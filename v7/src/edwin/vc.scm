@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.71 2000/08/18 20:22:38 cph Exp $
+;;; $Id: vc.scm,v 1.72 2000/08/21 04:55:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -221,7 +221,7 @@ Otherwise, the mod time of the file is the checkout time."
 (define (cache-value-2! master key p1 p2 read-value)
   (let ((t1 (file-modification-time p1))
 	(t2 (file-modification-time p2)))
-    (let ((value (read-value)))
+    (let ((value (read-value t1 t2)))
       (vc-master-put! master key (vector value t1 t2))
       value)))
 
@@ -790,7 +790,10 @@ files in or below it."
       (cache-value-2! master 'MODIFIED?
 		      (vc-master-pathname master)
 		      (vc-master-workfile master)
-		      (lambda () (vc-backend-diff master rev1 rev2 #f)))
+	(lambda (tm tw)
+	  (let ((modified? (vc-backend-diff master rev1 rev2 #f)))
+	    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+	    modified?)))
       (vc-backend-diff master rev1 rev2 #f)))
 
 (define-command vc-version-other-window
@@ -1690,7 +1693,11 @@ the value of vc-log-mode-hook."
     ;; We consider the workfile's owner to be the locker.
     (and (or (not revision)
 	     (equal? revision (vc-backend-workfile-revision master)))
-	 (or (vc-workfile-modified? master)
+	 (or (not
+	      (let ((t1 (file-modification-time (vc-master-workfile master)))
+		    (t2 (vc-cvs-workfile-mtime-string master)))
+		(and t1 t2
+		     (string=? (file-time->global-ctime-string t1) t2))))
 	     (cvs-file-edited? master))
 	 (unix/uid->string
 	  (file-attributes/uid
@@ -2013,18 +2020,6 @@ the value of vc-log-mode-hook."
 (define (vc-workfile-string master)
   (->namestring (vc-master-workfile master)))
 
-(define (vc-workfile-modified? master)
-  (read-cached-value-2 master 'MODIFIED?
-		       (vc-master-pathname master)
-		       (vc-master-workfile master)
-    (lambda (tm tw)
-      tm
-      (let ((tokens (find-cvs-entry master)))
-	(if (and tw tokens
-		 (string=? (file-time->global-ctime-string tw) (caddr tokens)))
-	    #f
-	    (vc-backend-diff master #f #f #t))))))
-
 (define (vc-save-workfile-buffer workfile)
   (let ((buffer (pathname->buffer workfile)))
     (if buffer
@@ -2056,6 +2051,42 @@ the value of vc-log-mode-hook."
 		    "diff" '("--brief" "/dev/null" "/dev/null")
 		    'OUTPUT #F))))
       result)))
+
+(define (vc-workfile-modified? master)
+  (read-cached-value-2 master 'MODIFIED?
+		       (vc-master-pathname master)
+		       (vc-master-workfile master)
+    (lambda (tm tw)
+      (if (eq? vc-type:cvs (vc-master-type master))
+	  (if (and tm tw
+		   (let ((ts (vc-cvs-workfile-mtime-string master)))
+		     (and ts
+			  (string=? ts (file-time->global-ctime-string tw)))))
+	      #f
+	      (let ((modified? (vc-backend-diff master #f #f #t)))
+		(set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+		modified?))
+	  (vc-backend-diff master #f #f #t)))))
+
+(define (vc-cvs-workfile-mtime-string master)
+  (read-cached-value-2 master 'CVS-MTIME-STRING
+		       (vc-master-pathname master)
+		       (vc-master-workfile master)
+    (lambda (tm tw)
+      (and tm tw
+	   (let ((entry (find-cvs-entry master)))
+	     (and entry
+		  (caddr entry)))))))
+
+(define (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+  (if (and (not modified?) tm tw (eq? vc-type:cvs (vc-master-type master)))
+      (begin
+	;; This breaks the READ-CACHED-VALUE-2 abstraction:
+	(vc-master-put! master 'CVS-MTIME-STRING
+			(vector (file-time->global-ctime-string tw) tm tw))
+	(let ((buffer (pathname->buffer (vc-master-workfile master))))
+	  (if buffer
+	      (vc-mode-line master buffer))))))
 
 (define (vc-revert-workfile-buffer master dont-confirm?)
   (let ((buffer (vc-workfile-buffer master #f)))
