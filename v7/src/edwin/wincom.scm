@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: wincom.scm,v 1.118 1996/04/23 23:07:26 cph Exp $
+;;;	$Id: wincom.scm,v 1.119 1996/04/24 01:48:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -345,7 +345,7 @@ or if the window is the only window of its frame."
     (let ((window (current-window)))
       (if (and (window-has-no-neighbors? window)
 	       (use-multiple-screens?)
-	       (other-screen (selected-screen) false))
+	       (other-screen? (selected-screen)))
 	  (delete-screen! (selected-screen))
 	  (window-delete! window)))))
 
@@ -364,7 +364,7 @@ or if the window is the only window of its frame."
 	 (let ((window (other-window n)))
 	   (if (current-window? window)
 	       (and (use-multiple-screens?)
-		    (let ((screen (other-screen (selected-screen) false)))
+		    (let ((screen (other-screen (selected-screen) 1 #f)))
 		      (and screen
 			   (screen-selected-window screen))))
 	       window))))
@@ -404,7 +404,7 @@ or if the window is the only window of its frame."
 (define (select-buffer-other-screen buffer)
   (if (multiple-screens?)
       (select-screen
-       (let ((screen (other-screen (selected-screen) false)))
+       (let ((screen (other-screen (selected-screen) 1 #t)))
 	 (if screen
 	     (begin
 	       (select-buffer-in-window buffer
@@ -520,7 +520,7 @@ Also kills any pop up window it may have created."
 		   (if (< (ref-variable split-height-threshold) limit)
 		       (set-variable! split-height-threshold limit))
 		   (cond ((and (use-multiple-screens?)
-			       (other-screen (selected-screen) false))
+			       (other-screen (selected-screen) 1 #t))
 			  =>
 			  (lambda (screen)
 			    (pop-into-window (screen-selected-window screen))))

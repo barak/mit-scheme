@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.52 1996/04/04 18:39:30 cph Exp $
+;;;	$Id: xterm.scm,v 1.53 1996/04/24 01:48:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -729,7 +729,7 @@
 	 (begin
 	   (%set-screen-visibility! screen 'UNMAPPED)
 	   (and (selected-screen? screen)
-		(let ((screen (other-screen screen false)))
+		(let ((screen (other-screen screen 1 #f)))
 		  (and screen
 		       (make-input-event 'SELECT-SCREEN
 					 select-screen

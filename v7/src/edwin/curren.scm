@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.120 1996/04/24 01:11:37 cph Exp $
+;;;	$Id: curren.scm,v 1.121 1996/04/24 01:49:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -86,20 +86,23 @@ The frame is guaranteed to be deselected at that time."
   (make-event-distributor))
 (define edwin-variable$screen-creation-hook edwin-variable$frame-creation-hook)
 
-(define (delete-screen! screen)
+(define (delete-screen! screen #!optional allow-kill-scheme?)
   (without-interrupts
    (lambda ()
      (if (not (screen-deleted? screen))
-	 (let ((other (other-screen screen true)))
+	 (let ((other (other-screen screen 1 #t)))
 	   (if other
 	       (begin
 		 (if (selected-screen? screen)
-		     (select-screen (or (other-screen screen false) other)))
+		     (select-screen (or (other-screen screen 1 #f) other)))
 		 (screen-discard! screen)
 		 (set-editor-screens! current-editor
 				      (delq! screen
-					     (editor-screens current-editor))))
-	       ((ref-command save-buffers-kill-scheme) #t)))))))
+					     (editor-screens current-editor)))
+		 #t)
+	       (if (or (default-object? allow-kill-scheme?) allow-kill-scheme?)
+		   ((ref-command save-buffers-kill-scheme) #t)
+		   #f)))))))
 
 (define (select-screen screen)
   (without-interrupts
@@ -173,15 +176,20 @@ The frame is guaranteed to be deselected at that time."
 	(else
 	 screen)))
 
-(define (other-screen screen invisible-ok?)
-  (let loop ((screen* screen))
-    (let ((screen* (screen1+ screen*)))
-      (cond ((eq? screen* screen)
-	     false)
-	    ((or invisible-ok? (screen-visible? screen*))
-	     screen*)
-	    (else
-	     (loop screen*))))))
+(define (other-screen screen n invisible-ok?)
+  (let ((next-screen (if (> n 0) screen1+ screen-1+)))
+    (let loop ((screen* screen) (n (abs n)))
+      (if (= n 0)
+	  screen*
+	  (let ((screen* (next-screen screen*)))
+	    (and (not (eq? screen* screen))
+		 (loop screen*
+		       (if (or invisible-ok? (screen-visible? screen*))
+			   (- n 1)
+			   n))))))))
+
+(define (other-screen? screen)
+  (other-screen screen 1 #t))
 
 ;;;; Windows
 
