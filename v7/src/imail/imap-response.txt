@@ -1,4 +1,4 @@
-$Id: imap-response.txt,v 1.5 2000/05/28 15:16:47 cph Exp $
+$Id: imap-response.txt,v 1.6 2000/06/01 04:56:42 cph Exp $
 
 Notes on IMAP server responses
 
@@ -161,7 +161,7 @@ Notes on IMAP server responses
 	= <nstring>
 	= <number>
 	= (<body-extension> <body-extension> ...)
-<body-fields> = <body-field-param> <nstring> <nstring> <body-field-enc> <number>
+<body-fields> = <body-field-param> <nstring> <nstring> <string> <number>
 <body-field-param>
 	= (<string> <string> ...)		;even number of <string>s
 	= NIL
@@ -285,6 +285,10 @@ Notes on IMAP server responses
 	   <string-or-false>		;message-id
 	   )
 <addr-list>
+	= (<address>+)
+	| #f
+
+<address>
 	= (<string-or-false>		;personal name
 	   <string-or-false>		;source route
 	   <string>			;mailbox name
