@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.32 1997/10/22 23:01:16 cph Exp $
+$Id: os2prm.scm,v 1.33 1997/11/11 13:20:29 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -213,17 +213,22 @@ MIT in each case. |#
 
 (define (current-user-name)
   (or (get-environment-variable "USER")
-      "nouser"))
+      (error "Unable to determine current user name.")))
 
 (define (user-home-directory user-name)
-  (or (and user-name
-	   (let ((directory (get-environment-variable "USERDIR")))
-	     (and directory
-		  (pathname-as-directory
-		   (pathname-new-name
-		    (pathname-as-directory (merge-pathnames directory))
-		    user-name)))))
-      (merge-pathnames "\\")))
+  (let ((try
+	 (lambda (directory)
+	   (pathname-as-directory (merge-pathnames user-name directory)))))
+    (cond ((get-environment-variable "USERDIR")
+	   => (lambda (userdir)
+		(try (pathname-as-directory (merge-pathnames userdir)))))
+	  ((get-environment-variable "HOME")
+	   => (lambda (homedir)
+		(if (string=? user-name (current-user-name))
+		    homedir
+		    (try (directory-pathname-as-file homedir)))))
+	  (else
+	   (error "Can't find user's home directory:" user-name)))))
 
 (define (dos/fs-drive-type pathname)
   (let ((type

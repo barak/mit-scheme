@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.13 1997/11/11 12:52:15 cph Exp $
+$Id: ntprm.scm,v 1.14 1997/11/11 13:20:21 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -261,14 +261,14 @@ MIT in each case. |#
 	    (merge-pathnames user-name directory)))))
     (cond ((get-environment-variable "USERDIR")
 	   => (lambda (userdir)
-		(try (pathname-as-directory
-		      (merge-pathnames userdir)))))
+		(try (pathname-as-directory (merge-pathnames userdir)))))
 	  ((nt/current-home-directory)
 	   => (lambda (homedir)
 		(if (string=? user-name (current-user-name))
 		    homedir
 		    (try (directory-pathname-as-file homedir)))))
-	  (else (error "Unable to find user home directory:" user-name)))))
+	  (else
+	   (error "Can't find user's home directory:" user-name)))))
 
 (define (nt/current-home-directory)
   (let ((homedrive (get-environment-variable "HOMEDRIVE"))
