@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.8 1999/01/02 06:19:10 cph Exp $
+;;; $Id: instance.scm,v 1.9 2000/02/21 22:10:33 cph Exp $
 ;;;
-;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -95,9 +95,7 @@
        ((PROCEDURE
 	 (LAMBDA ARGS
 	   (IF (NOT (,@test (LENGTH ARGS)))
-	       (ERROR:WRONG-NUMBER-OF-ARGUMENTS PROCEDURE
-						',arity
-						ARGS))
+	       (ERROR:WRONG-NUMBER-OF-ARGUMENTS PROCEDURE ,arity ARGS))
 	   (LET ((INSTANCE
 		  (OBJECT-NEW-TYPE
 		   (UCODE-TYPE RECORD)
@@ -140,11 +138,11 @@
       (cond ((eq? #t n-init-args)
 	     (if initialization
 		 (instance-constructor-3
-		  (fix:<= n-slots) (n-slots . #f)
+		  (fix:<= n-slots) (cons n-slots #f)
 		  ((initialization instance))
 		  ((apply initialize-instance instance args)))
 		 (instance-constructor-3
-		  (fix:<= n-slots) (n-slots . #f)
+		  (fix:<= n-slots) (cons n-slots #f)
 		  ()
 		  ((apply initialize-instance instance args)))))
 	    ((< n-slots 8)
@@ -245,7 +243,7 @@
 	  (make-initialization-1 #f)))))
 
 (define initialize-instance
-  (make-generic-procedure 1 'INITIALIZE-INSTANCE))
+  (make-generic-procedure '(1 . #F) 'INITIALIZE-INSTANCE))
 
 (define (instance? object)
   (and (tagged-vector? object)
