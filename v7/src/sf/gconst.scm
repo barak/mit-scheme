@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.12 1991/08/14 02:08:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.13 1992/02/08 15:10:14 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,7 +84,6 @@ MIT in each case. |#
     ENABLE-INTERRUPTS!
     EQ?
     ERROR-PROCEDURE
-    EXECUTE-AT-NEW-STATE-POINT
     FALSE
     FALSE?
     FIX:*
@@ -146,7 +145,6 @@ MIT in each case. |#
     FORCE
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
-    GET-FLUID-BINDINGS
     GET-NEXT-CONSTANT
     HUNK3-CONS
     INT:*
@@ -215,8 +213,6 @@ MIT in each case. |#
     SET-CAR!
     SET-CDR!
     SET-CELL-CONTENTS!
-    SET-CURRENT-DYNAMIC-STATE!
-    SET-FLUID-BINDINGS!
     SET-INTERRUPT-ENABLES!
     SET-STRING-LENGTH!
     STRING->SYMBOL
@@ -265,7 +261,6 @@ MIT in each case. |#
     SYSTEM-VECTOR-SET!
     SYSTEM-VECTOR?
     THE-EMPTY-STREAM
-    TRANSLATE-TO-STATE-POINT
     TRUE
     UNDEFINED-CONDITIONAL-BRANCH
     UNSIGNED-INTEGER->BIT-STRING
