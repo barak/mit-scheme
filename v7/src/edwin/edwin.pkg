@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.28 1991/04/11 03:15:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.29 1991/04/12 23:23:58 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -184,6 +184,7 @@ MIT in each case. |#
   (files "undo")
   (parent (edwin))
   (export (edwin)
+	  disable-group-undo!
 	  enable-group-undo!
 	  undo-boundary!
 	  undo-done!

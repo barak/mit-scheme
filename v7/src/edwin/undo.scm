@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.45 1989/04/28 22:54:12 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.46 1991/04/12 23:23:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -83,12 +83,14 @@
       group
       (make-undo-data (let ((records (make-vector initial-undo-records false)))
 			(mark-not-undoable!
-			 (let ((max-index (-1+ initial-undo-records)))
-			   (undo-records-ref records max-index)))
+			 (undo-records-ref records (- initial-undo-records 1)))
 			records)
 		      0
 		      (string-allocate initial-undo-chars)
 		      0)))))
+
+(define (disable-group-undo! group)
+  (set-group-undo-data! group false))
 
 (define (new-undo! undo-data type group start length)
   (let ((records (undo-data-records undo-data))
@@ -98,7 +100,7 @@
       (set-undo-record-start! undo-record start)
       (set-undo-record-length! undo-record length)
       (set! last-undo-record undo-record))
-    (let ((next (1+ index)))
+    (let ((next (+ index 1)))
       (cond ((< next (vector-length records))
 	     (mark-not-undoable! (undo-records-ref records next))
 	     (set-undo-data-next-record! undo-data next))
@@ -114,7 +116,7 @@
 	       (mark-not-undoable! new-record)
 	       (mark-not-undoable! max-record)
 	       (vector-set! new-records length new-record)
-	       (vector-set! new-records (-1+ maximum-undo-records) max-record)
+	       (vector-set! new-records (- maximum-undo-records 1) max-record)
 	       (set-undo-data-records! undo-data new-records)
 	       (set-undo-data-next-record! undo-data next))))))
   (set! last-undo-group group)
@@ -170,8 +172,7 @@
 				     group
 				     (mark-index (group-point group)))
 		(set! last-undo-record false)))
-	  (if (not (group-modified? group))
-	      (new-undo! undo-data 'UNMODIFY group start 0))
+	  (undo-mark-modified! group start undo-data)
 	  (let ((last last-undo-record)
 		(length (- end start)))
 	    (if (and last
@@ -194,8 +195,7 @@
 				     group
 				     (mark-index (group-point group)))
 		(set! last-undo-record false)))
-	  (if (not (group-modified? group))
-	      (new-undo! undo-data 'UNMODIFY group start 0))
+	  (undo-mark-modified! group start undo-data)
 	  (let ((last last-undo-record)
 		(length (- end start)))
 	    (if (and last
@@ -243,13 +243,21 @@
 				  group
 				  (mark-index point))))))))
 
+(define-integrable (undo-mark-modified! group start undo-data)
+  (if (not (group-modified? group))
+      (new-undo! undo-data 'UNMODIFY group start
+		 (let ((buffer (group-buffer group)))
+		   (and buffer
+			(buffer-modification-time buffer))))))
+
 (define-integrable (undo-mark-previous! undo-data type group start)
   (let ((records (undo-data-records undo-data)))
     (let ((index
 	   (let ((next (undo-data-next-record undo-data)))
-	     (-1+ (if (zero? next)
-		      (vector-length records)
-		      next)))))
+	     (- (if (zero? next)
+		    (vector-length records)
+		    next)
+		1))))
       (let ((record (vector-ref records index)))
 	(if record
 	    (if (not (eq? type (undo-record-type record)))
@@ -259,12 +267,6 @@
 	      (new-undo! undo-data type group start 0)))))))
 
 ;;;; Undo Command
-
-;;; This is used to determine if we have switched buffers since the
-;;; last Undo command.  Actually, this may be an artifact of RMS'
-;;; implementation since there should not be any way to switch buffers
-;;; between two Undo commands in this editor.
-(define last-undone-buffer)
 
 ;;; These keep track of the state of the Undo command, so that
 ;;; subsequent invocations know where to start from.
@@ -312,11 +314,9 @@ A numeric argument serves as a repeat count."
 	     (lambda ()
 	       (command-message-receive undo-command-tag
 		 (lambda ()
-		   (if (or (not (eq? last-undone-buffer buffer))
-			   (= -1 last-undone-record))
+		   (if (= -1 last-undone-record)
 		       (editor-error cant-undo-more)))
 		 (lambda ()
-		   (set! last-undone-buffer buffer)
 		   (set! number-records-undone 0)
 		   (set! number-chars-left
 			 (string-length (undo-data-chars undo-data)))
@@ -324,7 +324,7 @@ A numeric argument serves as a repeat count."
 		   (set! last-undone-char (undo-data-next-char undo-data))
 		   ;; This accounts for the boundary that is inserted
 		   ;; just before this command is called.
-		   (set! argument (1+ argument))
+		   (set! argument (+ argument 1))
 		   unspecific))
 	       (undo-n-records undo-data
 			       buffer
@@ -336,74 +336,72 @@ A numeric argument serves as a repeat count."
   (let ((records (undo-data-records undo-data)))
     (let find-nth-boundary ((argument argument) (i last-undone-record) (n 0))
       (let find-boundary ((i i) (n n) (any-records? false))
-	(let ((i (-1+ (if (zero? i) (vector-length records) i)))
-	      (n (1+ n)))
-	  (set! number-records-undone (1+ number-records-undone))
+	(let ((i (- (if (= i 0) (vector-length records) i) 1))
+	      (n (+ n 1)))
+	  (set! number-records-undone (+ number-records-undone 1))
 	  (if (> number-records-undone (vector-length records))
-	      (editor-error no-more-undo)
-	      (case (undo-record-type (vector-ref records i))
-		((BOUNDARY)
-		 (if (= argument 1)
-		     n
-		     (find-nth-boundary (-1+ argument) i n)))
-		((NOT-UNDOABLE)
-		 (if (and (= argument 1) any-records?)
-		     ;; In this case treat it as if there were a
-		     ;; BOUNDARY just in front of this record.
-		     (-1+ n)
-		     (editor-error no-more-undo)))
-		((INSERT)
-		 (set! number-chars-left
-		       (- number-chars-left
-			  (undo-record-length (vector-ref records i))))
-		 (if (negative? number-chars-left)
-		     (editor-error no-more-undo)
-		     (find-boundary i n true)))
-		(else
-		 (find-boundary i n true)))))))))
+	      (editor-error no-more-undo))
+	  (case (undo-record-type (vector-ref records i))
+	    ((BOUNDARY)
+	     (if (= argument 1)
+		 n
+		 (find-nth-boundary (- argument 1) i n)))
+	    ((NOT-UNDOABLE)
+	     (if (not (and (= argument 1) any-records?))
+		 (editor-error no-more-undo))
+	     ;; Treat this as if it were a BOUNDARY record.
+	     n)
+	    ((INSERT)
+	     (set! number-chars-left
+		   (- number-chars-left
+		      (undo-record-length (vector-ref records i))))
+	     (if (< number-chars-left 0)
+		 (editor-error no-more-undo))
+	     (find-boundary i n true))
+	    (else
+	     (find-boundary i n true))))))))
 
 (define (undo-n-records undo-data buffer n)
   (let ((group (buffer-group buffer))
 	(records (undo-data-records undo-data))
 	(chars (undo-data-chars undo-data)))
-    (let loop ((n n))
-      (if (positive? n)
-	  (let ((ir (-1+ (if (zero? last-undone-record)
-			     (vector-length records)
-			     last-undone-record))))
-	    (let ((type (undo-record-type (vector-ref records ir)))
-		  (start (undo-record-start (vector-ref records ir)))
-		  (length (undo-record-length (vector-ref records ir))))
-	      (cond ((eq? 'DELETE type)
-		     (let ((end (+ start length)))
-		       (if (or (< start (group-start-index group))
-			       (> end (group-end-index group)))
-			   (editor-error outside-visible-range))
-		       (group-delete! group start end))
-		     (set-current-point! (make-mark group start)))
-		    ((eq? 'INSERT type)
-		     (if (or (< start (group-start-index group))
-			     (> start (group-end-index group)))
-			 (editor-error outside-visible-range))
-		     (set-current-point! (make-mark group start))
-		     (let ((ic (- last-undone-char length)))
-		       (if (not (negative? ic))
-			   (begin
-			     (group-insert-substring! group start
-						      chars ic
-						      last-undone-char)
-			     (set! last-undone-char ic))
-			   (let ((l (string-length chars)))
-			     (let ((ic* (+ l ic)))
-			       (group-insert-substring! group start
-							chars ic* l)
-			       (group-insert-substring! group (- start ic)
-							chars 0
-							last-undone-char)
-			       (set! last-undone-char ic*))))))
-		    ((eq? 'UNMODIFY type)
-		     (buffer-not-modified! buffer))
-		    ((eq? 'BOUNDARY type) 'DONE)
-		    (else (error "Losing undo record type" type))))
-	    (set! last-undone-record ir)
-	    (loop (-1+ n)))))))
+    (do ((n n (- n 1)))
+	((= n 0))
+      (let ((ir
+	     (- (if (= last-undone-record 0)
+		    (vector-length records)
+		    last-undone-record)
+		1)))
+	(let ((record (vector-ref records ir)))
+	  (let ((start (undo-record-start record)))
+	    (if (or (< start (group-start-index group))
+		    (> start (group-end-index group)))
+		(editor-error outside-visible-range))
+	    (case (undo-record-type record)
+	      ((DELETE)
+	       (let ((end (+ start (undo-record-length record))))
+		 (if (> end (group-end-index group))
+		     (editor-error outside-visible-range))
+		 (group-delete! group start end)))
+	      ((INSERT)
+	       (let ((ic (- last-undone-char (undo-record-length record))))
+		 (if (>= ic 0)
+		     (begin
+		       (group-insert-substring! group start
+						chars ic last-undone-char)
+		       (set! last-undone-char ic))
+		     (let ((l (string-length chars)))
+		       (let ((ic* (+ l ic)))
+			 (group-insert-substring! group start chars ic* l)
+			 (group-insert-substring! group (- start ic)
+						  chars 0 last-undone-char)
+			 (set! last-undone-char ic*))))))
+	      ((UNMODIFY)
+	       (if (eqv? (undo-record-length record)
+			 (buffer-modification-time buffer))
+		   (buffer-not-modified! buffer)))
+	      ((BOUNDARY NOT-UNDOABLE)
+	       (set-current-point! (make-mark group start)))
+	      (else
+	       (error "Losing undo record type" (undo-record-type record))))))
+	(set! last-undone-record ir)))))
