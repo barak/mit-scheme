@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hash.scm,v 14.8 2003/02/14 18:28:32 cph Exp $
+$Id: hash.scm,v 14.9 2004/10/01 17:04:58 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1991,1993 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -102,7 +103,7 @@ USA.
 	  (%hash-table/make
 	   size
 	   1
-	   (let ((table (make-vector (1+ size) '())))
+	   (let ((table (make-vector (+ size 1) '())))
 	     (vector-set! table
 			  0
 			  ((ucode-primitive primitive-object-set-type)
@@ -115,7 +116,7 @@ USA.
 	     (let loop ((n 0))
 	       (if (fix:< n size)
 		   (begin
-		     (vector-set! table n (cons true '()))
+		     (vector-set! table n (cons #t '()))
 		     (loop (fix:+ n 1)))))
 	     table))))
     (weak-set-cdr! all-hash-tables
@@ -123,15 +124,15 @@ USA.
     table))
 
 (define (hash x #!optional table)
-  (if (eq? x false)
+  (if (eq? x #f)
       0
       (object-hash x
 		   (if (default-object? table) default-hash-table table)
-		   true)))
+		   #t)))
 
 (define (unhash n #!optional table)
-  (if (zero? n)
-      false
+  (if (= n 0)
+      #f
       (let ((object
 	     (object-unhash n
 			    (if (default-object? table)
@@ -142,21 +143,16 @@ USA.
 	object)))
 
 (define (valid-hash-number? n #!optional table)
-  (or (zero? n)
+  (or (= n 0)
       (object-unhash n (if (default-object? table) default-hash-table table))))
 
 (define (object-hashed? x #!optional table)
-  (or (eq? x false)
+  (or (eq? x #f)
       (object-hash x
 		   (if (default-object? table) default-hash-table table)
-		   false)))  
+		   #f)))  
 
-;;; This is not dangerous because assq is a primitive and does not
-;;; cons.  The rest of the consing (including that by the interpreter)
-;;; is a small bounded amount.
-;;;
-;;; NOTE: assq is no longer a primitive.  This works fine if assq is
-;;; compiled, but can lose if it is interpreted.
+;;; This can cons a bit when interpreted.
 
 (define (object-hash object #!optional table insert?)
   (let ((table
@@ -180,10 +176,8 @@ USA.
 		 (hash-table/hash-table table)))
 	       (bucket (vector-ref the-hash-table hash-index))
 	       (association (assq object bucket)))
-	  (cond (association
-		 (cdr association))
-		((not insert?)
-		 false)
+	  (cond (association (cdr association))
+		((not insert?) #f)
 		(else
 		 (let ((result (hash-table/next-number table)))
 		   (let ((pair (cons object result))
@@ -191,7 +185,7 @@ USA.
 			  (vector-ref (hash-table/unhash-table table)
 				      (modulo result
 					      (hash-table/size table)))))
-		     (set-hash-table/next-number! table (1+ result))
+		     (set-hash-table/next-number! table (+ result 1))
 		     (vector-set! the-hash-table
 				  hash-index
 				  (cons pair bucket))
@@ -219,16 +213,17 @@ USA.
     (with-absolutely-no-interrupts
       (lambda ()
 	(let ((bucket (vector-ref (hash-table/unhash-table table) index)))
-	  (set-car! bucket false)
+	  (set-car! bucket #f)
 	  (let ((result
-		 (without-interrupts
-		   (lambda ()
+		 (with-interrupt-mask interrupt-mask/gc-ok
+		   (lambda (interrupt-mask)
+		     interrupt-mask
 		     (let loop ((l (cdr bucket)))
-		       (cond ((null? l) false)
+		       (cond ((null? l) #f)
 			     ((= number (system-pair-cdr (car l)))
 			      (system-pair-car (car l)))
 			     (else (loop (cdr l)))))))))
-	    (set-car! bucket true)
+	    (set-car! bucket #t)
 	    result))))))
 
 ;;;; Rehash daemon
@@ -276,7 +271,7 @@ USA.
 		(let inner1 ((l1 bucket) (l2 (cdr bucket)))
 		  (cond ((null? l2)
 			 (outer (fix:- n 1)))
-			((eq? (system-pair-car (car l2)) false)
+			((eq? (system-pair-car (car l2)) #f)
 			 (set-cdr! l1 (cdr l2))
 			 (inner1 l1 (cdr l1)))
 			(else
@@ -285,7 +280,7 @@ USA.
 		(let inner2 ((l (cdr bucket)))
 		  (cond ((null? l)
 			 (outer (fix:- n 1)))
-			((eq? (system-pair-car (car l)) false)
+			((eq? (system-pair-car (car l)) #f)
 			 (inner2 (cdr l)))
 			(else
 			 (rehash (car l))
