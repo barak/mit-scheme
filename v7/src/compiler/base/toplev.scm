@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.45 1992/08/20 19:58:10 jinx Exp $
+$Id: toplev.scm,v 4.46 1992/10/19 19:13:30 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,6 +55,9 @@ MIT in each case. |#
 	(for-each kernel input)
 	(kernel input))))
 
+(define (cbf input . rest)
+  (apply compile-bin-file input rest))
+
 (define (compile-bin-file input-string #!optional output-string)
   (if compiler:cross-compiling?
       (apply cross-compile-bin-file
@@ -103,8 +106,8 @@ MIT in each case. |#
 		      (write (enough-namestring input-pathname))
 		      (write-string " => ")
 		      (write (enough-namestring output-pathname))))
-		(fasdump (transform input-pathname output-pathname)
-			 output-pathname)))))
+		(compiler-file-output (transform input-pathname output-pathname)
+				      output-pathname)))))
 	 (kernel
 	  (if compiler:batch-mode?
 	      (batch-kernel core)
@@ -141,18 +144,19 @@ MIT in each case. |#
     (fluid-let ((compiler:noisy? false)
 		(*info-output-filename* keep-debugging-info?))
       (compile-scode/internal scode
-			      keep-debugging-info?))))  
+			      keep-debugging-info?))))
 
 (define (compile-procedure procedure #!optional keep-debugging-info?)
-  (scode-eval (let ((keep-debugging-info?
-		     (and (or (default-object? keep-debugging-info?)
-			      keep-debugging-info?)
-			  'KEEP)))
-		(fluid-let ((compiler:noisy? false)
-			    (*info-output-filename* keep-debugging-info?))
-		  (compile-scode/internal (procedure-lambda procedure)
-				 keep-debugging-info?)))
-	      (procedure-environment procedure)))
+  (compiled-scode->procedure
+   (let ((keep-debugging-info?
+	  (and (or (default-object? keep-debugging-info?)
+		   keep-debugging-info?)
+	       'KEEP)))
+     (fluid-let ((compiler:noisy? false)
+		 (*info-output-filename* keep-debugging-info?))
+       (compile-scode/internal (procedure-lambda procedure)
+			       keep-debugging-info?)))
+   (procedure-environment procedure)))
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? true))
@@ -187,55 +191,6 @@ MIT in each case. |#
 (define compiler:batch-mode? false)
 (define compiler:abort-handled? false)
 (define compiler:abort-continuation)
-
-;;; Example of `lap->code' usage (MC68020):
-
-#|
-(define bar
-  ;; defines bar to be a procedure that adds 1 to its argument
-  ;; with no type or range checks.
-  (scode-eval
-   (lap->code
-    'start
-    `((entry-point start)
-      (dc uw #xffff)
-      (block-offset start)
-      (label start)
-      (pea (@pcr proc))
-      (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
-      (mov l (@a+ 7) (@ao 6 8))
-      (and b (& #x3) (@a 7))
-      (rts)
-      (dc uw #x0202)
-      (block-offset proc)
-      (label proc)
-      (mov l (@a+ 7) (d 0))
-      (addq l (& 1) (d 0))
-      (mov l (d 0) (@ao 6 8))
-      (and b (& #x3) (@a 7))
-      (rts)))
-   '()))
-|#
-
-(define (lap->code label instructions)
-  (in-compiler
-   (lambda ()
-     (set! *lap* instructions)
-     (set! *entry-label* label)
-     (set! *current-label-number* 0)
-     (set! *next-constant* 0)
-     (set! *interned-constants* '())
-     (set! *interned-variables* '())
-     (set! *interned-assignments* '())
-     (set! *interned-uuo-links* '())
-     (set! *interned-global-links* '())
-     (set! *interned-static-variables* '())
-     (set! *block-label* (generate-label))
-     (set! *external-labels* '())
-     (set! *ic-procedure-headers* '())
-     (phase/assemble)
-     (phase/link)
-     *result*)))
 
 (define (compile-recursively scode procedure-result? procedure-name)
   ;; Used by the compiler when it wants to compile subexpressions as
@@ -341,11 +296,6 @@ MIT in each case. |#
 ;; Last used: phase/link
 (define *ic-procedure-headers*)
 (define *entry-label*)
-(define *block-label*)
-
-;; First set: phase/lap-generation
-;; Last used: phase/info-generation-2
-(define *external-labels*)
 
 ;; First set: phase/lap-generation
 ;; Last used: phase/link
@@ -360,16 +310,6 @@ MIT in each case. |#
 (define *dbg-expression*)
 (define *dbg-procedures*)
 (define *dbg-continuations*)
-
-;; First set: phase/assemble
-;; Last used: phase/link
-(define *label-bindings*)
-(define *code-vector*)
-(define *entry-points*)
-
-;; First set: phase/link
-;; Last used: result of compilation
-(define *result*)
 
 (define (in-compiler thunk)
   (let ((run-compiler
@@ -422,19 +362,10 @@ MIT in each case. |#
   ;; Split this fluid-let because compiler was choking on it.
   (fluid-let ((*ic-procedure-headers*)
 	      (*current-label-number*)
-	      (*external-labels*)
-	      (*block-label*)
 	      (*dbg-expression*)
 	      (*dbg-procedures*)
 	      (*dbg-continuations*)
 	      (*lap*)
-	      (*next-constant*)
-	      (*interned-constants*)
-	      (*interned-variables*)
-	      (*interned-assignments*)
-	      (*interned-uuo-links*)
-	      (*interned-global-links*)
-	      (*interned-static-variables*)
 	      (*constants*)
 	      (*blocks*)
 	      (*expressions*)
@@ -455,16 +386,8 @@ MIT in each case. |#
 		(*rtl-root*)
 		(*machine-register-map*)
 		(*entry-label*)
-		(*label-bindings*)
-		(*code-vector*)
-		(*entry-points*)
-		(*subprocedure-linking-info*)
-		(*result*))
-      (thunk))))
-
-(define (recursive-compilation-results)
-  (sort *recursive-compilation-results*
-	(lambda (x y) (< (vector-ref x 0) (vector-ref y 0)))))
+		(*subprocedure-linking-info*))
+      (bind-assembler&linker-variables thunk))))
 
 (define (compiler:reset!)
   (set! *recursive-compilation-number* 0)
@@ -477,19 +400,10 @@ MIT in each case. |#
 
   (set! *ic-procedure-headers*)
   (set! *current-label-number*)
-  (set! *external-labels*)
-  (set! *block-label*)
   (set! *dbg-expression*)
   (set! *dbg-procedures*)
   (set! *dbg-continuations*)
   (set! *lap*)
-  (set! *next-constant*)
-  (set! *interned-constants*)
-  (set! *interned-variables*)
-  (set! *interned-assignments*)
-  (set! *interned-uuo-links*)
-  (set! *interned-global-links*)
-  (set! *interned-static-variables*)
   (set! *constants*)
   (set! *blocks*)
   (set! *expressions*)
@@ -510,12 +424,8 @@ MIT in each case. |#
   (set! *rtl-root*)
   (set! *machine-register-map*)
   (set! *entry-label*)
-  (set! *label-bindings*)
-  (set! *code-vector*)
-  (set! *entry-points*)
   (set! *subprocedure-linking-info*)
-  (set! *result*)
-  unspecific)
+  (assembler&linker-reset!))
 
 ;;;; Main Entry Point
 
@@ -567,11 +477,7 @@ MIT in each case. |#
 	 (phase/lap-linearization)
 	 (if lap-output-port
 	     (phase/lap-file-output lap-output-port))
-	 (phase/assemble)
-	 (if info-output-pathname
-	     (phase/info-generation-2 info-output-pathname))
-	 (phase/link)
-	 *result*)))))
+	 (assemble&link info-output-pathname))))))
 
 (define (compiler-phase name thunk)
   (if compiler:show-phases?
@@ -635,14 +541,6 @@ MIT in each case. |#
   (write-string " (process time); ")
   (write (/ (exact->inexact real-time) 1000))
   (write-string " (real time)"))
-
-(define-macro (last-reference name)
-  (let ((x (generate-uninterned-symbol)))
-    `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
-	 ,name
-	 (LET ((,x ,name))
-	   (SET! ,name)
-	   ,x))))
 
 (define (phase/fg-generation)
   (compiler-superphase "Flow Graph Generation"
@@ -982,16 +880,7 @@ MIT in each case. |#
 (define (phase/lap-generation)
   (compiler-phase "LAP Generation"
     (lambda ()
-      (set! *next-constant* 0)
-      (set! *interned-constants* '())
-      (set! *interned-variables* '())
-      (set! *interned-assignments* '())
-      (set! *interned-uuo-links* '())
-      (set! *interned-global-links* '())
-      (set! *interned-static-variables* '())
-      (set! *block-label* (generate-label))
-      (set! *external-labels* '())
-      (initialize-lap-linearizer!)
+      (initialize-back-end!)
       (if *procedure-result?*
 	  (generate-lap *rtl-graphs* '()
 	    (lambda (prefix environment-label free-ref-label n-sections)
@@ -1014,12 +903,10 @@ MIT in each case. |#
     (lambda ()
       (set! *lap*
 	    (optimize-linear-lap
-	     (LAP ,@(if *procedure-result?*
-			(LAP (ENTRY-POINT ,*entry-label*))
-			(lap:make-entry-point *entry-label* *block-label*))
-		  ,@(linearize-lap *rtl-root*
-				   *rtl-procedures*
-				   *rtl-continuations*))))
+	     (wrap-lap *entry-label*
+		       (linearize-lap *rtl-root*
+				      *rtl-procedures*
+				      *rtl-continuations*))))
       (with-values
 	  (lambda ()
 	    (info-generation-phase-2 *rtl-expression*
@@ -1067,171 +954,3 @@ MIT in each case. |#
 		  (write-char #\page)
 		  (newline)))
 	    (output-port/flush-output port)))))))
-
-(define (phase/assemble)
-  (compiler-phase "Assembly"
-    (lambda ()
-      (with-values (lambda () (assemble *block-label* (last-reference *lap*)))
-	(lambda (count code-vector labels bindings linkage-info)
-	  linkage-info			;ignored
-	  (set! *code-vector* code-vector)
-	  (set! *entry-points* labels)
-	  (set! *label-bindings* bindings)
-	  (if compiler:show-phases?
-	      (begin
-		(newline)
-		(write-string *output-prefix*)
-		(write-string "  Branch tensioning done in ")
-		(write (1+ count))
-		(write-string
-		 (if (zero? count) " iteration." " iterations.")))))))))
-
-(define (phase/info-generation-2 pathname)
-  (info-generation-2 pathname set-compiled-code-block/debugging-info!))
-
-(define (info-generation-2 pathname set-debugging-info!)
-  (compiler-phase "Debugging Information Generation"
-    (lambda ()
-      (set-debugging-info!
-       *code-vector*
-       (let ((info
-	      (info-generation-phase-3
-	       (last-reference *dbg-expression*)
-	       (last-reference *dbg-procedures*)
-	       (last-reference *dbg-continuations*)
-	       *label-bindings*
-	       (last-reference *external-labels*))))
-	 (cond ((eq? pathname 'KEEP)	; for dynamic execution
-		info)
-	       ((eq? pathname 'RECURSIVE) ; recursive compilation
-		(set! *recursive-compilation-results*
-		      (cons (vector *recursive-compilation-number*
-				    info
-				    *code-vector*)
-			    *recursive-compilation-results*))
-		(cons *info-output-filename* *recursive-compilation-number*))
-	       (else
-		(compiler:dump-info-file
-		 (let ((others (recursive-compilation-results)))
-		   (if (null? others)
-		       info
-		       (list->vector
-			(cons info
-			      (map (lambda (other) (vector-ref other 1))
-				   others)))))
-		 pathname)
-		*info-output-filename*)))))))
-
-;;; Various ways of dumping an info file
-
-(define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname true)
-  (announce-info-files pathname))
-
-(define (compiler:dump-bif/bsm-files binf pathname)
-  (let ((bif-path (pathname-new-type pathname "bif"))
-	(bsm-path (pathname-new-type pathname "bsm")))
-    (let ((bsm (split-inf-structure! binf bsm-path)))
-      (fasdump binf bif-path true)
-      (fasdump bsm bsm-path true))
-    (announce-info-files bif-path bsm-path)))
-  
-(define (compiler:dump-bci/bcs-files binf pathname)
-  (load-option 'COMPRESS)
-  (let ((bci-path (pathname-new-type pathname "bci"))
-	(bcs-path (pathname-new-type pathname "bcs")))
-    (let ((bsm (split-inf-structure! binf bcs-path)))
-      (call-with-temporary-filename
-	(lambda (bif-name)
-	  (fasdump binf bif-name true)
-	  (compress bif-name bci-path)))
-      (call-with-temporary-filename
-	(lambda (bsm-name)
-	  (fasdump bsm bsm-name true)
-	  (compress bsm-name bcs-path))))
-    (announce-info-files bci-path bcs-path)))
-  
-(define (compiler:dump-bci-file binf pathname)
-  (load-option 'COMPRESS)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf false)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(fasdump binf bif-name true)
-	(compress bif-name bci-path)))
-    (announce-info-files bci-path)))
-
-(define (announce-info-files . files)
-  (if compiler:noisy?
-      (let ((port (nearest-cmdl/port)))
-	(let loop ((files files))
-	  (if (null? files)
-	      unspecific
-	      (begin
-		(fresh-line port)
-		(write-string ";")
-		(write (->namestring (car files)))
-		(write-string " dumped ")
-		(loop (cdr files))))))))
-
-(define compiler:dump-info-file
-  compiler:dump-bci-file)
-
-(define (phase/link)
-  (compiler-phase "Linkification"
-    (lambda ()
-      ;; This has sections locked against GC to prevent relocation
-      ;; while computing addresses.
-      (let* ((label->offset
-	      (lambda (label)
-		(cdr (or (assq label *label-bindings*)
-			 (error "Missing entry point" label)))))
-	     (bindings
-	      (map (lambda (label)
-		     (cons
-		      label
-		      (with-absolutely-no-interrupts
-		       (lambda ()
-			 ((ucode-primitive primitive-object-set-type)
-			  type-code:compiled-entry
-			  (make-non-pointer-object
-			   (+ (label->offset label)
-			      (object-datum *code-vector*))))))))
-		   *entry-points*))
-	     (label->address
-	      (lambda (label)
-		(cdr (or (assq label bindings)
-			 (error "Label not defined as entry point"
-				label))))))
-	(set! *result*
-	      (if *procedure-result?*
-		  (let ((linking-info *subprocedure-linking-info*))
-		    (let ((compiled-procedure (label->address *entry-label*))
-			  (translate-label
-			   (let ((block-offset (label->offset *block-label*)))
-			     (lambda (index)
-			       (let ((label (vector-ref linking-info index)))
-				 (and label
-				      (- (label->offset label)
-					 block-offset)))))))
-		      (cons compiled-procedure
-			    (vector
-			     (compiled-code-address->block compiled-procedure)
-			     (translate-label 0)
-			     (translate-label 1)
-			     (vector-ref linking-info 2)))))
-		  (label->address *entry-label*)))
-	(for-each (lambda (entry)
-		    (set-lambda-body! (car entry)
-				      (label->address (cdr entry))))
-		  *ic-procedure-headers*))
-      (if (not compiler:preserve-data-structures?)
-	  (begin
-	    (set! *code-vector*)
-	    (set! *entry-points*)
-	    (set! *subprocedure-linking-info*)
-	    (set! *label-bindings*)
-	    (set! *block-label*)
-	    (set! *entry-label*)
-	    (set! *ic-procedure-headers*)
-	    unspecific)))))
