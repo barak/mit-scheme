@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.8 1989/11/28 21:12:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.9 1989/12/03 13:09:30 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -293,7 +293,7 @@ procedures and continuations differ from closures) */
      - 8: NON_MARKED header
      - 4: Format word
      - 2: 0xFFF4 (GC Offset to start of block from .+2)
-       0: BLE	0(4,3)		; call trampoline_to_interface
+       0: BLE	4(4,3)		; call trampoline_to_interface
        4: LDI	index,28
        8: trampoline dependent storage (0 - 3 longwords)
 
@@ -333,9 +333,9 @@ procedures and continuations differ from closures) */
 									\
   PC = ((unsigned long *) (entry_address));				\
 									\
-  /*	BLE	0(4,3) */						\
+  /*	BLE	4(4,3) */						\
 									\
-  *PC++ = ((unsigned long) 0xe4604000);					\
+  *PC++ = ((unsigned long) 0xe4602008);					\
 									\
   /*	LDO	index(0),28 */						\
 									\

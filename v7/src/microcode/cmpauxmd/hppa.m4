@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.5 1989/11/28 05:06:33 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.6 1989/12/03 13:09:51 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -89,10 +89,10 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	registers.
 ;;;;
 ;;;; Compiled Scheme code uses the following register convention.
-;;;; Note that trampoline_to_interface and the register block are
+;;;; Note that scheme_to_interface_ble and the register block are
 ;;;; preserved by C calls, but the others are not, since they change
-;;;; dynamically.  scheme_to_interface can be reached at a fixed
-;;;; offset from trampoline_to_interface.
+;;;; dynamically.  scheme_to_interface and trampoline_to_interface can
+;;;; be reached at fixed offsets from scheme_to_interface_ble.
 ;;;;	- gr22 contains the Scheme stack pointer.
 ;;;;	- gr21 contains the Scheme free pointer.
 ;;;;	- gr20 contains a cached version of MemTop.
@@ -102,7 +102,7 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	"register" block.  This block contains the compiler's copy of
 ;;;;	MemTop, the interpreter's registers (val, env, exp, etc),
 ;;;;	temporary locations for compiled code.
-;;;;	- gr3 contains the address of trampoline_to_interface.
+;;;;	- gr3 contains the address of scheme_to_interface_ble.
 ;;;;
 ;;;;	All other registers are available to the compiler.  A
 ;;;;	caller-saves convention is used, so the registers need not be
@@ -150,8 +150,10 @@ interface_to_scheme
 	DEP	5,LOW_TC_BIT,TC_LENGTH,19	; Setup dlink
 	.CALL	RTNVAL=GR		; out=28
 	BLE	0(5,26)			; Invoke entry point
-	COPY	31,3			; Setup trampoline_to_interface
+	COPY	31,3			; Setup scheme_to_interface_ble
 
+scheme_to_interface_ble
+	ADDI	4,31
 trampoline_to_interface
 	COPY	31,26
 scheme_to_interface
@@ -210,6 +212,7 @@ $THISMODULE$
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
 	.EXPORT interface_to_scheme,PRIV_LEV=3
 	.EXPORT interface_to_C,PRIV_LEV=3
+	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
 	.EXPORT trampoline_to_interface,PRIV_LEV=3
 	.EXPORT scheme_to_interface,PRIV_LEV=3
 	.END
