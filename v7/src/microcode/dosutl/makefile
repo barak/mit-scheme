@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.10 1993/11/05 00:46:57 gjr Exp $
+###	$Id: makefile,v 1.11 1994/03/25 01:12:07 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -126,13 +126,16 @@ STD_GC_SOURCES = \
 fasdump.c \
 gcloop.c \
 memmag.c \
-purify.c
+purify.c \
+wabbit.c
+
 BCH_GC_SOURCES = \
 bchdmp.c \
 bchgcl.c \
 bchmmg.c \
 bchpur.c \
 bchutl.c
+
 # DOS
 DOS_SOURCES = \
 intext.c \
@@ -254,7 +257,9 @@ STD_GC_OBJECTS = \
 fasdump.obj \
 gcloop.obj \
 memmag.obj \
-purify.obj
+purify.obj \
+wabbit.obj
+
 BCH_GC_OBJECTS = \
 bchdmp.obj \
 bchgcl.obj \
@@ -342,6 +347,7 @@ fasdump.obj : scheme.tch prims.h osio.h osfile.h osfs.h $(GC_HEAD_FILES) \
 memmag.obj : scheme.tch prims.h $(GC_HEAD_FILES) memmag.h
 gcloop.obj : scheme.tch $(GC_HEAD_FILES)
 purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
+wabbit.obj : scheme.tch $(GC_HEAD_FILES) zones.h
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 comutl.obj : scheme.tch prims.h
 artutl.obj : scheme.tch

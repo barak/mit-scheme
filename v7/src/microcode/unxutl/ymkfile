@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.87 1993/11/19 21:27:41 cph Exp $
+$Id: ymkfile,v 1.88 1994/03/25 01:10:08 gjr Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -442,7 +442,8 @@ STD_GC_SOURCES = \
 fasdump.c \
 gcloop.c \
 memmag.c \
-purify.c
+purify.c \
+wabbit.c
 
 BCH_GC_SOURCES = \
 bchdmp.c \
@@ -570,7 +571,8 @@ STD_GC_OBJECTS = \
 fasdump.o \
 gcloop.o \
 memmag.o \
-purify.o
+purify.o \
+wabbit.o
 
 BCH_GC_OBJECTS = \
 bchdmp.o \
