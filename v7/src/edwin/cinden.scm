@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.8 1992/01/10 21:16:53 cph Exp $
+;;;	$Id: cinden.scm,v 1.9 1993/09/17 03:49:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -173,7 +173,7 @@ This is in addition to c-continued-statement-offset."
 	       (basic-indent
 		(let ((m
 		       (and mark
-			    (re-search-backward "^[ \t\n\f#]"
+			    (re-search-backward "^[^ \t\n\f#]"
 						mark
 						(group-start indent-point)
 						false))))
