@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.276 2001/10/25 15:57:16 cph Exp $
+;;; $Id: imail-top.scm,v 1.277 2001/10/30 19:29:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -869,7 +869,11 @@ With prefix argument, appends next several messages."
 With prefix argument, appends next several messages.
 This command writes the message to the output file in human-readable format,
  unlike the \\[imail-output] command which writes in computer format."
-  "FAppend message to file\nP"
+  (lambda ()
+    (list (prompt-for-file "Append message to file" #f
+			   'HISTORY 'IMAIL-FILE-MESSAGE
+			   'HISTORY-INDEX 0)
+	  (command-argument)))
   (lambda (pathname argument)
     (let ((write-separator? (file-exists? pathname)))
       (call-with-temporary-buffer " *imail-file-message*"
