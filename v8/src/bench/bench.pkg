@@ -15,6 +15,7 @@
 	 "destruct.scm"
 	 "div.scm"
 	 "earley.scm"
+	 "fcomp.scm"
 	 "fib.scm"
 	 "flatten.scm"
 	 "library.scm"
