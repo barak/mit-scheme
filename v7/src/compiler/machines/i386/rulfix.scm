@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.7 1992/01/28 04:58:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.8 1992/01/30 06:34:32 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -206,8 +206,8 @@ MIT in each case. |#
   (LAP (CMP W ,(source-indirect-reference! address offset)
 	    (& ,(fixnum-object->fixnum-word constant)))))
 
-;; This assumes that the last instruction sets the condition code bits
-;; correctly.
+;; This assumes that the immediately preceding instruction sets the
+;; condition code bits correctly.
 
 (define-rule predicate
   (OVERFLOW-TEST)
@@ -295,55 +295,6 @@ MIT in each case. |#
 			      target
 			      source1
 			      source2))
-
-(define (two-arg-register-operation
-	 operate commutative?
-	 target-type source-reference alternate-source-reference
-	 target source1 source2)
-  (let* ((worst-case
-	  (lambda (target source1 source2)
-	    (LAP ,@(if (eq? target-type 'FLOAT)
-		       (load-float-register source1 target)
-		       (LAP (MOV W ,target ,source1)))
-		 ,@(operate target source2))))
-	 (new-target-alias!
-	  (lambda ()
-	    (let ((source1 (alternate-source-reference source1))
-		  (source2 (source-reference source2)))
-	      (delete-dead-registers!)
-	      (worst-case (reference-target-alias! target target-type)
-			  source1
-			  source2)))))
-    (cond ((pseudo-register? target)
-	   (reuse-pseudo-register-alias
-	    source1 target-type
-	    (lambda (alias)
-	      (let ((source2 (if (= source1 source2)
-				 (register-reference alias)
-				 (source-reference source2))))
-		(delete-register! alias)
-		(delete-dead-registers!)
-		(add-pseudo-register-alias! target alias)
-		(operate (register-reference alias) source2)))
-	    (lambda ()
-	      (if commutative?
-		  (reuse-pseudo-register-alias
-		   source2 target-type
-		   (lambda (alias2)
-		     (let ((source1 (source-reference source1)))
-		       (delete-register! alias2)
-		       (delete-dead-registers!)
-		       (add-pseudo-register-alias! target alias2)
-		       (operate (register-reference alias2) source1)))
-		   new-target-alias!)
-		  (new-target-alias!)))))
-	  ((not (eq? target-type (register-type target)))
-	   (error "two-arg-register-operation: Wrong type register"
-		  target target-type))
-	  (else
-	   (worst-case (register-reference target)
-		       (alternate-source-reference source1)
-		       (source-reference source2))))))
 
 (define (fixnum-2-args/register*constant operator target source constant)
   (fixnum-1-arg
@@ -636,10 +587,3 @@ MIT in each case. |#
 			      (LAP (JLE (@PCR ,label))))))
     (else
      (error "FIXNUM-BRANCH!: Unknown predicate" predicate))))
-
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define-integrable (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.2 1992/01/29 04:31:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.3 1992/01/30 06:32:33 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -128,11 +128,7 @@ MIT in each case. |#
 	 ,@set-address
 	 ,@(clear-map!)
 	 (MOV W (R ,ebx) (& ,frame-size))
-	 ,@(invoke-interface code:compiler-cache-reference-apply))))
-
-(define (object->machine-register! object mreg)
-  (require-register! mreg)
-  (load-constant (INST-EA (R ,mreg)) object))  
+	 ,@(invoke-interface code:compiler-cache-reference-apply))))  
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
@@ -168,7 +164,7 @@ MIT in each case. |#
 		    (JMP ,entry:compiler-primitive-lexpr-apply)))
 	      (else
 	       ;; Unknown primitive arity.  Go through apply.
-	       (LAP ,@(get-code)
+	       (LAP ,@get-code
 		    ,@(clear-map!)
 		    (MOV W (R ,edx) (& ,frame-size))
 		    ,@(invoke-interface code:compiler-apply)))))))
@@ -346,8 +342,6 @@ MIT in each case. |#
 
 ;;;; Procedure headers
 
-;; **** Here ****
-
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
@@ -365,10 +359,10 @@ MIT in each case. |#
 (define-integrable (simple-procedure-header code-word label entry)
   (let ((gc-label (generate-label)))    
     (LAP (LABEL ,gc-label)
-	 (JSR ,entry)
+	 (CALL ,entry)
 	 ,@(make-external-label code-word label)
-	 (CMP L ,reg:compiled-memtop (A 5))
-	 (B GE B (@PCR ,gc-label)))))
+	 (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	 (JGE (@PCR ,gc-label)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -389,10 +383,10 @@ MIT in each case. |#
       (LAP (ENTRY-POINT ,external-label)
 	   (EQUATE ,external-label ,internal-label)
 	   (LABEL ,gc-label)
-	   ,@(invoke-interface-jsr code:compiler-interrupt-ic-procedure)
+	   ,@(invoke-interface/call code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   (CMP L ,reg:compiled-memtop (A 5))
-	   (B GE B (@PCR ,gc-label))))))
+	   (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	   (JGE (@PCR ,gc-label))))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -415,40 +409,7 @@ MIT in each case. |#
 
 ;;;; Closures:
 
-#|
-
-The closure headers and closure consing code are heavily interdependent.
-
-There are two different versions of the rules, depending on the closure format:
-
-The 68020 format can be used when there is no problem with
-inconsistency between the processor's I-cache and the D-cache.  In
-this format, closures contain an absolute JSR instruction, stored by
-the closure consing code.  The absolute address is the address of the
-labelled word in the closure header.  Closures are allocated directly
-from the Scheme heap, and the instructions are stored by the
-cons-closure code.  Multiple entry-point closures have their entry
-points tightly packed, and since the JSR instruction is 6 bytes long,
-entries are not, in general at longword boundaries.  Because the rest
-of the compiler requires the closure object on the stack to be
-longword aligned, these objects always correspond to the first
-(canonical) entry point of a closure with multiple entry points.  Thus
-there is a little shuffling around to maintain this, and the identity
-of the object.
-
-The 68040 format should be used when the D-cache is in copyback mode
-(ie. storing to an address may not be seen by the I-cache even if
-there was no previous association).  In this format, closures contain
-a JSR instruction to a fixed piece of code, and the actual entry point
-is stored folling this fixed instruction.  The garbage collector can
-change this to an absolute JSR instruction.  Closures are allocated
-from a pool, renewed by out of line code that also pre-stores the
-instructions and synchronizes the caches.  Entry points are always
-long-word aligned and there is no need for shuffling.
-
-|#
-
-(define (MC68020/closure-header internal-label nentries entry)
+(define (generate/closure-header internal-label nentries entry)
   nentries				; ignored
   (let ((rtl-proc (label->object internal-label)))
     (let ((gc-label (generate-label))
@@ -460,206 +421,83 @@ long-word aligned and there is no need for shuffling.
 		  internal-label
 		  entry:compiler-interrupt-procedure))
 	  (LAP (LABEL ,gc-label)
-	       ,@(let ((distance (* 10 entry)))
-		   (cond ((zero? distance)
-			  (LAP))
-			 ((< distance 128)
-			  (LAP (MOVEQ (& ,distance) (D 0))
-			       (ADD L (D 0) (@A 7))))
-			 (else
-			  (LAP (ADD L (& ,distance) (@A 7))))))
+	       ,@(if (zero? entry)
+		     (LAP)
+		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
 	       (JMP ,entry:compiler-interrupt-closure)
 	       ,@(make-external-label internal-entry-code-word
 				      external-label)
-	       (ADD UL (& ,(MC68020/make-magic-closure-constant entry)) (@A 7))
+	       (ADD W (@R ,esp)
+		    (&U ,(generate/make-magic-closure-constant entry)))
 	       (LABEL ,internal-label)
-	       (CMP L ,reg:compiled-memtop (A 5))
-	       (B GE B (@PCR ,gc-label)))))))
-
-(define (MC68020/cons-closure target procedure-label min max size)
-  (let* ((target (reference-target-alias! target 'ADDRESS))
-	 (temporary (reference-temporary-register! 'ADDRESS)))
-    (LAP (LEA (@PCR ,(rtl-procedure/external-label
-		      (label->object procedure-label)))
-	      ,temporary)
-	 ,@(load-non-pointer (ucode-type manifest-closure)
-			     (+ 3 size)
-			     (INST-EA (@A+ 5)))
-	 (MOV UL
-	      (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
-	      (@A+ 5))
-	 (MOV L (A 5) ,target)
-	 (MOV UW (& #x4eb9) (@A+ 5))	; (JSR (L <entry>))
-	 (MOV L ,temporary (@A+ 5))
-	 (CLR W (@A+ 5))
-	 ,@(increment-machine-register 13 (* 4 size)))))
+	       (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	       (JGE (@PCR ,gc-label)))))))
 
-(define (MC68020/cons-multiclosure target nentries size entries)
-  (let ((target (reference-target-alias! target 'ADDRESS)))
-    (let ((total-size (+ size
-			 (quotient (+ 3 (* 5 nentries))
-				   2)))
-	  (temp1 (reference-temporary-register! 'ADDRESS))
-	  (temp2 (reference-temporary-register! 'DATA)))
-
-      (define (generate-entries entries offset first?)
-	(if (null? entries)
-	    (LAP)
-	    (let ((entry (car entries)))
-	      (LAP (MOV UL (& ,(+ (* (make-procedure-code-word (cadr entry)
-							       (caddr entry))
-				     #x10000)
-				  offset))
-			(@A+ 5))
-		   ,@(if first?
-			 (LAP (MOV L (A 5) ,target))
-			 (LAP))
-		   (LEA (@PCR ,(rtl-procedure/external-label
-				(label->object (car entry))))
-			,temp1)
-		   (MOV W ,temp2 (@A+ 5)) ; (JSR (L <entry>))
-		   (MOV L ,temp1 (@A+ 5))
-		   ,@(generate-entries (cdr entries)
-				       (+ 10 offset)
-				       false)))))	  
-
-      (LAP ,@(load-non-pointer (ucode-type manifest-closure)
-			       total-size
-			       (INST-EA (@A+ 5)))
-	   (MOV UL (& ,(* nentries #x10000)) (@A+ 5))
-	   (MOV UW (& #x4eb9) ,temp2)
-	   ,@(generate-entries entries 12 true)
-	   ,@(if (odd? nentries)
-		 (LAP (CLR W (@A+ 5)))
-		 (LAP))
-	   ,@(increment-machine-register 13 (* 4 size))))))
-
-(define (MC68020/make-magic-closure-constant entry)
+(define (generate/make-magic-closure-constant entry)
   (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
-     (+ (* entry 10) 6)))
+     (+ (* entry 10) 5)))
 
-(define (MC68040/closure-header internal-label nentries entry)
-  nentries entry			; ignored
-  (let ((rtl-proc (label->object internal-label)))
-    (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label rtl-proc)))
-      (if (zero? nentries)
-	  (LAP (EQUATE ,external-label ,internal-label)
-	       ,@(simple-procedure-header
-		  (internal-procedure-code-word rtl-proc)
-		  internal-label
-		  entry:compiler-interrupt-procedure))
-	  (LAP (LABEL ,gc-label)
-	       (JMP ,entry:compiler-interrupt-closure)
-	       ,@(make-external-label internal-entry-code-word
-				      external-label)
-	       (ADD UL (& ,(MC68040/make-magic-closure-constant entry)) (@A 7))
-	       (LABEL ,internal-label)
-	       (CMP L ,reg:compiled-memtop (A 5))
-	       (B GE B (@PCR ,gc-label)))))))
+(define (make-closure-longword code-word pc-offset)
+  (+ code-word (* #x20000 pc-offset)))
 
-(define (MC68040/cons-closure target procedure-label min max size)
-  (MC68040/with-allocated-closure target 1 size
-    (lambda (an)
-      (let ((temp (reference-temporary-register! 'ADDRESS)))
-	(LAP ,@(load-non-pointer (ucode-type manifest-closure)
-				 (+ size MC68040/closure-entry-size)
-				 (INST-EA (@A+ ,an)))
-	     (MOV UL
-		  (& ,(+ (* (make-procedure-code-word min max) #x10000) 8))
-		  (@A+ ,an))
-	     (LEA (@PCR ,(rtl-procedure/external-label
-			  (label->object procedure-label)))
-		  ,temp)
-	     (MOV L ,temp (@AO ,an 4)))))))
+(define (make-closure-code-longword frame/min frame/max pc-offset)
+  (make-closure-longword (make-procedure-code-word frame/min frame/max)
+			 pc-offset))			 
 
-(define (MC68040/cons-multiclosure target nentries size entries)
-  (MC68040/with-allocated-closure target nentries size
-    (lambda (atarget)
-      (let* ((atmp1 (areg->an (allocate-temporary-register! 'ADDRESS)))
-	     (atmp2 (areg->an (allocate-temporary-register! 'ADDRESS))))
-	(define (store-entries offset entries)
-	  (if (null? entries)
-	      (LAP)
-	      (let ((entry (car entries)))
-		(LAP (MOV UL (& ,(+ (* (make-procedure-code-word (cadr entry)
-								 (caddr entry))
-				       #x10000)
-				    offset))
-			  (@A+ ,atmp1))
-		     (ADDQ L (& 4) (A ,atmp1)) ; bump over JSR instr.
-		     (LEA (@PCR ,(rtl-procedure/external-label
-				  (label->object (car entry))))
-			  (A ,atmp2))
-		     (MOV L (A ,atmp2) (@A+ ,atmp1))
-		     ,@(store-entries (+ 12 offset) (cdr entries))))))
+(define (generate/cons-closure target procedure-label min max size)
+  (let* ((target (target-register-reference))
+	 (temporary (temporary-register-reference)))
+    (LAP ,@(load-pc-relative-address
+	    temporary
+	    `(- ,(rtl-procedure/external-label (label->object procedure-label))
+		5))
+	 (MOV W (@R ,regnum:free-pointer)
+	      (&U ,(make-non-pointer-literal (ucode-type manifest-closure)
+					     (+ 3 size))))
+	 (MOV W (@RO ,regnum:free-pointer 4)
+	      (&U ,(make-closure-code-longword min max 8)))
+	 (LEA ,target (@RO ,regnum:fre-pointer 8))
+	 (MOV B (@RO ,regnum:free-pointer 8) (&U #xe8))	; (CALL (@PCR <entry>))
+	 (SUB W ,temporary ,target)
+	 (MOV L (@RO ,regnum:free-pointer 9) ,temporary) ; displacement
+	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 4 size)))))))
 
-	(LAP ,@(load-non-pointer (ucode-type manifest-closure)
-				 (+ size 1
-				    (* nentries MC68040/closure-entry-size))
-				 (INST-EA (@A+ ,atarget)))
-	     (MOV UL (& ,(* nentries #x10000)) (@A+ ,atarget))
-	     (MOV L (A ,atarget) (A ,atmp1))
-	     (ADDQ L (& 4) (A ,atarget))
-	     ,@(store-entries 12 entries))))))
-
-;;;; Utilities for MC68040 closures.
+(define (generate/cons-multiclosure target nentries size entries)
+  (let* ((target (target-register-reference))
+	 (temp (temporary-register-reference)))
+    (with-pc-relative-address
+      (lambda (pc-label pc-reg)
+	(define (generate-entries entries offset)
+	  (let ((entry (car entries))
+		(rest (cdr entries)))
+	    (LAP (MOV W (@RO ,regnum:free-pointer -9)
+		      (&U ,(make-closure-code-longword (cadr entry)
+						       (caddr entry)
+						       offset)))
+		 (MOV B (@RO ,regnum:free-pointer -5) (&U #xe8))
+		 (LEA ,temp (@RO ,pc-reg (- ,(rtl-procedure/external-label
+					      (label->object (car entry)))
+					    ,pc-label)))
+		 (SUB W ,temp (R ,regnum:free-pointer))
+		 (MOV W (@RO ,regnum:free-pointer -4) ,temp)
+		 ,@(if (null? rest)
+		       (LAP)
+		       (LAP (ADD W (R ,regnum:free-pointer) 10)
+			    ,@(generate-entries rest (+ 10 offset)))))))
 
-(define (MC68040/make-magic-closure-constant entry)
-  entry					; ignored
-  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
-     6))
-
-;; In what follows, entry:compiler-allocate-closure gets its parameter in d0
-;; and returns its value in a0.
-
-(define (MC68040/allocate-closure size)
-  (LAP ,(load-dnl size 0)
-       (JSR ,entry:compiler-allocate-closure)))
-
-;; If this issues too much code, the optional code can be eliminated at
-;; some performace penalty in speed.
-
-(define (MC68040/with-allocated-closure target nentries size recvr)
-  (require-register! d0)
-  (rtl-target:=machine-register! target a0)
-  (let ((total-size (+ 1
-		       (if (= nentries 1) 0 1)
-		       (* MC68040/closure-entry-size nentries)
-		       size))
-	(label (generate-label)))
-    (LAP
-     ;; Optional code:
-     (MOV L ,reg:closure-free (A 0))
-     ,@(ea+=constant reg:closure-free (* 4 total-size))
-     ,@(ea+=constant reg:closure-space (- 0 total-size))
-     (B GE B (@PCR ,label))
-     ;; End of optional code.
-     ,@(MC68040/allocate-closure total-size)
-     (LABEL ,label)
-     ,@(recvr 0))))
-
-(define (rtl-target:=machine-register! rtl-reg machine-reg)
-  (if (machine-register? rtl-reg)
-      (begin
-	(require-register! machine-reg)
-	(if (not (= rtl-reg machine-reg))
-	    (suffix-instructions!
-	     (register->register-transfer machine-reg rtl-reg))))
-      (begin
-	(delete-register! rtl-reg)
-	(flush-register! machine-reg)
-	(add-pseudo-register-alias! rtl-reg machine-reg))))
-
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define-integrable (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
-(define-integrable (areg->an areg)
-  (- areg 8))
+	(LAP (MOV W (@R ,regnum:free-pointer)
+		  (&U ,(make-non-pointer-literal
+			(ucode-type manifest-closure)
+			(+ size
+			   (quotient (+ 3 (* 5 nentries))
+				     2)))))
+	     (MOV W (@RO ,regnum:free-pointer 4)
+		  (&U ,(make-closure-longword nentries 0)))
+	     (LEA ,target (@RO ,regnum:free-pointer 12))
+	     (ADD W (R ,regnum:free-pointer) (& 17))
+	     ,@(generate-entries entries 12)
+	     (ADD W (R ,regnum:free-pointer)
+		  (& ,(+ (* 4 size) (if (odd? nentries) 3 1)))))))))
 
 ;;;; The rules themselves.
 
@@ -678,12 +516,12 @@ long-word aligned and there is no need for shuffling.
 	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
   (case nentries
     ((0)
-     (let ((target (reference-target-alias! target 'ADDRESS)))
-       (LAP (MOV L (A 5) ,target)
-	    ,@(load-non-pointer (ucode-type manifest-vector)
-				size
-				(INST-EA (@A+ 5)))
-	    ,@(increment-machine-register 13 (* 4 size)))))
+     (let ((target (target-register-reference)))
+       (LAP (MOV W ,target (R ,regnum:free-pointer))
+	    (MOV W (@R ,regnum:free-pointer)
+		 (&U ,(make-non-pointer-literal (ucode-type manifest-vector)
+						size)))
+	    (ADD W (R ,regnum:free-pointer) (& (* 4 (1+ size)))))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
@@ -692,27 +530,11 @@ long-word aligned and there is no need for shuffling.
     (else
      (generate/cons-multiclosure target nentries size
 				 (vector->list entries)))))
-
-(let-syntax ((define/format-dependent
-	       (macro (name1 name2)
-		 `(define ,name1
-		    (case MC68K/closure-format
-		      ((MC68020)
-		       ,(intern
-			 (string-append "MC68020/" (symbol->string name2))))
-		      ((MC68040)
-		       ,(intern
-			 (string-append "MC68040/" (symbol->string name2))))
-		      (else
-		       (error "Unknown closure format" closure-format)))))))
-
-(define/format-dependent generate/closure-header closure-header)
-(define/format-dependent generate/cons-closure cons-closure)
-(define/format-dependent generate/cons-multiclosure cons-multiclosure)
-)
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
+
+;; **** here ****
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
   (LAP (LEA (@PCR ,environment-label) (A 0))

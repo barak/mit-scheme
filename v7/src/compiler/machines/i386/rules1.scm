@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.4 1992/01/28 21:23:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.5 1992/01/30 06:33:02 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -109,7 +109,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? n)))
-  (load-immediate n (target-register-reference target)))
+  (load-immediate (target-register-reference target) n))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -120,19 +120,19 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
   (load-pc-relative-address
-   target
+   (target-register-reference target)
    (rtl-procedure/external-label (label->object label))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
-  (load-pc-relative-address target label))
+  (load-pc-relative-address (target-register-reference target) label))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
-  (load-pc-relative-address/typed target
+  (load-pc-relative-address/typed (target-register-reference target)
 				  type
 				  (rtl-procedure/external-label
 				   (label->object label))))
@@ -142,15 +142,18 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
-  (load-pc-relative-address/typed target type label))
+  (load-pc-relative-address/typed (target-register-reference target)
+				  type label))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
-  (load-pc-relative target (free-reference-label name)))
+  (load-pc-relative (target-register-reference target)
+		    (free-reference-label name)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
-  (load-pc-relative target (free-assignment-label name)))
+  (load-pc-relative (target-register-reference target)
+		    (free-assignment-label name)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
@@ -261,20 +264,7 @@ MIT in each case. |#
     (let ((target (indirect-byte-reference! address offset)))
       (LAP (MOV B ,target ,source)))))
 
-;;;; Utilities specific to rules1 (others in lapgen)
-
-(define (assign-register->register target source)
-  (move-to-alias-register! source (register-type target) target)
-  (LAP))
-
-(define (convert-object/constant->register target constant conversion)
-  (delete-dead-registers!)
-  (let ((target (target-register-reference target)))
-    (if (non-pointer-object? constant)
-	;; Is this correct if conversion is object->address ?
-	(load-non-pointer target 0 (careful-object-datum constant))
-	(LAP ,@(load-constant target constant)
-	     ,@(conversion target)))))
+;;;; Utilities specific to rules1
 
 (define (load-displaced-register target source n)
   (if (zero? n)
@@ -290,30 +280,12 @@ MIT in each case. |#
 			       n
 			       (+ (make-non-pointer-literal type 0) n))))
 
-(define (load-constant target obj)
-  (if (non-pointer-object? obj)
-      (load-non-pointer target (object-type obj) (careful-object-datum obj))
-      (load-pc-relative target (free-constant-label obj))))
-
-(define (load-pc-relative target label)
-  (with-pc-relative-address
-    (lambda (pc-label pc-register)
-      (let ((target (target-register-reference target)))
-	(LAP (MOV W ,target (@RO ,pc-register (- ,label ,pc-label))))))))
-
-(define (load-pc-relative-address target label)
-  (with-pc-relative-address
-    (lambda (pc-label pc-register)
-      (let ((target (target-register-reference target)))
-	(LAP (LEA ,target (@RO ,pc-register (- ,label ,pc-label))))))))
-
 (define (load-pc-relative-address/typed target type label)
   (with-pc-relative-address
     (lambda (pc-label pc-register)
-      (let ((target (target-register-reference target)))
-	(LAP (LEA ,target (@RO ,pc-register
-			       (+ ,(make-non-pointer-literal type 0)
-				  (- ,label ,pc-label)))))))))
+      (LAP (LEA ,target (@RO ,pc-register
+			     (+ ,(make-non-pointer-literal type 0)
+				(- ,label ,pc-label))))))))
 
 (define (load-char-into-register type source target)
   (let ((target (target-register-reference target)))

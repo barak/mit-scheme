@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.1 1992/01/28 05:09:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules2.scm,v 1.2 1992/01/30 06:32:47 jinx Exp $
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -43,19 +43,6 @@ MIT in each case. |#
 			   (LAP (JE (@PCR ,label))))
 			 (lambda (label)
 			   (LAP (JNE (@PCR ,label))))))
-
-(define (compare/register*register reg1 reg2)
-  (cond ((register-alias reg1 'GENERAL)
-	 =>
-	 (lambda (alias)
-	   (LAP (CMP W ,(register-reference alias) ,(any-reference reg2)))))
-	((register-alias reg2 'GENERAL)
-	 =>
-	 (lambda (alias)
-	   (LAP (CMP W ,(any-reference reg1) ,(register-reference alias)))))
-	(else
-	 (LAP (CMP W ,(source-register-reference reg1)
-		   ,(any-reference reg2))))))
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))

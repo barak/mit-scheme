@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.2 1992/01/22 04:19:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.3 1992/01/30 06:35:03 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -183,18 +183,18 @@ entry	0		CMP	EDI,(ESI)	0x39 0x3e
 
 - GC & interrupt check at closure entry:
 
-gc_lab	-7-??		JMP	n(ESI)		0xFF 0x66 n-byte
-	-4-??		ADD	(ESP),&offset
+gc_lab	-11		ADD	(ESP),&offset	0x83 0x04 0x24 offset-byte
+  	-7		JMP	n(ESI)		0xFF 0x66 n-byte
 	-4		<type/arity info>
 	-2		<gc offset>
 entry	0		ADD	(ESP),&magic	0x81 0x04 0x24 magic-longword
 	7		CMP	EDI,(ESI)	0x39 0x3e
-	9		JAE	gc_lab		0x73 ??
+	9		JAE	gc_lab		0x73 0xea (= -22)
 	11		<real code>
 
 The magic value depends on the closure because of canonicalization.
 
-The ADD instruction at offset -4-?? is not present for the 0th closure
+The ADD instruction at offset -11 is not present for the 0th closure
 entry, since it is the canonical entry point.  Its format depends on
 the value of offset, since the sign-extending forms often suffice.
 
