@@ -1,8 +1,14 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.113 2001/04/09 13:17:28 cph Exp $
+$Id: todo.txt,v 1.114 2001/04/10 20:37:17 cph Exp $
 
 Bug fixes
 ---------
+
+* When forwarding a message using MIME, the code that strips off the
+  extra headers is causing problems -- in particular, it strips off
+  the MIME headers of the encapsulated message, which means that the
+  reader can't properly interpret the contents.  The MIME headers must
+  be left intact.
 
 * When network connection gets wedged, Edwin locks up and can't be
   interrupted with C-g.  This is fundamentally an Edwin problem, but
@@ -10,6 +16,9 @@ Bug fixes
   way to handle this -- if Edwin were running under a terminal window,
   it would have a real interrupt character, which would do what we
   want.  This should happen under X as well.
+
+  [I think this should be improved now that I've fixed the problem
+  with `poll' not handling errors right.]
 
 * When Rmail parser encounters corruption, tell the user what message
   is corrupted and attempt to recover the parse by looking for the
