@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.260 2000/06/12 01:38:24 cph Exp $
+$Id: edwin.pkg,v 1.261 2000/06/12 03:38:09 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1468,6 +1468,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$mail-to
 	  edwin-command$mail-yank-original
 	  edwin-mode$mail
+	  edwin-variable$mail-abbreviate-mime
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
 	  edwin-variable$mail-from-style

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.55 2000/06/12 03:29:43 cph Exp $
+;;; $Id: sendmail.scm,v 1.56 2000/06/12 03:37:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -162,6 +162,14 @@ The headers are delimited by a string found in mail-header-separator."
   #f
   (lambda (object) (or (false? object) (buffer? object))))
 (variable-permanent-local! (ref-variable-object mail-reply-buffer))
+
+(define-variable mail-abbreviate-mime
+  "If true, sent mail doesn't contain unnecessary MIME headers.
+For example, Content-Type and Content-Transfer-Encoding headers
+  that specify the default are unnecessary.
+If false, sent mail contains full MIME headers."
+  #t
+  boolean?)
 
 (define-command mail
   "Edit a message to be sent.  Argument means resume editing (don't erase).
@@ -804,7 +812,9 @@ the user from the mailer."
       (editor-error "Message contains over-long line in header.")))
 
 (define (copy-mime-message-body start end h-end output-mark)
-  (mail-insert-field-value h-end "Content-Type" "text/plain; charset=us-ascii")
+  (if (not (ref-variable mail-abbreviate-mime start))
+      (mail-insert-field-value h-end
+			       "Content-Type" "text/plain; charset=us-ascii"))
   (let ((b-start (mark-right-inserting-copy output-mark)))
     (if (or (any-non-us-ascii-chars? start end)
 	    (any-lines-too-long? start end 76))
@@ -821,9 +831,10 @@ the user from the mailer."
 				   "quoted-printable"))
 	(begin
 	  (insert-region start end b-start)
-	  (mail-insert-field-value h-end
-				   "Content-Transfer-Encoding"
-				   "7bit")))))
+	  (if (not (ref-variable mail-abbreviate-mime start))
+	      (mail-insert-field-value h-end
+				       "Content-Transfer-Encoding"
+				       "7bit"))))))
 
 (define (any-non-us-ascii-chars? start end)
   (group-find-next-char-in-set (mark-group start)
@@ -856,7 +867,8 @@ the user from the mailer."
      h-end
      "Content-Type"
      (string-append "multipart/mixed; boundary=\"" boundary "\""))
-    (mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit")
+    (if (not (ref-variable mail-abbreviate-mime start))
+	(mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit"))
     (insert-string "This is a multi-part message in MIME format." output-mark)
     (insert-mime-boundary boundary #f output-mark)
     (insert-newline output-mark)
@@ -881,12 +893,10 @@ the user from the mailer."
 		    "/"
 		    (symbol->string subtype)
 		    (mime-parameters->string parameters)))
-    (mail-insert-field-value
-     m
-     "Content-Transfer-Encoding"
-     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
-	 "7bit"
-	 "base64"))
+    (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
+	(if (not (ref-variable mail-abbreviate-mime m))
+	    (mail-insert-field-value m "Content-Transfer-Encoding" "7bit"))
+	(mail-insert-field-value m "Content-Transfer-Encoding" "base64"))
     (if disposition
 	(mail-insert-field-value m
 				 "Content-Disposition"
