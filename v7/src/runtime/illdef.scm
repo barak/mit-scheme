@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: illdef.scm,v 1.1 1995/04/13 22:24:31 cph Exp $
+$Id: illdef.scm,v 1.2 1995/04/14 08:21:32 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -68,7 +68,6 @@ MIT in each case. |#
   (walk/expression expression 'ILLEGAL))
 
 (define (walk/lambda expression context)
-  context
   (let loop
       ((expressions
 	(sequence-actions
@@ -76,12 +75,11 @@ MIT in each case. |#
 	   (lambda (name required optional rest auxiliary declarations body)
 	     name required optional rest
 	     (unscan-defines auxiliary declarations body))))))
-    (if (definition? (car expressions))
+    (if (null? (cdr expressions))
+	(walk/no-definitions (car expressions))
 	(begin
-	  (walk/no-definitions (definition-value (car expressions)))
-	  (if (not (null? (cdr expressions)))
-	      (loop (cdr expressions))))
-	(for-each walk/no-definitions expressions))))
+	  (walk/expression (car expressions) 'LEGAL)
+	  (loop (cdr expressions))))))
 
 (define (walk/definition expression context)
   (case context
