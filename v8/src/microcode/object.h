@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/object.h,v 9.39 1992/08/05 02:48:03 jinx Exp $
+$Id: object.h,v 9.40 1992/12/02 18:11:14 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -194,6 +194,7 @@ extern SCHEME_OBJECT * memory_base;
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
 #define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
 #define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
+#define RECORD_P(object) ((OBJECT_TYPE (object)) == TC_RECORD)
 #define BOOLEAN_P(object) (((object) == SHARP_T) || ((object) == SHARP_F))
 #define REFERENCE_TRAP_P(object) ((OBJECT_TYPE (object)) == TC_REFERENCE_TRAP)
 #define PRIMITIVE_P(object) ((OBJECT_TYPE (object)) == TC_PRIMITIVE)
