@@ -55,7 +55,7 @@ literature without prior written consent from MIT in each case.
 @subtitle Edition 0.9
 @subtitle for Scheme Release 7.3
 @subtitle DRAFT: @today{}
-@author by Chris Hanson
+@author by Chris Hanson, Stephen Adams and others
 
 @page
 
@@ -219,8 +219,12 @@ Installation information for C back-end versions goes here?
 @node Microsoft Windows and Windows NT installation,  , C-backend, Installation
 @section DOS, Microsoft Windows and Windows NT installation
 
-This section describes how to install MIT Scheme on PC-DOS (MS-DOS),
-Microsoft Windows 3.1 and Microsoft Windows NT.  For the most part the
+This section describes how to install MIT Scheme on DOS, Microsoft
+Windows 3.1 and Microsoft Windows NT.  We would prefer that the Windows
+version is used to the DOS version because we intend to maintain this
+version only so long as it is convienient.
+We have only tested the DOS version on Microsoft DOS 5.0.
+ For the most part the
 installation any of these platforms uses the same files, and the
 procedure is similar.  It is possible to install MIT Scheme so that it
 will run under all three operating systems on one computer, but this
@@ -236,11 +240,12 @@ does require some care with the configuration of the system.
 @node System requirements, Manifest,  , Microsoft Windows and Windows NT installation
 @subsection System requirements
 
-MIT Scheme requires at least a 386DX with 8Mb RAM.
-The bare minimum disk space required is 5.5Mb, which gives you a command
-line interface for Scheme.  We strongly recommend a more advanced
-environment.  To build the Edwin editor band requires an additional
-4.3Mb.  The whole installation without source code occupies 36Mb.
+MIT Scheme requires at least a 386SX with 8Mb RAM.
+The bare minimum
+disk space required is 5.5Mb, which gives you a command line interface
+for Scheme.  We strongly recommend a more advanced environment.  To
+build the Edwin editor band requires an additional 4.3Mb.  The whole
+installation without source code occupies 36Mb of disk.
 
 @node Manifest, Installation-win32, System requirements, Microsoft Windows and Windows NT installation
 @subsection Manifest
@@ -252,6 +257,7 @@ bin.zip         @r{Scheme binaries for Windows 3.1/Windows NT}
 dosbin.zip      @r{Scheme binaries for PC-DOS}
 lib.zip         @r{Smaller files from Scheme library}
 runtime.zip     @r{@file{runtime.com} band}
+runnoflo.zip    @r{@file{runtime.com} band for machines with no FP hardware}
 eddel.zip       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
 compedl.zip     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
 
@@ -264,6 +270,11 @@ bcied3.zip      @r{    "          "       "    "}
 bcicomp1.zip    @r{Debugging information for compiler}
 bcicomp2.zip    @r{    "          "       "      "}
 bcicomp3.zip    @r{    "          "       "      "}
+
+srcrun.zip      @r{Source code for the runtime system}
+srcuc.zip       @r{Source code for the microcode (C)}
+srced.zip       @r{Source code for Edwin}
+srccomp.zip     @r{Source code for i386 compiler}
 
 win32s.zip      @r{Win32s installation floppy from Microsoft}
 install.txt     @r{These instructions}
@@ -286,10 +297,10 @@ only during installation.
 
 @enumerate
 @item 
-MIT Scheme under Windows 3.1 requires the Win32s system to be installed.
-If you have not previously installed the Win32s system then you should
-create a floppy disk containing the contents of the @file{win32s.zip}
-file, e.g:
+MIT Scheme under Windows 3.1 requires the Win32s system (version 1.1) to
+be installed.  If you have not previously installed the Win32s system
+then you should create a floppy disk containing the contents of the
+@file{win32s.zip} file, e.g:
 
 @example
 a:
@@ -297,6 +308,12 @@ unzip @var{wherever}\win32s.zip
 @end example
 
 Run the @file{setup} command on the floppy disk.
+
+@noindent
+If you are not sure whether you have Win32s installed, or what version
+you have installed, try to install it anyway.  If you have version 1.0
+then the Win32s installation disk will upgrade your Win32s system to
+version 1.1.
 
 @example
 a:setup
@@ -332,6 +349,16 @@ essential files.
 (@var{Wherever} stands for the place that you have put the @file{.zip}
 files, which might be another directory or a floppy disk.)
 
+@noindent
+If you have a computer without floating-point hardware (e.g. a 386
+machine or a 486SX) and you wish to run the DOS version then you must
+install the runtime with special floating point support instead of
+@file{runtime.zip}:
+
+@example
+unzip @var{wherever}\runnoflo.zip
+@end example
+
 @item
 To install the DOS binaries, unzip the @file{dosbin.zip} file.
 
@@ -342,9 +369,11 @@ unzip @var{wherever}\dosbin.zip
 This creates a @file{@var{scheme}\dos-bin} directory containing the DOS
 versions of the @file{.exe} files.  These files are different to the
 Windows versions, so they are placed in a different directory to allow
-the different version to co-exist on your computer.
-It is only the @file{.exe} files that differ between DOS and Windows.
-The other parts of the MIT Scheme system are shared.
+the different version to co-exist on your computer.  It is only the
+@file{.exe} files that differ between DOS and Windows.  The other parts
+of the MIT Scheme system are shared.  The DOS version will run under
+Windows 3.1 but not under NT.  Either running on DOS or Windows 3.1, the
+DOS version has @emph{no} graphics support
 
 @item
 If you are installing for Windows 3.1 only, do @emph{one} of the
@@ -359,7 +388,7 @@ path %PATH%;@var{scheme}\bin\win31
 @end example
 
 @noindent
-Note that this command must be in a @file{.bat} file to work.
+This command must be in a @file{.bat} file to work.
 @item
 Copy the files from @file{@var{scheme}\bin\win31} into
 @file{@var{scheme}\bin}.
@@ -402,7 +431,6 @@ If you are installing for DOS there is no need to add things to the
 @code{PATH}.
 
 @item
-
 If you did not choose the default installation directory, make sure that
 the environment variable @code{MITSCHEME_LIBRARY_PATH} is defined:
 
@@ -414,7 +442,7 @@ set MITSCHEME_LIBRARY_PATH=@var{scheme}\lib
 @item
 Now test the installation so far.
 Under either Windows system, 
-you should be able to get a Scheme system running in it's terminal
+you should be able to get a Scheme system running in its terminal
 window by running the following from the Program Manager or the File
 Manager
 
@@ -432,9 +460,10 @@ following at the DOS prompt:
 @noindent
 If there are any problems at this stage review the installation so far.
 Remember that you might have to restart your machine to get the effect
-of any changes that you made in @file{autoexec.bat}.
+of any changes that you made in @file{autoexec.bat} or the NT registry.
 
 @item
+Windows versions only.
 Now you should create a Program Manager group for MIT Scheme.
 This can be done by running a Scheme program from the Program Manager
 using the @code{File|Run} option:
@@ -463,7 +492,6 @@ shield) should report that they cannot find their bands.
 
 @item
 To install the Edwin editor you need to build the @file{edwin.com} band.
-(A band is a Scheme memory image containing programs and data.)
 First unpack the delta file @file{eddel.com} [1.6Mb]:
 
 @example
@@ -483,7 +511,7 @@ This will load in @file{eddel.com} and create the new band [4.3Mb].
 After a successful build the program will exit.
 The @file{edwin.com} band can be used by both the DOS and Windows
 versions, so you only need to do this step once, even if you are
-installing for more than one of PC-DOS, Windows 3.1 and Windows NT.
+installing for more than one of DOS, Windows 3.1 and Windows NT.
 
 If you are installing only for DOS you will have to build
 @file{edwin.com} from the command line.  Be sure to run the DOS
@@ -562,7 +590,7 @@ necessary to build either of @file{edwin.com} and @file{compiler.com}
 before building and using @file{all.com}.
 The bands are shared by all of the supported operating systems so you
 only have to build the bands once, even if you want to use them from,
-say, both PC-DOS and Windows 3.1.
+say, both DOS and Windows 3.1
 
 After building the bands you may tidy the MIT Scheme group by removing
 the mincer icons and recover disk space by deleting the delta files
@@ -616,7 +644,7 @@ Unable to open file "@var{your-path}\\foo.scm" because: Unknown
 
 Work-around: In the interaction buffer: Quit to top level.  Do a
 @code{(gc-flip)}, which forces the file to be closed when the file port
-os garbage-collected.  Now you will be able to save the file.
+is garbage-collected.  Now you will be able to save the file.
 
 @item
 @code{MITSCHEME_INF_DIRECTORY} sometimes does not work.
@@ -682,18 +710,13 @@ in your @file{edwin.ini} file.
 
 
 
-@c @node DOS,  , Microsoft Windows and Windows NT installation, Installation
-@c @section DOS
-@c 
-@c Installation information for DOS version goes here
-
 
 
 @node Running Scheme, REPL, Installation, Top
 @chapter Running Scheme
 
 This chapter describes how to run MIT Scheme on a unix system or a PC
-running DOS, Microsoft Windows or Windows NT.
+running DOS, Microsoft Windows 3.1, or Microsoft Windows NT.
 It also describes how you can customize the behavior of MIT Scheme
 using command-line options and environment variables.
 
@@ -716,10 +739,10 @@ scheme
 @end example
 
 @noindent
-at your operating system's command interpreter@footnote{Under Microsoft
-Windows this is not possible.  Scheme must be run from the graphical
-environment.}.  Scheme will load itself, clear the screen, and print
-something like this:
+at your operating system's command interpreter. (Under Microsoft Windows
+3.1 you must use the Program Manager's @var{Run} command, or an icon.)
+Scheme will load itself, clear the screen, and print something like
+this:
 
 @example
 Scheme saved on Monday December 10, 1990 at 9:55:37 PM
@@ -898,12 +921,17 @@ and constant space is available.
 @section Command-Line Options
 
 Scheme accepts the command-line options detailed in the following
-sections.  The options may appear in any order, but they must all appear
-before any other arguments on the command line.  (At present, any
-arguments other than these options will generate a warning message when
-Scheme starts.  In the future, there will be an advertised mechanism by
-which the extra arguments can be handled by user code.)
+sections.  The options may appear in any order, with the restriction
+that the microcode options must appear before the runtime options, and
+the runtime options must appear before any other arguments on the
+command line.
+(At present, any arguments other than these options will generate a
+warning message when Scheme starts.  In the future, there will be an
+advertised mechanism by which the extra arguments can be handled by user
+code.)
 
+
+These are the microcode options:
 
 @table @code
 
@@ -946,25 +974,6 @@ environment variable @code{MITSCHEME_EDWIN_BAND}, if defined, or
 @file{edwin.com}; the library directories are searched to locate this
 file.  Note that the @code{-edwin} option is available only on machines
 with compiled-code support.
-
-@item -no-init-file
-@findex -no-init-file
-This option causes Scheme to ignore the @file{~/.scheme.init} file,
-normally loaded automatically when Scheme starts (if it exists).
-
-@item -eval
-@findex -eval
-This option causes Scheme to evaluate the expressions following it on
-the command line, up to (but not including) the next option that starts
-with a hyphen.  The expressions are evaluated in the
-@code{user-initial-environment}.
-
-@item -load
-@findex -load
-This option causes Scheme to load the files (or lists of files)
-following it on the command line, up to (but not including) the next
-option that starts with a hyphen.  The files are loaded in the
-@code{user-initial-environment} using the default syntax table.
 
 @item -large
 @findex -large
@@ -1024,7 +1033,7 @@ programs.
 @item -option-summary
 @findex -option-summary
 Causes Scheme to write an option summary to standard error.  This shows
-the values of all of the settable option variables.
+the values of all of the settable microcode option variables.
 
 @item -emacs
 @findex -emacs
@@ -1097,6 +1106,36 @@ maintainance and development of the MIT Scheme runtime system.
 
 @end table
 
+
+@noindent
+The following options are runtime options.
+They are processed after the microcode options and after runtime, Edwin
+or other band is loaded.
+
+@table @code
+@item -no-init-file
+@findex -no-init-file
+This option causes Scheme to ignore the @file{~/.scheme.init} or
+@file{scheme.ini} file, normally loaded automatically when Scheme starts
+(if it exists).
+
+@item -eval
+@findex -eval
+This option causes Scheme to evaluate the expressions following it on
+the command line, up to (but not including) the next option that starts
+with a hyphen.  The expressions are evaluated in the
+@code{user-initial-environment}.
+Unless explicitly handled, errors during evaluation are silently ignored.
+
+@item -load
+@findex -load
+This option causes Scheme to load the files (or lists of files)
+following it on the command line, up to (but not including) the next
+option that starts with a hyphen.  The files are loaded in the
+@code{user-initial-environment} using the default syntax table.
+Unless explicitly handled, errors during loading are silently ignored.
+@end table
+
 @noindent
 In addition to the above, @code{bchscheme} recognises the following
 command line options, all of which specify parameters affecting how
@@ -1107,22 +1146,20 @@ command line options, all of which specify parameters affecting how
 @findex -gc-directory
 @findex MITSCHEME_GC_DIRECTORY
 Specifies that @var{directory} should be used to create files for
-garbage collection.  This option is recognized only by @code{bchscheme}.
-If the option is not given, the value of environment variable
-@code{MITSCHEME_GC_DIRECTORY} is used instead, and if that is not
-defined, @file{/tmp} is used.
+garbage collection.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_DIRECTORY} is used instead, and
+if that is not defined, @file{/tmp} is used.
 
 @item -gc-end-position @var{number}
 @findex -gc-end-position
 @findex MITSCHEME_GC_END_POSITION
-This option is recognized only by @code{bchscheme}.  It specifies the
-last byte position in @code{-gc-file} at which this invocation of scheme
-can write.  If the option is not given, the value of environment
-variable @code{MITSCHEME_GC_END_POSITION} is used instead, and if that
-is not defined, it is computed from the start position (as provided with
--gc-start-position) and the heap size.  The area of the file used (and
-locked if possible) is the region between @code{-gc-start-position} and
-@code{-gc-end-position}.
+It specifies the last byte position in @code{-gc-file} at which this
+invocation of scheme can write.  If the option is not given, the value
+of environment variable @code{MITSCHEME_GC_END_POSITION} is used
+instead, and if that is not defined, it is computed from the start
+position (as provided with -gc-start-position) and the heap size.  The
+area of the file used (and locked if possible) is the region between
+@code{-gc-start-position} and @code{-gc-end-position}.
 
 
 @item -gc-file @var{filename}
@@ -1130,11 +1167,11 @@ locked if possible) is the region between @code{-gc-start-position} and
 @findex -gc-file
 @findex -gcfile
 @findex MITSCHEME_GC_FILE
-Specifies that @var{filename} should be used for garbage collection.
-This option is recognized only by @code{bchscheme}.  If the option is
-not given, the value of environment variable @code{MITSCHEME_GC_FILE} is
-used, and if this is not defined, a unique filename is generated in the
-directory specified with @code{-gc-directory}.
+Specifies that @var{filename} should be used for garbage collection.  If
+the option is not given, the value of environment variable
+@code{MITSCHEME_GC_FILE} is used, and if this is not defined, a unique
+filename is generated in the directory specified with
+@code{-gc-directory}.
 
 @code{-gcfile} is an alias for @code{-gc-file}.  At most one of these
 options should be specified.
@@ -1143,35 +1180,34 @@ options should be specified.
 @item -gc-keep
 @findex -gc-keep
 Specifies that the gc file used for garbage collection should not be
-deleted when scheme terminates.  This option is recognized only by
-@code{bchscheme}.  The gc file is deleted only if the file was created
+deleted when scheme terminates.
+The gc file is deleted only if the file was created
 by this invocation of scheme, and this option is not set.
 
 @item -gc-start-position @var{number}
 @findex -gc-start-position
 @findex MITSCHEME_GC_START_POSITION
-This option is recognized only by @code{bchscheme}.  It specifies the
-first byte position in @code{-gc-file} at which this invocation of
-scheme can write.  If the option is not given, the value of environment
-variable @code{MITSCHEME_GC_START_POSITION} is used instead, and if that
-is not defined, 0 is used, meaning the beginning of the file.  The area
-of the file used (and locked if possible) is the region between
-@code{-gc-start-position} and @code{-gc-end-position}.
+It specifies the first byte position in @code{-gc-file} at which this
+invocation of scheme can write.  If the option is not given, the value
+of environment variable @code{MITSCHEME_GC_START_POSITION} is used
+instead, and if that is not defined, 0 is used, meaning the beginning of
+the file.  The area of the file used (and locked if possible) is the
+region between @code{-gc-start-position} and @code{-gc-end-position}.
 
 @item -gc-window-size @var{blocks}
 @findex -gc-window-size
 @findex MITSCHEME_GC_WINDOW_SIZE
 Specifies the size of the windows into new space during garbage
-collection.  This option is recognized only by @code{bchscheme}.
-If this option is not given, the value of environment variable
-@code{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that is not
-defined, the value 16 is used.
+collection.  If this option is not given, the value of environment
+variable @code{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that is
+not defined, the value 16 is used.
 @end table
 
 @noindent
 The following command line options are only used by an experimental
-version of @code{bchscheme} that runs on Unix System V using shared
-memory, and only then if the gcdrone is installed:
+version of @code{bchscheme} that uses Unix System V-style shared memory,
+and only then if the @code{gcdrone} program is installed in the lib
+directory.
 
 @table @code
 @item -gc-drone @var{program}
@@ -1207,9 +1243,9 @@ and if that is not defined, 0 is used, disabling overlapped writes.
 
 
 There are many environment variables that Scheme (and Edwin, etc.) look
-for.  Some must be defined before you start Scheme, but others can be
-defined or overwritten within Scheme by using the
-@code{set-environment-variable!} procedure, e.g.
+for.  Environment variables that affect the microcode must be defined
+before you start Scheme, but others can be defined or overwritten within
+Scheme by using the @code{set-environment-variable!} procedure, e.g.
 
 @example
   (set-environment-variable! "EDWIN_FOREGROUND" "32")
@@ -1227,8 +1263,8 @@ according to the parts of MIT Scheme that they affect.
 * Environment variables that affect Edwin::  
 @end menu
 
-@node General Environment Variables, Environment variables for Bchscheme,  , Environment Variables
-@subsection General Environment Variables
+@node
+@subsection Environment Variables that affect the Microcode
 
 @table @asis
 
@@ -1342,8 +1378,8 @@ Overriden by @code{-gc-window-size}.
 
 @noindent
 The following environment variables are only used by an experimental
-version of Bchscheme that runs on Unix System V using shared memory, and
-only then if the gcdrone is installed:
+version of Bchscheme that uses Unix System V-style shared memory, and
+only then if the @code{gcdrone} program is installed:
 
 @table @asis
 @item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
@@ -1373,13 +1409,13 @@ Windows NT or MS-DOS versions of MIT Scheme.
 @findex MITSCHEME_DPMI_EXT_KBD
 DOS version only.
 Boolean option specifying whether Scheme inserts its own keyboard handling
-routine when running under DPMI/Windows.
+routine when running under DPMI (DOS Protected Mode Interface) or Windows.
 
 @item @code{MITSCHEME_X32_EXT_KBD} (default: @samp{false})
 @findex MITSCHEME_X32_EXT_KBD
 DOS version only.
 Boolean option specifying whether Scheme inserts its own keyboard handling
-routine when @emph{not} running under DPMI/Windows.
+routine when @emph{not} running under DPMI or Windows.
 
 @item @code{MITSCHEME_TRAP_ALT_TAB} (default: @samp{false})
 @findex MITSCHEME_TRAP_ALT_TAB
@@ -1392,7 +1428,7 @@ These options do not actually work.
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
 Microsoft Windows and Windows NT only.  Four integers separated by
-commas or spaces which specify the placement and size of the MIT Scheme
+commas or spaces that specify the placement and size of the MIT Scheme
 window as a @var{left,top,width,height} quadruple.  The units are screen
 pixels, and @samp{-1} means allow the system to choose this parameter.
 E.g.  @samp{-1,-1,500,300} places a 500 by 300 pixel window at some
@@ -1434,12 +1470,12 @@ to @code{TMP}.
 @subsection Environment variables that affect Edwin
 
 @table @asis
-@item @code{EDWIN_BINARY_DIRECTORY} (default: @file{edwin\autoload} on the library path)
+@item @code{EDWIN_BINARY_DIRECTORY} (default: @file{edwin/autoload} on the library path)
 @findex EDWIN_BINARY_DIRECTORY
 Directory where edwin expects to find files providing autoloaded
 facilities.
 
-@item @code{EDWIN_INFO_DIRECTORY} (default: @file{edwin\info} on the library path)
+@item @code{EDWIN_INFO_DIRECTORY} (default: @file{edwin/info} on the library path)
 @findex EDWIN_INFO_DIRECTORY
 Directory where edwin expects to find files for the `info' documentation
 subsystem.
@@ -1463,9 +1499,9 @@ ANSI background color specifier. Must be a two-digit sequence in the range
 
 @item @code{TERM}
 @findex TERM
-Terminal type.
-For DOS, should be @samp{ansi.sys} or @samp{ibm_pc_bios}.
-For Windows and Windows NT it should be @samp{ansi.sys}.
+Terminal type.  For DOS, should be @samp{ansi.sys} or
+@samp{ibm_pc_bios}.  For Windows and Windows NT it should be
+@samp{ansi.sys}, which is the default if not set.
 
 @item @code{LINES} (default: auto-sense)
 @findex LINES
@@ -1495,17 +1531,19 @@ adapter and support software.  E.g. 132.
 @section Starting Scheme from Microsoft Windows 3.1/NT
 
 There are two distinct versions of MIT Scheme that run on IBM
-`compatible' PCs: the MS-DOS version is a character-mode only
-implementation.  It may also be run under Windows as a DOS application.
+`compatible' PCs: the DOS version is a character-mode only
+implementation, which can also run under Windows 3.1 as a DOS application.
 The Windows version runs as graphics based application under Microsoft
-Windows 3.1 or Microsoft Windows NT@footnote{The Windows 3.1 and NT
-versions are identical except for a minor installation difference}.
+Windows 3.1 or Microsoft Windows NT.
+The DOS version will not run under Windows NT.
 
-Under Microsoft Windows, Scheme must be run from the Program Manager or
+Under Microsoft Windows 3.1, Scheme must be run from the Program Manager or
 the File Manager.  Scheme cannot be run from the command line, because
-only MS-DOS programs can be run from the command line.  Windows NT
-overcomes this restriction, but it is still useful to know how to run
-Scheme from the Program Manager.
+only DOS programs can be run from the command line.
+(This is the case even with WXSERVER as it appears not to work with
+win32s-based programs).
+Windows NT overcomes this restriction, but it is still useful to know
+how to run Scheme from the Program Manager.
 
 Once an icon is set up to run Scheme with some particular cmmand line
 options, Scheme is run by double-clicking that icon.
@@ -1526,7 +1564,7 @@ Give the icon an accurate @var{Description}.
 @item
 Include absolute pathnames to @code{scheme.exe} and @code{bchscheme.exe}
 in the icon @var{Command line} if these executables are not in a
-directory on the @code{PATH}.
+directory on the default @code{PATH}.
 @item
 Set the icon's @var{Working Directory} to: @code{%HOMEPATH%}
 @item
@@ -1582,19 +1620,21 @@ If your system supports suspension, this will cause Scheme to stop, and
 you will be returned to the operating system's command interpreter.
 Scheme remains stopped, and can be continued using the job-control
 commands of your command interpreter.  If your system doesn't support
-suspension, this procedure does nothing.
+suspension, this procedure does nothing.  (Calling the @code{quit}
+procedure is analogous to typing Control-@code{Z}, but it allows Scheme
+to respond by typing a prompt when it is unsuspended.)
 
 
 @node REPL, Debugging, Running Scheme, Top
 @chapter The Read-Eval-Print Loop
 
 @cindex REPL
-When you first start up Scheme, you will be typing at a program called
-the @dfn{Read-Eval-Print Loop} (abbreviated @dfn{REPL}).  It displays a
-prompt at the left hand side of the screen whenever it is waiting for
-input.  You then type an expression (terminating it with @key{RET}).
-Scheme evaluates the expression, prints the result, and gives you
-another prompt.
+When you first start up Scheme from the command line (i.e not under
+Edwin), you will be typing at a program called the @dfn{Read-Eval-Print
+Loop} (abbreviated @dfn{REPL}).  It displays a prompt at the left hand
+side of the screen whenever it is waiting for input.  You then type an
+expression (terminating it with @key{RET}).  Scheme evaluates the
+expression, prints the result, and gives you another prompt.
 
 @menu
 * The Prompt and Level Number::  The Prompt and Level Number
@@ -1622,11 +1662,14 @@ what you will see if you type @kbd{f o o @key{RET}} after starting
 Scheme:
 
 @example
-1 ]=> foo
+;Unbound variable: foo
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of foo.
+; (RESTART 2) => Define foo to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
 
-Unbound variable foo
 
-2 Error->
+2 error> 
 @end example
 
 @noindent
@@ -1635,10 +1678,11 @@ indicates that a new @sc{repl} has been started (also the prompt string
 has been changed to remind you that the @sc{repl} was started because of
 an error).  The @samp{2} means that this new @sc{repl} is ``over'' the
 old one.  The original @sc{repl} still exists, and is waiting for you to
-return to it.  Furthermore, if an error occurs while you are in this
-@sc{repl}, yet another @sc{repl} will be started, and the level number
-will be increased to @samp{3}.  This can continue ad infinitum, but
-normally it is rare to use more than a few levels.
+return to it, for example, by entering @code{(restart 1)}.  Furthermore,
+if an error occurs while you are in this @sc{repl}, yet another
+@sc{repl} will be started, and the level number will be increased to
+@samp{3}.  This can continue ad infinitum, but normally it is rare to
+use more than a few levels.
 
 The normal way to get out of an error @sc{repl} and back to the top
 level @sc{repl} is to use the @kbd{C-g} interrupt.  This is a
@@ -1646,7 +1690,7 @@ single-keystroke command executed by holding down the @key{CTRL} key and
 pressing the @key{G} key.  @kbd{C-g} always terminates whatever is
 running and returns you to the top level @sc{repl} immediately.
 
-Note: The appearance of the @samp{Error->} prompt does not mean that
+Note: The appearance of the @samp{error>} prompt does not mean that
 Scheme is in some weird inconsistent state that you should avoid.  It is
 merely a reminder that your program was in error: an illegal operation
 was attempted, but it was detected and avoided.  Often the best way to
@@ -1659,8 +1703,11 @@ destroyed, and you may not be able to find out what happened.
 
 @kindex C-g
 @kindex C-c
-Scheme has two interrupt keys under unix (other systems may have more
-than two): @kbd{C-g} and @kbd{C-c}.  The @kbd{C-g} key stops any Scheme
+Scheme has two interrupt keys under unix: @kbd{C-g} and @kbd{C-c}.  
+Other systems, like the PC may have more than two.
+The PC version has @kbd{C-b}, @kbd{C-x} and @kbd{C-u} as well as
+@kbd{C-g} and @kbd{C-c}.
+The @kbd{C-g} key stops any Scheme
 evaluation that is running and returns you to the top level @sc{repl}.
 @kbd{C-c} prompts you for another character and performs some action
 based on that character.  It is not necessary to type @key{RET} after
@@ -1725,6 +1772,9 @@ to evaluating
 The option @kbd{C-c x}, supplied for compatibility with older
 implementations, is equivalent to @kbd{C-c C-x}.
 
+@kindex C-x
+On the PC version @kbd{C-x} is equivalent to @kbd{C-c C-x}.
+
 @item C-c C-u
 @kindex C-c C-u
 Abort whatever Scheme evaluation is running and go up one level.  If you
@@ -1740,6 +1790,9 @@ evaluating
 @kindex C-c u
 The option @kbd{C-c u}, supplied for compatibility with older
 implementations, is equivalent to @kbd{C-c C-u}.
+
+@kindex C-u
+On the PC version @kbd{C-u} is equivalent to @kbd{C-c C-u}.
 
 @item C-c C-b
 @kindex C-c C-b
@@ -1758,7 +1811,11 @@ in that @sc{repl} at any time.
 @kindex C-c b
 The option @kbd{C-c b}, supplied for compatibility with older
 implementations, is equivalent to @kbd{C-c C-b}.
+
+@kindex C-b
+On the PC version @kbd{C-b} is equivalent to @kbd{C-c C-b}.
 @end table
+
 
 @node Proceeding, The Current REPL Environment, Interrupting, REPL
 @section Proceeding
@@ -1898,10 +1955,14 @@ cause Scheme to respond
 @example
 1 ]=> foo
 
-Unbound variable foo
-;Package: (user)
+;Unbound variable: foo
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of foo.
+; (RESTART 2) => Define foo to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
 
-2 Error->
+
+2 error> 
 @end example
 
 Sometimes, a bug will never cause an error, but will still cause the
@@ -2028,21 +2089,26 @@ starting the debugger:
 @example
 1 ]=> (fib 10)
 
-Unbound variable fob
+;Unbound variable: fob
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of fob.
+; (RESTART 2) => Define fob to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
 
-2 Error-> (debug)
 
-There are 8 subproblems on the stack.
+2 error> (debug)
+
+There are 6 subproblems on the stack.
 
 Subproblem level: 0 (this is the lowest subproblem level)
 Expression (from stack):
     fob
-Environment created by the procedure: fib
+Environment created by the procedure: FIB
  applied to: (10)
 The execution history for this subproblem contains 1 reduction.
 You are now in the debugger.  Type q to quit, ? for commands.
 
-3 Debug--> 
+3 debug> 
 @end example
 
 @noindent
@@ -2087,13 +2153,20 @@ files only.)
 @end defvr
 
 @defvr {variable+} load/default-types
-This variable is a list of strings that are the pathname types to look
-for, in that order, if @code{load} is given a pathname that has no type.
-The initial value of this variable is
+When load is given a pathname without a type, it uses the value of thsi
+variable to determine what pathname types to look for and how to load
+the file.  @code{load/default-types} is a list of associations that maps
+pathname types (strings) to loader procedures.  @code{Load} tries the
+pathname types in the order that they appear in the list.  The initial
+value of this variable has pathname types in this order:
 
 @lisp
-("com" "bin" "scm")
+"com" "so" "sl" "bin" "scm"
 @end lisp
+
+This means that, for example, @code{(load "foo")} will try to load
+@file{foo.com} first, and @file{foo.scm} only after looking for and
+failing to find the other pathname types.
 @end defvr
 
 @cindex working directory
@@ -2114,8 +2187,9 @@ perhaps additionally including user application code.  Scheme provides
 two methods for saving and restoring world images.  The first method
 writes a file containing all of the Scheme code in the world, which is
 called a @dfn{band}.  The file @file{runtime.com} that is loaded by the
-microcode is just such a band.  To make your own band, use the procedure
-@code{disk-save}:
+microcode is just such a band.
+To make your own band, use the procedure
+@code{disk-save}.
 
 @deffn {procedure+} disk-save filename [identify]
 Causes a band to be written to the file specified by @var{filename}.
@@ -2151,6 +2225,13 @@ it with the saved world.  The argument to @code{disk-restore} may be
 omitted, in which case it defaults to the filename from which the
 current world was last restored.
 
+
+Note: with the C back-end, @code{disk-save} is not very useful.
+The reason is that compiled procedures are compiled C code that has been
+dynamically linked in, and @code{disk-save} does not save any C
+procedures.
+If you need to build a band for a C back-end system, please contact us.
+
 Note: when restoring a saved band, the Scheme executable must be
 configured with a large enough constant space and heap to hold the
 band's contents.  If you attempt to restore a band using the
@@ -2169,9 +2250,11 @@ saves an executable image, which is started just like any other program.
 This has the advantage of being considerably faster to start on some
 systems, but the image file is typically much larger than the
 corresponding band.  However, @code{dump-world} is only supported for a
-few operating systems, and is not built in to the distributed executable
+few operating systems, and is not built into the distributed executable
 files --- if you wish to use @code{dump-world}, you must build your own
 executable file from the source code.
+Note that @code{dump-world} is unlikely to work with this release as MIT
+Scheme now uses shared libraries.
 
 @node Compiling Files, GNU Emacs Interface, World Images, Top
 @chapter Compiling Files
@@ -2199,7 +2282,7 @@ binary form.  If @var{destination} is not given, as in
 @noindent
 @code{cf} compiles the file @file{foo.scm}, producing the file
 @file{foo.com} (incidentally it will also produce @file{foo.bin},
-@file{foo.binf}, and possibly @file{foo.ext}).  If you later evaluate
+@file{foo.bci}, and possibly @file{foo.ext}).  If you later evaluate
 
 @lisp
 (load "foo")
@@ -2226,30 +2309,40 @@ output:
 
 @noindent
 takes @file{foo.scm} and generates @file{bar.com}.
-
-About the @file{.binf} files: these files contain the debugging
-information that Scheme uses when you call @code{debug} to examine
-compiled code.  When you load a @file{.com} file, Scheme remembers where
-it was loaded from, and when the debugger looks at the compiled code
-from that file, it attempts to find the @file{.binf} file in the same
-directory from which the @file{.com} file was loaded.  Thus it is a good
-idea to leave these files together.
-
-Another useful thing contained in the @file{.binf} file is the symbol
-table produced by the assembler.  If you have both the @file{foo.com}
-and @file{foo.binf} files, you can generate an assembly listing in
-@file{foo.lap} by evaluating:
-
-@findex compiler:write-lap-file
-@lisp
-(compiler:write-lap-file "foo")
-@end lisp
 @end deffn
 
-Unfortunately, the @file{.binf} files are somewhat large in the current
-implementation.  If you wish to save space, these files may be deleted;
-if Scheme tries to find one and cannot, it will still permit debugging,
-but will be unable to produce much information about your program.
+About the @file{.bci} files: these files contain the debugging
+information that Scheme uses when you call @code{debug} to examine
+compiled code.  When you load a @file{.com} file, Scheme remembers where
+it was loaded from, and when the debugger (or @code{pp}) looks at the
+compiled code from that file, it attempts to find the @file{.bci} file
+in the same directory from which the @file{.com} file was loaded.  Thus
+it is a good idea to leave these files together.
+
+@file{.bci} files are stored in a compressed format.
+The debugger has to uncompress the files when it first looks at them,
+and on a slow machine this can take a noticable time.
+In order to reduce this behaviour, the uncompressed files may be kept
+around and the debugging information is cached in memory.
+
+@c Two variables control the behaviour.
+
+@defvr {variable+} load-debugging-info-on-demand?
+cph: What operations other than normal printing are affected by this?
+@end defvr
+
+@deffn {procedure+} discard-debugging-info!
+Calling this procedure causes any debugging info cached in memory to be
+discarded.
+@end deffn
+
+cph: how can a user tailor the .bci uncompressed file behaviour?
+
+@c Unfortunately, the @file{.binf} files are somewhat large in the current
+@c implementation.  If you wish to save space, these files may be deleted;
+@c if Scheme tries to find one and cannot, it will still permit debugging,
+@c but will be unable to produce much information about your program.
+
 
 @deffn {procedure+} sf filename [destination]
 @code{sf} is the program that transforms a source-code file into binary
@@ -2440,6 +2533,110 @@ Finally, remove the @code{((lambda () @dots{}))} to produce
 (vector-ref (vector-ref (car baz) (cdr baz)) 3)
 @end lisp
 
+
+@node
+@subsection Operator Replacement
+
+The @code{replace-operator} declaration is provided to inform the
+compiler that certain operators may be replaced by other operators
+depending on the number of arguments.
+For example:
+
+@noindent
+Declaration:
+
+@lisp
+(declare (replace-operator (map (2 map-2) (3 map-3))))
+@end lisp
+
+@noindent
+Replacements:
+
+@lisp
+(map @var{f} @var{x} @var{y} @var{z}) @expansion{} (map @var{f} @var{x} @var{y} @var{z})
+(map @var{f} @var{x} @var{y}) @expansion{} (map-3 @var{f} @var{x} @var{y})
+(map @var{f} @var{x}) @expansion{} (map-2 @var{f} @var{x})
+(map @var{f}) @expansion{} (map @var{f})
+(map) @expansion{} (map)
+@end lisp
+
+@noindent
+Presumably, @code{map-2} and @code{map-3} are efficient versions of
+@code{map} because they are written for exactly two and three arguments
+respectively.  All the other cases are not expanded and handled by the
+general @code{map} procedure, which is less efficient because it must
+handle a variable number of arguments.
+
+
+@deffn {delcaration+} replace-operator name ...
+
+The syntax of this declaration is
+
+@lisp
+(replace-operator
+ (@var{name}
+  (@var{nargs1} @var{value1})
+  (@var{nargs2} @var{value2})
+  ...))
+@end lisp
+
+where
+
+@itemize @bullet
+@item
+@var{name} is a symbol.
+
+@item
+@var{nargs1}, @var{nargs2} etc. are non-negative integers, or one of the
+following symbols:  @code{any}, @code{else} or @code{otherwise}.
+
+@item
+@var{value1}, @var{value2} etc. are simple
+expressions in one of these forms:
+
+@table @code
+
+@item '@var{constant}
+A constant.
+
+@item @var{variable}
+A variable.
+
+@item (primitive @var{primitive-name} @r{[}@var{arity}@r{]})
+The primitive procedure named @var{primitive-name}.  The optional
+element @var{arity}, a non-negative integer, specifies the number of
+arguments that the primitive accepts.
+
+@item (global @var{var})
+A global variable.
+@end table
+@end itemize
+
+The meaning of these field is:
+
+@itemize @bullet
+@item
+@var{name} is the name of the operator to be reduced.  If is is not
+shadowed (for example, by a let) then it may be replaced according to
+the following rules.
+
+@item
+If the operator has @var{nargsN} arguments then it is replaced with a
+call to @var{valueN} with the same arguments
+
+@item
+If the number of arguments is not listed, and one of the @var{nargsN} is
+@code{any}, @code{else} or @code{otherwise}, then the operation is
+replaced with a call to the corresponding @var{valueN}.
+Only one of the @var{nargsN} may be of this form.
+
+@item
+If the number of arguments is not listed and none of the @var{nargsN} is
+@code{andy}, @code{else} or @code{otherwise}, then the operation is not
+replace.
+@end itemize
+@end deffn
+
 @node Operator Reduction,  , In-line Coding, Declarations
 @subsection Operator Reduction
 
@@ -2522,6 +2719,31 @@ informs the compiler that certain optimizations can be performed on
 calls to @code{+} by replacing them with calls to @code{%+}.  You should
 provide a definition of @code{+} as well, although it is not required.
 
+
+@noindent
+Declaration:
+
+@lisp
+(declare (reduce-operator (apply (primitive cons)
+                                 (group right)
+                                 (wrapper (global apply) 1))))
+@end lisp
+
+@noindent
+Replacements:
+
+@lisp
+(apply @var{f} @var{x} @var{y} @var{z} @var{w}) @expansion{} ((access apply ()) @var{f} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))))
+(apply @var{f} @var{x} @var{y}) @expansion{} ((access apply ()) @var{f} (cons @var{x} @var{y}))
+(apply @var{f} @var{x}) @expansion{} (apply @var{f} @var{x})
+(apply @var{f}) @expansion{} (apply @var{f})
+(apply) @expansion{} (apply)
+@end lisp
+
+
+
+
+@deffn {declaration+} reduce-operator name ...
 The general format of the declaration is (brackets denote optional
 elements):
 
@@ -2532,7 +2754,8 @@ elements):
   @r{[}(group @var{ordering})@r{]}
   @r{[}(null-value @var{value} @var{null-option})@r{]}
   @r{[}(singleton @var{unop})@r{]}
-  @r{[}(wrapper @var{wrap})@r{]}
+  @r{[}(wrapper @var{wrap} @r{[}n@r{]})@r{]}
+  @r{[}(maximum @var{m})@r{]}
   ))
 @end lisp
 
@@ -2540,6 +2763,9 @@ elements):
 where
 
 @itemize @bullet
+
+@item
+@var{n} and @var{m} are non-negative integers.
 
 @item
 @var{name} is a symbol.
@@ -2560,6 +2786,9 @@ A variable.
 The primitive procedure named @var{primitive-name}.  The optional
 element @var{arity} specifies the number of arguments that the primitive
 accepts.
+
+@item (global @var{var})
+A global variable.
 @end table
 
 @item
@@ -2571,6 +2800,7 @@ accepts.
 @code{associative}.
 @end itemize
 
+@noindent
 The meaning of these fields is:
 
 @itemize @bullet
@@ -2620,7 +2850,16 @@ invoked on the single argument left.  This option supersedes the
 The @code{wrapper} option specifies a function, @var{wrap}, to be
 invoked on the result of the outermost call to @var{binop} after the
 expansion.
+If @var{n} is provided it must be a non-negative integer indicating a number
+of arguments that are transferred verbatim from the original call to
+the wrapper.  They are passed to the left of the reduction.
+
+@item
+The maximum option specifies that calls with more than @var{m} arguments
+should not be reduced.
+
 @end itemize
+@end deffn
 
 @node GNU Emacs Interface, Edwin, Compiling Files, Top
 @chapter GNU Emacs Interface
