@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.21 2003/02/14 18:28:34 cph Exp $
+$Id: socket.scm,v 1.22 2003/06/08 03:36:11 cph Exp $
 
 Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -77,7 +77,8 @@ USA.
 		((ucode-primitive host-address-any 0))
 		host)
 	    (tcp-service->port service))
-	   ((ucode-primitive listen-tcp-server-socket 1) channel)))))))
+	   ((ucode-primitive listen-tcp-server-socket 1) channel))
+	 #t)))))
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
