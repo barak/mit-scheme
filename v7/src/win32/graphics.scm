@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.14 1998/01/30 09:07:25 cph Exp $
+$Id: graphics.scm,v 1.15 1998/01/30 09:46:06 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -420,14 +420,14 @@ MIT in each case. |#
 	     (+)
 	     "SCHEME-GRAPHICS"
 	     "Scheme Graphics"
-             (+ WS_OVERLAPPED WS_VISIBLE WS_CAPTION WS_THICKFRAME
+             (+ WS_OVERLAPPED WS_CAPTION WS_THICKFRAME
                 WS_SYSMENU WS_MINIMIZEBOX)
 	     CW_USEDEFAULT CW_USEDEFAULT
              (client-width->window-width width)
              (client-height->window-height height)
 	     0 0 (get-handle 0) 0
              wndproc)))
-    w ;ignored
+    (show-window w SW_SHOWNOACTIVATE)
     (let ((device (descriptor->device descriptor)))
       (protection-list/add! device-protection-list device descriptor)
       device)))
