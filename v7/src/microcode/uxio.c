@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.5 1990/08/16 19:22:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.6 1990/11/08 11:08:07 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ DEFUN_VOID (UX_channel_close_all)
   Tchannel channel;
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
     if (CHANNEL_OPEN_P (channel))
-      OS_channel_close (channel);
+      OS_channel_close_noerror (channel);
 }
 
 void
@@ -88,7 +88,7 @@ DEFUN_VOID (channel_allocate)
       channel += 1;
     }
 }
-
+
 int
 DEFUN (OS_channel_open_p, (channel), Tchannel channel)
 {
@@ -111,6 +111,20 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   UX_close (CHANNEL_DESCRIPTOR (channel));
   MARK_CHANNEL_CLOSED (channel);
+}
+
+static void
+DEFUN (channel_close_on_abort_1, (cp), PTR cp)
+{
+  OS_channel_close (* ((Tchannel *) cp));
+}
+
+void
+DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
+{
+  Tchannel * cp = (dstack_alloc (sizeof (Tchannel)));
+  (*cp) = (channel);
+  transaction_record_action (tat_abort, channel_close_on_abort_1, cp);
 }
 
 enum channel_type
