@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.12 1990/09/11 20:44:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/framex.scm,v 14.13 1990/09/12 00:43:05 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -249,8 +249,10 @@ MIT in each case. |#
 			   environment
 			   (validate-subexpression
 			    frame
-			    (list-ref (combination-operands expression)
-				      (-1+ (vector-ref source-code 2))))))
+			    (if (zero? (vector-ref source-code 2))
+				(combination-operator expression)
+				(list-ref (combination-operands expression)
+					  (-1+ (vector-ref source-code 2)))))))
 			 (else
 			  (lose)))))
 		   (lose))))
