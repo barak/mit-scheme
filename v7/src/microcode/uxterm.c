@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.19 1992/05/05 06:38:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.20 1993/02/16 00:02:14 arthur Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -379,7 +379,7 @@ DEFUN (OS_baud_rate_to_index, (rate), unsigned int rate)
   unsigned int * scan = baud_convert;
   unsigned int * end = (scan + BAUD_CONVERT_LENGTH);
   while (scan < end)
-    if ((*scan++) = rate)
+    if ((*scan++) == rate)
       return ((scan - 1) - baud_convert);
   return (-1);
 }
