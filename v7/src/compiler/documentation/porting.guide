@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.13 1991/02/28 18:07:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.14 1991/02/28 22:00:01 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -1514,20 +1514,207 @@ This example brings up the most important rule to be followed when
 writing RTL assignment rules: Any rule that writes an RTL
 pseudo-register MUST invoke DELETE-DEAD-REGISTERS! after allocating
 aliases for the necessary sources but before allocating an alias for
-the target.  MOVE-TO-ALIAS-REGISTER! already invokes it since it
-simultaneously allocates an alias for a source and for a target.
-Thus rules frequently expand into the following pattern:
+the target. Rules frequently expand into the following pattern:
     (let* ((r1 (standard-source source1))
 	   (r2 (standard-source source2))
 	   (rt (standard-target target)))
       (LAP ...))
+
+Note that MOVE-TO-ALIAS-REGISTER! already invokes
+DELETE-DEAD-REGISTERS! because it simultaneously allocates an alias
+for a source and for a target.
 
 	5.3.3 Invocation rules, etc.
 
-*** MISSING: Closures, multi closures, uuo-link calls, and block-linking.  Other
-hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
-are fossils.  On the other hand, they are easy to take care of because
-of the portable runtime library.
+The meaning and intent of most statement rules in an existing port is
+readily apparent.  There are some rules, however, whose meaning is not
+so obvious.  Most of these are written assuming some understanding of
+some of the concepts in the implementation.  The more arcane rules
+have to do with procedures and the representation of numbers.
+
+The following is a description of some of the more obscure rules
+related to procedures:
+
+* (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
+  This rule is used to invoke a procedure named by a free variable.
+It is the rule used to generate a branch to an execute cache as
+described in microcode/cmpint.txt.  The rule should allocate a new
+execute cache in the compiled code block by using FREE-UUO-LINK-LABEL,
+and should then branch to the instruction portion of the execute
+cache.
+
+* (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (? address))
+  These rules are used to shift call frames on the stack to maintain
+proper tail recursion.  ADDRESS specifies where to start pushing the
+frame.  It should be a pointer into the used portion of the stack, ie.
+point to a higher address.
+
+* (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size) (? address-1) (? address-2))
+  These rules are similar to the INVOCATION-PREFIX:MOVE-FRAME-UP
+rules, but are used when the destination of the frame is not known at
+compile time.  The destination depends on the continuation in effect
+at the time of the call, and the section of the stack that contains
+enclosing environment frames for the called procedure.  Two addresses
+are specified and the one that is closest to the current stack pointer
+should be used, that is the numerically lower of the two addresses.
+==> These dynamic-link instructions need not exist in the RTL.  They
+could be expanded into comparisons and uses of
+INVOCATION-PREFIX:MOVE-FRAME-UP with computed values.
+
+* (OPEN-PROCEDURE-HEADER (? label-name))
+  These rules are used to generate the entry code to procedures and
+continuations (return addresses).  On entry to procedures and
+continuations, a gc/interrupt check is performed, and the appropriate
+routine in the runtime library is invoked if necessary.  This check is
+performed by comparing the memory Free pointer to the compiled code's
+version of the MemTop pointer.  The low-level interrupt handlers
+change the MemTop pointer to guarantee that the following comparison
+will fail.  Thus a standard header generates the following code:
+    (LABEL gc-label)
+	<code to invoke the runtime library>
+	<format and gc words for the entry point>
+    (LABEL label-name)
+	<branch to gc-label if Free >= MemTop>
+
+Each of the individual headers is somewhat idiosyncratic, but the
+idiosyncratic code is machine independent.
+
+Procedures that expect dynamic links must guarantee that the dynamic
+link is preserved around the execution of the interrupt handler.  This
+is accomplished by invoking an alternate entry point in the runtime
+library and passing along the contents of the dynamic link register.
+
+* (CLOSURE-HEADER (? label-name) (? nentries) (? entry))
+  NENTRIES is the number of entry points that the closure object has,
+and ENTRY is the zero-based index for this entry point.  Closure
+headers also perform gc/interrupt tests, but they must also
+reconstruct the canonical closure object from the ``return address''
+and push the resulting object on the Scheme stack.  When backing out
+for interrupts, they may have to adjust the canonical closure object
+to be the real closure object if these two are different.  You should
+read the section on closures in microcode/cmpint.txt for a more
+complete explanation.
+
+* (ASSIGN (REGISTER (? target))
+	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
+			(? min) (? max) (? size)))
+  This rule issues the code to create a closure object whose real
+entry point is PROCEDURE-LABEL, that will accept between MIN-1 and
+MAX-1 (both inclusive) arguments, and that will have storage for SIZE
+free variables.  The free variable storage need not be initialized
+since it will be by subsequent RTL instructions.  The entry point of
+the resulting closure object should be written to RTL register TARGET.
+The format of closure objects is described in microcode/cmpint.txt.
+
+Note that CONS-CLOSURE will dynamically create some new instructions
+on the runtime heap, and that these instructions must be visible to
+the processor's instruction cache.  This may make this rule impossible
+to translate on machines where the programmer is given no control over
+the caches.  
+
+On machines where the control is minimal or flushing is expensive
+(ie., there is a single instruction or OS call to flush the complete
+caches or synchronize both caches), a solution is possible: 
+
+This rule can generate code to invoke an out-of-line routine.  The
+routine can manage a large pool of pre-allocated closures, and
+flush/synchronize the caches only when the pool is exhausted and more
+are allocated from the heap.
+
+Since the real entry points are not known until the closures objects
+are initialized, instead of using absolute jumps to the real entry
+points, the pre-allocated closures can contain jumps to a fixed
+routine that will extract the real entry point from the word pointed
+at by the return address and invoke it.  In other words, the code
+inserted in the closure objects will not be
+	jsr real-entry-point
+	<storage for first free variable>
+but
+	jsr fixed-routine
+	<storage for real-entry-point>
+	<storage for first free variable>
+
+and the fixed-routine will do something like
+	load	0(return-address),rtemp
+	jmp	0(rtemp)
+
+* (ASSIGN (REGISTER (? target))
+	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
+  This rule is similar to the previous rule, but issues code to
+allocate a closure object with NENTRIES entry points.  SIZE is the
+number of words allocated for free variables, and ENTRIES is a vector
+of entry-point descriptors.  Each descriptor is a list containing a
+label, a minimum (plus one) number of arguments, and a maximum (plus
+one) number of arguments.  Obviously the same problems with the
+processor's instruction cache occur, and the solutions are analogous.
+
+The file compiler/machines/port/rules3.scm contains most of these
+procedure-related rules.  It also contains three procedures that
+generate assembly language and are required by the compiler.  Both of
+these procedures are used to generate code to be wrapped around the
+top-level code of a compilation unit.
+
+* (GENERATE/QUOTATION-HEADER env-label free-label n-sections)
+  This procedure generates the header for the top-level expression
+given to COMPILE-SCODE, and generates its entry code.  This code
+initializes the executing compiled code block.  The initialization
+consists of storing the environment with respect to which the
+expression is evaluated into the environment slot of the compiled code
+block (labelled by ENV-LABEL), and invoking the linker to link in the
+executing compiled code block.
+
+The linker (a runtime library utility) expects three arguments:
+  The address of the first word of the compiled code block, labelled
+by the value of *BLOCK-LABEL* during the compilation.
+  The address of the first linker section in the constants area of the
+compiled code block, labelled by FREE-LABEL.
+  The number of linker sections in the compiled code block (N-SECTIONS).
+
+* (GENERATE/REMOTE-LINK label env-offset free-offset n-sections)
+  This procedure is similar to generate/quotation-header but is used
+to generate the code that initializes and links in a different
+compiled code block, a pointer to which is stored in the constants
+section of the executing compiled code block.
+  LABEL is a label into the constants block where the remote compiled
+code block is stored,
+  ENV-OFFSET is the offset in the remote compiled code block where the
+environment of execution should be stored,
+  FREE-OFFSET is the offset of the first linker section in the remote
+compiled code block, and
+  N-SECTIONS is the number of linker sections in the remote compiled
+code block.
+
+* (GENERATE/CONSTANTS-BLOCK consts reads writes execs)
+  This procedure generates the LAP directives used to generate the
+constants section of a compiled code block.  The constants section
+includes:
+  - The constant objects referenced by the code.
+  - The read variable caches used by the code.
+  - The write vaiable caches used by the code.
+  - The execute variable caches used by the code.
+  - A slot for the debugging information generated by the compiler.
+  - A slot for the environment where the code is linked.  
+
+This procedure is almost machine-independent, and you should be able
+to trivially modify an existing version.  The only machine dependence
+is the layout and size of the storage allocated for each execute cache
+(uuo link).  Each word of storage in the constants block is allocated
+by a SCHEME-OBJECT directive, and the order in which they are issued
+determines the layout in the constants block.  
+
+This machine-dependent expansion is performed by the TRANSMOGRIFLY
+procedure.  TRANSMOGRIFLY expects a list of lists whose first elements
+are the names of free variables and the rest of the elements are the
+number of arguments (plus 1) passed in the call.  It returns a list of
+pairs of objects and labels.  It should expand each <NAME,ARITY> pair
+into EXECUTE-CACHE-SIZE pairs, one of which should contain NAME as the
+object, another of which should contain ARITY as the object, and the
+rest of which (if any) can contain anything.  The pairs containing
+NAME and ARITY, and any additional ones, must be ordered to make the
+EXTRACT_EXECUTE_CACHE_ARITY, EXTRACT_EXECUTE_CACHE_SYMBOL macros from
+microcode/cmpint-port.h work correctly.  Note that the arity MUST NOT
+be overwritten when the execute cache is initialized to contain
+instructions.
 
 	5.3.4 Fixnum rules.
 
