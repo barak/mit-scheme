@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: berkeley-db.scm,v 1.1 2005/01/11 03:12:26 cph Exp $
+$Id: berkeley-db.scm,v 1.2 2005/03/20 16:56:14 cph Exp $
 
 Copyright 2004,2005 Massachusetts Institute of Technology
 
@@ -131,9 +131,9 @@ USA.
 		 (,(close-syntax (cadr form) environment)
 		  ,@(map (lambda (expr)
 			   (close-syntax expr environment))
-			 (cddr form))))))
+			 (cddr form)))))
 	    (IF (NOT (= RC 0))
-		(BDB-ERROR RC ',(cadr form)))))))
+		(BDB-ERROR RC ',(cadr form))))))))
 
 (define condition-type:bdb-error
   (make-condition-type 'BDB-ERROR condition-type:error '(RC PRIMITIVE)
