@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.77 1993/11/04 19:34:46 gjr Exp $
+$Id: cmpint.c,v 1.78 1993/11/04 23:51:07 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -773,7 +773,7 @@ static utility_result
 
 #define INVOKE_RETURN_ADDRESS() do					\
 {									\
-  if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))		\
+  if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))		\
     return (compiler_interrupt_common (0, Val));			\
   else									\
     RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
@@ -1154,8 +1154,7 @@ DEFUN (comutil_link,
   long offset;
 
 #ifdef AUTOCLOBBER_BUG
-  block_address[OBJECT_DATUM(* block_address)] =
-    Registers[REGBLOCK_ENV];
+  block_address[OBJECT_DATUM (* block_address)] = Regs[REGBLOCK_ENV];
 #endif
 
   offset = (constant_address - block_address);
@@ -2949,7 +2948,7 @@ DEFUN (comutil_reflect_to_interface,
 
       /* Attempt to process interrupts before really proceeding. */
 
-      if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))
+      if (((long) Free) >= ((long) (Regs[REGBLOCK_MEMTOP])))
       {
 	STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
 	STACK_PUSH (reflect_to_interface);
@@ -3411,9 +3410,9 @@ DEFUN_VOID (compiler_reset_internal)
     (ENTRY_TO_OBJECT (((char *) block)
 		      + ((unsigned long) (block [len]))));
 
-  Registers[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
-  Registers[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);
-  Registers[REGBLOCK_REFLECT_TO_INTERFACE] = reflect_to_interface;
+  Regs[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
+  Regs[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);
+  Regs[REGBLOCK_REFLECT_TO_INTERFACE] = reflect_to_interface;
 
   ASM_RESET_HOOK();
 
@@ -3427,6 +3426,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
   /* Start-up of whole interpreter */
 
+  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
   compiler_processor_type = COMPILER_PROCESSOR_TYPE;
   compiler_interface_version = COMPILER_INTERFACE_VERSION;
   if (fasl_p)
@@ -3844,6 +3844,7 @@ DEFUN (compiler_reset, (new_block), SCHEME_OBJECT new_block)
 void
 DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
+  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
   compiler_processor_type = 0;
   compiler_interface_version = 0;
   compiler_utilities = SHARP_F;
