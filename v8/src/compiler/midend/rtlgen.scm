@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.28 1995/05/14 00:52:41 adams Exp $
+$Id: rtlgen.scm,v 1.29 1995/06/23 12:41:35 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -615,6 +615,7 @@ MIT in each case. |#
   body)
 
 (define (rtlgen/wrap-with-interrupt-check/procedure external? body desc)
+  external?				;ignored
   (rtlgen/wrap-with-intrpt-check
    ;;  This change is required since the internal procedures are being
    ;;  compiled as external procedures (trivial closures) at the
@@ -1380,6 +1381,7 @@ MIT in each case. |#
   (cond ((not (pair? form))
 	 (illegal-action))
 	((DECLARE/? form)
+	 (rtlgen/check-declarations (declare/declarations form))
 	 false)
 	(else
 	 (rtlgen/expr (rtlgen/state/->expr state '(NONE)) form))))
@@ -4361,6 +4363,17 @@ MIT in each case. |#
       (like? 'cons-)
       (like? 'next-)
       (like? 'receiver-)))
+
+(define (rtlgen/check-declarations declarations)
+  (define (check-declaration declaration)
+    (if (and (pair? declaration)
+	     (memq (car declaration) *rtlgen/valid-remaining-declarations*))
+	unspecific
+	(user-warning "Unused declaration" declaration)))
+  (for-each check-declaration declarations))
+
+(define *rtlgen/valid-remaining-declarations*
+  '())
 
 #|
 ;; New RTL:
