@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.64 2000/05/17 17:00:43 cph Exp $
+;;; $Id: imail-core.scm,v 1.65 2000/05/17 17:30:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -275,7 +275,7 @@
   (%get-message folder index))
 
 (define-generic %get-message (folder index))
-
+
 ;; -------------------------------------------------------------------
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
@@ -306,6 +306,11 @@
 ;; reload contents from the persistent folder.
 
 (define-generic discard-folder-cache (folder))
+
+;; -------------------------------------------------------------------
+;; Probe FOLDER's server for changes.  Useful as a check for new mail.
+
+(define-generic probe-folder (folder))
 
 ;;;; Message type
 

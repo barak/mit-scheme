@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.50 2000/05/17 16:23:29 cph Exp $
+;;; $Id: imail-imap.scm,v 1.51 2000/05/17 17:30:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -691,6 +691,10 @@
 (define-method discard-folder-cache ((folder <imap-folder>))
   (close-imap-connection (imap-folder-connection folder))
   (reset-imap-folder! folder))
+
+(define-method probe-folder ((folder <imap-folder>))
+  (guarantee-imap-folder-open folder)
+  (imap:command:noop (imap-folder-connection folder)))
 
 ;;;; IMAP command invocation
 
