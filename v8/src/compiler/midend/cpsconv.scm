@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.10 1995/04/28 00:29:13 adams Exp $
+$Id: cpsconv.scm,v 1.11 1995/05/05 12:57:26 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -456,23 +456,27 @@ MIT in each case. |#
     ((NAMED)
      `(LOOKUP ,(cpsconv/cont/field1 cont)))
     ((VALUE)
-     (let ((value (cpsconv/new-name 'VALUE))
-	   (scode
-	    (new-dbg-expression/expr
-	     (new-dbg-continuation/inner (cpsconv/cont/dbg-cont cont)))))
-       (dbg-info/remember scode `(LOOKUP ,value))
+     (let* ((value    (cpsconv/new-name 'VALUE))
+	    (dbg-cont (cpsconv/cont/dbg-cont cont))
+	    (scode
+	     (and (new-dbg-continuation/inner dbg-cont)
+		  (new-dbg-expression/expr
+		   (new-dbg-continuation/inner dbg-cont)))))
+       (if scode (dbg-info/remember scode `(LOOKUP ,value)))
        (cpsconv/remember*
 	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
 	   (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
 		 (QUOTE #F)
 		 (LOOKUP ,value)))
-	(cpsconv/cont/dbg-cont cont))))
+	dbg-cont)))
     ((PREDICATE)
-     (let ((value (cpsconv/new-name 'VALUE))
-	   (scode
-	    (new-dbg-expression/expr
-	     (new-dbg-continuation/inner (cpsconv/cont/dbg-cont cont)))))
-       (dbg-info/remember scode `(LOOKUP ,value))
+     (let* ((value    (cpsconv/new-name 'VALUE))
+	    (dbg-cont (cpsconv/cont/dbg-cont cont))
+	    (scode
+	     (and (new-dbg-continuation/inner dbg-cont)
+		  (new-dbg-expression/expr
+		   (new-dbg-continuation/inner dbg-cont)))))
+       (if scode (dbg-info/remember scode `(LOOKUP ,value)))
        (cpsconv/remember*
 	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
 	   (IF (LOOKUP ,value)
