@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.47 1995/09/11 20:52:26 cph Exp $
+$Id: error.scm,v 14.48 1995/09/11 21:03:08 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -894,7 +894,7 @@ MIT in each case. |#
 	    (write-string "The object " port)
 	    (write (access-condition condition 'DATUM) port)
 	    (write-string " is not a valid pathname " port)
-	    (write (access-condition condition 'TYPE) port)
+	    (write-string (access-condition condition 'TYPE) port)
 	    (write-string "." port))))
 
   (set! condition-type:control-error
