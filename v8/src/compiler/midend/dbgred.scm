@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.9 1995/08/02 14:05:42 adams Exp $
+$Id: dbgred.scm,v 1.10 1995/08/03 23:23:50 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -37,6 +37,38 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+#|
+
+This phase works by constructing an expression graph containing all
+the possible ways of finding the value of an object.  Variables (user
+variables and intermediate variables) are nodes in the graph.  Edges
+connect nodes to equivlent expressions.
+
+The graph is constructed from rewriting information provided by other
+phases as they make representation decisions.  The basic rule for this
+to work is that if any phase changes the prepresentaion of the object
+(e.g. a cellified value) it must ensure that it generates a new name
+for the new representation (i.e. the cell).  This, togenther with
+alpha-renaming, ensures that different representations are never
+confused.
+
+The graph is traversed to generate path expressions that are used for
+retrieving the values at dbg time.  This happens in two phases.  Only
+a certain amount of information is available (in registers, on the
+stack etc).  First, all the nodes that can reach a node which is
+directly available are marked.  At graph construction time a certain
+portion of the graph is similarly marked as available from static
+sources (constants).  Then the graph is traversed from the target
+expressions (the user level variables) to search for a path to
+available information, and failing that, to static information.
+
+An alternative would be to just dump the graph with the debugging
+info, and search it at debugging time.  The graph is quite large, but
+a lot of that is KMP expressions, and nodes which will never be
+reachable.
+
+|#
+
 (define *dbg-graph*)
 
 (define (dbg-reduce/top-level program)
@@ -52,8 +84,6 @@ MIT in each case. |#
 	 program))
     )
 	
-  (sample/1 '(dbg-red/cache-gets histogram) dbg-red/cache-gets)
-  (sample/1 '(dbg-red/cache-sets histogram) dbg-red/cache-sets)
   program)
 
 
@@ -144,24 +174,30 @@ MIT in each case. |#
 (define-dbg-reducer LET (bindings body)
   (for-each (lambda (binding)
 	      (dbg-reduce/expr env (cadr binding)))
-	    bindings)
-  (let* ((static-names
-	  (map first
-	       (list-transform-positive bindings
-		 (lambda (binding)
-		   (form/static? (cadr binding))))))
-	 (env*
-	  (dbg-reduce/env/extend-static env static-names)))
-    ;;(dbg-reduce/reduce form env* #F #F)
-    (dbg-reduce/expr env* body)))
+    bindings)
+  (dbg-reduce/bindings bindings #F)
+  (dbg-reduce/expr env body))
 
 (define-dbg-reducer LETREC (bindings body)
   ;; add static bindings
-  (let ((env* (dbg-reduce/env/extend-static env (map car bindings))))
-    (for-each (lambda (binding)
-		(dbg-reduce/expr env* (cadr binding)))
-	      bindings)
-    (dbg-reduce/expr env* body)))
+  (dbg-reduce/bindings bindings #T)
+  (for-each (lambda (binding)
+	      (dbg-reduce/expr env (cadr binding)))
+    bindings)
+  (dbg-reduce/expr env body))
+
+(define (dbg-reduce/bindings bindings assume-static?)
+  (for-each 
+      (lambda (binding)
+	(if (or assume-static? (form/static? (cadr binding)))
+	    (let* ((name (car binding))
+		   (node (dbg-red/find-node name)))
+	      (if node
+		  (let ((edge
+			 (dbg-red/node/add-edge! node `(CC-ENTRY . ,name))))
+		    (dbg-red/edge/statically-available! edge))
+		  (internal-warning "Node absent" node)))))
+    bindings))
 
 (define-dbg-reducer IF (pred conseq alt)
   (dbg-reduce/expr env pred)
@@ -257,6 +293,12 @@ MIT in each case. |#
   (define (->path item)
     (let ((path   (dbg-red/reconstruct-path item *dbg-graph* env)))
       ;;(pp `(,item ,path))
+      #|(if path
+	  (begin
+	    (if (equal? path 'unassigned)
+		(sample/1 '(dbg-red/paths-unassigned count) 1))
+	    (sample/1 '(dbg-red/paths-reconstructed count) 1))
+	  (sample/1 '(dbg-red/paths-failed count) 1))|#
       path))
 
   (define (reconstruct-block block)
@@ -265,15 +307,19 @@ MIT in each case. |#
 		(ic-parent-path
 		 (and parent
 		      (new-dbg-block/parent-path-prefix parent)
-		      (->path (new-dbg-block/parent-path-prefix parent)))))
+		      (->path (new-dbg-block/parent-path-prefix parent))))
+		(variables*
+		 (vector-map (new-dbg-block/variables block)
+		   (lambda (variable)
+		     (new-dbg-variable/new-path variable (->path variable))))))
+	   ;; Note. It is important that the above ->PATH calls happen before
+	   ;; the call to DBG-RED/RECONSTRUCT-BLOCK below.
 	   (define (make parent* parent-path*)
 	     (new-dbg-block/%make
 	      (new-dbg-block/type block)
 	      parent*
 	      parent-path*
-	      (vector-map (new-dbg-block/variables block)
-		(lambda (variable)
-		  (new-dbg-variable/new-path variable (->path variable))))
+	      variables*
 	      (new-dbg-block/procedure block)))
 	   (cond (ic-parent-path
 		  (make 'IC ic-parent-path))
@@ -286,56 +332,195 @@ MIT in each case. |#
 		  (make (reconstruct-block parent) #F))))))
   
   (and block
-       (reconstruct-block block)))
-
-
-
+       (begin
+	 (dbg-red/env/mark-available-subgraph! env)
+	 (reconstruct-block block))))
+
+(define-structure
+    (dbg-red/node
+     (type vector)
+     (named)
+     (conc-name dbg-red/node/)
+     (constructor dbg-red/node/make (name))
+     (print-procedure
+      (standard-unparser-method 'DBG-RED/NODE
+	(lambda (node port)
+	  (write-char #\Space port)
+	  (display (dbg-red/node/name node) port)))))
+  (name #F read-only true)		; e.g. dbg-variable, symbol, or scode
+  (mark #F)
+  (cache #F)
+  (available-mark #F)
+  (available-count 0)
+  (definitions '#(0) read-only false)	; n-15 -> n-15-43
+					; n-15 -> cell-ref(n-15-cell)
+  (static-definitions '())
+  ;;(indirect-definitions '() read-only false)
+  (references  '#(0) read-only false)	; accessor(accessor(n-15))
+  )
+     
 (define-structure
     (dbg-red/edge
      (type vector)
-     (constructor dbg-red/edge/make (expr))
-     (conc-name dbg-red/edge/))
-  (mark #F)
-  (cache #F)
-  expr)
+     (named)
+     (constructor dbg-red/edge/make (expr from index))
+     (conc-name dbg-red/edge/)
+     (print-procedure
+      (standard-unparser-method 'DBG-RED/EDGE
+	(lambda (edge port)
+	  (write-char #\Space port)
+	  (display (dbg-red/edge/index edge) port)
+	  (write-char #\Space port)
+	  (display (dbg-red/node/name (dbg-red/edge/from edge)) port)
+	  (write-string " " port)
+	  (display (dbg-red/edge/expr edge) port)))))
+  expr					;
+  from					; a node
+  index					; position in FROM's definitions
+  )
 
 (define-structure
     (dbg-red/graph
      (conc-name dbg-red/graph/)
      (constructor dbg-red/graph/make))
-  table					; maps names to edge `list' vectors
-  expressions				; a list of scode expressions in names
+  table					; maps names to nodes
+  ;; a list of nodes which have scode expressions as names:
+  expressions
   )
+
+(define (dbg-red/vector-add! v item)
+  (let ((count (vector-ref v 0))
+	(len   (vector-length v)))
+    (let ((v* (if (= count (- len 1))
+		  (vector-grow v (fix:+ (fix:quotient (fix:* len 4) 3) 1))
+		  v))
+	  (count* (fix:+ count 1)))
+      (vector-set! v* count* item)
+      (vector-set! v* 0 count*)
+      v*)))
 
+(define (dbg-red/node/add-edge! node expr)
+  (let* ((defs (dbg-red/node/definitions node))
+	 (edge (dbg-red/edge/make expr node (+ (vector-ref defs 0) 1))))
+    (set-dbg-red/node/definitions! node (dbg-red/vector-add! defs edge))
+    edge))
+
 (define (dbg-rewrites->graph infos)
   (let* ((table  (make-eq-hash-table))
-	 (expressions '()))
+	 (expressions '())
+	 (static-edges '()))
+
+    (define (find-node key)
+      (or (hash-table/get table key #F)
+	  (let ((node (dbg-red/node/make key)))
+	    (hash-table/put! table key node)
+	    node)))
+
+    (define (add-references! expr edge)
+      (define (add-reference! key)
+	(let* ((node* (find-node key))
+	       (refs  (dbg-red/node/references node*)))
+	  (set-dbg-red/node/references! node* (dbg-red/vector-add! refs edge))))
+
+      (let walk ((expr expr))
+	(cond ((symbol? expr) (add-reference! expr))
+	      ((not (pair? expr)) unspecific)
+	      ((LOOKUP/? expr) (add-reference! (lookup/name expr)))
+	      ((QUOTE/? expr)  unspecific)
+	      ((CALL/? expr)
+	       (for-each walk (call/operands expr)))
+	      (else ;;(pp expr)
+		    unspecific))))
+
     (for-each
 	(lambda (info)
 	  (let ((key  (vector-ref info 0))
 		(expr (vector-ref info 1)))
-	    (let ((entry (hash-table/get table key #F)))
-	      (hash-table/put!
-	       table key
-	       (cond ((not entry)
-		      (vector (dbg-red/edge/make expr)))
-		     (else
-		      (vector-append entry
-				     (vector (dbg-red/edge/make expr))))))
+	    (let* ((node  (find-node key))
+		   (edge  (dbg-red/node/add-edge! node expr)))
+	      (if (QUOTE/? expr)
+		  (set! static-edges (cons edge static-edges)))
+	      (add-references! expr edge)
 	      (if (and (not (scode-constant? key))
-		       (not (%record? key))
-		       (not entry))
-		  (set! expressions (cons key expressions))))))
+		       (not (%record? key)))
+		  (set! expressions (cons node expressions))))))
       (cdr infos))
+    (for-each dbg-red/edge/statically-available! static-edges)
     (if compiler:enable-statistics?
 	(hash-table/for-each table
 	  (lambda (key entry)
 	    key
-	    (sample/1 '(DBG-RED/OUT-DEGREE HISTOGRAM) (vector-length entry)))))
+	    (sample/1 '(DBG-RED/OUT-DEGREE HISTOGRAM) 
+		      (vector-ref (dbg-red/node/definitions entry) 0))
+	    (sample/1 '(DBG-RED/IN-DEGREE HISTOGRAM)
+		      (vector-ref (dbg-red/node/references entry) 0))
+	    (sample/1 '(DBG-RED/STATIC-OUT-DEGREE HISTOGRAM)
+		      (length (dbg-red/node/static-definitions entry))))))
     (dbg-red/graph/make table expressions)))
+
+(define (dbg-red/edge/statically-available! edge)
+  ;; Mark node as statically available and propogate that information
+  (let* ((node  (dbg-red/edge/from  edge))
+	 (defs  (dbg-red/node/static-definitions node)))
+    (if (not (memq edge defs))
+	(let ((refs (dbg-red/node/references node)))
+	  (set-dbg-red/node/static-definitions! node (cons edge defs))
+	  (do ((i 1 (+ i 1)))
+	      ((> i (vector-ref refs 0)))
+	    ;; We should really do this when all subexpressions are static,
+	    ;; not just any subexpression.
+	    (dbg-red/edge/statically-available! (vector-ref refs i)))))))
 
-(define dbg-red/cache-sets 0)
-(define dbg-red/cache-gets 0)
+(define dbg-red/current-available-mark #F)
+
+(define (dbg-red/edge/available! edge)
+  ;; Move available edge closer to front
+  (let ((node  (dbg-red/edge/from  edge)))
+    (dbg-red/node/available! node)
+    (let ((available-count (dbg-red/node/available-count node))
+	  (index (dbg-red/edge/index edge))
+	  (defs  (dbg-red/node/definitions node)))
+      (if (not (eq? (vector-ref defs index) edge))
+	  (internal-error "Edge not at it's index" edge))
+      (if (> index available-count)	;not already available
+	  ;; exchange with non-available edge
+	  (let* ((available-count* (+ available-count 1))
+		 (other-edge (vector-ref defs available-count*)))
+	    (set-dbg-red/edge/index! other-edge index)
+	    (set-dbg-red/edge/index! edge available-count*)
+	    (vector-set! defs index other-edge)
+	    (vector-set! defs available-count* edge)
+	    (set-dbg-red/node/available-count! node available-count*))))))
+
+(define (dbg-red/node/available! node)
+  (if (not (eq? (dbg-red/node/available-mark node)
+		dbg-red/current-available-mark))
+      (let* ((uses  (dbg-red/node/references node))
+	     (count (vector-ref uses 0)))
+	(set-dbg-red/node/available-mark! node dbg-red/current-available-mark)
+	(set-dbg-red/node/available-count! node 0)
+	(let loop ((i 1))
+	  (if (<= i count)
+	      (let ((edge (vector-ref uses i)))
+		(dbg-red/edge/available! edge)
+		(loop (+ i 1))))))))
+
+
+(define (dbg-red/find-node name)
+  (hash-table/get (dbg-red/graph/table *dbg-graph*) name #F))
+
+(define (dbg-red/env/mark-available-subgraph! env)
+  (define (available! name)
+    (let ((node (dbg-red/find-node name)))
+      (if node
+	  (dbg-red/node/available! node))))
+
+  (set! dbg-red/current-available-mark (list 'available))
+  
+  (available! (dbg-reduce/env/frame-name env))
+  (for-each (lambda (name.path)
+	      (available! (car name.path)))
+    (dbg-reduce/env/parameters env)))
 
 (define dbg-red/reconstruct-path
   (lambda (item graph env)
@@ -347,29 +532,43 @@ MIT in each case. |#
 			((eq? offset-or-name dbg-red/start-from-closure)
 			 '())
 			(else
+			 (internal-error "CC-entries done statically")
 			 `((CC-ENTRY . ,offset-or-name))))))
 	    ((hash-table/get (dbg-red/graph/table graph) item #F)
-	     => (lambda (edges)
-		  (let loop ((i  (- (vector-length edges) 1)))
-		    (and (>= i 0)
-			 (or (reconstruct-edge (vector-ref edges i))
-			     (loop (- i 1)))))))
+	     => reconstruct-node)
 	    (else #F)))
 
+    (define (reconstruct-node node)
+      (let ((edges (dbg-red/node/definitions node))
+	    (limit (dbg-red/node/available-count node)))
+	(define (dynamic-path)
+	  (let loop ((i 1))
+	    (and (<= i limit)
+		 (or (reconstruct-edge (vector-ref edges i))
+		     (loop (+ i 1))))))
+	(define (static-path)
+	  (let loop ((edges (dbg-red/node/static-definitions node)))
+	    (if (null? edges)
+		#F
+		(or (reconstruct-edge (car edges))
+		    (loop (cdr edges))))))
+	(if (eq? (dbg-red/node/mark node) env)
+	    (if (eq? (dbg-red/node/cache node) 'PENDING)
+		#F
+		(dbg-red/node/cache node))
+	    (begin
+	      (set-dbg-red/node/mark!  node env)
+	      (set-dbg-red/node/cache! node 'PENDING)
+	      (let ((path
+		     (if (eq? (dbg-red/node/available-mark node)
+			      dbg-red/current-available-mark)
+			 (or (dynamic-path) (static-path))
+			 (static-path))))
+		(set-dbg-red/node/cache! node path)
+		path)))))
+
     (define (reconstruct-edge edge)
-      (if (eq? (dbg-red/edge/mark edge) env)
-	  (if (eq? (dbg-red/edge/cache edge) 'PENDING)
-	      #F
-	      (begin
-		(set! dbg-red/cache-gets (+ 1 dbg-red/cache-gets))
-		(dbg-red/edge/cache edge)))
-	  (begin
-	    (set-dbg-red/edge/mark! edge env)
-	    (set-dbg-red/edge/cache! edge 'PENDING)
-	    (let ((path (reconstruct-expression (dbg-red/edge/expr edge))))
-	      (set-dbg-red/edge/cache! edge path)
-	      (set! dbg-red/cache-sets (+ 1 dbg-red/cache-sets))
-	      path))))
+      (reconstruct-expression (dbg-red/edge/expr edge)))
 
     (define (reconstruct-expression expr)
       (cond ((QUOTE/? expr)
@@ -406,6 +605,9 @@ MIT in each case. |#
 			   (vector-index (quote/text layout)
 					 (quote/text name)))
 			  cell-path))))
+	    ((and (pair? expr)
+		  (eq? (car expr) 'CC-ENTRY))
+	     (list expr))
 	    ((and (CALL/? expr) (QUOTE/? (call/operator expr))
 		  (dbg-reduce/equivalent-primitive
 		   (quote/text (call/operator expr))))
@@ -428,7 +630,7 @@ MIT in each case. |#
 			      (mention primitive)
 			      `(,primitive ,@path2 ROOT ,@path1))))
 		      (else #F)))))
-	     ((and (CALL/? expr)
+	    ((and (CALL/? expr)
 		  (equal? (call/operator expr) '(QUOTE UNCOERCE)))
 	     (let ((procedure-path
 		    (reconstruct-expression (first (call/operands expr)))))
@@ -518,41 +720,32 @@ MIT in each case. |#
 ;; tracking of representation and naming changes for generating debugging
 ;; info.
 	 
-(define-structure
-    (dbg-use
-     (conc-name dbg-use/)
-     (constructor dbg-use/make (name))
-     (print-procedure
-      (standard-unparser-method 'DBG-USE
-	(lambda (u port)
-	  (write-char #\Space port)
-	  (display (dbg-use/name u) port)))))
-  (name #F read-only true)		; e.g. n-15
-  (definitions '() read-only false)	; n-15 -> n-15-43
-					; n-15 -> cell-ref(n-15-cell)
-  ;;(indirect-definitions '() read-only false)
-  (expressions '() read-only false)	; accessor(accessor(n-15))
-  )
-	 
 (define *dbg-rewrites*)
 
 (define (dbg-info/make-rewrites)
   (cons 'HEAD '()))
 
 (define (dbg-info/remember from to)
-  (define (unconstructable? form)
-    (and (CALL/? form)
-	 (QUOTE/? (call/operator form))
-	 (hash-table/get *dbg-unconstructable-operators*
-			 (quote/text (call/operator form)) #F)))
-  (let ((to (if (LOOKUP/? to) (lookup/name to) to)))
-    (if (and (not (unconstructable? to))
-	     (not (continuation-variable? from))
-	     (not (eq? from to)))
-	(set-cdr! *dbg-rewrites*
-		  (cons (vector from to) (cdr *dbg-rewrites*))))))
 
-(define *dbg-unconstructable-operators* (make-eq-hash-table))
+  (let ((to (if (LOOKUP/? to) (lookup/name to) to)))
+    (define (good)
+      (set-cdr! *dbg-rewrites*
+		(cons (vector from to) (cdr *dbg-rewrites*))))
+
+    (cond ((eq? from to))
+	  ((CALL/? form)
+	   (if (QUOTE/? (call/operator form))
+	       (let ((op (quote/text (call/operator form))))
+		 (cond ((hash-table/get *dbg-forbidden-operators* op #F))
+		       ((hash-table/get dbg-reduce/equivalent-operators op #F)
+			(good))
+		       ((primitive-procedure? op))
+		       (else		; a fakeprim
+			(good))))))
+	  ((continuation-variable? from))
+	  (else (good)))))
+
+(define *dbg-forbidden-operators* (make-eq-hash-table))
 
 (define (dbg-info/for-all-dbg-expressions! procedure)
   (for-each (lambda (from+to)
@@ -561,7 +754,7 @@ MIT in each case. |#
 
 (let ((forbid
        (lambda (operator)
-	 (hash-table/put! *dbg-unconstructable-operators* operator #T))))
+	 (hash-table/put! *dbg-forbidden-operators* operator #T))))
   (forbid %make-heap-closure)
   (forbid CONS)
   (forbid %cons)
@@ -585,4 +778,14 @@ Path expressions
 
 ;;These are used in parent environment path expressions
 (TOP-LEVEL-ENVIRONMENT)			;compiled code block's environment
+|#
+
+#|
+95/08/03:
+((27.305 77. "/sw/adams/hack/dbgred2.inf")
+ (21.277 60. (primitive "GARBAGE-COLLECT"))
+ (19.149 54. "/scheme/8.0/700/lib/options/hashtb.inf")
+ (9.574 27. other)
+ (7.801 22. "/scheme/8.0/700/runtime/list.inf")
+ (3.901 11. "/scheme/8.0/700/compiler/midend/fakeprim.inf")
 |#
