@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.66 2000/05/17 18:37:29 cph Exp $
+;;; $Id: imail-core.scm,v 1.67 2000/05/17 19:11:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -24,9 +24,24 @@
 
 (declare (usual-integrations))
 
+;;;; Base object type
+
+(define-class <imail-object> ()
+  (properties define accessor
+	      initializer make-1d-table))
+
+(define (get-property object key default)
+  (1d-table/get (imail-object-properties object) key default))
+
+(define (store-property! object key datum)
+  (1d-table/put! (imail-object-properties object) key datum))
+
+(define (remove-property! object key)
+  (1d-table/remove! (imail-object-properties object) key))
+
 ;;;; URL type
 
-(define-class <url> ())
+(define-class <url> (<imail-object>))
 
 ;; Return the canonical name of URL's protocol as a string.
 (define-generic url-protocol (url))
@@ -172,14 +187,12 @@
 
 ;;;; Folder type
 
-(define-class <folder> ()
+(define-class <folder> (<imail-object>)
   (url define accessor)
   (modification-count define standard
 		      initial-value 0)
   (modification-event define accessor
-		      initial-value (make-event-distributor))
-  (properties define standard
-	      initializer make-1d-table))
+		      initial-value (make-event-distributor)))
 
 (define-method write-instance ((folder <folder>) port)
   (write-instance-helper 'FOLDER folder port 
@@ -190,15 +203,6 @@
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
       (error:wrong-type-argument folder "IMAIL folder" procedure)))
-
-(define (folder-get folder key default)
-  (1d-table/get (folder-properties folder) key default))
-
-(define (folder-put! folder key datum)
-  (1d-table/put! (folder-properties folder) key datum))
-
-(define (folder-remove! folder key)
-  (1d-table/remove! (folder-properties folder) key))
 
 (define-method ->url ((folder <folder>))
   (folder-url folder))
@@ -314,7 +318,8 @@
 
 ;;;; Message type
 
-(define-class (<message> (constructor (header-fields body flags))) ()
+(define-class (<message> (constructor (header-fields body flags)))
+    (<imail-object>)
   (header-fields define accessor)
   (body define accessor)
   (flags define standard)

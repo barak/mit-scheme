@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.55 2000/05/17 17:52:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.56 2000/05/17 19:11:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -137,7 +137,7 @@ May be called with an IMAIL folder URL as argument;
    (lambda ()
      (buffer-put! buffer 'IMAIL-FOLDER folder)
      (buffer-put! buffer 'IMAIL-MESSAGE message)
-     (folder-put! folder 'BUFFER buffer)
+     (store-property! folder 'BUFFER buffer)
      (set-buffer-default-directory!
       buffer
       (if (file-folder? folder)
@@ -148,12 +148,12 @@ May be called with an IMAIL folder URL as argument;
 	 (maybe-add-command-suffix! notice-folder-modifications folder))))))
 
 (define (imail-folder->buffer folder error?)
-  (or (let ((buffer (folder-get folder 'BUFFER #f)))
+  (or (let ((buffer (get-property folder 'BUFFER #f)))
 	(and buffer
 	     (if (buffer-alive? buffer)
 		 buffer
 		 (begin
-		   (folder-remove! folder 'BUFFER)
+		   (remove-property! folder 'BUFFER)
 		   #f))))
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
