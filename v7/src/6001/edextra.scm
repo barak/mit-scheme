@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.25 1998/01/20 02:35:36 cph Exp $
+$Id: edextra.scm,v 1.26 1998/01/23 00:00:32 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -75,7 +75,9 @@ MIT in each case. |#
   (set! pset-list-file (merge-pathnames "probsets.scm" pset-directory))
   (set-default-directory student-work-directory)
   (set-working-directory-pathname! student-work-directory)
-  (let ((hairy-floppy-stuff? (eq? 'UNIX microcode-id/operating-system)))
+  (let ((hairy-floppy-stuff?
+	 (and (eq? 'UNIX microcode-id/operating-system)
+	      (string-ci=? "HP-UX" microcode-id/operating-system-variant))))
     (if hairy-floppy-stuff?
 	(run-floppy-login-loop))
     (let ((pathname (merge-pathnames "motd" student-root-directory)))
