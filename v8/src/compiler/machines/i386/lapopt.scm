@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.1 1995/01/10 20:53:00 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.2 1995/01/12 15:33:07 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,4 +37,5 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (optimize-linear-lap instructions)
+  (pp instructions)
   instructions)
