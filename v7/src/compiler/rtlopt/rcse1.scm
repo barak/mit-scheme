@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.109 1987/06/09 19:56:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.110 1987/06/30 00:21:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -77,8 +77,8 @@ MIT in each case. |#
 		    (else
 		     (let ((state (state:get)))
 		       (walk-rnode consequent)
-		       (state:set! state)
-		       (walk-rnode alternative))))
+		       (state:set! state))
+		     (walk-rnode alternative)))
 	      (walk-next consequent))
 	  (if (walk-next? alternative)
 	      (walk-next alternative))))))
