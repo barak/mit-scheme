@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.4 1989/08/15 13:19:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.5 1990/07/16 17:12:23 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,6 +53,13 @@ MIT in each case. |#
       (vector-set! interrupt-vector 2 condition-handler/gc))
     (vector-set! fixed-objects #x0C condition-handler/hardware-trap)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
+
+(define (reset-gc-after-restore!)
+  ;; This will be overridden by the Emacs-interface installation code
+  ;; after the rest of the runtime system is restored.
+  (set! hook/gc-start default/gc-start)
+  (set! hook/gc-finish default/gc-finish)
+  unspecific)
 
 (define (condition-handler/gc interrupt-code interrupt-enables)
   interrupt-code interrupt-enables

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.11 1990/01/24 16:45:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.12 1990/07/16 17:11:58 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,6 +110,7 @@ MIT in each case. |#
 	     ;; This instruction is a noop, so I flushed it -- cph.
 	     ;; (enable-interrupts! interrupt-mask/none)
 	     (read-microcode-tables!)
+	     (reset-gc-after-restore!)
 	     after-restore))))))))
 
 (define (dump-world/kernel filename after-suspend after-restore)
