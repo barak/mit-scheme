@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.13 1996/07/19 23:32:03 adams Exp $
+$Id: typerew.scm,v 1.14 1996/07/20 17:59:37 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1858,13 +1858,17 @@ MIT in each case. |#
 	(lambda (form collection index)
 	  form index
 	  (let ((v-type         (typerew/type collection))
+		(i-type         (typerew/type index))
 		(type-checks?   (typerew/type-checks? type-check-class))
 		(range-checks?  (typerew/range-checks? type-check-class)))
 	    (let ((check/1? (and type-checks?
 				 (not (type:subset? v-type collection-type))
 				 v-typecode))
-		  (check/2? (and (or type-checks? range-checks?)
-				 v-length)))
+		  (check/2?		; length check incorporates type check
+		   (and (or range-checks?
+			    (and type-checks?
+				 (not (type:subset? i-type type:fixnum))))
+			v-length)))
 	      (if (or check/1? check/2?)
 		  (if (type:disjoint? v-type collection-type)
 		      ;;typerew-no-replacement
@@ -1889,13 +1893,17 @@ MIT in each case. |#
 	(lambda (form collection index element)
 	  form index
 	  (let ((v-type      (typerew/type collection))
+		(i-type      (typerew/type index))
 		(e-type      (typerew/type element))
 		(type-checks?   (typerew/type-checks? type-check-class))
 		(range-checks?  (typerew/range-checks? type-check-class)))
 	    (let ((check/1? (and type-checks?
 				 (not (type:subset? v-type collection-type))
 				 v-typecode))
-		  (check/2? (and (or type-checks? range-checks?)
+		  (check/2? (and (or range-checks?
+				     (and type-checks?
+					  (not (type:subset? i-type
+							     type:fixnum))))
 				 v-length))
 		  (check/3? (and type-checks? element-typecode
 				 (not (type:subset? e-type element-type))
