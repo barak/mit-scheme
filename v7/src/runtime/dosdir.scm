@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.4 1992/08/08 16:23:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosdir.scm,v 1.5 1992/08/28 16:06:37 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -96,52 +96,6 @@ MIT in each case. |#
 	      (directory-channel-close channel)
 	      result))))))
 
-(define (component-matcher pattern)
-  ;; For the time being, this only understands one asterisk,
-  ;; and does not understand question marks.
-  (cond ((eq? pattern 'WILD)
-	 (lambda (instance)
-	   instance			; ignored
-	   true))
-	((and (string? pattern) (string-find-next-char pattern #\*))
-	 =>
-	 (lambda (posn)
-	   (let* ((len (string-length pattern))
-		  (min-len (-1+ len)))
-	     (cond ((zero? posn)
-		    (lambda (instance)
-		      (and (string? instance)
-			   (let ((len* (string-length instance)))
-			     (and (>= len* min-len)
-				  (substring=?
-				   pattern 1 len
-				   instance (- len* min-len) len*))))))
-		   ((= posn (-1+ len))
-		    (lambda (instance)
-		      (and (string? instance)
-			   (let ((len* (string-length instance)))
-			     (and (>= len* min-len)
-				  (substring=?
-				   pattern 0 min-len
-				   instance 0 min-len))))))
-		   (else
-		    (let* ((suffix-start (1+ posn))
-			   (suffix-len (- len suffix-start)))
-		      (lambda (instance)
-			(and (string? instance)
-			     (let ((len* (string-length instance)))
-			       (and
-				(>= len* min-len)
-				(substring=?
-				 pattern 0 posn
-				 instance 0 posn)
-				(substring=?
-				 pattern suffix-start len
-				 instance (- len* suffix-len) len*)))))))))))
-	(else
-	 (lambda (instance)
-	   (equal? pattern instance)))))
-
 (define (pathname<? x y)
   (or (component<? (pathname-name x) (pathname-name y))
       (and (equal? (pathname-name x) (pathname-name y))
@@ -153,3 +107,219 @@ MIT in each case. |#
 	   (and (string? y)
 		(or (not (string? x))
 		    (string<? x y))))))
+
+;;; This matcher does not currently understand question marks
+;;; but understands multiple asterisks.
+;;; Question marks are hard because in the presence of asterisks,
+;;; simple-minded left-to-right processing no longer works.  e.g.
+;;; "*foo?bar*" matching "foogbazfoogbar".
+
+(define (component-matcher pattern)
+  (cond ((eq? pattern 'WILD)
+	 (lambda (instance)
+	   instance			; ignored
+	   true))
+	((and (string? pattern) (string-find-next-char pattern #\*))
+	 =>
+	 (lambda (posn)
+	   (let* ((len (string-length pattern))
+		  (posn*
+		   (substring-find-next-char pattern (1+ posn) len #\*)))
+	     (if (not posn*)
+		 (simple-wildcard-matcher pattern posn)
+		 (let ((prefix (substring pattern 0 posn)))
+		   (let loop ((segments (list (substring pattern
+							 (1+ posn)
+							 posn*)))
+			      (posn posn*))
+		     (let* ((start (1+ posn))
+			    (posn*
+			     (substring-find-next-char pattern start len #\*)))
+		       (if (not posn*)
+			   (full-wildcard-matcher
+			    prefix
+			    (list-transform-negative (reverse! segments)
+			      string-null?)
+			    (substring pattern start len))
+			   (loop (cons (substring pattern start posn*)
+				       segments)
+				 posn*)))))))))
+	(else
+	 (lambda (instance)
+	   (equal? pattern instance)))))
+
+(define (simple-wildcard-matcher pattern posn)
+  (let* ((len (string-length pattern))
+	 (min-len (-1+ len)))
+    (cond ((zero? min-len)
+	   ;; e.g. "*"
+	   (lambda (instance)
+	     instance			; ignored
+	     true))
+	  ((zero? posn)
+	   ;; e.g. "*foo"
+	   (lambda (instance)
+	     (and (string? instance)
+		  (let ((len* (string-length instance)))
+		    (and (>= len* min-len)
+			 (substring=? pattern 1 len
+				      instance (- len* min-len) len*))))))
+	  ((= posn (-1+ len))
+	   ;; e.g. "bar*"
+	   (lambda (instance)
+	     (and (string? instance)
+		  (let ((len* (string-length instance)))
+		    (and (>= len* min-len)
+			 (substring=? pattern 0 min-len
+				      instance 0 min-len))))))
+	  (else
+	   ;; e.g. "foo*bar"
+	   (let* ((suffix-start (1+ posn))
+		  (suffix-len (- len suffix-start)))
+	     (lambda (instance)
+	       (and (string? instance)
+		    (let ((len* (string-length instance)))
+		      (and (>= len* min-len)
+			   (substring=? pattern 0 posn
+					instance 0 posn)
+			   (substring=? pattern suffix-start len
+					instance (- len* suffix-len)
+					len*))))))))))
+
+(define (full-wildcard-matcher prefix segments suffix)
+  (cond ((null? segments)
+	 ;; Degenerate case, e.g. "prefix**suffix"
+	 (simple-wildcard-matcher (string-append prefix "*" suffix)
+				  (string-length prefix)))
+	#|
+	((null? (cdr segments))
+	 ;; Special case the single middle segment.
+	 ;; Disabled because it is hardly worth it.
+	 (let ((prelen (string-length prefix))
+	       (suflen (string-length suffix)))
+	   (let* ((middle (car segments))
+		  (midlen (string-length middle))
+		  (totlen (+ prelen midlen suflen)))
+	     (cond ((string-null? prefix)
+		    (if (string-null? suffix)
+			;; e.g. "*middle*"
+			(lambda (instance)
+			  (and (string? instance)
+			       (let ((len (string-length instance)))
+				 (and (>= len totlen)
+				      (substring? middle instance)))))
+			;; e.g. "*middle*suffix"
+			(lambda (instance)
+			  (and (string? instance)
+			       (let ((len (string-length instance)))
+				 (and (>= len totlen)
+				      (let ((end (- len suflen)))
+					(and (substring=? suffix 0 suflen
+							  instance end len)
+					     (substring?
+					      middle
+					      (substring instance 0
+							 end))))))))))
+		   ((string-null? suffix)
+		    ;; e.g. "prefix*middle*"
+		    (lambda (instance)
+		      (and (string? instance)
+			   (let ((len (string-length instance)))
+			     (and (>= len totlen)
+				  (substring=? prefix 0 prelen
+					       instance 0 prelen)
+				  (substring? middle
+					      (substring instance prelen
+							 len)))))))
+		   (else
+		    ;; e.g. "prefix*middle*suffix"
+		    (lambda (instance)
+		      (and (string? instance)
+			   (let ((len (string-length instance)))
+			     (and (>= len totlen)
+				  (let ((end (- len suflen)))
+				    (substring=? prefix 0 prelen
+						 instance 0 prelen)
+				    (substring=? suffix 0 suflen
+						 instance end len)
+				    (substring? middle
+						(substring instance prelen
+							   end))))))))))))
+	|#
+
+	((and (null? (cdr segments))
+	      (string-null? prefix)
+	      (string-null? suffix))
+	 ;; Special case "*foo*"
+	 (let* ((middle (car segments))
+		(totlen (string-length middle)))
+	   (lambda (instance)
+	     (and (string? instance)
+		  (>= (string-length instance) totlen)
+		  (substring? middle instance)))))	   
+
+	(else
+	 (let* ((prelen (string-length prefix))
+		(suflen (string-length suffix))
+		(totlen (+ prelen
+			   (reduce + 0 (map string-length segments))
+			   suflen)))
+
+	   (define (segment-matcher segments)
+	     ;; This handles the "*foo*bar*baz*" part
+	     (let ((segment (car segments))
+		   (rest (cdr segments)))
+	       (if (null? rest)
+		   (lambda (instance)
+		     (substring? segment instance))
+		   (let ((next (segment-matcher rest))
+			 (len (string-length segment)))
+		     (lambda (instance)
+		       (let ((posn (substring? segment instance)))
+			 (and posn
+			      (next
+			       (substring instance (+ posn len)
+					  (string-length instance))))))))))
+
+	   (let ((tester (segment-matcher segments)))
+	     (cond ((string-null? prefix)
+		    (if (string-null? suffix)
+			;; e.g. "*foo*bar*"
+			(lambda (instance)
+			  (and (string? instance)
+			       (>= (string-length instance) totlen)
+			       (tester instance)))
+			;; e.g. "*foo*bar*suffix"
+			(lambda (instance)
+			  (and (string? instance)
+			       (let ((len (string-length instance)))
+				 (and (>= len totlen)
+				      (let ((end (- len suflen)))
+					(and (substring=? suffix 0 suflen
+							  instance end len)
+					     (tester (substring instance 0
+								end))))))))))
+
+		 ((string-null? suffix)
+		  ;; e.g. "prefix*foo*bar*"
+		  (lambda (instance)
+		    (and (string? instance)
+			 (let ((len (string-length instance)))
+			   (and (>= len totlen)
+				(substring=? prefix 0 prelen
+					     instance 0 prelen)
+				(tester (substring instance prelen len)))))))
+
+		 (else
+		  ;; e.g. "prefix*foo*bar*suffix"
+		  (lambda (instance)
+		    (and (string? instance)
+			 (let ((len (string-length instance)))
+			   (and (>= len totlen)
+				(let ((end (- len suflen)))
+				  (and (substring=? prefix 0 prelen
+						    instance 0 prelen)
+				       (substring=? suffix 0 suflen
+						    instance end len)
+				       (tester (substring instance prelen
+							  end)))))))))))))))
