@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.5 1991/11/04 20:31:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.6 1992/08/22 15:03:25 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,7 +48,8 @@ MIT in each case. |#
     (lambda (input-directory #!optional output-directory force?)
       (let ((output-directory
 	     (if (default-object? output-directory) false output-directory))
-	    (force? (if (default-object? force?) false force?)))
+	    (force? (if (default-object? force?) false force?))
+	    (output-type (output-type)))
 	(for-each (lambda (pathname)
 		    (if (or force?
 			    (not (compare-file-modification-times
@@ -66,12 +67,18 @@ MIT in each case. |#
 		      (directory-read input-directory)))))))
 
 (define sf-directory
-  (directory-processor "scm" "bin"
+  (directory-processor "scm"
+		       (lambda () "bin")
 		       (lambda (pathname output-directory)
 			 (sf pathname output-directory))))
 
 (define compile-directory
-  (directory-processor "bin" "com"
+  (directory-processor "bin"
+		       (lambda ()
+			 (if (access compiler:cross-compiling?
+				     (->environment '(compiler)))
+			     "moc"
+			     "com"))
 		       (lambda (pathname output-directory)
 			 (compile-bin-file pathname output-directory))))
 

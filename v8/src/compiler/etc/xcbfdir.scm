@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.7 1991/05/27 17:56:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.8 1992/08/22 15:00:49 jinx Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,7 +78,12 @@ MIT in each case. |#
 		     (->pathname "*.bin")))))
 
 (define (recompile-directory dir)
-  (process-directory dir compile-bin-file "com"))
+  (let ((extn
+	 (if (access compiler:cross-compiling?
+		     (->environment '(compiler)))
+	     "moc"
+	     "com")))
+    (process-directory dir compile-bin-file extn)))
 
 (define (cross-compile-directory dir)
   (process-directory dir cross-compile-bin-file "moc"))
