@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.32 1991/03/22 00:27:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.33 1991/03/28 00:17:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -209,7 +209,7 @@
 	     (with-current-point mark
 	       (lambda ()
 		 (sit-for 500)))))
-	(else
+	((not (typein-window? (current-window)))
 	 (temporary-message
 	  (let ((start (line-start mark 0))
 		(end (line-end mark 0)))
