@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin-unix.scm,v 1.3 1994/05/03 04:50:35 cph Exp $
+$Id: pack-edwin-unix.scm,v 1.4 1996/03/01 08:28:24 cph Exp $
 
-Copyright (c) 1993-94 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,8 +42,8 @@ MIT in each case. |#
   (pack-binaries (if (default-object? output) "lib/eddel.com" output)
 		 '(("edwin"
 		    "make.com"
-		    "edwin.bcon"
-		    "edwin.bldr"
+		    "edwinunx.bco"
+		    "edwin.bld"
 		    "utils.com"
 		    "nvector.com"
 		    "ring.com"
@@ -83,10 +83,6 @@ MIT in each case. |#
 		    "buffrm.com"
 		    "edtfrm.com"
 		    "calias.com"
-		    "xterm.com"
-		    "key.com"
-		    "termcap.com"
-		    "tterm.com"
 		    "edtstr.com"
 		    "editor.com"
 		    "curren.com"
@@ -107,7 +103,16 @@ MIT in each case. |#
 		    "linden.com"
 		    "unix.com"
 		    "fileio.com"
+		    "termcap.com"
+		    "tterm.com"
+		    "xterm.com"
+		    "key-x11.com"
 		    "process.com"
+		    "mousecom.com"
+		    "xcom.com"
+		    "debug.com"
+		    "dired.com"
+		    "dirunx.com"
 		    "argred.com"
 		    "autold.com"
 		    "autosv.com"
@@ -120,10 +125,6 @@ MIT in each case. |#
 		    "comint.com"
 		    "compile.com"
 		    "dabbrev.com"
-		    "xcom.com"
-		    "debug.com"
-		    "dired.com"
-		    "dirunx.com"
 		    "evlcom.com"
 		    "filcom.com"
 		    "fill.com"
@@ -139,7 +140,6 @@ MIT in each case. |#
 		    "motcom.com"
 		    "occur.com"
 		    "outline.com"
-		    "rcs.com"
 		    "reccom.com"
 		    "regcom.com"
 		    "replaz.com"
@@ -153,10 +153,11 @@ MIT in each case. |#
 		    "shell.com"
 		    "tagutl.com"
 		    "texcom.com"
+		    "rcsparse.com"
+		    "vc.com"
 		    "wincom.com"
 		    "scrcom.com"
 		    "modefs.com"
-		    "xmodef.com"
 		    "rename.com"
 		    "loadef.com"
 		    "notify.com"))))
