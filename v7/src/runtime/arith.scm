@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.22 1992/01/29 20:25:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.23 1992/01/30 23:21:04 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -386,7 +386,7 @@ MIT in each case. |#
 	(bash! true value stack)
 	;; set-string-maximum-length! also sets the length.
 	;; (set-string-length! string index)
-	((ucode-primitive set-string-maximun-length! 2) string index)
+	((ucode-primitive set-string-maximum-length! 2) string index)
 	string)))
 
   (cond ((fix:fixnum? number)
