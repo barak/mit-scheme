@@ -3,7 +3,6 @@
 prefix=`/scheme/v7/dist/release-prefix`
 rm -rf ${prefix}
 mkdir ${prefix}
-source=/scheme/v7/src
 destination="${prefix}/src"
 
 (
@@ -16,6 +15,8 @@ destination="${prefix}/src"
 find ${destination} -type d -name CVS -print | xargs rm -rf
 find ${destination} -type f -print | xargs chmod a-w
 find ${destination} -type d -print | xargs chmod g-w
+
+cp -p /scheme/v7/src/ChangeLog ${destination}/.
 
 tarfile=${prefix}-src.tar.gz
 zipfile=${prefix}-src.zip
