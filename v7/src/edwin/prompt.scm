@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.164 1995/04/10 16:48:34 cph Exp $
+;;;	$Id: prompt.scm,v 1.165 1995/04/24 01:10:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -458,19 +458,21 @@ a repetition of this command will exit."
       (if (and (string-null? string)
 	       (memq *default-type* '(INVISIBLE-DEFAULT VISIBLE-DEFAULT))
 	       *default-string*)
-	  (set-typein-string! *default-string* false))
-      (case (complete-input-string completion-procedure/complete-string false)
-	((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
-	  WAS-ALREADY-EXACT-COMPLETION)
-	 (exit-typein-edit))
-	((COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
-	  COMPLETED-TO-EXACT-COMPLETION)
-	 (if *completion-confirm?*
-	     (temporary-typein-message " [Confirm]")
-	     (exit-typein-edit)))
-	(else
-	 (update-typein!)
-	 (editor-failure))))))
+	  (set-typein-string! *default-string* false)))
+    (if (completion-procedure/verify-final-value? (typein-string))
+	(exit-typein-edit)
+	(case (complete-input-string completion-procedure/complete-string #f)
+	  ((WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+	    WAS-ALREADY-EXACT-COMPLETION)
+	   (exit-typein-edit))
+	  ((COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
+	    COMPLETED-TO-EXACT-COMPLETION)
+	   (if *completion-confirm?*
+	       (temporary-typein-message " [Confirm]")
+	       (exit-typein-edit)))
+	  (else
+	   (update-typein!)
+	   (editor-failure))))))
 
 ;;;; Completion Primitives
 
