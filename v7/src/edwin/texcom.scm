@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.39 1999/01/02 06:11:34 cph Exp $
+;;; $Id: texcom.scm,v 1.40 2000/02/25 17:46:45 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -114,56 +114,78 @@ With a zero argument, it transposes the words at point and mark."
 ;;;; Case Conversion
 
 (define-command upcase-region
-  "Convert region to upper case."
-  "m"
-  (lambda (mark)
-    (upcase-area mark)))
+  "Convert the region to upper case."
+  "r"
+  (lambda (region) (upcase-region region)))
 
 (define-command downcase-region
-  "Convert region to lower case."
-  "m"
-  (lambda (mark)
-    (downcase-area mark)))
+  "Convert the region to lower case."
+  "r"
+  (lambda (region) (downcase-region region)))
+
+(define-command capitalize-region
+  "Convert the region to capitalized form.
+Capitalized form means each word's first character is upper case
+and the rest of it is lower case."
+  "r"
+  (lambda (region) (capitalize-region region)))
 
 (define-command upcase-word
-  "Uppercase one or more words.
-Moves forward over the words affected.
-With a negative argument, uppercases words before point
-but does not move point."
+  "Convert following word (or ARG words) to upper case, moving over.
+With negative argument, convert previous words but do not move.
+See also `capitalize-word'."
   "p"
-  (lambda (argument)
-    (upcase-area (forward-word (current-point) argument 'ERROR))))
+  (lambda (argument) (case-word-command upcase-region argument)))
 
 (define-command downcase-word
-  "Lowercase one or more words.
-Moves forward over the words affected.
-With a negative argument, lowercases words before point
-but does not move point."
+  "Convert following word (or ARG words) to lower case, moving over.
+With negative argument, convert previous words but do not move."
   "p"
-  (lambda (argument)
-    (downcase-area (forward-word (current-point) argument 'ERROR))))
+  (lambda (argument) (case-word-command downcase-region argument)))
 
 (define-command capitalize-word
-  "Put next word in lowercase, but capitalize initial.
-With an argument, capitalizes that many words."
+  "Capitalize the following word (or ARG words), moving over.
+This gives the word(s) a first character in upper case
+and the rest lower case.
+With negative argument, capitalize previous words but do not move."
   "p"
-  (lambda (argument)
-    (define (capitalize-one-word)
-      (set-current-point! (forward-to-word (current-point) 'ERROR))
-      (capitalize-area (forward-word (current-point) 1 'ERROR)))
-    (cond ((positive? argument)
-	   (dotimes argument
-		    (lambda (i)
-		      i			;ignore
-		      (capitalize-one-word))))
-	  ((negative? argument)
-	   (let ((p (current-point)))
-	     (set-current-point! (forward-word p argument 'ERROR))
-	     (dotimes (- argument)
-		      (lambda (i)
-			i		;ignore
-			(capitalize-one-word)))
-	     (set-current-point! p))))))
+  (lambda (argument) (case-word-command capitalize-region argument)))
+
+(define (case-word-command procedure argument)
+  (let* ((point (current-point))
+	 (end (forward-word point argument 'ERROR)))
+    (procedure (make-region point end))
+    (if (positive? argument) (set-current-point! end))))
+
+(define (downcase-region region)
+  (region-transform! region
+    (lambda (string)
+      (string-downcase! string)
+      string)))
+
+(define (upcase-region region)
+  (region-transform! region
+    (lambda (string)
+      (string-upcase! string)
+      string)))
+
+(define (capitalize-region region)
+  (let ((end (region-end region)))
+    (let loop ((start (region-start region)))
+      (let ((start (forward-to-word start 'LIMIT)))
+	(if (mark< start end)
+	    (let ((m (forward-word start 1 #f)))
+	      (if m
+		  (begin
+		    (region-transform! (make-region start m)
+		      (lambda (string)
+			(string-capitalize! string)
+			string))
+		    (loop m))
+		  (region-transform! (make-region start end)
+		    (lambda (string)
+		      (string-capitalize! string)
+		      string)))))))))
 
 ;;;; Sentences
 

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: simple.scm,v 1.48 1999/01/02 06:11:34 cph Exp $
+;;; $Id: simple.scm,v 1.49 2000/02/25 17:46:30 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -198,28 +198,6 @@
 	  (group-extract-and-delete-string! group index1 index2)
 	  (group-extract-and-delete-string! group index2 index1)))))
 
-(define (downcase-area mark #!optional point)
-  (region-transform!
-   (make-region mark (if (default-object? point) (current-point) point))
-   (lambda (string)
-     (string-downcase! string)
-     string)))
-
-(define (upcase-area mark #!optional point)
-  (region-transform!
-   (make-region mark (if (default-object? point) (current-point) point))
-   (lambda (string)
-     (string-upcase! string)
-     string)))
-
-(define (capitalize-area mark #!optional point)
-  (region-transform!
-   (make-region mark (if (default-object? point) (current-point) point))
-   (lambda (string)
-     (string-downcase! string)
-     (string-set! string 0 (char-upcase (string-ref string 0)))
-     string)))
-
 (define (mark-flash mark #!optional type)
   (cond (*executing-keyboard-macro?* unspecific)
 	((not mark) (editor-beep))
@@ -251,7 +229,7 @@
 (define (reposition-window-top mark)
   (if (not (and mark (set-window-start-mark! (current-window) mark false)))
       (editor-beep)))
-
+
 (define (narrow-to-region mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (let ((group (mark-group mark))

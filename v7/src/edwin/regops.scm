@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regops.scm,v 1.87 1999/01/02 06:11:34 cph Exp $
+;;; $Id: regops.scm,v 1.88 2000/02/25 17:47:18 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -73,16 +73,11 @@
       (error "No right char:" mark))
   (group-delete-right-char! (mark-group mark) (mark-index mark)))
 
-;;; **** This is not a great thing to do.  It will screw up any marks
-;;; that are within the region, pushing them to either side.
-;;; Conceptually we just want the characters to be altered.
-
 (define (region-transform! region operation)
-  (let ((m (mark-right-inserting-copy (region-start region)))
-	(string (operation (region->string region))))
-    (region-delete! region)
-    (region-insert-string! m string)
-    (mark-temporary! m)))
+  (let ((start (region-start region)))
+    (group-replace-string! (mark-group start)
+			   (mark-index start)
+			   (operation (region->string region)))))
 
 ;;;; Clipping
 

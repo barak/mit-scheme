@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: grpops.scm,v 1.25 1999/11/01 03:40:17 cph Exp $
+;;; $Id: grpops.scm,v 1.26 2000/02/25 17:47:00 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -72,18 +72,18 @@
 
 (define (group-left-char group index)
   (string-ref (group-text group)
-	      (fix:- (group-index->position-integrable group index false) 1)))
+	      (fix:- (group-index->position-integrable group index #f) 1)))
 
 (define (group-right-char group index)
   (string-ref (group-text group)
-	      (group-index->position-integrable group index true)))
+	      (group-index->position-integrable group index #t)))
 
 (define (group-extract-and-delete-string! group start end)
   (let ((string (group-extract-string group start end)))
     (group-delete! group start end)
     string))
 
-;;;; Insertions
+;;;; Insertion
 
 (define (group-insert-char! group index char)
   (group-insert-chars! group index char 1))
@@ -167,11 +167,11 @@
   (set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
   (undo-record-insertion! group index (fix:+ index n))
   ;; The MODIFIED? bit must be set *after* the undo recording.
-  (set-group-modified?! group true)
+  (set-group-modified?! group #t)
   (if (group-text-properties group)
       (update-intervals-for-insertion! group index n)))
 
-;;;; Deletions
+;;;; Deletion
 
 (define (group-delete-left-char! group index)
   (group-delete! group (fix:- index 1) index))
@@ -241,11 +241,70 @@
 		    (fix:- (mark-index (system-pair-car marks)) n))))))
 	(set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
 	;; The MODIFIED? bit must be set *after* the undo recording.
-	(set-group-modified?! group true)
+	(set-group-modified?! group #t)
 	(if (group-text-properties group)
 	    (update-intervals-for-deletion! group start end))
 	(set-interrupt-enables! interrupt-mask)
 	unspecific)))
+
+;;;; Replacement
+
+(define (group-replace-char! group index char)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
+	(end-index (fix:+ index 1)))
+    (prepare-gap-for-replace! group index end-index)
+    (string-set! (group-text group) index char)
+    (finish-group-replace! group index end-index)
+    (set-interrupt-enables! interrupt-mask)
+    unspecific))
+
+(define (group-replace-string! group index string)
+  (group-replace-substring! group index string 0 (string-length string)))
+
+(define (group-replace-substring! group index string start end)
+  (if (fix:< start end)
+      (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
+	    (end-index (fix:+ index (fix:- end start))))
+	(prepare-gap-for-replace! group index end-index)
+	(%substring-move! string start end (group-text group) index)
+	(finish-group-replace! group index end-index)
+	(set-interrupt-enables! interrupt-mask)
+	unspecific)))
+
+(define (prepare-gap-for-replace! group start end)
+  (if (or (group-read-only? group)
+	  (and (group-text-properties group)
+	       (text-not-replaceable? group start end)))
+      (barf-if-read-only))
+  (if (not (group-modified? group))
+      (check-first-group-modification group))
+  (if (and (fix:< start (group-gap-start group))
+	   (fix:< (group-gap-start group) end))
+      (let ((new-end (fix:+ end (group-gap-length group))))
+	(%substring-move! (group-text group)
+			  (group-gap-end group)
+			  new-end
+			  (group-text group)
+			  (group-gap-start group))
+	(set-group-gap-start! group end)
+	(set-group-gap-end! group new-end)))
+  (undo-record-replacement! group start end))
+
+(define (finish-group-replace! group start end)
+  (if (group-start-changes-index group)
+      (begin
+	(if (fix:< start (group-start-changes-index group))
+	    (set-group-start-changes-index! group start))
+	(if (fix:> end (group-end-changes-index group))
+	    (set-group-end-changes-index! group end)))
+      (begin
+	(set-group-start-changes-index! group start)
+	(set-group-end-changes-index! group end)))
+  (set-group-modified-tick! group (fix:+ (group-modified-tick group) 1))
+  ;; The MODIFIED? bit must be set *after* the undo recording.
+  (set-group-modified?! group #t)
+  (if (group-text-properties group)
+      (update-intervals-for-replacement! group start end)))
 
 ;;;; Resizing
 

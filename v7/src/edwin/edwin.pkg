@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.242 2000/02/23 22:58:28 cph Exp $
+$Id: edwin.pkg,v 1.243 2000/02/25 17:47:08 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -168,6 +168,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  group-insert-string!
 	  group-insert-substring!
 	  group-left-char
+	  group-replace-char!
+	  group-replace-string!
+	  group-replace-substring!
 	  group-right-char
 	  prepare-gap-for-insert!))
 
@@ -202,6 +205,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  undo-record-deletion!
 	  undo-record-insertion!
 	  undo-record-property-changes!
+	  undo-record-replacement!
 	  undo-start
 	  with-group-undo-disabled))
 
@@ -871,8 +875,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (export (edwin group-operations)
 	  text-not-deleteable?
 	  text-not-insertable?
+	  text-not-replaceable?
 	  update-intervals-for-deletion!
-	  update-intervals-for-insertion!)
+	  update-intervals-for-insertion!
+	  update-intervals-for-replacement!)
   (export (edwin undo)
 	  group-extract-properties
 	  group-reinsert-properties!

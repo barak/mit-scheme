@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.18 1999/11/01 03:29:06 cph Exp $
+;;; $Id: txtprp.scm,v 1.19 2000/02/25 17:47:37 cph Exp $
 ;;;
-;;; Copyright (c) 1993-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1993-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -277,6 +277,9 @@
 		  (let ((next (next-interval interval)))
 		    (and next
 			 (loop next))))))))
+
+(define text-not-replaceable?
+  text-not-deleteable?)
 
 ;;;; Miscellaneous Properties
 
@@ -322,7 +325,7 @@
 			       (region-end-index region)
 			       comtabs))
 
-;;;; Insertion and Deletion
+;;;; Buffer modification
 
 (define (update-intervals-for-insertion! group start length)
   ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
@@ -368,6 +371,14 @@
 		    (decrement-interval-length interval delta)
 		    (deletion-loop (next-interval interval)
 				   (fix:- length delta))))))))))
+
+(define (update-intervals-for-replacement! group start end)
+  ;; Assumes that (GROUP-TEXT-PROPERTIES GROUP) is not #F.
+  ;; Assumes that (FIX:< START END).
+  group start end
+  ;; Not sure what to do about this right now.  For current uses of
+  ;; replacement, it's reasonable to leave the properties alone.
+  unspecific)
 
 ;;;; Undo
 

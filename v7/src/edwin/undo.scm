@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: undo.scm,v 1.58 1999/01/02 06:11:34 cph Exp $
+;;; $Id: undo.scm,v 1.59 2000/02/25 17:48:04 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -121,6 +121,19 @@
 			 point
 			 (group-undo-data group)))))))))
 
+(define (undo-record-replacement! group start end)
+  (if (not (eq? #t (group-undo-data group)))
+      (begin
+	(if (not (group-modified? group))
+	    (undo-record-first-change! group))
+	(set-group-undo-data!
+	 group
+	 (let ((text (group-extract-string group start end))
+	       (point (mark-index (group-point group))))
+	   (cons* (cons* 'REPLACEMENT text start)
+		  point
+		  (group-undo-data group)))))))
+
 (define (undo-record-property-changes! group properties)
     (if (not (eq? #t (group-undo-data group)))
 	(begin
@@ -209,6 +222,10 @@ which includes both the saved text and other data."
 					 (b (cdar undo-data)))
 				     (cond ((eq? 'REINSERT-PROPERTIES a)
 					    (reinsert-properties-size b))
+					   ((eq? 'REPLACEMENT a)
+					    (fix:+ 2
+						   (system-vector-length
+						    (car b))))
 					   ((string? a)
 					    (fix:+ 1 (system-vector-length a)))
 					   (else 0))))
@@ -281,49 +298,63 @@ A numeric argument serves as a repeat count."
 	     (mark-temporary! point)
 	     data)))
       (let loop ((data data))
-	(if (null? data)
-	    (finish data)
+	(if (pair? data)
 	    (let ((element (car data))
 		  (data (cdr data)))
-	      (if (eq? #f element)
-		  ;; #F means boundary: this step is done.
-		  (finish data)
-		  (begin
-		    (cond
+	      (cond ((not element)
+		     ;; #F means boundary: this step is done.
+		     (finish data))
+		    ((fix:fixnum? element)
 		     ;; Fixnum is a point position.
-		     ((fix:fixnum? element)
-		      (set-mark-index! point element))
-		     (else
-		      (let ((a (car element))
-			    (b (cdr element)))
-			(cond ((eq? #t a)
-			       ;; (#t . MOD-TIME) means first modification
-			       (if (eqv? b (buffer-modification-time buffer))
-				   (buffer-not-modified! buffer)))
-			      ((eq? 'REINSERT-PROPERTIES a)
-			       (group-reinsert-properties! group b))
-			      ((fix:fixnum? a)
-			       ;; (START . END) means insertion
-			       (if (or (fix:< a (group-start-index group))
-				       (fix:> a (group-end-index group))
-				       (fix:> b (group-end-index group)))
-				   (outside-visible-range))
-			       (set-mark-index! point a)
-			       (group-delete! group a b))
+		     (set-mark-index! point element)
+		     (loop data))
+		    ((pair? element)
+		     (let ((a (car element))
+			   (b (cdr element)))
+		       (cond ((eq? #t a)
+			      ;; (#t . MOD-TIME) means first modification
+			      (if (eqv? b (buffer-modification-time buffer))
+				  (buffer-not-modified! buffer)))
+			     ((eq? 'REINSERT-PROPERTIES a)
+			      (group-reinsert-properties! group b))
+			     ((eq? 'REPLACEMENT a)
+			      (let ((string (car b))
+				    (start (cdr b)))
+				(if (or (fix:< start (group-start-index group))
+					(fix:> (fix:+ start
+						      (string-length string))
+					       (group-end-index group)))
+				    (outside-visible-range))
+				;; No need to set point, set explicitly.
+				(group-replace-string! group start string)))
+			     ((fix:fixnum? a)
+			      ;; (START . END) means insertion
+			      (if (or (fix:< a (group-start-index group))
+				      (fix:> a (group-end-index group))
+				      (fix:> b (group-end-index group)))
+				  (outside-visible-range))
+			      (set-mark-index! point a)
+			      (group-delete! group a b))
+			     ((string? a)
 			      ;; (STRING . START) means deletion
-			      ((fix:< b 0)
-			       ;; negative START means set point at end
-			       (let ((b (fix:- 0 b)))
-				 (if (or (fix:< b (group-start-index group))
-					 (fix:> b (group-end-index group)))
-				     (outside-visible-range))
-				 (set-mark-index! point b)
-				 (group-insert-string! group b a)))
-			      (else
-			       ;; nonnegative START means set point at start
-			       (if (or (fix:< b (group-start-index group))
-				       (fix:> b (group-end-index group)))
-				   (outside-visible-range))
-			       (group-insert-string! group b a)
-			       (set-mark-index! point b))))))
-		    (loop data)))))))))
+			      (if (fix:< b 0)
+				  ;; negative START means set point at end
+				  (let ((b (fix:- 0 b)))
+				    (if (or (fix:< b (group-start-index group))
+					    (fix:> b (group-end-index group)))
+					(outside-visible-range))
+				    (set-mark-index! point b)
+				    (group-insert-string! group b a))
+				  ;; nonnegative START means set point at start
+				  (begin
+				    (if (or (fix:< b (group-start-index group))
+					    (fix:> b (group-end-index group)))
+					(outside-visible-range))
+				    (group-insert-string! group b a)
+				    (set-mark-index! point b))))
+			     (else
+			      (error "Malformed undo element:" element))))
+		     (loop data))
+		    (else
+		     (error "Malformed undo element:" element))))
+	    (finish data))))))
