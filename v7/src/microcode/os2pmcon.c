@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.18 1995/11/04 00:10:51 cph Exp $
+$Id: os2pmcon.c,v 1.19 1995/11/04 01:01:08 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -161,7 +161,7 @@ OS2_initialize_pm_console (void)
 			  (FCF_TITLEBAR | FCF_SYSMENU
 			   | FCF_SHELLPOSITION | FCF_SIZEBORDER
 			   | FCF_MINMAX | FCF_TASKLIST
-			   | FCF_MENU | FCF_ACCELTABLE),
+			   | FCF_MENU | FCF_ACCELTABLE | FCF_ICON),
 			  NULLHANDLE,
 			  ID_PMCON_RESOURCES,
 			  0, "Scheme"));

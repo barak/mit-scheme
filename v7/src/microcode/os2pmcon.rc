@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.rc,v 1.2 1995/11/03 01:30:07 cph Exp $
+$Id: os2pmcon.rc,v 1.3 1995/11/04 01:01:16 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -36,6 +36,31 @@ MIT in each case. */
 
 #include <os2.h>
 #include "os2pmcon.h"
+
+#ifdef SCHEME
+ICON ID_PMCON_RESOURCES "os2utl\\lambda2.ico"
+ICON 11 "os2utl\\bch.ico"
+#else
+#ifdef BCHSCHEM
+ICON ID_PMCON_RESOURCES "os2utl\\bch.ico"
+ICON 11 "os2utl\\lambda2.ico"
+#endif
+#endif
+
+ICON 12 "os2utl\\coffee.ico"
+ICON 13 "os2utl\\conses.ico"
+ICON 14 "os2utl\\edwin.ico"
+ICON 15 "os2utl\\envir1.ico"
+ICON 16 "os2utl\\graphics.ico"
+ICON 17 "os2utl\\lambda.ico"
+ICON 18 "os2utl\\liar1.ico"
+ICON 19 "os2utl\\liar2.ico"
+ICON 20 "os2utl\\liar3.ico"
+ICON 21 "os2utl\\mincer.ico"
+ICON 22 "os2utl\\shield1.ico"
+ICON 23 "os2utl\\shield2.ico"
+ICON 24 "os2utl\\shield3.ico"
+ICON 25 "os2utl\\shield4.ico"
 
 MENU ID_PMCON_RESOURCES
 {
