@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.142 1991/07/09 22:51:16 cph Exp $
+;;;	$Id: comwin.scm,v 1.143 1995/04/30 06:56:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -390,7 +390,7 @@
 
 ;;;; Deletion
 
-(define (window-delete! leaf)
+(define (window-delete! leaf #!optional merge-into)
   (check-leaf-window leaf 'WINDOW-DELETE!)
   (without-interrupts
    (lambda ()
@@ -415,20 +415,29 @@
 			(+ (window-y-size window) y-size))
 		    (=> window :set-x-size!
 			(+ (window-x-size window) x-size))))))
-	 (cond (next
-		(adjust-size! next)
-		(let ((inferior (window-inferior superior next)))
-		  (if (combination-vertical? superior)
-		      (set-inferior-y-start!
-		       inferior
-		       (- (inferior-y-start inferior) y-size))
-		      (set-inferior-x-start!
-		       inferior
-		       (- (inferior-x-start inferior) x-size)))))
-	       (previous
-		(adjust-size! previous))
-	       (else
-		(error "combination with single child" superior))))
+	 (let ((do-next
+		(lambda ()
+		  (adjust-size! next)
+		  (let ((inferior (window-inferior superior next)))
+		    (if (combination-vertical? superior)
+			(set-inferior-y-start!
+			 inferior
+			 (- (inferior-y-start inferior) y-size))
+			(set-inferior-x-start!
+			 inferior
+			 (- (inferior-x-start inferior) x-size))))))
+	       (do-previous
+		(lambda ()
+		  (adjust-size! previous))))
+	   (cond ((and (not (default-object? merge-into))
+		       merge-into
+		       (or (eq? merge-into next) (eq? merge-into previous)))
+		  (if (eq? merge-into next)
+		      (do-next)
+		      (do-previous)))
+		 (next (do-next))
+		 (previous (do-previous))
+		 (else (error "Combination with single child:" superior)))))
        (maybe-delete-combination! superior)))))
 
 (define (unlink-leaf! leaf)
