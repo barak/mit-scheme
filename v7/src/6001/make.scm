@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 1.1 1991/08/22 17:42:30 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.0 1991/08/22 19:41:10 arthur Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
