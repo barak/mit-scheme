@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.37 1995/07/26 18:41:54 adams Exp $
+;;;	$Id: hppa.m4,v 1.38 1995/08/14 22:03:44 adams Exp $
 ;;;
 ;;;	Copyright (c) 1989-1995 Massachusetts Institute of Technology
 ;;;
@@ -1815,9 +1815,11 @@ define(define_floating_point_util,
 	COPY	22,17				; preserve regs
 	COPY	21,16
 	COPY	19,15
+	COPY    2,14
         .CALL   ARGW0=FR,ARGW1=FU,RTNVAL=FU     ;fpin=105;fpout=104;
 	BL	$2,2
-	COPY	31,14
+	COPY	31,13
+	COPY    14,2
 	COPY	15,19
 	COPY	16,21
 	; LDW	REGBLOCK_VAL(0,rs_regblock),rs_val	; restore val REMOVED by JSM
