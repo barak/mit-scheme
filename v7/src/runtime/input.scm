@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.8 1990/10/03 01:29:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.9 1990/11/02 02:06:16 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -165,17 +165,10 @@ MIT in each case. |#
 (define (input-port/discard-chars port delimiters)
   ((input-port/operation/discard-chars port) port delimiters))
 
-(define (input-port/normal-mode port thunk)
-  (let ((operation (input-port/custom-operation port 'NORMAL-MODE)))
-    (if operation
-	(operation port thunk)
-	(thunk))))
-
-(define (input-port/immediate-mode port thunk)
-  (let ((operation (input-port/custom-operation port 'IMMEDIATE-MODE)))
-    (if operation
-	(operation port thunk)
-	(thunk))))
+(define (input-port/channel port)
+  (let ((operation (input-port/custom-operation port 'CHANNEL)))
+    (and operation
+	 (operation port))))
 
 (define eof-object
   "EOF Object")

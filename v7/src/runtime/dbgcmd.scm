@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.9 1990/09/12 02:47:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.10 1990/11/02 02:06:08 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -64,17 +64,10 @@ MIT in each case. |#
 (define (letter-commands command-set message prompt state)
   (with-standard-proceed-point
    (lambda ()
-     (let ((state (vector command-set prompt state))
-	   (cmdl (nearest-cmdl)))
-       (let ((input-port (cmdl/input-port cmdl)))
-	 (input-port/immediate-mode input-port
-	   (lambda ()
-	     (make-cmdl cmdl
-			input-port
-			(cmdl/output-port cmdl)
-			letter-commands/driver
-			state
-			message))))))))
+     (push-cmdl letter-commands/driver
+		(vector command-set prompt state)
+		message
+		make-cmdl))))
 
 (define (letter-commands/driver cmdl)
   (let ((command-set (vector-ref (cmdl/state cmdl) 0))
@@ -119,7 +112,7 @@ MIT in each case. |#
   (hook/leaving-command-loop thunk))
 
 (define (default/leaving-command-loop thunk)
-  (input-port/normal-mode (cmdl/input-port (nearest-cmdl)) thunk))
+  (thunk))
 
 (define (debug/read-eval-print environment from to prompt)
   (leaving-command-loop

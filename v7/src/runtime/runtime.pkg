@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.81 1990/10/17 03:30:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.82 1990/11/02 02:06:48 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -782,6 +782,7 @@ MIT in each case. |#
 	  current-input-port
 	  eof-object?
 	  guarantee-input-port
+	  input-port/channel
 	  input-port/char-ready?
 	  input-port/copy
 	  input-port/custom-operation
@@ -795,8 +796,6 @@ MIT in each case. |#
 	  input-port/operation/peek-char
 	  input-port/operation/read-char
 	  input-port/operation/read-string
-	  input-port/immediate-mode
-	  input-port/normal-mode
 	  input-port/peek-char
 	  input-port/read-char
 	  input-port/read-string
@@ -1175,14 +1174,13 @@ MIT in each case. |#
 	  close-output-port
 	  current-output-port
 	  display
-	  fresh-line
 	  guarantee-output-port
 	  make-output-port
 	  newline
+	  output-port/channel
 	  output-port/copy
 	  output-port/custom-operation
 	  output-port/flush-output
-	  output-port/fresh-line
 	  output-port/operation
 	  output-port/operation-names
 	  output-port/state
@@ -1375,7 +1373,6 @@ MIT in each case. |#
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block)
   (export (runtime console-output)
-	  channel-type=terminal?
 	  channel-write-char-block
 	  channel-write-string-block
 	  make-output-buffer
@@ -1385,24 +1382,23 @@ MIT in each case. |#
 	  output-buffer/size
 	  output-buffer/write-char-block
 	  output-buffer/write-string-block
-	  terminal-cooked-output
-	  terminal-output-baud-rate
-	  terminal-raw-output
 	  tty-output-channel)
   (export (runtime console-input)
 	  channel-type=file?
-	  channel-type=terminal?
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
 	  input-buffer/peek-char
 	  input-buffer/read-char
 	  make-input-buffer
-	  terminal-buffered
-	  terminal-buffered?
-	  terminal-input-baud-rate
-	  terminal-nonbuffered
 	  tty-input-channel)
+  (export (runtime rep)
+	  channel-type=terminal?
+	  terminal-cooked-input
+	  terminal-cooked-output
+	  terminal-get-state
+	  terminal-raw-input
+	  terminal-set-state)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -1497,7 +1493,6 @@ MIT in each case. |#
 	  in
 	  initial-top-level-repl
 	  make-cmdl
-	  make-repl
 	  nearest-cmdl
 	  nearest-repl
 	  nearest-repl/environment

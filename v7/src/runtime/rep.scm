@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.14 1990/06/20 20:29:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.15 1990/11/02 02:06:39 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -63,13 +63,15 @@ MIT in each case. |#
     (let loop ((message "Cold load finished"))
       (with-standard-proceed-point
        (lambda ()
-	 (make-repl false
-		    user-repl-environment
-		    user-repl-syntax-table
-		    user-initial-prompt
+	 (make-cmdl false
 		    console-input-port
 		    console-output-port
-		    (cmdl-message/standard message))))
+		    repl-driver
+		    (make-repl-state user-initial-prompt
+				     user-repl-environment
+				     user-repl-syntax-table)
+		    (cmdl-message/standard message)
+		    make-cmdl)))
       (loop "Reset!"))))
 
 ;;;; Command Loops
@@ -79,14 +81,16 @@ MIT in each case. |#
   (level false read-only true)
   (driver false read-only true)
   (proceed-continuation false read-only true)
+  (spawn-child false read-only true)
   continuation
   input-port
   output-port
   state)
 
-(define (make-cmdl parent input-port output-port driver state message)
+(define (make-cmdl parent input-port output-port driver state message
+		   spawn-child)
   (if (and parent (not (cmdl? parent)))
-      (error "MAKE-CMDL: illegal parent" parent))
+      (error:illegal-datum parent 'MAKE-CMDL))
   (let ((cmdl
 	 (%make-cmdl parent
 		     (let loop ((parent parent))
@@ -95,6 +99,7 @@ MIT in each case. |#
 			   1))
 		     driver
 		     (current-proceed-continuation)
+		     spawn-child
 		     false
 		     input-port
 		     output-port
@@ -122,14 +127,15 @@ MIT in each case. |#
   (if (not *nearest-cmdl*) (error "NEAREST-CMDL: no cmdl"))
   *nearest-cmdl*)
 
-(define (push-cmdl driver state message)
-  (let ((cmdl (nearest-cmdl)))
-    (make-cmdl cmdl
-	       (cmdl/input-port cmdl)
-	       (cmdl/output-port cmdl)
-	       driver
-	       state
-	       message)))
+(define (push-cmdl driver state message spawn-child)
+  (let ((parent (nearest-cmdl)))
+    ((cmdl/spawn-child parent) parent
+			       (cmdl/input-port parent)
+			       (cmdl/output-port parent)
+			       driver
+			       state
+			       message
+			       spawn-child)))
 
 (define (cmdl/base cmdl)
   (let ((parent (cmdl/parent cmdl)))
@@ -145,9 +151,15 @@ MIT in each case. |#
 (define hook/cmdl-prompt)
 
 (define (default/cmdl-prompt cmdl prompt)
-  (write-string
-   (string-append "\n\n" (number->string (cmdl/level cmdl)) " " prompt " ")
-   (cmdl/output-port cmdl)))
+  (use-output-port cmdl
+    (lambda (output-port)
+      (write-string
+       (string-append "\n\n"
+		      (number->string (cmdl/level cmdl))
+		      " "
+		      prompt
+		      " ")
+       output-port))))
 
 (define ((cmdl-message/standard string) cmdl)
   (hook/cmdl-message cmdl string))
@@ -155,21 +167,25 @@ MIT in each case. |#
 (define hook/cmdl-message)
 
 (define (default/cmdl-message cmdl string)
-  (write-string (string-append "\n" string) (cmdl/output-port cmdl)))
+  (use-output-port cmdl
+    (lambda (output-port)
+      (write-string (string-append "\n" string) output-port))))
 
 (define ((cmdl-message/strings . strings) cmdl)
-  (let ((port (cmdl/output-port cmdl)))
-    (for-each (lambda (string)
-		(write-string (string-append "\n" string) port))
-	      strings)))
+  (use-output-port cmdl
+    (lambda (output-port)
+      (for-each (lambda (string)
+		  (write-string (string-append "\n" string) output-port))
+		strings))))
 
 (define ((cmdl-message/null) cmdl)
   cmdl
   false)
 
 (define ((cmdl-message/active thunk) cmdl)
-  (with-output-to-port (cmdl/output-port cmdl)
-    thunk))
+  (use-output-port cmdl
+    (lambda (output-port)
+      (with-output-to-port output-port thunk))))
 
 (define ((cmdl-message/append . messages) cmdl)
   (for-each (lambda (message) (message cmdl)) messages))
@@ -254,31 +270,25 @@ MIT in each case. |#
 
 ;;;; REP Loops
 
-(define-structure (repl-state (conc-name repl-state/))
+(define-structure (repl-state
+		   (conc-name repl-state/)
+		   (constructor make-repl-state
+				(prompt environment syntax-table)))
   prompt
   environment
   syntax-table
-  reader-history
-  printer-history)
+  (reader-history (make-repl-history reader-history-size))
+  (printer-history (make-repl-history printer-history-size)))
 
-(define (make-repl parent environment syntax-table prompt input-port
-		   output-port message)
-  (input-port/normal-mode input-port
-    (lambda ()
-      (make-cmdl parent
-		 input-port
-		 output-port
-		 repl-driver
-		 (make-repl-state prompt
-				  environment
-				  syntax-table
-				  (make-repl-history reader-history-size)
-				  (make-repl-history printer-history-size))
-		 (cmdl-message/append
-		  message
-		  (cmdl-message/active
-		   (lambda ()
-		     (hook/repl-environment (nearest-repl) environment))))))))
+(define (push-repl environment message prompt)
+  (push-cmdl repl-driver
+	     (make-repl-state prompt environment (nearest-repl/syntax-table))
+	     (cmdl-message/append
+	      message
+	      (cmdl-message/active
+	       (lambda ()
+		 (hook/repl-environment (nearest-repl) environment))))
+	     make-cmdl))
 
 (define (repl-driver repl)
   (fluid-let ((hook/error-handler default/error-handler))
@@ -355,16 +365,6 @@ MIT in each case. |#
 	(repl/syntax-table repl)
 	user-initial-syntax-table)))
 
-(define (push-repl environment message prompt)
-  (let ((parent (nearest-cmdl)))
-    (make-repl parent
-	       environment
-	       (nearest-repl/syntax-table)
-	       prompt
-	       (cmdl/input-port parent)
-	       (cmdl/output-port parent)
-	       message)))
-
 (define (read-eval-print environment message prompt)
   (with-standard-proceed-point
    (lambda ()
@@ -406,7 +406,7 @@ MIT in each case. |#
   unspecific)
 
 (define (default/repl-read repl)
-  (let ((s-expression (read (cmdl/input-port repl))))
+  (let ((s-expression (read-internal (cmdl/input-port repl))))
     (repl-history/record! (repl/reader-history repl) s-expression)
     s-expression))
 
@@ -420,12 +420,13 @@ MIT in each case. |#
 
 (define (default/repl-write repl object)
   (repl-history/record! (repl/printer-history repl) object)
-  (let ((port (cmdl/output-port repl)))
-    (if (undefined-value? object)
-	(write-string "\n;No value" port)
-	(begin
-	  (write-string "\n;Value: " port)
-	  (write object port)))))
+  (use-output-port repl
+    (lambda (output-port)
+      (if (undefined-value? object)
+	  (write-string "\n;No value" output-port)
+	  (begin
+	    (write-string "\n;Value: " output-port)
+	    (write object output-port))))))
 
 ;;;; History
 
@@ -456,7 +457,6 @@ MIT in each case. |#
 ;;; User Interface Stuff
 
 (define user-repl-environment)
-(define user-repl-syntax-table)
 
 (define (pe)
   (let ((environment (nearest-repl/environment)))
@@ -470,7 +470,10 @@ MIT in each case. |#
 	(environment (->environment environment)))
     (set! user-repl-environment environment)
     (set-repl-state/environment! (cmdl/state repl) environment)
-    (hook/repl-environment repl environment)
+    (use-output-port repl
+      (lambda (output-port)
+	output-port
+	(hook/repl-environment repl environment)))
     environment))
 
 (define (ve environment)
@@ -478,7 +481,10 @@ MIT in each case. |#
 	(environment (->environment environment)))
     (set-repl-state/environment! (cmdl/state repl) environment)
     (set-repl-state/prompt! (cmdl/state repl) "Visiting->")
-    (hook/repl-environment repl environment)
+    (use-output-port repl
+      (lambda (output-port)
+	output-port
+	(hook/repl-environment repl environment)))
     environment))
 
 (define (->environment object)
@@ -501,6 +507,8 @@ MIT in each case. |#
 	   (if (not package)
 	       (error "->ENVIRONMENT: Not an environment" object))
 	   (package/environment package)))))
+
+(define user-repl-syntax-table)
 
 (define (gst syntax-table)
   (guarantee-syntax-table syntax-table)
@@ -562,10 +570,9 @@ MIT in each case. |#
   (read-char-internal (cmdl/input-port cmdl)))
 
 (define (default/prompt-for-confirmation cmdl prompt)
-  (let ((input-port (cmdl/input-port cmdl))
-	(output-port (cmdl/output-port cmdl)))
-    (input-port/immediate-mode input-port
-      (lambda ()
+  (let ((input-port (cmdl/input-port cmdl)))
+    (use-output-port cmdl
+      (lambda (output-port)
 	(let loop ()
 	  (newline output-port)
 	  (write-string prompt output-port)
@@ -584,18 +591,51 @@ MIT in each case. |#
 		   (loop)))))))))
 
 (define (default/prompt-for-expression cmdl prompt)
-  (let ((input-port (cmdl/input-port cmdl))
-	(output-port (cmdl/output-port cmdl)))
-    (newline output-port)
-    (write-string prompt output-port)
-    (write-string ": " output-port)
-    (input-port/normal-mode input-port
+  (use-output-port cmdl
+    (lambda (output-port)
+      (newline output-port)
+      (write-string prompt output-port)
+      (write-string ": " output-port)))
+  (read-internal (cmdl/input-port cmdl)))
+
+(define (use-output-port cmdl user)
+  (let ((output-port (cmdl/output-port cmdl)))
+    (terminal-bind terminal-cooked-output (output-port/channel output-port)
       (lambda ()
-	(read input-port)))))
+	(user output-port)))))
+
+(define (read-internal input-port)
+  (terminal-bind terminal-cooked-input (input-port/channel input-port)
+    (lambda ()
+      (read input-port))))
 
 (define (read-char-internal input-port)
-  (let loop ()
-    (let ((char (read-char input-port)))
-      (if (char=? char char:newline)
-	  (loop)
-	  char))))
+  (terminal-bind terminal-raw-input (input-port/channel input-port)
+    (lambda ()
+      (let loop ()
+	(let ((char (read-char input-port)))
+	  (if (char=? char char:newline)
+	      (loop)
+	      char))))))
+
+(define (terminal-bind operation terminal thunk)
+  (if (and terminal
+	   (channel-type=terminal? terminal))
+      (let ((outside-state)
+	    (inside-state false))
+	(dynamic-wind
+	 (lambda ()
+	   (set! outside-state (terminal-get-state terminal))
+	   (if inside-state
+	       (begin
+		 (terminal-set-state terminal inside-state)
+		 (set! inside-state)
+		 unspecific)
+	       (operation terminal)))
+	 thunk
+	 (lambda ()
+	   (set! inside-state (terminal-get-state terminal))
+	   (terminal-set-state terminal outside-state)
+	   (set! outside-state)
+	   unspecific)))
+      (thunk)))

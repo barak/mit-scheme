@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.9 1990/10/16 21:03:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.10 1990/11/02 02:06:23 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -264,20 +264,29 @@ MIT in each case. |#
 
 ;;;; Terminal Primitives
 
-(define (terminal-raw-output channel)
-  ((ucode-primitive terminal-raw-output 1) (channel-descriptor channel)))
+(define (terminal-get-state channel)
+  ((ucode-primitive terminal-get-state 1) (channel-descriptor channel)))
+
+(define (terminal-set-state channel state)
+  ((ucode-primitive terminal-set-state 2) (channel-descriptor channel) state))
+
+(define (terminal-cooked-input? channel)
+  ((ucode-primitive terminal-buffered? 1) (channel-descriptor channel)))
+
+(define (terminal-cooked-input channel)
+  ((ucode-primitive terminal-buffered 1) (channel-descriptor channel)))
+
+(define (terminal-raw-input channel)
+  ((ucode-primitive terminal-nonbuffered 1) (channel-descriptor channel)))
+
+(define (terminal-cooked-output? channel)
+  ((ucode-primitive terminal-cooked-output? 1) (channel-descriptor channel)))
 
 (define (terminal-cooked-output channel)
   ((ucode-primitive terminal-cooked-output 1) (channel-descriptor channel)))
 
-(define (terminal-buffered? channel)
-  ((ucode-primitive terminal-buffered? 1) (channel-descriptor channel)))
-
-(define (terminal-buffered channel)
-  ((ucode-primitive terminal-buffered 1) (channel-descriptor channel)))
-
-(define (terminal-nonbuffered channel)
-  ((ucode-primitive terminal-nonbuffered 1) (channel-descriptor channel)))
+(define (terminal-raw-output channel)
+  ((ucode-primitive terminal-raw-output 1) (channel-descriptor channel)))
 
 (define (terminal-flush-input channel)
   ((ucode-primitive terminal-flush-input 1) (channel-descriptor channel)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.7 1990/09/13 23:08:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.8 1990/11/02 02:06:32 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -54,7 +54,6 @@ MIT in each case. |#
 			       (copier %output-port/copy)
 			       (print-procedure output-port/unparse))
   state
-  start-of-line?
   (operation/write-char false read-only true)
   (operation/write-string false read-only true)
   (operation/flush-output false read-only true)
@@ -68,7 +67,6 @@ MIT in each case. |#
 (define (output-port/copy port state)
   (let ((result (%output-port/copy port)))
     (set-output-port/state! result state)
-    (set-output-port/start-of-line?! result false)
     result))
 
 (define (output-port/custom-operation port name)
@@ -101,7 +99,7 @@ MIT in each case. |#
 	     (operation 'WRITE-STRING default-operation/write-string))
 	    (flush-output
 	     (operation 'FLUSH-OUTPUT default-operation/flush-output)))
-	(%make-output-port state false write-char write-string flush-output
+	(%make-output-port state write-char write-string flush-output
 			   operations
 			   (append '(WRITE-CHAR WRITE-STRING FLUSH-OUTPUT)
 				   (map car operations)))))))
@@ -119,23 +117,12 @@ MIT in each case. |#
   false)
 
 (define (output-port/write-char port char)
-  (set-output-port/start-of-line?! port (char=? #\newline char))
   ((output-port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
   (let ((length (string-length string)))
     (if (positive? length)
-	(begin
-	  (set-output-port/start-of-line?!
-	   port
-	   (char=? #\newline (string-ref string (-1+ length))))
-	  ((output-port/operation/write-string port) port string)))))
-
-(define (output-port/fresh-line port)
-  (if (not (output-port/start-of-line? port))
-      (begin
-	(set-output-port/start-of-line?! port true)
-	((output-port/operation/write-char port) port #\newline))))
+	((output-port/operation/write-string port) port string))))
 
 (define (output-port/flush-output port)
   ((output-port/operation/flush-output port) port))
@@ -145,6 +132,11 @@ MIT in each case. |#
 	(and operation
 	     (operation port)))
       79))
+
+(define (output-port/channel port)
+  (let ((operation (output-port/custom-operation port 'CHANNEL)))
+    (and operation
+	 (operation port))))
 
 (define *current-output-port*)
 
@@ -188,15 +180,6 @@ MIT in each case. |#
 	     (current-output-port)
 	     (guarantee-output-port port))))
     (output-port/write-char port #\Newline)
-    (output-port/flush-output port))
-  unspecific)
-
-(define (fresh-line #!optional port)
-  (let ((port
-	 (if (default-object? port)
-	     (current-output-port)
-	     (guarantee-output-port port))))
-    (output-port/fresh-line port)
     (output-port/flush-output port))
   unspecific)
 
