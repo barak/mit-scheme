@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.9 2001/07/16 18:55:28 cph Exp $
+;;; $Id: xml-parser.scm,v 1.10 2001/07/16 20:39:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -96,23 +96,19 @@
   (fluid-let ((*general-entities* (predefined-entities))
 	      (*standalone?*)
 	      (*internal-dtd?* #t))
-    (let ((declaration (parse-declaration buffer)))
+    (let ((declaration (parse-declaration buffer))
+	  (one-value (lambda (v) (and v (vector-ref v 0)))))
       (set! *standalone?*
 	    (and declaration
 		 (equal? (xml-declaration-standalone declaration)
 			 "yes")))
-      (let* ((misc-1 (parse-misc buffer))
-	     (dtd
-	      (let ((v (parse-dtd buffer)))
-		(and v
-		     (vector-ref v 0))))
-	     (misc-2 (if dtd (parse-misc buffer) '()))
+      (let* ((misc-1 (one-value (parse-misc buffer)))
+	     (dtd (one-value (parse-dtd buffer)))
+	     (misc-2 (if dtd (one-value (parse-misc buffer)) '()))
 	     (element
-	      (or (let ((v (parse-element buffer)))
-		    (and v
-			 (vector-ref v 0)))
+	      (or (one-value (parse-element buffer))
 		  (perror buffer "Missing root element")))
-	     (misc-3 (parse-misc buffer)))
+	     (misc-3 (one-value (parse-misc buffer))))
 	(if (peek-parser-buffer-char buffer)
 	    (perror buffer "Unparsed content in input"))
 	(make-xml-document declaration
@@ -454,7 +450,8 @@
     (lambda (port)
       (let normalize-value ((value value))
 	(if (string? value)
-	    (let ((buffer (string->parser-buffer value)))
+	    (let ((buffer
+		   (string->parser-buffer (normalize-line-endings value))))
 	      (let loop ()
 		(let ((char (peek-parser-buffer-char buffer)))
 		  (cond ((not char)
@@ -475,6 +472,25 @@
 			 (loop))))))
 	    (perror p "Reference to external entity in attribute"))))))
 
+(define (trim-attribute-whitespace string)
+  (with-string-output-port
+    (lambda (port)
+      (let ((string (string-trim string)))
+	(let ((end (string-length string)))
+	  (let loop ((start 0))
+	    (if (fix:< start end)
+		(let ((regs
+		       (re-substring-search-forward "  +" string start end)))
+		  (if regs
+		      (begin
+			(write-substring string
+					 start
+					 (re-match-start-index 0 regs)
+					 port)
+			(write-char #\space port)
+			(loop (re-match-end-index 0 regs)))
+		      (write-substring string start end port))))))))))
+
 (define (normalize-line-endings string #!optional always-copy?)
   (if (string-find-next-char string #\return)
       (let ((end (string-length string)))
@@ -659,11 +675,12 @@
 (define parse-decl-separator		;[28a]
   (*parser
    (alt (with-pointer p
-	  (map (lambda (value)
-		 (parse-coalesced-element parse-external-subset-decl
-					  (list " " value " ")
-					  "parameter-entity value"
-					  p))
+	  (transform
+	      (lambda (v)
+		(parse-coalesced-element parse-external-subset-decl
+					 (list " " (vector-ref v 0) " ")
+					 "parameter-entity value"
+					 p))
 	       parse-parameter-entity-reference))
 	S)))
 
@@ -751,7 +768,17 @@
        S
        parse-required-name
        (encapsulate vector->list
-	 (* (encapsulate vector->list
+	 (* (encapsulate
+		(lambda (v)
+		  (let ((name (vector-ref v 0))
+			(type (vector-ref v 1))
+			(default (vector-ref v 2)))
+		    (list name type
+			  (if (and (not (eq? type (xml-intern "CDATA")))
+				   (pair? default))
+			      (list (car default)
+				    (trim-attribute-whitespace (cadr default)))
+			      default))))
 	      (seq S
 		   parse-name
 		   S
@@ -771,15 +798,11 @@
 			    (lambda (v)
 			      (cons 'NOTATION (vector->list v)))
 			  (bracket "notation type"
-			      (seq (noise (string "NOTATION"))
-				   S
-				   (noise (string "(")))
+			      (noise (seq (string "NOTATION") S (string "(")))
 			      (noise (string ")"))
 			    S?
 			    parse-required-name
-			    (* (seq S?
-				    (noise (string "|"))
-				    S?
+			    (* (seq (noise (seq S? (string "|") S?))
 				    parse-required-name))
 			    S?))
 			;;[59]
