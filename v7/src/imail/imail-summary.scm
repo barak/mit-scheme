@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.22 2000/06/16 17:56:10 cph Exp $
+;;; $Id: imail-summary.scm,v 1.23 2000/06/20 19:38:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,7 @@ If false, the message buffer is updated but not popped up."
 
 (define-command imail-summary-by-flags
   "Display a summary of all messages with one or more FLAGS.
-FLAGS should be a string containing the desired labels, separated by commas."
+FLAGS is a string containing the desired labels, separated by commas."
   (lambda ()
     (list (imail-prompt-for-flags "Flags to summarize by")))
   (lambda (flags-string)
@@ -72,9 +72,7 @@ RECIPIENTS is a string of regexps separated by commas."
     (imail-summary
      (string-append "Recipients " recipients-string)
      (let ((regexp
-	    (apply regexp-group
-		   (map re-quote-string
-			(burst-comma-list-string recipients-string)))))
+	    (apply regexp-group (burst-comma-list-string recipients-string))))
        (let ((try
 	      (lambda (s)
 		(and s
@@ -94,11 +92,12 @@ Edwin will list the header line in the summary."
   (lambda (regexp)
     (imail-summary
      (string-append "Regular expression " regexp)
-     (lambda (m)
-       (re-string-search-forward regexp
-				 (header-fields->string
-				  (message-header-fields m))
-				 #t)))))
+     (let ((case-fold? (ref-variable case-fold-search)))
+       (lambda (m)
+	 (re-string-search-forward regexp
+				   (header-fields->string
+				    (message-header-fields m))
+				   case-fold?))))))
 
 (define-command imail-summary-by-topic
   "Display a summary of all messages with the given SUBJECT.
@@ -109,13 +108,12 @@ SUBJECT is a string of regexps separated by commas."
     (imail-summary
      (string-append "About " regexps-string)
      (let ((regexp
-	    (apply regexp-group
-		   (map re-quote-string
-			(burst-comma-list-string regexps-string)))))
+	    (apply regexp-group (burst-comma-list-string regexps-string)))
+	   (case-fold? (ref-variable case-fold-search)))
        (lambda (m)
 	 (let ((s (get-first-header-field-value m "subject" #f)))
 	   (and s
-		(re-string-search-forward regexp s #t))))))))
+		(re-string-search-forward regexp s case-fold?))))))))
 
 (define (imail-summary description predicate)
   (let* ((folder (selected-folder))
