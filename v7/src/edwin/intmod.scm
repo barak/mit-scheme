@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.92 1998/06/07 08:19:11 cph Exp $
+;;;	$Id: intmod.scm,v 1.93 1998/06/21 09:02:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -589,9 +589,7 @@ If this is an error, the debugger examines the error condition."
     (let ((start (mark1+ (ref-variable comint-last-input-end) 'LIMIT))
 	  (end (port/mark (buffer-interface-port (selected-buffer) #t))))
       (let ((value-mark
-	     (re-search-backward
-	      ";\\(Unspecified return value\\|Value: \\|Value [0-9]+: \\)"
-	      end start #f)))
+	     (re-search-backward flush-output-regexp end start #f)))
 	(let ((start (mark-left-inserting-copy start))
 	      (end (or value-mark end)))
 	  (if (mark< start end)
@@ -609,6 +607,18 @@ If this is an error, the debugger examines the error condition."
 			    (delete-string m e)
 			    (insert-string "*** flushed ***" m)))))))
 	  (mark-temporary! start))))))
+
+(define flush-output-regexp
+  (string-append "^;"
+		 "\\("
+		 "Unspecified return value$"
+		 "\\|"
+		 "Value: "
+		 "\\|"
+		 "Value [0-9]+: "
+		 "\\|"
+		 "Quit!$"
+		 "\\)"))
 
 (define (inferior-repl-eval-region buffer region)
   (inferior-repl-eval-ok? buffer)
