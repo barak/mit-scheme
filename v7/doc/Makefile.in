@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.4 2000/12/23 05:09:39 cph Exp $
+# $Id: Makefile.in,v 1.5 2000/12/23 05:14:02 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -98,9 +98,9 @@ maintainer-clean:
 
 tags TAGS:
 
-install: install-info $(INST_TARGETS)
+install: install-info-gz $(INST_TARGETS)
 
-install-info:
+install-info-gz install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
 	@for D in $(SUBDIRS); do \
 	    echo "making $@ in $${D}";\
