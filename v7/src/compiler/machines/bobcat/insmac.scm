@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.125 1989/10/26 07:37:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.126 1990/04/03 23:21:21 jinx Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -242,9 +242,11 @@ MIT in each case. |#
 		    ,code))
 		 (else
 		  (error "PARSE-WORD: multiple tail elements" tail))))))
-    `(,(if (null? code) 'CONS 'CONS-SYNTAX)
-      ,(optimize-group-syntax instruction early-instruction-parsing?)
-      ,code)))
+    (if (not (null? instruction))
+	`(,(if (null? code) 'CONS 'CONS-SYNTAX)
+	  ,(optimize-group-syntax instruction early-instruction-parsing?)
+	  ,code)
+	code)))	
 
 (define (expand-descriptors descriptors receiver)
   (if (null? descriptors)
