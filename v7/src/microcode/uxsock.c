@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.21 1999/08/13 18:47:49 cph Exp $
+$Id: uxsock.c,v 1.22 2000/01/18 02:52:40 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "limits.h"
 
-#ifdef 0
+#if 0
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
 #endif
