@@ -101,7 +101,7 @@
 #endif
 
 #define OBARRAY_SIZE		3001	/* Interning hash table */
-#define STACK_GUARD_SIZE	500	/* Cells between constant and
+#define STACK_GUARD_SIZE	4096	/* Cells between constant and
 					   stack before overflow
 					   occurs */
 #define FILE_CHANNELS		15
