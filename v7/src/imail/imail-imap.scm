@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.193 2001/11/18 04:53:04 cph Exp $
+;;; $Id: imail-imap.scm,v 1.194 2001/11/18 04:58:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1673,7 +1673,7 @@
 (define (imap-folder-lock-pathname folder)
   (let ((spec (imap-folder-cache-specifier folder)))
     (let ((p (last-pair spec)))
-      (set-car! p (string-append (car p) "#lock")))
+      (set-car! p (string-append (car p) "!lock")))
     (init-file-specifier->pathname spec)))
 
 (define (imap-folder-cache-pathname folder)
@@ -1700,16 +1700,16 @@
 	    (cond ((char-set-member? char-set:cache-namestring-safe char)
 		   (write-char char port))
 		  ((char=? char #\/)
-		   (write-char #\. port))
+		   (write-char #\# port))
 		  (else
 		   (write-char #\% port)
 		   (let ((n (char->integer char)))
 		     (if (fix:< n #x10)
 			 (write-char #\0 port))
-		     (write n port))))))))))
+		     (write-string (number->string n 16) port))))))))))
 
 (define char-set:cache-namestring-safe
-  (char-set-union char-set:alphanumeric (string->char-set "-_")))
+  (char-set-union char-set:alphanumeric (string->char-set "-_.")))
 
 (define (read-cached-message-item message keyword pathname)
   (let ((item
