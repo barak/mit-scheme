@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.56 1992/08/20 16:06:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.57 1992/08/29 12:28:44 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. */
 #undef vax
 
 #ifndef RUN
-#define RUN(program) -./program
+#define RUN(program) ./program
 #endif
 
 #ifndef SOURCES_SYSTEM
@@ -214,7 +214,7 @@ cmpaux-hppa.s : cmpaux-hppa.m4 xmakefile
 #define PROC_TYPE_KNOWN
 #undef mips
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-mips.s
+MACHINE_SOURCES = cmpint.c cmpaux-mips.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-mips.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mips.h
 
@@ -227,7 +227,7 @@ cmpaux-mips.s : cmpaux-mips.m4 xmakefile
 #define PROC_TYPE_KNOWN
 #undef i386
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-i386.s
+MACHINE_SOURCES = cmpint.c cmpaux-i386.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-i386.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-i386.h
 
@@ -239,7 +239,7 @@ cmpaux-i386.s : cmpaux-i386.m4 xmakefile
 #if (PROC_TYPE == PROC_TYPE_ALPHA)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
-MACHINE_SOURCES = cmpint.c cmpaux-alpha.s
+MACHINE_SOURCES = cmpint.c cmpaux-alpha.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-alpha.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-alpha.h
 
@@ -619,8 +619,10 @@ psbmap.touch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
 usrdef.touch : usrdef.h config.h object.h prim.h
 
 limits.h : hard-params
+	rm -f limits.h
 	RUN(hard-params) -l > limits.h
 float.h : hard-params
+	rm -f float.h
 	RUN(hard-params) -f > float.h
 hard-params : hard-params.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
