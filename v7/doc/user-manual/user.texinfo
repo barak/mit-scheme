@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.17 1993/12/06 20:37:10 cph Exp $
+@comment $Id: user.texinfo,v 1.18 1993/12/07 00:19:56 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -280,6 +280,7 @@ RUNNOFLO.ZIP    @r{@file{runtime.com} band for machines with no FP hardware}
 EDDEL.ZIP       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
 COMPDEL.ZIP     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
 
+HELP.ZIP        @r{WinHelp User and Reference Manuals}
 BCIRUN1.ZIP     @r{Debugging information for runtime system}
 BCIRUN2.ZIP     @r{    "          "       "     "      "}
 BCIRUN3.ZIP     @r{    "          "       "     "      "}
@@ -506,6 +507,17 @@ At this point only the Scheme icon called `Runtime' will execute.
 Test it.  The other Scheme icons (`Edwin', `Compiler' and `MIT Scheme'
 shield) should report that they cannot find their bands.
 
+@item
+Windows versions only.
+To install the help files, unpack @file{help.zip}:
+
+@example
+unzip @var{wherever}\help.zip
+@end example
+
+@noindent
+This installs two windows help files, @file{user.hlp} and
+@file{scheme.hlp}, in @file{@var{scheme}\bin}.
 
 @item
 To install the Edwin editor you need to build the @file{edwin.com} band.
@@ -620,7 +632,7 @@ the icons and edit the command lines to change `scheme' to `bchschem'
 @item
 Debugging information can be installed by uncompressing the
 @file{bci*.zip} files in the Scheme root directory @var{scheme}.  The
-total space required for all of the debugging information is 11.3Mb.
+total space required for all of the debugging information is 7.5Mb.
 The most useful is the runtime debugging info which is in
 @file{bcirun1.zip} through @file{bcirun3.zip} [3.6Mb installed].
 
