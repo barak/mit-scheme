@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.169 1987/05/29 17:45:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.170 1987/05/29 21:21:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -224,7 +224,7 @@ MIT in each case. |#
 ;;;; Registers/Entries
 
 (let-syntax ((define-entries
-	       (macro names
+	       (macro (start . names)
 		 (define (loop names index)
 		   (if (null? names)
 		       '()
@@ -232,20 +232,21 @@ MIT in each case. |#
 						      (car names))
 				'(@AO 6 ,index))
 			     (loop (cdr names) (+ index 6)))))
-		 `(BEGIN ,@(loop names #x00F0)))))
-  (define-entries apply error wrong-number-of-arguments interrupt-procedure
-    interrupt-continuation lookup-apply lookup access unassigned? unbound?
-    set! define primitive-apply enclose setup-lexpr return-to-interpreter
-    safe-lookup cache-variable reference-trap assignment-trap
-    uuo-link uuo-link-trap))
+		 `(BEGIN ,@(loop names start)))))
+  (define-entries #x00F0 apply error wrong-number-of-arguments
+    interrupt-procedure interrupt-continuation lookup-apply lookup access
+    unassigned? unbound? set! define primitive-apply enclose setup-lexpr
+    return-to-interpreter safe-lookup cache-variable reference-trap
+    assignment-trap)
+  (define-entries #x0228 uuo-link uuo-link-trap))
 
 (define reg:temp '(@AO 6 #x0010))
 (define reg:enclose-result '(@AO 6 #x0014))
 (define reg:compiled-memtop '(@A 6))
 
-(define popper:apply-closure '(@AO 6 #x01A4))
-(define popper:apply-stack '(@AO 6 #x01E4))
-(define popper:value '(@AO 6 #x0228))
+(define popper:apply-closure '(@AO 6 #x0168))
+(define popper:apply-stack '(@AO 6 #x01A8))
+(define popper:value '(@AO 6 #x01E8))
 
 ;;;; Transfers to Registers
 
