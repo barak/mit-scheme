@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.19 1995/02/28 01:42:59 adams Exp $
+$Id: utils.scm,v 1.20 1995/03/01 14:09:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -582,7 +582,7 @@ Example use of FORM/COPY-TRANSFORMING:
       (operator/satisfies? rator '(OUT-OF-LINE-HOOK))))
 
 (define form/simple?
-  (form/head-operator-test simple-operator?))
+  (form/head-operator-test (lambda (op) (simple-operator? op))))
 
 (define form/pseudo-simple?
   (form/head-operator-test pseudo-simple-operator?))
