@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.21 1990/11/02 03:24:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.22 1990/11/14 15:11:14 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -103,6 +103,7 @@ MIT in each case. |#
 	  create-editor
 	  create-editor-args
 	  edit
+	  edwin
 	  inhibit-editor-init-file?
 	  reset-editor
 	  reset-editor-windows))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.198 1990/11/02 03:23:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.199 1990/11/14 15:10:51 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -68,6 +68,9 @@
 			(editor-spawn-child-cmdl with-editor-ungrabbed))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
+
+(define (edwin)
+  (edit))
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)
