@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.97 1996/10/02 18:57:09 cph Exp $
+$Id: boot.c,v 9.98 1997/07/15 22:54:57 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -118,6 +118,13 @@ DEFUN (main_name, (argc, argv),
   init_exit_scheme ();
   scheme_program_name = (argv[0]);
   initial_C_stack_pointer = ((PTR) (&argc));
+
+#ifdef WINNT
+  {
+    extern void NT_initialize_win32_system_utilities();
+    NT_initialize_win32_system_utilities ();
+  }
+#endif
 #ifdef PREALLOCATE_HEAP_MEMORY
   PREALLOCATE_HEAP_MEMORY ();
 #endif
@@ -357,19 +364,6 @@ DEFUN_VOID (initialize_fixed_objects_vector)
      GENERIC_TRAMPOLINE_MODULO,
      SHARP_F);
 
-  /* This guarantees that it will not be EQ? to anything
-     until smashed by the runtime system.
-   */
-
-  (*Free++) = EMPTY_LIST;
-  (*Free++) = EMPTY_LIST;
-  FAST_VECTOR_SET
-    (fixed_objects_vector,
-     ARITY_DISPATCHER_TAG,
-     (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
-
-  /* Rather than the above, we use an unlikely interned symbol
-   */
   FAST_VECTOR_SET
     (fixed_objects_vector,
      ARITY_DISPATCHER_TAG,
