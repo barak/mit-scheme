@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.18 1995/02/27 22:40:58 adams Exp $
+$Id: utils.scm,v 1.19 1995/02/28 01:42:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -576,9 +576,6 @@ Example use of FORM/COPY-TRANSFORMING:
 	    (cond ((begin-sans-declarations form) => walk)
 		  (else false)))
 	   (else false)))))
-
-(define (simple-operator? rator)
-  (operator/satisfies? rator '(SIMPLE)))
 
 (define (pseudo-simple-operator? rator)
   (or (operator/satisfies? rator '(SIMPLE))
