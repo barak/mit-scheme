@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.3 1994/12/06 16:30:54 adams Exp $
+$Id: compiler.pkg,v 1.4 1994/12/14 20:15:18 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -107,7 +107,11 @@ MIT in each case. |#
 	  compiler:show-procedures?
 	  compiler:show-subphases?
 	  compiler:show-time-reports?
-	  compiler:use-multiclosures?))
+	  compiler:use-multiclosures?
+
+	  compiler:display-statistics
+	  compiler:reset-statistics!)
+))
 
 ;;(define-package (compiler reference-contexts)
 ;;  (files "base/refctx")
