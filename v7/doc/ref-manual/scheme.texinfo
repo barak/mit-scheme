@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.79 1999/08/19 22:17:31 cph Exp $
+@comment $Id: scheme.texinfo,v 1.80 1999/08/20 20:52:45 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.79
+@subtitle Edition 1.80
 @subtitle for Scheme Release 7.5
-@subtitle 19 August 1999
+@subtitle 20 August 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -6369,17 +6369,15 @@ mode.
 @deffn {procedure+} re-string-match regexp string [case-fold? [syntax-table]]
 @deffnx {procedure+} re-substring-match regexp string start end [case-fold? [syntax-table]]
 These procedures match @var{regexp} against the respective string or
-substring, returning @code{#f} for no match, or the index of the first
-character after the matched substring if the match succeeds.  Here is an
-example showing how to extract the matched substring:
+substring, returning @code{#f} for no match, or a set of match registers
+(see below) if the match succeeds.  Here is an example showing how to
+extract the matched substring:
 
 @example
 @group
-(let ((index
-       (re-substring-match @var{regexp}
-                           @var{string} @var{start} @var{end})))
-  (and index
-       (substring @var{string} @var{start} index)))
+(let ((r (re-substring-match @var{regexp} @var{string} @var{start} @var{end})))
+  (and r
+       (substring @var{string} @var{start} (re-match-end-index 0 r))))
 @end group
 @end example
 @end deffn
@@ -6387,8 +6385,8 @@ example showing how to extract the matched substring:
 @deffn {procedure+} re-string-search-forward regexp string [case-fold? [syntax-table]]
 @deffnx {procedure+} re-substring-search-forward regexp string start end [case-fold? [syntax-table]]
 Searches @var{string} for the leftmost substring matching @var{regexp}.
-If successful, the index of the first character of the matched substring
-is returned; otherwise @code{#f} is returned.
+Returns a set of match registers (see below) if the search is
+successful, or @code{#f} if it is unsuccessful.
 
 @code{re-substring-search-forward} limits its search to the specified
 substring of @var{string}; @code{re-string-search-forward} searches all
@@ -6398,60 +6396,34 @@ of @var{string}.
 @deffn {procedure+} re-string-search-backward regexp string [case-fold? [syntax-table]]
 @deffnx {procedure+} re-substring-search-backward regexp string start end [case-fold? [syntax-table]]
 Searches @var{string} for the rightmost substring matching @var{regexp}.
-If successful, the index of the character just after the matched
-substring is returned; otherwise @code{#f} is returned.
+Returns a set of match registers (see below) if the search is
+successful, or @code{#f} if it is unsuccessful.
 
 @code{re-substring-search-backward} limits its search to the specified
 substring of @var{string}; @code{re-string-search-backward} searches all
 of @var{string}.
 @end deffn
 
-A feature of the regular-expression matching process is a set of ten
-index registers that are set when a successful match occurs (the
-registers are left unchanged by a failed match).  Each index register
-corresponds to an instance of the regular-expression grouping operator
-@samp{\(}, and records the start index (inclusive) and end index
-(exclusive) of the matched group.  These registers are numbered from
-@code{1} to @code{9}, corresponding left-to-right to the grouping
+When a successful match or search occurs, the above procedures return a
+set of @dfn{match registers}.  The match registers are a set of index
+registers that record indexes into the matched string.  Each index
+register corresponds to an instance of the regular-expression grouping
+operator @samp{\(}, and records the start index (inclusive) and end
+index (exclusive) of the matched group.  These registers are numbered
+from @code{1} to @code{9}, corresponding left-to-right to the grouping
 operators in the expression.  Additionally, register @code{0}
 corresponds to the entire substring matching the regular expression.
 
-@deffn {procedure+} re-match-start-index n [registers]
-@deffnx {procedure+} re-match-end-index n [registers]
+@deffn {procedure+} re-match-start-index n registers
+@deffnx {procedure+} re-match-end-index n registers
 @var{N} must be an exact integer between @code{0} and @code{9}
-inclusive.  @code{re-match-start-index} returns the start index of the
-corresponding regular-expression register, and @code{re-match-end-index}
-returns the corresponding end index.  If the matched regular expression
-contained @var{m} grouping operators, then the values of these
-procedures are undefined for @var{n} strictly greater than @var{m}.
-
-If @var{registers} is specified and not @code{#f}, it must be a
-registers object as returned by the procedure @code{re-registers}; in
-that case these procedures refer to @var{registers} rather than the
-internal registers.  Note that the internal registers referred to by
-these procedures are reused by the next regular-expression match or
-search.
-@end deffn
-
-@deffn {procedure+} re-registers
-@deffnx {procedure+} re-registers? object
-@deffnx {procedure+} set-re-registers! registers
-@code{re-registers} returns the current regular-expression registers as
-an object; the returned object will not be modified by subsequent calls
-to regular-expression match and search procedures.  The structure of
-this object is deliberately unspecified, but @code{re-registers?} is
-true only of these objects.  The procedure @code{set-re-registers!}
-accepts one of these objects and sets the regular-expression registers
-to the values it contains; it is the inverse of @code{re-registers}.
-@end deffn
-
-@deffn {procedure+} preserving-re-registers thunk
-This procedure executes @var{thunk} in a way that preserves the values
-of the current regular-expression registers.  In other words, the values
-of these registers will be the same both before and after the call to
-@code{preserving-re-registers}, even if @var{thunk} performs
-regular-expression matching (which would normally overwrite the
-values).
+inclusive.  @var{Registers} must be a match-registers object as returned
+by one of the regular-expression match or search procedures above.
+@code{re-match-start-index} returns the start index of the corresponding
+regular-expression register, and @code{re-match-end-index} returns the
+corresponding end index.  If the matched regular expression contained
+@var{m} grouping operators, then the values of these procedures are
+undefined for @var{n} strictly greater than @var{m}.
 @end deffn
 
 @deffn {procedure+} regexp-group alternative @dots{}
