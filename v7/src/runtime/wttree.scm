@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wttree.scm,v 1.7 1995/03/01 21:57:17 adams Exp $
+$Id: wttree.scm,v 1.8 1995/03/02 05:41:11 adams Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -330,7 +330,7 @@ reference:
 		      (r1  (node/split-gt tree1 ak)))
 		  (node/concat3 ak av (node/union l1 l) (node/union r1 r))))))))
 
-  (define (node/union-merge merge tree1 tree2)
+  (define (node/union-merge tree1 tree2 merge)
     (cond ((empty? tree1)  tree2)
 	  ((empty? tree2)  tree1)
 	  (else
@@ -343,8 +343,8 @@ reference:
 				  (merge ak av (node/v node1))
 				  av)))
 		 (node/concat3 ak value
-			       (node/union-merge merge l1 l)
-			       (node/union-merge merge r1 r))))))))
+			       (node/union-merge l1 l merge)
+			       (node/union-merge r1 r merge))))))))
 
   (define (node/difference tree1 tree2)
     (cond ((empty? tree1)   empty)
@@ -421,10 +421,10 @@ reference:
     (%make-wt-tree (tree/type tree1)
 		   (node/union (tree/root tree1) (tree/root tree2))))
 
-  (define (tree/union-merge merge tree1 tree2)
+  (define (tree/union-merge tree1 tree2 merge)
     (%make-wt-tree (tree/type tree1)
-		   (node/union-merge merge
-				     (tree/root tree1) (tree/root tree2))))
+		   (node/union-merge (tree/root tree1) (tree/root tree2)
+				     merge)))
 
   (define (tree/intersection tree1 tree2)
     (%make-wt-tree (tree/type tree1)
@@ -563,9 +563,9 @@ reference:
   (guarantee-compatible-trees tree1 tree2 'wt-tree/union)
   ((tree-type/union (tree/type tree1)) tree1 tree2))
 
-(define (wt-tree/union-merge merge tree1 tree2)
+(define (wt-tree/union-merge tree1 tree2 merge)
   (guarantee-compatible-trees tree1 tree2 'wt-tree/union-merge)
-  ((tree-type/union-merge (tree/type tree1)) merge tree1 tree2))
+  ((tree-type/union-merge (tree/type tree1)) tree1 tree2 merge))
 
 (define (wt-tree/intersection tree1 tree2)
   (guarantee-compatible-trees tree1 tree2 'wt-tree/intersection)
@@ -639,12 +639,12 @@ reference:
 
 (define number-wt-type
   ((lambda()
-     (declare (integrate-operator make-wt-tree-type))
-     (make-wt-tree-type  <))))
+     ;(declare (integrate-operator make-wt-tree-type))
+     (make-wt-tree-type  (lambda (x y) (< x y))))))
 
 (define string-wt-type
   ((lambda()
-     (declare (integrate-operator make-wt-tree-type))
+     ;(declare (integrate-operator make-wt-tree-type))
      (make-wt-tree-type  string<?))))
 
 ;;;
