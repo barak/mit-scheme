@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.1 1988/01/05 21:19:37 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.2 1988/01/06 22:28:39 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX LAP Generation Rules: Invocations and Entries
-;;;  Matches MC68020 version 1.13
+;;;  Matches MC68020 version 4.2
 
 (declare (usual-integrations))
 
@@ -69,6 +69,9 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,(load-rnw frame-size 0)
+;;;
+;;; Should this be MOVA L?
+;;;
 	 (MOVA B (@PCR ,*block-start-label*) (R 8))
 	 (JMP ,entry:compiler-cache-reference-apply))))
 
@@ -93,7 +96,7 @@ MIT in each case. |#
        (JMP (@R 1))))
 
 ;;;
-;;; Can I use R 10 below?
+;;; Can I use R 9 below?
 ;;;
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
@@ -103,12 +106,12 @@ MIT in each case. |#
 		  (JMP ,entry:compiler-error))
 	     (let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
-		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 10))
+		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 9))
 			   (JMP ,entry:compiler-primitive-apply)))
 		     ((= arity -1)
 		      (LAP (MOV L (& ,(-1+ frame-size))
 				,reg:lexpr-primitive-arity)
-			   (MOV L (@PCR ,(constant->label primitive)) (R 10))
+			   (MOV L (@PCR ,(constant->label primitive)) (R 9))
 			   (JMP ,entry:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
@@ -158,12 +161,12 @@ MIT in each case. |#
 	  ((zero? frame-size)
 	   (increment-rnl 14 how-far))
 	  ((= frame-size 1)
-	   (LAP (MOV L (@A+ 14) ,(offset-reference r14 (-1+ how-far)))
+	   (LAP (MOV L (@R+ 14) ,(offset-reference r14 (-1+ how-far)))
 		,@(increment-rnl 14 (-1+ how-far))))
 	  ((= frame-size 2)
 	   (if (= how-far 1)
 	       (LAP (MOV L (@RO B 14 4) (@RO B 14 8))
-		    (MOV L (@R+ 14) (@A 14)))
+		    (MOV L (@R+ 14) (@R 14)))
 	       (let ((i (lambda ()
 			  (INST (MOV L (@R+ 14)
 				     ,(offset-reference r14 (-1+ how-far)))))))
@@ -214,6 +217,9 @@ MIT in each case. |#
 	    frame-size 5
 	    (lambda ()
 	      (INST (MOV L
+;;;
+;;; Should these be (- temp 8) and (- destination 8)?
+;;;
 			 (@-R temp)
 			 (@-R destination))))
 	    (lambda (generator)
@@ -223,25 +229,29 @@ MIT in each case. |#
 ;;; This is invoked by the top level of the LAP GENERATOR.
 
 (define generate/quotation-header
-  (let ()
-    (define (declare-constants constants code)
-      (define (inner constants)
-	(if (null? constants)
-	    code
-	    (let ((entry (car constants)))
-	      (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
-		   ,@(inner (cdr constants))))))
-      (inner constants))
-
-    (define (declare-references references entry:single entry:multiple)
-      (if (null? references)
-	  (LAP)
-	  (LAP (MOVA L (@PCR ,(cdar references)) (R 9))
-	       ,@(if (null? (cdr references))
-		     (LAP (JSB ,entry:single))
-		     (LAP ,(load-rnw (length references) 1)
-			  (JSB ,entry:multiple)))
-	       ,@(make-external-label (generate-label)))))
+  (let ((declare-constants
+	 (lambda (constants code)
+	   (define (inner constants)
+	     (if (null? constants)
+		 code
+		 (let ((entry (car constants)))
+		   (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+			,@(inner (cdr constants))))))
+	   (inner constants)))
+	(declare-references 
+	 (lambda (references entry:single entry:multiple)
+	   (if (null? references)
+	       (LAP)
+	       (LAP (MOVA L (@PCR ,(cdar references)) (R 9))
+		    ,@(if (null? (cdr references))
+			  (LAP (JSB ,entry:single))
+			  (LAP ,(load-rnw (length references) 1)
+			       (JSB ,entry:multiple)))
+		    ,@(make-external-label (generate-label)))))))
+;;;
+;;; Break Point
+;;; Code above this point has been changed
+;;;
     (lambda (block-label constants references assignments uuo-links)
       (declare-constants uuo-links
        (declare-constants references
@@ -288,7 +298,7 @@ MIT in each case. |#
   (PROCEDURE-HEAP-CHECK (? label))
   (disable-frame-pointer-offset!
    (let ((gc-label (generate-label)))
-     (LAP ,@(procedure-header (label->procedure label) gc-label)
+     (LAP ,@(procedure-header (label->object label) gc-label)
 	  (CMP L ,reg:compiled-memtop (R 12))
 	  ;; *** LEQU ? ***
 	  (B B LEQ (@PCR ,gc-label))))))
@@ -302,20 +312,18 @@ MIT in each case. |#
 (define-rule statement
   (SETUP-LEXPR (? label))
   (disable-frame-pointer-offset!
-   (let ((procedure (label->procedure label)))
+   (let ((procedure (label->object label)))
      (LAP ,@(procedure-header procedure false)
 	  (MOV W
-	       (& ,(+ (procedure-required procedure)
-		      (procedure-optional procedure)
-		      (if (procedure/closure? procedure) 1 0)))
+	       (& ,(+ (rtl-procedure/n-required procedure)
+		      (rtl-procedure/n-optional procedure)
+		      (if (rtl-procedure/closure? procedure) 1 0)))
 	       (R 1))
-	  (MOV L (S ,(if (procedure-rest procedure) 1 0)) (R 2))
+	  (MOV L (S ,(if (rtl-procedure/rest? procedure) 1 0)) (R 2))
 	  (JSB ,entry:compiler-setup-lexpr)))))
 
 (define-rule statement
   (CONTINUATION-HEAP-CHECK (? internal-label))
-  (enable-frame-pointer-offset!
-   (continuation-frame-pointer-offset (label->continuation internal-label)))
   (let ((gc-label (generate-label)))
     (LAP (LABEL ,gc-label)
 	 (JSB ,entry:compiler-interrupt-continuation)
@@ -325,19 +333,19 @@ MIT in each case. |#
 	 (B B LEQ (@PCR ,gc-label)))))
 
 (define (procedure-header procedure gc-label)
-  (let ((internal-label (procedure-label procedure))
-	(external-label (procedure-external-label procedure)))
-    (LAP ,@(case (procedure-name procedure) ;really `procedure/type'.
+  (let ((internal-label (rtl-procedure/label procedure))
+	(external-label (rtl-procedure/external-label procedure)))
+    (LAP ,@(case (rtl-procedure/type procedure)
 	     ((IC)
 	      (LAP (ENTRY-POINT ,external-label)
 		   (EQUATE ,external-label ,internal-label)))
 	     ((CLOSURE)
-	      (let ((required (1+ (procedure-required procedure)))
-		    (optional (procedure-optional procedure)))
+	      (let ((required (1+ (rtl-procedure/n-required procedure)))
+		    (optional (rtl-procedure/n-optional procedure)))
 		(LAP (ENTRY-POINT ,external-label)
 		     ,@(make-external-label external-label)
 		     ,(test-rnw required 0)
-		     ,@(cond ((procedure-rest procedure)
+		     ,@(cond ((rtl-procedure/rest? procedure)
 			      (LAP (B B GEQ (@PCR ,internal-label))))
 			     ((zero? optional)
 			      (LAP (B B EQL (@PCR ,internal-label))))
