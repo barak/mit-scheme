@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.78 2000/06/14 02:16:23 cph Exp $
+$Id: todo.txt,v 1.79 2000/06/14 02:25:04 cph Exp $
 
 Bug fixes
 ---------
@@ -24,8 +24,6 @@ New features
 * When yanking a message into a reply buffer, need option to quote the
   original message using MIME, rather than the current copy-and-indent
   mechanism.
-
-* Should MIME encapsulation of forwarded messages be optional?
 
 * Command to expand attachment inline.  Sometimes attachments aren't
   big binary things but small text things that are easier to view

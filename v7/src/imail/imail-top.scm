@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.151 2000/06/14 02:15:42 cph Exp $
+;;; $Id: imail-top.scm,v 1.152 2000/06/14 02:24:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -142,6 +142,12 @@ Otherwise, the text is left as is."
   "If true, forwarded email messages will contain all header fields.
 Otherwise, only the header fields normally shown by IMAIL are sent."
   #f
+  boolean?)
+
+(define-variable imail-forward-using-mime
+  "If true, forwarded email messages are sent as MIME attachments.
+Otherwise, they are inserted into the message body."
+  #t
   boolean?)
 
 (define-command imail
@@ -450,6 +456,7 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-dont-reply-to-names
     imail-expunge-confirmation
     imail-forward-all-headers
+    imail-forward-using-mime
     imail-ignored-headers
     imail-kept-headers
     imail-message-filter
@@ -1779,15 +1786,23 @@ see the documentation of `imail-resend'."
 	  "]")))
      #f
      (lambda (mail-buffer)
-       (add-buffer-mime-attachment!
-	mail-buffer
-	'MESSAGE 'RFC822 '() '(INLINE)
-	(map header-field->mail-header
-	     (let ((headers (message-header-fields message)))
-	       (if (ref-variable imail-forward-all-headers mail-buffer)
-		   headers
-		   (maybe-reformat-headers headers mail-buffer))))
-	(message-body message))
+       (let ((raw? (ref-variable imail-forward-all-headers mail-buffer)))
+	 (if (ref-variable imail-forward-using-mime mail-buffer)
+	     (add-buffer-mime-attachment!
+	      mail-buffer
+	      'MESSAGE 'RFC822 '() '(INLINE)
+	      (map header-field->mail-header
+		   (let ((headers (message-header-fields message)))
+		     (if raw?
+			 headers
+			 (maybe-reformat-headers headers mail-buffer))))
+	      (message-body message))
+	     (let ((mark (mark-left-inserting-copy (buffer-end mail-buffer))))
+	       (with-buffer-point-preserved mail-buffer
+		 (lambda ()
+		   (insert-header-fields message raw? mark)
+		   (insert-string (message-body message) mark)))
+	       (mark-temporary! mark))))
        (if (window-has-no-neighbors? (current-window))
 	   (select-buffer mail-buffer)
 	   (select-buffer-other-window mail-buffer))
