@@ -1,13 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.86 2000/06/19 12:54:33 cph Exp $
+$Id: todo.txt,v 1.87 2000/06/19 20:01:21 cph Exp $
 
 Bug fixes
 ---------
-
-* When yanking MIME messages into a reply buffer, reformat the message
-  in the reply buffer, but drop any out-of-line content.  The user
-  should see exactly the same text, minus the attachments.  Otherwise
-  it's just confusing, and it requires extra editing to do the reply.
 
 * M-x imail-toggle-message isn't really a replacement for M-x
   imail-toggle-headers.  If the message is really large, and you just
