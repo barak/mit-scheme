@@ -1,6 +1,6 @@
 ;;; -*-Fundamental-*-
 ;;;
-;;;	$Id: bch-prm.lst,v 1.5 1993/06/24 04:35:33 gjr Exp $
+;;;	$Id: bch-prm.lst,v 1.6 1993/11/09 15:48:08 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -38,6 +38,7 @@
 ;;;
 ;;;;	Shared files (Unix and DOS)
 artutl.c
+avltree.c
 bignum.c
 bigprm.c
 bitstr.c

@@ -1,6 +1,6 @@
 ;;; -*-Fundamental-*-
 ;;;
-;;;	$Id: bch-p-nt.lst,v 1.4 1993/09/01 18:25:40 gjr Exp $
+;;;	$Id: bch-p-nt.lst,v 1.5 1993/11/09 15:47:15 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -38,6 +38,7 @@
 ;;;
 ;;;;	Shared files (Unix and DOS)
 artutl.c
+avltree.c
 bignum.c
 bigprm.c
 bitstr.c

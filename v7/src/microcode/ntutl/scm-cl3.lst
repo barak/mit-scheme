@@ -1,4 +1,5 @@
 artutl.obj
+avltree.obj
 bignum.obj
 bigprm.obj
 bitstr.obj
