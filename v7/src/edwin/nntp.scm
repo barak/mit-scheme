@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.9 1996/10/15 20:19:20 cph Exp $
+;;;	$Id: nntp.scm,v 1.10 1996/10/23 22:59:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -1563,9 +1563,11 @@
 			    (if (news-header:real? parent)
 				(news-header:subject parent)
 				(find-tree-subject header))))
-		       (compare-subjects
-			(canonicalize-subject (news-header:subject header))
-			(canonicalize-subject subject)))))
+		       (memq
+			(compare-subjects
+			 (canonicalize-subject (news-header:subject header))
+			 (canonicalize-subject subject))
+			'(EQUAL LEFT-PREFIX)))))
 	       (disassociate-header-from-parent header parent)))))
    headers))
 
@@ -1652,13 +1654,9 @@
 (define (assoc-subject subject alist)
   (let loop ((alist alist))
     (and (not (null? alist))
-	 (let ((comparison (compare-subjects subject (caar alist))))
-	   (if comparison
-	       (begin
-		 (if (eq? 'LEFT-PREFIX comparison)
-		     (set-car! (car alist) subject))
-		 (car alist))
-	       (loop (cdr alist)))))))
+	 (if (eq? 'EQUAL (compare-subjects subject (caar alist)))
+	     (car alist)
+	     (loop (cdr alist))))))
 
 (define (compare-subjects x y)
   (let ((xe (string-length x))
