@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: basic.scm,v 1.129 1993/02/25 08:35:52 gjr Exp $
+;;;	$Id: basic.scm,v 1.130 1993/08/10 05:32:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -187,7 +187,7 @@ Turns a following A (or C-A) into a Control-Meta-A."
     (if execute-extended-keys?
 	(dispatch-on-key (current-comtabs) key)
 	key)))
-
+
 (define-command prefix-key
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
