@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.6 1988/08/22 22:20:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.7 1988/08/23 16:34:11 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -233,7 +233,13 @@ MIT in each case. |#
 	  linearize-rtl
 	  open-coding-analysis)
   (export (compiler debug)
-	  linearize-rtl))
+	  linearize-rtl)
+  (export (compiler rtl-optimizer)
+	  rgraph/compress!
+	  generate-primitive
+	  generate-type-test
+	  generate-generic-binary
+	  generate-generic-unary))
 
 (define-package (compiler rtl-cse)
   (files "rtlopt/rcse1"			;RTL common subexpression eliminator
@@ -252,12 +258,14 @@ MIT in each case. |#
 	 "rtlopt/rdeath"		;RTL code compression
 	 "rtlopt/rdebug"		;RTL optimizer debugging output
 	 "rtlopt/ralloc"		;RTL register allocation
+	 "rtlopt/expand"		;RTL expansion
 	 )
   (parent (compiler))
   (export (compiler top-level)
 	  code-compression
 	  lifetime-analysis
-	  register-allocation))
+	  register-allocation
+	  rtl-expansion))
 
 (define-package (compiler debugging-information)
   (files "base/infnew")
