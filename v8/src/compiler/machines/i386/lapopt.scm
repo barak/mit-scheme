@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.6 1995/01/12 16:34:48 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.7 1995/01/12 17:24:26 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -43,11 +43,24 @@ MIT in each case. |#
   ;; 3. list of registers modified
   ;; 4. list of registers read
   ;; 5. list of registers used in addressing
+  (define (timing-of-inst inst)
+    (car inst))
+  (define (piping-of-inst inst)
+    (cadr inst))
+  (define (regs-mod-of-inst inst)
+    (caddr inst))
+  (define (regs-read-of-inst inst)
+    (cadddr inst))
+  (define (regs-addr-of-inst inst)
+    (caddddr inst))
+  
   (define (get-instruction-info inst)
     (define ins-vars '())
     (define instruction-data
       '((1 12 (a) (b) () mov ? (? a) (? b))
 	(1 12 (a) () () lea (? a) ?)
+	(1 12 (a) (b) () add ? (R a) (? b))
+	(2 #f () (a) () jmp (R a))
 	(0 #f () () () comment ?)
 	(0 #f () () () scheme-object ? ?)
 	(0 #f () () () label ?)
@@ -71,34 +84,36 @@ MIT in each case. |#
 		  (cdr (car data))
 		  (loop (cdr data))))))
       (if (pair? a)
-	  (let ((data (find-var (car a))))
-	    (if data
-		(if (eq? (car data) 'R)
-		    (cons (cadr data)
-			  (make-reg-list (cdr a)))
-		    (make-reg-list (cdr a)))
-		(if (number? (car a))
+	  (if (number? (car a))
 		    (cons (car a)
 			  (make-reg-list (cdr a)))
-		    (begin
-		      (pp (car a))
-		      ()))))
+		    (let ((data (find-var (car a))))
+		      (if data
+			  (if (eq? (car data) 'R)
+			      (cons (cadr data)
+				    (make-reg-list (cdr a)))
+			      (make-reg-list (cdr a)))
+			  (begin
+			    (pp (car a))
+			    ()))))
 	  a))
-
+    
     ;; Checks to see if the the pattern matches given data
     (define (is-all-match? pattern data)
       (define (is-match? pattern data)
 	(cond ((eq? '? pattern)
 	       #t)
-	      ((and (pair? pattern)
-		    (eq? '? (car pattern)))
-
-	       ;; Add data to variable list
-	       (set! ins-vars
-		     (cons (cons (cadr pattern)
-				 data)
-			   ins-vars))
-	       #t)
+	      ((pair? pattern)
+	       (if (or (eq? '? (car pattern))
+		       (eq? (car pattern)
+			    (car data)))
+		   (begin
+		     ;; Add data to variable list
+		     (set! ins-vars
+			   (cons (cons (cadr pattern)
+				       data)
+				 ins-vars))
+		     #t)))
 	      ((eq? pattern data)
 	       #t)
 	      (else
@@ -125,10 +140,60 @@ MIT in each case. |#
 		    (make-reg-list (cadddr (car data)))
 		    ())
 	      (loop (cdr data))))))
-  (let loop ((inst instructions)
-	     (times 0))
-    (if (null? inst)
-	(pp times)
-	(loop (cdr inst)
-	      (+ times (car (get-instruction-info (car inst)))))))
+  (define (get-pentium-timing instructions)
+    (let loop ((inst instructions)
+	       (time 0)
+	       (pipe-1-filled? #f)
+	       (pipe-1-data ())
+	       (last-mod-regs ())
+      (define (flush-pipe-1)
+	(if pipe-1-filled?
+	    (begin
+	      (set! time (+ time (car pipe-1-data)))
+	      (set! pipe-1-filled? #f)
+	      (set! last-mod-regs (regs-mod-of-inst pipe-1-data))
+	      (set! pipe-1-data ()))))
+	      
+      (if (null? inst)
+	  (begin
+	    (if pipe-1-filled?
+		(flush-pipe-1))
+	    time)
+	  (let ((info (get-instruction-info (car inst))))
+	    (if (and pipe-1-filled?
+		     (or (= (piping-of-inst info) 1)
+			 (eq? (piping-of-inst info) #f)
+			 (intersect? (append (regs-use-of-inst info)
+					     (regs-addr-of-inst info))
+				     (regs-mod-of-inst pipe-1-data))
+			 (intersect? (regs-addr-of-inst info)
+				     last-mod-regs)))
+		(flush-pipe-1))
+	    (if (intersect? last-mod-regs
+			    (regs-addr-of-inst info))
+		(set! time (+ time 1)))
+	    (if pipe-1-filled?
+		(loop (cdr inst)
+		      (+ time (if (> (timing-of-inst info)
+				     (timing-of-inst pipe-1-data))
+				  (timing-of-inst info)
+				  (timing-of-inst pipe-1-data)))
+		      #f
+		      ()
+		      (append (regs-mod-of-inst info)
+			      (regs-mod-of-inst pipe-1-data)))
+		(loop (cdr inst)
+		      time
+		      #t
+		      info
+		      last-mod-regs)))))))
+
+  (pp (get-pentium-timing instructions))
   instructions)
+
+
+
+
+
+
+
