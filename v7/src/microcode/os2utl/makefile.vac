@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.vac,v 1.9 2003/02/14 18:28:31 cph Exp $
+### $Id: makefile.vac,v 1.10 2003/05/17 20:56:53 cph Exp $
 ###
 ### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
@@ -44,7 +44,7 @@ CC = icc
 CFLAGS = $(ICCFLAGS) /DMIT_SCHEME
 LDFLAGS = $(ICCFLAGS) /B"/EXEPACK"
 M4 = m4
-M4FLAGS = -DOS2
+M4FLAGS = -DSUPPRESS_LEADING_UNDERSCORE
 AS = as
 ASFLAGS = -Zomf
 

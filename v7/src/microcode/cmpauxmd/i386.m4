@@ -1,8 +1,9 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.61 2003/02/14 18:28:25 cph Exp $
+### $Id: i386.m4,v 1.62 2003/05/17 20:55:45 cph Exp $
 ###
-### Copyright (c) 1992-2002 Massachusetts Institute of Technology
+### Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
+### Copyright 2002,2003 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -98,38 +99,15 @@
 ###
 ### WIN32
 ###	If defined, expand to run under Win32; implies DASM.
-### OS2
-###	If defined, expand to run under OS/2.  This macro does nothing
-###	more than define SUPPRESS_LEADING_UNDERSCORE and
-###	CALLER_ALLOCS_STRUCT_RETURN, which are the conventions used to
-###	call OS/2 API procedures; note that EMX/GCC doesn't define
-###	these symbols because it thinks it's running under unix.
-###
-### If none of { WIN32, OS2 } is defined, expansion is for unix.
 ###
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
 ###	otherwise, they have an underscore prepended to them.
-### CALLER_ALLOCS_STRUCT_RETURN
-### STATIC_STRUCT_RETURN
-###	Controls the conventions used to return 8-byte structs from C
-###	procedures.  If CALLER_ALLOCS_STRUCT_RETURN is defined, the
-###	caller allocates space on the stack and passes a pointer to
-###	that space on the top of the stack.  If STATIC_STRUCT_RETURN
-###	is defined, the callee returns a pointer to a static struct in
-###	EAX.  Otherwise, the callee returns the struct in EAX/EDX.
-### CALLEE_POPS_STRUCT_RETURN
-###	Modifies the CALLER_ALLOCS_STRUCT_RETURN calling convention.
-###	Under the modified convention, the callee pops the pointer to
-###	the allocated space, so the caller doesn't have to.  This
-###	convention is used by GCC 2.9.x.
 ### WCC386
 ###	Should be defined when using Watcom assembler.
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
-### LINUX_ELF
-###	If defined, expand to run under Linux ELF.
 ### TYPE_CODE_LENGTH
 ###	Normally defined to be 6.  Don't change this unless you know
 ###	what you're doing.
@@ -143,14 +121,6 @@
 ifdef(`WIN32',
       `define(IF_WIN32,`$1')',
       `define(IF_WIN32,`')')
-
-ifdef(`OS2',
-      `define(IFOS2,`$1')',
-      `define(IFOS2,`')')
-
-ifdef(`LINUX_ELF',
-      `define(IF_LINUX_ELF,`$1')',
-      `define(IF_LINUX_ELF,`')')
 
 ifdef(`DISABLE_387',
       `define(IF387,`')',
@@ -191,14 +161,9 @@ IFNDASM(`define(popad,`popa')')
 IFNDASM(`define(pushfd,`pushf')')
 IFNDASM(`define(popfd,`popf')')
 
-IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-
-ifdef(`WCC386R',
-      `define(EVR,`_$1')',
-      `ifdef(`SUPPRESS_LEADING_UNDERSCORE',
-	     `define(EVR,`$1')',
-	     `define(EVR,`_$1')')')
+ifdef(`SUPPRESS_LEADING_UNDERSCORE',
+       `define(EVR,`$1')',
+       `define(EVR,`_$1')')
 
 # When using the Watcom C compiler with register-based calling
 # conventions, source-code function names normally expand to `FOO_',
@@ -385,11 +350,6 @@ allocate_longword(C_Stack_Pointer)
 
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
-
-IFOS2(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
-IF_LINUX_ELF(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
-
-IF_WIN32(`ifdef(`WCC386', `define(`STATIC_STRUCT_RETURN',1)')')
 
 define_data(ia32_cpuid_supported)
 allocate_longword(ia32_cpuid_supported)
@@ -578,20 +538,16 @@ scheme_to_interface_proceed:
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
-')
-	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
+	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
 
+	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
 
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
+	OP(mov,l)	TW(REG(esp),REG(ecx))	# push ptr to struct return
 	OP(add,l)	TW(IMM(16),REG(ecx))
 	OP(push,l)	REG(ecx)
-')
 
 	OP(xor,l)	TW(REG(ecx),REG(ecx))
 	OP(mov,b)	TW(REG(al),REG(cl))
@@ -599,22 +555,10 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	call		IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-ifdef(`CALLEE_POPS_STRUCT_RETURN',`',`
-	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
-')')
-	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
-
-ifdef(`STATIC_STRUCT_RETURN',`
-	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
-')
-
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(pop,l)	REG(eax)	# Pop struct return into registers
+	OP(add,l)	TW(IMM(20),REG(esp))	# pop utility args
+	OP(pop,l)	REG(eax)		# pop struct return
 	OP(pop,l)	REG(edx)
-')
-	jmp		IJMP(REG(eax))			# Invoke handler
+	jmp		IJMP(REG(eax))		# Invoke handler
 
 define_c_label(interface_to_scheme)
 IF387(`

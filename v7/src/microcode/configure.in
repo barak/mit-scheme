@@ -19,7 +19,7 @@ dnl along with MIT/GNU Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.22 2003/05/17 02:21:09 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.23 2003/05/17 20:55:37 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -617,25 +617,7 @@ return 1;
 	[scheme_cv_linux_elf=no])
     AC_MSG_RESULT(${scheme_cv_linux_elf})
     if test "${scheme_cv_linux_elf}" = "yes"; then
-	M4_FLAGS="${M4_FLAGS} -P LINUX_ELF,1"
-    fi
-    if test "${GCC}" = "yes"; then
-	AC_MSG_CHECKING([for GCC version >= 2.95])
-	AC_TRY_RUN(
-[int
-main ()
-{
-#if ((__GNUC__ > 2) || ((__GNUC__ == 2) && (__GNUC_MINOR__ >= 95)))
-return 0;
-#endif
-return 1;
-}],
-	[scheme_cv_gcc3=yes],
-	[scheme_cv_gcc3=no])
-	AC_MSG_RESULT(${scheme_cv_gcc3})
-	if test "${scheme_cv_gcc3}" = "yes"; then
-	    M4_FLAGS="${M4_FLAGS} -P CALLEE_POPS_STRUCT_RETURN,1"
-	fi
+	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     fi
 fi
 

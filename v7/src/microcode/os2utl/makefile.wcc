@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.wcc,v 1.10 2003/02/14 18:28:31 cph Exp $
+### $Id: makefile.wcc,v 1.11 2003/05/17 20:56:57 cph Exp $
 ###
 ### Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ###
@@ -83,7 +83,7 @@ LDFLAGS := debug all option caseexact option quiet option symfile
 #		 * OS/2 _System calling convention.
 # -DDASM	Select Intel assembly language.
 # -DWCC386R	Select Watcom 386 register-based conventions.
-M4FLAGS = -DOS2 -DDASM -DWCC386R
+M4FLAGS = -DDASM -DWCC386R
 
 # Assembler options.
 #
