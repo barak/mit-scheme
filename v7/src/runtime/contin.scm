@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: contin.scm,v 14.8 1999/01/02 06:11:34 cph Exp $
+$Id: contin.scm,v 14.9 1999/02/24 04:40:59 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -29,28 +29,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   'REENTRANT
 	   receiver))
 
-;; The following is not properly tail recursive because it builds the
-;; extra frame that invokes cont on the result.
-;; This is done to guarantee that the continuation is still valid,
-;; since the continuation invocation code is the code that maintains
-;; this state.  Note that any other way of verifying this information
-;; would also add a continuation frame to the stack!
+;;; The following is not properly tail recursive because it builds the
+;;; extra frame that invokes cont on the result.  This is done to
+;;; guarantee that the continuation is still valid, since the
+;;; continuation invocation code is the code that maintains this
+;;; state.  Note that any other way of verifying this information
+;;; would also add a continuation frame to the stack!
 
 (define (non-reentrant-call-with-current-continuation receiver)
   (call/cc (ucode-primitive non-reentrant-call-with-current-continuation 1)
 	   'UNUSED
-	   (lambda (cont)
-	     (cont (receiver cont)))))
+	   (lambda (cont) (cont (receiver cont)))))
 
 (define (call/cc primitive type receiver)
   (primitive
    (lambda (control-point)
      (let ((continuation
-	    (make-continuation type control-point (get-dynamic-state))))
+	    (make-continuation type
+			       control-point
+			       (get-dynamic-state)
+			       (get-thread-event-block))))
        (%%within-continuation
 	continuation
-	(lambda ()
-	  (receiver continuation)))))))
+	(lambda () (receiver continuation)))))))
 
 (define-integrable (%%within-continuation continuation thunk)
   ((ucode-primitive within-control-point 2)
@@ -60,21 +61,29 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (%within-continuation continuation thread-switch? thunk)
   (%%within-continuation
    continuation
-   (let ((dynamic-state (continuation/dynamic-state continuation)))
+   (let ((restore-state (state-restoration-procedure continuation)))
      (lambda ()
-       (set-dynamic-state! dynamic-state thread-switch?)
+       (restore-state thread-switch?)
        (thunk)))))
 
 (define (invocation-method/reentrant continuation value)
   (%%within-continuation
    continuation
-   (let ((dynamic-state (continuation/dynamic-state continuation)))
+   (let ((restore-state (state-restoration-procedure continuation)))
      (lambda ()
-       (set-dynamic-state! dynamic-state false)
+       (restore-state #f)
        value))))
 
-;; These two are correctly locked for multiprocessing, but not for
-;; multiprocessors.
+(define (state-restoration-procedure continuation)
+  (let ((dynamic-state (continuation/dynamic-state continuation))
+	(block-thread-events?
+	 (continuation/block-thread-events? continuation)))
+    (lambda (thread-switch?)
+      (set-dynamic-state! dynamic-state thread-switch?)
+      (set-thread-event-block! block-thread-events?))))
+
+;;; These two are correctly locked for multiprocessing, but not for
+;;; multiprocessors.
 
 (define (within-continuation continuation thunk)
   (if (not (continuation? continuation))
@@ -84,14 +93,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (lambda ()
 	 (let ((method (continuation/invocation-method continuation)))
 	   (if (eq? method invocation-method/reentrant)
-	       true
+	       #t
 	       (and (eq? method invocation-method/unused)
 		    (begin
 		      (set-continuation/invocation-method!
 		       continuation
 		       invocation-method/used)
-		      true))))))
-      (%within-continuation continuation false thunk)
+		      #t))))))
+      (%within-continuation continuation #f thunk)
       (error "Reentering used continuation" continuation)))
 
 (define (invocation-method/unused continuation value)
@@ -109,14 +118,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   value
   (error "Reentering used continuation" continuation))
 
-(define (make-continuation type control-point dynamic-state)
+(define (make-continuation type control-point dynamic-state
+			   block-thread-events?)
   (make-entity
    (case type
      ((REENTRANT) invocation-method/reentrant)
      ((UNUSED) invocation-method/unused)
      ((USED) invocation-method/used)
      (else (error "Illegal continuation type" type)))
-   (make-%continuation control-point dynamic-state)))
+   (make-%continuation control-point dynamic-state block-thread-events?)))
 
 (define (continuation/type continuation)
   (let ((invocation-method (continuation/invocation-method continuation)))
@@ -128,12 +138,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (continuation? object)
   (and (entity? object)
        (if (%continuation? (entity-extra object))
-	   true
+	   #t
 	   (continuation? (entity-procedure object)))))
 
 (define (guarantee-continuation continuation)
   (if (not (continuation? continuation))
-      (error:wrong-type-argument continuation "continuation" false))
+      (error:wrong-type-argument continuation "continuation" #f))
   continuation)
 
 (define-integrable (continuation/invocation-method continuation)
@@ -150,5 +160,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (%continuation (constructor make-%continuation)
 				 (conc-name %continuation/))
-  (control-point false read-only true)
-  (dynamic-state false read-only true))
+  (control-point #f read-only #t)
+  (dynamic-state #f read-only #t)
+  (block-thread-events? #f read-only #t))

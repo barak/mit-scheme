@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.25 1999/02/23 21:31:46 cph Exp $
+$Id: thread.scm,v 1.26 1999/02/24 04:41:06 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -129,14 +129,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (call-with-current-continuation
    (lambda (return)
      (%within-continuation (or root-continuation root-continuation-default)
-			   true
+			   #t
        (lambda ()
 	 (fluid-let ((state-space:local (make-state-space)))
 	   (call-with-current-continuation
 	    (lambda (continuation)
 	      (let ((thread (make-thread continuation)))
 		(%within-continuation (let ((k return)) (set! return #f) k)
-				      true
+				      #t
 				      (lambda () thread)))))
 	   (set-interrupt-enables! interrupt-mask/all)
 	   (exit-current-thread (thunk))))))))
@@ -202,7 +202,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (thread-not-running thread state)
   (set-thread/execution-state! thread state)
   (let ((thread* (thread/next thread)))
-    (set-thread/next! thread false)
+    (set-thread/next! thread #f)
     (set! first-running-thread thread*))
   (run-first-thread))
 
@@ -222,12 +222,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(%resume-current-thread thread)))))
 
 (define (%resume-current-thread thread)
-  (if (thread/block-events? thread)
-      (%maybe-toggle-thread-timer)
-      (let ((event (handle-thread-events thread)))
-	(set-thread/block-events?! thread #f)
-	(%maybe-toggle-thread-timer)
-	(if (eq? #t event) #f event))))
+  (if (not (thread/block-events? thread))
+      (begin
+	(handle-thread-events thread)
+	(set-thread/block-events?! thread #f)))
+  (%maybe-toggle-thread-timer))
 
 (define (suspend-current-thread)
   (without-interrupts %suspend-current-thread))
@@ -238,18 +237,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let ((block-events? (thread/block-events? thread)))
 	(set-thread/block-events?! thread #f)
 	(maybe-signal-input-thread-events)
-	(let ((event
-	       (let ((event (handle-thread-events thread)))
-		 (if (eq? #t event)
-		     (begin
-		       (set-thread/block-events?! thread #f)
-		       (call-with-current-continuation
-			(lambda (continuation)
-			  (set-thread/continuation! thread continuation)
-			  (thread-not-running thread 'WAITING))))
-		     event))))
+	(let ((any-events? (handle-thread-events thread)))
 	  (set-thread/block-events?! thread block-events?)
-	  event)))))
+	  (if (not events?)
+	      (call-with-current-continuation
+	       (lambda (continuation)
+		 (set-thread/continuation! thread continuation)
+		 (thread-not-running thread 'WAITING)))))))))
 
 (define (stop-current-thread)
   (without-interrupts
@@ -314,7 +308,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
-	   (set-thread/next! thread false)
+	   (set-thread/next! thread #f)
 	   (set-thread/next! last-running-thread thread)
 	   (set! last-running-thread thread)
 	   (set! first-running-thread next)
@@ -636,7 +630,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (let ((thread first-running-thread))
        (if thread
 	   (let ((result (thread/block-events? thread)))
-	     (set-thread/block-events?! thread true)
+	     (set-thread/block-events?! thread #t)
 	     result)
 	   #f)))))
 
@@ -647,6 +641,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (lambda (thread)
 	 (handle-thread-events thread)
 	 (set-thread/block-events?! thread #f))))))
+
+(define (get-thread-event-block)
+  (without-interrupts
+   (lambda ()
+     (let ((thread first-running-thread))
+       (if thread
+	   (thread/block-events? thread)
+	   'NO-CURRENT-THREAD)))))
+
+(define (set-thread-event-block! block?)
+  (if (boolean? block?)
+      (without-interrupts
+       (lambda ()
+	 (let ((thread first-running-thread))
+	   (if thread
+	       (set-thread/block-events? thread block?)))))))
 
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)
@@ -671,21 +681,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (and (not (thread/block-events? thread))
 	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
-
+
 (define (handle-thread-events thread)
-  (let loop ((result #t))
+  (let loop ((any-events? #f))
     (let ((event (ring/dequeue (thread/pending-events thread) #t)))
       (if (eq? #t event)
-	  result
+	  any-events?
 	  (begin
 	    (if event
 		(begin
-		  (set-thread/block-events?! thread true)
+		  (set-thread/block-events?! thread #t)
 		  (event)
 		  (set-interrupt-enables! interrupt-mask/gc-ok)))
-	    (loop (if (or (eq? #f result) (eq? #t result))
-		      event
-		      result)))))))
+	    (loop #t))))))
 
 (define (allow-thread-event-delivery)
   (without-interrupts
@@ -709,14 +717,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (timer-record
 		   (conc-name timer-record/))
-  (time false read-only false)
+  (time #f read-only #t)
   thread
   event
   next)
 
 (define (register-timer-event interval event)
   (let ((time (+ (real-time-clock) interval)))
-    (let ((new-record (make-timer-record time (current-thread) event false)))
+    (let ((new-record (make-timer-record time (current-thread) event #f)))
       (without-interrupts
        (lambda ()
 	 (let loop ((record timer-records) (prev false))
@@ -800,7 +808,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (or (false? interval)
 	       (and (exact-integer? interval)
 		    (> interval 0))))
-      (error:wrong-type-argument interval false 'SET-THREAD-TIMER-INTERVAL!))
+      (error:wrong-type-argument interval #f 'SET-THREAD-TIMER-INTERVAL!))
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)
@@ -855,7 +863,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if thread-timer-running?
       (begin
 	((ucode-primitive real-timer-clear))
-	(set! thread-timer-running? false)
+	(set! thread-timer-running? #f)
 	((ucode-primitive clear-interrupts!) interrupt-bit/timer))))
 
 ;;;; Mutexes
@@ -966,7 +974,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   item)
 
 (define (make-ring)
-  (let ((link (make-link false false false)))
+  (let ((link (make-link #f #f #f)))
     (set-link/prev! link link)
     (set-link/next! link link)
     link))
