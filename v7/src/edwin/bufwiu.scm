@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.17 1991/04/01 10:06:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.18 1991/04/01 19:47:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -391,10 +391,17 @@
 			    (o3-index start)
 			    (fix:- 1 (fix:- (o3-y end) (o3-y start)))
 			    (window-y-size window))))
-    (cond ((not y) false)
-	  ((fix:= (o3-y start) y) true)
-	  ((fix:< (o3-y start) y) (scroll-lines-down window start end y))
-	  (else (scroll-lines-up window start end y)))))
+    (cond ((not y)
+	   (deallocate-outlines! window (o3-outline start) (o3-outline end))
+	   (deallocate-o3! window start)
+	   (deallocate-o3! window end)
+	   false)
+	  ((fix:= (o3-y start) y)
+	   true)
+	  ((fix:< (o3-y start) y)
+	   (scroll-lines-down window start end y))
+	  (else
+	   (scroll-lines-up window start end y)))))
 
 ;;;; Direct Output
 
