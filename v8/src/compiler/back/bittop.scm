@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.1 1994/11/19 01:54:17 adams Exp $
+$Id: bittop.scm,v 1.2 1994/11/26 19:06:24 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -78,6 +78,10 @@ MIT in each case. |#
       (lambda (directives vars)
 	(let* ((count (relax! directives vars))
 	       (block (assemble-objects (final-phase directives))))
+	  (if compiler:generate-profiling-instructions?
+	      (profile-info/insert-info!
+	       block
+	       (lambda (label) (symbol-table-value *the-symbol-table* label))))
 	  (values count
 		  block
 		  (queue->list *entry-points*)
