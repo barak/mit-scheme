@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.16 2002/11/20 19:46:23 cph Exp $
+$Id: strout.scm,v 14.17 2003/02/13 19:53:12 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -22,25 +23,25 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 |#
 
-;;;; String Output Ports
+;;;; String Output Ports (SRFI-6)
 ;;; package: (runtime string-output)
 
 (declare (usual-integrations))
 
-(define (make-accumulator-output-port)
+(define (open-output-string)
   (make-port accumulator-output-port-type
 	     (make-accumulator-state (make-string 16) 0)))
 
-(define (get-output-from-accumulator port)
+(define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT!) port))
 
 (define (with-output-to-string thunk)
-  (with-string-output-port (lambda (port) (with-output-to-port port thunk))))
+  (call-with-output-string (lambda (port) (with-output-to-port port thunk))))
 
-(define (with-string-output-port generator)
-  (let ((port (make-accumulator-output-port)))
+(define (call-with-output-string generator)
+  (let ((port (open-output-string)))
     (generator port)
-    (operation/extract-output! port)))
+    (get-output-string port)))
 
 (define accumulator-output-port-type)
 (define (initialize-package!)

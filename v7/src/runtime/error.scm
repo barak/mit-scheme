@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.59 2003/01/01 02:26:37 cph Exp $
+$Id: error.scm,v 14.60 2003/02/13 19:52:29 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -271,9 +273,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(reporter condition port))))
 
 (define (condition/report-string condition)
-  (with-string-output-port
-    (lambda (port)
-      (write-condition-report condition port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-condition-report condition port))))
 
 ;;;; Restarts
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.61 2003/01/15 04:52:25 cph Exp $
+$Id: schmod.scm,v 1.62 2003/02/13 19:58:30 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -171,7 +171,7 @@ The following commands evaluate Scheme expressions:
 	       NAMED-LAMBDA)
 
 	    ;; MIT Scheme procedures:
-	    (0 WITH-OUTPUT-TO-STRING)
+	    (0 CALL-WITH-OUTPUT-STRING WITH-OUTPUT-TO-STRING)
 	    (1 CALL-WITH-APPEND-FILE CALL-WITH-BINARY-APPEND-FILE
 	       CALL-WITH-BINARY-INPUT-FILE CALL-WITH-BINARY-OUTPUT-FILE
 	       WITH-INPUT-FROM-PORT WITH-INPUT-FROM-STRING WITH-OUTPUT-TO-PORT

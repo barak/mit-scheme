@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imail-imap.scm,v 1.196 2002/11/20 19:46:05 cph Exp $
-;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imail-imap.scm,v 1.197 2003/02/13 19:54:50 cph Exp $
+
+Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; IMAIL mail reader: IMAP back end
 
@@ -1695,22 +1696,22 @@
 	  (encode-cache-namestring (imap-url-mailbox url)))))
 
 (define (encode-cache-namestring string)
-  (with-string-output-port
-    (lambda (port)
-      (let ((n (string-length string)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n))
-	  (let ((char (string-ref string i)))
-	    (cond ((char-set-member? char-set:cache-namestring-safe char)
-		   (write-char char port))
-		  ((char=? char #\/)
-		   (write-char #\# port))
-		  (else
-		   (write-char #\% port)
-		   (let ((n (char->integer char)))
-		     (if (fix:< n #x10)
-			 (write-char #\0 port))
-		     (write-string (number->string n 16) port))))))))))
+  (call-with-output-string
+   (lambda (port)
+     (let ((n (string-length string)))
+       (do ((i 0 (fix:+ i 1)))
+	   ((fix:= i n))
+	 (let ((char (string-ref string i)))
+	   (cond ((char-set-member? char-set:cache-namestring-safe char)
+		  (write-char char port))
+		 ((char=? char #\/)
+		  (write-char #\# port))
+		 (else
+		  (write-char #\% port)
+		  (let ((n (char->integer char)))
+		    (if (fix:< n #x10)
+			(write-char #\0 port))
+		    (write-string (number->string n 16) port))))))))))
 
 (define char-set:cache-namestring-safe
   (char-set-union char-set:alphanumeric (string->char-set "-_.")))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.285 2003/01/15 21:26:02 cph Exp $
+$Id: imail-top.scm,v 1.286 2003/02/13 19:54:57 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -262,40 +262,40 @@ regardless of the folder type."
 
 (define-major-mode imail read-only "IMAIL"
   (lambda ()
-    (with-string-output-port
-      (lambda (port)
-	(write-string imail-mode-description port)
-	(newline port)
-	(newline port)
-	(write-string (make-string 70 #\-) port)
-	(newline port)
-	(write-string "These variables customize the behavior of IMAIL:" port)
-	(newline port)
-	(newline port)
-	(for-each
-	 (let ((buffer (selected-buffer)))
-	   (lambda (variable)
-	     (let ((name (variable-name-string variable)))
-	       (if (not (string-prefix-ci? "imail-summary-" name))
-		   (begin
-		     (write-string name port)
-		     (newline port)
-		     (write-string "  " port)
-		     (write-description
-		      (description-first-line (variable-description variable))
-		      port)
-		     (newline port)
-		     (write-string "  Value: " port)
-		     (write (variable-local-value buffer variable) port)
-		     (newline port)
-		     (newline port))))))
-	 (string-table-apropos editor-variables "^imail-"))
-	(write-string (make-string 70 #\-) port)
-	(newline port)
-	(write-string "These are all the key bindings for IMAIL mode:" port)
-	(newline port)
-	(newline port)
-	(write-string "\\{imail}" port))))
+    (call-with-output-string
+     (lambda (port)
+       (write-string imail-mode-description port)
+       (newline port)
+       (newline port)
+       (write-string (make-string 70 #\-) port)
+       (newline port)
+       (write-string "These variables customize the behavior of IMAIL:" port)
+       (newline port)
+       (newline port)
+       (for-each
+	(let ((buffer (selected-buffer)))
+	  (lambda (variable)
+	    (let ((name (variable-name-string variable)))
+	      (if (not (string-prefix-ci? "imail-summary-" name))
+		  (begin
+		    (write-string name port)
+		    (newline port)
+		    (write-string "  " port)
+		    (write-description
+		     (description-first-line (variable-description variable))
+		     port)
+		    (newline port)
+		    (write-string "  Value: " port)
+		    (write (variable-local-value buffer variable) port)
+		    (newline port)
+		    (newline port))))))
+	(string-table-apropos editor-variables "^imail-"))
+       (write-string (make-string 70 #\-) port)
+       (newline port)
+       (write-string "These are all the key bindings for IMAIL mode:" port)
+       (newline port)
+       (newline port)
+       (write-string "\\{imail}" port))))
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
@@ -2597,12 +2597,12 @@ Negative argument means search in reverse."
 
 (define-method insert-mime-message-inline*
     (message (body <mime-body-message>) selector context mark)
-  (insert-header-fields (with-string-output-port
-			  (lambda (port)
-			    (write-mime-message-body-part message
-							  `(,@selector HEADER)
-							  #t
-							  port)))
+  (insert-header-fields (call-with-output-string
+			 (lambda (port)
+			   (write-mime-message-body-part message
+							 `(,@selector HEADER)
+							 #t
+							 port)))
 			#f
 			mark)
   (walk-mime-message-part message

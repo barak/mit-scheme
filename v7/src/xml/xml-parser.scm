@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.19 2003/02/07 20:02:14 cph Exp $
+$Id: xml-parser.scm,v 1.20 2003/02/13 19:59:00 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -527,50 +527,50 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value value p)
-  (with-string-output-port
-    (lambda (port)
-      (let normalize-value ((value value))
-	(if (string? value)
-	    (let ((buffer
-		   (string->parser-buffer (normalize-line-endings value))))
-	      (let loop ()
-		(let ((char (peek-parser-buffer-char buffer)))
-		  (cond ((not char)
-			 unspecific)
-			((or (char=? char #\tab)
-			     (char=? char #\newline))
-			 (write-char #\space port)
-			 (read-parser-buffer-char buffer)
-			 (loop))
-			((char=? char #\&)
-			 (normalize-value
-			  (vector-ref (parse-reference buffer)
-				      0))
-			 (loop))
-			(else
-			 (write-char char port)
-			 (read-parser-buffer-char buffer)
-			 (loop))))))
-	    (perror p "Reference to external entity in attribute"))))))
+  (call-with-output-string
+   (lambda (port)
+     (let normalize-value ((value value))
+       (if (string? value)
+	   (let ((buffer
+		  (string->parser-buffer (normalize-line-endings value))))
+	     (let loop ()
+	       (let ((char (peek-parser-buffer-char buffer)))
+		 (cond ((not char)
+			unspecific)
+		       ((or (char=? char #\tab)
+			    (char=? char #\newline))
+			(write-char #\space port)
+			(read-parser-buffer-char buffer)
+			(loop))
+		       ((char=? char #\&)
+			(normalize-value
+			 (vector-ref (parse-reference buffer)
+				     0))
+			(loop))
+		       (else
+			(write-char char port)
+			(read-parser-buffer-char buffer)
+			(loop))))))
+	   (perror p "Reference to external entity in attribute"))))))
 
 (define (trim-attribute-whitespace string)
-  (with-string-output-port
-    (lambda (port)
-      (let ((string (string-trim string)))
-	(let ((end (string-length string)))
-	  (let loop ((start 0))
-	    (if (fix:< start end)
-		(let ((regs
-		       (re-substring-search-forward "  +" string start end)))
-		  (if regs
-		      (begin
-			(write-substring string
-					 start
-					 (re-match-start-index 0 regs)
-					 port)
-			(write-char #\space port)
-			(loop (re-match-end-index 0 regs)))
-		      (write-substring string start end port))))))))))
+  (call-with-output-string
+   (lambda (port)
+     (let ((string (string-trim string)))
+       (let ((end (string-length string)))
+	 (let loop ((start 0))
+	   (if (fix:< start end)
+	       (let ((regs
+		      (re-substring-search-forward "  +" string start end)))
+		 (if regs
+		     (begin
+		       (write-substring string
+					start
+					(re-match-start-index 0 regs)
+					port)
+		       (write-char #\space port)
+		       (loop (re-match-end-index 0 regs)))
+		     (write-substring string start end port))))))))))
 
 (define (normalize-line-endings string #!optional always-copy?)
   (if (string-find-next-char string #\return)

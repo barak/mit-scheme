@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imail-core.scm,v 1.147 2002/11/20 19:46:05 cph Exp $
-;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imail-core.scm,v 1.148 2003/02/13 19:54:36 cph Exp $
+
+Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; IMAIL mail reader: core definitions
 
@@ -649,10 +650,10 @@
   (set-message-folder! message #f))
 
 (define (message->string message)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-fields (message-header-fields message) port)
-      (write-message-body message port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-fields (message-header-fields message) port)
+     (write-message-body message port))))
 
 (define (message-time message)
   (let ((date (get-first-header-field-value message "date" #f)))
@@ -951,21 +952,21 @@
       (write-substring string start end port))))
 
 (define (header-fields->string headers)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-fields headers port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-fields headers port))))
 
 (define (header-field->string header)
-  (with-string-output-port
-    (lambda (port)
-      (write-header-field header port))))
+  (call-with-output-string
+   (lambda (port)
+     (write-header-field header port))))
 
 (define (header-field-value->string value)
-  (with-string-output-port
-    (lambda (port)
-      (encode-header-field-value value
-	(lambda (string start end)
-	  (write-substring string start end port))))))
+  (call-with-output-string
+   (lambda (port)
+     (encode-header-field-value value
+       (lambda (string start end)
+	 (write-substring string start end port))))))
 
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))

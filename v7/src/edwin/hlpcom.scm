@@ -1,25 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: hlpcom.scm,v 1.124 2002/11/20 19:46:00 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: hlpcom.scm,v 1.125 2003/02/13 19:53:57 cph Exp $
+
+Copyright 1986,1989,1990,1991,1993,1998 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Help Commands
 
@@ -398,13 +400,13 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	 (show-bindings
 	  (lambda (argument next comtabs)
 	    comtabs
-	    (cons (let ((port (make-accumulator-output-port)))
-		    (describe-bindings
-		     (mode-comtabs (name->mode argument 'ERROR))
-		     #f
-		     port)
-		    (newline port)
-		    (get-output-from-accumulator port))
+	    (cons (call-with-output-string
+		   (lambda (port)
+		     (describe-bindings
+		      (mode-comtabs (name->mode argument 'ERROR))
+		      #f
+		      port)
+		     (newline port)))
 		  (find-escape next comtabs))))
 	 (new-mode
 	  (lambda (argument next comtabs)

@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: rfc822.scm,v 3.4 2002/11/20 19:46:02 cph Exp $
-;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: rfc822.scm,v 3.5 2003/02/13 19:54:10 cph Exp $
+
+Copyright 1999,2000,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; IMAIL mail reader: RFC-822 support
 
@@ -288,19 +289,19 @@
 ;;;; Token-stream filters
 
 (define (rfc822:tokens->string tokens)
-  (let ((port (make-accumulator-output-port)))
-    (do ((tokens tokens (cdr tokens)))
-	((not (pair? tokens)))
-      (cond ((char? (car tokens))
-	     (write-char (car tokens) port))
-	    ((string? (car tokens))
-	     (write-string (car tokens) port))
-	    ((and (pair? (car tokens))
-		  (eq? 'ILLEGAL (caar tokens)))
-	     (write-char (cdar tokens) port))
-	    (else
-	     (error "Malformed RFC-822 token stream:" tokens))))
-    (get-output-from-accumulator port)))
+  (call-with-output-string
+   (lambda (port)
+     (do ((tokens tokens (cdr tokens)))
+	 ((not (pair? tokens)))
+       (cond ((char? (car tokens))
+	      (write-char (car tokens) port))
+	     ((string? (car tokens))
+	      (write-string (car tokens) port))
+	     ((and (pair? (car tokens))
+		   (eq? 'ILLEGAL (caar tokens)))
+	      (write-char (cdar tokens) port))
+	     (else
+	      (error "Malformed RFC-822 token stream:" tokens)))))))
 
 (define rfc822:strip-whitespace!
   (list-deletor!
@@ -372,7 +373,7 @@
 	      (and (not (eof-object? char))
 		   (char-lwsp? char))))))
     (lambda (input-string)
-      (let ((port (string->input-port input-string)))
+      (let ((port (open-input-string input-string)))
 	(define (dispatch)
 	  (let ((char (input-port/read-char port)))
 	    (cond ((eof-object? char)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.12 2003/02/07 20:01:59 cph Exp $
+$Id: xml-output.scm,v 1.13 2003/02/13 19:58:54 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (write-xml xml port))))
 
 (define (xml->string xml)
-  (with-string-output-port
+  (call-with-output-string
    (lambda (port)
      (write-xml xml port))))
 

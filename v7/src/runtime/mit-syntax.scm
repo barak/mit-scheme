@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.12 2003/02/13 02:46:41 cph Exp $
+$Id: mit-syntax.scm,v 14.13 2003/02/13 19:52:35 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -314,7 +314,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			      (if-error)
 			      (loop (cdr clauses))))))
 		    (cond ((identifier? req)
-			   (if (there-exists? supported-features
+			   (if (there-exists? supported-srfi-features
 				 (lambda (feature)
 				   (compare (rename feature) req)))
 			       (if-true)
@@ -344,8 +344,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			   (if-error)))))))
 	  (if-error)))))
 
-(define supported-features
+(define supported-srfi-features
   '(SRFI-0
+    SRFI-6
     SRFI-8
     SRFI-9
     SRFI-23

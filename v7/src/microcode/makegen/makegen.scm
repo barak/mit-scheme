@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.4 2002/11/20 19:46:17 cph Exp $
+$Id: makegen.scm,v 1.5 2003/02/13 19:56:29 cph Exp $
 
-Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -140,10 +140,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (generate-rule filename)
   (parse-rule
    (unbreak-lines
-    (with-string-output-port
-      (lambda (port)
-	(run-shell-command (string-append "gcc -M -DMIT_SCHEME " filename)
-			   'OUTPUT port))))))
+    (call-with-output-string
+     (lambda (port)
+       (run-shell-command (string-append "gcc -M -DMIT_SCHEME " filename)
+			  'OUTPUT port))))))
 
 (define (unbreak-lines string)
   (let ((indexes (string-search-all "\\\n" string)))

@@ -1,25 +1,26 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imap-response.scm,v 1.46 2002/11/20 19:46:06 cph Exp $
-;;;
-;;; Copyright (c) 2000-2002 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imap-response.scm,v 1.47 2003/02/13 19:55:04 cph Exp $
+
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; IMAP Server Response Reader
 
@@ -262,9 +263,9 @@
 	  (else (error "Illegal astring syntax:" char)))))
 
 (define (read-nstring input)
-  (let ((output (make-accumulator-output-port)))
+  (let ((output (open-output-string)))
     (and (read-nstring-to-port input output)
-	 (get-output-from-accumulator output))))
+	 (get-output-string output))))
 
 (define (read-nstring-to-port input output)
   (let ((char (peek-char-no-eof input)))
@@ -282,9 +283,9 @@
 	  (else (error "Illegal astring syntax:" char)))))
 
 (define (read-quoted input)
-  (with-string-output-port
-    (lambda (output)
-      (read-quoted-to-port input output))))
+  (call-with-output-string
+   (lambda (output)
+     (read-quoted-to-port input output))))
 
 (define (read-quoted-to-port input output)
   (discard-known-char #\" input)
@@ -305,9 +306,9 @@
 	       (lose)))))))
 
 (define (read-literal input)
-  (with-string-output-port
-    (lambda (output)
-      (read-literal-to-port input output))))
+  (call-with-output-string
+   (lambda (output)
+     (read-literal-to-port input output))))
 
 (define (read-literal-to-port input output)
   (discard-known-char #\{ input)

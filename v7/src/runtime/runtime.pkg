@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.425 2003/02/10 01:54:05 cph Exp $
+$Id: runtime.pkg,v 14.426 2003/02/13 19:52:58 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -3749,7 +3749,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (files "strnin")
   (parent (runtime))
   (export ()
-	  string->input-port
+	  open-input-string
+	  (string->input-port open-input-string)
 	  with-input-from-string)
   (initialization (initialize-package!)))
 
@@ -3757,9 +3758,12 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (files "strout")
   (parent (runtime))
   (export ()
-	  get-output-from-accumulator
-	  make-accumulator-output-port
-	  with-string-output-port
+	  call-with-output-string
+	  (get-output-from-accumulator get-output-string)
+	  get-output-string
+	  (make-accumulator-output-port open-output-string)
+	  open-output-string
+	  (with-string-output-port call-with-output-string)
 	  with-output-to-string)
   (initialization (initialize-package!)))
 
@@ -3793,6 +3797,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  reverse-syntactic-environments
 	  rsc-macro-transformer->expander
 	  strip-syntactic-closures
+	  supported-srfi-features
 	  syntactic-closure-rtd
 	  syntactic-closure/environment
 	  syntactic-closure/free-names

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.44 2002/11/20 19:46:22 cph Exp $
+$Id: pp.scm,v 14.45 2003/02/13 19:52:50 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -684,7 +686,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	 (numerical-walk-no-auto-highlight object list-depth))))
 
 (define (walk-custom unparser object list-depth)
-  (with-string-output-port
+  (call-with-output-string
    (lambda (port)
      (unparser (make-unparser-state port
 				    list-depth

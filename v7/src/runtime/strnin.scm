@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.9 2002/11/20 19:46:23 cph Exp $
+$Id: strnin.scm,v 14.10 2003/02/13 19:53:05 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1990,1993,1999,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -22,7 +22,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 |#
 
-;;;; String I/O Ports
+;;;; String Input Ports (SRFI-6)
 ;;; package: (runtime string-input)
 
 (declare (usual-integrations))
@@ -40,19 +40,19 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   unspecific)
 
 (define (with-input-from-string string thunk)
-  (with-input-from-port (string->input-port string) thunk))
+  (with-input-from-port (open-input-string string) thunk))
 
-(define (string->input-port string #!optional start end)
+(define (open-input-string string #!optional start end)
   (let ((end
 	 (if (default-object? end)
 	     (string-length string)
-	     (check-index end (string-length string) 'STRING->INPUT-PORT))))
+	     (check-index end (string-length string) 'OPEN-INPUT-STRING))))
     (make-port
      input-string-port-type
      (make-input-string-state string
 			      (if (default-object? start)
 				  0
-				  (check-index start end 'STRING->INPUT-PORT))
+				  (check-index start end 'OPEN-INPUT-STRING))
 			      end))))
 
 (define (check-index index limit procedure)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: nodefs.scm,v 1.13 2002/11/20 19:45:46 cph Exp $
+$Id: nodefs.scm,v 1.14 2003/02/13 19:56:06 cph Exp $
 
-Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1995,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -69,7 +69,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	expression)))
 
 (define (write-definition-value name #!optional value)
-  (with-string-output-port
+  (call-with-output-string
    (lambda (port)
      (write name port)
      (if (not (default-object? value))
