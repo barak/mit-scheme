@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.h,v 1.1 1990/06/20 19:35:53 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.h,v 1.2 1991/07/05 23:30:34 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,7 @@ MIT in each case. */
 struct interruptable_extent
 {
   PTR position;
-  Tcatch_tag control_point;
+  jmp_buf control_point;
   int interrupted;
 };
 
@@ -57,7 +57,7 @@ extern void EXFUN (exit_interruption_extent, (void));
 {									\
   struct interruptable_extent * INTERRUPTABLE_EXTENT_frame =		\
     (enter_interruptable_extent ());					\
-  if ((CATCH (INTERRUPTABLE_EXTENT_frame -> control_point)) == 0)	\
+  if ((setjmp (INTERRUPTABLE_EXTENT_frame -> control_point)) == 0)	\
     {									\
       current_interruptable_extent = INTERRUPTABLE_EXTENT_frame;	\
       (result) = (expression);						\

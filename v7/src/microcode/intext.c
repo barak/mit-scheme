@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.c,v 1.2 1991/06/22 19:29:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intext.c,v 1.3 1991/07/05 23:30:46 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -56,14 +56,19 @@ struct interruptable_extent *
 DEFUN_VOID (enter_interruptable_extent)
 {
   PTR position = dstack_position;
-  struct interruptable_extent * frame =
-    (dstack_alloc (sizeof (struct interruptable_extent)));
+  struct interruptable_extent * frame;
+  /* Inside the interrupt handler, the signal mask will be different.
+     Push a winding frame that will restore it to its current value.
+     Do this before any other changes so that the other changes are
+     undone before the signal mask is restored (possibly causing
+     another interrupt).  */
+  preserve_signal_mask ();
+  frame = (dstack_alloc (sizeof (struct interruptable_extent)));
   (frame -> position) = position;
   (frame -> interrupted) = 0;
   /* Create a dynamic binding frame but don't assign the new frame to
-     it until the CATCH has been done. */
+     it until the setjmp has been done. */
   dstack_bind ((&current_interruptable_extent), current_interruptable_extent);
-  preserve_signal_mask ();
   return (frame);
 }
 
@@ -87,5 +92,5 @@ DEFUN_VOID (enter_interruption_extent)
 void
 DEFUN_VOID (exit_interruption_extent)
 {
-  THROW ((current_interruptable_extent -> control_point), 1);
+  longjmp ((current_interruptable_extent -> control_point), 1);
 }
