@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.110 1991/06/24 23:16:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.111 1991/07/02 19:24:10 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1125,7 +1125,6 @@ MIT in each case. |#
 	  condition-type:hardware-trap
 	  condition-type:impurify-object-too-large
 	  condition-type:inapplicable-object
-	  condition-type:microcode-asynchronous
 	  condition-type:out-of-file-handles
 	  condition-type:primitive-io-error
 	  condition-type:primitive-procedure-error
