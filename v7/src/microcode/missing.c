@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.23 1989/09/20 23:10:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/missing.c,v 9.24 1989/09/22 08:45:25 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -34,6 +34,8 @@ MIT in each case. */
 
 /* This file contains utilities potentially missing from the math library. */
 
+#ifndef HAS_FREXP
+
 double
 frexp (value, eptr)
      double value;
@@ -146,7 +148,11 @@ ldexp (value, exponent)
   else
     return (x);
 }
+
+#endif /* not HAS_FREXP */
 
+#ifndef HAS_MODF
+
 double
 modf (value, iptr)
      double value;
@@ -202,6 +208,10 @@ modf (value, iptr)
   }
 }
 
+#endif /* not HAS_MODF */
+
+#ifndef HAS_FLOOR
+
 double
 floor (x)
      double x;
@@ -219,7 +229,9 @@ ceil (x)
   double fraction = (modf (x, (&iptr)));
   return ((fraction > 0) ? (iptr + 1) : iptr);
 }
-
+
+#endif /* not HAS_FLOOR */
+
 #ifdef DEBUG_MISSING
 
 #include <stdio.h>

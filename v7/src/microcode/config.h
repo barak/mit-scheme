@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.47 1989/09/20 23:07:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.48 1989/09/22 08:44:46 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -181,6 +181,11 @@ typedef unsigned long SCHEME_OBJECT;
    HAS_FREXP should be defined if the system has the double precision
    procedures ldexp and frexp.  On Unix, look for frexp(3C).
 
+   HAS_MODF should be defined if the system has the double precision
+   procedure modf.  On Unix, look for frexp(3C).  **** This flag is
+   new as of 22-SEP-89; please comment out any incorrect #define's as
+   we haven't been able to test this on all machines.
+
 */
 
 /* Possible values for FASL_INTERNAL_FORMAT.  For the most part this
@@ -263,6 +268,7 @@ typedef unsigned long SCHEME_OBJECT;
 #define MAX_FLONUM_EXPONENT	127
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 
 /* Not on these, however */
 
@@ -330,6 +336,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 /* C compiler bug in GC_Type */
 #define term_type		int
 #endif
@@ -351,6 +358,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 
 /* C Compiler bug when constant folding and anchor pointing */
 #define And2(x, y)	((x) ? (y) : false)
@@ -389,6 +397,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 #define HAVE_DOUBLE_TO_LONG_BUG
 
 #endif /* sun */
@@ -406,6 +415,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	127
 #include <public.h>
 #define HAS_FREXP
+#define HAS_MODF
 #define STACK_SIZE		4	/* 4K objects */
 #endif
 
@@ -455,6 +465,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define FLOATING_ALIGNMENT	0x7	/* Low 3 MBZ for float storage */
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 
 #ifndef AVOID_SPECTRUM_TC_KLUDGE
 
@@ -494,6 +505,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 #endif
 
 #ifdef pyr
@@ -524,6 +536,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#define HAS_MODF
 #endif
 
 #ifdef mips
