@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.118 2002/11/20 19:45:47 cph Exp $
+$Id: make.scm,v 4.119 2003/01/02 02:01:05 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright (c) 1991,1992,1993,1994,1997 Massachusetts Institute of Technology
+Copyright (c) 1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -27,6 +28,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (declare (usual-integrations))
 
 (lambda (architecture-name)
+  architecture-name
   ((access with-directory-rewriting-rule
 	   (->environment '(RUNTIME COMPILER-INFO)))
    (working-directory-pathname)
@@ -36,4 +38,4 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
      (load-option 'HASH-TABLE)
      (load-option 'RB-TREE)
      (load-package-set "compiler")))
-  (add-identification! (string-append "Liar (" architecture-name ")") 4 115))
+  (add-identification! "LIAR" 4 115))
