@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.75 2001/12/18 18:39:38 cph Exp $
+$Id: make.scm,v 14.76 2001/12/20 18:56:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -32,7 +32,7 @@ USA.
 ;; that are not performed directly using LOCAL-ASSIGNMENT.
 
 ((ucode-primitive local-assignment 3)
- (the-environment)
+ #f ;global environment
  'DEFINE-MULTIPLE
  (named-lambda (define-multiple env names values)
    (if (or (not (vector? names))
@@ -47,6 +47,8 @@ USA.
 		     (local-assignment env
 				       (vector-ref names i)
 				       (vector-ref values i)))))))))
+
+(define system-global-environment #f)
 
 ;; This definition is replaced later in the boot sequence.
 (define apply (ucode-primitive apply 2))
@@ -63,13 +65,8 @@ USA.
 	   names)
 	  parent)
 	 values))
-
-(define system-global-environment
-  (the-environment))
 
 (let ((environment-for-package (let () (the-environment))))
-
-(define this-environment (the-environment))
 
 (define-primitives
   (+ integer-add)
@@ -311,12 +308,6 @@ USA.
   (export 'SYSTEM-GLOBAL-PACKAGE))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 
-(let ((import
-       (lambda (name)
-	 (link-variables this-environment name
-			 environment-for-package name))))
-  (import 'CONSTRUCT-PACKAGES-FROM-FILE)
-  (import 'LOAD-PACKAGES-FROM-FILE))
 (define packages-file
   (fasload (case os-name
 	     ((NT) "runtime-w32.pkd")
@@ -324,7 +315,7 @@ USA.
 	     ((UNIX) "runtime-unx.pkd")
 	     (else "runtime-unk.pkd"))
 	   #f))
-(construct-packages-from-file packages-file)
+((access construct-packages-from-file environment-for-package) packages-file)
 
 ;;; Global databases.  Load, then initialize.
 (let ((files1
@@ -375,23 +366,24 @@ USA.
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
 
   ;; Load everything else.
-  (load-packages-from-file packages-file
-			   `((SORT-TYPE . MERGE-SORT)
-			     (OS-TYPE . ,os-name)
-			     (OPTIONS . NO-LOAD))
-    (let ((file-member?
-	   (lambda (filename files)
-	     (let loop ((files files))
-	       (and (pair? files)
-		    (or (string=? (car (car files)) filename)
-			(loop (cdr files))))))))
-      (lambda (filename environment)
-	(if (not (or (string=? filename "packag")
-		     (file-member? filename files1)
-		     (file-member? filename files2)))
-	    (eval (file->object filename #t #f)
-		  environment))
-	unspecific))))
+  ((access load-packages-from-file environment-for-package)
+   packages-file
+   `((SORT-TYPE . MERGE-SORT)
+     (OS-TYPE . ,os-name)
+     (OPTIONS . NO-LOAD))
+   (let ((file-member?
+	  (lambda (filename files)
+	    (let loop ((files files))
+	      (and (pair? files)
+		   (or (string=? (car (car files)) filename)
+		       (loop (cdr files))))))))
+     (lambda (filename environment)
+       (if (not (or (string=? filename "packag")
+		    (file-member? filename files1)
+		    (file-member? filename files2)))
+	   (eval (file->object filename #t #f)
+		 environment))
+       unspecific))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
