@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.1 1989/06/23 00:01:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/starbase.scm,v 1.2 1990/01/17 04:42:40 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -206,20 +206,24 @@ MIT in each case. |#
   (starbase-device/text-rotation (starbase-device/descriptor device)))
 
 (define (operation/set-text-height device height)
-  (starbase-set-text-height (starbase-device/descriptor device) height)
-  (set-starbase-device/text-height! device height))
+  (let ((device (starbase-device/descriptor device)))
+    (starbase-set-text-height device height)
+    (set-starbase-device/text-height! device height)))
 
 (define (operation/set-text-aspect device aspect)
-  (starbase-set-text-aspect (starbase-device/descriptor device) aspect)
-  (set-starbase-device/text-aspect! device aspect))
+  (let ((device (starbase-device/descriptor device)))
+    (starbase-set-text-aspect device aspect)
+    (set-starbase-device/text-aspect! device aspect)))
 
 (define (operation/set-text-slant device slant)
-  (starbase-set-text-slant (starbase-device/descriptor device) slant)
-  (set-starbase-device/text-slant! device slant))
+  (let ((device (starbase-device/descriptor device)))
+    (starbase-set-text-slant device slant)
+    (set-starbase-device/text-slant! device slant)))
 
 (define (operation/set-text-rotation device rotation)
-  (starbase-set-text-rotation (starbase-device/descriptor device) rotation)
-  (set-starbase-device/text-rotation! device rotation))
+  (let ((device (starbase-device/descriptor device)))
+    (starbase-set-text-rotation device rotation)
+    (set-starbase-device/text-rotation! device rotation)))
 
 (define (operation/color-map-size device)
   (starbase-color-map-size (starbase-device/descriptor device)))
