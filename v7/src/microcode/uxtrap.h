@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.1 1990/06/20 19:38:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.2 1990/06/28 18:20:53 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -54,6 +54,26 @@ MIT in each case. */
 #define FULL_SIGCONTEXT_RFREE(scp)	((scp)->fs_regs[RFREE])
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[GPR_START]))
 
+#define DECLARE_UX_SIGNAL_CODES						\
+static struct ux_sig_code_desc ux_signal_codes[] =			\
+{									\
+  { SIGFPE, (~ 0L), 0, "software floating point exception" },		\
+  { SIGFPE, (~ 0L), 5, "integer divide by zero" },			\
+  { SIGFPE, (1L << 15), (1L << 15), "branch/set on unordered" },	\
+  { SIGFPE, (1L << 14), (1L << 14), "signalling NAN" },			\
+  { SIGFPE, (1L << 13), (1L << 13), "operand error" },			\
+  { SIGFPE, (1L << 12), (1L << 12), "overflow" },			\
+  { SIGFPE, (1L << 11), (1L << 11), "underflow" },			\
+  { SIGFPE, (1L << 10), (1L << 10), "divide by zero" },			\
+  { SIGFPE, (1L << 9), (1L << 9), "inexact operation" },		\
+  { SIGFPE, (1L << 8), (1L << 8), "inexact decimal input" },		\
+  { SIGILL, (~ 0L), 0, "illegal instruction" },				\
+  { SIGILL, (~ 0L), 6, "check instruction" },				\
+  { SIGILL, (~ 0L), 7, "TRAPV instruction" },				\
+  { SIGILL, (~ 0L), 8, "priviledged instruction" },			\
+  { 0, 0, 0, ((char *) NULL) }						\
+}
+
 #endif /* hp9000s300 */
 
 #ifdef hp9000s800
@@ -81,6 +101,20 @@ MIT in each case. */
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
 #define FULL_SIGCONTEXT_NREGS		32
 #define PROCESSOR_NREGS			32
+
+#define DECLARE_UX_SIGNAL_CODES						\
+static struct ux_sig_code_desc ux_signal_codes[] =			\
+{									\
+  { SIGFPE, (~ 0L), 12, "overflow trap" },				\
+  { SIGFPE, (~ 0L), 13, "conditional trap" },				\
+  { SIGFPE, (~ 0L), 22, "floating-point assist exception trap" },	\
+  { SIGFPE, (~ 0L), 22, "floating-point assist emulation trap" },	\
+  { SIGILL, (~ 0L), 8, "illegal instruction trap" },			\
+  { SIGILL, (~ 0L), 9, "break instruction trap" },			\
+  { SIGILL, (~ 0L), 10, "priviledged operation trap" },			\
+  { SIGILL, (~ 0L), 11, "priviledged register trap" },			\
+  { 0, 0, 0, ((char *) NULL) }						\
+}
 
 #endif /* hp9000s800 */
 
@@ -209,5 +243,15 @@ extern void EXFUN
    (CONST char * message, int signo, int code, struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (soft_reset, (void));
+
+#ifndef DECLARE_UX_SIGNAL_CODES
+
+#define DECLARE_UX_SIGNAL_CODES						\
+static struct ux_sig_code_desc ux_signal_codes[] =			\
+{									\
+  { 0, 0, 0, ((char *) NULL) }						\
+}
+
+#endif
 
 #endif /* SCM_UXTRAP_H */
