@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.10 1999/04/28 03:27:55 cph Exp $
+$Id: os2sock.c,v 1.11 1999/08/13 18:29:34 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -167,6 +167,19 @@ const char *
 OS_canonical_host_name (const char * host_name)
 {
   struct hostent * entry = (gethostbyname ((char *) host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
+}
+
+const char *
+OS_get_host_by_address (const char * host_addr)
+{
+  struct hostent * entry = (gethostbyaddr (host_addr));
   if (entry == 0)
     return (0);
   {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.h,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: uxsock.h,v 1.9 1999/08/13 18:29:18 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -31,6 +31,7 @@ extern unsigned int EXFUN (OS_host_address_length, (void));
 extern char ** EXFUN (OS_get_host_by_name, (CONST char *));
 CONST char * EXFUN (OS_get_host_name, (void));
 CONST char * EXFUN (OS_canonical_host_name, (CONST char *));
+CONST char * EXFUN (OS_get_host_by_address, (CONST char *));
 
 #ifdef HAVE_UNIX_SOCKETS
 extern Tchannel EXFUN (OS_open_unix_stream_socket, (CONST char *));

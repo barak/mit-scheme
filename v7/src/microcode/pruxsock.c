@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.16 1999/01/02 06:11:34 cph Exp $
+$Id: pruxsock.c,v 1.17 1999/08/13 18:29:06 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -145,6 +145,23 @@ DEFINE_PRIMITIVE ("CANONICAL-HOST-NAME", Prim_canonical_host_name, 1, 1, 0)
   SOCKET_CODE
     ({
       CONST char * host_name = (OS_canonical_host_name (STRING_ARG (1)));
+      if (host_name == 0)
+	PRIMITIVE_RETURN (SHARP_F);
+      {
+	SCHEME_OBJECT result
+	  = (char_pointer_to_string ((unsigned char *) host_name));
+	OS_free ((PTR) host_name);
+	PRIMITIVE_RETURN (result);
+      }
+    });
+}
+
+DEFINE_PRIMITIVE ("GET-HOST-BY-ADDRESS", Prim_get_host_by_address, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+    ({
+      CONST char * host_name = (OS_get_host_by_address (STRING_ARG (1)));
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {

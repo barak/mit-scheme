@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.5 1999/01/02 06:11:34 cph Exp $
+$Id: ntsock.c,v 1.6 1999/08/13 18:29:38 cph Exp $
 
 Copyright (c) 1997-1999 Massachusetts Institute of Technology
 
@@ -149,6 +149,19 @@ const char *
 OS_canonical_host_name (const char * host_name)
 {
   struct hostent * entry = (gethostbyname (host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
+}
+
+const char *
+OS_get_host_by_address (const char * host_addr)
+{
+  struct hostent * entry = (gethostbyaddr (host_addr));
   if (entry == 0)
     return (0);
   {

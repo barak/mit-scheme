@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.18 1999/01/02 06:11:34 cph Exp $
+$Id: uxsock.c,v 1.19 1999/08/13 18:29:28 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -35,10 +35,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "prims.h"
 #include "limits.h"
 
-#ifndef _SUNOS4
+#ifdef 0
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
-#endif
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));
+#endif
 
 Tchannel
 DEFUN (OS_open_tcp_stream_socket, (host, port), char * host AND int port)
@@ -134,6 +134,19 @@ CONST char *
 DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
 {
   struct hostent * entry = (gethostbyname (host_name));
+  if (entry == 0)
+    return (0);
+  {
+    char * result = (OS_malloc ((strlen (entry -> h_name)) + 1));
+    strcpy (result, (entry -> h_name));
+    return (result);
+  }
+}
+
+CONST char *
+DEFUN (OS_get_host_by_address, (host_addr), CONST char * host_addr)
+{
+  struct hostent * entry = (UX_gethostbyaddr (host_addr, AF_INET));
   if (entry == 0)
     return (0);
   {
