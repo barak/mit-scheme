@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.167 1995/09/11 22:43:49 cph Exp $
+;;;	$Id: prompt.scm,v 1.168 1996/05/11 08:44:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -664,9 +664,7 @@ a repetition of this command will exit."
 	(write-strings-densely strings))))
 
 (define (flush-completions-list)
-  (if (let ((buffer (find-buffer " *Completions*")))
-	(and buffer (eq? buffer (weak-car *previous-popped-up-buffer*))))
-      (kill-pop-up-buffer false)))
+  (maybe-kill-pop-up-buffer (find-buffer " *Completions*")))
 
 (define (completion-message string)
   (if (typein-window? (current-window))
