@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.45 1992/07/29 19:54:52 cph Exp $
+$Id: extern.h,v 9.46 1992/08/29 12:59:13 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -230,7 +230,7 @@ extern Boolean EXFUN (Pure_Test, (SCHEME_OBJECT *));
 /* Interpreter utilities */
 
 extern void EXFUN (Microcode_Termination, (int code));
-extern void EXFUN (termination_normal, (int));
+extern void EXFUN (termination_normal, (CONST int));
 extern void EXFUN (termination_init_error, (void));
 extern void EXFUN (termination_end_of_computation, (void));
 extern void EXFUN (termination_trap, (void));
