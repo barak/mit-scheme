@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.3 1994/11/23 03:18:03 adams Exp $
+$Id: midend.scm,v 1.4 1994/11/25 23:05:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ MIT in each case. |#
 
       (define (run-phase program)
 	(if (memq this-phase *phases-to-omit*)
-	    (copier/top-level program copier/remember)
+	    program
 	    (proc program)))
       
       (lambda (program)
@@ -88,7 +88,9 @@ MIT in each case. |#
 	    (begin
 	      (newline)
 	      (write-string ";; Phase ")
-	      (write this-phase)))
+	      (write this-phase)
+	      (if (memq this-phase *phases-to-omit*)
+		  (write-string " omitted (see *phases-to-omit*)"))))
 	(if (not (show? this-phase))
 	    (run-phase program)
 	    (begin
