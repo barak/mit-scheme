@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: search.scm,v 1.154 2002/02/03 03:38:54 cph Exp $
+;;;$Id: search.scm,v 1.155 2002/02/09 05:55:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -27,7 +27,7 @@
     ((define-search
        (sc-macro-transformer
 	(lambda (form environment)
-	  (let ((name (close-syntax (cadr form) environment))
+	  (let ((name (cadr form))
 		(find-next (close-syntax (caddr form) environment)))
 	    `(DEFINE (,name GROUP START END CHAR)
 	       ;; Assume (FIX:<= START END)
@@ -65,7 +65,7 @@
     ((define-search
        (sc-macro-transformer
 	(lambda (form environment)
-	  (let ((name (close-syntax (cadr form) environment))
+	  (let ((name (cadr form))
 		(find-previous (close-syntax (caddr form) environment)))
 	    `(DEFINE (,name GROUP START END CHAR)
 	       ;; Assume (FIX:<= START END)

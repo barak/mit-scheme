@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xcom.scm,v 1.20 2002/02/03 03:38:55 cph Exp $
+;;; $Id: xcom.scm,v 1.21 2002/02/09 05:55:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -313,9 +313,7 @@ When called interactively, completion is available on the input."
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((name (cadr form)))
-	   `(DEFINE
-	      ,(close-syntax (symbol-append 'EDWIN-COMMAND$X- name)
-			     environment)
+	   `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
 	      ,(close-syntax (symbol-append 'EDWIN-COMMAND$ name)
 			     environment)))))))
   (copy set-foreground-color)
@@ -347,9 +345,7 @@ When called interactively, completion is available on the input."
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((name (cadr form)))
-	   `(DEFINE
-	      ,(close-syntax (symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
-			     environment)
+	   `(DEFINE ,(symbol-append 'EDWIN-VARIABLE$X-SCREEN- name)
 	      ,(close-syntax (symbol-append 'EDWIN-VARIABLE$FRAME- name)
 			     environment)))))))
   (copy icon-name-format)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.9 2002/02/03 03:38:53 cph Exp $
+$Id: arith.scm,v 1.10 2002/02/09 05:56:43 cph Exp $
 
 Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-standard-unary
        (sc-macro-transformer
 	(lambda (form environment)
-	  `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	  `(DEFINE (,(list-ref form 1) X)
 	     (IF (FLONUM? X)
 		 (,(close-syntax (list-ref form 2) environment) X)
 		 (,(close-syntax (list-ref form 3) environment) X)))))))
@@ -82,7 +82,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(lambda (form environment)
 	  (let ((flo:op (close-syntax (list-ref form 2) environment))
 		(int:op (close-syntax (list-ref form 3) environment)))
-	    `(DEFINE (,(close-syntax (list-ref form 1) environment) X Y)
+	    `(DEFINE (,(list-ref form 1) X Y)
 	       (IF (FLONUM? X)
 		   (IF (FLONUM? Y)
 		       (,flo:op X Y)
@@ -197,7 +197,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (FLO:->INTEGER ,n)
 		       (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
 						  ',(list-ref form 2))))))
-	   `(DEFINE (,(close-syntax (list-ref form 1) environment) N M)
+	   `(DEFINE (,(list-ref form 1) N M)
 	      (IF (FLONUM? N)
 		  (INT:->FLONUM
 		   (,operator ,(flo->int 'N)
@@ -229,7 +229,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-transcendental-unary
        (sc-macro-transformer
 	(lambda (form environment)
-	  `(DEFINE (,(close-syntax (list-ref form 1) environment) X)
+	  `(DEFINE (,(list-ref form 1) X)
 	     (IF (,(close-syntax (list-ref form 2) environment) X)
 		 ,(close-syntax (list-ref form 3) environment)
 		 (,(close-syntax (list-ref form 4) environment)

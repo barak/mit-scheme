@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: calias.scm,v 1.24 2002/02/03 03:38:54 cph Exp $
+;;; $Id: calias.scm,v 1.25 2002/02/09 05:55:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -258,9 +258,9 @@
 (let-syntax ((make-key
 	      (sc-macro-transformer
 	       (lambda (form environment)
-		 (let ((name (close-syntax (cadr form) environment)))
-		   `(DEFINE ,name
-		      (INTERN-SPECIAL-KEY ',name 0)))))))
+		 environment
+		 `(DEFINE ,(cadr form)
+		    (INTERN-SPECIAL-KEY ',(cadr form) 0))))))
   (make-key backspace)
   (make-key stop)
   (make-key f1)

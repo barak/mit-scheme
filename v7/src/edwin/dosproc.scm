@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosproc.scm,v 1.8 2002/02/03 03:38:54 cph Exp $
+;;; $Id: dosproc.scm,v 1.9 2002/02/09 05:55:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ;;;
@@ -45,8 +45,8 @@
 (let-syntax ((define-process-operation
 	      (sc-macro-transformer
 	       (lambda (form environment)
-		 (let ((name (close-syntax (cadr form) environment)))
-		   `(DEFINE ,name (PROCESS-OPERATION ',name)))))))
+		 environment
+		 `(DEFINE ,(cadr form) (PROCESS-OPERATION ',(cadr form)))))))
   (define-process-operation delete-process))
 
 (define (process-status-changes?)

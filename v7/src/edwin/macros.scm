@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: macros.scm,v 1.71 2002/02/03 03:38:54 cph Exp $
+;;; $Id: macros.scm,v 1.72 2002/02/09 05:55:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -27,38 +27,32 @@
 (define edwin-syntax-table (->environment '(EDWIN)))
 
 (define-syntax define-command
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      (capture-syntactic-environment
-      (lambda (closing-environment)
+      (lambda (instance-environment)
 	(if (syntax-match? '(SYMBOL EXPRESSION EXPRESSION EXPRESSION)
 			   (cdr form))
 	    (let ((name (list-ref form 1))
-		  (description (close-syntax (list-ref form 2) environment))
+		  (description (list-ref form 2))
 		  (interactive (list-ref form 3))
 		  (procedure (list-ref form 4)))
-	      (let ((scheme-name
-		     (close-syntax (command-name->scheme-name name)
-				   environment)))
-		`(DEFINE ,scheme-name
-		   (MAKE-COMMAND ',name
-				 ,description
-				 ,(if (null? interactive)
-				      `'()
-				      (close-syntax interactive environment))
-				 ,(close-syntax
-				   (if (and (pair? procedure)
-					    (identifier=? environment
-							  (car procedure)
-							  closing-environment
-							  'LAMBDA)
-					    (pair? (cdr procedure)))
-				       `(,(close-syntax 'NAMED-LAMBDA
-							closing-environment)
-					 (,scheme-name ,@(cadr procedure))
-					 ,@(cddr procedure))
-				       procedure)
-				   environment)))))
+	      (let ((scheme-name (command-name->scheme-name name)))
+		`(,(close-syntax 'DEFINE environment)
+		  ,scheme-name
+		   (,(close-syntax 'MAKE-COMMAND environment)
+		    ',name
+		    ,description
+		    ,interactive
+		    ,(if (and (pair? procedure)
+			      (identifier=?
+			       instance-environment (car procedure)
+			       environment 'LAMBDA)
+			      (pair? (cdr procedure)))
+			 `(,(close-syntax 'NAMED-LAMBDA environment)
+			   (,scheme-name ,@(cadr procedure))
+			   ,@(cddr procedure))
+			 procedure)))))
 	    (ill-formed-syntax form)))))))
 
 (define-syntax ref-command-object
@@ -91,32 +85,27 @@
 	 (ill-formed-syntax form)))))
 
 (define-syntax define-variable
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      (expand-variable-definition form environment `#F))))
 
 (define-syntax define-variable-per-buffer
-  (sc-macro-transformer
+  (rsc-macro-transformer
    (lambda (form environment)
      (expand-variable-definition form environment `#T))))
 
 (define (expand-variable-definition form environment buffer-local?)
   (if (and (syntax-match? '(SYMBOL + EXPRESSION) (cdr form))
 	   (<= (length form) 6))
-      `(DEFINE ,(close-syntax (variable-name->scheme-name (list-ref form 1))
-			      environment)
-	 (MAKE-VARIABLE ',(list-ref form 1)
-			,(close-syntax (list-ref form 2) environment)
-			,(if (> (length form) 3)
-			     (close-syntax (list-ref form 3) environment)
-			     '#F)
-			,buffer-local?
-			,(if (> (length form) 4)
-			     (close-syntax (list-ref form 4) environment)
-			     '#F)
-			,(if (> (length form) 5)
-			     (close-syntax (list-ref form 5) environment)
-			     '#F)))
+      `(,(close-syntax 'DEFINE environment)
+	,(variable-name->scheme-name (list-ref form 1))
+	(,(close-syntax 'MAKE-VARIABLE environment)
+	 ',(list-ref form 1)
+	 ,(list-ref form 2)
+	 ,(if (> (length form) 3) (list-ref form 3) '#F)
+	 ,buffer-local?
+	 ,(if (> (length form) 4) (list-ref form 4) '#F)
+	 ,(if (> (length form) 5) (list-ref form 5) '#F)))
       (ill-formed-syntax form)))
 
 (define-syntax ref-variable-object
@@ -180,8 +169,7 @@
        (if (syntax-match? pattern (cdr form))
 	   (let ((name (list-ref form 1))
 		 (super-mode-name (list-ref form 2)))
-	     (let ((scheme-name
-		    (close-syntax (mode-name->scheme-name name) environment)))
+	     (let ((scheme-name (mode-name->scheme-name name)))
 	       `(DEFINE ,scheme-name
 		  (MAKE-MODE ',name
 			     #T
@@ -200,7 +188,9 @@
 				(if super-mode-name
 				    `(LAMBDA (BUFFER)
 				       ((MODE-INITIALIZATION
-					 (MODE-SUPER-MODE ,scheme-name))
+					 (MODE-SUPER-MODE
+					  ,(close-syntax scheme-name
+							 environment)))
 					BUFFER)
 				       ,@(if initialization
 					     `((,initialization BUFFER))
@@ -220,7 +210,7 @@
      (lambda (form environment)
        (if (syntax-match? pattern (cdr form))
 	   (let ((name (list-ref form 1)))
-	     `(DEFINE ,(close-syntax (mode-name->scheme-name name) environment)
+	     `(DEFINE ,(mode-name->scheme-name name)
 		(MAKE-MODE ',name
 			   #F
 			   ',(or (list-ref form 2)

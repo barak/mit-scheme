@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.185 2002/02/03 03:38:53 cph Exp $
+;;; $Id: buffer.scm,v 1.186 2002/02/09 05:55:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
 ;;;
@@ -49,8 +49,7 @@
       (sc-macro-transformer
        (lambda (form environment)
 	 (let ((slot-name (cadr form)))
-	   `(DEFINE-INTEGRABLE
-	      ,(close-syntax (symbol-append 'BUFFER- slot-name) environment)
+	   `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
 	      ,(close-syntax (symbol-append 'BUFFER-% slot-name)
 			     environment)))))))
   (rename name)

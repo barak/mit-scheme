@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.33 2002/02/03 03:38:54 cph Exp $
+$Id: tterm.scm,v 1.34 2002/02/09 05:55:25 cph Exp $
 
 Copyright (c) 1990-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -445,10 +445,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (sc-macro-transformer
 	       (lambda (form environment)
 		 (let ((name (cadr form)))
-		   `(DEFINE-INTEGRABLE
-		      (,(close-syntax (symbol-append 'SCREEN- name)
-				      environment)
-		       SCREEN)
+		   `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
 		      (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
 				      environment)
 		       (SCREEN-STATE SCREEN)))))))
@@ -458,10 +455,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (let ((name (cadr form)))
 		   (let ((param (make-synthetic-identifier name)))
 		     `(DEFINE-INTEGRABLE
-			(,(close-syntax (symbol-append 'SET-SCREEN- name '!)
-					environment)
-			 SCREEN
-			 ,param)
+			(,(symbol-append 'SET-SCREEN- name '!) SCREEN ,param)
 			(,(close-syntax
 			   (symbol-append 'SET-TERMINAL-STATE/ name '!)
 			   environment)
