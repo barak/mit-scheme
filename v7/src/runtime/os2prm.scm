@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.16 1995/04/23 05:24:01 cph Exp $
+$Id: os2prm.scm,v 1.17 1995/04/23 05:53:47 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -105,9 +105,13 @@ MIT in each case. |#
    modification-time))
 
 (define (file-time->string time)
+  ;; The returned string is in the format specified by RFC 822,
+  ;; "Standard for the Format of ARPA Internet Text Messages".
   (let ((dt (decode-file-time time))
 	(d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
-    (string-append (number->string (decoded-time/day dt))
+    (string-append (day-of-week/short-string (decoded-time/day-of-week dt))
+		   ", "
+		   (number->string (decoded-time/day dt))
 		   " "
 		   (month/short-string (decoded-time/month dt))
 		   " "
@@ -132,16 +136,11 @@ MIT in each case. |#
   (ucode-primitive os2-daylight-savings-time? 0))
 
 (define (decode-file-time time)
-  (let* ((twosecs (remainder time 32))
-	 (time    (quotient  time 32))
-	 (minutes (remainder time 64))
-	 (time    (quotient  time 64))
-	 (hours   (remainder time 32))
-	 (time    (quotient  time 32))
-	 (day     (remainder time 32))
-	 (time    (quotient  time 32))
-	 (month   (remainder time 16))
-	 (year    (quotient  time 16)))
+  (let* ((twosecs (remainder time 32)) (time (quotient time 32))
+	 (minutes (remainder time 64)) (time (quotient time 64))
+	 (hours   (remainder time 32)) (time (quotient time 32))
+	 (day     (remainder time 32)) (time (quotient time 32))
+	 (month   (remainder time 16)) (year (quotient time 16)))
     (make-decoded-time (* twosecs 2) minutes hours day month (+ 1980 year))))
 
 (define (encode-file-time dt)
