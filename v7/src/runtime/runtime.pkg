@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.387 2001/12/18 20:51:05 cph Exp $
+$Id: runtime.pkg,v 14.388 2001/12/19 01:39:36 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -1321,9 +1321,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-arguments
 	  environment-assign!
 	  environment-assignable?
+	  environment-assigned?
 	  environment-bindings
 	  environment-bound-names
 	  environment-bound?
+	  environment-define
 	  environment-has-parent?
 	  environment-lambda
 	  environment-lookup
@@ -3738,8 +3740,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "syntab")
   (parent (runtime))
   (export ()
+	  environment-syntax-table
 	  guarantee-syntax-table
 	  make-syntax-table
+	  set-environment-syntax-table!
 	  syntax-table-define
 	  syntax-table-ref
 	  syntax-table/copy
@@ -3748,20 +3752,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  syntax-table/extend
 	  syntax-table/parent
 	  syntax-table/ref
-	  syntax-table?))
+	  syntax-table?)
+  (export (runtime environment)
+	  syntax-table-tag))
 
 (define-package (runtime syntaxer)
   (files "syntax")
   (parent (runtime))
   (export ()
-	  environment-syntax-table
 	  hook/syntax-expression
 	  lambda-tag:fluid-let
 	  lambda-tag:let
 	  lambda-tag:make-environment
 	  lambda-tag:unnamed
 	  make-syntax-closure
-	  set-environment-syntax-table!
 	  syntax
 	  syntax*
 	  syntax-closure/expression
@@ -3771,8 +3775,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  user-initial-syntax-table)
   (export (runtime defstruct)
 	  parse-lambda-list)
-  (export (runtime environment)
-	  syntax-table-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime illegal-definitions)

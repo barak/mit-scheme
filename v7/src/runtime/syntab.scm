@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntab.scm,v 14.6 2001/12/18 20:47:46 cph Exp $
+$Id: syntab.scm,v 14.7 2001/12/19 01:39:41 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -86,3 +86,16 @@ USA.
 (define (syntax-table/extend table alist)
   (%make-syntax-table (alist-copy alist)
 		      (guarantee-syntax-table table 'SYNTAX-TABLE/EXTEND)))
+
+(define (environment-syntax-table environment)
+  (environment-lookup environment syntax-table-tag))
+
+(define (set-environment-syntax-table! environment table)
+  (environment-define environment
+		      syntax-table-tag
+		      (guarantee-syntax-table table
+					      'SET-ENVIRONMENT-SYNTAX-TABLE!)))
+
+(define-integrable syntax-table-tag
+  ((ucode-primitive string->symbol)
+   "#[(runtime syntax-table)syntax-table-tag]"))

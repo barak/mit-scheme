@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.35 2001/12/18 20:47:18 cph Exp $
+$Id: syntax.scm,v 14.36 2001/12/19 01:39:46 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -113,20 +113,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (syntax/top-level?)
   *syntax-top-level?*)
 
-(define (environment-syntax-table environment)
-  (environment-lookup environment syntax-table-tag))
-
-(define (set-environment-syntax-table! environment table)
-  (if (not (interpreter-environment? environment))
-      (error:wrong-type-argument environment
-				 "interpreter environment"
-				 'SET-ENVIRONMENT-SYNTAX-TABLE!))
-  (local-assignment environment syntax-table-tag table))
-
-(define-integrable syntax-table-tag
-  ((ucode-primitive string->symbol)
-   "#[(runtime syntax-table)syntax-table-tag]"))
-
 (define-integrable (syntax-subsequence expressions)
   (syntax-sequence #f expressions))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.45 2001/12/18 20:50:59 cph Exp $
+$Id: uenvir.scm,v 14.46 2001/12/19 01:39:52 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -119,6 +119,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-BOUND?))))
 
+(define (environment-assigned? environment name)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/assigned? environment name))
+	((stack-ccenv? environment)
+	 (stack-ccenv/assigned? environment name))
+	((closure-ccenv? environment)
+	 (closure-ccenv/assigned? environment name))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-ASSIGNED?))))
+
 (define (environment-lookup environment name)
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/lookup environment name))
@@ -148,6 +158,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (closure-ccenv/assign! environment name value))
 	(else
 	 (illegal-environment environment 'ENVIRONMENT-ASSIGN!))))
+
+(define (environment-define environment name value)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/define environment name value))
+	((or (stack-ccenv? environment)
+	     (closure-ccenv? environment))
+	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE))
+	(else
+	 (illegal-environment environment 'ENVIRONMENT-DEFINE))))
 
 (define (illegal-environment object procedure)
   (error:wrong-type-argument object "environment" procedure))
@@ -218,13 +237,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (interpreter-environment/bound? environment name)
   (not (lexical-unbound? environment name)))
 
+(define (interpreter-environment/assigned? environment name)
+  (not (lexical-unassigned? environment name)))
+
 (define (interpreter-environment/lookup environment name)
-  (if (lexical-unassigned? environment name)
-      (make-unassigned-reference-trap)
-      (lexical-reference environment name)))
+  (lexical-reference environment name))
 
 (define (interpreter-environment/assign! environment name value)
   (lexical-assignment environment name value)
+  unspecific)
+
+(define (interpreter-environment/define environment name value)
+  (local-assignment environment name value)
   unspecific)
 
 (define (ic-environment/bound-names environment)
@@ -528,6 +552,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(and parent
 	     (environment-bound? parent name)))))
 
+(define (stack-ccenv/assigned? environment name)
+  (and (stack-ccenv/lookup environment name) #t))
+
 (define (stack-ccenv/lookup environment name)
   (lookup-dbg-variable (stack-ccenv/block environment)
 		       name
@@ -637,6 +664,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (let ((parent (closure-ccenv/parent environment)))
 	(and parent
 	     (environment-bound? parent name)))))
+
+(define (closure-ccenv/assigned? environment name)
+  (and (closure-ccenv/lookup environment name) #t))
 
 (define (closure-ccenv/variable-bound? environment variable)
   (or (eq? (dbg-variable/type variable) 'INTEGRATED)
