@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.17 2000/05/19 17:52:40 cph Exp $
+;;; $Id: imail-util.scm,v 1.18 2000/05/20 03:22:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -169,7 +169,7 @@
   (decorated-string-append "" ""
 			   (if (default-object? line-ending) "\n" line-ending)
 			   lines))
-
+
 (define (short-name->pathname name)
   (merge-pathnames name (current-home-directory)))
 
@@ -191,7 +191,7 @@
   (write-char #\: port)
   (write-string value port)
   (newline port))
-
+
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
 
@@ -241,3 +241,150 @@
 (define (burst-comma-list-string string)
   (list-transform-negative (map string-trim (burst-string string #\, #f))
     string-null?))
+
+;;;; Ordered-string-vector completion
+
+(define (hash-table/ordered-key-vector table <)
+  (let ((v (list->vector (hash-table/key-list url-protocols))))
+    (sort! v <)
+    v))
+
+(define (ordered-string-vector-completer strings)
+  (lambda (string if-unique if-not-unique if-not-found)
+    (ordered-vector-minimum-match strings string identity-procedure
+				  string-order (string-prefix-matcher string)
+				  if-unique if-not-unique if-not-found)))
+
+(define (ordered-string-vector-completer-ci strings)
+  (lambda (string if-unique if-not-unique if-not-found)
+    (ordered-vector-minimum-match strings string identity-procedure
+				  string-order-ci
+				  (string-prefix-matcher-ci string)
+				  if-unique if-not-unique if-not-found)))
+
+(define (ordered-string-vector-matches strings)
+  (lambda (string)
+    (ordered-vector-matches strings string identity-procedure
+			    string-order (string-prefix-matcher string))))
+
+(define (ordered-string-vector-matches-ci strings)
+  (lambda (string)
+    (ordered-vector-matches strings string identity-procedure
+			    string-order-ci
+			    (string-prefix-matcher-ci string))))
+
+(define (string-order x y)
+  (let ((lx (string-length x))
+	(ly (string-length y)))
+    (let ((i (substring-match-forward x 0 lx y 0 ly)))
+      (if (fix:< i lx)
+	  (if (fix:< i ly)
+	      (if (char<? (string-ref x i) (string-ref y i)) 'LESS 'GREATER)
+	      'GREATER)
+	  (if (fix:< i ly)
+	      'LESS
+	      'EQUAL)))))
+
+(define (string-order-ci x y)
+  (let ((lx (string-length x))
+	(ly (string-length y)))
+    (let ((i (substring-match-forward-ci x 0 lx y 0 ly)))
+      (if (fix:< i lx)
+	  (if (fix:< i ly)
+	      (if (char-ci<? (string-ref x i) (string-ref y i)) 'LESS 'GREATER)
+	      'GREATER)
+	  (if (fix:< i ly)
+	      'LESS
+	      'EQUAL)))))
+
+(define (string-prefix-matcher prefix)
+  (let ((l (string-length prefix)))
+    (lambda (x y)
+      (let ((i (string-match-forward x y)))
+	(and (fix:>= i l)
+	     i)))))
+
+(define (string-prefix-matcher-ci prefix)
+  (let ((l (string-length prefix)))
+    (lambda (x y)
+      (let ((i (string-match-forward-ci x y)))
+	(and (fix:>= i l)
+	     i)))))
+
+;;;; Filename Completion
+
+(define (pathname-complete-string pathname filter
+				  if-unique if-not-unique if-not-found)
+  (let loop
+      ((pathnames (filtered-completions (merge-pathnames pathname) filter)))
+    (if (pair? pathnames)
+	(if (pair? (cdr pathnames))
+	    (if-not-unique
+	     (string-greatest-common-prefix
+	      (map ->namestring pathnames))
+	     (lambda ()
+	       (map canonicalize-pathname pathnames)))
+	    (let ((pathname (car pathnames)))
+	      (let ((pathnames
+		     (filtered-list (pathname-as-directory pathname) filter)))
+		(if (pair? pathnames)
+		    (loop pathnames)
+		    (if-unique pathname)))))
+	(if-not-found))))
+
+(define (pathname-completions-list pathname filter)
+  (map canonicalize-pathname
+       (filtered-completions (merge-pathnames pathname) filter)))
+
+(define (filtered-completions pathname filter)
+  (let ((directory (directory-namestring pathname)))
+    (if (safe-file-directory? directory)
+	(let ((prefix (file-namestring pathname))
+	      (channel (directory-channel-open directory)))
+	  (let loop ((result '()))
+	    (let ((name (directory-channel-read-matching channel prefix)))
+	      (if name
+		  (loop
+		   (if (filter name)
+		       (cons (parse-namestring (string-append directory name)
+					       #f #f)
+			     result)
+		       result))
+		  (begin
+		    (directory-channel-close channel)
+		    result)))))
+	'())))
+
+(define (filtered-list pathname filter)
+  (let ((directory (directory-namestring pathname)))
+    (if (safe-file-directory? directory)
+	(let ((channel (directory-channel-open directory)))
+	  (let loop ((result '()))
+	    (let ((name (directory-channel-read channel)))
+	      (if name
+		  (loop
+		   (if (filter name)
+		       (cons (parse-namestring (string-append directory name)
+					       #f #f)
+			     result)
+		       result))
+		  (begin
+		    (directory-channel-close channel)
+		    result)))))
+	'())))
+
+(define (safe-file-directory? pathname)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:file-error
+				   condition-type:port-error)
+	 (lambda (condition)
+	   condition
+	   (k #f))
+       (lambda ()
+	 (file-directory? pathname))))))
+
+(define (canonicalize-pathname pathname)
+  (if (safe-file-directory? pathname)
+      (pathname-as-directory pathname)
+      pathname))

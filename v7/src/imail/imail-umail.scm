@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.26 2000/05/17 17:54:47 cph Exp $
+;;; $Id: imail-umail.scm,v 1.27 2000/05/20 03:22:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,9 +26,12 @@
 
 (define-class <umail-url> (<file-url>))
 
-(define-url-protocol "umail" <umail-url>
-  (lambda (string)
-    (%make-umail-url (short-name->pathname string))))
+(let ((filter (file-suffix-filter "mail")))
+  (define-url-protocol "umail" <umail-url>
+    (lambda (string)
+      (%make-umail-url (short-name->pathname string)))
+    (file-url-completer filter)
+    (file-url-completions filter)))
 
 (define (make-umail-url pathname)
   (save-url (%make-umail-url pathname)))

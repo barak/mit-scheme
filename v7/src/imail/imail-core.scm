@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.76 2000/05/19 21:02:00 cph Exp $
+;;; $Id: imail-core.scm,v 1.77 2000/05/20 03:22:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -72,7 +72,8 @@
 	     (let ((colon (string-find-next-char string #\:)))
 	       (if (not colon)
 		   (error:bad-range-argument string 'STRING->URL))
-	       ((get-url-protocol-parser (string-head string colon))
+	       ((or (get-url-protocol-parser (string-head string colon))
+		    (error:bad-range-argument string 'STRING->URL))
 		(string-tail string (fix:+ colon 1))))))
 	(hash-table/put! saved-urls string url)
 	url)))
@@ -90,20 +91,89 @@
 (define (url->string url)
   (string-append (url-protocol url) ":" (url-body url)))
 
-(define (define-url-protocol name class parser)
+(define (define-url-protocol name class parser completer completions)
   (define-method url-protocol ((url class)) url name)
-  (hash-table/put! url-protocol-parsers (string-downcase name) parser))
+  (hash-table/put! url-protocols
+		   (string-downcase name)
+		   (vector parser completer completions)))
 
-(define (get-url-protocol-parser name)
-  (or (hash-table/get url-protocol-parsers (string-downcase name) #f)
-      (error:bad-range-argument name 'GET-URL-PROTOCOL-PARSER)))
+(define (get-url-protocol-parser name) (get-url-protocol-item name 0))
+(define (get-url-protocol-completer name) (get-url-protocol-item name 1))
+(define (get-url-protocol-completions name) (get-url-protocol-item name 2))
 
-(define url-protocol-parsers
+(define (get-url-protocol-item name index)
+  (let ((v (hash-table/get url-protocols (string-downcase name) #f)))
+    (and v
+	 (vector-ref v index))))
+
+(define url-protocols
   (make-string-hash-table))
 
 ;; Return a string that concisely identifies URL, for use in the
 ;; presentation layer.
 (define-generic url-presentation-name (url))
+
+;; Do completion on URL-STRING, which is a partially-specified URL.
+;; Tail-recursively calls one of the three procedure arguments, as
+;; follows.  If URL-STRING has a unique completion, IF-UNIQUE is
+;; called with that completion.  If URL-STRING has more than one
+;; completion, IF-NOT-UNIQUE is called with two arguments: the first
+;; argument is a prefix string that all of the completions share, and
+;; the second argument is a thunk that returns a list of the
+;; completions.  If URL-STRING has no completions, IF-NOT-FOUND is
+;; called with no arguments.
+
+(define (url-complete-string url-string if-unique if-not-unique if-not-found)
+  (let ((colon (string-find-next-char url-string #\:))
+	(have-protocol
+	 (lambda (name body)
+	   (let ((prepend (lambda (string) (string-append name ":" string))))
+	     (let ((completer (get-url-protocol-completer name)))
+	       (if completer
+		   (completer
+		    body
+		    (lambda (string)
+		      (if-unique (prepend string)))
+		    (lambda (prefix get-completions)
+		      (if-not-unique
+		       (prepend prefix)
+		       (lambda () (map prepend (get-completions)))))
+		    if-not-found)
+		   (if-not-found)))))))
+    (if colon
+	(have-protocol (string-head url-string colon)
+		       (string-tail url-string (fix:+ colon 1)))
+	((ordered-string-vector-completer
+	  (hash-table/ordered-key-vector url-protocols string<?))
+	 url-string
+	 (lambda (string)
+	   (have-protocol string ""))
+	 (lambda (prefix get-completions)
+	   (if-not-unique prefix
+			  (lambda ()
+			    (append-map (lambda (name) (have-protocol name ""))
+					(get-completions)))))
+	 if-not-found))))
+
+;; Return a list of the completions for URL-STRING.
+
+(define (url-string-completions url-string)
+  (let ((colon (string-find-next-char url-string #\:))
+	(have-protocol
+	 (lambda (name body)
+	   (let ((completer (get-url-protocol-completer name)))
+	     (if completer
+		 (map (lambda (string) (string-append name ":" string))
+		      (completer body))
+		 '())))))
+    (if colon
+	(have-protocol (string-head url-string colon)
+		       (string-tail url-string (fix:+ colon 1)))
+	(append-map (lambda (name) (have-protocol name ""))
+		    (vector->list
+		     ((ordered-string-vector-matches
+		       (hash-table/ordered-key-vector url-protocols string<?))
+		      url-string))))))
 
 ;;;; Server operations
 

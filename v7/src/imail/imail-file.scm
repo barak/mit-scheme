@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.28 2000/05/18 03:42:59 cph Exp $
+;;; $Id: imail-file.scm,v 1.29 2000/05/20 03:22:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -32,6 +32,31 @@
 
 (define-method url-presentation-name ((url <file-url>))
   (file-namestring (file-url-pathname url)))
+
+(define ((file-url-completer filter)
+	 string if-unique if-not-unique if-not-found)
+  (pathname-complete-string (short-name->pathname string) filter
+    (lambda (string)
+      (if-unique (pathname->short-name string)))
+    (lambda (prefix get-completions)
+      (if-not-unique (pathname->short-name prefix)
+		     (lambda () (map pathname->short-name (get-completions)))))
+    if-not-found))
+
+(define ((file-url-completions filter) string)
+  (map pathname->short-name
+       (pathname-completions-list (short-name->pathname string) filter)))
+
+(define (file-suffix-filter suffix)
+  (let ((suffix (string-append "." suffix)))
+    (let ((l (string-length suffix)))
+      (lambda (string)
+	(let ((i (string-search-forward suffix string)))
+	  (and i
+	       (fix:> i 0)
+	       (let ((i (fix:+ i l)))
+		 (or (fix:= i (string-length string))
+		     (char=? #\. (string-ref string i))))))))))
 
 ;;;; Server operations
 

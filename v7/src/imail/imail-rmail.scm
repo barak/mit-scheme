@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.31 2000/05/17 17:54:34 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.32 2000/05/20 03:22:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -26,9 +26,16 @@
 
 (define-class <rmail-url> (<file-url>))
 
-(define-url-protocol "rmail" <rmail-url>
-  (lambda (string)
-    (%make-rmail-url (short-name->pathname string))))
+(let ((filter
+       (let ((suffix-filter (file-suffix-filter "rmail")))
+	 (lambda (string)
+	   (or (string-ci=? string "rmail")
+	       (suffix-filter string))))))
+  (define-url-protocol "rmail" <rmail-url>
+    (lambda (string)
+      (%make-rmail-url (short-name->pathname string)))
+    (file-url-completer filter)
+    (file-url-completions filter)))
 
 (define (make-rmail-url pathname)
   (save-url (%make-rmail-url pathname)))
