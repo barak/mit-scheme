@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.56 2005/02/19 04:34:24 cph Exp $
+$Id: xml.pkg,v 1.57 2005/02/20 01:25:02 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -514,5 +514,6 @@ USA.
 	  xml-rpc:fault
 	  xml-rpc:parse-request
 	  xml-rpc:parse-response
+	  xml-rpc:request
 	  xml-rpc:response
 	  xml-rpc:simple-fault))
