@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.2 1993/11/12 14:53:35 jmiller Exp $
+$Id: instr1.scm,v 1.3 1993/11/12 18:25:55 jmiller Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -286,5 +286,5 @@ case.
 
 (define-instruction UWORD
   ;; Directly insert 32 bit word into output stream
-  ((? expression)
+  (((? expression))
    (LONG (32 expression UNSIGNED))))
