@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.10 1993/10/10 10:08:13 cph Exp $
+$Id: hashtb.scm,v 1.11 1993/10/11 10:59:38 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -47,8 +47,7 @@ MIT in each case. |#
 				 entry-valid?
 				 entry-key
 				 entry-datum
-				 set-entry-datum!
-				 initial-size))
+				 set-entry-datum!))
 		   (conc-name table-))
   ;; Procedures describing keys and entries.
   (key-hash #f read-only #t)
@@ -58,33 +57,53 @@ MIT in each case. |#
   (entry-key #f read-only #t)
   (entry-datum #f read-only #t)
   (set-entry-datum! #f read-only #t)
-  (standard-accessors? (and (eq? eq? key=?)
-			    (or (eq? car entry-key)
-				(eq? strong-car entry-key)
-				(eq? weak-car entry-key))
-			    (or (eq? cdr entry-datum)
-				(eq? strong-cdr entry-datum)
-				(eq? weak-cdr entry-datum))
-			    (or (eq? set-cdr! set-entry-datum!)
-				(eq? strong-set-cdr! set-entry-datum!)
-				(eq? weak-set-cdr! set-entry-datum!)))
-		       read-only #t)
 
   ;; Parameters of the hash table.
   (rehash-threshold default-rehash-threshold)
   (rehash-size default-rehash-size)
 
   ;; Internal state variables.
-  count
-  size
-  (initial-size #f read-only #t)
-  grow-size
-  shrink-size
+  (count 0)
+  (grow-size minimum-size)
+  (shrink-size 0)
   buckets
-  primes
-  (needs-rehash? #f))
+  (primes prime-numbers-stream)
+  (flags (if (and (eq? eq? key=?)
+		  (or (eq? car entry-key)
+		      (eq? strong-car entry-key)
+		      (eq? weak-car entry-key))
+		  (or (eq? cdr entry-datum)
+		      (eq? strong-cdr entry-datum)
+		      (eq? weak-cdr entry-datum))
+		  (or (eq? set-cdr! set-entry-datum!)
+		      (eq? strong-set-cdr! set-entry-datum!)
+		      (eq? weak-set-cdr! set-entry-datum!)))
+	     1
+	     0)))
 
-(define-integrable default-size 10)
+(define-integrable (table-standard-accessors? table)
+  (read-flag table 1))
+
+(define-integrable (table-needs-rehash? table)
+  (read-flag table 2))
+
+(define-integrable (set-table-needs-rehash?! table value)
+  (write-flag table 2 value))
+
+(define-integrable (table-initial-size-in-effect? table)
+  (read-flag table 4))
+
+(define-integrable (set-table-initial-size-in-effect?! table value)
+  (write-flag table 4 value))
+
+(define-integrable (read-flag table flag)
+  (fix:= (fix:and (table-flags table) flag) flag))
+
+(define-integrable (write-flag table flag value)
+  (if value
+      (set-table-flags! table (fix:or (table-flags table) flag))
+      (set-table-flags! table (fix:andc (table-flags table) flag))))
+
 (define-integrable minimum-size 4)
 (define-integrable default-rehash-threshold 1)
 (define-integrable default-rehash-size 2.)
@@ -97,53 +116,54 @@ MIT in each case. |#
 
 (define (hash-table/constructor key-hash key=? make-entry entry-valid?
 				entry-key entry-datum set-entry-datum!)
-  (lambda (#!optional initial-size)
-    (let ((initial-size
-	   (if (default-object? initial-size)
-	       default-size
-	       (check-arg initial-size
-			  default-size
-			  exact-nonnegative-integer?
-			  "exact nonnegative integer"
-			  #f))))
-      (let ((table
-	     (make-hash-table key-hash
-			      key=?
-			      make-entry
-			      (if (eq? #t entry-valid?)
-				  always-valid
-				  entry-valid?)
-			      entry-key
-			      entry-datum
-			      set-entry-datum!
-			      (max initial-size minimum-size))))
-	(clear-table! table)
-	(if (address-hash? key-hash)
-	    (set! address-hash-tables (weak-cons table address-hash-tables)))
-	table))))
+  (let ((make-entry (if (eq? cons make-entry) strong-cons make-entry))
+	(entry-valid? (if (eq? #t entry-valid?) strong-valid? entry-valid?))
+	(entry-key (if (eq? car entry-key) strong-car entry-key))
+	(entry-datum (if (eq? cdr entry-datum) strong-cdr entry-datum))
+	(set-entry-datum!
+	 (if (eq? set-cdr! set-entry-datum!)
+	     strong-set-cdr!
+	     set-entry-datum!)))
+    (lambda (#!optional initial-size)
+      (let ((initial-size
+	     (if (default-object? initial-size)
+		 #f
+		 (check-arg initial-size
+			    #f
+			    exact-nonnegative-integer?
+			    "exact nonnegative integer"
+			    #f))))
+	(let ((table
+	       (make-hash-table key-hash key=? make-entry entry-valid?
+				entry-key entry-datum set-entry-datum!)))
+	  (if (and initial-size (> initial-size minimum-size))
+	      ;; If an initial size is given, it means that the table
+	      ;; should be initialized with that usable size.  The
+	      ;; table's usable size remains fixed at the initial size
+	      ;; until the count exceeds the usable size, at which point
+	      ;; normal table resizing takes over.
+	      (begin
+		(set-table-grow-size! table initial-size)
+		(set-table-initial-size-in-effect?! table #t)))
+	  (reset-table! table)
+	  (if (address-hash? key-hash)
+	      (set! address-hash-tables (weak-cons table address-hash-tables)))
+	  table)))))
 
-(define (hash-table/strong-constructor key-hash key=?)
-  (hash-table/constructor key-hash key=?
-			  strong-cons
-			  #t
-			  strong-car
-			  strong-cdr
-			  strong-set-cdr!))
-
-;; Standard trick because known calls to these primitives compile more
-;; efficiently than unknown calls.
+;;; Standard trick because known calls to these primitives compile
+;;; more efficiently than unknown calls.
 (define (strong-cons key datum) (cons key datum))
+(define (strong-valid? entry) entry #t)
 (define (strong-car entry) (car entry))
 (define (strong-cdr entry) (cdr entry))
 (define (strong-set-cdr! entry datum) (set-cdr! entry datum))
 
+(define (hash-table/strong-constructor key-hash key=?)
+  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
+
 (define (hash-table/weak-constructor key-hash key=?)
-  (hash-table/constructor key-hash key=?
-			  weak-cons
-			  weak-pair/car?
-			  weak-car
-			  weak-cdr
-			  weak-set-cdr!))
+  (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
+			  weak-car weak-cdr weak-set-cdr!))
 
 ;;;; Accessors
 
@@ -309,26 +329,35 @@ MIT in each case. |#
 
 ;;;; Parameters
 
-(let-syntax
-    ((define-export
-       (macro (name)
-	 (let ((export-name (symbol-append 'HASH-TABLE/ name)))
-	   `(DEFINE (,export-name TABLE)
-	      (GUARANTEE-HASH-TABLE TABLE ',export-name)
-	      (,(symbol-append 'TABLE- name) TABLE))))))
-  (define-export key-hash)
-  (define-export key=?)
-  (define-export make-entry)
-  (define-export entry-key)
-  (define-export entry-datum)
-  (define-export set-entry-datum!)
-  (define-export rehash-threshold)
-  (define-export rehash-size)
-  (define-export count))
+(define hash-table/key-hash
+  (record-accessor hash-table 'KEY-HASH))
 
-(define (hash-table/size table)
-  (guarantee-hash-table table 'HASH-TABLE/SIZE)
-  (table-grow-size table))
+(define hash-table/key=?
+  (record-accessor hash-table 'KEY=?))
+
+(define hash-table/make-entry
+  (record-accessor hash-table 'MAKE-ENTRY))
+
+(define hash-table/entry-key
+  (record-accessor hash-table 'ENTRY-KEY))
+
+(define hash-table/entry-datum
+  (record-accessor hash-table 'ENTRY-DATUM))
+
+(define hash-table/set-entry-datum!
+  (record-accessor hash-table 'SET-ENTRY-DATUM!))
+
+(define hash-table/rehash-threshold
+  (record-accessor hash-table 'REHASH-THRESHOLD))
+
+(define hash-table/rehash-size
+  (record-accessor hash-table 'REHASH-SIZE))
+
+(define hash-table/count
+  (record-accessor hash-table 'COUNT))
+
+(define hash-table/size
+  (record-accessor hash-table 'GROW-SIZE))
 
 (define (set-hash-table/rehash-threshold! table threshold)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
@@ -344,50 +373,45 @@ MIT in each case. |#
     (without-interrupts
      (lambda ()
        (set-table-rehash-threshold! table threshold)
-       (let ((size (table-size table)))
-	 (let ((shrink-size (compute-shrink-size table size))
-	       (grow-size (compute-grow-size table size)))
-	   (set-table-shrink-size! table shrink-size)
-	   (set-table-grow-size! table grow-size)
-	   (let ((count (table-count table)))
-	     (cond ((< count shrink-size) (shrink-table! table))
-		   ((> count grow-size) (grow-table! table))))))))))
+       (new-size! table (table-grow-size table))))))
 
 (define (set-hash-table/rehash-size! table size)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-SIZE!)
-  (set-table-rehash-size!
-   table
-   (check-arg size
-	      default-rehash-size
-	      (lambda (x)
-		(cond ((exact-integer? x) (< 0 x))
-		      ((real? x) (< 1 x))
-		      (else #f)))
-	      "real number < 1 or exact integer >= 1"
-	      'SET-HASH-TABLE/REHASH-SIZE!)))
+  (let ((size
+	 (check-arg size
+		    default-rehash-size
+		    (lambda (x)
+		      (cond ((exact-integer? x) (< 0 x))
+			    ((real? x) (< 1 x))
+			    (else #f)))
+		    "real number < 1 or exact integer >= 1"
+		    'SET-HASH-TABLE/REHASH-SIZE!)))
+    (without-interrupts
+     (lambda ()
+       (set-table-rehash-size! table size)
+       (reset-shrink-size! table)
+       (if (< (table-count table) (table-shrink-size table))
+	   (shrink-table! table))))))
 
 ;;;; Cleansing
 
 (define (hash-table/clear! table)
   (guarantee-hash-table table 'HASH-TABLE/CLEAR!)
-  (without-interrupts (lambda () (clear-table! table))))
-
-(define (clear-table! table)
-  (set-table-count! table 0)
-  (reset-table! table (table-initial-size table) #f #f #f))
+  (without-interrupts
+   (lambda ()
+     (if (not (table-initial-size-in-effect? table))
+	 (set-table-grow-size! table minimum-size))
+     (set-table-count! table 0)
+     (reset-table! table))))
 
 (define (hash-table/clean! table)
   (guarantee-hash-table table 'HASH-TABLE/CLEAN!)
-  (if (not (eq? always-valid (table-entry-valid? table)))
+  (if (not (eq? strong-valid? (table-entry-valid? table)))
       (without-interrupts
        (lambda ()
 	 (clean-table! table)
 	 (if (< (table-count table) (table-shrink-size table))
 	     (shrink-table! table))))))
-
-(define (always-valid entry)
-  entry
-  #t)
 
 (define (clean-table! table)
   (let ((buckets (table-buckets table))
@@ -438,68 +462,76 @@ MIT in each case. |#
 ;;;; Resizing
 
 (define (grow-table! table)
-  (let ((count (table-count table))
-	(rehash-size (table-rehash-size table)))
-    (let loop ((size (table-size table)))
-      (let ((grow-size (compute-grow-size table size)))
-	(if (> count grow-size)
-	    (loop (if (exact-integer? rehash-size)
-		      (+ size rehash-size)
-		      (let ((size* (round->exact (* size rehash-size))))
-			(if (> size* size)
-			    size*
-			    (+ size 1)))))
-	    (new-size! table size grow-size #f (table-primes table)))))))
+  (let loop ((size (table-grow-size table)))
+    (if (> (table-count table) size)
+	(loop (increment-size table size))
+	(new-size! table size)))
+  (set-table-initial-size-in-effect?! table #f))
 
 (define (shrink-table! table)
-  (let ((count (table-count table))
-	(rehash-size (table-rehash-size table)))
-    (let loop ((size (table-size table)))
-      (let ((shrink-size (compute-shrink-size table size)))
-	(if (< count shrink-size)
-	    (loop (if (exact-integer? rehash-size)
-		      (- size rehash-size)
-		      (let ((size* (round->exact (/ size rehash-size))))
-			(if (< size* size)
-			    size*
-			    (- size 1)))))
-	    (new-size! table size #f shrink-size #f))))))
+  (if (not (table-initial-size-in-effect? table))
+      (let loop ((size (table-grow-size table)))
+	(cond ((<= size minimum-size)
+	       (new-size! table minimum-size))
+	      ((< (table-count table) (compute-shrink-size table size))
+	       (loop (decrement-size table size)))
+	      (else
+	       (new-size! table size))))))
 
-(define (new-size! table size grow-size shrink-size primes)
+(define (new-size! table size)
+  (set-table-grow-size! table size)
   (let ((old-buckets (table-buckets table)))
-    (reset-table! table size grow-size shrink-size primes)
+    (reset-table! table)
     (rehash-table-from-old-buckets! table old-buckets)
-    ;; Since the rehashing also deletes entries which are no longer
-    ;; valid, the count might have been reduced.  So check to see if
-    ;; it's necessary to shrink the table even further.
+    ;; Since the rehashing also deletes invalid entries, the count
+    ;; might have been reduced.  So check to see if it's necessary to
+    ;; shrink the table even further.
     (if (< (table-count table) (table-shrink-size table))
 	(shrink-table! table))))
 
-(define (reset-table! table size grow-size shrink-size primes)
-  (let ((size (max size minimum-size)))
-    (set-table-size! table size)
-    (set-table-grow-size! table (or grow-size (compute-grow-size table size)))
-    (set-table-shrink-size! table
-			    (or shrink-size (compute-shrink-size table size)))
-    (let ((primes
-	   (let loop ((primes (or primes prime-numbers-stream)))
+(define (reset-table! table)
+  (reset-shrink-size! table)
+  (let ((primes
+	 (let ((size
+		(round->exact (/ (table-grow-size table)
+				 (table-rehash-threshold table)))))
+	   (let loop
+	       ((primes
+		 (if (< size (stream-car (table-primes table)))
+		     prime-numbers-stream
+		     (table-primes table))))
 	     (if (<= size (stream-car primes))
 		 primes
-		 (loop (stream-cdr primes))))))
-      (set-table-primes! table primes)
-      (set-table-buckets! table (make-vector (stream-car primes) '())))))
+		 (loop (stream-cdr primes)))))))
+    (set-table-primes! table primes)
+    (set-table-buckets! table (make-vector (stream-car primes) '()))))
 
-(define (compute-grow-size table size)
-  (round->exact (* (table-rehash-threshold table) size)))
+(define (reset-shrink-size! table)
+  (set-table-shrink-size! table
+			  (compute-shrink-size table (table-grow-size table))))
 
 (define (compute-shrink-size table size)
   (if (<= size minimum-size)
       0
-      (round->exact (* (table-rehash-threshold table)
-		       (let ((rehash-size (table-rehash-size table)))
-			 (if (exact-integer? rehash-size)
-			     (- size (+ rehash-size rehash-size))
-			     (/ size (* rehash-size rehash-size))))))))
+      (max 0 (decrement-size table (decrement-size table size)))))
+
+(define (increment-size table size)
+  (let ((rehash-size (table-rehash-size table)))
+    (if (exact-integer? rehash-size)
+	(+ size rehash-size)
+	(let ((size* (round->exact (* size rehash-size))))
+	  (if (> size* size)
+	      size*
+	      (+ size 1))))))
+
+(define (decrement-size table size)
+  (let ((rehash-size (table-rehash-size table)))
+    (if (exact-integer? rehash-size)
+	(- size rehash-size)
+	(let ((size* (round->exact (/ size rehash-size))))
+	  (if (< size* size)
+	      size*
+	      (- size 1))))))
 
 ;;;; Rehashing
 
