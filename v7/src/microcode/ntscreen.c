@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.16 1993/09/07 19:07:05 gjr Exp $
+$Id: ntscreen.c,v 1.17 1993/09/10 22:17:38 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -68,11 +68,12 @@ extern BOOL win32_under_win32s_p (void);
 
 // data structures
 
-#define MAX_EVENTS 250
+#define MAX_EVENTS 500
 
-typedef struct tagSCREEN_EVENT_LINK {
+typedef struct tagSCREEN_EVENT_LINK
+{
   SCREEN_EVENT event;
-  struct tagSCREEN_EVENT_LINK *next;
+  struct tagSCREEN_EVENT_LINK * next;
 } SCREEN_EVENT_LINK;
 
 #define MAX_COMMANDS 30
@@ -89,41 +90,43 @@ typedef struct tagSCREENINFO
    
    HWND	   hWnd;
    
-   char              *chars;
-   SCREEN_ATTRIBUTE  *attrs;
+   char              * chars;
+   SCREEN_ATTRIBUTE  * attrs;
    WORD              mode_flags;	//events & modes
    SCREEN_ATTRIBUTE  write_attribute;
    
-   WORD    CursorState ;
+   WORD    CursorState;
 
-   HFONT   hFont ;
-   LOGFONT lfFont ;
-   DWORD   rgbFGColour ;
-   DWORD   rgbBGColour ;
+   HFONT   hFont;
+   LOGFONT lfFont;
+   DWORD   rgbFGColour;
+   DWORD   rgbBGColour;
    int     xSize, ySize, xScroll, yScroll, xOffset, yOffset;
-   int     column, row, xChar, yChar ;
+   int     column, row, xChar, yChar;
    int     width, height;  //size in characters
 
-   int	n_events;
-   SCREEN_EVENT_LINK  *events;
-   SCREEN_EVENT_LINK  *free_events;
-   SCREEN_EVENT_LINK  *queue_head,  *queue_tail;
+   int n_events;
+   SCREEN_EVENT_LINK * events;
+   SCREEN_EVENT_LINK * free_events;
+   SCREEN_EVENT_LINK * queue_head, * queue_tail;
 
    int n_commands;
-   struct {
+   struct
+   {
      WORD wID;
-     COMMAND_HANDLER  thunk;
+     COMMAND_HANDLER thunk;
    } commands[MAX_COMMANDS];
    
    int n_bindings;
-   struct {
+   struct
+   {
      char   key;
      WORD   command;
    } bindings[MAX_BINDINGS];
 
    // for line input
    int n_chars;
-   char  *line_buffer;
+   char * line_buffer;
 
    /* ANSI emulator overflow */
    int n_pending;
@@ -1599,29 +1602,35 @@ Screen_SetPosition (SCREEN screen, int row, int column)
 static UINT
 ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
 {
-  UINT processed = 0;
-  SCREEN_EVENT_LINK * current = screen->queue_head;
+  int start_count;
+  SCREEN_EVENT_LINK ** next_loc;
   SCREEN_EVENT * entry = buffer;
     
   if (count < 0)
     count = MAX_EVENTS;
     
-  while ((count > 0) && (current != ((SCREEN_EVENT_LINK *) NULL)))
+  start_count = count;
+  next_loc = & screen->queue_head;
+
+  while ((count > 0) && ((* next_loc) != ((SCREEN_EVENT_LINK *) NULL)))
   {
+    SCREEN_EVENT_LINK * current = (* next_loc);
+
     if (entry)
       *entry++ = current->event;
-    current = current->next;
     if (remove)
     {
-      screen->queue_head->next = screen->free_events;
-      screen->free_events = screen->queue_head;
-      screen->queue_head = current;
-      if (current == ((SCREEN_EVENT_LINK *) NULL))
-	screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
-      screen->n_events--;
+      (* next_loc) = current->next;
+      current->next = screen->free_events;
+      screen->free_events = current;
+      screen->n_events -= 1;
     }
+    count -= 1;
   }
-  return (processed);
+  if (remove && ((* next_loc) == ((SCREEN_EVENT_LINK *) NULL)))
+    screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
+
+  return (start_count - count);
 }
 
 void
@@ -2507,7 +2516,7 @@ key_buffer_erase_character (SCREEN screen)
   return;
 }
 
-static VOID 
+static VOID
 buffered_key_command (SCREEN screen,  int ch)
 {
   switch (ch)
@@ -2536,58 +2545,59 @@ buffered_key_command (SCREEN screen,  int ch)
 static int
 ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 {
-  SCREEN_EVENT_LINK * current = screen->queue_head;
-  SCREEN_EVENT_LINK * previous = ((SCREEN_EVENT_LINK *) NULL);
+  int result;
+  SCREEN_EVENT_LINK ** next_loc, * last;
 
-  while (current)
+  result = -1;			/* No EOL seen yet. */
+  next_loc = & screen->queue_head;
+  last = ((SCREEN_EVENT_LINK *) NULL);
+
+  while ((* next_loc) != ((SCREEN_EVENT_LINK *) NULL))
   {
-    SCREEN_EVENT_LINK * next;
-
-    if (current->event.type == SCREEN_EVENT_TYPE_KEY)
+    SCREEN_EVENT_LINK * current = (* next_loc);
+    
+    if (current->event.type != SCREEN_EVENT_TYPE_KEY)
     {
-      int  ch = current->event.event.key.ch;
+      last = current;
+      next_loc = &current->next;
+    }
+    else
+    {
+      int ch = current->event.event.key.ch;
       if ((current->event.event.key.control_key_state
 	   & SCREEN_ANY_ALT_KEY_MASK)
 	  != 0)
 	ch |= 0200;	    
 	
-      if (ch!=0)
+      if (ch != 0)
 	buffered_key_command (screen, ch);
 	  
       /* dequeue */
-      next = current->next;
-      if (current == screen->queue_tail)
-	screen->queue_tail = previous;
-      if (previous != ((SCREEN_EVENT_LINK *) NULL))
-	previous->next = next;
-      else
-	screen->queue_head = next;
+
+      (* next_loc) = current->next;
       current->next = screen->free_events;
       screen->free_events = current;
       screen->n_events -= 1;
-      current = next;
-	  
-      /* If end of line then copy buffer and return */
 
       if ((ch == '\n') || (ch == '\r'))
       {
-	int i;
-	int count = min (screen->n_chars, buflen);
+	int i, count = (min (screen->n_chars, buflen));
 
 	for (i = 0; i < count; i++)
 	  buffer[i] = screen->line_buffer[i];
-	screen->n_chars = 0;
-	return count;
+	screen->n_chars -= count;
+	if (screen->n_chars > 0)
+	  _fmemmove (&screen->line_buffer[0],
+		     &screen->line_buffer[count],
+		     screen->n_chars);
+	result = (count);
+	break;
       }
     }
-    else /* not a key event */
-    {
-      previous = current;
-      current = current->next;	
-    }	
   }
-  /* We have copied all pending characters but there is no EOL yet */
-  return (-1);
+  if ((* next_loc) == ((SCREEN_EVENT_LINK *) NULL))
+    screen->queue_tail = last;
+  return (result);
 }
 
 /* Untranslated/unbuffered input */
@@ -2595,55 +2605,49 @@ ReadScreen_line_input (SCREEN screen, LPSTR buffer, int buflen)
 static int
 ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 {
-  int position = 0;
-  SCREEN_EVENT_LINK * current = screen->queue_head;
-  SCREEN_EVENT_LINK * previous = ((SCREEN_EVENT_LINK *) NULL);
+  int position;
+  SCREEN_EVENT_LINK ** next_loc, * last;
 
-  while (current)
+  last = ((SCREEN_EVENT_LINK *) NULL);
+
+  for (position = 0, next_loc = & screen->queue_head;
+       (position < buflen) && ((* next_loc) != ((SCREEN_EVENT_LINK *) NULL));
+       )
   {
-    if (current->event.type == SCREEN_EVENT_TYPE_KEY)
+    SCREEN_EVENT_LINK * current = (* next_loc);
+    
+    if (current->event.type != SCREEN_EVENT_TYPE_KEY)
     {
-      SCREEN_EVENT_LINK * next;
+      last = current;
+      next_loc = &current->next;
+    }
+    else
+    {
       int ch = current->event.event.key.ch;
-
       if ((current->event.event.key.control_key_state
 	   & SCREEN_ANY_ALT_KEY_MASK)
 	  != 0)
 	ch |= 0200;	    
 	
-      // stash away the character
-	if (position < buflen)
-	  buffer[position++] = ch;
+      /* Store the character */
+
+      buffer[position++] = ch;
       if (screen->mode_flags & SCREEN_MODE_ECHO)
       {
 	char c = ((char) ch);
-	/* Screen_WriteCharUninterpreted (screen, ch, NULL); */
 	WriteScreenBlock (screen->hWnd, &c, 1);
       }
-	
-      next = current->next;
-      if (current == screen->queue_tail)
-	screen->queue_tail = previous;
-      if (previous != ((SCREEN_EVENT_LINK *) NULL))
-	previous->next = next;
-      else
-	screen->queue_head = next;
+	  
+      /* dequeue */
+
+      (* next_loc) = current->next;
       current->next = screen->free_events;
       screen->free_events = current;
       screen->n_events -= 1;
-      current = next;
-
-      /* If end of line or the buffer is full then return */
-      if (position == buflen)
-	return (position);
     }
-    else /* not a key event */
-    {
-      previous = current;
-      current = current->next;	
-    }	
   }
-  /* We have copied all pending characters but there is no EOL yet */
+  if ((* next_loc) == ((SCREEN_EVENT_LINK *) NULL))
+    screen->queue_tail = last;
   return ((position == 0) ? -1 : position);
 }
 
@@ -3016,9 +3020,9 @@ GetControlKeyState(DWORD lKeyData)
 static SCREEN_EVENT *
 alloc_event (SCREEN screen, SCREEN_EVENT_TYPE type)
 {
-  SCREEN_EVENT_LINK * link;
+  SCREEN_EVENT_LINK * new_event;
   if ((screen->mode_flags & type) == 0)
-    return 0;
+    return ((SCREEN_EVENT_LINK *) NULL);
 
   if (screen->free_events == ((SCREEN_EVENT_LINK *) NULL))
   {
@@ -3033,44 +3037,44 @@ alloc_event (SCREEN screen, SCREEN_EVENT_TYPE type)
 	     == IDOK)
       screen_reset_events (screen);
       
-    return 0;
+    return ((SCREEN_EVENT_LINK *) NULL);
   }
     
-  link = screen->free_events;
-  screen->free_events = link->next;
-  link->event.type = type;
-  link->next = ((SCREEN_EVENT_LINK *) NULL);
-  if (screen->queue_head == ((SCREEN_EVENT_LINK *) NULL))
+  new_event = screen->free_events;
+  screen->free_events = new_event->next;
+  new_event->event.type = type;
+  new_event->next = ((SCREEN_EVENT_LINK *) NULL);
+  if (screen->queue_tail == ((SCREEN_EVENT_LINK *) NULL))
   {
-    screen->queue_tail = link;
-    screen->queue_head = link;
+    screen->queue_tail = new_event;
+    screen->queue_head = new_event;
   }
   else
   {
-    screen->queue_tail->next = link;
-    screen->queue_tail = link;
+    screen->queue_tail->next = new_event;
+    screen->queue_tail = new_event;
   }
   screen->n_events += 1;
 
-  return  &link->event;
+  return (&new_event->event);
 }
 
 BOOL
 Screen_GetEvent (HANDLE hwnd, SCREEN_EVENT * event)
 {
-  SCREEN_EVENT_LINK *link;
+  SCREEN_EVENT_LINK * new_event;
   SCREEN screen = (GETSCREEN (hwnd));
 
   if ((screen == ((SCREEN) NULL)) || (screen->n_events == 0))
     return (FALSE);
   screen->n_events -= 1;
-  link = screen->queue_head;
-  (* event) = link->event;
-  screen->queue_head = link->next;
-  if (link->next == ((SCREEN_EVENT_LINK *) NULL))
+  new_event = screen->queue_head;
+  (* event) = new_event->event;
+  screen->queue_head = new_event->next;
+  if (screen->queue_head == ((SCREEN_EVENT_LINK *) NULL))
     screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
-  link->next = screen->free_events;
-  screen->free_events = link;
+  new_event->next = screen->free_events;
+  screen->free_events = new_event;
   return (TRUE);
 }
 
@@ -3079,8 +3083,7 @@ Screen_PeekEvent (HANDLE hwnd, SCREEN_EVENT * event)
 {
   SCREEN screen = (GETSCREEN (hwnd));
 
-  if ((screen == ((SCREEN) NULL))
-      || (screen->n_events == 0))
+  if ((screen == ((SCREEN) NULL)) || (screen->n_events == 0))
     return (FALSE);
   if (event != ((SCREEN_EVENT *) NULL))
     (* event) = screen->queue_head->event;
