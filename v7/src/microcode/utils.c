@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.57 1993/06/24 06:32:28 gjr Exp $
+$Id: utils.c,v 9.58 1993/06/25 20:57:07 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -485,6 +485,34 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
 
 /* Do_Micro_Error, continued */
 
+  /* This can NOT be folded into the Will_Push below since we cannot
+     afford to have the Will_Push put down its own continuation.
+     There is guaranteed to be enough space for this one
+     continuation; in fact, the Will_Push here is really unneeded!
+   */
+
+  if (From_Pop_Return)
+  {
+   Will_Push (CONTINUATION_SIZE);
+    Save_Cont ();
+   Pushed ();
+  }
+
+ Will_Push (CONTINUATION_SIZE + (From_Pop_Return ? 0 : 1));
+  if (From_Pop_Return)
+    Store_Expression (Val);
+  else
+    STACK_PUSH (Fetch_Env ());
+  Store_Return ((From_Pop_Return) ?
+		RC_POP_RETURN_ERROR :
+		RC_EVAL_ERROR);
+  Save_Cont ();
+ Pushed ();
+
+/* Do_Micro_Error continues on the next page. */
+
+/* Do_Micro_Error, continued */
+
   if ((!Valid_Fixed_Obj_Vector()) ||
       (OBJECT_TYPE ((Error_Vector =
 		    Get_Fixed_Obj_Slot(System_Error_Vector))) !=
@@ -508,37 +536,7 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
     Handler = (VECTOR_REF (Error_Vector, ERR_BAD_ERROR_CODE));
   }
   else
-  {
     Handler = (VECTOR_REF (Error_Vector, Err));
-  }
-
-  /* This can NOT be folded into the Will_Push below since we cannot
-     afford to have the Will_Push put down its own continuation.
-     There is guaranteed to be enough space for this one
-     continuation; in fact, the Will_Push here is really unneeded!
-   */
-
-  if (From_Pop_Return)
-  {
-   Will_Push(CONTINUATION_SIZE);
-    Save_Cont();
-   Pushed();
-  }
-
- Will_Push (CONTINUATION_SIZE + (From_Pop_Return ? 0 : 1));
-  if (From_Pop_Return)
-  {
-    Store_Expression(Val);
-  }
-  else
-  {
-    STACK_PUSH (Fetch_Env());
-  }
-  Store_Return((From_Pop_Return) ?
-	       RC_POP_RETURN_ERROR :
-	       RC_EVAL_ERROR);
-  Save_Cont();
- Pushed ();
 
   /* Return from error handler will re-enable interrupts & restore history */
   Stop_History();
