@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.4 1992/05/28 18:12:14 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.5 1992/05/28 23:18:18 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -143,21 +143,20 @@ MIT in each case. |#
 (define get-environment-variable)
 (define set-environment-variable!)
 (define delete-environment-variable!)
+(define reset-environment-variables!)
 
-(let ((environment-variables '())
-      (*variable-deleted* "This var deleted"))
+(let ((environment-variables '()))
+  ;; Kludge: since getenv returns false for unbound,
+  ;; that can also be the marker for a deleted variable
+  (define-integrable *variable-deleted* false)
   (set! get-environment-variable
 	(lambda (variable)
-	  (if (string? variable)
-	      (let ((scheme-value (assoc variable environment-variables)))
-		(cond ((not scheme-value)
-		       ((ucode-primitive get-environment-variable) variable))
-		      ((eq? (cdr scheme-value) *variable-deleted*)
-		       false)
-		      (else
-		       (cdr scheme-value))))
-	      (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
-		     variable))))
+	  (cond ((not (string? variable))
+		 (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
+			variable))
+		((assoc variable environment-variables) => cdr)
+		(else
+		 ((ucode-primitive get-environment-variable) variable)))))
   (set! set-environment-variable!
 	(lambda (variable value)
 	  (if (string? variable)
@@ -175,6 +174,8 @@ MIT in each case. |#
   (set! delete-environment-variable!
 	(lambda (variable)
 	  (set-environment-variable! variable *variable-deleted*)))
+  (set! reset-environment-variables!
+	(lambda () (set! environment-variables '())))
 ) ; End LET
 
 (define (dos/user-home-directory user-name)
@@ -202,4 +203,8 @@ MIT in each case. |#
 (define (make-directory name)
   ((ucode-primitive directory-make)
    (->namestring (pathname-as-directory (merge-pathnames name)))))
- 
+
+
+;;; Queues after-restart daemon to clean up environment space
+
+(add-event-receiver! event:after-restart reset-environment-variables!)

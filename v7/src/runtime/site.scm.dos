@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.5 1992/05/28 22:43:20 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.6 1992/05/28 23:21:48 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -52,6 +52,14 @@ MIT in each case. |#
      (add-directory-rewriting-rule! path "$mitscheme_inf_directory"))
    '("/scheme")))
 
+(let ((set-default-inf-directory!
+       (lambda ()
+	 (if (not (get-environment-variable "mitscheme_inf_directory"))
+	     (set-environment-variable! "mitscheme_inf_directory"
+					"c:/scheme")))))
+  (set-default-inf-directory!)
+  (add-event-receiver! event:after-restart set-default-inf-directory!))  
+	  
 ;;; Dos specific:
 ;;; Timer hook to get interrupt keys
 
