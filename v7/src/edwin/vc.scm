@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.13 1994/03/18 22:01:36 cph Exp $
+;;;	$Id: vc.scm,v 1.14 1994/04/30 21:13:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -439,10 +439,8 @@ files in or below it."
   (let ((rev1 (vc-normalize-version rev1))
 	(rev2 (vc-normalize-version rev2)))
     (let ((rev1 (if (or rev1 rev2) rev1 (vc-workfile-version master))))
-      (if (or (if (or rev1 rev2)
-		  #t
-		  (not (vc-workfile-modified? master)))
-	      (= 0 (vc-backend-diff master rev1 rev2)))
+      (if (and (or rev1 rev2 (not (vc-workfile-modified? master)))
+	       (= 0 (vc-backend-diff master rev1 rev2)))
 	  (begin
 	    (message "No changes to "
 		     (vc-workfile-string master)
