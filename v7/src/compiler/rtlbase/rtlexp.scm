@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.3 1988/03/14 21:04:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.4 1988/04/25 21:44:58 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,6 +74,24 @@ MIT in each case. |#
       (or (rtl:object->address? expression)
 	  (rtl:variable-cache? expression)
 	  (rtl:assignment-cache? expression))))
+
+(define (rtl:fixnum-valued-expression? expression)
+  (if (rtl:register? expression)
+      (register-contains-fixnum? (rtl:register-number expression))
+      (rtl:object->fixnum? expression)))
+
+(define (rtl:optimizable? expression)
+  ;;; In order to avoid a combinatorial explosion in the number of
+  ;;; rules required in the lapgen phase we create a class of
+  ;;; expression types which we don't want optimized. We will
+  ;;; explicitly assign these expression types to registers during
+  ;;; rtl generation and then we need only create rules for how to
+  ;;; generate assignments to registers. Some day we will have
+  ;;; some facility for subrule hierarchies which may avoid the
+  ;;; combinatorial explosion. When that happens the next test may
+  ;;; be replaced by true.
+  (not (memq (rtl:expression-type expression)
+	     '(OBJECT->FIXNUM))))
 
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.2 1987/12/30 07:07:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.3 1988/04/25 21:45:08 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -122,3 +122,6 @@ MIT in each case. |#
 
 (define-integrable (register-contains-address? register)
   (memq register (rgraph-address-registers *current-rgraph*)))
+
+(define-integrable (register-contains-fixnum? register)
+  (memq register (rgraph-fixnum-registers *current-rgraph*)))
