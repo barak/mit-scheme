@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.27 1987/03/09 14:23:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.28 1987/03/09 16:02:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -388,7 +388,7 @@ Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
   Primitive_GC_If_Needed (IDENTITY_LENGTH + VECTOR_DATA);
   Result = Free;
   *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, IDENTITY_LENGTH));
-  for (i = 0; (i < IDENTITY_LENGTH); i -= 1)
+  for (i = 0; (i < IDENTITY_LENGTH); i += 1)
     *Free++ = NIL;
   Result[(ID_RELEASE + VECTOR_DATA)]
     = (C_String_To_Scheme_String (RELEASE));
