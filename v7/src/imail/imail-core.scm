@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.95 2000/06/02 17:24:52 cph Exp $
+;;; $Id: imail-core.scm,v 1.96 2000/06/02 20:35:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -810,7 +810,7 @@
 (define-generic message-mime-body-structure (message))
 (define-generic message-mime-body-part (message selector))
 
-(define-class <mime-body> ()
+(define-class <mime-body> (<imail-object>)
   (parameters define accessor)
   (disposition define accessor)
   (language define accessor))
