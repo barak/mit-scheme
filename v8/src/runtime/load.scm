@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.22 1991/05/03 17:54:29 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.23 1991/08/20 22:01:33 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (set! hook/process-command-line default/process-command-line)
+  (set! load-init-file? true)
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
@@ -47,9 +48,11 @@ MIT in each case. |#
   (set! fasload/default-types '("com" "bin"))
   (add-event-receiver! event:after-restart
 		       (lambda ()
-			 (load-init-file)
-			 (process-command-line))))
+			 (process-command-line)
+			 (if load-init-file?
+			     (load-init-file)))))
 
+(define load-init-file?)
 (define load-noisily?)
 (define load/loading?)
 (define load/suppress-loading-message?)
@@ -306,5 +309,47 @@ MIT in each case. |#
 (define hook/process-command-line)
 
 (define (default/process-command-line unused-command-line)
-  (if (positive? (vector-length unused-command-line))
-      (warn "unused command-line arguments" unused-command-line)))
+  (letrec ((unused-command-line-length (vector-length unused-command-line))
+	   (unused-for-each
+	    (lambda (proc start end)
+	      (if (< start end)
+		  (begin (proc (vector-ref unused-command-line start))
+			 (unused-for-each proc (1+ start) end)))))
+	   (find-first-dash
+	    (lambda (index)
+	      (let loop ((index index))
+		(if (= index unused-command-line-length)
+		    unused-command-line-length
+		    (let ((first (vector-ref unused-command-line index)))
+		      (cond ((zero? (string-length first))
+			     (loop (1+ index)))
+			    ((char=? (string-ref first 0) #\-)
+			     index)
+			    (else (loop (1+ index))))))))))
+    (let process-next-option ((index 0)
+			      (unhandled-options '()))
+      (if (= index unused-command-line-length)
+	  (if (not (null? unhandled-options))
+	      (warn "Unhandled command line options:"
+		    (reverse unhandled-options)))
+	  (let ((option (string-downcase (vector-ref unused-command-line index))))
+	    (cond ((string=? "-no-init-file" option)
+		   (set! load-init-file? false)
+		   (process-next-option (1+ index) unhandled-options))
+		  ((string=? "-eval" option)
+		   (let ((next-option (find-first-dash (1+ index))))
+		     (unused-for-each
+		      (lambda (string)
+			(eval (with-input-from-string string read)
+			      user-initial-environment))
+		      (1+ index)
+		      next-option)
+		     (process-next-option next-option unhandled-options)))
+		  ((string=? "-load" option)
+		   (let ((next-option (find-first-dash (1+ index))))
+		     (unused-for-each load (1+ index) next-option)
+		     (process-next-option next-option unhandled-options)))
+		  (else (process-next-option
+			 (1+ index)
+			 (cons (vector-ref unused-command-line index)
+			       unhandled-options)))))))))
