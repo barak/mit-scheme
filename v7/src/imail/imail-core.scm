@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.118 2001/03/19 19:29:48 cph Exp $
+;;; $Id: imail-core.scm,v 1.119 2001/05/07 18:02:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -307,7 +307,9 @@
   (let ((folder (hash-table/get memoized-folders url #f)))
     (and folder
 	 (let ((folder (weak-car folder)))
-	   (if (and folder (url-exists? url))
+	   ;; Delete memoization _only_ if URL-EXISTS? unambiguously
+	   ;; states non-existence.  An error is often transitory.
+	   (if (and folder (ignore-errors (lambda () (url-exists? url))))
 	       folder
 	       (begin
 		 (unmemoize-folder url)
