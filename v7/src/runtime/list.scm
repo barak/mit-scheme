@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.46 2005/03/29 03:25:24 cph Exp $
+$Id: list.scm,v 14.47 2005/03/29 03:38:36 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -1070,6 +1070,18 @@ USA.
 
 (define (error:not-restricted-keyword-list object caller)
   (error:wrong-type-argument object "restricted keyword list" caller))
+
+(define (unique-keyword-list? object)
+  (let loop ((l1 object) (l2 object) (symbols '()))
+    (if (pair? l1)
+	(and (symbol? (car l1))
+	     (not (memq (car l1) symbols))
+	     (pair? (cdr l1))
+	     (not (eq? (cdr l1) l2))
+	     (loop (cdr (cdr l1)) (cdr l1) (cons (car 1) symbols)))
+	(null? l1))))
+
+(define-guarantee unique-keyword-list "unique keyword list")
 
 (define (get-keyword-value klist key)
   (let ((lose (lambda () (error:not-keyword-list klist 'GET-KEYWORD-VALUE))))
