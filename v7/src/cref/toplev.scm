@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.12 1999/01/02 06:11:34 cph Exp $
+$Id: toplev.scm,v 1.13 2000/01/18 20:39:42 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (with-output-to-file (pathname-new-type pathname "crf")
 	(lambda ()
 	  (format-packages-unusual pmodel)))))
-
+
 (define (write-globals pathname pmodel changes?)
   (if (or changes? (not (file-processed? pathname "pkg" "glo")))
       (let ((package-bindings
@@ -137,8 +137,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					  package-bindings))
 			      unspecific)))))
 		  exports)
-	(fasdump (map (lambda (entry)
-			(cons (package/name (car entry))
-			      (map binding/name (cdr entry))))
-		      package-bindings)
+	(fasdump (cons '(VERSION . 2)
+		       (map (lambda (entry)
+			      (vector (package/name (car entry))
+				      (let loop ((package (car entry)))
+					(let ((parent
+					       (package/parent package)))
+					  (if parent
+					      (cons (package/name parent)
+						    (loop parent))
+					      '())))
+				      (map binding/name (cdr entry))))
+			    package-bindings))
 		 (pathname-new-type pathname "glo")))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: redpkg.scm,v 1.12 2000/01/18 20:38:41 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,14 +42,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					   "glo")))
 		   (if (file-exists? pathname)
 		       (let ((contents (fasload pathname)))
-			 (cond ((check-list contents symbol?)
-				(list (cons '() contents)))
+			 (cond ((and (pair? contents)
+				     (pair? (car contents))
+				     (eq? 'VERSION (caar contents))
+				     (exact-nonnegative-integer?
+				      (cdar contents)))
+				(if (not (= 2 (cdar contents)))
+				    (error "Unknown globals-file version:"
+					   (cdar contents)))
+				(cdr contents))
+			       ((check-list contents symbol?)
+				(list (vector '() '() contents)))
 			       ((check-list contents
 				  (lambda (element)
 				    (and (pair? element)
 					 (check-list (car element) symbol?)
 					 (check-list (cdr element) symbol?))))
-				contents)
+				(map (lambda (element)
+				       (vector (car element)
+					       '()
+					       (cdr element)))
+				     contents))
 			       (else
 				(warn "Malformed globals file:" pathname)
 				'())))
@@ -409,12 +422,21 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (let ((namestring (->namestring (car global))))
 	      (lambda (entry)
 		(for-each
-		 (let ((package (get-package (car entry) #t)))
+		 (let ((package (get-package (vector-ref entry 0) #t)))
+		   (let loop
+		       ((package package)
+			(ancestors (vector-ref entry 1)))
+		     (if (eq? 'UNKNOWN (package/parent package))
+			 (if (pair? ancestors)
+			     (let ((parent (get-package (car ancestors) #t)))
+			       (set-package/parent! package parent)
+			       (loop parent (cdr ancestors)))
+			     (set-package/parent! package #f))))
 		   (lambda (name)
 		     (bind! package
 			    name
 			    (make-expression package namestring #f))))
-		 (cdr entry))))
+		 (vector-ref entry 2))))
 	    (cdr global)))
 	 globals)
 	(for-each

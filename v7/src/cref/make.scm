@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.18 1999/01/03 05:22:10 cph Exp $
+$Id: make.scm,v 1.19 2000/01/18 20:38:37 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,5 +32,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (pathname-as-directory "cref")
      (lambda ()
        (load-option 'RB-TREE)
-       (package/system-loader "cref" '() false)))))
-(add-identification! "CREF" 1 18)
+       (package/system-loader "cref" '() #f)))))
+(add-identification! "CREF" 1 19)
