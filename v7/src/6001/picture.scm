@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.9 1992/06/03 18:25:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.10 1992/06/08 16:50:21 aragorn Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -36,10 +36,28 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-integrable floating-vector-ref vector-ref)
-(define-integrable floating-vector-set! vector-set!)
-(define-integrable floating-vector-copy vector-copy)
-(define-integrable make-floating-vector make-vector)
+(define-primitives floating-vector-ref)
+(define-primitives floating-vector-set!)
+(define-primitives floating-vector-cons)
+(define-primitives floating-vector-length)
+
+(define (make-floating-vector length init)
+  (let ((result (floating-vector-cons length)))
+    (if (not (= init 0.))
+	(do 
+	    ((i 0 (+ i 1)))
+	    ((= i length))
+	  (floating-vector-set! result i init)))
+    result))
+
+(define (floating-vector-copy vector)
+  (let* ((length (floating-vector-length vector))
+	 (result (floating-vector-cons length)))
+    (do
+	((i 0 (+ i 1)))
+	(( = i length))
+      (floating-vector-set! result i (floating-vector-ref vector i)))
+    result))
 
 (define (get-visual-info window)
   ((ucode-primitive x-get-visual-info) (x-graphics-device/xw window)

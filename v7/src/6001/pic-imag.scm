@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.3 1992/04/13 19:45:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.4 1992/06/08 16:49:57 aragorn Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -72,7 +72,7 @@ MIT in each case. |#
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
 		 (begin
-		   (let ((pic-row (floating-vector-ref pic-data py)))
+		   (let ((pic-row (vector-ref pic-data py)))
 		     (let x-loop ((px 0))
 		       (if (fix:< px pic-width)
 			   (begin
@@ -86,7 +86,7 @@ MIT in each case. |#
 	  ((and (fix:= 2 h-sf) (fix:= 2 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
-		 (let ((pic-row (floating-vector-ref pic-data py)))
+		 (let ((pic-row (vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
 			 (let* ((n-is-0 (fix:+ ix iy-index))
@@ -105,7 +105,7 @@ MIT in each case. |#
 	  ((and (fix:= 3 h-sf) (fix:= 3 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
-		 (let ((pic-row (floating-vector-ref pic-data py)))
+		 (let ((pic-row (vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
 			 (let* ((row0 (fix:+ ix iy-index))
@@ -130,7 +130,7 @@ MIT in each case. |#
 	  ((and (fix:= 4 h-sf) (fix:= 4 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
-		 (let ((pic-row (floating-vector-ref pic-data py)))
+		 (let ((pic-row (vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
 			 (let* ((row0 (fix:+ ix iy-index))
@@ -163,7 +163,7 @@ MIT in each case. |#
 	  (else 
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
-		 (let ((pic-row (floating-vector-ref pic-data py)))
+		 (let ((pic-row (vector-ref pic-data py)))
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
 			 (let* ((v

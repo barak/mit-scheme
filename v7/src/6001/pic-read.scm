@@ -51,7 +51,7 @@
     (side-effecting-iter
      width
      (lambda (n)
-       (let ((nth-row (floating-vector-ref data (- width n 1))))
+       (let ((nth-row (vector-ref data (- width n 1))))
 	 (side-effecting-iter
 	  length
 	  (lambda (m)
