@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.229 1993/08/02 23:54:22 cph Exp $
+;;;	$Id: editor.scm,v 1.230 1993/10/21 04:58:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,9 @@
 	 (lambda (with-editor-ungrabbed operations)
 	   (let ((message (cmdl-message/null)))
 	     (cmdl/start
-	      (push-cmdl
+	      (make-cmdl
+	       (nearest-cmdl)
+	       dummy-i/o-port
 	       (lambda (cmdl)
 		 cmdl		;ignore
 		 (bind-condition-handler (list condition-type:error)
@@ -95,8 +97,8 @@
 			(top-level-command-reader edwin-initialization)))))
 		 message)
 	       false
-	       `((START-CHILD
-		  ,(editor-start-child-cmdl with-editor-ungrabbed))
+	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))
+		 (CHILD-PORT ,(editor-child-cmdl-port (nearest-cmdl/port)))
 		 ,@operations))
 	      message))))))))
 
@@ -445,10 +447,28 @@ This does not affect editor errors or evaluation errors."
 			      operations))
 			  exit)))))))
 
+(define dummy-i/o-port
+  (make-i/o-port
+   (map (lambda (name)
+	  (list name
+		(lambda (port . ignore)
+		  ignore
+		  (error "Attempt to perform a"
+			 name
+			 (error-irritant/noise " operation on dummy I/O port:")
+			 port))))
+	'(CHAR-READY? READ-CHAR PEEK-CHAR WRITE-CHAR))
+   #f))
+
 (define (editor-start-child-cmdl with-editor-ungrabbed)
   (lambda (cmdl thunk)
     cmdl
     (with-editor-ungrabbed thunk)))
+
+(define (editor-child-cmdl-port port)
+  (lambda (cmdl)
+    cmdl
+    port))
 
 (define inferior-thread-changes?)
 (define inferior-threads)
