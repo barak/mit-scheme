@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.17 1993/09/10 22:17:38 gjr Exp $
+$Id: ntscreen.c,v 1.18 1993/09/13 18:38:09 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -1627,7 +1627,7 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
     }
     count -= 1;
   }
-  if (remove && ((* next_loc) == ((SCREEN_EVENT_LINK *) NULL)))
+  if (screen->queue_head == ((SCREEN_EVENT_LINK *) NULL))
     screen->queue_tail = ((SCREEN_EVENT_LINK *) NULL);
 
   return (start_count - count);
@@ -3017,27 +3017,37 @@ GetControlKeyState(DWORD lKeyData)
      | ((lKeyData & KEYDATA_ALT_BIT)      ?	SCREEN_ALT_KEY_PRESSED : 0));
 }
 
+static void
+alloc_event_failure (SCREEN screen)
+{
+  if ((MessageBox
+       (screen->hWnd,
+	"Scheme has leaked some keyboard event storage.\n"
+	"OK to reset and clear all pending events?",
+	"MIT Scheme",
+	(MB_ICONSTOP | MB_OKCANCEL)))
+      == IDOK)
+    screen_reset_events (screen);
+  return;
+}
+
 static SCREEN_EVENT *
 alloc_event (SCREEN screen, SCREEN_EVENT_TYPE type)
 {
   SCREEN_EVENT_LINK * new_event;
   if ((screen->mode_flags & type) == 0)
-    return ((SCREEN_EVENT_LINK *) NULL);
+    return ((SCREEN_EVENT *) NULL);
 
   if (screen->free_events == ((SCREEN_EVENT_LINK *) NULL))
   {
     if (screen->n_events == MAX_EVENTS)
+    {
       MessageBeep (0xFFFFFFFFUL);
-    else if ((MessageBox
-	      (screen->hWnd,
-	       "Scheme has leaked some keyboard event storage.\n"
-	       "OK to reset and clear all pending events?",
-	       "MIT Scheme",
-	       (MB_ICONSTOP | MB_OKCANCEL)))
-	     == IDOK)
-      screen_reset_events (screen);
-      
-    return ((SCREEN_EVENT_LINK *) NULL);
+      return ((SCREEN_EVENT *) NULL);
+    }
+    alloc_event_failure (screen);
+    if (screen->free_events == ((SCREEN_EVENT_LINK *) NULL))
+      return ((SCREEN_EVENT *) NULL);
   }
     
   new_event = screen->free_events;
@@ -3045,15 +3055,10 @@ alloc_event (SCREEN screen, SCREEN_EVENT_TYPE type)
   new_event->event.type = type;
   new_event->next = ((SCREEN_EVENT_LINK *) NULL);
   if (screen->queue_tail == ((SCREEN_EVENT_LINK *) NULL))
-  {
-    screen->queue_tail = new_event;
     screen->queue_head = new_event;
-  }
   else
-  {
     screen->queue_tail->next = new_event;
-    screen->queue_tail = new_event;
-  }
+  screen->queue_tail = new_event;
   screen->n_events += 1;
 
   return (&new_event->event);
