@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.132 2001/05/24 01:18:45 cph Exp $
+;;; $Id: imail-core.scm,v 1.133 2001/05/24 01:19:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -329,10 +329,10 @@
 (define-generic resource-type-name (resource))
 (define-method resource-type-name ((r <resource>)) r 'RESOURCE)
 
-(define-generic url-protocol ((resource <resource>))
+(define-method url-protocol ((resource <resource>))
   (url-protocol (resource-locator resource)))
 
-(define-generic url-body ((resource <resource>))
+(define-method url-body ((resource <resource>))
   (url-body (resource-locator resource)))
 
 (define-method container-url ((resource <resource>))
