@@ -1,0 +1,495 @@
+#| -*-Scheme-*-
+
+$Id: ssp.pkg,v 1.1 2003/12/29 07:34:21 uid67408 Exp $
+
+Copyright 2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; SSP: packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../xml/xml")
+
+(define-package (runtime ssp)
+  (parent (runtime)))
+
+(define-package (runtime ssp xhtml)
+  (files "xhtml")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  a
+	  abbr
+	  acronym
+	  address
+	  attributes
+	  b
+	  big
+	  blockquote
+	  body
+	  br
+	  button
+	  caption
+	  cite
+	  code
+	  col
+	  colgroup
+	  comment
+	  convert-xhtml-string-value
+	  dd
+	  define-empty-element
+	  define-standard-element
+	  defn
+	  del
+	  dir
+	  div
+	  dl
+	  dt
+	  em
+	  empty-element-constructor
+	  flatten-xml-element-contents
+	  form
+	  h1
+	  h2
+	  h3
+	  h4
+	  h5
+	  head
+	  hr
+	  href
+	  html
+	  http-equiv
+	  i
+	  id-def
+	  id-ref
+	  img
+	  input
+	  ins
+	  kbd
+	  li
+	  link
+	  listing
+	  menu
+	  meta
+	  ol
+	  optgroup
+	  option
+	  p
+	  pre
+	  q
+	  rel-link
+	  s
+	  samp
+	  script
+	  select
+	  small
+	  span
+	  standard-element-constructor
+	  strike
+	  strong
+	  style
+	  style-link
+	  sub
+	  sup
+	  table
+	  tbody
+	  td
+	  textarea
+	  tfoot
+	  th
+	  thead
+	  title
+	  tr
+	  tt
+	  u
+	  ul
+	  var
+	  xhtml-dtd
+	  xhtml-iri)
+  (export (runtime ssp-expander-environment)
+	  a
+	  abbr
+	  acronym
+	  address
+	  attributes
+	  b
+	  big
+	  blockquote
+	  body
+	  br
+	  button
+	  caption
+	  cite
+	  code
+	  col
+	  colgroup
+	  comment
+	  dd
+	  defn
+	  del
+	  dir
+	  div
+	  dl
+	  dt
+	  em
+	  form
+	  h1
+	  h2
+	  h3
+	  h4
+	  h5
+	  head
+	  hr
+	  href
+	  html
+	  http-equiv
+	  i
+	  id-def
+	  id-ref
+	  img
+	  input
+	  ins
+	  kbd
+	  li
+	  link
+	  listing
+	  menu
+	  meta
+	  ol
+	  optgroup
+	  option
+	  p
+	  pre
+	  q
+	  rel-link
+	  s
+	  samp
+	  script
+	  select
+	  small
+	  span
+	  strike
+	  strong
+	  style
+	  style-link
+	  sub
+	  sup
+	  table
+	  tbody
+	  td
+	  textarea
+	  tfoot
+	  th
+	  thead
+	  title
+	  tr
+	  tt
+	  u
+	  ul
+	  var
+	  xhtml-dtd
+	  xhtml-iri))
+
+(define-package (runtime ssp xhtml-expander)
+  (files "xhtml-expander")
+  (parent (runtime ssp))
+  (export ()
+	  expand-xhtml-directory
+	  expand-xhtml-file
+	  read/expand-xml-file)
+  (export (runtime ssp)
+	  expander-eval
+	  make-expansion-environment)
+  (export (runtime ssp-expander-environment)
+	  emit
+	  define-sabbr
+	  get-sabbr))
+
+(define-package (runtime ssp-expander-environment)
+  (files "expenv")
+  (parent ())
+  (export (runtime ssp xhtml-expander)
+	  expander-environment))
+
+(define-package (runtime ssp mod-lisp)
+  (files "mod-lisp")
+  (parent (runtime ssp))
+  (import (runtime debugger)
+	  command/earlier-subproblem
+	  command/print-subproblem
+	  dstate/subproblem
+	  make-initial-dstate)
+  (export ()
+	  start-mod-lisp-server)
+  (export (runtime ssp)
+	  define-mime-handler
+	  define-subtree-handler
+	  http-request-cookie-parameter
+	  http-request-cookie-parameter-bindings
+	  http-request-entity
+	  http-request-header
+	  http-request-header-bindings
+	  http-request-method
+	  http-request-pathname
+	  http-request-post-parameter
+	  http-request-post-parameter-bindings
+	  http-request-post-parameter-multiple
+	  http-request-url
+	  http-request-url-parameter
+	  http-request-url-parameter-bindings
+	  http-request-user-name
+	  http-response-header
+	  http-status-response
+	  mod-lisp-expander
+	  server-root-dir)
+  (export (runtime ssp-expander-environment)
+	  http-request-cookie-parameter
+	  http-request-cookie-parameter-bindings
+	  http-request-entity
+	  http-request-header
+	  http-request-header-bindings
+	  http-request-method
+	  http-request-pathname
+	  http-request-post-parameter
+	  http-request-post-parameter-bindings
+	  http-request-post-parameter-multiple
+	  http-request-url
+	  http-request-url-parameter
+	  http-request-url-parameter-bindings
+	  http-request-user-name
+	  http-response-header
+	  http-status-response
+	  server-root-dir)
+  (initialization (initialize-mime-extensions)))
+
+(define-package (runtime ssp xdoc)
+  (files "xdoc")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  int0-attribute
+	  with-xdoc-expansion-context
+	  xd:answer
+	  xd:answer?
+	  xd:boolean
+	  xd:boolean?
+	  xd:case
+	  xd:case?
+	  xd:check-action
+	  xd:check-action?
+	  xd:check-input
+	  xd:check-input?
+	  xd:check-inputs
+	  xd:check-inputs?
+	  xd:checkbox
+	  xd:checkbox?
+	  xd:choice
+	  xd:choice?
+	  xd:default
+	  xd:default?
+	  xd:due-date
+	  xd:due-date?
+	  xd:expected-value
+	  xd:expected-value?
+	  xd:explain
+	  xd:explain?
+	  xd:head
+	  xd:head?
+	  xd:hint
+	  xd:hint?
+	  xd:label
+	  xd:label?
+	  xd:menu
+	  xd:menu?
+	  xd:menuindex
+	  xd:menuindex?
+	  xd:menuitem
+	  xd:menuitem?
+	  xd:number
+	  xd:number?
+	  xd:problem
+	  xd:problem?
+	  xd:radio-buttons
+	  xd:radio-buttons?
+	  xd:radio-entry
+	  xd:radio-entry?
+	  xd:refer
+	  xd:refer?
+	  xd:submit-action
+	  xd:submit-action?
+	  xd:text
+	  xd:text?
+	  xd:true-false
+	  xd:true-false?
+	  xd:when
+	  xd:when?
+	  xd:xdoc
+	  xd:xdoc?
+	  xdoc-db-id
+	  xdoc-output?)
+  (export (runtime ssp-expander-environment)
+	  xd:answer
+	  xd:answer?
+	  xd:boolean
+	  xd:boolean?
+	  xd:case
+	  xd:case?
+	  xd:check-action
+	  xd:check-action?
+	  xd:check-input
+	  xd:check-input?
+	  xd:check-inputs
+	  xd:check-inputs?
+	  xd:checkbox
+	  xd:checkbox?
+	  xd:choice
+	  xd:choice?
+	  xd:default
+	  xd:default?
+	  xd:due-date
+	  xd:due-date?
+	  xd:expected-value
+	  xd:expected-value?
+	  xd:explain
+	  xd:explain?
+	  xd:head
+	  xd:head?
+	  xd:hint
+	  xd:hint?
+	  xd:label
+	  xd:label?
+	  xd:menu
+	  xd:menu?
+	  xd:menuindex
+	  xd:menuindex?
+	  xd:menuitem
+	  xd:menuitem?
+	  xd:number
+	  xd:number?
+	  xd:problem
+	  xd:problem?
+	  xd:radio-buttons
+	  xd:radio-buttons?
+	  xd:radio-entry
+	  xd:radio-entry?
+	  xd:refer
+	  xd:refer?
+	  xd:submit-action
+	  xd:submit-action?
+	  xd:text
+	  xd:text?
+	  xd:true-false
+	  xd:true-false?
+	  xd:when
+	  xd:when?
+	  xd:xdoc
+	  xd:xdoc?
+	  xdoc-due-date-attributes
+	  xdoc-due-date-string
+	  xdoc-part-number))
+
+(define-package (runtime ssp database-interface)
+  (files "db")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  close-database
+	  with-database-connection)
+  (export (runtime ssp xdoc)
+	  db-delete-persistent-value!
+	  db-get-persistent-value
+	  db-intern-persistent-value!
+	  db-previously-saved-input
+	  db-previously-saved-output
+	  db-save-input!
+	  db-save-output!
+	  db-set-persistent-value!)
+  (export (runtime ssp-expander-environment)
+	  db-change-user-password
+	  db-clear-late-flag
+	  db-clear-submitter
+	  db-delete-persistent-value!
+	  db-generate-password
+	  db-get-persistent-value
+	  db-get-ps-structure
+	  db-get-saved-output
+	  db-intern-persistent-value!
+	  db-known-user?
+	  db-known-users
+	  db-late-submitters
+	  db-new-user-account
+	  db-problem-submitted?
+	  db-ps-problem-names
+	  db-quote
+	  db-register-problem-set
+	  db-registered-problem-sets
+	  db-run-cmd
+	  db-run-query
+	  db-saved-submitters
+	  db-set-persistent-value!
+	  db-set-user-administrator
+	  db-set-user-enabled
+	  db-set-user-real-name
+	  db-user-administrator?
+	  db-user-enabled?
+	  db-user-real-name
+	  db-valid-password?))
+
+(define-package (runtime ssp xml-rpc)
+  (files "xmlrpc")
+  (parent (runtime ssp))
+  (export (runtime ssp)
+	  rpc-elt:array
+	  rpc-elt:base64
+	  rpc-elt:boolean
+	  rpc-elt:data
+	  rpc-elt:date-time
+	  rpc-elt:double
+	  rpc-elt:fault
+	  rpc-elt:i4
+	  rpc-elt:int
+	  rpc-elt:member
+	  rpc-elt:method-call
+	  rpc-elt:method-name
+	  rpc-elt:method-response
+	  rpc-elt:name
+	  rpc-elt:param
+	  rpc-elt:params
+	  rpc-elt:string
+	  rpc-elt:struct
+	  rpc-elt:value)
+  (export (runtime ssp-expander-environment)
+	  rpc-elt:array
+	  rpc-elt:base64
+	  rpc-elt:boolean
+	  rpc-elt:data
+	  rpc-elt:date-time
+	  rpc-elt:double
+	  rpc-elt:fault
+	  rpc-elt:i4
+	  rpc-elt:int
+	  rpc-elt:member
+	  rpc-elt:method-call
+	  rpc-elt:method-name
+	  rpc-elt:method-response
+	  rpc-elt:name
+	  rpc-elt:param
+	  rpc-elt:params
+	  rpc-elt:string
+	  rpc-elt:struct
+	  rpc-elt:value))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.1 2003/12/29 05:24:59 uid67408 Exp $
+$Id: xhtml-expander.scm,v 1.2 2003/12/29 07:31:22 uid67408 Exp $
 
 Copyright 2002,2003 Massachusetts Institute of Technology
 
@@ -26,17 +26,9 @@ USA.
 ;;;; XHTML+Scheme expander
 
 (declare (usual-integrations))
-(load-option 'xml)
 
-(define default-expander-directory
-  (merge-pathnames "*.xml"
-		   (directory-pathname (current-load-pathname))))
-
-(define (expand-xhtml-directory #!optional directory)
-  (for-each expand-xhtml-file
-	    (directory-read (if (default-object? directory)
-				default-expander-directory
-				directory))))
+(define (expand-xhtml-directory directory)
+  (for-each expand-xhtml-file (directory-read directory)))
 
 (define (expand-xhtml-file input #!optional output)
   (let ((document
@@ -74,14 +66,11 @@ USA.
   (let ((pathname (merge-pathnames pathname))
 	(environment (extend-top-level-environment expander-environment)))
     (environment-define environment 'document-pathname pathname)
-    (environment-define environment 'emit emit)
     (environment-define environment 'load
 			(let ((directory (directory-pathname pathname)))
 			  (lambda (pathname)
 			    (load (merge-pathnames pathname directory)
 				  environment))))
-    (environment-define environment 'define-sabbr define-sabbr)
-    (environment-define environment 'get-sabbr get-sabbr)
     environment))
 
 (define ((pi-expander environment) text)
@@ -97,26 +86,6 @@ USA.
     (car *outputs*)))
 
 (define expander-eval eval)
-(define expander-environment)
-(define server-environment (the-environment))
-(define expander-directory (directory-pathname (current-load-pathname)))
-
-(define (initialize-expander-environment)
-  (set! expander-environment
-	(let ((e (make-top-level-environment)))
-	  (load (merge-pathnames "xhtml" expander-directory) e)
-	  e))
-  (for-each (lambda (name)
-	      (link-variables server-environment name
-			      expander-environment name))
-	    (environment-bound-names expander-environment)))
-
-(define (define-expander name value)
-  (environment-define expander-environment name value)
-  (link-variables server-environment name
-		  expander-environment name))
-
-(initialize-expander-environment)
 
 (define (svar-expander text)
   (list (make-xml-element 'code '() (list (string-trim text)))))

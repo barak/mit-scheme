@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.1 2003/12/29 05:24:51 uid67408 Exp $
+$Id: xdoc.scm,v 1.2 2003/12/29 07:31:19 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ USA.
 (define *xdoc-inputs*)
 (define *xdoc-outputs*)
 (define *trace-expansion-port* #f)
+(define db-name "six002x_spring04")
 
 (define-mime-handler '(application/xdoc+xml "xdoc")
   (lambda (pathname port)
@@ -69,7 +70,7 @@ USA.
 	  0))))
 
 (define (with-xdoc-expansion-context ps-number pathname procedure)
-  (with-database-connection ps-number pathname
+  (with-database-connection db-name ps-number pathname
     (lambda ()
       (let ((environment (make-expansion-environment pathname)))
 	(fluid-let ((*xdoc-environment* environment)
@@ -173,11 +174,10 @@ USA.
 			    (for-each walk-html (xml-element-contents item))))
 		      (loop (cdr items) count))))))))))
 
-(define-expander 'xdoc-part-number
-  (lambda (name)
-    (if (string-prefix? "xdoc_" name)
-	(string-tail name 5)
-	name)))
+(define (xdoc-part-number name)
+  (if (string-prefix? "xdoc_" name)
+      (string-tail name 5)
+      name))
 
 (define (ps-info elt)
   (let ((no (find-attribute 'first-problem elt #f)))
@@ -288,7 +288,7 @@ USA.
 				   submitter
 				   *xdoc-late?*)))
 	    (values correctness* submitter))))))
-
+
 (define (current-input-status elt)
   (let ((p (%current-input-status elt)))
     (values (car p) (cdr p))))
@@ -506,34 +506,32 @@ USA.
 		      elt
 		      #t)))
 
-(define-expander 'xdoc-due-date-attributes
-  (lambda (dt)
-    (attributes 'class
-		(string-append "xdoc-due-date "
-			       (if (decoded-time-in-past? dt)
-				   "xdoc-due-date-overdue"
-				   "xdoc-due-date-on-time")))))
+(define (xdoc-due-date-attributes dt)
+  (attributes 'class
+	      (string-append "xdoc-due-date "
+			     (if (decoded-time-in-past? dt)
+				 "xdoc-due-date-overdue"
+				 "xdoc-due-date-on-time"))))
 
-(define-expander 'xdoc-due-date-string
-  (lambda (dt)
-    (let ((hour (decoded-time/hour dt))
-	  (minute (decoded-time/minute dt)))
-      (string-append "Due: "
-		     (day-of-week/long-string (decoded-time/day-of-week dt))
-		     " "
-		     (month/short-string (decoded-time/month dt))
-		     ". "
-		     (number->string (decoded-time/day dt))
-		     " at "
-		     (number->string
-		      (cond ((> hour 12) (- hour 12))
-			    ((> hour 0) hour)
-			    (else 12)))
-		     (if (> minute 0)
-			 (string-append ":" (string-pad-left minute 2 #\0))
-			 "")
-		     " "
-		     (if (> hour 12) "PM" "AM")))))
+(define (xdoc-due-date-string dt)
+  (let ((hour (decoded-time/hour dt))
+	(minute (decoded-time/minute dt)))
+    (string-append "Due: "
+		   (day-of-week/long-string (decoded-time/day-of-week dt))
+		   " "
+		   (month/short-string (decoded-time/month dt))
+		   ". "
+		   (number->string (decoded-time/day dt))
+		   " at "
+		   (number->string
+		    (cond ((> hour 12) (- hour 12))
+			  ((> hour 0) hour)
+			  (else 12)))
+		   (if (> minute 0)
+		       (string-append ":" (string-pad-left minute 2 #\0))
+		       "")
+		   " "
+		   (if (> hour 12) "PM" "AM"))))
 
 (define (due-date-in-past?)
   (let ((elt (find-named-child 'due-date *xdoc-root* #f)))
@@ -1403,65 +1401,71 @@ USA.
 (define (xdoc-action? elt)
   (eq? (xdoc-element-type elt) 'action))
 
-(let ((define-element
-	(lambda (local content-type elt-type)
-	  (let ((qname (symbol-append 'xd: local)))
-	    (define-expander qname
-	      ((if (eq? content-type 'empty)
-		   empty-element-constructor
-		   standard-element-constructor)
-	       qname xdoc-iri))
-	    (define-expander (symbol-append qname '?)
-	      (let ((name (make-xml-name qname xdoc-iri)))
-		(lambda (object)
-		  (and (xml-element? object)
-		       (xml-name=? (xml-element-name object) name))))))
-	  (hash-table/put! xdoc-content-types local content-type)
-	  (hash-table/put! xdoc-element-types local elt-type))))
-  (define-element 'xdoc 'mixed 'top-level-container)
-  (define-element 'head 'mixed 'internal)
-  (define-element 'due-date 'empty 'internal)
-  (define-element 'problem 'mixed 'internal-container)
-  (define-element 'answer 'element 'internal-container)
-  (define-element 'label 'mixed 'internal)
+(define-syntax define-element
+  (sc-macro-transformer
+   (lambda (form env)
+     env
+     (let ((local (cadr form))
+	   (content-type (caddr form))
+	   (elt-type (cadddr form)))
+       (let ((qname (symbol-append 'xd: local)))
+	 `(BEGIN
+	    (DEFINE ,qname
+	      (,(if (eq? content-type 'empty)
+		    'EMPTY-ELEMENT-CONSTRUCTOR
+		    'STANDARD-ELEMENT-CONSTRUCTOR)
+	       ',qname
+	       XDOC-IRI))
+	    (DEFINE ,(symbol-append qname '?)
+	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-IRI)))
+		(LAMBDA (OBJECT)
+		  (AND (XML-ELEMENT? OBJECT)
+		       (XML-NAME=? (XML-ELEMENT-NAME OBJECT) NAME)))))
+	    (HASH-TABLE/PUT! XDOC-CONTENT-TYPES ',local ',content-type)
+	    (HASH-TABLE/PUT! XDOC-ELEMENT-TYPES ',local ',elt-type)))))))
 
-  (define-element 'text 'empty 'input)
-  (define-element 'menu 'element 'input)
-  (define-element 'menuitem 'text 'internal)
-  (define-element 'checkbox 'empty 'input)
-  (define-element 'radio-buttons 'element 'input)
-  (define-element 'radio-entry 'mixed 'internal)
+(define-element xdoc mixed top-level-container)
+(define-element head mixed internal)
+(define-element due-date empty internal)
+(define-element problem mixed internal-container)
+(define-element answer element internal-container)
+(define-element label mixed internal)
 
-  (define-element 'check-input 'empty 'output)
-  (define-element 'check-inputs 'empty 'output)
-  (define-element 'number 'empty 'output)
-  (define-element 'boolean 'empty 'output)
-  (define-element 'menuindex 'empty 'output)
+(define-element text empty input)
+(define-element menu element input)
+(define-element menuitem text internal)
+(define-element checkbox empty input)
+(define-element radio-buttons element input)
+(define-element radio-entry mixed internal)
 
-  (define-element 'explain 'mixed 'content-selector)
-  (define-element 'hint 'mixed 'content-selector)
-  (define-element 'expected-value 'empty 'content-selector)
-  (define-element 'when 'mixed 'content-selector)
-  (define-element 'case 'element 'content-selector)
-  (define-element 'refer 'empty 'internal)
-  (define-element 'choice 'mixed 'internal)
-  (define-element 'default 'mixed 'internal)
+(define-element check-input empty output)
+(define-element check-inputs empty output)
+(define-element number empty output)
+(define-element boolean empty output)
+(define-element menuindex empty output)
 
-  (define-element 'check-action 'empty 'action)
-  (define-element 'submit-action 'empty 'action))
+(define-element explain mixed content-selector)
+(define-element hint mixed content-selector)
+(define-element expected-value empty content-selector)
+(define-element when mixed content-selector)
+(define-element case element content-selector)
+(define-element refer empty internal)
+(define-element choice mixed internal)
+(define-element default mixed internal)
 
-(define-expander 'xd:true-false
-  (lambda keyword-list
-    (xd:radio-buttons (apply attributes keyword-list)
-		      (xd:radio-entry (attributes 'value 'true) "True")
-		      (xd:radio-entry (attributes 'value 'false) "False"))))
+(define-element check-action empty action)
+(define-element submit-action empty action)
 
-(define-expander 'xd:true-false?
-  (lambda (object)
-    (and (xd:radio-buttons? object)
-	 (let ((entries (xml-element-contents object)))
-	   (and (fix:= (length entries) 2)
-		(let ((v1 (find-attribute 'value (car entries) #t))
-		      (v2 (find-attribute 'value (cadr entries) #t)))
-		  (or (and (string=? v1 "true") (string=? v2 "false"))
-		      (and (string=? v1 "false") (string=? v2 "true")))))))))
+(define (xd:true-false . keyword-list)
+  (xd:radio-buttons (apply attributes keyword-list)
+		    (xd:radio-entry (attributes 'value 'true) "True")
+		    (xd:radio-entry (attributes 'value 'false) "False")))
+
+(define (xd:true-false? object)
+  (and (xd:radio-buttons? object)
+       (let ((entries (xml-element-contents object)))
+	 (and (fix:= (length entries) 2)
+	      (let ((v1 (find-attribute 'value (car entries) #t))
+		    (v2 (find-attribute 'value (cadr entries) #t)))
+		(or (and (string=? v1 "true") (string=? v2 "false"))
+		    (and (string=? v1 "false") (string=? v2 "true"))))))))

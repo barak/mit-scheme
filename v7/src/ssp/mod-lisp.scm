@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.1 2003/12/29 05:24:43 uid67408 Exp $
+$Id: mod-lisp.scm,v 1.2 2003/12/29 07:31:14 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -27,7 +27,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (start-server)
+(define (start-mod-lisp-server)
   (start-server-internal 3000
 			 (host-address-loopback)
 			 (cond ((file-directory? "/web/www/") "/web/www/")
@@ -64,15 +64,6 @@ USA.
 	       port))
 	    (lambda () (close-port port))))))
      (lambda () (channel-close socket)))))
-
-(let ((target (the-environment))
-      (source (->environment '(RUNTIME DEBUGGER))))
-  (for-each (lambda (name)
-	      (link-variables target name source name))
-	    '(MAKE-INITIAL-DSTATE
-	      DSTATE/SUBPROBLEM
-	      COMMAND/EARLIER-SUBPROBLEM
-	      COMMAND/PRINT-SUBPROBLEM)))
 
 (define (condition->html condition)
   (call-with-output-string
@@ -548,76 +539,85 @@ USA.
 
 ;;;; Request/response accessors
 
-(let ((defaccess
-	(lambda (name accessor)
-	  (define-expander name
-	    (lambda ()
-	      (accessor *current-request*))))))
-  (defaccess 'HTTP-REQUEST-ENTITY http-message-entity)
-  (defaccess 'HTTP-REQUEST-METHOD http-message-method)
-  (defaccess 'HTTP-REQUEST-URL http-message-url))
+(define (http-request-entity)
+  (http-message-entity *current-request*))
 
-(let ((defget
-	(lambda (name accessor)
-	  (define-expander name
-	    (lambda (keyword #!optional error?)
-	      (let ((p (assq keyword (accessor *current-request*))))
-		(if p
-		    (cdr p)
-		    (begin
-		      (if (and (not (default-object? error?)) error?)
-			  (error:bad-range-argument keyword name))
-		      #f)))))
-	  (define-expander (symbol-append name '-bindings)
-	    (lambda ()
-	      (accessor *current-request*))))))
-  (defget 'HTTP-REQUEST-HEADER http-message-headers)
-  (defget 'HTTP-REQUEST-URL-PARAMETER http-message-url-parameters)
-  (defget 'HTTP-REQUEST-POST-PARAMETER http-message-post-parameters)
-  (defget 'HTTP-REQUEST-COOKIE-PARAMETER http-message-cookie-parameters))
+(define (http-request-method)
+  (http-message-method *current-request*))
 
-(define-expander 'HTTP-REQUEST-POST-PARAMETER-MULTIPLE
-  (lambda (keyword)
-    (let loop
-	((bindings (http-message-post-parameters *current-request*))
-	 (strings '()))
-      (if (pair? bindings)
-	  (loop (cdr bindings)
-		(if (eq? (caar bindings) keyword)
-		    (cons (cdar bindings) strings)
-		    strings))
-	  (reverse! strings)))))
+(define (http-request-url)
+  (http-message-url *current-request*))
 
-(define-expander 'HTTP-REQUEST-PATHNAME
-  (lambda ()
-    *current-pathname*))
+(define (http-request-header-bindings)
+  (http-message-headers *current-request*))
+
+(define (http-request-url-parameter-bindings)
+  (http-message-url-parameters *current-request*))
+
+(define (http-request-post-parameter-bindings)
+  (http-message-post-parameters *current-request*))
+
+(define (http-request-cookie-parameter-bindings)
+  (http-message-cookie-parameters *current-request*))
+
+(define (keyword-proc accessor name)
+  (lambda (keyword #!optional error?)
+    (let ((p (assq keyword (accessor *current-request*))))
+      (if p
+	  (cdr p)
+	  (begin
+	    (if (if (default-object? error?) #f error?)
+		(error:bad-range-argument keyword name))
+	    #f)))))
+
+(define http-request-header
+  (keyword-proc http-message-headers 'HTTP-REQUEST-HEADER))
+
+(define http-request-url-parameter
+  (keyword-proc http-message-url-parameters 'HTTP-REQUEST-URL-PARAMETER))
+
+(define http-request-post-parameter
+  (keyword-proc http-message-post-parameters 'HTTP-REQUEST-POST-PARAMETER))
+
+(define http-request-cookie-parameter
+  (keyword-proc http-message-cookie-parameters 'HTTP-REQUEST-COOKIE-PARAMETER))
+
+(define (http-request-post-parameter-multiple keyword)
+  (let loop
+      ((bindings (http-message-post-parameters *current-request*))
+       (strings '()))
+    (if (pair? bindings)
+	(loop (cdr bindings)
+	      (if (eq? (caar bindings) keyword)
+		  (cons (cdar bindings) strings)
+		  strings))
+	(reverse! strings))))
 
-(define-expander 'HTTP-RESPONSE-HEADER
-  (lambda (keyword datum)
-    (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
-    (guarantee-string datum 'HTTP-RESPONSE-HEADER)
-    (if (memq keyword '(STATUS CONTENT-LENGTH))
-	(error "Illegal header keyword:" keyword))
-    (add-header *current-response* keyword datum)))
+(define (http-request-pathname)
+  *current-pathname*)
 
-(define-expander 'HTTP-STATUS-RESPONSE
-  (lambda (code extra)
-    (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
-    (guarantee-string extra 'HTTP-STATUS-RESPONSE)
-    (status-response! *current-response* code extra)))
+(define (server-root-dir)
+  *root-dir*)
 
-(define-expander 'SERVER-ROOT-DIR
-  (lambda ()
-    *root-dir*))
+(define (http-response-header keyword datum)
+  (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
+  (guarantee-string datum 'HTTP-RESPONSE-HEADER)
+  (if (memq keyword '(STATUS CONTENT-LENGTH))
+      (error "Illegal header keyword:" keyword))
+  (add-header *current-response* keyword datum))
 
-(define-expander 'HTTP-REQUEST-USER-NAME
-  (lambda ()
-    (let ((auth (http-request-header 'authorization)))
-      (and auth
-	   (cond ((string-prefix? "Basic " auth)
-		  (decode-basic-auth-header auth 6 (string-length auth)))
-		 (else
-		  (error "Unknown authorization header format:" auth)))))))
+(define (http-status-response code extra)
+  (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
+  (guarantee-string extra 'HTTP-STATUS-RESPONSE)
+  (status-response! *current-response* code extra))
+
+(define (http-request-user-name)
+  (let ((auth (http-request-header 'authorization)))
+    (and auth
+	 (cond ((string-prefix? "Basic " auth)
+		(decode-basic-auth-header auth 6 (string-length auth)))
+	       (else
+		(error "Unknown authorization header format:" auth))))))
 
 (define (decode-basic-auth-header string start end)
   (let ((auth
@@ -658,5 +658,3 @@ USA.
 	  (begin
 	    (procedure line)
 	    (loop))))))
-
-(initialize-mime-extensions)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.1 2003/12/29 05:25:02 uid67408 Exp $
+$Id: xmlrpc.scm,v 1.2 2003/12/29 07:31:26 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -241,7 +241,7 @@ USA.
 	 ;; Probably not right -- formatting issues
 	 (rpc-elt:double (number->string object)))
 	((boolean? object)
-	 (rpc-elt:boolean? (if object "1" "0")))
+	 (rpc-elt:boolean (if object "1" "0")))
 	((string? object)
 	 (if (utf8-string-valid? object)
 	     (rpc-elt:string object)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.1 2003/12/29 05:24:29 uid67408 Exp $
+$Id: compile.scm,v 1.2 2003/12/29 07:30:39 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -23,14 +23,18 @@ USA.
 
 |#
 
-;;;; XDOC/mod-lisp compilation
+;;;; SSP/XDOC compilation
 
+(load-option 'CREF)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (compile-file "xhtml-expander")
-    (compile-file "xhtml")
-    (compile-file "db")
-    (compile-file "mod-lisp")
-    (compile-file "matcher")
-    (compile-file "xdoc")
-    (compile-file "xmlrpc")))
+    (for-each compile-file
+	      '("db"
+		"expenv"
+		"matcher"
+		"mod-lisp"
+		"xdoc"
+		"xhtml"
+		"xhtml-expander"
+		"xmlrpc"))
+    (cref/generate-constructors "ssp")))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.1 2003/12/29 05:24:32 uid67408 Exp $
+$Id: db.scm,v 1.2 2003/12/29 07:31:03 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -27,14 +27,13 @@ USA.
 
 (declare (usual-integrations))
 
-(define db-name "six002x_spring04")
 (define pgsql-conn #f)
 (define *database-connection* #f)
 (define *user-name*)
 (define *ps-number*)
 (define *page-key*)
 
-(define (with-database-connection ps-number pathname thunk)
+(define (with-database-connection db-name ps-number pathname thunk)
   (if (not (and pgsql-conn (pgsql-conn-open? pgsql-conn)))
       (set! pgsql-conn (open-pgsql-conn (string-append "dbname=" db-name))))
   (let ((page-key (enough-namestring pathname (server-root-dir))))
@@ -78,54 +77,50 @@ USA.
 	(set! pgsql-conn #f)
 	unspecific)))
 
-(define-expander 'db-run-query
-  (lambda strings
-    (exec-pgsql-query (database-connection)
-		      (string-append (apply string-append strings) ";"))))
+(define (db-run-query . strings)
+  (exec-pgsql-query (database-connection)
+		    (string-append (apply string-append strings) ";")))
 
-(define-expander 'db-run-cmd
-  (lambda strings
-    (let ((result (apply db-run-query strings)))
-      (let ((status (pgsql-cmd-status result)))
-	(pgsql-clear result)
-	status))))
+(define (db-run-cmd . strings)
+  (let ((result (apply db-run-query strings)))
+    (let ((status (pgsql-cmd-status result)))
+      (pgsql-clear result)
+      status)))
 
-(define-expander 'db-quote
-  (lambda (object)
-    (if object
-	(if (exact-integer? object)
-	    (number->string object)
-	    (string-append "'"
-			   (escape-pgsql-string
-			    (if (symbol? object)
-				(symbol-name object)
-				object))
-			   "'"))
-	"NULL")))
+(define (db-quote object)
+  (if object
+      (if (exact-integer? object)
+	  (number->string object)
+	  (string-append "'"
+			 (escape-pgsql-string
+			  (if (symbol? object)
+			      (symbol-name object)
+			      object))
+			 "'"))
+      "NULL"))
 
 ;;;; Problem-set registration
 
-(define-expander 'db-register-problem-set
-  (lambda (ps-number directory)
-    (db-run-cmd "DELETE FROM saved_inputs"
-		" WHERE ps_number = " (db-quote ps-number))
-    (db-run-cmd "DELETE FROM saved_outputs"
-		" WHERE ps_number = " (db-quote ps-number))
-    (db-run-cmd "DELETE FROM registered_outputs"
-		" WHERE ps_number = " (db-quote ps-number))
-    (let ((n-parts 0)
-	  (n-outputs 0))
-      (for-each (lambda (pathname)
-		  (if (not (string=? (pathname-name pathname) "index"))
-		      (begin
-			(set! n-parts (+ n-parts 1))
-			(set! n-outputs
-			      (+ n-outputs
-				 (register-part-outputs ps-number
-							pathname)))))
-		  unspecific)
-		(directory-read (merge-pathnames "*.xdoc" directory)))
-      (values n-parts n-outputs))))
+(define (db-register-problem-set ps-number directory)
+  (db-run-cmd "DELETE FROM saved_inputs"
+	      " WHERE ps_number = " (db-quote ps-number))
+  (db-run-cmd "DELETE FROM saved_outputs"
+	      " WHERE ps_number = " (db-quote ps-number))
+  (db-run-cmd "DELETE FROM registered_outputs"
+	      " WHERE ps_number = " (db-quote ps-number))
+  (let ((n-parts 0)
+	(n-outputs 0))
+    (for-each (lambda (pathname)
+		(if (not (string=? (pathname-name pathname) "index"))
+		    (begin
+		      (set! n-parts (+ n-parts 1))
+		      (set! n-outputs
+			    (+ n-outputs
+			       (register-part-outputs ps-number
+						      pathname)))))
+		unspecific)
+	      (directory-read (merge-pathnames "*.xdoc" directory)))
+    (values n-parts n-outputs)))
 
 (define (register-part-outputs ps-number pathname)
   (with-xdoc-expansion-context ps-number pathname
@@ -160,66 +155,62 @@ USA.
 	      ", " (db-quote part)
 	      ")"))
 
-(define-expander 'db-registered-problem-sets
-  (lambda ()
-    (let ((result
-	   (db-run-query "SELECT DISTINCT ps_number"
-			 " FROM registered_outputs"
-			 " ORDER BY ps_number")))
-      (let ((n (pgsql-n-tuples result)))
-	(do ((i 0 (+ i 1))
-	     (numbers '()
-		      (cons (string->number (pgsql-get-value result i 0))
-			    numbers)))
-	    ((= i n)
-	     (pgsql-clear result)
-	     (reverse! numbers)))))))
+(define (db-registered-problem-sets)
+  (let ((result
+	 (db-run-query "SELECT DISTINCT ps_number"
+		       " FROM registered_outputs"
+		       " ORDER BY ps_number")))
+    (let ((n (pgsql-n-tuples result)))
+      (do ((i 0 (+ i 1))
+	   (numbers '()
+		    (cons (string->number (pgsql-get-value result i 0))
+			  numbers)))
+	  ((= i n)
+	   (pgsql-clear result)
+	   (reverse! numbers))))))
 
-(define-expander 'db-ps-problem-names
-  (lambda (ps-number)
-    (let ((result
-	   (db-run-query "SELECT name"
-			 " FROM registered_outputs"
-			 " WHERE ps_number = " (db-quote ps-number))))
-      (let ((n (pgsql-n-tuples result)))
-	(do ((i 0 (+ i 1))
-	     (names '() (cons (pgsql-get-value result i 0) names)))
-	    ((= i n)
-	     (pgsql-clear result)
-	     names))))))
+(define (db-ps-problem-names ps-number)
+  (let ((result
+	 (db-run-query "SELECT name"
+		       " FROM registered_outputs"
+		       " WHERE ps_number = " (db-quote ps-number))))
+    (let ((n (pgsql-n-tuples result)))
+      (do ((i 0 (+ i 1))
+	   (names '() (cons (pgsql-get-value result i 0) names)))
+	  ((= i n)
+	   (pgsql-clear result)
+	   names)))))
 
-(define-expander 'db-problem-submitted?
-  (lambda (ps-number name user-name)
-    (let ((result
-	   (db-run-query "SELECT submitter"
-			 " FROM saved_outputs"
-			 " WHERE ps_number = " (db-quote ps-number)
-			 " AND name = " (db-quote name)
-			 " AND user_name = " (db-quote user-name))))
-      (let ((submitted?
-	     (and (> (pgsql-n-tuples result) 0)
-		  (let ((v (pgsql-get-value result 0 0)))
-		    (and v
-			 (not (string-null? v)))))))
-	(pgsql-clear result)
-	submitted?))))
+(define (db-problem-submitted? ps-number name user-name)
+  (let ((result
+	 (db-run-query "SELECT submitter"
+		       " FROM saved_outputs"
+		       " WHERE ps_number = " (db-quote ps-number)
+		       " AND name = " (db-quote name)
+		       " AND user_name = " (db-quote user-name))))
+    (let ((submitted?
+	   (and (> (pgsql-n-tuples result) 0)
+		(let ((v (pgsql-get-value result 0 0)))
+		  (and v
+		       (not (string-null? v)))))))
+      (pgsql-clear result)
+      submitted?)))
 
-(define-expander 'db-get-ps-structure
-  (lambda ()
-    (let ((result
-	   (db-run-query "SELECT ps_number, ps_part, name"
-			 " FROM registered_outputs"
-			 " ORDER BY ps_number, ps_part, name")))
-      (let ((n (pgsql-n-tuples result)))
-	(do ((i 0 (+ i 1))
-	     (items '()
-		    (cons (vector (string->number (pgsql-get-value result i 0))
-				  (pgsql-get-value result i 1)
-				  (pgsql-get-value result i 2))
-			  items)))
-	    ((= i n)
-	     (pgsql-clear result)
-	     (ps-structure->tree (reverse! items))))))))
+(define (db-get-ps-structure)
+  (let ((result
+	 (db-run-query "SELECT ps_number, ps_part, name"
+		       " FROM registered_outputs"
+		       " ORDER BY ps_number, ps_part, name")))
+    (let ((n (pgsql-n-tuples result)))
+      (do ((i 0 (+ i 1))
+	   (items '()
+		  (cons (vector (string->number (pgsql-get-value result i 0))
+				(pgsql-get-value result i 1)
+				(pgsql-get-value result i 2))
+			items)))
+	  ((= i n)
+	   (pgsql-clear result)
+	   (ps-structure->tree (reverse! items)))))))
 
 (define (ps-structure->tree items)
   (map (lambda (pset)
@@ -356,86 +347,81 @@ USA.
 		 " AND ps_number = " (db-quote *ps-number*)
 		 " AND name = " (db-quote id)))
 
-(define-expander 'db-get-saved-output
-  (lambda (user-name ps-number name)
-    (let ((result
-	   (db-run-query "SELECT correctness, submitter, late_p"
-			 " FROM saved_outputs"
-			 " WHERE user_name = " (db-quote user-name)
-			 " AND ps_number = " (db-quote ps-number)
-			 " AND name = " (db-quote name))))
-      (if (> (pgsql-n-tuples result) 0)
-	  (let ((correctness (pgsql-get-value result 0 0))
-		(submitter (pgsql-get-value result 0 1))
-		(late? (string=? (pgsql-get-value result 0 2) "t")))
-	    (pgsql-clear result)
-	    (values correctness
-		    (and submitter (string->symbol submitter))
-		    late?))
-	  (begin
-	    (pgsql-clear result)
-	    (values #f #f #f))))))
+(define (db-get-saved-output user-name ps-number name)
+  (let ((result
+	 (db-run-query "SELECT correctness, submitter, late_p"
+		       " FROM saved_outputs"
+		       " WHERE user_name = " (db-quote user-name)
+		       " AND ps_number = " (db-quote ps-number)
+		       " AND name = " (db-quote name))))
+    (if (> (pgsql-n-tuples result) 0)
+	(let ((correctness (pgsql-get-value result 0 0))
+	      (submitter (pgsql-get-value result 0 1))
+	      (late? (string=? (pgsql-get-value result 0 2) "t")))
+	  (pgsql-clear result)
+	  (values correctness
+		  (and submitter (string->symbol submitter))
+		  late?))
+	(begin
+	  (pgsql-clear result)
+	  (values #f #f #f)))))
 
 ;;;; Persistent values
 
-(define-expander 'db-get-persistent-value
-  (lambda (name default)
-    (let ((result
-	   (db-run-query (persistent-value-query name '(var_value) #f))))
-      (let ((string
-	     (and (> (pgsql-n-tuples result) 0)
-		  (pgsql-get-value result 0 0))))
-	(pgsql-clear result)
-	(if string
-	    (read (open-input-string string))
-	    default)))))
+(define (db-get-persistent-value name default)
+  (let ((result
+	 (db-run-query (persistent-value-query name '(var_value) #f))))
+    (let ((string
+	   (and (> (pgsql-n-tuples result) 0)
+		(pgsql-get-value result 0 0))))
+      (pgsql-clear result)
+      (if string
+	  (read (open-input-string string))
+	  default))))
 
-(define-expander 'db-set-persistent-value!
-  (lambda (name object)
-    (let ((value (write-to-string object))
-	  (result
-	   (db-run-query (persistent-value-query name '(var_value) #t))))
-      (if (> (pgsql-n-tuples result) 0)
-	  (let ((same-value? (string=? (pgsql-get-value result 0 0) value)))
-	    (pgsql-clear result)
-	    (if (not same-value?)
-		(db-run-cmd "UPDATE persistent_values SET"
-			    " var_value = "
-			    (db-quote value)
-			    " WHERE "
-			    (persistent-value-condition name))))
-	  (begin
-	    (pgsql-clear result)
+(define (db-set-persistent-value! name object)
+  (let ((value (write-to-string object))
+	(result
+	 (db-run-query (persistent-value-query name '(var_value) #t))))
+    (if (> (pgsql-n-tuples result) 0)
+	(let ((same-value? (string=? (pgsql-get-value result 0 0) value)))
+	  (pgsql-clear result)
+	  (if (not same-value?)
+	      (db-run-cmd "UPDATE persistent_values SET"
+			  " var_value = "
+			  (db-quote value)
+			  " WHERE "
+			  (persistent-value-condition name))))
+	(begin
+	  (pgsql-clear result)
+	  (db-run-cmd "INSERT INTO persistent_values VALUES"
+		      " (" (db-quote *user-name*)
+		      ", " (db-quote *page-key*)
+		      ", " (db-quote name)
+		      ", " (db-quote value)
+		      ")")))))
+
+(define (db-intern-persistent-value! name get-object)
+  (let ((result
+	 (db-run-query (persistent-value-query name '(var_value) #t))))
+    (if (> (pgsql-n-tuples result) 0)
+	(let ((value (pgsql-get-value result 0 0)))
+	  (pgsql-clear result)
+	  (read (open-input-string value)))
+	(begin
+	  (pgsql-clear result)
+	  (let ((object (get-object)))
 	    (db-run-cmd "INSERT INTO persistent_values VALUES"
 			" (" (db-quote *user-name*)
 			", " (db-quote *page-key*)
 			", " (db-quote name)
-			", " (db-quote value)
-			")"))))))
+			", " (db-quote (write-to-string object))
+			")")
+	    object)))))
 
-(define-expander 'db-intern-persistent-value!
-  (lambda (name get-object)
-    (let ((result
-	   (db-run-query (persistent-value-query name '(var_value) #t))))
-      (if (> (pgsql-n-tuples result) 0)
-	  (let ((value (pgsql-get-value result 0 0)))
-	    (pgsql-clear result)
-	    (read (open-input-string value)))
-	  (begin
-	    (pgsql-clear result)
-	    (let ((object (get-object)))
-	      (db-run-cmd "INSERT INTO persistent_values VALUES"
-			  " (" (db-quote *user-name*)
-			  ", " (db-quote *page-key*)
-			  ", " (db-quote name)
-			  ", " (db-quote (write-to-string object))
-			  ")")
-	      object))))))
-
-(define-expander 'db-delete-persistent-value!
-  (lambda (name)
-    (db-run-cmd "DELETE FROM persistent_values WHERE "
-		(persistent-value-condition name))))
+(define (db-delete-persistent-value! name)
+  (db-run-cmd "DELETE FROM persistent_values WHERE "
+	      (persistent-value-condition name)))
 
 (define (persistent-value-query name fields for-update?)
   (string-append "SELECT " (field-list->db-string fields)
@@ -450,13 +436,11 @@ USA.
 
 ;;;; Clear submitted/late
 
-(define-expander 'db-saved-submitters
-  (lambda (user-name)
-    (db-marked-submitters user-name "submitter IS NOT NULL")))
+(define (db-saved-submitters user-name)
+  (db-marked-submitters user-name "submitter IS NOT NULL"))
 
-(define-expander 'db-late-submitters
-  (lambda (user-name)
-    (db-marked-submitters user-name "late_p")))
+(define (db-late-submitters user-name)
+  (db-marked-submitters user-name "late_p"))
 
 (define (db-marked-submitters user-name condition)
   (let ((result
@@ -478,21 +462,19 @@ USA.
 	      (pgsql-clear result)
 	      (reverse! names)))))))
 
-(define-expander 'db-clear-submitter
-  (lambda (user-name number)
-    (receive (ps-number submitter) (parse-problem-number number)
-      (db-run-cmd "UPDATE saved_inputs"
-		  " SET submitter IS NULL"
-		  " WHERE user_name = " (db-quote user-name)
-		  " AND ps_number = " (db-quote ps-number)
-		  " AND submitter  = " (db-quote submitter))
-      (db-set-output-field user-name ps-number submitter
-			   "submitter IS NULL"))))
+(define (db-clear-submitter user-name number)
+  (receive (ps-number submitter) (parse-problem-number number)
+    (db-run-cmd "UPDATE saved_inputs"
+		" SET submitter IS NULL"
+		" WHERE user_name = " (db-quote user-name)
+		" AND ps_number = " (db-quote ps-number)
+		" AND submitter  = " (db-quote submitter))
+    (db-set-output-field user-name ps-number submitter
+			 "submitter IS NULL")))
 
-(define-expander 'db-clear-late-flag
-  (lambda (user-name number)
-    (receive (ps-number submitter) (parse-problem-number number)
-      (db-set-output-field user-name ps-number submitter "late_p = FALSE"))))
+(define (db-clear-late-flag user-name number)
+  (receive (ps-number submitter) (parse-problem-number number)
+    (db-set-output-field user-name ps-number submitter "late_p = FALSE")))
 
 (define (db-set-output-field user-name ps-number submitter assignment)
   (let ((result
@@ -507,9 +489,8 @@ USA.
 
 ;;;; Users
 
-(define-expander 'db-known-user?
-  (lambda (user-name)
-    (known-user? user-name #f)))
+(define (db-known-user? user-name)
+  (known-user? user-name #f))
 
 (define (known-user? user-name for-update?)
   (let ((result
@@ -532,85 +513,76 @@ USA.
   (if (not (known-user? user-name #t))
       (error "Unknown user:" user-name)))
 
-(define-expander 'db-known-users
-  (lambda (condition)
-    (let ((result
-	   (db-run-query "SELECT user_name"
-			 " FROM users"
-			 (case condition
-			   ((enabled) " WHERE enabled_p")
-			   ((disabled) " WHERE NOT enabled_p")
-			   (else ""))
-			 " ORDER BY user_name")))
-      (let ((n (pgsql-n-tuples result)))
-	(let loop ((i 0) (users '()))
-	  (if (< i n)
-	      (loop (+ i 1) (cons (pgsql-get-value result i 0) users))
-	      (begin
-		(pgsql-clear result)
-		(reverse! users))))))))
+(define (db-known-users condition)
+  (let ((result
+	 (db-run-query "SELECT user_name"
+		       " FROM users"
+		       (case condition
+			 ((enabled) " WHERE enabled_p")
+			 ((disabled) " WHERE NOT enabled_p")
+			 (else ""))
+		       " ORDER BY user_name")))
+    (let ((n (pgsql-n-tuples result)))
+      (let loop ((i 0) (users '()))
+	(if (< i n)
+	    (loop (+ i 1) (cons (pgsql-get-value result i 0) users))
+	    (begin
+	      (pgsql-clear result)
+	      (reverse! users)))))))
 
-(define-expander 'db-new-user-account
-  (lambda (user-name first-names last-name password enabled?)
-    (if (known-user? user-name #t)
-	#f
-	(begin
-	  (db-run-cmd "INSERT INTO users VALUES"
-		      " (" (db-quote user-name)
-		      ", " (db-quote first-names)
-		      ", " (db-quote last-name)
-		      ", " (db-quote (encrypt-password password))
-		      ", " "FALSE"
-		      ", " (if enabled? "TRUE" "FALSE")
-		      ")")
-	  #t))))
+(define (db-new-user-account user-name first-names last-name password enabled?)
+  (if (known-user? user-name #t)
+      #f
+      (begin
+	(db-run-cmd "INSERT INTO users VALUES"
+		    " (" (db-quote user-name)
+		    ", " (db-quote first-names)
+		    ", " (db-quote last-name)
+		    ", " (db-quote (encrypt-password password))
+		    ", " "FALSE"
+		    ", " (if enabled? "TRUE" "FALSE")
+		    ")")
+	#t)))
 
-(define-expander 'db-change-user-password
-  (lambda (user-name password)
-    (guarantee-known-user user-name)
-    (db-run-cmd "UPDATE users"
-		" SET password = " (db-quote (encrypt-password password))
-		" WHERE user_name = " (db-quote user-name))))
+(define (db-change-user-password user-name password)
+  (guarantee-known-user user-name)
+  (db-run-cmd "UPDATE users"
+	      " SET password = " (db-quote (encrypt-password password))
+	      " WHERE user_name = " (db-quote user-name)))
 
-(define-expander 'db-user-real-name
-  (lambda (user-name)
-    (let ((result
-	   (db-run-query "SELECT first_names, last_name"
-			 " FROM users"
-			 " WHERE user_name = " (db-quote user-name))))
-      (if (> (pgsql-n-tuples result) 0)
-	  (let ((first (pgsql-get-value result 0 0))
-		(last (pgsql-get-value result 0 1)))
-	    (pgsql-clear result)
-	    (values first last))
-	  (begin
-	    (pgsql-clear result)
-	    (error "Unknown user:" user-name)
-	    (values #f #f))))))
+(define (db-user-real-name user-name)
+  (let ((result
+	 (db-run-query "SELECT first_names, last_name"
+		       " FROM users"
+		       " WHERE user_name = " (db-quote user-name))))
+    (if (> (pgsql-n-tuples result) 0)
+	(let ((first (pgsql-get-value result 0 0))
+	      (last (pgsql-get-value result 0 1)))
+	  (pgsql-clear result)
+	  (values first last))
+	(begin
+	  (pgsql-clear result)
+	  (error "Unknown user:" user-name)
+	  (values #f #f)))))
 
-(define-expander 'db-set-user-real-name
-  (lambda (user-name first-names last-name)
-    (guarantee-known-user user-name)
-    (db-run-cmd "UPDATE users"
-		" SET first_names = " (db-quote first-names)
-		", last_name = " (db-quote last-name)
-		" WHERE user_name = " (db-quote user-name))))
+(define (db-set-user-real-name user-name first-names last-name)
+  (guarantee-known-user user-name)
+  (db-run-cmd "UPDATE users"
+	      " SET first_names = " (db-quote first-names)
+	      ", last_name = " (db-quote last-name)
+	      " WHERE user_name = " (db-quote user-name)))
 
-(define-expander 'db-user-enabled?
-  (lambda (user-name)
-    (get-user-flag user-name "enabled_p")))
+(define (db-user-enabled? user-name)
+  (get-user-flag user-name "enabled_p"))
 
-(define-expander 'db-user-administrator?
-  (lambda (user-name)
-    (get-user-flag user-name "administrator_p")))
+(define (db-user-administrator? user-name)
+  (get-user-flag user-name "administrator_p"))
 
-(define-expander 'db-set-user-enabled
-  (lambda (user-name value)
-    (set-user-flag user-name "enabled_p" value)))
+(define (db-set-user-enabled user-name value)
+  (set-user-flag user-name "enabled_p" value))
 
-(define-expander 'db-set-user-administrator
-  (lambda (user-name value)
-    (set-user-flag user-name "administrator_p" value)))
+(define (db-set-user-administrator user-name value)
+  (set-user-flag user-name "administrator_p" value))
 
 (define (get-user-flag user-name flag-name)
   (let ((result
@@ -648,13 +620,12 @@ USA.
 	(error "Unknown result from htpasswd:" pw-line))
     (substring pw-line 4 (fix:- (string-length pw-line) 1))))
 
-(define-expander 'db-valid-password?
-  (lambda (string)
-    (and (fix:>= (string-length string) 8)
-	 (not (string-find-next-char-in-set string char-set:not-password))
-	 (string-find-next-char-in-set string char-set:lower-case)
-	 (string-find-next-char-in-set string char-set:upper-case)
-	 (string-find-next-char-in-set string char-set:numeric))))
+(define (db-valid-password? string)
+  (and (fix:>= (string-length string) 8)
+       (not (string-find-next-char-in-set string char-set:not-password))
+       (string-find-next-char-in-set string char-set:lower-case)
+       (string-find-next-char-in-set string char-set:upper-case)
+       (string-find-next-char-in-set string char-set:numeric)))
 
 (define char-set:password
   (char-set-union char-set:alphanumeric
@@ -663,11 +634,10 @@ USA.
 (define char-set:not-password
   (char-set-invert char-set:password))
 
-(define-expander 'db-generate-password
-  (lambda ()
-    (string-append (string (integer->char (+ (char->integer #\A) (random 26))))
-		   (string (integer->char (+ (char->integer #\a) (random 26))))
-		   (random-digit-string 6))))
+(define (db-generate-password)
+  (string-append (string (integer->char (+ (char->integer #\A) (random 26))))
+		 (string (integer->char (+ (char->integer #\a) (random 26))))
+		 (random-digit-string 6)))
 
 (define (random-digit-string n-chars)
   (string-pad-left (number->string (random (expt 10 n-chars))) n-chars #\0))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.2 2003/12/29 07:31:10 uid67408 Exp $
+$Id: expenv.scm,v 1.1 2003/12/29 07:31:06 uid67408 Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -23,12 +23,7 @@ USA.
 
 |#
 
-;;;; SSP/XDOC loader
+;;;; XHTML expander environment
 
-(load-option 'XML)
-(load-option 'POSTGRESQL)
-(load-option 'MIME-CODEC)
-(with-working-directory-pathname (directory-pathname (current-load-pathname))
-  (lambda ()
-    (package/system-loader "ssp" '() 'QUERY)))
-(add-subsystem-identification! "SSP/XDOC" '(0 2))
+(define expander-environment
+  (the-environment))
