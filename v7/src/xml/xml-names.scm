@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.4 2004/02/26 04:52:03 cph Exp $
+$Id: xml-names.scm,v 1.5 2004/05/26 10:52:11 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -37,16 +37,18 @@ USA.
 	  (%make-xml-name qname iri)))))
 
 (define (check-prefix+iri qname iri)
-  (let ((s (symbol-name qname)))
-    (let ((c (find-prefix-separator s)))
-      (if (if c
-	      (let ((prefix (string-head->symbol s c)))
-		(or (and (eq? prefix 'xml)
-			 (not (eq? iri xml-iri)))
-		    (and (eq? prefix 'xmlns)
-			 (not (eq? iri xmlns-iri)))))
-	      iri)
-	  (error:bad-range-argument iri 'MAKE-XML-NAME)))))
+  (if (let ((s (symbol-name qname)))
+	(let ((c (find-prefix-separator s)))
+	  (case c
+	    ((#f) #f)
+	    ((ILLEGAL) iri)
+	    (else
+	     (let ((prefix (string-head->symbol s c)))
+	       (or (and (eq? prefix 'xml)
+			(not (eq? iri xml-iri)))
+		   (and (eq? prefix 'xmlns)
+			(not (eq? iri xmlns-iri)))))))))
+      (error:bad-range-argument iri 'MAKE-XML-NAME)))
 
 (define (%make-xml-name qname iri)
   (let ((uname
@@ -224,28 +226,29 @@ USA.
 (define (xml-qname-local qname)
   (let ((s (symbol-name qname)))
     (let ((c (find-prefix-separator s)))
-      (if c
-	  (string-tail->symbol s (fix:+ c 1))
-	  qname))))
+      (if (or (not c) (eq? c 'ILLEGAL))
+	  qname
+	  (string-tail->symbol s (fix:+ c 1))))))
 
 (define (xml-qname-prefix qname)
   (let ((s (symbol-name qname)))
     (let ((c (find-prefix-separator s)))
-      (if c
-	  (string-head->symbol s c)
-	  (null-xml-name-prefix)))))
+      (if (or (not c) (eq? c 'ILLEGAL))
+	  (null-xml-name-prefix)
+	  (string-head->symbol s c)))))
 
 (define (find-prefix-separator s)
   (let ((c (string-find-next-char s #\:)))
-    (and c
-	 (let ((i (fix:+ c 1))
-	       (e (string-length s)))
-	   (and (let ((char (read-utf8-char (open-input-string s i e))))
-		  (and (not (eof-object? char))
-		       (not (char=? char #\:))
-		       (char-in-alphabet? char alphabet:name-initial)))
-		(not (substring-find-next-char s i e #\:))))
-	 c)))
+    (if (or (not c)
+	    (let ((i (fix:+ c 1))
+		  (e (string-length s)))
+	      (and (let ((char (read-utf8-char (open-input-string s i e))))
+		     (and (not (eof-object? char))
+			  (not (char=? char #\:))
+			  (char-in-alphabet? char alphabet:name-initial)))
+		   (not (substring-find-next-char s i e #\:)))))
+	c
+	'ILLEGAL)))
 
 (define-record-type <combo-name>
     (make-combo-name qname expanded)
