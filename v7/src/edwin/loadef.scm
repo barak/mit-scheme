@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.10 1991/08/28 14:15:28 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.11 1991/09/18 13:56:13 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -127,3 +127,11 @@ modified version of TeX input format.")
 (define-variable texinfo-mode-hook
   "An event distributor that is invoked when entering Texinfo mode."
   (make-event-distributor))
+
+;;;; Other Libraries
+
+(define-library 'manual
+  '("manual" (EDWIN)))
+
+(define-autoload-command 'manual-entry 'MANUAL
+  "Display UNIX man page.")

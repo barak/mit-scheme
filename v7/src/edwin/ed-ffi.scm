@@ -119,6 +119,8 @@
 	       syntax-table/system-internal)
     ("malias"  (edwin mail-alias)
 	       edwin-syntax-table)
+    ("manual"  (edwin)
+	       edwin-syntax-table)
     ("midas"   (edwin)
 	       edwin-syntax-table)
     ("modefs"  (edwin)

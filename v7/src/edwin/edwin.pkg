@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.60 1991/09/12 23:45:01 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.61 1991/09/18 13:56:05 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -98,7 +98,8 @@ MIT in each case. |#
 	 "c-mode"
 	 "midas"
 	 "pasmod"
-	 "tximod")
+	 "tximod"
+	 "manual")			; man page display
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)

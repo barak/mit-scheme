@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.24 1991/08/28 14:54:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.25 1991/09/18 13:56:26 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -139,6 +139,7 @@ MIT in each case. |#
 	      "loadef"
 	      "lspcom"
 	      "malias"
+	      "manual"
 	      "midas"
 	      "modefs"
 	      "modes"
