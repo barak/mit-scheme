@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.50 1996/05/15 20:05:50 cph Exp $
+;;;	$Id: process.scm,v 1.51 1996/05/24 07:33:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-96 Massachusetts Institute of Technology
 ;;;
@@ -244,12 +244,13 @@ Initialized from the SHELL environment variable."
     (channel-descriptor-for-select channel)
     (current-thread)
     (lambda ()
-      (let ((queue process-input-queue)
-	    (tail (list process)))
-	(if (null? (cdr queue))
-	    (set-car! queue tail)
-	    (set-cdr! (cdr queue) tail))
-	(set-cdr! queue tail))))))
+      (let ((queue process-input-queue))
+	(if (not (memq process (car queue)))
+	    (let ((tail (list process)))
+	      (if (null? (cdr queue))
+		  (set-car! queue tail)
+		  (set-cdr! (cdr queue) tail))
+	      (set-cdr! queue tail))))))))
 
 (define (process-output-available?)
   (not (null? (car process-input-queue))))
