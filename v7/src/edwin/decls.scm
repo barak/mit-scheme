@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.55 1995/05/03 07:49:58 cph Exp $
+$Id: decls.scm,v 1.56 1995/10/25 03:02:52 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -145,6 +145,7 @@ MIT in each case. |#
 		"docstr"
 		"dos"
 		"doscom"
+		"dosfile"
 		"dosproc"
 		"dosshell"
 		"ed-ffi"
