@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.55 2001/12/17 22:05:33 cph Exp $
+### $Id: i386.m4,v 1.56 2001/12/19 19:53:35 cph Exp $
 ###
 ### Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ###
@@ -670,16 +670,18 @@ define_code_label(EFR(ia32_cache_synchronize))
 	leave
 	ret
 
-### Conditionally run the CPUID instruction for serialization.
+### Run the CPUID instruction for serialization.
 
-define_hook_label(conditionally_serialize)
-	OP(cmp,l)	TW(IMM(0),ABS(EVR(ia32_cpuid_needed)))
-	je	asm_conditionally_serialize_done
+define_hook_label(serialize_cache)
 	pusha
 	OP(xor,l)	TW(REG(eax),REG(eax))
 	cpuid
 	popa
-asm_conditionally_serialize_done:
+	ret
+
+### Stub to be used in place of above on machines that don't need it.
+
+define_hook_label(dont_serialize_cache)
 	ret
 
 ###	Assembly language hooks used to reduce code size.

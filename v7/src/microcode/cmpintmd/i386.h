@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.33 2001/12/16 06:01:33 cph Exp $
+$Id: i386.h,v 1.34 2001/12/19 19:53:46 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -540,6 +540,7 @@ DEFUN_VOID (i386_reset_hook)
 {
   extern int EXFUN (ASM_ENTRY_POINT(i386_interface_initialize), (void));
   extern void EXFUN (declare_builtin, (unsigned long, char *));
+  extern int ia32_cpuid_needed;
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
   int fp_support_present = (i386_interface_initialize ());
@@ -631,7 +632,14 @@ DEFUN_VOID (i386_reset_hook)
   SETUP_REGISTER (asm_sc_apply_size_7);			/* -10 */
   SETUP_REGISTER (asm_sc_apply_size_8);			/* -9 */
   SETUP_REGISTER (asm_interrupt_continuation_2);	/* -8 */
-  SETUP_REGISTER (asm_conditionally_serialize);		/* -7 */
+  if (ia32_cpuid_needed)
+    {
+      SETUP_REGISTER (asm_serialize_cache);		/* -7 */
+    }
+  else
+    {
+      SETUP_REGISTER (asm_dont_serialize_cache);	/* -7 */
+    }
 
 #ifdef _MACH_UNIX
   {
