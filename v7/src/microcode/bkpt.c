@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.25 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.26 1992/02/03 23:03:20 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,7 +82,7 @@ DEFUN_VOID (Handle_Pop_Return_Break)
   Boolean ignore;
   SCHEME_OBJECT *Old_Stack = Stack_Pointer;
 
-  printf ("Pop Return Break: SP = 0x%x\n", Stack_Pointer);
+  printf ("Pop Return Break: SP = 0x%lx\n", Stack_Pointer);
   ignore = (Print_One_Continuation_Frame ());
   Stack_Pointer = Old_Stack;
   return;
@@ -113,4 +113,3 @@ DEFUN_VOID (Pop_Return_Break_Point)
   SP_List = One_Before.next;
   return;
 }
-

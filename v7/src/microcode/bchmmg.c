@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.67 1992/01/27 17:04:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.68 1992/02/03 23:02:15 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -1833,7 +1833,7 @@ DEFUN (open_gc_file, (size, unlink_p),
      Well, it seems to clobber the string if there are no Xs.
    */
 
-#if 1
+#if TRUE
   position = (strlen (option_gc_file));
   if ((position >= 6)
       && ((strncmp ((option_gc_file + (position - 6)), "XXXXXX", 6)) == 0))
