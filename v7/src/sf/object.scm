@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.13 2002/02/03 03:38:58 cph Exp $
+$Id: object.scm,v 4.14 2002/02/09 06:17:50 cph Exp $
 
 Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -67,17 +67,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-enumeration
       (sc-macro-transformer
        (lambda (form environment)
-	 (let ((enumeration-name (close-syntax (cadr form) environment))
+	 (let ((enumeration-name (cadr form))
 	       (enumerand-names (caddr form)))
 	   `(BEGIN
 	      (DEFINE ,enumeration-name
 		(ENUMERATION/MAKE ',enumerand-names))
 	      ,@(map (lambda (enumerand-name)
-		       `(DEFINE ,(close-syntax
-				  (symbol-append enumerand-name '/ENUMERAND)
-				  environment)
-			  (ENUMERATION/NAME->ENUMERAND ,enumeration-name
-						       ',enumerand-name)))
+		       `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
+			  (ENUMERATION/NAME->ENUMERAND
+			   ,(close-syntax enumeration-name environment)
+			   ',enumerand-name)))
 		     enumerand-names)))))))
   (define-enumeration enumeration/random
     (block
@@ -180,9 +179,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     ((define-flag
       (sc-macro-transformer
        (lambda (form environment)
+	 environment
 	 (let ((name (cadr form))
-	       (tester (close-syntax (caddr form) environment))
-	       (setter (close-syntax (cadddr form) environment)))
+	       (tester (caddr form))
+	       (setter (cadddr form)))
 	   `(BEGIN
 	      (DEFINE (,tester VARIABLE)
 		(MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
