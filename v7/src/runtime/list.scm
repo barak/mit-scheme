@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.42 2004/11/17 05:42:14 cph Exp $
+$Id: list.scm,v 14.43 2004/11/17 06:09:07 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -789,91 +789,110 @@ USA.
 
 ;;;; Membership lists
 
-(define-syntax define-fast-member
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name ITEM ITEMS)
-	      (LET LOOP ((ITEMS* ITEMS))
-		(IF (PAIR? ITEMS*)
-		    (IF (,predicate (CAR ITEMS*) ITEM)
-			ITEMS*
-			(LOOP (CDR ITEMS*)))
-		    (BEGIN
-		      (IF (NOT (NULL? ITEMS*))
-			  (ERROR:NOT-LIST ITEMS ',name))
-		      #F)))))
-	 (ill-formed-syntax form)))))
+(define memq)
+(define memv)
+(define member)
 
-(define-fast-member memq eq?)
-(define-fast-member memv eqv?)
-(define-fast-member member equal?)
-
-(define-syntax define-fast-delete-member
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name ITEM ITEMS)
-	      (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
-		(COND ((PAIR? ITEMS)
-		       (LET ((HEAD (CONS (CAR ITEMS) '())))
-			 (LET LOOP ((ITEMS (CDR ITEMS)) (PREVIOUS HEAD))
-			   (COND ((PAIR? ITEMS)
-				  (IF (,predicate (CAR ITEMS) ITEM)
-				      (LOOP (CDR ITEMS) PREVIOUS)
-				      (LET ((NEW (CONS (CAR ITEMS) '())))
-					(SET-CDR! PREVIOUS NEW)
-					(LOOP (CDR ITEMS) NEW))))
-				 ((NOT (NULL? ITEMS)) (LOSE))))
-			 (IF (,predicate (CAR ITEMS) ITEM)
-			     (CDR HEAD)
-			     HEAD)))
-		      ((NULL? ITEMS) ITEMS)
-		      (ELSE (LOSE))))))
-	 (ill-formed-syntax form)))))
-
-(define-fast-delete-member delq eq?)
-(define-fast-delete-member delv eqv?)
-(define-fast-delete-member delete equal?)
-
-(define-syntax define-fast-delete-member!
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name ITEM ITEMS)
-	      (LETREC
-		  ((TRIM-INITIAL-SEGMENT
-		    (LAMBDA (ITEMS*)
-		      (IF (PAIR? ITEMS*)
-			  (IF (,predicate ITEM (CAR ITEMS*))
-			      (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
+(let-syntax
+    ((fast-member
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET! ,name
+		      (NAMED-LAMBDA (,name ITEM ITEMS)
+			(LET LOOP ((ITEMS* ITEMS))
+			  (IF (PAIR? ITEMS*)
+			      (IF (,predicate (CAR ITEMS*) ITEM)
+				  ITEMS*
+				  (LOOP (CDR ITEMS*)))
 			      (BEGIN
-				(LOCATE-INITIAL-SEGMENT ITEMS* (CDR ITEMS*))
-				ITEMS*))
-			  (BEGIN
-			    (IF (NOT (NULL? ITEMS*))
-				(ERROR:NOT-LIST ITEMS ',name))
-			    '()))))
-		   (LOCATE-INITIAL-SEGMENT
-		    (LAMBDA (LAST THIS)
-		      (IF (PAIR? THIS)
-			  (IF (,predicate ITEM (CAR THIS))
-			      (SET-CDR! LAST (TRIM-INITIAL-SEGMENT (CDR THIS)))
-			      (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
-			  (IF (NOT (NULL? THIS))
-			      (ERROR:NOT-LIST ITEMS ',name))))))
-		(TRIM-INITIAL-SEGMENT ITEMS))))
-	 (ill-formed-syntax form)))))
+				(IF (NOT (NULL? ITEMS*))
+				    (ERROR:NOT-LIST ITEMS ',name))
+				#F))))))
+	     (ill-formed-syntax form))))))
+  (fast-member memq eq?)
+  (fast-member memv eqv?)
+  (fast-member member equal?))
 
-(define-fast-delete-member! delq! eq?)
-(define-fast-delete-member! delv! eqv?)
-(define-fast-delete-member! delete! equal?)
+(define delq)
+(define delv)
+(define delete)
+
+(let-syntax
+    ((fast-delete-member
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET!
+		 ,name
+		 (NAMED-LAMBDA (,name ITEM ITEMS)
+		   (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
+		     (COND ((PAIR? ITEMS)
+			    (LET ((HEAD (CONS (CAR ITEMS) '())))
+			      (LET LOOP ((ITEMS (CDR ITEMS)) (PREVIOUS HEAD))
+				(COND ((PAIR? ITEMS)
+				       (IF (,predicate (CAR ITEMS) ITEM)
+					   (LOOP (CDR ITEMS) PREVIOUS)
+					   (LET ((NEW (CONS (CAR ITEMS) '())))
+					     (SET-CDR! PREVIOUS NEW)
+					     (LOOP (CDR ITEMS) NEW))))
+				      ((NOT (NULL? ITEMS)) (LOSE))))
+			      (IF (,predicate (CAR ITEMS) ITEM)
+				  (CDR HEAD)
+				  HEAD)))
+			   ((NULL? ITEMS) ITEMS)
+			   (ELSE (LOSE)))))))
+	     (ill-formed-syntax form))))))
+  (fast-delete-member delq eq?)
+  (fast-delete-member delv eqv?)
+  (fast-delete-member delete equal?))
+
+(define delq!)
+(define delv!)
+(define delete!)
+
+(let-syntax
+    ((fast-delete-member!
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET!
+		 ,name
+		 (NAMED-LAMBDA (,name ITEM ITEMS)
+		   (LETREC
+		       ((TRIM-INITIAL-SEGMENT
+			 (LAMBDA (ITEMS*)
+			   (IF (PAIR? ITEMS*)
+			       (IF (,predicate ITEM (CAR ITEMS*))
+				   (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
+				   (BEGIN
+				     (LOCATE-INITIAL-SEGMENT ITEMS*
+							     (CDR ITEMS*))
+				     ITEMS*))
+			       (BEGIN
+				 (IF (NOT (NULL? ITEMS*))
+				     (ERROR:NOT-LIST ITEMS ',name))
+				 '()))))
+			(LOCATE-INITIAL-SEGMENT
+			 (LAMBDA (LAST THIS)
+			   (IF (PAIR? THIS)
+			       (IF (,predicate ITEM (CAR THIS))
+				   (SET-CDR! LAST
+					     (TRIM-INITIAL-SEGMENT (CDR THIS)))
+				   (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
+			       (IF (NOT (NULL? THIS))
+				   (ERROR:NOT-LIST ITEMS ',name))))))
+		     (TRIM-INITIAL-SEGMENT ITEMS)))))
+	     (ill-formed-syntax form))))))
+  (fast-delete-member! delq! eq?)
+  (fast-delete-member! delv! eqv?)
+  (fast-delete-member! delete! equal?))
 
 ;;;; Association lists
 
@@ -887,97 +906,116 @@ USA.
 (define (error:not-alist object caller)
   (error:wrong-type-argument object "association list" caller))
 
-(define-syntax define-fast-assoc
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name KEY ALIST)
-	      (LET LOOP ((ALIST* ALIST))
-		(IF (PAIR? ALIST*)
-		    (BEGIN
-		      (IF (NOT (PAIR? (CAR ALIST*)))
-			  (ERROR:NOT-ALIST ALIST ',name))
-		      (IF (,predicate (CAR (CAR ALIST*)) KEY)
-			  (CAR ALIST*)
-			  (LOOP (CDR ALIST*))))
-		    (BEGIN
-		      (IF (NOT (NULL? ALIST*))
-			  (ERROR:NOT-ALIST ALIST ',name))
-		      #F)))))
-	 (ill-formed-syntax form)))))
+(define assq)
+(define assv)
+(define assoc)
 
-(define-fast-assoc assq eq?)
-(define-fast-assoc assv eqv?)
-(define-fast-assoc assoc equal?)
-
-(define-syntax define-fast-del-assoc
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name ITEM ITEMS)
-	      (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
-		(COND ((PAIR? ITEMS)
-		       (LET ((HEAD (CONS (CAR ITEMS) '())))
-			 (LET LOOP ((ITEMS* (CDR ITEMS)) (PREVIOUS HEAD))
-			   (COND ((PAIR? ITEMS*)
-				  (IF (,predicate (CAR ITEMS*) ITEM)
-				      (LOOP (CDR ITEMS*) PREVIOUS)
-				      (LET ((NEW (CONS (CAR ITEMS*) '())))
-					(SET-CDR! PREVIOUS NEW)
-					(LOOP (CDR ITEMS*) NEW))))
-				 ((NOT (NULL? ITEMS*)) (LOSE))))
-			 (IF (,predicate (CAR ITEMS) ITEM)
-			     (CDR HEAD)
-			     HEAD)))
-		      ((NULL? ITEMS) ITEMS)
-		      (ELSE (LOSE))))))
-	 (ill-formed-syntax form)))))
-
-(define-fast-del-assoc del-assq eq?)
-(define-fast-del-assoc del-assv eqv?)
-(define-fast-del-assoc del-assoc equal?)
-
-(define-syntax define-fast-del-assoc!
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
-	 (let ((name (cadr form))
-	       (predicate (close-syntax (caddr form) environment)))
-	   `(DEFINE (,name ITEM ITEMS)
-	      (LETREC
-		  ((TRIM-INITIAL-SEGMENT
-		    (LAMBDA (ITEMS*)
-		      (IF (PAIR? ITEMS*)
-			  (IF (,predicate (CAR ITEMS*) ITEM)
-			      (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
+(let-syntax
+    ((fast-assoc
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET! ,name
+		      (NAMED-LAMBDA (,name KEY ALIST)
+			(LET LOOP ((ALIST* ALIST))
+			  (IF (PAIR? ALIST*)
 			      (BEGIN
-				(LOCATE-INITIAL-SEGMENT ITEMS* (CDR ITEMS*))
-				ITEMS*))
-			  (BEGIN
-			    (IF (NOT (NULL? ITEMS*))
-				(LOSE))
-			    '()))))
-		   (LOCATE-INITIAL-SEGMENT
-		    (LAMBDA (LAST THIS)
-		      (IF (PAIR? THIS)
-			  (IF (,predicate (CAR THIS) ITEM)
-			      (SET-CDR! LAST (TRIM-INITIAL-SEGMENT (CDR THIS)))
-			      (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
-			  (IF (NOT (NULL? THIS))
-			      (LOSE)))))
-		   (LOSE
-		    (LAMBDA ()
-		      (ERROR:NOT-LIST ITEMS ',name))))
-		(TRIM-INITIAL-SEGMENT ITEMS))))
-	 (ill-formed-syntax form)))))
+				(IF (NOT (PAIR? (CAR ALIST*)))
+				    (ERROR:NOT-ALIST ALIST ',name))
+				(IF (,predicate (CAR (CAR ALIST*)) KEY)
+				    (CAR ALIST*)
+				    (LOOP (CDR ALIST*))))
+			      (BEGIN
+				(IF (NOT (NULL? ALIST*))
+				    (ERROR:NOT-ALIST ALIST ',name))
+				#F))))))
+	     (ill-formed-syntax form))))))
+  (fast-assoc assq eq?)
+  (fast-assoc assv eqv?)
+  (fast-assoc assoc equal?))
 
-(define-fast-del-assoc! del-assq! eq?)
-(define-fast-del-assoc! del-assv! eqv?)
-(define-fast-del-assoc! del-assoc! equal?)
+(define del-assq)
+(define del-assv)
+(define del-assoc)
+
+(let-syntax
+    ((fast-del-assoc
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET!
+		 ,name
+		 (NAMED-LAMBDA (,name ITEM ITEMS)
+		   (LET ((LOSE (LAMBDA () (ERROR:NOT-LIST ITEMS ',name))))
+		     (COND ((PAIR? ITEMS)
+			    (LET ((HEAD (CONS (CAR ITEMS) '())))
+			      (LET LOOP ((ITEMS* (CDR ITEMS)) (PREVIOUS HEAD))
+				(COND ((PAIR? ITEMS*)
+				       (IF (,predicate (CAR ITEMS*) ITEM)
+					   (LOOP (CDR ITEMS*) PREVIOUS)
+					   (LET ((NEW (CONS (CAR ITEMS*) '())))
+					     (SET-CDR! PREVIOUS NEW)
+					     (LOOP (CDR ITEMS*) NEW))))
+				      ((NOT (NULL? ITEMS*)) (LOSE))))
+			      (IF (,predicate (CAR ITEMS) ITEM)
+				  (CDR HEAD)
+				  HEAD)))
+			   ((NULL? ITEMS) ITEMS)
+			   (ELSE (LOSE)))))))
+	     (ill-formed-syntax form))))))
+  (fast-del-assoc del-assq eq?)
+  (fast-del-assoc del-assv eqv?)
+  (fast-del-assoc del-assoc equal?))
+
+(define del-assq!)
+(define del-assv!)
+(define del-assoc!)
+
+(let-syntax
+    ((fast-del-assoc!
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (if (syntax-match? '(SYMBOL IDENTIFIER) (cdr form))
+	     (let ((name (cadr form))
+		   (predicate (close-syntax (caddr form) environment)))
+	       `(SET!
+		 ,name
+		 (NAMED-LAMBDA (,name ITEM ITEMS)
+		   (LETREC
+		       ((TRIM-INITIAL-SEGMENT
+			 (LAMBDA (ITEMS*)
+			   (IF (PAIR? ITEMS*)
+			       (IF (,predicate (CAR ITEMS*) ITEM)
+				   (TRIM-INITIAL-SEGMENT (CDR ITEMS*))
+				   (BEGIN
+				     (LOCATE-INITIAL-SEGMENT ITEMS*
+							     (CDR ITEMS*))
+				     ITEMS*))
+			       (BEGIN
+				 (IF (NOT (NULL? ITEMS*))
+				     (LOSE))
+				 '()))))
+			(LOCATE-INITIAL-SEGMENT
+			 (LAMBDA (LAST THIS)
+			   (IF (PAIR? THIS)
+			       (IF (,predicate (CAR THIS) ITEM)
+				   (SET-CDR! LAST
+					     (TRIM-INITIAL-SEGMENT (CDR THIS)))
+				   (LOCATE-INITIAL-SEGMENT THIS (CDR THIS)))
+			       (IF (NOT (NULL? THIS))
+				   (LOSE)))))
+			(LOSE
+			 (LAMBDA ()
+			   (ERROR:NOT-LIST ITEMS ',name))))
+		     (TRIM-INITIAL-SEGMENT ITEMS)))))
+	     (ill-formed-syntax form))))))
+  (fast-del-assoc! del-assq! eq?)
+  (fast-del-assoc! del-assv! eqv?)
+  (fast-del-assoc! del-assoc! equal?))
 
 (define (alist-copy alist)
   (let ((lose (lambda () (error:not-alist alist 'ALIST-COPY))))
