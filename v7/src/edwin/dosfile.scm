@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.20 1998/10/23 05:44:06 cph Exp $
+;;;	$Id: dosfile.scm,v 1.21 1998/10/23 05:51:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -525,8 +525,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 			 (->namestring pathname))
 		    (let loop ((types types))
 		      (and (not (null? types))
-			   (let ((p
-				  (pathname-new-type pathname (car types))))
+			   (let ((p (pathname-new-type pathname (car types))))
 			     (if (file-exists? p)
 				 (->namestring p)
 				 (loop (cdr types)))))))))))
