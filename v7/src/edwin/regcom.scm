@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.16 1989/04/15 00:52:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.17 1989/04/28 03:52:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -104,7 +104,7 @@ With prefix arg, puts mark before and point after."
      (let ((value (get-register register)))
        (cond ((string? value) value)
 	     ((integer? value) (write-to-string value))
-	     (else (register-error "does not contain text")))))))
+	     (else (register-error register "does not contain text")))))))
 
 (define-command append-to-register
   "Append region to text in given register.
