@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.49 1991/10/29 22:55:11 jinx Exp $
+$Id: bitstr.c,v 9.50 1992/08/29 13:33:02 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -152,7 +152,7 @@ DEFINE_PRIMITIVE ("BIT-STRING-LENGTH", Prim_bit_string_length, 1, 1, 0)
   ptr =									\
     (MEMORY_LOC								\
      (bit_string, (BIT_STRING_INDEX_TO_WORD (bit_string, index))));	\
-  mask = (1 << (index % OBJECT_LENGTH))
+  mask = (1L << (index % OBJECT_LENGTH))
 
 /* (BIT-STRING-REF bit-string index)
    Returns the boolean value of the indexed bit. */
@@ -613,7 +613,7 @@ DEFUN (count_significant_bits, (number, start), long number AND long start)
   long significant_bits, i;
 
   significant_bits = start;
-  for (i = (1 << (start - 1)); (i >= 0); i >>= 1)
+  for (i = (1L << (start - 1)); (i >= 0); i >>= 1)
     {
       if (number >= i)
 	break;
@@ -677,12 +677,12 @@ DEFUN (bignum_to_bit_string, (length, bignum),
       if (! (bignum_fits_in_word_p (bignum, length, 0)))
 	error_bad_range_arg (2);
       {
-	static void btbs_consumer ();
+	void EXFUN (btbs_consumer, (unsigned char **, unsigned int));
 	SCHEME_OBJECT result = (zero_to_bit_string (length));
 	unsigned char * result_ptr =
 	  ((unsigned char *) (BIT_STRING_LOW_PTR (result)));
 	bignum_to_digit_stream
-	  (bignum, (1 << CHAR_BIT), btbs_consumer, (&result_ptr));
+	  (bignum, (1L << CHAR_BIT), btbs_consumer, (&result_ptr));
 	return (result);
       }
     }
@@ -707,7 +707,7 @@ SCHEME_OBJECT
 DEFUN (bit_string_to_bignum, (nbits, bitstr),
        long nbits AND SCHEME_OBJECT bitstr)
 {
-  static unsigned int bstb_producer ();
+  unsigned int EXFUN (bstb_producer, (struct bitstr_to_bignm_context *));
   struct bitstr_to_bignm_context context;
   int ndigits, skip;
 
@@ -730,7 +730,7 @@ DEFUN (bit_string_to_bignum, (nbits, bitstr),
 
   return
     (digit_stream_to_bignum (ndigits, bstb_producer,
-			     (&context), (1 << CHAR_BIT),
+			     (&context), (1L << CHAR_BIT),
 			     0));
 }
 
@@ -883,7 +883,7 @@ DEFINE_PRIMITIVE ("WRITE-BITS!", Prim_write_bits_x, 3, 3, 0)
 #define FIND_NEXT_SET_LOOP(init_bit)					\
 {									\
   bit = (init_bit);							\
-  mask = (1 << (init_bit));						\
+  mask = (1L << (init_bit));						\
   while (true)								\
     {									\
       if (((BIT_STRING_WORD (scan)) & mask) != 0)			\
