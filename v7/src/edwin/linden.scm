@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.120 1991/05/17 18:37:55 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.121 1991/05/17 18:45:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -130,7 +130,7 @@
 	       ;; first expression on that line.
 	       (forward-to-sexp-start (line-start last-sexp 0) last-sexp))))
       (if (char=? #\(
-		  (char->syntax-code syntax-table
+		  (char->syntax-code (ref-variable syntax-table)
 				     (mark-right-char first-sexp)))
 	  ;; The first expression is a list -- don't bother to call
 	  ;; the indent hook.
@@ -156,7 +156,8 @@
 	 (forward-to-sexp-start (mark1+ (parse-state-containing-sexp state))
 				indent-point)))
     (and (let ((syntax
-		(char->syntax-code syntax-table (mark-right-char first-sexp))))
+		(char->syntax-code (ref-variable syntax-table)
+				   (mark-right-char first-sexp))))
 	   (or (char=? #\w syntax)
 	       (char=? #\_ syntax)))
 	 (let ((name (extract-string first-sexp
