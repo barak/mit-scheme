@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.17 2003/07/12 03:15:47 cph Exp $
+$Id: ntsock.c,v 1.18 2003/07/12 03:39:29 cph Exp $
 
 Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -212,7 +212,7 @@ OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
     (setsockopt, ((CHANNEL_SOCKET (channel)),
 		  SOL_SOCKET,
 		  SO_REUSEADDR,
-		  (&one),
+		  ((void *) (&one)),
 		  (sizeof (one))));
   VOID_SOCKET_CALL
     (bind, ((CHANNEL_SOCKET (channel)),
