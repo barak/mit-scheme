@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.56 1993/04/27 09:22:29 cph Exp $
+;;;	$Id: intmod.scm,v 1.57 1993/07/30 21:11:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -116,13 +116,18 @@ REPL uses current evaluation environment."
 					   message))))))))))
 
 (define (current-repl-buffer)
+  (let ((buffer (current-repl-buffer*)))
+    (if (not buffer)
+	(error "No REPL to evaluate in."))
+    buffer))
+
+(define (current-repl-buffer*)
   (let ((buffer (current-buffer)))
     (if (buffer-interface-port buffer)
 	buffer
 	(let ((buffers repl-buffers))
-	  (if (null? buffers)
-	      (error "No REPL to evaluate in."))
-	  (car buffers)))))
+	  (and (not (null? buffers))
+	       (car buffers))))))
 
 (define repl-buffers)
 
@@ -192,7 +197,7 @@ REPL uses current evaluation environment."
   (let ((variable (ref-variable-object run-light))
 	(value (if run? "eval" "listen")))
     (if (and (ref-variable evaluate-in-inferior-repl buffer)
-	     (eq? buffer (current-repl-buffer)))
+	     (eq? buffer (current-repl-buffer*)))
 	(begin
 	  (undefine-variable-local-value! buffer variable)
 	  (set-variable-default-value! variable value)
@@ -214,16 +219,18 @@ REPL uses current evaluation environment."
 		  (lambda ()
 		    (exit-current-thread unspecific)))))
 	  (buffer-remove! buffer 'INTERFACE-PORT)
-	  (let ((run-light (ref-variable-object run-light)))
-	    (if (and (ref-variable evaluate-in-inferior-repl buffer)
-		     (eq? buffer (current-repl-buffer)))
+	  (let ((run-light (ref-variable-object run-light))
+		(evaluate-in-inferior-repl
+		 (ref-variable evaluate-in-inferior-repl buffer)))
+	    (if (and evaluate-in-inferior-repl
+		     (eq? buffer (current-repl-buffer*)))
 		(begin
 		  (set-variable-default-value! run-light false)
 		  (global-window-modeline-event!)))
 	    (set! repl-buffers (delq! buffer repl-buffers))
 	    (let ((buffer
-		   (and (ref-variable evaluate-in-inferior-repl buffer)
-			(current-repl-buffer))))
+		   (and evaluate-in-inferior-repl
+			(current-repl-buffer*))))
 	      (if buffer
 		  (let ((value (variable-local-value buffer run-light)))
 		    (undefine-variable-local-value! buffer run-light)
