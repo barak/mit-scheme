@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.2 1990/07/22 06:42:25 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.3 1991/01/24 05:30:26 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -205,60 +205,4 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
   PRIMITIVE_HEADER (1);
   OS_channel_blocking (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("FILE-FILL-INPUT-BUFFER", Prim_file_fill_input_buffer, 2, 2,
-  "Read characters from CHANNEL, storing them in STRING.\n\
-Attempt to fill STRING unless end-of-file is reached.\n\
-Return the number of characters actually read from CHANNEL.")
-{
-  PRIMITIVE_HEADER (2);
-  CHECK_ARG (2, STRING_P);
-  {
-    SCHEME_OBJECT buffer = (ARG_REF (2));
-    long nread =
-      (OS_channel_read ((arg_channel_old (1)),
-			(STRING_LOC (buffer, 0)),
-			(STRING_LENGTH (buffer))));
-    PRIMITIVE_RETURN ((nread < 0) ? SHARP_F : (long_to_integer (nread)));
-  }
-}
-
-DEFINE_PRIMITIVE ("FILE-WRITE-CHAR", Prim_file_write_char, 2, 2,
-  "This is an obsolete primitive.\n\
-Write CHAR to CHANNEL.")
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char c = (arg_ascii_char (1));
-    long nwritten = (OS_channel_write ((arg_channel_old (2)), (&c), 1));
-    PRIMITIVE_RETURN ((nwritten < 0) ? SHARP_F : (long_to_integer (nwritten)));
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("FILE-FLUSH-OUTPUT", Prim_file_flush_output, 1, 1,
-  "This is an obsolete primitive.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("FILE-WRITE-STRING", Prim_file_write_string, 2, 2,
-  "This is an obsolete primitive.")
-{
-  PRIMITIVE_HEADER (2);
-  {
-    fast SCHEME_OBJECT buffer = (ARG_REF (1));
-    if (! (STRING_P (buffer)))
-      error_wrong_type_arg (1);
-    {
-      long nwritten =
-	(OS_channel_write ((arg_channel_old (2)),
-			   (STRING_LOC (buffer, 0)),
-			   (STRING_LENGTH (buffer))));
-      PRIMITIVE_RETURN
-	((nwritten < 0) ? SHARP_F : (long_to_integer (nwritten)));
-    }
-  }
 }
