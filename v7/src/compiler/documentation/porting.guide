@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.8 1991/02/26 03:35:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.9 1991/02/26 04:25:11 jinx Exp $
 
 
 			LIAR PORTING GUIDE
@@ -1320,6 +1320,8 @@ You should then be able to invoke the compiler by giving scheme the
 
 	6.3 Testing the compiler
 
+*** Mention how to test the assembler by using LAP->CODE?
+
 There is no comprehensive test suite for the compiler.  There is,
 however, a small test suite that is likely to catch gross errors.  The
 files for the test suite are in compiler/tests/port.  Each file
@@ -1364,13 +1366,11 @@ If you've ported the disassembler as well, you should try
 disassembling some files and comparing them to then input LAP.  They
 won't be identical, but they should be similar.
 
-Various runtime system files make good tests as well.  You may want to
-try list.scm, vector.scm, and arith.scm.  Note that to test procedures
-from arith.scm, you must execute
+Various runtime system files also make good tests.  In particular, you
+may want to try list.scm, vector.scm, and arith.scm.  Note that to
+test procedures from arith.scm, you must execute
     (initialize-microcode-dependencies!)
 after loading the file.
-
-*** Mention how to test the assembler by using LAP->CODE?
 
 	6.4 Compiling the compiler
 
@@ -1452,13 +1452,104 @@ or relink the kernel), you may want to use microcode/bchscheme instead
 of microcode/scheme.  Bchscheme uses a disk file for the spare heap,
 rather than a region of memory, putting the available memory to use at
 all times.
+
+	6.5 Compiler convergence testing
 
-	6.5 Compiler convergence test
+Once you have a compiled compiler, you should run the same test suite
+that you ran with the interpreted compiler.  Once you have some degree
+of confidence that the compiled compiler works, you should make sure
+that it can correctly compile itself and the runtime system.  This
+recompilation can manifest second-order compiler bugs, that is, bugs
+in the compiler that cause it to compile parts of itself incorrectly
+without crashing, so that programs compiled by this
+incorrectly-compiled compiler fail even though these programs did not
+fail when compiled by the original compiler.
 
+Of course, you can never really tell if the compiler has compiled
+itself successfully.  You can only tell that it is not obviously wrong
+(ie. it did not crash).  Furthermore, there could be higher-order bugs
+that would take many recompilations to find.  However, if the binaries
+produced by two successive recompilations are identical, further
+recompilations would keep producing identical binaries and no
+additional bugs will be found this way.  Moreover, if the compiler
+and system survive a couple of recompilations, the compiler is likely
+to be able to compile correctly most programs.
+
+To run this compiler convergence test, you need to recompile the
+compiler.  In order to do this, you need to move the .com files from
+the source directories so that COMPILE-DIRECTORY and
+RECOMPILE-DIRECTORY will not skip all the files (they avoid compiling
+those already compiled).  The simplest way to move all these files is
+to type ``make stage1'' at your shell in the source directories
+(runtime, sf, cref, and compiler).  This command will create a STAGE1
+subdirectory for each of the source directories, and move all the .com
+and .binf files there.  You can then use compiler/comp.cbf, or
+compiler/etc/xcbfdir and RECOMPILE-DIRECTORY to regenerate the
+compiler.
+
+If you generated the stage1 compiled compiler by running the compiler
+interpreted, the new .com files should match the stage1 .com files.
+If you generated the stage1 compiler by cross-compilation, they will
+not.  The cross-compiler turns compiler:COMPILE-BY-PROCEDURES? off,
+while the default setting is on.  In the latter case, you want to
+generate one more stage to check for convergence, ie. execute ``make
+stage2'' in each source directory, and recompile once more.
+
+Once you have two stages that you think should have identical
+binaries, you can use COMPARE-COM-FILES, defined in
+compiler/etc/comcmp, to compare the binaries.  The simplest way to use
+it is to also load compiler/etc/comfiles and then use the CHECK-STAGE
+procedure.
+    (check-stage "STAGE2" '("runtime" "sf" "compiler/base"))
+will compare the corresponding .com files from runtime and
+runtime/STAGE2, sf and sf/STAGE2, and compiler/base and
+compiler/base/STAGE2.
+
+If nothing is printed, the binaries are identical.  Otherwise some
+description of the differences is printed.  COMPARE-COM-FILES does not
+check for isomorphism of Scode objects, so any sources that reference
+Scode constants (eg. runtime/advice.scm) will show some differences
+that can safely be ignored.  Generally, differences in constants can
+be ignored, but length and code differences should be understood.  The
+code in question can be disassembled to determine whether the
+differences are real or not.
+
+	6.6 Things to watch out for.
+
+While testing the compiler, in addition to checking for the correct
+operation of the compiled code, you should also watch out for crashes
+and other forms of unexpected failure.  In particular, hardware traps
+(eg.  segmentation violations, illegal instructions) occurring during
+the recompilation process are a good clue that there is a problem
+somwhere.
+
+The worst bugs to track are interrupt-related and
+garbage-collection-related bugs.  They will often make the compiler
+crash at almost-random points, and are very hard to reproduce.  Make
+sure that the rules for the various kinds of procedure headers
+generate the desired code, and that the desired code operates
+correctly.  You can test this explicitly by using an assembly-language
+debugger (eg. gdb, adb) to set breakpoints at the entry points of
+various kinds of procedures.  When the breakpoints are reached, you
+can bump the Free pointer to a value larger than MemTop, so that the
+interrupt branch will be taken.  If the code continues to execute
+correctly, you are probably safe.  You should especially check
+closures and procedures that expect dynamic links.
+
+Register allocation bugs also manifest themselves in unexpected ways.
+If you forget to use NEED-REGISTER! on a register used by a LAPGEN
+rule, or if you allocate registers for the sources and target of a
+rule in the wrong order, you may not notice for a long time, but some
+poor program will hit it.  If this happens, you will be lucky if you
+can find and disassemble a relatively small procedure that does not
+operate properly, but typically the only notice you will have is when
+Scheme crashes in an unrelated place.  Fortunately, this type of bug
+is reproducible.  In order to find the incorrectly compiled code, you
+can use binary search on the sources by mixing interpreted and
+compiled binaries.  When loading the compiler, .bin files will be used
+for those files for which the corresponding .com file does not exist.
+Thus you can move .com files in and out of the appropriate
+directories, reload, and test again.
 
 *** Here ***
-
-Testing for convergence by doing stages and comparing binaries.
-Common bugs.  interrupts, dlinks, register allocation bus, and bugs
-in the interface.
-
+*** Bugs in the interface.
