@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tximod.scm,v 1.30 2004/10/14 17:37:25 cph Exp $
+$Id: tximod.scm,v 1.31 2004/10/17 03:37:16 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1994 Massachusetts Institute of Technology
 Copyright 1996,2000,2001,2004 Massachusetts Institute of Technology
@@ -209,46 +209,71 @@ The default is not to surround any existing words with the braces."
 	(let ((m
 	       (re-search-backward texinfo-environment-regexp mark start #f)))
 	  (if m
-	      (cond ((match-forward "@end" m)
-		     (loop m (+ depth 1)))
-		    ((> depth 1)
-		     (loop m (- depth 1)))
-		    (else
-		     (re-match-forward texinfo-environment-regexp m)
-		     (insert-string "@end ")
-		     (insert-region (re-match-start 1)
-				    (re-match-end 1))
-		     (insert-newline)))
+	      (let ((string (re-match-extract-string 1)))
+		(cond ((string=? string "end")
+		       (loop m (+ depth 1)))
+		      ((> depth 1)
+		       (loop m (- depth 1)))
+		      (else
+		       (insert-string "@end ")
+		       (insert-string string)
+		       (insert-newline))))
 	      (insert-string "@end ")))))))
 
 (define texinfo-environment-regexp
-  (string-append
-   "^@"
-   (regexp-group "cartouche"
-		 "copying"
-		 "def[a-z]*[a-wyz]\\>"
-		 "direntry"
-		 "display"
-		 "end"
-		 "enumerate"
-		 "example"
-		 "f?table"
-		 "flushleft"
-		 "flushright"
-		 "format"
-		 "group"
-		 "html"
-		 "ifclear"
-		 "ifhtml"
-		 "ifinfo"
-		 "ifset"
-		 "iftex"
-		 "ignore"
-		 "itemize"
-		 "lisp"
-		 "menu"
-		 "quotation"
-		 "smallexample"
-		 "smalllisp"
-		 "tex"
-		 "titlepage")))
+  (string-append "^@"
+		 (regexp-group "cartouche"
+			       "copying"
+			       "defcv"
+			       "deffn"
+			       "defivar"
+			       "defmac"
+			       "defmethod"
+			       "defop"
+			       "defopt"
+			       "defspec"
+			       "deftp"
+			       "deftypefn"
+			       "deftypefun"
+			       "deftypevar"
+			       "deftypevr"
+			       "defun"
+			       "defvar"
+			       "defvr"
+			       "description"
+			       "detailmenu"
+			       "direntry"
+			       "display"
+			       "end"
+			       "enumerate"
+			       "example"
+			       "flushleft"
+			       "flushright"
+			       "format"
+			       "ftable"
+			       "group"
+			       "html"
+			       "ifclear"
+			       "ifhtml"
+			       "ifinfo"
+			       "ifnothtml"
+			       "ifnotinfo"
+			       "ifnottex"
+			       "ifset"
+			       "iftex"
+			       "ignore"
+			       "itemize"
+			       "lisp"
+			       "macro"
+			       "menu"
+			       "multitable"
+			       "quotation"
+			       "smalldisplay"
+			       "smallexample"
+			       "smallformat"
+			       "smalllisp"
+			       "table"
+			       "tex"
+			       "titlepage"
+			       "vtable")
+		 "\\>"))
