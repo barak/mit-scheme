@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.4 1995/01/12 22:39:50 ssmith Exp $
+$Id: lapgen.scm,v 1.5 1995/01/20 20:15:59 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -319,7 +319,7 @@ MIT in each case. |#
   (reference-temporary-register! 'GENERAL))
 
 (define (source-register source)
-   (or (register-alias source 'GENERAL)
+   (or ; (register-alias source 'GENERAL)
        (load-alias-register! source 'GENERAL)))
 
 (define-integrable (source-register-reference source)
@@ -327,6 +327,7 @@ MIT in each case. |#
 
 (define-integrable (any-reference rtl-reg)
   (standard-register-reference rtl-reg 'GENERAL true))
+;  (source-register-reference rtl-reg))
 
 (define (standard-move-to-temporary! source)
   (register-reference (move-to-temporary-register! source 'GENERAL)))
@@ -590,6 +591,11 @@ MIT in each case. |#
     set! define lookup-apply primitive-error
     quotient remainder modulo))
 
+(define (require-registers! . regs)
+  (let ((code (apply clean-registers! regs)))
+    (need-registers! regs)
+    code))
+
 (define-integrable (invoke-hook entry)
   (LAP (JMP ,entry)))
 
@@ -636,7 +642,11 @@ MIT in each case. |#
     link
     error
     primitive-error
-    short-primitive-apply)
+    short-primitive-apply
+    ;; New stuff for 8.0
+    interrupt-closure/new
+    interrupt-procedure/new
+    interrupt-continuation/new)
 
   (define-entries #x-80 0
     &+
@@ -692,3 +702,33 @@ MIT in each case. |#
 ;; Copied verbatim without understanding.
 (define (standard-source! register)
   (load-alias-register! register (register-type register)))
+
+(define-integrable (standard-temporary!)
+  (allocate-temporary-register! 'GENERAL))
+
+(define (copy r t)
+  (if (= r t)
+      (LAP)
+      (LAP (MOV W (R ,t) (R ,r)))))
+
+
+(define (adjust-type from to reg)
+  ;; FROM is either a typecode if it is known that reg has that typecode,
+  ;; else it is #F.  TO is a constant desired typecode
+  (if (or (not (fixnum? to))
+	  (and (not (fixnum? from))
+	       (not (false? from))))
+      (error "To must be a fixnum and from must be a fixnum or #f" from to)
+      (cond ((eqv? from to)
+	     (LAP))
+	    ((false? from)
+	     (if (= to 0)
+		 (LAP (AND W (R ,reg) (R ,regnum:datum-mask)))
+		 (LAP (AND W (R ,reg) (R ,regnum:datum-mask))
+		      (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width))))))
+	    ((eqv? (fix:or from to)
+		   to)
+	     (LAP (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width)))))
+	    (else
+	     (LAP (AND W (R ,reg) (R ,regnum:datum-mask))
+		  (OR W (R ,reg) (& ,(fix:lsh to scheme-type-width))))))))
