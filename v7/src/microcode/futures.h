@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.21 1987/01/22 14:26:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/futures.h,v 9.22 1987/07/07 19:59:21 cph Rel $
  *
  * This file contains macros useful for dealing with futures
  */
@@ -49,7 +49,13 @@ MIT in each case. */
 #define FUTURE_LOCK             2
 #define FUTURE_VALUE		3	/* if known, else */
 #define FUTURE_QUEUE		3	/* tasks waiting for value */
-#define FUTURE_EXTRA_STUFF	4	/* rest for extensibility */
+#define FUTURE_PROCESS		4
+#define FUTURE_STATUS		5
+#define FUTURE_ORIG_CODE	6
+#define FUTURE_PRIVATE		7
+#define FUTURE_WAITING_ON	8
+#define FUTURE_METERING		9
+#define FUTURE_USER		10
 
 #define Future_Is_Locked(P)     				\
 	(Vector_Ref((P), FUTURE_LOCK) != NIL)
@@ -145,6 +151,7 @@ MIT in each case. */
 */
 
 #ifdef FUTURE_LOGGING
+
 #define Touched_Futures_Vector()  Get_Fixed_Obj_Slot(Touched_Futures)
 
 #define Logging_On()							\
@@ -180,15 +187,27 @@ if (Logging_On())							\
   Touched_Futures_Vector() = NIL;                                 	\
   goto Apply_Non_Trapping;						\
 }
-#else
+
+#else /* not FUTURE_LOGGING */
+
 #define Log_Touch_Of_Future(F) { }
 #define Call_Future_Logging()
 #define Must_Report_References() (false)
-#endif	/* Logging */
 
-#else /* Futures not compiled */
+#endif /* FUTURE_LOGGING */
+
+#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)			\
+while (Type_Code(Value) == TC_FUTURE && Future_Spliceable(Value))	\
+{ Value = Future_Value(Value);						\
+  Vector_Set(P, Offset, Value);						\
+}
+
+#else /* not COMPILE_FUTURES */
+
 #define Touch_In_Primitive(P, To_Where)		To_Where = (P)
 #define Log_Touch_Of_Future(F) { }
 #define Call_Future_Logging()
 #define Must_Report_References() (false)
-#endif
+#define FUTURE_VARIABLE_SPLICE(P, Offset, Value)
+
+#endif /* COMPILE_FUTURES */
