@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: rulfix.scm,v 1.2 1993/10/28 02:57:14 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -427,7 +427,8 @@ MIT in each case. |#
 	   fixnum-methods/2-args/register*constant
 	   (lambda (tgt src1 constant overflow?)
 	     (if overflow? (no-overflow-branches!))
-	     (LAP ,',tgt " = (" ,',src1 ,instr ,',(longify constant) ");\n\t"))))))
+	     (LAP ,',tgt " = (" ,',src1 ,instr ,',(longify constant)
+		  ");\n\t"))))))
 
   (binary-fixnum FIXNUM-AND	" & ")
   (binary-fixnum FIXNUM-OR	" | ")
@@ -495,6 +496,5 @@ MIT in each case. |#
 
 (define (longify constant)
   (if (number? constant)
-      (string-append (number->string constant)
-		     "L")
+      (string-append (number->string constant) "L")
       constant))
