@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.49 2004/07/24 02:26:24 cph Exp $
+$Id: xml.pkg,v 1.50 2004/07/24 03:03:24 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -303,15 +303,15 @@ USA.
   (export ()
 	  (html-document html-1.0-document)
 	  (html-dtd html-1.0-dtd)
-	  (html-external-dtd html-1.0-external-dtd)
+	  (html-external-id html-1.0-external-id)
 	  guarantee-html-element
 	  guarantee-html-element-name
 	  html-1.0-document
 	  html-1.0-dtd
-	  html-1.0-external-dtd
+	  html-1.0-external-id
 	  html-1.1-document
 	  html-1.1-dtd
-	  html-1.1-external-dtd
+	  html-1.1-external-id
 	  html-element-context
 	  html-element-name-context
 	  html-element-name?
