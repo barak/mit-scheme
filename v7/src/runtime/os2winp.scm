@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.9 1995/05/20 10:18:14 cph Exp $
+$Id: os2winp.scm,v 1.10 1995/11/03 01:31:08 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -40,8 +40,11 @@ MIT in each case. |#
 (define-primitives
   (os2-clipboard-read-text 0)
   (os2-clipboard-write-text 1)
+  (os2-map-window-point 3)
+  (os2-window-handle-from-id 2)
   (os2menu-create 3)
   (os2menu-destroy 1)
+  (os2menu-get-item 3)
   (os2menu-get-item-attributes 4)
   (os2menu-insert-item 7)
   (os2menu-n-items 1)
@@ -77,7 +80,9 @@ MIT in each case. |#
   (os2ps-text-width 4)
   (os2ps-write 6)
   (os2win-activate 1)
+  (os2win-alarm 1)
   (os2win-beep 2)
+  (os2win-client-handle 1)
   (os2win-close 1)
   (os2win-close-event-qid 1)
   (os2win-console-wid 0)
@@ -85,17 +90,21 @@ MIT in each case. |#
   (os2win-desktop-width 0)
   (os2win-event-ready? 2)
   (os2win-focus? 1)
+  (os2win-font-dialog 2)
   (os2win-frame-handle 1)
   (os2win-get-event 2)
   (os2win-get-frame-size 1)
   (os2win-get-pos 1)
   (os2win-get-size 1)
   (os2win-invalidate 5)
+  (os2win-load-menu 3)
   (os2win-move-cursor 3)
   (os2win-open 2)
   (os2win-open-event-qid 0)
+  (os2win-popup-menu 7)
   (os2win-ps 1)
   (os2win-scroll 7)
+  (os2win-set-capture 2)
   (os2win-set-grid 3)
   (os2win-set-pos 3)
   (os2win-set-size 3)
@@ -104,6 +113,7 @@ MIT in each case. |#
   (os2win-shape-cursor 4)
   (os2win-show 2)
   (os2win-show-cursor 2)
+  (os2win-track-mouse 2)
   (os2win-update-frame 2))
 
 (define-integrable (event-type event) (vector-ref event 0))
@@ -129,10 +139,11 @@ MIT in each case. |#
 (define-event paint      4 xl xh yl yh)
 (define-event resize     5 width height)
 (define-event visibility 6 shown?)
-(define-event command    7 code)
-(define-event help       8 code)
+(define-event command    7 code source mouse?)
+(define-event help       8 code source mouse?)
+(define-event mousemove  9 x y hit-test flags)
 
-(define-integrable number-of-event-types 9)
+(define-integrable number-of-event-types 10)
 
 (define-integrable button-event-type:down 0)
 (define-integrable button-event-type:up 1)
@@ -489,3 +500,52 @@ MIT in each case. |#
 (define-integrable FCF_HIDEMAX                #x01000020)
 (define-integrable FCF_AUTOICON               #x40000000)
 (define-integrable FCF_STANDARD               #x0000CC3F)
+
+;;; Window handles.
+(define-integrable NULLHANDLE 0)
+(define-integrable HWND_DESKTOP 1)
+
+;;; Hit-test values (event-type:mousemove).
+(define-integrable HT_NORMAL 0)
+(define-integrable HT_TRANSPARENT -1)
+(define-integrable HT_DISCARD -2)
+(define-integrable HT_ERROR -3)
+
+;;; Pop-up menu option flags.
+(define-integrable PU_POSITIONONITEM          #x0001)
+(define-integrable PU_HCONSTRAIN              #x0002)
+(define-integrable PU_VCONSTRAIN              #x0004)
+(define-integrable PU_NONE                    #x0000)
+(define-integrable PU_MOUSEBUTTON1DOWN        #x0008)
+(define-integrable PU_MOUSEBUTTON2DOWN        #x0010)
+(define-integrable PU_MOUSEBUTTON3DOWN        #x0018)
+(define-integrable PU_SELECTITEM              #x0020)
+(define-integrable PU_MOUSEBUTTON1            #x0040)
+(define-integrable PU_MOUSEBUTTON2            #x0080)
+(define-integrable PU_MOUSEBUTTON3            #x0100)
+(define-integrable PU_KEYBOARD                #x0200)
+
+;;; Alarm types (os2win-alarm).
+(define-integrable WA_WARNING 0)
+(define-integrable WA_NOTE 1)
+(define-integrable WA_ERROR 2)
+
+(define-integrable SPTR_ARROW 1)
+(define-integrable SPTR_TEXT 2)
+(define-integrable SPTR_WAIT 3)
+(define-integrable SPTR_SIZE 4)
+(define-integrable SPTR_MOVE 5)
+(define-integrable SPTR_SIZENWSE 6)
+(define-integrable SPTR_SIZENESW 7)
+(define-integrable SPTR_SIZEWE 8)
+(define-integrable SPTR_SIZENS 9)
+(define-integrable SPTR_APPICON 10)
+(define-integrable SPTR_ICONINFORMATION 11)
+(define-integrable SPTR_ICONQUESTION 12)
+(define-integrable SPTR_ICONERROR 13)
+(define-integrable SPTR_ICONWARNING 14)
+(define-integrable SPTR_ILLEGAL 18)
+(define-integrable SPTR_FILE 19)
+(define-integrable SPTR_FOLDER 20)
+(define-integrable SPTR_MULTFILE 21)
+(define-integrable SPTR_PROGRAM 22)
