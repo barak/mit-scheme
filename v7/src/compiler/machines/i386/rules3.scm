@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.18 1992/02/18 04:34:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.19 1992/02/18 14:05:02 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -53,6 +53,7 @@ MIT in each case. |#
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation
   (LAP ,@(clear-map!)
+       (POP (R ,ecx))
        #|
        ,@(case frame-size
 	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
@@ -64,10 +65,10 @@ MIT in each case. |#
 	   ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
 	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
 	   (else
-	    (LAP (MOV W (R ,ecx) (& ,frame-size))
+	    (LAP (MOV W (R ,edx) (& ,frame-size))
 		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
        |#
-       (MOV W (R ,ecx) (& ,frame-size))
+       (MOV W (R ,edx) (& ,frame-size))
        ,@(invoke-interface code:compiler-apply)))
 
 (define-rule statement
