@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.2 1992/10/15 16:46:07 jinx Exp $
+$Id: lapgen.scm,v 1.3 1993/02/15 23:17:39 gjr Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -608,7 +608,10 @@ case.
   (let ((label (immediate->label immediate)))
     (load-pc-relative target 'IMMEDIATE label))
   |#
-  (warn "%load-immediate: generating 64-bit constant" (number->string immediate 16))
+  #|
+  (warn "%load-immediate: generating 64-bit constant"
+	(number->string immediate 16))
+  |#
   (with-values (lambda () (split-64-bits immediate))
     (lambda (high low)
       (let ((left-half (load-immediate target high false)))
