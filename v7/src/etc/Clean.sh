@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.5 2000/12/21 21:56:23 cph Exp $
+# $Id: Clean.sh,v 1.6 2001/08/16 20:33:44 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
 # Utility for cleaning up an MIT Scheme build directory.
 # The working directory must be the build directory.
 
 if [ $# -eq 1 ]; then
     COMMAND="$1"
-    KEYWORDS="rm-bin rm-com rm-pkg-src rm-pkg-bin"
+    KEYWORDS="rm-bin rm-com rm-old-pkg rm-pkg"
 elif [ $# -ge 2 ]; then
     COMMAND="$1"
     shift
@@ -66,13 +67,13 @@ for KEYWORD in ${KEYWORDS}; do
 	echo "rm -f *.com *.bci"
 	rm -f *.com *.bci
 	;;
-    rm-pkg-src)
-	echo "rm -f *.con *.ldr"
-	rm -f *.con *.ldr
+    rm-old-pkg)
+	echo "rm -f *.bco *.bld *.glo *.con *.ldr"
+	rm -f *.bco *.bld *.glo *.con *.ldr
 	;;
-    rm-pkg-bin)
-	echo "rm -f *.bco *.bld *.crf *.fre *.glo"
-	rm -f *.bco *.bld *.crf *.fre *.glo
+    rm-pkg)
+	echo "rm -f *.crf *.fre *.pkd"
+	rm -f *.crf *.fre *.pkd
 	;;
     esac
 done
