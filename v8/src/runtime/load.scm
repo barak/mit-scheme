@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.34 1992/05/26 01:00:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.35 1992/05/27 03:44:16 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -370,7 +370,8 @@ MIT in each case. |#
 
   (define (process-bunch alist)
     (let ((real-load load)
-	  (real-fasload fasload))
+	  (real-fasload fasload)
+	  (real-file-exists? file-exists?))
       (fluid-let
 	  ((load
 	    (lambda (fname #!optional env syntax-table purify?)
@@ -408,6 +409,10 @@ MIT in each case. |#
 		                       suppress-message?
 				       ";Pseudo-fasloading ")
 		      (caddr place))))))
+	   (file-exists?
+	    (lambda (filename)
+	      (or (find-filename fname alist)
+		  (real-file-exists? filename))))
 	   (flush-purification-queue! (lambda () 'done)))
         (load (caar alist))))
     (flush-purification-queue!))
