@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.29 1994/08/12 04:37:04 cph Exp $
+$Id: arith.scm,v 1.30 1994/12/15 21:40:14 adams Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -120,6 +120,99 @@ MIT in each case. |#
       (set-trampoline! 'GENERIC-TRAMPOLINE-QUOTIENT complex:quotient)
       (set-trampoline! 'GENERIC-TRAMPOLINE-REMAINDER complex:remainder)
       (set-trampoline! 'GENERIC-TRAMPOLINE-MODULO complex:modulo)))
+
+  ;; The binary cases for the following operators rely on the fact that the
+  ;; &<mumble> operators, either interpreted or open-coded by the
+  ;; compiler, calls the GENERIC-TRAMPOLINE version above, are set to
+  ;; the appropriate binary procedures when this package is
+  ;; initialized.  We could have just replaced (ucode-primitive &+)
+  ;; with + etc and relied on + being integrated, but that is not
+  ;; very clear.
+
+  (let-syntax
+      ((commutative
+	(macro (name generic-binary identity primitive-binary)
+	  `(SET! ,name
+		 (MAKE-ENTITY
+		  (LAMBDA (SELF . ZS)
+		    SELF		; ignored
+		    (REDUCE ,generic-binary ,identity ZS))
+		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+			  (LAMBDA () ,identity)
+			  (LAMBDA (Z)
+			    (IF (NOT (COMPLEX:COMPLEX? Z))
+				(ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
+			    Z)
+			  (LAMBDA (Z1 Z2)
+			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
+    (commutative + complex:+ 0 &+)
+    (commutative * complex:* 1 &*))
+		  
+  (let-syntax
+      ((non-commutative
+	(macro (name generic-unary generic-binary 
+		     generic-inverse inverse-identity primitive-binary)
+	  `(SET! ,name
+		 (MAKE-ENTITY
+		  (LAMBDA (SELF Z1 . ZS)
+		    SELF		; ignored
+		    (,generic-binary
+		     Z1
+		     (REDUCE ,generic-inverse ,inverse-identity ZS)))
+		  (VECTOR (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+			  #F
+			  ,generic-unary
+			  (LAMBDA (Z1 Z2)
+			    ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2))))))))
+    (non-commutative -  complex:negate  complex:-  complex:+  0  &-)
+    (non-commutative /  complex:invert  complex:/  complex:*  1  &/))
+		  
+  (let-syntax
+      ((relational
+	(macro (name generic-binary primitive-binary correct-type? negated?)
+	  `(SET! ,name
+		 (MAKE-ENTITY
+		  (LAMBDA (SELF . ZS)
+		    SELF		; ignored
+		    (REDUCE-COMPARATOR ,generic-binary ZS ',name))
+		  (VECTOR 
+		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		   (LAMBDA () #T)
+		   (LAMBDA (Z)
+		     (IF (NOT (,correct-type? Z))
+			 (ERROR:WRONG-TYPE-ARGUMENT Z FALSE ',name))
+		     #T)
+		   ,(if negated?
+			`(LAMBDA (Z1 Z2)
+			   (NOT ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))
+			`(LAMBDA (Z1 Z2)
+			   ((UCODE-PRIMITIVE ,primitive-binary) Z1 Z2)))))))))
+	  
+    (relational  =  complex:=  &=  complex:complex? #F)
+    (relational  <  complex:<  &<  complex:real?    #F)
+    (relational  >  complex:>  &>  complex:real?    #F)
+    (relational  <= (lambda (x y) (not (complex:< y x)))  &>  complex:real? #T)
+    (relational  >= (lambda (x y) (not (complex:< x y)))  &<  complex:real? #T))
+
+  (let-syntax
+      ((max/min
+	(macro (name generic-binary)
+	  `(SET! ,name
+		 (MAKE-ENTITY
+		  (LAMBDA (SELF X . XS)
+		    SELF		; ignored
+		    (REDUCE-MAX/MIN ,generic-binary X XS ',name))
+		  (VECTOR 
+		   (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
+		   #F
+		   (LAMBDA (X)
+		     (IF (NOT (COMPLEX:REAL? X))
+			 (ERROR:WRONG-TYPE-ARGUMENT X FALSE ',name))
+		     X)
+		   ,generic-binary))))))
+    (max/min max complex:max)
+    (max/min min complex:min))
+
   unspecific)
 
 (define flo:significand-digits-base-2)
@@ -1692,20 +1785,13 @@ MIT in each case. |#
 (define (inexact? z)
   (not (complex:exact? z)))
 
-(define (= . zs)
-  (reduce-comparator complex:= zs '=))
+;; Replaced with arity dispatched version defined version in INITIALIZE-PACKAGE!
 
-(define (< . xs)
-  (reduce-comparator complex:< xs '<))
-
-(define (> . xs)
-  (reduce-comparator complex:> xs '>))
-
-(define (<= . xs)
-  (reduce-comparator (lambda (x y) (not (complex:< y x))) xs '<=))
-
-(define (>= . xs)
-  (reduce-comparator (lambda (x y) (not (complex:< x y))) xs '>=))
+(define =)
+(define <)
+(define >)
+(define <=)
+(define >=)
 
 (define (reduce-comparator binary-comparator numbers procedure)
   (cond ((null? numbers)
@@ -1730,11 +1816,16 @@ MIT in each case. |#
 
 (define even? complex:even?)
 
-(define (max x . xs)
-  (reduce-max/min complex:max x xs 'MAX))
 
-(define (min x . xs)
-  (reduce-max/min complex:min x xs 'MIN))
+;; Replaced with arity dispatched version defined version in INITIALIZE-PACKAGE!
+
+(define +)
+(define *)
+(define -)
+(define /)
+
+(define max)
+(define min)
 
 (define (reduce-max/min max/min x1 xs procedure)
   (if (null? xs)
@@ -1748,51 +1839,11 @@ MIT in each case. |#
 	  (if (null? xs)
 	      x1
 	      (loop x1 xs))))))
-
-(define (+ . zs)
-  (cond ((null? zs)
-	 0)
-	((null? (cdr zs))
-	 (if (not (complex:complex? (car zs)))
-	     (error:wrong-type-argument (car zs) false '+))
-	 (car zs))
-	((null? (cddr zs))
-	 (complex:+ (car zs) (cadr zs)))
-	(else
-	 (reduce complex:+ 0 zs))))
 
 (define 1+ complex:1+)
 (define -1+ complex:-1+)
 
-(define (* . zs)
-  (cond ((null? zs)
-	 1)
-	((null? (cdr zs))
-	 (if (not (complex:complex? (car zs)))
-	     (error:wrong-type-argument (car zs) false '*))
-	 (car zs))
-	((null? (cddr zs))
-	 (complex:* (car zs) (cadr zs)))
-	(else
-	 (reduce complex:* 1 zs))))
-
-(define (- z1 . zs)
-  (cond ((null? zs)
-	 (complex:negate z1))
-	((null? (cdr zs))
-	 (complex:- z1 (car zs)))
-	(else
-	 (complex:- z1 (reduce complex:+ 0 zs)))))
-
 (define conjugate complex:conjugate)
-
-(define (/ z1 . zs)
-  (cond ((null? zs)
-	 (complex:invert z1))
-	((null? (cdr zs))
-	 (complex:/ z1 (car zs)))
-	(else
-	 (complex:/ z1 (reduce complex:* 1 zs)))))
 
 (define abs complex:abs)
 
