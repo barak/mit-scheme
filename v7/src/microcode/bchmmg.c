@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.58 1991/02/26 21:14:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.59 1991/03/18 21:08:58 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -199,9 +199,9 @@ DEFUN (Clear_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
   SET_MEMTOP (Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + Our_Constant_Size);
+  Initialize_Stack ();
   Free_Constant = Constant_Space;
   SET_CONSTANT_TOP ();
-  Initialize_Stack ();
   return;
 }
 
