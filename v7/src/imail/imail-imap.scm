@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.5 2000/04/28 05:47:17 cph Exp $
+;;; $Id: imail-imap.scm,v 1.6 2000/04/28 16:49:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -102,22 +102,41 @@
 	  modifier select-imap-folder
 	  initial-value #f))
 
-(define-class (<imap-folder> (constructor (url))) (<folder>)
+(define-class (<imap-folder> (constructor (connection url))) (<folder>)
+  (connection define accessor)
   (url accessor folder-url)
   (allowed-flags define standard)
   (permanent-flags define standard)
-  (uidvalidity define standard)
+  (uidvalidity define standard
+	       initial-value #f)
   (first-unseen define standard)
-  (messages define standard))
+  (length define standard
+	  initial-value 0)
+  (messages define standard
+	    initializer (lambda () (make-vector 0))))
 
-(define-class (<imap-message>) (<message>)
-  )
+(define-class (<imap-message>
+	       (constructor (uid flags length envelope)))
+    ()
+  (uid define accessor)
+  (flags define standard)
+  (length define accessor)
+  (envelope define accessor)
+  (external define standard
+	    initial-value #f))
 
-(define (next-imap-command-tag connection)
-  (let ((n (imap-connection-sequence-number connection)))
-    (set-imap-connection-sequence-number! connection (+ n 1))
-    (string-append "A" (string-pad-left (number->string n) 4 #\0))))
-
+(define (forget-imap-folder-messages! folder)
+  (let ((v (imap-folder-messages folder)))
+    (let ((n (vector-length v)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(let ((m (vector-ref v i)))
+	  (if (and m (imap-message-external m))
+	      (detach-message (imap-message-external m)))
+	  (vector-set! v i #f)))))
+  (set-imap-folder-messages! folder
+			     (make-vector (imap-folder-length folder) #f)))
+
 (define (open-imap-connection url)
   (let ((host (imap-url-host url))
 	(user-id (or (url-user-id url) (imail-default-user-id))))
@@ -196,15 +215,12 @@
       (set-cdr! queue '())
       responses)))
 
-(define (forget-imap-folder-contents! folder)
-  ???)
-
 (define (expunge-imap-folder-message folder index)
   ???)
 
 (define-method %open-folder ((url <imap-url>))
   (let ((connection (open-imap-connection url)))
-    (let ((folder (make-imap-folder url)))
+    (let ((folder (make-imap-folder connection url)))
       (select-imap-folder connection folder)
       (if (not (imap:command:select connection (imap-url-mailbox url)))
 	  (select-imap-folder connection #f))
@@ -227,8 +243,87 @@
 
 (define-method subscribed-folder-names ((url <imap-url>))
   ???)
-
-;;;; Folder
+
+(define-method %folder-valid? ((folder <imap-folder>))
+  ???)
+
+(define-method folder-length ((folder <imap-folder>))
+  (imap-folder-length folder))
+
+(define-method %get-message ((folder <imap-folder>) index)
+  (let ((messages (imap-folder-messages folder)))
+    (let ((message
+	   (or (vector-ref messages index)
+	       (apply make-imap-message
+		      (imap:command:fetch (imap-folder-connection folder)
+					  index
+					  '(UID FLAGS RFC822.SIZE
+						ENVELOPE))))))
+      (or (imap-message-external message)
+	  (let ((external
+		 (let ((items
+			(imap:command:fetch (imap-folder-connection folder)
+					    index
+					    '(RFC822.HEADER RFC822.TEXT))))
+		   (make-attached-message
+		    folder
+		    (lines->header-fields
+		     (except-last-pair!
+		      (string->lines
+		       (translate-string-line-endings (car items)))))
+		    (translate-string-line-endings (cadr items))))))
+	    (set-message-index! external index)
+	    (set-imap-message-external! message external)
+	    external)))))
+
+(define (translate-string-line-endings string)
+  (translate-substring-line-endings string 0 (string-length string)))
+
+(define (translate-substring-line-endings string start end)
+  (let ((indexes (substring-search-all "\r\n" string start end)))
+    (let ((s (make-string (fix:- (fix:- end start) (length indexes)))))
+      (let loop ((indexes indexes) (i start) (j 0))
+	(if (pair? indexes)
+	    (let ((j (substring-move! string i (car indexes) s j)))
+	      (string-set! s j #\newline)
+	      (loop (cdr indexes) (fix:+ (car indexes) 2) (fix:+ j 1)))
+	    (substring-move! string i end s j)))
+      s)))
+
+(define-method %append-message ((folder <imap-folder>) message)
+  ???)
+
+(define-method expunge-deleted-messages ((folder <imap-folder>))
+  ???)
+
+(define-method search-folder ((folder <imap-folder>) criteria)
+  ???)
+
+(define-method poll-folder ((folder <imap-folder>))
+  ???)
+
+(define-method synchronize-folder ((folder <imap-folder>))
+  ???)
+
+(define-method %save-folder ((folder <imap-folder>))
+  ???)
+
+(define-method %maybe-revert-folder ((folder <imap-folder>) resolve-conflict)
+  ???)
+
+(define-method %revert-folder ((folder <imap-folder>))
+  ???)
+
+(define-method %write-folder ((folder <folder>) (url <imap-url>))
+  ???)
+
+(define-method subscribe-folder ((folder <imap-folder>))
+  folder
+  (error "Unimplemented operation:" 'SUBSCRIBE-FOLDER))
+
+(define-method unsubscribe-folder ((folder <imap-folder>))
+  folder
+  (error "Unimplemented operation:" 'UNSUBSCRIBE-FOLDER))
 
 (define (imap:command:capability connection)
   (imap:response:capabilities
@@ -241,55 +336,56 @@
 (define (imap:command:select connection mailbox)
   (imap:response:ok? (imap:command:no-response connection 'SELECT mailbox)))
 
-(define (imap:command:fetch-1 connection index items)
-  (imap:command:single-response imap:response:fetch?
-				connection 'FETCH index items))
+(define (imap:command:fetch connection index items)
+  (let ((response
+	 (imap:command:single-response imap:response:fetch?
+				       connection 'FETCH (+ index 1) items)))
+    (map (lambda (item)
+	   (imap:response:fetch-attribute response item))
+	 items)))
 
 (define (imap:command:fetch-range connection start end items)
-  (imap:command:multiple-response imap:response:fetch?
-				  connection 'FETCH
-				  (string-append (number->string start)
-						 ":"
-						 (number->string (- end 1)))
-				  items))
-
+  (if (fix:< start end)
+      (imap:command:multiple-response imap:response:fetch?
+				      connection 'FETCH
+				      (string-append (number->string
+						      (+ start 1))
+						     ":"
+						     (number->string end))
+				      items)
+      '()))
+
 (define (imap:command:no-response connection command . arguments)
-  (call-with-values
-      (lambda () (apply imap:command connection command arguments))
-    (lambda (response responses)
-      (if (not (null? responses))
-	  (error "Malformed response from IMAP server:" responses))
-      response)))
+  (let ((responses (apply imap:command connection command arguments)))
+    (if (not (null? (cdr responses)))
+	(error "Malformed response from IMAP server:" responses))
+    (car responses)))
 
 (define (imap:command:single-response predicate connection command . arguments)
-  (call-with-values
-      (lambda () (apply imap:command connection command arguments))
-    (lambda (response responses)
-      (if (imap:response:ok? response)
-	  (if (and (pair? responses)
-		   (predicate (car responses))
-		   (null? (cdr responses)))
-	      (car responses)
-	      (error "Malformed response from IMAP server:" responses))
-	  (error "Server signalled a command error:" response)))))
+  (let ((responses (apply imap:command connection command arguments)))
+    (if (imap:response:ok? (car responses))
+	(if (and (pair? (cdr responses))
+		 (predicate (cadr responses))
+		 (null? (cddr responses)))
+	    (cadr responses)
+	    (error "Malformed response from IMAP server:" responses))
+	(error "Server signalled a command error:" (car responses)))))
 
 (define (imap:command:multiple-response predicate
 					connection command . arguments)
-  (call-with-values
-      (lambda () (apply imap:command connection command arguments))
-    (lambda (response responses)
-      (if (imap:response:ok? response)
-	  (if (for-all? responses predicate)
-	      responses
-	      (error "Malformed response from IMAP server:" responses))
-	  (error "Server signalled a command error:" response)))))
-
+  (let ((responses (apply imap:command connection command arguments)))
+    (if (imap:response:ok? (car responses))
+	(if (for-all? (cdr responses) predicate)
+	    (cdr responses)
+	    (error "Malformed response from IMAP server:" responses))
+	(error "Server signalled a command error:" (car responses)))))
+
 (define (imap:command connection command . arguments)
   (imap:wait-for-tagged-response connection
 				 (imap:send-command connection
 						    command arguments)
 				 command))
-
+
 (define (imap:send-command connection command arguments)
   (let ((tag (next-imap-command-tag connection))
 	(port (imap-connection-port connection)))
@@ -304,6 +400,11 @@
     (write-char #\linefeed port)
     (flush-output port)
     tag))
+
+(define (next-imap-command-tag connection)
+  (let ((n (imap-connection-sequence-number connection)))
+    (set-imap-connection-sequence-number! connection (+ n 1))
+    (string-append "A" (string-pad-left (number->string n) 4 #\0))))
 
 (define (imap:send-command-argument connection tag command argument)
   (let ((port (imap-connection-port connection)))
@@ -356,7 +457,7 @@
 			    (imap:response:tag response) tag))
 		    ((or (imap:response:ok? response)
 			 (imap:response:no? response))
-		     (values response responses))
+		     (cons response responses))
 		    (else
 		     (error "IMAP protocol error:" response))))
 	    (begin
@@ -384,10 +485,12 @@
 		 (error "Server shut down connection:" string))))
 	 (imap:response:preauth? response))
 	((imap:response:exists? response)
-	 (let ((folder (selected-imap-folder connection)))
-	   (if (not (= (imap:response:exists-count response)
-		       (folder-length folder)))
-	       (forget-imap-folder-contents! folder)))
+	 (let ((count (imap:response:exists-count response))
+	       (folder (selected-imap-folder connection)))
+	   (if (not (= count (imap-folder-length folder)))
+	       (begin
+		 (set-imap-folder-length! folder count)
+		 (forget-imap-folder-messages! folder))))
 	 #f)
 	((imap:response:expunge? response)
 	 (expunge-imap-folder-message (selected-imap-folder connection)
@@ -416,7 +519,7 @@
 	   (if (let ((uidvalidity* (imap-folder-uidvalidity folder)))
 		 (or (not uidvalidity*)
 		     (> uidvalidity uidvalidity*)))
-	       (forget-imap-folder-contents! folder))
+	       (forget-imap-folder-messages! folder))
 	   (set-imap-folder-uidvalidity! folder uidvalidity)))
 	((imap:response-code:unseen? code)
 	 (set-imap-folder-first-unseen! (selected-imap-folder connection)
