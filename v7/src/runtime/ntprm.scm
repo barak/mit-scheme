@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.28 1999/02/25 22:15:45 cph Exp $
+$Id: ntprm.scm,v 1.29 1999/02/25 22:27:15 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -331,14 +331,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (error "Can't find temporary directory.")))))
 
 (define (nt/system-root-directory)
-  (let ((sysroot
-	 (or (trydir (get-environment-variable "SystemRoot"))
-	     (trydir (get-environment-variable "windir"))
-	     (trydir (get-environment-variable "winbootdir")))))
-    (if (not sysroot)
-	(error "Unable to find Windows system root."))
-    (pathname-new-directory sysroot '(ABSOLUTE))))
-
+  (let ((trydir
+	 (lambda (directory)
+	   (and directory
+		(file-directory? directory)))))
+    (let ((sysroot
+	   (or (trydir (get-environment-variable "SystemRoot"))
+	       (trydir (get-environment-variable "windir"))
+	       (trydir (get-environment-variable "winbootdir")))))
+      (if (not sysroot)
+	  (error "Unable to find Windows system root."))
+      (pathname-new-directory (pathname-as-directory sysroot) '(ABSOLUTE)))))
+
 (define (os/file-end-of-line-translation pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
 	(or (string=? "NFS" (car type))
@@ -361,7 +365,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! nt/subprocess-argument-quote-char #f)
   (set! nt/subprocess-argument-escape-char #f)
   unspecific)
-
+
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)
   (cons (nt-volume-info/file-system-name (nt-volume-info pathname)) ""))
