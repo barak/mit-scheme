@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.123 1999/01/02 06:11:34 cph Exp $
+;;; $Id: curren.scm,v 1.124 2000/04/07 20:12:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -404,18 +404,18 @@ The frame is guaranteed to be deselected at that time."
 	       (buffer-processes buffer))
      (for-each (lambda (hook) (hook buffer))
 	       (get-buffer-hooks buffer 'KILL-BUFFER-HOOKS))
-     (let loop
-	 ((windows (buffer-windows buffer))
-	  (last-buffer false))
-       (if (not (null? windows))
-	   (let ((new-buffer
-		  (or (other-buffer buffer)
-		      last-buffer
-		      (error "Buffer to be killed has no replacement"
-			     buffer))))
-	     (select-buffer-in-window new-buffer (car windows) false)
-	     (loop (cdr windows) new-buffer))))
+     (if (not (make-buffer-invisible buffer))
+	 (error "Buffer to be killed has no replacement" buffer))
      (bufferset-kill-buffer! (current-bufferset) buffer))))
+
+(define (make-buffer-invisible buffer)
+  (let loop ((windows (buffer-windows buffer)) (last-buffer #f))
+    (or (not (pair? windows))
+	(let ((new-buffer (or (other-buffer buffer) last-buffer)))
+	  (and new-buffer
+	       (begin
+		 (select-buffer-in-window new-buffer (car windows) #f)
+		 (loop (cdr windows) new-buffer)))))))
 
 (define-integrable (add-kill-buffer-hook buffer hook)
   (add-buffer-hook buffer 'KILL-BUFFER-HOOKS hook))
