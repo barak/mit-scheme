@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.10 1992/08/12 09:16:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.11 1992/08/12 09:25:05 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -199,6 +199,7 @@ MIT in each case. |#
 
   (define (canonicalize-field field length)
     (if (valid? field length)
+	field
 	(substring field 0 length)))
 
   ;; This should really canonicalize the directory as well.
