@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.62 2001/08/02 04:32:14 cph Exp $
+$Id: lookup.c,v 9.63 2001/08/04 02:46:14 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -578,11 +578,12 @@ unbind_extension_variable (SCHEME_OBJECT frame, SCHEME_OBJECT symbol)
       unsigned long index = 0;
       while (index < length)
 	{
-	  if ((start[index]) == symbol)
+	  if ((PAIR_CAR (start[index])) == symbol)
 	    {
 	      if (index < (length - 1))
 		(start[index]) = (start [length - 1]);
 	      SET_EXTENDED_FRAME_LENGTH (frame, (length - 1));
+	      (start [length - 1]) = SHARP_F;
 	      return (1);
 	    }
 	  index += 1;
