@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: hlpcom.scm,v 1.106 1993/08/10 06:35:52 cph Exp $
+;;;	$Id: hlpcom.scm,v 1.107 1993/10/14 22:43:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -235,10 +235,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	     (string-append "Set " (variable-name-string variable) " to value")
 	     (variable-value variable)))))
   (lambda (variable value)
-    (let ((variable (name->variable variable)))
-      (if (not (variable-value-valid? variable value))
-	  (editor-error "illegal value for variable:" value))
-      (set-variable-value! variable value))))
+    (set-variable-value! (name->variable variable) value)))
 
 (define-command make-local-variable
   "Make a variable have a local value in the current buffer."
@@ -249,10 +246,8 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	     (string-append "Set " (variable-name-string variable) " to value")
 	     (variable-value variable)))))
   (lambda (variable value)
-    (let ((variable (name->variable variable)))
-      (if (not (variable-value-valid? variable value))
-	  (editor-error "illegal value for variable:" value))
-      (define-variable-local-value! (current-buffer) variable value))))
+    (define-variable-local-value! (current-buffer) (name->variable variable)
+      value)))
 
 (define-command kill-local-variable
   "Make a variable use its global value in the current buffer."

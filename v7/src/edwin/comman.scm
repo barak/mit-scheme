@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.74 1993/09/03 04:41:14 cph Exp $
+$Id: comman.scm,v 1.75 1993/10/14 22:43:17 cph Exp $
 
 Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 
@@ -122,7 +122,8 @@ of that license should have been included along with this file.
   initial-value
   %default-value
   assignment-daemons
-  value-validity-test)
+  value-validity-test
+  value-normalization)
 
 (define (variable-description variable)
   (let ((desc (variable-%description variable)))
@@ -156,20 +157,21 @@ of that license should have been included along with this file.
     (set-variable-initial-value! variable value)
     (set-variable-%default-value! variable value)
     (set-variable-assignment-daemons! variable '())
-    (set-variable-value-validity-test! variable false)
+    (set-variable-value-validity-test! variable #f)
+    (set-variable-value-normalization! variable #f)
     variable))
 
 (define-integrable (make-variable-buffer-local! variable)
   (set-variable-buffer-local?! variable #t))
 
-(define (check-variable-value-validity! variable value)
-  (if (not (variable-value-valid? variable value))
+(define (normalize-variable-value variable value)
+  (if (or (not (variable-value-validity-test variable))
+	  ((variable-value-validity-test variable) value))
       (editor-error "Invalid value for " (variable-name-string variable)
-		    ": " value)))
-
-(define (variable-value-valid? variable value)
-  (or (not (variable-value-validity-test variable))
-      ((variable-value-validity-test variable) value)))
+		    ": " value))
+  (if (variable-value-normalization variable)
+      ((variable-value-normalization variable) value)
+      value))
 
 (define (add-variable-assignment-daemon! variable daemon)
   (let ((daemons (variable-assignment-daemons variable)))
@@ -187,7 +189,7 @@ of that license should have been included along with this file.
 (define (name->variable name)
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-variables (symbol->string name))
-	(make-variable name "" false false))))
+	(make-variable name "" #f #f))))
 
 (define (->variable object)
   (if (variable? object)

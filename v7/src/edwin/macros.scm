@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: macros.scm,v 1.60 1993/08/10 06:47:41 cph Exp $
+;;;	$Id: macros.scm,v 1.61 1993/10/14 22:43:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -128,7 +128,7 @@
 
 (let ((variable-definition
        (lambda (buffer-local?)
-	 (lambda (name description #!optional value test)
+	 (lambda (name description #!optional value test normalization)
 	   (let ((name (canonicalize-name name)))
 	     (let ((scheme-name (variable-name->scheme-name name)))
 	       `(BEGIN
@@ -139,8 +139,13 @@
 				   ',buffer-local?))
 		  ,@(if (default-object? test)
 			'()
-			`((DEFINE-VARIABLE-VALUE-VALIDITY-TEST ,scheme-name
-			    ,test))))))))))
+			`((SET-VARIABLE-VALUE-VALIDITY-TEST! ,scheme-name
+							     ,test)))
+		  ,@(if (default-object? normalization)
+			'()
+			`((SET-VARIABLE-VALUE-NORMALIZATION!
+			   ,scheme-name
+			   ,normalization))))))))))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
     (variable-definition false))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER

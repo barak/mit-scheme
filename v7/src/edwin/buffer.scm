@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.163 1993/08/13 23:20:09 cph Exp $
+;;;	$Id: buffer.scm,v 1.164 1993/10/14 22:43:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -87,10 +87,10 @@ The buffer is guaranteed to be deselected at that time."
       (add-group-clip-daemon! group (buffer-clip-daemon buffer))
       (%buffer-reset! buffer)
       (vector-set! buffer buffer-index:windows '())
-      (vector-set! buffer buffer-index:display-start false)
+      (vector-set! buffer buffer-index:display-start #f)
       (vector-set! buffer buffer-index:default-directory directory)
       (vector-set! buffer buffer-index:local-bindings '())
-      (vector-set! buffer buffer-index:local-bindings-installed? false)
+      (vector-set! buffer buffer-index:local-bindings-installed? #f)
       (%set-buffer-major-mode! buffer mode)
       (event-distributor/invoke!
        (variable-default-value (ref-variable-object buffer-creation-hook))
@@ -108,13 +108,13 @@ The buffer is guaranteed to be deselected at that time."
    (make-ring
     (variable-default-value (ref-variable-object mark-ring-maximum))))
   (ring-push! (buffer-mark-ring buffer) (buffer-start buffer))
-  (vector-set! buffer buffer-index:pathname false)
-  (vector-set! buffer buffer-index:truename false)
-  (vector-set! buffer buffer-index:auto-save-pathname false)
-  (vector-set! buffer buffer-index:auto-saved? false)
+  (vector-set! buffer buffer-index:pathname #f)
+  (vector-set! buffer buffer-index:truename #f)
+  (vector-set! buffer buffer-index:auto-save-pathname #f)
+  (vector-set! buffer buffer-index:auto-saved? #f)
   (vector-set! buffer buffer-index:save-length 0)
-  (vector-set! buffer buffer-index:backed-up? false)
-  (vector-set! buffer buffer-index:modification-time false)
+  (vector-set! buffer buffer-index:backed-up? #f)
+  (vector-set! buffer buffer-index:modification-time #f)
   (vector-set! buffer buffer-index:alist '()))
 
 (define (buffer-modeline-event! buffer type)
@@ -261,9 +261,9 @@ The buffer is guaranteed to be deselected at that time."
      (let ((group (buffer-group buffer)))
        (if (group-modified? group)
 	   (begin
-	     (set-group-modified?! group false)
+	     (set-group-modified?! group #f)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
-	     (vector-set! buffer buffer-index:auto-saved? false)))))))
+	     (vector-set! buffer buffer-index:auto-saved? #f)))))))
 
 (define (buffer-modified! buffer)
   (without-interrupts
@@ -271,15 +271,15 @@ The buffer is guaranteed to be deselected at that time."
      (let ((group (buffer-group buffer)))
        (if (not (group-modified? group))
 	   (begin
-	     (set-group-modified?! group true)
+	     (set-group-modified?! group #t)
 	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))))
 
 (define (set-buffer-auto-saved! buffer)
-  (vector-set! buffer buffer-index:auto-saved? true)
+  (vector-set! buffer buffer-index:auto-saved? #t)
   (set-group-modified?! (buffer-group buffer) 'AUTO-SAVED))
 
 (define-integrable (buffer-auto-save-modified? buffer)
-  (eq? true (group-modified? (buffer-group buffer))))
+  (eq? #t (group-modified? (buffer-group buffer))))
 
 (define (buffer-clip-daemon buffer)
   (lambda (group start end)
@@ -315,19 +315,19 @@ The buffer is guaranteed to be deselected at that time."
 ;;;; Local Bindings
 
 (define (define-variable-local-value! buffer variable value)
-  (check-variable-value-validity! variable value)
-  (without-interrupts
-   (lambda ()
-     (let ((binding (search-local-bindings buffer variable)))
-       (if binding
-	   (set-cdr! binding value)
-	   (vector-set! buffer
-			buffer-index:local-bindings
-			(cons (cons variable value)
-			      (buffer-local-bindings buffer)))))
-     (if (buffer-local-bindings-installed? buffer)
-	 (set-variable-%value! variable value))
-     (invoke-variable-assignment-daemons! buffer variable))))
+  (let ((value (normalize-variable-value variable value)))
+    (without-interrupts
+     (lambda ()
+       (let ((binding (search-local-bindings buffer variable)))
+	 (if binding
+	     (set-cdr! binding value)
+	     (vector-set! buffer
+			  buffer-index:local-bindings
+			  (cons (cons variable value)
+				(buffer-local-bindings buffer)))))
+       (if (buffer-local-bindings-installed? buffer)
+	   (set-variable-%value! variable value))
+       (invoke-variable-assignment-daemons! buffer variable)))))
 
 (define (undefine-variable-local-value! buffer variable)
   (without-interrupts
@@ -349,30 +349,33 @@ The buffer is guaranteed to be deselected at that time."
 	(cdr binding)
 	(variable-default-value variable))))
 
+(define (variable-local-value? buffer variable)
+  (search-local-bindings buffer variable))
+
 (define (set-variable-local-value! buffer variable value)
   (cond ((variable-buffer-local? variable)
 	 (define-variable-local-value! buffer variable value))
 	((search-local-bindings buffer variable)
 	 =>
 	 (lambda (binding)
-	   (check-variable-value-validity! variable value)
-	   (without-interrupts
-	    (lambda ()
-	      (set-cdr! binding value)
-	      (if (buffer-local-bindings-installed? buffer)
-		  (set-variable-%value! variable value))
-	      (invoke-variable-assignment-daemons! buffer variable)))))
+	   (let ((value (normalize-variable-value variable value)))
+	     (without-interrupts
+	      (lambda ()
+		(set-cdr! binding value)
+		(if (buffer-local-bindings-installed? buffer)
+		    (set-variable-%value! variable value))
+		(invoke-variable-assignment-daemons! buffer variable))))))
 	(else
 	 (set-variable-default-value! variable value))))
 
 (define (set-variable-default-value! variable value)
-  (check-variable-value-validity! variable value)
-  (without-interrupts
-   (lambda ()
-     (set-variable-%default-value! variable value)
-     (if (not (search-local-bindings (current-buffer) variable))
-	 (set-variable-%value! variable value))
-     (invoke-variable-assignment-daemons! false variable))))
+  (let ((value (normalize-variable-value variable value)))
+    (without-interrupts
+     (lambda ()
+       (set-variable-%default-value! variable value)
+       (if (not (search-local-bindings (current-buffer) variable))
+	   (set-variable-%value! variable value))
+       (invoke-variable-assignment-daemons! #f variable)))))
 
 (define-integrable (search-local-bindings buffer variable)
   (let loop ((bindings (buffer-local-bindings buffer)))
@@ -411,25 +414,25 @@ The buffer is guaranteed to be deselected at that time."
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
       ((null? bindings))
     (set-variable-%value! (caar bindings) (cdar bindings)))
-  (vector-set! buffer buffer-index:local-bindings-installed? true))
+  (vector-set! buffer buffer-index:local-bindings-installed? #t))
 
 (define (uninstall-buffer-local-bindings! buffer)
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
       ((null? bindings))
     (set-variable-%value! (caar bindings)
 			  (variable-default-value (caar bindings))))
-  (vector-set! buffer buffer-index:local-bindings-installed? false))
+  (vector-set! buffer buffer-index:local-bindings-installed? #f))
 
 (define (set-variable-value! variable value)
   (if within-editor?
       (set-variable-local-value! (current-buffer) variable value)
       (begin
-	(check-variable-value-validity! variable value)
-	(without-interrupts
-	 (lambda ()
-	   (set-variable-%default-value! variable value)
-	   (set-variable-%value! variable value)
-	   (invoke-variable-assignment-daemons! false variable))))))
+	(let ((value (normalize-variable-value variable value)))
+	  (without-interrupts
+	   (lambda ()
+	     (set-variable-%default-value! variable value)
+	     (set-variable-%value! variable value)
+	     (invoke-variable-assignment-daemons! #f variable)))))))
 
 (define (with-variable-value! variable new-value thunk)
   (let ((old-value))
