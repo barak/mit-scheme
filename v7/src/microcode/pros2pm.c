@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.15 1995/11/04 02:00:08 cph Exp $
+$Id: pros2pm.c,v 1.16 1995/11/04 02:11:06 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -945,7 +945,8 @@ DEFINE_PRIMITIVE ("OS2WIN-LOAD-POINTER", Prim_OS2_window_load_pointer, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   PRIMITIVE_RETURN
-    (ulong_to_integer (OS2_window_load_pointer ((wid_argument (1)),
+    (ulong_to_integer (OS2_window_load_pointer (pm_qid,
+						(HWND_ARG (1)),
 						(arg_ulong_integer (2)),
 						(arg_ulong_integer (3)))));
 }
