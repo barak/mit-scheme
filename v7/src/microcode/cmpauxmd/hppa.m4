@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.12 1991/05/07 17:27:44 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.13 1991/05/07 18:47:55 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -414,24 +414,27 @@ multiply_fixnum
 	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26		; FIXNUM_LIMIT
 	FLDWS	0(0,21),4
 	FLDWS	4(0,21),5
+	STW	26,8(0,21)				; FIXNUM_LIMIT
         FCNVXF,SGL,DBL  4,4				; arg1
         FCNVXF,SGL,DBL  5,5				; arg2
 	FMPY,DBL	4,5,4
-	STW	26,0(0,21)				; FIXNUM_LIMIT
-	FCNVFXT,DBL,SGL	4,5
-	FSTWS	5,4(0,21)				; result
-	FLDWS	0(0,21),5				; FIXNUM_LIMIT
-	FCNVXF,SGL,DBL	5,5
+	FLDWS	8(0,21),5				; FIXNUM_LIMIT
+	COPY	0,25					; signal no overflow
 	FCMP,DBL,!>=	4,5				; result too large?
-	LDW	4(0,21),26
-	FSUB,DBL	0,5,5
 	FTEST
 	B,N	multiply_fixnum_ovflw
+	FSUB,DBL	0,5,5
 	FCMP,DBL,!<	4,5				; result too small?
-	COPY	0,25					; signal no overflow
 	FTEST
+	B,N	multiply_fixnum_ovflw
+	FCNVFXT,DBL,SGL	4,5
+	FSTWS	5,0(0,21)				; result
+	LDW	0(0,21),26
+	BE	0(5,31)					; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
 ;;
 multiply_fixnum_ovflw
+	COPY	0,26
 	LDO	1(0),25					; signal overflow
 	BE	0(5,31)					; return
 	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
