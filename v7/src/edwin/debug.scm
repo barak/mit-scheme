@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.67 2004/02/16 05:43:03 cph Exp $
+$Id: debug.scm,v 1.68 2004/12/06 21:26:13 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -454,6 +454,7 @@ USA.
 			 (call-with-interface-port
 			  (buffer-end buffer)
 			  (lambda (port)
+			    port
 			    (hook/repl-eval #f
 					    (prompt-for-expression prompt)
 					    (if (default-object? environment)

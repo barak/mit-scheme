@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.67 2004/11/19 17:28:51 cph Exp $
+$Id: load.scm,v 14.68 2004/12/06 21:21:44 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -558,6 +558,8 @@ USA.
 ;;;; Loader for packed binaries
 
 (define (load-packed-binaries pathname fname count environment)
+  fname
+
   (define (process-bunch alist)
     (let ((real-load load)
 	  (real-fasload fasload)

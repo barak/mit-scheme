@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.20 2004/11/19 18:11:29 cph Exp $
+$Id: unicode.scm,v 1.21 2004/12/06 21:27:35 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -1312,7 +1312,7 @@ USA.
 		  (write-string suffix output-port)))))
 	  #f)))
     (lambda (bytes #!optional start end)
-      (make-port type (open-input-byte-buffer string start end #f)))))
+      (make-port type (open-input-byte-buffer bytes start end #f)))))
 
 (define (utf-string->wide-string string start end source-char caller)
   (let ((source (open-input-byte-buffer string start end caller)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.13 2003/03/07 21:22:51 cph Exp $
+$Id: regexp.scm,v 1.14 2004/12/06 21:27:31 cph Exp $
 
-Copyright 1986, 1989-1999 Massachusetts Institute of Technology
+Copyright 1999,2000,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,7 +81,7 @@ USA.
 	     (re-match-start-index i regs)
 	     (re-match-end-index i regs)))
 
-(define (make-substring-operation name primitive)
+(define (make-substring-operation primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
     (let ((regexp
 	   (if (compiled-regexp? regexp)
@@ -102,16 +102,13 @@ USA.
 	   (make-re-registers regs)))))
 
 (define re-substring-match
-  (make-substring-operation 'RE-SUBSTRING-MATCH
-			    (ucode-primitive re-match-substring)))
+  (make-substring-operation (ucode-primitive re-match-substring)))
 
 (define re-substring-search-forward
-  (make-substring-operation 'RE-SUBSTRING-SEARCH-FORWARD
-			    (ucode-primitive re-search-substring-forward)))
+  (make-substring-operation (ucode-primitive re-search-substring-forward)))
 
 (define re-substring-search-backward
-  (make-substring-operation 'RE-SUBSTRING-SEARCH-BACKWARD
-			    (ucode-primitive re-search-substring-backward)))
+  (make-substring-operation (ucode-primitive re-search-substring-backward)))
 
 (define (make-string-operation substring-operation)
   (lambda (regexp string #!optional case-fold? syntax-table)
