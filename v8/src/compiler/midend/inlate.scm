@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.4 1995/04/29 00:57:15 adams Exp $
+$Id: inlate.scm,v 1.5 1995/07/08 15:01:34 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -111,10 +111,7 @@ MIT in each case. |#
 			(beginnify
 			 (list `(DECLARE ,@decls)
 			       body)))))))
-	(inlate/remember new
-			 (new-dbg-procedure/make
-			  form
-			  (cons name lambda-list)))))))
+	(inlate/remember new (new-dbg-procedure/make form))))))
 #|
 (define (inlate/lambda* name req opt rest aux decls sbody)
   name					; ignored

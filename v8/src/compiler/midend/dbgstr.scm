@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.14 1995/07/04 17:54:55 adams Exp $
+$Id: dbgstr.scm,v 1.15 1995/07/08 15:01:24 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (declare (usual-integrations))
-
+
 (define-structure
     (new-dbg-expression
      (conc-name new-dbg-expression/)
@@ -44,8 +44,9 @@ MIT in each case. |#
 	(lambda (expr port)
 	  (write-char #\Space port)
 	  (display (new-dbg-expression/expr expr) port)))))
-  (expr false read-only true)
-  (block false read-only false))
+  (block false read-only false)
+  (label false read-only true)
+  (expr false read-only true))
 
 
 (define (new-dbg-expression/new-block dbg-expr block*)
@@ -55,21 +56,21 @@ MIT in each case. |#
 (define-structure
     (new-dbg-procedure
      (conc-name new-dbg-procedure/)
-     (constructor new-dbg-procedure/make (lam-expr lambda-list))
+     (constructor new-dbg-procedure/make (lam-expr))
      (constructor new-dbg-procedure/%make))
-  (lam-expr false read-only true)
-  (lambda-list false read-only true)
-  (block false read-only false))
+  (block false read-only false)
+  (label false read-only false)
+  (lam-expr false read-only true))
 
 (define (new-dbg-procedure/copy dbg-proc)
-  (new-dbg-procedure/%make (new-dbg-procedure/lam-expr dbg-proc)
-			   (new-dbg-procedure/lambda-list dbg-proc)
-			   (new-dbg-procedure/block dbg-proc)))
+  (new-dbg-procedure/%make (new-dbg-procedure/block dbg-proc)
+			   (new-dbg-procedure/label dbg-proc)
+			   (new-dbg-procedure/lam-expr dbg-proc)))
 
 (define (new-dbg-procedure/new-block dbg-proc block*)
-  (new-dbg-procedure/%make (new-dbg-procedure/lam-expr dbg-proc)
-			   (new-dbg-procedure/lambda-list dbg-proc)
-			   block*))
+  (new-dbg-procedure/%make block*
+			   (new-dbg-procedure/label dbg-proc)
+			   (new-dbg-procedure/lam-expr dbg-proc)))
 
 (define-structure
     (new-dbg-continuation
@@ -125,7 +126,10 @@ MIT in each case. |#
 		(for-each-vector-element vars
 		  (lambda (var)
 		    (write-char #\Space port)
-		    (write (new-dbg-variable/name var) port))))))))))
+		    (write (if (new-dbg-variable? var)
+			       (new-dbg-variable/name var)
+			       var)
+			   port))))))))))
   ;; TYPE is one of 'NESTED, 'FIRST-CLASS
   (type false read-only false)
   ;; PARENT is either
@@ -157,25 +161,27 @@ MIT in each case. |#
 	label)))
 
 (define (new-dbg-procedure->old-dbg-procedure label type new-info)
-  (and new-info				; (lam-expr lambda-list block)
-       (call-with-values
-	(lambda ()
-	  (if (not (new-dbg-procedure? new-info))
-	      (internal-error "Not a new-dbg-procedure" new-info))
-	  (lambda-list/parse (new-dbg-procedure/lambda-list new-info)))
-	(lambda (required optional rest aux)
-	  ;; This does not set the external label!
-	  (make-dbg-procedure
-	   (new-dbg-block->old-dbg-block
-	    (new-dbg-procedure/block new-info))
-	   label			; internal-label
-	   type
-	   (car required)		; name
-	   (cdr required)		; true required
-	   optional
-	   rest
-	   aux
-	   (new-dbg-procedure/lam-expr new-info))))))
+  (and new-info
+       (begin
+	 (if (not (new-dbg-procedure? new-info))
+	     (internal-error "Not a new-dbg-procedure" new-info))
+	 (let ((source-lambda (new-dbg-procedure/lam-expr new-info)))
+	   (lambda-components source-lambda
+	     (lambda (name required optional rest auxiliary block-decls body)
+	       block-decls body		; ignored
+	       (pp `(,source-lambda))
+	       ;; This does not set the external label!
+	       (make-dbg-procedure
+		(new-dbg-block->old-dbg-block
+		 (new-dbg-procedure/block new-info))
+		label			; internal-label
+		type
+		name
+		required
+		optional
+		rest
+		auxiliary
+		source-lambda)))))))
 
 (define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
   (and new-info
