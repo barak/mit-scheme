@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.172 2001/05/29 20:46:28 cph Exp $
+;;; $Id: imail-imap.scm,v 1.173 2001/05/30 05:47:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -266,7 +266,8 @@
 		   (and (compatible-imap-urls? (imap-connection-url connection)
 					       url)
 			(not (eq? (imap-connection-namespace connection)
-				  'UNKNOWN)))))))
+				  'UNKNOWN))
+			0)))))
 	   (and connection
 		(imap-connection-namespace connection)))))
     (and response
@@ -417,7 +418,7 @@
 ;;;; Server connection
 
 (define-class <imap-connection> ()
-  (url             define accessor)
+  (url             define standard)
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
   (capabilities    define standard initial-value '())
@@ -491,31 +492,40 @@
 	 (set-cdr! queue '())
 	 responses)))))
 
-(define (get-imap-connection url)
-  (or (or (search-imap-connections
-	   (lambda (connection)
-	     (and (compatible-imap-urls? (imap-connection-url connection)
-					 url)
-		  (test-imap-connection-open connection))))
-	  (search-imap-connections
-	   (lambda (connection)
-	     (compatible-imap-urls? (imap-connection-url connection)
-				    url))))
+(define (get-folder-imap-connection url)
+  (or (search-imap-connections
+       (lambda (connection)
+	 (if (eq? (imap-connection-url connection) url)
+	     2
+	     (and (compatible-imap-urls? (imap-connection-url connection) url)
+		  (not (imap-connection-folder connection))
+		  (if (test-imap-connection-open connection) 1 0)))))
       (make-imap-connection url)))
 
-(define (search-imap-connections predicate)
-  (let loop ((connections memoized-imap-connections) (prev #f))
-    (and (weak-pair? connections)
-	 (let ((connection (weak-car connections)))
-	   (if connection
-	       (if (predicate connection)
-		   connection
-		   (loop (weak-cdr connections) connections))
-	       (let ((next (weak-cdr connections)))
-		 (if prev
-		     (weak-set-cdr! prev next)
-		     (set! memoized-imap-connections next))
-		 (loop next prev)))))))
+(define (get-compatible-imap-connection url)
+  (or (search-imap-connections
+       (lambda (connection)
+	 (and (compatible-imap-urls? (imap-connection-url connection) url)
+	      (if (test-imap-connection-open connection) 1 0))))
+      (make-imap-connection (imap-url-new-mailbox url ""))))
+
+(define (search-imap-connections assessor)
+  (let loop ((connections memoized-imap-connections) (prev #f) (winner #f))
+    (if (weak-pair? connections)
+	(let ((connection (weak-car connections)))
+	  (if connection
+	      (loop (weak-cdr connections)
+		    connections
+		    (let ((value (assessor connection)))
+		      (if (or (not winner) (> value (cdr winner)))
+			  (cons connection value)
+			  winner)))
+	      (let ((next (weak-cdr connections)))
+		(if prev
+		    (weak-set-cdr! prev next)
+		    (set! memoized-imap-connections next))
+		(loop next prev winner))))
+	(and winner (car winner)))))
 
 (define make-imap-connection
   (let ((constructor (instance-constructor <imap-connection> '(URL))))
@@ -532,18 +542,14 @@
 (define (test-imap-connection-open connection)
   (let ((port (imap-connection-port connection)))
     (and port
-	 (let* ((process
-		 (lambda ()
-		   (process-responses connection #f
-				      (dequeue-imap-responses connection))))
-		(lose
-		 (lambda ()
-		   (process)
-		   (close-imap-connection connection)
-		   #f)))
+	 (let ((lose
+		(lambda ()
+		  (process-queued-responses connection #f)
+		  (close-imap-connection connection)
+		  #f)))
 	   (let loop ()
 	     (cond ((not (char-ready? port))
-		    (process)
+		    (process-queued-responses connection #f)
 		    #t)
 		   ((eof-object? (peek-char port))
 		    (lose))
@@ -623,7 +629,7 @@
   (reset-imap-connection connection))
 
 (define (with-open-imap-connection url receiver)
-  (let ((connection (get-imap-connection url)))
+  (let ((connection (get-compatible-imap-connection url)))
     (dynamic-wind (lambda ()
 		    (set-imap-connection-reference-count!
 		     connection
@@ -687,9 +693,11 @@
 	    (not (eq? folder (imap-connection-folder connection))))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
-	  (let ((selected? #f))
+	  (let ((selected? #f)
+		(url (resource-locator folder)))
 	    (dynamic-wind
 	     (lambda ()
+	       (set-imap-connection-url! connection url)
 	       (set-imap-connection-folder! connection folder))
 	     (lambda ()
 	       (imap:command:select
@@ -699,7 +707,10 @@
 	       unspecific)
 	     (lambda ()
 	       (if (not selected?)
-		   (set-imap-connection-folder! connection #f)))))
+		   (begin
+		     (set-imap-connection-url! connection
+					       (imap-url-new-mailbox url ""))
+		     (set-imap-connection-folder! connection #f))))))
 	  (object-modified! folder 'STATUS)
 	  #t))))
 
@@ -1371,12 +1382,7 @@
 ;;;; Folder operations
 
 (define-method %open-resource ((url <imap-folder-url>))
-  (let ((folder
-	 (make-imap-folder url
-			   (or (search-imap-connections
-				(lambda (connection)
-				  (eq? (imap-connection-url connection) url)))
-			       (make-imap-connection url)))))
+  (let ((folder (make-imap-folder url (get-folder-imap-connection url))))
     (reset-imap-folder! folder)
     (guarantee-imap-folder-open folder)
     folder))
@@ -1714,10 +1720,7 @@
       (let ((response (imap:read-server-response-1 port)))
 	(let ((tag* (imap:response:tag response)))
 	  (if tag*
-	      (let ((responses
-		     (process-responses
-		      connection command
-		      (dequeue-imap-responses connection))))
+	      (let ((responses (process-queued-responses connection command)))
 		(if (string-ci=? tag tag*)
 		    (if (imap:response:ok? response)
 			(cons response responses)
@@ -1751,15 +1754,15 @@
 		 (k response))))
        thunk))))
 
-(define (process-responses connection command responses)
+(define (process-queued-responses connection command)
   (with-modification-events-deferred
     (lambda ()
-      (if (pair? responses)
-	  (if (process-response connection command (car responses))
-	      (cons (car responses)
-		    (process-responses connection command (cdr responses)))
-	      (process-responses connection command (cdr responses)))
-	  '()))))
+      (let loop ((responses (dequeue-imap-responses connection)))
+	(if (pair? responses)
+	    (if (process-response connection command (car responses))
+		(cons (car responses) (loop (cdr responses)))
+		(loop (cdr responses)))
+	    '())))))
 
 (define (process-response connection command response)
   (cond ((imap:response:status-response? response)
