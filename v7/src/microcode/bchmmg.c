@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.30 1987/06/02 00:16:36 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.31 1987/06/15 19:25:57 jinx Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -244,33 +244,44 @@ Reset_Memory()
 }
 
 void
-dump_buffer(from, position, nbuffers, name)
+dump_buffer(from, position, nbuffers, name, success)
      Pointer *from;
      long *position, nbuffers;
      char *name;
+     Boolean *success;
 {
   long bytes_written;
 
   if (lseek(gc_file, *position, 0) == -1)
   {
-    fprintf(stderr,
-	    "\nCould not position GC file to write the %s buffer.\n",
-	    name);
-    Microcode_Termination(TERM_EXIT);
-    /*NOTREACHED*/
+    if (success == NULL)
+    {
+      fprintf(stderr,
+	      "\nCould not position GC file to write the %s buffer.\n",
+	      name);
+      Microcode_Termination(TERM_EXIT);
+      /*NOTREACHED*/
+    }
+    *success = false;
+    return;
   }
   if ((bytes_written = write(gc_file, from, (nbuffers * GC_BUFFER_BYTES))) ==
       -1)
   {
-    fprintf(stderr, "\nCould not write out the %s buffer.\n", name);
-    Microcode_Termination(TERM_EXIT);
-    /*NOTREACHED*/
+    if (success == NULL)
+    {
+      fprintf(stderr, "\nCould not write out the %s buffer.\n", name);
+      Microcode_Termination(TERM_EXIT);
+      /*NOTREACHED*/
+    }
+    *success = false;
+    return;
   }
 
   *position += bytes_written;
   return;
 }
-
+
 void
 load_buffer(position, to, nbytes, name)
      long position;
@@ -338,18 +349,20 @@ initialize_free_buffer()
 }
 
 void
-end_transport()
+end_transport(success)
+     Boolean *success;
 {
-  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
+  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan", success);
   free_position = scan_position;
   return;
 }
 
 Pointer *
-dump_and_reload_scan_buffer(number_to_skip)
+dump_and_reload_scan_buffer(number_to_skip, success)
      long number_to_skip;
+     Boolean *success;
 {
-  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan");
+  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan", success);
   if (number_to_skip != 0)
     scan_position += (number_to_skip * GC_BUFFER_BYTES);
   reload_scan_buffer();
@@ -357,8 +370,9 @@ dump_and_reload_scan_buffer(number_to_skip)
 }
 
 Pointer *
-dump_and_reset_free_buffer(overflow)
+dump_and_reset_free_buffer(overflow, success)
      fast long overflow;
+     Boolean *success;
 {
   fast Pointer *into, *from;
 
@@ -366,9 +380,8 @@ dump_and_reset_free_buffer(overflow)
   if (free_buffer_bottom == scan_buffer_bottom)
   {
     /* No need to dump now, it will be dumped when scan is dumped.
-       Does this work?
-       We may need to dump the buffer anyway so we can dump the next one.
-       It may not be possible to lseek past the end of file.
+       Note that the next buffer may be dumped before this one,
+       but there is no problem lseeking past the end of file.
      */
     free_position += GC_BUFFER_BYTES;
     free_buffer_bottom = ((scan_buffer_bottom == gc_disk_buffer_1) ?
@@ -377,7 +390,7 @@ dump_and_reset_free_buffer(overflow)
     free_buffer_top = free_buffer_bottom + GC_DISK_BUFFER_SIZE;
   }
   else
-    dump_buffer(free_buffer_bottom, &free_position, 1, "free");
+    dump_buffer(free_buffer_bottom, &free_position, 1, "free", success);
 
   for (into = free_buffer_bottom; --overflow >= 0; )
     *into++ = *from++;
@@ -391,11 +404,12 @@ dump_and_reset_free_buffer(overflow)
 }
 
 void
-dump_free_directly(from, nbuffers)
+dump_free_directly(from, nbuffers, success)
      Pointer *from;
      long nbuffers;
+     Boolean *success;
 {
-  dump_buffer(from, &free_position, nbuffers, "free");
+  dump_buffer(from, &free_position, nbuffers, "free", success);
   return;
 }
 
@@ -414,7 +428,7 @@ flush_new_space_buffer()
   if (current_buffer_position == -1)
     return;
   dump_buffer(gc_disk_buffer_1, &current_buffer_position,
-	      1, "weak pair buffer");
+	      1, "weak pair buffer", NULL);
   current_buffer_position = -1;
   return;
 }
@@ -570,7 +584,8 @@ GC()
   *free_buffer++ = Fluid_Bindings;
   Free += (free_buffer - free_buffer_bottom);
   if (free_buffer >= free_buffer_top)
-    free_buffer = dump_and_reset_free_buffer(free_buffer - free_buffer_top);
+    free_buffer = dump_and_reset_free_buffer((free_buffer - free_buffer_top),
+					     NULL);
 
   /* The 4 step GC */
 
@@ -594,7 +609,7 @@ GC()
   *free_buffer++ = The_Precious_Objects;
   Free += (free_buffer - Result);
   if (free_buffer >= free_buffer_top)
-    free_buffer = dump_and_reset_free_buffer(free_buffer - free_buffer_top);
+    free_buffer = dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
 
   Result = GCLoop(Result, &free_buffer, &Free);
   if (free_buffer != Result)
@@ -604,7 +619,7 @@ GC()
     /*NOTREACHED*/
   }
 
-  end_transport();
+  end_transport(NULL);
 
   Fix_Weak_Chain();
   load_buffer(0, Heap_Bottom,

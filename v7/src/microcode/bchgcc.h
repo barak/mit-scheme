@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.27 1987/06/02 00:16:16 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.28 1987/06/15 19:25:36 jinx Exp $ */
 
 #include "gccode.h"
 #include <fcntl.h>
@@ -105,7 +105,7 @@ extern int     gc_file;
    not overflow the current buffer.
 */
 
-#define copy_vector()							\
+#define copy_vector(success)						\
 {									\
   Pointer *Saved_Scan = Scan;						\
   unsigned long real_length = 1 + Get_Integer(*Old);			\
@@ -119,10 +119,12 @@ extern int     gc_file;
     overflow = Scan - free_buffer_top;					\
     while (To != free_buffer_top)					\
       *To++ = *Old++;							\
-    To = dump_and_reset_free_buffer(0);					\
+    To = dump_and_reset_free_buffer(0, success);			\
     real_length = (overflow / GC_DISK_BUFFER_SIZE);			\
     if (real_length > 0)						\
-      dump_free_directly(Old, real_length);				\
+    {									\
+      dump_free_directly(Old, real_length, success);			\
+    }									\
     Old += (real_length * GC_DISK_BUFFER_SIZE);				\
     Scan = To + (overflow % GC_DISK_BUFFER_SIZE);			\
   }									\
@@ -151,7 +153,7 @@ extern int     gc_file;
   copy_code;								\
   To_Address += (length);						\
   if (To >= free_buffer_top)						\
-    To = dump_and_reset_free_buffer(To - free_buffer_top);		\
+    To = dump_and_reset_free_buffer((To - free_buffer_top), NULL);	\
 }
 
 #define relocate_normal_end()						\

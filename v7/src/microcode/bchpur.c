@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.31 1987/06/05 19:55:06 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.32 1987/06/15 19:26:16 jinx Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.  Garbage collection to disk version.
@@ -105,7 +105,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	if (Scan != scan_buffer_top)
 	  goto end_purifyloop;
 	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = dump_and_reload_scan_buffer(0) - 1;
+	Scan = dump_and_reload_scan_buffer(0, NULL) - 1;
 	continue;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -121,7 +121,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
-	  Scan = ((dump_and_reload_scan_buffer(overflow / GC_DISK_BUFFER_SIZE) +
+	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), NULL) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
@@ -140,7 +140,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  Pointer *Saved_Old = Old;
 
 	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector();
+	  copy_vector(NULL);
 	  *Saved_Old = New_Address;
 	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
 	  continue;
@@ -163,7 +163,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	{
 	  Temp = Vector_Ref(Temp, SYMBOL_NAME);
 	  relocate_indirect_setup();
-	  copy_vector();
+	  copy_vector(NULL);
 	  relocate_indirect_end();
 	}
 	/* Fall through. */
@@ -197,7 +197,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case_Purify_Vector:
 	relocate_normal_setup();
       Move_Vector:
-	copy_vector();
+	copy_vector(NULL);
 	relocate_normal_end();
 
       case TC_FUTURE:
@@ -276,7 +276,7 @@ purify(object, flag)
     fprintf(stderr, "\nPurify: Object too large.\n");
     Microcode_Termination(TERM_NO_SPACE);
   }
-  end_transport();
+  end_transport(NULL);
   load_buffer(0, block_start,
 	      (length * sizeof(Pointer)),
 	      "into constant space");

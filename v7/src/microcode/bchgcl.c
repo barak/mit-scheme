@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.29 1987/06/02 00:16:25 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.30 1987/06/15 19:25:47 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -65,7 +65,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	if (Scan != scan_buffer_top)
 	  goto end_gcloop;
 	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = dump_and_reload_scan_buffer(0) - 1;
+	Scan = dump_and_reload_scan_buffer(0, NULL) - 1;
 	continue;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -81,7 +81,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
-	  Scan = ((dump_and_reload_scan_buffer(overflow / GC_DISK_BUFFER_SIZE) +
+	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), NULL) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
@@ -98,7 +98,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	  Pointer *Saved_Old = Old;
 
 	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector();
+	  copy_vector(NULL);
 	  *Saved_Old = New_Address;
 	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
 	  continue;
@@ -135,7 +135,7 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
       case_Vector:
 	relocate_normal_setup();
       Move_Vector:
-	copy_vector();
+	copy_vector(NULL);
 	relocate_normal_end();
 
       case TC_FUTURE:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.31 1987/06/05 04:12:14 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.32 1987/06/15 19:25:22 jinx Exp $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -72,7 +72,11 @@ static fixup_count = 0;
 {									\
   To_Address += (length);						\
   if (To >= free_buffer_top)						\
-    To = dump_and_reset_free_buffer(To - free_buffer_top);		\
+  {									\
+    To = dump_and_reset_free_buffer((To - free_buffer_top), &success);	\
+    if (!success)							\
+      return false;							\
+  }									\
 }
 
 #define fasdump_normal_transport(copy_code, length)			\
@@ -168,7 +172,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
      Pointer **To_ptr, **To_Address_ptr;
 {
   fast Pointer *To, *Old, Temp, *To_Address, New_Address;
+  Boolean success;
 
+  success = true;
   To = *To_ptr;
   To_Address = *To_Address_ptr;
 
@@ -188,7 +194,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	if (Scan != scan_buffer_top)
 	  goto end_dumploop;
 	/* The -1 is here because of the Scan++ in the for header. */
-	Scan = dump_and_reload_scan_buffer(0) - 1;
+	Scan = dump_and_reload_scan_buffer(0, &success) - 1;
+	if (!success)
+	  return false;
 	continue;
 
       case TC_MANIFEST_NM_VECTOR:
@@ -204,8 +212,10 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 
 	  /* The + & -1 are here because of the Scan++ in the for header. */
 	  overflow = (Scan - scan_buffer_top) + 1;
-	  Scan = ((dump_and_reload_scan_buffer(overflow / GC_DISK_BUFFER_SIZE) +
+	  Scan = ((dump_and_reload_scan_buffer((overflow / GC_DISK_BUFFER_SIZE), &success) +
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
+	  if (!success)
+	    return false;
 	  break;
 	}
 
@@ -220,7 +230,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 
 	  fasdump_remember_to_fix(Old, *Old);
 	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector();
+	  copy_vector(&success);
+	  if (!success)
+	    return false;
 	  *Saved_Old = New_Address;
 	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
 	  continue;
@@ -285,7 +297,9 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case_Vector:
 	fasdump_normal_setup();
       Move_Vector:
-	copy_vector();
+	copy_vector(&success);
+	if (!success)
+	  return false;
 	fasdump_normal_end();
 
       case TC_FUTURE:
@@ -323,11 +337,13 @@ end_dumploop:
 
 Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
 {
+  Boolean success;
   long length, hlength;
   Pointer Prim_Exts, *dumped_object, *exts, *free_buffer;
   Pointer header[FASL_HEADER_LENGTH];
   Primitive_3_Args();
 
+  success = true;
   if (Type_Code(Arg2) != TC_CHARACTER_STRING)
     Primitive_Error(ERR_ARG_2_WRONG_TYPE);
   dump_file_name = Scheme_String_To_C_String(Arg2);
@@ -363,7 +379,12 @@ Built_In_Primitive(Prim_Prim_Fasdump, 3, "PRIMITIVE-FASDUMP", 0x56)
     fasdump_exit(0);
     PRIMITIVE_RETURN(NIL);
   }
-  end_transport();
+  end_transport(&success);
+  if (!success)
+  {
+    fasdump_exit(0);
+    PRIMITIVE_RETURN(NIL);
+  }
 
   length = (Free - dumped_object);
   prepare_dump_header(header, length, dumped_object, dumped_object,
