@@ -1,5 +1,5 @@
 
-# $Id: Makefile,v 1.1 2000/07/10 22:03:44 cph Exp $
+# $Id: Makefile,v 1.2 2000/07/10 22:04:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -23,7 +23,10 @@ user.ps: user.dvi
 	dvips -o $@ $^
 
 user.dvi: user.texinfo
-	./re-tex
+	texi2dvi $^
+
+user.pdf: user.texinfo
+	texi2pdf $^
 
 user.info: user.texinfo
 	makeinfo $^
