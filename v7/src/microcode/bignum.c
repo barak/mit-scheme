@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.40 1993/06/24 03:55:00 gjr Exp $
+$Id: bignum.c,v 9.41 1994/02/09 00:53:27 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -886,7 +886,7 @@ DEFUN (bignum_subtract_unsigned, (x, y),
 	}
     }
     {
-      fast bignum_digit_type * end_x = (scan_x + x_length);
+      fast bignum_digit_type * end_x = ((BIGNUM_START_PTR (x)) + x_length);
       if (borrow != 0)
 	while (scan_x < end_x)
 	  {
