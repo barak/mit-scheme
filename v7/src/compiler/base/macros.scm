@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.18 2001/12/20 03:46:57 cph Exp $
+$Id: macros.scm,v 4.19 2001/12/20 03:48:45 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (make-syntax-closure
    (scode/make-sequence
     `(,@(map (lambda (name)
-	       (make-definition name (make-unassigned-reference-trap)))
+	       (scode/make-definition name (make-unassigned-reference-trap)))
 	     names)
       ,(scode/make-combination
 	(let ((block (syntax* (append body (list unspecific)))))
