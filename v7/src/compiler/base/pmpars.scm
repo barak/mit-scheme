@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.1 1987/04/17 08:02:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.1.1.1 1987/06/10 21:22:36 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -40,48 +40,35 @@ MIT in each case. |#
 ;;; pattern/body definitions, producing Scheme code which can then be
 ;;; compiled.
 
-;;; PARSE-RULE, given a PATTERN and a BODY, returns: (1) a
-;;; pattern for use with the matcher; (2) the variables in the
-;;; pattern, in the order that the matcher will produce their
-;;; corresponding values; (3) a transformer expression; (4) a
-;;; qualifier expression; and (5) a list of actions which should be
-;;; executed sequentially when the rule fires.
+;;; PARSE-RULE, given a PATTERN and a BODY, returns: (1) a pattern for
+;;; use with the matcher; (2) the variables in the pattern, in the
+;;; order that the matcher will produce their corresponding values;
+;;; (3) a list of qualifier expressions; and (4) a list of actions
+;;; which should be executed sequentially when the rule fires.
 
 ;;; RULE-RESULT-EXPRESSION is used to generate a lambda expression
 ;;; which, when passed the values resulting from the match as its
 ;;; arguments, will return either false, indicating that the
-;;; qualifications failed, or the result of the body.  The meanings of
-;;; the transformer and qualifier are made explicit here.
+;;; qualifications failed, or the result of the body.
 
-(define (rule-result-expression names transformer qualifier body)
-  (let ((result
-	 (let ((body `(LAMBDA () ,body)))
-	   `(LAMBDA ,names
-	      ,(if (eq? qualifier true)
-		   body
-		   `(AND ,qualifier ,body))))))
-    (if (not transformer)
-	result
-	`(LAMBDA ,names
-	   (,transformer ,result ,@names)))))
-
+(define rule-result-expression)
 (define parse-rule)
-(let ()
 
+(let ()
+
 (set! parse-rule
-(named-lambda (parse-rule pattern body receiver)
-  (extract-variables pattern
-    (lambda (pattern variables)
-      (extract-qualifier body
-	(lambda (qualifiers actions)
-	  (let ((names (pattern-variables pattern)))
-	    (receiver pattern
-		      names
-		      (make-transformer (reorder-variables variables names))
-		      (if (null? qualifiers)
-			  true
-			  `(AND ,@qualifiers))
-		      actions))))))))
+      (named-lambda (parse-rule pattern body receiver)
+	(extract-variables
+	 pattern
+	 (lambda (pattern variables)
+	   (extract-qualifier
+	    body
+	    (lambda (qualifiers actions)
+	      (let ((names (pattern-variables pattern)))
+		(receiver pattern
+			  (reorder-variables variables names)
+			  qualifiers
+			  actions))))))))
 
 (define (extract-variables pattern receiver)
   (if (pair? pattern)
@@ -91,7 +78,7 @@ MIT in each case. |#
 				(if (null? (cddr pattern))
 				    '()
 				    (list (cons (car pattern)
-						(caddr pattern)))))))
+						(cddr pattern)))))))
 	  (extract-variables (car pattern)
 	    (lambda (car-pattern car-variables)
 	      (extract-variables (cdr pattern)
@@ -119,49 +106,62 @@ MIT in each case. |#
 	   (eq? (caar body) 'QUALIFIER))
       (receiver (cdar body) (cdr body))
       (receiver '() body)))
-
+
 (define (reorder-variables variables names)
   (map (lambda (name) (assq name variables))
        names))
+
+(set! rule-result-expression
+      (named-lambda (rule-result-expression variables qualifiers body)
+	(let ((body `(lambda () ,body)))
+	  (process-transformations variables
+	   (lambda (outer-vars inner-vars xforms xqualifiers)
+	     (if (null? inner-vars)
+		 `(lambda ,outer-vars
+		    ,(if (null? qualifiers)
+			 body
+			 `(and ,@qualifiers ,body)))
+		 `(lambda ,outer-vars
+		    (let ,(map list inner-vars xforms)
+		      (and ,@xqualifiers
+			   ,@qualifiers
+			   ,body)))))))))
 
-(define (make-transformer variables)
-  (generate-qualifiers&renames variables
-    (lambda (renames rename-bindings qualification-expressions)
-      ;; Note this assumes that `(null? rename-bindings)' implies
-      ;; `(null? qualification-expressions)'.
-      (if (null? rename-bindings)
-	  false				;i.e. no transformation needed.
-	  `(LAMBDA (RECEIVER ,@renames)
-	     (LET ,rename-bindings
-	       (AND ,@qualification-expressions
-		    (RECEIVER ,@renames))))))))
-
-(define (generate-qualifiers&renames variables receiver)
+(define (process-transformations variables receiver)
   (if (null? variables)
-      (receiver '() '() '())
-      (generate-qualifiers&renames (cdr variables)
-	(lambda (renames rename-bindings qualification-expressions)
-	  (let ((variable (cdar variables))
-		(rename (generate-uninterned-symbol)))
-	    (cond ((null? variable)
-		   (receiver `(,rename ,@renames)
-			     rename-bindings
-			     qualification-expressions))
-		  ((not (null? (cdr variable)))
-		   (error "Multiple per-variable qualifiers" variable))
-		  ((eq? (caar variable) '?)
-		   (receiver `(,rename ,@renames)
-			     `((,rename (,(cdar variable) ,rename))
-			       ,@rename-bindings)
-			     `(,rename ,@qualification-expressions)))
-		  ((eq? (caar variable) '?@)
-		   (receiver `(,rename ,@renames)
-			     `((,rename (MAP ,(cdar variable) ,rename))
-			       ,@rename-bindings)
-			     `((ALL-TRUE? ,rename)
-			       ,@qualification-expressions)))
-		  (else
-		   (error "Unknown qualifier type" variable))))))))
+      (receiver '() '() '() '())
+      (process-transformations
+       (cdr variables)
+       (lambda (outer inner xform qual)
+	 (let ((name (caar variables))
+	       (variable (cdar variables)))
+	   (cond ((null? variable)
+		  (receiver (cons name outer)
+			    inner
+			    xform
+			    qual))
+		 ((not (null? (cdr variable)))
+		  (error "process-trasformations: Multiple qualifiers"
+			 (car variables)))
+		 (else
+		  (let ((var (car variable)))
+		    (define (handle-xform rename)
+		      (if (eq? (car var) '?)
+			  (receiver (cons rename outer)
+				    (cons name inner)
+				    (cons `(,(cadr var) ,rename)
+					  xform)
+				    (cons name qual))
+			  (receiver (cons rename outer)
+				    (cons name inner)
+				    (cons `(MAP ,(cadr var) ,rename)
+					  xform)
+				    (cons `(ALL-TRUE? ,name) qual))))
+		    (handle-xform
+		     (if (null? (cddr var))
+			 name
+			 (caddr var)))))))))))
 
-;;; end PARSE-RULE environment.
+;; End of PARSE-RULE environment.
+)
 )
