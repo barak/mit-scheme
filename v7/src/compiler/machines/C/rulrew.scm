@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.2 1993/06/10 04:59:46 gjr Exp $
+$Id: rulrew.scm,v 1.3 1993/10/28 04:45:51 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -147,3 +147,29 @@ MIT in each case. |#
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
        (fix:fixnum? (rtl:constant-value expression))))
+
+(define-rule rewriting
+  (FLOAT-OFFSET (REGISTER (? base register-known-value))
+		(MACHINE-CONSTANT 0))
+  (QUALIFIER (rtl:simple-float-offset-address? base))
+  (rtl:make-float-offset (rtl:float-offset-address-base base)
+			 (rtl:float-offset-address-offset base)))
+
+(define (rtl:simple-float-offset-address? expr)
+  (and (rtl:float-offset-address? expr)
+       (let ((offset (rtl:float-offset-address-offset expr)))
+	 (or (rtl:machine-constant? offset)
+	     (rtl:register? offset)
+	     (and (rtl:object->datum? offset)
+		  (rtl:register? (rtl:object->datum-expression offset)))))
+       (let ((base (rtl:float-offset-address-base expr)))
+	 (or (rtl:register? base)
+	     (and (rtl:offset-address? base)
+		  (let ((base* (rtl:offset-address-base base))
+			(offset* (rtl:offset-address-offset base)))
+		    (and (rtl:machine-constant? offset*)
+			 (or (rtl:register? base*)
+			     (and (rtl:object->address? base*)
+				  (rtl:register?
+				   (rtl:object->address-expression
+				    base*)))))))))))
