@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.42 1987/03/17 18:51:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 13.43 1987/06/16 22:39:53 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -395,7 +395,9 @@
 	       (char->string (read-char)))
 	      (else
 	       (let ((string (read-string delimiters)))
-		 (if (char=? #\- (peek-char))
+		 (if (let ((char (*parser-peek-char*)))
+		       (and char
+			    (char=? #\- char)))
 		     (begin (discard-char)
 			    (string-append string "-" (loop)))
 		     string)))))
