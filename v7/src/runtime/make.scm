@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.53 1994/12/19 21:14:09 cph Exp $
+$Id: make.scm,v 14.54 1994/12/19 21:47:21 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -84,6 +84,12 @@ MIT in each case. |#
    values))
 
 (define system-global-environment (the-environment))
+
+(define *dashed-hairy-migration-support:false-value*
+  #F)
+
+(define *dashed-hairy-migration-support:system-global-environment*
+  system-global-environment)
 
 (let ((environment-for-package (let () (the-environment))))
 
