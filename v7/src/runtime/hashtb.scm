@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.30 2004/06/12 03:46:22 cph Exp $
+$Id: hashtb.scm,v 1.31 2004/06/13 04:14:22 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -609,10 +609,12 @@ USA.
 	    hash)))))
 
 (define (rehash-table! table)
-  (let ((entries (extract-table-entries! table)))
-    (set-table-needs-rehash?! table #f)
-    ((table-type-method:rehash! (table-type table)) table entries))
-  (maybe-shrink-table! table))
+  (with-table-locked! table
+    (lambda ()
+      (let ((entries (extract-table-entries! table)))
+	(set-table-needs-rehash?! table #f)
+	((table-type-method:rehash! (table-type table)) table entries))
+      (maybe-shrink-table! table))))
 
 (define (extract-table-entries! table)
   (let ((buckets (table-buckets table)))
