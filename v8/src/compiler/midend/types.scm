@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: types.scm,v 1.3 1996/07/19 23:53:58 adams Exp $
+$Id: types.scm,v 1.4 1996/07/23 15:34:53 adams Exp $
 
-Copyright (c) 1995-1995 Massachusetts Institute of Technology
+Copyright (c) 1995-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,6 +82,25 @@ MIT in each case. |#
 		 (cons (cdar pairs) description)))
 	  (else
 	   (loop type (cdr pairs) description)))))
+
+(define (type:user-description type)
+  (define (try t name)
+    (and (type:subset? type t) name))
+  (or (try type:boolean "a boolean")
+      (try type:exact-non-negative-integer  "an exact non-negative integer")
+      (try type:exact-integer "an exact integer")
+      (try type:number  "a number")
+      (try type:string  "a string")
+      (try type:string  "a character")
+      (try type:symbol  "a symbol")
+      (try type:vector  "a vector")
+      (try type:pair    "a pair")
+      (try type:list    "a list")
+      (try type:procedure "a procedure")
+      (if (type:subset? type:any type)
+	  "an object"
+	  (with-output-to-string
+	    (lambda () (write (type:description type)))))))
 
 (define type:empty (type:%make))
 
@@ -266,7 +285,7 @@ MIT in each case. |#
 
 (define-type-name type:boolean        'BOOLEAN)
 (define-type-name (type:except type:fixnum type:fixnum>=0) 'NEGATIVE-FIXNUM)
-(define-type-name type:fixnum         'FIXNUM?)
+(define-type-name type:fixnum         'FIXNUM)
 (define-type-name type:exact-integer  'EXACT-INTEGER)
 (define-type-name type:exact-number   'EXACT-NUMBER)
 (define-type-name type:inexact-number 'INEXACT-NUMBER)
