@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.8 1992/02/10 13:51:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.9 1992/02/27 02:14:00 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -137,7 +137,8 @@ DEFUN (OS_open_server_socket, (port, ArgNo), unsigned int port AND int ArgNo)
 
   if (((sizeof (unsigned int)) >
        (sizeof (((struct sockaddr_in *) 0)->sin_port))) &&
-      (port >= (1<<(CHAR_BIT * (((struct sockaddr_in *) 0)->sin_port)))))
+      (port >= (1 << (CHAR_BIT
+		      * (sizeof (((struct sockaddr_in *) 0)->sin_port))))))
     error_bad_range_arg(ArgNo);    
   STD_UINT_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
