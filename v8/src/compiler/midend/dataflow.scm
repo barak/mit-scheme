@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.4 1994/12/15 01:33:01 adams Exp $
+$Id: dataflow.scm,v 1.5 1995/01/17 22:49:36 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2228,10 +2228,10 @@ MIT in each case. |#
 			   unspecific)
 			  ((and (value/constant? value)
 				(simple-constant? (value/constant/value value)))
-			   (display "\n; Constant propagation:")
-			   (kmp/ppp
-			    `(,node ,(node/text node) =>
-				    (QUOTE ,(value/constant/value value))))
+			   ;;(display "\n; Constant propagation:")
+			   ;;(kmp/ppp
+			   ;; `(,node ,(node/text node) =>
+				;;    (QUOTE ,(value/constant/value value))))
 			   (form/rewrite! (node/text node)
 			     `(QUOTE ,(value/constant/value value))))
 			  (else unspecific)))))
