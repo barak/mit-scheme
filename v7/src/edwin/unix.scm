@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.16 1991/05/14 02:28:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.17 1991/05/15 18:44:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -102,6 +102,17 @@ Includes the new backup.  Must be > 0."
     (if relative
 	(string-append "~/" (pathname->string relative))
 	(pathname->string pathname))))
+
+(define (os/filename->display-string filename)
+  (let ((home (unix/current-home-directory)))
+    (cond ((not (string-prefix? home filename))
+	   filename)
+	  ((string=? home filename)
+	   "~")
+	  ((char=? #\/ (string-ref filename (string-length home)))
+	   (string-append "~" (string-tail filename (string-length home))))
+	  (else
+	   filename))))
 
 (define (os/auto-save-pathname pathname buffer)
   (let ((wrap
@@ -294,9 +305,8 @@ Includes the new backup.  Must be > 0."
 (define (os/filename-directory filename)
   (let ((end (string-length filename)))
     (let ((index (substring-find-previous-char filename 0 end #\/)))
-      (if index
-	  (substring filename 0 (+ index 1))
-	  "./"))))
+      (and index
+	   (substring filename 0 (+ index 1))))))
 
 (define (os/filename-non-directory filename)
   (let ((end (string-length filename)))
