@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.5 1988/04/22 16:39:45 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.6 1988/05/09 19:53:08 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -426,6 +426,64 @@ MIT in each case. |#
   (for-each
    define-fixnum-pred-1-arg
    '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?)))
+
+
+;;; Character open-coding
+
+(let ((define-character->fixnum
+	(lambda (character->fixnum rtl:coercion)
+	  (define-open-coder/value character->fixnum
+	    (lambda (operand)
+	      (return-2 (lambda (expressions finish)
+			  (finish (rtl:make-cons-pointer
+				   (rtl:make-constant (ucode-type fixnum))
+				   (rtl:coercion (car expressions)))))
+			'(0)))))))
+  (define-character->fixnum 'CHAR->INTEGER rtl:make-object->datum)
+  (define-character->fixnum 'CHAR->ASCII rtl:make-char->ascii))
+
+;;; String
+
+(let ((string-header-size (quotient (* 2 scheme-object-width) 8)))
+
+(define-open-coder/value 'STRING-REF
+  (lambda (operands)
+    (filter/nonnegative-integer (cadr operands)
+      (lambda (index)
+	(return-2
+	 (lambda (expressions finish)
+	   (finish (rtl:make-cons-pointer 
+		    (rtl:make-constant (ucode-type character))
+		    (rtl:make-fetch
+		     (rtl:locative-byte-offset (car expressions)
+					       (+ string-header-size index))))))
+	 '(0))))))
+
+(define-open-coder/effect 'STRING-SET!
+  (lambda (operands)
+    (filter/nonnegative-integer (cadr operands)
+      (lambda (index)				
+	(return-2
+	 (lambda (expressions finish)
+	   (let* ((locative 
+		   (rtl:locative-byte-offset (car expressions)
+					     (+ string-header-size index)))
+		  (assignment
+		   (rtl:make-assignment locative (rtl:make-char->ascii
+						  (cadr expressions)))))
+	     (if finish
+		 (let ((temporary (rtl:make-pseudo-register)))
+		   (scfg-append!
+		    (rtl:make-assignment temporary
+					 (rtl:make-cons-pointer
+					  (rtl:make-constant (ucode-type character))
+					  (rtl:make-fetch locative)))
+		    assignment
+		    (finish (rtl:make-fetch temporary))))
+		 assignment)))
+	 '(0 2))))))
+;;; End STRING operations, LET
+)
 
 ;;; end COMBINATION/INLINE
 )

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.3 1988/03/14 21:05:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.4 1988/05/09 19:51:06 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -89,58 +89,49 @@ MIT in each case. |#
 (define-integrable (rtl:interpreter-call-result:unbound?)
   (rtl:make-fetch 'INTERPRETER-CALL-RESULT:UNBOUND?))
 
+
+;;; "Pre-simplification" locative offsets
+
+(define (rtl:locative-offset? locative)
+  (and (pair? locative) (eq? (car locative) 'OFFSET)))
+
+(define-integrable rtl:locative-offset-base cadr)
+(define-integrable rtl:locative-offset-offset caddr)
+
+(define (rtl:locative-offset-granularity locative)
+  ;; This is kludged up for backward compatibility
+  (if (rtl:locative-offset? locative)
+      (if (pair? (cdddr locative))
+	  (cadddr locative)
+	  'OBJECT)
+      (error "Not a locative offset" locative)))
+
+(define-integrable (rtl:locative-byte-offset? locative)
+  (eq? (rtl:locative-offset-granularity locative) 'BYTE))
+
+(define-integrable (rtl:locative-object-offset? locative)
+  (eq? (rtl:locative-offset-granularity locative) 'OBJECT))
+
 (define (rtl:locative-offset locative offset)
   (cond ((zero? offset) locative)
-	((and (pair? locative) (eq? (car locative) 'OFFSET))
-	 `(OFFSET ,(cadr locative) ,(+ (caddr locative) offset)))
-	(else `(OFFSET ,locative ,offset))))
-
-;;; Expressions that are used in the intermediate form.
+	((rtl:locative-offset? locative)
+	 (if (rtl:locative-byte-offset? locative)
+	     (error "Can't add object-offset to byte-offset"
+		    locative offset)
+	     `(OFFSET ,(rtl:locative-offset-base locative)
+		      ,(+ (rtl:locative-offset-offset locative) offset)
+		      OBJECT)))
+	(else `(OFFSET ,locative ,offset OBJECT))))
 
-(define-integrable (rtl:make-address locative)
-  `(ADDRESS ,locative))
+(define (rtl:locative-byte-offset locative byte-offset)
+  (cond ((zero? byte-offset) locative)
+	((rtl:locative-offset? locative)
+	 `(OFFSET ,(rtl:locative-offset-base locative)
+		  ,(+ byte-offset
+		      (if (rtl:locative-byte-offset? locative)
+			  (rtl:locative-offset-offset locative)
+			  (* (rtl:locative-offset-offset locative)
+			     (quotient scheme-object-width 8))))
+		  BYTE))
+	(else `(OFFSET ,locative ,byte-offset BYTE))))
 
-(define-integrable (rtl:make-environment locative)
-  `(ENVIRONMENT ,locative))
-
-(define-integrable (rtl:make-cell-cons expression)
-  `(CELL-CONS ,expression))
-
-(define-integrable (rtl:make-fetch locative)
-  `(FETCH ,locative))
-
-(define-integrable (rtl:make-typed-cons:pair type car cdr)
-  `(TYPED-CONS:PAIR ,type ,car ,cdr))
-
-(define-integrable (rtl:make-typed-cons:vector type elements)
-  `(TYPED-CONS:VECTOR ,type ,@elements))
-
-(define-integrable (rtl:make-typed-cons:procedure label arg-info nvars)
-  `(TYPED-CONS:PROCEDURE ,label ,arg-info ,nvars))
-
-;;; Linearizer Support
-
-(define-integrable (rtl:make-jump-statement label)
-  `(JUMP ,label))
-
-(define-integrable (rtl:make-jumpc-statement predicate label)
-  `(JUMPC ,predicate ,label))
-
-(define-integrable (rtl:make-label-statement label)
-  `(LABEL ,label))
-
-(define-integrable (rtl:negate-predicate expression)
-  `(NOT ,expression))
-
-;;; Stack
-
-(define-integrable (stack-locative-offset locative offset)
-  (rtl:locative-offset locative (stack->memory-offset offset)))
-
-(define-integrable (stack-push-address)
-  (rtl:make-pre-increment (interpreter-stack-pointer)
-			  (stack->memory-offset -1)))
-
-(define-integrable (stack-pop-address)
-  (rtl:make-post-increment (interpreter-stack-pointer)
-			   (stack->memory-offset 1)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.6 1988/04/26 18:33:37 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.7 1988/05/09 19:52:24 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -197,11 +197,19 @@ MIT in each case. |#
 	  expression-simplify-for-statement
 	  expression-simplify-for-predicate)
 
+(define (make-offset register offset granularity)
+  (cond ((eq? granularity 'OBJECT)
+	 (rtl:make-offset register offset))
+	((eq? granularity 'BYTE)
+	 (rtl:make-byte-offset register offset))
+	(else
+	 (error "Unknown offset granularity" register offset granularity))))
+	 
 (define-export (locative-dereference-for-statement locative receiver)
   (locative-dereference locative scfg*scfg->scfg!
     receiver
-    (lambda (register offset)
-      (receiver (rtl:make-offset register offset)))))
+    (lambda (register offset granularity)
+      (receiver (make-offset register offset granularity)))))
 
 (define (locative-dereference locative scfg-append! if-register if-memory)
   (locative-dereference-1 locative scfg-append! locative-fetch
@@ -214,51 +222,53 @@ MIT in each case. |#
 	   (if register
 	       (if-register register)
 	       (if-memory (interpreter-regs-pointer)
-			  (rtl:interpreter-register->offset locative)))))
+			  (rtl:interpreter-register->offset locative)
+			  'OBJECT))))
 	((pair? locative)
 	 (case (car locative)
 	   ((REGISTER)
 	    (if-register locative))
 	   ((FETCH)
-	    (locative-fetch (cadr locative) 0 scfg-append! if-memory))
+	    (locative-fetch (cadr locative) 0 'OBJECT scfg-append! if-memory))
 	   ((OFFSET)
-	    (let ((fetch (cadr locative)))
+	    (let ((fetch (rtl:locative-offset-base locative)))
 	      (if (and (pair? fetch) (eq? (car fetch) 'FETCH))
 		  (locative-fetch (cadr fetch)
-				  (caddr locative)
+				  (rtl:locative-offset-offset locative)
+				  (rtl:locative-offset-granularity locative)
 				  scfg-append!
 				  if-memory)
 		  (error "LOCATIVE-DEREFERENCE: Bad OFFSET" locative))))
 	   ((CONSTANT)
 	    (assign-to-temporary locative scfg-append!
-	      (lambda (register)
+ 	      (lambda (register)
 		(assign-to-address-temporary register scfg-append!
 		  (lambda (register)
-		    (if-memory register 0))))))
+		    (if-memory register 0 'OBJECT))))))
 	   (else
 	    (error "LOCATIVE-DEREFERENCE: Unknown keyword" (car locative)))))
 	(else
 	 (error "LOCATIVE-DEREFERENCE: Illegal locative" locative))))
 
-(define (locative-fetch locative offset scfg-append! receiver)
+(define (locative-fetch locative offset granularity scfg-append! receiver)
   (let ((receiver
 	 (lambda (register)
 	   (guarantee-address register scfg-append!
 	     (lambda (address)
-	       (receiver address offset))))))
+	       (receiver address offset granularity))))))
     (locative-dereference locative scfg-append!
       receiver
-      (lambda (register offset)
-	(assign-to-temporary (rtl:make-offset register offset)
+      (lambda (register offset granularity)
+	(assign-to-temporary (make-offset register offset granularity)
 			     scfg-append!
 			     receiver)))))
 
-(define (locative-fetch-1 locative offset scfg-append! receiver)
+(define (locative-fetch-1 locative offset granularity scfg-append! receiver)
   (locative-dereference locative scfg-append!
     (lambda (register)
-      (receiver register offset))
-    (lambda (register offset*)
-      (receiver (rtl:make-offset register offset*) offset))))
+      (receiver register offset granularity))
+    (lambda (register offset* granularity*)
+      (receiver (make-offset register offset* granularity*) offset granularity))))
 
 (define (guarantee-address expression scfg-append! receiver)
   (if (rtl:address-valued-expression? expression)
@@ -272,12 +282,14 @@ MIT in each case. |#
       (receiver expression)
       (assign-to-temporary expression scfg-append! receiver)))
 
-(define (generate-offset-address expression offset scfg-append! receiver)
-  (guarantee-address expression scfg-append!
-    (lambda (address)
-      (guarantee-register address scfg-append!
-	(lambda (register)
-	  (receiver (rtl:make-offset-address register offset)))))))
+(define (generate-offset-address expression offset granularity scfg-append! receiver)
+  (if (eq? granularity 'OBJECT)
+      (guarantee-address expression scfg-append!
+        (lambda (address)
+	  (guarantee-register address scfg-append!
+    	    (lambda (register)
+	      (receiver (rtl:make-offset-address register offset))))))
+      (error "Byte Offset Address not implemented" expression offset)))
 
 (define-export (expression-simplify-for-statement expression receiver)
   (expression-simplify expression scfg*scfg->scfg! receiver))
@@ -338,11 +350,12 @@ MIT in each case. |#
 (define-expression-method 'ADDRESS
   (address-method
    (lambda (receiver scfg-append!)
-     (lambda (expression offset)
+     (lambda (expression offset granularity)
        (if (zero? offset)
 	   (guarantee-address expression scfg-append! receiver)
 	   (generate-offset-address expression
 				    offset
+				    granularity
 				    scfg-append!
 				    receiver))))))
 
@@ -362,13 +375,13 @@ MIT in each case. |#
 (define-expression-method 'ENVIRONMENT
   (address-method
    (lambda (receiver scfg-append!)
-     (lambda (expression offset)
+     (lambda (expression offset granularity)
        (if (zero? offset)
 	   (receiver
 	    (if (rtl:address-valued-expression? expression)
 		(rtl:make-address->environment expression)
 		expression))
-	   (generate-offset-address expression offset scfg-append!
+	   (generate-offset-address expression offset granularity scfg-append!
 	     (lambda (expression)
 	       (assign-to-temporary expression scfg-append!
 		 (lambda (register)
@@ -378,8 +391,8 @@ MIT in each case. |#
   (lambda (receiver scfg-append! locative)
     (locative-dereference locative scfg-append!
       receiver
-      (lambda (register offset)
-	(receiver (rtl:make-offset register offset))))))
+      (lambda (register offset granularity)
+	(receiver (make-offset register offset granularity))))))
 
 (define-expression-method 'TYPED-CONS:PAIR
   (lambda (receiver scfg-append! type car cdr)
@@ -441,8 +454,18 @@ MIT in each case. |#
 (define-expression-method 'OBJECT->TYPE
   (object-selector rtl:make-object->type))
 
+(define-expression-method 'CHAR->ASCII
+  (object-selector rtl:make-char->ascii))
+
 (define-expression-method 'OBJECT->DATUM
-  (object-selector rtl:make-object->datum))
+  (lambda (receiver scfg-append! expression)
+    (expression-simplify* expression scfg-append!
+      (lambda (s-expression)
+	(assign-to-temporary
+	  (rtl:make-object->datum s-expression)
+	  scfg-append!
+	  (lambda (temporary)
+	    (receiver temporary)))))))
 
 (define-expression-method 'OBJECT->ADDRESS
   (object-selector rtl:make-object->address))

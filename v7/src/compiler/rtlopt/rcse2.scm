@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.5 1988/04/26 18:48:18 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.6 1988/05/09 19:54:06 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -102,6 +102,7 @@ MIT in each case. |#
 		 '(OBJECT->ADDRESS OBJECT->DATUM
 				   OBJECT->TYPE
 				   OBJECT->FIXNUM
+				   CHAR->ASCII
 				   OFFSET-ADDRESS
 				   VARIABLE-CACHE
 				   ASSIGNMENT-CACHE)))))))
@@ -113,7 +114,7 @@ MIT in each case. |#
 (define (expression-address-varies? expression)
   (and (not (interpreter-register-reference? expression))
        (or (memq (rtl:expression-type expression)
-		 '(OFFSET PRE-INCREMENT POST-INCREMENT)))
+		 '(OFFSET BYTE-OFFSET PRE-INCREMENT POST-INCREMENT)))
        (rtl:any-subexpression? expression expression-address-varies?)))
 
 (define (expression-invalidate! expression)
@@ -283,6 +284,9 @@ MIT in each case. |#
 		  (quantity-number (stack-reference-quantity expression))
 		  (begin (set! hash-arg-in-memory? true)
 			 (continue expression))))
+	     ((BYTE-OFFSET)
+	      (set! hash-arg-in-memory? true)
+	      (continue expression))
 	     ((PRE-INCREMENT POST-INCREMENT)
 	      (set! hash-arg-in-memory? true)
 	      (set! do-not-record? true)

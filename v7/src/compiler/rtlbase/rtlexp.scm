@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.4 1988/04/25 21:44:58 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlexp.scm,v 4.5 1988/05/09 19:51:39 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -91,7 +91,7 @@ MIT in each case. |#
   ;;; combinatorial explosion. When that happens the next test may
   ;;; be replaced by true.
   (not (memq (rtl:expression-type expression)
-	     '(OBJECT->FIXNUM))))
+	     '(OBJECT->FIXNUM OBJECT->DATUM)))) ;; Mhwu
 
 (define (rtl:map-subexpressions expression procedure)
   (if (rtl:constant? expression)

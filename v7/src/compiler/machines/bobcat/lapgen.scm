@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.5 1988/05/03 01:04:25 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.6 1988/05/09 19:49:36 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -53,9 +53,12 @@ MIT in each case. |#
 (define-integrable (machine->pseudo-register source target)
   (machine-register->memory source (pseudo-register-home target)))
 
+(define-integrable (pseudo-register-offset register)
+  (+ #x000A (register-renumber register)))
+
 (define-integrable (pseudo-register-home register)
   (offset-reference regnum:regs-pointer
-		    (+ #x000A (register-renumber register))))
+		    (pseudo-register-offset register)))
 
 (define-integrable (machine->machine-register source target)
   (INST (MOV L
@@ -72,14 +75,27 @@ MIT in each case. |#
 	     ,source
 	     ,(register-reference target))))
 
-(define (offset-reference register offset)
-  (if (zero? offset)
-      (if (< register 8)
-	  (INST-EA (@D ,register))
-	  (INST-EA (@A ,(- register 8))))
-      (if (< register 8)
-	  (INST-EA (@DO ,register ,(* 4 offset)))
-	  (INST-EA (@AO ,(- register 8) ,(* 4 offset))))))
+(package (offset-reference byte-offset-reference)
+
+(define ((make-offset-reference grain-size) register offset)
+    (if (zero? offset)
+	(if (< register 8)
+	    (INST-EA (@D ,register))
+	    (INST-EA (@A ,(- register 8))))
+	(if (< register 8)
+	    (INST-EA (@DO ,register ,(* grain-size offset)))
+	    (INST-EA (@AO ,(- register 8) ,(* grain-size offset))))))
+
+(define-export offset-reference
+  (make-offset-reference
+   (quotient scheme-object-width addressing-granularity)))
+
+(define-export byte-offset-reference
+  (make-offset-reference
+   (quotient 8 addressing-granularity)))
+;;; End PACKAGE
+)
+
 
 (define (load-dnw n d)
   (cond ((zero? n)
@@ -215,7 +231,10 @@ MIT in each case. |#
 (define-integrable (register-effective-address? effective-address)
   (memq (lap:ea-keyword effective-address) '(A D)))
 
-(define (indirect-reference! register offset)
+
+(package (indirect-reference! indirect-byte-reference!)
+
+(define ((make-indirect-reference offset-reference) register offset)
   (offset-reference
    (if (machine-register? register)
        register
@@ -228,6 +247,13 @@ MIT in each case. |#
 		  ;; accept DATA if no ADDRESS registers available.
 		  (load-alias-register! register 'ADDRESS))))
    offset))
+
+(define-export indirect-reference!
+  (make-indirect-reference offset-reference))
+(define-export indirect-byte-reference!
+  (make-indirect-reference byte-offset-reference))
+;;; End PACKAGE
+)
 
 (define (coerce->any register)
   (if (machine-register? register)
@@ -247,6 +273,15 @@ MIT in each case. |#
       (LAP)
       (LAP (MOV L ,(coerce->any source)
 		,(register-reference register)))))
+
+(define (coerce->any/byte-reference register)
+  (if (machine-register? register)
+      (register-reference register)
+      (let ((alias (register-alias register false)))
+	(if alias
+	    (register-reference alias)
+	    (indirect-char/ascii-reference! regnum:regs-pointer
+					    (pseudo-register-offset register))))))
 
 (define (code-object-label-initialize code-object)
   false)
@@ -449,7 +484,52 @@ MIT in each case. |#
     ((ONE-PLUS-FIXNUM) fixnum-one-plus-gen)
     ((MINUS-ONE-PLUS-FIXNUM) fixnum-minus-one-plus-gen)
     ))
+
+;;;; OBJECT->DATUM rules - Mhwu
+;;;  Similar to fixnum rules, but no sign extension
 
+(define (load-constant-datum constant register-ref)
+  (if (non-pointer-object? constant)
+      (INST (MOV L (& ,(primitive-datum constant)) ,register-ref))
+      (LAP  (MOV L
+		 (@PCR ,(constant->label constant))
+		 ,register-ref)
+	    ,(scheme-object->datum register-ref))))
+
+(define (scheme-object->datum register-reference)
+  (INST (AND L ,mask-reference ,register-reference)))
+
+;;;; CHAR->ASCII rules
+
+(define (indirect-char/ascii-reference! register offset)
+  (indirect-byte-reference! register (+ (* offset 4) 3)))
+
+(define (char->signed-8-bit-immediate character)
+  (let ((ascii (char->ascii character)))
+    (if (< ascii 128) ascii (- ascii 256))))
+
+;;; This code uses a temporary register because right now the register
+;;; allocator thinks that it could use the same register for the target
+;;; and source, while what we want to happen is to first clear the target
+;;; and then move from source to target.
+;;; Optimal Code: (CLR L ,target-ref)
+;;;               (MOV B ,source ,target)
+;;; source-register is passed in to check for this. Yuck.
+(define (byte-offset->register source source-reg target)
+  (delete-dead-registers!)
+  (let* ((temp-ref (register-reference (allocate-temporary-register! 'DATA)))
+	 (target (allocate-alias-register! target 'DATA)))
+    (if (= target source-reg)
+	(LAP (CLR L ,temp-ref)
+	     (MOV B ,source ,temp-ref)
+	     (MOV L ,temp-ref ,(register-reference target)))
+	(LAP (CLR L ,(register-reference target))
+	     (MOV B ,source ,(register-reference target))))))
+
+(define (indirect-register register)
+  (if (machine-register? register)
+      register
+      (register-alias register false)))
 
 (define-integrable (data-register? register)
   (< register 8))

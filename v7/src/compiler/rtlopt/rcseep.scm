@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.2 1987/12/31 07:00:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseep.scm,v 4.3 1988/05/09 19:54:46 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,7 +46,7 @@ MIT in each case. |#
 	   (case type
 	     ((REGISTER)
 	      (register-equivalent? x y))
-	     ((OFFSET)
+	     ((OFFSET BYTE-OFFSET)
 	      (let ((rx (rtl:offset-register x)))
 		(and (register-equivalent? rx (rtl:offset-register y))
 		     (if (interpreter-stack-pointer? rx)

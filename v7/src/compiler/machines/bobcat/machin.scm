@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.7 1988/05/03 01:09:33 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.8 1988/05/09 19:48:57 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 ;;; Size of words.  Some of the stuff in "assmd.scm" might want to
 ;;; come here.
 
+(define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-datum-width 24)
 (define-integrable scheme-type-width 8)
@@ -127,6 +128,9 @@ MIT in each case. |#
        ;; or.l   #x01AFFFFF,reg = 8
        ((MINUS-ONE-PLUS-FIXNUM) 17)
        (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
+    ;; The following are preliminary. Check with Jinx (mhwu)
+    ((CHAR->ASCII) 4)
+    ((BYTE-OFFSET) 12)
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)

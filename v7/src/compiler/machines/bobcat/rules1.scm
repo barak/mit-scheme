@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.6 1988/04/22 16:20:11 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.7 1988/05/09 19:57:17 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -251,6 +251,84 @@ MIT in each case. |#
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
+
+;;;; OBJECT->DATUM rules.  Assignment is always to a register.
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? datum))))
+  (QUALIFIER (pseudo-register? target))
+  (delete-dead-registers!)
+  (let ((target-ref
+	 (register-reference (allocate-alias-register! target 'DATA))))
+    (load-constant-datum datum target-ref)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target-ref (move-to-alias-register! source 'DATA target)))
+    (LAP ,(scheme-object->datum target-ref))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM (OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((source (indirect-reference! address offset)))
+    (delete-dead-registers!)
+    (let ((target-ref
+	   (register-reference (allocate-alias-register! target 'DATA))))
+      (LAP (MOV L ,source ,target-ref)
+	   ,(scheme-object->datum target-ref)))))
+
+
+;;;; CHAR->ASCII/BYTE-OFFSET
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CHAR->ASCII (OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (byte-offset->register (indirect-char/ascii-reference! address offset)
+			 (indirect-register address)
+			 target))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (CHAR->ASCII (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (if (machine-register? source)
+      (LAP (BFEXTU ,(register-reference source)
+		   (& 0) (& 8)
+		   ,(register-reference (allocate-alias-register! target 'DATA))))
+      (byte-offset->register
+       (indirect-char/ascii-reference! regnum:regs-pointer
+				       (pseudo-register-offset source))
+       (indirect-register regnum:regs-pointer)
+       target)))
+
+(define-rule statement
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+	  (CHAR->ASCII (REGISTER (? source))))
+  (let ((source (coerce->any/byte-reference source)))
+    (let ((target (indirect-byte-reference! address offset)))
+      (LAP (MOV B ,source ,target)))))
+
+(define-rule statement
+  (ASSIGN (BYTE-OFFSET (REGISTER (? address)) (? offset))
+	  (CHAR->ASCII (CONSTANT (? character))))
+  (LAP (MOV B (& ,(char->signed-8-bit-immediate character))
+	    ,(indirect-byte-reference! address offset))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+  (QUALIFIER (pseudo-register? target))
+  (byte-offset->register (indirect-byte-reference! address offset)
+			 (indirect-register address)
+			 target))
+
+(define-rule statement
+  (ASSIGN (BYTE-OFFSET (REGISTER (? target)) (? target-offset))
+	  (CHAR->ASCII (OFFSET (REGISTER (? source)) (? source-offset))))
+  (let ((source (indirect-char/ascii-reference! source source-offset)))
+    (LAP (MOV B ,source ,(indirect-byte-reference! target target-offset)))))
+
 
 ;;;; Transfers to Memory
 
