@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.45 2001/10/04 16:13:24 cph Exp $
+$Id: string.c,v 9.46 2001/10/04 16:13:57 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -161,7 +161,7 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
     SCHEME_OBJECT string = (ARG_REF (1));
     long length
       = (arg_index_integer (2, ((MAXIMUM_STRING_LENGTH (string)) + 1)));
-    if (max_length < (STRING_LENGTH (string)))
+    if (length < (STRING_LENGTH (string)))
       SET_STRING_LENGTH (string, max_length);
     MEMORY_SET
       (string,
