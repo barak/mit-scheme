@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.3 2004/10/27 20:04:15 cph Exp $
+$Id: xhtml-expander.scm,v 1.4 2004/11/01 04:57:05 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -32,7 +32,8 @@ USA.
     (expand-xhtml-file pathname port)))
 
 (define (expand-xhtml-file pathname port)
-  (http-response-header 'content-type (html-content-type))
+  (if (in-mod-lisp?)
+      (http-response-header 'content-type (html-content-type)))
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.8 2004/10/31 00:01:26 cph Exp $
+$Id: mod-lisp.scm,v 1.9 2004/11/01 04:56:51 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -291,7 +291,8 @@ USA.
   (run-hooks-in-list mod-lisp-before-expander-hooks request)
   (call-with-output-string
     (lambda (port)
-      (fluid-let ((*current-request* request)
+      (fluid-let ((*in-mod-lisp?* #t)
+		  (*current-request* request)
 		  (*current-response* response)
 		  (*current-pathname* pathname)
 		  (expander-eval
@@ -305,6 +306,9 @@ USA.
 (define mod-lisp-before-expander-hooks (make-hook-list))
 (define mod-lisp-after-expander-hooks (make-hook-list))
 
+(define (in-mod-lisp?) *in-mod-lisp?*)
+
+(define *in-mod-lisp?* #f)
 (define *current-request*)
 (define *current-response*)
 (define *current-pathname*)
