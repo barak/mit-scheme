@@ -55,7 +55,9 @@ literature without prior written consent from MIT in each case.
 @subtitle Edition 0.99
 @subtitle for Scheme Release 7.3
 @subtitle DRAFT: @today{}
-@author by Stephen Adams, Chris Hanson and others
+@author by Stephen Adams
+@author Chris Hanson
+@author and the MIT Scheme Team
 
 @page
 
@@ -98,6 +100,14 @@ literature without prior written consent from MIT in each case.
 @end titlepage
 
 @node Top, Installation, (dir), (dir)
+
+@ifinfo
+Scheme is the UnCommon Lisp.  This Info file is the user's guide for the
+MIT implementation of Scheme.  It describes how to install and run MIT
+Scheme, how to execute and compile Scheme programs, and how to use
+Scheme with Edwin and GNU Emacs.
+@end ifinfo
+
 @menu
 * Installation::                
 * Release Notes::               
@@ -159,7 +169,7 @@ The Read-Eval-Print Loop
 
 * The Prompt and Level Number::  
 * Interrupting::                
-* Proceeding::                  
+* Restarting::                  
 * The Current REPL Environment::  
 
 Debugging
@@ -246,14 +256,14 @@ Installation information for C back-end versions goes here?
 
 This section describes how to install MIT Scheme on DOS, Microsoft
 Windows 3.1 and Microsoft Windows NT.  We would prefer that the Windows
-version is used to the DOS version because we intend to maintain this
-version only so long as it is convenient.
-We have only tested the DOS version on Microsoft DOS 5.0.
- For the most part the
-installation any of these platforms uses the same files, and the
-procedure is similar.  It is possible to install MIT Scheme so that it
-will run under all three operating systems on one computer, but this
+version be used, rather than the DOS version, because we intend to
+maintain the DOS version only so long as it is convenient.  For the most
+part the installation any of these platforms uses the same files, and
+the procedure is similar.  It is possible to install MIT Scheme so that
+it will run under all three operating systems on one computer, but this
 does require some care with the configuration of the system.
+
+Note that we have only tested the DOS version on Microsoft DOS 5.0.
 
 @menu
 * System requirements::         
@@ -291,9 +301,6 @@ bcirun3.zip     @r{    "          "       "     "      "}
 bcied1.zip      @r{Debugging information for Edwin}
 bcied2.zip      @r{    "          "       "    "}
 bcied3.zip      @r{    "          "       "    "}
-bcicomp1.zip    @r{Debugging information for compiler}
-bcicomp2.zip    @r{    "          "       "      "}
-bcicomp3.zip    @r{    "          "       "      "}
 
 srcrun.zip      @r{Source code for the runtime system}
 srcuc.zip       @r{Source code for the microcode (C)}
@@ -368,13 +375,13 @@ unzip @var{wherever}\runtime.zip
 @end example
 
 This will create the directory structures @file{@var{scheme}\bin},
-@file{@var{scheme}\lib} and @file{@var{scheme}\etc}, and unpacks the
+@file{@var{scheme}\lib} and @file{@var{scheme}\etc}, and unpack the
 essential files.
 (@var{Wherever} stands for the place that you have put the @file{.zip}
 files, which might be another directory or a floppy disk.)
 
 @noindent
-If you have a computer without floating-point hardware (e.g. a 386
+If you have a computer without floating-point hardware (e.g.@: a 386
 machine or a 486SX) and you wish to run the DOS version then you must
 install the runtime with special floating point support instead of
 @file{runtime.zip}:
@@ -391,13 +398,13 @@ unzip @var{wherever}\dosbin.zip
 @end example
 
 This creates a @file{@var{scheme}\dos-bin} directory containing the DOS
-versions of the @file{.exe} files.  These files are different to the
+versions of the @file{.exe} files.  These files are different from the
 Windows versions, so they are placed in a different directory to allow
-the different version to co-exist on your computer.  It is only the
-@file{.exe} files that differ between DOS and Windows.  The other parts
-of the MIT Scheme system are shared.  The DOS version will run under
-Windows 3.1 but not under NT.  Either running on DOS or Windows 3.1, the
-DOS version has @emph{no} graphics support
+both versions to co-exist on your computer.  It is only the @file{.exe}
+files that differ between DOS and Windows.  The other parts of the MIT
+Scheme system are shared.  The DOS version will run under Windows 3.1
+but not under NT.  Either running on DOS or Windows 3.1, the DOS version
+has @emph{no} graphics support
 
 @item
 If you are installing for Windows 3.1 only, do @emph{one} of the
@@ -437,7 +444,7 @@ Copy the files from @file{@var{scheme}\bin\nt} into
 @item
 If you are installing for both Windows 3.1 and Windows NT then you must
 use use environment variables and the @code{PATH} rather than copying
-files, i.e.  you must arrange for Windows 3.1 to be run with
+files, i.e.@: you must arrange for Windows 3.1 to be run with
 @file{@var{scheme}\bin\win31} on the path and for Windows NT to be run
 with @file{@var{scheme}\bin\nt} on the path.
 This can be done by putting
@@ -482,7 +489,7 @@ following at the DOS prompt:
 @end example
 
 @noindent
-If there are any problems at this stage review the installation so far.
+If there are any problems at this stage, review the installation so far.
 Remember that you might have to restart your machine to get the effect
 of any changes that you made in @file{autoexec.bat} or the NT registry.
 
@@ -568,7 +575,7 @@ This will load in @file{compdel.com} and create the new
 will exit.
 As for Edwin, this step needs to be done only once.
 
-If you choose to build this band under using the DOS version be sure to
+If you choose to build this band using the DOS version be sure to
 run the DOS @file{scheme.exe} rather than the Windows version:
 
 @example
@@ -614,7 +621,7 @@ necessary to build either of @file{edwin.com} and @file{compiler.com}
 before building and using @file{all.com}.
 The bands are shared by all of the supported operating systems so you
 only have to build the bands once, even if you want to use them from,
-say, both DOS and Windows 3.1
+say, both DOS and Windows 3.1.
 
 After building the bands you may tidy the MIT Scheme group by removing
 the mincer icons and recover disk space by deleting the delta files
@@ -635,9 +642,7 @@ Debugging information files can be installed in the Scheme root
 directory or in another directory.  If another directory is chosen then
 set the @code{MITSCHEME_INF_DIRECTORY} environment variable to this
 directory.  @file{bcied1.zip} through @file{bcied3.zip} [3.8Mb
-installed] and @file{bcicomp1.zip} through @file{bcicomp3.zip} [4Mb
-installed] hold the debugging information files for Edwin and the
-compiler respectively.
+installed] hold the debugging information files for Edwin.
 
 @end enumerate
 
@@ -757,8 +762,6 @@ in your @file{edwin.ini} file.
 @c w32sut.h & dlls to ntutl/config?
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
-
-
 @node Running Scheme, REPL, Release Notes, Top
 @chapter Running Scheme
 
@@ -792,10 +795,10 @@ Scheme will load itself, clear the screen, and print something like
 this:
 
 @example
-Scheme saved on Monday December 10, 1990 at 9:55:37 PM
+Scheme saved on Thursday December 2, 1993 at 6:18:35 PM
   Release 7.3.0 (beta)
   Microcode 11.146
-  Runtime 14.164
+  Runtime 14.166
 @end example
 
 @noindent
@@ -863,9 +866,9 @@ You might like to write scripts that invoke Scheme with your favourite
 command line options.  For example, under DOS you might not have enough
 memory to run edwin or the compiler with its default memory parameters
 (it will print something like ``Not enough memory for this
-configuration'' and halt when started), you can write a shell script
+configuration'' and halt when started), so you can write a shell script
 (unix) or a @file{.bat} file (PC) that will invoke Scheme with the
-appropriate "@code{-heap}" and other parameters.
+appropriate @samp{-heap} and other parameters.
 
 @item
 @cindex init file
@@ -953,16 +956,15 @@ For @code{bchscheme}, which has only one heap in memory, the equation is
 
 Once the storage is allocated for the constant space and the heap,
 Scheme will dynamically adjust the proportion of the total that is used
-for constant space.
-The stack and the extra microcode storage is not included in this adjustment.
-The dynamic adjustment of the heap and constant space avoids the problem
-with previous versions of MIT Scheme of having to know the amount of
-constant space that is required when loading your own bands with the
-@code{-band} option.  Now all that is required is that the total space
-is sufficient.
+for constant space.  The stack and the extra microcode storage is not
+included in this adjustment.  Previous versions of MIT Scheme needed to
+be told the amount of constant space that was required when loading your
+own bands with the @code{-band} option.  Dynamic adjustment of the heap
+and constant space avoids this problem; now all that is required is that
+the total space is sufficient.
+
 The Scheme procedure @code{(print-gc-statistics)} shows how much heap
 and constant space is available.
-
 
 @node Command-Line Options, Environment Variables, Customizing Scheme, Running Scheme
 @section Command-Line Options
@@ -1114,17 +1116,22 @@ Specifies that Scheme should not generate a core dump under any
 circumstances.  Under unix, if this option is not given, and Scheme
 terminates abnormally, you will be prompted to decide whether a core
 dump should be generated.
+
 This option is ignored on PC versions.
 
 @item -library @var{path}
 @findex -library
 @findex MITSCHEME_LIBRARY_PATH
-Sets the library search path to @var{path}.  This is a colon-separated
+Sets the library search path to @var{path}.  This is a
 list of directories that is searched to find various library files, such
 as bands.  If this option is not given, the value of the environment
 variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
-the default is used (@file{/usr/local/lib/mit-scheme} on Unix, @file{c:\scheme}
-on PCs).
+the default is used.
+
+On unix, the elements of the list are separated by colons, and the
+default value is @samp{/usr/local/lib/mit-scheme}.  On PCs, the elements
+of the list are separated by semicolons, and the default value is
+@samp{c:\scheme}.
 
 @item -utabmd @var{filename}
 @item -utab @var{filename}
@@ -1165,6 +1172,19 @@ or other band is loaded.
 This option causes Scheme to ignore the @file{~/.scheme.init} or
 @file{scheme.ini} file, normally loaded automatically when Scheme starts
 (if it exists).
+
+@item -no-suspend-file
+@findex -no-suspend-file
+Under some circumstances Scheme will write out file called
+@file{scheme_suspend} in the user's home directory.@footnote{On unix,
+this file is written when Scheme is terminated by the @code{SIGUSR1},
+@code{SIGHUP}, or @code{SIGPWR} signals.  On the PC, this file is never
+written.} This file is a ``band'' containing the complete state of the
+Scheme process; restoring this file continues the computation that
+Scheme was performing at the time the file was written.
+
+If the @code{-no-suspend-file} option is given, Scheme will not write a
+@file{scheme_suspend} file under any circumstances.
 
 @item -eval
 @findex -eval
@@ -1208,7 +1228,6 @@ position (as provided with -gc-start-position) and the heap size.  The
 area of the file used (and locked if possible) is the region between
 @code{-gc-start-position} and @code{-gc-end-position}.
 
-
 @item -gc-file @var{filename}
 @itemx -gcfile @var{filename}
 @findex -gc-file
@@ -1222,7 +1241,6 @@ filename is generated in the directory specified with
 
 @code{-gcfile} is an alias for @code{-gc-file}.  At most one of these
 options should be specified.
-
 
 @item -gc-keep
 @findex -gc-keep
@@ -1292,10 +1310,10 @@ and if that is not defined, 0 is used, disabling overlapped writes.
 There are many environment variables that Scheme (and Edwin, etc.) look
 for.  Environment variables that affect the microcode must be defined
 before you start Scheme, but others can be defined or overwritten within
-Scheme by using the @code{set-environment-variable!} procedure, e.g.
+Scheme by using the @code{set-environment-variable!} procedure, e.g.@:
 
 @example
-  (set-environment-variable! "EDWIN_FOREGROUND" "32")
+(set-environment-variable! "EDWIN_FOREGROUND" "32")
 @end example
 
 The rest of this section is a summary of the environment variables that
@@ -1355,15 +1373,15 @@ left to right, to find bands and various other files.
 On Unix systems the list is colon separated, with the default
 @file{/usr/local/lib/mit-scheme}.
 On PC systems the list is semi-colon separated with the default
-@file{c:\scheme\lib}
-
+@file{c:\scheme\lib}.
 
 @item @code{MITSCHEME_INF_DIRECTORY}
 Directory containing the debugging information files for the system. It
 should contain subdirectories corresponding to the subdirectories in the
-source tree.  For example, if its value is @file{f:\random}, then runtime system
-debugging files will be expected in @file{f:\random\runtime}, while edwin
-debugging files will be expected in @file{f:\random\edwin}
+source tree.  For example, if its value is @file{f:\random}, then
+runtime system debugging files will be expected in
+@file{f:\random\runtime}, while edwin debugging files will be expected
+in @file{f:\random\edwin}.
 
 @item @code{MITSCHEME_SMALL_CONSTANT} (default: @samp{400})
 @findex MITSCHEME_SMALL_CONSTANT
@@ -1478,7 +1496,7 @@ Microsoft Windows and Windows NT only.  Four integers separated by
 commas or spaces that specify the placement and size of the MIT Scheme
 window as a @var{left,top,width,height} quadruple.  The units are screen
 pixels, and @samp{-1} means allow the system to choose this parameter.
-E.g.  @samp{-1,-1,500,300} places a 500 by 300 pixel window at some
+E.g.@:  @samp{-1,-1,500,300} places a 500 by 300 pixel window at some
 system determined position on the screen.  The width and height include
 the window border and title.
 
@@ -1486,7 +1504,7 @@ the window border and title.
 @findex MITSCHEME_FOREGROUND
 Microsoft Windows and Windows NT only.  An value specifying the window
 text color.  The color is specified as hex blue, green and red values
-(@emph{not} RGB):, E.g. @code{0xff0000} for blue.
+(@emph{not} RGB): e.g.@: @code{0xff0000} for blue.
 
 @item @code{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_BACKGROUND
@@ -1502,8 +1520,8 @@ background color.  See @code{MITSCHEME_FOREGROUND}.
 @table @asis
 @item @code{HOME}
 @findex HOME
-Directory where to look for init files.  E.g. @samp{c:\users\joe} or
-@samp{/homes/joe}
+Directory where to look for init files.  E.g.@: @samp{c:\users\joe} or
+@samp{/homes/joe}.
 
 @item @code{TEMP}, @code{TMP}
 @findex TMP
@@ -1536,13 +1554,13 @@ strings.
 @findex EDWIN_FOREGROUND
 DOS version only.
 ANSI foreground color specifier. Must be a two-digit sequence in the range
-30-37.  E.g. 32 (green).
+30-37.  E.g.@: 32 (green).
 
 @item @code{EDWIN_BACKGROUND} (default: none (black))
 @findex EDWIN_BACKGROUND
 DOS version only.
 ANSI background color specifier. Must be a two-digit sequence in the range
-40-47. E.g. 40 (black).
+40-47. E.g.@: 40 (black).
 
 @item @code{TERM}
 @findex TERM
@@ -1558,18 +1576,18 @@ Number of text lines on the screen, depending on the terminal type.
 @item @code{MITSCHEME_LINES} (default: auto-sense or 25)
 @findex MITSCHEME_LINES
 DOS only.  Number of text lines on the screen, depending on the video
-adapter and support software.  E.g. 43.
+adapter and support software.  E.g.@: 43.
 
 @item @code{COLUMNS} (default: auto-sense)
 @findex COLUMNS
 Unix only.
 Number of text columns on the screen, depending on the terminal type (Unix) or
-video adapter and support software (DOS).  E.g. 132.
+video adapter and support software (DOS).  E.g.@: 132.
 
 @item @code{MITSCHEME_COLUMNS} (default: auto-sense, or 80)
 @findex MITSCHEME_COLUMNS
 DOS only.  Number of text columns on the screen, depending on the video
-adapter and support software.  E.g. 132.
+adapter and support software.  E.g.@: 132.
 
 @end table
 
@@ -1580,7 +1598,7 @@ adapter and support software.  E.g. 132.
 There are two distinct versions of MIT Scheme that run on IBM
 `compatible' PCs: the DOS version is a character-mode only
 implementation, which can also run under Windows 3.1 as a DOS application.
-The Windows version runs as graphics based application under Microsoft
+The Windows version runs as a graphics-based application under Microsoft
 Windows 3.1 or Microsoft Windows NT.
 The DOS version will not run under Windows NT.
 
@@ -1602,8 +1620,8 @@ Manager.
 Under Windows NT program manager groups can be @emph{common} or
 @emph{personal}.  When setting up icons in a common group it is
 important to make the icons independent of the vagaries of the
-environment of which user is running them.  It is often worthwhile doing
-this under Windows 3.1 and for personal groups too:
+environment of the user who is running them.  It is often worthwhile
+doing this under Windows 3.1 and for personal groups too:
 
 @itemize @bullet
 @item
@@ -1628,10 +1646,6 @@ editor.  You also have to put
 at the end of the command line.
 @end itemize
 
-
-
-
-
 @node Leaving Scheme,  , Starting Scheme from Microsoft Windows 3.1/NT, Running Scheme
 @section Leaving Scheme
 
@@ -1649,11 +1663,9 @@ be done lightly.
 
 The second way to leave Scheme is to suspend it; when this is done you
 may later restart where you left off.  Unfortunately this is not
-possible in all operating systems --- currently it is known to work on
-BSD Unix, Ultrix, SunOS, HP-UX (version 6.5 or later).  It does
-@emph{not} work on AT&T Unix or on PC platforms.  (Specifically, for
-unix or POSIX systems, suspension is available if the system supports
-job control.)
+possible in all operating systems --- currently it works only on unix
+versions that support job control (i.e.@: all of the unix versions for
+which we distribute Scheme), but not on PCs.
 
 Scheme is suspended by evaluating
 
@@ -1686,7 +1698,7 @@ expression, prints the result, and gives you another prompt.
 @menu
 * The Prompt and Level Number::  
 * Interrupting::                
-* Proceeding::                  
+* Restarting::                  
 * The Current REPL Environment::  
 @end menu
 
@@ -1745,14 +1757,14 @@ find out what is in error is to do some poking around in the error
 @sc{repl}.  If you abort out of it, the context of the error will be
 destroyed, and you may not be able to find out what happened.
 
-@node Interrupting, Proceeding, The Prompt and Level Number, REPL
+@node Interrupting, Restarting, The Prompt and Level Number, REPL
 @section Interrupting
 
 @kindex C-g
 @kindex C-c
 Scheme has two interrupt keys under unix: @kbd{C-g} and @kbd{C-c}.  
-Other systems, like the PC may have more than two.
-The PC version has @kbd{C-b}, @kbd{C-x} and @kbd{C-u} as well as
+Other systems, like the PC, may have more than two.
+The PC version has @kbd{C-b}, @kbd{C-x}, and @kbd{C-u} as well as
 @kbd{C-g} and @kbd{C-c}.
 The @kbd{C-g} key stops any Scheme
 evaluation that is running and returns you to the top level @sc{repl}.
@@ -1863,38 +1875,81 @@ implementations, is equivalent to @kbd{C-c C-b}.
 On the PC version @kbd{C-b} is equivalent to @kbd{C-c C-b}.
 @end table
 
+@node Restarting, The Current REPL Environment, Interrupting, REPL
+@section Restarting
 
-@node Proceeding, The Current REPL Environment, Interrupting, REPL
-@section Proceeding
-
-Another way of exiting a @sc{repl} is to use the @code{proceed}
+Another way of exiting a @sc{repl} is to use the @code{restart}
 procedure:
 
-@deffn {procedure+} proceed [value]
-@cindex error REPL, proceeding from
-There are two ways to use this procedure from an error @sc{repl} (usage
-from other kinds of @sc{repl} is not necessarily the same).  If
-@var{value} is not given, @code{proceed} retries the expression that
-caused the error.  Unless you have done something to fix the error
-condition, this will just cause the error to happen all over again.  If,
-for example, you are in an error @sc{repl} caused by evaluating an
-unbound variable, the proper way to use @code{proceed} is to first
-define a value for the variable, then to evaluate @code{(proceed)}.
-Your program should continue from that point normally.
+@deffn {procedure+} restart [K]
+@cindex REPL, restarting from
+This procedure selects and invokes a @dfn{restart method}.  The list of
+restart methods is different for each @sc{repl}; in the case of an error
+@sc{repl}, this list is printed when the @sc{repl} is started:
 
-One caveat: when you get an unbound variable error, the environment for
-the error @sc{repl} is the environment in which you looked up the
-variable, which is not necessarily the environment in which the variable
-should be defined.  It is best to use the @code{ge} procedure to
-guarantee that your definition goes into the right place.
+@example
+@group
+;Unbound variable: foo
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of foo.
+; (RESTART 2) => Define foo to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
 
-If @var{value} is given, @code{proceed} returns it in place of the
-expression that caused the error.  Thus, if you cannot easily fix a
-particular bug, but you know a correct value for the erring expression,
-you can continue the computation this way.
+
+2 error> 
+@end group
+@end example
+
+If the @var{k} argument is given, it must be a positive integer index
+into the list (in this example it must be between one and three
+inclusive).  The integer @var{k} selects an item from the list and
+invokes it.  If @var{k} is not given, @code{restart} prints the list and
+prompts for the integer index:
+
+@example
+@group
+2 error> (restart)
+;Choose an option by number:
+;  3: Specify a value to use instead of foo.
+;  2: Define foo to a given value.
+;  1: Return to read-eval-print level 1.
+
+Option number:
+@end group
+@end example
+
+The simplest restart methods just perform their actions.  For example:
+
+@example
+@group
+2 error> (restart 1)
+;Abort!
+
+1 ]=>
+@end group
+@end example
+
+Other methods will prompt for more input before continuing:
+
+@example
+@group
+2 error> (restart)
+;Choose an option by number:
+;  3: Specify a value to use instead of foo.
+;  2: Define foo to a given value.
+;  1: Return to read-eval-print level 1.
+
+Option number: 3
+
+Value to use instead of foo: '(a b)
+;Value: (a b)
+
+1 ]=>
+@end group
+@end example
 @end deffn
 
-@node The Current REPL Environment,  , Proceeding, REPL
+@node The Current REPL Environment,  , Restarting, REPL
 @section The Current REPL Environment
 
 @cindex current REPL environment
@@ -1925,20 +1980,6 @@ which it was closed by evaluating
 @end lisp
 
 Your programs create new environments whenever a procedure is called.
-When an error occurs, the error @sc{repl} that is created is usually
-initialized so that its current environment is the one in which the
-error occurred.  When it is not possible to supply the error's
-environment, the following message is printed:
-
-@lisp
-There is no environment available;
-using the current REPL environment
-@end lisp
-
-@noindent
-This message tells you that the error @sc{repl} is using the same
-environment as the @sc{repl} whose level number is one less than the
-error @sc{repl}'s.
 
 Here is the procedure that changes the @sc{repl}'s environment:
 
@@ -1953,10 +1994,10 @@ place.
 @deffn {procedure+} gst syntax-table
 In addition to the current environment, each @sc{repl} maintains a
 current @dfn{syntax table}.  The current syntax table tells the
-@sc{repl} which keywords are used to identify special forms (e.g.
+@sc{repl} which keywords are used to identify special forms (e.g.@:
 @code{if}, @code{lambda}).  If you write macros, often you will want to
 make your own syntax table, in which case it is useful to be able to
-make that syntax table be the current one.  @code{Gst} allows you to do
+make that syntax table be the current one.  @code{gst} allows you to do
 that.
 @end deffn
 
@@ -2082,12 +2123,12 @@ for the following expression:
     (cons 'not-prime n))
 @end lisp
 
-This is because the entire subproblem of the @code{if} combination can
+This is because the entire subproblem of the @code{if} expression can
 be reduced to the problem @code{(cons 'prime n)}, once we know that
 @code{(prime?  n)} is true; the @code{(cons 'not-prime n)} can be
 ignored, because it will never be needed.  On the other hand, if
 @code{(prime? n)} were false, then @code{(cons 'not-prime n)} would be
-the reduction for the @code{if} combination.
+the reduction for the @code{if} expression.
 
 The @emph{subproblem level} is a number representing how far back in the
 history of the current computation a particular evaluation is.  Consider
@@ -2106,7 +2147,7 @@ the @code{(- n 1)} is at subproblem level 0.  Following the history of
 the computation ``upwards,'' @code{(factorial (- n 1))} is at subproblem
 level 1, and @code{(* n (factorial (- n 1)))} is at subproblem level 2.
 These expressions all have @emph{reduction number} 0.  Continuing
-upwards, the @code{if} combination has reduction number 1.
+upwards, the @code{if} expression has reduction number 1.
 
 Moving backwards in the history of a computation, subproblem levels and
 reduction numbers increase, starting from zero at the expression
@@ -2122,10 +2163,10 @@ debugging tools, especially @code{debug}.
 @cindex continuation Browser
 @cindex browser, Continuation
 @findex debug
-There are three debuggers available with MIT Scheme.
-Two of them require and run under Edwin, and are documented there.
-The third is command oriented and does not require Edwin.
-This version is described here.
+There are three debuggers available with MIT Scheme.  Two of them
+require and run under Edwin, and are described in that section of this
+document (@pxref{Edwin}).  The third is command oriented, does not
+require Edwin, and is described here.
 
 The @dfn{debugger}, called @code{debug}, is the tool you should use when
 Scheme signals an error and you want to find out what caused the error.
@@ -2183,22 +2224,23 @@ specifically a description of one reduction.
 @node Debugging aids, Advising procedures, Debugger, Debugging
 @section Debugging aids
 
-An important stop in debugging is to locate the piece of code from which the
-error is signalled.  The Scheme debugger contains a history examiner and an
-environment examiner to aid the user in locating a bug.
+An important step in debugging is to locate the piece of code from which
+the error is signalled.  The Scheme debugger contains a history examiner
+and an environment examiner to aid the user in locating a bug.
 
 
 @deffn {special form+} bkpt message irritant
 Sets a breakpoint.  When the breakpoint is encountered, @var{message}
 and @var{irritant} are typed and a read-eval-print loop is entered in
-the current environment.
-To exit from the breakpoint and proceed with
-the interrupted process, call the procedure PROCEED.  Sample usage:
+the current environment.  To exit from the breakpoint and proceed with
+the interrupted process, call the procedure @code{proceed}.  Sample
+usage:
 
 @example
 1 ]=> (begin (write-line 'foo)
              (bkpt 'test-2 'test-3)
-             (write-line 'bar) 'done)
+             (write-line 'bar)
+             'done)
 
 foo
  test-2 test-3
@@ -2217,21 +2259,19 @@ bar
 @end example
 @end deffn
 
-
 @deffn {procedure+} where [obj]
 The procedure @code{where} enters the environment examination system.
 This allows environments and variable bindings to be examined and
 modified.  @code{Where} accepts one letter commands.  The commands can
-be found by typing `@kbd{?}' to the @samp{where>} prompt.  The optional
+be found by typing @kbd{?} to the @samp{where>} prompt.  The optional
 argument, @var{obj}, is an object with an environment associated with
-it: an environment, a procedure, or a delayed object.  If @var{obj} is
-omitted, the environment examined is the read-eval-print environment
-from which @var{where} was called (or an error or breakpoint environment
-if called from the debugger).  If a compound procedure is supplied,
-@var{where} lets the user examine the environment of definition of the
-procedure.  This is useful for debugging procedure arguments and values.
+it: an environment, a procedure, or a promise.  If @var{obj} is omitted,
+the environment examined is the read-eval-print environment from which
+@code{where} was called (or an error or breakpoint environment if called
+from the debugger).  If a compound procedure is supplied, @code{where}
+lets the user examine the environment of definition of the procedure.
+This is useful for debugging procedure arguments and values.
 @end deffn
-
 
 @node Advising procedures,  , Debugging aids, Debugging
 @section Advising procedures
@@ -2253,7 +2293,7 @@ Causes an informative message to be printed whenever the procedure
           ...]
 @end example
 
-where @var{val1}, @var{val2} etc. are the evaluated arguments supplied
+where @var{val1}, @var{val2} etc.@: are the evaluated arguments supplied
 to the procedure.
 @end deffn
 
@@ -2365,14 +2405,14 @@ given, the default is all advised procedures.
 @end deffn
 
 @deffn {procedure+} *proc*
-@code{*Proc*} is a procedure which returns as its value the ``broken''
+@code{*proc*} is a procedure which returns as its value the ``broken''
 procedure.  It is used only at a breakpoint set by the procedures
 @code{break-exit} and @code{break-entry} or procedures defined in terms
 of these procedures (like @code{break-both} and @code{break}).
 @end deffn
 
 @deffn {procedure+} *args*
-@code{*Args*} is a procedure which returns as its value a list of the
+@code{*args*} is a procedure which returns as its value a list of the
 arguments supplied to the ``broken'' procedure.  It is used only at a
 breakpoint set by the procedures @code{break-exit} and
 @code{break-entry} or procedures defined in terms of these procedures
@@ -2380,15 +2420,12 @@ breakpoint set by the procedures @code{break-exit} and
 @end deffn
 
 @deffn {procedure+} *result*
-@code{*Result*} is a procedure which returns as its value the result that
+@code{*result*} is a procedure which returns as its value the result that
 was about to be returned by the ``broken'' procedure. It is used only at
 a breakpoint set by the procedure @code{break-exit} or procedures
 defined in terms of this procedure (like @code{break-both} and
 @code{break}).
 @end deffn
-
-
-@c -----------------------------------------------------------------------------
 
 @node Loading Files, World Images, Debugging, Top
 @chapter Loading Files
@@ -2402,7 +2439,7 @@ evaluate the file in; if not given the current @sc{repl} environment is
 used.  Likewise @var{syntax-table} is the syntax table to use.
 
 @findex pathname-type
-@code{Load} determines whether the file to be loaded is binary or source
+@code{load} determines whether the file to be loaded is binary or source
 code, and performs the appropriate action.  By convention, files of
 source code have a pathname type of @code{"scm"}, and files of binary
 SCode have pathname type @code{"bin"}.  Native-code binaries have
@@ -2422,7 +2459,7 @@ files only.)
 When load is given a pathname without a type, it uses the value of this
 variable to determine what pathname types to look for and how to load
 the file.  @code{load/default-types} is a list of associations that maps
-pathname types (strings) to loader procedures.  @code{Load} tries the
+pathname types (strings) to loader procedures.  @code{load} tries the
 pathname types in the order that they appear in the list.  The initial
 value of this variable has pathname types in this order:
 
@@ -2493,12 +2530,16 @@ it with the saved world.  The argument to @code{disk-restore} may be
 omitted, in which case it defaults to the filename from which the
 current world was last restored.
 
-
-Note: with the C back-end, @code{disk-save} is not very useful.
-The reason is that compiled procedures are compiled C code that has been
+Note: with the C back-end, @code{disk-save} is not very useful.  The
+reason is that compiled procedures are compiled C code that has been
 dynamically linked in, and @code{disk-save} does not save any C
-procedures.
-If you need to build a band for a C back-end system, please contact us.
+procedures.  If you need to build a band for a C back-end system, please
+contact us.  You system is a C back-end system if the following
+expression does not evaluate to @code{#f}:
+
+@example
+(system-library-directory-pathname "shared")
+@end example
 
 Note: when restoring a saved band, the Scheme executable must be
 configured with a large enough constant space and heap to hold the
@@ -2604,13 +2645,12 @@ minutes or more.  All of the temporaries are deleted automatically when
 the Scheme process is killed.
 
 Two other behaviors are available.  One of them uncompresses the @file{.bci}
-file each time it is referenced, and the other uncompressed the @file{.bci}
+file each time it is referenced, and the other uncompresses the @file{.bci}
 file and writes it back out as a @file{.bif} file (the old default).
 The @file{.bif} file remains after Scheme exits.
 The time interval and the behavior are controlled by variables.  (These
 variables are not in the global environment; perhaps they should be.
 They are in the @code{(runtime compiler-info)} package environment.)
-
 
 @defvr {variable+} *save-uncompressed-files?*
 This variable affects what happens when @file{.bci} files are
@@ -2636,7 +2676,6 @@ about twice the size of the corresponding @file{.bci} files.  If you
 choose this option and you are running out of disk space you may delete
 the @file{.bif} files.  They will be regenerated as needed.
 @end table
-
 @end defvr
 
 @defvr {variable+} *uncompressed-file-lifetime*
@@ -2646,14 +2685,12 @@ The time is in microseconds; the default is @samp{300000} (five
 minutes).
 @end defvr
 
-
-
 @defvr {variable+} load-debugging-info-on-demand?
 If this variable is @file{#f}, then printing a compiled procedure
 will print the procedure's name only if the debugging information for
 that procedure is already loaded.  Otherwise, it will force the
 loading of the debugging information.
-The default value is @code{#f}
+The default value is @code{#f}.
 @end defvr
 
 @deffn {procedure+} sf filename [destination]
@@ -2672,9 +2709,9 @@ The simplest way to use @code{sf} is just to say:
 
 @noindent
 This will cause your file to be transformed, and the resulting binary
-file to be written out with the same name, but with @code{pathname-type}
-@code{"bin"}.  If you do not specify a @code{pathname-type} on the input
-file, @code{"scm"} is assumed.
+file to be written out with the same name, but with pathname type
+@code{"bin"}.  If you do not specify a pathname type on the input file,
+@code{"scm"} is assumed.
 
 Like @code{load}, the first argument to @code{sf} may be a list of
 filenames rather than a single filename.
@@ -2741,7 +2778,7 @@ with automatic renaming, if you request it.  Here are the relevant
 declarations:
 
 @deffn {declaration+} integrate name @dots{}
-The variables @var{name}s should be defined in the same file as this
+The variables @var{name}s must be defined in the same file as this
 declaration.  Any reference to one of the named variables that appears
 in the same block as the declaration, or one of its descendant blocks,
 will be replaced by the corresponding definition's value expression.
@@ -2875,8 +2912,8 @@ Replacements:
 
 @noindent
 Presumably @code{map-2} and @code{map-3} are efficient versions of
-@code{map} because they are written for exactly two and three arguments
-respectively.  All the other cases are not expanded and handled by the
+@code{map} that are written for exactly two and three arguments
+respectively.  All the other cases are not expanded but are handled by the
 original, general @code{map} procedure, which is less efficient because
 it must handle a variable number of arguments.
 
@@ -2900,11 +2937,11 @@ where
 @var{name} is a symbol.
 
 @item
-@var{nargs1}, @var{nargs2} etc. are non-negative integers, or one of the
+@var{nargs1}, @var{nargs2} etc.@: are non-negative integers, or one of the
 following symbols:  @code{any}, @code{else} or @code{otherwise}.
 
 @item
-@var{value1}, @var{value2} etc. are simple
+@var{value1}, @var{value2} etc.@: are simple
 expressions in one of these forms:
 
 @table @code
@@ -2925,7 +2962,7 @@ A global variable.
 @end table
 @end itemize
 
-The meaning of these field is:
+The meanings of these fields are:
 
 @itemize @bullet
 @item
@@ -2935,7 +2972,7 @@ the following rules.
 
 @item
 If the operator has @var{nargsN} arguments then it is replaced with a
-call to @var{valueN} with the same arguments
+call to @var{valueN} with the same arguments.
 
 @item
 If the number of arguments is not listed, and one of the @var{nargsN} is
@@ -3027,10 +3064,10 @@ Replacements:
 @end lisp
 
 Note: This declaration does not cause an appropriate definition of
-@code{+} (in the last example) to appear in your code.  It merely
+@code{%+} (in the last example) to appear in your code.  It merely
 informs the compiler that certain optimizations can be performed on
 calls to @code{+} by replacing them with calls to @code{%+}.  You should
-provide a definition of @code{+} as well, although it is not required.
+provide a definition of @code{%+} as well, although it is not required.
 
 
 @noindent
@@ -3357,7 +3394,7 @@ variable is false.
 
 @deffn {procedure+} create-editor arg @dots{}
 Initializes Edwin, or reinitializes it if already initialized.
-@code{Create-editor} is normally invoked automatically by @code{edit}.
+@code{create-editor} is normally invoked automatically by @code{edit}.
 
 If no @var{arg}s are given, the value of @code{create-editor-args} is
 used instead.  In other words, the following are equivalent:
@@ -3491,8 +3528,6 @@ Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
 
-@c -----------------------------------------------------------------------------
-
 @node Comparison of Edwin 3.82 to Emacs 18.57,  , Last resorts, Edwin
 @section Comparison of Edwin 3.82 to Emacs 18.57
 
@@ -3518,78 +3553,71 @@ These are differences in design, unlikely to be `fixed'.
 
 @itemize @bullet
 @item
-Edwin's keyboard character set is a superset of Emacs'.
-Edwin has support for real MIT-style bucky bits.
-Under X windows (and perhaps other systems) Edwin can distinguish
-between Ctrl+a and Ctrl+A, Ctrl+Space and Ctrl+@@, etc.
-When running on a terminal or a PC/DOS console, the input set is
-limited to 8-bit ASCII as in Emacs.
+Edwin's keyboard character set is a superset of Emacs'.  Edwin has
+support for real MIT-style bucky bits.  Under X windows (and perhaps
+other systems) Edwin can distinguish between @kbd{C-a} and @kbd{C-a},
+@kbd{C-SPC} and @kbd{C-@}, etc.  When running on a terminal or a PC/DOS
+console, the input set is limited to 8-bit ASCII as in Emacs.
 
 @item
 Edwin is case-insensitive for command and variable names.
 
 @item
-Edwin additionally defines C-z and C-^ as prefix keys.
-C-z is the CTRL-META prefix, C-^ is the CTRL prefix, both as in
-TOPS-20 EMACS.
+Edwin additionally defines @kbd{C-z} and @kbd{C-^} as prefix keys.
+@kbd{C-z} is the @key{CTRL-META} prefix, and @kbd{C-^} is the @key{CTRL}
+prefix, both as in TOPS-20 EMACS.
 
 @item
-C-z doesn't suspend Edwin.  C-x C-z suspends both Emacs and Edwin, but
-isn't defined in the Emacs Manual [p. 19].  Under X, Emacs produces an
-error message when C-x C-z is typed, while Edwin suspends itself if it
-was started from a shell with job control, otherwise it dies.
+@kbd{C-z} doesn't suspend Edwin.  @kbd{C-x C-z} suspends both Emacs and
+Edwin, but isn't defined in the Emacs Manual.  Under X, Emacs produces
+an error message when @kbd{C-x C-z} is typed; Edwin suspends itself if
+it was started from a shell with job control, otherwise it dies.
 
 @item
-C-h f doesn't work for anything but editor commands [p. 41].
-I.e. it only documents editor commands, not ordinary Scheme
-procedures like @code{car} or @code{call-with-current-continuation}.
+@kbd{C-h f} doesn't work for anything but editor commands, i.e.@: it
+only documents editor commands, not ordinary Scheme procedures like
+@code{car} or @code{call-with-current-continuation}.
 
 @item
-C-h v doesn't work for anything but editor variables [p. 42].
-I.e. it only documents editor variables, not ordinary Scheme
-variables.
+@kbd{C-h v} doesn't work for anything but editor variables, i.e.@: it
+only documents editor variables, not ordinary Scheme variables.
 
 @item
-In Edwin, C-w and C-y don't skip to next occurrence in reverse
-i-search.  This is intentional: I dislike Emacs' behavior in this,
-and I believe it's a bug.
+In Edwin, @kbd{C-w} and @kbd{C-y} don't skip to next occurrence in
+reverse i-search.  This is intentional.
 
 @item
-@code{comment-indent-hook} is defined differently.  In Emacs, it is called
-with no arguments and with point at the beginning of the comment; in
-Edwin, it is called with a single argument, the mark at the
-beginning of the comment, and with point undefined.
+@code{comment-indent-hook} is defined differently.  In Emacs, it is
+called with no arguments and with point at the beginning of the comment;
+in Edwin, it is called with a single argument, the mark at the beginning
+of the comment, and with point undefined.
 
 @item
-Edwin's completion of Scheme variables is environment dependent [p. 145].
-In scheme and scheme interaction modes, META-TAB completes the
-Scheme variable name.  Completion is environment-dependent, so a
-prefix may complete differently (or not at all) in two different
-buffers with different associated environments.  DOS Note: Since
-Alt+TAB is an MS Windows hot key, you can get the same effect (without
-disabling it) by typing Alt+Ctrl+I.
+Edwin's completion of Scheme variables is environment dependent.  In
+@code{Scheme} and @code{Scheme Interaction} modes, @kbd{M-TAB} completes
+the Scheme variable name.  Completion is environment-dependent, so a
+prefix may complete differently (or not at all) in two different buffers
+with different associated environments.
+
+DOS Note: Since @kbd{Alt+TAB} is an MS Windows hot key, you can get the
+same effect (without disabling it) by typing @kbd{Alt+Ctrl+I}.
 
 @item
-@code{M-x load-file} and @code{M-x load-library} behave somewhat
-differently in Edwin [p. 160].  M-x load-file seems to default to .scm
-extensions.  It should use the value of @code{load/default-types,}
-just like @code{load}.
+@kbd{M-x load-file} and @kbd{M-x load-library} behave somewhat
+differently in Edwin.
 
 @item
-The evaluation commands are much different in Edwin [p. 162].
+The evaluation commands are much different in Edwin.
 
 @item
-Edwin doesn't recognize "Local Variables:" at the end of a file;
-instead it recognizes "Edwin Variables:".  This is done because it
-cannot support the full syntax of Emacs local variables.  However,
-it is possible to support a subset of that syntax, and is desirable
-to do so.
+Edwin doesn't recognize @samp{Local Variables:} at the end of a file;
+instead it recognizes @samp{Edwin Variables:}.  This is done because it
+cannot support the full syntax of Emacs local variables.
 
 @item
-Variable `@code{text-mode-hook}' is an event distributor rather than a
+Variable @code{text-mode-hook} is an event distributor rather than a
 procedure of no arguments.
 @end itemize
-
 
 @node Deficiencies, Subsystems missing from Edwin, Incompatibilities, Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Deficiencies
@@ -3598,47 +3626,47 @@ Deficiencies are shortcomings of Edwin that are likely to be fixed.
 
 @itemize @bullet
 @item
-@code{C-x ^} can be used to grow or shrink the minibuffer window in Emacs
-but not in Edwin [p. 35].
+@kbd{C-x ^} can be used to grow or shrink the minibuffer window in Emacs
+but not in Edwin.
 
 @item
-@code{C-h} in Edwin is subset of that in Emacs [p. 41].
+@kbd{C-h} in Edwin is a subset of that in Emacs.
 Missing subcommands:
 
 @example
-   n   view-emacs-news
-   c-c describe-copying
-   c-d describe-distribution
-   c-w describe-warranty
+n   view-emacs-news
+c-c describe-copying
+c-d describe-distribution
+c-w describe-warranty
 @end example
 
 @item
-Dired is missing these commands in Edwin: @code{v} and @code{B}.
+Dired is missing these commands in Edwin: @kbd{v} and @kbd{B}.
 Under DOS it is missing the following:
 
 @example
-   v   @r{view this file.}
-   B   @r{byte-compile this file.}
-   M   @r{change this file's permissions.}
-   G   @r{change this file's group.}
-   O   @r{change this file's owner.}
-   C   @r{compress this file.}
-   U   @r{uncompress this file.}
+v   @r{view this file.}
+B   @r{byte-compile this file.}
+M   @r{change this file's permissions.}
+G   @r{change this file's group.}
+O   @r{change this file's owner.}
+C   @r{compress this file.}
+U   @r{uncompress this file.}
 @end example
 
 @item
 Dired has the following subcommands that Emacs does not have: 
 
 @example
-   k   @r{mark file for copying}
-   y   @r{copy marked files}
+k   @r{mark file for copying}
+y   @r{copy marked files}
 @end example
 
 @item
-@code{C-x n} is not disabled by default [p. 198].
+@kbd{C-x n} is not disabled by default.
 
 @item
-Edwin does not have the notion of "novice".
+Edwin does not have the notion of ``novice''.
 @end itemize
 
 @node Subsystems missing from Edwin, Documented Emacs commands missing from Edwin, Deficiencies, Comparison of Edwin 3.82 to Emacs 18.57
@@ -3692,12 +3720,11 @@ Missing Command or mode                     Reason
 * info                                      reduce size
   rcs                                       needs subprocess support
   sendmail                                  needs subprocess support
-  mailias                                   useless without sendmail
+  malias                                    useless without sendmail
 * occur (and list-matching-lines)           reduce size
   rmail                                     needs subprocess support
                                             + specific to Unix ?
   rmailsrt                                  useless without rmail
-* bochser                                   reduce size
 @end example
 
 Many of the missing modes and commands (compile, shell, rcs,
@@ -3708,11 +3735,13 @@ concept) may be Unix specific.  There is a pseudo-shell mode for DOS.
 Many of the subsystems listed above have not been tried under DOS.
 The ones that are known to work are marked with an asterisk (*),
 although for some of them variables have to be set appropriately
-before use (e.g. info-directory for info).
+before use (e.g.@: @code{info-directory} for info).
 
 
 @node Documented Emacs commands missing from Edwin, Documented Emacs variables missing from Edwin, Subsystems missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
 @subsection Documented Emacs commands missing from Edwin
+
+Here is a list of Emacs commands that are not implemented by Edwin:
 
 @example
   abbrev-mode
@@ -3833,7 +3862,6 @@ under DOS.  Some of them can be explicitly loaded under DOS.
 @example
   abbrev-all-caps
   abbrev-file-name
-  auto-mode-alist                       @r{(file-type-to-major-mode is similar)}
   blink-matching-paren
   blink-matching-paren-distance
   buffer-read-only
@@ -3906,25 +3934,25 @@ Incorrect behavior of Edwin that will be fixed:
 
 @itemize @bullet
 @item
-Examine rectangle commands and make sure they are right.  Probably
-they need rewriting [p. 55].
-@item
-Negative argument to M-u, M-l, and M-c seems to work by accident.
-@item
-@samp{-*- foo -*-} is valid if preceded only by blank lines.
-@item
-[partly fixed -- c-mode flashes for ) and @} now]
-Closing paren doesn't check for mismatched delimiters and issue
-warning message.  In c-mode, ] and ) aren't treated specially, and
-don't flash the matching delimiter; also @}, while treated specially,
-doesn't flash the matching delimiter [p. 141].
-@item
-C-u C-x ; isn't handled right in Edwin [p. 143].
-@item
-M-x indent-for-comment shouldn't reindent existing comment in column
-zero.
-@end itemize
+Negative argument to @kbd{M-u}, @kbd{M-l}, and @kbd{M-c} seems to work
+by accident.
 
+@item
+@samp{-*- foo -*-} is valid if preceded only by blank lines; in Edwin
+this works only if it is on a file's the first line.
+
+@item
+Closing paren doesn't check for mismatched delimiters and issue warning
+message.  In c-mode, @samp{]} isn't treated specially, and don't flash
+the matching delimiter.
+
+@item
+@kbd{C-u C-x ;} isn't handled right in Edwin.
+
+@item
+@kbd{M-x indent-for-comment} shouldn't reindent existing comment in
+column zero.
+@end itemize
 
 @c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 @node Win32 Package Reference, Variable Index, Edwin, Top
@@ -4002,7 +4030,7 @@ the @code{(win32)} package environment or a child environment.
 The Win32 foreign function interface (FFI) is a primitive and fairly
 simple system for calling procedures written in C in a
 dynamically linked library (DLL).  Both user's procedures from a custom
-DLL and system procedures (e.g.  MessageBox) are called using the same
+DLL and system procedures (e.g.@: MessageBox) are called using the same
 mechanism.
 
 @cindex limitations
@@ -4087,7 +4115,7 @@ into a Scheme value.
 
 @item revert
 Some C procedures modify one or more of their arguments.  These
-arguments are passed by reference, i.e. as a pointer to their address.
+arguments are passed by reference, i.e.@: as a pointer to their address.
 Since a Scheme object might have a different memory layout and storage
 conventions, it must be passed by copy-in and copy-out rather than by
 reference.
@@ -4116,13 +4144,13 @@ The defaults are
 
 @table @var
 @item check
-@code{(lambda (x) #t)}, i.e. unchecked.
+@code{(lambda (x) #t)}, i.e.@: unchecked.
 @item convert
-@code{(lambda (x) x)}, i.e. no translation performed.
+@code{(lambda (x) x)}, i.e.@: no translation performed.
 @item return
-@code{(lambda (x) x)}, i.e. no translation performed.
+@code{(lambda (x) x)}, i.e.@: no translation performed.
 @item revert
-@code{(lambda (x y) unspecific)}, i.e. no update performed
+@code{(lambda (x y) unspecific)}, i.e.@: no update performed
 @end table
 
 The @code{unchecked} windows type (see below) is defined as:
@@ -4221,10 +4249,10 @@ all uppercase, names in the Windows C language header files.  Win32 API
 calls are the source of values of this type and the values are
 meaningless except as arguments to other Win32 API calls.  Currently
 these values are represented as integers but we expect that Win32
-handles will in future be represented by allocated Scheme objects (e.g. records)
-that will allow predicates (e.g. @code{hmenu?}) and sensible
-interlocking with the garbage collector to free the programmer of the
-current tedious allocation and deallocation of handles.
+handles will in future be represented by allocated Scheme objects
+(e.g.@: records) that will allow predicates (e.g.@: @code{hmenu?}) and
+sensible interlocking with the garbage collector to free the programmer
+of the current tedious allocation and deallocation of handles.
 @end deffn
 
 @deffn {windows type} resource-id
@@ -4259,7 +4287,7 @@ necessarily be linked at or immediately after this call.  DLL modules
 are linked on need and unlinked before Scheme exits and when there
 are no remaining references to entry points after a garbage-collection.
 This behaviour ensures that the Scheme system can run when a DLL is
-absent, provided the DLL is not actually used (i.e. no attempt is made
+absent, provided the DLL is not actually used (i.e.@: no attempt is made
 to call a procedure in the DLL).
 @end deffn
 
@@ -4267,7 +4295,7 @@ to call a procedure in the DLL).
 @defvr {variable+} gdi32.dll
 @cindex DLL, GDI32.DLL
 This variable is bound to the module describing the @file{GDI32.DLL}
-library, which contains the Win32 API graphics calls, e.g.
+library, which contains the Win32 API graphics calls, e.g.@:
 @code{LineTo}.
 @end defvr
 
@@ -4303,7 +4331,7 @@ purposes only.  This form @emph{does not} define a procedure called
 @var{name}.  It is more like @code{lambda}.  The name might be used for
 debugging and pretty-printing.
 
-A windows procedure has a fixed number of parameters (i.e.  no `rest'
+A windows procedure has a fixed number of parameters (i.e.@: no `rest'
 parameters or `varargs'), each of which is named and associated with a
 windows type @var{type}.  Both the name @var{parameter} and the windows
 type @var{type} must be symbols and are not evaluated.  The procedure
@@ -4352,7 +4380,7 @@ including constraints between arguments such as checking that an index
 refers to a valid position in a string.
 @end table
 
-If both options (i.e. @code{with-reversions} and Scheme code) are used,
+If both options (i.e.@: @code{with-reversions} and Scheme code) are used,
 @code{with-reversions} must appear first.  There can be arbitrarily many
 Scheme expression.
 @end deffn
@@ -4384,7 +4412,7 @@ environment.  To signal an error, use @code{access}:
 
 The set of procedures is incomplete because procedures have been added
 on a by-need basis for the implementation of other parts of the system,
-e.g.  Scheme Graphics.  Look in the implementation for further details.
+e.g.@:  Scheme Graphics.  Look in the implementation for further details.
 
 Win32 API procedure names have been uniformly converted into Scheme
 identifiers as follows:
@@ -4394,7 +4422,7 @@ identifiers as follows:
 A leading uppercase letter is translated into a lowercase letter.
 @item
 Subsequent sequences of uppercase letters are translated into lowercase
-letters preceeded by a hyphen (minus symbol), i.e. hyphens are inserted
+letters preceeded by a hyphen (minus symbol), i.e.@: hyphens are inserted
 at a lowercase to uppercase transition.
 @item
 Predicates beginning with @code{Is} finally have a
@@ -4425,7 +4453,7 @@ access and manipulate non-Scheme objects.
 In the C world a DIB is a @dfn{handle} to a piece of memory containing
 the bits that represent information about the image and the pixels of
 the image.  The handle is a machine-word sized piece of data which may
-be thought of as a 32 bit integer.  The handle may be null (i.e. zero),
+be thought of as a 32 bit integer.  The handle may be null (i.e.@: zero),
 indicating that there is no block of memory describing the DIB.  The
 null value is usually returned by C functions that are supposed to
 create a DIB but failed, for some reason like the memory could not be
@@ -4468,14 +4496,14 @@ The following procedures have typed parameters, using the same
 convention as @code{windows-procedure}.
 
 @deffn {procedure+} open-dib (filename string)
-Return type: @var{dib}.  Calls the "OpenDIB" entry of
+Return type: @var{dib}.  Calls the @code{OpenDIB} entry of
 @file{DIBUTILS.DLL}.  If the return value is not @code{#f} then the file
 @var{filename} was found, successfully opened, and the contents were
 suitable for loading into memory as a device independent bitmap.
 @end deffn
 
 @deffn {procedure+} write-dib (filename string) (dib dib) 
-Return type: @var{bool}.  Calls the "WriteDIB" entry of
+Return type: @var{bool}.  Calls the @code{WriteDIB} entry of
 @file{DIBUTILS.DLL}.  Returns @code{#t} if the file @var{filename} could
 be opened and written to.  After this operation the file contains the
 bitmap data in a standard format that is understood by @code{open-dib}
@@ -4485,7 +4513,7 @@ resulting in failure are signalled by a @code{#f} return value.
 
 @deffn {procedure+} bitmap-from-dib (dib dib) (palette hpalette)
 Return type: @var{hbitmap}.
-Calls the "BitmapFromDib" entry of @file{DIBUTILS.DLL}.  The returned
+Calls the @code{BitmapFromDib} entry of @file{DIBUTILS.DLL}.  The returned
 value is a device dependent bitmap.  The colours from the DIB are
 matched against colors in @var{palette}.
 @end deffn
@@ -4494,12 +4522,12 @@ matched against colors in @var{palette}.
 Return type: @var{dib}.
 Returns a DIB containing the same image as the device dependent bitmap
 @var{bitmap}.
-@var{Style} determines the kind of DIB, e.g. compression style.
-Calls the  "DibFromBitmap" entry of @file{DIBUTILS.DLL}.
+@var{Style} determines the kind of DIB, e.g.@: compression style.
+Calls the @code{DibFromBitmap} entry of @file{DIBUTILS.DLL}.
 @end deffn
 
 @deffn {procedure+} dib-blt (dest hdc) (x int) (y int) (w int) (h int) (src dib) (src-x int) (src-y int) (raster-op long)
-Return type: @var{bool}.  Calls the "DibBlt" entry of
+Return type: @var{bool}.  Calls the @code{DibBlt} entry of
 @file{DIBUTILS.DLL}.  Similar to the Win32 API @code{BitBlt} call, but
 draws a DIB rather than a piece of another device context.  Draws the
 @var{dib} on device context @var{hdc} at position (@var{x},@var{y}).  A
@@ -4511,7 +4539,7 @@ combined but I don't think I got this right so stick to @code{SRCCOPY}.
 
 @deffn {procedure+} %delete-dib (dib-handle handle)
 Return type: @var{bool}.
-Calls the "DeleteDIB" entry of @file{DIBUTILS.DLL}.
+Calls the @code{DeleteDIB} entry of @file{DIBUTILS.DLL}.
 Note that the parameter is a @var{handle}, and not a @var{dib}.
 This allows us to destroy a DIB and reclaim its memory by knowing only
 the handle value, and not needing the @code{dib} record.
@@ -4530,25 +4558,25 @@ rather than risking it running out before the next garbage collection.
 
 @deffn {procedure+} dib-height (dib dib)
 Return type: @var{int}.
-Calls the "DibHeight" expand entry of @file{DIBUTILS.DLL}, which returns
+Calls the @code{DibHeight} expand entry of @file{DIBUTILS.DLL}, which returns
 the height of the bitmap in pixels.
 @end deffn
 
 @deffn {procedure+} dib-width (dib dib)
 Return type: @var{int}.
-Calls the "DibWidth" entry of @file{DIBUTILS.DLL}, which returns
+Calls the @code{DibWidth} entry of @file{DIBUTILS.DLL}, which returns
 the width of the bitmap in pixels.
 @end deffn
 
 @deffn {procedure+} copy-bitmap (bm hbitmap)
 Return type: @var{hbitmap}.
-Calls the "CopyBitmap" of @file{DIBUTILS.DLL}, which creates a new
+Calls the @code{CopyBitmap} of @file{DIBUTILS.DLL}, which creates a new
 bitmap with the same size and contents as the original.
 @end deffn
 
 @deffn {procedure+} create-dib (width int) (height int) (style int) (depth int) (palette hpalette)
 Return type: @var{dib}.
-Calls the "CreateDIB" entry of @file{DIBUTILS.DLL}.
+Calls the @code{CreateDIB} entry of @file{DIBUTILS.DLL}.
 Creates a DIB of @var{width} by @var{height} pixels and @var{depth} bits
 of colour information.
 The @var{style} parameter determines how the bitmap is stored.
@@ -4558,13 +4586,13 @@ If @var{depth}<=8 then the @var{palette} determines the DIB's colour table.
 
 @deffn {procedure+} crop-bitmap (bm hbitmap) (left int) (top int) (right int) (bottom int)
 Return type: @var{hbitmap}.
-Calls the "CropBitmap" entry of @file{DIBUTILS.DLL}.
+Calls the @code{CropBitmap} entry of @file{DIBUTILS.DLL}.
 Returns a new bitmap containing the image from a region of the original.
 @end deffn
 
 @deffn {procedure+} dib-set-pixels-unaligned dib (pixels string)
 Return type: @var{bool}.
-Calls the "DIBSetPixelsUnaligned" entry of @file{DIBUTILS.DLL}.  Stuffs
+Calls the @code{DIBSetPixelsUnaligned} entry of @file{DIBUTILS.DLL}.  Stuffs
 bytes from @var{pixels} into the bitmap.  There are no alignment
 constraints on @var{pixels} (the usual way of doing this is to use the
 @code{SetDIBits} function which requires that every scan line of the
@@ -4681,7 +4709,7 @@ calling convention.
 @c @item param
 @c Integer.
 @c @item proc
-@c @var{Proc} is a Scheme procedure with four parameters, i.e. of the form
+@c @var{Proc} is a Scheme procedure with four parameters, i.e.@: of the form
 @c 
 @c @example
 @c (lambda (@var{hwnd} @var{msg} @var{wparam} @var{lparam})
@@ -4837,7 +4865,7 @@ calling convention.
 @c @bye
 
 @c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-
+
 @node Variable Index, Key Index, Win32 Package Reference, Top
 @unnumbered Variable, Declaration, and Option Index
 @printindex fn
