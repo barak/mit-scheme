@@ -10819,8 +10819,9 @@ integer, which is a literal component; the symbol @code{newest}, which
 means to choose the largest available version number for that file; or
 the symbol @code{oldest}, which means to choose the smallest version
 number.  In the future some other possible values may be added, e.g.@:
-@code{installed}.  Note that in the current implementation this
-component is not used and should be specified as @code{#f}.
+@code{installed}.  Note that in the current implementation there are no
+file systems that support version numbers; thus this component is not
+used and should be specified as @code{#f}.
 @cindex newest, as pathname component
 @cindex oldest, as pathname component
 @cindex installed, as pathname component
@@ -10868,7 +10869,7 @@ Returns a particular component of @var{pathname}.
 @deffnx {procedure+} pathname-new-version pathname version
 Returns a new copy of @var{pathname} with the respective component
 replaced by the second argument.  @var{Pathname} is unchanged.
-Portable programs should not explicity replace a component with
+Portable programs should not explicitly replace a component with
 @code{unspecific} because this might not be permitted in some
 situations.
 
@@ -10936,8 +10937,8 @@ otherwise returns @code{#f}.
 @cindex defaulting, of pathname
 Returns a pathname whose components are obtained by combining those of
 @var{pathname} and @var{defaults}.
-@code{defaults} defaults to the value of
-@code{*default-pathname-defaults*} and @code{default-version} defaults
+@var{defaults} defaults to the value of
+@code{*default-pathname-defaults*} and @var{default-version} defaults
 to @code{newest}.
 
 The pathnames are combined by components: if @var{pathname} has a
@@ -10968,7 +10969,7 @@ path2
 @end example
 
 The merging rules for the version are more complex and depend on whether
-@code{pathname} specifies a name.
+@var{pathname} specifies a name.
 If the pathname does not specify a name, then the version, if not
 provided, will come from the defaults.
 However, if the pathname does specify a name then the version is not
@@ -10976,7 +10977,7 @@ affected by the defaults.
 The reason is that the version ``belongs to'' some other file name and
 is unlikely to have anything to do with the new one.
 Finally, if this process leaves the version missing, then
-@code{default-version} is used.
+@var{default-version} is used.
 
 The net effect is that if the user supplies just a name, then the host,
 device, directory and type will come from the defaults, but the version
@@ -11021,12 +11022,13 @@ These functions return a string corresponding to a subset of the
 @var{name}, @var{type} and @var{version} components of @var{pathname};
 the result of @code{directory-namestring} represents just the
 @var{directory} portion; and @code{host-namestring} returns a string for
-just the @var{host-name} portion.
+just the @var{host} portion.
 
 @code{enough-namestring} takes another argument, @var{defaults}.
 It returns an abbreviated namestring that is just sufficient to identify
 the file named by @var{pathname} when considered relative to the
-@var{defaults} (which defaults to @code{*default-pathname-defaults*}.
+@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+
 @example
 @group
 (file-namestring "/usr/morris/minor.van")
@@ -11034,7 +11036,7 @@ the file named by @var{pathname} when considered relative to the
 (directory-namestring "/usr/morris/minor.van")
      @result{}  "/usr/morris/"
 (enough-namestring "/usr/morris/men")
-     @result{}  "men"      @var{perhaps}
+     @result{}  "men"      @r{;perhaps}
 @end group
 @end example
 @end deffn
@@ -11127,7 +11129,7 @@ host's file system.
 Locates the pathname in MIT Scheme's system library directory.
 An error is signalled if @var{pathname} cannot be located on the library
 search path.
-system libraries.
+
 @example
 @group
 (system-library-pathname "compiler.com")
