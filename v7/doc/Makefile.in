@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.9 2003/02/14 19:22:43 cph Exp $
+# $Id: Makefile.in,v 1.10 2003/04/25 03:38:49 cph Exp $
 #
 # Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
@@ -102,7 +102,7 @@ maintainer-clean:
 
 tags TAGS:
 
-install: install-info-gz $(INST_TARGETS)
+install: install-info-gz install-man $(INST_TARGETS)
 
 install-info-gz install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
@@ -110,6 +110,10 @@ install-info-gz install-info:
 	    echo "making $@ in $${D}";\
 	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
 	done
+
+install-man:
+	$(mkinstalldirs) $(DESTDIR)$(mandir)/man1
+	$(INSTALL_DATA) scheme.1 $(DESTDIR)$(mandir)/man1/.
 
 install-html:
 	$(mkinstalldirs) $(DESTDIR)$(htmldir)
@@ -134,4 +138,4 @@ install-ps:
 	done
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS
-.PHONY: install install-info install-html install-pdf install-ps
+.PHONY: install install-man install-info install-html install-pdf install-ps
