@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.131 1999/01/02 06:11:34 cph Exp $
+;;; $Id: basic.scm,v 1.132 1999/01/28 06:03:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -92,7 +92,7 @@ Allows full text to be seen and edited."
 Prompts for a command and a key, and sets the key's binding.
 The key is bound in fundamental mode."
   (lambda ()
-    (let ((command (prompt-for-command "Command")))
+    (let ((command (prompt-for-command "Command" 'HISTORY 'SET-KEY)))
       (list command
 	    (prompt-for-key (string-append "Put \""
 					   (command-name-string command)
@@ -149,7 +149,7 @@ Turns a following A (or C-A) into a Control-Meta-A."
     (read-extension-key char-control-metafy)))
 
 (define execute-extended-keys?
-  true)
+  #t)
 
 (define extension-commands
   (list (name->command 'control-prefix)
@@ -195,8 +195,9 @@ For more information type the HELP key while entering the name."
     (dispatch-on-command
      (prompt-for-command
       ;; Prompt with the name of the command char.
-      (list (string-append (xkey->name (current-command-key)) " ")))
-     true)))
+      (list (string-append (xkey->name (current-command-key)) " "))
+      'HISTORY 'EXECUTE-EXTENDED-COMMAND)
+     #t)))
 
 ;;;; Errors
 
@@ -235,7 +236,7 @@ For more information type the HELP key while entering the name."
 		    (->namestring (buffer-pathname buffer))))
   (message
    "File on disk now will become a backup file if you save these changes.")
-  (set-buffer-backed-up?! buffer false))
+  (set-buffer-backed-up?! buffer #f))
 
 (define (editor-failure . strings)
   (cond ((not (null? strings)) (apply message strings))
@@ -245,7 +246,7 @@ For more information type the HELP key while entering the name."
 
 (define-variable beeping-allowed?
   "False if Edwin must never beep."
-  true)
+  #t)
 
 (define-integrable (editor-beep)
   (if (ref-variable beeping-allowed?)
@@ -272,23 +273,23 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 ;; Set this to #F to indicate that returning from the editor has the
 ;; same effect as calling %EXIT, or to prevent the editor from
 ;; returning to scheme.
-(define editor-can-exit? true)
+(define editor-can-exit? #t)
 
 ;; Set this to #F to indicate that calling QUIT has the same effect
 ;; as calling %EXIT, or to prevent the editor from suspending to the OS.
 (define scheme-can-quit?
-  true)
+  #t)
 
 ;; Set this to #T to force the exit commands to always prompt for
 ;; confirmation before killing Edwin.
-(define paranoid-exit? false)
+(define paranoid-exit? #f)
 
 (define-command suspend-scheme
   "Go back to Scheme's superior job.
 With argument, saves visited file first."
   "P"
   (lambda (argument)
-    (if argument (save-buffer (current-buffer) false))
+    (if argument (save-buffer (current-buffer) #f))
     (if (and scheme-can-quit? (os/scheme-can-quit?))
 	(quit-scheme)
 	(editor-error "Scheme cannot be suspended"))))
@@ -302,7 +303,7 @@ With argument, saves visited file first."
     (quit-editor)))
 
 (define (save-buffers-and-exit no-confirmation? noun exit)
-  (save-some-buffers no-confirmation? true)
+  (save-some-buffers no-confirmation? #t)
   (if (and (or (not (there-exists? (buffer-list)
 		      (lambda (buffer)
 			(and (buffer-modified? buffer)
@@ -316,7 +317,7 @@ With argument, saves visited file first."
 		     "Active processes exist; kill them and exit anyway")
 		    (begin
 		      (for-each delete-process (process-list))
-		      true))
+		      #t))
 	       (or (not paranoid-exit?)
 		   (prompt-for-yes-or-no? (string-append "Kill " noun)))))
       (exit)))
@@ -354,13 +355,13 @@ Setting this variable automatically makes it local to the current buffer."
 The procedure is passed a mark, and should return false if it cannot
 find a comment, or a pair of marks.  The car should be the start of
 the comment, and the cdr should be the end of the comment's starter."
-  false)
+  #f)
 
 (define-variable comment-indent-hook
   "Procedure to compute desired indentation for a comment.
 The procedure is passed the start mark of the comment
 and should return the column to indent the comment to."
-  false)
+  #f)
 
 (define-variable comment-start
   "String to insert to start a new comment, or #f if no comment syntax defined."
@@ -411,7 +412,7 @@ Otherwise, set the comment column to the argument."
 (define-variable comment-multi-line
   "True means \\[indent-new-comment-line] should continue same comment
 on new line, with no new terminator or starter."
-  false
+  #f
   boolean?)
 
 (define-command indent-new-comment-line

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.6 1999/01/28 03:59:45 cph Exp $
+;;; $Id: compile.scm,v 1.7 1999/01/28 06:03:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,8 @@
 
 (define-variable compile-command
   "Last shell command used to do a compilation; default for next compilation."
-  "make -k")
+  "make -k"
+  string?)
 
 (define-command compile
   "Compile the program including the current buffer.  Default: run `make'.
@@ -33,7 +34,8 @@ with output going to the buffer *compilation*."
   (lambda ()
     (list (prompt-for-string "Compile command"
 			     (ref-variable compile-command)
-			     'DEFAULT-TYPE 'INSERTED-DEFAULT)))
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'COMPILE)))
   (lambda (command)
     (set-variable! compile-command command)
     (run-compilation command)))
@@ -41,11 +43,19 @@ with output going to the buffer *compilation*."
 (define-command grep
   "Run grep, with user-specified args, and collect output in a buffer."
   (lambda ()
-    (list (prompt-for-string "Run grep (with args): "
-			     previous-grep-arguments
-			     'DEFAULT-TYPE 'INSERTED-DEFAULT)))
+    (list (prompt-for-string "Run grep (with args): " #f
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'GREP)))
   (lambda (command)
-    (set! previous-grep-arguments command)
+    (run-compilation (string-append "grep -n " command " /dev/null"))))
+
+(define-command fgrep
+  "Run fgrep, with user-specified args, and collect output in a buffer."
+  (lambda ()
+    (list (prompt-for-string "Run fgrep (with args): " #f
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'FGREP)))
+  (lambda (command)
     (run-compilation (string-append "grep -n " command " /dev/null"))))
 
 (define-command kill-compilation
@@ -54,18 +64,10 @@ with output going to the buffer *compilation*."
   (lambda ()
     (let ((process compilation-process))
       (if (and process (eq? (process-status process) 'RUN))
-	  (interrupt-process process true)))))
-
-(define-command kill-grep
-  "Kill the process made by the \\[grep] command."
-  ()
-  (lambda ()
-    (let ((process compilation-process))
-      (if (and process (eq? (process-status process) 'RUN))
-	  (interrupt-process process true)))))
+	  (interrupt-process process #t)))))
 
 (define (run-compilation command)
-  ((ref-command save-some-buffers) false)
+  ((ref-command save-some-buffers) #f)
   (let ((process compilation-process))
     (if process
 	(begin
@@ -74,7 +76,7 @@ with output going to the buffer *compilation*."
 		(if (not (prompt-for-yes-or-no?
 			  "A compilation process is running; kill it"))
 		    (editor-error "Cannot have two compilation processes"))
-		(interrupt-process process true)
+		(interrupt-process process #t)
 		(sit-for 1000)))
 	  (delete-process process))))
   (let ((buffer (temporary-buffer "*compilation*"))
@@ -88,7 +90,7 @@ with output going to the buffer *compilation*."
     (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
       (let ((window (get-buffer-window buffer)))
 	(if window
-	    (set-window-start-mark! window mark true)))
+	    (set-window-start-mark! window mark #t)))
       (insert-string "cd " mark)
       (insert-string (->namestring directory) mark)
       (insert-newline mark)
@@ -104,7 +106,7 @@ with output going to the buffer *compilation*."
 		  (os/form-shell-command command))))
       (set-process-sentinel! process compilation-process-sentinel)
       (set! compilation-process process))
-    (pop-up-buffer buffer false)))
+    (pop-up-buffer buffer #f)))
 
 (define (compilation-process-sentinel process status reason)
   (let ((buffer (process-buffer process)))
@@ -121,11 +123,9 @@ with output going to the buffer *compilation*."
   (without-interrupts
    (lambda ()
      (if (eq? process compilation-process)
-	 (set! compilation-process false))))
-  unspecific)
+	 (begin
+	   (set! compilation-process #f)
+	   unspecific)))))
 
 (define compilation-process
-  false)
-
-(define previous-grep-arguments
-  "")
+  #f)
