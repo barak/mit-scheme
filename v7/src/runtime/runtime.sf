@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.7 1992/05/12 04:15:23 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.sf,v 14.8 1992/05/12 13:43:47 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -42,4 +42,5 @@ MIT in each case. |#
 (cref/generate-constructors "runtim")
 (sf "runtim.con" "runtim.bcon")
 (sf "runtim.ldr" "runtim.bldr")
-(fasdump (read-file "runtim.avd") "runtim.bad")
+(if (file-exists? "runtim.avd")
+    (fasdump (read-file "runtim.avd") "runtim.bad"))
