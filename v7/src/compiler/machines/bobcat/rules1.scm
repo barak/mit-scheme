@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.23 1989/07/25 12:38:20 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.24 1989/08/13 09:57:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -556,33 +556,27 @@ MIT in each case. |#
 						source2)))
 	  (lambda ()
 	    (let ((new-target-alias!
-		   (lambda (source1 source2)
-		     (delete-dead-registers!)
-		     (worst-case (reference-target-alias! target 'DATA)
-				 source1
-				 source2))))
-	      (reuse-pseudo-register-alias source2 'DATA
-		(lambda (alias)
-		  (let ((source1 (source-reference source1))
-			(source2 (register-reference alias)))
-		    (let ((use-source2-alias!
-			   (lambda ()
-			     (delete-machine-register! alias)
-			     (delete-dead-registers!)
-			     (add-pseudo-register-alias! target alias)
-			     ((fixnum-2-args/operate operator) source2
-							       source1))))
-		      (cond ((fixnum-2-args/commutative? operator)
-			     (use-source2-alias!))
-			    ((effective-address/data-register? source1)
-			     (LAP (EXG ,source2 ,source1)
-				  ,@(use-source2-alias!)))
-			    (else
-			     (new-target-alias! source1 source2))))))
-		(lambda ()
-		  (new-target-alias!
-		   (standard-register-reference source1 'DATA)
-		   (source-reference source2))))))))      (lambda (target)
+		   (lambda ()
+		     (let ((source1
+			    (standard-register-reference source1 'DATA))
+			   (source2 (source-reference source2)))
+		       (delete-dead-registers!)
+		       (worst-case (reference-target-alias! target 'DATA)
+				   source1
+				   source2)))))
+	      (if (fixnum-2-args/commutative? operator)
+		  (reuse-pseudo-register-alias source2 'DATA
+		    (lambda (alias2)
+		      (let ((source1 (source-reference source1)))
+			(delete-machine-register! alias2)
+			(delete-dead-registers!)
+			(add-pseudo-register-alias! target alias2)
+			((fixnum-2-args/operate operator)
+			 (register-reference alias2)
+			 source1)))
+		    new-target-alias!)
+		  (new-target-alias!))))))
+      (lambda (target)
 	(worst-case target
 		    (standard-register-reference source1 'DATA)
 		    (source-reference source2))))))
