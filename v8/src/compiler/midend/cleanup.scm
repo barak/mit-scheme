@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.20 1995/07/04 05:47:49 adams Exp $
+$Id: cleanup.scm,v 1.21 1995/07/06 20:23:37 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -39,21 +39,6 @@ MIT in each case. |#
 
 (define (cleanup/top-level program)
   (cleanup/expr (cleanup/env/initial) program))
-
-;;(define-macro (define-cleanup-handler keyword bindings . body)
-;;  (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
-;;    (call-with-values
-;;	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-;;      (lambda (names code)
-;;	`(DEFINE ,proc-name
-;;	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-;;	     (NAMED-LAMBDA (,proc-name ENV FORM)
-;;	       (LET ((TRANSFORM-CODE (LAMBDA () ,code)))
-;;		 (LET ((INFO (CLEANUP/GET-DBG-INFO ENV FORM)))
-;;		   (LET ((CODE (TRANSFORM-CODE)))
-;;		     (IF INFO
-;;			 (CODE-REWRITE/REMEMBER* CODE INFO))
-;;		     CODE))))))))))
 
 (define-macro (define-cleanup-handler keyword bindings . body)
   (let ((proc-name (symbol-append 'CLEANUP/ keyword)))
@@ -657,16 +642,18 @@ MIT in each case. |#
 (define (cleanup/expr env expr)
   (if (not (pair? expr))
       (illegal expr))
+  ;;(sample/1 '(cleanup/dispatch histogram) (car expr))
+  ;; Dynamic Freqency: quote: 48%, call: 24%, lookup: 20%, let: 4%, ...
   (case (car expr)
     ((QUOTE)    (cleanup/quote env expr))
-    ((LOOKUP)   (cleanup/lookup env expr))
-    ((LAMBDA)   (cleanup/lambda env expr))
-    ((LET)      (cleanup/let env expr))
-    ((DECLARE)  (cleanup/declare env expr))
     ((CALL)     (cleanup/call env expr))
-    ((BEGIN)    (cleanup/begin env expr))
+    ((LOOKUP)   (cleanup/lookup env expr))
+    ((LET)      (cleanup/let env expr))
+    ((LAMBDA)   (cleanup/lambda env expr))
     ((IF)       (cleanup/if env expr))
     ((LETREC)   (cleanup/letrec env expr))
+    ((BEGIN)    (cleanup/begin env expr))
+    ((DECLARE)  (cleanup/declare env expr))
     (else
      (illegal expr))))
 
