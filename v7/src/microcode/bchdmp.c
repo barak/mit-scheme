@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.66 1992/08/29 13:42:55 jinx Exp $
+$Id: bchdmp.c,v 9.67 1992/08/30 14:09:28 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -65,10 +65,6 @@ DEFUN (mktemp, (fname), unsigned char * fname)
 extern int EXFUN (unlink, (CONST char *));
 
 #  define FASDUMP_FILENAME "/tmp/fasdumpXXXXXX"
-
-#if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SYSV4) || defined(__osf__)
-#  define FTRUNCATE_DECLARED
-#endif
 
 #endif /* DOS386 */
 
@@ -255,9 +251,8 @@ DEFUN (fasdump_exit, (length), long length)
 
 #ifdef HAVE_FTRUNCATE
   {
-#ifndef FTRUNCATE_DECLARED
-    extern int EXFUN (ftruncate, (int, unsigned long));
-#endif
+    extern int EXFUN (ftruncate, (int, size_t));
+
     ftruncate (dump_file, length);
     result = ((close (dump_file)) == 0);
   }
@@ -268,7 +263,7 @@ DEFUN (fasdump_exit, (length), long length)
 #endif /* HAVE_FTRUNCATE */
 #if defined(HAVE_TRUNCATE) && !defined(HAVE_FTRUNCATE)
   {
-    extern int EXFUN (truncate, (CONST char *, unsigned long));
+    extern int EXFUN (truncate, (CONST char *, size_t));
 
     truncate (dump_file_name, length);
   }
