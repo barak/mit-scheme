@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.2 1987/05/07 00:21:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.3 1987/05/18 16:15:19 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.2 1987/05/07 00:21:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.3 1987/05/18 16:15:19 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -95,7 +95,9 @@ promotional, or sales literature without prior written consent from
     (transmit-values (generate/rvalue (access-environment *access))
       (lambda (prefix expression)
 	(return-2
-	 (rtl:make-interpreter-call:access expression (access-name *access))
+	 (scfg*scfg->scfg!
+	  prefix
+	  (rtl:make-interpreter-call:access expression (access-name *access)))
 	 (rtl:interpreter-call-result:access))))))
 
 (define-rvalue-generator procedure-tag
