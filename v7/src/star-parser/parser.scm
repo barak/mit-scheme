@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.15 2001/07/02 19:21:57 cph Exp $
+;;; $Id: parser.scm,v 1.16 2001/07/09 04:08:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -124,7 +124,7 @@
 				      external-bindings
 				      internal-bindings))))
 
-(define-parser-preprocessor '(TRANSFORM ELEMENT-TRANSFORM ENCAPSULATE)
+(define-parser-preprocessor '(TRANSFORM MAP ENCAPSULATE)
   (lambda (expression external-bindings internal-bindings)
     (check-2-args expression)
     `(,(car expression) ,(cadr expression)
@@ -264,7 +264,7 @@
 	       ,(if-fail (backtrack-to pointer pointer*))))))
     if-fail))
 
-(define-parser (element-transform transform expression)
+(define-parser (map transform expression)
   (compile-parser-expression expression pointer
     (lambda (pointer result)
       (if-succeed pointer `(VECTOR-MAP ,transform ,result)))

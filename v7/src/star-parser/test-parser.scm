@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: test-parser.scm,v 1.2 2001/06/26 18:53:20 cph Exp $
+;;; $Id: test-parser.scm,v 1.3 2001/07/09 04:08:14 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -53,10 +53,10 @@
   (*parser (alt parse-num-10 parse-identifier parse-list)))
 
 (define parse-identifier
-  (*parser (element-transform intern (match match-identifier))))
+  (*parser (map intern (match match-identifier))))
 
 (define parse-num-10
-  (*parser (element-transform string->number (match match-num-10))))
+  (*parser (map string->number (match match-num-10))))
 
 (define parse-whitespace
   (*parser (noise (+ (alphabet char-set:whitespace)))))
