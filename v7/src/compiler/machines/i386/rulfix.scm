@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.16 1992/02/13 07:47:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.17 1992/02/15 16:13:00 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -84,8 +84,7 @@ MIT in each case. |#
 			 (REGISTER (? source1))
 			 (REGISTER (? source2))
 			 (? overflow?)))
-  overflow?				; ignored
-  ((fixnum-2-args/operate operator) target source1 source2))
+  ((fixnum-2-args/operate operator) target source1 source2 overflow?))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -318,7 +317,9 @@ MIT in each case. |#
 		   FIXNUM-OR
 		   FIXNUM-XOR)))
 	     
-(define ((fixnum-2-args/standard commutative? operate) target source1 source2)
+(define ((fixnum-2-args/standard commutative? operate) target source1
+						       source2 overflow?)
+  overflow?				; ignored
   (two-arg-register-operation operate
 			      commutative?
 			      target
@@ -339,36 +340,27 @@ MIT in each case. |#
 	      (worst-case (target-register-reference target)
 			  source1
 			  source2)))))
-    (cond ((pseudo-register? target)
-	   (reuse-pseudo-register-alias
-	    source1 'GENERAL
-	    (lambda (alias)
-	      (let ((source2 (if (= source1 source2)
-				 (register-reference alias)
-				 (any-reference source2))))
-		(delete-register! alias)
-		(delete-dead-registers!)
-		(add-pseudo-register-alias! target alias)
-		(operate (register-reference alias) source2)))
-	    (lambda ()
-	      (if commutative?
-		  (reuse-pseudo-register-alias
-		   source2 'GENERAL
-		   (lambda (alias2)
-		     (let ((source1 (any-reference source1)))
-		       (delete-register! alias2)
-		       (delete-dead-registers!)
-		       (add-pseudo-register-alias! target alias2)
-		       (operate (register-reference alias2) source1)))
-		   new-target-alias!)
-		  (new-target-alias!)))))
-	  ((not (eq? (register-type target) 'GENERAL))
-	   (error "two-arg-register-operation: Wrong type register"
-		  target 'GENERAL))
+    (cond ((not (pseudo-register? target))
+	   (if (not (eq? (register-type target) 'GENERAL))
+	       (error "two-arg-register-operation: Wrong type register"
+		      target 'GENERAL)
+	       (worst-case (register-reference target)
+			   (any-reference source1)
+			   (any-reference source2))))
+	  ((register-copy-if-available source1 'GENERAL target)
+	   =>
+	   (lambda (alias-ref)
+	     (operate alias-ref (if (= source2 source1)
+				    alias-ref
+				    (any-reference source2)))))
+	  ((not commutative?)
+	   (new-target-alias!))
+	  ((register-copy-if-available source2 'GENERAL target)
+	   =>
+	   (lambda (alias-ref)
+	     (operate alias-ref source1)))
 	  (else
-	   (worst-case (register-reference target)
-		       (any-reference source1)
-		       (any-reference source2))))))
+	   (new-target-alias!)))))
 
 (define (fixnum-2-args/register*constant operator target
 					 source constant overflow?)
@@ -407,12 +399,37 @@ MIT in each case. |#
 		  (LAP)
 		  (LAP (,instr W ,',target ,',source2)))))))))
 
-  (binary-operation PLUS-FIXNUM ADD true false)
+  #| (binary-operation PLUS-FIXNUM ADD true false) |#
   (binary-operation MINUS-FIXNUM SUB false false)
   (binary-operation FIXNUM-AND AND true true)
   (binary-operation FIXNUM-OR OR true true)
   (binary-operation FIXNUM-XOR XOR true false))
 
+(define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
+  (let* ((operate
+	  (lambda (target source2)
+	    (LAP (ADD W ,target ,source2))))
+	 (standard (fixnum-2-args/standard true operate)))
+
+  (lambda (target source1 source2 overflow?)
+    (if overflow?
+	(standard target source1 source2 overflow?)
+	(let ((one (register-alias source1 'GENERAL))
+	      (two (register-alias source2 'GENERAL)))
+	  (cond ((not (and one two))
+		 (standard target source1 source2 overflow?))
+		((register-copy-if-available source1 'GENERAL target)
+		 =>
+		 (lambda (tgt)
+		   (operate tgt (register-reference two))))
+		((register-copy-if-available source2 'GENERAL target)
+		 =>
+		 (lambda (tgt)
+		   (operate tgt (register-reference one))))
+		(else
+		 (let ((target (target-register-reference target)))
+		   (LAP (LEA ,target (@RI one two 1)))))))))))  
+
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (fixnum-2-args/standard
    false
@@ -425,7 +442,7 @@ MIT in each case. |#
 		      (LAP (MOV W ,temp ,source2)))
 		(NOT W ,temp)
 		(AND W ,target ,temp)))))))
-
+
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (fixnum-2-args/standard
    false
@@ -455,9 +472,9 @@ MIT in each case. |#
 			   (slabel (generate-label 'SHIFT-NEGATIVE)))
 		       (LAP (MOV W (R ,ecx) ,source2)
 			    (SAR W (R ,ecx) (& ,scheme-type-width))
-			    (JS (@PCR ,slabel))
+			    (JS B (@PCR ,slabel))
 			    (SHL W ,target (R ,ecx))
-			    (JMP (@PCR ,jlabel))
+			    (JMP B (@PCR ,jlabel))
 			    (LABEL ,slabel)
 			    (NEG W (R ,ecx))
 			    (SHR W ,target (R ,ecx))
@@ -470,7 +487,8 @@ MIT in each case. |#
 		   (LAP (MOV W ,temp ,target)
 			,@(with-target temp)
 			(MOV W ,target ,temp))))))))
-    (lambda (target source1 source2)
+    (lambda (target source1 source2 overflow?)
+      overflow?				; ignored
       (require-register! ecx)
       (two-arg-register-operation operate
 				  false
@@ -479,7 +497,8 @@ MIT in each case. |#
 				  source2))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
-  (lambda (target source1 source2)
+  (lambda (target source1 source2 overflow?)
+    overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
 	(let ((load-dividend (load-machine-register! source1 eax)))
@@ -493,7 +512,8 @@ MIT in each case. |#
 		 (SAL W (R ,eax) (& ,scheme-type-width))))))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
-  (lambda (target source1 source2)
+  (lambda (target source1 source2 overflow?)
+    overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
 	(let ((load-dividend (load-machine-register! source1 eax)))
@@ -585,7 +605,7 @@ MIT in each case. |#
 	     (let ((label (generate-label 'QUO-SHIFT))
 		   (absn (if (negative? n) (- 0 n) n)))
 	       (LAP (CMP W ,target (& 0))
-		    (JGE (@PCR ,label))
+		    (JGE B (@PCR ,label))
 		    (ADD W ,target (& ,(* (-1+ absn) fixnum-1)))
 		    (LABEL ,label)
 		    (SAR W ,target (& ,expt-of-2))
@@ -612,7 +632,7 @@ MIT in each case. |#
 	       ;; peephole optimizer should be able to fix this.
 	       (LAP (MOV W ,sign ,target)
 		    (AND W ,target (& ,mask))
-		    (JZ (@PCR ,label))
+		    (JZ B (@PCR ,label))
 		    (SAR W ,sign (& ,(-1+ scheme-object-width)))
 		    (XOR W ,sign (& ,mask))
 		    (OR W ,target ,sign)

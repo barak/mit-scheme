@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.10 1992/02/13 19:54:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.11 1992/02/15 16:12:51 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -89,9 +89,25 @@ MIT in each case. |#
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? datum))))
   (if (zero? type)
       (assign-register->register target datum)
-      (LAP (OR W
-	       ,(standard-move-to-target! datum target)
-	       (&U ,(make-non-pointer-literal type 0))))))
+      (let ((literal (make-non-pointer-literal type 0)))
+	(define (three-arg source)
+	  (let ((target (target-register-reference target)))
+	    (LAP (LEA ,target (@RO UW ,source ,literal)))))
+
+	(define (two-arg target)
+	  (LAP (OR W ,target (&U ,literal)))
+
+	(cond ((register-alias datum 'GENERAL)
+	       =>
+	       (lambda (alias)
+		 (if (pseudo-register? target)
+		     (reuse-pseudo-register-alias! datum 'GENERAL
+						   two-arg
+						   (lambda ()
+						     (three-arg alias)))
+		     (three-arg alias))))
+	      (else
+	       (two-arg (standard-move-to-target! datum target))))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
@@ -277,23 +293,34 @@ MIT in each case. |#
 
 ;;;; Utilities specific to rules1
 
-(define (load-displaced-register target source n)
+(define (load-displaced-register/internal target source n signed?)
   (cond ((zero? n)
 	 (assign-register->register target source))
 	((and (= target source)
 	      (= target esp))
-	 (LAP (ADD W (R ,esp) (& ,n))))
-	(else
+	 (if signed?
+	     (LAP (ADD W (R ,esp) (& ,n)))
+	     (LAP (ADD W (R ,esp) (&U ,n)))))
+	(signed?
 	 (let* ((source (indirect-byte-reference! source n))
+		(target (target-register-reference target)))
+	   (LAP (LEA ,target ,source))))
+	(else
+	 (let* ((source (indirect-unsigned-byte-reference! source n))
 		(target (target-register-reference target)))
 	   (LAP (LEA ,target ,source))))))
 
-(define (load-displaced-register/typed target source type n)
-  (load-displaced-register target
-			   source
-			   (if (zero? type)
-			       n
-			       (+ (make-non-pointer-literal type 0) n))))
+(define-integrable (load-displaced-register target source n)
+  (load-displaced-register/internal target source n true))
+
+(define-integrable (load-displaced-register/typed target source type n)
+  (load-displaced-register/internal target
+				    source
+				    (if (zero? type)
+					n
+					(+ (make-non-pointer-literal type 0)
+					   n))
+				    false))
 
 (define (load-pc-relative-address/typed target type label)
   (with-pc
@@ -321,3 +348,7 @@ MIT in each case. |#
 
 (define (indirect-byte-reference! register offset)
   (byte-offset-reference (allocate-indirection-register! register) offset))
+
+(define (indirect-unsigned-byte-reference! register offset)
+  (byte-unsigned-offset-reference (allocate-indirection-register! register)
+				  offset))
