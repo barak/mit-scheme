@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.7 2000/12/05 23:04:13 cph Exp $
+# $Id: Makefile.std,v 1.8 2000/12/07 22:20:38 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -27,8 +27,8 @@ all:
 	echo "No ALL action"
 
 setup:
-	test ! -f ed-ffi.scm \
-	|| test -f .edwin-ffi \
+	test ! -e ed-ffi.scm \
+	|| test -e .edwin-ffi \
 	|| ln -s ed-ffi.scm .edwin-ffi
 
 tags TAGS:

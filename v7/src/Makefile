@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.11 2000/12/07 22:00:20 cph Exp $
+# $Id: Makefile,v 1.12 2000/12/07 22:20:57 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -30,7 +30,7 @@ all:
 setup:
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \
 	    echo "making $@ in $${SUBDIR}"; \
-	    test -f $${SUBDIR}/Makefile \
+	    test -e $${SUBDIR}/Makefile \
 	    || ln -s ../Makefile.std $${SUBDIR}/Makefile; \
 	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
 	done
@@ -44,7 +44,7 @@ tags TAGS:
 
 mostlyclean clean distclean:
 	@for SUBDIR in $(SUBDIRS); do \
-	    if test -f $${SUBDIR}/Makefile; then \
+	    if test -e $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
 		( cd $${SUBDIR} && $(MAKE) $@ ); \
 	    fi; \
@@ -52,7 +52,7 @@ mostlyclean clean distclean:
 
 maintainer-clean:
 	@for SUBDIR in $(SCHEME_SUBDIRS); do \
-	    if test -f $${SUBDIR}/Makefile; then \
+	    if test -e $${SUBDIR}/Makefile; then \
 		echo "making $@ in $${SUBDIR}"; \
 		( cd $${SUBDIR} && $(MAKE) $@ ); \
 	    fi; \

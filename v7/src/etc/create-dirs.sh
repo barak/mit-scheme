@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: create-dirs.sh,v 1.2 2000/12/07 22:12:55 cph Exp $
+# $Id: create-dirs.sh,v 1.3 2000/12/07 22:19:28 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -22,7 +22,7 @@
 
 maybe_mkdir ()
 {
-    if test ! -d ${1}; then
+    if test ! -e ${1}; then
 	echo "mkdir ${1}"
 	mkdir ${1}
     fi
@@ -30,7 +30,7 @@ maybe_mkdir ()
 
 maybe_link ()
 {
-    if test ! -f ${1}; then
+    if test ! -e ${1}; then
 	echo "ln -s ${2} ${1}"
 	ln -s ${2} ${1}
     fi
