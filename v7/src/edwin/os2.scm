@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.28 1996/04/24 02:30:14 cph Exp $
+;;;	$Id: os2.scm,v 1.29 1996/04/24 02:38:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -179,45 +179,39 @@
   ;;   'WILDCARD means treat FILE as shell wildcard.
   ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
   ;;   'FILE means FILE itself should be listed, and not its contents.
-  (let ((mark (mark-left-inserting-copy mark)))
-    (call-with-current-continuation
-     (lambda (k)
-       (bind-condition-handler (list condition-type:file-error)
-	   (lambda (condition)
-	     (insert-string (condition/report-string condition) mark)
-	     (insert-newline mark)
-	     (k unspecific))
-	 (lambda ()
-	   (for-each
-	    (let ((now (os2/file-time->nmonths (current-file-time))))
-	      (lambda (entry)
-		(insert-string
-		 (os2/dired-line-string (car entry) (cdr entry) now)
-		 mark)
-		(insert-newline mark)))
-	    (if (eq? 'FILE type)
-		(let ((attributes (file-attributes file)))
-		  (if attributes
-		      (list (cons (file-namestring file) attributes))
-		      '()))
-		(sort (os2/read-dired-files file
-					    (string-find-next-char switches
-								   #\a))
-		      (if (string-find-next-char switches #\t)
-			  (lambda (x y)
-			    (> (file-attributes/modification-time (cdr x))
-			       (file-attributes/modification-time (cdr y))))
-			  (lambda (x y)
-			    (string-ci<? (car x) (car y)))))))))))
+  (let ((mark (mark-left-inserting-copy mark))
+	(now (get-universal-time)))
+    (catch-file-errors (lambda (c)
+			 (insert-string (condition/report-string c) mark)
+			 (insert-newline mark))
+      (lambda ()
+	(for-each
+	 (lambda (entry)
+	   (insert-string (os2/dired-line-string (car entry) (cdr entry) now)
+			  mark)
+	   (insert-newline mark))
+	 (if (eq? 'FILE type)
+	     (let ((attributes (file-attributes file)))
+	       (if attributes
+		   (list (cons (file-namestring file) attributes))
+		   '()))
+	     (sort (os2/read-dired-files file
+					 (string-find-next-char switches #\a))
+		   (if (string-find-next-char switches #\t)
+		       (lambda (x y)
+			 (> (file-attributes/modification-time (cdr x))
+			    (file-attributes/modification-time (cdr y))))
+		       (lambda (x y)
+			 (string-ci<? (car x) (car y)))))))))
     (mark-temporary! mark)))
-
+
 (define (os2/dired-line-string name attr now)
   (string-append
    (file-attributes/mode-string attr)
    " "
    (string-pad-left (number->string (file-attributes/length attr)) 10 #\space)
    " "
-   (os/ls-file-time-string (file-attributes/modification-time attr) now)
+   (file-time->ls-string (file-attributes/modification-time attr) now)
    " "
    name))
 
@@ -240,32 +234,6 @@
 		(if attr
 		    (cons (cons (file-namestring (car pathnames)) attr) result)
 		    result))))))
-
-;;;; Time
-
-(define (os/ls-file-time-string time #!optional now)
-  (let ((now
-	 (if (or (default-object? now) (not now))
-	     (os2/file-time->nmonths (current-file-time))
-	     now))
-	(dt (decode-file-time time))
-	(ns (lambda (n m c) (string-pad-left (number->string n) m c))))
-    (string-append (month/short-string (decoded-time/month dt))
-		   " "
-		   (ns (decoded-time/day dt) 2 #\space)
-		   " "
-		   (if (<= -6 (- (os2/file-time->nmonths time) now) 0)
-		       (string-append (ns (decoded-time/hour dt) 2 #\0)
-				      ":"
-				      (ns (decoded-time/minute dt) 2 #\0))
-		       (string-append " "
-				      (number->string
-				       (decoded-time/year dt)))))))
-
-(define (os2/file-time->nmonths time)
-  (let ((time (quotient time #x200000)))
-    (+ (* (quotient time 16) 12)
-       (remainder time 16))))
 
 ;;;; Compressed Files
 

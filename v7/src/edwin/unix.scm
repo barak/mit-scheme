@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.67 1996/04/24 02:29:50 cph Exp $
+;;;	$Id: unix.scm,v 1.68 1996/04/24 02:38:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -783,21 +783,6 @@ option, instead taking -P <filename>."
 (define (os/hostname)
   (or ((ucode-primitive full-hostname 0))
       ((ucode-primitive hostname 0))))
-
-(define (os/ls-file-time-string time)
-  (let ((dt (decode-file-time time))
-	(ns (lambda (n m c) (string-pad-left (number->string n) m c))))
-    (string-append (month/short-string (decoded-time/month dt))
-		   " "
-		   (ns (decoded-time/day dt) 2 #\space)
-		   " "
-		   (if (<= (- (get-universal-time) time) (* 60 60 24 180))
-		       (string-append (ns (decoded-time/hour dt) 2 #\0)
-				      ":"
-				      (ns (decoded-time/minute dt) 2 #\0))
-		       (string-append " "
-				      (number->string
-				       (decoded-time/year dt)))))))
 
 (define (os/newsrc-file-name server)
   (let ((homedir (user-homedir-pathname)))

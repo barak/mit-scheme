@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.21 1995/04/30 06:54:43 cph Exp $
+;;;	$Id: vc.scm,v 1.22 1996/04/24 02:38:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -452,7 +452,7 @@ files in or below it."
 		     ".")
 	    #t)
 	  (begin
-	    (pop-up-vc-command-buffer #f)
+	    (pop-up-vc-command-buffer #t)
 	    #f)))))
 
 (define-command vc-version-other-window
@@ -638,7 +638,7 @@ Normally shows only locked files; prefix arg says to show all files."
     " "
     (pad-on-left-to (number->string (file-attributes/length attr)) 8)
     " "
-    (os/ls-file-time-string (file-attributes/modification-time attr))
+    (file-time->ls-string (file-attributes/modification-time attr))
     " "
     (file-namestring file)
     "\n")

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.38 1994/08/24 19:57:15 adams Exp $
+;;;	$Id: utils.scm,v 1.39 1996/04/24 02:38:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -279,16 +279,6 @@
   (for-each write-string strings)
   (loop))
 
-(define (catch-file-errors if-error thunk)
-  (call-with-protected-continuation
-   (lambda (continuation)
-     (bind-condition-handler (list condition-type:file-error
-				   condition-type:port-error)
-	 (lambda (condition)
-	   condition
-	   (continuation (if-error)))
-       thunk))))
-
 (define (delete-directory-no-errors filename)
   (catch-file-errors (lambda () #f)
 		     (lambda () (delete-directory filename) #t)))
@@ -311,7 +301,7 @@
 	(begin (procedure i)
 	       (loop (1+ i)))))
   (loop 0))
-
+
 (define make-strong-eq-hash-table
   (strong-hash-table/constructor eq-hash-mod eq? #t))
 
@@ -324,3 +314,34 @@
 	 (if (eq? (weak-car (car alist)) item)
 	     (car alist)
 	     (loop (cdr alist))))))
+
+(define (file-time->ls-string time #!optional now)
+  ;; Returns a time string like that used by unix `ls -l'.
+  (let ((time (file-time->universal-time time))
+	(now
+	 (if (or (default-object? now) (not now))
+	     (get-universal-time)
+	     now)))
+    (let ((dt (decode-universal-time time))
+	  (d2 (lambda (n c) (string-pad-left (number->string n) 2 c))))
+      (string-append (month/short-string (decoded-time/month dt))
+		     " "
+		     (d2 (decoded-time/day dt) #\space)
+		     " "
+		     (if (<= 0 (- now time) (* 180 24 60 60))
+			 (string-append (d2 (decoded-time/hour dt) #\0)
+					":"
+					(d2 (decoded-time/minute dt) #\0))
+			 (string-append " "
+					(number->string
+					 (decoded-time/year dt))))))))
+
+(define (catch-file-errors if-error thunk)
+  (call-with-protected-continuation
+   (lambda (continuation)
+     (bind-condition-handler (list condition-type:file-error
+				   condition-type:port-error)
+	 (if (procedure-arity-valid? if-error 0)
+	     (lambda (condition) condition (continuation (if-error)))
+	     (lambda (condition) (continuation (if-error condition))))
+       thunk))))

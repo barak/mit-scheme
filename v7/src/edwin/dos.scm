@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.34 1996/02/28 16:42:39 adams Exp $
+;;;	$Id: dos.scm,v 1.35 1996/04/24 02:38:58 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -200,47 +200,54 @@
   string?)
 
 (define (insert-directory! file switches mark type)
-  switches				; ignored
   ;; Insert directory listing for FILE at MARK.
+  ;; SWITCHES are examined for the presence of "t".
   ;; TYPE can have one of three values:
   ;;   'WILDCARD means treat FILE as shell wildcard.
   ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
   ;;   'FILE means FILE itself should be listed, and not its contents.
-  ;; SWITCHES are ignored.
-  (generate-dired-listing! (if (eq? type 'DIRECTORY)
-			       (pathname-as-directory file)
-			       file)
-			   mark))
+  (let ((mark (mark-left-inserting-copy mark))
+	(now (get-universal-time)))
+    (call-with-current-continuation
+     (lambda (k)
+       (bind-condition-handler (list condition-type:file-error)
+	   (lambda (condition)
+	     (insert-string (condition/report-string condition) mark)
+	     (insert-newline mark)
+	     (k unspecific))
+	 (lambda ()
+	   (for-each
+	    (lambda (entry)
+	      (insert-string
+	       (dos/dired-line-string (car entry) (cdr entry) now)
+	       mark)
+	      (insert-newline mark))
+	    (let ((make-entry
+		   (lambda (pathname)
+		     (let ((attributes (file-attributes pathname)))
+		       (if attributes
+			   (list (cons (file-namestring pathname)
+				       attributes))
+			   '())))))
+	      (if (eq? 'FILE type)
+		  (make-entry file)
+		  (sort (append-map make-entry (directory-read file))
+			(if (string-find-next-char switches #\t)
+			    (lambda (x y)
+			      (> (file-attributes/modification-time (cdr x))
+				 (file-attributes/modification-time (cdr y))))
+			    (lambda (x y)
+			      (string-ci<? (car x) (car y))))))))))))
+    (mark-temporary! mark)))
 
-(define (generate-dired-listing! pathname point)
-  (let ((files (directory-read pathname)))
-    (for-each (lambda (file) (generate-dired-entry! file point))
-	      files)))
-
-(define (generate-dired-entry! file point)
-  (define (file-attributes/ls-time-string attr)
-    (let ((time-string
-	   (file-time->string (file-attributes/modification-time attr))))
-      ;; Move the year from end to start, carrying leading space.
-      (let ((index (fix:- (string-length time-string) 5)))
-	(string-append (string-tail time-string index)
-		       " "
-		       (string-head time-string index)))))
-
-  (let ((name (file-namestring file))
-	(attr (or (file-attributes file) (dummy-file-attributes))))
-    (let ((entry (string-append
-		  (string-pad-right	; Mode string
-		   (file-attributes/mode-string attr) 12 #\Space)
-		  (string-pad-left    ; Length
-		   (number->string (file-attributes/length attr)) 10 #\Space)
-		  (string-pad-right   ; Mod time
-		   (file-attributes/ls-time-string attr) 26 #\Space)
-		  name)))
-      (let ((point (mark-left-inserting-copy point)))
-	(insert-string entry point)
-	(insert-newline point)
-	(mark-temporary! point)))))
-
-(define-integrable (dummy-file-attributes)
-  '#(#f 0 0 0 0 0 0 0 "----------" 0))
+(define (dos/dired-line-string name attr now)
+  (string-append
+   (string-pad-right (file-attributes/mode-string attr)
+		     12 #\Space)
+   " "
+   (string-pad-left (number->string (file-attributes/length attr))
+		    10 #\Space)
+   " "
+   (file-time->ls-string (file-attributes/modification-time attr) now)
+   " "
+   name))
