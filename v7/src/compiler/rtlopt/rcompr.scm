@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.8 1988/12/12 21:30:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.9 1989/11/02 08:07:46 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988. 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,6 +114,10 @@ MIT in each case. |#
 	      (or (and (rtl:assign? rtl)
 		       (equal? (rtl:assign-address rtl) expression))
 		  (expression-clobbers-stack-pointer? rtl)))))
+	  ((and (rtl:offset-address? expression)
+		(interpreter-stack-pointer?
+		 (rtl:offset-address-register expression)))
+	   (search-stopping-at expression-clobbers-stack-pointer?))
 	  ((rtl:constant-expression? expression)
 	   (let loop ((next (rinst-next next)))
 	     (if (rinst-dead-register? next register)
@@ -138,3 +142,29 @@ MIT in each case. |#
 		    (rtl:post-increment-register expression)))
 		  (else
 		   (loop expression))))))))
+
+(define (fold-instructions! live rinst next register expression)
+  ;; Attempt to fold `expression' into the place of `register' in the
+  ;; RTL instruction `next'.  If the resulting instruction is
+  ;; reasonable (i.e. if the LAP generator informs us that it has a
+  ;; pattern for generating that instruction), the folding is
+  ;; performed.
+  (let ((rtl (rinst-rtl next)))
+    (if (rtl:refers-to-register? rtl register)
+	(let ((rtl (rtl:subst-register rtl register expression)))
+	  (if (lap-generator/match-rtl-instruction rtl)
+	      (begin
+		(set-rinst-rtl! rinst false)
+		(set-rinst-rtl! next rtl)
+		(let ((dead (rinst-dead-registers rinst)))
+		  (for-each increment-register-live-length! dead)
+		  (set-rinst-dead-registers!
+		   next
+		   (eqv-set-union dead
+				  (delv! register
+					 (rinst-dead-registers next)))))
+		(for-each-regset-member live decrement-register-live-length!)
+		(reset-register-n-refs! register)
+		(reset-register-n-deaths! register)
+		(reset-register-live-length! register)
+		(set-register-bblock! register false)))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.2 1989/10/27 07:27:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/varind.scm,v 1.3 1989/11/02 08:08:21 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -53,6 +53,7 @@ MIT in each case. |#
 	(let ((block (variable-block variable)))
 	  (and (not (lvalue-known-value variable))
 	       (null? (variable-assignments variable))
+	       (not (variable-closed-over? variable))
 	       (not (lvalue/source? variable))
 	       (not (block-passed-out? block))
 	       (let ((indirection
@@ -64,7 +65,9 @@ MIT in each case. |#
 				    (car links)))))
 			(and possibility
 			     (lvalue/variable? possibility)
-			     (null? (variable-assignments possibility))			     (let ((block* (variable-block possibility)))
+			     (null? (variable-assignments possibility))
+			     (not (variable-closed-over? possibility))
+			     (let ((block* (variable-block possibility)))
 			       (and (not (block-passed-out? block*))
 				    (block-ancestor? block block*)))
 			     (begin

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.22 1989/10/26 07:36:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.23 1989/11/02 08:08:04 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -586,10 +586,11 @@ MIT in each case. |#
       (phase/fold-constants)
       (phase/open-coding-analysis)
       (phase/operator-analysis)
-      (phase/variable-indirection)
       (phase/environment-optimization)
       (phase/identify-closure-limits)
-      (phase/setup-block-types)      (phase/compute-call-graph)
+      (phase/setup-block-types)
+      (phase/variable-indirection)
+      (phase/compute-call-graph)
       (phase/side-effect-analysis)
       (phase/continuation-analysis)
       (phase/subproblem-analysis)

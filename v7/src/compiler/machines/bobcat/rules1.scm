@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.27 1989/10/26 07:37:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.28 1989/11/02 08:08:36 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -86,23 +86,42 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (QUALIFIER (and (pseudo-register? target) (machine-register? source)))
-  (let ((source (indirect-reference! source n)))
-    (delete-dead-registers!)
-    (LAP (LEA ,source ,(reference-target-alias! target 'ADDRESS)))))
+  (QUALIFIER (pseudo-word? target))
+  (load-static-link target source n false))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
-  (QUALIFIER (and (pseudo-word? target) (pseudo-register? source)))
-  (reuse-pseudo-register-alias! source 'DATA
-    (lambda (reusable-alias)
-      (delete-dead-registers!)
-      (add-pseudo-register-alias! target reusable-alias)
-      (increment-machine-register reusable-alias n))
-    (lambda ()
-      (let ((source (indirect-reference! source n)))
-	(delete-dead-registers!)
-	(LAP (LEA ,source ,(reference-target-alias! target 'ADDRESS)))))))
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (QUALIFIER (pseudo-word? target))
+  (load-static-link target source n
+    (lambda (target)
+      (LAP (OR UL (& ,(make-non-pointer-literal type 0)) ,target)))))
+
+(define (load-static-link target source n suffix)
+  (let ((non-reusable
+	 (lambda ()
+	   (let ((source (indirect-reference! source n)))
+	     (delete-dead-registers!)
+	     (if suffix
+		 (let ((temp (reference-temporary-register! 'ADDRESS)))
+		   (let ((target (reference-target-alias! target 'DATA)))
+		     (LAP (LEA ,source ,temp)
+			  (MOV L ,temp ,target)
+			  ,@(suffix target))))
+		 (LAP (LEA ,source
+			   ,(reference-target-alias! target 'ADDRESS))))))))
+    (if (machine-register? source)
+	(non-reusable)
+	(reuse-pseudo-register-alias! source 'DATA
+	  (lambda (reusable-alias)
+	    (delete-dead-registers!)
+	    (add-pseudo-register-alias! target reusable-alias)
+	    (LAP ,@(increment-machine-register reusable-alias n)
+		 ,@(if suffix
+		       (suffix (register-reference reusable-alias))
+		       (LAP))))
+	  non-reusable))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
@@ -331,6 +350,16 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
+	  (CONS-POINTER (CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? source)) (? n))))
+  (let ((temp (reference-temporary-register! 'ADDRESS))
+	(target (indirect-reference! address offset)))
+    (LAP (LEA ,(indirect-reference! source n) ,temp)
+	 (MOV L ,temp ,target)
+	 ,(memory-set-type type target))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? address)) (? offset))
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (let ((temp (reference-temporary-register! 'ADDRESS))
 	(target (indirect-reference! address offset)))
@@ -424,17 +453,26 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
-	  (OFFSET-ADDRESS (REGISTER (? r)) (? n)))
-  (LAP (PEA ,(indirect-reference! r n))))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
-  (LAP (MOV L ,(indirect-reference! r n) (@-A 7))))
+	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:CONTINUATION (? label))))
+  (LAP (PEA (@PCR ,label))
+       ,(memory-set-type type (INST-EA (@A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
   (LAP (PEA (@PCR ,label))
        ,(memory-set-type (ucode-type compiled-entry) (INST-EA (@A 7)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (CONS-POINTER (CONSTANT (? type))
+			(OFFSET-ADDRESS (REGISTER (? r)) (? n))))
+  (LAP (PEA ,(indirect-reference! r n))
+       ,(memory-set-type type (INST-EA (@A 7)))))
+
+(define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (OFFSET (REGISTER (? r)) (? n)))
+  (LAP (MOV L ,(indirect-reference! r n) (@-A 7))))
+
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
