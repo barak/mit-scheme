@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.43 1991/06/13 18:59:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.44 1991/06/14 21:19:58 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -321,12 +321,33 @@ MIT in each case. |#
 			cleanup
 			(if error-finish
 			    (error-finish (rtl:make-fetch register:value))
-			    (make-null-cfg))))))))
+			    (make-null-cfg)))
+		       #|
+		       ;; This code is preferable to the above
+		       ;; expression in some circumstances.  It
+		       ;; creates a continuation, but the continuation
+		       ;; is left dangling instead of being hooked
+		       ;; back into the subsequent code.  This avoids
+		       ;; a merge in the RTL and allows the CSE to do
+		       ;; a better job -- but the cost is that it
+		       ;; creates a continuation that, if invoked, has
+		       ;; unpredictable behavior.
+		       (let ((scfg
+			      (scfg*scfg->scfg!
+			       (generate-primitive primitive-name
+						   expressions
+						   setup
+						   label)
+			       cleanup)))
+			 (make-scfg (cfg-entry-node scfg) '()))
+		       |#
+		       )))))
 	  (let loop ((checks checks))
 	    (if (null? checks)
 		non-error-cfg
 		(pcfg*scfg->scfg! (car checks)
-				  (loop (cdr checks)) error-cfg)))))))
+				  (loop (cdr checks))
+				  error-cfg)))))))
 
 (define (generate-primitive name argument-expressions
 			    continuation-setup continuation-label)
@@ -653,41 +674,6 @@ MIT in each case. |#
   (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
   (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
   (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2))
-
-(let ((make-fixed-ref
-       (lambda (name index)
-	 (lambda (combination expressions finish)
-	   (let ((expression (car expressions)))
-	     (open-code:with-checks
-	      combination
-	      (list (open-code:type-check expression (ucode-type pair)))
-	      (finish (rtl:make-fetch (rtl:locative-offset expression index)))
-	      finish
-	      name
-	      expressions))))))
-  (let ((car-ref (make-fixed-ref 'CAR 0))
-	(cdr-ref (make-fixed-ref 'CDR 1)))
-    (define-open-coder/value 'GENERAL-CAR-CDR
-      (filter/positive-integer
-       (lambda (pattern)
-	 (if (= pattern 1)
-	     (lambda (combination expressions finish)
-	       combination
-	       (finish (car expressions)))
-	     (lambda (combination expressions finish)
-	       (let loop ((pattern pattern)
-			  (expression (car expressions)))
-		 (let ((new-pattern (quotient pattern 2)))
-		   ((if (odd? pattern) car-ref cdr-ref)
-		    combination
-		    (list expression)
-		    (if (= new-pattern 1)
-			finish
-			(lambda (expression)
-			  (loop new-pattern expression)))))))))
-       1
-       '(0)
-       internal-close-coding-for-type-checks))))
 
 (let ((make-ref
        (lambda (name type)

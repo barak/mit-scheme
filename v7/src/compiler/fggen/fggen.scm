@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.27 1991/05/06 22:38:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.28 1991/06/14 21:19:42 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -578,73 +578,91 @@ MIT in each case. |#
 (define (generate/combination block continuation context expression)
   (scode/combination-components expression
     (lambda (operator operands)
-      (if (eq? not operator)
-	  (generate/conditional block continuation context
-				(scode/make-conditional (car operands) #F #T))
-	  (let ((make-combination
-		 (lambda (push continuation)
-		   (make-combination
-		    block
-		    (continuation-reference block continuation)
-		    (wrapper/subproblem/value
-		     block
-		     continuation
-		     (make-continuation-debugging-info 'COMBINATION-OPERAND
-						       expression
-						       0)
-		     (lambda (continuation*)
-		       (cond ((scode/lambda? operator)
-			      (generate/lambda*
-			       block continuation*
-			       context (context/unconditional context)
-			       operator (continuation/known-type continuation)
-			       false))
-			     ((scode/absolute-reference? operator)
-			      (generate/global-variable block continuation*
-							context operator))
-			     (else
-			      (generate/expression block continuation*
-						   context operator)))))
-		    (let loop ((operands operands) (index 1))
-		      (if (null? operands)
-			  '()
-			  (cons (generate/subproblem/value
-				 block continuation context
-				 (car operands) 'COMBINATION-OPERAND
-				 expression index)
-				(loop (cdr operands) (1+ index)))))
-		    push))))
-	    ((continuation/case continuation
-	       (lambda () (make-combination false continuation))
-	       (lambda ()
-		 (if (variable? continuation)
-		     (make-combination false continuation)
-		     (with-reified-continuation block
-						continuation
-						scfg*scfg->scfg!
-		       (lambda (push continuation)
+      (cond ((eq? not operator)
+	     (generate/conditional block continuation context
+				   (scode/make-conditional (car operands)
+							   #F #T)))
+	    ((and (eq? general-car-cdr operator)
+		  (let ((n (cadr operands)))
+		    (and (exact-integer? n)
+			 (positive? n))))
+	     (generate/expression
+	      block continuation context
+	      (let loop ((expression (car operands)) (n (cadr operands)))
+		(if (= n 1)
+		    expression
+		    (loop (scode/make-combination
+			   (if (= (remainder n 2) 1) car cdr)
+			   (list expression))
+			  (quotient n 2))))))
+	    (else
+	     (let ((make-combination
+		    (lambda (push continuation)
+		      (make-combination
+		       block
+		       (continuation-reference block continuation)
+		       (wrapper/subproblem/value
+			block
+			continuation
+			(make-continuation-debugging-info 'COMBINATION-OPERAND
+							  expression
+							  0)
+			(lambda (continuation*)
+			  (cond ((scode/lambda? operator)
+				 (generate/lambda*
+				  block continuation*
+				  context (context/unconditional context)
+				  operator
+				  (continuation/known-type continuation)
+				  false))
+				((scode/absolute-reference? operator)
+				 (generate/global-variable block continuation*
+							   context operator))
+				(else
+				 (generate/expression block continuation*
+						      context operator)))))
+		       (let loop ((operands operands) (index 1))
+			 (if (null? operands)
+			     '()
+			     (cons (generate/subproblem/value
+				    block continuation context
+				    (car operands) 'COMBINATION-OPERAND
+				    expression index)
+				   (loop (cdr operands) (1+ index)))))
+		       push))))
+	       ((continuation/case continuation
+		  (lambda () (make-combination false continuation))
+		  (lambda ()
+		    (if (variable? continuation)
+			(make-combination false continuation)
+			(with-reified-continuation block
+						   continuation
+						   scfg*scfg->scfg!
+			  (lambda (push continuation)
+			    (make-scfg
+			     (cfg-entry-node
+			      (make-combination push continuation))
+			     (continuation/next-hooks continuation))))))
+		  (lambda ()
+		    (with-reified-continuation block
+					       continuation
+					       scfg*pcfg->pcfg!
+		      (lambda (push continuation)
+			(scfg*pcfg->pcfg!
 			 (make-scfg
 			  (cfg-entry-node (make-combination push continuation))
-			  (continuation/next-hooks continuation))))))
-	       (lambda ()
-		 (with-reified-continuation block
-					    continuation
-					    scfg*pcfg->pcfg!
-		   (lambda (push continuation)
-		     (scfg*pcfg->pcfg!
-		      (make-scfg
-		       (cfg-entry-node (make-combination push continuation))
-		       (continuation/next-hooks continuation))
-		      (make-true-test block
-				      (continuation/rvalue continuation))))))
-	       (lambda ()
-		 (with-reified-continuation block
-					    continuation
-					    scfg*subproblem->subproblem!
-		   (lambda (push continuation)
-		     (make-subproblem/canonical
-		      (make-combination push continuation)
-		      continuation)))))))))))
+			  (continuation/next-hooks continuation))
+			 (make-true-test
+			  block
+			  (continuation/rvalue continuation))))))
+		  (lambda ()
+		    (with-reified-continuation block
+					       continuation
+					       scfg*subproblem->subproblem!
+		      (lambda (push continuation)
+			(make-subproblem/canonical
+			 (make-combination push continuation)
+			 continuation))))))))))))
 
 ;;;; Assignments
 
