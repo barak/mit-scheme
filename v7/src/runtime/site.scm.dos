@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.2 1992/05/27 17:46:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.3 1992/05/28 18:41:15 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -49,10 +49,8 @@ MIT in each case. |#
 	       (->environment '(runtime compiler-info)))))
   (for-each
    (lambda (path)
-     (add-directory-rewriting-rule! path "/scheme/runtime"))
-   '("/scheme/runtime/scm/"
-     "/scheme/runtime/bin/"
-     "/scheme/runtime/com/")))
+     (add-directory-rewriting-rule! path "$mitscheme_inf_directory"))
+   '("/scheme/")))
 
 ;;; Dos specific:
 ;;; Timer hook to get interrupt keys
@@ -66,4 +64,5 @@ MIT in each case. |#
   (let ((sv (vector-ref
 	     (get-fixed-objects-vector)
 	     (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))))
-    (vector-set! sv timer-slot typeahead-timer-interrupt)))
+    (vector-set! sv timer-slot typeahead-timer-interrupt))
+) ; End IN-PACKAGE

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.37 1992/05/27 04:03:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.38 1992/05/28 18:40:00 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -266,11 +266,13 @@ MIT in each case. |#
 	     (directory-prefix? (pathname-directory pathname)
 				(pathname-directory (car rule)))))))
     (if rule
-	(pathname-new-directory
-	 pathname
-	 (append (pathname-directory (cdr rule))
-		 (list-tail (pathname-directory pathname)
-			    (length (pathname-directory (car rule))))))
+	(pathname-new-device
+	 (pathname-new-directory
+	  pathname
+	  (append (pathname-directory (cdr rule))
+		  (list-tail (pathname-directory pathname)
+			     (length (pathname-directory (car rule))))))
+	 (pathname-device (cdr rule)))
 	pathname)))
 
 (define (directory-prefix? x y)
