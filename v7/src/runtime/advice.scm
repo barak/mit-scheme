@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.15 1999/01/02 06:11:34 cph Exp $
+$Id: advice.scm,v 14.16 1999/07/06 15:08:04 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -154,7 +154,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define the-result)
 
 (define (*args*)
-  the-arguments)
+  (list-copy the-arguments))
 
 (define (*proc*)
   the-procedure)
