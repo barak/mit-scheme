@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.15 1995/05/06 20:57:08 adams Exp $
+$Id: dataflow.scm,v 1.16 1995/07/28 21:28:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ MIT in each case. |#
 ;; a graph containing more than *maximum-node-count*, and returns #F
 ;; instead of the graph.
 ;;(define *maximum-node-count* #F)
-(define *maximum-node-count* 15000)
+(define *maximum-node-count* 10000)
 
 (define (dataflow/top-level program)
   (let* ((env          (dataflow/make-env))
