@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.46 2004/01/16 19:39:53 cph Exp $
+$Id: parse.scm,v 14.47 2004/01/17 13:49:49 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -64,17 +64,13 @@ USA.
   (let ((char (read-char port)))
     (if (eof-object? char)
 	char
-	(let ((handler (get-handler char (parser-table/initial table))))
-	  (if (not handler)
-	      (error:illegal-char char))
-	  (handler port table db ctx char)))))
+	((get-handler char (parser-table/initial table))
+	 port table db ctx char))))
 
 (define (dispatch-special port table db ctx)
   (let ((char (read-char/no-eof port)))
-    (let ((handler (get-handler char (parser-table/special table))))
-      (if (not handler)
-	  (error:illegal-char char))
-      (handler port table db ctx char))))
+    ((get-handler char (parser-table/special table))
+     port table db ctx char)))
 
 (define (dispatch/no-eof port table db ctx)
   (let ((object (dispatch port table db ctx)))
@@ -89,7 +85,10 @@ USA.
   (let ((n (char->integer char)))
     (if (not (fix:< n #x100))
 	(error:illegal-char char))
-    (vector-ref handlers n)))
+    (let ((handler (vector-ref handlers n)))
+      (if (not handler)
+	  (error:illegal-char char))
+      handler)))
 
 (define system-global-parser-table)
 (define char-set/constituents)
