@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.5 1990/06/12 17:52:24 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.6 1990/06/12 17:53:18 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -39,13 +39,10 @@ world: all bchscheme scm6003
 
 everything: world Bintopsb Ppband
 
-install.world: install scm6003 scmkit
+install.world: install scm6003
 	-mv -f $(BINDIR)/scm6003 $(BINDIR)/scm6003.busy
 	rm -f $(BINDIR)/scm6003.busy
 	$(INSTALL) scm6003 $(BINDIR)/scm6003
-	-mv -f $(BINDIR)/scmkit $(BINDIR)/scmkit.busy
-	rm -f $(BINDIR)/scmkit.busy
-	$(INSTALL) scmkit $(BINDIR)/scmkit
 
 scm6003 : $(OBJECTS) $(6003_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
