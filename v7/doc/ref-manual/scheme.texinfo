@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.65 1999/02/26 05:49:15 cph Exp $
+@comment $Id: scheme.texinfo,v 1.66 1999/03/16 06:21:07 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -4408,6 +4408,18 @@ flonums, and the radix is 10, then the above expression is normally
 satisfied by a result containing a decimal point.  The unspecified case
 allows for infinities, NaNs, and non-flonum representations.
 @end deffn
+
+@defvr {variable+} flonum-parser-fast?
+This variable controls the behavior of @code{string->number} when
+parsing inexact numbers.  Specifically, it allows the user to trade off
+accuracy against speed.
+
+When set to its default value, @code{#f}, the parser provides maximal
+accuracy, as required by the Scheme standard.  If set to @code{#t}, the
+parser uses faster algorithms that will sometimes introduce small errors
+in the result.  The errors affect a few of the least-significant bits of
+the result, and consequently can be tolerated by many applications.
+@end defvr
 
 @defvr {variable+} flonum-unparser-cutoff
 This variable controls the action of @code{number->string} when
@@ -12170,6 +12182,38 @@ The importance of @code{read-string!} is that it is both flexible and
 extremely fast.
 @end deffn
 
+The following variables may be dynamically bound to change the behavior
+of the @code{read} procedure.
+
+@defvr {variable+} *parser-radix*
+This variable defines the radix used by the reader when it parses
+numbers.  This is similar to passing a radix argument to
+@code{string->number}.  The value of this variable must be one of
+@code{2}, @code{8}, @code{10}, or @code{16}; any other value is ignored,
+and the reader uses radix @code{10}.
+
+Note that much of the number syntax is invalid for radixes other than
+@code{10}.  The reader detects cases where such invalid syntax is used
+and signals an error.  However, problems can still occur when
+@code{*parser-radix*} is set to @code{16}, because syntax that normally
+denotes symbols can now denote numbers (e.g.@: @code{abc}).  Because of
+this, it is usually undesirable to set this variable to anything other
+than the default.
+
+The default value of this variable is @code{10}.
+@end defvr
+
+@defvr {variable+} *parser-canonicalize-symbols?*
+This variable controls how the parser handles case-sensitivity of
+symbols.  If it is bound to its default value of @code{#t}, symbols read
+by the parser are converted to lower case before being interned.
+Otherwise, symbols are interned without case conversion.
+
+In general, it is a bad idea to use this feature, as it doesn't really
+make Scheme case-sensitive, and therefore can break features of the
+Scheme runtime that depend on case-insensitive symbols.
+@end defvr
+
 @node Output Procedures, Format, Input Procedures, Input/Output
 @section Output Procedures
 @cindex output procedures
@@ -14362,6 +14406,33 @@ non-negative integer that could have been returned by a call to
 permissions to be those encoded by @var{modes}.
 @end deffn
 
+@defvr {variable+} os2-file-mode/read-only
+@defvrx {variable+} os2-file-mode/hidden
+@defvrx {variable+} os2-file-mode/system
+@defvrx {variable+} os2-file-mode/directory
+@defvrx {variable+} os2-file-mode/archived
+The values of these variables are the ``mode bits'' that comprise the
+value returned by @code{file-modes} under OS/2.  These bits are small
+integers that are combined by adding to form a complete set of modes.
+The integer zero represents a set of modes in which none of these bits
+are set.
+@end defvr
+
+@defvr {variable+} nt-file-mode/read-only
+@defvrx {variable+} nt-file-mode/hidden
+@defvrx {variable+} nt-file-mode/system
+@defvrx {variable+} nt-file-mode/directory
+@defvrx {variable+} nt-file-mode/archive
+@defvrx {variable+} nt-file-mode/normal
+@defvrx {variable+} nt-file-mode/temporary
+@defvrx {variable+} nt-file-mode/compressed
+The values of these variables are the ``mode bits'' that comprise the
+value returned by @code{file-modes} under Windows.  These bits are small
+integers that are combined by adding to form a complete set of modes.
+The integer zero represents a set of modes in which none of these bits
+are set.
+@end defvr
+
 @deffn {procedure+} file-modification-time filename
 @cindex modification time, of file
 Returns the modification time of @var{filename} as an exact non-negative
@@ -16287,7 +16358,7 @@ Otherwise it returns @code{#f}, in which case it is an error to attempt
 to make a graphics device using @var{graphics-device-type}.
 @end deffn
 
-@deffn {procedure+} enumerate-graphics-device-types
+@deffn {procedure+} enumerate-graphics-types
 This procedure returns a list of symbols which are the names of all the
 graphics device types that are supported by the Scheme system.  The
 result is useful in deciding what additional arguments to supply to
