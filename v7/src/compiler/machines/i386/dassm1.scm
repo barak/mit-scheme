@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.4 1992/02/28 20:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/dassm1.scm,v 1.5 1992/08/11 02:33:58 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -48,49 +48,36 @@ MIT in each case. |#
 ;;;; Top level entries
 
 (define (compiler:write-lap-file filename #!optional symbol-table?)
-  (let ((pathname (->pathname filename)))
+  (let ((pathname (->pathname filename))
+	(symbol-table?
+	 (if (default-object? symbol-table?) true symbol-table?)))
     (with-output-to-file (pathname-new-type pathname "lap")
       (lambda ()
 	(let ((com-file (pathname-new-type pathname "com")))
-	  (let ((object (fasload com-file))
-		(info
-		 (let ((pathname (pathname-new-type pathname "binf")))
-		   (and (if (default-object? symbol-table?)
-			    (file-exists? pathname)
-			    symbol-table?)
-			(fasload pathname)))))
+	  (let ((object (fasload com-file)))
 	    (if (compiled-code-address? object)
-		(disassembler/write-compiled-code-block
-		 (compiled-code-address->block object)
-		 info)
+		(let ((block (compiled-code-address->block object)))
+		  (disassembler/write-compiled-code-block
+		   block
+		   (compiled-code-block/dbg-info block symbol-table?)))
 		(begin
 		  (if (not
 		       (and (scode/comment? object)
 			    (dbg-info-vector? (scode/comment-text object))))
 		      (error "Not a compiled file" com-file))
-		  (let ((items
+		  (let ((blocks
 			 (vector->list
 			  (dbg-info-vector/blocks-vector
 			   (scode/comment-text object)))))
-		    (if (not (null? items))
-			(if (false? info)
-			    (let loop ((items items))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       false)
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items)))))
-			    (let loop
-				((items items) (info (vector->list info)))
-			      (disassembler/write-compiled-code-block
-			       (car items)
-			       (car info))
-			      (if (not (null? (cdr items)))
-				  (begin
-				    (write-char #\page)
-				    (loop (cdr items) (cdr info))))))))))))))))
+		    (if (not (null? blocks))
+			(do ((blocks blocks (cdr blocks)))
+			    ((null? blocks) unspecific)
+			  (disassembler/write-compiled-code-block
+			   (car blocks)
+			   (compiled-code-block/dbg-info (car blocks)
+							 symbol-table?))
+			  (if (not (null? (cdr blocks)))
+			      (write-char #\page)))))))))))))
 
 (define disassembler/base-address)
 
