@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.16 1998/08/30 02:43:59 cph Exp $
+$Id: shell.scm,v 1.17 1998/10/23 05:50:20 cph Exp $
 
 Copyright (c) 1991-98 Massachusetts Institute of Technology
 
@@ -436,7 +436,12 @@ those that effect file completion."
     (cond ((null? results)
 	   (if-not-found))
 	  ((null? (cdr results))
-	   (if-unique (car results)))
+	   (if-unique
+	    (let ((result (car results)))
+	      (let ((t (pathname-type result)))
+		(if (memq t (os/executable-pathname-types))
+		    (->namestring (pathname-new-type result #f))
+		    result)))))
 	  (else
 	   (if-not-unique (compute-max-prefix results) (lambda () results))))
     (not (null? results))))
