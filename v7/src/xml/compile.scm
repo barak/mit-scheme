@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.12 2003/09/26 03:56:38 cph Exp $
+$Id: compile.scm,v 1.13 2004/07/15 18:16:43 cph Exp $
 
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,5 +42,6 @@ USA.
 		    "xml-struct"
 		    "xml-chars"
 		    "xml-output"
-		    "xml-parser"))))
+		    "xml-parser"
+		    "xhtml"))))
     (cref/generate-constructors "xml")))
