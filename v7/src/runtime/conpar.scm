@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.44 2005/02/08 01:11:03 cph Exp $
+$Id: conpar.scm,v 14.45 2005/02/08 03:28:02 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2001,2003,2004,2005 Massachusetts Institute of Technology
@@ -65,7 +65,7 @@ USA.
 	(history-reductions history))))
 
 (define undefined-history
-  "no history")
+  (list 'undefined-history))
 
 (define (stack-frame/next stack-frame)
   (let ((next (stack-frame/%next stack-frame)))
@@ -92,7 +92,7 @@ USA.
   (let ((elements (stack-frame/elements stack-frame)))
     (let ((length (vector-length elements)))
       (if (< index length)
-	  (map-reference-trap (lambda () (vector-ref elements index)))
+	  (vector-ref elements index)
 	  (stack-frame/ref (stack-frame/next stack-frame) (- index length))))))
 
 (define-integrable (stack-frame/return-address stack-frame)
@@ -187,7 +187,7 @@ USA.
 	     (history-transform (control-point/history control-point))))
 	(if (and (stream-pair? element-stream)
 		 (eq? return-address/reenter-compiled-code
-		      (element-stream/head element-stream)))
+		      (stream-car element-stream)))
 	    history
 	    (history-superproblem history)))
       (control-point/previous-history-offset control-point)
@@ -201,7 +201,7 @@ USA.
   (define (handle-ordinary stream)
     (let ((type
 	   (return-address->stack-frame-type
-	    (element-stream/head stream)
+	    (stream-car stream)
 	    (let ((type (parser-state/previous-type state)))
 	      (and type
 		   (1d-table/get (stack-frame-type/properties type)
@@ -312,8 +312,7 @@ USA.
    type elements state
    (let ((stream (parser-state/element-stream state)))
      (and (stream-pair? stream)
-	  (eq? (return-address->stack-frame-type (element-stream/head stream)
-						 #t)
+	  (eq? (return-address->stack-frame-type (stream-car stream) #t)
 	       stack-frame-type/return-to-interpreter)))
    #f))
 
@@ -322,7 +321,7 @@ USA.
 	 (not (let ((stream (parser-state/element-stream state)))
 		(and (stream-pair? stream)
 		     (eq? return-address/reenter-compiled-code
-			  (element-stream/head stream)))))))
+			  (stream-car stream)))))))
     (parse/standard-next type elements state valid-history? valid-history?)))
 
 (define (parser/restore-interrupt-mask type elements state)
@@ -519,14 +518,14 @@ USA.
 
 (define (length/combination-save-value stream offset)
   offset
-  (+ 3 (system-vector-length (element-stream/ref stream 1))))
+  (+ 3 (system-vector-length (stream-ref stream 1))))
 
 (define ((length/application-frame index missing) stream offset)
   offset
-  (+ index 1 (- (object-datum (element-stream/ref stream index)) missing)))
+  (+ index 1 (- (object-datum (stream-ref stream index)) missing)))
 
 (define (length/compiled-return-address stream offset)
-  (let ((entry (element-stream/head stream)))
+  (let ((entry (stream-car stream)))
     (let ((frame-size (compiled-continuation/next-continuation-offset entry)))
       (if frame-size
 	  (+ frame-size 1)
@@ -537,7 +536,7 @@ USA.
 	   (let loop ((s (stream-cdr stream)))
 	     (if (not (stream-pair? s))
 		 (error "Unable to find dynamic link:" stream))
-	     (let ((item (element-stream/head s)))
+	     (let ((item (stream-car s)))
 	       (if (stack-address? item)
 		   item
 		   (loop (stream-cdr s)))))
@@ -546,7 +545,7 @@ USA.
 (define (length/special-compiled stream offset)
   ;; return address is reflect-to-interface
   offset
-  (let ((code (element-stream/ref stream 1)))
+  (let ((code (stream-ref stream 1)))
     (define (default)
       (error "length/special-compiled: Unknown code" code))
 
@@ -554,7 +553,7 @@ USA.
 	   (default))
 	  ((fix:= code code/special-compiled/internal-apply)
 	   ;; Very infrequent!
-	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
+	   (fix:+ 3 (object-datum (stream-ref stream 2))))
 	  ((fix:= code code/special-compiled/restore-interrupt-mask)
 	   3)
 	  ((fix:= code code/special-compiled/stack-marker)
@@ -562,14 +561,13 @@ USA.
 	  ((fix:= code code/special-compiled/compiled-code-bkpt)
 	   ;; Very infrequent!
 	   (let ((fsize
-		  (compiled-code-address/frame-size
-		   (element-stream/ref stream 2))))
+		  (compiled-code-address/frame-size (stream-ref stream 2))))
 	     (if (not fsize)
 		 5
 		 (fix:+ 5 fsize))))
 	  ((fix:= code code/interrupt-restart)
-	   (let ((homes-saved (object-datum (element-stream/ref stream 2)))
-		 (regs-saved (object-datum (element-stream/ref stream 3))))
+	   (let ((homes-saved (object-datum (stream-ref stream 2)))
+		 (regs-saved (object-datum (stream-ref stream 3))))
 	     ;; The first reg saved is _always_ the continuation,
 	     ;; part of the next frame.
 	     (fix:- (fix:+
@@ -579,10 +577,10 @@ USA.
 		     (fix:+ homes-saved regs-saved))
 		    1)))
 	  ((fix:= code code/restore-regs)
-	   (fix:+ 3 (object-datum (element-stream/ref stream 2))))
+	   (fix:+ 3 (object-datum (stream-ref stream 2))))
 	  ((fix:= code code/apply-compiled)
 	   ;; Stream[2] is code entry point, [3] is frame size
-	   (+ 3 (object-datum (element-stream/ref stream 3))))
+	   (+ 3 (object-datum (stream-ref stream 3))))
 	  ((fix:= code code/continue-linking)
 	   ;; return code, reflect code, entry size, original count,
 	   ;; block, environment, offset, last header offset,sections,
@@ -593,7 +591,7 @@ USA.
 
 (define (length/interrupt-compiled-procedure stream offset)
   offset				; ignored
-  (+ (compiled-procedure-frame-size (element-stream/head stream)) 1))
+  (+ (compiled-procedure-frame-size (stream-car stream)) 1))
 
 (define (compiled-code-address/frame-size cc-address)
   (cond ((not (compiled-code-address? cc-address))
@@ -613,9 +611,7 @@ USA.
 (define (verify paranoia-index stream offset)
   (or (= paranoia-index 0)
       (stream-null? stream)
-      (let* ((type
-	      (return-address->stack-frame-type (element-stream/head stream)
-						#f))
+      (let* ((type (return-address->stack-frame-type (stream-car stream) #f))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -623,7 +619,7 @@ USA.
 		    (length stream offset))))
 	     (ltail (stream-tail* stream length)))
 	(and ltail
-	     (return-address? (element-stream/head ltail))
+	     (return-address? (stream-car ltail))
 	     (verify (- paranoia-index 1)
 		     ltail
 		     (+ offset length))))))
@@ -635,12 +631,6 @@ USA.
 	 (stream-tail* (stream-cdr stream) (- n 1)))
 	(else
 	 (error "stream-tail*: not a proper stream" stream))))
-
-(define (element-stream/head stream)
-  (map-reference-trap (lambda () (stream-car stream))))
-
-(define-integrable (element-stream/ref stream index)
-  (map-reference-trap (lambda () (stream-ref stream index))))
 
 ;;;; Stack Frame Types
 
@@ -862,9 +852,8 @@ USA.
 (define-integrable hardware-trap/extra-info-index 8)
 
 (define (length/hardware-trap stream offset)
-  (let ((state (element-stream/ref stream hardware-trap/state-index))
-	(stack-recovered?
-	 (element-stream/ref stream hardware-trap/stack-index)))
+  (let ((state (stream-ref stream hardware-trap/state-index))
+	(stack-recovered? (stream-ref stream hardware-trap/stack-index)))
     (if (not stack-recovered?)
 	hardware-trap/frame-size
 	(let ((after-header (stream-tail stream hardware-trap/frame-size)))
@@ -872,14 +861,13 @@ USA.
 	    ((1)
 	     ;; primitive
 	     (let* ((primitive
-		     (element-stream/ref stream hardware-trap/pc-info1-index))
+		     (stream-ref stream hardware-trap/pc-info1-index))
 		    (arity (primitive-procedure-arity primitive))
 		    (nargs
 		     (if (< arity 0)
-			 (element-stream/ref stream
-					     hardware-trap/pc-info2-index)
+			 (stream-ref stream hardware-trap/pc-info2-index)
 			 arity)))
-	       (if (return-address? (element-stream/ref after-header nargs))
+	       (if (return-address? (stream-ref after-header nargs))
 		   (+ hardware-trap/frame-size nargs)
 		   (- (heuristic (stream-tail after-header nargs)
 				 (+ hardware-trap/frame-size nargs offset))
@@ -893,7 +881,7 @@ USA.
 
 (define (heuristic stream offset)
   (if (or (stream-null? stream)
-	  (and (return-address? (element-stream/head stream))
+	  (and (return-address? (stream-car stream))
 	       (verify 2 stream offset)))
       offset
       (heuristic (stream-cdr stream) (+ offset 1))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cpoint.scm,v 14.7 2003/02/14 18:28:32 cph Exp $
+$Id: cpoint.scm,v 14.8 2005/02/08 03:28:13 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1991,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,7 +95,9 @@ USA.
 		      (loop index)
 		      (cons-stream false (skip-loop (-1+ n) (1+ index))))))))
 	    (else
-	     (cons-stream (system-vector-ref control-point index)
+	     (cons-stream (map-reference-trap
+			   (lambda ()
+			     (system-vector-ref control-point index)))
 			  (loop (1+ index))))))))
 
 (define (control-point/next-control-point control-point)
@@ -131,7 +133,8 @@ USA.
       (vector-set! result (+ 7 unused-length) previous-history-control-point)
       (let loop ((stream element-stream) (index (+ 8 unused-length)))
 	(cond ((stream-pair? stream)
-	       (vector-set! result index (stream-car stream))
+	       (vector-set! result index
+			    (unmap-reference-trap (stream-car stream)))
 	       (loop (stream-cdr stream) (1+ index)))
 	      (next-control-point
 	       (vector-set! result index (ucode-return-address join-stacklets))
