@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.69 1997/03/04 06:43:23 cph Exp $
+;;;	$Id: regexp.scm,v 1.70 1997/03/07 23:30:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -366,7 +366,7 @@
 				 syntax-table
 				 string start end)))
 
-(define (regexp-group alternatives)
+(define (regexp-group . alternatives)
   (let ((alternatives
 	 (list-transform-positive alternatives identity-procedure)))
     (if (null? alternatives)
