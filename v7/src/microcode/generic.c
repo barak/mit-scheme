@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: generic.c,v 9.37 1993/06/24 07:08:40 gjr Exp $
+$Id: generic.c,v 9.38 1996/10/02 18:57:39 cph Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,6 +44,7 @@ MIT in each case. */
  Pushed ();								\
   PRIMITIVE_ABORT (PRIM_APPLY);						\
   /*NOTREACHED*/							\
+  PRIMITIVE_RETURN (UNSPECIFIC);					\
 }
 
 #define INDIRECT_TEST_1(test, slot)					\

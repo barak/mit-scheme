@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.53 1993/09/12 03:21:01 gjr Exp $
+$Id: hooks.c,v 9.54 1996/10/02 18:57:42 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -344,6 +344,7 @@ Invoke RECEIVER with a reentrant copy of the current control stack.")
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CWCC (RC_RESTORE_HISTORY, SHARP_F, (ARG_REF (1)));
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION",
@@ -355,6 +356,7 @@ Invoke RECEIVER with a non-reentrant copy of the current control stack.")
   PRIMITIVE_CANONICALIZE_CONTEXT();
   CWCC (NON_REENTRANT_RC_RESTORE, NON_REENTRANT_FLAG, (ARG_REF (1)));
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* (WITHIN-CONTROL-POINT control-point thunk)
@@ -401,6 +403,7 @@ Invoke THUNK with CONTROL-POINT as its control stack.")
 
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
@@ -427,6 +430,7 @@ DEFINE_PRIMITIVE ("ERROR-PROCEDURE", Prim_error_procedure, 3, 3,
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 
@@ -446,6 +450,7 @@ Evaluate SCODE-EXPRESSION in ENVIRONMENT.")
   }
   PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("FORCE", Prim_force, 1, 1,
@@ -549,6 +554,7 @@ space is used as the starting point.")
     Pushed ();
       Translate_To_Point (new_point);
       /*NOTREACHED*/
+      PRIMITIVE_RETURN (UNSPECIFIC);
     }
   }
 }
@@ -753,6 +759,7 @@ identified by the continuation parser.")
   }
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("WITH-STACK-MARKER", Prim_with_stack_marker, 3, 3,
@@ -879,6 +886,7 @@ Set the interpreter's history object to HISTORY.")
   POP_PRIMITIVE_FRAME (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
@@ -919,6 +927,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
   Pushed ();
     PRIMITIVE_ABORT (PRIM_APPLY);
     /*NOTREACHED*/
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 

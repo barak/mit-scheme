@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.32 1994/06/28 19:03:13 cph Exp $
+$Id: step.c,v 9.33 1996/10/02 18:58:51 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,6 +85,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
   }
   PRIMITIVE_ABORT (PRIM_NO_TRAP_EVAL);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* (PRIMITIVE-APPLY-STEP OPERATOR OPERANDS HUNK3)
@@ -140,6 +141,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   }
   PRIMITIVE_ABORT (PRIM_NO_TRAP_APPLY);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 /* (PRIMITIVE-RETURN-STEP VALUE HUNK3)
@@ -161,5 +163,6 @@ DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
     Install_Traps (hooks);
     Val = (value);
     PRIMITIVE_ABORT (PRIM_NO_TRAP_POP_RETURN);
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.23 1996/03/21 16:35:15 adams Exp $
+$Id: ntscreen.c,v 1.24 1996/10/02 18:58:14 cph Exp $
 
-Copyright (c) 1993-1996 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -189,7 +189,7 @@ int  GetControlKeyState(void);
 #define xfree free
 #define xmalloc malloc
 
-LRESULT FAR PASCAL ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
+LRESULT FAR CALLBACK ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
 
 VOID RegisterScreen (SCREEN);
 VOID UnregisterScreen (SCREEN);
@@ -436,15 +436,15 @@ Screen_IsScreenHandle (HANDLE handle)
 }
 
 //---------------------------------------------------------------------------
-//  LRESULT FAR PASCAL ScreenWndProc (HWND hWnd, UINT uMsg,
-//                                 WPARAM wParam, LPARAM lParam )
+//  LRESULT FAR CALLBACK ScreenWndProc (HWND hWnd, UINT uMsg,
+//                                      WPARAM wParam, LPARAM lParam )
 //
 //  This is the TTY Window Proc.  This handles ALL messages to the tty
 //  window.
 //
 //---------------------------------------------------------------------------
 
-LRESULT FAR PASCAL 
+LRESULT FAR CALLBACK
 ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
    SCREEN  screen = GETSCREEN (hWnd);

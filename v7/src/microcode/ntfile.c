@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.5 1996/04/09 20:19:13 adams Exp $
+$Id: ntfile.c,v 1.6 1996/10/02 18:58:07 cph Exp $
 
-Copyright (c) 1992-1996 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -226,7 +226,7 @@ DEFUN (OS_file_position, (channel), Tchannel channel)
   STD_UINT_SYSTEM_CALL
     (syscall_lseek,
      result,
-     (_llseek ((CHANNEL_HANDLE (channel)), 0L, SEEK_CUR)));
+     (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), 0L, SEEK_CUR)));
   return (result);
 }
 
@@ -239,7 +239,7 @@ DEFUN (OS_file_set_position, (channel, position),
   STD_UINT_SYSTEM_CALL
     (syscall_lseek,
      result,
-     (_llseek ((CHANNEL_HANDLE (channel)), position, SEEK_SET)));
+     (_llseek (((HFILE) (CHANNEL_HANDLE (channel))), position, SEEK_SET)));
   if (result != position)
     error_external_return ();
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.49 1993/08/21 01:56:51 gjr Exp $
+$Id: findprim.c,v 9.50 1996/10/02 18:57:35 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,6 +137,8 @@ DEFUN (xrealloc, (ptr, length),
     }
   return (result);
 }
+
+extern void EXFUN (free, (void *));
 
 #define FIND_INDEX_LENGTH(index, size)					\
 {									\
@@ -562,6 +564,7 @@ DEFUN (print_procedure, (output, primitive_descriptor, error_string),
   fprintf (output, "\n");
   fprintf (output, "  %s;\n", error_string);
   fprintf (output, "  /%cNOTREACHED%c/\n", '*', '*');
+  fprintf (output, "  PRIMITIVE_RETURN (UNSPECIFIC);\n");
   fprintf (output, "}\n");
 
   return;

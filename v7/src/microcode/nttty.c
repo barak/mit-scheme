@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.5 1995/10/24 05:07:31 cph Exp $
+$Id: nttty.c,v 1.6 1996/10/02 18:58:24 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -106,7 +106,7 @@ void
 DEFUN_VOID (NT_initialize_tty)
 {
   extern Tchannel EXFUN (OS_open_handle, (int fd));
-  input_channel  = (OS_open_handle (master_tty_window));
+  input_channel  = (OS_open_handle ((int) master_tty_window));
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = input_channel;
   (CHANNEL_INTERNAL (output_channel)) = 1;
@@ -114,8 +114,6 @@ DEFUN_VOID (NT_initialize_tty)
 
   tty_command_beep = ALERT_STRING;
   tty_command_clear = "\014";
-
-  return;
 }
 
 /* Fake TERMCAP capability */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.60 1993/12/07 20:35:58 gjr Exp $
+$Id: fasdump.c,v 9.61 1996/10/02 18:57:28 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,6 +36,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+#include "osscheme.h"
 #include "osio.h"
 #include "osfile.h"
 #include "osfs.h"
@@ -48,11 +49,12 @@ MIT in each case. */
 static Tchannel dump_channel;
 
 #define Write_Data(size, buffer)					\
-  ((OS_channel_write_dump_file						\
-    (dump_channel,							\
-     ((char *) (buffer)),						\
-     ((size) * (sizeof (SCHEME_OBJECT)))))				\
-   / (sizeof (SCHEME_OBJECT)))
+  ((long)								\
+   ((OS_channel_write_dump_file						\
+     (dump_channel,							\
+      ((char *) (buffer)),						\
+      ((size) * (sizeof (SCHEME_OBJECT)))))				\
+    / (sizeof (SCHEME_OBJECT))))
 
 #include "dump.c"
 

@@ -1,7 +1,7 @@
 /* Copyright (C) 1990 Free Software Foundation, Inc.
 This file is part of the GNU C Library.
 
-$Id: ansidecl.h,v 1.4 1995/10/08 15:29:45 cph Exp $
+$Id: ansidecl.h,v 1.5 1996/10/02 18:56:19 cph Exp $
 
 The GNU C Library is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    version 3.0 that is no longer allowed.  What these fascists hope to
    gain by this, besides angering programmers, is unclear.  */
 
-#if defined(__STDC__) || defined(__IBMC__)
+#if defined(__STDC__) || defined(__IBMC__) || defined(CL386)
 
 #define	PTR		void *
 #define	PTRCONST	void *CONST

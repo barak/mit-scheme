@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.69 1993/11/05 00:44:57 gjr Exp $
+$Id: primutl.c,v 9.70 1996/10/02 18:58:34 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -140,6 +140,7 @@ DEFUN_VOID (Prim_unimplemented)
 
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 static void

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.3 1994/03/25 00:58:52 gjr Exp $
+$Id: wabbit.c,v 1.4 1996/10/02 18:59:11 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -614,7 +614,7 @@ DEFUN (wabbit_season, (wabbit_descriptor),
 {
   long n_wabbits, buf_len, ctr;
   SCHEME_OBJECT
-    * result, * area, * saved_area, * wabbit_ptr,
+    * result, * area, * saved_area,
     wabbit_buffer, wabbit_vector, * wabbit_vector_ptr;
 
   wabbit_vector = (VECTOR_REF (wabbit_descriptor, 1));

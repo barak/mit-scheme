@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.42 1995/07/27 00:10:55 adams Exp $
+$Id: option.c,v 1.43 1996/10/02 18:58:26 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,8 +51,10 @@ extern int atoi ();
 #ifdef WINNT
 #include <io.h>
 #include <string.h>
+#include <stdlib.h>
 #else
 extern int strlen ();
+extern char * malloc ();
 #endif
 
 #ifndef NULL
@@ -546,7 +548,6 @@ DEFUN (strchr, (s, c), CONST char * s AND int c)
 static PTR
 DEFUN (xmalloc, (n), unsigned long n)
 {
-  extern char * malloc ();
   PTR result = (malloc (n));
   if (result == 0)
     {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.96 1995/07/26 18:31:47 adams Exp $
+$Id: boot.c,v 9.97 1996/10/02 18:57:09 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,6 +52,7 @@ extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
 extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
 extern void EXFUN (OS_announcement, (void));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_symbol, (unsigned char *));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));

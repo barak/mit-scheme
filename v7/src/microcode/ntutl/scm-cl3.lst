@@ -67,7 +67,7 @@ ntenv.obj
 ntfile.obj
 ntfs.obj
 ntgui.obj
-ntgui.rbj
+ntgui.res
 ntio.obj
 ntsig.obj
 ntsys.obj

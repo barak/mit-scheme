@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.c,v 1.5 1996/04/09 20:16:32 adams Exp $
+$Id: ntsys.c,v 1.6 1996/10/02 18:58:21 cph Exp $
 
-Copyright (c) 1992-1996 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,7 +42,7 @@ nt_console_write (void * vbuffer, size_t nsize)
   unsigned char * buffer = vbuffer;
   int i;
 
-  for (i = 0; i < nsize; i++)
+  for (i = 0; i < ((int) nsize); i++)
     putchar (buffer[i]);
 
   return (nsize);

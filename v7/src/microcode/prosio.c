@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.12 1994/11/14 02:50:58 cph Exp $
+$Id: prosio.c,v 1.13 1996/10/02 18:58:41 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ DEFUN (arg_to_channel, (argument, arg_number),
     error_wrong_type_arg (arg_number);
   {
     fast long channel = (integer_to_long (argument));
-    if (! ((channel >= 0) || (channel < OS_channel_table_size)))
+    if (! ((channel >= 0) || (channel < ((long) OS_channel_table_size))))
       error_wrong_type_arg (arg_number);
     return (channel);
   }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.87 1995/10/08 15:31:46 cph Exp $
+$Id: cmpint.c,v 1.88 1996/10/02 18:57:13 cph Exp $
 
-Copyright (c) 1989-1995 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -151,7 +151,7 @@ MIT in each case. */
 #define ASM_ENTRY_POINT(name) name
 #endif
 
-#if defined(__STDC__) || defined(__IBMC__)
+#if defined(__STDC__) || defined(__IBMC__) || defined(CL386)
 #define EXFNX(name, proto) ASM_ENTRY_POINT (name) proto
 #define DEFNX(name, arglist, args) ASM_ENTRY_POINT (name) (args)
 #define DEFNX_VOID(name) ASM_ENTRY_POINT (name) (void)
@@ -3119,7 +3119,7 @@ DEFUN (bkpt_remove, (ep, handle), PTR ep AND SCHEME_OBJECT handle)
 C_UTILITY Boolean
 DEFUN (bkpt_p, (ep), PTR ep)
 {
-  return (SHARP_F);
+  return (FALSE);
 }
 
 C_UTILITY SCHEME_OBJECT
@@ -3127,6 +3127,7 @@ DEFUN (bkpt_proceed, (ep, handle, state),
        PTR ep AND SCHEME_OBJECT handle AND SCHEME_OBJECT state)
 {
   error_external_return ();
+  return (UNSPECIFIC);
 }
 
 C_UTILITY PTR

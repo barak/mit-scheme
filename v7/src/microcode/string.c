@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.36 1993/06/24 07:09:55 gjr Exp $
+$Id: string.c,v 9.37 1996/10/02 18:58:53 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -161,7 +161,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_vec_8b_ref, 2, 2, 0)
     STRING_SET								\
       (string,								\
        (arg_index_integer (2, (STRING_LENGTH (string)))),		\
-       (get_ascii (3)));						\
+       ((unsigned char) (get_ascii (3))));				\
   }									\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
 }
@@ -232,7 +232,7 @@ DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_substring_move_left, 5, 5, 0)
   while ((length--) > 0)						\
     {									\
       temp = (*scan);							\
-      (*scan++) = (char_map (temp));					\
+      (*scan++) = ((unsigned char) (char_map (temp)));			\
     }									\
   PRIMITIVE_RETURN (UNSPECIFIC);					\
 }
@@ -271,7 +271,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FILL!", Prim_vec_8b_fill, 4, 4, 0)
 {
   VECTOR_8B_SUBSTRING_PREFIX_FORWARD ();
   while (scan < limit)
-    (*scan++) = ascii;
+    (*scan++) = ((unsigned char) ascii);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -297,7 +297,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR-CI", Prim_vec_8b_find_next_char_ci, 
 {
   VECTOR_8B_SUBSTRING_PREFIX_FORWARD ();
   {
-    fast unsigned char char1 = (char_upcase (ascii));
+    fast unsigned char char1 = ((unsigned char) (char_upcase (ascii)));
     while (scan < limit)
       if ((char_upcase (*scan++)) == char1)
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM ((scan - 1) - string_start));
@@ -309,7 +309,7 @@ DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_vec_8b_find_prev_char_
 {
   VECTOR_8B_SUBSTRING_PREFIX_BACKWARD ();
   {
-    fast unsigned char char1 = (char_upcase (ascii));
+    fast unsigned char char1 = ((unsigned char) (char_upcase (ascii)));
     while (scan > limit)
       if ((char_upcase (*--scan)) == char1)
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (scan - string_start));

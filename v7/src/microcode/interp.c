@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.85 1995/09/15 05:51:12 cph Exp $
+$Id: interp.c,v 9.86 1996/10/02 19:01:28 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1528,7 +1528,7 @@ apply_dispatch:
 	    nactuals = (OBJECT_DATUM (nargs));
 	    data = (MEMORY_REF (Function, ENTITY_DATA));
 	    if ((VECTOR_P (data))
-		&& (nactuals < (VECTOR_LENGTH (data)))
+		&& (nactuals < ((long) (VECTOR_LENGTH (data))))
 		&& ((VECTOR_REF (data, nactuals)) != SHARP_F)
 		&& ((VECTOR_REF (data, 0))
 		    == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
@@ -1599,9 +1599,9 @@ apply_dispatch:
 	      Apply_Future_Check(formals,
 				 FAST_MEMORY_REF (Function, LAMBDA_FORMALS));
 
-	      if ((nargs != VECTOR_LENGTH (formals)) &&
-		  ((OBJECT_TYPE (Function) != TC_LEXPR) ||
-		  (nargs < VECTOR_LENGTH (formals))))
+	      if ((nargs != ((long) (VECTOR_LENGTH (formals))))
+		  && ((OBJECT_TYPE (Function) != TC_LEXPR)
+		      || (nargs < ((long) (VECTOR_LENGTH (formals))))))
 	      {
 		STACK_PUSH (STACK_FRAME_HEADER + nargs - 1);
 		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.16 1996/03/21 16:38:16 adams Exp $
+$Id: ntgui.c,v 1.17 1996/10/02 18:58:10 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. */
 #include "ntscreen.h"
 
 extern /*static*/ HANDLE  ghInstance = 0;
+extern void scheme_main (int argc, const char ** argv);
 BOOL InitApplication(HANDLE);
 BOOL InitInstance(HANDLE, int);
 
@@ -50,7 +51,7 @@ void *xmalloc(int);
 void xfree(void*);
 
 #ifdef GUI
-int PASCAL
+int WINAPI
 WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
     int argc;
@@ -96,7 +97,8 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
     if (!InitInstance(ghInstance, nCmdShow))
       return  FALSE;
 
-    return (scheme_main (argc, argv));
+    scheme_main (argc, argv);
+    return (0);
 }
 #endif
 
@@ -338,9 +340,12 @@ C_to_Scheme_WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     if (thunk==0)
       return  DefWindowProc (hwnd, message, wParam, lParam);
 
-    result = apply4(thunk,
-                ulong_to_integer(hwnd), ulong_to_integer(message),
-		ulong_to_integer(wParam), ulong_to_integer(lParam));
+    result
+      = (apply4 (thunk,
+		 (ulong_to_integer ((unsigned long) hwnd)),
+		 (ulong_to_integer (message)),
+		 (ulong_to_integer (wParam)),
+		 (ulong_to_integer (lParam))));
 
     return  scheme_object_to_windows_object (result);
 }
@@ -405,9 +410,12 @@ C_to_Scheme_WndProc_2 (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     if (general_scheme_wndproc == SHARP_F)
       return  DefWindowProc (hwnd, message, wParam, lParam);
 
-    result = apply4(general_scheme_wndproc,
-                    ulong_to_integer(hwnd), ulong_to_integer(message),
-		    ulong_to_integer(wParam), ulong_to_integer(lParam));
+    result
+      = (apply4 (general_scheme_wndproc,
+		 (ulong_to_integer ((unsigned long) hwnd)),
+		 (ulong_to_integer (message)),
+		 (ulong_to_integer (wParam)),
+		 (ulong_to_integer (lParam))));
 
     return  scheme_object_to_windows_object (result);
 }
@@ -491,10 +499,10 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     class_name = STRING_LOC (ARG_REF (1), 0);
     window_name = STRING_LOC (ARG_REF (2), 0);
     style = integer_to_ulong (ARG_REF (3));
-    x = arg_ulong_default (4, CW_USEDEFAULT);
-    y = arg_ulong_default (5, CW_USEDEFAULT);
-    w = arg_ulong_default (6, CW_USEDEFAULT);
-    h = arg_ulong_default (7, CW_USEDEFAULT);
+    x = (int) arg_ulong_default (4, ((unsigned long) CW_USEDEFAULT));
+    y = (int) arg_ulong_default (5, ((unsigned long) CW_USEDEFAULT));
+    w = (int) arg_ulong_default (6, ((unsigned long) CW_USEDEFAULT));
+    h = (int) arg_ulong_default (7, ((unsigned long) CW_USEDEFAULT));
     hWndParent = (HWND) arg_ulong_default (8, 0);
     hMenu      =  (HMENU) arg_ulong_default (9, 0);
     lpvParam   = (LPVOID)  ARG_REF (10);
@@ -502,7 +510,7 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
     result = CreateWindowEx (0, class_name, window_name, style, x, y, w, h,
 			     hWndParent, hMenu, ghInstance, lpvParam);
 
-    return  ulong_to_integer (result);
+    return  ulong_to_integer ((unsigned long) result);
 }
 
 
@@ -576,7 +584,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
 
     CHECK_ARG (1, STRING_P);
     it = GetModuleHandle (STRING_LOC (ARG_REF (1), 0));
-    PRIMITIVE_RETURN (long_to_integer (it));
+    PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
 DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
@@ -588,7 +596,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
 
     CHECK_ARG (1, STRING_P);
     it = LoadLibrary ((LPSTR)STRING_LOC (ARG_REF (1), 0));
-    PRIMITIVE_RETURN (long_to_integer (it));
+    PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
 DEFINE_PRIMITIVE ("NT:FREE-LIBRARY", Prim_nt_free_library, 1, 1,
@@ -623,7 +631,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
 
     it = GetProcAddress (module, function_name);
 
-    PRIMITIVE_RETURN (it==NULL ? SHARP_F : long_to_integer (it));
+    PRIMITIVE_RETURN (it==NULL ? SHARP_F : long_to_integer ((long) it));
 }
 
 DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
@@ -1227,7 +1235,7 @@ DEFINE_PRIMITIVE ("WIN32-SCREEN-CREATE!",
       SendMessage (hwnd, SCREEN_SETMODES,
 		   (WPARAM) arg_integer (2), (LPARAM) 0);
 
-    PRIMITIVE_RETURN (hwnd ? long_to_integer (hwnd) : SHARP_F);
+    PRIMITIVE_RETURN (hwnd ? long_to_integer ((long) hwnd) : SHARP_F);
   }
 }
 

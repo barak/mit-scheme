@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.h,v 9.28 1992/09/18 16:52:34 jinx Exp $
+$Id: bignum.h,v 9.29 1996/10/02 18:57:02 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,15 +65,17 @@ extern bignum_type EXFUN (bignum_make_zero, (void));
 extern bignum_type EXFUN (bignum_make_one, (int negative_p));
 extern int EXFUN (bignum_equal_p, (bignum_type, bignum_type));
 extern enum bignum_comparison EXFUN (bignum_test, (bignum_type));
-extern enum bignum_comparison EXFUN (bignum_compare,
-				     (bignum_type, bignum_type));
+extern enum bignum_comparison EXFUN
+  (bignum_compare, (bignum_type, bignum_type));
 extern bignum_type EXFUN (bignum_add, (bignum_type, bignum_type));
 extern bignum_type EXFUN (bignum_subtract, (bignum_type, bignum_type));
 extern bignum_type EXFUN (bignum_negate, (bignum_type));
 extern bignum_type EXFUN (bignum_multiply, (bignum_type, bignum_type));
-extern int EXFUN (bignum_divide,
-		  (bignum_type numerator, bignum_type denominator,
-		   bignum_type * quotient, bignum_type * remainder));
+extern int EXFUN
+  (bignum_divide, (bignum_type numerator,
+		   bignum_type denominator,
+		   bignum_type * quotient,
+		   bignum_type * remainder));
 extern bignum_type EXFUN (bignum_quotient, (bignum_type, bignum_type));
 extern bignum_type EXFUN (bignum_remainder, (bignum_type, bignum_type));
 #ifndef BIGNUM_NO_ULONG
@@ -84,17 +86,22 @@ extern unsigned long EXFUN (bignum_to_ulong, (bignum_type));
 #endif /* not BIGNUM_NO_ULONG */
 extern bignum_type EXFUN (double_to_bignum, (double));
 extern double EXFUN (bignum_to_double, (bignum_type));
-extern int EXFUN (bignum_fits_in_word_p,
-		  (bignum_type, long word_length, int twos_complement_p));
+extern int EXFUN
+  (bignum_fits_in_word_p, (bignum_type,
+			   long word_length,
+			   int twos_complement_p));
 extern bignum_type EXFUN (bignum_length_in_bits, (bignum_type));
 extern bignum_type EXFUN (bignum_length_upper_limit, (void));
-extern bignum_type EXFUN (digit_stream_to_bignum,
-			  (unsigned int n_digits,
-			   unsigned int EXFUN ((*producer), ()),
-			   bignum_procedure_context context,
-			   unsigned int radix, int negative_p));
-extern void EXFUN (bignum_to_digit_stream,
-		   (bignum_type, unsigned int radix,
-		    void EXFUN((*consumer), ()),
-		    bignum_procedure_context context));
+extern bignum_type EXFUN
+  (digit_stream_to_bignum,
+   (unsigned int n_digits,
+    unsigned int EXFUN ((*producer), (bignum_procedure_context)),
+    bignum_procedure_context context,
+    unsigned int radix,
+    int negative_p));
+extern void EXFUN
+  (bignum_to_digit_stream,
+   (bignum_type, unsigned int radix,
+    void EXFUN ((*consumer), (bignum_procedure_context, long)),
+    bignum_procedure_context context));
 extern long EXFUN (bignum_max_digit_stream_radix, (void));

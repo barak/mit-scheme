@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.17 1996/03/23 19:24:53 adams Exp $
+$Id: ntsig.c,v 1.18 1996/10/02 18:58:19 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -320,7 +320,7 @@ extern void EXFUN (tty_set_next_interrupt_char, (cc_t));
 {									\
   if (keyboard_interrupt_enables & (mask))				\
   {									\
-    tty_set_next_interrupt_char (interrupt_char);			\
+    tty_set_next_interrupt_char ((cc_t) interrupt_char);		\
     interrupt_p = 1;							\
   }									\
   else									\

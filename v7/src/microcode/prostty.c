@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prostty.c,v 1.5 1993/06/24 07:09:30 gjr Exp $
+$Id: prostty.c,v 1.6 1996/10/02 18:58:47 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -150,7 +150,8 @@ STRING must be in the correct form for this operating system.")
     unsigned char * scan;
 
     if (! ((STRING_P (argument))
-	   && ((STRING_LENGTH (argument)) == (num_chars * 2))))
+	   && (((unsigned int) (STRING_LENGTH (argument)))
+	       == (num_chars * 2))))
       error_wrong_type_arg (1);
 
     for (i = 0, scan = (STRING_LOC (argument, 0)); i < num_chars; i++)

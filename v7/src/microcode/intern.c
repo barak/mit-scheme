@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.54 1994/10/04 21:09:15 cph Exp $
+$Id: intern.c,v 9.55 1996/10/02 18:57:45 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,6 +37,8 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "trap.h"
+
+extern int EXFUN (strlen, (const char *));
 
 /* These are exported to other parts of the system. */
 

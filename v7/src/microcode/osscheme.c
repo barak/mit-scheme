@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osscheme.c,v 1.8 1994/11/14 05:10:53 cph Exp $
+$Id: osscheme.c,v 1.9 1996/10/02 18:58:30 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "osscheme.h"
+#include "prims.h"
 
 extern void
   EXFUN (signal_error_from_primitive, (long error_code));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.81 1995/07/26 23:23:38 adams Exp $
+$Id: fasload.c,v 9.82 1996/10/02 18:57:31 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,15 +50,18 @@ MIT in each case. */
 static Tchannel load_channel;
 
 #define Load_Data(size, buffer)						\
-  ((OS_channel_read_load_file						\
-    (load_channel,							\
-     ((char *) (buffer)),						\
-     ((size) * (sizeof (SCHEME_OBJECT)))))				\
-   / (sizeof (SCHEME_OBJECT)))
+  ((long)								\
+   ((OS_channel_read_load_file						\
+     (load_channel,							\
+      ((char *) (buffer)),						\
+      ((size) * (sizeof (SCHEME_OBJECT)))))				\
+    / (sizeof (SCHEME_OBJECT))))
 
 #include "load.c"
 
 extern char * EXFUN (malloc, (int));
+extern int EXFUN (strlen, (const char *));
+extern char * EXFUN (strcpy, (char *, const char *));
 
 extern char * Error_Names [];
 extern char * Abort_Names [];
@@ -254,7 +257,7 @@ DEFUN (read_file_end, (mode, prim_table_ptr, c_code_table_ptr),
        AND SCHEME_OBJECT ** prim_table_ptr
        AND SCHEME_OBJECT ** c_code_table_ptr)
 {
-  SCHEME_OBJECT * prim_table, * c_code_table, * ignore;
+  SCHEME_OBJECT * prim_table, * c_code_table;
   extern unsigned long checksum_area ();
 
   if ((Load_Data (Heap_Count, ((char *) Free))) != Heap_Count)
@@ -596,7 +599,7 @@ static Boolean
 DEFUN (check_primitive_numbers, (table, length),
        fast SCHEME_OBJECT * table AND fast long length)
 {
-  fast long count, top;
+  fast long count;
 
   for (count = 0; count < length; count += 1)
     if (table[count] != (MAKE_PRIMITIVE_OBJECT (count)))
@@ -1081,6 +1084,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   /* Return in a non-standard way. */
   PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #ifdef BYTE_INVERSION

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.41 1995/06/30 22:28:11 nick Exp $
+$Id: sysprim.c,v 9.42 1996/10/02 18:58:56 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,6 +47,7 @@ DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   termination_normal (0);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("EXIT-WITH-VALUE", 
@@ -56,6 +57,7 @@ as exit status.")
 {
   PRIMITIVE_HEADER (1);
   termination_normal ((int) arg_integer (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0,
@@ -63,6 +65,7 @@ DEFINE_PRIMITIVE ("HALT", Prim_restartable_exit, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   OS_restartable_exit ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)

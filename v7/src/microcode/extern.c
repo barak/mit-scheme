@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.34 1993/08/03 08:29:45 gjr Exp $
+$Id: extern.c,v 9.35 1996/10/02 18:57:24 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,7 +76,7 @@ a machine ADDRESS and a TYPE-CODE (either return code or primitive\n\
 procedure), it finds the number for the external representation for\n\
 the internal address.")
 {
-  fast long tc;
+  fast SCHEME_OBJECT tc;
   fast SCHEME_OBJECT address;
   PRIMITIVE_HEADER (2);
   tc = (arg_nonnegative_integer (1));
@@ -109,7 +109,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1
   CHECK_ARG (1, PRIMITIVE_P);
   {
     fast SCHEME_OBJECT primitive = (ARG_REF (1));
-    if ((PRIMITIVE_NUMBER (primitive)) > (NUMBER_OF_PRIMITIVES ()))
+    if ((PRIMITIVE_NUMBER (primitive))
+	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (LONG_TO_FIXNUM (PRIMITIVE_ARITY (primitive)));
   }
@@ -123,7 +124,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
   CHECK_ARG (1, PRIMITIVE_P);
   {
     fast SCHEME_OBJECT primitive = (ARG_REF (1));
-    if ((PRIMITIVE_NUMBER (primitive)) > (NUMBER_OF_PRIMITIVES ()))
+    if ((PRIMITIVE_NUMBER (primitive))
+	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
       error_bad_range_arg (1);
     {
       fast char * answer = (PRIMITIVE_DOCUMENTATION (primitive));

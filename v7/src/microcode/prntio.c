@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.2 1993/09/03 17:52:46 gjr Exp $
+$Id: prntio.c,v 1.3 1996/10/02 18:58:40 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,8 @@ MIT in each case. */
 DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (CHANNEL_HANDLE (arg_channel (1))));
+  PRIMITIVE_RETURN
+    (long_to_integer ((long) (CHANNEL_HANDLE (arg_channel (1)))));
 }
 
 static HANDLE *
@@ -71,10 +72,12 @@ DEFUN (wait_result, (result, limit_object, limit_abandoned),
 {
   if (result == WAIT_TIMEOUT)
     return (FIXNUM_ZERO);
-  else if ((result >= WAIT_OBJECT_0) && (result <= (WAIT_OBJECT_0 + limit_object)))
+  else if ((result >= WAIT_OBJECT_0)
+	   && (result <= (WAIT_OBJECT_0 + limit_object)))
     return (long_to_integer ((result + 1) - WAIT_OBJECT_0));
-  else if ((result >= WAIT_ABANDONED_0) && (result <= (WAIT_ABANDONED_0 + limit_abandoned)))
-    return (long_to_integer (- ((result + 1) - WAIT_ABANDONED_0)));
+  else if ((result >= WAIT_ABANDONED_0)
+	   && (result <= (WAIT_ABANDONED_0 + limit_abandoned)))
+    return (long_to_integer (- ((long) ((result + 1) - WAIT_ABANDONED_0))));
   else
     error_system_call ((GetLastError ()), syscall_select);
 }
@@ -114,8 +117,8 @@ DEFINE_PRIMITIVE ("NT:WAITFORMULTIPLEOBJECTS", Prim_nt_waitformultipleobjects, 3
     int timeout = (arg_nonnegative_integer (3));
     int nhand = (VECTOR_LENGTH (schhands));
     HANDLE * handles = (to_win_hand_vec (nhand, (VECTOR_LOC (schhands, 0))));
-    DWORD result = (WaitForMultipleObjects (nhand, handles, wait_for_all, timeout));
-
+    DWORD result
+      = (WaitForMultipleObjects (nhand, handles, wait_for_all, timeout));
     if (handles != ((HANDLE *) NULL))
       free (handles);
     PRIMITIVE_RETURN (wait_result (result, (nhand - 1), (nhand - 1)));

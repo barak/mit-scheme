@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.55 1995/07/26 23:44:54 adams Exp $
+$Id: lookup.c,v 9.56 1996/10/02 18:57:55 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1192,7 +1192,7 @@ redo_aux_lookup:
 
     scan = (OBJECT_ADDRESS (extension));
 
-    if ((temp + (AUX_LIST_FIRST - 1)) == (VECTOR_LENGTH (extension)))
+    if ((temp + (AUX_LIST_FIRST - 1)) == ((long) (VECTOR_LENGTH (extension))))
     {
       fast long i;
       fast SCHEME_OBJECT *fast_free;

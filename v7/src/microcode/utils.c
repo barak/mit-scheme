@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.69 1995/10/24 05:11:33 cph Exp $
+$Id: utils.c,v 9.70 1996/10/02 18:59:03 cph Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,7 +70,7 @@ DEFUN (compute_interrupt_handler_mask, (interrupt_masks, interrupt_number),
        long interrupt_number)
 {
   if ((VECTOR_P (interrupt_masks))
-      && (interrupt_number <= (VECTOR_LENGTH (interrupt_masks))))
+      && (interrupt_number <= ((long) (VECTOR_LENGTH (interrupt_masks)))))
     {
       SCHEME_OBJECT mask =
 	(VECTOR_REF (interrupt_masks, interrupt_number));
@@ -149,7 +149,7 @@ DEFUN (Setup_Interrupt, (masked_interrupts), long masked_interrupts)
       outf_fatal ("\nInvalid handlers vector (0x%lx).", interrupt_handlers);
       terminate_no_interrupt_handler (masked_interrupts);
     }
-  if (interrupt_number >= (VECTOR_LENGTH (interrupt_handlers)))
+  if (interrupt_number >= ((long) (VECTOR_LENGTH (interrupt_handlers))))
     {
       outf_fatal("\nInterrupt out of range: %ld (vector length = %ld).",
 		 interrupt_number,
@@ -622,7 +622,7 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
     /*NOTREACHED*/
   }
 
-  if ((Err < 0) || (Err >= (VECTOR_LENGTH (Error_Vector))))
+  if ((Err < 0) || (Err >= ((long) (VECTOR_LENGTH (Error_Vector)))))
   {
     if (VECTOR_LENGTH (Error_Vector) == 0)
       error_death (Err, "No error handlers: Empty handlers vector");

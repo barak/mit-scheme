@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: usrdef.h,v 9.41 1993/08/28 05:43:00 gjr Exp $
+$Id: usrdef.h,v 9.42 1996/10/02 18:59:01 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,11 +37,7 @@ MIT in each case. */
 #ifndef SCM_USRDEF_H
 #define SCM_USRDEF_H
 
-#include "ansidecl.h"
-#include "config.h"
-#include "object.h"
-#include "errors.h"
-#include "prim.h"
+#include "scheme.h"
 #include "prims.h"
 
 extern SCHEME_OBJECT EXFUN ((* (Static_Primitive_Procedure_Table[])), (void));

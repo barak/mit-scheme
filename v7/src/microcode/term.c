@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.12 1995/10/24 05:11:10 cph Exp $
+$Id: term.c,v 1.13 1996/10/02 18:58:59 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,9 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "ostop.h"
+#include "osio.h"
+#include "osfs.h"
+#include "osfile.h"
 #include "edwin.h"
 
 extern long death_blow;
@@ -43,6 +46,7 @@ extern void EXFUN (Reset_Memory, (void));
 
 #if defined(WINNT) || defined(_OS2)
 #define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
+extern void winnt_deallocate_registers (void);
 #endif
 
 static void EXFUN (edwin_auto_save, (void));
@@ -78,7 +82,7 @@ DEFUN (attempt_termination_backout, (code), int code)
   {
     SCHEME_OBJECT Term_Vector = (Get_Fixed_Obj_Slot (Termination_Proc_Vector));
     if ((! (VECTOR_P (Term_Vector)))
-	|| ((VECTOR_LENGTH (Term_Vector)) <= code))
+	|| (((long) (VECTOR_LENGTH (Term_Vector))) <= code))
       return;
     {
       SCHEME_OBJECT Handler = (VECTOR_REF (Term_Vector, code));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bitstr.c,v 9.56 1995/04/21 04:28:25 adams Exp $
+$Id: bitstr.c,v 9.57 1996/10/02 18:57:05 cph Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,7 +78,8 @@ DEFINE_PRIMITIVE ("BIT-STRING?", Prim_bit_string_p, 1, 1, 0)
 
 void
 DEFUN (fill_bit_string, (bit_string, sense),
-       SCHEME_OBJECT bit_string AND Boolean sense)
+       SCHEME_OBJECT bit_string AND
+       int sense)
 {
   SCHEME_OBJECT *scanner;
   SCHEME_OBJECT filler;
@@ -614,7 +615,7 @@ DEFUN (bignum_to_bit_string, (length, bignum),
       if (! (bignum_fits_in_word_p (bignum, length, 0)))
 	error_bad_range_arg (2);
       {
-	void EXFUN (btbs_consumer, (unsigned char **, unsigned int));
+	void EXFUN (btbs_consumer, (unsigned char **, long));
 	SCHEME_OBJECT result = (zero_to_bit_string (length));
 	unsigned char * result_ptr =
 	  ((unsigned char *) (BIT_STRING_LOW_PTR (result)));
@@ -628,10 +629,9 @@ DEFUN (bignum_to_bit_string, (length, bignum),
 void
 DEFUN (btbs_consumer, (result_ptr, digit),
        unsigned char ** result_ptr
-       AND unsigned int digit)
+       AND long digit)
 {
-  (* (INC_BIT_STRING_PTR (*result_ptr))) = digit;
-  return;
+  (* (INC_BIT_STRING_PTR (*result_ptr))) = ((unsigned char) digit);
 }
 
 struct bitstr_to_bignm_context

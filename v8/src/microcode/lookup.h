@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: lookup.h,v 9.49 1995/07/26 23:45:49 adams Exp $
+$Id: lookup.h,v 9.50 1996/10/02 18:58:01 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -192,7 +192,8 @@ extern SCHEME_OBJECT
 {									\
   fast SCHEME_OBJECT frame;						\
 									\
-label:									\
+/* Deleted this label to eliminate compiler warnings: */		\
+/* label: */								\
 									\
   frame = (MEMORY_FETCH (hunk [VARIABLE_COMPILED_TYPE]));		\
 									\
@@ -263,7 +264,7 @@ label:									\
     break;								\
   }									\
   depth = verified_offset(offset, get_offset(hunk));			\
-  if (depth > VECTOR_LENGTH (frame))					\
+  if (depth > ((long) (VECTOR_LENGTH (frame))))				\
   {									\
     cell = uncompiled_trap_object;					\
     break;								\

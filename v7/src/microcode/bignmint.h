@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignmint.h,v 1.4 1993/10/27 23:57:07 gjr Exp $
+$Id: bignmint.h,v 1.5 1996/10/02 18:56:54 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,6 +46,8 @@ typedef long bignum_digit_type;
 typedef long bignum_length_type;
 
 #ifdef MIT_SCHEME
+
+#include "prims.h"
 
 /* BIGNUM_ALLOCATE allocates a (length + 1)-element array of
    `bignum_digit_type'; deallocation is the responsibility of the

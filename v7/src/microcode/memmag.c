@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.62 1996/04/08 23:41:35 cph Exp $
+$Id: memmag.c,v 9.63 1996/10/02 19:01:40 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -673,6 +673,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
  Pushed ();
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)

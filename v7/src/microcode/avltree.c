@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: avltree.c,v 1.1 1993/11/05 00:45:09 gjr Exp $
+$Id: avltree.c,v 1.2 1996/10/02 18:56:52 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,8 @@ MIT in each case. */
  */
 
 #include "avltree.h"
+
+int EXFUN (strcmp_ci, (char * s1, char * s2));
 
 #ifndef NULL
 # define NULL ((PTR) 0)

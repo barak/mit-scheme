@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.47 1995/07/26 21:04:40 adams Exp $
+$Id: debug.c,v 9.48 1996/10/02 18:57:21 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -144,7 +144,7 @@ DEFUN_VOID (Show_Pure)
       outf_console ("Missing constant header.\n");
       return;
     }
-    if (OBJECT_DATUM (Obj_Address[Pure_Size]) != Pure_Size)
+    if (((long) (OBJECT_DATUM (Obj_Address[Pure_Size]))) != Pure_Size)
     {
       outf_console ("Pure size mismatch 0x%lx.\n",
 	      ((long) (OBJECT_DATUM (Obj_Address[Pure_Size]))));
@@ -160,7 +160,7 @@ DEFUN_VOID (Show_Pure)
       outf_console ("Missing ending header.\n");
       return;
     }
-    if (OBJECT_DATUM (Obj_Address[Total_Size]) != Total_Size)
+    if (((long) (OBJECT_DATUM (Obj_Address[Total_Size]))) != Total_Size)
     {
       outf_console ("Total size mismatch 0x%lx.\n",
 	      ((long) (OBJECT_DATUM (Obj_Address[Total_Size]))));
@@ -791,7 +791,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
       print_expression (stream, Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = (STACK_LOC (OBJECT_DATUM (Temp)));
+	Stack_Pointer = (STACK_LOC (- ((long) (OBJECT_DATUM (Temp)))));
         outf (stream, " (skipping)");
       }
       outf (stream, "\n");
@@ -1047,6 +1047,7 @@ DEFUN (set_flag, (flag_number, value), int flag_number AND int value)
 {
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
   /*NOTREACHED*/
+  return (0);
 }
 
 #endif /* not ENABLE_DEBUGGING_FLAGS */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bigprm.c,v 1.3 1993/06/24 07:07:02 gjr Exp $
+$Id: bigprm.c,v 1.4 1996/10/02 18:57:03 cph Exp $
 
-Copyright (c) 1989-1991 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -117,11 +117,12 @@ DEFINE_PRIMITIVE ("BIGNUM-REMAINDER", Prim_bignum_remainder, 2, 2, 0)
 
 static void
 DEFUN (listify_bignum_consumer, (previous_cdr, digit),
-       SCHEME_OBJECT * previous_cdr AND unsigned int digit)
+       PTR previous_cdr AND
+       long digit)
 {
-  (*previous_cdr) =
-    (cons ((LONG_TO_UNSIGNED_FIXNUM (digit)), (*previous_cdr)));
-  return;
+  (* ((SCHEME_OBJECT *) previous_cdr)) =
+    (cons ((LONG_TO_UNSIGNED_FIXNUM (digit)),
+	   (* ((SCHEME_OBJECT *) previous_cdr))));
 }
 
 DEFINE_PRIMITIVE ("LISTIFY-BIGNUM", Prim_listify_bignum, 2, 2,

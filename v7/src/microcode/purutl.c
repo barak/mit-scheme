@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: purutl.c,v 9.47 1993/12/07 20:36:04 gjr Exp $
+$Id: purutl.c,v 9.48 1996/10/02 18:58:49 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,11 @@ MIT in each case. */
 #include "prims.h"
 #include "gccode.h"
 #include "zones.h"
+
+#ifdef WINNT
+#include <stdlib.h>
+#include <malloc.h>
+#endif
 
 static void
 DEFUN (update, (From, To, Was, Will_Be),

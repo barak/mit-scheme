@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.10 1996/04/09 20:09:04 adams Exp $
+$Id: scheme32.c,v 1.11 1996/10/02 19:00:09 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ MIT in each case. */
 #include <stdlib.h>
 #include <mmsystem.h>
 
-static BOOL
+static BOOL __cdecl
 win32_under_win32s_p (void)
 {
   return ((BOOL) 0);
@@ -66,7 +66,7 @@ win32_under_win32s_p (void)
 //}
 
 
-static char *
+static char * __cdecl
 win32_allocate_heap (unsigned long size, unsigned long * handle)
 {
   LPVOID base;
@@ -79,7 +79,7 @@ win32_allocate_heap (unsigned long size, unsigned long * handle)
   return ((char *) base);
 }
 
-static void
+static void __cdecl
 win32_release_heap (char * area, unsigned long handle)
 {
   VirtualFree (((LPVOID) area),
@@ -91,13 +91,13 @@ win32_release_heap (char * area, unsigned long handle)
   return;
 }
 
-static BOOL
+static BOOL __cdecl
 win32_lock_memory_area (void * area, unsigned long size)
 {
   return (VirtualLock (area, size));
 }
 
-static void
+static void __cdecl
 win32_unlock_memory_area (void * area, unsigned long size)
 {
   (void) VirtualUnlock (area, size);
@@ -161,7 +161,7 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
   return;
 }
 
-static void
+static void __cdecl
 win32_flush_async_timer (void * state)
 {
   struct win32_timer_closure_s * scm_timer
@@ -180,7 +180,7 @@ win32_flush_async_timer (void * state)
   return;
 }
 
-static UINT
+static UINT __cdecl
 win32_install_async_timer (void ** state_ptr,
 			   unsigned long * base,
 			   long memtop_off,
@@ -249,7 +249,7 @@ win32_install_async_timer (void ** state_ptr,
 
 /* These are NOPs in this version. */
 
-static BOOL
+static BOOL __cdecl
 win32_alloc_scheme_selectors (unsigned long base,
 			      unsigned long size,
 			      unsigned short * scheme_cs,
@@ -259,7 +259,7 @@ win32_alloc_scheme_selectors (unsigned long base,
   return (FALSE);
 }
 
-static void
+static void __cdecl
 win32_release_scheme_selectors (unsigned short scheme_cs,
 				unsigned short scheme_ds,
 				unsigned short scheme_ss)
@@ -268,7 +268,7 @@ win32_release_scheme_selectors (unsigned short scheme_cs,
 }
 
 
-void
+void FAR WINAPI
 install_win32_system_utilities (WIN32_SYSTEM_UTILITIES *utils)
 {
 #define EXPORT(field) utils->field = win32_##field

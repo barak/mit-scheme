@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: vector.c,v 9.36 1992/12/02 19:29:50 cph Exp $
+$Id: vector.c,v 9.37 1996/10/02 18:59:08 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -214,7 +214,7 @@ DEFINE_PRIMITIVE ("SYSTEM-VECTOR-SET!", Prim_sys_vec_set, 3, 3, 0)
   TOUCH_IN_PRIMITIVE ((arg_type (1)), vector);				\
   start = (arg_nonnegative_integer (2));				\
   end = (arg_nonnegative_integer (3));					\
-  if (end > (VECTOR_LENGTH (vector)))					\
+  if (end > ((long) (VECTOR_LENGTH (vector))))				\
     error_bad_range_arg (3);						\
   if (start > end)							\
     error_bad_range_arg (2);						\
@@ -310,13 +310,13 @@ DEFINE_PRIMITIVE ("SYSTEM-LIST-TO-VECTOR", Prim_sys_list_to_vector, 2, 2, 0)
   end1 = (arg_nonnegative_integer (3));					\
   TOUCH_IN_PRIMITIVE ((ARG_VECTOR (4)), vector2);			\
   start2 = (arg_nonnegative_integer (5));				\
-  if (end1 > (VECTOR_LENGTH (vector1)))					\
+  if (end1 > ((long) (VECTOR_LENGTH (vector1))))			\
     error_bad_range_arg (3);						\
   if (start1 > end1)							\
     error_bad_range_arg (2);						\
   length = (end1 - start1);						\
   end2 = (start2 + length);						\
-  if (end2 > (VECTOR_LENGTH (vector2)))					\
+  if (end2 > ((long) (VECTOR_LENGTH (vector2))))			\
     error_bad_range_arg (5);						\
   if (ADDRESS_PURE_P (OBJECT_ADDRESS (vector2)))			\
     signal_error_from_primitive (ERR_WRITE_INTO_PURE_SPACE)
@@ -353,7 +353,7 @@ DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
   start = (arg_nonnegative_integer (2));
   end = (arg_nonnegative_integer (3));
   fill_value = (ARG_REF (4));
-  if (end > (VECTOR_LENGTH (vector)))
+  if (end > ((long) (VECTOR_LENGTH (vector))))
     error_bad_range_arg (3);
   if (start > end)
     error_bad_range_arg (2);

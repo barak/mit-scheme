@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosterm.c,v 1.14 1994/11/28 07:36:06 cph Exp $
+$Id: prosterm.c,v 1.15 1996/10/02 18:58:43 cph Exp $
 
-Copyright (c) 1990-94 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -113,7 +113,8 @@ DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT state = (ARG_REF (2));
-    if ((STRING_LENGTH (state)) != (OS_terminal_state_size ()))
+    if (((unsigned int) (STRING_LENGTH (state)))
+	!= (OS_terminal_state_size ()))
       error_bad_range_arg (2);
     OS_terminal_set_state ((arg_terminal (1)), (STRING_LOC (state, 0)));
   }

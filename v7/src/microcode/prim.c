@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.37 1993/10/27 23:55:26 gjr Exp $
+$Id: prim.c,v 9.38 1996/10/02 18:58:31 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,8 +59,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2, 2,
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
     (BOOLEAN_TO_OBJECT
-     ((OBJECT_TYPE (ARG_REF (2))) ==
-      (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
+     (((long) (OBJECT_TYPE (ARG_REF (2))))
+      == (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1,
@@ -149,8 +149,8 @@ DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2, 2, 0)
   TOUCH_IN_PRIMITIVE ((ARG_REF (2)), object);
   PRIMITIVE_RETURN
     (BOOLEAN_TO_OBJECT
-     ((OBJECT_TYPE (object)) ==
-      (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
+     (((long) (OBJECT_TYPE (object)))
+      == (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1, 1, 0)

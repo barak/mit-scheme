@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.41 1994/02/09 00:53:27 cph Exp $
+$Id: bignum.c,v 9.42 1996/10/02 18:56:56 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -492,7 +492,10 @@ DEFUN (bignum_to_long, (bignum), bignum_type bignum)
     fast bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));
     while (start < scan)
       accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));
-    return ((BIGNUM_NEGATIVE_P (bignum)) ? (-accumulator) : accumulator);
+    return
+      ((BIGNUM_NEGATIVE_P (bignum))
+       ? (- ((long) accumulator))
+       : ((long) accumulator));
   }
 }
 
@@ -607,15 +610,20 @@ DEFUN (bignum_fits_in_word_p, (bignum, word_length, twos_complement_p),
   {
     fast bignum_length_type length = (BIGNUM_LENGTH (bignum));
     fast unsigned int max_digits = (BIGNUM_BITS_TO_DIGITS (n_bits));
-    bignum_digit_type msd, max;
-    return
-      ((length < max_digits) ||
-       ((length == max_digits) &&
-	((((msd = (BIGNUM_REF (bignum, (length - 1)))) <
-	   (max = (1L << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH))))) ||
-	  (twos_complement_p &&
-	   (msd == max) &&
-	   (BIGNUM_NEGATIVE_P (bignum)))))));
+    if (((unsigned int) length) < max_digits)
+      return (1);
+    if (((unsigned int) length) > max_digits)
+      return (0);
+    {
+      bignum_digit_type msd = (BIGNUM_REF (bignum, (length - 1)));
+      bignum_digit_type max
+	= (1L << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH)));
+      return
+	(((msd < max)
+	  || (twos_complement_p
+	      && (msd == max)
+	      && (BIGNUM_NEGATIVE_P (bignum)))));
+    }
   }
 }
 
@@ -696,8 +704,7 @@ void
 DEFUN (bignum_to_digit_stream, (bignum, radix, consumer, context),
        bignum_type bignum
        AND unsigned int radix
-       AND void EXFUN ((*consumer),
-		       (bignum_procedure_context, bignum_digit_type))
+       AND void EXFUN ((*consumer), (bignum_procedure_context, long))
        AND bignum_procedure_context context)
 {
   BIGNUM_ASSERT ((radix > 1) && (radix <= BIGNUM_RADIX_ROOT));
@@ -732,7 +739,7 @@ DEFUN (bignum_equal_p_unsigned, (x, y),
        bignum_type x AND bignum_type y)
 {
   bignum_length_type length = (BIGNUM_LENGTH (x));
-  if (length != (BIGNUM_LENGTH (y)))
+  if (length != ((bignum_length_type) (BIGNUM_LENGTH (y))))
     return (0);
   else
     {

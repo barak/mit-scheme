@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.5 1995/10/28 01:03:30 cph Exp $
+$Id: prntfs.c,v 1.6 1996/10/02 18:58:37 cph Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -194,9 +194,9 @@ static void
 DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
 {
   (a[0]) = (file_type_letter (s));
-  rwx ((((s -> st_mode) & 0700) << 0), (& (a [1])));
-  rwx ((((s -> st_mode) & 0070) << 3), (& (a [4])));
-  rwx ((((s -> st_mode) & 0007) << 6), (& (a [7])));
+  rwx (((unsigned short) (((s -> st_mode) & 0700) << 0)), (& (a [1])));
+  rwx (((unsigned short) (((s -> st_mode) & 0070) << 3)), (& (a [4])));
+  rwx (((unsigned short) (((s -> st_mode) & 0007) << 6)), (& (a [7])));
 #ifdef S_ISUID
   if (((s -> st_mode) & S_ISUID) != 0)
     (a[3]) = (((a[3]) == 'x') ? 's' : 'S');
@@ -365,11 +365,11 @@ The file must exist and you must be the owner (or superuser).")
 {
   PRIMITIVE_HEADER (3);
   {
-    time_t times[2];
-
-    times[0] = (time_t) arg_integer (2);
-    times[1] = (time_t) arg_integer (3);
-    STD_VOID_SYSTEM_CALL(syscall_utime, (utime ((STRING_ARG (1)), &times)));
+    struct utimbuf times;
+    (times . actime) = ((time_t) (arg_integer (2)));
+    (times . modtime) = ((time_t) (arg_integer (3)));
+    STD_VOID_SYSTEM_CALL
+      (syscall_utime, (utime ((STRING_ARG (1)), (&times))));
     PRIMITIVE_RETURN (SHARP_F);
   }
 }

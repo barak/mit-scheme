@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.h,v 1.4 1996/03/23 19:25:10 adams Exp $
+$Id: memmag.h,v 1.5 1996/10/02 18:58:05 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -45,6 +45,8 @@ extern void winnt_deallocate_registers (void);
 #define DEALLOCATE_REGISTERS winnt_deallocate_registers
 
 #include "ntscmlib.h"
+
+extern BOOL win32_under_win32s_p (void);
 
 #ifdef WINNT_RAW_ADDRESSES
 
