@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.4 1992/07/28 14:40:43 jinx Exp $
+$Id: dossig.c,v 1.5 1992/09/03 07:29:39 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -44,6 +44,8 @@ MIT in each case. */
 #include "dossys.h"
 #include "dosexcp.h"
 #include "doskbd.h"
+
+cc_t EXFUN (DOS_interactive_interrupt_handler, (void));
 
 /* Signal Manipulation */
 
@@ -232,12 +234,13 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
 		 (((struct handler_record *) ap) -> handler));
 }
 
-#define CONTROL_B_INTERRUPT_CHAR 'B'
-#define CONTROL_G_INTERRUPT_CHAR 'G'
-#define CONTROL_U_INTERRUPT_CHAR 'U'
-#define CONTROL_X_INTERRUPT_CHAR 'X'
-#define GENERAL_INTERRUPT_CHAR	 '!'
-#define NO_INTERRUPT_CHAR	 '0'
+#define CONTROL_B_INTERRUPT_CHAR	'B'
+#define CONTROL_G_INTERRUPT_CHAR	'G'
+#define CONTROL_U_INTERRUPT_CHAR	'U'
+#define CONTROL_X_INTERRUPT_CHAR	'X'
+#define INTERACTIVE_INTERRUPT_CHAR	'!'
+#define TERMINATE_INTERRUPT_CHAR	'@'
+#define NO_INTERRUPT_CHAR		'0'
 
 static void
 DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
@@ -264,12 +267,17 @@ DEFUN_STD_HANDLER (sighnd_control_g,
     
 DEFUN_STD_HANDLER (sighnd_control_c,
   { 
-    tty_set_next_interrupt_char (GENERAL_INTERRUPT_CHAR);
+    cc_t int_char;
+
+    int_char = (DOS_interactive_interrupt_handler ());
+    if (int_char != ((cc_t) 0))
+      tty_set_next_interrupt_char (int_char);
   })
 
 /* Keyboard interrupt */
 #define KB_INT_TABLE_SIZE		((256) + 1)
 
+#define CONTROL_BREAK			'\0'		/* A lie. */
 #define CONTROL_B			'\002'
 #define CONTROL_C			'\003'
 #define CONTROL_G			'\007'
@@ -280,7 +288,8 @@ DEFUN_STD_HANDLER (sighnd_control_c,
 #define CONTROL_G_ENABLE		(0x2)
 #define CONTROL_U_ENABLE		(0x4)
 #define CONTROL_X_ENABLE		(0x8)
-#define GENERAL_INTERRUPT_ENABLE	(0x10)
+#define INTERACTIVE_INTERRUPT_ENABLE	(0x10)
+#define TERMINATE_INTERRUPT_ENABLE	(0x20)
 
 /* This is a table and also a null terminated string. */
 unsigned char keyboard_interrupt_table[KB_INT_TABLE_SIZE];
@@ -289,20 +298,22 @@ static unsigned char keyboard_interrupt_enables;
 void
 DEFUN (OS_ctty_get_interrupt_enables, (mask), Tinterrupt_enables * mask)
 {
-  *mask = (Tinterrupt_enables) keyboard_interrupt_enables;
+  *mask = ((Tinterrupt_enables) keyboard_interrupt_enables);
   return;
 }
 
 void 
 DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
 {
-  keyboard_interrupt_enables = *mask;
+  /* Kludge: ctl-break always enabled. */
+  keyboard_interrupt_enables = (((unsigned char) (*mask))
+				| TERMINATE_INTERRUPT_ENABLE);
   return;
 }
 
 /* This is a temporary kludge. */
 
-#define NUM_INT_CHANNELS 5
+#define NUM_INT_CHANNELS 6
 static cc_t int_chars[NUM_INT_CHANNELS];
 static cc_t int_handlers[NUM_INT_CHANNELS];
 
@@ -337,7 +348,11 @@ DEFUN_VOID (update_interrupt_characters)
 	break;
 
       case interrupt_handler_interactive:
-        handler = GENERAL_INTERRUPT_CHAR;
+        handler = INTERACTIVE_INTERRUPT_CHAR;
+	break;
+
+      case interrupt_handler_terminate:
+	handler = TERMINATE_INTERRUPT_CHAR;
 	break;
 
       default:
@@ -404,71 +419,138 @@ DEFUN_VOID (initialize_keyboard_interrupt_table)
   int_handlers[3] = ((unsigned char) interrupt_handler_control_x);
   int_chars[4] = CONTROL_C;
   int_handlers[4] = ((unsigned char) interrupt_handler_interactive);
+  int_chars[5] = CONTROL_BREAK;
+  int_handlers[5] = ((unsigned char) interrupt_handler_terminate);
   update_interrupt_characters ();
   keyboard_interrupt_enables =
-    (CONTROL_B_ENABLE | CONTROL_G_ENABLE | CONTROL_U_ENABLE |
-     CONTROL_X_ENABLE | GENERAL_INTERRUPT_ENABLE);
-  return;
-}
-
-int
-DEFUN (signal_keyboard_character_interrupt, (c), unsigned char c)
-{
-  if ((c >= 0) && (c < KB_INT_TABLE_SIZE))
-  { int interrupt_char = keyboard_interrupt_table[c];
-    int interrupt_p;
-
-#define Request_Interrupt_If_Enabled(mask)			\
-  ( interrupt_p =						\
-      ( (keyboard_interrupt_enables&(mask))			\
-	? tty_set_next_interrupt_char (interrupt_char), 1 : 0 ))
-    
-    switch (interrupt_char)
-    { 
-      case CONTROL_B_INTERRUPT_CHAR:
-	Request_Interrupt_If_Enabled(CONTROL_B_ENABLE); break;
-      case CONTROL_G_INTERRUPT_CHAR:
-	Request_Interrupt_If_Enabled(CONTROL_G_ENABLE); break;
-      case CONTROL_U_INTERRUPT_CHAR:
-	Request_Interrupt_If_Enabled(CONTROL_U_ENABLE); break;
-      case CONTROL_X_INTERRUPT_CHAR:
-	Request_Interrupt_If_Enabled(CONTROL_X_ENABLE); break;
-      case GENERAL_INTERRUPT_CHAR:
-	Request_Interrupt_If_Enabled(GENERAL_INTERRUPT_ENABLE); break;
-      default:
-	interrupt_p = 0;
-    }
-    return interrupt_p;
-  }
-  return 0;
-}      
-
-
-static void
-DEFUN_VOID (print_interrupt_help)
-{ 
-  console_write_string("\nInterrupt Choices are:\n");
-  console_write_string("C-G interrupt: G, g, ^G (abort to top level)\n");
-  console_write_string("C-X interrupt: X, x, ^x (abort)\n");
-  console_write_string("C-B interrupt: B, b, ^B (break)\n");
-  console_write_string("C-U interrupt: U, u, ^U (up)\n");
-  console_write_string("Quit scheme:   Q, q\n");
-  console_write_string("Print help:    ?");
-
+    (CONTROL_B_ENABLE | CONTROL_G_ENABLE
+     | CONTROL_U_ENABLE | CONTROL_X_ENABLE
+     | INTERACTIVE_INTERRUPT_ENABLE
+     | TERMINATE_INTERRUPT_ENABLE);
   return;
 }
   
+static int hard_attn_limit = 2;
+static int hard_attn_counter = 0;
+
 cc_t
 DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 {
-  if ((int_char == CONTROL_B_INTERRUPT_CHAR) ||
-      (int_char == CONTROL_G_INTERRUPT_CHAR) ||
-      (int_char == CONTROL_X_INTERRUPT_CHAR) ||
-      (int_char == CONTROL_U_INTERRUPT_CHAR) )
-    return int_char;
-  
+  /* Scheme got a keyboard interrupt, reset the hard attention counter. */
+  hard_attn_counter = 0;
+  return (int_char);
+}
+
+static void
+DEFUN_VOID (print_interrupt_help)
+{ 
+  console_write_string ("\nInterrupt Choices are:\n");
+  console_write_string ("C-G interrupt:    G, g, ^G (abort to top level)\n");
+  console_write_string ("C-X interrupt:    X, x, ^x (abort)\n");
+  console_write_string ("C-B interrupt:    B, b, ^B (break)\n");
+  console_write_string ("C-U interrupt:    U, u, ^U (up)\n");
+  console_write_string ("Ignore interrupt: I, i     (dismiss)\n");
+  console_write_string ("Reset scheme:     R, r     (hard reset)\n");
+  console_write_string ("Quit scheme:      Q, q     (exit)\n");
+  console_write_string ("Print help:       ?");
+  return;
+}
+
+#define REQUEST_INTERRUPT_IF_ENABLED(mask) do				\
+{									\
+  if (keyboard_interrupt_enables & (mask))				\
+  {									\
+    tty_set_next_interrupt_char (interrupt_char);			\
+    interrupt_p = 1;							\
+  }									\
+  else									\
+    interrupt_p = 0;							\
+} while (0)
+    
+int EXFUN (signal_keyboard_character_interrupt, (int));
+
+int
+DEFUN (signal_keyboard_character_interrupt, (c), int c)
+{
+  if (c == -1)
+  {
+    if (keyboard_interrupt_enables & TERMINATE_INTERRUPT_ENABLE)
+      goto interactive_interrupt;
+    else
+      return (0);
+  }
+  if (c == -2)
+  {
+    /* Special kludge for hard attn. */
+    if (keyboard_interrupt_enables & TERMINATE_INTERRUPT_ENABLE)
+    {
+      hard_attn_counter += 1;
+      if (hard_attn_counter >= hard_attn_limit)
+      {
+	console_write_string ("\nTerminating scheme!");
+	termination_normal (0);
+      }
+      goto interactive_interrupt;
+    }
+    return (0);
+  }
+  else if ((c >= 0) && (c < KB_INT_TABLE_SIZE))
+  {
+    int interrupt_p, interrupt_char;
+
+    interrupt_char = keyboard_interrupt_table[c];
+
+    switch (interrupt_char)
+    { 
+      case CONTROL_B_INTERRUPT_CHAR:
+	REQUEST_INTERRUPT_IF_ENABLED (CONTROL_B_ENABLE);
+	break;
+
+      case CONTROL_G_INTERRUPT_CHAR:
+	REQUEST_INTERRUPT_IF_ENABLED (CONTROL_G_ENABLE);
+	break;
+
+      case CONTROL_U_INTERRUPT_CHAR:
+	REQUEST_INTERRUPT_IF_ENABLED (CONTROL_U_ENABLE);
+	break;
+
+      case CONTROL_X_INTERRUPT_CHAR:
+	REQUEST_INTERRUPT_IF_ENABLED (CONTROL_X_ENABLE);
+	break;
+
+      case INTERACTIVE_INTERRUPT_CHAR:
+	if (! (keyboard_interrupt_enables & INTERACTIVE_INTERRUPT_ENABLE))
+	{
+	  interrupt_p = 0;
+	  break;
+	}
+interactive_interrupt:
+	{
+	  cc_t int_char;
+
+	  int_char = (DOS_interactive_interrupt_handler ());
+	  if (int_char != ((cc_t) 0))
+	  {
+	    tty_set_next_interrupt_char ((int) int_char);
+	    interrupt_p = 1;
+	  }
+	}
+	break;
+
+      default:
+	interrupt_p = 0;
+    }
+    return (interrupt_p);
+  }
+  return (0);
+}
+
+cc_t
+DEFUN_VOID (DOS_interactive_interrupt_handler)
+{  
   while (1)
-  { unsigned char response;
+  {
+    unsigned char response;
 
     console_write_string
       ("\nKeyboard interrupt, type character (? for help): ");
@@ -487,6 +569,18 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
       case 'G':
       case CONTROL_G:
 	return CONTROL_G_INTERRUPT_CHAR;
+
+      case 'i':
+      case 'I':
+	return ((cc_t) 0);	
+
+      case 'R':
+      case 'r':
+      {
+	extern void EXFUN (soft_reset, (void));
+	soft_reset ();
+	/*NOTREACHED*/
+      }
 
       case 'q':
       case 'Q':
@@ -526,8 +620,8 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 	print_interrupt_help ();
 	break;
       }
-    } /* End CASE */
- }    /* End WHILE */
+    }
+ }
 }
   
 void
@@ -547,7 +641,6 @@ DEFUN_VOID (OS_restartable_exit)
 {
   stop_signal_default (SIGTSTP);
 }
-
 
 #ifdef HAVE_ITIMER
 
@@ -625,6 +718,7 @@ DEFUN_STD_HANDLER (sighnd_dead_subprocess,
 
 /* PC specific low-level interrupt hooks */
 /* Control-Break Interrupt */
+
 int
 DEFUN (control_break_handler, (pd), struct INT_DATA *pd)
 {
@@ -635,23 +729,45 @@ DEFUN (control_break_handler, (pd), struct INT_DATA *pd)
 /* Interval timer */
 
 /* Scheme timer emulation; DOS does not have an ITIMER like unix. */
-/* Zero means timer is not set. */
+/* Zero means timer is not set or has expired. */
 
-extern volatile unsigned long scm_itimer_counter;
-extern volatile unsigned long scm_itimer_reload;
+extern unsigned long scm_itimer_counter;
+extern unsigned long scm_itimer_reload;
+
+unsigned long scm_itimer_counter = 0;
+unsigned long scm_itimer_reload = 0;
+
+extern void EXFUN (dos_process_timer_interrupt, (void));
+
+void
+DEFUN_VOID (dos_process_timer_interrupt)
+{
+  if (scm_itimer_counter != 0)
+  {
+    if (--scm_itimer_counter == 0)
+    { 
+      scm_itimer_counter = scm_itimer_reload;
+      request_timer_interrupt ();
+    }
+  }
+  return;
+}
+
 extern int EXFUN (bios_timer_handler, (struct INT_DATA *));
 
 int 
 DEFUN (bios_timer_handler, (pd), struct INT_DATA *pd)
 {
-  if (scm_itimer_reload != 0)
-  {
-    if (--scm_itimer_counter == 0)
-    { 
-      scm_itimer_counter = scm_itimer_reload;
-      request_timer_interrupt();
-    }
-  }
+#if 0
+  dos_process_timer_interrupt ();
+#else
+  /* This is a kludge for DOS.
+     Reuse INT_Global_GC as a high-priority interrupt from
+     which the keyboard interrupt and real timer interrupt are
+     derived.
+   */
+  REQUEST_INTERRUPT (INT_Global_GC);
+#endif
   return (INTERRUPT_CHAIN_NEXT);
 }
 
@@ -867,12 +983,13 @@ DEFUN_VOID (DOS_install_interrupts)
     extern int X32_timer_interrupt_previous;
 
     X32_asm_initialize ();
+
     if ((X32_lock_scheme_microcode ()) != 0)
     {
       fprintf (stderr,
 	       "\n;; DOS_install_interrupts (X32): Unable to lock memory.");
       fprintf (stderr,
-	       "\n;; Timer interrupt not available!\n");
+	       "\n;; Interrupt and exceptions handlers not available!\n");
       fflush (stderr);
       return;
     }
@@ -887,42 +1004,38 @@ DEFUN_VOID (DOS_install_interrupts)
       fprintf (stderr,
 	       "\n;; Timer interrupt not available!\n");
       fflush (stderr);
-      return;
     }
     else
       dos_record_interrupt_interception (DOS_INTVECT_USER_TIMER_TICK,
 					 X32_interrupt_restore);
-    if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
-    {
-      dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
-					 DOS_restore_keyboard);
-      DOS_keyboard_intercepted_p = true;    
-    }
+
     install_exception_handlers (X32_get_exception_vector,
 				X32_set_exception_handler,
 				X32_restore_handler);
   }
+
   else
   {
     scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK, 
 		       bios_timer_handler, 
 		       256);
 
-    if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
-    {
-      dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
-					 DOS_restore_keyboard);
-      DOS_keyboard_intercepted_p = true;    
-    }
-
     if (!under_DPMI_p ())
       scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
 			 control_break_handler,
 			 256);
+
     else if (enable_DPMI_exceptions_p ())
       install_exception_handlers (DPMI_get_exception_vector,
 				  DPMI_set_exception_handler,
 				  DPMI_restore_handler);
+  }
+
+  if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
+  {
+    dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
+				       DOS_restore_keyboard);
+    DOS_keyboard_intercepted_p = true;    
   }
   return;
 }

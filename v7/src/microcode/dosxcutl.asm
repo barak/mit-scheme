@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosxcutl.asm,v 1.2 1992/07/28 14:26:03 jinx Exp $
+;;;	$Id: dosxcutl.asm,v 1.3 1992/09/03 07:30:06 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -378,24 +378,31 @@ common_different_stacks:
 ;;	it cannot process a page fault.
 
 	.data
-	public _X32_locked_data_start
-_X32_locked_data_start dd 0
 
-X32_excp_buffer			db 64 dup(0)
+	public _X32_locked_data_start
+_X32_locked_data_start 			dd 0
+
+X32_excp_buffer				db 64 dup(0)
 	public	_X32_excp_handlers
-_X32_excp_handlers 		db 32*20 dup (0)
+_X32_excp_handlers 			db 32*20 dup (0)
 
 	public _X32_ds_val
-_X32_ds_val	dd 06765h
-	public _X32_timer_interrupt_previous
-_X32_timer_interrupt_previous	dd 0
-				dd 0
-				dd 0
+_X32_ds_val				dd 06765h
 
-	public _scm_itimer_counter
-_scm_itimer_counter dd 0
-	public _scm_itimer_reload
-_scm_itimer_reload dd 0
+	public _X32_timer_interrupt_previous
+_X32_timer_interrupt_previous		dd 0
+					dd 0
+					dd 0
+
+	public _X32_kbd_interrupt_previous
+_X32_kbd_interrupt_previous		dd 0
+					dd 0
+					dd 0
+
+	public _X32_kbd_interrupt_pointers
+_X32_kbd_interrupt_pointers		dd 0
+					dd 0
+					dd 0
 
 	public _IntCode			; These are usually declared in C,
 _IntCode dd 0				; but they need to be locked since
@@ -548,23 +555,22 @@ X32_set_up_trap_sp_merge:
 ;;	executing as a normal program again), so it should be able to
 ;;	page it in if necessary.
 
-;;	X32 timer interrupt.
-;;	Must be locked in memory (and all the data it accesses.
+;;;;	X32 interrupt handlers:
+;;	Must be locked in memory (and all the data they access).
 
-INT_Timer equ 64			; This must agree with intrpt.h
+;;	X32 timer interrupt handler.
+;;	This signals Scheme's "global GC interrupt", a high-priority
+;;	timer interrupt from which the keyboard and real timer
+;;	interrupts are derived.
+
+INT_Timer equ 2				; This must agree with intrpt.h
+;;	INT_Timer equ 64
 
 	public	_X32_timer_interrupt
 _X32_timer_interrupt:
 	push	ds
 	mov	ds,cs:_X32_ds_val
-	cmp	dword ptr _scm_itimer_reload,0
-	je	x32_timer_return
-	dec	dword ptr _scm_itimer_counter
-	cmp	dword ptr _scm_itimer_counter,0
-	jne	x32_timer_return
 	push	eax
-	mov	eax,dword ptr _scm_itimer_reload
-	mov	dword ptr _scm_itimer_counter,eax
 	or	_IntCode,INT_Timer
 	mov	eax,_IntCode
 	and	eax,_IntEnb
@@ -579,9 +585,150 @@ x32_timer_return:
 	pop	ds
 	jmp	fword ptr cs:_X32_timer_interrupt_previous
 
+;;	X32 keyboard interrupt handler
+;;	This performs scan-code to ASCII translation in order
+;;	not to drop the bucky bits.
+;;
+
+	public	_X32_keyboard_interrupt
+_X32_keyboard_interrupt:
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[0]
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[4]
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[8]
+	push	dword ptr cs:_X32_ds_val[0]
+	pushfd
+	call	scheme_system_isr
+	jnc	x32_keyboard_interrupt_dismiss
+
+	popfd				; original flags
+	lea	esp,16[esp]
+	jmp	fword ptr cs:_X32_kbd_interrupt_previous
+
+x32_keyboard_interrupt_dismiss:
+	push	ebx			; preserve ebx
+	push	ecx			; preserve ecx
+	mov	ebx,8[esp]		; updated flags
+	mov	36[esp],ebx		; store eflags to location 1
+	mov	ecx,40[esp]		; pointer to interrupt structure
+	mov	ss:[ecx],eax		; store new eax
+	mov	ss:24[ecx],ebx		; store eflags to location 2
+	pop	ecx
+	pop	ebx
+	popfd				; updated flags
+	lea	esp,16[esp]		; pop args
+	iretd
+
+;;	Stack on entry to scheme_system_isr
+;;
+;;24    address of modifier mask
+;;20	offset for unshifted table
+;;16	offset for shifted table
+;;12	DS for scan_code to ascii tables
+;;8	Flags to restore/modify
+;;4	EIP for low-level hook (DPMI or DOSX)
+;;0	Old ebp [pushed on entry]
+;;
+;;	Arguments:
+;; AL = scan code
+;; AH = 4fh
+;; CF set
+;;
+;;	Return:
+;; AL = scan code
+;; CF clear if scan code should be ignored (interrupt dismissed).
+
+chain_to_next_handler:
+	stc				; set the carry flag
+	ret
+
+	public	scheme_system_isr
+scheme_system_isr:
+	cmp	ah,4fh
+	jne	chain_to_next_handler
+	cmp	al,39h
+        ja      chain_to_next_handler
+
+;; process a keystroke
+
+	push	ebp
+	mov	ebp,esp
+        push    eax             ; Preserve accross interrupt
+
+        mov     ah,2h           ; Get shift bits
+        int     16h             ; Return in AL
+        
+        push    ecx
+        push    edx             ; Preserve regs
+        push    es
+
+        mov     edx,12[ebp]      ; Segment selector
+        push    edx
+        pop     es
+	
+        mov     edx,24[ebp]     ; Modifier mask address
+        and     al,es:[edx]     ; Ignore modifiers
+        push    eax             ; Save result
+        
+        mov     ecx,-4[ebp]     ; Scan code + function number
+        and     ecx,3fh         ; Only scan code
+        mov     edx,20[ebp]     ; Unshifted table offset
+        and     eax,47h         ; Shift, ctrl, and CAPS-LOCK mask
+        cmp     al,0
+        je      index_into_table
+        mov     edx,16[ebp]      ; Shifted table offset
+
+index_into_table:
+        mov     al,es:[edx] [ecx]  ; Get ASCII value
+        pop     edx             ; Masked modifier bits
+        cmp     al,0            ; Null entries mean chain
+        je      abort_translation
+
+        bt      edx,2           ; Control set?
+        jnc     after_control
+        and     al,09fh         ; Clear bits 6 and 5
+
+after_control:
+        bt      edx,3           ; Alt set?
+        jnc     after_meta
+        or      al,080h         ; Set bit 8
+
+after_meta:
+	cmp	al,0f0h		; M-p ?
+	je	abort_translation
+        mov     ecx,-4[ebp]     ; Get scan code
+
+	cmp	al,0		; C-Space ?
+	jne	after_ctrl_space
+	mov	cl,3		; Fudge scan code
+
+after_ctrl_space:
+	mov	ch,cl
+        mov     cl,al           ; Transfer ASCII value
+        
+        mov     ah,5h           ; Insert keystroke
+        int     16h             ; CH = scan code, CL = ASCII
+                                ; returns AL = 0h if win, 1h if buffer full
+
+	and	byte ptr 8[ebp],0feh	; clear interrupt carry flag
+        pop     es
+        pop     edx
+        pop     ecx
+	pop	eax
+	pop	ebp
+	clc				; clear our carry flag
+	ret
+
+abort_translation:
+        pop     es
+        pop     edx
+        pop     ecx
+	pop	eax
+	pop	ebp
+	stc				; set carry flag
+	ret
+
 	public	_X32_locked_code_end
 _X32_locked_code_end:
-
 
 X32_set_up_trap_stack:
 	push	4[edx]			; Trapped SS

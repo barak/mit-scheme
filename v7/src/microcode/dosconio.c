@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosconio.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosconio.c,v 1.2 1992/09/03 07:29:51 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. */
 #include "dosscan.h"
 #include "dossys.h"
 #include "intrpt.h"
-
+
 /* This is really not set up to include Scheme level headers, so we
    fake them here. */
 extern long
@@ -52,7 +52,6 @@ extern long
 #define fileno(fp)	((fp)->_file)
 #endif
 
-
 #define CONIO_BUFFER_SIZE	(1024)
 #define TYPEAHEAD_BUFFER_SIZE	(1024)
 
@@ -83,7 +82,6 @@ typedef struct typeahead_buffer_struct
 
 static conio_buffer_t line_buffer, key_buffer;
 static typeahead_buffer_t typeahead_buffer;
-
 
 static int max_scancode_conversion_length = 0;
 static unsigned char * keyboard_scancode_table[] = DEFAULT_SCANCODE_CONVERSIONS;
@@ -124,7 +122,8 @@ static unsigned long scancode_malloced_table[MALLOCED_TABLE_SIZE] = {0,};
 
 static void
 DEFUN (map_keyboard_scancode, (scancode), unsigned char scancode)
-{ extern int signal_keyboard_character_interrupt(unsigned char);
+{
+  extern int signal_keyboard_character_interrupt (int);
 
   if (scancode < KEYBOARD_SCANCODE_TABLE_SIZE)
   {
@@ -132,15 +131,27 @@ DEFUN (map_keyboard_scancode, (scancode), unsigned char scancode)
     unsigned char * conversion = keyboard_scancode_table[scancode];
     if (conversion == NO_CONVERSION)
       return;
+    else if (conversion == SOFT_ATTN)
+    {
+      signal_keyboard_character_interrupt (-1);
+      return;
+    }
+    else if (conversion == HARD_ATTN)
+    {
+      signal_keyboard_character_interrupt (-2);
+      return;
+    }
 
-    len = ((conversion == CTRL_AT) ? 1 : strlen (conversion));
+    len = ((conversion == CTRL_AT) ? 1 : (strlen (conversion)));
     
     if (len <= (Typeahead_Buffer_Remaining ()))
-    { /* Copy conversion string into typeahead buffer, worrying about
-	 interrupt characters along the way. */
+    {
+      /* Copy conversion string into typeahead buffer, worrying about
+	 interrupt characters along the way.
+       */
       while (--len >= 0)
       {
-	if ((signal_keyboard_character_interrupt (*conversion)) == 0)
+	if ((signal_keyboard_character_interrupt ((int) (*conversion))) == 0)
 	  typeahead_buffer.buffer[typeahead_buffer.length++] = *conversion++;
       }
     }
@@ -162,7 +173,7 @@ DEFUN_VOID (recompute_max_scancode_conversion_length)
     else if (conversion == CTRL_AT)
       length = 1;
     else
-      length = strlen (conversion);
+      length = (strlen (conversion));
     max_scancode_conversion_length 
       = Max (length, max_scancode_conversion_length);
   }
@@ -202,8 +213,8 @@ DEFINE_PRIMITIVE ("KEYBOARD-SET-CONVERSION!", Prim_keyboard_set_conversion,
 {
   PRIMITIVE_HEADER (2);
   {
-    int scancode = arg_integer (1);
-    SCHEME_OBJECT scheme_conversion = ARG_REF (2);
+    int scancode = (arg_integer (1));
+    SCHEME_OBJECT scheme_conversion = (ARG_REF (2));
 
     if ((scancode < 0) || (scancode >= KEYBOARD_SCANCODE_TABLE_SIZE))
       error_bad_range_arg(1);
@@ -259,18 +270,18 @@ DEFINE_PRIMITIVE ("KEYBOARD-SET-CONVERSION!", Prim_keyboard_set_conversion,
 static void
 DEFUN_VOID (consume_typeahead)
 {
-  extern int signal_keyboard_character_interrupt(unsigned char);
+  extern int signal_keyboard_character_interrupt (int);
   unsigned char character;
 
-  while ( (Typeahead_Buffer_Available_p()) &&
-	  (dos_poll_keyboard_character(&character)) )
+  while ((Typeahead_Buffer_Available_p ()) &&
+	 (dos_poll_keyboard_character (&character)))
   { 
     if (character == '\0') /* Extended scancode */
     { 
-      dos_poll_keyboard_character(&character);
-      map_keyboard_scancode(character);
+      dos_poll_keyboard_character (&character);
+      map_keyboard_scancode (character);
     }
-    else if (signal_keyboard_character_interrupt(character) == 0)
+    else if ((signal_keyboard_character_interrupt ((int) character)) == 0)
       typeahead_buffer.buffer[typeahead_buffer.length++] = character;
     else
       break;
@@ -281,35 +292,47 @@ DEFUN_VOID (consume_typeahead)
 static int
 DEFUN_VOID (typeahead_available_p)
 {
-  consume_typeahead();
-  return !(typeahead_buffer.length == 0);
+  consume_typeahead ();
+  return (!(typeahead_buffer.length == 0));
 }
 
 static unsigned char
 DEFUN_VOID (get_typeahead_character)
-{ unsigned char result;
-  
+{
   if (typeahead_buffer.length == 0)
     return '\0';
   else
-  { int i;
+  {
+    int i;
+    unsigned char result;
+
     result = typeahead_buffer.buffer[0];
     for (i = 1; i < typeahead_buffer.length; i++)
       typeahead_buffer.buffer[i - 1] = typeahead_buffer.buffer[i];
     typeahead_buffer.length--;
-    return result;
+    return (result);
   }
 }
 
 DEFINE_PRIMITIVE ("CONSUME-TYPEAHEAD", Prim_consume_typeahead, 0, 0,
-  "Suck up DOS typeahead.")
+		  "Suck up DOS typeahead.")
 {
-
+  /* Obsolete -- done by microcode directly. */
   PRIMITIVE_HEADER(0);
-  consume_typeahead();
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
+		  "High-priority timer interrupt handler.")
+{
+  extern void EXFUN (dos_process_timer_interrupt, (void));
+  PRIMITIVE_HEADER (2);
+
+  consume_typeahead ();
+  dos_process_timer_interrupt ();
+  CLEAR_INTERRUPT (INT_Global_GC);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
 static void
 DEFUN (key_buffer_insert_self, (c), unsigned char c)
@@ -319,12 +342,13 @@ DEFUN (key_buffer_insert_self, (c), unsigned char c)
   if (key_buffer.length != CONIO_BUFFER_SIZE)
   {
     key_buffer.buffer[key_buffer.length++] = c;
-    ( (c == LINEFEED)
-      ? dos_console_write(crlf, sizeof(crlf))
-      : dos_console_write(&c, 1) );
+    if (c == LINEFEED)
+      dos_console_write (crlf, (sizeof (crlf)));
+    else
+      dos_console_write (&c, 1);
   }
   return;
-}  
+}
 
 static void
 DEFUN_VOID (key_buffer_erase_character)
@@ -334,27 +358,26 @@ DEFUN_VOID (key_buffer_erase_character)
   if (key_buffer.length != 0)
   {
     key_buffer.length -= 1;
-    dos_console_write(erase, sizeof(erase));
+    dos_console_write (erase, (sizeof (erase)));
   }
   return;
 }
 
 static void
 DEFUN_VOID(key_buffer_to_line_buffer)
-{ register size_t i = 0;
+{
+  register size_t i = 0;
   register size_t j = 0;
 
-  while ((i < key_buffer.length)&&(line_buffer.length != CONIO_BUFFER_SIZE))
+  while ((i < key_buffer.length)
+	 && (line_buffer.length != CONIO_BUFFER_SIZE))
     line_buffer.buffer[line_buffer.length++] = key_buffer.buffer[i++];
   while (i < key_buffer.length)
     key_buffer.buffer[j++] = key_buffer.buffer[i++];
   key_buffer.length = j;
-
   return;
 }
-
 
-
 void
 DEFUN_VOID (flush_conio_buffers)
 {
@@ -366,19 +389,34 @@ DEFUN_VOID (flush_conio_buffers)
 
 void
 DEFUN_VOID (DOS_initialize_conio)
-{ void initialize_keyboard_interrupt_table(void);
+{
+  void initialize_keyboard_interrupt_table (void);
 
-  flush_conio_buffers();
-  initialize_keyboard_interrupt_table();
-  initialize_scancode_table();
+  flush_conio_buffers ();
+  initialize_keyboard_interrupt_table ();
+  initialize_scancode_table ();
+  return;
+}
+
+extern void EXFUN (DOS_initialize_fov, (SCHEME_OBJECT));
+
+void
+DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
+{
+  extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
+  SCHEME_OBJECT iv, prim;
+
+  prim = (make_primitive ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT"));
+  iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
+  VECTOR_SET (iv, Global_GC_Level, prim);
 
   return;
 }
 
-
 static int
-DEFUN(empty_line_buffer, (buffer, nbytes), char * buffer AND size_t nbytes)
-{ register size_t i, j;
+DEFUN (empty_line_buffer, (buffer, nbytes), char * buffer AND size_t nbytes)
+{
+  register size_t i, j;
   
   for (i = 0; ((i < line_buffer.length)&&(i < nbytes)); i++)
     *buffer++ = line_buffer.buffer[i];
@@ -386,9 +424,8 @@ DEFUN(empty_line_buffer, (buffer, nbytes), char * buffer AND size_t nbytes)
   for (j = 0; i < line_buffer.length; i++, j++)
     line_buffer.buffer[j] = line_buffer.buffer[i];
   line_buffer.length -= nbytes;
-  return nbytes;
+  return (nbytes);
 }
-
 
 static void
 DEFUN (buffered_key_command, (c), unsigned char c)
@@ -432,34 +469,35 @@ DEFUN(console_read, (buffer, nbytes, buffered_p, blocking_p),
   System_Error_Reset();
   do
   { /* Get all pending characters into the buffer */
-    while (typeahead_available_p())
+    while (typeahead_available_p ())
     { 
       if (buffered_p)
-	buffered_key_command(get_typeahead_character());
-      else /* Non buffered channel, in CScheme, also no echo. */
-      	non_buffered_key_command(get_typeahead_character());
+	buffered_key_command (get_typeahead_character ());
+      else
+	/* Non buffered channel, in CScheme, also no echo. */
+      	non_buffered_key_command (get_typeahead_character ());
     } /* End WHILE */
     /* Test for pending interrupts here: */
-    if (pending_interrupts_p())
-    { if (INTERRUPT_QUEUED_P(INT_Character))
-	flush_conio_buffers();
-      System_Error_Return(EINTR);
+    if (pending_interrupts_p ())
+    {
+      if (INTERRUPT_QUEUED_P (INT_Character))
+	flush_conio_buffers ();
+      System_Error_Return (EINTR);
     }
     /* Return if we buffered up a line, or channel is not buffered */
     if (line_buffer.length != 0)
-      return empty_line_buffer(buffer, nbytes);
+      return (empty_line_buffer (buffer, nbytes));
   } while (blocking_p);	/* Keep reading for blocking channel. */
   /* This means there is nothing available, don't block */
-  System_Error_Return(ERRNO_NONBLOCK);
+  System_Error_Return (ERRNO_NONBLOCK);
 }
-	
-
+
 extern int EXFUN
  (text_write, (int fd AND CONST unsigned char * buffer AND size_t nbytes));
 
 void
 DEFUN (console_write_string, (string), void * string)
 {
-  text_write(fileno(stdout), string, strlen((char *) string));
+  text_write ((fileno(stdout)), string, strlen((char *) string));
   return;
 }

@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbutl.asm,v 1.3 1992/07/28 14:30:04 jinx Exp $
+;;;	$Id: doskbutl.asm,v 1.4 1992/09/03 07:30:20 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -53,8 +53,9 @@
 ;;4	offset for shifted table
 ;;0	DS for scan_code to ascii tables
 
-	public _DOSX_scheme_system_isr
-	public _DPMI_PM_scheme_system_isr
+	extrn	scheme_system_isr:near
+	public	_DOSX_scheme_system_isr
+	public	_DPMI_PM_scheme_system_isr
 
 _DOSX_scheme_system_isr:
 _DPMI_PM_scheme_system_isr:
@@ -119,111 +120,110 @@ DPMI_scheme_system_dismiss:
 	lea	esp,24[esp]		; pop args
 	iret				; tell DPMI we're done	
 
-;;	Stack on entry to scheme_system_isr
-;;
-;;24    address of modifier mask
-;;20	offset for unshifted table
-;;16	offset for shifted table
-;;12	DS for scan_code to ascii tables
-;;8	Flags to restore/modify
-;;4	EIP for low-level hook (DPMI or DOSX)
-;;0	Old ebp [pushed on entry]
-;;
-;;	Arguments:
-;; AL = scan code
-;; AH = 4fh
-;; CF set
-;;
-;;	Return:
-;; AL = scan code
-;; CF clear if scan code should be ignored (interrupt dismissed).
+;; These macros taken from x32's mac32.asm
 
-chain_to_next_handler:
-	stc				; set the carry flag
-	ret
+;Macro for start of a real mode code segment
+start16code     macro
+__X386_CODESEG_16       segment para use16 public 'CODE'
+assume cs:__X386_CODESEG_16,ds:nothing,es:nothing,fs:nothing,gs:nothing,ss:nothing
+endm
 
-scheme_system_isr:
+;Macro for end of real mode code segment
+end16code       macro
+__X386_CODESEG_16       ends
+endm
+
+start16code
+	public	_RM_keyboard_pattern_start
+_RM_keyboard_pattern_start:
+
+modifier_mask:
+	db 2 dup (0)
+shifted_table_offset:
+	db 2 dup (0)
+unshifted_table_offset:
+	db 2 dup (0)
+
+chain:
+	popf
+	db	0eah			; jmpf	next_in_chain
+	db 4 dup (0)
+			
+kbd_isr:
+	pushf
 	cmp	ah,4fh
-	jne	chain_to_next_handler
+	jne	chain
 	cmp	al,39h
-        ja      chain_to_next_handler
-
-;; process a keystroke
-
-	push	ebp
-	mov	ebp,esp
-        push    eax             ; Preserve accross interrupt
-
-        mov     ah,2h           ; Get shift bits
-        int     16h             ; Return in AL
-        
-        push    ecx
-        push    edx             ; Preserve regs
-        push    es
-
-        mov     edx,12[ebp]      ; Segment selector
-        push    edx
-        pop     es
-	
-        mov     edx,24[ebp]     ; Modifier mask address
-        and     al,es:[edx]     ; Ignore modifiers
-        push    eax             ; Save result
-        
-        mov     ecx,-4[ebp]     ; Scan code + function number
-        and     ecx,3fh         ; Only scan code
-        mov     edx,20[ebp]     ; Unshifted table offset
-        and     eax,47h         ; Shift, ctrl, and CAPS-LOCK mask
-        cmp     al,0
-        je      index_into_table
-        mov     edx,16[ebp]      ; Shifted table offset
-
-index_into_table:
-        mov     al,es:[edx] [ecx]  ; Get ASCII value
-        pop     edx             ; Masked modifier bits
-        cmp     al,0            ; Null entries mean chain
-        je      abort_translation
-
-        bt      edx,2           ; Control set?
-        jnc     after_control
-        and     al,09fh         ; Clear bits 6 and 5
-
-after_control:
-        bt      edx,3           ; Alt set?
-        jnc     after_meta
-        or      al,080h         ; Set bit 8
-
-after_meta:
-	cmp	al,0f0h		; M-p ?
+	ja	chain
+	push	bx			; Preserve bx
+	push	ax			; Preserve scan code
+	mov	ah,2h
+	int	16h			; Get modifier bits
+	and	al,byte ptr cs:modifier_mask
+	pop	bx			; Get scan code
+	push	bx
+	and	bx,3fh			; Drop fncn
+	cmp	al,8h			; Only meta bit set?
+	je	do_unshifted
+	cmp	al,0			; No modifier bits set?
+	je	do_unshifted
+do_shifted:
+	push	si
+	mov	si,word ptr cs:shifted_table_offset
+	mov	bl,byte ptr cs:[bx+si]
+	pop	si
+	jmp	merge
+do_unshifted:
+	push	si
+	mov	si,word ptr cs:unshifted_table_offset
+	mov	bl,byte ptr cs:[bx+si]
+	pop	si
+merge:
+	cmp	bl,0			; No translation?
 	je	abort_translation
-        mov     ecx,-4[ebp]     ; Get scan code
-
-	cmp	al,0		; C-Space ?
+	; bt	al,2h			; Control set?
+	db	0fh,0bah,0e0h,2		; bt	al,2h
+	jnc	after_ctrl
+	and	bl,09fh 		; controlify
+after_ctrl:
+	; bt	al,3h			; Alt set?
+	db	0fh,0bah,0e0h,3
+	jnc	after_meta
+	or	bl,080h 		; metify
+after_meta:
+	cmp	bl,0f0h 		; M-p ?
+	je	abort_translation
+	pop	ax
+	push	cx			; Preserve cx
+	push	ax
+	mov	ch,al			; Scan code
+	cmp	bl,0			; C-Space?
 	jne	after_ctrl_space
-	mov	cl,3		; Fudge scan code
-
+	mov	ch,3			; Fudge scan code
 after_ctrl_space:
-	mov	ch,cl
-        mov     cl,al           ; Transfer ASCII value
-        
-        mov     ah,5h           ; Insert keystroke
-        int     16h             ; CH = scan code, CL = ASCII
-                                ; returns AL = 0h if win, 1h if buffer full
-
-	and	byte ptr 8[ebp],0feh	; clear interrupt carry flag
-        pop     es
-        pop     edx
-        pop     ecx
-	pop	eax
-	pop	ebp
-	clc				; clear our carry flag
-	ret
+	mov	cl,bl			; ASCII value
+	mov	ah,05h			; fcn. number
+	int	16h			; Record keystroke
+	pop	ax			; Restore registers
+	pop	cx
+	pop	bx
+	push	bp
+	mov	bp,sp
+	and	8[bp],0feh  		; clc iret's flags
+	pop	bp
+	popf
+	clc
+	iret
 
 abort_translation:
-        pop     es
-        pop     edx
-        pop     ecx
-	pop	eax
-	pop	ebp
-	stc				; set carry flag
-	ret
+	pop	ax
+	pop	bx
+	jmp	chain
+	
+	public	_RM_keyboard_pattern_end
+_RM_keyboard_pattern_end:
+	nop
+
+end16code
+
 end

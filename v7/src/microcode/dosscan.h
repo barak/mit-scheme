@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosscan.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dosscan.h,v 1.2 1992/09/03 07:29:58 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -44,6 +44,8 @@ MIT in each case. */
 #define NO_CONVERSION	((unsigned char *) ((void *) 0))
 
 unsigned char CTRL_AT[] = { '\0' };
+unsigned char HARD_ATTN[] = "This is hard attention";
+unsigned char SOFT_ATTN[] = "This is soft attention";
 unsigned char META_a[] = {Metafy('a'), '\0'};
 unsigned char META_b[] = {Metafy('b'), '\0'};
 unsigned char META_c[] = {Metafy('c'), '\0'};
@@ -235,9 +237,9 @@ unsigned char META_PLUS[] = {Metafy('+'), '\0'};
 /* 135 */	NO_CONVERSION,					\
 /* 136 */	NO_CONVERSION,					\
 /* 137 */	NO_CONVERSION,					\
-/* 138 */	NO_CONVERSION,					\
+/* 138 */	HARD_ATTN,		/* Ctrl-F12 */		\
 /* 139 */	NO_CONVERSION,					\
-/* 140 */	NO_CONVERSION,					\
+/* 140 */	SOFT_ATTN,		/* Alt-F12 */		\
 /* 141 */	NO_CONVERSION,					\
 /* 142 */	NO_CONVERSION,					\
 /* 143 */	NO_CONVERSION,					\

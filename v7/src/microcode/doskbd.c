@@ -1,6 +1,5 @@
 /* -*-C-*-
-
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.7 1992/06/04 12:40:40 jinx Exp $
+$Id: doskbd.c,v 1.8 1992/09/03 07:30:46 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -53,6 +52,10 @@ MIT in each case. */
 #undef getDS
 #endif
 
+#ifdef getCS
+#undef getCS
+#endif
+
 #include "dossys.h"
 #include "dosinsn.h"
 #include "doskbd.h"
@@ -64,11 +67,19 @@ MIT in each case. */
 #ifndef EFAULT
 #  define EFAULT 2001
 #endif
+
+/* These depend on the C compiler (Zortech) allocating them contiguosly. */
+
+extern unsigned char scan_code_tables_start[];
+extern unsigned char scan_code_tables_end[];
 
 /* Tables mapping scan codes to ASCII characters.
    Entries with NULL (\0) should not be mapped by the
    Scheme keyboard ISR.  Let the default handler map them.
  */
+
+unsigned char
+scan_code_tables_start[] = "foo";
 
 static unsigned char
 shifted_scan_code_to_ascii[] =
@@ -132,7 +143,7 @@ shifted_scan_code_to_ascii[] =
 	'\0',		/* 56 */
 	' '		/* 57 */
   };
-    
+
 static unsigned char
 unshifted_scan_code_to_ascii[] =
 {
@@ -197,6 +208,9 @@ unshifted_scan_code_to_ascii[] =
   };
 
 static unsigned char modifier_mask = 0x4f;
+
+unsigned char
+scan_code_tables_end[] = "bar";
 
 union RM_address
 {
@@ -227,16 +241,6 @@ under_QEMM_386_p (void)
       return (dos_true);
   }
   return (dos_false);
-}
-
-dos_boolean
-under_DPMI_p (void)
-{
-  union REGS regs;
-  
-  regs.e.eax = 0x1686;
-  int86 (0x2f, &regs, &regs);
-  return (regs.x.ax == 0);
 }
 
 static void
@@ -298,7 +302,7 @@ install_kbd_hook_p (char * var_name)
 #define DOS_KBD_FUNC_RECORD_KEYSTROKE	0x5
 
 int
-bios_keyboard_handler(struct INT_DATA *pd)
+bios_keyboard_handler (struct INT_DATA *pd)
 {
   unsigned char scan_code, chord, ascii;
   union REGS regs;
@@ -783,129 +787,80 @@ DPMI_restore_kbd_hook (void)
 
 #if defined(DPMI_RM_HANDLER_REAL) || defined(DOSX_RM_HANDLER_REAL)
 
-unsigned char RM_handler_pattern[] =
-{
-			/*  chain:					*/
-0x9d,			/* 0	popf					*/
-0xea,0,0,0,0,		/* 1	jmpf	next_in_chain			*/
-			/*  kbd_isr:					*/
-0x9c,			/* 6	pushf					*/
-0x80,0xfc,0x4f,		/* 7	cmp	ah,4fh				*/
-0x75,0xf4,		/* a	jne	chain				*/
-0x3c,0x39,		/* c	cmp	al,39h				*/
-0x77,0xf0,		/* e	ja	chain				*/
-0x53,			/* 10	push	bx	; Preserve bx		*/
-0x50,			/* 11	push	ax	; Preserve scan code	*/
-0xb4,2,			/* 12	mov	ah,2h				*/
-0xcd,0x16,		/* 14	int	16h	; Get modifier bits	*/
-0x2e,0x22,6,0xf4,0,	/* 16	and	al,cs:modifier mask		*/
-0x5b,			/* 1b	pop	bx	; Get scan code		*/
-0x53,			/* 1c	push	bx				*/
-0x81,0xe3,0x3f,0,	/* 1d	and	bx,3fh	; Drop fncn		*/
-0x3c,8,			/* 21	cmp	al,8h	; Only meta bit set?	*/
-0x74,0xb,		/* 23	je	do_unshifted			*/
-0x3c,0,			/* 25	cmp	al,0	; No modifier bits set? */
-0x74,7,			/* 27	je	do_unshifted			*/
-			/*  do_shifted:					*/
-0x2e,0x8a,0x9f,0x80,0,	/* 29	mov	bl,cs:shifted_table[bx]		*/
-0xeb,5,			/* 2e	jmp	merge				*/
-			/*  do_unshifted:				*/
-0x2e,0x8a,0x9f,0xba,0,	/* 30	mov	bl,cs:unshifted_table[bx]	*/
-			/*  merge:					*/
-0x80,0xfb,0,		/* 35	cmp	bl,0	; No translation?	*/
-0x74,0x37,		/* 38	je	abort_translation		*/
-0x0f,0xba,0xe0,2,	/* 3a	bt	al,2h	; Control set?		*/
-0x73,3,			/* 3e	jnc	after_ctrl			*/
-0x80,0xe3,0x9f,		/* 40	and	bl,09fh ; controlify		*/
-			/*  after_ctrl:					*/
-0x0f,0xba,0xe0,3,	/* 43	bt	al,3h	; Alt set?		*/
-0x73,3,			/* 47	jnc	after_meta			*/
-0x80,0xcb,0x80,		/* 49	or	bl,080h ; metify		*/
-			/*  after_meta:					*/
-0x80,0xfb,0xf0,		/* 4c   cmp	bl,0f0h ; M-p ?			*/
-0x74,0x20,		/* 4f	je	abort_translation		*/
-0x58,			/* 51	pop	ax				*/
-0x51,			/* 52	push	cx	; Preserve cx		*/
-0x50,			/* 53	push	ax				*/
-0x8a,0xe8,		/* 54	mov	ch,al	; Scan code		*/
-0x80,0xfb,0,		/* 56	cmp	bl,0	; C-Space?		*/
-0x75,2,			/* 59   jne	after_ctrl_space		*/
-0xb5,3,			/* 5b	mov	ch,3	; Fudge scan code	*/
-			/*  after_ctrl_space:				*/
-0x8a,0xcb,		/* 5d	mov	cl,bl	; ASCII value		*/
-0xb4,5,			/* 5f	mov	ah,05h	; fcn. number		*/
-0xcd,0x16,		/* 61	int	16h	; Record keystroke	*/
-0x58,			/* 63	pop	ax	; Restore registers	*/
-0x59,			/* 64	pop	cx				*/
-0x5b,			/* 65	pop	bx				*/
-0x55,			/* 66	push	bp				*/
-0x8b,0xec,		/* 67	mov	bp,sp				*/
-0x80,0x66,8,0xfe,	/* 69	and	8[bp],0feh  ; clc iret's flags	*/
-0x5d,			/* 6d	pop	bp				*/
-0x9d,			/* 6e	popf					*/
-0xf8,			/* 6f	clc					*/
-0xcf,			/* 70	iret					*/
-			/*  abort_translation:				*/
-0x58,			/* 71	pop	ax				*/
-0x5b,			/* 72	pop	bx				*/
-0xeb,0x8b		/* 73	jmp	chain				*/
-			/* 75	PAD					*/
-};
-
-#define PATTERN_SIZE		0x75
-#define PADDED_PATTERN_SIZE	0x80
-#define PATTERN_CHAIN_OFFSET	2
-#define PATTERN_START_OFFSET	6
-#define RM_ISR_TABLE_SIZE	0x3a
-#define RM_ISR_TOTAL_SIZE					\
-  (PADDED_PATTERN_SIZE + (2 * RM_ISR_TABLE_SIZE) + 1)
-#define RM_ISR_MASK_OFFSET	(RM_ISR_TOTAL_SIZE - 1)
+static unsigned shifted_table_offset = 0;
+static unsigned unshifted_table_offset = 0;
 
+#define PATTERN_MODIFIER_OFFSET		0
+#define PATTERN_SHIFTED_PTR_OFFSET	2
+#define PATTERN_UNSHIFTED_PTR_OFFSET	4
+#define PATTERN_CHAIN_OFFSET		8
+#define PATTERN_START_OFFSET		12
+
+#define RM_ISR_MASK_OFFSET		PATTERN_MODIFIER_OFFSET
+									
 static void *
-make_RM_handler (void)
+make_RM_handler (unsigned * size, unsigned * offset, unsigned * delta)
 {
-  unsigned char * copy;
+  extern void RM_keyboard_pattern_start (void);
+  extern void RM_keyboard_pattern_end (void);
+  unsigned long pattern_start, start_offset;
+  unsigned long pattern_size, total_size;
   unsigned short * wordptr;
+  unsigned char * copy;
+  union REGS regs;
 
-  if (((sizeof (RM_handler_pattern)) != PATTERN_SIZE)
-      || ((sizeof (shifted_scan_code_to_ascii)) != RM_ISR_TABLE_SIZE)
-      || ((sizeof (unshifted_scan_code_to_ascii)) != RM_ISR_TABLE_SIZE)
-      || (RM_ISR_MASK_OFFSET != 0xf4))
-  {
-    fprintf (stderr, "make_RM_handler: Inconsistent sizes!\n");
-    fprintf (stderr, "	   PATTERN_SIZE = %d\n", PATTERN_SIZE);
-    fprintf (stderr, "and (sizeof (RM_handler_pattern)) = %d\n",
-	     (sizeof (RM_handler_pattern)));
-    fprintf (stderr, "	   RM_ISR_TABLE_SIZE = %d\n",
-	     RM_ISR_TABLE_SIZE);
+  regs.x.ax = 0x2509;
+  int86 (0x21, &regs, &regs);
+  start_offset = ((unsigned long) RM_keyboard_pattern_start);
+  pattern_start = ((((unsigned long) regs.x.bx) << 4) + start_offset);
 
-    fprintf (stderr, "and (sizeof (shifted_scan_code_to_ascii)) = %d\n",
-	     (sizeof (shifted_scan_code_to_ascii)));
-    fprintf (stderr, "and (sizeof (unshifted_scan_code_to_ascii)) = %d\n",
-	     (sizeof (unshifted_scan_code_to_ascii)));
-    fprintf (stderr, "	   RM_ISR_MASK_OFFSET  = 0x%x <> 0xf4",
-	     RM_ISR_MASK_OFFSET);
-    errno = EFAULT;
-    return ((void *) NULL);
-  }
+  pattern_size = (((unsigned long) RM_keyboard_pattern_end) - start_offset);
+  total_size = (pattern_size
+		+ (sizeof (shifted_scan_code_to_ascii))
+		+ (sizeof (unshifted_scan_code_to_ascii)));
 
-  copy = ((unsigned char *) (malloc (RM_ISR_TOTAL_SIZE)));
+  copy = ((unsigned char *) (malloc (total_size)));
   if (copy == ((unsigned char *) NULL))
     return ((void *) NULL);
 
-  memcpy (copy, RM_handler_pattern, (sizeof (RM_handler_pattern)));
-  memcpy ((copy + PADDED_PATTERN_SIZE),
-	  shifted_scan_code_to_ascii,
-	  RM_ISR_TABLE_SIZE);
-  memcpy ((copy + PADDED_PATTERN_SIZE + RM_ISR_TABLE_SIZE),
-	  unshifted_scan_code_to_ascii,
-	  RM_ISR_TABLE_SIZE);
+  farcpy (((unsigned) copy), (getDS ()),
+	  ((unsigned) pattern_start), (regs.e.edx >> 16),
+	  pattern_size);
 
+  if (copy[PATTERN_START_OFFSET] != ((unsigned char) 0x9c))
+  {
+    fprintf (stderr, "make_RM_handler: Bad pattern!\n");
+    fprintf (stderr, "\tpattern_start = 0x%lx, pattern_size = %d.\n",
+	     pattern_start, pattern_size);
+    fprintf (stderr, "\tselector = 0x%x; segment = 0x%x; start_offset = 0x%x.\n",
+	     (regs.e.edx >> 16), regs.x.bx, start_offset);
+    free (copy);
+    return ((void *) NULL);
+  }
+
+  memcpy ((copy + pattern_size),
+	  shifted_scan_code_to_ascii,
+	  (sizeof (shifted_scan_code_to_ascii)));
+
+  memcpy ((copy + (pattern_size + (sizeof (shifted_scan_code_to_ascii)))),
+	  unshifted_scan_code_to_ascii,
+	  (sizeof (unshifted_scan_code_to_ascii)));
+
+  copy[PATTERN_MODIFIER_OFFSET] = modifier_mask;
+  wordptr = ((unsigned short *) (copy + PATTERN_SHIFTED_PTR_OFFSET));
+  * wordptr = (pattern_size + start_offset);
+  wordptr = ((unsigned short *) (copy + PATTERN_UNSHIFTED_PTR_OFFSET));
+  * wordptr = ((pattern_size + (sizeof (shifted_scan_code_to_ascii)))
+	       + start_offset);
   wordptr = ((unsigned short *) (copy + PATTERN_CHAIN_OFFSET));
   * wordptr++ = old_RM_vector.x.off;
   * wordptr = old_RM_vector.x.seg;
-  * (copy + RM_ISR_MASK_OFFSET) = modifier_mask;
 
+  * delta = start_offset;
+  * size = total_size;
+  * offset = PATTERN_START_OFFSET;
+  shifted_table_offset = pattern_size;
+  unshifted_table_offset = (pattern_size + (sizeof (shifted_scan_code_to_ascii)));
   return ((void *) copy);
 }
 
@@ -1011,10 +966,12 @@ DPMI_install_kbd_hook (void)
 
   {
     void * RM_handler;
-    unsigned short real_mode_segment;
+    unsigned handler_size, entry_offset, relocation;
     unsigned short prot_mode_selector;
+    unsigned short real_mode_segment;
+    unsigned long base_addr;
 
-    RM_handler = (make_RM_handler ());
+    RM_handler = (make_RM_handler (& handler_size, & entry_offset, & relocation));
     if (RM_handler == ((void *) NULL))
     {
       int saved_errno = errno;
@@ -1024,7 +981,7 @@ DPMI_install_kbd_hook (void)
       return (DOS_FAILURE);
     }
 
-    if ((DPMI_allocate_DOS_block (RM_ISR_TOTAL_SIZE,
+    if ((DPMI_allocate_DOS_block (handler_size,
 				  & real_mode_segment,
 				  & prot_mode_selector))
 	!= DOS_SUCCESS)
@@ -1037,11 +994,13 @@ DPMI_install_kbd_hook (void)
 
     farcpy (0, prot_mode_selector,
 	    ((unsigned) RM_handler), (getDS ()),
-	    RM_ISR_TOTAL_SIZE);
+	    handler_size);
+
+    base_addr = ((((unsigned long) real_mode_segment) << 4) - relocation);
 
     if ((DPMI_RM_setvector (DOS_INTVECT_SYSTEM_SERVICES,
-			    PATTERN_START_OFFSET,
-			    real_mode_segment))
+			    (entry_offset + relocation),
+			    (base_addr >> 4)))
 	!= DOS_SUCCESS)
     {
       DPMI_free_DOS_block (prot_mode_selector);
@@ -1058,6 +1017,51 @@ DPMI_install_kbd_hook (void)
 #  endif /* not DPMI_RM_HANDLER_PROTECTED */
 #endif /* DPMI_RM_HANDLER_UNTOUCHED */
   return (DOS_SUCCESS);
+}
+
+static void
+DPMI_set_modifier_mask (unsigned char new_mask)
+{
+#ifdef DPMI_RM_HANDLER_REAL
+
+  if (DPMI_RM_selector != 0)
+    farcpy (RM_ISR_MASK_OFFSET, DPMI_RM_selector, 
+	    ((unsigned) (& new_mask)), (getDS ()),
+	    1);
+
+#endif /* DPMI_RM_HANDLER_REAL */
+  return;
+}
+
+static void
+DPMI_set_kbd_translation (unsigned shift_p,
+			  unsigned scan_code,
+			  unsigned char new)
+{
+#ifdef DPMI_RM_HANDLER_REAL
+
+  if (DPMI_RM_selector != 0)
+    farcpy ((scan_code + ((shift_p != 0)
+			  ? shifted_table_offset
+			  : unshifted_table_offset)),
+	    DPMI_RM_selector,
+	    ((unsigned) (& new)),
+	    (getDS ()),
+	    1);
+
+#endif /* DPMI_RM_HANDLER_REAL */
+
+  return;
+}
+
+dos_boolean
+under_DPMI_p (void)
+{
+  union REGS regs;
+  
+  regs.e.eax = 0x1686;
+  int86 (0x2f, &regs, &regs);
+  return (regs.x.ax == 0);
 }
 
 #ifdef DOSX_RM_HANDLER_REAL
@@ -1111,18 +1115,20 @@ DOSX_install_kbd_hook (void)
   {
     void * RM_handler;
     union RM_address new_handler;
+    unsigned handler_size, entry_offset, relocation;
+    unsigned long base_addr;
 
     DOSX_RM_getvector (DOS_INTVECT_SYSTEM_SERVICES,
 		       ((unsigned *) & old_RM_vector));
 
-    RM_handler = (make_RM_handler ());
+    RM_handler = (make_RM_handler (& handler_size, & entry_offset, & relocation));
     if (RM_handler == ((void *) NULL))
       return (DOS_FAILURE);
 
 #if 0
 
     if ((DOSX_convert_PM_to_RM_address ((getDS ()), ((unsigned) RM_handler),
-					RM_ISR_TOTAL_SIZE,
+					handler_size,
 					((unsigned *) & new_handler)))
 	!= DOS_SUCCESS)
     {
@@ -1142,7 +1148,11 @@ DOSX_install_kbd_hook (void)
       return (DOS_FAILURE);
     }
 
-    normalize_RM_address (& new_handler);
+    base_addr = (((new_handler.x.seg << 4) + (new_handler.x.off))
+		 - relocation);
+    new_handler.x.seg = (base_addr >> 4);
+    new_handler.x.off = (base_addr & 0xf);
+    new_handler.x.off += (relocation + entry_offset);
 
     if ((DOSX_RM_setvector (DOS_INTVECT_SYSTEM_SERVICES,
 			    ((unsigned) new_handler)))
@@ -1156,7 +1166,7 @@ DOSX_install_kbd_hook (void)
 
 #else /* not 0 */
     
-    if ((DOSX_allocate_DOS_block (RM_ISR_TOTAL_SIZE, &new_handler.x.seg))
+    if ((DOSX_allocate_DOS_block (handler_size, &new_handler.x.seg))
 	!= DOS_SUCCESS)
     {
       int saved_errno = errno;
@@ -1165,7 +1175,6 @@ DOSX_install_kbd_hook (void)
       errno = saved_errno;
       return (DOS_FAILURE);
     }
-    new_handler.x.off = 0;
 
     /* This assumes that the bottom 1 Mb of memory is mapped to the DOS
        memory, so it can be accessed directly.
@@ -1173,18 +1182,25 @@ DOSX_install_kbd_hook (void)
 
     memcpy (((void *) ((unsigned long) new_handler.x.seg << 4)),
 	    RM_handler,
-	    RM_ISR_TOTAL_SIZE);
+	    handler_size);
+
+    DOSX_RM_segment = new_handler.x.seg;
+
+    base_addr = ((new_handler.x.seg << 4) - relocation)
+    new_handler.x.seg = (base_addr >> 4);
+    new_handler.x.off = (base_addr & 0xf);
+    new_handler.x.off += (relocation + entry_offset);
 
     if ((DOSX_RM_setvector (DOS_INTVECT_SYSTEM_SERVICES, new_handler.fp))
 	!= DOS_SUCCESS)
     {
-      DOSX_free_DOS_block (new_handler.x.seg);
+      DOSX_free_DOS_block (DOSX_RM_segment);
+      DOSX_RM_segment = 0;
       fflush (stdout);
       free (RM_handler);
       errno = EFAULT;
       return (DOS_FAILURE);
     }
-    DOSX_RM_segment = new_handler.x.seg;
 
 #endif /* 0 */
 
@@ -1243,45 +1259,165 @@ DOSX_restore_kbd_hook (void)
   return (DOS_SUCCESS);
 }
 
+static void
+DOSX_set_modifier_mask (unsigned char new_mask)
+{
+#ifdef DOSX_RM_HANDLER_REAL
+
+  if (DOSX_RM_segment != 0)
+    (* ((unsigned char *)
+	((((unsigned long) DOSX_RM_segment) << 4) + RM_ISR_MASK_OFFSET)))
+      = new_mask;
+
+#endif /* DOSX_RM_HANDLER_REAL */
+  return;
+}
+
+static void
+DOSX_set_kbd_translation (unsigned shift_p,
+			  unsigned scan_code,
+			  unsigned char new)
+{
+#ifdef DOSX_RM_HANDLER_REAL
+
+  if (DOSX_RM_segment != 0)
+    (* ((unsigned char *)
+	((((unsigned long) DOSX_RM_segment) << 4)
+	 + (scan_code + ((shift_p != 0)
+			 ? shifted_table_offset
+			 : unshifted_table_offset)))))
+      = new;
+
+#endif /* DOSX_RM_HANDLER_REAL */
+  return;
+}
+
+static dos_boolean
+under_DOSX_p (void)
+{
+  return (dos_true);
+}
+
+/* Zortech's int_intercept does not work consistently with X32.
+   Here is alternative lower-level code.
+ */
+
+extern dos_boolean EXFUN (under_X32_p, (void));
+
+static int
+X32_install_kbd_hook (void)
+{
+  extern int EXFUN (X32_int_intercept, (unsigned, void (*) (void), PTR));
+  extern void EXFUN (X32_keyboard_interrupt, (void));
+  extern PTR X32_kbd_interrupt_pointers[];
+  extern int X32_kbd_interrupt_previous;
+
+  X32_kbd_interrupt_pointers[0] = ((PTR) &modifier_mask);
+  X32_kbd_interrupt_pointers[1] = ((PTR) &unshifted_scan_code_to_ascii[0]);
+  X32_kbd_interrupt_pointers[2] = ((PTR) &shifted_scan_code_to_ascii[0]);
+
+  if ((X32_int_intercept (DOS_INTVECT_SYSTEM_SERVICES,
+			  X32_keyboard_interrupt,
+			  ((PTR) &X32_kbd_interrupt_previous)))
+      != 0)
+    return (DOS_FAILURE);
+  return (DOS_SUCCESS);
+}
+
+static int
+X32_restore_kbd_hook (void)
+{
+  extern int EXFUN (X32_interrupt_restore, (unsigned));
+
+  if ((X32_interrupt_restore (DOS_INTVECT_SYSTEM_SERVICES)) != 0)
+    return (DOS_FAILURE);
+  return (DOS_SUCCESS);
+}
+
+static void
+X32_set_modifier_mask (unsigned char new_mask)
+{
+  return;
+}
+
+static void
+X32_set_kbd_translation (unsigned shift_p,
+			 unsigned scan_code,
+			 unsigned char new)
+{
+  return;
+}
+
+struct keyboard_method_s
+{
+  dos_boolean (* present) (void);
+  int (* install) (void);
+  int (* restore) (void);
+  void (* set_modifier_mask) (unsigned char);
+  void (* set_kbd_translation) (unsigned, unsigned, unsigned char);
+};
+
+static struct keyboard_method_s keyboard_methods[] =
+{
+  {
+    under_DPMI_p,
+    DPMI_install_kbd_hook,
+    DPMI_restore_kbd_hook,
+    DPMI_set_modifier_mask,
+    DPMI_set_kbd_translation
+  },
+  {
+    under_X32_p,
+    X32_install_kbd_hook,
+    X32_restore_kbd_hook,
+    X32_set_modifier_mask,
+    X32_set_kbd_translation
+  },
+  {
+    under_DOSX_p,
+    DOSX_install_kbd_hook,
+    DOSX_restore_kbd_hook,
+    DOSX_set_modifier_mask,
+    DOSX_set_kbd_translation    
+  }
+};
+
+struct keyboard_method_s *
+  installed_keyboard_method = ((struct keyboard_method_s *) NULL);
+
+#define N_KEYBOARD_METHODS						\
+  ((sizeof (keyboard_methods)) / (sizeof (struct keyboard_method_s)))
+
 int
 dos_install_kbd_hook (void)
 {
-  if (scheme_PM_vector != ((void *) NULL))
-  {
-    errno = ELOOP;
-    return (DOS_FAILURE);
-  }
-  if (under_DPMI_p ())
-    return (DPMI_install_kbd_hook ());
-  else
-    return (DOSX_install_kbd_hook ());
-}
+  int i, result;
 
+  for (i = 0; i < N_KEYBOARD_METHODS; i++)
+  {
+    if ((* (keyboard_methods[i].present)) ())
+    {
+      result = ((* (keyboard_methods[i].install)) ());
+      if (result == DOS_SUCCESS)
+	installed_keyboard_method = &keyboard_methods[i];
+      return (result);
+    }
+  }
+  return (DOS_FAILURE);
+}
+
 int
 dos_restore_kbd_hook (void)
 {
-  if ((scheme_PM_vector == ((void *) NULL))
-      && (scheme_RM_vector == ((void *) NULL)))
-    return (DOS_SUCCESS);
-  else if (!under_DPMI_p ())
-  {
-    if ((DOSX_restore_kbd_hook ()) != DOS_SUCCESS)
-      return (DOS_FAILURE);
-  }
-  else if ((DPMI_restore_kbd_hook ()) != DOS_SUCCESS)
-    return (DOS_FAILURE);
+  int result;
 
-  if (scheme_PM_vector != ((void *) NULL))
-  {
-    free (scheme_PM_vector);
-    scheme_PM_vector = ((void *) NULL);
-  }
-  if (scheme_RM_vector != ((void *) NULL))
-  {
-    free (scheme_RM_vector);
-    scheme_RM_vector = ((void *) NULL);
-  }
-  return (DOS_SUCCESS);
+  if (installed_keyboard_method == ((struct keyboard_method_s *) NULL))
+    return (DOS_SUCCESS);
+  
+  result = (* (installed_keyboard_method->restore)) ();
+  if (result == DOS_SUCCESS)
+    installed_keyboard_method = ((struct keyboard_method_s *) NULL);
+  return (result);
 }
 
 unsigned char
@@ -1291,37 +1427,14 @@ dos_set_kbd_modifier_mask (unsigned char new_mask)
 
   modifier_mask = new_mask;
 
-#ifdef DPMI_RM_HANDLER_REAL
-
-  if (DPMI_RM_selector != 0)
-    farcpy (RM_ISR_MASK_OFFSET, DPMI_RM_selector, 
-	    ((unsigned) (& modifier_mask)), (getDS ()),
-	    1);
-
-#endif /* DPMI_RM_HANDLER_REAL */
-
-#ifdef DOSX_RM_HANDLER_REAL
-
-  if (DOSX_RM_segment != 0)
-    (* ((unsigned char *)
-	((((unsigned long) DOSX_RM_segment) << 4) + RM_ISR_MASK_OFFSET)))
-      = modifier_mask;
-
-#endif /* DOSX_RM_HANDLER_REAL */
+  if (installed_keyboard_method != ((struct keyboard_method_s *) NULL))
+    (* (installed_keyboard_method->set_modifier_mask)) (modifier_mask);
 
   return (old_mask);
 }
-
+
 extern int EXFUN (dos_set_kbd_translation,
 		  (unsigned, unsigned, unsigned char));
-
-#ifndef PADDED_PATTERN_SIZE
-#  define PADDED_PATTERN_SIZE 0
-#endif
-
-#ifndef RM_ISR_TABLE_SIZE
-#  define RM_ISR_TABLE_SIZE 0
-#endif
 
 int
 dos_set_kbd_translation (unsigned shift_p,
@@ -1330,44 +1443,20 @@ dos_set_kbd_translation (unsigned shift_p,
 {
   unsigned char old;
   unsigned char * table;
-  unsigned offset;
 
   if (scan_code >= (sizeof (shifted_scan_code_to_ascii)))
     return (-1);
 
   if (shift_p != 0)
-  {
     table = &shifted_scan_code_to_ascii[0];
-    offset = PADDED_PATTERN_SIZE;
-  }
   else
-  {
     table = &unshifted_scan_code_to_ascii[0];
-    offset = (PADDED_PATTERN_SIZE + RM_ISR_TABLE_SIZE);
-  }
+
   old = table[scan_code];
   table[scan_code] = new;
-			       
 
-#ifdef DPMI_RM_HANDLER_REAL
+  if (installed_keyboard_method != ((struct keyboard_method_s *) NULL))
+    (* (installed_keyboard_method->set_kbd_translation)) (shift_p, scan_code, new);
 
-  if (DPMI_RM_selector != 0)
-    farcpy ((offset + scan_code),
-	    DPMI_RM_selector,
-	    ((unsigned) (& table[scan_code])),
-	    (getDS ()),
-	    1);
-
-#endif /* DPMI_RM_HANDLER_REAL */
-
-#ifdef DOSX_RM_HANDLER_REAL
-
-  if (DOSX_RM_segment != 0)
-    (* ((unsigned char *)
-	((((unsigned long) DOSX_RM_segment) << 4) + offset)))
-      = new;
-
-#endif /* DOSX_RM_HANDLER_REAL */
-
-  return (old);
+  return ((int) old);
 }
