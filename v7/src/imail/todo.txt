@@ -1,0 +1,35 @@
+IMAIL To-Do List
+$Id: todo.txt,v 1.1 2000/05/11 00:47:42 cph Exp $
+
+* Must be able to handle malformed headers in incoming mail.
+  Generating a low-level error in this situation is unacceptable.
+
+* Try to leverage IMAP MIME parser by building compatible
+  interface for file-based folders.
+
+* Implement file backup when writing file folders.
+
+* RENAME-FOLDER incorrectly uses RENAME-FILE when moving a file
+  folder, which will fail on cross-device renames.
+
+* RMAIL file reader must recognize when the tail of the file contains
+  umail messages.
+
+* Write M-x imail-resend.
+
+* Implement operations for IMAP: %NEW-FOLDER, %DELETE-FOLDER,
+  %MOVE-FOLDER, %COPY-FOLDER, AVAILABLE-FOLDER-NAMES, APPEND-MESSAGE,
+  and SEARCH-FOLDER.
+
+* Write summary browser for folders.
+
+* Write folder browser for servers.
+
+* Implement cache that saves information about messages on disk.  This
+  should use UIDs for IMAP folders; for other folders perhaps the
+  message ID can be used.
+
+* Reimplement UID synchronization.  Take advantage of monotonic UID
+  numbers to discover largest prefix range that hasn't changed.
+  Binary search can be used which should produce excellent results on
+  large folders.

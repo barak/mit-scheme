@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.39 2000/05/10 17:39:47 cph Exp $
+;;; $Id: imail-top.scm,v 1.40 2000/05/11 00:47:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -19,15 +19,6 @@
 ;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; IMAIL mail reader: top level
-
-;;; * Must be able to handle malformed headers in incoming mail.
-;;;   Generating a low-level error in this situation is unacceptable.
-;;;
-;;; * Try to leverage IMAP MIME parser by building compatible
-;;;   interface for file-based folders.
-;;;
-;;; * Build generic message cache?  Need to figure out when cached
-;;;   info can be deleted.
 
 (declare (usual-integrations))
 
