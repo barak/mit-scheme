@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.19 1994/01/08 16:57:21 gjr Exp $
+$Id: mips.h,v 1.20 1994/05/02 19:04:06 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -566,7 +566,7 @@ DEFUN (allocate_closure, (size), long size)
        in the last chunk.
      */
        
-    if ((space > 0) && (free_closure != ((SCHEME_OBJECT) NULL)))
+    if ((space > 0) && (free_closure != ((SCHEME_OBJECT *) NULL)))
       free_closure[-3] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (space - 1)));
 
     free_closure = Free;
