@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 1.5 1995/08/08 16:17:59 adams Exp $
+$Id: switch.scm,v 1.6 1996/07/20 18:08:36 adams Exp $
 
-Copyright (c) 1988-1994  Massachusetts Institute of Technology
+Copyright (c) 1988-1996  Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -55,6 +55,7 @@ MIT in each case. |#
 (define compiler:optimize-environments? true)
 (define compiler:analyze-side-effects? true)
 (define compiler:cse? true)
+(define compiler:rtl-instruction-scheduling? false)
 (define compiler:open-code-primitives? true)
 (define compiler:generate-kmp-files? false)
 (define compiler:kmp-output-abbreviated? true)

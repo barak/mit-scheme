@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.11 1995/08/08 16:20:33 adams Exp $
+$Id: toplev.scm,v 1.12 1996/07/20 18:08:46 adams Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -779,6 +779,24 @@ MIT in each case. |#
 				 false))
       (if compiler:code-compression?
 	  (phase/code-compression))
+      (if (and *rtl-output-all-phases?* *rtl-output-port*)
+	  (phase/rtl-file-output "Post Code-Compression"
+				 false
+				 false
+				 false
+				 *rtl-output-port*
+				 false))
+      (if compiler:rtl-instruction-scheduling?
+	  (begin
+	    (phase/rtl-instruction-scheduling)
+	    (phase/lifetime-analysis)
+	    (if (and *rtl-output-all-phases?* *rtl-output-port*)
+		(phase/rtl-file-output "Post Instruction-Scheduling"
+				       false
+				       false
+				       false
+				       *rtl-output-port*
+				       false))))
       (phase/register-allocation)
       (phase/rtl-optimization-cleanup))))
 
@@ -816,6 +834,11 @@ MIT in each case. |#
   (compiler-subphase "Instruction Combination"
     (lambda ()
       (code-compression *rtl-graphs*))))
+
+(define (phase/rtl-instruction-scheduling)
+  (compiler-subphase "Instruction Scheduling"
+    (lambda ()
+      (rtl-instruction-scheduling *rtl-graphs*))))
 
 (define (phase/linearization-analysis)
   (compiler-subphase "Linearization Analysis"
