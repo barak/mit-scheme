@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.23 1998/04/18 05:39:22 cph Exp $
+$Id: ntgui.c,v 1.24 1998/10/22 04:38:24 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -80,14 +80,46 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 
       s = strcpy (cmdline, lpCmdLine);
 
-      while (*s) {
-	if (*s==' ')
-	  *s++ = 0;
-	else {
-	  argv[argc++] = s;
-	  while (*s != 0 && *s != ' ') s++;
+      while ((*s) != '\0')
+	{
+	  while ((*s) == ' ')
+	    s += 1;
+	  if ((*s) == '"')
+	    {
+	      s += 1;
+	      (argv[argc++]) = s;
+	      while (1)
+		{
+		  if ((*s) == '"')
+		    {
+		      (*s++) = '\0';
+		      break;
+		    }
+		  if ((*s) == '\0')
+		    {
+		      outf_fatal ("WinMain: unterminated quoted argument.");
+		      outf_flush_fatal ();
+		      return (FALSE);
+		    }
+		  s += 1;
+		}
+	    }
+	  else
+	    {
+	      (argv[argc++]) = s;
+	      while (1)
+		{
+		  if ((*s) == ' ')
+		    {
+		      (*s++) = '\0';
+		      break;
+		    }
+		  if ((*s) == '\0')
+		    break;
+		  s += 1;
+		}
+	    }
 	}
-      }
       argv[argc] = 0;
     }
 
