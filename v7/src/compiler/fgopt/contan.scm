@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.6 1988/12/13 12:41:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.7 1988/12/15 17:24:42 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -105,22 +105,32 @@ may change if call-with-current-continuation is handled specially.
   (and (stack-parent? block)
        (let ((lvalue (stack-block/continuation-lvalue block))
 	     (parent (block-parent block)))
-	 (if (let ((end (stack-block/continuation-lvalue parent)))
-	       (define (loop visited)
-		 (lambda (lvalue)
-		   (or (memq lvalue visited)
-		       (and (not (lvalue/external-source? lvalue))
-			    (null? (lvalue-initial-values lvalue))
-			    (memq end (lvalue-backward-links lvalue))
-			    (for-all? (lvalue-initial-backward-links lvalue)
-			      (loop (cons lvalue visited)))))))
-	       ((loop (list end)) lvalue))
+	 (if (with-new-lvalue-marks
+	      (lambda ()
+		(let ((end (stack-block/continuation-lvalue parent)))
+		  (define (loop lvalue)
+		    (lvalue-mark! lvalue)
+		    (and (not (lvalue/external-source? lvalue))
+			 (null? (lvalue-initial-values lvalue))
+			 (memq end (lvalue-backward-links lvalue))
+			 (for-all? (lvalue-initial-backward-links lvalue)
+				   next)))
+
+		  (define (next lvalue)
+		    (if (lvalue-marked? lvalue)
+			true
+			(loop lvalue)))
+
+		  (lvalue-mark! end)
+		  (loop lvalue))))
+
 	     ;; Most interesting case: we're always in a tail
 	     ;; recursive position with respect to our parent.  Note
 	     ;; that we didn't bother to check whether any of the
 	     ;; intermediate procedures were closures: if that is
 	     ;; true, we'd better be a closure as well.
 	     parent
+
 	     ;; Acceptable substitute: we're a subproblem of someone
 	     ;; who is a child of the parent.
 	     (let ((value (lvalue-known-value lvalue)))
@@ -128,7 +138,7 @@ may change if call-with-current-continuation is handled specially.
 		    (let ((block (continuation/block value)))
 		      (and (block-ancestor? block parent)
 			   block))))))))
-
+
 (define (compute-block-popping-limits block)
   (let ((external (stack-block/external-ancestor block)))
     (map->eq-set
@@ -136,26 +146,43 @@ may change if call-with-current-continuation is handled specially.
        (cond ((not join) external)
 	     ((eq? join block) block)
 	     (else (block-farthest-uncommon-ancestor block join))))
-     (let ((lvalue (stack-block/continuation-lvalue block))
-	   (ancestry (memq external (block-ancestry block))))
-       (let ((join-blocks
-	      (map->eq-set
-	       (lambda (block*)
-		 (let ((ancestry* (memq external (block-ancestry block*))))
-		   (and ancestry*
-			(let loop
-			    ((ancestry (cdr ancestry))
-			     (ancestry* (cdr ancestry*))
-			     (join (car ancestry)))
-			  (if (and (not (null? ancestry))
-				   (not (null? ancestry*))
-				   (eq? (car ancestry) (car ancestry*)))
-			      (loop (cdr ancestry)
-				    (cdr ancestry*)
-				    (car ancestry))
-			      join)))))
-	       (map->eq-set block-parent
-			    (map continuation/block (lvalue-values lvalue))))))
-	 (if (lvalue-passed-in? lvalue)
-	     (eq-set-adjoin false join-blocks)
-	     join-blocks))))))
+     (let ((lvalue (stack-block/continuation-lvalue external))
+	   (ancestry (block-partial-ancestry block external)))
+       (eq-set-union
+	(eq-set-adjoin false (join-blocks lvalue external ancestry))
+	(with-new-lvalue-marks
+	 (lambda ()
+	   (define (loop lvalue)
+	     (lvalue-mark! lvalue)
+	     (if (lvalue/external-source? lvalue)
+		 (error "internal continuation is external source" lvalue))
+	     (eq-set-union
+	      (join-blocks lvalue external ancestry)
+	      (map-union next (lvalue-initial-backward-links lvalue))))
+
+	   (define (next lvalue)
+	     (if (lvalue-marked? lvalue)
+		 '()
+		 (loop lvalue)))
+
+	   (lvalue-mark! lvalue)
+	   (next (stack-block/continuation-lvalue block)))))))))
+
+(define (join-blocks lvalue external ancestry)
+  (map->eq-set
+   (lambda (block*)
+     (and (block-ancestor-or-self? block* external)
+	  (let loop
+	      ((ancestry ancestry)
+	       (ancestry* (block-partial-ancestry block* external))
+	       (join external))
+	    (if (and (not (null? ancestry))
+		     (not (null? ancestry*))
+		     (eq? (car ancestry) (car ancestry*)))
+		(loop (cdr ancestry)
+		      (cdr ancestry*)
+		      (car ancestry))
+		join))))
+   (map->eq-set block-parent
+		(map continuation/block
+		     (lvalue-initial-values lvalue)))))
