@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.9 2001/12/21 18:22:57 cph Exp $
+$Id: urtrap.scm,v 14.10 2001/12/22 03:17:25 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -119,7 +119,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (if (cached-reference-trap? value)
 	(cached-reference-trap-value value)
 	value)))
-
+
 (define (make-macro-reference-trap transformer)
   (make-reference-trap 15 transformer))
 
@@ -142,3 +142,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (let ((index (object-datum (getter))))
 	 (and (> index trap-max-immediate)
 	      (fix:= 15 (primitive-object-ref (getter) 0))))))
+
+(define (make-macro-reference-trap-expression transformer)
+  (make-combination primitive-object-set-type
+		    (list (ucode-type reference-trap)
+			  (make-combination cons (list 15 transformer)))))
+
+(define (macro-reference-trap-expression? expression)
+  (and (combination? expression)
+       (eq? (combination-operator expression) primitive-object-set-type)
+       (let ((operands (combination-operands expression)))
+	 (and (pair? operands)
+	      (eqv? (car operands) (ucode-type reference-trap))
+	      (pair? (cdr operands))
+	      (let ((expression (cadr operands)))
+		(and (combination? expression)
+		     (eq? (combination-operator expression) cons)
+		     (let ((operands (combination-operands expression)))
+		       (and (pair? operands)
+			    (eqv? (car operands) 15)
+			    (pair? (cdr operands))
+			    (null? (cddr operands))))))
+	      (null? (cddr operands))))))
+
+(define (macro-reference-trap-expression-transformer expression)
+  (cadr (combination-operands (cadr (combination-operands expression)))))

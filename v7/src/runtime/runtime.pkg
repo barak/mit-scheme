@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.401 2001/12/21 18:37:35 cph Exp $
+$Id: runtime.pkg,v 14.402 2001/12/22 03:19:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -2695,7 +2695,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  unmap-reference-trap
 	  unmapped-macro-reference-trap?
 	  unmapped-unassigned-reference-trap?
-	  unmapped-unbound-reference-trap?))
+	  unmapped-unbound-reference-trap?)
+  (export (runtime syntaxer)
+	  make-macro-reference-trap-expression)
+  (export (runtime unsyntaxer)
+	  macro-reference-trap-expression-transformer
+	  macro-reference-trap-expression?))
 
 (define-package (runtime rep)
   (files "rep")
@@ -3758,6 +3763,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  syntax-table/define)
   (export (runtime syntaxer)
 	  guarantee-syntax-table
+	  make-syntax-table
 	  syntax-table/environment
 	  syntax-table/extend
 	  syntax-table/ref))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.25 2001/12/21 18:22:53 cph Exp $
+$Id: unsyn.scm,v 14.26 2001/12/22 03:17:22 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -163,9 +163,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
-  (cond ((macro-reference-trap? value)
+  (cond ((macro-reference-trap-expression? value)
 	 `(DEFINE-SYNTAX ,name
-	    ,(macro-reference-trap-transformer value)))
+	    ,(macro-reference-trap-expression-transformer value)))
 	((and (eq? #t unsyntaxer:macroize?)
 	      (lambda? value)
 	      (not (has-substitution? value)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.48 2001/12/21 18:22:41 cph Exp $
+$Id: syntax.scm,v 14.49 2001/12/22 03:17:19 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -86,11 +86,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (syntax-top-level name syntaxer expression table)
   (let ((scode
 	 (fluid-let ((*syntax-table*
-		      (if (eq? table 'DEFAULT)
-			  (if (unassigned? *syntax-table*)
-			      (nearest-repl/environment)
-			      *syntax-table*)
-			  (guarantee-syntax-table table name)))
+		      (make-syntax-table
+		       (if (eq? table 'DEFAULT)
+			   (if (unassigned? *syntax-table*)
+			       (nearest-repl/environment)
+			       *syntax-table*)
+			   (guarantee-syntax-table table name))))
 		     (*current-keyword* #f))
 	   (syntaxer #t expression))))
     (if *disallow-illegal-definitions?*
@@ -436,7 +437,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (let ((value (syntax-subexpression value)))
     (syntax-table/define *syntax-table* name (syntax-eval value))
     (if top-level?
-	(make-definition name (make-macro-reference-trap value))
+	(make-definition name (make-macro-reference-trap-expression value))
 	name)))
 
 (define (syntax-eval scode)
