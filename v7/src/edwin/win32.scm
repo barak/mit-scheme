@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32.scm,v 1.1 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: win32.scm,v 1.2 1994/11/02 19:16:53 adams Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,19 +48,18 @@
 (declare (usual-integrations))
 
 (define-primitives
-  (nt-get-event 1)
-  (nt-peek-event 1)
-  (prim-win32-screen/clear-rectangle 6)
-  (prim-win32-screen/discard 1)
-  (prim-win32-screen/invalidate-rect 5)
-  (prim-win32-screen/vertical-scroll 6)
-  (prim-win32-screen/screen-writechar 5)
-  (prim-win32-screen/screen-move-cursor 3)
-  (prim-win32-screen/screen-x-size 1)
-  (prim-win32-screen/screen-y-size 1)
-  (prim-win32-screen/create-screen 3)
-  (prim-win32-screen/write-substring 7)
-  (prim-win32-screen/show-cursor 2))
+  (win32-screen-get-event 1)
+  (win32-screen-clear-rectangle! 6)
+  (win32-screen-invalidate-rect! 5)
+  (win32-screen-vertical-scroll! 6)
+  (win32-screen-write-char! 5)
+  (win32-screen-move-cursor! 3)
+  (win32-screen-size 1)
+  (win32-screen-create! 2)
+  (win32-screen-write-substring! 7)
+  (win32-screen-show-cursor! 2)
+  (win32-screen-current-focus 0)
+  (win32-screen-set-icon! 2))
 
 (define-integrable event:process-output 16)
 (define-integrable event:process-status 32)
@@ -68,222 +67,218 @@
 
 (define win32-screens '())
 
+
+;;(define (debug . details)
+;;  (pp details console-output-port))
+
 (define-structure (win32-screen-state
 		   (constructor make-win32-screen-state (handle))
-		   (conc-name win32-screen-state/))
+		   (conc-name state/))
   (handle false read-only true)
-  (cursor-x 0) ; cached position, -1 if we dont know
-  (cursor-y 0) ; ditto
+  (cursor-x -1) ; cached position, -1 if we dont know
+  (cursor-y -1) ; ditto
   ;; This rect is the bounding box of a sequence of updates.  RECT-TOP is #F
-  ;; if no box has been established.
+  ;; if no box has been established, which implies that the screen needs no
+  ;; update.
   (rect-top #F)
   (rect-bottom 0)
   (rect-right 0)
   (rect-left 0)
-  (update? false)
-  (state 'OPEN))
+  (redisplay-title? #F)
+  (name #F))
   
 
-(define (make-win32-screen handle)
-  (let ((screen
-	 (make-screen (make-win32-screen-state handle)
-		      win32-screen/beep
-		      win32-screen/clear-line!
-		      win32-screen/clear-rectangle!
-		      win32-screen/clear-screen!
-		      win32-screen/discard!
-		      win32-screen/enter!
-		      win32-screen/exit!
-		      win32-screen/flush!
-		      win32-screen/modeline-event!
-		      false
-		      win32-screen/scroll-lines-down!
-		      win32-screen/scroll-lines-up!
-		      win32-screen/wrap-update!
-		      win32-screen/write-char!
-		      win32-screen/write-cursor!
-		      win32-screen/write-substring!
-		      8
-		      (prim-win32-screen/screen-x-size handle)
-		      (prim-win32-screen/screen-y-size handle))))
-    (set! win32-screens (cons screen win32-screens))
-    screen))
+(define-integrable (screen-redisplay-title? screen)
+  (state/redisplay-title? (screen-state screen)))
+
+(define-integrable (set-screen-redisplay-title?! screen flag)
+  (set-state/redisplay-title?! (screen-state screen) flag))
+
+
+(define (make-win32-screen)
+  (let* ((window (win32-screen-create! 0 win32-screen-features-mask))
+	 (icon   (load-icon (get-handle 0) "EDWIN_ICON"))
+	 (width.height (win32-screen-size window)))
+    (set-window-text window "Edwin")
+    (win32-screen-set-icon! window icon)
+    ;; The first time (re)entering edwin we make the master tty window iconic:
+    (if (null? win32-screens)
+	(show-window (get-handle 1) SW_SHOWMINNOACTIVE))
+    (let ((screen
+	   (make-screen (make-win32-screen-state window)
+			win32-screen/beep
+			win32-screen/clear-line!
+			win32-screen/clear-rectangle!
+			win32-screen/clear-screen!
+			win32-screen/discard!
+			win32-screen/enter!
+			win32-screen/exit!
+			win32-screen/flush!
+			win32-screen/modeline-event!
+			false
+			win32-screen/scroll-lines-down!
+			win32-screen/scroll-lines-up!
+			win32-screen/wrap-update!
+			win32-screen/write-char!
+			win32-screen/write-cursor!
+			win32-screen/write-substring!
+			8
+			(car width.height)
+			(cdr width.height))))
+      (set! win32-screens (cons screen win32-screens))
+      (set! input-screen #F)
+      ;;(debug 'CREATE screen)
+      screen)))
+
 
 (define (win32-screen/beep screen)
   screen
   (message-beep -1))
 
-
-(define-integrable (set-rect! state top bottom left right)
-  (set-win32-screen-state/rect-top!    state top)
-  (set-win32-screen-state/rect-bottom! state bottom)
-  (set-win32-screen-state/rect-left!   state left)
-  (set-win32-screen-state/rect-right!  state right))
-
 (define (expand-rect screen top bottom left right)
-  ;; Defined here because the system ones are not integrated:
   (define-integrable (min u v)  (if (fix:< u v) u v))
   (define-integrable (max u v)  (if (fix:> u v) u v))
+  (define (set-rect! state top bottom left right)
+    (set-state/rect-top!    state top)
+    (set-state/rect-bottom! state bottom)
+    (set-state/rect-left!   state left)
+    (set-state/rect-right!  state right))
+
   (let ((state  (screen-state screen)))
-    (if (win32-screen-state/rect-top state)
+    (if (state/rect-top state)
 	(set-rect! state
-		   (min top    (win32-screen-state/rect-top state))
-		   (max bottom (win32-screen-state/rect-bottom state))
-		   (min left   (win32-screen-state/rect-left state))
-		   (max right  (win32-screen-state/rect-right state)))
+		   (min top    (state/rect-top state))
+		   (max bottom (state/rect-bottom state))
+		   (min left   (state/rect-left state))
+		   (max right  (state/rect-right state)))
 	(set-rect! state top bottom left right))))
 
 
-(define (flush-invalid-region screen)
+(define (invalidate-invalid-region! screen)
   (let ((state  (screen-state screen)))
-    (if (win32-screen-state/rect-top state)
+    (if (state/rect-top state)
 	(begin
-	  (prim-win32-screen/invalidate-rect
-	   (win32-screen->handle screen)
-	   (win32-screen-state/rect-top state)
-	   (+ (win32-screen-state/rect-bottom state) 1)
-	   (win32-screen-state/rect-left state)
-	   (+ (win32-screen-state/rect-right state) 1))
-	  (set-win32-screen-state/update?! state #f)))))
+	  (win32-screen-invalidate-rect!
+	   (screen->handle screen)
+	   (state/rect-top state)
+	   (fix:+ (state/rect-bottom state) 1)
+	   (state/rect-left state)
+	   (fix:+ (state/rect-right state) 1))))))
 
 
 (define-integrable (set-screen-cursor-position! screen x y)
-  (set-win32-screen-state/cursor-x! (screen-state screen) x)
-  (set-win32-screen-state/cursor-y! (screen-state screen) y))
+  (set-state/cursor-x! (screen-state screen) x)
+  (set-state/cursor-y! (screen-state screen) y))
 
 
 (define (win32-screen/clear-line! screen x y first-unused-x)
-  (prim-win32-screen/clear-rectangle (win32-screen->handle screen)
-				     x first-unused-x y (fix:1+ y)
-				     0))
+  (win32-screen-clear-rectangle! (screen->handle screen)
+				 x first-unused-x y (fix:1+ y)
+				 0))
 
 (define (win32-screen/clear-rectangle! screen xl xu yl yu highlight)
-  (prim-win32-screen/clear-rectangle (win32-screen->handle screen)
-				     xl xu yl yu
-				     (if highlight 1 0)))
+  (win32-screen-clear-rectangle! (screen->handle screen)
+				 xl xu yl yu
+				 (if highlight 1 0)))
 
 (define (win32-screen/clear-screen! screen)
-  (prim-win32-screen/clear-rectangle (win32-screen->handle screen)
-				     0 (win32-x-size screen)
-				     0 (win32-y-size screen)
-				     0))
+  (let* ((handle  (screen->handle screen))
+	 (w.h     (win32-screen-size handle)))
+    (win32-screen-clear-rectangle! handle 0 (car w.h) 0 (cdr w.h)  0)))
 
 (define (win32-screen/discard! screen)
-  (set! win32-screens (delq screen win32-screens))
-  (destroy-window (win32-screen->handle screen)))
+  ;;(debug 'DISCARD screen)
+  (destroy-window (screen->handle screen))
+  (set! win32-screens (delq screen win32-screens)))
 
 (define (win32-screen/enter! screen)
+  (set! input-screen #F)
   (set-screen-cursor-position! screen -1 -1)
-  (prim-win32-screen/show-cursor (win32-screen->handle screen) #T))
+  (set-active-window (screen->handle screen))
+  (win32-screen-show-cursor! (screen->handle screen) #T))
 
 (define (win32-screen/exit! screen)
-  screen
-  unspecific)  
-
-(define (win32-screen/flush! screen)
-  screen
-  unspecific) 
+  (win32-screen-show-cursor! (screen->handle screen) #F)
+  (set! input-screen #F))
 
 (define (win32-screen/modeline-event! screen window type)
-  window type screen)
+  window type				; ignored
+  (set-screen-redisplay-title?! screen true))
+
 
 (define (win32-screen/scroll-lines-down! screen xl xu yl yu amount)
   (and #F
-       (prim-win32-screen/vertical-scroll (win32-screen->handle screen)
-					  xl xu yl yu (+ yl amount))))
+       (win32-screen-vertical-scroll! (screen->handle screen)
+				      xl xu yl yu (fix:+ yl amount))))
 
 (define (win32-screen/scroll-lines-up! screen xl xu yl yu amount)
   (and #F
-       (prim-win32-screen/vertical-scroll (win32-screen->handle screen)
-					  xl xu amount yu 0)
-       (prim-win32-screen/vertical-scroll (win32-screen->handle screen)
-					  xl xu yl yu (- yl amount))))
+       (win32-screen-vertical-scroll! (screen->handle screen)
+				      xl xu amount yu 0)
+       (win32-screen-vertical-scroll! (screen->handle screen)
+				      xl xu yl yu (fix:- yl amount))))
 
+
+(define (win32-screen/flush! screen)
+  ;; Win32 API call causes any pending painting to be done
+  (update-window (screen->handle screen))
+  #F)
 
 (define (win32-screen/wrap-update! screen thunk)
   (let ((finished? false))
     (dynamic-wind
      (lambda ()
-       (prim-win32-screen/show-cursor (win32-screen->handle screen) #F)
-       (set-win32-screen-state/rect-top! (screen-state screen) #F))
+       (set-state/rect-top! (screen-state screen) #F))
      (lambda ()
        (let ((result (thunk)))
 	 (set! finished? result)
 	 result))
      (lambda ()
-       (if finished?
+       ;; invalidate the region that this update affected, and then flush
+       (invalidate-invalid-region! screen)
+       (if (and finished? (screen-redisplay-title? screen))
 	   (begin
-	     (prim-win32-screen/show-cursor (win32-screen->handle screen) #T)))
-       (if (win32-screen-state/update? (screen-state screen))
-	   (flush-invalid-region screen))))))
+	     (update-win32-screen-name! screen)
+	     (set-screen-redisplay-title?! screen false)))
+       (win32-screen/flush! screen)))))
 
 (define (win32-screen/write-char! screen x y char highlight)
-  (prim-win32-screen/screen-writechar (win32-screen->handle screen) x y 
-				      (char->integer char)
-				      (if highlight 1 0))
+  (win32-screen-write-char! (screen->handle screen) x y 
+			    (char->integer char)
+			    (if highlight 1 0))
   (if (char-graphic? char)
-      (set-screen-cursor-position! screen (+ x 1) y)
+      (set-screen-cursor-position! screen (fix:+ x 1) y)
       (set-screen-cursor-position! screen -1 -1)))
 
 (define (win32-screen/write-substring! screen x y string start end highlight)
-  (if (= start end) '()
-      (begin
-	(prim-win32-screen/write-substring
-	 (win32-screen->handle screen) x y string start end
-	 (if highlight 1 0))
-	(win32-screen/write-cursor! screen (+ x (- end start)) y)
-	(expand-rect screen x (+ x (- end start)) y y)
-	(set-win32-screen-state/update?! (screen-state screen) #t))))
+  ;;(debug 'substring x y string start end)
+  (win32-screen-write-substring!
+   (screen->handle screen) x y string start end
+   (if highlight 1 0))
+  (expand-rect screen x (fix:+ x (fix:- end start)) y y))
 
-
-;;(define (win32-screen/write-cursor! screen x y)
-;;  (begin 
-;;    (prim-win32-screen/screen-move-cursor (win32-screen->handle screen) x y)
-;;    (set-screen-cursor-position! screen x y)))
 
 (define (win32-screen/write-cursor! screen x y)
   (let ((state  (screen-state screen)))
-    (if (or (not (= (win32-screen-state/cursor-x state) x))
-	    (not (= (win32-screen-state/cursor-y state) y)))
-	(let ((handle  (win32-screen->handle screen)))
-	  (prim-win32-screen/screen-move-cursor handle x y)
-	  (set-screen-cursor-position! screen x y)
-	  (prim-win32-screen/invalidate-rect handle x (+ x 1) y (+ y 1))))))
+    (if (or (not (fix:= (state/cursor-x state) x))
+	    (not (fix:= (state/cursor-y state) y)))
+	(let ((handle  (screen->handle screen)))
+	  (win32-screen-move-cursor! handle x y)
+	  (set-screen-cursor-position! screen x y)))))
 
+;; Mask bits:  VK coded special keys, Edwin mode,
+;;    mouse, key, resize and close events
+(define-integrable win32-screen-features-mask #x140F)
 
-(define (win32-x-size screen)
-  (prim-win32-screen/screen-x-size (win32-screen->handle screen)))
-
-(define (win32-y-size screen)
-  (prim-win32-screen/screen-y-size (win32-screen->handle screen)))
-
-(define-integrable (win32-key-event? event)
-  (and (vector? event)
-       (fix:= (vector-ref event 0) 2)))
-
-(define (win32-mouse-event? event)
-  (and (vector? event)
-       (fix:= (vector-ref event 0) 4)))
-
-(define-integrable (win32-resize-event? event)
-  (and (vector? event)
-       (fix:= (vector-ref event 0) 1)))
-
-(define-integrable (change-event? event)
-  (fix:fixnum? event))
-
-(define-integrable (win32-close-event? event)
-  (and (vector? event)
-       (fix:= (vector-ref event 0) 8)))
-
-(define (win32-screen->handle screen)
+(define (screen->handle screen)
   (if (memq screen win32-screens)
-      (win32-screen-state/handle (screen-state screen))
-      (let ((window (prim-win32-screen/create-screen
-		     0 2751 (get-handle 1))))
-	(set-window-text window "Edwin")
-	(make-win32-screen window)
-	window)))
+      (state/handle (screen-state screen))
+      (error "Screen has unexpectedly vanished" screen)))
+
+(define (handle->win32-screen handle)
+  (list-search-positive win32-screens
+    (lambda (screen) (eqv? handle (state/handle (screen-state screen))))))
+
 
 (define win32-display-type)
 
@@ -294,14 +289,14 @@
 			   true
 			   (lambda geometry
 			     geometry
-			     (let ((window (prim-win32-screen/create-screen
-					    0 2751 (get-handle 1))))
-			       (set-window-text window "Edwin")
-			       (make-win32-screen window)))
+			     (make-win32-screen))
 			   get-win32-input-operations
 			   with-editor-interrupts-from-win32
 			   with-win32-interrupts-enabled
 			   with-win32-interrupts-disabled))
+  (add-event-receiver! event:before-exit
+		       (lambda ()
+			 (for-each screen-discard! win32-screens)))
   unspecific)
 
 (define (with-editor-interrupts-from-win32 receiver)
@@ -336,7 +331,8 @@
 
 (define signal-interrupts? #f)
 
-(define-integrable (some-bits? mask item) (not (fix:= 0 (fix:and mask item))))
+(define-integrable (some-bits? mask item)
+  (not (fix:= 0 (fix:and mask item))))
 
 (define (process-mouse-event screen event)
   screen
@@ -355,35 +351,24 @@
 
 (define (process-resize-event screen event)
   event
-  (set-screen-size! screen
-		    (win32-x-size screen)
-		    (win32-y-size screen))
-  (update-screen! screen #f) 
-  #f)
+  (make-input-event 'SET-SCREEN-SIZE
+		    (lambda (screen)
+		      (let ((w.h (win32-screen-size
+				  (screen->handle screen))))
+			(if (not (and (= (car w.h) (screen-x-size screen))
+				      (= (cdr w.h) (screen-y-size screen))))
+			    (begin
+			      (set-screen-size! screen (car w.h) (cdr w.h))
+			      (update-screen! screen #T)))))
+		    screen))
 
 (define (process-close-event screen event)
   event
-  (and (not (screen-deleted? screen))
-       (make-input-event 'DELETE-SCREEN delete-screen! screen)))
-
-
-(define (give-up-time-slice!)
-  (if (other-running-threads?)
-      (yield-current-thread)       ; yield to scheme threads
-      (sleep 1)))                  ; ... or to win32 threads
-
-;;(define (win32-char event)
-;;  (let ((key (vector-ref event 5))
-;;	(cont-state (vector-ref event 4)))
-;;    (cond ((not (fix:= (fix:and cont-state 514) 0))
-;;	   (char-metafy (integer->char key)))
-;;	  ((and (not (fix:= (fix:and cont-state 514) 0))
-;;		(fix:= (fix:and cont-state 8) 8))
-;;	   (char-control-metafy (integer->char key)))
-;;	  ((fix:= (fix:and cont-state 8) 8)
-;;	   (integer->char key))
-;;	  (else
-;;	   (integer->char key)))))
+  (cond ((screen-deleted? screen)  #F)
+	((= (length win32-screens) 1)
+	 (make-input-event 'EXIT save-buffers-and-exit #F "Scheme" exit-scheme))
+	(else
+	 (make-input-event 'DELETE-SCREEN delete-screen! screen))))
 
 
 (define (process-key-event event)
@@ -411,129 +396,172 @@
 		  (char-controlify (integer->char key)))
 		 (else
 		  (integer->char key)))))
-      ;;(frob-trace (with-output-to-string
-      ;;              (lambda ()
-      ;;                (display event)
-      ;;                (display "   ")
-      ;;                (display `((m ,alt?) (c ,control?) (s ,shift?)))
-      ;;                (display "\r\n=> ")
-      ;;                (write result))))
       result)))
 
 	
 (define (get-win32-input-operations screen)
-  (let ((screen-handle  (win32-screen->handle screen))
-	(pending-result #F))
-    (let* ((read-event 
-	    (lambda (block?)
-	      (let ((event (read-event-1 screen-handle block?)))
-		event)))
 
-	   (process-event
-	    (lambda (event)
-	      (cond ((win32-key-event? event)
-		     (let ((key (process-key-event event)))
-		       (if (and signal-interrupts?
-				(eq? key #\BEL))
-			   (begin
-			     (signal-interrupt!)
-			     #f)
-			   key)))
-		    ((win32-mouse-event? event)
-		     (process-mouse-event screen event))
-		    ((win32-resize-event? event)
-		     (process-resize-event screen event))
-		    ((win32-close-event? event)
-		     (process-close-event screen event))
-		    (else #f))))
+  screen ; ignored
 
-	   (get-next-event
-	    (lambda (block?)
-	      (let loop ()
-		(let ((event  (read-event block?)))
-		  (cond ((not event)
-			 #F)
-			((change-event? event)
-			 (let ((flag  (process-change-event event)))
-			   (if flag
-			       (pce-event flag)
-			       (loop))))
-			(else
-			 (or (process-event event)
-			     (loop))))))))
+  (set! input-screen #f)
 
-	   (probe
-	    (lambda (block?)
-	      (let ((result  (get-next-event block?)))
-		(if result
-		    (set! pending-result result))
-		result)))
+  (define-integrable (win32-resize-event? event)
+    (and (vector? event) (fix:= (vector-ref event 0) 1)))
 
-	   (guarantee-result
-	    (lambda ()
-	      (or (get-next-event #T)
-		  (error "#F returned from blocking read"))))
+  (define-integrable (win32-key-event? event)
+    (and (vector? event) (fix:= (vector-ref event 0) 2)))
 
-	   (halt-update?
-	    (lambda ()
-	      (or pending-result
-		  (probe 'IN-UPDATE))))
-	   (peek-no-hang
-	    (lambda ()
-	      (or pending-result
-		  (probe #F))))
-	   (peek
-	    (lambda ()
-	      (or pending-result
-		  (let ((result  (guarantee-result)))
-		    (set! pending-result result)
-		    result))))
-	   (read
-	    (lambda ()
-	      (cond (pending-result
-		     => (lambda (result)
-			  (set! pending-result #F)
-			  result))
-		    (else
-		     (guarantee-result))))))
+  (define-integrable (win32-mouse-event? event)
+    (and (vector? event) (fix:= (vector-ref event 0) 4)))
 
-      (values halt-update?	         
-	      peek-no-hang
-	      peek
-	      read))))
+  (define-integrable (win32-close-event? event)
+    (and (vector? event) (fix:= (vector-ref event 0) 8)))
+
+  (define-integrable (change-event? event)  (fix:fixnum? event))
+
+  (define (read-event block?)
+    (read-event-1 input-screen block?))
+
+  (define (process-event event)
+    (cond ((win32-key-event? event)
+	   (let ((key (process-key-event event)))
+	     (if (and signal-interrupts?
+		      (eq? key #\BEL))
+		 (begin
+		   (signal-interrupt!)
+		   #f)
+		 key)))
+	  ((win32-mouse-event? event)
+	   (process-mouse-event input-screen event))
+	  ((win32-resize-event? event)
+	   (process-resize-event input-screen event))
+	  ((win32-close-event? event)
+	   (process-close-event input-screen event))
+	  ((input-event? event)
+	   event)
+	  (else #f)))
+
+  (define (pce-event flag)
+    (make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
+		      update-screens!
+		      #f))
+
+  (define (get-next-event block?)
+    (let loop ()
+      (let ((event  (read-event block?)))
+	(cond ((not event)
+	       #F)
+	      ((change-event? event)
+	       (let ((flag  (process-change-event event)))
+		 (if flag
+		     (pce-event flag)
+		     (loop))))
+	      (else
+	       (or (process-event event)
+		   (loop)))))))
+
+  (define (guarantee-result)
+    (or (get-next-event #T)
+	(error "#F returned from blocking read")))
+
+  (let* ((pending-result #F)
+
+	 (probe
+	  (lambda (block?)
+	    (let ((result  (get-next-event block?)))
+	      (if result
+		  (set! pending-result result))
+	      result)))
+
+	 (halt-update?
+	  (lambda ()
+	    (or pending-result
+		(probe 'IN-UPDATE))))
+	 (peek-no-hang
+	  (lambda ()
+	    (or pending-result
+		(probe #F))))
+	 (peek
+	  (lambda ()
+	    (or pending-result
+		(let ((result  (guarantee-result)))
+		  (set! pending-result result)
+		  result))))
+	 (read
+	  (lambda ()
+	    (cond (pending-result
+		   => (lambda (result)
+			(set! pending-result #F)
+			result))
+		  (else
+		   (guarantee-result))))))
+
+    (values halt-update?	         
+	    peek-no-hang
+	    peek
+	    read)))
 
 
-(define (read-event-1 screen-handle block?)
-  (let loop ()
-    (let ((interrupt-mask (set-interrupt-enables! 5 #|interrupt-mask/gc-ok|# )))
-      (if (eq? block? 'IN-UPDATE)
-	  (let ((result  (nt-get-event screen-handle)))
-	    (set-interrupt-enables! interrupt-mask)
-	    result)
-	  (cond (inferior-thread-changes?
-		 (set-interrupt-enables! interrupt-mask)
-		 event:inferior-thread-output)
-		((process-output-available?)
-		 (set-interrupt-enables! interrupt-mask)
-		 event:process-output)
-		((process-status-changes?)
-		 (set-interrupt-enables! interrupt-mask)
-		 event:process-status)
-		(else
-		 (let ((result (nt-get-event screen-handle)))
+;; The INPUT-SCREEN is the current screen from which we are processing input
+;; events.  When a different screen (or some window from sone other application)
+;; may have been selected, INPUT-SCREEN is set to #F.  This causes READ-EVENT-1
+;; to hunt for a screen from which it can take input events.
+;; This is a crock.  An improvement would be to put the input events for
+;; Edwin screens into a common queue, and invent an new `select-screen' event
+;; That in turn would require implementing the queues separately from the window
+;; but it would move the place at which the process should be suspended to
+;; a single place (WIN32-SCREEN-GET-EVENT), allowing a WIN32(C?) event and
+
+(define input-screen)
+
+(define (give-up-time-slice!)
+  (if (other-running-threads?)
+      (yield-current-thread)       ; yield to scheme threads
+      (sleep 1)))                  ; ... or to win32 threads / processes
+
+(define (read-event-1 screen block?)
+  (let ((screen-handle (and screen (screen->handle screen))))
+    (let loop ()
+      (define (return-or-block result)
+	(if (and (not result) block?)
+	    (begin
+	      (give-up-time-slice!)
+	      (loop))
+	    result))
+      (let ((interrupt-mask
+	     ;;(set-interrupt-enables! 5)
+	     (set-interrupt-enables! interrupt-mask/gc-ok))
+	    )
+	(if (eq? block? 'IN-UPDATE)
+	    (and screen-handle
+		 (let ((result  (win32-screen-get-event screen-handle)))
 		   (set-interrupt-enables! interrupt-mask)
-		   ;; in lieu of blocking we give up our timeslice.
-		   (if (and (not result)
-			    block?)
-		       (begin
-			 (give-up-time-slice!)
-			 (loop))
-		       result))))))))
-
-(define (pce-event flag)
-  (make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
-		    update-screens!
-		    #f))
+		   result))
+	    (cond (inferior-thread-changes?
+		   (set-interrupt-enables! interrupt-mask)
+		   event:inferior-thread-output)
+		  ((process-output-available?)
+		   (set-interrupt-enables! interrupt-mask)
+		   event:process-output)
+		  ((process-status-changes?)
+		   (set-interrupt-enables! interrupt-mask)
+		   event:process-status)
+		  ((or (not screen-handle)
+		       (not (eqv? screen-handle (win32-screen-current-focus))))
+		   ;;(debug 'FIND-FOCUS screen-handle)
+		   (let* ((handle  (win32-screen-current-focus))
+			  (screen* (handle->win32-screen handle)))
+		     (set-interrupt-enables! interrupt-mask)
+		     (if screen*
+			 (begin
+			   (set! input-screen screen*)
+			   (make-input-event 'SELECT-SCREEN select-screen screen*))
+			 (return-or-block #F))))
+		  (else
+		   (let ((result (win32-screen-get-event screen-handle)))
+		     (set-interrupt-enables! interrupt-mask)
+		     ;; in lieu of blocking we give up our timeslice.
+		     (return-or-block result)))))))))
 
 
 (define (process-change-event event)
@@ -541,3 +569,18 @@
 	((fix:= event event:process-status) (handle-process-status-changes))
 	((fix:= event event:inferior-thread-output) (accept-thread-output))
 	(else (error "Illegal change event:" event))))
+
+
+
+(define-integrable (screen-name screen)
+  (state/name (screen-state screen)))
+
+(define-integrable (set-screen-name! screen name)
+  (set-state/name! (screen-state screen) name))
+
+(define (win32-screen/set-name! screen name)
+  (let ((name* (screen-name screen)))
+    (if (or (not name*) (not (string=? name name*)))
+	(begin
+	  (set-screen-name! screen name)
+	  (set-window-text (screen->handle screen) name)))))
