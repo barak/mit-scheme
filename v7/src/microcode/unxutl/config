@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.13 1991/09/16 20:18:08 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.14 1991/10/17 08:21:11 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -53,14 +53,17 @@ case $# in
 	vax-bsd42)			# vaxen running 4.2BSD
 		system_file=bsd4-2
 		machine_file=vax
+		cmpint_file=cmpint-vax.h
 		;;
 	vax-bsd43)			# vaxen running 4.3BSD
 		system_file=bsd4-3
 		machine_file=vax
+		cmpint_file=cmpint-vax.h
 		;;
 	vax-ultrix)			# vaxen running ultrix
 		system_file=ultrix
 		machine_file=vax
+		cmpint_file=cmpint-vax.h
 		;;
 	mips-ultrix | dec-3100 | dec-5100 | pmax)
 		system_file=ultrix
