@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.169 2000/06/19 04:37:25 cph Exp $
+;;; $Id: imail-top.scm,v 1.170 2000/06/19 04:58:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1345,12 +1345,16 @@ A prefix argument says to prompt for a URL and append all messages
 	(let* ((folder (selected-folder))
 	       (count (folder-modification-count folder)))
 	  (probe-folder folder)
-	  (if (> (folder-modification-count folder) count)
-	      (let ((unseen (navigator/first-unseen-message folder)))
-		(if unseen
-		    (select-message folder unseen)
-		    (message "No unseen messages")))
-	      (message "No changes to mail folder"))))))
+	  (cond ((<= (folder-modification-count folder) count)
+		 (message "No changes to mail folder"))
+		((navigator/first-unseen-message folder)
+		 => (lambda (unseen) (select-message folder unseen)))
+		((selected-message #f)
+		 (message "No unseen messages"))
+		((navigator/first-message folder)
+		 => (lambda (first) (select-message folder first)))
+		(else
+		 (message "No changes to mail folder")))))))
 
 (define-command imail-disconnect
   "Disconnect the selected IMAIL folder from its server.
@@ -1736,12 +1740,7 @@ Negative argument means search in reverse."
 	  (directory-pathname (file-folder-pathname folder))
 	  (user-homedir-pathname)))
      (add-event-receiver! (folder-modification-event folder)
-       (lambda (folder type parameters)
-	 (if (eq? type 'EXPUNGE)
-	     (maybe-add-command-suffix! notice-message-expunge
-					folder
-					(car parameters))
-	     (maybe-add-command-suffix! notice-folder-modifications folder))))
+			  notice-folder-event)
      (add-kill-buffer-hook buffer delete-associated-buffers)
      (add-kill-buffer-hook buffer stop-probe-folder-thread)
      (start-probe-folder-thread buffer))))
@@ -1797,6 +1796,16 @@ Negative argument means search in reverse."
       buffer))
 
 ;;;; Mode-line updates
+
+(define (notice-folder-event folder type parameters)
+  (case type
+    ((EXPUNGE)
+     (maybe-add-command-suffix! notice-message-expunge folder
+				(car parameters)))
+    ((INCREASE-LENGTH SET-LENGTH)
+     (maybe-add-command-suffix! notice-message-expunge folder 0))
+    (else
+     (maybe-add-command-suffix! notice-folder-modifications folder))))
 
 (define (notice-message-expunge folder index)
   (let ((buffer (imail-folder->buffer folder #f)))
