@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.8 1998/07/09 04:29:36 cph Exp $
+$Id: wf_user.scm,v 1.9 1998/10/23 05:13:58 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -77,6 +77,7 @@ MIT in each case. |#
 (define  get-menu-item-id)
 (define  get-menu-state)
 (define  get-menu-string)
+(define  get-module-file-name)
 (define  get-nearest-color)
 (define  get-nearest-palette-index)
 (define  get-rop2)
@@ -537,6 +538,12 @@ MIT in each case. |#
   (set! get-last-error
     (windows-procedure (get-last-error)
       dword kernel32.dll "GetLastError"))
+
+  (set! get-module-file-name
+    (windows-procedure (get-module-file-name (module handle)
+					     (name string)
+					     (strlen int))
+      int kernel32.dll "GetModuleFileNameA"))
 
 
   unspecific)
