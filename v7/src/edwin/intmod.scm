@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.38 1991/05/06 01:04:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.39 1991/08/28 21:06:47 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -76,16 +76,18 @@ The history may be accessed with the following commands:
 	      (region->string region)))
 
 (define (scheme-interaction-output-wrapper thunk)
-  (set-current-point! (buffer-end (current-buffer)))
-  (with-output-to-current-point
-   (lambda ()
-     (intercept-^G-interrupts
-      (lambda ()
-	(fresh-line)
-	(write-string ";Abort!")
-	(fresh-lines 2)
-	(^G-signal))
-      thunk))))
+  (let ((point (buffer-end (current-buffer))))
+    (set-current-point! point)
+    (with-output-to-mark
+     point
+     (lambda ()
+       (intercept-^G-interrupts
+	(lambda ()
+	  (fresh-line)
+	  (write-string ";Abort!")
+	  (fresh-lines 2)
+	  (^G-signal))
+	thunk)))))
 
 (define-key 'scheme-interaction #\M-p 'comint-previous-input)
 (define-key 'scheme-interaction #\M-n 'comint-next-input)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.26 1991/07/19 00:38:54 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.27 1991/08/28 21:07:07 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -305,11 +305,15 @@ may be available.  The following commands are special to this mode:
   (access syntax-table? system-global-environment))
 
 (define (editor-eval sexp environment)
-  (with-output-to-transcript-buffer
-   (lambda ()
-     (let ((value (eval-with-history sexp environment)))
-       (transcript-write value)
-       value))))
+  (let ((to-transcript? (ref-variable enable-transcript-buffer)))
+    (with-output-to-transcript-buffer
+     (lambda ()
+       (let* ((buffer (transcript-buffer))
+	      (value (eval-with-history sexp environment)))
+	 (transcript-write value
+			   buffer
+			   to-transcript?)
+	 value)))))
 
 (define (eval-with-history expression environment)
   (let ((syntax-table (evaluation-syntax-table environment)))
@@ -400,7 +404,7 @@ TYPEIN or False => Error messages always appear in Typein window."
 	(lambda ()
 	  (thunk))))))
 
-(define (transcript-write value)
+(define (transcript-write value buffer to-transcript?)
   (let ((value-string
 	 (if (undefined-value? value)
 	     "No value"
@@ -412,14 +416,16 @@ TYPEIN or False => Error messages always appear in Typein window."
 			   (ref-variable transcript-list-breadth-limit)))
 		(write-to-string value))))))
     (let ((value-message (lambda () (message value-string))))
-      (if (ref-variable enable-transcript-buffer)
-	  (begin
-	    (fresh-lines 1)
-	    (write-char #\;)
-	    (write-string value-string)
-	    (fresh-lines 2)
-	    (if (null? (buffer-windows (transcript-buffer)))
-		(value-message)))
+      (if to-transcript?
+	  (with-output-to-mark
+	   (buffer-point buffer)
+	   (lambda ()
+	     (fresh-lines 1)
+	     (write-char #\;)
+	     (write-string value-string)
+	     (fresh-lines 2)
+	     (if (null? (buffer-windows buffer))
+		 (value-message))))
 	  (value-message)))))
 
 (define (transcript-buffer)
