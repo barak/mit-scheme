@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dossig.c,v 1.2 1992/05/28 18:56:35 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -447,11 +447,12 @@ DEFUN (signal_keyboard_character_interrupt, (c), unsigned char c)
 static void
 DEFUN_VOID (print_interrupt_help)
 { 
-  console_write_string("Choices are:\n");
+  console_write_string("\nInterrupt Choices are:\n");
   console_write_string("C-G interrupt: G, g, ^G (abort to top level)\n");
   console_write_string("C-X interrupt: X, x, ^x (abort)\n");
   console_write_string("C-B interrupt: B, b, ^B (break)\n");
   console_write_string("C-U interrupt: U, u, ^U (up)\n");
+  console_write_string("Quit scheme:   Q, q\n");
 
   return;
 }
@@ -471,34 +472,57 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
     console_write_string
       ("\nKeyboard interrupt, type character (? for help): ");
     
-    response = dos_get_keyboard_character();
-    dos_console_write_character(response);
+    response = (dos_get_keyboard_character ());
+    dos_console_write_character (response);
     
     switch (response)
-    { case 'b':
+    {
+      case 'b':
       case 'B':
       case CONTROL_B:
 	return CONTROL_B_INTERRUPT_CHAR;
+
       case 'g':
       case 'G':
       case CONTROL_G:
 	return CONTROL_G_INTERRUPT_CHAR;
+
+      case 'q':
+      case 'Q':
+      {
+	console_write_string ("\nTerminate scheme (y or n)? ");
+	response = (dos_get_keyboard_character ());
+	dos_console_write_character (response);
+	if ((response == 'y') || (response == 'Y'))
+	{
+	  console_write_string ("\n");
+	  termination_normal (0);
+	}
+	print_interrupt_help ();
+	break;
+      }
+
       case 'u':
       case 'U':
       case CONTROL_U:
 	return CONTROL_U_INTERRUPT_CHAR;
+
       case 'x':
       case 'X':
       case CONTROL_X:
 	return CONTROL_X_INTERRUPT_CHAR;
+
       case '?':
-	print_interrupt_help();
+	print_interrupt_help ();
 	break;
+
       default:
-      { char temp[128];
-	sprintf(temp, "\nIllegal interrupt character: [%c]\n", response);
-	console_write_string(temp);
-	print_interrupt_help();
+      {
+	char temp[128];
+
+	sprintf(temp, "\nIllegal interrupt character: [%c]", response);
+	console_write_string (temp);
+	print_interrupt_help ();
 	break;
       }
     } /* End CASE */
