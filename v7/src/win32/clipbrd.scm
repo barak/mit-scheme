@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: clipbrd.scm,v 1.2 1996/10/07 18:17:17 cph Exp $
+;;;	$Id: clipbrd.scm,v 1.3 1998/07/09 04:29:29 cph Exp $
 ;;;
-;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -42,39 +42,39 @@
 ;;; of that license should have been included along with this file.
 
 ;;;; Miscellaneous Win32 Facilities
+
+(declare (usual-integrations))
 
 (define (win32-clipboard-write-text s)
-  (let ((clip? (open-clipboard 0)))
-    (and clip?
-	 (let* ((len  (+ (string-length s) 1))
-		(mem  (global-alloc #x2002 #|= GMEM_MOVEABLE + GMEM_DDESHARE|#
-				    len)))
-	   (if (= mem 0)
-	       #F
-	       (let ((ptr  (global-lock mem)))
-		 (if (= ptr 0)
-		     #F
-		     (begin
-		       (copy-memory ptr s len)
-		       (global-unlock mem)
-		       (set-clipboard-data CF_TEXT mem)
-		       (close-clipboard)))))))))
+  (let* ((len (+ (string-length s) 1))
+	 (mem
+	  (global-alloc #x2002		;(GMEM_MOVEABLE | GMEM_DDESHARE)
+			len)))
+    (if (= mem 0)
+	(error "Unable to allocate global memory of length" len))
+    (copy-memory (global-lock mem) s len)
+    (global-unlock mem)
+    (if (not (open-clipboard 0))
+	(error "Error opening clipboard."))
+    (if (not (empty-clipboard))
+	(error "Error emptying clipboard."))
+    (if (not (set-clipboard-data CF_TEXT mem))
+	(error "Error setting clipboard data."))
+    (if (not (close-clipboard))
+	(error "Error closing clipboard."))))
 
 (define (win32-clipboard-read-text)
-  (let ((clip? (open-clipboard 0)))
-    (and clip?
-	 (let* ((mem  (get-clipboard-data CF_TEXT)))
-	   (if (= mem 0)
-	       #F
-	       (let* ((maxlen (global-size mem))
-		      (s      (string-allocate maxlen))
-		      (ptr    (global-lock mem)))
-		 (copy-memory s ptr maxlen)
-		 (global-unlock mem)
-		 (close-clipboard)
-		 (let ((end (vector-8b-find-next-char s 0 maxlen 0)))
-		   (set-string-length! s end))
-		 s))))))
+  (open-clipboard 0)
+  (let ((mem (get-clipboard-data CF_TEXT)))
+    (and (not (= mem 0))
+	 (let* ((maxlen (global-size mem))
+		(s (string-allocate maxlen))
+		(ptr (global-lock mem)))
+	   (copy-memory s ptr maxlen)
+	   (global-unlock mem)
+	   (close-clipboard)
+	   (set-string-length! s (vector-8b-find-next-char s 0 maxlen 0))
+	   s))))
 
 (define (win32-screen-width)
   (get-system-metrics SM_CXSCREEN))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.4 1998/02/12 04:35:20 cph Exp $
+$Id: make.scm,v 1.5 1998/07/09 04:29:16 cph Exp $
 
 Copyright (c) 1993-98 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
 
 ;((package/reference (find-package '(WIN32))
 ;		    'INITIALIZE-PACKAGE!))
-(add-identification! "Win32" 1 4)
+(add-identification! "Win32" 1 5)
 
 
 (define (package-initialize package-name procedure-name mandatory?)
