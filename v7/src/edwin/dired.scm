@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.133 1992/11/20 13:49:12 bal Exp $
+;;;	$Id: dired.scm,v 1.134 1992/11/20 15:35:18 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -626,7 +626,7 @@ krypted and unkrypt it.  Otherwise, krypt it."
 	   (lambda ()
 	     (read-string (char-set)))))
 	(password 
-	 (prompt-for-password "Password: ")))
+	 (prompt-for-confirmed-password)))
     (let ((the-encrypted-string
 	   (encrypt the-file-string password)))
       (let ((new-name 
