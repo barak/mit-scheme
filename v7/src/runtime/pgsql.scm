@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.2 2003/07/21 00:59:45 cph Exp $
+$Id: pgsql.scm,v 1.3 2003/11/06 00:16:21 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -262,9 +262,6 @@ USA.
 
 (define (pgsql-result-status result)
   (index->name (pq-result-status (result->handle result)) exec-status))
-
-(define (pgsql-result-status-string result)
-  (pq-res-status (pq-result-status (result->handle result))))
 
 (define (pgsql-field-name result index)
   (pq-field-name (result->handle result) index))
