@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.154 1991/03/16 00:03:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.155 1992/03/13 10:52:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -149,7 +149,8 @@
   (car (window-redisplay-flags window)))
 
 (define-integrable (window-needs-redisplay! window)
-  (setup-redisplay-flags! (window-redisplay-flags window)))
+  (if (not (car (window-redisplay-flags window)))
+      (setup-redisplay-flags! (window-redisplay-flags window))))
 
 (define-integrable (window-inferior? window window*)
   (find-inferior? (window-inferiors window) window*))
@@ -209,29 +210,29 @@
 				display-style)
   (update-inferiors! (window-inferiors window) screen x-start y-start
 		     xl xu yl yu display-style
-    (let ((halt-update? (editor-halt-update? current-editor)))
-      (lambda (window screen x-start y-start xl xu yl yu display-style)
-	(and (or display-style (not (halt-update?)))
-	     (=> window :update-display! screen x-start y-start xl xu yl yu
-		 display-style))))))
+    (lambda (window screen x-start y-start xl xu yl yu display-style)
+      (and (or display-style (not ((editor-halt-update? current-editor))))
+	   (=> window :update-display! screen x-start y-start xl xu yl yu
+	       display-style)))))
 
 (define (update-inferiors! inferiors screen x-start y-start xl xu yl yu
 			   display-style updater)
   (let loop ((inferiors inferiors))
     (if (null? inferiors)
 	true
-	(and (update-inferior! (car inferiors) screen x-start y-start
-			       xl xu yl yu display-style updater)
+	(and (or (not (or display-style
+			  (inferior-needs-redisplay? (car inferiors))))
+		 (update-inferior! (car inferiors) screen x-start y-start
+				   xl xu yl yu display-style updater))
 	     (loop (cdr inferiors))))))
 
 (define (update-inferior! inferior screen x-start y-start xl xu yl yu
 			  display-style updater)
+  ;; Assumes (OR DISPLAY-STYLE (INFERIOR-NEEDS-REDISPLAY? INFERIOR))
   (let ((window (inferior-window inferior))
 	(xi (inferior-x-start inferior))
-	(yi (inferior-y-start inferior))
-	(flags (inferior-redisplay-flags inferior)))
+	(yi (inferior-y-start inferior)))
     (and (or (not xi)
-	     (not (or display-style (car flags)))
 	     (clip-window-region-1 (fix:- xl xi)
 				   (fix:- xu xi)
 				   (window-x-size window)
@@ -244,10 +245,12 @@
 			      screen (fix:+ x-start xi) (fix:+ y-start yi)
 			      xl xu yl yu display-style))))))
 	 (begin
-	   (set-car! flags false)
+	   (set-car! (inferior-redisplay-flags inferior) false)
 	   true))))
 
+(declare (integrate-operator clip-window-region-1))
 (define (clip-window-region-1 al au bs receiver)
+  (declare (integrate al au bs))
   (if (fix:< 0 al)
       (if (fix:< au bs)
 	  (if (fix:< al au) (receiver al au) true)
@@ -431,7 +434,8 @@
 
 (define (inferior-needs-redisplay! inferior)
   (if (and (inferior-x-start inferior) (inferior-y-start inferior))
-      (setup-redisplay-flags! (inferior-redisplay-flags inferior))
+      (if (not (car (inferior-redisplay-flags inferior)))
+	  (setup-redisplay-flags! (inferior-redisplay-flags inferior)))
       (set-car! (inferior-redisplay-flags inferior) false)))
 
 (define (setup-redisplay-flags! flags)

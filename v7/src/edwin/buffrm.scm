@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.40 1991/05/10 22:18:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.41 1992/03/13 10:52:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -88,17 +88,20 @@
 (define-method buffer-frame (:update-display! window screen x-start y-start
 					      xl xu yl yu display-style)
   ;; Assumes that interrupts are disabled.
-  (and (update-inferior! text-inferior screen x-start y-start
-			 xl xu yl yu display-style
-			 buffer-window:update-display!)
-       (if modeline-inferior
-	   (update-inferior! modeline-inferior screen x-start y-start
-			     xl xu yl yu display-style
-			     modeline-window:update-display!)
-	   true)
-       (update-inferior! border-inferior screen x-start y-start
-			 xl xu yl yu display-style
-			 vertical-border-window:update-display!)))
+  (if (or display-style (inferior-needs-redisplay? text-inferior))
+      (update-inferior! text-inferior screen x-start y-start
+			xl xu yl yu display-style
+			buffer-window:update-display!))
+  (if (and modeline-inferior
+	   (or display-style (inferior-needs-redisplay? modeline-inferior)))
+      (update-inferior! modeline-inferior screen x-start y-start
+			xl xu yl yu display-style
+			modeline-window:update-display!))
+  (if (or display-style (inferior-needs-redisplay? border-inferior))
+      (update-inferior! border-inferior screen x-start y-start
+			xl xu yl yu display-style
+			vertical-border-window:update-display!))
+  true)
 
 (define (initial-modeline! frame modeline?)
   ;; **** Kludge: The text-inferior will generate modeline events, so
@@ -217,7 +220,7 @@
 (define (window-modeline-event! frame type)
   (with-instance-variables buffer-frame frame (type)
     (if modeline-inferior
-	(=> (inferior-window modeline-inferior) :event! type)))
+	(modeline-window:event! (inferior-window modeline-inferior) type)))
   (screen-modeline-event! (window-screen frame) frame type))
 
 (define-integrable (window-override-message window)

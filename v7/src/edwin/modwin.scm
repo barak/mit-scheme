@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.38 1991/07/02 18:56:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.39 1992/03/13 10:52:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -76,6 +76,7 @@
   true
   boolean?)
 
-(define-method modeline-window (:event! window type)
+(define (modeline-window:event! window type)
   type					;ignored
-  (setup-redisplay-flags! redisplay-flags))
+  (with-instance-variables modeline-window window ()
+    (setup-redisplay-flags! redisplay-flags)))

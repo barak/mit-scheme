@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.295 1991/05/18 03:25:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.296 1992/03/13 10:52:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -724,12 +724,17 @@
   (if (%window-override-string window)
       (update-override-string! window screen x-start y-start xl xu yl yu)
       (update-outlines! window))
-  (and (update-inferior! (%window-blank-inferior window)
-			 screen x-start y-start xl xu yl yu display-style
-			 blank-window:update-display!)
-       (update-inferior! (%window-cursor-inferior window)
-			 screen x-start y-start xl xu yl yu display-style
-			 cursor-window:update-display!)))
+  (let ((inferior (%window-blank-inferior window)))
+    (if (or display-style (inferior-needs-redisplay? inferior))
+	(update-inferior! inferior screen x-start y-start
+			  xl xu yl yu display-style
+			  blank-window:update-display!)))
+  (let ((inferior (%window-cursor-inferior window)))
+    (if (or display-style (inferior-needs-redisplay? inferior))
+	(update-inferior! inferior screen x-start y-start
+			  xl xu yl yu display-style
+			  cursor-window:update-display!)))
+  true)
 
 (define (buffer-window/redraw! window)
   (if (%window-debug-trace window)
