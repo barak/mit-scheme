@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.21 1996/07/24 15:11:44 adams Exp $
+$Id: typerew.scm,v 1.22 1996/07/27 03:30:17 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -102,8 +102,8 @@ MIT in each case. |#
    (q-env:restrict env effect:unknown)
    (lambda (quantity type env*)
      quantity type env*			; a shame
-     ;; Creating the closure itself is no big deal since we dont have
-     ;; reasonable type information for procedures.
+     ;; Creating the procedure or closure itself is no big deal since we dont
+     ;; have reasonable type information for procedures:
      (typerew/send receiver
 		   (quantity:other-expression form effect:none)
 		   type:compiled-entry
@@ -170,6 +170,9 @@ MIT in each case. |#
 			  (q-env:bind* env* names quantities types)
 			  receiver))))))
 
+#|
+This version is WASTEFUL since letrec bindings are always procedures
+and we dont do much with that.
 
 (define-type-rewriter LETREC (bindings body)
   ;; This is lame. We need more complex procedure types to summarize what
@@ -181,6 +184,22 @@ MIT in each case. |#
 			   (cons (quantity:variable (first binding))
 				 type:compiled-entry))
 			 bindings))))
+    (let loop ((bindings bindings)
+	       (env** env*))
+      (if (null? bindings)
+	  (typerew/expr body env** receiver)
+	  (typerew/expr (second (car bindings))
+			env**
+			(lambda (quantity type env***)
+			  (loop (cdr bindings)
+				(q-env:glb/1 env*** quantity type)))))))
+|#
+
+(define-type-rewriter LETREC (bindings body)
+  ;; This is lame. We need more complex procedure types to summarize what
+  ;; we found out about the procedures, and an intelligent traversal
+  ;; order to maximize the info (or some kind of iterative solution).
+  (let ((env* env))
     (let loop ((bindings bindings)
 	       (env** env*))
       (if (null? bindings)
