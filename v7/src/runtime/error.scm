@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.55 2001/12/23 17:20:59 cph Exp $
+$Id: error.scm,v 14.56 2002/01/07 03:38:28 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -706,6 +706,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define error:derived-thread)
 (define error:illegal-pathname-component)
 (define error:macro-binding)
+(define error:unassigned-variable)
+(define error:unbound-variable)
 (define error:wrong-number-of-arguments)
 (define error:wrong-type-argument)
 (define error:wrong-type-datum)
@@ -1134,6 +1136,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! error:no-such-restart
 	(condition-signaller condition-type:no-such-restart
 			     '(NAME)
+			     standard-error-handler))
+  (set! error:unassigned-variable
+	(condition-signaller condition-type:unassigned-variable
+			     '(ENVIRONMENT LOCATION)
+			     standard-error-handler))
+  (set! error:unbound-variable
+	(condition-signaller condition-type:unbound-variable
+			     '(ENVIRONMENT LOCATION)
 			     standard-error-handler))
   (set! error:macro-binding
 	(condition-signaller condition-type:macro-binding

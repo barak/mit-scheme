@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.404 2002/01/04 06:05:13 cph Exp $
+$Id: runtime.pkg,v 14.405 2002/01/07 03:38:41 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1325,6 +1325,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-bindings
 	  environment-bound-names
 	  environment-bound?
+	  environment-definable?
 	  environment-define
 	  environment-define-macro
 	  environment-has-parent?
@@ -1334,6 +1335,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  environment-macro-names
 	  environment-parent
 	  environment-procedure-name
+	  environment-reference-type
+	  environment-safe-lookup
 	  environment?
 	  extend-interpreter-environment
 	  guarantee-environment
@@ -1476,7 +1479,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  ordinal-number-string
 	  write-operator)
   (export (runtime environment)
-	  error:macro-binding)
+	  error:macro-binding
+	  error:unassigned-variable
+	  error:unbound-variable)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
