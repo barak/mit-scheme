@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.33 1990/05/03 15:17:28 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -385,7 +385,7 @@ MIT in each case. |#
 			       (? n)))
   (if (zero? n)
       (LAP)
-      (let ((target (indirect-byte-reference! address offset)))
+      (let ((target (indirect-reference! address offset)))
 	(cond ((<= 1 n 8)
 	       (LAP (ADDQ L (& ,n) ,target)))
 	      ((<= -8 n -1)
