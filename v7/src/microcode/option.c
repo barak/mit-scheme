@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.36 1994/01/30 03:31:57 gjr Exp $
+$Id: option.c,v 1.37 1994/04/30 06:25:16 cph Exp $
 
 Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
@@ -572,9 +572,9 @@ struct option_descriptor
 
 static void
 DEFUN (option_argument, (option, argument_p, value_cell),
-       CONST char * option
-       AND int argument_p
-       AND PTR value_cell)
+       CONST char * option AND
+       int argument_p AND
+       PTR value_cell)
 {
   struct option_descriptor descriptor;
   (descriptor . option) = option;
@@ -694,11 +694,11 @@ DEFUN (environment_default, (variable, defval),
 
 static CONST char *
 DEFUN (standard_string_option, (option, variable, defval),
-       CONST char * option
-       AND CONST char * variable
-       AND CONST char * defval)
+       CONST char * option AND
+       CONST char * variable AND
+       CONST char * defval)
 {
-  if (option != ((char *) NULL))
+  if (option != 0)
     return (option);
   {
     CONST char * t = (getenv (variable));
@@ -708,12 +708,12 @@ DEFUN (standard_string_option, (option, variable, defval),
 
 static long
 DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
-       CONST char * option
-       AND CONST char * optval
-       AND CONST char * variable
-       AND long defval)
+       CONST char * option AND
+       CONST char * optval AND
+       CONST char * variable AND
+       long defval)
 {
-  if (optval != ((char *) NULL))
+  if (optval != 0)
     {
       long n = (strtol (optval, ((char **) NULL), 0));
       if (n < 0)
@@ -743,10 +743,10 @@ DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
 
 static unsigned int
 DEFUN (standard_numeric_option, (option, optval, variable, defval),
-       CONST char * option
-       AND CONST char * optval
-       AND CONST char * variable
-       AND unsigned int defval)
+       CONST char * option AND
+       CONST char * optval AND
+       CONST char * variable AND
+       unsigned int defval)
 {
   if (optval != 0)
     {
@@ -915,10 +915,10 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
 
 CONST char *
 DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
-       CONST char * option
-       AND CONST char * filename
-       AND int default_p
-       AND int fail_p)
+       CONST char * option AND
+       CONST char * filename AND
+       int default_p AND
+       int fail_p)
 {
   CONST char * result;
 
@@ -953,11 +953,11 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
 
 static CONST char *
 DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
-       CONST char * option
-       AND CONST char * optval
-       AND CONST char * variable
-       AND CONST char * defval
-       AND int fail_p)
+       CONST char * option AND
+       CONST char * optval AND
+       CONST char * variable AND
+       CONST char * defval AND
+       int fail_p)
 {
   if (optval != 0)
     {
@@ -996,8 +996,8 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 
 static void
 DEFUN (conflicting_options, (option1, option2),
-       CONST char * option1
-       AND CONST char * option2)
+       CONST char * option1 AND
+       CONST char * option2)
 {
   outf_fatal ("%s: can't specify both options %s and %s.\n",
 	   scheme_program_name, option1, option2);
@@ -1006,40 +1006,40 @@ DEFUN (conflicting_options, (option1, option2),
 
 static void
 DEFUN (describe_boolean_option, (name, value),
-       CONST char * name
-       AND int value)
+       CONST char * name AND
+       int value)
 {
   outf_fatal ("  %s: %s\n", name, (value ? "yes" : "no"));
 }
 
 static void
 DEFUN (describe_string_option, (name, value),
-       CONST char * name
-       AND CONST char * value)
+       CONST char * name AND
+       CONST char * value)
 {
   outf_fatal ("  %s: %s\n", name, value);
 }
 
 static void
 DEFUN (describe_numeric_option, (name, value),
-       CONST char * name
-       AND int value)
+       CONST char * name AND
+       int value)
 {
   outf_fatal ("  %s: %d\n", name, value);
 }
 
 static void
 DEFUN (describe_size_option, (name, value),
-       CONST char * name
-       AND unsigned int value)
+       CONST char * name AND
+       unsigned int value)
 {
   outf_fatal ("  %s size: %d\n", name, value);
 }
 
 static void
 DEFUN (describe_path_option, (name, value),
-       CONST char * name
-       AND CONST char ** value)
+       CONST char * name AND
+       CONST char ** value)
 {
   outf_fatal ("  %s: ", name);
   {
@@ -1107,8 +1107,8 @@ DEFUN_VOID (describe_options)
 
 void
 DEFUN (read_command_line_options, (argc, argv),
-       int argc
-       AND CONST char ** argv)
+       int argc AND
+       CONST char ** argv)
 {
   parse_standard_options (argc, argv);
   if (option_library_path != 0)
