@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: msort.scm,v 14.7 2000/03/16 17:09:11 cph Exp $
+$Id: msort.scm,v 14.8 2001/11/26 19:11:18 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 |#
 
 ;;;; Merge Sort
@@ -24,8 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-;; This merge sort is stable for partial orders (for predicates like
-;; <=, rather than like <).
+;; This merge sort is stable.
 
 (define (merge-sort obj pred)
   (if (vector? obj)
@@ -51,8 +51,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (if (fix:< p high)
 		(if (and (fix:< p1 middle)
 			 (or (fix:= p2 high)
-			     (pred (vector-ref temp p1)
-				   (vector-ref temp p2))))
+			     (not (pred (vector-ref temp p2)
+					(vector-ref temp p1)))))
 		    (begin
 		      (vector-set! v p (vector-ref temp p1))
 		      (merge (fix:+ p 1) (fix:+ p1 1) p2))
