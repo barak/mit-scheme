@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: win32.scm,v 1.9 1999/01/02 06:11:34 cph Exp $
+;;; $Id: win32.scm,v 1.10 1999/03/03 05:29:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -24,11 +24,10 @@
 (declare (usual-integrations))
 
 (define-primitives
+  (win32-read-event 0)
   (win32-screen-char-dimensions 1)
   (win32-screen-clear-rectangle! 6)
   (win32-screen-create! 2)
-  (win32-screen-current-focus 0)
-  (win32-screen-get-event 1)
   (win32-screen-invalidate-rect! 5)
   (win32-screen-move-cursor! 3)
   (win32-screen-set-background-color! 2)
@@ -42,30 +41,24 @@
   (win32-screen-write-char! 5)
   (win32-screen-write-substring! 7))
 
-(define-integrable event:process-output 16)
-(define-integrable event:process-status 32)
-(define-integrable event:inferior-thread-output 64)
-
-(define win32-screens '())
-
 ;;(define (debug . details)
 ;;  (pp details console-output-port))
 
 (define-structure (win32-screen-state
 		   (constructor make-win32-screen-state (handle))
 		   (conc-name state/))
-  (handle false read-only true)
+  (handle #f read-only #t)
   (cursor-x -1) ; cached position, -1 if we dont know
   (cursor-y -1) ; ditto
   ;; This rect is the bounding box of a sequence of updates.  RECT-TOP is #F
   ;; if no box has been established, which implies that the screen needs no
   ;; update.
-  (rect-top #F)
+  (rect-top #f)
   (rect-bottom 0)
   (rect-right 0)
   (rect-left 0)
-  (redisplay-title? #F)
-  (name #F))
+  (redisplay-title? #f)
+  (name #f))
 
 (define-integrable (screen-redisplay-title? screen)
   (state/redisplay-title? (screen-state screen)))
@@ -93,7 +86,7 @@
 			win32-screen/exit!
 			win32-screen/flush!
 			win32-screen/modeline-event!
-			false
+			#f
 			win32-screen/scroll-lines-down!
 			win32-screen/scroll-lines-up!
 			win32-screen/wrap-update!
@@ -104,7 +97,6 @@
 			(car width.height)
 			(cdr width.height))))
       (set! win32-screens (cons screen win32-screens))
-      (set! input-screen #F)
       ;;(debug 'CREATE screen)
       screen)))
 
@@ -166,26 +158,24 @@
   (set! win32-screens (delq screen win32-screens)))
 
 (define (win32-screen/enter! screen)
-  (set! input-screen #F)
   (set-screen-cursor-position! screen -1 -1)
   (set-active-window (screen->handle screen))
   (win32-screen-show-cursor! (screen->handle screen) #T))
 
 (define (win32-screen/exit! screen)
-  (win32-screen-show-cursor! (screen->handle screen) #F)
-  (set! input-screen #F))
+  (win32-screen-show-cursor! (screen->handle screen) #F))
 
 (define (win32-screen/modeline-event! screen window type)
   window type				; ignored
-  (set-screen-redisplay-title?! screen true))
+  (set-screen-redisplay-title?! screen #t))
 
 (define (win32-screen/scroll-lines-down! screen xl xu yl yu amount)
-  (and #F
+  (and #f
        (win32-screen-vertical-scroll! (screen->handle screen)
 				      xl xu yl yu (fix:+ yl amount))))
 
 (define (win32-screen/scroll-lines-up! screen xl xu yl yu amount)
-  (and #F
+  (and #f
        (win32-screen-vertical-scroll! (screen->handle screen)
 				      xl xu amount yu 0)
        (win32-screen-vertical-scroll! (screen->handle screen)
@@ -197,7 +187,7 @@
   #F)
 
 (define (win32-screen/wrap-update! screen thunk)
-  (let ((finished? false))
+  (let ((finished? #f))
     (dynamic-wind
      (lambda ()
        (set-state/rect-top! (screen-state screen) #F))
@@ -211,7 +201,7 @@
        (if (and finished? (screen-redisplay-title? screen))
 	   (begin
 	     (update-win32-screen-name! screen)
-	     (set-screen-redisplay-title?! screen false)))
+	     (set-screen-redisplay-title?! screen #f)))
        (win32-screen/flush! screen)))))
 
 (define (win32-screen/write-char! screen x y char highlight)
@@ -237,10 +227,6 @@
 	  (win32-screen-move-cursor! handle x y)
 	  (set-screen-cursor-position! screen x y)))))
 
-;; Mask bits:  VK coded special keys, Edwin mode,
-;;    mouse, key, resize and close events
-(define-integrable win32-screen-features-mask #x140F)
-
 (define (screen->handle screen)
   (if (memq screen win32-screens)
       (state/handle (screen-state screen))
@@ -250,305 +236,6 @@
   (list-search-positive win32-screens
     (lambda (screen) (eqv? handle (state/handle (screen-state screen))))))
 
-(define win32-display-type)
-
-(define (win32-screen-available?)
-  (implemented-primitive-procedure? win32-screen-create!))
-
-(define (initialize-package!)
-  (set! win32-display-type
-	(make-display-type 'win32
-			   true        ; multiple screens?
-			   win32-screen-available?
-			   (lambda geometry
-			     geometry
-			     (make-win32-screen))
-			   get-win32-input-operations
-			   with-editor-interrupts-from-win32
-			   with-win32-interrupts-enabled
-			   with-win32-interrupts-disabled))
-  (add-event-receiver! event:before-exit
-		       (lambda ()
-			 (for-each screen-discard! win32-screens)))
-  unspecific)
-
-(define (with-editor-interrupts-from-win32 receiver)
-  (fluid-let ((signal-interrupts? #t))
-    (dynamic-wind
-     (lambda () '())
-     (lambda () (receiver (lambda (thunk) (thunk)) '()))
-     (lambda () '()))))
-
-(define (with-win32-interrupts-enabled thunk)
-  (with-signal-interrupts true thunk))
-
-(define (with-win32-interrupts-disabled thunk)
-  (with-signal-interrupts false thunk))
-
-(define (with-signal-interrupts enabled? thunk)
-  (let ((old))
-    (dynamic-wind (lambda ()
-		    (set! old signal-interrupts?)
-		    (set! signal-interrupts? enabled?)
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (set! enabled? signal-interrupts?)
-		    (set! signal-interrupts? old)
-		    unspecific))))
-
-(define (signal-interrupt!)
-  (editor-beep)
-  (temporary-message "Quit")
-  (^G-signal))
-
-(define signal-interrupts? #f)
-
-(define-integrable (some-bits? mask item)
-  (not (fix:= 0 (fix:and mask item))))
-
-(define (process-mouse-event screen event)
-  screen
-  (make-input-event 'BUTTON
-		    execute-button-command
-		    screen
-		    ((if (= (vector-ref event 5) 0)
-			 make-down-button
-			 make-up-button)
-		     (cond ((some-bits? #x1 (vector-ref event 4))  0)
-			   ((some-bits? #x2 (vector-ref event 4))  2)
-			   ((some-bits? #x4 (vector-ref event 4))  1)
-			   (else 0)))
-		    (vector-ref event 2)
-		    (vector-ref event 1)))
-
-(define (process-resize-event screen event)
-  event
-  (make-input-event 'SET-SCREEN-SIZE
-		    (lambda (screen)
-		      (let ((w.h (win32-screen-size (screen->handle screen))))
-			(if (not (and (= (car w.h) (screen-x-size screen))
-				      (= (cdr w.h) (screen-y-size screen))))
-			    (begin
-			      (set-screen-size! screen (car w.h) (cdr w.h))
-			      (update-screen! screen #T)))))
-		    screen))
-
-(define (process-close-event screen event)
-  event
-  (cond ((screen-deleted? screen)  #F)
-	((= (length win32-screens) 1)
-	 (make-input-event 'EXIT save-buffers-and-exit #F "Scheme"
-			   exit-scheme))
-	(else
-	 (make-input-event 'DELETE-SCREEN delete-screen! screen))))
-
-(define (process-key-event event)
-  (let* ((key        (vector-ref event 5))
-	 (cont-state (vector-ref event 4))
-	 (alt?       (some-bits? #x1 cont-state))
-	 (control?   (some-bits? #x2 cont-state))
-	 (shift?     (some-bits? #x4 cont-state)))
-    (let ((result
-	   (cond ((fix:= key -1)
-		  (let ((vk-code (vector-ref event 2))
-			(bucky-bits
-			 (+ (if alt? 1 0)     ; M-
-			    (if control? 2 0) ; C-
-			    (if shift? 4 0)   ; S-
-			    )))
-		    (win32-make-special-key vk-code bucky-bits)))
-		 ((and control? alt?)
-		  (char-control-metafy (integer->char key)))
-		 (alt?
-		  (char-metafy (integer->char key)))
-		 ;;((and control? (eq? key 32))
-		 ;; #\c-space)
-		 (control?
-		  (char-controlify (integer->char key)))
-		 (else
-		  (integer->char key)))))
-      result)))
-
-(define (get-win32-input-operations screen)
-
-  screen ; ignored
-
-  (set! input-screen #f)
-
-  (define-integrable (win32-resize-event? event)
-    (and (vector? event) (fix:= (vector-ref event 0) 1)))
-
-  (define-integrable (win32-key-event? event)
-    (and (vector? event) (fix:= (vector-ref event 0) 2)))
-
-  (define-integrable (win32-mouse-event? event)
-    (and (vector? event) (fix:= (vector-ref event 0) 4)))
-
-  (define-integrable (win32-close-event? event)
-    (and (vector? event) (fix:= (vector-ref event 0) 8)))
-
-  (define-integrable (change-event? event)  (fix:fixnum? event))
-
-  (define (process-event event)
-    (cond ((win32-key-event? event)
-	   (let ((key (process-key-event event)))
-	     (if (and signal-interrupts?
-		      (eq? key #\BEL))
-		 (begin
-		   (signal-interrupt!)
-		   #f)
-		 key)))
-	  ((win32-mouse-event? event)
-	   (process-mouse-event input-screen event))
-	  ((win32-resize-event? event)
-	   (process-resize-event input-screen event))
-	  ((win32-close-event? event)
-	   (process-close-event input-screen event))
-	  ((input-event? event)
-	   event)
-	  (else #f)))
-
-  (define (pce-event flag)
-    (make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
-		      update-screens!
-		      #f))
-
-  (define (get-next-event block?)
-    (let loop ()
-      (let ((event  (read-event block?)))
-	(cond ((not event)
-	       #F)
-	      ((change-event? event)
-	       (let ((flag  (process-change-event event)))
-		 (if flag
-		     (pce-event flag)
-		     (loop))))
-	      (else
-	       (or (process-event event)
-		   (loop)))))))
-
-  (define (guarantee-result)
-    (or (get-next-event #T)
-	(error "#F returned from blocking read")))
-
-  (let* ((pending-result #F)
-
-	 (probe
-	  (lambda (block?)
-	    (let ((result  (get-next-event block?)))
-	      (if result
-		  (set! pending-result result))
-	      result)))
-
-	 (halt-update?
-	  (lambda ()
-	    (or pending-result
-		(probe 'IN-UPDATE))))
-	 (peek-no-hang
-	  (lambda ()
-	    (or pending-result
-		(probe #F))))
-	 (peek
-	  (lambda ()
-	    (or pending-result
-		(let ((result  (guarantee-result)))
-		  (set! pending-result result)
-		  result))))
-	 (read
-	  (lambda ()
-	    (cond (pending-result
-		   => (lambda (result)
-			(set! pending-result #F)
-			result))
-		  (else
-		   (guarantee-result))))))
-
-    (values halt-update?
-	    peek-no-hang
-	    peek
-	    read)))
-
-;; The INPUT-SCREEN is the current screen from which we are processing
-;; input events.  When a different screen (or some window from sone
-;; other application) may have been selected, INPUT-SCREEN is set to
-;; #F.  This causes READ-EVENT-1 to hunt for a screen from which it
-;; can take input events.  This is a crock.  An improvement would be
-;; to put the input events for Edwin screens into a common queue, and
-;; invent an new `select-screen' event That in turn would require
-;; implementing the queues separately from the window but it would
-;; move the place at which the process should be suspended to a single
-;; place (WIN32-SCREEN-GET-EVENT), allowing a WIN32(C?) event and
-
-(define input-screen)
-
-(define-integrable interrupt-mask/gc+win32
-  ;; Include INTERRUPT-BIT/GLOBAL-1 so that messages are dispatched to
-  ;; the screen by the interrupt-handler.
-  ;;(fix:or interrupt-mask/gc-ok interrupt-bit/global-1)
-  15)
-
-(define (read-event block?)
-  (let ((handle (and input-screen (screen->handle input-screen))))
-    (if (eq? block? 'IN-UPDATE)
-	(read-event-2 handle)
-	(read-event-1 handle block?))))
-
-(define (read-event-1 handle block?)
-  (or (read-event-2 handle)
-      (let loop ()
-	(let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
-	  (cond (inferior-thread-changes?
-		 (set-interrupt-enables! mask)
-		 event:inferior-thread-output)
-		((process-output-available?)
-		 (set-interrupt-enables! mask)
-		 event:process-output)
-		((process-status-changes?)
-		 (set-interrupt-enables! mask)
-		 event:process-status)
-		(else
-		 (let ((handle* (win32-screen-current-focus))
-		       (wait
-			(lambda ()
-			  (test-for-input-on-descriptor
-			   ;; console-channel-descriptor here
-			   ;; means "input from message queue".
-			   console-channel-descriptor block?))))
-		   (if (eqv? handle handle*)
-		       (let ((flag (wait)))
-			 (set-interrupt-enables! mask)
-			 (case flag
-			   ((#F) #f)
-			   ((PROCESS-STATUS-CHANGE) event:process-status)
-			   ((INTERRUPT) (loop))
-			   (else (read-event-1 handle block?))))
-		       (let ((screen* (handle->win32-screen handle*)))
-			 (set-interrupt-enables! mask)
-			 (if screen*
-			     (begin
-			       (set! input-screen screen*)
-			       (make-input-event 'SELECT-SCREEN
-						 select-screen
-						 screen*))
-			     (and block?
-				  (begin
-				    (wait)
-				    (read-event-1 handle block?)))))))))))))
-
-(define (read-event-2 handle)
-  (and handle
-       (let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
-	 (let ((result (win32-screen-get-event handle)))
-	   (set-interrupt-enables! mask)
-	   result))))
-
-(define (process-change-event event)
-  (cond ((fix:= event event:process-output) (accept-process-output))
-	((fix:= event event:process-status) (handle-process-status-changes))
-	((fix:= event event:inferior-thread-output) (accept-thread-output))
-	(else (error "Illegal change event:" event))))
-
 (define-integrable (screen-name screen)
   (state/name (screen-state screen)))
 
@@ -604,3 +291,383 @@
   (let ((rect (make-rect 0 0 0 0)))
     (get-client-rect (screen->handle screen) rect)
     (values (rect/right rect) (rect/bottom rect))))
+
+(define win32-screens)
+(define win32-display-type)
+(define win32-event-queue)
+(define signal-interrupts?)
+(define reading-event?)
+(define previewer-registration)
+
+(define (win32-screen-available?)
+  (implemented-primitive-procedure? win32-screen-create!))
+
+(define (initialize-package!)
+  (set! win32-screens '())
+  (set! win32-display-type
+	(make-display-type 'win32
+			   #t		; multiple screens?
+			   win32-screen-available?
+			   (lambda geometry
+			     geometry
+			     (if (not win32-event-queue)
+				 (set! win32-event-queue (make-queue)))
+			     (make-win32-screen))
+			   get-win32-input-operations
+			   with-editor-interrupts-from-win32
+			   with-win32-interrupts-enabled
+			   with-win32-interrupts-disabled))
+  (set! win32-event-queue #f)
+  (add-event-receiver! event:before-exit
+		       (lambda () (for-each screen-discard! win32-screens))))
+
+(define (with-editor-interrupts-from-win32 receiver)
+  (fluid-let ((reading-event? #f)
+	      (signal-interrupts? #t)
+	      (previewer-registration))
+    (dynamic-wind
+     (lambda () (preview-event-stream))
+     (lambda () (receiver (lambda (thunk) (thunk)) '()))
+     (lambda () (deregister-input-thread-event previewer-registration)))))
+
+(define (with-win32-interrupts-enabled thunk)
+  (with-signal-interrupts #t thunk))
+
+(define (with-win32-interrupts-disabled thunk)
+  (with-signal-interrupts #f thunk))
+
+(define (with-signal-interrupts enabled? thunk)
+  (let ((old))
+    (dynamic-wind (lambda ()
+		    (set! old signal-interrupts?)
+		    (set! signal-interrupts? enabled?)
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set! enabled? signal-interrupts?)
+		    (set! signal-interrupts? old)
+		    unspecific))))
+
+(define (signal-interrupt!)
+  (editor-beep)
+  (temporary-message "Quit")
+  (^G-signal))
+
+(define (get-win32-input-operations screen)
+  screen ; ignored
+  (let ((get-next-event
+	 (lambda (block?)
+	   (let loop ()
+	     (let ((event (read-event block?)))
+	       (and event
+		    (or (process-event event)
+			(loop)))))))
+	(pending-result #f))
+    (let ((probe
+	   (lambda (block?)
+	     (let ((result (get-next-event block?)))
+	       (if result
+		   (set! pending-result result))
+	       result))))
+      (values (lambda ()		;halt-update?
+		(or pending-result
+		    (probe 'IN-UPDATE)))
+	      (lambda ()		;peek-no-hang
+		(or pending-result
+		    (probe #f)))
+	      (lambda ()		;peek
+		(or pending-result
+		    (let ((result (get-next-event #t)))
+		      (set! pending-result result)
+		      result)))
+	      (lambda ()		;read
+		(cond (pending-result
+		       => (lambda (result)
+			    (set! pending-result #f)
+			    result))
+		      (else
+		       (get-next-event #t))))))))
+
+(define (process-event event)
+  (cond ((fix:fixnum? event)
+	 (let ((flag (process-change-event event)))
+	   (and flag
+		(make-input-event (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
+				  update-screens! #f))))
+	((vector? event) (process-special-event event))
+	((input-event? event) event)
+	(else #f)))
+
+(define (process-change-event event)
+  (cond ((fix:= event:process-output event) (accept-process-output))
+	((fix:= event:process-status event) (handle-process-status-changes))
+	((fix:= event:inferior-thread-output event) (accept-thread-output))
+	(else (error "Illegal change event:" event))))
+
+(define (process-special-event event)
+  (let ((handler (hash-table/get event-handlers (event-type event) #f))
+	(screen (handle->win32-screen (event-handle event))))
+    (and handler
+	 screen
+	 (handler screen event))))
+
+(define event-handlers
+  (make-eq-hash-table))
+
+(define (define-event-handler event-type handler)
+  (hash-table/put! event-handlers event-type handler))
+
+;;;; Events
+
+(define (read-event block?)
+  (let ((queue win32-event-queue))
+    (let loop ()
+      (set! reading-event? #t)
+      (let ((event
+	     (if (queue-empty? queue)
+		 (if (eq? 'IN-UPDATE block?)
+		     (read-event-2)
+		     (read-event-1 block?))
+		 (dequeue!/unsafe queue))))
+	(set! reading-event? #f)
+	event))))
+
+(define (read-event-1 block?)
+  (or (read-event-2)
+      (let loop ()
+	(let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
+	  (cond (inferior-thread-changes?
+		 (set-interrupt-enables! mask)
+		 event:inferior-thread-output)
+		((process-output-available?)
+		 (set-interrupt-enables! mask)
+		 event:process-output)
+		((process-status-changes?)
+		 (set-interrupt-enables! mask)
+		 event:process-status)
+		(else
+		 (let ((flag
+			(test-for-input-on-descriptor
+			 ;; console-channel-descriptor here
+			 ;; means "input from message queue".
+			 console-channel-descriptor block?)))
+		   (set-interrupt-enables! mask)
+		   (case flag
+		     ((#F) #f)
+		     ((PROCESS-STATUS-CHANGE) event:process-status)
+		     ((INTERRUPT) (loop))
+		     (else (read-event-1 block?))))))))))
+
+(define (read-event-2)
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc+win32)))
+    (let ((result (win32-read-event)))
+      (set-interrupt-enables! mask)
+      result)))
+
+(define-integrable interrupt-mask/gc+win32
+  ;; Include INTERRUPT-BIT/GLOBAL-1 so that messages are dispatched to
+  ;; the screen by the interrupt-handler.
+  ;;(fix:or interrupt-mask/gc-ok interrupt-bit/global-1)
+  15)
+
+(define (preview-event-stream)
+  (set! previewer-registration
+	(permanently-register-input-thread-event
+	 console-channel-descriptor
+	 (current-thread)
+	 (lambda ()
+	   (if (not reading-event?)
+	       (let ((event (read-event-2)))
+		 (if event
+		     (preview-event event)))))))
+  unspecific)
+
+(define (preview-event event)
+  (cond ((and signal-interrupts?
+	      (vector? event)
+	      (fix:= event-type:key (event-type event))
+	      (eqv? #\BEL (decode-key-event event)))
+	 (clean-event-queue win32-event-queue)
+	 (signal-interrupt!))
+	(else
+	 (enqueue!/unsafe win32-event-queue event))))
+
+(define (clean-event-queue queue)
+  ;; Flush keyboard and mouse events from the input queue.  Other
+  ;; events are harmless and must be processed regardless.
+  (do ((events (let loop ()
+		 (if (queue-empty? queue)
+		     '()
+		     (let ((event (dequeue!/unsafe queue)))
+		       (if (and (vector? event)
+				(let ((type (event-type event)))
+				  (or (fix:= event-type:mouse type)
+				      (fix:= event-type:key type))))
+			   (loop)
+			   (cons event (loop))))))
+	       (cdr events)))
+      ((null? events))
+    (enqueue!/unsafe queue (car events))))
+
+;; Mask bits:  VK coded special keys, Edwin mode,
+;;    mouse, key, resize, close, focus, and visibility events
+(define-integrable win32-screen-features-mask #x14003F)
+
+(define-integrable event:process-output 16)
+(define-integrable event:process-status 32)
+(define-integrable event:inferior-thread-output 64)
+
+(define-integrable event-type:resize		#x001)
+(define-integrable event-type:key		#x002)
+(define-integrable event-type:mouse		#x004)
+(define-integrable event-type:close		#x008)
+(define-integrable event-type:focus		#x010)
+(define-integrable event-type:visibility	#x020)
+
+(define-integrable control-key:alt-pressed	#x001)
+(define-integrable control-key:control-pressed	#x002)
+(define-integrable control-key:shift-pressed	#x004)
+
+(define-integrable button-state:left-pressed	#x001)
+(define-integrable button-state:right-pressed	#x002)
+(define-integrable button-state:middle-pressed	#x004)
+
+(define-integrable (some-bits? mask item)
+  (not (fix:= 0 (fix:and mask item))))
+
+(define-integrable (event-type event) (vector-ref event 0))
+(define-integrable (event-handle event) (vector-ref event 1))
+
+(define-structure (resize-event (type vector)
+				(initial-offset 2)
+				(conc-name resize-event/))
+  (rows #f read-only #t)
+  (columns #f read-only #t))
+
+(define-structure (key-event (type vector)
+			     (initial-offset 2)
+			     (conc-name key-event/))
+  (repeat-count #f read-only #t)
+  (virtual-keycode #f read-only #t)
+  (virtual-scancode #f read-only #t)
+  (control-key-state #f read-only #t)
+  (character #f read-only #t)
+  (key-down? #f read-only #t))
+
+(define-structure (mouse-event (type vector)
+			       (initial-offset 2)
+			       (conc-name mouse-event/))
+  (row #f read-only #t)
+  (column #f read-only #t)
+  (control-key-state #f read-only #t)
+  (button-state #f read-only #t)
+  (up? #f read-only #t)
+  (mouse-moved? #f read-only #t)
+  (double-click? #f read-only #t))
+
+(define-structure (focus-event (type vector)
+			       (initial-offset 2)
+			       (conc-name focus-event/))
+  (gained? #f read-only #t))
+
+(define-structure (visibility-event (type vector)
+				    (initial-offset 2)
+				    (conc-name visibility-event/))
+  (show? #f read-only #t))
+
+(define-event-handler event-type:resize
+  (lambda (screen event)
+    event
+    (make-input-event 'SET-SCREEN-SIZE
+		      (lambda (screen)
+			(let ((w.h
+			       (win32-screen-size (screen->handle screen))))
+			  (if (not (and (= (car w.h) (screen-x-size screen))
+					(= (cdr w.h) (screen-y-size screen))))
+			      (begin
+				(set-screen-size! screen (car w.h) (cdr w.h))
+				(update-screen! screen #t)))))
+		      screen)))
+
+(define-event-handler event-type:key
+  (lambda (screen event)
+    screen
+    (let ((key (decode-key-event event)))
+      (if (and signal-interrupts? (eq? key #\BEL))
+	  (begin
+	    (signal-interrupt!)
+	    #f)
+	  key))))
+
+(define (decode-key-event event)
+  (let ((key (key-event/character event))
+	(cont-state (key-event/control-key-state event)))
+    (let ((alt? (some-bits? control-key:alt-pressed cont-state))
+	  (control? (some-bits? control-key:control-pressed cont-state))
+	  (shift? (some-bits? control-key:shift-pressed cont-state)))
+      (cond ((fix:= key -1)
+	     (let ((vk-code (key-event/virtual-keycode event))
+		   (bucky-bits
+		    (+ (if alt? 1 0)     ; M-
+		       (if control? 2 0) ; C-
+		       (if shift? 4 0)   ; S-
+		       )))
+	       (win32-make-special-key vk-code bucky-bits)))
+	    ((and control? alt?)
+	     (char-control-metafy (integer->char key)))
+	    (alt?
+	     (char-metafy (integer->char key)))
+	    ;;((and control? (eq? key 32))
+	    ;; #\c-space)
+	    (control?
+	     (char-controlify (integer->char key)))
+	    (else
+	     (integer->char key))))))
+
+(define-event-handler event-type:mouse
+  (lambda (screen event)
+    (make-input-event
+     'BUTTON
+     execute-button-command
+     screen
+     ((if (mouse-event/up? event)
+	  make-up-button
+	  make-down-button)
+      (let ((state (mouse-event/button-state event)))
+	(cond ((some-bits? button-state:left-pressed state) 0)
+	      ((some-bits? button-state:right-pressed state) 2)
+	      ((some-bits? button-state:middle-pressed state) 1)
+	      (else 0))))
+     (mouse-event/column event)
+     (mouse-event/row event))))
+
+(define-event-handler event-type:close
+  (lambda (screen event)
+    event
+    (cond ((screen-deleted? screen)
+	   #f)
+	  ((= (length win32-screens) 1)
+	   (make-input-event 'EXIT
+			     save-buffers-and-exit #f "Scheme" exit-scheme))
+	  (else
+	   (make-input-event 'DELETE-SCREEN delete-screen! screen)))))
+
+(define-event-handler event-type:focus
+  (lambda (screen event)
+    (and (focus-event/gained? event)
+	 (not (selected-screen? screen))
+	 (make-input-event 'SELECT-SCREEN select-screen screen))))
+
+(define-event-handler event-type:visibility
+  (lambda (screen event)
+    (and (not (screen-deleted? screen))
+	 (if (visibility-event/show? event)
+	     (begin
+	       (screen-force-update screen)
+	       (make-input-event 'UPDATE update-screen! screen #f))
+	     (and (selected-screen? screen)
+		  (let ((screen (other-screen screen 1 #f)))
+		    (and screen
+			 (make-input-event 'SELECT-SCREEN
+					   select-screen
+					   screen))))))))
