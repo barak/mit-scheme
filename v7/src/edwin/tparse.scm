@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tparse.scm,v 1.68 1992/02/27 00:29:34 cph Exp $
+;;;	$Id: tparse.scm,v 1.69 1994/03/03 07:46:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -241,7 +241,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 				       ls
 				       ps)))))))))
 	  (and (mark< limit mark)
-	       (let ((ls (line-start mark 0)))
+	       (let ((ls (line-start mark (if (line-start? mark) -1 0))))
 		 (and (mark<= limit ls)
 		      (cond ((separator? ls) (skip-separators ls))
 			    ((mark= limit ls) ls)
