@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/spectrum/assmd.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: assmd.scm,v 1.2 1996/07/27 02:43:15 adams Exp $
 $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,6 +79,7 @@ MIT in each case. |#
 ;;; Machine dependent instruction order
 
 (define (instruction-insert! bits block position receiver)
+  (declare (integrate receiver))
   (let* ((l (bit-string-length bits))
 	 (new-position (- position l)))
     (bit-substring-move-right! bits 0 l block new-position)
@@ -87,5 +88,6 @@ MIT in each case. |#
 (define instruction-initial-position bit-string-length)
 (define-integrable instruction-append bit-string-append-reversed)
 
+(declare (integrate-operator instruction-insert!))
 ;;; end let-syntax
 )
