@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.156 1987/04/12 00:24:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.157 1987/04/17 10:55:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -243,6 +243,15 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
   (increment-anl 7 n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 15) (? n)))
+  (QUALIFIER (pseudo-register? target))
+  `((LEA (@AO 7 ,(* 4 n)) ,(reference-assignment-alias! target 'ADDRESS))))
+
+(define-rule statement
+  (ASSIGN (REGISTER 15) (REGISTER (? source)))
+  `((MOVE L ,(coerce->any source) (A 7))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
