@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: linux.h,v 1.18 1999/03/03 05:32:18 cph Exp $
 
 Copyright (c) 1995-1999 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Comment out the following line if you are running ncurses 1.9.9g or
    later.  Version 1.9.9e and earlier defined "tparam", but version
    1.9.9g and later do not.  */
-#define TERMCAP_FILES
+/* #define TERMCAP_FILES */
 #else
 #define M4_SWITCH_SYSTEM
 #define LIBS_TERMCAP LINUX_STATIC_LIBS (-ltermcap)
