@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: 6001.sf,v 1.7 1992/09/10 07:33:15 cph Exp $
+$Id: 6001.sf,v 1.8 1993/11/09 21:23:57 adams Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 (fluid-let ((sf/default-syntax-table syntax-table/system-internal))
   (for-each sf-conditionally
-	    '("arith" "make" "nodefs" "picture" "pic-record" "pic-image"
+	    '("arith" "make" "nodefs" "picture" "pic-reco" "pic-imag"
 		      "pic-read" "pic-ops")))
 
 (fluid-let ((sf/default-syntax-table
