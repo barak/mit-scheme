@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.34 2003/02/14 18:28:33 cph Exp $
+$Id: list.scm,v 14.35 2003/03/06 15:28:48 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
@@ -74,7 +74,7 @@ USA.
 	this-element)))
 
 (define (make-list length #!optional value)
-  (guarantee-index/list length 'MAKE-LIST)
+  (guarantee-index-fixnum length 'MAKE-LIST)
   (let ((value (if (default-object? value) '() value)))
     (let loop ((n length) (result '()))
       (if (fix:zero? n)
@@ -90,7 +90,7 @@ USA.
   items)
 
 (define (make-circular-list length #!optional value)
-  (guarantee-index/list length 'MAKE-CIRCULAR-LIST)
+  (guarantee-index-fixnum length 'MAKE-CIRCULAR-LIST)
   (if (not (fix:zero? length))
       (let ((value (if (default-object? value) '() value)))
 	(let ((last (cons value '())))
@@ -103,7 +103,7 @@ USA.
       '()))
 
 (define (make-initialized-list length initialization)
-  (guarantee-index/list length 'MAKE-INITIALIZED-LIST)
+  (guarantee-index-fixnum length 'MAKE-INITIALIZED-LIST)
   (let loop ((index (- length 1)) (result '()))
     (if (negative? index)
 	result
@@ -136,7 +136,7 @@ USA.
     (car tail)))
 
 (define (list-tail list index)
-  (guarantee-index/list index 'LIST-TAIL)
+  (guarantee-index-fixnum index 'LIST-TAIL)
   (let loop ((list list) (index* index))
     (if (fix:zero? index*)
 	list
@@ -146,7 +146,7 @@ USA.
 	  (loop (cdr list) (fix:- index* 1))))))
 
 (define (list-head list index)
-  (guarantee-index/list index 'LIST-HEAD)
+  (guarantee-index-fixnum index 'LIST-HEAD)
   (let loop ((list list) (index* index))
     (if (fix:zero? index*)
 	'()
@@ -159,38 +159,48 @@ USA.
   (list-head (list-tail list start) (- end start)))
 
 (define (list? object)
-  (let loop ((l1 object) (l2 object))
+  (let loop ((l1 object) (l2 object) (length 0))
     (if (pair? l1)
 	(let ((l1 (cdr l1)))
 	  (and (not (eq? l1 l2))
 	       (if (pair? l1)
-		   (loop (cdr l1) (cdr l2))
-		   (null? l1))))
-	(null? l1))))
-
-(define (alist? object)
-  (let loop ((l1 object) (l2 object))
-    (if (pair? l1)
-	(and (pair? (car l1))
-	     (let ((l1 (cdr l1)))
-	       (and (not (eq? l1 l2))
-		    (if (pair? l1)
-			(and (pair? (car l1))
-			     (loop (cdr l1) (cdr l2)))
-			(null? l1)))))
-	(null? l1))))
+		   (loop (cdr l1) (cdr l2) (fix:+ length 2))
+		   (and (null? l1)
+			(fix:+ length 1)))))
+	(and (null? l1)
+	     length))))
 
 (define (list-of-type? object predicate)
-  (let loop ((l1 object) (l2 object))
+  (let loop ((l1 object) (l2 object) (length 0))
     (if (pair? l1)
 	(and (predicate (car l1))
 	     (let ((l1 (cdr l1)))
 	       (and (not (eq? l1 l2))
 		    (if (pair? l1)
 			(and (predicate (car l1))
-			     (loop (cdr l1) (cdr l2)))
-			(null? l1)))))
-	(null? l1))))
+			     (loop (cdr l1) (cdr l2) (fix:+ length 2)))
+			(and (null? l1)
+			     (fix:+ length 1))))))
+	(and (null? l1)
+	     length))))
+
+(define (guarantee-list object caller)
+  (let ((n (list? object)))
+    (if (not n)
+	(error:wrong-type-argument object "list" caller))
+    n))
+
+(define (guarantee-list-of-type object predicate description caller)
+  (let ((n (list-of-type? object predicate)))
+    (if (not n)
+	(error:wrong-type-argument object description caller))
+    n))
+
+(define (alist? object)
+  (list-of-type? object pair?))
+
+(define (guarantee-alist object caller)
+  (guarantee-list-of-type object pair? "association list" caller))
 
 (define (list-copy items)
   (let ((lose (lambda () (error:wrong-type-argument items "list" 'LIST-COPY))))
@@ -967,10 +977,3 @@ USA.
 (define-integrable (guarantee-pair object procedure)
   (if (not (pair? object))
       (error:wrong-type-argument object "pair" procedure)))
-
-(define-integrable (guarantee-index/list object procedure)
-  (if (not (index-fixnum? object))
-      (guarantee-index/list/fail object procedure)))
-
-(define (guarantee-index/list/fail object procedure)
-  (error:wrong-type-argument object "valid list index" procedure))
