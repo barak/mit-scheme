@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.16 1993/12/08 17:42:47 gjr Exp $
+$Id: bittop.scm,v 1.17 1993/12/08 23:48:58 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -43,6 +43,7 @@ MIT in each case. |#
 (define *the-symbol-table*)
 (define *start-label*)
 (define *end-label*)
+(define *padding-present?*)
 
 ;;;; Assembler top level procedure
 
@@ -52,7 +53,8 @@ MIT in each case. |#
 	      (*entry-points* (make-queue))
 	      (*the-symbol-table* (make-symbol-table))
 	      (*start-label* start-label)
-	      (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
+	      (*end-label* (generate-uninterned-symbol 'END-LABEL-))
+	      (*padding-present?* false))
     (initialize-symbol-table!)
     (with-values
 	(lambda ()
@@ -84,20 +86,27 @@ MIT in each case. |#
 		  (symbol-table->assq-list *the-symbol-table*)))))))
 
 (define (relax! directives vars)
-  (define (loop vars count)
+  (define (continue widening? count)
+    (clear-symbol-table!)
+    (initialize-symbol-table!)
+    (loop widening?
+	  (phase-1 widening? directives)
+	  (1+ count)))
+
+  (define (loop widening? vars count)
     (finish-symbol-table!)
     (if (null? vars)
 	count
-	(with-values (lambda () (phase-2 vars))
+	(with-values (lambda () (phase-2 widening? vars))
 	  (lambda (any-modified? number-of-vars)
-	    number-of-vars
-	    (if any-modified?
-		(begin
-		  (clear-symbol-table!)
-		  (initialize-symbol-table!)
-		  (loop (phase-1 directives) (1+ count)))
-		count)))))
-  (loop vars 0))
+	    (cond (any-modified?
+		   (continue false count))
+		  ((or (zero? number-of-vars)
+		       (not *padding-present*?))
+		   count)
+		  (else
+		   (continue (not widening?) count)))))))
+  (loop false vars 0))
 
 ;;; Vector header and NMV header for code section
 
@@ -432,6 +441,7 @@ MIT in each case. |#
 		      (add-to-queue! *entry-points* (cadr this))
 		      (process-trivial-directive))
 		     ((PADDING)
+		      (set! *padding-present?* true)
 		      (let ((directive (->padding-directive this)))
 			(new-directive! directive)
 			(after-padding
@@ -443,11 +453,13 @@ MIT in each case. |#
 		      (error "initial-phase: Unknown directive" this))))))))
     (loop input starting-pc starting-pc '() '() '())))
 
-(define (phase-1 directives)
+(define (phase-1 widening? directives)
   (define (loop rem pcmin pcmax pc-stack vars)
     (if (null? rem)
-	(let ((emin (final-pad pcmin))
-	      (emax (+ pcmax maximum-padding-length)))
+	(let* ((emin (final-pad pcmin))
+	       (emax (if (not widening?)
+			 (+ pcmax maximum-padding-length)
+			 emin)))
 	  (symbol-table-define! *the-symbol-table*
 				*end-label*
 				(make-machine-interval emin emax))
@@ -471,10 +483,12 @@ MIT in each case. |#
 			  (if (null? pc-stack)
 			      (make-machine-interval pcmin pcmax)
 			      (car pc-stack)))
-	     (variable-width-lengths this
+	     (variable-width-lengths
+	      this
 	      (lambda (minl maxl)
 		(loop (cdr rem)
-		      (+ pcmin minl) (+ pcmax maxl)
+		      (+ pcmin minl)
+		      (+ pcmax (if widening? minl maxl))
 		      pc-stack
 		      (cons this vars)))))
 	    ((TICK)
@@ -493,7 +507,7 @@ MIT in each case. |#
 	     (error "phase-1: Unknown directive" this))))))
   (loop directives starting-pc starting-pc '() '()))
 
-(define (phase-2 vars)
+(define (phase-2 widening? vars)
   (define (loop vars modified? count)
     (if (null? vars)
 	(values modified? count)
@@ -504,6 +518,7 @@ MIT in each case. |#
 	    (with-values
 	     (lambda ()
 	       (process-variable var
+				 widening?
 				 (interval-low interval)
 				 (interval-high interval)))
 	     (lambda (determined? filtered?)
@@ -512,7 +527,7 @@ MIT in each case. |#
 		     (if determined? count (1+ count)))))))))
   (loop vars false 0))
 
-(define (process-variable var minval maxval)
+(define (process-variable var widening? minval maxval)
   (define (loop sels dropped-some?)
     (cond ((null? sels)
 	   (error "variable-width-expression: minimum value is too large"
@@ -520,7 +535,10 @@ MIT in each case. |#
 	  ((not (selector/fits? minval (car sels)))
 	   (loop (cdr sels) true))
 	  ((selector/fits? maxval (car sels))
-	   (variable-width->fixed! var (car sels))
+	   (cond ((not widening?)
+		  (variable-width->fixed! var (car sels)))
+		 (dropped-some?
+		  (vector-set! var 3 sels)))
 	   (values true dropped-some?))
 	  (dropped-some?
 	   (vector-set! var 3 sels)
