@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.3 1989/03/14 07:59:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.4 1989/04/05 18:15:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -69,21 +69,27 @@
 	  (else char))))
 
 (define (unmap-alias-char char)
-  (let ((code (char-code char))
-	(bits (char-bits char)))
-    (if (or (>= code #x20)
-	    (memv code '(#x09 #x0A #x0C #x0D #x1B))
-	    (odd? (quotient bits 2)))
-	(let ((entry
-	       (list-search-positive alias-characters
-		 (lambda (entry)
-		   (eqv? (cdr entry) char)))))
-	  (if entry
-	      (unmap-alias-char (car entry))
-	      char))
-	(unmap-alias-char
-	 (make-char (+ code (if (<= #x01 code #x1A) #x60 #x40))
-		    (+ bits 2))))))
+  (if (ascii-controlified? char)
+      (unmap-alias-char
+       (make-char (let ((code (char-code char)))
+		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
+		  (+ (char-bits char) 2)))
+      (let ((entry
+	     (list-search-positive alias-characters
+	       (lambda (entry)
+		 (eqv? (cdr entry) char)))))
+	(if entry
+	    (unmap-alias-char (car entry))
+	    char))))
 
+(define (ascii-controlified? char)
+  (and (even? (quotient (char-bits char) 2))
+       (let ((code (char-code char)))
+	 (or (< code #x09)
+	     (= code #x0B)
+	     (if (< code #x1B)
+		 (< #x0D code)
+		 (and (< code #x20)
+		      (< #x1B code)))))))
 (define-integrable (char-name char)
   (char->name (unmap-alias-char char)))
