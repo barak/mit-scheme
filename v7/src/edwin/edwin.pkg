@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.135 1993/10/06 00:59:11 cph Exp $
+$Id: edwin.pkg,v 1.136 1993/10/06 01:34:58 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -702,16 +702,40 @@ MIT in each case. |#
   (files "info")
   (parent (edwin))
   (export (edwin)
+	  edwin-command$info
+	  edwin-command$info-cease-edit
+	  edwin-command$info-current-menu-item
+	  edwin-command$info-directory
+	  edwin-command$info-edit
+	  edwin-command$info-exit
+	  edwin-command$info-fifth-menu-item
+	  edwin-command$info-first-menu-item
+	  edwin-command$info-follow-reference
+	  edwin-command$info-fourth-menu-item
+	  edwin-command$info-goto-node
+	  edwin-command$info-help
+	  edwin-command$info-last
+	  edwin-command$info-menu
+	  edwin-command$info-next
+	  edwin-command$info-previous
+	  edwin-command$info-search
+	  edwin-command$info-second-menu-item
+	  edwin-command$info-summary
+	  edwin-command$info-tagify
+	  edwin-command$info-third-menu-item
+	  edwin-command$info-up
+	  edwin-command$info-validate
 	  edwin-variable$info-current-file
 	  edwin-variable$info-current-node
 	  edwin-variable$info-current-subfile
 	  edwin-variable$info-directory
 	  edwin-variable$info-enable-active-nodes
 	  edwin-variable$info-enable-edit
+	  edwin-variable$info-enable-selections
 	  edwin-variable$info-history
 	  edwin-variable$info-previous-search
-	  edwin-variable$info-tag-table-start
-	  edwin-variable$info-tag-table-end))
+	  edwin-variable$info-tag-table-end
+	  edwin-variable$info-tag-table-start))
 
 (define-package (edwin rectangle)
   (files "reccom")
