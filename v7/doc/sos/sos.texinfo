@@ -1,66 +1,66 @@
 \input texinfo @c -*-Texinfo-*-
-@iftex
-@finalout
-@end iftex
+@comment $Id: sos.texinfo,v 2.17 2004/10/17 02:11:15 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-sos
-@settitle @value{TITLE}
-@comment %**end of header
-@setchapternewpage odd
+@set EDITION 2.11
+@set VERSION 1.8
+@set UPDATED 2004-10-16
+@settitle SOS @value{VERSION}
 @syncodeindex ky fn
 @syncodeindex vr fn
 @syncodeindex pg fn
 @syncodeindex tp fn
+@comment %**end of header
+@finalout
 
-@c $Id: sos.texinfo,v 2.16 2004/10/16 06:02:55 cph Exp $
+@copying
+@acronym{SOS} is an object-oriented programming extension for MIT/GNU
+Scheme.
 
-@set TITLE The SOS Reference Manual
-@set EDITION 2.11
-@set UPDATED 14 February 2003
+Copyright @copyright{} 1993,1994,1997,1998 Massachusetts Institute of Technology@*
+Copyright @copyright{} 1999,2000,2001,2002 Massachusetts Institute of Technology@*
+Copyright @copyright{} 2003,2004 Massachusetts Institute of Technology
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with the Front-Cover Texts being ``A GNU Manual,''
+and with the Back-Cover Texts as in (a) below.  A copy of the
+license is included in the section entitled ``GNU Free Documentation
+License.''
+
+(a) The FSF's Back-Cover Text is: ``You have freedom to copy and modify
+this GNU Manual, like GNU software.  Copies published by the Free
+Software Foundation raise funds for GNU development.''
+@end quotation
+@end copying
 
 @dircategory Programming Languages
 @direntry
 * SOS: (mit-scheme-sos).		MIT/GNU Scheme Object System
 @end direntry
 
-@ifinfo
-Copyright @copyright{} 1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright @copyright{} 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.2 or
-any later version published by the Free Software Foundation; with no
-Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
-@end ifinfo
-
 @titlepage
-@title @value{TITLE}
-@subtitle Edition @value{EDITION}
+@title The SOS Reference Manual
+@subtitle Edition @value{EDITION} for SOS @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson
-
 @page
-
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright @copyright{} 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
-
-Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.2 or
-any later version published by the Free Software Foundation; with no
-Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
-Texts.  A copy of the license is included in the section entitled "GNU
-Free Documentation License".
+@insertcopying
 @end titlepage
 
-@node Top, Introduction, (dir), (dir)
+@setchapternewpage odd
 
-@ifinfo
-This is Edition @value{EDITION}, last updated @value{UPDATED}, of
-@cite{The SOS Reference Manual}.
-@end ifinfo
+@contents
+
+@ifnottex
+@node Top, Introduction, (dir), (dir)
+@top SOS
+
+@insertcopying
+@end ifnottex
 
 @menu
 * Introduction::                
@@ -2014,7 +2014,6 @@ to permit their use in free software.
 @appendix Concept Index
 @printindex cp
 
-@contents
 @bye
 
 @c Local Variables:
