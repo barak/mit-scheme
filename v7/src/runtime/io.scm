@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.16 1990/11/14 13:25:29 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.17 1991/02/15 18:06:02 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -232,17 +232,32 @@ MIT in each case. |#
        (let ((descriptors ((ucode-primitive channel-table 0))))
 	 (and descriptors
 	      (vector-map descriptors descriptor->channel)))))))
+
+(define (bind-port-for-errors port thunk)
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition) (error:derived-port port condition))
+    thunk))
 
 ;;;; File Primitives
 
 (define (file-open primitive filename)
   (let ((channel
-	 (without-interrupts (lambda () (make-channel (primitive filename))))))
+	 (bind-condition-handler (list condition-type:error)
+	     (lambda (condition)
+	       (error
+		(make-condition condition-type:open-file-error
+				(condition/continuation condition)
+				(condition/restarts condition)
+				`(FILENAME ,filename))))
+	   (lambda ()
+	     (without-interrupts
+	      (lambda ()
+		(make-channel (primitive filename))))))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(begin
 	  (channel-close channel)
-	  (error:datum-out-of-range filename primitive)))
+	  (error:bad-range-argument filename primitive)))
     channel))
 
 (define (file-open-input-channel filename)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.7 1990/09/11 22:57:30 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/lambda.scm,v 14.8 1991/02/15 18:06:07 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -421,14 +421,14 @@ MIT in each case. |#
   ((cond ((slambda? *lambda) clambda-op)
 	 ((slexpr? *lambda) clexpr-op)
 	 ((xlambda? *lambda) xlambda-op)
-	 (else (error:illegal-datum *lambda op-name)))
+	 (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
    *lambda))
 
 (define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) *lambda arg)
   ((cond ((slambda? *lambda) clambda-op)
 	 ((slexpr? *lambda) clexpr-op)
 	 ((xlambda? *lambda) xlambda-op)
-	 (else (error:illegal-datum *lambda op-name)))
+	 (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
    *lambda arg))
 
 (define &lambda-components)

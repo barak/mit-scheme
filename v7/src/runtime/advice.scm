@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.7 1990/09/11 20:43:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.8 1991/02/15 18:04:23 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -220,13 +220,6 @@ MIT in each case. |#
 ;;; This procedure is called with the newly-created environment as its
 ;;; argument.
 
-;;; Doing (PROCEED) from within entry or exit advice will cause that
-;;; particular piece of advice to be terminated, but any remaining
-;;; advice to be executed.  Doing (PROCEED value), however,
-;;; immediately terminates all advice and returns VALUE as if the
-;;; procedure called had generated the value.  Returning from a piece
-;;; of exit advice is equivalent to doing (PROCEED value) from it.
-
 (define (advised-procedure-wrapper environment)
   (let ((procedure (ic-environment/procedure environment))
 	(arguments (ic-environment/arguments environment)))
@@ -234,30 +227,27 @@ MIT in each case. |#
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-
-	   (define ((catching-proceeds receiver) advice)
-	     (with-proceed-point
-	      (lambda (proceed-continuation values)
-		(if (null? values)
-		    (proceed-continuation '())
-		    (continuation (car values))))
-	      (lambda ()
-		(receiver advice))))
-
-	   (for-each (catching-proceeds
-		      (lambda (advice)
-			(advice procedure arguments environment)))
-		     (car state))
-	   (let ((value (scode-eval original-body environment)))
-	     (for-each (catching-proceeds
-			(lambda (advice)
-			  (set! value
-				(advice procedure
-					arguments
-					value
-					environment))))
-		       (cdr state))
-	     value)))))))
+	   (bind-restart 'USE-VALUE
+	       "Return a value from the advised procedure."
+	       continuation
+	     (lambda (restart)
+	       (restart/put! restart 'INTERACTIVE
+		 (lambda ()
+		   (prompt-for-evaluated-expression "Procedure value")))
+	       (for-each (lambda (advice)
+			   (with-simple-restart 'CONTINUE
+			       "Continue with advised procedure."
+			     (lambda ()
+			       (advice procedure arguments environment))))
+			 (car state))
+	       (let ((value (scode-eval original-body environment)))
+		 (for-each (lambda (advice)
+			     (with-simple-restart 'CONTINUE
+				 "Return from advised procedure."
+			       (lambda ()
+				 (advice procedure arguments environment))))
+			   (cdr state))
+		 value)))))))))
 
 ;;;; Primitive Advisors
 
@@ -415,7 +405,10 @@ MIT in each case. |#
 
 (define (break-rep environment message . info)
   (breakpoint (cmdl-message/append
-	       (cmdl-message/active (lambda () (apply trace-display info)))
+	       (cmdl-message/active
+		(lambda (cmdl)
+		  cmdl
+		  (apply trace-display info)))
 	       (cmdl-message/standard message))
 	      environment))
 

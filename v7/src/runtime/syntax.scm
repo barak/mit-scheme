@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.13 1990/09/11 20:45:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.14 1991/02/15 18:07:07 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -170,16 +170,14 @@ MIT in each case. |#
     (apply transform (cdr expression))))
 
 (define (syntax-error message . irritants)
-  (error-procedure
-   (string-append "SYNTAX: "
-		  (if *current-keyword*
-		      (string-append (symbol->string *current-keyword*)
-				     ": "
-				     message)
-		      message))
-   irritants
-   ;; This is not really the right environment.  Perhaps nothing is.
-   syntaxer/default-environment))
+  (apply error
+	 (string-append "SYNTAX: "
+			(if *current-keyword*
+			    (string-append (symbol->string *current-keyword*)
+					   ": "
+					   message)
+			    message))
+	 irritants))
 
 (define (syntax-expressions expressions)
   (if (null? expressions)

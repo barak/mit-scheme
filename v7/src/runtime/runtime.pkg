@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.88 1991/01/26 03:23:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.89 1991/02/15 18:06:51 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -527,53 +527,97 @@ MIT in each case. |#
   (files "error")
   (parent ())
   (export ()
+	  abort
+	  access-condition
 	  bind-condition-handler
-	  cmdl-message/error
-	  condition-type/generalizations
+	  bind-restart
+	  bound-restarts
+	  break-on-signals
+	  condition-accessor
+	  condition-constructor
+	  condition-predicate
+	  condition-signaller
 	  condition-type/error?
+	  condition-type/field-names
+	  condition-type/generalizations
+	  condition-type/get
 	  condition-type/properties
-	  condition-type/reporter
+	  condition-type/put!
+	  condition-type:arithmetic-error
+	  condition-type:bad-range-argument
+	  condition-type:cell-error
+	  condition-type:control-error
+	  condition-type:datum-out-of-range
+	  condition-type:derived-port-error
+	  condition-type:divide-by-zero
 	  condition-type:error
+	  condition-type:file-error
+	  condition-type:file-touch-error
+	  condition-type:floating-point-overflow
+	  condition-type:floating-point-underflow
+	  condition-type:illegal-datum
+	  condition-type:no-such-restart
+	  condition-type:open-file-error
+	  condition-type:port-error
+	  condition-type:serious-condition
+	  condition-type:simple-condition
+	  condition-type:simple-error
+	  condition-type:simple-warning
+	  condition-type:unassigned-variable
+	  condition-type:unbound-variable
+	  condition-type:variable-error
+	  condition-type:warning
+	  condition-type:wrong-number-of-arguments
+	  condition-type:wrong-type-argument
+	  condition-type:wrong-type-datum
 	  condition-type?
 	  condition/continuation
 	  condition/error?
-	  condition/generalizations
-	  condition/internal?
-	  condition/irritants
-	  condition/message
+	  condition/get
 	  condition/properties
-	  condition/report-string
-	  condition/reporter
+	  condition/put!
+	  condition/restarts
 	  condition/type
-	  condition/write-report
 	  condition?
-	  error-condition
-	  error-continuation
-	  error-irritant
+	  continue
+	  error
 	  error-irritant/noise
-	  error-irritant/noise-value
-	  error-irritant/noise?
-	  error-irritants
-	  error-irritants/sans-noise
-	  error-message
-	  error-type:vanilla
-	  error-type?
-	  error?
+	  error:bad-range-argument
+	  error:datum-out-of-range
+	  error:derived-port
+	  error:divide-by-zero
+	  error:file-touch
+	  error:no-such-restart
+	  error:open-file
+	  error:wrong-number-of-arguments
+	  error:wrong-type-argument
+	  error:wrong-type-datum
+	  find-restart
 	  format-error-message
-	  guarantee-condition
-	  guarantee-condition-type
+	  invoke-restart
+	  invoke-restart-interactively
 	  make-condition
 	  make-condition-type
-	  make-error-type
+	  muffle-warning
+	  restart/effector
+	  restart/get
+	  restart/name
+	  restart/properties
+	  restart/put!
+	  restart?
 	  signal-condition
-	  signal-error
 	  standard-error-handler
-	  warn)
-  (export (runtime rep)
-	  default/error-handler
-	  hook/error-handler)
-  (export (runtime emacs-interface)
-	  hook/error-decision)
+	  standard-error-hook
+	  standard-warning-handler
+	  standard-warning-hook
+	  store-value
+	  use-value
+	  warn
+	  with-simple-restart
+	  write-condition-report
+	  write-restart-report)
+  (export (runtime microcode-errors)
+	  write-operator)
   (initialization (initialize-package!)))
 
 (define-package (runtime event-distributor)
@@ -1062,18 +1106,27 @@ MIT in each case. |#
   (files "uerror")
   (parent (runtime error-handler))
   (export ()
-	  error-type:anomalous
-	  error-type:bad-range-argument
-	  error-type:failed-argument-coercion
-	  error-type:fasdump
-	  error-type:fasload
-	  error-type:file
-	  error-type:illegal-argument
-	  error-type:open-file
-	  error-type:premature-write-termination
-	  error-type:random-internal
-	  error-type:wrong-type-argument
-	  microcode-error-type)
+	  condition-type:anomalous-microcode-error
+	  condition-type:compiled-code-error
+	  condition-type:fasdump-environment
+	  condition-type:fasl-file-bad-data
+	  condition-type:fasl-file-compiled-mismatch
+	  condition-type:fasl-file-too-big
+	  condition-type:fasload-band
+	  condition-type:fasload-error
+	  condition-type:hardware-trap
+	  condition-type:impurify-object-too-large
+	  condition-type:inapplicable-object
+	  condition-type:microcode-asynchronous
+	  condition-type:out-of-file-handles
+	  condition-type:primitive-io-error
+	  condition-type:primitive-procedure-error
+	  condition-type:system-call-error
+	  condition-type:unimplemented-primitive
+	  condition-type:unimplemented-primitive-for-os
+	  condition-type:unlinkable-variable
+	  condition-type:user-microcode-reset
+	  condition-type:wrong-arity-primitives)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-tables)
@@ -1422,6 +1475,7 @@ MIT in each case. |#
 	  pty-master-send-signal
 	  pty-master-stop)
   (export (runtime generic-input)
+	  bind-port-for-errors
 	  input-buffer/buffered-chars
 	  input-buffer/channel
 	  input-buffer/char-ready?
@@ -1438,6 +1492,7 @@ MIT in each case. |#
 	  input-buffer/size
 	  make-input-buffer)
   (export (runtime generic-output)
+	  bind-port-for-errors
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
@@ -1447,6 +1502,7 @@ MIT in each case. |#
 	  output-buffer/size
 	  output-buffer/write-string-block)
   (export (runtime file-input)
+	  bind-port-for-errors
 	  file-length
 	  file-open-input-channel
 	  input-buffer/chars-remaining
@@ -1457,6 +1513,7 @@ MIT in each case. |#
 	  file-open-output-channel
 	  make-output-buffer)
   (export (runtime console-input)
+	  bind-port-for-errors
 	  channel-type=file?
 	  input-buffer/buffer-contents
 	  input-buffer/buffered-chars
@@ -1471,6 +1528,7 @@ MIT in each case. |#
 	  make-input-buffer
 	  tty-input-channel)
   (export (runtime console-output)
+	  bind-port-for-errors
 	  make-output-buffer
 	  output-buffer/buffered-chars
 	  output-buffer/channel
@@ -1542,15 +1600,12 @@ MIT in each case. |#
 	  abort->nearest
 	  abort->previous
 	  abort->top-level
-	  abort-to-nearest-driver
-	  abort-to-previous-driver
-	  abort-to-top-level-driver
+	  bkpt
 	  breakpoint
 	  breakpoint-procedure
 	  cmdl-interrupt/abort-nearest
 	  cmdl-interrupt/abort-previous
 	  cmdl-interrupt/abort-top-level
-	  cmdl-interrupt/abort-top-level/reset?
 	  cmdl-interrupt/breakpoint
 	  cmdl-message/active
 	  cmdl-message/append
@@ -1559,23 +1614,23 @@ MIT in each case. |#
 	  cmdl-message/strings
 	  cmdl-message/value
 	  cmdl/base
-	  cmdl/continuation
 	  cmdl/driver
 	  cmdl/input-port
 	  cmdl/level
 	  cmdl/output-port
 	  cmdl/parent
-	  cmdl/proceed-continuation
 	  cmdl/state
 	  cmdl?
-	  current-proceed-continuation
 	  ge
 	  gst
 	  in
 	  initial-top-level-repl
 	  make-cmdl
 	  nearest-cmdl
+	  nearest-cmdl/input-port
+	  nearest-cmdl/output-port
 	  nearest-repl
+	  nearest-repl/condition
 	  nearest-repl/environment
 	  nearest-repl/syntax-table
 	  out
@@ -1584,6 +1639,7 @@ MIT in each case. |#
 	  prompt-for-command-char
 	  prompt-for-confirmation
 	  prompt-for-expression
+	  prompt-for-evaluated-expression
 	  push-cmdl
 	  push-repl
 	  re
@@ -1599,7 +1655,7 @@ MIT in each case. |#
 	  repl/reader-history
 	  repl/syntax-table
 	  repl?
-	  set-cmdl/continuation!
+	  restart
 	  set-cmdl/input-port!
 	  set-cmdl/output-port!
 	  set-cmdl/state!
@@ -1608,16 +1664,16 @@ MIT in each case. |#
 	  set-repl/prompt!
 	  set-repl/reader-history!
 	  set-repl/syntax-table!
+	  ve
 	  with-cmdl/input-port
-	  with-cmdl/output-port
-	  with-proceed-point
-	  with-standard-proceed-point)
+	  with-cmdl/output-port)
   (export (runtime load)
 	  hook/repl-eval
 	  hook/repl-write)
   (export (runtime emacs-interface)
 	  hook/cmdl-message
 	  hook/cmdl-prompt
+	  hook/error-decision
 	  hook/prompt-for-confirmation
 	  hook/prompt-for-expression
 	  hook/read-command-char
@@ -1675,6 +1731,7 @@ MIT in each case. |#
 	  in-package-expression
 	  in-package?
 	  intern
+	  interned-symbol?
 	  make-absolute-reference
 	  make-access
 	  make-assignment
@@ -1702,6 +1759,7 @@ MIT in each case. |#
 	  symbol-hash-mod
 	  symbol?
 	  the-environment?
+	  uninterned-symbol?
 	  variable-components
 	  variable-name
 	  variable?)

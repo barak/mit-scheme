@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.19 1990/11/15 19:07:18 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.20 1991/02/15 18:05:49 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,7 +90,7 @@ MIT in each case. |#
   (and (file-exists? filename)
        (call-with-current-continuation
 	(lambda (k)
-	  (bind-condition-handler (list error-type:fasload)
+	  (bind-condition-handler (list condition-type:fasload-band)
 	      (lambda (condition) condition (k false))
 	    (lambda () (fasload filename true)))))))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.16 1990/09/11 22:06:09 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.17 1991/02/15 18:04:30 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,7 +130,8 @@ MIT in each case. |#
       (set-trampoline! 'GENERIC-TRAMPOLINE-ADD complex:+)
       (set-trampoline! 'GENERIC-TRAMPOLINE-SUBTRACT complex:-)
       (set-trampoline! 'GENERIC-TRAMPOLINE-MULTIPLY complex:*)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/))))
+      (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/)))
+  unspecific)
 
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
@@ -243,7 +244,7 @@ MIT in each case. |#
 		       (int:* answer b)
 		       (loop b e answer)))))))
 	((int:zero? e) 1)
-	(else (error:datum-out-of-range e 'EXPT))))
+	(else (error:bad-range-argument e 'EXPT))))
 
 (define (int:->string n radix)
   (if (int:integer? n)
@@ -265,7 +266,7 @@ MIT in each case. |#
 	 (cond ((int:positive? n) (0<n n))
 	       ((int:negative? n) (cons #\- (0<n (int:negate n))))
 	       (else (list #\0)))))
-      (error:illegal-datum n 'NUMBER->STRING)))
+      (error:wrong-type-argument n false 'NUMBER->STRING)))
 
 (declare (integrate-operator rat:rational?))
 (define (rat:rational? object)
@@ -283,11 +284,11 @@ MIT in each case. |#
 	       (int:= (ratnum-denominator q) (ratnum-denominator r)))
 	  (if (int:integer? r)
 	      #f
-	      (error:illegal-datum r '=)))
+	      (error:wrong-type-argument r false '=)))
       (if (ratnum? r)
 	  (if (int:integer? q)
 	      #f
-	      (error:illegal-datum q '=))
+	      (error:wrong-type-argument q false '=))
 	  (int:= q r))))
 
 (define (rat:< q r)
@@ -405,7 +406,7 @@ MIT in each case. |#
   (rat:binary-operator u/u* v/v*
     (lambda (u v)
       (if (int:zero? v)
-	  (error:datum-out-of-range v '/)
+	  (error:divide-by-zero '/ (list u v))
 	  (rat:sign-correction u v
 	    (lambda (u v)
 	      (let ((d (int:gcd u v)))
@@ -442,10 +443,10 @@ MIT in each case. |#
 	      ((int:negative? v)
 	       (make-rational (int:negate v*) (int:negate v)))
 	      (else
-	       (error:datum-out-of-range v/v* '/))))
+	       (error:divide-by-zero '/ (list 1 v/v*)))))
       (cond ((int:positive? v/v*) (make-rational 1 v/v*))
 	    ((int:negative? v/v*) (make-rational -1 (int:negate v/v*)))
-	    (else (error:datum-out-of-range v/v* '/)))))
+	    (else (error:divide-by-zero '/ (list 1 v/v*))))))
 
 (define-integrable (rat:binary-operator u/u* v/v*
 					int*int int*rat rat*int rat*rat)
@@ -476,12 +477,12 @@ MIT in each case. |#
 (define (rat:numerator q)
   (cond ((ratnum? q) (ratnum-numerator q))
 	((int:integer? q) q)
-	(else (error:illegal-datum q 'NUMERATOR))))
+	(else (error:wrong-type-argument q false 'NUMERATOR))))
 
 (define (rat:denominator q)
   (cond ((ratnum? q) (ratnum-denominator q))
 	((int:integer? q) 1)
-	(else (error:illegal-datum q 'DENOMINATOR))))
+	(else (error:wrong-type-argument q false 'DENOMINATOR))))
 
 (let-syntax
     ((define-integer-coercion
@@ -490,7 +491,8 @@ MIT in each case. |#
 	    (COND ((RATNUM? Q)
 		   (,coercion (RATNUM-NUMERATOR Q) (RATNUM-DENOMINATOR Q)))
 		  ((INT:INTEGER? Q) Q)
-		  (ELSE (ERROR:ILLEGAL-DATUM Q ',operation-name)))))))
+		  (ELSE
+		   (ERROR:WRONG-TYPE-ARGUMENT Q FALSE ',operation-name)))))))
   (define-integer-coercion rat:floor floor int:floor)
   (define-integer-coercion rat:ceiling ceiling int:ceiling)
   (define-integer-coercion rat:truncate truncate int:quotient)
@@ -515,7 +517,7 @@ MIT in each case. |#
 		       ;; the continued fraction:
 		       (rat:+ fx
 			      (rat:invert (loop (rat:invert (rat:- y fy))
-					    (rat:invert (rat:- x fx)))))
+						(rat:invert (rat:- x fx)))))
 		       ;; [X] < X < [X]+1 <= [Y] <= Y so [X]+1 is the answer:
 		       (rat:1+ fx)))))
 	   (cond ((rat:positive? x)
@@ -557,7 +559,7 @@ MIT in each case. |#
 		  ((int:positive? e)
 		   (exact-method e))
 		  (else 1))))
-      (error:datum-out-of-range e 'EXPT)))
+      (error:bad-range-argument e 'EXPT)))
 
 (define (rat:->string q radix)
   (if (ratnum? q)
@@ -729,7 +731,7 @@ MIT in each case. |#
 (define (real:exact? x)
   (and (not (flonum? x))
        (or (rat:rational? x)
-	   (error:illegal-datum x 'EXACT?))))
+	   (error:wrong-type-argument x false 'EXACT?))))
 
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
@@ -769,7 +771,7 @@ MIT in each case. |#
     (lambda (q)
       (if (rat:rational? q)
 	  q
-	  (error:illegal-datum q 'INEXACT->EXACT)))))
+	  (error:wrong-type-argument q false 'INEXACT->EXACT)))))
 
 (let-syntax
     ((define-standard-binary
@@ -848,7 +850,7 @@ MIT in each case. |#
    (if (flonum? n)
        (if (flo:integer? n)
 	   (flo:->integer n)
-	   (error:illegal-datum n 'EVEN?))
+	   (error:wrong-type-argument n false 'EVEN?))
        n)))
 
 (let-syntax
@@ -858,7 +860,7 @@ MIT in each case. |#
 		(lambda (n)
 		  `(IF (FLO:INTEGER? ,n)
 		       (FLO:->INTEGER ,n)
-		       (ERROR:ILLEGAL-DATUM ,n ',operator-name)))))
+		       (ERROR:WRONG-TYPE-ARGUMENT ,n FALSE ',operator-name)))))
 	   `(DEFINE (,name N M)
 	      (IF (FLONUM? N)
 		  (INT:->FLONUM
@@ -943,10 +945,10 @@ MIT in each case. |#
 		 ((flo:zero? x)
 		  (if (flo:positive? y)
 		      x
-		      (error:datum-out-of-range y 'EXPT)))
+		      (error:bad-range-argument y 'EXPT)))
 		 ((and (flo:negative? x)
 		       (not (flo:integer? y)))
-		  (error:datum-out-of-range x 'EXPT))
+		  (error:bad-range-argument x 'EXPT))
 		 (else
 		  (flo:expt x y))))))
     (if (flonum? x)
@@ -1031,7 +1033,7 @@ MIT in each case. |#
 (define (rec:real-arg name x)
   (if (real:zero? (rec:imag-part x))
       (rec:real-part x)
-      (error:illegal-datum x name)))
+      (error:wrong-type-argument x false name)))
 
 (define (complex:= z1 z2)
   (if (recnum? z1)
@@ -1172,7 +1174,7 @@ MIT in each case. |#
 	((real:real? z)
 	 z)
 	(else
-	 (error:illegal-datum z 'CONJUGATE))))
+	 (error:wrong-type-argument z false 'CONJUGATE))))
 
 (define (complex:/ z1 z2)
   (if (recnum? z1)
@@ -1470,12 +1472,12 @@ MIT in each case. |#
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
 	((real:real? z) z)
-	(else (error:illegal-datum z 'REAL-PART))))
+	(else (error:wrong-type-argument z false 'REAL-PART))))
 
 (define (complex:imag-part z)
   (cond ((recnum? z) (rec:imag-part z))
 	((real:real? z) 0)
-	(else (error:illegal-datum z 'IMAG-PART))))
+	(else (error:wrong-type-argument z false 'IMAG-PART))))
 
 (define (complex:magnitude z)
   (if (recnum? z)
@@ -1686,7 +1688,7 @@ MIT in each case. |#
 	       (list? radix))
 	  (parse-format-tail (cdr radix)))
 	 (else
-	  (error:datum-out-of-range radix 'NUMBER->STRING)))))
+	  (error:bad-range-argument radix 'NUMBER->STRING)))))
 
 (define (parse-format-tail tail)
   (let loop

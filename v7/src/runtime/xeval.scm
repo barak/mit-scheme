@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.2 1989/08/15 10:00:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/xeval.scm,v 1.3 1991/02/15 18:08:01 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,7 +110,6 @@ MIT in each case. |#
 	   (CONDITIONAL ,rewrite/conditional)
 	   (DELAY ,rewrite/delay)
 	   (DISJUNCTION ,rewrite/disjunction)
-	   (ERROR-COMBINATION ,rewrite/error-combination)
 	   (IN-PACKAGE ,rewrite/in-package)
 	   (LAMBDA ,rewrite/lambda)
 	   (SEQUENCE ,rewrite/sequence)
@@ -212,14 +211,6 @@ MIT in each case. |#
 		    (rewrite/expression (disjunction-alternative expression)
 					environment
 					bound-names)))
-
-(define (rewrite/error-combination expression environment bound-names)
-  (make-combination
-   (combination-operator expression)
-   (let ((operands (combination-operands expression)))
-     (list (rewrite/expression (car operands) environment bound-names)
-	   (rewrite/expression (cadr operands) environment bound-names)
-	   (caddr operands)))))
 
 (define (rewrite/in-package expression environment bound-names)
   (make-in-package (rewrite/expression (in-package-environment expression)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.5 1990/07/16 17:12:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.6 1991/02/15 18:05:23 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -124,11 +124,11 @@ MIT in each case. |#
 		unspecific))))))
 
 (define (default/stack-overflow)
-  (abort-to-nearest-driver "Aborting!: maximum recursion depth exceeded"))
+  (abort->nearest "Aborting!: maximum recursion depth exceeded"))
 
 (define (default/hardware-trap escape-code)
   escape-code
-  (abort-to-nearest-driver "Aborting!: the hardware trapped"))
+  (abort->nearest "Aborting!: the hardware trapped"))
 
 (define pure-space-queue)
 (define constant-space-queue)
@@ -166,7 +166,9 @@ MIT in each case. |#
 	(cmdl-message/standard "Aborting!: out of memory")
 	;; Clean up whatever possible to avoid a reoccurrence.
 	(cmdl-message/active
-	 (lambda () (with-gc-notification! true gc-clean)))))))
+	 (lambda (cmdl)
+	   cmdl
+	   (with-gc-notification! true gc-clean)))))))
 
 ;;;; User Primitives
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.6 1990/09/11 20:44:25 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.7 1991/02/15 18:05:04 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,10 +85,19 @@ MIT in each case. |#
   (if (cmdl/io-to-console? repl)
       (begin
 	(repl-history/record! (repl/printer-history repl) object)
-	(transmit-signal-with-argument #\v
-				       (if (undefined-value? object)
-					   ""
-					   (object->string object))))
+	(cond ((undefined-value? object)
+	       (transmit-signal-with-argument #\v ""))
+	      ((object-non-pointer? object)
+	       (transmit-signal-with-argument #\v (object->string object)))
+	      (else
+	       ;; The #\P command used to do something useful, but now
+	       ;; it just sets the Emacs variable `xscheme-prompt' to
+	       ;; its string argument.  We use this to advantage here.
+	       (transmit-signal-with-argument #\P (object->string object))
+	       (emacs-eval
+		"(xscheme-write-message-1 xscheme-prompt (format \";Value "
+		(number->string (object-hash object))
+		": %s\" xscheme-prompt))"))))
       (normal/repl-write repl object)))
 
 (define (emacs/cmdl-message cmdl string)
@@ -104,17 +113,10 @@ MIT in each case. |#
 		  (let ((entry (assoc prompt cmdl-prompt-alist)))
 		    (if entry
 			(cdr entry)
-			prompt)))))
+			"[Evaluator]")))))
 
 (define cmdl-prompt-alist
-  '(("]=>" . "[Normal REPL]")
-    ("==>" . "[Normal REPL]")
-    ("Eval-in-env-->" . "[Normal REPL]")
-    ("Bkpt->" . "[Breakpoint REPL]")
-    ("Error->" . "[Error REPL]")
-    ("Debugger-->" . "[Debugger REPL]")
-    ("Visiting->" . "[Visiting environment]")
-    ("Debug-->" . "[Debugger]")
+  '(("Debug-->" . "[Debugger]")
     ("Where-->" . "[Environment Inspector]")
     ("Which-->" . "[Task Inspector]")))
 
@@ -146,9 +148,7 @@ MIT in each case. |#
   (transmit-signal-without-gc #\z)
   (beep console-output-port)
   (if paranoid-error-decision?
-      (begin
-	(transmit-signal-with-argument #\P "Error!")
-	(abort-to-previous-driver "Quit!"))))
+      (cmdl-interrupt/abort-previous)))
 
 (define paranoid-error-decision?
   false)
@@ -173,8 +173,7 @@ MIT in each case. |#
 (define (emacs/prompt-for-confirmation cmdl prompt)
   (if (cmdl/io-to-console? cmdl)
       (begin
-	(transmit-signal-with-argument #\n
-				       (string-append prompt " (y or n)? "))
+	(transmit-signal-with-argument #\n (string-append prompt "? "))
 	(char=? #\y (read-char-internal)))
       (normal/prompt-for-confirmation cmdl prompt)))
 
@@ -213,11 +212,11 @@ MIT in each case. |#
 (define normal/gc-finish)
 (define normal/cmdl-message)
 (define normal/cmdl-prompt)
+(define normal/error-decision)
 (define normal/repl-write)
 (define normal/repl-read)
 (define normal/read-start)
 (define normal/read-finish)
-(define normal/error-decision)
 (define normal/read-command-char)
 (define normal/prompt-for-confirmation)
 (define normal/prompt-for-expression)
@@ -233,11 +232,11 @@ MIT in each case. |#
   (set! normal/gc-finish hook/gc-finish)
   (set! normal/cmdl-message hook/cmdl-message)
   (set! normal/cmdl-prompt hook/cmdl-prompt)
+  (set! normal/error-decision hook/error-decision)
   (set! normal/repl-write hook/repl-write)
   (set! normal/repl-read hook/repl-read)
   (set! normal/read-start hook/read-start)
   (set! normal/read-finish hook/read-finish)
-  (set! normal/error-decision hook/error-decision)
   (set! normal/read-command-char hook/read-command-char)
   (set! normal/prompt-for-confirmation hook/prompt-for-confirmation)
   (set! normal/prompt-for-expression hook/prompt-for-expression)
@@ -261,11 +260,11 @@ MIT in each case. |#
   (set! hook/gc-finish emacs/gc-finish)
   (set! hook/cmdl-message emacs/cmdl-message)
   (set! hook/cmdl-prompt emacs/cmdl-prompt)
+  (set! hook/error-decision emacs/error-decision)
   (set! hook/repl-write emacs/repl-write)
   (set! hook/repl-read emacs/repl-read)
   (set! hook/read-start emacs/read-start)
   (set! hook/read-finish emacs/read-finish)
-  (set! hook/error-decision emacs/error-decision)
   (set! hook/read-command-char emacs/read-command-char)
   (set! hook/prompt-for-confirmation emacs/prompt-for-confirmation)
   (set! hook/prompt-for-expression emacs/prompt-for-expression)
@@ -283,11 +282,11 @@ MIT in each case. |#
   (set! hook/gc-finish normal/gc-finish)
   (set! hook/cmdl-message normal/cmdl-message)
   (set! hook/cmdl-prompt normal/cmdl-prompt)
+  (set! hook/error-decision normal/error-decision)
   (set! hook/repl-write normal/repl-write)
   (set! hook/repl-read normal/repl-read)
   (set! hook/read-start normal/read-start)
   (set! hook/read-finish normal/read-finish)
-  (set! hook/error-decision normal/error-decision)
   (set! hook/read-command-char normal/read-command-char)
   (set! hook/prompt-for-confirmation normal/prompt-for-confirmation)
   (set! hook/prompt-for-expression normal/prompt-for-expression)

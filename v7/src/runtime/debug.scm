@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.23 1990/09/13 23:43:13 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.24 1991/02/15 18:04:50 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,59 +46,72 @@ MIT in each case. |#
 (define debugger:list-breadth-limit 5)
 
 (define (debug #!optional object)
-  (let ((dstate
-	 (make-initial-dstate 
-	  (if (default-object? object)
-	      (or (error-continuation)
-		  (current-proceed-continuation))
-	      object))))
-    (letter-commands
-     command-set
-     (cmdl-message/active
+  (if (default-object? object)
+      (let ((condition (nearest-repl/condition)))
+	(if condition
+	    (debug-internal condition)
+	    (call-with-current-continuation debug-internal)))
+      (debug-internal object)))
+
+(define (debug-internal object)
+  (let ((dstate (make-initial-dstate object)))
+    (with-simple-restart 'CONTINUE "Return from DEBUG."
       (lambda ()
-	(presentation
-	 (lambda ()
-	   (let ((n (count-subproblems dstate)))
-	     (write-string "There ")
-	     (write-string (if (= n 1) "is" "are"))
-	     (write-string " ")
-	     (if (> n debugger:count-subproblems-limit)
-		 (begin
-		   (write-string "more than ")
-		   (write debugger:count-subproblems-limit))
-		 (write n))
-	     (write-string " subproblem")
-	     (if (not (= n 1))
-		 (write-string "s")))
-	   (write-string " on the stack.")
-	   (newline)
-	   (newline)
-	   (print-subproblem dstate)))
-	(debugger-message
-	 "You are now in the debugger.  Type q to quit, ? for commands.")))
-     "Debug-->"
-     dstate)))
-
+	(letter-commands
+	 command-set
+	 (cmdl-message/active
+	  (lambda (cmdl)
+	    cmdl
+	    (presentation
+	     (lambda ()
+	       (let ((n (count-subproblems dstate)))
+		 (write-string "There ")
+		 (write-string (if (= n 1) "is" "are"))
+		 (write-string " ")
+		 (if (> n debugger:count-subproblems-limit)
+		     (begin
+		       (write-string "more than ")
+		       (write debugger:count-subproblems-limit))
+		     (write n))
+		 (write-string " subproblem")
+		 (if (not (= n 1))
+		     (write-string "s")))
+	       (write-string " on the stack.")
+	       (newline)
+	       (newline)
+	       (print-subproblem dstate)))
+	    (debugger-message
+	     "You are now in the debugger.  Type q to quit, ? for commands.")))
+	 "Debug-->"
+	 dstate)))))
+
 (define (make-initial-dstate object)
-  (let ((dstate (allocate-dstate)))
-    (set-dstate/history-state!
-     dstate
-     (cond (debugger:use-history? 'ALWAYS)
-	   (debugger:auto-toggle? 'ENABLED)
-	   (else 'DISABLED)))
-    (let ((stack-frame (coerce-to-stack-frame object)))
-     (if (not stack-frame)
-	 (error "DEBUG: null continuation" object))
-      (set-current-subproblem! dstate stack-frame '()))
-    dstate))
-
-(define (coerce-to-stack-frame object)
-  (cond ((stack-frame? object)
-	 (stack-frame/skip-non-subproblems object))
-	((continuation? object)
-	 (coerce-to-stack-frame (continuation->stack-frame object)))
-	(else
-	 (error "DEBUG: illegal argument" object))))
+  (let ((make-dstate
+	 (lambda (stack-frame condition)
+	   (let ((dstate (allocate-dstate)))
+	     (set-dstate/history-state!
+	      dstate
+	      (cond (debugger:use-history? 'ALWAYS)
+		    (debugger:auto-toggle? 'ENABLED)
+		    (else 'DISABLED)))
+	     (set-dstate/condition! dstate condition)
+	     (set-current-subproblem!
+	      dstate
+	      (or (stack-frame/skip-non-subproblems stack-frame)
+		  (error "No frames on stack!" stack-frame))
+	      '())
+	     dstate))))
+    (cond ((condition? object)
+	   (make-dstate
+	    (continuation->stack-frame (condition/continuation object))
+	    object))
+	  ((continuation? object)
+	   (make-dstate (continuation->stack-frame object) false))
+	  ((stack-frame? object)
+	   (make-dstate object false))
+	  (else
+	   (error:wrong-type-argument object "condition or continuation"
+				      'DEBUG)))))
 
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
@@ -117,7 +130,8 @@ MIT in each case. |#
   history-state
   expression
   subexpression
-  environment-list)
+  environment-list
+  condition)
 
 (define (dstate/reduction dstate)
   (nth-reduction (dstate/reductions dstate)
@@ -149,8 +163,10 @@ MIT in each case. |#
 	   "Go to a particular subproblem")
       (#\H ,command/summarize-subproblems
 	   "prints a summary (History) of all subproblems")
-      (#\I ,command/error-info
+      (#\I ,command/condition-report
 	   "redisplay the error message Info")
+      (#\K ,command/condition-restart
+	   "continue the program using a standard restart option")
       (#\L ,command/print-expression
 	   "(List expression) pretty print the current expression")
       (#\O ,command/print-environment-procedure
@@ -604,47 +620,54 @@ MIT in each case. |#
 (define (command/enter-where dstate)
   (with-current-environment dstate debug/where))
 
-;;;; Error info
+;;;; Condition commands
 
-(define (command/error-info dstate)
-  dstate				;ignore
-  (show-error-info (error-condition)))
+(define (command/condition-report dstate)
+  (let ((condition (dstate/condition dstate)))
+    (if condition
+	(presentation
+	 (lambda ()
+	   (write-condition-report condition (current-output-port))))
+	(debugger-failure "No condition to report."))))
 
-(define (show-error-info condition)
-  (if condition
-      (presentation
-       (lambda ()
-	 (let ((message (condition/message condition))
-	       (irritants (condition/irritants condition))
-	       (port (current-output-port)))
-	   (write-string " Message: ")
-	   (write-string message)
-	   (newline)
-	   (if (null? irritants)
-	       (write-string " No irritants")
-	       (begin
-		 (write-string " Irritants: ")
-		 (for-each
-		  (let ((n (- (output-port/x-size port) 4)))
-		    (lambda (irritant)
-		      (newline)
-		      (write-string "    ")
-		      (if (error-irritant/noise? irritant)
-			  (begin
-			    (write-string "noise: ")
-			    (write (error-irritant/noise-value irritant)))
-			  (write-string
-			   (let ((result (write-to-string irritant n)))
-			     (if (car result)
-				 (substring-move-right! "..." 0 3
-							(cdr result) (- n 3)))
-			     (cdr result))))))
-		  irritants)))
-	   (newline)
-	   (write-string " Formatted output:")
-	   (newline)
-	   ((condition/reporter condition) condition port))))
-      (debugger-failure "No error to report.")))
+(define (command/condition-restart dstate)
+  (let ((restarts
+	 (let ((condition (dstate/condition dstate)))
+	   (if condition
+	       (condition/restarts condition)
+	       (bound-restarts)))))
+    (if (null? restarts)
+	(debugger-failure "No options to choose from.")
+	(let ((n-restarts (length restarts))
+	      (invoke-option
+	       (lambda (n)
+		 (invoke-restart-interactively (list-ref restarts n)))))
+	  (presentation
+	   (lambda ()
+	     (let ((port (current-output-port)))
+	       (if (= n-restarts 1)
+		   (begin
+		     (write-string "There is only one option:" port)
+		     (newline port)
+		     (write-restarts restarts port)
+		     (if (prompt-for-confirmation "Use this option")
+			 (invoke-option 0)))
+		   (begin
+		     (write-string "Choose an option by number:" port)
+		     (newline port)
+		     (write-restarts restarts port)
+		     (invoke-option
+		      (prompt-for-nonnegative-integer "Option number"
+						      n-restarts)))))))))))
+
+(define (write-restarts restarts port)
+  (do ((restarts restarts (cdr restarts))
+       (index 0 (1+ index)))
+      ((null? restarts))
+    (write-string (string-pad-left (number->string index) 3) port)
+    (write-string ": " port)
+    (write-restart-report (car restarts) port)
+    (newline port)))
 
 ;;;; Advanced hacking commands
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.6 1990/09/11 22:33:26 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.7 1991/02/15 18:06:30 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,7 @@ MIT in each case. |#
 	     10
 	     (begin
 	       (if (not (memv radix-default '(2 8 10 16)))
-		   (error:datum-out-of-range radix-default 'STRING->NUMBER))
+		   (error:bad-range-argument radix-default 'STRING->NUMBER))
 	       radix-default))))
     (with-values (lambda () (parse-prefix (string->list string)))
       (lambda (chars radix-prefix exactness)

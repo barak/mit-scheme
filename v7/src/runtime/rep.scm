@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.16 1990/11/15 15:42:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rep.scm,v 14.17 1991/02/15 18:06:46 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,10 +45,7 @@ MIT in each case. |#
 	(object-component-binder cmdl/output-port set-cmdl/output-port!))
   (set! hook/cmdl-prompt default/cmdl-prompt)
   (set! hook/cmdl-message default/cmdl-message)
-  (set! cmdl-interrupt/breakpoint default/breakpoint)
-  (set! cmdl-interrupt/abort-top-level default/abort-top-level)
-  (set! cmdl-interrupt/abort-previous default/abort-previous)
-  (set! cmdl-interrupt/abort-nearest default/abort-nearest)
+  (set! hook/error-decision false)
   (set! hook/repl-environment default/repl-environment)
   (set! hook/repl-read default/repl-read)
   (set! hook/repl-write default/repl-write)
@@ -59,21 +56,16 @@ MIT in each case. |#
   unspecific)
 
 (define (initial-top-level-repl)
-  (fluid-let ((user-repl-environment user-initial-environment)
-	      (user-repl-syntax-table user-initial-syntax-table))
-    (let loop ((message "Cold load finished"))
-      (with-standard-proceed-point
-       (lambda ()
-	 (make-cmdl false
-		    console-input-port
-		    console-output-port
-		    repl-driver
-		    (make-repl-state user-initial-prompt
-				     user-repl-environment
-				     user-repl-syntax-table)
-		    (cmdl-message/standard message)
-		    make-cmdl)))
-      (loop "Reset!"))))
+  (make-cmdl false
+	     console-input-port
+	     console-output-port
+	     repl-driver
+	     (make-repl-state user-initial-prompt
+			      user-initial-environment
+			      user-initial-syntax-table
+			      false)
+	     (cmdl-message/standard "Cold load finished")
+	     make-cmdl))
 
 ;;;; Command Loops
 
@@ -81,52 +73,54 @@ MIT in each case. |#
   (parent false read-only true)
   (level false read-only true)
   (driver false read-only true)
-  (proceed-continuation false read-only true)
   (spawn-child false read-only true)
-  continuation
   input-port
   output-port
   state)
 
 (define (make-cmdl parent input-port output-port driver state message
 		   spawn-child)
-  (if (and parent (not (cmdl? parent)))
-      (error:illegal-datum parent 'MAKE-CMDL))
-  (let ((cmdl
-	 (%make-cmdl parent
-		     (let loop ((parent parent))
-		       (if parent
-			   (+ (loop (cmdl/parent parent)) 1)
-			   1))
-		     driver
-		     (current-proceed-continuation)
-		     spawn-child
-		     false
-		     input-port
-		     output-port
-		     state)))
-    (let loop ((message message))
-      (loop
-       (fluid-let
-	   ((*nearest-cmdl* cmdl)
-	    (cmdl-interrupt/abort-nearest default/abort-nearest)
-	    (cmdl-interrupt/abort-previous default/abort-previous)
-	    (cmdl-interrupt/abort-top-level default/abort-top-level)
-	    (cmdl-interrupt/breakpoint default/breakpoint))
-	 (with-interrupt-mask interrupt-mask/all
-	   (lambda (interrupt-mask)
-	     interrupt-mask
-	     (call-with-current-continuation
-	      (lambda (continuation)
-		(set-cmdl/continuation! cmdl continuation)
-		(message cmdl)
-		(driver cmdl))))))))))
+  (if (not (or (false? parent) (cmdl? parent)))
+      (error:wrong-type-argument parent "cmdl or #f" 'MAKE-CMDL))
+  (let ((level (if parent (+ (cmdl/level parent) 1) 1)))
+    (let ((cmdl
+	   (%make-cmdl parent level driver spawn-child input-port output-port
+		       state)))
+      (let loop ((message message))
+	(loop
+	 (call-with-current-continuation
+	  (lambda (continuation)
+	    (bind-restart 'ABORT
+		(string-append "Return to "
+			       (if (repl? cmdl) "read-eval-print" "command")
+			       " level "
+			       (number->string level)
+			       ".")
+		(lambda (#!optional message)
+		  (continuation
+		   (if (default-object? message)
+		       (cmdl-message/standard "Abort!")
+		       message)))
+	      (lambda (restart)
+		(restart/put! restart make-cmdl cmdl)
+		(fluid-let ((*nearest-cmdl* cmdl))
+		  (with-interrupt-mask interrupt-mask/all
+		    (lambda (interrupt-mask)
+		      interrupt-mask
+		      (message cmdl)
+		      ((cmdl/driver cmdl) cmdl)))))))))))))
 
 (define *nearest-cmdl*)
 
 (define (nearest-cmdl)
   (if (not *nearest-cmdl*) (error "NEAREST-CMDL: no cmdl"))
   *nearest-cmdl*)
+
+(define (nearest-cmdl/input-port)
+  (cmdl/input-port (nearest-cmdl)))
+
+(define (nearest-cmdl/output-port)
+  (cmdl/output-port (nearest-cmdl)))
 
 (define (push-cmdl driver state message spawn-child)
   (let ((parent (nearest-cmdl)))
@@ -150,7 +144,6 @@ MIT in each case. |#
 ;;;; Messages
 
 (define hook/cmdl-prompt)
-
 (define (default/cmdl-prompt cmdl prompt)
   (with-output-port-cooked cmdl
     (lambda (output-port)
@@ -166,7 +159,6 @@ MIT in each case. |#
   (hook/cmdl-message cmdl string))
 
 (define hook/cmdl-message)
-
 (define (default/cmdl-message cmdl string)
   (with-output-port-cooked cmdl
     (lambda (output-port)
@@ -179,120 +171,153 @@ MIT in each case. |#
 		  (write-string (string-append "\n" string) output-port))
 		strings))))
 
-(define ((cmdl-message/null) cmdl)
-  cmdl
-  false)
-
-(define ((cmdl-message/active thunk) cmdl)
+(define ((cmdl-message/active actor) cmdl)
   (with-output-port-cooked cmdl
     (lambda (output-port)
-      (with-output-to-port output-port thunk))))
+      (with-output-to-port output-port
+	(lambda ()
+	  (actor cmdl))))))
 
-(define ((cmdl-message/append . messages) cmdl)
-  (for-each (lambda (message) (message cmdl)) messages))
+(define (cmdl-message/append . messages)
+  (let ((messages (delq! %cmdl-message/null messages)))
+    (cond ((null? messages)
+	   (cmdl-message/null))
+	  ((null? (cdr messages))
+	   (car messages))
+	  (else
+	   (lambda (cmdl)
+	     (for-each (lambda (message) (message cmdl)) messages))))))
+
+(define-integrable (cmdl-message/null)
+  %cmdl-message/null)
+
+(define (%cmdl-message/null cmdl)
+  cmdl
+  false)
 
 ;;;; Interrupts
 
-(define cmdl-interrupt/abort-nearest)
-(define cmdl-interrupt/abort-previous)
-(define cmdl-interrupt/abort-top-level)
-(define cmdl-interrupt/breakpoint)
+(define (cmdl-interrupt/abort-nearest)
+  (abort->nearest "Abort!"))
 
-(define (default/abort-nearest)
-  (abort-to-nearest-driver "Abort!"))
+(define (cmdl-interrupt/abort-previous)
+  (abort->previous "Up!"))
 
-(define (abort-to-nearest-driver message)
-  (abort->nearest (cmdl-message/standard message)))
+(define (cmdl-interrupt/abort-top-level)
+  (abort->top-level "Quit!"))
 
 (define (abort->nearest message)
-  ((cmdl/continuation (nearest-cmdl)) message))
-
-(define (default/abort-previous)
-  (abort-to-previous-driver "Up!"))
-
-(define (abort-to-previous-driver message)
-  (abort->previous (cmdl-message/standard message)))
+  (invoke-abort (let ((restart (find-restart 'ABORT)))
+		  (if (not restart)
+		      (error:no-such-restart 'ABORT))
+		  restart)
+		message))
 
 (define (abort->previous message)
-  ((cmdl/continuation 
-    (let ((cmdl (nearest-cmdl)))
-      (or (cmdl/parent cmdl)
-	  cmdl)))
-   message))
-
-(define (default/abort-top-level)
-  (abort-to-top-level-driver "Quit!"))
-
-(define (abort-to-top-level-driver message)
-  (abort->top-level (cmdl-message/standard message)))
+  (invoke-abort (let ((restarts (find-restarts 'ABORT (bound-restarts))))
+		  (let ((next (find-restarts 'ABORT (cdr restarts))))
+		    (cond ((not (null? next)) (car next))
+			  ((not (null? restarts)) (car restarts))
+			  (else (error:no-such-restart 'ABORT)))))
+		message))
 
 (define (abort->top-level message)
-  ((let ((cmdl (cmdl/base (nearest-cmdl))))
-     (if cmdl-interrupt/abort-top-level/reset?
-	 (cmdl/proceed-continuation cmdl)
-	 (cmdl/continuation cmdl)))
-   message))
+  (invoke-abort (let loop ((restarts (find-restarts 'ABORT (bound-restarts))))
+		  (let ((next (find-restarts 'ABORT (cdr restarts))))
+		    (cond ((not (null? next)) (loop next))
+			  ((not (null? restarts)) (car restarts))
+			  (else (error:no-such-restart 'ABORT)))))
+		message))
 
-;; User option variable
-(define cmdl-interrupt/abort-top-level/reset? false)
+(define (find-restarts name restarts)
+  (let loop ((restarts restarts))
+    (if (or (null? restarts)
+	    (eq? name (restart/name (car restarts))))
+	restarts
+	(loop (cdr restarts)))))
 
-(define (default/breakpoint)
-  (with-standard-proceed-point
-   (lambda ()
-     (breakpoint (cmdl-message/standard "^B interrupt")
-		 (nearest-repl/environment)))))
-
-;;;; Proceed
+(define (invoke-abort restart message)
+  (let ((effector (restart/effector restart)))
+    (if (restart/get restart make-cmdl)
+	(effector
+	 (if (string? message) (cmdl-message/standard message) message))
+	(effector))))
 
-(define (with-proceed-point value-filter thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (fluid-let ((proceed-continuation continuation)
-		 (proceed-value-filter value-filter))
-       (thunk)))))
-
-(define (current-proceed-continuation)
-  proceed-continuation)
-
-(define (proceed . arguments)
-  (proceed-value-filter proceed-continuation arguments))
-
-(define proceed-continuation false)
-(define proceed-value-filter)
-
-(define (with-standard-proceed-point thunk)
-  (with-proceed-point standard-value-filter thunk))
-
-(define (standard-value-filter continuation arguments)
-  (continuation
-   (if (null? arguments)
-       unspecific
-       (car arguments))))
+(define (cmdl-interrupt/breakpoint)
+  (with-simple-restart 'CONTINUE "Continue from ^B interrupt."
+    (lambda ()
+      (push-repl "^B interrupt" false "^B>"))))
 
 ;;;; REP Loops
 
 (define-structure (repl-state
 		   (conc-name repl-state/)
 		   (constructor make-repl-state
-				(prompt environment syntax-table)))
+				(prompt environment syntax-table condition)))
   prompt
   environment
   syntax-table
+  (condition false read-only true)
   (reader-history (make-repl-history reader-history-size))
   (printer-history (make-repl-history printer-history-size)))
 
-(define (push-repl environment message prompt)
-  (push-cmdl repl-driver
-	     (make-repl-state prompt environment (nearest-repl/syntax-table))
-	     (cmdl-message/append
-	      message
-	      (cmdl-message/active
-	       (lambda ()
-		 (hook/repl-environment (nearest-repl) environment))))
-	     make-cmdl))
+(define (push-repl message condition
+		   #!optional prompt environment syntax-table)
+  (let ((environment (if (default-object? environment) 'INHERIT environment)))
+    (push-cmdl repl-driver
+	       (let ((repl (nearest-repl)))
+		 (make-repl-state (if (or (default-object? prompt)
+					  (eq? 'INHERIT prompt))
+				      (repl/prompt repl)
+				      prompt)
+				  (if (eq? 'INHERIT environment)
+				      (repl/environment repl)
+				      environment)
+				  (if (or (default-object? syntax-table)
+					  (eq? 'INHERIT syntax-table))
+				      (repl/syntax-table repl)
+				      syntax-table)
+				  condition))
+	       (cmdl-message/append
+		(cond ((not message)
+		       (if condition
+			   (cmdl-message/strings
+			    (with-string-output-port
+			      (lambda (port)
+				(write-string ";" port)
+				(write-condition-report condition
+							port))))
+			   (cmdl-message/null)))
+		      ((string? message)
+		       (cmdl-message/standard message))
+		      (else
+		       message))
+		(if condition
+		    (cmdl-message/append
+		     (if hook/error-decision
+			 (cmdl-message/active
+			  (lambda (cmdl)
+			    cmdl
+			    (hook/error-decision)))
+			 (cmdl-message/null))
+		     (condition-restarts-message condition))
+		    (cmdl-message/null))
+		(if (eq? 'INHERIT environment)
+		    (cmdl-message/null)
+		    (cmdl-message/active
+		     (lambda (cmdl)
+		       cmdl
+		       (repl-environment (nearest-repl) environment)))))
+	       (lambda args
+		 (with-history-disabled
+		  (lambda ()
+		    (apply make-cmdl args)))))))
+
+(define hook/error-decision)
 
 (define (repl-driver repl)
-  (fluid-let ((hook/error-handler default/error-handler))
+  (fluid-let ((standard-error-hook false)
+	      (standard-warning-hook false))
     (hook/cmdl-prompt repl (repl/prompt repl))
     (let ((s-expression (hook/repl-read repl)))
       (cmdl-message/value
@@ -300,7 +325,85 @@ MIT in each case. |#
 		       s-expression
 		       (repl/environment repl)
 		       (repl/syntax-table repl))))))
+
+(define (condition-restarts-message condition)
+  (cmdl-message/active
+   (lambda (cmdl)
+     (let ((port (cmdl/output-port cmdl)))
+       (write-string "
+;To continue, call RESTART with an option number:" port)
+       (write-restarts (filter-restarts (condition/restarts condition)) port
+	 (lambda (index port)
+	   (write-string " (RESTART " port)
+	   (write index port)
+	   (write-string ") =>" port)))))))
 
+(define (restart #!optional n)
+  (let ((restarts
+	 (filter-restarts
+	  (let ((condition (nearest-repl/condition)))
+	    (if condition
+		(condition/restarts condition)
+		(bound-restarts))))))
+    (let ((n-restarts (length restarts)))
+      (if (zero? n-restarts)
+	  (error "Can't RESTART: no options available."))
+      (invoke-restart-interactively
+       (list-ref
+	restarts
+	(- n-restarts
+	   (if (default-object? n)
+	       (let ((port (nearest-cmdl/output-port)))
+		 (newline port)
+		 (write-string ";Choose an option by number:" port)
+		 (write-restarts restarts port
+		   (lambda (index port)
+		     (write-string (string-pad-left (number->string index) 3)
+				   port)
+		     (write-string ":" port)))
+		 (let loop ()
+		   (let ((n
+			  (prompt-for-evaluated-expression "Option number")))
+		     (if (and (exact-integer? n) (<= 1 n n-restarts))
+			 n
+			 (begin
+			   (beep port)
+			   (newline port)
+			   (write-string
+			    ";Option must be an integer between 1 and "
+			    port)
+			   (write n-restarts port)
+			   (write-string ", inclusive.")
+			   (loop))))))
+	       (begin
+		 (if (not (exact-integer? n))
+		     (error:wrong-type-argument n "exact integer" 'RESTART))
+		 (if (not (<= 1 n n-restarts))
+		     (error:bad-range-argument n 'RESTART))
+		 n))))))))
+
+(define (write-restarts restarts port write-index)
+  (newline port)
+  (do ((restarts restarts (cdr restarts))
+       (index (length restarts) (- index 1)))
+      ((null? restarts))
+    (write-string ";" port)
+    (write-index index port)
+    (write-string " " port)
+    (write-restart-report (car restarts) port)
+    (newline port)))
+
+(define (filter-restarts restarts)
+  (let loop ((restarts restarts))
+    (if (null? restarts)
+	'()
+	(cons (car restarts)
+	      (if (restart/get (car restarts) make-cmdl)
+		  (list-transform-positive (cdr restarts)
+		    (lambda (restart)
+		      (restart/get restart make-cmdl)))
+		  (loop (cdr restarts)))))))
+
 (define (repl? object)
   (and (cmdl? object)
        (repl-state? (cmdl/state object))))
@@ -314,14 +417,18 @@ MIT in each case. |#
 (define-integrable (repl/environment repl)
   (repl-state/environment (cmdl/state repl)))
 
-(define-integrable (set-repl/environment! repl environment)
-  (set-repl-state/environment! (cmdl/state repl) environment))
+(define (set-repl/environment! repl environment)
+  (set-repl-state/environment! (cmdl/state repl) environment)
+  (repl-environment repl environment))
 
 (define-integrable (repl/syntax-table repl)
   (repl-state/syntax-table (cmdl/state repl)))
 
 (define-integrable (set-repl/syntax-table! repl syntax-table)
   (set-repl-state/syntax-table! (cmdl/state repl) syntax-table))
+
+(define-integrable (repl/condition repl)
+  (repl-state/condition (cmdl/state repl)))
 
 (define-integrable (repl/reader-history repl)
   (repl-state/reader-history (cmdl/state repl)))
@@ -334,7 +441,7 @@ MIT in each case. |#
 
 (define-integrable (set-repl/printer-history! repl printer-history)
   (set-repl-state/printer-history! (cmdl/state repl) printer-history))
-
+
 (define (repl/parent repl)
   (skip-non-repls (cmdl/parent repl)))
 
@@ -355,32 +462,13 @@ MIT in each case. |#
 	repl)))
 
 (define (nearest-repl/environment)
-  (let ((repl (nearest-repl)))
-    (if repl
-	(repl/environment repl)
-	user-initial-environment)))
+  (repl/environment (nearest-repl)))
 
 (define (nearest-repl/syntax-table)
-  (let ((repl (nearest-repl)))
-    (if repl
-	(repl/syntax-table repl)
-	user-initial-syntax-table)))
+  (repl/syntax-table (nearest-repl)))
 
-(define (read-eval-print environment message prompt)
-  (with-standard-proceed-point
-   (lambda ()
-     (push-repl environment message prompt))))
-
-(define (breakpoint message environment)
-  (push-repl environment message "Bkpt->"))
-
-(define (breakpoint-procedure environment message . irritants)
-  (with-history-disabled
-   (lambda ()
-     (with-standard-proceed-point
-      (lambda ()
-	(breakpoint (apply cmdl-message/error message irritants)
-		    environment))))))
+(define (nearest-repl/condition)
+  (repl/condition (nearest-repl)))
 
 ;;;; Hooks
 
@@ -388,6 +476,12 @@ MIT in each case. |#
 (define hook/repl-read)
 (define hook/repl-eval)
 (define hook/repl-write)
+
+(define (repl-environment repl environment)
+  (with-output-port-cooked repl
+    (lambda (output-port)
+      output-port
+      (hook/repl-environment repl environment))))
 
 (define (default/repl-environment repl environment)
   (let ((port (cmdl/output-port repl)))
@@ -401,8 +495,7 @@ MIT in each case. |#
       (if package
 	  (begin
 	    (write-string "\n;Package: " port)
-	    (write (package/name package) port)))))
-  unspecific)
+	    (write (package/name package) port))))))
 
 (define (default/repl-read repl)
   (let ((s-expression (read-internal (cmdl/input-port repl))))
@@ -424,7 +517,12 @@ MIT in each case. |#
       (if (undefined-value? object)
 	  (write-string "\n;No value" output-port)
 	  (begin
-	    (write-string "\n;Value: " output-port)
+	    (write-string "\n;Value" output-port)
+	    (if (object-pointer? object)
+		(begin
+		  (write-string " " output-port)
+		  (write (object-hash object) output-port)))
+	    (write-string ": " output-port)
 	    (write object output-port))))))
 
 ;;;; History
@@ -456,14 +554,11 @@ MIT in each case. |#
 (define (repl-history/read history n)
   (if (not (and (exact-nonnegative-integer? n)
 		(< n (repl-history/size history))))
-      (error:illegal-datum n 'REPL-HISTORY/READ))
+      (error:wrong-type-argument n "history index" 'REPL-HISTORY/READ))
   (list-ref (repl-history/elements history)
 	    (- (- (repl-history/size history) 1) n)))
 
 ;;; User Interface Stuff
-
-(define user-repl-environment)
-(define user-repl-syntax-table)
 
 (define (pe)
   (let ((environment (nearest-repl/environment)))
@@ -473,15 +568,8 @@ MIT in each case. |#
 	  environment))))
 
 (define (ge environment)
-  (let ((repl (nearest-repl))
-	(environment (->environment environment)))
-    (set-repl-state/environment! (cmdl/state repl) environment)
-    (if (not (cmdl/parent repl))
-	(set! user-repl-environment environment))
-    (with-output-port-cooked repl
-      (lambda (output-port)
-	output-port
-	(hook/repl-environment repl environment)))
+  (let ((environment (->environment environment)))
+    (set-repl/environment! (nearest-repl) environment)
     environment))
 
 (define (->environment object)
@@ -498,15 +586,12 @@ MIT in each case. |#
 		  (and package-name
 		       (name->package package-name)))))
 	   (if (not package)
-	       (error:illegal-datum object '->ENVIRONMENT))
+	       (error:wrong-type-argument object "environment" '->ENVIRONMENT))
 	   (package/environment package)))))
 
 (define (gst syntax-table)
   (guarantee-syntax-table syntax-table)
-  (let ((repl (nearest-repl)))
-    (set-repl-state/syntax-table! (cmdl/state repl) syntax-table)
-    (if (not (cmdl/parent repl))
-	(set! user-repl-syntax-table syntax-table)))
+  (set-repl-state/syntax-table! (cmdl/state (nearest-repl)) syntax-table)
   unspecific)
 
 (define (re #!optional index)
@@ -531,6 +616,38 @@ MIT in each case. |#
   (repl-history/read (repl/printer-history (nearest-repl))
 		     (- (if (default-object? index) 1 index) 1)))
 
+(define (read-eval-print environment message prompt)
+  (push-repl message false prompt environment))
+
+(define (breakpoint message environment)
+  (with-simple-restart 'CONTINUE "Continue from breakpoint."
+    (lambda ()
+      (read-eval-print environment message "Breakpoint->"))))
+
+(define (bkpt datum . arguments)
+  (apply breakpoint-procedure 'INHERIT datum arguments))
+
+(define (breakpoint-procedure environment datum . arguments)
+  ;; For upwards compatibility.
+  (with-simple-restart 'CONTINUE "Return from BKPT."
+    (lambda ()
+      (read-eval-print environment
+		       (cmdl-message/active
+			(lambda (cmdl)
+			  (let ((port (cmdl/output-port cmdl)))
+			    (newline port)
+			    (format-error-message datum arguments port))))
+		       "Bkpt->"))))
+
+(define (ve environment)
+  (read-eval-print (->environment environment) false 'INHERIT))
+
+(define (proceed #!optional value)
+  (if (default-object? value)
+      (continue)
+      (use-value value))
+  (write-string "\n;Unable to PROCEED" (nearest-cmdl/output-port)))
+
 ;;;; Prompting
 
 (define (prompt-for-command-char prompt #!optional cmdl)
@@ -545,6 +662,18 @@ MIT in each case. |#
 (define (prompt-for-expression prompt #!optional cmdl)
   (hook/prompt-for-expression (if (default-object? cmdl) (nearest-cmdl) cmdl)
 			      prompt))
+
+(define (prompt-for-evaluated-expression prompt #!optional
+					 environment syntax-table)
+  (let ((repl (nearest-repl)))
+    (hook/repl-eval repl
+		    (prompt-for-expression prompt)
+		    (if (default-object? environment)
+			(repl/environment repl)
+			environment)
+		    (if (default-object? syntax-table)
+			(repl/syntax-table repl)
+			syntax-table))))
 
 (define hook/read-command-char)
 (define hook/prompt-for-confirmation)

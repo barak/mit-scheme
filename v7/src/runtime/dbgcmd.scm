@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.10 1990/11/02 02:06:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dbgcmd.scm,v 14.11 1991/02/15 18:04:45 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,12 +62,10 @@ MIT in each case. |#
 	      (loop (cdr command-set)))))))
 
 (define (letter-commands command-set message prompt state)
-  (with-standard-proceed-point
-   (lambda ()
-     (push-cmdl letter-commands/driver
-		(vector command-set prompt state)
-		message
-		make-cmdl))))
+  (push-cmdl letter-commands/driver
+	     (vector command-set prompt state)
+	     message
+	     make-cmdl))
 
 (define (letter-commands/driver cmdl)
   (let ((command-set (vector-ref (cmdl/state cmdl) 0))
@@ -101,7 +99,8 @@ MIT in each case. |#
 
 (define (standard-exit-command state)
   state					;ignore
-  (proceed))
+  (continue)
+  (debugger-failure "Can't exit; use a restart command instead."))
 
 (define (initialize-package!)
   (set! hook/leaving-command-loop default/leaving-command-loop))
@@ -117,12 +116,18 @@ MIT in each case. |#
 (define (debug/read-eval-print environment from to prompt)
   (leaving-command-loop
    (lambda ()
-     (read-eval-print
-      environment
-      (cmdl-message/standard
-       (string-append
-	"You are now in " to ".  Type C-c C-u to return to " from "."))
-      prompt))))
+     (with-simple-restart 'CONTINUE
+	 (lambda (port)
+	   (write-string "Return to " port)
+	   (write-string from port)
+	   (write-string "." port))
+       (lambda ()
+	 (read-eval-print
+	  environment
+	  (cmdl-message/standard
+	   (string-append
+	    "You are now in " to ".  Type C-c C-u to return to " from "."))
+	  prompt))))))
 
 (define (debug/eval expression environment)
   (leaving-command-loop

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.4 1989/08/15 13:19:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.5 1991/02/15 18:04:39 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -81,7 +81,9 @@ MIT in each case. |#
 ;; multiprocessors.
 
 (define (within-continuation continuation thunk)
-  (guarantee-continuation continuation)
+  (if (not (continuation? continuation))
+      (error:wrong-type-argument continuation "continuation"
+				 'WITHIN-CONTINUATION))
   (if (without-interrupts
        (lambda ()
 	 (let ((method (continuation/invocation-method continuation)))
@@ -135,7 +137,7 @@ MIT in each case. |#
 
 (define (guarantee-continuation continuation)
   (if (not (continuation? continuation))
-      (error "Illegal continuation" continuation))
+      (error:wrong-type-argument continuation "continuation" false))
   continuation)
 
 (define-integrable (continuation/invocation-method continuation)

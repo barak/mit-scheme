@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.5 1990/10/02 22:43:13 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.6 1991/02/15 18:05:58 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -104,16 +104,24 @@ MIT in each case. |#
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables
   (clear-interrupts! interrupt-bit/suspend)
-  (bind-condition-handler '() (lambda (condition) condition (%exit))
+  (bind-condition-handler (list condition-type:serious-condition)
+      (lambda (condition)
+	condition
+	(%exit))
     (lambda ()
-      (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
-					   (home-directory-pathname))
-			  true))
-	  (%exit)))))
+      (bind-condition-handler (list condition-type:warning)
+	  (lambda (condition)
+	    condition
+	    (muffle-warning))
+	(lambda ()
+	  (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
+					       (home-directory-pathname))
+			      true))
+	      (%exit)))))))
 
 (define (gc-out-of-space-handler . args)
   args
-  (abort-to-nearest-driver "Aborting! Out of memory"))
+  (abort->nearest "Aborting! Out of memory"))
 
 (define (illegal-interrupt-handler interrupt-code interrupt-enables)
   (error "Illegal interrupt" interrupt-code interrupt-enables))

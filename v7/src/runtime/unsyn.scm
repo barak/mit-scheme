@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.10 1990/09/11 22:58:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 14.11 1991/02/15 18:07:27 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,8 +50,6 @@ MIT in each case. |#
 			     (DEFINITION ,unsyntax-DEFINITION-object)
 			     (DELAY ,unsyntax-DELAY-object)
 			     (DISJUNCTION ,unsyntax-DISJUNCTION-object)
-			     (ERROR-COMBINATION
-			      ,unsyntax-ERROR-COMBINATION-object)
 			     (IN-PACKAGE ,unsyntax-IN-PACKAGE-object)
 			     (LAMBDA ,unsyntax-LAMBDA-object)
 			     (OPEN-BLOCK ,unsyntax-OPEN-BLOCK-object)
@@ -72,7 +70,7 @@ MIT in each case. |#
 
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
-      (error:illegal-datum alist 'UNSYNTAX-WITH-SUBSTITUTIONS))
+      (error:wrong-type-argument alist "alist" 'UNSYNTAX-WITH-SUBSTITUTIONS))
   (fluid-let ((substitutions alist))
     (unsyntax scode)))
 
@@ -103,10 +101,9 @@ MIT in each case. |#
 	    (unsyntax-objects (cdr objects)))))
 
 (define (unsyntax-error keyword message . irritants)
-  (error-procedure
-   (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
-   irritants
-   system-global-environment))
+  (apply error
+	 (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
+	 irritants))
 
 ;;;; Unsyntax Quanta
 
@@ -331,7 +328,8 @@ MIT in each case. |#
 
 (define (unsyntax-lambda-list expression)
   (if (not (lambda? expression))
-      (error:illegal-datum expression 'UNSYNTAX-LAMBDA-LIST))
+      (error:wrong-type-argument expression "SCode lambda"
+				 'UNSYNTAX-LAMBDA-LIST))
   (lambda-components** expression
     (lambda (name required optional rest body)
       name body
@@ -376,8 +374,6 @@ MIT in each case. |#
 		`(CONS-STREAM ,(unsyntax-object (car operands))
 			      ,(unsyntax-object
 				(delay-expression (cadr operands)))))
-	       ((absolute-reference-to? operator 'BREAKPOINT-PROCEDURE)
-		(unsyntax-error-like-form operands 'BKPT))
 	       ((lambda? operator)
 		(lambda-components** operator
 		  (lambda (name required optional rest body)
@@ -436,34 +432,6 @@ MIT in each case. |#
 	       (cdr expression))
 	 ,@(cddr (caddr (car expression))))
       expression))
-
-(define (unsyntax-ERROR-COMBINATION-object combination)
-  (if unsyntaxer:macroize?
-      (unsyntax-error-like-form (combination-operands combination) 'ERROR)
-      (unsyntax-COMBINATION-object combination)))
-
-(define (unsyntax-error-like-form operands name)
-  (cons* name
-	 (unsyntax-object (car operands))
-	 (unsyntax-objects
-	  (let loop ((irritants (cadr operands)))
-	    (cond ((null? irritants) '())
-		  ((has-substitution? irritants) (list irritants))
-		  ((and (combination? irritants)
-			(absolute-reference-to?
-			 (combination-operator irritants)
-			 'LIST))
-		   (combination-operands irritants))
-		  ((and (combination? irritants)
-			(eq? (combination-operator irritants) cons))
-		   (let ((operands (combination-operands irritants)))
-		     (cons (car operands)
-			   (loop (cadr operands)))))
-		  (else
-		   ;; Actually, this is an error.  But do
-		   ;; something useful here just in case it
-		   ;; actually happens.
-		   (list irritants)))))))
 
 (define (unsyntax/fluid-let names values body if-malformed)
   (combination-components body

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.11 1990/11/09 10:10:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.12 1991/02/15 18:05:53 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,7 +63,8 @@ MIT in each case. |#
   (operation-names false read-only true))
 
 (define (guarantee-input-port port)
-  (if (not (input-port? port)) (error "Bad input port" port))
+  (if (not (input-port? port))
+      (error:wrong-type-argument port "input port" false))
   port)
 
 (define (input-port/copy port state)
@@ -236,8 +237,9 @@ MIT in each case. |#
 			      0
 			      (begin
 				(if (not (exact-nonnegative-integer? interval))
-				    (error:illegal-datum interval
-							 'CHAR-READY?))
+				    (error:wrong-type-argument interval
+							       false
+							       'CHAR-READY?))
 				interval))))
 
 (define (peek-char #!optional port)

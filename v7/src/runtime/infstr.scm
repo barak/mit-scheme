@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infstr.scm,v 1.3 1990/01/22 23:41:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infstr.scm,v 1.4 1991/02/15 18:05:45 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -161,35 +161,48 @@ MIT in each case. |#
 (define (dbg-label/name label)
   (cond ((dbg-label-2? label) (dbg-label-2/name label))
 	((dbg-label-1? label) (dbg-label-1/name label))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label" 'DBG-LABEL/NAME))))
 
 (define (set-dbg-label/name! label name)
   (cond ((dbg-label-1? label) (set-dbg-label-1/name! label name))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'SET-DBG-LABEL/NAME!))))
 
 (define (dbg-label/offset label)
   (cond ((dbg-label-2? label) (dbg-label-2/offset label))
 	((dbg-label-1? label) (dbg-label-1/offset label))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'DBG-LABEL/OFFSET))))
 
 (define (dbg-label/external? label)
   (cond ((dbg-label-2? label) (dbg-label-2/external? label))
 	((dbg-label-1? label) (dbg-label-1/external? label))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'DBG-LABEL/EXTERNAL?))))
 
 (define (set-dbg-label/external?! label external?)
   (cond ((dbg-label-2? label) (set-dbg-label-2/external?! label external?))
 	((dbg-label-1? label) (set-dbg-label-1/external?! label external?))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'SET-DBG-LABEL/EXTERNAL?!))))
 
 (define (dbg-label/names label)
   (cond ((dbg-label-2? label) (dbg-label-2/names label))
 	((dbg-label-1? label) (dbg-label-1/names label))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'DBG-LABEL/NAMES))))
 
 (define (set-dbg-label/names! label names)
   (cond ((dbg-label-1? label) (set-dbg-label-1/names! label names))
-	(else (error error-type:wrong-type-argument label))))
+	(else
+	 (error:wrong-type-argument label "debugging label"
+				    'SET-DBG-LABEL/NAMES!))))
 
 (define-structure (dbg-label-1
 		   (named

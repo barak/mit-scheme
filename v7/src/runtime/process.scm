@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.4 1990/11/09 08:44:17 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.5 1991/02/15 18:06:38 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,7 +61,8 @@ MIT in each case. |#
 	    ((inherited) 1)
 	    ((pipe) 2)
 	    ((pty) 3)
-	    (else (error:illegal-datum ctty-type 'MAKE-SUBPROCESS))))))
+	    (else
+	     (error:wrong-type-argument ctty-type false 'MAKE-SUBPROCESS))))))
     (let ((input-channel
 	   (without-interrupts
 	    (lambda ()

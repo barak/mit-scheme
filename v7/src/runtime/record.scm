@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.7 1990/10/16 21:03:14 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.8 1991/02/15 18:06:42 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,10 +47,14 @@ MIT in each case. |#
 					(unparser/standard-method type-name))
     (named-structure/set-tag-description! record-type
       (letrec ((description
-		(let ((predicate (record-predicate record-type)))
+		(let ((predicate (record-predicate record-type))
+		      (record-name
+		       (string-append "record of type "
+				      (write-to-string type-name))))
 		  (lambda (record)
 		    (if (not (predicate record))
-			(error:illegal-datum record description))
+			(error:wrong-type-argument record record-name
+						   description))
 		    (map (lambda (field-name)
 			   (list field-name
 				 (vector-ref
@@ -69,12 +73,13 @@ MIT in each case. |#
 
 (define (record-type-name record-type)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-TYPE-NAME))
+      (error:wrong-type-argument record-type "record type" 'RECORD-TYPE-NAME))
   (vector-ref record-type 1))
 
 (define (record-type-field-names record-type)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-TYPE-FIELD-NAMES))
+      (error:wrong-type-argument record-type "record type"
+				 'RECORD-TYPE-FIELD-NAMES))
   (list-copy (vector-ref record-type 2)))
 
 (define-integrable (record-type-record-length record-type)
@@ -83,14 +88,15 @@ MIT in each case. |#
 (define (record-type-field-index record-type field-name procedure-name)
   (let loop ((field-names (vector-ref record-type 2)) (index 1))
     (if (null? field-names)
-	(error:datum-out-of-range field-name procedure-name))
+	(error:bad-range-argument field-name procedure-name))
     (if (eq? field-name (car field-names))
 	index
 	(loop (cdr field-names) (+ index 1)))))
 
 (define (set-record-type-unparser-method! record-type method)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+      (error:wrong-type-argument record-type "record type"
+				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
   (unparser/set-tagged-vector-method! record-type method))
 
 (define record-type-marker)
@@ -106,13 +112,14 @@ MIT in each case. |#
   (named-structure/set-tag-description! record-type-marker
     (lambda (record-type)
       (if (not (record-type? record-type))
-	  (error:illegal-datum record-type false))
+	  (error:wrong-type-argument record-type "record type" false))
       `((TYPE-NAME ,(record-type-name record-type))
 	(FIELD-NAMES ,(record-type-field-names record-type))))))
 
 (define (record-constructor record-type #!optional field-names)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-CONSTRUCTOR))
+      (error:wrong-type-argument record-type "record type"
+				 'RECORD-CONSTRUCTOR))
   (let ((field-names
 	 (if (default-object? field-names)
 	     (vector-ref record-type 2)
@@ -143,12 +150,12 @@ MIT in each case. |#
 
 (define (record-type-descriptor record)
   (if (not (record? record))
-      (error:illegal-datum record 'RECORD-TYPE-DESCRIPTOR))
+      (error:wrong-type-argument record "record" 'RECORD-TYPE-DESCRIPTOR))
   (vector-ref record 0))
 
 (define (record-predicate record-type)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-PREDICATE))
+      (error:wrong-type-argument record-type "record type" 'RECORD-PREDICATE))
   (let ((record-length (record-type-record-length record-type)))
     (lambda (object)
       (and (vector? object)
@@ -157,7 +164,7 @@ MIT in each case. |#
 
 (define (record-accessor record-type field-name)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-ACCESSOR))
+      (error:wrong-type-argument record-type "record type" 'RECORD-ACCESSOR))
   (let ((record-length (record-type-record-length record-type))
 	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
 	(index
@@ -166,12 +173,12 @@ MIT in each case. |#
       (if (not (and (vector? record)
 		    (= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
-	  (error:illegal-datum record procedure-name))
+	  (error:wrong-type-argument record "record" procedure-name))
       (vector-ref record index))))
 
 (define (record-updater record-type field-name)
   (if (not (record-type? record-type))
-      (error:illegal-datum record-type 'RECORD-UPDATER))
+      (error:wrong-type-argument record-type "record type" 'RECORD-UPDATER))
   (let ((record-length (record-type-record-length record-type))
 	(procedure-name `(RECORD-UPDATER ,record-type ',field-name))
 	(index
@@ -180,5 +187,5 @@ MIT in each case. |#
       (if (not (and (vector? record)
 		    (= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
-	  (error:illegal-datum record procedure-name))
+	  (error:wrong-type-argument record "record" procedure-name))
       (vector-set! record index field-value))))

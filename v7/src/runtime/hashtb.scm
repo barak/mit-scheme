@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hashtb.scm,v 1.1 1990/02/10 23:43:09 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hashtb.scm,v 1.2 1991/02/15 18:05:41 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -388,7 +388,7 @@ MIT in each case. |#
 (define (check-arg object predicate default)
   (cond ((predicate object) object)
 	((not object) default)
-	(else (error error-type:wrong-type-argument object))))
+	(else (error:wrong-type-datum object false))))
 
 ;;;; Common Hash Table Constructors
 

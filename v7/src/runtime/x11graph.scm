@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.6 1990/10/02 22:44:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.7 1991/02/15 18:07:54 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -267,7 +267,8 @@ MIT in each case. |#
   (x-graphics-device/process-events! device)
   (if (not (and (exact-nonnegative-integer? line-style)
 		(< line-style 8)))
-      (error:illegal-datum line-style 'SET-LINE-STYLE))
+      (error:wrong-type-argument line-style "graphics line style"
+				 'SET-LINE-STYLE))
   (let ((xw (x-graphics-device/window device)))
     (if (zero? line-style)
 	(x-graphics-set-line-style xw 0)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.5 1990/09/13 20:12:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dragon4.scm,v 1.6 1991/02/15 18:04:59 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -219,4 +219,4 @@ MIT in each case. |#
 		      ((absolute) (cutoff-adjust cutoff))
 		      ((relative) (cutoff-adjust (+ k cutoff)))
 		      (else
-		       (error:illegal-datum cutoff-mode 'DRAGON4)))))))))))))
+		       (error:wrong-type-datum cutoff-mode false)))))))))))))

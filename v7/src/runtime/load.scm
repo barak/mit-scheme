@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.19 1990/11/19 19:33:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.20 1991/02/15 18:06:13 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -183,7 +183,7 @@ MIT in each case. |#
 		   (load/default-find-pathname-with-type pathname
 							 default-types)))))
 	(if (not truename)
-	    (error error-type:open-file pathname))
+	    (error:open-file pathname))
 	truename)))
 
 (define (search-types-in-order pathname default-types)

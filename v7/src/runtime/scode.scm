@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.10 1990/09/11 22:57:46 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.11 1991/02/15 18:06:58 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -99,12 +99,18 @@ MIT in each case. |#
 ;;;; Symbol
 
 (define (symbol? object)
-  (or (object-type? (ucode-type interned-symbol) object)
-      (object-type? (ucode-type uninterned-symbol) object)))
+  (or (interned-symbol? object)
+      (uninterned-symbol? object)))
+
+(define-integrable (interned-symbol? object)
+  (object-type? (ucode-type interned-symbol) object))
+
+(define-integrable (uninterned-symbol? object)
+  (object-type? (ucode-type uninterned-symbol) object))
 
 (define (string->uninterned-symbol string)
   (if (not (string? string))
-      (error:illegal-datum string 'STRING->UNINTERNED-SYMBOL))
+      (error:wrong-type-argument string "string" 'STRING->UNINTERNED-SYMBOL))
   (&typed-pair-cons (ucode-type uninterned-symbol)
 		    string
 		    (make-unbound-reference-trap)))
@@ -117,7 +123,7 @@ MIT in each case. |#
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
-      (error:illegal-datum symbol 'SYMBOL-NAME))
+      (error:wrong-type-argument symbol "symbol" 'SYMBOL-NAME))
   (system-pair-car symbol))
 
 (define-integrable (symbol->string symbol)

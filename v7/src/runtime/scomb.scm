@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.9 1990/09/11 22:57:55 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.10 1991/02/15 18:07:03 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -170,7 +170,8 @@ MIT in each case. |#
 	       (&triple-second expression)
 	       (&triple-third expression)))
 	(else
-	 (error:illegal-datum expression 'SEQUENCE-IMMEDIATE-ACTIONS))))
+	 (error:wrong-type-argument expression "SCode sequence"
+				    'SEQUENCE-IMMEDIATE-ACTIONS))))
 
 (define-integrable (sequence-components expression receiver)
   (receiver (sequence-actions expression)))
@@ -309,7 +310,8 @@ MIT in each case. |#
 				  ,combination))
 		,case-n)
 	       (ELSE
-		(ERROR:ILLEGAL-DATUM ,combination ',name))))))
+		(ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
+					   ',name))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination

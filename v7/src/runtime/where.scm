@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.8 1990/09/11 20:46:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/where.scm,v 14.9 1991/02/15 18:07:46 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,21 +38,24 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (where #!optional environment)
-  (let ((wstate
-	 (make-wstate
-	  (list
-	   (if (default-object? environment)
-	       (nearest-repl/environment)
-	       (->environment environment))))))
-    (letter-commands
-     command-set
-     (cmdl-message/active
-      (lambda ()
-	(show-current-frame wstate true)
-	(debugger-message
-	 "You are now in the environment inspector.  Type q to quit, ? for commands.")))
-     "Where-->"
-     wstate)))
+  (with-simple-restart 'CONTINUE "Return from WHERE."
+    (lambda ()
+      (let ((wstate
+	     (make-wstate
+	      (list
+	       (if (default-object? environment)
+		   (nearest-repl/environment)
+		   (->environment environment))))))
+	(letter-commands
+	 command-set
+	 (cmdl-message/active
+	  (lambda (cmdl)
+	    cmdl
+	    (show-current-frame wstate true)
+	    (debugger-message
+	     "You are now in the environment inspector.  Type q to quit, ? for commands.")))
+	 "Where-->"
+	 wstate)))))
 
 (define-structure (wstate
 		   (conc-name wstate/))

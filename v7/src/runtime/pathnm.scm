@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.10 1990/11/15 23:45:39 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.11 1991/02/15 18:06:34 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -340,7 +340,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define (canonicalize-input-pathname filename)
   (let ((pathname (->pathname filename)))
     (let ((truename (pathname->input-truename pathname)))
-      (if (not truename) (error error-type:open-file pathname))
+      (if (not truename) (error:open-file pathname))
       truename)))
 
 (define (pathname->input-truename pathname)
@@ -427,7 +427,7 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 (define (system-library-pathname pathname)
   (let loop ((directories library-directory-path))
     (if (null? directories)
-	(error error-type:open-file pathname))
+	(error:open-file pathname))
     (or (pathname->input-truename (merge-pathnames pathname (car directories)))
 	(loop (cdr directories)))))
 

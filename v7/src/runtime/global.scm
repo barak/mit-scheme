@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.20 1990/11/14 13:24:16 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.21 1991/02/15 18:05:37 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -247,19 +247,3 @@ MIT in each case. |#
 		(per-symbol
 		 (cdr bucket)
 		 (cons (car bucket) accumulator))))))))
-
-(define (error:illegal-datum object #!optional operator-name)
-  (if (or (default-object? operator-name) (not operator-name))
-      (error error-type:wrong-type-argument object)
-      (error error-type:wrong-type-argument object
-	     (error-irritant/noise char:newline)
-	     (error-irritant/noise "within procedure")
-	     operator-name)))
-
-(define (error:datum-out-of-range object #!optional operator-name)
-  (if (or (default-object? operator-name) (not operator-name))
-      (error error-type:bad-range-argument object)
-      (error error-type:bad-range-argument object
-	     (error-irritant/noise char:newline)
-	     (error-irritant/noise "within procedure")
-	     operator-name)))
