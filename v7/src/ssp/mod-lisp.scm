@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.16 2004/11/23 16:34:24 cph Exp $
+$Id: mod-lisp.scm,v 1.17 2004/11/23 17:20:34 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -290,7 +290,6 @@ USA.
   '("index.html" "index.xhtml" "index.ssp" "index.xml"))
 
 (define (mod-lisp-expander request response pathname expander authenticator)
-  (run-hooks-in-list mod-lisp-before-expander-hooks request)
   (call-with-output-string
     (lambda (port)
       (fluid-let ((*in-mod-lisp?* #t)
@@ -303,8 +302,9 @@ USA.
 		     (with-repl-eval-boundary (nearest-repl)
 		       (lambda ()
 			 (eval expression environment))))))
-	(expander pathname port))
-      (run-hooks-in-list mod-lisp-after-expander-hooks request response))))
+	(run-hooks-in-list mod-lisp-before-expander-hooks request)
+	(expander pathname port)
+	(run-hooks-in-list mod-lisp-after-expander-hooks request response)))))
 
 (define mod-lisp-before-expander-hooks (make-hook-list))
 (define mod-lisp-after-expander-hooks (make-hook-list))
@@ -816,9 +816,11 @@ USA.
 (define subtree-authenticators '())
 
 (define (http-request-user-name)
-  (http-message-user-name *current-request*))
+  (if *current-authenticator*
+      (*current-authenticator* *current-request*)
+      (http-authenticator:basic *current-request*)))
 
-(define (http-message-user-name message)
+(define (http-authenticator:basic message)
   (let ((auth (http-message-header message 'authorization)))
     (and auth
 	 (cond ((string-prefix? "Basic " auth)
@@ -889,7 +891,7 @@ USA.
 	(write-line (list (get-universal-time)
 			  (http-message-method request)
 			  (http-message-url request)
-			  (http-message-user-name request)
+			  (http-request-user-name)
 			  (http-message-post-parameters request))
 		    request-log-port)
 	(flush-output request-log-port))))

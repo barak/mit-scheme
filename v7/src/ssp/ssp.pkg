@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.14 2004/11/23 16:34:28 cph Exp $
+$Id: ssp.pkg,v 1.15 2004/11/23 17:20:38 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ USA.
 	  define-mime-handler
 	  define-subtree-authenticator
 	  define-subtree-handler
+	  http-authenticator:basic
 	  http-browser-type
 	  html-content-type
 	  http-request-cookie
@@ -77,6 +78,7 @@ USA.
 	  trace-i/o-filename
 	  trace-requests?)
   (export (runtime ssp-expander-environment)
+	  http-authenticator:basic
 	  http-browser-type
 	  html-content-type
 	  http-request-cookie
