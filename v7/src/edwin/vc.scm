@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.52 2000/03/31 19:20:54 cph Exp $
+;;; $Id: vc.scm,v 1.53 2000/03/31 19:22:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -524,7 +524,7 @@ merge in the changes into your working copy."
 			  (message (buffer-name buffer) " is up to date.")))))
 		((NEEDS-CHECKOUT NEEDS-MERGE)
 		 (vc-next-action-merge master from-dired?))
-		((LOCALLY-MODIFIED LOCALLY-ADDED)
+		((LOCALLY-MODIFIED LOCALLY-ADDED LOCALLY-REMOVED)
 		 (do-checkin))
 		((UNRESOLVED-CONFLICT)
 		 (message (->namestring workfile)
@@ -551,13 +551,13 @@ merge in the changes into your working copy."
 	     (and (there-exists? files
 		    (lambda (file)
 		      (let ((master (file-vc-master file #f)))
-			(and master
-			     (if (eq? vc-type:cvs (vc-master-type master))
-				 (memq (cvs-status master)
-				       '(LOCALLY-MODIFIED
-					 LOCALLY-ADDED
-					 LOCALLY-REMOVED))
-				 (vc-backend-locking-user master #f))))))
+			(or (not master)
+			    (if (eq? vc-type:cvs (vc-master-type master))
+				(memq (cvs-status master)
+				      '(LOCALLY-MODIFIED
+					LOCALLY-ADDED
+					LOCALLY-REMOVED))
+				(vc-backend-locking-user master #f))))))
 		  "")
 	     #f
 	     (lambda (comment)
