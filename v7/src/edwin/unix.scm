@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.4 1989/04/20 08:19:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.5 1989/04/25 02:03:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -180,31 +180,31 @@ Includes the new backup.  Must be > 0"
 
 (define (os/make-dired-line pathname)
   (let ((attributes (file-attributes pathname)))
-    (string-append "  "
-		   (file-attributes/mode-string attributes)
-		   " "
-		   (pad-on-left-to
-		    (number->string (file-attributes/n-links attributes) 10)
-		    3)
-		   " "
-		   (pad-on-right-to
-		    (unix/uid->string (file-attributes/uid attributes))
-		    8)
-		   " "
-		   (pad-on-right-to
-		    (unix/gid->string (file-attributes/gid attributes))
-		    8)
-		   " "
-		   (pad-on-left-to
-		    (number->string (file-attributes/length attributes) 10)
-		    7)
-		   " "
-		   (substring (unix/file-time->string
-			       (file-attributes/modification-time attributes))
-			      4
-			      16)
-		   " "
-		   (pathname-name-string pathname))))
+    (and attributes
+	 (string-append
+	  "  "
+	  (file-attributes/mode-string attributes)
+	  " "
+	  (pad-on-left-to
+	   (number->string (file-attributes/n-links attributes) 10)
+	   3)
+	  " "
+	  (pad-on-right-to (unix/uid->string (file-attributes/uid attributes))
+			   8)
+	  " "
+	  (pad-on-right-to (unix/gid->string (file-attributes/gid attributes))
+			   8)
+	  " "
+	  (pad-on-left-to
+	   (number->string (file-attributes/length attributes) 10)
+	   7)
+	  " "
+	  (substring (unix/file-time->string
+		      (file-attributes/modification-time attributes))
+		     4
+		     16)
+	  " "
+	  (pathname-name-string pathname)))))
 
 (define (os/dired-filename-region lstart)
   (let ((lend (line-end lstart 0)))
