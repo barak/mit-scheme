@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.2 2000/12/06 05:24:12 cph Exp $
+# $Id: Setup.sh,v 1.3 2000/12/08 17:53:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -21,6 +21,14 @@
 # Program to set up MIT Scheme microcode from CVS for distribution.
 # Requires `gcc' and `scheme'.
 
+if [ ! -f config.h.in ]; then
+    echo "autoheader"
+    autoheader
+fi
+if [ ! -x configure ]; then
+    echo "autoconf"
+    autoconf
+fi
 makegen/makeinit.sh
 make setup
 make distclean

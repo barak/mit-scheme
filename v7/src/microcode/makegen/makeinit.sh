@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.6 2000/12/06 05:24:17 cph Exp $
+# $Id: makeinit.sh,v 1.7 2000/12/08 17:53:58 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,14 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Script to create "config.h.in", "configure", and "Makefile.in".
-# Requires GCC and MIT Scheme.
-
-# generate "config.h.in" from "acconfig.h".
-autoheader
-
-# generate "configure" from "configure.in".
-autoconf
+# Script to create "Makefile.in".
+# Requires `gcc' and `scheme'.
 
 # generate "config.h".
 [ -f Makefile.in ] || touch Makefile.in

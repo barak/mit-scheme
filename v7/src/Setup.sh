@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.3 2000/12/08 17:53:58 cph Exp $
+# $Id: Setup.sh,v 1.4 2000/12/08 17:56:34 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -55,7 +55,10 @@ maybe_mkdir lib/edwin/etc
 maybe_mkdir lib/edwin/info
 maybe_link lib/edwin/autoload ../../edwin
 
-for SUBDIR in "$@"; do
+SUBDIRS=""
+
+for SUBDIR in 6001 compiler cref edwin imail microcode rcs \
+	runtime runtime-check sf sos win32; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     ( cd ${SUBDIR} && ./Setup.sh ) || exit 1
