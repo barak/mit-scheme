@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.61 2000/05/18 05:18:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.62 2000/05/18 15:35:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -637,18 +637,22 @@ With prefix argument N moves backward N messages with these flags."
 (define-command imail-delete-forward
   "Delete this message and move to next nondeleted one.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
-  ()
-  (lambda ()
-    ((ref-command imail-delete-message))
-    ((ref-command imail-next-undeleted-message) 1)))
+  "p"
+  (lambda (n)
+    (do ((i 0 (+ i 1)))
+	((>= i n))
+      ((ref-command imail-delete-message))
+      ((ref-command imail-next-undeleted-message) 1))))
 
 (define-command imail-delete-backward
   "Delete this message and move to previous nondeleted one.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
-  ()
-  (lambda ()
-    ((ref-command imail-delete-message))
-    ((ref-command imail-next-undeleted-message) -1)))
+  "p"
+  (lambda (n)
+    (do ((i 0 (+ i 1)))
+	((>= i n))
+      ((ref-command imail-delete-message))
+      ((ref-command imail-next-undeleted-message) -1))))
 
 (define-command imail-undelete-previous-message
   "Back up to deleted message, select it, and undelete it."
