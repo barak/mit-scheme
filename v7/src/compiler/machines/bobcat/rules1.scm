@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.4 1988/03/14 19:38:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.5 1988/03/25 21:20:04 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER 15) (OFFSET-ADDRESS (REGISTER 15) (? n)))
-  (increment-anl 7 n))
+  (increment-machine-register 15 n))
 
 (define-rule statement
   (ASSIGN (REGISTER 12) (REGISTER 15))
@@ -79,15 +79,16 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER 12) (OBJECT->ADDRESS (REGISTER (? source))))
   (QUALIFIER (pseudo-register? source))
-  (if (and (dead-register? source)
-	   (register-has-alias? source 'DATA))
-      (let ((source (register-reference (register-alias source 'DATA))))
+  (reuse-pseudo-register-alias! source 'DATA
+    (lambda (reusable-alias)
+      (let ((source (register-reference reusable-alias)))
 	(LAP (AND L ,mask-reference ,source)
-	     (MOV L ,source (A 4))))
+	     (MOV L ,source (A 4)))))
+    (lambda ()
       (let ((temp (reference-temporary-register! 'DATA)))
 	(LAP (MOV L ,(coerce->any source) ,temp)
 	     (AND L ,mask-reference ,temp)
-	     (MOV L ,temp (A 4))))))
+	     (MOV L ,temp (A 4)))))))
 
 ;;; All assignments to pseudo registers are required to delete the
 ;;; dead registers BEFORE performing the assignment.  This is because
@@ -96,11 +97,15 @@ MIT in each case. |#
 ;;; happened after the assignment.
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 15) (? n)))
+  (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER (? source)) (? n)))
   (QUALIFIER (pseudo-register? target))
-  (LAP
-   (LEA (@AO 7 ,(* 4 n))
-	,(reference-assignment-alias! target 'ADDRESS))))
+  (reuse-pseudo-register-alias! source 'DATA
+    (lambda (reusable-alias)
+      (add-pseudo-register-alias! target reusable-alias false)
+      (increment-machine-register reusable-alias n))
+    (lambda ()
+      (LAP (LEA ,(indirect-reference! source n)
+		,(reference-assignment-alias! target 'ADDRESS))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
@@ -180,7 +185,7 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (QUALIFIER (pseudo-register? target))
-  (let ((temp (register-reference (allocate-temporary-register! 'ADDRESS))))
+  (let ((temp (reference-temporary-register! 'ADDRESS)))
     (delete-dead-registers!)
     (let ((target* (coerce->any target)))
       (if (register-effective-address? target*)
@@ -231,7 +236,7 @@ MIT in each case. |#
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (CONS-POINTER (CONSTANT (? type)) (ENTRY:PROCEDURE (? label))))
   (let* ((target (indirect-reference! a n))
-	 (temp (register-reference (allocate-temporary-register! 'ADDRESS))))
+	 (temp (reference-temporary-register! 'ADDRESS)))
     (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
 	      ,temp)
 	 (MOV L ,temp ,target)

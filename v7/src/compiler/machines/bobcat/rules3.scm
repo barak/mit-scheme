@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.5 1988/03/14 19:38:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.6 1988/03/25 21:20:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -152,10 +152,10 @@ MIT in each case. |#
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (increment-anl 7 how-far))
+	   (increment-machine-register 15 how-far))
 	  ((= frame-size 1)
 	   (LAP (MOV L (@A+ 7) ,(offset-reference a7 (-1+ how-far)))
-		,@(increment-anl 7 (-1+ how-far))))
+		,@(increment-machine-register 15 (-1+ how-far))))
 	  ((= frame-size 2)
 	   (if (= how-far 1)
 	       (LAP (MOV L (@AO 7 4) (@AO 7 8))
@@ -165,7 +165,7 @@ MIT in each case. |#
 				     ,(offset-reference a7 (-1+ how-far)))))))
 		 (LAP ,(i)
 		      ,(i)
-		      ,@(increment-anl 7 (- how-far 2))))))
+		      ,@(increment-machine-register 15 (- how-far 2))))))
 	  (else
 	   (generate/move-frame-up frame-size (offset-reference a7 offset))))))
 
@@ -370,7 +370,7 @@ MIT in each case. |#
 	 (MOVE W (& #x4eb9) (@A+ 5))			; (JSR (L <entry>))
 	 (MOVE L ,temp-ref (@A+ 5))
 	 (CLR W (@A+ 5))
-	 ,@(increment-anl 5 size))))
+	 ,@(increment-machine-register 15 size))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.

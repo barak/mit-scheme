@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.6 1988/03/14 20:44:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.7 1988/03/25 21:21:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -116,6 +116,9 @@ MIT in each case. |#
   (prefix-instructions! instructions)
   alias)
 
+(define-integrable (reference-existing-alias register type)
+  (register-reference (register-alias register type)))
+
 (define-integrable (reference-alias-register! register type)
   (register-reference (load-alias-register! register type)))
 
@@ -125,38 +128,44 @@ MIT in each case. |#
 (define-integrable (reference-temporary-register! type)
   (register-reference (allocate-temporary-register! type)))
 
+(define (reuse-pseudo-register-alias! source type if-reusable if-not)
+  (let ((reusable-alias
+	 (and (dead-register? source)
+	      (register-alias source type))))
+    (if reusable-alias
+	(begin (delete-dead-registers!)
+	       (if-reusable reusable-alias))
+	(if-not))))
+
 (define (move-to-alias-register! source type target)
-  (reuse-pseudo-register-alias! source type
+  (reuse-and-load-pseudo-register-alias! source type
     (lambda (reusable-alias)
       (add-pseudo-register-alias! target reusable-alias false))
     (lambda ()
       (allocate-alias-register! target type))))
 
 (define (move-to-temporary-register! source type)
-  (reuse-pseudo-register-alias! source type
+  (reuse-and-load-pseudo-register-alias! source type
     need-register!
     (lambda ()
       (allocate-temporary-register! type))))
 
-(define (reuse-pseudo-register-alias! source type if-reusable if-not)
-  ;; IF-NOT is assumed to return a machine register.
-  (let ((reusable-alias
-	 (and (dead-register? source)
-	      (register-alias source type))))
-    (if reusable-alias
-	(begin (delete-dead-registers!)
-	       (if-reusable reusable-alias)
-	       (register-reference reusable-alias))
-	(let ((alias (if (machine-register? source)
-			 source
-			 (register-alias source false))))
-	  (delete-dead-registers!)
-	  (let ((target (if-not)))
-	    (prefix-instructions!
-	     (cond ((not alias) (home->register-transfer source target))
-		   ((= alias target) '())
-		   (else (register->register-transfer alias target))))
-	    (register-reference target))))))
+(define (reuse-and-load-pseudo-register-alias! source type if-reusable if-not)
+  (reuse-pseudo-register-alias! source type
+    (lambda (reusable-alias)
+      (if-reusable reusable-alias)
+      (register-reference reusable-alias))
+    (lambda ()
+      (let ((alias (if (machine-register? source)
+		       source
+		       (register-alias source false))))
+	(delete-dead-registers!)
+	(let ((target (if-not)))
+	  (prefix-instructions!
+	   (cond ((not alias) (home->register-transfer source target))
+		 ((= alias target) '())
+		 (else (register->register-transfer alias target))))
+	  (register-reference target))))))
 
 ;; These procedures are used when the copy is going to be transformed,
 ;; and the machine has 3 operand instructions, which allow an implicit
@@ -186,27 +195,24 @@ MIT in each case. |#
      (allocate-temporary-register! type))))
 
 (define (provide-copy-reusing-alias! source type rec1 rec2 if-reusable if-not)
-  ;; IF-NOT is assumed to return a machine register.
-  (let ((reusable-alias
-	 (and (dead-register? source)
-	      (register-alias source type))))
-    (if reusable-alias
-	(begin (delete-dead-registers!)
-	       (if-reusable reusable-alias)
-	       (rec1 (register-reference reusable-alias)))
-	(let ((alias (if (machine-register? source)
-			 source
-			 (register-alias source false))))
-	  (delete-dead-registers!)
-	  (let ((target (if-not)))
-	    (cond ((not alias)
-		   (rec2 (pseudo-register-home source)
-			 (register-reference target)))
-		  ((= alias target)
-		   (rec1 (register-reference target)))
-		  (else
-		   (rec2 (register-reference alias)
-			 (register-reference target)))))))))
+  (reuse-pseudo-register-alias! source type
+    (lambda (reusable-alias)
+      (if-reusable reusable-alias)
+      (rec1 (register-reference reusable-alias)))
+    (lambda ()
+      (let ((alias (if (machine-register? source)
+		       source
+		       (register-alias source false))))
+	(delete-dead-registers!)
+	(let ((target (if-not)))
+	  (cond ((not alias)
+		 (rec2 (pseudo-register-home source)
+		       (register-reference target)))
+		((= alias target)
+		 (rec1 (register-reference target)))
+		(else
+		 (rec2 (register-reference alias)
+		       (register-reference target)))))))))
 
 (define (add-pseudo-register-alias! register alias saved-into-home?)
   (set! *register-map*

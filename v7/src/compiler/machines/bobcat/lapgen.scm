@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.2 1988/03/14 19:16:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.3 1988/03/25 21:20:28 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -80,7 +80,7 @@ MIT in each case. |#
       (if (< register 8)
 	  (INST-EA (@DO ,register ,(* 4 offset)))
 	  (INST-EA (@AO ,(- register 8) ,(* 4 offset))))))
-
+
 (define (load-dnw n d)
   (cond ((zero? n)
 	 (INST (CLR W (D ,d))))
@@ -93,13 +93,15 @@ MIT in each case. |#
   (if (zero? n)
       (INST (TST W (D ,d)))
       (INST (CMPI W (& ,n) (D ,d)))))
-
-(define (increment-anl an n)
-  (case n
-    ((0) (LAP))
-    ((1 2) (LAP (ADDQ L (& ,(* 4 n)) (A ,an))))
-    ((-1 -2) (LAP (SUBQ L (& ,(* -4 n)) (A ,an))))
-    (else (LAP (LEA (@AO ,an ,(* 4 n)) (A ,an))))))
+
+(define (increment-machine-register register n)
+  (let ((target (register-reference register)))
+    (case n
+      ((0) (LAP))
+      ((1 2) (LAP (ADDQ L (& ,(* 4 n)) ,target)))
+      ((-1 -2) (LAP (SUBQ L (& ,(* -4 n)) ,target)))
+      ((< register 8) (LAP (ADD L (& ,(* 4 n)) ,target)))
+      (else (LAP (LEA (@AO ,(- register 8) ,(* 4 n)) ,target))))))
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
@@ -116,12 +118,13 @@ MIT in each case. |#
 		    (& ,(make-non-pointer-literal type datum))
 		    ,target)))
 	((and (zero? datum)
-	      (memq (lap:ea-keyword target) '(D @D @A @A+ @-A @AO @DO @AOX W L)))
+	      (memq (lap:ea-keyword target)
+		    '(D @D @A @A+ @-A @AO @DO @AOX W L)))
 	 (INST (CLR L ,target)))
 	((and (<= -128 datum 127) (eq? (lap:ea-keyword target) 'D))
 	 (INST (MOVEQ (& ,datum) ,target)))
 	(else (INST (MOV L (& ,datum) ,target)))))
-
+
 (define (test-byte n effective-address)
   (if (and (zero? n) (TSTable-effective-address? effective-address))
       (INST (TST B ,effective-address))
@@ -185,7 +188,8 @@ MIT in each case. |#
       result)))
 
 (define-integrable (TSTable-effective-address? effective-address)
-  (memq (lap:ea-keyword effective-address) '(D @D @A @A+ @-A @DO @AO @AOX W L)))
+  (memq (lap:ea-keyword effective-address)
+	'(D @D @A @A+ @-A @DO @AO @AOX W L)))
 
 (define-integrable (register-effective-address? effective-address)
   (memq (lap:ea-keyword effective-address) '(A D)))
