@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.8 1995/03/11 17:44:22 adams Exp $
+$Id: compat.scm,v 1.9 1995/06/22 15:11:12 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -427,13 +427,14 @@ MIT in each case. |#
 	       . ,(compat/expr* env (cdr rands)))))))
 
 (define-rewrite/compat %variable-cache-ref
-  ;; (CALL ',%variable-cache-ref '#F <read-variable-cache> 'NAME)
-  ;;       ------- rator ------- cont -------- rands -----------
+  ;; (CALL %variable-cache-ref '#F <read-variable-cache> 'IGNORE-TRAPS? 'NAME)
+  ;;       ------ rator ------ cont -------- rands -----------
   (lambda (env rator cont rands)
     rator				; ignored
     (let ((cont  (compat/expr env cont))
 	  (cell  (compat/expr env (first rands)))
-	  (quoted-name (compat/expr env (second rands))))
+	  (ignore-traps? (compat/expr env (second rands)))
+	  (quoted-name (compat/expr env (third rands))))
       (compat/verify-hook-continuation cont)
       (compat/verify-cache cell quoted-name)
       (let* ((%continue
@@ -447,7 +448,7 @@ MIT in each case. |#
 	     (cell-name
 	      (new-variable-cache-variable name `(VARIABLE-CACHE ,name)))
 	     (value-name (compat/new-name name)))
-	(if (compat/ignore-reference-traps? name)
+	(if (quote/text ignore-traps?)
 	    (%continue `(CALL (QUOTE ,%variable-cell-ref)
 			      (QUOTE #F)
 			      (CALL (QUOTE ,%variable-read-cache) (QUOTE #F)
@@ -468,12 +469,14 @@ MIT in each case. |#
 
 (define-rewrite/compat %safe-variable-cache-ref
   (lambda (env rator cont rands)
-    ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache> 'NAME)
+    ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache>
+    ;;       'IGNORE-TRAPS? 'NAME)
     ;;       --------- rator --------- cont -------- rands -----------
     rator				; ignored
     (let ((cont  (compat/expr env cont))
 	  (cell  (compat/expr env (first rands)))
-	  (quoted-name (compat/expr env (second rands))))
+	  (ignore-traps? (compat/expr env (second rands)))
+	  (quoted-name (compat/expr env (third rands))))
       (compat/verify-hook-continuation cont)
       (compat/verify-cache cell quoted-name)
       (let* ((%continue
@@ -493,7 +496,7 @@ MIT in each case. |#
 	   (LET ((,value-name (CALL (QUOTE ,%variable-cell-ref)
 				    (QUOTE #F)
 				    (LOOKUP ,cell-name))))
-	     ,(if (compat/ignore-reference-traps? name)
+	     ,(if (quote/text ignore-traps?)
 		  (%continue `(LOOKUP ,value-name))
 		  `(IF (IF (CALL (QUOTE ,%reference-trap?)
 				 (QUOTE #F)
@@ -506,17 +509,6 @@ MIT in each case. |#
 		       (CALL (QUOTE ,%hook-safe-variable-cell-ref)
 			     ,cont
 			     (LOOKUP ,cell-name))))))))))
-
-
-;;;  These predicates should determine the right answers from declarations:
-
-(define (compat/ignore-reference-traps? name)
-  name
-  #F)
-
-(define (compat/ignore-assignment-traps? name)
-  name
-  #F)
 
 ;; NOTE: This is never in value position because envconv expands
 ;; all cell sets into begins.  In particular, this means that cont
@@ -527,13 +519,14 @@ MIT in each case. |#
 
 (define-rewrite/compat %variable-cache-set!
   (lambda (env rator cont rands)
-    ;; (CALL ',%variable-write-cache '#F <write-variable-cache> 'NAME)
-    ;;       -------- rator -------- cont -------- rands -----------
+    ;; (CALL ',%variable-cache-set! '#F <write-variable-cache> 'IGNORE-TRAPS? 'NAME)
+    ;;       ------- rator -------- cont -------- rands -----------
     rator				; ignored
-    (let ((cont        (compat/expr env cont))
-	  (cell        (compat/expr env (first rands)))
-	  (value       (compat/expr env (second rands)))
-	  (quoted-name (compat/expr env (third rands))))
+    (let ((cont          (compat/expr env cont))
+	  (cell          (compat/expr env (first rands)))
+	  (value         (compat/expr env (second rands)))
+	  (ignore-traps? (compat/expr env (third rands)))
+	  (quoted-name   (compat/expr env (fourth rands))))
       ;; (compat/verify-hook-continuation cont)
       (if (not (equal? cont '(QUOTE #F)))
 	  (internal-error "Unexpected continuation to variable cache assignment"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triveval.scm,v 1.4 1995/03/20 02:01:28 adams Exp $
+$Id: triveval.scm,v 1.5 1995/06/22 15:09:07 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -232,19 +232,19 @@ MIT in each case. |#
 (define (make-write-variable-cache env name)
   (variable-cache/make env name))
 
-(define (variable-cache-ref cache name)
-  name					; ignored
+(define (variable-cache-ref cache ignore-traps? name)
+  ignore-traps? name			; ignored
   (lexical-reference (variable-cache/env cache)
 		     (variable-cache/name cache)))
 
-(define (variable-cache-set! cache value name)
-  name					; ignored
+(define (variable-cache-set! cache value ignore-traps? name)
+  ignore-traps? name			; ignored
   (lexical-assignment (variable-cache/env cache)
 		      (variable-cache/name cache)
 		      value))
 
-(define (safe-variable-cache-ref cache name)
-  name					; ignored
+(define (safe-variable-cache-ref cache ignore-traps? name)
+  ignore-traps? name			; ignored
   (let ((env (variable-cache/env cache))
 	(name (variable-cache/name cache)))
     (if (lexical-unassigned? env name)
@@ -365,7 +365,7 @@ MIT in each case. |#
 	      (reverse (cdr elements)))))))
 
 (define *operator->procedure*
-  (make-eq-hash-table 311))
+  (make-eq-hash-table))
 
 (define (operator->procedure rator)
   (if (not (symbol? rator))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.16 1995/06/22 01:50:10 adams Exp $
+$Id: fakeprim.scm,v 1.17 1995/06/22 15:09:29 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -308,7 +308,7 @@ MIT in each case. |#
 	     'descriptor operator-cache #!rest values)
 
 (define %variable-cache-ref
-  ;; (CALL ',%variable-cache-ref '#F <read-variable-cache> 'NAME)
+  ;; (CALL %variable-cache-ref '#F <read-variable-cache> 'ignore-traps? 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, removed by compat.scm (replaced by a
   ;;     lot of hairy code)
@@ -317,21 +317,23 @@ MIT in each case. |#
   (make-operator "#[variable-cache-ref]"
 		 '(SIDE-EFFECT-FREE) '(OUT-OF-LINE-HOOK)))
 
-(cookie-call %variable-cache-ref '#F read-variable-cache 'NAME)
+(cookie-call %variable-cache-ref '#F read-variable-cache 'IGNORE-TRAPS? 'NAME)
 
 (define %variable-cache-set!
   ;; (CALL ',%variable-cache-set! '#F <write-variable-cache>
-  ;;       <value> 'NAME)
+  ;;       <value> 'IGNORE-TRAPS? 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, removed by compat.scm (replaced by a
   ;;     lot of hairy code)
   ;;   The NAME is redundant with the code that creates the variable cache
   (make-operator "#[variable-cache-set!]" '(OUT-OF-LINE-HOOK)))
 
-(cookie-call %variable-cache-set! '#F write-variable-cache value 'NAME)
+(cookie-call %variable-cache-set! '#F write-variable-cache value
+	     'IGNORE-TRAPS? 'NAME)
 
 (define %safe-variable-cache-ref
-  ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache> 'NAME)
+  ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache>
+  ;;       'IGNORE-TRAPS? 'NAME)
   ;; Note:
   ;;   Introduced by envconv.scm, removed by compat.scm (replaced by a
   ;;     lot of hairy code)
@@ -341,8 +343,8 @@ MIT in each case. |#
   (make-operator "#[safe-variable-cache-ref]"
 		 '(SIDE-EFFECT-FREE) '(OUT-OF-LINE-HOOK)))
 
-
-(cookie-call %safe-variable-cache-ref '#F read-variable-cache 'NAME)
+(cookie-call %safe-variable-cache-ref '#F read-variable-cache
+	     'IGNORE-TRAPS? 'NAME)
 
 (define %variable-read-cache
   ;; (CALL ',%variable-read-cache '#F <read-variable-cache> 'NAME)
