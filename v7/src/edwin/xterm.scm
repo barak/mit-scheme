@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.56 1999/01/02 06:11:34 cph Exp $
+;;; $Id: xterm.scm,v 1.57 1999/02/22 05:05:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -113,12 +113,12 @@
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm display))
 		   (conc-name xterm-screen-state/))
-  (xterm false read-only true)
-  (display false read-only true)
-  (redisplay-flag true)
-  (selected? true)
-  (name false)
-  (icon-name false))
+  (xterm #f read-only #t)
+  (display #f read-only #t)
+  (redisplay-flag #t)
+  (selected? #t)
+  (name #f)
+  (icon-name #f))
 
 (define screen-list)
 
@@ -141,7 +141,7 @@
 			xterm-screen/exit!
 			xterm-screen/flush!
 			xterm-screen/modeline-event!
-			false
+			#f
 			xterm-screen/scroll-lines-down!
 			xterm-screen/scroll-lines-up!
 			xterm-screen/wrap-update!
@@ -171,9 +171,7 @@
   (or (x-display-get-geometry display instance)
       (let ((geometry (x-display-get-geometry display class)))
 	(and geometry
-	     (if primary?
-		 geometry
-		 (strip-position-from-geometry geometry))))
+	     (if primary? geometry (strip-position-from-geometry geometry))))
       "80x40"))
 
 (define (x-display-get-geometry display key)
@@ -281,10 +279,10 @@
 	  (x-window-set-icon-name (screen-xterm screen) name)))))
 
 (define (xterm-screen/wrap-update! screen thunk)
-  (let ((finished? false))
+  (let ((finished? #f))
     (dynamic-wind
      (lambda ()
-       (xterm-enable-cursor (screen-xterm screen) false))
+       (xterm-enable-cursor (screen-xterm screen) #f))
      (lambda ()
        (let ((result (thunk)))
 	 (set! finished? result)
@@ -292,12 +290,12 @@
      (lambda ()
        (if (screen-selected? screen)
 	   (let ((xterm (screen-xterm screen)))
-	     (xterm-enable-cursor xterm true)
+	     (xterm-enable-cursor xterm #t)
 	     (xterm-draw-cursor xterm)))
        (if (and finished? (screen-redisplay-flag screen))
 	   (begin
 	     (update-xterm-screen-names! screen)
-	     (set-screen-redisplay-flag! screen false)))
+	     (set-screen-redisplay-flag! screen #f)))
        (xterm-screen/flush! screen)))))
 
 (define (xterm-screen/discard! screen)
@@ -306,7 +304,7 @@
 
 (define (xterm-screen/modeline-event! screen window type)
   window type				; ignored
-  (set-screen-redisplay-flag! screen true))
+  (set-screen-redisplay-flag! screen #t))
 
 (define (xterm-screen/enter! screen)
   (if (pair? (screen-visibility screen))
@@ -317,9 +315,9 @@
 		       (cons xterm-screen/enter!
 			     (cdr (screen-visibility screen)))))))
       (begin
-	(set-screen-selected?! screen true)
+	(set-screen-selected?! screen #t)
 	(let ((xterm (screen-xterm screen)))
-	  (xterm-enable-cursor xterm true)
+	  (xterm-enable-cursor xterm #t)
 	  (xterm-draw-cursor xterm))
 	(xterm-screen/grab-focus! screen)
 	(xterm-screen/flush! screen))))
@@ -336,9 +334,9 @@
 	 #t)))
 
 (define (xterm-screen/exit! screen)
-  (set-screen-selected?! screen false)
+  (set-screen-selected?! screen #f)
   (let ((xterm (screen-xterm screen)))
-    (xterm-enable-cursor xterm false)
+    (xterm-enable-cursor xterm #f)
     (xterm-erase-cursor xterm))
   (xterm-screen/flush! screen))
 
@@ -382,7 +380,7 @@
 ;;;; Event Handling
 
 (define x-screen-auto-raise
-  false)
+  #f)
 
 (define-integrable (maybe-raise-screen)
   (if x-screen-auto-raise
@@ -519,20 +517,23 @@
       (if (and (vector? event)
 	       (fix:= (vector-ref event 0) event-type:expose))
 	  (begin
-	    (let ((xterm (vector-ref event 1)))
-	      ;; If this is the first Expose event for this window, it
-	      ;; requires special treatment.  Element 6 of the event
-	      ;; is 0 for Expose events and 1 for GraphicsExpose
-	      ;; events.
-	      (if (eq? 0 (vector-ref event 6))
-		  (note-xterm-exposed xterm))
-	      (xterm-dump-rectangle xterm
-				    (vector-ref event 2)
-				    (vector-ref event 3)
-				    (vector-ref event 4)
-				    (vector-ref event 5)))
+	    (process-expose-event event)
 	    (loop))
 	  event))))
+
+(define (process-expose-event event)
+  (let ((xterm (vector-ref event 1)))
+    ;; If this is the first Expose event for this window, it
+    ;; requires special treatment.  Element 6 of the event
+    ;; is 0 for Expose events and 1 for GraphicsExpose
+    ;; events.
+    (if (eq? 0 (vector-ref event 6))
+	(note-xterm-exposed xterm))
+    (xterm-dump-rectangle xterm
+			  (vector-ref event 2)
+			  (vector-ref event 3)
+			  (vector-ref event 4)
+			  (vector-ref event 5))))
 
 (define (read-event-1 display block?)
   (or (x-display-process-events display 2)
@@ -591,6 +592,9 @@
 	 (clean-event-queue x-display-events)
 	 (signal-interrupt!))
 	((and (vector? event)
+	      (fix:= event-type:expose (vector-ref event 0)))
+	 (process-expose-event event))
+	((and (vector? event)
 	      (or (fix:= event-type:map (vector-ref event 0))
 		  (fix:= event-type:unmap (vector-ref event 0))
 		  (fix:= event-type:visibility (vector-ref event 0))))
@@ -635,7 +639,7 @@
 	     (handler #f event)))))
 
 (define event-handlers
-  (make-vector number-of-event-types false))
+  (make-vector number-of-event-types #f))
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
@@ -1294,10 +1298,10 @@
        (deregister-input-thread-event previewer-registration)))))
 
 (define (with-x-interrupts-enabled thunk)
-  (with-signal-interrupts true thunk))
+  (with-signal-interrupts #t thunk))
 
 (define (with-x-interrupts-disabled thunk)
-  (with-signal-interrupts false thunk))
+  (with-signal-interrupts #f thunk))
 
 (define (with-signal-interrupts enabled? thunk)
   (let ((old))
@@ -1319,7 +1323,7 @@
 (define x-display-type)
 (define x-display-data)
 (define x-display-events)
-(define x-display-name false)
+(define x-display-name #f)
 
 (define (get-x-display)
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
@@ -1334,7 +1338,7 @@
   (set! screen-list '())
   (set! x-display-type
 	(make-display-type 'X
-			   true
+			   #t
 			   get-x-display
 			   make-xterm-screen
 			   (lambda (screen)
@@ -1343,6 +1347,6 @@
 			   with-editor-interrupts-from-x
 			   with-x-interrupts-enabled
 			   with-x-interrupts-disabled))
-  (set! x-display-data false)
+  (set! x-display-data #f)
   (set! x-display-events)
   unspecific)
