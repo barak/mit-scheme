@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.2 1989/07/26 23:59:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.3 1989/07/27 06:02:41 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -54,9 +54,9 @@ MIT in each case. */
 
 #endif
 
-#ifdef HAVE_STARBASE_GRAPHICS
+#if defined(HAVE_STARBASE_GRAPHICS) && !defined(STARBASE_DEVICE_DRIVERS)
 /* Add additional Starbase device drivers here.
-   If HAVE_X_WINDOWS is defined (in the s/ file), -lddsox11 is
+   If HAVE_X_WINDOWS is defined, -lddsox11 is
    automatically included, so don't add it here. */
 #define STARBASE_DEVICE_DRIVERS -ldd300h
 #endif
