@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.51 1987/11/17 20:11:40 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.52 1988/02/21 18:13:33 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -86,7 +86,7 @@
 		    (set-interrupt-enables! ie)
 		    (set! date-world-saved d)
 		    (set! time-world-saved t)
-		    *the-non-printing-object*)
+		    false)
 		  (lambda (ie)
 		    (set-interrupt-enables! ie)
 		    (set! date-world-saved d)
@@ -98,7 +98,7 @@
 			   (set! world-identification identify)
 			   (restart-world))
 			  (else
-			   *the-non-printing-object*)))))))
+			   true)))))))
 
 (set! disk-save
   (setup-image save-world))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.47 1987/12/14 00:13:58 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.48 1988/02/21 18:14:55 jinx Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -72,10 +72,10 @@
   (fluid-let (((access *error-hook* error-system)
 	       (lambda (environment message irritant substitute-environment?)
 		 (%exit))))
-    (disk-save (merge-pathnames (string->pathname "scheme_suspend")
-				(home-directory-pathname))
-	       true))
-  (%exit))
+    (if (not (disk-save (merge-pathnames (string->pathname "scheme_suspend")
+					 (home-directory-pathname))
+			true))
+	(%exit))))
 
 ;;; Keyboard Interrupts
 
