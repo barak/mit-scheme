@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.15 1995/10/24 05:13:42 cph Exp $
+$Id: nttop.c,v 1.16 1995/10/25 02:30:37 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -98,10 +98,12 @@ DEFUN_VOID (OS_initialize)
 void
 DEFUN_VOID (OS_announcement)
 {
+#if 0
   /* To make our compiler vendors happy. */
   outf_console
-    ("Copyright (c) 1993-1994 Massachusetts Institute of Technology\n");
+    ("Copyright (c) 1993-1995 Massachusetts Institute of Technology\n");
   outf_console ("\n");
+#endif
 }
 
 void
