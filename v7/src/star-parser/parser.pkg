@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.1 2001/06/26 18:03:18 cph Exp $
+;;; $Id: parser.pkg,v 1.2 2001/06/26 18:51:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -29,6 +29,8 @@
   (export ()
 	  decrement-parser-buffer-pointer
 	  discard-parser-buffer-head!
+	  get-parser-buffer-pointer
+	  get-parser-buffer-tail
 	  input-port->parser-buffer
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
@@ -46,6 +48,7 @@
 	  parser-buffer?
 	  peek-parser-buffer-char
 	  read-parser-buffer-char
+	  set-parser-buffer-pointer!
 	  source->parser-buffer
 	  string->parser-buffer
 	  substring->parser-buffer))
