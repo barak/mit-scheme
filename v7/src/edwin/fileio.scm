@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.111 1992/11/13 22:54:37 cph Exp $
+;;;	$Id: fileio.scm,v 1.112 1992/11/15 21:58:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -50,39 +50,48 @@
 
 (define (read-buffer buffer pathname visit?)
   (set-buffer-writable! buffer)
-  (let ((truename
-	 (catch-file-errors (lambda () false)
-			    (lambda () (->truename pathname)))))
-    (if truename
-	(begin
-	  ;; Set modified so that file supercession check isn't done.
-	  (set-group-modified! (buffer-group buffer) true)
-	  (region-delete! (buffer-unclipped-region buffer))
-	  (%insert-file (buffer-start buffer) truename visit?)
-	  (set-buffer-point! buffer (buffer-start buffer))))
+  (let ((truename false)
+	(file-error false))
+    ;; Set modified so that file supercession check isn't done.
+    (set-group-modified! (buffer-group buffer) true)
+    (region-delete! (buffer-unclipped-region buffer))
+    (call-with-current-continuation
+     (lambda (continuation)
+       (bind-condition-handler (list condition-type:file-error)
+	   (lambda (condition)
+	     (set! truename false)
+	     (set! file-error condition)
+	     (continuation unspecific))
+	 (lambda ()
+	   (set! truename (->truename pathname))
+	   (if truename
+	       (begin
+		 (%insert-file (buffer-start buffer) truename visit?)
+		 (if visit?
+		     (set-buffer-modification-time!
+		      buffer
+		      (file-modification-time truename)))))))))
+    (set-buffer-point! buffer (buffer-start buffer))
     (if visit?
 	(begin
-	  (if truename
-	      (set-buffer-modification-time!
-	       buffer
-	       (file-modification-time truename)))
 	  (set-buffer-pathname! buffer pathname)
 	  (set-buffer-truename! buffer truename)
 	  (set-buffer-save-length! buffer)
 	  (buffer-not-modified! buffer)
 	  (undo-done! (buffer-point buffer))))
+    (if file-error
+	(signal-condition file-error))
     truename))
 
 (define (insert-file mark filename)
   (%insert-file
    mark 
-   (bind-condition-handler
-    (list condition-type:file-error)
-    (lambda (condition)
-      condition
-      (editor-error "File " (->namestring filename) " not found"))
-    (lambda ()
-      (->truename filename)))
+   (bind-condition-handler (list condition-type:file-error)
+       (lambda (condition)
+	 condition
+	 (editor-error "File " (->namestring filename) " not found"))
+     (lambda ()
+       (->truename filename)))
    false))
 
 (define-variable read-file-message

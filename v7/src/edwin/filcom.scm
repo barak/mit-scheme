@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.170 1992/11/12 18:00:27 cph Exp $
+;;;	$Id: filcom.scm,v 1.171 1992/11/15 21:58:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -49,47 +49,6 @@
 (define (find-file filename)
   (select-buffer (find-file-noselect filename true)))
 
-(define (find-file-other-window filename)
-  (select-buffer-other-window (find-file-noselect filename true)))
-
-(define (find-file-other-screen filename)
-  (select-buffer-other-screen (find-file-noselect filename true)))
-
-(define (find-file-noselect filename warn?)
-  (let ((pathname (pathname-simplify (merge-pathnames filename))))
-    (if (file-directory? pathname)
-	(if (ref-variable find-file-run-dired)
-	    (make-dired-buffer (pathname-as-directory pathname))
-	    (editor-error (->namestring pathname) " is a directory."))
-	(let ((buffer (pathname->buffer pathname)))
-	  (if buffer
-	      (begin
-		(if warn? (find-file-revert buffer))
-		buffer)
-	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-		(visit-file buffer pathname)
-		buffer))))))
-
-(define-variable find-file-run-dired
-  "True says run dired if find-file is given the name of a directory."
-  true
-  boolean?)
-
-(define (find-file-revert buffer)
-  (if (not (verify-visited-file-modification-time? buffer))
-      (let ((pathname (buffer-pathname buffer)))
-	(cond ((not (file-exists? pathname))
-	       (editor-error "File "
-			     (->namestring pathname)
-			     " no longer exists!"))
-	      ((prompt-for-yes-or-no?
-		(string-append
-		 "File has changed since last visited or saved.  "
-		 (if (buffer-modified? buffer)
-		     "Flush your changes"
-		     "Read from disk")))
-	       (revert-buffer buffer true true))))))
-
 (define-command find-file
   "Visit a file in its own buffer.
 If the file is already in some buffer, select that buffer.
@@ -97,11 +56,22 @@ Otherwise, visit the file in a buffer named after the file."
   "FFind file"
   find-file)
 
+(define (find-file-other-window filename)
+  (select-buffer-other-window (find-file-noselect filename true)))
+
 (define-command find-file-other-window
   "Visit a file in another window.
 May create a window, or reuse one."
   "FFind file in other window"
   find-file-other-window)
+
+(define (find-file-other-screen filename)
+  (select-buffer-other-screen (find-file-noselect filename true)))
+
+(define-command find-file-other-screen
+  "Visit a file in another screen."
+  "FFind file in other screen"
+  find-file-other-screen)
 
 (define-command find-alternate-file
   "Find file FILENAME, select its buffer, kill previous buffer.
@@ -120,107 +90,10 @@ If the current buffer now contains an empty file that you just visited
 	      (do-it)
 	      (kill-buffer buffer*)))))))
 
-(define-command find-file-other-screen
-  "Visit a file in another screen."
-  "FFind file in other screen"
-  find-file-other-screen)
-
-(define-command revert-buffer
-  "Replace the buffer text with the text of the visited file on disk.
-This undoes all changes since the file was visited or saved.
-If latest auto-save file is more recent than the visited file,
-asks user whether to use that instead.
-Argument means don't offer to use auto-save file."
-  "P"
-  (lambda (argument)
-    (revert-buffer (current-buffer) argument false)))
-
-(define (revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  ((or (buffer-get buffer 'REVERT-BUFFER-METHOD)
-       revert-buffer-default)
-   buffer dont-use-auto-save? dont-confirm?))
-
-(define (revert-buffer-default buffer dont-use-auto-save? dont-confirm?)
-  (let ((auto-save?
-	 (and (not dont-use-auto-save?)
-	      (buffer-auto-saved? buffer)
-	      (buffer-auto-save-pathname buffer)
-	      (file-readable? (buffer-auto-save-pathname buffer))
-	      (prompt-for-confirmation?
-"Buffer has been auto-saved recently.  Revert from auto-save file"))))
-    (let ((pathname
-	   (if auto-save?
-	       (buffer-auto-save-pathname buffer)
-	       (buffer-pathname buffer))))
-      (cond ((not pathname)
-	     (editor-error
-	      "Buffer does not seem to be associated with any file"))
-	    ((not (file-readable? pathname))
-	     (editor-error "File "
-			   (->namestring pathname)
-			   " no longer "
-			   (if (file-exists? pathname) "exists" "readable")
-			   "!"))
-	    ((or dont-confirm?
-		 (prompt-for-yes-or-no?
-		  (string-append "Revert buffer from file "
-				 (->namestring pathname))))
-	     ;; If file was backed up but has changed since, we
-	     ;; should make another backup.
-	     (if (and (not auto-save?)
-		      (not (verify-visited-file-modification-time? buffer)))
-		 (set-buffer-backed-up?! buffer false))
-	     (let ((where (mark-index (buffer-point buffer)))
-		   (group (buffer-group buffer))
-		   (do-it
-		    (lambda () (visit-file buffer pathname (not auto-save?)))))
-	       (if (group-undo-data group)
-		   (begin
-		     ;; Throw away existing undo data.
-		     (disable-group-undo! group)
-		     (do-it)
-		     (enable-group-undo! group))
-		   (do-it))
-	       (set-buffer-point!
-		buffer
-		(make-mark (buffer-group buffer)
-			   (min where (buffer-length buffer))))))))))
-
-(define (visit-file buffer pathname #!optional visit?)
-  (after-find-file
-   buffer
-   (or (read-buffer-interactive buffer
-				pathname
-				(or (default-object? visit?) visit?))
-       pathname)))
-
-(define (read-buffer-interactive buffer pathname visit?)
-  (let ((truename
-	 (catch-file-errors (lambda () false)
-			    (lambda () (read-buffer buffer pathname visit?)))))
-    (define (finish msg)
-      (if msg
-	  (message msg))
-      truename)
-
-    (cond (truename
-	   (finish (and (not (file-writable? truename))
-			"File is write protected")))
-	  ((file-attributes pathname)
-	   (finish "File exists, but is read-protected."))
-	  (else
-	   (let loop ((hooks (if (not visit?)
-				 '()
-				 (ref-variable find-file-not-found-hooks buffer))))
-	     (if (null? hooks)
-		 (finish (cond ((file-writable? pathname)
-				"(New file)")
-			       ((file-attributes (directory-pathname pathname))
-				"File not found and directory write-protected")
-			       (else
-				"File not found and directory doesn't exist")))
-		 (and (not ((car hooks) buffer))
-		      (loop (cdr hooks)))))))))
+(define-variable find-file-run-dired
+  "True says run dired if find-file is given the name of a directory."
+  true
+  boolean?)
 
 (define-variable find-file-not-found-hooks
   "List of procedures to be called for find-file on nonexistent file.
@@ -230,23 +103,94 @@ until one of them returns non-false."
   '()
   list?)
 
-(define (after-find-file buffer pathname)
-  (if (file-writable? pathname)
-      (set-buffer-writable! buffer)
-      (set-buffer-read-only! buffer))
-  (setup-buffer-auto-save! buffer)
-  (normal-mode buffer true)
-  (event-distributor/invoke! (ref-variable find-file-hooks buffer))
-  (load-find-file-initialization buffer pathname))
-
 (define-variable find-file-hooks
   "Event distributor to be invoked after a buffer is loaded from a file.
 The buffer's local variables (if any) will have been processed before the
 invocation."
   (make-event-distributor))
 
+(define (find-file-noselect filename warn?)
+  (let ((pathname (pathname-simplify (merge-pathnames filename))))
+    (if (file-test-no-errors file-directory? pathname)
+	(if (ref-variable find-file-run-dired)
+	    (make-dired-buffer (pathname-as-directory pathname))
+	    (editor-error (->namestring pathname) " is a directory."))
+	(let ((buffer (pathname->buffer pathname)))
+	  (if buffer
+	      (begin
+		(if warn? (find-file-revert buffer))
+		buffer)
+	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
+		(let ((error?
+		       (not
+			(catch-file-errors
+			 (lambda () false)
+			 (lambda () (read-buffer buffer pathname true))))))
+		  (if error?
+		      (do ((hooks
+			    (ref-variable find-file-not-found-hooks buffer)
+			    (cdr hooks)))
+			  ((or (null? hooks)
+			       ((car hooks) buffer)))))
+		  (after-find-file buffer error? warn?))
+		buffer))))))
+
+(define (after-find-file buffer error? warn?)
+  (let ((pathname (or (buffer-truename buffer) (buffer-pathname buffer))))
+    (let ((buffer-read-only?
+	   (not (file-test-no-errors file-writable? pathname))))
+      (if buffer-read-only?
+	  (set-buffer-read-only! buffer)
+	  (set-buffer-writable! buffer))
+      (setup-buffer-auto-save! buffer)
+      (let ((serious-message
+	     (lambda (msg)
+	       (message msg)
+	       (sit-for 1))))
+	(cond ((not buffer-read-only?)
+	       (cond ((and warn?
+			   (file-newer-than-file?
+			    (buffer-auto-save-pathname buffer)
+			    pathname))
+		      (serious-message
+		       "Auto save file is newer; consider M-x recover-file"))
+		     (error?
+		      (message "(New file)"))))
+	      ((not error?)
+	       (message "File is write protected"))
+	      (else
+	       (serious-message
+		(if (file-test-no-errors file-exists? pathname)
+		    "File exists, but is read-protected."
+		    (string-append
+		     "File not found and directory "
+		     (let ((directory
+			    (directory-pathname-as-file
+			     (directory-pathname
+			      (buffer-pathname buffer)))))
+		       (if (file-test-no-errors file-exists? directory)
+			   "write-protected"
+			   "doesn't exist")))))))))
+    (normal-mode buffer true)
+    (event-distributor/invoke! (ref-variable find-file-hooks buffer))
+    (load-find-file-initialization buffer pathname)))
+
+(define (file-test-no-errors test pathname)
+  (catch-file-errors (lambda () false)
+		     (lambda () (test pathname))))
+
+(define (file-newer-than-file? a b)
+  (let ((a (file-modification-time-indirect a)))
+    (and a
+	 (let ((b (file-modification-time-indirect b)))
+	   (or (not b)
+	       (< a b))))))
+
 (define (load-find-file-initialization buffer pathname)
-  (let ((pathname (os/find-file-initialization-filename pathname)))
+  (let ((pathname
+	 (catch-file-errors
+	  (lambda () false)
+	  (lambda () (os/find-file-initialization-filename pathname)))))
     (if pathname
 	(let ((database
 	       (with-output-to-transcript-buffer
@@ -288,6 +232,117 @@ invocation."
 	    (local-set-variable! scheme-syntax-table (caddr entry))
 	    (local-set-variable! evaluate-in-inferior-repl false)
 	    (local-set-variable! run-light false))))))
+
+(define (find-file-revert buffer)
+  (if (not (verify-visited-file-modification-time? buffer))
+      (let ((pathname (buffer-pathname buffer)))
+	(cond ((not (file-exists? pathname))
+	       (editor-error "File "
+			     (->namestring pathname)
+			     " no longer exists!"))
+	      ((prompt-for-yes-or-no?
+		(string-append
+		 "File has changed since last visited or saved.  "
+		 (if (buffer-modified? buffer)
+		     "Flush your changes"
+		     "Read from disk")))
+	       (revert-buffer buffer true true))))))
+
+(define-command revert-buffer
+  "Replace the buffer text with the text of the visited file on disk.
+This undoes all changes since the file was visited or saved.
+If latest auto-save file is more recent than the visited file,
+asks user whether to use that instead.
+Argument means don't offer to use auto-save file."
+  "P"
+  (lambda (argument)
+    (revert-buffer (current-buffer) argument false)))
+
+(define (revert-buffer buffer dont-use-auto-save? dont-confirm?)
+  ((or (buffer-get buffer 'REVERT-BUFFER-METHOD) revert-buffer-default)
+   buffer dont-use-auto-save? dont-confirm?))
+
+(define (revert-buffer-default buffer dont-use-auto-save? dont-confirm?)
+  (let ((auto-save?
+	 (and (not dont-use-auto-save?)
+	      (buffer-auto-saved? buffer)
+	      (buffer-auto-save-pathname buffer)
+	      (file-readable? (buffer-auto-save-pathname buffer))
+	      (prompt-for-confirmation?
+"Buffer has been auto-saved recently.  Revert from auto-save file"))))
+    (let ((pathname
+	   (if auto-save?
+	       (buffer-auto-save-pathname buffer)
+	       (buffer-pathname buffer))))
+      (cond ((not pathname)
+	     (editor-error
+	      "Buffer does not seem to be associated with any file"))
+	    ((not (file-readable? pathname))
+	     (editor-error "File "
+			   (->namestring pathname)
+			   " no longer "
+			   (if (file-exists? pathname) "exists" "readable")
+			   "!"))
+	    ((or dont-confirm?
+		 (prompt-for-yes-or-no?
+		  (string-append "Revert buffer from file "
+				 (->namestring pathname))))
+	     ;; If file was backed up but has changed since, we
+	     ;; should make another backup.
+	     (if (and (not auto-save?)
+		      (not (verify-visited-file-modification-time? buffer)))
+		 (set-buffer-backed-up?! buffer false))
+	     (let ((where (mark-index (buffer-point buffer)))
+		   (group (buffer-group buffer))
+		   (do-it
+		    (lambda ()
+		      (read-buffer buffer pathname (not auto-save?)))))
+	       (if (group-undo-data group)
+		   (begin
+		     ;; Throw away existing undo data.
+		     (disable-group-undo! group)
+		     (do-it)
+		     (enable-group-undo! group))
+		   (do-it))
+	       (set-buffer-point!
+		buffer
+		(make-mark group (min where (buffer-length buffer))))
+	       (after-find-file buffer false false)))))))
+
+(define-command recover-file
+  "Visit file FILE, but get contents from its last auto-save file."
+  "FRecover file"
+  (lambda (filename)
+    (let ((pathname (pathname-simplify (merge-pathnames filename))))
+      (let ((filename (->namestring pathname)))
+	(if (os/auto-save-filename? filename)
+	    (editor-error filename " is an auto-save file")))
+      (let ((auto-save-pathname (os/auto-save-pathname pathname false)))
+	(let ((auto-save-filename (->namestring auto-save-pathname)))
+	  (if (not (file-newer-than-file? auto-save-pathname pathname))
+	      (editor-error "Auto-save file "
+			    auto-save-filename
+			    " not current"))
+	  (if (not (call-with-temporary-buffer "*Directory*"
+		     (lambda (buffer)
+		       (read-directory pathname "-l" (buffer-end buffer))
+		       (read-directory auto-save-pathname
+				       "-l"
+				       (buffer-end buffer))
+		       (set-buffer-point! buffer (buffer-start buffer))
+		       (buffer-not-modified! buffer)
+		       (pop-up-buffer buffer false)
+		       (prompt-for-yes-or-no?
+			(string-append "Recover auto save file "
+				       auto-save-filename)))))
+	      (editor-error "Recover-file cancelled."))
+	  (let ((buffer (find-file-noselect pathname false)))
+	    (read-buffer buffer auto-save-pathname false)
+	    (after-find-file buffer false false)
+	    (disable-buffer-auto-save! buffer)
+	    (message
+	     "Auto-save off in this buffer till you do M-x auto-save-mode.")
+	    (select-buffer buffer)))))))
 
 (define-command save-buffer
   "Save current buffer in visited file if modified.  Versions described below.

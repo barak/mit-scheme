@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.21 1992/11/12 19:36:15 bal Exp $
+;;;	$Id: rmail.scm,v 1.22 1992/11/15 21:59:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -331,8 +331,8 @@ but does not copy any new mail into the file."
 			      (<= n (msg-memo/number (msg-memo/last memo)))
 			      n))))))
 
-(define (rmail-after-find-file buffer pathname)
-  pathname
+(define (rmail-after-find-file buffer error? warn?)
+  error? warn?
   ;; No need to auto save RMAIL files.
   (disable-buffer-auto-save! buffer)
   (convert-buffer-to-babyl-format buffer)
