@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.31 1996/03/09 18:27:52 adams Exp $
+$Id: utils.scm,v 1.32 1996/08/01 11:38:02 adams Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,7 +137,7 @@ MIT in each case. |#
 	(cond ((symbol? closure)    (gen closure))
 	      ((LOOKUP/? closure)   (gen (lookup/name closure)))
 	      (else expr))))
-    (cond ((QUOTE/? expr)
+    (cond ((or (QUOTE/? expr) (and (pair? expr) (eq? (car expr) 'CONSTANT)))
 	   expr)
 	  ;;((LET/? expr)
 	  ;; (let do-let ((names '()) (values '()) (form expr))
@@ -1146,7 +1146,7 @@ Example use of FORM/COPY-TRANSFORMING:
       (/ x y)
       (careful-error "/: Domain error" x y)))
 
-;; This is hideously slow:
+;; This is slow:
 (define (apply-carefully operator operands)
   (let ((result  (ignore-errors (lambda () (apply operator operands)))))
     (if (condition? result)
