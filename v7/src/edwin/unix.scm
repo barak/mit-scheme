@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.38 1993/10/16 10:22:46 cph Exp $
+;;;	$Id: unix.scm,v 1.39 1993/10/26 23:15:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -302,7 +302,7 @@ Includes the new backup.  Must be > 0."
 	  filename))))
 
 (define unix/encoding-pathname-types
-  '("Z" "gz"))
+  '("Z" "gz" "KY"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -310,10 +310,35 @@ Includes the new backup.  Must be > 0."
 	     unix/encoding-pathname-types)))
 
 (define (os/backup-filename? filename)
-  (let loop ((suffixes unix/backup-suffixes))
-    (and (not (null? suffixes))
-	 (or (string-suffix? (car suffixes) filename)
-	     (loop (cdr suffixes))))))
+  (let ((end (string-length filename)))
+    (let loop ((suffixes unix/backup-suffixes))
+      (and (not (null? suffixes))
+	   (or (let ((suffix (car suffixes)))
+		 (let ((start (fix:- end (string-length suffix))))
+		   (and (fix:> start 0)
+			(let loop ((suffix-index 0) (index start))
+			  (if (fix:= index end)
+			      start
+			      (and (char=? (string-ref suffix suffix-index)
+					   (string-ref filename index))
+				   (loop (fix:+ suffix-index 1)
+					 (fix:+ index 1))))))))
+	       (loop (cdr suffixes)))))))
+
+(define (os/numeric-backup-filename? filename)
+  (let ((suffix (os/backup-filename? filename)))
+    (and suffix
+	 (fix:>= suffix 4)
+	 (let loop ((index (fix:- suffix 2)))
+	   (and (fix:>= index 2)
+		(if (char-numeric? (string-ref filename index))
+		    (loop (fix:- index 1))
+		    (and (char=? (string-ref filename index) #\~)
+			 (char=? (string-ref filename (fix:- index 1)) #\.)
+			 (cons (string-head filename (fix:- index 1))
+			       (substring->number filename
+						  (fix:+ index 1)
+						  suffix)))))))))
 
 (define (os/pathname-type-for-mode pathname)
   (let ((type (pathname-type pathname)))

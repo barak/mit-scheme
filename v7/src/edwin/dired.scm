@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.138 1993/10/26 21:28:19 cph Exp $
+;;;	$Id: dired.scm,v 1.139 1993/10/26 23:15:17 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -393,19 +393,18 @@ Type `h' after entering dired for more info."
    (region->string (dired-filename-region lstart))))
 
 (define (dired-mark char n)
-  (with-read-only-defeated (current-point)
-    (lambda ()
-      (dotimes n
-	(lambda (i)
-	  i				;ignore
-	  (let ((lstart (line-start (current-point) 0)))
-	    (guarantee-dired-filename-line lstart)
-	    (dired-mark-1 lstart char)
-	    (set-dired-point! (line-start lstart 1))))))))
+  (do ((i 0 (fix:+ i 1)))
+      ((fix:= i n) unspecific)
+    (let ((lstart (line-start (current-point) 0)))
+      (guarantee-dired-filename-line lstart)
+      (dired-mark-1 lstart char)
+      (set-dired-point! (line-start lstart 1)))))
 
 (define (dired-mark-1 lstart char)
-  (delete-right-char lstart)
-  (insert-chars char 1 lstart))
+  (with-read-only-defeated lstart
+    (lambda ()
+      (delete-right-char lstart)
+      (insert-chars char 1 lstart))))
 
 (define (dired-file-line? lstart)
   (and (dired-filename-start lstart)
@@ -422,26 +421,79 @@ Type `h' after entering dired for more info."
   "Flag for deletion files whose names suggest they are auto save files."
   ()
   (lambda ()
-    (with-read-only-defeated (current-point)
-      (lambda ()
-	(for-each-file-line (current-buffer)
-	  (lambda (lstart)
-	    (if (os/auto-save-filename?
-		 (region->string (dired-filename-region lstart)))
-		(dired-mark-1 lstart dired-flag-delete-char))))))))
+    (for-each-file-line (current-buffer)
+      (lambda (lstart)
+	(if (os/auto-save-filename?
+	     (region->string (dired-filename-region lstart)))
+	    (dired-mark-1 lstart dired-flag-delete-char))))))
 
 (define-command dired-flag-backup-files
-  "Flag all backup files (names ending with ~) for deletion."
+  "Flag all backup files for deletion."
   ()
   (lambda ()
-    (with-read-only-defeated (current-point)
-      (lambda ()
-	(for-each-file-line (current-buffer)
-	  (lambda (lstart)
-	    (if (os/backup-filename?
-		 (region->string (dired-filename-region lstart)))
-		(dired-mark-1 lstart dired-flag-delete-char))))))))
+    (for-each-file-line (current-buffer)
+      (lambda (lstart)
+	(if (os/backup-filename?
+	     (region->string (dired-filename-region lstart)))
+	    (dired-mark-1 lstart dired-flag-delete-char))))))
 
+(define-command dired-clean-directory
+  "Flag numerical backups for deletion.
+Spares dired-kept-versions latest versions, and kept-old-versions oldest.
+Positive numeric arg overrides dired-kept-versions;
+negative numeric arg overrides kept-old-versions with minus the arg."
+  "P"
+  (lambda (argument)
+    (let ((argument (command-argument-value argument))
+	  (old (ref-variable kept-old-versions))
+	  (new (ref-variable dired-kept-versions))
+	  (do-it
+	   (lambda (old new)
+	     (let ((total (+ old new)))
+	       (for-each (lambda (file)
+			   (let ((nv (length (cdr file))))
+			     (if (> nv total)
+				 (let ()
+				   (let ((end (- nv total)))
+				     (do ((versions
+					   (list-tail
+					    (sort (cdr file)
+						  (lambda (x y)
+						    (< (car x) (car y))))
+					    old)
+					   (cdr versions))
+					  (index 0 (fix:+ index 1)))
+					 ((fix:= index end))
+				       (dired-mark-1 (cdar versions) #\D)))))))
+			 (dired-numeric-backup-files))))))
+      (cond ((and argument (> argument 0)) (do-it argument new))
+	    ((and argument (< argument 0)) (do-it old (- argument)))
+	    (else (do-it old new))))))
+
+(define (dired-numeric-backup-files)
+  (let ((result '()))
+    (let loop ((start (line-start (buffer-start (current-buffer)) 0)))
+      (let ((next (line-start start 1 #f)))
+	(if next
+	    (begin
+	      (let ((region (dired-filename-region start)))
+		(if region
+		    (let ((filename (region->string region)))
+		      (let ((root.version (numeric-backup-filename? filename)))
+			(if root.version
+			    (let ((root (car root.version))
+				  (version.index
+				   (cons (cdr root.version) start)))
+			      (let ((entry (assoc root result)))
+				(if entry
+				    (set-cdr! entry
+					      (cons version.index (cdr entry)))
+				    (set! result
+					  (cons (list root version.index)
+						result))))))))))
+	      (loop next)))))
+    result))
+
 (define (dired-kill-files)
   (let ((filenames (dired-marked-files dired-flag-delete-char)))
     (if (not (null? filenames))
@@ -548,9 +600,7 @@ Type `h' after entering dired for more info."
 		       (pathname-new-directory (car filename) destination))
 	    true))))
     (if copied?
-	(with-read-only-defeated (cdr filename)
-	  (lambda ()
-	    (dired-mark-1 (cdr filename) #\space))))
+	(dired-mark-1 (cdr filename) #\space))
     copied?))
 
 ;;;; List Directory

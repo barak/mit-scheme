@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.11 1993/07/30 06:26:13 gjr Exp $
+;;;	$Id: dos.scm,v 1.12 1993/10/26 23:15:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -311,6 +311,20 @@ Includes the new backup.  Must be > 0."
   (let ((version (filename->version-number filename)))
     (and (fix:fixnum? version)
 	 (fix:> version 0))))
+
+(define (os/numeric-backup-filename? filename)
+  (let ((type (pathname-type filename)))
+    (and (string? type)
+	 (fix:= (string-length type) 3)
+	 (let ((version (string->number type)))
+	   (and version
+		(cons (->namestring (pathname-new-type filename #f))
+		      version)))
+	 (let ((version (substring->number type 1 3)))
+	   (and version
+		(cons (->namestring (pathname-new-type filename
+						       (string-head type 1)))
+		      version))))))
 
 (define (os/auto-save-filename? filename)
   (let ((version (filename->version-number filename)))
