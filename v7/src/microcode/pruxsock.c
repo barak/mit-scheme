@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.11 1997/10/26 08:05:01 cph Exp $
+$Id: pruxsock.c,v 1.12 1997/11/01 07:10:30 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -120,6 +120,40 @@ The result is a vector of strings, or #F if no such host exists.")
 	      (memory_to_string (length, ((unsigned char *) (*addresses++))));
 	  PRIMITIVE_RETURN (result);
 	}
+      }
+    });
+}
+
+DEFINE_PRIMITIVE ("GET-HOST-NAME", Prim_get_host_name, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  SOCKET_CODE
+    ({
+      CONST char * host_name = (OS_get_host_name ());
+      if (host_name == 0)
+	PRIMITIVE_RETURN (SHARP_F);
+      {
+	SCHEME_OBJECT result
+	  = (char_pointer_to_string ((unsigned char *) host_name));
+	OS_free (host_name);
+	PRIMITIVE_RETURN (result);
+      }
+    });
+}
+
+DEFINE_PRIMITIVE ("CANONICAL-HOST-NAME", Prim_canonical_host_name, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+    ({
+      CONST char * host_name = (OS_full_host_name (STRING_ARG (1)));
+      if (host_name == 0)
+	PRIMITIVE_RETURN (SHARP_F);
+      {
+	SCHEME_OBJECT result
+	  = (char_pointer_to_string ((unsigned char *) host_name));
+	OS_free (host_name);
+	PRIMITIVE_RETURN (result);
       }
     });
 }
