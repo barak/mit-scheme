@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.27 1994/03/07 18:52:44 cph Exp $
+;;;	$Id: debug.scm,v 1.28 1994/07/04 06:22:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -96,11 +96,12 @@
     (let ((start (horizontal-space-end start))
 	  (lend (line-end start 0)))
       (if (mark<= lend end)
- 	  (begin
+	  (begin
 	    (let ((end (horizontal-space-start lend)))
 	      (if (mark< start end)
 		  (highlight-region (make-region start end) #t)))
- 	    (loop (mark1+ lend)))
+	    (if (not (group-end? lend))
+		(loop (mark1+ lend))))
 	  (let ((end (horizontal-space-start end)))
 	    (if (mark< start end)
 		(highlight-region (make-region start end) #t)))))))
