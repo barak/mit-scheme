@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.45 1987/05/29 13:31:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.46 1987/06/02 11:24:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -161,6 +161,15 @@
 
 (define (unsyntax-THE-ENVIRONMENT-object object)
   `(THE-ENVIRONMENT))
+
+(define (unsyntax-DISJUNCTION-object object)
+  `(OR ,@(disjunction-components object unexpand-disjunction)))
+
+(define (unexpand-disjunction predicate alternative)
+  `(,(unsyntax-object predicate)
+    ,@(if (disjunction? alternative)
+	  (disjunction-components alternative unexpand-disjunction)
+	  `(,(unsyntax-object alternative)))))
 
 (define (unsyntax-CONDITIONAL-object conditional)
   (conditional-components conditional unsyntax-conditional))
@@ -171,6 +180,9 @@
 	((eq? alternative undefined-conditional-branch)
 	 `(IF ,(unsyntax-object predicate)
 	      ,(unsyntax-object consequent)))
+	((eq? consequent undefined-conditional-branch)
+	 `(IF (,not ,(unsyntax-object predicate))
+	      ,(unsyntax-object alternative)))
 	((conditional? alternative)
 	 `(COND ,@(unsyntax-cond-conditional predicate
 					     consequent
@@ -207,15 +219,6 @@
 					   consequent
 					   alternative))))))
       `(,(unsyntax-object predicate) ,(unsyntax-object consequent))))
-
-(define (unsyntax-DISJUNCTION-object object)
-  `(OR ,@(disjunction-components object unexpand-disjunction)))
-
-(define (unexpand-disjunction predicate alternative)
-  `(,(unsyntax-object predicate)
-    ,@(if (disjunction? alternative)
-	  (disjunction-components alternative unexpand-disjunction)
-	  `(,(unsyntax-object alternative)))))
 
 ;;;; Lambdas
 
