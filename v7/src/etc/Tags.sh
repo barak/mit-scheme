@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.2 2000/12/08 06:12:52 cph Exp $
+# $Id: Tags.sh,v 1.1 2000/12/08 06:04:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,28 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Utility for cleaning up the MIT Scheme runtime-check directory.
-# The working directory must be the runtime-check directory.
+# Utility to make TAGS file for an MIT Scheme build directory.
+# The working directory must be the build directory.
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
-    exit 1
-fi
-
-../etc/Clean.sh "${1}" rm-pkg-src rm-pkg-bin
-
-for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
-    if [ -d ${SUBDIR} ]; then
-	echo "making ${COMMAND} in ${SUBDIR}"
-	(cd ${SUBDIR} && rm -f *.bin *.ext *.com *.bci)
-    fi
-done
-
-case "${1}" in
-distclean | maintainer-clean)
-    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
-    rm -f machines/vax/dinstr[123].scm
-    ;;
-esac
-
-exit 0
+etags *.scm

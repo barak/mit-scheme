@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.3 2000/12/08 06:04:32 cph Exp $
+# $Id: Clean.sh,v 1.4 2000/12/08 06:07:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -33,7 +33,7 @@ else
     exit 1
 fi
 
-case "${1}" in
+case "${COMMAND}" in
 mostlyclean | clean | distclean)
     ;;
 maintainer-clean)

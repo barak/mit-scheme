@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.1 2000/12/08 05:34:01 cph Exp $
+# $Id: Setup.sh,v 1.2 2000/12/08 06:09:03 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -37,7 +37,7 @@ maybe_link ()
 }
 
 for N in 1 2 3; do
-    maybe_link machines/vax/dinstr$${N}.scm instr$${N}.scm
+    maybe_link machines/vax/dinstr${N}.scm instr${N}.scm
 done
 
 exit 0
