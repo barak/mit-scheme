@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 13.41 1987/01/23 00:09:52 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 13.42 1987/07/27 21:56:05 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -37,21 +37,21 @@
 ;;;	without prior written consent from MIT in each case.
 ;;;
 
-;;;; New Character Abstraction
+;;;; Character Abstraction
 
 (declare (usual-integrations))
 
-(in-package system-global-environment
-(let-syntax ()
-  (define-macro (define-primitives . names)
-    `(BEGIN ,@(map (lambda (name)
-		     `(DEFINE ,name ,(make-primitive-procedure name)))
-		   names)))
+(let-syntax ((define-primitives
+	       (macro names
+		 `(BEGIN ,@(map (lambda (name)
+				  `(LOCAL-ASSIGNMENT
+				    SYSTEM-GLOBAL-ENVIRONMENT
+				    ',name
+				    ,(make-primitive-procedure name)))
+				names)))))
   (define-primitives
-   make-char char-code char-bits
-   char->integer integer->char char->ascii
-   char-ascii? ascii->char
-   char-upcase char-downcase)))
+   make-char char-code char-bits char->integer integer->char char->ascii
+   char-ascii? ascii->char char-upcase char-downcase))
 
 (define char-code-limit #x80)
 (define char-bits-limit #x20)
