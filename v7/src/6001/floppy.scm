@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.11 1992/09/30 18:51:38 cph Exp $
+$Id: floppy.scm,v 1.12 1993/01/24 03:47:34 gjs Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -661,7 +661,7 @@ M-x rename-file, or use the `r' command in Dired.")
 
 (define (time-zone-offset)
   (let ((decoded-time (get-decoded-time))
-	(file-time (unix/current-file-time)))
+	(file-time (unix/get-time)))
     (- (* (quotient file-time 60) 60)
        (make-dos-time (decoded-time/year decoded-time)
 		      (decoded-time/month decoded-time)
