@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.214 1993/11/18 04:27:04 adams Exp $
+$Id: runtime.pkg,v 14.215 1993/11/18 04:36:21 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2641,5 +2641,5 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  apropos
-	  apropos-list)
-  ))
+	  apropos-list))
+
