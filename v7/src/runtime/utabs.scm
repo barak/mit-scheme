@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.5 1991/01/26 03:23:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.6 1991/05/06 03:19:52 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -38,7 +38,6 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (read-microcode-tables!)
   (add-event-receiver! event:after-restore read-microcode-tables!))
 
 (define (read-microcode-tables! #!optional filename)

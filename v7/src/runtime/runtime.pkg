@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.102 1991/04/18 22:36:11 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.103 1991/05/06 03:19:42 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -49,14 +49,13 @@ MIT in each case. |#
 	 "vector")
   (file-case sort-type
     ((merge-sort) "msort")
-    ((quick-sort) "qsort")
+    ;;((quick-sort) "qsort")
     (else))
   (file-case os-type
     ((unix) "unxpth" "unxprm")
     ;;((vms) "vmspth")
     ;;(else "unkpth")
-    (else))
-  (initialization (initialize-package!)))
+    (else)))
 
 (define-package (package)
   ;; The information appearing here must be duplicated in the cold load

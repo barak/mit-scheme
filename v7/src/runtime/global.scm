@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.22 1991/04/18 22:34:31 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.23 1991/05/06 03:19:29 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -37,9 +37,6 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! hook/scode-eval default/scode-eval))
-
 ;;;; Primitive Operators
 
 (define-primitives
@@ -104,11 +101,11 @@ MIT in each case. |#
   (extended-scode-eval (syntax expression system-global-syntax-table)
 		       environment))
 
-(define hook/scode-eval)
-(define default/scode-eval (ucode-primitive scode-eval))
-
 (define (scode-eval scode environment)
   (hook/scode-eval scode environment))
+
+(define hook/scode-eval
+  (ucode-primitive scode-eval))
 
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))

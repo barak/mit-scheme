@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.28 1991/02/22 21:16:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/make.scm,v 14.29 1991/05/06 03:19:35 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -283,15 +283,17 @@ MIT in each case. |#
  `((SORT-TYPE . MERGE-SORT)
    (OS-TYPE . ,(intern os-name-string))
    (OPTIONS . NO-LOAD)))
+
+(package-initialize '(RUNTIME MICROCODE-TABLES) 'READ-MICROCODE-TABLES!)
 
 ;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
  '(
    ;; Microcode interface
+   (RUNTIME STATE-SPACE)
    (RUNTIME MICROCODE-TABLES)
    (RUNTIME PRIMITIVE-IO)
    (RUNTIME SAVE/RESTORE)
-   (RUNTIME STATE-SPACE)
    (RUNTIME SYSTEM-CLOCK)
    ;; Basic data structures
    (RUNTIME NUMBER)
