@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.26 1991/08/23 23:25:24 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.27 1991/10/26 16:20:48 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -311,18 +311,9 @@ MIT in each case. |#
 
 (define (file-open primitive filename)
   (let ((channel
-	 (bind-condition-handler (list condition-type:error)
-	     (lambda (condition)
-	       (error
-		(make-condition condition-type:open-file-error
-				(condition/continuation condition)
-				(condition/restarts condition)
-				`(FILENAME ,filename
-				  EXPLANATION ,condition))))
-	   (lambda ()
-	     (without-interrupts
-	      (lambda ()
-		(make-channel (primitive filename))))))))
+	 (without-interrupts
+	  (lambda ()
+	    (make-channel (primitive filename))))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(begin

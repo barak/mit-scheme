@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.27 1991/06/24 22:50:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.28 1991/10/26 16:21:08 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -182,6 +182,55 @@ MIT in each case. |#
 	    (thunk)))
 	(thunk))))
 
+(define (open-file-signaller)
+  (let ((signal
+	 (condition-signaller condition-type:open-file-error
+			      '(FILENAME NOUN EXPLANATION))))
+    (lambda (continuation operator operands index noun explanation)
+      (open-file/use-value continuation operator operands index noun
+	(lambda ()
+	  (open-file/retry continuation operator operands noun
+	    (lambda ()
+	      (signal continuation
+		      (list-ref operands index)
+		      noun
+		      explanation))))))))
+
+(define (open-file/use-value continuation operator operands index noun thunk)
+  (let ((continuation (continuation/next-continuation continuation)))
+    (if continuation
+	(bind-restart 'USE-VALUE
+	    (string-append "Try opening a different " noun ".")
+	    (lambda (operand)
+	      (within-continuation continuation
+		(lambda ()
+		  (apply operator
+			 (substitute-element operands index operand)))))
+	  (let ((prompt
+		 (string-append "New "
+				noun
+				" name (an expression to be evaluated)")))
+	    (lambda (restart)
+	      (restart/put! restart 'INTERACTIVE
+		(lambda ()
+		  (values (prompt-for-evaluated-expression prompt))))
+	      (thunk))))
+	(thunk))))
+
+(define (open-file/retry continuation operator operands noun thunk)
+  (let ((continuation (continuation/next-continuation continuation)))
+    (if continuation
+	(bind-restart 'RETRY
+	    (string-append "Try opening the same " noun " again.")
+	    (lambda ()
+	      (within-continuation continuation
+		(lambda ()
+		  (apply operator operands))))
+	  (lambda (restart)
+	    (restart/put! restart 'INTERACTIVE values)
+	    (thunk)))
+	(thunk))))
+
 (define (substitute-element list index element)
   (let loop ((list list) (i 0))
     (if (= i index)
@@ -253,17 +302,10 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define (write-code object what port)
-  (if (integer? object)
-      (begin
-	(write-string what port)
-	(write-string " " port)
-	(write object port))
-      (begin
-	(write-string "the " port)
-	(write object port)
-	(write-string " " port)
-	(write-string what port))))
+(define (error-type->string error-type)
+  (if (symbol? error-type)
+      (string-replace (symbol->string error-type) #\- #\space)
+      (string-append "error " (write-to-string error-type))))
 
 (define (normalize-trap-code-name name)
   (let loop ((prefixes '("floating-point " "integer ")))
@@ -285,6 +327,36 @@ MIT in each case. |#
 	     (string-ci=? "divide by zero" name))
 	 'DIVIDE-BY-ZERO)
 	(else false)))
+
+(define file-open-primitives
+  (list (ucode-primitive file-open-append-channel 1)
+	(ucode-primitive file-open-input-channel 1)
+	(ucode-primitive file-open-io-channel 1)
+	(ucode-primitive file-open-output-channel 1)))
+
+(define directory-open-primitives
+  (list (ucode-primitive directory-open 1)
+	(ucode-primitive directory-open-noread 1)))
+
+(define file-primitives
+  (list (ucode-primitive directory-make 1)
+	(ucode-primitive file-access 2)
+	(ucode-primitive file-attributes 1)
+	(ucode-primitive file-attributes-indirect 1)
+	(ucode-primitive file-copy 2)
+	(ucode-primitive file-directory? 1)
+	(ucode-primitive file-exists? 1)
+	(ucode-primitive file-link-hard 2)
+	(ucode-primitive file-link-soft 2)
+	(ucode-primitive file-mod-time-indirect 1)
+	(ucode-primitive file-modes 1)
+	(ucode-primitive file-remove 1)
+	(ucode-primitive file-remove-link 1)
+	(ucode-primitive file-rename 2)
+	(ucode-primitive file-soft-link? 1)
+	(ucode-primitive file-touch 1)
+	(ucode-primitive link-file 3)
+	(ucode-primitive set-file-modes! 2)))
 
 (define (initialize-package!)
 
@@ -601,24 +673,21 @@ MIT in each case. |#
 (define-error-handler 'OUT-OF-FILE-HANDLES
   (let ((signal
 	 (condition-signaller condition-type:out-of-file-handles
-			      '(OPERATOR OPERANDS))))
+			      '(OPERATOR OPERANDS)))
+	(signal-open-file (open-file-signaller)))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
-	    (let ((operator (apply-frame/operator frame)))
+	    (let ((operator (apply-frame/operator frame))
+		  (operands (apply-frame/operands frame)))
 	      (if (or (eq? (ucode-primitive file-open-input-channel) operator)
 		      (eq? (ucode-primitive file-open-output-channel) operator)
 		      (eq? (ucode-primitive file-open-io-channel) operator)
 		      (eq? (ucode-primitive file-open-append-channel)
 			   operator))
-		  (signal-open-file-error continuation
-					  (apply-frame/operand frame 0))
-		  (signal continuation
-			  operator
-			  (apply-frame/operands frame)))))))))
-
-(define signal-open-file-error
-  (condition-signaller condition-type:open-file-error '(FILENAME)))
+		  (signal-open-file continuation operator operands 0 "file"
+				    "Channel table full.")
+		  (signal continuation operator operands))))))))
 
 (set! condition-type:system-call-error
   (make-condition-type 'SYSTEM-CALL-ERROR
@@ -628,69 +697,69 @@ MIT in each case. |#
       (write-string "The primitive " port)
       (write-operator (access-condition condition 'OPERATOR) port)
       (write-string ", while executing " port)
-      (write-code (access-condition condition 'SYSTEM-CALL) "system call" port)
+      (let ((system-call (access-condition condition 'SYSTEM-CALL)))
+	(if (symbol? system-call)
+	    (begin
+	      (write-string "the " port)
+	      (write system-call port)
+	      (write-string " system call" port))
+	    (begin
+	      (write-string "system call " port)
+	      (write system-call port))))
       (write-string ", received " port)
-      (write-code (access-condition condition 'ERROR-TYPE) "error" port)
+      (let ((error-type (access-condition condition 'ERROR-TYPE)))
+	(if (symbol? error-type)
+	    (write-string "the error: " port))
+	(write-string (error-type->string error-type) port))
       (write-string "." port))))
 
 (define-low-level-handler 'SYSTEM-CALL
   (let ((make-condition
 	 (condition-constructor condition-type:system-call-error
-				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE))))
+				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE)))
+	(signal-open-file (open-file-signaller)))
     (lambda (continuation error-code)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (and (apply-frame? frame)
 		 (vector? error-code)
 		 (= 3 (vector-length error-code)))
 	    (let ((operator (apply-frame/operator frame))
-		  (operands (apply-frame/operands frame)))
-	      (let ((condition
-		     (make-condition
-		      continuation
-		      'BOUND-RESTARTS
-		      operator
-		      operands
-		      (let ((system-call (vector-ref error-code 2)))
-			(or (microcode-system-call/code->name system-call)
-			    system-call))
-		      (let ((error-type (vector-ref error-code 1)))
-			(or (microcode-system-call-error/code->name error-type)
-			    error-type)))))
+		  (operands (apply-frame/operands frame))
+		  (system-call
+		   (let ((system-call (vector-ref error-code 2)))
+		     (or (microcode-system-call/code->name system-call)
+			 system-call)))
+		  (error-type
+		   (let ((error-type (vector-ref error-code 1)))
+		     (or (microcode-system-call-error/code->name
+			  error-type)
+			 error-type))))
+	      (let ((make-condition
+		     (lambda ()
+		       (make-condition continuation 'BOUND-RESTARTS
+				       operator operands
+				       system-call error-type))))
 		(cond ((port-error-test operator operands)
 		       => (lambda (port)
-			    (error:derived-port port condition)))
-		      ((and (memq operator file-primitives)
-			    (not (null? operands))
+			    (error:derived-port port (make-condition))))
+		      ((and (not (null? operands))
 			    (string? (car operands)))
-		       (error:derived-file (car operands) condition))
+		       (let ((signal-open-file
+			      (lambda (noun)
+				(signal-open-file
+				 continuation operator operands 0 noun
+				 (error-type->string error-type)))))
+			 (cond ((memq operator file-open-primitives)
+				(signal-open-file "file"))
+			       ((memq operator directory-open-primitives)
+				(signal-open-file "directory"))
+			       ((memq operator file-primitives)
+				(error:derived-file (car operands)
+						    (make-condition)))
+			       (else
+				(error (make-condition))))))
 		      (else
-		       (error condition))))))))))
-
-(define file-primitives
-  (list (ucode-primitive directory-make 1)
-	(ucode-primitive directory-open 1)
-	(ucode-primitive directory-open-noread 1)
-	(ucode-primitive file-access 2)
-	(ucode-primitive file-attributes 1)
-	(ucode-primitive file-attributes-indirect 1)
-	(ucode-primitive file-copy 2)
-	(ucode-primitive file-directory? 1)
-	(ucode-primitive file-exists? 1)
-	(ucode-primitive file-link-hard 2)
-	(ucode-primitive file-link-soft 2)
-	(ucode-primitive file-mod-time-indirect 1)
-	(ucode-primitive file-modes 1)
-	(ucode-primitive file-open-append-channel 1)
-	(ucode-primitive file-open-input-channel 1)
-	(ucode-primitive file-open-io-channel 1)
-	(ucode-primitive file-open-output-channel 1)
-	(ucode-primitive file-remove 1)
-	(ucode-primitive file-remove-link 1)
-	(ucode-primitive file-rename 2)
-	(ucode-primitive file-soft-link? 1)
-	(ucode-primitive file-touch 1)
-	(ucode-primitive link-file 3)
-	(ucode-primitive set-file-modes! 2)))
+		       (error (make-condition)))))))))))
 
 ;;;; FASLOAD Errors
 

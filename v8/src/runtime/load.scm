@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.27 1991/08/23 23:26:14 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.28 1991/10/26 16:20:56 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -179,16 +179,12 @@ MIT in each case. |#
 
 (define (find-true-pathname pathname default-types)
   (or (pathname->input-truename pathname)
-      (let ((truename
-	     (let ((pathname (pathname-default-version pathname 'NEWEST)))
-	       (if (pathname-type pathname)
-		   (pathname->input-truename pathname)
-		   (load/default-find-pathname-with-type pathname
-							 default-types)))))
-	(or truename
-	    (find-true-pathname
-	     (->pathname (error:open-file pathname "The file does not exist."))
-	     default-types)))))
+      (let ((pathname (pathname-default-version pathname 'NEWEST)))
+	(if (pathname-type pathname)
+	    (pathname->input-truename pathname)
+	    (load/default-find-pathname-with-type pathname default-types)))
+      (find-true-pathname (->pathname (error:open-file pathname))
+			  default-types)))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))

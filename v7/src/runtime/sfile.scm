@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.5 1991/10/22 12:12:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.6 1991/10/26 16:21:04 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -43,8 +43,7 @@ MIT in each case. |#
 (define (canonicalize-existing-pathname filename)
   (let ((pathname (->pathname filename)))
     (or (pathname->existing-truename pathname)
-	(canonicalize-existing-pathname
-	 (error:open-file pathname "The file does not exist.")))))
+	(canonicalize-existing-pathname (error:open-file pathname)))))
 
 (define (pathname->existing-truename pathname)
   (let ((pathname (pathname->absolute-pathname pathname))
