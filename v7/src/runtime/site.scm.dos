@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.8 1992/05/28 23:46:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/site.scm.dos,v 1.9 1992/05/29 00:06:11 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -56,6 +56,8 @@ MIT in each case. |#
 	     (fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))))
     (vector-set! sv timer-slot typeahead-timer-interrupt))
 
+) ; End IN-PACKAGE
+
 ;;; Normalization of various directory structures.
 
 (let ((add-directory-rewriting-rule!
@@ -72,6 +74,4 @@ MIT in each case. |#
 	     (set-environment-variable! "MITSCHEME_INF_DIRECTORY"
 					"c:/scheme")))))
   (set-default-inf-directory!)
-  (add-event-receiver! event:after-restart set-default-inf-directory!))  
-	  
-) ; End IN-PACKAGE
+  (add-event-receiver! event:after-restart set-default-inf-directory!))
