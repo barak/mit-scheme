@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.278 1997/05/15 00:17:48 cph Exp $
+$Id: runtime.pkg,v 14.279 1997/05/19 17:38:00 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -1662,6 +1662,7 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  add-to-protection-list!
+	  all-open-channels
 	  channel-blocking
 	  channel-blocking?
 	  channel-close
@@ -1687,6 +1688,7 @@ MIT in each case. |#
 	  channel-write-string-block
 	  channel?
 	  clean-lost-protected-objects
+	  close-all-open-channels
 	  close-all-open-files
 	  directory-channel-close
 	  directory-channel-open

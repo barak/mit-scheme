@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.49 1997/01/22 20:44:39 cph Exp $
+$Id: io.scm,v 14.50 1997/05/19 17:37:43 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -139,17 +139,37 @@ MIT in each case. |#
   (not (channel-descriptor channel)))
 
 (define (close-all-open-files)
-  (close-all-open-files-internal (ucode-primitive channel-close 1)))
+  (close-all-open-channels channel-type=file?))
+
+(define (close-all-open-channels #!optional filter)
+  (let ((filter (if (default-object? filter) #f filter)))
+    (for-each (lambda (channel)
+		(if (or (not filter) (filter channel))
+		    (let ((port (channel-port channel)))
+		      (if port
+			  (close-port port)
+			  (channel-close channel)))))
+	      (all-open-channels))
+    (if (not filter)
+	(close-all-open-channels-internal (ucode-primitive channel-close 1)))))
+
+(define (all-open-channels)
+  (without-interrupts
+   (lambda ()
+     (let loop ((l (cdr open-channels-list)) (result '()))
+       (if (null? l)
+	   result
+	   (loop (cdr l) (cons (system-pair-car (car l)) result)))))))
 
 (define (primitive-io/reset!)
   ;; This is invoked after disk-restoring.
   ;; It "cleans" the new runtime system.
-  (close-all-open-files-internal (lambda (ignore) ignore))
+  (close-all-open-channels-internal (lambda (ignore) ignore))
   (drop-all-protected-objects open-directories-list)
   (set! have-select? ((ucode-primitive have-select? 0)))
   unspecific)
 
-(define (close-all-open-files-internal action)
+(define (close-all-open-channels-internal action)
   (without-interrupts
    (lambda ()
      (let loop ((l (cdr open-channels-list)))
