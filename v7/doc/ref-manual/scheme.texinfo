@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.100 2001/11/16 21:15:11 cph Exp $
+@comment $Id: scheme.texinfo,v 1.101 2001/11/17 05:54:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -296,6 +296,7 @@ Input/Output
 * Custom Output::               
 * Prompting::                   
 * Port Primitives::             
+* Parser Buffers::              
 
 Port Primitives
 
@@ -12022,6 +12023,7 @@ custom ports and high-performance @sc{i/o}.
 * Custom Output::               
 * Prompting::                   
 * Port Primitives::             
+* Parser Buffers::              
 @end menu
 
 @node Ports, File Ports, Input/Output, Input/Output
@@ -13310,7 +13312,7 @@ character in raw mode.  If the character is @code{#\y}, @code{#\Y}, or
 Under Edwin or Emacs, the confirmation is read in the minibuffer.
 @end deffn
 
-@node Port Primitives,  , Prompting, Input/Output
+@node Port Primitives, Parser Buffers, Prompting, Input/Output
 @section Port Primitives
 @cindex port primitives
 
@@ -13873,6 +13875,210 @@ was when @code{port/with-output-terminal-mode} was called, and returns
 the value that was yielded by @var{thunk}.  This binding is performed
 by @code{dynamic-wind}, which guarantees that the output terminal mode is
 restored if @var{thunk} escapes from its continuation.
+@end deffn
+
+@node Parser Buffers,  , Port Primitives, Input/Output
+@section Parser Buffers
+
+@cindex Parser buffer
+The @dfn{parser buffer} mechanism facilitates construction of parsers
+for complex grammars.  It does this by providing an input stream with
+unbounded buffering and backtracking.  The amount of buffering is
+under program control.  The stream can backtrack to any position in
+the buffer.
+
+@cindex Parser-buffer pointer
+The mechanism defines two data types: the @dfn{parser buffer} and the
+@dfn{parser-buffer pointer}.  A parser buffer is like an input port
+with buffering and backtracking.  A parser-buffer pointer is a pointer
+into the stream of characters provided by a parser buffer.
+
+Note that all of the procedures defined here consider a parser buffer
+to contain a stream of 8-bit characters in the @acronym{ISO-8859-1}
+character set, except for @code{match-utf8-char-in-alphabet} which
+treats it as a stream of Unicode characters encoded as 8-bit bytes in
+the @acronym{UTF-8} encoding.
+
+There are several constructors for parser buffers:
+
+@deffn {procedure+} input-port->parser-buffer port
+Returns a parser buffer that buffers characters read from @var{port}.
+@end deffn
+
+@deffn {procedure+} substring->parser-buffer string start end
+Returns a parser buffer that buffers the characters in the argument
+substring.  This is equivalent to creating a string input port and
+calling @code{input-port->parser-buffer}, but it runs faster and uses
+less memory.
+@end deffn
+
+@deffn {procedure+} string->parser-buffer string
+Like @code{substring->parser-buffer} but buffers the entire string.
+@end deffn
+
+@deffn {procedure+} source->parser-buffer source
+Returns a parser buffer that buffers the characters returned by
+calling @var{source}.  @var{Source} is a procedure of three arguments:
+a string, a start index, and an end index (in other words, a substring
+specifier).  Each time @var{source} is called, it writes some
+characters in the substring, and returns the number of characters
+written.  When there are no more characters available, it returns
+zero.  It must not return zero in any other circumstance.
+@end deffn
+
+Parser buffers and parser-buffer pointers may be distinguished from
+other objects:
+
+@deffn {procedure+} parser-buffer? object
+Return @code{#t} if @var{object} is a parser buffer, otherwise return
+@code{#f}.
+@end deffn
+
+@deffn {procedure+} parser-buffer-pointer? object
+Return @code{#t} if @var{object} is a parser-buffer pointer, otherwise
+return @code{#f}.
+@end deffn
+
+Characters can be read out of a parser buffer much like they can be
+read out of an input port.  The parser buffer maintains an internal
+pointer indicating its current position in the input stream.
+Additionally, the buffer remembers all characters that were previously
+read, and can look at characters arbitrarily far ahead in the stream.
+It is this buffering capability that facilitates complex matching and
+backtracking.
+
+@deffn {procedure+} read-parser-buffer-char buffer
+Return the next character in @var{buffer}, advancing the internal
+pointer past that character.  If there are no more characters
+available, @code{#f} is returned and the internal pointer is
+unchanged.
+@end deffn
+
+@deffn {procedure+} peek-parser-buffer-char buffer
+Return the next character in @var{buffer}, or @code{#f} if no
+characters are available.  The internal pointer is unchanged by this
+operation.
+@end deffn
+
+@deffn {procedure+} parser-buffer-ref buffer index
+Return a character in @var{buffer}.  @var{Index} is a non-negative
+integer specifying the character to be returned.  If @var{index} is
+zero, return the next available character; if it is one, return the
+character after that, and so on.  If @var{index} specifies a position
+after the last character in @var{buffer}, return @code{#f}.  The
+internal pointer is unchanged by this operation.
+@end deffn
+
+The internal pointer of a parser buffer can be read or written:
+
+@deffn {procedure+} get-parser-buffer-pointer buffer
+Return a parser-buffer pointer object corresponding to the internal
+pointer of @var{buffer}.
+@end deffn
+
+@deffn {procedure+} set-parser-buffer-pointer! buffer pointer
+Set the internal pointer of @var{buffer} to the position specified by
+@var{pointer}.  @var{Pointer} must have been returned from a previous
+call of @code{get-parser-buffer-pointer} on @var{buffer}.
+Additionally, if some of @var{buffer}'s characters have been discarded
+by @code{discard-parser-buffer-head!}, @var{pointer} must be outside
+the range that was discarded.
+@end deffn
+
+@deffn {procedure+} get-parser-buffer-tail buffer pointer
+Return a newly-allocated string consisting of all of the characters in
+@var{buffer} that fall between @var{pointer} and @var{buffer}'s
+internal pointer.  @var{Pointer} must have been returned from a
+previous call of @code{get-parser-buffer-pointer} on @var{buffer}.
+Additionally, if some of @var{buffer}'s characters have been discarded
+by @code{discard-parser-buffer-head!}, @var{pointer} must be outside
+the range that was discarded.
+@end deffn
+
+@deffn {procedure+} discard-parser-buffer-head! buffer
+Discard all characters in @var{buffer} that have already been read; in
+other words, all characters prior to the internal pointer.  After this
+operation has completed, it is no longer possible to move the internal
+pointer backwards past the current position by calling
+@code{set-parser-buffer-pointer!}.
+@end deffn
+
+The next rather large set of procedures does conditional matching
+against the contents of a parser buffer.  All matching is performed
+relative to the buffer's internal pointer, so the first character to
+be matched against is the next character that would be returned by
+@code{peek-parser-buffer-char}.  The returned value is always
+@code{#t} for a successful match, and @code{#f} otherwise.  For
+procedures whose names do not end in @code{-no-advance}, a successful
+match also moves the internal pointer of the buffer forward to the end
+of the matched text; otherwise the internal pointer is unchanged.
+
+@deffn {procedure+} match-parser-buffer-char buffer char
+@deffnx {procedure+} match-parser-buffer-char-ci buffer char
+@deffnx {procedure+} match-parser-buffer-not-char buffer char
+@deffnx {procedure+} match-parser-buffer-not-char-ci buffer char
+@deffnx {procedure+} match-parser-buffer-char-no-advance buffer char
+@deffnx {procedure+} match-parser-buffer-char-ci-no-advance buffer char
+@deffnx {procedure+} match-parser-buffer-not-char-no-advance buffer char
+@deffnx {procedure+} match-parser-buffer-not-char-ci-no-advance buffer char
+Each of these procedures compares a single character in @var{buffer}
+to @var{char}.  The basic comparison @code{match-parser-buffer-char}
+compares the character to @var{char} using @code{char=?}.  The
+procedures whose names contain the @code{-ci} modifier do
+case-insensitive comparison (i.e.@: they use @code{char-ci=?}).  The
+procedures whose names contain the @code{not-} modifier are successful
+if the character @emph{doesn't} match @var{char}.
+@end deffn
+
+@deffn {procedure+} match-parser-buffer-char-in-set buffer char-set
+@deffnx {procedure+} match-parser-buffer-char-in-set-no-advance buffer char-set
+These procedures compare the next character in @var{buffer} against
+@var{char-set} using @code{char-set-member?}.
+@end deffn
+
+@deffn {procedure+} match-parser-buffer-string buffer string
+@deffnx {procedure+} match-parser-buffer-string-ci buffer string
+@deffnx {procedure+} match-parser-buffer-string-no-advance buffer string
+@deffnx {procedure+} match-parser-buffer-string-ci-no-advance buffer string
+These procedures match @var{string} against @var{buffer}'s contents.
+The @code{-ci} procedures do case-insensitive matching.
+@end deffn
+
+@deffn {procedure+} match-parser-buffer-substring buffer string start end
+@deffnx {procedure+} match-parser-buffer-substring-ci buffer string start end
+@deffnx {procedure+} match-parser-buffer-substring-no-advance buffer string start end
+@deffnx {procedure+} match-parser-buffer-substring-ci-no-advance buffer string start end
+These procedures match the specified substring against @var{buffer}'s
+contents.  The @code{-ci} procedures do case-insensitive matching.
+@end deffn
+
+@deffn {procedure+} match-utf8-char-in-alphabet buffer alphabet
+This procedure treats @var{buffer}'s contents as @acronym{UTF-8}
+encoded Unicode characters and matches the next such character against
+@var{alphabet}, which must be a Unicode alphabet object
+(@pxref{Unicode}).  @acronym{UTF-8} represents characters with 1 to 6
+bytes, so a successful match can move the internal pointer forward by
+as many as 6 bytes.
+@end deffn
+
+The remaining procedures provide information that can be used to
+identify locations in a parser buffer's stream.
+
+@deffn {procedure+} parser-buffer-position-string pointer
+Return a string describing the location of @var{pointer} in terms of
+its character and line indexes.  This resulting string is meant to be
+presented to an end user in order to direct their attention to a
+feature in the input stream.  In this string, the indexes are
+presented as one-based numbers.
+
+@var{Pointer} may alternatively be a parser buffer, in which case it
+is equivalent to having specified the buffer's internal pointer.
+@end deffn
+
+@deffn {procedure+} parser-buffer-pointer-index pointer
+@deffnx {procedure+} parser-buffer-pointer-line pointer
+Return the character or line index, respectively, of @var{pointer}.
+Both indexes are zero-based.
 @end deffn
 
 @node Operating-System Interface, Error System, Input/Output, Top
