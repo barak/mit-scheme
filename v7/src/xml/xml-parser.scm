@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.44 2003/09/26 00:35:49 cph Exp $
+$Id: xml-parser.scm,v 1.45 2003/09/26 01:00:11 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -491,7 +491,7 @@ USA.
 			     (if (string=? "xmlns:xmlns" s)
 				 (perror pn "Illegal namespace prefix" s))
 			     (let ((iri (iri)))
-			       (if (default-xml-namespace-iri? iri)
+			       (if (null-xml-namespace-iri? iri)
 				   ;; legal in XML 1.1
 				   (forbidden-iri ""))
 			       (if (string=? "xmlns:xml" s)
@@ -510,33 +510,34 @@ USA.
 (define (intern-name n element-name?)
   (let ((s (car n))
 	(p (cdr n)))
-    (let ((simple (string->symbol s))
+    (let ((qname (string->symbol s))
 	  (c (string-find-next-char s #\:)))
       (let ((iri
-	     (and (not *in-dtd?*)
-		  (or element-name? c)
-		  (let ((prefix
-			 (if c
-			     (string-head->symbol s c)
-			     (null-xml-name-prefix))))
-		    (case prefix
-		      ((xmlns) xmlns-iri)
-		      ((xml) xml-iri)
-		      (else
-		       (let ((entry (assq prefix *prefix-bindings*)))
-			 (if entry
-			     (cdr entry)
-			     (begin
-			       (if (not (null-xml-name-prefix? prefix))
-				   (perror p "Unknown XML prefix" prefix))
-			       (default-xml-namespace-iri))))))))))
-	(if iri
-	    (%make-xml-name simple
+	     (if (and (not *in-dtd?*)
+		      (or element-name? c))
+		 (let ((prefix
+			(if c
+			    (string-head->symbol s c)
+			    (null-xml-name-prefix))))
+		   (case prefix
+		     ((xmlns) xmlns-iri)
+		     ((xml) xml-iri)
+		     (else
+		      (let ((entry (assq prefix *prefix-bindings*)))
+			(if entry
+			    (cdr entry)
+			    (begin
+			      (if (not (null-xml-name-prefix? prefix))
+				  (perror p "Unknown XML prefix" prefix))
+			      (null-xml-namespace-iri)))))))
+		 (null-xml-namespace-iri? iri))))
+	(if (null-xml-namespace-iri? iri)
+	    qname
+	    (%make-xml-name qname
 			    iri
 			    (if c
 				(string-tail->symbol s (fix:+ c 1))
-				simple))
-	    simple)))))
+				qname)))))))
 
 ;;;; Processing instructions
 

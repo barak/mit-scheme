@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.33 2003/09/26 00:35:52 cph Exp $
+$Id: xml-struct.scm,v 1.34 2003/09/26 01:00:14 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -28,23 +28,23 @@ USA.
 (declare (usual-integrations))
 
 (define-record-type <combo-name>
-    (make-combo-name simple universal)
+    (make-combo-name qname expanded)
     combo-name?
-  (simple combo-name-simple)
-  (universal combo-name-universal))
+  (qname combo-name-qname)
+  (expanded combo-name-expanded))
 
 (set-record-type-unparser-method! <combo-name>
   (standard-unparser-method 'XML-NAME
     (lambda (name port)
       (write-char #\space port)
-      (write (combo-name-simple name) port))))
+      (write (combo-name-qname name) port))))
 
-(define-record-type <universal-name>
-    (make-universal-name iri local combos)
-    universal-name?
-  (iri universal-name-iri)
-  (local universal-name-local)
-  (combos universal-name-combos))
+(define-record-type <expanded-name>
+    (make-expanded-name iri local combos)
+    expanded-name?
+  (iri expanded-name-iri)
+  (local expanded-name-local)
+  (combos expanded-name-combos))
 
 (define (xml-name? object)
   (or (and (interned-symbol? object)
@@ -76,10 +76,10 @@ USA.
   ;; See RFC 1630 for correct syntax.
   (utf8-string-valid? object))
 
-(define (default-xml-namespace-iri? object)
+(define (null-xml-namespace-iri? object)
   (eq? object '||))
 
-(define (default-xml-namespace-iri)
+(define (null-xml-namespace-iri)
   '||)
 
 (define (guarantee-xml-namespace-iri object caller)
@@ -93,25 +93,25 @@ USA.
   (guarantee-xml-namespace-iri iri 'XML-NAMESPACE-IRI->STRING)
   (symbol->string iri))
 
-(define (xml-intern simple #!optional iri)
-  (make-xml-name simple
+(define (xml-intern qname #!optional iri)
+  (make-xml-name qname
 		 (if (default-object? iri)
-		     (default-xml-namespace-iri)
+		     (null-xml-namespace-iri)
 		     iri)))
 
-(define (make-xml-name simple iri)
+(define (make-xml-name qname iri)
   (let ((bad-name
 	 (lambda ()
-	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME)))
+	   (error:wrong-type-argument qname "an XML name" 'MAKE-XML-NAME)))
 	(bad-iri
 	 (lambda ()
 	   (error:wrong-type-argument iri "IRI" 'MAKE-XML-NAME))))
     (receive (string symbol)
-	(cond ((symbol? simple) (values (symbol-name simple) simple))
-	      ((string? simple) (values simple (string->symbol simple)))
+	(cond ((symbol? qname) (values (symbol-name qname) qname))
+	      ((string? qname) (values qname (string->symbol qname)))
 	      (else (bad-name)))
       (let ((type (string-is-xml-nmtoken? string)))
-	(cond ((and type (default-xml-namespace-iri? iri))
+	(cond ((and type (null-xml-namespace-iri? iri))
 	       symbol)
 	      ((eq? type 'NAME)
 	       (let ((iri (make-xml-namespace-iri iri)))
@@ -131,21 +131,21 @@ USA.
 			symbol)))))
 	      (else (bad-name)))))))
 
-(define (%make-xml-name simple iri local)
+(define (%make-xml-name qname iri local)
   (let ((uname
-	 (hash-table/intern! (hash-table/intern! universal-names
+	 (hash-table/intern! (hash-table/intern! expanded-names
 						 iri
 						 make-eq-hash-table)
 			     local
 			     (lambda ()
-			       (make-universal-name iri
-						    local
-						    (make-eq-hash-table))))))
-    (hash-table/intern! (universal-name-combos uname)
-			simple
-			(lambda () (make-combo-name simple uname)))))
+			       (make-expanded-name iri
+						   local
+						   (make-eq-hash-table))))))
+    (hash-table/intern! (expanded-name-combos uname)
+			qname
+			(lambda () (make-combo-name qname uname)))))
 
-(define universal-names
+(define expanded-names
   (make-eq-hash-table))
 
 (define xml-iri
@@ -154,20 +154,20 @@ USA.
 (define xmlns-iri
   (make-xml-namespace-iri "http://www.w3.org/2000/xmlns/"))
 
-(define (xml-name-simple name)
+(define (xml-name-qname name)
   (cond ((xml-nmtoken? name) name)
-	((combo-name? name) (combo-name-simple name))
-	(else (error:not-xml-name name 'XML-NAME-simple))))
+	((combo-name? name) (combo-name-qname name))
+	(else (error:not-xml-name name 'XML-NAME-QNAME))))
 
-(define (xml-name-simple=? name simple)
-  (eq? (xml-name-simple name) simple))
+(define (xml-name-qname=? name qname)
+  (eq? (xml-name-qname name) qname))
 
 (define (xml-name-string name)
-  (symbol-name (xml-name-simple name)))
+  (symbol-name (xml-name-qname name)))
 
 (define (xml-name-iri name)
-  (cond ((xml-nmtoken? name) (default-xml-namespace-iri))
-	((combo-name? name) (universal-name-iri (combo-name-universal name)))
+  (cond ((xml-nmtoken? name) (null-xml-namespace-iri))
+	((combo-name? name) (expanded-name-iri (combo-name-expanded name)))
 	(else (error:not-xml-name name 'XML-NAME-IRI))))
 
 (define (xml-name-iri=? name iri)
@@ -177,7 +177,7 @@ USA.
   (let ((s
 	 (symbol-name
 	  (cond ((xml-nmtoken? name) name)
-		((combo-name? name) (combo-name-simple name))
+		((combo-name? name) (combo-name-qname name))
 		(else (error:not-xml-name name 'XML-NAME-PREFIX))))))
     (let ((c (string-find-next-char s #\:)))
       (if c
@@ -185,10 +185,10 @@ USA.
 	  (null-xml-name-prefix)))))
 
 (define (null-xml-name-prefix? object)
-  (eq? object ':NULL))
+  (eq? object '||))
 
 (define (null-xml-name-prefix)
-  ':NULL)
+  '||)
 
 (define (xml-name-prefix=? name prefix)
   (eq? (xml-name-prefix name) prefix))
@@ -200,7 +200,7 @@ USA.
 	     (if c
 		 (string-tail->symbol s (fix:+ c 1))
 		 name))))
-	((combo-name? name) (universal-name-local (combo-name-universal name)))
+	((combo-name? name) (expanded-name-local (combo-name-expanded name)))
 	(else (error:not-xml-name name 'XML-NAME-LOCAL))))
 
 (define (xml-name-local=? name local)
@@ -210,14 +210,14 @@ USA.
   (let ((lose (lambda (n) (error:not-xml-name n 'XML-NAME=?))))
     (cond ((xml-nmtoken? n1)
 	   (cond ((xml-nmtoken? n2) (eq? n1 n2))
-		 ((combo-name? n2) (eq? n1 (combo-name-simple n2)))
+		 ((combo-name? n2) (eq? n1 (combo-name-qname n2)))
 		 (else (lose n2))))
 	  ((combo-name? n1)
 	   (cond ((xml-nmtoken? n2)
-		  (eq? (combo-name-simple n1) n2))
+		  (eq? (combo-name-qname n1) n2))
 		 ((combo-name? n2)
-		  (eq? (combo-name-universal n1)
-		       (combo-name-universal n2)))
+		  (eq? (combo-name-expanded n1)
+		       (combo-name-expanded n2)))
 		 (else (lose n2))))
 	  (else (lose n1)))))
 
@@ -661,7 +661,7 @@ USA.
 
 (define-xml-printer element
   (lambda (elt)
-    (xml-name-simple (xml-element-name elt))))
+    (xml-name-qname (xml-element-name elt))))
 
 (define-xml-printer external-id
   (lambda (dtd)

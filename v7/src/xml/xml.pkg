@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.31 2003/09/26 00:35:45 cph Exp $
+$Id: xml.pkg,v 1.32 2003/09/26 01:00:07 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -51,8 +51,6 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
-	  default-xml-namespace-iri
-	  default-xml-namespace-iri?
 	  error:not-xml-attribute-value
 	  error:not-xml-!attlist
 	  error:not-xml-!element
@@ -109,6 +107,8 @@ USA.
 	  make-xml-unparsed-!entity
 	  null-xml-name-prefix
 	  null-xml-name-prefix?
+	  null-xml-namespace-iri
+	  null-xml-namespace-iri?
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
 	  set-xml-!element-content-type!
@@ -201,8 +201,8 @@ USA.
 	  xml-name-local=?
 	  xml-name-prefix
 	  xml-name-prefix=?
-	  xml-name-simple
-	  xml-name-simple=?
+	  xml-name-qname
+	  xml-name-qname=?
 	  xml-name-string
 	  xml-name-iri
 	  xml-name-iri=?
