@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.26 1995/07/04 18:15:58 adams Exp $
+$Id: utils.scm,v 1.27 1995/07/13 04:00:09 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -243,11 +243,9 @@ MIT in each case. |#
 		     actions*)))
 	  ((and (not (null? actions*))
 		(or (form/satisfies? (car actions) '(SIDE-EFFECT-FREE))
-		    (and compiler:guru?
-			 (form/satisfies? (car actions) '(STATIC))
-			 (begin
-			   (write-line `(BEGINNIFY ELIDING ,(car actions)))
-			   #T))))
+		    (form/satisfies? (car actions) '(STATIC))))
+	   (if compiler:guru?
+	       (write-line `(BEGINNIFY ELIDING ,(car actions))))
 	   (loop (cdr actions) actions*))
 	  (else
 	   (loop (cdr actions)
@@ -280,7 +278,7 @@ MIT in each case. |#
 	    (finish
 	     (lambda (cont-name cont-expr bindings*)
 	       (let ((rator* `(LAMBDA (,cont-name
-				       ,@(lmap car bindings*))
+				       ,@(map car bindings*))
 				,body)))
 		 `(CALL ,(remember rator* rator)
 			,cont-expr
@@ -914,14 +912,6 @@ Example use of FORM/COPY-TRANSFORMING:
 	  (else
 	   (loop (cons (car l) elements)
 		 (cdr l))))))
-
-(define-integrable (lmap proc l)
-  (let loop ((l l) (l* '()))
-    (if (null? l)
-	(reverse! l*)
-	(loop (cdr l)
-	      (cons (proc (car l))
-		    l*)))))
 
 (define (difference set1 set2)
   (list-transform-negative set1
