@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.57 2004/02/24 20:36:42 cph Exp $
+$Id: xml-parser.scm,v 1.58 2004/02/25 21:00:52 cph Exp $
 
 Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -170,7 +170,7 @@ USA.
 			    0)))
 	       (lose c0 c1 c2 c3))))
 	((#\U+3C)
-	 (values #f '8-BIT #\<))
+	 (values #f 'NO-BOM #\<))
 	(else
 	 (values 'UTF-8 'UTF-8 c0))))))
 
@@ -188,9 +188,8 @@ USA.
 	    ((UTF-32)
 	     (if (not (eq? declared coding))
 		 (lose)))
-	    ((8-BIT)
-	     (if (memq declared
-		       '(UTF-16 UTF-16BE UTF-16LE UTF-32 UTF-32BE UTF-32LE))
+	    ((NO-BOM)
+	     (if (coding-requires-bom? declared)
 		 (lose))
 	     (port/set-coding port (or declared 'UTF-8)))
 	    ((ANY) unspecific)
@@ -205,6 +204,9 @@ USA.
     (if (and coding (not (port/known-coding? port coding)))
 	(error:bad-range-argument coding #f))
     coding))
+
+(define (coding-requires-bom? coding)
+  (memq coding '(UTF-16 UTF-16BE UTF-16LE UTF-32 UTF-32BE UTF-32LE)))
 
 ;;;; Top level
 
