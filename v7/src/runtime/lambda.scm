@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.11 1994/01/29 21:34:20 adams Exp $
+$Id: lambda.scm,v 14.12 1994/02/18 22:33:05 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -375,11 +375,10 @@ MIT in each case. |#
       (xlambda? object)))
 
 (define (make-lambda name required optional rest auxiliary declarations body)
-  (if (or (list-has-duplicates? required)
-	  (list-has-duplicates? optional)
-	  (list-has-duplicates? auxiliary)
-	  (there-exists? required (lambda (name) (memq name optional)))
-	  (and rest (or (memq rest required) (memq rest optional))))
+  (if (list-has-duplicates? (append required
+				    optional
+				    (if rest (list rest) '())
+				    auxiliary))
       (error "one or more duplicate parameters"
 	     required optional rest auxiliary))
   (let ((body* (if (null? declarations)
