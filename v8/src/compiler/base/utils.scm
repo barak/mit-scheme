@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.2 1994/12/14 20:33:47 adams Exp $
+$Id: utils.scm,v 1.3 1994/12/15 01:28:15 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -457,7 +457,7 @@ MIT in each case. |#
 	 (sample/2/really statistic datum1 datum2))))
 
 (define-integrable (find-statistic specification)
-  (if (pair? statistic)
+  (if (pair? specification)
       (hash-table/get *compiler-statistics* (car specification) #F)
       #F))
 
