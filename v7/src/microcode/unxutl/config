@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.8 1990/11/27 19:14:56 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.9 1990/12/29 20:57:57 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -85,28 +85,28 @@ case $# in
 		system_file=sunos4
 		machine_file=sun3
 		cmpint_file=cmpint-mc68k.h
-		cmp_file=sun/cmpaux-mc68k.s
+		cmp_file=cmpaux/sun3.s
 		cmp_link=cmpaux-mc68k.s
 		;;
 	sun3-os3)			# sun3, pre-4.0 sunos
 		system_file=sunos3
 		machine_file=sun3
 		cmpint_file=cmpint-mc68k.h
-		cmp_file=sun/cmpaux-mc68k.s
+		cmp_file=cmpaux/sun3.s
 		cmp_link=cmpaux-mc68k.s
 		;;
 	sun3-nfp)			# sun3, No Floating Point
 		system_file=sunos4
 		machine_file=sun3
 		cmpint_file=cmpint-mc68k.h
-		cmp_file=sun-nfp/cmpaux-mc68k.s
+		cmp_file=cmpaux/sun3-nfp.s
 		cmp_link=cmpaux-mc68k.s
 		;;
 	sun3-os3-nfp)			# sun3, pre-4.0 sunos, No Floating Point
 		system_file=sunos3
 		machine_file=sun3
 		cmpint_file=cmpint-mc68k.h
-		cmp_file=sun-nfp/cmpaux-mc68k.s
+		cmp_file=cmpaux/sun3-nfp.s
 		cmp_link=cmpaux-mc68k.s
 		;;
 	sun4 | sparc) 
@@ -117,7 +117,7 @@ case $# in
 		system_file=next-mach
 		machine_file=next
 		cmpint_file=cmpint-mc68k.h
-		cmp_file=sun/cmpaux-mc68k.s
+		cmp_file=cmpaux/sun3.s
 		cmp_link=cmpaux-mc68k.s
 		;;
 	umax)				# Encore Multimax
