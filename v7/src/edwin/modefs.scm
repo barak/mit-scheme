@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.146 1994/03/11 05:25:18 cph Exp $
+;;;	$Id: modefs.scm,v 1.147 1994/03/16 23:39:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -310,6 +310,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\u) 'undo)
 (define-prefix-key 'fundamental '(#\c-x #\v))
 (define-key 'fundamental '(#\c-x #\v #\c) 'vc-cancel-version)
+(define-key 'fundamental '(#\c-x #\v #\d) 'vc-directory)
 (define-key 'fundamental '(#\c-x #\v #\h) 'vc-insert-headers)
 (define-key 'fundamental '(#\c-x #\v #\i) 'vc-register)
 (define-key 'fundamental '(#\c-x #\v #\l) 'vc-print-log)
