@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.98 1997/07/15 22:54:57 adams Exp $
+$Id: boot.c,v 9.99 1997/07/16 01:46:32 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -186,10 +186,16 @@ DEFUN (main_name, (argc, argv),
       Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
+
+#ifdef EMPTY_LIST_VALUE
+      /* EMPTY_LIST_VALUE is defined if it is teh true value for '() and
+         EMPTY_LIST is a location used to store '() or #F
+	 */
       if (option_empty_list_eq_false)
 	EMPTY_LIST = SHARP_F;
       else
 	EMPTY_LIST = EMPTY_LIST_VALUE;
+#endif
 
       initialize_primitives ();
       if (! option_fasl_file)
