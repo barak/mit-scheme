@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fhooks.c,v 9.32 1990/06/20 17:40:31 cph Rel $
+$Id: fhooks.c,v 9.33 1993/02/11 02:21:21 adams Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 

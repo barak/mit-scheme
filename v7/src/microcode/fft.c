@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.30 1991/12/20 22:49:07 cph Exp $
+$Id: fft.c,v 9.31 1993/02/11 02:20:22 adams Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 

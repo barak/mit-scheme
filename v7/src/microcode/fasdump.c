@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.53 1992/02/18 17:30:34 jinx Exp $
+$Id: fasdump.c,v 9.54 1993/02/11 02:18:59 adams Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
