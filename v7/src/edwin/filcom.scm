@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.168 1992/09/18 18:56:13 cph Exp $
+;;;	$Id: filcom.scm,v 1.169 1992/09/30 02:27:55 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -196,32 +196,31 @@ Argument means don't offer to use auto-save file."
 
 (define (read-buffer-interactive buffer pathname visit?)
   (let ((truename
-	 (catch-file-errors
-	  (lambda ()
-	    (if visit?
-		(let loop
-		    ((hooks (ref-variable find-file-not-found-hooks buffer)))
-		  (if (and (not (null? hooks))
-			   (not ((car hooks) buffer)))
-		      (loop (cdr hooks)))))
-	    false)
-	  (lambda ()
-	    (read-buffer buffer pathname visit?)))))
-    (let ((pathname (or truename pathname)))
-      (let ((msg
-	     (cond ((file-writable? pathname)
-		    (and (not truename) "(New file)"))
-		   (truename
-		    "File is write protected")
-		   ((file-attributes pathname)
-		    "File exists, but is read-protected.")
-		   ((file-attributes (directory-pathname pathname))
-		    "File not found and directory write-protected")
-		   (else
-		    "File not found and directory doesn't exist"))))
-	(if msg
-	    (message msg))))
-    truename))
+	 (catch-file-errors (lambda () false)
+			    (lambda () (read-buffer buffer pathname visit?)))))
+    (define (finish msg)
+      (if msg
+	  (message msg))
+      truename)
+
+    (cond (truename
+	   (finish (and (not (file-writable? truename))
+			"File is write protected")))
+	  ((file-attributes pathname)
+	   (finish "File exists, but is read-protected."))
+	  (else
+	   (let loop ((hooks (if (not visit?)
+				 '()
+				 (ref-variable find-file-not-found-hooks buffer))))
+	     (if (null? hooks)
+		 (finish (cond ((file-writable? pathname)
+				"(New file)")
+			       ((file-attributes (directory-pathname pathname))
+				"File not found and directory write-protected")
+			       (else
+				"File not found and directory doesn't exist")))
+		 (and (not ((car hooks) buffer))
+		      (loop (cdr hooks)))))))))
 
 (define-variable find-file-not-found-hooks
   "List of procedures to be called for find-file on nonexistent file.
