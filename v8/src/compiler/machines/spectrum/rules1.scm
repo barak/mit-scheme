@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: rules1.scm,v 1.2 1995/03/08 13:38:51 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -480,8 +480,13 @@ MIT in each case. |#
 	  (CHAR->ASCII (REGISTER (? source))))
   (store-byte (standard-source! source) offset (standard-source! base)))
 
+;; store null byte in memory
 (define-rule statement
-  ;; store null byte in memory
+  (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
+	  (CONSTANT 0))
+  (store-byte 0 offset (standard-source! base)))
+
+(define-rule statement
   (ASSIGN (BYTE-OFFSET (REGISTER (? base)) (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\NUL)))
   (store-byte 0 offset (standard-source! base)))
