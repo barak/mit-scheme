@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.39 2001/01/04 22:07:43 cph Exp $
+$Id: string.c,v 9.40 2001/01/04 22:24:15 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -530,7 +530,7 @@ static ht_record_t * EXFUN (ht_delete, (hash_table_t *, unsigned long));
 
 static hash_table_t * external_strings = 0;
 
-DEFINE_PRIMITIVE ("allocate-external-string", Prim_alloc_external_string, 1, 1, 0)
+DEFINE_PRIMITIVE ("ALLOCATE-EXTERNAL-STRING", Prim_alloc_external_string, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
@@ -547,7 +547,7 @@ DEFINE_PRIMITIVE ("allocate-external-string", Prim_alloc_external_string, 1, 1, 
   }
 }
 
-DEFINE_PRIMITIVE ("external-string?", Prim_external_string_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("EXTERNAL-STRING?", Prim_external_string_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
@@ -565,7 +565,7 @@ DEFINE_PRIMITIVE ("external-string?", Prim_external_string_p, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("deallocate-external-string", Prim_dealloc_external_string, 1, 1, 0)
+DEFINE_PRIMITIVE ("DEALLOCATE-EXTERNAL-STRING", Prim_dealloc_external_string, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
@@ -581,7 +581,7 @@ DEFINE_PRIMITIVE ("deallocate-external-string", Prim_dealloc_external_string, 1,
   }
 }
 
-DEFINE_PRIMITIVE ("extended-string-length", Prim_extended_string_length, 1, 1, 0)
+DEFINE_PRIMITIVE ("EXTENDED-STRING-LENGTH", Prim_extended_string_length, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
