@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.47 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.48 1991/11/04 18:49:26 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -362,11 +362,11 @@ DEFUN (protect_fd, (fd), int fd)
   (*p) = fd;
   transaction_record_action (tat_always, protect_fd_close, p);
 }
-
+
 DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
-  "Given a file name and two integers, change the access and modification \n\
-times of the file to the times represented by the two integers. \n\
-Those integers are the times in seconds since 00:00:00 GMT, Jan. 1, 1970 \n\
+  "Change the access and modification times of FILE.\n\
+The second and third arguments are the respective times;\n\
+they are integers are the times in seconds since 00:00:00 GMT, Jan. 1, 1970\n\
 The file must exist and you must be the owner (or superuser).")
 {
   PRIMITIVE_HEADER (3);
@@ -377,5 +377,21 @@ The file must exist and you must be the owner (or superuser).")
     times.modtime = arg_integer (3);
     STD_VOID_SYSTEM_CALL(syscall_utime, (UX_utime ((STRING_ARG (1)), &times)));
     PRIMITIVE_RETURN (SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
+  "True iff the two file arguments are the same file.")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct stat s1;
+    struct stat s2;
+    PRIMITIVE_RETURN
+      (BOOLEAN_TO_OBJECT
+       ((UX_read_file_status ((STRING_ARG (1)), (&s1)))
+	&& (UX_read_file_status ((STRING_ARG (2)), (&s2)))
+	&& ((s1 . st_dev) == (s2 . st_dev))
+	&& ((s1 . st_ino) == (s2 . st_ino))));
   }
 }
