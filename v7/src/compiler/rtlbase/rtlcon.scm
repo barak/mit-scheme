@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.1 1987/04/21 23:49:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.2 1987/05/07 00:10:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ MIT in each case. |#
 
 (define (rtl:make-push-return continuation)
   (%make-assign (stack-push-address)
-		    (rtl:make-entry:continuation continuation)))
+		(rtl:make-entry:continuation continuation)))
 
 ;;; Interpreter Calls
 
