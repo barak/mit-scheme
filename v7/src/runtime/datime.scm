@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.35 2003/02/14 18:28:32 cph Exp $
+$Id: datime.scm,v 14.36 2003/09/30 17:17:05 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,6 +42,7 @@ USA.
 		   (conc-name decoded-time/)
 		   (constructor %make-decoded-time)
 		   (constructor allocate-decoded-time ())
+		   (predicate decoded-time?)
 		   (copier))
   (second #f read-only #t)
   (minute #f read-only #t)
