@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.235 2001/04/11 01:09:16 cph Exp $
+;;; $Id: imail-top.scm,v 1.236 2001/04/15 20:58:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1481,20 +1481,24 @@ With prefix argument, closes and buries only selected IMAIL folder."
   ()
   (lambda ()
     (let ((message (selected-message)))
-      (select-message (selected-folder)
-		      message
-		      #t
-		      (if (get-property message 'RAW? #f) #f 'FULL-HEADERS)))))
+      (store-property! message 'RAW?
+		       (case (get-property message 'RAW? #f)
+			 ((#f) 'HEADERS-ONLY)
+			 ((HEADERS-ONLY) #f)
+			 ((BODY-ONLY) #t)
+			 (else 'BODY-ONLY)))
+      (select-message (selected-folder) message #t))))
 
 (define-command imail-toggle-message
   "Toggle between standard and raw formats for message."
   ()
   (lambda ()
     (let ((message (selected-message)))
-      (select-message (selected-folder)
-		      message
-		      #t
-		      (not (get-property message 'RAW? #f))))))
+      (store-property! message 'RAW?
+		       (case (get-property message 'RAW? #f)
+			 ((#f HEADERS-ONLY) #t)
+			 (else #f)))
+      (select-message (selected-folder) message #t))))
 
 (define-command imail-get-new-mail
   "Probe the mail server for new mail.
@@ -1808,7 +1812,7 @@ Negative argument means search in reverse."
 
 ;;;; Message selection
 
-(define (select-message folder selector #!optional force? raw?)
+(define (select-message folder selector #!optional force?)
   (let ((buffer (imail-folder->buffer folder #t))
 	(message
 	 (cond ((message? selector)
@@ -1839,10 +1843,7 @@ Negative argument means search in reverse."
 	    (with-read-only-defeated mark
 	      (lambda ()
 		(if message
-		    (begin
-		      (store-property! message 'RAW?
-				       (if (default-object? raw?) #f raw?))
-		      (insert-message message #f 0 mark))
+		    (insert-message message #f 0 mark)
 		    (insert-string "[This folder has no messages in it.]"
 				   mark))))
 	    (mark-temporary! mark))
@@ -2064,8 +2065,8 @@ Negative argument means search in reverse."
 
 (define (insert-message message inline-only? left-margin mark)
   (let ((raw? (get-property message 'RAW? #f)))
-    (insert-header-fields message raw? mark)
-    (cond ((and raw? (not (eq? raw? 'FULL-HEADERS)))
+    (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
+    (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
 	  ((folder-supports-mime? (message-folder message))
 	   (insert-mime-message-body message mark inline-only? left-margin))

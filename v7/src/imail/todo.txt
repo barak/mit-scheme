@@ -1,12 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.116 2001/04/15 20:25:08 cph Exp $
+$Id: todo.txt,v 1.117 2001/04/15 20:59:02 cph Exp $
 
 Bug fixes
 ---------
-
-* M-x imail-toggle-header should not change other aspects of the
-  message presentation; it should toggle only the headers.  Currently
-  it also affects the RAW/formatted flag too.
 
 * When network connection gets wedged, Edwin locks up and can't be
   interrupted with C-g.  This is fundamentally an Edwin problem, but
