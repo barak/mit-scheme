@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Id: xscheme.el,v 1.33 1994/03/24 17:54:43 cph Exp $
+;;; $Id: xscheme.el,v 1.34 1994/03/24 17:59:43 cph Exp $
 
 (require 'scheme)
 
@@ -343,9 +343,19 @@ with no args, if that value is non-nil.
 		(set-process-sentinel process (cdr previous-state))))))))
 
 (defun scheme-interaction-mode-initialize ()
+  (if (not scheme-interaction-mode-map)
+      (progn
+	(setq scheme-interaction-mode-map (make-keymap))
+	(scheme-mode-commands scheme-interaction-mode-map)
+	(xscheme-interrupt-commands scheme-interaction-mode-map)
+	(xscheme-evaluation-commands scheme-interaction-mode-map)
+	(scheme-interaction-mode-commands scheme-interaction-mode-map)))
   (use-local-map scheme-interaction-mode-map)
   (setq major-mode 'scheme-interaction-mode)
   (setq mode-name "Scheme Interaction"))
+
+(defvar scheme-interaction-mode-map
+  nil)
 
 (defun scheme-interaction-mode-commands (keymap)
   (let ((entries scheme-interaction-mode-commands-alist))
@@ -361,15 +371,6 @@ with no args, if that value is non-nil.
     ("\C-c\C-y" xscheme-yank)
     ("\ep" xscheme-yank-pop)
     ("\en" xscheme-yank-push)))
-
-(defvar scheme-interaction-mode-map nil)
-(if (not scheme-interaction-mode-map)
-    (progn
-      (setq scheme-interaction-mode-map (make-keymap))
-      (scheme-mode-commands scheme-interaction-mode-map)
-      (xscheme-interrupt-commands scheme-interaction-mode-map)
-      (xscheme-evaluation-commands scheme-interaction-mode-map)
-      (scheme-interaction-mode-commands scheme-interaction-mode-map)))
 
 (defun xscheme-enter-interaction-mode ()
   (save-excursion
