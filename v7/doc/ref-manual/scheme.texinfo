@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.107 2001/11/21 02:01:02 cph Exp $
+@comment $Id: scheme.texinfo,v 1.108 2001/11/26 18:16:01 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -51,7 +51,7 @@ Free Documentation License".
 @title{MIT Scheme Reference Manual}
 @subtitle Edition 1.95
 @subtitle for Scheme Release 7.6.0
-@subtitle 20 November 2001
+@subtitle 26 November 2001
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -14938,7 +14938,395 @@ procedure.  @var{Table} must satisfy @code{parser-macros?}, and
 @node XML Parser,  , Parser Language, Input/Output
 @section XML Parser
 
-[Not yet written.]
+@cindex XML parser
+@cindex parser, XML
+MIT Scheme provides a simple non-validating @acronym{XML} parser.
+This parser is mostly conformant, with the exception that it doesn't
+support @acronym{UTF-16}.  The parser also does not support external
+document type declarations (@acronym{DTD}s).  The output of the parser
+is a record tree that closely reflects the structure of the
+@acronym{XML} document.
+
+@cindex XML output
+@cindex output, XML
+There is also an output mechanism that writes an @acronym{XML} record
+tree to a port.  There is no guarantee that parsing an @acronym{XML}
+document and writing it back out will make a verbatim copy of the
+document.  The output will be semantically identical but may have
+small syntactic differences.  For example, comments are discarded by
+the parser, and entities are substituted during the parsing process.
+
+The purpose of the @acronym{XML} support is to provide a mechanism for
+reading and writing simple @acronym{XML} documents.  In the future
+this support may be further developed to support a standard interface
+such as @acronym{DOM} or @acronym{SAX}.
+
+@cindex run-time-loadable option
+@cindex option, run-time-loadable
+The @acronym{XML} support is a run-time-loadable option; to use it,
+execute
+
+@example
+(load-option 'xml)
+@end example
+@findex load-option
+
+@noindent
+once before compiling any code that uses it.
+
+The @acronym{XML} interface consists of an input procedure, an output
+procedure, and a set of record types.
+
+@deffn procedure parse-xml-document buffer
+This procedure parses an @acronym{XML} input stream and returns a
+newly-allocated @acronym{XML} record tree.  The @var{buffer} argument
+must be a parser buffer (@pxref{Parser Buffers}).  Most errors in the
+input stream are detected and signalled, with information identifying
+the location of the error where possible.  Note that the input stream
+is assumed to be @acronym{UTF-8}.
+@end deffn
+
+@deffn procedure write-xml xml-document port
+This procedure writes an @acronym{XML} record tree to @var{port}.  The
+@var{xml-document} argument must be a record of type
+@code{xml-document}, which is the root record of an @acronym{XML}
+record tree.  The output is encoded in @acronym{UTF-8}.
+@end deffn
+
+@cindex XML names
+@cindex names, XML
+@acronym{XML} names are represented in memory as symbols.  All symbols
+appearing within @acronym{XML} records are @acronym{XML} names.
+Because @acronym{XML} names are case sensitive, there is a procedure
+to intern these symbols:
+
+@deffn procedure xml-intern string
+@cindex XML name
+Returns the @acronym{XML} name called @var{string}.  @acronym{XML}
+names are represented as symbols, but unlike ordinary Scheme symbols,
+they are case sensitive.  The following is true for any two strings
+@var{string1} and @var{string2}:
+
+@example
+@group
+(let ((name1 (xml-intern @var{string1}))
+      (name2 (xml-intern @var{string2})))
+  (if (string=? @var{string1} @var{string2})
+      (eq? name1 name2)
+      (not (eq? name1 name2))))
+@end group
+@end example
+@end deffn
+
+The output from the @acronym{XML} parser and the input to the
+@acronym{XML} output procedure is a complex data structure composed of
+a heirarchy of typed components.  Each component is a record whose
+fields correspond to parts of the @acronym{XML} structure that the
+record represents.  There are no special operations on these records;
+each is a tuple with named subparts.  The root record type is
+@code{xml-document}, which represents a complete @acronym{XML}
+document.
+
+Each record type @var{type} has the following associated bindings:
+
+@table @code
+@item @var{type}-rtd
+is a variable bound to the record-type descriptor for @var{type}.  The
+record-type descriptor may be used as a specializer in @acronym{SOS}
+method definitions, which greatly simplifies code to dispatch on these
+types.
+
+@item @var{type}?
+is a predicate for records of type @var{type}.  It accepts one
+argument, which can be any object, and returns @code{#t} if the object
+is a record of this type, or @code{#f} otherwise.
+
+@item make-@var{type}
+is a constructor for records of type @var{type}.  It accepts one
+argument for each field of @var{type}, in the same order that they are
+written in the type description, and returns a newly-allocated record
+of that type.
+
+@item @var{type}-@var{field}
+is an accessor procedure for the field @var{field} in records of type
+@var{type}.  It accepts one argument, which must be a record of that
+type, and returns the contents of the corresponding field in the
+record.
+
+@item set-@var{type}-@var{field}!
+is a modifier procedure for the field @var{field} in records of type
+@var{type}.  It accepts two arguments: the first must be a record of
+that type, and the second is a new value for the corresponding field.
+The record's field is modified to have the new value.
+@end table
+
+@deftp {record type} xml-document declaration misc-1 dtd misc-2 root misc-3
+@vindex xml-document-rtd
+@findex xml-document?
+@findex make-xml-document
+@findex xml-document-declaration
+@findex xml-document-misc-1
+@findex xml-document-dtd
+@findex xml-document-misc-2
+@findex xml-document-root
+@findex xml-document-misc-3
+@findex set-xml-document-declaration!
+@findex set-xml-document-misc-1!
+@findex set-xml-document-dtd!
+@findex set-xml-document-misc-2!
+@findex set-xml-document-root!
+@findex set-xml-document-misc-3!
+The @code{xml-document} record is the top-level record representing a
+complete @acronym{XML} document.  @var{Declaration} is either an
+@code{xml-declaration} object or @code{#f}.  @var{Dtd} is either an
+@code{xml-dtd} object or @code{#f}.  @var{Root} is an
+@code{xml-element} object.  @var{Misc-1}, @var{misc-2}, and
+@var{misc-3} are lists of miscellaneous items; a miscellaneous item is
+either an @code{xml-processing-instructions} object or a string of
+whitespace.
+@end deftp
+
+@deftp {record type} xml-declaration version encoding standalone
+@vindex xml-declaration-rtd
+@findex xml-declaration?
+@findex make-xml-declaration
+@findex xml-declaration-version
+@findex xml-declaration-encoding
+@findex xml-declaration-standalone
+@findex set-xml-declaration-version!
+@findex set-xml-declaration-encoding!
+@findex set-xml-declaration-standalone!
+The @code{xml-declaration} record represents the @samp{<?xml @dots{}
+?>} declaration that optionally appears at the beginning of an
+@acronym{XML} document.  @var{Version} is a version string, typically
+@code{"1.0"}.  @var{Encoding} is either an encoding string or
+@code{#f}.  @var{Standalone} is either @code{"yes"}, @code{"no"}, or
+@code{#f}.
+@end deftp
+
+@deftp {record type} xml-element name attributes contents
+@vindex xml-element-rtd
+@findex xml-element?
+@findex make-xml-element
+@findex xml-element-name
+@findex xml-element-attributes
+@findex xml-element-contents
+@findex set-xml-element-name!
+@findex set-xml-element-attributes!
+@findex set-xml-element-contents!
+The @code{xml-element} record represents general @acronym{XML}
+elements; the bulk of a typical @acronym{XML} document consists of
+these elements.  @var{Name} is the element name (a symbol).
+@var{Attributes} is a list of attributes; each attribute is a pair
+whose @sc{car} is the attribute name (a symbol), and whose @sc{cdr} is
+the attribute value (a string).  @var{Contents} is a list of the
+contents of the element.  Each element of this list is either a
+string, an @code{xml-element} record, an
+@code{xml-processing-instructions} record, or an
+@code{xml-uninterpreted} record.
+@end deftp
+
+@deftp {record type} xml-processing-instructions name text
+@vindex xml-processing-instructions-rtd
+@findex xml-processing-instructions?
+@findex make-xml-processing-instructions
+@findex xml-processing-instructions-name
+@findex xml-processing-instructions-text
+@findex set-xml-processing-instructions-name!
+@findex set-xml-processing-instructions-text!
+The @code{xml-processing-instructions} record represents processing
+instructions, which have the form @samp{<?@var{name} @dots{} ?>}.
+These instructions are intended to contain non-@acronym{XML} data that
+will be processed by another interpreter; for example they might
+contain @acronym{PHP} programs.  The @var{name} field is the processor
+name (a symbol), and the @var{text} field is the body of the
+instructions (a string).
+@end deftp
+
+@deftp {record type} xml-uninterpreted text
+@vindex xml-uninterpreted-rtd
+@findex xml-uninterpreted?
+@findex make-xml-uninterpreted
+@findex xml-uninterpreted-text
+@findex set-xml-uninterpreted-text!
+Some documents contain entity references that can't be expanded by the
+parser, perhaps because the document requires an external
+@acronym{DTD}.  Such references are left uninterpreted in the output
+by wrapping them in @code{xml-uninterpreted} records.  In some
+situations, for example when they are embedded in attribute values,
+the surrounding text is also included in the @code{xml-uninterpreted}
+record.  The @var{text} field contains the uninterpreted @acronym{XML}
+text (a string).
+@end deftp
+
+@deftp {record type} xml-dtd root external internal
+@vindex xml-dtd-rtd
+@findex xml-dtd?
+@findex make-xml-dtd
+@findex xml-dtd-root
+@findex xml-dtd-external
+@findex xml-dtd-internal
+@findex set-xml-dtd-root!
+@findex set-xml-dtd-external!
+@findex set-xml-dtd-internal!
+The @code{xml-dtd} record represents a document type declaration.  The
+@var{root} field is an @acronym{XML} name for the root element of the
+document.  @var{External} is either an @code{xml-external-id} record
+or @code{#f}.  @var{Internal} is a list of @acronym{DTD} element
+records (e.g.@: @code{xml-!element}, @code{xml-!attlist}, etc.).
+@end deftp
+
+The remaining record types are valid only within a @acronym{DTD}.
+
+@deftp {record type} xml-!element name content-type
+@vindex xml-!element-rtd
+@findex xml-!element?
+@findex make-xml-!element
+@findex xml-!element-name
+@findex xml-!element-content-type
+@findex set-xml-!element-name!
+@findex set-xml-!element-content-type!
+The @code{xml-!element} record represents an element-type
+declaration.  @var{Name} is the @acronym{XML} name of the type being
+declared (a symbol).  @var{Content-type} describes the type and can
+have several different values, as follows:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{EMPTY} and @samp{ANY} correspond to the
+@acronym{XML} keywords of the same name.
+
+@item
+A list @samp{(MIX @var{type} @dots{})} corresponds to the
+@samp{(#PCDATA | @var{type} | @dots{})} syntax.
+@end itemize
+@end deftp
+
+@deftp {record type} xml-!attlist name definitions
+@vindex xml-!attlist-rtd
+@findex xml-!attlist?
+@findex make-xml-!attlist
+@findex xml-!attlist-name
+@findex xml-!attlist-definitions
+@findex set-xml-!attlist-name!
+@findex set-xml-!attlist-definitions!
+The @code{xml-!attlist} record represents an attribute-list
+declaration.  @var{Name} is the @acronym{XML} name of the type for
+which attributes are being declared (a symbol).  @var{Definitions} is
+a list of attribute definitions, each of which is a list of three
+elements @code{(@var{name} @var{type} @var{default})}.  @var{Name} is
+an @acronym{XML} name for the name of the attribute (a symbol).
+@var{Type} describes the attribute type, and can have one of the
+following values:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{CDATA}, @samp{IDREFS}, @samp{IDREF},
+@samp{ID}, @samp{ENTITY}, @samp{ENTITIES}, @samp{NMTOKENS}, and
+@samp{NMTOKEN} correspond to the @acronym{XML} keywords of the same
+names.
+
+@item
+A list @samp{(NOTATION @var{name1} @var{name2} @dots{})} corresponds
+to the @samp{NOTATION (@var{name1} | @var{name2} @dots{})} syntax.
+
+@item
+A list @samp{(ENUMERATED @var{name1} @var{name2} @dots{})} corresponds
+to the @samp{(@var{name1} | @var{name2} @dots{})} syntax.
+@end itemize
+
+@var{Default} describes the default value for the attribute, and can
+have one of the following values:
+
+@itemize @bullet
+@item
+The @acronym{XML} names @samp{#REQUIRED} and @samp{#IMPLIED}
+correspond to the @acronym{XML} keywords of the same names.
+
+@item
+A list @samp{(#FIXED @var{value})} corresponds to the @samp{#FIXED
+"@var{value}"} syntax.  @var{Value} is represented as a string, but
+might also be an @code{xml-uninterpreted} record.
+
+@item
+A list @samp{(DEFAULT @var{value})} corresponds to the
+@samp{"@var{value}"} syntax.  @var{Value} is represented as a string,
+but might also be an @code{xml-uninterpreted} record.
+@end itemize
+@end deftp
+
+@deftp {record type} xml-!entity name value
+@vindex xml-!entity-rtd
+@findex xml-!entity?
+@findex make-xml-!entity
+@findex xml-!entity-name
+@findex xml-!entity-value
+@findex set-xml-!entity-name!
+@findex set-xml-!entity-value!
+The @code{xml-!entity} record represents a general entity
+declaration.  @var{Name} is an @acronym{XML} name for the entity.
+@var{Value} is the entity's value, either a string, an
+@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-parameter-!entity name value
+@vindex xml-parameter-!entity-rtd
+@findex xml-parameter-!entity?
+@findex make-xml-parameter-!entity
+@findex xml-parameter-!entity-name
+@findex xml-parameter-!entity-value
+@findex set-xml-parameter-!entity-name!
+@findex set-xml-parameter-!entity-value!
+The @code{xml-parameter-!entity} record represents a parameter entity
+declaration.  @var{Name} is an @acronym{XML} name for the entity.
+@var{Value} is the entity's value, either a string, an
+@code{xml-uninterpreted} record, or an @code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-unparsed-!entity name id notation
+@vindex xml-unparsed-!entity-rtd
+@findex xml-unparsed-!entity?
+@findex make-xml-unparsed-!entity
+@findex xml-unparsed-!entity-name
+@findex xml-unparsed-!entity-id
+@findex xml-unparsed-!entity-notation
+@findex set-xml-unparsed-!entity-name!
+@findex set-xml-unparsed-!entity-id!
+@findex set-xml-unparsed-!entity-notation!
+The @code{xml-unparsed-!entity} record represents an unparsed entity
+declaration.  @code{Name} is an @acronym{XML} name for the entity.
+@var{Id} is an @code{xml-external-id} record.  @var{Notation} is an
+@acronym{XML} name for the notation.
+@end deftp
+
+@deftp {record type} xml-!notation name id
+@vindex xml-!notation-rtd
+@findex xml-!notation?
+@findex make-xml-!notation
+@findex xml-!notation-name
+@findex xml-!notation-id
+@findex set-xml-!notation-name!
+@findex set-xml-!notation-id!
+The @code{xml-!notation} record represents a notation declaration.
+@code{Name} is an @acronym{XML} name for the notation.  @var{Id} is an
+@code{xml-external-id} record.
+@end deftp
+
+@deftp {record type} xml-external-id id uri
+@vindex xml-external-id-rtd
+@findex xml-external-id?
+@findex make-xml-external-id
+@findex xml-external-id-id
+@findex xml-external-id-uri
+@findex set-xml-external-id-id!
+@findex set-xml-external-id-uri!
+The @code{xml-external-id} record is a reference to an external
+@acronym{DTD}.  This reference consists of two parts: @var{id} is a
+public @acronym{ID} literal, corresponding to the @samp{PUBLIC}
+keyword, while @var{uri} is a system literal, corresponding to the
+@samp{SYSTEM} keyword.  Either or both may be present, depending on
+the context.  Each is represented as a string.
+@end deftp
 
 @node Operating-System Interface, Error System, Input/Output, Top
 @chapter Operating-System Interface
