@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.8 1993/01/12 19:48:19 gjr Exp $
+$Id: prosenv.c,v 1.9 1993/07/01 22:29:58 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -123,14 +123,14 @@ DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,
   "Return the current process time in units of milliseconds.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (ulong_to_integer (OS_process_clock ()));
+  PRIMITIVE_RETURN (double_to_integer (OS_process_clock ()));
 }
 
 DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0,
   "Return the current real time in units of milliseconds.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (ulong_to_integer (OS_real_time_clock ()));
+  PRIMITIVE_RETURN (double_to_integer (OS_real_time_clock ()));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-TIMER-CLEAR", Prim_process_timer_clear, 0, 0,

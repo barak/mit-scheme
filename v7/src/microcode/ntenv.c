@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
+$Id: ntenv.c,v 1.3 1993/07/01 22:29:57 cph Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -87,18 +87,18 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   return (t);
 }
 
-clock_t
+double
 DEFUN_VOID (OS_process_clock)
 {
   /* This must not signal an error in normal use. */
   /* Return answer in milliseconds, was in 1/100th seconds */
-  return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
+  return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
 
-clock_t
+double
 DEFUN_VOID (OS_real_time_clock)
 {
-  return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
+  return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC))
 }
 
 /* Timer adjustments */

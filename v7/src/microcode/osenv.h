@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.3 1993/01/12 19:48:12 gjr Exp $
+$Id: osenv.h,v 1.4 1993/07/01 22:29:57 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -51,8 +51,8 @@ struct time_structure
 extern time_t EXFUN (OS_encoded_time, ());
 extern void EXFUN (OS_decode_time, (time_t, struct time_structure * ts));
 extern time_t EXFUN (OS_encode_time, (struct time_structure * ts));
-extern clock_t EXFUN (OS_process_clock, (void));
-extern clock_t EXFUN (OS_real_time_clock, (void));
+extern double EXFUN (OS_process_clock, (void));
+extern double EXFUN (OS_real_time_clock, (void));
 extern void EXFUN (OS_process_timer_set, (clock_t first, clock_t interval));
 extern void EXFUN (OS_process_timer_clear, (void));
 extern void EXFUN (OS_real_timer_set, (clock_t first, clock_t interval));

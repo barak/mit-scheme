@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.10 1993/02/06 05:42:47 gjr Exp $
+$Id: uxenv.c,v 1.11 1993/07/01 22:29:59 cph Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -104,10 +104,10 @@ DEFUN_VOID (initialize_process_clock)
   initial_process_clock = (buffer . tms_utime);
 }
 
-clock_t
+double
 DEFUN_VOID (OS_process_clock)
 {
-  clock_t ct = (UX_SC_CLK_TCK ());
+  double ct = ((double) (UX_SC_CLK_TCK ()));
   struct tms buffer;
   /* Was STD_VOID_SYSTEM_CALL, but at least one version of Ultrix
      returns negative numbers other than -1 when there are no errors.  */
@@ -115,8 +115,9 @@ DEFUN_VOID (OS_process_clock)
     if (errno != EINTR)
       error_system_call (errno, syscall_times);
   return
-    (((((buffer . tms_utime) - initial_process_clock) * 2000) + ct) /
-     (2 * ct));
+    (((((double) ((buffer . tms_utime) - initial_process_clock)) * 2000.0)
+      + ct)
+     / (2.0 * ct));
 }
 
 #else /* not HAVE_TIMES */
@@ -126,11 +127,11 @@ DEFUN_VOID (initialize_process_clock)
 {
 }
 
-clock_t
+double
 DEFUN_VOID (OS_process_clock)
 {
   /* This must not signal an error in normal use. */
-  return (0);
+  return (0.0);
 }
 
 #endif /* HAVE_TIMES */
@@ -146,7 +147,7 @@ DEFUN_VOID (initialize_real_time_clock)
   UX_gettimeofday ((&initial_rtc), (&tz));
 }
 
-clock_t
+double
 DEFUN_VOID (OS_real_time_clock)
 {
   struct timeval rtc;
@@ -154,8 +155,9 @@ DEFUN_VOID (OS_real_time_clock)
   STD_VOID_SYSTEM_CALL
     (syscall_gettimeofday, (UX_gettimeofday ((&rtc), (&tz))));
   return
-    ((((rtc . tv_sec) - (initial_rtc . tv_sec)) * 1000) +
-     ((((rtc . tv_usec) - (initial_rtc . tv_usec)) + 500) / 1000));
+    ((((double) ((rtc . tv_sec) - (initial_rtc . tv_sec))) * 1000.0) +
+     ((((double) ((rtc . tv_usec) - (initial_rtc . tv_usec))) + 500.0)
+      / 1000.0));
 }
 
 #else /* not HAVE_GETTIMEOFDAY */
@@ -170,10 +172,10 @@ DEFUN_VOID (initialize_real_time_clock)
   initial_rtc = (UX_times (&buffer));
 }
 
-clock_t
+double
 DEFUN_VOID (OS_real_time_clock)
 {
-  clock_t ct = (UX_SC_CLK_TCK ());
+  double ct = ((double) (UX_SC_CLK_TCK ()));
   struct tms buffer;
   clock_t t;
   /* Was STD_UINT_SYSTEM_CALL, but at least one version of Ultrix
@@ -181,7 +183,7 @@ DEFUN_VOID (OS_real_time_clock)
   while ((t = (UX_times (&buffer))) == (-1))
     if (errno != EINTR)
       error_system_call (errno, syscall_times);
-  return ((((t - initial_rtc) * 2000) + ct) / (2 * ct));
+  return (((((double) (t - initial_rtc)) * 2000.0) + ct) / (2.0 * ct));
 }
 
 #else /* not HAVE_TIMES */
@@ -194,12 +196,12 @@ DEFUN_VOID (initialize_real_time_clock)
   initial_rtc = (time (0));
 }
 
-clock_t
+double
 DEFUN_VOID (OS_real_time_clock)
 {
   time_t t;
   STD_UINT_SYSTEM_CALL (syscall_time, t, (UX_time (0)));
-  return ((t - initial_rtc) * 1000);
+  return (((double) (t - initial_rtc)) * 1000.0);
 }
 
 #endif /* HAVE_TIMES */

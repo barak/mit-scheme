@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosenv.c,v 1.3 1993/01/12 19:48:36 gjr Exp $
+$Id: dosenv.c,v 1.4 1993/07/01 22:29:56 cph Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -83,18 +83,23 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   return (t);
 }
 
-clock_t
+double
+DEFUN_VOID (OS_real_time_clock)
+{
+  /* Jump through hoops because `clock()' wraps around to zero after
+     one day and `time()' has at best resolution of one second.  */
+  return
+    (((((double) (((long) (OS_encoded_time ())) / 60L)) * 60.0)
+      + (((double) (((long) (clock ())) % (60L * ((long) CLOCKS_PER_SEC))))
+	 / ((double) CLOCKS_PER_SEC)))
+     * 1000.0);
+}
+
+double
 DEFUN_VOID (OS_process_clock)
 {
   /* This must not signal an error in normal use. */
-  /* Return answer in milliseconds, was in 1/100th seconds */
-  return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
-}
-
-clock_t
-DEFUN_VOID (OS_real_time_clock)
-{
-  return (clock()*((clock_t) (1000/CLOCKS_PER_SEC)));
+  return (OS_real_time_clock);
 }
 
 /* Timer adjustments */
