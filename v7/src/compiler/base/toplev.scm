@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.55 1999/01/02 06:06:43 cph Exp $
+$Id: toplev.scm,v 4.56 1999/03/04 05:54:06 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -506,8 +506,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(wrapper
 	 (if (default-object? wrapper) in-compiler wrapper)))
     (fluid-let ((*info-output-filename*
-		 (if (pathname? info-output-pathname)
-		     (->namestring info-output-pathname)
+		 (if (string? info-output-pathname)
+		     (->pathname info-output-pathname)
 		     *info-output-filename*))
 		(*rtl-output-port* rtl-output-port)
 		(*lap-output-port* lap-output-port)
