@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.1 1990/09/10 18:13:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.2 1990/11/14 14:58:18 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -94,8 +94,9 @@ MIT in each case. |#
 (define (initialize-syntax!)
   ;; First hack the parser (reader) table
   ;; Remove backquote and comma
-  (let ((undefined-entry (access parse-object/undefined-atom-delimiter
-				 (->environment '(runtime parser)))))
+  (let ((undefined-entry
+	 (access parse-object/undefined-atom-delimiter
+		 (->environment '(runtime parser)))))
     (parser-table/set-entry! sicp-parser-table "`" undefined-entry)
     (parser-table/set-entry! sicp-parser-table "," undefined-entry))
   ;; Add brackets as extended alphabetic since they are used in book (ugh!)
@@ -104,17 +105,21 @@ MIT in each case. |#
    "/"
    (lambda (parse-object collect-list)
      (parser-table/set-entry! sicp-parser-table "[" parse-object collect-list)
-     (parser-table/set-entry! sicp-parser-table "]" parse-object collect-list)))
+     (parser-table/set-entry! sicp-parser-table "]" parse-object
+			      collect-list)))
   ;; Now, hack the syntax (special form) table.
-  (for-each (lambda (name)
-	      (syntax-table-define
-		  sicp-syntax-table
-		  name
-		(or (syntax-table-ref system-global-syntax-table name)
-		    (error "Missing syntactic keyword" name))))
-	    '(ACCESS BEGIN BKPT COLLECT COND CONJUNCTION CONS-STREAM DEFINE
-		     DELAY DISJUNCTION ERROR IF LAMBDA LET MAKE-ENVIRONMENT
-		     QUOTE SEQUENCE SET! THE-ENVIRONMENT))
+  (let ((move
+	 (lambda (from to)
+	   (syntax-table-define sicp-syntax-table to
+	     (or (syntax-table-ref system-global-syntax-table from)
+		 (error "Missing syntactic keyword" from))))))
+    (for-each (lambda (name) (move name name))
+	      '(ACCESS BEGIN BKPT COLLECT COND CONS-STREAM DEFINE
+		       DELAY ERROR IF LAMBDA LET MAKE-ENVIRONMENT
+		       QUOTE SET! THE-ENVIRONMENT))
+    (move 'AND 'CONJUNCTION)
+    (move 'OR 'DISJUNCTION)
+    (move 'BEGIN 'SEQUENCE))
   (set! *student-parser-table* (parser-table/copy sicp-parser-table))
   (set! *student-syntax-table* (syntax-table/copy sicp-syntax-table))
   #T)
@@ -127,26 +132,31 @@ MIT in each case. |#
 
 (define (in-user-environment-chain? environment)
   (or (eq? environment user-global-environment)
-      (and (not (eq? environment system-global-environment))
-	   (environment-has-parent? environment)
+      (and (environment-has-parent? environment)
 	   (in-user-environment-chain? (environment-parent environment)))))
 
-(define (enable-global-environment)
-  ((access ic-environment/set-parent! (->environment '(runtime environment)))
-   user-global-environment
-   system-global-environment)
-  'ENABLED)
+(define ic-environment/remove-parent!)
+(define ic-environment/set-parent!)
+
+(let ((e (->environment '(runtime environment))))
+  (set! ic-environment/remove-parent! (access ic-environment/remove-parent! e))
+  (set! ic-environment/set-parent! (access ic-environment/set-parent! e)))
 
 (define (disable-global-environment)
-  ((access ic-environment/remove-parent! (->environment '(runtime environment)))
-   user-global-environment)
+  (ic-environment/remove-parent! user-global-environment)
   'DISABLED)
+
+(define (enable-global-environment)
+  (ic-environment/set-parent! user-global-environment
+			      system-global-environment)
+  'ENABLED)
 
 (define (student-environment-warning-hook environment)
   (if (not (in-user-environment-chain? environment))
       (begin
 	(newline)
-	(write-string "This environment is part of the Scheme system outside the student system.")
+	(write-string
+	 "This environment is part of the Scheme system outside the student system.")
 	(newline)
 	(write-string
 	 "Performing side-effects in it may damage to the system."))))
@@ -154,18 +164,20 @@ MIT in each case. |#
 ;;;; Feature hackery
 
 (define (enable-language-features . prompt)
+  prompt
   (without-interrupts
    (lambda ()
      (enable-global-environment)
-     (enable-system-syntax)
-     *the-non-printing-object*)))
+     (enable-system-syntax)))
+  unspecific)
 
 (define (disable-language-features . prompt)
+  prompt
   (without-interrupts
    (lambda ()
      (disable-global-environment)
-     (disable-system-syntax)
-     *the-non-printing-object*)))
+     (disable-system-syntax)))
+  unspecific)
 
 (define (language-features-enabled?)
   (global-environment-enabled?))
@@ -204,7 +216,7 @@ MIT in each case. |#
     (AND . AND*)
     (APPEND)
     (APPEND-STREAMS)
-    (APPLICABLE?)
+    (APPLICABLE? . PROCEDURE?)
     (APPLY)
     (ASCII)
     (ASSOC)
@@ -435,12 +447,11 @@ MIT in each case. |#
 (define student-band-pathname)
 
 (define (initialize-system)
-  (let ((old-init-file-pathname (init-file-pathname)))
-    (set! init-file-pathname
+  (set! init-file-pathname
+	(let ((old-init-file-pathname (init-file-pathname)))
 	  (lambda ()
-	    (merge-pathnames
-	     (make-pathname #f #f #f "sicp" #f #f)
-	     old-init-file-pathname))))
+	    (merge-pathnames (make-pathname #f #f #f "sicp" #f #f)
+			     old-init-file-pathname))))
   (set! student-band-pathname
 	(merge-pathnames
 	 (make-pathname #f #f #f "sicp" "bin" #f)
@@ -460,13 +471,13 @@ MIT in each case. |#
 
 (define (reload #!optional filename)
   (disk-restore
-   (if (unassigned? filename)
+   (if (default-object? filename)
        student-band-pathname
        (merge-pathnames (->pathname filename)
 			student-band-pathname))))   
 
 (define (student-band #!optional filename)
-  (if (not (unassigned? filename))
+  (if (not (default-object? filename))
       (set! student-band-pathname
 	    (merge-pathnames (->pathname filename)
 			     student-band-pathname)))

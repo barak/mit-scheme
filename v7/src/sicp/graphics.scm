@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/graphics.scm,v 1.1 1990/09/10 18:10:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/graphics.scm,v 1.2 1990/11/14 14:57:58 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,18 +42,18 @@ MIT in each case. |#
 (define draw-line-to)
 (define draw-point)
 (define graphics-available?)
-(define graphics-text)		      ;Accepts different parameters on Chipmunks
+(define graphics-text)
 (define init-graphics)
 (define position-pen)
 
 (define graphics-package
   (make-environment
 
-    (define graphics-device)
+    (define graphics-device #F)
 
     (set! clear-graphics
 	  (lambda ()
-	    (if (unassigned? graphics-device)
+	    (if (not graphics-device)
 		(init-graphics))
 	    (graphics-clear graphics-device)
 	    (graphics-move-cursor graphics-device 0 0)))
@@ -76,22 +76,20 @@ MIT in each case. |#
 
     (set! graphics-text
 	  (lambda (text x y)
+	    ;; Accepts different parameters on Chipmunks.
 	    (graphics-draw-text graphics-device x y text)))
 
     (set! init-graphics
 	  (lambda ()
 	    (let ((display (x-open-display #f)))
-	      (set! graphics-device (make-graphics-device
-				     x-graphics-device-type
-				     display
-				     "512x388"
-				     #f)))
-	    (graphics-set-coordinate-limits graphics-device
-					    -256 -195
-					    255 194)
+	      (set! graphics-device
+		    (make-graphics-device x-graphics-device-type
+					  display "512x388" #f)))
+	    (graphics-set-coordinate-limits graphics-device -256 -195 255 194)
 	    (graphics-move-cursor graphics-device 0 0)))
 
     (set! position-pen
 	  (lambda (x y)
 	    (graphics-move-cursor graphics-device x y)))
+
 ))

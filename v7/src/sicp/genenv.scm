@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/genenv.scm,v 1.1 1990/09/10 18:09:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/genenv.scm,v 1.2 1990/11/14 14:57:50 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
 (define make-unassigned-object
   microcode-object/unassigned)
 
-(let ((list-type (microcode-type 'LIST)))
+(let ()
   (define (get-values descriptors frame receiver)
     (define (inner descriptors names values unref)
       (define (do-next name-here name-there)
@@ -73,44 +73,29 @@ MIT in each case. |#
 		   (do-next (car this) (cdr this)))))))
     (inner descriptors '() '() '()))
 
-  (define (default-receiver frame unref)
-    frame)
-
-  ;; Kludge:
-  ;; This wants to be map-unassigned from sdata.scm
-
-  (define (default-process object)
-    (car ((access &typed-pair-cons (->environment '(runtime scode-data)))
-	  list-type object '())))
-
-  (define (compose f g)
-    (lambda (x)
-      (f (g x))))
-
   (set! build-environment
 	(named-lambda (build-environment names source-frame
 					 #!optional parent-frame
 					 process receiver)
-	  (get-values
-	   names
-	   source-frame
-	   (lambda (names values unreferenceable)
-	     ((if (unassigned? receiver)
-		  default-receiver
-		  receiver)
-	      (apply (scode-eval (make-lambda lambda-tag:make-environment
-					      names
-					      '()
-					      '()
-					      '()
-					      '()
-					      (make-the-environment))
-				 (if (unassigned? parent-frame)
-				     source-frame
-				     parent-frame))
-		     (map (if (unassigned? process)
-			      default-process
-			      (compose default-process process))
-			  values))
-	      unreferenceable)))))
+	  (get-values names source-frame
+	    (lambda (names values unreferenceable)
+	      (if (default-object? receiver)
+		  unreferenceable
+		  (receiver
+		   (apply (scode-eval (make-lambda lambda-tag:make-environment
+						   names
+						   '()
+						   '()
+						   '()
+						   '()
+						   (make-the-environment))
+				      (if (default-object? parent-frame)
+					  source-frame
+					  parent-frame))
+			  (map (if (default-object? process)
+				   unmap-reference-trap
+				   (lambda (x)
+				     (unmap-reference-trap (process x))))
+			       values))
+		   unreferenceable))))))
   42)
