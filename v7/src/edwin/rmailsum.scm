@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.19 1992/01/08 16:11:28 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.20 1992/01/08 16:46:42 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.19 1992/01/08 16:11:28 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.20 1992/01/08 16:46:42 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -764,7 +764,7 @@ Calls whatever function is bound to #\c-o in RMAIL mode."
       (execute-command the-command))
     (select-buffer-other-window (ref-variable rmail-summary-buffer))
     (if (ref-variable rmail-delete-after-output)
-	((ref-command rmail-summary-delete-message-forward)))))
+	((ref-command rmail-summary-delete-message-forward) 1))))
 
 (define-command rmail-summary-output-to-rmail-file
   "Append this message to RMAIL file named FILE-NAME.
@@ -778,7 +778,7 @@ Calls whatever function is bound to #\o in RMAIL mode."
       (execute-command the-command))
     (select-buffer-other-window (ref-variable rmail-summary-buffer))
     (if (ref-variable rmail-delete-after-output)
-	((ref-command rmail-summary-delete-message-forward)))))
+	((ref-command rmail-summary-delete-message-forward) 1))))
 
 (define-command rmail-summary-get-new-mail
   "Get new mail.
