@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.37 1995/08/04 13:40:31 adams Exp $
+$Id: uenvir.scm,v 14.38 1995/08/19 01:15:44 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -398,12 +398,18 @@ MIT in each case. |#
     (cond ((not object)
 	   default)
 	  ((dbg-continuation? object)
-	   (make-ccenv  (dbg-continuation/block object) frame))
+	   (let ((block (dbg-continuation/block object)))
+	     (if block
+		 (make-ccenv  block frame)
+		 default)))
 	  ((dbg-procedure? object)
 	   (let ((invocation-block (dbg-procedure/block object)))
-	     (if (stack-frame/compiled-interrupt? frame)
-		 (make-ccenv invocation-block frame)
-		 (error "Non-interrupt procedure frame" entry frame))))
+	     (cond ((not invocation-block)
+		    default)
+		   ((stack-frame/compiled-interrupt? frame)
+		    (make-ccenv invocation-block frame))
+		   (else
+		    (error "Non-interrupt procedure frame" entry frame)))))
 	  #|				;
 	  ((dbg-expression? object)
 	   ;; for now
