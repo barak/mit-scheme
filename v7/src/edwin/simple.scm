@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.43 1992/02/25 22:18:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.44 1992/05/18 19:38:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -80,7 +80,7 @@
   (let ((point (if (default-object? point) (current-point) point)))
     (let loop ((n n) (mark point))
       (if (> n 0)
-	  (if (line-start? mark)
+	  (if (and (line-start? mark) (not (group-start? mark)))
 	      (loop (- n 1) (mark-1+ mark))
 	      (insert-newlines n point))))))
 
