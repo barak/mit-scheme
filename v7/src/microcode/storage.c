@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.48 1992/02/03 23:39:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.49 1992/07/28 14:44:37 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -42,9 +42,11 @@ MIT in each case. */
                          /*************/
 
 SCHEME_OBJECT
+#ifndef DOS386
+ * MemTop,		/* Top of free space available */
+#endif /* DOS386 */
  * Ext_History,		/* History register */
  * Free,		/* Next free word in storage */
- * MemTop,		/* Top of free space available */
  * Ext_Stack_Pointer,	/* Next available slot in control stack */
  * Stack_Top,		/* Top of control stack */
  * Stack_Guard,		/* Guard area at end of stack */
@@ -65,8 +67,10 @@ SCHEME_OBJECT
 			   *** This must be changed when stacklets are used. */
 
 long
+#ifndef DOS386
   IntCode,		/* Interrupts requesting */
   IntEnb,		/* Interrupts enabled */
+#endif /* DOS386 */
   temp_long,		/* temporary for sign extension */
   GC_Reserve,		/* Scheme pointer overflow space in heap */
   GC_Space_Needed;	/* Amount of space needed when GC triggered */
