@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.39 1987/10/05 18:35:30 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.40 1988/05/03 19:21:57 jinx Exp $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -83,7 +83,7 @@ extern Pointer
 
 #else
 
-#define Lexical_Offset(Ind)		Get_Integer(Ind)
+#define Lexical_Offset(Ind)		OBJECT_DATUM(Ind)
 #define Make_Local_Offset(Ind)		Make_Non_Pointer(LOCAL_REF, Ind)
 
 #endif
@@ -107,7 +107,7 @@ extern Pointer
 #define verify(type_code, variable, code, label)			\
 {									\
   variable = code;							\
-  if (Type_Code(Fetch(hunk[VARIABLE_COMPILED_TYPE])) !=			\
+  if (OBJECT_TYPE(Fetch(hunk[VARIABLE_COMPILED_TYPE])) !=		\
       type_code)							\
     goto label;								\
 }
@@ -155,7 +155,7 @@ label:									\
 									\
   frame = Fetch(hunk[VARIABLE_COMPILED_TYPE]);				\
 									\
-  switch (Type_Code(frame))						\
+  switch (OBJECT_TYPE(frame))						\
   {									\
     case GLOBAL_REF:							\
       /* frame is a pointer to the same symbol. */			\
@@ -176,7 +176,7 @@ label:									\
       /* Done here rather than in a separate case because of		\
 	 peculiarities of the bobcat compiler.				\
        */								\
-      cell = ((Type_Code(frame) == UNCOMPILED_REF) ?			\
+      cell = ((OBJECT_TYPE(frame) == UNCOMPILED_REF) ?			\
 	      uncompiled_trap_object :					\
 	      illegal_trap_object);					\
       break;								\
@@ -216,7 +216,7 @@ label:									\
   }									\
 									\
   frame = Vector_Ref(frame, ENVIRONMENT_FUNCTION);			\
-  if (Type_Code(frame) != AUX_LIST_TYPE)				\
+  if (OBJECT_TYPE(frame) != AUX_LIST_TYPE)				\
   {									\
     cell = uncompiled_trap_object;					\
     break;								\
@@ -237,32 +237,3 @@ label:									\
   cell = Nth_Vector_Loc(frame, CONS_CDR);				\
   break;								\
 }
-
-#define lookup_primitive_type_test()					\
-{									\
-  if (Type_Code(Arg1) != GLOBAL_ENV)					\
-    Arg_1_Type(TC_ENVIRONMENT);						\
-  if (Type_Code(Arg2) != TC_INTERNED_SYMBOL)				\
-    Arg_2_Type(TC_UNINTERNED_SYMBOL);					\
-}
-
-#define lookup_primitive_end(Result)					\
-{									\
-  if (Result == PRIM_DONE)						\
-    PRIMITIVE_RETURN(Val);						\
-  if (Result == PRIM_INTERRUPT)						\
-    Primitive_Interrupt();						\
-  Primitive_Error(Result);						\
-}
-
-#define standard_lookup_primitive(action)				\
-{									\
-  long Result;								\
-									\
-  lookup_primitive_type_test();						\
-  Result = action;							\
-  lookup_primitive_end(Result);						\
-  /*NOTREACHED*/							\
-}
-
-

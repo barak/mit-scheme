@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.38 1987/11/17 08:14:11 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.39 1988/05/03 19:18:47 jinx Exp $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -42,7 +42,6 @@ MIT in each case. */
 #include "locks.h"
 #include "trap.h"
 #include "lookup.h"
-#include "primitive.h"
 
 /* NOTE:
    Although this code has been parallelized, it has not been
@@ -75,7 +74,101 @@ Pointer illegal_trap_object[] = { ILLEGAL_OBJECT };
  */
 
 Pointer fake_variable_object[3];
+
+/* scan_frame searches a frame for a given name.
+   If it finds the names, it stores into hunk the path by which it was
+   found, so that future references do not spend the time to find it
+   again.  It returns a pointer to the value cell, or a null pointer
+   cell if the variable was not found in this frame.
+ */
 
+extern Pointer *scan_frame();
+
+Pointer *
+scan_frame(frame, sym, hunk, depth, unbound_valid_p)
+     Pointer frame, sym, *hunk;
+     long depth;
+     Boolean unbound_valid_p;
+{
+  Lock_Handle compile_serializer;
+  fast Pointer *scan, temp;
+  fast long count;
+
+  temp = Vector_Ref(frame, ENVIRONMENT_FUNCTION);
+
+  if (OBJECT_TYPE(temp) == AUX_LIST_TYPE)
+  {
+    /* Search for an auxiliary binding. */
+
+    Pointer *start;
+
+    scan = Get_Pointer(temp);
+    start = scan;
+    count = Lexical_Offset(scan[AUX_LIST_COUNT]);
+    scan += AUX_LIST_FIRST;
+
+    while (--count >= 0)
+    {
+      if (Fast_Vector_Ref(*scan, CONS_CAR) == sym)
+      {
+	Pointer *cell;
+
+	cell = Nth_Vector_Loc(*scan, CONS_CDR);
+	if (Fetch(cell[0]) == DANGEROUS_UNBOUND_OBJECT)
+	{
+	  /* A dangerous unbound object signals that
+	     a definition here must become dangerous,
+	     but is not a real bining.
+	   */
+	  return (unbound_valid_p ? (cell) : ((Pointer *) NULL));
+	}
+	setup_lock(compile_serializer, hunk);
+	hunk[VARIABLE_COMPILED_TYPE] = Make_Non_Pointer(AUX_REF, depth);
+	hunk[VARIABLE_OFFSET] = Make_Local_Offset(scan - start);
+	remove_lock(compile_serializer);
+	return (cell);
+      }
+      scan += 1;  
+    }
+    temp = Vector_Ref(temp, ENV_EXTENSION_PROCEDURE);
+  }
+
+  /* Search for a formal parameter. */
+
+  temp = Fast_Vector_Ref(Fast_Vector_Ref(temp, PROCEDURE_LAMBDA_EXPR),
+			 LAMBDA_FORMALS);
+  for (count = Vector_Length(temp) - 1,
+       scan = Nth_Vector_Loc(temp, VECTOR_DATA + 1);
+       count > 0;
+       count -= 1,
+       scan += 1)
+  {
+    if (*scan == sym)
+    {
+      fast long offset;
+
+      offset = 1 + Vector_Length(temp) - count;
+
+      setup_lock(compile_serializer, hunk);
+      if (depth != 0)
+      {
+	hunk[VARIABLE_COMPILED_TYPE] = Make_Non_Pointer(FORMAL_REF, depth);
+	hunk[VARIABLE_OFFSET] = Make_Local_Offset(offset);
+      }
+      else
+      {
+	hunk[VARIABLE_COMPILED_TYPE] = Make_Local_Offset(offset);
+	hunk[VARIABLE_OFFSET] = NIL;
+      }
+      remove_lock(compile_serializer);
+
+      return (Nth_Vector_Loc(frame, offset));
+    }
+  }
+
+  return ((Pointer *) NULL);
+}
+
 /* The lexical lookup procedure.
    deep_lookup searches env for an occurrence of sym.  When it finds
    it, it stores into hunk the path by which it was found, so that
@@ -89,7 +182,7 @@ deep_lookup(env, sym, hunk)
      Pointer env, sym, *hunk;
 {
   Lock_Handle compile_serializer;
-  fast Pointer frame, *scan;
+  fast Pointer frame;
   fast long depth;
 
   for (depth = 0, frame = env;
@@ -98,91 +191,20 @@ deep_lookup(env, sym, hunk)
        frame = Fast_Vector_Ref(Vector_Ref(frame, ENVIRONMENT_FUNCTION),
 			       PROCEDURE_ENVIRONMENT))
   {
-    fast Pointer temp;
+    fast Pointer *cell;
 
-    temp = Vector_Ref(frame, ENVIRONMENT_FUNCTION);
-
-    if (OBJECT_TYPE(temp) == AUX_LIST_TYPE)
+    cell = scan_frame(frame, sym, hunk, depth, false);
+    if (cell != ((Pointer *) NULL))
     {
-      /* Search for an auxiliary binding. */
-
-      fast long count;
-      Pointer *start;
-
-      scan = Get_Pointer(temp);
-      start = scan;
-      count = Lexical_Offset(scan[AUX_LIST_COUNT]);
-      scan += AUX_LIST_FIRST;
-
-      while (--count >= 0)
-      {
-	if (Fast_Vector_Ref(*scan, CONS_CAR) == sym)
-	{
-	  Pointer *cell;
-
-	  cell = Nth_Vector_Loc(*scan, CONS_CDR);
-	  if (Fetch(cell[0]) == DANGEROUS_UNBOUND_OBJECT)
-	  {
-	    /* A dangerous unbound object signals that
-	       a definition here must become dangerous,
-	       but is not a real bining.
-	     */
-	    goto do_next_frame;
-	  }
-	  setup_lock(compile_serializer, hunk);
-	  hunk[VARIABLE_COMPILED_TYPE] = Make_Non_Pointer(AUX_REF, depth);
-	  hunk[VARIABLE_OFFSET] = Make_Local_Offset(scan - start);
-	  remove_lock(compile_serializer);
-	  return cell;
-	}
-	scan += 1;  
-      }
-      temp = Vector_Ref(temp, ENV_EXTENSION_PROCEDURE);
+      return (cell);
     }
-
-    {
-      /* Search for a formal parameter. */
-
-      fast long count;
-
-      temp = Fast_Vector_Ref(Fast_Vector_Ref(temp, PROCEDURE_LAMBDA_EXPR),
-			     LAMBDA_FORMALS);
-      for (count = Vector_Length(temp) - 1,
-	   scan = Nth_Vector_Loc(temp, VECTOR_DATA + 1);
-	   count > 0;
-	   count -= 1,
-	   scan += 1)
-	if (*scan == sym)
-	{
-	  long offset;
-
-	  offset = 1 + Vector_Length(temp) - count;
-
-	  setup_lock(compile_serializer, hunk);
-	  if (depth != 0)
-	  {
-	    hunk[VARIABLE_COMPILED_TYPE] = Make_Non_Pointer(FORMAL_REF, depth);
-	    hunk[VARIABLE_OFFSET] = Make_Local_Offset(offset);
-	  }
-	  else
-	  {
-	    hunk[VARIABLE_COMPILED_TYPE] = Make_Local_Offset(offset);
-	    hunk[VARIABLE_OFFSET] = NIL;
-	  }
-	  remove_lock(compile_serializer);
-
-	  return Nth_Vector_Loc(frame, offset);
-	}
-    }
-
-do_next_frame:
-    continue;
   }
+
   /* The reference is global. */
 
   if (OBJECT_DATUM(frame) != GO_TO_GLOBAL)
   {
-    return unbound_trap_object;
+    return (unbound_trap_object);
   }
 
   setup_lock(compile_serializer, hunk);
@@ -190,7 +212,7 @@ do_next_frame:
   hunk[VARIABLE_OFFSET] = NIL;
   remove_lock(compile_serializer);
 
-  return Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE);
+  return (Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE));
 }
 
 /* Full lookup end code.
@@ -214,7 +236,7 @@ deep_lookup_end(cell, hunk)
     FUTURE_VARIABLE_SPLICE (((Pointer) cell), 0, Val);
     if (!(REFERENCE_TRAP_P(Val)))
     {
-      return PRIM_DONE;
+      return (PRIM_DONE);
     }
 
     /* Remarks:
@@ -234,22 +256,22 @@ deep_lookup_end(cell, hunk)
        */
 
       case TRAP_UNASSIGNED:
-	return ERR_UNASSIGNED_VARIABLE;
+	return (ERR_UNASSIGNED_VARIABLE);
 
       case TRAP_UNASSIGNED_DANGEROUS:
 	return_value = ERR_UNASSIGNED_VARIABLE;
 	break;
 
       case TRAP_DANGEROUS:
-	{
-	  Pointer trap_value;
+      {
+	Pointer trap_value;
 
-	  trap_value = Val;
-	  Val = (Vector_Ref (trap_value, TRAP_EXTRA));
-	  FUTURE_VARIABLE_SPLICE (trap_value, TRAP_EXTRA, Val);
-	}
+	trap_value = Val;
+	Val = (Vector_Ref (trap_value, TRAP_EXTRA));
+	FUTURE_VARIABLE_SPLICE (trap_value, TRAP_EXTRA, Val);
 	return_value = PRIM_DONE;
 	break;
+      }
 
       case TRAP_FLUID:
       case TRAP_FLUID_DANGEROUS:
@@ -269,7 +291,7 @@ deep_lookup_end(cell, hunk)
 	break;
 
       case TRAP_UNBOUND:
-	return ERR_UNBOUND_VARIABLE;
+	return (ERR_UNBOUND_VARIABLE);
 
       case TRAP_UNBOUND_DANGEROUS:
 	return_value = ERR_UNBOUND_VARIABLE;
@@ -292,7 +314,7 @@ deep_lookup_end(cell, hunk)
 
   } while (repeat_p);
 
-  return return_value;
+  return (return_value);
 }
 
 /* Simple lookup finalization.
@@ -315,7 +337,7 @@ lookup_end_restart:
 
   if (!(REFERENCE_TRAP_P(Val)))
   {
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 
   get_trap_kind(trap_kind, Val);
@@ -327,8 +349,8 @@ lookup_end_restart:
     case TRAP_FLUID_DANGEROUS:
     case TRAP_COMPILER_CACHED_DANGEROUS:
       return
-	deep_lookup_end(deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk),
-			hunk);
+	(deep_lookup_end(deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk),
+			 hunk));
 
     case TRAP_COMPILER_CACHED:
       cell = Nth_Vector_Loc(Vector_Ref(Val, TRAP_EXTRA),
@@ -340,13 +362,13 @@ lookup_end_restart:
       goto lookup_end_restart;
 
     case TRAP_UNBOUND:
-      return ERR_UNBOUND_VARIABLE;
+      return (ERR_UNBOUND_VARIABLE);
 
     case TRAP_UNASSIGNED:
-      return ERR_UNASSIGNED_VARIABLE;
+      return (ERR_UNASSIGNED_VARIABLE);
 
     default:
-      return ERR_ILLEGAL_REFERENCE_TRAP;
+      return (ERR_ILLEGAL_REFERENCE_TRAP);
   }
 }
 
@@ -581,7 +603,7 @@ compiler_cache_assignment:
 
     if (return_value != PRIM_DONE)
     {
-      return return_value;
+      return (return_value);
     }
   }
   else
@@ -604,7 +626,7 @@ compiler_cache_assignment:
     remove_lock(compile_serializer);
   }
 
-  return return_value;
+  return (return_value);
 }
 
 #undef ABORT
@@ -643,7 +665,7 @@ assignment_end_after_lock:
   {
     *cell = value;
     remove_lock(set_serializer);
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 
   get_trap_kind(temp, Val);
@@ -656,10 +678,10 @@ assignment_end_after_lock:
     case TRAP_COMPILER_CACHED_DANGEROUS:
       remove_lock(set_serializer);
       return
-	deep_assignment_end(deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk),
-			    hunk,
-			    value,
-			    false);
+	(deep_assignment_end(deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk),
+			     hunk,
+			     value,
+			     false));
 
     case TRAP_COMPILER_CACHED:
     {
@@ -675,7 +697,7 @@ assignment_end_after_lock:
 	 */
 
 	remove_lock(set_serializer);
-	return deep_assignment_end(cell, hunk, value, false);
+	return (deep_assignment_end(cell, hunk, value, false));
       }
       cell = Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL);
       update_lock(set_serializer, cell);
@@ -702,7 +724,7 @@ assignment_end_after_lock:
       break;
   }
   remove_lock(set_serializer);
-  return temp;
+  return (temp);
 }
 
 /* Finds the fluid value cell associated with the reference trap on
@@ -718,7 +740,9 @@ lookup_fluid(trap)
   fluids = Fluid_Bindings;
 
   if (Fluids_Debug)
+  {
     Print_Expression(fluids, "Searching fluid bindings");
+  }
 
   while (PAIR_P(fluids))
   {
@@ -727,9 +751,11 @@ lookup_fluid(trap)
     if (this_pair[CONS_CAR] == trap)
     {
       if (Fluids_Debug)
+      {
 	fprintf(stderr, "Fluid found.\n");
+      }
 
-      return &this_pair[CONS_CDR];
+      return (&this_pair[CONS_CDR]);
     }
 
     fluids = Fast_Vector_Ref(fluids, CONS_CDR);
@@ -738,9 +764,11 @@ lookup_fluid(trap)
   /* Not found in fluid binding alist, so use default. */
 
   if (Fluids_Debug)
+  {
     fprintf(stderr, "Fluid not found, using default.\n");
+  }
 
-  return Nth_Vector_Loc(trap, TRAP_EXTRA);
+  return (Nth_Vector_Loc(trap, TRAP_EXTRA));
 }
 
 /* Utilities for definition.
@@ -771,14 +799,14 @@ dangerize(cell, sym)
     {
       remove_lock(set_serializer);
       Request_GC(2);
-      return PRIM_INTERRUPT;
+      return (PRIM_INTERRUPT);
     }
     trap = Make_Pointer(TC_REFERENCE_TRAP, Free);
     *Free++ = DANGEROUS_OBJECT;
     *Free++ = *cell;
     *cell = trap;
     remove_lock(set_serializer);
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 
   get_trap_kind(temp, *cell);
@@ -802,7 +830,7 @@ dangerize(cell, sym)
       long compiler_uncache();
 
       remove_lock(set_serializer);
-      return compiler_uncache(cell, sym);
+      return (compiler_uncache(cell, sym));
     }
 
     case TRAP_FLUID:
@@ -827,7 +855,7 @@ dangerize(cell, sym)
       break;
   }
   remove_lock(set_serializer);
-  return temp;
+  return (temp);
 }
 
 /* The core of the incremental definition mechanism.
@@ -835,6 +863,11 @@ dangerize(cell, sym)
    definition, extending the frames appropriately, and uncaching any
    compiled code reference caches which might be affected by the new
    definition.
+
+   *UNDEFINE*: If (local?) undefine is ever implemented, it suffices
+   to set the value cell to DANGEROUS_UNBOUND_OBJECT, uncache all the
+   compiler cached variables to the location, and rewrite the code
+   below slightly as implied by the comments tagged *UNDEFINE*.
  */
 
 long
@@ -849,19 +882,25 @@ extend_frame(env, sym, value, original_frame_p)
 
   if (OBJECT_TYPE(env) == GLOBAL_ENV)
   {
+    /* *UNDEFINE*: If undefine is ever implemented, this code need not
+       change: There are no shadowed bindings that need to be
+       recached.
+     */
     if (OBJECT_DATUM(env) != GO_TO_GLOBAL)
     {
-      if (original_frame_p)
-	return ERR_BAD_FRAME;
-      return PRIM_DONE;
+      return (original_frame_p ? ERR_BAD_FRAME : PRIM_DONE);
     }
     else if (original_frame_p)
-      return redefinition(Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE),
-			  value);
-
-    else return dangerize(Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE), sym);
+    {
+      return (redefinition(Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE),
+			   value));
+    }
+    else
+    {
+      return (dangerize(Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE), sym));
+    }
   }
-
+
   the_procedure = Vector_Ref(env, ENVIRONMENT_FUNCTION);
   if (OBJECT_TYPE(the_procedure) == AUX_LIST_TYPE)
     the_procedure = Vector_Ref(the_procedure, ENV_EXTENSION_PROCEDURE);
@@ -879,16 +918,27 @@ extend_frame(env, sym, value, original_frame_p)
 	 scan = Nth_Vector_Loc(formals, VECTOR_DATA + 1);
 	 count > 0;
 	 count -= 1)
+    {
+      /* *UNDEFINE*: If undefine is ever implemented, this code must
+	 check whether the value is DANGEROUS_UNBOUND_OBJECT, and if
+	 so, a search must be done to cause the shadowed compiler
+	 cached variables to be recached, as in the aux case below.
+       */
       if (*scan++ == sym)
       {
 	long offset;
 
 	offset = 1 + Vector_Length(formals) - count;
 	if (original_frame_p)
-	  return redefinition(Nth_Vector_Loc(env, offset), value);
+	{
+	  return (redefinition(Nth_Vector_Loc(env, offset), value));
+	}
 	else
-	  return dangerize(Nth_Vector_Loc(env, offset), sym);
+	{
+	  return (dangerize(Nth_Vector_Loc(env, offset), sym));
+	}
       }
+    }
   }
 
   /* Guarantee that there is an extension slot. */
@@ -905,7 +955,7 @@ redo_aux_lookup:
     {
       remove_lock(extension_serializer);
       Request_GC(AUX_LIST_INITIAL_SIZE);
-      return PRIM_INTERRUPT;
+      return (PRIM_INTERRUPT);
     }
     scan = Free;
     extension = Make_Pointer(AUX_LIST_TYPE, scan);
@@ -947,8 +997,10 @@ redo_aux_lookup:
 
 	/* This is done only because of compiler cached variables.
 	   In their absence, this conditional is unnecessary.
-	   Note that this would also have to be done for formal
-	   bindings if we allowed "undefinition" of variables.
+
+	   *UNDEFINE*: This would also have to be done for other kinds
+	   of bindings if undefine is ever implemented.  See the
+	   comments above.
 	 */
 	if (Fetch(scan[0]) == DANGEROUS_UNBOUND_OBJECT)
 	{
@@ -963,18 +1015,24 @@ redo_aux_lookup:
 			   fake_variable_object),
 	       sym);
 	  if (temp != PRIM_DONE)
-	    return temp;
+	  {
+	    return (temp);
+	  }
 	}
 
 	if (original_frame_p)
-	  return redefinition(scan, value);
+	{
+	  return (redefinition(scan, value));
+	}
 	else
-	  return dangerize(scan, sym);
+	{
+	  return (dangerize(scan, sym));
+	}
       }
       scan += 1;  
     }
   }
-
+
   /* Not found in this frame at all. */
 
   {
@@ -985,7 +1043,9 @@ redo_aux_lookup:
 		   sym, NIL, false);
 
     if (temp != PRIM_DONE)
-      return temp;
+    {
+      return (temp);
+    }
 
     /* Proceed to extend the frame:
        - If the frame is the one where the definition is occurring,
@@ -1018,7 +1078,7 @@ redo_aux_lookup:
       {
 	remove_lock(extension_serializer);
 	Request_GC(i);
-	return PRIM_INTERRUPT;
+	return (PRIM_INTERRUPT);
       }
 
       fast_free = Free;
@@ -1042,7 +1102,7 @@ redo_aux_lookup:
     {
       remove_lock(extension_serializer);
       Request_GC(2);
-      return PRIM_INTERRUPT;
+      return (PRIM_INTERRUPT);
     }
 
     {
@@ -1056,7 +1116,7 @@ redo_aux_lookup:
       scan[AUX_LIST_COUNT] = Make_Local_Offset(temp + 1);
     }
     remove_lock(extension_serializer);
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 }
 
@@ -1073,15 +1133,15 @@ Lex_Ref(env, var)
 
   hunk = Get_Pointer(var);
   lookup(cell, env, hunk, repeat_lex_ref_lookup);
-  return lookup_end(cell, env, hunk);
+  return (lookup_end(cell, env, hunk));
 }
 
 long
 Symbol_Lex_Ref(env, sym)
 	Pointer env, sym;
 {
-  return deep_lookup_end(deep_lookup(env, sym, fake_variable_object),
-			 fake_variable_object);
+  return (deep_lookup_end(deep_lookup(env, sym, fake_variable_object),
+			  fake_variable_object));
 }
 
 long
@@ -1093,17 +1153,17 @@ Lex_Set(env, var, value)
 
   hunk = Get_Pointer(var);
   lookup(cell, env, hunk, repeat_lex_set_lookup);
-  return assignment_end(cell, env, hunk, value);
+  return (assignment_end(cell, env, hunk, value));
 }
 
 long
 Symbol_Lex_Set(env, sym, value)
 	Pointer env, sym, value;
 {
-  return deep_assignment_end(deep_lookup(env, sym, fake_variable_object),
-			     fake_variable_object,
-			     value,
-			     false);
+  return (deep_assignment_end(deep_lookup(env, sym, fake_variable_object),
+			      fake_variable_object,
+			      value,
+			      false));
 }
 
 long
@@ -1113,12 +1173,14 @@ Local_Set(env, sym, value)
   long result;
 
   if (Define_Debug)
+  {
     fprintf(stderr,
 	    "\n;; Local_Set: defining %s.",
 	    Scheme_String_To_C_String(Vector_Ref(sym, SYMBOL_NAME)));
+  }
   result = extend_frame(env, sym, value, true);
   Val = sym;
-  return result;
+  return (result);
 }
 
 long
@@ -1126,12 +1188,14 @@ safe_reference_transform (reference_result)
      long reference_result;
 {
   if (reference_result == ERR_UNASSIGNED_VARIABLE)
-    {
-      Val = UNASSIGNED_OBJECT;
-      return (PRIM_DONE);
-    }
+  {
+    Val = UNASSIGNED_OBJECT;
+    return (PRIM_DONE);
+  }
   else
+  {
     return (reference_result);
+  }
 }
 
 long
@@ -1153,7 +1217,7 @@ unassigned_p_transform (reference_result)
      long reference_result;
 {
   switch (reference_result)
-    {
+  {
     case ERR_UNASSIGNED_VARIABLE:
       Val = TRUTH;
       return (PRIM_DONE);
@@ -1165,8 +1229,12 @@ unassigned_p_transform (reference_result)
 
     default:
       return (reference_result);
-    }
+  }
 }
+
+extern long
+  Symbol_Lex_unassigned_p(),
+  Symbol_Lex_unbound_p();
 
 long
 Symbol_Lex_unassigned_p( frame, symbol)
@@ -1183,23 +1251,23 @@ Symbol_Lex_unbound_p( frame, symbol)
 
   result = Symbol_Lex_Ref( frame, symbol);
   switch (result)
-    {
+  {
     case ERR_UNASSIGNED_VARIABLE:
     case PRIM_DONE:
-      {
-	Val = NIL;
-	return (PRIM_DONE);
-      }
+    {
+      Val = NIL;
+      return (PRIM_DONE);
+    }
 
     case ERR_UNBOUND_VARIABLE:
-      {
-	Val = TRUTH;
-	return (PRIM_DONE);
-      }
+    {
+      Val = TRUTH;
+      return (PRIM_DONE);
+    }
 
     default:
       return (result);
-    }
+  }
 }
 
 /* force_definition is used when access to the global environment is
@@ -1218,8 +1286,10 @@ force_definition(env, symbol, message)
   fast Pointer previous;
 
   if (OBJECT_TYPE(env) == GLOBAL_ENV)
+  {
     return ((Pointer *) NULL);
-	    
+  }
+
   do
   {
     previous = env;
@@ -1236,10 +1306,10 @@ force_definition(env, symbol, message)
 
 /* Fast variable reference mechanism for compiled code.
 
-   compiler_cache_reference is the core of the variable caching mechanism.
+   compiler_cache is the core of the variable caching mechanism.
 
-   It creates a variable cache for the variable specified by (name,
-   env) if needed, and stores it or a related object in the location
+   It creates a variable cache for the variable at the specified cell,
+   if needed, and stores it or a related object in the location
    specified by (block, offset).  It adds this reference to the
    appropriate reference list for further updating.
    
@@ -1259,34 +1329,27 @@ force_definition(env, symbol, message)
    updated to point to it.
  */    
 
+extern long compiler_cache();
+
 long
-compiler_cache_reference(env, name, block, offset, kind)
-     Pointer env, name, block;
+compiler_cache(cell, name, block, offset, kind)
+     fast Pointer *cell;
+     Pointer name, block;
      long offset, kind;
 {
   Lock_Handle set_serializer;
-  fast Pointer *cell, trap, references, extension;
+  fast Pointer trap, references, extension;
   Pointer trap_value, store_trap_tag, store_extension;
   long trap_kind, return_value;
-
-  cell = deep_lookup(env, name, fake_variable_object);
-  if (cell == unbound_trap_object)
-  {
-    long message;
-
-    cell = force_definition(env, name, &message);
-    if (message != PRIM_DONE)
-      return message;
-  }
     
   store_trap_tag = NIL;
   store_extension = NIL;
   trap_kind = TRAP_COMPILER_CACHED;
-
+
   setup_lock(set_serializer, cell);
   trap = *cell;
   trap_value = trap;
-
+
   if (REFERENCE_TRAP_P(trap))
   {
     long old_trap_kind;
@@ -1330,7 +1393,7 @@ compiler_cache_reference(env, name, block, offset, kind)
 
       default:
 	remove_lock(set_serializer);
-	return ERR_ILLEGAL_REFERENCE_TRAP;
+	return (ERR_ILLEGAL_REFERENCE_TRAP);
     }
   }
 
@@ -1355,7 +1418,7 @@ compiler_cache_reference(env, name, block, offset, kind)
   {
     remove_lock(set_serializer);
     Request_GC(MAXIMUM_CACHE_SIZE);
-    return PRIM_INTERRUPT;
+    return (PRIM_INTERRUPT);
   }
 
 #endif
@@ -1377,7 +1440,7 @@ compiler_cache_reference(env, name, block, offset, kind)
     {
       remove_lock(set_serializer);
       Request_GC(7);
-      return PRIM_INTERRUPT;
+      return (PRIM_INTERRUPT);
     }
 #endif
 
@@ -1405,6 +1468,15 @@ compiler_cache_reference(env, name, block, offset, kind)
     update_lock(set_serializer,
 		Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL));
   }
+
+  if (block == NIL)
+  {
+    /* It is not really from compiled code.
+       The environment linking stuff wants a cc cache instead.
+     */
+    remove_lock(set_serializer);
+    return (PRIM_DONE);
+  }
 
   /* There already is a compiled code cache.
      Maybe this should clean up all the cache lists? 
@@ -1431,7 +1503,7 @@ compiler_cache_reference(env, name, block, offset, kind)
 	{
 	  remove_lock(set_serializer);
 	  Request_GC(4);
-	  return PRIM_INTERRUPT;
+	  return (PRIM_INTERRUPT);
 	}
 #endif
 	store_extension = Make_Pointer(TRAP_EXTENSION_TYPE, Free);
@@ -1456,7 +1528,7 @@ compiler_cache_reference(env, name, block, offset, kind)
     if (return_value != PRIM_DONE)
     {
       remove_lock(set_serializer);
-      return return_value;
+      return (return_value);
     }
   }
 
@@ -1504,9 +1576,34 @@ compiler_cache_reference(env, name, block, offset, kind)
   }
 
   remove_lock(set_serializer);
-  return return_value;
+  return (return_value);
 }
 
+/* This procedure invokes cache_reference after finding the top-level
+   value cell associated with (env, name).
+ */
+
+long
+compiler_cache_reference(env, name, block, offset, kind)
+     Pointer env, name, block;
+     long offset, kind;
+{
+  Pointer *cell;
+
+  cell = deep_lookup(env, name, fake_variable_object);
+  if (cell == unbound_trap_object)
+  {
+    long message;
+
+    cell = force_definition(env, name, &message);
+    if (message != PRIM_DONE)
+    {
+      return (message);
+    }
+  }
+  return (compiler_cache(cell, name, block, offset, kind));
+}
+
 /* This procedure updates all the references in the cached reference
    list pointed at by slot to hold value.  It also eliminates "empty"
    pairs (pairs whose weakly held block has vanished).  
@@ -1558,7 +1655,7 @@ add_reference(slot, block, offset)
     {
       Fast_Vector_Set(pair, CONS_CAR, block);
       Fast_Vector_Set(pair, CONS_CDR, offset);
-      return PRIM_DONE;
+      return (PRIM_DONE);
     }
     slot = Nth_Vector_Loc(*slot, CONS_CDR);    
   }
@@ -1566,7 +1663,7 @@ add_reference(slot, block, offset)
   if (GC_allocate_test(4))
   {
     Request_GC(4);
-    return PRIM_INTERRUPT;
+    return (PRIM_INTERRUPT);
   }
 
   *slot = Make_Pointer(TC_LIST, Free);
@@ -1577,7 +1674,7 @@ add_reference(slot, block, offset)
   *Free++ = block;
   *Free++ = offset;
 
-  return PRIM_DONE;
+  return (PRIM_DONE);
 }
 
 /* compiler_uncache_slot uncaches all references in the list pointed
@@ -1605,7 +1702,7 @@ compiler_uncache_slot(slot, sym, kind)
       if (GC_allocate_test(4))
       {
 	Request_GC(4);
-	return PRIM_INTERRUPT;
+	return (PRIM_INTERRUPT);
       }
       new_extension = Make_Pointer(TRAP_EXTENSION_TYPE, Free);
       *Free++ = REQUEST_RECACHE_OBJECT;
@@ -1621,7 +1718,7 @@ compiler_uncache_slot(slot, sym, kind)
 				    block,
 				    Get_Integer(offset));
 	if (result != PRIM_DONE)
-	  return result;
+	  return (result);
       }
       else
       {
@@ -1632,7 +1729,7 @@ compiler_uncache_slot(slot, sym, kind)
     }
     *slot = Fast_Vector_Ref(temp, CONS_CDR);
   }
-  return PRIM_DONE;
+  return (PRIM_DONE);
 }
 
 /* compiler_uncache is invoked when a redefinition occurs.
@@ -1646,6 +1743,8 @@ static long trap_map_table[] =
   { TRAP_REFERENCES_LOOKUP,
     TRAP_REFERENCES_ASSIGNMENT,
     TRAP_REFERENCES_OPERATOR};
+
+extern long compiler_uncache();
 
 long
 compiler_uncache(value_cell, sym)
@@ -1662,7 +1761,7 @@ compiler_uncache(value_cell, sym)
   if (!(REFERENCE_TRAP_P(val)))
   {
     remove_lock(set_serializer);
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 
   get_trap_kind(trap_kind, val);
@@ -1670,7 +1769,7 @@ compiler_uncache(value_cell, sym)
       (trap_kind != TRAP_COMPILER_CACHED_DANGEROUS))
   {
     remove_lock(set_serializer);
-    return PRIM_DONE;
+    return (PRIM_DONE);
   }
 
   extension = Fast_Vector_Ref(val, TRAP_EXTRA);
@@ -1687,7 +1786,7 @@ compiler_uncache(value_cell, sym)
     if (temp != PRIM_DONE)
     {
       remove_lock(set_serializer);
-      return temp;
+      return (temp);
     }
   }
 
@@ -1697,7 +1796,7 @@ compiler_uncache(value_cell, sym)
 
   Fast_Vector_Set(extension, TRAP_EXTENSION_CLONE, NIL);
   remove_lock(set_serializer);
-  return PRIM_DONE;
+  return (PRIM_DONE);
 }
 
 /* recache_uuo_links is invoked when an assignment occurs to a
@@ -1761,7 +1860,7 @@ recache_uuo_links(extension, old_value)
 
     Fast_Vector_Set(extension, TRAP_EXTENSION_CELL, old_value);
   }
-  return return_value;
+  return (return_value);
 }
 
 /* This kludge is due to the lack of closures. */
@@ -1773,7 +1872,7 @@ make_recache_uuo_link(value, extension, block, offset)
 {
   extern long make_fake_uuo_link();
 
-  return make_fake_uuo_link(extension, block, offset);
+  return (make_fake_uuo_link(extension, block, offset));
 }
 
 long
@@ -1803,7 +1902,7 @@ update_uuo_links(value, extension, handler)
 		   Get_Integer(Fast_Vector_Ref(pair, CONS_CDR)));
       if (return_value != PRIM_DONE)
       {
-	return return_value;
+	return (return_value);
       }
       slot = Nth_Vector_Loc(*slot, CONS_CDR);
     }
@@ -1821,7 +1920,7 @@ update_uuo_links(value, extension, handler)
     fix_references(Nth_Vector_Loc(references, TRAP_REFERENCES_ASSIGNMENT),
 		   extension);
   }
-  return PRIM_DONE;
+  return (PRIM_DONE);
 }
 
 /* compiler_reference_trap is called when a reference occurs to a compiled
@@ -1843,8 +1942,8 @@ compiler_reference_trap(extension, kind, handler)
 
   if (Vector_Ref(extension, TRAP_EXTENSION_CELL) != REQUEST_RECACHE_OBJECT)
   {
-    return (*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
-		      fake_variable_object);
+    return ((*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
+		       fake_variable_object));
   }
 
   block = Fast_Vector_Ref(extension, TRAP_EXTENSION_BLOCK);
@@ -1856,7 +1955,9 @@ compiler_reference_trap(extension, kind, handler)
 			     offset,
 			     kind);
   if (temp != PRIM_DONE)
-    return temp;
+  {
+    return (temp);
+  }
 
   switch(kind)
   {
@@ -1874,7 +1975,7 @@ compiler_reference_trap(extension, kind, handler)
       extern Pointer extract_uuo_link();
 
       Val = extract_uuo_link(block, offset);
-      return PRIM_DONE;
+      return (PRIM_DONE);
     }
 
     case TRAP_REFERENCES_ASSIGNMENT:
@@ -1885,8 +1986,8 @@ compiler_reference_trap(extension, kind, handler)
       Pointer extension;
 
       extension = extract_variable_cache(block, offset);
-      return (*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
-			fake_variable_object);
+      return ((*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
+			 fake_variable_object));
     }
   }
 }
@@ -1903,9 +2004,9 @@ compiler_cache_lookup(name, block, offset)
      Pointer name, block;
      long offset;
 {
-  return compiler_cache_reference(compiled_block_environment(block),
-				  name, block, offset,
-				  TRAP_REFERENCES_LOOKUP);
+  return (compiler_cache_reference(compiled_block_environment(block),
+				   name, block, offset,
+				   TRAP_REFERENCES_LOOKUP));
 }
 
 long
@@ -1913,9 +2014,9 @@ compiler_cache_assignment(name, block, offset)
      Pointer name, block;
      long offset;
 {
-  return compiler_cache_reference(compiled_block_environment(block),
-				  name, block, offset,
-				  TRAP_REFERENCES_ASSIGNMENT);
+  return (compiler_cache_reference(compiled_block_environment(block),
+				   name, block, offset,
+				   TRAP_REFERENCES_ASSIGNMENT));
 }
 
 long
@@ -1923,9 +2024,9 @@ compiler_cache_operator(name, block, offset)
      Pointer name, block;
      long offset;
 {
-  return compiler_cache_reference(compiled_block_environment(block),
-				  name, block, offset,
-				  TRAP_REFERENCES_OPERATOR);
+  return (compiler_cache_reference(compiled_block_environment(block),
+				   name, block, offset,
+				   TRAP_REFERENCES_OPERATOR));
 }
 
 extern long complr_operator_reference_trap();
@@ -1941,16 +2042,18 @@ complr_operator_reference_trap(frame_slot, extension)
 				 TRAP_REFERENCES_OPERATOR,
 				 deep_lookup_end);
   if (temp != PRIM_DONE)
+  {
     return temp;
+  }
   *frame_slot = Val;
-  return PRIM_DONE;
+  return (PRIM_DONE);
 }
 
 Pointer
 compiler_var_error(extension, environment)
      Pointer extension, environment;
 {
-  return Vector_Ref(extension, TRAP_EXTENSION_NAME);
+  return (Vector_Ref(extension, TRAP_EXTENSION_NAME));
 }
 
 /* Utility for compiler_assignment_trap, below.
@@ -1963,8 +2066,8 @@ long
 compiler_assignment_end(cell, hunk)
      Pointer *cell, *hunk;
 {
-  return
-    deep_assignment_end(cell, hunk, saved_compiler_assignment_value, false);
+  return (deep_assignment_end(cell, hunk,
+			      saved_compiler_assignment_value, false));
 }
 
 /* More compiled code interface procedures */
@@ -1979,9 +2082,9 @@ long
 compiler_lookup_trap(extension)
      Pointer extension;
 {
-  return compiler_reference_trap(extension,
-				 TRAP_REFERENCES_LOOKUP,
-				 deep_lookup_end);
+  return (compiler_reference_trap(extension,
+				  TRAP_REFERENCES_LOOKUP,
+				  deep_lookup_end));
 }
 
 long
@@ -2003,130 +2106,7 @@ compiler_assignment_trap(extension, value)
      Pointer extension, value;
 {
   saved_compiler_assignment_value = value;
-  return compiler_reference_trap(extension,
-				 TRAP_REFERENCES_ASSIGNMENT,
-				 compiler_assignment_end);
-}
-
-/* Primitives built on the procedures above. */
-
-/* (LEXICAL-ASSIGNMENT ENVIRONMENT SYMBOL VALUE)
-   Sets the value of the variable with the name given in SYMBOL, as
-   seen in the lexical ENVIRONMENT, to the specified VALUE.
-   Returns the previous value.
-
-   It's indistinguishable from evaluating
-   (set! <symbol> <value>) in <environment>.
-*/
-Built_In_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT", 0x0)
-Define_Primitive(Prim_Lexical_Assignment, 3, "LEXICAL-ASSIGNMENT")
-{
-  Primitive_3_Args();
-
-  standard_lookup_primitive(Symbol_Lex_Set(Arg1, Arg2, Arg3));
-}
-
-/* (LEXICAL-REFERENCE ENVIRONMENT SYMBOL)
-   Returns the value of the variable with the name given in SYMBOL,
-   as seen in the lexical ENVIRONMENT.
-
-   Indistinguishable from evaluating <symbol> in <environment>.
-*/
-Built_In_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE", 0x12)
-Define_Primitive(Prim_Lexical_Reference, 2, "LEXICAL-REFERENCE")
-{
-  Primitive_2_Args();
-
-  standard_lookup_primitive(Symbol_Lex_Ref(Arg1, Arg2));
-}
-
-/* (LOCAL-REFERENCE ENVIRONMENT SYMBOL)
-   Identical to LEXICAL_REFERENCE, here for histerical reasons.
-*/
-Built_In_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE", 0x1)
-Define_Primitive(Prim_Local_Reference, 2, "LOCAL-REFERENCE")
-{
-  Primitive_2_Args();
-
-  standard_lookup_primitive(Symbol_Lex_Ref(Arg1, Arg2));
-}
-
-/* (LOCAL-ASSIGNMENT ENVIRONMENT SYMBOL VALUE)
-   Should be called *DEFINE.
-
-   If the variable specified by SYMBOL already exists in the
-   lexical ENVIRONMENT, then its value there is changed to VALUE.
-   Otherwise a new binding is created in that environment linking
-   the specified variable to the value.  Returns SYMBOL.
-
-   Indistinguishable from evaluating
-   (define <symbol> <value>) in <environment>.
-*/
-Built_In_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT", 0x2)
-Define_Primitive(Prim_Local_Assignment, 3, "LOCAL-ASSIGNMENT")
-{
-  Primitive_3_Args();
-
-  standard_lookup_primitive(Local_Set(Arg1, Arg2, Arg3));
-}
-
-/* (LEXICAL-UNASSIGNED? ENVIRONMENT SYMBOL)
-   Returns #!TRUE if the variable corresponding to SYMBOL is bound
-   but has the special UNASSIGNED value in ENVIRONMENT.  Returns
-   NIL otherwise.  Does a complete lexical search for SYMBOL
-   starting in ENVIRONMENT.
-   The special form (unassigned? <symbol>) is built on top of this.
-*/
-Built_In_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?", 0x18)
-Define_Primitive(Prim_Unassigned_Test, 2, "LEXICAL-UNASSIGNED?")
-{
-  Primitive_2_Args();
-
-  standard_lookup_primitive(Symbol_Lex_unassigned_p(Arg1, Arg2));
-}
-
-/* (LEXICAL-UNBOUND? ENVIRONMENT SYMBOL)
-   Returns #!TRUE if the variable corresponding to SYMBOL has no
-   binding in ENVIRONMENT.  Returns NIL otherwise.  Does a complete
-   lexical search for SYMBOL starting in ENVIRONMENT.
-   The special form (unbound? <symbol>) is built on top of this.
-*/
-Built_In_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?", 0x33)
-Define_Primitive(Prim_Unbound_Test, 2, "LEXICAL-UNBOUND?")
-{
-  Primitive_2_Args();
-
-  standard_lookup_primitive(Symbol_Lex_unbound_p(Arg1, Arg2));
-}
-
-/* (LEXICAL-UNREFERENCEABLE? ENVIRONMENT SYMBOL)
-   Returns #T if evaluating <symbol> in <environment> would cause
-   a variable lookup error (unbound or unassigned).
-*/
-Built_In_Primitive(Prim_Unreferenceable_Test, 2,
-		   "LEXICAL-UNREFERENCEABLE?", 0x13)
-Define_Primitive(Prim_Unreferenceable_Test, 2,
-		   "LEXICAL-UNREFERENCEABLE?")
-{
-  long Result;
-  Primitive_2_Args();
-
-  lookup_primitive_type_test();
-  Result = Symbol_Lex_Ref(Arg1, Arg2);
-  switch (Result)
-  { case PRIM_DONE:
-      PRIMITIVE_RETURN(NIL);
-
-    case PRIM_INTERRUPT:
-      Primitive_Interrupt();
-      /*NOTREACHED*/
-
-    case ERR_UNASSIGNED_VARIABLE:
-    case ERR_UNBOUND_VARIABLE:
-      PRIMITIVE_RETURN(TRUTH);
-
-    default:
-      Primitive_Error(Result);
-  }
-  /*NOTREACHED*/
+  return (compiler_reference_trap(extension,
+				  TRAP_REFERENCES_ASSIGNMENT,
+				  compiler_assignment_end));
 }
