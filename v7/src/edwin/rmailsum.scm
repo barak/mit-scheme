@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.29 1992/11/18 21:53:22 cph Exp $
+;;;	$Id: rmailsum.scm,v 1.30 1993/08/02 21:06:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,28 +48,19 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.29 1992/11/18 21:53:22 cph Exp $"
+  "$Id: rmailsum.scm,v 1.30 1993/08/02 21:06:09 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
   "Corresponding RMAIL buffer for a summary buffer.
 FALSE means buffer is not a summary buffer."
   false
-  (lambda (x)
-    (or (not x) (buffer? x))))
-
-(define-variable-per-buffer rmail-summary-buffer
-  "Corresponding RMAIL-summary buffer for an RMAIL buffer.
-FALSE means buffer has no summary buffer."
-  false
-  (lambda (x)
-    (or (not x) (buffer? x))))
+  (lambda (x) (or (not x) (buffer? x))))
 
 (define-variable-per-buffer rmail-summary-vector
   "Vector of header lines."
   false
-  (lambda (x)
-    (or (not x) (vector? x))))
+  (lambda (x) (or (not x) (vector? x))))
 
 ;;; (define-variable rmail-last-multi-labels
 ;;;   ""

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.21 1993/02/25 08:55:45 gjr Exp $
+;;;	$Id: loadef.scm,v 1.22 1993/08/02 21:05:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -84,6 +84,12 @@
 (define-variable rmail-summary-mode-hook
   "An event distributor that is invoked when entering RMAIL Summary mode."
   (make-event-distributor))
+
+(define-variable-per-buffer rmail-summary-buffer
+  "Corresponding RMAIL-summary buffer for an RMAIL buffer.
+FALSE means buffer has no summary buffer."
+  false
+  (lambda (x) (or (not x) (buffer? x))))
 
 (define-library 'MIDAS-MODE
   '("midas" (EDWIN)))
