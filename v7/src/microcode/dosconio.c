@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.4 1992/09/06 16:24:18 jinx Exp $
+$Id: dosconio.c,v 1.5 1992/09/07 04:28:17 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -485,7 +485,7 @@ DEFINE_PRIMITIVE ("KEYBOARD-SET-CONVERSION!", Prim_keyboard_set_conversion, 2, 2
 	  error_system_call (ENOMEM, syscall_malloc);
 	ptr = conversion;
 	scheme = (STRING_LOC (scheme_conversion, 0));
-	for (i = 0; i <= len; i ++)
+	for (i = 0; i < len; i ++)
 	  *ptr++ = *scheme++;
 	*ptr = '\0';
 	keyboard_scancode_table[scancode] = conversion;
