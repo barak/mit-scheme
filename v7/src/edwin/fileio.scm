@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.161 2003/02/14 18:28:12 cph Exp $
+$Id: fileio.scm,v 1.162 2003/09/24 01:57:48 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -334,7 +334,36 @@ Visiting a file whose name matches REGEXP causes MODE to be used."
   "Specifies the major mode for new buffers based on file type.
 This is an alist, the cars of which are pathname types,
 and the cdrs of which are major modes."
-  (os/file-type-to-major-mode)
+  (alist-copy
+   `(("article" . text)
+     ("asm" . midas)
+     ("bat" . text)
+     ("bib" . text)
+     ("c" . c)
+     ("cc" . c)
+     ("dtd" . html)
+     ("h" . c)
+     ("htm" . html)
+     ("html" . html)
+     ("inc" . php)
+     ("java" . java)
+     ("pas" . pascal)
+     ("php" . php)
+     ("php3" . php)
+     ("s" . scheme)
+     ("scm" . scheme)
+     ("text" . text)
+     ("texi" . texinfo)
+     ("texinfo" . texinfo)
+     ("txi" . texinfo)
+     ("txt" . text)
+     ("xht" . html)
+     ("xhtml" . html)
+     ("xml" . html)
+     ("xsl" . html)
+     ("y" . c)
+     ,@(os/file-type-to-major-mode)))
+  
   string->mode-alist?)
 
 ;;;; Local Variable Initialization
