@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.13 2000/05/08 14:53:09 cph Exp $
+;;; $Id: imail-util.scm,v 1.14 2000/05/16 15:14:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -193,34 +193,3 @@
 
 (define (edwin-variable-value name)
   (variable-value (name->variable name 'ERROR)))
-
-(define (translate-string-line-endings string)
-  (translate-substring-line-endings string 0 (string-length string)))
-
-(define (translate-substring-line-endings string start end)
-  (let ((indexes (substring-search-all "\r\n" string start end)))
-    (let ((s (make-string (fix:- (fix:- end start) (length indexes)))))
-      (let loop ((indexes indexes) (i start) (j 0))
-	(if (pair? indexes)
-	    (let ((j (substring-move! string i (car indexes) s j)))
-	      (string-set! s j #\newline)
-	      (loop (cdr indexes) (fix:+ (car indexes) 2) (fix:+ j 1)))
-	    (substring-move! string i end s j)))
-      s)))
-
-(define (network-string->lines string)
-  (network-substring->lines string 0 (string-length string)))
-
-(define (network-substring->lines string start end)
-  (let loop
-      ((start start)
-       (indexes (substring-search-all "\r\n" string start end))
-       (lines '()))
-    (if (pair? indexes)
-	(loop (fix:+ (car indexes) 2)
-	      (cdr indexes)
-	      (cons (substring string start (car indexes)) lines))
-	(reverse!
-	 (if (fix:< start end)
-	     (cons (substring string start end) lines)
-	     lines)))))

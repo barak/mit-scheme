@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.15 2000/05/16 03:58:31 cph Exp $
+;;; $Id: imap-response.scm,v 1.16 2000/05/16 15:14:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -268,7 +268,7 @@
 		       (loop))
 		     (lose))))
 	      (else (lose)))))))
-
+
 (define (read-literal port)
   (discard-known-char #\{ port)
   (let ((n (read-number port)))
@@ -284,7 +284,19 @@
 	      (loop (fix:+ start m)))))
       (if trace-imap-server-responses?
 	  (write-string s (notification-output-port)))
+      (translate-network-line-endings-to-scheme! s)
       s)))
+
+(define (translate-network-line-endings-to-scheme! string)
+  (let ((n (string-length string)))
+    (let ((i (substring-search-forward "\r\n" string 0 n)))
+      (if i
+	  (let loop ((i i) (n n))
+	    (let* ((n (substring-move! s (fix:+ i 1) n s i))
+		   (i (substring-search-forward "\r\n" string (fix:+ i 1) n)))
+	      (if i
+		  (loop i n)
+		  (set-string-maximum-length! string n))))))))
 
 (define (read-list port #!optional read-item)
   (read-closed-list #\( #\)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.8 2000/05/16 03:13:43 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.9 2000/05/16 15:14:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -598,7 +598,17 @@
   (imap:write-literal-substring-body string 0 (string-length string) port))
 
 (define (imap:write-literal-substring-body string start end port)
-  (write-substring string start end port))
+  ;; Translate newlines back to network line endings.
+  (let loop ((start start))
+    (if (fix:<= start end)
+	(let ((index (substring-find-next-char string start end #\newline)))
+	  (if index
+	      (begin
+		(write-substring string start index port)
+		(write-char #\return port)
+		(write-char #\linefeed port)
+		(loop (fix:+ index 1)))
+	      (write-substring string start end port))))))
 
 (define (imap:universal-time->date-time time)
   (imap:decoded-time->date-time (universal-time->global-decoded-time time)))

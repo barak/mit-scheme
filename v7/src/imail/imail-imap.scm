@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.43 2000/05/16 04:14:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.44 2000/05/16 15:14:13 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1015,15 +1015,14 @@
      (%set-message-flags! message (map imap-flag->imail-flag datum))
      #t)
     ((RFC822.HEADER)
-     (%set-message-header-fields!
-      message
-      (lines->header-fields (network-string->lines datum)))
+     (%set-message-header-fields! message
+				  (lines->header-fields (string->lines datum)))
      #t)
     ((RFC822.SIZE)
      (%set-imap-message-length! message datum)
      #t)
     ((RFC822.TEXT)
-     (%set-message-body! message (translate-string-line-endings datum))
+     (%set-message-body! message datum)
      #t)
     ((UID)
      (%set-imap-message-uid! message datum)
