@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.212 1992/02/08 15:23:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.213 1992/02/10 12:02:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -324,6 +324,9 @@ This does not affect editor errors or evaluation errors."
 
 (define (exit-editor)
   (within-continuation editor-abort reset-editor))
+
+(define (exit-scheme)
+  (within-continuation editor-abort %exit))
 
 (define (^G-signal)
   (let ((handler *^G-interrupt-handler*))
