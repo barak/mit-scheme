@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.1 1992/02/01 15:44:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.2 1992/02/01 20:08:47 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -38,21 +38,18 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define-integrable (->sti reg)
+  (- reg fr0))
+
 (define (flonum-source! register)
-  (load-alias-register! register 'FLOAT))
+  (->sti (load-alias-register! register 'FLOAT)))
 
 (define (flonum-target! pseudo-register)
   (delete-dead-registers!)
-  (allocate-alias-register! pseudo-register 'FLOAT))
+  (->sti (allocate-alias-register! pseudo-register 'FLOAT)))
 
 (define (flonum-temporary!)
   (allocate-temporary-register! 'FLOAT))
-
-(define-integrable (fpr0 reg)
-  (INST-EA (ST ,(reg - fr0))))
-
-(define-integrable (fpr1 reg)
-  (INST-EA (ST ,(1+ (reg -fr0)))))
 
 (define-rule statement
   ;; convert a floating-point number to a flonum object
@@ -64,16 +61,19 @@ MIT in each case. |#
 	      (&U ,(make-non-pointer-literal
 		    (ucode-type manifest-nm-vector)
 		    2)))
-	 ,@(if source
-	       (LAP (FLD D ,(fpr0 source))
-		    (FSTP D (@RO ,regnum:free-pointer 4)))
+	 ,@(if (not source)
 	       ;; Value is in memory home
 	       (let ((off (pseudo-register-offset source))
 		     (temp (temporary-register-reference)))
 		 (LAP (MOV W ,target (@RO ,regnum:regs-pointer ,off))
 		      (MOV W ,temp (@RO ,regnum:regs-pointer ,(+ 4 off)))
 		      (MOV W (@RO ,regnum:free-pointer 4) ,target)
-		      (MOV W (@RO ,regnum:free-pointer 8) ,temp))))
+		      (MOV W (@RO ,regnum:free-pointer 8) ,temp)))
+	       (let ((sti (->sti source)))
+		 (if (zero? sti)
+		     (LAP (FST D (@RO ,regnum:free-pointer 4)))
+		     (LAP (FLD D (ST ,(->sti source)))
+			  (FSTP D (@RO ,regnum:free-pointer 4))))))
 	 (LEA ,target
 	      (@RO ,regnum:free-pointer
 		   ,(make-non-pointer-literal (ucode-type flonum) 0)))
@@ -86,7 +86,7 @@ MIT in each case. |#
 	 (target (flonum-target! target)))
     (LAP ,@(object->address source)
 	 (FLD D (@RO ,source 4))
-	 (FSTP D ,(fpr1 target)))))
+	 (FSTP D (ST ,(1+ target))))))
 
 ;;;; Flonum Arithmetic
 
@@ -115,9 +115,11 @@ MIT in each case. |#
        (macro (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
 	    (lambda (target source)
-	      (LAP (FLD D ,',(fpr0 source))
-		   (,opcode)
-		   (FSTP D ,',(fpr1 target))))))))
+	      (if (and (zero? target) (zero? source))
+		  (,opcode)
+		  (LAP (FLD D (ST ,', source))
+		       (,opcode)
+		       (FSTP D (ST ,',(1+ target))))))))))
   (define-flonum-operation flonum-negate FCHS)
   (define-flonum-operation flonum-abs FABS)
   (define-flonum-operation flonum-sin FSIN)
@@ -125,13 +127,11 @@ MIT in each case. |#
   (define-flonum-operation flonum-sqrt FSQRT)
   (define-flonum-operation flonum-round FRND))
 
-;; Missing:
+;; **** Missing: ****
 ;; flonum-tan flonum-asin flonum-acos flonum-atan
 ;; flonum-exp flonum-log flonum-truncate
 ;; Most of the above can be done in a couple of instructions
-
-;; **** Here ****
-
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-2-ARGS (? operation)
@@ -139,11 +139,42 @@ MIT in each case. |#
 			 (REGISTER (? source2))
 			 (? overflow?)))
   overflow?				;ignore
-  (let ((source1 (flonum-source! source1))
-	(source2 (flonum-source! source2)))
-    ((flonum-2-args/operator operation) (flonum-target! target)
-					source1
-					source2)))
+  ((flonum-2-args/operator operation) target source1 source2))
+
+(define ((flonum-binary-operation operate) target source1 source2)
+  (let ((default
+	  (lambda ()
+	    (let* ((sti1 (flonum-source! source1))
+		   (sti2 (flonum-source! source2)))
+	      (operate (flonum-target! target) sti1 sti2)))))
+    (cond ((pseudo-register? target)
+	   (reuse-pseudo-register-alias
+	    source1 target-type
+	    (lambda (alias)
+	      (let* ((sti1 (->sti alias))
+		     (sti2 (if (= source1 source2)
+			       sti1
+			       (flonum-source! source2))))
+		(delete-register! alias)
+		(delete-dead-registers!)
+		(add-pseudo-register-alias! target alias)
+		(operate sti1 sti1 sti2)))
+	    (lambda ()
+	      (reuse-pseudo-register-alias
+	       source2 target-type
+	       (lambda (alias2)
+		 (let ((sti1 (flonum-source! source1))
+		       (sti2 (->sti alias2)))
+		   (delete-register! alias2)
+		   (delete-dead-registers!)
+		   (add-pseudo-register-alias! target alias2)
+		   (operate sti2 sti1 sti2)))
+	       default))))
+	  ((not (eq? target-type (register-type target)))
+	   (error "flonum-2-args: Wrong type register"
+		  target target-type))
+	  (else
+	   (default)))))
 
 (define (flonum-2-args/operator operation)
   (lookup-arithmetic-method operation flonum-methods/2-args))
@@ -153,17 +184,40 @@ MIT in each case. |#
 
 (let-syntax
     ((define-flonum-operation
-       (macro (primitive-name opcode)
+       (macro (primitive-name op1%2 op1%2p op2%1 op2%1p)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/2-args
-	    (lambda (target source1 source2)
-	      (LAP (,opcode (DBL) ,',source1 ,',source2 ,',target)))))))
-  (define-flonum-operation flonum-add fadd)
-  (define-flonum-operation flonum-subtract fsub)
-  (define-flonum-operation flonum-multiply fmpy)
-  (define-flonum-operation flonum-divide fdiv)
-  (define-flonum-operation flonum-remainder frem))
+	    (flonum-binary-operation
+	     (lambda (target source1 source2)
+	       (cond ((= target source1)
+		      (cond ((zero? target)
+			     (LAP (,op1%2 D (ST) (ST ,',source2))))
+			    ((zero? source2)
+			     (LAP (,op2%1 D (ST ,',target) (ST))))
+			    (else
+			     (LAP (FLD D (ST ,',source2))
+				  (,op2%1p D (ST ,',(1+ target)) (ST))))))
+		     ((= target source2)
+		      (cond ((zero? target)
+			     (LAP (,op2%1 D (ST) (ST ,',source1))))
+			    ((zero? source1)
+			     (LAP (,op1%2 D (ST ,',target) (ST))))
+			    (else
+			     (LAP (FLD D (ST ,',source1))
+				  (,op1%2p D (ST ,',(1+ target)) (ST))))))
+		     (else
+		      (LAP (FLD D (ST ,',source1))
+			   (,op1%2 D (ST) (ST ,',(1+ source2)))
+			   (FSTP D (ST ,',(1+ target))))))))))))
+  (define-flonum-operation flonum-add fadd faddp fadd faddp)
+  (define-flonum-operation flonum-subtract fsub fsubp fsubr fsubpr)
+  (define-flonum-operation flonum-multiply fmul fmulp fmul fmulp)
+  (define-flonum-operation flonum-divide fdiv fdivp fdivr fdivpr))
+
+;; **** Missing: (define-flonum-operation flonum-remainder fprem1) ***
 
 ;;;; Flonum Predicates
+
+;; **** Here ****
 
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
