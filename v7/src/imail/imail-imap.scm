@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.60 2000/05/19 20:08:25 cph Exp $
+;;; $Id: imail-imap.scm,v 1.61 2000/05/19 21:02:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -492,7 +492,7 @@
 			   ;; Flags might have been updated while
 			   ;; reading the UIDs.
 			   (if (%message-flags-initialized? m*)
-			       (%%set-message-flags! m (message-flags m*)))
+			       (%set-message-flags! m (message-flags m*)))
 			   (detach-message! m*)
 			   (attach-message! m folder i*)
 			   (vector-set! v* i* m)
@@ -514,7 +514,7 @@
 (define (imap-message-connection message)
   (imap-folder-connection (message-folder message)))
 
-(define-method %set-message-flags! ((message <imap-message>) flags)
+(define-method set-message-flags! ((message <imap-message>) flags)
   (imap:command:uid-store-flags (imap-message-connection message)
 				(imap-message-uid message)
 				(map imail-flag->imap-flag
@@ -1144,7 +1144,7 @@
 (define (process-fetch-attribute message keyword datum)
   (case keyword
     ((FLAGS)
-     (%%set-message-flags! message (map imap-flag->imail-flag datum))
+     (%set-message-flags! message (map imap-flag->imail-flag datum))
      #t)
     ((RFC822.HEADER)
      (%set-message-header-fields! message
@@ -1171,9 +1171,6 @@
 
 (define %set-message-body!
   (slot-modifier <imap-message> 'BODY))
-
-(define %%set-message-flags!
-  (slot-modifier <imap-message> 'FLAGS))
 
 (define %message-flags-initialized?
   (slot-initpred <imap-message> 'FLAGS))

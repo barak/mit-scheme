@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.75 2000/05/19 20:03:12 cph Exp $
+;;; $Id: imail-core.scm,v 1.76 2000/05/19 21:02:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -306,8 +306,7 @@
     (<imail-object>)
   (header-fields define accessor)
   (body define accessor)
-  (flags define standard
-	 modifier %set-message-flags!)
+  (flags define accessor)
   (folder define standard
 	  initial-value #f)
   (index define standard
@@ -324,6 +323,19 @@
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
+
+(define-generic set-message-flags! (message flags))
+
+(define-method set-message-flags! ((message <message>) flags)
+  (%set-message-flags! message flags))
+
+(define %set-message-flags!
+  (let ((modifier (slot-modifier <message> 'FLAGS)))
+    (lambda (message flags)
+      (modifier message flags)
+      (let ((folder (message-folder message)))
+	(if folder
+	    (folder-modified! folder 'FLAGS message))))))
 
 (define (message-attached? message #!optional folder)
   (let ((folder (if (default-object? folder) #f folder)))
@@ -465,12 +477,6 @@
      (let ((flags (message-flags message)))
        (if (flags-member? flag flags)
 	   (set-message-flags! message (flags-delete! flag flags)))))))
-
-(define (set-message-flags! message flags)
-  (%set-message-flags! message flags)
-  (let ((folder (message-folder message)))
-    (if folder
-	(folder-modified! folder 'FLAGS message))))
 
 (define (folder-flags folder)
   (let ((n (folder-length folder)))
