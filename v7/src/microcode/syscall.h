@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.8 1995/01/06 17:50:54 cph Exp $
+$Id: syscall.h,v 1.9 1996/04/23 20:50:30 cph Exp $
 
-Copyright (c) 1993-95 Massachusetts Institute of Technology
+Copyright (c) 1993-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -107,7 +107,9 @@ enum syscall_names
   syscall_stat,
   syscall_lstat,
   syscall_mktime,
-  syscall_dld
+  syscall_dld,
+  syscall_statfs,
+  syscall_fstatfs
 };
 
 enum syserr_names

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.18 1996/03/04 20:41:28 cph Exp $
+$Id: uxtop.c,v 1.19 1996/04/23 20:50:20 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -364,7 +364,9 @@ static char * syscall_names_table [] =
   "STAT",
   "LSTAT",
   "MKTIME",
-  "DYNAMIC-LOAD"
+  "DYNAMIC-LOAD",
+  "STATFS",
+  "FSTATFS"
 };
 
 void

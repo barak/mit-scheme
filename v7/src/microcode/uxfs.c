@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.11 1996/03/01 09:17:51 cph Exp $
+$Id: uxfs.c,v 1.12 1996/04/23 20:50:46 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,33 @@ MIT in each case. */
 
 #include "ux.h"
 #include "osfs.h"
+
+#ifdef HAVE_STATFS
+#include <sys/vfs.h>
+
+#ifdef __linux
+#include <linux/ext2_fs.h>
+#include <linux/ext_fs.h>
+#include <linux/hpfs_fs.h>
+#include <linux/iso_fs.h>
+#include <linux/minix_fs.h>
+#include <linux/msdos_fs.h>
+#include <linux/nfs_fs.h>
+#if 0				/* Broken -- requires __KERNEL__ defined. */
+#include <linux/proc_fs.h>
+#endif
+#include <linux/sysv_fs.h>
+#include <linux/xia_fs.h>
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= 66304) /* 1.3.0 (is this correct?) */
+#include <linux/smb_fs.h>
+#if (LINUX_VERSION_CODE >= 66387) /* 1.3.53 */
+#include <linux/ncp_fs.h>
+#endif
+#endif
+#endif /* __linux */
+
+#endif /* HAVE_STATFS */
 
 int
 DEFUN (UX_read_file_status, (filename, s),
@@ -77,6 +104,77 @@ DEFUN (OS_file_existence_test, (name), CONST char * name)
      : (UX_read_file_status (name, (&s)))
      ? file_is_link
      : file_doesnt_exist);
+}
+
+CONST char *
+DEFUN (UX_file_system_type, (name), CONST char * name)
+{
+#ifdef HAVE_STATFS
+  struct statfs s;
+  while ((UX_statfs (name, (&s))) < 0)
+    {
+      if ((errno == ENOENT) || (errno == ENOTDIR))
+	return (0);
+      if (errno != EINTR)
+	error_system_call (errno, syscall_statfs);
+    }
+
+#ifdef __linux
+  switch (s . f_type)
+    {
+#ifdef COH_SUPER_MAGIC
+    case COH_SUPER_MAGIC:	return ("coherent");
+#endif
+    case EXT_SUPER_MAGIC:	return ("ext");
+    case EXT2_SUPER_MAGIC:	return ("ext2");
+    case HPFS_SUPER_MAGIC:	return ("hpfs");
+    case ISOFS_SUPER_MAGIC:	return ("iso9660");
+    case MINIX_SUPER_MAGIC:	return ("minix1");
+    case MINIX_SUPER_MAGIC2:	return ("minix1-30");
+#ifdef MINIX2_SUPER_MAGIC
+    case MINIX2_SUPER_MAGIC:	return ("minix2");
+#endif
+#ifdef MINIX2_SUPER_MAGIC2
+    case MINIX2_SUPER_MAGIC2:	return ("minix2-30");
+#endif
+    case MSDOS_SUPER_MAGIC:	return ("fat");
+#ifdef NCP_SUPER_MAGIC
+    case NCP_SUPER_MAGIC:	return ("ncp");
+#endif
+#ifdef NEW_MINIX_SUPER_MAGIC
+    case NEW_MINIX_SUPER_MAGIC: return ("minix2");
+#endif
+    case NFS_SUPER_MAGIC:	return ("nfs");
+#ifdef PROC_SUPER_MAGIC
+    case PROC_SUPER_MAGIC:	return ("proc");
+#endif
+#ifdef SMB_SUPER_MAGIC
+    case SMB_SUPER_MAGIC:	return ("smb");
+#endif
+#ifdef SYSV2_SUPER_MAGIC
+    case SYSV2_SUPER_MAGIC:	return ("sysv2");
+#endif
+#ifdef SYSV4_SUPER_MAGIC
+    case SYSV4_SUPER_MAGIC:	return ("sysv4");
+#endif
+#ifdef XENIX_SUPER_MAGIC
+    case XENIX_SUPER_MAGIC:	return ("xenix");
+#endif
+    case _XIAFS_SUPER_MAGIC:	return ("xiafs");
+    }
+#endif /* __linux */
+
+#ifdef _HPUX
+  switch ((s . f_fsid) [1])
+    {
+    case MOUNT_UFS:		return ("ufs");
+    case MOUNT_NFS:		return ("nfs");
+    case MOUNT_CDFS:		return ("iso9660");
+    }
+#endif /* _HPUX */
+#endif /* HAVE_STATFS */
+
+  return (0);
 }
 
 int

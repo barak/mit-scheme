@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxfs.c,v 9.51 1993/06/24 07:09:32 gjr Exp $
+$Id: pruxfs.c,v 9.52 1996/04/23 20:50:35 cph Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,7 @@ extern int EXFUN
   (UX_read_file_status, (CONST char * filename, struct stat * s));
 extern int EXFUN
   (UX_read_file_status_indirect, (CONST char * filename, struct stat * s));
+extern CONST char * EXFUN (UX_file_system_type, (CONST char * name));
 
 static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
 static void EXFUN (file_mode_string, (struct stat * s, char * a));
@@ -414,5 +415,15 @@ DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
 	&& (UX_read_file_status ((STRING_ARG (2)), (&s2)))
 	&& ((s1 . st_dev) == (s2 . st_dev))
 	&& ((s1 . st_ino) == (s2 . st_ino))));
+  }
+}
+
+DEFINE_PRIMITIVE ("FILE-SYSTEM-TYPE", Prim_file_system_type, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    char * result = (UX_file_system_type (STRING_ARG (1)));
+    PRIMITIVE_RETURN
+      (char_pointer_to_string ((result == 0) ? "unknown" : result));
   }
 }
