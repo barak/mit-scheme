@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 1.2 1987/06/30 19:50:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 1.3 1987/07/28 22:50:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ MIT in each case. |#
 	    (if (procedure? operator)
 		(apply-procedure operator))
 	    true)))))
-
+
 (define (procedure-applicator operands combination-value)
   (let ((number-supplied (length operands)))
     (lambda (procedure)
@@ -99,10 +99,15 @@ MIT in each case. |#
 		   (vnode-unknowable! rest)))
 	      ((> number-supplied (+ number-required number-optional))
 	       (warn "Too many arguments" procedure operands))))
-      (for-each vnode-connect!
-		(append (procedure-required procedure)
-			(procedure-optional procedure))
-		operands)
+      (let loop ((parameters
+		  (append (procedure-required procedure)
+			  (procedure-optional procedure)))
+		 (operands operands))
+	(if (not (null? parameters))
+	    (if (null? operands)
+		(for-each vnode-unknowable! parameters)
+		(begin (vnode-connect! (car parameters) (car operands))
+		       (loop (cdr parameters) (cdr operands))))))
       ((vnode-connect!:vnode (procedure-value procedure)) combination-value))))
 
 (define-integrable (vnode-connect! vnode operand)
