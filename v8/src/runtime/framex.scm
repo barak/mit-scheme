@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.13 1990/09/12 00:43:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/framex.scm,v 14.14 1990/10/03 21:52:58 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,17 +42,20 @@ MIT in each case. |#
 	 (stack-frame-type/debugging-info-method (stack-frame/type frame))))
     (if (not method)
 	;; (error "STACK-FRAME/DEBUGGING-INFO: missing method" frame)
-	(values (make-debugging-info/noise
-		 (lambda (long?)
-		   (with-output-to-string
-		     (lambda ()
-		       (display "Unknown (methodless) ")
-		       (if long?
-			   (pp frame)
-			   (write frame))))))
-		undefined-environment
-		undefined-expression)
+	(stack-frame/debugging-info/default frame)
 	(method frame))))
+
+(define (stack-frame/debugging-info/default frame)
+  (values (make-debugging-info/noise
+	   (lambda (long?)
+	     (with-output-to-string
+	       (lambda ()
+		 (display "Unknown (methodless) ")
+		 (if long?
+		     (pp frame)
+		     (write frame))))))
+	  undefined-environment
+	  undefined-expression))
 
 (define (debugging-info/undefined-expression? expression)
   (or (eq? expression undefined-expression)
@@ -191,6 +194,16 @@ MIT in each case. |#
 			     (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)
 	  undefined-expression))
+
+(define (method/compiler-error-restart frame)
+  (let ((primitive (stack-frame/ref frame 2)))
+    (if (primitive-procedure? primitive)
+	(values (%make-combination (make-variable 'apply)
+				   (list primitive
+					 unknown-expression))
+		undefined-environment
+		undefined-expression)
+	(stack-frame/debugging-info/default frame))))
 
 (define (stack-frame-list frame start)
   (let ((end (stack-frame/length frame)))
@@ -341,6 +354,8 @@ MIT in each case. |#
 		 method/compiler-lookup-apply-trap-restart)
   (record-method 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART
 		 method/compiler-lookup-apply-trap-restart)
+  (record-method 'COMPILER-ERROR-RESTART
+		 method/compiler-error-restart)
   (record-method 'HARDWARE-TRAP method/hardware-trap)
   (set-stack-frame-type/debugging-info-method!
    stack-frame-type/compiled-return-address

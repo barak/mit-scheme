@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.19 1990/09/11 20:43:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/conpar.scm,v 14.20 1990/10/03 21:53:21 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -303,7 +303,7 @@ MIT in each case. |#
    type
    elements
    (make-parser-state (parser-state/dynamic-state state)
-		      (parser-state/fluid-bindingU state)
+		      (parser-state/fluid-bindings state)
 		      (vector-ref elements 1)
 		      (parser-state/history state)
 		      (parser-state/previous-history-offset state)
@@ -626,7 +626,9 @@ MIT in each case. |#
       (compiler-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
       (compiler-subproblem 'COMPILER-UNASSIGNED?-RESTART 4)
       (compiler-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-UNBOUND?-RESTART 4))
+      (compiler-subproblem 'COMPILER-UNBOUND?-RESTART 4)
+
+      (compiler-subproblem 'COMPILER-ERROR-RESTART 3))
 
     (stack-frame-type 'HARDWARE-TRAP
 		      true
