@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.1 1987/08/11 05:34:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.2 1987/08/11 05:41:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -385,27 +385,28 @@ functionality is not implemented.
 	,@slot-names))))
 
 (define (constructor-definition/keyword structure name)
-  `(DEFINE (,name . KEYWORD-LIST)
-     ,(let ((list-cons
-	     `((ACCESS CONS* ,system-global-environment)
-	       ,@(constructor-prefix-slots structure)
-	       ((ACCESS KEYWORD-PARSER
-			DEFSTRUCT-PACKAGE
-			,system-global-environment)
-		KEYWORD-LIST
-		((ACCESS LIST ,system-global-environment)
-		 ,@(map (lambda (slot)
-			  `((ACCESS CONS ,system-global-environment)
-			    ',(slot/name slot)
-			    ',(slot/default slot)))
-			(structure/slots structure)))))))
-	(case (structure/scheme-type structure)
-	  ((VECTOR)
-	   `((ACCESS LIST->VECTOR ,system-global-environment) ,list-cons))
-	  ((LIST)
-	   list-cons)
-	  (else
-	   (error "Unknown scheme type" structure))))))
+  (let ((keyword-list (string->uninterned-symbol "keyword-list")))
+    `(DEFINE (,name . ,keyword-list)
+       ,(let ((list-cons
+	       `((ACCESS CONS* ,system-global-environment)
+		 ,@(constructor-prefix-slots structure)
+		 ((ACCESS KEYWORD-PARSER
+			  DEFSTRUCT-PACKAGE
+			  ,system-global-environment)
+		  ,keyword-list
+		  ((ACCESS LIST ,system-global-environment)
+		   ,@(map (lambda (slot)
+			    `((ACCESS CONS ,system-global-environment)
+			      ',(slot/name slot)
+			      ,(slot/default slot)))
+			  (structure/slots structure)))))))
+	  (case (structure/scheme-type structure)
+	    ((VECTOR)
+	     `((ACCESS LIST->VECTOR ,system-global-environment) ,list-cons))
+	    ((LIST)
+	     list-cons)
+	    (else
+	     (error "Unknown scheme type" structure)))))))
 
 (define (constructor-definition/boa structure name lambda-list)
   `(DEFINE (,name . ,lambda-list)
