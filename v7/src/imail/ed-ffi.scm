@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.1 2000/01/18 20:56:13 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.2 2000/01/18 20:57:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -21,10 +21,10 @@
 ;;;; IMAIL mail reader: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("imail-core" (edwin imail) edwin-syntax-table)
-    ("imail-file" (edwin imail) edwin-syntax-table)
-    ("imail-rmail" (edwin imail) edwin-syntax-table)
+ '#(("imail-core" (edwin imail) system-global-syntax-table)
+    ("imail-file" (edwin imail) system-global-syntax-table)
+    ("imail-rmail" (edwin imail) system-global-syntax-table)
     ("imail-top" (edwin imail) edwin-syntax-table)
-    ("imail-umail" (edwin imail) edwin-syntax-table)
-    ("imail-util" (edwin imail) edwin-syntax-table)
-    ("rfc822" (edwin imail) edwin-syntax-table)))
+    ("imail-umail" (edwin imail) system-global-syntax-table)
+    ("imail-util" (edwin imail) system-global-syntax-table)
+    ("rfc822" (edwin imail) system-global-syntax-table)))
