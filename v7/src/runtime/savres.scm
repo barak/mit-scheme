@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.16 1990/11/15 23:27:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.17 1990/11/15 23:45:22 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -148,11 +148,8 @@ MIT in each case. |#
 		   (error "no default band name available")))
 	      (let ((pathname
 		     (pathname-default-type (->pathname filename) "com")))
-		(let ((truename
-		       (or (pathname->input-truename pathname)
-			   (system-library-pathname pathname))))
-		  (if (not truename) (error error-type:open-file pathname))
-		  truename))))))
+		(or (pathname->input-truename pathname)
+		    (system-library-pathname pathname)))))))
     (event-distributor/invoke! event:before-exit)
     ((ucode-primitive load-band) filename)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.9 1990/11/15 23:37:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 14.10 1990/11/15 23:45:39 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -426,10 +426,10 @@ See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.|#
 
 (define (system-library-pathname pathname)
   (let loop ((directories library-directory-path))
-    (and (not (null? directories))
-	 (or (pathname->input-truename
-	      (merge-pathnames pathname (car directories)))
-	     (loop (cdr directories))))))
+    (if (null? directories)
+	(error error-type:open-file pathname))
+    (or (pathname->input-truename (merge-pathnames pathname (car directories)))
+	(loop (cdr directories)))))
 
 (define (system-library-directory-pathname pathname)
   (if (not pathname)
