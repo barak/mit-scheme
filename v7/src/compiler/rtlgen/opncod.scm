@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.17 1988/11/04 10:28:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.18 1988/11/04 11:08:55 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -575,6 +575,7 @@ MIT in each case. |#
 	  (lambda (name index)
 	    (define-open-coder/effect name
 	      (lambda (operands)
+		operands
 		(return-2 (open-code/memory-assignment index) '(0 1)))))))
     (define/set! '(SET-CAR!
 		   SET-CELL-CONTENTS!
@@ -870,6 +871,7 @@ MIT in each case. |#
 	(lambda (generic-op)
 	  (define-open-coder/value generic-op
 	    (lambda (operands)
+	      operands
 	      (return-2
 		(lambda (expressions finish)
 		  (generate-generic-binary
@@ -887,6 +889,7 @@ MIT in each case. |#
 	(lambda (generic-op)
 	  (define-open-coder/value generic-op
 	    (lambda (operand)
+	      operand
 	      (return-2
 		(lambda (expression finish)
 		  (generate-generic-unary
@@ -903,6 +906,7 @@ MIT in each case. |#
 	(lambda (generic-op)
 	  (define-open-coder/predicate generic-op
 	    (lambda (operands)
+	      operands
 	      (return-2
 		(lambda (expressions finish)
 		  (generate-generic-binary
@@ -921,6 +925,7 @@ MIT in each case. |#
 	(lambda (generic-op)
 	  (define-open-coder/predicate generic-op
 	    (lambda (operand)
+	      operand
 	      (return-2
 		(lambda (expression finish)
 		  (generate-generic-unary
