@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.65 1994/01/12 00:30:20 gjr Exp $
+$Id: bintopsb.c,v 9.66 1995/07/26 23:03:33 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -231,7 +231,7 @@ DEFUN (print_a_char, (c, name), fast char c AND char * name)
       if (warn_portable_p)
       {
 	fprintf (stderr,
-		 "%s: %s: File may not be portable: c = 0x%x\n",
+		 "%s: %s: Warning - file may not be portable: c = 0x%x\n",
 		 program_name, name, x);
 	warn_portable_p = false;
       }
@@ -336,7 +336,7 @@ DEFUN (print_a_fixnum, (val), long val)
   temp = ((val < 0) ? -val : val);
   for (size_in_bits = 0; temp != 0; size_in_bits += 1)
     temp = temp >> 1;
-  fprintf (portable_file, "%02x %c ", TC_FIXNUM, (val < 0 ? '-' : '+'));
+  fprintf (portable_file, "%02x %c ", TA_FIXNUM, (val<0) ? '-' : '+');
   if (val == 0)
     fprintf (portable_file, "0\n");
   else
@@ -393,7 +393,7 @@ DEFUN (print_a_string, (from), SCHEME_OBJECT * from)
 
   fprintf (portable_file,
 	   "%02x %ld ",
-	   TC_CHARACTER_STRING,
+	   TA_CHARACTER_STRING,
 	   ((compact_p
 	     && ((BYTES_TO_WORDS (len + 1)) == (BYTES_TO_WORDS (maxlen + 1))))
 	    ? len
@@ -459,11 +459,11 @@ DEFUN (print_a_bignum, (bignum_ptr), SCHEME_OBJECT * bignum_ptr)
   if (BIGNUM_ZERO_P (bignum))
   {
     fprintf (portable_file, "%02x + 0\n",
-	     (compact_p ? TC_FIXNUM : TC_BIG_FIXNUM));
+	     (compact_p ? TA_FIXNUM : TA_BIGNUM));
     return;
   }
   {
-    int the_type = TC_BIG_FIXNUM;
+    int the_type = TA_BIGNUM;
     bignum_digit_type * scan = (BIGNUM_START_PTR (bignum));
     fast long length_in_bits = (bignum_length (bignum));
     fast int bits_in_digit = 0;
@@ -475,7 +475,7 @@ DEFUN (print_a_bignum, (bignum_ptr), SCHEME_OBJECT * bignum_ptr)
      */ 
 
     if (compact_p && (length_in_bits > fixnum_to_bits))
-      the_type = TC_FIXNUM;
+      the_type = TA_FIXNUM;
 
     fprintf (portable_file, "%02x %c %ld ",
 	     the_type,
@@ -554,7 +554,7 @@ DEFUN (print_a_bit_string, (from), SCHEME_OBJECT * from)
 
   the_bit_string = (MAKE_POINTER_OBJECT (TC_BIT_STRING, from));
   bits_remaining = (BIT_STRING_LENGTH (the_bit_string));
-  fprintf (portable_file, "%02x %ld", TC_BIT_STRING, bits_remaining);
+  fprintf (portable_file, "%02x %ld", TA_VECTOR_1B, bits_remaining);
 
   if (bits_remaining != 0)
   {
@@ -619,7 +619,7 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
   val = utemp.dval;
 
   fprintf (portable_file, "%02x %c ",
-	   TC_BIG_FLONUM,
+	   TA_FLONUM,
 	   ((val < 0.0) ? '-' : '+'));
   if (val == 0.0)
   {
@@ -635,7 +635,7 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
     if (temp >= 1.0)
       temp -= 1.0;
   }
-  fprintf (portable_file, "%d %ld ", expt, size_in_bits);
+  fprintf (portable_file, "%ld %ld ", expt, size_in_bits);
 
   for (size_in_bits = (hex_digits (size_in_bits));
        size_in_bits > 0;
@@ -749,7 +749,10 @@ DEFUN (print_a_flonum, (src), SCHEME_OBJECT * src)
 {									\
   fast long len = (OBJECT_DATUM (Old_Contents));			\
   (*Old_Address++) = (MAKE_BROKEN_HEART (Fre));				\
-  (Mem_Base [(Fre)++]) = Old_Contents;					\
+  if (Old_Contents == SHARP_F)						\
+    (Mem_Base [(Fre)++]) = ALIASED_LENGTH_SHARP_F;			\
+  else									\
+    (Mem_Base [(Fre)++]) = Old_Contents;				\
   while ((len--) > 0)							\
     (Mem_Base [(Fre)++]) = (*Old_Address++);				\
 } while (0)
@@ -1214,6 +1217,11 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	break;
 
       case TC_MANIFEST_NM_VECTOR:
+	if (This == ALIASED_LENGTH_SHARP_F) /* See psbmap.h */
+	{
+	    *Area += 1;
+	    break;
+	}
 	nmv_p = true;
         if (null_nmv_p)
 	{
@@ -1230,7 +1238,7 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	  if (((OBJECT_DATUM (This)) != 0) && warn_portable_p)
 	  {
 	    warn_portable_p = false;
-	    fprintf (stderr, "%s: File is not portable: NMH found\n",
+	    fprintf (stderr, "%s: Warning - file is not portable: NMH found\n",
 		     program_name);
 	  }
 	}
@@ -1418,7 +1426,10 @@ DEFUN (Process_Area, (Code, Area, Bound, Obj, FObj),
 	}
 	break;
 
-      case TC_FIXNUM:
+      case TC_POSITIVE_FIXNUM:
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
+      case TC_NEGATIVE_FIXNUM:
+#endif
 	NIntegers += 1;
 	NBits += fixnum_to_bits;
 	/* Fall Through */
@@ -1538,8 +1549,11 @@ DEFUN (print_binary_objects, (from, count),
   while (--count >= 0)
   {
     switch (OBJECT_TYPE (* from))
-    {
-      case TC_FIXNUM:
+    { 
+      case TC_POSITIVE_FIXNUM:
+#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
+      case TC_NEGATIVE_FIXNUM:
+#endif
 	print_a_fixnum (FIXNUM_TO_LONG (*from));
 	from += 1;
 	break;
@@ -1566,7 +1580,7 @@ DEFUN (print_binary_objects, (from, count),
 
       case TC_CHARACTER:
 	fprintf (portable_file, "%02x %03x\n",
-		 TC_CHARACTER, ((*from) & MASK_MIT_ASCII));
+		 TA_CHARACTER, ((*from) & MASK_MIT_ASCII));
 	from += 1;
 	break;
 
@@ -1575,6 +1589,7 @@ DEFUN (print_binary_objects, (from, count),
       case TC_MANIFEST_NM_VECTOR:
         if ((OBJECT_DATUM (*from)) == 0)
 	{
+	    /* used as a word of padding */
 	  from += 1;
 	  count += 1;
 	  break;
@@ -1605,13 +1620,13 @@ DEFUN (print_c_compiled_entries, (entry, count),
 
     Get_Compiled_Block (block, entry);
     fprintf (portable_file, "%02x %lx %ld %ld %lx\n",
-	     TC_C_COMPILED_TAG,
+	     TA_C_COMPILED_TAG,
 	     ((long) C_COMPILED_ENTRY_FORMAT),
 	     ((long) (FORMAT_WORD_LOW_BYTE (format))),
 	     ((long) (FORMAT_WORD_HIGH_BYTE (format))),
 	     ((long) (entry - block)));
     fprintf (portable_file, "%02x %lx %lx\n",
-	     TC_C_COMPILED_TAG,
+	     TA_C_COMPILED_TAG,
 	     ((long) C_COMPILED_ENTRY_CODE),
 	     entry_index);
     count -= 1;
@@ -1639,17 +1654,17 @@ DEFUN (print_c_closure_entries, (entry, count),
 
     Get_Compiled_Block (block, entry);
     fprintf (portable_file, "%02x %lx %ld %ld %lx\n",
-	     TC_C_COMPILED_TAG,
+	     TA_C_COMPILED_TAG,
 	     ((long) C_COMPILED_ENTRY_FORMAT),
 	     ((long) (FORMAT_WORD_LOW_BYTE (format))),
 	     ((long) (FORMAT_WORD_HIGH_BYTE (format))),
 	     ((long) (entry - block)));
     fprintf (portable_file, "%02x %lx %lx\n",
-	     TC_C_COMPILED_TAG,
+	     TA_C_COMPILED_TAG,
 	     ((long) C_COMPILED_ENTRY_CODE),
 	     entry_index);
     fprintf (portable_file, "%02x %lx %lx %lx\n",
-	     TC_C_COMPILED_TAG,
+	     TA_C_COMPILED_TAG,
 	     ((long) C_COMPILED_EXECUTE_ENTRY),
 	     offset,
 	     (OBJECT_DATUM (base)));
@@ -1659,23 +1674,119 @@ DEFUN (print_c_closure_entries, (entry, count),
   return;
 }
 
+#define DIRECT(psbcode)                                          \
+   { fprintf (portable_file, "%02x %lx\n", psbcode, the_datum); break; }
+
+#define CONSTANT_TRANSLATION(psbcode) \
+   { fprintf (portable_file, "%02x 0\n", psbcode);  goto next_object; }
+
 static void
 DEFUN (print_objects, (from, to),
        fast SCHEME_OBJECT * from AND fast SCHEME_OBJECT * to)
 {
-  fast long the_datum, the_type;
+    SCHEME_OBJECT the_object;
+    fast long  the_datum, the_type;
 
+next_object:
   while (from < to)
   {
-    the_type = (OBJECT_TYPE (* from));
-    the_datum = (OBJECT_DATUM (* from));
+    the_object = *from;
     from += 1;
+
+    switch (the_object)
+    {
+      case ALIASED_LENGTH_SHARP_F:
+	/* this looked like #F but we knew it was a length so dont translate
+	   it */
+	from[-1] = SHARP_F;
+	the_object = SHARP_F;
+	break;
+      case EMPTY_LIST_VALUE:  CONSTANT_TRANSLATION(TA_NIL);
+#if (SHARP_F != EMPTY_LIST_VALUE)
+      case SHARP_F:           CONSTANT_TRANSLATION(TA_FALSE);
+#endif
+      case SHARP_T:           CONSTANT_TRANSLATION(TA_TRUE);
+      case UNSPECIFIC:        CONSTANT_TRANSLATION(TA_UNSPECIFIC);
+      default: break;
+    }
+
+    the_type = (OBJECT_TYPE (the_object));
+    the_datum = (OBJECT_DATUM (the_object));
 
     switch (the_type)
     {
+      case TC_CONSTANT:              DIRECT(TA_CONSTANT);
+      case TC_NULL:                  DIRECT(TA_TC_NULL);
+
+      case TC_BIG_FLONUM:            DIRECT(TA_FLONUM);
+      case TC_RATNUM:                DIRECT(TA_RATNUM);
+      case TC_COMPLEX:               DIRECT(TA_RECNUM);
+
+      case TC_MANIFEST_SPECIAL_NM_VECTOR:DIRECT(TA_MANIFEST_SPECIAL_NM_VECTOR);
+      case TC_PRIMITIVE:             DIRECT(TA_PRIMITIVE);
+
+      case TC_REFERENCE_TRAP:        DIRECT(TA_REFERENCE_TRAP);
+      case TC_COMPILED_CODE_BLOCK:   DIRECT(TA_COMPILED_CODE_BLOCK);
+      case TC_CONTROL_POINT:         DIRECT(TA_CONTROL_POINT);
+      case TC_STACK_ENVIRONMENT:     DIRECT(TA_STACK_ENVIRONMENT);
+
+      case TC_CELL:                  DIRECT(TA_CELL);
+      case TC_LIST:                  DIRECT(TA_PAIR);
+      case TC_WEAK_CONS:             DIRECT(TA_WEAK_CONS);
+      case TC_UNINTERNED_SYMBOL:     DIRECT(TA_UNINTERNED_SYMBOL);
+      case TC_INTERNED_SYMBOL:       DIRECT(TA_INTERNED_SYMBOL);
+      case TC_HUNK3_A:               DIRECT(TA_HUNK3_A);
+      case TC_HUNK3_B:               DIRECT(TA_HUNK3_B);
+      case TC_QUAD:                  DIRECT(TA_QUAD);
+
+      case TC_NON_MARKED_VECTOR:     DIRECT(TA_NON_MARKED_VECTOR);
+      case TC_VECTOR:                DIRECT(TA_VECTOR);
+      case TC_RECORD:                DIRECT(TA_RECORD);
+      case TC_VECTOR_1B:             DIRECT(TA_VECTOR_1B);
+      case TC_CHARACTER_STRING:      DIRECT(TA_CHARACTER_STRING);
+      case TC_VECTOR_16B:            DIRECT(TA_VECTOR_16B);
+
+      case TC_ACCESS:                DIRECT(TA_ACCESS);
+      case TC_ASSIGNMENT:            DIRECT(TA_ASSIGNMENT);
+      case TC_COMBINATION:           DIRECT(TA_COMBINATION);
+      case TC_COMBINATION_1:         DIRECT(TA_COMBINATION_1);
+      case TC_COMBINATION_2:         DIRECT(TA_COMBINATION_2);
+      case TC_COMMENT:               DIRECT(TA_COMMENT);
+      case TC_CONDITIONAL:           DIRECT(TA_CONDITIONAL);
+      case TC_DEFINITION:            DIRECT(TA_DEFINITION);
+      case TC_DELAY:                 DIRECT(TA_DELAY);
+      case TC_DELAYED:               DIRECT(TA_PROMISE);
+      case TC_DISJUNCTION:           DIRECT(TA_DISJUNCTION);
+      case TC_ENTITY:                DIRECT(TA_ENTITY);
+      case TC_ENVIRONMENT:           DIRECT(TA_ENVIRONMENT);
+      case TC_EXTENDED_LAMBDA:       DIRECT(TA_EXTENDED_LAMBDA);
+      case TC_EXTENDED_PROCEDURE:    DIRECT(TA_EXTENDED_PROCEDURE);
+      case TC_FUTURE:                DIRECT(TA_FUTURE);
+      case TC_IN_PACKAGE:            DIRECT(TA_IN_PACKAGE);
+      case TC_LAMBDA:                DIRECT(TA_LAMBDA);
+      case TC_LEXPR:                 DIRECT(TA_LEXPR);
+      case TC_PCOMB0:                DIRECT(TA_PCOMB0);
+      case TC_PCOMB1:                DIRECT(TA_PCOMB1);
+      case TC_PCOMB2:                DIRECT(TA_PCOMB2);
+      case TC_PCOMB3:                DIRECT(TA_PCOMB3);
+      case TC_PROCEDURE:             DIRECT(TA_PROCEDURE);
+      case TC_RETURN_CODE:           DIRECT(TA_RETURN_CODE);
+      case TC_SCODE_QUOTE:           DIRECT(TA_SCODE_QUOTE);
+      case TC_SEQUENCE_2:            DIRECT(TA_SEQUENCE_2);
+      case TC_SEQUENCE_3:            DIRECT(TA_SEQUENCE_3);
+      case TC_THE_ENVIRONMENT:       DIRECT(TA_THE_ENVIRONMENT);
+      case TC_VARIABLE:              DIRECT(TA_VARIABLE);
+
+      /* These account for POSITIVE_FIXNUM, CHARACTER & BIG_FIXNUM: */
+      case CONSTANT_CODE:            DIRECT(TA_CONSTANT_CODE);
+      case HEAP_CODE:                DIRECT(TA_HEAP_CODE);
+      case PURE_CODE:                DIRECT(TA_PURE_CODE);
+
+
       case TC_MANIFEST_NM_VECTOR:
       {
-	fprintf (portable_file, "%02x %lx\n", the_type, the_datum);
+	fprintf (portable_file, "%02x %lx\n",
+		 TA_MANIFEST_NM_VECTOR, the_datum);
 	while (--the_datum >= 0)
 	  fprintf (portable_file, "%lx\n", ((unsigned long) *from++));
 	break;
@@ -1684,14 +1795,26 @@ DEFUN (print_objects, (from, to),
       case TC_COMPILED_ENTRY:
       {
 	SCHEME_OBJECT base;
+	long TC_of_base, TA_of_base;
 	long offset;
 
 	offset = (UNSIGNED_FIXNUM_TO_LONG (compiled_entry_table [the_datum]));
 	base = compiled_entry_table[the_datum + 1];
-
+	TC_of_base = OBJECT_TYPE(base);
+	switch (TC_of_base)  /* translate base type too */
+	{
+	  case TC_COMPILED_ENTRY:    TA_of_base = TA_COMPILED_ENTRY;  break;
+	  default:
+	    fprintf(stderr,
+		    "%s: Unexpected base type for compiled entry: TC 0x%02x.\n",
+		    program_name,
+		    TC_of_base);
+	    quit(1);
+	}
+		    
 	fprintf (portable_file, "%02x %lx %02x %lx\n",
-		 TC_COMPILED_ENTRY, offset,
-		 (OBJECT_TYPE (base)), (OBJECT_DATUM (base)));
+		 TA_COMPILED_ENTRY, offset,
+		 TA_of_base, (OBJECT_DATUM (base)));
 	break;
       }
 
@@ -1707,7 +1830,7 @@ DEFUN (print_objects, (from, to),
 	    long count = (READ_CACHE_LINKAGE_COUNT (header));
 
 	    fprintf (portable_file, "%02x %lx %lx %lx\n",
-		     TC_C_COMPILED_TAG,
+		     TA_C_COMPILED_TAG,
 		     ((long) C_COMPILED_LINKAGE_HEADER),
 		     ((long) (READ_LINKAGE_KIND (header))),
 		     ((long) count));
@@ -1716,7 +1839,7 @@ DEFUN (print_objects, (from, to),
 	      unsigned long the_quad = ((unsigned long) *from++);
 
 	      fprintf (portable_file, "%02x %lx %lx\n",
-		       TC_C_COMPILED_TAG,
+		       TA_C_COMPILED_TAG,
 		       ((long) C_COMPILED_RAW_QUAD),
 		       the_quad);
 	    }
@@ -1738,7 +1861,7 @@ DEFUN (print_objects, (from, to),
 	    area_end = (END_OPERATOR_LINKAGE_AREA (i_scan, count));
 
 	    fprintf (portable_file, "%02x %lx %lx %lx\n",
-		     TC_C_COMPILED_TAG,
+		     TA_C_COMPILED_TAG,
 		     ((long) C_COMPILED_LINKAGE_HEADER),
 		     ((long) (READ_LINKAGE_KIND (header))),
 		     ((long) count));
@@ -1758,12 +1881,12 @@ DEFUN (print_objects, (from, to),
 	      base = compiled_entry_table[address + 1];
 
 	      fprintf (portable_file, "%02x %lx %lx %lx\n",
-		       TC_C_COMPILED_TAG,
+		       TA_C_COMPILED_TAG,
 		       ((long) C_COMPILED_EXECUTE_ENTRY),
 		       offset,
 		       (OBJECT_DATUM (base)));
 	      fprintf (portable_file, "%02x %lx %lx\n",
-		       TC_C_COMPILED_TAG,
+		       TA_C_COMPILED_TAG,
 		       ((long) C_COMPILED_EXECUTE_ARITY),
 		       arity);
 	    }
@@ -1788,7 +1911,7 @@ DEFUN (print_objects, (from, to),
 	SCHEME_OBJECT * entry, * area_end;
 
 	fprintf (portable_file, "%02x %lx %lx\n",
-		 TC_C_COMPILED_TAG,
+		 TA_C_COMPILED_TAG,
 		 ((long) C_COMPILED_CLOSURE_HEADER),
 		 the_datum);
 
@@ -1798,7 +1921,7 @@ DEFUN (print_objects, (from, to),
 	
 	if (entry != (from + 1))
 	  fprintf (portable_file, "%02x %lx %lx\n",
-		   TC_C_COMPILED_TAG,
+		   TA_C_COMPILED_TAG,
 		   ((long) C_COMPILED_MULTI_CLOSURE_HEADER),
 		   nentries);
 
@@ -1809,7 +1932,7 @@ DEFUN (print_objects, (from, to),
 
       case TC_BROKEN_HEART:
       if (the_datum == 0)
-	goto ordinary_object;
+	DIRECT(TA_BROKEN_HEART);
       /* An NMV header fending off C-compiled code descriptors.
 	 This knows in detail the format
        */
@@ -1820,7 +1943,7 @@ DEFUN (print_objects, (from, to),
 
 	nmv_length = (OBJECT_DATUM (compiled_block_table [the_datum + 1]));
 	fprintf (portable_file, "%02x %lx %lx\n",
-		 TC_C_COMPILED_TAG,
+		 TA_C_COMPILED_TAG,
 		 ((long) C_COMPILED_FAKE_NMV),
 		 nmv_length);
 
@@ -1830,10 +1953,10 @@ DEFUN (print_objects, (from, to),
       }
 
       default:
-      ordinary_object:
       {
-	fprintf (portable_file, "%02x %lx\n", the_type, the_datum);
-	break;
+	  fprintf (stderr, "Unknown object kind: 0x%02x | 0x%06x\n",
+		   the_type, the_datum);
+	  quit(1);
       }
     }
   }
@@ -1842,7 +1965,7 @@ DEFUN (print_objects, (from, to),
 
 /* Debugging Aids and Consistency Checks */
 
-#define DEBUG	0
+#define DEBUG 0
 
 #if (DEBUG > 0)
 
@@ -1990,8 +2113,10 @@ DEFUN_VOID (do_it)
     if (Machine_Type == FASL_INTERNAL_FORMAT)
       shuffle_bytes_p = false;
 
-    upgrade_traps_p = (Sub_Version < FASL_REFERENCE_TRAP);
-    upgrade_primitives_p = (Sub_Version < FASL_MERGED_PRIMITIVES);
+    upgrade_traps_p = (Version == FASL_FORMAT_ADDED_STACK &&
+		       Sub_Version < FASL_REFERENCE_TRAP);
+    upgrade_primitives_p = (Version == FASL_FORMAT_ADDED_STACK
+			    && Sub_Version < FASL_MERGED_PRIMITIVES);
     upgrade_lengths_p = upgrade_primitives_p;
 
     DEBUGGING1 (fprintf (stderr,
