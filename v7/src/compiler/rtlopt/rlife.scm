@@ -38,6 +38,8 @@
 ;;;; RTL Register Lifetime Analysis
 ;;;  Based on the GNU C Compiler
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.50 1986/12/15 05:27:44 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -76,7 +78,7 @@
     (let ((next (snode-next snode)))
       (cond ((not next)
 	     (set-bblock-exit! bblock snode))
-	    ((or (not (null? (cdr (node-previous next))))
+	    ((or (node-previous>1? next)
 		 (rtl:invocation? (rnode-rtl snode)))
 	     (set-bblock-exit! bblock snode)
 	     (walk-next next))
@@ -143,14 +145,11 @@
   (let ((old (bblock-live-at-entry bblock))
 	(dead (regset-allocate *n-registers*))
 	(live (regset-allocate *n-registers*)))
-    (let loop ((rnode (bblock-exit bblock)))
-      (regset-clear! dead)
-      (regset-clear! live)
-      (let ((previous
-	     (and (not (eq? rnode (bblock-entry bblock)))
-		  (node-previous-node rnode))))
-	(procedure old dead live (rnode-rtl rnode) rnode)
-	(if previous (loop previous))))))
+    (walk-bblock-backward bblock
+      (lambda (rnode previous)
+	(regset-clear! dead)
+	(regset-clear! live)
+	(procedure old dead live (rnode-rtl rnode) rnode)))))
 
 (define (update-live-registers! old dead live rtl rnode)
   (mark-set-registers! old dead rtl rnode)
@@ -222,21 +221,20 @@
 ;;;; Optimization
 
 (define (optimize-block bblock)
-  (let ((live (regset-copy (bblock-live-at-entry bblock)))
-	(births (make-regset *n-registers*)))
-    (define (loop rnode next)
-      (optimize-rtl live rnode next)
-      (if (not (eq? next (bblock-exit bblock)))
-	  (begin (regset-clear! births)
-		 (mark-set-registers! live births (rnode-rtl rnode) false)
-		 (for-each (lambda (register)
-			     (regset-delete! live register))
-			   (rnode-dead-registers rnode))
-		 (regset-union! live births)
-		 (loop next (snode-next next)))))
-    (let ((entry (bblock-entry bblock)))
-      (if (not (eq? entry (bblock-exit bblock)))
-	  (loop entry (snode-next entry))))))
+  (if (not (eq? (bblock-entry bblock) (bblock-exit bblock)))
+      (let ((live (regset-copy (bblock-live-at-entry bblock)))
+	    (births (make-regset *n-registers*)))
+	(walk-bblock-forward bblock
+	  (lambda (rnode next)
+	    (if next
+		(begin (optimize-rtl live rnode next)
+		       (regset-clear! births)
+		       (mark-set-registers! live births (rnode-rtl rnode)
+					    false)
+		       (for-each (lambda (register)
+				   (regset-delete! live register))
+				 (rnode-dead-registers rnode))
+		       (regset-union! live births))))))))
 
 (define (rtl-snode-delete! rnode)
   (bblock-edit! (rnode-bblock rnode)
@@ -268,29 +266,34 @@
 	      (let ((register (rtl:register-number address)))
 		(if (and (pseudo-register? register)
 			 (= 2 (register-n-refs register))
-			 (rnode-dead-register? next register))
-		    (begin
-		     (let ((dead (rnode-dead-registers rnode)))
-		       (for-each increment-register-live-length! dead)
-		       (set-rnode-dead-registers!
-			next
-			(set-union dead
-				   (delv! register
-					  (rnode-dead-registers next)))))
-		     (for-each-regset-member live 
-		       decrement-register-live-length!)
-		     (rtl:modify-subexpressions (rnode-rtl next)
-		       (lambda (expression set-expression!)
-			 (if (and (rtl:register? expression)
+			 (rnode-dead-register? next register)
+			 (rtl:any-subexpression? (rnode-rtl next)
+			   (lambda (expression)
+			     (and (rtl:register? expression)
 				  (= (rtl:register-number expression)
-				     register))
-			     (set-expression! (rtl:assign-expression rtl)))))
-		     (rtl-snode-delete! rnode)
-		     (reset-register-n-refs! register)
-		     (reset-register-n-deaths! register)
-		     (reset-register-live-length! register)
-		     (set-register-next-use! register false)
-		     (set-register-bblock! register false)))))))))
+				     register)))))
+		    (begin
+		      (let ((dead (rnode-dead-registers rnode)))
+			(for-each increment-register-live-length! dead)
+			(set-rnode-dead-registers!
+			 next
+			 (set-union dead
+				    (delv! register
+					   (rnode-dead-registers next)))))
+		      (for-each-regset-member live 
+			decrement-register-live-length!)
+		      (rtl:modify-subexpressions (rnode-rtl next)
+			(lambda (expression set-expression!)
+			  (if (and (rtl:register? expression)
+				   (= (rtl:register-number expression)
+				      register))
+			      (set-expression! (rtl:assign-expression rtl)))))
+		      (rtl-snode-delete! rnode)
+		      (reset-register-n-refs! register)
+		      (reset-register-n-deaths! register)
+		      (reset-register-live-length! register)
+		      (set-register-next-use! register false)
+		      (set-register-bblock! register false)))))))))
 
 (define set-union
   (let ()
@@ -358,7 +361,7 @@
 				 (write-string " ")
 				 (write register)))))))
 	      (reverse bblocks))))
-
+
 ;;; end USING-SYNTAX
 )
 

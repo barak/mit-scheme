@@ -37,6 +37,8 @@
 
 ;;;; Register Allocator
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/regmap.scm,v 1.85 1986/12/15 05:27:32 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -95,6 +97,7 @@ REGISTER-RENUMBERs are equal.
 (define load-alias-register)
 (define allocate-alias-register)
 (define allocate-temporary-register)
+(define add-pseudo-register-alias)
 
 (define machine-register-contents)
 (define pseudo-register-aliases)
@@ -368,6 +371,12 @@ REGISTER-RENUMBERs are equal.
       (allocator-values alias
 			(register-map:add-home map false alias)
 			instructions))))
+
+(define-export (add-pseudo-register-alias map register alias)
+  (let ((entry (map-entries:find-home map register)))
+    (if entry
+	(register-map:add-alias map entry alias)
+	(register-map:add-home map register alias))))
 
 (define-export (machine-register-contents map register)
   (let ((entry (map-entries:find-alias map register)))

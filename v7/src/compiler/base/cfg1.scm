@@ -37,6 +37,8 @@
 
 ;;;; Control Flow Graph Abstraction
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.137 1986/12/15 05:25:37 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -83,7 +85,7 @@
 (define-vector-method pnode-tag ':DESCRIBE
   pnode-describe)
 
-;;;; Special Nodes
+;;;; Holders
 
 ;;; Entry/Exit holder nodes are used to hold onto the edges of a
 ;;; graph.  Entry holders need only a next connection, and exit
@@ -120,7 +122,118 @@
 
 (define-integrable (entry-holder-next entry)
   (next-reference (entry-holder-&next entry)))
+
+(define (node->holder node)
+  (let ((holder (make-entry-holder)))
+    (entry-holder-connect! holder node)
+    holder))
 
+(define-integrable (entry-holder-hook? hook)
+  (entry-holder? (hook-node hook)))
+
+(define-integrable (node-previous=0? node)
+  (hooks=0? (node-previous node)))
+
+(define (hooks=0? hooks)
+  (or (null? hooks)
+      (and (entry-holder-hook? (car hooks))
+	   (hooks=0? (cdr hooks)))))
+
+(define-integrable (node-previous>0? node)
+  (hooks>0? (node-previous node)))
+
+(define (hooks>0? hooks)
+  (and (not (null? hooks))
+       (or (not (entry-holder-hook? (car hooks)))
+	   (hooks>0? (cdr hooks)))))
+
+(define-integrable (node-previous=1? node)
+  (hooks=1? (node-previous node)))
+
+(define (hooks=1? hooks)
+  (and (not (null? hooks))
+       ((if (entry-holder-hook? (car hooks)) hooks=1? hooks=0?)
+	(cdr hooks))))
+
+(define-integrable (node-previous>1? node)
+  (hooks>1? (node-previous node)))
+
+(define (hooks>1? hooks)
+  (and (not (null? hooks))
+       ((if (entry-holder-hook? (car hooks)) hooks>1? hooks>0?)
+	(cdr hooks))))
+
+(define-integrable (node-previous-first node)
+  (hook-node (hooks-first (node-previous node))))
+
+(define (hooks-first hooks)
+  (cond ((null? hooks) (error "No first hook"))
+	((entry-holder-hook? (car hooks)) (hooks-first (cdr hooks)))
+	(else (car hooks))))
+
+(define (for-each-previous-node node procedure)
+  (for-each (lambda (hook)
+	      (let ((node (hook-node hook)))
+		(if (not (entry-holder? node))
+		    (procedure node))))
+	    (node-previous node)))
+
+;;;; Frames
+
+(define frame-tag (make-vector-tag false 'FRAME))
+(define-vector-slots frame 1 &entry)
+
+(define-integrable (frame-entry-node frame)
+  (entry-holder-next (frame-&entry frame)))
+
+(define sframe-tag (make-vector-tag frame-tag 'SFRAME))
+(define-vector-slots sframe 2 &next)
+
+(define-integrable (make-sframe entry next)
+  (vector sframe-tag entry next))
+
+(define-integrable (sframe-next-hooks sframe)
+  (node-previous (sframe-&next sframe)))
+
+(define (scfg->sframe scfg)
+  (let ((entry (make-entry-holder))
+	(exit (make-exit-holder)))
+    (entry-holder-connect! entry (cfg-entry-node scfg))
+    (hooks-connect! (scfg-next-hooks scfg) exit)
+    (make-sframe entry exit)))
+
+(define (sframe->scfg sframe)
+  (make-scfg (frame-entry-node sframe)
+	     (sframe-next-hooks sframe)))
+
+(define pframe-tag (make-vector-tag frame-tag 'PFRAME))
+(define-vector-slots pframe 2 &consequent &alternative)
+
+(define-integrable (make-pframe entry consequent alternative)
+  (vector pframe-tag entry consequent alternative))
+
+(define-integrable (pframe-consequent-hooks pframe)
+  (node-previous (pframe-&consequent pframe)))
+
+(define-integrable (pframe-alternative-hooks pframe)
+  (node-previous (pframe-&alternative pframe)))
+
+(define (pcfg->pframe pcfg)
+  (let ((entry (make-entry-holder))
+	(consequent (make-exit-holder))
+	(alternative (make-exit-holder)))
+    (entry-holder-connect! entry (cfg-entry-node pcfg))
+    (hooks-connect! (pcfg-consequent-hooks pcfg) consequent)
+    (hooks-connect! (pcfg-alternative-hooks pcfg) alternative)
+    (make-pframe entry consequent alternative)))
+
+(define (pframe->scfg pframe)
+  (make-scfg (frame-entry-node pframe)
+	     (pframe-consequent-hooks pframe)
+	     (pframe-alternative-hooks pframe)))
+
+;;;; Noops
+
 (define noop-node-tag (make-vector-tag cfg-node-tag 'NOOP))
 (define-vector-slots noop-node 1 previous next)
 (define *noop-nodes*)
@@ -192,16 +305,6 @@
     (if entry
 	(set-cdr! entry item)
 	(set-node-alist! node (cons (cons key item) (node-alist node))))))
-
-(define-integrable (node-previous-node node)
-  (hook-node (car (node-previous node))))
-
-(define (for-each-previous-node node procedure)
-  (for-each (lambda (hook)
-	      (let ((node (hook-node hook)))
-		(if (not (entry-holder? node))
-		    (procedure node))))
-	    (node-previous node)))
 
 (define *generation*)
 

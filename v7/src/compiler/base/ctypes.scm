@@ -37,6 +37,8 @@
 
 ;;;; Compiler CFG Datatypes
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.33 1986/12/15 05:26:07 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -52,47 +54,6 @@
   (vnode-connect! lvalue rvalue)
   (snode->scfg (make-snode definition-tag block lvalue rvalue)))
 
-(define-snode combination block compilation-type value operator operands
-  procedures known-operator)
-(define *combinations*)
-
-(define (make-combination block compilation-type value operator operands)
-  (let ((combination
-	 (make-snode combination-tag block compilation-type value operator
-		     operands '() false)))
-    (set! *combinations* (cons combination *combinations*))
-    (set-block-combinations! block
-			     (cons combination (block-combinations block)))
-    (set-vnode-combinations! value
-			     (cons combination (vnode-combinations value)))
-    (snode->scfg combination)))
-
-(define-snode rtl-quote generator)
-
-(define-integrable (make-rtl-quote generator)
-  (snode->scfg (make-snode rtl-quote-tag generator)))
-
-(define-snode continuation block entry delta generator rtl label)
-(define *continuations*)
-
-(define-integrable (make-continuation block entry delta generator)
-  (let ((continuation
-	 (make-snode continuation-tag block entry delta generator false
-		     (generate-label 'CONTINUATION))))
-    (set! *continuations* (cons continuation *continuations*))
-    continuation))
-
-(define-unparser continuation-tag
-  (lambda (continuation)
-    (write (continuation-label continuation))))
-
-(define-snode invocation number-pushed continuation procedure generator)
-
-(define-integrable (make-invocation number-pushed continuation procedure
-				    generator)
-  (snode->scfg (make-snode invocation-tag number-pushed continuation procedure
-			   generator)))
-
 (define-pnode true-test rvalue)
 
 (define-integrable (make-true-test rvalue)
@@ -112,6 +73,59 @@
 
 (define-integrable (make-unbound-test block variable)
   (pnode->pcfg (make-pnode unbound-test-tag block variable)))
+
+(define-snode rtl-quote generator)
+
+(define-integrable (make-rtl-quote generator)
+  (snode->scfg (make-snode rtl-quote-tag generator)))
+
+(define-snode combination block compilation-type value operator operands
+  procedures known-operator)
+(define *combinations*)
+
+(define (make-combination block compilation-type value operator operands)
+  (let ((combination
+	 (make-snode combination-tag block compilation-type value operator
+		     operands '() false)))
+    (set! *combinations* (cons combination *combinations*))
+    (set-block-combinations! block
+			     (cons combination (block-combinations block)))
+    (set-vnode-combinations! value
+			     (cons combination (vnode-combinations value)))
+    (snode->scfg combination)))
+
+(define-snode continuation block &entry delta generator &rtl label)
+(define *continuations*)
+
+(define-integrable (make-continuation block entry delta generator)
+  (let ((continuation
+	 (make-snode continuation-tag block (node->holder entry) delta
+		     generator false (generate-label 'CONTINUATION))))
+    (set! *continuations* (cons continuation *continuations*))
+    continuation))
+
+(define-integrable (continuation-entry continuation)
+  (entry-holder-next (continuation-&entry continuation)))
+
+(define-integrable (set-continuation-entry! continuation entry)
+  (set-continuation-&entry! continuation (node->holder entry)))
+
+(define-integrable (continuation-rtl continuation)
+  (sframe->scfg (continuation-&rtl continuation)))
+
+(define-integrable (set-continuation-rtl! continuation rtl)
+  (set-continuation-&rtl! continuation (scfg->sframe rtl)))
+
+(define-unparser continuation-tag
+  (lambda (continuation)
+    (write (continuation-label continuation))))
+
+(define-snode invocation number-pushed continuation procedure generator)
+
+(define-integrable (make-invocation number-pushed continuation procedure
+				    generator)
+  (snode->scfg (make-snode invocation-tag number-pushed continuation procedure
+			   generator)))
 
 ;;; end USING-SYNTAX
 )

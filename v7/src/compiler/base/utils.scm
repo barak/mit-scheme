@@ -37,6 +37,8 @@
 
 ;;;; Compiler Utilities
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.70 1986/12/15 05:28:22 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -50,7 +52,8 @@
        (unparse-with-brackets
 	(lambda ()
 	  (write-string "LIAR ")
-	  ((vector-method object ':UNPARSE) object)))))
+	  (fluid-let ((*unparser-radix* 16))
+	    ((vector-method object ':UNPARSE) object))))))
     tag))
 
 (define (vector-tag-put! tag key value)

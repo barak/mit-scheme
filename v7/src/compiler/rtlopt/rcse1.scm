@@ -38,6 +38,8 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.92 1986/12/15 05:27:18 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
@@ -142,30 +144,26 @@
   (thunk)
   (if (not volatile?) (insert-source!)))
 
-(define-cse-method 'EQ-TEST
-  (lambda (statement)
-    (expression-replace! rtl:eq-test-expression-1
-			 rtl:set-eq-test-expression-1!
-			 statement
-			 trivial-action)
-    (expression-replace! rtl:eq-test-expression-2
-			 rtl:set-eq-test-expression-2!
-			 statement
-			 trivial-action)))
-
-(define (define-trivial-method type get-expression set-expression!)
+(define (define-trivial-one-arg-method type get set)
   (define-cse-method type
     (lambda (statement)
-      (expression-replace! get-expression set-expression! statement
-			   trivial-action))))
+      (expression-replace! get set statement trivial-action))))
 
-(define-trivial-method 'TRUE-TEST
-  rtl:true-test-expression
-  rtl:set-true-test-expression!)
+(define (define-trivial-two-arg-method type get-1 set-1 get-2 set-2)
+  (define-cse-method type
+    (lambda (statement)
+      (expression-replace! get-1 set-1 statement trivial-action)
+      (expression-replace! get-2 set-2 statement trivial-action))))
 
-(define-trivial-method 'TYPE-TEST
-  rtl:type-test-expression
-  rtl:set-type-test-expression!)
+(define-trivial-two-arg-method 'EQ-TEST
+  rtl:eq-test-expression-1 rtl:set-eq-test-expression-1!
+  rtl:eq-test-expression-2 rtl:set-eq-test-expression-2!)
+
+(define-trivial-one-arg-method 'TRUE-TEST
+  rtl:true-test-expression rtl:set-true-test-expression!)
+
+(define-trivial-one-arg-method 'TYPE-TEST
+  rtl:type-test-expression rtl:set-type-test-expression!)
 
 (define-cse-method 'RETURN noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK noop)

@@ -37,35 +37,37 @@
 
 ;;;; LAP Code Generation
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.18 1986/12/15 05:26:52 cph Exp $
+
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 (define *code-object-label*)
+(define *code-object-entry*)
 
 (define (generate-lap quotations procedures continuations receiver)
   (fluid-let ((*generation* (make-generation))
 	      (*next-constant* 0)
 	      (*interned-constants* '())
 	      (*block-start-label* (generate-label))
-	      (*code-object-label*))
-    (for-each (lambda (continuation)
-		(set! *code-object-label*
-		      (code-object-label-initialize continuation))
-		(let ((rnode (cfg-entry-node (continuation-rtl continuation))))
-		  (hooks-disconnect! (node-previous rnode) rnode)
-		  (cgen-rnode rnode)))
-	      continuations)
+	      (*code-object-label*)
+	      (*code-object-entry*))
     (for-each (lambda (quotation)
-		(set! *code-object-label*
-		      (code-object-label-initialize quotation))
-		(cgen-rnode (cfg-entry-node (quotation-rtl quotation))))
+		(cgen-cfg quotation quotation-rtl))
 	      quotations)
     (for-each (lambda (procedure)
-		(set! *code-object-label*
-		      (code-object-label-initialize procedure))
-		(cgen-rnode (cfg-entry-node (procedure-rtl procedure))))
+		(cgen-cfg procedure procedure-rtl))
 	      procedures)
+    (for-each (lambda (continuation)
+		(cgen-cfg continuation continuation-rtl))
+	      continuations)
     (receiver *interned-constants* *block-start-label*)))
+
+(define (cgen-cfg object extract-cfg)
+  (set! *code-object-label* (code-object-label-initialize object))
+  (let ((rnode (cfg-entry-node (extract-cfg object))))
+    (set! *code-object-entry* rnode)
+    (cgen-rnode rnode)))
 
 (define *current-rnode*)
 (define *dead-registers*)
@@ -73,9 +75,10 @@
 (define (cgen-rnode rnode)
   (define (cgen-right-node next)
     (if (and next (not (eq? (node-generation next) *generation*)))
-	(begin (if (not (null? (cdr (node-previous next))))
+	(begin (if (node-previous>1? next)
 		   (let ((hook (find-hook rnode next))
 			 (snode (statement->snode '(NOOP))))
+		     (set-node-generation! snode *generation*)
 		     (set-rnode-lap! snode
 				     (clear-map-instructions
 				      (rnode-register-map rnode)))
@@ -95,8 +98,7 @@
 		      (*needed-registers* '()))
 	    (let ((instructions (match-result)))
 	      (set-rnode-lap! rnode
-			      (append! *prefix-instructions*
-				       instructions)))
+			      (append! *prefix-instructions* instructions)))
 	    (delete-dead-registers!)
 	    (set-rnode-register-map! rnode *register-map*))
 	  (begin (error "CGEN-RNODE: No matching rules" (rnode-rtl rnode))
@@ -104,14 +106,6 @@
   ;; **** Works because of kludge in definition of RTL-SNODE.
   (cgen-right-node (pnode-consequent rnode))
   (cgen-right-node (pnode-alternative rnode)))
-
-(define (rnode-input-register-map node)
-  (let ((previous (node-previous node)))
-    (if (and (not (null? previous))
-	     (null? (cdr previous))
-	     (not (entry-holder? (hook-node (car previous)))))
-	(rnode-register-map (hook-node (car previous)))
-	(empty-register-map))))
 
 (define *cgen-rules*
   '())
@@ -121,6 +115,22 @@
 	(cons (cons pattern result-procedure)
 	      *cgen-rules*))
   pattern)
+
+(define (rnode-input-register-map rnode)
+  (if (or (eq? rnode *code-object-entry*)
+	  (not (node-previous=1? rnode)))
+      (empty-register-map)
+      (let ((previous (node-previous-first rnode)))
+	(let ((map (rnode-register-map previous)))
+	  (if (rtl-pnode? previous)
+	      (delete-pseudo-registers
+	       map
+	       (regset->list
+		(regset-difference
+		 (bblock-live-at-exit (rnode-bblock previous))
+		 (bblock-live-at-entry (rnode-bblock rnode))))
+	       (lambda (map aliases) map))
+	      map)))))
 
 ;;;; Machine independent stuff
 
@@ -151,36 +161,71 @@
 (define ((register-type-predicate type) register)
   (register-type? register type))
 
-(define (guarantee-machine-register! register type receiver)
+(define-integrable (dead-register? register)
+  (memv register *dead-registers*))
+
+(define (guarantee-machine-register! register type)
   (if (and (machine-register? register)
 	   (register-type? register type))
-      (receiver register)
-      (with-alias-register! register type receiver)))
+      register
+      (load-alias-register! register type)))
 
-(define (with-alias-register! register type receiver)
+(define (load-alias-register! register type)
   (bind-allocator-values (load-alias-register *register-map* type
 					      *needed-registers* register)
-    (lambda (alias map instructions)
-      (set! *register-map* map)
-      (need-register! alias)
-      (append! instructions (receiver alias)))))
+    store-allocator-values!))
 
-(define (allocate-register-for-assignment! register type receiver)
+(define (allocate-alias-register! register type)
   (bind-allocator-values (allocate-alias-register *register-map* type
 						  *needed-registers* register)
     (lambda (alias map instructions)
-      (set! *register-map* (delete-other-locations map alias))
-      (need-register! alias)
-      (append! instructions (receiver alias)))))
+      (store-allocator-values! alias
+			       (delete-other-locations map alias)
+			       instructions))))
 
-(define (with-temporary-register! type receiver)
+(define (allocate-temporary-register! type)
   (bind-allocator-values (allocate-temporary-register *register-map* type
 						      *needed-registers*)
-    (lambda (alias map instructions)
-      (set! *register-map* map)
-      (need-register! alias)
-      (append! instructions (receiver alias)))))
+    store-allocator-values!))
+
+(define (store-allocator-values! alias map instructions)
+  (need-register! alias)
+  (set! *register-map* map)
+  (prefix-instructions! instructions)
+  alias)
+
+(define (move-to-alias-register! source type target)
+  (reuse-pseudo-register-alias! source type
+    (lambda (reusable-alias)
+      (add-pseudo-register-alias! target reusable-alias))
+    (lambda ()
+      (allocate-alias-register! target type))))
+
+(define (move-to-temporary-register! source type)
+  (reuse-pseudo-register-alias! source type
+    need-register!
+    (lambda ()
+      (allocate-temporary-register! type))))
+
+(define (reuse-pseudo-register-alias! source type if-reusable if-not)
+  (let ((reusable-alias
+	 (and (dead-register? source)
+	      (register-alias source type))))
+    (if reusable-alias
+	(begin (delete-dead-registers!)
+	       (if-reusable reusable-alias)
+	       (register-reference reusable-alias))
+	(let ((source (coerce->any source)))
+	  (delete-dead-registers!)
+	  (let ((target (register-reference (if-not))))
+	    (prefix-instructions! `((MOVE L ,source ,target)))
+	    target)))))
 
+(define (add-pseudo-register-alias! register alias)
+  (set! *register-map*
+	(add-pseudo-register-alias *register-map* register alias))
+  (need-register! alias))
+
 (define (clear-map!)
   (let ((instructions (clear-map)))
     (set! *register-map* (empty-register-map))
@@ -193,8 +238,7 @@
 (define (clear-registers! . registers)
   (if (null? registers)
       '()
-      (let loop ((map *register-map*)
-		 (registers registers))
+      (let loop ((map *register-map*) (registers registers))
 	(save-machine-register map (car registers)
 	  (lambda (map instructions)
 	    (let ((map (delete-machine-register map (car registers))))
@@ -219,8 +263,7 @@
   (set! *register-map* (delete-machine-register *register-map* register))
   (set! *needed-registers* (set-delete *needed-registers* register)))
 
-(package (delete-pseudo-register!
-	  delete-dead-registers!)
+(package (delete-pseudo-register! delete-dead-registers!)
   (define-export (delete-pseudo-register! register)
     (delete-pseudo-register *register-map* register delete-registers!))
   (define-export (delete-dead-registers!)
@@ -229,9 +272,6 @@
   (define (delete-registers! map aliases)
     (set! *register-map* map)
     (set! *needed-registers* (set-difference *needed-registers* aliases))))
-
-(define-integrable (dead-register? register)
-  (memv register *dead-registers*))
 
 (define *next-constant*)
 (define *interned-constants*)
