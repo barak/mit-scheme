@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.47 1987/05/15 19:49:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.48 1987/06/02 18:44:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -75,11 +75,17 @@ MIT in each case. |#
   (let ((combination
 	 (make-snode combination-tag block compilation-type value operator
 		     operands '() false false)))
+    (define (add-vnode-combination! vnode)
+      (set-vnode-combinations! vnode
+			       (cons combination (vnode-combinations vnode))))
     (set! *combinations* (cons combination *combinations*))
     (set-block-combinations! block
 			     (cons combination (block-combinations block)))
-    (set-vnode-combinations! value
-			     (cons combination (vnode-combinations value)))
+    (let ((rvalue (subproblem-value operator)))
+      (cond ((vnode? rvalue)
+	     (add-vnode-combination! rvalue))
+	    ((reference? rvalue)
+	     (add-vnode-combination! (reference-variable rvalue)))))
     (snode->scfg combination)))
 
 (define-integrable (combination-compiled-for-predicate? combination)
@@ -90,7 +96,7 @@ MIT in each case. |#
 
 (define-integrable (combination-compiled-for-value? combination)
   (eq? 'VALUE (combination-compilation-type combination)))
-
+
 (define-snode continuation rtl-edge label frame-pointer-offset)
 (define *continuations*)
 
