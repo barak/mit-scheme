@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.20 1998/12/29 04:07:48 cph Exp $
+;;;	$Id: nntp.scm,v 1.21 1998/12/31 04:24:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -62,8 +62,10 @@
 
 (define-structure (nntp-connection
 		   (conc-name nntp-connection:)
-		   (constructor make-nntp-connection (server change-hook)))
+		   (constructor make-nntp-connection
+				(server proxy change-hook)))
   (server #f read-only #t)
+  (proxy #f read-only #t)
   (change-hook #f read-only #t)
   (port #f)
   (banner #f)
@@ -78,7 +80,8 @@
 			"... ")))
     (message msg)
     (let ((port
-	   (open-tcp-stream-socket (nntp-connection:server connection)
+	   (open-tcp-stream-socket (or (nntp-connection:proxy connection)
+				       (nntp-connection:server connection))
 				   "nntp"
 				   nntp-socket-buffer-size)))
       (set-nntp-connection:port! connection port)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.229 1998/12/29 04:09:50 cph Exp $
+$Id: edwin.pkg,v 1.230 1998/12/31 04:25:04 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1759,6 +1759,7 @@ MIT in each case. |#
 	  edwin-variable$news-server-mode-hook
 	  edwin-variable$news-server-name-appearance
 	  edwin-variable$news-server-offline-timeout
+	  edwin-variable$news-server-proxy-alist
 	  edwin-variable$news-show-nonexistent-groups
 	  edwin-variable$news-show-unsubscribed-groups
 	  edwin-variable$news-sort-groups

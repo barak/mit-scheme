@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.47 1998/12/29 04:08:26 cph Exp $
+;;;	$Id: snr.scm,v 1.48 1998/12/31 04:24:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -66,6 +66,19 @@ This has three possible values:
   'HOST-ONLY means include the host name, but not the domain."
   'NONE
   (lambda (object) (memq object '(NONE FULL HOST-ONLY))))
+
+(define-variable news-server-proxy-alist
+  "Alist mapping news servers to associated proxies.
+Each entry in the list is a pair of strings:
+ the car of the entry is the FQDN of a news server;
+ the cdr of the entry is the FQDN of a proxy for that server."
+  '()
+  (lambda (object)
+    (list-of-type? object
+      (lambda (entry)
+	(and (pair? entry)
+	     (string? (car entry))
+	     (string? (cdr entry)))))))
 
 (define-variable news-server-initial-refresh
   "Switch controlling whether News groups are refreshed when reader starts.
@@ -263,11 +276,10 @@ The default value of this variable is (SUBSCRIBED (HEADERS BODIES))."
 	     (eq? 'ALL (car object))
 	     (list-of-strings? (car object)))
 	 (pair? (cdr object))
-	 (and (list? (cadr object))
-	      (for-all? (cadr object)
-		(lambda (element)
-		  (or (eq? 'HEADERS element)
-		      (eq? 'BODIES element)))))
+	 (list-of-type? (cadr object)
+	   (lambda (element)
+	     (or (eq? 'HEADERS element)
+		 (eq? 'BODIES element))))
 	 (null? (cddr object)))))
 
 (define-command rnews
@@ -364,12 +376,12 @@ Only one News reader may be open per server; if a previous News reader
 (define (news-buffer-name server prefix)
   (case (ref-variable news-server-name-appearance #f)
     ((HOST-ONLY)
-      (string-append prefix
-		     ":"
-		     (let ((dot (string-find-next-char server #\.)))
-		       (if dot
-			   (string-head server dot)
-			   server))))
+     (string-append prefix
+		    ":"
+		    (let ((dot (string-find-next-char server #\.)))
+		      (if dot
+			  (string-head server dot)
+			  server))))
     ((FULL) (string-append prefix ":" server))
     (else prefix)))
 
@@ -387,8 +399,7 @@ Only one News reader may be open per server; if a previous News reader
     (lambda (buffer)
       (add-kill-buffer-hook buffer news-server-buffer:kill)
       (buffer-put! buffer 'NNTP-CONNECTION
-		   (make-nntp-connection server
-					 update-nntp-connection-modeline!))
+		   (make-nntp-connection-1 server buffer))
       (let ((sort? (ref-variable news-sort-groups buffer)))
 	(let ((groups
 	       (let ((groups
@@ -451,6 +462,14 @@ Only one News reader may be open per server; if a previous News reader
 (define (news-server-buffer:close-connection buffer)
   (nntp-connection:close (news-server-buffer:connection buffer)))
 
+(define (make-nntp-connection-1 server buffer)
+  (make-nntp-connection
+   server
+   (let ((entry (assoc server (ref-variable news-server-proxy-alist buffer))))
+     (and entry
+	  (cdr entry)))
+   update-nntp-connection-modeline!))
+
 (define (news-server-buffer:save-groups buffer)
   (write-groups-init-file buffer)
   (for-each-vector-element (news-server-buffer:groups buffer)
@@ -2981,9 +3000,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
       (let ((server-buffer (find-news-server-buffer server)))
 	(if server-buffer
 	    (do-it (news-server-buffer:connection server-buffer))
-	    (let ((connection
-		   (make-nntp-connection server
-					 update-nntp-connection-modeline!)))
+	    (let ((connection (make-nntp-connection-1 server lookup-buffer)))
 	      (let ((result (do-it connection)))
 		(nntp-connection:close connection)
 		result)))))))
