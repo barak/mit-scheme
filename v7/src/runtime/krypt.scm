@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: krypt.scm,v 1.11 2000/04/10 03:33:42 cph Exp $
+$Id: krypt.scm,v 1.12 2001/03/21 05:39:47 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Encryption/Decryption functions
@@ -171,11 +172,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (rcm-key key1 password)
 	      (let ((passwordmac (make-string 5 #\NUL)))
 		(rcm key1 5 passwordmac)
-		(substring-move-left! header 0 hlen output-string 0)
-		(substring-move-left! passwordmac 0 5 output-string hlen)
-		(substring-move-left! input-string 0
-				      (string-length input-string)
-				      output-string (fix:+ hlen 5)))
+		(substring-move! header 0 hlen output-string 0)
+		(substring-move! passwordmac 0 5 output-string hlen)
+		(substring-move! input-string 0
+				 (string-length input-string)
+				 output-string (fix:+ hlen 5)))
 	      (let loop ((index (fix:+ hlen 5)))
 		(if (fix:< index end-index)
 		    (begin

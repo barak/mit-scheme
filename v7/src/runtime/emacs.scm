@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.28 2001/02/27 17:16:12 cph Exp $
+$Id: emacs.scm,v 14.29 2001/03/21 05:39:42 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; GNU Emacs/Scheme Interface
@@ -189,7 +190,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let ((buffer (make-string buffer-length)))
 	(string-set! buffer 0 #\altmode)
 	(string-set! buffer 1 type)
-	(substring-move-left! string 0 length buffer 2)
+	(substring-move! string 0 length buffer 2)
 	(string-set! buffer (- buffer-length 1) #\altmode)
 	(output-port/flush-output port)
 	(with-absolutely-no-interrupts

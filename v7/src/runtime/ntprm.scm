@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.34 2000/04/19 01:00:17 cph Exp $
+$Id: ntprm.scm,v 1.35 2001/03/21 05:39:50 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Miscellaneous Win32 Primitives
@@ -588,7 +589,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let loop ((strings strings) (index 0))
 	(if (not (null? strings))
 	    (let ((n (string-length (car strings))))
-	      (substring-move-left! (car strings) 0 n result index)
+	      (substring-move! (car strings) 0 n result index)
 	      (let ((index* (fix:+ index n)))
 		(string-set! result index* #\NUL)
 		(loop (cdr strings) (fix:+ index* 1))))))
@@ -616,13 +617,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     (map (lambda (s) (string-length s)) strings))
 		     (fix:- (length strings) 1)))))
 	(let ((n (string-length (car strings))))
-	  (substring-move-left! (car strings) 0 n result 0)
+	  (substring-move! (car strings) 0 n result 0)
 	  (let loop ((strings (cdr strings)) (index n))
 	    (if (not (null? strings))
 		(let ((n (string-length (car strings))))
 		  (string-set! result index #\space)
-		  (substring-move-left! (car strings) 0 n
-					result (fix:+ index 1))
+		  (substring-move! (car strings) 0 n result (fix:+ index 1))
 		  (loop (cdr strings) (fix:+ (fix:+ index 1) n))))))
 	result)))
 

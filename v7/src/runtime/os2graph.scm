@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.17 2000/04/10 18:32:36 cph Exp $
+$Id: os2graph.scm,v 1.18 2001/03/21 05:39:53 cph Exp $
 
-Copyright (c) 1995-2000 Massachusetts Institute of Technology
+Copyright (c) 1995-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; OS/2 PM Graphics Interface
@@ -966,7 +967,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(if (not (fix:= to 0))
 	    (let ((from* (fix:+ from width))
 		  (to (fix:- to row-size)))
-	      (substring-move-right! bytes from from* copy to)
+	      (substring-move! bytes from from* copy to)
 	      (loop from* to))))
       copy)))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.14 2000/05/30 03:51:59 cph Exp $
+$Id: strout.scm,v 14.15 2001/03/21 05:40:01 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; String Output Ports
@@ -72,8 +73,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (n* (fix:+ n (fix:- end start))))
        (if (fix:> n* (string-length (accumulator-state-accumulator state)))
 	   (grow-accumulator! state n*))
-       (substring-move-left! string start end
-			     (accumulator-state-accumulator state) n)
+       (substring-move! string start end
+			(accumulator-state-accumulator state) n)
        (set-accumulator-state-counter! state n*)))))
 
 (define (operation/extract-output! port)
@@ -100,5 +101,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (if (fix:>= n min-size)
 		 n
 		 (loop (fix:+ n n)))))))
-    (substring-move-left! old 0 n new 0)
+    (substring-move! old 0 n new 0)
     (set-accumulator-state-accumulator! state new)))

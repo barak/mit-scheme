@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rgxcmp.scm,v 1.112 2001/02/05 21:47:30 cph Exp $
+;;; $Id: rgxcmp.scm,v 1.113 2001/03/21 05:39:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 
 ;;;; Regular Expression Pattern Compiler
 ;;;  Translated from GNU (thank you RMS!)
@@ -196,15 +197,14 @@
 			((fix:< n 256)
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) n)
-			 (substring-move-right! string i (fix:+ i n)
-						result (fix:+ p 2))
+			 (substring-move! string i (fix:+ i n)
+					  result (fix:+ p 2))
 			 (make-compiled-regexp result case-fold?))
 			(else
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) 255)
 			 (let ((j (fix:+ i 255)))
-			   (substring-move-right! string i j
-						  result (fix:+ p 2))
+			   (substring-move! string i j result (fix:+ p 2))
 			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
 
 (define re-quote-string
@@ -228,14 +228,14 @@
 							  special)))
 		    (if index
 			(begin
-			  (substring-move-right! string start index result i)
+			  (substring-move! string start index result i)
 			  (let ((i (+ i (- index start))))
 			    (string-set! result i #\\)
 			    (string-set! result
 					 (1+ i)
 					 (string-ref string index))
 			    (loop (1+ index) (+ i 2))))
-			(substring-move-right! string start end result i))))
+			(substring-move! string start end result i))))
 		result)))))))
 
 ;;;; Char-Set Compiler

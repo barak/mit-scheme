@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.45 2000/01/05 02:40:20 cph Exp $
+$Id: os2prm.scm,v 1.46 2001/03/21 05:39:56 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright (c) 1994-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Miscellaneous OS/2 Primitives
@@ -506,11 +507,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    0
 		    (map (lambda (s) (fix:+ (string-length s) 1)) strings)))))
       (let ((n (string-length (car strings))))
-	(substring-move-left! (car strings) 0 n result 0)
+	(substring-move! (car strings) 0 n result 0)
 	(string-set! result n #\NUL)
 	(let loop ((strings (cdr strings)) (index (fix:+ n 1)))
 	  (let ((n (string-length (car strings))))
-	    (substring-move-left! (car strings) 0 n result index)
+	    (substring-move! (car strings) 0 n result index)
 	    (if (null? (cdr strings))
 		(string-set! result (fix:+ index n) #\NUL)
 		(begin
@@ -527,7 +528,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let loop ((strings strings) (index 0))
       (if (not (null? strings))
 	  (let ((n (string-length (car strings))))
-	    (substring-move-left! (car strings) 0 n result index)
+	    (substring-move! (car strings) 0 n result index)
 	    (string-set! result (fix:+ index n) #\NUL)
 	    (loop (cdr strings) (fix:+ (fix:+ index n) 1)))))
     result))
