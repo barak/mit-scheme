@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.62 1992/07/06 23:42:05 jinx Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.63 1992/07/21 04:27:49 cph Exp $
 ;;;
-;;;	Copyright (c) 1987-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -123,7 +123,7 @@
 	       UNINTERNED-SYMBOL			;05
 	       (FLONUM BIG-FLONUM)			;06
 	       COMBINATION-1				;07
-	       TRUE					;08
+	       (TRUE CONSTANT)				;08
 	       EXTENDED-PROCEDURE			;09		
 	       VECTOR					;0A
 	       (RETURN-CODE RETURN-ADDRESS)		;0B
@@ -141,7 +141,7 @@
 	       LAMBDA					;17
 	       PRIMITIVE				;18
 	       SEQUENCE-2				;19
-	       (FIXNUM ADDRESS)		       		;1A
+	       (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM) ;1A
 	       PRIMITIVE-COMBINATION-1			;1B
 	       CONTROL-POINT	       			;1C
 	       INTERNED-SYMBOL				;1D
@@ -702,4 +702,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.62 1992/07/06 23:42:05 jinx Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/utabmd.scm,v 9.63 1992/07/21 04:27:49 cph Exp $"
