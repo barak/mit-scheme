@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.4 1993/10/26 03:05:43 jawilson Exp $
+$Id: c.c,v 1.5 1993/10/27 23:11:43 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -236,9 +236,9 @@ DEFUN (C_to_interface, (entry), PTR in_entry)
   SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) in_entry);
   while (1)
   {
-    int proc_index;
-    proc_index = (LABEL_PROCEDURE (entry));
-    if (proc_index >= max_compiled_code_blocks)
+    unsigned int proc_index = ((unsigned int) (LABEL_PROCEDURE (entry)));
+
+    if (proc_index >= ((unsigned int) max_compiled_code_blocks))
     {
       if (entry != &dummy_entry)
 #if 0
