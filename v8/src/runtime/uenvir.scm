@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.6 1989/04/15 01:27:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/uenvir.scm,v 14.7 1989/05/21 17:16:43 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -151,20 +151,9 @@ MIT in each case. |#
       (lexical-reference environment name)))
 
 (define (system-global-environment/bound-names environment)
-  (let ((table (fixed-objects-item 'OBARRAY)))
-    (let per-bucket ((index (-1+ (vector-length table))) (accumulator '()))
-      (if (< index 0)
-	  accumulator
-	  (let per-symbol
-	      ((bucket (vector-ref table index))
-	       (accumulator accumulator))
-	    (if (null? bucket)
-		(per-bucket (-1+ index) accumulator)
-		(per-symbol
-		 (cdr bucket)
-		 (if (not (lexical-unbound? environment (car bucket)))
-		     (cons (car bucket) accumulator)
-		     accumulator))))))))
+  (list-transform-negative (obarray->list)
+    (lambda (sym)
+      (lexical-unbound? environment sym))))
 
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
