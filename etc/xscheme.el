@@ -1,11 +1,15 @@
-;; Run Scheme under Emacs
-;; Copyright (C) 1986-2000 Free Software Foundation, Inc.
+;;; xscheme.el --- run MIT Scheme under Emacs
+
+;; Copyright (C) 1986, 1987, 1989, 1990, 2001 Free Software Foundation, Inc.
+
+;; Maintainer: FSF
+;; Keywords: languages, lisp
 
 ;; This file is part of GNU Emacs.
 
 ;; GNU Emacs is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation; either version 1, or (at your option)
+;; the Free Software Foundation; either version 2, or (at your option)
 ;; any later version.
 
 ;; GNU Emacs is distributed in the hope that it will be useful,
@@ -14,38 +18,49 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs; see the file COPYING.  If not, write to
-;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+;; Boston, MA 02111-1307, USA.
 
-;;; Requires C-Scheme release 5 or later
-;;; Changes to Control-G handler require runtime version 13.85 or later
+;;; Commentary:
 
-;;; $Id: xscheme.el,v 1.38 2000/01/05 06:25:53 cph Exp $
+;; A major mode for interacting with MIT Scheme.
+;;
+;; Requires MIT Scheme release 5 or later.
+;; Changes to Control-G handler require runtime version 13.85 or later.
+
+;;; Code:
 
 (require 'scheme)
 
-;;;###autoload
-(defvar scheme-program-name "scheme"
-  "*Program invoked by the `run-scheme' command.")
+(defgroup xscheme nil
+  "Major mode for editing Scheme and interacting with MIT's C-Scheme."
+  :group 'lisp)
 
-;;;###autoload
-(defvar scheme-band-name nil
-  "*Band loaded by the `run-scheme' command.")
+(if (< emacs-major-version 21)
+    (defcustom scheme-program-name "scheme"
+      "*Program invoked by the `run-scheme' command."
+      :type 'string
+      :group 'xscheme))
 
-;;;###autoload
-(defvar scheme-program-arguments nil
-  "*Arguments passed to the Scheme program by the `run-scheme' command.")
+(defcustom scheme-band-name nil
+  "*Band loaded by the `run-scheme' command."
+  :type '(choice (const nil) string)
+  :group 'xscheme)
 
-(defvar xscheme-allow-pipelined-evaluation t
+(defcustom scheme-program-arguments nil
+  "*Arguments passed to the Scheme program by the `run-scheme' command."
+  :type '(choice (const nil) string)
+  :group 'xscheme)
+
+(defcustom xscheme-allow-pipelined-evaluation t
   "If non-nil, an expression may be transmitted while another is evaluating.
 Otherwise, attempting to evaluate an expression before the previous expression
-has finished evaluating will signal an error.")
+has finished evaluating will signal an error."
+  :type 'boolean
+  :group 'xscheme)
 
-(defvar default-xscheme-runlight
-  '(": " xscheme-runlight-string)
-  "Default global (shared) xscheme-runlight modeline format.")
-
-(defvar xscheme-startup-message
+(defcustom xscheme-startup-message
   "This is the Scheme process buffer.
 Type \\[advertised-xscheme-send-previous-expression] to evaluate the expression before point.
 Type \\[xscheme-send-control-g-interrupt] to abort evaluation.
@@ -53,30 +68,20 @@ Type \\[describe-mode] for more information.
 
 "
   "String to insert into Scheme process buffer first time it is started.
-Is processed with `substitute-command-keys' first.")
+Is processed with `substitute-command-keys' first."
+  :type 'string
+  :group 'xscheme)
 
-(defvar xscheme-signal-death-message nil
-  "If non-nil, causes a message to be generated when the Scheme process dies.")
+(defcustom xscheme-signal-death-message nil
+  "If non-nil, causes a message to be generated when the Scheme process dies."
+  :type 'boolean
+  :group 'xscheme)
 
-(defvar xscheme-process-name "*scheme*"
-  "*Process created by the `run-scheme' command.")
-
-(defvar xscheme-buffer-name "*scheme*"
-  "*Buffer created by the `run-scheme' command.")
-
-(defun xscheme-emacs-version>= (major minor)
-  (let* ((first-dot (string-match "\\." emacs-version))
-	 (esv (substring emacs-version (1+ first-dot)))
-	 (second-dot (string-match "\\." esv)))
-    (let ((emacs-version-major
-	   (string-to-int (substring emacs-version 0 first-dot)))
-	  (emacs-version-minor
-	   (string-to-int (if second-dot
-			      (substring esv 0 second-dot)
-			      esv))))
-      (or (> emacs-version-major major)
-	  (and (= emacs-version-major major)
-	       (>= emacs-version-minor minor))))))
+(defcustom xscheme-start-hook nil
+  "If non-nil, a procedure to call when the Scheme process is started.
+When called, the current buffer will be the Scheme process-buffer."
+  :type 'hook
+  :group 'xscheme)
 
 (defun xscheme-evaluation-commands (keymap)
   (define-key keymap "\e\C-x" 'xscheme-send-definition)
@@ -96,14 +101,36 @@ Is processed with `substitute-command-keys' first.")
 (xscheme-evaluation-commands scheme-mode-map)
 (xscheme-interrupt-commands scheme-mode-map)
 
-;;;###autoload
 (defun run-scheme (command-line)
   "Run MIT Scheme in an inferior process.
 Output goes to the buffer `*scheme*'.
 With argument, asks for a command line."
-  (interactive
-   (list (read-scheme-command-line current-prefix-arg)))
-  (scheme-start command-line xscheme-process-name xscheme-buffer-name))
+  (interactive (list (xscheme-read-command-line current-prefix-arg)))
+  (xscheme-start command-line xscheme-process-name xscheme-buffer-name))
+
+(defun xscheme-start (command-line process-name buffer-name)
+  (setq-default xscheme-process-command-line command-line)
+  (switch-to-buffer
+   (xscheme-start-process command-line process-name buffer-name))
+  (make-local-variable 'xscheme-process-command-line)
+  (setq xscheme-process-command-line command-line))
+
+(defun xscheme-read-command-line (arg)
+  (let ((default
+	  (or xscheme-process-command-line
+	      (xscheme-default-command-line))))
+    (if arg
+	(read-string "Run Scheme: " default)
+	default)))
+
+(defun xscheme-default-command-line ()
+  (concat scheme-program-name " -emacs"
+	  (if scheme-program-arguments
+	      (concat " " scheme-program-arguments)
+	      "")
+	  (if scheme-band-name
+	      (concat " -band " scheme-band-name)
+	      "")))
 
 (defun reset-scheme ()
   "Reset the Scheme process."
@@ -116,37 +143,12 @@ With argument, asks for a command line."
 	   (message "Resetting Scheme process...")
 	   (if process
 	       (progn
-		(kill-process process t)
-		(delete-process process)))
+		 (kill-process process t)
+		 (delete-process process)))
 	   (xscheme-start-process xscheme-process-command-line
 				  xscheme-process-name
 				  xscheme-buffer-name)
 	   (message "Resetting Scheme process...done")))))
-
-(defun scheme-start (command-line process-name buffer-name &optional avoid-set)
-  (if (not avoid-set)
-      (setq-default xscheme-process-command-line command-line))
-  (switch-to-buffer
-   (xscheme-start-process command-line process-name buffer-name))
-  (make-local-variable 'xscheme-process-command-line)
-  (setq xscheme-process-command-line command-line))
-
-(defun read-scheme-command-line (arg)
-  (let ((default
-	  (or xscheme-process-command-line
-	      (xscheme-default-command-line))))
-    (if arg
-	(read-string "Run Scheme: " default)
-      default)))
-
-(defun xscheme-default-command-line ()
-  (concat scheme-program-name " -emacs"
-	  (if scheme-program-arguments
-	      (concat " " scheme-program-arguments)
-	      "")
-	  (if scheme-band-name
-	      (concat " -band " scheme-band-name)
-	      "")))
 
 ;;;; Multiple Scheme buffer management commands
 
@@ -169,9 +171,9 @@ With argument, asks for a command line."
 				     (buffer-file-name buffer)
 				     "; start scheme in it? ")))
 	    (progn
-	      (scheme-start (read-scheme-command-line t)
-			    buffer-name
-			    buffer-name)
+	      (xscheme-start (xscheme-read-command-line t)
+			     buffer-name
+			     buffer-name)
 	      (if globally
 		  (global-set-scheme-interaction-buffer buffer-name)))
 	  (message "start-scheme aborted"))))))
@@ -193,7 +195,7 @@ With argument, asks for a command line."
     (setq-default xscheme-runlight
 		  (if (eq (process-status process-name) 'run)
 		      default-xscheme-runlight
-		    ""))))
+		      ""))))
 
 (defun local-set-scheme-interaction-buffer (buffer-name)
   "Set the scheme interaction buffer for the current buffer."
@@ -239,7 +241,7 @@ With argument, asks for a command line."
 ;;;; Interaction Mode
 
 (defun scheme-interaction-mode (&optional preserve)
-  "Major mode for interacting with the inferior Scheme process.
+  "Major mode for interacting with an inferior MIT Scheme process.
 Like  scheme-mode  except that:
 
 \\[advertised-xscheme-send-previous-expression] sends the expression before point to the Scheme process as input
@@ -311,7 +313,6 @@ Entry to this mode calls the value of scheme-interaction-mode-hook
 with no args, if that value is non-nil.
  Likewise with the value of scheme-mode-hook.
  scheme-interaction-mode-hook is called after scheme-mode-hook."
-
   (interactive "P")
   (if (not preserve)
       (let ((previous-mode major-mode))
@@ -322,12 +323,13 @@ with no args, if that value is non-nil.
         (make-local-variable 'xscheme-previous-process-state)
         (make-local-variable 'xscheme-runlight-string)
         (make-local-variable 'xscheme-runlight)
+        (make-local-variable 'xscheme-last-input-end)
         (setq xscheme-previous-mode previous-mode)
         (let ((buffer (current-buffer)))
           (setq xscheme-buffer-name (buffer-name buffer))
+          (setq xscheme-last-input-end (make-marker))
           (let ((process (get-buffer-process buffer)))
-            (if (not process)
-                (setq xscheme-previous-process-state (cons nil nil))
+            (if process
                 (progn
                   (setq xscheme-process-name (process-name process))
                   (setq xscheme-previous-process-state
@@ -336,7 +338,8 @@ with no args, if that value is non-nil.
 		  (xscheme-process-filter-initialize t)
 		  (xscheme-modeline-initialize xscheme-buffer-name)
 		  (set-process-sentinel process 'xscheme-process-sentinel)
-		  (set-process-filter process 'xscheme-process-filter)))))))
+		  (set-process-filter process 'xscheme-process-filter))
+                (setq xscheme-previous-process-state (cons nil nil)))))))
   (scheme-interaction-mode-initialize)
   (scheme-mode-variables)
   (run-hooks 'scheme-mode-hook 'scheme-interaction-mode-hook))
@@ -357,19 +360,9 @@ with no args, if that value is non-nil.
 		(set-process-sentinel process (cdr previous-state))))))))
 
 (defun scheme-interaction-mode-initialize ()
-  (if (not scheme-interaction-mode-map)
-      (progn
-	(setq scheme-interaction-mode-map (make-keymap))
-	(scheme-mode-commands scheme-interaction-mode-map)
-	(xscheme-interrupt-commands scheme-interaction-mode-map)
-	(xscheme-evaluation-commands scheme-interaction-mode-map)
-	(scheme-interaction-mode-commands scheme-interaction-mode-map)))
   (use-local-map scheme-interaction-mode-map)
   (setq major-mode 'scheme-interaction-mode)
   (setq mode-name "Scheme Interaction"))
-
-(defvar scheme-interaction-mode-map
-  nil)
 
 (defun scheme-interaction-mode-commands (keymap)
   (let ((entries scheme-interaction-mode-commands-alist))
@@ -383,10 +376,20 @@ with no args, if that value is non-nil.
 (setq scheme-interaction-mode-commands-alist
       (append scheme-interaction-mode-commands-alist
 	      '(("\C-c\C-m" xscheme-send-current-line)
+		("\C-c\C-o" xscheme-delete-output)
 		("\C-c\C-p" xscheme-send-proceed)
 		("\C-c\C-y" xscheme-yank)
 		("\ep" xscheme-yank-pop)
 		("\en" xscheme-yank-push))))
+
+(defvar scheme-interaction-mode-map nil)
+(if (not scheme-interaction-mode-map)
+    (progn
+      (setq scheme-interaction-mode-map (make-keymap))
+      (scheme-mode-commands scheme-interaction-mode-map)
+      (xscheme-interrupt-commands scheme-interaction-mode-map)
+      (xscheme-evaluation-commands scheme-interaction-mode-map)
+      (scheme-interaction-mode-commands scheme-interaction-mode-map)))
 
 (defun xscheme-enter-interaction-mode ()
   (save-excursion
@@ -477,15 +480,16 @@ The strings are concatenated and terminated by a newline."
 
 (defun xscheme-send-string-2 (string)
   (let ((process (get-process xscheme-process-name)))
-    (send-string process (concat string "\n"))
+    (process-send-string process (concat string "\n"))
     (if (xscheme-process-buffer-current-p)
 	(set-marker (process-mark process) (point)))))
 
 (defun xscheme-select-process-buffer ()
   "Select the Scheme process buffer and move to its output point."
   (interactive)
-  (let ((process (or (get-process xscheme-process-name)
-		     (error "No scheme process"))))
+  (let ((process
+	 (or (get-process xscheme-process-name)
+	     (error "No scheme process"))))
     (let ((buffer (or (process-buffer process) (error "No process buffer"))))
       (let ((window (get-buffer-window buffer)))
 	(if window
@@ -509,16 +513,16 @@ The strings are concatenated and terminated by a newline."
   (let ((length (length xscheme-expressions-ring)))
     (if (zerop length)
 	(error "Scheme expression ring is empty")
-      (setq xscheme-expressions-ring-yank-pointer
-	    (let ((index
-		   (% (+ arg
-			 (- length
-			    (length xscheme-expressions-ring-yank-pointer)))
-		      length)))
-	    (nthcdr (if (< index 0)
-			(+ index length)
-		      index)
-		    xscheme-expressions-ring))))))
+	(setq xscheme-expressions-ring-yank-pointer
+	      (let ((index
+		     (% (+ arg
+			   (- length
+			      (length xscheme-expressions-ring-yank-pointer)))
+			length)))
+		(nthcdr (if (< index 0)
+			    (+ index length)
+			    index)
+			xscheme-expressions-ring))))))
 
 (defun xscheme-yank (&optional arg)
   "Insert the most recent expression at point.
@@ -535,7 +539,6 @@ See also the commands \\[xscheme-yank-pop] and \\[xscheme-yank-push]."
       (exchange-point-and-mark)))
 
 ;; Old name, to avoid errors in users' init files.
-
 (fset 'xscheme-yank-previous-send
       'xscheme-yank)
 
@@ -592,7 +595,8 @@ The region is sent terminated by a newline."
 	(if (not (bolp))
 	    (insert-before-markers ?\n))
 	(set-marker (process-mark (get-process xscheme-process-name))
-		    (point))))
+		    (point))
+	(set-marker xscheme-last-input-end (point))))
   (xscheme-send-string (buffer-substring start end)))
 
 (defun xscheme-send-definition ()
@@ -645,7 +649,23 @@ Useful for working with debugging Scheme under adb."
 (defun xscheme-send-char (char)
   "Prompt for a character and send it to the Scheme process."
   (interactive "cCharacter to send: ")
-  (send-string xscheme-process-name (char-to-string char)))
+  (process-send-string xscheme-process-name (char-to-string char)))
+
+(defun xscheme-delete-output ()
+  "Delete all output from interpreter since last input."
+  (interactive)
+  (let ((proc (get-buffer-process (current-buffer))))
+    (save-excursion
+      (goto-char (process-mark proc))
+      (re-search-backward
+       "^;\\(Unspecified return value$\\|Value\\( [0-9]+\\)?: \\|\\(Abort\\|Up\\|Quit\\)!$\\)"
+       xscheme-last-input-end
+       t)
+      (forward-line 0)
+      (if (< (marker-position xscheme-last-input-end) (point))
+	  (progn
+	    (delete-region xscheme-last-input-end (point))
+	    (insert-before-markers "*** output flushed ***\n"))))))
 
 ;;;; Interrupts
 
@@ -657,30 +677,29 @@ Useful for working with debugging Scheme under adb."
 (defun xscheme-send-proceed ()
   "Cause the Scheme process to proceed from a breakpoint."
   (interactive)
-  (send-string xscheme-process-name "(proceed)\n"))
-
-(defun buffer-local-value-cell (buffer name)
-  (let ((pair (assq name (buffer-local-variables (get-buffer buffer)))))
-    (if (not pair)
-	(error "buffer-local-value-cell: Not bound")
-      pair)))
+  (process-send-string xscheme-process-name "(proceed)\n"))
 
 (defun xscheme-send-control-g-interrupt ()
   "Cause the Scheme processor to halt and flush input.
 Control returns to the top level rep loop."
   (interactive)
-  (let* ((inhibit-quit t)
-	 (vcell (buffer-local-value-cell xscheme-buffer-name
-					 'xscheme-control-g-disabled-p)))
+  (let ((inhibit-quit t))
     (cond ((not xscheme-control-g-synchronization-p)
 	   (interrupt-process xscheme-process-name))
-	  ((cdr vcell)
+	  ((save-excursion
+	     (set-buffer xscheme-buffer-name)
+	     xscheme-control-g-disabled-p)
 	   (message "Relax..."))
 	  (t
-	   (rplacd vcell t)
-	   (message "Sending C-G interrupt to Scheme...")
+	   (save-excursion
+	     (set-buffer xscheme-buffer-name)
+	     (setq xscheme-control-g-disabled-p t))
+	   (message xscheme-control-g-message-string)
 	   (interrupt-process xscheme-process-name)
-	   (send-string xscheme-process-name (char-to-string 0))))))
+	   (xscheme-send-char 0)))))
+
+(defconst xscheme-control-g-message-string
+  "Sending C-G interrupt to Scheme...")
 
 (defun xscheme-send-control-u-interrupt ()
   "Cause the Scheme process to halt, returning to previous rep loop."
@@ -701,14 +720,20 @@ Control returns to the top level rep loop."
   "Send a ^A type interrupt to the Scheme process."
   (interactive "cInterrupt character to send: ")
   (quit-process xscheme-process-name)
-  (send-string xscheme-process-name (char-to-string char))
+  (xscheme-send-char char)
   (if (and mark-p xscheme-control-g-synchronization-p)
-      (send-string xscheme-process-name (char-to-string 0))))
+      (xscheme-send-char 0)))
 
 ;;;; Internal Variables
 
 (defvar xscheme-process-command-line nil
   "Command used to start the most recent Scheme process.")
+
+(defvar xscheme-process-name "scheme"
+  "Name of xscheme process that we're currently interacting with.")
+
+(defvar xscheme-buffer-name "*scheme*"
+  "Name of xscheme buffer that we're currently interacting with.")
 
 (defvar xscheme-expressions-ring-max 30
   "*Maximum length of Scheme expressions ring.")
@@ -718,6 +743,8 @@ Control returns to the top level rep loop."
 
 (defvar xscheme-expressions-ring-yank-pointer nil
   "The tail of the Scheme expressions ring whose car is the last thing yanked.")
+
+(defvar xscheme-last-input-end)
 
 (defvar xscheme-process-filter-state 'idle
   "State of scheme process escape reader state machine:
@@ -731,8 +758,8 @@ waiting for input.  Otherwise, it is busy evaluating something.")
 
 (defconst xscheme-control-g-synchronization-p t
   "If non-nil, insert markers in the scheme input stream to indicate when
-control-g interrupts were signalled.  Do not allow more control-g's to be
-signalled until the scheme process acknowledges receipt.")
+control-g interrupts were signaled.  Do not allow more control-g's to be
+signaled until the scheme process acknowledges receipt.")
 
 (defvar xscheme-control-g-disabled-p nil
   "This variable, if non-nil, indicates that a control-g is being processed
@@ -751,9 +778,9 @@ from being inserted into the process-buffer.")
 (defvar xscheme-string-receiver nil
   "Procedure to send the string argument from the scheme process.")
 
-(defvar xscheme-start-hook nil
-  "If non-nil, a procedure to call when the Scheme process is started.
-When called, the current buffer will be the Scheme process-buffer.")
+(defconst default-xscheme-runlight
+  '(": " xscheme-runlight-string)
+  "Default global (shared) xscheme-runlight modeline format.")
 
 (defvar xscheme-runlight "")
 (defvar xscheme-runlight-string nil)
@@ -864,15 +891,16 @@ When called, the current buffer will be the Scheme process-buffer.")
       (set-buffer buffer)
       (xscheme-process-filter-initialize (eq reason 'run))
       (if (not (eq reason 'run))
-	(progn
-	  (setq scheme-mode-line-process "")
-	  (setq xscheme-mode-string "no process")
-	  (if (equal name (default-value 'xscheme-buffer-name))
-	      (setq-default xscheme-runlight ""))))
+	  (progn
+	    (setq scheme-mode-line-process "")
+	    (setq xscheme-mode-string "no process")
+	    (if (equal name (default-value 'xscheme-buffer-name))
+		(setq-default xscheme-runlight ""))))
       (if (and (not (memq reason '(run stop)))
 	       xscheme-signal-death-message)
-	  (progn (beep)
-		 (message
+	  (progn
+	    (beep)
+	    (message
 "The Scheme process has died!  Do M-x reset-scheme to restart it"))))))
 
 (defun xscheme-process-filter-initialize (running-p)
@@ -956,18 +984,22 @@ When called, the current buffer will be the Scheme process-buffer.")
       (let ((string (apply 'concat args)))
 	(save-excursion
 	  (xscheme-goto-output-point)
-	  (while (string-match "\\(\007\\|\f\\)" string)
-	    (let ((start (match-beginning 0))
-		  (end (match-end 0)))
-	      (insert-before-markers (substring string 0 start))
-	      (if (= ?\f (aref string start))
-		  (progn
-		    (if (not (bolp))
-			(insert-before-markers ?\n))
-		    (insert-before-markers ?\f))
-		  (beep))
-	      (setq string (substring string (1+ start)))))
-	  (insert-before-markers string)))))
+	  (let ((old-point (point)))
+	    (while (string-match "\\(\007\\|\f\\)" string)
+	      (let ((start (match-beginning 0))
+		    (end (match-end 0)))
+		(insert-before-markers (substring string 0 start))
+		(if (= ?\f (aref string start))
+		    (progn
+		      (if (not (bolp))
+			  (insert-before-markers ?\n))
+		      (insert-before-markers ?\f))
+		    (beep))
+		(setq string (substring string (1+ start)))))
+	    (insert-before-markers string)
+	    (if (and xscheme-last-input-end
+		     (equal (marker-position xscheme-last-input-end) (point)))
+		(set-marker xscheme-last-input-end old-point)))))))
 
 (defun xscheme-guarantee-newlines (n)
   (if xscheme-allow-output-p
@@ -1005,20 +1037,7 @@ When called, the current buffer will be the Scheme process-buffer.")
 	     (default-value 'xscheme-buffer-name))
       (setq-default xscheme-runlight-string runlight))
   (rplaca (nthcdr 3 xscheme-runlight) runlight)
-  (xscheme-modeline-redisplay))
-
-(defun xscheme-modeline-redisplay-1929 ()
   (force-mode-line-update t))
-
-(defun xscheme-modeline-redisplay-18 ()
-  (save-excursion (set-buffer (other-buffer)))
-  (set-buffer-modified-p (buffer-modified-p))
-  (sit-for 0))
-
-(fset 'xscheme-modeline-redisplay
-      (if (xscheme-emacs-version>= 19 29)
-	  'xscheme-modeline-redisplay-1929
-	  'xscheme-modeline-redisplay-18))
 
 ;;;; Process Filter Operations
 
@@ -1113,7 +1132,9 @@ the remaining input.")
   (setq xscheme-running-p t))
 
 (defun xscheme-enable-control-g ()
-  (setq xscheme-control-g-disabled-p nil))
+  (setq xscheme-control-g-disabled-p nil)
+  (if (string= (current-message) xscheme-control-g-message-string)
+      (message nil)))
 
 (defun xscheme-display-process-buffer ()
   (let ((window (or (xscheme-process-buffer-window)
@@ -1136,7 +1157,7 @@ the remaining input.")
 
 (defun xscheme-write-value (string)
   (if (zerop (length string))
-      (xscheme-write-message-1 "(no value)" ";No value")
+      (xscheme-write-message-1 "(no value)" ";Unspecified return value")
       (xscheme-write-message-1 string (format ";Value: %s" string))))
 
 (defun xscheme-write-message-1 (message-string output-string)
@@ -1156,7 +1177,7 @@ the remaining input.")
   (setq xscheme-prompt string)
   (xscheme-guarantee-newlines 2)
   (setq xscheme-mode-string (xscheme-coerce-prompt string))
-  (xscheme-modeline-redisplay))
+  (force-mode-line-update t))
 
 (defun xscheme-output-goto ()
   (xscheme-goto-output-point)
@@ -1208,13 +1229,7 @@ the remaining input.")
 		   (let ((state (parse-partial-sexp start (nth 2 state))))
 		     (if (nth 2 state) 'many 'one)))))
 	(set-syntax-table old-syntax-table)))))
-
-;;; This is EMACS magic that causes this file to be automagically byte-compiled
-;;; when it is saved.
-;;;
-;;; Local Variables:
-;;; write-file-hooks: ((lambda () (if (fboundp 'auto-compile) (auto-compile))))
-;;; kept-old-versions: 0
-;;; kept-new-versions: 3
-;;; trim-versions-without-asking: t
-;;; End:
+
+(provide 'xscheme)
+
+;;; xscheme.el ends here
