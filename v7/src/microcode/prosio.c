@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.15 1997/10/22 05:30:41 cph Exp $
+$Id: prosio.c,v 1.16 1997/11/01 19:09:16 cph Exp $
 
 Copyright (c) 1987-97 Massachusetts Institute of Technology
 
@@ -138,8 +138,8 @@ static char * channel_type_names [] =
   "os/2-console",
   "os/2-unnamed-pipe",
   "os/2-named-pipe",
-  "win32-char",
-  "win32-pipe"
+  "win32-anonymous-pipe",
+  "win32-named-pipe"
 };
 
 DEFINE_PRIMITIVE ("CHANNEL-TYPE-NAME", Prim_channel_type_name, 1, 1,
