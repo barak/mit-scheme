@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.18 1990/10/17 03:31:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.19 1990/11/19 19:33:01 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -151,21 +151,20 @@ MIT in each case. |#
 				 (kernel (car filenames) false)
 				 (loop (cdr filenames)))))
 			 (kernel filename/s true))))
-		(values
-		 value
-		 load/after-load-hooks)))))
+		(values value load/after-load-hooks)))))
       (lambda (result hooks)
 	(if (not (null? hooks))
-	    (for-each (lambda (hook)
-			(hook))
-		      (reverse hooks)))
+	    (for-each (lambda (hook) (hook)) (reverse hooks)))
 	result))))
-	
+
 (define (load/push-hook! hook)
   (if (not load/loading?)
-      (error "load/push-hook! Not loading.")
-      (set! load/after-load-hooks
-	    (cons hook load/after-load-hooks))))
+      (error "not loading any file" 'LOAD/PUSH-HOOK!))
+  (set! load/after-load-hooks (cons hook load/after-load-hooks))
+  unspecific)
+
+(define default-object
+  "default-object")
 
 (define (load-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
@@ -174,51 +173,45 @@ MIT in each case. |#
 (define (fasload-latest . args)
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
     (apply fasload args)))
-
-(define (find-latest-file pathname default-types)
-  (let loop ((types default-types)
-	     (latest-pathname #f)
-	     (latest-modification-time 0))
-    (if (not (pair? types))
-	latest-pathname
-	(let* ((complete-pathname
-		(find-complete-pathname
-		 (pathname-new-type pathname (car types))))
-	       (modification-time
-		(if complete-pathname
-		    (file-modification-time complete-pathname)
-		    -1)))
-	  (if (> modification-time latest-modification-time)
-	      (loop (cdr types)
-		    complete-pathname
-		    modification-time)
-	      (loop (cdr types)
-		    latest-pathname
-		    latest-modification-time))))))
-
-(define default-object
-  "default-object")
-
+
 (define (find-true-pathname pathname default-types)
-  (or (if (pathname-type pathname)
-	  (find-complete-pathname pathname)
-	  (or (pathname->input-truename pathname)
-	      (load/default-find-pathname-with-type
-	       pathname
-	       default-types)))
-      (error "No such file" pathname)))
+  (or (pathname->input-truename pathname)
+      (let ((truename
+	     (let ((pathname (pathname-default-version pathname 'NEWEST)))
+	       (if (pathname-type pathname)
+		   (pathname->input-truename pathname)
+		   (load/default-find-pathname-with-type pathname
+							 default-types)))))
+	(if (not truename)
+	    (error error-type:open-file pathname))
+	truename)))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
     (and (not (null? types))
-	 (or (find-complete-pathname
+	 (or (pathname->input-truename
 	      (pathname-new-type pathname (car types)))
 	     (loop (cdr types))))))
 
-(define (find-complete-pathname pathname)
-  (pathname->input-truename
-   (pathname-default-version pathname 'NEWEST)))
-
+(define (find-latest-file pathname default-types)
+  (let loop
+      ((types default-types)
+       (latest-pathname false)
+       (latest-modification-time 0))
+    (if (not (pair? types))
+	latest-pathname
+	(let ((truename
+	       (pathname->input-truename
+		(pathname-new-type pathname (car types))))
+	      (skip
+	       (lambda ()
+		 (loop (cdr types) latest-pathname latest-modification-time))))
+	  (if (not truename)
+	      (skip)
+	      (let ((modification-time (file-modification-time truename)))
+		(if (> modification-time latest-modification-time)
+		    (loop (cdr types) truename modification-time)
+		    (skip))))))))
 
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
