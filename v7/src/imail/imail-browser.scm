@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.6 2001/06/03 06:02:48 cph Exp $
+;;; $Id: imail-browser.scm,v 1.7 2001/06/04 17:40:15 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -271,7 +271,27 @@ To do:
 
 (define-major-mode imail-browser read-only "IMAIL Browser"
   "Major mode in effect in IMAIL folder browser.
-Each line summarizes a single mail folder.
+Each line summarizes a single mail folder (or container).
+You can move using the usual cursor motion commands.
+
+Type \\[imail-browser-flag-folder-deletion] to flag a folder for Deletion.
+Type \\[imail-browser-mark] to Mark a folder for later commands.
+  Most commands operate on the marked folders and use the current folder
+  if no folders are marked.  Use a numeric prefix argument to operate on
+  the next ARG (or previous -ARG if ARG<0) folders, or just `1'
+  to operate on the current folder only.  Prefix arguments override marks.
+Type \\[imail-browser-unmark] to Unmark a folder.
+Type \\[imail-browser-unmark-backward] to back up one line and unmark.
+Type \\[imail-browser-do-flagged-delete] to eXecute the deletions requested.
+Type \\[imail-browser-view-selected-folder] to Find the current line's folder
+  (or browse it in another buffer, if it is a container).
+Type \\[imail-browser-view-selected-container] to browse the current line's container in another buffer.
+Type \\[imail-browser-view-container] to browse this container's container.
+Type \\[imail-browser-toggle-container] to show the contents of this line's container in the buffer,
+  or hide them if they are already shown.
+Type \\[imail-browser-do-rename] to rename a folder or move the marked folders to another container.
+Type \\[imail-browser-do-copy] to copy folders.
+Type \\[imail-browser-revert] to read the container again.  This discards all deletion-flags.
 
 \\{imail-browser}"
   (lambda (buffer)
@@ -300,18 +320,20 @@ Each line summarizes a single mail folder.
 (define-key 'imail-browser #\f 'imail-browser-view-selected-folder)
 (define-key 'imail-browser #\g 'imail-browser-revert)
 (define-key 'imail-browser #\h 'describe-mode)
-(define-key 'imail-browser #\m 'imail-browser-mark-folder)
+(define-key 'imail-browser #\m 'imail-browser-mark)
 (define-key 'imail-browser #\q 'imail-browser-quit)
 (define-key 'imail-browser #\t 'imail-browser-toggle-container)
 (define-key 'imail-browser #\u 'imail-browser-unmark)
 (define-key 'imail-browser #\x 'imail-browser-do-flagged-delete)
 (define-key 'imail-browser #\^ 'imail-browser-view-container)
 
-(define-key 'imail-browser #\rubout 'imail-browser-backup-unmark)
+(define-key 'imail-browser #\rubout 'imail-browser-unmark-backward)
 (define-key 'imail-browser #\M-rubout 'imail-browser-unmark-all-folders)
 
 (define-command imail-browser-view-selected-folder
-  ""
+  "Visit the folder or container named on this line.
+If this line names a resource that is both a folder and a container,
+this command visits it as a folder."
   ()
   (lambda ()
     (let ((url (selected-url)))
@@ -320,7 +342,7 @@ Each line summarizes a single mail folder.
 	  (editor-error "Not a selectable folder.")))))
 
 (define-command imail-browser-view-selected-container
-  ""
+  "Browse the container named on this line."
   ()
   (lambda ()
     (let ((info (browser-line-info)))
@@ -330,7 +352,8 @@ Each line summarizes a single mail folder.
 	    (editor-error "Not a selectable container."))))))
 
 (define-command imail-browser-view-container
-  ""
+  "Browse the container of the resource being viewed in this buffer.
+With prefix arg, prompt for the container to browse."
   (lambda ()
     (list
      (and (command-argument)
@@ -348,13 +371,18 @@ Each line summarizes a single mail folder.
 	       (editor-error "This is not an IMAIL buffer.")))))))
 
 (define-command imail-browser-mouse-toggle-container
-  ""
+  "Show the contents of the container pointed at.
+Like \\[imail-browser-toggle-container] except that the container is
+selected by the position of the mouse rather than point."
   ()
   (lambda ()
     ((ref-command imail-browser-toggle-container) (mouse-command-mark))))
 
 (define-command imail-browser-toggle-container
-  ""
+  "Show the contents of the container named by this line.
+The contents are inserted immediately after this line,
+indented slightly to indicate where they are contained.
+If the containers contents are currently shown, then hide them instead."
   "d"
   (lambda (mark)
     (let ((buffer (mark-buffer mark))
@@ -405,23 +433,27 @@ With prefix argument, mark the next N folders for deletion."
   "p"
   (lambda (n) (imail-browser-mark-lines n #\D)))
 
-(define-command imail-browser-mark-folder
-  ""
+(define-command imail-browser-mark
+  "Mark the current (or next ARG) folder.
+Use \\[imail-browser-unmark-all-folders] to remove all marks."
   "p"
   (lambda (n) (imail-browser-mark-lines n #\*)))
 
 (define-command imail-browser-unmark
-  ""
+  "Unmark the current (or next ARG) folders."
   "p"
   (lambda (n) (imail-browser-mark-lines n #\space)))
 
-(define-command imail-browser-backup-unmark
-  ""
+(define-command imail-browser-unmark-backward
+  "Move up lines and remove marks there.
+Optional prefix ARG says how many lines to unmark; default is one line."
   "p"
   (lambda (n) ((ref-command imail-browser-unmark) (- n))))
 
 (define-command imail-browser-unmark-all-folders
-  ""
+  "Remove a specific mark (or any mark) from every folder.
+After this command, type the mark character to remove, 
+or type RET to remove all marks."
   "cRemove marks (RET means all)"
   (lambda (mark-char)
     (let ((buffer (selected-buffer)))
@@ -461,8 +493,69 @@ With prefix argument, mark the next N folders for deletion."
 			 (loop (+ n 1) (line-start mark -1 'ERROR))))
 		   (editor-failure))))))))
 
+(define-command imail-browser-do-copy
+  "Copy all marked (or next ARG) folders, or copy the current folder.
+When operating on just the current folder, you specify the new name.
+When operating on multiple or marked folders, you specify a container,
+and new copies of these folders are made in that container
+with the same names that the folders currently have."
+  "P"
+  (lambda (argument)
+    (browser-transfer-resources "copy" "copied" argument copy-folder)))
+
+(define-command imail-browser-do-rename
+  "Rename current folder or all marked (or next ARG) folders.
+When renaming just the current folder, you specify the new name.
+When renaming multiple or marked folders, you specify a container."
+  "P"
+  (lambda (argument)
+    (browser-transfer-resources "rename" "renamed" argument rename-resource)))
+
+(define (browser-transfer-resources present-tense past-tense argument
+				    operation)
+  (call-with-values (lambda () (browser-url-list argument (current-point)))
+    (lambda (mark urls)
+      (cond ((not (pair? urls))
+	     (message "No folders to " present-tense "."))
+	    ((pair? (cdr urls))
+	     (let ((container
+		    (imail-parse-partial-url
+		     (prompt-for-container (string-append
+					    (string-capitalize present-tense)
+					    " folders into")
+					   #f
+					   'HISTORY 'IMAIL-BROWSER-TRANSFER-N
+					   'HISTORY-INDEX 0
+					   'REQUIRE-MATCH? #t))))
+	       (for-each
+		(lambda (url)
+		  (operation url
+			     (make-content-url container
+					       (url-content-name url))))
+		urls)
+	       (message "Folders " past-tense " into "
+			(url->string container))))
+	    (else
+	     (let* ((url (car urls))
+		    (new-url
+		     (imail-parse-partial-url
+		      (prompt-for-url (string-append
+				       (string-capitalize present-tense)
+				       " folder to")
+				      #f
+				      'HISTORY 'IMAIL-BROWSER-TRANSFER-1
+				      'HISTORY-INDEX 0)))
+		    (new-url
+		     (if (container-url? new-url)
+			 (make-content-url new-url (url-content-name url))
+			 new-url)))
+	       (operation url new-url)
+	       (message "Folder " past-tense " to " (url->string new-url)))))
+      (set-current-point! mark)
+      (mark-temporary! mark))))
+
 (define-command imail-browser-do-flagged-delete
-  "Delete each folder that is marked for deletion."
+  "Delete the folders that are flagged for deletion."
   ()
   (lambda ()
     (let ((buffer (selected-buffer)))
@@ -483,54 +576,6 @@ With prefix argument, mark the next N folders for deletion."
 	    (set-current-point! mark)
 	    (mark-temporary! mark)))))))
 
-(define-command imail-browser-do-copy
-  ""
-  "P"
-  (lambda (argument)
-    unspecific))
-
-(define-command imail-browser-do-rename
-  "Rename current folder or all marked (or next ARG) folders.
-When renaming just the current folder, you specify the new name.
-When renaming multiple or marked folders, you specify a container."
-  "P"
-  (lambda (argument)
-    (call-with-values
-	(lambda () (browser-url-list argument (current-point)))
-      (lambda (mark urls)
-	(if (pair? urls)
-	    (if (pair? (cdr urls))
-		(browser-rename-many-folders urls)
-		(browser-rename-one-folder (car urls)))
-	    (message "No folders to rename."))
-	(set-current-point! mark)
-	(mark-temporary! mark)))))
-
-(define (browser-rename-one-folder url)
-  (let ((new-url
-	 (let ((new-url
-		(prompt-for-url (string-append "Rename folder to") #f
-				'HISTORY 'IMAIL-BROWSER-DO-RENAME-1
-				'HISTORY-INDEX 0)))
-	   (if (container-url? new-url)
-	       (make-content-url new-url (url-content-name url))
-	       new-url))))
-    (rename-resource url new-url)
-    (message "Folder renamed to " (url->string new-url))))
-
-(define (browser-rename-many-folders urls)
-  (let ((container-url
-	 (prompt-for-container (string-append "Move folders into") #f
-			       'HISTORY 'IMAIL-BROWSER-DO-RENAME-N
-			       'HISTORY-INDEX 0
-			       'REQUIRE-MATCH? #t)))
-    (for-each (lambda (url)
-		(rename-resource url
-				 (make-content-url container-url
-						   (url-content-name url))))
-	      urls))
-  (message "Folders moved into " (url->string container-url)))
-
 (define (browser-internal-do-delete urls)
   (if (pair? urls)
       (if (if (pair? (cdr urls))
@@ -551,7 +596,7 @@ When renaming multiple or marked folders, you specify a container."
        (map url->string urls)
        (mark->output-port (buffer-point buffer))
        (window-x-size (or window (car (buffer-windows buffer))))))))
-
+
 (define (browser-url-list argument mark)
   (if argument
       (browser-next-n-urls (command-argument-numeric-value argument) mark)
