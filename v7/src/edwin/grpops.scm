@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.11 1991/04/12 23:19:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.12 1991/04/24 00:37:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -90,6 +90,11 @@
 (define (group-right-char group index)
   (string-ref (group-text group)
 	      (group-index->position-integrable group index true)))
+
+(define (group-extract-and-delete! group start end)
+  (let ((string (group-extract-string group start end)))
+    (group-delete! group start end)
+    string))
 
 ;;;; Insertions
 
