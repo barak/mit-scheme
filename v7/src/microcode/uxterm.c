@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.16 1991/06/15 03:23:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.17 1991/07/02 18:41:14 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -543,10 +543,10 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
 	  if (errno != EINTR)
 	    {
 #ifdef PTY_ITERATION
-	      if (errno != EACCES)
-		continue;
-#endif
+	      continue;
+#else
 	      error_system_call (errno, syscall_open);
+#endif
 	    }
 	  deliver_pending_interrupts ();
 	  goto retry_open;
@@ -556,7 +556,6 @@ DEFUN (OS_open_pty_master, (master_fd, master_fname),
       (*master_fname) = master_name;
       return (slave_name);
     }
- loser:
   error_external_return ();
   return (0);
 }
