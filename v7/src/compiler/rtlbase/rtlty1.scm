@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.10 1987/06/17 19:43:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.11 1987/07/02 21:02:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
 (define-rtl-expression cons-pointer rtl: type datum)
 (define-rtl-expression constant % value)
 (define-rtl-expression variable-cache rtl: name)
+(define-rtl-expression uuo-link rtl: name)
 (define-rtl-expression entry:continuation % continuation)
 (define-rtl-expression entry:procedure % procedure)
 (define-rtl-expression offset-address rtl: register number)
