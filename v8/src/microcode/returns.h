@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.37 1990/01/29 22:31:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.38 1990/10/03 16:49:32 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,10 +120,11 @@ MIT in each case. */
 #define RC_COMP_LINK_CACHES_RESTART	0x5B
 #define RC_HARDWARE_TRAP		0x5C
 #define RC_INTERNAL_APPLY_VAL		0x5D
+#define RC_COMP_ERROR_RESTART		0x5E
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5D
+#define MAX_RETURN_CODE			0x5E
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -220,5 +221,6 @@ MIT in each case. */
 /* 0x5A */		"",						\
 /* 0x5B */		"COMPILER_LINK_CACHES_RESTART",			\
 /* 0x5C */		"HARDWARE_TRAP",				\
-/* 0x5D */		"INTERNAL_APPLY_VAL"				\
+/* 0x5D */		"INTERNAL_APPLY_VAL",				\
+/* 0x5E */		"COMPILER_ERROR_RESTARRT"			\
 }
