@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.13 1991/04/02 19:55:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.14 1991/05/17 19:11:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -114,10 +114,12 @@
 (define (buffer-window/mark-visible? window mark)
   ;; True iff cursor at this position would be on-screen.
   (let ((index (mark-index mark)))
-    (with-values (lambda () (start-point-for-index window index))
-      (lambda (start-index start-y line-start-index)
-	line-start-index
-	(predict-index-visible? window start-index start-y index)))))
+    (and (fix:<= (%window-group-start-index window) index)
+	 (fix:<= index (%window-group-end-index window))
+	 (with-values (lambda () (start-point-for-index window index))
+	   (lambda (start-index start-y line-start-index)
+	     line-start-index
+	     (predict-index-visible? window start-index start-y index))))))
 
 (define (start-point-for-index window index)
   (if (outlines-valid? window)
