@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.2 1988/06/13 11:45:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gdatab.scm,v 14.3 1988/06/16 06:27:40 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,12 +41,14 @@ MIT in each case. |#
   (set! event:after-restore (make-event-distributor))
   (set! event:after-restart (make-event-distributor))
   (set! tagged-pair-methods (make-1d-table))
-  (set! tagged-vector-methods (make-1d-table)))
+  (set! tagged-vector-methods (make-1d-table))
+  (set! named-structure-descriptions (make-1d-table)))
 
 (define event:after-restore)
 (define event:after-restart)
 (define tagged-pair-methods)
 (define tagged-vector-methods)
+(define named-structure-descriptions)
 
 (define (unparser/tagged-pair-method tag)
   (1d-table/get tagged-pair-methods tag false))
@@ -59,6 +61,12 @@ MIT in each case. |#
 
 (define (unparser/set-tagged-vector-method! tag method)
   (1d-table/put! tagged-vector-methods tag method))
+
+(define (named-structure/get-tag-description tag)
+  (1d-table/get named-structure-descriptions tag false))
+
+(define (named-structure/set-tag-description! tag description)
+  (1d-table/put! named-structure-descriptions tag description))
 
 ;;; Support for old-style methods
 
