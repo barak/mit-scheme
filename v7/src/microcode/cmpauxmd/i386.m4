@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.25 1992/08/12 01:29:01 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.26 1992/08/24 15:21:27 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -37,74 +37,74 @@
 ###	without prior written consent from MIT in each case.
 ###
 
-#### Intel i386 assembly language part of the compiled code interface.
-#### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
-#### documentation.
-####
-#### This m4 source expands into either Unix (gas) source or DOS
-#### (masm) source.
-####
-#### NOTE:
-####	Assumptions:
-####
-####	0) Segment registers and paging are set up for 32-bit "flat"
-####	operation.
-####
-####	1) All registers (except double floating point registers) and
-####	stack locations hold a C long object.
-####
-####	2) The C compiler divides registers into three groups:
-####	- Linkage registers, used for procedure calls and global
-####	references.  On i386 (gcc and Zortech C): %ebp, %esp.
-####	- super temporaries, not preserved accross procedure calls and
-####	always usable. On i386 (gcc and Zortech C): %eax, %edx, %ecx.
-####	- preserved registers saved by the callee if they are written.
-####	On i386 (gcc and Zortech C): all others (%ebx, %esi, %edi).
-####
-####	3) Arguments, if passed on a stack, are popped by the caller
-####	or by the procedure return instruction (as on the VAX).  Thus
-####	most "leaf" procedures need not worry about them.  On i386,
-####	arguments are passed on the stack.
-####
-####	4) There is a hardware or software maintained stack for
-####	control.  The procedure calling sequence may leave return
-####	addresses in registers, but they must be saved somewhere for
-####	nested calls and recursive procedures.  On i386: saved on
-####    the stack by the CALL instruction.
-####
-####	5) C procedures return long values in a super temporary
-####    register.  Two word structures are returned differently,
-####    depending on the C compiler used.  When using GCC, two-word
-####    structures are returned in {%eax, %edx}.  When using a
-####    compiler compatible with MicroSoft's C compiler (e.g. Zortech
-####    C), two word structures are returned by returning in %eax the
-####    address of a structure allocated statically.  If the Scheme
-####    system ever becomes reentrant, this will have to change.
-####	Note the assumption below is that all DOS compilers are
-####	compatible with MicroSoft C.
-####
-####	6) Floating point registers are not preserved by this
-####	interface.  The interface is only called from the Scheme
-####	interpreter, which does not use floating point data.  Thus
-####	although the calling convention would require us to preserve
-####	them, they contain garbage.
-####
-#### Compiled Scheme code uses the following register convention:
-####	- %esp containts the Scheme stack pointer, not the C stack
-####	pointer.
-####	- %esi contains a pointer to the Scheme interpreter's "register"
-####	block.  This block contains the compiler's copy of MemTop,
-####	the interpreter's registers (val, env, exp, etc.),
-####	temporary locations for compiled code, and the addresses
-####	of various hooks defined in this file.
-####	- %edi contains the Scheme free pointer.
-####	- %ebp contains the Scheme datum mask.
-####	The dynamic link (when needed) is in Registers[REGBLOCK_COMPILER_TEMP]
-####	Values are returned in Registers[REGBLOCK_VAL]
-####
-####	All other registers (%eax, %edx, %ecx, %ebx) are available to
-####	the compiler.  A caller-saves convention is used, so the
-####	registers need not be preserved by subprocedures.
+### Intel i386 assembly language part of the compiled code interface.
+### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+### documentation.
+###
+### This m4 source expands into either Unix (gas) source or DOS
+### (masm) source.
+###
+### NOTE:
+###	Assumptions:
+###
+###	0) Segment registers and paging are set up for 32-bit "flat"
+###	operation.
+###
+###	1) All registers (except double floating point registers) and
+###	stack locations hold a C long object.
+###
+###	2) The C compiler divides registers into three groups:
+###	- Linkage registers, used for procedure calls and global
+###	references.  On i386 (gcc and Zortech C): %ebp, %esp.
+###	- super temporaries, not preserved accross procedure calls and
+###	always usable. On i386 (gcc and Zortech C): %eax, %edx, %ecx.
+###	- preserved registers saved by the callee if they are written.
+###	On i386 (gcc and Zortech C): all others (%ebx, %esi, %edi).
+###
+###	3) Arguments, if passed on a stack, are popped by the caller
+###	or by the procedure return instruction (as on the VAX).  Thus
+###	most "leaf" procedures need not worry about them.  On i386,
+###	arguments are passed on the stack.
+###
+###	4) There is a hardware or software maintained stack for
+###	control.  The procedure calling sequence may leave return
+###	addresses in registers, but they must be saved somewhere for
+###	nested calls and recursive procedures.  On i386: saved on
+###	the stack by the CALL instruction.
+###
+###	5) C procedures return long values in a super temporary
+###	register.  Two word structures are returned differently,
+###	depending on the C compiler used.  When using GCC, two-word
+###	structures are returned in {%eax, %edx}.  When using a
+###	compiler compatible with MicroSoft's C compiler (e.g. Zortech
+###	C), two word structures are returned by returning in %eax the
+###	address of a structure allocated statically.  If the Scheme
+###	system ever becomes reentrant, this will have to change.
+###	Note the assumption below is that all DOS compilers are
+###	compatible with MicroSoft C.
+###
+###	6) Floating point registers are not preserved by this
+###	interface.  The interface is only called from the Scheme
+###	interpreter, which does not use floating point data.  Thus
+###	although the calling convention would require us to preserve
+###	them, they contain garbage.
+###
+### Compiled Scheme code uses the following register convention:
+###	- %esp containts the Scheme stack pointer, not the C stack
+###	pointer.
+###	- %esi contains a pointer to the Scheme interpreter's "register"
+###	block.  This block contains the compiler's copy of MemTop,
+###	the interpreter's registers (val, env, exp, etc.),
+###	temporary locations for compiled code, and the addresses
+###	of various hooks defined in this file.
+###	- %edi contains the Scheme free pointer.
+###	- %ebp contains the Scheme datum mask.
+###	The dynamic link (when needed) is in Registers[REGBLOCK_COMPILER_TEMP]
+###	Values are returned in Registers[REGBLOCK_VAL]
+###
+###	All other registers (%eax, %edx, %ecx, %ebx) are available to
+###	the compiler.  A caller-saves convention is used, so the
+###	registers need not be preserved by subprocedures.
 
 ####	Utility macros and definitions
 
@@ -467,7 +467,7 @@ define_c_label(asm_interrupt_dlink)
 	jmp	scheme_to_interface_call
 
 ###
-###	This sames even more instructions than primitive_apply
+###	This saves even more instructions than primitive_apply
 ###	When the PC is not available.  Instead of jumping here,
 ###	a call instruction is used, and the longword offset to
 ###	the primitive object follows the call instruction.
