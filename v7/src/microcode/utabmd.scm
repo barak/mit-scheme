@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.50 1989/10/26 07:49:55 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.51 1990/01/29 21:14:15 jinx Exp $
 
 (declare (usual-integrations))
 
@@ -463,6 +463,7 @@
 	       #F					;5A
 	       COMPILER-LINK-CACHES-RESTART 		;5B
 	       HARDWARE-TRAP				;5C
+	       INTERNAL-APPLY-VAL			;5D
 	       ))
 
 ;;; [] Errors
@@ -586,4 +587,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.50 1989/10/26 07:49:55 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.51 1990/01/29 21:14:15 jinx Exp $"
