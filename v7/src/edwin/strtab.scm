@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.41 1989/04/28 22:53:31 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.42 1989/08/11 11:12:19 cph Rel $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -148,9 +148,32 @@
 	    (cons (string-table-entry-string
 		   (vector-ref (string-table-vector table) index))
 		  (loop (1+ index))))))
-    (lambda ()
-      '())))
+    (lambda () '())))
 
+(define (string-table-apropos table string)
+  (let ((end (string-table-size table)))
+    (let loop ((index 0))
+      (if (= index end)
+	  '()
+	  (let ((entry (vector-ref (string-table-vector table) index)))
+	    (if (substring-ci? string (string-table-entry-string entry))
+		(cons (string-table-entry-value entry) (loop (1+ index)))
+		(loop (1+ index))))))))
+
+(define (substring-ci? string1 string2)
+  (or (string-null? string1)
+      (let ((char (string-ref string1 0))
+	    (end1 (string-length string1))
+	    (end2 (string-length string2)))
+	(let loop ((start2 0))
+	  (let ((index (substring-find-next-char-ci string2 start2 end2 char)))
+	    (and index
+		 (if (= (-1+ end1)
+			(substring-match-forward-ci string1 1 end1
+						    string2 (1+ index) end2))
+		     index
+		     (loop (1+ index)))))))))
+
 (define (%string-table-complete table string
 				if-unique if-not-unique if-not-found)
   (let ((size (string-length string))
@@ -201,28 +224,3 @@
 	  (if (= index table-size)
 	      (if-not-found)
 	      (perform-search index)))))))
-
-(define (string-table-apropos table string)
-  (let ((end (string-table-size table)))
-    (let loop ((index 0))
-      (if (= index end)
-	  '()
-	  (let ((entry (vector-ref (string-table-vector table) index)))
-	    (if (substring-ci? string (string-table-entry-string entry))
-		(cons (string-table-entry-value entry) (loop (1+ index)))
-		(loop (1+ index))))))))
-
-(define (substring-ci? string1 string2)
-  (or (string-null? string1)
-      (let ((char (string-ref string1 0))
-	    (end1 (string-length string1))
-	    (end2 (string-length string2)))
-	(define (loop start2)
-	  (let ((index (substring-find-next-char-ci string2 start2 end2 char)))
-	    (and index
-		 (if (= (-1+ end1)
-			(substring-match-forward-ci string1 1 end1
-						    string2 (1+ index) end2))
-		     index
-		     (loop (1+ index))))))
-	(loop 0))))
