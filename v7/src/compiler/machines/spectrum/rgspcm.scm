@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rgspcm.scm,v 4.2 1991/05/07 17:43:26 jinx Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/rgspcm.scm,v 4.2 1991/05/06 23:17:03 jinx Exp $
+$Id: rgspcm.scm,v 4.3 1993/07/01 03:21:22 gjr Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,14 +49,21 @@ MIT in each case. |#
 (define (special-primitive-handler primitive)
   (let ((entry (assq primitive special-primitive-handlers)))
     (and entry
-	 (cdr entry))))
+	 ((cdr entry)))))
 
 (define special-primitive-handlers
   '())
 
 (define (define-special-primitive/standard primitive)
   (define-special-primitive-handler primitive
-    rtl:make-invocation:special-primitive))
+    (lambda ()
+      rtl:make-invocation:special-primitive)))
+
+(define (define-special-primitive/if-open-coding primitive)
+  (define-special-primitive-handler primitive
+    (lambda ()
+      (and compiler:open-code-primitives?
+	   rtl:make-invocation:special-primitive))))
 
 (define-special-primitive/standard '&+)
 (define-special-primitive/standard '&-)
@@ -73,3 +79,6 @@ MIT in each case. |#
 (define-special-primitive/standard 'negative?)
 (define-special-primitive/standard 'quotient)
 (define-special-primitive/standard 'remainder)
+(define-special-primitive/if-open-coding 'vector-cons)
+(define-special-primitive/if-open-coding 'string-allocate)
+(define-special-primitive/if-open-coding 'floating-vector-cons)
