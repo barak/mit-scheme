@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: contin.scm,v 14.12 2003/02/14 18:28:32 cph Exp $
+$Id: contin.scm,v 14.13 2005/03/29 05:00:26 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1992,1999,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -145,10 +145,7 @@ USA.
 	   #t
 	   (continuation? (entity-procedure object)))))
 
-(define (guarantee-continuation continuation)
-  (if (not (continuation? continuation))
-      (error:wrong-type-argument continuation "continuation" #f))
-  continuation)
+(define-guarantee continuation "continuation")
 
 (define-integrable (continuation/invocation-method continuation)
   (entity-procedure continuation))
