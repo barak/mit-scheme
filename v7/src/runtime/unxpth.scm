@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.3 1987/07/18 03:02:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.4 1987/07/19 21:43:50 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -200,7 +200,7 @@
       (substring string start end)))
 
 (define (string-components string delimiter)
-  (substring-components string start end delimiter))
+  (substring-components string 0 (string-length string) delimiter))
 
 (define (substring-components string start end delimiter)
   (define (loop start)
