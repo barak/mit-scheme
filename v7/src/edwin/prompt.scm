@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.190 2000/10/30 15:39:10 cph Exp $
+;;; $Id: prompt.scm,v 1.191 2001/05/07 18:00:20 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; User Prompting
 ;;; Package: (edwin prompt)
@@ -589,17 +590,14 @@ a repetition of this command will exit."
 	      (editor-failure))))))))
 
 (define (verify-final-value string error-continuation)
-  (let ((verifier (options/verify-final-value *options*)))
-    (if verifier
-	(bind-condition-handler (list condition-type:error)
-	    (lambda (condition)
-	      condition
-	      (editor-beep)
-	      (temporary-typein-message " [Error]")
-	      (error-continuation unspecific))
-	  (lambda ()
-	    (verifier string)))
-	#t)))
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition)
+	condition
+	(editor-beep)
+	(temporary-typein-message " [Error]")
+	(error-continuation unspecific))
+    (lambda ()
+      ((options/verify-final-value *options*) string))))
 
 ;;;; Completion Primitives
 
@@ -621,14 +619,24 @@ a repetition of this command will exit."
 	    (lambda ()
 	      (complete-string original
 		(lambda (string)
-		  (set! effected? #t)
-		  (if (not (string=? string original))
-		      (set-typein-string! string update?))
-		  (if (if (case-insensitive-completion?)
-			  (string-ci=? string original)
-			  (string=? string original))
-		      'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
-		      'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION))
+		  (let ((verified?
+			 (if (eq? (ref-mode-object minibuffer-local-must-match)
+				  (options/mode *options*))
+			     ((options/verify-final-value *options*) string)
+			     #t)))
+		    (set! effected? #t)
+		    (if (not (string=? string original))
+			(set-typein-string! string update?))
+		    (if verified?
+			(if (if (case-insensitive-completion?)
+				(string-ci=? string original)
+				(string=? string original))
+			    'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+			    'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION)
+			(begin
+			  (editor-beep)
+			  (temporary-typein-message " [No match]")
+			  'NO-MATCH))))
 		(lambda (string list-completions)
 		  (let ((verified?
 			 ((options/verify-final-value *options*) string)))
