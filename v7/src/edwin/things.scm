@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.80 1991/04/21 00:52:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.81 1991/10/02 09:00:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -186,7 +186,7 @@
 	    (values 0
 		    (- (integer-divide-remainder qr1)
 		       (integer-divide-remainder qr2)))))
-      (values 0 (- c2 c1))))
+      (values 0 (- c1 c2))))
 
 (define (insert-horizontal-space target-column #!optional point tab-width)
   (let* ((point
