@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.14 2000/04/06 03:25:19 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.15 2000/04/06 22:05:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -290,10 +290,17 @@
   "RMAIL")
 
 (define (rmail-primary-inbox-list)
-  (error "Unimplemented procedure:" 'RMAIL-PRIMARY-INBOX-LIST))
+  (let ((l (variable-value (name->variable 'RMAIL-PRIMARY-INBOX-LIST 'ERROR))))
+    (if (null? l)
+	(os/rmail-primary-inbox-list
+	 (let ((d (os/rmail-spool-directory)))
+	   (if d
+	       (list (string-append d (current-user-name)))
+	       '())))
+	l)))
 
 (define (rmail-spool-directory)
-  (error "Unimplemented procedure:" 'RMAIL-SPOOL-DIRECTORY))
+  (os/rmail-spool-directory))
 
 (define (read-rmail-inbox folder pathname rename?)
   (let ((pathname
