@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.71 2000/05/19 18:06:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.72 2000/05/19 18:21:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -123,7 +123,7 @@ May be called with an IMAIL folder URL as argument;
 		    (associate-imail-with-buffer buffer folder #f)
 		    buffer))))
 	 (select-message folder
-			 (or (first-unseen-message folder)
+			 (or (navigator/first-unseen-message folder)
 			     (selected-message #f buffer))
 			 #t)
 	 buffer)))))
@@ -319,7 +319,7 @@ DEL	Scroll to previous screen of this message.
 	  (select-message
 	   folder
 	   (or (selected-message #f buffer)
-	       (first-unseen-message folder))
+	       (navigator/first-unseen-message folder))
 	   #t)))))
 
 (define (imail-kill-buffer buffer)
@@ -345,7 +345,7 @@ DEL	Scroll to previous screen of this message.
   ()
   (lambda ()
     (let ((folder (selected-folder)))
-      (select-message folder (last-message folder)))))
+      (select-message folder (navigator/last-message folder)))))
 
 (define-command imail-next-message
   "Show following message whether deleted or not.
@@ -433,8 +433,8 @@ With prefix argument N moves backward N messages with these flags."
       (call-with-values
 	  (lambda ()
 	    (if (< delta 0)
-		(values (- delta) previous-message "previous")
-		(values delta next-message "next")))
+		(values (- delta) navigator/previous-message "previous")
+		(values delta navigator/next-message "next")))
 	(lambda (n step direction)
 	  (let ((folder (selected-folder))
 		(msg (selected-message)))
@@ -460,7 +460,7 @@ With prefix argument N moves backward N messages with these flags."
 		       selector
 		       (loop (message-index selector))))
 		 ((not selector)
-		  (last-message folder))
+		  (navigator/last-message folder))
 		 ((and (exact-integer? selector)
 		       (<= 0 selector)
 		       (< selector (folder-length folder)))
@@ -577,7 +577,7 @@ With prefix argument N moves backward N messages with these flags."
 	     (if (or (default-object? buffer) (not buffer))
 		 (selected-buffer)
 		 buffer)))
-	(let ((method (buffer-get buffer 'IMAIL-MESSAGE-METHOD #f)))
+	(let ((method (navigator/selected-message)))
 	  (if method
 	      (method buffer)
 	      (let ((buffer (chase-imail-buffer buffer)))
@@ -658,6 +658,54 @@ With prefix argument N moves backward N messages with these flags."
 			  headers)))
 	headers)))
 
+;;;; Navigation hooks
+
+(define (navigator/first-unseen-message folder)
+  ((or (imail-navigator imail-navigators/first-unseen-message)
+       first-unseen-message)
+   folder))
+
+(define (navigator/first-message folder)
+  ((or (imail-navigator imail-navigators/first-message)
+       first-message)
+   folder))
+
+(define (navigator/last-message folder)
+  ((or (imail-navigator imail-navigators/last-message)
+       last-message)
+   folder))
+
+(define (navigator/next-message message #!optional predicate)
+  ((or (imail-navigator imail-navigators/next-message)
+       next-message)
+   message
+   (if (default-object? predicate) #f predicate)))
+
+(define (navigator/previous-message message)
+  ((or (imail-navigator imail-navigators/previous-message)
+       previous-message)
+   message
+   (if (default-object? predicate) #f predicate)))
+
+(define (imail-navigator accessor)
+  (let ((navigators (buffer-get (selected-buffer) 'IMAIL-NAVIGATORS #f)))
+    (and navigators
+	 (accessor navigators))))
+
+(define (navigator/selected-message)
+  (let ((navigators (buffer-get (selected-buffer) 'IMAIL-NAVIGATORS #f)))
+    (and navigators
+	 (imail-navigators/selected-message navigators))))
+
+(define-structure (imail-navigators safe-accessors
+				    (conc-name imail-navigators/))
+  (first-unseen-message #f read-only #t)
+  (first-message #f read-only #t)
+  (last-message #f read-only #t)
+  (next-message #f read-only #t)
+  (previous-message #f read-only #t)
+  (selected-message #f read-only #t))
+
 ;;;; Message deletion
 
 (define-command imail-delete-message
@@ -687,7 +735,8 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
     (let ((message (selected-message)))
       (if (message-deleted? message)
 	  (undelete-message message)
-	  (let ((message (previous-message message message-deleted?)))
+	  (let ((message
+		 (navigator/previous-message message message-deleted?)))
 	    (if (not message)
 		(editor-error "No previous deleted message."))
 	    (undelete-message message)
@@ -701,10 +750,10 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 	  (message
 	   (let ((message (selected-message)))
 	     (if (message-deleted? message)
-		 (or (next-message message message-undeleted?)
-		     (previous-message message message-undeleted?)
-		     (next-message message)
-		     (previous-message message))
+		 (or (navigator/next-message message message-undeleted?)
+		     (navigator/previous-message message message-undeleted?)
+		     (navigator/next-message message)
+		     (navigator/previous-message message))
 		 message))))
       (expunge-deleted-messages folder)
       (select-message folder message))))
@@ -755,7 +804,7 @@ Completion is performed over known flags when reading."
 	(close-folder folder*))
       (select-message folder
 		      (or (selected-message #f)
-			  (first-unseen-message folder))))))
+			  (navigator/first-unseen-message folder))))))
 
 (define-command imail-output
   "Append this message to a specified folder."
@@ -974,22 +1023,22 @@ Currently useful only for IMAP folders."
   (lambda ()
     (let ((folder (selected-folder)))
       (let ((count (folder-modification-count folder))
-	    (last (last-message folder)))
+	    (last (navigator/last-message folder)))
 	(probe-folder folder)
 	(if (> (folder-modification-count folder) count)
 	    (select-message
 	     folder
 	     (or (cond ((not last)
-			(first-message folder))
+			(navigator/first-message folder))
 		       ((message-attached? last folder)
-			(next-message last))
+			(navigator/next-message last))
 		       ((message-index last)
 			=> (lambda (index)
 			     (let ((index (+ index 1)))
 			       (if (< index (folder-length folder))
 				   (get-message folder index)
-				   (first-unseen-message folder)))))
-		       (else (first-unseen-message folder)))
+				   (navigator/first-unseen-message folder)))))
+		       (else (navigator/first-unseen-message folder)))
 		 (selected-message #f)))
 	    (message "(No changes to mail folder)"))))))
 
