@@ -3,14 +3,13 @@
 (declare (usual-integrations)
 	 (integrate-external "/scheme/700/runtime/hash"))
 
-(using-syntax syntax-table/system-internal
-  (define foo-1 'invalid-rehash)
-  (define foo-2 'invalid-bucket)
-  (define foo-3 'unhash-table)
-  (define (foo)
-    (set! foo-1 3)
-    (set! foo-2 3)
-    (set! foo-3 3))
+(define foo-1 'invalid-rehash)
+(define foo-2 'invalid-bucket)
+(define foo-3 'unhash-table)
+(define (foo)
+  (set! foo-1 3)
+  (set! foo-2 3)
+  (set! foo-3 3))
 
 (define *do-validation?* #T)
 
@@ -123,5 +122,3 @@
 	      (let ((result (old-unhash number table)))
 		(validate table 'unhash #T)
 		result)))))
-	      
-)

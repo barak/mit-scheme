@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.9 2000/02/21 22:10:33 cph Exp $
+;;; $Id: instance.scm,v 1.10 2001/12/19 20:50:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
 ;;;
@@ -89,6 +89,9 @@
 	  `(IF INITIALIZATION
 	       ,(generator '((INITIALIZATION INSTANCE)))
 	       ,(generator '())))))))
+
+(define-macro (ucode-type name)
+  (apply microcode-type name))
 
 (define-macro (instance-constructor-3 test arity initialization ixs)
   `(LETREC

@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.2 1999/01/02 06:19:10 cph Exp $
+$Id: ed-ffi.scm,v 1.3 2001/12/19 20:50:01 cph Exp $
 
-Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+Copyright (c) 1997, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,16 +16,17 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
  '#(
-    ("class"	(sos class)	system-global-syntax-table)
-    ("instance"	(sos instance)	syntax-table/system-internal)
-    ("macros"	(sos macros)	system-global-syntax-table)
-    ("method"	(sos method)	system-global-syntax-table)
-    ("printer"	(sos printer)	system-global-syntax-table)
-    ("slot"	(sos slot)	system-global-syntax-table)))
+    ("class"	(sos class))
+    ("instance"	(sos instance))
+    ("macros"	(sos macros))
+    ("method"	(sos method))
+    ("printer"	(sos printer))
+    ("slot"	(sos slot))))

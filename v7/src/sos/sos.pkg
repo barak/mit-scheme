@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sos.pkg,v 1.9 2000/02/21 23:13:11 cph Exp $
+$Id: sos.pkg,v 1.10 2001/12/19 20:50:08 cph Exp $
 
 Copyright (c) 1995-2000 Massachusetts Institute of Technology
 
@@ -29,7 +29,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (sos slot)
   (files "slot")
-  (parent ())
+  (parent (sos))
   (export ()
 	  set-slot-value!
 	  slot-accessor
@@ -58,7 +58,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (sos class)
   (files "class")
-  (parent ())
+  (parent (sos))
   (export ()
 	  <%record>
 	  <bignum>
@@ -116,7 +116,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (sos instance)
   (files "instance")
-  (parent ())
+  (parent (sos))
   (export ()
 	  initialize-instance
 	  instance-class
@@ -127,7 +127,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (sos method)
   (files "method")
-  (parent ())
+  (parent (sos))
   (export ()
 	  <chained-method>
 	  <computed-emp>
@@ -162,11 +162,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-package (sos printer)
   (files "printer")
-  (parent ())
+  (parent (sos))
   (export ()
 	  write-instance
 	  write-instance-helper))
 
 (define-package (sos macros)
   (files "macros")
-  (parent ()))
+  (parent (sos)))

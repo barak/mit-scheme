@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.38 2001/10/10 05:10:33 cph Exp $
+$Id: option.scm,v 14.39 2001/12/19 20:50:44 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -48,13 +48,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(load-latest (merge-pathnames file
 					      (library-directory-pathname ""))
 			     (make-load-environment)
-			     system-global-syntax-table
+			     'DEFAULT
 			     #f))
 	      (values *options* *parent*)))
 	find-option))
 
     (define (make-load-environment)
-      (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
+      (extend-interpreter-environment system-global-environment))
 
     (fluid-let ((*parser-canonicalize-symbols?* #t))
       (if (memq name loaded-options)
@@ -122,7 +122,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			      (lambda ()
 				(load pathname
 				      environment
-				      syntax-table/system-internal
+				      'DEFAULT
 				      #t))))))))))
 		files)
       (flush-purification-queue!)

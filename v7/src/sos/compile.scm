@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.4 2001/08/15 03:10:42 cph Exp $
+;;; $Id: compile.scm,v 1.5 2001/12/19 20:49:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999, 2001 Massachusetts Institute of Technology
 ;;;
@@ -24,7 +24,7 @@
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (compile-file "class")
-    (compile-file "instance" '() syntax-table/system-internal)
+    (compile-file "instance")
     (compile-file "macros")
     (compile-file "method")
     (compile-file "printer")
