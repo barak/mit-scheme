@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.111 1994/03/08 21:00:10 cph Exp $
+;;;	$Id: curren.scm,v 1.112 1994/05/13 20:26:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -362,8 +362,13 @@
 (define (bury-buffer buffer)
   (bufferset-bury-buffer! (current-bufferset) buffer))
 
-(define (find-buffer name)
-  (bufferset-find-buffer (current-bufferset) name))
+(define (find-buffer name #!optional error?)
+  (let ((buffer (bufferset-find-buffer (current-bufferset) name)))
+    (if (and (not buffer)
+	     (not (default-object? error?))
+	     error?)
+	(editor-error "No buffer named" name))
+    buffer))
 
 (define (create-buffer name)
   (bufferset-create-buffer (current-bufferset) name))
