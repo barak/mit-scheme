@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.88 2000/05/22 20:57:22 cph Exp $
+;;; $Id: imail-top.scm,v 1.89 2000/05/22 22:41:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1144,26 +1144,31 @@ Selects the first new message if any new mail.
 Currently useful only for IMAP folders."
   ()
   (lambda ()
-    (let ((folder (selected-folder)))
-      (let ((count (folder-modification-count folder))
-	    (last (navigator/last-message folder)))
-	(probe-folder folder)
-	(if (> (folder-modification-count folder) count)
-	    (select-message
-	     folder
-	     (or (cond ((not last)
-			(navigator/first-message folder))
-		       ((message-attached? last folder)
-			(navigator/next-message last))
-		       ((message-index last)
-			=> (lambda (index)
-			     (let ((index (+ index 1)))
-			       (if (< index (folder-length folder))
-				   (get-message folder index)
-				   (navigator/first-unseen-message folder)))))
-		       (else (navigator/first-unseen-message folder)))
-		 (selected-message #f)))
-	    (message "(No changes to mail folder)"))))))
+    (let* ((folder (selected-folder))
+	   (count (folder-modification-count folder))
+	   ;; NAVIGATOR/LAST-MESSAGE must run _after_
+	   ;; FOLDER-MODIFICATION-COUNT as it can potentially change
+	   ;; its value.  (E.g. when IMAP folder is closed, this
+	   ;; reopens it, reads new information from the server, and
+	   ;; changes the modification count.)
+	   (last (navigator/last-message folder)))
+      (probe-folder folder)
+      (if (> (folder-modification-count folder) count)
+	  (select-message
+	   folder
+	   (or (cond ((not last)
+		      (navigator/first-message folder))
+		     ((message-attached? last folder)
+		      (navigator/next-message last))
+		     ((message-index last)
+		      => (lambda (index)
+			   (let ((index (+ index 1)))
+			     (if (< index (folder-length folder))
+				 (get-message folder index)
+				 (navigator/first-unseen-message folder)))))
+		     (else (navigator/first-unseen-message folder)))
+	       (selected-message #f)))
+	  (message "(No changes to mail folder)")))))
 
 (define-command imail-save-folder
   "Save the currently selected IMAIL folder."
