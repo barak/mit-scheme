@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.42 1992/11/30 19:58:43 cph Exp $
+$Id: x11base.c,v 1.43 1992/12/10 19:11:20 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -250,7 +250,9 @@ DEFUN (deallocate_x_colormap, (xcm), struct xcolormap * xcm)
 /* Error Handlers */
 
 static int
-DEFUN (x_io_error_handler, (display), Display * display)
+DEFUN (x_io_error_handler, (display, error_event),
+       Display * display AND
+       XErrorEvent * error_event)
 {
   fprintf (stderr, "\nX IO Error\n");
   error_external_return ();
@@ -511,22 +513,40 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
   return (xw);
 }
 
+static jmp_buf x_close_window_jmp_buf;
+
+static int
+DEFUN (x_close_window_io_error, (display, error_event),
+       Display * display AND
+       XErrorEvent * error_event)
+{
+  longjmp (x_close_window_jmp_buf, 1);
+}
+
 static void
 DEFUN (x_close_window, (xw), struct xwindow * xw)
 {
   Display * display = (XW_DISPLAY (xw));
   ((x_window_table . items) [XW_ALLOCATION_INDEX (xw)]) = 0;
-  {
-    x_deallocator_t deallocator = (XW_DEALLOCATOR (xw));
-    if (deallocator != 0)
-      (*deallocator) (xw);
-  }
-  {
-    XFontStruct * font = (XW_FONT (xw));
-    if (font != 0)
-      XFreeFont (display, font);
-  }
-  XDestroyWindow (display, (XW_WINDOW (xw)));
+  if ((setjmp (x_close_window_jmp_buf)) == 0)
+    {
+      XSetIOErrorHandler (x_close_window_io_error);
+      {
+	x_deallocator_t deallocator = (XW_DEALLOCATOR (xw));
+	if (deallocator != 0)
+	  (*deallocator) (xw);
+      }
+      {
+	XFontStruct * font = (XW_FONT (xw));
+	if (font != 0)
+	  XFreeFont (display, font);
+      }
+      XDestroyWindow (display, (XW_WINDOW (xw)));
+      /* Guarantee that the IO error occurs while the IO error handler
+	 is rebound, if at all. */
+      XFlush (display);
+    }
+  XSetIOErrorHandler (x_io_error_handler);
   free (xw);
 }
 
