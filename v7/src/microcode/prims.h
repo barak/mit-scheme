@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.39 1991/08/26 15:00:15 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.40 1992/01/20 13:20:01 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,9 +40,9 @@ MIT in each case. */
 
 /* Definition of primitives. */
 
-#define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc) \
-extern SCHEME_OBJECT fn_name ();					\
-SCHEME_OBJECT fn_name ()
+#define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc)	\
+extern SCHEME_OBJECT EXFUN (fn_name, (void));				\
+SCHEME_OBJECT DEFUN_VOID (fn_name)
 
 /* Can be used for `max_args' in `DEFINE_PRIMITIVE' to indicate that
    the primitive has no upper limit on its arity.  */
@@ -59,7 +59,7 @@ SCHEME_OBJECT fn_name ()
 #define PRIMITIVE_RETURN(value)	return (value)
 #define PRIMITIVE_ABORT abort_to_interpreter
 
-extern void canonicalize_primitive_context ();
+extern void EXFUN (canonicalize_primitive_context, (void));
 #define PRIMITIVE_CANONICALIZE_CONTEXT canonicalize_primitive_context
 
 /* Various utilities */
