@@ -2,6 +2,7 @@
 
 prefix=`/scheme/v7/dist/release-prefix`
 tldir=${prefix}/doc
+rm -rf ${prefix}
 mkdir ${prefix}
 mkdir ${tldir}
 
