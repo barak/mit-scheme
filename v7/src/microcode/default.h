@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.22 1987/04/16 02:20:58 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.23 1987/06/18 19:18:57 jinx Exp $
  *
  * This file contains default definitions for some hooks which 
  * various machines require.  These machines define these hooks
@@ -204,6 +204,10 @@ extern Pointer Swap_Temp;
 
 #ifndef Band_Load_Hook
 #define Band_Load_Hook()
+#endif
+
+#ifndef Band_Dump_Exit_Hook
+#define Band_Dump_Exit_Hook()
 #endif
 
 #ifndef Fasdump_Exit_Hook
