@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.8 1989/12/10 00:49:54 cph Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.9 1990/02/06 16:15:20 jinx Exp $
 ###
-###	Copyright (c) 1989 Massachusetts Institute of Technology
+###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -67,10 +67,15 @@
 ####
 ####	5) C procedures return long values in a super temporary
 ####    register.  Two word structures are returned in super temporary
-####    registers as well.  On MC68K: d0 is used for long returns.  GCC
-####    returns two word structures in d0/d1, but many other compilers
-####    return the address of the structure in a0.  The code below
-####    must be changed if structures are not returned in d0/d1.
+####    registers as well.  On MC68K: d0 is used for long returns.
+####    Since there are two methods for returning structures on MC68K,
+####    there is a flag to choose a mechanism:
+####    o  GCC returns two word structures in d0/d1 (set flag GCC in
+####       M4_MACHINE_SWITCHES in m.h)
+####    o  Other compilers return the address of the structure in d0
+####	o  The HP compiler requires that the address of this structure
+####	   be in a1 before the procedure is called (set flag HP in
+####	   M4_MACHINE_SWITCHES in m.h)
 ####
 ####	6) Floating point registers are not preserved by this
 ####	interface.  The interface is only called from the Scheme
@@ -108,6 +113,31 @@ extern_c_label($1):')
 define(define_debugging_label,
 `	global	$1
 $1:')
+
+# Call a SCHEME_UTILITY (see cmpint.c) and then dispatch to the
+# interface procedure requested with the data to be passed to the
+# procedure in d1.
+#
+# NOTE: Read introductory note about GCC and HP switches
+
+define(allocate_utility_result,
+	`ifdef(`HP',
+	      `subq.l	&8,%sp
+	       mov.l	%sp,%a1',
+	      `')')
+
+
+define(utility_call,
+       `jsr	(%a0)		# call C procedure
+	ifdef(`HP',
+	      `lea	eval(($1+2)*4)(%sp),%sp',
+              `lea	eval($1*4)(%sp),%sp')
+	mov.l	%d0,%a0
+	ifdef(`GCC',
+              `',
+	      `mov.l	4(%a0),%d1
+	       mov.l	0(%a0),%a0')
+	jmp(%a0)')
 
 # Scheme object representation.  Must match object.h
 
@@ -231,20 +261,14 @@ define_debugging_label(scheme_to_interface)
 	nop
 define_debugging_label(scheme_to_interface_proceed)')
 	switch_to_C_registers()
+	allocate_utility_result()
 	mov.l	%d4,-(%sp)		# Push arguments to scheme utility
 	mov.l	%d3,-(%sp)
 	mov.l	%d2,-(%sp)
 	mov.l	%d1,-(%sp)
 	lea	extern_c_label(utility_table),%a0
 	mov.l	(0,%a0,%d0.w*4),%a0	# C-written Scheme utility
-	jsr	(%a0)
-	lea	16(%sp),%sp		# Pop arguments to scheme utility
-
-### On return, %d0 contains the address of interface_to_scheme or
-### interface_to_C.  %d1 contains the appropriate data for them.
-
-	mov.l	%d0,%a0
-	jmp	(%a0)
+	utility_call(4)                 # 4 arguments
 
 ### The data in %d1 is the address of an entry point to invoke.
 
@@ -344,16 +368,10 @@ define_c_label(asm_interrupt_dlink)
 # Bum this one for speed.
 define_c_label(asm_primitive_apply)
 	switch_to_C_registers()
+	allocate_utility_result()
 	mov.l	%d1,-(%sp)		# only one argument
 	mov.l	extern_c_label(utility_table)+HEX(12)*4,%a0
-	jsr	(%a0)
-	addq.l	&4,%sp			# pop the argument
-
-### On return, %d0 contains the address of interface_to_scheme or
-### interface_to_C.  %d1 contains the appropriate data for them.
-
-	mov.l	%d0,%a0
-	jmp	(%a0)
+	utility_call(1)                 # one argument
 
 	set	tc_compiled_entry,HEX(28)
 	set	offset_apply,HEX(14)
