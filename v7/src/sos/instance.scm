@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: instance.scm,v 1.1 1997/06/04 06:08:35 cph Exp $
+;;; $Id: instance.scm,v 1.2 1997/06/04 22:28:54 cph Exp $
 ;;;
-;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;; This material was developed by the Scheme project at the
 ;;; Massachusetts Institute of Technology, Department of Electrical
@@ -156,3 +156,18 @@
 
 (define (instance-class instance)
   (dispatch-tag-contents (tagged-vector-tag instance)))
+
+(define (instance-predicate class)
+  (guarantee-class class 'INSTANCE-PREDICATE)
+  (let ((predicate (make-generic-procedure 1)))
+    (let ((add
+	   (lambda (c v)
+	     (add-method predicate
+			 (make-method (list c) (lambda (object) object v))))))
+      (add <object> #f)
+      (add class #t))
+    predicate))
+
+(define (instance-of? object class)
+  (and (subclass? (object-class object) class)
+       #t))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sos.pkg,v 1.1 1997/06/04 06:09:57 cph Exp $
+$Id: sos.pkg,v 1.2 1997/06/04 22:28:49 cph Exp $
 
 Copyright (c) 1995-97 Massachusetts Institute of Technology
 
@@ -116,8 +116,6 @@ MIT in each case. |#
 	  class-slots
 	  class?
 	  dispatch-tag->class
-	  instance-of?
-	  instance-predicate
 	  make-class
 	  make-trivial-subclass
 	  object-class
@@ -131,6 +129,8 @@ MIT in each case. |#
   (export ()
 	  instance-class
 	  instance-constructor
+	  instance-of?
+	  instance-predicate
 	  instance?))
 
 (define-package (sos method)

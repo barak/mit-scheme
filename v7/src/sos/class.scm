@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.1 1997/06/04 06:08:13 cph Exp $
+;;; $Id: class.scm,v 1.2 1997/06/04 22:29:00 cph Exp $
 ;;;
-;;; Copyright (c) 1995-96 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
 ;;; This material was developed by the Scheme project at the
 ;;; Massachusetts Institute of Technology, Department of Electrical
@@ -401,11 +401,3 @@
 		 <generic-procedure>)
 
 (define <class> (object-class <object>))
-
-(define (instance-predicate class)
-  (guarantee-class class 'INSTANCE-PREDICATE)
-  (lambda (object) (instance-of? object class)))
-
-(define (instance-of? object class)
-  (and (subclass? (object-class object) class)
-       #t))
