@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.16 2001/10/05 15:43:04 cph Exp $
+$Id: rexp.scm,v 1.17 2001/10/05 15:54:35 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
