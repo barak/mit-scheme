@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.7 1993/10/30 03:01:30 gjr Exp $
+$Id: c.c,v 1.8 1993/10/30 17:53:48 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -207,7 +207,7 @@ DEFUN (declare_compiled_code,
     /* Wrap around */
     return (-1);
     
-  if (n_dispatch > compiled_entries_size)
+  if (n_dispatch >= compiled_entries_size)
   {
     struct compiled_entry_s * new_entries;
     unsigned long new_entries_size = ((compiled_entries_size == 0)
