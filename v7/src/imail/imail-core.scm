@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.102 2000/06/16 17:54:36 cph Exp $
+;;; $Id: imail-core.scm,v 1.103 2000/06/18 20:39:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -833,6 +833,13 @@
     (if entry
 	(cdr entry)
 	default)))
+
+(define (mime-body-disposition-filename body)
+  (let ((disposition (mime-body-disposition body)))
+    (and disposition
+	 (let ((entry (assq 'FILENAME (cdr disposition))))
+	   (and entry
+		(cdr entry))))))
 
 (define-method write-instance ((body <mime-body>) port)
   (write-instance-helper 'MIME-BODY body port 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.167 2000/06/16 18:18:10 cph Exp $
+;;; $Id: imail-top.scm,v 1.168 2000/06/18 20:39:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -172,6 +172,12 @@ Note that this variable does not affect subparts of multipart/alternative."
 Otherwise, simple dashed-line separators are used."
   #f
   boolean?)
+
+(define-variable imail-mime-attachment-directory
+  "Default directory in which to store MIME attachments.
+Either #F or a pathname."
+  #f
+  (lambda (x) (or (not x) (string? x) (pathname? x))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -735,7 +741,7 @@ With prefix argument N, removes FLAG from next N messages,
   "Append messages to this folder from a specified folder."
   (lambda ()
     (list (prompt-for-imail-url-string "Get messages from folder" #f
-				       'HISTORY 'IMAIL-INPUT
+				       'HISTORY 'IMAIL-INPUT-FROM-FOLDER
 				       'HISTORY-INDEX 0
 				       'REQUIRE-MATCH? #t)))
   (lambda (url-string)
@@ -842,49 +848,41 @@ With prefix argument, prompt even when point is on an attachment."
   (let ((filename
 	 (prompt-for-file
 	  "Save attachment as"
-	  (let ((filename (mime-body-disposition-filename body)))
+	  (let ((filename
+		 (let ((filename (mime-body-disposition-filename body)))
+		   (and filename
+			(filter-mime-attachment-filename filename)))))
 	    (and filename
 		 (list
 		  (merge-pathnames
-		   (filter-mime-attachment-filename filename)
-		   (or (buffer-get buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY #f)
-		       (buffer-default-directory buffer)))))))))
+		   filename
+		   (let ((directory
+			  (ref-variable imail-mime-attachment-directory
+					buffer)))
+		     (if directory
+			 (directory-pathname directory)
+			 (buffer-default-directory buffer)))))))))
+	(text?
+	 (let ((type (mime-body-type body)))
+	   (or (eq? type 'TEXT)
+	       (eq? type 'MESSAGE)))))
     (if (or (not (file-exists? filename))
 	    (prompt-for-yes-or-no? "File already exists; overwrite"))
 	(begin
-	  (call-with-binary-output-file filename
-	    (lambda (port)
-	      (let ((string (message-mime-body-part message selector #f))
-		    (text?
-		     (let ((type (mime-body-type body)))
-		       (or (eq? type 'TEXT)
-			   (eq? type 'MESSAGE)))))
-		(case (mime-body-one-part-encoding body)
-		  ((QUOTED-PRINTABLE)
-		   (decode-quoted-printable-string string port text?))
-		  ((BASE64)
-		   (decode-base64-string string port text?))
-		  (else
-		   (write-string string port))))))
-	  (buffer-put! buffer 'IMAIL-MIME-ATTACHMENT-DIRECTORY
-		       (directory-pathname filename))))))
-
-(define (decode-quoted-printable-string string port text?)
-  (let ((context (decode-quoted-printable:initialize port text?)))
-    (decode-quoted-printable:update context string 0 (string-length string))
-    (decode-quoted-printable:finalize context)))
-
-(define (decode-base64-string string port text?)
-  (let ((context (decode-base64:initialize port text?)))
-    (decode-base64:update context string 0 (string-length string))
-    (decode-base64:finalize context)))
-
-(define (mime-body-disposition-filename body)
-  (let ((disposition (mime-body-disposition body)))
-    (and disposition
-	 (let ((entry (assq 'FILENAME (cdr disposition))))
-	   (and entry
-		(cdr entry))))))
+	  ((if text? call-with-output-file call-with-binary-output-file)
+	   filename
+	   (lambda (port)
+	     (let ((string (message-mime-body-part message selector #f)))
+	       (case (mime-body-one-part-encoding body)
+		 ((QUOTED-PRINTABLE)
+		  (decode-quoted-printable-string string port text?))
+		 ((BASE64)
+		  (decode-base64-string string port text?))
+		 (else
+		  (write-string string port))))))
+	  (set-variable! imail-mime-attachment-directory
+			 (directory-pathname filename)
+			 buffer)))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -909,6 +907,16 @@ With prefix argument, prompt even when point is on an attachment."
   (char-set-invert
    (char-set-difference char-set:graphic
 			char-set:mime-attachment-filename-delimiters)))
+
+(define (decode-quoted-printable-string string port text?)
+  (let ((context (decode-quoted-printable:initialize port text?)))
+    (decode-quoted-printable:update context string 0 (string-length string))
+    (decode-quoted-printable:finalize context)))
+
+(define (decode-base64-string string port text?)
+  (let ((context (decode-base64:initialize port text?)))
+    (decode-base64:update context string 0 (string-length string))
+    (decode-base64:finalize context)))
 
 ;;;; Sending mail
 
@@ -942,8 +950,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
   ()
   (lambda () ((ref-command mail-other-window) #t)))
 
-;;; This procedure is invoked by M-x mail-yank-original in Mail mode.
-
+;; This procedure is invoked by M-x mail-yank-original in Mail mode.
 (define (imail-yank-original buffer mark)
   (let ((message (selected-message #t buffer)))
     (insert-header-fields message #f mark)
@@ -1195,9 +1202,9 @@ If it doesn't exist, it is created first."
 	     (make-peer-url
 	      (let ((history
 		     (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
-		(and (pair? history)
-		     (imail-parse-partial-url (car history))
-		     (imail-default-url)))
+		(if (pair? history)
+		    (imail-parse-partial-url (car history))
+		    (imail-default-url)))
 	      (url-base-name (imail-parse-partial-url from)))
 	     'HISTORY 'IMAIL-COPY-FOLDER-TARGET))))
   (lambda (from to)
@@ -1273,7 +1280,7 @@ If it doesn't exist, it is created first."
     (message
      (if (save-folder (selected-folder))
 	 "Folder saved"
-	 "(No changes need to be saved)"))))
+	 "No changes need to be saved."))))
 
 (define-command imail-toggle-message
   "Toggle between standard and raw formats for message."
@@ -1306,10 +1313,11 @@ A prefix argument says to prompt for a URL and append all messages
 	       (count (folder-modification-count folder)))
 	  (probe-folder folder)
 	  (if (> (folder-modification-count folder) count)
-	      (select-message folder
-			      (or (navigator/first-unseen-message folder)
-				  (selected-message #f)))
-	      (message "(No changes to mail folder)"))))))
+	      (let ((unseen (navigator/first-unseen-message folder)))
+		(if unseen
+		    (select-message folder unseen)
+		    (message "No unseen messages.")))
+	      (message "No changes to mail folder."))))))
 
 (define-command imail-disconnect
   "Disconnect the selected IMAIL folder from its server.
@@ -1368,37 +1376,32 @@ Negative argument means search in reverse."
   (parse-url-string string imail-get-default-url))
 
 (define (imail-get-default-url protocol)
-  (let ((do-imap
-	 (lambda ()
-	   (call-with-values
-	       (lambda ()
-		 (let ((server (ref-variable imail-default-imap-server #f)))
-		   (let ((colon (string-find-next-char server #\:)))
-		     (if colon
-			 (values
-			  (string-head server colon)
-			  (or (string->number (string-tail server (+ colon 1)))
-			      (error "Invalid port specification:" server)))
-			 (values server 143)))))
-	     (lambda (host port)
-	       (make-imap-url (or (ref-variable imail-default-user-id #f)
-				  (current-user-name))
-			      host
-			      port
-			      (ref-variable imail-default-imap-mailbox
-					    #f)))))))
-    (cond ((not protocol)
-	   (let ((folder
-		  (buffer-get (chase-imail-buffer (selected-buffer))
-			      'IMAIL-FOLDER
-			      #f)))
-	     (if folder
-		 (folder-url folder)
-		 (do-imap))))
-	  ((string-ci=? protocol "imap") (do-imap))
-	  ((string-ci=? protocol "rmail") (make-rmail-url "~/RMAIL"))
-	  ((string-ci=? protocol "umail") (make-umail-url "~/inbox.mail"))
-	  (else (error:bad-range-argument protocol)))))
+  (cond ((not protocol)
+	 (let ((folder (selected-folder #f)))
+	   (if folder
+	       (folder-url folder)
+	       (imail-get-default-url "imap"))))
+	((string-ci=? protocol "imap")
+	 (call-with-values
+	     (lambda ()
+	       (let ((server (ref-variable imail-default-imap-server #f)))
+		 (let ((colon (string-find-next-char server #\:)))
+		   (if colon
+		       (values
+			(string-head server colon)
+			(or (string->number (string-tail server (+ colon 1)))
+			    (error "Invalid port specification:" server)))
+		       (values server 143)))))
+	   (lambda (host port)
+	     (make-imap-url (or (ref-variable imail-default-user-id #f)
+				(current-user-name))
+			    host
+			    port
+			    (ref-variable imail-default-imap-mailbox
+					  #f)))))
+	((string-ci=? protocol "rmail") (make-rmail-url "~/RMAIL"))
+	((string-ci=? protocol "umail") (make-umail-url "~/inbox.mail"))
+	(else (error:bad-range-argument protocol))))
 
 (define (prompt-for-imail-url-string prompt default . options)
   (let ((get-option
@@ -1429,7 +1432,7 @@ Negative argument means search in reverse."
 	     (let ((url
 		    (ignore-errors
 		     (lambda ()
-		       (parse-url-string string imail-get-default-url)))))
+		       (imail-parse-partial-url string)))))
 	       (and (url? url)
 		    (url-exists? url))))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
@@ -1593,12 +1596,12 @@ Negative argument means search in reverse."
   (let ((buffer (imail-folder->buffer folder #t))
 	(message
 	 (cond ((message? selector)
-		(and (message-attached? selector folder)
-		     selector
-		     (let ((index (message-index selector)))
-		       (if (< index (folder-length folder))
-			   (get-message folder index)
-			   (last-message folder)))))
+		(if (message-attached? selector folder)
+		    selector
+		    (let ((index (message-index selector)))
+		      (if (and index (< index (folder-length folder)))
+			  (get-message folder index)
+			  (last-message folder)))))
 	       ((not selector)
 		(last-message folder))
 	       ((and (exact-integer? selector)
