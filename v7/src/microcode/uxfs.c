@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.12 1996/04/23 20:50:46 cph Exp $
+$Id: uxfs.c,v 1.13 1997/06/01 17:54:27 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,11 +46,11 @@ MIT in each case. */
 #include <linux/minix_fs.h>
 #include <linux/msdos_fs.h>
 #include <linux/nfs_fs.h>
-#if 0				/* Broken -- requires __KERNEL__ defined. */
-#include <linux/proc_fs.h>
-#endif
 #include <linux/sysv_fs.h>
 #include <linux/xia_fs.h>
+
+#if 0				/* Broken -- requires __KERNEL__ defined. */
+#include <linux/proc_fs.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= 66304) /* 1.3.0 (is this correct?) */
 #include <linux/smb_fs.h>
@@ -58,6 +58,57 @@ MIT in each case. */
 #include <linux/ncp_fs.h>
 #endif
 #endif
+#endif
+
+/* Explicitly code various constants that are, for one reason or
+   another, possibly unavailable.  These constants are unlikely to be
+   changed, so this ought to be safe.  */
+
+#ifndef AFFS_SUPER_MAGIC
+#define AFFS_SUPER_MAGIC 0xadff
+#endif
+
+#ifndef MINIX2_SUPER_MAGIC
+#define MINIX2_SUPER_MAGIC 0x2468
+#endif
+
+#ifndef MINIX2_SUPER_MAGIC2
+#define MINIX2_SUPER_MAGIC2 0x2478
+#endif
+
+#ifndef NCP_SUPER_MAGIC
+#define NCP_SUPER_MAGIC 0x564c
+#endif
+
+#ifndef NFS_SUPER_MAGIC
+#define NFS_SUPER_MAGIC 0x6969
+#endif
+
+#ifndef PROC_SUPER_MAGIC
+#define PROC_SUPER_MAGIC 0x9fa0
+#endif
+
+#ifndef SMB_SUPER_MAGIC
+#define SMB_SUPER_MAGIC 0x517B
+#endif
+
+#ifndef XENIX_SUPER_MAGIC
+#define XENIX_SUPER_MAGIC 0x012FF7B4
+#endif
+
+#ifndef SYSV4_SUPER_MAGIC
+#define SYSV4_SUPER_MAGIC 0x012FF7B5
+#endif
+
+#ifndef SYSV2_SUPER_MAGIC
+#define SYSV2_SUPER_MAGIC 0x012FF7B6
+#endif
+
+#ifndef COH_SUPER_MAGIC
+#define COH_SUPER_MAGIC 0x012FF7B7
+#endif
+
+
 #endif /* __linux */
 
 #endif /* HAVE_STATFS */
@@ -122,44 +173,23 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
 #ifdef __linux
   switch (s . f_type)
     {
-#ifdef COH_SUPER_MAGIC
     case COH_SUPER_MAGIC:	return ("coherent");
-#endif
     case EXT_SUPER_MAGIC:	return ("ext");
     case EXT2_SUPER_MAGIC:	return ("ext2");
     case HPFS_SUPER_MAGIC:	return ("hpfs");
     case ISOFS_SUPER_MAGIC:	return ("iso9660");
     case MINIX_SUPER_MAGIC:	return ("minix1");
     case MINIX_SUPER_MAGIC2:	return ("minix1-30");
-#ifdef MINIX2_SUPER_MAGIC
     case MINIX2_SUPER_MAGIC:	return ("minix2");
-#endif
-#ifdef MINIX2_SUPER_MAGIC2
     case MINIX2_SUPER_MAGIC2:	return ("minix2-30");
-#endif
     case MSDOS_SUPER_MAGIC:	return ("fat");
-#ifdef NCP_SUPER_MAGIC
     case NCP_SUPER_MAGIC:	return ("ncp");
-#endif
-#ifdef NEW_MINIX_SUPER_MAGIC
-    case NEW_MINIX_SUPER_MAGIC: return ("minix2");
-#endif
     case NFS_SUPER_MAGIC:	return ("nfs");
-#ifdef PROC_SUPER_MAGIC
     case PROC_SUPER_MAGIC:	return ("proc");
-#endif
-#ifdef SMB_SUPER_MAGIC
     case SMB_SUPER_MAGIC:	return ("smb");
-#endif
-#ifdef SYSV2_SUPER_MAGIC
     case SYSV2_SUPER_MAGIC:	return ("sysv2");
-#endif
-#ifdef SYSV4_SUPER_MAGIC
     case SYSV4_SUPER_MAGIC:	return ("sysv4");
-#endif
-#ifdef XENIX_SUPER_MAGIC
     case XENIX_SUPER_MAGIC:	return ("xenix");
-#endif
     case _XIAFS_SUPER_MAGIC:	return ("xiafs");
     }
 #endif /* __linux */
