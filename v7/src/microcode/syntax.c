@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.11 1989/03/14 08:18:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.12 1989/04/15 00:15:52 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -881,7 +881,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 				  ((SCAN_TO_INDEX (level -> previous))
 				   - 1)))));
   (User_Vector_Set(result, 5, (((level == level_start)
-				|| ((level -> previous) == NULL))
+				|| (((level - 1) -> last) == NULL))
 			       ? NIL
 			       : (Make_Unsigned_Fixnum 
 				  ((SCAN_TO_INDEX ((level - 1) -> last))
