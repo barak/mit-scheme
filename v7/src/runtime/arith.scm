@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.4 1989/10/27 23:58:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.5 1989/10/28 06:46:39 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -117,24 +117,12 @@ MIT in each case. |#
 
 ;;;; Constants
 
-(define flo:0)
-(define flo:1)
-(define flo:log2)
-(define flo:log10/log2)
-;;; +2i is supposed to be a constant, but the reader
-;;; doesn't yet handle this syntax.
-(define rec:+2i)
-(define rec:pi/2)
-(define rec:pi)
+(define-integrable flo:0 0.)
+(define-integrable flo:1 1.)
+(define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
+(define rec:pi (flo:* 2. rec:pi/2))
 
 (define (initialize-package!)
-  (set! flo:0 (int:->flonum 0))
-  (set! flo:1 (int:->flonum 1))
-  (set! flo:log2 (flo:log (int:->flonum 2)))
-  (set! flo:log10/log2 (flo:/ (flo:log (int:->flonum 10)) flo:log2))
-  (set! rec:+2i (make-recnum 0 2))
-  (set! rec:pi/2 (real:* 2 (real:atan2 1 1)))
-  (set! rec:pi (real:* 2 rec:pi/2))
   (initialize-microcode-dependencies!)
   (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
   (let ((fixed-objects-vector (get-fixed-objects-vector)))
@@ -177,7 +165,9 @@ MIT in each case. |#
     ;; this phenomenon.
     (set! flo:significand-digits-base-10
 	  (int:+ 2
-		 (flo:floor->exact (flo:/ (int:->flonum p) flo:log10/log2)))))
+		 (flo:floor->exact
+		  (flo:/ (int:->flonum p)
+			 (flo:/ (flo:log 10.) (flo:log 2.)))))))
   (set! rat:flonum-epsilon/2
 	(rat:expt 2 (int:negate flo:significand-digits-base-2)))
   unspecific)
@@ -256,7 +246,7 @@ MIT in each case. |#
 	    (positive-case n d)))))
 
 (define (int:expt b e)
-  (cond ((or (int:zero? b) (int:= 1 b)) b)
+  (cond ((or (int:zero? b) (int:= 1 b)) 1)
 	((int:positive? e)
 	 (if (int:= 1 e)
 	     b
@@ -625,7 +615,8 @@ MIT in each case. |#
 	 (int:+ 2
 		(flo:floor->exact
 		 (flo:/ (int:->flonum flo:significand-digits-base-2)
-			(flo:/ (flo:log (int:->flonum radix)) flo:log2)))))))
+			(flo:/ (flo:log (int:->flonum radix))
+			       (flo:log 2.))))))))
 
 (declare (integrate flo:integer?))
 (define (flo:integer? x)
@@ -903,31 +894,6 @@ MIT in each case. |#
 (define (real:sqrt x)
   (if (flonum? x) (flo:sqrt x) (rat:sqrt x)))
 
-(define (real:expt x y)
-  (if (flonum? x)
-      (if (flonum? y)
-	  (flo:expt x y)
-	  (flo:expt x (rat:->flonum y)))
-      (if (flonum? y)
-	  (flo:expt (rat:->flonum x) y)
-	  (cond ((int:integer? y)
-		 ((copy rat:expt) x y))
-		((int:= 1 (rat:numerator y))
-		 (let ((d (rat:denominator y)))
-		   (if (int:= 2 d)
-		       (rat:sqrt x)
-		       (let ((guess
-			      (flo:expt (rat:->flonum x) (rat:->flonum y))))
-			 (let ((q
-				(if (int:integer? x)
-				    (flo:round->exact guess)
-				    (flo:->rational guess))))
-			   (if (rat:= x (rat:expt q d))
-			       q
-			       guess))))))
-		(else
-		 (flo:expt (rat:->flonum x) (rat:->flonum x)))))))
-
 (define (real:->flonum x)
   (if (flonum? x)
       x
@@ -937,6 +903,66 @@ MIT in each case. |#
   (if (flonum? x)
       (flo:->string x radix)
       (rat:->string x radix)))
+
+(define (real:expt x y)
+  (let ((general-case
+	 (lambda (x y)
+	   (cond ((flo:zero? y) flo:1)
+		 ((flo:zero? x)
+		  (if (flo:positive? y)
+		      x
+		      (bad-range 'EXPT y)))
+		 ((and (flo:negative? x)
+		       (not (flo:integer? y)))
+		  (bad-range 'EXPT x))
+		 (else
+		  (flo:expt x y))))))
+    (if (flonum? x)
+	(cond ((flonum? y)
+	       (general-case x y))
+	      ((int:integer? y)
+	       (let ((exact-method
+		      (lambda (y)
+			(if (int:= 1 y)
+			    x
+			    (let loop ((x x) (y y) (answer flo:1))
+			      (let ((qr (int:divide y 2)))
+				(let ((x (flo:* x x))
+				      (y (integer-divide-quotient qr))
+				      (answer
+				       (if (int:zero?
+					    (integer-divide-remainder qr))
+					   answer
+					   (flo:* answer x))))
+				  (if (int:= 1 y)
+				      (flo:* answer x)
+				      (loop x y answer)))))))))
+		 (cond ((int:positive? y) (exact-method y))
+		       ((int:negative? y)
+			(flo:/ flo:1 (exact-method (int:negate y))))
+		       (else flo:1))))
+	      (else
+	       (general-case x (rat:->flonum y))))
+	(cond ((flonum? y)
+	       (general-case (rat:->flonum x) y))
+	      ((int:integer? y)
+	       (rat:expt x y))
+	      ((and (rat:positive? x)
+		    (int:= 1 (rat:numerator y)))
+	       (let ((d (rat:denominator y)))
+		 (if (int:= 2 d)
+		     (rat:sqrt x)
+		     (let ((guess
+			    (flo:expt (rat:->flonum x) (rat:->flonum y))))
+		       (let ((q
+			      (if (int:integer? x)
+				  (flo:round->exact guess)
+				  (flo:->rational guess))))
+			 (if (rat:= x (rat:expt q d))
+			     q
+			     guess))))))
+	      (else
+	       (general-case (rat:->flonum x) (rat:->flonum y)))))))
 
 (define (complex:complex? object)
   (or (recnum? object) ((copy real:real?) object)))
@@ -1265,7 +1291,7 @@ MIT in each case. |#
       (complex:/ (let ((iz (complex:+i* z)))
 		   (complex:- (complex:exp iz)
 			      (complex:exp (complex:negate iz))))
-		 rec:+2i)
+		 +2i)
       ((copy real:sin) z)))
 
 (define (complex:cos z)
@@ -1337,7 +1363,7 @@ MIT in each case. |#
   (complex:/ (let ((iz (complex:+i* z)))
 	       (complex:- (complex:log (complex:1+ iz))
 			  (complex:log (complex:- 1 iz))))
-	     rec:+2i))
+	     +2i))
 
 (define (complex:sqrt z)
   (cond ((recnum? z)
@@ -1354,7 +1380,8 @@ MIT in each case. |#
 	  (and (real:negative? z1)
 	       (not (real:integer? z2))))
       (complex:exp (complex:* (complex:log z1) z2))
-      ((copy real:expt) z1 z2)))
+      (real:expt z1 z2)))
+
 (define (complex:make-rectangular real imag)
   (if (real:exact0= imag)
       real
