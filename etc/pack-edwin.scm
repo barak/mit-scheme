@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.2 1992/08/29 12:08:44 jinx Exp $
+$Id: pack-edwin.scm,v 1.3 1992/09/23 23:59:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -113,10 +113,12 @@ MIT in each case. |#
 		    "bufmnu.com"
 		    "c-mode.com"
 		    "cinden.com"
-		    "comint.com"
+		    "comhst.com"
+		    ;; "comint.com"
 		    ;; "compile.com"
 		    "debug.com"
 		    "dired.com"
+		    ;; "dirunx.com"
 		    "evlcom.com"
 		    "filcom.com"
 		    "fill.com"
