@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pasmod.scm,v 1.50 2000/03/02 05:31:51 cph Exp $
+;;; $Id: pasmod.scm,v 1.51 2001/12/18 22:12:25 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Pascal Mode
 
@@ -49,22 +50,22 @@
 			 buffer)
     (event-distributor/invoke! (ref-variable pascal-mode-hook buffer) buffer)))
 
-(define pascal-mode:syntax-table (make-syntax-table))
-(modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")
-(modify-syntax-entry! pascal-mode:syntax-table #\) ")( 4")
-(modify-syntax-entry! pascal-mode:syntax-table #\[ "(]  ")
-(modify-syntax-entry! pascal-mode:syntax-table #\] ")[  ")
-(modify-syntax-entry! pascal-mode:syntax-table #\{ "<   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\} ">   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\' "\"   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\$ "\"   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\* "_ 23")
-(modify-syntax-entry! pascal-mode:syntax-table #\. "_   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\^ "_   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\@ "'   ")
-(modify-syntax-entry! pascal-mode:syntax-table #\% "    ")
-(modify-syntax-entry! pascal-mode:syntax-table #\" "    ")
-(modify-syntax-entry! pascal-mode:syntax-table #\\ "    ")
+(define pascal-mode:syntax-table (make-char-syntax-table))
+(set-char-syntax! pascal-mode:syntax-table #\( "()1 ")
+(set-char-syntax! pascal-mode:syntax-table #\) ")( 4")
+(set-char-syntax! pascal-mode:syntax-table #\[ "(]  ")
+(set-char-syntax! pascal-mode:syntax-table #\] ")[  ")
+(set-char-syntax! pascal-mode:syntax-table #\{ "<   ")
+(set-char-syntax! pascal-mode:syntax-table #\} ">   ")
+(set-char-syntax! pascal-mode:syntax-table #\' "\"   ")
+(set-char-syntax! pascal-mode:syntax-table #\$ "\"   ")
+(set-char-syntax! pascal-mode:syntax-table #\* "_ 23")
+(set-char-syntax! pascal-mode:syntax-table #\. "_   ")
+(set-char-syntax! pascal-mode:syntax-table #\^ "_   ")
+(set-char-syntax! pascal-mode:syntax-table #\@ "'   ")
+(set-char-syntax! pascal-mode:syntax-table #\% "    ")
+(set-char-syntax! pascal-mode:syntax-table #\" "    ")
+(set-char-syntax! pascal-mode:syntax-table #\\ "    ")
 
 (define (pascal-comment-locate mark)
   (if (re-search-forward "\\((\\*\\|{\\)[ \t]*" mark (line-end mark 0))

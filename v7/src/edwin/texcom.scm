@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.45 2000/03/02 05:31:10 cph Exp $
+;;; $Id: texcom.scm,v 1.46 2001/12/18 22:12:32 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Text Commands
 
@@ -34,14 +35,14 @@
 
 (define-key 'text #\m-s 'center-line)
 
-(define text-mode:syntax-table (make-syntax-table))
-(modify-syntax-entry! text-mode:syntax-table #\" "    ")
-(modify-syntax-entry! text-mode:syntax-table #\\ "    ")
-(modify-syntax-entry! text-mode:syntax-table #\[ "(]  ")
-(modify-syntax-entry! text-mode:syntax-table #\] ")[  ")
-(modify-syntax-entry! text-mode:syntax-table #\{ "(}  ")
-(modify-syntax-entry! text-mode:syntax-table #\} "){  ")
-(modify-syntax-entry! text-mode:syntax-table #\' "w   ")
+(define text-mode:syntax-table (make-char-syntax-table))
+(set-char-syntax! text-mode:syntax-table #\" "    ")
+(set-char-syntax! text-mode:syntax-table #\\ "    ")
+(set-char-syntax! text-mode:syntax-table #\[ "(]  ")
+(set-char-syntax! text-mode:syntax-table #\] ")[  ")
+(set-char-syntax! text-mode:syntax-table #\{ "(}  ")
+(set-char-syntax! text-mode:syntax-table #\} "){  ")
+(set-char-syntax! text-mode:syntax-table #\' "w   ")
 
 (define-variable text-mode-abbrev-table
   "Mode-specific abbrev table for Text mode.")

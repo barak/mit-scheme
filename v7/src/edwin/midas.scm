@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: midas.scm,v 1.21 2000/03/02 05:31:48 cph Exp $
+;;; $Id: midas.scm,v 1.22 2001/12/18 22:12:23 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Midas Mode
 
@@ -43,14 +44,14 @@
 			 buffer)
     (event-distributor/invoke! (ref-variable midas-mode-hook buffer) buffer)))
 
-(define midas-mode:syntax-table (make-syntax-table))
-(modify-syntax-entry! midas-mode:syntax-table #\; "<   ")
-(modify-syntax-entry! midas-mode:syntax-table #\newline ">   ")
-(modify-syntax-entry! midas-mode:syntax-table #\. "w   ")
-(modify-syntax-entry! midas-mode:syntax-table #\' "'   ")
-(modify-syntax-entry! midas-mode:syntax-table #\$ "'   ")
-(modify-syntax-entry! midas-mode:syntax-table #\% "'   ")
-(modify-syntax-entry! midas-mode:syntax-table #\# "'   ")
+(define midas-mode:syntax-table (make-char-syntax-table))
+(set-char-syntax! midas-mode:syntax-table #\; "<   ")
+(set-char-syntax! midas-mode:syntax-table #\newline ">   ")
+(set-char-syntax! midas-mode:syntax-table #\. "w   ")
+(set-char-syntax! midas-mode:syntax-table #\' "'   ")
+(set-char-syntax! midas-mode:syntax-table #\$ "'   ")
+(set-char-syntax! midas-mode:syntax-table #\% "'   ")
+(set-char-syntax! midas-mode:syntax-table #\# "'   ")
 
 (define (midas-comment-indentation mark)
   (if (match-forward ";;;" mark)

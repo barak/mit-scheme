@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vhdl.scm,v 1.8 2000/03/02 05:31:35 cph Exp $
+;;; $Id: vhdl.scm,v 1.9 2001/12/18 22:12:39 cph Exp $
 ;;;
-;;; Copyright (c) 1997-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1997-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Major Mode for VHDL Programs
 
@@ -54,15 +55,15 @@
 			       buffer)))
 
 (define vhdl-mode:syntax-table
-  (let ((syntax-table (make-syntax-table)))
-    (for-each (lambda (char) (modify-syntax-entry! syntax-table char "_"))
+  (let ((syntax-table (make-char-syntax-table)))
+    (for-each (lambda (char) (set-char-syntax! syntax-table char "_"))
 	      (string->list "_.#+"))
-    (for-each (lambda (char) (modify-syntax-entry! syntax-table char "."))
+    (for-each (lambda (char) (set-char-syntax! syntax-table char "."))
 	      (string->list "*/&|<>=$%"))
-    (modify-syntax-entry! syntax-table #\\ "\"")
-    (modify-syntax-entry! syntax-table #\' "\"")
-    (modify-syntax-entry! syntax-table #\- "_ 56")
-    (modify-syntax-entry! syntax-table #\newline ">")
+    (set-char-syntax! syntax-table #\\ "\"")
+    (set-char-syntax! syntax-table #\' "\"")
+    (set-char-syntax! syntax-table #\- "_ 56")
+    (set-char-syntax! syntax-table #\newline ">")
     syntax-table))
 
 (define-key 'vhdl #\linefeed 'reindent-then-newline-and-indent)

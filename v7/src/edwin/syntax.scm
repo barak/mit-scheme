@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntax.scm,v 1.85 2000/02/25 14:21:11 cph Exp $
+;;; $Id: syntax.scm,v 1.86 2001/12/18 22:12:30 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,13 +16,13 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Syntax Tables
 
 (declare (usual-integrations))
 
-(define make-syntax-table make-char-syntax-table)
 (define modify-syntax-entry! set-char-syntax!)
 
 (define (modify-syntax-entries! syntax-table cl ch string)

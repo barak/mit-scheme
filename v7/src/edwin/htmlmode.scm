@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: htmlmode.scm,v 1.4 2000/09/06 15:15:40 cph Exp $
+;;; $Id: htmlmode.scm,v 1.5 2001/12/18 22:12:18 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Major Mode for HTML
 
@@ -64,12 +65,12 @@
   (make-event-distributor))
 
 (define html-syntax-table
-  (let ((syntax-table (make-syntax-table text-mode:syntax-table)))
-    (modify-syntax-entry! syntax-table #\< "(>1")
-    (modify-syntax-entry! syntax-table #\! ". 2")
-    (modify-syntax-entry! syntax-table #\- "_ 3")
-    (modify-syntax-entry! syntax-table #\> ")<4")
-    (modify-syntax-entry! syntax-table #\" "\"\"")
+  (let ((syntax-table (make-char-syntax-table text-mode:syntax-table)))
+    (set-char-syntax! syntax-table #\< "(>1")
+    (set-char-syntax! syntax-table #\! ". 2")
+    (set-char-syntax! syntax-table #\- "_ 3")
+    (set-char-syntax! syntax-table #\> ")<4")
+    (set-char-syntax! syntax-table #\" "\"\"")
     syntax-table))
 
 (define (html-comment-locate mark)

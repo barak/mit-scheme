@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tximod.scm,v 1.24 2000/09/06 15:15:46 cph Exp $
+;;; $Id: tximod.scm,v 1.25 2001/12/18 22:12:35 cph Exp $
 ;;;
-;;; Copyright (c) 1987-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1987-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Texinfo Mode
 
@@ -68,12 +69,12 @@ commands to save keystrokes.
     (event-distributor/invoke! (ref-variable texinfo-mode-hook buffer)
 			       buffer)))
 
-(define texinfo-mode:syntax-table (make-syntax-table))
-(modify-syntax-entry! texinfo-mode:syntax-table #\" " ")
-(modify-syntax-entry! texinfo-mode:syntax-table #\\ " ")
-(modify-syntax-entry! texinfo-mode:syntax-table #\@ "\\")
-(modify-syntax-entry! texinfo-mode:syntax-table #\DC1 "\\")
-(modify-syntax-entry! texinfo-mode:syntax-table #\' "w")
+(define texinfo-mode:syntax-table (make-char-syntax-table))
+(set-char-syntax! texinfo-mode:syntax-table #\" " ")
+(set-char-syntax! texinfo-mode:syntax-table #\\ " ")
+(set-char-syntax! texinfo-mode:syntax-table #\@ "\\")
+(set-char-syntax! texinfo-mode:syntax-table #\DC1 "\\")
+(set-char-syntax! texinfo-mode:syntax-table #\' "w")
 
 (define-key 'texinfo '(#\C-c #\{) 'texinfo-insert-braces)
 (define-key 'texinfo '(#\C-c #\}) 'up-list)

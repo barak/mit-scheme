@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.10 2000/02/29 03:59:31 cph Exp $
+;;; $Id: javamode.scm,v 1.11 2001/12/18 22:12:20 cph Exp $
 ;;;
-;;; Copyright (c) 1998-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1998-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Major Mode for Java Programs
 
@@ -65,9 +66,9 @@ This is just like C mode, except that
   (make-event-distributor))
 
 (define java-syntax-table
-  (let ((syntax-table (make-syntax-table c-syntax-table)))
-    (modify-syntax-entry! syntax-table #\/ ". 1456")
-    (modify-syntax-entry! syntax-table #\newline ">")
+  (let ((syntax-table (make-char-syntax-table c-syntax-table)))
+    (set-char-syntax! syntax-table #\/ ". 1456")
+    (set-char-syntax! syntax-table #\newline ">")
     syntax-table))
 
 (define (java-comment-locate mark)
@@ -124,6 +125,6 @@ This is just like C mode, except that
   (make-event-distributor))
 
 (define php-syntax-table
-  (let ((syntax-table (make-syntax-table java-syntax-table)))
-    (modify-syntax-entry! syntax-table #\$ ". p")
+  (let ((syntax-table (make-char-syntax-table java-syntax-table)))
+    (set-char-syntax! syntax-table #\$ ". p")
     syntax-table))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: c-mode.scm,v 1.59 2000/03/02 05:31:58 cph Exp $
+;;; $Id: c-mode.scm,v 1.60 2001/12/18 22:12:16 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; C Mode (from GNU Emacs)
 
@@ -97,13 +98,13 @@ Settings for K&R and BSD indentation styles are
   (make-event-distributor))
 
 (define c-syntax-table
-  (let ((syntax-table (make-syntax-table)))
-    (for-each (lambda (char) (modify-syntax-entry! syntax-table char "."))
+  (let ((syntax-table (make-char-syntax-table)))
+    (for-each (lambda (char) (set-char-syntax! syntax-table char "."))
 	      (string->list "+-=%<>&|"))
-    (modify-syntax-entry! syntax-table #\' "\"")
-    (modify-syntax-entry! syntax-table #\\ "\\")
-    (modify-syntax-entry! syntax-table #\/ ". 14")
-    (modify-syntax-entry! syntax-table #\* ". 23")
+    (set-char-syntax! syntax-table #\' "\"")
+    (set-char-syntax! syntax-table #\\ "\\")
+    (set-char-syntax! syntax-table #\/ ". 14")
+    (set-char-syntax! syntax-table #\* ". 23")
     syntax-table))
 
 (define (c-comment-locate start)
