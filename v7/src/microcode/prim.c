@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.34 1992/06/10 21:48:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.35 1992/07/21 18:19:00 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -196,7 +196,7 @@ DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2, 2, 0)
 
 /* (NOT OBJECT)
    Returns #T if OBJECT is #F.  Otherwise returns #F.  This is
-   the primitive known as NOT, NULL?, and FALSE? in Scheme.
+   the primitive known as NOT and FALSE? in Scheme.
    Touches the argument.  */
 
 DEFINE_PRIMITIVE ("NOT", Prim_not, 1, 1, 0)
@@ -205,6 +205,18 @@ DEFINE_PRIMITIVE ("NOT", Prim_not, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (object == SHARP_F));
+}
+
+/* (NULL? OBJECT)
+   Returns #T if OBJECT is '().  Otherwise returns #F.
+   Touches the argument.  */
+
+DEFINE_PRIMITIVE ("NULL?", Prim_null_p, 1, 1, 0)
+{
+  fast SCHEME_OBJECT object;
+  PRIMITIVE_HEADER (1);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (object == EMPTY_LIST));
 }
 
 /* Cells */
