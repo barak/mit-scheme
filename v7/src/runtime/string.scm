@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.21 1999/05/07 21:41:13 cph Exp $
+$Id: string.scm,v 14.22 1999/05/08 02:23:23 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -637,11 +637,35 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (%substring-search-forward text tstart tend
 			     pattern 0 (string-length pattern)))
 
+(define (string-search-backward text pattern)
+  (guarantee-string text 'STRING-SEARCH-BACKWARD)
+  (guarantee-string pattern 'STRING-SEARCH-BACKWARD)
+  (%substring-search-backward text 0 (string-length text)
+			      pattern 0 (string-length pattern)))
+
+(define (substring-search-backward text tstart tend pattern)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-BACKWARD)
+  (guarantee-string pattern 'SUBSTRING-SEARCH-BACKWARD)
+  (%substring-search-backward text tstart tend
+			      pattern 0 (string-length pattern)))
+
+(define (string-search-all text pattern)
+  (guarantee-string text 'STRING-SEARCH-ALL)
+  (guarantee-string pattern 'STRING-SEARCH-ALL)
+  (%bm-substring-search-all text 0 (string-length text)
+			    pattern 0 (string-length pattern)))
+
+(define (substring-search-all text tstart tend pattern)
+  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-ALL)
+  (guarantee-string pattern 'SUBSTRING-SEARCH-ALL)
+  (%bm-substring-search-all text tstart tend
+			    pattern 0 (string-length pattern)))
+
 (define (%substring-search-forward text tstart tend pattern pstart pend)
   ;; Returns index of first matched char, or #F.
   (if (fix:< (fix:- pend pstart) 4)
       (%dumb-substring-search-forward text tstart tend pattern pstart pend)
-      (%bm-string-search-forward text tstart tend pattern pstart pend)))
+      (%bm-substring-search-forward text tstart tend pattern pstart pend)))
 
 (define (%dumb-substring-search-forward text tstart tend pattern pstart pend)
   (if (fix:= pstart pend)
@@ -662,23 +686,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		     tstart
 		     (loop (fix:+ tstart 1)))))))))
 
-(define (string-search-backward text pattern)
-  (guarantee-string text 'STRING-SEARCH-BACKWARD)
-  (guarantee-string pattern 'STRING-SEARCH-BACKWARD)
-  (%substring-search-backward text 0 (string-length text)
-			      pattern 0 (string-length pattern)))
-
-(define (substring-search-backward text tstart tend pattern)
-  (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-BACKWARD)
-  (guarantee-string pattern 'SUBSTRING-SEARCH-BACKWARD)
-  (%substring-search-backward text tstart tend
-			      pattern 0 (string-length pattern)))
-
 (define (%substring-search-backward text tstart tend pattern pstart pend)
   ;; Returns index following last matched char, or #F.
   (if (fix:< (fix:- pend pstart) 4)
       (%dumb-substring-search-backward text tstart tend pattern pstart pend)
-      (%bm-string-search-backward text tstart tend pattern pstart pend)))
+      (%bm-substring-search-backward text tstart tend pattern pstart pend)))
 
 (define (%dumb-substring-search-backward text tstart tend pattern pstart pend)
   (if (fix:= pstart pend)
@@ -705,7 +717,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; Cormen, Leiserson, and Rivest, "Introduction to Algorithms",
 ;;; Chapter 34, "String Matching".
 
-(define (%bm-string-search-forward text tstart tend pattern pstart pend)
+(define (%bm-substring-search-forward text tstart tend pattern pstart pend)
   (let ((m (fix:- pend pstart))
 	(pstart-1 (fix:- pstart 1))
 	(pend-1 (fix:- pend 1))
@@ -726,7 +738,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					   (lambda* (vector-8b-ref text tj)))
 				    (gamma (fix:- pj pstart))))))))))))
 
-(define (%bm-string-search-backward text tstart tend pattern pstart pend)
+(define (%bm-substring-search-backward text tstart tend pattern pstart pend)
   (let ((m (fix:- pend pstart))
 	(pend-1 (fix:- pend 1))
 	(rpattern (reverse-substring pattern pstart pend)))
@@ -745,6 +757,31 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   (fix:max (fix:- (fix:- pend pj)
 					   (lambda* (vector-8b-ref text tj)))
 				    (gamma (fix:- pend-1 pj))))))))))))
+
+(define (%bm-substring-search-all text tstart tend pattern pstart pend)
+  (let ((m (fix:- pend pstart))
+	(pstart-1 (fix:- pstart 1))
+	(pend-1 (fix:- pend 1))
+	(lambda* (compute-last-occurrence-function pattern pstart pend))
+	(gamma0 (compute-gamma0 pattern pstart pend)))
+    (let ((gamma (compute-good-suffix-function pattern pstart pend gamma0))
+	  (gamma0+1 (fix:+ gamma0 1))
+	  (tend-m (fix:- tend m))
+	  (m-1 (fix:- m 1)))
+      (let outer ((s tstart) (occurrences '()))
+	(if (fix:<= s tend-m)
+	    (let inner ((pj pend-1) (tj (fix:+ s m-1)))
+	      (if (fix:= (vector-8b-ref pattern pj) (vector-8b-ref text tj))
+		  (if (fix:= pstart pj)
+		      (outer (fix:+ s gamma0+1) (cons s occurrences))
+		      (inner (fix:- pj 1) (fix:- tj 1)))
+		  (outer (fix:+ s
+				(fix:max (fix:- (fix:- pj pstart-1)
+						(lambda*
+						 (vector-8b-ref text tj)))
+					 (gamma (fix:- pj pstart))))
+			 occurrences)))
+	    (reverse! occurrences))))))
 
 (define (compute-last-occurrence-function pattern pstart pend)
   (let ((lam (make-vector 256 0)))
