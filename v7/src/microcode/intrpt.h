@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.16 1993/10/14 19:23:18 gjr Exp $
+$Id: intrpt.h,v 1.17 1994/10/04 20:07:32 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,30 +95,52 @@ MIT in each case. */
 
 #define SET_INTERRUPT_MASK(mask)					\
 {									\
+  GRAB_INTERRUPT_REGISTERS ();						\
   (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask));		\
   COMPILER_SETUP_INTERRUPT ();						\
+  RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
 #define FETCH_INTERRUPT_CODE() ((long) (Registers[REGBLOCK_INT_CODE]))
 
 #define REQUEST_INTERRUPT(code)						\
 {									\
+  GRAB_INTERRUPT_REGISTERS ();						\
   (Registers[REGBLOCK_INT_CODE]) =					\
     ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) | (code)));		\
   COMPILER_SETUP_INTERRUPT ();						\
+  RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
 #define CLEAR_INTERRUPT(code)						\
 {									\
+  GRAB_INTERRUPT_REGISTERS ();						\
   (Registers[REGBLOCK_INT_CODE]) =					\
     ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) &~ (code)));		\
   COMPILER_SETUP_INTERRUPT ();						\
+  RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
 #define INITIALIZE_INTERRUPTS()						\
 {									\
-  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) 0);			\
+  GRAB_INTERRUPT_REGISTERS ();						\
+  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) INT_Mask);		\
   (Registers[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) 0);			\
-  SET_INTERRUPT_MASK (INT_Mask);					\
-  CLEAR_INTERRUPT (INT_Mask);						\
+  COMPILER_SETUP_INTERRUPT ();						\
+  RELEASE_INTERRUPT_REGISTERS ();					\
 }
+
+#if defined(_OS2)
+
+#define GRAB_INTERRUPT_REGISTERS() OS_grab_interrupt_registers ()
+#define RELEASE_INTERRUPT_REGISTERS() OS_release_interrupt_registers ()
+
+extern void OS_grab_interrupt_registers (void);
+extern void OS_release_interrupt_registers (void);
+
+#else /* not _OS2 */
+
+#define GRAB_INTERRUPT_REGISTERS()
+#define RELEASE_INTERRUPT_REGISTERS()
+
+#endif /* _OS2 */

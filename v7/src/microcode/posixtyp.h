@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: posixtyp.h,v 1.9 1993/11/11 20:18:48 cph Exp $
+$Id: posixtyp.h,v 1.10 1994/10/04 20:05:57 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,6 +103,14 @@ MIT in each case. */
 /*#define _CC_T*/
 #endif
 
+#if defined(_OS2) && defined(__IBMC__)
+#include <sys/types.h>
+#include <time.h>
+#define _TIME_T
+#define _OFF_T
+#define _SIZE_T
+#define _CLOCK_T
+#endif /* _OS2 && __IBMC__ */
 
 #ifndef _MODE_T
 #define _MODE_T
