@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.274 2001/09/29 03:00:13 cph Exp $
+;;; $Id: imail-top.scm,v 1.275 2001/10/01 16:22:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -883,7 +883,7 @@ This command writes the message to the output file in human-readable format,
 		      (insert-chars #\= 79 mark)
 		      (insert-newlines 2 mark))
 		    (set! write-separator? #t))
-		(insert-message message #t 0 mark)))
+		(insert-message message #f 0 mark)))
 	    (mark-temporary! mark))
 	  (append-to-file (buffer-region buffer) pathname #t 'DEFAULT))))))
 
