@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.24 1991/08/12 22:16:02 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.25 1991/08/24 02:27:37 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -325,6 +325,11 @@ extern void EXFUN (error_system_call, (int code, enum syscall_names name));
 
 #ifdef _NEXTOS
 #define SYSTEM_VARIANT "NeXT"
+#endif
+
+#ifdef apollo
+#define SYSTEM_VARIANT "Domain"
+#undef S_IFIFO
 #endif
 
 #ifdef _SUNOS
