@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.21 1993/12/23 06:58:54 cph Exp $
+$Id: thread.scm,v 1.22 1995/11/13 07:21:35 cph Exp $
 
-Copyright (c) 1991-1993 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -760,6 +760,9 @@ MIT in each case. |#
 
 (define (stop-thread-timer)
   (without-interrupts %stop-thread-timer))
+
+(define (with-thread-timer-stopped thunk)
+  (dynamic-wind %stop-thread-timer thunk %maybe-toggle-thread-timer))
 
 (define (%maybe-toggle-thread-timer)
   (cond ((and timer-interval

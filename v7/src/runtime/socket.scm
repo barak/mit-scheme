@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.5 1992/06/15 22:22:35 cph Exp $
+$Id: socket.scm,v 1.6 1995/11/13 07:20:52 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,23 +38,32 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (open-tcp-stream-socket host-name service)
-  (socket-ports
-   (let ((host (vector-ref ((ucode-primitive get-host-by-name 1) host-name) 0))
-	 (port (tcp-service->port service)))
-     (without-interrupts
-      (lambda ()
-	(make-channel
-	 ((ucode-primitive open-tcp-stream-socket 2) host port)))))))
+  (socket-ports (open-tcp-stream-socket-channel host-name service)))
 
 (define (open-unix-stream-socket filename)
-  (socket-ports
-   (without-interrupts
-    (lambda ()
-      (make-channel ((ucode-primitive open-unix-stream-socket 1) filename))))))
+  (socket-ports (open-unix-stream-socket-channel filename)))
 
 (define (socket-ports channel)
   (let ((port (make-generic-i/o-port channel channel 64 64)))
     (values port port)))
+
+(define (open-tcp-stream-socket-channel host-name service)
+  (let ((host (vector-ref (get-host-by-name host-name) 0))
+	(port (tcp-service->port service)))
+    (without-interrupts
+     (lambda ()
+       (make-channel
+	((ucode-primitive open-tcp-stream-socket 2) host port))))))
+
+(define (get-host-by-name host-name)
+  (with-thread-timer-stopped
+    (lambda ()
+      ((ucode-primitive get-host-by-name 1) host-name))))
+
+(define (open-unix-stream-socket-channel filename)
+  (without-interrupts
+   (lambda ()
+     (make-channel ((ucode-primitive open-unix-stream-socket 1) filename)))))
 
 (define (open-tcp-server-socket service)
   (without-interrupts

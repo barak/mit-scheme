@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.266 1995/11/04 02:34:03 cph Exp $
+$Id: runtime.pkg,v 14.267 1995/11/13 07:22:06 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2131,7 +2131,9 @@ MIT in each case. |#
 	  close-tcp-server-socket
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
+	  open-tcp-stream-socket-channel
 	  open-unix-stream-socket
+	  open-unix-stream-socket-channel
 	  tcp-server-connection-accept))
 
 (define-package (runtime subprocess)
@@ -3064,6 +3066,7 @@ MIT in each case. |#
 	  unlock-thread-mutex
 	  with-create-thread-continuation
 	  with-thread-mutex-locked
+	  with-thread-timer-stopped
 	  yield-current-thread)
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
