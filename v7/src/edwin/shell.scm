@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.21 1999/08/24 02:59:37 cph Exp $
+$Id: shell.scm,v 1.22 2000/02/24 01:23:42 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ this buffer's default directory the same as the shell's working directory.
     current directory stack is.
 \\[shell-dirtrack-toggle] turns directory tracking on and off.
 
+\\{shell}
 Customisation: Entry to this mode runs the hooks on comint-mode-hook and
 shell-mode-hook (in that order).
 
