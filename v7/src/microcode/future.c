@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.22 1987/04/16 02:22:53 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/future.c,v 9.23 1987/07/07 02:37:36 jinx Rel $
 
    Support code for futures
 */
@@ -41,6 +41,13 @@ MIT in each case. */
 
 #ifndef COMPILE_FUTURES
 #include "Error: future.c is useless without COMPILE_FUTURES"
+#endif
+
+/* This is how we support future numbering for external metering */
+#ifndef New_Future_Number
+#define New_Future_Number() NIL
+#else
+Pointer Get_New_Future_Number();
 #endif
 
 /*
