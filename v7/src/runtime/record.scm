@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.48 2004/11/17 05:42:22 cph Exp $
+$Id: record.scm,v 1.49 2005/03/19 03:14:31 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 1997,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,8 +70,9 @@ USA.
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(NAME DISPATCH-TAG FIELD-NAMES DEFAULT-INITS)
-		   (vector-cons 4 (lambda () #f)))))
+		   '#(NAME DISPATCH-TAG FIELD-NAMES DEFAULT-INITS EXTENSION)
+		   (vector-cons 5 (lambda () #f))
+		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
     (%record-set! type 1 record-type-type-tag))
@@ -89,7 +90,7 @@ USA.
 		  (%record-type-name (dispatch-tag-contents tag))
 		  #f))
 		((eq? tag record-type-type-tag)
-		 (standard-unparser-method 'TYPE
+		 (standard-unparser-method 'RECORD-TYPE
 		   (lambda (type port)
 		     (write-char #\space port)
 		     (display (%record-type-name type) port))))
@@ -136,7 +137,8 @@ USA.
 		     #f
 		     (->type-name type-name)
 		     names
-		     (vector-cons n (lambda () #f))))
+		     (vector-cons n (lambda () #f))
+		     #f))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)
       (if (not (default-object? default-inits))
@@ -163,12 +165,18 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
+(define-integrable (%record-type-extension record-type)
+  (%record-ref record-type 5))
+
+(define-integrable (%set-record-type-extension! record-type extension)
+  (%record-set! record-type 5 extension))
+
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
 (define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
-
+
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
   (%record-type-dispatch-tag record-type))
@@ -182,7 +190,7 @@ USA.
   ;; Can't use VECTOR->LIST here because it isn't available at cold load.
   (let ((v (%record-type-field-names record-type)))
     (subvector->list v 0 (vector-length v))))
-
+
 (define (record-type-default-inits record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
   (let* ((v (%record-type-default-inits record-type))
@@ -244,6 +252,14 @@ USA.
 	(lambda (generic tags)
 	  generic
 	  (and (eq? (cadr tags) tag) method))))))
+
+(define (record-type-extension record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
+  (%record-type-extension record-type))
+
+(define (set-record-type-extension! record-type extension)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
+  (%set-record-type-extension! record-type extension))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
