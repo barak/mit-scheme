@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.9 1995/04/28 07:04:59 cph Exp $
+$Id: os2msg.c,v 1.10 1995/11/03 01:22:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -481,20 +481,14 @@ subqueue_emptyp (qid_t qid)
 int
 OS2_tqueue_select (tqueue_t * tqueue, int blockp)
 {
-  while (1)
+  msg_t * message = (read_tqueue (tqueue, blockp));
+  if ((TQUEUE_TYPE (tqueue)) == tqt_scm)
     {
-      msg_t * message = (read_tqueue (tqueue, blockp));
-      if ((TQUEUE_TYPE (tqueue)) == tqt_scm)
-	{
-	  process_interrupt_messages ();
-	  if (pending_interrupts_p ())
-	    return (-2);
-	}
-      if (message != 0)
-	return (MSG_SENDER (message));
-      if (!blockp)
-	return (-1);
+      process_interrupt_messages ();
+      if (pending_interrupts_p ())
+	return (-2);
     }
+  return ((message != 0) ? (MSG_SENDER (message)) : (-1));
 }
 
 static msg_t *
@@ -598,6 +592,16 @@ read_std_tqueue (tqueue_t * tqueue, int blockp)
       (void) OS2_reset_event_semaphore (STD_TQUEUE_EVENT (tqueue));
       OS2_release_mutex_semaphore (STD_TQUEUE_MUTEX (tqueue));
       (void) OS2_wait_event_semaphore ((STD_TQUEUE_EVENT (tqueue)), 1);
+      /* Don't wait more than once; the caller must be prepared to
+	 call again if a message is required.  The reason this is
+	 necessary is that two threads may be waiting on the same
+	 tqueue at the same time, and when a message shows up, the
+	 wrong thread might read it.  If we allowed the loop to
+	 continue, the thread that was waiting for the message would
+	 wake up, see no message, and go to sleep; meanwhile, the
+	 other thread has already stored the message in the correct
+	 subqueue.  */
+      blockp = 0;
     }
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.4 1995/04/28 06:59:29 cph Exp $
+$Id: pros2io.c,v 1.5 1995/11/03 01:22:21 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -106,6 +106,7 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
 
     /* This first phase checks the qid subqueues and OS2_scheme_tqueue
        for any previously-queued input.  */
+  check_for_input:
     for (qid = 0; (qid <= QID_MAX); qid += 1)
       {
 	(results [qid]) = 0;
@@ -132,8 +133,10 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
 	    (OS2_scheme_tqueue_avail_map [qid]) = 0;
 	  n = (OS2_tqueue_select (OS2_scheme_tqueue, blockp));
 	  if (n == (-1))
-	    break;
-	  else if (n < 0)
+	    /* If we're unblocked and there's no message in the
+	       tqueue, go back and check for input again.  */
+	    goto check_for_input;
+	  if (n < 0)
 	    interruptp = 1;
 	  else
 	    for (qid = 0; (qid <= QID_MAX); qid += 1)
