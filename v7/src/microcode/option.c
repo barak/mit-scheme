@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.57 2002/11/20 19:46:11 cph Exp $
+$Id: option.c,v 1.58 2002/12/27 03:18:27 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -53,10 +53,6 @@ extern int atoi ();
 #  include <io.h>
 #  include "nt.h"
 #  include "ntio.h"
-#endif
-
-#ifndef NULL
-# define NULL 0
 #endif
 
 #if defined(__WIN32__) || defined(__OS2__)
@@ -154,14 +150,14 @@ Scheme accepts the following command-line options.  The options may
 appear in any order, but they must all appear before any other
 arguments on the command line.
 
--library PATH
+--library PATH
   Sets the library search path to PATH.  This is a colon-separated
   list of directories that is searched to find various library files,
   such as bands.  If this option is not given, the value of the
   environment variable MITSCHEME_LIBRARY_PATH is used; it that isn't
   defined, "/usr/local/lib/mit-scheme" is used.
 
--band FILENAME
+--band FILENAME
   Specifies the initial band to be loaded.  Searches for FILENAME in
   the working directory and the library directories, returning the
   full pathname of the first readable file of that name.  If this
@@ -170,13 +166,13 @@ arguments on the command line.
   these cases the library directories are searched, but not the
   working directory.
 
--fasl FILENAME
+--fasl FILENAME
   Specifies that a cold load should be performed, using FILENAME as
   the initial file to be loaded.  If this option isn't given, a normal
   load is performed instead.  This option may not be used together
-  with the "-band" option.
+  with the "--band" option.
 
--utabmd FILENAME
+--utabmd FILENAME
   Specifies the name of the microcode tables file.  The file is
   searched for in the working directory and the library directories.
   If this option isn't given, the filename is the value of the
@@ -184,11 +180,11 @@ arguments on the command line.
   defined, "utabmd.bin"; in these cases the library directories are
   searched, but not the working directory.
 
--utab FILENAME
-  An alternate name for the "-utabmd" option.  At most one of these
+--utab FILENAME
+  An alternate name for the "--utabmd" option.  At most one of these
   options may be given.
 
--large
+--large
   Specifies that large heap, constant, and stack default sizes should
   be used.  These are specified by the environment variables
   MITSCHEME_LARGE_HEAP, MITSCHEME_LARGE_CONSTANT, and
@@ -200,299 +196,299 @@ arguments on the command line.
   Scheme procedure `(print-gc-statistics)' shows how much heap and
   constant space is available and in use.]
 
--heap BLOCKS
+--heap BLOCKS
   Specifies the size of the heap in 1024-word blocks.  Overrides any
   default.  Normally two such heaps are allocated; `bchscheme'
   allocates only one.
 
--constant BLOCKS
+--constant BLOCKS
   Specifies the size of constant space in 1024-word blocks.  Overrides
   any default.
 
--stack BLOCKS
+--stack BLOCKS
   Specifies the size of the stack in 1024-word blocks.  Overrides any
   default.
 
--option-summary
+--option-summary
   Causes Scheme to write option information to standard error.
 
--emacs
+--emacs
   Specifies that Scheme is running as a subprocess of GNU Emacs.
   This option is automatically supplied by GNU Emacs, and should not
   be given under other circumstances.
 
--interactive
+--interactive
   If this option isn't specified, and Scheme's standard I/O is not a
   terminal, Scheme will detach itself from its controlling terminal.
   This will prevent it from getting signals sent to the process group
   of that terminal.  If this option is specified, Scheme will not
   detach itself from the controlling terminal.
 
--nocore
+--nocore
   Specifies that Scheme should not generate a core dump under any
   circumstances.
 
 The following options are available only on machines with
 compiled-code support:
 
--compiler
+--compiler
   This option specifies defaults appropriate for loading the compiler.
-  It changes the defaults for "-band": the environment variable
+  It changes the defaults for "--band": the environment variable
   MITSCHEME_COMPILER_BAND is used, otherwise "compiler.com" is used.
-  It also specifies the use of large sizes, exactly like "-large".
+  It also specifies the use of large sizes, exactly like "--large".
 
--edwin
+--edwin
   This option specifies defaults appropriate for loading the editor.
-  It changes the defaults for "-band": the environment variable
+  It changes the defaults for "--band": the environment variable
   MITSCHEME_EDWIN_BAND is used, otherwise "edwin.com" is used.  It
-  also specifies the use of large sizes, exactly like "-large".
+  also specifies the use of large sizes, exactly like "--large".
 
 The following options are only meaningful to bchscheme:
 
--gc-directory DIRECTORY
+--gc-directory DIRECTORY
   Specifies what directory to use to allocate the garbage collection file.
 
--gc-drone FILENAME
+--gc-drone FILENAME
   Specifies the program to use as the gc drones for overlapped I/O.
 
--gc-end-position N
+--gc-end-position N
   Specifies a position into the gc file past which bchscheme should not use.
 
--gc-file FILENAME
+--gc-file FILENAME
   Specifies that FILENAME should be used garbage collection.  Overrides
   -gc-directory if it is an absolute pathname.  -gcfile means the same thing,
   but is deprecated.
 
--gc-keep
+--gc-keep
   Specifles that newly allocated gc files should be kept rather than deleted.
 
--gc-read-overlap N
+--gc-read-overlap N
   Specifies the number of additional GC windows to use when reading
   for overlapped I/O.  Each implies a drone process to manage it,
   if supported.
 
--gc-start-position N
+--gc-start-position N
   Specifies a position into the gc file before which bchscheme should not use.
 
--gc-window-size BLOCKS
+--gc-window-size BLOCKS
   Specifies the size in 1024-word blocks of each GC window.
 
--gc-write-overlap N
+--gc-write-overlap N
   Specifies the number of additional GC windows to use when writing for
   overlapped I/O.  Each implies a drone process to manage it, if supported.
 */
 
 #ifndef LIBRARY_PATH_VARIABLE
-#define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
+#  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
 #endif
 
 #ifndef DEFAULT_LIBRARY_PATH
-#ifdef DOS_LIKE_FILENAMES
-#define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
-#else
-#define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
-#endif
+#  ifdef DOS_LIKE_FILENAMES
+#    define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
+#  else
+#    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
+#  endif
 #endif
 
 #ifndef BAND_VARIABLE
-#define BAND_VARIABLE "MITSCHEME_BAND"
+#  define BAND_VARIABLE "MITSCHEME_BAND"
 #endif
 
 #ifndef DEFAULT_BAND
-#define DEFAULT_BAND "runtime.com"
+#  define DEFAULT_BAND "runtime.com"
 #endif
 
 #ifndef COMPILER_BAND_VARIABLE
-#define COMPILER_BAND_VARIABLE "MITSCHEME_COMPILER_BAND"
+#  define COMPILER_BAND_VARIABLE "MITSCHEME_COMPILER_BAND"
 #endif
 
 #ifndef COMPILER_DEFAULT_BAND
-#define COMPILER_DEFAULT_BAND "compiler.com"
+#  define COMPILER_DEFAULT_BAND "compiler.com"
 #endif
 
 #ifndef EDWIN_BAND_VARIABLE
-#define EDWIN_BAND_VARIABLE "MITSCHEME_EDWIN_BAND"
+#  define EDWIN_BAND_VARIABLE "MITSCHEME_EDWIN_BAND"
 #endif
 
 #ifndef EDWIN_DEFAULT_BAND
-#define EDWIN_DEFAULT_BAND "edwin.com"
+#  define EDWIN_DEFAULT_BAND "edwin.com"
 #endif
 
 #ifndef ALL_BAND_VARIABLE
-#define ALL_BAND_VARIABLE "MITSCHEME_ALL_BAND"
+#  define ALL_BAND_VARIABLE "MITSCHEME_ALL_BAND"
 #endif
 
 #ifndef ALL_DEFAULT_BAND
-#define ALL_DEFAULT_BAND "all.com"
+#  define ALL_DEFAULT_BAND "all.com"
 #endif
 
 #ifndef UTABMD_FILE_VARIABLE
-#define UTABMD_FILE_VARIABLE "MITSCHEME_UTABMD_FILE"
+#  define UTABMD_FILE_VARIABLE "MITSCHEME_UTABMD_FILE"
 #endif
 
 #ifndef DEFAULT_UTABMD_FILE
-#define DEFAULT_UTABMD_FILE "utabmd.bin"
+#  define DEFAULT_UTABMD_FILE "utabmd.bin"
 #endif
 
 #ifdef HAS_COMPILER_SUPPORT
 
-#if defined(hp9000s800) || defined(__hp9000s800)
+#  if defined(hp9000s800) || defined(__hp9000s800)
 /* HPPA compiled binaries are large! */
 
-#ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 600
-#endif
+#    ifndef DEFAULT_SMALL_CONSTANT
+#      define DEFAULT_SMALL_CONSTANT 600
+#    endif
 
-#ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1400
-#endif
+#    ifndef DEFAULT_LARGE_CONSTANT
+#      define DEFAULT_LARGE_CONSTANT 1400
+#    endif
 
-#endif /* hp9000s800 */
+#  endif /* hp9000s800 */
 
-#ifdef mips
+#  ifdef mips
 /* MIPS compiled binaries are large! */
 
-#ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 700
-#endif
+#    ifndef DEFAULT_SMALL_CONSTANT
+#      define DEFAULT_SMALL_CONSTANT 700
+#    endif
 
-#ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1500
-#endif
+#    ifndef DEFAULT_LARGE_CONSTANT
+#      define DEFAULT_LARGE_CONSTANT 1500
+#    endif
 
-#endif /* mips */
+#  endif /* mips */
 
-#ifdef __IA32__
+#  ifdef __IA32__
 /* 386 code is large too! */
 
-#ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 600
-#endif
+#    ifndef DEFAULT_SMALL_CONSTANT
+#      define DEFAULT_SMALL_CONSTANT 600
+#    endif
 
-#ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1200
-#endif
+#    ifndef DEFAULT_LARGE_CONSTANT
+#      define DEFAULT_LARGE_CONSTANT 1200
+#    endif
 
-#endif /* __IA32__ */
+#  endif /* __IA32__ */
 
 #endif /* HAS_COMPILER_SUPPORT */
 
 #ifndef DEFAULT_SMALL_HEAP
-#define DEFAULT_SMALL_HEAP 250
+#  define DEFAULT_SMALL_HEAP 250
 #endif
 
 #ifndef SMALL_HEAP_VARIABLE
-#define SMALL_HEAP_VARIABLE "MITSCHEME_SMALL_HEAP"
+#  define SMALL_HEAP_VARIABLE "MITSCHEME_SMALL_HEAP"
 #endif
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 450
+#  define DEFAULT_SMALL_CONSTANT 450
 #endif
 
 #ifndef SMALL_CONSTANT_VARIABLE
-#define SMALL_CONSTANT_VARIABLE "MITSCHEME_SMALL_CONSTANT"
+#  define SMALL_CONSTANT_VARIABLE "MITSCHEME_SMALL_CONSTANT"
 #endif
 
 #ifndef DEFAULT_SMALL_STACK
-#define	DEFAULT_SMALL_STACK 100
+#  define	DEFAULT_SMALL_STACK 100
 #endif
 
 #ifndef SMALL_STACK_VARIABLE
-#define SMALL_STACK_VARIABLE "MITSCHEME_SMALL_STACK"
+#  define SMALL_STACK_VARIABLE "MITSCHEME_SMALL_STACK"
 #endif
 
 #ifndef DEFAULT_LARGE_HEAP
-#define DEFAULT_LARGE_HEAP 1000
+#  define DEFAULT_LARGE_HEAP 1000
 #endif
 
 #ifndef LARGE_HEAP_VARIABLE
-#define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"
+#  define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"
 #endif
 
 #ifndef DEFAULT_LARGE_CONSTANT
-#define DEFAULT_LARGE_CONSTANT 1000
+#  define DEFAULT_LARGE_CONSTANT 1000
 #endif
 
 #ifndef LARGE_CONSTANT_VARIABLE
-#define LARGE_CONSTANT_VARIABLE "MITSCHEME_LARGE_CONSTANT"
+#  define LARGE_CONSTANT_VARIABLE "MITSCHEME_LARGE_CONSTANT"
 #endif
 
 #ifndef DEFAULT_LARGE_STACK
-#define DEFAULT_LARGE_STACK DEFAULT_SMALL_STACK
+#  define DEFAULT_LARGE_STACK DEFAULT_SMALL_STACK
 #endif
 
 #ifndef LARGE_STACK_VARIABLE
-#define LARGE_STACK_VARIABLE "MITSCHEME_LARGE_STACK"
+#  define LARGE_STACK_VARIABLE "MITSCHEME_LARGE_STACK"
 #endif
 
 /* These are only meaningful for bchscheme */
 
 #ifndef DEFAULT_GC_DIRECTORY
-#ifdef DOS_LIKE_FILENAMES
-#define DEFAULT_GC_DIRECTORY		"\\tmp"
-#else
-#define DEFAULT_GC_DIRECTORY		"/tmp"
-#endif
+#  ifdef DOS_LIKE_FILENAMES
+#    define DEFAULT_GC_DIRECTORY "\\tmp"
+#  else
+#    define DEFAULT_GC_DIRECTORY "/tmp"
+#  endif
 #endif
 
 #ifndef GC_DIRECTORY_VARIABLE
-#define GC_DIRECTORY_VARIABLE		"MITSCHEME_GC_DIRECTORY"
+#  define GC_DIRECTORY_VARIABLE "MITSCHEME_GC_DIRECTORY"
 #endif
 
 #ifndef DEFAULT_GC_DRONE
-#define DEFAULT_GC_DRONE		"gcdrone"
+#  define DEFAULT_GC_DRONE "gcdrone"
 #endif
 
 #ifndef GC_DRONE_VARIABLE
-#define GC_DRONE_VARIABLE		"MITSCHEME_GC_DRONE"
+#  define GC_DRONE_VARIABLE "MITSCHEME_GC_DRONE"
 #endif
 
 #ifndef DEFAULT_GC_END_POSITION
-#define DEFAULT_GC_END_POSITION		-1
+#  define DEFAULT_GC_END_POSITION (-1)
 #endif
 
 #ifndef GC_END_POSITION_VARIABLE
-#define GC_END_POSITION_VARIABLE	"MITSCHEME_GC_END_POSITION"
+#  define GC_END_POSITION_VARIABLE "MITSCHEME_GC_END_POSITION"
 #endif
 
 #ifndef DEFAULT_GC_FILE
-#define DEFAULT_GC_FILE			"GCXXXXXX"
+#  define DEFAULT_GC_FILE "GCXXXXXX"
 #endif
 
 #ifndef GC_FILE_VARIABLE
-#define GC_FILE_VARIABLE		"MITSCHEME_GC_FILE"
+#  define GC_FILE_VARIABLE "MITSCHEME_GC_FILE"
 #endif
 
 #ifndef DEFAULT_GC_READ_OVERLAP
-#define DEFAULT_GC_READ_OVERLAP		0
+#  define DEFAULT_GC_READ_OVERLAP 0
 #endif
 
 #ifndef GC_READ_OVERLAP_VARIABLE
-#define GC_READ_OVERLAP_VARIABLE	"MITSCHEME_GC_READ_OVERLAP"
+#  define GC_READ_OVERLAP_VARIABLE "MITSCHEME_GC_READ_OVERLAP"
 #endif
 
 #ifndef DEFAULT_GC_START_POSITION
-#define DEFAULT_GC_START_POSITION	0
+#  define DEFAULT_GC_START_POSITION 0
 #endif
 
 #ifndef GC_START_POSITION_VARIABLE
-#define GC_START_POSITION_VARIABLE	"MITSCHEME_GC_START_POSITION"
+#  define GC_START_POSITION_VARIABLE "MITSCHEME_GC_START_POSITION"
 #endif
 
 #ifndef DEFAULT_GC_WINDOW_SIZE
-#define DEFAULT_GC_WINDOW_SIZE		16
+#  define DEFAULT_GC_WINDOW_SIZE 16
 #endif
 
 #ifndef GC_WINDOW_SIZE_VARIABLE
-#define GC_WINDOW_SIZE_VARIABLE		"MITSCHEME_GC_WINDOW_SIZE"
+#  define GC_WINDOW_SIZE_VARIABLE "MITSCHEME_GC_WINDOW_SIZE"
 #endif
 
 #ifndef DEFAULT_GC_WRITE_OVERLAP
-#define DEFAULT_GC_WRITE_OVERLAP	0
+#  define DEFAULT_GC_WRITE_OVERLAP 0
 #endif
 
 #ifndef GC_WRITE_OVERLAP_VARIABLE
-#define GC_WRITE_OVERLAP_VARIABLE	"MITSCHEME_GC_WRITE_OVERLAP"
+#  define GC_WRITE_OVERLAP_VARIABLE "MITSCHEME_GC_WRITE_OVERLAP"
 #endif
 
 static int
@@ -529,19 +525,6 @@ DEFUN (string_compare_ci, (string1, string2),
      ? 0
      : ((length1 < length2) ? (-1) : 1));
 }
-
-#if 0
-static char *
-DEFUN (strchr, (s, c), CONST char * s AND int c)
-{
-  while (1)
-    {
-      int c1 = (*s++);
-      if (c1 == c) return ((char *) (s - 1));
-      if (c1 == '\0') return (0);
-    }
-}
-#endif
 
 static PTR
 DEFUN (xmalloc, (n), unsigned long n)
@@ -613,6 +596,15 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
   while (scan_argv < end_argv)
     {
       CONST char * option = (*scan_argv++);
+      if ((strncmp ("--", option, 2)) == 0)
+	option += 2;
+      else if ((strncmp ("-", option, 1)) == 0)
+	option += 1;
+      else
+	{
+	  scan_argv -= 1;
+	  break;
+	}
       for (scan_desc = descriptors; (scan_desc < end_desc); scan_desc += 1)
 	if ((string_compare_ci (option, (scan_desc -> option))) == 0)
 	  {
@@ -623,7 +615,7 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
 		  (*value_cell) = (*scan_argv++);
 		else
 		  {
-		    outf_fatal ("%s: option %s requires an argument.\n",
+		    outf_fatal ("%s: option --%s requires an argument.\n",
 			     scheme_program_name, option);
 		    termination_init_error ();
 		  }
@@ -651,51 +643,53 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
 static void
 DEFUN (parse_standard_options, (argc, argv), int argc AND CONST char ** argv)
 {
-  option_argument ("-band", 1, (&option_raw_band));
-  option_argument ("-constant", 1, (&option_raw_constant));
-  option_argument ("-emacs", 0, (&option_emacs_subprocess));
-  option_argument ("-fasl", 1, (&option_fasl_file));
-  option_argument ("-heap", 1, (&option_raw_heap));
-  option_argument ("-interactive", 0, (&option_force_interactive));
-  option_argument ("-large", 0, (&option_large_sizes));
-  option_argument ("-library", 1, (&option_raw_library));
-  option_argument ("-nocore", 0, (&option_disable_core_dump));
-  option_argument ("-option-summary", 0, (&option_summary));
-  option_argument ("-stack", 1, (&option_raw_stack));
-  option_argument ("-utab", 1, (&option_raw_utab));
-  option_argument ("-utabmd", 1, (&option_raw_utabmd));
-  option_argument ("-empty-list-eq-false", 0, (&option_empty_list_eq_false));
+  option_argument ("band", 1, (&option_raw_band));
+  option_argument ("constant", 1, (&option_raw_constant));
+  option_argument ("emacs", 0, (&option_emacs_subprocess));
+  option_argument ("fasl", 1, (&option_fasl_file));
+  option_argument ("heap", 1, (&option_raw_heap));
+  option_argument ("interactive", 0, (&option_force_interactive));
+  option_argument ("large", 0, (&option_large_sizes));
+  option_argument ("library", 1, (&option_raw_library));
+  option_argument ("nocore", 0, (&option_disable_core_dump));
+  option_argument ("option-summary", 0, (&option_summary));
+  option_argument ("stack", 1, (&option_raw_stack));
+  option_argument ("utab", 1, (&option_raw_utab));
+  option_argument ("utabmd", 1, (&option_raw_utabmd));
+  option_argument ("empty-list-eq-false", 0, (&option_empty_list_eq_false));
 #ifdef HAS_COMPILER_SUPPORT
-  option_argument ("-compiler", 0, (&option_compiler_defaults));
-  option_argument ("-edwin", 0, (&option_edwin_defaults));
+  option_argument ("compiler", 0, (&option_compiler_defaults));
+  option_argument ("edwin", 0, (&option_edwin_defaults));
 #endif
   /* The following options are only meaningful to bchscheme. */
-  option_argument ("-gc-directory", 1, (&option_gc_directory));
-  option_argument ("-gc-drone", 1, (&option_gc_drone));
-  option_argument ("-gc-end-position", 1, (&option_raw_gc_end_position));
-  option_argument ("-gc-file", 1, (&option_gc_file));
-  option_argument ("-gc-keep", 0, (&option_gc_keep));
-  option_argument ("-gc-start-position", 1, (&option_raw_gc_start_position));
-  option_argument ("-gc-read-overlap", 1, (&option_raw_gc_read_overlap));
-  option_argument ("-gc-window-size", 1, (&option_raw_gc_window_size));
-  option_argument ("-gc-write-overlap", 1, (&option_raw_gc_write_overlap));
-  option_argument ("-gcfile", 1, (&option_raw_gc_file)); /* Obsolete */
+  option_argument ("gc-directory", 1, (&option_gc_directory));
+  option_argument ("gc-drone", 1, (&option_gc_drone));
+  option_argument ("gc-end-position", 1, (&option_raw_gc_end_position));
+  option_argument ("gc-file", 1, (&option_gc_file));
+  option_argument ("gc-keep", 0, (&option_gc_keep));
+  option_argument ("gc-start-position", 1, (&option_raw_gc_start_position));
+  option_argument ("gc-read-overlap", 1, (&option_raw_gc_read_overlap));
+  option_argument ("gc-window-size", 1, (&option_raw_gc_window_size));
+  option_argument ("gc-write-overlap", 1, (&option_raw_gc_write_overlap));
+  option_argument ("gcfile", 1, (&option_raw_gc_file)); /* Obsolete */
   parse_options (argc, argv);
 }
 
 static CONST char *
 DEFUN (string_option, (option, defval),
-       CONST char * option AND CONST char * defval)
+       CONST char * option AND
+       CONST char * defval)
 {
-  return ((option == ((char *) NULL)) ? defval : option);
+  return ((option == 0) ? defval : option);
 }
 
 static CONST char *
 DEFUN (environment_default, (variable, defval),
-       CONST char * variable AND CONST char * defval)
+       CONST char * variable AND
+       CONST char * defval)
 {
   CONST char * temp = (getenv (variable));
-  return ((temp == ((char *) NULL)) ? defval : temp);
+  return ((temp == 0) ? defval : temp);
 }
 
 static CONST char *
@@ -721,10 +715,10 @@ DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
 {
   if (optval != 0)
     {
-      long n = (strtol (optval, ((char **) NULL), 0));
+      long n = (strtol (optval, 0, 0));
       if (n < 0)
 	{
-	  outf_fatal ("%s: illegal argument %s for option %s.\n",
+	  outf_fatal ("%s: illegal argument %s for option --%s.\n",
 		   scheme_program_name, optval, option);
 	  termination_init_error ();
 	}
@@ -734,7 +728,7 @@ DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
     CONST char * t = (getenv (variable));
     if (t != 0)
       {
-	long n = (strtol (t, ((char **) NULL), 0));
+	long n = (strtol (t, 0, 0));
 	if (n < 0)
 	  {
 	    outf_fatal ("%s: illegal value %s for variable %s.\n",
@@ -759,7 +753,7 @@ DEFUN (standard_numeric_option, (option, optval, variable, defval),
       int n = (atoi (optval));
       if (n <= 0)
 	{
-	  outf_fatal ("%s: illegal argument %s for option %s.\n",
+	  outf_fatal ("%s: illegal argument %s for option --%s.\n",
 		   scheme_program_name, optval, option);
 	  termination_init_error ();
 	}
@@ -899,7 +893,7 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
       unsigned int dlen;
       CONST char * fullname;
       if (directory == 0)
-	return ((char *) NULL);
+	return (0);
       dlen = (strlen (directory));
       if (dlen > 0)
 	{
@@ -926,36 +920,34 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
        int default_p AND
        int fail_p)
 {
-  CONST char * result;
-
-  if ((result = (search_for_library_file (filename))) != ((char *) NULL))
+  CONST char * result = (search_for_library_file (filename));
+  if (result != 0)
     return (result);
   if (!fail_p)
     return (filename);
   else
-  {
-    CONST char ** scan_path = option_library_path;
-
-    outf_fatal ("%s: can't find a readable %s",
-	     scheme_program_name, (default_p ? "default" : "file"));
-    if (option != 0)
-      outf_fatal (" for option %s", option);
-    outf_fatal (".\n");
-    outf_fatal ("\tsearched for file %s in these directories:\n",
-	     filename);
-    if (!default_p)
-      outf_fatal ("\t.\n");
-    while (1)
     {
-      CONST char * element = (*scan_path++);
-      if (element == 0)
-	break;
-      outf_fatal ("\t%s\n", element);
+      CONST char ** scan_path = option_library_path;
+      outf_fatal ("%s: can't find a readable %s",
+		  scheme_program_name,
+		  (default_p ? "default" : "file"));
+      if (option != 0)
+	outf_fatal (" for option --%s", option);
+      outf_fatal (".\n");
+      outf_fatal ("\tsearched for file %s in these directories:\n", filename);
+      if (!default_p)
+	outf_fatal ("\t.\n");
+      while (1)
+	{
+	  CONST char * element = (*scan_path++);
+	  if (element == 0)
+	    break;
+	  outf_fatal ("\t%s\n", element);
+	}
+      termination_init_error ();
+      /*NOTREACHED*/
+      return (0);
     }
-    termination_init_error ();
-    /*NOTREACHED*/
-    return (0);
-  }
 }
 
 static CONST char *
@@ -974,8 +966,8 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 	{
 	  if (fail_p)
 	    {
-	      outf_fatal ("%s: can't read file %s for option %s.\n",
-		       scheme_program_name, optval, option);
+	      outf_fatal ("%s: can't read file %s for option --%s.\n",
+			  scheme_program_name, optval, option);
 	      termination_init_error ();
 	    }
 	  return (string_copy (optval));
@@ -990,8 +982,8 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
       {
 	if ((! (FILE_READABLE (filename))) && fail_p)
 	  {
-	    outf_fatal ("%s: can't read default file %s for option %s.\n",
-		     scheme_program_name, filename, option);
+	    outf_fatal ("%s: can't read default file %s for option --%s.\n",
+			scheme_program_name, filename, option);
 	    termination_init_error ();
 	  }
 	return (string_copy (filename));
@@ -1006,8 +998,8 @@ DEFUN (conflicting_options, (option1, option2),
        CONST char * option1 AND
        CONST char * option2)
 {
-  outf_fatal ("%s: can't specify both options %s and %s.\n",
-	   scheme_program_name, option1, option2);
+  outf_fatal ("%s: can't specify both options --%s and --%s.\n",
+	      scheme_program_name, option1, option2);
   termination_init_error ();
 }
 
@@ -1246,11 +1238,11 @@ DEFUN (read_command_line_options, (argc, argv),
     if (option_fasl_file != 0)
       {
 	if (option_raw_band != 0)
-	  conflicting_options ("-fasl", "-band");
+	  conflicting_options ("fasl", "band");
 #ifndef NATIVE_CODE_IS_C
 	if (! (FILE_READABLE (option_fasl_file)))
 	  {
-	    outf_fatal ("%s: can't read option file: -fasl %s\n",
+	    outf_fatal ("%s: can't read option file: --fasl %s\n",
 		     scheme_program_name, option_fasl_file);
 	    termination_init_error ();
 	  }
@@ -1264,7 +1256,7 @@ DEFUN (read_command_line_options, (argc, argv),
 	if (option_raw_band != 0)
 	  option_band_specified = 1;
 	option_band_file =
-	  (standard_filename_option ("-band",
+	  (standard_filename_option ("band",
 				     option_raw_band,
 				     band_variable,
 				     default_band,
@@ -1277,7 +1269,7 @@ DEFUN (read_command_line_options, (argc, argv),
 			  (&band_constant_size),
 			  (&band_heap_size)));
   option_heap_size
-    = ((standard_numeric_option ("-heap",
+    = ((standard_numeric_option ("heap",
 				 option_raw_heap,
 				 (option_large_sizes
 				  ? LARGE_HEAP_VARIABLE
@@ -1287,7 +1279,7 @@ DEFUN (read_command_line_options, (argc, argv),
 				  : DEFAULT_SMALL_HEAP)))
        + (band_sizes_valid ? band_heap_size : 0));
   option_constant_size
-    = (standard_numeric_option ("-constant",
+    = (standard_numeric_option ("constant",
 				option_raw_constant,
 				(option_large_sizes
 				 ? LARGE_CONSTANT_VARIABLE
@@ -1298,7 +1290,7 @@ DEFUN (read_command_line_options, (argc, argv),
 				 ? DEFAULT_LARGE_CONSTANT
 				 : DEFAULT_SMALL_CONSTANT)));
   option_stack_size
-    = (standard_numeric_option ("-stack",
+    = (standard_numeric_option ("stack",
 				option_raw_stack,
 				(option_large_sizes
 				 ? LARGE_STACK_VARIABLE
@@ -1311,9 +1303,9 @@ DEFUN (read_command_line_options, (argc, argv),
   if (option_raw_utabmd != 0)
     {
       if (option_raw_utab != 0)
-	conflicting_options ("-utabmd", "-utab");
+	conflicting_options ("utabmd", "utab");
       option_utabmd_file =
-	(standard_filename_option ("-utabmd",
+	(standard_filename_option ("utabmd",
 				   option_raw_utabmd,
 				   UTABMD_FILE_VARIABLE,
 				   DEFAULT_UTABMD_FILE,
@@ -1321,7 +1313,7 @@ DEFUN (read_command_line_options, (argc, argv),
     }
   else
     option_utabmd_file =
-      (standard_filename_option ("-utab",
+      (standard_filename_option ("utab",
 				 option_raw_utab,
 				 UTABMD_FILE_VARIABLE,
 				 DEFAULT_UTABMD_FILE,
@@ -1332,7 +1324,7 @@ DEFUN (read_command_line_options, (argc, argv),
   if (option_raw_gc_file != ((char *) 0))
   {
     if (option_gc_file != ((char *) 0))
-      conflicting_options ("-gcfile", "-gc-file");
+      conflicting_options ("gcfile", "gc-file");
     else
       option_gc_file = option_raw_gc_file;
   }
@@ -1363,14 +1355,14 @@ DEFUN (read_command_line_options, (argc, argv),
     option_gc_directory = (string_option (option_gc_directory, dir));
   }
   option_gc_drone =
-    (standard_filename_option ("-gc-drone",
+    (standard_filename_option ("gc-drone",
 			       option_gc_drone,
 			       GC_DRONE_VARIABLE,
 			       DEFAULT_GC_DRONE,
 			       0));
 
   option_gc_end_position =
-    (non_negative_numeric_option ("-gc-end-position",
+    (non_negative_numeric_option ("gc-end-position",
 				  option_raw_gc_end_position,
 				  GC_END_POSITION_VARIABLE,
 				  DEFAULT_GC_END_POSITION));
@@ -1382,26 +1374,26 @@ DEFUN (read_command_line_options, (argc, argv),
 
   option_gc_read_overlap =
     ((int)
-     (non_negative_numeric_option ("-gc-read-overlap",
+     (non_negative_numeric_option ("gc-read-overlap",
 				   option_raw_gc_read_overlap,
 				   GC_READ_OVERLAP_VARIABLE,
 				   DEFAULT_GC_READ_OVERLAP)));
 
   option_gc_start_position =
-    (non_negative_numeric_option ("-gc-start-position",
+    (non_negative_numeric_option ("gc-start-position",
 				  option_raw_gc_start_position,
 				  GC_START_POSITION_VARIABLE,
 				  DEFAULT_GC_START_POSITION));
 
   option_gc_window_size =
-    (standard_numeric_option ("-gc-window-size",
+    (standard_numeric_option ("gc-window-size",
 			      option_raw_gc_window_size,
 			      GC_WINDOW_SIZE_VARIABLE,
 			      DEFAULT_GC_WINDOW_SIZE));
 
   option_gc_write_overlap =
     ((int)
-     (non_negative_numeric_option ("-gc-write-overlap",
+     (non_negative_numeric_option ("gc-write-overlap",
 				   option_raw_gc_write_overlap,
 				   GC_WRITE_OVERLAP_VARIABLE,
 				   DEFAULT_GC_WRITE_OVERLAP)));
