@@ -24,7 +24,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.1 1987/10/19 19:44:09 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.2 1987/12/05 17:01:14 cph Exp $
 
 (provide 'scheme)
 
@@ -122,11 +122,14 @@ Entry to this mode calls the value of scheme-mode-hook
 if that value is non-nil."
   (interactive)
   (kill-all-local-variables)
-  (use-local-map scheme-mode-map)
-  (setq major-mode 'scheme-mode)
-  (setq mode-name "Scheme")
+  (scheme-mode-initialize-internal)
   (scheme-mode-variables)
   (run-hooks 'scheme-mode-hook))
+
+(defun scheme-mode-initialize-internal ()
+  (use-local-map scheme-mode-map)
+  (setq major-mode 'scheme-mode)
+  (setq mode-name "Scheme"))
 
 (autoload 'run-scheme "xscheme"
   "Run an inferior Scheme process.
