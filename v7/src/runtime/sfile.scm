@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/sfile.scm,v 14.8 1991/11/04 20:29:58 cph Exp $
+$Id: sfile.scm,v 14.9 1993/11/06 21:36:53 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,6 +46,14 @@ MIT in each case. |#
 
 (define (delete-file filename)
   ((ucode-primitive file-remove) (->namestring (merge-pathnames filename))))
+
+(define (delete-file-no-errors filename)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:file-error
+				   condition-type:port-error)
+	 (lambda (condition) condition (k unspecific))
+       (lambda () (delete-file filename))))))
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
