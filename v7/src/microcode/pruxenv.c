@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.3 1991/08/13 05:46:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.4 1991/09/25 20:37:33 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -61,7 +61,7 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, INTEGER_P);
   {
-    long clock = (arg_integer (1));
+    time_t clock = (arg_integer (1));
     char * time_string = (UX_ctime (&clock));
     (time_string[24]) = '\0';
     PRIMITIVE_RETURN (char_pointer_to_string (time_string));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.3 1990/12/11 04:16:23 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/posixtyp.h,v 1.4 1991/09/25 20:37:24 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,8 +62,15 @@ MIT in each case. */
 #define _NLINK_T
 #define _PID_T
 #define _CLOCK_T
+#define _TIME_T
 #define _SIZE_T
 #define _CC_T
+#endif
+
+#ifdef apollo
+#define _MODE_T
+#define _NLINK_T
+#define _PID_T
 #endif
 
 #endif
@@ -99,6 +106,11 @@ typedef short gid_t;
 #ifndef _CLOCK_T
 #define _CLOCK_T
 typedef unsigned long clock_t;
+#endif
+
+#ifndef _TIME_T
+#define _TIME_T
+typedef long time_t;
 #endif
 
 #ifndef _SIZE_T
