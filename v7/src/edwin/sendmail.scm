@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.51 2000/06/08 20:57:13 cph Exp $
+;;; $Id: sendmail.scm,v 1.52 2000/06/08 21:11:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -663,7 +663,7 @@ the user from the mailer."
        (lambda () (kill-buffer temp-buffer))))))
 
 (define (prepare-mail-buffer-for-sending mail-buffer process-header)
-  (guarantee-mime-compliance mail-buffer)
+  ;;(guarantee-mime-compliance mail-buffer)
   (let ((temp-buffer (temporary-buffer " sendmail temp")))
     (let ((start (mark-right-inserting-copy (buffer-start temp-buffer)))
 	  (end (mark-left-inserting-copy (buffer-end temp-buffer))))
