@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.52 1990/11/21 07:03:52 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.53 1990/11/29 00:12:09 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -743,7 +743,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-FASDUMP", Prim_prim_fasdump, 3, 3, 0)
     int copy_result;
     SCHEME_OBJECT fasdump_result;
     Tchannel channel, temp_channel;
-    char temp_name[] = "/tmp/fasdumpXXXXXX";
+    char temp_name[19] = "/tmp/fasdumpXXXXXX";
 
     channel = (arg_channel (2));
 
