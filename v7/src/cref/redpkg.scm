@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.6 1995/01/05 20:21:16 cph Exp $
+$Id: redpkg.scm,v 1.7 1995/01/06 00:14:12 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -55,7 +55,6 @@ MIT in each case. |#
 			(pathname-new-type (merge-pathnames pathname
 							    model-pathname)
 					   "glo")))
-		   (handle-old-pathname-type pathname "glob")
 		   (if (file-exists? pathname)
 		       (let ((contents (fasload pathname)))
 			 (cond ((check-list contents symbol?)
@@ -122,7 +121,6 @@ MIT in each case. |#
 
 (define (cache-file-analyses! pmodel)
   (let ((pathname (pathname-new-type (pmodel/pathname pmodel) "fre")))
-    (handle-old-pathname-type pathname "free")
     (let ((result
 	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
 	     (append-map! (lambda (package)
@@ -332,13 +330,6 @@ MIT in each case. |#
 (define (check-list items predicate)
   (and (list? items)
        (for-all? items predicate)))
-
-(define (handle-old-pathname-type pathname type)
-  (let ((old (pathname-new-type pathname type)))
-    (if (file-exists? old)
-	(if (file-exists? pathname)
-	    (delete-file old)
-	    (rename-file old pathname)))))
 
 ;;;; Packages
 
