@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.9 1989/01/06 22:25:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.10 1989/01/06 23:01:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -374,34 +374,57 @@ MIT in each case. |#
 ;;;; General motion command
 
 (define (goto-command)
+  (if (select-subproblem)
+      (begin
+	(select-reduction)
+	(print-current-reduction))))
+
+(define (select-subproblem)
   (let loop ()
     (let ((subproblem-number (prompt-for-expression "Subproblem number: ")))
-      (cond ((not (and (integer? subproblem-number)
-		       (not (negative? subproblem-number))))
-	     (beep)
-	     (newline)
-	     (write-string "Subproblem level must be nonnegative integer!")
-	     (loop))
-	    ((< subproblem-number current-subproblem-number)
-	     (repeat (lambda ()
-		       (set-current-subproblem! (car previous-subproblems)
-						(cdr previous-subproblems)
-						normal-reduction-number))
-		     (- current-subproblem-number subproblem-number)))
-	    (else
-	     (let loop ()
-	       (if (< current-subproblem-number subproblem-number)
-		   (if (stack-frame/next-subproblem current-subproblem)
-		       (begin
-			 (earlier-subproblem)
-			 (loop))
-		       (begin
-			 (beep)
-			 (newline)
-			 (write-string "There is no such subproblem")
-			 (newline)
-			 (write-string "Now at subproblem number: ~o")
-			 (write current-subproblem-number)))))))))
+      (if (not (and (integer? subproblem-number)
+		    (not (negative? subproblem-number))))
+	  (begin
+	    (beep)
+	    (newline)
+	    (write-string "Subproblem level must be nonnegative integer!")
+	    (loop))
+	  (let ((delta (- subproblem-number current-subproblem-number)))
+	    (cond ((negative? delta)
+		   (let ((tail
+			  (list-tail previous-subproblems (-1+ (- delta)))))
+		     (set-current-subproblem! (car tail)
+					      (cdr tail)
+					      normal-reduction-number))
+		   true)
+		  ((positive? delta)
+		   (let loop
+		       ((subproblem current-subproblem)
+			(subproblems previous-subproblems)
+			(delta delta))
+		     (let ((next (stack-frame/next-subproblem subproblem)))
+		       (cond ((not next)
+			      (beep)
+			      (newline)
+			      (write-string "There is no such subproblem")
+			      false)
+			     ((= delta 1)
+			      (set-current-subproblem!
+			       next
+			       (cons subproblem subproblems)
+			       normal-reduction-number)
+			      true)
+			     (else
+			      (loop next
+				    (cons subproblem subproblems)
+				    (-1+ delta)))))))
+		  (else
+		   (newline)
+		   (write-string "Already at subproblem ")
+		   (write subproblem-number)
+		   false)))))))
+
+(define (select-reduction)
   (set-current-reduction!
    (cond ((> current-number-of-reductions 1)
 	  (let get-reduction-number ()
@@ -418,7 +441,8 @@ MIT in each case. |#
 		     (write-string
 		      "Reduction number must be nonnegative integer!")
 		     (get-reduction-number))
-		    ((not (< reduction-number current-number-of-reductions))
+		    ((not (< reduction-number
+			     current-number-of-reductions))
 		     (beep)
 		     (newline)
 		     (write-string "Reduction number too large!")
@@ -428,12 +452,13 @@ MIT in each case. |#
 	 ((= current-number-of-reductions 1)
 	  (newline)
 	  (write-string "There is only one reduction for this subproblem")
+	  (newline)
 	  0)
 	 (else
 	  (newline)
 	  (write-string "There are no reductions for this subproblem")
-	  -1)))
-  (print-current-reduction))
+	  (newline)
+	  -1))))
 
 ;;;; Environment motion and display
 
@@ -526,7 +551,10 @@ MIT in each case. |#
   (let ((next (stack-frame/next-subproblem current-subproblem)))
     (if next
 	(let ((invalid-expression? (invalid-expression? current-expression))
-	      (environment (get-evaluation-environment environment?)))
+	      (environment (get-evaluation-environment environment?))
+	      (return
+	       (lambda (value)
+		 ((stack-frame->continuation next) value))))
 	  (let ((value
 		 (debug/eval
 		  (let ((expression
@@ -548,8 +576,8 @@ MIT in each case. |#
 		  (write-string "That evaluates to:")
 		  (newline)
 		  (write value)
-		  (if (prompt-for-confirmation "Confirm: ") (next value)))
-		(next value))))
+		  (if (prompt-for-confirmation "Confirm: ") (return value)))
+		(return value))))
 	(begin
 	  (beep)
 	  (newline)
