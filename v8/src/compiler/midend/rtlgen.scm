@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.12 1995/01/30 21:45:40 adams Exp $
+$Id: rtlgen.scm,v 1.13 1995/02/16 13:19:38 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -1118,11 +1118,12 @@ MIT in each case. |#
     (if (not (= (length (remove-duplicates 
 			 (map (lambda (4v) (second (vector-ref 4v 1))) result)))
 		(length result)))
-	(begin
-	  (internal-warning "Duplicate preservation:")
-	  (pp `((,(length (rtlgen/state/env state)) bindings)
-		(,(length orig-reg-defns) orig-reg-defns)
-		(,(length result) result)))))
+	(if compiler:guru?
+	    (begin
+	      (internal-warning "Duplicate preservation:")
+	      (pp `((,(length (rtlgen/state/env state)) bindings)
+		    (,(length orig-reg-defns) orig-reg-defns)
+		    (,(length result) result))))))
     result)
 
   (define (preservations-from-state state)
@@ -1225,13 +1226,14 @@ MIT in each case. |#
 	      (case (car value)
 		((REGISTER)		; Added by JSM
 		 ;;(bkpt "; case = register")
-		 (if (reg-preserved? value)
-		     (internal-warning
-		      "rtlgen/preservation-state register preserved"
-		      reg value)
-		     (internal-warning
-		      "rtlgen/preservation-state register not preserved"
-		      reg value))
+		 (if compiler:guru?
+		     (if (reg-preserved? value)
+			 (internal-warning
+			  "rtlgen/preservation-state register preserved"
+			  reg value)
+			 (internal-warning
+			  "rtlgen/preservation-state register not preserved"
+			  reg value)))
 		 (ignore))
 		((OFFSET)
 		 ;; *** Kludge ***
@@ -1414,7 +1416,8 @@ MIT in each case. |#
 
   rands					; ignored
 
-  (internal-warning "call-lambda-with-stack-closure" call)
+  (if compiler:guru?
+      (internal-warning "call-lambda-with-stack-closure" call))
 
   ;; Sanity check: we can only rearrange the stack if all stack references
   ;; have already been loaded into pseudo-registers.  This may include
@@ -1584,7 +1587,8 @@ MIT in each case. |#
     (let ((loc (rtlgen/expr (rtlgen/state/->expr state `(PREDICATE ,tl ,fl))
 			    pred)))
       (if loc
-	  (internal-warning "Predicate returned a value" pred loc))
+	  (if compiler:guru?
+	      (internal-warning "Predicate returned a value" pred loc)))
       (values (not (zero? (cadr tl)))
 	      (not (zero? (cadr fl)))))))
 
