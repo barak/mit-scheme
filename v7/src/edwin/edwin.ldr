@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.42 1993/08/22 04:48:26 gjr Exp $
+$Id: edwin.ldr,v 1.43 1993/09/01 18:12:01 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -105,6 +105,8 @@ MIT in each case. |#
 	(load "search" environment)
 	(load "image" environment)
 	(load "comman" environment)
+	(if (not (memq (lookup 'os-type) '(dos nt)))
+	    (set! (access *external-doc-strings?* environment) false))
 	(load "comtab" (->environment '(EDWIN COMTAB)))
 	(load "modes" environment)
 	(load "buffer" environment)
@@ -227,4 +229,8 @@ MIT in each case. |#
 	(load-set-and-initialize! '("bochser" "bochsmod")
 				  (->environment '(EDWIN BOCHSER)))
 	|#
-	(load "notify" environment)))))
+	(load "notify" environment)
+	(if (access *external-doc-strings?* environment)
+	    (begin
+	      (set! (access *external-doc-strings?* environment) false)
+	      (warn "Remember to use ``dump-doc-strings''!")))))))
