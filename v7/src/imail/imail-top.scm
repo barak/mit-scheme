@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.219 2000/10/26 16:44:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.220 2000/11/13 21:28:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -60,6 +60,11 @@ The procedure is called with one argument, a list of headers,
  Each list element is a pair of two strings, the name and value."
   #f
   (lambda (object) (or (not object) (procedure? object))))
+
+(define-variable imail-output-default
+  "If not #f, the default URL for M-x imail-output."
+  #f
+  string-or-false?)
 
 (define-variable imail-delete-after-output
   "True means automatically delete a message that is copied to a file."
@@ -782,7 +787,8 @@ With prefix argument N, removes FLAG from next N messages,
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder" #f
+    (list (prompt-for-imail-url-string "Output to folder"
+				       (ref-variable imail-output-default #f)
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)
 	  (command-argument)))
