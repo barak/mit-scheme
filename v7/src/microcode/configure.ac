@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [14.14], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.2 2004/01/16 20:36:29 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.3 2004/01/18 06:04:46 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -493,7 +493,7 @@ AC_CHECK_FUNCS([ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([fcntl floor fpathconf frexp ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
-AC_CHECK_FUNCS([gettimeofday getwd grantpt])
+AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
 AC_CHECK_FUNCS([lockf])
 AC_CHECK_FUNCS([memcpy mkdir mktime modf])
