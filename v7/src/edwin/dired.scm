@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.112 1991/08/06 15:38:01 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.113 1991/08/07 19:09:03 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -184,9 +184,9 @@ CANNOT contain the 'F' option."
 	  (let loop ((index index))
 	    (set-mark-index! point index)
 	    (group-insert-string! group index "  ")
-	    (let ((index (line-end-index group (mark-index point))))
+	    (let ((index (1+ (line-end-index group (mark-index point)))))
 	      (if (not (group-end-index? group index))
-		  (loop (+ index 1))))))))
+		  (loop index)))))))
   (set-buffer-point! buffer (buffer-start buffer))
   (buffer-not-modified! buffer)
   (set-buffer-read-only! buffer))
