@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.31 1995/10/31 09:06:39 cph Exp $
+;;;	$Id: dos.scm,v 1.32 1995/11/10 23:48:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -155,13 +155,11 @@
     ;; Swap year around to the start
     (let ((time-string
 	   (file-time->string (file-attributes/modification-time attr))))
-      (if (string? time-string)
-	  (or (let ((len (string-length time-string)))
-		(and (fix:> len 5) ;; Grab the space char as well
-		     (string-append (substring time-string (fix:- len 5) len)
-				    " "
-				    (substring time-string 0 (fix:- len 5)))))
-	      ""))))
+      ;; Move the year from end to start, carrying leading space.
+      (let ((index (fix:- (string-length time-string) 5)))
+	(string-append (string-tail time-string index)
+		       " "
+		       (string-head time-string index)))))
 
   (let ((name (file-namestring file))
 	(attr (or (file-attributes file) (dummy-file-attributes))))
