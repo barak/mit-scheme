@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.27 1988/08/15 20:48:35 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.28 1988/08/16 17:49:29 markf Exp $ */
 
 #include "scheme.h"
 #include "prims.h"
@@ -443,13 +443,13 @@ DEFINE_PRIMITIVE ("&=", Prim_equal_number, 2, 2, 0)
   Set_Time_Zone (Zone_Math);
   
   if ((COMPLEX_P (Arg1)) && (COMPLEX_P (Arg2)))
-    Basic_Two_Op_Comparator (==, EQUAL)
+    PRIMITIVE_RETURN
+      (((Basic_Equal_Number ((REAL_PART (Arg1)), (REAL_PART (Arg2)))) == SHARP_T)
+       ? (Basic_Equal_Number ((IMAG_PART (Arg1)), (IMAG_PART (Arg2))))
+       : SHARP_F);
   else if ((COMPLEX_P (Arg1)) || (COMPLEX_P (Arg2)))
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN
-    (((Basic_Equal_Number ((REAL_PART (Arg1)), (REAL_PART (Arg2)))) == SHARP_T)
-     ? (Basic_Equal_Number ((IMAG_PART (Arg1)), (IMAG_PART (Arg2))))
-     : SHARP_F);
+  Basic_Two_Op_Comparator (==, EQUAL)
   /*NOTREACHED*/
 }
 
