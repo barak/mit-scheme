@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.10 1991/04/03 00:12:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.11 1991/04/12 23:19:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -103,6 +103,10 @@
   (if (group-read-only? group) (barf-if-read-only))
   (move-gap-to! group index)
   (guarantee-gap-length! group 1)
+  (let ((gap-start* (fix:1+ index)))
+    (undo-record-insertion! group index gap-start*)
+    (vector-set! group group-index:gap-start gap-start*))
+  (vector-set! group group-index:gap-length (fix:-1+ (group-gap-length group)))
   (string-set! (group-text group) index char)
   (for-each-mark group
     (lambda (mark)
@@ -110,11 +114,7 @@
 	(if (or (fix:> index* index)
 		(and (fix:= index* index)
 		     (mark-left-inserting? mark)))
-	    (set-mark-index! mark (fix:+ index* 1))))))
-  (vector-set! group group-index:gap-length (fix:-1+ (group-gap-length group)))
-  (let ((gap-start* (fix:1+ index)))
-    (vector-set! group group-index:gap-start gap-start*)
-    (undo-record-insertion! group index gap-start*)))
+	    (set-mark-index! mark (fix:+ index* 1)))))))
 
 (define (group-insert-string! group index string)
   (group-insert-substring! group index string 0 (string-length string)))
@@ -130,6 +130,12 @@
   (move-gap-to! group index)
   (let ((n (fix:- end start)))
     (guarantee-gap-length! group n)
+    (let ((gap-start* (fix:+ index n)))
+      (undo-record-insertion! group index gap-start*)
+      (vector-set! group group-index:gap-start gap-start*))
+    (vector-set! group
+		 group-index:gap-length
+		 (fix:- (group-gap-length group) n))
     (substring-move-right! string start end (group-text group) index)
     (for-each-mark group
       (lambda (mark)
@@ -137,13 +143,7 @@
 	  (if (or (fix:> index* index)
 		  (and (fix:= index* index)
 		       (mark-left-inserting? mark)))
-	      (set-mark-index! mark (fix:+ index* n))))))
-    (vector-set! group
-		 group-index:gap-length
-		 (fix:- (group-gap-length group) n))
-    (let ((gap-start* (fix:+ index n)))
-      (vector-set! group group-index:gap-start gap-start*)
-      (undo-record-insertion! group index gap-start*))))
+	      (set-mark-index! mark (fix:+ index* n))))))))
 
 ;;;; Deletions
 
