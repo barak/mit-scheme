@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.144 2000/08/05 02:00:05 cph Exp $
+;;; $Id: imail-imap.scm,v 1.145 2001/01/22 18:38:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -648,7 +648,8 @@
       (vector-set! v index (make-imap-message folder index)))))
 
 (define (read-message-headers! folder start)
-  (if (imap-folder-uidvalidity folder)
+  (if (and (imap-folder-uidvalidity folder)
+	   (> (folder-length folder) start))
       ((imail-ui:message-wrapper "Reading message UIDs")
        (lambda ()
 	 (imap:command:fetch-range (imap-folder-connection folder)
@@ -757,13 +758,15 @@
 			    #f))
 	      (fill-messages-vector! folder 0)
 	      (set-imap-folder-messages-synchronized?! folder #t)
-	      (with-interrupt-mask interrupt-mask
-		(lambda (interrupt-mask)
-		  interrupt-mask
-		  ((imail-ui:message-wrapper "Reading message UIDs")
-		   (lambda ()
-		     (imap:command:fetch-range (imap-folder-connection folder)
-					       0 #f '(UID))))))
+	      (if (> count 0)
+		  (with-interrupt-mask interrupt-mask
+		    (lambda (interrupt-mask)
+		      interrupt-mask
+		      ((imail-ui:message-wrapper "Reading message UIDs")
+		       (lambda ()
+			 (imap:command:fetch-range
+			  (imap-folder-connection folder)
+			  0 #f '(UID)))))))
 	      (let ((v* (imap-folder-messages folder))
 		    (n* (imap-folder-n-messages folder)))
 		(let loop ((i 0) (i* 0))
