@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/daemon.c,v 9.29 1991/10/29 22:55:11 jinx Exp $
+$Id: daemon.c,v 9.30 1992/09/18 21:59:42 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -66,7 +66,7 @@ DEFINE_PRIMITIVE ("CLOSE-LOST-OPEN-FILES", Prim_close_lost_open_files, 1, 1, 0)
 	SCHEME_OBJECT weak_cell = (FAST_PAIR_CAR (cell));
 	if ((FAST_PAIR_CAR (weak_cell)) == SHARP_F)
 	  {
-	    OS_channel_close
+	    OS_channel_close_noerror
 	      (UNSIGNED_FIXNUM_TO_LONG (FAST_PAIR_CDR (weak_cell)));
 	    cell = (FAST_PAIR_CDR (cell));
 	    (*smash) = cell;
