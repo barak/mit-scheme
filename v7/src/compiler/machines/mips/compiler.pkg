@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.15 1993/08/11 23:36:37 cph Exp $
+$Id: compiler.pkg,v 1.16 1993/08/26 06:27:25 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -616,6 +616,7 @@ MIT in each case. |#
 	  lap:make-unconditional-branch
 	  lap:syntax-instruction)
   (export (compiler top-level)
+	  *block-associations*
 	  *interned-assignments*
 	  *interned-constants*
 	  *interned-global-links*

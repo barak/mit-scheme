@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.7 1993/08/11 23:36:50 cph Exp $
+$Id: compiler.pkg,v 1.8 1993/08/26 06:33:56 gjr Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -610,6 +610,7 @@ case.
 	  lap:make-unconditional-branch
 	  lap:syntax-instruction)
   (export (compiler top-level)
+	  *block-associations*
 	  *interned-assignments*
 	  *interned-constants*
 	  *interned-global-links*
