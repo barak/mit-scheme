@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: logmer.scm,v 1.20 2000/03/20 22:52:26 cph Exp $
+$Id: logmer.scm,v 1.21 2000/03/27 06:36:17 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -193,7 +193,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (number->string (decoded-time/year dt))
      "-"
      (string-pad-left (number->string (decoded-time/month dt)) 2 #\0)
-
      "-"
      (string-pad-left (number->string (decoded-time/day dt)) 2 #\0))))
 
