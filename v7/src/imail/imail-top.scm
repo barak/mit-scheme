@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.50 2000/05/17 17:04:08 cph Exp $
+;;; $Id: imail-top.scm,v 1.51 2000/05/17 17:06:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -491,7 +491,8 @@ With prefix argument N moves backward N messages with these flags."
 		(insert-string "[This folder has no messages in it.]" mark))
 	    (mark-temporary! mark))
 	  (set-buffer-point! buffer (buffer-start buffer))
-	  (set-buffer-major-mode! buffer (ref-mode-object imail))))
+	  (set-buffer-major-mode! buffer (ref-mode-object imail))
+	  (buffer-not-modified! buffer)))
     (if message
 	(message-seen message))
     (imail-update-mode-line! buffer)))
