@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.9 1993/11/08 21:43:42 gjr Exp $
+$Id: liarc.h,v 1.10 1993/11/09 06:38:55 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -79,6 +79,12 @@ typedef union machine_word_u machine_word;
 
 #define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
 #define ADDRESS_UNITS_PER_FLOAT		(sizeof (double))
+
+#ifdef HEAP_IN_LOW_MEMORY
+#define CLOSURE_ENTRY_DELTA	ADDRESS_UNITS_PER_OBJECT
+#else /* not HEAP_IN_LOW_MEMORY */
+#define CLOSURE_ENTRY_DELTA	1
+#endif /* HEAP_IN_LOW_MEMORY */
 
 #undef FIXNUM_TO_LONG
 #define FIXNUM_TO_LONG(source)						\
