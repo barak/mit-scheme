@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.30 1992/01/20 18:06:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.31 1992/06/05 20:01:42 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -39,11 +39,14 @@ MIT in each case. */
 
 #define SYSTEM_NAME "unix"
 
-#include <sys/types.h>
+#include "oscond.h"
+#include "ansidecl.h"
+#include "posixtype.h"
+
 #include <sys/times.h>
 #include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
