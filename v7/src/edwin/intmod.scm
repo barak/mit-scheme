@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.96 1999/02/16 20:12:20 cph Exp $
+;;; $Id: intmod.scm,v 1.97 1999/02/18 04:05:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -116,7 +116,6 @@ REPL uses current evaluation environment."
 (define cmdl-message/init-inferior
   (cmdl-message/active
    (lambda (port)
-     port
      (set-working-directory-pathname!
       (buffer-default-directory (port/buffer port))))))
 
@@ -179,11 +178,11 @@ REPL uses current evaluation environment."
   (signal-thread-event (port/thread port) false))
 
 (define (standard-prompt-spacing port)
+  (fresh-line port)
+  (newline port)
   (enqueue-output-operation! port
     (lambda (mark transcript?)
       transcript?
-      (if (not (group-start? mark))
-	  (guarantee-newlines 2 mark))
       (undo-boundary! mark)
       #t)))
 
