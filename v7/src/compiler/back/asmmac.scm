@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.6 1988/06/14 08:09:40 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/asmmac.scm,v 1.7 1990/09/12 00:35:45 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,8 +49,8 @@ MIT in each case. |#
 
 (define (compile-database cases procedure)
   `(LIST
-    ,@(map (lambda (case)
-	     (parse-rule (car case) (cdr case)
+    ,@(map (lambda (rule)
+	     (parse-rule (car rule) (cdr rule)
 	       (lambda (pattern variables qualifier actions)
 		 `(CONS ',pattern
 			,(rule-result-expression variables

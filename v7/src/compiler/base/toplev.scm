@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.29 1990/06/07 19:52:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.30 1990/09/12 00:39:42 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -197,10 +197,10 @@ MIT in each case. |#
    '()))
 |#
 
-(define (lap->code label lap)
+(define (lap->code label instructions)
   (in-compiler
    (lambda ()
-     (set! *lap* lap)
+     (set! *lap* instructions)
      (set! *entry-label* label)
      (set! *current-label-number* 0)
      (set! *next-constant* 0)
