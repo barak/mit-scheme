@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.28 1999/02/24 04:51:57 cph Exp $
+$Id: thread.scm,v 1.29 1999/02/24 04:53:43 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -648,15 +648,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (let ((thread first-running-thread))
        (if thread
 	   (thread/block-events? thread)
-	   'NO-CURRENT-THREAD)))))
+	   #f)))))
 
 (define (set-thread-event-block! block?)
-  (if (boolean? block?)
-      (without-interrupts
-       (lambda ()
-	 (let ((thread first-running-thread))
-	   (if thread
-	       (set-thread/block-events?! thread block?)))))))
+  (without-interrupts
+   (lambda ()
+     (let ((thread first-running-thread))
+       (if thread
+	   (set-thread/block-events?! thread block?))))))
 
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)
