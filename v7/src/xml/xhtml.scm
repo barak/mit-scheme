@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.8 2004/07/24 02:12:14 cph Exp $
+$Id: xhtml.scm,v 1.9 2004/07/24 02:26:19 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -27,6 +27,9 @@ USA.
 
 (declare (usual-integrations))
 
+(define (html-1.0-document attrs . items)
+  (%make-document html-1.0-dtd attrs items))
+
 (define html-1.0-external-dtd
   (make-xml-external-id "-//W3C//DTD XHTML 1.0 Strict//EN"
 			"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"))
@@ -34,12 +37,29 @@ USA.
 (define html-1.0-dtd
   (make-xml-dtd 'html html-1.0-external-dtd '()))
 
+(define (html-1.1-document attrs . items)
+  (%make-document html-1.1-dtd attrs items))
+
 (define html-1.1-external-dtd
   (make-xml-external-id "-//W3C//DTD XHTML 1.1//EN"
 			"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"))
 
 (define html-1.1-dtd
   (make-xml-dtd 'html html-1.1-external-dtd '()))
+
+(define (%make-document dtd attrs items)
+  (make-xml-document (make-xml-declaration "1.0" "UTF-8" #f)
+		     '("\n")
+		     dtd
+		     '("\n")
+		     (html:html (if (there-exists? attrs
+				      (lambda (attr)
+					(eq? (xml-attribute-name attr)
+					     'xmlns)))
+				    attrs
+				    (xml-attrs 'xmlns html-iri attrs))
+				items)
+		     '()))
 
 (define html-iri
   (make-xml-namespace-iri "http://www.w3.org/1999/xhtml"))
@@ -59,7 +79,7 @@ USA.
 (define (guarantee-html-element-name object caller)
   (if (not (html-element-name? object))
       (error:wrong-type-argument object "XHTML element name" caller)))
-
+
 (define-syntax define-html-element
   (sc-macro-transformer
    (lambda (form environment)
@@ -95,7 +115,7 @@ USA.
 
 (define element-context-map
   (make-eq-hash-table))
-
+
 (define-html-element a		inline)
 (define-html-element abbr	inline)
 (define-html-element acronym	inline)
@@ -120,6 +140,7 @@ USA.
 (define-html-element div	block)
 (define-html-element dl		block)
 (define-html-element dt		dl)
+
 (define-html-element em		inline)
 (define-html-element fieldset	block)
 (define-html-element form	block)
