@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.63 1996/09/20 18:54:48 cph Exp $
+$Id: x11base.c,v 1.64 1996/09/30 18:31:14 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1924,11 +1924,17 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
 
     CATCH_X_ERRORS (status);
     if (status == 0)
-      XSetInputFocus
-	((XW_DISPLAY (xw)),
-	 (XW_WINDOW (xw)),
-	 RevertToParent,
-	 ((Time) (arg_ulong_integer (2))));
+      {
+	Display * display = (XW_DISPLAY (xw));
+	XSetInputFocus
+	  (display,
+	   (XW_WINDOW (xw)),
+	   RevertToParent,
+	   ((Time) (arg_ulong_integer (2))));
+	/* Force the message out now; otherwise the error-catching
+	   code will be ineffective.  */
+	XFlush (display);
+      }
     else
       error_bad_range_arg (1);
   }
