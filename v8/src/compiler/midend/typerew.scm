@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.24 1996/11/14 22:17:26 adams Exp $
+$Id: typerew.scm,v 1.25 1997/07/09 02:25:53 adams Exp $
 
 Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
@@ -1512,6 +1512,19 @@ and we dont do much with that.
   (typerew/rewrite/coerced-arguments flo:op identity-procedure
 				     typerew/coerce/fixnum->flonum))
 
+(define (typerew/%lc op left-constant)
+  (lambda (form)
+    (define (make args)
+      (sample/1 '(typerew/left-constant-replacements histogram) op)
+      `(CALL (QUOTE ,op)
+	     '#F
+	     ,@args
+	     (QUOTE ,left-constant)))
+    (if (eq? (quote/text (call/operator form)) %invoke-remote-cache)
+	(make (cddr (cddddr form)))
+	(make (cdddr form)))))
+
+
 (let ((&+ (make-primitive-procedure '&+))
       (type:not-fixnum (type:not type:fixnum)))
 
@@ -1669,7 +1682,9 @@ and we dont do much with that.
 	(type:except type:fixnum-not-0 type:exact-minus-one))
        (type:integer-result (type:or type:exact-integer type:flonum))
        (QUOTIENT   (make-primitive-procedure 'QUOTIENT))
-       (REMAINDER  (make-primitive-procedure 'REMAINDER)))
+       (REMAINDER  (make-primitive-procedure 'REMAINDER))
+       (INTEGER-QUOTIENT   (ucode-primitive INTEGER-QUOTIENT))
+       (INTEGER-REMAINDER  (ucode-primitive INTEGER-REMAINDER)))
 
   ;; QUOTIENT and REMAINDER on fixnums can overflow only when dividing by 0
   ;; or -1.  When dividing by -1 it can only overflow when the value
@@ -1697,25 +1712,45 @@ and we dont do much with that.
   (define-typerew-binary-variants-type-method  REMAINDER 
     type:number          type:number          type:integer-result
     effect:none
-    type:unsigned-byte   type:fixnum-not-0    type:unsigned-byte
-    type:small-fixnum>=0 type:fixnum-not-0    type:small-fixnum>=0
-    type:fixnum>=0       type:fixnum-not-0    type:fixnum>=0
-    type:small-fixnum    type:fixnum-not-0    type:small-fixnum
-    type:fixnum          type:fixnum-not-0    type:fixnum
+    type:unsigned-byte   type:exact-integer   type:unsigned-byte
+    type:fixnum>=0       type:unsigned-byte   type:unsigned-byte
+    type:small-fixnum>=0 type:exact-integer   type:small-fixnum>=0
+    type:small-fixnum    type:exact-integer   type:small-fixnum
+    type:exact-integer   type:unsigned-byte   type:small-fixnum
+    type:fixnum>=0       type:exact-integer   type:fixnum>=0
+    type:exact-integer   type:small-fixnum    type:fixnum
+    type:fixnum          type:exact-integer   type:fixnum
     type:exact-integer   type:exact-integer   type:exact-integer
     type:flonum          type:flonum          type:flonum
     type:inexact-number  type:number          type:integer-result
     type:number          type:inexact-number  type:integer-result)
 
+  (define-typerew-binary-variants-type-method INTEGER-QUOTIENT
+    type:exact-integer  type:exact-integer    type:exact-integer  effect:none)
+
+  (define-typerew-binary-variants-type-method INTEGER-REMAINDER
+    type:exact-integer   type:exact-integer   type:exact-integer
+    effect:none
+    type:unsigned-byte   type:exact-integer   type:unsigned-byte
+    type:fixnum>=0       type:unsigned-byte   type:unsigned-byte
+    type:small-fixnum>=0 type:exact-integer   type:small-fixnum>=0
+    type:fixnum>=0       type:exact-integer   type:fixnum>=0
+    type:small-fixnum    type:exact-integer   type:small-fixnum
+    type:exact-integer   type:unsigned-byte   type:small-fixnum
+    type:exact-integer   type:small-fixnum    type:fixnum
+    type:fixnum          type:exact-integer   type:fixnum)
 
   (define-typerew-binary-variants-replacement-method  QUOTIENT
-    type:small-fixnum    type:fixnum-not-0    type:fixnum         fix:quotient
-    type:fixnum          type:fixnum-not-0/-1 type:fixnum         fix:quotient
-    type:any             type:any             type:any            %quotient)
+    type:small-fixnum    type:fixnum-not-0    type:fixnum        fix:quotient
+    type:fixnum          type:fixnum-not-0/-1 type:fixnum        fix:quotient
+    type:any             type:any             type:any           %quotient)
 
   (define-typerew-binary-variants-replacement-method  REMAINDER
-    type:fixnum          type:fixnum-not-0    type:fixnum         fix:remainder
-    type:any             type:any             type:any            %remainder)
+    type:fixnum          type:fixnum-not-0    type:fixnum        fix:remainder
+    type:any             type:any             type:any           %remainder)
+
+  (define-typerew-binary-variants-replacement-method  INTEGER-REMAINDER
+    type:fixnum          type:fixnum-not-0    type:fixnum        fix:remainder)
 
   ;; MODULO is not integrated.
   )
@@ -1724,9 +1759,7 @@ and we dont do much with that.
       (INTEGER-SUBTRACT-1 (ucode-primitive INTEGER-SUBTRACT-1))
       (INTEGER-ADD        (ucode-primitive INTEGER-ADD))
       (INTEGER-SUBTRACT   (ucode-primitive INTEGER-SUBTRACT))
-      (INTEGER-MULTIPLY   (ucode-primitive INTEGER-MULTIPLY))
-      (INTEGER-QUOTIENT   (ucode-primitive INTEGER-QUOTIENT))
-      (INTEGER-REMAINDER  (ucode-primitive INTEGER-REMAINDER)))
+      (INTEGER-MULTIPLY   (ucode-primitive INTEGER-MULTIPLY)))
 
   (define-typerew-unary-variants-type-method INTEGER-ADD-1
     type:exact-integer    type:exact-integer     effect:none
@@ -1766,11 +1799,6 @@ and we dont do much with that.
   (define-typerew-binary-variants-type-method INTEGER-MULTIPLY
     type:exact-integer  type:exact-integer  type:exact-integer  effect:none
     type:unsigned-byte  type:unsigned-byte  type:small-fixnum>=0)
-
-  (define-typerew-binary-variants-type-method INTEGER-QUOTIENT
-    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
-  (define-typerew-binary-variants-type-method INTEGER-REMAINDER
-    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
 
   (define-typerew-binary-variants-replacement-method INTEGER-ADD
     type:fixnum         type:fixnum         type:fixnum     fix:+)
@@ -1874,7 +1902,12 @@ and we dont do much with that.
 
 (let ((&=  (make-primitive-procedure '&=))
       (EQ? (make-primitive-procedure 'EQ?))
-      (INT= (make-primitive-procedure 'INTEGER-EQUAL?))
+      (INTEGER-EQUAL?   (make-primitive-procedure 'INTEGER-EQUAL?))
+      (INTEGER-LESS?    (make-primitive-procedure 'INTEGER-LESS?))
+      (INTEGER-GREATER? (make-primitive-procedure 'INTEGER-GREATER?))
+      (INTEGER-ZERO?  (make-primitive-procedure 'INTEGER-ZERO?))
+      (INTEGER-NEGATIVE?  (make-primitive-procedure 'INTEGER-NEGATIVE?))
+      (INTEGER-POSITIVE?  (make-primitive-procedure 'INTEGER-POSITIVE?))
       (type:not-fixnum  (type:not type:fixnum)))
   (define-typerew-binary-variants-type-method  &=
     type:number                 type:number             type:boolean
@@ -1882,7 +1915,7 @@ and we dont do much with that.
   (define-typerew-binary-variants-type-method  %=
     type:number                 type:number             type:boolean
     effect:none)
-  (define-typerew-binary-variants-type-method  INT=
+  (define-typerew-binary-variants-type-method  INTEGER-EQUAL?
     type:exact-integer          type:exact-integer      type:boolean
     effect:none)
   (define-typerew-binary-variants-replacement-method  &=
@@ -1903,14 +1936,30 @@ and we dont do much with that.
     type:fixnum          type:flonum         type:any      (typerew/%l flo:=)
     type:flonum          type:fixnum         type:any      (typerew/%r flo:=))
 
-  (define-typerew-binary-variants-replacement-method  INT=
+  (define-typerew-binary-variants-replacement-method  INTEGER-EQUAL?
     type:fixnum             type:exact-integer      type:any    EQ?
-    type:exact-integer      type:fixnum             type:any    EQ?))    
+    type:exact-integer      type:fixnum             type:any    EQ?)
+
+  (define-typerew-binary-variants-replacement-method  INTEGER-LESS?
+    type:fixnum             type:fixnum             type:any    fix:<)
+
+  (define-typerew-binary-variants-replacement-method  INTEGER-GREATER?
+    type:fixnum             type:fixnum             type:any    fix:>)
+
+  (define-typerew-unary-variants-replacement-method INTEGER-ZERO?
+    type:exact-integer     type:any                 (typerew/%lc EQ? 0))
+
+  (define-typerew-unary-variants-replacement-method INTEGER-NEGATIVE?
+    type:exact-integer     type:any                 (typerew/%lc fix:< 0))
+
+  (define-typerew-unary-variants-replacement-method INTEGER-POSITIVE?
+    type:exact-integer     type:any                 (typerew/%lc fix:> 0))
+)
 
 
 ;; We have no objects which could be EQ? (EQV? EQUAL?) without being the
-;; same type.
-;;
+;; same type. (Numbers are only EQV? or EQUAL? if they have the same
+;; exactness.)
 (let ((define-equality-disjointness
 	(lambda (equality-test)
 	  (define-typerew-binary-predicate-type-method equality-test
