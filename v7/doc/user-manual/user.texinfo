@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.49 1996/04/10 20:03:38 adams Exp $
+@comment $Id: user.texinfo,v 1.50 1996/04/15 19:33:35 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -120,7 +120,6 @@ Scheme with Edwin and GNU Emacs.
 * GNU Emacs Interface::         
 * Edwin::                       
 * Release Notes::               
-* Known Problems::              
 * Comparison of Edwin to Emacs::  
 * Index::                       
 
@@ -143,8 +142,7 @@ OS/2 Installation
 
 Windows Installation
 
-* System Requirements::         
-* Manifest::                    
+* Prerequisites::               
 * Windows Installation Procedure::  
 
 Running Scheme
@@ -823,17 +821,16 @@ SET SHELL=C:\LOCAL\PROG\4OS2251\4OS2.EXE
 
 This section describes how to install MIT Scheme on Windows 3.1, Windows
 95 and Windows NT.  Note that we have tested MIT Scheme only on Windows
-NT 3.10 and Windows 3.1 and Windows 95.  It should run under Windows NT
+NT 3.10, Windows 3.1 and Windows 95.  It should run under Windows NT
 3.51.  It was compiled using the Microsoft's MSTOOLS compiler that comes
 with Windows NT 3.10.
 
 @menu
-* System Requirements::         
-* Manifest::                    
+* Prerequisites::               
 * Windows Installation Procedure::  
 @end menu
 
-@node Prerequisites
+@node Prerequisites, Windows Installation Procedure, Windows Installation, Windows Installation
 @subsection Prerequisites
 
 The Scheme files use about 20 megabytes of disk space when installed.
@@ -850,7 +847,7 @@ comfortable.  If you want to use the Scheme compiler or the Edwin text
 editor, you should have at least 16 megabytes of RAM.
 
 MIT Scheme is a 32 bit program.  To run it on Windows 3.1 you need to
-install the Win32S compatibility package from Microsoft.  You might
+install the WIN32S compatibility package from Microsoft.  You might
 already have WIN32S on your machine if another 32 bit software package
 installed it.  WIN32S is provided in the self-extracting ZIP file
 @file{PW1118.EXE}.  Create a temporary directory.  Copy
@@ -858,7 +855,7 @@ installed it.  WIN32S is provided in the self-extracting ZIP file
 @code{PW1118}.  This will create three files.  Follow the instructions
 in @file{README.TXT}.
 
-@node Windows Installation Procedure
+@node Windows Installation Procedure,  , Prerequisites, Windows Installation
 @subsection Windows Installation Procedure
 
 Create a directory where you would like Scheme to be installed.  We
@@ -893,6 +890,13 @@ Installation command files.
 A directory containing the data files needed by Scheme when it is running.
 
 @end table
+
+@noindent
+If you do not get this directory structure you may be using a version of
+@file{UNZIP} that does not understand directory trees.  In this case use
+the version of @file{UNZIP} that comes with MIT Scheme, in the same
+directory as the @file{.ZIP} files.
+
 
 Perform the following steps to install Scheme:
 
@@ -935,7 +939,7 @@ If you keep only @file{bchschem.exe} we recommend you rename it to
 @file{scheme.exe}.  Of course, you can also keep both programs around if
 you think you might use them both.
 
-The only difference between these two programs is how they handle arbage
+The only difference between these two programs is how they handle garbage
 collection.  @file{scheme.exe} allocates two memory heaps, and copies
 objects between the heaps to preserve them.  This means that most of the
 time that other heap is occupying valuable memory but doesn't hold any
@@ -959,6 +963,7 @@ using @file{scheme.exe} with paging.  Of course, if you are using
 to win.
 
 @item
+
 You may move the @file{lib\} directory anywhere you like.  You may rename
 it to anything you like.  (Here at MIT, we use @file{c:\scheme\lib}.)
 After you have chosen where it will be located, set the
@@ -991,42 +996,59 @@ automatically.
 if you do not want to keep the documentation.
 
 @item
-emph{Optional:} Creating a folder containing icons to invoke Scheme.
+Creating a folder containing shortcuts (icons) to invoke Scheme.
 Run Scheme and load the file @file{etc\pmgrp.scm}.
-On Windows 95 and windows NT you can run scheme from the command line.
+On Windows 95 and windows NT you can run scheme from the command line:
+
+@example
+   bin\scheme -library lib -load etc\pmgrp
+@end example
 
 On windows 3.1 you have to use the @samp{File | Run..} menu option of the
 Program Manager or File Manager and enter the full paths:
 
 @example
-      c:\scheme\bin\scheme -library c:\scheme\lib -load c:\scheme\etc\pmgrp.scm
+   c:\scheme\bin\scheme -library c:\scheme\lib -load c:\scheme\etc\pmgrp.scm
 @end example
 
 @noindent
-
 This will create a folder called @samp{MIT Scheme 7.4.2} containing
 icons for running Scheme and for reading the help files.  The icons
 called @samp{Scheme}, @samp{Edwin}, @samp{Liar}, and @samp{All},
-correspond to running SCheme with the image files @file{runtime.com},
+correspond to running Scheme with the image files @file{runtime.com},
 @file{edwin.com}, @file{compiler.com}, and @file{all.com}.  If you
 decide to delete any of the image files, you can delete the
 corresponding icons as well.
+
+There is a bug in Windows 95 which prevents the Edwin shortcut from
+being created correctly.  To get around this problem, we have created
+the shortcut with an incorrect command line.  You have to manually edit
+the shortcut to change the curly braces on the command line into
+parentheses.  The command line reads
+
+@example
+...  -eval @{edit@}
+@end example
+
+@noindent
+but should read
+
+@example
+...  -eval (edit)
+@end example
 
 @item
 @emph{Optional} Consider setting some of other environment variables
 described below.
 
-@end enumerate
 
 @item
-
 The two files @file{w32rtbci.zip} and @file{w32edbci.zip} contain
 debugging information for the Scheme runtime and Edwin respectively.
 The total space required for all of the debugging information is about 8MB.
 The runtime debugging information is the more useful as it allows the
 debugger to give you source code level information on all of the
 standard procedures like @samp{map} and @samp{number->string}.
-
 
 Debugging information can be installed by uncompressing the
 @file{w32rtbci.zip} and @file{w32edbci.zip} files in the @file{SRC}
@@ -1041,9 +1063,30 @@ unzip w32rtbci
 unzip w32rtbci
 @end group
 @end example
-Debugging information files can be installed in another place, in schch
-case the the @code{MITSCHEME_INF_DIRECTORY} environment variable shpould
+
+@noindent
+Debugging information files can be installed in another place, in which
+case the the @code{MITSCHEME_INF_DIRECTORY} environment variable should
 be set in @file{autoexec.bat}.
+
+To test that you have installed the debugging information correctly, try
+to pretty-print a compiled procedure, for example,
+
+@example
+(pp pp)
+@end example
+
+@noindent
+
+When the debugging information is installed correctly, Scheme will be
+able to find the source code for the @code{pp} procedure, and display
+it.  Otherwise it will use the short opaque form, something like this:
+
+@example
+#[compiled-procedure 13 ("pp" #x2) #xF #x646BF7]
+@end example
+
+@end enumerate
 
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
@@ -1073,8 +1116,9 @@ scheme
 
 @noindent
 at your operating system's command interpreter. (Under Windows 3.1 you
-must use the Program Manager's @code{Run} command, or an icon.)  Scheme
-will load itself, clear the screen, and print something like this:
+must use the Program Manager's @samp{File | Run..} command, or an icon.)
+Scheme will load itself, clear the screen, and print something like
+this:
 
 @example
 @group
@@ -1949,44 +1993,49 @@ searching for a subdirectory with the user's login name.
 @node Starting Scheme from Windows, Leaving Scheme, Environment Variables, Running Scheme
 @section Starting Scheme from Windows
 
-The Windows version of MIT Scheme runs as a graphics-based application
-under Windows 3.1, Windows 95, and Windows NT.
+The Windows version of MIT Scheme runs as a graphics-based application.
+Under Windows NT and Windows 95, Scheme can be started from the command
+line as described at the beginning of this chapter.
 
 Under Windows 3.1, Scheme must be run from the Program Manager or the
-File Manager.  Scheme cannot be run from the command line, because only
-@sc{dos} programs can be run from the command line.  Windows 95 and
-Windows NT overcome this restriction, but it is still useful to know how
-to run Scheme from the Desktop.
+File Manager.  Scheme cannot be run from the command line, because it is
+not a @sc{dos} program (although some people run other shell programs in
+place of @file{command.com} that can run Window applications).
 
-Once an icon is set up to run Scheme with some particular command-line
-options, Scheme is run by double-clicking that icon.
-The rest of this section gives some tips on how to set up
-Program Manager icons that run Scheme.  If you are unfamiliar with this
-concept you should read about it under the help topic of the Program
-Manager.
-
-Under Windows NT program manager groups can be @emph{common} or
-@emph{personal}.  When setting up icons in a common group it is
-important to make the icons independent of the vagaries of the
-environment of the user who is running them.  It is often worthwhile
-doing this under Windows 3.1 and for personal groups too.  Here are some
-guidelines to accomplish this:
+Shortcuts (Windows 95) or Program Manager groups and icons (Windows 3.1
+and Windows NT) are a convenient way to start Scheme.
+The rest of this section gives some tips on how to set up shortcuts
+that run Scheme.  If you are unfamiliar with
+this concept you should read about it in the system help.
 
 @itemize @bullet
 @item
-Give the icon an accurate @var{Description}.
+Under Windows NT program manager groups can be @emph{common} or
+@emph{personal}.  When setting up icons in a common group it is
+important to make the icon properties independent of the vagaries of the
+environment of the user who is running them.  It is often worthwhile
+doing this under Windows 3.1 and for personal groups too.
+
+@item
+Give the shortcut an accurate @var{Description}.
 
 @item
 Include absolute pathnames to @file{scheme.exe} and @file{bchscheme.exe}
-in the icon @var{Command line} if these executables are not in a
-directory on the default @samp{PATH}.
+in the icon @var{Command line}.
 
 @item
-Set the icon's @var{Working Directory} to: @samp{%HOMEPATH%}
+I you specify the @samp{-library} command line option then you do not
+have to worry about the @samp{MITSCHEME_LIBRARY_PATH} environment
+variable.
 
 @item
-There are several icons available --- choose one that best represents
-the options given on the command line.
+Set the shortcut's @var{Working Directory} to something sensible.  On
+Windows NT you can use @samp{%HOMEPATH%} to make Scheme start up in the
+user's home directory.
+
+@item
+There are several icons available in the Scheme executable --- choose
+one that best represents the options given on the command line.
 
 @item
 Specifying a band that contains Edwin is not sufficient to invoke the
@@ -4739,7 +4788,7 @@ Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
 
-@node Release Notes, Known Problems, Edwin, Top
+@node Release Notes, Comparison of Edwin to Emacs, Edwin, Top
 @appendix Release Notes
 
 The last full release of MIT Scheme was version 7.3.1 in 1994.  The
@@ -5287,68 +5336,23 @@ Time, load, and mail notification in mode line
 @end display
 @end itemize
 
-@node Known Problems, Comparison of Edwin to Emacs, Release Notes, Top
-@appendix Known Problems
+@c @node Known Problems, Comparison of Edwin to Emacs, Release Notes, Top
+@c @appendix Known Problems
+@c 
+@c Edwin autoloads.
+@c A few files that are automatically part of Edwin under Unix are not part
+@c of Edwin in the PC.  These can be loaded manually from the auto-load
+@c directory, for example, by putting
+@c 
+@c @example
+@c (edwin-load "dabbrev")
+@c @end example
+@c 
+@c @noindent
+@c in your @file{edwin.ini} file.
+@c @end itemize
 
-@itemize @bullet
-@item
-The Windows version of MIT Scheme is more robust under NT than Windows
-3.1
-
-@item
-[NT] Exclusive file access problems.  Edwin sometimes can't write a file
-that is still open for reading.
-
-Typically you will have entered @code{(load "foo.scm")} in the
-interaction buffer and got an error, say a mis-matched parenthesis.
-You then switch to the @code{foo.scm} buffer, fix the problem and then
-try to save the file.
-Edwin refuses, saying
-
-@example
-Unable to open file "@var{your-path}\\foo.scm" because: Unknown
-@end example
-
-@noindent
-Work-around: In the interaction buffer: Quit to top level.  Do a
-@code{(gc-flip)}, which forces the file to be closed when the file port
-is garbage-collected.  Now you will be able to save the file.
-
-@item
-@code{MITSCHEME_INF_DIRECTORY} sometimes does not work.
-The runtime system cannot find the debugging information unless it is on
-the @file{C:} drive.
-To test if the debugging information is available, try
-
-@example
-(pp pp)
-@end example
-
-@noindent
-If the debugging information is available the @code{pp} procedure
-pretty-prints procedures as Scheme code.
-If the information cannot be found then it prints the procedure as an
-opaque object, similar to this:
-
-@example
-#[compiled-procedure 13 ("pp" #x2) #xF #x646BF7]
-@end example
-
-@item
-Edwin autoloads.
-A few files that are automatically part of Edwin under Unix are not part
-of Edwin in the PC.  These can be loaded manually from the auto-load
-directory, for example, by putting
-
-@example
-(edwin-load "dabbrev")
-@end example
-
-@noindent
-in your @file{edwin.ini} file.
-@end itemize
-
-@node Comparison of Edwin to Emacs, Index, Known Problems, Top
+@node Comparison of Edwin to Emacs, Index, Release Notes, Top
 @appendix Comparison of Edwin to Emacs
 
 This section documents known differences between Edwin 3.90 and Emacs
