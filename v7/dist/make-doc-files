@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-doc-files,v 1.15 2001/03/03 05:25:41 cph Exp $
+# $Id: make-doc-files,v 1.16 2001/03/09 19:01:39 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -20,43 +20,65 @@
 
 . /scheme/v7/dist/release-prefix
 
+TL_DIR="$(pwd)"
+BUILD_DIR_REL="$(get_release_prefix)"
+BUILD_DIR="${TL_DIR}/${BUILD_DIR_REL}"
+SRC_FILE="${BUILD_DIR}-src.tar.gz"
+STAMP_BUILD="${TL_DIR}/stamp-build"
+
+if [ ! -f "${SRC_FILE}" ]; then
+    echo "No source file: ${SRC_FILE}."
+    exit 1
+fi
+
+MKINSTALLDIRS="/scheme/v7/src/mkinstalldirs"
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
-DOCDIR="/scheme/v7/doc"
-PREFIX=`get_release_prefix`
-TAG=`get_release_tag`
-TLDIR="`pwd`/${PREFIX}"
 
-rm -rf ${TLDIR}
-mkdir ${TLDIR}
+if [ ! -f "${STAMP_BUILD}" ];then
+    rm -rf "${BUILD_DIR}"
+
+    tar xzf "${SRC_FILE}"
+
+    cd "${BUILD_DIR}/doc"
+    ./configure
+    make
+    cd "${TL_DIR}"
+
+    touch "${STAMP_BUILD}"
+fi
+
 
 make_tarfile ()
 {
-    TARFILE=${PREFIX}-doc-${1}.tar.gz
-    rm -f ${TARFILE}
-    tar cvzf ${TARFILE} ${PREFIX}
-    chmod a-w ${TARFILE}
+    TARFILE="${BUILD_DIR}-${1}.tar.gz"
+    rm -f "${TARFILE}"
+    tar cvzf "${TARFILE}" "${BUILD_DIR_REL}/${1}"
+    chmod a-w "${TARFILE}"
 }
 
 make_zipfile ()
 {
-    ZIPFILE=${PREFIX}-doc-${1}.zip
-    rm -f ${ZIPFILE}
-    zip -r ${ZIPFILE} ${PREFIX}
-    chmod a-w ${ZIPFILE}
+    ZIPFILE="${BUILD_DIR}-${1}.zip"
+    rm -f "${ZIPFILE}"
+    zip -r "${ZIPFILE}" "${BUILD_DIR_REL}/${1}"
+    chmod a-w "${ZIPFILE}"
 }
 
 for TYPE in html info pdf ps; do
-    mkdir ${TLDIR}/doc-${TYPE}
-    (cd ${DOCDIR}; make install-${TYPE} ${TYPE}dir=${TLDIR}/doc-${TYPE})
-    make_tarfile ${TYPE}
-    make_zipfile ${TYPE}
+    IMAGE_ROOT="doc-${TYPE}"
+    IMAGE_DIR="${BUILD_DIR}/${IMAGE_ROOT}"
+    rm -rf "${IMAGE_DIR}"
+    mkdir "${IMAGE_DIR}"
+    (cd "${BUILD_DIR}/doc"; make "install-${TYPE}" "${TYPE}dir=${IMAGE_DIR}")
+    make_tarfile "${IMAGE_ROOT}"
+    make_zipfile "${IMAGE_ROOT}"
     case "${TYPE}" in
     html | pdf)
-	rm -rf doc-${TYPE}
-	mv ${TLDIR}/doc-${TYPE} .
+	rm -rf "${IMAGE_ROOT}"
+	mv -f "${IMAGE_DIR}" .
 	;;
     esac
 done
 
-rm -rf ${TLDIR}
+rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
