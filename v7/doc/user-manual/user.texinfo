@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.23 1994/09/09 21:54:50 cph Exp $
+@comment $Id: user.texinfo,v 1.24 1995/02/23 13:58:12 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -3599,6 +3599,16 @@ Finally, remove the @code{((lambda () @dots{}))} to produce
 
 @lisp
 (vector-ref (vector-ref (car baz) (cdr baz)) 3)
+@end lisp
+
+
+Useful tip: to see the effect of integration declarations (and of
+macros) on a source file, pretty-print the @file{.bin} file like this
+(be prepared for a lot of output).
+
+@lisp
+(sf "foo.scm")
+(pp (fasload "foo.bin"))
 @end lisp
 
 @node Replacement of Operators, Reduction of Operators, In-line Coding, Declarations
