@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.57 1990/10/03 15:16:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.58 1990/10/03 18:57:28 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1065,6 +1065,9 @@ Pop_Return:
 
       define_compiler_restart (RC_COMP_LINK_CACHES_RESTART,
 			       comp_link_caches_restart)
+
+      define_compiler_restart (RC_COMP_ERROR_RESTART,
+			       comp_error_restart)
 
     case RC_REENTER_COMPILED_CODE:
       compiled_code_restart();
