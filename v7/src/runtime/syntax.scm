@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.41 1987/01/23 00:21:11 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.42 1987/02/27 21:59:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -44,7 +44,8 @@
 (define lambda-tag:unnamed
   (make-named-tag "UNNAMED-PROCEDURE"))
 
-(define *fluid-let-type* 'shallow)
+(define *fluid-let-type*
+  'SHALLOW)
 
 (define lambda-tag:shallow-fluid-let
   (make-named-tag "SHALLOW-FLUID-LET-PROCEDURE"))
@@ -557,95 +558,68 @@
 ;;;; FLUID-LET
 
 (define syntax-FLUID-LET-form-shallow
-  (spread-arguments
-   (lambda (bindings . body)
-     (define (syntax-fluid-bindings bindings receiver)
+  (let ()
+
+    (define (syntax-fluid-bindings bindings receiver)
+      (if (null? bindings)
+	  (receiver '() '() '() '())
+	  (syntax-fluid-bindings (cdr bindings)
+	    (lambda (names values transfers-in transfers-out)
+	      (let ((binding (car bindings)))
+		(if (pair? binding)
+		    (let ((transfer 
+			   (let ((assignment
+				  (syntax-extended-assignment (car binding))))
+			     (lambda (target source)
+			       (make-assignment
+				target
+				(assignment
+				 (make-assignment source
+						  unassigned-object))))))
+			  (value (expand-binding-value (cdr binding)))
+			  (inside-name
+			   (string->uninterned-symbol "INSIDE-PLACEHOLDER"))
+			  (outside-name
+			   (string->uninterned-symbol "OUTSIDE-PLACEHOLDER")))
+		      (receiver (cons* inside-name outside-name names)
+				(cons* value unassigned-object values)
+				(cons (transfer outside-name inside-name)
+				      transfers-in)
+				(cons (transfer inside-name outside-name)
+				      transfers-out)))
+		    (syntax-error "Binding not a pair" binding)))))))
+
+    (spread-arguments
+     (lambda (bindings . body)
        (if (null? bindings)
-	   (receiver '() '() '() '())
-	   (syntax-fluid-bindings
-	    (cdr bindings)
-	    (syntax-fluid-binding (car bindings) receiver))))
-
-     (define (syntax-fluid-binding binding receiver)
-       (if (pair? binding)
-	   (let ((transfer 
-		  (let ((assignment (syntax-extended-assignment (car binding))))
-		    (lambda (target source)
-		      (make-assignment
-		       target
-		       (assignment
-			(make-assignment source unassigned-object))))))
-		 (value (expand-binding-value (cdr binding)))
-		 (inside-name (string->uninterned-symbol "INSIDE-PLACEHOLDER"))
-		 (outside-name (string->uninterned-symbol "OUTSIDE-PLACEHOLDER")))
+	   (syntax-sequence body)
+	   (syntax-fluid-bindings bindings
 	     (lambda (names values transfers-in transfers-out)
-	       (receiver (cons* inside-name outside-name names)
-			 (cons* value unassigned-object values)
-			 (cons (transfer outside-name inside-name) transfers-in)
-			 (cons (transfer inside-name outside-name) transfers-out))))
-	   (syntax-error "Binding not a list" binding)))
-     
-     (if (null? bindings)
-	 (syntax-sequence body)
-	 (syntax-fluid-bindings bindings
-           (lambda (names values transfers-in transfers-out)
-	     (make-closed-block
-	      lambda-tag:shallow-fluid-let names values
-	      (make-combination*
-	       (make-variable 'DYNAMIC-WIND)
-	       (make-thunk (make-sequence transfers-in))
-	       (make-thunk (syntax-sequence body))
-	       (make-thunk (make-sequence transfers-out))))))))))
+	       (make-closed-block
+		lambda-tag:shallow-fluid-let names values
+		(make-combination*
+		 (make-variable 'DYNAMIC-WIND)
+		 (make-thunk (make-sequence transfers-in))
+		 (make-thunk (syntax-sequence body))
+		 (make-thunk (make-sequence transfers-out)))))))))))
 
-(define (make-fluid-let-like prim procedure-tag)
-  (define (syntax-fluid-bindings bindings receiver)
-    (if (null? bindings)
-	(receiver '() '())
-	(syntax-fluid-bindings
-	 (cdr bindings)
-	 (syntax-fluid-binding (car bindings) receiver))))
+(define syntax-FLUID-LET-form-deep)
+(define syntax-FLUID-LET-form-common-lisp)
+(let ()
 
-  (define (syntax-fluid-binding binding receiver)
-    (if (pair? binding)
-	(let ((value (expand-binding-value (cdr binding)))
-	      (var-or-access (syntax-fluid-let-name (car binding))))
-	  (lambda (names values)
-	    (receiver (cons var-or-access names)
-		      (cons value values))))
-	(syntax-error "Binding not a list" binding)))
-
-  (define (syntax-fluid-let-name name)
-    (let ((syntaxed (syntax-expression name)))
-      (if (or (variable? syntaxed) (access? syntaxed))
-	  syntaxed
-	  (syntax-error "binding name illegal"))))
-  
+(define (make-fluid-let primitive procedure-tag)
+  ;; (FLUID-LET ((<access-or-symbol> <value>) ...) . <body>) =>
+  ;;    (WITH-SAVED-FLUID-BINDINGS
+  ;;      (LAMBDA ()
+  ;;        (ADD-FLUID! (THE-ENVIRONMENT) <access-or-symbol> <value>)
+  ;;        ...
+  ;;        <body>))
   (let ((with-saved-fluid-bindings
-	 (make-primitive-procedure 'with-saved-fluid-bindings)))
+	 (make-primitive-procedure 'WITH-SAVED-FLUID-BINDINGS)))
     (spread-arguments
      (lambda (bindings . body)
        (syntax-fluid-bindings bindings
          (lambda (names values)
-	   (define (accum-assignments names values)
-	     (mapcar make-fluid-assign names values))
-	   (define (make-fluid-assign name-or-access value)
-	     (cond ((variable? name-or-access)
-		    (make-combination
- 		     prim
-		     `(,the-environment-object
-		       ,(make-quotation name-or-access)
-		       ,value)))
-		   ((access? name-or-access)
-		    (access-components
-		     name-or-access
-		     (lambda (env name)
-		       (make-combination
-			prim
-			`(,env ,name ,value)))))
-		   (else
-		    (syntax-error
-		     "Target of FLUID-LET not a symbol or ACCESS form"
-		     name-or-access))))
 	   (make-combination
 	    (internal-make-lambda procedure-tag '() '() '()
   	     (make-combination
@@ -653,32 +627,56 @@
 	      (list
 	       (make-thunk
 		(make-sequence 
-		 (append (accum-assignments names values)
-			 (list (syntax-sequence body))))))))
+		 (map*
+		  (list (syntax-sequence body))
+		  (lambda (name-or-access value)
+		    (cond ((variable? name-or-access)
+			   (make-combination
+			    primitive
+			    (list the-environment-object
+				  (make-quotation name-or-access)
+				  value)))
+			  ((access? name-or-access)
+			   (access-components name-or-access
+			     (lambda (env name)
+			       (make-combination primitive
+						 (list env name value)))))
+			  (else
+			   (syntax-error
+			    "Target of FLUID-LET not a symbol or ACCESS form"
+			    name-or-access))))
+		  names values))))))
             '())))))))
-	
-(define syntax-FLUID-LET-form-deep
-  ;; (FLUID-LET <bvl> . <body>) =>
-  ;;    (WITH-SAVED-FLUID-BINDINGS
-  ;;      (lambda ()
-  ;;        (ADD-FLUID! (the-environment) <access-or-symbol> <value>)
-  ;;        ...
-  ;;        <fluid-let-body>))
-  (let ((add-fluid-binding! 	
-	 (make-primitive-procedure 'add-fluid-binding!)))
-    (make-fluid-let-like add-fluid-binding! lambda-tag:deep-fluid-let)))
+
+(define (syntax-fluid-bindings bindings receiver)
+  (if (null? bindings)
+      (receiver '() '())
+      (syntax-fluid-bindings
+       (cdr bindings)
+       (lambda (names values)
+	 (let ((binding (car bindings)))
+	   (if (pair? binding)
+	       (receiver (cons (let ((name (syntax-expression (car binding))))
+				 (if (or (variable? name)
+					 (access? name))
+				     name
+				     (syntax-error "Binding name illegal"
+						   (car binding))))
+			       names)
+			 (cons (expand-binding-value (cdr binding)) values))
+	       (syntax-error "Binding not a pair" binding)))))))
 
-(define syntax-FLUID-LET-form-common-lisp
-  ;; This -- groan -- is for Common Lisp support
-  ;; (FLUID-BIND <bvl> . <body>) =>
-  ;;    (WITH-SAVED-FLUID-BINDINGS
-  ;;      (lambda ()
-  ;;        (ADD-FLUID! (the-environment) <access-or-symbol> <value>)
-  ;;        ...
-  ;;        <fluid-let-body>))
-  (let ((make-fluid-binding! 	
-	 (make-primitive-procedure 'make-fluid-binding!)))
-    (make-fluid-let-like make-fluid-binding! lambda-tag:common-lisp-fluid-let)))
+(set! syntax-FLUID-LET-form-deep
+      (make-fluid-let (make-primitive-procedure 'ADD-FLUID-BINDING!)
+		      lambda-tag:deep-fluid-let))
+
+(set! syntax-FLUID-LET-form-common-lisp
+      ;; This -- groan -- is for Common Lisp support
+      (make-fluid-let (make-primitive-procedure 'MAKE-FLUID-BINDING!)
+		      lambda-tag:common-lisp-fluid-let))
+
+;;; end special FLUID-LETs.
+)
 
 ;;;; Extended Assignment Syntax
 
@@ -716,10 +714,13 @@
    (lambda declarations
      (make-block-declaration (map process-declaration declarations)))))
 
+;;; These two procedures use `error' instead of `syntax-error' because
+;;; they are called when the syntaxer is not running.
+
 (define (process-declarations declarations)
   (if (list? declarations)
       (map process-declaration declarations)
-      (syntax-error "Illegal declaration list" declarations)))
+      (error "SYNTAX: Illegal declaration list" declarations)))
 
 (define (process-declaration declaration)
   (cond ((symbol? declaration)
@@ -729,12 +730,12 @@
 	      (symbol? (car declaration)))
 	 declaration)
 	(else
-	 (syntax-error "Illegal declaration" declaration))))
+	 (error "SYNTAX: Illegal declaration" declaration))))
 
 ;;;; SCODE Constructors
 
 (define unassigned-object
- (make-unassigned-object))
+  (make-unassigned-object))
 
 (define the-environment-object
   (make-the-environment))
@@ -855,11 +856,11 @@
   (add-syntax! name which-kind))
   
 (set! shallow-fluid-let!
-      (fluid-let-maker 'shallow syntax-fluid-let-form-shallow))
+      (fluid-let-maker 'SHALLOW syntax-fluid-let-form-shallow))
 (set! deep-fluid-let!
-      (fluid-let-maker 'deep syntax-fluid-let-form-deep))
+      (fluid-let-maker 'DEEP syntax-fluid-let-form-deep))
 (set! common-lisp-fluid-let!
-      (fluid-let-maker 'common-lisp syntax-fluid-let-form-common-lisp))
+      (fluid-let-maker 'COMMON-LISP syntax-fluid-let-form-common-lisp))
 
 ;;;; Top Level Syntaxers
 
@@ -1012,5 +1013,4 @@
 ;;; Edwin Variables:
 ;;; Scheme Environment: syntaxer-package
 ;;; End:
-
 )
