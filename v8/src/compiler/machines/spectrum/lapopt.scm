@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: lapopt.scm,v 1.2 1994/11/26 19:23:53 adams Exp $
 
 Copyright (c) 1991-1994 Massachusetts Institute of Technology
 
@@ -606,8 +606,14 @@ MIT in each case. |#
 			       (else
 				(fix-unconditional-branch)))))))))
 
-	  ((BE BLE)
+	  ((BE)
 	   (fix-unconditional-branch))
+	  ((BLE)
+	   (if (and (equal? (second instr) '(N))
+		    (eqv? (second (third instr)) hook:compiler-profile-count))
+	       ;; (BLE (N) (OFFSET profile 4 3)) has a data word following it
+	       (fail)
+	       (fix-unconditional-branch)))
 	  ((NOP)
 	   (let ((dict (match hook-pattern instrs)))
 	     (if (not dict)
