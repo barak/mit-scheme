@@ -1,49 +1,33 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.10 1990/06/21 19:59:16 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.11 1990/12/11 23:36:17 cph Rel $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
 
-all: xmakefile doall
-
-doall:
+all: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} all
 
-scheme: xmakefile doscheme
-
-doscheme:
+scheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} scheme
 
-xscheme: xmakefile doxscheme
-
-doxscheme:
+xscheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} xscheme
 
-bchscheme: xmakefile dobchscheme
-
-dobchscheme:
+bchscheme: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchscheme
 
-Psbtobin: xmakefile dopsbtobin
-
-dopsbtobin:
+Psbtobin: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
 
-Bintopsb: xmakefile dobintopsb
-
-dobintopsb:
+Bintopsb: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Bintopsb
 
-Ppband: xmakefile doppband
-
-doppband:
+Ppband: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Ppband
 
-install: xmakefile doinstall
-
-doinstall:
+install: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install
 
 # If you have a problem with cc -E here, changing
