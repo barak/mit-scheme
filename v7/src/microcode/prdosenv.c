@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/prdosenv.c,v 1.3 1992/05/25 16:20:10 jinx Exp $
+$Id: prdosenv.c,v 1.4 1992/09/30 19:32:25 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -100,11 +100,27 @@ DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
-  "Invoke sh (the Bourne shell) on the string argument.\n\
-Wait until the shell terminates, returning its exit status as an integer.")
+  "Invoke COMMAND.COM on the string argument.\n\
+Wait until the command terminates, returning its exit status as an integer.")
 {
+  static int state = 0;
+  extern int EXFUN (under_X32_p, (void));
+  extern int EXFUN (under_DPMI_p, (void));
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (-1));
+
+  while (1)
+    switch (state)
+    {
+      case 0:
+        state = (((under_X32_p ()) && (! (under_DPMI_p ()))) ? 1 : -1);
+	break;
+	
+      case 1:
+	PRIMITIVE_RETURN (long_to_integer (DOS_system (STRING_ARG (1))));
+
+      case -1:
+        PRIMITIVE_RETURN (long_to_integer (-1));
+    }
 }
 
 DEFINE_PRIMITIVE ("UNIX-ENVIRONMENT", Prim_unix_environment_alist, 0, 0,
