@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.32 2003/08/03 05:55:46 cph Exp $
+$Id: xml-parser.scm,v 1.33 2003/08/03 06:14:19 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -77,8 +77,6 @@ USA.
   (and (pair? v)
        (string? (car v))
        (null? (cdr v))))
-
-;;;; Top level
 
 (define (read-xml-file pathname #!optional pi-handlers)
   (call-with-input-file pathname
@@ -96,6 +94,8 @@ USA.
 (define (substring->xml string start end #!optional pi-handlers)
   (parse-xml-document (substring->parser-buffer string start end)
 		      (if (default-object? pi-handlers) '() pi-handlers)))
+
+;;;; Top level
 
 (define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]
   (if (not (parser-buffer? buffer))
@@ -160,6 +160,8 @@ USA.
 	      parse-pi:misc
 	      (map normalize-line-endings (match S))))))))
 
+;;;; XML declaration
+
 (define (xml-declaration-parser description text-decl?)
   (*parser
    (top-level
@@ -286,7 +288,7 @@ USA.
 		   (let* ((name (vector-ref v 0))
 			  (attributes
 			   (process-attr-decls name (vector-ref v 1) p)))
-		     (process-namespace-decls attributes p)
+		     (process-namespace-decls attributes)
 		     (vector (intern-element-name name)
 			     (map (lambda (attr)
 				    (cons (intern-attribute-name (car attr))
@@ -315,6 +317,8 @@ USA.
 		     parse-comment)
 		parse-char-data)))))
 
+;;;; Attribute defaulting
+
 (define (process-attr-decls name attributes p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
@@ -462,47 +466,47 @@ USA.
 	     (loop)
 	     #t))))
 
-(define (process-namespace-decls attributes p)
+(define (process-namespace-decls attributes)
   (set! *prefix-bindings*
 	(let loop ((attributes attributes))
 	  (if (pair? attributes)
 	      (let ((name (caar attributes))
 		    (value (cdar attributes))
-		    (tail (loop (cdr attributes)))
-		    (forbidden-uri
-		     (lambda (uri)
-		       (perror p "Forbidden namespace URI" uri))))
+		    (tail (loop (cdr attributes))))
 		(let ((s (car name))
-		      (pn (cdr name))
-		      (uri
-		       (lambda ()
-			 (if (not (simple-attribute-value? value))
-			     (perror p "Illegal namespace URI" value))
-			 (if (string-null? (car value))
-			     #f		;xmlns=""
-			     (car value))))
-		      (guarantee-legal-uri
-		       (lambda (uri)
-			 (if (and uri
-				  (or (string=? uri xml-uri)
-				      (string=? uri xmlns-uri)))
-			     (forbidden-uri uri)))))
-		  (cond ((string=? "xmlns" s)
-			 (let ((uri (uri)))
-			   (guarantee-legal-uri uri)
-			   (cons (cons #f uri) tail)))
-			((string-prefix? "xmlns:" s)
-			 (if (string=? "xmlns:xmlns" s)
-			     (perror p "Illegal namespace prefix" s))
-			 (let ((uri (uri)))
-			   (if (not uri) ;legal in XML 1.1
-			       (forbidden-uri ""))
-			   (if (string=? "xmlns:xml" s)
-			       (if (not (and uri (string=? uri xml-uri)))
-				   (forbidden-uri uri))
-			       (guarantee-legal-uri uri))
-			   (cons (cons local-part uri) tail)))
-			(else tail))))
+		      (pn (cdr name)))
+		  (let ((uri
+			 (lambda ()
+			   (if (not (simple-attribute-value? value))
+			       (perror pn "Illegal namespace URI" value))
+			   (if (string-null? (car value))
+			       #f	;xmlns=""
+			       (car value))))
+			(forbidden-uri
+			 (lambda (uri)
+			   (perror pn "Forbidden namespace URI" uri))))
+		    (let ((guarantee-legal-uri
+			   (lambda (uri)
+			     (if (and uri
+				      (or (string=? uri xml-uri)
+					  (string=? uri xmlns-uri)))
+				 (forbidden-uri uri)))))
+		      (cond ((string=? "xmlns" s)
+			     (let ((uri (uri)))
+			       (guarantee-legal-uri uri)
+			       (cons (cons #f uri) tail)))
+			    ((string-prefix? "xmlns:" s)
+			     (if (string=? "xmlns:xmlns" s)
+				 (perror pn "Illegal namespace prefix" s))
+			     (let ((uri (uri)))
+			       (if (not uri) ;legal in XML 1.1
+				   (forbidden-uri ""))
+			       (if (string=? "xmlns:xml" s)
+				   (if (not (and uri (string=? uri xml-uri)))
+				       (forbidden-uri uri))
+				   (guarantee-legal-uri uri))
+			       (cons (cons (string-tail s 6) uri) tail)))
+			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
 
