@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.2 1995/01/31 22:00:21 cph Exp $
+$Id: os2graph.scm,v 1.3 1995/01/31 22:04:28 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -53,8 +53,9 @@ MIT in each case. |#
 	   (close ,os2-graphics/close)
 	   (color? ,os2-graphics/color?)
 	   (coordinate-limits ,os2-graphics/coordinate-limits)
-	   (device-coordinate-limits ,os2-graphics/device-coordinate-limits)
 	   (define-color ,os2-graphics/define-color)
+	   (desktop-size ,os2-graphics/desktop-size)
+	   (device-coordinate-limits ,os2-graphics/device-coordinate-limits)
 	   (drag-cursor ,os2-graphics/drag-cursor)
 	   (draw-line ,os2-graphics/draw-line)
 	   (draw-lines ,os2-graphics/draw-lines)
@@ -62,27 +63,27 @@ MIT in each case. |#
 	   (draw-text ,os2-graphics/draw-text)
 	   (find-color ,os2-graphics/find-color)
 	   (flush ,os2-graphics/flush)
+	   (hide-window ,os2-graphics/hide-window)
+	   (lower-window ,os2-graphics/lower-window)
+	   (maximize-window ,os2-graphics/maximize-window)
+	   (minimize-window ,os2-graphics/minimize-window)
 	   (move-cursor ,os2-graphics/move-cursor)
 	   (open ,os2-graphics/open)
+	   (raise-window ,os2-graphics/raise-window)
 	   (reset-clip-rectangle ,os2-graphics/reset-clip-rectangle)
+	   (restore-window ,os2-graphics/restore-window)
 	   (set-background-color ,os2-graphics/set-background-color)
 	   (set-clip-rectangle ,os2-graphics/set-clip-rectangle)
 	   (set-coordinate-limits ,os2-graphics/set-coordinate-limits)
 	   (set-drawing-mode ,os2-graphics/set-drawing-mode)
+	   (set-font ,os2-graphics/set-font)
 	   (set-foreground-color ,os2-graphics/set-foreground-color)
 	   (set-line-style ,os2-graphics/set-line-style)
-	   (window-size ,os2-graphics/window-size)
-	   (set-window-size ,os2-graphics/set-window-size)
-	   (window-position ,os2-graphics/window-position)
 	   (set-window-position ,os2-graphics/set-window-position)
+	   (set-window-size ,os2-graphics/set-window-size)
 	   (set-window-title ,os2-graphics/set-window-title)
-	   (hide-window ,os2-graphics/hide-window)
-	   (minimize-window ,os2-graphics/minimize-window)
-	   (maximize-window ,os2-graphics/maximize-window)
-	   (restore-window ,os2-graphics/restore-window)
-	   (raise-window ,os2-graphics/raise-window)
-	   (lower-window ,os2-graphics/lower-window)
-	   (desktop-size ,os2-graphics/desktop-size))))
+	   (window-position ,os2-graphics/window-position)
+	   (window-size ,os2-graphics/window-size))))
   (register-graphics-device-type 'OS/2 os2-graphics-device-type)
   (set! event-descriptor #f)
   (set! event-previewer-registration #f)
@@ -581,6 +582,12 @@ MIT in each case. |#
 
 (define (os2-graphics/set-window-title device title)
   (os2win-set-title (os2-graphics-device/wid device) title))
+
+(define (os2-graphics/set-font device font)
+  (let ((window (graphics-device/descriptor device)))
+    (set-os2-window/font-metrics! window
+				  (set-normal-font! (os2-window/wid window)
+						    font))))
 
 (define (os2-graphics/hide-window device)
   (os2win-set-state (os2-graphics-device/wid device) window-state:hide))
