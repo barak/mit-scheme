@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.5 1987/04/27 20:25:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.6 1987/05/07 00:06:42 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -71,14 +71,15 @@ MIT in each case. |#
 		   "rtlreg" "rtlcfg" "emodel" "rtypes"))
 
 (define filenames/dependency-chain/rcse
-  (filename/append "front-end" "rcseht" "rcserq" "rcsesr" "rcseep" "rcse"))
+  (filename/append "front-end" "rcseht" "rcserq" "rcseep" "rcse"))
 
 (define filenames/dependency-group/base
   (append (filename/append "base" "linear" "rtlcon" "rtlexp")
 	  (filename/append "alpha" "dflow" "graphc")
 	  (filename/append "front-end"
-			   "ralloc" "rcsesa" "rdeath" "rdebug" "rgcomb" "rlife"
-			   "rtlgen")
+			   "ralloc" "rcsesa" "rdeath" "rdebug" "rgcomb"
+			   "rgpcom" "rgpred" "rgproc" "rgrval" "rgstmt"
+			   "rlife" "rtlgen")
 	  (filename/append "back-end" "lapgen")))
 
 (file-dependency/integration/chain
@@ -101,7 +102,8 @@ MIT in each case. |#
 	 (filename/append "alpha" "dflow" "graphc")
 	 (filename/append "front-end"
 			  "ralloc" "rcse" "rcseep" "rcseht" "rcserq" "rcsesa"
-			  "rcsesr" "rdeath" "rdebug" "rgcomb" "rlife" "rtlgen")
+			  "rdeath" "rdebug" "rgcomb" "rgpcom" "rgpred" "rgproc"
+			  "rgrval" "rgstmt" "rlife" "rtlgen")
 	 (filename/append "back-end"
 			  "asmmac" "block" "lapgen" "laptop" "regmap" "symtab")
 	 (filename/append "machines/bobcat" "insmac" "machin"))
