@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.21 1991/09/02 03:55:24 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.22 1991/09/02 04:02:40 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1018,6 +1018,10 @@ MIT in each case. |#
 	(condition-signaller condition-type:file-touch-error
 			     '(FILENAME MESSAGE)
 			     standard-error-handler))
+  (set! stepping-off!
+	(lambda ()
+	  (set! (access old-stepper-hooks *old-hook-storage-environment*)
+		(access null-hooks *old-hook-storage-environment*))))
 
   unspecific)
 
@@ -1171,7 +1175,6 @@ MIT in each case. |#
 ;; Without-stepping doesn't work right with the stepper unless stepping-off!
 ;; is included in the thunk passed to it.
 
-(define (stepping-off!)
-  (set! (access old-stepper-hooks *old-hook-storage-environment*)
-	(access null-hooks *old-hook-storage-environment*)))
+(define stepping-off!)
+ 
 
