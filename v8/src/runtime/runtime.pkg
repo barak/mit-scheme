@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.278 1996/07/30 16:26:39 adams Exp $
+$Id: runtime.pkg,v 14.279 1996/10/07 18:12:20 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -389,6 +389,7 @@ MIT in each case. |#
 	  decoded-time/year
 	  decoded-time/zone
 	  encode-universal-time
+	  epoch
 	  file-time->string
 	  get-decoded-time
 	  get-universal-time
