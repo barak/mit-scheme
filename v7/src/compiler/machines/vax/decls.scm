@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.6 1991/07/25 02:38:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.7 1991/10/30 20:54:22 cph Exp $
 $MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
@@ -54,17 +54,18 @@ MIT in each case. |#
 
 (define (setup-source-nodes!)
   (let ((filenames
-	 (mapcan (lambda (subdirectory)
-		   (map (lambda (pathname)
-			  (string-append subdirectory
-					 "/"
-					 (pathname-name pathname)))
-			(directory-read
-			 (string-append subdirectory
-					"/"
-					source-file-expression))))
-		 '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-			  "machines/vax"))))
+	 (append-map!
+	  (lambda (subdirectory)
+	    (map (lambda (pathname)
+		   (string-append subdirectory
+				  "/"
+				  (pathname-name pathname)))
+		 (directory-read
+		  (string-append subdirectory
+				 "/"
+				 source-file-expression))))
+	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+		   "machines/vax"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))

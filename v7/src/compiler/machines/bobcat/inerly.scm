@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.6 1988/08/31 06:00:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.7 1991/10/30 20:53:14 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,17 +49,17 @@ MIT in each case. |#
 
 (define (make-ea-transformer #!optional modes keywords)
   (make-database-transformer
-    (mapcan (lambda (rule)
-	      (apply
-	       (lambda (pattern variables categories expression)
-		 (if (and (or (default-object? modes)
-			      (eq-subset? modes categories))
-			  (or (default-object? keywords)
-			      (not (memq (car pattern) keywords))))
-		     (list (early-make-rule pattern variables expression))
-		     '()))
-	       rule))
-	    early-ea-database)))
+    (append-map! (lambda (rule)
+		   (apply
+		    (lambda (pattern variables categories expression)
+		      (if (and (or (default-object? modes)
+				   (eq-subset? modes categories))
+			       (or (default-object? keywords)
+				   (not (memq (car pattern) keywords))))
+			  (list (early-make-rule pattern variables expression))
+			  '()))
+		    rule))
+		 early-ea-database)))
 
 (define (eq-subset? s1 s2)
   (or (null? s1)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.4 1990/10/05 11:36:32 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/anfile.scm,v 1.5 1991/10/30 20:59:06 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,7 +67,7 @@ MIT in each case. |#
   (cond ((comment? expression)
 	 (process-top-level (comment-expression expression)))
 	((sequence? expression)
-	 (mapcan process-top-level (sequence-actions expression)))
+	 (append-map! process-top-level (sequence-actions expression)))
 	(else
 	 (list expression))))
 

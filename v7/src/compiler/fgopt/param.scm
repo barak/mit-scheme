@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/param.scm,v 1.2 1989/10/26 07:36:59 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/param.scm,v 1.3 1991/10/30 20:50:56 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -279,7 +279,7 @@ parameters in registers.
 	 (append (block-children block) (block-disowned-children block))))
     (if (null? children)
 	(list block)
-	(cons block (mapcan linearize-block-tree children)))))
+	(cons block (append-map! linearize-block-tree children)))))
 
 (define (interesting-variable? variable)
   ;;; variables that will be in cells are eliminated from

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.4 1991/10/01 21:38:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 4.5 1991/10/30 21:01:22 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -163,12 +163,12 @@ MIT in each case. |#
 		     (map procedure (declarations/after declarations))))
 
 (define (declarations/integrated-variables declarations)
-  (mapcan (lambda (binding)
-	    (if (and (eq? 'INTEGRATE (binding/operation binding))
-		     (eq? 'NO-VALUES (binding/values binding)))
-		(list-copy (binding/names binding))
-		'()))
-	  (declarations/after declarations)))
+  (append-map (lambda (binding)
+		(if (and (eq? 'INTEGRATE (binding/operation binding))
+			 (eq? 'NO-VALUES (binding/values binding)))
+		    (binding/names binding)
+		    '()))
+	      (declarations/after declarations)))
 
 (define-structure (declarations
 		   (type vector)
@@ -303,8 +303,8 @@ symbol				; obvious.
 		     (intern-type (vector-ref extern 2)
 				  (vector-ref extern 3)))))
      table
-     (mapcan read-externs-file
-	     (mapcan specification->pathnames specifications)))))
+     (append-map! read-externs-file
+		  (append-map! specification->pathnames specifications)))))
 
 (define (specification->pathnames specification)
   (let ((value

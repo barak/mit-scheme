@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/constr.scm,v 1.1 1989/04/26 05:11:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/constr.scm,v 1.2 1991/10/30 20:49:47 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -158,11 +158,8 @@ MIT in each case. |#
 	  elements
 	  (begin
 	    (mark! node)
-	    (update! node (safe-mapcan transitively-close*! elements))
+	    (update! node (append-map transitively-close*! elements))
 	    (select node))))))
-
-(define-integrable (safe-mapcan procedure list)
-  (mapcan (lambda (item) (list-copy (procedure item))) list))
 
 (define (order-per-constraints elements constraint-graph)
   (order-per-constraints/extracted
@@ -250,7 +247,7 @@ MIT in each case. |#
 
   (with-new-node-marks
    (lambda ()
-     (mapcan doit entry-nodes))))
+     (append-map! doit entry-nodes))))
 
 (define *constraint-generation*)
 

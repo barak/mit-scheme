@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.28 1991/07/25 02:34:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.29 1991/10/30 20:52:36 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -53,17 +53,18 @@ MIT in each case. |#
 
 (define (setup-source-nodes!)
   (let ((filenames
-	 (mapcan (lambda (subdirectory)
-		   (map (lambda (pathname)
-			  (string-append subdirectory
-					 "/"
-					 (pathname-name pathname)))
-			(directory-read
-			 (string-append subdirectory
-					"/"
-					source-file-expression))))
-		 '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-			  "machines/bobcat"))))
+	 (append-map!
+	  (lambda (subdirectory)
+	    (map (lambda (pathname)
+		   (string-append subdirectory
+				  "/"
+				  (pathname-name pathname)))
+		 (directory-read
+		  (string-append subdirectory
+				 "/"
+				 source-file-expression))))
+	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+		   "machines/bobcat"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))

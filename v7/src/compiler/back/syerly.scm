@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.7 1988/08/31 06:40:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.8 1991/10/30 20:48:53 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,11 +94,11 @@ MIT in each case. |#
 		((CONS*)
 		 (apply cons* (map scode/unquasiquote operands)))
 		((APPEND)
-		 (mapcan (lambda (component)
-			   (if (scode/constant? component)
-			       (scode/constant-value component)
-			       (list (list 'UNQUOTE-SPLICING component))))
-			 operands))
+		 (append-map (lambda (component)
+			       (if (scode/constant? component)
+				   (scode/constant-value component)
+				   (list (list 'UNQUOTE-SPLICING component))))
+			     operands))
 		(else (list 'UNQUOTE exp))))
 	    (cond ((eq? operator cons)
 		   ;; integrations

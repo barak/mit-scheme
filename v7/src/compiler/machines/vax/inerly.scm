@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.5 1989/05/17 20:29:02 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.6 1991/10/30 20:53:57 cph Exp $
 $MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -88,14 +88,14 @@ MIT in each case. |#
 (define (make-ea-transformer category type)
   type					; ignored
   (make-database-transformer
-   (mapcan (lambda (rule)
-	     (apply
-	      (lambda (pattern variables categories expression)
-		(if (memq category categories)
-		    (list (early-make-rule pattern variables expression))
-		    '()))
-	      rule))
-	   early-ea-database)))
+   (append-map! (lambda (rule)
+		  (apply
+		   (lambda (pattern variables categories expression)
+		     (if (memq category categories)
+			 (list (early-make-rule pattern variables expression))
+			 '()))
+		   rule))
+		early-ea-database)))
 
 ;;;; Early effective address assembly.
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.28 1991/07/25 02:35:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.29 1991/10/30 20:51:43 cph Exp $
 $MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -53,17 +53,18 @@ MIT in each case. |#
 
 (define (setup-source-nodes!)
   (let ((filenames
-	 (mapcan (lambda (subdirectory)
-		   (map (lambda (pathname)
-			  (string-append subdirectory
-					 "/"
-					 (pathname-name pathname)))
-			(directory-read
-			 (string-append subdirectory
-					"/"
-					source-file-expression))))
-		 '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-			  "machines/spectrum"))))
+	 (append-map!
+	  (lambda (subdirectory)
+	    (map (lambda (pathname)
+		   (string-append subdirectory
+				  "/"
+				  (pathname-name pathname)))
+		 (directory-read
+		  (string-append subdirectory
+				 "/"
+				 source-file-expression))))
+	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
+		   "machines/spectrum"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))

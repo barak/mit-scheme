@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.17 1991/04/08 22:26:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.18 1991/10/30 21:00:11 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -482,68 +482,69 @@ must be defined when the defstruct is evaluated.
   `(ACCESS ,name #F))
 
 (define (accessor-definitions structure)
-  (mapcan (lambda (slot)
-	    (let ((accessor-name
-		   (if (structure/conc-name structure)
-		       (symbol-append (structure/conc-name structure)
-				      (slot/name slot))
-		       (slot/name slot))))
-	      (if (eq? (structure/scheme-type structure) 'RECORD)
-		  `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
-		    (DEFINE ,accessor-name
-		      (,(absolute 'RECORD-ACCESSOR)
-		       ,(structure/type structure)
-		       ',(slot/name slot))))
-		  `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
-		    (DEFINE (,accessor-name STRUCTURE)
-		      (DECLARE (INTEGRATE STRUCTURE))
-		      ,(case (structure/scheme-type structure)
-			 ((VECTOR)
-			  `(,(absolute 'VECTOR-REF)
-			    STRUCTURE
-			    ,(slot/index slot)))
-			 ((LIST)
-			  `(,(absolute 'LIST-REF)
-			    STRUCTURE
-			    ,(slot/index slot)))
-			 (error "Unknown scheme type" structure)))))))
-	  (structure/slots structure)))
+  (append-map! (lambda (slot)
+		 (let ((accessor-name
+			(if (structure/conc-name structure)
+			    (symbol-append (structure/conc-name structure)
+					   (slot/name slot))
+			    (slot/name slot))))
+		   (if (eq? (structure/scheme-type structure) 'RECORD)
+		       `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
+			 (DEFINE ,accessor-name
+			   (,(absolute 'RECORD-ACCESSOR)
+			    ,(structure/type structure)
+			    ',(slot/name slot))))
+		       `((DECLARE (INTEGRATE-OPERATOR ,accessor-name))
+			 (DEFINE (,accessor-name STRUCTURE)
+			   (DECLARE (INTEGRATE STRUCTURE))
+			   ,(case (structure/scheme-type structure)
+			      ((VECTOR)
+			       `(,(absolute 'VECTOR-REF)
+				 STRUCTURE
+				 ,(slot/index slot)))
+			      ((LIST)
+			       `(,(absolute 'LIST-REF)
+				 STRUCTURE
+				 ,(slot/index slot)))
+			      (error "Unknown scheme type" structure)))))))
+	       (structure/slots structure)))
 
 (define (settor-definitions structure)
-  (mapcan (lambda (slot)
-	    (if (slot/read-only? slot)
-		'()
-		(let ((settor-name
-		       (if (structure/conc-name structure)
-			   (symbol-append 'SET-
-					  (structure/conc-name structure)
-					  (slot/name slot)
-					  '!)
-			   (symbol-append 'SET-
-					  (slot/name slot)
-					  '!))))
-		  (if (eq? (structure/scheme-type structure) 'RECORD)
-		      `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
-			(DEFINE ,settor-name
-			  (,(absolute 'RECORD-UPDATER)
-			   ,(structure/type structure)
-			   ',(slot/name slot))))
-		      `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
-			(DEFINE (,settor-name STRUCTURE VALUE)
-			  (DECLARE (INTEGRATE STRUCTURE VALUE))
-			  ,(case (structure/scheme-type structure)
-			     ((VECTOR)
-			      `(,(absolute 'VECTOR-SET!) STRUCTURE
-							 ,(slot/index slot)
-							 VALUE))
-			     ((LIST)
-			      `(,(absolute 'SET-CAR!)
-				(,(absolute 'LIST-TAIL) STRUCTURE
-							,(slot/index slot))
-				VALUE))
-			     (else
-			      (error "Unknown scheme type" structure)))))))))
-	  (structure/slots structure)))
+  (append-map!
+   (lambda (slot)
+     (if (slot/read-only? slot)
+	 '()
+	 (let ((settor-name
+		(if (structure/conc-name structure)
+		    (symbol-append 'SET-
+				   (structure/conc-name structure)
+				   (slot/name slot)
+				   '!)
+		    (symbol-append 'SET-
+				   (slot/name slot)
+				   '!))))
+	   (if (eq? (structure/scheme-type structure) 'RECORD)
+	       `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
+		 (DEFINE ,settor-name
+		   (,(absolute 'RECORD-UPDATER)
+		    ,(structure/type structure)
+		    ',(slot/name slot))))
+	       `((DECLARE (INTEGRATE-OPERATOR ,settor-name))
+		 (DEFINE (,settor-name STRUCTURE VALUE)
+		   (DECLARE (INTEGRATE STRUCTURE VALUE))
+		   ,(case (structure/scheme-type structure)
+		      ((VECTOR)
+		       `(,(absolute 'VECTOR-SET!) STRUCTURE
+						  ,(slot/index slot)
+						  VALUE))
+		      ((LIST)
+		       `(,(absolute 'SET-CAR!)
+			 (,(absolute 'LIST-TAIL) STRUCTURE
+						 ,(slot/index slot))
+			 VALUE))
+		      (else
+		       (error "Unknown scheme type" structure)))))))))
+   (structure/slots structure)))
 
 (define (constructor-definitions structure)
   `(,@(map (lambda (boa-constructor)

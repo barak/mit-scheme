@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.3 1990/10/04 10:21:24 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/object.scm,v 1.4 1991/10/30 20:58:35 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,10 +73,9 @@ MIT in each case. |#
 
 (define (make-package name file-cases initialization parent)
   (let ((files
-	 (mapcan (lambda (file-case)
-		   (mapcan (lambda (clause) (list-copy (cdr clause)))
-			   (cdr file-case)))
-		 file-cases)))
+	 (append-map! (lambda (file-case)
+			(append-map cdr (cdr file-case)))
+		      file-cases)))
     (%make-package name
 		   file-cases
 		   files
