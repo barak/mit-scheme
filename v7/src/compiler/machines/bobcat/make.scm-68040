@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.28 1987/06/25 22:29:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.29 1987/07/03 19:00:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 27)
+      (define :modification 29)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.28 1987/06/25 22:29:10 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.29 1987/07/03 19:00:22 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -100,6 +100,7 @@ MIT in each case. |#
 	 (cons converter-package
 	       '("alpha/fggen1.bin"	;SCode->flow-graph converter
 		 "alpha/fggen2.bin"
+		 "alpha/declar.bin"	;Declaration handling
 		 ))
 
 	 (cons dataflow-package
