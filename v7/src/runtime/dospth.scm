@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.37 1997/11/11 12:47:40 cph Exp $
+$Id: dospth.scm,v 1.38 1998/03/09 04:32:56 cph Exp $
 
-Copyright (c) 1992-97 Massachusetts Institute of Technology
+Copyright (c) 1992-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -147,9 +147,14 @@ MIT in each case. |#
     (let ((colon (string-find-next-char string #\:)))
       (if (not colon)
 	  (values #f components)
-	  (values (string-head string colon)
-		  (cons (string-tail string (+ colon 1))
-			(cdr components)))))))
+	  (begin
+	    (if (not (and (= colon 1)
+			  (char-alphabetic? (string-ref string 0))
+			  (= (string-length string) 2)))
+		(error "Device specification must be a single letter:" string))
+	    (values (string-head string colon)
+		    (cons (string-tail string (+ colon 1))
+			  (cdr components))))))))
 
 (define (simplify-directory directory)
   (cond ((and (eq? (car directory) 'RELATIVE) (null? (cdr directory))) #f)
