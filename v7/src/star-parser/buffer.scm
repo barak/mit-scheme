@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.5 2001/06/29 05:21:43 cph Exp $
+;;; $Id: buffer.scm,v 1.6 2001/06/30 03:21:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -113,6 +113,24 @@
      (number->string (+ (parser-buffer-pointer-line pointer) 1))
      ", char "
      (number->string (+ (parser-buffer-pointer-index pointer) 1)))))
+
+(define (read-parser-buffer-char buffer)
+  ;; Attempt to read the next character from BUFFER, starting at the
+  ;; current position.  If there is a character available, increment
+  ;; the position and return the character.  If there are no more
+  ;; characters available, return #F and leave the position unchanged.
+  (let ((char (peek-parser-buffer-char buffer)))
+    (if char
+	(increment-buffer-index! buffer char))
+    char))
+
+(define (peek-parser-buffer-char buffer)
+  ;; Attempt to read the next character from BUFFER, starting at the
+  ;; current position.  If there is a character available, return it,
+  ;; otherwise return #F.  The position is unaffected in either case.
+  (and (guarantee-buffer-chars buffer 1)
+       (string-ref (parser-buffer-string buffer)
+		   (parser-buffer-index buffer))))
 
 (let-syntax
     ((char-matcher
@@ -125,14 +143,12 @@
 		    ,test)))
 	   (DEFINE (,(symbol-append 'MATCH-PARSER-BUFFER- name)
 		    BUFFER REFERENCE)
-	     (AND (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
-		    (AND CHAR
-			 ,test))
-		  (BEGIN
-		    (SET-PARSER-BUFFER-INDEX!
-		     BUFFER
-		     (FIX:+ (PARSER-BUFFER-INDEX BUFFER) 1))
-		    #T)))))))
+	     (LET ((CHAR (PEEK-PARSER-BUFFER-CHAR BUFFER)))
+	       (AND CHAR
+		    ,test
+		    (BEGIN
+		      (INCREMENT-BUFFER-INDEX! BUFFER CHAR)
+		      #T))))))))
   (char-matcher char (char=? char reference))
   (char-matcher char-ci (char-ci=? char reference))
   (char-matcher not-char (not (char=? char reference)))
@@ -168,9 +184,7 @@
 		   (PARSER-BUFFER-INDEX BUFFER)
 		   (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
 		  (BEGIN
-		    (SET-PARSER-BUFFER-INDEX!
-		     BUFFER
-		     (FIX:+ (PARSER-BUFFER-INDEX BUFFER) N))
+		    (BUFFER-INDEX+N! BUFFER N)
 		    #T)))))))
   (substring-matcher "")
   (substring-matcher "-ci"))
@@ -193,29 +207,21 @@
   (substring-matcher "")
   (substring-matcher "-ci"))
 
-(define (read-parser-buffer-char buffer)
-  ;; Attempt to read the next character from BUFFER, starting at the
-  ;; current position.  If there is a character available, increment
-  ;; the position and return the character.  If there are no more
-  ;; characters available, return #F and leave the position unchanged.
-  (let ((char (peek-parser-buffer-char buffer)))
-    (if char
-	(begin
-	  (set-parser-buffer-index! buffer
-				    (fix:+ (parser-buffer-index buffer) 1))
-	  (if (char=? char #\newline)
-	      (set-parser-buffer-line! buffer
-				       (fix:+ (parser-buffer-line buffer)
-					      1)))))
-    char))
+(define-integrable (increment-buffer-index! buffer char)
+  (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))
+  (if (char=? char #\newline)
+      (set-parser-buffer-line! buffer (fix:+ (parser-buffer-line buffer) 1))))
 
-(define (peek-parser-buffer-char buffer)
-  ;; Attempt to read the next character from BUFFER, starting at the
-  ;; current position.  If there is a character available, return it,
-  ;; otherwise return #F.  The position is unaffected in either case.
-  (and (guarantee-buffer-chars buffer 1)
-       (string-ref (parser-buffer-string buffer)
-		   (parser-buffer-index buffer))))
+(define (buffer-index+n! buffer n)
+  (let ((i (parser-buffer-index buffer))
+	(s (parser-buffer-string buffer)))
+    (let ((j (fix:+ i n)))
+      (do ((i i (fix:+ i 1)))
+	  ((fix:= i j))
+	(if (char=? (string-ref s i) #\newline)
+	    (set-parser-buffer-line! buffer
+				     (fix:+ (parser-buffer-line buffer) 1))))
+      (set-parser-buffer-index! buffer j))))
 
 (define (guarantee-buffer-chars buffer n)
   (let ((min-end (fix:+ (parser-buffer-index buffer) n))
