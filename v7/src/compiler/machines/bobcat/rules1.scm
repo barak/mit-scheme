@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.21 1989/03/10 08:05:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.22 1989/04/27 20:06:32 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -366,9 +366,9 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (let ((source-ref (reference-alias-register! r 'DATA)))
-    (LAP ,@(fixnum->object source-ref)
-	 (MOV L ,source-ref (@A+ 5)))))
+  (let ((temporary (move-to-temporary-register! r 'DATA)))
+    (LAP ,@(fixnum->object temporary)
+	 (MOV L ,temporary (@A+ 5)))))
 
 (define-rule statement
   ;; This pops the top of stack into the heap
@@ -413,9 +413,9 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (let ((source-ref (reference-alias-register! r 'DATA)))
-    (LAP ,@(fixnum->object source-ref)
-	 (MOV L ,source-ref (@-A 7)))))
+  (let ((temporary (move-to-temporary-register! r 'DATA)))
+    (LAP ,@(fixnum->object temporary)
+	 (MOV L ,temporary (@-A 7)))))
 
 ;;;; Fixnum Operations
 
