@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.22 1992/02/27 18:54:43 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.23 1992/06/05 20:05:32 jinx Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -362,7 +362,7 @@ DEFUN (name, (signo, info, pscp),					\
     struct handler_record * record =					\
       (dstack_alloc (sizeof (struct handler_record)));			\
     (record -> signo) = signo;						\
-    (record -> handler) = handler;					\
+    (record -> handler) = name;						\
     transaction_record_action (tat_abort, ta_abort_handler, record);	\
   }									\
   statement;								\
