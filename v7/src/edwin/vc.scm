@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.25 1996/12/16 04:57:32 cph Exp $
+;;;	$Id: vc.scm,v 1.26 1997/06/25 07:26:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -1009,12 +1009,15 @@ the value of vc-log-mode-hook."
 (define-vc-type-operation 'LOCKING-USER vc-type:rcs
   (lambda (master revision)
     (let ((admin (vc-admin master)))
-      (let ((delta (rcs-find-delta admin revision)))
-	(let loop ((locks (rcs-admin/locks admin)))
-	  (and (not (null? locks))
-	       (if (eq? delta (cdar locks))
-		   (caar locks)
-		   (loop (cdr locks)))))))))
+      (let ((delta (rcs-find-delta admin revision #f)))
+	(if delta
+	    (let loop ((locks (rcs-admin/locks admin)))
+	      (and (not (null? locks))
+		   (if (eq? delta (cdar locks))
+		       (caar locks)
+		       (loop (cdr locks)))))
+	    ;; Kludge: this causes the next action to be a checkin.
+	    (current-user-name))))))
 
 (define-vc-type-operation 'MODE-LINE-STATUS vc-type:rcs
   (lambda (master buffer)
@@ -1153,7 +1156,7 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'DEFAULT-VERSION vc-type:rcs
   (lambda (master)
-    (rcs-delta/number (rcs-find-delta (vc-admin master) #f))))
+    (rcs-delta/number (rcs-find-delta (vc-admin master) #f #t))))
 
 (define-vc-type-operation 'BUFFER-VERSION vc-type:rcs
   (lambda (master buffer)
