@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.2 1995/01/11 16:24:26 ssmith Exp $
+$Id: rules3.scm,v 1.3 1995/01/11 20:42:52 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -827,7 +827,120 @@ MIT in each case. |#
   (make-external-label (make-procedure-code-word min max)
 		       label))
 
+(define-rule statement
+  (INTERRUPT-CHECK:PROCEDURE (? intrpt) (? heap) (? stack) (? label)
+			     (MACHINE-CONSTANT (? frame-size)))
+  (generate-interrupt-check/new
+   intrpt heap stack
+   (lambda (interrupt-label)
+     (let ((ret-add-label (generate-label)))
+       (LAP (LABEL ,interrupt-label)
+	    (MOV B (R ,regnum:hook) (& ,(- frame-size 1)))
+	    ,@(invoke-hook hook:compiler-interrupt-procedure/new)
+	    (LABEL ,ret-add-label)
+	    (WORD () (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
+
+(define-rule statement
+  (INTERRUPT-CHECK:CONTINUATION (? intrpt) (? heap) (? stack) (? label)
+				(MACHINE-CONSTANT (? frame-size)))
+  ;; Generated both for continuations and in some weird case of
+  ;; top-level expressions.
+  (generate-interrupt-check/new
+   intrpt heap
+   (and (= frame-size 1) stack)		; expressions only
+   (lambda (interrupt-label)
+     (let ((ret-add-label (generate-label)))
+       (LAP (LABEL ,interrupt-label)
+	    (MOV B (R ,regnum:hook) (& ,(- frame-size 1)))
+	    #| (LDI ()
+		    ,(if (= nregs 0)	; **** probably wrong
+			 code:compiler-interrupt-procedure
+			 code:compiler-interrupt-continuation)
+		    28) |#
+	    ,@(invoke-hook hook:compiler-interrupt-continuation/new)
+	    (LABEL ,ret-add-label)
+	    (WORD () (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
+
+(define-rule statement
+  (INTERRUPT-CHECK:CLOSURE (? intrpt) (? heap) (? stack)
+			   (MACHINE-CONSTANT (? frame-size)))
+  (generate-interrupt-check/new
+   intrpt heap stack
+   (lambda (interrupt-label)
+     (LAP (LABEL ,interrupt-label)
+	  (MOV B (R ,regnum:hook) (& ,(- frame-size 2))) ; Continuation and self
+	  ; register are saved by other
+	  ; means.
+	  ,@(invoke-hook hook:compiler-interrupt-closure/new)))))
+
+(define-rule statement
+  (INTERRUPT-CHECK:SIMPLE-LOOP (? intrpt) (? heap) (? stack)
+			       (? loop-label) (? header-label)
+			       (MACHINE-CONSTANT (? frame-size)))
+  ;; Nothing generates this now -- JSM
+  loop-label				; ignored
+  (generate-interrupt-check/new
+   intrpt heap stack
+   (lambda (interrupt-label)
+     (let ((ret-add-label (generate-label)))
+       (LAP (LABEL ,interrupt-label)
+	    (MOV B (R regnum:hook) (& ,(- frame-size 1)))
+	    ,@(invoke-hook hook:compiler-interrupt-procedure/new)
+	    (LABEL ,ret-add-label)
+	    (WORD () (- (- ,header-label ,ret-add-label)
+			,*privilege-level*)))))))
+
+
+;; Copied and modified from Spectrum's
+(define (generate-interrupt-check/new intrpt heap stack generate-stub)
+  ;; This does not check the heap because it is assumed that there is
+  ;; a large buffer at the end of the heap.  As long as the code can't
+  ;; loop without checking, which is what intrpt guarantees, there
+  ;; is no need to check.
+
+  (if (and (number? heap)
+	   (> heap 1000))
+      (internal-warning "Large allocation " heap 'words))
+  (let* ((interrupt-label (generate-label))
+	 (heap-check? intrpt)
+	 (stack-check? (and stack compiler:generate-stack-checks?))
+	 (need-interrupt-code (lambda ()
+				(add-end-of-block-code!
+				 (lambda ()
+				   (generate-stub interrupt-label))))))
+    (cond ((and heap-check? stack-check?)
+	   (need-interrupt-code)
+	   (profile-info/add 'HEAP-CHECK)
+	   (profile-info/add 'STACK-CHECK)
+	   (LAP (CMP W (R ,regnum:free-pointer) (@RO B ,regnum:regs-pointer ,register-block/memtop-offset))
+		;; The following should be JAE, but on certain occasions
+		;; memtop is set to -1 to force an abort, which wouldn't
+		;; fare too well here.  This restricts memory to the lower
+		;; 2 Gigabytes.  Oh darn.  Of course, it could cause problems
+		;; in operating systems that don't let us map memory where we
+		;; want it.
+		(JGE (@PCR ,interrupt-label))
+		(CMP W (R ,regnum:stack-pointer) (@RO B ,regnum:regs-pointer ,register-block/stack-guard-offset))
+		;; Same may apply here
+		(JL (@PCR ,interrupt-label))))
+	  ;; NOTE: Spectrum loads memtop into a register at this point...
+	  (heap-check?
+	   (need-interrupt-code)
+	   (profile-info/add 'HEAP-CHECK)
+	   (LAP (CMP W (R ,regnum:free-pointer) (@RO B ,regnum:regs-pointer ,register-block/memtop-offset))
+		;; NOTE: See above
+		(JGE (@PCR ,interrupt-label))))
+	  (stack-check?
+	   (need-interrupt-code)
+	   (profile-info/add 'STACK-CHECK)
+	   (LAP (CMP W (R ,regnum:stack-pointer) (@RO B ,regnum:regs-pointer ,register-block/stack-guard-offset))
+		(JL (@PCR ,interrupt-label))))
+	  (else
+	   (LAP)))))
+
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
 ;;; End: ***
+
+
