@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.42 1987/02/09 23:10:13 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.43 1987/08/25 20:49:23 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -56,20 +56,20 @@
 (define *radix*)
 
 (set! string->number
-(named-lambda (string->number string #!optional exactness radix)
-  ((cond ((or (unassigned? exactness) (not exactness)) identity-procedure)
-	 ((eq? exactness 'E) ->exact)
-	 ((eq? exactness 'I) ->inexact)
-	 (else (error "Illegal exactness argument" exactness)))
-   (fluid-let ((*radix*
-		(cond ((unassigned? radix) *parser-radix*)
-		      ((memv radix '(2 8 10 16)) radix)
-		      ((eq? radix 'B) 2)
-		      ((eq? radix 'O) 8)
-		      ((eq? radix 'D) 10)
-		      ((eq? radix 'X) 16)
-		      (else (error "Illegal radix argument" radix)))))
-     (parse-number (string->list string))))))
+  (named-lambda (string->number string #!optional exactness radix)
+    ((cond ((or (unassigned? exactness) (not exactness)) identity-procedure)
+	   ((eq? exactness 'E) ->exact)
+	   ((eq? exactness 'I) ->inexact)
+	   (else (error "Illegal exactness argument" exactness)))
+     (fluid-let ((*radix*
+		  (cond ((unassigned? radix) *parser-radix*)
+			((memv radix '(2 8 10 16)) radix)
+			((eq? radix 'B) 2)
+			((eq? radix 'O) 8)
+			((eq? radix 'D) 10)
+			((eq? radix 'X) 16)
+			(else (error "Illegal radix argument" radix)))))
+       (parse-number (string->list string))))))
 
 (define (parse-number chars)
   (parse-real chars
@@ -109,32 +109,33 @@
 (define (parse-unsigned-real chars receiver)
   (parse-prefix chars false false false
     (lambda (chars radix exactness precision)
-      (define (finish)
-	(parse-body chars
-	  (lambda (chars real)
-	    (parse-suffix chars
-	      (lambda (chars exponent)
-		(receiver chars
-			  ((case exactness
-			     ((#F) identity-procedure)
-			     ((#\e) ->exact)
-			     ((#\i) ->inexact))
-			   ((case precision
-			      ((#F) identity-procedure)
-			      ((#\s) ->short-flonum)
-			      ((#\l) ->long-flonum))
-			    (if exponent
-				(* real (expt 10 exponent))
-				real)))))))))
-      (if radix
-	  (fluid-let ((*radix*
-		       (cdr (assv radix
-				  '((#\b . 2)
-				    (#\o . 8)
-				    (#\d . 10)
-				    (#\x . 16))))))
-	    (finish))
-	  (finish)))))
+      (let ((finish
+	     (lambda ()
+	       (parse-body chars
+		 (lambda (chars real)
+		   (parse-suffix chars
+		     (lambda (chars exponent)
+		       (receiver chars
+				 ((case exactness
+				    ((#F) identity-procedure)
+				    ((#\e) ->exact)
+				    ((#\i) ->inexact))
+				  ((case precision
+				     ((#F) identity-procedure)
+				     ((#\s) ->short-flonum)
+				     ((#\l) ->long-flonum))
+				   (if exponent
+				       (* real (expt 10 exponent))
+				       real)))))))))))
+	(if radix
+	    (fluid-let ((*radix*
+			 (cdr (assv radix
+				    '((#\b . 2)
+				      (#\o . 8)
+				      (#\d . 10)
+				      (#\x . 16))))))
+	      (finish))
+	    (finish))))))
 
 (define (parse-prefix chars radix exactness precision receiver)
   (and (not (null? chars))
@@ -184,7 +185,7 @@
 	 ((#\-)
 	  (parse-unsigned-suffix (cdr chars)
 	    (lambda (chars exponent)
-	      (receiver chars (- exponent)))))
+	      (receiver chars (and exponent (- exponent))))))
 	 (else
 	  (parse-unsigned-suffix chars
 	    receiver)))))
