@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.52 1991/05/02 01:13:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.53 1991/08/13 20:59:40 newts Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -106,21 +106,19 @@
   (lambda (name description interactive procedure)
     (let ((name (canonicalize-name name)))
       (let ((scheme-name (command-name->scheme-name name)))
-	`(BEGIN
-	   (DEFINE ,scheme-name
-	     (MAKE-COMMAND ',name
-			   ',description
-			   ,(if (null? interactive)
-				`'()
-				interactive)
-			   ,(if (and (pair? procedure)
-				     (eq? 'LAMBDA (car procedure))
-				     (pair? (cdr procedure)))
-				`(NAMED-LAMBDA (,scheme-name
-						,@(cadr procedure))
-				   ,@(cddr procedure))
-				procedure)))
-	   ',name)))))
+	`(DEFINE ,scheme-name
+	   (MAKE-COMMAND ',name
+			 ',description
+			 ,(if (null? interactive)
+			      `'()
+			      interactive)
+			 ,(if (and (pair? procedure)
+				   (eq? 'LAMBDA (car procedure))
+				   (pair? (cdr procedure)))
+			      `(NAMED-LAMBDA (,scheme-name
+					      ,@(cadr procedure))
+				 ,@(cddr procedure))
+			      procedure)))))))
 
 (syntax-table-define edwin-syntax-table 'REF-COMMAND-OBJECT
   (lambda (name)
@@ -148,8 +146,7 @@
 		  ,@(if (default-object? test)
 			'()
 			`((DEFINE-VARIABLE-VALUE-VALIDITY-TEST ,scheme-name
-			    ,test)))
-		  ',name)))))))
+			    ,test))))))))))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE
     (variable-definition false))
   (syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
@@ -187,43 +184,39 @@
     (let ((name (canonicalize-name name))
 	  (super-mode-name
 	   (and super-mode-name (canonicalize-name super-mode-name))))
-      `(BEGIN
-	 (DEFINE ,(mode-name->scheme-name name)
-	   (MAKE-MODE ',name
-		      TRUE
-		      ',(or display-name (symbol->string name))
-		      ,(if super-mode-name
-			   `(MODE-COMTABS (NAME->MODE ',super-mode-name))
-			   ''())
-		      ',description
-		      (LAMBDA ()
-			,@(let ((initialization
-				 (if super-mode-name
-				     `(((MODE-INITIALIZATION
-					 ,(mode-name->scheme-name
-					   super-mode-name)))
-				       ,@initialization)
-				     initialization)))
-			    (if (null? initialization)
-				`(',unspecific)
-				initialization)))))
-	 ',name))))
+      `(DEFINE ,(mode-name->scheme-name name)
+	 (MAKE-MODE ',name
+		    TRUE
+		    ',(or display-name (symbol->string name))
+		    ,(if super-mode-name
+			 `(MODE-COMTABS (NAME->MODE ',super-mode-name))
+			 ''())
+		    ',description
+		    (LAMBDA ()
+		      ,@(let ((initialization
+			       (if super-mode-name
+				   `(((MODE-INITIALIZATION
+				       ,(mode-name->scheme-name
+					 super-mode-name)))
+				     ,@initialization)
+				   initialization)))
+			  (if (null? initialization)
+			      `(',unspecific)
+			      initialization))))))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-MINOR-MODE
   (lambda (name display-name description . initialization)
     (let ((name (canonicalize-name name)))
-      `(BEGIN
-	 (DEFINE ,(mode-name->scheme-name name)
-	   (MAKE-MODE ',name
-		      FALSE
-		      ',(or display-name (symbol->string name))
-		      '()
-		      ',description
-		      (LAMBDA ()
-			,@(if (null? initialization)
-			      `(',unspecific)
-			      initialization))))
-	 ',name))))
+      `(DEFINE ,(mode-name->scheme-name name)
+	 (MAKE-MODE ',name
+		    FALSE
+		    ',(or display-name (symbol->string name))
+		    '()
+		    ',description
+		    (LAMBDA ()
+		      ,@(if (null? initialization)
+			    `(',unspecific)
+			    initialization)))))))
 
 (syntax-table-define edwin-syntax-table 'REF-MODE-OBJECT
   (lambda (name)
