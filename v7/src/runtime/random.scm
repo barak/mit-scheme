@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.13 1995/08/02 03:56:44 adams Exp $
+$Id: random.scm,v 14.14 1996/04/24 04:18:18 cph Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -59,20 +59,20 @@ MIT in each case. |#
 (define-integrable b. 4294967291. #|(exact->inexact b)|#)
 
 (define (random modulus #!optional state)
-  (if (not (and (real? modulus) (< 0 modulus)))
-      (error:wrong-type-argument modulus "positive real" 'RANDOM))
   (let ((element
 	 (flo:random-unit
 	  (guarantee-random-state (if (default-object? state) #f state)
 				  'RANDOM))))
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
-    (cond ((flo:flonum? modulus)
+    (cond ((and (flo:flonum? modulus) (flo:< 0. modulus))
 	   (flo:* element modulus))
-	  ((exact-integer? modulus)
+	  ((and (int:integer? modulus) (int:< 0 modulus))
 	   (flo:truncate->exact (flo:* element (int:->flonum modulus))))
+	  ((and (real? modulus) (< 0 modulus))
+	   (* (inexact->exact element) modulus))
 	  (else
-	   (* (inexact->exact element) modulus)))))
+	   (error:wrong-type-argument modulus "positive real" 'RANDOM)))))
 
 (define (flo:random-unit state)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -102,7 +102,7 @@ MIT in each case. |#
 
 (define (make-random-state #!optional state)
   (let ((state (if (default-object? state) #f state)))
-    (if (or (eq? #t state) (exact-integer? state))
+    (if (or (eq? #t state) (int:integer? state))
 	(initial-random-state
 	 (congruential-rng (+ (real-time-clock) 123456789)))
 	(copy-random-state
@@ -118,7 +118,7 @@ MIT in each case. |#
     (let fill ()
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i r))
-	(flo:vector-set! seeds i (exact->inexact (generate-random-seed b))))
+	(flo:vector-set! seeds i (int:->flonum (generate-random-seed b))))
       ;; Disallow cases with all seeds either 0 or b-1, since they can
       ;; get locked in trivial cycles.
       (if (or (let loop ((i 0))
@@ -137,20 +137,34 @@ MIT in each case. |#
   (let ((a 16807 #|(expt 7 5)|#)
 	(m 2147483647 #|(- (expt 2 31) 1)|#))
     (let ((m-1 (- m 1)))
-      (let ((seed (+ (modulo seed m-1) 1)))
+      (let ((seed (+ (int:remainder seed m-1) 1)))
 	(lambda (b)
-	  (let ((n (modulo (* a seed) m)))
+	  (let ((n (int:remainder (* a seed) m)))
 	    (set! seed n)
-	    (quotient (* (- n 1) b) m-1)))))))
+	    (int:quotient (* (- n 1) b) m-1)))))))
+
+;;; The RANDOM-STATE data abstraction must be built by hand because
+;;; the random-number generator is needed in order to build the record
+;;; abstraction.
 
-(define-structure (random-state
-		   (type vector)
-		   (named ((ucode-primitive string->symbol)
-			   "#[(runtime random-number)random-state]"))
-		   (constructor %make-random-state))
-  index
-  borrow
-  vector)
+(define-integrable (%make-random-state i b v)
+  (vector random-state-tag i b v))
+
+(define (random-state? object)
+  (and (vector? object)
+       (not (fix:= (vector-length object) 0))
+       (eq? (vector-ref object 0) random-state-tag)))
+
+(define random-state-tag
+  ((ucode-primitive string->symbol) "#[(runtime random-number)random-state]"))
+
+(define-integrable (random-state-index s) (vector-ref s 1))
+(define-integrable (set-random-state-index! s x) (vector-set! s 1 x))
+
+(define-integrable (random-state-borrow s) (vector-ref s 2))
+(define-integrable (set-random-state-borrow! s x) (vector-set! s 2 x))
+
+(define-integrable (random-state-vector s) (vector-ref s 3))
 
 (define (copy-random-state state)
   (%make-random-state (random-state-index state)
@@ -181,3 +195,11 @@ MIT in each case. |#
 (define (initialize-package!)
   (set! *random-state* (make-random-state #t))
   unspecific)
+
+(define (finalize-random-state-type!)
+  (named-structure/set-tag-description! random-state-tag
+    (make-define-structure-type 'VECTOR
+				'RECORD-STATE
+				'(INDEX BORROW VECTOR)
+				'(1 2 3)
+				#f)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.8 1995/02/14 01:06:18 cph Exp $
+$Id: uproc.scm,v 1.9 1996/04/24 04:23:19 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,17 +79,11 @@ MIT in each case. |#
 	  (else (error "not a procedure" procedure)))))
 
 (define (skip-entities object)
-  (cond ((%entity? object)
-	 (skip-entities (if (%entity-is-apply-hook? object)
-			    (apply-hook-procedure object)
-			    (entity-procedure object))))
-	((%record? object)
-	 (let ((method (%record-application-method object)))
-	   (if method
-	       (skip-entities method)
-	       object)))
-	(else
-	 object)))
+  (if (%entity? object)
+      (skip-entities (if (%entity-is-apply-hook? object)
+			 (apply-hook-procedure object)
+			 (entity-procedure object)))
+      object))
 
 (define (procedure-arity procedure)
   (let loop ((p procedure) (e 0))
@@ -291,7 +285,8 @@ MIT in each case. |#
   (system-pair-set-cdr! entity extra))
 
 (define (make-apply-hook procedure extra)
-  (make-entity (lambda args (apply procedure (cdr args)))
+  (make-entity (lambda (entity . args)
+		 (apply (apply-hook-procedure entity) args))
 	       (hunk3-cons apply-hook-tag procedure extra)))
 
 (define (apply-hook? object)

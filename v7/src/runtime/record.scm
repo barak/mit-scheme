@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.23 1994/09/01 22:39:01 adams Exp $
+$Id: record.scm,v 1.24 1996/04/24 04:23:11 cph Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,30 +49,6 @@ MIT in each case. |#
   (primitive-object-set! 3)
   (primitive-object-set-type 2))
 
-(define record-type-type)
-(define record-type-population)
-(define record-type-initialization-hook)
-
-(define (initialize-package!)
-  (set! record-type-type
-	(let ((record-type-type
-	       (%record false
-			false
-			"record-type"
-			'(RECORD-TYPE-APPLICATION-METHOD
-			  RECORD-TYPE-NAME
-			  RECORD-TYPE-FIELD-NAMES
-			  RECORD-TYPE-METHODS
-			  RECORD-TYPE-CLASS-WRAPPER)
-			'()
-			false)))
-	  (%record-set! record-type-type 0 record-type-type)
-	  (%record-type-has-application-method! record-type-type)
-	  record-type-type))
-  (set! record-type-population (make-population))
-  (set! record-type-initialization-hook false)
-  (add-to-population! record-type-population record-type-type))
-
 (define-integrable (%record? object)
   (object-type? (ucode-type record) object))
 
@@ -81,9 +57,10 @@ MIT in each case. |#
       (error:wrong-type-argument length "exact integer" '%MAKE-RECORD))
   (if (not (> length 0))
       (error:bad-range-argument length '%MAKE-RECORD))
-  (if (default-object? object)
-      (object-new-type (ucode-type record) (make-vector length))
-      (object-new-type (ucode-type record) (make-vector length object))))
+  (object-new-type
+   (ucode-type record)
+   ((ucode-primitive vector-cons) length
+				  (if (default-object? object) #f object))))
 
 (define (%record-copy record)
   (let ((length (%record-length record)))
@@ -96,109 +73,121 @@ MIT in each case. |#
 	  ((= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
+
+(define record-type-type-tag)
+(define unparse-record)
+(define record-description)
 
-(define (%record-application-method record)
-  ;; This procedure must match the code in "microcode/interp.c".
-  (let ((record-type (%record-ref record 0)))
-    (and (%record? record-type)
-	 (and (object-type? (ucode-type constant)
-			    (primitive-object-ref record-type 0))
-	      (>= (%record-length record-type) 2))
-	 (let ((method (%record-ref record-type 1)))
-	   (and (not (eq? method record))
-		method)))))
+(define (initialize-record-type-type!)
+  (let ((type
+	 (%record #f
+		  "record-type"
+		  '(RECORD-TYPE-NAME
+		    RECORD-TYPE-FIELD-NAMES
+		    RECORD-TYPE-DISPATCH-TAG)
+		  #f)))
+    (set! record-type-type-tag (make-dispatch-tag type))
+    (%record-set! type 0 record-type-type-tag)
+    (%record-set! type 3 record-type-type-tag)))
 
-(define (%record-type-has-application-method! record-type)
-  (primitive-object-set!
-   record-type
-   0
-   (primitive-object-set-type (ucode-type constant)
-			      (primitive-object-ref record-type 0))))
+(define (initialize-record-procedures!)
+  (set! unparse-record (make-generic-procedure 2 'UNPARSE-RECORD))
+  (set-generic-procedure-default-generator! unparse-record
+    (let ((record-method (standard-unparser-method 'RECORD #f)))
+      (lambda (generic tags)
+	generic
+	(let ((tag (cadr tags)))
+	  (cond ((record-type? (dispatch-tag-contents tag))
+		 (standard-unparser-method
+		  (record-type-name (dispatch-tag-contents tag))
+		  #f))
+		((eq? tag record-type-type-tag)
+		 (standard-unparser-method 'TYPE
+		   (lambda (type port)
+		     (write-char #\space port)
+		     (display (record-type-name type) port))))
+		((eq? tag (built-in-dispatch-tag 'DISPATCH-TAG))
+		 (standard-unparser-method 'DISPATCH-TAG
+		   (lambda (tag port)
+		     (write-char #\space port)
+		     (write (dispatch-tag-contents tag) port))))
+		(else record-method))))))
+  (set! set-record-type-unparser-method!
+	set-record-type-unparser-method!/after-boot)
+  (for-each (lambda (t.m)
+	      (set-record-type-unparser-method! (car t.m) (cdr t.m)))
+	    deferred-unparser-methods)
+  (set! deferred-unparser-methods)
+  (set! record-description (make-generic-procedure 1 'RECORD-DESCRIPTION))
+  (set-generic-procedure-default-generator! record-description
+    (lambda (generic tags)
+      generic
+      (if (record-type? (dispatch-tag-contents (car tags)))
+	  (lambda (record)
+	    (let ((type (record-type-descriptor record)))
+	      (map (lambda (field-name)
+		     `(,field-name
+		       ,((record-accessor type field-name) record)))
+		   (record-type-field-names type))))
+	  (lambda (record)
+	    (let loop ((i (fix:- (%record-length record) 1)) (d '()))
+	      (if (fix:< i 0)
+		  d
+		  (loop (fix:- i 1)
+			(cons (list i (%record-ref record i)) d)))))))))
 
 (define (make-record-type type-name field-names #!optional print-method)
   (guarantee-list-of-unique-symbols field-names 'MAKE-RECORD-TYPE)
   (let ((record-type
-	 (%record record-type-type
-		  false
+	 (%record record-type-type-tag
 		  (->string type-name)
 		  (list-copy field-names)
-		  '()
-		  false)))
-    (%record-type-has-application-method! record-type)
-    (add-to-population! record-type-population record-type)
-    (if record-type-initialization-hook
-	(record-type-initialization-hook record-type))
+		  #f)))
+    (%record-set! record-type 3 (make-dispatch-tag record-type))
     (if (not (default-object? print-method))
 	(set-record-type-unparser-method! record-type print-method))
     record-type))
 
 (define (record-type? object)
   (and (%record? object)
-       (eq? (%record-ref object 0) record-type-type)))
-
-(define (record-type-application-method record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-APPLICATION-METHOD)
-  (%record-ref record-type 1))
-
-(define (set-record-type-application-method! record-type method)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-APPLICATION-METHOD!)
-  (if (not (or (not method) (procedure? method)))
-      (error:wrong-type-argument method "application method"
-				 'SET-RECORD-TYPE-APPLICATION-METHOD!))
-  (%record-set! record-type 1 method))
+       (eq? (%record-ref object 0) record-type-type-tag)))
 
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
-  (%record-type/name record-type))
-
-(define-integrable (%record-type/name record-type)
-  (%record-ref record-type 2))
+  (%record-ref record-type 1))
 
 (define (record-type-field-names record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
-  (list-copy (%record-type/field-names record-type)))
+  (%record-ref record-type 2))
 
-(define-integrable (%record-type/field-names record-type)
+(define (record-type-dispatch-tag record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
   (%record-ref record-type 3))
 
-(define (record-type-unparser-method record-type)
-  (record-type-method record-type 'UNPARSER))
-
 (define (set-record-type-unparser-method! record-type method)
+  (set! deferred-unparser-methods
+	(cons (cons record-type method) deferred-unparser-methods))
+  unspecific)
+
+(define deferred-unparser-methods '())
+
+(define (set-record-type-unparser-method!/after-boot record-type method)
   (if (not (or (not method) (procedure? method)))
       (error:wrong-type-argument method "unparser method"
 				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
-  (set-record-type-method! record-type 'UNPARSER method))
-
-(define (record-type-method record-type keyword)
-  (guarantee-record-type record-type 'RECORD-TYPE-METHOD)
-  (let ((entry (assq keyword (%record-ref record-type 4))))
-    (and entry
-	 (cdr entry))))
-
-(define (set-record-type-method! record-type keyword method)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-METHOD!)
-  (let ((methods (%record-ref record-type 4)))
-    (let ((entry (assq keyword methods)))
-      (if method
-	  (if entry
-	      (set-cdr! entry method)
-	      (%record-set! record-type 4
-			    (cons (cons keyword method) methods)))
-	  (if entry
-	      (%record-set! record-type 4 (delq! entry methods)))))))
-
-(define (record-type-field-index record-type field-name procedure-name)
-  (let loop ((field-names (%record-type/field-names record-type)) (index 1))
-    (if (null? field-names)
-	(error:bad-range-argument field-name procedure-name))
-    (if (eq? field-name (car field-names))
-	index
-	(loop (cdr field-names) (+ index 1)))))
+  (remove-generic-procedure-generators
+   unparse-record
+   (list (make-dispatch-tag #f) record-type))
+  (add-generic-procedure-generator unparse-record
+    (lambda (generic tags)
+      generic
+      (and (eq? (cadr tags) (record-type-dispatch-tag record-type))
+	   method))))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
-  (let ((all-field-names (%record-type/field-names record-type)))
+  (let ((all-field-names (record-type-field-names record-type))
+	(tag (record-type-dispatch-tag record-type)))
     (let ((field-names
 	   (if (default-object? field-names) all-field-names field-names))
 	  (record-length (+ 1 (length all-field-names))))
@@ -216,7 +205,7 @@ MIT in each case. |#
 	  (let ((record
 		 (object-new-type (ucode-type record)
 				  (make-vector record-length))))
-	    (%record-set! record 0 record-type)
+	    (%record-set! record 0 tag)
 	    (do ((indexes indexes (cdr indexes))
 		 (field-values field-values (cdr field-values)))
 		((null? indexes))
@@ -225,51 +214,55 @@ MIT in each case. |#
 
 (define (record? object)
   (and (%record? object)
-       (record-type? (%record-ref object 0))))
+       (dispatch-tag? (%record-ref object 0))
+       (record-type? (dispatch-tag-contents (%record-ref object 0)))))
 
 (define (record-type-descriptor record)
   (guarantee-record record 'RECORD-TYPE-DESCRIPTOR)
-  (%record-ref record 0))
+  (dispatch-tag-contents (%record-ref record 0)))
 
 (define (record-copy record)
   (guarantee-record record 'RECORD-COPY)
   (%record-copy record))
 
-(define (record-description record)
-  (let ((type (record-type-descriptor record)))
-    (let ((method (record-type-method type 'DESCRIPTION)))
-      (if method
-	  (method record)
-	  (map (lambda (field-name)
-		 `(,field-name ,((record-accessor type field-name) record)))
-	       (record-type-field-names type))))))
-
 (define (record-predicate record-type)
   (guarantee-record-type record-type 'RECORD-PREDICATE)
-  (lambda (object)
-    (and (%record? object)
-	 (eq? (%record-ref object 0) record-type))))
+  (let ((tag (record-type-dispatch-tag record-type)))
+    (lambda (object)
+      (and (%record? object)
+	   (eq? (%record-ref object 0) tag)))))
 
 (define (record-accessor record-type field-name)
   (guarantee-record-type record-type 'RECORD-ACCESSOR)
-  (let ((procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
+  (let ((tag (record-type-dispatch-tag record-type))
+	(type-name (record-type-name record-type))
+	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
 	(index
 	 (record-type-field-index record-type field-name 'RECORD-ACCESSOR)))
     (lambda (record)
-      (guarantee-record-of-type record record-type procedure-name)
+      (guarantee-record-of-type record tag type-name procedure-name)
       (%record-ref record index))))
 
 (define (record-modifier record-type field-name)
   (guarantee-record-type record-type 'RECORD-MODIFIER)
-  (let ((procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
+  (let ((tag (record-type-dispatch-tag record-type))
+	(type-name (record-type-name record-type))
+	(procedure-name `(RECORD-ACCESSOR ,record-type ',field-name))
 	(index
 	 (record-type-field-index record-type field-name 'RECORD-MODIFIER)))
     (lambda (record field-value)
-      (guarantee-record-of-type record record-type procedure-name)
+      (guarantee-record-of-type record tag type-name procedure-name)
       (%record-set! record index field-value))))
 
 (define record-updater
   record-modifier)
+
+(define (record-type-field-index record-type field-name error-name)
+  (let loop ((field-names (record-type-field-names record-type)) (index 1))
+    (cond ((null? field-names)
+	   (and error-name (error:bad-range-argument field-name error-name)))
+	  ((eq? field-name (car field-names)) index)
+	  (else (loop (cdr field-names) (+ index 1))))))
 
 (define (->string object)
   (if (string? object)
@@ -292,13 +285,13 @@ MIT in each case. |#
   (if (not (record-type? record-type))
       (error:wrong-type-argument record-type "record type" procedure)))
 
-(define-integrable (guarantee-record-of-type record record-type procedure-name)
+(define-integrable (guarantee-record-of-type record tag type-name
+					     procedure-name)
   (if (not (and (%record? record)
-		(eq? (%record-ref record 0) record-type)))
-      (error:wrong-type-argument
-       record
-       (string-append "record of type " (%record-type/name record-type))
-       procedure-name)))
+		(eq? (%record-ref record 0) tag)))
+      (error:wrong-type-argument record
+				 (string-append "record of type " type-name)
+				 procedure-name)))
 
 (define-integrable (guarantee-record record procedure-name)
   (if (not (record? record))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.29 1995/07/10 21:15:01 adams Exp $
+$Id: defstr.scm,v 14.30 1996/04/24 04:22:19 cph Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,8 +82,7 @@ differences:
 
 |#
 
-(define (initialize-package!)
-  (set! slot-assoc (association-procedure eq? slot/name))
+(define (initialize-define-structure-macro!)
   (syntax-table-define system-global-syntax-table 'DEFINE-STRUCTURE
     transform/define-structure))
 
@@ -107,12 +106,12 @@ differences:
 		  (+ index 1)))
 	  ((null? slots))
 	(set-slot/index! (car slots) index))
-      `(BEGIN ,@(constructor-definitions structure)
+      `(BEGIN ,@(type-definitions structure)
+	      ,@(constructor-definitions structure)
 	      ,@(accessor-definitions structure)
 	      ,@(modifier-definitions structure)
 	      ,@(predicate-definitions structure)
-	      ,@(copier-definitions structure)
-	      ,@(type-definitions structure)))))
+	      ,@(copier-definitions structure)))))
 
 ;;;; Parse Options
 
@@ -308,7 +307,8 @@ differences:
 				   ((eq? type 'RECORD)
 				    false)
 				   (else
-				    (make-default-defstruct-unparser-text name))))
+				    (make-default-defstruct-unparser-text
+				     name))))
 			type
 			named?
 			(and named? type-name)
@@ -365,81 +365,81 @@ differences:
 
 ;;;; Descriptive Structure
 
-(define structure-rtd
-  (make-record-type "structure"
-		    '(NAME
-		      CONC-NAME
-		      KEYWORD-CONSTRUCTORS
-		      BOA-CONSTRUCTORS
-		      COPIER-NAME
-		      PREDICATE-NAME
-		      PRINT-PROCEDURE
-		      TYPE
-		      NAMED?
-		      TYPE-NAME
-		      TAG-EXPRESSION
-		      OFFSET
-		      SLOTS)))
+(define structure-rtd)
+(define make-structure)
+(define structure?)
+(define structure/name)
+(define structure/conc-name)
+(define structure/keyword-constructors)
+(define structure/boa-constructors)
+(define structure/copier-name)
+(define structure/predicate-name)
+(define structure/print-procedure)
+(define structure/type)
+(define structure/named?)
+(define structure/type-name)
+(define structure/tag-expression)
+(define structure/offset)
+(define structure/slots)
 
-(define make-structure
-  (record-constructor structure-rtd))
-
-(define structure?
-  (record-predicate structure-rtd))
-
-(define structure/name
-  (record-accessor structure-rtd 'NAME))
-
-(define structure/conc-name
-  (record-accessor structure-rtd 'CONC-NAME))
-
-(define structure/keyword-constructors
-  (record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
-
-(define structure/boa-constructors
-  (record-accessor structure-rtd 'BOA-CONSTRUCTORS))
-
-(define structure/copier-name
-  (record-accessor structure-rtd 'COPIER-NAME))
-
-(define structure/predicate-name
-  (record-accessor structure-rtd 'PREDICATE-NAME))
-
-(define structure/print-procedure
-  (record-accessor structure-rtd 'PRINT-PROCEDURE))
-
-(define structure/type
-  (record-accessor structure-rtd 'TYPE))
-
-(define structure/named?
-  (record-accessor structure-rtd 'NAMED?))
-
-(define structure/type-name
-  (record-accessor structure-rtd 'TYPE-NAME))
-
-(define structure/tag-expression
-  (record-accessor structure-rtd 'TAG-EXPRESSION))
-
-(define structure/offset
-  (record-accessor structure-rtd 'OFFSET))
-
-(define structure/slots
-  (record-accessor structure-rtd 'SLOTS))
-
-(define slot-rtd
-  (make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
-
-(define make-slot
-  (record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
-
-(define slot/name (record-accessor slot-rtd 'NAME))
-(define slot/default (record-accessor slot-rtd 'DEFAULT))
-(define slot/type (record-accessor slot-rtd 'TYPE))
-(define slot/read-only? (record-accessor slot-rtd 'READ-ONLY?))
-(define slot/index (record-accessor slot-rtd 'INDEX))
-(define set-slot/index! (record-modifier slot-rtd 'INDEX))
-
+(define slot-rtd)
+(define make-slot)
+(define slot/name)
+(define slot/default)
+(define slot/type)
+(define slot/read-only?)
+(define slot/index)
+(define set-slot/index!)
 (define slot-assoc)
+
+(define (initialize-structure-types!)
+  (set! structure-rtd
+	(make-record-type "structure"
+			  '(NAME
+			    CONC-NAME
+			    KEYWORD-CONSTRUCTORS
+			    BOA-CONSTRUCTORS
+			    COPIER-NAME
+			    PREDICATE-NAME
+			    PRINT-PROCEDURE
+			    TYPE
+			    NAMED?
+			    TYPE-NAME
+			    TAG-EXPRESSION
+			    OFFSET
+			    SLOTS)))
+  (set! make-structure (record-constructor structure-rtd))
+  (set! structure? (record-predicate structure-rtd))
+  (set! structure/name (record-accessor structure-rtd 'NAME))
+  (set! structure/conc-name (record-accessor structure-rtd 'CONC-NAME))
+  (set! structure/keyword-constructors
+	(record-accessor structure-rtd 'KEYWORD-CONSTRUCTORS))
+  (set! structure/boa-constructors
+	(record-accessor structure-rtd 'BOA-CONSTRUCTORS))
+  (set! structure/copier-name (record-accessor structure-rtd 'COPIER-NAME))
+  (set! structure/predicate-name
+	(record-accessor structure-rtd 'PREDICATE-NAME))
+  (set! structure/print-procedure
+	(record-accessor structure-rtd 'PRINT-PROCEDURE))
+  (set! structure/type (record-accessor structure-rtd 'TYPE))
+  (set! structure/named? (record-accessor structure-rtd 'NAMED?))
+  (set! structure/type-name (record-accessor structure-rtd 'TYPE-NAME))
+  (set! structure/tag-expression
+	(record-accessor structure-rtd 'TAG-EXPRESSION))
+  (set! structure/offset (record-accessor structure-rtd 'OFFSET))
+  (set! structure/slots (record-accessor structure-rtd 'SLOTS))
+  (set! slot-rtd
+	(make-record-type "slot" '(NAME DEFAULT TYPE READ-ONLY? INDEX)))
+  (set! make-slot
+	(record-constructor slot-rtd '(NAME DEFAULT TYPE READ-ONLY?)))
+  (set! slot/name (record-accessor slot-rtd 'NAME))
+  (set! slot/default (record-accessor slot-rtd 'DEFAULT))
+  (set! slot/type (record-accessor slot-rtd 'TYPE))
+  (set! slot/read-only? (record-accessor slot-rtd 'READ-ONLY?))
+  (set! slot/index (record-accessor slot-rtd 'INDEX))
+  (set! set-slot/index! (record-modifier slot-rtd 'INDEX))
+  (set! slot-assoc (association-procedure eq? slot/name))
+  (initialize-structure-type-type!))
 
 ;;;; Code Generation
 
@@ -511,20 +511,22 @@ differences:
 	 (map (lambda (slot)
 		(string->uninterned-symbol (symbol->string (slot/name slot))))
 	      (structure/slots structure))))
-    `(DEFINE (,name ,@slot-names)
-       (,(absolute
-	  (case (structure/type structure)
-	    ((RECORD) '%RECORD)
-	    ((VECTOR) 'VECTOR)
-	    ((LIST) 'LIST)))
-	,@(constructor-prefix-slots structure)
-	,@slot-names))))
+    (make-constructor structure name slot-names
+      (lambda (tag-expression)
+	`(,(absolute
+	    (case (structure/type structure)
+	      ((RECORD) '%RECORD)
+	      ((VECTOR) 'VECTOR)
+	      ((LIST) 'LIST)))
+	  ,@(constructor-prefix-slots structure tag-expression)
+	  ,@slot-names)))))
 
 (define (constructor-definition/keyword structure name)
   (let ((keyword-list (string->uninterned-symbol "keyword-list")))
-    `(DEFINE (,name . ,keyword-list)
-       ,(let ((list-cons
-	       `(,@(constructor-prefix-slots structure)
+    (make-constructor structure name keyword-list
+      (lambda (tag-expression)
+	(let ((list-cons
+	       `(,@(constructor-prefix-slots structure tag-expression)
 		 (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER)
 		  ,keyword-list
 		  (,(absolute 'LIST)
@@ -538,7 +540,7 @@ differences:
 	    ((VECTOR)
 	     `(,(absolute 'APPLY) ,(absolute 'VECTOR) ,@list-cons))
 	    ((LIST)
-	     `(,(absolute 'CONS*) ,@list-cons)))))))
+	     `(,(absolute 'CONS*) ,@list-cons))))))))
 
 (define (define-structure/keyword-parser argument-list default-alist)
   (if (null? argument-list)
@@ -559,38 +561,50 @@ differences:
 	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
-  `(DEFINE (,name . ,lambda-list)
-     (,(absolute
-	(case (structure/type structure)
-	  ((RECORD) '%RECORD)
-	  ((VECTOR) 'VECTOR)
-	  ((LIST) 'LIST)))
-      ,@(constructor-prefix-slots structure)
-      ,@(parse-lambda-list lambda-list
-	  (lambda (required optional rest)
-	    (let ((name->slot
-		   (lambda (name)
-		     (or (slot-assoc name (structure/slots structure))
-			 (error "Not a defined structure slot:" name)))))
-	      (let ((required (map name->slot required))
-		    (optional (map name->slot optional))
-		    (rest (and rest (name->slot rest))))
-		(map (lambda (slot)
-		       (cond ((or (memq slot required)
-				  (eq? slot rest))
-			      (slot/name slot))
-			     ((memq slot optional)
-			      `(IF (DEFAULT-OBJECT? ,(slot/name slot))
-				   ,(slot/default slot)
-				   ,(slot/name slot)))
-			     (else
-			      (slot/default slot))))
-		     (structure/slots structure)))))))))
+  (make-constructor structure name lambda-list
+    (lambda (tag-expression)
+      `(,(absolute
+	  (case (structure/type structure)
+	    ((RECORD) '%RECORD)
+	    ((VECTOR) 'VECTOR)
+	    ((LIST) 'LIST)))
+	,@(constructor-prefix-slots structure tag-expression)
+	,@(parse-lambda-list lambda-list
+	    (lambda (required optional rest)
+	      (let ((name->slot
+		     (lambda (name)
+		       (or (slot-assoc name (structure/slots structure))
+			   (error "Not a defined structure slot:" name)))))
+		(let ((required (map name->slot required))
+		      (optional (map name->slot optional))
+		      (rest (and rest (name->slot rest))))
+		  (map (lambda (slot)
+			 (cond ((or (memq slot required)
+				    (eq? slot rest))
+				(slot/name slot))
+			       ((memq slot optional)
+				`(IF (DEFAULT-OBJECT? ,(slot/name slot))
+				     ,(slot/default slot)
+				     ,(slot/name slot)))
+			       (else
+				(slot/default slot))))
+		       (structure/slots structure))))))))))
 
-(define (constructor-prefix-slots structure)
+(define (make-constructor structure name arguments generate-body)
+  (let ((tag-expression (structure/tag-expression structure)))
+    (if (eq? (structure/type structure) 'RECORD)
+	(let ((tag (generate-uninterned-symbol 'TAG-)))
+	  `(DEFINE ,name
+	     (LET ((,tag (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
+	       (NAMED-LAMBDA (,name ,@arguments)
+		 ,(generate-body tag)))))
+	`(DEFINE (,name ,@arguments)
+	   ,(generate-body tag-expression)))))
+
+(define (constructor-prefix-slots structure tag-expression)
   (let ((offsets (make-list (structure/offset structure) false)))
     (if (structure/named? structure)
-	(cons (structure/tag-expression structure) offsets)
+	(cons tag-expression offsets)
 	offsets)))
 
 (define (copier-definitions structure)
@@ -609,24 +623,29 @@ differences:
     (if predicate-name
 	(let ((tag-expression (structure/tag-expression structure))
 	      (variable (string->uninterned-symbol "object")))
-	  `((DEFINE (,predicate-name ,variable)
-	      ,(case (structure/type structure)
-		 ((RECORD)
-		  `(AND (,(absolute '%RECORD?) ,variable)
-			(,(absolute 'EQ?)
-			 (,(absolute '%RECORD-REF) ,variable 0)
-			 ,tag-expression)))
-		 ((VECTOR)
-		  `(AND (,(absolute 'VECTOR?) ,variable)
-			(,(absolute 'NOT)
-			 (,(absolute 'ZERO?)
-			  (,(absolute 'VECTOR-LENGTH) ,variable)))
-			(,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
-					  ,tag-expression)))
-		 ((LIST)
-		  `(AND (,(absolute 'PAIR?) ,variable)
-			(,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
-					  ,tag-expression)))))))
+	  (case (structure/type structure)
+	    ((RECORD)
+	     (let ((tag (generate-uninterned-symbol 'TAG-)))
+	       `((DEFINE ,predicate-name
+		   (LET ((,tag (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
+		     (NAMED-LAMBDA (,predicate-name ,variable)
+		       (AND (,(absolute '%RECORD?) ,variable)
+			    (,(absolute 'EQ?)
+			     (,(absolute '%RECORD-REF) ,variable 0)
+			     ,tag))))))))
+	    ((VECTOR)
+	     `((DEFINE (,predicate-name ,variable)
+		 (AND (,(absolute 'VECTOR?) ,variable)
+		      (,(absolute 'NOT)
+		       (,(absolute 'ZERO?)
+			(,(absolute 'VECTOR-LENGTH) ,variable)))
+		      (,(absolute 'EQ?) (,(absolute 'VECTOR-REF) ,variable 0)
+					,tag-expression)))))
+	    ((LIST)
+	     `((DEFINE (,predicate-name ,variable)
+		 (AND (,(absolute 'PAIR?) ,variable)
+		      (,(absolute 'EQ?) (,(absolute 'CAR) ,variable)
+					,tag-expression)))))))
 	'())))
 
 (define (type-definitions structure)
@@ -659,33 +678,38 @@ differences:
 		       ,type-expression)))))))
       '()))
 
-(define structure-type-rtd
-  (make-record-type "structure-type"
-		    '(TYPE NAME FIELD-NAMES FIELD-INDEXES UNPARSER-METHOD)))
+(define structure-type-rtd)
+(define make-define-structure-type)
+(define structure-type?)
+(define structure-type/type)
+(define structure-type/name)
+(define structure-type/field-names)
+(define structure-type/field-indexes)
+(define structure-type/unparser-method)
+(define set-structure-type/unparser-method!)
 
-(define make-define-structure-type
-  (record-constructor structure-type-rtd))
-
-(define structure-type?
-  (record-predicate structure-type-rtd))
-
-(define structure-type/type
-  (record-accessor structure-type-rtd 'TYPE))
-
-(define structure-type/name
-  (record-accessor structure-type-rtd 'NAME))
-
-(define structure-type/field-names
-  (record-accessor structure-type-rtd 'FIELD-NAMES))
-
-(define structure-type/field-indexes
-  (record-accessor structure-type-rtd 'FIELD-INDEXES))
-
-(define structure-type/unparser-method
-  (record-accessor structure-type-rtd 'UNPARSER-METHOD))
-
-(define set-structure-type/unparser-method!
-  (record-modifier structure-type-rtd 'UNPARSER-METHOD))
+(define (initialize-structure-type-type!)
+  (set! structure-type-rtd
+	(make-record-type "structure-type"
+			  '(TYPE NAME FIELD-NAMES FIELD-INDEXES
+				 UNPARSER-METHOD)))
+  (set! make-define-structure-type
+	(record-constructor structure-type-rtd))
+  (set! structure-type?
+	(record-predicate structure-type-rtd))
+  (set! structure-type/type
+	(record-accessor structure-type-rtd 'TYPE))
+  (set! structure-type/name
+	(record-accessor structure-type-rtd 'NAME))
+  (set! structure-type/field-names
+	(record-accessor structure-type-rtd 'FIELD-NAMES))
+  (set! structure-type/field-indexes
+	(record-accessor structure-type-rtd 'FIELD-INDEXES))
+  (set! structure-type/unparser-method
+	(record-accessor structure-type-rtd 'UNPARSER-METHOD))
+  (set! set-structure-type/unparser-method!
+	(record-modifier structure-type-rtd 'UNPARSER-METHOD))
+  unspecific)
 
 (define (structure-tag/unparser-method tag type)
   (let ((structure-type (tag->structure-type tag type)))

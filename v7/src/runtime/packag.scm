@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.24 1995/11/01 01:05:28 cph Exp $
+$Id: packag.scm,v 14.25 1996/04/24 04:22:46 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,15 +43,14 @@ MIT in each case. |#
 ;;; record type, then build the record type and clobber it into the
 ;;; packages.  Thereafter, packages are constructed normally.
 
-(define package-rtd
-  false)
+(define package-tag #f)
 
 (define-integrable (make-package parent name environment)
-  (%record package-rtd parent '() name environment))
+  (%record package-tag parent '() name environment))
 
 (define (package? object)
   (and (%record? object)
-       (eq? (%record-ref object 0) package-rtd)))
+       (eq? (%record-ref object 0) package-tag)))
 
 (define-integrable (package/parent package)
   (%record-ref package 1))
@@ -74,16 +73,16 @@ MIT in each case. |#
 (define (finalize-package-record-type!)
   (let ((rtd
 	 (make-record-type "package" '(PARENT CHILDREN %NAME ENVIRONMENT))))
-    (set! package-rtd rtd)
-    (let loop ((package system-global-package))
-      (%record-set! package 0 rtd)
-      (for-each loop (package/children package)))
-    (set-record-type-unparser-method!
-     rtd
-     (standard-unparser-method 'PACKAGE
-       (lambda (package port)
-	 (write-char #\space port)
-	 (write (package/name package) port))))))
+    (let ((tag (record-type-dispatch-tag rtd)))
+      (set! package-tag tag)
+      (let loop ((package system-global-package))
+	(%record-set! package 0 tag)
+	(for-each loop (package/children package))))
+    (set-record-type-unparser-method! rtd
+      (standard-unparser-method 'PACKAGE
+	(lambda (package port)
+	  (write-char #\space port)
+	  (write (package/name package) port))))))
 
 (define (package/child package name)
   (let loop ((children (package/children package)))

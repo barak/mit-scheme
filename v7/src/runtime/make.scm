@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.57 1995/04/13 22:24:53 cph Exp $
+$Id: make.scm,v 14.58 1996/04/24 04:23:54 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -342,11 +342,14 @@ MIT in each case. |#
 	 ("list" . (RUNTIME LIST))
 	 ("symbol" . ())
 	 ("uproc" . (RUNTIME PROCEDURE))
+	 ("fixart" . ())
+	 ("random" . (RUNTIME RANDOM-NUMBER))
+	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))))
+	 ("record" . (RUNTIME RECORD))
+	 ("defstr" . (RUNTIME DEFSTRUCT))))
       (files2
-       '(("defstr" . (RUNTIME DEFSTRUCT))
-	 ("prop1d" . (RUNTIME 1D-PROPERTY))
+       '(("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))))
       (load-files
@@ -362,9 +365,12 @@ MIT in each case. |#
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
   (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
+		      #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE! true)
-  (package-initialize '(PACKAGE) 'FINALIZE-PACKAGE-RECORD-TYPE! true)
+  (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
+  (package-initialize '(RUNTIME DEFSTRUCT) 'INITIALIZE-STRUCTURE-TYPES! #t)
   (load-files files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
@@ -399,7 +405,6 @@ MIT in each case. |#
    ;; Microcode interface
    ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES! #t)
    (RUNTIME STATE-SPACE)
-   (RUNTIME MICROCODE-TABLES)
    (RUNTIME APPLY)
    (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
@@ -412,7 +417,6 @@ MIT in each case. |#
    (RUNTIME GENSYM)
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
-   (RUNTIME RANDOM-NUMBER)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -421,9 +425,20 @@ MIT in each case. |#
    (RUNTIME SCODE-WALKER)
    (RUNTIME CONTINUATION-PARSER)
    (RUNTIME PROGRAM-COPIER)
+   ;; Generic Procedures
+   ((RUNTIME GENERIC-PROCEDURE EQHT) INITIALIZE-ADDRESS-HASHING! #t)
+   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-GENERIC-PROCEDURES! #t)
+   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-MULTIPLEXER! #t)
+   ((RUNTIME TAGGED-VECTOR) INITIALIZE-TAGGED-VECTOR! #t)
+   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-RECORD-SLOT-ACCESS! #t)
+   ((RUNTIME RECORD) INITIALIZE-RECORD-PROCEDURES! #t)
+   ((PACKAGE) FINALIZE-PACKAGE-RECORD-TYPE! #t)
+   ((RUNTIME RANDOM-NUMBER) FINALIZE-RANDOM-STATE-TYPE! #t)
    ;; Condition System
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
+   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS! #t)
+   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS! #t)
    ;; System dependent stuff
    (() INITIALIZE-SYSTEM-PRIMITIVES! #f)
    ;; Threads
@@ -450,7 +465,7 @@ MIT in each case. |#
    (RUNTIME ILLEGAL-DEFINITIONS)
    (RUNTIME MACROS)
    (RUNTIME SYSTEM-MACROS)
-   (RUNTIME DEFSTRUCT)
+   ((RUNTIME DEFSTRUCT) INITIALIZE-DEFINE-STRUCTURE-MACRO! #t)
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.44 1995/07/27 21:10:31 adams Exp $
+$Id: unpars.scm,v 14.45 1996/04/24 04:17:53 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,6 @@ MIT in each case. |#
   (set! string-delimiters
 	(char-set-union char-set:not-graphic (char-set #\" #\\)))
   (set! hook/interned-symbol unparse-symbol)
-  (set! hook/record-unparser false)
-  (set! hook/unparse-record false)
   (set! hook/procedure-unparser false)
   (set! *unparser-radix* 10)
   (set! *unparser-list-breadth-limit* false)
@@ -320,7 +318,8 @@ MIT in each case. |#
   (cond ((not object) (*unparse-string "#f"))
 	((null? object) (*unparse-string "()"))
 	((eq? object #t) (*unparse-string "#t"))
-	((undefined-value? object) (*unparse-string "#[unspecified-return-value]"))
+	((undefined-value? object)
+	 (*unparse-string "#[unspecified-return-value]"))
 	((eq? object lambda-auxiliary-tag) (*unparse-string "#!aux"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
@@ -461,26 +460,9 @@ MIT in each case. |#
   (vector-ref vector index))
 
 (define (unparse/record record)
-  (let ((method
-	 (and hook/record-unparser
-	      (hook/record-unparser record))))
-    (cond (method
-	   (invoke-user-method method record))
-	  ((record? record)
-	   (let ((type (record-type-descriptor record)))
-	     (let ((method
-		    (or (record-type-unparser-method type)
-			hook/unparse-record)))
-	       (if method
-		   (invoke-user-method method record)
-		   (*unparse-with-brackets (record-type-name type)
-					   record
-					   #f)))))
-	  (else
-	   (unparse/default record)))))
-
-(define hook/record-unparser)
-(define hook/unparse-record)
+  (if *unparse-with-maximum-readability?*
+      (*unparse-readable-hash record)
+      (invoke-user-method unparse-record record)))
 
 (define (unparse/pair pair)
   (let ((prefix (unparse-list/prefix-pair? pair)))
@@ -569,9 +551,13 @@ MIT in each case. |#
   (let ((method
 	 (and hook/procedure-unparser
 	      (hook/procedure-unparser procedure))))
-    (if method
-	(invoke-user-method method procedure)
-	(usual-method))))
+    (cond (method (invoke-user-method method procedure))
+	  ((generic-procedure? procedure)
+	   (*unparse-with-brackets 'GENERIC-PROCEDURE procedure
+	     (let ((name (generic-procedure-name procedure)))
+	       (and name
+		    (lambda () (*unparse-object name))))))
+	  (else (usual-method)))))
 
 (define (unparse/compound-procedure procedure)
   (unparse-procedure procedure

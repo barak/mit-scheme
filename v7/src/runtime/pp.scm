@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.36 1995/08/06 15:53:07 adams Exp $
+$Id: pp.scm,v 14.37 1996/04/24 04:22:59 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
+  (set-generic-procedure-default-generator! pp-description
+    (lambda (generic tags)
+      generic tags
+      pp-description/default))
   (set! forced-indentation (special-printer kernel/forced-indentation))
   (set! pressured-indentation (special-printer kernel/pressured-indentation))
   (set! print-procedure (special-printer kernel/print-procedure))
@@ -59,7 +64,6 @@ MIT in each case. |#
   (set! dispatch-list code-dispatch-list)
   (set! dispatch-default print-combination)
   (set! cocked-object (generate-uninterned-symbol))
-  (set! hook/pp-description #f)
   unspecific)
 
 (define *pp-named-lambda->define?* false)
@@ -90,25 +94,24 @@ MIT in each case. |#
 	    (else
 	     (pretty-print object))))))
 
-(define (pp-description object)
-  (cond ((and hook/pp-description
-	      (hook/pp-description object)))
-	((named-structure? object)
+(define pp-description)
+
+(define (pp-description/default object)
+  (cond ((named-structure? object)
 	 (named-structure/description object))
 	((%record? object)		; unnamed record
 	 (let loop ((i (- (%record-length object) 1)) (d '()))
 	   (if (< i 0)
 	       d
-	       (loop (- i 1) (cons (list i (%record-ref object i)) d)))))
+	       (loop (- i 1)
+		     (cons (list i (%record-ref object i)) d)))))
 	((weak-pair? object)
-	 `((weak-car ,(weak-car object))
-	   (weak-cdr ,(weak-cdr object))))
+	 `((WEAK-CAR ,(weak-car object))
+	   (WEAK-CDR ,(weak-cdr object))))
 	((cell? object)
-	 `((contents ,(cell-contents object))))
+	 `((CONTENTS ,(cell-contents object))))
 	(else
 	 #f)))
-
-(define hook/pp-description)
 
 ;;; Controls the appearance of procedures in the CASE statement used
 ;;; to describe an arity dispatched procedure:

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.269 1996/04/24 03:48:09 cph Exp $
+$Id: runtime.pkg,v 14.270 1996/04/24 04:17:17 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -223,6 +223,8 @@ MIT in each case. |#
   (files "infstr" "infutl")
   (parent ())
   (export ()
+	  *save-uncompressed-files?*
+	  *uncompressed-file-lifetime*
 	  compiled-entry/block
 	  compiled-entry/dbg-object
 	  compiled-entry/offset
@@ -758,6 +760,8 @@ MIT in each case. |#
   (export (runtime hash)
 	  add-primitive-gc-daemon!)
   (export (runtime hash-table)
+	  add-primitive-gc-daemon!)
+  (export (runtime generic-procedure eqht)
 	  add-primitive-gc-daemon!)
   (export (runtime interrupt-handler)
 	  trigger-gc-daemons!)
@@ -1631,6 +1635,7 @@ MIT in each case. |#
 	  *pp-uninterned-symbols-by-name*
 	  make-pretty-printer-highlight
 	  pp
+	  pp-description
 	  pretty-print)
   (initialization (initialize-package!)))
 
@@ -1802,12 +1807,10 @@ MIT in each case. |#
   (export ()
 	  %make-record
 	  %record
-	  %record-application-method
 	  %record-copy
 	  %record-length
 	  %record-ref
 	  %record-set!
-	  %record-type-has-application-method!
 	  %record?
 	  make-record-type
 	  record-accessor
@@ -1816,18 +1819,17 @@ MIT in each case. |#
 	  record-description
 	  record-modifier
 	  record-predicate
-	  record-type-application-method
 	  record-type-descriptor
+	  record-type-dispatch-tag
 	  record-type-field-names
-	  record-type-method
 	  record-type-name
-	  record-type-unparser-method
 	  record-type?
 	  record-updater
 	  record?
-	  set-record-type-application-method!
-	  set-record-type-method!
-	  set-record-type-unparser-method!)
+	  set-record-type-unparser-method!
+	  unparse-record)
+  (export (runtime record-slot-access)
+	  record-type-field-index)
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)
@@ -3183,3 +3185,114 @@ MIT in each case. |#
 	  ordered-vector-minimum-match
 	  search-ordered-subvector
 	  search-ordered-vector))
+
+(define-package (runtime gdbm)
+  (file-case options
+    ((load) "gdbm")
+    (else))
+  (parent ())
+  (export ()
+	  gdbm-available?
+	  gdbm-close
+	  gdbm-delete
+	  gdbm-exists?
+	  gdbm-fetch
+	  gdbm-firstkey
+	  gdbm-nextkey
+	  gdbm-open
+	  gdbm-reorganize
+	  gdbm-setopt
+	  gdbm-store
+	  gdbm-sync
+	  gdbm-version
+	  gdbm_cachesize
+	  gdbm_fast
+	  gdbm_fastmode
+	  gdbm_insert
+	  gdbm_newdb
+	  gdbm_reader
+	  gdbm_replace
+	  gdbm_wrcreat
+	  gdbm_writer))
+
+(define-package (runtime generic-procedure)
+  (files "gentag" "gencache" "generic")
+  (parent ())
+  (export ()
+	  ;; tag.scm:
+	  dispatch-tag-contents
+	  dispatch-tag?
+	  guarantee-dispatch-tag
+	  make-dispatch-tag
+	  set-dispatch-tag-contents!
+
+	  ;; generic.scm:
+	  arity-max
+	  arity-min
+	  built-in-dispatch-tag
+	  built-in-dispatch-tags
+	  condition-type:no-applicable-methods
+	  dispatch-tag
+	  error:no-applicable-methods
+	  generic-procedure-applicable?
+	  generic-procedure-arity
+	  generic-procedure-name
+	  generic-procedure?
+	  guarantee-generic-procedure
+	  make-generic-procedure
+	  purge-generic-procedure-cache
+	  standard-generic-procedure-tag)
+  (export (runtime generic-procedure multiplexer)
+	  generic-procedure-generator
+	  set-generic-procedure-generator!))
+
+(define-package (runtime generic-procedure multiplexer)
+  (files "genmult")
+  (parent ())
+  (export ()
+	  add-generic-procedure-generator
+	  condition-type:extra-applicable-methods
+	  error:extra-applicable-methods
+	  generic-procedure-default-generator
+	  generic-procedure-generator-list
+	  remove-generic-procedure-generator
+	  remove-generic-procedure-generators
+	  set-generic-procedure-default-generator!))
+
+(define-package (runtime tagged-vector)
+  (files "tvector")
+  (parent ())
+  (export ()
+	  guarantee-tagged-vector
+	  make-tagged-vector
+	  record-slot-uninitialized
+	  set-tagged-vector-element!
+	  set-tagged-vector-tag!
+	  tagged-vector
+	  tagged-vector-element
+	  tagged-vector-element-initialized?
+	  tagged-vector-length
+	  tagged-vector-tag
+	  tagged-vector?))
+
+(define-package (runtime record-slot-access)
+  (files "recslot")
+  (parent ())
+  (export ()
+	  %record-accessor
+	  %record-accessor-generator
+	  %record-initpred
+	  %record-initpred-generator
+	  %record-modifier
+	  %record-modifier-generator
+	  %record-slot-index
+	  %record-slot-names))
+
+(define-package (runtime generic-procedure eqht)
+  (files "geneqht")
+  (parent ())
+  (export (runtime generic-procedure)
+	  eqht/for-each
+	  eqht/get
+	  eqht/put!
+	  make-eqht))

@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.15 1996/04/24 03:52:10 cph Exp $
+$Id: ed-ffi.scm,v 1.16 1996/04/24 04:27:22 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,9 +114,19 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("gdbm"	(runtime gdbm)
 		syntax-table/system-internal)
+    ("gencache"	(runtime generic-procedure)
+		syntax-table/system-internal)
+    ("geneqht"	(runtime generic-procedure)
+		syntax-table/system-internal)
+    ("generic"	(runtime generic-procedure)
+		syntax-table/system-internal)
     ("genio"	(runtime generic-i/o-port)
 		syntax-table/system-internal)
+    ("genmult"	(runtime generic-procedure multiplexer)
+		syntax-table/system-internal)
     ("gensym"	(runtime gensym)
+		syntax-table/system-internal)
+    ("gentag"	(runtime generic-procedure)
 		syntax-table/system-internal)
     ("global"	()
 		syntax-table/system-internal)
@@ -210,6 +220,8 @@ MIT in each case. |#
 		syntax-table/system-internal)
     ("record"	(runtime record)
 		syntax-table/system-internal)
+    ("recslot"	(runtime record-slot-access)
+		syntax-table/system-internal)
     ("rep"	(runtime rep)
 		syntax-table/system-internal)
     ("savres"	(runtime save/restore)
@@ -255,6 +267,8 @@ MIT in each case. |#
     ("tscript"	(runtime transcript)
 		syntax-table/system-internal)
     ("ttyio"	(runtime console-i/o-port)
+		syntax-table/system-internal)
+    ("tvector"	(runtime tagged-vector)
 		syntax-table/system-internal)
     ("udata"	()
 		syntax-table/system-internal)
