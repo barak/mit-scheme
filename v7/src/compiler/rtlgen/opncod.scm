@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.57 1993/01/08 00:05:35 cph Exp $
+$Id: opncod.scm,v 4.58 1993/01/12 10:44:20 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -662,6 +662,12 @@ MIT in each case. |#
    '()
    false))
 
+#|
+;; This can't work correctly because it needs to do complicated setup
+;; of memtop and stack_guard registers, which is a fairly lengthy code
+;; sequence on most machines.  Instead it should be implemented by an
+;; assembly language hook.
+
 (define-open-coder/effect 'SET-INTERRUPT-ENABLES!
   (simple-open-coder
    (lambda (combination expressions finish)
@@ -684,6 +690,7 @@ MIT in each case. |#
        ))
    '(0)
    internal-close-coding-for-type-checks))
+|#
 
 (define-open-coder/value 'PRIMITIVE-GET-FREE
   (filter/type-code
