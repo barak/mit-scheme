@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.36 1997/07/31 10:40:38 adams Exp $
+$Id: usiexp.scm,v 4.37 1997/07/31 18:33:07 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -555,7 +555,7 @@ MIT in each case. |#
 	   (null? (cdr operands)))
       (if-expanded
        (constant/make (and expr (object/scode expr))
-		      (string->symbol (car operands))))
+		      (string->symbol (constant/value (car operands)))))
       (if-not-expanded)))
 
 (define (intern-expansion expr operands if-expanded if-not-expanded block)
@@ -566,7 +566,7 @@ MIT in each case. |#
 	   (null? (cdr operands)))
       (if-expanded
        (constant/make (and expr (object/scode expr))
-		      (intern (car operands))))
+		      (intern (constant/value (car operands)))))
       (if-not-expanded)))
 
 (define (int:->flonum-expansion expr operands if-expanded if-not-expanded
