@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.39 1988/08/15 20:48:07 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.40 1989/06/08 00:24:34 jinx Rel $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -38,9 +38,6 @@ MIT in each case. */
  *
  */
 
-extern void gc_death();
-extern char gc_death_message_buffer[];
-
 /* A SWITCH on GC types, duplicates information in GC_Type_Map[], but exists
    for efficiency reasons. Macros must be used by convention: first
    Switch_by_GC_Type, then each of the case_ macros (in any order).  The
@@ -156,6 +153,39 @@ extern char gc_death_message_buffer[];
    TC_FUTURE
    TC_BIG_FLONUM
 */
+
+extern void gc_death();
+extern char gc_death_message_buffer[];
+
+/* Assumption: A call to GC_BAD_TYPE is followed by the non-pointer code. */
+
+#ifndef BAD_TYPES_INNOCUOUS
+
+#define GC_BAD_TYPE(name)						\
+do									\
+{									\
+  sprintf(gc_death_message_buffer,					\
+	  "%s: bad type code (0x%02x)",					\
+	  (name), (OBJECT_TYPE(Temp)));					\
+  gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,		\
+	   Scan, To);							\
+  /*NOTREACHED*/							\
+} while (0)
+
+#else /* BAD_TYPES_INNOCUOUS */
+
+#define GC_BAD_TYPE(name)						\
+do									\
+{									\
+  fprintf(stderr,							\
+	  "\n%s: bad type code (0x%02x) 0x%lx",				\
+	  (name), (OBJECT_TYPE(Temp)), Temp);				\
+  fprintf(stderr,							\
+	  " -- Treating as non-pointer.\n");				\
+  /* Fall through */							\
+} while (0)
+
+#endif /* BAD_TYPES_INNOCUOUS */
 
 /* Macros for the garbage collector and related programs. */
 

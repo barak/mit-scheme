@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.37 1989/05/31 01:50:46 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.38 1989/06/08 00:24:10 jinx Rel $ */
 
 /* Memory management top level.
 
@@ -174,7 +174,7 @@ GCFlip()
   Heap_Top = Temp;
   Free = Heap_Bottom;
   SET_MEMTOP(Heap_Top - GC_Reserve);
-  Weak_Chain = NIL;
+  Weak_Chain = EMPTY_LIST;
   return;
 }
 
@@ -182,7 +182,7 @@ GCFlip()
    the picture in gccode.h for a description of the structure built by
    the GC.  This code follows the chain of weak cells (in old space) and
    either updates the new copy's CAR with the relocated version of the
-   object, or replaces it with NIL.
+   object, or replaces it with SHARP_F.
 
    Note that this is the only code in the system, besides the inner garbage
    collector, which looks at both old and new space.
@@ -196,13 +196,13 @@ Fix_Weak_Chain()
   fast Pointer *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
 
   Low_Constant = Constant_Space;
-  while (Weak_Chain != NIL)
+  while (Weak_Chain != EMPTY_LIST)
   {
     Old_Weak_Cell = Get_Pointer(Weak_Chain);
     Scan = Get_Pointer(*Old_Weak_Cell++);
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
-    Temp = Make_New_Pointer(Type_Code(Weak_Chain), Old_Car);
+    Temp = Make_New_Pointer(OBJECT_TYPE(Weak_Chain), Old_Car);
     Weak_Chain = Make_New_Pointer(TC_NULL, Weak_Chain);
 
     switch(GC_Type(Temp))
@@ -211,22 +211,22 @@ Fix_Weak_Chain()
 	continue;
 
       case GC_Special:
-	if (Type_Code(Temp) != TC_REFERENCE_TRAP)
+	if (OBJECT_TYPE(Temp) != TC_REFERENCE_TRAP)
 	{
 	  /* No other special type makes sense here. */
 	  goto fail;
 	}
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  *Scan = Temp;
 	  continue;
 	}
 	/* Otherwise, it is a pointer.  Fall through */
-
+
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
-	 Otherwise it falls through and we replace it with a full NIL.
+	 Otherwise it falls through and we replace it with a full SHARP_F.
 	 Eliminating this assignment would keep old data (pl. of datum).
        */
       case GC_Cell:
@@ -241,7 +241,7 @@ Fix_Weak_Chain()
 	  continue;
 	}
 	Normal_BH(false, continue);
-	*Scan = NIL;
+	*Scan = SHARP_F;
 	continue;
 
       case GC_Compiled:
@@ -252,16 +252,23 @@ Fix_Weak_Chain()
 	  continue;
 	}
 	Compiled_BH(false, continue);
-	*Scan = NIL;
+	*Scan = SHARP_F;
 	continue;
 
       case GC_Undefined:
+	fprintf(stderr,
+		"\nFix_Weak_Chain: Clearing bad object 0x%08lx.\n",
+		Temp);
+	*Scan = SHARP_F;
+	continue;
+	
       default:			/* Non Marked Headers and Broken Hearts */
       fail:
         fprintf(stderr,
-		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
-		Type_Code(Temp), Datum(Temp));
+		"\nFix_Weak_Chain: Bad Object: 0x%08lx.\n",
+		Temp);
 	Microcode_Termination(TERM_INVALID_TYPE_CODE);
+	/*NOTREACHED*/
     }
   }
   return;
@@ -298,8 +305,8 @@ void GC()
 
   Root = Free;
   The_Precious_Objects = Get_Fixed_Obj_Slot(Precious_Objects);
-  Set_Fixed_Obj_Slot(Precious_Objects, NIL);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, NIL);
+  Set_Fixed_Obj_Slot(Precious_Objects, SHARP_F);
+  Set_Fixed_Obj_Slot(Lost_Objects_Base, SHARP_F);
 
   *Free++ = Fixed_Objects;
   *Free++ = Make_Pointer(UNMARKED_HISTORY_TYPE, History);
@@ -307,7 +314,7 @@ void GC()
   *Free++ = Undefined_Primitives_Arity;
   *Free++ = Get_Current_Stacklet();
   *Free++ = ((Prev_Restore_History_Stacklet == NULL) ?
-	     NIL :
+	     SHARP_F :
 	     Make_Pointer(TC_CONTROL_POINT, Prev_Restore_History_Stacklet));
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
@@ -352,7 +359,7 @@ void GC()
   /* Set_Current_Stacklet is sometimes a No-Op! */
   Set_Current_Stacklet(*Root);
   Root += 1;
-  if (*Root == NIL)
+  if (*Root == SHARP_F)
   {
     Prev_Restore_History_Stacklet = NULL;
     Root += 1;

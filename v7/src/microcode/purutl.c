@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.35 1989/03/27 23:15:52 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.36 1989/06/08 00:25:32 jinx Rel $ */
 
 /* Pure/Constant space utilities. */
 
@@ -102,9 +102,9 @@ Update(From, To, Was, Will_Be)
   return;
 }
 
-Pointer
-Make_Impure(Object)
-     Pointer Object;
+long
+Make_Impure(Object, New_Object)
+     Pointer Object, *New_Object;
 {
   Pointer *New_Address, *End_Of_Area;
   fast Pointer *Obj_Address, *Constant_Address;
@@ -122,8 +122,11 @@ Make_Impure(Object)
     case TC_MANIFEST_NM_VECTOR:
     case TC_MANIFEST_SPECIAL_NM_VECTOR:
     case_Non_Pointer:
+#if false
       fprintf(stderr, "\nImpurify Non-Pointer (0x%lx)\n", Object);
       Microcode_Termination(TERM_NON_POINTER_RELOCATION);
+#endif
+      return (ERR_ARG_1_WRONG_TYPE);
   
     case TC_BIG_FLONUM:
     case TC_FUTURE:
@@ -155,7 +158,12 @@ Make_Impure(Object)
     default:
       fprintf(stderr, "\nImpurify: Bad type code = 0x%02x.\n",
 	      OBJECT_TYPE(Object));
-      Invalid_Type_Code();
+#ifdef BAD_TYPES_LETHAL
+      Microcode_Termination(TERM_INVALID_TYPE_CODE);
+      /*NOTREACHED*/
+#else /* not BAD_TYPES_LETHAL */
+      return (ERR_ARG_1_WRONG_TYPE);
+#endif /* BAD_TYPES_LETHAL */
   }
 
   /* Add a copy of the object to the last constant block in memory.
@@ -166,7 +174,7 @@ Make_Impure(Object)
   Obj_Address = Get_Pointer(Object);
   if (!Test_Pure_Space_Top(Constant_Address + Length))
   {
-    return (NIL);
+    return (ERR_IMPURIFY_OUT_OF_SPACE);
   }
   Block_Length = Get_Integer(*(Constant_Address-1));
   Constant_Address -= 2;
@@ -221,7 +229,8 @@ Make_Impure(Object)
 
   EXIT_CRITICAL_SECTION ({});
 
-  return (Make_Pointer(OBJECT_TYPE(Object), New_Address));
+  *New_Object = (Make_Pointer(OBJECT_TYPE(Object), New_Address));
+  return (PRIM_DONE);
 }
 
 /* (PRIMITIVE-IMPURIFY OBJECT)
@@ -230,16 +239,18 @@ Make_Impure(Object)
 */
 DEFINE_PRIMITIVE ("PRIMITIVE-IMPURIFY", Prim_impurify, 1, 1, 0)
 {
-  Pointer Result;
+  long result;
+  Pointer New_Object;
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
-  Result = Make_Impure(Arg1);
-  if (Result != NIL)
+  result = Make_Impure(Arg1, &New_Object);
+  if (result == PRIM_DONE)
   {
-    return (Result);
+    PRIMITIVE_RETURN(New_Object);
   }
-  Primitive_Error(ERR_IMPURIFY_OUT_OF_SPACE);
+  else
+  Primitive_Error(result);
   /*NOTREACHED*/
 }
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.38 1989/05/31 01:50:57 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.39 1989/06/08 00:25:19 jinx Rel $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -113,9 +113,6 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
-	break;
-
-      case_Non_Pointer:
 	break;
 
       /* Compiled code relocation. */
@@ -210,11 +207,15 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 					Compiled_BH(false, continue)));
 	}
 	break;
-
+
       case_Cell:
 	Setup_Pointer_for_Purify(Transport_Cell());
 	break;
 
+      case TC_WEAK_CONS:
+	Setup_Pointer_for_Purify(Transport_Weak_Cons());
+	break;
+
       /*
 	Symbols, variables, and reference traps cannot be put into
 	pure space.  The strings contained in the first two can, on the
@@ -248,23 +249,21 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	Setup_Pointer_for_Purify(Transport_Pair());
 	break;
 
-      case TC_WEAK_CONS:
-	Setup_Pointer_for_Purify(Transport_Weak_Cons());
-	break;
-
       case TC_VARIABLE:
       case_Triple:
 	Setup_Pointer_for_Purify(Transport_Triple());
 	break;
 
-/* PurifyLoop continues on the next page */
-
-/* PurifyLoop, continued */
-
       case_Quadruple:
 	Setup_Pointer_for_Purify(Transport_Quadruple());
 	break;
 
+      case TC_BIG_FLONUM:
+        Setup_Pointer_for_Purify({
+	  Transport_Flonum();
+	  break;
+	});
+
 	/* No need to handle futures specially here, since PurifyLoop
 	   is always invoked after running GCLoop, which will have
 	   spliced all spliceable futures unless the GC itself of the
@@ -288,19 +287,13 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	Setup_Pointer_for_Purify(Transport_Vector());
 	break;
 
-      case TC_BIG_FLONUM:
-        Setup_Pointer_for_Purify({
-	  Transport_Flonum();
-	  break;
-	});
-
       default:
-	sprintf(gc_death_message_buffer,
-		"purifyloop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("purifyloop");
+	/* Fall Through */
+
+      case_Non_Pointer:
+	break;
+
       } /* Switch_by_GC_Type */
   } /* For loop */
 

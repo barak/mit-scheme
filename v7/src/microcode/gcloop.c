@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.29 1988/08/15 20:48:17 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.30 1989/06/08 00:22:49 jinx Rel $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -110,9 +110,6 @@ GCLoop(Scan, To_Pointer)
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += OBJECT_DATUM(Temp);
 	break;
-
-      case_Non_Pointer:
-	break;
 
       /* Compiled code relocation. */
 
@@ -188,7 +185,7 @@ GCLoop(Scan, To_Pointer)
 				  Transport_Compiled(),
 				  Compiled_BH(true, continue)));
 	break;
-
+
       case_Cell:
 	Setup_Pointer_for_GC(Transport_Cell());
 	break;
@@ -204,7 +201,7 @@ GCLoop(Scan, To_Pointer)
       case_Pair:
 	Setup_Pointer_for_GC(Transport_Pair());
 	break;
-
+
       case TC_VARIABLE:
       case_Triple:
 	Setup_Pointer_for_GC(Transport_Triple());
@@ -233,12 +230,12 @@ GCLoop(Scan, To_Pointer)
 	break;
 
       default:
-	sprintf(gc_death_message_buffer,
-		"gcloop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("gcloop");
+	/* Fall Through */
+
+      case_Non_Pointer:
+	break;
+
       }	/* Switch_by_GC_Type */
   } /* For loop */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.43 1989/05/31 01:49:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.44 1989/06/08 00:24:47 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -117,7 +117,9 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	   and if so we need a new bufferfull. */
 	Scan += Get_Integer(Temp);
 	if (Scan < scan_buffer_top)
+	{
 	  break;
+	}
 	else
 	{
 	  unsigned long overflow;
@@ -128,9 +130,6 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
-
-      case_Non_Pointer:
-	break;
 
       case_compiled_entry_point:
 	if (purify_mode == PURE_COPY)
@@ -330,12 +329,12 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	continue;
 
       default:
-	sprintf(gc_death_message_buffer,
-		"gcloop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("purifyloop");
+	/* Fall Through */
+
+      case_Non_Pointer:
+	break;
+
       }
   }
 end_purifyloop:

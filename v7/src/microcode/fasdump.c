@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.41 1988/10/04 14:48:41 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.42 1989/06/08 00:25:01 jinx Rel $
 
    This file contains code for fasdump and dump-band.
 */
@@ -145,10 +145,6 @@ DumpLoop(Scan, Dump_Mode)
       case TC_MANIFEST_NM_VECTOR:
       case TC_MANIFEST_SPECIAL_NM_VECTOR:
 	Scan += Get_Integer(Temp);
-	break;
-
-      case TC_STACK_ENVIRONMENT:
-      case_Fasload_Non_Pointer:
 	break;
 
       /* Compiled code relocation. */
@@ -281,12 +277,12 @@ DumpLoop(Scan, Dump_Mode)
 	break;
 
       default:
-	sprintf(gc_death_message_buffer,
-		"dumploop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("dumploop");
+	/* Fall Through */
+
+      case TC_STACK_ENVIRONMENT:
+      case_Fasload_Non_Pointer:
+	break;
       }
   }
   result = PRIM_DONE;

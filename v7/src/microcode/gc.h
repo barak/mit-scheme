@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.26 1988/08/15 20:47:59 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gc.h,v 9.27 1989/06/08 00:23:04 jinx Exp $
  *
  * Garbage collection related macros of sufficient utility to be
  * included in all compilations.
@@ -38,23 +38,56 @@ MIT in each case. */
 
 /* GC Types. */
 
-#define GC_Non_Pointer 	0
-#define GC_Cell		1
-#define GC_Pair		2
-#define GC_Triple	3
-#define GC_Hunk3	3
-#define GC_Quadruple    4
-#define GC_Hunk4        4
-#define GC_Undefined	-1 /* Undefined types */
-#define GC_Special	-2 /* Internal GC types */
-#define GC_Vector	-3
-#define GC_Compiled	-4
+#ifdef CMPGCFILE
+#ifndef BAD_TYPES_LETHAL
+#ifndef BAD_TYPES_INNOCUOUS
+#define BAD_TYPES_INNOCUOUS
+#endif /* BAD_TYPES_INNOCUOUS */
+#endif /* BAD_TYPES_LETHAL */
+#endif /* CMPGCFILE */
 
-#define GC_Type_Code(TC)					\
- ((GC_Type_Map[TC] != GC_Undefined)	?			\
-  GC_Type_Map[TC]			:			\
-  (fprintf(stderr, "Bad Type code = 0x%02x\n", TC),		\
-   Invalid_Type_Code(), GC_Undefined))
+#ifdef BAD_TYPES_INNOCUOUS
+#ifdef BAD_TYPES_LETHAL
+#error "gc.h: BAD_TYPES both lethal and innocuous"
+#endif /* BAD_TYPES_LETHAL */
+#else /* not BAD_TYPES_INNOCUOUS */
+#ifndef BAD_TYPES_LETHAL
+#define BAD_TYPES_LETHAL
+#endif /* BAD_TYPES_LETHAL */
+#endif /* BAD_TYPES_INNOCUOUS */
+
+#define GC_Non_Pointer 			0
+#define GC_Cell				1
+#define GC_Pair				2
+#define GC_Triple			3
+#define GC_Hunk3			3
+#define GC_Quadruple    		4
+#define GC_Hunk4        		4
+#define GC_Undefined			-1 /* Undefined types */
+#define GC_Special			-2 /* Internal GC types */
+#define GC_Vector			-3
+#define GC_Compiled			-4
+
+#ifdef BAD_TYPES_INNOCUOUS
+#define INVALID_TYPE_CODE(TC)		GC_Undefined
+
+#else /* not BAD_TYPES_INNOCUOUS */
+
+/* Some C compilers complain if the expression below does not yield
+   a value, and Microcode_Termination yields void.
+ */
+
+#define INVALID_TYPE_CODE(TC)						\
+  (fprintf(stderr, "\nGC_Type_Code: Bad Type code = 0x%02x\n", TC),	\
+   Microcode_Termination(TERM_INVALID_TYPE_CODE),			\
+   GC_Undefined)
+
+#endif /* BAD_TYPES_INNOCUOUS */
+
+#define GC_Type_Code(TC)						\
+ ((GC_Type_Map[TC] != GC_Undefined)	?				\
+  GC_Type_Map[TC]			:				\
+  (INVALID_TYPE_CODE(TC)))
 
 #define GC_Type(Object)			GC_Type_Code(OBJECT_TYPE(Object))
 
@@ -67,9 +100,6 @@ MIT in each case. */
 #define GC_Type_Special(Object)		(GC_Type(Object) == GC_Special)
 #define GC_Type_Vector(Object)		(GC_Type(Object) == GC_Vector)
 #define GC_Type_Compiled(Object)	(GC_Type(Object) == GC_Compiled)
-
-#define Invalid_Type_Code()					\
-  Microcode_Termination(TERM_INVALID_TYPE_CODE)
 
 /* Overflow detection, various cases */
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.44 1989/05/31 01:49:41 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.45 1989/06/08 00:23:58 jinx Rel $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -660,7 +660,7 @@ Fix_Weak_Chain()
 	  continue;
 	}
 	/* Otherwise, it is a pointer.  Fall through */
-
+
       /* Normal pointer types, the broken heart is in the first word.
          Note that most special types are treated normally here.
 	 The BH code updates *Scan if the object has been relocated.
@@ -700,11 +700,17 @@ Fix_Weak_Chain()
 	continue;
 
       case GC_Undefined:
+	fprintf(stderr,
+		"\nFix_Weak_Chain: Clearing bad object 0x%08lx.\n",
+		Temp);
+	*Scan = SHARP_F;
+	continue;
+	
       default:			/* Non Marked Headers and Broken Hearts */
       fail:
         fprintf(stderr,
-		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
-		OBJECT_TYPE(Temp), OBJECT_DATUM(Temp));
+		"\nFix_Weak_Chain: Bad Object: 0x%08lx.\n",
+		Temp);
 	Microcode_Termination(TERM_INVALID_TYPE_CODE);
 	/*NOTREACHED*/
     }

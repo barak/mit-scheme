@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.50 1989/05/31 01:50:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.51 1989/06/08 00:23:42 jinx Rel $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -579,6 +579,13 @@ Eval_Non_Trapping:
   Eval_Ucode_Hook();
   switch (OBJECT_TYPE(Fetch_Expression()))
   {
+    default:
+#if false
+      Eval_Error(ERR_UNDEFINED_USER_TYPE);
+#else
+      /* fall through to self evaluating. */
+#endif
+
     case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_CHARACTER_STRING:
@@ -891,8 +898,6 @@ lookup_end_restart:
     }
 
     SITE_EXPRESSION_DISPATCH_HOOK()
-
-    default: Eval_Error(ERR_UNDEFINED_USER_TYPE);
   };
 
 /* Interpret() continues on the next page */
@@ -1759,7 +1764,8 @@ return_from_compiled_code:
 	      Pop_Return_Error(Which_Way);
 	    }
 
-	    default: Microcode_Termination( TERM_COMPILER_DEATH);
+	    default:
+	      Microcode_Termination( TERM_COMPILER_DEATH);
             }
           }
 
@@ -1774,8 +1780,11 @@ return_from_compiled_code:
 
     case RC_MOVE_TO_ADJACENT_POINT:
     /* Expression contains the space in which we are moving */
-    { long From_Count = Get_Integer(Stack_Ref(TRANSLATE_FROM_DISTANCE));
+    {
+      long From_Count;
       Pointer Thunk, New_Location;
+
+      From_Count = Get_Integer(Stack_Ref(TRANSLATE_FROM_DISTANCE));
       if (From_Count != 0)
       { Pointer Current = Stack_Ref(TRANSLATE_FROM_POINT);
 	Stack_Ref(TRANSLATE_FROM_DISTANCE) = Make_Unsigned_Fixnum((From_Count - 1));
@@ -1788,21 +1797,37 @@ return_from_compiled_code:
 	else Save_Cont();
       }
       else
-      { long To_Count = Get_Integer(Stack_Ref(TRANSLATE_TO_DISTANCE))-1;
-	fast Pointer To_Location = Stack_Ref(TRANSLATE_TO_POINT);
+      {
+	long To_Count;
+	fast Pointer To_Location;
 	fast long i;
-	for (i=0; i < To_Count; i++)
+
+	To_Count = (Get_Integer(Stack_Ref(TRANSLATE_TO_DISTANCE))-  1);
+	To_Location = Stack_Ref(TRANSLATE_TO_POINT);
+	for (i = 0; i < To_Count; i++)
+	{
 	  To_Location = Fast_Vector_Ref(To_Location, STATE_POINT_NEARER_POINT);
+	}
 	Thunk = Fast_Vector_Ref(To_Location, STATE_POINT_BEFORE_THUNK);
 	New_Location = To_Location;
 	Stack_Ref(TRANSLATE_TO_DISTANCE) = Make_Unsigned_Fixnum(To_Count);
-	if (To_Count==0) 
+	if (To_Count == 0) 
+	{
 	  Stack_Pointer = Simulate_Popping(4);
-	else Save_Cont();
+	}
+	else
+	{
+	  Save_Cont();
+	}
       }
       if (Fetch_Expression() != NIL)
+      {
         Vector_Set(Fetch_Expression(), STATE_SPACE_NEAREST_POINT, New_Location);
-      else Current_State_Point = New_Location;
+      }
+      else
+      {
+	Current_State_Point = New_Location;
+      }
      Will_Push(2);
       Push(Thunk);
       Push(STACK_FRAME_HEADER);
