@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.49 1989/04/18 04:14:55 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.50 1989/05/04 15:13:50 jinx Rel $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -62,8 +62,8 @@ strcmp_ci (s1, s2)
     {
       fast int c1 = (*s1++);
       fast int c2 = (*s2++);
-      if (islower (c1)) c1 = (_toupper (c1));
-      if (islower (c2)) c2 = (_toupper (c2));
+      if (islower (c1)) c1 = (toupper (c1));
+      if (islower (c2)) c2 = (toupper (c2));
       if (c1 < c2) return (-1);
       if (c1 > c2) return (1);
     }
