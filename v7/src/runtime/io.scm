@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.43 1995/04/14 19:06:15 cph Exp $
+$Id: io.scm,v 14.44 1995/08/01 05:05:08 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -610,6 +610,77 @@ MIT in each case. |#
 (define output-buffer/buffered-chars
   output-buffer/position)
 
+(define (output-buffer/write-substring buffer string start end)
+  (define (write-buffered start end n-previous)
+    (if (fix:< start end)
+	(let loop ((start start) (n-previous n-previous))
+	  (let ((n-left (fix:- end start))
+		(max-posn (output-buffer/logical-size buffer)))
+	    (let ((room (fix:- max-posn (output-buffer/position buffer))))
+	      (cond ((fix:>= room n-left)
+		     (add-to-buffer string start end)
+		     (if (fix:= n-left room)
+			 (output-buffer/drain buffer))
+		     (fix:+ n-previous n-left))
+		    ((fix:> room 0)
+		     (let ((new-start (fix:+ start room))
+			   (n-previous (fix:+ n-previous room)))
+		       (add-to-buffer string start new-start)
+		       (if (fix:< (output-buffer/drain buffer) max-posn)
+			   (loop new-start n-previous)
+			   n-previous)))
+		    (else
+		     (if (fix:< (output-buffer/drain buffer) max-posn)
+			 (loop start n-previous)
+			 n-previous))))))
+	n-previous))
+
+  (define (write-newline)
+    ;; This transfers the end-of-line string atomically.  In this way,
+    ;; as far as the Scheme program is concerned, either the newline
+    ;; has been completely buffered/written, or it has not at all.
+    (let ((translation (output-buffer/line-translation buffer)))
+      (let ((tlen (string-length translation)))
+	(let loop ()
+	  (let ((posn (output-buffer/position buffer)))
+	    (if (fix:<= tlen
+			(fix:- (string-length (output-buffer/string buffer))
+			       posn))
+		(begin
+		  (add-to-buffer translation 0 tlen)
+		  #t)
+		(and (fix:< (output-buffer/drain buffer) posn)
+		     (loop))))))))
+
+  (define (add-to-buffer string start end)
+    (let ((posn (output-buffer/position buffer)))
+      (substring-move-left! string start end
+			    (output-buffer/string buffer) posn)
+      (set-output-buffer/position! buffer (fix:+ posn (fix:- end start)))))
+
+  (cond ((not (output-buffer/string buffer))
+	 (if (fix:= start end)
+	     0
+	     (or (channel-write (output-buffer/channel buffer)
+				string start end)
+		 0)))
+	((not (output-buffer/line-translation buffer))
+	 (write-buffered start end 0))
+	(else
+	 (let loop ((start start) (n-prev 0))
+	   (let find-newline ((index start))
+	     (cond ((fix:= index end)
+		    (write-buffered start end n-prev))
+		   ((not (char=? (string-ref string index) #\newline))
+		    (find-newline (fix:+ index 1)))
+		   (else
+		    (let ((n-prev* (write-buffered start index n-prev)))
+		      (if (or (fix:< n-prev*
+				     (fix:+ n-prev (fix:- start index)))
+			      (not (write-newline)))
+			  n-prev*
+			  (loop (fix:+ index 1) (fix:+ n-prev* 1)))))))))))
+
 (define (output-buffer/drain buffer)
   (let ((string (output-buffer/string buffer))
 	(position (output-buffer/position buffer)))
@@ -636,97 +707,6 @@ MIT in each case. |#
 
 (define (output-buffer/flush buffer)
   (set-output-buffer/position! buffer 0))
-
-(define (output-buffer/write-substring buffer string start end)
-  (define (output-buffer/write-buffered-substring start end)
-    (let loop ((start start) (n-left (fix:- end start)) (n-previous 0))
-      (let ((string* (output-buffer/string buffer))
-	    (position (output-buffer/position buffer)))
-	(let ((max-position (output-buffer/logical-size buffer))
-	      (position* (fix:+ position n-left)))
-	  (cond ((fix:<= position* max-position)
-		 (substring-move-left! string start end string* position)
-		 (set-output-buffer/position! buffer position*)
-		 (if (fix:= position* max-position)
-		     (output-buffer/drain buffer))
-		 (fix:+ n-previous n-left))
-		((fix:< position max-position)
-		 (let ((room (fix:- max-position position)))
-		   (let ((end (fix:+ start room))
-			 (n-previous (fix:+ n-previous room)))
-		     (substring-move-left! string start end
-					   string* position)
-		     (set-output-buffer/position! buffer max-position)
-		     (if (fix:< (output-buffer/drain buffer) max-position)
-			 (loop end (fix:- n-left room) n-previous)
-			 n-previous))))
-		(else
-		 (if (fix:< (output-buffer/drain buffer) max-position)
-		     (loop start n-left n-previous)
-		     n-previous)))))))
-
-  ;; This transfers the end-of-line string atomically.  In this way,
-  ;; as far as the Scheme program is concerned, either the newline has
-  ;; been completely buffered/written, or it has not at all.
-
-  (define (output-buffer/write-translated-newline)
-    (let ((translation (output-buffer/line-translation buffer))
-	  (string (output-buffer/string buffer)))
-      (let ((tlen (string-length translation)))
-	(let loop ((posn (output-buffer/position buffer)))
-	  (if (fix:<= tlen (fix:- (string-length string) posn))
-	      (begin
-		(substring-move-left! translation 0 tlen string posn)
-		(set-output-buffer/position! buffer (fix:+ posn tlen))
-		true)
-	      (and (output-buffer/drain buffer)
-		   (loop (output-buffer/position buffer))))))))
-		
-  
-  (define (find-next-newline posn)
-    (and (fix:< posn end)
-	 (if (char=? (string-ref string posn) #\Newline)
-	     posn
-	     (find-next-newline (fix:+ posn 1)))))
-
-  (cond ((fix:= start end)
-	 0)
-	((not (output-buffer/string buffer))
-	 (or (channel-write (output-buffer/channel buffer) string start end)
-	     0))
-	((not (output-buffer/line-translation buffer))
-	 (output-buffer/write-buffered-substring start end))
-	(else
-	 (letrec ((write-newline
-		   (lambda (posn)
-		     (and (output-buffer/write-translated-newline)
-			  (let ((next (fix:+ posn 1)))
-			    (if (fix:= next end)
-				1
-				(fix:+ 1
-				       (or (write-segment
-					    next
-					    (find-next-newline next))
-					   0)))))))
-		  (write-segment
-		   (lambda (start posn)
-		     (cond ((not posn)
-			    (output-buffer/write-buffered-substring start end))
-			   ((fix:= posn start)
-			    (write-newline posn))
-			   (else
-			    (let ((delta (fix:- posn start))
-				  (n-written
-				   (output-buffer/write-buffered-substring
-				    start posn)))
-			      (and n-written
-				   (if (fix:< n-written delta)
-				       n-written
-				       (fix:+ n-written
-					      (or (write-newline posn)
-						  0))))))))))
-
-	   (write-segment start (find-next-newline start))))))
 
 (define (output-buffer/drain-block buffer)
   (let loop ()
@@ -799,7 +779,7 @@ MIT in each case. |#
    (lambda ()
      (if (fix:= (input-buffer/end-index buffer) 0)
 	 0
-	 (let ((string-size 
+	 (let ((string-size
 		(input-buffer-size (input-buffer/line-translation buffer)
 				   buffer-size)))
 	   (let ((old-string (input-buffer/string buffer))
