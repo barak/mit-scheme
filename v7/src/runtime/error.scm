@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.46 1987/04/13 18:42:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.47 1987/06/04 00:02:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -320,6 +320,13 @@ using the current read-eval-print environment."))
   (if (continuation-evaluated-object? object)
       (continuation-evaluated-object-value object)
       (error "Not evaluated -- get a wizard" unwrap-evaluated-object object)))
+
+(define (combination-operator? expression)
+  (and (combination? expression)
+       (variable? (combination-operator expression))))
+
+(define (combination-operator-name combination)
+  (variable-name (combination-operator combination)))
 
 ;;;; Environment Operation Errors
 
@@ -330,6 +337,7 @@ using the current read-eval-print environment."))
 (define-unbound-variable-error variable? variable-name)
 (define-unbound-variable-error access? access-name)
 (define-unbound-variable-error assignment? assignment-name)
+(define-unbound-variable-error combination-operator? combination-operator-name)
 (define-unbound-variable-error
   (list (make-primitive-procedure 'LEXICAL-REFERENCE)
 	(make-primitive-procedure 'LEXICAL-ASSIGNMENT))
@@ -349,6 +357,8 @@ using the current read-eval-print environment."))
 
 (define-unassigned-variable-error variable? variable-name)
 (define-unassigned-variable-error access? access-name)
+(define-unassigned-variable-error combination-operator?
+  combination-operator-name)
 (define-unassigned-variable-error
   (list (make-primitive-procedure 'LEXICAL-REFERENCE))
   combination-second-operand)
