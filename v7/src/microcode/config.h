@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.93 1995/10/08 15:28:45 cph Exp $
+$Id: config.h,v 9.94 1995/10/24 04:55:32 cph Exp $
 
 Copyright (c) 1987-95 Massachusetts Institute of Technology
 
@@ -596,8 +596,18 @@ extern void EXFUN (dos386_stack_reset, (void));
 #endif /* DOS386 */
 
 #ifdef WINNT
+
 extern void EXFUN (winnt_stack_reset, (void));
 #define STACK_RESET winnt_stack_reset
+
+#define HEAP_MALLOC(size) (WIN32_ALLOCATE_HEAP ((size), (&scheme_heap_handle)))
+#define HEAP_FREE(base)							\
+  WIN32_RELEASE_HEAP (((char *) (base)), scheme_heap_handle)
+
+/* We must not define `main' as that causes conflicts when compiling
+   this code with the Watcom C compiler.  */
+#define main_name scheme_main
+
 #endif /* WINNT */
 
 /* These (pdp10, nu) haven't worked in a while.

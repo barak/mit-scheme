@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: memmag.h,v 1.2 1993/08/21 02:33:58 gjr Exp $
+$Id: memmag.h,v 1.3 1995/10/24 04:56:12 cph Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -115,9 +115,6 @@ WIN32_RELEASE_HEAP (char * area, unsigned long handle)
 #endif /* WINNT_RAW_ADDRESSES */
 
 static unsigned long scheme_heap_handle;
-
-#define HEAP_MALLOC(size) (WIN32_ALLOCATE_HEAP (size, &scheme_heap_handle))
-#define HEAP_FREE(base) WIN32_RELEASE_HEAP (((char *) (base)), scheme_heap_handle)
 
 #endif /* WINNT */
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.7 1994/10/07 22:43:34 adams Exp $
+$Id: ntfs.c,v 1.8 1995/10/24 04:56:58 cph Exp $
 
-Copyright (c) 1992-1994 Massachusetts Institute of Technology
+Copyright (c) 1992-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -148,18 +148,18 @@ DEFUN (OS_directory_delete, (name), CONST char * name)
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (NT_rmdir (name)));
 }
 
-typedef struct DIR_struct
+typedef struct nt_dir_struct
 {
   WIN32_FIND_DATA entry;
   HANDLE handle;         /* may be DIR_UNALLOCATED */
   BOOL more;
   char pathname[256];
-} DIR;
+} nt_dir;
 
 #define GET_DIRECTORY_ENTRY_NAME(entry, pathname)		\
   (strcpy(pathname, (entry).cFileName), strlwr(pathname))
 
-static DIR ** directory_pointers;
+static nt_dir ** directory_pointers;
 static unsigned int n_directory_pointers;
 
 void
@@ -170,18 +170,18 @@ DEFUN_VOID (NT_initialize_directory_reader)
 }
 
 static unsigned int
-DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
+DEFUN (allocate_directory_pointer, (pointer), nt_dir * pointer)
 {
   if (n_directory_pointers == 0)
     {
-      DIR ** pointers = ((DIR **) (NT_malloc ((sizeof (DIR *)) * 4)));
+      nt_dir ** pointers = ((nt_dir **) (NT_malloc ((sizeof (nt_dir *)) * 4)));
       if (pointers == 0)
 	error_system_call (ENOMEM, syscall_malloc);
       directory_pointers = pointers;
       n_directory_pointers = 4;
       {
-	DIR ** scan = directory_pointers;
-	DIR ** end = (scan + n_directory_pointers);
+	nt_dir ** scan = directory_pointers;
+	nt_dir ** end = (scan + n_directory_pointers);
 	(*scan++) = pointer;
 	while (scan < end)
 	  (*scan++) = 0;
@@ -189,8 +189,8 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
       return (0);
     }
   {
-    DIR ** scan = directory_pointers;
-    DIR ** end = (scan + n_directory_pointers);
+    nt_dir ** scan = directory_pointers;
+    nt_dir ** end = (scan + n_directory_pointers);
     while (scan < end)
       if ((*scan++) == 0)
 	{
@@ -201,15 +201,15 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
   {
     unsigned int result = n_directory_pointers;
     unsigned int n_pointers = (2 * n_directory_pointers);
-    DIR ** pointers =
-      ((DIR **)
+    nt_dir ** pointers =
+      ((nt_dir **)
        (NT_realloc (((PTR) directory_pointers),
-		    ((sizeof (DIR *)) * n_pointers))));
+		    ((sizeof (nt_dir *)) * n_pointers))));
     if (pointers == 0)
       error_system_call (ENOMEM, syscall_realloc);
     {
-      DIR ** scan = (pointers + result);
-      DIR ** end = (pointers + n_pointers);
+      nt_dir ** scan = (pointers + result);
+      nt_dir ** end = (pointers + n_pointers);
       (*scan++) = pointer;
       while (scan < end)
 	(*scan++) = 0;
@@ -236,7 +236,7 @@ unsigned int
 DEFUN (OS_directory_open, (name), CONST char * name)
 {
   char filename[128], searchname[128];
-  DIR * dir = NT_malloc(sizeof(DIR));
+  nt_dir * dir = NT_malloc(sizeof(nt_dir));
 
   if (dir == 0)
     error_system_call (ENOMEM, syscall_malloc);
@@ -257,7 +257,7 @@ DEFUN (OS_directory_open, (name), CONST char * name)
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
 {
-  DIR * dir = REFERENCE_DIRECTORY (index);
+  nt_dir * dir = REFERENCE_DIRECTORY (index);
 
   if (dir == 0 || !dir->more)
     return 0;
@@ -279,7 +279,7 @@ DEFUN (OS_directory_read_matching, (index, prefix),
 void
 DEFUN (OS_directory_close, (index), unsigned int index)
 { 
-  DIR * dir = REFERENCE_DIRECTORY (index);
+  nt_dir * dir = REFERENCE_DIRECTORY (index);
 
   if (dir)
   {
