@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.10 1989/08/15 13:20:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.11 1990/01/24 16:45:07 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -63,26 +63,28 @@ MIT in each case. |#
 	   (if (default-object? identify) world-identification identify))
 	  (time (get-decoded-time)))
       (gc-clean)
-      (save-image filename
-		  (lambda ()
-		    (set! time-world-saved time)
-		    (if (string? identify)
-			unspecific
-			false))
-		  (lambda ()
-		    (set! time-world-saved time)
-		    (event-distributor/invoke! event:after-restore)
-		    (if (string? identify)
-			(begin
-			  (set! world-identification identify)
-			  (clear console-output-port)
-			  (abort->top-level
-			   (lambda (cmdl)
-			     (identify-world (cmdl/output-port cmdl))
-			     (event-distributor/invoke! event:after-restart))))
-			(begin
-			  (event-distributor/invoke! event:after-restart)
-			  true)))))))
+      (save-image
+       filename
+       (lambda ()
+	 (set! time-world-saved time)
+	 (if (string? identify)
+	     unspecific
+	     false))
+       (lambda ()
+	 (set! time-world-saved time)
+	 (event-distributor/invoke! event:after-restore)
+	 (cond ((string? identify)
+		(set! world-identification identify)
+		(clear console-output-port)
+		(abort->top-level
+		 (lambda (cmdl)
+		   (identify-world (cmdl/output-port cmdl))
+		   (event-distributor/invoke! event:after-restart))))
+	       ((not identify)
+		true)
+	       (else
+		(event-distributor/invoke! event:after-restart)
+		true)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
