@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.40 1992/05/26 20:06:27 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.41 1992/05/26 20:12:48 mhwu Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -1159,8 +1159,7 @@ MIT in each case. |#
 	  (compress bif-path bci-path)
 	  (announce-info-files bci-path))))))
 
-(define compiler:dump-info-file compiler:dump-bci/bcs-files)
-
+(define compiler:dump-info-file compiler:dump-bci-file)
 
 (define (phase/link)
   (compiler-phase "Linkification"
