@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dfloat.c,v 1.1 1991/07/11 02:16:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/dfloat.c,v 1.2 1991/08/14 02:02:53 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -92,4 +92,14 @@ DEFINE_PRIMITIVE( "FLOATING-VECTOR-SET!", Prim_floating_vector_set,
   *where = new_value;
   /* double value = *where; */
   PRIMITIVE_RETURN (SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("FLOATING-VECTOR-LENGTH", Prim_floating_vector_length,
+		  1, 1, 0)
+{
+  SCHEME_OBJECT vector = (ARG_DOUBLE_VECTOR (1));
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN
+    (LONG_TO_UNSIGNED_FIXNUM ((VECTOR_LENGTH (vector)) / FLONUM_SIZE));
 }
