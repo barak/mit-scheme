@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.50 1992/08/21 22:47:00 cph Exp $
+;;;	$Id: intmod.scm,v 1.51 1992/09/29 21:12:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -46,13 +46,24 @@
 ;;; Package: (edwin inferior-repl)
 
 (declare (usual-integrations))
-
+
 (define-variable repl-enable-transcript-buffer
   "If true, record input and output from inferior REPLs in transcript buffer.
 This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
   true
   boolean?)
 
+(define-variable repl-error-decision
+  "If true, errors in REPL evaluation force the user to choose an option.
+Otherwise, they start a nested error REPL."
+  false
+  boolean?)
+
+(define-variable repl-mode-locked
+  "If true, user cannot change the mode of REPL and CMDL buffers."
+  true
+  boolean?)
+
 (define (call-with-transcript-output-mark buffer procedure)
   (if (and (ref-variable repl-enable-transcript-buffer buffer)
 	   (ref-variable enable-transcript-buffer buffer))
@@ -60,12 +71,6 @@ This flag has effect only when ENABLE-TRANSCRIPT-BUFFER is also true."
        (lambda (buffer)
 	 (procedure (buffer-end buffer))))
       (procedure false)))
-
-(define-variable repl-error-decision
-  "If true, errors in REPL evaluation force the user to choose an option.
-Otherwise, they start a nested error REPL."
-  false
-  boolean?)
 
 (define-command repl
   "Run an inferior read-eval-print loop (REPL), with I/O through buffer *scheme*.
@@ -87,6 +92,8 @@ REPL uses current evaluation environment."
 
 (define (start-inferior-repl! buffer environment syntax-table message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
+  (if (ref-variable repl-mode-locked)
+      (buffer-put! buffer 'MAJOR-MODE-LOCKED true))
   (set-buffer-default-directory! buffer (working-directory-pathname))
   (add-buffer-initialization!
    buffer
@@ -283,7 +290,12 @@ The history may be accessed with the following commands:
 The REPL may be controlled by the following commands:
 
 \\[inferior-cmdl-abort-top-level] returns to top level.
-\\[inferior-cmdl-abort-previous] goes up one level.")
+\\[inferior-cmdl-abort-previous] goes up one level."
+  (event-distributor/invoke! (ref-variable inferior-repl-mode-hook)))
+
+(define-variable inferior-repl-mode-hook
+  "An event distributor that is invoked when entering Inferior REPL mode."
+  (make-event-distributor))
 
 (define-key 'inferior-repl '(#\C-c #\C-b) 'inferior-cmdl-breakpoint)
 (define-key 'inferior-repl '(#\C-c #\C-c) 'inferior-cmdl-abort-top-level)
@@ -311,7 +323,12 @@ Typing ? will show you which characters perform useful functions.
 Additionally, these commands abort the command loop:
 
 \\[inferior-cmdl-abort-top-level] returns to the top-level REPL.
-\\[inferior-cmdl-abort-previous] returns to the previous level REPL.")
+\\[inferior-cmdl-abort-previous] returns to the previous level REPL."
+  (event-distributor/invoke! (ref-variable inferior-cmdl-mode-hook)))
+
+(define-variable inferior-cmdl-mode-hook
+  "An event distributor that is invoked when entering Inferior CMDL mode."
+  (make-event-distributor))
 
 (define-key 'inferior-cmdl '(#\C-c #\C-b) 'inferior-cmdl-breakpoint)
 (define-key 'inferior-cmdl '(#\C-c #\C-c) 'inferior-cmdl-abort-top-level)
