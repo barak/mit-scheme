@@ -195,6 +195,8 @@
 	       edwin-syntax-table)
     ("simple"  (edwin)
 	       syntax-table/system-internal)
+    ("sort"    (edwin)
+	       edwin-syntax-table)
     ("strpad"  (edwin)
 	       syntax-table/system-internal)
     ("strtab"  (edwin)

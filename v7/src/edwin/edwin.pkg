@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.101 1992/10/20 20:02:13 jinx Exp $
+$Id: edwin.pkg,v 1.102 1992/11/01 07:12:57 arthur Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -100,6 +100,7 @@ MIT in each case. |#
 	 "tximod"
 	 "notify"			; mode line notifications
 	 "outline"			; outline minor mode
+	 "sort"
 
 	 ;; These are only available under Unix/X
 

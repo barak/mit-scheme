@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.41 1992/10/20 20:02:54 jinx Exp $
+$Id: decls.scm,v 1.42 1992/11/01 07:13:12 arthur Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -187,6 +187,7 @@ MIT in each case. |#
 		"sercom"
 		"shell"
 		"simple"
+		"sort"
 		"syntax"
 		"tagutl"
 		"techinfo"
