@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/wt_user.scm,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: wt_user.scm,v 1.2 1993/11/10 21:43:04 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -39,13 +39,13 @@ MIT in each case. |#
 
 
 (define-integrable int32-offset-ref   
-          (make-primitive-procedure 'int32-offset-ref))
+          (ucode-primitive int32-offset-ref 2))
 (define-integrable int32-offset-set!  
-          (make-primitive-procedure 'int32-offset-set!))
+          (ucode-primitive int32-offset-set! 3))
 (define-integrable uint32-offset-ref  
-          (make-primitive-procedure 'uint32-offset-ref))
+          (ucode-primitive uint32-offset-ref 2))
 (define-integrable uint32-offset-set! 
-          (make-primitive-procedure 'uint32-offset-set!))
+          (ucode-primitive uint32-offset-set! 3))
 
 (define-integrable byte-offset-ref  vector-8b-ref)	    
 (define-integrable byte-offset-set! vector-8b-set!)	    
@@ -87,7 +87,7 @@ MIT in each case. |#
 
 (define-windows-type RECT
   (lambda (thing) (or (eq? thing #f) (rect? thing)))
-  (lambda (thing) (and thing (rect/mem r)))
+  (lambda (thing) (and thing (rect/mem thing)))
   #f
   #f)
 
