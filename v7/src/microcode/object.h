@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.55 2003/11/26 05:01:25 cph Exp $
+$Id: object.h,v 9.56 2004/11/21 04:18:43 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -198,7 +198,7 @@ extern SCHEME_OBJECT * memory_base;
 #define PRIMITIVE_P(object) ((OBJECT_TYPE (object)) == TC_PRIMITIVE)
 #define FUTURE_P(object) ((OBJECT_TYPE (object)) == TC_FUTURE)
 #define PROMISE_P(object) ((OBJECT_TYPE (object)) == TC_DELAYED)
-#define APPARENT_LIST_P(object) (((object) == EMPTY_LIST) || (PAIR_P (object)))
+#define APPARENT_LIST_P(object) ((EMPTY_LIST_P (object)) || (PAIR_P (object)))
 #define CONTROL_POINT_P(object) ((OBJECT_TYPE (object)) == TC_CONTROL_POINT)
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define GC_NON_POINTER_P(object) ((GC_Type (object)) == GC_Non_Pointer)

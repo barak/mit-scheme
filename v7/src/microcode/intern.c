@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.59 2003/02/14 18:28:19 cph Exp $
+$Id: intern.c,v 9.60 2004/11/21 04:18:14 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ DEFUN (find_symbol_internal, (length, string),
 		     % (VECTOR_LENGTH (obarray)))
 		    + 1)));
   }
-  while ((*bucket) != EMPTY_LIST)
+  while (!EMPTY_LIST_P (*bucket))
     {
       fast SCHEME_OBJECT symbol = (PAIR_CAR (*bucket));
       fast SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
@@ -131,7 +131,7 @@ SCHEME_OBJECT
 DEFUN (find_symbol, (length, string), long length AND unsigned char * string)
 {
   SCHEME_OBJECT result = (* (find_symbol_internal (length, string)));
-  return ((result == EMPTY_LIST) ? SHARP_F : result);
+  return ((EMPTY_LIST_P (result)) ? SHARP_F : result);
 }
 
 static SCHEME_OBJECT
@@ -156,7 +156,7 @@ DEFUN (memory_to_symbol, (length, string),
 {
   SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
   return
-    (((*cell) == EMPTY_LIST)
+    ((EMPTY_LIST_P (*cell))
      ? (make_symbol ((memory_to_string (length, string)), cell))
      : (*cell));
 }
@@ -173,7 +173,7 @@ DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
   SCHEME_OBJECT * cell =
     (find_symbol_internal ((STRING_LENGTH (string)),
 			   (STRING_LOC (string, 0))));
-  return (((*cell) == EMPTY_LIST) ? (make_symbol (string, cell)) : (*cell));
+  return ((EMPTY_LIST_P (*cell)) ? (make_symbol (string, cell)) : (*cell));
 }
 
 SCHEME_OBJECT
@@ -182,7 +182,7 @@ DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
   SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
   SCHEME_OBJECT * cell =
     (find_symbol_internal ((STRING_LENGTH (name)), (STRING_LOC (name, 0))));
-  return (((*cell) == EMPTY_LIST)
+  return ((EMPTY_LIST_P (*cell))
 	  ? (link_new_symbol (symbol, cell))
 	  : (*cell));
 }

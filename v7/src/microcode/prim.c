@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.42 2004/07/04 05:23:43 cph Exp $
+$Id: prim.c,v 9.43 2004/11/21 04:21:06 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1993 Massachusetts Institute of Technology
 Copyright 1996,2004 Massachusetts Institute of Technology
@@ -217,7 +217,7 @@ DEFINE_PRIMITIVE ("NULL?", Prim_null_p, 1, 1, 0)
   fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
   TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (object == EMPTY_LIST));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (EMPTY_LIST_P (object)));
 }
 
 /* Cells */

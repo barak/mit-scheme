@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.38 2003/02/14 18:28:23 cph Exp $
+$Id: step.c,v 9.39 2004/11/21 04:19:00 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -107,7 +107,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 	    number_of_args += 1;
 	    TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
 	  }
-	if (scan_list != EMPTY_LIST)
+	if (!EMPTY_LIST_P (scan_list))
 	  error_wrong_type_arg (2);
       }
       POP_PRIMITIVE_FRAME (3);

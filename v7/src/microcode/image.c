@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: image.c,v 9.36 2003/02/14 18:28:19 cph Exp $
+$Id: image.c,v 9.37 2004/11/21 04:17:59 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ arg_image (arg_number, nrows, ncols, array)
   if (! (PAIR_P (rest))) goto loser;
   third = (PAIR_CAR (rest));
   if (! (ARRAY_P (third))) goto loser;
-  if ((PAIR_CDR (rest)) != EMPTY_LIST) goto loser;
+  if (!EMPTY_LIST_P (PAIR_CDR (rest))) goto loser;
   (*nrows) = (UNSIGNED_FIXNUM_TO_LONG (first));
   (*ncols) = (UNSIGNED_FIXNUM_TO_LONG (second));
   (*array) = (ARRAY_CONTENTS (third));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: list.c,v 9.34 2003/02/14 18:28:19 cph Exp $
+$Id: list.c,v 9.35 2004/11/21 04:18:35 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -190,7 +190,7 @@ DEFINE_PRIMITIVE ("LENGTH", Prim_length, 1, 1,
       i += 1;
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
     }
-  if (list != EMPTY_LIST)
+  if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (1);
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (i));
 }
@@ -230,7 +230,7 @@ DEFINE_PRIMITIVE ("MEMQ", Prim_memq, 2, 2,
 	PRIMITIVE_RETURN (list);
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
     }
-  if (list != EMPTY_LIST)
+  if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (2);
   PRIMITIVE_RETURN (SHARP_F);
 }
@@ -277,7 +277,7 @@ DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2,
 	PRIMITIVE_RETURN (association);
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (alist)), alist);
     }
-  if (alist != EMPTY_LIST)
+  if (!EMPTY_LIST_P (alist))
     error_wrong_type_arg (2);
   PRIMITIVE_RETURN (SHARP_F);
 }

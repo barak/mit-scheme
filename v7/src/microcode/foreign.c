@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: foreign.c,v 1.5 2003/02/14 18:28:19 cph Exp $
+$Id: foreign.c,v 1.6 2004/11/21 04:17:37 cph Exp $
 
 Copyright (c) 1992, 1999, 2000 Massachusetts Institute of Technology
 
@@ -521,7 +521,7 @@ If LOAD_INFO is #F then we search over all the dynamically loaded files.")
     PTR func_ptr;
     LOAD_INFO * load_info;
 
-    load_info = ((ARG_REF (2) == EMPTY_LIST) ?
+    load_info = ((EMPTY_LIST_P (ARG_REF (2))) ?
 		 ((LOAD_INFO *) NULL) :
 		 ((LOAD_INFO *) handle_to_foreign_pointer (arg_handle (2))));
 		  

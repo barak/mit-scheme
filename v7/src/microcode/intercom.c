@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intercom.c,v 9.35 2003/02/14 18:28:19 cph Exp $
+$Id: intercom.c,v 9.36 2004/11/21 04:18:06 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -90,7 +90,7 @@ DEFINE_PRIMITIVE ("PUT-WORK", Prim_put_work, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
-    if (queue == EMPTY_LIST)
+    if (EMPTY_LIST_P (queue))
       {
 	queue = (cons (EMPTY_LIST, EMPTY_LIST));
 	Set_Fixed_Obj_Slot (The_Work_Queue, queue);
@@ -99,7 +99,7 @@ DEFINE_PRIMITIVE ("PUT-WORK", Prim_put_work, 1, 1, 0)
       SCHEME_OBJECT queue_tail = (PAIR_CDR (queue));
       SCHEME_OBJECT new_entry = (cons ((ARG_REF (1)), EMPTY_LIST));
       SET_PAIR_CDR (queue, new_entry);
-      if (queue_tail == EMPTY_LIST)
+      if (EMPTY_LIST_P (queue_tail))
 	SET_PAIR_CAR (queue, new_entry);
       else
 	SET_PAIR_CDR (queue_tail, new_entry);
@@ -113,7 +113,7 @@ DEFINE_PRIMITIVE ("PUT-WORK-IN-FRONT", Prim_put_work_in_front, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
-    if (queue == EMPTY_LIST)
+    if (EMPTY_LIST_P (queue))
       {
 	queue = (cons (EMPTY_LIST, EMPTY_LIST));
 	Set_Fixed_Obj_Slot (The_Work_Queue, queue);
@@ -122,7 +122,7 @@ DEFINE_PRIMITIVE ("PUT-WORK-IN-FRONT", Prim_put_work_in_front, 1, 1, 0)
       SCHEME_OBJECT queue_head = (PAIR_CAR (queue));
       SCHEME_OBJECT new_entry = (cons ((ARG_REF (1)), queue_head));
       SET_PAIR_CAR (queue, new_entry);
-      if (queue_head == EMPTY_LIST)
+      if (EMPTY_LIST_P (queue_head))
 	SET_PAIR_CDR (queue, new_entry);
     }
   }
@@ -135,7 +135,7 @@ DEFINE_PRIMITIVE ("DRAIN-WORK-QUEUE!", Prim_drain_queue, 0, 0, 0)
   {
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
     Set_Fixed_Obj_Slot (The_Work_Queue, EMPTY_LIST);
-    PRIMITIVE_RETURN ((queue != EMPTY_LIST) ? (PAIR_CAR (queue)) : EMPTY_LIST);
+    PRIMITIVE_RETURN ((!EMPTY_LIST_P (queue)) ? (PAIR_CAR (queue)) : EMPTY_LIST);
   }
 }
 
@@ -144,14 +144,14 @@ DEFINE_PRIMITIVE ("PEEK-AT-WORK-QUEUE", Prim_peek_queue, 0, 0, 0)
   PRIMITIVE_HEADER (0);
   {
     fast SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
-    if (queue == EMPTY_LIST)
+    if (EMPTY_LIST_P (queue))
       PRIMITIVE_RETURN (EMPTY_LIST);
     /* Reverse the queue and return it.
        (Why is it being reversed? -- cph) */
     {
       fast SCHEME_OBJECT this_pair = (PAIR_CAR (queue));
       fast SCHEME_OBJECT result = EMPTY_LIST;
-      while (this_pair != EMPTY_LIST)
+      while (!EMPTY_LIST_P (this_pair))
 	{
 	  result = (cons ((PAIR_CAR (this_pair)), result));
 	  this_pair = (PAIR_CDR (this_pair));
@@ -170,8 +170,8 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
     SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
     SCHEME_OBJECT queue_head =
-      ((queue == EMPTY_LIST) ? EMPTY_LIST : (PAIR_CAR (queue)));
-    if (queue_head == EMPTY_LIST)
+      ((EMPTY_LIST_P (queue)) ? EMPTY_LIST : (PAIR_CAR (queue)));
+    if (EMPTY_LIST_P (queue_head))
       {
 	if (thunk == SHARP_F)
 	  {
@@ -200,7 +200,7 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
       SCHEME_OBJECT result = (PAIR_CAR (queue_head));
       queue_head = (PAIR_CDR (queue_head));
       SET_PAIR_CAR (queue, queue_head);
-      if (queue_head == EMPTY_LIST)
+      if (EMPTY_LIST_P (queue_head))
 	SET_PAIR_CDR (queue, EMPTY_LIST);
       PRIMITIVE_RETURN (result);
     }

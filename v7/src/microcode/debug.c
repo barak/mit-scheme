@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.57 2003/02/14 18:28:18 cph Exp $
+$Id: debug.c,v 9.58 2004/11/21 04:17:29 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -232,7 +232,7 @@ DEFUN (print_list, (stream, pair), outf_channel stream AND SCHEME_OBJECT pair)
       pair = (PAIR_CDR (pair));
       count += 1;
     }
-  if (pair != EMPTY_LIST)
+  if (!EMPTY_LIST_P (pair))
     {
       if (count == MAX_LIST_PRINT)
 	outf (stream, " ...");
@@ -433,7 +433,7 @@ DEFUN (do_printing, (stream, Expr, Detailed),
   Temp_Address = (OBJECT_DATUM (Expr));
   handled_p = false;
 
-  if (Expr == EMPTY_LIST)	{ outf (stream, "()");	return; }
+  if (EMPTY_LIST_P (Expr))	{ outf (stream, "()");	return; }
   else if (Expr == SHARP_F)	{ outf (stream, "#F");	return; }
   else if (Expr == SHARP_T)	{ outf (stream, "#T");	return; }
   else if (Expr == UNSPECIFIC)	{ outf (stream, "[UNSPECIFIC]"); return; }
