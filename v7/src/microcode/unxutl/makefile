@@ -1,7 +1,7 @@
 #
 # Makefile for MIT CScheme microcode.
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/makefile,v 1.18 1992/08/24 13:31:00 jinx Exp $
+# $Id: makefile,v 1.19 1993/01/08 04:54:36 cph Exp $
 #
 CPP = cc -E
 MAKE = make  # BSD doesn't have it as a default.
@@ -26,6 +26,10 @@ bchdrn: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} bchdrn
 .PHONY: bchdrn
 
+scmsig: xmakefile
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} scmsig
+.PHONY: scmsig
+
 Psbtobin: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} Psbtobin
 .PHONY: Psbtobin
@@ -49,6 +53,10 @@ world: xmakefile
 install.world: xmakefile
 	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} install.world
 .PHONY: install.world
+
+everything: xmakefile
+	$(MAKE) $(MAKEOVERRIDES) -f xmakefile ${MFLAGS} everything
+.PHONY: everything
 
 # If you have a problem with cc -E here, changing
 # the definition of CPP above may fix it.
