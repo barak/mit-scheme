@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.45 1990/06/20 17:42:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.46 1990/06/21 20:17:03 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -640,12 +640,11 @@ Copy_Rib (Orig_Rib)
     (OBJECT_NEW_ADDRESS (((Free - 3) [RIB_NEXT_REDUCTION]), Result));
   return (Result);
 }
-
+
 /* Restore_History pops a history object off the stack and
    makes a COPY of it the current history collection object.
    This is called only from the RC_RESTORE_HISTORY case in
-   interpret.c .
-*/
+   interpret.c . */
 
 Boolean
 Restore_History (Hist_Obj)
@@ -664,7 +663,6 @@ Restore_History (Hist_Obj)
     }
   }
   Orig_Vertebra = OBJECT_ADDRESS (Hist_Obj);
-
   for (Next_Vertebra = NULL, Prev_Vertebra = NULL;
        Next_Vertebra != Orig_Vertebra;
        Next_Vertebra =
@@ -680,16 +678,18 @@ Restore_History (Hist_Obj)
     if (Prev_Vertebra == NULL)
     {
       New_History = Free;
+      Free[HIST_PREV_SUBPROBLEM] =
+	MAKE_OBJECT (UNMARKED_HISTORY_TYPE, 0); /* Clobbered later */
     }
     else
     {
       Prev_Vertebra[HIST_NEXT_SUBPROBLEM] =
            MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Free);
+      Free[HIST_PREV_SUBPROBLEM] =
+	MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Prev_Vertebra);
     }
     Free[HIST_RIB] = MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, New_Rib);
     Free[HIST_NEXT_SUBPROBLEM] = SHARP_F;
-    Free[HIST_PREV_SUBPROBLEM] =
-      MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Prev_Vertebra);
     if (HISTORY_MARKED_P(Next_Vertebra[HIST_MARK]))
     {
       HISTORY_MARK(Free[HIST_MARK]);
