@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.181 1995/01/06 01:06:09 cph Exp $
+;;;	$Id: filcom.scm,v 1.182 1995/01/16 20:46:15 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -651,9 +651,9 @@ If a file with the new name already exists, confirmation is requested first."
 			  get-completions))
 	 if-not-found))
       (lambda (string)
-	(filename-completions-list
-	 (prompt-string->pathname string directory)))
-      verify-final-value?
+	(filename-completions-list (prompt-string->pathname string directory)))
+      (lambda (string)
+	(verify-final-value? (prompt-string->pathname string directory)))
       require-match?)
      directory)))
 
@@ -724,8 +724,12 @@ If a file with the new name already exists, confirmation is requested first."
      (os/directory-list-completions directory
 				    (file-namestring pathname)))))
 
-(define-integrable (prompt-string->pathname string directory)
-  (merge-pathnames (os/trim-pathname-string string) directory))
+(define (prompt-string->pathname string directory)
+  (merge-pathnames (let ((pathname (os/trim-pathname-string string)))
+		     (if (memq (pathname-device pathname) '(#F UNSPECIFIC))
+			 pathname
+			 (pathname-default-directory pathname '(ABSOLUTE))))
+		   directory))
 
 (define (canonicalize-filename-completions directory filenames)
   (do ((filenames filenames (cdr filenames)))
