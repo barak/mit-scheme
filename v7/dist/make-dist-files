@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.13 2001/03/03 05:28:05 cph Exp $
+# $Id: make-dist-files,v 1.14 2001/03/05 20:49:02 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -45,7 +45,7 @@ if [ ! -f "${SRC_FILE}" ]; then
 fi
 
 BUILD_DIR="$(pwd)/$(get_release_prefix)"
-IMAGE_DIR="$(pwd)/image-$$"
+IMAGE_DIR="${BUILD_DIR}-image"
 BINDIR="${IMAGE_DIR}/usr/local/bin"
 AUXDIR="${IMAGE_DIR}/usr/local/lib/mit-scheme"
 
@@ -53,124 +53,131 @@ MKINSTALLDIRS="/scheme/v7/src/mkinstalldirs"
 INSTALL="install"
 INSTALL_DATA="${INSTALL} -m 644"
 
-rm -rf ${BUILD_DIR} ${IMAGE_DIR}
-tar xzf "${SRC_FILE}"
+# It takes a lot of work to build the image.
+# Don't throw it away needlessly.
+if [ ! -d "${IMAGE_DIR}" ]; then
+    rm -rf "${BUILD_DIR}"
+    tar xzf "${SRC_FILE}"
 
-cd "${BUILD_DIR}/src"
-./configure --enable-static-libs=yes --with-mcrypt=no
-make
-make install DESTDIR="${IMAGE_DIR}"
-${MKINSTALLDIRS} "${AUXDIR}/doc/."
-${INSTALL_DATA} COPYING "${AUXDIR}/doc/."
+    cd "${BUILD_DIR}/src"
+    ./configure --enable-static-libs=yes --with-mcrypt=no
+    make
+    make install DESTDIR="${IMAGE_DIR}"
+    ${MKINSTALLDIRS} "${AUXDIR}/doc/."
+    ${INSTALL_DATA} COPYING "${AUXDIR}/doc/."
 
-cd "${BUILD_DIR}/doc"
-./configure
-make
-make install-info-gz DESTDIR="${IMAGE_DIR}" \
-    infodir=/usr/local/lib/mit-scheme/edwin/info
-make install-html DESTDIR="${IMAGE_DIR}"
+    cd "${BUILD_DIR}/doc"
+    ./configure
+    make
+    make install-info-gz DESTDIR="${IMAGE_DIR}" \
+	infodir=/usr/local/lib/mit-scheme/edwin/info
+    make install-html DESTDIR="${IMAGE_DIR}"
 
-rm -rf ${BUILD_DIR}
+    rm -rf ${BUILD_DIR}
 
-${INSTALL_DATA} /usr/local/info/dir "${AUXDIR}/edwin/info/."
-${INSTALL_DATA} /usr/local/info/r4rs.* "${AUXDIR}/edwin/info/."
-${INSTALL_DATA} /usr/local/info/r5rs.* "${AUXDIR}/edwin/info/."
+    ${INSTALL_DATA} /usr/local/info/dir "${AUXDIR}/edwin/info/."
+    ${INSTALL_DATA} /usr/local/info/r4rs.* "${AUXDIR}/edwin/info/."
+    ${INSTALL_DATA} /usr/local/info/r5rs.* "${AUXDIR}/edwin/info/."
 
-ALL_BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
-case ${TYPE} in
-std)
-    for BAND in ${ALL_BANDS}; do
-	case "${BAND}" in
-	"runtime.com"|"all.com")
-	    ;;
-	*)
-	    rm -f "${AUXDIR}/${BAND}"
-	    ;;
-	esac
-    done
-    ;;
-all)
-    ;;
-6001)
-    for BAND in ${ALL_BANDS}; do
-	case "${BAND}" in
-	"6001.com")
-	    ;;
-	*)
-	    rm -f "${AUXDIR}/${BAND}"
-	    ;;
-	esac
-    done
-    ;;
-scmutils)
-    for BAND in ${ALL_BANDS}; do
-	rm -f "${AUXDIR}/${BAND}"
-    done
-    ;;
-esac
-
-#
-# Scmutils
-#
-if [ ${TYPE} = scmutils ]; then
-    MECH_SOURCE=/sw/scmutils
-    MECH_DEST=${IMAGE_DIR}/usr/local/scmutils
-    ${MKINSTALLDIRS} ${MECH_DEST}
-
-    for DIR in $(cd ${MECH_SOURCE};find src -type d -print); do
-	${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
-	for FILE in ${MECH_SOURCE}/${DIR}/*.scm \
-		    ${MECH_SOURCE}/${DIR}/*.doc \
-		    ${MECH_SOURCE}/${DIR}/*.c
-	do
-	    [ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+    ALL_BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
+    case ${TYPE} in
+    std)
+	for BAND in ${ALL_BANDS}; do
+	    case "${BAND}" in
+	    "runtime.com"|"all.com")
+		;;
+	    *)
+		rm -f "${AUXDIR}/${BAND}"
+		;;
+	    esac
 	done
-    done
-    ${INSTALL_DATA} ${MECH_SOURCE}/src/copyrigh ${MECH_DEST}/src/copyright
-    ${INSTALL_DATA} ${MECH_SOURCE}/src/general/binio/transcript ${MECH_DEST}/src/general/binio/.
-    rm -rf ${MECH_DEST}/src/commentary
-    rm -rf ${MECH_DEST}/src/poly/zuras
-
-    for DIR in $(cd ${MECH_SOURCE};find linux -type d -print); do
-	${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
-	for FILE in ${MECH_SOURCE}/${DIR}/*.bci; do
-	    [ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	;;
+    all)
+	;;
+    6001)
+	for BAND in ${ALL_BANDS}; do
+	    case "${BAND}" in
+	    "6001.com")
+		;;
+	    *)
+		rm -f "${AUXDIR}/${BAND}"
+		;;
+	    esac
 	done
-    done
-    rm -rf ${MECH_DEST}/linux/commentary
+	;;
+    scmutils)
+	for BAND in ${ALL_BANDS}; do
+	    rm -f "${AUXDIR}/${BAND}"
+	done
+	;;
+    esac
 
-    ${INSTALL_DATA} ${MECH_SOURCE}/dist/edwin-mechanics.com ${MECH_DEST}/linux/.
-    ln -s ../../scmutils/linux/edwin-mechanics.com ${AUXDIR}/.
-    ${INSTALL_DATA} ${MECH_SOURCE}/linux/c-utils/* ${MECH_DEST}/linux/c-utils/.
+    #
+    # Scmutils
+    #
+    if [ ${TYPE} = scmutils ]; then
+	MECH_SOURCE=/sw/scmutils
+	MECH_DEST=${IMAGE_DIR}/usr/local/scmutils
+	${MKINSTALLDIRS} ${MECH_DEST}
 
-    ${MKINSTALLDIRS} ${MECH_DEST}/manual
-    ${INSTALL_DATA} ${MECH_SOURCE}/manual/refman.txt ${MECH_DEST}/manual/.
+	for DIR in $(cd ${MECH_SOURCE};find src -type d -print); do
+	    ${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
+	    for FILE in ${MECH_SOURCE}/${DIR}/*.scm \
+			${MECH_SOURCE}/${DIR}/*.doc \
+			${MECH_SOURCE}/${DIR}/*.c
+	    do
+		[ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	    done
+	done
+	${INSTALL_DATA} ${MECH_SOURCE}/src/copyrigh ${MECH_DEST}/src/copyright
+	${INSTALL_DATA} ${MECH_SOURCE}/src/general/binio/transcript \
+	    ${MECH_DEST}/src/general/binio/.
+	rm -rf ${MECH_DEST}/src/commentary
+	rm -rf ${MECH_DEST}/src/poly/zuras
 
-    ${INSTALL} ${MECH_SOURCE}/dist/mechanics ${BINDIR}/.
-    ${INSTALL} ${MECH_SOURCE}/dist/edwin ${BINDIR}/.
+	for DIR in $(cd ${MECH_SOURCE};find linux -type d -print); do
+	    ${MKINSTALLDIRS} ${MECH_DEST}/${DIR}
+	    for FILE in ${MECH_SOURCE}/${DIR}/*.bci; do
+		[ -f ${FILE} ] && ${INSTALL_DATA} ${FILE} ${MECH_DEST}/${DIR}/.
+	    done
+	done
+	rm -rf ${MECH_DEST}/linux/commentary
+
+	${INSTALL_DATA} ${MECH_SOURCE}/dist/edwin-mechanics.com \
+	    ${MECH_DEST}/linux/.
+	ln -s ../../scmutils/linux/edwin-mechanics.com ${AUXDIR}/.
+	${INSTALL_DATA} ${MECH_SOURCE}/linux/c-utils/* \
+	    ${MECH_DEST}/linux/c-utils/.
+
+	${MKINSTALLDIRS} ${MECH_DEST}/manual
+	${INSTALL_DATA} ${MECH_SOURCE}/manual/refman.txt ${MECH_DEST}/manual/.
+
+	${INSTALL} ${MECH_SOURCE}/dist/mechanics ${BINDIR}/.
+	${INSTALL} ${MECH_SOURCE}/dist/edwin ${BINDIR}/.
+    fi
+
+    #
+    # Adjust permissions
+    #
+    find ${IMAGE_DIR} -type f -print | xargs chmod og-w
+    find ${IMAGE_DIR} -type d -print | xargs chmod og-w
 fi
-
-#
-# Adjust permissions
-#
-find ${IMAGE_DIR} -type f -print | xargs chmod og-w
-find ${IMAGE_DIR} -type d -print | xargs chmod og-w
 
 make_tarfile ()
 {
-    tarfile=${1}.tar.gz
-    rm -f ${tarfile}
-    (cd ${IMAGE_DIR}/usr/local; tar cvzf ../../../${tarfile} *)
-    chmod 444 ${tarfile}
+    tarfile="${1}.tar.gz"
+    [ -e "${tarfile}" ] && rm -f "${tarfile}"
+    (cd ${IMAGE_DIR}/usr/local; tar cvzf "../../../${tarfile}" *)
+    chmod 444 "${tarfile}"
 }
 
 if [ "${DESTINATION}" = "" ]; then
   PRE="$(get_release_prefix)-ix86"
   make_tarfile "${PRE}-gnu-linux"
-  ${INSTALL} /scheme/v7/dist/freebsd-bin/* ${BINDIR}/.
+  ${INSTALL} /scheme/v7/dist/freebsd-bin/* "${BINDIR}/."
   make_tarfile "${PRE}-freebsd"
 else
-  make_tarfile ${DESTINATION}
+  make_tarfile "${DESTINATION}"
 fi
 
-rm -rf ${IMAGE_DIR}
+rm -rf "${IMAGE_DIR}"
