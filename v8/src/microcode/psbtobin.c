@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.40 1990/01/23 08:30:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.41 1990/04/17 21:56:23 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -68,10 +68,10 @@ Write_Data(Count, From_Where)
      long Count;
      SCHEME_OBJECT *From_Where;
 {
-  extern int fwrite();
-
-  return (fwrite(((char *) From_Where), sizeof(SCHEME_OBJECT),
-		 Count, internal_file));
+  return (fwrite (((char *) From_Where),
+		  (sizeof (SCHEME_OBJECT)),
+		  Count,
+		  internal_file));
 }
 
 #include "fasl.h"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.36 1989/11/30 03:03:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.37 1990/04/17 21:55:47 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -53,9 +53,7 @@ Load_Data(Count, To_Where)
      long Count;
      FILE *To_Where;
 {
-  extern int fread();
-
-  return (fread(To_Where, sizeof(SCHEME_OBJECT), Count, stdin));
+  return (fread (To_Where, (sizeof (SCHEME_OBJECT)), Count, stdin));
 }
 
 long

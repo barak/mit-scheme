@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.44 1990/01/22 19:16:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.45 1990/04/17 21:56:00 cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -48,9 +48,7 @@ Load_Data(Count, To_Where)
      long Count;
      char *To_Where;
 {
-  extern int fread();
-
-  return (fread(To_Where, sizeof(SCHEME_OBJECT), Count, internal_file));
+  return (fread (To_Where, (sizeof (SCHEME_OBJECT)), Count, internal_file));
 }
 
 #define INHIBIT_FASL_VERSION_CHECK
