@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.1 1992/02/01 14:44:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules4.scm,v 1.2 1992/02/05 17:20:37 jinx Exp $
 $mc68020-Header: rules4.scm,v 4.12 90/05/03 15:17:38 GMT jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -99,9 +99,15 @@ MIT in each case. |#
 	 (interpreter-call-argument->machine-register! extension edx)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
+	 #|
 	 (CALL ,(if safe?
 		    entry:compiler-safe-reference-trap
-		    entry:compiler-reference-trap)))))
+		    entry:compiler-reference-trap))
+	 |#
+	 ,@(invoke-interface/call
+	    (if safe?
+		code:compiler-safe-reference-trap
+		code:compiler-reference-trap)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension) (? value))
@@ -113,7 +119,10 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@set-value
 	 ,@(clear-map!)
-	 (CALL ,entry:compiler-assignment-trap))))
+	 #|
+	 (CALL ,entry:compiler-assignment-trap)
+	 |#
+	 ,@(invoke-interface/call code:compiler-assignment-trap))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? extension))

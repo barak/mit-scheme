@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.3 1992/02/05 14:57:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.4 1992/02/05 17:21:48 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -355,6 +355,117 @@ MIT in each case. |#
 	      (MOV W ,target ,source-reference))))
       (else
        (error "Unknown expression type" (car expression))))))
+
+;;;; Named registers, codes, and entries
+
+(define reg:compiled-memtop
+  #|
+  (INST-EA (@RO ,regnum:regs-pointer ,(* 4 register-block/memtop-offset)))
+  |#
+  (INST-EA (@R ,regnum:regs-pointer)))
+
+(define reg:environment
+  (INST-EA (@RO ,regnum:regs-pointer
+		,(* 4 register-block/environment-offset))))
+
+(define reg:dynamic-link
+  (INST-EA (@RO ,regnum:regs-pointer
+		,(* 4 register-block/dynamic-link-offset))))
+
+(define reg:lexpr-primitive-arity
+  (INST-EA (@RO ,regnum:regs-pointer
+		,(* 4 register-block/lexpr-primitive-arity-offset))))
+
+(define reg:utility-arg-4
+  (INST-EA (@RO ,regnum:regs-pointer
+		,(* 4 register-block/utility-arg4-offset))))
+
+(let-syntax ((define-codes
+	       (macro (start . names)
+		 (define (loop names index)
+		   (if (null? names)
+		       '()
+		       (cons `(DEFINE-INTEGRABLE
+				,(symbol-append 'CODE:COMPILER-
+						(car names))
+				,index)
+			     (loop (cdr names) (1+ index)))))
+		 `(BEGIN ,@(loop names start)))))
+  (define-codes #x012
+    primitive-apply primitive-lexpr-apply
+    apply error lexpr-apply link
+    interrupt-closure interrupt-dlink interrupt-procedure 
+    interrupt-continuation interrupt-ic-procedure
+    assignment-trap cache-reference-apply
+    reference-trap safe-reference-trap unassigned?-trap
+    -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
+    access lookup safe-lookup unassigned? unbound?
+    set! define lookup-apply primitive-error
+    quotient remainder modulo))
+
+(define-integrable (invoke-interface code)
+  (LAP (MOV W (R ,eax) (& ,code))
+       (JMP ,entry:compiler-scheme-to-interface)))
+
+(define-integrable (invoke-interface/call code)
+  (LAP (MOV W (R ,eax) (& ,code))
+       (JSR ,entry:compiler-scheme-to-interface/call)))
+
+(let-syntax ((define-entries
+	       (macro (start . names)
+		 (define (loop names index)
+		   (if (null? names)
+		       '()
+		       (cons `(DEFINE-INTEGRABLE
+				,(symbol-append 'ENTRY:COMPILER-
+						(car names))
+				(INST-EA (@RO ,regnum:regs-pointer ,index)))
+			     (loop (cdr names) (+ index 4)))))
+		 `(BEGIN ,@(loop names start)))))
+  (define-entries (* 16 4)
+    scheme-to-interface			; Main entry point (only one necessary)
+    scheme-to-interface/call		; Used by rules3&4, for convenience.
+    trampoline-to-interface		; Used by trampolines, for convenience.
+    interrupt-procedure
+    interrupt-continuation
+    interrupt-closure
+    interrupt-dlink
+    #|
+    ;; Not yet available
+    primitive-apply
+    primitive-lexpr-apply
+    assignment-trap
+    reference-trap
+    safe-reference-trap
+    &+
+    &-
+    &*
+    &/
+    &=
+    &<
+    &>
+    1+
+    -1+
+    zero?
+    positive?
+    negative?
+    quotient
+    remainder
+    modulo
+    shortcircuit-apply			; Used by rules3, for speed.
+    shortcircuit-apply-size-1		; Small frames, save time and space.
+    shortcircuit-apply-size-2
+    shortcircuit-apply-size-3
+    shortcircuit-apply-size-4
+    shortcircuit-apply-size-5
+    shortcircuit-apply-size-6
+    shortcircuit-apply-size-7
+    shortcircuit-apply-size-8
+    link
+    error
+    primitive-error
+    |#
+    ))
 
 ;;; *** Here ***
 
