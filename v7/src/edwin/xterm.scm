@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.31 1992/02/25 22:41:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.32 1992/03/14 00:01:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -57,6 +57,7 @@
   (x-display-sync 2)
   (x-window-beep 1)
   (x-window-display 1)
+  (x-window-raise 1)
   (x-window-set-event-mask 2)
   (x-window-set-icon-name 2)
   (x-window-set-input-focus 2)
@@ -101,11 +102,12 @@
 (define-integrable event-type:map 11)
 (define-integrable event-type:unmap 12)
 (define-integrable event-type:take-focus 13)
-(define-integrable number-of-event-types 14)
+(define-integrable event-type:visibility 14)
+(define-integrable number-of-event-types 15)
 
 ;; This mask contains button-down, button-up, configure, focus-in,
-;; key-press, expose, destroy, map, and unmap.
-(define-integrable event-mask #x1e57)
+;; key-press, expose, destroy, map, unmap, and visibility.
+(define-integrable event-mask #x5e57)
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm display))
@@ -172,7 +174,7 @@
 (define (xterm->screen xterm)
   (let loop ((screens screen-list))
     (and (not (null? screens))
-	 (if (eqv? xterm (screen-xterm (car screens)))
+	 (if (eq? xterm (screen-xterm (car screens)))
 	     (car screens)
 	     (loop (cdr screens))))))
 
@@ -255,6 +257,17 @@
 
 ;;;; Event Handling
 
+(define x-screen-auto-raise
+  false)
+
+(define-integrable (maybe-raise-screen)
+  (if x-screen-auto-raise
+      (let ((screen (selected-screen)))
+	(if (let ((visibility (screen-visibility screen)))
+	      (or (eq? visibility 'OBSCURED)
+		  (eq? visibility 'PARTIALLY-OBSCURED)))
+	    (x-window-raise (screen-xterm screen))))))
+
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
@@ -277,6 +290,7 @@
 	     (set! end (string-length string))
 	     (set! start end)
 	     (cond ((fix:= end 0)
+		    (maybe-raise-screen)
 		    (x-make-special-key (vector-ref event 4)
 					(vector-ref event 3)))
 		   ((fix:= end 1)
@@ -290,7 +304,9 @@
 			  (begin
 			    (signal-interrupt!)
 			    false)
-			  char)))
+			  (begin
+			    (maybe-raise-screen)
+			    char))))
 		   (else
 		    (let ((i
 			   (and signal-interrupts?
@@ -302,9 +318,11 @@
 			    (and (fix:< start end)
 				 (let ((result (string-ref string start)))
 				   (set! start (fix:+ start 1))
+				   (maybe-raise-screen)
 				   result)))
 			  (begin
 			    (set! start 1)
+			    (maybe-raise-screen)
 			    (string-ref string 0)))))))))
       (let ((guarantee-result
 	     (lambda ()
@@ -530,11 +548,25 @@
     event
     (and (not (screen-deleted? screen))
 	 (begin
-	   (set-screen-visibility! screen 'INVISIBLE)
+	   (set-screen-visibility! screen 'UNMAPPED)
 	   (and (selected-screen? screen)
 		(let ((screen (other-screen screen false)))
 		  (and screen
 		       (make-input-event select-screen screen))))))))
+
+(define-event-handler event-type:visibility
+  (lambda (screen event)
+    (let ((old-visibility (screen-visibility screen)))
+      (if (not (eq? old-visibility 'DELETED))
+	  (begin
+	    (case (vector-ref event 2)
+	      ((0) (set-screen-visibility! screen 'VISIBLE))
+	      ((1) (set-screen-visibility! screen 'PARTIALLY-OBSCURED))
+	      ((2) (set-screen-visibility! screen 'OBSCURED)))
+	     (if (or (eq? old-visibility 'UNMAPPED)
+		     (eq? old-visibility 'OBSCURED))
+		 (update-screen! screen true)))))
+    false))
 
 (define-event-handler event-type:take-focus
   (lambda (screen event)
