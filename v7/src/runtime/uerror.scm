@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.21 1991/03/10 22:42:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.22 1991/03/11 23:33:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -647,6 +647,7 @@ MIT in each case. |#
 	      (let ((condition
 		     (make-condition
 		      continuation
+		      'BOUND-RESTARTS
 		      operator
 		      operands
 		      (let ((system-call (vector-ref error-code 2)))
