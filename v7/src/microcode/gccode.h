@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.47 1993/03/10 17:19:44 cph Exp $
+$Id: gccode.h,v 9.48 1993/06/24 04:48:12 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -184,13 +184,11 @@ do									\
 #define GC_BAD_TYPE(name)						\
 do									\
 {									\
-  fprintf								\
-    (stderr,								\
-     "\n%s: bad type code (0x%02x) 0x%lx",				\
+  outf_error ("\n%s: bad type code (0x%02x) 0x%lx",			\
      (name),								\
      (OBJECT_TYPE (Temp)),						\
      Temp);								\
-  fprintf (stderr, " -- Treating as non-pointer.\n");			\
+  outf_error (" -- Treating as non-pointer.\n");			\
   /* Fall through */							\
 } while (0)
 
@@ -346,18 +344,18 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
 	     ? ((Constant_Space <= Scan) && (Scan < Constant_Top))	\
 	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
     {									\
-      fprintf (stderr, "\nBad transport_vector limit:\n");		\
-      fprintf (stderr, "  limit = 0x%lx\n", ((long) Scan));		\
-      fprintf (stderr, "  Scan = 0x%lx\n", ((long) Saved_Scan));	\
-      fprintf (stderr, "  To = 0x%lx\n", ((long) To));			\
-      fflush (stderr);							\
+      outf_fatal ("\nBad transport_vector limit:\n");			\
+      outf_fatal ("  limit = 0x%lx\n", ((long) Scan));			\
+      outf_fatal ("  Scan = 0x%lx\n", ((long) Saved_Scan));		\
+      outf_fatal ("  To = 0x%lx\n", ((long) To));			\
+      outf_flush_fatal ();						\
       abort ();								\
     }									\
   if ((OBJECT_DATUM (*Old)) > 65536)					\
     {									\
-      fprintf (stderr, "\nWarning: copying large vector: %d\n",		\
-	       (OBJECT_DATUM (*Old)));					\
-      fflush (stderr);							\
+      outf_error ("\nWarning: copying large vector: %d\n",		\
+	          (OBJECT_DATUM (*Old)));				\
+      outf_flush_error ();						\
     }									\
 }
 

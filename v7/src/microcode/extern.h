@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.49 1992/09/26 02:54:58 cph Exp $
+$Id: extern.h,v 9.50 1993/06/24 04:44:10 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,7 +85,12 @@ extern int local_circle [];
 
 /* The register block */
 
+#ifdef WINNT
+extern SCHEME_OBJECT *RegistersPtr;
+#define Registers RegistersPtr
+#else
 extern SCHEME_OBJECT Registers [];
+#endif
 
 extern SCHEME_OBJECT
  * Ext_History,		/* History register */
@@ -257,7 +262,7 @@ extern SCHEME_OBJECT EXFUN (Find_State_Space, (SCHEME_OBJECT));
 
 extern void EXFUN (debug_edit_flags, (void));
 
-extern void EXFUN (Back_Trace, (FILE *));
+extern void EXFUN (Back_Trace, (outf_channel));
 extern void EXFUN (Show_Env, (SCHEME_OBJECT));
 extern void EXFUN (Show_Pure, (void));
 extern void EXFUN (Print_Return, (char *));

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.67 1992/11/24 01:10:35 gjr Exp $
+$Id: fasload.c,v 9.68 1993/06/24 04:44:55 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -227,6 +227,7 @@ DEFUN (read_file_start, (file_name, from_band_load),
   Tchannel channel;
 
   channel = (OS_open_load_file (file_name));
+  
   if (Per_File)
   {
     debug_edit_flags ();
@@ -344,10 +345,10 @@ DEFUN (Relocate, (P), long P)
   }
   else
   {
-    printf ("Pointer out of range: 0x%lx\n", P);
+    outf_console ("Pointer out of range: 0x%lx\n", P);
     if (!Warned)
     {
-      printf ("Heap: %lx-%lx, Constant: %lx-%lx, Stack: ?-0x%lx\n",
+      outf_console ("Heap: %lx-%lx, Constant: %lx-%lx, Stack: ?-0x%lx\n",
 	      ((long) Heap_Base), ((long) Dumped_Heap_Top),
 	      ((long) Const_Base), ((long) Dumped_Constant_Top),
 	      ((long) Dumped_Stack_Top));
@@ -357,7 +358,7 @@ DEFUN (Relocate, (P), long P)
   }
   if (Reloc_Debug)
   {
-    printf ("0x%06lx -> 0x%06lx\n", P, ((long) Result));
+    outf_console ("0x%06lx -> 0x%06lx\n", P, ((long) Result));
   }
   return (Result);
 }
@@ -415,7 +416,7 @@ DEFUN (Relocate_Block, (Scan, Stop_At),
 
   if (Reloc_Debug)
   {
-    fprintf (stderr,
+    outf_error (
 	     "\nRelocate_Block: block = 0x%lx, length = 0x%lx, end = 0x%lx.\n",
 	     ((long) Scan), ((long) ((Stop_At - Scan) - 1)), ((long) Stop_At));
   }
@@ -626,7 +627,7 @@ DEFUN (Intern_Block, (Next_Pointer, Stop_At),
 {
   if (Reloc_Debug)
   {
-    printf ("Interning a block.\n");
+    outf_console ("Interning a block.\n");
   }
 
   while (Next_Pointer < Stop_At)
@@ -673,7 +674,7 @@ DEFUN (Intern_Block, (Next_Pointer, Stop_At),
   }
   if (Reloc_Debug)
   {
-    printf ("Done interning block.\n");
+    outf_console ("Done interning block.\n");
   }
   return;
 }
@@ -764,7 +765,7 @@ DEFUN (load_file, (mode), int mode)
     /* We need to relocate.  Oh well. */
     if (Reloc_Debug)
     {
-      printf ("heap_relocation = %ld = %lx; const_relocation = %ld = %lx\n",
+      outf_console ("heap_relocation = %ld = %lx; const_relocation = %ld = %lx\n",
 	      ((long) heap_relocation), ((long) heap_relocation),
 	      ((long) const_relocation), ((long) const_relocation));
     }
@@ -877,7 +878,7 @@ DEFUN (add_reload_cleanup, (cleanup_procedure), Tcleanup cleanup_procedure)
       (* ((Tcleanup *) (PTRVEC_LOC (reload_cleanups, 0)))) = cleanup_procedure;
     }
   else
-    ptrvec_adjoin (reload_cleanups, cleanup_procedure);
+    ptrvec_adjoin (reload_cleanups, (PTR) cleanup_procedure);
 }
 
 void
@@ -894,9 +895,8 @@ DEFUN_VOID (execute_reload_cleanups)
 void
 DEFUN_VOID (compiler_reset_error)
 {
-  fprintf (stderr,
-	   "\ncompiler_reset_error: The band being restored and\n");
-  fprintf (stderr,
+  outf_fatal ("\ncompiler_reset_error: The band being restored and\n");
+  outf_fatal (
 	   "the compiled code interface in this microcode are inconsistent.\n");
   Microcode_Termination (TERM_COMPILER_DEATH);
 }
@@ -946,24 +946,23 @@ DEFUN (terminate_band_load, (ap), PTR ap)
   {
     int abort_value = (abort_to_interpreter_argument ());
     if (abort_value > 0)
-      fprintf (stderr, "Error %ld (%s)",
+      outf_fatal ("Error %ld (%s)",
 	       ((long) abort_value),
 	       (Error_Names [abort_value]));
     else
-      fprintf (stderr, "Abort %ld (%s)",
+      outf_fatal ("Abort %ld (%s)",
 	       ((long) abort_value),
 	       (Abort_Names [(-abort_value) - 1]));
   }
-  fputs (" past the point of no return.\n", stderr);
+  outf_fatal (" past the point of no return.\n");
   {
     char * band_name = (* ((char **) ap));
     if (band_name != 0)
       {
-	fprintf (stderr, "band-name = \"%s\".\n", band_name);
+	outf_fatal ("band-name = \"%s\".\n", band_name);
 	free (band_name);
       }
   }
-  fflush (stderr);
   END_BAND_LOAD (false, true);
   Microcode_Termination (TERM_DISK_RESTORE);
   /*NOTREACHED*/
@@ -1089,7 +1088,7 @@ DEFUN_VOID (Finish_String_Inversion)
       Count = 4 * (Count - 2) + (OBJECT_TYPE (String_Chain)) - MAGIC_OFFSET;
       if (Reloc_Debug)
       {
-	printf ("String at 0x%lx: restoring length of %ld.\n",
+	outf_console ("String at 0x%lx: restoring length of %ld.\n",
 		((long) (OBJECT_ADDRESS (String_Chain))),
 		((long) Count));
       }
@@ -1101,7 +1100,7 @@ DEFUN_VOID (Finish_String_Inversion)
   return;
 }
 
-#define print_char(C) printf (((C < ' ') || (C > '|')) ?	\
+#define print_char(C) outf_console (((C < ' ') || (C > '|')) ?	\
 			      "\\%03o" : "%c", (C && UCHAR_MAX));
 
 void
@@ -1127,16 +1126,16 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
 
     if (Reloc_Debug)
     {
-      printf ("\nString at 0x%lx with %ld characters",
+      outf_console ("\nString at 0x%lx with %ld characters",
 	      ((long) Orig_Pointer),
 	      ((long) (Orig_Pointer[STRING_LENGTH_INDEX])));
     }
 
     if (old_size != new_size)
     {
-      printf ("\nWord count changed from %ld to %ld: ",
-	      ((long) old_size), ((long) new_size));
-      printf ("\nWhich, of course, is impossible!!\n");
+      outf_fatal ("\nWord count changed from %ld to %ld: ",
+	          ((long) old_size), ((long) new_size));
+      outf_fatal ("\nWhich, of course, is impossible!!\n");
       Microcode_Termination (TERM_EXIT);
     }
 
@@ -1161,7 +1160,7 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
     Count = (OBJECT_DATUM (Orig_Pointer[STRING_HEADER])) - 1;
     if (Reloc_Debug)
     {
-       printf ("\nCell count = %ld\n", ((long) Count));
+       outf_console ("\nCell count = %ld\n", ((long) Count));
      }
     Pointer_Address = &(Orig_Pointer[STRING_CHARS]);
     To_Char = (char *) Pointer_Address;
@@ -1188,7 +1187,7 @@ DEFUN (String_Inversion, (Orig_Pointer), SCHEME_OBJECT * Orig_Pointer)
   }
   if (Reloc_Debug)
   {
-    printf ("\n");
+    outf_console ("\n");
   }
   return;
 }

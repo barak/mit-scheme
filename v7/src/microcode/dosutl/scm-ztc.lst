@@ -4,7 +4,7 @@ bigprm.obj
 bitstr.obj
 boot.obj
 char.obj
-cmpi386.obj
+cmpauxmd.obj
 cmpint.obj
 comutl.obj
 daemon.obj
@@ -30,6 +30,7 @@ obstack.obj
 option.obj
 osscheme.obj
 ostty.obj
+outf.obj
 prim.obj
 primutl.obj
 prmcon.obj

@@ -1,4 +1,4 @@
-/* Copyright (C) 1990-1992 Free Software Foundation, Inc.
+/* Copyright (C) 1990-1993 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,9 +14,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/error.c,v 1.4 1993/02/22 21:25:32 gjr Exp $ */
+/* $Id: error.c,v 1.5 1993/06/24 04:42:06 gjr Exp $ */
 
 #include <stdio.h>
+#include "outf.h"
 #include "dstack.h"
 
 static PTR
@@ -26,8 +27,8 @@ DEFUN (xmalloc, (length), unsigned int length)
   PTR result = (malloc (length));
   if (result == 0)
     {
-      fputs ("malloc: memory allocation failed\n", stderr);
-      fflush (stderr);
+      outf_fatal ("malloc: memory allocation failed\n");
+      outf_flush_fatal ();
       abort ();
     }
   return (result);

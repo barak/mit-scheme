@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.40 1993/03/10 17:19:52 cph Exp $
+$Id: gcloop.c,v 9.41 1993/06/24 04:49:14 gjr Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -105,7 +105,7 @@ static int gc_scan_history_index;
       || ((gc_scan_trap != 0) && (Scan >= gc_scan_trap))		\
       || ((gc_free_trap != 0) && (To >= gc_free_trap)))			\
     {									\
-      fprintf(stderr, "\nGCLoop: trap.\n");				\
+      outf_error ("\nGCLoop: trap.\n");					\
       abort ();								\
     }									\
 }

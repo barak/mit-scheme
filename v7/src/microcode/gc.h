@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: gc.h,v 9.32 1992/09/26 02:54:59 cph Exp $
+$Id: gc.h,v 9.33 1993/06/24 04:45:49 gjr Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,7 +79,7 @@ MIT in each case. */
  */
 
 #define INVALID_TYPE_CODE(TC)						\
-  (fprintf(stderr, "\nGC_Type_Code: Bad Type code = 0x%02x\n", TC),	\
+  (outf_fatal  ("\nGC_Type_Code: Bad Type code = 0x%02x\n", TC),	\
    Microcode_Termination(TERM_INVALID_TYPE_CODE),			\
    GC_Undefined)
 

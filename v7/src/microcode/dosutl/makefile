@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.4 1992/09/30 14:37:56 jinx Exp $
+###	$Id: makefile,v 1.5 1993/06/24 04:38:08 gjr Exp $
 ###
-###	Copyright (c) 1992 Massachusetts Institute of Technology
+###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -39,20 +39,19 @@
 
 ####	 Makefile for Scheme on DOS
 
-TERMCAP_OBJECTS = dostterm.obj tparam.obj # terminfo.obj
-TERMCAP_SOURCES = dostterm.c tparam.c # terminfo.c
-TERMCAP_LIBS = # -lcurses
-GRAPHICS_SOURCES = dosfg.c # starbase.c
-GRAPHICS_OBJECTS = dosfg.obj # starbase.obj
-GRAPHICS_LIBS = fgp.lib # -lsb1 -lsb2
+TERMCAP_OBJECTS = dostterm.obj tparam.obj
+TERMCAP_SOURCES = dostterm.c tparam.c
+TERMCAP_LIBS =
+GRAPHICS_SOURCES = # dosfg.c
+GRAPHICS_OBJECTS = # dosfg.obj
+GRAPHICS_LIBS = # fgp.lib
 MACHINE_SWITCHES = -3 -mx -DNO_CONST -Di386
-MACHINE_SOURCES = cmpint.c cmpi386.asm
-MACHINE_OBJECTS = cmpint.obj cmpi386.obj
-GC_HEAD_FILES = gccode.h cmpgc.h cmpint2.h cmpi386.h
+MACHINE_SOURCES = cmpint.c cmpauxmd.asm
+MACHINE_OBJECTS = cmpint.obj cmpauxmd.obj
+GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 USER_PRIM_SOURCES = dosint10.c dosi10.asm dosx32.c
 USER_PRIM_OBJECTS = dosint10.obj dosi10.obj dosx32.obj
 USER_LIBS =
-BINDIR = \scheme\microcode
 CC = ztc
 M4 = # m4
 AS = mlx
@@ -103,6 +102,7 @@ obstack.c \
 option.c \
 osscheme.c \
 ostty.c \
+outf.c \
 prim.c \
 primutl.c \
 prmcon.c \
@@ -140,7 +140,6 @@ dosenv.c \
 dosfile.c \
 dosio.c \
 dosconio.c \
-dosprm.c \
 dostty.c \
 dostop.c \
 dosutil.c \
@@ -161,7 +160,6 @@ dosenv.obj \
 dosfile.obj \
 dosio.obj \
 dosconio.obj \
-dosprm.obj \
 dostty.obj \
 dostop.obj \
 dosutil.obj \
@@ -219,6 +217,7 @@ obstack.obj \
 option.obj \
 osscheme.obj \
 ostty.obj \
+outf.obj \
 prim.obj \
 primutl.obj \
 prmcon.obj \
@@ -284,7 +283,7 @@ breakup.exe : breakup.obj
 wsize.exe : wsize.obj
 	$(CC) wsize.obj $(MACHINE_SWITCHES) $(LDFLAGS)
 ppband.exe : ppband.obj
-	$(CC) ppband.obj $(MACHINE_SWITCHES) $(LDFLAG)
+	$(CC) ppband.obj $(MACHINE_SWITCHES) $(LDFLAGS) $(FLASHTEK)
 
 usrdef.c : $(SCHEME_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) dosconio.c usrdef.tch findprim.exe scm-prm.lst
 	rm -f usrdef.c
@@ -314,7 +313,7 @@ scheme.tch : scheme.h oscond.h ansidecl.h dstack.h obstack.h config.h \
 	rm -f scheme.tch
 	touch scheme.tch
 
-psbmap.tch : config.h object.h bignum.h bignumint.h bitstr.h types.h \
+psbmap.tch : config.h object.h bignum.h bignmint.h bitstr.h types.h \
 	sdata.h const.h psbmap.h $(GC_HEAD_FILES) comlin.h comlin.c
 	rm -f psbmap.tch
 	touch psbmap.tch
@@ -351,7 +350,7 @@ purify.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 purutl.obj : scheme.tch prims.h $(GC_HEAD_FILES) zones.h
 comutl.obj : scheme.tch prims.h
 artutl.obj : scheme.tch
-bignum.obj : scheme.tch bignumint.h limits.h
+bignum.obj : scheme.tch bignmint.h limits.h
 bigprm.obj flonum.obj intprm.obj : scheme.tch prims.h zones.h
 generic.obj : scheme.tch prims.h
 fixnum.obj : scheme.tch prims.h mul.c
@@ -413,7 +412,7 @@ dostrap.obj: dostrap.h dosexcp.h $(DOS_DEPENDENCIES)
 dossys.obj: dossys.h
 prdosenv.obj : $(DOS_DEPENDENCIES)
 prdosfs.obj : $(DOS_DEPENDENCIES) scheme.h prims.h osfs.h
-cmpi386.obj : cmpi386.asm
+cmpauxmd.obj : cmpauxmd.asm
 dosexcp.obj : dosexcp.h dossys.h dosinsn.h
 doskbd.obj : doskbd.h dossys.h dosinsn.h
 dosasutl.obj : dosasutl.asm
@@ -423,12 +422,16 @@ dosint10.obj: dosint10.c dosint10.h
 dosi10.obj: dosi10.asm
 dosx32.obj: dosx32.c
 
-mswload.exe: mswload.obj mswload.def mswload.res
-  blinkx /CO /MO mswload.obj,mswload.exe,mswload.map,,mswload.def,mswload.res
+clean:
+  del *.obj
+  del *.exe
 
-mswload.res: mswload.rc
-  zrc -V mswload.rc
+unconfig:
+  del cmpintmd.h
+  del cmpauxmd.asm
+  del float.h
+  del limits.h
+  del makefile
+  del *.lst
 
-mswload.obj: mswload.c mswload.h
-  ztc -ms -W1 -bx -o -c -g mswload.c
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.5 1993/04/19 08:31:05 cph Exp $
+$Id: dosio.c,v 1.6 1993/06/24 04:32:16 gjr Exp $
 
-Copyright (c) 1992-93 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -410,17 +410,17 @@ DEFUN (OS_terminal_get_ospeed, (channel), Tchannel channel)
 }
 
 void
-DEFUN (terminal_state_set_ospeed, (s, b),
-       Ttty_state * s AND
-       unsigned int b)
+DEFUN (OS_terminal_set_ispeed, (channel, baud),
+       Tchannel channel AND
+       unsigned int baud)
 {
   error_unimplemented_primitive ();
 }
 
 void
-DEFUN (terminal_state_set_ispeed, (s, b),
-       Ttty_state * s AND
-       unsigned int b)
+DEFUN (OS_terminal_set_ospeed, (channel, baud),
+       Tchannel channel AND
+       unsigned int baud)
 {
   error_unimplemented_primitive ();
 }
