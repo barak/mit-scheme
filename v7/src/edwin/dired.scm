@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.142 1994/03/10 00:50:31 cph Exp $
+;;;	$Id: dired.scm,v 1.143 1994/03/11 05:23:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -493,19 +493,7 @@ Special value `always' suppresses confirmation."
 	 (pathname-directory
 	  (cleanup-pop-up-buffers
 	   (lambda ()
-	     (let ((buffer (temporary-buffer " *dired-files*")))
-	       (write-strings-densely (map (lambda (filename)
-					     (file-namestring (car filename)))
-					   filenames)
-				      (mark->output-port (buffer-point buffer))
-				      (window-x-size (current-window)))
-	       (set-buffer-point! buffer (buffer-start buffer))
-	       (buffer-not-modified! buffer)
-	       (set-buffer-read-only! buffer)
-	       (define-variable-local-value! buffer
-		   (ref-variable-object truncate-partial-width-windows)
-		 #f)
-	       (pop-up-buffer buffer #f))
+	     (dired-pop-up-files-window filenames)
 	     (prompt-for-existing-directory
 	      (string-append (string-capitalize singular-verb)
 			     " these files to directory")
@@ -703,35 +691,40 @@ Actions controlled by variables list-directory-brief-switches
 	(set-dired-point! lstart))))
 
 (define (dired-kill-files)
-  (let ((filenames (dired-marked-files dired-flag-delete-char)))
-    (if (not (null? filenames))
-	(let ((buffer (temporary-buffer " *Deletions*")))
-	  (write-strings-densely
-	   (map (lambda (filename)
-		  (file-namestring (car filename)))
-		filenames)
-	   (mark->output-port (buffer-point buffer))
-	   (window-x-size (current-window)))
-	  (set-buffer-point! buffer (buffer-start buffer))
-	  (buffer-not-modified! buffer)
-	  (set-buffer-read-only! buffer)
-	  (if (with-selected-buffer buffer
-		(lambda ()
-		  (local-set-variable! truncate-partial-width-windows false)
-		  (prompt-for-yes-or-no? "Delete these files")))
-	      ;; Must delete the files in reverse order so that the
-	      ;; non-permanent marks remain valid as lines are
-	      ;; deleted.
-	      (let loop ((filenames (reverse! filenames)) (failures '()))
-		(cond ((not (null? filenames))
-		       (loop (cdr filenames)
-			     (if (dired-kill-file! (car filenames))
-				 failures
-				 (cons (file-namestring (caar filenames))
-				       failures))))
-		      ((not (null? failures))
-		       (message "Deletions failed: " failures)))))
-	  (kill-buffer buffer)))))
+  (let ((filenames (dired-marked-files #f dired-flag-delete-char)))
+    (if (and (not (null? filenames))
+	     (cleanup-pop-up-buffers
+	      (lambda ()
+		(dired-pop-up-files-window filenames)
+		(prompt-for-yes-or-no? "Delete these files"))))
+	;; Must delete the files in reverse order so that the
+	;; non-permanent marks remain valid as lines are deleted.
+	(let loop ((filenames (reverse! filenames)) (failures '()))
+	  (cond ((not (null? filenames))
+		 (loop (cdr filenames)
+		       (if (dired-kill-file! (car filenames))
+			   failures
+			   (cons (file-namestring (caar filenames))
+				 failures))))
+		((not (null? failures))
+		 (message "Deletions failed: " failures)))))))
+
+(define (dired-pop-up-files-window filenames)
+  (let ((buffer (temporary-buffer " *dired-files*")))
+    (define-variable-local-value! buffer
+	(ref-variable-object truncate-partial-width-windows)
+      #f)
+    (let ((window (pop-up-buffer buffer #f)))
+      (write-strings-densely (map (lambda (filename)
+				    (file-namestring (car filename)))
+				  filenames)
+			     (mark->output-port (buffer-point buffer))
+			     (window-x-size
+			      (or window (car (buffer-windows buffer)))))
+      (set-buffer-point! buffer (buffer-start buffer))
+      (buffer-not-modified! buffer)
+      (set-buffer-read-only! buffer)
+      (if window (shrink-window-if-larger-than-buffer window)))))
 
 (define (dired-kill-file! filename)
   (let ((deleted?
