@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.33 1989/11/26 17:38:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.34 1990/01/20 07:29:47 cph Rel $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -56,14 +56,49 @@ extern SCHEME_OBJECT *GCLoop();
 }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
+#ifndef ENABLE_GC_DEBUGGING_TOOLS
+#define ENABLE_GC_DEBUGGING_TOOLS
+#endif
+#endif
+
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+
+#ifndef GC_SCAN_HISTORY_SIZE
+#define GC_SCAN_HISTORY_SIZE 1024
+#endif
 
 SCHEME_OBJECT
-  *gc_scan_trap = NULL,
-  *gc_free_trap = NULL,
-  gc_trap = MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE);
+  * gc_scan_trap = ((SCHEME_OBJECT *) 0),
+  * gc_free_trap = ((SCHEME_OBJECT *) 0),
+  gc_trap = (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_MAX_IMMEDIATE)),
+  * (gc_scan_history [GC_SCAN_HISTORY_SIZE]),
+  * (gc_to_history [GC_SCAN_HISTORY_SIZE]);
+
+static int gc_scan_history_index;
+
+#define INITIALIZE_GC_HISTORY()						\
+{									\
+  gc_scan_history_index = 0;						\
+  {									\
+    SCHEME_OBJECT ** scan = gc_scan_history;				\
+    SCHEME_OBJECT ** end = (scan + GC_SCAN_HISTORY_SIZE);		\
+    while (scan < end)							\
+      (*scan++) = ((SCHEME_OBJECT *) 0);				\
+  }									\
+  {									\
+    SCHEME_OBJECT ** scan = gc_to_history;				\
+    SCHEME_OBJECT ** end = (scan + GC_SCAN_HISTORY_SIZE);		\
+    while (scan < end)							\
+      (*scan++) = ((SCHEME_OBJECT *) 0);				\
+  }									\
+}
 
 #define HANDLE_GC_TRAP()						\
 {									\
+  (gc_scan_history [gc_scan_history_index]) = Scan;			\
+  (gc_to_history [gc_scan_history_index]) = To;				\
+  if ((++gc_scan_history_index) == GC_SCAN_HISTORY_SIZE)		\
+    gc_scan_history_index = 0;						\
   if ((Temp == gc_trap) ||						\
       (Scan == gc_scan_trap) ||						\
       (To == gc_free_trap))						\
@@ -74,6 +109,7 @@ SCHEME_OBJECT
 
 #else
 
+#define INITIALIZE_GC_HISTORY()
 #define HANDLE_GC_TRAP()
 
 #endif
@@ -85,6 +121,7 @@ GCLoop(Scan, To_Pointer)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
 
+  INITIALIZE_GC_HISTORY ();
   To = *To_Pointer;
   Low_Constant = Constant_Space;
   for ( ; Scan != To; Scan++)
