@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: expand.scm,v 1.2 1994/11/26 22:05:28 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -63,23 +63,41 @@ MIT in each case. |#
 (define-expander SET! (name value)
   `(SET! ,name ,(expand/expr value)))
 
+#|
 (define-expander LAMBDA (lambda-list body)
   (expand/rewrite/lambda lambda-list (expand/expr body)))
+|#
 
-(define (expand/rewrite/lambda lambda-list body)
-  (cond ((memq '#!AUX lambda-list)
-	 => (lambda (tail)
-	      (let ((rest (list-prefix lambda-list tail))
-		    (auxes (cdr tail)))
-		`(LAMBDA ,rest
-		   ,(if (null? auxes)
-			body
-			`(LET ,(lmap (lambda (aux)
-				       (list aux `(QUOTE ,%unassigned)))
-				     auxes)
-			   ,(expand/aux/sort auxes body)))))))
-	(else
-	 `(LAMBDA ,lambda-list ,body))))
+(define (expand/lambda form)
+  (expand/remember
+   (let ((lambda-list (lambda/formals form))
+	 (body (expand/expr (lambda/body form))))
+     (cond ((memq '#!AUX lambda-list)
+	    => (lambda (tail)
+		 (let ((rest (list-prefix lambda-list tail))
+		       (auxes (cdr tail)))
+		   (if (null? auxes)
+		       `(LAMBDA ,rest ,body)
+		       (let ((body*
+			      `(LET ,(lmap (lambda (aux)
+					     (list aux `(QUOTE ,%unassigned)))
+					   auxes)
+				 ,(expand/aux/sort auxes body))))
+			 (expand/split-block body* form)
+			 `(LAMBDA ,rest
+			    ,body*))))))
+	   (else
+	    `(LAMBDA ,lambda-list ,body))))
+   form))
+
+(define (expand/split-block new-form form)
+  (let ((info (code-rewrite/original-form/previous form)))
+    (and info
+	 (new-dbg-procedure? info)
+	 (expand/remember*
+	  new-form
+	  (new-dbg-expression/make2 false
+				    (new-dbg-procedure/block info))))))
 
 (define-expander LET (bindings body)
   (expand/let* expand/letify bindings body))
@@ -88,19 +106,9 @@ MIT in each case. |#
   `(DECLARE ,@anything))
 
 (define-expander CALL (rator cont #!rest rands)
-  (if (and (pair? rator) (eq? (car rator) 'LAMBDA))
-      (let ((result
-	     (let ((rator* (expand/rewrite/lambda (cadr rator) (caddr rator))))
-	       (expand/let* (lambda (bindings body)
-			      (expand/pseudo-letify rator bindings body))
-			    (expand/bindify (cadr rator*)
-					    (cons cont rands))
-			    (caddr rator*)))))
-	(expand/remember (cadr result) rator)
-	result)
-      `(CALL ,(expand/expr rator)
-	     ,(expand/expr cont)
-	     ,@(expand/expr* rands))))
+  `(CALL ,(expand/expr rator)
+	 ,(expand/expr cont)
+	 ,@(expand/expr* rands)))
 
 (define-expander BEGIN (#!rest actions)
   (expand/code-compress (expand/expr* actions)))
@@ -246,6 +254,9 @@ MIT in each case. |#
 
 (define (expand/remember new old)
   (code-rewrite/remember new old))
+
+(define (expand/remember* new old)
+  (code-rewrite/remember* new old))
 
 (define (expand/new-name prefix)
   (new-variable prefix))

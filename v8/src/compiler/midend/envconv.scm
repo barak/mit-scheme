@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.4 1994/11/26 00:23:24 jmiller Exp $
+$Id: envconv.scm,v 1.5 1994/11/26 22:06:52 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -116,38 +116,40 @@ MIT in each case. |#
     (envconv/new-reference env name `(SET! ,name ,value*))))
 
 (define (envconv/lambda env form name)
-  (let ((form*
-	 (let ((lambda-list (lambda/formals form))
-	       (body (lambda/body form)))
-	   (if (or (not (eq? (envconv/env/context env) 'TOP-LEVEL))
-		   (not *envconv/compile-by-procedures?*)
-		   *envconv/procedure-result?*
-		   (eq? form *envconv/top-level-program*))
-	       (envconv/lambda* 'ARBITRARY env lambda-list body)
-	       (envconv/compile-separately form name true env)))))
-    (envconv/remember form*
-		      form
-		      (if (LAMBDA/? form*)
-			  (let* ((body (lambda/body form*))
-				 (body-info (code-rewrite/original-form body)))
-			    (cond ((not body-info) false)
-				  ((new-dbg-procedure? body-info)
-				   (new-dbg-block/parent
-				    (new-dbg-procedure/block body-info)))
-				  (else
-				   (new-dbg-expression/block body-info))))
-			  (envconv/env/block env)))))
+  (let ((lambda-list (lambda/formals form))
+	(body (lambda/body form)))
+    (if (or (not (eq? (envconv/env/context env) 'TOP-LEVEL))
+	    (not *envconv/compile-by-procedures?*)
+	    *envconv/procedure-result?*
+	    (eq? form *envconv/top-level-program*))
+	(envconv/lambda* 'ARBITRARY env form)
+	(envconv/compile-separately form name true env))))
 
-
-(define (envconv/lambda* context* env lambda-list body)
-  (envconv/binding-body context*
-			env
-			;; Ignore continuation
-			(cdr (lambda-list->names lambda-list)) 
-			body
-			(lambda (body*)
-			  `(LAMBDA ,lambda-list
-			     ,body*))))
+(define (envconv/lambda* context* env form)
+  (let ((lambda-list (lambda/formals form))
+	(body (lambda/body form)))
+    (let ((form*
+	   (envconv/binding-body context*
+				 env
+				 ;; Ignore continuation
+				 (cdr (lambda-list->names lambda-list)) 
+				 body
+				 (lambda (body*)
+				   `(LAMBDA ,lambda-list
+				      ,body*)))))
+      (envconv/remember form*
+			form
+			(if (LAMBDA/? form*)
+			    (let* ((body (lambda/body form*))
+				   (body-info
+				    (code-rewrite/original-form body)))
+			      (cond ((not body-info) false)
+				    ((new-dbg-procedure? body-info)
+				     (new-dbg-block/parent
+				      (new-dbg-procedure/block body-info)))
+				    (else
+				     (new-dbg-expression/block body-info))))
+			    (envconv/env/block env))))))
 
 (define-environment-converter LET (env bindings body)
   (let ((bindings* (lmap (lambda (binding)
@@ -227,16 +229,12 @@ MIT in each case. |#
 (define-environment-converter CALL (env rator cont #!rest rands)
   (define (default)
     `(CALL ,(if (LAMBDA/? rator)
-		(envconv/remember
-		 (envconv/lambda*
+		(envconv/lambda*
 		  (if (eq? (envconv/env/context env) 'ARBITRARY)
 		      'ARBITRARY
 		      'ONCE-ONLY)
-		  env (lambda/formals rator) (lambda/body rator))
-		 rator
-		 (envconv/env/block env))
+		  env rator)
 		(envconv/expr env rator))
-
 	   ,(envconv/expr env cont)
 	   ,@(envconv/expr* env rands)))
 
@@ -303,8 +301,6 @@ MIT in each case. |#
      (envconv/lookup env expr))
     ((LAMBDA)
      (envconv/lambda env expr name))
-    ((LET)
-     (envconv/let env expr))
     ((DECLARE)
      (envconv/declare env expr))
     ((CALL)
@@ -329,7 +325,11 @@ MIT in each case. |#
      (envconv/in-package env expr))
     ((THE-ENVIRONMENT)
      (envconv/the-environment env expr))
-    ((LETREC)
+#|
+    ((LET)
+     (envconv/let env expr))
+|#
+    ((LET LETREC)
      (not-yet-legal expr))
     (else
      (illegal expr))))

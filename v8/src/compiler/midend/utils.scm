@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.5 1994/11/26 17:43:21 adams Exp $
+$Id: utils.scm,v 1.6 1994/11/26 22:06:43 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -83,6 +83,7 @@ MIT in each case. |#
 	    (*unparse-string (substring name 1 (string-length name))))
 	   ((new-variable->index symbol)
 	    => (lambda (index)
+		 index			; ignored
 		 (*unparse-string name)
 		 ;;(*unparse-string kmp/pp-symbol-glue)
 		 ;;(*unparse-string (number->string index))
@@ -194,7 +195,8 @@ MIT in each case. |#
 	       `(BEGIN ,@actions*)
 	       (car actions*)))
 	  ((not (pair? (car actions)))
-	   (internal-warning "BEGINNIFY: Non-pair form in BEGIN:" (car actions))
+	   (internal-warning "BEGINNIFY: Non-pair form in BEGIN:"
+			     (car actions))
 	   (loop (cdr actions)
 		 (cons (car actions) actions*)))
 	  ((eq? (caar actions) 'BEGIN)
@@ -847,8 +849,7 @@ MIT in each case. |#
 	set
 	(loop (union (proc (car l)) set)
 	      (cdr l)))))
-
-
+
 (define (remove-duplicates l)
   (let loop ((l l) (l* '()))
     (cond ((null? l)           (reverse! l*))
@@ -861,7 +862,6 @@ MIT in each case. |#
 	((memq (car set1) set2) #F)
 	(else  (null-intersection? (cdr set1) set2))))
 
-
 (define (list-split ol predicate)
   ;; (values yes no)
   (let loop ((l (reverse ol))
@@ -897,6 +897,19 @@ MIT in each case. |#
 	    (internal-error "vector-index: component not found"
 			    vector name)))))
 
+(define (pair-up oone otwo)
+  (let loop ((one oone) (two otwo) (result '()))
+    (cond ((and (not (null? one))
+		(not (null? two)))
+	   (loop (cdr one)
+		 (cdr two)
+		 (cons (cons (car one) (car two))
+		       result)))
+	  ((or (null? one)
+	       (null? two))
+	   (internal-error "pair-up: Mismatched lengths" oone otwo))
+	  (else
+	   (reverse! result)))))
 
 (define-structure (queue
 		   (conc-name queue/)

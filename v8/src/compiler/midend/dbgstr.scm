@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.3 1994/11/25 23:03:33 adams Exp $
+$Id: dbgstr.scm,v 1.4 1994/11/26 22:05:20 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -36,7 +36,8 @@ MIT in each case. |#
 
 (define-structure (new-dbg-expression
 		   (conc-name new-dbg-expression/)
-		   (constructor new-dbg-expression/make (expr)))
+		   (constructor new-dbg-expression/make (expr))
+		   (constructor new-dbg-expression/make2 (expr block)))
   (expr false read-only true)
   (block false read-only false))
 
@@ -63,8 +64,8 @@ MIT in each case. |#
 
 (define-structure (new-dbg-variable
 		   (conc-name new-dbg-variable/)
-		   (constructor new-dbg-variable/make (name block)))
-  (name false read-only true)
+		   (constructor new-dbg-variable/make (original-name block)))
+  (name original-name read-only false)
   (original-name name read-only true)
   (block false read-only false)
   (original-block block read-only false)

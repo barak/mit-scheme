@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.3 1994/11/25 22:58:37 adams Exp $
+$Id: alpha.scm,v 1.4 1994/11/26 22:07:13 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -42,21 +42,26 @@ MIT in each case. |#
 (define-macro (define-alphaconv keyword bindings . body)
   (let ((proc-name (symbol-append 'ALPHACONV/ keyword)))
     (call-with-values
-	(lambda () (%matchup (cddr bindings) '(handler state env) '(cdr form)))
-      (lambda (names code)
-	`(define ,proc-name
-	   (let ((handler (lambda ,(cons* (car bindings) (cadr bindings) names) ,@body)))
-	     (named-lambda (,proc-name state env form)
-	       ,code)))))))
+     (lambda () (%matchup (cddr bindings) '(handler state env) '(cdr form)))
+     (lambda (names code)
+       `(define ,proc-name
+	  (named-lambda (,proc-name state env form)
+	    ;; All handlers inherit FORM (and others) from the
+	    ;; surrounding scope.
+	    (let ((handler
+		   (lambda ,(cons* (car bindings) (cadr bindings) names)
+		     ,@body)))
+	      ,code)))))))
 
 (define-alphaconv LOOKUP (state env name)
-  env					; ignored
+  state env				; ignored
   `(LOOKUP ,(alphaconv/env/lookup name env)))
 
 (define-alphaconv LAMBDA (state env lambda-list body)
   (let* ((names     (lambda-list->names lambda-list))
 	 (new-names (alphaconv/renamings env names))
 	 (env*      (alphaconv/env/extend env names new-names)))
+    (alphaconv/remember-renames form env*)
     `(LAMBDA ,(alphaconv/rename-lambda-list lambda-list new-names)
        ,(alphaconv/expr state env* body))))
 
@@ -67,6 +72,20 @@ MIT in each case. |#
 	   (loop (cdr ll) nn (cons (car ll) result)))
 	  (else
 	   (loop (cdr ll) (cdr nn) (cons (car nn) result))))))
+
+(define (alphaconv/remember-renames form env*)
+  (let ((info (code-rewrite/original-form/previous form)))
+    (and info
+	 (new-dbg-procedure? info)
+	 (let ((block (new-dbg-procedure/block info)))
+	   (and block
+		(for-each
+		 (lambda (var)
+		   (set-new-dbg-variable/name!
+		    var
+		    (alphaconv/env/lookup (new-dbg-variable/original-name var)
+					  env*)))
+		 (new-dbg-block/variables block)))))))
 
 (define-alphaconv CALL (state env rator cont #!rest rands)
   `(CALL ,(alphaconv/expr state env rator)
@@ -84,19 +103,20 @@ MIT in each case. |#
 	 (new-names (alphaconv/renamings env names))
 	 (inner-env (alphaconv/env/extend env names new-names))
 	 (expr-env  (if (eq? keyword 'LETREC) inner-env env))
-	 (bindings* (map (lambda (new-name binding)
-			   (list new-name
-				 (alphaconv/expr state expr-env (second binding))))
-			 new-names
-			 bindings)))
+	 (bindings*
+	  (map (lambda (new-name binding)
+		 (list new-name
+		       (alphaconv/expr state expr-env (second binding))))
+	       new-names
+	       bindings)))
     `(,keyword  ,bindings*  ,(alphaconv/expr state inner-env body))))
 
 (define-alphaconv QUOTE (state env object)
-  env					; ignored
+  state env				; ignored
   `(QUOTE ,object))
 
 (define-alphaconv DECLARE (state env #!rest anything)
-  env					; ignored
+  state env				; ignored
   `(DECLARE ,@anything))
 
 (define-alphaconv BEGIN (state env #!rest actions)
@@ -111,7 +131,7 @@ MIT in each case. |#
   `(SET! ,(alphaconv/env/lookup name env) ,(alphaconv/expr state env value)))
 
 (define-alphaconv UNASSIGNED? (state env name)
-  env					; ignored
+  state env				; ignored
   `(UNASSIGNED? ,(alphaconv/env/lookup name env)))
 
 (define-alphaconv OR (state env pred alt)
