@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rtlcsm.scm,v 1.1 1989/10/26 07:40:33 cph Rel $
+$Id: rtlcsm.scm,v 1.1.1.1 1994/03/30 21:23:49 gjr Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Common Suffix Merging
+;; Package: (compiler rtl-optimizer common-suffix-merging)
 
 (declare (usual-integrations))
 
@@ -261,6 +262,7 @@ MIT in each case. |#
 			      '()))))))
 	  false))
 	((and (rtl:invocation? x)
+	      (not (eq? (rtl:expression-type x) 'INVOCATION:PROCEDURE))
 	      (not (eqv? (rtl:invocation-continuation x)
 			 (rtl:invocation-continuation y))))
 	 (let ((x* (rtl:map-subexpressions x identity-procedure))
