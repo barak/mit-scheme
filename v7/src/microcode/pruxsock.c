@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.5 1992/02/03 23:36:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxsock.c,v 1.6 1992/06/05 19:45:15 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -42,23 +42,45 @@ MIT in each case. */
 
 #include "uxsock.h"
 #include "osio.h"
+
+#define SOCKET_CODE(code) do					\
+{								\
+  code								\
+} while (0)
+
+#else /* HAVE_SOCKETS */
+
+#define SOCKET_CODE(code) do					\
+{								\
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);	\
+} while (0)
+
+#endif /* HAVE_SOCKETS */
 
 DEFINE_PRIMITIVE ("GET-SERVICE-BY-NAME", Prim_get_service_by_name, 2, 2,
   "Given SERVICE-NAME and PROTOCOL-NAME, return a port number.\n\
 The result is a nonnegative integer, or #F if no such service exists.")
 {
   PRIMITIVE_HEADER (2);
+  SOCKET_CODE
+(
   {
     int result = (OS_get_service_by_name ((STRING_ARG (1)), (STRING_ARG (2))));
     return ((result < 0) ? SHARP_F : (long_to_integer (result)));
   }
+);
 }
 
 DEFINE_PRIMITIVE ("HOST-ADDRESS-LENGTH", Prim_host_address_length, 0, 0,
   "The length of a host address string, in characters.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer (OS_host_address_length ()));
+  SOCKET_CODE
+(
+  {
+    PRIMITIVE_RETURN (long_to_integer (OS_host_address_length ()));
+  }
+);
 }
 
 DEFINE_PRIMITIVE ("GET-HOST-BY-NAME", Prim_get_host_by_name, 1, 1,
@@ -66,6 +88,8 @@ DEFINE_PRIMITIVE ("GET-HOST-BY-NAME", Prim_get_host_by_name, 1, 1,
 The result is a vector of strings, or #F if no such host exists.")
 {
   PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+(
   {
     char ** addresses = (OS_get_host_by_name (STRING_ARG (1)));
     if (addresses == 0)
@@ -86,7 +110,10 @@ The result is a vector of strings, or #F if no such host exists.")
       }
     }
   }
+);
 }
+
+#ifdef HAVE_SOCKETS
 
 static char *
 DEFUN (arg_host, (arg), unsigned int arg)
@@ -97,36 +124,45 @@ DEFUN (arg_host, (arg), unsigned int arg)
   return ((char *) (STRING_LOC ((ARG_REF (arg)), 0)));
 }
 
+#endif /* HAVE_SOCKETS */ 
+
 DEFINE_PRIMITIVE ("OPEN-TCP-STREAM-SOCKET", Prim_open_tcp_stream_socket, 2, 2,
   "Given HOST-ADDRESS and PORT-NUMBER, open and return a TCP stream socket.")
 {
   PRIMITIVE_HEADER (2);
+  SOCKET_CODE
+({
   PRIMITIVE_RETURN
     (long_to_integer
      (OS_open_tcp_stream_socket ((arg_host (1)),
 				 (arg_nonnegative_integer (2)))));
+});
 }
-
-#ifdef HAVE_UNIX_SOCKETS
 
 DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
   "Open the unix stream socket FILENAME.")
 {
   PRIMITIVE_HEADER (1);
+#ifdef HAVE_UNIX_SOCKETS
   PRIMITIVE_RETURN
     (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1))));
-}
-
+#else
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
 #endif /* HAVE_UNIX_SOCKETS */
+}
 
 DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
   "Given PORT-NUMBER, open and return a TCP server socket.")
 {
   PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+({
   PRIMITIVE_RETURN
     (long_to_integer (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
+});
 }
 
+#ifdef HAVE_SOCKETS
 static Tchannel
 DEFUN (arg_server_socket, (arg), unsigned int arg)
 {
@@ -135,6 +171,7 @@ DEFUN (arg_server_socket, (arg), unsigned int arg)
     error_bad_range_arg (arg);
   return (server_socket);
 }
+#endif /* HAVE_SOCKETS */
 
 DEFINE_PRIMITIVE ("TCP-SERVER-CONNECTION-ACCEPT", Prim_tcp_server_connection_accept, 2, 2,
   "Poll SERVER-SOCKET for a connection.\n\
@@ -144,6 +181,8 @@ Second argument PEER-ADDRESS, if not #F, must be a host address string.\n\
 It is filled with the peer's address if given.")
 {
   PRIMITIVE_HEADER (2);
+  SOCKET_CODE
+(
   {
     Tchannel server_socket = (arg_server_socket (1));
     char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
@@ -152,6 +191,5 @@ It is filled with the peer's address if given.")
     PRIMITIVE_RETURN
       ((connection == NO_CHANNEL) ? SHARP_F : (long_to_integer (connection)));
   }
+);
 }
-
-#endif /* HAVE_SOCKETS */
