@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.12 1995/11/04 01:53:49 cph Exp $
+$Id: os2winp.scm,v 1.13 1995/11/04 02:25:38 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
   (os2win-console-wid 0)
   (os2win-desktop-height 0)
   (os2win-desktop-width 0)
+  (os2win-destroy-pointer 1)
   (os2win-event-ready? 2)
   (os2win-focus? 1)
   (os2win-font-dialog 2)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.24 1995/11/04 02:10:56 cph Exp $
+$Id: os2pm.c,v 1.25 1995/11/04 02:23:44 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -2390,6 +2390,12 @@ static HPOINTER
 window_load_pointer (qid_t qid, HWND desktop, HMODULE module, ULONG id)
 {
   return (WinLoadPointer (desktop, module, id));
+}
+
+static BOOL
+window_destroy_pointer (qid_t qid, HPOINTER pointer)
+{
+  return (WinLoadPointer (pointer));
 }
 
 static BOOL
