@@ -52,10 +52,10 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 0.9
+@subtitle Edition 0.99
 @subtitle for Scheme Release 7.3
 @subtitle DRAFT: @today{}
-@author by Chris Hanson, Stephen Adams and others
+@author by Stephen Adams, Chris Hanson and others
 
 @page
 
@@ -98,25 +98,21 @@ literature without prior written consent from MIT in each case.
 @end titlepage
 
 @node Top, Installation, (dir), (dir)
-
 @menu
 * Installation::                
-* Running Scheme::              Running Scheme
-* REPL::                        The Read-Eval-Print Loop
-* Debugging::                   Debugging
-* Loading Files::               Loading Files
-* World Images::                World Images
-* Compiling Files::             Compiling Files
-* GNU Emacs Interface::         GNU Emacs Interface
-* Edwin::                       Edwin
+* Release Notes::               
+* Running Scheme::              
+* REPL::                        
+* Debugging::                   
+* Loading Files::               
+* World Images::                
+* Compiling Files::             
+* GNU Emacs Interface::         
+* Edwin::                       
 * Win32 Package Reference::     
-* Variable Index::              Variable, Declaration, and Option Index
-* Key Index::                   Key Index
-* Concept Index::               Concept Index
-
---- The Detailed Node Listing ---
-
-Running Scheme
+* Variable Index::              
+* Key Index::                   
+* Concept Index::               
 
  --- The Detailed Node Listing ---
 
@@ -131,20 +127,29 @@ DOS, Microsoft Windows and Windows NT installation
 * System requirements::         
 * Manifest::                    
 * Installation-win32::          Installation
+
+Release Notes
+
+* Unix Release Notes::          
+* C-Backend Release Notes::     
+* DOS::                         
+
+DOS, Microsoft Windows 3.1 and Windows NT Release Notes
+
 * Known Problems::              
 
 Running Scheme
 
-* Basics of Starting Scheme::   Basics of Starting Scheme
+* Basics of Starting Scheme::   
 * Customizing Scheme::          
-* Command-Line Options::        Command-Line Options
-* Environment Variables::       Environment Variables
+* Command-Line Options::        
+* Environment Variables::       
 * Starting Scheme from Microsoft Windows 3.1/NT::  
-* Leaving Scheme::              Leaving Scheme
+* Leaving Scheme::              
 
 Environment Variables
 
-* General Environment Variables::  
+* Environment Variables that affect the Microcode::  
 * Environment variables for Bchscheme::  
 * Environment variables for PC versions::  
 * Environment variables that affect the runtime system::  
@@ -152,26 +157,46 @@ Environment Variables
 
 The Read-Eval-Print Loop
 
-* The Prompt and Level Number::  The Prompt and Level Number
-* Interrupting::                Interrupting
-* Proceeding::                  Proceeding
-* The Current REPL Environment::  The Current REPL Environment
+* The Prompt and Level Number::  
+* Interrupting::                
+* Proceeding::                  
+* The Current REPL Environment::  
 
 Debugging
 
-* Subproblems and Reductions::  Subproblems and Reductions
-* Debugger::                    The Debugger
+* Subproblems and Reductions::  
+* Debugger::                    
+* Debugging aids::              
+* Advising procedures::         
 
 Compiling Files
 
-* Compilation Procedures::      Compilation Procedures
-* Declarations::                Declarations
+* Compilation Procedures::      
+* Declarations::                
 
 Declarations
 
-* Standard Names::              Standard Names
-* In-line Coding::              In-line Coding
-* Operator Reduction::          Operator Reduction
+* Standard Names::              
+* In-line Coding::              
+* Operator Replacement::        
+* Operator Reduction::          
+
+Edwin
+
+* Starting Edwin::              
+* Leaving Edwin::               
+* Last resorts::                
+* Comparison of Edwin 3.82 to Emacs 18.57::  
+
+Comparison of Edwin 3.82 to Emacs 18.57
+
+* Incompatibilities::           
+* Deficiencies::                
+* Subsystems missing from Edwin::  
+* Documented Emacs commands missing from Edwin::  
+* Documented Emacs variables missing from Edwin::  
+* Variables that should be per-buffer in Edwin::  
+* Edwin Bugs::                  
 
 Win32 Package Reference
 
@@ -191,7 +216,7 @@ Device Independent Bitmap Utilities
 * Other parts of the DIB Utilities implementation::  
 @end menu
 
-@node Installation, Running Scheme, Top, Top
+@node Installation, Release Notes, , Top
 @chapter Installation
 
 
@@ -222,7 +247,7 @@ Installation information for C back-end versions goes here?
 This section describes how to install MIT Scheme on DOS, Microsoft
 Windows 3.1 and Microsoft Windows NT.  We would prefer that the Windows
 version is used to the DOS version because we intend to maintain this
-version only so long as it is convienient.
+version only so long as it is convenient.
 We have only tested the DOS version on Microsoft DOS 5.0.
  For the most part the
 installation any of these platforms uses the same files, and the
@@ -234,7 +259,6 @@ does require some care with the configuration of the system.
 * System requirements::         
 * Manifest::                    
 * Installation-win32::          Installation
-* Known Problems::              
 @end menu
 
 @node System requirements, Manifest,  , Microsoft Windows and Windows NT installation
@@ -259,7 +283,7 @@ lib.zip         @r{Smaller files from Scheme library}
 runtime.zip     @r{@file{runtime.com} band}
 runnoflo.zip    @r{@file{runtime.com} band for machines with no FP hardware}
 eddel.zip       @r{@file{eddel.com}: a kit to build @file{edwin.com} band}
-compedl.zip     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
+compdel.zip     @r{@file{compdel.com}: a kit to build @file{compiler.com} band}
 
 bcirun1.zip     @r{Debugging information for runtime system}
 bcirun2.zip     @r{    "          "       "     "      "}
@@ -282,7 +306,7 @@ unzip.exe       @r{Program to unpack the @file{.zip} files}
 @end example
 
 
-@node Installation-win32, Known Problems, Manifest, Microsoft Windows and Windows NT installation
+@node Installation-win32,  , Manifest, Microsoft Windows and Windows NT installation
 @subsection Installation
 
 These installation instructions describe how to install MIT Scheme on
@@ -619,7 +643,33 @@ compiler respectively.
 
 
 
-@node Known Problems,  , Installation-win32, Microsoft Windows and Windows NT installation
+
+@node Release Notes, Running Scheme, Installation, Top
+@chapter Release Notes
+
+General release notes
+
+@menu
+* Unix Release Notes::          
+* C-Backend Release Notes::     
+* DOS::                         
+@end menu
+
+@node Unix Release Notes, ,  , Release Notes
+@section Unix Release Notes
+
+@node C-Backend Release Notes, , Unix Release Notes, Release Notes
+@section C-Backend Release Notes
+
+@node DOS,  , C-Backend Release Notes, Release Notes
+@section DOS, Microsoft Windows 3.1 and Windows NT Release Notes
+
+
+@menu
+* Known Problems::              
+@end menu
+
+@node Known Problems,  ,  , DOS
 @subsection Known Problems in this Beta Release
 
 @itemize @bullet
@@ -662,7 +712,7 @@ If the information cannot be found then it prints the procedure as an
 opaque object, similar to this:
 
 @example
-#[compiled-procedure 13 (pp "pp" #x2) #xF #x646BF7]
+#[compiled-procedure 13 ("pp" #x2) #xF #x646BF7]
 @end example
 
 @item
@@ -708,11 +758,8 @@ in your @file{edwin.ini} file.
 
 @c NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
 
-
-
-
-
-@node Running Scheme, REPL, Installation, Top
+
+@node Running Scheme, REPL, Release Notes, Top
 @chapter Running Scheme
 
 This chapter describes how to run MIT Scheme on a unix system or a PC
@@ -721,12 +768,12 @@ It also describes how you can customize the behavior of MIT Scheme
 using command-line options and environment variables.
 
 @menu
-* Basics of Starting Scheme::   Basics of Starting Scheme
+* Basics of Starting Scheme::   
 * Customizing Scheme::          
-* Command-Line Options::        Command-Line Options
-* Environment Variables::       Environment Variables
+* Command-Line Options::        
+* Environment Variables::       
 * Starting Scheme from Microsoft Windows 3.1/NT::  
-* Leaving Scheme::              Leaving Scheme
+* Leaving Scheme::              
 @end menu
 
 @node Basics of Starting Scheme, Customizing Scheme,  , Running Scheme
@@ -1256,14 +1303,14 @@ are specific to MIT Scheme.  The environment variables are organised
 according to the parts of MIT Scheme that they affect.
 
 @menu
-* General Environment Variables::  
+* Environment Variables that affect the Microcode::  
 * Environment variables for Bchscheme::  
 * Environment variables for PC versions::  
 * Environment variables that affect the runtime system::  
 * Environment variables that affect Edwin::  
 @end menu
 
-@node
+@node Environment Variables that affect the Microcode, Environment variables for Bchscheme,  , Environment Variables
 @subsection Environment Variables that affect the Microcode
 
 @table @asis
@@ -1345,35 +1392,35 @@ and @code{-utab}.  It is only necessary when re-building
 
 @end table
 
-@node Environment variables for Bchscheme, Environment variables for PC versions, General Environment Variables, Environment Variables
+@node Environment variables for Bchscheme, Environment variables for PC versions, Environment Variables that affect the Microcode, Environment Variables
 @subsection Environment variables for Bchscheme
 
 @table @asis
 
 @item @code{MITSCHEME_GC_DIRECTORY} (default: @file{/tmp})
 @findex MITSCHEME_GC_DIRECTORY
-The directory where to write gc files.  Overriden by @code{-gc-directory}.
+The directory where to write gc files.  Overridden by @code{-gc-directory}.
 
 @item @code{MITSCHEME_GC_END_POSITION} (default: start-position + heap-size)
 @findex MITSCHEME_GC_END_POSITION
-The last position in the gc file to use.  Overriden by
+The last position in the gc file to use.  Overridden by
 @code{-gc-end-position}.
 
 @item @code{MITSCHEME_GC_FILE} (default: @file{GCXXXXXX})
 @findex MITSCHEME_GC_FILE
 The name of the file to use for garbage collection.  If it ends in 6 Xs,
 the Xs are replaced by a letter and process id of the scheme process,
-thus generating a unique name.  Overriden by @code{-gc-file}.
+thus generating a unique name.  Overridden by @code{-gc-file}.
 
 @item @code{MITSCHEME_GC_START_POSITION} (default: 0)
 @findex MITSCHEME_GC_START_POSITION
-The first position in the gc file to use.  Overriden by
+The first position in the gc file to use.  Overridden by
 @code{-gc-start-position}.
 
 @item @code{MITSCHEME_GC_WINDOW_SIZE} (default: 16)
 @findex MITSCHEME_GC_WINDOW_SIZE
 The size in blocks of windows into new space (in the gc file).
-Overriden by @code{-gc-window-size}.
+Overridden by @code{-gc-window-size}.
 @end table
 
 @noindent
@@ -1385,16 +1432,16 @@ only then if the @code{gcdrone} program is installed:
 @item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
 @findex MITSCHEME_GC_DRONE
 The program to use as the I/O drone during garbage collection.
-Overriden by @code{-gc-drone}.
+Overridden by @code{-gc-drone}.
 
 @item @code{MITSCHEME_GC_READ_OVERLAP} (default: 0)
 @findex MITSCHEME_GC_READ_OVERLAP
-The maximum number of simultaneous read operations.  Overriden by
+The maximum number of simultaneous read operations.  Overridden by
 @code{-gc-read-overlap}.
 
 @item @code{MITSCHEME_GC_WRITE_OVERLAP} (default: 0)
 @findex MITSCHEME_GC_WRITE_OVERLAP
-The maximum number of simultaneous write operations.  Overriden by
+The maximum number of simultaneous write operations.  Overridden by
 @code{-gc-write-overlap}.
 @end table
 
@@ -1545,7 +1592,7 @@ win32s-based programs).
 Windows NT overcomes this restriction, but it is still useful to know
 how to run Scheme from the Program Manager.
 
-Once an icon is set up to run Scheme with some particular cmmand line
+Once an icon is set up to run Scheme with some particular command line
 options, Scheme is run by double-clicking that icon.
 The rest of this section gives some tips on how to set up icons in the
 Program Manager that run Scheme.  If you are unfamiliar with this
@@ -1637,10 +1684,10 @@ expression (terminating it with @key{RET}).  Scheme evaluates the
 expression, prints the result, and gives you another prompt.
 
 @menu
-* The Prompt and Level Number::  The Prompt and Level Number
-* Interrupting::                Interrupting
-* Proceeding::                  Proceeding
-* The Current REPL Environment::  The Current REPL Environment
+* The Prompt and Level Number::  
+* Interrupting::                
+* Proceeding::                  
+* The Current REPL Environment::  
 @end menu
 
 @node The Prompt and Level Number, Interrupting,  , REPL
@@ -1996,8 +2043,10 @@ Planning ahead is the best way to ward off bugs, but when bugs do
 appear, be prepared to attack them with all the tools available.
 
 @menu
-* Subproblems and Reductions::  Subproblems and Reductions
-* Debugger::                    The Debugger
+* Subproblems and Reductions::  
+* Debugger::                    
+* Debugging aids::              
+* Advising procedures::         
 @end menu
 
 @node Subproblems and Reductions, Debugger,  , Debugging
@@ -2066,13 +2115,18 @@ subproblem, where they start over at zero.  The best way to get a feel
 for subproblem levels and reduction numbers is to experiment with the
 debugging tools, especially @code{debug}.
 
-@node Debugger,  , Subproblems and Reductions, Debugging
+@node Debugger, Debugging aids, Subproblems and Reductions, Debugging
 @section The Debugger
 
 @cindex debugger
 @cindex continuation Browser
 @cindex browser, Continuation
 @findex debug
+There are three debuggers available with MIT Scheme.
+Two of them require and run under Edwin, and are documented there.
+The third is command oriented and does not require Edwin.
+This version is described here.
+
 The @dfn{debugger}, called @code{debug}, is the tool you should use when
 Scheme signals an error and you want to find out what caused the error.
 When Scheme signals an error, it records all the information necessary
@@ -2124,6 +2178,218 @@ evaluated by the interpreter.  The debugger informs us that the
 execution history has recorded some information for this subproblem,
 specifically a description of one reduction.
 
+
+
+@node Debugging aids, Advising procedures, Debugger, Debugging
+@section Debugging aids
+
+An important stop in debugging is to locate the piece of code from which the
+error is signalled.  The Scheme debugger contains a history examiner and an
+environment examiner to aid the user in locating a bug.
+
+
+@deffn {special form+} bkpt message irritant
+Sets a breakpoint.  When the breakpoint is encountered, @var{message}
+and @var{irritant} are typed and a read-eval-print loop is entered in
+the current environment.
+To exit from the breakpoint and proceed with
+the interrupted process, call the procedure PROCEED.  Sample usage:
+
+@example
+1 ]=> (begin (write-line 'foo)
+             (bkpt 'test-2 'test-3)
+             (write-line 'bar) 'done)
+
+foo
+ test-2 test-3
+;To continue, call RESTART with an option number:
+; (RESTART 2) => Return from BKPT.
+; (RESTART 1) => Return to read-eval-print level 1.
+
+2 bkpt> (+ 3 3)
+
+;Value: 6
+
+2 bkpt> (proceed)
+
+bar
+;Value: done
+@end example
+@end deffn
+
+
+@deffn {procedure+} where [obj]
+The procedure @code{where} enters the environment examination system.
+This allows environments and variable bindings to be examined and
+modified.  @code{Where} accepts one letter commands.  The commands can
+be found by typing `@kbd{?}' to the @samp{where>} prompt.  The optional
+argument, @var{obj}, is an object with an environment associated with
+it: an environment, a procedure, or a delayed object.  If @var{obj} is
+omitted, the environment examined is the read-eval-print environment
+from which @var{where} was called (or an error or breakpoint environment
+if called from the debugger).  If a compound procedure is supplied,
+@var{where} lets the user examine the environment of definition of the
+procedure.  This is useful for debugging procedure arguments and values.
+@end deffn
+
+
+@node Advising procedures,  , Debugging aids, Debugging
+@section Advising procedures
+
+Giving advice to procedures is a powerful debugging technique.
+@code{trace} and @code{break} are useful examples of advice-giving
+procedures.
+Note that the advice system only works for interpreted procedures.
+
+
+@deffn {procedure+} trace-entry proc
+Causes an informative message to be printed whenever the procedure
+@var{proc} is entered.  The message is of the form
+
+@example
+[Entering #[compound-procedure 1 foo]
+    Args: @var{val1}
+          @var{val2}
+          ...]
+@end example
+
+where @var{val1}, @var{val2} etc. are the evaluated arguments supplied
+to the procedure.
+@end deffn
+
+@deffn {procedure+} trace-exit proc
+Causes and informative message to be printed when procedure @var{proc}
+terminates.  The message contains the procedure, its argument values,
+and the value returned by the procedure.
+@end deffn
+
+@deffn {procedure+} trace-both proc
+@deffnx {procedure+} trace proc
+@code{trace-both} is the same as calling both @code{trace-entry} and
+@code{trace-exit} on @var{proc}.
+@code{trace} is the same as @code{trace-both}.
+@end deffn
+
+@deffn {procedure+} untrace-entry [proc]
+@code{untrace-entry} stops tracing the entry of @var{proc}.
+If @var{proc} is not given, the
+default is to stop tracing the entry of all entry-traced procedures.
+@end deffn
+
+@deffn {procedure+} untrace-exit [proc]
+Stops tracing the exit of @var{proc}.  If @var{proc} is not included,
+the default is all exit-traced procedures.
+@end deffn
+
+@deffn {procedure+} untrace [proc]
+Stops tracing both the entry to and the exit from @var{proc}.  If
+@var{proc} is not given, the default is all traced procedures.
+@end deffn
+
+@deffn {procedure+} break-entry proc
+Like @code{trace-entry} with the additional effect that a breakpoint is
+entered when procedure @var{proc} is invoked.  Both @var{proc} and its
+arguments can be accessed by calling the procedures @code{*proc*} and
+@code{*args*}, respectively.
+Use @code{restart} or @code{proceed} to continue from a breakpoint.
+@end deffn
+
+@deffn {procedure+} break-exit proc
+Like @code{trace-exit}, except that a breakpoint is entered just prior
+to leaving the procedure @var{proc}.  @var{Proc}, its arguments, and the
+result can be accessed by calling the procedures @code{*proc*},
+@code{*args*}, and @code{*result*}, respectively.
+Use @code{restart} or @code{proceed} to continue from a breakpoint.
+@end deffn
+
+@deffn {procedure+} break-both proc
+@deffnx {procedure+} break proc
+Sets a breakpoint at the beginning and end of @var{proc}.  This is
+@code{break-entry} and @code{break-exit} combined.
+@end deffn
+
+@deffn {procedure+} unbreak [proc]
+Discontinues the entering of a breakpoint on the entry to and exit from
+the procedure @var{proc}.  If @var{proc} is not given, the default is
+all breakpointed procedures.
+@end deffn
+
+@deffn {procedure+} unbreak-entry [proc]
+Discontinues the entering of a breakpoint on the entry to the procedure
+@var{proc}.  If @var{proc} is not given, the default is all
+entry-breakpointed procedures.
+@end deffn
+
+@deffn {procedure+} unbreak-exit [proc]
+Discontinues the entering of a breakpoint on the exit from the procedure
+@var{proc}.  If @var{proc} is not given, the default is all
+exit-breakpointed procedures.
+@end deffn
+
+@deffn {procedure+} advise-entry proc advice
+General entry-advising procedure.  @code{trace-entry} and
+@code{break-entry} are examples of entry-advising procedures.
+@code{advise-entry} gives @var{advice} to @var{proc}. When @var{proc}
+is invoked, @var{advice} is passed three arguments: @var{proc}, a list
+of @var{proc}'s argument values, and the current environment.
+@end deffn
+
+@deffn {procedure+} advise-exit proc advice
+The general exit-advising procedure.  @code{trace-exit} and
+@code{break-exit} are examples of exit-advising procedures.
+@var{Advice} is a procedure that should accept four arguments:
+@var{proc}, its argument values, the result computed by @var{proc}, and
+the current environment.  @var{Advice} is responsible for returning a
+value on behalf of @var{proc}.  That is, the value returned by
+@var{advice} is the value returned by the advised procedure.
+@end deffn
+
+@deffn {procedure+} advice proc
+Returned the advice, if any, given to @var{proc}.
+@end deffn
+
+@deffn {procedure+} unadvise-entry [proc]
+Removes entry advice from @var{proc}. If @var{proc} is not given, the
+default is all entry-advised procedures.
+@end deffn
+
+@deffn {procedure+} unadvise-exit [proc]
+Removes exit advice from @var{proc}. If @var{proc} is not given, the
+default is all exit-advised procedures.
+@end deffn
+
+@deffn {procedure+} unadvise [proc]
+Removes all advice from @var{proc}. This is a combination of
+@code{unadvise-entry} and @code{unadvise-exit}. If @var{proc} is not
+given, the default is all advised procedures.
+@end deffn
+
+@deffn {procedure+} *proc*
+@code{*Proc*} is a procedure which returns as its value the ``broken''
+procedure.  It is used only at a breakpoint set by the procedures
+@code{break-exit} and @code{break-entry} or procedures defined in terms
+of these procedures (like @code{break-both} and @code{break}).
+@end deffn
+
+@deffn {procedure+} *args*
+@code{*Args*} is a procedure which returns as its value a list of the
+arguments supplied to the ``broken'' procedure.  It is used only at a
+breakpoint set by the procedures @code{break-exit} and
+@code{break-entry} or procedures defined in terms of these procedures
+(like @code{break-both} and @code{break}).
+@end deffn
+
+@deffn {procedure+} *result*
+@code{*Result*} is a procedure which returns as its value the result that
+was about to be returned by the ``broken'' procedure. It is used only at
+a breakpoint set by the procedure @code{break-exit} or procedures
+defined in terms of this procedure (like @code{break-both} and
+@code{break}).
+@end deffn
+
+
+@c -----------------------------------------------------------------------------
+
 @node Loading Files, World Images, Debugging, Top
 @chapter Loading Files
 
@@ -2153,7 +2419,7 @@ files only.)
 @end defvr
 
 @defvr {variable+} load/default-types
-When load is given a pathname without a type, it uses the value of thsi
+When load is given a pathname without a type, it uses the value of this
 variable to determine what pathname types to look for and how to load
 the file.  @code{load/default-types} is a list of associations that maps
 pathname types (strings) to loader procedures.  @code{Load} tries the
@@ -2175,7 +2441,9 @@ failing to find the other pathname types.
 All pathnames are interpreted relative to a working directory, which is
 initialized when Scheme is started.  The working directory can be
 obtained from the procedure @code{pwd} or modified by the procedure
-@code{cd}; see the reference manual for details.
+@code{cd}; see the reference manual for details.  Files may be loaded
+when Scheme first starts; see the @code{-load} command line option for
+details.
 
 @node World Images, Compiling Files, Loading Files, Top
 @chapter World Images
@@ -2264,8 +2532,8 @@ Note: the procedures described in this section are only available in the
 available on machines that support native-code compilation.
 
 @menu
-* Compilation Procedures::      Compilation Procedures
-* Declarations::                Declarations
+* Compilation Procedures::      
+* Declarations::                
 @end menu
 
 @node Compilation Procedures, Declarations,  , Compiling Files
@@ -2320,29 +2588,73 @@ in the same directory from which the @file{.com} file was loaded.  Thus
 it is a good idea to leave these files together.
 
 @file{.bci} files are stored in a compressed format.
-The debugger has to uncompress the files when it first looks at them,
-and on a slow machine this can take a noticable time.
-In order to reduce this behaviour, the uncompressed files may be kept
-around and the debugging information is cached in memory.
+The debugger has to uncompress the files when it looks at them,
+and on a slow machine this can take a noticeable time.
+The system takes steps to reduce the impact of this behaviour:
+debugging information is cached in memory,
+and uncompressed versions of @file{.bci} files are kept around.
+The default behavior is that a temporary file is created and the
+@file{.bci} file is uncompressed into it.  The temporary file is kept
+around for a while afterwards, and during that time if the uncompressed
+@file{.bci} file is needed the temporary file is used.  Each such
+reference updates an `access time' that is associated with the temporary
+file.  The garbage collector checks the access times of all such
+temporary files, and deletes any that have not been accessed in five
+minutes or more.  All of the temporaries are deleted automatically when
+the Scheme process is killed.
 
-@c Two variables control the behaviour.
+Two other behaviors are available.  One of them uncompresses the @file{.bci}
+file each time it is referenced, and the other uncompressed the @file{.bci}
+file and writes it back out as a @file{.bif} file (the old default).
+The @file{.bif} file remains after Scheme exits.
+The time interval and the behavior are controlled by variables.  (These
+variables are not in the global environment; perhaps they should be.
+They are in the @code{(runtime compiler-info)} package environment.)
 
-@defvr {variable+} load-debugging-info-on-demand?
-cph: What operations other than normal printing are affected by this?
+
+@defvr {variable+} *save-uncompressed-files?*
+This variable affects what happens when @file{.bci} files are
+uncompressed.  It allows a trade-off between performance and disk space.
+There are three possible values:
+
+@table @code
+@item #f
+The uncompressed versions of @file{.bci} files are never saved.  Each
+time the information is needed the @file{.bci} file is uncompressed.
+This option requires the minimum amount of disk space and is the
+slowest.
+
+@item automatic
+Uncompressed versions of @file{.bci} files are kept as temporary files.
+The temporary files are deleted when Scheme exits, and if they have not
+been used for a while.  This is the default.
+
+@item #t
+The @file{.bci} files are uncompressed to permanent @file{.bif} files.
+These files remain on disk after Scheme exits, and are rather large -
+about twice the size of the corresponding @file{.bci} files.  If you
+choose this option and you are running out of disk space you may delete
+the @file{.bif} files.  They will be regenerated as needed.
+@end table
+
 @end defvr
 
-@deffn {procedure+} discard-debugging-info!
-Calling this procedure causes any debugging info cached in memory to be
-discarded.
-@end deffn
+@defvr {variable+} *uncompressed-file-lifetime*
+The minimum length of time that a temporary uncompressed version of
+a @file{.bci} file will stay on disk after it is last used.
+The time is in microseconds; the default is @samp{300000} (five
+minutes).
+@end defvr
 
-cph: how can a user tailor the .bci uncompressed file behaviour?
 
-@c Unfortunately, the @file{.binf} files are somewhat large in the current
-@c implementation.  If you wish to save space, these files may be deleted;
-@c if Scheme tries to find one and cannot, it will still permit debugging,
-@c but will be unable to produce much information about your program.
 
+@defvr {variable+} load-debugging-info-on-demand?
+If this variable is @file{#f}, then printing a compiled procedure
+will print the procedure's name only if the debugging information for
+that procedure is already loaded.  Otherwise, it will force the
+loading of the debugging information.
+The default value is @code{#f}
+@end defvr
 
 @deffn {procedure+} sf filename [destination]
 @code{sf} is the program that transforms a source-code file into binary
@@ -2380,9 +2692,10 @@ Several declarations can be added to your programs to help @code{cf} and
 @code{sf} make them more efficient.
 
 @menu
-* Standard Names::              Standard Names
-* In-line Coding::              In-line Coding
-* Operator Reduction::          Operator Reduction
+* Standard Names::              
+* In-line Coding::              
+* Operator Replacement::        
+* Operator Reduction::          
 @end menu
 
 @node Standard Names, In-line Coding,  , Declarations
@@ -2419,7 +2732,7 @@ following expression:
       (->environment '(scode-optimizer)))
 @end lisp
 
-@node In-line Coding, Operator Reduction, Standard Names, Declarations
+@node In-line Coding, Operator Replacement, Standard Names, Declarations
 @subsection In-line Coding
 
 Another useful facility is the ability to in-line code procedure
@@ -2534,7 +2847,7 @@ Finally, remove the @code{((lambda () @dots{}))} to produce
 @end lisp
 
 
-@node
+@node Operator Replacement, Operator Reduction, In-line Coding, Declarations
 @subsection Operator Replacement
 
 The @code{replace-operator} declaration is provided to inform the
@@ -2561,23 +2874,23 @@ Replacements:
 @end lisp
 
 @noindent
-Presumably, @code{map-2} and @code{map-3} are efficient versions of
+Presumably @code{map-2} and @code{map-3} are efficient versions of
 @code{map} because they are written for exactly two and three arguments
 respectively.  All the other cases are not expanded and handled by the
-general @code{map} procedure, which is less efficient because it must
-handle a variable number of arguments.
+original, general @code{map} procedure, which is less efficient because
+it must handle a variable number of arguments.
 
 
-@deffn {delcaration+} replace-operator name ...
+@deffn {declaration+} replace-operator name ...
 
 The syntax of this declaration is
 
 @lisp
 (replace-operator
- (@var{name}
-  (@var{nargs1} @var{value1})
-  (@var{nargs2} @var{value2})
-  ...))
+  (@var{name}
+    (@var{nargs1} @var{value1})
+    (@var{nargs2} @var{value2})
+    ...))
 @end lisp
 
 where
@@ -2632,12 +2945,12 @@ Only one of the @var{nargsN} may be of this form.
 
 @item
 If the number of arguments is not listed and none of the @var{nargsN} is
-@code{andy}, @code{else} or @code{otherwise}, then the operation is not
-replace.
+@code{any}, @code{else} or @code{otherwise}, then the operation is not
+replaced.
 @end itemize
 @end deffn
 
-@node Operator Reduction,  , In-line Coding, Declarations
+@node Operator Reduction,  , Operator Replacement, Declarations
 @subsection Operator Reduction
 
 @findex reduce-operator
@@ -2749,13 +3062,13 @@ elements):
 
 @lisp
 (reduce-operator
- (@var{name}
-  @var{binop}
-  @r{[}(group @var{ordering})@r{]}
-  @r{[}(null-value @var{value} @var{null-option})@r{]}
-  @r{[}(singleton @var{unop})@r{]}
-  @r{[}(wrapper @var{wrap} @r{[}n@r{]})@r{]}
-  @r{[}(maximum @var{m})@r{]}
+  (@var{name}
+    @var{binop}
+    @r{[}(group @var{ordering})@r{]}
+    @r{[}(null-value @var{value} @var{null-option})@r{]}
+    @r{[}(singleton @var{unop})@r{]}
+    @r{[}(wrapper @var{wrap} @r{[}n@r{]})@r{]}
+    @r{[}(maximum @var{m})@r{]}
   ))
 @end lisp
 
@@ -2885,7 +3198,7 @@ and all output from the Scheme process will go there.  The mode line for
 the @code{*scheme*} buffer will have this form:
 
 @example
------Scheme: 1 [Evaluator]           (Scheme Interaction: input)------
+--**-*scheme*: 1 [Evaluator]           (Scheme Interaction: input)------
 @end example
 
 @noindent
@@ -3003,14 +3316,32 @@ except that Edwin's extension language is MIT Scheme, while GNU Emacs
 extensions are written in Emacs Lisp.  This manual does not discuss
 customization of Edwin.
 
+@menu
+* Starting Edwin::              
+* Leaving Edwin::               
+* Last resorts::                
+* Comparison of Edwin 3.82 to Emacs 18.57::  
+@end menu
+
+@node Starting Edwin, Leaving Edwin,  , Edwin
+@section Starting Edwin
+
 To use Edwin, start Scheme with a world image containing Edwin (for
 example by giving the @code{-edwin} command-line option), then call the
 procedure @code{edit}:
 
 @deffn {procedure+} edit
+@deffnx {procedure+} edwin
 Enter the Edwin text editor.  If entering for the first time, the editor
 is initialized (by calling @code{create-editor} with no arguments).
 Otherwise, the previously-initialized editor is reentered.
+
+This procedure is sometimes evaluated from the command line to start
+Scheme with Edwin running:
+
+@example
+scheme -edwin -eval (edit)
+@end example
 
 @findex edwin
 The procedure @code{edwin} is an alias for @code{edit}.
@@ -3076,6 +3407,10 @@ signals an error if neither the console nor the X display is usable.
 @end table
 @end defvr
 
+
+@node Leaving Edwin, Last resorts, Starting Edwin, Edwin
+@section Leaving Edwin
+
 Once Edwin has been entered, it can be exited in the following ways:
 
 @table @kbd
@@ -3115,6 +3450,18 @@ This command is identical to the @kbd{C-x C-c} command of GNU Emacs.
 
 
 
+@node Last resorts, Comparison of Edwin 3.82 to Emacs 18.57, Leaving Edwin, Edwin
+@section Last resorts
+
+When Scheme exits abnormally it tries to save any unsaved Edwin buffers.
+The buffers are saved in an auto-save file in case the original is more
+valuable than the unsaved version.  You can use the editor command
+@code{M-x recover-file} to recover the auto-saved version.  The
+auto-save files are named so: under unix, @file{foo.scm} will be saved
+as @file{#foo.scm#}; on PCs it will be saved as @file{foo.s00}, a backup
+file with version @samp{00} (which is never used as an actual version).
+
+
 The following Scheme procedures are useful for recovering from bugs in
 Edwin's implementation.  All of them are designed for use when Edwin is
 @emph{not} running --- they should not be used when Edwin is running.
@@ -3143,7 +3490,442 @@ or their contents.  This is useful if a bug in the display code causes
 Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
+
+@c -----------------------------------------------------------------------------
+
+@node Comparison of Edwin 3.82 to Emacs 18.57,  , Last resorts, Edwin
+@section Comparison of Edwin 3.82 to Emacs 18.57
+
+This section documents all known differences between Edwin 3.82 and
+Emacs 18.57.  All page numbers in this section refer to the Emacs
+version 18 manual.
+
+
+@menu
+* Incompatibilities::           
+* Deficiencies::                
+* Subsystems missing from Edwin::  
+* Documented Emacs commands missing from Edwin::  
+* Documented Emacs variables missing from Edwin::  
+* Variables that should be per-buffer in Edwin::  
+* Edwin Bugs::                  
+@end menu
+
+@node Incompatibilities, Deficiencies,  , Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Incompatibilities
+
+These are differences in design, unlikely to be `fixed'.
+
+@itemize @bullet
+@item
+Edwin's keyboard character set is a superset of Emacs'.
+Edwin has support for real MIT-style bucky bits.
+Under X windows (and perhaps other systems) Edwin can distinguish
+between Ctrl+a and Ctrl+A, Ctrl+Space and Ctrl+@@, etc.
+When running on a terminal or a PC/DOS console, the input set is
+limited to 8-bit ASCII as in Emacs.
+
+@item
+Edwin is case-insensitive for command and variable names.
+
+@item
+Edwin additionally defines C-z and C-^ as prefix keys.
+C-z is the CTRL-META prefix, C-^ is the CTRL prefix, both as in
+TOPS-20 EMACS.
+
+@item
+C-z doesn't suspend Edwin.  C-x C-z suspends both Emacs and Edwin, but
+isn't defined in the Emacs Manual [p. 19].  Under X, Emacs produces an
+error message when C-x C-z is typed, while Edwin suspends itself if it
+was started from a shell with job control, otherwise it dies.
+
+@item
+C-h f doesn't work for anything but editor commands [p. 41].
+I.e. it only documents editor commands, not ordinary Scheme
+procedures like @code{car} or @code{call-with-current-continuation}.
+
+@item
+C-h v doesn't work for anything but editor variables [p. 42].
+I.e. it only documents editor variables, not ordinary Scheme
+variables.
+
+@item
+In Edwin, C-w and C-y don't skip to next occurrence in reverse
+i-search.  This is intentional: I dislike Emacs' behavior in this,
+and I believe it's a bug.
+
+@item
+@code{comment-indent-hook} is defined differently.  In Emacs, it is called
+with no arguments and with point at the beginning of the comment; in
+Edwin, it is called with a single argument, the mark at the
+beginning of the comment, and with point undefined.
+
+@item
+Edwin's completion of Scheme variables is environment dependent [p. 145].
+In scheme and scheme interaction modes, META-TAB completes the
+Scheme variable name.  Completion is environment-dependent, so a
+prefix may complete differently (or not at all) in two different
+buffers with different associated environments.  DOS Note: Since
+Alt+TAB is an MS Windows hot key, you can get the same effect (without
+disabling it) by typing Alt+Ctrl+I.
+
+@item
+@code{M-x load-file} and @code{M-x load-library} behave somewhat
+differently in Edwin [p. 160].  M-x load-file seems to default to .scm
+extensions.  It should use the value of @code{load/default-types,}
+just like @code{load}.
+
+@item
+The evaluation commands are much different in Edwin [p. 162].
+
+@item
+Edwin doesn't recognize "Local Variables:" at the end of a file;
+instead it recognizes "Edwin Variables:".  This is done because it
+cannot support the full syntax of Emacs local variables.  However,
+it is possible to support a subset of that syntax, and is desirable
+to do so.
+
+@item
+Variable `@code{text-mode-hook}' is an event distributor rather than a
+procedure of no arguments.
+@end itemize
 
+
+@node Deficiencies, Subsystems missing from Edwin, Incompatibilities, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Deficiencies
+
+Deficiencies are shortcomings of Edwin that are likely to be fixed.
+
+@itemize @bullet
+@item
+@code{C-x ^} can be used to grow or shrink the minibuffer window in Emacs
+but not in Edwin [p. 35].
+
+@item
+@code{C-h} in Edwin is subset of that in Emacs [p. 41].
+Missing subcommands:
+
+@example
+   n   view-emacs-news
+   c-c describe-copying
+   c-d describe-distribution
+   c-w describe-warranty
+@end example
+
+@item
+Dired is missing these commands in Edwin: @code{v} and @code{B}.
+Under DOS it is missing the following:
+
+@example
+   v   @r{view this file.}
+   B   @r{byte-compile this file.}
+   M   @r{change this file's permissions.}
+   G   @r{change this file's group.}
+   O   @r{change this file's owner.}
+   C   @r{compress this file.}
+   U   @r{uncompress this file.}
+@end example
+
+@item
+Dired has the following subcommands that Emacs does not have: 
+
+@example
+   k   @r{mark file for copying}
+   y   @r{copy marked files}
+@end example
+
+@item
+@code{C-x n} is not disabled by default [p. 198].
+
+@item
+Edwin does not have the notion of "novice".
+@end itemize
+
+@node Subsystems missing from Edwin, Documented Emacs commands missing from Edwin, Deficiencies, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Subsystems missing from Edwin
+
+@itemize @bullet
+@item
+abbrev mode (edwin has dynamic abbreviations)
+@item
+emulation modes: edt, vi, vip
+@item
+file locks
+@item
+language modes: emacs-lisp, fortran, lisp, modula-2, prolog
+@item
+overwrite mode
+@item
+picture mode
+@item
+slow terminal incremental search
+@item
+spelling
+@item
+tab stops
+@item
+text formatter modes: nroff, scribe, tex, latex
+@end itemize
+
+DOS Note:
+
+Some modes are available under Unix, but are not included in the standard
+DOS edwin binary to reduce its size or because they don't work under DOS:
+
+@example
+Missing Command or mode                     Reason
+-----------------------                     ------
+
+* dabbrev                                   reduce size
+  compile                                   needs subprocess support
+  shell                                     needs subprocess support
+                                            + there is a DOS replacement
+  techinfo                                  specific to MIT & Unix
+  telnet                                    needs subprocess support
+* midas mode (assembly language editing)    reduce size
+* pascal mode                               reduce size
+  texinfo                                   reduce size
+  man                                       specific to unix
+  print                                     does not work yet
+* run-notifier                              reduce size
+* outline mode                              reduce size
+* info                                      reduce size
+  rcs                                       needs subprocess support
+  sendmail                                  needs subprocess support
+  mailias                                   useless without sendmail
+* occur (and list-matching-lines)           reduce size
+  rmail                                     needs subprocess support
+                                            + specific to Unix ?
+  rmailsrt                                  useless without rmail
+* bochser                                   reduce size
+@end example
+
+Many of the missing modes and commands (compile, shell, rcs,
+sendmail) require subprocess support.  They should be easy to bring
+up if subprocesses become available, however the code (or even the
+concept) may be Unix specific.  There is a pseudo-shell mode for DOS. 
+
+Many of the subsystems listed above have not been tried under DOS.
+The ones that are known to work are marked with an asterisk (*),
+although for some of them variables have to be set appropriately
+before use (e.g. info-directory for info).
+
+
+@node Documented Emacs commands missing from Edwin, Documented Emacs variables missing from Edwin, Subsystems missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Documented Emacs commands missing from Edwin
+
+@example
+  abbrev-mode
+  abbrev-prefix-mark
+  add-change-log-entry
+  add-change-log-entry-other-window
+  add-global-abbrev
+  add-mode-abbrev
+  add-name-to-file
+  append-to-buffer
+  byte-compile-file
+  byte-recompile-directory
+  cancel-debug-on-entry
+* compile
+  convert-mocklisp-buffer
+  copy-to-buffer
+  debug-on-entry
+  define-abbrevs
+* delete-matching-lines
+* delete-non-matching-lines
+  describe-copying
+  describe-distribution
+  describe-no-warranty
+  describe-syntax
+  disable-command
+  disassemble
+  display-time                          @r{(}run-notifier @r{is similar)}
+  dissociated-press
+  doctor
+  edit-abbrevs
+  edit-abbrevs-redefine
+  edit-options
+  edit-picture
+  edit-tab-stops
+  edit-tab-stops-note-changes
+  edt-emulation-on
+  emacs-lisp-mode
+  emacs-version
+  enable-command
+  expand-abbrev
+  expand-region-abbrevs
+  flush-lines
+  fortran-mode
+  global-set-key                        (set-key is similar)
+  grep
+  hanoi
+  indent-c-exp                          c-indent-expression
+  insert-abbrevs
+  insert-kbd-macro                      write-kbd-macro
+  insert-parentheses
+  inverse-add-global-abbrev
+  inverse-add-mode-abbrev
+* keep-lines
+  kill-all-abbrevs
+  latex-mode                            Note: BAL has one
+  lisp-complete-symbol                  (scheme-complete-variable is similar)
+  lisp-interaction-mode                 (inferior-repl-mode is similar)
+  lisp-mode
+  lisp-send-defun
+  list-abbrevs
+  list-command-history
+  list-options
+  list-tags
+  local-set-key
+* lpr-buffer
+* lpr-region
+  make-symbolic-link
+  make-variable-buffer-local
+* manual-entry
+  modify-syntax-entry
+  move-past-close-and-reindent
+  next-error
+  next-file
+  nroff-mode
+* occur
+* occur-mode-goto-occurrence
+  open-dribble-file
+  open-termscript
+  overwrite-mode
+  plain-tex-mode
+  prepend-to-buffer
+* print-buffer
+* print-region
+  read-abbrev-file
+  recover-file
+  run-lisp
+  save-buffers-kill-emacs               save-buffers-kill-scheme
+  set-gosmacs-bindings
+* shell-command
+* shell-command-on-region
+  spell-buffer
+  spell-region
+  spell-string
+  spell-word
+  suspend-emacs                         suspend-scheme
+  tab-to-tab-stop
+  tags-apropos
+  tex-mode
+  top-level
+  unexpand-abbrev
+  vi-mode
+  view-buffer
+  view-emacs-news
+  view-file
+  vip-mode
+  write-abbrev-file
+  yow
+  zap-to-char
+@end example
+
+The commands marked with an asterisk are available under Unix, but not
+under DOS.  Some of them can be explicitly loaded under DOS.
+
+@node Documented Emacs variables missing from Edwin, Variables that should be per-buffer in Edwin, Documented Emacs commands missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Documented Emacs variables missing from Edwin
+
+
+@example
+  abbrev-all-caps
+  abbrev-file-name
+  auto-mode-alist                       @r{(file-type-to-major-mode is similar)}
+  blink-matching-paren
+  blink-matching-paren-distance
+  buffer-read-only
+  c-tab-always-indent
+  comment-start-skip
+* compile-command
+  completion-ignore-case                @r{(not documented)}
+  ctl-arrow
+  debug-on-error                        debug-on-editor-error
+                                        debug-on-internal-error
+                                        debug-on-evaluation-error
+                                        @r{are similar, but more specific}
+  debug-on-quit
+  default-directory
+  default-major-mode
+  echo-keystrokes
+  initial-major-mode                    @r{Scheme variable} initial-buffer-mode
+  insert-default-directory
+  inverse-video
+  kill-ring-max
+  load-path
+* lpr-switches
+  major-mode
+  mark-ring
+  mark-ring-max                         mark-ring-maximum
+  meta-flag
+  no-redraw-on-recenter
+  save-abbrevs
+  selective-display-ellipses
+* shell-file-name
+  tab-stop-list
+  tags-file-name                        @r{(}tags-table-pathname@r{ is similar)}
+  track-eol
+  visible-bell
+@end example
+
+@noindent
+The variables marked with an asterisk are available under Unix, but
+not under DOS.
+
+@node Variables that should be per-buffer in Edwin, Edwin Bugs, Documented Emacs variables missing from Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Variables that should be per-buffer in Edwin
+
+@example
+abbrev-mode
+auto-fill-hook
+buffer-auto-save-file-name
+buffer-backed-up
+buffer-file-name
+buffer-offer-save
+buffer-read-only
+buffer-saved-size
+buffer-undo-list
+ctl-arrow
+default-directory
+local-abbrev-table
+major-mode
+mark-ring
+mode-name
+overwrite-mode
+selective-display
+selective-display-ellipses
+shell-prompt-pattern
+@end example
+
+@node Edwin Bugs,  , Variables that should be per-buffer in Edwin, Comparison of Edwin 3.82 to Emacs 18.57
+@subsection Edwin Bugs
+
+Incorrect behavior of Edwin that will be fixed:
+
+@itemize @bullet
+@item
+Examine rectangle commands and make sure they are right.  Probably
+they need rewriting [p. 55].
+@item
+Negative argument to M-u, M-l, and M-c seems to work by accident.
+@item
+@samp{-*- foo -*-} is valid if preceded only by blank lines.
+@item
+[partly fixed -- c-mode flashes for ) and @} now]
+Closing paren doesn't check for mismatched delimiters and issue
+warning message.  In c-mode, ] and ) aren't treated specially, and
+don't flash the matching delimiter; also @}, while treated specially,
+doesn't flash the matching delimiter [p. 141].
+@item
+C-u C-x ; isn't handled right in Edwin [p. 143].
+@item
+M-x indent-for-comment shouldn't reindent existing comment in column
+zero.
+@end itemize
+
+
 @c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 @node Win32 Package Reference, Variable Index, Edwin, Top
 @chapter Win32 Package Reference
@@ -3163,11 +3945,6 @@ those which are a consequence of the Intel architecture.
 * Device Independent Bitmap Utilities::  
 @end menu
 
-@c @node Acknowledgements, Overview, Top, Top
-@c @unnumbered Acknowledgements
-@c 
-@c Somebody must have helped!
-@c GJR, Alan Bawden.
 
 @node Overview, Foreign function interface,  , Win32 Package Reference
 @section Overview
@@ -3178,7 +3955,7 @@ expected that changes will be necessary when MIT Scheme is ported to
 Microsoft Windows NT on the DEC Alpha architecture.  In particular, the
 current system is not arranged in a way that adequately distinguishes
 between issues that are a consequence of the NT operating system and
-those which are a consequence of the Intel architecture.
+those which are a consequence of the Intel x86 architecture.
 @cindex limitations
 
 Thus this documentation is not definitive, it merely outlines how the
@@ -3187,7 +3964,7 @@ implemented using the win32 system must plan for a re-implementation
 stage.
 
 
-The Win32 implementation has several compononents:
+The Win32 implementation has several components:
 
 @itemize @bullet
 
@@ -3358,8 +4135,8 @@ Windows types are @emph{not} first class values, so they cannot be
 stored in variables or defined using @code{define}:
 
 @example
-(define my-type unchecked)                        @error{}  Unbound variable
-(define-similar-windows-type umy-type unchecked)  @r{;; the correct way}
+(define my-type unchecked)                       @error{}  Unbound variable
+(define-similar-windows-type my-type unchecked)  @r{;; the correct way}
 @end example
 
 Scheme characters must be converted to integers.  This is accomplished
@@ -3418,7 +4195,7 @@ character in the string.
 
 @deffn {windows type} char*
 A string or @code{#f}.  The string is passed as a pointer to characters.
-The string is correctly nul-terminated.  @code{#f} is passed as the null
+The string is correctly null-terminated.  @code{#f} is passed as the null
 pointer.  This is an example where there is a more complex mapping
 between C objects and Scheme objects.  C's @code{char*} type is
 represented as one of two Scheme types depending on its value.  This
@@ -3544,11 +4321,11 @@ it's value.
   (windows-procedure (set-window-text (window hwnd) (text string))
     bool user32.dll "SetWindowText"))
 
-(set-window-title  my-window "Hi")   @result{}  #t
-                                     @r{;; Changes window's title/text}
+(set-window-title my-win "Hi")   @result{}  #t
+                                 @r{;; Changes window's title/text}
 
-set-window-title                     @result{}  #[compiled-procedure 56 ...]
-set-window-text                      @error{}  Unbound variable
+set-window-title                 @result{}  #[compiled-procedure  ...]
+set-window-text                  @error{}  Unbound variable
 @end example
 
 
@@ -3627,32 +4404,32 @@ Example: applying these rules to @code{IsWindow} yields
 @code{is-window?}, and @code{GetDC} is translated into @code{get-dc}.
 
 
-[It might be worthwhile just keeping the same names.  As the
-Win32 API procedure names are uniformly `WordWordWordACRONYMWord', case
-insensitivity is unlikely to be a problem.  The only problem is the
-protential for a clash between a procedure name and a type
-name.]
+@c [It might be worthwhile just keeping the same names.  As the
+@c Win32 API procedure names are uniformly `WordWordWordACRONYMWord', case
+@c insensitivity is unlikely to be a problem.  The only problem is the
+@c potential for a clash between a procedure name and a type
+@c name.]
 
 
 @node Device Independent Bitmap Utilities,  , Foreign function interface, Win32 Package Reference
 @section Device Independent Bitmap Utilities
 
 
-The Device Independent Bitmap (DIB) utilities DLL @file{DIBUTILS.DLL}
+The Device Independent Bitmap (DIB) utilities library @file{DIBUTILS.DLL}
 and the associated procedures in @file{dib.scm} in the Win32 system
 source is an example of how to use the foreign function interface to
 access and manipulate non-Scheme objects.
 @cindex DLL, DIBUTILS.DLL
 
 @deffn {windows type} dib
-In the C world a DIB is a handle to a piece of memory containing the
-bits that represent information about the image and the pixels of the
-image.  The handle is a machine-word sized piece of data which may be
-thought of as a 32 bit integer.  The handle may be null, indicating that
-there is no block of memory describing the DIB.  The null value is
-usually returned by C functions that are supposed to create a DIB but
-failed, for some reason like the memory could not be allocated or a file
-could not be opened.
+In the C world a DIB is a @dfn{handle} to a piece of memory containing
+the bits that represent information about the image and the pixels of
+the image.  The handle is a machine-word sized piece of data which may
+be thought of as a 32 bit integer.  The handle may be null (i.e. zero),
+indicating that there is no block of memory describing the DIB.  The
+null value is usually returned by C functions that are supposed to
+create a DIB but failed, for some reason like the memory could not be
+allocated or a file could not be opened.
 
 In the Scheme world a DIB is a structure containing information
 about the bitmap (specifically the integer that represents the handle).
@@ -3726,7 +4503,7 @@ Return type: @var{bool}.  Calls the "DibBlt" entry of
 @file{DIBUTILS.DLL}.  Similar to the Win32 API @code{BitBlt} call, but
 draws a DIB rather than a piece of another device context.  Draws the
 @var{dib} on device context @var{hdc} at position (@var{x},@var{y}).  A
-rectange of width @var{w} and height @var{h} is copied from position
+rectangle of width @var{w} and height @var{h} is copied from position
 (@var{src-x},@var{src-y}) of @var{dib}.
 @var{Raster-op} is supposed to allow the source and destination to be
 combined but I don't think I got this right so stick to @code{SRCCOPY}.
@@ -3804,7 +4581,7 @@ Microsoft documentation on how to create DLLs.  Look at the code in the
 @file{WIN32/DIBUTILS} directory of the Scheme source.
 
 Please note:
-@itemize
+@itemize @bullet
 @item
 @cindex DLL, exports
 For the foreign function interface to find the procedures they must be
@@ -4078,5 +4855,5 @@ calling convention.
 
 @c Local Variables:
 @c selective-display: t
-@c truncate-lines: t
+@c truncate-lines: nil
 @c End:
