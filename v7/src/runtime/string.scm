@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.29 2000/04/13 20:11:29 cph Exp $
+$Id: string.scm,v 14.30 2000/04/13 22:18:09 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -74,12 +74,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (substring-ci<? string1 start1 end1 string2 start2 end2)
   (let ((match (substring-match-forward-ci string1 start1 end1
 					   string2 start2 end2))
-	(len1 (- end1 start1))
-	(len2 (- end2 start2)))
-    (and (not (= match len2))
-	 (or (= match len1)
-	     (char-ci<? (string-ref string1 (+ match start1))
-			(string-ref string2 (+ match start2)))))))
+	(len1 (fix:- end1 start1))
+	(len2 (fix:- end2 start2)))
+    (and (not (fix:= match len2))
+	 (or (fix:= match len1)
+	     (char-ci<? (string-ref string1 (fix:+ match start1))
+			(string-ref string2 (fix:+ match start2)))))))
 
 ;;; Substring Covers
 
@@ -199,12 +199,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable (%string-null? string)
   (fix:= 0 (string-length string)))
 
-(define-integrable (%substring string start end)
-  (let ((start start)
-	(end end))
-    (let ((result (string-allocate (fix:- end start))))
-      (substring-move-right! string start end result 0)
-      result)))
+(declare (integrate-operator %substring))
+(define (%substring string start end)
+  (let ((result (string-allocate (fix:- end start))))
+    (substring-move-left! string start end result 0)
+    result))
 
 (define (substring string start end)
   (guarantee-substring string start end 'SUBSTRING)
@@ -226,11 +225,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ;; addresses of the objects ...
   (let ((result (string-allocate (length chars))))
     (let loop ((index 0) (chars chars))
-      (if (null? chars)
-	  result
+      (if (pair? chars)
 	  ;; LENGTH would have barfed if input is not a proper list:
-	  (begin (string-set! result index (car chars))
-		 (loop (fix:+ index 1) (cdr chars)))))))
+	  (begin
+	    (string-set! result index (car chars))
+	    (loop (fix:+ index 1) (cdr chars)))
+	  result))))
 
 (define (string . chars)
   (list->string chars))
@@ -256,7 +256,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (guarantee-string string 'STRING-COPY)
   (let ((size (string-length string)))
     (let ((result (string-allocate size)))
-      (substring-move-right! string 0 size result 0)
+      (substring-move-left! string 0 size result 0)
       result)))
 
 (define (string-append . strings)
@@ -266,19 +266,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((result
 	 (string-allocate
 	  (let loop ((strings strings) (length 0))
-	    (if (null? strings)
-		length
+	    (if (pair? strings)
 		(begin
 		  (guarantee-string (car strings) 'STRING-APPEND)
 		  (loop (cdr strings)
-			(fix:+ (string-length (car strings)) length))))))))
-
+			(fix:+ (string-length (car strings)) length)))
+		length)))))
     (let loop ((strings strings) (index 0))
-      (if (null? strings)
-	  result
+      (if (pair? strings)
 	  (let ((size (string-length (car strings))))
-	    (substring-move-right! (car strings) 0 size result index)
-	    (loop (cdr strings) (fix:+ index size)))))))
+	    (substring-move-left! (car strings) 0 size result index)
+	    (loop (cdr strings) (fix:+ index size)))
+	  result))))
 
 (define (string-move! string1 string2 start2)
   (guarantee-string string1 'STRING-MOVE!)
@@ -418,7 +417,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (guarantee-string string 'STRING-UPCASE!)
   (substring-upcase! string 0 (string-length string)))
 
-
 (define (string-lower-case? string)
   (guarantee-string string 'STRING-LOWER-CASE?)
   (%substring-lower-case? string 0 (string-length string)))
@@ -542,72 +540,100 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
     (let ((match (substring-match-forward string1 0 size1 string2 0 size2)))
-      ((if (= match size1)
-	   (if (= match size2) if= if<)
-	   (if (= match size2) if>
+      ((if (fix:= match size1)
+	   (if (fix:= match size2) if= if<)
+	   (if (fix:= match size2) if>
 	       (if (char<? (string-ref string1 match)
 			   (string-ref string2 match))
 		   if< if>)))))))
 
 (define (string-prefix? string1 string2)
   (guarantee-2-strings string1 string2 'STRING-PREFIX?)
-  (substring-prefix? string1 0 (string-length string1)
-		     string2 0 (string-length string2)))
+  (%substring-prefix? string1 0 (string-length string1)
+		      string2 0 (string-length string2)))
 
 (define (substring-prefix? string1 start1 end1 string2 start2 end2)
-  (let ((length (- end1 start1)))
-    (and (<= length (- end2 start2))
-	 (= (substring-match-forward string1 start1 end1
-				     string2 start2 end2)
-	    length))))
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-PREFIX?)
+  (%substring-prefix? string1 start1 end1
+		      string2 start2 end2))
+
+(define (%substring-prefix? string1 start1 end1 string2 start2 end2)
+  (let ((length (fix:- end1 start1)))
+    (and (fix:<= length (fix:- end2 start2))
+	 (fix:= (substring-match-forward string1 start1 end1
+					 string2 start2 end2)
+		length))))
 
 (define (string-suffix? string1 string2)
   (guarantee-2-strings string1 string2 'STRING-SUFFIX?)
-  (substring-suffix? string1 0 (string-length string1)
-		     string2 0 (string-length string2)))
+  (%substring-suffix? string1 0 (string-length string1)
+		      string2 0 (string-length string2)))
 
 (define (substring-suffix? string1 start1 end1 string2 start2 end2)
-  (let ((length (- end1 start1)))
-    (and (<= length (- end2 start2))
-	 (= (substring-match-backward string1 start1 end1
-				      string2 start2 end2)
-	    length))))
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-SUFFIX?)
+  (%substring-suffix? string1 start1 end1
+		      string2 start2 end2))
 
+(define (%substring-suffix? string1 start1 end1 string2 start2 end2)
+  (let ((length (fix:- end1 start1)))
+    (and (fix:<= length (fix:- end2 start2))
+	 (fix:= (substring-match-backward string1 start1 end1
+					  string2 start2 end2)
+		length))))
+
 (define (string-compare-ci string1 string2 if= if< if>)
   (guarantee-2-strings string1 string2 'STRING-COMPARE-CI)
   (let ((size1 (string-length string1))
 	(size2 (string-length string2)))
     (let ((match (substring-match-forward-ci string1 0 size1 string2 0 size2)))
-      ((if (= match size1)
-	   (if (= match size2) if= if<)
-	   (if (= match size2) if>
+      ((if (fix:= match size1)
+	   (if (fix:= match size2) if= if<)
+	   (if (fix:= match size2) if>
 	       (if (char-ci<? (string-ref string1 match)
 			      (string-ref string2 match))
 		   if< if>)))))))
 
 (define (string-prefix-ci? string1 string2)
   (guarantee-2-strings string1 string2 'STRING-PREFIX-CI?)
-  (substring-prefix-ci? string1 0 (string-length string1)
-			string2 0 (string-length string2)))
+  (%substring-prefix-ci? string1 0 (string-length string1)
+			 string2 0 (string-length string2)))
 
 (define (substring-prefix-ci? string1 start1 end1 string2 start2 end2)
-  (let ((length (- end1 start1)))
-    (and (<= length (- end2 start2))
-	 (= (substring-match-forward-ci string1 start1 end1
-					string2 start2 end2)
-	    length))))
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-PREFIX-CI?)
+  (%substring-prefix-ci? string1 start1 end1
+			 string2 start2 end2))
+
+(define (%substring-prefix-ci? string1 start1 end1 string2 start2 end2)
+  (let ((length (fix:- end1 start1)))
+    (and (fix:<= length (fix:- end2 start2))
+	 (fix:= (substring-match-forward-ci string1 start1 end1
+					    string2 start2 end2)
+		length))))
 
 (define (string-suffix-ci? string1 string2)
   (guarantee-2-strings string1 string2 'STRING-SUFFIX-CI?)
-  (substring-suffix-ci? string1 0 (string-length string1)
-			string2 0 (string-length string2)))
+  (%substring-suffix-ci? string1 0 (string-length string1)
+			 string2 0 (string-length string2)))
 
 (define (substring-suffix-ci? string1 start1 end1 string2 start2 end2)
-  (let ((length (- end1 start1)))
-    (and (<= length (- end2 start2))
-	 (= (substring-match-backward-ci string1 start1 end1
-					 string2 start2 end2)
-	    length))))
+  (guarantee-2-substrings string1 start1 end1
+			  string2 start2 end2
+			  'SUBSTRING-SUFFIX-CI?)
+  (%substring-suffix-ci? string1 start1 end1
+			 string2 start2 end2))
+
+(define (%substring-suffix-ci? string1 start1 end1 string2 start2 end2)
+  (let ((length (fix:- end1 start1)))
+    (and (fix:<= length (fix:- end2 start2))
+	 (fix:= (substring-match-backward-ci string1 start1 end1
+					     string2 start2 end2)
+		length))))
 
 ;;;; Trim/Pad
 
@@ -618,9 +644,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					   char-set:not-whitespace
 					   char-set)))
 	(length (string-length string)))
-    (if (not index)
-	""
-	(%substring string index length))))
+    (if index
+	(%substring string index length)
+	"")))
 
 (define (string-trim-right string #!optional char-set)
   (let ((index
@@ -628,20 +654,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					   (if (default-object? char-set)
 					       char-set:not-whitespace
 					       char-set))))
-    (if (not index)
-	""
-	(%substring string 0 (fix:+ index 1)))))
+    (if index
+	(%substring string 0 (fix:+ index 1))
+	"")))
 
 (define (string-trim string #!optional char-set)
   (let ((char-set
 	 (if (default-object? char-set) char-set:not-whitespace char-set)))
     (let ((index (string-find-next-char-in-set string char-set)))
-      (if (not index)
-	  ""
+      (if index
 	  (%substring string
 		      index
 		      (fix:+ (string-find-previous-char-in-set string char-set)
-			     1))))))
+			     1))
+	  ""))))
 
 (define (string-pad-right string n #!optional char)
   (guarantee-string string 'STRING-PAD-RIGHT)
@@ -651,11 +677,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	string
 	(let ((result (string-allocate n)))
 	  (if (fix:> length n)
-	      (substring-move-right! string 0 n result 0)
+	      (substring-move-left! string 0 n result 0)
 	      (begin
-		(substring-move-right! string 0 length result 0)
-		(let ((char (if (default-object? char) #\space char)))
-		  (substring-fill! result length n char))))
+		(substring-move-left! string 0 length result 0)
+		(substring-fill! result length n
+				 (if (default-object? char) #\space char))))
 	  result))))
 
 (define (string-pad-left string n #!optional char)
@@ -667,11 +693,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(let ((result (string-allocate n))
 	      (i (fix:- n length)))
 	  (if (fix:< i 0)
-	      (substring-move-right! string (fix:- 0 i) length result 0)
+	      (substring-move-left! string (fix:- 0 i) length result 0)
 	      (begin
-		(let ((char (if (default-object? char) #\space char)))
-		  (substring-fill! result 0 i char))
-		(substring-move-right! string 0 length result i)))
+		(substring-fill! result 0 i
+				 (if (default-object? char) #\space char))
+		(substring-move-left! string 0 length result i)))
 	  result))))
 
 ;;;; String Search
@@ -905,9 +931,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (error:wrong-type-argument object "string" procedure)))
 
 (define-integrable (guarantee-2-strings object1 object2 procedure)
-  (if (and (string? object1)
-	   (string? object2))
-      unspecific
+  (if (not (and (string? object1) (string? object2)))
       (guarantee-2-strings/fail object1 object2 procedure)))
 
 (define (guarantee-2-strings/fail object1 object2 procedure)
@@ -932,6 +956,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(fix:<= start end)
 		(fix:<= end (string-length string))))
       (guarantee-substring/fail string start end procedure)))
+
+(define-integrable (guarantee-2-substrings string1 start1 end1
+					   string2 start2 end2
+					   procedure)
+  (guarantee-substring string1 start1 end1 procedure)
+  (guarantee-substring string2 start2 end2 procedure))
 
 (define (guarantee-substring/fail string start end procedure)
   (guarantee-string string procedure)
