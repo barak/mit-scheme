@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.261 2000/06/12 03:38:09 cph Exp $
+$Id: edwin.pkg,v 1.262 2000/06/15 20:30:45 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1456,8 +1456,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  buffer-mime-attachments
 	  buffer-mime-processing-enabled?
 	  disable-buffer-mime-processing!
+	  edwin-command$add-mime-file-attachment
+	  edwin-command$kill-mime-attachment
 	  edwin-command$mail
 	  edwin-command$mail-bcc
+	  edwin-command$mail-browse-attachments
 	  edwin-command$mail-cc
 	  edwin-command$mail-fill-yanked-message
 	  edwin-command$mail-other-window
@@ -1467,7 +1470,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-command$mail-subject
 	  edwin-command$mail-to
 	  edwin-command$mail-yank-original
+	  edwin-command$mime-attachments-quit
 	  edwin-mode$mail
+	  edwin-mode$mime-attachments
+	  edwin-variable$file-type-to-mime-type
 	  edwin-variable$mail-abbreviate-mime
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
@@ -1485,6 +1491,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-variable$mail-self-blind
 	  edwin-variable$mail-setup-hook
 	  edwin-variable$mail-yank-ignored-headers
+	  edwin-variable$mime-attachments-mode-hook
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
 	  edwin-variable$smtp-require-valid-recipients

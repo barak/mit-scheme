@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.58 2000/06/15 20:24:21 cph Exp $
+;;; $Id: sendmail.scm,v 1.59 2000/06/15 20:28:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -359,7 +359,8 @@ Here are commands that move to a header field (and create it if there isn't):
 	 \\[mail-cc]  move to CC:	\\[mail-bcc]  move to BCC:
 \\[mail-signature]  mail-signature (insert ~/.signature file).
 \\[mail-yank-original]  mail-yank-original (insert current message, in Rmail).
-\\[mail-fill-yanked-message]  mail-fill-yanked-message (fill what was yanked)."
+\\[mail-fill-yanked-message]  mail-fill-yanked-message (fill what was yanked).
+\\[mail-browse-attachments]  view, add, or delete MIME attachments."
   (lambda (buffer)
     (add-kill-buffer-hook buffer mail-kill-buffer)
     (local-set-variable!
