@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.465 2003/10/11 04:00:24 cph Exp $
+$Id: runtime.pkg,v 14.466 2003/10/15 17:07:04 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2575,6 +2575,8 @@ USA.
 	  tty-input-channel
 	  tty-output-channel
 	  with-channel-blocking)
+  (export (runtime emacs-interface)
+	  channel-descriptor)
   (export (runtime load)
 	  channel-descriptor)
   (export (runtime socket)

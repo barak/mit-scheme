@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.31 2003/02/14 18:28:32 cph Exp $
+$Id: emacs.scm,v 14.32 2003/10/15 17:06:55 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -173,10 +174,10 @@ USA.
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (channel-write-block (port/output-channel port) "\033b" 0 2))
+  (cwb (port/output-channel port) "\033b" 0 2))
 
 (define (emacs/gc-finish port)
-  (channel-write-block (port/output-channel port) "\033e" 0 2))
+  (cwb (port/output-channel port) "\033e" 0 2))
 
 (define (transmit-signal port type)
   (let ((channel (port/output-channel port))
@@ -184,7 +185,7 @@ USA.
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (channel-write-block channel buffer 0 2)))))
+       (cwb channel buffer 0 2)))))
 
 (define (transmit-signal-with-argument port type string)
   (let ((channel (port/output-channel port))
@@ -198,7 +199,17 @@ USA.
 	(output-port/flush-output port)
 	(with-absolutely-no-interrupts
 	 (lambda ()
-	   (channel-write-block channel buffer 0 buffer-length)))))))
+	   (cwb channel buffer 0 buffer-length)))))))
+
+(define (cwb channel string start end)
+  ;; This is a private copy of CHANNEL-WRITE-BLOCK that bypasses all
+  ;; the threading hair in that procedure.
+  (let loop ((start start) (n-left (fix:- end start)))
+    (let ((n
+	   ((ucode-primitive channel-write 4) (channel-descriptor channel)
+					      string start end)))
+      (cond ((not n) (loop start n-left))
+	    ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n)))))))
 
 (define (emacs-typeout port message)
   (emacs-eval port "(message \"%s\" " (write-to-string message) ")"))
