@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.10 2003/06/14 05:00:33 cph Exp $
+$Id: unicode.scm,v 1.11 2003/07/03 04:33:50 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -639,7 +639,17 @@ USA.
 		 (loop)))))))))
 
 (define (open-wide-input-string string #!optional start end)
-  (with-substring-args string start end 'OPEN-WIDE-INPUT-STRING
+  (guarantee-wide-string string 'OPEN-WIDE-INPUT-STRING)
+  (let* ((end
+	  (if (or (default-object? end) (not end))
+	      (wide-string-length string)
+	      (guarantee-substring-end-index end (wide-string-length string)
+					     'OPEN-WIDE-INPUT-STRING)))
+	 (start
+	  (if (or (default-object? start) (not start))
+	      0
+	      (guarantee-substring-start-index start end
+					       'OPEN-WIDE-INPUT-STRING))))
     (make-port ws-input-port-type (make-ws-input-state string start end))))
 
 (define ws-input-port-type)
