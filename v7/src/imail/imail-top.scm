@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.214 2000/09/07 03:21:28 cph Exp $
+;;; $Id: imail-top.scm,v 1.215 2000/09/30 00:21:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1930,9 +1930,11 @@ Negative argument means search in reverse."
   (let ((n (folder-length folder)))
     (do ((i 0 (+ i 1))
 	 (unseen 0
-		 (if (message-unseen? (get-message folder i))
-		     (+ unseen 1)
-		     unseen)))
+		 (if (let ((m (get-message folder i)))
+		       (or (message-seen? m)
+			   (message-deleted? m)))
+		     unseen
+		     (+ unseen 1))))
 	((= i n) unseen))))
 
 ;;;; Probe-folder thread
