@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.5 2000/12/06 02:48:42 cph Exp $
+# $Id: makeinit.sh,v 1.6 2000/12/06 05:24:17 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -41,6 +41,6 @@ scheme -heap 2000 <<EOF
 		   "Makefile.in")
 EOF
 
-# Generate "Makefile", then use distclean rule to clean up.
+# Generate "Makefile".
+# We assume that caller will run "make distclean".
 ./config.status
-make distclean

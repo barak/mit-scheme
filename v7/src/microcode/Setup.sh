@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.1 2000/12/06 02:41:42 cph Exp $
+# $Id: Setup.sh,v 1.2 2000/12/06 05:24:12 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -22,4 +22,5 @@
 # Requires `gcc' and `scheme'.
 
 makegen/makeinit.sh
-( cd cmpauxmd && make )
+make setup
+make distclean
