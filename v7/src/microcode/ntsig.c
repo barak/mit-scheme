@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: ntsig.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -32,6 +32,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+
+/* Hacks by SRA for NT:
+    1. punt interactive debugging completely
+*/
+
 #include "scheme.h"
 #include "nt.h"
 #include <signal.h>
@@ -42,11 +47,17 @@ MIT in each case. */
 #include "critsec.h"
 /*#include <bios.h> SRA*/
 #include "ntsys.h"
+#include "ntio.h"
 #include "ntexcp.h"
 #include "ntkbd.h"
 #ifdef USE_ZORTECH_CERROR
 #include <cerror.h>
 #endif
+#include "extern.h"
+#include "ntutil.h"
+#include "ntscreen.h"
+
+#include <mmsystem.h>
 
 #ifndef fileno
 #define fileno(fp)	((fp)->_file)
@@ -66,6 +77,7 @@ DEFUN (current_handler, (signo), int signo)
     DOS_signal (signo, result);
   return (result);
 }
+#endif /* UNUSED */
 
 #define INSTALL_HANDLER DOS_signal
 #define NEED_HANDLER_TRANSACTION
@@ -74,7 +86,6 @@ DEFUN (current_handler, (signo), int signo)
 #define ABORT_HANDLER DOS_signal
 #define EXIT_HANDLER DOS_signal
 
-#endif /* UNUSED */
 
 /* These could be implemented, at least under DPMI by examining
    and setting the virtual interrupt state.
@@ -139,8 +150,7 @@ DEFUN (defsignal, (signo, name, action, flags),
 		      (sizeof (struct signal_descriptor)))));
       if (signal_descriptors == 0)
 	{
-	  fprintf (stderr, "\nUnable to grow signal definitions table.\n");
-	  fflush (stderr);
+	  outf_fatal ("\nUnable to grow signal definitions table.\n");
 	  termination_init_error ();
 	}
     }
@@ -193,8 +203,7 @@ DEFUN_VOID (initialize_signal_descriptors)
 		 (sizeof (struct signal_descriptor))));
   if (signal_descriptors == 0)
     {
-      fprintf (stderr, "\nUnable to allocate signal definitions table.\n");
-      fflush (stderr);
+      outf_error ("\nUnable to allocate signal definitions table.\n");
       termination_init_error ();
     }
 
@@ -207,6 +216,7 @@ DEFUN_VOID (initialize_signal_descriptors)
 
   OS_SPECIFIC_SIGNALS ();
 }
+#endif
 
 /* Signal Handlers */
 
@@ -242,12 +252,14 @@ DEFUN (name, (signo), int signo)					\
   SIGNAL_HANDLER_RETURN ();						\
 }
 
+
 static void
 DEFUN (ta_abort_handler, (ap), PTR ap)
 {
   ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
 		 (((struct handler_record *) ap) -> handler));
 }
+#ifdef UNUSED
 #endif /* UNUSED */
 
 #define CONTROL_B_INTERRUPT_CHAR	'B'
@@ -258,23 +270,20 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
 #define TERMINATE_INTERRUPT_CHAR	'@'
 #define NO_INTERRUPT_CHAR		'0'
 
-#ifdef UNUSED
+
 static void
 DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
 {
   c &= 0177;
   if (c == ALERT_CHAR)
-    putc (c, stdout);
+    outf_console ("%c", c);
   else if (c < '\040')
-    {
-      putc ('^', stdout);
-      putc ((c + '@'), stdout);
-    }
+    outf_console ("^%c", (c+'@'));
   else if (c == '\177')
-    fputs ("^?", stdout);
+    outf_console ("^?");
   else
-    putc (c, stdout);
-  fflush (stdout);
+    outf_console ("%c", c);
+  outf_flush_console();
 }
 
 DEFUN_STD_HANDLER (sighnd_control_g,
@@ -291,7 +300,6 @@ DEFUN_STD_HANDLER (sighnd_control_c,
       tty_set_next_interrupt_char (int_char);
   })
 
-#endif /* UNUSED */
 
 /* Keyboard interrupt */
 
@@ -337,13 +345,24 @@ DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
 static cc_t int_chars[NUM_INT_CHANNELS];
 static cc_t int_handlers[NUM_INT_CHANNELS];
 
+#define SCREEN_COMMAND_INTERRUPT_FIRST (SCREEN_COMMAND_CLOSE+10)
+
+LRESULT   master_tty_interrupt (HWND tty, WORD command)
+{
+    int  ch = int_chars[command - SCREEN_COMMAND_INTERRUPT_FIRST];
+    signal_keyboard_character_interrupt (ch);
+}
+
 static void
 DEFUN_VOID (update_interrupt_characters)
 {
+  extern HANDLE master_tty_window;
   int i;
 
-  for (i = 0; i < KB_INT_TABLE_SIZE; i++)
+  for (i = 0; i < KB_INT_TABLE_SIZE; i++) {
     keyboard_interrupt_table[i] = NO_INTERRUPT_CHAR;
+    SendMessage (master_tty_window, SCREEN_SETBINDING, i, 0);
+  }
 
   for (i = 0; i < NUM_INT_CHANNELS; i++)
   {
@@ -380,6 +399,11 @@ DEFUN_VOID (update_interrupt_characters)
 	break;
     }
     keyboard_interrupt_table[(int) (int_chars[i])] = handler;
+    SendMessage (master_tty_window, SCREEN_SETCOMMAND,
+                 SCREEN_COMMAND_INTERRUPT_FIRST+i,
+		 (LPARAM) master_tty_interrupt);
+    SendMessage (master_tty_window, SCREEN_SETBINDING,
+                 int_chars[i], SCREEN_COMMAND_INTERRUPT_FIRST+i);
   }
   return;
 }
@@ -430,26 +454,23 @@ extern long EXFUN (text_write, (int, CONST unsigned char *, size_t));
 static void
 DEFUN (console_write_string, (string), unsigned char * string)
 {
-  (void) text_write ((fileno (stdout)), string, (strlen (string)));
+  outf_console ("%s", string);
+  outf_flush_console();
   return;
 }
 
 static void
 DEFUN (console_write_character, (c), unsigned char c)
 {
-  (void) text_write ((fileno (stdout)), &c, 1);
+  outf_console ("%c", c);
+  outf_flush_console();
   return;
 }
 
 static unsigned char
 DEFUN_VOID (console_read_character)
 {
-  unsigned char c;
-  extern int EXFUN (dos_read, (int, PTR, size_t, int, int, int));
-
-  /* non-buffered, blocking, non-interrupting read. */
-  (void) dos_read ((fileno (stdin)), &c, 1, 0, 1, 0);
-  return (c);
+  return  userio_read_char();
 }
 
 void
@@ -491,6 +512,16 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 static void
 DEFUN_VOID (print_interrupt_help)
 {
+  console_write_string (
+    "\r\nInterrupt choices are:\r\n"
+    "C-G interrupt:   ^G (abort to top level)\r\n"
+    "C-X interrupt:   ^x (abort)\r\n"
+    "C-B interrupt:   ^B (break)\r\n"
+    "C-U interrupt:   ^U (up)\r\n"
+    "(exit) to exit Scheme\r\n"
+    );
+
+/*
   console_write_string ("\nInterrupt Choices are:\n");
   console_write_string ("C-G interrupt:    G, g, ^G (abort to top level)\n");
   console_write_string ("C-X interrupt:    X, x, ^x (abort)\n");
@@ -500,6 +531,7 @@ DEFUN_VOID (print_interrupt_help)
   console_write_string ("Reset scheme:     R, r     (hard reset)\n");
   console_write_string ("Quit scheme:      Q, q     (exit)\n");
   console_write_string ("Print help:       ?");
+*/
   return;
 }
 
@@ -575,7 +607,10 @@ interactive_interrupt:
 	{
 	  cc_t int_char;
 
-	  int_char = (DOS_interactive_interrupt_handler ());
+	  /*int_char = (DOS_interactive_interrupt_handler ());*/
+	  print_interrupt_help();
+	  int_char = 0;
+	  
 	  if (int_char == ((cc_t) 0))
 	    hard_attn_counter = 0;
 	  else
@@ -1152,109 +1187,7 @@ DEFUN_VOID (enable_X32_exceptions_p)
 static void
 DEFUN_VOID (DOS_install_interrupts)
 {
-/*
-  extern dos_boolean EXFUN (under_X32_p, (void));
-  dos_boolean x32_p = (under_X32_p ());
-  dos_boolean dpmi_p = (under_DPMI_p ());
-*/
-
-#if 0
-  if (x32_p && (feature_enabled_p ("MITSCHEME_X32_INTERRUPTS")))
-  {
-    extern void EXFUN (X32_asm_initialize, (void));
-    extern int EXFUN (X32_lock_scheme_microcode, (void));
-    extern int EXFUN (X32_interrupt_restore, (unsigned));
-    extern int EXFUN (X32_int_intercept, (unsigned, void (*) (), PTR));
-    extern void EXFUN (X32_timer_interrupt, (void));
-    extern void EXFUN (X32_critical_error, (void));
-    extern int X32_timer_interrupt_previous;
-    extern int X32_critical_error_previous;
-
-    X32_asm_initialize ();
-
-    if ((X32_lock_scheme_microcode ()) != 0)
-    {
-      fprintf (stderr,
-	       "\n;; DOS_install_interrupts (X32): Unable to lock memory.");
-      fprintf (stderr,
-	       "\n;; Interrupt and exceptions handlers not available!\n");
-      fflush (stderr);
-      return;
-    }
-
-    if ((X32_int_intercept (DOS_INTVECT_USER_TIMER_TICK,
-			    X32_timer_interrupt,
-			    ((PTR) &X32_timer_interrupt_previous)))
-	!= 0)
-    {
-      fprintf (stderr,
-	       "\n;; DOS_install_interrupts (X32): Unable to intercept.");
-      fprintf (stderr,
-	       "\n;; Timer interrupt not available!\n");
-      fflush (stderr);
-    }
-    else
-      dos_record_interrupt_interception (DOS_INTVECT_USER_TIMER_TICK,
-					 X32_interrupt_restore);
-
-    if (!dpmi_p)
-    {
-#ifdef USE_ZORTECH_CERROR
-      _cerror_handler = critical_error_handler;
-      cerror_open ();
-#else /* not USE_ZORTECH_CERROR */
-      if ((X32_int_intercept (DOS_INTVECT_CRITICAL_ERROR,
-			      X32_critical_error,
-			      ((PTR) &X32_critical_error_previous)))
-	  == 0)
-	dos_record_interrupt_interception (DOS_INTVECT_CRITICAL_ERROR,
-					   X32_interrupt_restore);
-
-#endif /* USE_ZORTECH_CERROR */
-    }
-  }
-#endif /* 0 to comment out SRA*/
 
-#if 0
-  else if (feature_enabled_p ("MITSCHEME_DOSX_INTERRUPTS"))
-  {
-    scm_int_intercept (DOS_INTVECT_USER_TIMER_TICK,
-		       bios_timer_handler,
-		       256);
-
-    if (!dpmi_p)
-    {
-      scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
-			 control_break_handler,
-			 256);
-
-#ifdef USE_ZORTECH_CERROR
-      _cerror_handler = critical_error_handler;
-      cerror_open ();
-#else /* not USE_ZORTECH_CERROR */
-      scm_int_intercept (DOS_INTVECT_CRITICAL_ERROR,
-			 critical_error_handler,
-			 256);
-#endif /* USE_ZORTECH_CERROR */
-    }
-  }
-  if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
-  {
-    dos_record_interrupt_interception (DOS_INTVECT_SYSTEM_SERVICES,
-				       DOS_restore_keyboard);
-    DOS_keyboard_intercepted_p = true;
-  }
-#endif /*0*/
-/*SRA
-  if (dpmi_p && (enable_DPMI_exceptions_p ()))
-    install_exception_handlers (DPMI_get_exception_vector,
-				DPMI_set_exception_handler,
-				DPMI_restore_handler);
-  else if (x32_p && (enable_X32_exceptions_p ()))
-    install_exception_handlers (X32_get_exception_vector,
-				X32_set_exception_handler,
-				X32_restore_handler);
-*/
   return;
 }
 
@@ -1271,14 +1204,6 @@ DEFUN_VOID (DOS_restore_interrupts)
 	(void) ((dos_interrupt_restoration[iv]) (iv));
 	dos_interrupt_restoration[iv] = ((int (*) (unsigned)) NULL);
       }
-
-#ifdef USE_ZORTECH_CERROR
-    if (_cerror_handler == critical_error_handler)
-    {
-      cerror_close ();
-      _cerror_handler = ((int _far _cdecl (*) (int *, int *)) NULL);
-    }
-#endif /* USE_ZORTECH_CERROR */
 
     dos_interrupts_initialized_p = false;
   }
@@ -1304,9 +1229,87 @@ DEFUN (bind_handler, (signo, handler),
 
 #endif /* UNUSED */
 
-void
-DEFUN_VOID (DOS_initialize_signals)
+
+
+
+
+
+/*
+ *   Timer interrupt based on multimedia system
+ *
+ *   WARNING: the docs say that timer_tick and all that it references must
+ *   be in a DLL witha a FIXED attribute.
+ *   Also, it appears to need _stdcall, but mmsystem.h refutes this
+ */
+
+void _stdcall
+DEFUN (timer_tick, (wID, wMsg, dwUser, dw1, dw2),
+       UINT wID  AND UINT wMsg AND DWORD dwUser AND DWORD dw1 AND DWORD dw2)
 {
+//    REQUEST_INTERRUPT(INT_Global_GC);	/* windows polling */
+    REQUEST_INTERRUPT(INT_Global_1);	/* windows polling */
+    REQUEST_INTERRUPT(INT_Timer);	/* scheme interrupt */
+}
+
+static TIMECAPS tc;
+static UINT msTargetResolution = 50;
+static UINT msInterval = 75;
+static UINT wTimerRes;
+static UINT wTimerID;
+
+char *
+DEFUN_VOID (install_timer)
+{
+/*
+    outf_error (";; !Warning: timer interrupt not installed %s:%d.\n",
+      __FILE__,__LINE__);
+    return 0;
+/**/
+    if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR)
+      return  "timeGetDevCaps";
+    wTimerRes = min(max(tc.wPeriodMin, msTargetResolution), tc.wPeriodMax);
+    if (timeBeginPeriod (wTimerRes) == TIMERR_NOCANDO)
+      return  "timeBeginPeriod";
+    wTimerID =
+        timeSetEvent (msInterval,
+	              wTimerRes,
+		      (LPTIMECALLBACK) timer_tick,
+		      0,
+		      TIME_PERIODIC);
+    if (! wTimerID)
+      return  "timeSetEvent";
+    
+    return  0;
+}
+
+
+
+void
+DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
+{
+  extern SCHEME_OBJECT EXFUN (make_primitive, (char *));
+  SCHEME_OBJECT iv, prim;
+
+  prim = make_primitive ("NT-DEFAULT-POLL-GUI-INTERRUPT");
+  iv = FAST_VECTOR_REF (fov, System_Interrupt_Vector);
+//  VECTOR_SET (iv, Global_GC_Level, prim);
+  VECTOR_SET (iv, Global_1_Level, prim);
+  return;
+}
+
+
+
+void
+DEFUN_VOID (NT_initialize_signals)
+{
+    char *timer_error = install_timer();
+    if (timer_error) {
+      outf_fatal ("install_timer:  %s", timer_error);
+      outf_flush_fatal ();
+      abort ();
+    }	
+
+    
 #ifdef UNUSED
   initialize_signal_descriptors ();
   bind_handler (SIGINT,		sighnd_control_c);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntio.h,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntio.h,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,7 +39,7 @@ MIT in each case. */
 
 struct channel
 {
-  int descriptor;
+  HANDLE   handle;
   enum channel_type type;
   unsigned int internal : 1;
   unsigned int nonblocking : 1;
@@ -48,10 +48,10 @@ struct channel
   unsigned int cooked : 1;
 };
 
-#define MARK_CHANNEL_CLOSED(channel) ((CHANNEL_DESCRIPTOR (channel)) = (-1))
-#define CHANNEL_CLOSED_P(channel) ((CHANNEL_DESCRIPTOR (channel)) < 0)
-#define CHANNEL_OPEN_P(channel) ((CHANNEL_DESCRIPTOR (channel)) >= 0)
-#define CHANNEL_DESCRIPTOR(channel) ((channel_table [(channel)]) . descriptor)
+#define MARK_CHANNEL_CLOSED(chan) ((CHANNEL_HANDLE (chan)) =  (HANDLE)(-1))
+#define CHANNEL_CLOSED_P(chan)    ((CHANNEL_HANDLE (chan)) == (HANDLE)(-1))
+#define CHANNEL_OPEN_P(chan)      ((CHANNEL_HANDLE (chan)) != (HANDLE)(-1))
+#define CHANNEL_HANDLE(channel) ((channel_table [channel]) . handle)
 #define CHANNEL_TYPE(channel) ((channel_table [(channel)]) . type)
 #define CHANNEL_INTERNAL(channel) ((channel_table [(channel)]) . internal)
 #define CHANNEL_NONBLOCKING(channel)					\
@@ -65,7 +65,7 @@ struct channel
 #define MAKE_CHANNEL(descriptor, type, receiver)			\
 {									\
   Tchannel MAKE_CHANNEL_temp = (channel_allocate ());			\
-  (CHANNEL_DESCRIPTOR (MAKE_CHANNEL_temp)) = (descriptor);		\
+  (CHANNEL_HANDLE (MAKE_CHANNEL_temp)) = (descriptor);			\
   (CHANNEL_TYPE (MAKE_CHANNEL_temp)) = (type);				\
   (CHANNEL_INTERNAL (MAKE_CHANNEL_temp)) = 0;				\
   (CHANNEL_NONBLOCKING (MAKE_CHANNEL_temp)) = 0;			\
@@ -85,5 +85,7 @@ extern Tchannel EXFUN (channel_allocate, (void));
 #define CNTRL_Z			'\032'
 #define DELETE			'\177'
 
+#define CONSOLE_HANDLE (STDIN_HANDLE)
+#define IsConsoleHandle(h)  ((h)==CONSOLE_HANDLE)
+
 #endif /* SCM_UXIO_H */
-

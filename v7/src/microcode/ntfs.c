@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntfs.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntfs.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 #include "nt.h"
 #include "osfs.h"
 #include <string.h>
+#include "outf.h"
 
 int
 DEFUN (DOS_read_file_status, (name, s),

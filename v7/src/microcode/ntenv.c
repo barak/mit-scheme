@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: ntenv.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -208,7 +208,7 @@ DEFUN (OS_set_working_dir_pathname, (name), char * name)
   size_t name_size = strlen(name);
   char *filename = name;
 
-  STD_VOID_SYSTEM_CALL (syscall_chdir, (SetCurrentDirectory (filename)));
+  STD_BOOL_SYSTEM_CALL (syscall_chdir, (SetCurrentDirectory (filename)));
 
   while (1) {
     if (name_size < current_dir_path_size) {

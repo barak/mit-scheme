@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: nttty.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,11 +37,15 @@ MIT in each case. */
 #include "osenv.h"
 #include "ntio.h"
 #include "ntterm.h"
+#include "ntscreen.h"
 
 /* Standard Input and Output */
 
 static Tchannel input_channel;
 static Tchannel output_channel;
+
+HANDLE master_tty_window = 0;
+
 int tty_x_size;
 int tty_y_size;
   /* 1-based values */
@@ -63,12 +67,14 @@ DEFUN_VOID (OS_tty_output_channel)
 unsigned int
 DEFUN_VOID (OS_tty_x_size)
 {
+  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
   return (tty_x_size);
 }
 
 unsigned int
 DEFUN_VOID (OS_tty_y_size)
 {
+  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
   return (tty_y_size);
 }
 
@@ -96,80 +102,24 @@ DEFUN_VOID (OS_tty_command_clear)
 #define DEFAULT_TTY_Y_SIZE 25
 #endif
 
-void
-pc_gestalt_screen_x_size (void)
-{
-  tty_x_size = DEFAULT_TTY_X_SIZE;
 
-/*SRA
-  char *psTemp;
-
-  psTemp = (getenv ("MITSCHEME_COLUMNS"));
-  if (psTemp == NULL)
-  {
-    union REGS regs;
-
-    regs.h.ah = 0x0F;
-    regs.h.al = 0x00;
-    int10h (&regs, &regs);
-    tty_x_size = regs.h.ah;
-  }
-  else
-  {
-    tty_x_size = (atoi (psTemp));
-    if (tty_x_size == 0)
-      tty_x_size = DEFAULT_TTY_X_SIZE; /* atoi failed, use default */    /*
-  }
-*/
-  return;
-}
-
-void
-pc_gestalt_screen_y_size (void)
-{
-  tty_y_size = DEFAULT_TTY_Y_SIZE;
-/*SRA
-  char *psTemp;
-
-  psTemp = (getenv ("MITSCHEME_LINES"));
-  if (psTemp == NULL)
-  {
-    union REGS regs;
-
-    regs.x.ax = 0x1130;
-    regs.h.bh = 0x00;
-    regs.h.dl = DEFAULT_TTY_Y_SIZE-1;
-    int10h (&regs, &regs);
-    tty_y_size = regs.h.dl + 1;
-  }
-  else
-  {
-    tty_y_size = (atoi (psTemp));
-    if (tty_y_size == 0)
-      tty_y_size = DEFAULT_TTY_Y_SIZE; /* atoi failed, use default */    /*
-  }
-*/
-  return;
-}
 
 void
 DEFUN_VOID (DOS_initialize_tty)
 {
-  extern Tchannel EXFUN (OS_open_fd, (int fd));
-  input_channel = (OS_open_fd (STDIN_FILENO));
+  extern Tchannel EXFUN (OS_open_handle, (int fd));
+//  master_tty_window = Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL);
+  input_channel  = OS_open_handle (master_tty_window);
+//  input_channel = OS_open_handle (STDIN_HANDLE);
   (CHANNEL_INTERNAL (input_channel)) = 1;
-  output_channel = (OS_open_fd (STDOUT_FILENO));
+  output_channel = input_channel;
+//  output_channel = OS_open_handle (STDOUT_HANDLE);
   (CHANNEL_INTERNAL (output_channel)) = 1;
-  tty_x_size = (-1);
-  tty_y_size = (-1);
+  Screen_GetSize (master_tty_window, &tty_y_size, &tty_x_size);
+
   tty_command_beep = ALERT_STRING;
-  tty_command_clear = "\033[2J";
+  tty_command_clear = "\014";
 
-  /* Figure out the size of the terminal. Tries environment variables.
-     If that fails, use default values. */
-
-  pc_gestalt_screen_x_size ();
-  pc_gestalt_screen_y_size ();
   return;
 }
 

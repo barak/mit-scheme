@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntterm.h,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntterm.h,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,4 +38,3 @@ MIT in each case. */
 #include "osterm.h"
 
 #endif /* SCM_UXTERM_H */
-

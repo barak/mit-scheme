@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: nttrap.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ MIT in each case. */
 #include "nttrap.h"
 #include "ntexcp.h"
 #include "ntinsn.h"
-
+#include "extern.h"
 
 extern void EXFUN (DOS_initialize_trap_recovery, (void));
 CONST char * EXFUN (find_trap_name, (int trapno));
@@ -415,11 +415,10 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
   if ((! (Valid_Fixed_Obj_Vector ())) ||
       ((handler = (Get_Fixed_Obj_Slot (Trap_Handler))) == SHARP_F))
     {
-      fprintf (stderr, "There is no trap handler for recovery!\n");
-      fprintf (stderr, "Trap = %s.\n", (find_trap_name (trapno)));
-      fprintf (stderr, "pc = %04x:%08lx; sp = %04x:%08lx.\n",
+      outf_fatal ("There is no trap handler for recovery!\n");
+      outf_fatal ("Trap = %s.\n", (find_trap_name (trapno)));
+      outf_fatal ("pc = %04x:%08lx; sp = %04x:%08lx.\n",
 	       scp->sc_cs, scp->sc_eip, scp->sc_ss, scp->sc_esp);
-      fflush (stderr);
       termination_trap ();
     }
   if (Free > MemTop)
@@ -602,11 +601,11 @@ DEFUN (continue_from_trap, (trapno, info, scp),
   the_pc = ((FULL_SIGCONTEXT_PC (scp)) & PC_VALUE_MASK);
 
 #if FALSE
-  fprintf (stderr, "\ncontinue_from_trap:");
-  fprintf (stderr, "\tpc = 0x%08lx\n", the_pc);
-  fprintf (stderr, "\tCsp = 0x%08lx\n", C_sp);
-  fprintf (stderr, "\tssp = 0x%08lx\n", scheme_sp);
-  fprintf (stderr, "\tesp = 0x%08lx\n", Ext_Stack_Pointer);
+  outf_error ("\ncontinue_from_trap:");
+  outf_error ("\tpc = 0x%08lx\n", the_pc);
+  outf_error ("\tCsp = 0x%08lx\n", C_sp);
+  outf_error ("\tssp = 0x%08lx\n", scheme_sp);
+  outf_error ("\tesp = 0x%08lx\n", Ext_Stack_Pointer);
 #endif
 
   if (((the_pc & PC_ALIGNMENT_MASK) != 0)

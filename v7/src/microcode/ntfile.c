@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntfile.c,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntfile.c,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,74 +39,105 @@ MIT in each case. */
 extern void EXFUN (terminal_open, (Tchannel channel));
 
 static enum channel_type
-DEFUN (fd_channel_type, (fd), int fd)
+DEFUN (handle_channel_type, (hFile), HANDLE hFile)
 {
-  static int first_time = 1;
-  if (first_time) {
-    printf("\n;; fd_channel_type(fd)  is broken.\n");
-    first_time = 0;
-  }
-  return  channel_type_file;
-/* SRA:stat is fried on the NT Oct Beta
-  struct stat stat_buf;
-  if ((DOS_fstat (fd, (&stat_buf))) < 0){
-    return (channel_type_unknown);
+  if (Screen_IsScreenHandle (hFile))
+    return  channel_type_terminal;
+//  if (IsConsoleHandle (hFile))
+//    return  channel_type_terminal;
+  switch (GetFileType (hFile))
   {
-    mode_t type = ((stat_buf . st_mode) & S_IFMT);
-    return
-      ((type == S_IFREG) ? channel_type_file
-       : (type == S_IFCHR)
-       ? ((isatty (fd))
-	  ? channel_type_terminal
-	  : channel_type_character_device)
-#ifdef S_IFIFO
-       : (type == S_IFIFO) ? channel_type_fifo
-#endif
-#ifdef S_IFBLK
-       : (type == S_IFBLK) ? channel_type_block_device
-#endif
-       : (type == S_IFDIR) ? channel_type_directory
-       : channel_type_unknown);
+    default:
+    case  FILE_TYPE_UNKNOWN:	return  channel_type_unknown;
+    case  FILE_TYPE_DISK:	return  channel_type_file;
+    case  FILE_TYPE_CHAR:	return  channel_type_character_device;
+    case  FILE_TYPE_PIPE:	return  channel_type_fifo;
   }
-  */
 }
 
 Tchannel
-DEFUN (OS_open_fd, (fd), int fd)
+DEFUN (OS_open_handle, (hFile), HANDLE hFile)
 {
-  enum channel_type type = (fd_channel_type (fd));
+  enum channel_type type;
   Tchannel channel;
-  MAKE_CHANNEL (fd, type, channel =);
+  
+//  if (hFile == STDIN_HANDLE) {
+//    MAKE_CHANNEL (STDIN_HANDLE, channel_type_terminal, channel=);
+//    CHANNEL_COOKED(channel) = 1;
+//  }
+//
+//  else if (hFile == STDOUT_HANDLE) {
+//    MAKE_CHANNEL (STDOUT_HANDLE, channel_type_terminal, channel=);
+//    CHANNEL_COOKED(channel) = 1;
+//  }
+//
+//  else if (hFile == STDERR_HANDLE) {
+//    MAKE_CHANNEL (STDERR_HANDLE, channel_type_terminal, channel=);
+//    CHANNEL_COOKED(channel) = 1;
+//  }
 
-  /* Like Unix, all terminals initialize to cooked mode. */
-  if (type == channel_type_terminal) CHANNEL_COOKED(channel) = 1;
+//  else
+  {
+    type = handle_channel_type (hFile);
+    MAKE_CHANNEL (hFile, type, channel =);
 
-  return (channel);
+    /* Like Unix, all terminals initialize to cooked mode. */
+    if (type == channel_type_terminal)
+      CHANNEL_COOKED(channel) = 1;
+  }
+  return  channel;
 }
 
-static Tchannel
-DEFUN (open_file, (filename, oflag), CONST char * filename AND int oflag)
-{
-  int fd;
-  STD_UINT_SYSTEM_CALL
-    (syscall_open, fd, (DOS_open (filename, oflag, MODE_REG)));
-  return (OS_open_fd (fd));
-}
 
-#define DEFUN_OPEN_FILE(name, oflag)					\
+#define DEFUN_OPEN_FILE(name, args)					\
 Tchannel								\
 DEFUN (name, (filename), CONST char * filename)				\
 {									\
-  return  (open_file)(filename, oflag);					\
+  HANDLE  hFile;							\
+  STD_HANDLE_SYSTEM_CALL (syscall_open, hFile, CreateFile args);	\
+  return  OS_open_handle (hFile);					\
 }
 
-DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY | _O_BINARY)
-DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY))
-DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
+
+DEFUN_OPEN_FILE (OS_open_input_file,
+  (filename, GENERIC_READ, FILE_SHARE_READ, 0,
+   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0));
+
+DEFUN_OPEN_FILE (OS_open_output_file,
+  (filename, GENERIC_WRITE, 0, 0,
+   CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
+
+DEFUN_OPEN_FILE (OS_open_io_file,
+  (filename, GENERIC_READ | GENERIC_WRITE, 0, 0,
+   OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0));
+
+
+//DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY | _O_BINARY)
+//DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY))
+//DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
+
 
 #ifdef HAVE_APPEND
 
-DEFUN_OPEN_FILE (OS_open_append_file, (O_WRONLY | O_CREAT | O_APPEND | _O_BINARY))
+Tchannel
+DEFUN (OS_open_append_file, (filename), CONST char * filename)
+{
+  HANDLE    hFile;
+  STD_HANDLE_SYSTEM_CALL
+    (syscall_open, hFile,
+      CreateFile (filename,
+	          GENERIC_WRITE,
+		  0	/*sharing*/,
+		  0	/*security*/,
+		  OPEN_ALWAYS,
+		  FILE_ATTRIBUTE_NORMAL /*attributes&flags*/,
+		  0	/*Template*/));
+  SetFilePointer (hFile, 0, 0, FILE_END);
+  return  OS_open_handle (hFile);
+}
+
+
+//DEFUN_OPEN_FILE (OS_open_append_file, (O_WRONLY | O_CREAT | O_APPEND | _O_BINARY))
 
 #else
 
@@ -120,57 +151,75 @@ DEFUN (OS_open_append_file, (filename), CONST char * filename)
 #endif
 
 static Tchannel
-DEFUN (make_load_channel, (fd), int fd)
+DEFUN (make_load_channel, (handle), HANDLE handle)
 {
-  enum channel_type type = (fd_channel_type (fd));
-/*SRA: fd_channel_type doesnt work properly
-  if ((type == channel_type_terminal)
-      || (type == channel_type_directory)
-      || (type == channel_type_unknown))
-    return (NO_CHANNEL);
-*/
+  enum channel_type type = handle_channel_type (handle);
   if ((type == channel_type_terminal)
       || (type == channel_type_directory)
       )
     return (NO_CHANNEL);
-  MAKE_CHANNEL (fd, type, return);
+  MAKE_CHANNEL (handle, type, return);
 }
 
 Tchannel
 DEFUN (OS_open_load_file, (filename), CONST char * filename)
 {
-  while (1)
-    {
       /*SRA:*/
-      int fd = (DOS_open (filename, O_RDONLY|_O_BINARY, MODE_REG));
-      if (fd >= 0)
-	return (make_load_channel (fd));
-      if (errno != EINTR)
-	return (NO_CHANNEL);
-    }
+   HANDLE  hFile;
+   
+   hFile = CreateFile (filename, GENERIC_READ,
+				 0 /*FILE_SHARE_READ?*/,
+				 0 /*security?*/,
+				 OPEN_EXISTING,
+				 0,
+				 0);
+   if (hFile != INVALID_HANDLE_VALUE)
+     return  make_load_channel (hFile);
+
+   /* try to truncate extension for .bcon hack*/
+   {
+     char newname [MAX_PATH+10];
+     int i;
+     strncpy (newname, filename, MAX_PATH);
+     for (i=0; newname[i]; i++);
+     if (i<4)  return  NO_CHANNEL;
+     if (newname[i-5]=='.') {
+       newname[i-1] = 0;
+       hFile = CreateFile (newname, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+       if (hFile != INVALID_HANDLE_VALUE)
+	 return  make_load_channel (hFile);
+     }
+   }
+ 
+   return  NO_CHANNEL;
 }
 
 Tchannel
 DEFUN (OS_open_dump_file, (filename), CONST char * filename)
 {
-  while (1)
-    {
-      /*SRA: +binary*/
-      int fd = (DOS_open (filename, (_O_BINARY | O_WRONLY | O_CREAT | O_TRUNC), MODE_REG));
-      if (fd >= 0)
-	return (make_load_channel (fd));
-      if (errno != EINTR)
-	return (NO_CHANNEL);
-    }
+   HANDLE  hFile = CreateFile (	filename,
+			        GENERIC_WRITE,
+				0 /*no sharing*/,
+				0 /*security?*/,
+				CREATE_ALWAYS,
+				0,
+				0);
+
+  if (hFile != INVALID_HANDLE_VALUE)
+    return  make_load_channel (hFile);
+  
+  return  NO_CHANNEL;
 }
 
 off_t
 DEFUN (OS_file_length, (channel), Tchannel channel)
 {
-  struct stat stat_buf;
-  STD_VOID_SYSTEM_CALL
-    (syscall_fstat, (DOS_fstat ((CHANNEL_DESCRIPTOR (channel)), (&stat_buf))));
-  return (stat_buf . st_size);
+  DWORD  result;
+  while ((result = GetFileSize (CHANNEL_HANDLE (channel), 0)) == 0xffffffffL
+         && GetLastError() != NO_ERROR)
+    error_system_call (GetLastError(), syscall_fstat);
+  
+  return  result;
 }
 
 off_t
@@ -180,7 +229,7 @@ DEFUN (OS_file_position, (channel), Tchannel channel)
   STD_UINT_SYSTEM_CALL
     (syscall_lseek,
      result,
-     (DOS_lseek ((CHANNEL_DESCRIPTOR (channel)), 0L, SEEK_CUR)));
+     (_llseek ((CHANNEL_HANDLE (channel)), 0L, SEEK_CUR)));
   return (result);
 }
 
@@ -189,11 +238,11 @@ DEFUN (OS_file_set_position, (channel, position),
        Tchannel channel AND
        off_t position)
 {
-  off_t result;
+  LONG result;
   STD_UINT_SYSTEM_CALL
     (syscall_lseek,
      result,
-     (DOS_lseek ((CHANNEL_DESCRIPTOR (channel)), position, SEEK_SET)));
+     (_llseek ((CHANNEL_HANDLE (channel)), position, SEEK_SET)));
   if (result != position)
     error_external_return ();
 }

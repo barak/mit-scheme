@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/nttrap.h,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/nttrap.h,v 1.2 1993/06/24 01:52:11 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -93,4 +93,3 @@ extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (soft_reset, (void));
 
 #endif /* SCM_DOSTRAP_H */
-
