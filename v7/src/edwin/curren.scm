@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.91 1991/03/16 00:01:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.92 1991/04/21 00:30:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -418,11 +418,13 @@ The buffer is guaranteed to be selected at that time."
   (set-buffer-mark! (current-buffer) (guarantee-mark mark)))
 
 (define-integrable (set-buffer-mark! buffer mark)
-  (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting mark)))
+  (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting-copy mark)))
 
 (define-variable auto-push-point-notification
-  "Message to display when point is pushed on the mark ring, or false."
-  "Mark Set")
+  "Message to display when point is pushed on the mark ring.
+If false, don't display any message."
+  "Mark set"
+  string-or-false?)
 
 (define (push-current-mark! mark)
   (push-buffer-mark! (current-buffer) (guarantee-mark mark))
@@ -433,7 +435,7 @@ The buffer is guaranteed to be selected at that time."
 	(temporary-message notification))))
 
 (define-integrable (push-buffer-mark! buffer mark)
-  (ring-push! (buffer-mark-ring buffer) (mark-right-inserting mark)))
+  (ring-push! (buffer-mark-ring buffer) (mark-right-inserting-copy mark)))
 
 (define-integrable (pop-current-mark!)
   (pop-buffer-mark! (current-buffer)))
