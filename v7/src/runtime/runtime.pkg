@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.485 2004/05/27 14:04:32 cph Exp $
+$Id: runtime.pkg,v 14.486 2004/06/07 19:47:57 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1723,14 +1723,8 @@ USA.
 	  hash-table->alist
 	  hash-table/clean!
 	  hash-table/clear!
-	  hash-table/constructor
 	  hash-table/count
 	  hash-table/datum-list
-	  hash-table/entries-list
-	  hash-table/entries-vector
-	  hash-table/entry-datum
-	  hash-table/entry-key
-	  hash-table/entry-value
 	  hash-table/for-each
 	  hash-table/get
 	  hash-table/intern!
@@ -1738,13 +1732,10 @@ USA.
 	  hash-table/key-list
 	  hash-table/key=?
 	  hash-table/lookup
-	  hash-table/make-entry
 	  hash-table/put!
 	  hash-table/rehash-size
 	  hash-table/rehash-threshold
 	  hash-table/remove!
-	  hash-table/set-entry-datum!
-	  hash-table/set-entry-value!
 	  hash-table/size
 	  hash-table?
 	  make-eq-hash-table

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.28 2003/07/30 05:13:46 cph Exp $
+$Id: hashtb.scm,v 1.29 2004/06/07 19:47:43 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,27 +29,35 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Hash Table Structure
+;;;; Structures
+
+(define-structure (hash-table-type
+		   (type-descriptor <hash-table-type>)
+		   (constructor make-table-type)
+		   (conc-name table-type-))
+  (key-hash #f read-only #t)
+  (key=? #f read-only #t)
+  (rehash-after-gc? #f read-only #t)
+  (method:get #f read-only #t)
+  (method:put! #f read-only #t)
+  (method:intern! #f read-only #t)
+  (method:remove! #f read-only #t)
+  (method:clean! #f read-only #t)
+  (method:rehash! #f read-only #t)
+  (method:get-list #f read-only #t))
+
+(define-integrable (guarantee-hash-table-type object procedure)
+  (if (not (hash-table-type? object))
+      (error:not-hash-table-type object procedure)))
+
+(define (error:not-hash-table-type object procedure)
+  (error:wrong-type-argument object "hash table type" procedure))
 
 (define-structure (hash-table
 		   (type-descriptor <hash-table>)
-		   (constructor make-hash-table
-				(key-hash
-				 key=?
-				 make-entry
-				 entry-valid?
-				 entry-key
-				 entry-datum
-				 set-entry-datum!))
+		   (constructor make-table (type))
 		   (conc-name table-))
-  ;; Procedures describing keys and entries.
-  (key-hash #f read-only #t)
-  (key=? #f read-only #t)
-  (make-entry #f read-only #t)
-  (entry-valid? #f read-only #t)
-  (entry-key #f read-only #t)
-  (entry-datum #f read-only #t)
-  (set-entry-datum! #f read-only #t)
+  (type #f read-only #t)
 
   ;; Parameters of the hash table.
   (rehash-threshold default-rehash-threshold)
@@ -60,39 +69,14 @@ USA.
   (shrink-size 0)
   buckets
   (primes prime-numbers-stream)
-  (flags 0))
+  (needs-rehash? #f)
+  (initial-size-in-effect? #f))
 
-(define-integrable (table-standard-accessors? table)
-  (read-flag table 1))
+(define-integrable (increment-table-count! table)
+  (set-table-count! table (fix:+ (table-count table) 1)))
 
-(define-integrable (set-table-standard-accessors?! table value)
-  (write-flag table 1 value))
-
-(define-integrable (table-needs-rehash? table)
-  (read-flag table 2))
-
-(define-integrable (set-table-needs-rehash?! table value)
-  (write-flag table 2 value))
-
-(define-integrable (table-initial-size-in-effect? table)
-  (read-flag table 4))
-
-(define-integrable (set-table-initial-size-in-effect?! table value)
-  (write-flag table 4 value))
-
-(define-integrable (table-rehash-after-gc? table)
-  (read-flag table 8))
-
-(define-integrable (set-table-rehash-after-gc?! table value)
-  (write-flag table 8 value))
-
-(define-integrable (read-flag table flag)
-  (fix:= (fix:and (table-flags table) flag) flag))
-
-(define-integrable (write-flag table flag value)
-  (if value
-      (set-table-flags! table (fix:or (table-flags table) flag))
-      (set-table-flags! table (fix:andc (table-flags table) flag))))
+(define-integrable (decrement-table-count! table)
+  (set-table-count! table (fix:- (table-count table) 1)))
 
 (define-integrable minimum-size 4)
 (define-integrable default-rehash-threshold 1)
@@ -100,128 +84,53 @@ USA.
 
 (define-integrable (guarantee-hash-table object procedure)
   (if (not (hash-table? object))
-      (error:wrong-type-argument object "hash table" procedure)))
+      (error:not-hash-table object procedure)))
+
+(define (error:not-hash-table object procedure)
+  (error:wrong-type-argument object "hash table" procedure))
 
-;;;; Constructors
+;;;; Table operations
 
-(define (hash-table/constructor key-hash key=? make-entry entry-valid?
-				entry-key entry-datum set-entry-datum!
-				#!optional rehash-after-gc?)
-  (let ((make-entry (if (eq? cons make-entry) strong-cons make-entry))
-	(entry-valid? (if (eq? #t entry-valid?) strong-valid? entry-valid?))
-	(entry-key (if (eq? car entry-key) strong-car entry-key))
-	(entry-datum (if (eq? cdr entry-datum) strong-cdr entry-datum))
-	(set-entry-datum!
-	 (if (eq? set-cdr! set-entry-datum!)
-	     strong-set-cdr!
-	     set-entry-datum!))
-	(rehash-after-gc?
-	 (and (not (default-object? rehash-after-gc?))
-	      rehash-after-gc?)))
-    (lambda (#!optional initial-size)
-      (let ((initial-size
-	     (if (default-object? initial-size)
-		 #f
-		 (check-arg initial-size
-			    #f
-			    exact-nonnegative-integer?
-			    "exact nonnegative integer"
-			    #f))))
-	(let ((table
-	       (make-hash-table key-hash key=? make-entry entry-valid?
-				entry-key entry-datum set-entry-datum!)))
-	  (if (and initial-size (> initial-size minimum-size))
-	      ;; If an initial size is given, it means that the table
-	      ;; should be initialized with that usable size.  The
-	      ;; table's usable size remains fixed at the initial size
-	      ;; until the count exceeds the usable size, at which point
-	      ;; normal table resizing takes over.
-	      (begin
-		(set-table-grow-size! table initial-size)
-		(set-table-initial-size-in-effect?! table #t)))
-	  (set-table-standard-accessors?!
-	   table
-	   (and (eq? eq? key=?)
-		(or (eq? car entry-key)
-		    (eq? strong-car entry-key)
-		    (eq? weak-car entry-key))
-		(or (eq? cdr entry-datum)
-		    (eq? strong-cdr entry-datum)
-		    (eq? weak-cdr entry-datum))
-		(or (eq? set-cdr! set-entry-datum!)
-		    (eq? strong-set-cdr! set-entry-datum!)
-		    (eq? weak-set-cdr! set-entry-datum!))))
-	  (set-table-rehash-after-gc?! table rehash-after-gc?)
-	  (reset-table! table)
-	  (if rehash-after-gc?
-	      (set! address-hash-tables (weak-cons table address-hash-tables)))
-	  table)))))
+(define ((hash-table-constructor type) #!optional initial-size)
+  (make-hash-table type (if (default-object? initial-size) #f initial-size)))
 
-;;; Standard trick because known calls to these primitives compile
-;;; more efficiently than unknown calls.
-(define (strong-cons key datum) (cons key datum))
-(define (strong-valid? entry) entry #t)
-(define (strong-car entry) (car entry))
-(define (strong-cdr entry) (cdr entry))
-(define (strong-set-cdr! entry datum) (set-cdr! entry datum))
+(define (make-hash-table type #!optional initial-size)
+  (guarantee-hash-table-type type 'MAKE-HASH-TABLE)
+  (let ((initial-size
+	 (if (or (default-object? initial-size) (not initial-size))
+	     #f
+	     (begin
+	       (guarantee-exact-nonnegative-integer initial-size
+						    'MAKE-HASH-TABLE)
+	       initial-size))))
+    (let ((table (make-table type)))
+      (if (and initial-size (> initial-size minimum-size))
+	  ;; If an initial size is given, it means that the table
+	  ;; should be initialized with that usable size.  The
+	  ;; table's usable size remains fixed at the initial size
+	  ;; until the count exceeds the usable size, at which point
+	  ;; normal table resizing takes over.
+	  (begin
+	    (set-table-grow-size! table initial-size)
+	    (set-table-initial-size-in-effect?! table #t)))
+      (reset-table! table)
+      (if (table-type-rehash-after-gc? type)
+	  (set! address-hash-tables (weak-cons table address-hash-tables)))
+      table)))
 
-(define (strong-hash-table/constructor key-hash key=?
-				       #!optional rehash-after-gc?)
-  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!
-			  (and (not (default-object? rehash-after-gc?))
-			       rehash-after-gc?)))
+(define (hash-table/key-hash table)
+  (guarantee-hash-table table 'HASH-TABLE/KEY-HASH)
+  (table-type-key-hash (table-type table)))
 
-(define (weak-hash-table/constructor key-hash key=?
-				     #!optional rehash-after-gc?)
-  (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
-			  weak-car weak-cdr weak-set-cdr!
-			  (and (not (default-object? rehash-after-gc?))
-			       rehash-after-gc?)))
-
-;;;; Accessors
+(define (hash-table/key=? table)
+  (guarantee-hash-table table 'HASH-TABLE/KEY=?)
+  (table-type-key=? (table-type table)))
 
 (define (hash-table/get table key default)
   (guarantee-hash-table table 'HASH-TABLE/GET)
-  (let ((entries
-	 (vector-ref (table-buckets table) (compute-key-hash table key))))
-    (if (and key (table-standard-accessors? table))
-	;; Optimize standard case: compiler makes this fast.
-	(let loop ((entries entries))
-	  (if (pair? entries)
-	      (if (eq? (system-pair-car (car entries)) key)
-		  (system-pair-cdr (car entries))
-		  (loop (cdr entries)))
-	      default))
-	(let ((key=? (table-key=? table))
-	      (entry-key (table-entry-key table)))
-	  (let loop ((entries entries))
-	    (if (pair? entries)
-		(if (key=? (entry-key (car entries)) key)
-		    ((table-entry-datum table) (car entries))
-		    (loop (cdr entries)))
-		default))))))
-
-;; This is useful when interning objects using a hash-table.
-(define (hash-table/get-key table key default)
-  (guarantee-hash-table table 'HASH-TABLE/GET)
-  (let ((entries
-	 (vector-ref (table-buckets table) (compute-key-hash table key))))
-    (if (and key (table-standard-accessors? table))
-	;; Optimize standard case: compiler makes this fast.
-	(let loop ((entries entries))
-	  (if (pair? entries)
-	      (if (eq? (system-pair-car (car entries)) key)
-		  (system-pair-car (car entries))
-		  (loop (cdr entries)))
-	      default))
-	(let ((key=? (table-key=? table))
-	      (entry-key (table-entry-key table)))
-	  (let loop ((entries entries))
-	    (if (pair? entries)
-		(if (key=? (entry-key (car entries)) key)
-		    (entry-key (car entries))
-		    (loop (cdr entries)))
-		default))))))
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:get (table-type table)) table key default))))
 
 (define hash-table/lookup
   (let ((default (list #f)))
@@ -231,209 +140,65 @@ USA.
 	    (if-not-found)
 	    (if-found datum))))))
 
-;;;; Modifiers
-
 (define (hash-table/put! table key datum)
   (guarantee-hash-table table 'HASH-TABLE/PUT!)
-  (let ((buckets (table-buckets table))
-	(hash (compute-key-hash table key)))
-    (let ((add-bucket!
-	   (lambda ()
-	     (without-interrupts
-	      (lambda ()
-		(vector-set! buckets
-			     hash
-			     (cons ((table-make-entry table) key datum)
-				   (vector-ref buckets hash)))
-		(if (> (let ((count (fix:+ (table-count table) 1)))
-			 (set-table-count! table count)
-			 count)
-		       (table-grow-size table))
-		    (grow-table! table)))))))
-      (if (and key (table-standard-accessors? table))
-	  (let loop ((entries (vector-ref buckets hash)))
-	    (if (pair? entries)
-		(if (eq? (system-pair-car (car entries)) key)
-		    (system-pair-set-cdr! (car entries) datum)
-		    (loop (cdr entries)))
-		(add-bucket!)))
-	  (let ((key=? (table-key=? table))
-		(entry-key (table-entry-key table)))
-	    (let loop ((entries (vector-ref buckets hash)))
-	      (if (pair? entries)
-		  (if (key=? (entry-key (car entries)) key)
-		      ((table-set-entry-datum! table) (car entries) datum)
-		      (loop (cdr entries)))
-		  (add-bucket!))))))))
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:put! (table-type table)) table key datum))))
+
+(define (hash-table/intern! table key get-datum)
+  (guarantee-hash-table table 'HASH-TABLE/INTERN!)
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:intern! (table-type table)) table key get-datum))))
 
 (define (hash-table/remove! table key)
   (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
-  (let ((key=? (table-key=? table))
-	(entry-key (table-entry-key table))
-	(decrement-count
-	 (lambda ()
-	   (if (< (let ((count (fix:- (table-count table) 1)))
-		    (set-table-count! table count)
-		    count)
-		  (table-shrink-size table))
-	       (shrink-table! table)))))
-    (let ((buckets (table-buckets table))
-	  (hash (compute-key-hash table key)))
-      (let ((entries (vector-ref buckets hash)))
-	(if (pair? entries)
-	    (let ((next (cdr entries)))
-	      (if (key=? (entry-key (car entries)) key)
-		  (without-interrupts
-		   (lambda ()
-		     (vector-set! buckets hash next)
-		     (decrement-count)))
-		  (let loop ((previous entries) (entries next))
-		    (if (pair? entries)
-			(let ((next (cdr entries)))
-			  (if (key=? (entry-key (car entries)) key)
-			      (without-interrupts
-			       (lambda ()
-				 (set-cdr! previous next)
-				 (decrement-count)))
-			      (loop entries next))))))))))))
-
-(define (hash-table/intern! table key get-datum)
-  (guarantee-hash-table table 'HASH-TABLE/INTERN!)
-  (let ((buckets (table-buckets table))
-	(hash (compute-key-hash table key)))
-    (let ((add-bucket!
-	   (lambda ()
-	     (let ((datum (get-datum)))
-	       (without-interrupts
-		(lambda ()
-		  (vector-set! buckets
-			       hash
-			       (cons ((table-make-entry table) key datum)
-				     (vector-ref buckets hash)))
-		  (if (> (let ((count (fix:+ (table-count table) 1)))
-			   (set-table-count! table count)
-			   count)
-			 (table-grow-size table))
-		      (grow-table! table))))
-	       datum))))
-      (if (and key (table-standard-accessors? table))
-	  (let loop ((entries (vector-ref buckets hash)))
-	    (if (pair? entries)
-		(if (eq? (system-pair-car (car entries)) key)
-		    (system-pair-cdr (car entries))
-		    (loop (cdr entries)))
-		(add-bucket!)))
-	  (let ((key=? (table-key=? table))
-		(entry-key (table-entry-key table)))
-	    (let loop ((entries (vector-ref buckets hash)))
-	      (if (pair? entries)
-		  (if (key=? (entry-key (car entries)) key)
-		      ((table-entry-datum table) (car entries))
-		      (loop (cdr entries)))
-		  (add-bucket!))))))))
-
-;;;; Enumerators
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:remove! (table-type table)) table key))))
+
+(define (hash-table/clean! table)
+  (guarantee-hash-table table 'HASH-TABLE/CLEAN!)
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:clean! (table-type table)) table)
+      (maybe-shrink-table! table))))
 
 (define (hash-table/for-each table procedure)
   ;; It's difficult to make this more efficient because PROCEDURE is
   ;; allowed to delete the entry from the table, and if the table is
   ;; resized while being examined we'll lose our place.
-  (guarantee-hash-table table 'HASH-TABLE/FOR-EACH)
-  (let ((entry-key (table-entry-key table))
-	(entry-datum (table-entry-datum table)))
-    (for-each (lambda (entry)
-		(procedure (entry-key entry) (entry-datum entry)))
-	      (hash-table/entries-list table))))
-
-(define (hash-table/entries-vector table)
-  (guarantee-hash-table table 'HASH-TABLE/ENTRIES-VECTOR)
-  (let ((result (make-vector (table-count table))))
-    (let* ((buckets (table-buckets table))
-	   (n-buckets (vector-length buckets)))
-      (let per-bucket ((n 0) (i 0))
-	(if (fix:< n n-buckets)
-	    (let per-entry ((entries (vector-ref buckets n)) (i i))
-	      (if (pair? entries)
-		  (begin
-		    (vector-set! result i (car entries))
-		    (per-entry (cdr entries) (fix:+ i 1)))
-		  (per-bucket (fix:+ n 1) i))))))
-    result))
-
-(define (hash-table/entries-list table)
-  (guarantee-hash-table table 'HASH-TABLE/ENTRIES-LIST)
-  (table->list table (lambda (entry) entry)))
+  (for-each (lambda (p) (procedure (car p) (cdr p)))
+	    (hash-table->alist table)))
 
 (define (hash-table->alist table)
   (guarantee-hash-table table 'HASH-TABLE->ALIST)
-  (table->list table
-	       (let ((entry-key (table-entry-key table))
-		     (entry-datum (table-entry-datum table)))
-		 (lambda (entry)
-		   (cons (entry-key entry) (entry-datum entry))))))
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:get-list (table-type table))
+       table
+       (lambda (key datum) (cons key datum))))))
 
 (define (hash-table/key-list table)
   (guarantee-hash-table table 'HASH-TABLE/KEY-LIST)
-  (table->list table (table-entry-key table)))
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:get-list (table-type table))
+       table
+       (lambda (key datum) datum key)))))
 
 (define (hash-table/datum-list table)
   (guarantee-hash-table table 'HASH-TABLE/DATUM-LIST)
-  (table->list table (table-entry-datum table)))
-
-(define (table->list table entry->element)
-  (let ((buckets (table-buckets table))
-	(cons-element
-	 (let ((entry-valid? (table-entry-valid? table)))
-	   (if (eq? strong-valid? entry-valid?)
-	       (lambda (entry result)
-		 (cons (entry->element entry) result))
-	       (lambda (entry result)
-		 (let ((element (entry->element entry)))
-		   (if (entry-valid? entry)
-		       (cons element result)
-		       result)))))))
-    (let ((n-buckets (vector-length buckets)))
-      (let loop ((n 0) (result '()))
-	(if (fix:< n n-buckets)
-	    (loop (fix:+ n 1)
-		  (let loop ((entries (vector-ref buckets n)) (result result))
-		    (if (pair? entries)
-			(loop (cdr entries)
-			      (cons-element (car entries) result))
-			result)))
-	    result)))))
+  (with-table-locked! table
+    (lambda ()
+      ((table-type-method:get-list (table-type table))
+       table
+       (lambda (key datum) key datum)))))
 
-;;;; Parameters
-
-(define hash-table/key-hash
-  (record-accessor <hash-table> 'KEY-HASH))
-
-(define hash-table/key=?
-  (record-accessor <hash-table> 'KEY=?))
-
-(define hash-table/make-entry
-  (record-accessor <hash-table> 'MAKE-ENTRY))
-
-(define hash-table/entry-key
-  (record-accessor <hash-table> 'ENTRY-KEY))
-
-(define hash-table/entry-datum
-  (record-accessor <hash-table> 'ENTRY-DATUM))
-
-(define hash-table/set-entry-datum!
-  (record-accessor <hash-table> 'SET-ENTRY-DATUM!))
-
-(define hash-table/rehash-threshold
-  (record-accessor <hash-table> 'REHASH-THRESHOLD))
-
-(define hash-table/rehash-size
-  (record-accessor <hash-table> 'REHASH-SIZE))
-
-(define hash-table/count
-  (record-accessor <hash-table> 'COUNT))
-
-(define hash-table/size
-  (record-accessor <hash-table> 'GROW-SIZE))
+(define (hash-table/rehash-threshold table)
+  (guarantee-hash-table table 'HASH-TABLE/REHASH-THRESHOLD)
+  (table-rehash-threshold table))
 
 (define (set-hash-table/rehash-threshold! table threshold)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
@@ -446,10 +211,14 @@ USA.
 			   (<= x 1)))
 		    "real number between 0 (exclusive) and 1 (inclusive)"
 		    'SET-HASH-TABLE/REHASH-THRESHOLD!)))
-    (without-interrupts
-     (lambda ()
-       (set-table-rehash-threshold! table threshold)
-       (new-size! table (table-grow-size table))))))
+    (with-table-locked! table
+      (lambda ()
+	(set-table-rehash-threshold! table threshold)
+	(new-size! table (table-grow-size table))))))
+
+(define (hash-table/rehash-size table)
+  (guarantee-hash-table table 'HASH-TABLE/REHASH-SIZE)
+  (table-rehash-size table))
 
 (define (set-hash-table/rehash-size! table size)
   (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-SIZE!)
@@ -462,90 +231,256 @@ USA.
 			    (else #f)))
 		    "real number < 1 or exact integer >= 1"
 		    'SET-HASH-TABLE/REHASH-SIZE!)))
-    (without-interrupts
-     (lambda ()
-       (set-table-rehash-size! table size)
-       (reset-shrink-size! table)
-       (if (< (table-count table) (table-shrink-size table))
-	   (shrink-table! table))))))
-
-;;;; Cleansing
+    (with-table-locked! table
+      (lambda ()
+	(set-table-rehash-size! table size)
+	(reset-shrink-size! table)
+	(maybe-shrink-table! table)))))
+
+(define (hash-table/count table)
+  (guarantee-hash-table table 'HASH-TABLE/COUNT)
+  (table-count table))
+
+(define (hash-table/size table)
+  (guarantee-hash-table table 'HASH-TABLE/SIZE)
+  (table-grow-size table))
 
 (define (hash-table/clear! table)
   (guarantee-hash-table table 'HASH-TABLE/CLEAR!)
-  (without-interrupts
-   (lambda ()
-     (if (not (table-initial-size-in-effect? table))
-	 (set-table-grow-size! table minimum-size))
-     (set-table-count! table 0)
-     (reset-table! table))))
+  (with-table-locked! table
+    (lambda ()
+      (if (not (table-initial-size-in-effect? table))
+	  (set-table-grow-size! table minimum-size))
+      (set-table-count! table 0)
+      (reset-table! table))))
+
+;;;; Weak table type
 
-(define (hash-table/clean! table)
-  (guarantee-hash-table table 'HASH-TABLE/CLEAN!)
-  (if (not (eq? strong-valid? (table-entry-valid? table)))
-      (without-interrupts
-       (lambda ()
-	 (clean-table! table)
-	 (if (< (table-count table) (table-shrink-size table))
-	     (shrink-table! table))))))
+(define (make-weak-hash-table-type key-hash key=? rehash-after-gc?)
 
-(define (clean-table! table)
-  (let ((buckets (table-buckets table))
-	(entry-valid? (table-entry-valid? table)))
-    (let ((n-buckets (vector-length buckets)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n-buckets))
-	(letrec
-	    ((scan-head
-	      (lambda (entries)
-		(if (pair? entries)
-		    (if (entry-valid? (car entries))
-			(begin
-			  (vector-set! buckets i entries)
-			  (scan-tail entries (cdr entries)))
-			(begin
-			  (decrement-table-count! table)
-			  (scan-head (cdr entries))))
-		    (vector-set! buckets i entries))))
-	     (scan-tail
-	      (lambda (previous entries)
-		(if (pair? entries)
-		    (if (entry-valid? (car entries))
-			(scan-tail entries (cdr entries))
-			(begin
-			  (decrement-table-count! table)
-			  (let loop ((entries (cdr entries)))
-			    (if (pair? entries)
-				(if (entry-valid? (car entries))
-				    (begin
-				      (set-cdr! previous entries)
-				      (scan-tail entries (cdr entries)))
-				    (begin
-				      (decrement-table-count! table)
-				      (loop (cdr entries))))
-				(set-cdr! previous entries)))))))))
-	  (let ((entries (vector-ref buckets i)))
-	    (if (pair? entries)
-		(if (entry-valid? (car entries))
-		    (scan-tail entries (cdr entries))
-		    (begin
-		      (decrement-table-count! table)
-		      (scan-head (cdr entries)))))))))))
+  (define-integrable (make-type compute-hash!)
+    (make-table-type key-hash key=? rehash-after-gc?
+		     (make-method:get compute-hash! key=? %weak-entry-key
+				      %weak-entry-datum)
+		     (make-method:put! compute-hash! key=? %weak-make-entry
+				       %weak-entry-key %weak-set-entry-datum!)
+		     (make-method:intern! compute-hash! key=? %weak-make-entry
+					  %weak-entry-key %weak-entry-datum)
+		     (make-method:remove! compute-hash! key=? %weak-entry-key)
+		     weak-method:clean!
+		     (make-method:rehash! key-hash %weak-entry-valid?
+					  %weak-entry-key)
+		     (make-method:get-list %weak-entry-valid? %weak-entry-key
+					   %weak-entry-datum)))
 
-(define-integrable (decrement-table-count! table)
-  (set-table-count! table (fix:- (table-count table) 1)))
+  (define (weak-method:clean! table)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n-buckets)))
+	  (letrec
+	      ((scan-head
+		(lambda (p)
+		  (if (pair? p)
+		      (if (%weak-entry-key (car p))
+			  (begin
+			    (vector-set! buckets i p)
+			    (scan-tail (cdr p) p))
+			  (begin
+			    (decrement-table-count! table)
+			    (scan-head (cdr p))))
+		      (vector-set! buckets i p))))
+	       (scan-tail
+		(lambda (p q)
+		  (if (pair? p)
+		      (if (%weak-entry-key (car p))
+			  (scan-tail (cdr p) p)
+			  (begin
+			    (decrement-table-count! table)
+			    (let loop ((p (cdr p)))
+			      (if (pair? p)
+				  (if (%weak-entry-key (car p))
+				      (begin
+					(set-cdr! q p)
+					(scan-tail (cdr p) p))
+				      (begin
+					(decrement-table-count! table)
+					(loop (cdr p))))
+				  (set-cdr! q p)))))))))
+	    (scan-head (vector-ref buckets i)))))))
+
+  (define-integrable (%weak-make-entry key datum)
+    (if (or (not key) (number? key))	;Keep numbers in table.
+	(cons key datum)
+	(system-pair-cons (ucode-type weak-cons) key datum)))
+
+  (define-integrable (%weak-entry-valid? entry)
+    (or (pair? entry)
+	(system-pair-car entry)))
+
+  (define-integrable %weak-entry-key system-pair-car)
+  (define-integrable %weak-entry-datum system-pair-cdr)
+  (define-integrable %weak-set-entry-datum! system-pair-set-cdr!)
+
+  (if rehash-after-gc?
+      (make-type (compute-address-hash key-hash))
+      (make-type (compute-non-address-hash key-hash))))
+
+(define (weak-hash-table/constructor key-hash key=?
+				     #!optional rehash-after-gc?)
+  (hash-table-constructor
+   (make-weak-hash-table-type key-hash key=?
+			      (if (default-object? rehash-after-gc?)
+				  #f
+				  rehash-after-gc?))))
+
+;;;; Strong table type
+
+(define (make-strong-hash-table-type key-hash key=? rehash-after-gc?)
+
+  (define-integrable (make-type compute-hash!)
+    (make-table-type key-hash key=? rehash-after-gc?
+		     (make-method:get compute-hash! key=? %strong-entry-key
+				      %strong-entry-datum)
+		     (make-method:put! compute-hash! key=? %strong-make-entry
+				       %strong-entry-key
+				       %strong-set-entry-datum!)
+		     (make-method:intern! compute-hash! key=?
+					  %strong-make-entry %strong-entry-key
+					  %strong-entry-datum)
+		     (make-method:remove! compute-hash! key=?
+					  %strong-entry-key)
+		     (lambda (table) table unspecific)
+		     (make-method:rehash! key-hash %strong-entry-valid?
+					  %strong-entry-key)
+		     (make-method:get-list %strong-entry-valid?
+					   %strong-entry-key
+					   %strong-entry-datum)))
+
+  (define-integrable %strong-make-entry cons)
+  (define-integrable (%strong-entry-valid? entry) entry #t)
+  (define-integrable %strong-entry-key car)
+  (define-integrable %strong-entry-datum cdr)
+  (define-integrable %strong-set-entry-datum! set-cdr!)
+
+  (if rehash-after-gc?
+      (make-type (compute-address-hash key-hash))
+      (make-type (compute-non-address-hash key-hash))))
+
+(define (strong-hash-table/constructor key-hash key=?
+				       #!optional rehash-after-gc?)
+  (hash-table-constructor
+   (make-strong-hash-table-type key-hash key=?
+				(if (default-object? rehash-after-gc?)
+				    #f
+				    rehash-after-gc?))))
+
+;;;; Methods
+
+(define-integrable (make-method:get compute-hash! key=? entry-key entry-datum)
+  (lambda (table key default)
+    (let ((hash (compute-hash! table key)))
+      (let loop ((p (vector-ref (table-buckets table) hash)))
+	(if (pair? p)
+	    (if (key=? (entry-key (car p)) key)
+		(entry-datum (car p))
+		(loop (cdr p)))
+	    default)))))
+
+(define-integrable (make-method:put! compute-hash! key=? make-entry entry-key
+				     set-entry-datum!)
+  (lambda (table key datum)
+    (let ((hash (compute-hash! table key)))
+      (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
+	(if (pair? p)
+	    (if (key=? (entry-key (car p)) key)
+		(set-entry-datum! (car p) datum)
+		(loop (cdr p) p))
+	    (begin
+	      (let ((r (cons (make-entry key datum) '())))
+		(if q
+		    (set-cdr! q r)
+		    (vector-set! (table-buckets table) hash r)))
+	      (increment-table-count! table)
+	      (maybe-grow-table! table)))))))
+
+(define-integrable (make-method:intern! compute-hash! key=? make-entry
+					entry-key entry-datum)
+  (lambda (table key get-datum)
+    (let ((hash (compute-hash! table key)))
+      (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
+	(if (pair? p)
+	    (if (key=? (entry-key (car p)) key)
+		(entry-datum (car p))
+		(loop (cdr p) p))
+	    (let ((datum (get-datum)))
+	      (let ((r (cons (make-entry key datum) '())))
+		(if q
+		    (set-cdr! q r)
+		    (vector-set! (table-buckets table) hash r)))
+	      (increment-table-count! table)
+	      (maybe-grow-table! table)
+	      datum))))))
+
+(define-integrable (make-method:remove! compute-hash! key=? entry-key)
+  (lambda (table key)
+    (let ((hash (compute-hash! table key)))
+      (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
+	(if (pair? p)
+	    (if (key=? (entry-key (car p)) key)
+		(begin
+		  (if q
+		      (set-cdr! q (cdr p))
+		      (vector-set! (table-buckets table) hash (cdr p)))
+		  (decrement-table-count! table)
+		  (maybe-shrink-table! table))
+		(loop (cdr p) p)))))))
+
+(define-integrable (make-method:rehash! key-hash entry-valid? entry-key)
+  (lambda (table entries)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(let loop ((p entries))
+	  (if (pair? p)
+	      (let ((q (cdr p)))
+		(if (entry-valid? (car p))
+		    (let ((hash (key-hash (entry-key (car p)) n-buckets)))
+		      (set-cdr! p (vector-ref buckets hash))
+		      (vector-set! buckets hash p))
+		    (decrement-table-count! table))
+		(loop q))))))))
+
+(define-integrable (make-method:get-list entry-valid? entry-key entry-datum)
+  (lambda (table ->item)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(do ((i 0 (fix:+ i 1))
+	     (items '()
+		    (let loop ((p (vector-ref buckets i)) (items items))
+		      (if (pair? p)
+			  (loop (cdr p)
+				(if (entry-valid? (car p))
+				    (cons (->item (entry-key (car p))
+						  (entry-datum (car p)))
+					  items)
+				    items))
+			  items))))
+	    ((not (fix:< i n-buckets)) items))))))
 
 ;;;; Resizing
 
-(define (grow-table! table)
-  (let loop ((size (table-grow-size table)))
-    (if (> (table-count table) size)
-	(loop (increment-size table size))
-	(new-size! table size)))
-  (set-table-initial-size-in-effect?! table #f))
+(define (maybe-grow-table! table)
+  (if (> (table-count table) (table-grow-size table))
+      (begin
+	(let loop ((size (table-grow-size table)))
+	  (if (> (table-count table) size)
+	      (loop (increment-size table size))
+	      (new-size! table size)))
+	(set-table-initial-size-in-effect?! table #f))))
 
-(define (shrink-table! table)
-  (if (not (table-initial-size-in-effect? table))
+(define (maybe-shrink-table! table)
+  (if (and (< (table-count table) (table-shrink-size table))
+	   (not (table-initial-size-in-effect? table)))
       (let loop ((size (table-grow-size table)))
 	(cond ((<= size minimum-size)
 	       (new-size! table minimum-size))
@@ -558,7 +493,13 @@ USA.
   (set-table-grow-size! table size)
   (let ((old-buckets (table-buckets table)))
     (reset-table! table)
-    (rehash-table-from-old-buckets! table old-buckets)))
+    (let ((n-buckets (vector-length old-buckets))
+	  (method (table-type-method:rehash! (table-type table))))
+      (set-table-needs-rehash?! table #f)
+      (do ((i 0 (fix:+ i 1)))
+	  ((not (fix:< i n-buckets)))
+	(method table (vector-ref old-buckets i))))
+    (maybe-shrink-table! table)))
 
 (define (reset-table! table)
   (reset-shrink-size! table)
@@ -604,66 +545,7 @@ USA.
 	      size*
 	      (- size 1))))))
 
-;;;; Rehashing
-
-(define (rehash-table-from-old-buckets! table buckets)
-  (let ((n-buckets (vector-length buckets)))
-    (set-table-needs-rehash?! table #f)
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i n-buckets))
-      (let ((entries (vector-ref buckets i)))
-	(if (pair? entries)
-	    (rehash-table-entries! table entries)))))
-  (maybe-shrink-table! table))
-
-(define (rehash-table-entries! table entries)
-  (let ((buckets (table-buckets table))
-	(entry-valid? (table-entry-valid? table))
-	(entry-key (table-entry-key table))
-	(key-hash (table-key-hash table)))
-    (let ((n-buckets (vector-length buckets)))
-      (let loop ((entries entries))
-	(if (pair? entries)
-	    (let ((rest (cdr entries)))
-	      (if (entry-valid? (car entries))
-		  (let ((hash
-			 (key-hash (entry-key (car entries)) n-buckets)))
-		    (set-cdr! entries (vector-ref buckets hash))
-		    (vector-set! buckets hash entries))
-		  (decrement-table-count! table))
-	      (loop rest)))))))
-
-(define (maybe-shrink-table! table)
-  ;; Since the rehashing also deletes invalid entries, the count
-  ;; might have been reduced.  So check to see if it's necessary to
-  ;; shrink the table even further.
-  (if (< (table-count table) (table-shrink-size table))
-      (shrink-table! table)))
-
-(define (rehash-table! table)
-  (let ((entries (extract-table-entries! table)))
-    (set-table-needs-rehash?! table #f)
-    (rehash-table-entries! table entries))
-  (maybe-shrink-table! table))
-
-(define (extract-table-entries! table)
-  (let ((buckets (table-buckets table)))
-    (let ((n-buckets (vector-length buckets)))
-      (let ((entries '()))
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n-buckets))
-	  (let ((bucket (vector-ref buckets i)))
-	    (if (pair? bucket)
-		(begin
-		  (let loop ((bucket bucket))
-		    (if (pair? (cdr bucket))
-			(loop (cdr bucket))
-			(set-cdr! bucket entries)))
-		  (set! entries bucket)
-		  (vector-set! buckets i '())))))
-	entries))))
-
-;;;; Address-Hash Tables
+;;;; Address hashing
 
 ;;; Address-hash tables compute their hash number from the address of
 ;;; the key.  Because the address is changed by the garbage collector,
@@ -705,23 +587,44 @@ USA.
 ;;; the NEEDS-REHASH? flag will be true after the resizing is
 ;;; completed, and the next operation will rehash the table.
 
-;;; The exception to this rule is COMPUTE-KEY-HASH, which might have
-;;; to shrink the table due to keys which have been reclaimed by the
-;;; garbage collector.  REHASH-TABLE! explicitly checks for this
+;;; The exception to this rule is COMPUTE-ADDRESS-HASH, which might
+;;; have to shrink the table due to keys which have been reclaimed by
+;;; the garbage collector.  REHASH-TABLE! explicitly checks for this
 ;;; possibility, and rehashes the table again if necessary.
 
-(define (compute-key-hash table key)
-  (let ((key-hash (table-key-hash table)))
-    (if (table-rehash-after-gc? table)
-	(let loop ()
-	  (let ((hash (key-hash key (vector-length (table-buckets table)))))
-	    (if (not (table-needs-rehash? table))
-		hash
-		(begin
-		  (without-interrupts (lambda () (rehash-table! table)))
-		  (loop)))))
-	(key-hash key (vector-length (table-buckets table))))))
+(define-integrable (compute-non-address-hash key-hash)
+  (lambda (table key)
+    (key-hash key (vector-length (table-buckets table)))))
+
+(define-integrable (compute-address-hash key-hash)
+  (lambda (table key)
+    (let loop ()
+      (let ((hash (key-hash key (vector-length (table-buckets table)))))
+	(if (table-needs-rehash? table)
+	    (begin
+	      (rehash-table! table)
+	      (loop))
+	    hash)))))
+
+(define (rehash-table! table)
+  (let ((entries (extract-table-entries! table)))
+    (set-table-needs-rehash?! table #f)
+    ((table-type-method:rehash! (table-type table)) table entries))
+  (maybe-shrink-table! table))
+
+(define (extract-table-entries! table)
+  (let ((buckets (table-buckets table)))
+    (let ((n-buckets (vector-length buckets)))
+      (do ((i 0 (fix:+ i 1))
+	   (entries '()
+		    (append! (let ((p (vector-ref buckets i)))
+			       (vector-set! buckets i '())
+			       p)
+			     entries)))
+	  ((not (fix:< i n-buckets)) entries)))))
 
+;;;; EQ/EQV/EQUAL types
+
 (define-integrable (eq-hash-mod key modulus)
   (fix:remainder (eq-hash key) modulus))
 
@@ -734,7 +637,7 @@ USA.
 	(fix:not n)
 	n)))
 
-(define (eqv-hash-mod key modulus)
+(define-integrable (eqv-hash-mod key modulus)
   (int:remainder (eqv-hash key) modulus))
 
 (define (eqv-hash key)
@@ -744,39 +647,26 @@ USA.
 	((%recnum? key) (%recnum->nonneg-int key))
 	(else (eq-hash key))))
 
-(define (equal-hash-mod key modulus)
+(define-integrable (equal-hash-mod key modulus)
   (int:remainder (equal-hash key) modulus))
 
 (define (equal-hash key)
-  (cond ((pair? key)
-	 (int:+ (equal-hash (car key))
-		(equal-hash (cdr key))))
-	((vector? key)
+  (cond ((vector? key)
 	 (let ((length (vector-length key)))
 	   (do ((i 0 (fix:+ i 1))
-		(accum 0
-		       (int:+ accum
-			      (equal-hash (vector-ref key i)))))
-	       ((fix:= i length) accum))))
-	((cell? key)
-	 (equal-hash (cell-contents key)))
-	((%bignum? key)
-	 (%bignum->nonneg-int key))
-	((%ratnum? key)
-	 (%ratnum->nonneg-int key))
-	((flo:flonum? key)
-	 (%flonum->nonneg-int key))
-	((%recnum? key)
-	 (%recnum->nonneg-int key))
-	((string? key)
-	 (string-hash key))
-	((bit-string? key)
-	 (bit-string->unsigned-integer key))
-	((pathname? key)
-	 (string-hash (->namestring key)))
-	(else
-	 (eq-hash key))))
-
+		(accum 0 (int:+ accum (equal-hash (vector-ref key i)))))
+	       ((not (fix:< i length)) accum))))
+	((pair? key) (int:+ (equal-hash (car key)) (equal-hash (cdr key))))
+	((cell? key) (equal-hash (cell-contents key)))
+	((%bignum? key) (%bignum->nonneg-int key))
+	((%ratnum? key) (%ratnum->nonneg-int key))
+	((flo:flonum? key) (%flonum->nonneg-int key))
+	((%recnum? key) (%recnum->nonneg-int key))
+	((string? key) (string-hash key))
+	((bit-string? key) (bit-string->unsigned-integer key))
+	((pathname? key) (string-hash (->namestring key)))
+	(else (eq-hash key))))
+
 (define-integrable (%bignum? object)
   (object-type? (ucode-type big-fixnum) object))
 
@@ -811,6 +701,32 @@ USA.
 (declare (integrate-operator int:abs))
 (define (int:abs n)
   (if (int:negative? n) (int:negate n) n))
+
+;;;; Miscellany
+
+(define address-hash-tables)
+(define make-eq-hash-table)
+(define make-eqv-hash-table)
+(define make-equal-hash-table)
+(define make-string-hash-table)
+(define make-symbol-hash-table)
+(define make-object-hash-table)
+
+(define (initialize-package!)
+  (set! address-hash-tables '())
+  (add-primitive-gc-daemon! mark-address-hash-tables!)
+  (set! make-eq-hash-table
+	(weak-hash-table/constructor eq-hash-mod eq? #t))
+  (set! make-eqv-hash-table
+	(weak-hash-table/constructor eqv-hash-mod eqv? #t))
+  (set! make-equal-hash-table
+	(strong-hash-table/constructor equal-hash-mod equal? #t))
+  (set! make-string-hash-table
+	(strong-hash-table/constructor string-hash-mod string=? #f))
+  ;; Define old names for compatibility:
+  (set! make-symbol-hash-table make-eq-hash-table)
+  (set! make-object-hash-table make-eqv-hash-table)
+  unspecific)
 
 (define (mark-address-hash-tables!)
   (let loop ((previous #f) (tables address-hash-tables))
@@ -824,62 +740,15 @@ USA.
 		  (system-pair-set-cdr! previous (system-pair-cdr tables))
 		  (set! address-hash-tables (system-pair-cdr tables)))
 	      (loop previous (system-pair-cdr tables)))))))
-
-;;;; Miscellany
-
-(define address-hash-tables)
-(define make-eq-hash-table)
-(define make-eqv-hash-table)
-(define make-equal-hash-table)
-(define make-string-hash-table)
-
-;; Define old names for compatibility:
-(define hash-table/entry-value hash-table/entry-datum)
-(define hash-table/set-entry-value! hash-table/set-entry-datum!)
-(define make-symbol-hash-table)
-(define make-object-hash-table)
-
-(define (initialize-package!)
-  (set! address-hash-tables '())
-  (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! make-eq-hash-table (weak-hash-table/constructor eq-hash-mod eq? #t))
-  ;; EQV? hash tables are weak except for numbers and #F.  It's
-  ;; important to keep numbers in the table, and handling #F specially
-  ;; makes it easier to deal with weak pairs.
-  (set! make-eqv-hash-table
-	(hash-table/constructor eqv-hash-mod
-				eqv?
-				(lambda (key datum)
-				  (if (or (not key) (number? key))
-				      (cons key datum)
-				      (system-pair-cons (ucode-type weak-cons)
-							key
-							datum)))
-				(lambda (entry)
-				  (or (pair? entry)
-				      (system-pair-car entry)))
-				(lambda (entry)
-				  (system-pair-car entry))
-				(lambda (entry)
-				  (system-pair-cdr entry))
-				(lambda (entry datum)
-				  (system-pair-set-cdr! entry datum))
-				#t))
-  (set! make-equal-hash-table
-	(strong-hash-table/constructor equal-hash-mod equal? #t))
-  (set! make-symbol-hash-table make-eq-hash-table)
-  (set! make-object-hash-table make-eqv-hash-table)
-  (set! make-string-hash-table
-	(strong-hash-table/constructor string-hash-mod string=? #f))
-  unspecific)
 
 (define (check-arg object default predicate description procedure)
   (cond ((predicate object) object)
 	((not object) default)
 	(else (error:wrong-type-argument object description procedure))))
 
-(define-integrable (without-interrupts thunk)
+(define-integrable (with-table-locked! table thunk)
+  table
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (thunk)
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
+    (let ((value (thunk)))
+      (set-interrupt-enables! interrupt-mask)
+      value)))
