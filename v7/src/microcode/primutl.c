@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.55 1992/02/27 19:02:48 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.56 1992/05/28 19:03:07 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -50,7 +50,9 @@ SCHEME_OBJECT Undefined_Primitives_Arity = SHARP_F;
 
 /* Common utilities. */
 
-static int
+extern int EXFUN (strcmp_ci, (char *, char *));
+
+int
 DEFUN (strcmp_ci, (s1, s2), fast char * s1 AND fast char * s2)
 {
   int length1 = (strlen (s1));
