@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr4.scm,v 1.2 1987/07/21 15:13:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr4.scm,v 1.3 1987/08/07 17:14:20 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -144,7 +144,7 @@ MIT in each case. |#
 			     (3 #b100)
 			     (3 r-offset)
 			     (3 #b100)
-			     (3 width)))))))
+			     (3 r-width)))))))
 
   (define-bitfield-manipulation-2 BFCHG  #b1010 ea-d/c&a)
   (define-bitfield-manipulation-2 BFCLR  #b1100 ea-d/c&a)
