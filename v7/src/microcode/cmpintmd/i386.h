@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.3 1992/01/30 06:35:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.4 1992/01/31 04:19:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -237,7 +237,8 @@ do {									\
 
 /* *** GC and other relocators have to be changed to set this up. *** */
 
-#define CMPINT_NEED_PC_DISPLACEMENT
+#define PC_RELATIVE_CLOSURES
+#define PC_RELATIVE_UUO_LINKS
 
 extern long pc_displacement_relocation;
 
