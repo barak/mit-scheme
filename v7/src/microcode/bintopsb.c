@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bintopsb.c,v 9.61 1993/11/09 08:36:04 gjr Exp $
+$Id: bintopsb.c,v 9.62 1993/11/09 16:47:01 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -2090,7 +2090,9 @@ DEFUN_VOID (do_it)
 
     c_code_table = primitive_table_end;
     c_code_table_end = &c_code_table[C_Code_Table_Size];
-    if (C_Code_Table_Size != 0)
+    if (C_Code_Table_Size == 0)
+      c_code_table[0] = (LONG_TO_UNSIGNED_FIXNUM (0));
+    else
     {
       fast SCHEME_OBJECT * table;
       fast long count, char_count;
