@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.6 2003/06/08 04:07:08 cph Exp $
+$Id: gcfinal.scm,v 14.7 2003/06/08 04:21:56 cph Exp $
 
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
@@ -133,7 +133,7 @@ USA.
 	      (let ((object (context->object context)))
 		(without-interrupts
 		 (lambda ()
-		   (weak-set-cdr! p object)
+		   (weak-set-car! p object)
 		   (set-gc-finalizer-items!
 		    finalizer
 		    (cons p (gc-finalizer-items finalizer)))))
