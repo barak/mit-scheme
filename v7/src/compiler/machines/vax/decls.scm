@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.1 1988/01/11 20:29:03 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/decls.scm,v 4.2 1988/02/23 19:29:53 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,10 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Compiler File Dependencies.  VAX compiler.
-;;;
-;;; Current with machines/bobcat version 4.2
-;;;
+;;;; Compiler File Dependencies
+
 (declare (usual-integrations))
 
 (define-structure (source-node
@@ -53,7 +51,7 @@ MIT in each case. |#
   (mapcan (lambda (subdirectory)
 	    (map (lambda (pathname)
 		   (string-append subdirectory "/" (pathname-name pathname)))
-		 (directory-read (string-append subdirectory "/*.bin"))))
+		 (directory-read (string-append subdirectory "/*.scm"))))
 	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
 		   "machines/vax")))
 
@@ -221,7 +219,7 @@ MIT in each case. |#
 			  "asmmac" "bittop" "bitutl" "insseq" "lapgn1" "lapgn2"
 			  "lapgn3" "linear" "regmap" "symtab" "syntax")
 	 (filename/append "machines/vax"
-			  "insmac" "machin" "rgspcm")
+			  "insmac" "machin" "rgspcm" "dassm1" "dassm2" "dassm3")
 	 (filename/append "fggen"
 			  "declar" "fggen")
 	 (filename/append "fgopt"
@@ -245,7 +243,7 @@ MIT in each case. |#
 
 (file-dependency/syntax/join
  (filename/append "machines/vax"
-		  "insutl" "instr1" "instr2" "instr3" "instr4")
+		  "insutl" "instr1" "instr2" "instr3")
  assembler-syntax-table)
 
 ;;;; Integration Dependencies
@@ -272,6 +270,11 @@ MIT in each case. |#
 (define-integration-dependencies "base" "subprb" "base"
   "cfg3" "contin" "enumer" "object" "proced")
 (define-integration-dependencies "base" "infnew" "base" "infutl")
+
+(define-integration-dependencies "machines/vax" "dassm3" "machines/vax" "dassm1")
+(define-integration-dependencies "machines/vax" "dassm3" "base" "infutl")
+(define-integration-dependencies "machines/vax" "dassm2" "machines/vax" "dassm1")
+(define-integration-dependencies "machines/vax" "dassm2" "base" "infutl")
 
 (define front-end-base
   (filename/append "base"
@@ -362,7 +365,7 @@ MIT in each case. |#
 (define assembler-body
   (append
    (filename/append "back" "bittop")
-   (filename/append "machines/vax" "instr1" "instr2" "instr3" "instr4")))
+   (filename/append "machines/vax" "instr1" "instr2" "instr3")))
 
 (file-dependency/integration/join
  (append instruction-base
@@ -392,7 +395,7 @@ MIT in each case. |#
 
 (file-dependency/expansion/join
  (filename/append "machines/vax"
-		  "lapgen" "rules1" "rules2" "rules3" "rules4")
+		  "lapgen" "rules1" "rules2" "rules3" "rules4" "insmac")
  '((LAP:SYNTAX-INSTRUCTION
     (ACCESS LAP:SYNTAX-INSTRUCTION-EXPANDER LAP-SYNTAX-PACKAGE
 	    COMPILER-PACKAGE))
@@ -403,17 +406,9 @@ MIT in each case. |#
     (ACCESS SYNTAX-EVALUATION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
    (CONS-SYNTAX
     (ACCESS CONS-SYNTAX-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (OPTIMIZE-GROUP-EARLY
-    (ACCESS OPTIMIZE-GROUP-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-KEYWORD-EARLY
-    (ACCESS EA-KEYWORD-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-MODE-EARLY
-    (ACCESS EA-MODE-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-REGISTER-EARLY
-    (ACCESS EA-REGISTER-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-EXTENSION-EARLY
-    (ACCESS EA-EXTENSION-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
-   (EA-CATEGORIES-EARLY
-    (ACCESS EA-CATEGORIES-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))))
+   (EA-VALUE-EARLY
+    (ACCESS EA-VALUE-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))
+   (COERCE-TO-TYPE
+    (ACCESS COERCE-TO-TYPE-EXPANDER LAP-SYNTAX-PACKAGE COMPILER-PACKAGE))))
 
 (finish-integration-dependencies!)
