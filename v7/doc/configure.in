@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 1.2 2000/12/08 21:01:23 cph Exp $])
+AC_REVISION([$Id: configure.in,v 1.3 2000/12/08 21:15:51 cph Exp $])
 AC_INIT(ref-manual/scheme.texinfo)
 
 AC_PROG_INSTALL
@@ -62,5 +62,10 @@ test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
 AC_SUBST(psdir)
 
 AC_SUBST(INST_TARGETS)
+
+for D in ref-manual sos user-manual; do
+    test -L ${D}/gfdl.texinfo \
+      || (cd ${D}; ${ac_cv_prog_LN_S} ../imail/gfdl.texinfo .)
+done
 
 AC_OUTPUT(Makefile imail/Makefile ref-manual/Makefile sos/Makefile user-manual/Makefile)
