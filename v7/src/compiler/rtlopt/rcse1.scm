@@ -38,7 +38,7 @@
 ;;;; RTL Common Subexpression Elimination
 ;;;  Based on the GNU C Compiler
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.92 1986/12/15 05:27:18 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.93 1986/12/16 06:24:11 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -168,7 +168,7 @@
 (define-cse-method 'RETURN noop)
 (define-cse-method 'PROCEDURE-HEAP-CHECK noop)
 (define-cse-method 'CONTINUATION-HEAP-CHECK noop)
-
+
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type
     (lambda (statement)
@@ -184,7 +184,7 @@
   rtl:interpreter-call:lookup-environment
   rtl:set-interpreter-call:lookup-environment!
   interpreter-register:lookup)
-
+
 (define-lookup-method 'INTERPRETER-CALL:UNASSIGNED?
   rtl:interpreter-call:unassigned?-environment
   rtl:set-interpreter-call:unassigned?-environment!
@@ -199,8 +199,7 @@
   (lambda (statement)
     (let ((n (rtl:interpreter-call:enclose-size statement)))
       (stack-region-invalidate! 0 n)
-      (stack-pointer-adjust! n))
-    (expression-invalidate! (interpreter-stack-pointer))))
+      (stack-pointer-adjust! n))))
 
 (define (define-assignment-method type
 	  get-environment set-environment!
@@ -221,7 +220,7 @@
   rtl:set-interpreter-call:set!-environment!
   rtl:interpreter-call:set!-value
   rtl:set-interpreter-call:set!-value!)
-
+
 (define (define-invocation-method type)
   (define-cse-method type
     (lambda (statement)
@@ -232,11 +231,10 @@
 	   (let ((size (second prefix))
 		 (distance (third prefix)))
 	     (stack-region-invalidate! 0 (+ size distance)) ;laziness
-	     (stack-pointer-adjust! distance))
-	   (expression-invalidate! (interpreter-stack-pointer)))
+	     (stack-pointer-adjust! distance)))
 	  ((APPLY-STACK APPLY-CLOSURE) (trash-stack statement))
 	  (else (error "Bad prefix type" prefix)))))))
-
+
 (define (continuation-adjustment statement)
   (let ((continuation (rtl:invocation-continuation statement)))
     (if continuation
@@ -256,22 +254,27 @@
 			 statement
 			 trivial-action)))
 
-(define (define-message-receiver type)
+(define (define-message-receiver type size)
   (define-cse-method type
-    (lambda (statement)
-      (stack-pointer-adjust! -2)
-      (expression-invalidate! (interpreter-stack-pointer)))))
+    (let ((size (delay (- (size)))))
+      (lambda (statement)
+	(stack-pointer-adjust! (force size))))))
 
-(define-message-receiver 'MESSAGE-RECEIVER:CLOSURE)
-(define-message-receiver 'MESSAGE-RECEIVER:STACK)
-(define-message-receiver 'MESSAGE-RECEIVER:SUBPROBLEM)
+(define-message-receiver 'MESSAGE-RECEIVER:CLOSURE
+  rtl:message-receiver-size:closure)
+
+(define-message-receiver 'MESSAGE-RECEIVER:STACK
+  rtl:message-receiver-size:closure)
+
+(define-message-receiver 'MESSAGE-RECEIVER:SUBPROBLEM
+  rtl:message-receiver-size:subproblem)
 
 (define (define-stack-trasher type)
   (define-cse-method type trash-stack))
 
 (define (trash-stack statement)
   (stack-invalidate!)
-  (expression-invalidate! (interpreter-stack-pointer)))
+  (stack-pointer-invalidate!))
 
 (define-stack-trasher 'SETUP-CLOSURE-LEXPR)
 (define-stack-trasher 'SETUP-STACK-LEXPR)
@@ -616,10 +619,14 @@
 			*stack-reference-quantities*))
 	    quantity)))))
 
-(define (stack-pointer-adjust! offset)
-  (set! *stack-offset* (+ (stack->memory-offset offset) *stack-offset*)))
+(define-integrable (stack-pointer-adjust! offset)
+  (set! *stack-offset* (+ (stack->memory-offset offset) *stack-offset*))
+  (stack-pointer-invalidate!))
 
-(define (stack-invalidate!)
+(define-integrable (stack-pointer-invalidate!)
+  (register-expression-invalidate! (interpreter-stack-pointer)))
+
+(define-integrable (stack-invalidate!)
   (set! *stack-reference-quantities* '()))
 
 (define (stack-region-invalidate! start end)
