@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.47 1989/11/26 17:38:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.48 1989/12/06 05:49:09 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -231,12 +231,13 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 
 	Scan += 1;
 	/* Is there enough space to read the count? */
-	if ((((char *) Scan) + 2) > ((char *) scan_buffer_top))
+	if ((((char *) Scan) + (2 * (sizeof (format_word)))) >
+	    ((char *) scan_buffer_top))
 	{
 	  long dw;
 	  char *header_end;
 
-	  header_end = (((char *) Scan) + 2);
+	  header_end = (((char *) Scan) + (2 * (sizeof (format_word))));
 	  extend_scan_buffer (((char *) header_end), To);
 	  count = (MANIFEST_CLOSURE_COUNT (Scan));
 	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
@@ -244,7 +245,8 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  header_end = ((char *)
 			(end_scan_buffer_extension ((char *) header_end)));
 	  word_ptr = (header_end + dw);
-	  Scan = ((SCHEME_OBJECT *) (header_end - 2));
+	  Scan = ((SCHEME_OBJECT *)
+		  (header_end - (2 * (sizeof (format_word)))));
 	}
 	else
 	{
