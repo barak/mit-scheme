@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.4 2001/07/16 20:40:20 cph Exp $
+;;; $Id: compile.scm,v 1.5 2001/10/01 05:22:52 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,6 +36,4 @@
 		    "xml-chars"
 		    "xml-output"
 		    "xml-parser"))))
-    (cref/generate-constructors "xml")
-    (sf "xml.con")
-    (sf "xml.ldr")))
+    (cref/generate-constructors "xml")))
