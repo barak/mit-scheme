@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.2 1987/06/05 16:25:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.3 1987/06/15 18:21:00 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. */
    ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS))
 
 Built_In_Primitive (Prim_compiled_code_address_block, 1,
-		    "COMPILED-CODE-ADDRESS-BLOCK", 0xB5)
+		    "COMPILED-CODE-ADDRESS->BLOCK", 0xB5)
 {
   Pointer *address;
   Primitive_1_Arg ();
@@ -51,7 +51,8 @@ Built_In_Primitive (Prim_compiled_code_address_block, 1,
 #ifdef CMPGCFILE
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   address = (Get_Pointer (Arg1));
-  return (Make_Pointer (TC_VECTOR, (Get_Compiled_Block (address))));
+  return (Make_Pointer (TC_COMPILED_CODE_BLOCK,
+			(Get_Compiled_Block (address))));
 #else /* not CMPGCFILE */
   error_external_error ();
 #endif /* CMPGCFILE */
