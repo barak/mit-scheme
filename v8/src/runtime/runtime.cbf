@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.cbf,v 1.2 1993/08/11 19:13:10 cph Exp $
+$Id: runtime.cbf,v 1.3 1995/07/27 21:07:21 adams Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,3 +34,11 @@ MIT in each case. |#
 
 (fluid-let ((compiler:coalescing-constant-warnings? #f))
   (compile-directory "."))
+
+(in-package (->environment '(runtime compiler-info))
+  (let ((make.com  ((make-primitive-procedure 'binary-fasload) "make.com")))
+    (if (compiled-module? make.com)
+	(begin
+	  (fresh-line)
+	  (display ";Fixing \"make.com\" for cold load")
+	  (fasdump (compiled-module/expression make.com) "make.com")))))
