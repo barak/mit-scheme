@@ -20,7 +20,6 @@ else
 endif
 set source="$prefix/scheme/rel5"
 set rcs_source="$prefix/scheme/rcs/rel5"
-set tempfile="/tmp/sdist$$"
 
 if (-e $destination) then
   rm -rf $destination
@@ -31,18 +30,15 @@ mkdir $destination
 cd $source
 vms/make.vms
 
-# Copy all the auxiliary files.  Use $tempfile because of buggy
-# interaction between `find' and RFA under recent versions of hp-ux.
+# Copy all the auxiliary files.
 cd $source
-find Makefile documentation etc examples makefiles libs -print > $tempfile
-find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -print >> $tempfile
-cpio -pdmuv $destination < $tempfile
-rm -f $tempfile
+find Makefile documentation etc examples makefiles libs -type f -print | cpio -pdmuv $destination
+find vms \( -name '*.com' -o -name '*.txt' -o -name '*.el' \) -type f -print | cpio -pdmuv $destination
 
 # Clean up any unwanted files that might be around.
 cd $source
 foreach i (documentation etc makefiles libs)
-  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) -exec rm -f {} \;
+  find $destination/$i \( -name '.*~*' -o -name '#*' -o -name '*~*' -o -name '*.bin' -o -name '*.ext' -o -name '*.com' -o -name '*.binf' -o -name '*.elc' -o -name 'RCS' -o -name 'RCS.remote' \) -print | xargs rm -f
 end
 
 # Copy the primary source code by checking out reference copies from RCS.
@@ -59,7 +55,7 @@ end
 cd $destination
 etc/resyntax
 etc/make_psb
-find * \( -name '*.bin' -o -name '*.ext' \) -exec rm -f {} \;
+find * \( -name '*.bin' -o -name '*.ext' \) -print | xargs rm -f
 
 # Move things into the appropriate places.
 cd $destination/documentation
