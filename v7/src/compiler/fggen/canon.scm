@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.11 1993/02/25 02:05:42 gjr Exp $
+$Id: canon.scm,v 1.12 1993/03/02 01:16:21 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -312,28 +312,6 @@ ARBITRARY:	The expression may be executed more than once.  It
 		   expression))
 	(single-definition name value)))))
 
-(define (single-definition name value)
-  (make-canout (scode/make-combination
-		(ucode-primitive local-assignment)
-		(list (scode/make-variable environment-variable)
-		      name
-		      (canout-expr value)))
-	       (canout-safe? value)
-	       true
-	       false))
-
-(define (multi-definition names values)
-  (make-canout (scode/make-combination
-		(scode/make-absolute-reference 'DEFINE-MULTIPLE)
-		(list (scode/make-variable environment-variable)
-		      (list->vector names)
-		      (scode/make-combination
-		       (ucode-primitive vector)
-		       (map canout-expr values))))
-	       (for-all? values canout-safe?)
-	       true
-	       false))
-
 (define (canonicalize/the-environment expr bound context)
   expr bound context ;; ignored
   (make-canout (scode/make-variable environment-variable)
@@ -341,13 +319,13 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 (define (canonicalize/lambda expr bound context)
   (let ((canout
-	 (canonicalize/lambda* expr bound
-			       (if (eq? context 'FIRST-CLASS)
-				   'FIRST-CLASS
-				   'ARBITRARY))))
-    (if (and (eq? context 'TOP-LEVEL)
-	     (canout-safe? canout)
-	     compiler:compile-by-procedures?)
+	 (canonicalize/lambda* expr bound (if (eq? context 'FIRST-CLASS)
+					      'FIRST-CLASS
+					      'ARBITRARY))))
+    (if (not (and (eq? context 'TOP-LEVEL)
+		  (canout-safe? canout)
+		  compiler:compile-by-procedures?))
+	canout
 	(make-canout
 	 (scode/make-directive
 	  (if (null? *top-level-declarations*)
@@ -359,19 +337,17 @@ ARBITRARY:	The expression may be executed more than once.  It
 	  expr)
 	 true
 	 (canout-needs? canout)
-	 (canout-splice? canout))
-	canout)))
-
+	 (canout-splice? canout)))))
+
 (define (canonicalize/sequence expr bound context)
   (cond ((not (scode/open-block? expr))
 	 (scode/sequence-components expr
 	  (lambda (actions)
 	    (canonicalize/combine-unary
 	     scode/make-sequence
-	     (combine-list
-	      (map (lambda (act)
-		     (canonicalize/expression act bound context))
-		   actions))))))
+	     (combine-list (map (lambda (act)
+				  (canonicalize/expression act bound context))
+				actions))))))
 	((or (eq? context 'ONCE-ONLY)
 	     (eq? context 'ARBITRARY)
 	     (and (eq? context 'FIRST-CLASS)
@@ -394,8 +370,83 @@ ARBITRARY:	The expression may be executed more than once.  It
 		 bound
 		 context))))))))
 
+(define (single-definition name value)
+  (make-canout (scode/make-combination
+		(ucode-primitive local-assignment)
+		(list (scode/make-variable environment-variable)
+		      name
+		      (canout-expr value)))
+	       (canout-safe? value)
+	       true
+	       false))
+
+;; To reduce code space, split into two blocks, one with constants,
+;; the other with expressions to be evaluated.
+
+(define (multi-definition names* values*)
+  (define (collect names values wrapper)
+    (if (null? (cdr values))
+	(single-definition (car names) (car values))
+	(scode/make-combination
+	 (scode/make-absolute-reference 'DEFINE-MULTIPLE)
+	 (list (scode/make-variable environment-variable)
+	       (list->vector names)
+	       (wrapper (scode/make-combination (ucode-primitive vector)
+						(map canout-expr values)))))))
+
+  (define (join left right)
+    (scode/make-sequence (list left right)))
+
+  (define (directive-wrapper frob)
+    (scode/make-directive frob '(CONSTANTIFY) frob))
+
+  (define (pseudo-constant? value)
+    (let ((value (canout-expr value)))
+      (or (scode/constant? value)
+	  (scode/lambda? value)
+	  ;; Lambdas may be wrapped in directives
+	  (and (scode/comment? value)
+	       (scode/comment-directive? (scode/comment-text value)
+					 'COMPILE-PROCEDURE)))))
+
+  (let loop ((names names*) (values values*) (last 'NONE)
+	     (knames '()) (kvals '()) (vnames '()) (vvals '()))
+    (cond ((null? names)
+	   (make-canout
+	    (cond ((null? vvals)
+		   (collect names* values* directive-wrapper))
+		  ((or (null? kvals) (null? (cdr kvals)))
+		   (collect names* values* identity-procedure))
+		  (else
+		   (let ((vnames (reverse vnames)) (vvals (reverse vvals))
+			 (knames (reverse knames)) (kvals (reverse kvals)))
+		     (if (eq? last 'CONSTANT)
+			 (join (collect vnames vvals directive-wrapper)
+			       (collect knames kvals identity-procedure))
+			 (join (collect knames kvals identity-procedure)
+			       (collect vnames vvals) directive-wrapper)))))
+	    (for-all? values canout-safe?)
+	    true
+	    false))
+	  ((pseudo-constant? (car values))
+	   (loop (cdr names) (cdr values) 'CONSTANT
+		 (cons (car names) knames)
+		 (cons (car values) kvals)
+		 vnames vvals))
+	  (else
+	   (loop (cdr names) (cdr values) 'EVALUATED
+		 knames kvals
+		 (cons (car names) vnames)
+		 (cons (car values) vvals))))))
+
 ;; Collect continguous simple definitions into multi-definitions
 ;; in an attempt to make the top-level code smaller.
+;; Note: MULTI-DEFINITION can reorder the definitions, so this
+;; code must be careful.  Currently it only collects 
+;; lambda expressions or expressions with no free variables.
+;; Note: call-with-current-continuation at top-level may
+;; expose this, but unless the programmer goes out of his/her
+;; way to hide the reference (or use the primitive), it won't happen.
 
 (define (canonicalize/compressing expr bound context)
   (define (give-up)
@@ -529,9 +580,9 @@ ARBITRARY:	The expression may be executed more than once.  It
    (lambda (text body)
      (if (not (and (scode/comment-directive? text 'PROCESSED 'ENCLOSE)
 		   (scode/combination? body)))
-	 (canonicalize/combine-binary
-	  scode/make-comment
-	  (canonicalize/expression text bound context)
+	 (canonicalize/combine-unary
+	  (lambda (body*)
+	    (scode/make-comment text body*))
 	  (canonicalize/expression body bound context))
 	 (scode/combination-components
 	  body
