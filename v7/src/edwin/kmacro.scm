@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.38 1992/04/16 22:30:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.39 1993/08/19 05:56:15 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -90,15 +90,18 @@
   (fluid-let ((*executing-keyboard-macro?* true)
 	      (*keyboard-macro-position*)
 	      (*keyboard-macro-continuation*))
-    (define (loop n)
-      (set! *keyboard-macro-position* *macro)
-      (if (call-with-current-continuation
-	   (lambda (c)
-	     (set! *keyboard-macro-continuation* c)
-	     (command-reader)))
-	  (cond ((zero? n) (loop 0))
-		((> n 1) (loop (-1+ n))))))
-    (if (not (negative? repeat)) (loop repeat))))
+    (call-with-current-continuation
+     (lambda (c)
+       (let ((n repeat))
+	 (set! *keyboard-macro-continuation*
+	       (lambda (v)
+		 (if (and v (positive? n))
+		     (begin
+		       (set! *keyboard-macro-position* *macro)
+		       (set! n (-1+ n))
+		       (command-reader #f))
+		     (c unspecific))))
+	 (*keyboard-macro-continuation* #t))))))
 
 (define (keyboard-macro-define name *macro)
   (string-table-put! named-keyboard-macros name last-keyboard-macro)
