@@ -69,6 +69,13 @@ cd $destination/microcode
 make -k remove
 mv config.h config.dst
 mv Makefile ../makefiles
+mv cmp68020.s cmp68020.asm
+m4 cmp68020.asm > cmp68020.hp
+cp cmp68020.hp cmp68020.s
+/u/cph/cvt/cvt cmp68020
+mv cmp68020.a68 cmp68020.sun
+rm -f cmp68020.s
+chmod -w cmp68020.hp cmp68020.sun
 
 # Create the file "make_dirs.com":
 cd $destination
