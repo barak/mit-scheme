@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.44 1992/09/22 20:13:23 cph Exp $
+$Id: infutl.scm,v 1.45 1993/02/27 07:17:38 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,7 +36,7 @@ MIT in each case. |#
 ;;; package: (runtime compiler-info)
 
 (declare (usual-integrations))
-(declare (integrate-external "infstr"))
+(declare (integrate-external "infstr" "char"))
 
 (define *save-uncompressed-files?* true)
 
@@ -450,66 +450,89 @@ MIT in each case. |#
 
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.
+;;;  Note: this is written in a funky style for speed.
+;;;  It depends on EOF-OBJECTs not being chars!
+
+(define *uncompress-read-char*)
+(define *uncompress-read-substring*)
+(define-integrable window-size 4096)
 
 (define (uncompress-ports input-port output-port #!optional buffer-size)
-  (define-integrable window-size 4096)
-  (if (default-object? buffer-size)
-      (set! buffer-size 4096))
+  (fluid-let ((*uncompress-read-char*
+	       (or (input-port/operation/read-char input-port)
+		   (error "Port doesn't support read-char" input-port)))
+	      (*uncompress-read-substring*
+	       (input-port/operation/read-substring input-port)))
+    (uncompress-kernel input-port output-port
+		       (if (default-object? buffer-size)
+			   4096
+			   buffer-size))))
+
+(define (uncompress-kernel input-port output-port buffer-size)
   (let ((buffer (make-string buffer-size))
-	(cp-table (make-vector window-size))
-	(port/read-char 
-	 (or (input-port/operation/read-char input-port)
-	     (error "Port doesn't support read-char" input-port)))
-	(port/read-substring
-	 (input-port/operation/read-substring input-port)))
+	(cp-table (make-vector window-size)))
 
     (define (displacement->cp-index displacement cp)
       (let ((index (fix:- cp displacement)))
 	(if (fix:< index 0) (fix:+ window-size index) index)))
+
     (define-integrable (cp:+ cp n)
       (fix:remainder (fix:+ cp n) window-size))
+
     (define-integrable (read-substring! buffer start end)
-      (port/read-substring input-port buffer start end))
-    (define (read-ascii)
-      (let ((char (port/read-char input-port)))
-	(and (not (eof-object? char))
-	     (char->ascii char))))
-    (define (guarantee-buffer nbp)
+      (*uncompress-read-substring* input-port buffer start end))
+
+    (define (grow-buffer!)
+      (let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
+	     (nbuffer (make-string new-size)))
+	(substring-move-right! buffer 0 buffer-size nbuffer 0)
+	(set! buffer-size new-size)
+	(set! buffer nbuffer)
+	unspecific))
+
+    (define-integrable (guarantee-buffer nbp)
       (if (fix:> nbp buffer-size)
-	  (let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
-		 (nbuffer (make-string new-size)))
-	    (substring-move-right! buffer 0 buffer-size nbuffer 0)
-	    (set! buffer-size new-size)
-	    (set! buffer nbuffer))))
+	  (grow-buffer!)))
 
-    (let loop ((bp 0) (cp 0) (byte (read-ascii)))
-      (cond ((not byte)
-	     (output-port/write-substring output-port buffer 0 bp)
-	     bp)
-	    ((fix:< byte 16)
-	     (let ((length (fix:+ byte 1)))
-	       (let ((nbp (fix:+ bp length)) (ncp (cp:+ cp length)))
-		 (guarantee-buffer nbp)
-		 (read-substring! buffer bp nbp)
-		 (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
-		     ((fix:= bp nbp))
-		   (vector-set! cp-table cp bp))
-		 (loop nbp ncp (read-ascii)))))
-	    (else
-	     (let ((cpi (displacement->cp-index
-			 (fix:+ (fix:* (fix:remainder byte 16) 256)
-				(read-ascii))
-			 cp))	
-		   (length (fix:+ (fix:quotient byte 16) 1)))
-	       (let ((bp* (vector-ref cp-table cpi))
-		     (nbp (fix:+ bp length))
-		     (ncp (cp:+ cp 1)))
-		 (guarantee-buffer nbp)
-		 (substring-move-right! buffer bp* (fix:+ bp* length)
-					buffer bp)
-		 (vector-set! cp-table cp bp)
-		 (loop nbp ncp (read-ascii)))))))))
-
+    (let loop ((bp 0) (cp 0))
+      (let ((char (*uncompress-read-char* input-port)))
+	(if (not (char? char))
+	    ;; Assume eof!
+	    (begin
+	      (output-port/write-substring output-port buffer 0 bp)
+	      bp)
+	    (let ((byte (char->integer char)))
+	      (if (fix:< byte 16)
+		  (let ((length (fix:+ byte 1)))
+		    (let ((nbp (fix:+ bp length))
+			  (ncp (cp:+ cp length)))
+		      (guarantee-buffer nbp)
+		      (read-substring! buffer bp nbp)
+		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
+			  ((fix:= bp nbp))
+			(vector-set! cp-table cp bp))
+		      (loop nbp ncp)))
+		  (let ((cpi (displacement->cp-index
+			      (fix:+ (fix:* (fix:remainder byte 16) 256)
+				     (char->integer
+				      (*uncompress-read-char* input-port)))
+			      cp))
+			(length (fix:+ (fix:quotient byte 16) 1)))
+		    (let ((bp* (vector-ref cp-table cpi))
+			  (nbp (fix:+ bp length))
+			  (ncp (cp:+ cp 1)))
+		      (guarantee-buffer nbp)
+		      (let ((end-bp* (fix:+ bp* length)))
+			(if (fix:> length 10)
+			    (substring-move-right! buffer bp* end-bp*
+						   buffer bp)
+			    (do ((bp* bp* (fix:+ bp* 1))
+				 (bp bp (fix:+ bp 1)))
+				((not (fix:< bp* end-bp*)))
+			      (vector-8b-set! buffer bp
+					      (vector-8b-ref buffer bp*)))))			       
+		      (vector-set! cp-table cp bp)
+		      (loop nbp ncp))))))))))
 
 (define (uncompress-internal ifile ofile if-fail)
   (call-with-binary-input-file (merge-pathnames ifile)
@@ -540,7 +563,7 @@ MIT in each case. |#
 	    (if (fix:>= i end)
 		(fix:- i start)
 		(let ((char (port/read-char port)))
-		  (if (eof-object? char)
+		  (if (not (char? char))
 		      (fix:- i start)
 		      (begin
 			(string-set! buffer i char)
