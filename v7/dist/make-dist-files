@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.20 2001/04/14 01:57:06 cph Exp $
+# $Id: make-dist-files,v 1.21 2002/06/17 16:31:55 cph Exp $
 #
-# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+# Copyright (c) 2000-2002 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ if [ ! -f "${SRC_FILE}" ]; then
     exit 1
 fi
 
-MKDIR="mkdir -p"
+MKDIR="install -d -m 755"
 INSTALL="install -p"
 INSTALL_DATA="${INSTALL} -m 644"
 
