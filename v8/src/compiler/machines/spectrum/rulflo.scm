@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: rulflo.scm,v 1.2 1995/04/02 15:21:40 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -52,17 +52,20 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (FLOAT->OBJECT (REGISTER (? source))))
   (let ((source (flonum-source! source))
-	(temp (standard-temporary!)))
+	(temp   (standard-temporary!)))
     (let ((target (standard-target! target)))
+      ;; With this ordering of STANDARD-TEMPORARY! and STANDARD-TARGET! it is
+      ;; possible that TEMP = TARGET.  The sequence below works for this case.
       (LAP
        ;; make heap parsable forwards
        ;; (STW () 0 (OFFSET 0 0 ,regnum:free-pointer))	
        (DEPI () #b100 31 3 ,regnum:free-pointer)		; quad align
-       (COPY () ,regnum:free-pointer ,target)
-       ,@(deposit-type (ucode-type flonum) target)
        ,@(load-non-pointer (ucode-type manifest-nm-vector) 2 temp)
        (STWS (MA C) ,temp (OFFSET 4 0 ,regnum:free-pointer))
-       (FSTDS (MA) ,source (OFFSET 8 0 ,regnum:free-pointer))))))
+       (LDO () (OFFSET -4 0 ,regnum:free-pointer) ,target)
+       (FSTDS (MA) ,source (OFFSET 8 0 ,regnum:free-pointer))
+       ,@(deposit-type (ucode-type flonum) target)
+       ))))
 
 (define-rule statement
   ;; convert a flonum object to a floating-point number
