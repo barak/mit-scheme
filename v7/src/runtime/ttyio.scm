@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/ttyio.scm,v 1.2 1991/11/26 07:07:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/ttyio.scm,v 1.3 1993/08/16 09:50:12 jawilson Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,9 +37,14 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define hook/read-char)
+(define hook/peek-char)
+
 (define (initialize-package!)
   (let ((input-channel (tty-input-channel))
 	(output-channel (tty-output-channel)))
+    (set! hook/read-char operation/read-char)
+    (set! hook/peek-char operation/peek-char)
     (set! the-console-port
 	  (make-i/o-port
 	   `((BEEP ,operation/beep)
@@ -58,9 +63,9 @@ MIT in each case. |#
 	     (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	     (OUTPUT-CHANNEL ,operation/output-channel)
 	     (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
-	     (PEEK-CHAR ,operation/peek-char)
+	     (PEEK-CHAR ,(lambda (port) (hook/peek-char port)))
 	     (PRINT-SELF ,operation/print-self)
-	     (READ-CHAR ,operation/read-char)
+	     (READ-CHAR ,(lambda (port) (hook/read-char port)))
 	     (READ-FINISH ,operation/read-finish)
 	     (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
 	     (SET-INPUT-BUFFER-SIZE ,operation/set-input-buffer-size)
