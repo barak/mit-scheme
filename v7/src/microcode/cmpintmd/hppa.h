@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.10 1989/12/06 10:56:13 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.11 1990/01/22 22:31:26 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -196,12 +196,28 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
   union ble_inst ble;
 
   source.address = sourcev;
+
+#if 0
+  ldil.fields.opcode = 0x08;
+  ldil.fields.base = 26;
+  ldil.fields.E = 0;
+#endif
+
   ldil.inst = ((0x08 << 26) | (26 << 21));
-  ble.inst = ((0x39 << 26) | (26 << 21) | (6 << 13));
   ldil.fields.A = source.fields.A;
   ldil.fields.B = source.fields.B;
   ldil.fields.C = source.fields.C;
   ldil.fields.D = source.fields.D;
+
+#if 0
+  ble.fields.opcode = 0x39;
+  ble.fields.base = 26;
+  ble.fields.w1 = 0;
+  ble.fields.s = 3;
+  ble.fields.w0 = 0;
+#endif
+
+  ble.inst = ((0x39 << 26) | (26 << 21) | (3 << 13));
   ble.fields.w2a = source.fields.w2a;
   ble.fields.w2b = source.fields.w2b;
   ble.fields.n = (nullify_p & 1);
@@ -219,24 +235,32 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
 procedures and continuations differ from closures) */
 
 #define ENTRY_SKIPPED_CHECK_OFFSET 	4
-#define CLOSURE_SKIPPED_CHECK_OFFSET 	12
+#define CLOSURE_SKIPPED_CHECK_OFFSET 	16
 
 /*
   The instructions for a normal entry should be something like
 
   COMBT,>=,N	Rfree,Rmemtop,interrupt
+  LDW		0(0,Regs),Rmemtop
 
   For a closure
 
-  DEPI		tc_closure>>1,4,5,31
-  STWM		31,-4(0,Rstack)
-  COMB,>=	Rfree,Rmemtop,interrupt
-  LDW		0(0,Regs),Rmemtop
+  DEP		0,31,2,31			; clear privilege bits
+  DEPI		tc_closure>>1,4,5,31		; set type code
+  STWM		31,-4(0,Rstack)			; push on stack
+  COMB,>=	Rfree,Rmemtop,interrupt		; GC/interrupt check
+  LDW		0(0,Regs),Rmemtop		; Recache memtop
+
+  Notes:
 
   The LDW can be eliminated once the C interrupt handler is changed to
   update Rmemtop directly.  At that point, the instruction following the
   COMB instruction will have to be nullified whenever the interrupt
   branch is processed.
+
+  The DEP can be eliminated if we assume that the privilege bits will always
+  be the same (3).  The clearing can be combined with the ADDI instruction in
+  the closure object itself.
 
  */
 
@@ -288,7 +312,7 @@ procedures and continuations differ from closures) */
      -12: MANIFEST vector header
      - 8: NON_MARKED header
      - 4: Format word
-     - 2: 0xFFF4 (GC Offset to start of block from .+2)
+     - 2: 0xC (GC Offset to start of block from .+2)
        0: BLE	4(4,3)		; call trampoline_to_interface
        4: LDI	index,28
        8: trampoline dependent storage (0 - 3 longwords)
@@ -329,13 +353,15 @@ procedures and continuations differ from closures) */
 									\
   PC = ((unsigned long *) (entry_address));				\
 									\
-  /*	BLE	4(4,3) */						\
+  /*	BLE	4(4,3)		*/					\
 									\
   *PC++ = ((unsigned long) 0xe4602008);					\
 									\
-  /*	LDO	index(0),28 */						\
+  /*	LDO	index(0),28	*/					\
+  /*    This assumes that index is >= 0. */				\
 									\
-  *PC++ = (((unsigned long) 0x341c0000) + ((unsigned long) (index)));	\
+  *PC++ = (((unsigned long) 0x341c0000) +				\
+	   (((unsigned long) (index)) << 1));				\
 }
 
 /* Execute cache entries.
@@ -404,7 +430,7 @@ procedures and continuations differ from closures) */
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
 {									\
-  (target) = ((long) (* ((unsigned short *) (address)) + 5));		\
+  (target) = ((long) (* (((unsigned short *) (address)) + 5)));		\
 }
 
 /* Given a target location and the address of the first word of an
