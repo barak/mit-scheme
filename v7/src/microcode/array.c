@@ -30,15 +30,21 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.30 1988/05/05 09:29:44 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.31 1988/07/09 11:18:24 pas Exp $ */
 
-/* CONTAINS:                                                         */
-/* Scheme_Array constructors, and selectors                          */
-/* Also procedures for converting between C_Array, and Scheme_Vector */
+/* ARRAY = 
+   sequence of REAL(float or double numbers) with a tag on the front */
+/*___________________________________________________________________*/
+/* contents
+   Scheme_Array datatype                 
+   constructors, selectors, operators 
+   procedures for converting between C_Array, and Scheme_Vector      
+   basic and advanced array primitive operations (see manual.scm) */
+/*___________________________________________________________________*/
 
-/* See array.h for definition using NM_VECTOR,                       */
-/* and for many useful EXTERN                                        */
-/* ARRAY = SEQUENCE OF REALS                                         */
+/* See array.h for definition using NM_VECTOR,                       
+   and for many useful EXTERN                                        */
+
 
 #include "scheme.h"
 #include "primitive.h"
@@ -47,8 +53,10 @@ MIT in each case. */
 #include <math.h>
 #include <values.h>
 /* <values.h> contains some math constants */
+/*__________________________________________________________*/
 
-/* first a useful procedure */
+
+/* First some utilities */
 
 int Scheme_Number_To_REAL(Arg, Cell) Pointer Arg; REAL *Cell;
 /* 0 means conversion ok, 1 means too big, 2 means not a number */
@@ -108,8 +116,7 @@ int Scheme_Number_To_Double(Arg, Cell) Pointer Arg; double *Cell;
   return (0);
 }
 
-
-/**** SCHEME PRIMITIVES *****/
+/*__________________begin__________________*/
 
 /*   I think this is not needed, can be done at s-code ...
 Define_Primitive(Prim_Array_Predicate, 1, "ARRAY?")
@@ -138,7 +145,6 @@ Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
   REAL Init_Value, *Next;
   int Error_Number;
   Pointer Result;
-
   Primitive_2_Args();
   Arg_1_Type(TC_FIXNUM);
   Range_Check(Length, Arg1, 0, ARRAY_MAX_LENGTH, ERR_ARG_1_BAD_RANGE);
@@ -149,10 +155,29 @@ Define_Primitive(Prim_Array_Cons, 2, "ARRAY-CONS")
   
   Allocate_Array(Result,Length,allocated_cells);
   Next = Scheme_Array_To_C_Array(Result);
+  for (i=0; i<Length; i++) *Next++ = Init_Value;
+  return Result; 
+}
+
+Define_Primitive(Prim_Array_Cons_Reals, 3, "ARRAY-CONS-REALS")
+{ long i, Length, allocated_cells;
+  REAL *a, from, dt;
+  Pointer Result;
+  int Error_Number;
+  Primitive_3_Args();
+
+  Error_Number = Scheme_Number_To_REAL(Arg1, &from); /*         starting time */
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+  Error_Number = Scheme_Number_To_REAL(Arg2, &dt); /*           dt interval */
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  Length = Get_Integer(Arg3);	/* number of points */
   
-  for (i=0; i < Length; i++) {
-    *Next++ = Init_Value;
-  }
+  Allocate_Array(Result,Length,allocated_cells);
+  a = Scheme_Array_To_C_Array(Result);
+  a[0] = from; 
+  for (i=1; i<Length; i++) a[i] = a[i-1]+dt;
   return Result; 
 }
 
@@ -165,7 +190,6 @@ Define_Primitive(Prim_Array_Length, 1, "ARRAY-LENGTH")
 Define_Primitive(Prim_Array_Ref, 2, "ARRAY-REF")
 { long Index;
   REAL *Array, value;
-  Pointer *Result;
   Primitive_2_Args();
   Arg_1_Type(TC_ARRAY);
   Arg_2_Type(TC_FIXNUM);
@@ -207,6 +231,10 @@ Define_Primitive(Prim_Array_Copy, 1, "ARRAY-COPY")
   Array_Copy(Arg1, Result);
   return Result;
 }
+
+/*____________________data file readers___________
+  ascii and 2bint formats 
+  ________________________________________________*/
 
 Define_Primitive(Prim_Array_Read_Ascii_File, 2, "ARRAY-READ-ASCII-FILE")
 { FILE *fp;
@@ -259,6 +287,44 @@ C_Array_Write_Ascii_File(a,N,fp)           /* 16 ascii decimal digits */
   Close_File(fp);
 }
 
+/* 2BINT FORMAT = integer stored in 2 consecutive bytes.
+   We need to use 2bint because on many machines (bobcats included)
+   "putw", and "getw" use 4 byte integers (C int) ---> waste lots of space.
+   */
+Define_Primitive(Prim_Array_Read_2bint_File, 2, "ARRAY-READ-2BINT-FILE")
+{ FILE *fp;
+  long Length, allocated_cells;
+  REAL *a;
+  SCHEME_ARRAY Result;
+  Primitive_2_Args();
+  Arg_1_Type(TC_CHARACTER_STRING);                /* filename */
+  Arg_2_Type(TC_FIXNUM);                          /* length of data */
+  Length = Get_Integer(Arg2);
+  if (Length <= 0) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  Allocate_Array(Result, Length, allocated_cells);
+  if (!(Open_File(Arg1, "r", &fp))) Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  printf("Reading 2bint file ...\n"); fflush(stdout);
+  a = Scheme_Array_To_C_Array(Result);
+  C_Array_Read_2bint_File(a,Length,fp);
+  return Result;
+}
+C_Array_Read_2bint_File(a,N,fp)
+     REAL *a; long N; FILE *fp;
+{ long i;
+  int foo1,foo2;
+  for (i=0;i<N;i++) {
+    if (feof(fp)!=0) { printf("Not enough values read: last read i-1=%d , value=%d\n", (i-1), a[i-1]);
+		       return NIL; }
+    foo1=getc(fp); foo2=getc(fp); /* Read 2BYTE INT FORMAT */
+    a[i] = ((REAL)
+	    ((foo1<<8) ^ foo2) ); /* put together the integer */
+  }
+  Close_File(fp);
+}
+/* C_Array_Write_2bint_File  
+   is not implemented yet, don't have the time to to it now. */
+
+
 Define_Primitive(Prim_SubArray, 3, "SUBARRAY")
 { long Length, i, allocated_cells, Start, End, New_Length;
   REAL *To_Here, *From_Here;
@@ -377,9 +443,13 @@ Define_Primitive(Prim_Array_Scale, 2, "ARRAY-SCALE!")
   return Result; 
 }
 
-/* The following functions are used in the primitive "ARRAY-UNARY-FUNCTION!"
-   for tranforming arrays
+/* ARRAY-UNARY-FUNCTION!
+   applies a unary function on each element of an array.
+   The name of this proc comes from "(array-unary-function! array function)"
    */
+
+/* available functions
+ */
 
 void REALabs(a,b) REAL *a,*b;
 { (*b) = ( (REAL) fabs( (double) (*a)) );
@@ -476,25 +546,26 @@ void REALbessel2(order,a,b) long order; REAL *a,*b;  /* Bessel of second kind */
 struct array_func_table {
   long numofargs;
   void (*func)();
-} Array_Function_Table[] ={
-  1, REALabs,
-  1, REALexp,
-  1, REALlog,
-  1, REALtruncate,
-  1, REALround,
-  1, REALsquare,
-  1, REALsqrt,
-  1, REALsin,
-  1, REALcos,
-  1, REALtan,
-  1, REALasin,
-  1, REALacos,
-  1, REALatan,
-  1, REALgamma,
-  1, REALerf,
-  1, REALerfc,
-  2, REALbessel1,
-  2, REALbessel2
+} Array_Function_Table[] =
+{ 
+  1, REALabs,			/*0*/
+  1, REALexp,			/*1*/
+  1, REALlog,			/*2*/
+  1, REALtruncate,		/*3*/
+  1, REALround,			/*4*/
+  1, REALsquare,		/*5*/
+  1, REALsqrt,			/*6*/
+  1, REALsin,			/*7*/
+  1, REALcos,			/*8*/
+  1, REALtan,			/*9*/
+  1, REALasin,			/*10*/
+  1, REALacos,			/*11*/
+  1, REALatan,			/*12*/
+  1, REALgamma,			/*13*/
+  1, REALerf,			/*14*/
+  1, REALerfc,			/*15*/
+  2, REALbessel1,		/*16*/
+  2, REALbessel2		/*17*/
   };
 
 #define MAX_ARRAY_FUNCTC 17
@@ -524,26 +595,62 @@ Define_Primitive(Prim_Array_Unary_Function, 2, "ARRAY-UNARY-FUNCTION!")
   return Result; 
 }
 
-Define_Primitive(Prim_Array_Min_Max, 1, "ARRAY-MIN-MAX")
-{ long Length, nmin, nmax;
-  Pointer Result, *Orig_Free;
-  REAL *Array;
-
-  Primitive_1_Args();
+/* The following is accumulate of + and * 
+   code numbers are               0     1
+   */
+Define_Primitive(Prim_Array_Accumulate, 2, "ARRAY-ACCUMULATE")
+{ long Length, i;
+  REAL *a, result;
+  long functc;
+  
+  Primitive_2_Args();
   Arg_1_Type(TC_ARRAY);
-  Array= Scheme_Array_To_C_Array(Arg1);
+  Arg_2_Type(TC_FIXNUM);
   Length = Array_Length(Arg1);
-  C_Array_Find_Min_Max(Array, Length, &nmin, &nmax);
-  Primitive_GC_If_Needed(4);
-  Result = Make_Pointer(TC_LIST, Free);
-  Orig_Free = Free;
-  Free+=4;
-  My_Store_Reduced_Flonum_Result(Array[nmin], *Orig_Free);
-  Orig_Free+=1;
-  *Orig_Free++ = Make_Pointer(TC_LIST, Orig_Free+1);
-  My_Store_Reduced_Flonum_Result(Array[nmax], *Orig_Free);
-  *(++Orig_Free)=NIL;
-  return Result;
+  Range_Check(functc, Arg2, 0, 1, ERR_ARG_2_BAD_RANGE);
+  a = Scheme_Array_To_C_Array(Arg1);
+  
+  if (functc==0)
+  { result = 0.0;
+    for (i=0;i<Length;i++) result = result + a[i];
+  }
+  else if (functc==1)
+  { result = 1.0;
+    for (i=0;i<Length;i++) result = result * a[i];
+  }
+  Reduced_Flonum_Result((double) result);
+}
+
+/* The following searches for value within tolerance
+   starting from index=from in array.
+   Returns first index where match occurs.    --  (useful for finding zeros)
+   */
+Define_Primitive(Prim_Array_Search_Value_Tolerance_From, 3, "ARRAY-SEARCH-VALUE-TOLERANCE-FROM")
+{ long Length, from, i;
+  REAL *a, value;		/* value to search for */ 
+  double tolerance;		/* tolerance allowed */
+  int Error_Number;
+  Primitive_4_Args();
+  Arg_1_Type(TC_ARRAY);
+  a = Scheme_Array_To_C_Array(Arg1);  Length = Array_Length(Arg1);
+  
+  Error_Number = Scheme_Number_To_REAL(Arg2, &value);
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_2_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_2_WRONG_TYPE);
+  Error_Number = Scheme_Number_To_Double(Arg2, &tolerance);
+  if (Error_Number == 1) Primitive_Error(ERR_ARG_3_BAD_RANGE);
+  if (Error_Number == 2) Primitive_Error(ERR_ARG_3_WRONG_TYPE);
+  Arg_4_Type(TC_FIXNUM);
+  Range_Check(from, Arg2, 0, Length-1, ERR_ARG_4_BAD_RANGE);
+  
+  i = from;
+  while ((tolerance < (fabs(((double) (a[i]-value)))))
+	 && (i<Length) )
+  { i++; }
+  if (tolerance >= (fabs(((double) (a[i]-value)))))
+    return Make_Pointer(TC_FIXNUM, i);
+  else
+    return NIL;
 }
 
 Define_Primitive(Prim_Array_Min_Max_Index, 1, "ARRAY-MIN-MAX-INDEX")
@@ -594,6 +701,11 @@ void C_Array_Find_Min_Max(x, n, nmin, nmax) REAL *x; long n, *nmax, *nmin;
   *nmin = nnmin ;
   *nmax = nnmax ;
 }
+
+
+/* The following becomes obsolete.
+   Done using array-reduce + divide by array-length 
+   */
 Define_Primitive(Prim_Array_Find_Average, 1, "ARRAY-AVERAGE")
 { long Length; REAL average;
   Primitive_1_Args();
@@ -603,6 +715,10 @@ Define_Primitive(Prim_Array_Find_Average, 1, "ARRAY-AVERAGE")
   C_Array_Find_Average( Scheme_Array_To_C_Array(Arg1), Length, &average);
   Reduced_Flonum_Result((double) average);
 }
+/* Computes the average in pieces, so as to reduce 
+   roundoff smearing in cumulative sum.
+   example= first huge positive numbers, then small nums, then huge negative numbers.
+   */
 void C_Array_Find_Average(Array, Length, pAverage)
      long Length; REAL *Array, *pAverage;
 { long i;
@@ -673,7 +789,6 @@ Define_Primitive(Prim_Array_Clip_Min_Max, 3, "ARRAY-CLIP-MIN-MAX!")
   To_Here = Scheme_Array_To_C_Array(Result);
   
   if (xmin>xmax) Primitive_Error(ERR_ARG_3_BAD_RANGE);
-
   for (i=0; i < Length; i++) {
     if ((*From_Here)<xmin) *To_Here++ = xmin;
     else if ((*From_Here)>xmax) *To_Here++ = xmax;
@@ -702,12 +817,11 @@ Define_Primitive(Prim_Array_Make_Polar, 2, "ARRAY-MAKE-POLAR!")
   To_Here_Mag = Scheme_Array_To_C_Array(Result_Mag);
   To_Here_Phase = Scheme_Array_To_C_Array(Result_Phase);
 
-  for (i=0; i < Length; i++) {
+  for (i=0; i < Length; i++) 
+  {
     C_Make_Polar(*From_Here_Real, *From_Here_Imag, *To_Here_Mag, *To_Here_Phase);
-    From_Here_Real++ ;
-    From_Here_Imag++ ;
-    To_Here_Mag++ ; 
-    To_Here_Phase++ ;
+    From_Here_Real++ ;  From_Here_Imag++ ;
+    To_Here_Mag++ ;     To_Here_Phase++ ;
   }
   
   Primitive_GC_If_Needed(4);
@@ -1157,6 +1271,10 @@ double integer_power(a, n) double a; long n;
   { return(a * integer_power(a, (n-1))); }
 }
 
+
+/* The following should go away. 
+   Better done using ARRAY-CONS-INTEGERS, and ARRAY-UNARY-FUNCTION
+   */
 Define_Primitive(Prim_Sample_Aperiodic_Function, 3, "SAMPLE-APERIODIC-FUNCTION")
 { long N, i, allocated_cells, Function_Number;
   double Sampling_Frequency, DT, DTi;
