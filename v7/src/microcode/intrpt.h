@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.2 1987/11/20 08:16:43 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.3 1987/12/13 22:19:36 cph Rel $
  *
  * Interrupt manipulation utilities.
  */
@@ -45,6 +45,7 @@ MIT in each case. */
 #define INT_Global_2		32
 #define INT_Timer		64	/* Local interrupt */
 #define INT_Global_3		128
+#define INT_Suspend		256	/* Local interrupt */
 #define INT_Global_Mask		\
   (INT_Global_GC | INT_Global_1 | INT_Global_2 | INT_Global_3)
 
@@ -52,7 +53,7 @@ MIT in each case. */
 #define Global_1_Level		3
 #define Global_2_Level		5
 #define Global_3_Level		7
-#define MAX_INTERRUPT_NUMBER	7
+#define MAX_INTERRUPT_NUMBER	8
 
 #define INT_Mask		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
 
