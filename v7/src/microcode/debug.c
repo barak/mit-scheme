@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.40 1992/01/20 16:00:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.41 1992/01/20 17:59:21 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ extern SCHEME_OBJECT
 static SCHEME_OBJECT
 DEFUN (compiled_entry_debug_filename, (entry), SCHEME_OBJECT entry)
 {
-  SCHEME_OBJECT results [3];
+  long results [3];
 
   compiled_entry_type (entry, (& (results [0])));
   if (((results [0]) == 0) && (compiled_entry_closure_p (entry)))
@@ -618,7 +618,7 @@ DEFUN (do_printing, (Expr, Detailed),
 
     case TC_COMPILED_ENTRY:
       {
-	SCHEME_OBJECT results [3];
+	long results [3];
 	char * type_string;
 	SCHEME_OBJECT filename;
 	SCHEME_OBJECT entry;
