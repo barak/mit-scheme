@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.17 1996/07/19 18:27:18 adams Exp $
+$Id: earlyrew.scm,v 1.18 1996/07/23 02:28:13 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -543,9 +543,10 @@ MIT in each case. |#
 (define-rewrite/early '&> (earlyrew/binaryop > '&> %> 1))
 
 ;; Safe to use generic arithmetic for integer operations:
-(define-rewrite/early 'INTEGER-EQUAL?   (earlyrew/binaryop = '&= %= 1))
-(define-rewrite/early 'INTEGER-LESS?    (earlyrew/binaryop < '&< %< 1))
-(define-rewrite/early 'INTEGER-GREATER? (earlyrew/binaryop > '&> %> 1))
+;; This is not safe in arith.scm.
+;;(define-rewrite/early 'INTEGER-EQUAL?   (earlyrew/binaryop = '&= %= 1))
+;;(define-rewrite/early 'INTEGER-LESS?    (earlyrew/binaryop < '&< %< 1))
+;;(define-rewrite/early 'INTEGER-GREATER? (earlyrew/binaryop > '&> %> 1))
 
 ;;;; Rewrites of unary operations in terms of binary operations
 
@@ -582,9 +583,10 @@ MIT in each case. |#
   (define-rewrite/early '1+        (unary-rewrite '&+ 1))
   (define-rewrite/early '-1+       (unary-rewrite '&- 1))
 
-  (define-rewrite/early 'INTEGER-ZERO?      (unary-rewrite 'INTEGER-EQUAL? 0))
-  (define-rewrite/early 'INTEGER-NEGATIVE?  (unary-rewrite 'INTEGER-LESS? 0))
-  (define-rewrite/early 'INTEGER-POSITIVE?  (unary-rewrite 'INTEGER-GREATER? 0))
+  ;; Relies on integer-equal? etc which ahve problems in arith.scm
+  ;;(define-rewrite/early 'INTEGER-ZERO?      (unary-rewrite 'INTEGER-EQUAL? 0))
+  ;;(define-rewrite/early 'INTEGER-NEGATIVE?  (unary-rewrite 'INTEGER-LESS? 0))
+  ;;(define-rewrite/early 'INTEGER-POSITIVE?  (unary-rewrite 'INTEGER-GREATER? 0))
   (define-rewrite/early 'INTEGER-ADD-1      (unary-rewrite 'INTEGER-ADD 1))
   (define-rewrite/early 'INTEGER-SUBTRACT-1 (unary-rewrite 'INTEGER-SUBTRACT 1))
 
