@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.1 1991/03/16 00:03:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.2 1991/04/03 00:18:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -557,7 +557,8 @@ after the listing is made.)"
 			       (begin
 				 (set! start-index (+ start-index n))
 				 (if (= start-index end-index)
-				     (channel-close input-channel))))))))
+				     (channel-close input-channel)))))))
+		     (channel-close input-channel))
 		 (copy-output)
 		 (let ((status (subprocess-status process)))
 		   (if (eq? status 'RUNNING)
