@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.12 1992/02/11 23:01:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.13 1992/02/11 23:16:50 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -233,7 +233,7 @@ DEFUN (OS_process_deallocate, (process), Tprocess process)
 
 Tprocess
 DEFUN (OS_make_subprocess,
-       (filename, argv, envp,
+       (filename, argv, envp, working_directory,
 	ctty_type, ctty_name,
 	channel_in_type, channel_in,
 	channel_out_type, channel_out,
