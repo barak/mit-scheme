@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.25 1999/06/21 21:05:24 cph Exp $
+$Id: string.scm,v 14.26 1999/06/22 01:06:52 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -769,7 +769,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(lambda* (compute-last-occurrence-function pattern pstart pend))
 	(gamma0 (compute-gamma0 pattern pstart pend)))
     (let ((gamma (compute-good-suffix-function pattern pstart pend gamma0))
-	  (gamma0+1 (fix:+ gamma0 1))
 	  (tend-m (fix:- tend m))
 	  (m-1 (fix:- m 1)))
       (let outer ((s tstart) (occurrences '()))
@@ -777,7 +776,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (let inner ((pj pend-1) (tj (fix:+ s m-1)))
 	      (if (fix:= (vector-8b-ref pattern pj) (vector-8b-ref text tj))
 		  (if (fix:= pstart pj)
-		      (outer (fix:+ s gamma0+1) (cons s occurrences))
+		      (outer (fix:+ s gamma0) (cons s occurrences))
 		      (inner (fix:- pj 1) (fix:- tj 1)))
 		  (outer (fix:+ s
 				(fix:max (fix:- (fix:- pj pstart-1)
