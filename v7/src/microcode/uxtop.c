@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.5 1990/11/05 11:55:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.6 1990/11/08 11:13:28 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -100,11 +100,11 @@ DEFUN_VOID (OS_initialize)
   }
   UX_initialize_channels ();
   UX_initialize_terminals ();
-  UX_initialize_processes ();
   UX_initialize_environment ();
   UX_initialize_tty ();
   UX_initialize_userio ();
   UX_initialize_signals ();
+  UX_initialize_processes ();
   UX_initialize_trap_recovery ();
   UX_initialize_directory_reader ();
   OS_Name = SYSTEM_NAME;
