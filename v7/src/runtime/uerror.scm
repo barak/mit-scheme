@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.15 1990/07/30 04:01:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.16 1990/10/03 21:53:53 jinx Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -299,7 +299,9 @@ MIT in each case. |#
        (BROKEN-CVARIABLE ,(make-internal-type "Broken compiled variable"))
        (BROKEN-VARIABLE-CACHE
 	,(make-internal-type "Broken variable value cell"))
-       (COMPILED-CODE-ERROR ,(make-internal-type "Compiled code error"))
+       (COMPILED-CODE-ERROR
+	,(make-condition-type (list error-type:illegal-argument)
+			      "Compiled code error"))
        (EXECUTE-MANIFEST-VECTOR
 	,(make-internal-type "Attempt to execute manifest vector"))
        (EXTERNAL-RETURN
@@ -616,6 +618,17 @@ MIT in each case. |#
 	   (ucode-primitive link-file)
 	   (ucode-primitive set-file-modes! 2))
 	  file-error)))
+
+    (define-error-handler 'COMPILED-CODE-ERROR
+      'COMPILER-ERROR-RESTART
+      (lambda (frame)
+	(primitive-procedure? (stack-frame/ref frame 2)))
+      (lambda (condition-type frame)
+	(make-error-condition
+	 condition-type
+	 (list (error-irritant/noise ": inappropriate arguments to open-coded")
+	       (stack-frame/ref frame 2))
+	 repl-environment)))      
 
     (define-total-error-handler 'WRITE-INTO-PURE-SPACE
       write-into-pure-space-error)
