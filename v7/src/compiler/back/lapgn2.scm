@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.19 1991/02/14 18:44:48 jinx Exp $
+$Id: lapgn2.scm,v 1.20 1993/07/01 03:06:27 gjr Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Generator: High-Level Register Assignment
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -346,7 +347,12 @@ MIT in each case. |#
       (if (is-alias-for-register? machine-register source-register)
 	  (clear-registers! machine-register)
 	  (let ((source-reference
-		 (standard-register-reference source-register false true)))
+		 (if (register-value-class=word? source-register)
+		     (standard-register-reference source-register false true)
+		     (standard-register-reference
+		      source-register
+		      (register-type source-register)
+		      false))))
 	    (LAP ,@(clear-registers! machine-register)
 		 ,@(reference->register-transfer source-reference
 						 machine-register))))))
