@@ -1,0 +1,51 @@
+;;; -*- Scheme -*-
+
+(if (not (name->package '(COMPILER)))
+    (load "comp.bcon"))
+
+(let ((sf-and-load
+       (lambda (files package)
+	 (sf-conditionally files)
+	 (load files (package/environment (find-package package)))))
+      (compiler-package (find-package '(COMPILER))))
+  (write-string "\n\n---- Loading compile-time files ----")
+  (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+  (sf-and-load '("base/macros") '(COMPILER MACROS))
+  ((package/reference (find-package '(COMPILER MACROS)) 'INITIALIZE-PACKAGE!))
+  (sf-and-load '("machines/bobcat/decls") '(COMPILER DECLARATIONS))
+  (let ((environment
+	 (package/environment (find-package '(COMPILER DECLARATIONS)))))
+    (set! (access source-file-expression environment) "*.scm")
+    ((access initialize-package! environment)))
+  (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
+  (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
+  (sf-and-load '("machines/bobcat/assmd") '(COMPILER ASSEMBLER))
+  (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
+  (sf-and-load '("machines/bobcat/coerce" "back/asmmac"
+					  "machines/bobcat/insmac")
+	       '(COMPILER LAP-SYNTAXER))
+  (if (package/reference compiler-package
+			 'COMPILER:ENABLE-EXPANSION-DECLARATIONS?)
+      (begin
+	(sf-and-load '("base/scode") '(COMPILER))
+	(sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
+	(sf-and-load '("machines/bobcat/inerly" "back/syerly")
+		     '(COMPILER LAP-SYNTAXER))
+	(let ((environment
+	       (package/environment (find-package '(COMPILER LAP-SYNTAXER))))
+	      (syntax-table
+	       (package/reference compiler-package 'EARLY-SYNTAX-TABLE)))
+	  (fluid-let ((load-noisily? false))
+	    (for-each (lambda (name)
+			(write-string "\nPre-loading instruction set from ")
+			(write name)
+			(load (string-append "machines/bobcat/" name ".scm")
+			      environment
+			      syntax-table)
+			(write-string " -- done"))
+		      '("instr1" "instr2" "instr3" "instr4")))))))
+
+((package/reference (find-package '(COMPILER DECLARATIONS)) 'SYNTAX-FILES!))
+(cref/generate-all "comp")
+(sf "comp.con" "comp.bcon")
+(sf "comp.ldr" "comp.bldr")

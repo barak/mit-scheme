@@ -1,0 +1,323 @@
+#| -*-Scheme-*-
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.1 1988/06/14 08:58:13 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Compiler Packaging
+
+(global-definitions "../runtime/runtim")
+
+(define-package (compiler)
+  (files "base/switch"
+	 "base/hashtb"
+	 "base/object"			;tagged object support
+	 "base/enumer"			;enumerations
+	 "base/sets"			;set abstraction
+	 "base/mvalue"			;multiple-value support
+	 "base/scode"			;SCode abstraction
+	 "machines/bobcat/machin"	;machine dependent stuff
+	 "base/utils"			;odds and ends
+
+	 "base/cfg1"			;control flow graph
+	 "base/cfg2"
+	 "base/cfg3"
+
+	 "base/ctypes"			;CFG datatypes
+
+	 "base/rvalue"			;Right hand values
+	 "base/lvalue"			;Left hand values
+	 "base/blocks"			;rvalue: blocks
+	 "base/proced"			;rvalue: procedures
+	 "base/contin"			;rvalue: continuations
+
+	 "base/subprb"			;subproblem datatype
+
+	 "rtlbase/rgraph"		;program graph abstraction
+	 "rtlbase/rtlty1"		;RTL: type definitions
+	 "rtlbase/rtlty2"		;RTL: type definitions
+	 "rtlbase/rtlexp"		;RTL: expression operations
+	 "rtlbase/rtlcon"		;RTL: complex constructors
+	 "rtlbase/rtlreg"		;RTL: registers
+	 "rtlbase/rtlcfg"		;RTL: CFG types
+	 "rtlbase/rtlobj"		;RTL: CFG objects
+	 "rtlbase/regset"		;RTL: register sets
+
+	 "base/infutl"			;utilities for info generation, shared
+	 "back/insseq"			;LAP instruction sequences
+	 )
+  (parent ()))
+
+(define-package (compiler macros)
+  (files "base/macros")
+  (parent ())
+  (export (compiler)
+	  assembler-syntax-table
+	  compiler-syntax-table
+	  early-syntax-table
+	  lap-generator-syntax-table)
+  (import (runtime macros)
+	  parse-define-syntax)
+  (initialization (initialize-package!)))
+
+(define-package (compiler declarations)
+  (files "machines/bobcat/decls")
+  (parent (compiler))
+  (import (scode-optimizer top-level)
+	  sf/internal
+	  sf/pathname-defaulting)
+  (initialization (initialize-package!)))
+
+(define-package (compiler top-level)
+  (files "base/toplev")
+  (parent (compiler))
+  (export ()
+	  cf
+	  compile-bin-file
+	  compile-procedure
+	  compiler:reset!)
+  (export (compiler fg-generator)
+	  compile-recursively)
+  (export (compiler rtl-generator)
+	  *ic-procedure-headers*
+	  *rtl-continuations*
+	  *rtl-expression*
+	  *rtl-graphs*
+	  *rtl-procedures*)
+  (export (compiler lap-syntaxer)
+	  compiler:external-labels
+	  label->object)
+  (export (compiler debug)
+	  *root-expression*
+	  *rtl-procedures*
+	  *rtl-graphs*))
+
+(define-package (compiler debug)
+  (files "base/debug")
+  (parent (compiler))
+  (export ()
+	  compiler:write-rtl-file
+	  debug/find-continuation
+	  debug/find-entry-node
+	  debug/find-procedure
+	  debug/where
+	  dump-rtl
+	  po
+	  show-bblock-rtl
+	  show-fg
+	  show-fg-node
+	  show-rtl)
+  (import (runtime pretty-printer)
+	  *pp-primitives-by-name*))
+
+(define-package (compiler pattern-matcher/lookup)
+  (files "base/pmlook")
+  (parent (compiler))
+  (export (compiler)
+	  make-pattern-variable
+	  pattern-lookup
+	  pattern-variable-name
+	  pattern-variable?
+	  pattern-variables))
+
+(define-package (compiler pattern-matcher/parser)
+  (files "base/pmpars")
+  (parent (compiler))
+  (export (compiler)
+	  parse-rule
+	  rule-result-expression)
+  (export (compiler macros)
+	  parse-rule
+	  rule-result-expression))
+
+(define-package (compiler pattern-matcher/early)
+  (files  "base/pmerly")
+  (parent (compiler))
+  (export (compiler)
+	  early-parse-rule
+	  early-pattern-lookup
+	  early-make-rule
+	  make-database-transformer
+	  make-symbol-transformer
+	  make-bit-mask-transformer))
+
+(define-package (compiler fg-generator)
+  (files "fggen/canon"			;SCode canonicalizer
+	 "fggen/fggen"			;SCode->flow-graph converter
+	 "fggen/declar"			;Declaration handling
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  canonicalize/top-level
+	  construct-graph))
+
+(define-package (compiler fg-optimizer)
+  (files "fgopt/simapp"			;simulate applications
+	 "fgopt/outer"			;outer analysis
+	 "fgopt/folcon"			;fold constants
+	 "fgopt/operan"			;operator analysis
+	 "fgopt/closan"			;closure analysis
+	 "fgopt/blktyp"			;environment type assignment
+	 "fgopt/contan"			;continuation analysis
+	 "fgopt/simple"			;simplicity analysis
+	 "fgopt/order"			;subproblem ordering
+	 "fgopt/conect"			;connectivity analysis
+	 "fgopt/desenv"			;environment design
+	 "fgopt/offset"			;compute node offsets
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  compute-node-offsets
+	  connectivity-analysis
+	  continuation-analysis
+	  design-environment-frames!
+	  fold-constants
+	  identify-closure-limits!
+	  operator-analysis
+	  outer-analysis
+	  setup-block-types!
+	  simplicity-analysis
+	  simulate-application
+	  subproblem-ordering))
+
+(define-package (compiler rtl-generator)
+  (files "rtlgen/rtlgen"		;RTL generator
+	 "rtlgen/rgproc"		;procedure headers
+	 "rtlgen/rgstmt"		;statements
+	 "rtlgen/rgrval"		;rvalues
+	 "rtlgen/rgcomb"		;combinations
+	 "rtlgen/rgretn"		;returns
+	 "rtlgen/fndblk"		;find blocks and variables
+	 "rtlgen/opncod"		;open-coded primitives
+	 "machines/bobcat/rgspcm"	;special close-coded primitives
+	 "rtlbase/rtline"		;linearizer
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  generate/top-level
+	  linearize-rtl
+	  open-coding-analysis)
+  (export (compiler debug)
+	  linearize-rtl))
+
+(define-package (compiler rtl-cse)
+  (files "rtlopt/rcse1"			;RTL common subexpression eliminator
+	 "rtlopt/rcse2"
+	 "rtlopt/rcseep"		;CSE expression predicates
+	 "rtlopt/rcseht"		;CSE hash table
+	 "rtlopt/rcserq"		;CSE register/quantity abstractions
+	 "rtlopt/rcsesr"		;CSE stack references
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  common-subexpression-elimination))
+
+(define-package (compiler rtl-optimizer)
+  (files "rtlopt/rlife"			;RTL register lifetime analyzer
+	 "rtlopt/rdeath"		;RTL code compression
+	 "rtlopt/rdebug"		;RTL optimizer debugging output
+	 "rtlopt/ralloc"		;RTL register allocation
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  code-compression
+	  lifetime-analysis
+	  register-allocation))
+
+(define-package (compiler debugging-information)
+  (files "base/infnew")
+  (parent (compiler))
+  (export (compiler top-level)
+	  generate-top-level-info
+	  generate-top-level-object
+	  generation-phase2))
+
+(define-package (compiler lap-syntaxer)
+  (files "back/lapgn1"			;LAP generator
+	 "back/lapgn2"			; "      "
+	 "back/lapgn3"			; "      "
+	 "back/regmap"			;Hardware register allocator
+	 "machines/bobcat/lapgen"	;code generation rules
+	 "machines/bobcat/rules1"	;  "      "        "
+	 "machines/bobcat/rules2"	;  "      "        "
+	 "machines/bobcat/rules3"	;  "      "        "
+	 "machines/bobcat/rules4"	;  "      "        "
+	 "back/syntax"			;Generic syntax phase
+	 "back/syerly"			;Early binding version
+	 "machines/bobcat/coerce"	;Coercions: integer -> bit string
+	 "back/asmmac"			;Macros for hairy syntax
+	 "machines/bobcat/insmac"	;Macros for hairy syntax
+	 "machines/bobcat/inerly"	;Early binding version
+	 "machines/bobcat/insutl"	;Utilities for instructions
+	 "machines/bobcat/instr1"	;68000 Effective addressing
+	 "machines/bobcat/instr2"	;68000 Instructions
+	 "machines/bobcat/instr3"	;  "        "
+	 "machines/bobcat/instr4"	;  "        "	 )
+  (parent (compiler))
+  (export (compiler)
+	  lap:make-entry-point
+	  lap:make-label-statement
+	  lap:make-unconditional-branch
+	  lap:syntax-instruction)
+  (export (compiler top-level)
+	  generate-bits)
+  (import (scode-optimizer expansion)
+	  scode->scode-expander))
+
+(define-package (compiler lap-syntaxer linearizer)
+  (files "back/linear")
+  (parent (compiler lap-syntaxer))
+  (export (compiler lap-syntaxer)
+	  map-lap
+	  linearize-bits
+	  bblock-linearize-bits)
+  (export (compiler top-level)
+	  linearize-bits))
+
+(define-package (compiler assembler)
+  (files "machines/bobcat/assmd"	;Machine dependent
+	 "back/symtab"			;Symbol tables
+	 "back/bitutl"			;Assembly blocks
+	 "back/bittop"			;Assembler top level
+	 )
+  (parent (compiler))
+  (export (compiler)
+	  instruction-append)
+  (export (compiler top-level)
+	  assemble))
+
+(define-package (compiler disassembler)
+  (files "machines/bobcat/dassm1"
+	 "machines/bobcat/dassm2"
+	 "machines/bobcat/dassm3")
+  (parent (compiler))
+  (export ()
+	  compiler:write-lap-file))
