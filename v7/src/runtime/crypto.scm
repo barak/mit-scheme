@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.4 2000/04/11 04:00:28 cph Exp $
+$Id: crypto.scm,v 14.5 2000/04/11 04:17:37 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -140,7 +140,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      passphrase))
 	(error "Error signalled by mhash_keygen()."))
     keyword))
-
+
 (define (convert-keygen-parameters name parameters)
   (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
 	(uses-salt? (mhash-keygen-uses-salt? name))
@@ -158,7 +158,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (let ((n (fix:+ 2 n-algorithms)))
       (let ((v (make-vector n)))
 	(vector-set! v 0
-		     (and uses-salt? (list-ref parameters n-algorithms)))
+		     (and uses-salt?
+			  (let ((salt (list-ref parameters n-algorithms))
+				(n (mhash-keygen-salt-size name)))
+			    (if (not (fix:= n (string-length salt)))
+				(error "Salt size incorrect:"
+				       (string-length salt)
+				       (error-irritant/noise "; should be:")
+				       n))
+			    salt)))
 	(vector-set! v 1
 		     (and uses-count?
 			  (list-ref parameters
