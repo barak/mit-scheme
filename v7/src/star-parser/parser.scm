@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.6 2001/06/26 21:29:41 cph Exp $
+;;; $Id: parser.scm,v 1.7 2001/06/26 23:46:41 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -219,7 +219,7 @@
 	  (with-current-pointer pointers
 	    (lambda (start-pointers)
 	      (let loop ((ps ps) (pointers start-pointers) (results '()))
-		(compile-parser-expression (car ps) start-pointers
+		(compile-parser-expression (car ps) pointers
 		  (lambda (pointers result)
 		    (let ((results (cons result results)))
 		      (if (pair? (cdr ps))
@@ -253,22 +253,23 @@
 (define-parser (* parser)
   (handle-pending-backtracking pointers
     (lambda (pointers)
-      (if-succeed
-       (unknown-location pointers)
-       (let ((loop (generate-uninterned-symbol))
-	     (elements (generate-uninterned-symbol)))
-	 `(LET ,loop ((,elements (VECTOR)))
-	    ,(compile-parser-expression parser (no-pointers)
-	       (lambda (pointers element)
-		 (handle-pending-backtracking pointers
-		   (lambda (pointers)
-		     pointers
-		     `(,loop (VECTOR-APPEND ,elements ,element)))))
-	       (lambda (pointers)
-		 (handle-pending-backtracking pointers
-		   (lambda (pointers)
-		     pointers
-		     elements))))))))))
+      (with-variable-binding
+	  (let ((loop (generate-uninterned-symbol))
+		(elements (generate-uninterned-symbol)))
+	    `(LET ,loop ((,elements (VECTOR)))
+	       ,(compile-parser-expression parser (no-pointers)
+		  (lambda (pointers element)
+		    (handle-pending-backtracking pointers
+		      (lambda (pointers)
+			pointers
+			`(,loop (VECTOR-APPEND ,elements ,element)))))
+		  (lambda (pointers)
+		    (handle-pending-backtracking pointers
+		      (lambda (pointers)
+			pointers
+			elements))))))
+	(lambda (elements)
+	  (if-succeed (unknown-location pointers) elements))))))
 
 ;;; Edwin Variables:
 ;;; Eval: (scheme-indent-method 'handle-pending-backtracking 1)
