@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.59 1988/06/14 08:44:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.60 1988/12/15 17:27:22 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,9 +37,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (lifetime-analysis mark-set-registers!)
-
-(define-export (lifetime-analysis rgraphs)
+(define (lifetime-analysis rgraphs)
   (for-each walk-rgraph rgraphs))
 
 (define (walk-rgraph rgraph)
@@ -113,9 +111,9 @@ MIT in each case. |#
 	    (for-each-regset-member old register-crosses-call!))
 	(if (instruction-dead? rtl old)
 	    (set-rinst-rtl! rinst false)
-	    (begin (update-live-registers! old dead live rtl bblock rinst)
-		   (for-each-regset-member old
-		     increment-register-live-length!))))))
+	    (begin
+	      (update-live-registers! old dead live rtl bblock rinst)
+	      (for-each-regset-member old increment-register-live-length!))))))
   (bblock-perform-deletions! bblock))
 
 (define (propagation-loop bblock procedure)
@@ -181,10 +179,10 @@ MIT in each case. |#
 	 (and (rtl:register? address)
 	      (let ((register (rtl:register-number address)))
 		(and (pseudo-register? register)
-		     (not (regset-member? needed register))))))))
+		     (not (regset-member? needed register))))))
+       (not (rtl:expression-contains? (rtl:assign-expression rtl)
+				      rtl:volatile-expression?))))
 
 (define (interesting-register? expression)
   (and (rtl:register? expression)
        (pseudo-register? (rtl:register-number expression))))
-
-)
