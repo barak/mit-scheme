@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: c-mode.scm,v 1.55 1999/01/02 06:11:34 cph Exp $
+;;; $Id: c-mode.scm,v 1.56 1999/10/07 15:13:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -64,40 +64,21 @@ Settings for K&R and BSD indentation styles are
   c-argdecl-indent              0    8
   c-label-offset               -5   -8"
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object syntax-table)
-      c-mode:syntax-table)
-    (define-variable-local-value! buffer
-	(ref-variable-object syntax-ignore-comments-backwards)
-      true)
+    (local-set-variable! syntax-table c-syntax-table buffer)
+    (local-set-variable! syntax-ignore-comments-backwards #t buffer)
     (let ((paragraph-start
 	   (string-append "^$\\|" (ref-variable page-delimiter buffer))))
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-start)
-	paragraph-start)
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-separate)
-	paragraph-start))
-    (define-variable-local-value! buffer
-	(ref-variable-object paragraph-ignore-fill-prefix)
-      true)
-    (define-variable-local-value! buffer
-	(ref-variable-object indent-line-procedure)
-      (ref-command c-indent-command))
-    (define-variable-local-value! buffer
-	(ref-variable-object require-final-newline)
-      true)
-    (define-variable-local-value! buffer (ref-variable-object comment-start)
-      "/* ")
-    (define-variable-local-value! buffer (ref-variable-object comment-end)
-      " */")
-    (define-variable-local-value! buffer (ref-variable-object comment-column)
-      32)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-locator-hook)
-      c-mode:comment-locate)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-indent-hook)
-      c-mode:comment-indent)
+      (local-set-variable! paragraph-start paragraph-start buffer)
+      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (local-set-variable! paragraph-ignore-fill-prefix #t buffer)
+    (local-set-variable! indent-line-procedure (ref-command c-indent-command)
+			 buffer)
+    (local-set-variable! require-final-newline #t buffer)
+    (local-set-variable! comment-start "/* " buffer)
+    (local-set-variable! comment-end " */" buffer)
+    (local-set-variable! comment-column 32 buffer)
+    (local-set-variable! comment-locator-hook c-comment-locate buffer)
+    (local-set-variable! comment-indent-hook c-comment-indent buffer)
     (event-distributor/invoke! (ref-variable c-mode-hook buffer) buffer)))
 
 (define-command c-mode
@@ -109,25 +90,21 @@ Settings for K&R and BSD indentation styles are
   "An event distributor that is invoked when entering C mode."
   (make-event-distributor))
 
-(define c-mode:syntax-table (make-syntax-table))
-(modify-syntax-entry! c-mode:syntax-table #\\ "\\")
-(modify-syntax-entry! c-mode:syntax-table #\/ ". 14")
-(modify-syntax-entry! c-mode:syntax-table #\* ". 23")
-(modify-syntax-entry! c-mode:syntax-table #\+ ".")
-(modify-syntax-entry! c-mode:syntax-table #\- ".")
-(modify-syntax-entry! c-mode:syntax-table #\= ".")
-(modify-syntax-entry! c-mode:syntax-table #\% ".")
-(modify-syntax-entry! c-mode:syntax-table #\< ".")
-(modify-syntax-entry! c-mode:syntax-table #\> ".")
-(modify-syntax-entry! c-mode:syntax-table #\& ".")
-(modify-syntax-entry! c-mode:syntax-table #\| ".")
-(modify-syntax-entry! c-mode:syntax-table #\' "\"")
+(define c-syntax-table
+  (let ((syntax-table (make-syntax-table)))
+    (for-each (lambda (char) (modify-syntax-entry! syntax-table char "."))
+	      (string->list "+-=%<>&|"))
+    (modify-syntax-entry! syntax-table #\' "\"")
+    (modify-syntax-entry! syntax-table #\\ "\\")
+    (modify-syntax-entry! syntax-table #\/ ". 14")
+    (modify-syntax-entry! syntax-table #\* ". 23")
+    syntax-table))
 
-(define (c-mode:comment-locate start)
+(define (c-comment-locate start)
   (and (re-search-forward "/\\*+ *" start (line-end start 0))
        (cons (re-match-start 0) (re-match-end 0))))
 
-(define (c-mode:comment-indent start)
+(define (c-comment-indent start)
   (if (re-match-forward "^/\\*" start (line-end start 0))
       0
       (max (+ (mark-column (horizontal-space-start start)) 1)
@@ -136,13 +113,13 @@ Settings for K&R and BSD indentation styles are
 (define-variable c-auto-newline
   "True means automatically newline before and after braces,
 and after colons and semicolons, inserted in C code."
-  false
+  #f
   boolean?)
 
 (define-variable c-tab-always-indent
   "True means TAB in C mode should always reindent the current line,
 regardless of where in the line point is when the TAB command is used."
-  true
+  #t
   boolean?)
 
 (define-key 'c #\linefeed 'reindent-then-newline-and-indent)
@@ -167,17 +144,17 @@ regardless of where in the line point is when the TAB command is used."
 	       (or (line-blank? point)
 		   (and (ref-variable c-auto-newline)
 			(begin
-			  ((ref-command c-indent-command) false)
+			  ((ref-command c-indent-command) #f)
 			  (insert-newline)
-			  true))))
+			  #t))))
 	  (begin
 	    (insert-char char)
-	    ((ref-command c-indent-command) false)
+	    ((ref-command c-indent-command) #f)
 	    (if (ref-variable c-auto-newline)
 		(begin
 		  (insert-newline)
-		  ((ref-command c-indent-command) false))))
-	  ((ref-command self-insert-command) false))
+		  ((ref-command c-indent-command) #f))))
+	  ((ref-command self-insert-command) #f))
       (if (eqv? #\} char)
 	  (mark-flash (backward-one-sexp (current-point)) 'RIGHT)))))
 
@@ -207,7 +184,7 @@ regardless of where in the line point is when the TAB command is used."
 			       (not (re-match-forward "case\\b"
 						      mark
 						      (line-end mark 0)
-						      false))
+						      #f))
 			       (mark< (skip-chars-forward
 				       " \t"
 				       (skip-chars-forward "a-zA-Z0-9_$" mark))
@@ -221,16 +198,16 @@ regardless of where in the line point is when the TAB command is used."
 				(parse-state-quoted? state)))))))
 	  (begin
 	    (insert-char char)
-	    ((ref-command c-indent-command) false)
+	    ((ref-command c-indent-command) #f)
 	    (if (and (ref-variable c-auto-newline)
 		     (not (c-inside-parens? point)))
 		(begin
 		  (insert-newline)
-		  ((ref-command c-indent-command) false))))
+		  ((ref-command c-indent-command) #f))))
 	  ((ref-command self-insert-command) argument)))))
 
 (define (c-inside-parens? mark)
-  (let ((container (backward-up-list mark 1 false)))
+  (let ((container (backward-up-list mark 1 #f)))
     (and container
 	 (mark>= container (backward-definition-start mark 1 'LIMIT))
 	 (char-match-forward #\( container))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: cinden.scm,v 1.19 1999/01/02 06:11:34 cph Exp $
+;;; $Id: cinden.scm,v 1.20 1999/10/07 15:13:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -299,7 +299,7 @@ This is in addition to c-continued-statement-offset."
 	       (values start* state*))
 	      ((parse-state-in-comment? state*)
 	       (if (not (and state (parse-state-in-comment? state)))
-		   (c-mode:comment-indent (parse-state-comment-start state*)))
+		   (c-comment-indent (parse-state-comment-start state*)))
 	       (loop start* state*))
 	      ((parse-state-in-string? state*)
 	       (loop start* state*))
