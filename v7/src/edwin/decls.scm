@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.57 1996/04/23 22:38:47 cph Exp $
+$Id: decls.scm,v 1.58 1996/12/07 22:24:13 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -142,6 +142,7 @@ MIT in each case. |#
 		"dired"
 		"diros2"
 		"dirunx"
+		"dirw32"
 		"docstr"
 		"dos"
 		"doscom"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.200 1996/10/15 19:05:46 cph Exp $
+$Id: edwin.pkg,v 1.201 1996/12/07 22:24:29 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -1147,6 +1147,12 @@ MIT in each case. |#
   (extend-package (edwin)
     (files "dos" "dosfile"))
 
+  (extend-package (edwin dired)
+    (files "dirw32")
+    (export (edwin)
+	    edwin-command$dired-chmod
+	    edwin-command$dired-hidden-toggle))
+
   (extend-package (edwin screen console-screen)
     (files "ansi" "bios"))
 
@@ -1239,7 +1245,9 @@ MIT in each case. |#
   (extend-package (edwin dired)
     (files "diros2")
     (export (edwin)
-	    edwin-command$dired-do-compress))
+	    edwin-command$dired-chmod
+	    edwin-command$dired-do-compress
+	    edwin-command$dired-hidden-toggle))
 
   (extend-package (edwin process)
     (files "process"))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.41 1996/10/10 10:29:20 cph Exp $
+;;;	$Id: dos.scm,v 1.42 1996/12/07 22:23:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -42,7 +42,7 @@
 ;;; of that license should have been included along with this file.
 ;;;
 
-;;;; DOS Customizations for Edwin
+;;;; Win32 Customizations for Edwin
 
 (declare (usual-integrations))
 
@@ -177,62 +177,70 @@
 ;;;; Dired customization
 
 (define-variable dired-listing-switches
-  "Dired listing format -- Ignored under DOS."
+  "Dired listing format.
+Recognized switches are:
+    -a	show all files including system and hidden files
+    -t	sort files according to modification time
+    -l	ignored (but allowed for unix compatibility)
+Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   "-l"
   string?)
 
 (define-variable list-directory-brief-switches
-  "list-directory brief listing format -- Ignored under DOS."
+  "list-directory brief listing format.
+Recognized switches are:
+    -a	show all files including system and hidden files
+    -t	sort files according to modification time
+    -l	ignored (but allowed for unix compatibility)
+Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   "-l"
   string?)
 
 (define-variable list-directory-verbose-switches
-  "list-directory verbose listing format -- Ignored under DOS."
+  "list-directory verbose listing format.
+Recognized switches are:
+    -a	show all files including system and hidden files
+    -t	sort files according to modification time
+    -l	ignored (but allowed for unix compatibility)
+Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   "-l"
   string?)
 
 (define (insert-directory! file switches mark type)
   ;; Insert directory listing for FILE at MARK.
-  ;; SWITCHES are examined for the presence of "t".
+  ;; SWITCHES are examined for the presence of "a" and "t".
   ;; TYPE can have one of three values:
   ;;   'WILDCARD means treat FILE as shell wildcard.
   ;;   'DIRECTORY means FILE is a directory and a full listing is expected.
   ;;   'FILE means FILE itself should be listed, and not its contents.
   (let ((mark (mark-left-inserting-copy mark))
 	(now (get-universal-time)))
-    (call-with-current-continuation
-     (lambda (k)
-       (bind-condition-handler (list condition-type:file-error)
-	   (lambda (condition)
-	     (insert-string (condition/report-string condition) mark)
-	     (insert-newline mark)
-	     (k unspecific))
-	 (lambda ()
-	   (for-each
-	    (lambda (entry)
-	      (insert-string
-	       (dos/dired-line-string (car entry) (cdr entry) now)
-	       mark)
-	      (insert-newline mark))
-	    (let ((make-entry
-		   (lambda (pathname)
-		     (let ((attributes (file-attributes pathname)))
-		       (if attributes
-			   (list (cons (file-namestring pathname)
-				       attributes))
-			   '())))))
-	      (if (eq? 'FILE type)
-		  (make-entry file)
-		  (sort (append-map make-entry (directory-read file))
-			(if (string-find-next-char switches #\t)
-			    (lambda (x y)
-			      (> (file-attributes/modification-time (cdr x))
-				 (file-attributes/modification-time (cdr y))))
-			    (lambda (x y)
-			      (string-ci<? (car x) (car y))))))))))))
+    (catch-file-errors (lambda (c)
+			 (insert-string (condition/report-string c) mark)
+			 (insert-newline mark))
+      (lambda ()
+	(for-each
+	 (lambda (entry)
+	   (insert-string (win32/dired-line-string (car entry) (cdr entry) now)
+			  mark)
+	   (insert-newline mark))
+	 (if (eq? 'FILE type)
+	     (let ((attributes (file-attributes file)))
+	       (if attributes
+		   (list (cons (file-namestring file) attributes))
+		   '()))
+	     (sort (win32/read-dired-files
+		    file
+		    (string-find-next-char switches #\a))
+		   (if (string-find-next-char switches #\t)
+		       (lambda (x y)
+			 (> (file-attributes/modification-time (cdr x))
+			    (file-attributes/modification-time (cdr y))))
+		       (lambda (x y)
+			 (string-ci<? (car x) (car y)))))))))
     (mark-temporary! mark)))
 
-(define (dos/dired-line-string name attr now)
+(define (win32/dired-line-string name attr now)
   (string-append
    (file-attributes/mode-string attr)
    " "
@@ -241,6 +249,26 @@
    (file-time->ls-string (file-attributes/modification-time attr) now)
    " "
    name))
+
+(define (win32/read-dired-files file all-files?)
+  (let loop
+      ((pathnames
+	(let ((pathnames (directory-read file #f)))
+	  (if all-files?
+	      pathnames
+	      (list-transform-positive pathnames
+		(let ((mask
+		       (fix:or nt-file-mode/hidden nt-file-mode/system)))
+		  (lambda (pathname)
+		    (fix:= (fix:and (file-modes pathname) mask) 0)))))))
+       (result '()))
+    (if (null? pathnames)
+	result
+	(loop (cdr pathnames)
+	      (let ((attr (file-attributes (car pathnames))))
+		(if attr
+		    (cons (cons (file-namestring (car pathnames)) attr) result)
+		    result))))))
 
 (define dired-pathname-wild?
   pathname-wild?)

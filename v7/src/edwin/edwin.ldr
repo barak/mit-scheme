@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.57 1996/12/06 22:34:08 cph Exp $
+$Id: edwin.ldr,v 1.58 1996/12/07 22:24:04 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -207,7 +207,8 @@ MIT in each case. |#
 	  (load "dired" env)
 	  (case (lookup 'OS-TYPE)
 	    ((UNIX) (load "dirunx" env))
-	    ((OS/2) (load "diros2" env))))
+	    ((OS/2) (load "diros2" env))
+	    ((NT) (load "dirw32" env))))
 
 	(load "argred" (->environment '(EDWIN COMMAND-ARGUMENT)))
 	(load "autold" environment)

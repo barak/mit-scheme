@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.40 1996/04/23 22:38:39 cph Exp $
+$Id: ed-ffi.scm,v 1.41 1996/12/07 22:24:20 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -118,6 +118,8 @@ of that license should have been included along with this file.
     ("diros2"	(edwin dired)
 		edwin-syntax-table)
     ("dirunx"	(edwin dired)
+		edwin-syntax-table)
+    ("dirw32"	(edwin dired)
 		edwin-syntax-table)
     ("display"	(edwin display-type)
 		syntax-table/system-internal)
