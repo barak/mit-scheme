@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.3 1993/08/21 03:57:56 gjr Exp $
+$Id: scheme32.c,v 1.4 1993/09/03 17:50:59 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -135,7 +135,7 @@ win32_install_async_timer (unsigned long * block,
 {
   TIMECAPS tc;
   UINT wTimerRes;
-  UINT msInterval = 75;
+  UINT msInterval = 50;
   UINT msTargetResolution = 50;
   struct win32_timer_closure_s * timer_closure;
 
