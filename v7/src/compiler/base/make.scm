@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.97 1993/01/08 00:05:44 cph Exp $
+$Id: make.scm,v 4.98 1993/02/25 02:13:39 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -46,5 +46,5 @@ MIT in each case. |#
     (initialize-package! '(COMPILER DECLARATIONS)))
   (add-system!
    (make-system (string-append "Liar (" architecture-name ")")
-		4 97
+		4 98
 		'())))
