@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.12 1990/01/18 22:41:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.13 1990/06/07 19:56:35 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -135,7 +135,7 @@ MIT in each case. |#
       (with-absolutely-no-interrupts
 	(lambda ()
 	  (vector-set! output-block 0
-		       ((ucode-primitive primitive-object-new-type)
+		       ((ucode-primitive primitive-object-set-type)
 			(ucode-type manifest-nm-vector)
 			non-pointer-length)))))
     (write-bits! output-block

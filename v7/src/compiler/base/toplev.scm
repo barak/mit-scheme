@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.28 1990/05/03 15:03:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.29 1990/06/07 19:52:14 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1096,7 +1096,7 @@ MIT in each case. |#
 		      label
 		      (with-absolutely-no-interrupts
 		       (lambda ()
-			 ((ucode-primitive &make-object)
+			 ((ucode-primitive primitive-object-set-type)
 			  type-code:compiled-entry
 			  (make-non-pointer-object
 			   (+ (label->offset label)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.3 1990/01/18 22:42:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crsend.scm,v 1.4 1990/06/07 19:52:33 cph Rel $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -117,7 +117,7 @@ MIT in each case. |#
 		   label
 		   (with-absolutely-no-interrupts
 		    (lambda ()
-		      ((ucode-primitive &make-object)
+		      ((ucode-primitive primitive-object-set-type)
 		       type-code:compiled-entry
 		       (make-non-pointer-object
 			(+ (cdr (or (assq label label-bindings)

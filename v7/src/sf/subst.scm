@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.5 1989/10/26 06:28:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 4.6 1990/06/07 19:53:16 cph Rel $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -804,7 +804,7 @@ forms are simply removed.
 
 (define *foldable-primitive-procedures
   (map make-primitive-procedure
-       '(PRIMITIVE-TYPE PRIMITIVE-TYPE?
+       '(OBJECT-TYPE OBJECT-TYPE?
          NOT EQ? NULL? PAIR? ZERO? POSITIVE? NEGATIVE?
 	 &= &< &> &+ &- &* &/ 1+ -1+)))
 

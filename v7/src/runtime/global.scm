@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.14 1989/08/17 13:53:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.15 1990/06/07 19:53:40 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -168,7 +168,7 @@ MIT in each case. |#
 	  (wait-loop)))))
 
 (define-integrable (future? object)
-  ((ucode-primitive primitive-type? 2) (ucode-type future) object))
+  ((ucode-primitive object-type? 2) (ucode-type future) object))
 
 (define (exit)
   (if (prompt-for-confirmation "Kill Scheme")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.12 1990/04/21 16:26:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.13 1990/06/07 19:55:02 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -200,7 +200,7 @@ that you cannot just vector-ref into.
    ;; This combination returns an unsafe object, but since it
    ;; is used as an argument to a primitive, I can get away
    ;; with not turning off the garbage collector.
-   ((ucode-primitive system-memory-ref 2) block 0)))
+   ((ucode-primitive primitive-object-ref 2) block 0)))
 
 (define (compiled-code-block/index->offset index)
   (* (1+ index) compiled-code-block/bytes-per-object))
