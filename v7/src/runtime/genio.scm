@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.4 1995/04/14 19:06:09 cph Exp $
+$Id: genio.scm,v 1.5 1995/04/21 19:58:06 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -279,7 +279,12 @@ MIT in each case. |#
     (else (error:wrong-type-datum mode "terminal mode"))))
 
 (define (operation/close port)
-  (let ((input-buffer (port/input-buffer port)))
-    (if input-buffer (input-buffer/close input-buffer)))
+  ;; Must close output-buffer first, because it may need to flush
+  ;; buffered data, and there might only be one channel for both the
+  ;; input and output buffers.
   (let ((output-buffer (port/output-buffer port)))
-    (if output-buffer (output-buffer/close output-buffer))))
+    (if output-buffer
+	(output-buffer/close output-buffer)))
+  (let ((input-buffer (port/input-buffer port)))
+    (if input-buffer
+	(input-buffer/close input-buffer))))
