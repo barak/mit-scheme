@@ -2,13 +2,14 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.24 1993/10/14 06:42:03 cph Exp $
+@comment $Id: scheme.texinfo,v 1.25 1993/10/14 10:41:01 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd
-@synindex vr fn
+@syncodeindex vr cp
+@syncodeindex fn cp
 
 @comment Parts of this document are essentially plagiarized from "Common
 @comment Lisp: The Language".  Those parts are marked by the following
@@ -105,7 +106,7 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.24 alpha
+@subtitle Edition 1.25 alpha
 @subtitle for Scheme Release 7.2
 @subtitle 14 October 1993
 @author by Chris Hanson
@@ -181,8 +182,7 @@ facilities available for developing programs in MIT Scheme, and the
 * File-System Interface::       
 * Error System::                
 * Graphics::                    
-* Procedure Index::             Index of Procedures, Special Forms, and Variables
-* Concept Index::               Index of Concepts
+* Index::                       
 
  --- The Detailed Node Listing ---
 
@@ -762,6 +762,7 @@ which must be a pair.
 Many procedures signal an error when an argument is of the wrong type;
 usually this error is a condition of type
 @code{condition-type:wrong-type-argument}.
+@findex condition-type:wrong-type-argument
 
 In addition to the standard data-type names (@var{pair}, @var{list},
 @var{boolean}, @var{string}, etc.), the following names as arguments
@@ -853,6 +854,7 @@ error.  When this error is signalled, it is a condition of type
 @code{condition-type:unassigned-variable}; sometimes the compiler does
 not generate code to signal the error.  Unassigned variables are useful
 only in combination with side effects (@pxref{Assignments}).
+@findex condition-type:unassigned-variable
 
 @node Environment Concepts, Initial and Current Environments, Variable Bindings, Scheme Concepts
 @subsection Environment Concepts
@@ -862,8 +864,9 @@ only in combination with side effects (@pxref{Assignments}).
 @cindex error, unbound variable (defn)
 An @dfn{environment} is a set of variable bindings.  If an environment
 has no binding for a variable, that variable is said to be @dfn{unbound}
-in that environment.  Referencing an unbound variable signals an
-``Unbound Variable'' error.
+in that environment.  Referencing an unbound variable signals a
+condition of type @code{condition-type:unbound-variable}.
+@findex condition-type:unbound-variable
 
 @cindex extension, of environment (defn)
 @cindex environment, extension (defn)
@@ -1605,12 +1608,13 @@ each in sequence:
 @table @asis
 @item Required
 All of the @dfn{required} parameters are matched against the arguments
-first.  If there are fewer arguments than required parameters, a ``Wrong
-Number of Arguments'' error is signalled; this error is also signalled
-if there are more arguments than required parameters and there are no
-further parameters.
+first.  If there are fewer arguments than required parameters, an error
+of type @code{condition-type:wrong-number-of-arguments} is signalled;
+this error is also signalled if there are more arguments than required
+parameters and there are no further parameters.
 @cindex required parameter (defn)
 @cindex parameter, required (defn)
+@findex condition-type:wrong-number-of-arguments
 
 @item Optional
 Once the required parameters have all been matched, the @dfn{optional}
@@ -1618,10 +1622,12 @@ parameters are matched against the remaining arguments.  If there are
 fewer arguments than optional parameters, the unmatched parameters are
 bound to special objects called @dfn{default objects}.  If there are
 more arguments than optional parameters, and there are no further
-parameters, a ``Wrong Number of Arguments'' error is signalled.
+parameters, an error of type
+@code{condition-type:wrong-number-of-arguments} is signalled.
 @cindex optional parameter (defn)
 @cindex parameter, optional (defn)
 @cindex default object (defn)
+@findex condition-type:wrong-number-of-arguments
 
 @findex default-object?
 The predicate @code{default-object?}, which is true only of default
@@ -1886,10 +1892,11 @@ by the rules of lexical scoping) of its corresponding @var{variable}.
 MIT Scheme allows any of the @var{init}s to be omitted, in which
 case the corresponding @var{variable}s are temporarily unassigned.
 
-An error is signalled if any of the @var{variable}s are unbound.
-However, because @code{fluid-let} operates by means of side effects, it
-is valid for any @var{variable} to be unassigned when the form is
-entered.
+An error of type @code{condition-type:unbound-variable} is signalled if
+any of the @var{variable}s are unbound.  However, because
+@code{fluid-let} operates by means of side effects, it is valid for any
+@var{variable} to be unassigned when the form is entered.
+@findex condition-type:unbound-variable
 
 Here is an example showing the difference between @code{fluid-let} and
 @code{let}.  First see how @code{let} affects the binding of a variable:
@@ -3295,6 +3302,7 @@ as fixed point and floating point are referred to by names such as
 * Numerical operations::        
 * Numerical input and output::  
 * Fixnum and Flonum Operations::  
+* Random Numbers::              
 @end menu
 
 @node Numerical types, Exactness,  , Numbers
@@ -3677,7 +3685,9 @@ implementations).  If @code{min} or @code{max} is used to compare
 numbers of mixed exactness, and the numerical value of the result cannot
 be represented as an inexact number without loss of accuracy, then the
 procedure may report a violation of an implementation
-restriction.@footnote{MIT Scheme signals an error in this case.}
+restriction.@footnote{MIT Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.}
+@findex condition-type:bad-range-argument
 @end deffn
 
 @deffn procedure + z1 @dots{}
@@ -4117,13 +4127,16 @@ minus @var{pi} (exclusive) to @var{pi} (inclusive).
 value returned is the inexact number that is numerically closest to the
 argument.  If an exact argument has no reasonably close inexact
 equivalent, then a violation of an implementation restriction may be
-reported; MIT Scheme signals an error in this case.
+reported; MIT Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.
+@findex condition-type:bad-range-argument
 
 @code{inexact->exact} returns an exact representation of @var{z}.  The
 value returned is the exact number that is numerically closest to the
 argument.  If an inexact argument has no reasonably close exact
 equivalent, then a violation of an implementation restriction may be
-reported; MIT Scheme signals an error in this case.
+reported; in MIT Scheme this case does not occur because all inexact
+numbers are representable as exact numbers.
 
 These procedures implement the natural one-to-one correspondence between
 exact and inexact integers throughout an implementation-dependent range.
@@ -4175,6 +4188,66 @@ satisfied by a result containing a decimal point.  The unspecified case
 allows for infinities, NaNs, and non-flonum representations.
 @end deffn
 
+@defvr {variable+} flonum-unparser-cutoff
+This variable controls the action of @code{number->string} when
+@var{number} is a flonum (and consequently controls all printing of
+flonums).  This variable can have the following values:
+
+@itemize @bullet
+@item
+The symbol @code{normal}, which is the initial value of this variable,
+causes flonums to be printed with full precision.  @code{number->string}
+uses as many digits as are necessary to display all of the information
+in the flonum.  This value may also be specified as a list @code{(normal
+@var{n})} where @var{n} is an exact integer; @var{n} is ignored.
+
+@item
+The list @code{(relative @var{n})}, where @var{n} is an exact positive
+integer, constrains @code{number->string} to represent the flonum using
+at most @var{n} significant digits.  @code{number->string} rounds the
+result so that it is as accurate as possible.  For example:
+
+@example
+@group
+(number->string (* 4 (atan 1 1)))
+                                    @result{} "3.141592653589793"
+(fluid-let ((flonum-unparser-cutoff '(relative 5)))
+  (number->string (* 4 (atan 1 1))))
+                                    @result{} "3.1416"
+@end group
+@end example
+
+@item
+The list @code{(absolute @var{n})}, where @var{n} is an exact integer,
+constrains @code{number->string} to represent the flonum by rounding it
+at the @var{n}th digit to the right of the decimal point; if @var{n} is
+negative, the number is rounded @code{(- @var{n})} digits to the left of
+the decimal point.  For example:
+
+@example
+@group
+(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
+  (number->string (* 4 (atan 1 1))))
+                                    @result{} "3.14159"
+(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
+  (number->string (* 4000 (atan 1 1))))
+                                    @result{} "3141.59265"
+(fluid-let ((flonum-unparser-cutoff '(absolute -4)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31415930000."
+(fluid-let ((flonum-unparser-cutoff '(absolute -5)))
+  (number->string (* 4e10 (atan 1 1))))
+                                    @result{} "31415900000."
+@end group
+@end example
+@end itemize
+
+@noindent
+If @code{flonum-unparser-cutoff} is bound to a value different from
+those described here, @code{number->string} issues a warning and acts as
+though it had been bound to @code{normal}.
+@end defvr
+
 @deffn procedure string->number string [radix]
 Returns a number of the maximally precise representation expressed by
 the given @var{string}.  @var{Radix} must be an exact integer, either 2,
@@ -4194,7 +4267,7 @@ number, then @code{string->number} returns @code{#f}.
 @end example
 @end deffn
 
-@node Fixnum and Flonum Operations,  , Numerical input and output, Numbers
+@node Fixnum and Flonum Operations, Random Numbers, Numerical input and output, Numbers
 @section Fixnum and Flonum Operations
 
 This section describes numerical operations that are restricted forms of
@@ -4453,6 +4526,65 @@ This is the flonum version of @code{atan} with two arguments.  When
 compiled, it does not check the types of its arguments.
 @end deffn
 
+@node Random Numbers,  , Fixnum and Flonum Operations, Numbers
+@section Random Numbers
+@cindex random number
+@cindex pseudo-random number
+@cindex number, pseudo-random
+
+MIT Scheme provides a facility for generating pseudo-random numbers.
+The current implementation is a ``subtract-with-carry'' random-number
+generator, based on the algorithm from @cite{A New Class of Random
+Number Generators}, George Marsaglia and Arif Zaman, @cite{The Annals of
+Applied Probability}, Vol.@: 1, No.@: 3, 1991.  At the time it was
+implemented, this was a good algorithm for general purposes, but the
+state of the art in random-number generation is constantly changing.  If
+necessary, the implementation will be updated to use a new algorithm
+while retaining the same interface.
+
+The interface described here is essentially identical to that of Common
+Lisp.
+
+@deffn {procedure+} random modulus [state]
+@var{Modulus} must be a positive real number.  @code{random} returns a
+pseudo-random number between zero (inclusive) and @var{modulus}
+(exclusive).  The exactness of the returned number is the same as the
+exactness of @var{modulus}.  Additionally, if @var{modulus} is an exact
+integer, the returned number will be also.  Usually, @var{modulus} is
+either an exact integer or an inexact real; the current implementation
+has been tuned to make these two cases fast.
+
+If @var{state} is given and not @code{#f}, it must be a random-state
+object; otherwise, it defaults to the value of the variable
+@code{*random-state*}.  This object is used to maintain the state of the
+pseudo-random-number generator and is altered as a side effect of the
+@code{random} procedure.
+@end deffn
+
+@defvr {variable+} *random-state*
+This variable holds a data structure, a random-state object, that
+encodes the internal state of the random-number generator that
+@code{random} uses by default.  A call to @code{random} will perform a
+side effect on this data structure.  This variable may be changed, using
+@code{set!} or @code{fluid-let}, to hold a new random-state object.
+@end defvr
+
+@deffn {procedure+} make-random-state [state]
+This procedure returns a new random-state object, suitable for use as
+the value of the variable @code{*random-state*}.  If @var{state} is not
+given or @code{#f}, @code{make-random-state} returns a @emph{copy} of
+the current random-number state object (the value of the variable
+@code{*random-state*}).  If @var{state} is a random-state object, a copy
+of that object is returned.  If @var{state} is @code{#t}, then a new
+random-state object is returned that has been ``randomly'' initialized
+by some means (such as by a time-of-day clock).
+@end deffn
+
+@deffn {procedure+} random-state? object
+Returns @code{#t} if @var{object} is a random-state object, otherwise
+returns @code{#f}.
+@end deffn
+
 @node Characters, Strings, Numbers, Top
 @chapter Characters
 
@@ -4616,7 +4748,8 @@ If @var{slashify?} is not specified, it defaults to @code{#f}.
 
 @deffn {procedure+} name->char string
 Converts a string that names a character into the character specified.
-If @var{string} does not name any character, signals an error.
+If @var{string} does not name any character, @code{name->char} signals
+an error.
 
 @example
 (name->char "a")                        @result{}  #\a
@@ -4900,8 +5033,10 @@ Meta) count as legal @sc{ascii} characters.
 @end deffn
 
 @deffn {procedure+} char->ascii char
-Returns the @sc{ascii} code for @var{char}.  An error is signalled if
-@var{char} doesn't have an @sc{ascii} representation.
+Returns the @sc{ascii} code for @var{char}.  An error
+@code{condition-type:bad-range-argument} is signalled if @var{char}
+doesn't have an @sc{ascii} representation.
+@findex condition-type:bad-range-argument
 @end deffn
 
 @deffn {procedure+} ascii->char code
@@ -6448,7 +6583,7 @@ less than the length of the list.  The first element of a list has index
 @deffnx {procedure+} eighth list
 @deffnx {procedure+} ninth list
 @deffnx {procedure+} tenth list
-Returns the specified element of @var{list}, signalling an error if
+Returns the specified element of @var{list}.  It is an error if
 @var{list} is not long enough to contain the specified element (for
 example, if the argument to @code{seventh} is a list that contains only
 six elements).
@@ -7485,16 +7620,20 @@ direction of copying only matters when @var{bit-string-1} and
 @deffn {procedure+} unsigned-integer->bit-string length integer
 Both @var{length} and @var{integer} must be exact non-negative integers.
 @var{Integer} is converted to a newly allocated bit string of
-@var{length} bits.  Signals an error if @var{integer} is too large to be
-represented in @var{length} bits.
+@var{length} bits.  Signals an error of type
+@code{condition-type:bad-range-argument} if @var{integer} is too large
+to be represented in @var{length} bits.
+@findex condition-type:bad-range-argument
 @end deffn
 
 @deffn {procedure+} signed-integer->bit-string length integer
 @var{Length} must be an exact non-negative integer, and @var{integer}
 may be any exact integer.  Converts @var{integer} into a newly allocated
 bit string of @var{length} bits, using two's complement encoding for
-negative numbers.  Signals an error if @var{integer} is too large to be
-represented in @var{length} bits.
+negative numbers.  Signals an error of type
+@code{condition-type:bad-range-argument} if @var{integer} is too large
+to be represented in @var{length} bits.
+@findex condition-type:bad-range-argument
 @end deffn
 
 @deffn {procedure+} bit-string->unsigned-integer bit-string
@@ -9225,10 +9364,12 @@ integers.
 @code{unhash} takes an exact non-negative integer @var{k} and returns
 the object associated with that integer.  If there is no object
 associated with @var{k}, or if the object previously associated with
-@var{k} has been reclaimed by the garbage collector, an error is
-signalled.  In other words, if @code{hash} previously returned @var{k}
-for some object, and that object has not been reclaimed, it is the value
-of the call to @code{unhash}.
+@var{k} has been reclaimed by the garbage collector, an error of type
+@code{condition-type:bad-range-argument} is signalled.  In other words,
+if @code{hash} previously returned @var{k} for some object, and that
+object has not been reclaimed, it is the value of the call to
+@code{unhash}.
+@findex condition-type:bad-range-argument
 @end deffn
 
 An object that is passed to @code{hash} as an argument is not protected
@@ -9606,10 +9747,13 @@ is, the number of arguments that the procedure accepts.  The results of
 the test may be less restrictive than the effect of calling the
 procedure.  In other words, these procedures may indicate that the
 procedure will accept a given number of arguments, but if you call the
-procedure it may signal an error.  This is because these procedures
-examine the apparent arity of a procedure.  For example, here is a
-procedure that appears to accept any number of arguments, but when
-called will signal an error if the number of arguments is not one:
+procedure it may signal a
+@code{condition-type:wrong-number-of-arguments} error.  This is because
+these procedures examine the apparent arity of a procedure.  For
+example, here is a procedure that appears to accept any number of
+arguments, but when called will signal an error if the number of
+arguments is not one:
+@findex condition-type:wrong-number-of-arguments
 
 @example
 (lambda arguments (apply car arguments))
@@ -9970,8 +10114,7 @@ of its ancestor environments; otherwise returns @code{#f}.
 
 @deffn {procedure+} environment-lookup environment symbol
 @var{Symbol} must be bound in @var{environment} or one of its ancestor
-environments.  Returns the value to which it is bound.  Signals an error
-if @var{symbol} is unassigned.
+environments.  Returns the value to which it is bound.
 @end deffn
 
 @deffn {procedure+} environment-assignable? environment symbol
@@ -10197,6 +10340,7 @@ also satisfies @code{port?}, @code{input-port?}, and
 These procedures check the type of @var{object}, signalling an error of
 type @code{condition-type:wrong-type-argument} if it is not an input
 port or output port, respectively.  Otherwise they return @var{object}.
+@findex condition-type:wrong-type-argument
 @end deffn
 
 @deffn procedure current-input-port
@@ -10306,14 +10450,18 @@ open files in normal mode.
 @cindex construction, of file input port
 Takes a filename referring to an existing file and returns an input port
 capable of delivering characters from the file.  If the file cannot be
-opened, an error is signalled.
+opened, an error of type @code{condition-type:file-operation-error} is
+signalled.
+@findex condition-type:file-operation-error
 @end deffn
 
 @deffn procedure open-output-file filename [append?]
 @cindex construction, of file output port
 Takes a filename referring to an output file to be created and returns
 an output port capable of writing characters to a new file by that name.
-If the file cannot be opened, an error is signalled.
+If the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.
+@findex condition-type:file-operation-error
 
 @cindex appending, to output file
 If @var{append?} is given and not @code{#f}, the file is opened in
@@ -10328,7 +10476,9 @@ argument @var{append?} is an MIT Scheme extension.
 @cindex construction, of file input port
 Takes a filename referring to an existing file and returns an @sc{i/o}
 port capable of reading characters from and writing characters to the
-file.  If the file cannot be opened, an error is signalled.
+file.  If the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.
+@findex condition-type:file-operation-error
 
 This procedure is often used to open special files.  For example, under
 unix this procedure can be used to open terminal device files, @sc{pty}
@@ -10353,17 +10503,18 @@ is called, and returns an unspecified value.
 @deffnx procedure call-with-output-file filename procedure
 These procedures call @var{procedure} with one argument: the port
 obtained by opening the named file for input or output, respectively.
-If the file cannot be opened, an error is signalled.  If @var{procedure}
-returns, then the port is closed automatically and the value yielded by
-@var{procedure} is returned.  If @var{procedure} does not return, then
-the port will not be closed automatically unless it is reclaimed by the
-garbage collector.@footnote{Because Scheme's escape procedures have
-unlimited extent, it is possible to escape from the current continuation
-but later to escape back in.  If implementations were permitted to close
-the port on any escape from the current continuation, then it would be
-impossible to write portable code using both
-@code{call-with-current-continuation} and @code{call-with-input-file} or
-@code{call-with-output-file}.}
+If the file cannot be opened, an error of type
+@code{condition-type:file-operation-error} is signalled.  If
+@var{procedure} returns, then the port is closed automatically and the
+value yielded by @var{procedure} is returned.  If @var{procedure} does
+not return, then the port will not be closed automatically unless it is
+reclaimed by the garbage collector.@footnote{Because Scheme's escape
+procedures have unlimited extent, it is possible to escape from the
+current continuation but later to escape back in.  If implementations
+were permitted to close the port on any escape from the current
+continuation, then it would be impossible to write portable code using
+both @code{call-with-current-continuation} and
+@code{call-with-input-file} or @code{call-with-output-file}.}
 @end deffn
 
 @deffn {procedure+} call-with-binary-input-file filename procedure
@@ -12250,8 +12401,9 @@ host's file system.
 @deffn {procedure+} system-library-pathname pathname
 @cindex library, system pathname
 Locates @var{pathname} in MIT Scheme's system library directory.  An
-error is signalled if @var{pathname} cannot be located on the library
-search path.
+error of type @code{condition-type:file-operation-error} is signalled if
+@var{pathname} cannot be located on the library search path.
+@findex condition-type:file-operation-error
 
 @example
 @group
@@ -12364,12 +12516,20 @@ exactly the same way as fluid binding of a variable
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
 @section File Manipulation
 
+This section describes procedures that manipulate files and directories.
+Any of these procedures can signal a number of errors for many reasons.
+The specifics of these errors are much too operating-system dependent to
+document them here.  However, if such an error is signalled by one of
+these procedures, it will be of type
+@code{condition-type:file-operation-error}.
+@findex condition-type:file-operation-error
+
 @deffn {procedure+} file-exists? filename
 @cindex existence, testing of file
 Returns @code{#t} if @var{filename} is an existing file or directory;
-otherwise returns @code{#f}.  If the file is a symbolic link, this
-procedure tests the existence of the file linked to, not the link
-itself.
+otherwise returns @code{#f}.  In operating systems that support symbolic
+links, if the file is a symbolic link, this procedure tests the
+existence of the file linked to, not the link itself.
 @end deffn
 
 @deffn {procedure+} copy-file source-filename target-filename
@@ -12393,41 +12553,135 @@ In the unix implementation, this will not rename across file systems.
 Deletes the file named @var{filename}.
 @end deffn
 
-@deffn {procedure+} ->truename pathname
+@deffn {procedure+} ->truename filename
 @cindex truename, of input file
 This function attempts to discover and return the ``true name'' of the
-file associated with the @var{pathname} within the file system.  An
-error is signalled if the appropriate file cannot be located within the
-file system.
+file associated with @var{filename} within the file system.  An error of
+type @code{condition-type:file-operation-error} is signalled if the
+appropriate file cannot be located within the file system.
+@findex condition-type:file-operation-error
 @end deffn
 
-@deffn {procedure+} file-modification-time filename
-@deffnx {procedure+} file-modification-time-direct filename
-@cindex modification time, of file
-Returns the modification time of @var{filename} as an exact integer.
-The result may be compared to other modification times using ordinary
-integer arithmetic.  If @var{filename} names a file that does not exist,
-returns @code{#f}.  If @var{filename} names a symbolic link,
-@code{file-modification-time-direct} returns the modification time of
-the link, while @code{file-modification-time} returns the modification
-time of the file linked to.
+@deffn {procedure+} call-with-temporary-filename procedure
+@code{call-with-temporary-filename} generates a temporary filename, and
+calls @var{procedure} with that filename as its sole argument.  The
+filename is guaranteed not to refer to any existing file, and, barring
+unusual circumstances, it can be used to open an output file without
+error.  When @var{procedure} returns, if the file referred to by the
+filename exists, it is deleted; then, the value yielded by
+@var{procedure} is returned.  If @var{procedure} escapes from its
+continuation, and the file referred to by the filename exists, it is
+deleted.
 @end deffn
 
 @deffn {procedure+} file-directory? filename
 @cindex directory, predicate for
 Returns @code{#t} if the file named @var{filename} exists and is a
-directory.  Otherwise returns @code{#f}.  If @var{filename} names a
-symbolic link, this examines the file linked to, not the link itself.
+directory.  Otherwise returns @code{#f}.  In operating systems that
+support symbolic links, if @var{filename} names a symbolic link, this
+examines the file linked to, not the link itself.
 @end deffn
 
 @deffn {procedure+} file-symbolic-link? filename
 @cindex symbolic link, predicate for
-If the file named @var{filename} exists and is a symbolic link, this
-procedure returns the contents of the symbolic link as a newly allocated
-string.  The returned value is the name of the file that the symbolic
-link points to and must be interpreted relative to the directory of
-@var{filename}.  If @var{filename} either does not exist or is not a
-symbolic link, this procedure returns @code{#f}.
+In operating systems that support symbolic links, if the file named
+@var{filename} exists and is a symbolic link, this procedure returns the
+contents of the symbolic link as a newly allocated string.  The returned
+value is the name of the file that the symbolic link points to and must
+be interpreted relative to the directory of @var{filename}.  If
+@var{filename} either does not exist or is not a symbolic link, or if
+the operating system does not support symbolic links, this procedure
+returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} file-readable? filename
+Returns @code{#t} if @var{filename} names a file that can be opened for
+input; i.e.@: a @dfn{readable} file.  Otherwise returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} file-writable? filename
+Returns @code{#t} if @var{filename} names a file that can be opened for
+output; i.e.@: a @dfn{writable} file.  Otherwise returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} file-access filename mode
+@var{Mode} must be an exact integer between @code{0} and @code{7}
+inclusive; it is a bitwise-encoded predicate selector with @code{1}
+meaning ``executable'', @code{2} meaning ``writable'', and @code{4}
+meaning ``readable''.  @code{file-access} returns @code{#t} if
+@var{filename} exists and satisfies the predicates selected by
+@var{mode}.  For example, if @var{mode} is @code{5}, then @var{filename}
+must be both readable and executable.  If @var{filename} doesn't exist,
+or if it does not satisfy the selected predicates, @code{#f} is
+returned.
+@end deffn
+
+@deffn {procedure+} file-modes filename
+If @var{filename} names an existing file, @code{file-modes} returns an
+exact non-negative integer encoding the file's permissions.  The
+encoding of this integer is operating-system dependent, but typically it
+contains bits that indicate what users and processes are allowed to
+read, write, or execute the file.  If @var{filename} does not name an
+existing file, @code{#f} is returned.
+@end deffn
+
+@deffn {procedure+} set-file-modes! filename modes
+@var{Filename} must name an existing file.  @var{Modes} must be an exact
+non-negative integer that could have been returned by a call to
+@code{file-modes}.  @code{set-file-modes!} modifies the file's
+permissions to be those encoded by @var{modes}.
+@end deffn
+
+@deffn {procedure+} file-modification-time filename
+@cindex modification time, of file
+Returns the modification time of @var{filename} as an exact integer.
+The result may be compared to other file times using ordinary integer
+arithmetic.  If @var{filename} names a file that does not exist,
+@code{file-modification-time} returns @code{#f}.
+
+@findex file-modification-time-direct
+@findex file-modification-time-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-modification-time} returns the
+modification time of the file linked to.  An alternate procedure,
+@code{file-modification-time-direct}, returns the modification time of
+the link itself; in all other respects it is identical to
+@code{file-modification-time}.  For symmetry,
+@code{file-modification-time-indirect} is a synonym of
+@code{file-modification-time}.
+@end deffn
+
+@deffn {procedure+} file-access-time filename
+@cindex access time, of file
+Returns the access time of @var{filename} as an exact integer.  The
+result may be compared to other file times using ordinary integer
+arithmetic.  If @var{filename} names a file that does not exist,
+@code{file-access-time} returns @code{#f}.
+
+Some operating systems don't implement access times; in those systems
+@code{file-access-time} returns an unspecified value.
+
+@findex file-access-time-direct
+@findex file-access-time-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-access-time} returns the access time
+of the file linked to.  An alternate procedure,
+@code{file-access-time-direct}, returns the access time of the link
+itself; in all other respects it is identical to
+@code{file-access-time}.  For symmetry, @code{file-access-time-indirect}
+is a synonym of @code{file-access-time}.
+@end deffn
+
+@deffn {procedure+} set-file-times! filename access-time modification-time
+@var{Filename} must name an existing file, while @var{access-time} and
+@var{modification-time} must be valid file times that might have been
+returned by @code{file-access-time} and @code{file-modification-time},
+respectively.  @code{set-file-times!} alters the access and modification
+times of the file specified by @var{filename} to the values given by
+@var{access-time} and @var{modification-time}, respectively.  For
+convenience, either of the time arguments may be specified as @code{#f};
+in this case the corresponding time is not changed.
+@code{set-file-times!} returns an unspecified value.
 @end deffn
 
 @deffn {procedure+} file-attributes filename
@@ -12470,8 +12724,17 @@ the file's mode bits.
 @item
 The inode number of the file, an exact non-negative integer.
 @end enumerate
-@end deffn
 
+@findex file-attributes-direct
+@findex file-attributes-indirect
+In operating systems that support symbolic links, if @var{filename}
+names a symbolic link, @code{file-attributes} returns the attributes of
+the link itself.  An alternate procedure,
+@code{file-attributes-indirect}, returns the attributes of the file
+linked to; in all other respects it is identical to
+@code{file-attributes}.  For symmetry, @code{file-attributes-direct} is
+a synonym of @code{file-attributes}.
+@end deffn
 
 @node Directory Reader,  , File Manipulation, File-System Interface
 @section Directory Reader
@@ -13142,7 +13405,7 @@ can be signalled by any @sc{i/o} operation, whether or not it involves
 files.
 @end defvr
 
-@node Graphics, Procedure Index, Error System, Top
+@node Graphics, Index, Error System, Top
 @chapter Graphics
 @cindex graphics
 
@@ -14386,12 +14649,8 @@ Saves @var{picture} in @sc{pgm} format in the file @var{pathname}.
 Overwrites any previously existing file of that name.
 @end deffn
 
-@node Procedure Index, Concept Index, Graphics, Top
-@unnumbered Index of Procedures, Special Forms, and Variables
-@printindex fn
-
-@node Concept Index,  , Procedure Index, Top
-@unnumbered Index of Concepts
+@node Index,  , Graphics, Top
+@unnumbered Index
 @printindex cp
 
 @summarycontents
