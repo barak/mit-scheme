@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.10 1989/08/18 19:10:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.11 1990/01/31 02:03:13 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -160,31 +160,33 @@ MIT in each case. |#
 
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
-  (let ((true-filename (pathname->string true-pathname)))
-    (let ((port (open-input-file/internal pathname true-filename)))
-      (if (= 250 (char->ascii (peek-char port)))
-	  (begin
-	    (close-input-port port)
-	    (scode-eval
-	     (let ((scode
-		    (fasload/internal true-pathname
-				      load/suppress-loading-message?)))
-	       (if purify? (purify (load/purification-root scode)))
-	       scode)
-	     (if (eq? environment default-object)
-		 (nearest-repl/environment)
-		 environment)))
-	  (let ((value-stream
-		 (lambda ()
-		   (eval-stream (read-stream port) environment syntax-table))))
-	    (if load-noisily?
-		(write-stream (value-stream)
-			      (lambda (value)
-				(hook/repl-write (nearest-repl) value)))
-		(loading-message load/suppress-loading-message? true-filename
-		  (lambda ()
-		    (write-stream (value-stream)
-				  (lambda (value) value false))))))))))
+  (let* ((true-filename (pathname->string true-pathname))
+	 (port (open-input-file/internal pathname true-filename))
+	 (fasl-marker (peek-char port)))
+    (if (and (not (eof-object? fasl-marker))
+	     (= 250 (char->ascii fasl-marker)))
+	(begin
+	  (close-input-port port)
+	  (scode-eval
+	   (let ((scode
+		  (fasload/internal true-pathname
+				    load/suppress-loading-message?)))
+	     (if purify? (purify (load/purification-root scode)))
+	     scode)
+	   (if (eq? environment default-object)
+	       (nearest-repl/environment)
+	       environment)))
+	(let ((value-stream
+	       (lambda ()
+		 (eval-stream (read-stream port) environment syntax-table))))
+	  (if load-noisily?
+	      (write-stream (value-stream)
+			    (lambda (value)
+			      (hook/repl-write (nearest-repl) value)))
+	      (loading-message load/suppress-loading-message? true-filename
+			       (lambda ()
+				 (write-stream (value-stream)
+					       (lambda (value) value false)))))))))
 
 (define (load/purification-root scode)
   (or (and (comment? scode)
