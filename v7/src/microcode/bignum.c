@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.37 1992/08/29 13:34:08 jinx Exp $
+$Id: bignum.c,v 9.38 1992/09/18 16:52:22 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -492,6 +492,49 @@ DEFUN (bignum_to_long, (bignum), bignum_type bignum)
     while (start < scan)
       accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));
     return ((BIGNUM_NEGATIVE_P (bignum)) ? (-accumulator) : accumulator);
+  }
+}
+
+bignum_type
+DEFUN (ulong_to_bignum, (n), unsigned long n)
+{
+  bignum_digit_type result_digits [BIGNUM_DIGITS_FOR_LONG];
+  fast bignum_digit_type * end_digits = result_digits;
+  /* Special cases win when these small constants are cached. */
+  if (n == 0) return (BIGNUM_ZERO ());
+  if (n == 1) return (BIGNUM_ONE (0));
+  {
+    fast unsigned long accumulator = n;
+    do
+      {
+	(*end_digits++) = (accumulator & BIGNUM_DIGIT_MASK);
+	accumulator >>= BIGNUM_DIGIT_LENGTH;
+      }
+    while (accumulator != 0);
+  }
+  {
+    bignum_type result =
+      (bignum_allocate ((end_digits - result_digits), 0));
+    fast bignum_digit_type * scan_digits = result_digits;
+    fast bignum_digit_type * scan_result = (BIGNUM_START_PTR (result));
+    while (scan_digits < end_digits)
+      (*scan_result++) = (*scan_digits++);
+    return (result);
+  }
+}
+
+unsigned long
+DEFUN (bignum_to_ulong, (bignum), bignum_type bignum)
+{
+  if (BIGNUM_ZERO_P (bignum))
+    return (0);
+  {
+    fast unsigned long accumulator = 0;
+    fast bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
+    fast bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));
+    while (start < scan)
+      accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));
+    return (accumulator);
   }
 }
 

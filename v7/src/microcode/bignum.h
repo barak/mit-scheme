@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.27 1992/02/10 13:16:02 jinx Exp $
+$Id: bignum.h,v 9.28 1992/09/18 16:52:34 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -78,7 +78,9 @@ extern bignum_type EXFUN (bignum_quotient, (bignum_type, bignum_type));
 extern bignum_type EXFUN (bignum_remainder, (bignum_type, bignum_type));
 #ifndef BIGNUM_NO_ULONG
 extern bignum_type EXFUN (long_to_bignum, (long));
+extern bignum_type EXFUN (ulong_to_bignum, (unsigned long));
 extern long EXFUN (bignum_to_long, (bignum_type));
+extern unsigned long EXFUN (bignum_to_ulong, (bignum_type));
 #endif /* not BIGNUM_NO_ULONG */
 extern bignum_type EXFUN (double_to_bignum, (double));
 extern double EXFUN (bignum_to_double, (bignum_type));
