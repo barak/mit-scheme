@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.23 1992/10/31 23:35:19 jinx Exp $
+;;;	$Id: hppa.m4,v 1.24 1992/11/03 17:13:02 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -146,10 +146,10 @@ C_to_interface
 	.PROC
 	.CALLINFO CALLER,FRAME=28,SAVE_RP
 	.ENTRY
-	STW	2,-20(0,30)		; Save return address
-	STWM	3,eval(C_FRAME_SIZE)(30) ; Save first reg, allocate frame
-	STW	4,-108(30)		; Save the other regs
-	STW	5,-104(30)
+	STW	2,-20(0,30)			; Save return address
+	STWM	3,eval(C_FRAME_SIZE)(30)	; Save first reg, 
+	STW	4,-108(30)			;  and allocate frame
+	STW	5,-104(30)			; Save the other regs
 	STW	6,-100(30)
 	STW	7,-96(30)
 	STW	8,-92(30)
@@ -164,36 +164,36 @@ C_to_interface
 	STW	17,-56(30)
 	STW	18,-52(30)
 	ADDIL	L'Registers-$global$,27
-	LDO	R'Registers-$global$(1),4 ; Setup Regs
+	LDO	R'Registers-$global$(1),4	; Setup Regs
 	LDI	QUAD_MASK,5
 
 ep_interface_to_scheme
-	LDW	8(0,4),2		; Move interpreter reg to val
-	LDW	0(0,4),20		; Setup memtop
+	LDW	8(0,4),2			; Move interpreter reg to val
+	LDW	0(0,4),20			; Setup memtop
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
 	ADDIL	L'Free-$global$,27
-	LDW	R'Free-$global$(1),21	; Setup free
-	COPY	2,19			; Restore dynamic link if any
+	LDW	R'Free-$global$(1),21		; Setup free
+	COPY	2,19				; Restore dynamic link if any
 	DEP	5,LOW_TC_BIT,TC_LENGTH,19
-	.CALL	RTNVAL=GR		; out=28
-	BLE	0(5,26)			; Invoke entry point
-	COPY	31,3			; Setup scheme_to_interface_ble
+	.CALL	RTNVAL=GR			; out=28
+	BLE	0(5,26)				; Invoke entry point
+	COPY	31,3				; Setup scheme_to_interface_ble
 
 scheme_to_interface_ble
-	ADDI	4,31,31			; Skip over format word ...
+	ADDI	4,31,31				; Skip over format word ...
 trampoline_to_interface
 	COPY	31,26
 	DEP	0,31,2,26
 scheme_to_interface
-	STW	2,8(0,4)		; Move val to interpreter reg
+	STW	2,8(0,4)			; Move val to interpreter reg
 	ADDIL	L'hppa_utility_table-$global$,27
 	LDW	R'hppa_utility_table-$global$(1),29
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
-	LDWX,S	28(0,29),29		; Find handler
+	LDWX,S	28(0,29),29			; Find handler
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
 	ADDIL	L'Free-$global$,27
-	STW	21,R'Free-$global$(1)	; Update free
+	STW	21,R'Free-$global$(1)		; Update free
 	ifelse(ASM_DEBUG,1,"ADDIL	L'interface_counter-$global$,27
 	LDW	R'interface_counter-$global$(0,1),21
 	LDO	1(21),21
@@ -204,12 +204,12 @@ scheme_to_interface
 interface_proceed")
 	ifdef("GCC", "LDO	-116(30),28")
 	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
-	BLE	0(4,29)			; Call handler
-	COPY	31,2			; Setup return address
+	BLE	0(4,29)				; Call handler
+	COPY	31,2				; Setup return address
 	ifdef("GCC", "LDW	-116(30),28
 		      LDW	-112(30),29")
-	BV	0(28)			; Call receiver
-	COPY	29,26			; Setup entry point
+	BV	0(28)				; Call receiver
+	COPY	29,26				; Setup entry point
 
 ;; This sequence of NOPs is provided to allow for modification of
 ;; the sequence that appears above without having to recompile the
@@ -227,118 +227,118 @@ interface_proceed")
 	NOP
 	NOP")
 
-hook_jump_table				; scheme_to_interface + 100
+hook_jump_table					; scheme_to_interface + 100
 store_closure_code_hook
 	B	store_closure_code+4
-	LDIL	L'0x23400000,20		; LDIL opcode and register
+	LDIL	L'0x23400000,20			; LDIL opcode and register
 
 store_closure_entry_hook
 	B	store_closure_entry+4
-	DEP	0,31,2,1		; clear PC protection bits
+	DEP	0,31,2,1			; clear PC protection bits
 
 multiply_fixnum_hook
 	B	multiply_fixnum+4
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
 
 fixnum_quotient_hook
 	B	fixnum_quotient+4
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
 
 fixnum_remainder_hook
 	B	fixnum_remainder+4
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
 
 fixnum_lsh_hook
 	B	fixnum_lsh+4
-	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 
 generic_plus_hook
 	B	generic_plus+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_subtract_hook
 	B	generic_subtract+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_times_hook
 	B	generic_times+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_divide_hook
 	B	generic_divide+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_equal_hook
 	B	generic_equal+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_less_hook
 	B	generic_less+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_greater_hook
 	B	generic_greater+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_increment_hook
 	B	generic_increment+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_decrement_hook
 	B	generic_decrement+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_zero_hook
 	B	generic_zero+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_positive_hook
 	B	generic_positive+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 generic_negative_hook
 	B	generic_negative+4
-	LDW	0(0,22),6		; arg1
+	LDW	0(0,22),6			; arg1
 
 shortcircuit_apply_hook
 	B	shortcircuit_apply+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_1_hook
 	B	shortcircuit_apply_1+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_2_hook
 	B	shortcircuit_apply_2+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_3_hook
 	B	shortcircuit_apply_3+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_4_hook
 	B	shortcircuit_apply_4+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_5_hook
 	B	shortcircuit_apply_5+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_6_hook
 	B	shortcircuit_apply_6+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_7_hook
 	B	shortcircuit_apply_7+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 shortcircuit_apply_8_hook
 	B	shortcircuit_apply_8+4
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 
 stack_and_interrupt_check_hook
 	B	stack_and_interrupt_check+4
-	LDW	44(0,4),25		; Stack_Guard -> r25
+	LDW	44(0,4),25			; Stack_Guard -> r25
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
@@ -402,8 +402,8 @@ store_closure_entry
 ;; which the closure should jump with pc protection bits.
 ;; 26 contains the format/gc-offset word for this entry.
 ;;
-	DEP	0,31,2,1		; clear PC protection bits
-	STWM	26,4(0,21)		; move format long to heap
+	DEP	0,31,2,1			; clear PC protection bits
+	STWM	26,4(0,21)			; move format long to heap
 ;; fall through to store_closure_code
 
 store_closure_code
@@ -422,7 +422,7 @@ store_closure_code
 ;; The SYNC is assumed to be separated by at least 7 instructions from
 ;; the first execution of the new instructions.
 ;;
-	LDIL	L'0x23400000,20		; LDIL opcode and register
+	LDIL	L'0x23400000,20			; LDIL opcode and register
 	EXTRU	1,0,1,5
 	DEP	5,31,1,20
 	EXTRU	1,11,11,5
@@ -431,63 +431,63 @@ store_closure_code
 	DEP	5,17,2,20
 	EXTRU	1,18,5,5
 	DEP	5,15,5,20
-	STW	20,0(0,21)		; Store LDIL instruction
-	LDIL	L'0xe7406000,20		; BLE opcode, register and nullify
-	LDO	R'0xe7406000(20),20
+	STW	20,0(0,21)			; Store LDIL instruction
+	LDIL	L'0xe7406000,20			; BLE opcode, register
+	LDO	R'0xe7406000(20),20		;  and nullify
 	EXTRU	1,19,1,5
 	DEP	5,29,1,20
 	EXTRU	1,29,10,5
 	DEP	5,28,10,20
-	STW	20,4(0,21)		; Store BLE instruction
+	STW	20,4(0,21)			; Store BLE instruction
 	LDIL	L'0xb7ff07e9,20
 	LDO	R'0xb7ff07e9(20),20
-	STW	20,8(0,21)		; Store ADDI instruction
+	STW	20,8(0,21)			; Store ADDI instruction
 	LDI	12,20
-	FDC	0(0,21)			; flush 1st inst. from D-cache
-	FDC	20(0,21)		; flush last inst. from D-cache
+	FDC	0(0,21)				; flush 1st inst. from D-cache
+	FDC	20(0,21)			; flush last inst. from D-cache
 	SYNC
-	FIC,M	20(5,21)		; flush 1st inst. from I-cache
+	FIC,M	20(5,21)			; flush 1st inst. from I-cache
 	SYNC
-	LDW	0(0,4),20		; Reload memtop
-	BE	0(5,31)			; Return
-	LDI	QUAD_MASK,5		; Restore register 5
+	LDW	0(0,4),20			; Reload memtop
+	BE	0(5,31)				; Return
+	LDI	QUAD_MASK,5			; Restore register 5
 
 multiply_fixnum
 ;;
 ;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
 ;;
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
 	STW	26,0(0,21)
-	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 	STW	25,4(0,21)
-	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26		; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26	; FIXNUM_LIMIT
 	FLDWS	0(0,21),4
 	FLDWS	4(0,21),5
-	STW	26,8(0,21)				; FIXNUM_LIMIT
-        FCNVXF,SGL,DBL  4,4				; arg1
-        FCNVXF,SGL,DBL  5,5				; arg2
+	STW	26,8(0,21)			; FIXNUM_LIMIT
+        FCNVXF,SGL,DBL  4,4			; arg1
+        FCNVXF,SGL,DBL  5,5			; arg2
 	FMPY,DBL	4,5,4
-	FLDWS	8(0,21),5				; FIXNUM_LIMIT
-        FCNVXF,SGL,DBL  5,5				; FIXNUM_LIMIT
-	COPY	0,25					; signal no overflow
-	FCMP,DBL,!>=	4,5				; result too large?
+	FLDWS	8(0,21),5			; FIXNUM_LIMIT
+        FCNVXF,SGL,DBL  5,5			; FIXNUM_LIMIT
+	COPY	0,25				; signal no overflow
+	FCMP,DBL,!>=	4,5			; result too large?
 	FTEST
 	B,N	multiply_fixnum_ovflw
 	FSUB,DBL	0,5,5
-	FCMP,DBL,!<	4,5				; result too small?
+	FCMP,DBL,!<	4,5			; result too small?
 	FTEST
 	B,N	multiply_fixnum_ovflw
 	FCNVFXT,DBL,SGL	4,5
-	FSTWS	5,0(0,21)				; result
+	FSTWS	5,0(0,21)			; result
 	LDW	0(0,21),26
-	BE	0(5,31)					; return
-	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+	BE	0(5,31)				; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26	; make into fixnum
 ;;
 multiply_fixnum_ovflw
 	COPY	0,26
-	LDO	1(0),25					; signal overflow
-	BE	0(5,31)					; return
-	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+	LDO	1(0),25				; signal overflow
+	BE	0(5,31)				; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26	; make into fixnum
 
 fixnum_quotient
 ;;
@@ -496,33 +496,37 @@ fixnum_quotient
 ;; divisor is -1 and the dividend is the most negative fixnum,
 ;; producing the most positive fixnum plus 1.
 ;;
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
 	COMB,=	0,25,fixnum_quotient_ovflw
 	STW	26,0(0,21)
-	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 	STW	25,4(0,21)
-	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26		; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26	; FIXNUM_LIMIT
 	FLDWS	0(0,21),4
 	FLDWS	4(0,21),5
-        FCNVXF,SGL,DBL  4,4				; arg1
-        FCNVXF,SGL,DBL  5,5				; arg2
+        FCNVXF,SGL,DBL  4,4			; arg1
+        FCNVXF,SGL,DBL  5,5			; arg2
 	FDIV,DBL	4,5,4
-	STW	26,0(0,21)				; FIXNUM_LIMIT
+	STW	26,0(0,21)			; FIXNUM_LIMIT
 	FCNVFXT,DBL,SGL	4,5
-	FSTWS	5,4(0,21)				; result
-	FLDWS	0(0,21),5				; FIXNUM_LIMIT
+	FSTWS	5,4(0,21)			; result
+	FLDWS	0(0,21),5			; FIXNUM_LIMIT
 	FCNVXF,SGL,DBL	5,5
-	FCMP,DBL,!>=	4,5				; result too large?
+	FCMP,DBL,!>=	4,5			; result too large?
 	LDW	4(0,21),26
-	COPY	0,25					; signal no overflow
+	COPY	0,25				; signal no overflow
 	FTEST
 ;;
 fixnum_quotient_ovflw
-	LDO	1(0),25					; signal overflow
-	BE	0(5,31)					; return
-	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+	LDO	1(0),25				; signal overflow
+	BE	0(5,31)				; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26	; make into fixnum
 
-fixnum_remainder
+;; fixnum_remainder
+;;
+;; NOTE: The following code is disabled because the FREM instruction
+;;	 has been dropped from the architecture and has never been
+;;	 implemented in hardware.
 ;;
 ;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
 ;; Note that remainder only overflows when dividing by 0.
@@ -530,58 +534,96 @@ fixnum_remainder
 ;; the Scheme remainder operation.  The sign of the result must
 ;; sometimes be adjusted.
 ;;
-	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+;;	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
+;;	COMB,=,N	0,25,fixnum_remainder_ovflw
+;;	STW	26,0(0,21)
+;;	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
+;;	STW	25,4(0,21)
+;;	FLDWS	0(0,21),4
+;;	FLDWS	4(0,21),5
+;;	FCNVXF,SGL,DBL  4,4			; arg1
+;;	FCNVXF,SGL,DBL  5,5			; arg2
+;;	FREM,DBL	4,5,4
+;;	FCNVFXT,DBL,SGL	4,5
+;;	FSTWS	5,4(0,21)			; result
+;;	LDW	4(0,21),1
+;;	XOR,<	26,1,0				; skip if signs !=
+;;	B,N	fixnum_remainder_done
+;;	COMB,=,N	0,1,fixnum_remainder_done
+;;	XOR,<	26,25,0				; skip if signs !=
+;;	ADD,TR	1,25,1				; result += arg2
+;;	SUB	1,25,1				; result -= arg2
+;;;;
+;;fixnum_remainder_done
+;;	ZDEP    1,FIXNUM_POS,FIXNUM_LENGTH,26	; make into fixnum
+;;	BE	0(5,31)				; return
+;;	COPY	0,25				; signal no overflow
+;;;;
+;;fixnum_remainder_ovflw
+;;	BE	0(5,31)				; return
+;;	LDO	1(0),25				; signal overflow
+
+fixnum_remainder
+;;
+;; On arrival, 31 has a return address and 26 and 25 have the fixnum
+;; arguments.
+;; Remainder can overflow only if arg2 = 0.
+;;
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26	; arg1
+	STWM	29,-4(0,22)			; Preserve gr29
 	COMB,=,N	0,25,fixnum_remainder_ovflw
-	STW	26,0(0,21)
-	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
-	STW	25,4(0,21)
-	FLDWS	0(0,21),4
-	FLDWS	4(0,21),5
-        FCNVXF,SGL,DBL  4,4				; arg1
-        FCNVXF,SGL,DBL  5,5				; arg2
-	FREM,DBL	4,5,4
-	FCNVFXT,DBL,SGL	4,5
-	FSTWS	5,4(0,21)				; result
-	LDW	4(0,21),1
-	XOR,<	26,1,0					; skip if signs !=
+	STWM	31,-4(0,22)			; Preserve ret. add.
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
+	STWM	26,-4(0,22)			; Preserve arg1
+        .CALL   				;in=25,26;out=29; (MILLICALL)
+	BL	$$remI,31
+	STWM	25,-4(0,22)			; Preserve arg2
+;;
+	LDWM	4(0,22),25			; Restore arg2
+	LDWM	4(0,22),26			; Restore arg1
+	XOR,<	26,29,0				; Skip if signs !=
 	B,N	fixnum_remainder_done
-	COMB,=,N	0,1,fixnum_remainder_done
-	XOR,<	26,25,0					; skip if signs !=
-	ADD,TR	1,25,1					; result += arg2
-	SUB	1,25,1					; result -= arg2
+	COMB,=,N	0,29,fixnum_remainder_done
+	XOR,<	26,25,0
+	ADD,TR	29,25,29			; setup result
+	SUB	29,25,29
 ;;
 fixnum_remainder_done
-	ZDEP    1,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
-	BE	0(5,31)					; return
-	COPY	0,25					; signal no overflow
+	ZDEP	29,FIXNUM_POS,FIXNUM_LENGTH,26	; make into fixnum
+	LDWM	4(0,22),31			; Restore ret. add.
+	COPY	0,25				; signal no overflow
+	BE	0(5,31)				; return
+	LDWM	4(0,22),29			; Restore gr29
 ;;
 fixnum_remainder_ovflw
-	BE	0(5,31)					; return
-	LDO	1(0),25					; signal overflow
+	LDO	1(0),25				; signal overflow
+	COPY	0,26				; bogus return value
+	BE	0(5,31)				; return
+	LDWM	4(0,22),29			; Restore gr29	
 
 fixnum_lsh
 ;;
 ;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
 ;; If arg2 is negative, it is a right shift, otherwise a left shift.
 ;;
-	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 	COMB,<,N	0,25,fixnum_lsh_positive
-	SUB	0,25,25			; negate, for right shift
+	SUB	0,25,25				; negate, for right shift
 	COMICLR,>	FIXNUM_LENGTH,25,0
-	LDI	31,25			; shift right completely
+	LDI	31,25				; shift right completely
 	MTSAR	25
-	VSHD	0,26,26			; shift right
-	DEP	0,31,TC_LENGTH,26	; normalize fixnum
-	BE	0(5,31)			; return
-	COPY	0,25			; signal no overflow
+	VSHD	0,26,26				; shift right
+	DEP	0,31,TC_LENGTH,26		; normalize fixnum
+	BE	0(5,31)				; return
+	COPY	0,25				; signal no overflow
 ;;
 fixnum_lsh_positive
-	SUBI,>	32,25,25		; shift amount for right shift
-	COPY	0,25			; shift left completely
+	SUBI,>	32,25,25			; shift amount for right shift
+	COPY	0,25				; shift left completely
 	MTSAR	25
-	VSHD	26,0,26			; shift right (32 - arg2)
-	BE	0(5,31)			; return
-	COPY	0,25			; signal no overflow
+	VSHD	26,0,26				; shift right (32 - arg2)
+	BE	0(5,31)				; return
+	COPY	0,25				; signal no overflow
 
 ;;;; Generic arithmetic utilities.
 ;;;  On entry the arguments are on the Scheme stack, and the return
@@ -589,152 +631,152 @@ fixnum_lsh_positive
 
 define(define_generic_binary,
 "generic_$1
-	LDW	0(0,22),6		; arg1
-	LDW	4(0,22),8		; arg2
-	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg1
-	EXTRU	8,TC_START,TC_LENGTH,9	; type of arg2
+	LDW	0(0,22),6			; arg1
+	LDW	4(0,22),8			; arg2
+	EXTRU	6,TC_START,TC_LENGTH,7		; type of arg1
+	EXTRU	8,TC_START,TC_LENGTH,9		; type of arg2
 	COMIB,<>,N	TC_FLONUM,7,generic_$1_one_unk
 	COMIB,<>,N	TC_FLONUM,9,generic_$1_two_unk
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	FLDDS	4(0,6),4		; arg1 -> fr4
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	FLDDS	4(0,8),5		; arg2 -> fr5
-	LDO	8(22),22		; pop args from stack
-	B	generic_flonum_result	; cons flonum and return
-	$3,DBL	4,5,4			; operate
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	FLDDS	4(0,6),4			; arg1 -> fr4
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	FLDDS	4(0,8),5			; arg2 -> fr5
+	LDO	8(22),22			; pop args from stack
+	B	generic_flonum_result		; cons flonum and return
+	$3,DBL	4,5,4				; operate
 
-generic_$1_one_unk			; ~FLO * ??
+generic_$1_one_unk				; ~FLO * ??
 	COMIB,<>,N	TC_FLONUM,9,generic_$1_fail
 	COMICLR,=	TC_FIXNUM,7,0
 	B,N	generic_$1_fail
-	EXTRS	6,31,FIXNUM_LENGTH,6	; sign extend arg1
-	STW	6,0(0,21)		; put in memory to reload into fpcp
-	LDO	8(22),22		; pop args from stack
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	FLDWS	0(0,21),4		; single precision int arg1 -> fr4
-	FLDDS	4(0,8),5		; arg2 -> fr5
-        FCNVXF,SGL,DBL  4,4		; convert to double float
-	B	generic_flonum_result	; cons flonum and return
-	$3,DBL	4,5,4			; operate
+	EXTRS	6,31,FIXNUM_LENGTH,6		; sign extend arg1
+	STW	6,0(0,21)			; through memory into fp
+	LDO	8(22),22			; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	FLDWS	0(0,21),4			; single int arg1 -> fr4
+	FLDDS	4(0,8),5			; arg2 -> fr5
+        FCNVXF,SGL,DBL  4,4			; convert to double float
+	B	generic_flonum_result		; cons flonum and return
+	$3,DBL	4,5,4				; operate
 
-generic_$1_two_unk			; FLO * ~FLO
+generic_$1_two_unk				; FLO * ~FLO
 	COMICLR,=	TC_FIXNUM,9,0
 	B,N	generic_$1_fail
-	EXTRS	8,31,FIXNUM_LENGTH,8	; sign extend arg2
-	STW	8,0(0,21)		; put in memory to reload into fpcp
-	LDO	8(22),22		; pop args from stack
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	FLDWS	0(0,21),5		; single precision int arg2 -> fr5
-	FLDDS	4(0,6),4		; arg1 -> fr4
-        FCNVXF,SGL,DBL  5,5		; convert to double float
-	B	generic_flonum_result	; cons flonum and return
-	$3,DBL	4,5,4			; operate
+	EXTRS	8,31,FIXNUM_LENGTH,8		; sign extend arg2
+	STW	8,0(0,21)			; through memory into fpcp
+	LDO	8(22),22			; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	FLDWS	0(0,21),5			; single int arg2 -> fr5
+	FLDDS	4(0,6),4			; arg1 -> fr4
+        FCNVXF,SGL,DBL  5,5			; convert to double float
+	B	generic_flonum_result		; cons flonum and return
+	$3,DBL	4,5,4				; operate
 
-generic_$1_fail				; ?? * ??, out of line
+generic_$1_fail					; ?? * ??, out of line
 	B	scheme_to_interface
-	LDI	HEX($2),28		; operation code")
+	LDI	HEX($2),28			; operation code")
 
-generic_flonum_result			; expects data in fr4.
-	DEPI	4,31,3,21		; align free
-	COPY	21,2			; result (untagged)
-	LDWM	4(0,22),8		; return address
+generic_flonum_result				; expects data in fr4.
+	DEPI	4,31,3,21			; align free
+	COPY	21,2				; result (untagged)
+	LDWM	4(0,22),8			; return address
 	LDIL	L'FLONUM_VECTOR_HEADER,7
-	;	LDO	R'FLONUM_VECTOR_HEADER(7),7	; Assembler bug!
+	;	LDO	R'FLONUM_VECTOR_HEADER(7),7 ; Assembler bug!
 	ADDI	R'FLONUM_VECTOR_HEADER,7,7
-	STWM	7,4(0,21)		; vector header
+	STWM	7,4(0,21)			; vector header
 	DEPI	TC_FLONUM,TC_START,TC_LENGTH,2 ; tag flonum
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	BLE	0(5,8)			; return!
-	FSTDS,MA	4,8(0,21)	; store floating data
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	BLE	0(5,8)				; return!
+	FSTDS,MA	4,8(0,21)		; store floating data
 
 define(define_generic_binary_predicate,
 "generic_$1
-	LDW	0(0,22),6		; arg1
-	LDW	4(0,22),8		; arg2
-	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg1
-	EXTRU	8,TC_START,TC_LENGTH,9	; type of arg2
+	LDW	0(0,22),6			; arg1
+	LDW	4(0,22),8			; arg2
+	EXTRU	6,TC_START,TC_LENGTH,7		; type of arg1
+	EXTRU	8,TC_START,TC_LENGTH,9		; type of arg2
 	COMIB,<>,N	TC_FLONUM,7,generic_$1_one_unk
 	COMIB,<>,N	TC_FLONUM,9,generic_$1_two_unk
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	FLDDS	4(0,6),4		; arg1 -> fr4
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	FLDDS	4(0,8),5		; arg2 -> fr5
-	LDO	8(22),22		; pop args from stack
-	B	generic_boolean_result	; cons answer and return
-	FCMP,DBL,$3	4,5		; compare
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	FLDDS	4(0,6),4			; arg1 -> fr4
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	FLDDS	4(0,8),5			; arg2 -> fr5
+	LDO	8(22),22			; pop args from stack
+	B	generic_boolean_result		; cons answer and return
+	FCMP,DBL,$3	4,5			; compare
 
-generic_$1_one_unk			; ~FLO * ??
+generic_$1_one_unk				; ~FLO * ??
 	COMIB,<>,N	TC_FLONUM,9,generic_$1_fail
 	COMICLR,=	TC_FIXNUM,7,0
 	B,N	generic_$1_fail
-	EXTRS	6,31,FIXNUM_LENGTH,6	; sign extend arg1
-	STW	6,0(0,21)		; put in memory to reload into fpcp
-	LDO	8(22),22		; pop args from stack
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	FLDWS	0(0,21),4		; single precision int arg1 -> fr4
-	FLDDS	4(0,8),5		; arg2 -> fr5
-        FCNVXF,SGL,DBL  4,4		; convert to double float
-	B	generic_boolean_result	; cons answer and return
-	FCMP,DBL,$3	4,5		; compare
+	EXTRS	6,31,FIXNUM_LENGTH,6		; sign extend arg1
+	STW	6,0(0,21)			; through memory into fpcp
+	LDO	8(22),22			; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	FLDWS	0(0,21),4			; single int arg1 -> fr4
+	FLDDS	4(0,8),5			; arg2 -> fr5
+        FCNVXF,SGL,DBL  4,4			; convert to double float
+	B	generic_boolean_result		; cons answer and return
+	FCMP,DBL,$3	4,5			; compare
 
-generic_$1_two_unk			; FLO * ~FLO
+generic_$1_two_unk				; FLO * ~FLO
 	COMICLR,=	TC_FIXNUM,9,0
 	B,N	generic_$1_fail
-	EXTRS	8,31,FIXNUM_LENGTH,8	; sign extend arg2
-	STW	8,0(0,21)		; put in memory to reload into fpcp
-	LDO	8(22),22		; pop args from stack
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	FLDWS	0(0,21),5		; single precision int arg2 -> fr5
-	FLDDS	4(0,6),4		; arg1 -> fr4
-        FCNVXF,SGL,DBL  5,5		; convert to double float
-	B	generic_boolean_result	; cons answer and return
-	FCMP,DBL,$3	4,5		; compare
+	EXTRS	8,31,FIXNUM_LENGTH,8		; sign extend arg2
+	STW	8,0(0,21)			; through memory into fpcp
+	LDO	8(22),22			; pop args from stack
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	FLDWS	0(0,21),5			; single int arg2 -> fr5
+	FLDDS	4(0,6),4			; arg1 -> fr4
+        FCNVXF,SGL,DBL  5,5			; convert to double float
+	B	generic_boolean_result		; cons answer and return
+	FCMP,DBL,$3	4,5			; compare
 
-generic_$1_fail				; ?? * ??, out of line
+generic_$1_fail					; ?? * ??, out of line
 	B	scheme_to_interface
-	LDI	HEX($2),28		; operation code")
+	LDI	HEX($2),28			; operation code")
 
 generic_boolean_result
-	LDWM	4(0,22),8		; return address
+	LDWM	4(0,22),8			; return address
 	LDIL	L'SHARP_T,2
 	FTEST
 	LDIL	L'SHARP_F,2
-	DEP	5,TC_START,TC_LENGTH,8	; data segment quadrant bits
-	BLE,N	0(5,8)			; return!
+	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
+	BLE,N	0(5,8)				; return!
 
 define(define_generic_unary,
 "generic_$1
-	LDW	0(0,22),6		; arg
-	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg
+	LDW	0(0,22),6			; arg
+	EXTRU	6,TC_START,TC_LENGTH,7		; type of arg
 	COMIB,<>,N	TC_FLONUM,7,generic_$1_fail
-	LDI	1,7			; constant 1
-	STW	7,0(0,21)		; into memory
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	LDO	4(22),22		; pop arg from stack
-	FLDWS	0(0,21),5		; 1 -> fr5
-	FLDDS	4(0,6),4		; arg -> fr4
-	FCNVXF,SGL,DBL	5,5		; convert to double float
-	B	generic_flonum_result	; cons flonum and return
-	$3,DBL	4,5,4			; operate
+	LDI	1,7				; constant 1
+	STW	7,0(0,21)			; into memory
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	LDO	4(22),22			; pop arg from stack
+	FLDWS	0(0,21),5			; 1 -> fr5
+	FLDDS	4(0,6),4			; arg -> fr4
+	FCNVXF,SGL,DBL	5,5			; convert to double float
+	B	generic_flonum_result		; cons flonum and return
+	$3,DBL	4,5,4				; operate
 
 generic_$1_fail
 	B	scheme_to_interface
-	LDI	HEX($2),28		; operation code")
+	LDI	HEX($2),28			; operation code")
 
 define(define_generic_unary_predicate,
 "generic_$1
-	LDW	0(0,22),6		; arg
-	EXTRU	6,TC_START,TC_LENGTH,7	; type of arg
+	LDW	0(0,22),6			; arg
+	EXTRU	6,TC_START,TC_LENGTH,7		; type of arg
 	COMIB,<>,N	TC_FLONUM,7,generic_$1_fail
-	DEP	5,TC_START,TC_LENGTH,6	; data segment quadrant bits
-	FLDDS	4(0,6),4		; arg -> fr4
-	LDO	4(22),22		; pop arg from stack
-	B	generic_boolean_result	; cons answer and return
-	FCMP,DBL,$3	4,0		; compare
+	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
+	FLDDS	4(0,6),4			; arg -> fr4
+	LDO	4(22),22			; pop arg from stack
+	B	generic_boolean_result		; cons answer and return
+	FCMP,DBL,$3	4,0			; compare
 
 generic_$1_fail
 	B	scheme_to_interface
-	LDI	HEX($2),28		; operation code")
+	LDI	HEX($2),28			; operation code")
 
 define_generic_unary(decrement,22,FSUB)
 define_generic_binary(divide,23,FDIV)
@@ -753,24 +795,24 @@ define_generic_unary_predicate(zero,2d,=)
 ;;;  Procedure in r26, arity (for shortcircuit-apply) in r25.
 
 shortcircuit_apply
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 	COMICLR,=	TC_CCENTRY,24,0
 	B,N	shortcircuit_apply_lose
-	DEP	5,5,6,26		; procedure -> address
-	LDB	-3(0,26),23		; procedure's frame-size
+	DEP	5,5,6,26			; procedure -> address
+	LDB	-3(0,26),23			; procedure's frame-size
 	COMB,<>,N	25,23,shortcircuit_apply_lose
-	BLE,N	0(5,26)			; invoke procedure
+	BLE,N	0(5,26)				; invoke procedure
 
 define(define_shortcircuit_fixed,
 "shortcircuit_apply_$1
-	EXTRU	26,5,6,24		; procedure type -> 24
+	EXTRU	26,5,6,24			; procedure type -> 24
 	COMICLR,=	TC_CCENTRY,24,0
 	B	shortcircuit_apply_lose
 	LDI	$1,25
-	DEP	5,5,6,26		; procedure -> address
-	LDB	-3(0,26),23		; procedure's frame-size
+	DEP	5,5,6,26			; procedure -> address
+	LDB	-3(0,26),23			; procedure's frame-size
 	COMB,<>,N	25,23,shortcircuit_apply_lose
-	BLE,N	0(5,26)			; invoke procedure")
+	BLE,N	0(5,26)				; invoke procedure")
 
 define_shortcircuit_fixed(1)
 define_shortcircuit_fixed(2)
@@ -782,7 +824,7 @@ define_shortcircuit_fixed(7)
 define_shortcircuit_fixed(8)
 
 shortcircuit_apply_lose
-	DEP	24,5,6,26		; insert type back
+	DEP	24,5,6,26			; insert type back
 	B	scheme_to_interface
 	LDI	0x14,28
 
@@ -790,8 +832,8 @@ shortcircuit_apply_lose
 ;;; address to the interrupt invocation label.
 
 stack_and_interrupt_check
-	LDW	44(0,4),25		; Stack_Guard -> r25
-	LDW	0(0,4),20		; MemTop -> r20
+	LDW	44(0,4),25			; Stack_Guard -> r25
+	LDW	0(0,4),20			; MemTop -> r20
 ;;;
 ;;; If the Scheme stack pointer is <= Stack_Guard, then the stack has
 ;;; overflowed -- in which case we must signal a stack-overflow interrupt.
@@ -805,8 +847,8 @@ stack_and_interrupt_check
 	NOP
 
 stack_and_interrupt_check_stack_overflow
-	LDW	48(0,4),25		; IntCode -> r25
-	LDW	4(0,4),24		; IntEnb -> r24
+	LDW	48(0,4),25			; IntCode -> r25
+	LDW	4(0,4),24			; IntEnb -> r24
 ;;;
 ;;; Set the stack-overflow interrupt bit and write the interrupt word
 ;;; back out to memory.  If the stack-overflow interrupt is disabled,
@@ -814,19 +856,20 @@ stack_and_interrupt_check_stack_overflow
 ;;; the interrupt.
 	DEPI	1,INT_BIT_STACK_OVERFLOW,1,25
 	BB,>=	24,INT_BIT_STACK_OVERFLOW,stack_and_interrupt_check_no_overflow
-	STW	25,48(0,4)		; r25 -> IntCode
-	ADDI	-1,0,20			; -1 -> r20
-	STW	20,0(0,4)		; r20 -> MemTop
+	STW	25,48(0,4)			; r25 -> IntCode
+	ADDI	-1,0,20				; -1 -> r20
+	STW	20,0(0,4)			; r20 -> MemTop
 ;;;
 ;;; If (Free >= MemTop), signal an interrupt.
 stack_and_interrupt_check_no_overflow
-	SUB,<	21,20,0			; skip next inst. if (Free < MemTop)
+	SUB,<	21,20,0				; skip next inst.
+						;  if (Free < MemTop)
 ;;;
 ;;; To signal the interrupt, add the interrupt invocation offset to
 ;;; the return address, then return normally.
 stack_and_interrupt_check_signal_interrupt
 	ADD	26,31,31
-	BE	0(5,31)			; return
+	BE	0(5,31)				; return
 	NOP
 
 ;;;; Assembly language entry point used by utilities in cmpint.c
@@ -834,9 +877,9 @@ stack_and_interrupt_check_signal_interrupt
 ;;;  It returns from C_to_interface.
 
 ep_interface_to_C
-	COPY	29,28			; Setup C value
-        LDW     -eval(C_FRAME_SIZE+20)(0,30),2 ; Restore return address
-        LDW     -52(0,30),18		; Restore saved registers
+	COPY	29,28				; Setup C value
+        LDW     -eval(C_FRAME_SIZE+20)(0,30),2	; Restore return address
+        LDW     -52(0,30),18			; Restore saved registers
         LDW     -56(0,30),17
         LDW     -60(0,30),16
         LDW     -64(0,30),15
@@ -851,10 +894,10 @@ ep_interface_to_C
         LDW     -100(0,30),6
         LDW     -104(0,30),5
         LDW     -108(0,30),4
-        BV      0(2)			; Return
+        BV      0(2)				; Return
         .EXIT
         LDWM    -eval(C_FRAME_SIZE)(0,30),3	; Restore last reg, pop frame
-        .PROCEND			;in=26;out=28;
+        .PROCEND				;in=26;out=28;
 
 ;;;; Procedure to initialize this interface.
 ;;;
@@ -866,15 +909,15 @@ interface_initialize
 	.PROC
 	.CALLINFO CALLER,FRAME=0
 	.ENTRY
-	LDO	4(30),30		; Allocate stack slot
+	LDO	4(30),30			; Allocate stack slot
 	FSTWS	0,0(30)
 	LDW	0(30),22
-	LDI	30,21			; enable V, Z, O, U traps
+	LDI	30,21				; enable V, Z, O, U traps
 	OR	21,22,22
 	STW	22,0(30)
 	FLDWS	0(30),0
-					; Prepare entry points
-	BL	known_pc,28		; get pc
+						; Prepare entry points
+	BL	known_pc,28			; get pc
 	ADDIL	L'ep_interface_to_scheme-known_pc,28
 known_pc
 	LDO	R'ep_interface_to_scheme-known_pc(1),29
@@ -884,10 +927,10 @@ known_pc
 	LDO	R'ep_interface_to_C-known_pc(1),29
 	ADDIL	L'interface_to_C-$global$,27
 	STW	29,R'interface_to_C-$global$(0,1)
-					; Return
+						; Return
 	BV	0(2)
 	.EXIT
-	LDO	-4(30),30		; De-allocate stack slot
+	LDO	-4(30),30			; De-allocate stack slot
 	.PROCEND
 
 ;;;; Routine to flush some locations from the processor cache.
@@ -917,12 +960,13 @@ cache_flush_region
 	.PROC
         .CALLINFO CALLER,FRAME=0
 	.ENTRY
-	LDO	3(25),25		; add 3 to round up in next inst.
-	SHD	0,25,2,25		; divide count (in longs) by 4
-	COPY	25,28			; save for FIC loop
-	COPY	26,29			; save for FIC loop
-	LDI	16,1			; increment
-	BB,>=,N	24,30,process_i_cache	; if D_CACHE is not set, skip d-cache
+	LDO	3(25),25			; add 3 to round up
+	SHD	0,25,2,25			; divide count (in longs) by 4
+	COPY	25,28				; save for FIC loop
+	COPY	26,29				; save for FIC loop
+	LDI	16,1				; increment
+	BB,>=,N	24,30,process_i_cache		; if D_CACHE is not set,
+						;  skip d-cache
 ;;;
 flush_cache_fdc_loop
 	ADDIB,>=	-1,25,flush_cache_fdc_loop
@@ -930,7 +974,7 @@ flush_cache_fdc_loop
 	SYNC
 ;;;
 process_i_cache
-	BB,>=,N	24,31,L$exit2		; if I_CACHE is not set, return
+	BB,>=,N	24,31,L$exit2			; if I_CACHE is not set, return
 ;;;
 flush_cache_fic_loop
 	ADDIB,>=	-1,28,flush_cache_fic_loop
@@ -940,7 +984,7 @@ L$exit2
 	BV	0(2)
 	.EXIT
 	SYNC
-	.PROCEND			;in=25,26;
+	.PROCEND				;in=25,26;
 
 ;;;; Routine to flush the processor cache.
 ;;;
@@ -966,123 +1010,124 @@ cache_flush_all
 	.ENTRY
 
 do_d_cache
-	BB,>=,N	26,30,do_i_cache	; if D_CACHE is not set, skip d-cache
+	BB,>=,N	26,30,do_i_cache		; if D_CACHE is not set,
+						;  skip d-cache
 
-	LDW	32(0,25),31		; 31 <- address (initially base)
-	LDW	44(0,25),29		; 29 <- loop
-	LDW	36(0,25),23		; 23 <- stride
-	LDW	40(0,25),19		; 19 <- count
+	LDW	32(0,25),31			; 31 <- address (init. base)
+	LDW	44(0,25),29			; 29 <- loop
+	LDW	36(0,25),23			; 23 <- stride
+	LDW	40(0,25),19			; 19 <- count
 
-	LDO	-1(19),19		; decrement count
-	COMIB,>,N	0,19,d_sync	; if (count < 0), no flush
+	LDO	-1(19),19			; decrement count
+	COMIB,>,N	0,19,d_sync		; if (count < 0), no flush
 	COMIB,=,N	1,29,d_direct_l
 	COMIB,=,N	2,29,d_assoc2_l
 	COMIB,=,N	4,29,d_assoc4_l
 
-d_assoc_l				; set-associative cache flush-loop
-	COPY	29,20			; 20 (lcount) <- loop
+d_assoc_l					; set-associative flush-loop
+	COPY	29,20				; 20 (lcount) <- loop
 
-d_set_l					; set flush-loop
-	LDO	-1(20),20		; decrement lcount
-	COMIB,<=,N	0,20,d_set_l	; if (lcount >= 0), continue set loop
-	FDCE	0(0,31)			; flush entry at (address)
+d_set_l						; set flush-loop
+	LDO	-1(20),20			; decrement lcount
+	COMIB,<=,N	0,20,d_set_l		; if (lcount >= 0), set loop
+	FDCE	0(0,31)				; flush entry at (address)
 
-	LDO	-1(19),19		; decrement count
-	COMIB,<=	0,19,d_assoc_l	; if (count >= 0), loop
-	ADD	31,23,31		; address++
+	LDO	-1(19),19			; decrement count
+	COMIB,<=	0,19,d_assoc_l		; if (count >= 0), loop
+	ADD	31,23,31			; address++
 
-	B	do_i_cache		; next
-	SYNC				; synchronize after flush
+	B	do_i_cache			; next
+	SYNC					; synchronize after flush
 
-d_assoc4_l				; 4-way set-associative flush loop
-	FDCE	0(0,31)			; flush entry at (*address)
-	FDCE	0(0,31)			; flush entry at (*address)
-	FDCE	0(0,31)			; flush entry at (*address)
-	FDCE,M	23(0,31)		; flush entry at (*address++)
-	COMIB,<		0,19,d_assoc4_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+d_assoc4_l					; 4-way set-associative loop
+	FDCE	0(0,31)				; flush entry at (*address)
+	FDCE	0(0,31)				; flush entry at (*address)
+	FDCE	0(0,31)				; flush entry at (*address)
+	FDCE,M	23(0,31)			; flush entry at (*address++)
+	COMIB,<		0,19,d_assoc4_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
-	B	do_i_cache		; next
-	SYNC				; synchronize after flush
+	B	do_i_cache			; next
+	SYNC					; synchronize after flush
 
-d_assoc2_l				; 2-way set-associative flush loop
-	FDCE	0(0,31)			; flush entry at (*address)
-	FDCE,M	23(0,31)		; flush entry at (*address++)
-	COMIB,<		0,19,d_assoc2_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+d_assoc2_l					; 2-way set-associative loop
+	FDCE	0(0,31)				; flush entry at (*address)
+	FDCE,M	23(0,31)			; flush entry at (*address++)
+	COMIB,<		0,19,d_assoc2_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
-	B	do_i_cache		; next
-	SYNC				; synchronize after flush
+	B	do_i_cache			; next
+	SYNC					; synchronize after flush
 
-d_direct_l				; direct-mapped flush loop
-	FDCE,M	23(0,31)		; flush entry at (*address++)
-	COMIB,<		0,19,d_direct_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+d_direct_l					; direct-mapped flush loop
+	FDCE,M	23(0,31)			; flush entry at (*address++)
+	COMIB,<		0,19,d_direct_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
 d_sync
-	SYNC				; synchronize after flush
+	SYNC					; synchronize after flush
 
 do_i_cache
-	BB,>=,N	26,31,L$exit1		; if I_CACHE is not set, return
+	BB,>=,N	26,31,L$exit1			; if I_CACHE is not set, return
 
-	LDW	8(0,25),31		; 31 <- address (initially base)
-	LDW	20(0,25),29		; 29 <- loop
-	LDW	12(0,25),23		; 23 <- stride
-	LDW	16(0,25),19		; 19 <- count
+	LDW	8(0,25),31			; 31 <- address (init. base)
+	LDW	20(0,25),29			; 29 <- loop
+	LDW	12(0,25),23			; 23 <- stride
+	LDW	16(0,25),19			; 19 <- count
 
-	LDO	-1(19),19		; decrement count
-	COMIB,>,N	0,19,i_sync	; if (count < 0), no flush
+	LDO	-1(19),19			; decrement count
+	COMIB,>,N	0,19,i_sync		; if (count < 0), no flush
 	COMIB,=,N	1,29,i_direct_l
 	COMIB,=,N	2,29,i_assoc2_l
 	COMIB,=,N	4,29,i_assoc4_l
 
-i_assoc_l				; set-associative cache flush-loop
-	COPY	29,20			; 20 (lcount) <- loop
+i_assoc_l					; set-associative flush-loop
+	COPY	29,20				; 20 (lcount) <- loop
 
-i_set_l					; set flush-loop
-	LDO	-1(20),20		; decrement lcount
-	COMIB,<=,N	0,20,i_set_l	; if (lcount >= 0), continue set loop
-	FICE	0(5,31)			; flush entry at (address)
+i_set_l						; set flush-loop
+	LDO	-1(20),20			; decrement lcount
+	COMIB,<=,N	0,20,i_set_l		; if (lcount >= 0), set loop
+	FICE	0(5,31)				; flush entry at (address)
 
-	LDO	-1(19),19		; decrement count
-	COMIB,<=	0,19,i_assoc_l	; if (count >= 0), loop
-	ADD	31,23,31		; address++
+	LDO	-1(19),19			; decrement count
+	COMIB,<=	0,19,i_assoc_l		; if (count >= 0), loop
+	ADD	31,23,31			; address++
 
-	B	i_skips			; next
-	SYNC				; synchronize after flush
+	B	i_skips				; next
+	SYNC					; synchronize after flush
 
-i_assoc4_l				; 4-way set-associative flush loop
-	FICE	0(5,31)			; flush entry at (*address)
-	FICE	0(5,31)			; flush entry at (*address)
-	FICE	0(5,31)			; flush entry at (*address)
-	FICE,M	23(5,31)		; flush entry at (*address++)
-	COMIB,<		0,19,i_assoc4_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+i_assoc4_l					; 4-way set-associative loop
+	FICE	0(5,31)				; flush entry at (*address)
+	FICE	0(5,31)				; flush entry at (*address)
+	FICE	0(5,31)				; flush entry at (*address)
+	FICE,M	23(5,31)			; flush entry at (*address++)
+	COMIB,<		0,19,i_assoc4_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
-	B	i_skips			; next
-	SYNC				; synchronize after flush
+	B	i_skips				; next
+	SYNC					; synchronize after flush
 
-i_assoc2_l				; 2-way set-associative flush loop
-	FICE	0(5,31)			; flush entry at (*address)
-	FICE,M	23(5,31)		; flush entry at (*address++)
-	COMIB,<		0,19,i_assoc2_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+i_assoc2_l					; 2-way set-associative loop
+	FICE	0(5,31)				; flush entry at (*address)
+	FICE,M	23(5,31)			; flush entry at (*address++)
+	COMIB,<		0,19,i_assoc2_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
-	B	i_skips			; next
-	SYNC				; synchronize after flush
+	B	i_skips				; next
+	SYNC					; synchronize after flush
 
-i_direct_l				; direct-mapped flush loop
-	FICE,M	23(5,31)		; flush entry at (*address++)
-	COMIB,<		0,19,i_direct_l	; if (count > 0), loop
-	LDO	-1(19),19		; decrement count
+i_direct_l					; direct-mapped flush loop
+	FICE,M	23(5,31)			; flush entry at (*address++)
+	COMIB,<		0,19,i_direct_l		; if (count > 0), loop
+	LDO	-1(19),19			; decrement count
 
 i_sync
-	SYNC				; synchronize after flush
+	SYNC					; synchronize after flush
 
 i_skips
-	NOP				; 7 instructionss as prescribed
-	NOP				; by the programming note in the
-	NOP				; description for SYNC.
+	NOP					; 7 instructionss as prescribed
+	NOP					; by the programming note in
+	NOP					; the description for SYNC.
 	NOP
 	NOP
 
@@ -1116,6 +1161,7 @@ interface_limit
 	.IMPORT	hppa_utility_table,DATA
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
+        .IMPORT $$remI,MILLICODE
 	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
 	.EXPORT interface_initialize,PRIV_LEV=3
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
