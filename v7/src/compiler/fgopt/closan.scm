@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.27 2001/11/05 18:12:13 cph Exp $
+$Id: closan.scm,v 4.28 2001/11/05 18:13:12 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -284,7 +284,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   ;; able to reach BLOCK*.
   (for-each-callee! block
     (lambda (procedure)
-      (close-if-unreachable! (procedure-block procedure) block*
+      (close-if-unreachable! (procedure-block procedure)
+			     block*
 			     (condition-new-procedure condition procedure)))))
 
 (define (for-each-callee! block action)
@@ -308,24 +309,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   ;; Undrift BLOCK so it is a descendant of BLOCK*, due to CONDITION.
   (if (block-ancestor? block block*)
       (error "Attempt to undrift block below an ancestor:" block block*))
-  (let ((procedure (condition-procedure condition)))
-    (if (not (and procedure
+  (if (let ((procedure (condition-procedure condition)))
+	(not (and procedure
 		  (or (procedure-closure-context procedure)
-		      (procedure/trivial-closure? procedure))))
-	(let ((block
-	       (let loop ((block block))
-		 (if (or (eq? (block-parent block)
-			      (original-block-parent block))
-			 (original-block-ancestor? (block-parent block)
-						   block*))
-		     (loop (block-parent block))
-		     block))))
-	  (if (not (and (eq? (condition-keyword condition) 'CONTAGION)
-			(let ((procedure (block-procedure block)))
-			  (and procedure
-			       (procedure/trivial-closure? procedure)))))
-	      (if (add-constraint block block* condition)
-		  (update-callers-and-callees! block block* condition)))))))
+		      (procedure/trivial-closure? procedure)))))
+      (let ((block
+	     (let loop ((block block))
+	       (if (or (eq? (block-parent block)
+			    (original-block-parent block))
+		       (original-block-ancestor? (block-parent block)
+						 block*))
+		   (loop (block-parent block))
+		   block))))
+	(if (not (and (eq? (condition-keyword condition) 'CONTAGION)
+		      (let ((procedure (block-procedure block)))
+			(and procedure
+			     (procedure/trivial-closure? procedure)))))
+	    (if (add-constraint block block* condition)
+		(update-callers-and-callees! block block* condition))))))
 
 (define (update-callers-and-callees! block block* condition)
   ;; The context of BLOCK has changed, so it may be necessary to
