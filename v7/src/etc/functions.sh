@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.5 2000/12/08 18:04:13 cph Exp $
+# $Id: functions.sh,v 1.1 2000/12/08 18:04:13 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,21 +18,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Utility to set up an MIT Scheme build directory.
-# The working directory must be the build directory.
+# Functions for shell scripts.
 
-if [ $# -ne 0 ]; then
-    echo "usage: $0"
-    exit 1
-fi
+maybe_mkdir ()
+{
+    if [ ! -e ${1} ]; then
+	echo "mkdir ${1}"
+	mkdir ${1}
+    fi
+}
 
-. ../etc/functions.sh
-
-maybe_link Makefile ../Makefile.std
-for FN in Clean.sh Stage.sh Tags.sh; do
-    maybe_link ${FN} ../etc/${FN}
-done
-
-[ -e ed-ffi.scm ] && maybe_link .edwin-ffi ed-ffi.scm
-
-exit 0
+maybe_link ()
+{
+    if [ ! -e ${1} ] && [ ! -L ${1} ]; then
+	echo "ln -s ${2} ${1}"
+	ln -s ${2} ${1}
+    fi
+}

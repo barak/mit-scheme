@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.4 2000/12/08 17:56:34 cph Exp $
+# $Id: Setup.sh,v 1.5 2000/12/08 18:04:12 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -26,21 +26,7 @@ if [ ! -x configure ]; then
     autoconf
 fi
 
-maybe_mkdir ()
-{
-    if [ ! -e ${1} ]; then
-	echo "mkdir ${1}"
-	mkdir ${1}
-    fi
-}
-
-maybe_link ()
-{
-    if [ ! -L ${1} ]; then
-	echo "ln -s ${2} ${1}"
-	ln -s ${2} ${1}
-    fi
-}
+. etc/functions.sh
 
 # lib
 maybe_mkdir lib

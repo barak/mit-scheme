@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.2 2000/12/08 06:13:56 cph Exp $
+# $Id: Setup.sh,v 1.3 2000/12/08 18:04:13 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -26,15 +26,9 @@ if [ $# -ne 0 ]; then
     exit 1
 fi
 
-../etc/Setup.sh
+. ../etc/functions.sh
 
-maybe_link ()
-{
-    if [ ! -L ${1} ]; then
-	echo "ln -s ${2} ${1}"
-	ln -s ${2} ${1}
-    fi
-}
+../etc/Setup.sh
 
 for FNS in `cd ../runtime; ls *.scm`; do
     FN="`basename ${FNS} .scm`.bin"
