@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.13 1988/11/08 08:23:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.14 1989/01/18 09:58:56 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,6 +42,15 @@ MIT in each case. |#
 (define-integrable scheme-object-width 32)
 (define-integrable scheme-datum-width 24)
 (define-integrable scheme-type-width 8)
+
+;; It is currently required that both packed characters and objects be
+;; integrable numbers of address units.  Furthermore, the number of
+;; address units per object must be an integral multiple of the number
+;; of address units per character.  This will cause problems on a
+;; machine that is word addressed, in which case we will have to
+;; rethink the character addressing strategy.
+(define-integrable address-units-per-object 4)
+(define-integrable address-units-per-packed-char 1)
 
 (let-syntax ((fold
 	      (macro (expression)
