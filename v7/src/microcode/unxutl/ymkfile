@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.92 1997/10/22 05:40:36 cph Exp $
+$Id: ymkfile,v 1.93 1998/01/20 01:05:39 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -144,22 +144,32 @@ MIT in each case. */
 #ifndef LIBS_TERMCAP
 #define LIBS_TERMCAP -lcurses
 #endif
-TERMCAP_OBJECTS = terminfo.o tterm.o
+#ifndef TERMCAP_FILES
+#define TERMCAP_FILES terminfo.o
+#endif
 #else /* not HAVE_TERMINFO */
 #ifndef LIBS_TERMCAP
 #define LIBS_TERMCAP
-TERMCAP_OBJECTS = termcap.o tparam.o tterm.o
+#ifndef TERMCAP_FILES
+#define TERMCAP_FILES termcap.o tparam.o
+#endif
 #else /* LIBS_TERMCAP */
-TERMCAP_OBJECTS = tparam.o tterm.o
+#ifndef TERMCAP_FILES
+#define TERMCAP_FILES tparam.o
+#endif
 #endif /* LIBS_TERMCAP */
 #endif /* not HAVE_TERMINFO */
 TERMCAP_SOURCES = tterm.c
+TERMCAP_OBJECTS = TERMCAP_FILES tterm.o
 TERMCAP_LIBS = LIBS_TERMCAP
 
 #ifdef HAVE_X_WINDOWS
 X_SOURCES = x11base.c x11term.c x11graph.c x11color.c
 X_OBJECTS = x11base.o x11term.o x11graph.o x11color.o
-X_LIB = LIBX11_MACHINE LIBX11_SYSTEM -lX11
+#ifndef X11_LIBRARY
+#define X11_LIBRARY -lX11
+#endif
+X_LIB = LIBX11_MACHINE LIBX11_SYSTEM X11_LIBRARY
 #endif /* HAVE_X_WINDOWS */
 
 #ifdef HAVE_STARBASE_GRAPHICS

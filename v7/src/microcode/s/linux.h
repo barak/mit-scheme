@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.13 1997/10/02 19:52:53 adams Exp $
+$Id: linux.h,v 1.14 1998/01/20 01:06:09 cph Exp $
 
-Copyright (c) 1995-97 Massachusetts Institute of Technology
+Copyright (c) 1995-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,22 +33,25 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#define LIBX11_MACHINE -L/usr/X11R6/lib
+#define LIBX11_SYSTEM -L/usr/X11R6/lib
 
 #define LIB_DEBUG
 
 #define ALTERNATE_M4 s/ultrix.m4
 
+#define LINUX_STATIC_LIBS(libs) -Xlinker -Bstatic libs -Xlinker -Bdynamic
+
 #ifdef __ELF__
 #define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
-/* This is kind of random -- the only system that I've tried this on
-   is Debian 1.1, which uses ncurses for its termcap support (Debian
-   0.93R6 used termcap instead).  Debian can have -ltermcap, but it's
-   an optional package and often not installed.  */
-#define LIBS_TERMCAP -lncurses
+/* Newer versions of Debian don't really support termcap.  However,
+   ncurses is supported on all GNU/Linux systems, so we'll use that
+   instead.  */
+#define LIBS_TERMCAP LINUX_STATIC_LIBS (-lncurses)
+#define HAVE_TERMINFO
+#define TERMCAP_FILES
 #else
 #define M4_SWITCH_SYSTEM
-#define LIBS_TERMCAP -ltermcap
+#define LIBS_TERMCAP LINUX_STATIC_LIBS (-ltermcap)
 #endif
 
 #define LD_SWITCH_SYSTEM -export-dynamic
