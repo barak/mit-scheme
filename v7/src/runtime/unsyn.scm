@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.15 1994/03/22 21:31:01 cph Exp $
+$Id: unsyn.scm,v 14.16 1994/03/22 21:36:27 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -101,7 +101,8 @@ MIT in each case. |#
 
 (define (unsyntax-error keyword message . irritants)
   (apply error
-	 (cons (string-append "UNSYNTAX: " (symbol->string keyword) ": " message)
+	 (cons (string-append "UNSYNTAX: " (symbol->string keyword) ": "
+			      message)
 	       irritants)))
 
 ;;;; Unsyntax Quanta
@@ -133,7 +134,7 @@ MIT in each case. |#
 	     (not (has-substitution? object)))
 	(access-components object
 	  (lambda (environment name)
-	    `(,name ,@(loop environment unsyntaxer:macroize?))))
+	    `(,name ,@(loop environment (eq? #t unsyntaxer:macroize?)))))
 	`(,(unsyntax-object object)))))
 
 (define (unsyntax-DEFINITION-object definition)
@@ -145,7 +146,7 @@ MIT in each case. |#
       `(SET! ,name ,@(unexpand-binding-value value)))))
 
 (define (unexpand-definition name value)
-  (if (and unsyntaxer:macroize?
+  (if (and (eq? #t unsyntaxer:macroize?)
 	   (lambda? value)
 	   (not (has-substitution? value)))
       (lambda-components** value
@@ -180,7 +181,7 @@ MIT in each case. |#
 
 (define (unsyntax-sequence seq)
   (if (sequence? seq)
-      (if unsyntaxer:macroize?
+      (if (eq? #t unsyntaxer:macroize?)
 	  (unsyntax-sequence-actions seq)
 	  `((BEGIN ,@(unsyntax-sequence-actions seq))))
       (list (unsyntax-object seq))))
@@ -194,7 +195,7 @@ MIT in each case. |#
 	    (cond (substitution
 		   (cons (cdr substitution)
 			 (loop (cdr actions))))
-		  ((and unsyntaxer:macroize?
+		  ((and (eq? #t unsyntaxer:macroize?)
 			(sequence? (car actions)))
 		   (append (unsyntax-sequence-actions (car actions))
 			   (loop (cdr actions))))
@@ -203,7 +204,7 @@ MIT in each case. |#
 			 (loop (cdr actions))))))))))
 
 (define (unsyntax-OPEN-BLOCK-object open-block)
-  (if unsyntaxer:macroize?
+  (if (eq? #t unsyntaxer:macroize?)
       (open-block-components open-block
 	(lambda (auxiliary declarations expression)
 	  `(OPEN-BLOCK ,auxiliary
@@ -226,7 +227,7 @@ MIT in each case. |#
 
 (define (unsyntax-DISJUNCTION-object object)
   `(OR ,@(disjunction-components object
-	   (if unsyntaxer:macroize?
+	   (if (eq? #t unsyntaxer:macroize?)
 	       unexpand-disjunction
 	       (lambda (predicate alternative)
 		 (list (unsyntax-object predicate)
@@ -240,7 +241,7 @@ MIT in each case. |#
 
 (define (unsyntax-CONDITIONAL-object conditional)
   (conditional-components conditional
-    (if unsyntaxer:macroize?
+    (if (eq? #t unsyntaxer:macroize?)
 	unsyntax-conditional
 	unsyntax-conditional/default)))
 
@@ -360,7 +361,7 @@ MIT in each case. |#
        (let ((ordinary-combination
 	      (lambda ()
 		`(,(unsyntax-object operator) ,@(unsyntax-objects operands)))))
-	 (cond ((or (not unsyntaxer:macroize?)
+	 (cond ((or (not (eq? #t unsyntaxer:macroize?))
 		    (has-substitution? operator))
 		(ordinary-combination))
 	       ((and (or (eq? operator cons)
