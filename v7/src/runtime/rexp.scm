@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rexp.scm,v 1.11 2000/04/13 20:14:59 cph Exp $
+;;; $Id: rexp.scm,v 1.12 2000/04/13 20:23:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -23,8 +23,8 @@
 (declare (usual-integrations))
 
 (define (rexp? rexp)
-  (or (string? rexp)
-      (char-set? rexp)
+  (or (char-set? rexp)
+      (string? rexp)
       (and (pair? rexp)
 	   (list? (cdr rexp))
 	   (let ((one-arg
@@ -106,7 +106,7 @@
 (define (rexp-groupify rexp)
   (let ((group (lambda () `(GROUP ,rexp)))
 	(no-group (lambda () (error "Expression can't be grouped:" rexp))))
-    (cond ((string? rexp)
+    (cond ((and (string? rexp) (not (char-set? rexp)))
 	   (case (string-length rexp)
 	     ((0) (no-group))
 	     ((1) rexp)
@@ -134,7 +134,7 @@
 (define (rexp-not-syntax-char type) `(NOT-SYNTAX-CHAR ,type))
 
 (define (rexp-case-fold rexp)
-  (cond ((string? rexp)
+  (cond ((and (string? rexp) (not (char-set? rexp)))
 	 `(CASE-FOLD rexp))
 	((and (pair? rexp)
 	      (memq (car rexp) '(ALTERNATIVES SEQUENCE GROUP OPTIONAL * +))
@@ -148,10 +148,10 @@
 
 (define (rexp->regexp rexp)
   (let ((lose (lambda () (error "Malformed rexp:" rexp))))
-    (cond ((string? rexp)
-	   (re-quote-string rexp))
-	  ((char-set? rexp)
+    (cond ((char-set? rexp)
 	   (char-set->regexp rexp))
+	  ((string? rexp)
+	   (re-quote-string rexp))
 	  ((and (pair? rexp) (list? (cdr rexp)))
 	   (let ((one-arg
 		  (lambda ()
@@ -175,7 +175,7 @@
 		 ((+) (string-append (rexp-arg) "+"))
 		 ((CASE-FOLD)
 		  (let ((arg (one-arg)))
-		    (if (string? arg)
+		    (if (and (string? arg) (not (char-set? arg)))
 			(case-fold-string arg)
 			(lose))))
 		 ((ANY-CHAR) ".")
