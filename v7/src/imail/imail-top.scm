@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.166 2000/06/16 18:00:18 cph Exp $
+;;; $Id: imail-top.scm,v 1.167 2000/06/16 18:18:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1576,7 +1576,7 @@ Negative argument means search in reverse."
 		(let ((folder (selected-folder))
 		      (msg (selected-message)))
 		  (let loop ((n n) (msg msg) (winner #f))
-		    (if operation (operation next))
+		    (if operation (operation msg))
 		    (let ((next (step msg predicate)))
 		      (cond ((not next)
 			     (if winner (select-message folder winner))
