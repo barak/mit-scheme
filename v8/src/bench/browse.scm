@@ -32,10 +32,6 @@
 ; The next few definitions should be omitted if the Scheme implementation
 ; already provides them.
 
-(define gensym generate-uninterned-symbol)
-(define get 2d-get)
-(define put 2d-put!)
-
 (define (append! x y)
   (if (null? x)
       y
