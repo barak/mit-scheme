@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.46 2001/12/19 01:39:52 cph Exp $
+$Id: uenvir.scm,v 14.47 2001/12/19 04:18:37 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -320,25 +320,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (ic-frame-parent environment)
   (procedure-environment (ic-environment/procedure environment)))
 
-(define (make-null-interpreter-environment)
-  (let ((environment (let () (the-environment)))
-	(null-environment
-	 (object-new-type (object-type #F)
-			  (fix:xor (object-datum #F) 1))))
-    (let ((procedure
-	   (ic-frame-procedure (ic-external-frame environment))))
-      (if (vector? procedure)
-	  (begin
-	    (vector-set! procedure 0 null-environment)
-	    (system-pair-set-cdr! (vector-ref procedure 1) null-environment))
-	  (system-pair-set-cdr! procedure null-environment)))
-    environment))
-
-(define (extend-interpreter-environment environment)
-  (if (not (interpreter-environment? environment))
-      (illegal-environment environment 'EXTEND-INTERPRETER-ENVIRONMENT))
-  (eval '(LET () (THE-ENVIRONMENT)) environment))
-
 (define (ic-environment/lambda environment)
   (procedure-lambda (ic-environment/procedure environment)))
 
@@ -367,6 +348,47 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (map-reference-trap-value
    (lambda ()
      (system-vector-ref environment index))))
+
+(define (extend-interpreter-environment environment #!optional names values)
+  (if (not (interpreter-environment? environment))
+      (illegal-environment environment 'EXTEND-INTERPRETER-ENVIRONMENT))
+  (%extend-interpreter-environment
+   environment
+   (if (default-object? names) '() names)
+   (if (default-object? values) 'DEFAULT values)
+   'EXTEND-INTERPRETER-ENVIRONMENT))
+
+(define (make-null-interpreter-environment #!optional names values)
+  (%extend-interpreter-environment
+   (object-new-type (object-type #f) (fix:xor (object-datum #f) 1))
+   (if (default-object? names) '() names)
+   (if (default-object? values) 'DEFAULT values)
+   'MAKE-NULL-INTERPRETER-ENVIRONMENT))
+
+(define (%extend-interpreter-environment environment names values procedure)
+  (if (not (list-of-type? names symbol?))
+      (error:wrong-type-argument names "list of symbols" procedure))
+  (system-list->vector
+   (ucode-type environment)
+   (cons (system-pair-cons (ucode-type procedure)
+			   (system-pair-cons (ucode-type lambda)
+					     unspecific
+					     (list->vector
+					      (cons lambda-tag:unnamed names)))
+			   environment)
+	 (if (eq? values 'DEFAULT)
+	     (let ((values (make-list (length names))))
+	       (do ((values values (cdr values)))
+		   ((not (pair? values)))
+		 (set-car! values
+			   (make-unmapped-unassigned-reference-trap)))
+	       values)
+	     (begin
+	       (if (not (list? values))
+		   (error:wrong-type-argument values "list" procedure))
+	       (if (not (fix:= (length values) (length names)))
+		   (error:bad-range-argument values procedure))
+	       values)))))
 
 ;;;; Compiled Code Environments
 
