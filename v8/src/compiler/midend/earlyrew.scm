@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.16 1995/09/08 03:09:09 adams Exp $
+$Id: earlyrew.scm,v 1.17 1996/07/19 18:27:18 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -64,19 +64,26 @@ MIT in each case. |#
      ,(earlyrew/expr body)))
 
 (define-early-rewriter CALL (rator cont #!rest rands)
-  (define (default)
-    `(CALL ,(earlyrew/expr rator)
-	   ,(earlyrew/expr cont)
-	   ,@(earlyrew/expr* rands)))
-  (cond ((and (QUOTE/? rator)
-	      (rewrite-operator/early? (quote/text rator)))
-	 => (lambda (handler)
-	      (if (not (equal? cont '(QUOTE #F)))
-		  (internal-error "Early rewrite done after CPS conversion?"
-				  cont))
-	      (apply handler form (earlyrew/expr* rands))))
-	(else
-	 (default))))
+  (let ((rands* (earlyrew/expr* rands)))
+    (define (default)
+      `(CALL ,(earlyrew/expr rator)
+	     ,(earlyrew/expr cont)
+	     ,@rands*))
+    (cond ((and (QUOTE/? rator)
+		(rewrite-operator/early? (quote/text rator)))
+	   => (lambda (handler)
+		(if (not (equal? cont '(QUOTE #F)))
+		    (internal-error "Early rewrite done after CPS conversion?"
+				    cont))
+		(let ((rator* (quote/text rator)))
+		  (if (primitive-procedure? rator*)
+		      (let ((arity (primitive-procedure-arity rator*)))
+			(if (= arity (length rands))
+			    (apply handler form rands*)
+			    (default)))
+		      (apply handler form rands*)))))
+	  (else
+	   (default)))))
 
 (define-early-rewriter LET (bindings body)
   `(LET ,(map (lambda (binding)
@@ -91,7 +98,7 @@ MIT in each case. |#
 			 (earlyrew/expr (cadr binding))))
 		 bindings)
      ,(earlyrew/expr body)))
-
+
 (define-early-rewriter QUOTE (object)
   `(QUOTE ,object))
 
@@ -105,7 +112,7 @@ MIT in each case. |#
   `(IF ,(earlyrew/expr pred)
        ,(earlyrew/expr conseq)
        ,(earlyrew/expr alt)))
-
+
 (define (earlyrew/expr expr)
   (if (not (pair? expr))
       (illegal expr))
@@ -135,7 +142,9 @@ MIT in each case. |#
 
 (define (earlyrew/new-name prefix)
   (new-variable prefix))
-
+
+
+
 (define *early-rewritten-operators*
   (make-eq-hash-table))
 
@@ -213,7 +222,6 @@ MIT in each case. |#
 		       (and (zero? y-value)
 			    (exact? y-value)
 			    x))))
-
 
 (define-rewrite/early '&-
   (earlyrew/binaryop - '&- %- 1
@@ -300,21 +308,19 @@ MIT in each case. |#
 			     (unexpanded)
 			     (let ((y-name (earlyrew/new-name 'Y))
 				   (n-bits (good-factor->nbits x-value)))
-			       `(CALL
-				 (LAMBDA (,y-name)
-				   (IF (CALL (QUOTE ,%small-fixnum?)
-					     (QUOTE #F)
-					     (LOOKUP ,y-name)
-					     (QUOTE ,n-bits))
-				       (CALL (QUOTE ,fix:*)
-					     (QUOTE #F)
-					     (QUOTE ,x-value)
-					     (LOOKUP ,y-name))
-				       (CALL (QUOTE ,%*)
-					     (QUOTE #F)
-					     (QUOTE ,x-value)
-					     (LOOKUP ,y-name))))
-				 ,y))))
+			       (bind y-name y
+				     `(IF (CALL (QUOTE ,%small-fixnum?)
+						(QUOTE #F)
+						(LOOKUP ,y-name)
+						(QUOTE ,n-bits))
+					  (CALL (QUOTE ,fix:*)
+						(QUOTE #F)
+						(QUOTE ,x-value)
+						(LOOKUP ,y-name))
+					  (CALL (QUOTE ,%*)
+						(QUOTE #F)
+						(QUOTE ,x-value)
+						(LOOKUP ,y-name)))))))
 			(else
 			 (out-of-line)))))
 	    ((form/number? y)
@@ -347,13 +353,8 @@ MIT in each case. |#
 			 (out-of-line)))))
 	    (else
 	     (out-of-line))))))
-
-;; NOTE: these could use 0 as the number of bits, but this would prevent
-;; a common RTL-level optimization triggered by CSE.
 
-(define-rewrite/early '&= (earlyrew/binaryop = '&= %= 1))
-(define-rewrite/early '&< (earlyrew/binaryop < '&< %< 1))
-(define-rewrite/early '&> (earlyrew/binaryop > '&> %> 1))
+
 
 (define-rewrite/early '&/
   (lambda (form x y)
@@ -383,6 +384,168 @@ MIT in each case. |#
 		       (out-of-line x y)))))
 	  (else
 	   (out-of-line x y)))))
+
+(define-rewrite/early 'INTEGER-ADD
+  (let ((INTEGER-ADD        (make-primitive-procedure 'INTEGER-ADD))
+	(INTEGER-ADD-1      (make-primitive-procedure 'INTEGER-ADD-1))
+	(INTEGER-SUBTRACT-1 (make-primitive-procedure 'INTEGER-SUBTRACT-1)))
+
+    (lambda (form x y)
+      (define (equivalent form*)
+	(earlyrew/remember* form* form))
+
+      (define (using-primitive x y)
+	(cond ((equal? y `(QUOTE 1))
+	       `(CALL (QUOTE ,INTEGER-ADD-1) (QUOTE #F) ,x))
+	      ((equal? y `(QUOTE -1))
+	       `(CALL (QUOTE ,INTEGER-SUBTRACT-1) (QUOTE #F) ,x))
+	      (else
+	       `(CALL (QUOTE ,INTEGER-ADD) (QUOTE #F) ,x ,y))))
+
+      (define (unexpanded) (using-primitive x y))
+
+      (define (by-constant x-value y)
+	(cond  ((zero? x-value)
+		y)
+	       ((small-fixnum? x-value 1)
+		(let ((y-name (earlyrew/new-name 'Y)))
+		  (bind y-name y
+			`(IF (CALL (QUOTE ,%small-fixnum?)
+				   (QUOTE #F)
+				   (LOOKUP ,y-name)
+				   (QUOTE 1))
+			     ,(equivalent `(CALL (QUOTE ,fix:+)
+						 (QUOTE #F)
+						 (LOOKUP ,y-name)
+						 (QUOTE ,x-value)))
+			     ,(equivalent
+			       (using-primitive `(LOOKUP ,y-name)
+						`(QUOTE ,x-value)))))))
+	       (else (unexpanded))))
+
+      (cond ((form/exact-integer? x)
+	     => (lambda (x-value)
+		  (cond ((form/exact-integer? y)
+			 => (lambda (y-value)
+			      `(QUOTE ,(INTEGER-ADD x-value y-value))))
+			(else
+			 (by-constant x-value y)))))
+	    ((form/number? y)
+	     => (lambda (y-value)
+		  (by-constant y-value x)))
+	    (else
+	     (unexpanded))))))
+
+(define-rewrite/early 'INTEGER-SUBTRACT
+  (let ((INTEGER-SUBTRACT (make-primitive-procedure 'INTEGER-SUBTRACT))
+	(INTEGER-ADD      (make-primitive-procedure 'INTEGER-ADD)))
+
+    (lambda (form x y)
+      (define (equivalent form*)
+	(earlyrew/remember* form* form))
+
+      (define (unexpanded)
+	`(CALL (QUOTE ,INTEGER-SUBTRACT) (QUOTE #F) ,x ,y))
+
+      (define (by-constant x-value y)
+	(cond ((small-fixnum? x-value 1)
+	       (let ((y-name (earlyrew/new-name 'Y)))
+		 (bind y-name y
+		       `(IF (CALL (QUOTE ,%small-fixnum?)
+				  (QUOTE #F)
+				  (LOOKUP ,y-name)
+				  (QUOTE 1))
+			    ,(equivalent `(CALL (QUOTE ,fix:-)
+						(QUOTE #F)
+						(QUOTE ,x-value)
+						(LOOKUP ,y-name)))
+			    ,(equivalent `(CALL (QUOTE ,INTEGER-SUBTRACT)
+						(QUOTE #F)
+						(QUOTE ,x-value)
+						(LOOKUP ,y-name)))))))
+	      (else (unexpanded))))
+
+      (cond ((form/number? y)
+	     => (lambda (y-value)
+		  ((rewrite-operator/early? INTEGER-ADD)
+		   form
+		   x
+		   `(QUOTE ,(- y-value)))))
+	    ((form/exact-integer? x)
+	     => (lambda (x-value)
+		  (by-constant x-value y)))
+	    (else
+	     (unexpanded))))))
+
+(define-rewrite/early 'INTEGER-NEGATE
+  (let ((INTEGER-SUBTRACT (make-primitive-procedure 'INTEGER-SUBTRACT)))
+    (lambda (form x)
+      ((rewrite-operator/early? INTEGER-SUBTRACT)
+       form
+       `(QUOTE ,0)
+       x))))
+
+(define-rewrite/early 'INTEGER-MULTIPLY
+  (let ((INTEGER-MULTIPLY (make-primitive-procedure 'INTEGER-MULTIPLY)))
+
+    (lambda (form x y)
+      (define (equivalent form*)
+	(earlyrew/remember* form* form))
+
+      (define (unexpanded)
+	`(CALL (QUOTE ,INTEGER-MULTIPLY) (QUOTE #F) ,x ,y))
+
+      (define (by-constant x-value y)
+	(cond  ((zero? x-value)
+		`(BEGIN ,expression ,(equivalent `(QUOTE ,0))))
+	       ((= 1 x-value)
+		y)
+	       ((good-factor? x-value)
+		(let ((y-name (earlyrew/new-name 'Y))
+		      (n-bits (good-factor->nbits x-value)))
+		  (bind y-name y
+			`(IF (CALL (QUOTE ,%small-fixnum?)
+				   (QUOTE #F)
+				   (LOOKUP ,y-name)
+				   (QUOTE ,n-bits))
+			     ,(equivalent `(CALL (QUOTE ,fix:*)
+						 (QUOTE #F)
+						 (LOOKUP ,y-name)
+						 (QUOTE ,x-value)))
+			     ,(equivalent `(CALL (QUOTE ,INTEGER-MULTIPLY)
+						 (QUOTE #F)
+						 (LOOKUP ,y-name)
+						 (QUOTE ,x-value)))))))
+	       (else (unexpanded))))
+
+      (cond ((form/exact-integer? x)
+	     => (lambda (x-value)
+		  (cond ((form/exact-integer? y)
+			 => (lambda (y-value)
+			      `(QUOTE ,(INTEGER-MULTIPLY x-value y-value))))
+			(else
+			 (by-constant x-value y)))))
+	    ((form/number? y)
+	     => (lambda (y-value)
+		  (by-constant y-value x)))
+	    (else
+	     (unexpanded))))))
+
+;;
+;; Missing: INTEGER-QUOTIENT and INTEGER-REMAINDER
+;;
+
+;; NOTE: these could use 0 as the number of bits, but this would prevent
+;; a common RTL-level optimization triggered by CSE.
+
+(define-rewrite/early '&= (earlyrew/binaryop = '&= %= 1))
+(define-rewrite/early '&< (earlyrew/binaryop < '&< %< 1))
+(define-rewrite/early '&> (earlyrew/binaryop > '&> %> 1))
+
+;; Safe to use generic arithmetic for integer operations:
+(define-rewrite/early 'INTEGER-EQUAL?   (earlyrew/binaryop = '&= %= 1))
+(define-rewrite/early 'INTEGER-LESS?    (earlyrew/binaryop < '&< %< 1))
+(define-rewrite/early 'INTEGER-GREATER? (earlyrew/binaryop > '&> %> 1))
 
 ;;;; Rewrites of unary operations in terms of binary operations
 
@@ -419,6 +582,12 @@ MIT in each case. |#
   (define-rewrite/early '1+        (unary-rewrite '&+ 1))
   (define-rewrite/early '-1+       (unary-rewrite '&- 1))
 
+  (define-rewrite/early 'INTEGER-ZERO?      (unary-rewrite 'INTEGER-EQUAL? 0))
+  (define-rewrite/early 'INTEGER-NEGATIVE?  (unary-rewrite 'INTEGER-LESS? 0))
+  (define-rewrite/early 'INTEGER-POSITIVE?  (unary-rewrite 'INTEGER-GREATER? 0))
+  (define-rewrite/early 'INTEGER-ADD-1      (unary-rewrite 'INTEGER-ADD 1))
+  (define-rewrite/early 'INTEGER-SUBTRACT-1 (unary-rewrite 'INTEGER-SUBTRACT 1))
+
   (define-rewrite/early 'ZERO-FIXNUM?
     (special-rewrite 'EQUAL-FIXNUM? 0))
   (define-rewrite/early 'NEGATIVE-FIXNUM?
@@ -436,7 +605,7 @@ MIT in each case. |#
 
   (define-rewrite/early 'FLONUM-NEGATE
     (special-rewrite/left 'FLONUM-SUBTRACT 0.)))
-
+
 #|
 ;; Some machines have an ABS instruction.
 ;; This should be enabled according to the back end.
@@ -511,7 +680,7 @@ MIT in each case. |#
 					   prim-cdr))
 			       (QUOTE #f)
 			       ,text))))))))
-
+
 (define-rewrite/early 'GENERAL-CAR-CDR
   (let ((prim-general-car-cdr (make-primitive-procedure 'GENERAL-CAR-CDR)))
     (lambda (form term pattern)
@@ -575,8 +744,7 @@ MIT in each case. |#
 		`(QUOTE ,(sqrt number))))
 	  (else
 	   (default (list arg))))))
-
-
+
 (define-rewrite/early/global 'EXPT 2
   (let ((&* (make-primitive-procedure '&*))
 	(max-multiplies 3))
