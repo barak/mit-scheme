@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.7 1989/08/14 09:22:30 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.8 1991/03/22 00:24:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -63,20 +63,23 @@
 (define (group-extract-string group start end)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
-	(length (group-gap-length group)))
-    (cond ((not (fix:> end gap-start))
-	   (substring text start end))
-	  ((not (fix:< start gap-start))
-	   (substring text (fix:+ start length) (fix:+ end length)))
+	(string (make-string (fix:- end start))))
+    (cond ((fix:<= end gap-start)
+	   (substring-move-right! text start end string 0))
+	  ((fix:>= start gap-start)
+	   (substring-move-right! text
+				  (fix:+ start (group-gap-length group))
+				  (fix:+ end (group-gap-length group))
+				  string
+				  0))
 	  (else
-	   (let ((string (string-allocate (fix:- end start))))
-	     (substring-move-right! text start gap-start string 0)
-	     (substring-move-right! text
-				    (group-gap-end group)
-				    (fix:+ end length)
-				    string
-				    (fix:- gap-start start))
-	     string)))))
+	   (substring-move-right! text start gap-start string 0)
+	   (substring-move-right! text
+				  (group-gap-end group)
+				  (fix:+ end (group-gap-length group))
+				  string
+				  (fix:- gap-start start))))
+    string))
 
 (define (group-left-char group index)
   (string-ref (group-text group)
