@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.5 1994/11/26 22:06:52 gjr Exp $
+$Id: envconv.scm,v 1.6 1994/11/30 23:20:59 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -116,18 +116,16 @@ MIT in each case. |#
     (envconv/new-reference env name `(SET! ,name ,value*))))
 
 (define (envconv/lambda env form name)
-  (let ((lambda-list (lambda/formals form))
-	(body (lambda/body form)))
-    (if (or (not (eq? (envconv/env/context env) 'TOP-LEVEL))
-	    (not *envconv/compile-by-procedures?*)
-	    *envconv/procedure-result?*
-	    (eq? form *envconv/top-level-program*))
-	(envconv/lambda* 'ARBITRARY env form)
-	(envconv/compile-separately form name true env))))
+  (if (or (not (eq? (envconv/env/context env) 'TOP-LEVEL))
+	  (not *envconv/compile-by-procedures?*)
+	  *envconv/procedure-result?*
+	  (eq? form *envconv/top-level-program*))
+      (envconv/lambda* 'ARBITRARY env form)
+      (envconv/compile-separately form name true env)))
 
 (define (envconv/lambda* context* env form)
   (let ((lambda-list (lambda/formals form))
-	(body (lambda/body form)))
+	(body        (lambda/body form)))
     (let ((form*
 	   (envconv/binding-body context*
 				 env
@@ -372,9 +370,17 @@ MIT in each case. |#
 
 ;;;; Environment utilities
 
-(define-structure (envconv/env
-		   (conc-name envconv/env/)
-		   (constructor envconv/env/%make (context parent block)))
+(define-structure
+    (envconv/env
+     (conc-name envconv/env/)
+     (constructor envconv/env/%make (context parent block))
+     (print-procedure
+      (lambda (env port)
+	(write-char #\Space port)
+	(write (envconv/env/depth env) port)
+	(write-char #\Space port)
+	(write (envconv/env/reified-name env) port))))
+
   (context false read-only true)
   (reified-name false read-only false)
   (depth (if parent
@@ -407,7 +413,8 @@ MIT in each case. |#
   (number false read-only true)
   (references '() read-only false))
 
-(define-structure (envconv/separate-compilation-key
+(define-structure
+    (envconv/separate-compilation-key
 		   (conc-name envconv/key/)
 		   (constructor envconv/key/make
 				(form name procedure? env)))
