@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.4 1987/08/24 19:45:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.5 1987/08/24 20:37:11 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -656,10 +656,9 @@ MIT in each case. |#
    values))
 
 (define (scode/let-components lcomb receiver)
-  (scode/combination-components
+  (scode/combination-components lcomb
    (lambda (operator values)
-     (scode/lambda-components
-      operator
+     (scode/lambda-components operator
       (lambda (tag names opt rest aux decls body)
 	(receiver names values decls body))))))				     
 
