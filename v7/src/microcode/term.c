@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.18 2003/02/14 18:28:24 cph Exp $
+$Id: term.c,v 1.19 2003/03/20 04:39:06 cph Exp $
 
-Copyright (c) 1990-2000, 2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1993,1994,1995,1996 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,6 +30,7 @@ USA.
 #include "osfs.h"
 #include "osfile.h"
 #include "edwin.h"
+#include "option.h"
 
 extern long death_blow;
 extern char * Term_Messages [];
@@ -112,8 +114,11 @@ DEFUN (termination_prefix, (code), int code)
      message should be considered normal output.  */
   if (code == TERM_HALT)
     {
-      outf_console ("\n%s.\n", (Term_Messages [code]));
-      outf_flush_console ();
+      if (!option_suppress_noise)
+	{
+	  outf_console ("\n%s.\n", (Term_Messages [code]));
+	  outf_flush_console ();
+	}
     }
   else
     {
