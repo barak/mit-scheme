@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.30 1999/08/10 16:54:41 cph Exp $
+;;; $Id: dosfile.scm,v 1.31 1999/08/20 20:34:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -290,24 +290,28 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 		 (re-string-match ".[0-9][0-9]" type))))))
 
 (define (os/numeric-backup-filename? filename)
-  (and (let ((try
-	      (lambda (pattern) (re-string-search-forward pattern filename))))
-	 (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
-	     (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
-	     (there-exists? dos/backup-suffixes
-	       (lambda (suffix)
-		 (try (string-append "^\\(.+\\)\\.~\\([0-9]+\\)"
-				     (re-quote-string suffix)
-				     "$"))))))
-       (let ((root-start (re-match-start-index 1))
-	     (root-end (re-match-end-index 1))
-	     (version-start (re-match-start-index 2))
-	     (version-end (re-match-end-index 2)))
-	 (let ((version
-		(substring->number filename version-start version-end)))
-	   (and (> version 0)
-		(cons (substring filename root-start root-end)
-		      version))))))
+  (let ((r
+	 (let ((try
+		(lambda (pattern)
+		  (re-string-search-forward pattern filename))))
+	   (or (try "^\\([^.]+\\)\\.\\([0-9][0-9][0-9]\\)$")
+	       (try "^\\([^.]+\\.[^.]\\)\\([0-9][0-9]\\)$")
+	       (let loop ((suffixes dos/backup-suffixes))
+		 (if (pair? suffixes)
+		     (or (try (string-append "^\\(.+\\)\\.~\\([0-9]+\\)"
+					     (re-quote-string (car suffixes))
+					     "$"))
+			 (loop (cdr suffixes)))))))))
+    (and r
+	 (let ((root-start (re-match-start-index 1 r))
+	       (root-end (re-match-end-index 1 r))
+	       (version-start (re-match-start-index 2 r))
+	       (version-end (re-match-end-index 2 r)))
+	   (let ((version
+		  (substring->number filename version-start version-end)))
+	     (and (> version 0)
+		  (cons (substring filename root-start root-end)
+			version)))))))
 
 (define (os/auto-save-filename? filename)
   (if (dos/fs-long-filenames? filename)

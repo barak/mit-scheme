@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: manual.scm,v 1.15 1999/01/02 06:11:34 cph Exp $
+;;; $Id: manual.scm,v 1.16 1999/08/20 20:35:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -28,20 +28,22 @@ TOPIC is either the title of the entry, or has the form TITLE(SECTION)
 where SECTION is the desired section of the manual, as in `tty(4)'."
   "sManual entry (topic): "
   (lambda (topic #!optional section)
-    (if (and (default-object? section)
-	     (re-string-match
-	      "\\`[ \t]*\\([^( \t]+\\)[ \t]*(\\(.+\\))[ \t]*\\'"
-	      topic))
-	(begin
-	  (set! section
-		(substring topic
-			   (re-match-start-index 2)
-			   (re-match-end-index 2)))
-	  (set! topic
-		(substring topic
-			   (re-match-start-index 1)
-			   (re-match-end-index 1))))
-	(set! section false))
+    (let ((r
+	   (and (default-object? section)
+		(re-string-match
+		 "\\`[ \t]*\\([^( \t]+\\)[ \t]*(\\(.+\\))[ \t]*\\'"
+		 topic))))
+      (if r
+	  (begin
+	    (set! section
+		  (substring topic
+			     (re-match-start-index 2 r)
+			     (re-match-end-index 2 r)))
+	    (set! topic
+		  (substring topic
+			     (re-match-start-index 1 r)
+			     (re-match-end-index 1 r))))
+	  (set! section false)))
     (let ((buffer-name
 	   (if (ref-variable manual-entry-reuse-buffer?)
 	       "*Manual-Entry*"

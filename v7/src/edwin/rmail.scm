@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.63 1999/08/10 16:54:54 cph Exp $
+;;; $Id: rmail.scm,v 1.64 1999/08/20 20:34:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -1250,9 +1250,10 @@ original message into it."
 	 ;; Append from field to message-id if needed.
 	 (let ((from (rfc822-first-address from)))
 	   (if (re-string-search-forward
-		(if (re-string-search-forward "@[^@]*\\'" from #f)
-		    (string-head from (re-match-start-index 0))
-		    from)
+		(let ((r (re-string-search-forward "@[^@]*\\'" from #f)))
+		  (if r
+		      (string-head from (re-match-start-index 0 r))
+		      from))
 		message-id #t)
 	       message-id
 	       (string-append message-id " (" from ")"))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.25 1999/01/28 04:01:08 cph Exp $
+$Id: floppy.scm,v 1.26 1999/08/20 20:35:56 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -610,9 +610,10 @@ M-x rename-file, or use the `r' command in Dired.")
       (let ((offset (time-zone-offset)))
 	(let loop
 	    ((start
-	      (if (re-substring-match leader-pattern string start end)
-		  (re-match-end-index 0)
-		  start)))
+	      (let ((r (re-substring-match leader-pattern string start end)))
+		(if r
+		    (re-match-end-index 0 r)
+		    start))))
 	  (if (= start end)
 	      '()
 	      (let ((eol
@@ -638,22 +639,23 @@ M-x rename-file, or use the `r' command in Dired.")
 			 "/dev/rfd:/\\(.+\\) *$")
 	  false)))
     (lambda (string start end offset)
-      (if (not (re-substring-match line-pattern string start end))
-	  (error "Line doesn't match dosls -l pattern:"
-		 (substring string start end)))
-      (let ((month (extract-string-match string 1))
-	    (day (extract-string-match string 2))
-	    (year (extract-string-match string 3))
-	    (hour (extract-string-match string 4))
-	    (minute (extract-string-match string 5))
-	    (filename (extract-string-match string 6)))
-	(values (string-downcase filename)
-		(+ (make-dos-time (string->number year)
-				  (month-name->number month)
-				  (string->number day)
-				  (string->number hour)
-				  (string->number minute))
-		   offset))))))
+      (let ((r (re-substring-match line-pattern string start end)))
+	(if (not r)
+	    (error "Line doesn't match dosls -l pattern:"
+		   (substring string start end)))
+	(let ((month (extract-string-match string r 1))
+	      (day (extract-string-match string r 2))
+	      (year (extract-string-match string r 3))
+	      (hour (extract-string-match string r 4))
+	      (minute (extract-string-match string r 5))
+	      (filename (extract-string-match string r 6)))
+	  (values (string-downcase filename)
+		  (+ (make-dos-time (string->number year)
+				    (month-name->number month)
+				    (string->number day)
+				    (string->number hour)
+				    (string->number minute))
+		     offset)))))))
 
 (define (month-name->number month)
   (let ((months
@@ -855,8 +857,8 @@ M-x rename-file, or use the `r' command in Dired.")
 (define (directory-filename? filename)
   (char=? #\/ (string-ref filename (- (string-length filename) 1))))
 
-(define (extract-string-match string n)
-  (substring string (re-match-start-index n) (re-match-end-index n)))
+(define (extract-string-match string r n)
+  (substring string (re-match-start-index n r) (re-match-end-index n r)))
 
 (define (three-way-sort = set set*)
   (let ((member? (member-procedure =)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: telnet.scm,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: telnet.scm,v 1.15 1999/08/20 20:35:48 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -70,19 +70,20 @@ use it instead of the default."
 	       (if (not new-process?)
 		   buffer-name
 		   (new-buffer buffer-name)))))
-       (if (re-string-match "\\([^ ]+\\) \\([^ ]+\\)" host)
-	   (let ((host
-		  (substring host
-			     (re-match-start-index 1)
-			     (re-match-end-index 1)))
-		 (port
-		  (substring host
-			     (re-match-start-index 2)
-			     (re-match-end-index 2))))
-	     (if (not (exact-nonnegative-integer? (string->number port)))
-		 (editor-error "Port must be a positive integer: " port))
-	     (make-comint mode buffer-name "telnet" host port))
-	   (make-comint mode buffer-name "telnet" host))))))
+       (let ((r (re-string-match "\\([^ ]+\\) \\([^ ]+\\)" host)))
+	 (if r
+	     (let ((host
+		    (substring host
+			       (re-match-start-index 1 r)
+			       (re-match-end-index 1 r)))
+		   (port
+		    (substring host
+			       (re-match-start-index 2 r)
+			       (re-match-end-index 2 r))))
+	       (if (not (exact-nonnegative-integer? (string->number port)))
+		   (editor-error "Port must be a positive integer: " port))
+	       (make-comint mode buffer-name "telnet" host port))
+	     (make-comint mode buffer-name "telnet" host)))))))
 
 (add-event-receiver! (ref-variable telnet-mode-hook)
 		     comint-strip-carriage-returns)

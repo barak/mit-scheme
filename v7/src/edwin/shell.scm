@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.19 1999/01/02 06:11:34 cph Exp $
+$Id: shell.scm,v 1.20 1999/08/20 20:35:42 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -139,7 +139,12 @@ Otherwise, one argument `-i' is passed to the shell."
 (define (shell-directory-tracker string)
   (if (ref-variable shell-dirtrack?)
       (let ((start
-	     (re-string-match "^\\s *" string #f (ref-variable syntax-table)))
+	     (let ((r
+		    (re-string-match "^\\s *" string #f
+				     (ref-variable syntax-table))))
+	       (if r
+		   (re-match-end-index 0 r)
+		   0)))
 	    (end (string-length string)))
 	(let ((try
 	       (let ((match
@@ -149,16 +154,18 @@ Otherwise, one argument `-i' is passed to the shell."
 					    #f
 					    (ref-variable syntax-table)))))
 		 (lambda (command)
-		   (let ((eoc (match command start)))
-		     (cond ((not eoc)
-			    false)
-			   ((match "\\s *\\(\;\\|$\\)" eoc)
-			    "")
+		   (let ((eoc
+			  (let ((r (match command start)))
+			    (and r
+				 (re-match-end-index r)))))
+		     (cond ((not eoc) #f)
+			   ((match "\\s *\\(\;\\|$\\)" eoc) "")
 			   ((match "\\s +\\([^ \t\;]+\\)\\s *\\(\;\\|$\\)" eoc)
-			    (substring string
-				       (re-match-start-index 1)
-				       (re-match-end-index 1)))
-			   (else false)))))))
+			    => (lambda (r)
+				 (substring string
+					    (re-match-start-index 1 r)
+					    (re-match-end-index 1 r))))
+			   (else #f)))))))
 	  (cond ((try (ref-variable shell-cd-regexp))
 		 => shell-process-cd)
 		((try (ref-variable shell-pushd-regexp))

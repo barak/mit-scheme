@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmailsrt.scm,v 1.11 1999/05/13 03:06:45 cph Exp $
+;;; $Id: rmailsrt.scm,v 1.12 1999/08/20 20:35:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -57,9 +57,10 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 				       (msg-memo/end memo))
 		    "")))
 	   ;; Remove `Re:'
-	   (if (re-string-match re-pattern key)
-	       (string-tail key (re-match-end-index 0))
-	       key))))
+	   (let ((r (re-string-match re-pattern key)))
+	     (if r
+		 (string-tail key (re-match-end-index 0 r))
+		 key)))))
      string<?)))
 
 (define-command rmail-sort-by-author 
@@ -174,49 +175,57 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 		   ("AUGUST" . "08")("SEPTEMBER" . "09")("OCTOBER" . "10")
 		   ("NOVEMBER" . "11")("DECEMBER" . "12")))
 	  (date (or date "")))
-    ;; Can understand the following styles:
-    ;; (1) 14 Apr 89 03:20:12 GMT
-    ;; (2) Fri, 17 Mar 89 4:01:33 GMT
-    ;; (3) Fri, 3 Apr 92 18:55 EST
-    ;;
-    ;; added [ ]+ to the regexp to handle date string put out
-    ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
-    ;; made seconds optional since research.att.com doesn't send it out
-      (if (re-string-search-forward
-	   "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)"
-	   date)
-	  (string-append
-	   ;; Year
-	   (let ((year
-		  (string->number
-		   (substring date
-			      (re-match-start-index 3)
-			      (re-match-end-index 3)))))
-	     (let ((y1 (modulo year 100)))
-	       (string-pad-left (number->string y1) 2)))
-	   ;; Month
-	   (cdr
-	    (assoc
-	     (string-upcase
-	      (substring (substring date
-				    (re-match-start-index 2)
-				    (re-match-end-index 2))
-			 0 3))
-	     month))
-	   ;; Day
-	   (let ((day
-		  (substring date
-			     (re-match-start-index 1)
-			     (re-match-end-index 1))))
-	     (string-pad-left day 2 #\0))
-	   ;; Time
-	   (string-pad-left
-	    (substring date (re-match-start-index 4) (re-match-end-index 4))
-	    2 #\0)
-	   (substring date (re-match-start-index 5) (re-match-end-index 5))
-	   (substring date (re-match-start-index 6) (re-match-end-index 6)))
-      ;; Cannot understand DATE string.
-	  date))))
+      ;; Can understand the following styles:
+      ;; (1) 14 Apr 89 03:20:12 GMT
+      ;; (2) Fri, 17 Mar 89 4:01:33 GMT
+      ;; (3) Fri, 3 Apr 92 18:55 EST
+      ;;
+      ;; added [ ]+ to the regexp to handle date string put out
+      ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
+      ;; made seconds optional since research.att.com doesn't send it out
+      (let ((r
+	     (re-string-search-forward
+	      "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)"
+	      date)))
+	(if r
+	    (string-append
+	     ;; Year
+	     (let ((year
+		    (string->number
+		     (substring date
+				(re-match-start-index 3 r)
+				(re-match-end-index 3 r)))))
+	       (let ((y1 (modulo year 100)))
+		 (string-pad-left (number->string y1) 2)))
+	     ;; Month
+	     (cdr
+	      (assoc
+	       (string-upcase
+		(substring (substring date
+				      (re-match-start-index 2 r)
+				      (re-match-end-index 2 r))
+			   0 3))
+	       month))
+	     ;; Day
+	     (let ((day
+		    (substring date
+			       (re-match-start-index 1 r)
+			       (re-match-end-index 1 r))))
+	       (string-pad-left day 2 #\0))
+	     ;; Time
+	     (string-pad-left
+	      (substring date
+			 (re-match-start-index 4 r)
+			 (re-match-end-index 4 r))
+	      2 #\0)
+	     (substring date
+			(re-match-start-index 5 r)
+			(re-match-end-index 5 r))
+	     (substring date
+			(re-match-start-index 6 r)
+			(re-match-end-index 6 r)))
+	    ;; Cannot understand DATE string.
+	    date)))))
 
 (define mail-string-delete
   (lambda (string start end)
@@ -226,42 +235,49 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define mail-strip-quoted-names
   (lambda (address)
-    (if (re-string-search-forward "\\`[ \t\n]*" address)
-	(set! address (string-tail address (re-match-end-index 0))))
+    (let ((r (re-string-search-forward "\\`[ \t\n]*" address)))
+      (if r
+	  (set! address (string-tail address (re-match-end-index 0 r)))))
     ;; strip surrounding whitespace
-    (if (re-string-search-forward "[ \t\n]*\\'" address)
-	(set! address (string-head address (re-match-start-index 0))))
+    (let ((r (re-string-search-forward "[ \t\n]*\\'" address)))
+      (if r
+	  (set! address (string-head address (re-match-start-index 0 r)))))
     (let loop ()
-      (if (re-string-search-forward "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)"
-				    address)
-	  (begin
-	    (set! address (mail-string-delete
-			   address 
-			   (re-match-start-index 0)
-			   (re-match-end-index 0)))
-	    (loop))))
+      (let ((r
+	     (re-string-search-forward
+	      "[ \t]*(\\([^)\"\\]\\|\\\\.\\|\\\\\n\\)*)"
+	      address)))
+	(if r
+	    (begin
+	      (set! address
+		    (mail-string-delete address 
+					(re-match-start-index 0 r)
+					(re-match-end-index 0 r)))
+	      (loop)))))
     ;; strip `quoted' names (This is supposed to hack `"Foo Bar" <bar@host>')
     (let loop ((the-pos 0))
-      (let ((pos
+      (let ((r
 	     (re-substring-match
 	      "[ \t]*\"\\([^\"\\]\\|\\\\.\\|\\\\\n\\)*\"[ \t\n]*"
 	      address the-pos (string-length address))))
-	(if pos
-	    (if (and (> (string-length address) (re-match-end-index 0))
-		     (char=? (string-ref address (re-match-end-index 0)) #\@))
-		(loop pos)
-		(begin
-		  (set! address
-			(mail-string-delete address
-					    the-pos (re-match-end-index 0)))
-		  (loop the-pos))))))
+	(if r
+	    (let ((pos (re-match-end-index 0 r)))
+	      (if (and (> (string-length address) pos)
+		       (char=? (string-ref address pos) #\@))
+		  (loop pos)
+		  (begin
+		    (set! address (mail-string-delete address the-pos pos))
+		    (loop the-pos)))))))
     ;; Retain only part of address in <> delims, if there is such a thing.
     (let loop ()
-      (if (re-string-search-forward "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)" address)
-	  (let ((junk-beg (re-match-end-index 1))
-		(junk-end (re-match-start-index 2))
-		(close (re-match-end-index 0)))
-	    (set! address (mail-string-delete address (-1+ close) close))
-	    (set! address (mail-string-delete address junk-beg junk-end))
-	    (loop))))
+      (let ((r
+	     (re-string-search-forward "\\(,\\|\\`\\)[^,]*<\\([^>,]*>\\)"
+				       address)))
+	(if r
+	    (let ((junk-beg (re-match-end-index 1 r))
+		  (junk-end (re-match-start-index 2 r))
+		  (close (re-match-end-index 0 r)))
+	      (set! address (mail-string-delete address (-1+ close) close))
+	      (set! address (mail-string-delete address junk-beg junk-end))
+	      (loop)))))
     address))

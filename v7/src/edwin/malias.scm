@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: malias.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+;;; $Id: malias.scm,v 1.5 1999/08/20 20:35:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
 ;;;
@@ -120,11 +120,12 @@
       (let loop ()
 	(let ((line (read-mailrc-line port)))
 	  (if line
-	      (let ((index
+	      (let ((r
 		     (re-string-match "^\\(a\\|alias\\|g\\|group\\)[ \t]+"
 				      line)))
-		(if index
-		    (let ((parsed-line (parse-mailrc-line line index)))
+		(if r
+		    (let ((parsed-line
+			   (parse-mailrc-line line (re-match-end-index 0 r))))
 		      (if (null? (cdr parsed-line))
 			  (loop)
 			  (cons parsed-line (loop))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.51 1999/01/28 04:00:03 cph Exp $
+;;; $Id: snr.scm,v 1.52 1999/08/20 20:35:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-1999 Massachusetts Institute of Technology
 ;;;
@@ -1377,14 +1377,16 @@ This shows News groups that have been created since the last time that
     (mark-temporary! start)))
 
 (define (compose-author-string from mark)
-  (if (and (ref-variable news-group-show-author-name mark)
-	   (or (re-string-match "^\"\\(.+\\)\"[ \t]+<.+>$" from)
-	       (re-string-match "^\\(.+\\)<.+>$" from)
-	       (re-string-match "^[^ \t]+[ \t]+(\\(.+\\))$" from)))
-      (string-trim (substring from
-			      (re-match-start-index 1)
-			      (re-match-end-index 1)))
-      (or (rfc822-first-address from) from)))
+  (let ((r
+	 (and (ref-variable news-group-show-author-name mark)
+	      (or (re-string-match "^\"\\(.+\\)\"[ \t]+<.+>$" from)
+		  (re-string-match "^\\(.+\\)<.+>$" from)
+		  (re-string-match "^[^ \t]+[ \t]+(\\(.+\\))$" from)))))
+    (if r
+	(string-trim (substring from
+				(re-match-start-index 1 r)
+				(re-match-end-index 1 r)))
+	(or (rfc822-first-address from) from))))
 
 (define (news-group-buffer:header-mark buffer header)
   (let ((index (news-header:index header)))
