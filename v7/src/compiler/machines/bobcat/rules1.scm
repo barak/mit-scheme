@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.18 1988/11/04 21:49:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.19 1989/01/18 04:04:07 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -281,10 +281,10 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (FIXNUM->OBJECT (REGISTER (? source))))
-  (let ((target (indirect-reference! a n))
-	(temporary (move-to-temporary-register! source 'DATA)))
-    (LAP ,@(fixnum->object temporary)
-	 (MOV L ,temporary ,target))))
+  (let ((target (indirect-reference! a n)))
+    (let ((temporary (move-to-temporary-register! source 'DATA)))
+      (LAP ,@(fixnum->object temporary)
+	   (MOV L ,temporary ,target)))))
 
 ;;;; Transfers to Memory
 
