@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.40 1993/10/21 11:49:51 cph Exp $
+$Id: rep.scm,v 14.41 1993/10/21 11:57:46 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -146,7 +146,7 @@ MIT in each case. |#
 			 (*error-output-port* port)
 			 (*notification-output-port* port)
 			 (*trace-output-port* port)
-			 (*interaction-output-port* port))
+			 (*interaction-i/o-port* port))
 	       (let loop ((message message))
 		 (loop
 		  (bind-abort-restart cmdl
