@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.356 2001/01/04 22:25:46 cph Exp $
+$Id: runtime.pkg,v 14.357 2001/01/05 20:06:57 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -196,7 +196,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  vector-8b-find-previous-char
 	  vector-8b-find-previous-char-ci
 	  vector-8b-ref
-	  vector-8b-set!)
+	  vector-8b-set!
+	  xstring-length
+	  xstring-move!
+	  xstring?
+	  xsubstring-move!)
   (export (runtime char-syntax)
 	  guarantee-substring)
   (initialization (initialize-package!)))

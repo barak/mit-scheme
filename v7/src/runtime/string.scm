@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.36 2001/01/04 22:25:49 cph Exp $
+$Id: string.scm,v 14.37 2001/01/05 20:06:52 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -989,8 +989,30 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (external-string? xstring))
       (error:wrong-type-argument xstring "external string"
 				 'EXTERNAL-STRING-LENGTH))
-  ((ucode-primitive extended-string-length)
-   (external-string-descriptor xstring)))
+   ((ucode-primitive extended-string-length)
+    (external-string-descriptor xstring)))
+
+(define (xstring? object)
+  (or (string? object)
+      (external-string? object)))
+
+(define (xstring-length xstring)
+  (cond ((string? xstring)
+	 (string-length xstring))
+	((external-string? xstring)
+	 ((ucode-primitive extended-string-length)
+	  (external-string-descriptor xstring)))
+	(else
+	 (error:wrong-type-argument xstring "xstring" 'XSTRING-LENGTH))))
+
+(define (xstring-move! xstring1 xstring2 start2)
+  (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
+
+(define (xsubstring-move! xstring1 start1 end1 xstring2 start2)
+  (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
+	 (substring-move-left! xstring1 start1 end1 xstring2 start2))
+	((> start2 start1)
+	 (substring-move-right! xstring1 0 end1 xstring2 start2))))
 
 ;;;; Guarantors
 ;;
