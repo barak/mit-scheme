@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.102 2000/05/23 20:19:06 cph Exp $
+;;; $Id: imail-top.scm,v 1.103 2000/05/23 21:00:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -106,6 +106,22 @@ if none is otherwise specified.
 May be overridden by an explicit mailbox in imail-primary-folder."
   "inbox"
   string?)
+
+(define-variable imail-pass-phrase-retention-time
+  "The amount of time, in minutes, that IMAIL retains pass phrases.
+The pass phrase is deleted if unused for this long.
+Set this to zero if you don't want pass-phrase retention."
+  30
+  exact-nonnegative-integer?)
+
+(add-variable-assignment-daemon!
+ (ref-variable-object imail-pass-phrase-retention-time)
+ (lambda (buffer variable)
+   (clean-imail-memoized-pass-phrases
+    (get-universal-time)
+    (if buffer
+	(variable-local-value buffer variable)
+	(variable-default-value variable)))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -253,16 +269,32 @@ regardless of the folder type."
   prompt-for-yes-or-no?)
 
 (define (imail-call-with-pass-phrase url receiver)
-  (let ((key (url-pass-phrase-key url)))
-    (let ((obscured (hash-table/get imail-memoized-pass-phrases key #f)))
-      (if obscured
-	  (call-with-unobscured-pass-phrase obscured receiver)
+  (let ((key (url-pass-phrase-key url))
+	(now (get-universal-time))
+	(retention-time (ref-variable imail-pass-phrase-retention-time)))
+    (clean-imail-memoized-pass-phrases now retention-time)
+    (let ((entry (hash-table/get imail-memoized-pass-phrases key #f)))
+      (if entry
+	  (begin
+	    (set-car! entry now)
+	    (call-with-unobscured-pass-phrase (cdr entry) receiver))
 	  (call-with-pass-phrase
 	   (string-append "Pass phrase for " key)
 	   (lambda (pass-phrase)
-	     (hash-table/put! imail-memoized-pass-phrases key
-			      (obscure-pass-phrase pass-phrase))
+	     (if (> retention-time 0)
+		 (hash-table/put! imail-memoized-pass-phrases key
+				  (cons now
+					(obscure-pass-phrase pass-phrase))))
 	     (receiver pass-phrase)))))))
+
+(define (clean-imail-memoized-pass-phrases now retention-time)
+  (if (> retention-time 0)
+      (hash-table/for-each imail-memoized-pass-phrases
+	(let ((cutoff (- now retention-time)))
+	  (lambda (key datum)
+	    (if (<= (car datum) cutoff)
+		(hash-table/remove! imail-memoized-pass-phrases key)))))
+      (hash-table/clear! imail-memoized-pass-phrases)))
 
 (define imail-memoized-pass-phrases
   (make-string-hash-table))
@@ -327,11 +359,11 @@ Instead, these commands are available:
 \\[imail-forward]	Forward this message to another user.
 \\[imail-continue]	Continue composing outgoing message started before.
 
-\\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-input]	Append messages from a specified folder.
+\\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-copy-messages]	Copy all messages in selected folder to another folder.
 \\[imail-create-folder]	Create a new folder.  (Normally not needed
-	  as output commands auto-create folders.)
+	  as output commands create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
@@ -364,6 +396,7 @@ variable's documentation (using \\[describe-variable]) for details:
     imail-kept-headers
     imail-message-filter
     imail-mode-hook
+    imail-pass-phrase-retention-time
     imail-primary-folder
     imail-reply-with-re
 
@@ -415,8 +448,9 @@ variable's documentation (using \\[describe-variable]) for details:
 
 (define-key 'imail #\t		'imail-toggle-header)
 (define-key 'imail #\m-s	'imail-search)
-(define-key 'imail #\o		'imail-output)
 (define-key 'imail #\i		'imail-input)
+(define-key 'imail #\o		'imail-output)
+(define-key 'imail #\m-o	'imail-copy-messages)
 (define-key 'imail #\+		'imail-create-folder)
 (define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)

@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.46 2000/05/23 20:19:09 cph Exp $
+$Id: todo.txt,v 1.47 2000/05/23 21:00:52 cph Exp $
 
 Bug fixes
 ---------
@@ -63,8 +63,6 @@ New features
   should use UIDs for IMAP folders; for other folders perhaps the
   message ID can be used.  (Or perhaps no cache is required for
   non-IMAP folders.)
-
-* Password memoization should be controllable from the editor.
 
 * Implement file backup when writing file folders.
 
