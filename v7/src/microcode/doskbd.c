@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: doskbd.c,v 1.10 1992/10/07 06:23:30 jinx Exp $
+$Id: doskbd.c,v 1.11 1992/10/17 23:07:22 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,6 +39,8 @@ MIT in each case. */
 #include <dos.h>
 #include <int.h>
 #include "msdos.h"
+#include "osio.h"
+#include "ostty.h"
 
 /* These flags determine how the code will behave. */
 
@@ -1494,21 +1496,31 @@ struct keyboard_method_s *
 #define N_KEYBOARD_METHODS						\
   ((sizeof (keyboard_methods)) / (sizeof (struct keyboard_method_s)))
 
+static int
+stdin_is_keyboard_p (void)
+{
+  Tchannel input = (OS_tty_input_channel ());
+  if ((OS_channel_type (input)) != channel_type_terminal)
+    return (0);
+  return (1);
+}
+
 int
 dos_install_kbd_hook (void)
 {
   int i, result;
 
-  for (i = 0; i < N_KEYBOARD_METHODS; i++)
-  {
-    if ((* (keyboard_methods[i].present)) ())
+  if (stdin_is_keyboard_p ())
+    for (i = 0; i < N_KEYBOARD_METHODS; i++)
     {
-      result = ((* (keyboard_methods[i].install)) ());
-      if (result == DOS_SUCCESS)
-	installed_keyboard_method = &keyboard_methods[i];
-      return (result);
+      if ((* (keyboard_methods[i].present)) ())
+      {
+	result = ((* (keyboard_methods[i].install)) ());
+	if (result == DOS_SUCCESS)
+	  installed_keyboard_method = &keyboard_methods[i];
+	return (result);
+      }
     }
-  }
   return (DOS_FAILURE);
 }
 
