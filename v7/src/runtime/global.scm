@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.35 1992/02/08 15:08:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.36 1992/05/10 13:36:29 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -238,12 +238,17 @@ MIT in each case. |#
 (define (fasdump object filename)
   (let ((filename (->namestring (merge-pathnames filename)))
 	(port (nearest-cmdl/port)))
-    (fresh-line port)
-    (write-string ";Dumping " port)
-    (write (enough-namestring filename) port)
-    (if (not ((ucode-primitive primitive-fasdump) object filename false))
-	(error "FASDUMP: Object is too large to be dumped:" object))
-    (write-string " -- done" port)))
+    (let loop ()
+      (fresh-line port)
+      (write-string ";Dumping " port)
+      (write (enough-namestring filename) port)
+      (if ((ucode-primitive primitive-fasdump) object filename false)
+	  (write-string " -- done" port)
+	  (begin
+	    (with-simple-restart 'RETRY "Try again."
+	      (lambda ()
+		(error "FASDUMP: Object is too large to be dumped:" object)))
+	    (loop))))))
 
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects
