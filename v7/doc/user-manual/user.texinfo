@@ -1,0 +1,2028 @@
+\input texinfo @c -*-Texinfo-*-
+@tex
+\special{twoside}
+@end tex
+@c %**start of header
+@setfilename user.info
+@settitle MIT Scheme User's Manual
+@c %**end of header
+@setchapternewpage odd
+@synindex vr fn
+
+@ifinfo
+This file documents the use of MIT Scheme.
+
+Copyright @copyright{} 1991 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and Computer
+Science.  Permission to copy this document, to redistribute it, and to use
+it for any purpose is granted, subject to the following restrictions and
+understandings.
+
+@enumerate
+@item
+Any copy made of this document must include this copyright notice in
+full.
+
+@item
+Users of this document agree to make their best efforts (a) to return to
+the MIT Scheme project any improvements or extensions that they make, so
+that these may be included in future releases; and (b) to inform MIT of
+noteworthy uses of this document.
+
+@item
+All materials developed as a consequence of the use of this document shall
+duly acknowledge such use, in accordance with the usual standards of
+acknowledging credit in academic research.
+
+@item
+MIT has made no warrantee or representation that the contents of this
+document will be error-free, and MIT is under no obligation to provide any
+services, by way of maintenance, update, or otherwise.
+
+@item
+In conjunction with products arising from the use of this material, there
+shall be no use of the name of the Massachusetts Institute of Technology
+nor of any adaptation thereof in any advertising, promotional, or sales
+literature without prior written consent from MIT in each case.
+@end enumerate
+@end ifinfo
+
+@titlepage
+@title{MIT Scheme User's Manual}
+@subtitle Edition 0.9
+@subtitle for Scheme Release 7.1
+@subtitle DRAFT: @today{}
+@author by Chris Hanson
+
+@page
+
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1991 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and Computer
+Science.  Permission to copy this document, to redistribute it, and to use
+it for any purpose is granted, subject to the following restrictions and
+understandings.
+
+@enumerate
+@item
+Any copy made of this document must include this copyright notice in
+full.
+
+@item
+Users of this document agree to make their best efforts (a) to return to
+the MIT Scheme project any improvements or extensions that they make, so
+that these may be included in future releases; and (b) to inform MIT of
+noteworthy uses of this document.
+
+@item
+All materials developed as a consequence of the use of this document shall
+duly acknowledge such use, in accordance with the usual standards of
+acknowledging credit in academic research.
+
+@item
+MIT has made no warrantee or representation that the contents of this
+document will be error-free, and MIT is under no obligation to provide any
+services, by way of maintenance, update, or otherwise.
+
+@item
+In conjunction with products arising from the use of this material, there
+shall be no use of the name of the Massachusetts Institute of Technology
+nor of any adaptation thereof in any advertising, promotional, or sales
+literature without prior written consent from MIT in each case.
+@end enumerate
+@end titlepage
+
+@node Top, Running Scheme, (dir), (dir)
+
+@menu
+* Running Scheme::              Running Scheme
+* REPL::                        The Read-Eval-Print Loop
+* Debugging::                   Debugging
+* Loading Files::               Loading Files
+* World Images::                World Images
+* Compiling Files::             Compiling Files
+* GNU Emacs Interface::         GNU Emacs Interface
+* Edwin::                       Edwin
+* Variable Index::              Variable, Declaration, and Option Index
+* Key Index::                   Key Index
+* Concept Index::               Concept Index
+
+ --- The Detailed Node Listing ---
+
+Running Scheme
+
+* Basics of Starting Scheme::   Basics of Starting Scheme
+* Command-Line Options::        Command-Line Options
+* Environment Variables::       Environment Variables
+* Leaving Scheme::              Leaving Scheme
+
+The Read-Eval-Print Loop
+
+* The Prompt and Level Number::  The Prompt and Level Number
+* Interrupting::                Interrupting
+* Proceeding::                  Proceeding
+* The Current REPL Environment::  The Current REPL Environment
+
+Debugging
+
+* Subproblems and Reductions::  Subproblems and Reductions
+* Debugger::                    The Debugger
+
+Compiling Files
+
+* Compilation Procedures::      Compilation Procedures
+* Declarations::                Declarations
+
+Declarations
+
+* Standard Names::              Standard Names
+* In-line Coding::              In-line Coding
+* Operator Reduction::          Operator Reduction
+@end menu
+
+@node Running Scheme, REPL, Top, Top
+@chapter Running Scheme
+
+This chapter describes how to run MIT Scheme on a unix system.  It also
+describes the command-line options and environment variables that affect
+how Scheme runs.
+
+@menu
+* Basics of Starting Scheme::   Basics of Starting Scheme
+* Command-Line Options::        Command-Line Options
+* Environment Variables::       Environment Variables
+* Leaving Scheme::              Leaving Scheme
+@end menu
+
+@node Basics of Starting Scheme, Command-Line Options, Running Scheme, Running Scheme
+@section Basics of Starting Scheme
+
+Usually, MIT Scheme is invoked by typing
+
+@example
+scheme
+@end example
+
+@noindent
+at your operating system's command interpreter.  Scheme will load
+itself, clear the screen, and print something like this:
+
+@example
+Scheme saved on Monday December 10, 1990 at 9:55:37 PM
+  Release 7.1.0 (beta)
+  Microcode 11.59
+  Runtime 14.104
+@end example
+
+@noindent
+This information, which can be printed again by evaluating
+
+@findex identify-world
+@lisp
+(identify-world)
+@end lisp
+
+@cindex release number
+@cindex microcode, version
+@cindex runtime system, version
+@cindex version numbers
+@noindent
+tells you the following version information.  ``Release'' is the release
+number for the entire Scheme system.  This number is changed each time a
+new version of Scheme is released.  An ``(alpha)'' or ``(beta)''
+following the release number indicates that this is a alpha- or
+beta-test release.  ``Microcode'' is the version number for the part of
+the system that is written in C.  ``Runtime'' is the version number for
+the part of the system that is written in Scheme.
+
+@cindex subsystem versions
+@cindex SF, version
+@cindex compiler, version
+@cindex Edwin, version
+@cindex student package, version
+@cindex compatibility package, version
+Following this there may be additional version numbers for specific
+subsystems.  @samp{SF} refers to the scode optimization program
+@code{sf}, @samp{Liar} is the native-code compiler, @samp{Edwin} is the
+Emacs-like text editor, and @samp{Student} is the S&ICP compatibility
+package.
+
+@cindex compiler, starting
+If the compiler is supported for your machine, you can invoke it by
+giving Scheme the @samp{-compiler} option:
+
+@example
+scheme -compiler
+@end example
+
+@noindent
+This option causes Scheme to use a larger constant space and heap, and
+to load the world image containing the compiler.
+
+@cindex init file
+Scheme supports @dfn{init files}: if the file @file{~/.scheme.init}
+exists, it is loaded immediately after the identification banner, and
+before the input prompt is printed.  The @code{-no-init-file} command
+line option causes Scheme to ignore the @file{~/.scheme.init} file (see
+@xref{Command-Line Options}).
+
+@node Command-Line Options, Environment Variables, Basics of Starting Scheme, Running Scheme
+@section Command-Line Options
+
+Scheme accepts the following command-line options.  The options may
+appear in any order, but they must all appear before any other
+arguments on the command line.  (At present, any arguments other than
+these options will generate a warning message when Scheme starts.  In
+the future, there will be an advertised mechanism by which the extra
+arguments can be handled by user code.)
+
+@table @code
+
+@item -band @var{filename}
+@findex -band
+@findex MITSCHEME_BAND
+@cindex world image
+@cindex band
+Specifies the initial world image file (@dfn{band}) to be loaded.
+Searches for @var{filename} in the working directory and the library
+directories, using the full pathname of the first readable file of that
+name.  If @var{filename} is an absolute pathname (on unix, this means it
+starts with @samp{/}), then no search occurs --- @var{filename} is
+tested for readability and then used directly.  If this option isn't
+given, the filename is the value of the environment variable
+@code{MITSCHEME_BAND}, or if that isn't defined, @file{runtime.com}; in
+these cases the library directories are searched, but not the working
+directory.
+
+@item -compiler
+@findex -compiler
+@findex MITSCHEME_COMPILER_BAND
+This option specifies defaults appropriate for loading the compiler.  It
+specifies the use of large sizes, exactly like @code{-large}.  If the
+@code{-band} option is also specified, that is the only effect of this
+option.  Otherwise, the default band's filename is the value of the
+environment variable @code{MITSCHEME_COMPILER_BAND}, if defined, or
+@file{compiler.com}; the library directories are searched to locate this
+file.  Note that the @code{-compiler} option is available only on
+machines with compiled-code support.
+
+@item -edwin
+@findex -edwin
+@findex MITSCHEME_EDWIN_BAND
+This option specifies defaults appropriate for loading the editor.  It
+specifies the use of large sizes, exactly like @code{-large}.  If the
+@code{-band} option is also specified, that is the only effect of this
+option.  Otherwise, the default band's filename is the value of the
+environment variable @code{MITSCHEME_EDWIN_BAND}, if defined, or
+@file{edwin.com}; the library directories are searched to locate this
+file.  Note that the @code{-edwin} option is available only on machines
+with compiled-code support.
+
+@item -no-init-file
+@findex -no-init-file
+This option causes Scheme to ignore the @file{~/.scheme.init} file,
+normally loaded automatically when Scheme starts (if it exists).
+
+@item -eval
+@findex -eval
+This option causes Scheme to evaluate the expressions following it on
+the command line, up to (but not including) the next option that starts
+with a hyphen.  The expressions are evaluated in the
+@code{user-initial-environment}.
+
+@item -load
+@findex -load
+This option causes Scheme to load the files (or lists of files)
+following it on the command line, up to (but not including) the next
+option that starts with a hyphen.  The files are loaded in the
+@code{user-initial-environment} using the default syntax table.
+
+@item -large
+@findex -large
+Specifies that large heap, constant, and stack sizes should be used.
+These are specified by the environment variables
+
+@group
+@findex MITSCHEME_LARGE_HEAP
+@findex MITSCHEME_LARGE_CONSTANT
+@findex MITSCHEME_LARGE_STACK
+@example
+MITSCHEME_LARGE_HEAP
+MITSCHEME_LARGE_CONSTANT
+MITSCHEME_LARGE_STACK
+@end example
+@end group
+
+@noindent
+If this option isn't given, the small sizes are used, specified by the
+environment variables
+
+@group
+@findex MITSCHEME_SMALL_HEAP
+@findex MITSCHEME_SMALL_CONSTANT
+@findex MITSCHEME_SMALL_STACK
+@example
+MITSCHEME_SMALL_HEAP
+MITSCHEME_SMALL_CONSTANT
+MITSCHEME_SMALL_STACK
+@end example
+@end group
+
+@noindent
+There are reasonable built-in defaults for all of these environment
+variables, should any of them be undefined.  Note that any or all of the
+defaults can be individually overridden by the @code{-heap},
+@code{-constant}, and @code{-stack} options.
+
+@findex print-gc-statistics
+Note: the Scheme procedure @code{(print-gc-statistics)} shows how much
+heap and constant space is available and in use.
+
+@item -heap @var{blocks}
+@findex -heap
+Specifies the size of the heap in 1024-word blocks.  Overrides any
+default.  Normally two such heaps are allocated; @code{bchscheme}
+allocates only one, and uses a disk file for the other.
+
+@item -constant @var{blocks}
+@findex -constant
+Specifies the size of constant space in 1024-word blocks.  Overrides any
+default.  Constant space holds the compiled code for the runtime system
+and other subsystems.
+
+@item -stack @var{blocks}
+@findex -stack
+Specifies the size of the stack in 1024-word blocks.  Overrides any
+default.  This is Scheme's stack, NOT the unix stack used by C programs.
+
+@item -option-summary
+@findex -option-summary
+Causes Scheme to write an option summary to standard error.  This shows
+the values of all of the settable option variables.
+
+@item -emacs
+@findex -emacs
+Specifies that Scheme is running as a subprocess of GNU Emacs.  This
+option is automatically supplied by GNU Emacs, and should not be given
+under other circumstances.
+
+@item -interactive
+@findex -interactive
+If this option isn't specified, and Scheme's standard @sc{i/o} is not a
+terminal, Scheme will detach itself from its controlling terminal.  This
+will prevent it from getting signals sent to the process group of that
+terminal.  If this option is specified, Scheme will not detach itself
+from the controlling terminal.
+
+This detaching behavior is useful for running Scheme as a background
+job.  For example, using the C shell in unix, the following will run
+Scheme as a background job, redirecting its input and output to files,
+and preventing it from being killed by keyboard interrupts or by logging
+out:
+
+@example
+scheme < /usr/cph/foo.in >& /usr/cph/foo.out &
+@end example
+
+@item -nocore
+@findex -nocore
+Specifies that Scheme should not generate a core dump under any
+circumstances.  If this option is not given, and Scheme terminates
+abnormally, you will be prompted to decide whether a core dump should be
+generated.
+
+@item -library @var{path}
+@findex -library
+@findex MITSCHEME_LIBRARY_PATH
+Sets the library search path to @var{path}.  This is a colon-separated
+list of directories that is searched to find various library files, such
+as bands.  If this option is not given, the value of the environment
+variable @code{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
+@file{/usr/local/lib/mit-scheme} is used.
+
+@item -utabmd @var{filename}
+@item -utab @var{filename}
+@findex -utabmd
+@findex -utab
+@findex MITSCHEME_UTABMD_FILE
+Specifies that @var{filename} contains the microcode tables (the
+microcode tables are information that informs the runtime system about
+the microcode's structure).  @var{Filename} is searched for in the
+working directory and the library directories.  If this option isn't
+given, the filename is the value of the environment variable
+@code{MITSCHEME_UTABMD_FILE}, or if that isn't defined,
+@file{utabmd.bin}; in these cases the library directories are searched,
+but not the working directory.
+
+@code{-utab} is an alternate name for the @code{-utabmd} option.  At
+most one of these options may be given.
+
+@item -fasl @var{filename}
+@findex -fasl
+Specifies that a @dfn{cold load} should be performed, using
+@var{filename} as the initial file to be loaded.  If this option isn't
+given, a normal load is performed instead.  This option may not be used
+together with the @code{-band} option.  This option is useful only for
+maintainance and development of the MIT Scheme runtime system.
+
+@item -gc-directory @var{directory}
+@findex -gc-directory
+@findex MITSCHEME_GC_DIRECTORY
+Specifies that @var{directory} should be used to create files for
+garbage collection.  This option is recognized only by @code{bchscheme}.
+If the option is not given, the value of environment variable
+@code{MITSCHEME_GC_DIRECTORY} is used instead, and if that is not
+defined, @file{/tmp} is used.
+
+@item -gc-drone @var{program}
+@findex -gc-drone
+@findex MITSCHEME_GC_DRONE
+Specifies that @var{program} should be used as the drone program for
+overlapped I/O during garbage collection.  This option is recognized
+only by @code{bchscheme}.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_DRONE} is used instead, and if
+that is not defined, @file{gcdrone} is used.
+
+@item -gc-end-position @var{number}
+@findex -gc-end-position
+@findex MITSCHEME_GC_END_POSITION
+This option is recognized only by @code{bchscheme}.  It specifies the
+last byte position in @code{-gc-file} at which this invocation of scheme
+can write.  If the option is not given, the value of environment
+variable @code{MITSCHEME_GC_END_POSITION} is used instead, and if that
+is not defined, it is computed from the start position (as provided with
+-gc-start-position) and the heap size.  The area of the file used (and
+locked if possible) is the region between @code{-gc-start-position} and
+@code{-gc-end-position}.
+
+@item -gc-file @var{filename}
+@item -gcfile
+@findex -gc-file
+@findex -gcfile
+@findex MITSCHEME_GC_FILE
+Specifies that @var{filename} should be used for garbage collection.
+This option is recognized only by @code{bchscheme}.  If the option is
+not given, the value of environment variable @code{MITSCHEME_GC_FILE} is
+used, and if this is not defined, a unique filename is generated in the
+directory specified with @code{-gc-directory}.
+
+@code{-gcfile} is an alias for @code{-gc-file}.  At most one of these
+options should be specified.
+
+@item -gc-keep
+@findex -gc-keep
+Specifies that the gc file used for garbage collection should not be
+deleted when scheme terminates.  This option is recognized only by
+@code{bchscheme}.  The gc file is deleted only if the file was created
+by this invocation of scheme, and this option is not set.
+
+@item -gc-read-overlap @var{N}
+@findex -gc-read-overlap
+@findex MITSCHEME_GC_READ_OVERLAP
+Specifies that scheme should delegate at most @var{N} simultaneous disk
+read operations during garbage collection.  This option is recognized
+only by @code{bchscheme}.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_READ_OVERLAP} is used instead,
+and if that is not defined, 0 is used, disabling overlapped reads.
+
+@item -gc-start-position @var{number}
+@findex -gc-start-position
+@findex MITSCHEME_GC_START_POSITION
+This option is recognized only by @code{bchscheme}.  It specifies the
+first byte position in @code{-gc-file} at which this invocation of
+scheme can write.  If the option is not given, the value of environment
+variable @code{MITSCHEME_GC_START_POSITION} is used instead, and if that
+is not defined, 0 is used, meaning the beginning of the file.  The area
+of the file used (and locked if possible) is the region between
+@code{-gc-start-position} and @code{-gc-end-position}.
+
+@item -gc-window-size @var{blocks}
+@findex -gc-window-size
+@findex MITSCHEME_GC_WINDOW_SIZE
+Specifies the size of the windows into new space during garbage
+collection.  This option is recognized only by @code{bchscheme}.
+If this option is not given, the value of environment variable
+@code{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that is not
+defined, the value 16 is used.
+
+@item -gc-write-overlap @var{N}
+@findex -gc-write-overlap
+@findex MITSCHEME_GC_WRITE_OVERLAP
+Specifies that scheme should delegate at most @var{N} simultaneous disk
+write operations during garbage collection.  This option is recognized
+only by @code{bchscheme}.  If the option is not given, the value of
+environment variable @code{MITSCHEME_GC_WRITE_OVERLAP} is used instead,
+and if that is not defined, 0 is used, disabling overlapped writes.
+@end table
+
+@node Environment Variables, Leaving Scheme, Command-Line Options, Running Scheme
+@section Environment Variables
+
+This is a summary of the environment variables that are specific to MIT
+Scheme.
+
+@table @asis
+
+@item @code{MITSCHEME_BAND} (default: @file{runtime.com})
+@findex MITSCHEME_BAND
+The initial band to be loaded.  Overridden by @code{-band},
+@code{-compiler}, or @code{-edwin}.
+
+@item @code{MITSCHEME_COMPILER_BAND} (default: @file{compiler.com})
+@findex MITSCHEME_COMPILER_BAND
+The initial band to be loaded if the @code{-compiler} option is given.
+Overridden by @code{-band}.
+
+@item @code{MITSCHEME_EDWIN_BAND} (default: @file{edwin.com})
+@findex MITSCHEME_EDWIN_BAND
+The initial band to be loaded if the @code{-edwin} option is given.
+Overridden by @code{-band}.
+
+@item @code{MITSCHEME_LARGE_CONSTANT} (default: @samp{1000})
+@findex MITSCHEME_LARGE_CONSTANT
+The size of constant space, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-constant}.  Note: default is somewhat larger on RISC machines.
+
+@item @code{MITSCHEME_LARGE_HEAP} (default: @samp{1000})
+@findex MITSCHEME_LARGE_HEAP
+The size of the heap, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-heap}.
+
+@item @code{MITSCHEME_LARGE_STACK} (default: @samp{100})
+@findex MITSCHEME_LARGE_STACK
+The size of the stack, in 1024-word blocks, if the @code{-large},
+@code{-compiler}, or @code{-edwin} options are given.  Overridden by
+@code{-stack}.
+
+@item @code{MITSCHEME_LIBRARY_PATH} (default: @file{/usr/local/lib/mit-scheme})
+@findex MITSCHEME_LIBRARY_PATH
+A colon-separated list of directories.  These directories are searched,
+left to right, to find bands and various other files.
+
+@item @code{MITSCHEME_SMALL_CONSTANT} (default: @samp{400})
+@findex MITSCHEME_SMALL_CONSTANT
+The size of constant space, in 1024-word blocks, if the size options are
+not given.  Overridden by @code{-constant}, @code{-large},
+@code{-compiler}, or @code{-edwin}.  Note: default is somewhat larger on
+RISC machines.
+
+@item @code{MITSCHEME_SMALL_HEAP} (default: @samp{250})
+@findex MITSCHEME_SMALL_HEAP
+The size of the heap, in 1024-word blocks, if the size options are not
+given.  Overridden by @code{-heap}, @code{-large}, @code{-compiler}, or
+@code{-edwin}.
+
+@item @code{MITSCHEME_SMALL_STACK} (default: @samp{100})
+@findex MITSCHEME_SMALL_STACK
+The size of the stack, in 1024-word blocks, if the size options are not
+given.  Overridden by @code{-stack}, @code{-large}, @code{-compiler}, or
+@code{-edwin}.
+
+@item @code{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin})
+@findex MITSCHEME_UTABMD_FILE
+The file containing the microcode tables.  Overridden by @code{-utabmd}
+and @code{-utab}.
+
+@item @code{MITSCHEME_GC_DIRECTORY} (default: @file{/tmp})
+@findex MITSCHEME_GC_DIRECTORY
+The directory where to write gc files.  Overriden by @code{-gc-directory}.
+
+@item @code{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
+@findex MITSCHEME_GC_DRONE
+The program to use as the I/O drone during garbage collection.
+Overriden by @code{-gc-drone}.
+
+@item @code{MITSCHEME_GC_END_POSITION} (default: start-position + heap-size)
+@findex MITSCHEME_GC_END_POSITION
+The last position in the gc file to use.  Overriden by
+@code{-gc-end-position}.
+
+@item @code{MITSCHEME_GC_FILE} (default: @file{GCXXXXXX})
+@findex MITSCHEME_GC_FILE
+The name of the file to use for garbage collection.  If it ends in 6 Xs,
+the Xs are replaced by a letter and process id of the scheme process,
+thus generating a unique name.  Overriden by @code{-gc-file}.
+
+@item @code{MITSCHEME_GC_READ_OVERLAP} (default: 0)
+@findex MITSCHEME_GC_READ_OVERLAP
+The maximum number of simultaneous read operations.  Overriden by
+@code{-gc-read-overlap}.
+
+@item @code{MITSCHEME_GC_START_POSITION} (default: 0)
+@findex MITSCHEME_GC_START_POSITION
+The first position in the gc file to use.  Overriden by
+@code{-gc-start-position}.
+
+@item @code{MITSCHEME_GC_WINDOW_SIZE} (default: 16)
+@findex MITSCHEME_GC_WINDOW_SIZE
+The size in blocks of windows into new space (in the gc file).
+Overriden by @code{-gc-window-size}.
+
+@item @code{MITSCHEME_GC_WRITE_OVERLAP} (default: 0)
+@findex MITSCHEME_GC_WRITE_OVERLAP
+The maximum number of simultaneous write operations.  Overriden by
+@code{-gc-write-overlap}.
+@end table
+
+@node Leaving Scheme,  , Environment Variables, Running Scheme
+@section Leaving Scheme
+
+There are two ways you can leave Scheme.  The first is to evaluate
+
+@findex exit
+@lisp
+(exit)
+@end lisp
+
+@noindent
+which will halt the Scheme system, after first requesting confirmation.
+Any information that was in the environment is lost, so this should not
+be done lightly.
+
+The second way to leave Scheme is to suspend it; when this is done you
+may later restart where you left off.  Unfortunately this is not
+possible in all operating systems --- currently it is known to work on
+BSD Unix, Ultrix, SunOS, HP-UX (version 6.5 or later).  It does NOT work
+on AT&T Unix.  (Specifically, for unix or POSIX systems, suspension is
+available if the system supports job control.)
+
+Scheme is suspended by evaluating
+
+@findex quit
+@lisp
+(quit)
+@end lisp
+
+@noindent
+If your system supports suspension, this will cause Scheme to stop, and
+you will be returned to the operating system's command interpreter.
+Scheme remains stopped, and can be continued using the job-control
+commands of your command interpreter.  If your system doesn't support
+suspension, this procedure does nothing.
+
+@node REPL, Debugging, Running Scheme, Top
+@chapter The Read-Eval-Print Loop
+
+@cindex REPL
+When you first start up Scheme, you will be typing at a program called
+the @dfn{Read-Eval-Print Loop} (abbreviated @dfn{REPL}).  It displays a
+prompt at the left hand side of the screen whenever it is waiting for
+input.  You then type an expression (terminating it with @key{RET}).
+Scheme evaluates the expression, prints the result, and gives you
+another prompt.
+
+@menu
+* The Prompt and Level Number::  The Prompt and Level Number
+* Interrupting::                Interrupting
+* Proceeding::                  Proceeding
+* The Current REPL Environment::  The Current REPL Environment
+@end menu
+
+@node The Prompt and Level Number, Interrupting, REPL, REPL
+@section The Prompt and Level Number
+
+@cindex prompt, REPL
+The @sc{repl} @dfn{prompt} normally has the form
+
+@example
+1 ]=>
+@end example
+
+@cindex level number, REPL
+@noindent
+The @samp{1} in the prompt is a @dfn{level number}, which is always a
+positive integer.  This number is incremented under certain
+circumstances, the most common being an error.  For example, here is
+what you will see if you type @kbd{f o o @key{RET}} after starting
+Scheme:
+
+@example
+1 ]=> foo
+
+Unbound variable foo
+
+2 Error->
+@end example
+
+@noindent
+In this case, the level number has been incremented to @samp{2}, which
+indicates that a new @sc{repl} has been started (also the prompt string
+has been changed to remind you that the @sc{repl} was started because of
+an error).  The @samp{2} means that this new @sc{repl} is ``over'' the
+old one.  The original @sc{repl} still exists, and is waiting for you to
+return to it.  Furthermore, if an error occurs while you are in this
+@sc{repl}, yet another @sc{repl} will be started, and the level number
+will be increased to @samp{3}.  This can continue ad infinitum, but
+normally it is rare to use more than a few levels.
+
+The normal way to get out of an error @sc{repl} and back to the top
+level @sc{repl} is to use the @kbd{C-g} interrupt.  This is a
+single-keystroke command executed by holding down the @key{CTRL} key and
+pressing the @key{G} key.  @kbd{C-g} always terminates whatever is
+running and returns you to the top level @sc{repl} immediately.
+
+Note: The appearance of the @samp{Error->} prompt does not mean that
+Scheme is in some weird inconsistent state that you should avoid.  It is
+merely a reminder that your program was in error: an illegal operation
+was attempted, but it was detected and avoided.  Often the best way to
+find out what is in error is to do some poking around in the error
+@sc{repl}.  If you abort out of it, the context of the error will be
+destroyed, and you may not be able to find out what happened.
+
+@node Interrupting, Proceeding, The Prompt and Level Number, REPL
+@section Interrupting
+
+@kindex C-g
+@kindex C-c
+Scheme has two interrupt keys under unix (other systems may have more
+than two): @kbd{C-g} and @kbd{C-c}.  The @kbd{C-g} key stops any Scheme
+evaluation that is running and returns you to the top level @sc{repl}.
+@kbd{C-c} prompts you for another character and performs some action
+based on that character.  It is not necessary to type @key{RET} after
+@kbd{C-g} or @kbd{C-c}, nor is it needed after the character that
+@kbd{C-c} will ask you for.
+
+Here are the more common options for @kbd{C-c}.
+
+@table @kbd
+
+@item C-c i
+@kindex C-c i
+Ignore the interrupt.  Type this if you made a mistake and didn't
+really mean to type @kbd{C-c}.
+
+@item C-c ?
+@kindex C-c ?
+Print help information.  This will describe any other options not
+documented here.
+
+@item C-c q
+@kindex C-c q
+@findex exit
+Similar to typing @code{(exit)} at the @sc{repl}, except that it works
+even if Scheme is running an evaluation, and does not request
+confirmation.
+
+@item C-c z
+@kindex C-c z
+@findex quit
+Similar to typing @code{(quit)} at the @sc{repl}, except that it works
+even if Scheme is running an evaluation.
+
+@item C-c C-c
+@kindex C-c C-c
+Identical to typing @kbd{C-g}.  If no evaluation is running, this is
+equivalent to evaluating
+
+@findex cmdl-interrupt/abort-top-level
+@lisp
+(cmdl-interrupt/abort-top-level)
+@end lisp
+
+@noindent
+@kindex C-c C-g
+@kindex C-c g
+The options @kbd{C-c C-g} and @kbd{C-c g}, supplied for compatibility
+with older implementations, are equivalent to @kbd{C-c C-c}.
+
+@item C-c C-x
+@kindex C-c C-x
+Abort whatever Scheme evaluation is currently running and return to the
+``current'' @sc{repl}.  If no evaluation is running, this is equivalent
+to evaluating
+
+@findex cmdl-interrupt/abort-nearest
+@lisp
+(cmdl-interrupt/abort-nearest)
+@end lisp
+
+@kindex C-c x
+The option @kbd{C-c x}, supplied for compatibility with older
+implementations, is equivalent to @kbd{C-c C-x}.
+
+@item C-c C-u
+@kindex C-c C-u
+Abort whatever Scheme evaluation is running and go up one level.  If you
+are already at level number 1, it just aborts the evaluation, leaving
+you at level 1.  If no evaluation is running, this is equivalent to
+evaluating
+
+@findex cmdl-interrupt/abort-previous
+@lisp
+(cmdl-interrupt/abort-previous)
+@end lisp
+
+@kindex C-c u
+The option @kbd{C-c u}, supplied for compatibility with older
+implementations, is equivalent to @kbd{C-c C-u}.
+
+@item C-c C-b
+@kindex C-c C-b
+@cindex breakpoint
+Suspend whatever Scheme evaluation is running and start a
+@dfn{breakpoint} @sc{repl}.  The evaluation can be resumed by evaluating
+
+@findex proceed
+@lisp
+(proceed)
+@end lisp
+
+@noindent
+in that @sc{repl} at any time.
+
+@kindex C-c b
+The option @kbd{C-c b}, supplied for compatibility with older
+implementations, is equivalent to @kbd{C-c C-b}.
+@end table
+
+@node Proceeding, The Current REPL Environment, Interrupting, REPL
+@section Proceeding
+
+Another way of exiting a @sc{repl} is to use the @code{proceed}
+procedure:
+
+@deffn {procedure+} proceed [value]
+@cindex error REPL, proceeding from
+There are two ways to use this procedure from an error @sc{repl} (usage
+from other kinds of @sc{repl} is not necessarily the same).  If
+@var{value} is not given, @code{proceed} retries the expression that
+caused the error.  Unless you have done something to fix the error
+condition, this will just cause the error to happen all over again.  If,
+for example, you are in an error @sc{repl} caused by evaluating an
+unbound variable, the proper way to use @code{proceed} is to first
+define a value for the variable, then to evaluate @code{(proceed)}.
+Your program should continue from that point normally.
+
+One caveat: when you get an unbound variable error, the environment for
+the error @sc{repl} is the environment in which you looked up the
+variable, which is not necessarily the environment in which the variable
+should be defined.  It is best to use the @code{ge} procedure to
+guarantee that your definition goes into the right place.
+
+If @var{value} is given, @code{proceed} returns it in place of the
+expression that caused the error.  Thus, if you cannot easily fix a
+particular bug, but you know a correct value for the erring expression,
+you can continue the computation this way.
+@end deffn
+
+@node The Current REPL Environment,  , Proceeding, REPL
+@section The Current REPL Environment
+
+@cindex current REPL environment
+@findex user-initial-environment
+@findex system-global-environment
+Every @sc{repl} has a @dfn{current environment}, which is the place
+where expressions are evaluated and definitions are stored.  When Scheme
+is started, this environment is the value of the variable
+@code{user-initial-environment}.  There are a number of other
+environments in the system, for example
+@code{system-global-environment}, where the runtime system's bindings
+are stored.
+
+You can get the current @sc{repl} environment by evaluating
+
+@findex nearest-repl/environment
+@lisp
+(nearest-repl/environment)
+@end lisp
+
+There are several other ways to obtain environments.  For example, if
+you have a procedure object, you can get a pointer to the environment in
+which it was closed by evaluating
+
+@findex procedure-environment
+@lisp
+(procedure-environment @var{procedure})
+@end lisp
+
+Your programs create new environments whenever a procedure is called.
+When an error occurs, the error @sc{repl} that is created is usually
+initialized so that its current environment is the one in which the
+error occurred.  When it is not possible to supply the error's
+environment, the following message is printed:
+
+@lisp
+There is no environment available;
+using the current REPL environment
+@end lisp
+
+@noindent
+This message tells you that the error @sc{repl} is using the same
+environment as the @sc{repl} whose level number is one less than the
+error @sc{repl}'s.
+
+Here is the procedure that changes the @sc{repl}'s environment:
+
+@deffn {procedure+} ge environment
+Changes the current @sc{repl} environment to be @var{environment}
+(@code{ge} stands for ``Goto Environment'').  @var{Environment} is
+allowed to be a procedure as well as an environment object.  If it is a
+procedure, then the closing environment of that procedure is used in its
+place.
+@end deffn
+
+@deffn {procedure+} gst syntax-table
+In addition to the current environment, each @sc{repl} maintains a
+current @dfn{syntax table}.  The current syntax table tells the
+@sc{repl} which keywords are used to identify special forms (e.g.
+@code{if}, @code{lambda}).  If you write macros, often you will want to
+make your own syntax table, in which case it is useful to be able to
+make that syntax table be the current one.  @code{Gst} allows you to do
+that.
+@end deffn
+
+@node Debugging, Loading Files, REPL, Top
+@chapter Debugging
+
+This chapter is adapted from @cite{Don't Panic: A 6.001 User's Guide to
+the Chipmunk System}, by Arthur A. Gleckler.
+
+@cindex bugs
+@cindex debugging
+Even computer software that has been planned carefully and written well
+may not always work correctly.  Mysterious creatures called @dfn{bugs}
+may creep in and wreak havoc, leaving the programmer to clean up the
+mess.  Some have theorized that a program fails only because its author
+made a mistake, but experienced computer programmers know that bugs are
+always to blame.  This is why the task of fixing broken computer
+software is called @dfn{debugging}.
+
+It is impossible to prove the correctness of any non-trivial program;
+hence the Cynic's First Law of Debugging:
+
+@quotation
+Programs don't become more reliable as they are debugged; the bugs just
+get harder to find.
+@end quotation
+
+@cindex breakpoints
+Scheme is equipped with a variety of special software for finding and
+removing bugs.  The debugging tools include facilities for tracing a
+program's use of specified procedures, for examining Scheme
+environments, and for setting @dfn{breakpoints}, places where the
+program will pause for inspection.
+
+@cindex error
+Many bugs are detected when programs try to do something which is
+impossible, like adding a number to a symbol, or using a variable which
+does not exist; this type of mistake is called an @dfn{error}.
+Whenever an error occurs, Scheme prints an error message and starts a
+new @sc{repl}.  For example, using a nonexistent variable @code{foo} will
+cause Scheme to respond
+
+@example
+1 ]=> foo
+
+Unbound variable foo
+;Package: (user)
+
+2 Error->
+@end example
+
+Sometimes, a bug will never cause an error, but will still cause the
+program to operate incorrectly.  For instance,
+
+@lisp
+(prime? 7)   @result{}   #f
+@end lisp
+
+In this situation, Scheme does not know that the program is misbehaving.
+The programmer must notice the problem and, if necessary, start the
+debugging tools manually.
+
+There are several approaches to finding bugs in a Scheme program:
+
+@itemize @bullet
+@item
+Inspect the original Scheme program.
+
+@item
+Use the debugging tools to follow your program's progress.
+
+@item
+Edit the program to insert checks and breakpoints.
+@end itemize
+
+@noindent
+Only experience can teach how to debug programs, so be sure to
+experiment with all these approaches while doing your own debugging.
+Planning ahead is the best way to ward off bugs, but when bugs do
+appear, be prepared to attack them with all the tools available.
+
+@menu
+* Subproblems and Reductions::  Subproblems and Reductions
+* Debugger::                    The Debugger
+@end menu
+
+@node Subproblems and Reductions, Debugger, Debugging, Debugging
+@section Subproblems and Reductions
+
+@cindex subproblem
+@cindex reduction
+@cindex subexpression
+Understanding the concepts of @dfn{reduction} and @dfn{subproblem} is
+essential to good use of the debugging tools.  The Scheme interpreter
+evaluates an expression by @dfn{reducing} it to a simpler expression.
+In general, Scheme's evaluation rules designate that evaluation proceeds
+from one expression to the next by either starting to work on a
+@dfn{subexpression} of the given expression, or by reducing the entire
+expression to a new (simpler, or reduced) form.  Thus, a history of the
+successive forms processed during the evaluation of an expression will
+show a sequence of subproblems, where each subproblem may consist of a
+sequence of reductions.
+
+For example, both @code{(+ 5 6)} and @code{(+ 7 9)} are subproblems of
+the following combination:
+
+@lisp
+(* (+ 5 6) (+ 7 9))
+@end lisp
+
+If @code{(prime? n)} is true, then @code{(cons 'prime n)} is a reduction
+for the following expression:
+
+@lisp
+(if (prime? n)
+    (cons 'prime n)
+    (cons 'not-prime n))
+@end lisp
+
+This is because the entire subproblem of the @code{if} combination can
+be reduced to the problem @code{(cons 'prime n)}, once we know that
+@code{(prime?  n)} is true; the @code{(cons 'not-prime n)} can be
+ignored, because it will never be needed.  On the other hand, if
+@code{(prime? n)} were false, then @code{(cons 'not-prime n)} would be
+the reduction for the @code{if} combination.
+
+The @emph{subproblem level} is a number representing how far back in the
+history of the current computation a particular evaluation is.  Consider
+@code{factorial}:
+
+@lisp
+(define (factorial n)
+  (if (< n 2)
+      1
+      (* n (factorial (- n 1)))))
+@end lisp
+
+@noindent
+If we stop @code{factorial} in the middle of evaluating @code{(- n 1)},
+the @code{(- n 1)} is at subproblem level 0.  Following the history of
+the computation ``upwards,'' @code{(factorial (- n 1))} is at subproblem
+level 1, and @code{(* n (factorial (- n 1)))} is at subproblem level 2.
+These expressions all have @emph{reduction number} 0.  Continuing
+upwards, the @code{if} combination has reduction number 1.
+
+Moving backwards in the history of a computation, subproblem levels and
+reduction numbers increase, starting from zero at the expression
+currently being evaluated.  Reduction numbers increase until the next
+subproblem, where they start over at zero.  The best way to get a feel
+for subproblem levels and reduction numbers is to experiment with the
+debugging tools, especially @code{debug}.
+
+@node Debugger,  , Subproblems and Reductions, Debugging
+@section The Debugger
+
+@cindex debugger
+@cindex continuation Browser
+@cindex browser, Continuation
+@findex debug
+The @dfn{debugger}, called @code{debug}, is the tool you should use when
+Scheme signals an error and you want to find out what caused the error.
+When Scheme signals an error, it records all the information necessary
+to continue running the Scheme program that caused the error; the
+debugger provides you with the means to inspect this information.  For
+this reason, the debugger is sometimes called a @dfn{continuation
+browser}.
+
+Here is the transcript of a typical Scheme session, showing a user
+evaluating the expression @code{(fib 10)}, Scheme responding with an
+unbound variable error for the variable @code{fob}, and the user
+starting the debugger:
+
+@example
+1 ]=> (fib 10)
+
+Unbound variable fob
+
+2 Error-> (debug)
+
+There are 8 subproblems on the stack.
+
+Subproblem level: 0 (this is the lowest subproblem level)
+Expression (from stack):
+    fob
+Environment created by the procedure: fib
+ applied to: (10)
+The execution history for this subproblem contains 1 reduction.
+You are now in the debugger.  Type q to quit, ? for commands.
+
+3 Debug--> 
+@end example
+
+@noindent
+@cindex execution history
+This tells us that the error occurred while trying to evaluate the
+expression @code{fob} while running @code{(fib 10)}.  It also tells us
+this is subproblem level 0, the first of 8 subproblems that are
+available for us to examine.  The expression shown is marked ``(from
+stack)'', which tells us that this expression was reconstructed from the
+interpreter's internal data structures.  Another source of information
+is the @dfn{execution history}, which keeps a record of expressions
+evaluated by the interpreter.  The debugger informs us that the
+execution history has recorded some information for this subproblem,
+specifically a description of one reduction.
+
+@node Loading Files, World Images, Debugging, Top
+@chapter Loading Files
+
+To load files of Scheme code, use the procedure @code{load}:
+
+@deffn {procedure} load filename [environment [syntax-table]]
+@var{Filename} may be a string naming a file, or a list of strings
+naming many files.  @var{Environment}, if given, is the environment to
+evaluate the file in; if not given the current @sc{repl} environment is
+used.  Likewise @var{syntax-table} is the syntax table to use.
+
+@findex pathname-type
+@code{Load} determines whether the file to be loaded is binary or source
+code, and performs the appropriate action.  By convention, files of
+source code have a pathname type of @code{"scm"}, and files of binary
+SCode have pathname type @code{"bin"}.  Native-code binaries have
+pathname type @code{"com"}.  (See the description of
+@code{pathname-type} in the reference manual.)
+@end deffn
+
+@defvr {variable+} load-noisily?
+If @code{load-noisily?} is set to @code{#t}, @code{load} will print the
+value of each expression in the file as it is evaluated.  Otherwise,
+nothing is printed except for the value of the last expression in the
+file.  (Note: the noisy loading feature is implemented for source-code
+files only.)
+@end defvr
+
+@defvr {variable+} load/default-types
+This variable is a list of strings that are the pathname types to look
+for, in that order, if @code{load} is given a pathname that has no type.
+The initial value of this variable is
+
+@lisp
+("com" "bin" "scm")
+@end lisp
+@end defvr
+
+@cindex working directory
+@findex pwd
+@findex cd
+All pathnames are interpreted relative to a working directory, which is
+initialized when Scheme is started.  The working directory can be
+obtained from the procedure @code{pwd} or modified by the procedure
+@code{cd}; see the reference manual for details.
+
+@node World Images, Compiling Files, Loading Files, Top
+@chapter World Images
+
+@cindex world image
+@cindex band
+A @dfn{world image} is a file that contains a complete Scheme system,
+perhaps additionally including user application code.  Scheme provides
+two methods for saving and restoring world images.  The first method
+writes a file containing all of the Scheme code in the world, which is
+called a @dfn{band}.  The file @file{runtime.com} that is loaded by the
+microcode is just such a band.  To make your own band, use the procedure
+@code{disk-save}:
+
+@deffn {procedure+} disk-save filename [identify]
+Causes a band to be written to the file specified by @var{filename}.
+The optional argument @var{identify} controls what happens when that
+band is restored, as follows:
+
+@table @asis
+@item not specified
+Start up in the top-level @sc{repl}, identifying the world in the normal
+way.
+
+@item a string
+Do the same thing except print that string instead of @samp{Scheme} when
+restarting.
+
+@item the constant @code{#t}
+Restart exactly where you were when the call to @code{disk-save} was
+performed.  This is especially useful for saving your state when an
+error has occurred and you are not in the top-level @sc{repl}.
+
+@item the constant @code{#f}
+Just like @code{#t}, except that the runtime system will not perform
+normal restart initializations; in particular, it will not load your
+init file.
+@end table
+@end deffn
+
+@findex disk-restore
+To restore a saved band, give the @code{-band} option when starting
+Scheme.  Alternatively, evaluate @code{(disk-restore @var{filename})}
+from a running Scheme, which will destroy the current world, replacing
+it with the saved world.  The argument to @code{disk-restore} may be
+omitted, in which case it defaults to the filename from which the
+current world was last restored.
+
+Note: when restoring a saved band, the Scheme executable must be
+configured with a large enough constant space and heap to hold the
+band's contents.  If you attempt to restore a band using the
+@code{-band} option, and the band is too large, Scheme will write an
+error message that tells you the appropriate command-line options needed
+to load that band.  If you attempt restore a too-large band using
+@code{disk-restore}, Scheme will signal an error, but will not provide
+the configuration information.  In general, the configuration that was
+used to save a band is sufficiently large to restore it.
+
+@findex dump-world
+Another method for saving the world is the @code{dump-world} procedure,
+which accepts the same arguments as @code{disk-save} and works in much
+the same way.  However, rather than dumping a band, @code{dump-world}
+saves an executable image, which is started just like any other program.
+This has the advantage of being considerably faster to start on some
+systems, but the image file is typically much larger than the
+corresponding band.  However, @code{dump-world} is only supported for a
+few operating systems, and is not built in to the distributed executable
+files --- if you wish to use @code{dump-world}, you must build your own
+executable file from the source code.
+
+@node Compiling Files, GNU Emacs Interface, World Images, Top
+@chapter Compiling Files
+
+Note: the procedures described in this section are only available in the
+@file{compiler.com} world image.  Furthermore, @code{cf} is only
+available on machines that support native-code compilation.
+
+@menu
+* Compilation Procedures::      Compilation Procedures
+* Declarations::                Declarations
+@end menu
+
+@node Compilation Procedures, Declarations, Compiling Files, Compiling Files
+@section Compilation Procedures
+
+@deffn {procedure+} cf filename [destination]
+This is the program that transforms a source-code file into native-code
+binary form.  If @var{destination} is not given, as in
+
+@lisp
+(cf "foo")
+@end lisp
+
+@noindent
+@code{cf} compiles the file @file{foo.scm}, producing the file
+@file{foo.com} (incidentally it will also produce @file{foo.bin},
+@file{foo.binf}, and possibly @file{foo.ext}).  If you later evaluate
+
+@lisp
+(load "foo")
+@end lisp
+
+@noindent
+@file{foo.com} will be loaded rather than @file{foo.scm}.
+
+If @var{destination} is given, it says where the output files should go.
+If this argument is a directory, they go in that directory, e.g.:
+
+@lisp
+(cf "foo" "../bar/")
+@end lisp
+
+@noindent
+will take @file{foo.scm} and generate the file @file{../bar/foo.com}.
+If @var{destination} is not a directory, it is the root name of the
+output:
+
+@lisp
+(cf "foo" "bar")
+@end lisp
+
+@noindent
+takes @file{foo.scm} and generates @file{bar.com}.
+
+About the @file{.binf} files: these files contain the debugging
+information that Scheme uses when you call @code{debug} to examine
+compiled code.  When you load a @file{.com} file, Scheme remembers where
+it was loaded from, and when the debugger looks at the compiled code
+from that file, it attempts to find the @file{.binf} file in the same
+directory from which the @file{.com} file was loaded.  Thus it is a good
+idea to leave these files together.
+
+Another useful thing contained in the @file{.binf} file is the symbol
+table produced by the assembler.  If you have both the @file{foo.com}
+and @file{foo.binf} files, you can generate an assembly listing in
+@file{foo.lap} by evaluating:
+
+@findex compiler:write-lap-file
+@lisp
+(compiler:write-lap-file "foo")
+@end lisp
+@end deffn
+
+Unfortunately, the @file{.binf} files are somewhat large in the current
+implementation.  If you wish to save space, these files may be deleted;
+if Scheme tries to find one and cannot, it will still permit debugging,
+but will be unable to produce much information about your program.
+
+@deffn {procedure+} sf filename [destination]
+@code{sf} is the program that transforms a source-code file into binary
+SCode form; it is used on machines that do not support native-code
+compilation.  It performs numerous optimizations that can make your
+programs run considerably faster than unoptimized interpreted code.
+Also, the binary files that it generates load very quickly compared to
+source-code files.
+
+The simplest way to use @code{sf} is just to say:
+
+@lisp
+(sf @var{filename})
+@end lisp
+
+@noindent
+This will cause your file to be transformed, and the resulting binary
+file to be written out with the same name, but with @code{pathname-type}
+@code{"bin"}.  If you do not specify a @code{pathname-type} on the input
+file, @code{"scm"} is assumed.
+
+Like @code{load}, the first argument to @code{sf} may be a list of
+filenames rather than a single filename.
+
+@code{sf} takes an optional second argument, which is the filename of
+the output file.  If this argument is a directory, then the output file
+has its normal name but is put in that directory instead.
+@end deffn
+
+@node Declarations,  , Compilation Procedures, Compiling Files
+@section Declarations
+@cindex declarations
+
+Several declarations can be added to your programs to help @code{cf} and
+@code{sf} make them more efficient.
+
+@menu
+* Standard Names::              Standard Names
+* In-line Coding::              In-line Coding
+* Operator Reduction::          Operator Reduction
+@end menu
+
+@node Standard Names, In-line Coding, Declarations, Declarations
+@subsection Standard Names
+
+Normally, all files have a line
+
+@findex usual-integrations
+@lisp
+(declare (usual-integrations))
+@end lisp
+
+@noindent
+near their beginning, which tells the compiler that free variables whose
+names are defined in @code{system-global-environment} will not be
+shadowed by other definitions when the program is loaded.  If you
+redefine some global name in your code, for example @code{car},
+@code{cdr}, and @code{cons}, you should indicate it in the declaration:
+
+@lisp
+(declare (usual-integrations car cdr cons))
+@end lisp
+
+You can obtain an alphabetically-sorted list of the names that the
+@code{usual-integrations} declaration affects by evaluating the
+following expression:
+
+@lisp
+(eval '(sort (append usual-integrations/constant-names
+                     usual-integrations/expansion-names)
+             (lambda (x y)
+               (string<=? (symbol->string x)
+                          (symbol->string y))))
+      (->environment '(scode-optimizer)))
+@end lisp
+
+@node In-line Coding, Operator Reduction, Standard Names, Declarations
+@subsection In-line Coding
+
+Another useful facility is the ability to in-line code procedure
+definitions.  In fact, the compiler will perform full beta conversion,
+with automatic renaming, if you request it.  Here are the relevant
+declarations:
+
+@deffn {declaration+} integrate name @dots{}
+The variables @var{name}s should be defined in the same file as this
+declaration.  Any reference to one of the named variables that appears
+in the same block as the declaration, or one of its descendant blocks,
+will be replaced by the corresponding definition's value expression.
+@end deffn
+
+@deffn {declaration+} integrate-operator name @dots{}
+Similar to the @code{integrate} declaration, except that it only
+substitutes for references that appear in the operator position of a
+combination.  All other references are ignored.
+@end deffn
+
+@deffn {declaration+} integrate-external filename
+Causes the compiler to use the top-level integrations provided by
+@var{filename}.  @var{filename} should not specify a file type, and the
+source-code file that it names must have been previously processed by
+the compiler.
+
+If @var{filename} is a relative filename (the normal case), it is
+interpreted as being relative to the file in which the declaration
+appears.  Thus if the declaration appears in file @file{/usr/cph/foo.scm},
+then the compiler looks for a file called @file{/usr/cph/@var{filename}.ext}.
+
+Note: When the compiler finds top-level integrations, it collects them
+and outputs them into an auxiliary file with extension @file{.ext}.
+This @file{.ext} file is what the @code{integrate-external} declaration
+refers to.
+@end deffn
+
+@findex define-integrable
+@findex define
+Note that the most common use of this facility, in-line coding of
+procedure definitions, requires a somewhat complicated use of these
+declarations.  Because this is so common, there is a special form,
+@code{define-integrable}, which is like @code{define} but performs the
+appropriate declarations.  For example:
+
+@lisp
+(define-integrable (foo-bar foo bar)
+  (vector-ref (vector-ref foo bar) 3))
+@end lisp
+
+Here is how you do the same thing without this special form: there
+should be an @code{integrate-operator} declaration for the procedure's
+name, and (internal to the procedure's definition) an @code{integrate}
+declaration for each of the procedure's parameters, like this:
+
+@lisp
+(declare (integrate-operator foo-bar))
+
+(define foo-bar
+  (lambda (foo bar)
+    (declare (integrate foo bar))
+    (vector-ref (vector-ref foo bar) 3)))
+@end lisp
+
+The reason for this complication is as follows: the
+@code{integrate-operator} declaration finds all the references to
+@code{foo-bar} and replaces them with the lambda expression from the
+definition.  Then, the @code{integrate} declarations take effect because
+the combination in which the reference to @code{foo-bar} occurred
+supplies code which is substituted throughout the body of the procedure
+definition.  For example:
+
+@lisp
+(foo-bar (car baz) (cdr baz))
+@end lisp
+
+@noindent
+First use the @code{integrate-operator} declaration:
+
+@group
+@lisp
+((lambda (foo bar)
+   (declare (integrate foo bar))
+   (vector-ref (vector-ref foo bar) 3))
+ (car baz)
+ (cdr baz))
+@end lisp
+@end group
+
+@noindent
+Next use the internal @code{integrate} declaration:
+
+@group
+@lisp
+((lambda (foo bar)
+   (vector-ref (vector-ref (car baz) (cdr baz)) 3))
+ (car baz)
+ (cdr baz))
+@end lisp
+@end group
+
+@noindent
+Next notice that the variables @code{foo} and @code{bar} are not used,
+and eliminate them:
+
+@group
+@lisp
+((lambda ()
+   (vector-ref (vector-ref (car baz) (cdr baz)) 3)))
+@end lisp
+@end group
+
+@noindent
+Finally, remove the @code{((lambda () @dots{}))} to produce
+
+@lisp
+(vector-ref (vector-ref (car baz) (cdr baz)) 3)
+@end lisp
+
+@node Operator Reduction,  , In-line Coding, Declarations
+@subsection Operator Reduction
+
+@findex reduce-operator
+The @code{reduce-operator} declaration is provided to inform the
+compiler that certain names are n-ary versions of binary operators.
+Here are some examples:
+
+@noindent
+Declaration:
+
+@group
+@lisp
+(declare (reduce-operator (cons* cons)))
+@end lisp
+@end group
+
+@noindent
+Replacements:
+
+@group
+@lisp
+(cons* @var{x} @var{y} @var{z} @var{w}) @expansion{} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))),
+(cons* @var{x} @var{y}) @expansion{} (cons @var{x} @var{y})
+(cons* @var{x}) @expansion{} @var{x}
+(cons*) @error{} too few arguments
+@end lisp
+@end group
+
+@noindent
+Declaration:
+
+@group
+@lisp
+(declare (reduce-operator (list cons (null-value '() any))))
+@end lisp
+@end group
+
+@noindent
+Replacements:
+
+@group
+@lisp
+(list @var{x} @var{y} @var{z} @var{w}) @expansion{} (cons @var{x} (cons @var{y} (cons @var{z} (cons @var{w} '()))))
+(list @var{x} @var{y}) @expansion{} (cons @var{x} (cons @var{y} '()))
+(list @var{x}) @expansion{} (cons @var{x} '())
+(list) @expansion{} '()
+@end lisp
+@end group
+
+@noindent
+Declaration:
+
+@group
+@lisp
+(declare (reduce-operator (- %- (null-value 0 single) (group left))))
+@end lisp
+@end group
+
+@noindent
+Replacements:
+
+@group
+@lisp
+(- @var{x} @var{y} @var{z} @var{w}) @expansion{} (%- (%- (%- @var{x} @var{y}) @var{z}) @var{w})
+(- @var{x} @var{y}) @expansion{} (%- @var{x} @var{y})
+(- @var{x}) @expansion{} (%- 0 @var{x})
+(-) @expansion{} 0
+@end lisp
+@end group
+
+@noindent
+Declaration:
+
+@group
+@lisp
+(declare (reduce-operator (+ %+ (null-value 0 none) (group right))))
+@end lisp
+@end group
+
+@noindent
+Replacements:
+
+@group
+@lisp
+(+ @var{x} @var{y} @var{z} @var{w}) @expansion{} (%+ @var{x} (%+ @var{y} (%+ @var{z} @var{w})))
+(+ @var{x} @var{y}) @expansion{} (%+ @var{x} @var{y})
+(+ @var{x}) @expansion{} @var{x}
+(+) @expansion{} 0
+@end lisp
+@end group
+
+Note: This declaration does not cause an appropriate definition of
+@code{+} (in the last example) to appear in your code.  It merely
+informs the compiler that certain optimizations can be performed on
+calls to @code{+} by replacing them with calls to @code{%+}.  You should
+provide a definition of @code{+} as well, although it is not required.
+
+The general format of the declaration is (brackets denote optional
+elements):
+
+@group
+@lisp
+(reduce-operator
+ (@var{name}
+  @var{binop}
+  @r{[}(group @var{ordering})@r{]}
+  @r{[}(null-value @var{value} @var{null-option})@r{]}
+  @r{[}(singleton @var{unop})@r{]}
+  @r{[}(wrapper @var{wrap})@r{]}
+  ))
+@end lisp
+@end group
+
+@noindent
+where
+
+@itemize @bullet
+
+@item
+@var{name} is a symbol.
+
+@item
+@var{binop}, @var{value}, @var{unop}, and @var{wrap} are simple
+expressions in one of these forms:
+
+@table @code
+
+@item '@var{constant}
+A constant.
+
+@item @var{variable}
+A variable.
+
+@item (primitive @var{primitive-name} @r{[}@var{arity}@r{]})
+The primitive procedure named @var{primitive-name}.  The optional
+element @var{arity} specifies the number of arguments that the primitive
+accepts.
+@end table
+
+@item
+@var{null-option} is either @code{always}, @code{any}, @code{one},
+@code{single}, @code{none}, or @code{empty}.
+
+@item
+@var{ordering} is either @code{left}, @code{right}, or
+@code{associative}.
+@end itemize
+
+The meaning of these fields is:
+
+@itemize @bullet
+
+@item
+@var{name} is the name of the n-ary operation to be reduced.
+
+@item
+@var{binop} is the binary operation into which the n-ary operation is to
+be reduced.
+
+@item
+The @code{group} option specifies whether @var{name} associates to the
+right or left.
+
+@item
+The @code{null-value} option specifies a value to use in the following
+cases:
+
+@table @code
+
+@item none
+@itemx empty
+When no arguments are supplied to @var{name}, @var{value} is returned.
+
+@item one
+@itemx single
+When a single argument is provided to @var{name}, @var{value} becomes
+the second argument to @var{binop}.
+
+@item any
+@itemx always
+@var{binop} is used on the ``last'' argument, and @var{value} provides
+the remaining argument to @var{binop}.
+@end table
+
+In the above options, when @var{value} is supplied to @var{binop}, it is
+supplied on the left if grouping to the left, otherwise it is supplied
+on the right.
+
+@item
+The @code{singleton} option specifies a function, @var{unop}, to be
+invoked on the single argument left.  This option supersedes the
+@code{null-value} option, which can only take the value @code{none}.
+
+@item
+The @code{wrapper} option specifies a function, @var{wrap}, to be
+invoked on the result of the outermost call to @var{binop} after the
+expansion.
+@end itemize
+
+@node GNU Emacs Interface, Edwin, Compiling Files, Top
+@chapter GNU Emacs Interface
+
+There is an interface library, called @code{xscheme}, distributed with
+MIT Scheme and GNU Emacs, which facilitates running Scheme as a
+subprocess of Emacs.  If you wish to use this interface, please install
+the version of @file{xscheme.el} that comes with MIT Scheme, as it is
+guaranteed to be correct for your version of Scheme.
+
+@findex run-scheme
+@findex -emacs
+To invoke Scheme from Emacs, use @kbd{M-x run-scheme}, which is defined
+when either of the libraries @file{scheme} or @file{xscheme} is loaded.
+You may give @code{run-scheme} a prefix argument, in which case it will
+allow you to edit the command line that is used to invoke Scheme.
+@emph{Do not} remove the @code{-emacs} option!
+
+@findex scheme-interaction-mode
+Scheme will be started up as a subprocess in a buffer called
+@code{*scheme*}.  This buffer will be in @code{scheme-interaction-mode}
+and all output from the Scheme process will go there.  The mode line for
+the @code{*scheme*} buffer will have this form:
+
+@example
+-----Scheme: 1 [Evaluator]           (Scheme Interaction: input)------
+@end example
+
+@noindent
+@cindex level number, REPL
+The first field, showing @samp{1} in this example, is the level number.
+
+@noindent
+The second field, showing @samp{[Evaluator]} in this example, describes
+the type of @sc{repl} that is running.  Other values include:
+
+@example
+[Debugger]
+[Where]
+@end example
+
+@noindent
+The @dfn{mode} after @samp{Scheme Interaction} is one of:
+
+@table @samp
+@item input
+Scheme is waiting for input.
+
+@item run
+Scheme is running an evaluation.
+
+@item gc
+Scheme is garbage collecting.
+@end table
+
+@findex scheme-mode
+When @code{xscheme} is loaded, @code{scheme-mode} is extended to include
+commands for evaluating expressions (do @kbd{C-h m} in any
+@code{scheme-mode} buffer for the most up-to-date information):
+
+@table @kbd
+
+@item @key{ESC} o
+@kindex @key{ESC} o
+@findex xscheme-send-buffer
+Evaluates the current buffer (@code{xscheme-send-buffer}).
+
+@item @key{ESC} z
+@kindex @key{ESC} z
+@findex xscheme-send-definition
+Evaluates the current definition (@code{xscheme-send-definition}).  This
+is also bound to @kbd{@key{ESC} C-x}.
+
+@item @key{ESC} C-z
+@kindex @key{ESC} C-z
+@findex xscheme-send-region
+Evaluates the current region (@code{xscheme-send-region}).
+
+@item C-x C-e
+@kindex C-x C-e
+@findex xscheme-send-previous-expression
+Evaluates the expression to the left of point
+(@code{xscheme-send-previous-expression}).  This is also bound to
+@kbd{@key{ESC} @key{RET}}.
+
+@item C-c C-s
+@kindex C-c C-s
+@findex xscheme-select-process-buffer
+Selects the @code{*scheme*} buffer and places you at its end
+(@code{xscheme-select-process-buffer}).
+
+@item C-c C-y
+@kindex C-c C-y
+@findex xscheme-yank-previous-send
+Yanks the most recently evaluated expression, placing it at point
+(@code{xscheme-yank-previous-send}).  This works only in the
+@code{*scheme*} buffer.
+@end table
+
+The following commands provide interrupt capability:
+
+@table @kbd
+
+@item C-c C-c
+@kindex C-c C-c
+@findex xscheme-send-control-g-interrupt
+Like typing @kbd{C-g} when running Scheme without Emacs
+(@code{xscheme-send-control-g-interrupt}).
+
+@item C-c C-x
+@kindex C-c C-x
+@findex xscheme-send-control-x-interrupt
+Like typing @kbd{C-c C-x} when running Scheme without Emacs
+(@code{xscheme-send-control-x-interrupt}).
+
+@item C-c C-u
+@kindex C-c C-u
+@findex xscheme-send-control-u-interrupt
+Like typing @kbd{C-c C-u} when running Scheme without Emacs
+(@code{xscheme-send-control-u-interrupt}).
+
+@item C-c C-b
+@kindex C-c C-b
+@findex xscheme-send-breakpoint-interrupt
+Like typing @kbd{C-c C-b} when running Scheme without Emacs
+(@code{xscheme-send-breakpoint-interrupt}).
+
+@item C-c C-p
+@kindex C-c C-p
+@findex xscheme-send-proceed
+Like evaluating @code{(proceed)} (@code{xscheme-send-proceed}).
+@end table
+
+@node Edwin, Variable Index, GNU Emacs Interface, Top
+@chapter Edwin
+
+This chapter describes how to start Edwin, the MIT Scheme text editor.
+Edwin is very similar to GNU Emacs --- you should refer to the GNU Emacs
+manual for information about Edwin's commands and key bindings ---
+except that Edwin's extension language is MIT Scheme, while GNU Emacs
+extensions are written in Emacs Lisp.  This manual does not discuss
+customization of Edwin.
+
+To use Edwin, start Scheme with a world image containing Edwin (for
+example by giving the @code{-edwin} command-line option), then call the
+procedure @code{edit}:
+
+@deffn {procedure+} edit
+Enter the Edwin text editor.  If entering for the first time, the editor
+is initialized (by calling @code{create-editor} with no arguments).
+Otherwise, the previously-initialized editor is reentered.
+
+@findex edwin
+The procedure @code{edwin} is an alias for @code{edit}.
+@end deffn
+
+@defvr {variable+} inhibit-editor-init-file?
+When Edwin is first initialized, it loads your init file (called
+@file{~/.edwin}) if you have one.  If the Scheme variable
+@code{inhibit-editor-init-file?} is true, however, your init file will
+not be loaded even if it exists.  By default, this variable is false.
+@end defvr
+
+@deffn {procedure+} create-editor arg @dots{}
+Initializes Edwin, or reinitializes it if already initialized.
+@code{Create-editor} is normally invoked automatically by @code{edit}.
+
+If no @var{arg}s are given, the value of @code{create-editor-args} is
+used instead.  In other words, the following are equivalent:
+
+@lisp
+(create-editor)
+(apply create-editor create-editor-args)
+@end lisp
+
+@noindent
+On the other hand, if @var{arg}s are given, they are used to update
+@code{create-editor-args}, making the following equivalent:
+
+@lisp
+(apply create-editor @var{args})
+(begin (set! create-editor-args @var{args}) (create-editor))
+@end lisp
+@end deffn
+
+@defvr {variable+} create-editor-args
+This variable controls the initialization of Edwin.  The following
+values are defined:
+
+@table @code
+
+@item (console)
+This says to run Edwin on Scheme's console, or in unix terminology, the
+standard input and output.  If the console is not a terminal device, or
+is not powerful enough to run Edwin, an error will be signalled at
+initialization time.
+
+@item (x)
+@findex DISPLAY
+This says to create an X window and run Edwin on it.  This requires the
+@code{DISPLAY} environment variable to have been set to the appropriate
+value before Scheme was started.
+
+@item (x @var{geometry})
+This is like @code{(x)} except that @var{geometry} specifies the
+window's geometry in the usual way.  @var{Geometry} must be a character
+string whose contents is an X geometry specification.
+
+@item (#f)
+This is the default.  It says to try running Edwin on Scheme's console,
+and failing that, to create an X window and run Edwin on that.  This
+signals an error if neither the console nor the X display is usable.
+@end table
+@end defvr
+
+Once Edwin has been entered, it can be exited in the following ways:
+
+@table @kbd
+
+@item C-x z
+@kindex C-x z
+@findex suspend-edwin
+Stop Edwin and return to Scheme (@code{suspend-edwin}).  The call to the
+procedure @code{edit} that entered Edwin returns normally.  A subsequent
+call to @code{edit} will resume Edwin where it was stopped.
+
+@item C-x c
+@kindex C-x c
+@findex save-buffers-kill-edwin
+Offer to save any modified buffers, then kill Edwin, returning to Scheme
+(@code{save-buffers-kill-edwin}).  This is like the @code{suspend-edwin}
+command, except that a subsequent call to @code{edit} will reinitialize
+the editor.
+
+@item C-x C-z
+@kindex C-x C-z
+@findex suspend-scheme
+Stop Edwin and suspend Scheme, returning control to the operating
+system's command interpreter (@code{suspend-scheme}).  When Scheme is
+resumed (using the command interpreter's job-control commands), Edwin is
+automatically restarted where it was stopped.  This command is identical
+to the @kbd{C-x C-z} command of GNU Emacs.
+
+@item C-x C-c
+@kindex C-x C-c
+@findex save-buffers-kill-scheme
+Offer to save any modified buffers, then kill both Edwin and Scheme
+(@code{save-buffers-kill-scheme}).  Control is returned to the operating
+system's command interpreter, and the Scheme process is terminated.
+This command is identical to the @kbd{C-x C-c} command of GNU Emacs.
+@end table
+
+The following Scheme procedures are useful for recovering from bugs in
+Edwin's implementation.  All of them are designed for use when Edwin is
+@emph{not} running --- they should not be used when Edwin is running.
+These procedures are designed to help Edwin's implementors deal with
+bugs during the implementation of the editor; they are not intended for
+casual use, but as a means of recovering from bugs that would otherwise
+require reloading the editor's world image from the disk.
+
+@deffn {procedure+} save-editor-files
+Examines Edwin, offering to save any unsaved buffers.  This is useful if
+some bug caused Edwin to die while there were unsaved buffers, and you
+want to save the information without restarting the editor.
+@end deffn
+
+@deffn {procedure+} reset-editor
+Resets Edwin, causing it to be reinitialized the next time that
+@code{edit} is called.  If you encounter a fatal bug in Edwin, a good
+way to recover is to first call @code{save-editor-files}, and then to
+call @code{reset-editor}.  That should completely reset the editor to
+its initial state.
+@end deffn
+
+@deffn {procedure+} reset-editor-windows
+Resets Edwin's display structures, without affecting any of the buffers
+or their contents.  This is useful if a bug in the display code causes
+Edwin's internal display data structures to get into an inconsistent
+state that prevents Edwin from running.
+@end deffn
+
+@node Variable Index, Key Index, Edwin, Top
+@unnumbered Variable, Declaration, and Option Index
+@printindex fn
+
+@node Key Index, Concept Index, Variable Index, Top
+@unnumbered Key Index
+@printindex ky
+
+@node Concept Index,  , Key Index, Top
+@unnumbered Concept Index
+@printindex cp
+
+@contents
+@bye
+
+@c Local Variables:
+@c selective-display: t
+@c truncate-lines: t
+@c End:
