@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+$Id: copyrigh.c,v 1.2 1993/06/24 07:15:59 gjr Exp $
+
+Copyright (c) 1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,5 +32,5 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Id: copyrigh.c,v 1.1 1993/06/24 07:07:29 gjr Exp $ */
+
 
