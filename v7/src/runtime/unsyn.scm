@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.46 1987/06/02 11:24:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.47 1987/06/02 13:24:17 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -53,15 +53,15 @@
   (make-environment
 
 (set! unsyntax
-(named-lambda (unsyntax scode #!optional unsyntax-table)
-  (let ((object (if (compound-procedure? scode)
-		    (procedure-lambda scode)
-		    scode)))
-    (if (unassigned? unsyntax-table)
-	(unsyntax-object object)
-	(with-unsyntax-table unsyntax-table
-	  (lambda ()
-	    (unsyntax-object object)))))))
+  (named-lambda (unsyntax scode #!optional unsyntax-table)
+    (let ((object (if (compound-procedure? scode)
+		      (procedure-lambda scode)
+		      scode)))
+      (if (unassigned? unsyntax-table)
+	  (unsyntax-object object)
+	  (with-unsyntax-table unsyntax-table
+	    (lambda ()
+	      (unsyntax-object object)))))))
 
 (define (unsyntax-object object)
   ((unsyntax-dispatcher object) object))
@@ -71,6 +71,17 @@
       '()
       (cons (unsyntax-object (car objects))
 	    (unsyntax-objects (cdr objects)))))
+
+(define (absolute-reference? object)
+  (and (access? object)
+       (eq? (access-environment object) system-global-environment)))
+
+(define (absolute-reference-name reference)
+  (access-name reference))
+
+(define (absolute-reference-to? object name)
+  (and (absolute-reference? object)
+       (eq? (absolute-reference-name object) name)))
 
 ;;;; Unsyntax Quanta
 
@@ -92,12 +103,6 @@
 	(lambda (environment name)
 	  `(,name ,@(unexpand-access environment))))
       `(,(unsyntax-object object))))
-
-(define (unsyntax-UNBOUND?-object unbound?)
-  `(UNBOUND? ,(unbound?-name unbound?)))
-
-(define (unsyntax-UNASSIGNED?-object unassigned?)
-  `(UNASSIGNED? ,(unassigned?-name unassigned?)))
 
 (define (unsyntax-DEFINITION-object definition)
   (definition-components definition unexpand-definition))
@@ -128,6 +133,12 @@
 (define unexpand-definition
   (definition-unexpander 'DEFINE 'DEFINE))
 
+(define (unsyntax-UNBOUND?-object unbound?)
+  `(UNBOUND? ,(unbound?-name unbound?)))
+
+(define (unsyntax-UNASSIGNED?-object unassigned?)
+  `(UNASSIGNED? ,(unassigned?-name unassigned?)))
+
 (define (unsyntax-COMMENT-object comment)
   (comment-components comment
     (lambda (text expression)
@@ -232,12 +243,12 @@
 	    `(NAMED-LAMBDA (,name . ,bvl) ,@body))))))
 
 (set! unsyntax-lambda-list
-(named-lambda (unsyntax-lambda-list lambda)
-  (if (not (lambda? lambda))
-      (error "Must be a lambda expression" lambda))
-  (lambda-components** lambda
-    (lambda (name required optional rest body)
-      (lambda-list required optional rest)))))
+  (named-lambda (unsyntax-lambda-list lambda)
+    (if (not (lambda? lambda))
+	(error "Must be a lambda expression" lambda))
+    (lambda-components** lambda
+      (lambda (name required optional rest body)
+	(lambda-list required optional rest)))))
 
 (define (lambda-list required optional rest)
   (cond ((null? rest)
@@ -272,15 +283,15 @@
 			     (delay-expression (cadr operands)))))
 	    ((eq? operator error-procedure)
 	     (unsyntax-error-like-form operands 'ERROR))
-	    ((variable? operator)
-	     (let ((name (variable-name operator)))
-	       (cond ((eq? name 'ERROR-PROCEDURE)
-		      (unsyntax-error-like-form operands 'ERROR))
-		     ((eq? name 'BREAKPOINT-PROCEDURE)
-		      (unsyntax-error-like-form operands 'BKPT))
-		     (else
-		      (cons (unsyntax-object operator)
-			    (unsyntax-objects operands))))))
+	    ((absolute-reference? operator)
+	     (case (absolute-reference-name operator)
+	       ((ERROR-PROCEDURE)
+		(unsyntax-error-like-form operands 'ERROR))
+	       ((BREAKPOINT-PROCEDURE)
+		(unsyntax-error-like-form operands 'BKPT))
+	       (else
+		(cons (unsyntax-object operator)
+		      (unsyntax-objects operands)))))
 	    ((lambda? operator)
 	     (lambda-components** operator
 	       (lambda (name required optional rest body)
@@ -314,21 +325,16 @@
   (cons* name
 	 (unsyntax-object (first operands))
 	 (let ((operand (second operands)))
-	   (cond ((and (access? operand)
-		       (null? (access-environment operand))
-		       (eq? (access-name operand) '*THE-NON-PRINTING-OBJECT*))
+	   (cond ((absolute-reference-to? operand '*THE-NON-PRINTING-OBJECT*)
 		  '())
 		 ((combination? operand)
 		  (combination-components operand
 		    (lambda (operator operands)
-		      (if (and (access? operator)
-			       (access-components operator
-				 (lambda (environment name)
-				   (and (eq? name 'LIST)
-					(null? environment)))))
+		      (if (absolute-reference-to? operator 'LIST)
 			  (unsyntax-objects operands)
 			  `(,(unsyntax-object operand))))))
-		 (else `(,(unsyntax-object operand)))))))
+		 (else
+		  `(,(unsyntax-object operand)))))))
 
 (define (unsyntax-shallow-FLUID-LET names values body)
   (combination-components body
@@ -420,35 +426,35 @@
   '(UNSYNTAX-TABLE))
 
 (set! make-unsyntax-table
-(named-lambda (make-unsyntax-table alist)
-  (cons unsyntax-table-tag
-	(make-type-dispatcher alist identity-procedure))))
+  (named-lambda (make-unsyntax-table alist)
+    (cons unsyntax-table-tag
+	  (make-type-dispatcher alist identity-procedure))))
 
 (set! unsyntax-table?
-(named-lambda (unsyntax-table? object)
-  (and (pair? object)
-       (eq? (car object) unsyntax-table-tag))))
+  (named-lambda (unsyntax-table? object)
+    (and (pair? object)
+	 (eq? (car object) unsyntax-table-tag))))
 
 (set! current-unsyntax-table
-(named-lambda (current-unsyntax-table)
-  *unsyntax-table))
+  (named-lambda (current-unsyntax-table)
+    *unsyntax-table))
 
 (set! set-current-unsyntax-table!
-(named-lambda (set-current-unsyntax-table! table)
-  (if (not (unsyntax-table? table))
-      (error "Not an unsyntax table" 'SET-CURRENT-UNSYNTAX-TABLE! table))
-  (set-table! table)))
+  (named-lambda (set-current-unsyntax-table! table)
+    (if (not (unsyntax-table? table))
+	(error "Not an unsyntax table" 'SET-CURRENT-UNSYNTAX-TABLE! table))
+    (set-table! table)))
 
 (set! with-unsyntax-table
-(named-lambda (with-unsyntax-table table thunk)
-  (define old-table)
-  (if (not (unsyntax-table? table))
-      (error "Not an unsyntax table" 'WITH-UNSYNTAX-TABLE table))
-  (dynamic-wind (lambda ()
-		  (set! old-table (set-table! table)))
-		thunk
-		(lambda ()
-		  (set! table (set-table! old-table))))))
+  (named-lambda (with-unsyntax-table table thunk)
+    (define old-table)
+    (if (not (unsyntax-table? table))
+	(error "Not an unsyntax table" 'WITH-UNSYNTAX-TABLE table))
+    (dynamic-wind (lambda ()
+		    (set! old-table (set-table! table)))
+		  thunk
+		  (lambda ()
+		    (set! table (set-table! old-table))))))
 
 (define unsyntax-dispatcher)
 (define *unsyntax-table)
