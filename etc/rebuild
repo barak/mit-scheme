@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.5 1991/08/28 22:42:48 arthur Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild,v 1.6 1991/11/05 18:17:45 cph Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -31,7 +31,7 @@ if ("$status" == 0) then
 endif
 hp9000s800
 if ("$status" == 0) then
-  set root="/scheme/800"
+  set root="/scheme/700"
 endif
 
 
@@ -60,7 +60,7 @@ if ("$1" != "none") then
     set runver="$1"
   endif
   echo "### Making runtime system version $runver..."
-  set runtime="$root/lib/BACKUP/runtime-$runver.Z"
+  set runtime="$root/backup/runtime-$runver"
   echo \(load\ \"runtim.sf\"\)\ \(load\ \"runtim.cbf\"\) >> $script
 else
   set runtime=""
@@ -68,12 +68,12 @@ endif
 
 if ("$2" != "none") then
   if (("$2" == "") || ("$2" == "next")) then
-    set compver=`rcsversion /scheme/src/compiler/machines/bobcat/make.scm`
+    set compver=`rcsversion /scheme/src/compiler/base/make.scm`
   else
     set compver="$2"
   endif
   echo "### Making compiler version $compver..."
-  set complr="$root/lib/BACKUP/complr-$compver.Z"
+  set complr="$root/backup/complr-$compver"
   echo \(cd\ \"../sf\"\)\ \(load\ \"sf.sf\"\)\ \(load\ \"sf.cbf\"\) >> $script
   echo \(cd\ \"../cref\"\)\ \(load\ \"cref.sf\"\)\ \(load\ \"cref.cbf\"\) >> $script
   echo \(cd\ \"../compiler\"\)\ \(load\ \"comp.sf\"\)\ \(load\ \"comp.cbf\"\) >> $script
@@ -88,7 +88,7 @@ if ("$3" != "none") then
     set edver="$3"
   endif
   echo "### Making edwin version $edver..."
-  set edwin="$root/lib/BACKUP/edwin-$edver.Z"
+  set edwin="$root/backup/edwin-$edver"
   echo \(cd\ \"../edwin\"\)\ \(load\ \"edwin.sf\"\)\ \(load\ \"edwin.cbf\"\) >> $script
 else
   set edwin=""
@@ -101,7 +101,7 @@ if ("$4" != "none") then
     set stver="$4"
   endif
   echo "### Making 6.001 student band version $stver..."
-  set student="$root/lib/BACKUP/6001-$stver.Z"
+  set student="$root/backup/6001-$stver"
   echo \(cd\ \"../runtime-check\"\) >> $script
   echo \(load\ \"runtim.cbf\"\) >> $script
   if ("$edwin" == "") then
@@ -300,10 +300,11 @@ if ("$runtime" != "") then
     mv -f "$runtime" "$backup"
   endif
   echo "### compress <$runband >$runtime"
-  compress <$runband >$runtime
+  cpx $runband $runtime
+  compress $runtime
   chmod a-w $runtime
-  echo "###" mv -f "$runband" /usr/local/lib/mit-scheme/runtime.com
-  mv -f "$runband" /usr/local/lib/mit-scheme/runtime.com
+  echo "###" mv -f "$runband" "$root/lib/runtime.com"
+  mv -f "$runband" "$root/lib/runtime.com"
 endif
 
 if ("$complr" != "") then
@@ -313,10 +314,11 @@ if ("$complr" != "") then
     echo "###" mv -f "$complr" "$backup"
   endif
   echo "### compress <$compband >$complr"
-  compress <$compband >$complr
+  cpx $compband $complr
+  compress $complr
   chmod a-w $complr
-  echo "###" mv -f "$compband" /usr/local/lib/mit-scheme/compiler.com
-  mv -f "$compband" /usr/local/lib/mit-scheme/compiler.com
+  echo "###" mv -f "$compband" "$root/lib/compiler.com"
+  mv -f "$compband" "$root/lib/compiler.com"
 endif
 
 if ("$edwin" != "") then
@@ -325,16 +327,18 @@ if ("$edwin" != "") then
     mv -f "$edwin" "$backup"
     echo "###" mv -f "$edwin" "$backup"
   endif
-  echo "### compress <$edwinband >$edwin"
-  compress <$edwinband >$edwin
-  chmod a-w $edwin
-  echo "###" mv -f "$edwinband" /usr/local/lib/mit-scheme/edwin.com
-  mv -f "$edwinband" /usr/local/lib/mit-scheme/edwin.com
+# Don't save this -- CPH
+#  echo "### compress <$edwinband >$edwin"
+#  cpx $edwinband $edwin
+#  compress $edwin
+#  chmod a-w $edwin
+  echo "###" mv -f "$edwinband" "$root/lib/edwin.com"
+  mv -f "$edwinband" "$root/lib/edwin.com"
 endif
 
 if ("$fullband" != "") then
-  echo "###" mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
-  mv -f "$fullband" /usr/local/lib/mit-scheme/c+e.com
+  echo "###" mv -f "$fullband" "$root/lib/c+e.com"
+  mv -f "$fullband" "$root/lib/c+e.com"
 endif
 
 if ("$student" != "") then
@@ -343,11 +347,13 @@ if ("$student" != "") then
     mv -f "$student" "$backup"
     echo "###" mv -f "$student" "$backup"
   endif
-  echo "### compress <$studband >$student"
-  compress <$studband >$student
-  chmod a-w $student
-  echo "###" mv -f "$studband" /usr/local/lib/mit-scheme/6001.com
-  mv -f "$studband" /usr/local/lib/mit-scheme/6001.com
+# Don't save this -- CPH
+#  echo "### compress <$studband >$student"
+#  cpx $studband $student
+#  compress $student
+#  chmod a-w $student
+  echo "###" mv -f "$studband" "$root/lib/6001.com"
+  mv -f "$studband" "$root/lib/6001.com"
 endif
 
 rm -f "$lock"
