@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.7 1995/04/24 16:07:34 adams Exp $
+$Id: laterew.scm,v 1.8 1995/07/06 21:48:58 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -160,16 +160,27 @@ MIT in each case. |#
       (let ((cont (first rands))
 	    (x    (second rands))
 	    (y    (third rands)))
-	(laterew/verify-hook-continuation cont)
 	(let ((%continue
-	       (if (QUOTE/? cont)
-		   (lambda (expr)
-		     expr)
-		   (lambda (expr)
-		     `(CALL (QUOTE ,%invoke-continuation)
-			    ,cont
-			    ,expr)))))
-		   
+	       (cond ((QUOTE/? cont)
+		      (lambda (expr)
+			expr))
+		     ((or (LOOKUP/? cont)
+			  (CALL/%stack-closure-ref? cont))
+		      (lambda (expr)
+			`(CALL (QUOTE ,%invoke-continuation)
+			       ,cont
+			       ,expr)))
+		     (else
+		      (if compiler:guru?
+			  (internal-warning
+			   "Unexpected continuation to out-of-line hook" cont))
+		      (lambda (expr)
+			(let ((cont-var (new-continuation-variable)))
+			  `(CALL (LAMBDA (,cont-var)
+				   (CALL (QUOTE ,%invoke-continuation)
+					 (LOOKUP ,cont-var)
+					 ,expr))
+				 ,cont)))))))
 	  (cond ((form/number? x)
 		 => (lambda (x-value)
 		      (cond ((form/number? y)
@@ -223,15 +234,6 @@ MIT in each case. |#
 				,cont
 				(LOOKUP ,x-name)
 				(LOOKUP ,y-name))))))))))))
-
-
-(define (laterew/verify-hook-continuation cont)
-  (if (not (or (QUOTE/? cont)
-	       (LOOKUP/? cont)
-	       (CALL/%stack-closure-ref? cont)))
-      (internal-error "Unexpected continuation to out-of-line hook"
-		      cont))
-  unspecific)
 
 (define *late-rewritten-operators* (make-eq-hash-table))
 
