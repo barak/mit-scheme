@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsock.c,v 1.10 1992/06/05 20:06:19 jinx Exp $
+$Id: uxsock.c,v 1.11 1993/06/15 19:00:55 gjr Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,6 +46,7 @@ MIT in each case. */
 #include "uxsock.h"
 #include "uxio.h"
 #include "prims.h"
+#include "limits.h"
 
 extern struct servent * EXFUN (getservbyname, (CONST char *, CONST char *));
 extern struct hostent * EXFUN (gethostbyname, (CONST char *));

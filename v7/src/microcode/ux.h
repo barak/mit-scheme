@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.45 1993/06/08 04:08:26 gjr Exp $
+$Id: ux.h,v 1.46 1993/06/15 19:00:20 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -69,7 +69,9 @@ extern int errno;
  */
 extern int EXFUN (ioctl, (int, unsigned long, ...));
 #endif
+#ifndef _SUNOS4
 extern int EXFUN (open, (const char *, int, ...));
+#endif
 extern int EXFUN (kill, (pid_t, int));
 
 #include "intext.h"
