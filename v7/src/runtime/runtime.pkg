@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.230 1994/08/04 15:23:45 adams Exp $
+$Id: runtime.pkg,v 14.231 1994/08/15 19:14:28 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1033,7 +1033,8 @@ MIT in each case. |#
 	  *notification-output-port*
 	  *trace-output-port*)
   (export (runtime emacs-interface)
-	  set-port/thread-mutex!))
+	  set-port/thread-mutex!
+	  standard-port-accessors))
 
 (define-package (runtime input-port)
   (files "input")

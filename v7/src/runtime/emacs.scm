@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.20 1993/11/19 22:17:07 cph Exp $
+$Id: emacs.scm,v 14.21 1994/08/15 19:14:42 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -259,6 +259,12 @@ MIT in each case. |#
 	  (or (eq? port the-console-port)
 	      (eq? port emacs-console-port)))
 	(set-console-i/o-port! new-port))
+    (do ((pairs standard-port-accessors (cdr pairs)))
+	((null? pairs))
+      (if (let ((port ((caar pairs))))
+	    (or (eq? port the-console-port)
+		(eq? port emacs-console-port)))
+	  ((cdar pairs) new-port)))
     (do ((cmdl (nearest-cmdl) (cmdl/parent cmdl)))
 	((not cmdl))
       (if (let ((port (cmdl/port cmdl)))

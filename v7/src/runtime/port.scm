@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.7 1993/10/21 14:52:40 cph Exp $
+$Id: port.scm,v 1.8 1994/08/15 19:14:15 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -553,3 +553,10 @@ MIT in each case. |#
 (define (with-interaction-i/o-port port thunk)
   (fluid-let ((*interaction-i/o-port* (guarantee-i/o-port port)))
     (thunk)))
+
+(define standard-port-accessors
+  (list (cons current-input-port set-current-input-port!)
+	(cons current-output-port set-current-output-port!)
+	(cons notification-output-port set-notification-output-port!)
+	(cons trace-output-port set-trace-output-port!)
+	(cons interaction-i/o-port set-interaction-i/o-port!)))
