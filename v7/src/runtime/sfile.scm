@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.12 1994/03/11 05:17:51 cph Exp $
+$Id: sfile.scm,v 14.13 1994/05/04 22:47:10 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -52,8 +52,12 @@ MIT in each case. |#
    (lambda (k)
      (bind-condition-handler (list condition-type:file-error
 				   condition-type:port-error)
-	 (lambda (condition) condition (k unspecific))
-       (lambda () (delete-file filename))))))
+	 (lambda (condition)
+	   condition
+	   (k #f))
+       (lambda ()
+	 (delete-file filename)
+	 #t)))))
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
