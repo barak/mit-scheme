@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.5 1991/03/16 00:03:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.6 1991/03/16 08:13:20 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -76,31 +76,29 @@ MIT in each case. |#
 	  ((not (no-undesirable-characteristics? description))
 	   (error "terminal type has undesirable characteristics"
 		  (terminal-type-name description))))
-    (make-screen (let ((baud-rate (output-port/baud-rate console-output-port)))
-		   (let ((baud-rate-index (baud-rate->index baud-rate)))
-		     (make-terminal-state
-		      description
-		      baud-rate-index
-		      baud-rate
-		      (fix:1+ (fix:quotient baud-rate 2400)))))
-		 console-beep
-		 console-clear-line!
-		 console-clear-rectangle!
-		 console-clear-screen!
-		 console-discard!
-		 console-enter!
-		 console-exit!
-		 console-flush!
-		 console-modeline-event!
-		 console-preempt-update?
-		 console-scroll-lines-down!
-		 console-scroll-lines-up!
-		 console-wrap-update!
-		 console-write-char!
-		 console-write-cursor!
-		 console-write-substring!
-		 (output-port/x-size console-output-port)
-		 (output-port/y-size console-output-port))))
+    (let ((baud-rate (output-port/baud-rate console-output-port)))
+      (make-screen (make-terminal-state description
+					(baud-rate->index baud-rate)
+					baud-rate)
+		   console-beep
+		   console-clear-line!
+		   console-clear-rectangle!
+		   console-clear-screen!
+		   console-discard!
+		   console-enter!
+		   console-exit!
+		   console-flush!
+		   console-modeline-event!
+		   console-discretionary-flush
+		   console-scroll-lines-down!
+		   console-scroll-lines-up!
+		   console-wrap-update!
+		   console-write-char!
+		   console-write-cursor!
+		   console-write-substring!
+		   (fix:1+ (fix:quotient baud-rate 2400))
+		   (output-port/x-size console-output-port)
+		   (output-port/y-size console-output-port)))))
 
 (define (console-termcap-description)
   (if (eq? console-description 'UNKNOWN)
@@ -283,15 +281,11 @@ MIT in each case. |#
 
 (define-structure (terminal-state
 		   (constructor make-terminal-state
-				(description
-				 baud-rate-index
-				 baud-rate
-				 preemption-modulus))
+				(description baud-rate-index baud-rate))
 		   (conc-name terminal-state/))
   (description false read-only true)
   (baud-rate-index false read-only true)
   (baud-rate false read-only true)
-  (preemption-modulus false read-only true)
   (cursor-x false)
   (cursor-y false)
   (standout-mode? false)
@@ -307,9 +301,6 @@ MIT in each case. |#
 
 (define-integrable (screen-baud-rate screen)
   (terminal-state/baud-rate (screen-state screen)))
-
-(define-integrable (screen-preemption-modulus screen)
-  (terminal-state/preemption-modulus (screen-state screen)))
 
 (define-integrable (screen-cursor-x screen)
   (terminal-state/cursor-x (screen-state screen)))
@@ -376,22 +367,19 @@ MIT in each case. |#
   (thunk)
   (output-port/flush-output console-output-port))
 
-(define (console-preempt-update? screen y)
-  (and (fix:= 0 (fix:remainder y (screen-preemption-modulus screen)))
-       (begin
-	 (let ((n (output-port/buffered-chars console-output-port)))
-	   (if (fix:< 20 n)
-	       (begin
-		 (output-port/flush-output console-output-port)
-		 (let ((baud-rate (screen-baud-rate screen)))
-		   (if (fix:< baud-rate 2400)
-		       (let ((msec (quotient (* n 10000) baud-rate)))
-			 (if (>= msec 1000)
-			     (let ((t (+ (real-time-clock) msec)))
-			       (let loop ()
-				 (if (< (real-time-clock) t)
-				     (loop)))))))))))
-	 true)))
+(define (console-discretionary-flush screen)
+  (let ((n (output-port/buffered-chars console-output-port)))
+    (if (fix:< 20 n)
+	(begin
+	  (output-port/flush-output console-output-port)
+	  (let ((baud-rate (screen-baud-rate screen)))
+	    (if (fix:< baud-rate 2400)
+		(let ((msec (quotient (* n 10000) baud-rate)))
+		  (if (>= msec 1000)
+		      (let ((t (+ (real-time-clock) msec)))
+			(let loop ()
+			  (if (< (real-time-clock) t)
+			      (loop))))))))))))
 
 (define (console-beep screen)
   (output-1 screen (ts-audible-bell (screen-description screen))))

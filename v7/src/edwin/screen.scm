@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.88 1991/03/16 00:02:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.89 1991/03/16 08:13:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -58,13 +58,14 @@
 				 operation/exit!
 				 operation/flush!
 				 operation/modeline-event!
-				 operation/preempt-update?
+				 operation/discretionary-flush
 				 operation/scroll-lines-down!
 				 operation/scroll-lines-up!
 				 operation/wrap-update!
 				 operation/write-char!
 				 operation/write-cursor!
 				 operation/write-substring!
+				 preemption-modulus
 				 x-size
 				 y-size)))
   (state false read-only true)
@@ -77,13 +78,14 @@
   (operation/exit! false read-only true)
   (operation/flush! false read-only true)
   (operation/modeline-event! false read-only true)
-  (operation/preempt-update? false read-only true)
+  (operation/discretionary-flush false read-only true)
   (operation/scroll-lines-down! false read-only true)
   (operation/scroll-lines-up! false read-only true)
   (operation/wrap-update! false read-only true)
   (operation/write-char! false read-only true)
   (operation/write-cursor! false read-only true)
   (operation/write-substring! false read-only true)
+  (preemption-modulus false read-only true)
   (root-window false)
   (needs-update? false)
   (in-update? false)
@@ -187,9 +189,6 @@
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'terminal screen 'move-cursor x y))
   ((screen-operation/write-cursor! screen) screen x y))
-
-(define-integrable (terminal-preempt-update? screen y)
-  ((screen-operation/preempt-update? screen) screen y))
 
 (define-integrable (terminal-clear-screen screen)
   (if (screen-debug-trace screen)
@@ -529,6 +528,8 @@
   (let ((current-matrix (screen-current-matrix screen))
 	(new-matrix (screen-new-matrix screen))
 	(y-size (screen-y-size screen))
+	(preemption-modulus (screen-preemption-modulus screen))
+	(discretionary-flush (screen-operation/discretionary-flush screen))
 	(halt-update? (editor-halt-update? current-editor)))
     (let ((enable (matrix-enable new-matrix)))
       (let loop ((y 0))
@@ -540,9 +541,10 @@
 		 (set-matrix-cursor-y! current-matrix y))
 	       (set-screen-needs-update?! screen false)
 	       true)
-	      ((and (terminal-preempt-update? screen y)
-		    ;; `terminal-preempt-update?' has side-effects,
-		    ;; and it must be run regardless of `force?'.
+	      ((and (fix:= 0 (fix:remainder y preemption-modulus))
+		    (begin
+		      (if discretionary-flush (discretionary-flush screen))
+		      true)
 		    (not force?)
 		    (or (halt-update?)
 			(eq? (screen-debug-preemption-y screen) y)))

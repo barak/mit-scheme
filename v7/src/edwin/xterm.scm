@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.15 1991/03/16 00:03:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.16 1991/03/16 08:13:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -105,13 +105,14 @@
 			xterm-screen/exit!
 			xterm-screen/flush!
 			xterm-screen/modeline-event!
-			xterm-screen/preempt-update?
+			false
 			xterm-screen/scroll-lines-down!
 			xterm-screen/scroll-lines-up!
 			xterm-screen/wrap-update!
 			xterm-screen/write-char!
 			xterm-screen/write-cursor!
 			xterm-screen/write-substring!
+			8
 			(xterm-x-size xterm)
 			(xterm-y-size xterm)))))
     (set! screen-list (cons screen screen-list))
@@ -179,11 +180,6 @@
     (xterm-enable-cursor xterm false)
     (xterm-erase-cursor xterm))
   (xterm-screen/flush! screen))
-
-(define (xterm-screen/preempt-update? screen y)
-  screen				; ignored
-  (fix:= (fix:remainder y 8) 0))
-  
 
 (define (xterm-screen/scroll-lines-down! screen xl xu yl yu amount)
   (xterm-scroll-lines-down (screen-xterm screen) xl xu yl yu amount)
