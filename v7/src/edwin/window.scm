@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.147 1989/06/19 22:36:54 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.148 1989/06/21 10:37:45 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -363,6 +363,26 @@
 
 (define-integrable (set-inferior-size! inferior x y)
   (=> (inferior-window inferior) :set-size! x y))
+
+(define (inferior-containing-coordinates window x y stop-search?)
+  (let search ((window window) (x x) (y y))
+    (if (stop-search? window)
+	(values window x y)
+	(let loop ((inferiors (window-inferiors window)))
+	  (if (null? inferiors)
+	      (values false false false)
+	      (let ((inferior (car inferiors)))
+		(let ((x-start (inferior-x-start inferior))
+		      (y-start (inferior-y-start inferior)))
+		  (if (and x-start y-start)
+		      (let ((x (- x x-start))
+			    (y (- y y-start)))
+			(if (and (not (negative? x))
+				 (<= x (inferior-x-size inferior))
+				 (not (negative? y))
+				 (<= y (inferior-y-size inferior)))			    (search (inferior-window inferior) x y)
+			    (loop (cdr inferiors))))
+		      (loop (cdr inferiors))))))))))
 
 (define-integrable (find-inferior? inferiors window)
   (assq window inferiors))
@@ -426,30 +446,3 @@
 (define-integrable (set-inferior-redisplay-flags! inferior flags)
   (vector-set! (cdr inferior) 2 flags)
   unspecific)
-
-(define (inferior-containing-coordinates window x y #!optional stop-search?)
-  (let ((stop-search? (if (default-object? stop-search?)
-			  window-inferiors
-			  stop-search?)))
-    (let search ((window window)
-		 (x x)
-		 (y y))
-      (if (stop-search? window)
-	  (values window x y)
-	  (let loop ((inferiors (window-inferiors window)))
-	    (and
-	     (not (null? inferiors))
-	     (let ((inferior (car inferiors)))
-	       (let ((x-start (inferior-x-start inferior))
-		     (y-start (inferior-y-start inferior))
-		     (inf-window (inferior-window inferior)))
-		 (cond ((or (null? x-start) (null? y-start)) false)
-		       ((and (>= x x-start)
-			     (<= x (inferior-x-end inferior))
-			     (>= y y-start)
-			     (<= y (inferior-y-end inferior)))
-			(search inf-window
-				(- x x-start)
-				(- y y-start)))
-		       (else
-			(loop (cdr inferiors))))))))))))
