@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild,v 1.12 1993/06/25 20:52:11 cph Exp $
+# $Id: rebuild,v 1.13 1994/01/08 21:36:00 gjr Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -63,7 +63,7 @@ if ("$1" != "none") then
   endif
   echo "### Making runtime system version $runver..."
   set runtime="$root/backup/runtime-$runver"
-  echo \(load\ \"runtim.sf\"\)\ \(load\ \"runtim.cbf\"\) >> $script
+  echo \(load\ \"runtime.sf\"\)\ \(load\ \"runtime.cbf\"\) >> $script
 else
   set runtime=""
 endif
@@ -78,7 +78,7 @@ if ("$2" != "none") then
   set complr="$root/backup/complr-$compver"
   echo \(cd\ \"../sf\"\)\ \(load\ \"sf.sf\"\)\ \(load\ \"sf.cbf\"\) >> $script
   echo \(cd\ \"../cref\"\)\ \(load\ \"cref.sf\"\)\ \(load\ \"cref.cbf\"\) >> $script
-  echo \(cd\ \"../compiler\"\)\ \(load\ \"comp.sf\"\)\ \(load\ \"comp.cbf\"\) >> $script
+  echo \(cd\ \"../compiler\"\)\ \(load\ \"compiler.sf\"\)\ \(load\ \"compiler.cbf\"\) >> $script
 else
   set complr=""
 endif
@@ -105,7 +105,7 @@ if ("$4" != "none") then
   echo "### Making 6.001 student band version $stver..."
   set student="$root/backup/6001-$stver"
   echo \(cd\ \"../runtime-check\"\) >> $script
-  echo \(load\ \"runtim.cbf\"\) >> $script
+  echo \(load\ \"runtime.cbf\"\) >> $script
   if ("$edwin" == "") then
     echo ";;; Must syntax Edwin in order to syntax the 6.001 make.scm file." >> $script
     echo \(cd\ \"../edwin\"\) >> $script

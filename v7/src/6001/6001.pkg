@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/6001.pkg,v 1.8 1993/11/09 21:24:16 adams Exp $
+$Id: 6001.pkg,v 1.9 1994/01/08 21:37:20 gjr Exp $
 
-Copyright (c) 1991-92 Massachusetts Institute of Technology
+Copyright (c) 1991-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; 6.001 packaging
 
-(global-definitions "../runtime/runtim")
+(global-definitions "../runtime/runtime")
 
 (define-package (student)
   (parent ()))
