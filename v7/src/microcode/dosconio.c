@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.2 1992/09/03 07:29:51 jinx Exp $
+$Id: dosconio.c,v 1.3 1992/09/03 07:40:47 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -312,14 +312,6 @@ DEFUN_VOID (get_typeahead_character)
     typeahead_buffer.length--;
     return (result);
   }
-}
-
-DEFINE_PRIMITIVE ("CONSUME-TYPEAHEAD", Prim_consume_typeahead, 0, 0,
-		  "Suck up DOS typeahead.")
-{
-  /* Obsolete -- done by microcode directly. */
-  PRIMITIVE_HEADER(0);
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
