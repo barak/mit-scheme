@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.467 2003/11/06 00:16:05 cph Exp $
+$Id: runtime.pkg,v 14.468 2003/11/06 04:16:50 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4642,7 +4642,11 @@ USA.
     (else))
   (parent (runtime))
   (export ()
+	  call-with-pgsql-conn
 	  close-pgsql-conn
+	  condition-type:pgsql-connection-error
+	  condition-type:pgsql-error
+	  condition-type:pgsql-query-error
 	  escape-pgsql-string
 	  exec-pgsql-query
 	  make-empty-pgsql-result

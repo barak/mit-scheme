@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.3 2003/11/06 00:16:21 cph Exp $
+$Id: pgsql.scm,v 1.4 2003/11/06 04:16:46 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -149,7 +149,55 @@ USA.
 	       (set! results (make-gc-finalizer pq-clear))
 	       (set! pgsql-initialized? #t)))
 	 #t)))
+
+(define condition-type:pgsql-error
+  (make-condition-type 'PGSQL-ERROR condition-type:error '()
+    (lambda (condition port)
+      condition
+      (write-string "Unknown PostgreSQL error." port))))
 
+(define condition-type:pgsql-connection-error
+  (make-condition-type 'PGSQL-CONNECTION-ERROR condition-type:pgsql-error
+      '(MESSAGE)
+    (lambda (condition port)
+      (write-string "Unable to connect to PostgreSQL server" port)
+      (write-message (access-condition condition 'MESSAGE) port))))
+
+(define error:pgsql-connection
+  (condition-signaller condition-type:pgsql-connection-error
+		       '(MESSAGE)
+		       standard-error-handler))
+
+(define condition-type:pgsql-query-error
+  (make-condition-type 'PGSQL-QUERY-ERROR condition-type:pgsql-error
+      '(QUERY RESULT)
+    (lambda (condition port)
+      (write-string "PostgreSQL query error" port)
+      (write-message
+       (pgsql-result-error-message (access-condition condition 'RESULT))
+       port))))
+
+(define error:pgsql-query
+  (condition-signaller condition-type:pgsql-query-error
+		       '(QUERY RESULT)
+		       standard-error-handler))
+
+(define (write-message string port)
+  (if string
+      (begin
+	(write-string ": " port)
+	(let ((regs
+	       (re-string-match "\\`\\s *\\(error:\\)?\\s *\\(.*\\)\\s *\\'"
+				string
+				#t)))
+	  (if regs
+	      (write-substring string
+			       (re-match-start-index 2 regs)
+			       (re-match-end-index 2 regs)
+			       port)
+	      (write-string string port))))
+      (write-string "." port)))
+
 (define (open-pgsql-conn parameters #!optional wait?)
   (if (not (pgsql-available?))
       (error "No PostgreSQL support in this sytem."))
@@ -162,13 +210,13 @@ USA.
 	   (pq-connect-start parameters p)))
      (lambda (handle)
        (cond ((= 0 handle)
-	      (error "Unable to connect to PostgreSQL server."))
+	      (error:pgsql-connection #f))
 	     ((= PGSQL-CONNECTION-BAD (pq-status handle))
 	      (let ((msg (pq-error-message handle)))
 		(pq-finish handle)
-		(error "Unable to connect to PostgreSQL server:" msg))))
+		(error:pgsql-connection msg))))
        (make-connection handle)))))
-
+
 (define (close-pgsql-conn connection)
   (guarantee-connection connection 'CLOSE-PGSQL-CONN)
   (without-interrupts
@@ -177,6 +225,18 @@ USA.
 	 (begin
 	   (remove-from-gc-finalizer! connections connection)
 	   (set-connection-handle! connection #f))))))
+
+(define (call-with-pgsql-conn parameters procedure)
+  (let ((conn))
+    (dynamic-wind (lambda ()
+		    (set! conn (open-pgsql-conn parameters))
+		    unspecific)
+		  (lambda ()
+		    (procedure conn))
+		  (lambda ()
+		    (close-pgsql-conn conn)
+		    (set! conn)
+		    unspecific))))
 
 (define-integrable (connection->handle connection)
   (guarantee-valid-connection connection 'CONNECTION->HANDLE))
@@ -220,15 +280,23 @@ USA.
 
 (define (exec-pgsql-query connection query)
   (guarantee-string query 'EXEC-PGSQL-QUERY)
-  (let ((handle (connection->handle connection)))
-    (make-gc-finalized-object
-     results
-     (lambda (p)
-       (pq-exec handle query p))
-     (lambda (result-handle)
-       (if (= 0 result-handle)
-	   (error "Unable to execute PostgreSQL query:" query))
-       (make-result result-handle)))))
+  (let ((result
+	 (let ((handle (connection->handle connection)))
+	   (make-gc-finalized-object
+	    results
+	    (lambda (p)
+	      (pq-exec handle query p))
+	    (lambda (result-handle)
+	      (if (= 0 result-handle)
+		  (error "Unable to execute PostgreSQL query:" query))
+	      (make-result result-handle))))))
+    (if (memq (pgsql-result-status result)
+	      '(PGSQL-COMMAND-OK
+		PGSQL-TUPLES-OK
+		PGSQL-COPY-OUT
+		PGSQL-COPY-IN))
+	result
+	(error:pgsql-query query result))))
 
 (define (make-empty-pgsql-result connection status)
   (let ((handle (connection->handle connection)))
