@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.163 1996/04/24 02:19:57 cph Exp $
+;;;	$Id: dired.scm,v 1.164 1996/09/06 17:10:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -251,10 +251,12 @@ Type `h' after entering dired for more info."
 
 (define (read-directory pathname file-list switches mark)
   (if (eq? 'ALL file-list)
-      (insert-directory! (if (and (not (pathname-wild? pathname))
-				  (file-directory? pathname))
-			     (pathname-as-directory pathname)
-			     pathname)
+      (insert-directory! (let ((dir (pathname-as-directory pathname)))
+			   (if (and (not (pathname-wild? pathname))
+				    (not (pathname=? pathname dir))
+				    (file-directory? pathname))
+			       dir
+			       pathname))
 			 switches mark
 			 (if (pathname-wild? pathname)
 			     'WILDCARD
