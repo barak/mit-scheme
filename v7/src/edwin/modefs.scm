@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.148 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: modefs.scm,v 1.149 1995/04/13 23:26:56 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -326,32 +326,44 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\{) 'shrink-window-horizontally)
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
+
+;;; Additional bindings to `standard' special keys:
 
-
-;; Additional bindings to `standard' special keys
-
-(define-key 'fundamental left 'backward-char)
+(define-key 'fundamental (make-special-key 'down 0) 'next-line)
+(define-key 'fundamental (make-special-key 'up 0) 'previous-line)
+(define-key 'fundamental (make-special-key 'left 0) 'backward-char)
+(define-key 'fundamental (make-special-key 'right 0) 'forward-char)
 (define-key 'fundamental (make-special-key 'left 1) 'backward-word)
-(define-key 'fundamental deletechar 'delete-char)
-(define-key 'fundamental right 'forward-char)
 (define-key 'fundamental (make-special-key 'right 1) 'forward-word)
-(define-key 'fundamental deleteline 'kill-line)
-(define-key 'fundamental down 'next-line)
-(define-key 'fundamental insertline 'open-line)
-(define-key 'fundamental up 'previous-line)
-(define-key 'fundamental home 'home-cursor)
-(define-key 'fundamental next 'scroll-up)
-(define-key 'fundamental prior 'scroll-down)
+
+;; PC bindings:
+(define-key 'fundamental (make-special-key 'home 0) 'home-cursor)
+(define-key 'fundamental (make-special-key 'end 0) 'end-of-line)
+(define-key 'fundamental (make-special-key 'delete 0) 'delete-char)
+(define-key 'fundamental (make-special-key 'page-up 0) 'scroll-down)
+(define-key 'fundamental (make-special-key 'page-down 0) 'scroll-up)
+(define-key 'fundamental (make-special-key 'page-up 1) 'scroll-other-window)
+(define-key 'fundamental (make-special-key 'page-down 1)
+  'scroll-other-window-down)
+
+;; HP bindings:
+(define-key 'fundamental (make-special-key 'deletechar 0) 'delete-char)
+(define-key 'fundamental (make-special-key 'deleteline 0) 'kill-line)
+(define-key 'fundamental (make-special-key 'insertline 0) 'open-line)
+(define-key 'fundamental (make-special-key 'next 0) 'scroll-up)
+(define-key 'fundamental (make-special-key 'prior 0) 'scroll-down)
 (define-key 'fundamental (make-special-key 'next 1) 'scroll-other-window)
 (define-key 'fundamental (make-special-key 'prior 1) 'scroll-other-window-down)
 
-;;; Jokes
+;;; Jokes:
 
 (define-key 'fundamental #\h-space 'hyper-space)
 (define-key 'fundamental (make-special-key 'malesymbol 4) 'super-man)
 (define-key 'fundamental (make-special-key 'menu 4) 'super-menu)
 (define-key 'fundamental #\t-$ 'top-dollar)
 (define-key 'fundamental #\t-^ 'top-hat)
+
+;;; Mouse buttons:
 
 (define-key 'fundamental button1-down 'mouse-set-point)
 (define-key 'fundamental button1-up 'mouse-ignore)
