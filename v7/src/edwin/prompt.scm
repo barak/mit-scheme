@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.178 1999/01/28 06:10:14 cph Exp $
+;;; $Id: prompt.scm,v 1.179 1999/01/28 06:15:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -403,9 +403,9 @@
 (define (name->history name)
   (if (not (symbol? name))
       (error:wrong-type-argument name "symbol" 'NAME->HISTORY))
-  (or (hash-table-get prompt-histories name #f)
+  (or (hash-table/get prompt-histories name #f)
       (let ((history (list 'PROMPT-HISTORY)))
-	(hash-table-put! prompt-histories name history)
+	(hash-table/put! prompt-histories name history)
 	history)))
 
 (define (history-length name)
