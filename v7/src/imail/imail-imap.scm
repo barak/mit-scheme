@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.69 2000/05/22 13:52:07 cph Exp $
+;;; $Id: imail-imap.scm,v 1.70 2000/05/22 15:08:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -760,7 +760,10 @@
 	      (lambda ()
 		(imap:command:append connection
 				     (imap-url-mailbox url)
-				     (message-flags message)
+				     (map imail-flag->imap-flag
+					  (flags-delete
+					   "\\recent"
+					   (message-flags message)))
 				     (message-internal-time message)
 				     (message->string message)))))))))
 
