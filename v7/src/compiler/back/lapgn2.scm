@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.15 1990/01/20 07:26:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.16 1990/01/20 07:32:06 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -456,7 +456,7 @@ MIT in each case. |#
       (rec2 (standard-register-reference source type true)
 	    (reference-temporary-register! type)))))
 
-(define (register-copy-if-available source type target if-win if-lose)
+(define (register-copy-if-available source type target)
   (reuse-pseudo-register-alias source type
     (lambda (reusable-alias)
       (lambda ()
@@ -466,7 +466,7 @@ MIT in each case. |#
 	(register-reference reusable-alias)))
     (lambda () false)))
 
-(define (temporary-copy-if-available source type if-win if-lose)
+(define (temporary-copy-if-available source type)
   (reuse-pseudo-register-alias source type
     (lambda (reusable-alias)
       (lambda ()
