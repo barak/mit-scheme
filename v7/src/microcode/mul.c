@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.29 1990/06/20 17:41:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.30 1990/11/14 10:58:49 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -115,7 +115,7 @@ Mul (Arg1, Arg2)
 #include "Error: types changed.  Change assembly language appropriately"
 #endif
 
-#if defined(MC68020)
+#ifndef MC68010 /* MC68020, MC68030, or MC68040 */
 
 static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 
@@ -136,7 +136,7 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 	asm("	rts");
 	asm("	data");
 
-#else	/* not MC68020, but 68k family */
+#else	/* MC68010 */
 
 	/* 20(sp) = arg0; 24(sp) = arg1 because of movem */
 
@@ -196,7 +196,7 @@ static long Fixnum_Range[2] = {SMALLEST_FIXNUM , BIGGEST_FIXNUM};
 	asm("	rts");
 	asm("	data");
 
-#endif	/* not MC68020 */
+#endif	/* MC68010 */
 #endif  /* hp9000s300 */
 
 #endif /* (TYPE_CODE_LENGTH == 8) */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.32 1990/11/13 08:45:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.33 1990/11/14 10:59:06 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -161,11 +161,19 @@ GRAPHICS_LIBS =
 
 #if (PROC_TYPE == PROC_TYPE_68020)
 #define PROC_TYPE_KNOWN
-MACHINE_SWITCHES = -DMC68020 -DHAS_COMPILER_SUPPORT
+MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mc68k.h
 #endif /* PROC_TYPE_68020 */
+
+#if (PROC_TYPE == PROC_TYPE_68000)
+#define PROC_TYPE_KNOWN
+MACHINE_SWITCHES = -DMC68010
+MACHINE_SOURCES = cmpint.c
+MACHINE_OBJECTS = cmpint.o
+GC_HEAD_FILES = gccode.h cmpgc.h
+#endif /* PROC_TYPE_68000 */
 
 #if (PROC_TYPE == PROC_TYPE_VAX)
 #define PROC_TYPE_KNOWN
