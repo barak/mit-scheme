@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.10 2001/03/01 04:25:54 cph Exp $
+$Id: prbfish.c,v 1.11 2001/03/08 06:28:22 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -229,3 +229,66 @@ Returned value is the new value of NUM.")
 		    (&num));
   PRIMITIVE_RETURN (long_to_integer (num));
 }
+
+#ifdef CRYPTO_MODULES
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive
+    ("BLOWFISH-SET-KEY", Prim_blowfish_set_key, 1, 1,
+     "(STRING)\n\
+Generate a Blowfish key from STRING.\n\
+STRING must be 72 bytes or less in length.\n\
+For text-string keys, use MD5 on the text, and pass the digest here.");
+  declare_primitive
+    ("BLOWFISH-ECB", Prim_blowfish_ecb, 4, 4,
+     "(INPUT OUTPUT KEY-VECTOR ENCRYPT?)\n\
+Apply Blowfish in Electronic Code Book mode.\n\
+INPUT is an 8-byte string.\n\
+OUTPUT is an 8-byte string.\n\
+KEY is a Blowfish key.\n\
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).");
+  declare_primitive
+    ("BLOWFISH-CBC-V2", Prim_blowfish_cbc, 5, 5,
+     "(INPUT OUTPUT KEY INIT-VECTOR ENCRYPT?)\n\
+Apply Blowfish in Cipher Block Chaining mode.\n\
+INPUT is a string whose length is a multiple of 8 bytes.\n\
+OUTPUT is a string whose length is the same as INPUT.\n\
+KEY is a Blowfish key.\n\
+INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+  The value from any call may be passed in to a later call.\n\
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).");
+  declare_primitive
+    ("BLOWFISH-CFB64-SUBSTRING-V2", Prim_blowfish_cfb64_substring, 9, 9,
+     "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM ENCRYPT?)\n\
+Apply Blowfish in Cipher Feed-Back mode.\n\
+\(INPUT,ISTART,IEND) is an arbitrary substring.\n\
+OUTPUT is a string as large as the input substring.\n\
+OSTART says where to start writing to the output string.\n\
+KEY is a Blowfish key.\n\
+INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+  The value from any call may be passed in to a later call.\n\
+  The initial value must be unique for each message/key pair.\n\
+NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
+  number of bytes that have previously been processed in this stream.\n\
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
+Returned value is the new value of NUM.");
+  declare_primitive
+    ("BLOWFISH-OFB64-SUBSTRING", Prim_blowfish_ofb64_substring, 8, 8,
+     "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM)\n\
+Apply Blowfish in Output Feed-Back mode.\n\
+(INPUT,ISTART,IEND) is an arbitrary substring.\n\
+OUTPUT is a string as large as the input substring.\n\
+OSTART says where to start writing to the output string.\n\
+KEY is a Blowfish key.\n\
+INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+  The value from any call may be passed in to a later call.\n\
+  The initial value must be unique for each message/key pair.\n\
+NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
+  number of bytes that have previously been processed in this stream.\n\
+Returned value is the new value of NUM.");
+  return "#prbfish";
+}
+
+#endif

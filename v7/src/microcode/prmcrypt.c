@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmcrypt.c,v 1.1 2001/02/28 21:42:01 cph Exp $
+$Id: prmcrypt.c,v 1.2 2001/03/08 06:28:24 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -329,3 +329,59 @@ DEFINE_PRIMITIVE ("MCRYPT_MODULE_GET_ALGO_SUPPORTED_KEY_SIZES", Prim_mcrypt_modu
     PRIMITIVE_RETURN (convert_key_sizes (sizes, n_sizes));
   }
 }
+
+#ifdef CRYPTO_MODULES
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive
+    ("MCRYPT_MODULE_OPEN", Prim_mcrypt_module_open, 2, 2, 0);
+  declare_primitive
+    ("MCRYPT_GENERIC_INIT", Prim_mcrypt_generic_init, 3, 3, 0);
+  declare_primitive
+    ("MCRYPT_GENERIC", Prim_mcrypt_generic, 4, 4, 0);
+  declare_primitive
+    ("MDECRYPT_GENERIC", Prim_mdecrypt_generic, 4, 4, 0);
+  declare_primitive
+    ("MCRYPT_GENERIC_END", Prim_mcrypt_generic_end, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_SELF_TEST", Prim_mcrypt_enc_self_test, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_IS_BLOCK_ALGORITHM_MODE", Prim_mcrypt_enc_is_block_algorithm_mode, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_IS_BLOCK_ALGORITHM", Prim_mcrypt_enc_is_block_algorithm, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_IS_BLOCK_MODE", Prim_mcrypt_enc_is_block_mode, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_GET_KEY_SIZE", Prim_mcrypt_enc_get_key_size, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_GET_IV_SIZE", Prim_mcrypt_enc_get_iv_size, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_GET_ALGORITHMS_NAME", Prim_mcrypt_enc_get_algorithms_name, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_ENC_GET_MODES_NAME", Prim_mcrypt_enc_get_modes_name, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_SELF_TEST", Prim_mcrypt_module_self_test, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_IS_BLOCK_ALGORITHM_MODE", Prim_mcrypt_module_is_block_algorithm_mode, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_IS_BLOCK_ALGORITHM", Prim_mcrypt_module_is_block_algorithm, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_IS_BLOCK_MODE", Prim_mcrypt_module_is_block_mode, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_GET_ALGO_BLOCK_SIZE", Prim_mcrypt_module_get_algo_block_size, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_MODULE_GET_ALGO_KEY_SIZE", Prim_mcrypt_module_get_algo_key_size, 1, 1, 0);
+  declare_primitive
+    ("MCRYPT_LIST_ALGORITHMS", Prim_mcrypt_list_algorithms, 0, 0, 0);
+  declare_primitive
+    ("MCRYPT_LIST_MODES", Prim_mcrypt_list_modes, 0, 0, 0);
+  declare_primitive
+    ("MCRYPT_ENC_GET_SUPPORTED_KEY_SIZES", Prim_mcrypt_enc_get_supported_key_sizes, 1, 1, 0);
+  declare_primitive
+     ("MCRYPT_MODULE_GET_ALGO_SUPPORTED_KEY_SIZES", Prim_mcrypt_module_get_algo_supported_key_sizes, 1, 1, 0);
+  return "#prmcrypt";
+}
+
+#endif

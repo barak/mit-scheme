@@ -1,6 +1,6 @@
-# $Id: Makefile.in.in,v 1.13 2000/12/08 19:07:28 cph Exp $
+# $Id: Makefile.in.in,v 1.14 2001/03/08 06:28:54 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ TAR = tar
 GZIP_ENV = --best
 
 DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
-       -I. -I$(srcdir) -I.
+       @SCHEME_DEFS@ -I. -I$(srcdir) -I.
 CFLAGS = @CFLAGS@
 X_CFLAGS = @X_CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -86,9 +86,10 @@ GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
 STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
-STATIC_PREFIX = @STATIC_PREFIX@
-STATIC_SUFFIX = @STATIC_SUFFIX@
 X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
+CRYPTO_TARGETS = @CRYPTO_TARGETS@
+PRBFISH_LIBS = @PRBFISH_LIBS@
+PRMD5_LIBS = @PRMD5_LIBS@
 
 # **** Non-configured files ****
 
@@ -114,19 +115,20 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 
 bin_PROGRAMS = scheme bchscheme
 aux_PROGRAMS = gcdrone
+aux_LIBS = $(CRYPTO_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
 
 scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
 scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
 scheme_DEPENDENCIES = 
-scheme_LDFLAGS = @X_LIBS@
+scheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
 
 bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
 bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
 bchscheme_DEPENDENCIES = 
-bchscheme_LDFLAGS = @X_LIBS@
+bchscheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
 bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
 
 bchdrn_SOURCES = bchdrn.c bchutl.c
@@ -154,11 +156,12 @@ psbtobin_LDFLAGS =
 psbtobin_LIBS = $(LIBS)
 
 ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
 MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
 
-CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpintmd.h TAGS
@@ -181,7 +184,7 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
 # **** Main rules ****
 
-all: $(ALL_PROGRAMS) $(ALL_DATA)
+all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
@@ -218,6 +221,18 @@ psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 utabmd.bin: utabmd.scm
 	scheme -compiler -eval '(sf "utabmd")' < /dev/null
 
+prbfish.so: prbfish.o
+	ld -shared -o $@ $^ $(PRBFISH_LIBS)
+
+prmd5.so: prmd5.o
+	ld -shared -o $@ $^ $(PRMD5_LIBS)
+
+prmhash.so: prmhash.o
+	ld -shared -o $@ $^ -lmhash
+
+prmcrypt.so: prmcrypt.o
+	ld -shared -o $@ $^ -lmcrypt -lltdl
+
 tags: TAGS
 TAGS:
 	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
@@ -235,7 +250,8 @@ maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
 	( cd cmpauxmd && $(MAKE) $@ )
 
-install: install-binPROGRAMS install-auxPROGRAMS install-auxDATA
+install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
+	install-auxDATA
 
 install-binPROGRAMS: $(bin_PROGRAMS)
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
@@ -254,6 +270,16 @@ install-auxPROGRAMS: $(aux_PROGRAMS)
 	    if test -f $$p; then \
 		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
 		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
+
+install-auxLIBS: $(aux_LIBS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
+	@list='$(aux_LIBS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_LIBS) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+		$(INSTALL_LIBS) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
 	    fi; \
 	done
 

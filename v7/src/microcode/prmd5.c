@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmd5.c,v 1.5 2001/03/01 04:25:57 cph Exp $
+$Id: prmd5.c,v 1.6 2001/03/08 06:28:28 cph Exp $
 
 Copyright (c) 1997-2001 Massachusetts Institute of Technology
 
@@ -144,3 +144,33 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
     }
   }
 }
+
+#ifdef CRYPTO_MODULES
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive
+    ("MD5", Prim_md5, 1, 1,
+     "(STRING)\n\
+Generate an MD5 digest of string.\n\
+The digest is returned as a 16-byte string.");
+
+  declare_primitive
+    ("MD5-INIT", Prim_md5_init, 0, 0,
+     "()\n\
+Create and return an MD5 digest context.");
+
+  declare_primitive
+    ("MD5-UPDATE", Prim_md5_update, 4, 4,
+     "(CONTEXT STRING START END)\n\
+Update CONTEXT with the contents of the substring (STRING,START,END).");
+
+  declare_primitive
+    ("MD5-FINAL", Prim_md5_final, 1, 1,
+     "(CONTEXT)\n\
+Finalize CONTEXT and return the digest as a 16-byte string.");
+  return "#prmd5";
+}
+
+#endif

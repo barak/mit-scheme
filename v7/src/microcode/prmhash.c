@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.1 2000/04/10 02:52:53 cph Exp $
+$Id: prmhash.c,v 11.2 2001/03/08 06:28:31 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -369,3 +369,47 @@ DEFINE_PRIMITIVE ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0)
 	== 0));
   }
 }
+
+#ifdef CRYPTO_MODULES
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive
+    ("MHASH_COUNT", Prim_mhash_count, 0, 0, 0);
+  declare_primitive
+    ("MHASH_GET_BLOCK_SIZE", Prim_mhash_get_block_size, 1, 1, 0);
+  declare_primitive
+    ("MHASH_GET_HASH_PBLOCK", Prim_mhash_get_hash_pblock, 1, 1, 0);
+  declare_primitive
+    ("MHASH_GET_HASH_NAME", Prim_mhash_get_hash_name, 1, 1, 0);
+  declare_primitive
+    ("MHASH_INIT", Prim_mhash_init, 1, 1, 0);
+  declare_primitive
+    ("MHASH_HMAC_INIT", Prim_mhash_hmac_init, 3, 3, 0);
+  declare_primitive
+    ("MHASH", Prim_mhash, 4, 4, 0);
+  declare_primitive
+    ("MHASH_END", Prim_mhash_end, 1, 1, 0);
+  declare_primitive
+    ("MHASH_HMAC_END", Prim_mhash_hmac_end, 1, 1, 0);
+  declare_primitive
+    ("MHASH_KEYGEN_COUNT", Prim_mhash_keygen_count, 0, 0, 0);
+  declare_primitive
+    ("MHASH_GET_KEYGEN_NAME", Prim_mhash_get_keygen_name, 1, 1, 0);
+  declare_primitive
+    ("MHASH_KEYGEN_USES_SALT", Prim_mhash_keygen_uses_salt, 1, 1, 0);
+  declare_primitive
+    ("MHASH_KEYGEN_USES_COUNT", Prim_mhash_keygen_uses_count, 1, 1, 0);
+  declare_primitive
+    ("MHASH_KEYGEN_USES_HASH_ALGORITHM", Prim_mhash_keygen_uses_hash_algorithm, 1, 1, 0);
+  declare_primitive
+    ("MHASH_GET_KEYGEN_SALT_SIZE", Prim_mhash_get_keygen_salt_size, 1, 1, 0);
+  declare_primitive
+    ("MHASH_GET_KEYGEN_MAX_KEY_SIZE", Prim_mhash_get_keygen_max_key_size, 1, 1, 0);
+  declare_primitive
+     ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0);
+  return "#prmd5";
+}
+
+#endif
