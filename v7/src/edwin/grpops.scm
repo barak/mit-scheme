@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.9 1991/04/02 19:55:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.10 1991/04/03 00:12:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -169,8 +169,10 @@
 	     (for-each-mark group
 	       (lambda (mark)
 		 (let ((index (mark-index mark)))
-		   (if (fix:>= index end)
-		       (set-mark-index! mark (fix:- index length)))))))
+		   (cond ((fix:> index end)
+			  (set-mark-index! mark (fix:- index length)))
+			 ((fix:>= index start)
+			  (set-mark-index! mark start)))))))
 	   (vector-set! group group-index:gap-start start)
 	   (let ((gap-end (fix:+ end (group-gap-length group)))
 		 (max-gap-length gap-maximum-extra))
