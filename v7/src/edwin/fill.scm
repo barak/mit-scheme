@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fill.scm,v 1.57 1992/12/02 18:08:39 cph Exp $
+;;;	$Id: fill.scm,v 1.58 1993/02/22 19:32:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -211,12 +211,14 @@ Prefix arg means justify as well."
 		      (delete-horizontal-space point)
 		      (if (mark< point end) (insert-newline point))
 		      (if justify?
-			  (fill:call-with-line-marks (mark-1+ point)
-						     fill-prefix
-			    (lambda (start end)
-			      (fill:justify-line start end fill-column))))
+			  (fill:call-with-line-marks
+			   (if (mark< point end) (mark-1+ point) point)
+			   fill-prefix
+			   (lambda (start end)
+			     (fill:justify-line start end fill-column))))
 		      (if fill-prefix (insert-string fill-prefix point))))
-		(loop)))))
+		(if (mark< point end)
+		    (loop))))))
       (mark-temporary! point)
       (mark-temporary! end)
       (mark-temporary! start))))
