@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.9 1987/11/17 08:08:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.10 1987/12/09 22:35:43 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -76,28 +76,40 @@ compiled_entry_to_block_offset(ce)
 	  ((unsigned long) compiled_entry_to_block_address(address)));
 }
 
-Built_In_Primitive (Prim_comp_code_address_block, 1,
-		    "COMPILED-CODE-ADDRESS->BLOCK", 0xB5)
-Define_Primitive (Prim_comp_code_address_block, 1,
-		    "COMPILED-CODE-ADDRESS->BLOCK")
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK",
+		  Prim_comp_code_address_block, 1)
 {
   Pointer *address;
   Primitive_1_Arg ();
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   address = compiled_entry_to_block_address(Arg1);
-  return (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
+  PRIMITIVE_RETURN (Make_Pointer (TC_COMPILED_CODE_BLOCK, address));
 }
 
-Built_In_Primitive (Prim_comp_code_address_offset, 1,
-		    "COMPILED-CODE-ADDRESS->OFFSET", 0xAC)
-Define_Primitive (Prim_comp_code_address_offset, 1,
-		    "COMPILED-CODE-ADDRESS->OFFSET")
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1)
 {
   long offset;
   Primitive_1_Arg ();
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   offset = compiled_entry_to_block_offset(Arg1);
-  return (Make_Signed_Fixnum (offset));
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (offset));
+}
+
+/*
+  This number is eventually used to subtract from stack environment
+  addresses, so it must correspond to how those are made.
+
+  NOTE: this will have to be updated when the compiler is ported to the
+  stacklet microcode.
+ */
+
+#define STACK_TOP_TO_DATUM() (((long) Stack_Top) & ADDRESS_MASK)
+
+DEFINE_PRIMITIVE("STACK-TOP-ADDRESS", Prim_Stack_Top_Address, 0)
+{
+  Primitive_0_Args();
+
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(STACK_TOP_TO_DATUM()));
 }
