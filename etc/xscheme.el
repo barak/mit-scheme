@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.8 1987/12/05 19:55:28 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.9 1987/12/07 04:47:23 cph Exp $
 
 (require 'scheme)
 
@@ -33,6 +33,14 @@
 
 (defvar scheme-program-arguments nil
   "*Arguments passed to the Scheme program by the `run-scheme' command.")
+
+(defvar xscheme-signal-death-message nil
+  "If non-nil, causes a message to be generated when the Scheme process dies.")
+
+(defvar xscheme-allow-pipelined-evaluation t
+  "If non-nil, an expression may be transmitted while another is evaluating.
+Otherwise, attempting to evaluate an expression before the previous expression
+has finished evaluating will signal an error.")
 
 (defun run-scheme (command-line)
   "Run an inferior Scheme process.
@@ -117,9 +125,6 @@ from being inserted into the process-buffer.")
   "If non-nil, a procedure to call when the Scheme process is started.
 When called, the current buffer will be the Scheme process-buffer.")
 
-(defvar xscheme-signal-death-message nil
-  "If non-nil, causes a message to be generated when the Scheme process dies.")
-
 (defvar xscheme-runlight-string nil)
 (defvar xscheme-mode-string nil)
 
@@ -177,7 +182,9 @@ The strings are concatenated and terminated by a newline."
 	       (apply 'insert-before-markers strings)
 	       (xscheme-send-string-1 strings))))
 	((xscheme-debug-mode-p) (error "No sends allowed in debugger mode"))
-	(xscheme-running-p (error "No sends allowed while Scheme running"))
+	((and (not xscheme-allow-pipelined-evaluation)
+	      xscheme-running-p)
+	 (error "No sends allowed while Scheme running"))
 	(t (xscheme-send-string-1 strings))))
 
 (defun xscheme-send-string-1 (strings)
@@ -634,7 +641,7 @@ the remaining input.")
   nil)
 
 (defun xscheme-input-char-immediately ()
-  (xscheme-message xscheme-prompt)
+  (message "%s" xscheme-prompt)
   (let ((char nil)
 	(aborted-p t)
 	(not-done t))
@@ -657,23 +664,29 @@ the remaining input.")
 		 (setq not-done nil))))
       (if aborted-p
 	  (xscheme-send-control-g-interrupt)))
-    (xscheme-message "")
+    (message "")
     (if char
 	(xscheme-send-char char))))
 
 (defun xscheme-message (string)
-  (message "%s" string))
+  (xscheme-write-message-1 nil string))
 
 (defun xscheme-write-value (string)
+  (xscheme-write-message-1 "Value" string))
+
+(defun xscheme-write-message-1 (prefix string)
   (if (not (zerop (length string)))
       (progn (let* ((process (get-process "scheme"))
 		    (window (get-buffer-window (process-buffer process))))
 	       (if (or (not window)
 		       (not (pos-visible-in-window-p (process-mark process)
 						     window)))
-		   (xscheme-message string)))
+		   (message "%s" string)))
 	     (xscheme-guarantee-newlines 1)
-	     (xscheme-process-filter-output-1 (concat ";Value: " string)))))
+	     (xscheme-process-filter-output-1
+	      (if prefix
+		  (format ";%s: %s" prefix string)
+		  (format ";%s" string))))))
 
 (defun xscheme-set-prompt-variable (string)
   (setq xscheme-prompt string))
