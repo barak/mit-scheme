@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.102 1993/08/13 01:35:02 jawilson Exp $
+;;;	$Id: screen.scm,v 1.103 1993/08/16 08:04:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -275,8 +275,8 @@
       (set-matrix-highlight! matrix highlight)
       (set-matrix-enable! matrix enable)
       (set-matrix-highlight-enable! matrix highlight-enable))
-    (set-matrix-cursor-x! matrix false)
-    (set-matrix-cursor-y! matrix false)
+    (set-matrix-cursor-x! matrix 0)
+    (set-matrix-cursor-y! matrix 0)
     matrix))
 
 (define (set-screen-size! screen x-size y-size)
