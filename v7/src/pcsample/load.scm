@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: load.scm,v 1.2 1995/07/28 14:25:11 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -36,6 +36,15 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+;; This kludge keeps the 7.4 and 8.0 sources the same:
+
+(let ((compiler-info (->environment '(runtime compiler-info))))
+  (if (environment-bound? compiler-info 'COMPILED-ENTRY/FILENAME)
+      (in-package compiler-info
+	(define compiled-entry/filename-and-index compiled-entry/filename)
+	(define compiled-code-block/filename-and-index
+	  compiled-code-block/filename))))
+
 (package/system-loader "pcs" '() 'QUERY)
 (add-system! (make-system "PC Sampler" 1 0 '()))
 
