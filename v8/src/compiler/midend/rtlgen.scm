@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.47 1996/07/19 02:27:15 adams Exp $
+$Id: rtlgen.scm,v 1.48 1996/07/22 16:24:01 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -3848,6 +3848,17 @@ MIT in each case. |#
   (define-flonum-primitive/2 'FLONUM-MULTIPLY 'FLONUM-MULTIPLY)
   (define-flonum-primitive/2 'FLONUM-SUBTRACT 'FLONUM-SUBTRACT))
 
+
+(define-open-coder/value %fixnum->flonum 1
+  (lambda (state rands open-coder)
+    open-coder				; ignored
+    (let* ((rand (rtlgen/->register (first rands))))
+      (rtlgen/value-assignment
+       state
+       `(FLOAT->OBJECT
+	 ,(rtlgen/->register
+	   `(FLONUM-1-ARG FIXNUM->FLONUM ,rand #F)))))))
+
 (let ((char-tag   (machine-tag 'CHARACTER))
       (fixnum-tag (machine-tag 'POSITIVE-FIXNUM)))
   (let ((define-datum-conversion
