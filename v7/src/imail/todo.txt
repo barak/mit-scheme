@@ -1,14 +1,15 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.48 2000/05/23 21:13:25 cph Exp $
+$Id: todo.txt,v 1.49 2000/05/24 19:45:21 cph Exp $
 
 Bug fixes
 ---------
 
 * M-x imail-copy-messages re-reads the target folder UIDs for each
   message that is written, when the target folder is not being
-  visited.
+  visited.  [I haven't seen this lately.  Maybe it's fixed?]
 
-* Implement operations for IMAP: URL-EXISTS?.
+* Implement operation for IMAP: URL-EXISTS?.  [Is this desirable?
+  A straightforward implementation requires contacting the server.]
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -16,35 +17,17 @@ Bug fixes
 * RMAIL file reader must recognize when the tail of the file contains
   umail messages.
 
-Design changes
---------------
-
-* Move pathname-completion code into the runtime system.
-
-* Rename the procedures that form the UI callback interface to make it
-  clear what their role is.
-
-* Repackage the code so that each file now in the core is in a
-  separate package.
-
-* Reimplement UID synchronization.  Take advantage of monotonic UID
-  numbers to discover largest prefix range that hasn't changed.
-  Binary search can be used which should produce excellent results on
-  large folders.  UID FETCH command should be useful for this.
-
-* Try to leverage IMAP MIME parser by building compatible
-  interface for file-based folders.
-
-* Change file URLs to follow specification in RFC1738, which requires
-  the use of forward slashes and encoding.  Take advantage of relative
-  URLs as specified in RFC1808.  Maybe change URL representation to
-  have a heirarchical path structure so that we can write MERGE-URLS.
-
 New features
 ------------
 
+* In M-x imail-copy-folder, default the target buffer to have the same
+  name as the source buffer, e.g. from "foo.rmail" to "inbox.foo".
+  [It may not be obvious how to do this as I'm not sure how to specify
+  the prefix "inbox." in a server-independent way.]
+
 * Set the IMAIL buffer's modification bit to indicate whether the
-  folder is locally modified.  Meaningful only for file folders.
+  folder is locally modified.  Meaningful only for file folders.  Hook
+  up the save-folder code into M-x save-some-buffers.
 
 * Optionally convert quoted-printable messages to 8bit for presentation.
 
@@ -78,3 +61,27 @@ New features
 
 * Implement something closer to the IMAP COPY operation, e.g.
   APPEND-MESSAGES.
+
+Design changes
+--------------
+
+* Move pathname-completion code into the runtime system.
+
+* Rename the procedures that form the UI callback interface to make it
+  clear what their role is.
+
+* Repackage the code so that each file now in the core is in a
+  separate package.
+
+* Reimplement UID synchronization.  Take advantage of monotonic UID
+  numbers to discover largest prefix range that hasn't changed.
+  Binary search can be used which should produce excellent results on
+  large folders.  UID FETCH command should be useful for this.
+
+* Try to leverage IMAP MIME parser by building compatible
+  interface for file-based folders.
+
+* Change file URLs to follow specification in RFC1738, which requires
+  the use of forward slashes and encoding.  Take advantage of relative
+  URLs as specified in RFC1808.  Maybe change URL representation to
+  have a heirarchical path structure so that we can write MERGE-URLS.
