@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.4 1991/02/16 01:09:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rulfix.scm,v 1.5 1991/02/16 05:45:30 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
 Copyright (c) 1989, 1991 Massachusetts Institute of Technology
@@ -92,16 +92,12 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (fixnum->object/temp r
-		       (lambda (temp)
-			 (LAP (MOV L ,temp (@R+ 12))))))
+  (fixnum->object (any-register-reference r) (INST-EA (@R+ 12))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
 	  (FIXNUM->OBJECT (REGISTER (? r))))
-  (fixnum->object/temp r
-		       (lambda (temp)
-			 (LAP (PUSHL ,temp)))))
+  (fixnum->object (any-register-reference r) (INST-EA (@-R 14))))
 
 ;;;; Fixnum Operations
 
@@ -339,32 +335,28 @@ MIT in each case. |#
 (define-integrable (ct/address->fixnum address target)
   (load-fixnum-constant (careful-object-datum address) target))
 
-(define (fixnum->object source target)
-  (LAP ,@(if (eq? target source)
-	     (LAP (BIS L (S ,(ucode-type fixnum)) ,target))
-	     (LAP (BIS L (S ,(ucode-type fixnum)) ,source ,target)))
-       ,@(fixnum->datum target target)))
-
-(define-integrable (ct/fixnum->object fixnum target)
-  (load-constant fixnum target))
-
 (define (fixnum->address source target)
   (fixnum->datum source target))
 
 (define (ct/fixnum->address fixnum target)
   (load-immediate fixnum target))
+
+(define-integrable (target-or-register target)
+  (if (effective-address/register? target)
+      target
+      (standard-temporary-reference)))
 
-(define (fixnum->object/temp source handler)
-  ;; We can't use fixnum->object to the heap or stack directly because
-  ;; fixnum->object expands into multiple instructions.
-  (let ((source (any-register-reference source))
-	(temp (standard-temporary-reference)))
-    (LAP ,@(fixnum->object source temp)
-	 ,@(handler temp))))
+(define (fixnum->object source target)
+  (let ((rtarget (target-or-register target)))
+    (LAP ,@(if (eq? rtarget source)
+	       (LAP (BIS L (S ,(ucode-type fixnum)) ,rtarget))
+	       (LAP (BIS L (S ,(ucode-type fixnum)) ,source ,rtarget)))
+	 ,@(fixnum->datum rtarget target))))
 
-(define-integrable fixnum-1
-  ;; (expt 2 scheme-type-width) ***
-  64)
+(define-integrable (ct/fixnum->object fixnum target)
+  (load-constant fixnum target))
+
+(define-integrable fixnum-1 64)		; (expt 2 scheme-type-width) ***
 
 (define-integrable fixnum-bits-mask
   (-1+ fixnum-1))
@@ -549,11 +541,6 @@ MIT in each case. |#
 	   (LAP (ADD L ,(make-immediate word) ,target)))
 	  (else
 	   (LAP (ADD L ,(make-immediate word) ,source ,target))))))
-
-(define-integrable (target-or-register target)
-  (if (effective-address/register? target)
-      target
-      (standard-temporary-reference)))
 
 ;;;; Arithmetic operations
 
