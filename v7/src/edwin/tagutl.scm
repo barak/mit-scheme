@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.30 1989/03/15 19:14:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.31 1989/04/05 18:22:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -67,11 +67,7 @@ the string used in the previous Find Tag."
   (if (not (ref-variable "Tags Table Pathname"))
       (visit-tags-table-command false))
   (let ((pathname (ref-variable "Tags Table Pathname")))
-    (let ((buffer
-	   (or (pathname->buffer pathname)
-	       (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-		 (read-buffer buffer pathname)
-		 buffer))))
+    (let ((buffer (find-file-noselect pathname)))
       (if (and (not (verify-visited-file-modification-time buffer))
 	       (prompt-for-yes-or-no?
 		"Tags file has changed, read new contents"))
@@ -269,6 +265,3 @@ replace with the command \\[Tags Loop Continue]."
   (if (not (and (buffer-alive? buffer)
 		(tags-loop-operator buffer start)))
       (tags-loop-start (cdr tags-loop-entry))))
-
-(define find-file-noselect
-  (file-finder identity-procedure))
