@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.17 1992/02/17 22:34:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.18 1992/02/25 16:42:55 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -458,13 +458,17 @@ MIT in each case. |#
     interrupt-continuation
     interrupt-closure
     interrupt-dlink
-    #|
-    ;; Not yet available
     primitive-apply
     primitive-lexpr-apply
     assignment-trap
     reference-trap
     safe-reference-trap
+    link
+    error
+    primitive-error
+    short-primitive-apply)
+
+  (define-entries #x-80
     &+
     &-
     &*
@@ -488,12 +492,7 @@ MIT in each case. |#
     shortcircuit-apply-size-5
     shortcircuit-apply-size-6
     shortcircuit-apply-size-7
-    shortcircuit-apply-size-8
-    link
-    error
-    primitive-error
-    |#
-    ))
+    shortcircuit-apply-size-8))
 
 ;; Operation tables
 

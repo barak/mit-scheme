@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.20 1992/02/19 23:56:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.21 1992/02/25 16:42:38 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -55,6 +55,9 @@ MIT in each case. |#
   (LAP ,@(clear-map!)
        (POP (R ,ecx))
        #|
+       (MOV W (R ,edx) (& ,frame-size))
+       ,@(invoke-interface code:compiler-apply)
+       |#
        ,@(case frame-size
 	   ((1) (invoke-hook entry:compiler-shortcircuit-apply-size-1))
 	   ((2) (invoke-hook entry:compiler-shortcircuit-apply-size-2))
@@ -66,10 +69,7 @@ MIT in each case. |#
 	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
 	   (else
 	    (LAP (MOV W (R ,edx) (& ,frame-size))
-		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))
-       |#
-       (MOV W (R ,edx) (& ,frame-size))
-       ,@(invoke-interface code:compiler-apply)))
+		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -148,37 +148,58 @@ MIT in each case. |#
 	 ,@(clear-map!)
 	 (MOV W (R ,ebx) (& ,frame-size))
 	 ,@(invoke-interface code:compiler-lookup-apply))))
-
+
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
   (let-syntax ((invoke
+		#|
 		(macro (code entry)
 		  entry			; ignored (for now)
-		  `(invoke-interface ,code))))
+		  `(invoke-interface ,code))
+		|#
+		(macro (code entry)
+		  code			; ignored
+		  `(invoke-hook ,entry))))
+
     (if (eq? primitive compiled-error-procedure)
 	(LAP ,@(clear-map!)
 	     (MOV W (R ,ecx) (& ,frame-size))
 	     ,@(invoke code:compiler-error entry:compiler-error))
-	(let ((arity (primitive-procedure-arity primitive))
-	      (get-code (object->machine-register! primitive ecx)))
+	(let ((arity (primitive-procedure-arity primitive)))
 	  (cond ((not (negative? arity))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      ,@(invoke code:compiler-primitive-apply
-				entry:compiler-primitive-apply)))
+		 (with-values (lambda () (get-cached-label))
+		   (lambda (pc-label pc-reg)
+		     pc-reg		; ignored
+		     (if pc-label
+			 (let ((get-code
+				(object->machine-register! primitive ecx)))
+			   (LAP ,@get-code
+				,@(clear-map!)
+				,@(invoke code:compiler-primitive-apply
+					  entry:compiler-primitive-apply)))
+			 (let ((prim-label (constant->label primitive))
+			       (offset-label (generate-label 'PRIMOFF)))
+			   (LAP ,@(clear-map!)
+				,@(invoke-hook/call
+				   entry:compiler-short-primitive-apply)
+				(LABEL ,offset-label)
+				(LONG S (- ,prim-label ,offset-label))))))))
 		((= arity -1)
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV W ,reg:lexpr-primitive-arity (& ,(-1+ frame-size)))
-		      ,@(invoke code:compiler-primitive-lexpr-apply
-				entry:compiler-primitive-lexpr-apply)))
+		 (let ((get-code (object->machine-register! primitive ecx)))
+		   (LAP ,@get-code
+			,@(clear-map!)
+			(MOV W ,reg:lexpr-primitive-arity
+			     (& ,(-1+ frame-size)))
+			,@(invoke code:compiler-primitive-lexpr-apply
+				  entry:compiler-primitive-lexpr-apply))))
 		(else
 		 ;; Unknown primitive arity.  Go through apply.
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV W (R ,edx) (& ,frame-size))
-		      ,@(invoke-interface code:compiler-apply))))))))
+		 (let ((get-code (object->machine-register! primitive ecx)))
+		   (LAP ,@get-code
+			,@(clear-map!)
+			(MOV W (R ,edx) (& ,frame-size))
+			,@(invoke-interface code:compiler-apply)))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -205,8 +226,10 @@ MIT in each case. |#
 
   (let-syntax ((define-primitive-invocation
 		 (macro (name)
-		   ;; For now.
-		   `(define-special-primitive-invocation ,name))))
+		   #|
+		   `(define-special-primitive-invocation ,name)
+		   |#
+		   `(define-optimized-primitive-invocation ,name))))
 
     (define-primitive-invocation &+)
     (define-primitive-invocation &-)
@@ -568,9 +591,9 @@ MIT in each case. |#
 		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  ,@(invoke-hook/call entry:compiler-link)
-		  |#
 		  ,@(invoke-interface/call code:compiler-link)
+		  |#
+		  ,@(invoke-hook/call entry:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
 					 (generate-label))))))
 
@@ -588,9 +611,9 @@ MIT in each case. |#
 		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
 		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
 		  #|
-		  ,@(invoke-hook/call entry:compiler-link)
-		  |#
 		  ,@(invoke-interface/call code:compiler-link)
+		  |#
+		  ,@(invoke-hook/call entry:compiler-link)
 		  ,@(make-external-label (continuation-code-word false)
 					 (generate-label))))))
 
