@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.44 1996/07/12 20:20:56 adams Exp $
+$Id: x11graph.scm,v 1.45 1996/12/01 17:11:07 adams Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
   (x-graphics-draw-point 3)
   (x-graphics-draw-points 3)
   (x-graphics-draw-string 4)
+  (x-graphics-draw-image-string 4)
   (x-graphics-fill-polygon 2)
   (x-graphics-map-x-coordinate 2)
   (x-graphics-map-y-coordinate 2)
@@ -171,6 +172,7 @@ MIT in each case. |#
 	   (draw-points ,x-graphics/draw-points)
 	   (draw-subimage ,image/draw-subimage)
 	   (draw-text ,x-graphics/draw-text)
+	   (draw-text-opaque ,x-graphics/draw-text-opaque)
 	   (fill-circle ,x-graphics/fill-circle)
 	   (fill-polygon ,x-graphics/fill-polygon)
 	   (flush ,x-graphics/flush)
@@ -581,6 +583,9 @@ MIT in each case. |#
 (define (x-graphics/draw-text device x y string)
   (x-graphics-draw-string (x-graphics-device/xw device) x y string))
 
+(define (x-graphics/draw-text-opaque device x y string)
+  (x-graphics-draw-image-string (x-graphics-device/xw device) x y string))
+
 (define (x-graphics/flush device)
   (if (and x-graphics:auto-raise?
 	   (x-graphics-device/mapped? device)
@@ -666,9 +671,6 @@ MIT in each case. |#
 (define (x-graphics/fill-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
 		       x y radius radius 0 360 #T))
-   
-(define (x-graphics/fill-polygon device point-vector)
-  (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
    
 (define (x-graphics/fill-polygon device point-vector)
   (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
