@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.73 1993/02/23 02:38:43 gjr Exp $
+$Id: interp.c,v 9.74 1993/02/23 20:18:50 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -44,8 +44,6 @@ MIT in each case. */
 #include "cmpint.h"
 #include "zones.h"
 #include "prmcon.h"
-
-extern void EXFUN (Interpret, (Boolean));
 
 extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
