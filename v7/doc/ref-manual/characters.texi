@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: characters.texi,v 1.5 2004/10/14 03:54:52 cph Exp $
+@c $Id: characters.texi,v 1.6 2004/10/15 05:23:31 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -698,8 +698,8 @@ The basic unit in a Unicode implementation is the @dfn{code point}.  The
 character equivalent of a code point is a @dfn{wide character}.
 
 @deffn procedure unicode-code-point? object
-Returns @code{#t} if @var{object} is a Unicode code point, which are
-implemented as exact non-negative integers.  Code points are further
+Returns @code{#t} if @var{object} is a Unicode code point.  Code points
+are implemented as exact non-negative integers.  They are further
 limited, by the Unicode standard, to be strictly less than
 @code{#x110000}, with the values @code{#xD800} through @code{#xDFFF},
 @code{#xFFFE}, and @code{#xFFFF} excluded.
