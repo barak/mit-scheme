@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.7 1992/02/13 05:31:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.8 1992/02/13 16:46:55 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -177,6 +177,12 @@ MIT in each case. |#
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
 (define-integrable register-block/utility-arg4-offset 9) ; closure free
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
+
+(define-integrable (fits-in-signed-byte? value)
+  (and (>= value -128) (< value 128)))
+
+(define-integrable (fits-in-unsigned-byte? value)
+  (and (>= value 0) (< value 128)))
 
 ;;;; RTL Generator Interface
 
