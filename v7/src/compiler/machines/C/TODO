@@ -1,17 +1,10 @@
 -*- Indented-Text -*-
 
-* No consistency at band-restore time.
-  The saved band may not correspond at all to the compiled-code blocks
-  in the microcode.
-
-* package loader, etc. have to understand initialize-c-compiled-block.
-  runtime/make.scm was hacked specially.  Other systems will not work
-  until this is done.
-
-* Edwin autoloads and load options.
-
 * Short documentation (how to compile files and add them to the microcode).
 
-RANDOM INFO:
-  USE: 	setenv CMDOPT -DBAND_ALREADY_BUILT
-  to build a microcode without the data building stuff
+* Implement compile-procedure and compile-scode.
+
+* Make fasdump work on compiled code by doing something similar to what
+  happens with primitives.  Right now it is difficult because there is
+  nothing to map back entry numbers to block numbers.
+
