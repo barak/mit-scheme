@@ -176,7 +176,7 @@
       add-to-agenda!
       add-to-canvas-item-group
       add-to-menu
-      add-to-protection-list!
+      ;;add-to-protection-list!
       add-vectors
       add-widget-list-for-display-number!
       after-delay
@@ -223,10 +223,10 @@
       box:event-propagator
       box:rearrange
       button-stretch
-      canvas-flush-protect-list!
-      canvas-protect-from-gc!
+      ;;canvas-flush-protect-list!
+      ;;canvas-protect-from-gc!
       canvas-stretch
-      canvas-unprotect-from-gc!
+      ;;canvas-unprotect-from-gc!
       canvasitem-add-event-handler!
       canvasitem-ask-widget
       canvasitem.add-event-handler!-procedure
@@ -251,7 +251,7 @@
       choose-maximum-glue
       choose-minimum-glue
       clean-lost-celled-objects
-      clean-lost-protected-objects
+      ;;clean-lost-protected-objects
       cleanup-vanished-objects-for-display
       clear-counters!
       cleararea
@@ -306,7 +306,7 @@
       destroy-registration
       destroy-sensitive-surface
       display->tk-widgets
-      display-protection-list
+      ;;display-protection-list
       display/colormap-list
       display/default-root-window
       display/display
@@ -351,13 +351,13 @@
       fillrectangle
       finalize-uitk-objects
       finalize-uitk-objects-later
-      find-in-protection-list
+      ;;find-in-protection-list
       find-menu-record
       find-real-array-box-children
       find-sensitivity
       find-ss
-      find-tk-protection-list
-      find-tk-protection-list-from-number
+      ;;find-tk-protection-list
+      ;;find-tk-protection-list-from-number
       first-segment
       flush-display-hook
       flush-queued-output
@@ -488,7 +488,7 @@
       make-point
       make-point-event
       make-polygon-on-canvas
-      make-protection-list
+      ;;make-protection-list
       ;;make-queue
       make-radiobutton
       make-rect
@@ -577,8 +577,8 @@
       point=
       point?
       proc-with-transformed-args
-      protection-list-all-elements
-      protection-list-referenced-elements
+      ;;protection-list-all-elements
+      ;;protection-list-referenced-elements
       queue/pp
       ;;queue?
       read-and-empty-agenda!
@@ -592,11 +592,11 @@
       rectangle-overlaps-rectangle?
       rectangle-overlaps?
       rectangle=
-      region-protection-list
+      ;;region-protection-list
       region/region
       remember-on-canvas!
       remove-child!
-      remove-from-protection-list!
+      ;;remove-from-protection-list!
       remove-from-registry
       reset-sensitivity!
       rest-segments
@@ -624,7 +624,7 @@
       scxl-wrapper.wrapped-object
       scxl-wrapper/pp
       scxl-wrapper?
-      search-protection-list
+      ;;search-protection-list
       segment-queue
       segment-time
       segments
@@ -776,9 +776,9 @@
       swat-open-in-application
       swat:number->string
       tcl-global-eval
-      text-flush-protect-list!
-      text-protect-from-gc!
-      text-unprotect-from-gc!
+      ;;text-flush-protect-list!
+      ;;text-protect-from-gc!
+      ;;text-unprotect-from-gc!
       texttag-add-event-handler!
       texttag-ask-widget
       texttag.add-event-handler!-procedure
@@ -866,12 +866,12 @@
       uiobj-get-desired-size
       uiobj-handle-event
       uiobj-point-within?
-      uiobj-protect-from-gc!
+      ;;uiobj-protect-from-gc!
       uiobj-rectangle-overlaps?
       uiobj-set-assigned-screen-area!
       uiobj-set-context!
       uiobj-set-used-screen-area!
-      uiobj-unprotect-from-gc!
+      ;;uiobj-unprotect-from-gc!
       uiobj-used-screen-area
       uiobjinternals
       uiobjinternals-index
@@ -897,7 +897,7 @@
       uiobjinternals.used-screen-area-procedure
       uiobjinternals/pp
       uiobjinternals?
-      uitk-protection-list
+      ;;uitk-protection-list
       uitk-queue
       uitk-thread
       uitk-thread-main-loop
