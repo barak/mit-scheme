@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.8 1992/09/04 22:05:01 nick Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/edextra.scm,v 1.9 1992/09/08 21:40:29 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -35,7 +35,7 @@ MIT in each case. |#
 ;;;; 6.001: Edwin Extensions
 
 (declare (usual-integrations))
-
+
 (load-edwin-library 'PRINT)
 
 (define-command print-graphics
@@ -68,14 +68,8 @@ MIT in each case. |#
 (environment-link-name '(student pictures)
 		       '(edwin)
 		       'restore-focus-to-editor)
-
-
-
+
 ;;;; EDWIN Command "Load Problem Set"
-
-(declare (usual-integrations))
-(using-syntax (access edwin-syntax-table (->environment '(edwin)))
-(in-package (->environment '(edwin))
 
 ;;; Wired-in pathnames
 
@@ -171,20 +165,7 @@ MIT in each case. |#
 	(and (file-exists?
 	      (merge-pathnames directory (->pathname (car files))))
 	     (loop (cdr files))))))
-
-;;; Return the string representation of a number.
-(define (number->string number)
-  (with-output-to-string (lambda () (write number))))
-
-;;; Return the number represented by string.  Note that even if string does not
-;;; represent a number, string->number will convert it to whatever object READ
-;;; would when presented with the contents of that string as input.  Therefore,
-;;; it may be necessary to test to see if the result is a number.
-(define (string->number string)
-  (with-input-from-string string read))
-
 
-
 (define (->string object)
   (if (string? object)
       object
@@ -194,57 +175,51 @@ MIT in each case. |#
   "Load a 6.001 problem set."
   ()
   (lambda ()
-  (begin
     (load pset-list-file (->environment '(edwin)))
-   (let* ((default-ps (problem-sets/default-ps problem-sets))
-	  (ps (prompt-for-string "Load Problem Set" (->string default-ps)))
-	  )
-     (let* ((error-handler
-	     (lambda () (editor-error "There doesn't appear to be a problem set "
-				      ps
-				      " installed; ask a TA for help.")))
-	    (groups (ps-groups ps error-handler))
-	    (pset-path (merge-pathnames (string-append "ps" (->string ps) "/") 
-					pset-dir)))
-       (or (files-all-exist? (groups/all-files groups) pset-path)
-	   (error-handler))
-       (map (lambda (file)
-	      (find-file (merge-pathnames pset-path
-					  (->pathname file))))
-	    (groups/files-to-reference groups))
-       (map (lambda (file)
-	      (let ((filename (merge-pathnames pset-path
-					       (->pathname file))))
-		(message "Evaluating file " (->namestring filename))
-		(load filename (->environment '(student)))
-		(append-message " -- done")))
-	    (groups/files-to-load groups))
-       (map (lambda (file)
-	      (let ((filename (merge-pathnames pset-path
-					       (->pathname file))))
-		(message "Evaluating file " (->namestring filename))
-		(load filename (->environment '(student)))
-		(append-message " -- done")
-		(find-file filename)))
-	    (groups/files-to-load&reference groups))
-       (map (lambda (file)
-	      (let ((source-file (merge-pathnames pset-path (->pathname file)))
-		    (dest-file (merge-pathnames student-dir (->pathname file))))
-		(message "Copying file " (->namestring file) " to working area")
-		(let ((buffer (find-buffer (->namestring dest-file))))
-		  (if buffer (kill-buffer buffer)))
-		(find-file source-file)
-		(let ((buffer (current-buffer)))
-		  (set-buffer-writeable! buffer)
-		  (set-visited-pathname buffer dest-file)
-		  (write-buffer buffer))
-		(append-message " -- done")
-		(find-file dest-file)))
-	    (groups/files-to-copy groups))
-       )))))
-))
-
-;;; Edwin Variables:
-;;; scheme-environment: '(edwin)
-;;; scheme-syntax-table: 'edwin-syntax-table
-;;; End:
+    (let* ((default-ps (problem-sets/default-ps problem-sets))
+	   (ps (prompt-for-string "Load Problem Set" (->string default-ps))))
+      (let* ((error-handler
+	      (lambda ()
+		(editor-error "There doesn't appear to be a problem set "
+			      ps
+			      " installed; ask a TA for help.")))
+	     (groups (ps-groups ps error-handler))
+	     (pset-path
+	      (merge-pathnames (string-append "ps" (->string ps) "/") 
+			       pset-dir)))
+	(if (not (files-all-exist? (groups/all-files groups) pset-path))
+	    (error-handler))
+	(map (lambda (file)
+	       (find-file (merge-pathnames pset-path (->pathname file))))
+	     (groups/files-to-reference groups))
+	(map (lambda (file)
+	       (let ((filename (merge-pathnames pset-path (->pathname file))))
+		 (message "Evaluating file " (->namestring filename))
+		 (load filename (->environment '(student)))
+		 (append-message " -- done")))
+	     (groups/files-to-load groups))
+	(map (lambda (file)
+	       (let ((filename (merge-pathnames pset-path (->pathname file))))
+		 (message "Evaluating file " (->namestring filename))
+		 (load filename (->environment '(student)))
+		 (append-message " -- done")
+		 (find-file filename)))
+	     (groups/files-to-load&reference groups))
+	(map (lambda (file)
+	       (let ((source-file
+		      (merge-pathnames pset-path (->pathname file)))
+		     (dest-file
+		      (merge-pathnames student-dir (->pathname file))))
+		 (message "Copying file "
+			  (->namestring file)
+			  " to working area")
+		 (let ((buffer (find-buffer (->namestring dest-file))))
+		   (if buffer (kill-buffer buffer)))
+		 (find-file source-file)
+		 (let ((buffer (current-buffer)))
+		   (set-buffer-writeable! buffer)
+		   (set-visited-pathname buffer dest-file)
+		   (write-buffer buffer))
+		 (append-message " -- done")
+		 (find-file dest-file)))
+	     (groups/files-to-copy groups))))))
