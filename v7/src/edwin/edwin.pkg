@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.49 1991/08/09 18:42:23 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.50 1991/08/13 02:30:37 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -905,9 +905,31 @@ MIT in each case. |#
 	  edwin-command$rmail-previous-message
 	  edwin-command$rmail-previous-undeleted-message
 	  edwin-command$rmail-show-message
+	  edwin-command$rmail-sort-by-author
+	  edwin-command$rmail-sort-by-date
+	  edwin-command$rmail-sort-by-recipient
+	  edwin-command$rmail-sort-by-size-lines
+	  edwin-command$rmail-sort-by-subject
+	  edwin-command$rmail-summary
+	  edwin-command$rmail-summary-delete-message
+	  edwin-command$rmail-summary-delete-message-backward
+	  edwin-command$rmail-summary-delete-message-forward
+	  edwin-command$rmail-summary-exit
+	  edwin-command$rmail-summary-next-message
+	  edwin-command$rmail-summary-next-undeleted-message
+	  edwin-command$rmail-summary-previous-message
+	  edwin-command$rmail-summary-previous-undeleted-message
+	  edwin-command$rmail-summary-quit
+	  edwin-command$rmail-summary-scroll-message-down
+	  edwin-command$rmail-summary-scroll-message-up
+	  edwin-command$rmail-summary-show-message
+	  edwin-command$rmail-summary-undelete-message
+	  edwin-command$rmail-summary-undelete-message-backward
+	  edwin-command$rmail-summary-undelete-message-forward
 	  edwin-command$rmail-toggle-header
 	  edwin-command$rmail-undelete-previous-message
 	  edwin-mode$rmail
+	  edwin-mode$rmail-summary
 	  edwin-variable$rmail-default-dont-reply-to-names
 	  edwin-variable$rmail-delete-after-output
 	  edwin-variable$rmail-dont-reply-to-names
@@ -919,28 +941,4 @@ MIT in each case. |#
 	  edwin-variable$rmail-message-filter
 	  edwin-variable$rmail-mode-hook
 	  edwin-variable$rmail-primary-inbox-list
-	  rmail-spool-directory
-	  edwin-command$rmail-sort-by-author
-	  edwin-command$rmail-sort-by-date
-	  edwin-command$rmail-sort-by-recipient
-	  edwin-command$rmail-sort-by-size-lines
-	  edwin-command$rmail-sort-by-subject
-	  edwin-command$rmail-summary
-	  edwin-command$rmail-summary-show-message
-	  edwin-command$rmail-summary-next-message
-	  edwin-command$rmail-summary-previous-message
-	  edwin-command$rmail-summary-next-undelete-message
-	  edwin-command$rmail-summary-previous-undelete-message
-	  edwin-command$rmail-summary-scroll-message-up
-	  edwin-command$rmail-summary-scroll-message-down
-	  edwin-command$rmail-summary-delete-message
-	  edwin-command$rmail-summary-delete-message-forward
-	  edwin-command$rmail-summary-delete-message-backward
-	  edwin-command$rmail-summary-undelete-message
-	  edwin-command$rmail-summary-undelete-message-forward
-	  edwin-command$rmail-summary-undelete-message-backward
-	  edwin-command$rmail-summary-exit
-	  edwin-command$rmail-summary-quit
-	  edwin-mode$rmail-summary
-	  ))
-	  
+	  rmail-spool-directory))
