@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.30 1987/04/16 02:08:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.31 1987/04/29 15:39:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -262,8 +262,9 @@ main(argc, argv)
 									\
 	/* Now make the fixed objects vector */				\
   Fixed_Objects = Make_Pointer(TC_VECTOR, Free);			\
-  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, NFixed_Objects);	\
-  for (i=1; i <= NFixed_Objects; i++) *Free++ = NIL;			\
+  /* Create the vector with 4 extra slots for expansion and debugging. */ \
+  *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, (NFixed_Objects + 4));	\
+  for (i=1; i <= (NFixed_Objects + 4); i++) *Free++ = NIL;		\
   User_Vector_Set(Fixed_Objects, Non_Object, Bad_Object);		\
   User_Vector_Set(Fixed_Objects, System_Interrupt_Vector, Int_Vec);	\
   User_Vector_Set(Fixed_Objects, System_Error_Vector, Error);		\
