@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.8 1991/04/27 00:43:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.c,v 1.9 1992/01/20 16:38:07 jinx Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -391,6 +391,7 @@ DEFUN (UX_mkdir, (name, mode),
 cc_t
 DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
 {
+  extern long EXFUN (fpathconf, (int, int));
   long result = (fpathconf (fildes, _PC_VDISABLE));
   return
     ((result < 0) ?

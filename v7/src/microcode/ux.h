@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.28 1991/10/29 13:59:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.29 1992/01/20 16:35:42 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,7 @@ MIT in each case. */
 #include "posixtype.h"
 
 extern int errno;
+extern int EXFUN (ioctl, (int, int, PTR));
 
 #include "intext.h"
 #include "dstack.h"
