@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/make.scm,v 15.14 1992/09/03 15:44:57 cph Exp $
+$Id: make.scm,v 15.15 1992/09/10 05:19:51 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -37,7 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (package/system-loader "6001" '() 'QUERY)
-(load "edextra" (->environment '(edwin)))
+(load '("edextra" "floppy") (->environment '(edwin)))
 ((access initialize-package! (->environment '(student scode-rewriting))))
 (add-system! (make-system "6.001" 15 6 '()))
 
@@ -57,6 +57,11 @@ MIT in each case. |#
   (set! scheme-can-quit? false)
   (set! paranoid-exit? true)
   (set! x-screen-auto-raise true)
+  (set! standard-editor-initialization
+	(let ((usual standard-editor-initialization))
+	  (lambda ()
+	    (usual)
+	    (standard-login-initialization))))
   (set-variable-value! edwin-variable$enable-transcript-buffer true)
   (set-variable-value! edwin-variable$evaluate-in-inferior-repl true)
   (set-variable-value! edwin-variable$repl-error-decision true)
