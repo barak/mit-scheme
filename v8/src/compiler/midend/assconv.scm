@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.4 1995/01/22 01:06:01 adams Exp $
+$Id: assconv.scm,v 1.5 1995/02/21 06:20:05 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -219,6 +219,9 @@ MIT in each case. |#
 (define (assconv/new-name prefix)
   (new-variable prefix))
 
+(define (assconv/rename variable)
+  (variable/rename variable))
+
 (define (assconv/new-cell-name prefix)
   (new-variable (string-append (symbol-name prefix) "-cell")))
 
@@ -378,21 +381,22 @@ MIT in each case. |#
 	 (QUOTE ,(assconv/binding/name binding))))
 
 (define (assconv/cell-assignment binding value)
-  (let ((cell-name  (assconv/binding/cell-name binding))
-	(value-name (assconv/binding/name binding)))
+  (let* ((cell-name  (assconv/binding/cell-name binding))
+	 (value-name (assconv/binding/name binding))
+	 (local-name (assconv/rename value-name)))
     #|
     ;; This returns the new value
-    (bind value-name value
+    (bind local-name value
 	  `(BEGIN
 	     (CALL (QUOTE ,%cell-set!)
 		   (QUOTE #F)
 		   (LOOKUP ,cell-name)
-		   (LOOKUP ,value-name)
+		   (LOOKUP ,local-name)
 		   (QUOTE ,value-name))
-	     (LOOKUP ,value-name)))
+	     (LOOKUP ,local-name)))
     |#
     ;; This returns the old value
-    (bind value-name
+    (bind local-name
 	  `(CALL (QUOTE ,%cell-ref)
 		 (QUOTE #F)
 		 (LOOKUP ,cell-name)
@@ -403,7 +407,7 @@ MIT in each case. |#
 		   (LOOKUP ,cell-name)
 		   ,value
 		   (QUOTE ,value-name))
-	     (LOOKUP ,value-name)))))
+	     (LOOKUP ,local-name)))))
 
 (define (assconv/cellify! binding)
   (let ((cell-name (assconv/new-cell-name (assconv/binding/name binding))))
