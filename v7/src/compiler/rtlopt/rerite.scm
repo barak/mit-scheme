@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rerite.scm,v 1.1 1990/01/18 22:49:26 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rerite.scm,v 1.2 1992/02/17 21:41:52 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; RTL Rewriting
+;;; package: (compiler rtl-optimizer rtl-rewriting)
 
 (declare (usual-integrations))
 
@@ -56,6 +57,9 @@ MIT in each case. |#
 
 (define (add-rewriting-rule! pattern result-procedure)
   (new-rewriting-rule! rules:post-cse pattern result-procedure))
+
+(define (add-pre-cse-rewriting-rule! pattern result-procedure)
+  (new-rewriting-rule! rules:pre-cse pattern result-procedure))
 
 (define (walk-rgraphs rules rgraphs)
   (if (not (and (null? (rewriting-rules/assignment rules))
@@ -164,9 +168,7 @@ MIT in each case. |#
 		 (error "illegal RTL type" keyword))))))
   pattern)
 
-(define-rule
-  (lambda (pattern result-procedure)
-    (new-rewriting-rule! rules:pre-cse pattern result-procedure))
+(define-rule add-pre-cse-rewriting-rule!
   (OBJECT->ADDRESS (? source))
   (QUALIFIER (value-class=address? (rtl:expression-value-class source)))
   source)
