@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.29 1992/02/18 00:16:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.30 1992/02/18 14:12:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -309,8 +309,7 @@
       (let ((read-until-result
 	     (lambda (time-limit)
 	       (let loop ()
-		 (if (not time-limit)
-		     (update-screens! false))
+		 (update-screens! false)
 		 (let ((event (get-next-event time-limit)))
 		   (cond ((not event)
 			  (if (not time-limit)
@@ -433,15 +432,10 @@
     (enqueue!/unsafe queue (car events))))
 
 (define (process-change-event event)
-  (if (cond ((fix:= event event:process-output)
-	     (accept-process-output))
-	    ((fix:= event event:process-status)
-	     (handle-process-status-changes))
-	    ((fix:= event event:interrupt)
-	     (accept-thread-output))
-	    (else
-	     (error "Illegal change event:" event)))
-      (update-screens! false)))
+  (cond ((fix:= event event:process-output) (accept-process-output))
+	((fix:= event event:process-status) (handle-process-status-changes))
+	((fix:= event event:interrupt) (accept-thread-output))
+	(else (error "Illegal change event:" event))))
 
 (define (process-special-event event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0)))
