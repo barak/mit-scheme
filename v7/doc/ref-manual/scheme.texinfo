@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.116 2002/03/13 05:47:01 cph Exp $
+@comment $Id: scheme.texinfo,v 1.117 2002/11/20 18:10:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -49,9 +49,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.96
-@subtitle for Scheme Release 7.7.0
-@subtitle 13 March 2002
+@subtitle Edition 1.97
+@subtitle for Scheme Release 7.7.2
+@subtitle 20 November 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -159,6 +159,7 @@ Special Forms
 * Iteration::                   
 * Structure Definitions::       
 * Macros::                      
+* SRFI syntax::                 
 
 Definitions
 
@@ -177,6 +178,12 @@ Syntactic Closures
 * Syntax Terminology::          
 * SC Transformer Definition::   
 * SC Identifiers::              
+
+SRFI syntax
+
+* cond-expand (SRFI 0)::        
+* receive (SRFI 8)::            
+* define-record-type (SRFI 9)::  
 
 Numbers
 
@@ -298,7 +305,7 @@ Environments
 * Environment Operations::      
 * Environment Variables::       
 * REPL Environment::            
-* Top-level Environments::    
+* Top-level Environments::      
 
 Input/Output
 
@@ -1565,6 +1572,7 @@ This chapter describes the basic Scheme special forms.
 * Iteration::                   
 * Structure Definitions::       
 * Macros::                      
+* SRFI syntax::                 
 @end menu
 
 @node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
@@ -3192,7 +3200,7 @@ The @code{type} option is restricted to the values @code{vector} and
 The @code{include} option is not implemented.
 @end itemize
 
-@node Macros,  , Structure Definitions, Special Forms
+@node Macros, SRFI syntax, Structure Definitions, Special Forms
 @section Macros
 
 (This section is largely taken from the @cite{Revised^4 Report on the
@@ -3502,9 +3510,9 @@ an identifier and either both its occurrence in the macro expression and
 its occurrence in the macro definition have the same lexical binding, or
 the two identifiers are equal and both have no lexical binding.
 
-A subpattern followed by @code{...} can match zero or more elements of
-the input.  It is an error for @code{...} to appear in @var{literals}.
-Within a pattern the identifier @code{...} must follow the last element
+A subpattern followed by @samp{...} can match zero or more elements of
+the input.  It is an error for @samp{...} to appear in @var{literals}.
+Within a pattern the identifier @samp{...} must follow the last element
 of a nonempty sequence of subpatterns.
 
 More formally, an input form @var{F} matches a pattern @var{P} if and
@@ -3531,7 +3539,7 @@ whose @var{n}th ``cdr'' matches @var{P_n+1}; or
 
 @item
 @var{P} is of the form @code{(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
-@var{ellipsis})} where @var{ellipsis} is the identifier @code{...} and
+@var{ellipsis})} where @var{ellipsis} is the identifier @samp{...} and
 @var{F} is a proper list of at least @var{n} forms, the first @var{n} of
 which match @var{P_1} through @var{P_n}, respectively, and each
 remaining element of @var{F} matches @var{P_n+1}; or
@@ -3548,13 +3556,13 @@ When a macro use is transcribed according to the template of the
 matching @var{syntax rule}, pattern variables that occur in the template
 are replaced by the subforms they match in the input.  Pattern variables
 that occur in subpatterns followed by one or more instances of the
-identifier @code{...} are allowed only in subtemplates that are followed
-by as many instances of @code{...}.  They are replaced in the output by
+identifier @samp{...} are allowed only in subtemplates that are followed
+by as many instances of @samp{...}.  They are replaced in the output by
 all of the subforms they match in the input, distributed as indicated.
 It is an error if the output cannot be built up as specified.
 
 Identifiers that appear in the template but are not pattern variables or
-the identifier @code{...} are inserted into the output as literal
+the identifier @samp{...} are inserted into the output as literal
 identifiers.  If a literal identifier is inserted as a free identifier
 then it refers to the binding of that identifier within whose scope the
 instance of @code{syntax-rules} appears.  If a literal identifier is
@@ -4275,6 +4283,307 @@ must be written using the @code{er-macro-transformer} syntax:
 @end group
 @end example
 @end deffn
+
+@node SRFI syntax,  , Macros, Special Forms
+@section SRFI syntax
+
+@cindex SRFI syntax
+Several special forms have been introduced to support some of the
+@uref{http://srfi.schemers.org/,Scheme Requests for Implementation}
+(@acronym{SRFI}).  Note that MIT Scheme has for some time supported
+@uref{http://srfi.schemers.org/srfi-23/srfi-23.html,@acronym{SRFI} 23}
+(error-reporting mechanism) and
+@uref{http://srfi.schemers.org/srfi-30/srfi-30.html,@acronym{SRFI} 30}
+(nested multi-line comments), since these @acronym{SRFI}s reflect
+existing practice rather than introducing new functionality.
+
+@menu
+* cond-expand (SRFI 0)::        
+* receive (SRFI 8)::            
+* define-record-type (SRFI 9)::  
+@end menu
+
+@node cond-expand (SRFI 0), receive (SRFI 8), SRFI syntax, SRFI syntax
+@subsection cond-expand (SRFI 0)
+
+@cindex SRFI 0
+@uref{http://srfi.schemers.org/srfi-0/srfi-0.html,@acronym{SRFI} 0}
+is a mechanism for portably determining the availability of
+@uref{http://srfi.schemers.org/,@acronym{SRFI}} @dfn{features}.
+The @code{cond-expand} special form conditionally expands according to
+the features available.
+
+@deffn {special form} cond-expand clause clause dots{}
+Each @var{clause} has the form
+
+@example
+(@var{feature-requirement} @var{expression} @dots{})
+@end example
+
+where @var{feature-requirement} can have one of the following forms:
+
+@example
+@group
+@var{feature-identifier}
+(and @var{feature-requirement} @dots{})
+(or @var{feature-requirement} @dots{})
+(not @var{feature-requirement})
+else
+@end group
+@end example
+
+(Note that at most one @code{else} clause may be present, and it must
+always be the last clause.)
+
+The @code{cond-expand} special form tests for the existence of features
+at macro-expansion time.  It either expands into the body of one of its
+@var{clause}s or signals an error during syntactic processing.
+@code{cond-expand} expands into the body of the first @var{clause} whose
+@var{feature-requirement} is currently satisfied (an @code{else}
+@var{clause}, if present, is selected if none of the previous
+@var{clauses} is selected).
+
+A @var{feature-requirement} has an obvious interpretation as a logical
+formula, where the @var{feature-identifier} variables have meaning true
+if the feature corresponding to the @var{feature-identifier}, as
+specified in the @acronym{SRFI} registry, is in effect at the location
+of the @code{cond-expand} form, and false otherwise.  A
+@var{feature-requirement} is satisfied if its formula is true under this
+interpretation.
+
+@example
+@group
+(cond-expand
+  ((and srfi-1 srfi-10)
+   (write 1))
+  ((or srfi-1 srfi-10)
+   (write 2))
+  (else))
+
+(cond-expand
+  (command-line
+   (define (program-name) (car (argv)))))
+@end group
+@end example
+
+The second example assumes that @code{command-line} is an alias for some
+feature which gives access to command line arguments.  Note that an
+error will be signaled at macro-expansion time if this feature is not
+present.
+
+Note that MIT Scheme allows @code{cond-expand} in any context where a
+special form is allowed.  This is an extension of the semantics defined
+by @acronym{SRFI 0}, which only allows @code{cond-expand} at top level.
+@end deffn
+
+@node receive (SRFI 8), define-record-type (SRFI 9), cond-expand (SRFI 0), SRFI syntax
+@subsection receive (SRFI 8)
+
+@cindex SRFI 8
+@uref{http://srfi.schemers.org/srfi-8/srfi-8.html,@acronym{SRFI} 8}
+defines a convenient syntax to bind an identifier to each of the values
+of a multiple-valued expression and then evaluate an expression in the
+scope of the bindings.  As an instance of this pattern, consider the
+following excerpt from a @samp{quicksort} procedure:
+
+@example
+@group
+(call-with-values
+  (lambda ()
+    (partition (precedes pivot) others))
+  (lambda (fore aft)
+    (append (qsort fore) (cons pivot (qsort aft)))))
+@end group
+@end example
+
+Here @samp{partition} is a multiple-valued procedure that takes two
+arguments, a predicate and a list, and returns two lists, one comprising
+the list elements that satisfy the predicate, the other those that do
+not.  The purpose of the expression shown is to partition the list
+@samp{others}, sort each of the sublists, and recombine the results into
+a sorted list.
+
+For our purposes, the important step is the binding of the identifiers
+@samp{fore} and @samp{aft} to the values returned by @samp{partition}.
+Expressing the construction and use of these bindings with the
+call-by-values primitive is cumbersome: One must explicitly embed the
+expression that provides the values for the bindings in a parameterless
+procedure, and one must explicitly embed the expression to be evaluated
+in the scope of those bindings in another procedure, writing as its
+parameters the identifiers that are to be bound to the values received.
+
+These embeddings are boilerplate, exposing the underlying binding
+mechanism but not revealing anything relevant to the particular program
+in which it occurs.  So the use of a syntactic abstraction that exposes
+only the interesting parts -- the identifiers to be bound, the
+multiple-valued expression that supplies the values, and the body of the
+receiving procedure -- makes the code more concise and more readable:
+
+@example
+@group
+(receive (fore aft) (partition (precedes pivot) others)
+  (append (qsort fore) (cons pivot (qsort aft))))
+@end group
+@end example
+
+The advantages are similar to those of a @samp{let} expression over a
+procedure call with a @samp{lambda} expression as its operator.  In both
+cases, cleanly separating a ``header'' in which the bindings are
+established from a ``body'' in which they are used makes it easier to
+follow the code.
+
+@deffn {special form} receive formals expression body
+@var{Formals} and @var{body} are defined as for @samp{lambda}
+(@pxref{Lambda Expressions}).  Specifically, @var{formals} can have the
+following forms (the use of @samp{#!optional} and @samp{#!rest} is also
+allowed in @var{formals} but is omitted for brevity):
+
+@table @samp
+@item (@var{ident1} @dots{} @var{identN})
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident1}, @dots{}, @var{identN} to fresh
+locations.  The @var{expression} is evaluated, and its values are stored
+into those locations.  (It is an error if @var{expression} does not have
+exactly @var{N} values.)
+
+@item @var{ident}
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident} to a fresh location.  The
+@var{expression} is evaluated, its values are converted into a newly
+allocated list, and the list is stored in the location bound to
+@var{ident}.
+
+@item (@var{ident1} @dots{} @var{identN} . @var{identN+1})
+The environment in which the @samp{receive} expression is evaluated is
+extended by binding @var{ident1}, @dots{}, @var{identN+1} to fresh
+locations.  The @var{expression} is evaluated.  Its first @var{N} values
+are stored into the locations bound to @var{ident1} @dots{} @var{identN}.
+Any remaining values are converted into a newly allocated list, which is
+stored into the location bound to @var{identN+1}.  (It is an error if
+@var{expression} does not have at least @var{N} values.)
+@end table
+
+In any case, the expressions in @var{body} are evaluated sequentially in
+the extended environment.  The results of the last expression in the
+body are the values of the @samp{receive} expression.
+@end deffn
+
+@node define-record-type (SRFI 9),  , receive (SRFI 8), SRFI syntax
+@subsection define-record-type (SRFI 9)
+
+@cindex SRFI 9
+The @samp{define-record-type} syntax described in
+@uref{http://srfi.schemers.org/srfi-9/srfi-9.html,@acronym{SRFI} 9} is a
+slight simplification of one written for Scheme 48 by Jonathan Rees.
+Unlike many record-defining special forms, it does not create any new
+identifiers.  Instead, the names of the record type, predicate,
+constructor, and so on are all listed explicitly in the source.  This
+has the following advantages:
+
+@itemize @bullet
+@item
+It can be defined using a simple macro in Scheme implementations that
+provide a procedural interface for creating record types.
+
+@item
+It does not restrict users to a particular naming convention.
+
+@item
+Tools like @command{grep} and the GNU Emacs tag facility will see the
+defining occurance of each identifier.
+@end itemize
+
+@deffn {special form} define-record-type type-name (constructor-name field-tag @dots{}) predicate-name field-spec @dots{}
+@var{Type-name}, @var{contructor-name}, @var{field-tag}, and
+@var{predicate-name} are identifiers.  @var{Field-spec} has one of these
+two forms:
+
+@example
+@group
+(@var{field-tag} @var{accessor-name})
+(@var{field-tag} @var{accessor-name} @var{modifier-name})
+@end group
+@end example
+
+@noindent
+where @var{field-tag}, @var{accessor-name}, and @var{modifier-name} are
+each identifiers.
+
+@code{define-record-type} is generative: each use creates a new record
+type that is distinct from all existing types, including other record
+types and Scheme's predefined types.  Record-type definitions may only
+occur at top-level (there are two possible semantics for ``internal''
+record-type definitions, generative and nongenerative, and no consensus
+as to which is better).
+
+An instance of @code{define-record-type} is equivalent to the following
+definitions:
+
+@itemize @bullet
+@item
+@var{Type-name} is bound to a representation of the record type itself.
+Operations on record types, such as defining print methods, reflection,
+etc.@: are left to other SRFIs.
+
+@item
+@var{constructor-name} is bound to a procedure that takes as many
+arguments as there are @var{field-tag}s in the (@var{constructor-name}
+@dots{}) subform and returns a new @var{type-name} record.  Fields whose
+tags are listed with @var{constructor-name} have the corresponding
+argument as their initial value.  The initial values of all other fields
+are unspecified.
+
+@item
+@var{predicate-name} is a predicate that returns @code{#t} when given a
+value returned by @var{constructor-name} and @code{#f} for everything
+else.
+
+@item
+Each @var{accessor-name} is a procedure that takes a record of type
+@var{type-name} and returns the current value of the corresponding
+field.  It is an error to pass an accessor a value which is not a record
+of the appropriate type.
+
+@item
+Each @var{modifier-name} is a procedure that takes a record of type
+@var{type-name} and a value which becomes the new value of the
+corresponding field; an unspecified value is returned.  It is an error
+to pass a modifier a first argument which is not a record of the
+appropriate type.
+@end itemize
+
+Assigning the value of any of these identifiers has no effect on the
+behavior of any of their original values.
+@end deffn
+
+The following
+
+@example
+@group
+(define-record-type :pare
+  (kons x y)
+  pare?
+  (x kar set-kar!)
+  (y kdr))
+@end group
+@end example
+
+@noindent
+defines @samp{kons} to be a constructor, @samp{kar} and @samp{kdr} to be
+accessors, @samp{set-kar!} to be a modifier, and @samp{pare?} to be a
+predicate for objects of type @samp{:pare}.
+
+@example
+@group
+(pare? (kons 1 2))        @result{} #t
+(pare? (cons 1 2))        @result{} #f
+(kar (kons 1 2))          @result{} 1
+(kdr (kons 1 2))          @result{} 2
+(let ((k (kons 1 2)))
+  (set-kar! k 3)
+  (kar k))                @result{} 3
+@end group
+@end example
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
 @chapter Equivalence Predicates
@@ -7850,7 +8159,7 @@ by the @code{\|} construct.
 @deffn procedure rexp-group rexp @dots{}
 @code{rexp-group} is like @code{rexp-sequence}, except that the result
 is marked as a match group.  This is equivalent to the @code{\(}
-... @code{\)} construct.
+@dots{} @code{\)} construct.
 @end deffn
 
 The next three procedures in principal accept a single @acronym{REXP}
@@ -12436,7 +12745,7 @@ with that key in the result tree is computed by applying the procedure
 from @var{wt-tree-2}.  @var{Merge} is of the form
 
 @example
-(lambda (@var{key} @var{datum-1} @var{datum-2}) ...)
+(lambda (@var{key} @var{datum-1} @var{datum-2}) @dots{})
 @end example
 
 If some key occurs only in one tree, that association will appear in the
@@ -13073,7 +13382,7 @@ an unspecified value.
 * Environment Operations::      
 * Environment Variables::       
 * REPL Environment::            
-* Top-level Environments::    
+* Top-level Environments::      
 @end menu
 
 @node Environment Operations, Environment Variables, Environments, Environments
@@ -18575,7 +18884,7 @@ designed to have relatively low overhead.
 @example
 @group
 (with-timings
- (lambda () @r{...hairy computation...})
+ (lambda () @r{@dots{} hairy computation @dots{}})
  (lambda (run-time gc-time real-time)
    (write (internal-time/ticks->seconds run-time))
    (write-char #\space)
@@ -18606,7 +18915,7 @@ overhead.
 @group
 (measure-interval #t
                   (lambda (start-time)
-                    (let ((v @r{...hairy computation...}))
+                    (let ((v @r{@dots{} hairy computation @dots{}}))
                       (lambda (end-time)
                         (write (- end-time start-time))
                         (newline)
@@ -19071,7 +19380,7 @@ addresses for this machine.  (This is equivalent to passing the result
 of calling @code{host-address-any}.)
 @end deffn
 
-@deffn procedure tcp-server-connection-accept server-socket block? peer-address
+@deffn procedure tcp-server-connection-accept server-socket block? peer-address [line-translation]
 Checks to see if a client has connected to @var{server-socket}.  If
 so, an @acronym{I/O} port is returned.  The returned port can be read
 and written using ordinary Scheme @acronym{I/O} procedures such as
@@ -19086,6 +19395,13 @@ The argument @var{peer-address} is either @code{#f} or an @acronym{IP}
 address as allocated by @code{allocate-host-address}.  If it is an
 @acronym{IP} address, the address is modified to be the address of the
 client making the connection.
+
+The optional argument @var{line-translation} specifies how end-of-line
+characters will be translated when reading or writing to the returned
+socket.  If this is unspecified or @code{#f}, then lines will be
+terminated by @sc{cr-lf}, which is the standard for most internet
+protocols.  Otherwise, it must be a string, which specifies the
+line-ending character sequence to use.
 
 Note that closing the port returned by this procedure does not affect
 @var{server-socket}; it just closes the particular client connection
@@ -19415,7 +19731,7 @@ that it doesn't want to process that particular condition, it can signal
 the condition again.  This is one way to allow other handlers to get a
 chance to see the condition.
 
-@deffn procedure error reason argument...
+@deffn procedure error reason argument @dots{}
 @cindex REP loop
 @findex signal-condition
 @findex warn
@@ -19446,7 +19762,7 @@ field containing the @var{reason} and the @var{irritants} field
 containing the @var{argument}s.
 @end deffn
 
-@deffn procedure warn reason argument...
+@deffn procedure warn reason argument @dots{}
 @findex error
 @findex signal-condition
 @vindex condition-type:simple-warning
@@ -20079,7 +20395,7 @@ was created (usually the same as when it was signalled).  If
 and these often include restarts added after the condition ocurred.
 @end deffn
 
-@deffn procedure invoke-restart restart argument...
+@deffn procedure invoke-restart restart argument @dots{}
 @findex invoke-restart-interactively
 Calls the restart effector encapsulated in @var{restart}, passing the
 specified @var{argument}s to it.  @code{invoke-restart} is intended for
@@ -20212,7 +20528,7 @@ constructor procedure returned by @code{condition-constructor} has
 signature
 
 @example
-(lambda (@var{continuation} @var{restarts} . @var{field-values}) ...)
+(lambda (@var{continuation} @var{restarts} . @var{field-values}) @dots{})
 @end example
 
 @noindent
@@ -20394,7 +20710,7 @@ procedure of arity two (the first argument will be a condition of this
 type and the second a port) that will @code{write} the message to the
 given port, or @code{#f} to specify that the reporter should be taken
 from the condition type @var{generalization} (or produce an
-``undocumented condition of type ...'' message if @var{generalization}
+``undocumented condition of type @dots{}'' message if @var{generalization}
 is @code{#f}).  The conventions used to form descriptions are spelled
 out in @ref{Error Messages}.
 @end deffn
@@ -21946,7 +22262,7 @@ of the line width.
 @findex fill-polygon
 Draws a filled polygon using the current foreground color.
 @var{Points} is a vector of real numbers.
-The numbers are in the order x1 y1 x2 y2 ... xn yn.
+The numbers are in the order x1 y1 x2 y2 @dots{} xn yn.
 For example,
 
 @example
@@ -22767,7 +23083,7 @@ library.  This module contains many useful Win32 API procedures, like
 @end defvr
 
 
-@deffn {special form} windows-procedure (name (parameter type) ...) return-type module entry-name [options]
+@deffn {special form} windows-procedure (name (parameter type) @dots{}) return-type module entry-name [options]
 @cindex defining foreign procedures
 This form creates a procedure, and could be thought of as
 ``foreign-named-lambda''.  The form creates a Scheme procedure that
@@ -22809,7 +23125,7 @@ it's value.
                          @result{}  #t
                          @r{;; Changes window's title/text}
 
-set-window-title         @result{}  #[compiled-procedure  ...]
+set-window-title         @result{}  #[compiled-procedure  @dots{}]
 set-window-text          @error{}  Unbound variable
 @end group
 @end example
@@ -22867,8 +23183,8 @@ from the system global environment:
 @example
 @group
 (declare (usual-integrations))
-...
-((access error system-global-environment) "Complain" ...)
+@dots{}
+((access error system-global-environment) "Complain" @dots{})
 @end group
 @end example
 
