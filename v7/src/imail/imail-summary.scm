@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.39 2001/01/06 05:49:18 cph Exp $
+;;; $Id: imail-summary.scm,v 1.40 2001/05/18 00:56:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: summary buffer
 
@@ -243,22 +244,27 @@ SUBJECT is a string of regexps separated by commas."
 ;;;; Summary content generation
 
 (define (rebuild-imail-summary-buffer buffer)
-  (buffer-widen! buffer)
-  (with-read-only-defeated (buffer-start buffer)
-    (lambda ()
-      (region-delete! (buffer-region buffer))
-      (fill-imail-summary-buffer! buffer
-				  (selected-folder #f buffer)
-				  (buffer-get buffer
-					      'IMAIL-SUMMARY-PREDICATE
-					      #f))))
-  (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
-  (buffer-not-modified! buffer)
-  (set-buffer-point! buffer (imail-summary-first-line buffer))
-  (let ((message
-	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f))))
-    (if message
-	(imail-summary-select-message buffer message))))
+  (let ((folder (selected-folder #f buffer)))
+    (if folder
+	(begin
+	  (buffer-widen! buffer)
+	  (with-read-only-defeated (buffer-start buffer)
+	    (lambda ()
+	      (region-delete! (buffer-region buffer))
+	      (fill-imail-summary-buffer! buffer
+
+					  (buffer-get buffer
+						      'IMAIL-SUMMARY-PREDICATE
+						      #f))))
+	  (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
+	  (buffer-not-modified! buffer)
+	  (set-buffer-point! buffer (imail-summary-first-line buffer))
+	  (let ((message
+		 (selected-message #f
+				   (buffer-get buffer
+					       'IMAIL-FOLDER-BUFFER #f))))
+	    (if message
+		(imail-summary-select-message buffer message)))))))
 
 (define (fill-imail-summary-buffer! buffer folder predicate)
   (let ((end (folder-length folder)))
