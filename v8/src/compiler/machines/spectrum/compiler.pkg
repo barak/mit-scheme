@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.7 1994/12/15 03:07:44 adams Exp $
+$Id: compiler.pkg,v 1.8 1995/01/17 23:01:57 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
 	  compiler:generate-stack-checks?
 	  compiler:generate-type-checks?
 	  compiler:generate-profiling-instructions?
+	  compiler:guru?
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?
 	  compiler:noisy?
