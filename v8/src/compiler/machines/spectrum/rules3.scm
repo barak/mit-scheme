@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.2 1994/11/23 20:40:56 adams Exp $
+$Id: rules3.scm,v 1.3 1994/11/23 20:43:30 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -430,15 +430,15 @@ MIT in each case. |#
 		,@load-continuation
 		,@(invoke-hook hook)
 		(WORD () (- ,(constant->label prim) *PC*)))
-	 (let ((label1 (generate-label))
-	       (label2 (generate-label)))
-	   (LAP ,@load-continuation
-		(BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
-		(ADDI () (- (- ,label2 ,label1) ,*privilege-level*) 31 31)
-		(LABEL ,label1)
-		,@(gen-preservation-info)
-		(LABEL ,label2)
-		(WORD () (- ,(constant->label prim) *PC*)))))))))
+	   (let ((label1 (generate-label))
+		 (label2 (generate-label)))
+	     (LAP ,@load-continuation
+		  (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
+		  (ADDI () (- (- ,label2 ,label1) ,*privilege-level*) 31 31)
+		  (LABEL ,label1)
+		  ,@(gen-preservation-info)
+		  (LABEL ,label2)
+		  (WORD () (- ,(constant->label prim) *PC*)))))))))
 
 #|
 (define (open-code-block-allocation name prim hook frame-size cont-label)
@@ -1516,6 +1516,8 @@ MIT in each case. |#
 					      delete-dead-registers!)))
 	 (obj* (or obj regnum:first-arg)))
     (need-register! obj*)
+    (if continuation
+	(need-register! 19))
     (let ((addr (if untagged-entries? obj* (standard-temporary!)))
 	  (temp (standard-temporary!))
 	  (label (generate-label))
