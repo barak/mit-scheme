@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: autosv.scm,v 1.31 1997/01/03 04:06:40 cph Exp $
+;;;	$Id: autosv.scm,v 1.32 1997/07/21 04:34:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -98,7 +98,7 @@ This file is not the file you visited; that changes only when you save."
   (lambda () (do-auto-save)))
 
 (define (setup-buffer-auto-save! buffer)
-  (if (ref-variable auto-save-default)
+  (if (ref-variable auto-save-default buffer)
       (enable-buffer-auto-save! buffer)
       (disable-buffer-auto-save! buffer)))
 
