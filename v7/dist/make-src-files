@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.13 2000/12/23 04:36:58 cph Exp $
+# $Id: make-src-files,v 1.14 2000/12/25 06:20:43 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,6 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+INSTALL="install"
+INSTALL_DATA="${INSTALL} -m 644"
 PREFIX=`/scheme/v7/dist/release-prefix`
 rm -rf ${PREFIX}
 mkdir ${PREFIX}
@@ -34,8 +36,8 @@ find ${DESTINATION} -type d -name CVS -print | xargs rm -rf
 find ${DESTINATION} -type f -print | xargs chmod g-w
 find ${DESTINATION} -type d -print | xargs chmod g-w
 
-cp -p /scheme/v7/src/ChangeLog changelog.txt
-cp -p /scheme/v7/src/ChangeLog ${DESTINATION}/.
+${INSTALL_DATA} /scheme/v7/src/ChangeLog changelog.txt
+${INSTALL_DATA} /scheme/v7/src/ChangeLog ${DESTINATION}/.
 
 tarfile=${PREFIX}-src.tar.gz
 zipfile=${PREFIX}-src.zip
