@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.9 1988/05/10 00:38:45 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.10 1988/05/17 16:57:01 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -301,7 +301,7 @@ MIT in each case. |#
 	  (delete-dead-registers!)
 	  (let ((target-ref
 		 (register-reference (allocate-alias-register! target 'DATA))))
-	    (LAP (BFEXTU ,source-ref (& 0) (& 8) ,target-ref))))
+	    (LAP (BFEXTU ,source-ref (& 24) (& 8) ,target-ref))))
 	(byte-offset->register
 	 (indirect-char/ascii-reference! regnum:regs-pointer
 					 (pseudo-register-offset source))
