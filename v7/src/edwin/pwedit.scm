@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pwedit.scm,v 1.1 1999/01/14 21:30:55 cph Exp $
+;;; $Id: pwedit.scm,v 1.2 1999/01/14 21:35:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -75,7 +75,6 @@
 				       (button-event/x button-event)
 				       (button-event/y button-event))
 	     (buffer-end (window-buffer window))))))))
-     
 
 (define (insert-pw-forms pw-forms point)
   (let ((point (mark-left-inserting-copy point)))
