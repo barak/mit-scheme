@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.52 2003/02/24 21:56:36 cph Exp $
+$Id: string.scm,v 14.53 2003/02/26 00:24:29 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -1416,12 +1416,12 @@ USA.
 
 (define (guarantee-substring/fail string start end caller)
   (guarantee-string string caller)
-  (guarantee-substring-end-index string end caller)
+  (guarantee-substring-end-index end (string-length string) caller)
   (guarantee-substring-start-index start end caller))
 
-(define-integrable (guarantee-substring-end-index string end caller)
+(define-integrable (guarantee-substring-end-index end length caller)
   (guarantee-string-index end caller)
-  (if (not (fix:<= end (string-length string)))
+  (if (not (fix:<= end length))
       (error:bad-range-argument end caller))
   end)
 
