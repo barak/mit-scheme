@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.3 1988/08/29 23:00:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.4 1988/11/02 21:51:17 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -54,10 +54,8 @@ MIT in each case. |#
    rgraph
    (cons register (rgraph-non-object-registers rgraph))))
 
-(define (add-rgraph-entry-node! rgraph node)
-  (set-rgraph-entry-edges! rgraph
-			   (cons (node->edge node)
-				 (rgraph-entry-edges rgraph))))
+(define (add-rgraph-entry-edge! rgraph edge)
+  (set-rgraph-entry-edges! rgraph (cons edge (rgraph-entry-edges rgraph))))
 
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
