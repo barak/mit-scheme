@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.2 1988/06/14 08:10:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 4.3 1988/08/22 22:15:31 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,14 +32,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; LAP Generator
+;;;; LAP Generator: top level
 
 (declare (usual-integrations))
 
 (define *block-start-label*)
 (define *entry-bblock*)
 (define *current-bblock*)
-(define *dead-registers*)
 
 (define (generate-bits rgraphs receiver)
   (with-new-node-marks
@@ -120,22 +119,27 @@ MIT in each case. |#
   (let ((rtl (rinst-rtl rinst)))
     ;; LOOP is for easy restart while debugging.
     (let loop ()
-      (let ((match-result
-	     (let ((rule
-		    (if (eq? (car rtl) 'ASSIGN)
-			(assq (caadr rtl) *assign-rules*)
-			(assq (car rtl) *cgen-rules*))))
-	       (and rule
-		    (pattern-lookup (cdr rule) rtl)))))
+      (let ((match-result (lap-generator/match-rtl-instruction rtl)))
 	(if match-result
 	    (fluid-let ((*dead-registers* (rinst-dead-registers rinst))
-			(*prefix-instructions* '())
+			(*prefix-instructions* (LAP))
 			(*needed-registers* '()))
 	      (let ((instructions (match-result)))
 		(delete-dead-registers!)
 		(LAP ,@*prefix-instructions* ,@instructions)))
 	    (begin (error "CGEN-BBLOCK: No matching rules" rtl)
 		   (loop)))))))
+
+(define (lap-generator/match-rtl-instruction rtl)
+  ;; Match a single RTL instruction, returning a thunk to generate the
+  ;; LAP.  This is used in the RTL optimizer at certain points to
+  ;; determine if a rewritten instruction is valid.
+  (let ((rule
+	 (if (eq? (car rtl) 'ASSIGN)
+	     (assq (caadr rtl) *assign-rules*)
+	     (assq (car rtl) *cgen-rules*))))
+    (and rule
+	 (pattern-lookup (cdr rule) rtl))))
 
 (define (bblock-input-register-map bblock)
   (if (or (eq? bblock *entry-bblock*)
