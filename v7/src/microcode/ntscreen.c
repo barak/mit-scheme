@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.38 2000/01/10 04:44:22 cph Exp $
+$Id: ntscreen.c,v 1.39 2000/01/12 23:50:54 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -696,6 +696,39 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	  good time to reset our keyboard modifiers' state. */
        reset_modifiers ();
        goto use_default;
+
+     case WM_INPUTLANGCHANGE:
+       /* Clear dead keys in the keyboard state; for simplicity only
+	  preserve modifier key states.  */
+       {
+	 BYTE keystate [256];
+	 GetKeyboardState (keystate);
+	 {
+	   unsigned int i;
+	   for (i = 0; (i < 256); i += 1)
+	     switch (i)
+	       {
+	       case VK_SHIFT:
+	       case VK_LSHIFT:
+	       case VK_RSHIFT:
+	       case VK_CAPITAL:
+	       case VK_NUMLOCK:
+	       case VK_SCROLL:
+	       case VK_CONTROL:
+	       case VK_LCONTROL:
+	       case VK_RCONTROL:
+	       case VK_MENU:
+	       case VK_LMENU:
+	       case VK_RMENU:
+	       case VK_LWIN:
+	       case VK_RWIN:
+		 (keystate[i]) = 0;
+		 break;
+	       }
+	 }
+	 SetKeyboardState (keystate);
+       }
+      goto use_default;
 
      case WM_SETFOCUS:
        SetScreenFocus (hWnd);
@@ -1910,13 +1943,15 @@ get_modifiers (void)
   if (modifier_set_p (VK_NUMLOCK))  mods |= SCREEN_NUMLOCK_ON;
   if (modifier_set_p (VK_SCROLL))   mods |= SCREEN_SCROLLLOCK_ON;
 
-  if (modifier_set_p (VK_LCONTROL))
-    mods |= (SCREEN_LEFT_CONTROL_PRESSED | SCREEN_CONTROL_PRESSED);
   if (modifier_set_p (VK_RCONTROL))
     mods |= (SCREEN_RIGHT_CONTROL_PRESSED | SCREEN_CONTROL_PRESSED);
   if (modifier_set_p (VK_LMENU))
     mods |= (SCREEN_LEFT_ALT_PRESSED | SCREEN_ALT_PRESSED);
-  if (modifier_set_p (VK_RMENU))
+
+  /* Slight complication to handle case where AltGr is pressed.  */
+  if ((modifier_set_p (VK_LCONTROL)) && (!modifier_set_p (VK_RMENU)))
+    mods |= (SCREEN_LEFT_CONTROL_PRESSED | SCREEN_CONTROL_PRESSED);
+  if ((modifier_set_p (VK_RMENU)) && (!modifier_set_p (VK_LCONTROL)))
     mods |= (SCREEN_RIGHT_ALT_PRESSED | SCREEN_ALT_PRESSED);
 
   return (mods);
