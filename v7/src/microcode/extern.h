@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.36 1990/06/20 17:40:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.h,v 9.37 1990/08/16 19:19:49 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -220,6 +220,8 @@ extern CONST char * EXFUN (string_option_argument, (CONST char * name));
 extern long EXFUN (numeric_option_argument, (CONST char * name, long defval));
 extern Boolean Restore_History ();
 extern Boolean interpreter_applicable_p ();
+extern void EXFUN
+  (add_reload_cleanup, (void EXFUN ((*cleanup_procedure), (void))));
 
 /* Memory management utilities */
 extern SCHEME_OBJECT Purify_Pass_2 ();
