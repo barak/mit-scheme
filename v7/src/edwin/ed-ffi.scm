@@ -143,6 +143,8 @@
 	       syntax-table/system-internal)
     ("occur"   (edwin occurrence)
 	       edwin-syntax-table)
+    ("outline" (edwin)
+	       edwin-syntax-table)
     ("pasmod"  (edwin)
 	       edwin-syntax-table)
     ("paths"   (edwin)

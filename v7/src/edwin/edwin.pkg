@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.88 1992/04/16 22:29:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.89 1992/04/17 20:05:18 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -102,7 +102,8 @@ MIT in each case. |#
 	 "tximod"
 	 "manual"			; man page display
 	 "print"			; printer output
-	 "notify")			; mode line notifications
+	 "notify"			; mode line notifications
+	 "outline")			; outline minor mode
   (parent ())
   (import (runtime rep)
 	  hook/repl-eval)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.34 1992/04/09 17:22:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.35 1992/04/17 20:05:10 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -156,6 +156,7 @@ MIT in each case. |#
 		"motcom"
 		"motion"
 		"notify"
+		"outline"
 		"occur"
 		"pasmod"
 		"print"
