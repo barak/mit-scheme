@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.5 2000/01/14 17:04:03 cph Exp $
+;;; $Id: imail-core.scm,v 1.6 2000/01/14 18:10:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -258,7 +258,7 @@
 (define-generic poll-folder (folder))
 
 ;; Synchronize the local copy of FOLDER with the server's copy.
-;; Unspecified result.  Meaningless for file-based protocols.
+;; Unspecified result.
 (define-generic synchronize-folder (folder))
 
 ;; Save any changes made to FOLDER.  This permits the use of caches
@@ -371,15 +371,6 @@
 (define standard-message-flags
   '(DELETED ANSWERED SEEN FILED FORWARDED EDITED RESENT))
 
-(define (message-deleted? message)
-  (message-flagged? message 'DELETED))
-
-(define (delete-message message)
-  (set-message-flag message 'DELETED))
-
-(define (undelete-message message)
-  (clear-message-flag message 'DELETED))
-
 (define (message-flags->header-field flags)
   (make-header-field
    message-flags:name
@@ -403,6 +394,34 @@
 				#t)))))
 
 (define message-flags:name "X-IMAIL-FLAGS")
+
+(define (message-deleted? msg) (message-flagged? msg 'DELETED))
+(define (delete-message msg) (set-message-flag msg 'DELETED))
+(define (undelete-message msg) (clear-message-flag msg 'DELETED))
+
+(define (message-answered? msg) (message-flagged? msg 'ANSWERED))
+(define (message-answered msg) (set-message-flag msg 'ANSWERED))
+(define (message-not-answered msg) (clear-message-flag msg 'ANSWERED))
+
+(define (message-seen? msg) (message-flagged? msg 'SEEN))
+(define (message-seen msg) (set-message-flag msg 'SEEN))
+(define (message-not-seen msg) (clear-message-flag msg 'SEEN))
+
+(define (message-filed? msg) (message-flagged? msg 'FILED))
+(define (message-filed msg) (set-message-flag msg 'FILED))
+(define (message-not-filed msg) (clear-message-flag msg 'FILED))
+
+(define (message-forwarded? msg) (message-flagged? msg 'FORWARDED))
+(define (message-forwarded msg) (set-message-flag msg 'FORWARDED))
+(define (message-not-forwarded msg) (clear-message-flag msg 'FORWARDED))
+
+(define (message-edited? msg) (message-flagged? msg 'EDITED))
+(define (message-edited msg) (set-message-flag msg 'EDITED))
+(define (message-not-edited msg) (clear-message-flag msg 'EDITED))
+
+(define (message-resent? msg) (message-flagged? msg 'RESENT))
+(define (message-resent msg) (set-message-flag msg 'RESENT))
+(define (message-not-resent msg) (clear-message-flag msg 'RESENT))
 
 ;;;; Message properties
 
