@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.36 1997/04/28 05:59:49 cph Exp $
+$Id: arith.scm,v 1.37 1997/04/28 07:10:20 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -804,45 +804,63 @@ MIT in each case. |#
 
 (define (rat:->inexact q)
   (if (ratnum? q)
-      (let ((n (ratnum-numerator q))
-	    (d (ratnum-denominator q)))
-	(cond ((int:positive? n) (ratio->flonum n d))
-	      ((int:negative? n) (flo:negate (ratio->flonum (int:negate n) d)))
-	      (else flo:0)))
+      (ratio->flonum (ratnum-numerator q) (ratnum-denominator q))
       (int:->inexact q)))
 
-(define (int:->inexact n)
-  (cond ((int:positive? n) (ratio->flonum n 1))
-	((int:negative? n) (flo:negate (ratio->flonum (int:negate n) 1)))
-	(else flo:0)))
-
 (define (ratio->flonum n d)
-  (let ((k (int:- (integer-length-in-bits n) (integer-length-in-bits d)))
-	(p flo:significand-digits-base-2))
-    (letrec
-	((step1
-	  (lambda (n d)
-	    ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
-	    (if (int:< k 0)
-		(step2 (integer-shift-left n (int:- 0 k)) d)
-		(step2 n (integer-shift-left d k)))))
-	 (step2
-	  (lambda (n d)
-	    ;; (assert (< 1/2 (/ n d) 2))
-	    (if (int:< n d)
-		(step3 n d (int:- k p))
-		(step3 n (int:* 2 d) (int:- (int:+ k 1) p)))))
-	 (step3
-	  (lambda (n d e)
-	    ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
-	    (let ((n (int:round (integer-shift-left n p) d)))
-	      (if (int:= n int:flonum-integer-limit)
-		  (step4 (int:quotient n 2) (int:1+ e))
-		  (step4 n e)))))
-	 (step4
-	  (lambda (n e)
-	    (flo:denormalize (integer->flonum n #b11) e))))
-      (step1 n d))))
+  (let ((n>0
+	 (lambda (n)
+	   (let ((k (int:- (integer-length-in-bits n)
+			   (integer-length-in-bits d)))
+		 (p flo:significand-digits-base-2))
+	     (letrec
+		 ((step1
+		   (lambda (n d)
+		     ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
+		     (if (int:negative? k)
+			 (step2 (integer-shift-left n (int:negate k)) d)
+			 (step2 n (integer-shift-left d k)))))
+		  (step2
+		   (lambda (n d)
+		     ;; (assert (< 1/2 (/ n d) 2))
+		     (if (int:< n d)
+			 (step3 n d (int:- k p))
+			 (step3 n (int:* 2 d) (int:- (int:1+ k) p)))))
+		  (step3
+		   (lambda (n d e)
+		     ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
+		     (let ((n (int:round (integer-shift-left n p) d)))
+		       (if (int:= n int:flonum-integer-limit)
+			   (step4 (int:quotient n 2) (int:1+ e))
+			   (step4 n e)))))
+		  (step4
+		   (lambda (n e)
+		     (flo:denormalize (integer->flonum n #b11) e))))
+	       (step1 n d))))))
+    (cond ((fix:zero? n) flo:0)
+	  ((int:positive? n) (n>0 n d))
+	  (else (flo:negate (n>0 (int:negate n) d))))))
+
+(define (int:->inexact n)
+  (let ((n>0
+	 (lambda (n)
+	   (let ((e (int:- (integer-length-in-bits n)
+			   flo:significand-digits-base-2))
+		 (finish
+		  (lambda (n e)
+		    (flo:denormalize (integer->flonum n #b11) e))))
+	     (cond ((fix:zero? e)
+		    (finish n e))
+		   ((int:positive? e)
+		    (let ((n (int:round n (integer-shift-left 1 e))))
+		      (if (int:= n int:flonum-integer-limit)
+			  (finish (int:quotient n 2) (int:1+ e))
+			  (finish n e))))
+		   (else
+		    (finish (integer-shift-left n (int:negate e)) e)))))))
+    (cond ((fix:zero? n) flo:0)
+	  ((int:positive? n) (n>0 n d))
+	  (else (flo:negate (n>0 (int:negate n) d))))))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
