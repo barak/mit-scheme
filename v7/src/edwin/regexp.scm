@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.72 1999/05/13 03:06:42 cph Exp $
+;;; $Id: regexp.scm,v 1.73 1999/06/26 02:02:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -45,33 +45,38 @@
   (let ((group (object-unhash match-group)))
     (cons group
 	  (if group
-	      (let ((v (make-vector 20 #f))
-		    (rv (re-registers)))
+	      (let ((v (make-vector 20)))
 		(do ((i 0 (fix:+ i 1)))
 		    ((fix:= i 20))
-		  (let ((index (vector-ref rv i)))
-		    (if index
-			(vector-set!
-			 v i
-			 ;; Start marks are right-inserting,
-			 ;; end marks are left-inserting.
-			 (make-permanent-mark group index (fix:>= i 10))))))
+		  (vector-set!
+		   v i
+		   (let ((index (vector-ref registers i)))
+		     (and index
+			  ;; Start marks are right-inserting,
+			  ;; end marks are left-inserting.
+			  (make-permanent-mark group index (fix:>= i 10))))))
 		v)
-	      (re-registers)))))
+	      (vector-copy registers)))))
 
 (define (set-re-match-data! data)
   (let ((group (car data))
 	(marks (cdr data)))
-    (set! match-group (if group (group-hash-number group) hash-of-false))
-    (set-re-registers!
-     (if group
-	 (vector-map marks
-		     (lambda (mark)
-		       (and mark
-			    (let ((index (mark-index mark)))
-			      (mark-temporary! mark)
-			      index))))
-	 marks))))
+    (if group
+	(begin
+	  (set! match-group (group-hash-number group))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i 20))
+	    (vector-set! registers i
+			 (let ((mark (vector-ref marks i)))
+			   (and mark
+				(let ((index (mark-index mark)))
+				  (mark-temporary! mark)
+				  index))))))
+	(begin
+	  (set! match-group hash-of-false)
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i 20))
+	    (vector-set! registers i (vector-ref marks i)))))))
 
 (define (preserving-match-data thunk)
   (let ((data unspecific))
