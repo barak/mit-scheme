@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.8 1992/04/02 08:14:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/manual.scm,v 1.9 1992/04/04 13:06:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -79,6 +79,7 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 		(if section (string-append "(" section ")") "")
 		"-Manual-Entry*"))))
       (let ((buffer (temporary-buffer buffer-name)))
+	(disable-group-undo! (buffer-group buffer))
 	(message "Invoking man "
 		 (if section (string-append section " ") "")
 		 topic
@@ -100,54 +101,18 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	(pop-up-buffer buffer false)
 	(message "Manual page ready")))))
 
-(define manual-vendor-pattern
-  (string-append
-   "^\\("
-   "\\(Printed\\|Sun Release\\) [0-9].*[0-9]"
-   "\\|"
-   " *Page [0-9]*.*(printed [0-9/]*)"
-   "\\|"
-   "[ \t]*Hewlett-Packard\\( Company\\|\\)[ \t]*- [0-9]* -.*"
-   "\\)$"))
-
 (define (nuke-nroff-bs buffer)
-  (let* ((group (buffer-group buffer))
-	 (syntax-table (group-syntax-table group)))
-    (let ((nuke-regexp
-	   (lambda (regexp case-fold-search)
-	     (let ((pattern (re-compile-pattern regexp case-fold-search)))
-	       (let loop ((index (group-start-index group)))
-		 (if (re-search-buffer-forward pattern
-					       case-fold-search
-					       syntax-table
-					       group
-					       index
-					       (group-end-index group))
-		     (let ((start (re-match-start-index 0)))
-		       (group-delete! group start (re-match-end-index 0))
-		       (loop start))))))))
-      ;; Nuke underlining
-      (nuke-regexp "\\(_\b\\)+" false)
-      ;; Nuke overstriking
-      (nuke-regexp "\\(\b.\\)+" false)
-      ;; Nuke headers: "MORE(1) UNIX Programmer's Manual MORE(1)"
-      (nuke-regexp "^ *\\([A-Za-z][-_A-Za-z0-9]*([-0-9A-Z]+)\\).*\\1$" false)
-      ;; Nuke vendor-specific footers
-      (nuke-regexp manual-vendor-pattern true)
-      ;; Nuke generic footers
-      (nuke-regexp "^[A-Za-z0-9_]*[ \t]*[0-9]+$" false))
-    ;; Crunch blank lines
-    (let ((pattern (re-compile-pattern "\n\n\n+" false)))
-      (let loop ((index (group-start-index group)))
-	(if (re-search-buffer-forward pattern
-				      false
-				      syntax-table
-				      group
-				      index
-				      (group-end-index group))
-	    (let ((start (re-match-start-index 0)))
-	      (group-delete! group (fix:+ start 2) (re-match-end-index 0))
-	      (loop start))))))
+  (nuke-underlining buffer)
+  (nuke-overstriking buffer)
+  ;; Nuke headers: "MORE(1) UNIX Programmer's Manual MORE(1)"
+  (nuke-regexp buffer
+	       "^ *\\([A-Za-z][-_A-Za-z0-9]*([-0-9A-Z]+)\\).*\\1$"
+	       false)
+  ;; Nuke vendor-specific footers
+  (nuke-regexp buffer manual-vendor-pattern true)
+  ;; Nuke generic footers
+  (nuke-regexp buffer "^[A-Za-z0-9_]*[ \t]*[0-9]+$" false)
+  (crunch-blank-lines buffer)
   ;; Nuke blanks lines at start.
   (if (re-match-forward "\\([ \t]*\n\\)+"
 			(buffer-start buffer)
@@ -169,3 +134,86 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 				 ((not (line-blank? m)) mark)
 				 (else (loop m)))))
 		       end))))
+
+(define manual-vendor-pattern
+  (string-append
+   "^\\("
+   "\\(Printed\\|Sun Release\\) [0-9].*[0-9]"
+   "\\|"
+   " *Page [0-9]*.*(printed [0-9/]*)"
+   "\\|"
+   "[ \t]*Hewlett-Packard\\( Company\\|\\)[ \t]*- [0-9]* -.*"
+   "\\)$"))
+
+(define (nuke-underlining buffer)
+  (let ((group (buffer-group buffer)))
+    (let loop
+	((index
+	  (let ((start (group-start-index group)))
+	    (if (and (fix:< start (group-end-index group))
+		     (char=? #\backspace (group-right-char group start)))
+		(fix:+ start 1)
+		start))))
+      (let ((bs
+	     (group-find-next-char group
+				   index
+				   (group-end-index group)
+				   #\backspace)))
+	(if bs
+	    (if (char=? #\_ (group-left-char group bs))
+		(begin
+		  (group-delete! group (fix:- bs 1) (fix:+ bs 1))
+		  (loop (fix:- bs 1)))
+		(loop (fix:+ bs 1))))))))
+
+(define (nuke-overstriking buffer)
+  (let ((group (buffer-group buffer)))
+    (let loop ((start (group-start-index group)))
+      (let ((end (group-end-index group)))
+	(let ((bs (group-find-next-char group start end #\backspace)))
+	  (if bs
+	      (if (fix:< (fix:+ bs 2) end)
+		  (let find-end ((index (fix:+ bs 2)))
+		    (if (and (fix:< (fix:+ index 2) end)
+			     (char=? #\backspace
+				     (group-right-char group index)))
+			(find-end (fix:+ index 2))
+			(begin
+			  (group-delete! group bs index)
+			  (loop bs)))))))))))
+
+(define (nuke-regexp buffer regexp case-fold-search)
+  (let ((group (buffer-group buffer))
+	(pattern (re-compile-pattern regexp case-fold-search)))
+    (let ((syntax-table (group-syntax-table group)))
+      (let loop ((index (group-start-index group)))
+	(if (re-search-buffer-forward pattern
+				      case-fold-search
+				      syntax-table
+				      group
+				      index
+				      (group-end-index group))
+	    (let ((start (re-match-start-index 0)))
+	      (group-delete! group start (re-match-end-index 0))
+	      (loop start)))))))
+
+(define (crunch-blank-lines buffer)
+  (let ((group (buffer-group buffer)))
+    (let loop ((start (group-start-index group)))
+      (let ((end (group-end-index group)))
+	(let ((nl (group-find-next-char group start end #\newline)))
+	  (if nl
+	      (let ((nl+2 (fix:+ nl 2)))
+		(if (fix:< nl+2 end)
+		    (begin
+		      (if (and (char=? #\newline
+				       (group-right-char group (fix:+ nl 1)))
+			       (char=? #\newline
+				       (group-right-char group nl+2)))
+			  (let find-end ((index (fix:+ nl 3)))
+			    (if (and (fix:< index end)
+				     (char=? #\newline
+					     (group-right-char group index)))
+				(find-end (fix:+ index 1))
+				(group-delete! group nl+2 index))))
+		      (loop nl+2))))))))))
