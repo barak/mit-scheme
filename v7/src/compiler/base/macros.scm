@@ -37,7 +37,7 @@
 
 ;;;; Compiler Macros
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.54 1986/12/21 14:52:26 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.55 1987/01/01 16:55:28 cph Exp $
 
 (declare (usual-integrations))
 
@@ -244,8 +244,7 @@
 (syntax-table-define (access compiler-syntax-table compiler-package)
 		     'UCODE-TYPE
   (macro (name)
-    (or (microcode-type name)
-	(error "Unknown type code" name))))
+    (microcode-type name)))
 
 (syntax-table-define (access compiler-syntax-table compiler-package)
 		     'UCODE-PRIMITIVE
