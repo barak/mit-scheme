@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.11 1995/08/10 21:52:53 adams Exp $
+$Id: earlyrew.scm,v 1.12 1995/08/16 18:16:35 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -556,6 +556,80 @@ MIT in each case. |#
 	    (else
 	     (default))))))
 
+(define (early/indexed-reference primitive object-tag-name
+				 %check/full %check/index
+				 %unchecked)
+  (let ((object-tag (machine-tag object-tag-name)))
+    (lambda (vec index #!optional value)
+      
+      (define (bind+ name value body)
+	(if name (bind name value body) body))
+
+      (let ((vec-name  (earlyrew/new-name object-tag-name))
+	    (idx-name  (earlyrew/new-name 'INDEX))
+	    (val-name  (and (not (default-object? value))
+			    (earlyrew/new-name 'VALUE))))
+	(let ((extra
+	       (if (default-object? value) '() (list `(LOOKUP ,val-name)))))
+	  (let ((test
+		 (cond ((and compiler:generate-range-checks?
+			     compiler:generate-type-checks?)
+			`(CALL (QUOTE ,%check/full) '#F
+			       (LOOKUP ,vec-name) (LOOKUP ,idx-name)))
+		       (compiler:generate-range-checks?
+			`(CALL (QUOTE ,%check/index) '#F
+			       (LOOKUP ,vec-name) (LOOKUP ,idx-name)))
+		       (compiler:generate-type-checks?
+			`(CALL (QUOTE ,object-type?) '#F
+			       (QUOTE ,object-tag) (LOOKUP ,vec-name)))
+		       (else #F)))
+		(unchecked
+		 (lambda ()
+		   `(CALL (QUOTE ,%unchecked) (QUOTE #F)
+			  (LOOKUP ,vec-name)
+			  (LOOKUP ,idx-name)
+			  ,@extra)))
+		(primitive-call
+		 (lambda ()
+		   `(CALL (QUOTE ,primitive) (QUOTE #F)
+			  (LOOKUP ,vec-name)
+			  (LOOKUP ,idx-name)
+			  ,@extra))))
+	    (bind vec-name vec
+		  (bind idx-name index
+			(bind+ val-name (or (default-object? value) value)
+			       (if test
+				   `(IF ,test
+					,(unchecked)
+					,(primitive-call))
+				   (unchecked)))))))))))
+
+(define-rewrite/early 'VECTOR-REF
+  (early/indexed-reference (make-primitive-procedure 'VECTOR-REF) 'VECTOR
+			   %vector-check %vector-check/index
+			   %vector-ref))
+
+(define-rewrite/early 'VECTOR-SET!
+  (early/indexed-reference (make-primitive-procedure 'VECTOR-SET!) 'VECTOR
+			   %vector-check %vector-check/index
+			   %vector-set!))
+
+(define (early/make-cxr primitive %unchecked)
+  (let ((prim-pair? (make-primitive-procedure 'PAIR?)))
+    (lambda (text)
+      (if compiler:generate-type-checks?
+	  (let ((text-name  (earlyrew/new-name 'OBJECT)))
+	    (bind text-name text
+		  `(IF (CALL ',prim-pair? '#F (LOOKUP ,text-name))
+		       (CALL ',%unchecked '#F (LOOKUP ,text-name))
+		       (CALL ',primitive  '#F (LOOKUP ,text-name)))))
+	  `(CALL ',%unchecked '#F ,text)))))
+
+(define early/car (early/make-cxr (make-primitive-procedure 'CAR) %car))
+(define early/cdr (early/make-cxr (make-primitive-procedure 'CDR) %cdr))
+
+(define-rewrite/early 'CAR early/car)
+(define-rewrite/early 'CDR early/cdr)
 
 (define-rewrite/early 'GENERAL-CAR-CDR
   (let ((prim-general-car-cdr (make-primitive-procedure 'GENERAL-CAR-CDR))
@@ -572,11 +646,8 @@ MIT in each case. |#
 			(if (= num 1)
 			    text
 			    (walk-bits (quotient num 2)
-				       `(CALL (QUOTE ,(if (odd? num)
-							  prim-car
-							  prim-cdr))
-					      (QUOTE #f)
-					      ,text))))
+				       ((if (odd? num) early/car early/cdr)
+					text))))
 		      (default))))
 	    (else (default))))))
 

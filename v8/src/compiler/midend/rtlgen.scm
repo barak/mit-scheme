@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.36 1995/08/14 15:11:24 adams Exp $
+$Id: rtlgen.scm,v 1.37 1995/08/16 18:19:52 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -3218,6 +3218,15 @@ MIT in each case. |#
   (define-fixnum-predicate fix:> 'GREATER-THAN-FIXNUM?
     rtlgen/branch/unpredictable))
 
+(define-open-coder/pred %word-less-than-unsigned? 2
+  (lambda (state rands open-coder)
+    open-coder				; ignored
+    (let* ((rand1 (rtlgen/->register (first rands)))
+	   (rand2 (rtlgen/->register (second rands))))
+      (rtlgen/branch/likely
+       state
+       `(PRED-2-ARGS WORD-LESS-THAN-UNSIGNED? ,rand1 ,rand2)))))
+
 (let ((define-flonum-predicate
 	(lambda (proc name rtlgen/branch)
 	  (define-open-coder/pred proc 2
@@ -3501,8 +3510,8 @@ MIT in each case. |#
   (define-fixed-selector %cell-ref          (machine-tag 'CELL) 0 2)
   (define-fixed-selector %car               (machine-tag 'PAIR) 0 1)
   (define-fixed-selector %cdr               (machine-tag 'PAIR) 1 1)
-  (define-fixed-selector 'CAR               (machine-tag 'PAIR) 0 1)
-  (define-fixed-selector 'CDR               (machine-tag 'PAIR) 1 1)
+  ;;(define-fixed-selector 'CAR               (machine-tag 'PAIR) 0 1)
+  ;;(define-fixed-selector 'CDR               (machine-tag 'PAIR) 1 1)
   (define-fixed-selector 'SYSTEM-PAIR-CAR   false 0 1)
   (define-fixed-selector 'SYSTEM-PAIR-CDR   false 1 1)
   (define-fixed-selector 'SYSTEM-HUNK3-CXR0 false 0 1)
@@ -3545,7 +3554,7 @@ MIT in each case. |#
 			 (rtlgen/value-assignment
 			  state
 			  `(OFFSET ,ptr (MACHINE-CONSTANT ,offset))))))))))))
-  (define-indexed-selector 'VECTOR-REF (machine-tag 'VECTOR) 1 2)
+  ;;(define-indexed-selector 'VECTOR-REF (machine-tag 'VECTOR) 1 2)
   (define-indexed-selector %vector-ref (machine-tag 'VECTOR) 1 2)
   (define-indexed-selector '%RECORD-REF (machine-tag 'RECORD) 1 2)
   ;; NOTE: This assumes that the result of the following two is always
@@ -3986,7 +3995,7 @@ MIT in each case. |#
 			 (rtlgen/emit!/1
 			  `(ASSIGN (OFFSET ,ptr (MACHINE-CONSTANT ,offset))
 				   ,value)))))))))))
-  (define-indexed-mutator 'VECTOR-SET!  (machine-tag 'VECTOR) 1 3)
+  ;(define-indexed-mutator 'VECTOR-SET!  (machine-tag 'VECTOR) 1 3)
   (define-indexed-mutator %vector-set!  (machine-tag 'VECTOR) 1 3)
   (define-indexed-mutator '%RECORD-SET! (machine-tag 'RECORD) 1 3)
   (define-indexed-mutator 'PRIMITIVE-OBJECT-SET! false 0 3))
