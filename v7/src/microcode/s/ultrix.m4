@@ -1,7 +1,10 @@
 #!/bin/csh -f
-# $Id
-: /scheme/src/ucode.new/s/RCS/ultrix.m4,v 1.4 1991/02/15 00:51:05 jinx Exp gjr $
-# Postprocessing to make m4 work correctly under Ultrix & BSD.
+###
+###	$Id: ultrix.m4,v 1.6 1993/06/24 07:32:21 gjr Exp $
+###
+###	Copyright (c) 1989-1993 Massachusetts Institute of Technology
+###
+####	Postprocessing to make m4 work correctly under Ultrix & BSD.
 
 if ($#argv == 0) then
   sed -e '/^#/D' | m4 | sed -e 's/@/$/g' -e 's/^$//'

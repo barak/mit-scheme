@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for Mach emulating BSD4.3
 
-$Id
-: /scheme/src/ucode.new/s/RCS/mach4-3.h,v 1.1 1992/02/16 00:13:15 jinx Exp gjr $
+$Id: mach4-3.h,v 1.3 1993/06/24 07:29:44 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

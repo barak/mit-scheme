@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for Sony NEWS-OS version 5
 
-$Id
-: /scheme/src/ucode.new/s/RCS/newsos5.h,v 1.2 1992/08/17 17:32:13 cph Exp gjr $
+$Id: newsos5.h,v 1.4 1993/06/24 07:29:57 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

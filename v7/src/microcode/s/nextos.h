@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for NeXT running Mach
 
-$Id
-: /scheme/src/ucode.new/s/RCS/nextos.h,v 1.4 1991/08/28 05:47:04 cph Exp gjr $
+$Id: nextos.h,v 1.6 1993/06/24 07:30:10 gjr Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

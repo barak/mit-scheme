@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for BSD4.2
 
-$Id
-: /scheme/src/ucode.new/s/RCS/bsd4-2.h,v 1.5 1990/10/16 20:56:47 cph Rel gjr $
+$Id: bsd4-2.h,v 1.7 1993/06/24 07:28:55 gjr Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

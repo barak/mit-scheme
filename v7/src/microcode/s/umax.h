@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for Encore UMAX42 and Mach
 
-$Id
-: /scheme/src/ucode.new/s/RCS/umax.h,v 1.3 1990/10/16 20:57:29 cph Rel gjr $
+$Id: umax.h,v 1.5 1993/06/24 07:32:37 gjr Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

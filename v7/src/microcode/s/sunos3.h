@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for SUNOS
 
-$Id
-: /scheme/src/ucode.new/s/RCS/sunos3.h,v 1.2 1990/10/16 20:57:13 cph Rel gjr $
+$Id: sunos3.h,v 1.4 1993/06/24 07:30:25 gjr Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and

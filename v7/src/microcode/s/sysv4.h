@@ -1,10 +1,9 @@
 /* -*-C-*-
    System file for AT&T System V Release 4
 
-$Id
-: /scheme/src/ucode.new/s/RCS/sysv4.h,v 1.1 1991/06/14 23:35:12 cph Exp gjr $
+$Id: sysv4.h,v 1.3 1993/06/24 07:31:12 gjr Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
