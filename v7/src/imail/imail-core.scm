@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.29 2000/04/18 21:20:00 cph Exp $
+;;; $Id: imail-core.scm,v 1.30 2000/04/23 04:02:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -81,6 +81,9 @@
 
 (define url-protocol-parsers
   (make-string-hash-table))
+
+(define-generic url-user-id (url))
+(define-method url-user-id ((url <url>)) url #f)
 
 (define (get-memoized-folder url)
   (let ((folder (hash-table/get memoized-folders url #f)))

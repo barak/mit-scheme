@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.20 2000/04/14 01:45:39 cph Exp $
+;;; $Id: imail-top.scm,v 1.21 2000/04/23 04:02:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -101,7 +101,8 @@ May be called with an IMAIL folder URL as argument;
 
 (define (imail-authenticator url)
   (let ((user-name
-	 (or (ref-variable imail-user-name)
+	 (or (url-user-id url)
+	     (ref-variable imail-user-name)
 	     (current-user-name))))
     (values user-name
 	    (call-with-pass-phrase
