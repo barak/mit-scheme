@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.135 2000/06/30 18:31:40 cph Exp $
+;;; $Id: imail-imap.scm,v 1.136 2000/06/30 19:05:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -942,7 +942,9 @@
 		      (imap-message-body-parts message)))
 	       (write-string part port)))
 	    (else
-	     (write-string (%imap-message-body-part message section) port))))))
+	     (imap:bind-fetch-body-part-port port
+	       (lambda ()
+		 (%imap-message-body-part message section))))))))
 
 (define (%imap-message-body-part message section)
   (imap:response:fetch-body-part

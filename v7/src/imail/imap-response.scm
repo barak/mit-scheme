@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.35 2000/06/15 20:40:27 cph Exp $
+;;; $Id: imap-response.scm,v 1.36 2000/06/30 19:05:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -186,7 +186,10 @@
 			       (discard-known-char #\> port)
 			       (discard-known-char #\space port)
 			       n)))))
-		(list x section origin (read-nstring port))))
+		(list x section origin
+		      (if *fetch-body-part-port*
+			  (read-nstring-to-port port *fetch-body-part-port*)
+			  (read-nstring port)))))
 	    (begin
 	      (discard-known-char #\space port)
 	      (list x
@@ -205,6 +208,12 @@
 		       (read-nz-number port))
 		      (else
 		       (error "Illegal fetch keyword:" x))))))))))
+
+(define (imap:bind-fetch-body-part-port port thunk)
+  (fluid-let ((*fetch-body-part-port* port))
+    (thunk)))
+
+(define *fetch-body-part-port* #f)
 
 (define (parse-section string)
   (let ((pv (parse-string imap:parse:section string)))
@@ -248,46 +257,56 @@
 	  ((char=? #\{ char) (read-literal port))
 	  (else (error "Illegal astring syntax:" char)))))
 
-(define (read-nstring port)
-  (let ((char (peek-char-no-eof port)))
-    (cond ((char=? #\" char) (read-quoted port))
-	  ((char=? #\{ char) (read-literal port))
+(define (read-nstring input)
+  (let ((output (make-accumulator-output-port)))
+    (and (read-nstring-to-port input output)
+	 (get-output-from-accumulator output))))
+
+(define (read-nstring-to-port input output)
+  (let ((char (peek-char-no-eof input)))
+    (cond ((char=? #\" char)
+	   (read-quoted-to-port input output)
+	   "")
+	  ((char=? #\{ char)
+	   (read-literal-to-port input output)
+	   "")
 	  ((imap:atom-char? char)
-	   (let ((atom (read-atom port)))
+	   (let ((atom (read-atom input)))
 	     (if (string-ci=? "NIL" atom)
 		 #f
 		 (error "Illegal nstring:" atom))))
 	  (else (error "Illegal astring syntax:" char)))))
 
-(define (read-quoted port)
-  (discard-known-char #\" port)
-  (let ((port* (make-accumulator-output-port))
-	(lose (lambda () (error "Malformed quoted string."))))
+(define (read-quoted input)
+  (with-string-output-port
+    (lambda (output)
+      (read-quoted-to-port input output))))
+
+(define (read-quoted-to-port input output)
+  (discard-known-char #\" input)
+  (let ((lose (lambda () (error "Malformed quoted string."))))
     (let loop ()
-      (let ((char (read-char-no-eof port)))
+      (let ((char (read-char-no-eof input)))
 	(cond ((imap:quoted-char? char)
-	       (write-char char port*)
+	       (write-char char output)
 	       (loop))
-	      ((char=? #\" char)
-	       (get-output-from-accumulator port*))
 	      ((char=? #\\ char)
 	       (let ((char (read-char-no-eof char)))
 		 (if (imap:quoted-special? char)
 		     (begin
-		       (write-char char port*)
+		       (write-char char output)
 		       (loop))
 		     (lose))))
-	      (else (lose)))))))
+	      ((not (char=? #\" char))
+	       (lose)))))))
 
-(define (read-literal port)
-  (let ((output (make-accumulator-output-port)))
-    (read-literal-internal port
-      (lambda (string start end)
-	(write-substring string start end output)))
-    (get-output-from-accumulator output)))
+(define (read-literal input)
+  (with-string-output-port
+    (lambda (output)
+      (read-literal-to-port input output))))
 
-(define (read-literal-internal port handler)
-  (let ((n (read-literal-length port))
+(define (read-literal-to-port input output)
+  (let ((n (read-literal-length input))
 	(b1 (make-string 4096))
 	(b2 (make-string 4096)))
     (let loop ((i 0))
@@ -296,15 +315,15 @@
 	      (lambda ()
 		(let ((n-to-read (fix:- n i)))
 		  (if (fix:<= n-to-read 4096)
-		      (read-and-translate port n-to-read #t b1 b2)
-		      (read-and-translate port 4096 #f b1 b2))))
+		      (read-and-translate input n-to-read #t b1 b2)
+		      (read-and-translate input 4096 #f b1 b2))))
 	    (lambda (n-read n-written)
 	      (if (fix:= 0 n-read)
-		  (error "Premature EOF:" port))
+		  (error "Premature EOF:" input))
 	      (let ((i (fix:+ i n-read)))
 		(if (and *read-literal-progress-hook* (fix:<= i n))
 		    (*read-literal-progress-hook* i n))
-		(handler b2 0 n-written)
+		(write-substring b2 0 n-written output)
 		(loop i))))))))
 
 (define (read-literal-length port)

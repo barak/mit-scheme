@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.106 2000/06/30 03:16:15 cph Exp $
+$Id: todo.txt,v 1.107 2000/06/30 19:05:50 cph Exp $
 
 Bug fixes
 ---------
@@ -46,11 +46,6 @@ New features
 
 Design changes
 --------------
-
-* Integrate MIME decoding into reading of MIME body parts by
-  fluid-binding the decoder as a handler for the MIME response reader.
-  Use this same mechanism to read MIME attachments directly into
-  files.
 
 * Move pathname-completion code into the runtime system.
 

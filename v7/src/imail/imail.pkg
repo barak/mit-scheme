@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.69 2000/06/27 17:25:48 cph Exp $
+;;; $Id: imail.pkg,v 1.70 2000/06/30 19:05:46 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -136,6 +136,7 @@
 	  imap-transcript-write-char
 	  imap-transcript-write-string
 	  imap-transcript-write-substring
+	  imap:bind-fetch-body-part-port
 	  imap:read-literal-progress-hook
 	  imap:read-server-response
 	  imap:response-code:alert?
