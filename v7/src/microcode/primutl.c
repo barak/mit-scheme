@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.41 1987/11/17 08:15:15 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.42 1987/11/18 00:08:54 jinx Exp $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -288,12 +288,12 @@ primitive_name(code)
   return (string_to_symbol(scheme_string));
 }
 
-extern Pointer find_primitiveo();
+extern Pointer find_primitive();
 
 Pointer
-find_primitive(Name, intern_p, arity, check_p)
+find_primitive(Name, intern_p, allow_p, arity)
      Pointer Name;
-     Boolean intern_p, check_p;
+     Boolean intern_p, allow_p;
      int arity;
 {
   extern Boolean string_equal();
@@ -306,8 +306,7 @@ find_primitive(Name, intern_p, arity, check_p)
   if (i != -1)
   {
     old_arity = Primitive_Arity_Table[i];
-    if ((!check_p) || (arity == old_arity) ||
-	(arity == UNKNOWN_PRIMITIVE_ARITY))
+    if ((arity == UNKNOWN_PRIMITIVE_ARITY) || (arity == old_arity))
     {
       return (Make_Non_Pointer(TC_PRIMITIVE, i));
     }
@@ -316,11 +315,14 @@ find_primitive(Name, intern_p, arity, check_p)
       return (MAKE_SIGNED_FIXNUM(old_arity));
     }
   }
-  else if (intern_p == NIL)
+
+  /* Search the undefined primitives table if allowed. */
+
+  if (!allow_p)
   {
     return (NIL);
   }
-
+
   /* The vector should be sorted for faster comparison. */
 
   Max = NUMBER_OF_UNDEFINED_PRIMITIVES();
@@ -334,10 +336,10 @@ find_primitive(Name, intern_p, arity, check_p)
 
       if (string_equal(Name, *Next++))
       {
-	if (check_p)
+	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
 	  temp = User_Vector_Ref(Undefined_Primitives_Arity, i);
-	  if ((temp == NIL) && (arity != UNKNOWN_PRIMITIVE_ARITY))
+	  if (temp == NIL)
 	  {
 	    User_Vector_Set(Undefined_Primitives_Arity,
 			    i,
@@ -346,7 +348,7 @@ find_primitive(Name, intern_p, arity, check_p)
 	  else
 	  {
 	    Sign_Extend(temp, old_arity);
-	    if ((arity != UNKNOWN_PRIMITIVE_ARITY) && (arity != old_arity))
+	    if (arity != old_arity)
 	    {
 	      return (temp);
 	    }
@@ -359,8 +361,13 @@ find_primitive(Name, intern_p, arity, check_p)
 
   /*
     Intern the primitive name by adding it to the vector of
-    undefined primitives.
+    undefined primitives, if interning is allowed.
    */
+
+  if (!intern_p)
+  {
+    return (NIL);
+  }
 
   if ((Max % CHUNK_SIZE) == 0)
   {
@@ -392,7 +399,7 @@ find_primitive(Name, intern_p, arity, check_p)
     {
       *Free++ = Fetch(*Next++);
     }
-    *Free++ = ((check_p && (arity != UNKNOWN_PRIMITIVE_ARITY)) ?
+    *Free++ = ((arity != UNKNOWN_PRIMITIVE_ARITY) ?
 	       (MAKE_SIGNED_FIXNUM(arity)) :
 	       NIL);
     for (i = 1; i < CHUNK_SIZE; i++)
@@ -405,7 +412,7 @@ find_primitive(Name, intern_p, arity, check_p)
   {
     Max += 1;
     User_Vector_Set(Undefined_Primitives, Max, Name);
-    if (check_p && (arity != UNKNOWN_PRIMITIVE_ARITY))
+    if (arity != UNKNOWN_PRIMITIVE_ARITY)
     {
       User_Vector_Set(Undefined_Primitives_Arity,
 		      Max,
@@ -560,7 +567,7 @@ install_primitive_table(table, length, flush_p)
     table += 1;
     result =
       find_primitive(Make_Pointer(TC_CHARACTER_STRING, table),
-		     true, arity, true);
+		     true, true, arity);
     if (OBJECT_TYPE(result) != TC_PRIMITIVE)
     {
       Primitive_Error(ERR_WRONG_ARITY_PRIMITIVES);

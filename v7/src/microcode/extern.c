@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.23 1987/11/17 08:09:28 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/extern.c,v 9.24 1987/11/18 00:09:22 jinx Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -195,7 +195,7 @@ Built_In_Primitive(Prim_Get_Primitive_Address, 2, "GET-PRIMITIVE-ADDRESS", 0x103
 Define_Primitive(Prim_Get_Primitive_Address, 2, "GET-PRIMITIVE-ADDRESS")
 {
   extern Pointer find_primitive();
-  Boolean intern_p, check_p;
+  Boolean intern_p, allow_p;
   long arity;
   Primitive_2_Args();
 
@@ -203,17 +203,23 @@ Define_Primitive(Prim_Get_Primitive_Address, 2, "GET-PRIMITIVE-ADDRESS")
   Touch_In_Primitive(Arg2, Arg2);
   if (Arg2 == NIL)
   {
-    check_p = false;
+    allow_p = false;
     intern_p = false;
-    arity = 0;
+    arity = UNKNOWN_PRIMITIVE_ARITY;
+  }
+  else if (Arg2 == TRUTH)
+  {
+    allow_p = true;
+    intern_p = false;
+    arity = UNKNOWN_PRIMITIVE_ARITY;
   }
   else
   {
     CHECK_ARG(2, FIXNUM_P);
-    check_p = true;
+    allow_p = true;
     intern_p = true;
     Sign_Extend(Arg2, arity);
   }
   PRIMITIVE_RETURN(find_primitive(Fast_Vector_Ref(Arg1, SYMBOL_NAME),
-				  intern_p, arity, check_p));
+				  intern_p, allow_p, arity));
 }
