@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.16 1992/01/20 18:05:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.17 1992/01/20 18:52:26 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -368,9 +368,9 @@ enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
 #ifdef HAVE_SELECT
-  extern int EXFUN (select,
+  extern int EXFUN (UX_select,
 		    (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
-		     struct timeval));
+		     struct timeval *));
   extern int EXFUN (UX_process_any_status_change, (void));
   int status_change_p;
   int nfds;
@@ -385,8 +385,13 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 	(nfds,
 	 ((status_change_p = (UX_process_any_status_change ()))
 	  ? ((errno = EINTR), (-1))
-	  : (UX_select (FD_SETSIZE, (&readable), 0, 0,
-			(blockp ? 0 : (&zero_timeout))))));
+	  : (UX_select (FD_SETSIZE,
+			(&readable),
+			((SELECT_TYPE *) 0),
+			((SELECT_TYPE *) 0),
+			(blockp
+			 ? ((struct timeval *) 0)
+			 : (&zero_timeout))))));
       if (nfds > 0)
 	return
 	  ((FD_ISSET (fd, (&readable)))
