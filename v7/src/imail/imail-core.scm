@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.21 2000/02/04 05:19:21 cph Exp $
+;;; $Id: imail-core.scm,v 1.22 2000/02/07 22:31:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -208,6 +208,8 @@
 ;;;; Folder type
 
 (define-class <folder> ()
+  (modified? define standard
+	     initial-value #t)
   (properties define standard
 	      initializer make-1d-table))
 
@@ -240,6 +242,16 @@
 ;; Return the number of messages in FOLDER.
 (define-generic folder-length (folder))
 
+(define (folder-modified! folder)
+  (set-folder-modified?! folder #t))
+
+(define (folder-not-modified! folder)
+  (let ((count (folder-length folder)))
+    (do ((index 0 (+ index 1)))
+	((= index count))
+      (message-not-modified! (get-message folder index))))
+  (set-folder-modified?! folder #f))
+
 ;; Get the INDEX'th message in FOLDER and return it.  Signal an
 ;; error for invalid INDEX.
 (define (get-message folder index)
@@ -258,7 +270,8 @@
   (if (not (<= index (folder-length folder)))
       (error:bad-range-argument index 'INSERT-MESSAGE))
   (guarantee-message message 'INSERT-MESSAGE)
-  (%insert-message folder index message))
+  (%insert-message folder index message)
+  (folder-modified! folder))
 
 (define-generic %insert-message (folder index message))
 
@@ -266,14 +279,15 @@
 ;;; messages.  Unspecified result.
 (define (append-message folder message)
   (guarantee-message message 'APPEND-MESSAGE)
-  (%append-message folder message))
+  (%append-message folder message)
+  (folder-modified! folder))
 
 (define-generic %append-message (folder message))
-
+
 ;; Remove all messages in FOLDER that are marked for deletion.
 ;; Unspecified result.
 (define-generic expunge-deleted-messages (folder))
-
+
 ;; Search FOLDER for messages matching CRITERIA, returning them in a
 ;; list.  [Possible values for CRITERIA not yet defined.]  Returns a
 ;; list of messages.
@@ -331,6 +345,8 @@
 		 modifier set-header-fields!)
   (body define standard)
   (flags define standard)
+  (modified? define standard
+	     initial-value #t)
   (properties define standard)
   (folder define standard)
   (index define standard))
@@ -373,11 +389,24 @@
 		       (alist-copy (message-properties message))
 		       folder)))
     (set-message-folder! message folder)
+    (if (message-modified? message)
+	(folder-modified! folder))
     message))
 
 (define (detach-message message)
   (set-message-folder! message #f)
   (set-message-index! message #f))
+
+(define (message-modified! message)
+  (without-interrupts
+   (lambda ()
+     (set-message-modified?! message #t)
+     (let ((folder (message-folder message)))
+       (if folder
+	   (folder-modified! folder))))))
+
+(define (message-not-modified! message)
+  (set-message-modified?! message #f))
 
 (define (maybe-strip-imail-headers strip? headers)
   (if strip?
@@ -455,11 +484,13 @@
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
   (let ((flags (message-flags message)))
     (if (not (flags-member? flag flags))
-	(set-message-flags! message (cons flag flags)))))
+	(set-message-flags! message (cons flag flags))))
+  (message-modified! message))
 
 (define (clear-message-flag message flag)
   (guarantee-message-flag flag 'SET-MESSAGE-FLAG)
-  (flags-delete! flag (message-flags message)))
+  (flags-delete! flag (message-flags message))
+  (message-modified! message))
 
 (define (folder-flags folder)
   (let ((n (folder-length folder)))
@@ -551,7 +582,8 @@
 	      (set-cdr! (car alist*) value)
 	      (loop (cdr alist*)))
 	  (set-message-properties! message
-				   (cons (cons name value) alist))))))
+				   (cons (cons name value) alist)))))
+  (message-modified! message))
 
 (define (message-property-name? object)
   (header-field-name? object))

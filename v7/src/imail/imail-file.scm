@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.7 2000/02/04 05:19:26 cph Exp $
+;;; $Id: imail-file.scm,v 1.8 2000/02/07 22:31:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -72,7 +72,8 @@
 (define (update-file-folder-modification-time! folder)
   (set-file-folder-modification-time!
    folder
-   (file-modification-time (file-folder-pathname folder))))
+   (file-modification-time (file-folder-pathname folder)))
+  (folder-not-modified! folder))
 
 (define-method %folder-valid? ((folder <file-folder>))
   (file-exists? (file-folder-pathname folder)))
@@ -139,9 +140,13 @@
 	      (set-file-folder-messages! folder (reverse! messages*)))
 	     ((message-deleted? (car messages))
 	      (detach-message (car messages))
+	      (folder-modified! folder)
 	      (loop (cdr messages) index messages*))
 	     (else
-	      (set-message-index! (car messages) index)
+	      (if (not (eqv? index (message-index (car messages))))
+		  (begin
+		    (set-message-index! (car messages) index)
+		    (message-modified! (car messages))))
 	      (loop (cdr messages)
 		    (fix:+ index 1)
 		    (cons (car messages) messages*))))))))
