@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.1 1988/06/13 11:40:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 14.2 1988/08/05 20:16:26 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -51,9 +51,6 @@ MIT in each case. |#
 	  (begin (write-char #\Space port)
 		 (unparser state object)))
       (write-char #\] port))))
-(define *the-non-printing-object*
-  (object-new-type (ucode-type true) 1))
-
 (define-integrable interrupt-bit/stack     #x0001)
 (define-integrable interrupt-bit/global-gc #x0002)
 (define-integrable interrupt-bit/gc        #x0004)
