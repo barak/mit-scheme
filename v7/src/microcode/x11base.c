@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.29 1992/01/22 22:35:09 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.30 1992/01/22 23:13:31 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -1220,7 +1220,7 @@ DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2, 0)
 	unsigned int start_index = (saved_font -> min_char_or_byte2);
 	unsigned int index;
 	unsigned int length = 
-	  (start_index - (saved_font -> max_char_or_byte2) + 1);
+	  ((saved_font -> max_char_or_byte2) - start_index + 1);
 	SCHEME_OBJECT character_vector =
 	  (allocate_marked_vector (TC_VECTOR, length, true));
 	for (index = 0; index < length; index++)
