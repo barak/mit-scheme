@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.22 1993/12/15 19:35:37 adams Exp $
+$Id: parse.scm,v 14.23 1993/12/17 01:37:13 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -573,7 +573,6 @@ MIT in each case. |#
 
 (define named-objects)
 
-
 (define (parse-unhash number)
   (if (not (exact-nonnegative-integer? number))
       (parse-error "Invalid unhash syntax" number))
@@ -586,7 +585,7 @@ MIT in each case. |#
 (define-accretor 1 (parse-object/unhash)
   (discard-char)
   (let* ((number (parse-object/dispatch))
-	 (object (parser-unhash number)))
+	 (object (parse-unhash number)))
     ;; This may seem a little random, because #@N doesn't just
     ;; return an object.  However, the motivation for this piece of
     ;; syntax is convenience -- and 99.99% of the time the result of
@@ -598,7 +597,6 @@ MIT in each case. |#
 	object
 	(make-quotation object))))
 
-
 (define-accretor 1 (parse-object/unhash-printed-representation)
   ;; #[fnord]
   ;; #[fnord-with-hash-number n ... ]
@@ -606,8 +604,9 @@ MIT in each case. |#
   (let* ((name   (parse-object/dispatch)))
     (discard-whitespace)
     (if (char=? #\] (peek-char))
-	(begin  (read-char)
-		(parse-error "No hash number in #[" name)))
+	(begin
+	  (read-char)
+	  (parse-error "No hash number in #[" name)))
     (let* ((number (parse-object/dispatch))
 	   (object (parse-unhash number)))
       ;; now gobble up crap until we find the #\]
@@ -615,10 +614,10 @@ MIT in each case. |#
 	(discard-whitespace)
 	(if (char=? #\] (peek-char))
 	    (read-char)
-	    (begin (parse-object/dispatch)
-		   (loop))))
+	    (begin
+	      (parse-object/dispatch)
+	      (loop))))
       object)))
-
 
 ;;;; #<number>
 
@@ -632,19 +631,15 @@ MIT in each case. |#
   (set! *parser-current-special-prefix*
 	(string->number (read-string char-set/non-digit) 10))
   ((vector-ref table (peek-ascii))))
-
 
 ;;;; #n= and #n#
-;;
-;;  The fluid variable *parser-cyclic-context* contains the context
-;;  (roughly read operation) in which the #n= and #n# references are
-;;  defined.  It is basically a table associating <n> with the
-;;  reference #<n>#.
-;;  
-;;
+;;;
+;;;  The fluid variable *parser-cyclic-context* contains the context
+;;;  (roughly read operation) in which the #n= and #n# references are
+;;;  defined.  It is basically a table associating <n> with the
+;;;  reference #<n>#.
 
 (define *parser-cyclic-context* #f)
-
 
 (define (parse-object/define-shared)
   (discard-char)
@@ -669,10 +664,10 @@ MIT in each case. |#
 	 (string-append
 	  "#"  (number->string (reference/index ref))
 	  "=#" (number->string (reference/index text))
-	  "# not allowed.  Circular structure labels must not refer to labels.")))
+	  "# not allowed.  Circular structure labels must not refer to labels."
+	  )))
     (context/close-reference ref text)
     ref))
-
 
 (define (parse-object/reference-shared)
   (discard-char)
@@ -688,14 +683,12 @@ MIT in each case. |#
 	 "Must define circular structure label #<n># before use: <n> ="
 	 index))))
 
-
 (define (cyclic-parser-post-edit datum)
   (if *parser-cyclic-context*
       (context/substitute-cycles *parser-cyclic-context* datum)
       datum))
-
 
-;;;; contexts and references
+;;;; Contexts and References
 
 (define-structure
   (reference
@@ -703,10 +696,10 @@ MIT in each case. |#
   index
   context
   text
-  start-touch-count   ;; number of #n? things seen when we saw this #n=
-  end-touch-count     ;; number of #n? things seen after finishing this one
-                      ;;  is #f if this is not yet finished
-                      ;; if difference=0 this one contains no references
+  start-touch-count   ; number of #n? things seen when we saw this #n=
+  end-touch-count     ; number of #n? things seen after finishing this one
+                      ;  is #f if this is not yet finished
+                      ; if difference=0 this one contains no references
   )
 
 (define (reference/contains-references? ref)
@@ -717,15 +710,14 @@ MIT in each case. |#
   (context
    (conc-name context/)
    (constructor %make-context))
-  references        ;; some kind of association number->reference
-  touches           ;; number of #n# or #n= things see so far
-)
+  references        ; some kind of association number->reference
+  touches           ; number of #n# or #n= things see so far
+  )
 
 (define (make-context)   (%make-context '() 0))
 
 (define (context/touch! context)
   (set-context/touches! context  (fix:1+ (context/touches context))))
-
 
 (define (context/define-reference context index)
   (let ((ref  (make-reference index
@@ -740,24 +732,24 @@ MIT in each case. |#
     ref))
 
 (define (context/close-reference ref text)
-  (set-reference/end-touch-count! ref (context/touches (reference/context ref)))
+  (set-reference/end-touch-count! ref
+				  (context/touches (reference/context ref)))
   (set-reference/text! ref text))
 
 (define (context/find-reference context index)
   (let ((index.ref (assq index (context/references context))))
     (if index.ref (cdr index.ref) #f)))
 
-;;  SUBSTITUTE! traverses a tree, replacing all references by their text
-;;
-;;  This implementation assumes that #n= and #n# are THE ONLY source
-;;  of circularity, thus the objects given to SUBSTITUTE! are trees.
+;;;  SUBSTITUTE! traverses a tree, replacing all references by their text
+;;;
+;;;  This implementation assumes that #n= and #n# are THE ONLY source
+;;;  of circularity, thus the objects given to SUBSTITUTE! are trees.
 
 (define (substitute! thing)
   ;(display "[substitute!]")
   (cond ((pair? thing)    (substitute/pair! thing))
 	((vector? thing)  (substitute/vector! thing))
-	((%record? thing) (substitute/%record! thing))
-	))
+	((%record? thing) (substitute/%record! thing))))
 
 (define (substitute/pair! pair)
   (if (reference? (car pair))
@@ -779,39 +771,20 @@ MIT in each case. |#
 	
 (define (substitute/%record! r)
   ;; TEST THIS CODE
-  (let ((n  (%record-length r)))
-    (if (fix:> n 0)
-	(let loop ((i (fix:- n 1)))
-	  (if (fix:> i 0)
-	      (let ((elt (%record-ref r i)))
-		(if (reference? elt)
-		    (%record-set! r i (reference/text elt))
-		    (substitute! elt))
-		(loop (fix:- i 1)))))
-	;; tail-call 0th element which is usually a record type decriptor
-	(let ((elt (%record-ref r 0)))
-	  (if (reference? elt)
-	      (%record-set! r i (reference/text elt))
-	      (substitute! elt))))))
-	
-  
-(define (context/substitute-cycles context datum)
+  (do ((i (fix:- (%record-length r) 1) (fix:- i 1)))
+      ((fix:< i 0))
+    (let ((elt (%record-ref r i)))
+      (if (reference? elt)
+	  (%record-set! r i (reference/text elt))
+	  (substitute! elt)))))
 
+(define (context/substitute-cycles context datum)
   (for-each (lambda (index.ref)
 	      (let ((ref (cdr index.ref)))
 		(if (reference/contains-references? ref)
 		    (substitute! (reference/text ref)))))
 	    (context/references context))
-
   (cond ((null? (context/references context))	 datum)
 	((reference? datum)	                 (reference/text datum))
 	(else  (substitute! datum)
 	       datum)))
-
-
-
-
-
-;;(define (test-recursive-read)
-;;  (discard-char)
-;;  (vector (read *parser-input-port*)))
