@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.15 1992/10/17 22:23:47 jinx Exp $
+$Id: dosprm.scm,v 1.16 1992/11/03 22:42:11 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -42,6 +42,7 @@ MIT in each case. |#
    (->namestring (merge-pathnames filename))))
 
 (define (file-symbolic-link? filename)
+  filename				; ignored
   false)
 
 (define (file-modes filename)
