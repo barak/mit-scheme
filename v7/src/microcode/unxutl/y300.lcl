@@ -1,16 +1,16 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.10 1990/07/28 18:57:14 jinx Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.11 1990/07/28 21:45:22 jinx Exp $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
 
 6003_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES)\
 	SOURCES_SYSTEM SOURCES_MACHINE Sgraph_ar.c fft.c array.c\
-       image.c dmpwrld.c
+       image.c
 6003_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
 	OBJECTS_SYSTEM OBJECTS_MACHINE Sgraph_ar.o fft.o array.o\
-       image.o dmpwrld.o usr6003.o
+       image.o usr6003.o
 6003_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
@@ -58,7 +58,9 @@ usr6003.c : $(6003_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim 
 scmkit : $(OBJECTS) $(KIT_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
 	rm -f $@
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB)
+       gld $(LDFLAGS) -noinhibit-exec -o $@ /usr/local/lib/gcc-crt0.o \
+       $(OBJECTS) $(KIT_OBJECTS) $(KIT_LIB) \
+       /usr/local/lib/gcc-gnulib -lc /usr/local/lib/gcc-gnulib
 
 usrkit.c : $(KIT_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
 	@ECHO "#** Re-making" $@ because of $?
