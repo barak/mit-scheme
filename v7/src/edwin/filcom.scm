@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.215 2001/05/10 18:34:56 cph Exp $
+;;; $Id: filcom.scm,v 1.216 2001/05/10 19:06:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -807,61 +807,57 @@ Prefix arg means treat the plaintext file as binary data."
 
 (define (filename-complete-string pathname
 				  if-unique if-not-unique if-not-found)
-  (define (loop directory filenames)
-    (let ((unique-case
-	   (lambda (filename)
-	     (let ((pathname (merge-pathnames filename directory)))
-	       (if (file-test-no-errors file-directory? pathname)
-		   ;; Note: We assume here that all directories contain
-		   ;; at least one file.  Thus directory names should 
-		   ;; complete, but not uniquely.
-		   (let ((dir (->namestring (pathname-as-directory pathname))))
-		     (if-not-unique dir
-				    (lambda ()
-				      (canonicalize-filename-completions
-				       dir
-				       (os/directory-list dir)))))
-		   (if-unique (->namestring pathname))))))
-	  (non-unique-case
-	   (lambda (filenames*)
-	     (let ((string (string-greatest-common-prefix filenames*)))
-	       (if-not-unique (->namestring (merge-pathnames string directory))
-			      (lambda ()
-				(canonicalize-filename-completions
-				 directory
-				 (list-transform-positive filenames
-				   (lambda (filename)
-				     (string-prefix? string filename))))))))))
-      (if (null? (cdr filenames))
-	  (unique-case (car filenames))
-	  (let ((filtered-filenames
-		 (list-transform-negative filenames
-		   (lambda (filename)
-		     (completion-ignore-filename?
-		      (merge-pathnames filename directory))))))
-	    (cond ((null? filtered-filenames)
-		   (non-unique-case filenames))
-		  ((null? (cdr filtered-filenames))
-		   (unique-case (car filtered-filenames)))
-		  (else
-		   (non-unique-case filtered-filenames)))))))
   (let ((directory (directory-namestring pathname))
-	(prefix (file-namestring pathname)))
-    (cond ((not (file-test-no-errors file-directory? directory))
-	   (if-not-found))
-	  ((string-null? prefix)
-	   ;; This optimization assumes that all directories
-	   ;; contain at least one file.
+	(prefix (file-namestring pathname))
+	(if-directory
+	 (lambda (directory)
 	   (if-not-unique directory
 			  (lambda ()
 			    (canonicalize-filename-completions
 			     directory
-			     (os/directory-list directory)))))
+			     (os/directory-list directory)))))))
+    (cond ((not (file-test-no-errors file-directory? directory))
+	   (if-not-found))
+	  ((string-null? prefix)
+	   (if-directory directory))
 	  (else
-	   (let ((filenames (os/directory-list-completions directory prefix)))
-	     (if (null? filenames)
-		 (if-not-found)
-		 (loop directory filenames)))))))
+	   (let ((filenames (os/directory-list-completions directory prefix))
+		 (unique-case
+		  (lambda (filename)
+		    (let ((pathname (merge-pathnames filename directory)))
+		      (if (file-test-no-errors file-directory? pathname)
+			  (if-directory
+			   (->namestring (pathname-as-directory pathname)))
+			  (if-unique (->namestring pathname))))))
+		 (non-unique-case
+		  (lambda (filenames filtered-filenames)
+		    (let ((string
+			   (string-greatest-common-prefix filtered-filenames)))
+		      (if-not-unique
+		       (->namestring (merge-pathnames string directory))
+		       (lambda ()
+			 (canonicalize-filename-completions
+			  directory
+			  (list-transform-positive filenames
+			    (lambda (filename)
+			      (string-prefix? string filename))))))))))
+	     (cond ((null? filenames)
+		    (if-not-found))
+		   ((null? (cdr filenames))
+		    (unique-case (car filenames)))
+		   (else
+		    (let ((filtered-filenames
+			   (list-transform-negative filenames
+			     (lambda (filename)
+			       (completion-ignore-filename?
+				(merge-pathnames filename directory))))))
+		      (cond ((null? filtered-filenames)
+			     (non-unique-case filenames filenames))
+			    ((null? (cdr filtered-filenames))
+			     (unique-case (car filtered-filenames)))
+			    (else
+			     (non-unique-case filenames
+					      filtered-filenames)))))))))))
 
 (define (filename-completions-list pathname)
   (let ((directory (directory-namestring pathname)))
