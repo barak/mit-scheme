@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.12 1992/02/14 22:28:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.13 1992/04/30 04:05:42 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -307,18 +307,23 @@ struct full_sigcontext
 #include <sys/siginfo.h>
 #include <sys/ucontext.h>
 
+/* For Sony NEWS-OS 5.0.1 and earlier: */
+#if defined(sonyrisc) && !defined(_CFE)
+#define gregs gpregs
+#endif
+
 #define SIGINFO_T siginfo_t *
 #define SIGINFO_VALID_P(info) ((info) != 0)
 #define SIGINFO_CODE(info) ((info) -> si_code)
 
 #define SIGCONTEXT ucontext
-#define SIGCONTEXT_SP(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_SP])
-#define SIGCONTEXT_PC(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_EPC])
+#define SIGCONTEXT_SP(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_SP])
+#define SIGCONTEXT_PC(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_EPC])
 
 #define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_T1])
-#define FULL_SIGCONTEXT_SCHSP(scp) ((((scp) -> uc_mcontext) . gpregs) [CXT_V1])
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(((scp) -> uc_mcontext) . gpregs)
+#define FULL_SIGCONTEXT_RFREE(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_T1])
+#define FULL_SIGCONTEXT_SCHSP(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_V1])
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(((scp) -> uc_mcontext) . gregs)
 #define FULL_SIGCONTEXT_NREGS		NGREG
 #define PROCESSOR_NREGS			NGREG
 
