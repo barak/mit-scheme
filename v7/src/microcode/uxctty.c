@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.10 1992/02/12 12:18:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxctty.c,v 1.11 1992/05/05 06:37:40 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,7 @@ MIT in each case. */
 
 #include "ux.h"
 #include "osctty.h"
+#include "ossig.h"
 
 /* If `ctty_fildes' is nonnegative, it is an open file descriptor for
    the controlling terminal of the process.
@@ -316,6 +317,7 @@ DEFUN_VOID (OS_ctty_fd)
 }
 
 #if 0
+
 /* not currently used */
 static void
 DEFUN (ctty_get_interrupt_chars, (ic), Tinterrupt_chars * ic)
@@ -428,7 +430,7 @@ DEFUN (ctty_set_interrupt_chars, (ic), Tinterrupt_chars * ic)
       set_terminal_state (ctty_fildes, (&s));
     }
 }
-
+
 static void
 DEFUN_VOID (ctty_update_interrupt_chars)
 {
@@ -463,6 +465,8 @@ DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
   ctty_update_interrupt_chars ();
 }
 
+#if 0
+
 void
 DEFUN (OS_ctty_set_interrupt_chars, (quit_char, int_char, tstp_char),
        cc_t quit_char AND
@@ -473,6 +477,64 @@ DEFUN (OS_ctty_set_interrupt_chars, (quit_char, int_char, tstp_char),
   (current_interrupt_chars . intrpt) = int_char;
   (current_interrupt_chars . tstp) = tstp_char;
   ctty_update_interrupt_chars ();
+}
+#endif
+
+unsigned int
+DEFUN_VOID (OS_ctty_num_int_chars)
+{
+  return (3);
+}
+
+cc_t *
+DEFUN_VOID (OS_ctty_get_int_chars)
+{
+  static cc_t int_chars [3];
+
+  int_chars[0] = current_interrupt_chars.quit;
+  int_chars[1] = current_interrupt_chars.intrpt;
+  int_chars[2] = current_interrupt_chars.tstp;
+  return (& int_chars [0]);
+}
+
+void
+DEFUN (OS_ctty_set_int_chars, (int_chars), cc_t * int_chars)
+{
+  current_interrupt_chars.quit   = int_chars[0];
+  current_interrupt_chars.intrpt = int_chars[1];
+  current_interrupt_chars.tstp   = int_chars[2];
+  ctty_update_interrupt_chars ();
+  return;
+}
+
+extern enum interrupt_handler EXFUN (OS_signal_quit_handler, (void));
+extern enum interrupt_handler EXFUN (OS_signal_int_handler, (void));
+extern enum interrupt_handler EXFUN (OS_signal_tstp_handler, (void));
+extern void EXFUN
+  (OS_signal_set_interrupt_handlers,
+   (enum interrupt_handler quit_handler,
+    enum interrupt_handler int_handler,
+    enum interrupt_handler tstp_handler));
+
+cc_t *
+DEFUN_VOID (OS_ctty_get_int_char_handlers)
+{
+  static cc_t int_handlers [3];
+
+  int_handlers[0] = ((cc_t) (OS_signal_quit_handler ()));
+  int_handlers[1] = ((cc_t) (OS_signal_int_handler ()));
+  int_handlers[2] = ((cc_t) (OS_signal_tstp_handler ()));
+  return (& int_handlers [0]);
+}
+
+void
+DEFUN (OS_ctty_set_int_char_handlers, (int_handlers), cc_t * int_handlers)
+{
+  OS_signal_set_interrupt_handlers
+    (((enum interrupt_handler) (int_handlers [0])),
+     ((enum interrupt_handler) (int_handlers [1])),
+     ((enum interrupt_handler) (int_handlers [2])));
+  return;
 }
 
 void

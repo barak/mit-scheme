@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osctty.h,v 1.1 1990/06/20 19:36:13 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osctty.h,v 1.2 1992/05/05 06:37:17 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,13 +37,6 @@ MIT in each case. */
 
 #include "os.h"
 
-extern cc_t EXFUN (OS_ctty_quit_char, (void));
-extern cc_t EXFUN (OS_ctty_int_char, (void));
-extern cc_t EXFUN (OS_ctty_tstp_char, (void));
-extern void EXFUN
-  (OS_ctty_set_interrupt_chars,
-   (cc_t quit_char, cc_t int_char, cc_t tstp_char));
-
 /* If this procedure returns 0, the interrupt control procedures will
    not work correctly. */
 extern int EXFUN (OS_ctty_interrupt_control, (void));
@@ -51,5 +44,11 @@ extern int EXFUN (OS_ctty_interrupt_control, (void));
 typedef unsigned int Tinterrupt_enables;
 extern void EXFUN (OS_ctty_get_interrupt_enables, (Tinterrupt_enables * mask));
 extern void EXFUN (OS_ctty_set_interrupt_enables, (Tinterrupt_enables * mask));
+
+extern unsigned int EXFUN (OS_ctty_num_int_chars, (void));
+extern cc_t * EXFUN (OS_ctty_get_int_chars, (void));
+extern cc_t * EXFUN (OS_ctty_get_int_char_handlers, (void));
+extern void EXFUN (OS_ctty_set_int_chars, (cc_t *));
+extern void EXFUN (OS_ctty_set_int_char_handlers, (cc_t *));
 
 #endif /* SCM_OSCTTY_H */

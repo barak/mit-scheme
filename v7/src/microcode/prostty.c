@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prostty.c,v 1.3 1991/10/29 22:55:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prostty.c,v 1.4 1992/05/05 06:37:58 jinx Exp $
 
-Copyright (c) 1987-1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,7 +38,6 @@ MIT in each case. */
 #include "prims.h"
 #include "ostty.h"
 #include "osctty.h"
-#include "ossig.h"
 #include "osfile.h"
 #include "osio.h"
 
@@ -121,35 +120,46 @@ DEFINE_PRIMITIVE ("TTY-GET-INTERRUPT-CHARS", Prim_tty_get_interrupt_chars, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   {
-    SCHEME_OBJECT result = (allocate_string (6));
+    unsigned int i;
+    unsigned int num_chars = (OS_ctty_num_int_chars ());
+    SCHEME_OBJECT result = (allocate_string (num_chars * 2));
+    cc_t * int_chars = (OS_ctty_get_int_chars ());
+    cc_t * int_handlers = (OS_ctty_get_int_char_handlers ());
     unsigned char * scan = (STRING_LOC (result, 0));
-    (*scan++) = ((unsigned char) (OS_ctty_quit_char ()));
-    (*scan++) = ((unsigned char) (OS_signal_quit_handler ()));
-    (*scan++) = ((unsigned char) (OS_ctty_int_char ()));
-    (*scan++) = ((unsigned char) (OS_signal_int_handler ()));
-    (*scan++) = ((unsigned char) (OS_ctty_tstp_char ()));
-    (*scan) = ((unsigned char) (OS_signal_tstp_handler ()));
+
+    for (i = 0; i < num_chars; i++)
+    {
+      (*scan++) = ((unsigned char) int_chars[i]);
+      (*scan++) = ((unsigned char) int_handlers[i]);
+    }
     PRIMITIVE_RETURN (result);
   }
 }
 
-DEFINE_PRIMITIVE ("TTY-SET-INTERRUPT-CHARS", Prim_tty_set_interrupt_chars, 1, 1,
+DEFINE_PRIMITIVE ("TTY-SET-INTERRUPT-CHARS!", Prim_tty_set_interrupt_chars, 1, 1,
   "Change the current interrupt characters to STRING.\n\
 STRING must be in the correct form for this operating system.")
 {
   PRIMITIVE_HEADER (1);
   {
+    unsigned int i;
+    unsigned int num_chars = (OS_ctty_num_int_chars ());
+    cc_t * int_chars = (OS_ctty_get_int_chars ());
+    cc_t * int_handlers = (OS_ctty_get_int_char_handlers ());
     SCHEME_OBJECT argument = (ARG_REF (1));
-    if (! ((STRING_P (argument)) && ((STRING_LENGTH (argument)) == 6)))
+    unsigned char * scan;
+
+    if (! ((STRING_P (argument))
+	   && ((STRING_LENGTH (argument)) == (num_chars * 2))))
       error_wrong_type_arg (1);
-    OS_signal_set_interrupt_handlers
-      (((enum interrupt_handler) (STRING_REF (argument, 1))),
-       ((enum interrupt_handler) (STRING_REF (argument, 3))),
-       ((enum interrupt_handler) (STRING_REF (argument, 5))));
-    OS_ctty_set_interrupt_chars
-      ((STRING_REF (argument, 0)),
-       (STRING_REF (argument, 2)),
-       (STRING_REF (argument, 4)));
+
+    for (i = 0, scan = (STRING_LOC (argument, 0)); i < num_chars; i++)
+    {
+      int_chars[i] = (*scan++);
+      int_handlers[i] = (*scan++);
+    }
+    OS_ctty_set_int_chars (int_chars);
+    OS_ctty_set_int_char_handlers (int_handlers);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
