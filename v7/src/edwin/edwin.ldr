@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.45 1993/09/30 19:22:02 bal Exp $
+$Id: edwin.ldr,v 1.46 1993/10/05 22:57:50 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -82,6 +82,7 @@ MIT in each case. |#
 	  (begin
 	    (load-option 'KRYPT)
 	    (load-option 'SUBPROCESS)))
+      (load-option 'RB-TREE)
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
