@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.21 1999/08/09 19:30:18 cph Exp $
+$Id: random.scm,v 14.22 1999/08/09 19:33:44 cph Exp $
 
 Copyright (c) 1993-1999 Massachusetts Institute of Technology
 
@@ -96,19 +96,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (lambda (port)
 		(initial-random-state
 		 (lambda (b)
-		   (let loop ()
-		     (let ((n
-			    (let loop
-				((m #x100)
-				 (n (char->integer (read-char port))))
-			      (if (< m b)
-				  (loop (* m #x100)
-					(+ (* n #x100)
-					   (char->integer (read-char port))))
-				  n))))
-		       (if (< n b)
-			   n
-			   (loop))))))))
+		   (let outer ()
+		     (let inner
+			 ((m #x100)
+			  (n (char->integer (read-char port))))
+		       (cond ((< m b)
+			      (inner (* m #x100)
+				     (+ (* n #x100)
+					(char->integer (read-char port)))))
+			     ((< n b) n)
+			     (else (outer)))))))))
 	    (initial-random-state
 	     (congruential-rng (+ (real-time-clock) 123456789))))
 	(copy-random-state
