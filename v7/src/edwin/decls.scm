@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.51 1994/10/12 00:31:13 cph Exp $
+$Id: decls.scm,v 1.52 1994/10/25 01:46:12 adams Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -86,7 +86,8 @@ MIT in each case. |#
 	      "clscon"
 	      "clsmac"
 	      "display"
-	      "key"
+	      "key-w32"
+	      "key-x11"
 	      "macros"
 	      "make"
 	      "nvector"
@@ -99,6 +100,7 @@ MIT in each case. |#
 	      "strtab"
 	      "termcap"
 	      "utils"
+	      "win32"
 	      "winren"
 	      "xform"
 	      "xterm"))
@@ -170,6 +172,7 @@ MIT in each case. |#
 		"modlin"
 		"motcom"
 		"motion"
+		"mousecom"
 		"notify"
 		"outline"
 		"occur"
@@ -210,6 +213,7 @@ MIT in each case. |#
 		"wincom"
 		"winout"
 		"xcom"
+		"win32com"
 		"xmodef")))
   (for-each sf-class
 	    '("comwin"

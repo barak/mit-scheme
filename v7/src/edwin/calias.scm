@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.14 1992/10/20 20:03:03 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.15 1994/10/25 01:46:12 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -223,8 +223,14 @@
 
 ;;;; Special keys (room for system-dependent extension)
 
-(define-structure (special-key (constructor %make-special-key)
-			       (conc-name special-key/))
+(define-structure
+  (special-key (constructor %make-special-key)
+	       (conc-name special-key/)
+	       (print-procedure
+		(standard-unparser-method 'SPECIAL-KEY
+		 (lambda (key port)
+		   (write-char #\space port)
+		   (write-string (special-key/name key) port)))))
   (symbol false read-only true)
   (bucky-bits false read-only true))
 
@@ -249,7 +255,67 @@
 		   (fix:lsh bit -1)
 		   (string-append (vector-ref bucky-bit-map n) name)))))))
 
-(define hook/make-special-key %make-special-key)
+
+(define hashed-keys)
+
+(define (intern-special-key name bucky-bits)
+  (let ((name-entry (assq name (cdr hashed-keys))))
+    (if name-entry
+	(let ((bits-entry (assq bucky-bits (cdr name-entry))))
+	  (if bits-entry
+	      (cdr bits-entry)
+	      (let ((new-key (%make-special-key name bucky-bits)))
+		(set-cdr! name-entry
+			  (cons (cons bucky-bits new-key)
+				(cdr name-entry)))
+		new-key)))
+	(let ((new-key (%make-special-key name bucky-bits)))
+	  (set-cdr! hashed-keys
+		    (cons (cons name (list (cons bucky-bits new-key)))
+			  (cdr hashed-keys)))
+	  new-key))))
+
+
+(define hook/make-special-key intern-special-key)
 
 (define (make-special-key name bits)
   (hook/make-special-key name bits))
+
+
+;; Predefined special keys
+
+(set! hashed-keys (list 'hashed-keys))
+
+(let-syntax ((make-key
+	      (macro (name)
+		`(define ,name (intern-special-key ',name 0)))))
+  (make-key backspace)
+  (make-key stop)
+  (make-key f1)
+  (make-key f2)
+  (make-key f3)
+  (make-key f4)
+  (make-key menu)
+  (make-key system)
+  (make-key user)
+  (make-key f5)
+  (make-key f6)
+  (make-key f7)
+  (make-key f8)
+  (make-key f9)
+  (make-key f10)
+  (make-key f11)
+  (make-key f12)
+  (make-key insertline)
+  (make-key deleteline)
+  (make-key insertchar)
+  (make-key deletechar)
+  (make-key home)
+  (make-key prior)
+  (make-key next)
+  (make-key up)
+  (make-key down)
+  (make-key left)
+  (make-key right)
+  (make-key select)
+  (make-key print))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xcom.scm,v 1.10 1992/11/20 19:10:04 cph Exp $
+;;;	$Id: xcom.scm,v 1.11 1994/10/25 01:46:12 adams Exp $
 ;;;
-;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -154,7 +154,7 @@ Useful only if `x-screen-icon-name-format' is false."
 	     (typein-edit-other-window)
 	     (screen-selected-window screen))))
     (let ((buffer (window-buffer window))
-	  (update-name
+  (update-name
 	   (lambda (set-name format length)
 	     (if format
 		 (set-name
@@ -312,81 +312,98 @@ When called interactively, completion is available on the input."
      "ur-angle"
      "watch"
      "xterm"))
+
 
-;;;; Mouse Commands
+;;;;;; Mouse Commands
+;;
+;;  Now taken care of in mousecom.scm
+;;
+;;(define-command x-mouse-select
+;;  "Select window the mouse is on."
+;;  ()
+;;  (lambda ()
+;;    (select-window (button-event/window (current-button-event)))))
+;;
+;;(define-command x-mouse-keep-one-window
+;;  "Select window mouse is on, then kill all other windows."
+;;  ()
+;;  (lambda ()
+;;    ((ref-command x-mouse-select))
+;;    ((ref-command delete-other-windows))))
+;;
+;;(define-command x-mouse-select-and-split
+;;  "Select window mouse is on, then split it vertically in half."
+;;  ()
+;;  (lambda ()
+;;    ((ref-command x-mouse-select))
+;;    ((ref-command split-window-vertically) false)))
+;;
+;;(define-command x-mouse-set-point
+;;  "Select window mouse is on, and move point to mouse position."
+;;  ()
+;;  (lambda ()
+;;    (let ((button-event (current-button-event)))
+;;      (let ((window (button-event/window button-event)))
+;;	(select-window window)
+;;	(set-current-point!
+;;	 (or (window-coordinates->mark window
+;;				       (button-event/x button-event)
+;;				       (button-event/y button-event))
+;;	     (buffer-end (window-buffer window))))))))
+;;
+;;(define-command x-mouse-set-mark
+;;  "Select window mouse is on, and set mark at mouse position.
+;;Display cursor at that position for a second."
+;;  ()
+;;  (lambda ()
+;;    (let ((button-event (current-button-event)))
+;;      (let ((window (button-event/window button-event)))
+;;	(select-window window)
+;;	(let ((mark
+;;	       (or (window-coordinates->mark window
+;;					     (button-event/x button-event)
+;;					     (button-event/y button-event))
+;;		   (buffer-end (window-buffer window)))))
+;;	  (push-current-mark! mark)
+;;	  (mark-flash mark))))))
+;;
+;;(define-command x-mouse-show-event
+;;  "Show the mouse position in the minibuffer."
+;;  ()
+;;  (lambda ()
+;;    (let ((button-event (current-button-event)))
+;;      (message "window: " (button-event/window button-event)
+;;	       " x: " (button-event/x button-event)
+;;	       " y: " (button-event/y button-event)))))
+;;
+;;(define-command x-mouse-ignore
+;;  "Don't do anything."
+;;  ()
+;;  (lambda () unspecific))
+;;
+;;(define x-button1-down (make-down-button 0))
+;;(define x-button2-down (make-down-button 1))
+;;(define x-button3-down (make-down-button 2))
+;;(define x-button4-down (make-down-button 3))
+;;(define x-button5-down (make-down-button 4))
+;;(define x-button1-up (make-up-button 0))
+;;(define x-button2-up (make-up-button 1))
+;;(define x-button3-up (make-up-button 2))
+;;(define x-button4-up (make-up-button 3))
+;;(define x-button5-up (make-up-button 4))
+;;
+;;(define-key 'fundamental x-button1-down 'x-mouse-set-point)
 
-(define-command x-mouse-select
-  "Select window the mouse is on."
-  ()
-  (lambda ()
-    (select-window (button-event/window (current-button-event)))))
 
-(define-command x-mouse-keep-one-window
-  "Select window mouse is on, then kill all other windows."
-  ()
-  (lambda ()
-    ((ref-command x-mouse-select))
-    ((ref-command delete-other-windows))))
+;; X compatibility
 
-(define-command x-mouse-select-and-split
-  "Select window mouse is on, then split it vertically in half."
-  ()
-  (lambda ()
-    ((ref-command x-mouse-select))
-    ((ref-command split-window-vertically) false)))
-
-(define-command x-mouse-set-point
-  "Select window mouse is on, and move point to mouse position."
-  ()
-  (lambda ()
-    (let ((button-event (current-button-event)))
-      (let ((window (button-event/window button-event)))
-	(select-window window)
-	(set-current-point!
-	 (or (window-coordinates->mark window
-				       (button-event/x button-event)
-				       (button-event/y button-event))
-	     (buffer-end (window-buffer window))))))))
-
-(define-command x-mouse-set-mark
-  "Select window mouse is on, and set mark at mouse position.
-Display cursor at that position for a second."
-  ()
-  (lambda ()
-    (let ((button-event (current-button-event)))
-      (let ((window (button-event/window button-event)))
-	(select-window window)
-	(let ((mark
-	       (or (window-coordinates->mark window
-					     (button-event/x button-event)
-					     (button-event/y button-event))
-		   (buffer-end (window-buffer window)))))
-	  (push-current-mark! mark)
-	  (mark-flash mark))))))
-
-(define-command x-mouse-show-event
-  "Show the mouse position in the minibuffer."
-  ()
-  (lambda ()
-    (let ((button-event (current-button-event)))
-      (message "window: " (button-event/window button-event)
-	       " x: " (button-event/x button-event)
-	       " y: " (button-event/y button-event)))))
-
-(define-command x-mouse-ignore
-  "Don't do anything."
-  ()
-  (lambda () unspecific))
-
-(define x-button1-down (make-down-button 0))
-(define x-button2-down (make-down-button 1))
-(define x-button3-down (make-down-button 2))
-(define x-button4-down (make-down-button 3))
-(define x-button5-down (make-down-button 4))
-(define x-button1-up (make-up-button 0))
-(define x-button2-up (make-up-button 1))
-(define x-button3-up (make-up-button 2))
-(define x-button4-up (make-up-button 3))
-(define x-button5-up (make-up-button 4))
-
-(define-key 'fundamental x-button1-down 'x-mouse-set-point)
+(define x-button1-down button1-down)
+(define x-button2-down button2-down)
+(define x-button3-down button3-down)
+(define x-button4-down button4-down)
+(define x-button5-down button5-down)
+(define x-button1-up button1-up)
+(define x-button2-up button2-up)
+(define x-button3-up button3-up)
+(define x-button4-up button4-up)
+(define x-button5-up button5-up)

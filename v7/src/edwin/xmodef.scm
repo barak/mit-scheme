@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xmodef.scm,v 1.1 1992/10/20 20:03:21 jinx Exp $
+;;;	$Id: xmodef.scm,v 1.2 1994/10/25 01:46:12 adams Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -46,35 +46,3 @@
 
 (declare (usual-integrations))
 
-(let-syntax ((define-function-key
-               (macro (mode key command)
-                 (let ((token (if (pair? key) (car key) key)))
-                   `(if (not (lexical-unreferenceable? (the-environment)
-                                                       ',token))
-                        (define-key ,mode ,key ,command))))))
-
-  (define-function-key 'fundamental left 'backward-char)
-  (define-function-key 'fundamental deletechar 'delete-char)
-  (define-function-key 'fundamental right 'forward-char)
-  (define-function-key 'fundamental deleteline 'kill-line)
-  (define-function-key 'fundamental down 'next-line)
-  (define-function-key 'fundamental insertline 'open-line)
-  (define-function-key 'fundamental up 'previous-line)
-  (define-function-key 'fundamental next 'scroll-up)
-  (define-function-key 'fundamental home 'home-cursor)
-  (define-function-key 'fundamental prior 'scroll-down)
-  (define-function-key 'fundamental (make-special-key 'next 1)
-    'scroll-other-window)
-  (define-function-key 'fundamental (make-special-key 'prior 1) 
-    'scroll-other-window-down)
-
-;;; Jokes
-
-  (define-key 'fundamental #\h-space 'hyper-space)
-  (define-function-key 'fundamental (make-special-key 'malesymbol 4) 
-    'super-man)
-  (define-function-key 'fundamental (make-special-key 'menu 4) 'super-menu)
-  (define-key 'fundamental #\t-$ 'top-dollar)
-  (define-key 'fundamental #\t-^ 'top-hat)
-
-) ;; End of let-syntax

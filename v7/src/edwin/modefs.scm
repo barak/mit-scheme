@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.147 1994/03/16 23:39:59 cph Exp $
+;;;	$Id: modefs.scm,v 1.148 1994/10/25 01:46:12 adams Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -86,6 +86,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'read-only-noarg char-set:graphic 'undefined)
 (define-key 'read-only-noarg '(#\c-x #\c-q) 'no-toggle-read-only)
 
+(define-key 'fundamental #\c-space 'set-mark-command)
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)
 (define-key 'fundamental #\c-0 'digit-argument)
@@ -178,7 +179,8 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-m 'back-to-indentation)
 (define-key 'fundamental #\m-q 'fill-paragraph)
 (define-key 'fundamental #\m-r 'move-to-window-line)
-;; This should only be bound in NT/Windows:
+;; This should only be bound in NT/Windows, and only when running with
+;; I/O through the scheme window as a terminal (rather than a proper screen).
 (define-key 'fundamental #\m-S 'resize-screen)
 (define-key 'fundamental #\m-t 'transpose-words)
 (define-key 'fundamental #\m-u 'upcase-word)
@@ -324,3 +326,36 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\{) 'shrink-window-horizontally)
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
+
+
+;; Additional bindings to `standard' special keys
+
+(define-key 'fundamental left 'backward-char)
+(define-key 'fundamental (make-special-key 'left 1) 'backward-word)
+(define-key 'fundamental deletechar 'delete-char)
+(define-key 'fundamental right 'forward-char)
+(define-key 'fundamental (make-special-key 'right 1) 'forward-word)
+(define-key 'fundamental deleteline 'kill-line)
+(define-key 'fundamental down 'next-line)
+(define-key 'fundamental insertline 'open-line)
+(define-key 'fundamental up 'previous-line)
+(define-key 'fundamental home 'home-cursor)
+(define-key 'fundamental next 'scroll-up)
+(define-key 'fundamental prior 'scroll-down)
+(define-key 'fundamental (make-special-key 'next 1) 'scroll-other-window)
+(define-key 'fundamental (make-special-key 'prior 1) 'scroll-other-window-down)
+
+;;; Jokes
+
+(define-key 'fundamental #\h-space 'hyper-space)
+(define-key 'fundamental (make-special-key 'malesymbol 4) 'super-man)
+(define-key 'fundamental (make-special-key 'menu 4) 'super-menu)
+(define-key 'fundamental #\t-$ 'top-dollar)
+(define-key 'fundamental #\t-^ 'top-hat)
+
+(define-key 'fundamental button1-down 'mouse-set-point)
+(define-key 'fundamental button1-up 'mouse-ignore)
+(define-key 'fundamental button2-up 'mouse-ignore)
+(define-key 'fundamental button3-up 'mouse-ignore)
+(define-key 'fundamental button4-up 'mouse-ignore)
+(define-key 'fundamental button5-up 'mouse-ignore)

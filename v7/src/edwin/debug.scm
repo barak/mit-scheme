@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.31 1994/10/12 01:42:43 cph Exp $
+;;;	$Id: debug.scm,v 1.32 1994/10/25 01:46:12 adams Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -230,7 +230,7 @@
   "Select a bline when mouse clicked there."
   ()
   (lambda ()
-    ((ref-command x-mouse-set-point))
+    ((ref-command mouse-set-point))
     (let ((bline (mark->bline (current-point))))
       (if bline
 	  (select-bline bline)))))
@@ -1223,13 +1223,9 @@ one of these buffers, simply rename it using `M-x rename-buffer': once
 it has been renamed, it will not be deleted automatically.")
 
 (define-key 'continuation-browser #\p 'quit-with-restart-value)
-(if (equal? microcode-id/operating-system-name "unix")
-    (begin
-      (define-key 'continuation-browser down 'browser-next-line)
-      (define-key 'continuation-browser up 'browser-previous-line)
-      (define-key 'continuation-browser x-button1-down
-	'debugger-mouse-select-bline)))
-
+(define-key 'continuation-browser down 'browser-next-line)
+(define-key 'continuation-browser up 'browser-previous-line)
+(define-key 'continuation-browser button1-down 'debugger-mouse-select-bline)
 (define-key 'continuation-browser #\c-n 'browser-next-line)
 (define-key 'continuation-browser #\c-p 'browser-previous-line)
 (define-key 'continuation-browser #\? 'describe-mode)
@@ -1596,13 +1592,9 @@ to keep one of these buffers, simply rename it using `M-x rename-buffer':
 once it has been renamed, it will not be deleted automatically.")
 
 
-(if (equal? microcode-id/operating-system-name "unix")
-    (begin
-      (define-key 'environment-browser down 'browser-next-line)
-      (define-key 'environment-browser up 'browser-previous-line)
-      (define-key 'environment-browser x-button1-down
-	'debugger-mouse-select-bline)))
-
+(define-key 'environment-browser down 'browser-next-line)
+(define-key 'environment-browser up 'browser-previous-line)
+(define-key 'environment-browser button1-down	'debugger-mouse-select-bline)
 (define-key 'environment-browser #\c-n 'browser-next-line)
 (define-key 'environment-browser #\c-p 'browser-previous-line)
 (define-key 'environment-browser #\? 'describe-mode)

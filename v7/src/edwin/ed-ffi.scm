@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.34 1994/10/12 00:30:59 cph Exp $
+$Id: ed-ffi.scm,v 1.35 1994/10/25 01:46:12 adams Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -149,7 +149,9 @@ of that license should have been included along with this file.
 	       edwin-syntax-table)
     ("iserch"  (edwin incremental-search)
 	       edwin-syntax-table)
-    ("key"     (edwin keys)
+    ("key-w32" (edwin win32-keys)
+	       edwin-syntax-table)
+    ("key-x11" (edwin x-keys)
 	       edwin-syntax-table)
     ("keymap"  (edwin command-summary)
 	       edwin-syntax-table)
@@ -285,6 +287,8 @@ of that license should have been included along with this file.
 	       syntax-table/system-internal)
     ("utlwin"  (edwin window)
 	       class-syntax-table)
+    ("win32"   (edwin screen win32)
+	       edwin-syntax-table)
     ("vc"      (edwin vc)
 	       edwin-syntax-table)
     ("wincom"  (edwin)

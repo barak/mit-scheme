@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.153 1994/10/13 04:02:54 cph Exp $
+$Id: edwin.pkg,v 1.154 1994/10/25 01:46:12 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -35,6 +35,10 @@ MIT in each case. |#
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
+
+#| Only for Win32:
+(global-definitions "../win32/win32")
+|#
 
 (define-package (edwin)
   (file-case os-type
@@ -103,6 +107,8 @@ MIT in each case. |#
 	 "notify"			; mode line notifications
 	 "outline"			; outline minor mode
 	 "sort"
+
+	 "mousecom"                     ; mouse commands
 
 	 ;; These are only available under Unix/X
 
@@ -1011,19 +1017,37 @@ MIT in each case. |#
 	  xterm-screen/set-name)
   (initialization (initialize-package!)))
 
+#| PC only:
+(define-package (edwin screen win32)
+  (files "win32")
+  (parent (edwin screen))
+  (import (win32)
+	  destroy-window
+	  get-handle
+	  message-beep
+	  send-message
+	  set-window-text
+	  sleep
+	  )
+  (initialization (initialize-package!)))
+
+(define-package (edwin win32-keys)
+  (files "key-w32")
+  (parent (edwin))
+  (export (edwin screen win32)
+	  win32-make-special-key)
+  (export (edwin)
+	  end ; the END key
+	  )
+  (initialization (initialize-package!)))
+|#
+
 (define-package (edwin x-commands)
   (files "xcom")
   (parent (edwin))
   (export (edwin)
 	  edwin-command$x-auto-raise-mode
 	  edwin-command$x-lower-screen
-	  edwin-command$x-mouse-ignore
-	  edwin-command$x-mouse-keep-one-window
-	  edwin-command$x-mouse-select
-	  edwin-command$x-mouse-select-and-split
-	  edwin-command$x-mouse-set-mark
-	  edwin-command$x-mouse-set-point
-	  edwin-command$x-mouse-show-event
 	  edwin-command$x-raise-screen
 	  edwin-command$x-set-background-color
 	  edwin-command$x-set-border-color
@@ -1054,44 +1078,23 @@ MIT in each case. |#
 	  x-button5-up)
   (export (edwin screen x-screen)
 	  update-xterm-screen-names!))
+
 
-(define-package (edwin keys)
-  (files "key")
+(define-package (edwin win-commands)
+  (files "win32com")
+  (parent (edwin))
+  (export (edwin)
+	  ))
+
+
+(define-package (edwin x-keys)
+  (files "key-x11")
   (parent (edwin))
   (export (edwin screen x-screen)
 	  x-make-special-key)
-  (export (edwin)
-	  stop
-	  f1
-	  f2
-	  f3
-	  f4
-	  menu
-	  system
-	  user
-	  f5
-	  f6
-	  f7
-	  f8
-	  f9
-	  f10
-	  f11
-	  f12
-	  insertline
-	  deleteline
-	  insertchar
-	  deletechar
-	  home
-	  prior
-	  next
-	  up
-	  down
-	  left
-	  right
-	  select
-	  print)
   (initialization (initialize-package!)))
-
+
+
 (define-package (edwin vc)
   (files "vc")
   (parent (edwin))
