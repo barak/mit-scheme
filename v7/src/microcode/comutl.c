@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.17 1989/01/05 19:02:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.18 1989/01/30 13:04:03 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -152,7 +152,7 @@ DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 
 
   CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   closure = (ARG_REF (1));
-  compiled_entry_type (closure, (& entry_type));
+  compiled_entry_type (closure, (& (entry_type [0])));
   if (! (((entry_type [0]) == 0) &&
 	 (compiled_entry_manifest_closure_p (closure))))
     error_bad_range_arg (1);

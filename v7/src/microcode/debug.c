@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.31 1988/10/27 05:22:28 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/debug.c,v 9.32 1989/01/30 13:03:22 cph Exp $
  *
  * Utilities to help with debugging
  */
@@ -76,7 +76,7 @@ compiled_entry_debug_filename (entry)
   extern long compiled_entry_to_block_offset ();
   extern Pointer compiled_closure_to_entry ();
 
-  compiled_entry_type (entry, (& results));
+  compiled_entry_type (entry, (& (results [0])));
   if (((results [0]) == 0) && (compiled_entry_manifest_closure_p (entry)))
     entry = (compiled_closure_to_entry (entry));
   return (compiled_block_debug_filename (COMPILED_ENTRY_TO_BLOCK (entry)));
@@ -649,7 +649,7 @@ do_printing (Expr, Detailed)
 
 	entry = Expr;
 	closure_p = false;
-	compiled_entry_type (entry, (& results));
+	compiled_entry_type (entry, (& (results [0])));
 	switch (results [0])
 	  {
 	  case 0:
