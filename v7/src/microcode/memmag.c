@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.28 1987/04/16 02:26:14 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.29 1987/04/21 15:01:18 cph Exp $ */
 
 /* Memory management top level.
 
@@ -381,21 +381,15 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
   GCFlip();
   GC();
   IntCode &= ~INT_GC;
-  if (GC_Check(GC_Space_Needed))
-  {
-    fprintf(stderr,
-	    "\nGC just ended.  The free pointer is at 0x%x, the top of this heap\n",
-	   Free);
-    fprintf(stderr,
-	    "is at 0x%x, and we are trying to cons 0x%x objects.  Dead!\n",
-	   MemTop, GC_Space_Needed);
-    Microcode_Termination(TERM_NO_SPACE);
-  }
   Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)
   {
-    Val = Make_Unsigned_Fixnum(MemTop - Free);
+   Will_Push(CONTINUATION_SIZE);
+    Store_Return(RC_NORMAL_GC_DONE);
+    Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+    Save_Cont();
+   Pushed();
     longjmp( *Back_To_Eval, PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
