@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.47 2001/09/20 21:12:03 cph Exp $
+;;; $Id: imail-summary.scm,v 1.48 2002/06/04 20:43:46 cph Exp $
 ;;;
-;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -303,19 +303,21 @@ SUBJECT is a string of regexps separated by commas."
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
 		      mark)
 	(insert-newline mark)
-	(for-each (lambda (message)
-		    (if (or (not predicate) (predicate message))
-			(write-imail-summary-line! message index-digits mark)))
-		  messages)
+	(for-each
+	 (lambda (message)
+	   (if (or (not predicate) (predicate message))
+	       (begin
+		 (let ((m (get-property message 'IMAIL-SUMMARY-MARK #f)))
+		   (if m
+		       (mark-temporary! m)))
+		 (store-property! message
+				  'IMAIL-SUMMARY-MARK
+				  (mark-right-inserting-copy mark))
+		 (write-imail-summary-line! message index-digits mark))))
+	 messages)
 	(mark-temporary! mark)))))
 
 (define (write-imail-summary-line! message index-digits mark)
-  (let ((m (get-property message 'IMAIL-SUMMARY-MARK #f)))
-    (if m
-	(mark-temporary! m)))
-  (store-property! message
-		   'IMAIL-SUMMARY-MARK
-		   (mark-right-inserting-copy mark))
   (insert-char #\space mark)
   (insert-string (message-flag-markers message) mark)
   (insert-char #\space mark)
