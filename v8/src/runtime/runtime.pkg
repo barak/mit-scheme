@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.114 1991/08/16 01:19:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.115 1991/08/16 15:41:38 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -828,7 +828,9 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  hash
+	  hash-table/make
 	  object-hash
+	  object-hashed?
 	  object-unhash
 	  unhash
 	  valid-hash-number?)
