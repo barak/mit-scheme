@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.9 1993/09/11 02:45:58 gjr Exp $
+$Id: prosio.c,v 1.10 1994/11/14 00:05:20 cph Exp $
 
 Copyright (c) 1987-93 Massachusetts Institute of Technology
 
@@ -81,7 +81,7 @@ DEFINE_PRIMITIVE ("CHANNEL-CLOSE", Prim_channel_close, 1, 1,
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("CHANNEL-TABLE", Prim_channel_table, 0, 0,
   "Return a vector of all channels in the channel table.")
 {
@@ -118,6 +118,41 @@ DEFINE_PRIMITIVE ("CHANNEL-TYPE", Prim_channel_type, 1, 1,
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (long_to_integer ((long) (OS_channel_type (arg_channel (1)))));
+}
+
+/* Must match definition of `enum channel_type' in "osio.h".  */
+static unsigned char * channel_type_names [] =
+{
+  "unknown",
+  "file",
+  "unix-pipe",
+  "unix-fifo",
+  "terminal",
+  "unix-pty-master",
+  "unix-stream-socket",
+  "tcp-stream-socket",
+  "tcp-server-socket",
+  "directory",
+  "unix-character-device",
+  "unix-block-device",
+  "os/2-console",
+  "os/2-unnamed-pipe",
+  "os/2-named-pipe"
+};
+
+DEFINE_PRIMITIVE ("CHANNEL-TYPE-NAME", Prim_channel_type_name, 1, 1,
+  "Return (as a string) the type of CHANNEL.")
+{
+  enum channel_type type;
+  unsigned int index;
+  PRIMITIVE_HEADER (1);
+  type = (OS_channel_type (arg_channel (1)));
+  if (type == channel_type_unknown)
+    PRIMITIVE_RETURN (SHARP_F);
+  index = ((unsigned int) type);
+  if (index >= ((sizeof (channel_type_names)) / (sizeof (unsigned char *))))
+    PRIMITIVE_RETURN (SHARP_F);
+  PRIMITIVE_RETURN (char_pointer_to_string (channel_type_names [index]));
 }
 
 DEFINE_PRIMITIVE ("CHANNEL-READ", Prim_channel_read, 4, 4,
