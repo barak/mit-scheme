@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.146 1999/08/10 16:54:37 cph Exp $
+;;; $Id: fileio.scm,v 1.147 1999/08/23 04:47:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@ filename suffix \".bf\"."
 (define (write-encrypted-file region pathname)
   (let ((m (string-append "Encrypting file " (->namestring pathname) "...")))
     (message m)
-    (%blowfish-decrypt-file pathname
+    (%blowfish-encrypt-file pathname
 			    (make-buffer-input-port (region-start region)
 						    (region-end region)))
     (message m "done")))
