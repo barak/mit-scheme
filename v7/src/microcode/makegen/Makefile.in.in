@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.23 2003/07/21 03:52:08 cph Exp $
+# $Id: Makefile.in.in,v 1.24 2005/01/11 03:44:43 cph Exp $
 #
 # Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 #
@@ -246,6 +246,9 @@ prmcrypt.so: prmcrypt.o
 
 prgdbm.so: prgdbm.o
 	$(LINK_MODULE) $^ -lgdbm $(MODULE_LIBS)
+
+prdb4.so: prdb4.o
+	$(LINK_MODULE) $^ -ldb-4 $(MODULE_LIBS)
 
 prpgsql.so: prpgsql.o
 	$(LINK_MODULE) $^ -lpq $(MODULE_LIBS)
