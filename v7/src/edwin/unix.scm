@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.90 1999/01/14 18:37:50 cph Exp $
+;;; $Id: unix.scm,v 1.91 1999/01/16 06:04:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -346,7 +346,7 @@ Includes the new backup.  Must be > 0."
 		   (read-compressed-file "gzip -d" pathname mark))
 		  ((equal? "Z" type)
 		   (read-compressed-file "uncompress" pathname mark))))))
-    (,read/write-encrypted-file?
+    (,(read/write-encrypted-file? #f)
      . ,(lambda (pathname mark visit?)
 	  visit?
 	  (read-encrypted-file pathname mark)))))
@@ -360,7 +360,7 @@ Includes the new backup.  Must be > 0."
 		   (write-compressed-file "gzip" region pathname))
 		  ((equal? "Z" type)
 		   (write-compressed-file "compress" region pathname))))))
-    (,read/write-encrypted-file?
+    (,(read/write-encrypted-file? #t)
      . ,(lambda (region pathname visit?)
 	  visit?
 	  (write-encrypted-file region pathname)))))
@@ -447,13 +447,13 @@ filename suffixes \".bf\" and \".ky\"."
   #t
   boolean?)
 
-(define (read/write-encrypted-file? group pathname)
+(define ((read/write-encrypted-file? write?) group pathname)
   (and (ref-variable enable-encrypted-files group)
        (let ((type (pathname-type pathname)))
 	 (and (member type unix/encrypted-file-suffixes)
 	      (if (equal? "bf" type)
 		  (and (blowfish-available?)
-		       (blowfish-file? pathname))
+		       (or write? (blowfish-file? pathname)))
 		  #t)))))
 
 (define unix/encrypted-file-suffixes
