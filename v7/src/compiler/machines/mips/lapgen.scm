@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.17 2001/12/20 21:45:25 cph Exp $
+$Id: lapgen.scm,v 1.18 2002/02/22 03:55:30 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -605,16 +605,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Codes and Hooks
 
 (let-syntax ((define-codes
-	       (lambda (start . names)
-		 (define (loop names index)
-		   (if (null? names)
-		       '()
-		       (cons `(DEFINE-INTEGRABLE
-				,(symbol-append 'CODE:COMPILER-
-						(car names))
-				,index)
-			     (loop (cdr names) (1+ index)))))
-		 `(BEGIN ,@(loop names start)))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(BEGIN
+		     ,@(let loop ((names (cddr form)) (index (cadr form)))
+			 (if (pair? names)
+			     (cons `(DEFINE-INTEGRABLE
+				      ,(symbol-append 'CODE:COMPILER-
+						      (car names))
+				      ,index)
+				   (loop (cdr names) (+ index 1)))
+			     '())))))))
   (define-codes #x012
     primitive-apply primitive-lexpr-apply
     apply error lexpr-apply link

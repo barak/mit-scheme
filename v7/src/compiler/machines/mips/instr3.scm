@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr3.scm,v 1.4 2001/12/20 21:45:25 cph Exp $
+$Id: instr3.scm,v 1.5 2002/02/22 03:54:22 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,26 +27,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((three-reg
-      (lambda (keyword function-code)
-	`(BEGIN
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
-	     (((? fd) (? fs) (? ft))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 0)		; single precision
-		    (5 ft)
-		    (5 fs)
-		    (5 fd)
-		    (6 ,function-code))))
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
-	     (((? fd) (? fs) (? ft))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 1)		; double precision
-		    (5 ft)
-		    (5 fs)
-		    (5 fd)
-		    (6 ,function-code))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(BEGIN
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.S)
+	      (((? fd) (? fs) (? ft))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 0)		; single precision
+		     (5 ft)
+		     (5 fs)
+		     (5 fd)
+		     (6 ,(caddr form)))))
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.D)
+	      (((? fd) (? fs) (? ft))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 1)		; double precision
+		     (5 ft)
+		     (5 fs)
+		     (5 fd)
+		     (6 ,(caddr form))))))))))
 
   (three-reg add 0)
   (three-reg sub 1)
@@ -55,26 +57,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((two-reg
-      (lambda (keyword function-code)
-	`(BEGIN
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
-	     (((? fd) (? fs))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 0)		; single precision
-		    (5 0)
-		    (5 fs)
-		    (5 fd)
-		    (6 ,function-code))))
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
-	     (((? fd) (? fs))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 1)		; double precision
-		    (5 0)
-		    (5 fs)
-		    (5 fd)
-		    (6 ,function-code))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(BEGIN
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.S)
+	      (((? fd) (? fs))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 0)		; single precision
+		     (5 0)
+		     (5 fs)
+		     (5 fd)
+		     (6 ,(caddr form)))))
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.D)
+	      (((? fd) (? fs))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 1)		; double precision
+		     (5 0)
+		     (5 fs)
+		     (5 fd)
+		     (6 ,(caddr form))))))))))
   (two-reg abs 5)
   (two-reg mov 6)
   (two-reg neg 7))
@@ -141,26 +145,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((compare
-      (lambda (keyword conditions)
-	`(BEGIN
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.S)
-	     (((? fs) (? ft))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 0)
-		    (5 ft)
-		    (5 fs)
-		    (5 0)
-		    (6 ,conditions))))
-	   (DEFINE-INSTRUCTION ,(symbol-append keyword '.D)
-	     (((? fs) (? ft))
-	      (LONG (6 17)
-		    (1 1)
-		    (4 1)
-		    (5 ft)
-		    (5 fs)
-		    (5 0)
-		    (6 ,conditions))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(BEGIN
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.S)
+	      (((? fs) (? ft))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 0)
+		     (5 ft)
+		     (5 fs)
+		     (5 0)
+		     (6 ,(caddr form)))))
+	    (DEFINE-INSTRUCTION ,(symbol-append (cadr form) '.D)
+	      (((? fs) (? ft))
+	       (LONG (6 17)
+		     (1 1)
+		     (4 1)
+		     (5 ft)
+		     (5 fs)
+		     (5 0)
+		     (6 ,(caddr form))))))))))
   (compare c.f 48)
   (compare c.un 49)
   (compare c.eq 50)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr1.scm,v 1.8 2001/12/20 21:45:25 cph Exp $
+$Id: instr1.scm,v 1.9 2002/02/22 03:49:17 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,46 +29,48 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((arithmetic-immediate-instruction
-      (lambda (keyword opcode special-opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source) (? immediate))
-	    (VARIABLE-WIDTH (evaluated-immediate immediate)
-	      ((#x-8000 #x7fff)
-	       (LONG (6 ,opcode)
-		     (5 source)
-		     (5 destination)
-		     (16 evaluated-immediate SIGNED)))
-	      ((#x8000 #xffff)
-	       ;; ORI     1, 0, immediate
-	       ;; reg-op  destination, source, 1
-	       (LONG (6 13)		; ORI
-		     (5 0)
-		     (5 1)
-		     (16 evaluated-immediate)
-		     (6 0)		; reg-op
-		     (5 source)
-		     (5 1)
-		     (5 destination)
-		     (5 0)
-		     (6 ,special-opcode)))
-	      ((() ())
-	       ;; LUI     1, (top of immediate)
-	       ;; ORI     1, 1, (bottom of immediate)
-	       ;; reg-op  destination, source, 1
-	       (LONG (6 15)		; LUI
-		     (5 0)
-		     (5 1)
-		     (16 (top-16-bits evaluated-immediate))
-		     (6 13)		; ORI
-		     (5 1)
-		     (5 1)
-		     (16 (bottom-16-bits evaluated-immediate))
-		     (6 0)		; reg-op
-		     (5 source)
-		     (5 1)
-		     (5 destination)
-		     (5 0)
-		     (6 ,special-opcode)))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source) (? immediate))
+	     (VARIABLE-WIDTH (evaluated-immediate immediate)
+	       ((#x-8000 #x7fff)
+		(LONG (6 ,(caddr form))
+		      (5 source)
+		      (5 destination)
+		      (16 evaluated-immediate SIGNED)))
+	       ((#x8000 #xffff)
+		;; ORI     1, 0, immediate
+		;; reg-op  destination, source, 1
+		(LONG (6 13)		; ORI
+		      (5 0)
+		      (5 1)
+		      (16 evaluated-immediate)
+		      (6 0)		; reg-op
+		      (5 source)
+		      (5 1)
+		      (5 destination)
+		      (5 0)
+		      (6 ,(cadddr form))))
+	       ((() ())
+		;; LUI     1, (top of immediate)
+		;; ORI     1, 1, (bottom of immediate)
+		;; reg-op  destination, source, 1
+		(LONG (6 15)		; LUI
+		      (5 0)
+		      (5 1)
+		      (16 (top-16-bits evaluated-immediate))
+		      (6 13)		; ORI
+		      (5 1)
+		      (5 1)
+		      (16 (bottom-16-bits evaluated-immediate))
+		      (6 0)		; reg-op
+		      (5 source)
+		      (5 1)
+		      (5 destination)
+		      (5 0)
+		      (6 ,(cadddr form)))))))))))
   (arithmetic-immediate-instruction addi 8 32)
   (arithmetic-immediate-instruction addiu 9 33)
   (arithmetic-immediate-instruction slti 10 42)
@@ -76,33 +78,35 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((unsigned-immediate-instruction
-      (lambda (keyword opcode special-opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source) (? immediate))
-	    (VARIABLE-WIDTH (evaluated-immediate immediate)
-	      ((0 #xffff)
-	       (LONG (6 ,opcode)
-		     (5 source)
-		     (5 destination)
-		     (16 evaluated-immediate)))
-	      ((() ())
-	       ;; LUI     1, (top of immediate)
-	       ;; ORI     1, 1, (bottom of immediate)
-	       ;; reg-op  destination, source, 1
-	       (LONG (6 15)		; LUI
-		     (5 0)
-		     (5 1)
-		     (16 (top-16-bits evaluated-immediate))
-		     (6 13)		; ORI
-		     (5 1)
-		     (5 1)
-		     (16 (bottom-16-bits evaluated-immediate))
-		     (6 0)		; reg-op
-		     (5 source)
-		     (5 1)
-		     (5 destination)
-		     (5 0)
-		     (6 ,special-opcode)))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source) (? immediate))
+	     (VARIABLE-WIDTH (evaluated-immediate immediate)
+	       ((0 #xffff)
+		(LONG (6 ,(caddr form))
+		      (5 source)
+		      (5 destination)
+		      (16 evaluated-immediate)))
+	       ((() ())
+		;; LUI     1, (top of immediate)
+		;; ORI     1, 1, (bottom of immediate)
+		;; reg-op  destination, source, 1
+		(LONG (6 15)		; LUI
+		      (5 0)
+		      (5 1)
+		      (16 (top-16-bits evaluated-immediate))
+		      (6 13)		; ORI
+		      (5 1)
+		      (5 1)
+		      (16 (bottom-16-bits evaluated-immediate))
+		      (6 0)		; reg-op
+		      (5 source)
+		      (5 1)
+		      (5 destination)
+		      (5 0)
+		      (6 ,(cadddr form)))))))))))
   (unsigned-immediate-instruction andi 12 36)
   (unsigned-immediate-instruction ori 13 37)
   (unsigned-immediate-instruction xori 14 38))
@@ -143,15 +147,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((3-operand-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source-1) (? source-2))
-	    (LONG (6 0)
-		  (5 source-1)
-		  (5 source-2)
-		  (5 destination)
-		  (5 0)
-		  (6 ,opcode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source-1) (? source-2))
+	     (LONG (6 0)
+		   (5 source-1)
+		   (5 source-2)
+		   (5 destination)
+		   (5 0)
+		   (6 ,(caddr form)))))))))
   (3-operand-instruction add 32)
   (3-operand-instruction addu 33)
   (3-operand-instruction sub 34)
@@ -165,45 +171,50 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((shift-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
+      (lambda (form environment)
+	environment
+	`(DEFINE-INSTRUCTION ,(cadr form)
 	   (((? destination) (? source) (? amount))
 	    (LONG (6 0)
 		  (5 0)
 		  (5 source)
 		  (5 destination)
 		  (5 amount)
-		  (6 ,opcode)))))))
+		  (6 ,(caddr form))))))))
   (shift-instruction sll 0)
   (shift-instruction srl 2)
   (shift-instruction sra 3))
 
 (let-syntax
     ((shift-variable-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination) (? source) (? amount))
-	    (LONG (6 0)
-		  (5 amount)
-		  (5 source)
-		  (5 destination)
-		  (5 0)
-		  (6 ,opcode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination) (? source) (? amount))
+	     (LONG (6 0)
+		   (5 amount)
+		   (5 source)
+		   (5 destination)
+		   (5 0)
+		   (6 ,(caddr form)))))))))
   (shift-variable-instruction sllv 4)
   (shift-variable-instruction srlv 6)
   (shift-variable-instruction srav 7))
 
 (let-syntax
     ((div/mul-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? source-1) (? source-2))
-	    (LONG (6 0)
-		  (5 source-1)
-		  (5 source-2)
-		  (5 0)
-		  (5 0)
-		  (6 ,opcode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source-1) (? source-2))
+	     (LONG (6 0)
+		   (5 source-1)
+		   (5 source-2)
+		   (5 0)
+		   (5 0)
+		   (6 ,(caddr form)))))))))
   (div/mul-instruction div 26)
   (div/mul-instruction divu 27)
   (div/mul-instruction mult 24)
@@ -211,39 +222,45 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((from-hi/lo-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? destination))
-	    (LONG (6 0)
-		  (5 0)
-		  (5 0)
-		  (5 destination)
-		  (5 0)
-		  (6 ,opcode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? destination))
+	     (LONG (6 0)
+		   (5 0)
+		   (5 0)
+		   (5 destination)
+		   (5 0)
+		   (6 ,(caddr form)))))))))
   (from-hi/lo-instruction mfhi 16)
   (from-hi/lo-instruction mflo 18))
 #|
 (let-syntax
     ((to-hi/lo-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? source))
-	    (LONG (6 0)
-		  (5 source)
-		  (5 0)
-		  (5 0)
-		  (5 0)
-		  (6 ,opcode)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source))
+	     (LONG (6 0)
+		   (5 source)
+		   (5 0)
+		   (5 0)
+		   (5 0)
+		   (6 ,(caddr form)))))))))
   (to-hi/lo-instruction mthi 17)
   (to-hi/lo-instruction mtlo 19))
 
 (let-syntax
     ((jump-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? address))
-	    (LONG (6 ,opcode)
-		  (26 (quotient address 2))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? address))
+	     (LONG (6 ,(caddr form))
+		   (26 (QUOTIENT address 2)))))))))
   (jump-instruction j 2)
   (jump-instruction jal 3))
 |#
@@ -267,14 +284,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((move-coprocessor-instruction
-      (lambda (keyword opcode move-op)
-	`(define-instruction ,keyword
-	   (((? rt-mci) (? rd-mci))
-	    (LONG (6 ,opcode)
-		  (5 ,move-op)
-		  (5 rt-mci)
-		  (5 rd-mci)
-		  (11 0)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? rt-mci) (? rd-mci))
+	     (LONG (6 ,(caddr form))
+		   (5 ,(cadddr form))
+		   (5 rt-mci)
+		   (5 rd-mci)
+		   (11 0))))))))
   ;; (move-coprocessor-instruction mfc0 16 #x000)
   (move-coprocessor-instruction mfc1 17 #x000)
   ;; (move-coprocessor-instruction mfc2 18 #x000)
@@ -295,12 +314,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 #|
 (let-syntax
     ((coprocessor-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? cofun))
-	    (LONG (6 ,opcode)
-		  (1 1)			; CO bit
-		  (25 cofun)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? cofun))
+	     (LONG (6 ,(caddr form))
+		   (1 1)		; CO bit
+		   (25 cofun))))))))
   (coprocessor-instruction cop0 16)
   (coprocessor-instruction cop1 17)
   (coprocessor-instruction cop2 18)
@@ -308,13 +329,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((cop0-instruction
-      (lambda (keyword cp0-op)
-	`(define-instruction ,keyword
-	   (()
-	    (LONG (6 16)
-		  (1 1)			; CO
-		  (20 0)
-		  (5 ,cp0-op)))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (()
+	     (LONG (6 16)
+		   (1 1)		; CO
+		   (20 0)
+		   (5 ,(caddr form)))))))))
   (cop0-instruction rfe 16)
   (cop0-instruction tlbp 8)
   (cop0-instruction tlbr 1)

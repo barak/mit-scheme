@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: instr2b.scm,v 1.5 2001/12/20 21:45:25 cph Exp $
+$Id: instr2b.scm,v 1.6 2002/02/22 03:52:45 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,33 +28,35 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((load/store-instruction
-      (lambda (keyword opcode)
-	`(define-instruction ,keyword
-	   (((? source/dest-reg) (OFFSET (? offset-ls) (? base-reg)))
-	    (VARIABLE-WIDTH (delta offset-ls)
-              ((#x-8000 #x7fff)
-	       (LONG (6 ,opcode)
-		     (5 base-reg)
-		     (5 source/dest-reg)
-		     (16 delta SIGNED)))
-	      ((() ())
-	       ;; LUI    1,adjusted-left<offset>
-	       ;; ADDU   1,1,base-reg
-	       ;; LW     source/dest-reg,right<offset>(1)
-	       (LONG (6 15)	; LUI
-		     (5 0)
-		     (5 1)
-		     (16 (adjusted:high delta))
-		     (6 0)	; ADD
-		     (5 1)
-		     (5 base-reg)
-		     (5 1)
-		     (5 0)
-		     (6 32)
-		     (6 ,opcode); LW
-		     (5 1)
-		     (5 source/dest-reg)
-		     (16 (adjusted:low delta) SIGNED)))))))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 `(DEFINE-INSTRUCTION ,(cadr form)
+	    (((? source/dest-reg) (OFFSET (? offset-ls) (? base-reg)))
+	     (VARIABLE-WIDTH (delta offset-ls)
+	       ((#x-8000 #x7fff)
+		(LONG (6 ,(caddr form))
+		      (5 base-reg)
+		      (5 source/dest-reg)
+		      (16 delta SIGNED)))
+	       ((() ())
+		;; LUI    1,adjusted-left<offset>
+		;; ADDU   1,1,base-reg
+		;; LW     source/dest-reg,right<offset>(1)
+		(LONG (6 15)	; LUI
+		      (5 0)
+		      (5 1)
+		      (16 (adjusted:high delta))
+		      (6 0)	; ADD
+		      (5 1)
+		      (5 base-reg)
+		      (5 1)
+		      (5 0)
+		      (6 32)
+		      (6 ,(caddr form)); LW
+		      (5 1)
+		      (5 source/dest-reg)
+		      (16 (adjusted:low delta) SIGNED))))))))))
   (load/store-instruction lb 32)
   (load/store-instruction lbu 36)
   (load/store-instruction lh 33)
