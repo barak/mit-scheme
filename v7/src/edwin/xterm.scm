@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.45 1993/09/09 22:40:36 cph Exp $
+;;;	$Id: xterm.scm,v 1.46 1993/09/10 19:13:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -496,6 +496,9 @@
 		((process-output-available?)
 		 (set-interrupt-enables! interrupt-mask)
 		 event:process-output)
+		((process-status-changes?)
+		 (set-interrupt-enables! interrupt-mask)
+		 event:process-status)
 		(else
 		 (let ((flag
 			(test-for-input-on-descriptor
@@ -505,14 +508,7 @@
 		   (case flag
 		     ((#F) #f)
 		     ((PROCESS-STATUS-CHANGE) event:process-status)
-		     ((INTERRUPT)
-		      ;; Must independently check for this condition
-		      ;; because TEST-FOR-INPUT-ON-DESCRIPTOR can't
-		      ;; reliably produce the PROCESS-STATUS-CHANGE
-		      ;; result.
-		      (if (process-status-changes?)
-			  event:process-status
-			  (loop)))
+		     ((INTERRUPT) (loop))
 		     (else (read-event-1 display block?))))))))))
 
 (define (preview-event-stream)
