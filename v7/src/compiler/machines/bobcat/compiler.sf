@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.6 1988/11/01 04:45:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.7 1988/12/15 17:02:14 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -34,9 +34,6 @@ MIT in each case. |#
 
 ;;;; Script to incrementally syntax the compiler
 
-(fluid-let ((sf/usual-integrations-default-deletions
-	     '(VARIABLE? PRIMITIVE-PROCEDURE?)))
-
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
@@ -47,16 +44,15 @@ MIT in each case. |#
       ;; If there is no existing package constructor, generate one.
       (if (not (file-exists? "comp.bcon"))
 	  (begin
-	    ((package/reference (find-package '(CROSS-REFERENCE))
-				'CREF/GENERATE-TRIVIAL-CONSTRUCTOR)
+	    ((access cref/generate-trivial-constructor
+		     (->environment '(CROSS-REFERENCE)))
 	     "comp")
 	    (sf "comp.con" "comp.bcon")))
       (load "comp.bcon")))
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
-(if (lexical-unreferenceable? (package/environment (find-package '(COMPILER)))
-			      'SYNTAX-FILES!)
+(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
     (let ((sf-and-load
 	   (lambda (files package)
 	     (sf-conditionally files)
@@ -66,11 +62,9 @@ MIT in each case. |#
       (write-string "\n\n---- Loading compile-time files ----")
       (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
-      ((access initialize-package!
-	       (package/environment (find-package '(COMPILER MACROS)))))
+      ((access initialize-package! (->environment '(COMPILER MACROS))))
       (sf-and-load '("machines/bobcat/decls") '(COMPILER DECLARATIONS))
-      (let ((environment
-	     (package/environment (find-package '(COMPILER DECLARATIONS)))))
+      (let ((environment (->environment '(COMPILER DECLARATIONS))))
 	(set! (access source-file-expression environment) "*.scm")
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
@@ -85,7 +79,7 @@ MIT in each case. |#
 		   '(COMPILER LAP-SYNTAXER))))
 
 ;; Load the assembler instruction database.
-(in-package (package/environment (find-package '(COMPILER LAP-SYNTAXER)))
+(in-package (->environment '(COMPILER LAP-SYNTAXER))
   (if (and compiler:enable-expansion-declarations?
 	   (null? early-instructions))
       (fluid-let ((load-noisily? false))
@@ -97,9 +91,8 @@ MIT in each case. |#
 			  early-syntax-table)
 		    (write-string " -- done"))		  '("instr1" "instr2" "instr3" "instr4")))))
 ;; Resyntax any files that need it.
-((access syntax-files! (package/environment (find-package '(COMPILER)))))
+((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-all "comp")(sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
-) ;; End of fluid-let
