@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dirunx.scm,v 1.1 1992/09/23 23:05:02 jinx Exp $
+;;;	$Id: dirunx.scm,v 1.2 1993/04/15 10:13:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -61,15 +61,15 @@
   "Change owner of this file."
   "sChange to Owner"
   (lambda (owner) (dired-change-line "chown" owner)))
-
+
 (define-command dired-compress
-  "Compress a file."
+  "Compress a file using gzip."
   '()
   (lambda ()
     (let ((pathname (dired-current-pathname)))
       (let ((directory (directory-pathname pathname)))
 	(run-synchronous-process false false directory false
-				 (find-program "compress" directory)
+				 (find-program "gzip" directory)
 				 ""
 				 (->namestring pathname)))
       (dired-redisplay
@@ -77,25 +77,27 @@
 	pathname
 	(let ((old-type (pathname-type pathname)))
 	  (cond ((not old-type)
-		 "Z")
-		((string=? old-type "Z")
+		 "z")
+		((string=? old-type "z")
 		 old-type)
 		(else
-		 (string-append old-type ".Z")))))))))
+		 (string-append old-type ".z")))))))))
 
 (define-command dired-uncompress
-  "Uncompress a file."
+  "Uncompress a file using gunzip."
   '()
   (lambda ()
     (let ((pathname (dired-current-pathname)))
       (let ((directory (directory-pathname pathname)))
 	(run-synchronous-process false false directory false
-				 (find-program "uncompress" directory)
+				 (find-program "gunzip" directory)
 				 ""
 				 (->namestring pathname)))
       (dired-redisplay
-       (if (and (pathname-type pathname)
-		(string=? (pathname-type pathname) "Z"))
+       (if (let ((type (pathname-type pathname)))
+	     (and type
+		  (or (string=? "z" type)
+		      (string=? "Z" type))))
 	   (pathname-new-type pathname false)
 	   pathname)))))
 
