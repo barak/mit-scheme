@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.5 1995/03/12 05:44:38 adams Exp $
+$Id: laterew.scm,v 1.6 1995/04/15 16:36:27 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -291,10 +291,69 @@ MIT in each case. |#
 (let ((not-primitive  (make-primitive-procedure 'NOT)))
   (define-rewrite/late not-primitive
     (lambda (rands)
-      (let ((cont  (first rands))
-	    (x     (second rands))
-	    (more? (not (null? (cddr rands)))))
+      (let ((cont   (first rands))
+	    (x      (second rands))
+	    (more?  (not (null? (cddr rands)))))
 	(if (and (equal? cont '(QUOTE #F))
 		 (not more?))
 	    `(IF ,x (QUOTE #F) (QUOTE #T))
 	    `(CALL (QUOTE ,not-primitive) ,cont ,@rands))))))
+
+(define-rewrite/late %make-multicell
+  (lambda (rands)
+    (let ((cont    (first rands))
+	  (layout  (second rands))
+	  (values  (cddr rands)))
+      (laterew/multicell-operation cont layout name 'MAKE #F values))))
+
+(define-rewrite/late %multicell-ref
+  (lambda (rands)
+    (let ((cont    (first rands))
+	  (cell    (second rands))
+	  (layout  (third rands))
+	  (name    (fourth rands)))
+      (laterew/multicell-operation cont layout name 'READ cell #F))))
+
+(define-rewrite/late %multicell-set!
+  (lambda (rands)
+    (let ((cont    (first rands))
+	  (cell    (second rands))
+	  (value   (third rands))
+	  (layout  (fourth rands))
+	  (name    (fifth rands)))
+      (laterew/multicell-operation cont layout name 'WRITE cell value))))
+
+(define (laterew/multicell-operation cont layout name operation cell value/s)
+  (if (not (equal? cont '(QUOTE #F)))
+      (internal-error "Bad continuation for Multicell operation" cont))
+  (let ((layout
+	 (if (not (QUOTE/? layout))
+	     (quote/text layout)
+	     (internal-error "Multicell operation needs constant LAYOUT"
+			     layout)))
+	(name
+	 (cond ((eq? name #F)  #F)
+	       ((QUOTE/? name) (name/text name))
+	       (else (internal-error "Multicell operation needs constant NAME"
+				     name)))))
+    (define (index)
+      (let ((value  (vector-find-next-element layout name)))
+	(or value
+	    (internal-error "Multicell operation: name not found"
+			    name layout))))
+    (case (vector-length layout)
+      ((1)
+       (case operation
+	 ((READ)	`(CALL ',%cell-ref '#F ,cell ',name))
+	 ((WRITE)	`(CALL ',%cell-set! '#F ,cell ,value/s ',name))
+	 ((MAKE)	`(CALL ',%make-cell '#F ,@value/s ',name))))
+      ;;((2)
+      ;; (case operation
+      ;;   ((READ))
+      ;;   ((WRITE))
+      ;;   ((MAKE))))
+      (else
+       (case operation
+	 ((READ)	`(CALL ',%vector-ref '#F ,cell ,(index)))
+	 ((WRITE)	`(CALL ',%vector-set! '#F ,cell ,(index) ,value/s))
+	 ((MAKE)	`(CALL ',%vector '#F ,@value/s)))))))
