@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules4.scm,v 1.2 1995/01/20 20:17:41 ssmith Exp $
+$Id: rules4.scm,v 1.3 1995/05/24 00:20:33 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,8 +39,9 @@ MIT in each case. |#
 
 ;;;; Variable cache trap handling.
 
-(define regnum:third-arg eax)
-(define regnum:fourth-arg ebx)
+
+; fourth arg: reg:utility-arg-4 (see lapgen.scm)
+
 (define (%load-interface-args! first second third fourth)
   (let* ((load-reg
 	  (lambda (arg reg)
@@ -49,31 +50,36 @@ MIT in each case. |#
 		(clean-registers! reg))))
 	 (load-one (load-reg first regnum:first-arg))
 	 (load-two (load-reg second regnum:second-arg))
-	 (load-three (load-reg third regnum:third-arg))
-	 (load-four (load-reg fourth regnum:fourth-arg)))
+	 (load-three (load-reg third regnum:third-arg)))
+    ;	 (load-four (load-reg fourth regnum:fourth-arg))
+    (if fourth
+	(error "Unsupported fourth argument"))
     (LAP ,@load-one
 	 ,@load-two
-	 ,@load-three
-	 ,@load-four)))
+	 ,@load-three)))
 
 (define *interpreter-call-clobbered-regs* (list eax ebx ecx edx))
 
-(define (interpreter-call code extension extra)
-  (let ((start (%load-interface-args! false extension extra false)))
+(define (interpreter-call hook extension extra)
+  (let ((start (%load-interface-args! extra extension false false)))
     (LAP (COMMENT >> %interface-load-args)
 	 ,@start
 	 (COMMENT << %interface-load-args)
 	 ,@(preserving-regs
 	    *interpreter-call-clobbered-regs*
 	    (lambda (gen-preservation-info)
-	      (if (not gen-preservation-info)
-		  (invoke-hook/call code)
+	      (if gen-preservation-info
 		  (let ((label1 (generate-label))
 			(label2 (generate-label)))
-		    (LAP ,@(invoke-hook/call code)
+		    (LAP (INC W (R ,regnum:free-pointer)) 
+			 ,@(invoke-hook/call hook)
 			 (LABEL ,label1)
+			 (BYTE U (- (- ,label2 ,label1) 1))
 			 ,@(gen-preservation-info)
-			 (LABEL ,label2)))))))))
+			 (LABEL ,label2)))
+		  (LAP ,@(invoke-hook/call hook))))))))
+
+
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
