@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.20 1989/09/20 23:12:00 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.21 1991/05/20 20:31:51 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -314,6 +314,25 @@ DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars,
 		   || (SYNTAX_ENTRY_PREFIX (sentry))));
       }
       MOVE_LEFT (start);
+    }
+}
+
+DEFINE_PRIMITIVE ("SCAN-FORWARD-PREFIX-CHARS", Prim_scan_forward_prefix_chars, 4, 4, 0)
+{
+  Boolean quoted;
+  NORMAL_INITIALIZATION_FORWARD (4);
+
+  while (true)
+    {
+      WIN_IF_RIGHT_END (start);
+      RIGHT_QUOTED_P (start, quoted);
+      WIN_IF (quoted);
+      {
+	long sentry = (PEEK_RIGHT (start));
+	WIN_IF (! (((SYNTAX_ENTRY_CODE (sentry)) == syntaxcode_quote)
+		   || (SYNTAX_ENTRY_PREFIX (sentry))));
+      }
+      MOVE_RIGHT (start);
     }
 }
 
