@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.26 1987/10/09 16:13:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.27 1987/10/28 18:31:11 jinx Rel $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere.
  *
@@ -50,7 +50,7 @@ Built_In_Primitive(Prim_Null, 1, "NULL?", 0xC)
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
-  return (Arg1 == NIL) ? TRUTH : NIL;
+  PRIMITIVE_RETURN((Arg1 == NIL) ? TRUTH : NIL);
 }
 
 /* (EQ? OBJECT-1 OBJECT-2)
@@ -65,7 +65,7 @@ Built_In_Primitive(Prim_Eq, 2, "EQ?", 0xD)
     return TRUTH;
   Touch_In_Primitive(Arg1, Arg1);
   Touch_In_Primitive(Arg2, Arg2);
-  return ((Arg1 == Arg2) ? TRUTH : NIL);
+  PRIMITIVE_RETURN((Arg1 == Arg2) ? TRUTH : NIL);
 }
 
 /* Pointer manipulation */
@@ -81,7 +81,7 @@ Built_In_Primitive(Prim_Make_Non_Pointer, 1,
   Primitive_1_Arg();
 
   Arg_1_Type(TC_FIXNUM);
-  return Arg1;
+  PRIMITIVE_RETURN(Arg1);
 }
 
 /* (PRIMITIVE-DATUM OBJECT)
@@ -91,7 +91,7 @@ Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM", 0xB0)
 {
   Primitive_1_Arg();
 
-  return Make_New_Pointer(TC_ADDRESS, Arg1);
+  PRIMITIVE_RETURN(Make_New_Pointer(TC_ADDRESS, Arg1));
 }
 
 /* (PRIMITIVE-TYPE OBJECT)
@@ -103,7 +103,7 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE", 0x10)
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1, Arg1);
-  return Make_Unsigned_Fixnum(OBJECT_TYPE(Arg1));
+  PRIMITIVE_RETURN(Make_Unsigned_Fixnum(OBJECT_TYPE(Arg1)));
 }
 
 /* (PRIMITIVE-GC-TYPE OBJECT)
@@ -115,7 +115,7 @@ Built_In_Primitive(Prim_Gc_Type, 1, "PRIMITIVE-GC-TYPE", 0xBC)
 {
   Primitive_1_Arg(); 
 
-  return Make_Non_Pointer(TC_FIXNUM, GC_Type(Arg1));
+  PRIMITIVE_RETURN(Make_Non_Pointer(TC_FIXNUM, GC_Type(Arg1)));
 }
 
 /* (PRIMITIVE-TYPE? TYPE-CODE OBJECT)
@@ -129,10 +129,7 @@ Built_In_Primitive(Prim_Prim_Type_QM, 2, "PRIMITIVE-TYPE?", 0xF)
 
   Arg_1_Type(TC_FIXNUM);
   Touch_In_Primitive(Arg2, Arg2);
-  if (Type_Code(Arg2) == Get_Integer(Arg1))
-    return TRUTH;
-  else
-    return NIL;
+  PRIMITIVE_RETURN((Type_Code(Arg2) == Get_Integer(Arg1)) ? TRUTH : NIL);
 }
 
 /* (PRIMITIVE-SET-TYPE TYPE-CODE OBJECT)
@@ -153,9 +150,13 @@ Built_In_Primitive(Prim_Primitive_Set_Type, 2, "PRIMITIVE-SET-TYPE", 0x11)
   New_GC_Type = GC_Type_Code(New_Type);
   if ((GC_Type(Arg2) == New_GC_Type) ||
       (New_GC_Type == GC_Non_Pointer))
-    return Make_New_Pointer(New_Type, Arg2);
+  {
+    PRIMITIVE_RETURN(Make_New_Pointer(New_Type, Arg2));
+  }
   else
+  {
     Primitive_Error(ERR_ARG_1_BAD_RANGE);
+  }
   /*NOTREACHED*/
 }
 
@@ -178,7 +179,7 @@ Built_In_Primitive(Prim_And_Make_Object, 2, "&MAKE-OBJECT", 0x8D)
 
   Arg_1_Type(TC_FIXNUM);
   Range_Check(New_Type, Arg1, 0, MAX_TYPE_CODE, ERR_ARG_1_BAD_RANGE);
-  return Make_New_Pointer(New_Type, Arg2);
+  PRIMITIVE_RETURN(Make_New_Pointer(New_Type, Arg2));
 }
 
 /* (SYSTEM-MEMORY-REF OBJECT INDEX)
@@ -191,7 +192,7 @@ Built_In_Primitive(Prim_System_Memory_Ref, 2, "SYSTEM-MEMORY-REF", 0x195)
   Primitive_2_Args();
 
   Arg_2_Type(TC_FIXNUM);
-  return Vector_Ref(Arg1, Get_Integer(Arg2));
+  PRIMITIVE_RETURN(Vector_Ref(Arg1, Get_Integer(Arg2)));
 }
 
 /* (SYSTEM-MEMORY-SET! OBJECT INDEX VALUE)
@@ -206,7 +207,7 @@ Built_In_Primitive(Prim_System_Memory_Set, 3, "SYSTEM-MEMORY-SET!", 0x196)
 
   Arg_2_Type(TC_FIXNUM);
   index = Get_Integer(Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, index), Arg3);
+  PRIMITIVE_RETURN(Swap_Pointers(Nth_Vector_Loc(Arg1, index), Arg3));
 }
 
 /* Cells */
@@ -220,7 +221,7 @@ Built_In_Primitive(Prim_Make_Cell, 1, "MAKE-CELL", 0x61)
 
   Primitive_GC_If_Needed(1);
   *Free++ = Arg1;
-  return Make_Pointer(TC_CELL, Free-1);
+  PRIMITIVE_RETURN(Make_Pointer(TC_CELL, (Free - 1)));
 }
 
 /* (CELL-CONTENTS CELL)
@@ -231,7 +232,7 @@ Built_In_Primitive(Prim_Cell_Contents, 1, "CELL-CONTENTS", 0x62)
   Primitive_1_Arg();
 
   Arg_1_Type(TC_CELL);
-  return(Vector_Ref(Arg1, CELL_CONTENTS));
+  PRIMITIVE_RETURN(Vector_Ref(Arg1, CELL_CONTENTS));
 }
 
 /* (CELL? OBJECT)
@@ -243,7 +244,7 @@ Built_In_Primitive(Prim_Cell, 1, "CELL?", 0x63)
   Primitive_1_Arg();
 
   Touch_In_Primitive(Arg1,Arg1);
-  return (Type_Code(Arg1 == TC_CELL)) ? TRUTH : NIL;
+  PRIMITIVE_RETURN(((Type_Code(Arg1)) == TC_CELL) ? TRUTH : NIL);
 }
 
 /* (SET-CELL-CONTENTS! CELL VALUE)
@@ -255,5 +256,5 @@ Built_In_Primitive(Prim_Set_Cell_Contents, 2, "SET-CELL-CONTENTS!", 0x8C)
 
   Arg_1_Type(TC_CELL);
   Side_Effect_Impurify(Arg1, Arg2);
-  return Swap_Pointers(Nth_Vector_Loc(Arg1, CELL_CONTENTS), Arg2);
+  PRIMITIVE_RETURN(Swap_Pointers(Nth_Vector_Loc(Arg1, CELL_CONTENTS), Arg2));
 }
