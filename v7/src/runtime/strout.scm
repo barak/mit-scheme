@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/strout.scm,v 14.4 1990/09/13 22:31:59 cph Rel $
+$Id: strout.scm,v 14.5 1993/01/18 05:38:49 cph Exp $
 
-Copyright (c) 1988, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,13 +36,14 @@ MIT in each case. |#
 ;;; package: (runtime string-output)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! output-string-template
 	(make-output-port `((PRINT-SELF ,operation/print-self)
 			    (WRITE-CHAR ,operation/write-char)
-			    (WRITE-STRING ,operation/write-string))
-			  false)))
+			    (WRITE-SUBSTRING ,operation/write-substring))
+			  false))
+  unspecific)
 
 (define (with-output-to-string thunk)
   (with-string-output-port
@@ -50,19 +51,49 @@ MIT in each case. |#
      (with-output-to-port port thunk))))
 
 (define (with-string-output-port generator)
-  (apply string-append
-	 (reverse!
-	  (let ((port (output-port/copy output-string-template '())))
-	    (generator port)
-	    (output-port/state port)))))
+  (let ((state (make-output-string-state (make-string 16) 0)))
+    (let ((port (output-port/copy output-string-template state)))
+      (generator port)
+      (without-interrupts
+       (lambda ()
+	 (string-head (output-string-state/accumulator state)
+		      (output-string-state/counter state)))))))
 
 (define output-string-template)
 
-(define (operation/write-char port char)
-  (set-output-port/state! port (cons (string char) (output-port/state port))))
+(define-structure (output-string-state (type vector)
+				       (conc-name output-string-state/))
+  accumulator
+  counter)
 
-(define (operation/write-string port string)
-  (set-output-port/state! port (cons string (output-port/state port))))
+(define (grow-accumulator! state)
+  (let ((old (output-string-state/accumulator state)))
+    (let ((n (string-length old)))
+      (let ((new (make-string (+ n n))))
+	(substring-move-left! old 0 n new 0)
+	(set-output-string-state/accumulator! state new)))))
+
+(define (operation/write-char port char)
+  (without-interrupts
+   (lambda ()
+     (let* ((state (output-port/state port))
+	    (n (output-string-state/counter state)))
+       (if (fix:= (string-length (output-string-state/accumulator state)) n)
+	   (grow-accumulator! state))
+       (string-set! (output-string-state/accumulator state) n char)
+       (set-output-string-state/counter! state (fix:+ n 1))))))
+
+(define (operation/write-substring port string start end)
+  (without-interrupts
+   (lambda ()
+     (let* ((state (output-port/state port))
+	    (n (output-string-state/counter state))
+	    (n* (fix:+ n (fix:- end start))))
+       (if (fix:> n* (string-length (output-string-state/accumulator state)))
+	   (grow-accumulator! state))
+       (substring-move-left! string start end
+			     (output-string-state/accumulator state) n)
+       (set-output-string-state/counter! state n*)))))
 
 (define (operation/print-self state port)
   port
