@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 13.42 1987/03/12 02:16:14 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pathnm.scm,v 13.43 1987/07/18 03:02:54 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -49,13 +49,13 @@
 ;;; components may have special meaning to certain directory
 ;;; operations.
 
-;;; * 'UNSPECIFIC, meaning that the component was supplied, but null.
-;;; This means about the same thing as "". (maybe it should be
-;;; eliminated in favor of that?)
-
 ;;; * #F, meaning that the component was not supplied.  This has
 ;;; special meaning to `merge-pathnames', in which such components are
 ;;; substituted.
+
+;;; * 'UNSPECIFIC, which means the same thing as #F except that it is
+;;; never defaulted by `merge-pathnames'.  Normally there is no way to
+;;; specify such a component value with `string->pathname'.
 
 ;;; A pathname consists of 5 components, not all necessarily
 ;;; meaningful, as follows:
@@ -63,8 +63,10 @@
 ;;; * The DEVICE is usually a physical device, as in the Twenex `ps:'.
 
 ;;; * The DIRECTORY is a list of components.  If the first component
-;;; is the null string, then the directory path is absolute.
-;;; Otherwise it is relative.
+;;; is 'ROOT, then the directory path is absolute.  Otherwise it is
+;;; relative.  Two special components allowed only in directories are
+;;; the symbols 'SELF and 'UP which are equivalent to Unix' "." and
+;;; ".." respectively.
 
 ;;; * The NAME is the proper name part of the filename.
 
@@ -74,25 +76,24 @@
 
 ;;; * The VERSION is special.  Unlike an ordinary component, it is
 ;;; never a string, but may be either a positive integer, 'NEWEST,
-;;; 'WILD, 'UNSPECIFIC, or #F.  Many system procedures will default
+;;; 'UNSPECIFIC, 'WILD, or #F.  Many system procedures will default
 ;;; the version to 'NEWEST, which means to search the directory for
 ;;; the highest version numbered file.
 
 ;;; This file requires the following procedures and variables which
 ;;; define the conventions for the particular file system in use:
-;;;
 ;;; (symbol->pathname symbol)
-;;; (string->pathname string)
+;;; (pathname-parse string (lambda (device directory name type version)))
 ;;; (pathname-unparse device directory name type version)
 ;;; (pathname-unparse-name name type version)
-;;; (simplify-directory directory)
+;;; (pathname-as-directory pathname)
 ;;; working-directory-package
 ;;; (access reset! working-directory-package)
 ;;; init-file-pathname
 ;;; (home-directory-pathname)
 ;;; (working-directory-pathname)
 ;;; (set-working-directory-pathname! name)
-;;;
+
 ;;; See the files unkpth.scm, vmspth.scm, or unxpth.scm for examples.
 
 ;;;; Basic Pathnames
@@ -102,7 +103,7 @@
        (eq? (environment-procedure object) make-pathname)))
 
 (define (make-pathname device directory name type version)
-  (define string #F)
+  (define string false)
 
   (define (:print-self)
     (unparse-with-brackets
@@ -145,9 +146,8 @@
 
 (define (pathname-absolute? pathname)
   (let ((directory (pathname-directory pathname)))
-    (and (not (null? directory))
-	 (string-null? (car directory)))))
-
+    (and (pair? directory)
+	 (eq? (car directory) 'ROOT))))
 (define (pathname-new-device pathname device)
   (pathname-components pathname
     (lambda (old-device directory name type version)
@@ -176,22 +176,22 @@
 (define (pathname-directory-path pathname)
   (pathname-components pathname
     (lambda (device directory name type version)
-      (make-pathname device directory #F #F #F))))
+      (make-pathname device directory false false false))))
 
 (define (pathname-directory-string pathname)
   (pathname-components pathname
     (lambda (device directory name type version)
-      (pathname-unparse device directory #F #F #F))))
+      (pathname-unparse device directory false false false))))
 
 (define (pathname-name-path pathname)
   (pathname-components pathname
     (lambda (device directory name type version)
-      (make-pathname #F #F name type version))))
+      (make-pathname false false name type version))))
 
 (define (pathname-name-string pathname)
   (pathname-components pathname
     (lambda (device directory name type version)
-      (pathname-unparse #F #F name type version))))
+      (pathname-unparse false false name type version))))
 
 ;;;; Parse and unparse.
 
@@ -202,6 +202,9 @@
 	((string? object) (string->pathname object))
 	((symbol? object) (symbol->pathname object))
 	(else (error "Unable to coerce into pathname" object))))
+
+(define (string->pathname string)
+  (parse-pathname string make-pathname))
 
 (define (pathname->string pathname)
   (or (access string pathname)
@@ -221,27 +224,49 @@
 ;;;; Merging pathnames
 
 (define (merge-pathnames pathname default)
-  (make-pathname (or (pathname-device pathname) (pathname-device default))
-		 (simplify-directory
-		  (let ((directory (pathname-directory pathname)))
-		    (cond ((null? directory) (pathname-directory default))
-			  ((string-null? (car directory)) directory)
-			  (else
-			   (append (pathname-directory default) directory)))))
-		 (or (pathname-name pathname) (pathname-name default))
-		 (or (pathname-type pathname) (pathname-type default))
-		 (or (pathname-version pathname) (pathname-version default))))
+  (make-pathname
+   (or (pathname-device pathname) (pathname-device default))
+   (simplify-directory
+    (let ((directory (pathname-directory pathname))
+	  (default (pathname-directory default)))
+      (cond ((null? directory) default)
+	    ((or (eq? directory 'UNSPECIFIC)
+		 (null? default)
+		 (eq? default 'UNSPECIFIC))
+	     directory)
+	    ((pair? directory)
+	     (cond ((eq? (car directory) 'ROOT) directory)
+		   ((pair? default) (append default directory))
+		   (else (error "Illegal pathname directory" default))))
+	    (else (error "Illegal pathname directory" directory)))))
+   (or (pathname-name pathname) (pathname-name default))
+   (or (pathname-type pathname) (pathname-type default))
+   (or (pathname-version pathname) (pathname-version default))))
 
-(define (pathname-as-directory pathname)
-  (let ((file (pathname-unparse-name (pathname-name pathname)
-				     (pathname-type pathname)
-				     (pathname-version pathname))))
-    (if (string-null? file)
-	pathname
-	(make-pathname (pathname-device pathname)
-		       (append (pathname-directory pathname)
-			       (list file))
-		       #F #F #F))))
+(define simplify-directory)
+(let ()
+
+(set! simplify-directory
+  (named-lambda (simplify-directory directory)
+    (cond ((not (pair? directory)) directory)
+	  ((eq? (car directory) 'ROOT)
+	   (cons 'ROOT (simplify-tail (simplify-root-tail (cdr directory)))))
+	  (else (simplify-tail directory)))))
+
+(define (simplify-root-tail directory)
+  (if (and (pair? directory)
+	   (memq (car directory) '(SELF UP)))
+      (simplify-root-tail (cdr directory))
+      directory))
+
+(define (simplify-tail directory)
+  (cond ((not (pair? directory)) directory)
+	((eq? (car directory) 'SELF) (simplify-tail (cdr directory)))
+	((not (pair? (cdr directory))) directory)
+	((eq? (cadr directory) 'UP) (simplify-tail (cddr directory)))
+	(else (cons (car directory) (simplify-tail (cdr directory))))))
+
+)
 
 (define (pathname->absolute-pathname pathname)
   (merge-pathnames pathname (working-directory-pathname)))

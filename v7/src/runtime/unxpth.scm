@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.2 1987/03/17 18:54:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 1.3 1987/07/18 03:02:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -56,64 +56,88 @@
 (define (symbol->pathname symbol)
   (string->pathname (string-downcase (symbol->string symbol))))
 
-(define string->pathname)
+(define parse-pathname)
+(define pathname-as-directory)
 (define home-directory-pathname)
 (let ()
 
-(set! string->pathname
-  (named-lambda (string->pathname string)
-    (parse-pathname string make-pathname)))
+(set! parse-pathname
+  (named-lambda (parse-pathname string receiver)
+    (let ((end (string-length string)))
+      (parse-device string 0 end
+	(lambda (device start)
+	  (let ((components
+		 (let ((components
+			(substring-components string start end #\/)))
+		   (append (expand-directory-prefixes (car components))
+			   (cdr components)))))
+	    (parse-name (car (last-pair components))
+	      (lambda (name type version)
+		(receiver device
+			  (parse-directory-components
+			   (except-last-pair components))
+			  name type version)))))))))
 
-(define (parse-pathname string receiver)
-  (let ((components (divide-into-components (string-trim string))))
-    (if (null? components)
-	(receiver #F #F #F #F #F)
-	(let ((components
-	       (append (expand-directory-prefixes (car components))
-		       (cdr components))))
-	  (parse-name (car (last-pair components))
-	    (lambda (name type version)
-	      (receiver #F
-			(map (lambda (component)
-			       (if (string=? "*" component)
-				   'WILD
-				   component))
-			     (except-last-pair components))
-			name type version)))))))
+(define (parse-directory-components components)
+  (if (null? components)
+      '()
+      (cons (if (string-null? (car components))
+		'ROOT
+		(parse-directory-component (car components)))
+	    (map parse-directory-component (cdr components)))))
 
-(define (divide-into-components string)
-  (let ((end (string-length string)))
-    (define (loop start)
-      (let ((index (substring-find-next-char string start end #\/)))
-	(if index
-	    (cons (substring string start index)
-		  (loop (1+ index)))
-	    (list (substring string start end)))))
-    (loop 0)))
+(set! pathname-as-directory
+  (named-lambda (pathname-as-directory pathname)
+    (make-pathname
+     (pathname-device pathname)
+     (let ((directory (pathname-directory pathname)))
+       (let ((file (pathname-unparse-name (pathname-name pathname)
+					  (pathname-type pathname)
+					  (pathname-version pathname))))
+	 (if (string-null? file)
+	     directory
+	     (let ((file-components (list (parse-directory-component file))))
+	       (cond ((or (null? directory) (eq? directory 'UNSPECIFIC))
+		      file-components)
+		     ((pair? directory)
+		      (append directory file-components))
+		     (else (error "Illegal pathname directory" directory)))))))
+     false false false)))
 
+(define (parse-device string start end receiver)
+  (let ((index (substring-find-next-char string start end #\:)))
+    (if index
+	(receiver (substring string start index) (1+ index))
+	(receiver false start))))
+
+(define (parse-directory-component component)
+  (cond ((string=? "*" component) 'WILD)
+	((string=? "." component) 'SELF)
+	((string=? ".." component) 'UP)
+	(else component)))
+
 (define (expand-directory-prefixes string)
   (if (string-null? string)
       (list string)
       (case (string-ref string 0)
 	((#\$)
-	 (divide-into-components
+	 (string-components
 	  (get-environment-variable
-	   (substring string 1 (string-length string)))))
+	   (substring string 1 (string-length string)))
+	  #\/))
 	((#\~)
 	 (let ((user-name (substring string 1 (string-length string))))
-	   (divide-into-components
+	   (string-components
 	    (if (string-null? user-name)
 		(get-environment-variable "HOME")
-		(get-user-home-directory user-name)))))
+		(get-user-home-directory user-name))
+	    #\/)))
 	(else (list string)))))
 
 (set! home-directory-pathname
   (lambda ()
-    (make-pathname #F
-		   (divide-into-components (get-environment-variable "HOME"))
-		   #F
-		   #F
-		   #F)))	
+    (pathname-as-directory
+     (string->pathname (get-environment-variable "HOME")))))
 
 (define get-environment-variable
   (let ((primitive (make-primitive-procedure 'GET-ENVIRONMENT-VARIABLE)))
@@ -126,15 +150,6 @@
     (lambda (user-name)
       (or (primitive user-name)
 	  (error "User has no home directory" user-name)))))
-
-(define (digits->number digits weight accumulator)
-  (if (null? digits)
-      accumulator
-      (let ((value (char->digit (car digits) 10)))
-	(and value
-	     (digits->number (cdr digits)
-			     (* weight 10)
-			     (+ (* weight value) accumulator))))))
 
 (define (parse-name string receiver)
   (let ((start 0)
@@ -146,7 +161,7 @@
       (substring-find-previous-char string start end #\.))
 
     (define (parse-version start)
-      (cond ((= start end) 'UNSPECIFIC)
+      (cond ((= start end) "")
 	    ((substring=? string start end "*" 0 1) 'WILD)
 	    ((substring-find-next-char string start end #\*)
 	     (substring string start end))
@@ -159,13 +174,13 @@
 		   (substring string start end))))))
 
     (if (= start end)
-	(receiver #F #F #F)
+	(receiver false false false)
 	(let ((index (find-next-dot start)))
 	  (if index
 	      (let ((start* (1+ index))
 		    (name (wildify string start index)))
 		(if (= start* end)
-		    (receiver name 'UNSPECIFIC 'UNSPECIFIC)
+		    (receiver name "" "")
 		    (or (let ((index (find-next-dot start*)))
 			  (and index
 			       (let ((version (parse-version (1+ index))))
@@ -176,13 +191,34 @@
 			(let ((index (find-previous-dot start)))
 			  (receiver (wildify string start index)
 				    (wildify string (1+ index) end)
-				    #F)))))
-	      (receiver (wildify string start end) #F #F))))))
-
+				    false)))))
+	      (receiver (wildify string start end) false false))))))
+
 (define (wildify string start end)
   (if (substring=? string start end "*" 0 1)
       'WILD
       (substring string start end)))
+
+(define (string-components string delimiter)
+  (substring-components string start end delimiter))
+
+(define (substring-components string start end delimiter)
+  (define (loop start)
+    (let ((index (substring-find-next-char string start end delimiter)))
+      (if index
+	  (cons (substring string start index)
+		(loop (1+ index)))
+	  (list (substring string start end)))))
+  (loop start))
+
+(define (digits->number digits weight accumulator)
+  (if (null? digits)
+      accumulator
+      (let ((value (char->digit (car digits) 10)))
+	(and value
+	     (digits->number (cdr digits)
+			     (* weight 10)
+			     (+ (* weight value) accumulator))))))
 
 ;;; end LET.
 )
@@ -195,59 +231,60 @@
 
 (set! pathname-unparse
   (named-lambda (pathname-unparse device directory name type version)
-    (unparse-device
-     device
-     (unparse-directory directory
-			(pathname-unparse-name name type version)))))
+    (string-append (let ((device-string (unparse-component device)))
+		     (if device-string
+			 (string-append device-string ":")
+			 ""))
+		   (unparse-directory directory)
+		   (pathname-unparse-name name type version))))
 
-(define (unparse-device device rest)
-  (let ((device-string (unparse-component device)))
-    (if device-string
-	(string-append device-string ":" rest)
-	rest)))
-
-(define (unparse-directory directory rest)
-  (cond ((null? directory) rest)
+(define (unparse-directory directory)
+  (define (loop directory)
+    (if (null? directory)
+	""
+	(string-append (unparse-directory-component (car directory))
+		       "/"
+		       (loop (cdr directory)))))
+  (cond ((null? directory) "")
 	((pair? directory)
-	 (let loop ((directory directory))
-	   (let ((directory-string (unparse-component (car directory)))
-		 (rest (if (null? (cdr directory))
-			   rest
-			   (loop (cdr directory)))))
-	     (if directory-string
-		 (string-append directory-string "/" rest)
-		 rest))))
-	(else
-	 (error "Unrecognizable directory" directory))))
+	 (string-append (if (eq? (car directory) 'ROOT)
+			    ""
+			    (unparse-directory-component (car directory)))
+			"/"
+			(loop (cdr directory))))
+	(else (error "Illegal pathname directory" directory))))
+
+(define (unparse-directory-component component)
+  (cond ((eq? component 'WILD) "*")
+	((eq? component 'SELF) ".")
+	((eq? component 'UP) "..")
+	((string? component) component)
+	(else (error "Illegal pathname directory component" component))))
 
 (set! pathname-unparse-name
   (named-lambda (pathname-unparse-name name type version)
-    (let ((name-string (unparse-component name))
-	  (type-string (unparse-component type))
-	  (version-string (unparse-version version)))
-      (cond ((not name-string) "")
-	    ((not type-string) name-string)
-	    ((eq? type-string 'UNSPECIFIC) (string-append name-string "."))
-	    ((not version-string) (string-append name-string "." type-string))
-	    ((eq? version-string 'UNSPECIFIC)
-	     (string-append name-string "." type-string "."))
-	    (else
-	     (string-append name-string "." type-string "."
-			    version-string))))))
-
-(define (unparse-version version)
-  (if (eq? version 'NEWEST)
-      "0"
-      (unparse-component version)))
+    (let ((name (unparse-component name))
+	  (type (unparse-component type))
+	  (version (unparse-version version)))
+      (cond ((not name) "")
+	    ((not type) name)
+	    ((not version) (string-append name "." type))
+	    (else (string-append name "." type "." version))))))
 
 (define (unparse-component component)
-  (cond ((not component) #F)
-	((eq? component 'UNSPECIFIC) component)
+  (cond ((or (not component) (string? component)) component)
+	((eq? component 'UNSPECIFIC) false)
 	((eq? component 'WILD) "*")
-	((string? component) component)
-	((and (integer? component) (> component 0))
-	 (list->string (number->digits component '())))
-	(else (error "Unknown component" component))))
+	(else (error "Illegal pathname component" component))))
+
+(define (unparse-version version)
+  (cond ((or (not version) (string? version)) version)
+	((eq? version 'UNSPECIFIC) false)
+	((eq? version 'WILD) "*")
+	((eq? version 'NEWEST) "0")
+	((and (integer? version) (> version 0))
+	 (list->string (number->digits version '())))
+	(else (error "Illegal pathname version" version))))
 
 (define (number->digits number accumulator)
   (if (zero? number)
@@ -259,19 +296,6 @@
 
 ;;; end LET.
 )
-
-;;;; Utility for merge pathnames
-
-(define (simplify-directory directory)
-  (cond ((null? directory) directory)
-	((string=? (car directory) ".")
-	 (simplify-directory (cdr directory)))
-	((null? (cdr directory)) directory)
-	((string=? (cadr directory) "..")
-	 (simplify-directory (cddr directory)))
-	(else
-	 (cons (car directory)
-	       (simplify-directory (cdr directory))))))
 
 ;;;; Working Directory
 
@@ -311,4 +335,4 @@
 ))
 
 (define init-file-pathname
-  (make-pathname #F #F ".scheme" "init" #F))
+  (string->pathname ".scheme.init"))
