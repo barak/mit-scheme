@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.30 2003/09/19 00:39:21 cph Exp $
+$Id: random.scm,v 14.31 2003/11/26 07:00:40 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
@@ -28,7 +28,7 @@ USA.
 ;;; package: (runtime random-number)
 
 (declare (usual-integrations))
-
+
 ;;; A "subtract-with-borrow" RNG, based on the algorithm from "A New
 ;;; Class of Random Number Generators", George Marsaglia and Arif
 ;;; Zaman, The Annals of Applied Probability, Vol. 1, No. 3, 1991.
@@ -44,29 +44,54 @@ USA.
 ;;; here are taken from the article and are claimed to represent
 ;;; "hundreds of hours" of compute time.  The period of this generator
 ;;; is (- (EXPT B R) (EXPT B S)), which is approximately (EXPT 10 414).
-
+
 (define-integrable r 43)
 (define-integrable s 22)
 (define-integrable b 4294967291 #|(- (expt 2 32) 5)|#)
 (define-integrable b. 4294967291. #|(exact->inexact b)|#)
 
 (define (random modulus #!optional state)
-  (let ((element
-	 (flo:random-unit
-	  (guarantee-random-state (if (default-object? state) #f state)
-				  'RANDOM))))
+  (let ((state
+	 (guarantee-random-state (if (default-object? state) #f state)
+				 'RANDOM)))
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
-    (cond ((and (flo:flonum? modulus) (flo:< 0. modulus))
-	   (flo:* element modulus))
-	  ((and (int:integer? modulus) (int:< 0 modulus))
-	   (flo:truncate->exact (flo:* element (int:->flonum modulus))))
-	  ((and (real? modulus) (< 0 modulus))
-	   (* (inexact->exact element) modulus))
+    (cond ((int:integer? modulus)
+	   ;; This complexity guarantees that we use enough random
+	   ;; bits to uniformly cover the output interval.
+	   (if (int:> modulus 0)
+	       (let loop ((modulus modulus))
+		 (if (int:> modulus b)
+		     (let ((qr (int:divide modulus b)))
+		       (int:+ (int:* (car qr)
+				     (flo:truncate->exact
+				      (flo:random-element state)))
+			      (loop (cdr qr))))
+		     (flo:truncate->exact
+		      ;; This operation order minimizes error.
+		      (flo:/ (flo:* (flo:random-element state)
+				    (int:->flonum modulus))
+			     b.))))
+	       (error:bad-range-argument modulus 'RANDOM)))
+	  ((flo:flonum? modulus)
+	   (if (flo:> modulus 0.)
+	       (flo:* (flo:random-unit state) modulus)
+	       (error:bad-range-argument modulus 'RANDOM)))
+	  ((real? modulus)
+	   ;; I can't think of the correct thing to do here.  The old
+	   ;; code scaled a random element into the appropriate range,
+	   ;; which gave one of B evenly-distributed values.  But this
+	   ;; is arbitrary and not necessarily what the caller wants.
+	   ;; If you have an idea what should happen here, let me
+	   ;; know.  -- cph
+	   (error "Unsupported modulus:" modulus))
 	  (else
-	   (error:wrong-type-argument modulus "positive real" 'RANDOM)))))
+	   (error:wrong-type-argument modulus "real number" 'RANDOM)))))
 
 (define (flo:random-unit state)
+  (flo:/ (flo:random-element state) b.))
+
+(define (flo:random-element state)
   (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((index (random-state-index state))
 	  (vector (random-state-vector state)))
@@ -90,7 +115,7 @@ USA.
 				       0
 				       (fix:+ index 1))))
 	(set-interrupt-enables! mask)
-	(flo:/ element b.)))))
+	element))))
 
 (define (random-byte-vector n #!optional state)
   (let ((state (if (default-object? state) #f state))
