@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/scrcom.scm,v 1.1 1990/08/31 20:12:53 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/scrcom.scm,v 1.2 1990/09/12 19:56:55 markf Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -51,9 +51,13 @@
 then a message is diplayed and the screen is not deleted."
   ()
   (lambda ()
+    (message "Not yet implemented")
+#|
     (if (> (length (all-screens)) 1)
 	(delete-current-screen!)
-	(message "Can't delete the last screen."))))
+	(message "Can't delete the last screen."))
+|#
+    ))
 
 (define-command create-new-screen
   "Create a new screen with the current buffer in it."
