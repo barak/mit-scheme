@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.92 2002/02/12 14:54:42 cph Exp $
+@comment $Id: user.texinfo,v 1.93 2002/03/13 05:56:36 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -36,7 +36,7 @@ Free Documentation License".
 @title{MIT Scheme User's Manual}
 @subtitle Edition 1.88
 @subtitle for Scheme Release 7.7.0
-@subtitle 12 February 2002
+@subtitle 13 March 2002
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -130,7 +130,7 @@ system you are using.
 @node Installation, Running Scheme, Introduction, Top
 @chapter Installation
 
-This chapter describes how to install MIT Scheme release 7.6.  The
+This chapter describes how to install MIT Scheme release 7.7.  The
 release is supported under several different operating systems: unix,
 OS/2, and Windows.  Read the section detailing the installation for the
 operating system that you are using.
@@ -170,7 +170,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.6.0-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.7.0-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -188,7 +188,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.6.0-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.7.0-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -252,7 +252,7 @@ choose the directory in which MIT Scheme is to be installed, and the
 name of the folder in which the shortcuts are to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
-@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.6}.
+@samp{Add/Remove Programs}, and double-click on @samp{MIT Scheme 7.7}.
 
 @node OS/2 Installation, Optional Configuration, Windows Installation, Installation
 @section OS/2 Installation
@@ -520,10 +520,10 @@ Scheme will load itself and print something like this:
 
 @example
 @group
-Scheme saved on Monday November 26, 2001 at 2:38:09 PM
-  Release 7.6.0
-  Microcode 14.5
-  Runtime 14.192
+Scheme saved on Tuesday March 12, 2002 at 3:34:25 PM
+  Release 7.7.0
+  Microcode 14.8
+  Runtime 15.0
 @end group
 @end example
 
@@ -3637,10 +3637,10 @@ It is not necessary to type @key{RET} after these commands.
 
 @table @asis
 @item Traversing subproblems
-@cindex Debugger command: u
-@cindex Debugger command: d
-@cindex Debugger command: g
-@cindex Debugger command: h
+@cindex Debugger command u
+@cindex Debugger command d
+@cindex Debugger command g
+@cindex Debugger command h
 The debugger has several commands for traversing the structure of the
 continuation.  It is useful to think of the continuation as a
 two-dimensional structure: a backbone consisting of subproblems, and
@@ -3654,9 +3654,9 @@ command allows you to select a subproblem by number, and the @kbd{h}
 command will show you a brief summary of all of the subproblems.
 
 @item Traversing reductions
-@cindex Debugger command: r
-@cindex Debugger command: b
-@cindex Debugger command: f
+@cindex Debugger command r
+@cindex Debugger command b
+@cindex Debugger command f
 If the subproblem description says that @samp{The execution history for
 this subproblem contains @var{N} reductions}, then there is a ``rib'' of
 reductions for this subproblem.  You can see a summary of the reductions
@@ -3669,8 +3669,8 @@ subproblem.  Likewise, if you are at the newest reduction and use
 @kbd{f}, you'll move to the next newer subproblem.
 
 @item Examining subproblems and reductions
-@cindex Debugger command: t
-@cindex Debugger command: l
+@cindex Debugger command t
+@cindex Debugger command l
 The following commands will show you additional information about the
 currently selected subproblem or reduction.  The @kbd{t} command will
 reprint the standard description (in case it has scrolled off the
@@ -3685,8 +3685,8 @@ frames, where each frame corresponds to a block of environment
 variables, as bound by @code{lambda} or @code{let}.  These frames
 collectively represent the block structure of a given environment.
 
-@cindex Debugger command: p
-@cindex Debugger command: s
+@cindex Debugger command p
+@cindex Debugger command s
 Once an environment frame is selected by the debugger, it is possible to
 select the parent frame of that frame (in other words, the enclosing
 block) using the @kbd{p} command.  You can subsequently return to the
@@ -3698,12 +3698,12 @@ frame using @kbd{p} or @kbd{s} will print the bindings of the newly
 selected frame.
 
 @item Examining environments
-@cindex Debugger command: a
-@cindex Debugger command: c
-@cindex Debugger command: e
-@cindex Debugger command: o
-@cindex Debugger command: v
-@cindex Debugger command: w
+@cindex Debugger command a
+@cindex Debugger command c
+@cindex Debugger command e
+@cindex Debugger command o
+@cindex Debugger command v
+@cindex Debugger command w
 The following commands allow you to examine the contents of the selected
 frame.  The @kbd{c} command prints the bindings of the current frame.
 The @kbd{a} command prints the bindings of the current frame and each
@@ -3719,7 +3719,7 @@ command pretty-prints the procedure that was called to create the
 selected environment frame.
 
 @item Continuing the computation
-@cindex Debugger command: k
+@cindex Debugger command k
 There are three commands that can be used to restart the computation
 that you are examining.  The first is the @kbd{k} command, which shows
 the currently active restarts, prompts you to select one, and passes
@@ -3734,7 +3734,7 @@ produce a value.  The appropriate internal continuation is then invoked
 with that value as its sole argument.  The two commands differ only in
 which internal continuation is to be invoked.
 
-@cindex Debugger command: j
+@cindex Debugger command j
 The @kbd{j} command invokes the continuation associated with
 the selected subproblem.  What this means is as follows: when the
 description of a subproblem is printed, it consists of two parts, and
@@ -3746,7 +3746,7 @@ value.  So, in effect, you are telling the program what the ``subproblem
 being executed'' will evaluate to, and bypassing further execution of
 that code.
 
-@cindex Debugger command: z
+@cindex Debugger command z
 The @kbd{z} command is slightly different.  It instead invokes the
 continuation that is waiting for the outer ``expression'' to finish.  In
 other words, it is the same as invoking the @kbd{j} command in the next
@@ -3754,17 +3754,17 @@ frame up.  So you can think of this as an abbreviation for the @kbd{u}
 command followed by the @kbd{j} command.
 
 @item Wizard commands
-@cindex Debugger command: m
-@cindex Debugger command: x
-@cindex Debugger command: y
+@cindex Debugger command m
+@cindex Debugger command x
+@cindex Debugger command y
 The @kbd{m}, @kbd{x}, and @kbd{y} commands are for Scheme wizards.  They
 are used to debug the MIT Scheme implementation.  If you want to find
 out what they do, read the source code.
 
 @item Miscellaneous commands
-@cindex Debugger command: i
-@cindex Debugger command: q
-@cindex Debugger command: ?
+@cindex Debugger command i
+@cindex Debugger command q
+@cindex Debugger command ?
 The @kbd{i} command will reprint the error message for the error that
 was in effect immediately before the debugger started.  The @kbd{q}
 command quits the debugger, returning to the caller.  And the @kbd{?}
@@ -4681,6 +4681,82 @@ source code.
 Note that MIT Scheme still conforms to the @cite{Revised^4 Report on the
 Algorithmic Language Scheme}, but not to the @cite{Revised^5 Report on
 The Algorithmic Language Scheme}.
+
+@menu
+* Recent Changes::              
+* Older Changes::               
+@end menu
+
+@node Recent Changes, Older Changes, Release Notes, Release Notes
+@appendixsec Recent Changes
+
+These are the changes since release 7.6.0:
+
+@itemize @bullet
+@item
+Release 7.7.0 provides ``hygienic'' macro support, as defined in
+@cite{R^4RS} and @cite{R^5RS}.  This is a complete rewrite of the syntax
+engine, so any program that uses macros should be rewritten to use the
+new engine.  A subset of the old macro-definition syntax is still
+supported, but this will eventually be removed.  Note that the new
+syntax engine has no effect on the compiled-code format; most binaries
+compiled by release 7.6.x should continue to work.
+
+There are several user-visible consequences to this change:
+
+@itemize @bullet
+@item
+These syntactic keywords have been eliminated:
+@code{define-macro},
+@code{in-package},
+@code{macro},
+@code{make-environment},
+@code{scode-quote},
+@code{unassigned?}, and
+@code{using-syntax}.
+
+@item
+The syntactic keyword @code{the-environment} has been restricted to use
+in top-level environments.  It is no longer allowed in the body of any
+binding form (e.g.@: @code{lambda}, @code{let}).
+
+@item
+Syntactic keywords are now stored in environments, rather than in a
+separate syntax-table structure.  The environment abstraction has been
+enhanced to support this, as well as to make it more general.  The
+changes are documented in the reference manual.
+
+@item
+The syntax-table abstraction has been eliminated, and most procedures
+and arguments involving syntax tables have been removed.  One exception
+is the @code{load} procedure, which still accepts a syntax-table
+argument, but ignores it.
+@end itemize
+
+Although the 7.6.1 release had a workaround for problems with certain
+@acronym{AMD} Athlon processors, the workaround was ineffective on
+machines running Windows operating systems (and possibly OS/2 systems as
+well).  This version fixes that problem.
+
+The hash-table abstraction is now always loaded.  It's not necessary to
+call @code{load-option} prior to use of hash tables.  For upwards
+compatibility, calling @samp{(load-option 'hash-table)} is still
+permitted but does nothing.
+
+@item
+Release 7.6.1 provides a workaround for a bug on some @acronym{AMD}
+Athlon processors (specifically, models 1, 3, and 4).  This bug causes
+those processors to incorrectly execute certain kinds of self-modifying
+code, including that used by MIT Scheme.
+
+Release 7.6.1 also fixes a problem that caused the *PARSER and XML
+subsystems not to load correctly on Windows and OS/2 systems.
+@end itemize
+
+@node Older Changes,  , Recent Changes, Release Notes
+@appendixsec Older Changes
+
+These are the changes that occurred between releases 7.6.0 and 7.5.17:
 
 @itemize @bullet
 @item
