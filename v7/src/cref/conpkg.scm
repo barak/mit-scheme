@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.4 1993/10/11 23:31:39 cph Exp $
+$Id: conpkg.scm,v 1.5 1995/01/06 19:29:58 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,7 +41,10 @@ MIT in each case. |#
 
 (define (construct-constructor pmodel)
   (let ((packages (pmodel/packages pmodel)))
-    `((DECLARE (USUAL-INTEGRATIONS))
+    ;; SYSTEM-GLOBAL-ENVIRONMENT is here so that it is not integrated.
+    ;; This is necessary for cross-syntaxing when the representation of
+    ;; #F, () or the system-global-environment changes.
+    `((DECLARE (USUAL-INTEGRATIONS SYSTEM-GLOBAL-ENVIRONMENT))
       ,@(append-map*
 	 `((LET ((ENVIRONMENT-LINK-NAME
 		  (LET-SYNTAX
@@ -56,7 +59,7 @@ MIT in each case. |#
 
 (define (construct-definitions package)
   (cond ((package/root? package)
-	 `((IN-PACKAGE #F
+	 `((IN-PACKAGE SYSTEM-GLOBAL-ENVIRONMENT
 	     ,@(map (lambda (binding) `(DEFINE ,(binding/name binding)))
 		    (package/source-bindings package)))))
 	((equal? (package/name package) '(PACKAGE))
