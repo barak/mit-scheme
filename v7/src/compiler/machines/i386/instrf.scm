@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.8 1992/02/18 01:52:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.9 1992/02/19 05:38:05 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
 	    (define-instruction ,pmnemonic
 	      (((ST (? i)) (ST 0))
 	       (BYTE (8 #xde)
-		     (8 (+ #xc0 i)))))
+		     (8 (+ ,opcode2 i)))))
 
 	    (define-instruction ,imnemonic
 	      ((L (? source mW))
@@ -232,7 +232,7 @@ MIT in each case. |#
 	       (BYTE (8 ,opcode))
 	       (ModR/M ,digit source)))))))
 
-  (define-flonum-state FLDCW   #xd9 5 #f)
+  (define-flonum-state FNLDCW  #xd9 5 FLDCW)
   (define-flonum-state FLDENV  #xd9 4 #f)
   (define-flonum-state FNSTCW  #xd9 7 FSTCW)
   (define-flonum-state FNSTENV #xd9 6 FSTENV)
