@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.15 1991/04/23 06:47:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.16 1991/05/10 05:13:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -61,9 +61,9 @@ The following commands evaluate Scheme expressions;
 normally they record the associated output in a transcript buffer:
 
 \\[eval-expression] reads and evaluates an expression in minibuffer.
-\\[eval-previous-sexp] evaluates the expression preceding point.
-\\[eval-definition] evaluates the current definition.
-\\[eval-buffer] evaluates the buffer.
+\\[eval-last-sexp] evaluates the expression preceding point.
+\\[eval-defun] evaluates the current definition.
+\\[eval-current-buffer] evaluates the buffer.
 \\[eval-region] evaluates the current region."
 
   (local-set-variable! syntax-table scheme-mode:syntax-table)
@@ -89,8 +89,8 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\rubout 'backward-delete-char-untabify)
 (define-key 'scheme #\tab 'lisp-indent-line)
 (define-key 'scheme #\) 'lisp-insert-paren)
-(define-key 'scheme #\m-o 'eval-buffer)
-(define-key 'scheme #\m-z 'eval-definition)
+(define-key 'scheme #\m-o 'eval-current-buffer)
+(define-key 'scheme #\m-z 'eval-defun)
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
 

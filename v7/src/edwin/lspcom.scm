@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.151 1991/03/11 01:14:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.152 1991/05/10 05:13:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -155,26 +155,22 @@ A negative argument means move forward but still to a less deep spot."
 
 ;;;; Definition Commands
 
-(define-command beginning-of-definition
-  "Move to beginning of this or previous definition.
-Leaves the mark behind, in case typed by accident.
-With a negative argument, moves forward to the beginning of a definition.
-The beginning of a definition is determined by Definition Start."
+(define-command beginning-of-defun
+  "Move backward to next beginning-of-defun.
+With argument, do this that many times."
   "p"
   (lambda (argument)
     (move-thing backward-definition-start argument)))
 
-(define-command end-of-definition
-  "Move to end of this or next definition.
-Leaves the mark behind, in case typed by accident.
-With argument of 2, finds end of following definition.
-With argument of -1, finds end of previous definition, etc."
+(define-command end-of-defun
+  "Move forward to next end of defun.
+An end of a defun is found by moving forward from the beginning of one."
   "p"
   (lambda (argument)
     (move-thing forward-definition-end (if (zero? argument) 1 argument))))
 
-(define-command mark-definition
-  "Put mark at end of definition, point at beginning."
+(define-command mark-defun
+  "Put mark at end of defun, point at beginning."
   ()
   (lambda ()
     (let ((point (current-point)))
@@ -186,8 +182,8 @@ With argument of -1, finds end of previous definition, etc."
 	   (or (re-search-backward "^\n" start (mark-1+ start))
 	       start)))))))
 
-(define-command align-definition
-  "Reposition window so current definition is at the top.
+(define-command align-defun
+  "Reposition window so current defun is at the top.
 If this would place point off screen, nothing happens."
   ()
   (lambda ()
