@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.21 1990/04/03 00:15:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.22 1990/04/17 19:16:28 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -488,7 +488,7 @@ memmag.o gcloop.o purify.o purutl.o comutl.o : scheme.touch prims.h \
 	$(GC_HEAD_FILES) zones.h
 
 artutl.o : scheme.touch
-bignum.o : scheme.touch bignumint.h
+bignum.o : scheme.touch bignumint.h limits.h
 bigprm.o flonum.o intprm.o generic.o : scheme.touch prims.h zones.h
 fixnum.o : scheme.touch prims.h mul.c
 
