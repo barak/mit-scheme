@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.17 1995/02/22 13:37:04 adams Exp $
+$Id: utils.scm,v 1.18 1995/02/27 22:40:58 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -526,7 +526,7 @@ Example use of FORM/COPY-TRANSFORMING:
 (define (begin-sans-declarations form)
   ;; If the begin form is a sequence of declarations followed by a single
   ;; form then return that form, else return #F
-  (let loop ((exprs (begin/actions form)))
+  (let loop ((exprs (begin/exprs form)))
     (cond ((null? exprs) (internal-error "No non-declare subform" form))
 	  ((DECLARE/? (car exprs)) (loop (cdr exprs)))
 	  (else (if (null? (cdr exprs)) (car exprs) #F)))))
@@ -546,7 +546,7 @@ Example use of FORM/COPY-TRANSFORMING:
 		   (operator/satisfies? (quote/text rator) operator-properties)
 		   (for-all? (call/cont-and-operands expr) walk))))
 	   ((BEGIN)
-	    (cond ((begin-sans-declarations form) => walk)
+	    (cond ((begin-sans-declarations expr) => walk)
 		  (else false)))
 	   (else false)))))
 
