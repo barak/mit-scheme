@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.18 2000/05/05 17:18:14 cph Exp $
+;;; $Id: imail-imap.scm,v 1.19 2000/05/08 04:31:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -139,6 +139,17 @@
 	    (loop (car q.r) (fix:- i 1)))))
     s))
 
+(define (base26-string->nonnegative-integer s)
+  (let ((end (string-length s)))
+    (let loop ((start 0) (n 0))
+      (if (fix:< start end)
+	  (let ((digit (- (vector-8b-ref s start) (char->integer #\A))))
+	    (if (not (<= 0 digit 25))
+		(error:bad-range-argument s
+					  'BASE26-STRING->NONNEGATIVE-INTEGER))
+	    (loop (fix:+ start 1) (+ (* n 26) digit)))
+	  n))))
+
 (define (enqueue-imap-response connection response)
   (let ((queue (imap-connection-response-queue connection)))
     (let ((next (cons response '())))
@@ -227,78 +238,64 @@
 
 (define-class (<imap-folder> (constructor (url connection))) (<folder>)
   (connection define accessor)
+  (read-only? define standard)
   (allowed-flags define standard)
   (permanent-flags define standard)
   (permanent-keywords? define standard)
+  (uidnext define standard)
   (uidvalidity define standard)
-  (first-unseen define standard)
+  (unseen define standard)
   (messages define standard initial-value '#()))
 
 (define-class <imap-message> (<message>)
   (uid define accessor)
-  (length define accessor)
-  (envelope define accessor))
+  (length define accessor))
 
 (define make-imap-message
   (let ((constructor
 	 (instance-constructor <imap-message>
 			       '(HEADER-FIELDS BODY FLAGS PROPERTIES
-					       UID LENGTH ENVELOPE))))
-    (lambda (uid flags length envelope)
-      (constructor 'UNCACHED 'UNCACHED (map imap-flag->imail-flag flags)
-		   '() uid length envelope))))
+					       UID LENGTH))))
+    (lambda (uid flags rfc822.size rfc822.header)
+      (constructor (lines->header-fields
+		    (except-last-pair!
+		     (string->lines
+		      (translate-string-line-endings rfc822.header))))
+		   'UNCACHED
+		   (map imap-flag->imail-flag flags)
+		   '()
+		   uid
+		   rfc822.size))))
 
-(let ((demand-loader
-       (lambda (generic slot-name item-name noun transform)
-	 (let ((modifier (slot-modifier <imap-message> slot-name)))
-	   (define-method generic ((message <imap-message>))
-	     (if (eq? 'UNCACHED (call-next-method message))
-		 (modifier
-		  message
-		  (transform
-		   (translate-string-line-endings
-		    (car
-		     (let ((index (message-index message)))
-		       ((imail-message-wrapper "Reading " noun
-					       " for message "
-					       (number->string (+ index 1)))
-			(lambda ()
-			  (imap:command:fetch (imap-folder-connection
-					       (message-folder message))
-					      index
-					      (list item-name))))))))))
-	     (call-next-method message))))))
-  (demand-loader message-header-fields 'HEADER-FIELDS 'RFC822.HEADER "headers"
-		 (lambda (string)
-		   (lines->header-fields
-		    (except-last-pair! (string->lines string)))))
-  (demand-loader message-body 'BODY 'RFC822.TEXT "body" identity-procedure))
-
+(let ((modifier (slot-modifier <imap-message> 'BODY)))
+  (define-method message-body ((message <imap-message>))
+    (let ((body (call-next-method message)))
+      (if (eq? 'UNCACHED body)
+	  (let ((body
+		 (translate-string-line-endings
+		  (car
+		   (let ((index (message-index message)))
+		     ((imail-message-wrapper "Reading body for message "
+					     (number->string (+ index 1)))
+		      (lambda ()
+			(imap:command:fetch (imap-folder-connection
+					     (message-folder message))
+					    index
+					    '(RFC822.TEXT)))))))))
+	    (modifier message body)
+	    body)
+	  body))))
+
 (define-method set-message-flags! ((message <imap-message>) flags)
-  (call-next-method message flags)
-  (let ((old-flags (message-flags message))
-	(folder (message-folder message))
-	(index (message-index message)))
-    (let ((connection (imap-folder-connection folder))
-	  (diff
-	   (lambda (f1 f2)
-	     (map imail-flag->imap-flag
-		  (list-transform-positive (flags-difference f1 f2)
-		    (let ((flags (imap-folder-permanent-flags folder))
-			  (keywords? (imap-folder-permanent-keywords? folder)))
-		      (lambda (flag)
-			(if (string-prefix? "\\" flag)
-			    (flags-member? flag flags)
-			    keywords?))))))))
-      (imap:command:store-flags+ connection index (diff flags old-flags))
-      (imap:command:store-flags- connection index (diff old-flags flags)))))
-
-(define (flags-difference f1 f2)
-  (if (pair? f1)
-      (if (flags-member? (car f1) f2)
-	  (flags-difference (cdr f1) f2)
-	  (cons (car f1) (flags-difference (cdr f1) f2)))
-      '()))
+  (call-next-method
+   message
+   (map imap-flag->imail-flag
+	(imap:response:fetch-attribute
+	 (imap:command:store-flags
+	  (imap-folder-connection (message-folder message))
+	  (message-index message)
+	  (map imail-flag->imap-flag (flags-delete "\\recent" flags)))
+	 'FLAGS))))
 
 (define (imap-flag->imail-flag flag)
   (case flag
@@ -317,11 +314,13 @@
   (without-interrupts
    (lambda ()
      (for-each-vector-element (imap-folder-messages folder) detach-message)
+     (set-imap-folder-read-only?! folder #f)
      (set-imap-folder-allowed-flags! folder '())
      (set-imap-folder-permanent-flags! folder '())
      (set-imap-folder-permanent-keywords?! folder #f)
+     (set-imap-folder-uidnext! folder #f)
      (set-imap-folder-uidvalidity! folder #f)
-     (set-imap-folder-first-unseen! folder #f)
+     (set-imap-folder-unseen! folder #f)
      (set-imap-folder-messages! folder '#()))))
 
 (define (set-imap-folder-length! folder count)
@@ -344,7 +343,8 @@
 	  ((imail-message-wrapper "Reading message outlines")
 	   (lambda ()
 	     (imap:command:fetch-range connection 0 end
-				       '(UID FLAGS RFC822.SIZE ENVELOPE))))
+				       '(UID FLAGS RFC822.SIZE
+					     RFC822.HEADER))))
 	  (cdr responses))
 	 (index start (fix:+ index 1)))
 	((fix:= index end))
@@ -418,9 +418,9 @@
   (guarantee-imap-folder-open folder)
   (vector-ref (imap-folder-messages folder) index))
 
-(define-method first-unseen-message ((folder <imap-folder>))
+(define-method unseen-message ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)
-  (let ((unseen (imap-folder-first-unseen folder)))
+  (let ((unseen (imap-folder-unseen folder)))
     (and unseen
 	 (get-message folder unseen))))
 
@@ -492,21 +492,9 @@
 					   items))
       '()))
 
-(define (imap:command:uid-fetch connection uid items)
-  (let ((response
-	 (imap:command:single-response imap:response:fetch?
-				       connection 'UID 'FETCH uid items)))
-    (map (lambda (item)
-	   (imap:response:fetch-attribute response item))
-	 items)))
-
-(define (imap:command:store-flags+ connection index flags)
-  (if (pair? flags)
-      (imap:command:no-response connection 'STORE index '+FLAGS.SILENT flags)))
-
-(define (imap:command:store-flags- connection index flags)
-  (if (pair? flags)
-      (imap:command:no-response connection 'STORE index '-FLAGS.SILENT flags)))
+(define (imap:command:store-flags connection index flags)
+  (imap:command:single-response imap:response:fetch?
+				connection 'STORE index 'FLAGS flags))
 
 (define (imap:command:expunge connection)
   ((imail-message-wrapper "Expunging messages")
@@ -607,22 +595,25 @@
   (let ((port (imap-connection-port connection)))
     (let loop ()
       (let ((response (imap:read-server-response port)))
-	(if (imap:response:tag response)
-	    (let ((responses
-		   (process-responses
-		    connection command
-		    (dequeue-imap-responses connection))))
-	      (cond ((not (string-ci=? tag (imap:response:tag response)))
-		     (error "Out-of-sequence tag:"
-			    (imap:response:tag response) tag))
-		    ((or (imap:response:ok? response)
-			 (imap:response:no? response))
-		     (cons response responses))
-		    (else
-		     (error "IMAP protocol error:" response))))
-	    (begin
-	      (enqueue-imap-response connection response)
-	      (loop)))))))
+	(let ((tag* (imap:response:tag response)))
+	  (if tag*
+	      (let ((responses
+		     (process-responses
+		      connection command
+		      (dequeue-imap-responses connection))))
+		(if (string-ci=? tag tag*)
+		    (if (or (imap:response:ok? response)
+			    (imap:response:no? response))
+			(cons response responses)
+			(error "IMAP protocol error:" response))
+		    (if (< (base26-string->nonnegative-integer tag*)
+			   (base26-string->nonnegative-integer tag))
+			;; If this is an old tag, ignore it and move on.
+			(loop)
+			(error "Out-of-sequence tag:" tag* tag))))
+	      (begin
+		(enqueue-imap-response connection response)
+		(loop))))))))
 
 (define (process-responses connection command responses)
   (if (pair? responses)
@@ -637,12 +628,20 @@
 	 (let ((code (imap:response:response-text-code response))
 	       (string (imap:response:response-text-string response)))
 	   (if code
-	       (process-response-text connection code string))
+	       (process-response-text connection command code string))
 	   (if (and (imap:response:bye? response)
 		    (not (eq? command 'LOGOUT)))
 	       (begin
 		 (close-imap-connection connection)
 		 (error "Server shut down connection:" string))))
+	 (if (or (imap:response:no? response)
+		 (imap:response:bad? response))
+	     (imail-present-user-alert
+	      (lambda (port)
+		(write-string "Notice from IMAP server:" port)
+		(newline port)
+		(display text port)
+		(newline port))))
 	 (imap:response:preauth? response))
 	((imap:response:exists? response)
 	 (let ((count (imap:response:exists-count response))
@@ -665,32 +664,29 @@
 	 #f)
 	((imap:response:recent? response)
 	 #f)
-	((or (imap:response:capability? response)
-	     (imap:response:fetch? response)
-	     (imap:response:list? response)
-	     (imap:response:lsub? response)
-	     (imap:response:search? response)
-	     (imap:response:status? response))
-	 #t)
+	((imap:response:capability? response)
+	 (eq? command 'CAPABILITY))
+	((imap:response:list? response)
+	 (eq? command 'LIST))
+	((imap:response:lsub? response)
+	 (eq? command 'LSUB))
+	((imap:response:search? response)
+	 (eq? command 'SEARCH))
+	((imap:response:status? response)
+	 (eq? command 'STATUS))
+	((imap:response:fetch? response)
+	 (memq command '(FETCH STORE)))
 	(else
 	 (error "Illegal server response:" response))))
 
-(define (process-response-text connection code text)
-  (cond ((imap:response-code:uidvalidity? code)
-	 (let ((folder (selected-imap-folder connection))
-	       (uidvalidity (imap:response-code:uidvalidity code)))
-	   (if (let ((uidvalidity* (imap-folder-uidvalidity folder)))
-		 (or (not uidvalidity*)
-		     (> uidvalidity uidvalidity*)))
-	       (forget-imap-folder-messages! folder))
-	   (set-imap-folder-uidvalidity! folder uidvalidity)
-	   (folder-modified! folder)))
-	((imap:response-code:unseen? code)
-	 (let ((folder (selected-imap-folder connection)))
-	   (set-imap-folder-first-unseen!
-	    folder
-	    (- (imap:response-code:unseen code) 1))
-	   (folder-modified! folder)))
+(define (process-response-text connection command code text)
+  (cond ((imap:response-code:alert? code)
+	 (imail-present-user-alert
+	  (lambda (port)
+	    (write-string "Alert from IMAP server:" port)
+	    (newline port)
+	    (display text port)
+	    (newline port))))
 	((imap:response-code:permanentflags? code)
 	 (let ((pflags (imap:response-code:permanentflags code))
 	       (folder (selected-imap-folder connection)))
@@ -701,18 +697,37 @@
 	    folder
 	    (map imap-flag->imail-flag (delq '\* pflags)))
 	   (folder-modified! folder)))
-	((imap:response-code:alert? code)
-	 (imail-present-user-alert
-	  (lambda (port)
-	    (write-string "Alert from IMAP server:" port)
-	    (newline port)
-	    (display text port)
-	    (newline port))))
+	((imap:response-code:read-only? code)
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-read-only?! folder #t)
+	   (folder-modified! folder)))
+	((imap:response-code:read-write? code)
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-read-only?! folder #f)
+	   (folder-modified! folder)))
+	((imap:response-code:uidnext? code)
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-uidnext! folder (imap:response-code:uidnext code))
+	   (folder-modified! folder)))
+	((imap:response-code:uidvalidity? code)
+	 (let ((folder (selected-imap-folder connection))
+	       (uidvalidity (imap:response-code:uidvalidity code)))
+	   (if (let ((uidvalidity* (imap-folder-uidvalidity folder)))
+		 (or (not uidvalidity*)
+		     (> uidvalidity uidvalidity*)))
+	       (forget-imap-folder-messages! folder))
+	   (set-imap-folder-uidvalidity! folder uidvalidity)
+	   (folder-modified! folder)))
+	((imap:response-code:unseen? code)
+	 (let ((folder (selected-imap-folder connection)))
+	   (set-imap-folder-unseen!
+	    folder
+	    (- (imap:response-code:unseen code) 1))
+	   (folder-modified! folder)))
 	#|
-	((or (imap:response-code:newname? code)
+	((or (imap:response-code:badcharset? code)
+	     (imap:response-code:newname? code)
 	     (imap:response-code:parse? code)
-	     (imap:response-code:read-only? code)
-	     (imap:response-code:read-write? code)
 	     (imap:response-code:trycreate? code))
 	 unspecific)
 	|#
