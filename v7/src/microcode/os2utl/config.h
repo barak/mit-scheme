@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.2 2000/12/05 21:23:51 cph Exp $
+$Id: config.h,v 1.3 2001/03/01 05:23:53 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -67,6 +67,12 @@ typedef long ssize_t;
 
 /* Define if architecture has native-code compiler support.  */
 #define HAS_COMPILER_SUPPORT 1
+
+/* Define if you have the <blowfish.h> header file.  */
+#define HAVE_BLOWFISH_H 1
+
+/* Define if you have the <md5.h> header file.  */
+#define HAVE_MD5_H 1
 
 /* Include the shared configuration header.  */
 #include "confshared.h"
