@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Id: y300.lcl,v 1.21 1992/10/01 19:01:44 cph Exp $
+   $Id: y300.lcl,v 1.22 1992/12/04 01:25:35 nick Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -56,6 +56,15 @@ LYN_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS)\
 LYN_LIB =  $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB)\
 	-lm
 
+
+SIG_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS)\
+	SOURCES_SYSTEM SOURCES_MACHINE fft.c array.c image.c
+SIG_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS)\
+	OBJECTS_SYSTEM OBJECTS_MACHINE fft.o array.o image.o usrSIG.o
+SIG_LIB =  $(USER_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+
+
 world: all scm6003 kitscheme
 
 everything: world Ppband
@@ -105,3 +114,15 @@ usrLYN.c : $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xm
 	./Findprim $(LYN_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrLYN.c
 
 gpio.o : gpio.c scheme.touch prims.h
+
+
+scmsig : $(COMMON_OBJECTS) $(SIG_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
+	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(SIG_OBJECTS) $(SIG_LIB)
+
+usrSIG.c : $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.touch Findprim xmakefile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usrSIG.c
+	./Findprim $(SIG_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrSIG.c
+
