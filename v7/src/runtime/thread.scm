@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.33 1999/03/26 01:44:10 cph Exp $
+$Id: thread.scm,v 1.34 2001/04/03 03:44:02 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -862,10 +862,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (%maybe-toggle-thread-timer)
   (cond ((and timer-interval
-	      (let ((current-thread first-running-thread))
-		(and current-thread
-		     (or (thread/next current-thread)
-			 input-registrations))))
+	      (or input-registrations
+		  (let ((current-thread first-running-thread))
+		    (and current-thread
+			 (thread/next current-thread)))))
 	 (%start-thread-timer timer-interval #t))
 	(timer-records
 	 (let ((next-event-time (timer-record/time timer-records)))
