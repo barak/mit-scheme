@@ -37,6 +37,8 @@
 
 ;;;; Symbol Tables
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.37 1986/12/16 06:25:33 cph Exp $
+
 (declare (usual-integrations))
 
 (define (make-symbol-table)
@@ -52,7 +54,7 @@
   (let ((entry (assq key (cdr table))))
     (if entry
 	(cdr entry)
-	(let ((nothing (vector #!FALSE '())))
+	(let ((nothing (vector #F '())))
 	  (set-cdr! table (cons (cons key nothing) (cdr table)))
 	  nothing))))
 
@@ -61,7 +63,13 @@
     (or (and entry (vector-ref (cdr entry) 0))
 	(error "SYMBOL-TABLE-VALUE: Undefined key" key))))
 
-(define (binding-value binding)
+(define (symbol-table-undefined-names table)
+  (let loop ((entries (cdr table)))
+    (cond ((null? entries) '())
+	  ((binding-value (cdr (car entries))) (loop (cdr entries)))
+	  (else (cons (car (car entries)) (loop (cdr entries)))))))
+
+(define-integrable (binding-value binding)
   (vector-ref binding 0))
 
 (define (set-binding-value! binding value)
