@@ -1,0 +1,22 @@
+/* These extra files are for 6003.  They assume we're using HP-UX. */
+6003_SOURCES = SOURCES_SYSTEM SOURCES_MACHINE starbase.c Sgraph.c SgX.c\
+	Sgraph_xt.c Sgraph_ar.c fft.c array.c image.c
+6003_OBJECTS = OBJECTS_SYSTEM OBJECTS_MACHINE starbase.o Sgraph.o SgX.o\
+	Sgraph_xt.o Sgraph_ar.o fft.o array.o image.o usr6003.o
+6003_LIB = -ltermcap -ldd300h -ldd98700 -ldd98710 -lddXn -lddhil\
+	-lsb1 -lsb2 -lXhp -lXr -lX LIB_MATH
+
+world: all bchscheme scm6003
+
+everything: world Bintopsb Ppband
+
+scm6003 : $(OBJECTS) $(6003_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	-mv -f $@ $@.busy
+	rm -f $@.busy
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(6003_OBJECTS) $(6003_LIB)
+
+usr6003.c : $(6003_SOURCES) $(SOURCES) usrdef.touch Findprim xmakefile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usr6003.c
+	./Findprim $(6003_SOURCES) $(SOURCES) > usr6003.c
