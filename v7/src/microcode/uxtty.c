@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.6 1992/01/20 17:24:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtty.c,v 1.7 1992/01/20 18:50:53 jinx Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
@@ -188,7 +188,7 @@ DEFUN_VOID (UX_initialize_tty)
     tty_command_clear = "\f";
   else
     {
-      extern void EXFUN (tputs, (char *, int, void (*) (char)));
+      extern void EXFUN (tputs, (const char *, int, void (*) (char)));
       char * command = tputs_output_scan;
       tputs (tty_command_clear, tty_y_size, tputs_write_char);
       (*tputs_output_scan++) = '\0';
