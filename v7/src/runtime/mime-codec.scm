@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 14.9 2001/02/08 17:16:05 cph Exp $
+;;; $Id: mime-codec.scm,v 14.10 2001/09/10 00:49:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -257,8 +257,7 @@
 		context
 		(decode-qp-pending-string pending string end* end)))
 	      ((not pending)
-	       (if (and (eq? type 'LINE-END)
-			(qp-decoding-context/text? context))
+	       (if (eq? type 'LINE-END)
 		   ;; Hard line break.
 		   (newline port)))
 	      ((eqv? pending #\=)
