@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.65 2000/07/05 22:37:58 cph Exp $
+;;; $Id: sendmail.scm,v 1.66 2000/07/05 22:57:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -943,15 +943,18 @@ the user from the mailer."
 			      #f)))
 	      (lambda (initialize update finalize text?)
 		(let ((context (initialize output-port text?)))
-		  (call-with-input-file (mime-attachment-pathname attachment)
-		    (lambda (input-port)
-		      (let ((buffer (make-string 4096)))
-			(let loop ()
-			  (let ((n-read (read-string! buffer input-port)))
-			    (if (> n-read 0)
-				(begin
-				  (update context buffer 0 n-read)
-				  (loop))))))))
+		  ((if (eq? type 'TEXT)
+		       call-with-input-file
+		       call-with-binary-input-file)
+		   (mime-attachment-pathname attachment)
+		   (lambda (input-port)
+		     (let ((buffer (make-string 4096)))
+		       (let loop ()
+			 (let ((n-read (read-string! buffer input-port)))
+			   (if (> n-read 0)
+			       (begin
+				 (update context buffer 0 n-read)
+				 (loop))))))))
 		  (finalize context)))))))))
 
 (define (enable-buffer-mime-processing! buffer)
