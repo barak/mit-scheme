@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.4 1987/05/04 23:51:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.5 1987/05/08 02:33:21 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -466,30 +466,34 @@ MIT in each case. |#
 	;; Simple LET-like combination.  Delete any unreferenced
 	;; parameters.  If no parameters remain, delete the
 	;; combination and lambda.
-	(let ((body (procedure/body operator)))
-	  (transmit-values ((delete-unused-parameters (free/expression body))
-			    (procedure/required operator)
-			    operands)
-	    (lambda (required operands)
-	      (if (null? required)
-		  body
-		  (combination/make (procedure/make (procedure/block operator)
-						    (procedure/name operator)
-						    required '() false body)
-				    operands)))))
+	(transmit-values ((delete-integrated-parameters
+			   (declarations/integrated-variables
+			    (block/declarations (procedure/block operator))))
+			  (procedure/required operator)
+			  operands)
+	  (lambda (required operands)
+	    (if (null? required)
+		(procedure/body operator)
+		(combination/make (procedure/make (procedure/block operator)
+						  (procedure/name operator)
+						  required
+						  '()
+						  false
+						  (procedure/body operator))
+				  operands))))
 	(combination/make operator operands))))
 
-(define (delete-unused-parameters referenced)
+(define (delete-integrated-parameters integrated)
   (define (loop parameters operands)
     (if (null? parameters)
 	(return-2 '() operands)
 	(let ((rest (loop (cdr parameters) (cdr operands))))
-	  (if (memq (car parameters) referenced)
+	  (if (memq (car parameters) integrated)
+	      rest
 	      (transmit-values rest
 		(lambda (parameters* operands*)
 		  (return-2 (cons (car parameters) parameters*)
-			    (cons (car operands) operands*))))
-	      rest))))
+			    (cons (car operands) operands*))))))))
   loop)
 
 ;;; end COMBINATION/OPTIMIZING-MAKE
