@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.14 1995/07/27 22:00:28 adams Exp $
+$Id: scomb.scm,v 14.15 1997/07/15 17:29:56 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -197,8 +197,7 @@ MIT in each case. |#
 (define (conditional? object)
   (object-type? (ucode-type conditional) object))
 
-(define undefined-conditional-branch
-  (object-new-type (ucode-type constant) #x-800000))
+(define undefined-conditional-branch unspecific)
 
 (define-integrable (conditional-predicate conditional)
   (&triple-first conditional))
