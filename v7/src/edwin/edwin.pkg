@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.155 1994/11/02 19:40:18 adams Exp $
+$Id: edwin.pkg,v 1.156 1994/12/19 20:38:55 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -35,12 +35,13 @@ MIT in each case. |#
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
-(global-definitions "../win32/win32")
+;;(global-definitions "../win32/win32")
 
 (define-package (edwin)
   (file-case os-type
     ((unix) "unix")
-    ((dos nt)  "dos"))
+    ((dos nt) "dos")
+    ((os/2) "os2"))
   (files "utils"
 	 "nvector"
 	 "ring"
@@ -921,7 +922,7 @@ MIT in each case. |#
 
 ;;;; This is the variant used under DOS and NT (for now)
 
-#||#
+#|
 (define-package (edwin process)
   (file-case os-type
     ((dos nt)  "dosproc"))
@@ -940,10 +941,10 @@ MIT in each case. |#
   (file-case os-type
     ((dos) "doscom" "dosshell"))
   (parent (edwin)))
-#||#
+|#
 
 ;;;; This is the variant used under Unix/X
-#|
+
 (define-package (edwin process)
   (file-case os-type
     ((unix) "process")
@@ -1000,7 +1001,6 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
-|#
 
 (define-package (edwin screen x-screen)
   (files "xterm")
@@ -1015,7 +1015,7 @@ MIT in each case. |#
 	  xterm-screen/set-name)
   (initialization (initialize-package!)))
 
-#| PC only: |#
+#| PC only:
 (define-package (edwin screen win32)
   (files "win32")
   (parent (edwin screen))
@@ -1047,7 +1047,7 @@ MIT in each case. |#
 	  end ; the END key
 	  )
   (initialization (initialize-package!)))
-#| End PC only|#
+|#
 
 (define-package (edwin x-commands)
   (files "xcom")
@@ -1086,7 +1086,6 @@ MIT in each case. |#
   (export (edwin screen x-screen)
 	  update-xterm-screen-names!))
 
-
 (define-package (edwin win-commands)
   (files "win32com")
   (parent (edwin))
