@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.10 1993/11/09 06:38:55 gjr Exp $
+$Id: liarc.h,v 1.11 1993/11/13 03:20:21 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -35,6 +35,20 @@ MIT in each case. */
 #ifndef LIARC_INCLUDED
 #define LIARC_INCLUDED
 
+#ifndef COMPILE_FOR_STATIC_LINKING
+#ifndef COMPILE_FOR_DYNAMIC_LOADING
+#define COMPILE_FOR_DYNAMIC_LOADING
+#endif
+#endif
+
+#ifndef MIT_SCHEME
+#defien MIT_SCHEME
+#endif
+
+#ifndef NATIVE_CODE_IS_C
+#define NATIVE_CODE_IS_C
+#endif
+
 #include <stdio.h>
 #include "ansidecl.h"
 #include "config.h"
@@ -64,7 +78,7 @@ extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
 extern SCHEME_OBJECT * Ext_Stack_Pointer;
 extern SCHEME_OBJECT Registers[];
-
+
 union machine_word_u
 {
   SCHEME_OBJECT Obj;
@@ -76,7 +90,7 @@ union machine_word_u
 };
 
 typedef union machine_word_u machine_word;
-
+
 #define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
 #define ADDRESS_UNITS_PER_FLOAT		(sizeof (double))
 

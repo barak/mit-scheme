@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.85 1993/11/11 20:18:25 cph Exp $
+$Id: ymkfile,v 1.86 1993/11/13 03:20:15 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -261,7 +261,7 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 
 COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
 
-MACHINE_SWITCHES = -DNATIVE_CODE_IS_C
+MACHINE_SWITCHES = -DNATIVE_CODE_IS_C -DCOMPILE_FOR_STATIC_LINKING
 MACHINE_SOURCES = cmpauxmd.c cmpint.c compinit.c $(COMPILED_SOURCES)
 MACHINE_OBJECTS = cmpauxmd.o cmpint.o compinit.o $(COMPILED_OBJECTS)
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
