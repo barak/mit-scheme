@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.76 1993/12/07 20:35:50 gjr Exp $
+$Id: bchdmp.c,v 9.77 1993/12/11 20:32:23 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -222,6 +222,7 @@ static Boolean compiled_code_present_p;
     SCHEME_OBJECT * Saved_Old = Old;					\
 									\
     fasdump_remember_to_fix (Old, (* Old));				\
+    FLOAT_ALIGN_FREE (To_Address, To);					\
     New_Address = (MAKE_BROKEN_HEART (To_Address));			\
     copy_vector (&success);						\
     if (!success)							\
