@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.50 1990/02/11 22:34:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.51 1990/02/13 16:11:07 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -847,7 +847,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Trapping = false;
   Return_Hook_Address = NULL;
   History = Make_Dummy_History();
-  Prev_Restore_History_Stacklet = ((SCHEME_OBJECT *) SHARP_F);
+  Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = 0;
 
   end_band_load(true, false);
