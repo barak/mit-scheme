@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.16 2001/12/17 17:40:58 cph Exp $
+$Id: toplev.scm,v 1.17 2002/03/14 04:58:39 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,50 +25,60 @@ USA.
 (declare (usual-integrations))
 
 (define (generate/common kernel)
-  (lambda (filename)
-    (let ((pathname (merge-pathnames filename)))
-      (let ((pmodel (read-package-model pathname)))
-	(let ((changes? (read-file-analyses! pmodel)))
+  (lambda (filename #!optional os-type)
+    (let ((pathname (merge-pathnames filename))
+	  (os-type
+	   (if (or (default-object? os-type) (not os-type))
+	       microcode-id/operating-system
+	       os-type)))
+      (let ((pmodel (read-package-model pathname os-type)))
+	(let ((changes? (read-file-analyses! pmodel os-type)))
 	  (resolve-references! pmodel)
-	  (kernel pathname pmodel changes?))))))
+	  (kernel pathname pmodel changes? os-type))))))
 
-(define (cref/generate-trivial-constructor filename)
+(define (cref/generate-trivial-constructor filename #!optional os-type)
   (let ((pathname (merge-pathnames filename)))
-    (write-external-descriptions pathname (read-package-model pathname) #f)))
+    (write-external-descriptions pathname
+				 (read-package-model pathname)
+				 #f
+				 (if (or (default-object? os-type)
+					 (not os-type))
+				     microcode-id/operating-system
+				     os-type))))
 
 (define cref/generate-cref
   (generate/common
-   (lambda (pathname pmodel changes?)
-     (write-cref pathname pmodel changes?))))
+   (lambda (pathname pmodel changes? os-type)
+     (write-cref pathname pmodel changes? os-type))))
 
 (define cref/generate-cref-unusual
   (generate/common
-   (lambda (pathname pmodel changes?)
-     (write-cref-unusual pathname pmodel changes?))))
+   (lambda (pathname pmodel changes? os-type)
+     (write-cref-unusual pathname pmodel changes? os-type))))
 
 (define cref/generate-constructors
   (generate/common
-   (lambda (pathname pmodel changes?)
-     (write-cref-unusual pathname pmodel changes?)
-     (write-external-descriptions pathname pmodel changes?))))
+   (lambda (pathname pmodel changes? os-type)
+     (write-cref-unusual pathname pmodel changes? os-type)
+     (write-external-descriptions pathname pmodel changes? os-type))))
 
 (define cref/generate-all
   (generate/common
-   (lambda (pathname pmodel changes?)
-     (write-cref pathname pmodel changes?)
-     (write-external-descriptions pathname pmodel changes?))))
+   (lambda (pathname pmodel changes? os-type)
+     (write-cref pathname pmodel changes? os-type)
+     (write-external-descriptions pathname pmodel changes? os-type))))
 
-(define (write-external-descriptions pathname pmodel changes?)
-  (let ((package-set (package-set-pathname pathname)))
+(define (write-external-descriptions pathname pmodel changes? os-type)
+  (let ((package-set (package-set-pathname pathname os-type)))
     (if (or changes?
 	    (not (file-modification-time<?
 		  (pathname-default-type pathname "pkg")
 		  package-set)))
 	(fasdump (construct-external-descriptions pmodel) package-set))))
 
-(define (write-cref pathname pmodel changes?)
+(define (write-cref pathname pmodel changes? os-type)
   (let ((cref-pathname
-	 (pathname-new-type (package-set-pathname pathname) "crf")))
+	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
 	    (not (file-modification-time<?
 		  (pathname-default-type pathname "pkg")
@@ -77,9 +87,9 @@ USA.
 	  (lambda ()
 	    (format-packages pmodel))))))
 
-(define (write-cref-unusual pathname pmodel changes?)
+(define (write-cref-unusual pathname pmodel changes? os-type)
   (let ((cref-pathname
-	 (pathname-new-type (package-set-pathname pathname) "crf")))
+	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
 	    (not (file-modification-time<?
 		  (pathname-default-type pathname "pkg")

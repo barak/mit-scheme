@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.25 2001/12/19 01:54:09 cph Exp $
+$Id: redpkg.scm,v 1.26 2002/03/14 04:58:51 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,11 +25,11 @@ USA.
 (declare (usual-integrations)
 	 (integrate-external "object"))
 
-(define (read-package-model filename)
+(define (read-package-model filename os-type)
   (let ((model-pathname (merge-pathnames filename)))
     (with-values
 	(lambda ()
-	  (sort-descriptions (read-and-parse-model model-pathname)))
+	  (sort-descriptions (read-and-parse-model model-pathname os-type)))
       (lambda (packages extensions loads globals)
 	(descriptions->pmodel
 	 packages
@@ -40,7 +40,8 @@ USA.
 		 (->namestring pathname)
 		 (let ((pathname
 			(package-set-pathname
-			 (merge-pathnames pathname model-pathname))))
+			 (merge-pathnames pathname model-pathname)
+			 os-type)))
 		   (if (file-exists? pathname)
 		       (let ((contents (fasload pathname)))
 			 (if (package-file? contents)
@@ -110,8 +111,8 @@ USA.
       (pair? (package-description/initializations description))
       (pair? (package-description/finalizations description))))
 
-(define (read-file-analyses! pmodel)
-  (call-with-values (lambda () (cache-file-analyses! pmodel))
+(define (read-file-analyses! pmodel os-type)
+  (call-with-values (lambda () (cache-file-analyses! pmodel os-type))
     (lambda (analyses changes?)
       (for-each (lambda (p&c)
 		  (record-file-analysis! pmodel
@@ -129,9 +130,10 @@ USA.
   (time #f)
   (data #f))
 
-(define (cache-file-analyses! pmodel)
+(define (cache-file-analyses! pmodel os-type)
   (let ((pathname
-	 (pathname-new-type (package-set-pathname (pmodel/pathname pmodel))
+	 (pathname-new-type (package-set-pathname (pmodel/pathname pmodel)
+						  os-type)
 			    "fre"))
 	(changes? (list #f)))
     (let ((result
@@ -232,17 +234,18 @@ USA.
 
 ;;;; Package Descriptions
 
-(define (read-and-parse-model pathname)
+(define (read-and-parse-model pathname os-type)
   (parse-package-expressions
    (read-file (pathname-default-type pathname "pkg"))
-   pathname))
+   pathname
+   os-type))
 
-(define (parse-package-expressions expressions pathname)
+(define (parse-package-expressions expressions pathname os-type)
   (map (lambda (expression)
-	 (parse-package-expression expression pathname))
+	 (parse-package-expression expression pathname os-type))
        expressions))
 
-(define (parse-package-expression expression pathname)
+(define (parse-package-expression expression pathname os-type)
   (let ((lose
 	 (lambda ()
 	   (error "Ill-formed package expression:" expression))))
@@ -278,8 +281,10 @@ USA.
 	       (cond ((null? clauses)
 		      '())
 		     ((or (eq? 'ELSE (caar clauses))
-			  (memq microcode-id/operating-system (caar clauses)))
-		      (parse-package-expressions (cdar clauses) pathname))
+			  (memq os-type (caar clauses)))
+		      (parse-package-expressions (cdar clauses)
+						 pathname
+						 os-type))
 		     (else
 		      (loop (cdr clauses)))))))
       ((INCLUDE)
@@ -289,7 +294,8 @@ USA.
 		   (lose))
 	       (append-map (lambda (filename)
 			     (read-and-parse-model
-			      (merge-pathnames filename pathname)))
+			      (merge-pathnames filename pathname)
+			      os-type))
 			   filenames))))
       (else
        (lose)))))
