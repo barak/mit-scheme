@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.14 1993/11/09 04:30:49 gjr Exp $
+$Id: cout.scm,v 1.15 1993/11/13 19:24:04 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define *C-procedure-name* 'DEFAULT)
+(define *disable-timestamps?* false)
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   (define (stringify-object x)
@@ -51,15 +52,17 @@ MIT in each case. |#
 	   (error "stringify: Unknown frob" x))))
 
   (define (make-time-stamp)
-    (let ((time (get-decoded-time)))
-      (string-append
-       "_"
-       (number->string (decoded-time/second time)) "_"
-       (number->string (decoded-time/minute time)) "_"
-       (number->string (decoded-time/hour time)) "_"
-       (number->string (decoded-time/day time)) "_"
-       (number->string (decoded-time/month time)) "_"
-       (number->string (decoded-time/year time)))))
+    (if *disable-timestamps?*
+	"_timestamp"
+	(let ((time (get-decoded-time)))
+	  (string-append
+	   "_"
+	   (number->string (decoded-time/second time)) "_"
+	   (number->string (decoded-time/minute time)) "_"
+	   (number->string (decoded-time/hour time)) "_"
+	   (number->string (decoded-time/day time)) "_"
+	   (number->string (decoded-time/month time)) "_"
+	   (number->string (decoded-time/year time))))))
 
   (define (->variable-declarations vars)
     (if (null? vars)
