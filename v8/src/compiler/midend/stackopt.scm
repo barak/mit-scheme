@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.7 1995/04/08 04:38:22 adams Exp $
+$Id: stackopt.scm,v 1.8 1995/04/14 04:34:10 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -365,8 +365,9 @@ End of Big Note A |#
 
 
 (define (stackopt/fat-procedure state lambda-body match-result)
-  (if state
-      (internal-error "Model exists at non-continuation lambda!" state))
+  ;;Following test wrong: (lambda () (subproblem) (lambda (a1 ... a100) ...))
+  ;;(if state
+  ;;    (internal-error "Model exists at non-continuation lambda!" state))
   (let* ((frame-vector  (cadr (assq stackopt/?frame-vector match-result)))
 	 (frame-name    (cadr (assq stackopt/?frame-name match-result)))
 	 (model  (stackopt/model/make #F (vector-copy frame-vector) frame-name
