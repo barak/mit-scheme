@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: wabbit.c,v 1.5 1997/07/14 17:59:57 adams Exp $
+$Id: wabbit.c,v 1.6 1997/07/14 19:38:35 adams Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -932,6 +932,10 @@ DEFUN (kill_da_wabbit, (where, current_object),
 }
 
 /* Alternate version of Fix_Weak_Chain that hunts wabbits. */
+
+#ifndef EMPTY_WEAK_CHAIN
+#define EMPTY_WEAK_CHAIN EMPTY_LIST
+#endif
 
 void
 DEFUN_VOID (fix_weak_chain_and_hunt_wabbits)
