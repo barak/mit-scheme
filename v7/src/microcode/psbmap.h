@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.24 1987/11/20 08:13:32 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.25 1987/11/23 04:55:56 cph Rel $
  *
  * This file contains macros and declarations for Bintopsb.c
  * and Psbtobin.c
@@ -52,7 +52,7 @@ MIT in each case. */
 #include "sdata.h"
 #include "const.h"
 #include "gccode.h"
-#include "character.h"
+#include "char.h"
 
 #ifdef HAS_FREXP
 extern double frexp(), ldexp();
