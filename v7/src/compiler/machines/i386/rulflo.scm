@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.2 1992/02/01 20:08:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.3 1992/02/02 17:13:29 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -181,7 +181,7 @@ MIT in each case. |#
 
 (define flonum-methods/2-args
   (list 'FLONUM-METHODS/2-ARGS))
-
+
 (let-syntax
     ((define-flonum-operation
        (macro (primitive-name op1%2 op1%2p op2%1 op2%1p)
@@ -213,54 +213,94 @@ MIT in each case. |#
   (define-flonum-operation flonum-multiply fmul fmulp fmul fmulp)
   (define-flonum-operation flonum-divide fdiv fdivp fdivr fdivpr))
 
-;; **** Missing: (define-flonum-operation flonum-remainder fprem1) ***
+(define-arithmetic-method 'flonum-remainder flonum-methods/2-args
+  (flonum-binary-operation
+   (lambda (target source1 source2)
+     (if (zero? source2)
+	 (LAP (FLD D (ST ,source1))
+	      (FPREM1)
+	      (FSTP D (ST ,(1+ target))))
+	 #|
+	 ;; This sequence is one cycle shorter than the one below,
+	 ;; but needs two spare stack locations instead of 1.
+	 ;; Since FPREM1 is a variable, very slow instruction,
+	 ;; the difference in time will hardly be noticeable
+	 ;; but the availability of an extra "register" may be.
+	 (LAP (FLD D (ST ,source2))
+	      (FLD D (ST ,source1))
+	      (FPREM1)
+	      (FSTP D (ST ,(+ target 2)))
+	      (FSTP D (ST 0)))		; FPOP
+	 |#
+	 (LAP (FXCH (ST ,source2))
+	      (FLD D (ST ,(if (zero? source1)
+			      source2
+			      source1)))
+	      (FPREM1)
+	      (FSTP D (ST ,(1+ (if (= target source2)
+				   0
+				   target))))
+	      (FXCH (ST ,source2)))))))
 
 ;;;; Flonum Predicates
 
-;; **** Here ****
-
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
-  #|
-  ;; No immediate zeros, easy to generate by subtracting from itself
-  (let ((temp (flonum-temporary!)))
-    (LAP (FSUB (DBL) ,temp ,temp ,temp)
-	 ,@(flonum-compare
-	    (case predicate
-	      ((FLONUM-ZERO?) '=)
-	      ((FLONUM-NEGATIVE?) '<)
-	      ((FLONUM-POSITIVE?) '>)
-	      (else (error "unknown flonum predicate" predicate)))
-	    (flonum-source! source)
-	    temp)))
-  |#
-  ;; The status register (fr0) reads as 0 for non-store instructions.
-  (flonum-compare (case predicate
-		    ((FLONUM-ZERO?) '=)
-		    ((FLONUM-NEGATIVE?) '<)
-		    ((FLONUM-POSITIVE?) '>)
-		    (else (error "unknown flonum predicate" predicate)))
-		  (flonum-source! source)
-		  0))
+  (let ((sti (flonum-source! source)))
+    (if (zero? sti)
+	(flonum-branch! predicate
+			(LAP (FTST)))
+	(flonum-branch! (commute-flonum-predicate predicate)
+			(LAP (FLDZ)
+			     (FCOMP D (ST ,(1+ sti))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
-  (flonum-compare (case predicate
-		    ((FLONUM-EQUAL?) '=)
-		    ((FLONUM-LESS?) '<)
-		    ((FLONUM-GREATER?) '>)
-		    (else (error "unknown flonum predicate" predicate)))
-		  (flonum-source! source1)
-		  (flonum-source! source2)))
+  (let* ((st1 (flonum-source! source1))
+	 (st2 (flonum-source! source2)))
+    (cond ((zero? st1)
+	   (flonum-branch! predicate
+			   (LAP (FCOM D (ST ,st2)))))
+	  ((zero? st2)
+	   (flonum-branch! (commute-flonum-predicate predicate)
+			   (LAP (FCOM D (ST ,st1)))))
+	  (else
+	   (flonum-branch! predicate
+			   (LAP (FLD D (ST ,st1))
+				(FCOMP D (ST ,(1+ st2)))))))))
 
-(define (flonum-compare cc r1 r2)
-  (set-current-branches!
-   (lambda (label)
-     (LAP (B (N) (@PCR ,label))))
-   (lambda (label)
-     (LAP (SKIP (TR))
-	  (B (N) (@PCR ,label)))))
-  (LAP (FCMP (,(invert-condition cc) DBL) ,r1 ,r2)
-       (FTEST ())))
+(define (commute-flonum-predicate pred)
+  (case pred
+    ((FLONUM-EQUAL?) 'FLONUM-EQUAL?)
+    ((FLONUM-LESS?) 'FLONUM-GREATER?)
+    ((FLONUM-GREATER?) 'FLONUM-LESS?)
+    (else
+     (error "commute-flonum-predicate: Unknown predicate" pred))))
+
+(define (flonum-branch! predicate prefix)
+  (case predicate
+    ((FLONUM-ZERO? FLONUM-EQUAL?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JE (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JNE (@PCR ,label))))))
+    ((FLONUM-NEGATIVE? FLONUM-LESS?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JB (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JAE (@PCR ,label))))))
+    ((FLONUM-POSITIVE? FLONUM-GREATER?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JA (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JBE (@PCR ,label))))))
+    (else
+     (error "flonum-branch!: Unknown predicate" predicate)))
+  (flush-register! eax)
+  (LAP ,@prefix
+       (FSTSW (R ,eax))
+       (SAHF)))
+
+;; **** Missing: 2 argument operations and predicates with constants! ****
