@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: kmacro.scm,v 1.47 2003/02/14 18:28:12 cph Exp $
+$Id: kmacro.scm,v 1.48 2005/02/18 01:05:34 cph Exp $
 
-Copyright 1985, 1989-2001 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -179,7 +180,7 @@ With argument, also record the keys it is bound to."
 					 #f
 					 named-keyboard-macros
 					 'DEFAULT-TYPE 'NO-DEFAULT
-					 'REQUIRE-MATCH #t)))
+					 'REQUIRE-MATCH? #t)))
       (let ((pathname
 	     (prompt-for-pathname (string-append "Write keyboard macro "
 						 name
