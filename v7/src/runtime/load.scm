@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.37 1992/05/30 16:47:40 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.38 1992/08/12 01:08:14 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
   (set! load/default-types '("com" "bin" "scm"))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! fasload/default-types '("com" "bin"))
+  (initialize-command-line-parsers)
   (set! hook/process-command-line default/process-command-line)
   (add-event-receiver! event:after-restart process-command-line))
 
@@ -285,60 +286,94 @@ MIT in each case. |#
   (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
 
 (define hook/process-command-line)
+
+(define *command-line-parsers* '())
+
+(define (set-command-line-parser! keyword proc)
+  (if (or (not (string? keyword))
+	  (< (string-length keyword) 2)
+	  (not (char=? (string-ref keyword 0) #\-)))
+      (error "set-command-line-parser!: Invalid keyword" keyword))
+  (let ((place (assoc keyword *command-line-parsers*)))
+    (if place
+	(set-cdr! place proc)
+	(begin
+	  (set! *command-line-parsers*
+		(cons (cons keyword proc)
+		      *command-line-parsers*))
+	  unspecific))))
+
+(define *load-init-file?*)
+
 (define (default/process-command-line unused-command-line)
-  (if unused-command-line
-      (letrec ((unused-command-line-length (vector-length unused-command-line))
-	       (unused-for-each
-		(lambda (proc start end)
-		  (if (< start end)
-		      (begin (proc (vector-ref unused-command-line start))
-			     (unused-for-each proc (1+ start) end)))))
-	       (find-first-dash
-		(lambda (index)
-		  (let loop ((index index))
-		    (if (= index unused-command-line-length)
-			unused-command-line-length
-			(let ((first (vector-ref unused-command-line index)))
-			  (cond ((zero? (string-length first))
-				 (loop (1+ index)))
-				((char=? (string-ref first 0) #\-)
-				 index)
-				(else (loop (1+ index))))))))))
-	(let find-no-init-file-option ((index 0))
-	  (if (= index unused-command-line-length)
-	      (load-init-file)
-	      (or (string=?
-		   "-no-init-file"
-		   (string-downcase (vector-ref unused-command-line index)))
-		  (find-no-init-file-option (1+ index)))))
-	(let process-next-option ((index 0)
-				  (unhandled-options '()))
-	  (if (= index unused-command-line-length)
-	      (if (not (null? unhandled-options))
-		  (warn "Unhandled command line options:"
-			(reverse unhandled-options)))
-	      (let ((option
-		     (string-downcase (vector-ref unused-command-line index))))
-		(cond ((string=? "-no-init-file" option)
-		       (process-next-option (1+ index) unhandled-options))
-		      ((string=? "-eval" option)
-		       (let ((next-option (find-first-dash (1+ index))))
-			 (unused-for-each
-			  (lambda (string)
-			    (eval (with-input-from-string string read)
-				  user-initial-environment))
-			  (1+ index)
-			  next-option)
-			 (process-next-option next-option unhandled-options)))
-		      ((string=? "-load" option)
-		       (let ((next-option (find-first-dash (1+ index))))
-			 (unused-for-each load (1+ index) next-option)
-			 (process-next-option next-option unhandled-options)))
-		      (else (process-next-option
-			     (1+ index)
-			     (cons (vector-ref unused-command-line index)
-				   unhandled-options))))))))
-      (load-init-file)))
+  (define (process-keyword command-line unused-options)
+    (cond ((not (null? command-line))
+	   (let* ((keyword (car command-line))
+		  (place (assoc keyword *command-line-parsers*)))
+	     (cond (place
+		    (process-keyword ((cdr place) command-line)
+				     unused-options))
+		   ((zero? (string-length keyword))
+		    (process-keyword (cdr command-line)
+				     unused-options))
+		   (else
+		    (if (or (not (char=? (string-ref keyword 0) #\-))
+			    (= (string-length keyword) 1))
+			(warn "process-command-line: Invalid keyword" keyword))
+		    (find-next-keyword (cdr command-line)
+				       (cons (car command-line)
+					     unused-options))))))
+	  ((not (null? unused-options))
+	   (warn "Unhandled command line options:"
+		 (reverse unused-options)))))
+
+  (define (find-next-keyword command-line unused-options)
+    (if (null? command-line)
+	(process-keyword '() unused-options)
+	(let ((keyword (car command-line)))
+	  (if (or (< (string-length keyword) 2)
+		  (not (char=? (string-ref keyword 0) #\-)))
+	      (find-next-keyword (cdr command-line)
+				 (cons keyword unused-options))
+	      (process-keyword command-line unused-options)))))
+
+  (fluid-let ((*load-init-file?* true))
+    (if unused-command-line
+	(process-keyword (vector->list unused-command-line) '()))
+    (if *load-init-file?*
+	(load-init-file))))
+
+(define (for-each-non-keyword command-line processor)
+  (let loop ((command-line command-line))
+    (if (null? command-line)
+	'()
+	(let ((next (car command-line)))
+	  (if (and (> (string-length next) 0)
+		   (char=? (string-ref next 0) #\-))
+	      command-line
+	      (begin
+		(processor next)
+		(loop (cdr command-line))))))))
+
+(define (initialize-command-line-parsers)
+  (set-command-line-parser!
+   "-no-init-file"
+   (lambda (command-line)
+     (set! *load-init-file?* false)
+     (cdr command-line)))
+
+  (set-command-line-parser!
+   "-load"
+   (lambda (command-line)
+     (for-each-non-keyword (cdr command-line) load)))
+
+  (set-command-line-parser!
+   "-eval"
+   (lambda (command-line)
+     (for-each-non-keyword (cdr command-line)
+			   (lambda (arg)
+			     (eval (with-input-from-string arg read)
+				   user-initial-environment))))))
 
 ;;;; Loader for packed binaries
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.157 1992/07/24 22:19:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.158 1992/08/12 01:08:57 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1197,7 +1197,8 @@ MIT in each case. |#
 	  load/default-find-pathname-with-type
 	  load/push-hook!
 	  load/suppress-loading-message?
-	  read-file)
+	  read-file
+	  set-command-line-parser!)
   (initialization (initialize-package!)))
 
 (define-package (runtime macros)
