@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.62 2003/05/17 20:55:45 cph Exp $
+### $Id: i386.m4,v 1.63 2003/10/31 20:45:35 cph Exp $
 ###
 ### Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
 ### Copyright 2002,2003 Massachusetts Institute of Technology
@@ -389,11 +389,14 @@ i386_initialize_no_fp:
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
 
 # Do a bunch of hair to determine if we need to do cache synchronization.
-# First, test to see if the CPUID instruction is supported.
+# See if the CPUID instruction is supported.
 
 	OP(xor,l)	TW(REG(eax),REG(eax))
 	OP(mov,l)	TW(REG(eax),ABS(EVR(ia32_cpuid_supported)))
 	OP(mov,l)	TW(REG(eax),ABS(EVR(ia32_cpuid_needed)))
+
+# First test: can we toggle the AC bit?
+
 	pushfd
 	OP(pop,l)	REG(eax)
 	OP(mov,l)	TW(REG(eax),REG(ecx))
@@ -402,12 +405,28 @@ i386_initialize_no_fp:
 	popfd
 	pushfd
 	OP(pop,l)	REG(eax)
+
+# if AC bit can't be toggled, this is a 386 (and doesn't support CPUID).
+
 	OP(xor,l)	TW(REG(ecx),REG(eax))
 	jz		no_cpuid_instr
+	OP(push,l)	REG(ecx)			# restore EFLAGS
+	popfd
 
-# Restore original EFLAGS.
+# Now test to see if the ID bit can be toggled.
 
-	OP(push,l)	REG(ecx)
+	OP(mov,l)	TW(REG(ecx),REG(eax))
+	OP(xor,l)	TW(IMM(HEX(00200000)),REG(eax))
+	OP(push,l)	REG(eax)
+	popfd
+	pushfd
+	OP(pop,l)	REG(eax)
+
+# if ID bit can't be toggled, this is a 486 that doesn't support CPUID.
+
+	OP(xor,l)	TW(REG(ecx),REG(eax))
+	jz		no_cpuid_instr
+	OP(push,l)	REG(ecx)			# restore EFLAGS
 	popfd
 
 # Now we know that cpuid is supported.
