@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.10 1993/09/09 21:41:25 cph Exp $
+;;;	$Id: txtprp.scm,v 1.11 1993/09/09 21:43:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -254,14 +254,15 @@
 		      (loop (next-interval next))
 		      (interval-start next))))))))
 
-(define (next-specific-property-change group index prop)
+(define (next-specific-property-change group index key)
   (validate-point-arguments group index 'NEXT-SPECIFIC-PROPERTY-CHANGE)
+  (validate-symbol-argument key 'NEXT-SPECIFIC-PROPERTY-CHANGE)
   (and (group-text-properties group)
        (let ((z (find-interval group index)))
-	 (let ((p (assq prop (interval-properties z))))
+	 (let ((p (assq key (interval-properties z))))
 	   (let loop ((next (next-interval z)))
 	     (and next
-		  (if (eq? p (assq prop (interval-properties next)))
+		  (if (eq? p (assq key (interval-properties next)))
 		      (loop (next-interval next))
 		      (interval-start next))))))))
 
@@ -276,14 +277,15 @@
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
 
-(define (prev-specific-property-change group index prop)
+(define (previous-specific-property-change group index key)
   (validate-point-arguments group index 'PREV-SPECIFIC-PROPERTY-CHANGE)
+  (validate-symbol-argument key 'PREV-SPECIFIC-PROPERTY-CHANGE)
   (and (group-text-properties group)
        (let ((z (find-interval group index)))
-	 (let ((p (assq prop (interval-properties z))))
+	 (let ((p (assq key (interval-properties z))))
 	   (let loop ((prev (previous-interval z)))
 	     (and prev
-		  (if (eq? p (assq prop (interval-properties prev)))
+		  (if (eq? p (assq key (interval-properties prev)))
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.132 1993/09/09 21:41:39 cph Exp $
+$Id: edwin.pkg,v 1.133 1993/09/09 21:42:13 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -844,8 +844,8 @@ MIT in each case. |#
 	  local-comtabs
 	  next-property-change
 	  next-specific-property-change
-	  prev-specific-property-change
 	  previous-property-change
+	  previous-specific-property-change
 	  remove-text-properties
 	  remove-text-property
 	  set-text-properties)
