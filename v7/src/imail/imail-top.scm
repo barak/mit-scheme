@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.104 2000/05/23 21:12:48 cph Exp $
+;;; $Id: imail-top.scm,v 1.105 2000/05/24 19:44:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -113,15 +113,6 @@ The pass phrase is deleted if unused for this long.
 Set this to zero if you don't want pass-phrase retention."
   30
   exact-nonnegative-integer?)
-
-(add-variable-assignment-daemon!
- (ref-variable-object imail-pass-phrase-retention-time)
- (lambda (buffer variable)
-   (clean-imail-memoized-pass-phrases
-    (get-universal-time)
-    (if buffer
-	(variable-local-value buffer variable)
-	(variable-default-value variable)))))
 
 (define-command imail
   "Read and edit incoming mail.
@@ -270,33 +261,46 @@ regardless of the folder type."
 
 (define (imail-call-with-pass-phrase url receiver)
   (let ((key (url-pass-phrase-key url))
-	(now (get-universal-time))
-	(retention-time (ref-variable imail-pass-phrase-retention-time)))
-    (clean-imail-memoized-pass-phrases now retention-time)
-    (let ((entry (hash-table/get imail-memoized-pass-phrases key #f)))
+	(retention-time (ref-variable imail-pass-phrase-retention-time #f)))
+    (let ((entry (hash-table/get memoized-pass-phrases key #f)))
       (if entry
 	  (begin
-	    (set-car! entry now)
-	    (call-with-unobscured-pass-phrase (cdr entry) receiver))
+	    (without-interrupts
+	     (lambda ()
+	       (deregister-timer-event (vector-ref entry 1))
+	       (set-up-pass-phrase-timer! entry key retention-time)))
+	    (call-with-unobscured-pass-phrase (vector-ref entry 0) receiver))
 	  (call-with-pass-phrase
 	   (string-append "Pass phrase for " key)
 	   (lambda (pass-phrase)
 	     (if (> retention-time 0)
-		 (hash-table/put! imail-memoized-pass-phrases key
-				  (cons now
-					(obscure-pass-phrase pass-phrase))))
+		 (hash-table/put!
+		  memoized-pass-phrases
+		  key
+		  (let ((entry
+			 (vector (obscure-pass-phrase pass-phrase) #f #f)))
+		    (set-up-pass-phrase-timer! entry key retention-time)
+		    entry)))
 	     (receiver pass-phrase)))))))
 
-(define (clean-imail-memoized-pass-phrases now retention-time)
-  (if (> retention-time 0)
-      (hash-table/for-each imail-memoized-pass-phrases
-	(let ((cutoff (- now (* retention-time 60))))
-	  (lambda (key datum)
-	    (if (<= (car datum) cutoff)
-		(hash-table/remove! imail-memoized-pass-phrases key)))))
-      (hash-table/clear! imail-memoized-pass-phrases)))
+(define (set-up-pass-phrase-timer! entry key retention-time)
+  ;; A race condition can occur when the timer event is re-registered.
+  ;; If the previous timer event is queued but not executed before
+  ;; being deregistered, then it will run after the re-registration
+  ;; and try to delete the record.  By matching on ID, the previous
+  ;; event sees that it has been superseded and does nothing.
+  (let ((id (list 'ID)))
+    (vector-set! entry 2 id)
+    (vector-set! entry 1
+      (register-timer-event (* retention-time 60000)
+	(lambda ()
+	  (without-interrupts
+	   (lambda ()
+	     (let ((entry (hash-table/get memoized-pass-phrases key #f)))
+	       (if (and entry (eq? (vector-ref entry 2) id))
+		   (hash-table/remove! memoized-pass-phrases key))))))))))
 
-(define imail-memoized-pass-phrases
+(define memoized-pass-phrases
   (make-string-hash-table))
 
 (define (obscure-pass-phrase clear-text)
