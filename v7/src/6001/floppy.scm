@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.14 1993/01/25 00:45:45 nick Exp $
+$Id: floppy.scm,v 1.15 1993/11/02 19:11:49 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -420,6 +420,7 @@ then answer \"yes\" to the prompt below.")
 	(wait-for-user)))))
 
 (define (checkpoint-floppy)
+  (save-some-buffers #t #f)
   (append-string "Copying files from working directory to floppy.\n")
   (let* ((working-directory (read-working-directory))
 	 (floppy-directory (read-floppy-directory)))
