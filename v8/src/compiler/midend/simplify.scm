@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.16 1995/08/06 22:26:53 adams Exp $
+$Id: simplify.scm,v 1.17 1995/08/19 13:42:24 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -365,33 +365,36 @@ MIT in each case. |#
   (let ((ordinary-refs  (simplify/binding/ordinary-refs node))
 	(operator-refs  (simplify/binding/operator-refs node)))
     (define copy-value
-      ;; We only copy the value if we are making substituting in several
-      ;; places, and then we only copy for the 2nd substitution
-      ;; onwards.  This saves work because we tend to copy one huge
-      ;; thing or many tiny things.
+      ;; We copy the value only when we are substituting in several places, and
+      ;; then we copy only for the 2nd substitution onwards.  This
+      ;; saves work because we tend to copy one huge expression or
+      ;; many tiny ones.
       (let* ((all-refs (append ordinary-refs operator-refs)))
 	(lambda (ref)
 	  (if (eq? ref (car all-refs))
 	      value
 	      (simplify/copy-form/renaming env value)))))
 
+    ;; In the case where the value is just another variable (i.e an
+    ;; indirection), we must add the rewritten source to the
+    ;; references of the value's variable.  In other cases the
+    ;; references are in-tact because they are substructures of the
+    ;; the value.
     (for-each (lambda (ref)
 		(let ((value*  (copy-value ref)))
 		  (simplify/remember*! ref value)
-		  (form/rewrite! ref value*)))
+		  (form/rewrite! ref value*)
+		  (if (LOOKUP/? value*)
+		      (simplify/lookup*! env (lookup/name value*) ref 
+					 'ORDINARY))))
       ordinary-refs)
-
+    
     (for-each (lambda (ref)
 		(form/rewrite! ref `(CALL ,(copy-value ref) ,@(cddr ref))))
       operator-refs)
 
     ;; For DBG info
-    (cond ((and (null? ordinary-refs) (LAMBDA/? value))
-	   'ignore) ; probably a huge procedure body
-	  (else
-	   (dbg-info/remember (simplify/binding/name node)
-			      value)))
-    ))
+    (dbg-info/remember (simplify/binding/name node) value)))
 
 (define (simplify/copy-form/renaming env form)
   ;;  Copy FORM, renaming local bindings and keeping references to free
