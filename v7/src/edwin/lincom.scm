@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: lincom.scm,v 1.121 1995/01/06 01:08:00 cph Exp $
+;;;	$Id: lincom.scm,v 1.122 1996/03/01 07:49:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -261,10 +261,8 @@ specified left-margin column."
 and indent the new line indent according to mode."
   ()
   (lambda ()
-    (delete-horizontal-space)
     ((ref-command indent-according-to-mode))
-    (insert-newline)
-    ((ref-command indent-according-to-mode))))
+    ((ref-command newline-and-indent))))
 
 (define-variable-per-buffer indent-tabs-mode
   "If false, do not use tabs for indentation or horizontal spacing."
