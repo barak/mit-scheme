@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.69 1993/06/24 18:09:03 gjr Exp $
+$Id: ymkfile,v 1.70 1993/06/24 22:26:22 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -611,7 +611,7 @@ wsize : wsize.o
 
 ppband : ppband.o
 	@ECHO "#** Re-linking" $@ because of $?
-	$(CC) $(LDFLAGS) -o $@ Ppband.o
+	$(CC) $(LDFLAGS) -o $@ ppband.o
 
 install: scheme bchscheme
 	-mv -f $(BINDIR)/scheme $(BINDIR)/scheme.busy
@@ -739,11 +739,11 @@ bitstr.o : scheme.tch prims.h bitstr.h
 regex.o : scheme.tch syntax.h regex.h
 rgxprim.o : scheme.tch prims.h edwin.h syntax.h regex.h
 
-Bintopsb.o : psbmap.tch trap.h limits.h fasl.h load.c bltdef.h
-Psbtobin.o : psbmap.tch float.h fasl.h dump.c
-Ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
+bintopsb.o : psbmap.tch trap.h limits.h fasl.h load.c bltdef.h
+psbtobin.o : psbmap.tch float.h fasl.h dump.c
+ppband.o : ansidecl.h config.h errors.h types.h const.h object.h \
         $(GC_HEAD_FILES) sdata.h load.c fasl.h
-Wsize.o : config.h
+wsize.o : config.h
 
 dmpwrld.o : scheme.tch prims.h ux.h osfs.h \
 	unexec.c unexhppa.c getpgsz.h
