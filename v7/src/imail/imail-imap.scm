@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.138 2000/07/05 03:29:28 cph Exp $
+;;; $Id: imail-imap.scm,v 1.139 2000/07/07 01:52:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -122,7 +122,18 @@
   (let ((index (string-search-backward "/" mailbox)))
     (if index
 	(string-head mailbox index)
-	(or (let ((response (imap-url-namespace url)))
+	(or (let ((response
+		   (let ((connection
+			  (search-imap-connections
+			   (lambda (connection)
+			     (and (compatible-imap-urls?
+				   (imap-connection-url connection)
+				   url)
+				  (not
+				   (eq? (imap-connection-delimiter connection)
+					'UNKNOWN)))))))
+		     (and connection
+			  (imap-connection-namespace connection)))))
 	      (and response
 		   (let ((namespace
 			  (imap:response:namespace-personal response)))
@@ -309,7 +320,7 @@
 
 ;;;; Server connection
 
-(define-class (<imap-connection> (constructor (url))) ()
+(define-class <imap-connection> ()
   (url             define accessor)
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
@@ -385,33 +396,41 @@
 	 (set-cdr! queue '())
 	 responses)))))
 
-(define (get-imap-connection url for-folder?)
-  (let loop ((connections memoized-imap-connections) (prev #f) (near #f))
-    (cond ((weak-pair? connections)
-	   (let ((connection (weak-car connections)))
-	     (if connection
-		 (if (let ((url* (imap-connection-url connection)))
-		       (if for-folder?
-			   (eq? url* url)
-			   (compatible-imap-urls? url* url)))
-		     (if (or for-folder?
-			     (test-imap-connection-open connection))
-			 connection
-			 (loop (weak-cdr connections) connections connection))
-		     (loop (weak-cdr connections) connections near))
-		 (let ((next (weak-cdr connections)))
-		   (if prev
-		       (weak-set-cdr! prev next)
-		       (set! memoized-imap-connections next))
-		   (loop next prev near)))))
-	  (near)
-	  (else
-	   (let ((connection (make-imap-connection url)))
-	     (without-interrupts
-	      (lambda ()
-		(set! memoized-imap-connections
-		      (weak-cons connection memoized-imap-connections))))
-	     connection)))))
+(define (get-imap-connection url)
+  (or (or (search-imap-connections
+	   (lambda (connection)
+	     (and (compatible-imap-urls? (imap-connection-url connection)
+					 url)
+		  (test-imap-connection-open connection))))
+	  (search-imap-connections
+	   (lambda (connection)
+	     (compatible-imap-urls? (imap-connection-url connection)
+				    url))))
+      (make-imap-connection url)))
+
+(define (search-imap-connections predicate)
+  (let loop ((connections memoized-imap-connections) (prev #f))
+    (and (weak-pair? connections)
+	 (let ((connection (weak-car connections)))
+	   (if connection
+	       (if (predicate connection)
+		   connection
+		   (loop (weak-cdr connections) connections))
+	       (let ((next (weak-cdr connections)))
+		 (if prev
+		     (weak-set-cdr! prev next)
+		     (set! memoized-imap-connections next))
+		 (loop next prev)))))))
+
+(define make-imap-connection
+  (let ((constructor (instance-constructor <imap-connection> '(URL))))
+    (lambda (url)
+      (let ((connection (constructor url)))
+	(without-interrupts
+	 (lambda ()
+	   (set! memoized-imap-connections
+		 (weak-cons connection memoized-imap-connections))))
+	connection))))
 
 (define memoized-imap-connections '())
 
@@ -514,7 +533,7 @@
   (reset-imap-connection connection))
 
 (define (with-open-imap-connection url receiver)
-  (let ((connection (get-imap-connection url #f)))
+  (let ((connection (get-imap-connection url)))
     (dynamic-wind (lambda ()
 		    (set-imap-connection-reference-count!
 		     connection
@@ -538,14 +557,14 @@
 	(close-imap-connection connection))))
 
 (define (imap-url-delimiter url)
-  (let ((connection (get-imap-connection url #f)))
+  (let ((connection (get-imap-connection url)))
     (let ((delimiter (imap-connection-delimiter connection)))
       (if (eq? delimiter 'UNKNOWN)
 	  (with-open-imap-connection url imap-connection-delimiter)
 	  delimiter))))
 
 (define (imap-url-namespace url)
-  (let ((connection (get-imap-connection url #f)))
+  (let ((connection (get-imap-connection url)))
     (if (eq? (imap-connection-delimiter connection) 'UNKNOWN)
 	(with-open-imap-connection url imap-connection-namespace)
 	(imap-connection-namespace connection))))
@@ -1203,7 +1222,12 @@
 ;;;; Folder operations
 
 (define-method %open-folder ((url <imap-url>))
-  (let ((folder (make-imap-folder url (get-imap-connection url #t))))
+  (let ((folder
+	 (make-imap-folder url
+			   (or (search-imap-connections
+				(lambda (connection)
+				  (eq? (imap-connection-url connection) url)))
+			       (make-imap-connection url)))))
     (reset-imap-folder! folder)
     (guarantee-imap-folder-open folder)
     folder))
