@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.23 1993/10/26 23:12:54 gjr Exp $
+# $Id: config,v 1.24 1993/11/03 22:08:04 gjr Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -34,6 +34,24 @@
 # If config fails after disturbing the status quo, 
 # 	config.out is removed.
 #
+
+usage()
+{
+	echo "Usage: $progname [-C-back-end | -native-back-end] machine"
+	echo "Where \`machine' is one of:"
+	echo "alpha-osf alpha"
+	echo "mips-ultrix nws3250 sgi4d"
+	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
+	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4 sparc"
+	echo "i386-sysv 386bsd umax"
+	echo "vax-bsd42 vax-bsd43 vax-ultrix"
+	if [ -r config.out ]
+	then
+		cat config.out
+	fi
+	exit 1;
+}
+
 
 discriminate()
 {
@@ -129,7 +147,7 @@ discriminate()
 		cmpaux_file=mc68k.m4
 		cmp_file=sun3-nfp.s
 		;;
-	sun4) 
+	sun4 sparc)
 		system_file=sunos4
 		machine_file=sun4 
 		;;
@@ -157,7 +175,7 @@ discriminate()
 		;;
 	*)
 		echo "$progname: unknown machine name: $machine"
-		exit 1
+		usage
 	esac;
 }
 
@@ -270,25 +288,6 @@ perform()
          echo "Remember to edit file cf.h before using make.") \
 		| tee config.out
 }
-
-usage()
-{
-	echo "Usage: $progname [-C-back-end | -native-back-end] machine"
-	echo "Where \`machine' is one of:"
-	echo "alpha-osf alpha"
-	echo "mips-ultrix nws3250 sgi4d"
-	echo "hp9k300 hp9k400 hp9k700 hp9k800 next"
-	echo "sun3 sun3-os3 sun3-nfp sun3-os3-nfp sun4"
-	echo "i386-sysv 386bsd umax"
-	echo "vax-bsd42 vax-bsd43 vax-ultrix"
-	if [ -r config.out ]
-	then
-		cat config.out
-	fi
-	exit 1;
-}
-
-
 
 progname=$0
 
