@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pic-reco.scm,v 1.10 2003/02/14 18:28:00 cph Exp $
+$Id: pic-reco.scm,v 1.11 2003/03/07 19:19:24 cph Exp $
 
-Copyright (c) 1993, 1999, 2001 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -22,79 +22,59 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 
 |#
-
+
 ;;; Representation of pictures using records
 
 (declare (usual-integrations))
-
-(define picture-type (make-record-type 
-		      'picture 
-		      '(width
-			height
-			data
-			min
-			max 
-			image)))
-
-(define %make-picture (record-constructor picture-type '(width height)))
-
-(define %picture-min (record-accessor picture-type 'min))
-(define %picture-max (record-accessor picture-type 'max))
-(define %picture-set-data! (record-updater picture-type 'data))
-(define %picture-set-image! (record-updater picture-type 'image))
-(define %picture-set-min! (record-updater picture-type 'min))
-(define %picture-set-max! (record-updater picture-type 'max))
+
+(define-record-type <picture>
+    (%make-picture width height)
+    picture?
+  (width picture-width)
+  (height picture-height)
+  (data picture-data %picture-set-data!)
+  (min %picture-min %picture-set-min!)
+  (max %picture-max %picture-set-max!)
+  (image picture-image %picture-set-image!))
 
 (define (make-picture width height #!optional initial-val)
   (let ((pic (%make-picture width height))
-	(initial-val (if (default-object? initial-val)
-			 0.
-			 (exact->inexact initial-val))))
+	(initial-val
+	 (if (default-object? initial-val)
+	     0.
+	     (exact->inexact initial-val))))
     (%picture-set-min! pic initial-val)
     (%picture-set-max! pic initial-val)
     (%picture-set-data! pic 
-			(make-initialized-vector
-			 height
-			 (lambda (n)
-			   n	; ignored
-			   (flo:make-vector width initial-val))))
+			(make-initialized-vector height
+			  (lambda (n)
+			    n
+			    (flo:make-vector width initial-val))))
     (%picture-set-image! pic #f)
     pic))
 
-(define picture? (record-predicate picture-type))
+(define (picture-set-data! picture data)
+  (%picture-set-data! picture data)
+  (invalidate-cached-values picture))
 
-(define picture-width
-  (record-accessor picture-type 'width))
+(define (picture-min picture)
+  (or (%picture-min picture)
+      (begin
+	(find-min-max picture)
+	(%picture-min picture))))
 
-(define picture-height
-  (record-accessor picture-type 'height))
-
-(define picture-data
-  (record-accessor picture-type 'data))
-
-(define picture-image
-  (record-accessor picture-type 'image))
+(define (picture-max picture)
+  (or (%picture-max picture)
+      (begin
+	(find-min-max picture)
+	(%picture-max picture))))
 
 (define (picture-set-image! picture image)
   (let ((img (picture-image picture)))
     (if (image? img)
 	(image/destroy img))
     (%picture-set-image! picture image)))
-
-(define (picture-min picture)
-  (let ((pic-min (%picture-min picture)))
-    (if (not pic-min) 
-	(begin (find-min-max picture)
-	       (%picture-min picture))
-	pic-min)))
-
-(define (picture-max picture)
-  (let ((pic-max (%picture-max picture)))
-    (if (not pic-max) 
-	(begin (find-min-max picture)
-	       (%picture-max picture))
-	pic-max)))
-
+
 (define (make-picture-referencer bad-type-predicate bad-range-signal)
   (lambda (picture x y)
     (cond ((bad-type-predicate x)
@@ -125,39 +105,25 @@ USA.
 	   (bad-range-signal y 'PICTURE-SET!))
 	  (else
 	   (flo:vector-set! (vector-ref (picture-data picture) y)
-			x (exact->inexact value))
+			    x (exact->inexact value))
 	   (invalidate-cached-values picture)))))
 
-(define picture-ref (make-picture-referencer
-		     (lambda (var)
-		       (declare (integrate var))
-		       (not (fix:fixnum? var)))
-		     error:bad-range-argument))
+(define picture-ref
+  (make-picture-referencer (lambda (var) (not (fix:fixnum? var)))
+			   error:bad-range-argument))
 
-(define no-error-picture-ref (make-picture-referencer
-			  (lambda (var)
-			    (declare (integrate var))
-			    var  ;ignored
-			    false)
-			  (lambda (var proc-name)
-			    var proc-name   ;ignored
-			    false)))
+(define no-error-picture-ref
+  (make-picture-referencer (lambda (var) var #f)
+			   (lambda (var caller) var caller #f)))
 
-(define picture-set! (make-picture-setter
-		      (lambda (var)
-			(declare (integrate var))
-			(not (fix:fixnum? var)))
-		      error:bad-range-argument))
+(define picture-set!
+  (make-picture-setter (lambda (var) (not (fix:fixnum? var)))
+		       error:bad-range-argument))
 
-(define no-error-picture-set! (make-picture-setter
-			   (lambda (var)
-			     (declare (integrate var))
-			     var  ;ignored
-			     false)
-			   (lambda (var proc-name)
-			     var proc-name  ;ignored 
-			     false)))
-
+(define no-error-picture-set!
+  (make-picture-setter (lambda (var) var #f)
+		       (lambda (var caller) var caller #f)))
+
 (define (picture-map! picture fn)
   (let ((picdata (picture-data picture))
 	(width (picture-width picture))
@@ -173,14 +139,9 @@ USA.
 		  (y-loop (1+ y))))))
       (invalidate-cached-values picture))))
 
-(define (picture-set-data! picture data)
-  (%picture-set-data! picture data)
-  (invalidate-cached-values picture))
-
 ;;; Note that picture-data and picture-set-data! are both unsafe operations
 ;;; in the sense that both of them do not ensure that only floating point 
 ;;; numbers are ever stored in the picture array.
-
 
 (define (invalidate-cached-values picture)
   (%picture-set-min! picture #f)
