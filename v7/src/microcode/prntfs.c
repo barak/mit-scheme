@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.9 1997/01/01 22:57:37 cph Exp $
+$Id: prntfs.c,v 1.10 1997/01/05 23:41:16 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -45,6 +45,7 @@ MIT in each case. */
 #include <math.h>
 
 extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
+extern int win32_directory_read (unsigned int, WIN32_FIND_DATA *);
 
 static SCHEME_OBJECT file_attributes_internal
   (DWORD, FILETIME *, FILETIME *, FILETIME *, DWORD, DWORD);
@@ -55,84 +56,57 @@ static void EXFUN (protect_fd, (int fd));
 #define FILE_TOUCH_OPEN_TRIES 5
 #endif
 
-#define STAT_IGNORE_ERROR_P(code)					\
+#define STAT_NOT_FOUND_P(code)						\
   (((code) == ERROR_FILE_NOT_FOUND)					\
-   || ((code) == ERROR_PATH_NOT_FOUND)					\
+   || ((code) == ERROR_PATH_NOT_FOUND))
+
+#define STAT_NOT_ACCESSIBLE_P(code)					\
+  (((code) == ERROR_ACCESS_DENIED)					\
    || ((code) == ERROR_SHARING_VIOLATION))
 
-struct file_info
-{
-  DWORD attributes;
-  FILETIME atime;
-  FILETIME mtime;
-  FILETIME ctime;
-  DWORD llength;
-  DWORD hlength;
-};
-
 static HANDLE create_file_for_info (const char *);
 static void close_file_handle (HANDLE);
 
-static int
-get_file_info (const char * namestring, struct file_info * info)
+enum get_file_info_result { gfi_ok, gfi_not_found, gfi_not_accessible };
+
+static enum get_file_info_result
+get_file_info (const char * namestring, BY_HANDLE_FILE_INFORMATION * info)
 {
-  HANDLE hfile = INVALID_HANDLE_VALUE;
-  enum syscall_names name;
-  memset (info, 0, (sizeof (*info)));
-  (info -> attributes) = (GetFileAttributes (namestring));
-  if ((info -> attributes) == 0xFFFFFFFF)
-    {
-      name = apicall_GetFileAttributes;
-      goto error_return;
-    }
-  hfile = (create_file_for_info (namestring));
+  HANDLE hfile = (create_file_for_info (namestring));
   if (hfile == INVALID_HANDLE_VALUE)
-    return (0);
-  if (!GetFileTime (hfile,
-		    (& (info -> ctime)),
-		    (& (info -> atime)),
-		    (& (info -> mtime))))
     {
-      name = apicall_GetFileTime;
-      goto error_return;
+      DWORD code = (GetLastError ());
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (gfi_not_accessible);
+      NT_error_api_call (code, apicall_CreateFile);
     }
-  (info -> llength) = (GetFileSize (hfile, (& (info -> hlength))));
-  if ((info -> llength) == 0xFFFFFFFF)
+  if (!GetFileInformationByHandle (hfile, info))
     {
-      name = apicall_GetFileSize;
-      goto error_return;
+      DWORD code = (GetLastError ());
+      (void) CloseHandle (hfile);
+      if (STAT_NOT_FOUND_P (code))
+	return (gfi_not_found);
+      if (STAT_NOT_ACCESSIBLE_P (code))
+	return (gfi_not_accessible);
+      NT_error_api_call (code, apicall_GetFileInformationByHandle);
     }
   close_file_handle (hfile);
-  return (1);
- error_return:
-  {
-    DWORD code = (GetLastError ());
-    if (hfile != INVALID_HANDLE_VALUE)
-      (void) CloseHandle (hfile);
-    if (!STAT_IGNORE_ERROR_P (code))
-      NT_error_api_call (code, name);
-    return (0);
-  }
+  return (gfi_ok);
 }
 
 static HANDLE
 create_file_for_info (const char * namestring)
 {
-  HANDLE hfile
-    = (CreateFile (namestring,
-		   0,
-		   (FILE_SHARE_READ | FILE_SHARE_WRITE),
-		   0,
-		   OPEN_EXISTING,
-		   FILE_FLAG_BACKUP_SEMANTICS,
-		   NULL));
-  if (hfile == INVALID_HANDLE_VALUE)
-    {
-      DWORD code = (GetLastError ());
-      if (!STAT_IGNORE_ERROR_P (code))
-	NT_error_api_call (code, apicall_CreateFile);
-    }
-  return (hfile);
+  return
+    (CreateFile (namestring,
+		 0,
+		 (FILE_SHARE_READ | FILE_SHARE_WRITE),
+		 0,
+		 OPEN_EXISTING,
+		 FILE_FLAG_BACKUP_SEMANTICS,
+		 NULL));
 }
 
 static void
@@ -188,12 +162,21 @@ unix_time_to_file_time (unsigned long ut, FILETIME * ft)
 DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   "Return mode bits of FILE, as an integer.")
 {
-  struct file_info info;
+  BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    ((get_file_info ((STRING_ARG (1)), (&info)))
-     ? (LONG_TO_UNSIGNED_FIXNUM (info . attributes))
-     : SHARP_F);
+  switch (get_file_info ((STRING_ARG (1)), (&info)))
+    {
+    case gfi_ok:
+      PRIMITIVE_RETURN
+	(ulong_to_integer
+	 (((info . dwFileAttributes) == 0xFFFFFFFF)
+	  ? 0
+	  : (info . dwFileAttributes)));
+    case gfi_not_found:
+      PRIMITIVE_RETURN (SHARP_F);
+    default:
+      PRIMITIVE_RETURN (ulong_to_integer (0));
+    }
 }
 
 DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
@@ -207,12 +190,19 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
 
 DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
 {
-  struct file_info info;
+  BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    ((get_file_info ((STRING_ARG (1)), (&info)))
-     ? (ulong_to_integer (file_time_to_unix_time (& (info . mtime))))
-     : SHARP_F);
+  switch (get_file_info ((STRING_ARG (1)), (&info)))
+    {
+    case gfi_ok:
+      PRIMITIVE_RETURN
+	(ulong_to_integer
+	 (file_time_to_unix_time (& (info . ftLastWriteTime))));
+    case gfi_not_found:
+      PRIMITIVE_RETURN (SHARP_F);
+    default:
+      PRIMITIVE_RETURN (ulong_to_integer (0));
+    }
 }
 
 DEFINE_PRIMITIVE ("SET-FILE-TIMES!", Prim_set_file_times, 3, 3,
@@ -247,7 +237,6 @@ The file must exist and you must be the owner.")
 }
 
 /* Returns a vector of 10 items:
-
    0 = #T iff the file is a directory,
        string (name linked to) for symbolic link,
        #F for all other files.
@@ -260,8 +249,65 @@ The file must exist and you must be the owner.")
    7 = size of the file in bytes
    8 = mode string for the file
    9 = inode number of the file
+   */
 
-   The file_mode_string stuff was gobbled from GNU Emacs. */
+static SCHEME_OBJECT
+dword_pair_to_integer (DWORD low, DWORD high)
+{
+  SCHEME_OBJECT result = (ulong_to_integer (low));
+  if (high != 0)
+    result = (integer_add
+	      ((integer_multiply
+		((ulong_to_integer (high)),
+		 (integer_add_1 (ulong_to_integer (0xFFFFFFFF))))),
+	       result));
+  return (result);
+}
+
+#define STORE_FILE_TIME(index, name)					\
+  VECTOR_SET (result, (index),						\
+	      (ulong_to_integer						\
+	       (((name) == 0) ? 0 : (file_time_to_unix_time (name)))))
+
+#define ATTRIBUTE_LETTER(index, mask, letter)				\
+  STRING_SET (modes, (index), ((attributes & (mask)) ? (letter) : '-'))
+
+/* Maximum number of words needed for an attributes vector.
+   This is intentionally higher than strictly necessary.  */
+#define MAX_ATTRIBUTES_ALLOCATION 256
+
+static SCHEME_OBJECT
+create_attributes_vector (DWORD attributes, DWORD nlinks,
+			  DWORD uid, DWORD gid,
+			  FILETIME * atime, FILETIME * mtime, FILETIME * ctime,
+			  DWORD size_low, DWORD size_high,
+			  DWORD inode_low, DWORD inode_high)
+{
+  SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 11, 0));
+  SCHEME_OBJECT modes = (allocate_string (6));
+  VECTOR_SET (result, 0,
+	      (BOOLEAN_TO_OBJECT (attributes & FILE_ATTRIBUTE_DIRECTORY)));
+  VECTOR_SET (result, 1, (ulong_to_integer (nlinks)));
+  VECTOR_SET (result, 2, (ulong_to_integer (uid)));
+  VECTOR_SET (result, 3, (ulong_to_integer (gid)));
+  STORE_FILE_TIME(4, atime);
+  STORE_FILE_TIME(5, mtime);
+  STORE_FILE_TIME(6, ctime);
+  VECTOR_SET (result, 7, (dword_pair_to_integer (size_low, size_high)));
+  ATTRIBUTE_LETTER (0, FILE_ATTRIBUTE_DIRECTORY, 'd');
+  ATTRIBUTE_LETTER (1, FILE_ATTRIBUTE_READONLY, 'r');
+  ATTRIBUTE_LETTER (2, FILE_ATTRIBUTE_HIDDEN, 'h');
+  ATTRIBUTE_LETTER (3, FILE_ATTRIBUTE_SYSTEM, 's');
+  ATTRIBUTE_LETTER (4, FILE_ATTRIBUTE_ARCHIVE, 'a');
+  ATTRIBUTE_LETTER (5, FILE_ATTRIBUTE_COMPRESSED, 'c');
+  VECTOR_SET (result, 8, modes);
+  VECTOR_SET (result, 9, (dword_pair_to_integer (inode_low, inode_high)));
+  VECTOR_SET (result, 10, (ulong_to_integer (attributes)));
+  return (result);
+}
+
+#undef STORE_FILE_TIME
+#undef ATTRIBUTE_LETTER
 
 DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
   "Given a file name, return attribute information about the file.\n\
@@ -269,53 +315,26 @@ If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
 {
-  struct file_info info;
-  SCHEME_OBJECT result;
-  SCHEME_OBJECT modes;
+  BY_HANDLE_FILE_INFORMATION info;
   PRIMITIVE_HEADER (1);
-
-  if (!get_file_info ((STRING_ARG (1)), (&info)))
-    PRIMITIVE_RETURN (SHARP_F);
-  result = (allocate_marked_vector (TC_VECTOR, 10, true));
-  modes = (allocate_string (6));
-  VECTOR_SET (result, 0,
-	      (BOOLEAN_TO_OBJECT
-	       ((info . attributes) & FILE_ATTRIBUTE_DIRECTORY)));
-  VECTOR_SET (result, 1, (ulong_to_integer (1)));
-  VECTOR_SET (result, 2, (ulong_to_integer (0)));
-  VECTOR_SET (result, 3, (ulong_to_integer (0)));
-#define STORE_FILE_TIME(index, name)					\
-  VECTOR_SET (result, (index),						\
-	      (ulong_to_integer						\
-	       (file_time_to_unix_time (& (info . name)))))
-  STORE_FILE_TIME(4, atime);
-  STORE_FILE_TIME(5, mtime);
-  STORE_FILE_TIME(6, ctime);
-#undef STORE_FILE_TIME
-  {
-    SCHEME_OBJECT l = (ulong_to_integer (info . llength));
-    if ((info . hlength) != 0)
-      l = (integer_add
-	   ((integer_multiply
-	     ((ulong_to_integer (info . hlength)),
-	      (integer_add_1 (ulong_to_integer (0xFFFFFFFF))))),
-	    l));
-    VECTOR_SET (result, 7, l);
-  }
-#define ATTRIBUTE_LETTER(index, mask, letter)				\
-  STRING_SET (modes,							\
-	      (index),							\
-	      (((info . attributes) & (mask)) ? (letter) : '-'))
-  ATTRIBUTE_LETTER (0, FILE_ATTRIBUTE_DIRECTORY, 'd');
-  ATTRIBUTE_LETTER (1, FILE_ATTRIBUTE_READONLY, 'r');
-  ATTRIBUTE_LETTER (2, FILE_ATTRIBUTE_HIDDEN, 'h');
-  ATTRIBUTE_LETTER (3, FILE_ATTRIBUTE_SYSTEM, 's');
-  ATTRIBUTE_LETTER (4, FILE_ATTRIBUTE_ARCHIVE, 'a');
-  ATTRIBUTE_LETTER (5, FILE_ATTRIBUTE_COMPRESSED, 'c');
-#undef ATTRIBUTE_LETTER
-  VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (ulong_to_integer (0)));
-  PRIMITIVE_RETURN (result);
+  Primitive_GC_If_Needed (MAX_ATTRIBUTES_ALLOCATION);
+  switch (get_file_info ((STRING_ARG (1)), (&info)))
+    {
+    case gfi_not_found:
+      PRIMITIVE_RETURN (SHARP_F);
+    case gfi_ok:
+      PRIMITIVE_RETURN
+	(create_attributes_vector
+	 ((info . dwFileAttributes), (info . nNumberOfLinks), 0, 0,
+	  (& (info . ftLastAccessTime)),
+	  (& (info . ftLastWriteTime)),
+	  (& (info . ftCreationTime)),
+	  (info . nFileSizeLow), (info . nFileSizeHigh),
+	  (info . nFileIndexLow), (info . nFileIndexHigh)));
+    default:
+      PRIMITIVE_RETURN
+	(create_attributes_vector (0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+    }
 }
 
 DEFINE_PRIMITIVE ("FILE-TOUCH", Prim_file_touch, 1, 1,
@@ -471,10 +490,10 @@ DEFINE_PRIMITIVE ("NT-GET-FILE-ATTRIBUTES", Prim_NT_get_file_attributes, 1, 1, 0
     DWORD attributes = (GetFileAttributes (filename));
     if (attributes == 0xFFFFFFFF)
       {
-	DWORD error_code = (GetLastError ());
-	if (!STAT_IGNORE_ERROR_P (error_code))
-	  NT_error_api_call (error_code, apicall_GetFileAttributes);
-	PRIMITIVE_RETURN (SHARP_F);
+	DWORD code = (GetLastError ());
+	if (STAT_NOT_FOUND_P (code))
+	  PRIMITIVE_RETURN (SHARP_F);
+	NT_error_api_call (code, apicall_GetFileAttributes);
       }
     PRIMITIVE_RETURN (ulong_to_integer (attributes));
   }
@@ -486,4 +505,36 @@ DEFINE_PRIMITIVE ("NT-SET-FILE-ATTRIBUTES", Prim_NT_set_file_attributes, 2, 2, 0
   STD_BOOL_API_CALL
     (SetFileAttributes, ((STRING_ARG (1)), (arg_ulong_integer (2))));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static unsigned int
+DEFUN (arg_directory_index, (argument), unsigned int argument)
+{
+  long index = (arg_integer (argument));
+  if (! (OS_directory_valid_p (index)))
+    error_bad_range_arg (argument);
+  return (index);
+}
+
+DEFINE_PRIMITIVE ("WIN32-DIRECTORY-READ", Prim_win32_directory_read, 1, 1,
+  "Read and return a filename from DIRECTORY, or #F if no more files.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    WIN32_FIND_DATA info;
+    /* 69 is 2 words for pair, plus 68 words for string with maximum
+       length of 260 bytes including the terminating zero.  260 is the
+       current value of MAX_PATH at this time.  */
+    Primitive_GC_If_Needed (MAX_ATTRIBUTES_ALLOCATION + 69);
+    PRIMITIVE_RETURN
+      ((win32_directory_read ((arg_directory_index (1)), (&info)))
+       ? (cons ((char_pointer_to_string (info . cFileName)),
+		(create_attributes_vector
+		 ((info . dwFileAttributes), 1, 0, 0,
+		  (& (info . ftLastAccessTime)),
+		  (& (info . ftLastWriteTime)),
+		  (& (info . ftCreationTime)),
+		  (info . nFileSizeLow), (info . nFileSizeHigh), 0, 0))))
+       : SHARP_F);
+  }
 }
