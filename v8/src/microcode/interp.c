@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.62 1991/06/22 19:28:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.63 1991/07/18 15:58:12 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -487,6 +487,11 @@ Repeat_Dispatch:
     case CODE_MAP(PRIM_POP_RETURN):
       goto Pop_Return;
 
+    case PRIM_NO_TRAP_POP_RETURN:
+      PROCEED_AFTER_PRIMITIVE();
+    case CODE_MAP(PRIM_NO_TRAP_POP_RETURN):
+      goto Pop_Return_Non_Trapping;
+
     case PRIM_REENTER:
       BACK_OUT_AFTER_PRIMITIVE();
       LOG_FUTURES();
@@ -596,6 +601,7 @@ Do_Expression:
 
   if (Microcode_Does_Stepping &&
       Trapping &&
+      (! WITHIN_CRITICAL_SECTION_P()) &&
       ((Fetch_Eval_Trapper ()) != SHARP_F))
   {
     Stop_Trapping ();
@@ -942,6 +948,20 @@ lookup_end_restart:
  */
 
 Pop_Return:
+  if (Microcode_Does_Stepping &&
+      Trapping &&
+      (! WITHIN_CRITICAL_SECTION_P()) &&
+      ((Fetch_Return_Trapper ()) != SHARP_F))
+  {
+    Will_Push(3);
+      Stop_Trapping();
+      STACK_PUSH (Val);
+      STACK_PUSH (Fetch_Return_Trapper());
+      STACK_PUSH (STACK_FRAME_HEADER+1);
+    Pushed();
+    goto Apply_Non_Trapping;
+  }
+Pop_Return_Non_Trapping:
   Pop_Return_Ucode_Hook();
   Restore_Cont();
   if (Consistency_Check &&
@@ -1420,6 +1440,7 @@ Internal_Apply:
 
       if (Microcode_Does_Stepping &&
 	  Trapping &&
+	  (! WITHIN_CRITICAL_SECTION_P()) &&
 	  ((Fetch_Apply_Trapper ()) != SHARP_F))
       {
 	long Count;
@@ -1896,6 +1917,7 @@ return_from_compiled_code:
 Primitive_Internal_Apply:
       if (Microcode_Does_Stepping &&
 	  Trapping &&
+	  (! WITHIN_CRITICAL_SECTION_P()) &&
 	  ((Fetch_Apply_Trapper ()) != SHARP_F))
       {
 	/* Does this work in the stacklet case?
@@ -2139,18 +2161,6 @@ Primitive_Internal_Apply:
       Translate_To_Point(Where_To_Go);
       break;			/* We never get here.... */
     }
-
-    case RC_RETURN_TRAP_POINT:
-      Store_Return(Old_Return_Code);
-     Will_Push(CONTINUATION_SIZE+3);
-      Save_Cont();
-      Return_Hook_Address = NULL;
-      Stop_Trapping();
-      STACK_PUSH (Val);
-      STACK_PUSH (Fetch_Return_Trapper());
-      STACK_PUSH (STACK_FRAME_HEADER+1);
-     Pushed();
-      goto Apply_Non_Trapping;
 
     case RC_SEQ_2_DO_2:
       End_Subproblem();

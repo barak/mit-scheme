@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.28 1990/06/20 17:42:08 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/step.c,v 9.29 1991/07/18 16:01:27 markf Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -47,9 +47,8 @@ MIT in each case. */
 */
 
 void
-Install_Traps(Hunk3, Return_Hook_Too)
+Install_Traps (Hunk3)
      SCHEME_OBJECT Hunk3;
-     Boolean Return_Hook_Too;
 {
   SCHEME_OBJECT Eval_Hook, Apply_Hook, Return_Hook;
 
@@ -58,18 +57,9 @@ Install_Traps(Hunk3, Return_Hook_Too)
   Apply_Hook = MEMORY_REF (Hunk3, HUNK_CXR1);
   Return_Hook = MEMORY_REF (Hunk3, HUNK_CXR2);
   Set_Fixed_Obj_Slot(Stepper_State, Hunk3);
-  Trapping = ((Eval_Hook != SHARP_F) | (Apply_Hook != SHARP_F));
-  if (Microcode_Does_Stepping && Return_Hook_Too && (Return_Hook != SHARP_F))
-  {
-    /* Here it is ... gross and ugly.  We know that the top of stack
-       has the existing return code to be clobbered, since it was put
-       there by Save_Cont.
-    */
-    Return_Hook_Address = (STACK_LOC (0));
-    Old_Return_Code = (*Return_Hook_Address);
-    (*Return_Hook_Address) =
-      (MAKE_OBJECT (TC_RETURN_CODE, RC_RETURN_TRAP_POINT));
-  }
+  Trapping = ((Eval_Hook != SHARP_F) |
+	      (Apply_Hook != SHARP_F) |
+	      (Return_Hook != SHARP_F));
   return;
 }
 
@@ -83,12 +73,14 @@ Install_Traps(Hunk3, Return_Hook_Too)
 DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, HUNK3_P);
   {
     SCHEME_OBJECT expression = (ARG_REF (1));
     SCHEME_OBJECT environment = (ARG_REF (2));
+    SCHEME_OBJECT hooks = (ARG_REF (3));
     PRIMITIVE_CANONICALIZE_CONTEXT ();
-    Install_Traps ((ARG_REF (3)), false);
     POP_PRIMITIVE_FRAME (3);
+    Install_Traps (hooks);
     Store_Expression (expression);
     Store_Env (environment);
   }
@@ -111,37 +103,40 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CHECK_ARG (3, HUNK3_P);
   {
-    SCHEME_OBJECT procedure = (ARG_REF (2));
-    SCHEME_OBJECT argument_list = (ARG_REF (3));
+    SCHEME_OBJECT hooks = (ARG_REF (3));
     fast long number_of_args = 0;
     {
-      fast SCHEME_OBJECT scan_list;
-      TOUCH_IN_PRIMITIVE (argument_list, scan_list);
-      while (PAIR_P (scan_list))
-	{
-	  number_of_args += 1;
-	  TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
-	}
-      if (scan_list != EMPTY_LIST)
-	error_wrong_type_arg (2);
-    }
-    Install_Traps ((ARG_REF (3)), true);
-    POP_PRIMITIVE_FRAME (3);
-    {
-      fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
-      fast SCHEME_OBJECT scan_list;
-      fast long i;
-    Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
-      Stack_Pointer = scan_stack;
-      TOUCH_IN_PRIMITIVE (argument_list, scan_list);
-      for (i = number_of_args; (i > 0); i -= 1)
-	{
-	  (*scan_stack++) = (PAIR_CAR (scan_list));
-	  TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
-	}
-      STACK_PUSH (procedure);
-      STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
-    Pushed ();
+      SCHEME_OBJECT procedure = (ARG_REF (1));
+      SCHEME_OBJECT argument_list = (ARG_REF (2));
+      {
+	fast SCHEME_OBJECT scan_list;
+	TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+	while (PAIR_P (scan_list))
+	  {
+	    number_of_args += 1;
+	    TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	  }
+	if (scan_list != EMPTY_LIST)
+	  error_wrong_type_arg (2);
+      }
+      POP_PRIMITIVE_FRAME (3);
+      Install_Traps (hooks);
+      {
+	fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
+	fast SCHEME_OBJECT scan_list;
+	fast long i;
+	Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
+	Stack_Pointer = scan_stack;
+	TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+	for (i = number_of_args; (i > 0); i -= 1)
+	  {
+	    (*scan_stack++) = (PAIR_CAR (scan_list));
+	    TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	  }
+	STACK_PUSH (procedure);
+	STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
+	Pushed ();
+      }
     }
   }
   PRIMITIVE_ABORT (PRIM_NO_TRAP_APPLY);
@@ -152,16 +147,20 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
    Returns VALUE and intalls the eval-trap, apply-trap, and
    return-trap from HUNK3.  If any trap is '(), it is a null trap
    that does a normal EVAL, APPLY or return.
-
-   UGLY ... currently assumes that it is illegal to set a return trap
-   this way, so that we don't run into stack parsing problems.  If
-   this is ever changed, be sure to check for COMPILE_STEPPER flag! */
+*/
 
 DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  if ((MEMORY_REF ((ARG_REF (2)), HUNK_CXR2)) != SHARP_F)
-    error_bad_range_arg (2);
-  Install_Traps ((ARG_REF (2)), false);
-  PRIMITIVE_RETURN (ARG_REF (1));
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  CHECK_ARG (2, HUNK3_P);
+  {
+    SCHEME_OBJECT value = (ARG_REF (1));
+    SCHEME_OBJECT hooks = (ARG_REF (2));
+
+    POP_PRIMITIVE_FRAME (2); 
+    Install_Traps (hooks);
+    Val = (value);
+    PRIMITIVE_ABORT (PRIM_NO_TRAP_POP_RETURN);
+  }
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.33 1990/06/20 17:41:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.h,v 9.34 1991/07/18 15:59:41 markf Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -201,11 +201,6 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define Stop_Trapping()							\
 {									\
   Trapping = false;							\
-  if (Return_Hook_Address != NULL)					\
-  {									\
-    *Return_Hook_Address = Old_Return_Code;				\
-  }									\
-  Return_Hook_Address = NULL;						\
 }
 
 /* Primitive utility macros */
