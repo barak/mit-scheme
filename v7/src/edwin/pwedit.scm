@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pwedit.scm,v 1.11 2003/02/14 18:28:13 cph Exp $
+$Id: pwedit.scm,v 1.12 2003/11/11 01:46:43 cph Exp $
 
-Copyright 1999-2000 Massachusetts Institute of Technology
+Copyright 1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,7 +49,7 @@ If password-file is #f, or if prefix arg supplied, prompts for a filename."
 	      (prompt-for-existing-file "View password file" default))))
        (cond ((not pathname) (prompt #f))
 	     ((command-argument) (prompt (list pathname)))
-	     (else pathname)))))
+	     (else (->namestring pathname))))))
   (lambda (pathname)
     (let ((forms
 	   (call-with-temporary-buffer " view-pw-file"
