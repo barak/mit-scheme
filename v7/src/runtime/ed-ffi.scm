@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.13 1995/10/25 02:49:52 cph Exp $
+$Id: ed-ffi.scm,v 1.14 1995/10/28 02:57:38 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -153,6 +153,8 @@ MIT in each case. |#
     ("macros"	(runtime macros)
 		syntax-table/system-internal)
     ("msort"	()
+		syntax-table/system-internal)
+    ("ntprm"	()
 		syntax-table/system-internal)
     ("numint"	(runtime number interface)
 		syntax-table/system-internal)
