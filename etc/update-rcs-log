@@ -7,18 +7,36 @@ umask 002
 
 exec > /scheme/etc/update-rcs-log.out 2>&1
 
-GOPTS="-d :pserver:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
-MAP="/scheme/v7/src/etc/usermap"
+GOPTS_SCHEME="-d :pserver:anoncvs@subversions.gnu.org:/cvsroot/mit-scheme"
+UM="/scheme/v7/src/etc/usermap"
+O="ChangeLog"
+N="${O}.new"
+
+generate_log_gopts ()
+{
+    cd "${1}"
+    cvs2cl --global-opts "${2}" --revisions --usermap "${UM}" --stdout > "${N}"
+    if cmp "${N}" "${O}"; then
+	rm -f "${N}"
+    else
+	mv -f "${N}" "${O}"
+    fi
+}
+
+generate_log_gopts /scheme/v7/doc "${GOPTS_SCHEME}"
+generate_log_gopts /scheme/v7/src "${GOPTS_SCHEME}"
+generate_log_gopts /scheme/etc "${GOPTS_SCHEME}"
 
 generate_log ()
 {
     cd "${1}"
-    /usr/local/bin/cvs2cl -g "${GOPTS}" -r -U "${MAP}"
-    /bin/rm -f ChangeLog.bak
+    cvs2cl --revisions --usermap "${UM}" --stdout > "${N}"
+    if cmp "${N}" "${O}"; then
+	rm -f "${N}"
+    else
+	mv -f "${N}" "${O}"
+    fi
 }
 
-generate_log /scheme/v7/doc
-generate_log /scheme/v7/src
-#generate_log /scheme/etc
-#generate_log /gunk/hlsim/doc
-#generate_log /gunk/hlsim/src
+generate_log /gunk/hlsim/doc
+generate_log /gunk/hlsim/src
