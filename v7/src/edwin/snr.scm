@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.31 1997/04/05 06:09:27 cph Exp $
+;;;	$Id: snr.scm,v 1.32 1997/05/18 07:59:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -48,6 +48,8 @@
 
 (load-option 'ORDERED-VECTOR)
 
+;;; Variables affecting the reader:
+
 (define-variable news-server
   "Host name of the default News server.
 This is the name used by \\[rnews].
@@ -84,8 +86,8 @@ This variable can be set to #F to disable the timeout altogether.
 [THIS VARIABLE CURRENTLY HAS NO EFFECT.]"
   #f
   (lambda (object) (or (not object) (exact-nonnegative-integer? object))))
-
-;;; Variables for News-server buffers:
+
+;;; Variables for News-group-list buffers:
 
 (define-variable news-show-unsubscribed-groups
   "Switch controlling whether unsubscribed News groups appear in server buffers.
@@ -109,6 +111,15 @@ If true (the default), News groups in the subscribed-groups buffer are sorted.
 If false, groups appear in the order they are listed in the init file."
   #t
   boolean?)
+
+(define-variable news-hide-groups
+  "List of regexps indicatings groups to be hidden.
+Any News group whose name matches one of these regexps will not be shown
+ in the all-groups and new-groups buffers.
+Subscribing to such a group will still work, and afterwards the
+ group will appear in the subscribed-groups buffer."
+  '()
+  list-of-strings?)
 
 (define-variable news-refresh-group-when-selected
   "Switch controlling whether News group is refreshed when selected.
@@ -1092,17 +1103,18 @@ This shows News groups that have been created since the last time that
       (initialize-news-group-buffer buffer argument)
       (let ((ls (find-first-property-line buffer 'NEWS-HEADER #f)))
 	(and ls
-	     (let ((header (region-get ls 'NEWS-HEADER #f)))
-	       (cond ((not (news-header:article-deleted? header)) ls)
-		     ((news-group-buffer:next-header buffer
-						     header
-						     news-header:unread?)
-		      => (lambda (header)
-			   (or (news-group-buffer:header-mark buffer header)
-			       (news-group-buffer:thread-start-mark
-				buffer (news-header:thread header))
-			       ls)))
-		     (else ls))))))))
+	     (let ((header
+		    (let ((header (region-get ls 'NEWS-HEADER #f)))
+		      (and (news-header:article-deleted? header)
+			   (news-group-buffer:next-header
+			    buffer header news-header:unread?)))))
+	       (if header
+		   (if (news-header:pre-read-body? header)
+		       (news-group-buffer:header-mark-1 buffer header)
+		       (or (news-group-buffer:header-mark buffer header)
+			   (news-group-buffer:thread-start-mark
+			    buffer (news-header:thread header)) ls))
+		   ls)))))))
 
 (define (news-group-buffer-name group)
   (news-buffer-name (news-group:server group) (news-group:name group)))
@@ -1140,9 +1152,8 @@ This shows News groups that have been created since the last time that
 			 (let ((n (news-group:number-of-articles next)))
 			   (if (and n (> n 0))
 			       (let ((ls
-				      (news-server-buffer:group-mark buffer
-								     next
-								     #f)))
+				      (news-server-buffer:group-mark
+				       buffer next #f)))
 				 (if ls
 				     (set-buffer-point! buffer ls)))
 			       (loop next)))))))))
@@ -1640,7 +1651,10 @@ This mode's commands include:
 \\[news-catch-up-group]	mark all articles as read and return to news-groups buffer
 \\[news-expunge-group]	remove marked threads from the article list
 \\[news-revert-group]	refresh the article list from the news server
-\\[news-save-server-data]	write info about the subscribed groups to the init file"
+\\[news-save-server-data]	write info about the subscribed groups to the init file
+
+\\[news-group-show-header]	show the header of the article indicated by point
+\\[news-group-show-subject]	show the subject of the article indicated by point"
   (lambda (buffer)
     (local-set-variable! truncate-lines #t buffer)
     (event-distributor/invoke! (ref-variable news-group-mode-hook buffer)
@@ -1657,6 +1671,7 @@ This mode's commands include:
 (define-key 'news-group #\M-d 'news-delete-thread)
 (define-key 'news-group #\M-e 'news-expand-threads)
 (define-key 'news-group #\g 'news-revert-group)
+(define-key 'news-group #\h 'news-group-show-header)
 (define-key 'news-group #\i 'news-ignore-thread)
 (define-key 'news-group #\m 'news-mark-article)
 (define-key 'news-group #\M-m 'news-mark-thread)
@@ -1670,6 +1685,7 @@ This mode's commands include:
 (define-key 'news-group #\M-P 'news-group-previous-thread-article)
 (define-key 'news-group #\q 'news-group-quit)
 (define-key 'news-group #\r 'news-read-marked-bodies)
+(define-key 'news-group #\s 'news-group-show-subject)
 (define-key 'news-group #\t 'news-toggle-thread)
 (define-key 'news-group #\u 'news-unmark-article)
 (define-key 'news-group #\M-u 'news-unmark-thread)
@@ -2197,6 +2213,42 @@ This kills the current buffer."
 			server-buffer)))))
 	(kill-buffer buffer)
 	(if alternate (select-buffer alternate))))))
+
+(define-command news-group-show-subject
+  "Show the subject of the current article.
+Without argument, the subject is shown in the echo area if it will fit there.
+Otherwise (or with argument) a buffer containing the subject is popped up.
+This is useful when the subject has been truncated by the one-line display."
+  "P"
+  (lambda (argument)
+    (let ((subject
+	   (canonicalize-subject (news-header:subject (current-news-header)))))
+      (if (and (not argument)
+	       (< (string-columns subject 0 8 default-char-image-strings)
+		  (window-x-size (typein-window))))
+	  (message subject)
+	  (pop-up-temporary-buffer " news-header subject"
+				   '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE)
+	    (lambda (buffer window)
+	      window
+	      (insert-string subject (buffer-point buffer))))))))
+
+(define-command news-group-show-header
+  "Show the header of the current article.
+With argument, the complete header is shown.
+Otherwise, the standard pruned header is shown."
+  "P"
+  (lambda (argument)
+    (let ((header (current-news-header)))
+      (if argument (news-header:guarantee-full-text! header))
+      (pop-up-temporary-buffer " news-header subject"
+			       '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE)
+	(lambda (buffer window)
+	  window
+	  (insert-news-header header buffer (not argument))
+	  ;; delete two blank lines at end
+	  (let ((end (buffer-end buffer)))
+	    (delete-string (mark- end 2) end)))))))
 
 ;;;; News-Article Buffer
 
@@ -2266,8 +2318,12 @@ This kills the current buffer."
 	    (news-group-buffer:group group-buffer)))))))
 
 (define (insert-news-header header buffer truncate?)
-  (let ((hend (mark-left-inserting-copy (buffer-start buffer))))
-    (insert-string (news-header:text header) hend)
+  (let ((hend (mark-left-inserting-copy (buffer-start buffer)))
+	(text (news-header:text header)))
+    (if (and (not (string-null? text))
+	     (char=? #\newline (string-ref text 0)))
+	(insert-substring text 1 (string-length text) hend)
+	(insert-string text hend))
     (insert-newline hend)
     (if truncate? (delete-ignored-headers (buffer-start buffer) hend))
     (mark-temporary! hend))
@@ -2719,7 +2775,7 @@ While composing the follow-up, use \\[mail-yank-original] to yank the
 		     (nntp-connection:server
 		      (news-group:connection
 		       (news-header:group
-			(news-article-buffer:header article-buffer))))))))
+			(news-article-buffer:header buffer))))))))
 
 (define (news-article-buffer:followup-fields buffer)
   (let ((header (news-article-buffer:header buffer)))
@@ -2854,7 +2910,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		(nntp-connection:close connection)
 		result)))))))
 
-(define (news-post-process-headers start end)
+(define ((news-post-process-headers buffer) start end)
   (let ((start (mark-left-inserting-copy start)))
     (if (not (mail-field-end start end "From"))
 	(insert-string (mail-from-string #f)
@@ -2874,8 +2930,10 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	  (news-post-canonicalize-newsgroups region)
 	  (mail-insert-field start "Newsgroups")))
     (if (not (mail-field-end start end "Message-id"))
-	(insert-string (news-post-default-message-id)
-		       (mail-insert-field end "Message-id")))
+	(insert-string
+	 (news-post-default-message-id (mail-field-region start end "Subject")
+				       buffer)
+	 (mail-insert-field end "Message-id")))
     (if (not (mail-field-end start end "Path"))
 	(insert-string (news-post-default-path)
 		       (mail-insert-field end "Path")))
@@ -2899,11 +2957,28 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define (news-post-default-path)
   (string-append (get-news-server-name #f) "!" (current-user-name)))
 
-(define (news-post-default-message-id)
+(define (news-post-default-message-id subject-region buffer)
+  ;; From "News Article Format and Transmission, 2 June 1994, section
+  ;; 6.5: The followup agent MUST not delete any message ID whose
+  ;; local part ends with "_-_" (underscore (ASCII 95), hyphen (ASCII
+  ;; 45), underscore); followup agents are urged to use this form to
+  ;; mark subject changes, and to avoid using it otherwise.
   (string-append "<"
 		 (current-user-name)
 		 "."
 		 (number->string (get-universal-time))
+		 (if (compare-subjects
+		      (canonicalize-subject
+		       (let ((reply-buffer
+			      (ref-variable mail-reply-buffer buffer)))
+			 (if reply-buffer
+			     (news-header:subject
+			      (news-article-buffer:header reply-buffer))
+			     "")))
+		      (canonicalize-subject
+		       (if subject-region (region->string subject-region) "")))
+		     ""
+		     "_-_")
 		 "@"
 		 (os/hostname)
 		 ">"))
