@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.14 2003/02/14 18:28:34 cph Exp $
+$Id: uproc.scm,v 1.15 2003/03/14 20:02:18 cph Exp $
 
 Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
 
@@ -102,10 +102,10 @@ USA.
   (let loop ((p procedure) (e 0))
     (cond ((%primitive-procedure? p)
 	   (let ((arity (primitive-procedure-arity p)))
-	     (cond ((< arity 0)
+	     (cond ((fix:< arity 0)
 		    (cons 0 #f))
-		   ((<= e arity)
-		    (let ((arity (- arity e)))
+		   ((fix:<= e arity)
+		    (let ((arity (fix:- arity e)))
 		      (cons arity arity)))
 		   (else
 		    (error "Illegal arity for entity:" procedure)))))
@@ -113,39 +113,44 @@ USA.
 	   (lambda-components (%compound-procedure-lambda p)
 	     (lambda (name required optional rest auxiliary decl body)
 	       name auxiliary decl body
-	       (let ((r (- (length required) e)))
+	       (let ((r (fix:- (length required) e)))
 		 (cond (rest
-			(cons (max 0 r) #f))
-		       ((>= r 0)
-			(cons r (+ r (length optional))))
+			(cons (fix:max 0 r) #f))
+		       ((fix:>= r 0)
+			(cons r (fix:+ r (length optional))))
 		       (else
 			(error "Illegal arity for entity:" procedure)))))))
 	  ((%compiled-procedure? p)
 	   (let ((info (compiled-entry-kind p))
-		 (e+1 (+ e 1)))
+		 (e+1 (fix:+ e 1)))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; min = (1 + req)
-	     (let ((min (- (system-hunk3-cxr1 info) e+1))
+	     (let ((min (fix:- (system-hunk3-cxr1 info) e+1))
 		   (max (system-hunk3-cxr2 info)))
-	       (cond ((< max 0)
-		      (cons (if (negative? min) 0 min) #f))
-		     ((>= min 0)
-		      (cons min (- max e+1)))
+	       (cond ((fix:< max 0)
+		      (cons (if (fix:< min 0) 0 min) #f))
+		     ((fix:>= min 0)
+		      (cons min (fix:- max e+1)))
 		     (else
 		      (error "Illegal arity for entity:" procedure))))))
 	  ((%entity? p)
 	   (if (%entity-is-apply-hook? p)
 	       (loop (apply-hook-procedure p) e)
-	       (loop (entity-procedure p) (+ e 1))))
+	       (loop (entity-procedure p) (fix:+ e 1))))
 	  (else
 	   (error:wrong-type-argument procedure "procedure"
 				      'PROCEDURE-ARITY)))))
 
 (define (procedure-arity-valid? procedure n-arguments)
+  (guarantee-index-fixnum n-arguments 'PROCEDURE-ARITY-VALID?)
   (let ((arity (procedure-arity procedure)))
     (and (<= (car arity) n-arguments)
 	 (or (not (cdr arity))
 	     (<= n-arguments (cdr arity))))))
+
+(define (thunk? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 0)))
 
 ;;;; Interpreted Procedures
 
