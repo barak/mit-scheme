@@ -2,16 +2,15 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.91 2000/04/12 00:40:52 cph Exp $
+@comment $Id: scheme.texinfo,v 1.92 2000/07/21 17:59:22 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
 @comment %**end of header (This is for running Texinfo on a region.)
 @setchapternewpage odd
-@syncodeindex vr cp
-@syncodeindex fn cp
-
-@clear sicpstuff
+@syncodeindex vr fn
+@syncodeindex pg fn
+@syncodeindex tp fn
 
 @comment Parts of this document are essentially plagiarized from "Common
 @comment Lisp: The Language".  Those parts are marked by the following
@@ -20,42 +19,7 @@
 @comment **** begin CLTL ****
 @comment **** end CLTL ****
 
-@comment This TeX macro is used in the description of the entry formats.
-@comment It is similar to the @deffn macro, but doesn't screw around
-@comment with the left margin or make an entry in the index.
 @tex
-
-\gdef\defnameexample #1#2{%
-\advance \hsize by -\leftskip %
-\advance \hsize by -\rightskip %
-\noindent        %
-\setbox0=\hbox{\hskip \deflastargmargin{\rm #2}\hskip \deftypemargin}%
-\dimen0=\hsize \advance \dimen0 by -\wd0 % compute size for first line
-\dimen1=\hsize \advance \dimen1 by -\defargsindent %size for continuations
-\parshape 2 0in \dimen0 \defargsindent \dimen1     %
-% Now output arg 2 ("Function" or some such)
-% ending at \deftypemargin from the right margin,
-% but stuck inside a box of width 0 so it does not interfere with linebreaking
-\rlap{\rightline{{\rm #2}\hskip \deftypemargin}}%
-\tolerance=10000 \hbadness=10000    % Make all lines underfull and no complaints
-\hskip \deftypemargin  % Indent function name slightly
-{\df #1}\enskip        % Generate function name
-}
-
-\gdef\deffnheaderexample #1#2#3{%
-\begingroup\defnameexample {#2}{#1}\defunargs{#3}\endgroup}
-
-\gdef\defmethparsebodyexample #1#2#3#4 {\begingroup\inENV %
-\medbreak %
-% Define the end token that this defining construct specifies
-% so that it will exit this group.
-\def#1{\endgraf\endgroup\medbreak}%
-\def#2##1 {\begingroup\obeylines\activeparens\spacesplit{#3{##1}}}%
-\parindent=0in %
-\begingroup\obeylines\activeparens\spacesplit{#3{#4}}}
-
-\gdef\deffnexample{\defmethparsebodyexample\Edeffnexample\deffnexamplex\deffnheaderexample}
-
 % Don't let TeX put extra vspace around math displays ($$ ... $$),
 % because these always appear inside @tex ... @end tex commands
 % that put space there to begin with.
@@ -63,7 +27,6 @@
 \abovedisplayshortskip=0pt plus 3pt
 \belowdisplayskip=0pt plus 3pt
 \belowdisplayshortskip=0pt plus 3pt
-
 @end tex
 
 @ifinfo
@@ -81,9 +44,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.91
+@subtitle Edition 1.92
 @subtitle for Scheme Release 7.5
-@subtitle 11 April 2000
+@subtitle 21 July 2000
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -130,7 +93,9 @@ facilities available for developing programs in MIT Scheme, and the
 * Error System::                
 * Graphics::                    
 * Win32 Package Reference::     
-* Index::                       
+* GNU Free Documentation License::  
+* Binding Index::               
+* Concept Index::               
 
 @detailmenu
  --- The Detailed Node Listing ---
@@ -663,15 +628,8 @@ on the value in any way.
 Each description of an MIT Scheme variable, special form, or
 procedure begins with one or more header lines in this format:
 
-@iftex
-@deffnexample @var{category} @var{template}
-@end deffnexample
-@end iftex
-@ifinfo
-@display
-* @var{category}: @var{template}
-@end display
-@end ifinfo
+@deffn @var{category} @var{template}
+@end deffn
 
 @noindent
 where @var{category} specifies the kind of item (``variable'', ``special
@@ -759,15 +717,8 @@ manual, and uppercase in the Info file.
 When an argument names a Scheme data type, it indicates that the
 argument must be that type of data object.  For example,
 
-@iftex
-@deffnexample procedure cdr pair
-@end deffnexample
-@end iftex
-@ifinfo
-@display
-* procedure: cdr PAIR
-@end display
-@end ifinfo
+@deffn procedure cdr pair
+@end deffn
 
 @noindent
 indicates that the standard Scheme procedure @code{cdr} takes one argument,
@@ -798,29 +749,15 @@ also imply type restrictions:
 
 Some examples:
 
-@iftex
-@deffnexample procedure list object @dots{}
-@end deffnexample
-@end iftex
-@ifinfo
-@display
-* procedure: list OBJECT @dots{}
-@end display
-@end ifinfo
+@deffn procedure list object @dots{}
+@end deffn
 
 @noindent
 indicates that the standard Scheme procedure @code{list} takes zero or
 more arguments, each of which may be any Scheme object.
 
-@iftex
-@deffnexample procedure write-char char [output-port]
-@end deffnexample
-@end iftex
-@ifinfo
-@display
-* procedure: write-char CHAR [OUTPUT-PORT]
-@end display
-@end ifinfo
+@deffn procedure write-char char [output-port]
+@end deffn
 
 @noindent
 indicates that the standard Scheme procedure @code{write-char} must be
@@ -19422,7 +19359,7 @@ equivalent:
 @end example
 @end defop
 
-@node Win32 Package Reference, Index, Graphics, Top
+@node Win32 Package Reference, GNU Free Documentation License, Graphics, Top
 @chapter Win32 Package Reference
 
 @ifinfo
@@ -20113,249 +20050,16 @@ The current system works with C procedures with the @code{__stdcall} and
 calling convention.
 @end itemize
 
+@node GNU Free Documentation License, Binding Index, Win32 Package Reference, Top
+@unnumbered GNU Free Documentation License
+@include gfdl.texinfo
 
-@c @node Writing windows procedures, Procedure Index, Device Independent Bitmap Utilities, Top
-@c @section Writing windows procedures
-@c 
-@c @cindex warning
-@c @strong{Warning}: Do not try to do this.  It is very hard to get it even
-@c partly right and probably impossible to make the program 100% reliable.
-@c 
-@c It is possible to write Scheme procedures that determine the behavior
-@c of windows and controls on the screen.  To succeed at this you need a
-@c good understanding of how you would do the same thing in C using the
-@c Windows SDK, the limitations of mixed language working when C calls
-@c Scheme, and lots of patience because debugging this kind of code is very
-@c painful.
-@c The only major example of this kind of code is the Scheme Graphics
-@c implementation (source in @file{WIN32/GRAPHICS.SCM}, but you will need
-@c to read @file{RUNTIME/GRAPHICS.SCM} and the DIB utilities too).
-@c 
-@c Currently, Scheme `wndprocs' are run during interrupt processing.  They
-@c are run in the dynamic context of whatever was running when the
-@c interrupt was signalled.  Any procedure that relies upon a dynamic
-@c variable cannot be used reliably.  Thus doing, say, a @code{display}
-@c might result in the output unintentionally being inserted in a file
-@c rather than appearing on the screen.  Errors are not handled, thus a
-@c call to @code{(+ #f 5)} can result in the interrupt processing mechanism
-@c becoming confused, and subsequently causing the system to lock up, as
-@c all user input ultimately is processed using this same mechanism.
-@c Obviously this state of affairs is not satisfactory and I intend to
-@c improve things by running the wndprocs in a known dynamic context and
-@c trapping errors, but not until Edwin's I/O handling is changed to
-@c separate it more from this mechanism, and definitely not until after the
-@c release.
-@c 
-@c @menu
-@c * Procedures::                  
-@c * Scheme WndProcs::             
-@c @end menu
-@c 
-@c @node Procedures, ,  , Writing windows procedures
-@c @subsection Procedures
-@c 
-@c @deffn {procedure+} get-handle index
-@c Return a magic number that cannot be found any other way.
-@c Subject to change, the current behavior is:
-@c 
-@c @table @code
-@c @item 0
-@c The handle of the instance, @code{hInstance}, of the Scheme application
-@c @item 1
-@c The handle of the master tty window
-@c @item 3
-@c The address of the C function that invokes a Scheme wndproc.
-@c @end table
-@c @end deffn
-@c 
-@c @deffn {procedure+} create-scheme-window ex-style class name style x y w h parent menu inst param proc
-@c Creates a window by calling @code{CreateWindowEx} with all the
-@c parameters except @var{proc}.
-@c 
-@c @table @var
-@c @item ex-style
-@c Integer.
-@c @item class
-@c String.  Must name a window class created with a @code{lpfnWndProc}
-@c entry that has the value of @code{(get-handle 3)}.
-@c @item name
-@c String.  Title of window.
-@c @item style
-@c Integer.
-@c @item x y
-@c Integer. Window position.
-@c @item w h
-@c Integer. Window size.
-@c @item parent
-@c Integer.  Handle of parent window.
-@c @item menu
-@c Integer or string.  Number or name of menu resource for this window's
-@c menu.
-@c 0 means no menu.
-@c @item inst
-@c Integer, should be the result of @code{(get-handle 0)}.
-@c @item param
-@c Integer.
-@c @item proc
-@c @var{Proc} is a Scheme procedure with four parameters, i.e.@: of the form
-@c 
-@c @example
-@c (lambda (@var{hwnd} @var{msg} @var{wparam} @var{lparam})
-@c   ...)
-@c @end example
-@c This procedure is the Scheme analogue of the C function that would
-@c normally have been installed as the @code{lpfnWndProc} of the window
-@c class.
-@c @end table
-@c @end deffn
-@c 
-@c @deffn {procedure+} subclass-window! hwnd subclass-behavior
-@c Replace @var{hwnd}'s wndproc with a wndproc formed by calling
-@c @var{subclass-behavior} on the original wndproc.
-@c @end deffn
-@c 
-@c @deffn {procedure+} register-class  style wndproc clsExtra wndExtra hInstance hIcon hCursor hBackground menu-name class-name
-@c A way to call @code{RegisterClass} without first constructing a C
-@c @code{WNDCLASS} object.
-@c @end deffn
-@c 
-@c @deffn {procedure+} default-scheme-wndproc
-@c The Scheme equivalent of the C @code{DefWindowProc}.
-@c @end deffn
-@c 
-@c @node Scheme WndProcs,  , Procedures, Writing windows procedures
-@c @subsection  Scheme WndProcs
-@c 
-@c 
-@c A Scheme wndproc is of the form
-@c 
-@c @cindex wndproc
-@c @example
-@c (lambda (hwnd msg wparam lparam)
-@c   (cond ((= msg WM_CREATE)
-@c          ...)
-@c         (...
-@c          ...)
-@c         (else
-@c          (default-scheme-wndproc hwnd msg wparam lparam))))
-@c @end example
-@c 
-@c @cindex wndproc, higher-order
-@c Scheme has the advantage over C that first class procedures can be used
-@c to organize the data used by the window.
-@c A useful idiom idiom is to parameterize the code with the default
-@c behavior.
-@c This example behaves like @var{default-wndproc}, except that it
-@c beeps every time the left mouse button is pressed.
-@c 
-@c @example
-@c (define ((my-wndproc default-wndproc) hwnd msg wparam lparam)
-@c   (define (default) (default-wndproc hwnd msg wparam lparam))
-@c   (cond ((= msg WM_LBUTTONDOWN)
-@c            (message-beep MB_OK)
-@c            (default))
-@c         (else
-@c            (default))))
-@c @end example
-@c 
-@c @noindent
-@c @code{my-wndproc} is suitable for use with @code{subclass-window!}
-@c For example,
-@c 
-@c @example
-@c (subclass-window! (get-handle 1) my-wndproc)
-@c @end example
-@c Will cause the main Scheme window to beep every time the left mouse
-@c button is pressed, but otherwise work normally.
-@c 
-@c In a similar fashion, Scheme wndprocs can be closed over state
-@c describing the object that the window displays or edits.
-@c An idiom for a complex kind of window is to have a record (structure)
-@c representing the object, and to create the window procedure with that
-@c object in scope.
-@c The following extended example is a framework for an editor.
-@c The @code{whizz-editor} record's @code{hwnd} field is set at window
-@c creation time so that we can get the window handle from the record.  The
-@c utility of this is demonstrated in @code{whizz-editor/set-title}.
-@c 
-@c @example
-@c (define-structure whizz-editor
-@c   hwnd
-@c   magic-flag?
-@c   @var{other stuff})
-@c 
-@c 
-@c (define (make-whizz-editor-wndproc data)
-@c   ;; @r{The following string is created once before the window comes}
-@c   ;; @r{into existence}
-@c   (define window-local-string (make-string 100))
-@c 
-@c   ;; @r{The normal wndproc}
-@c   (define ((wndproc default-wndproc) hwnd msg wparam lparam)
-@c     (define (default) (default-wndproc hwnd msg wparam lparam))
-@c     (cond ((= msg WM_CREATE)
-@c              (set-whizz-editor-hwnd! data hwnd)
-@c              ...
-@c              (default))
-@c           (...
-@c              ... (if (whizz-editor-magic-flag? data) ... ...)
-@c              ...)
-@c           (else
-@c              (default))))
-@c 
-@c   wndproc)
-@c      
-@c 
-@c (define (create-whizz-editor)
-@c   (let* ((data     (make-whizz-editor 0 ...))
-@c          (wndproc  (make-whizz-editor-wndproc data))
-@c          
-@c     (create-scheme-window
-@c        0 "WHIZZ_EDITOR_CLASS" "Whizz Editor"
-@c        (+ WS_VISIBLE WS_OVERLAPPED)
-@c        CW_USEDEFAULT CW_USEDEFAULT CW_USEDEFAULT CW_USEDEFAULT
-@c        0 0 (get-handle 0) 0
-@c        (wndproc default-scheme-wndproc)))
-@c     data))
-@c 
-@c (define (whizz-editor/set-title wh title)
-@c   (set-window-text (whizz-editor-hwnd wh) title))
-@c @end example
-@c 
-@c @noindent
-@c Now we are ready to create a Whizz Editor and set its title:
-@c 
-@c @example
-@c (define my-editor (create-whizz-editor))
-@c (whizz-editor/set-title my-editor "A new title")
-@c @end example
-@c 
-@c @node Procedure Index, Concept Index, , Top
-@c @unnumbered Index of Procedures, Special Forms, and Variables
-@c @printindex fn
-@c 
-@c @node Concept Index,  , Procedure Index, Top
-@c @unnumbered Index of Concepts
-@c @printindex cp
-@c 
-@c @node Procedure Index,  , Writing windows procedures, Top
-@c @unnumbered Index
-@c @printindex fn
-@c 
-@c @c @summarycontents
-@c 
-@c @contents
-@c 
-@c @bye
+@node Binding Index, Concept Index, GNU Free Documentation License, Top
+@unnumbered Binding Index
+@printindex fn
 
-@c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-
-@ifset sicpstuff
-@include pictures.texinfo
-@end ifset
-
-@node Index,  , Win32 Package Reference, Top
-@unnumbered Index
+@node Concept Index,  , Binding Index, Top
+@unnumbered Concept Index
 @printindex cp
 
 @summarycontents
