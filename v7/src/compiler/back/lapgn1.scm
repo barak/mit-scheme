@@ -37,7 +37,7 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.21 1986/12/20 23:48:34 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.22 1986/12/21 14:52:04 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -57,19 +57,19 @@
 		 (*code-object-label*)
 		 (*code-object-entry*))
        (for-each (lambda (quotation)
-		   (cgen-cfg quotation quotation-rtl))
+		   (cgen-cfg quotation quotation-rtl-entry))
 		 quotations)
        (for-each (lambda (procedure)
-		   (cgen-cfg procedure procedure-rtl))
+		   (cgen-cfg procedure procedure-rtl-entry))
 		 procedures)
        (for-each (lambda (continuation)
-		   (cgen-cfg continuation continuation-rtl))
+		   (cgen-cfg continuation continuation-rtl-entry))
 		 continuations)
        (receiver *interned-constants* *block-start-label*)))))
 
-(define (cgen-cfg object extract-cfg)
+(define (cgen-cfg object extract-entry)
   (set! *code-object-label* (code-object-label-initialize object))
-  (let ((rnode (cfg-entry-node (extract-cfg object))))
+  (let ((rnode (extract-entry object)))
     (set! *code-object-entry* rnode)
     (cgen-rnode rnode)))
 

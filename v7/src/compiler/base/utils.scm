@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.77 1986/12/20 22:54:13 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.78 1986/12/21 14:52:59 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -337,6 +337,7 @@
   (define-scode-operator in-package-components)
   (define-scode-operator lambda-components)
   (define-scode-operator lambda?)
+  (define-scode-operator make-access)
   (define-scode-operator make-combination)
   (define-scode-operator make-conditional)
   (define-scode-operator make-definition)

@@ -37,7 +37,7 @@
 
 ;;;; Compiler Macros
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.53 1986/12/20 22:52:39 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.54 1986/12/21 14:52:26 cph Exp $
 
 (declare (usual-integrations))
 
@@ -84,11 +84,11 @@
 		 ((symbol? (car pattern))
 		  (if-lambda pattern body))
 		 (else
-		  (error "Illegal name" parse-lambda-syntax (car pattern))))))
+		  (error "Illegal name" parse-define-syntax (car pattern))))))
 	((symbol? pattern)
 	 (if-variable pattern body))
 	(else
-	 (error "Illegal name" parse-lambda-syntax pattern))))
+	 (error "Illegal name" parse-define-syntax pattern))))
 
 (define lambda-list->bound-names
   (let ((accumulate

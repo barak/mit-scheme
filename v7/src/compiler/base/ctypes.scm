@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.37 1986/12/20 22:51:33 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.38 1986/12/21 14:51:50 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -68,7 +68,7 @@
 
 (define-integrable (make-unbound-test block variable)
   (pnode->pcfg (make-pnode unbound-test-tag block variable)))
-
+
 (define-snode combination block compilation-type value operator operands
   procedures known-operator)
 (define *combinations*)
@@ -84,15 +84,18 @@
 			     (cons combination (vnode-combinations value)))
     (snode->scfg combination)))
 
-(define-snode continuation rtl delta label)
+(define-snode continuation rtl-edge delta label)
 (define *continuations*)
 
 (define-integrable (make-continuation rtl delta)
   (let ((continuation
-	 (make-snode continuation-tag rtl delta
+	 (make-snode continuation-tag (cfg-entry-edge rtl) delta
 		     (generate-label 'CONTINUATION))))
     (set! *continuations* (cons continuation *continuations*))
     continuation))
+
+(define-integrable (continuation-rtl-entry continuation)
+  (edge-right-node (continuation-rtl-edge continuation)))
 
 (define-unparser continuation-tag
   (lambda (continuation)

@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.144 1986/12/20 23:48:20 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.145 1986/12/21 14:51:38 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -161,13 +161,13 @@
   (let ((next (edge-right-node edge)))
     (edge-disconnect-right! edge)
     (edge-connect-right! edge snode)
-    (create-edge! snode set-snode-next! next)))
+    (create-edge! snode set-snode-next-edge! next)))
 
 (define (node-insert-snode! node snode)
   (let ((previous-edges (node-previous-edges node)))
     (edges-disconnect-right! previous-edges)
     (edges-connect-right! previous-edges snode)
-    (create-edge! snode set-snode-next! node)))
+    (create-edge! snode set-snode-next-edge! node)))
 
 ;;;; Previous Connections
 
@@ -240,12 +240,12 @@
   (let ((node (make-noop-node)))
     (make-pcfg node
 	       '()
-	       (list (make-hook node set-snode-next!)))))
+	       (list (make-hook node set-snode-next-edge!)))))
 
 (define (make-true-pcfg)
   (let ((node (make-noop-node)))
     (make-pcfg node
-	       (list (make-hook node set-snode-next!))
+	       (list (make-hook node set-snode-next-edge!))
 	       '())))
 
 ;;;; Miscellaneous
@@ -379,6 +379,11 @@
   (create-edge! (hook-node hook) (hook-connect hook) node))
 
 ;;;; CFG Construction
+
+(define (cfg-entry-edge cfg)
+  (let ((edge (make-edge false false false)))
+    (edge-connect-right! edge (cfg-entry-node cfg))
+    edge))
 
 (define-integrable (scfg-next-connect! scfg cfg)
   (hooks-connect! (scfg-next-hooks scfg) (cfg-entry-node cfg)))

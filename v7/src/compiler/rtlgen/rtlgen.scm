@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.1 1986/12/20 22:53:46 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.2 1986/12/21 14:52:34 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -79,7 +79,7 @@
 
 (define (generate:quotation quotation)
   (set-quotation-rtl! quotation
-		      (generate:cfg (quotation-cfg quotation) 0)))
+		      (generate:cfg (quotation-fg-entry quotation) 0)))
 
 (define (generate:procedure procedure)
   (set-procedure-rtl!
@@ -89,7 +89,7 @@
 	  ((stack-procedure? procedure) generate:stack-procedure)
 	  (else (error "Unknown procedure type" procedure)))
     procedure
-    (generate:cfg (procedure-cfg procedure) 0))))
+    (generate:cfg (procedure-fg-entry procedure) 0))))
 
 (define (generate:closure-procedure procedure cfg)
   (scfg-append! (if (or (not (null? (procedure-optional procedure)))
