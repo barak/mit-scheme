@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.17 2003/04/15 20:17:14 cph Exp $
+$Id: char.scm,v 14.18 2003/04/25 03:09:14 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003 Massachusetts Institute of Technology
@@ -240,74 +240,67 @@ USA.
 ;;;; Character Names
 
 (define (name->char string)
-  (let ((end (string-length string))
-	(bits '()))
-    (define (loop start)
+  (let ((end (string-length string)))
+    (let loop ((start 0) (bits 0))
       (let ((left (fix:- end start)))
-	(cond ((fix:= 0 left)
-	       (error "Missing character name"))
-	      ((fix:= 1 left)
-	       (let ((char (string-ref string start)))
-		 (if (char-graphic? char)
-		     (char-code char)
-		     (error "Non-graphic character" char))))
-	      (else
-	       (let ((hyphen
-		      (substring-find-next-char string start end #\-)))
-		 (if (not hyphen)
-		     (name->code string start end)
-		     (let ((bit (-map-> named-bits string start hyphen)))
-		       (if (not bit)
-			   (name->code string start end)
-			   (begin (if (not (memv bit bits))
-				      (set! bits (cons bit bits)))
-				  (loop (fix:+ hyphen 1)))))))))))
-    (let ((code (loop 0)))
-      (make-char code (apply + bits)))))
+	(if (fix:= 0 left)
+	    (error:bad-range-argument string 'NAME->CHAR))
+	(if (fix:= 1 left)
+	    (let ((char (string-ref string start)))
+	      (if (not (char-graphic? char))
+		  (error:bad-range-argument string 'NAME->CHAR))
+	      (make-char (char-code char) bits))
+	    (let ((hyphen (substring-find-next-char string start end #\-)))
+	      (if hyphen
+		  (let ((bit (-map-> named-bits string start hyphen)))
+		    (if bit
+			(loop (fix:+ hyphen 1) (fix:or bit bits))
+			(make-char (name->code string start end) bits)))
+		  (make-char (name->code string start end) bits))))))))
 
 (define (name->code string start end)
-  (if (substring-ci=? string start end "Newline" 0 7)
+  (if (substring-ci=? string start end "newline" 0 7)
       (char-code char:newline)
       (or (-map-> named-codes string start end)
 	  (numeric-name->code string start end)
-	  (error "Unknown character name" (substring string start end)))))
+	  (error "Unknown character name:" (substring string start end)))))
 
 (define (numeric-name->code string start end)
   (and (> (- end start) 6)
        (substring-ci=? string start (+ start 5) "<code" 0 5)
-       (substring-ci=? string (- end 1)  end    ">" 0 1)
+       (substring-ci=? string (- end 1) end ">" 0 1)
        (string->number (substring string (+ start 5) (- end 1)) 10)))
-
+
 (define (char->name char #!optional slashify?)
-  (if (default-object? slashify?) (set! slashify? false))
-  (define (loop weight bits)
+  (let ((code (char-code char))
+	(bits (char-bits char)))
+    (string-append
+     (bucky-bits->prefix bits)
+     (let ((base-char (code->char code)))
+       (cond ((<-map- named-codes code))
+	     ((and (if (default-object? slashify?) #f slashify?)
+		   (not (fix:= 0 bits))
+		   (or (char=? base-char #\\)
+		       (char-set-member? char-set/atom-delimiters base-char)))
+	      (string-append "\\" (string base-char)))
+	     ((char-graphic? base-char)
+	      (string base-char))
+	     (else
+	      (string-append "<code" (number->string code 10) ">")))))))
+
+(define (bucky-bits->prefix bits)
+  (let loop ((bits bits) (weight 1))
     (if (fix:= 0 bits)
-	(let ((code (char-code char)))
-	  (let ((base-char (code->char code)))
-	    (cond ((<-map- named-codes code))
-		  ((and slashify?
-			(not (fix:= 0 (char-bits char)))
-			(or (char=? base-char #\\)
-			    (char-set-member? char-set/atom-delimiters
-					      base-char)))
-		   (string-append "\\" (string base-char)))
-		  ((char-graphic? base-char)
-		   (string base-char))
-		  (else
-		   (string-append "<code"
-				  (number->string code 10)
-				  ">")))))
-	(let ((qr (integer-divide bits 2)))
-	  (let ((rest (loop (fix:* weight 2) (integer-divide-quotient qr))))
-	    (if (fix:= 0 (integer-divide-remainder qr))
-		rest
-		(string-append (or (<-map- named-bits weight)
-				   (string-append "<bits-"
-						  (number->string weight 10)
-						  ">"))
-			       "-"
-			       rest))))))
-  (loop 1 (char-bits char)))
+	""
+	(let ((rest (loop (fix:lsh bits -1) (fix:lsh weight 1))))
+	  (if (fix:= 0 (fix:and bits 1))
+	      rest
+	      (string-append (or (<-map- named-bits weight)
+				 (string-append "<bits-"
+						(number->string weight 10)
+						">"))
+			     "-"
+			     rest))))))
 
 (define (-map-> alist string start end)
   (and (not (null? alist))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.30 2003/02/14 18:28:11 cph Exp $
+$Id: calias.scm,v 1.31 2003/04/25 03:09:55 cph Exp $
 
 Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -245,32 +245,15 @@ USA.
 			  (cdr hashed-keys)))
 	  new-key))))
 
-(define hashed-keys
-  (list 'HASHED-KEYS))
-
 (define (special-key/name special-key)
-  (string-append (bucky-bits->name (special-key/bucky-bits special-key))
+  (string-append (bucky-bits->prefix (special-key/bucky-bits special-key))
 		 (symbol-name (special-key/symbol special-key))))
 
-(define (bucky-bits->name bits)
-  (let ((bucky-bit-map '#("M-" "C-" "S-" "H-" "T-")))
-    (let loop ((n (fix:- (vector-length bucky-bit-map) 1))
-	       (bit (fix:lsh 1 (fix:- (vector-length bucky-bit-map) 1)))
-	       (name ""))
-      (cond ((fix:< n 0)
-	     name)
-	    ((fix:= 0 (fix:and bit bits))
-	     (loop (fix:- n 1) (fix:lsh bit -1) name))
-	    (else
-	     (loop (fix:- n 1)
-		   (fix:lsh bit -1)
-		   (string-append (vector-ref bucky-bit-map n) name)))))))
-
 (define (make-special-key name bits)
   (hook/make-special-key name bits))
 
-(define hook/make-special-key
-  intern-special-key)
+(define hashed-keys (list 'HASHED-KEYS))
+(define hook/make-special-key intern-special-key)
 
 ;; Predefined special keys
 (define-syntax define-special-key
