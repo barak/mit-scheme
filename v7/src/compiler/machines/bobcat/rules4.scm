@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.3 1988/06/14 08:48:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.4 1988/08/29 22:56:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -102,7 +102,7 @@ MIT in each case. |#
 
 (define (assignment-call:cons-pointer entry environment name type datum)
   (let ((set-environment (expression->machine-register! environment a0)))
-    (let ((datum (coerce->any datum)))
+    (let ((datum (standard-register-reference datum false)))
       (let ((clear-map (clear-map!)))
 	(LAP ,@set-environment
 	     (MOV L ,datum ,reg:temp)
@@ -168,8 +168,7 @@ MIT in each case. |#
 				     (CONS-POINTER (CONSTANT (? type))
 						   (REGISTER (? datum))))
   (let ((set-extension (expression->machine-register! extension a0)))
-    (let ((datum (coerce->any datum)))
-      (let ((clear-map (clear-map!)))
+    (let ((datum (standard-register-reference datum false)))      (let ((clear-map (clear-map!)))
 	(LAP ,@set-extension
 	     (MOV L ,datum ,reg:temp)
 	     (MOV B (& ,type) ,reg:temp)
