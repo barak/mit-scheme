@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.8 2000/12/07 20:15:19 cph Exp $
+# $Id: Makefile.in.in,v 1.9 2000/12/07 20:19:05 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -152,10 +152,11 @@ psbtobin_LDFLAGS =
 psbtobin_LIBS = $(LIBS)
 
 ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_DATA = $(aux_DATA)
 
 MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
 
-CLEAN_FILES = $(ALL_PROGRAMS) $(EXTRA_PROGRAMS)
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpintmd.h TAGS
@@ -179,7 +180,7 @@ MAINTAINER_CLEAN_FILES = Makefile.in makegen/Makefile.deps \
 
 # **** Main rules ****
 
-all: $(ALL_PROGRAMS)
+all: $(ALL_PROGRAMS) $(ALL_DATA)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
