@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.21 1994/01/29 21:54:17 adams Exp $
+$Id: record.scm,v 1.22 1994/01/31 02:49:45 gjr Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -114,7 +114,7 @@ MIT in each case. |#
    (primitive-object-set-type (ucode-type constant)
 			      (primitive-object-ref record-type 0))))
 
-(define (make-record-type type-name field-names)
+(define (make-record-type type-name field-names #!optional print-method)
   (guarantee-list-of-unique-symbols field-names 'MAKE-RECORD-TYPE)
   (let ((record-type
 	 (%record record-type-type
@@ -127,6 +127,8 @@ MIT in each case. |#
     (add-to-population! record-type-population record-type)
     (if record-type-initialization-hook
 	(record-type-initialization-hook record-type))
+    (if (not (default-object? print-method))
+	(set-record-type-unparser-method! record-type print-method))
     record-type))
 
 (define (record-type? object)
