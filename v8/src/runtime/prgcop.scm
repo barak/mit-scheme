@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/prgcop.scm,v 1.4 1993/08/22 20:23:18 gjr Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/prgcop.scm,v 1.5 1994/11/12 23:05:38 adams Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -49,7 +49,7 @@ MIT in each case. |#
 	   (COMBINATION ,copy-COMBINATION-object)
 	   (COMMENT ,copy-COMMENT-object)
 	   (CONDITIONAL ,(%copy-triple (ucode-type CONDITIONAL)))
-	   (DEFINITION ,(%copy-triple (ucode-type DEFINITION)))
+	   (DEFINITION ,(%copy-pair (ucode-type DEFINITION)))
 	   (DELAY ,(%copy-pair (ucode-type DELAY)))
 	   (DISJUNCTION ,(%copy-pair (ucode-type DISJUNCTION)))
 	   (IN-PACKAGE ,(%copy-pair (ucode-type IN-PACKAGE)))
@@ -237,9 +237,9 @@ MIT in each case. |#
 
 (define (copy-SEQUENCE-object obj)
   (cond ((object-type? (ucode-type SEQUENCE-2) obj)
-	 (%copy-pair (ucode-type SEQUENCE-2) obj))
+	 (%%copy-pair (ucode-type SEQUENCE-2) obj))
 	((object-type? (ucode-type SEQUENCE-3) obj)
-	 (%copy-triple (ucode-type SEQUENCE-3) obj))
+	 (%%copy-triple (ucode-type SEQUENCE-3) obj))
 	(else
 	 (error "copy-SEQUENCE-object: Unknown type" obj))))
 
