@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: psbtobin.c,v 9.53 1993/11/09 08:33:42 gjr Exp $
+$Id: psbtobin.c,v 9.54 1993/11/11 22:19:06 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -762,7 +762,7 @@ DEFUN (when, (what, message), Boolean what AND char * message)
 #endif /* DEBUG > 2 */
 
 void
-relocation_error (long addr)
+DEFUN (relocation_error, (addr), long addr)
 {
   fprintf (stderr, "%s: Out of range address %d.\n",
 	   program_name, addr);
