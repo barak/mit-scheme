@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.48 1989/09/24 14:47:07 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.49 1989/09/24 14:47:35 cph Exp $
 
 (declare (usual-integrations))
 
@@ -574,4 +574,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.48 1989/09/24 14:47:07 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.49 1989/09/24 14:47:35 cph Exp $"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.3 1989/09/24 14:17:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.4 1989/09/24 14:51:41 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -89,7 +89,8 @@ MIT in each case. |#
 (define microcode-id/tty-x-size)
 (define microcode-id/tty-y-size)
 (define microcode-id/floating-mantissa-bits)
-(define microcode-id/floating-exponent-bits)(define microcode-id/operating-system-name)
+(define microcode-id/floating-epsilon)
+(define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
 (define microcode-id/stack-type)
 
