@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.20 1997/05/01 03:51:13 cph Exp $
+$Id: uxproc.c,v 1.21 1997/10/22 05:25:31 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -244,8 +244,8 @@ DEFUN (OS_make_subprocess,
 	channel_out_type, channel_out,
 	channel_err_type, channel_err),
        CONST char * filename AND
-       char * CONST * argv AND
-       char * CONST * envp AND
+       CONST char ** argv AND
+       CONST char ** envp AND
        CONST char * working_directory AND
        enum process_ctty_type ctty_type AND
        char * ctty_name AND
@@ -507,7 +507,7 @@ DEFUN_VOID (OS_process_status_sync_all)
 }
 
 int
-DEFUN_VOID (UX_process_any_status_change)
+DEFUN_VOID (OS_process_any_status_change)
 {
   return (process_tick != sync_tick);
 }

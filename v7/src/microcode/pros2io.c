@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.5 1995/11/03 01:22:21 cph Exp $
+$Id: pros2io.c,v 1.6 1997/10/22 05:24:52 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,9 +35,14 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "os2.h"
+#include "osproc.h"
 
-extern int OS2_process_any_status_change (void);
 extern qid_t OS2_channel_thread_descriptor (Tchannel);
+extern Tprocess OS2_make_subprocess
+  (const char *, PSZ, PSZ, const char *,
+   enum process_channel_type, Tchannel,
+   enum process_channel_type, Tchannel,
+   enum process_channel_type, Tchannel);
 
 DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-LUB", Prim_OS2_select_registry_lub, 0, 0, 0)
 {
@@ -76,7 +81,7 @@ DEFINE_PRIMITIVE ("OS2-SELECT-DESCRIPTOR", Prim_OS2_select_descriptor, 2, 2, 0)
     case mat_not_available:
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
     case mat_interrupt:
-      if (OS2_process_any_status_change ())
+      if (OS_process_any_status_change ())
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
       else
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
@@ -151,9 +156,66 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (0));
     else if (!interruptp)
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (1));
-    else if (!OS2_process_any_status_change ())
+    else if (!OS_process_any_status_change ())
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (2));
     else
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (3));
+  }
+}
+
+#define PROCESS_CHANNEL_ARG(arg, type, channel)				\
+{									\
+  if ((ARG_REF (arg)) == SHARP_F)					\
+    (type) = process_channel_type_none;					\
+  else if ((ARG_REF (arg)) == (LONG_TO_FIXNUM (-1)))			\
+    (type) = process_channel_type_inherit;				\
+  else									\
+    {									\
+      (type) = process_channel_type_explicit;				\
+      (channel) = (arg_channel (arg));					\
+    }									\
+}
+
+DEFINE_PRIMITIVE ("OS2-MAKE-SUBPROCESS", Prim_OS2_make_subprocess, 7, 7,
+  "(FILENAME CMD-LINE ENV WORK-DIR STDIN STDOUT STDERR)\n\
+Create a subprocess.\n\
+FILENAME is the program to run.\n\
+CMD-LINE a string containing the program's invocation.\n\
+ENV is a string to pass as the program's environment;\n\
+  #F means inherit Scheme's environment.\n\
+WORK-DIR is a string to pass as the program's working directory;\n\
+  #F means inherit Scheme's working directory.\n\
+STDIN is the input channel for the subprocess.\n\
+STDOUT is the output channel for the subprocess.\n\
+STDERR is the error channel for the subprocess.\n\
+  Each channel arg can take these values:\n\
+  #F means none;\n\
+  -1 means use the corresponding channel from Scheme;\n\
+  otherwise the argument must be a channel.")
+{
+  PRIMITIVE_HEADER (7);
+  {
+    CONST char * filename = (STRING_ARG (1));
+    CONST char * command_line = (STRING_ARG (2));
+    CONST char * env = (((ARG_REF (3)) == SHARP_F) ? 0 (STRING_ARG (3)));
+    CONST char * working_directory
+      = (((ARG_REF (4)) == SHARP_F) ? 0 (STRING_ARG (4)));
+    enum process_channel_type channel_in_type;
+    Tchannel channel_in;
+    enum process_channel_type channel_out_type;
+    Tchannel channel_out;
+    enum process_channel_type channel_err_type;
+    Tchannel channel_err;
+
+    PROCESS_CHANNEL_ARG (5, channel_in_type, channel_in);
+    PROCESS_CHANNEL_ARG (6, channel_out_type, channel_out);
+    PROCESS_CHANNEL_ARG (7, channel_err_type, channel_err);
+    PRIMITIVE_RETURN
+      (long_to_integer
+       (OS2_make_subprocess
+	(filename, command_line, env, working_directory,
+	 channel_in_type, channel_in,
+	 channel_out_type, channel_out,
+	 channel_err_type, channel_err)));
   }
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.3 1995/10/09 05:54:35 cph Exp $
+$Id: os2proc.c,v 1.4 1997/10/22 05:24:30 cph Exp $
 
-Copyright (c) 1995 Massachusetts Institute of Technology
+Copyright (c) 1995-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -73,8 +73,6 @@ static void restore_stdio (HFILE, HFILE);
 static void transfer_stdio (HFILE, Tchannel, enum process_channel_type);
 static Tprocess allocate_process (void);
 static void allocate_process_abort (void *);
-static PSZ rewrite_arguments (char * const *);
-static PSZ rewrite_environment (char * const *);
 static void child_wait_thread (void *);
 static Tprocess find_process (PID);
 
@@ -132,24 +130,17 @@ OS2_initialize_processes (void)
 }
 
 Tprocess
-OS_make_subprocess (const char * filename,
-		    char * const * argv,
-		    char * const * envp,
-		    const char * working_directory,
-		    enum process_ctty_type ctty_type,
-		    char * ctty_name,
-		    enum process_channel_type channel_in_type,
-		    Tchannel channel_in,
-		    enum process_channel_type channel_out_type,
-		    Tchannel channel_out,
-		    enum process_channel_type channel_err_type,
-		    Tchannel channel_err)
+OS2_make_subprocess (const char * filename,
+		     const char * command_line,
+		     const char * environment,
+		     const char * working_directory,
+		     enum process_channel_type channel_in_type,
+		     Tchannel channel_in,
+		     enum process_channel_type channel_out_type,
+		     Tchannel channel_out,
+		     enum process_channel_type channel_err_type,
+		     Tchannel channel_err)
 {
-  if ((ctty_type != process_ctty_type_none)
-      || (channel_in_type == process_channel_type_ctty)
-      || (channel_out_type == process_channel_type_ctty)
-      || (channel_err_type == process_channel_type_ctty))
-    OS2_error_anonymous ();
   transaction_begin ();
   save_process_state (working_directory != 0);
   transfer_stdio (0, channel_in, channel_in_type);
@@ -165,14 +156,13 @@ OS_make_subprocess (const char * filename,
     lock_process_status ();
     child = (allocate_process ());
     STD_API_CALL
-      (dos_exec_pgm,
-       (error_object,
-	(sizeof (error_object)),
-	EXEC_ASYNCRESULT,
-	(rewrite_arguments (argv)),
-	((envp == 0) ? 0 : (rewrite_environment (envp))),
-	(& result_codes),
-	((PSZ) filename)));
+      (dos_exec_pgm, (error_object,
+		      (sizeof (error_object)),
+		      EXEC_ASYNCRESULT,
+		      ((PSZ) command_line),
+		      ((PSZ) environment),
+		      (& result_codes),
+		      ((PSZ) filename)));
     (PROCESS_ID (child)) = (result_codes . codeTerminate);
     (PROCESS_RAW_STATUS (child)) = process_status_running;
     (PROCESS_RAW_REASON (child)) = 0;
@@ -329,70 +319,6 @@ allocate_process_abort (void * environment)
   OS_process_deallocate (process);
 }
 
-static PSZ
-rewrite_arguments (char * const * argv)
-{
-  unsigned long nargs = 0;
-  unsigned long length = 0;
-  while ((argv [nargs]) != 0)
-    {
-      length += (strlen (argv [nargs]));
-      nargs += 1;
-    }
-  {
-    PSZ result = (dstack_alloc (length + ((nargs < 2) ? 2 : nargs) + 1));
-    PSZ scan_result = result;
-    if (nargs == 0)
-      (*scan_result++) = '\0';
-    else
-      {
-	unsigned long limit = (nargs - 1);
-	unsigned long index = 0;
-	while (1)
-	  {
-	    const char * arg = (argv [index]);
-	    while (1)
-	      {
-		char c = (*arg++);
-		if (c == '\0')
-		  break;
-		(*scan_result++) = c;
-	      }
-	    if (index == limit)
-	      break;
-	    (*scan_result++) = ((index == 0) ? '\0' : ' ');
-	    index += 1;
-	  }
-      }
-    (*scan_result++) = '\0';
-    (*scan_result) = '\0';
-    return (result);
-  }
-}
-
-static PSZ
-rewrite_environment (char * const * envp)
-{
-  unsigned long length;
-  char * const * scan_env;
-  const char * binding;
-  PSZ result;
-  PSZ scan_result;
-
-  length = 0;
-  scan_env = envp;
-  while ((binding = (*scan_env++)) != 0)
-    length += ((strlen (binding)) + 1);
-  result = (dstack_alloc (length + 1));
-  scan_result = result;
-  scan_env = envp;
-  while ((binding = (*scan_env++)) != 0)
-    while (((*scan_result++) = (*binding++)) != '\0')
-      ;
-  (*scan_result) = '\0';
-  return (result);
-}
-
 void
 OS_process_deallocate (Tprocess process)
 {
@@ -467,7 +393,7 @@ OS_process_status_sync_all (void)
 }
 
 int
-OS2_process_any_status_change (void)
+OS_process_any_status_change (void)
 {
   return (process_tick != sync_tick);
 }
@@ -612,4 +538,101 @@ find_process (PID pid)
     if ((PROCESS_ID (process)) == pid)
       return (process);
   return (NO_PROCESS);
+}
+
+/* OBSOLETE */
+
+static PSZ rewrite_arguments (const char **);
+static PSZ rewrite_environment (const char **);
+
+Tprocess
+OS_make_subprocess (const char * filename,
+		    const char ** argv,
+		    const char ** envp,
+		    const char * working_directory,
+		    enum process_ctty_type ctty_type,
+		    char * ctty_name,
+		    enum process_channel_type channel_in_type,
+		    Tchannel channel_in,
+		    enum process_channel_type channel_out_type,
+		    Tchannel channel_out,
+		    enum process_channel_type channel_err_type,
+		    Tchannel channel_err)
+{
+  if ((ctty_type != process_ctty_type_none)
+      || (channel_in_type == process_channel_type_ctty)
+      || (channel_out_type == process_channel_type_ctty)
+      || (channel_err_type == process_channel_type_ctty))
+    OS2_error_anonymous ();
+  return (OS2_make_subprocess (filename,
+			       (rewrite_arguments (argv)),
+			       (rewrite_environment (envp)),
+			       working_directory,
+			       channel_in_type, channel_in,
+			       channel_out_type, channel_out,
+			       channel_err_type, channel_err));
+}
+
+static PSZ
+rewrite_arguments (const char ** argv)
+{
+  unsigned long nargs = 0;
+  unsigned long length = 0;
+  while ((argv [nargs]) != 0)
+    {
+      length += (strlen (argv [nargs]));
+      nargs += 1;
+    }
+  {
+    PSZ result = (dstack_alloc (length + ((nargs < 2) ? 2 : nargs) + 1));
+    PSZ scan_result = result;
+    if (nargs == 0)
+      (*scan_result++) = '\0';
+    else
+      {
+	unsigned long limit = (nargs - 1);
+	unsigned long index = 0;
+	while (1)
+	  {
+	    const char * arg = (argv [index]);
+	    while (1)
+	      {
+		char c = (*arg++);
+		if (c == '\0')
+		  break;
+		(*scan_result++) = c;
+	      }
+	    if (index == limit)
+	      break;
+	    (*scan_result++) = ((index == 0) ? '\0' : ' ');
+	    index += 1;
+	  }
+      }
+    (*scan_result++) = '\0';
+    (*scan_result) = '\0';
+    return (result);
+  }
+}
+
+static PSZ
+rewrite_environment (const char ** envp)
+{
+  unsigned long length;
+  const char ** scan_env;
+  const char * binding;
+  PSZ result;
+  PSZ scan_result;
+
+  length = 0;
+  scan_env = envp;
+  while ((binding = (*scan_env++)) != 0)
+    length += ((strlen (binding)) + 1);
+  result = (dstack_alloc (length + 1));
+  scan_result = result;
+  scan_env = envp;
+  while ((binding = (*scan_env++)) != 0)
+    while (((*scan_result++) = (*binding++)) != '\0')
+      ;
+  (*scan_result) = '\0';
+  return (result);
 }

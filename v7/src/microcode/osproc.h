@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osproc.h,v 1.8 1993/06/24 07:09:06 gjr Exp $
+$Id: osproc.h,v 1.9 1997/10/22 05:24:39 cph Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -85,11 +85,12 @@ extern size_t OS_process_table_size;
 #define NO_PROCESS OS_process_table_size
 extern enum process_jc_status scheme_jc_status;
 
+/* OS_make_subprocess is obsolete; use OS-specific procedure.  */
 extern Tprocess EXFUN
   (OS_make_subprocess,
    (CONST char * filename,
-    char * CONST * argv,
-    char * CONST * env,
+    CONST char ** argv,
+    CONST char ** env,
     CONST char * working_directory,
     enum process_ctty_type ctty_type,
     char * ctty_name,
@@ -109,6 +110,7 @@ extern pid_t EXFUN (OS_process_id, (Tprocess process));
 extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
 extern int EXFUN (OS_process_status_sync, (Tprocess process));
 extern int EXFUN (OS_process_status_sync_all, (void));
+extern int EXFUN (OS_process_any_status_change, (void));
 extern enum process_status EXFUN (OS_process_status, (Tprocess process));
 extern unsigned short EXFUN (OS_process_reason, (Tprocess process));
 

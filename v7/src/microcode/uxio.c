@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.40 1997/01/01 22:57:45 cph Exp $
+$Id: uxio.c,v 1.41 1997/10/22 05:25:17 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 #include "ux.h"
 #include "uxio.h"
 #include "uxselect.h"
+#include "uxproc.h"
 
 size_t OS_channel_table_size;
 struct channel * channel_table;
@@ -380,7 +381,6 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 #ifdef HAVE_SELECT
 CONST int OS_have_select_p = 1;
-extern int EXFUN (UX_process_any_status_change, (void));
 #ifndef SELECT_DECLARED
 extern int EXFUN (UX_select,
 		  (int, SELECT_TYPE *, SELECT_TYPE *, SELECT_TYPE *,
@@ -442,7 +442,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
       readable = (* ((SELECT_TYPE *) input_fds));
       INTERRUPTABLE_EXTENT
 	(nfds,
-	 ((UX_process_any_status_change ())
+	 ((OS_process_any_status_change ())
 	  ? ((errno = EINTR), (-1))
 	  : (UX_select (FD_SETSIZE,
 			(&readable),
@@ -476,7 +476,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 	}
       else if (errno != EINTR)
 	error_system_call (errno, syscall_select);
-      else if (UX_process_any_status_change ())
+      else if (OS_process_any_status_change ())
 	return (select_input_process_status);
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
@@ -532,7 +532,6 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 #else /* HAVE_POLL */
 
 CONST int OS_have_select_p = 1;
-extern int EXFUN (UX_process_any_status_change, (void));
 
 unsigned int
 DEFUN_VOID (UX_select_registry_size)
@@ -633,7 +632,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 	}
       else if (! ((errno == EINTR) || (errno == EAGAIN)))
 	error_system_call (errno, syscall_select);
-      else if (UX_process_any_status_change ())
+      else if (OS_process_any_status_change ())
 	return (select_input_process_status);
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
@@ -662,7 +661,7 @@ DEFUN (UX_select_descriptor, (fd, blockp),
 	}
       else if (errno != EINTR)
 	error_system_call (errno, syscall_select);
-      else if (UX_process_any_status_change ())
+      else if (OS_process_any_status_change ())
 	return (select_input_process_status);
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
