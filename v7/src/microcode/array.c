@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.29 1988/02/14 00:41:37 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.30 1988/05/05 09:29:44 cph Exp $ */
 
 /* CONTAINS:                                                         */
 /* Scheme_Array constructors, and selectors                          */
@@ -951,7 +951,8 @@ Define_Primitive(Prim_Array_Complex_Multiplication_Into_First_One, 5, "ARRAY-COM
 { long Length, i;
   SCHEME_ARRAY scheme_result_r, scheme_result_i;
   REAL *x_r,*x_i, *y_r,*y_i, *result_r,*result_i;
-  register REAL Temp, radius, infinity;
+  register REAL Temp, radius;
+  REAL infinity;
   int Error_Number;
   
   Primitive_5_Args();
