@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.22 1998/02/01 05:35:41 cph Exp $
+$Id: ntfs.c,v 1.23 1998/04/10 16:32:10 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -307,11 +307,7 @@ typedef struct nt_dir_struct
   WIN32_FIND_DATA entry;
   HANDLE handle;         /* may be DIR_UNALLOCATED */
   BOOL more;
-  char pathname[256];
 } nt_dir;
-
-#define GET_DIRECTORY_ENTRY_NAME(entry, pathname)		\
-  (strcpy(pathname, (entry).cFileName), strlwr(pathname))
 
 static nt_dir ** directory_pointers;
 static unsigned int n_directory_pointers;
@@ -395,22 +391,41 @@ DEFUN (OS_directory_open, (name), CONST char * search_pattern)
   (dir -> handle) = (FindFirstFile (pattern, (& (dir -> entry))));
   if ((dir -> handle) == INVALID_HANDLE_VALUE)
     {
-      free (dir);
-      NT_error_api_call ((GetLastError ()), apicall_FindFirstFile);
+      DWORD code = (GetLastError ());
+      if (code != ERROR_FILE_NOT_FOUND)
+	{
+	  free (dir);
+	  NT_error_api_call (code, apicall_FindFirstFile);
+	}
+      (dir -> more) = FALSE;
     }
-  (dir -> more) = TRUE;
+  else
+    (dir -> more) = TRUE;
   return (allocate_directory_pointer (dir));
+}
+
+int
+win32_directory_read (unsigned int index, WIN32_FIND_DATA * info)
+{
+  nt_dir * dir = (REFERENCE_DIRECTORY (index));
+  if ((dir == 0) || (! (dir -> more)))
+    return (0);
+  (*info) = (dir -> entry);
+  if ((dir -> handle) == INVALID_HANDLE_VALUE)
+    (dir -> more) = FALSE;
+  else
+    (dir -> more) = (FindNextFile ((dir -> handle), (& (dir -> entry))));
+  return (1);
 }
 
 CONST char *
 DEFUN (OS_directory_read, (index), unsigned int index)
 {
-  nt_dir * dir = (REFERENCE_DIRECTORY (index));
-  if ((dir == 0) || (! (dir -> more)))
-    return (0);
-  GET_DIRECTORY_ENTRY_NAME ((dir -> entry), (dir -> pathname));
-  (dir -> more) = (FindNextFile ((dir -> handle), (& (dir -> entry))));
-  return (dir -> pathname);
+  static WIN32_FIND_DATA info;
+  return
+    ((win32_directory_read (index, (&info)))
+     ? (info . cFileName)
+     : 0);
 }
 
 CONST char *
@@ -429,24 +444,14 @@ DEFUN (OS_directory_read_matching, (index, prefix),
     }
 }
 
-int
-win32_directory_read (unsigned int index, WIN32_FIND_DATA * info)
-{
-  nt_dir * dir = (REFERENCE_DIRECTORY (index));
-  if ((dir == 0) || (! (dir -> more)))
-    return (0);
-  (*info) = (dir -> entry);
-  (dir -> more) = (FindNextFile ((dir -> handle), (& (dir -> entry))));
-  return (1);
-}
-
 void
 DEFUN (OS_directory_close, (index), unsigned int index)
 {
   nt_dir * dir = (REFERENCE_DIRECTORY (index));
   if (dir)
     {
-      FindClose (dir -> handle);
+      if ((dir -> handle) != INVALID_HANDLE_VALUE)
+	FindClose (dir -> handle);
       free (dir);
     }
   DEALLOCATE_DIRECTORY (index);
