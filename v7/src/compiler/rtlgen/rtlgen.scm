@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.8 1987/04/12 00:22:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.9 1987/04/12 01:14:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,7 +105,7 @@ MIT in each case. |#
     (define (cellify-variable variable)
       (if (variable-in-cell? variable)
 	  (let ((locative
-		 (stack-locative-offset register:stack-pointer
+		 (stack-locative-offset (rtl:make-fetch register:stack-pointer)
 					(variable-offset block variable))))
 	    (rtl:make-assignment
 	     locative
