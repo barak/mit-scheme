@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.21 2003/09/05 20:51:44 cph Exp $
+$Id: toplev.scm,v 1.22 2004/12/13 03:25:59 cph Exp $
 
 Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,27 +31,26 @@ USA.
 
 (define (generate/common kernel)
   (lambda (filename #!optional os-type)
-    (let ((pathname (merge-pathnames filename))
-	  (os-type
-	   (if (or (default-object? os-type) (not os-type))
-	       microcode-id/operating-system
-	       os-type)))
-      (let ((pmodel (read-package-model pathname os-type)))
-	(let ((changes? (read-file-analyses! pmodel os-type)))
-	  (resolve-references! pmodel)
-	  (kernel pathname pmodel changes? os-type))))))
+    (let ((pathname (merge-pathnames filename)))
+      (for-each (lambda (os-type)
+		  (let ((pmodel (read-package-model pathname os-type)))
+		    (let ((changes? (read-file-analyses! pmodel os-type)))
+		      (resolve-references! pmodel)
+		      (kernel pathname pmodel changes? os-type))))
+		os-types))))
 
 (define (cref/generate-trivial-constructor filename #!optional os-type)
-  (let ((pathname (merge-pathnames filename))
-	(os-type
-	 (if (or (default-object? os-type)
-		 (not os-type))
-	     microcode-id/operating-system
-	     os-type)))
-    (write-external-descriptions pathname
-				 (read-package-model pathname os-type)
-				 #f
-				 os-type)))
+  (let ((pathname (merge-pathnames filename)))
+    (for-each (lambda (os-type)
+		(write-external-descriptions
+		 pathname
+		 (read-package-model pathname os-type)
+		 #f
+		 os-type))
+	      os-types)))
+
+(define os-types
+  '(NT OS/2 UNIX))
 
 (define cref/generate-cref
   (generate/common
