@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.156 1994/12/19 20:38:55 cph Exp $
+$Id: edwin.pkg,v 1.157 1994/12/19 20:48:20 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -1049,6 +1049,30 @@ MIT in each case. |#
   (initialization (initialize-package!)))
 |#
 
+(define-package (edwin screen os2-screen)
+  (files "os2term")
+  (parent (edwin screen))
+  (export (edwin)
+	  os2-screen/get-position
+	  os2-screen/hide!
+	  os2-screen/lower!
+	  os2-screen/maximize!
+	  os2-screen/minimize!
+	  os2-screen/raise!
+	  os2-screen/restore!
+	  os2-screen/set-background-color!
+	  os2-screen/set-font!
+	  os2-screen/set-foreground-color!
+	  os2-screen/set-position!
+	  os2-screen/set-size!
+	  os2/desktop-width
+	  os2/desktop-height
+	  screen-char-width
+	  screen-char-height
+	  screen-pel-width
+	  screen-pel-height)
+  (initialization (initialize-package!)))
+
 (define-package (edwin x-commands)
   (files "xcom")
   (parent (edwin))
@@ -1097,6 +1121,17 @@ MIT in each case. |#
   (export (edwin screen win32)
 	  update-win32-screen-name!))
 
+(define-package (edwin os2-commands)
+  (files "os2com")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$set-background-color
+	  edwin-command$set-font
+	  edwin-command$set-foreground-color
+	  edwin-command$set-screen-position
+	  edwin-command$set-screen-size
+	  edwin-command$show-screen-position
+	  edwin-command$show-screen-size))
 
 (define-package (edwin x-keys)
   (files "key-x11")
