@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.23 1987/10/08 17:04:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.24 1987/10/28 18:42:53 jinx Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -47,9 +47,9 @@ Built_In_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
   extern Boolean OS_Clean_Interrupt_Channel();
   Primitive_2_Args();
 
-  return (OS_Clean_Interrupt_Channel(Get_Integer(Arg1),
-				     Get_Integer(Arg2)) ?
-	  TRUTH : NIL);
+  PRIMITIVE_RETURN(OS_Clean_Interrupt_Channel(Get_Integer(Arg1),
+					      Get_Integer(Arg2)) ?
+		   TRUTH : NIL);
 }
 
 Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
@@ -66,7 +66,7 @@ Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
     /*NOTREACHED*/
   }
   IntCode &= ~INT_Character;
-  return Make_Unsigned_Fixnum(result);
+  PRIMITIVE_RETURN(Make_Unsigned_Fixnum(result));
 }
 
 /* Time primitives */
@@ -75,7 +75,7 @@ Built_In_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK", 0x109)
 {
   Primitive_0_Args();
 
-  return Make_Unsigned_Fixnum(System_Clock());
+  PRIMITIVE_RETURN(Make_Unsigned_Fixnum(System_Clock()));
 }
 
 Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
@@ -97,7 +97,7 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
     Set_Int_Timer(Days, Centi_Seconds);
   }
   IntCode &= ~INT_Timer;
-  return NIL;
+  PRIMITIVE_RETURN(NIL);
 }
 
 /* Date and current time primitives */
@@ -109,9 +109,9 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
   Primitive_0_Args();							\
 									\
   result = OS_Name();							\
-  if (result == -1)							\
-    return NIL;								\
-  return Make_Unsigned_Fixnum(result);					\
+  PRIMITIVE_RETURN((result == -1) ?					\
+		   NIL :						\
+		   (Make_Unsigned_Fixnum(result)));			\
 }
 
 Built_In_Primitive(Prim_Current_Year, 0, "CURRENT-YEAR", 0x126)
@@ -154,7 +154,7 @@ Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
   extern Boolean Restartable_Exit();
   Primitive_0_Args();
 
-  return ((Restartable_Exit() ? TRUTH : NIL));
+  PRIMITIVE_RETURN((Restartable_Exit() ? TRUTH : NIL));
 }
 
 /* (SET-RUN-LIGHT! OBJECT)
@@ -167,14 +167,17 @@ Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
 Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!", 0xC0)
 {
   Primitive_1_Arg();
-#ifdef RUN_LIGHT_IS_BEEP
-  extern void OS_tty_beep();
 
-  OS_tty_beep();
-  OS_Flush_Output_Buffer();
-  return TRUTH;
+#ifdef RUN_LIGHT_IS_BEEP
+  {
+    extern void OS_tty_beep();
+
+    OS_tty_beep();
+    OS_Flush_Output_Buffer();
+    PRIMITIVE_RETURN(TRUTH);
+  }
 #else
-  return NIL;
+  PRIMITIVE_RETURN(NIL);
 #endif
 }
 
@@ -183,5 +186,5 @@ Built_In_Primitive( Prim_under_emacs_p, 0, "UNDER-EMACS?", 0x1A1)
   extern Boolean OS_Under_Emacs();
   Primitive_0_Args();
 
-  return (OS_Under_Emacs() ? TRUTH : NIL);
+  PRIMITIVE_RETURN((OS_Under_Emacs() ? TRUTH : NIL));
 }
