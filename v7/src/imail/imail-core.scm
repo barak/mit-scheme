@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.89 2000/05/23 18:36:36 cph Exp $
+;;; $Id: imail-core.scm,v 1.90 2000/05/23 18:52:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -489,12 +489,13 @@
 
 (define-generic message-length (message))
 (define-method message-length ((message <message>))
-  (+ (reduce (lambda (header)
-	       (+ (string-length (header-field-name header))
-		  (string-length (header-field-value header))
-		  2))
-	     1
-	     (message-header-fields message))
+  (+ (apply +
+	    (map (lambda (header)
+		   (+ (string-length (header-field-name header))
+		      (string-length (header-field-value header))
+		      2))
+		 (message-header-fields message)))
+     1
      (string-length (message-body message))))
 
 ;;;; Message Navigation
