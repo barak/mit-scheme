@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.9 1988/12/06 18:52:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.10 1988/12/13 13:02:26 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -41,8 +41,10 @@ MIT in each case. |#
 ;; deleted!
 
 (define-root-type lvalue
-  forward-links		;lvalues that sink values from here
-  backward-links	;lvalues that source values to here
+  initial-forward-links	;lvalues that sink values directly from here
+  initial-backward-links ;lvalues that source values directly to here
+  forward-links		;transitive closure of initial-forward-links
+  backward-links	;transitive closure of initial-backward-links
   initial-values	;rvalues that are possible sources
   values-cache		;(see `lvalue-values')
   known-value		;either #F or the rvalue which is the unique value
@@ -62,7 +64,8 @@ MIT in each case. |#
 ;;; (define (make-lvalue tag . extra)
 ;;;   (let ((lvalue
 ;;; 	 (list->vector
-;;; 	  (cons* tag '() '() '() 'NOT-CACHED false '() false false '()
+;;; 	  (cons* tag '() '() '() '() '() 'NOT-CACHED
+;;; 		 false '() false false '() '()
 ;;; 		 extra))))
 ;;;     (set! *lvalues* (cons lvalue *lvalues*))
 ;;;     lvalue))
@@ -77,8 +80,7 @@ MIT in each case. |#
   name		;name of variable [symbol]
   assignments	;true iff variable appears in an assignment
   in-cell?	;true iff variable requires cell at runtime
-  (normal-offset ;offset of variable within `block'
-   popping-limit) ;popping-limit for continuation variables
+  normal-offset	;offset of variable within `block'
   declarations	;list of declarations for this variable
   closed-over?	;true iff a closure references it freely.
   )
@@ -144,16 +146,29 @@ MIT in each case. |#
 					(lvalue-initial-values lvalue)))))
 
 (define (lvalue-connect!:lvalue to from)
-  (if (not (memq from (lvalue-backward-links to)))
+  (if (not (memq from (lvalue-initial-backward-links to)))
       (begin
-	(set-lvalue-backward-links! to (cons from (lvalue-backward-links to)))
-	(set-lvalue-forward-links! from (cons to (lvalue-forward-links from)))
-	(for-each (lambda (from)
-		    (lvalue-connect!:lvalue to from))
-		  (lvalue-backward-links from))
-	(for-each (lambda (to)
-		    (lvalue-connect!:lvalue to from))
-		  (lvalue-forward-links to)))))
+	(set-lvalue-initial-backward-links!
+	 to
+	 (cons from (lvalue-initial-backward-links to)))
+	(set-lvalue-initial-forward-links!
+	 from
+	 (cons to (lvalue-initial-forward-links from)))))
+  (letrec ((connect
+	    (lambda (to from)
+	      (if (not (memq from (lvalue-backward-links to)))
+		  (begin
+		    (set-lvalue-backward-links!
+		     to
+		     (cons from (lvalue-backward-links to)))
+		    (set-lvalue-forward-links!
+		     from
+		     (cons to (lvalue-forward-links from)))
+		    (for-each (lambda (from) (connect to from))
+			      (lvalue-backward-links from))
+		    (for-each (lambda (to) (connect to from))
+			      (lvalue-forward-links to)))))))
+    (connect to from)))
 
 (define (lvalue-values lvalue)
   ;; No recursion is needed here because the dataflow graph is
@@ -244,18 +259,21 @@ MIT in each case. |#
 (define-integrable (lvalue/internal-source? lvalue)
   (not (null? (lvalue-initial-values lvalue))))
 
-(define (variable-in-known-location? block variable)
+(define (variable-in-known-location? context variable)
   (or (variable/value-variable? variable)
       (let ((definition-block (variable-block variable)))
 	(or (not (ic-block? definition-block))
-	    ;; If the block has no procedure, then we know nothing about
-	    ;; the locations of its bindings.
-	    (and (rvalue/procedure? (block-procedure block))
-		 ;; If IC reference in same block as definition, then
-		 ;; incremental definitions cannot screw us.
-		 (eq? block definition-block)
-		 ;; Make sure that IC variables are bound!  A variable
-		 ;; that is not bound by the code being compiled still has
-		 ;; a "definition" block, which is the outermost IC block
-		 ;; of the expression in which the variable is referenced.
-		 (memq variable (block-bound-variables block)))))))
+	    ;; If the block has no procedure, then we know nothing
+	    ;; about the locations of its bindings.
+	    (let ((reference-block (reference-context/block context)))
+	      (and (rvalue/procedure? (block-procedure reference-block))
+		   ;; If IC reference in same block as definition,
+		   ;; then incremental definitions cannot screw us.
+		   (eq? reference-block definition-block)
+		   ;; Make sure that IC variables are bound!  A
+		   ;; variable that is not bound by the code being
+		   ;; compiled still has a "definition" block, which
+		   ;; is the outermost IC block of the expression in
+		   ;; which the variable is referenced.
+		   (memq variable
+			 (block-bound-variables reference-block))))))))
