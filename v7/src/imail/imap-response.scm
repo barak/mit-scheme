@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.1 2000/04/22 01:53:46 cph Exp $
+;;; $Id: imap-response.scm,v 1.2 2000/04/22 05:06:56 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -18,12 +18,10 @@
 ;;; along with this program; if not, write to the Free Software
 ;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;;;; IMAP Server Response Parser
+;;;; IMAP Server Response Reader
 
 (declare (usual-integrations))
 
-;;;; IMAP response reader
-
 (define (imap:read-server-response port)
   (let ((tag (read-string char-set:space port)))
     (if (eof-object? tag)
@@ -48,12 +46,14 @@
 (define (read-untagged-response port)
   (let ((x (read-atom port)))
     (if (atom-is-number? x)
-	(let ((n (string->number x))
-	      (x (intern (read-atom port))))
-	  (case x
-	    ((EXISTS RECENT EXPUNGE) (list x n))
-	    ((FETCH) (read-fetch-response port))
-	    (else (error "Malformed response code:" x))))
+	(let ((n (string->number x)))
+	  (discard-known-char #\space port)
+	  (let ((x (read-interned-atom port)))
+	    (cons x
+		  (case x
+		    ((EXISTS RECENT EXPUNGE) (list n))
+		    ((FETCH) (read-fetch-response port))
+		    (else (error "Malformed response code:" x))))))
 	(let ((x (intern x)))
 	  (cons x
 		(case x
@@ -68,27 +68,11 @@
 		  (else (error "Malformed response code:" x))))))))
 
 (define (read-tagged-response tag port)
-  (let ((x (intern (read-atom port))))
+  (let ((x (read-interned-atom port)))
     (if (memq x '(OK NO BAD))
 	(cons* x tag (read-response-text port))
 	(error "Malformed response code:" x))))
 
-(define (read-response-text port)
-  (discard-known-char #\space port)
-  (let ((code
-	 (and (char=? #\[ (peek-char port))
-	      (let ((code (read-bracket-list port)))
-		(discard-known-char #\space port)
-		code))))
-    (list code
-	  (if (char=? #\= (peek-char port))
-	      (read-mime2-text port)
-	      (list (read-text port))))))
-
-(define (read-fetch-response port)
-  (discard-known-char #\space port)
-  (read-list port))
-
 (define (read-flags-response port)
   (discard-known-char #\space port)
   (read-list port read-flag))
@@ -119,20 +103,100 @@
 			 (cons name (read-number port))))))))
 
 (define (read-capability-response port)
-  (read-open-list read-atom port))
+  (read-open-list read-interned-atom port))
+
+(define (read-response-text port)
+  (discard-known-char #\space port)
+  (let ((code
+	 (and (char=? #\[ (peek-char-no-eof port))
+	      (read-response-text-code port))))
+    (cons code
+	  (if (char=? #\= (peek-char port))
+	      (read-mime2-text port)
+	      (list (read-text port))))))
+
+(define (read-response-text-code port)
+  (discard-known-char #\[ port)
+  (let ((code
+	 (let ((x (intern (read-resp-text-atom port))))
+	   (case x
+	     ((ALERT PARSE READ-ONLY READ-WRITE TRYCREATE)
+	      x)
+	     ((UIDVALIDITY UNSEEN)
+	      (discard-known-char #\space port)
+	      (list x (read-nz-number port)))
+	     ((PERMANENTFLAGS)
+	      (discard-known-char #\space port)
+	      (cons x (read-list port read-pflag)))
+	     (else
+	      (if (char=? #\space (peek-char-no-eof port))
+		  (begin
+		    (read-char port)
+		    (list x (read-resp-text-tail port)))
+		  x))))))
+    (discard-known-char #\] port)
+    (discard-known-char #\space port)
+    code))
+
+(define (read-fetch-response port)
+  (discard-known-char #\space port)
+  (read-list port
+    (lambda (port)
+      (let ((x (intern (read-fetch-keyword port))))
+	(cons x
+	      (case x
+		((ENVELOPE)
+		 (discard-known-char #\space port)
+		 (read-generic port))
+		((FLAGS)
+		 (read-flags-response port))
+		((INTERNALDATE)
+		 (discard-known-char #\space port)
+		 (list (read-quoted port)))
+		((RFC822 RFC822.HEADER RFC822.TEXT)
+		 (discard-known-char #\space port)
+		 (list (read-nstring port)))
+		((RFC822.SIZE)
+		 (discard-known-char #\space port)
+		 (list (read-number port)))
+		((BODY)
+		 (if (char=? #\[ (peek-char-no-eof port))
+		     (let ((section
+			    (parse-section (read-bracketed-string port))))
+		       (discard-known-char #\space port)
+		       (let ((n
+			      (and (char-numeric? (peek-char-no-eof port))
+				   (let ((n (read-number port)))
+				     (discard-known-char #\space port)
+				     n))))
+			 (list section n (read-nstring port))))
+		     (begin
+		       (discard-known-char #\space port)
+		       (list (read-generic port)))))
+		((BODYSTRUCTURE)
+		 (discard-known-char #\space port)
+		 (list (read-generic port)))
+		((UID)
+		 (discard-known-char #\space port)
+		 (list (read-nz-number port)))
+		(else
+		 (error "Illegal fetch keyword:" x))))))))
+
+(define (parse-section string)
+  (let ((pv (parse-string imap:parse:section string)))
+    (and pv
+	 (parser-token pv 'SECTION))))
 
 (define (read-generic port)
   (let ((char (peek-char-no-eof port)))
     (cond ((char=? #\" char) (read-quoted port))
 	  ((char=? #\{ char) (read-literal port))
-	  ((char=? #\( char) (cons 'LIST (read-list port)))
-	  ((char=? #\[ char) (cons 'BRACKET-LIST (read-bracket-list port)))
-	  ((char=? #\\ char) (read-pflag port))
+	  ((char=? #\( char) (read-list port))
 	  ((imap:atom-char? char)
 	   (let ((atom (read-atom port)))
 	     (if (atom-is-number? atom)
 		 (string->number atom)
-		 atom)))
+		 (intern atom))))
 	  (else (error "Illegal IMAP syntax:" char)))))
 
 (define (read-astring port)
@@ -144,7 +208,7 @@
 
 (define (read-nstring port)
   (let ((v (read-astring port)))
-    (if (and (string? v) (not (string-ci=? "NIL" v)))
+    (if (and (symbol? v) (not (eq? v 'NIL)))
 	(error "Illegal nstring:" v)
 	v)))
 
@@ -158,7 +222,7 @@
 	       (write-char char port*)
 	       (loop))
 	      ((char=? #\" char)
-	       (list 'QUOTED (get-output-from-accumulator port*)))
+	       (get-output-from-accumulator port*))
 	      ((char=? #\\ char)
 	       (let ((char (read-char-no-eof char)))
 		 (if (imap:quoted-special? char)
@@ -182,15 +246,10 @@
 		       (fix:+ j 1))))
 	      ((fix:< j n)
 	       (set-string-length! s j))))
-      (list 'LITERAL s))))
+      s)))
 
 (define (read-list port #!optional read-item)
   (read-closed-list #\( #\)
-		    (if (default-object? read-item) read-generic read-item)
-		    port))
-
-(define (read-bracket-list port #!optional read-item)
-  (read-closed-list #\[ #\]
 		    (if (default-object? read-item) read-generic read-item)
 		    port))
 
@@ -201,10 +260,17 @@
 	(read-char port)
 	'())
       (let loop ((items (list (read-item port))))
-	(let ((char (read-char-no-eof port)))
-	  (cond ((char=? char #\space) (loop (cons (read-item port) items)))
-		((char=? char close) (reverse! items))
-		(else (error "Illegal list delimiter:" char)))))))
+	(let ((char (peek-char-no-eof port)))
+	  (cond ((char=? char #\space)
+		 (read-char port)
+		 (loop (cons (read-item port) items)))
+		((char=? char #\()
+		 (loop (cons (read-item port) items)))
+		((char=? char close)
+		 (read-char port)
+		 (reverse! items))
+		(else
+		 (error "Illegal list delimiter:" char)))))))
 
 (define (read-open-list read-item port)
   (let loop ((items '()))
@@ -217,25 +283,38 @@
 	    (else
 	     (error "Illegal list delimiter:" char))))))
 
+(define (read-bracketed-string port)
+  (discard-known-char #\[ port)
+  (let ((s (read-string char-set:close-bracket port)))
+    (discard-known-char #\] port)
+    s))
+
 (define (read-pflag port)
   (discard-known-char #\\ port)
-  (if (char=? #\* (peek-char-no-eof port))
-      (begin
-	(read-char port)
-	"\\*")
-      (string-append "\\" (read-atom port))))
+  (intern
+   (if (char=? #\* (peek-char-no-eof port))
+       (begin
+	 (read-char port)
+	 "\\*")
+       (string-append "\\" (read-atom port)))))
 
 (define (read-flag port)
-  (if (char=? #\\ (peek-char-no-eof port))
-      (begin
-	(read-char port)
-	(string-append "\\" (read-atom port)))
-      (read-atom port)))
+  (intern
+   (if (char=? #\\ (peek-char-no-eof port))
+       (begin
+	 (read-char port)
+	 (string-append "\\" (read-atom port)))
+       (read-atom port))))
 
-(define (non-null-string-reader constituents)
+(define (string-reader constituents)
   (let ((delimiters (char-set-invert constituents)))
     (lambda (port)
-      (let ((s (read-string delimiters port)))
+      (read-string delimiters port))))
+
+(define (non-null-string-reader constituents)
+  (let ((reader (string-reader constituents)))
+    (lambda (port)
+      (let ((s (reader port)))
 	(if (string-null? s)
 	    (error "Empty string.")
 	    s)))))
@@ -257,8 +336,25 @@
 (define read-atom
   (non-null-string-reader imap:char-set:atom-char))
 
+(define read-resp-text-atom
+  (non-null-string-reader
+   (char-set-difference imap:char-set:atom-char (char-set #\]))))
+
 (define read-text
-  (non-null-string-reader imap:char-set:text-char))
+  ;; This is supposed to be non-null, but Cyrus sometimes sends null.
+  (string-reader imap:char-set:text-char))
+
+(define read-resp-text-tail
+  ;; This is also supposed to be non-null.
+  (string-reader
+   (char-set-difference imap:char-set:text-char (char-set #\]))))
+
+(define read-fetch-keyword
+  (non-null-string-reader
+   (char-set-union char-set:alphanumeric (char-set #\.))))
+
+(define (read-interned-atom port)
+  (intern (read-atom port)))
 
 (define (read-mime2-text port)
   (discard-known-char #\= port)
@@ -285,10 +381,13 @@
 (define atom-is-number?
   (let ((char-set:not-numeric (char-set-invert char-set:numeric)))
     (lambda (atom)
-      (string-find-next-char-in-set atom char-set:not-numeric))))
+      (not (string-find-next-char-in-set atom char-set:not-numeric)))))
 
 (define char-set:space
   (char-set #\space))
+
+(define char-set:close-bracket
+  (char-set #\]))
 
 (define (read-char-no-eof port)
   (let ((char (read-char port)))

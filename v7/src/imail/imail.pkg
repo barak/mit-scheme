@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.16 2000/04/22 01:53:45 cph Exp $
+;;; $Id: imail.pkg,v 1.17 2000/04/22 05:07:23 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -62,6 +62,8 @@
 	  alternatives-parser
 	  ci-string-matcher
 	  decoding-parser
+	  encapsulating-parser
+	  list-parser
 	  match-always
 	  match-never
 	  noise-parser
@@ -69,6 +71,8 @@
 	  optional-parser
 	  parse-always
 	  parse-never
+	  parse-string
+	  parse-substring
 	  parser-token
 	  rexp-matcher
 	  sequence-matcher
@@ -121,6 +125,7 @@
 	  imap:char-set:tag-char
 	  imap:char-set:text-char
 	  imap:match:tag
+	  imap:parse:section
 	  imap:quoted-char?
 	  imap:quoted-special?))
 
