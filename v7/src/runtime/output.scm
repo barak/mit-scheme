@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.4 1988/08/05 20:57:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 14.5 1989/03/06 19:58:24 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -133,10 +133,14 @@ MIT in each case. |#
 (define-integrable (current-output-port)
   *current-output-port*)
 
+(define (set-current-output-port! port)
+  (guarantee-output-port port)
+  (set! *current-output-port* port)
+  unspecific)
+
 (define (with-output-to-port port thunk)
-  (cond ((eq? port *current-output-port*) (thunk))
-	((not (output-port? port)) (error "Bad output port" port))
-	(else (fluid-let ((*current-output-port* port)) (thunk)))))
+  (guarantee-output-port port)
+  (fluid-let ((*current-output-port* port)) (thunk)))
 
 (define (with-output-to-file output-specifier thunk)
   (let ((new-port (open-output-file output-specifier))
