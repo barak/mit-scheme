@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.30 1993/06/24 07:10:31 gjr Exp $
+$Id: x11graph.c,v 1.31 1993/09/08 22:37:01 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -238,23 +238,33 @@ DEFUN (process_event, (xw, event),
        struct xwindow * xw AND
        XEvent * event)
 {
-  switch (event -> type)
+}
+
+static void
+DEFUN (reconfigure, (xw, width, height),
+       struct xwindow * xw AND
+       unsigned int width AND
+       unsigned int height)
+{
+  unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  unsigned int x_size = ((width < extra) ? 0 : (width - extra));
+  unsigned int y_size = ((height < extra) ? 0 : (height - extra));
+  if ((x_size != (XW_X_SIZE (xw))) || (y_size != (XW_Y_SIZE (xw))))
     {
-    case ConfigureNotify:
-      {
-	unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
-	unsigned int x_size = (((event -> xconfigure) . width) - extra);
-	unsigned int y_size = (((event -> xconfigure) . height) - extra);
-	if ((x_size != (XW_X_SIZE (xw))) || (y_size != (XW_Y_SIZE (xw))))
-	  {
-	    (XW_X_SIZE (xw)) = x_size;
-	    (XW_Y_SIZE (xw)) = y_size;
-	    reset_virtual_device_coordinates (xw);
-	    XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
-	  }
-      }
-      break;
+      (XW_X_SIZE (xw)) = x_size;
+      (XW_Y_SIZE (xw)) = y_size;
+      reset_virtual_device_coordinates (xw);
+      XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
     }
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-RECONFIGURE", Prim_x_graphics_reconfigure, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  reconfigure ((x_window_arg (1)),
+	       (arg_nonnegative_integer (2)),
+	       (arg_nonnegative_integer (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 static void
