@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.37 1996/10/02 17:00:28 cph Exp $
+;;;	$Id: dos.scm,v 1.38 1996/10/07 18:21:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -248,11 +248,9 @@
 
 (define (dos/dired-line-string name attr now)
   (string-append
-   (string-pad-right (file-attributes/mode-string attr)
-		     12 #\Space)
+   (file-attributes/mode-string attr)
    " "
-   (string-pad-left (number->string (file-attributes/length attr))
-		    10 #\Space)
+   (string-pad-left (number->string (file-attributes/length attr)) 10 #\space)
    " "
    (file-time->ls-string (file-attributes/modification-time attr) now)
    " "
