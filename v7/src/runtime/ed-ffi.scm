@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.23 2000/04/11 04:01:05 cph Exp $
+$Id: ed-ffi.scm,v 1.24 2000/06/22 03:53:02 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -158,6 +158,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("load"	(runtime load)
 		syntax-table/system-internal)
     ("macros"	(runtime macros)
+		syntax-table/system-internal)
+    ("mime-codec" (runtime mime-codec)
 		syntax-table/system-internal)
     ("msort"	()
 		syntax-table/system-internal)
