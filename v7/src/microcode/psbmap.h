@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.34 1992/01/15 17:31:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbmap.h,v 9.35 1992/02/11 21:14:07 mhwu Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,6 +45,7 @@ MIT in each case. */
 #define fast register
 
 #include <stdio.h>
+#include "ansidecl.h"
 #include "config.h"
 #include "types.h"
 #include "object.h"
@@ -179,8 +180,7 @@ static char
 FILE *input_file, *output_file;
 
 Boolean
-strequal(s1, s2)
-     register char *s1, *s2;
+DEFUN (strequal, (s1, s2), register char * s1 AND register char * s2)
 {
   for ( ; *s1 != '\0'; s1++, s2++)
   {
@@ -193,44 +193,44 @@ strequal(s1, s2)
 }
 
 void
-setup_io()
+DEFUN (setup_io, (input_mode, output_mode),
+       CONST char * input_mode AND CONST char * output_mode)
 {
-  if (strequal(input_file_name, "-"))
+  if (strequal (input_file_name, "-"))
   {
     input_file = stdin;
   }
   else
   {
-    input_file = fopen(input_file_name, "r");
+    input_file = (fopen (input_file_name, input_mode));
     if (input_file == ((FILE *) NULL))
     {
-      fprintf(stderr, "%s: failed to open %s for input.\n",
-	      input_file_name);
-      exit(1);
+      fprintf (stderr, "%s: failed to open %s for input.\n",
+	       input_file_name);
+      exit (1);
     }
   }
 
-  if (strequal(output_file_name, "-"))
+  if (strequal (output_file_name, "-"))
   {
     output_file = stdout;
   }
   else
   {
-    output_file = fopen(output_file_name, "w");
+    output_file = (fopen (output_file_name, output_mode));
     if (output_file == ((FILE *) NULL))
     {
-      fprintf(stderr, "%s: failed to open %s for output.\n",
-	      output_file_name);
-      fclose(input_file);
-      exit(1);
+      fprintf (stderr, "%s: failed to open %s for output.\n",
+	       output_file_name);
+      fclose (input_file);
+      exit (1);
     }
   }
   return;
 }
 
 void
-quit(code)
-     int code;
+DEFUN (quit, (code), int code)
 {
   fclose(input_file);
   fclose(output_file);

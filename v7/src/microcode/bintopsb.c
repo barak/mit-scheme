@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.49 1992/02/03 22:38:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.50 1992/02/11 21:14:38 mhwu Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ MIT in each case. */
 
 /* IO definitions */
 
-#include "ansidecl.h"
 #include "psbmap.h"
 #include "trap.h"
 #include "limits.h"
@@ -1798,7 +1797,7 @@ DEFUN (main, (argc, argv),
     quit (1);
   }
 
-  setup_io ();
+  setup_io ("rb", "w");
   do_it ();
   quit (0);
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.42 1990/11/21 21:07:33 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.43 1992/02/11 21:15:00 mhwu Exp $
 
-Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,6 +46,23 @@ MIT in each case. */
 #include "sdata.h"
 
 #define fast register
+
+/* These are needed when there is no compiler support. */
+
+extern void EXFUN (gc_death,
+		   (long code, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
+
+extern char
+  gc_death_message_buffer[];
+
+void
+DEFUN (gc_death, (code, message, scan, free),
+       long code AND char * message
+       AND SCHEME_OBJECT * scan AND SCHEME_OBJECT * free)
+{
+  fprintf (stderr, "gc_death: %s.\n", message);
+  exit (1);
+}
 
 /* These are needed by load.c */
 
@@ -155,7 +172,11 @@ DEFUN (print_long_as_string, (string), char *string)
 	  printf ("     ");
 	  break;
 
+#ifdef __STDC__
 	case '\a':
+#else
+	case '\007':
+#endif
 	  printf ("   \\a");
 	  break;
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.46 1992/02/03 22:39:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbtobin.c,v 9.47 1992/02/11 21:14:23 mhwu Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,7 +37,6 @@ MIT in each case. */
 
 /* Cheap renames */
 
-#include "ansidecl.h"
 #include "psbmap.h"
 #include "float.h"
 #include "limits.h"
@@ -1249,7 +1248,7 @@ DEFUN (main, (argc, argv),
   }
   allow_nmv_p = (allow_nmv_p || allow_compiled_p);
 
-  setup_io ();
+  setup_io ("r", "wb");
   do_it ();
   quit (0);
 }
