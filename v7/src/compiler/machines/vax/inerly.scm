@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.3 1987/08/23 08:15:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/inerly.scm,v 1.4 1987/08/23 16:32:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -82,7 +82,7 @@ MIT in each case. |#
 (syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
     `(define-early-transformer ',name
-       (make-ea-transformer 'category 'type))))
+       (make-ea-transformer ',category ',type))))
 
 (define (make-ea-transformer category type)
   (make-database-transformer
