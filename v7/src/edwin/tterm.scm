@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.24 1993/09/02 20:22:07 gjr Exp $
+$Id: tterm.scm,v 1.25 1994/11/01 23:02:14 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -71,7 +71,8 @@ MIT in each case. |#
 					    insert-line-next-cost
 					    delete-line-cost
 					    delete-line-next-cost
-					    scroll-region-cost)))
+					    scroll-region-cost
+					    (make-key-table description))))
 		   console-beep
 		   console-clear-line!
 		   console-clear-rectangle!
@@ -141,33 +142,109 @@ MIT in each case. |#
   (not (or (tf-hazeltine description)
 	   (tf-teleray description)
 	   (tf-underscore description))))
+
+(define (make-key-table description)
+  (append-map
+   (lambda (name+key)
+     (let ((name   (first name+key))
+	   (key    (second name+key)))
+       (let ((pair (assoc name (termcap-description-keys description))))
+	 (if (and pair (cdr pair))
+	     (list (cons (cdr pair) key))
+	     '() ))))
+   `((up    ,up)
+     (down  ,down)
+     (left  ,left)
+     (right ,right)
+     (f1    ,f1)
+     (f2    ,f2)
+     (f3    ,f3)
+     (f4    ,f4)
+     (f5    ,f5)
+     (f6    ,f6)
+     (f7    ,f7)
+     (f8    ,f8)
+     (f9    ,f9)
+     (f10   ,f10)
+     (f11   ,f11)
+     (f12   ,f12)
+     )))
 
-(define (get-console-input-operations)
+(define (get-console-input-operations terminal-state)
   (let ((channel (input-port/channel console-input-port))
-	(string (make-string input-buffer-size))
-	(start input-buffer-size)
-	(end input-buffer-size))
+        (string  (make-string (* 3 input-buffer-size)))
+        (start   0)
+        (end     0)
+        (incomplete-pending #F)
+	(timeout-interval 1000)		; 1s. Should be f(baud rate) etc
+        (len     0))                    ; length of event in input characters
+    ;; When the input is a prefix of the character sequence sent by some key
+    ;; we are prepared to wait a little while to see if the rest of
+    ;; the sequence arrives.  INCOMPLETE-PENDING is either #F, the
+    ;; real time at which we timeout for waiting for the sequence to
+    ;; complete, or #T if a timeout occured.
     (letrec
-	((read-char
+        ((parse-key			; -> #F or a char? or a special-key?
+	  (lambda ()
+	    (and (fix:< start end)
+		 (let ((n-chars  (fix:- end start)))
+		   (let find ((key-pairs (terminal-state/key-table terminal-state))
+			      (possible-pending? #F))
+		     (if (null? key-pairs)
+			 (begin
+			   (if (number? incomplete-pending)
+			       (if (or (not possible-pending?)
+				       (> (real-time-clock) incomplete-pending))
+				   (set! incomplete-pending #T)))
+			   (if (number? incomplete-pending)
+			       #F
+			       (begin
+				 (set! len 1)
+				 (string-ref string start))))
+
+			 (let* ((key-seq  (caar key-pairs))
+				(n-seq    (string-length key-seq)))
+			   (cond ((and (fix:<= n-seq n-chars)
+				       (substring=? string start
+						    (fix:+ start n-seq)
+						    key-seq 0 n-seq))
+				  (set! len n-seq)
+				  (cdar key-pairs))
+				 ((and (fix:> n-seq n-chars)
+				       (substring=? string start
+						    (fix:+ start n-chars)
+						    key-seq 0 n-chars))
+				  (if (not incomplete-pending)
+				      (set! incomplete-pending
+					    (+ (real-time-clock)
+					       timeout-interval)))
+				  (find (cdr key-pairs) #T))
+				 (else
+				  (find (cdr key-pairs) possible-pending?))))))))))
+	 (read-more?			; -> #F or #T is some chars were read
 	  (lambda (block?)
 	    (if block?
 		(channel-blocking channel)
 		(channel-nonblocking channel))
-	    (let ((n
-		   (channel-read channel
-				 string 0 input-buffer-size)))
-	      (cond ((not n) #f)
+	    (let ((n  (channel-read channel string end input-buffer-size)))
+	      (cond ((not n)  #F)
 		    ((fix:> n 0)
-		     (set! start 0)
-		     (set! end n)
-		     (if transcript-port
-			 (output-port/write-substring transcript-port
-						      string 0 n))
-		     (string-ref string 0))
+		     (let ((new-end (fix:+ end n)))
+		       (if transcript-port
+			   (output-port/write-substring transcript-port
+							string end new-end))
+		       (set! end new-end))
+		     #T)
 		    ((fix:= n 0)
-		     (error "Reached EOF in keyboard input."))
+		     ;;(error "Reached EOF in keyboard input.")
+		     #F)
 		    (else
 		     (error "Illegal return value:" n))))))
+	 (read-char
+	  (lambda (block?)
+	    (if (read-more? block?)
+		(parse-key)
+		#F)))
 	 (read-event
 	  (lambda (block?)
 	    (or (read-char #f)
@@ -188,39 +265,45 @@ MIT in each case. |#
 	  (lambda ()
 	    (let ((event (read-event #t)))
 	      (cond ((char? event) event)
+		    ((special-key? event) event)
 		    ((process-change-event event)
 		     => (lambda (flag)
 			  (make-input-event
 			   (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
 			   update-screens! #f)))
-		    (else (guarantee-result)))))))
+		    (else (guarantee-result))))))
+	 (consume!
+	  (lambda (bytes)
+	    (set! start (fix:+ start bytes))
+	    (cond ((fix:>= start end)	; all consumed
+		   (set! end 0)
+		   (set! start 0))
+		  ((fix:>= start input-buffer-size)
+		   (substring-move-left! string start end string 0)
+		   (set! end (fix:- end start))
+		   (set! start 0)))
+	    (set! incomplete-pending #F)
+	    unspecific)))
       (values
        (lambda ()			;halt-update?
 	 (or (fix:< start end)
 	     (read-char #f)))
        (lambda ()			;peek-no-hang
-	 (if (fix:< start end)
-	     (string-ref string start)
-	     (let loop ()
-	       (let ((event (read-event #f)))
-		 (if (fix:fixnum? event)
-		     (begin
-		       (process-change-event event)
-		       #f)
-		     event)))))
+	 (or (parse-key)
+	     (let ((event (read-event #f)))
+	       (if (fix:fixnum? event)
+		   (begin
+		     (process-change-event event)
+		     #f)
+		   event))))
        (lambda ()			;peek
-	 (if (fix:< start end)
-	     (string-ref string start)
+	 (or (parse-key)
 	     (guarantee-result)))
        (lambda ()			;read
-	 (if (fix:< start end)
-	     (let ((char (string-ref string start)))
-	       (set! start (fix:+ start 1))
-	       char)
-	     (let ((event (guarantee-result)))
-	       (if (char? event)
-		   (set! start (fix:+ start 1)))
-	       event)))))))
+	 (let ((event (or (parse-key) (guarantee-result))))
+	   (consume! len)
+	   event))))))
+
 
 (define-integrable input-buffer-size 16)
 (define-integrable event:process-output -2)
@@ -266,8 +349,8 @@ MIT in each case. |#
 			   console-available?
 			   make-console-screen
 			   (lambda (screen)
-			     screen
-			     (get-console-input-operations))
+			     (get-console-input-operations
+			      (screen-state screen)))
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
@@ -346,7 +429,8 @@ MIT in each case. |#
 				 insert-line-next-cost
 				 delete-line-cost
 				 delete-line-next-cost
-				 scroll-region-cost))
+				 scroll-region-cost
+				 key-table))
 		   (conc-name terminal-state/))
   (description false read-only true)
   (baud-rate-index false read-only true)
@@ -361,7 +445,8 @@ MIT in each case. |#
   (standout-mode? false)
   (insert-mode? false)
   (delete-mode? false)
-  (scroll-region false))
+  (scroll-region false)
+  (key-table false))
 
 (let-syntax ((define-accessor
 	       (macro (name)
