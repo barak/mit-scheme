@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.14 1999/11/08 18:26:08 cph Exp $
+$Id: vector.scm,v 14.15 2000/03/27 19:56:07 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,9 +36,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable (guarantee-subvector vector start end procedure)
   (guarantee-vector vector procedure)
   (if (not (index-fixnum? start))
-      (error:wrong-type-argument start "valid vector index" procedure))
+      (error:wrong-type-argument start "vector index" procedure))
   (if (not (index-fixnum? end))
-      (error:wrong-type-argument end "valid vector index" procedure))
+      (error:wrong-type-argument end "vector index" procedure))
   (if (not (fix:<= start end))
       (error:bad-range-argument start procedure))
   (if (not (fix:<= end (vector-length vector)))
@@ -46,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (make-vector size #!optional fill)
   (if (not (index-fixnum? size))
-      (error:wrong-type-argument size "valid vector index" 'MAKE-VECTOR))
+      (error:wrong-type-argument size "vector index" 'MAKE-VECTOR))
   ((ucode-primitive vector-cons) size (if (default-object? fill) #f fill)))
 
 (define (vector->list vector)
@@ -94,11 +94,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (subvector-move-right! (car vectors) 0 size result index)
 	    (loop (cdr vectors) (fix:+ index size)))))))
 
-(define (vector-grow vector length)
+(define (vector-grow vector length #!optional value)
   (guarantee-vector vector 'VECTOR-GROW)
-  (let ((new-vector (make-vector length #f)))
-    (subvector-move-right! vector 0 (vector-length vector) new-vector 0)
-    new-vector))
+  (if (not (index-fixnum? length))
+      (error:wrong-type-argument length "vector length" 'VECTOR-GROW))
+  (if (fix:< length (vector-length vector))
+      (error:bad-range-argument length 'VECTOR-GROW))
+  (let ((vector* (make-vector length (if (default-object? value) #f value))))
+    (subvector-move-right! vector 0 (vector-length vector) vector* 0)
+    vector*))
 
 (define (make-initialized-vector length initialization)
   ;; LENGTH is checked by MAKE-VECTOR
