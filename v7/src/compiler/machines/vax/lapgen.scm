@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.10 1991/02/15 00:41:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.11 1991/06/17 23:01:34 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.39 1991/01/30 22:48:01 jinx Exp $
 
-Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,15 +92,15 @@ MIT in each case. |#
 (define mask-reference
   (register-reference regnum:pointer-mask))
 
-(define-export (lap:make-label-statement label)
+(define (lap:make-label-statement label)
   ;; This should use LAP rather than INST, but
   ;; that requires changing back/linear.scm
   (INST (LABEL ,label)))
 
-(define-export (lap:make-unconditional-branch label)
+(define (lap:make-unconditional-branch label)
   (LAP (BR (@PCR ,label))))		; Unsized
 
-(define-export (lap:make-entry-point label block-start-label)
+(define (lap:make-entry-point label block-start-label)
   block-start-label
   (LAP (ENTRY-POINT ,label)
        ,@(make-external-label expression-code-word label)))
