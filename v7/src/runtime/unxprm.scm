@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.40 1995/10/23 06:39:22 cph Exp $
+$Id: unxprm.scm,v 1.41 1995/10/28 01:16:00 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -296,6 +296,54 @@ MIT in each case. |#
 
 (define (os/default-end-of-line-translation)
   #f)
+
+(define (copy-file from to)
+  (let ((input-filename (->namestring (merge-pathnames from)))
+	(output-filename (->namestring (merge-pathnames to))))
+    (let ((input-channel false)
+	  (output-channel false))
+      (dynamic-wind
+       (lambda ()
+	 (set! input-channel (file-open-input-channel input-filename))
+	 (set! output-channel
+	       (begin
+		 ((ucode-primitive file-remove-link 1) output-filename)
+		 (file-open-output-channel output-filename)))
+	 unspecific)
+       (lambda ()
+	 (let ((source-length (channel-file-length input-channel))
+	       (buffer-length 8192))
+	   (if (zero? source-length)
+	       0
+	       (let* ((buffer (make-string buffer-length))
+		      (transfer
+		       (lambda (length)
+			 (let ((n-read
+				(channel-read-block input-channel
+						    buffer
+						    0
+						    length)))
+			   (if (positive? n-read)
+			       (channel-write-block output-channel
+						    buffer
+						    0
+						    n-read))
+			   n-read))))
+		 (let loop ((source-length source-length))
+		   (if (< source-length buffer-length)
+		       (transfer source-length)
+		       (let ((n-read (transfer buffer-length)))
+			 (if (= n-read buffer-length)
+			     (+ (loop (- source-length buffer-length))
+				buffer-length)
+			     n-read))))))))
+       (lambda ()
+	 (if output-channel (channel-close output-channel))
+	 (if input-channel (channel-close input-channel)))))
+    (set-file-times! output-filename
+		     #f
+		     (file-modification-time input-filename))
+    (set-file-modes! output-filename (file-modes input-filename))))
 
 ;;; Queues after-restart daemon to clean up environment space
 

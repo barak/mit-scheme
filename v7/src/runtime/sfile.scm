@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.17 1995/04/09 22:57:42 cph Exp $
+$Id: sfile.scm,v 14.18 1995/10/28 01:16:09 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -59,58 +59,10 @@ MIT in each case. |#
 	 (delete-file filename)
 	 #t)))))
 
-(define (copy-file from to)
-  (let ((input-filename (->namestring (merge-pathnames from)))
-	(output-filename (->namestring (merge-pathnames to))))
-    (let ((input-channel false)
-	  (output-channel false))
-      (dynamic-wind
-       (lambda ()
-	 (set! input-channel (file-open-input-channel input-filename))
-	 (set! output-channel
-	       (begin
-		 ((ucode-primitive file-remove-link 1) output-filename)
-		 (file-open-output-channel output-filename)))
-	 unspecific)
-       (lambda ()
-	 (let ((source-length (channel-file-length input-channel))
-	       (buffer-length 8192))
-	   (if (zero? source-length)
-	       0
-	       (let* ((buffer (make-string buffer-length))
-		      (transfer
-		       (lambda (length)
-			 (let ((n-read
-				(channel-read-block input-channel
-						    buffer
-						    0
-						    length)))
-			   (if (positive? n-read)
-			       (channel-write-block output-channel
-						    buffer
-						    0
-						    n-read))
-			   n-read))))
-		 (let loop ((source-length source-length))
-		   (if (< source-length buffer-length)
-		       (transfer source-length)
-		       (let ((n-read (transfer buffer-length)))
-			 (if (= n-read buffer-length)
-			     (+ (loop (- source-length buffer-length))
-				buffer-length)
-			     n-read))))))))
-       (lambda ()
-	 (if output-channel (channel-close output-channel))
-	 (if input-channel (channel-close input-channel)))))
-    (set-file-times! output-filename
-		     #f
-		     (file-modification-time input-filename))
-    (set-file-modes! output-filename (file-modes input-filename))))
-
 (define (file-eq? x y)
   ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
 			      (->namestring (merge-pathnames y))))
-
+
 (define (call-with-temporary-filename receiver)
   (call-with-temporary-file-pathname
    (lambda (pathname)

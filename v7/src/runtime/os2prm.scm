@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.22 1995/10/25 02:16:48 cph Exp $
+$Id: os2prm.scm,v 1.23 1995/10/28 01:15:54 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -81,6 +81,12 @@ MIT in each case. |#
   ((ucode-primitive set-file-attributes! 2)
    (->namestring (merge-pathnames filename))
    modes))
+
+(define-integrable os2-file-mode/read-only #x01)
+(define-integrable os2-file-mode/hidden    #x02)
+(define-integrable os2-file-mode/system    #x04)
+(define-integrable os2-file-mode/directory #x10)
+(define-integrable os2-file-mode/archived  #x20)
 
 (define (file-length filename)
   ((ucode-primitive file-length 1)
@@ -281,6 +287,10 @@ MIT in each case. |#
 
 (define (os/default-end-of-line-translation)
   "\r\n")
+
+(define (copy-file from to)
+  ((ucode-primitive os2-copy-file 2) (->namestring (merge-pathnames from))
+				     (->namestring (merge-pathnames to))))
 
 (define (initialize-system-primitives!)
   (discard-select-registry-result-vectors!)
