@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.347 2000/04/14 01:29:52 cph Exp $
+$Id: runtime.pkg,v 14.348 2000/05/02 20:39:57 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -1301,6 +1301,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "list")
   (parent ())
   (export ()
+	  add-member-procedure
 	  alist-copy
 	  alist?
 	  append
