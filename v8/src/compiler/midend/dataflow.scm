@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.11 1995/03/22 01:06:49 adams Exp $
+$Id: dataflow.scm,v 1.12 1995/04/08 21:00:17 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2121,6 +2121,29 @@ MIT in each case. |#
 		    (or (eq? from (vector-ref set i))
 			(eq? from (vector-ref set (fix:- i 1)))
 			(loop (fix:- i 2)))))))))
+
+(define (nodes-linked? from to)
+  (or (eq? from to)
+      (let ((set  (node/links-in to)))
+	(and set
+	     (let unrolled-loop ((i  (vector-ref set 0)))
+	       (if (fix:>= i 8)
+		   (or (eq? from (vector-ref set i))
+		       (eq? from (vector-ref set (fix:- i 1)))
+		       (eq? from (vector-ref set (fix:- i 2)))
+		       (eq? from (vector-ref set (fix:- i 3)))
+		       (eq? from (vector-ref set (fix:- i 4)))
+		       (eq? from (vector-ref set (fix:- i 5)))
+		       (eq? from (vector-ref set (fix:- i 6)))
+		       (eq? from (vector-ref set (fix:- i 7)))
+		       (unrolled-loop (fix:- i 8)))
+		   (let end-loop ((i i))
+		     (and (fix:> i 0)
+			  ;; Loop unrolled 1 time is safe because the zero slot
+			  ;; contains a fixnum that will never match a node
+			  (or (eq? from (vector-ref set i))
+			      (eq? from (vector-ref set (fix:- i 1)))
+			      (end-loop (fix:- i 2)))))))))))
 
 
 (define (make-empty-node-set)
