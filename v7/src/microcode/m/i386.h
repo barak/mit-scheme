@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for Intel i386 computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/i386.h,v 1.1 1990/11/27 19:17:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/i386.h,v 1.2 1992/02/19 18:57:36 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,3 +34,9 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_I386
+
+/* This is really only good under bsd.  SysV versions probably have -D */
+
+#define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)"
+
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
