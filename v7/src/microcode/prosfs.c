@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.7 1992/02/08 14:54:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.8 1992/05/04 21:14:49 jinx Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -39,6 +39,9 @@ MIT in each case. */
 #include "osfile.h"
 #include "osfs.h"
 #include "osio.h"
+#ifdef DOS386
+#  include <sys\stat.h>
+#endif
 
 extern int EXFUN (OS_channel_copy,
 		  (off_t source_length,
