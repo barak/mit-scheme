@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for DEC Vax computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/vax.h,v 1.1 1989/07/18 22:36:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/vax.h,v 1.2 1989/07/26 03:47:51 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -34,10 +34,3 @@ promotional, or sales literature without prior written consent from
 MIT in each case. */
 
 #define PROC_TYPE PROC_TYPE_VAX
-
-#ifndef HAVE_CURSES
-#define LIBS_MACHINE -ltermcap
-#endif
-
-#define M4_RULE .m4.s: ; @ECHO "### Generating $@ because of $?"	@@\
-	$(M4) $(M4_FLAGS) $*.m4 | sed -e 's/@/$$/g' -e 's/^$$//' >$*.s
