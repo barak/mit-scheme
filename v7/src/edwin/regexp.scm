@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.56 1991/05/10 22:05:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.57 1991/05/10 22:15:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -88,7 +88,7 @@
 	     (if group
 		 (let ((v (make-vector 20 false)))
 		   (do ((i 0 (+ i 1)))
-		       ((< i 20))
+		       ((= i 20))
 		     (let ((index (vector-ref registers i)))
 		       (if index
 			   (vector-set!
