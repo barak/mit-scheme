@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.14 1992/02/04 04:03:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.15 1992/02/10 15:02:57 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -704,7 +704,8 @@ and reverse search is specified by a negative numeric arg."
       (update-mode-line! buffer)
       (let ((start (re-search-forward babyl-eooh-regexp start end false)))
 	(narrow-to-region start (mark-1+ end))
-	(set-buffer-point! buffer start)))))
+	(set-buffer-point! buffer start))
+	(set-buffer-mark! buffer (mark-1+ end)))))
 
 (define (update-mode-line! buffer)
   (define-variable-local-value! buffer (ref-variable-object mode-line-process)
