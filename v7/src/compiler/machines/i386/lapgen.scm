@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.16 1992/02/16 02:06:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.17 1992/02/17 22:34:19 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -212,8 +212,10 @@ MIT in each case. |#
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
 
 (define (object->machine-register! object mreg)
-  (require-register! mreg)
-  (load-constant (INST-EA (R ,mreg)) object))
+  ;; This funny ordering allows load-constant to use a pc value in mreg!
+  (let ((code (load-constant (INST-EA (R ,mreg)) object)))
+    (require-register! mreg)
+    code))
 
 (define (assign-register->register target source)
   (move-to-alias-register! source (register-type target) target)
