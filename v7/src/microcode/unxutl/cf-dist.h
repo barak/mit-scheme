@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.24 2000/10/16 18:31:13 cph Exp $
+$Id: cf-dist.h,v 1.25 2000/10/16 18:32:09 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -72,9 +72,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* If defined, this prevents the C compiler from running its optimizer. */
 /* #define SUPPRESS_C_OPTIMIZER */
 
+#ifndef __GNUC__
 /* If defined, this prevents the C compiler from
    generating debugging information. */
 #define SUPPRESS_C_DEBUGGING
+#endif
 
 /* Some compilation options:
    -DDISABLE_HISTORY		turns off history recording mechanism
