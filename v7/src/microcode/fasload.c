@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.74 1993/11/04 04:03:14 gjr Exp $
+$Id: fasload.c,v 9.75 1993/11/04 23:50:45 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -70,7 +70,6 @@ extern SCHEME_OBJECT
 
 extern void
   EXFUN (install_primitive_table, (SCHEME_OBJECT *, long)),
-  EXFUN (install_c_table, (SCHEME_OBJECT *, long)),
   EXFUN (compiler_reset_error, (void)),
   EXFUN (compiler_initialize, (long)),
   EXFUN (compiler_reset, (SCHEME_OBJECT));
@@ -306,6 +305,7 @@ DEFUN (read_file_end, (mode, prim_table_ptr, c_code_table_ptr),
   Free += Primitive_Table_Size;
 
   c_code_table = Free;
+  * c_code_table = FIXNUM_ZERO;
   if ((C_Code_Table_Size != 0)
       && ((Load_Data (C_Code_Table_Size, ((char *) c_code_table)))
 	  != C_Code_Table_Size))
@@ -748,7 +748,8 @@ DEFUN (load_file, (mode), int mode)
   /* Setup the primitive and C code tables */
 
   install_primitive_table (primitive_table, Primitive_Table_Length);
-  if (! (install_c_code_table (c_code_table, C_Code_Table_Length)))
+  if ((mode == MODE_BAND)
+      && (! (install_c_code_table (c_code_table, C_Code_Table_Length))))
     signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
 
   if ((mode != MODE_BAND)
