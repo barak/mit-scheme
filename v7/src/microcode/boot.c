@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.79 1993/06/24 03:55:53 gjr Exp $
+$Id: boot.c,v 9.80 1993/06/24 21:58:42 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -106,6 +106,8 @@ DEFUN (usage, (error_string), CONST char * error_string)
 #ifndef main_name
 #define main_name main
 #endif
+
+#define FILE_READABLE(filename) ((access ((filename), 4)) >= 0)
 
 main_type
 DEFUN (main_name, (argc, argv),
