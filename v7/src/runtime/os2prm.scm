@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.36 1998/05/31 03:20:22 cph Exp $
+$Id: os2prm.scm,v 1.37 1998/11/23 06:27:23 cph Exp $
 
 Copyright (c) 1994-98 Massachusetts Institute of Technology
 
@@ -280,10 +280,10 @@ MIT in each case. |#
 			      user-name
 			      (directory-pathname-as-file homedir))))
 		;; Look for USER-NAME in root directory of system
-		;; drive.  Failing that, use root directory itself.
-		(let ((rootdir (%system-root-directory)))
-		  (or (trydir (merge-pathnames user-name rootdir))
-		      rootdir)))))))
+		;; drive.
+		(trydir (merge-pathnames user-name (%system-root-directory)))
+		;; OK, give up:
+		(error "Can't find user's home directory:" user-name))))))
 
 (define (dos/fs-drive-type pathname)
   (let ((type

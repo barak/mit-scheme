@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.23 1998/09/06 04:45:15 cph Exp $
+$Id: ntprm.scm,v 1.24 1998/11/23 06:27:16 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -294,10 +294,10 @@ MIT in each case. |#
 			      user-name
 			      (directory-pathname-as-file homedir))))
 		;; Look for USER-NAME in root directory of system
-		;; drive.  Failing that, use root directory itself.
-		(let ((rootdir (%system-root-directory)))
-		  (or (trydir (merge-pathnames user-name rootdir))
-		      rootdir)))))))
+		;; drive.
+		(trydir (merge-pathnames user-name (%system-root-directory)))
+		;; OK, give up:
+		(error "Can't find user's home directory:" user-name))))))
 
 (define dos/user-home-directory user-home-directory)
 (define dos/current-user-name current-user-name)
