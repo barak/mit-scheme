@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.6 1992/03/31 19:18:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.7 1992/03/31 19:55:45 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -131,9 +131,6 @@ MIT in each case. |#
 
 ;;;; Fixnums
 
-;; I've copied this rule from the MC68020.  -- Jinx
-;; It should probably be qualified to be in the immediate range.
-
 (define-rule rewriting
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-fixnum? source))
@@ -145,7 +142,7 @@ MIT in each case. |#
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
-		  (rtl:fixnum-value? operand-2)))
+		  (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
 
 (define-rule rewriting
@@ -154,8 +151,12 @@ MIT in each case. |#
 		 (? operand-2)
 		 #F)
   (QUALIFIER (and (rtl:register? operand-2)
-		  (or (rtl:constant-power-of-2-magnitude? operand-1)
-		      (rtl:small-fixnum? operand-1))))
+		  (rtl:constant-fixnum-test
+		   operand-1
+		   (lambda (n)
+		     (let ((absn (abs n)))
+		       (and (integer-log-base-2? absn)
+			    (<= absn 64)))))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
 
 (define-rule rewriting
@@ -164,8 +165,12 @@ MIT in each case. |#
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
-		  (or (rtl:constant-power-of-2-magnitude? operand-2)
-		      (rtl:small-fixnum? operand-2))))
+		  (rtl:constant-fixnum-test
+		   operand-2
+		   (lambda (n)
+		     (let ((absn (abs n)))
+		       (and (integer-log-base-2? absn)
+			    (<= absn 64)))))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
 
 (define-rule rewriting
@@ -174,18 +179,24 @@ MIT in each case. |#
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
-		  (rtl:constant-power-of-2-magnitude? operand-2)))
+		  (rtl:constant-fixnum-test
+		   operand-2
+		   (lambda (n)
+		     (integer-log-base-2? (abs n))))))
   (rtl:make-fixnum-2-args 'FIXNUM-QUOTIENT operand-1 operand-2 #F))
-
+
 (define-rule rewriting
   (FIXNUM-2-ARGS FIXNUM-REMAINDER
 		 (? operand-1)
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
-		  (rtl:constant-power-of-2-magnitude? operand-2)))
+		  (rtl:constant-fixnum-test
+		   operand-2
+		   (lambda (n)
+		     (integer-log-base-2? (abs n))))))
   (rtl:make-fixnum-2-args 'FIXNUM-REMAINDER operand-1 operand-2 #F))
-
+
 ;; These are used by vector-ref and friends with computed indices.
 
 (define-rule rewriting
@@ -195,7 +206,10 @@ MIT in each case. |#
 		 #F)
   (QUALIFIER
    (and (rtl:object->fixnum-of-register? operand-1)
-	(rtl:constant-power-of-2? operand-2)))
+	(rtl:constant-fixnum-test
+	 operand-2
+	 (lambda (n)
+	   (integer-log-base-2? n)))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
 
 (define-rule rewriting
@@ -204,7 +218,10 @@ MIT in each case. |#
 		 (REGISTER (? operand-2 register-known-value))
 		 #F)
   (QUALIFIER
-   (and (rtl:constant-power-of-2? operand-1)
+   (and (rtl:constant-fixnum-test
+	 operand-1
+	 (lambda (n)
+	   (integer-log-base-2? n)))
 	(rtl:object->fixnum-of-register? operand-2)))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
 
@@ -212,27 +229,13 @@ MIT in each case. |#
   (and (rtl:constant? expression)
        (fix:fixnum? (rtl:constant-value expression))))
 
-(define (rtl:fixnum-value? expression)
-  (and (rtl:object->fixnum? expression)
-       (rtl:constant-fixnum? (rtl:object->fixnum-expression expression))))
-
-(define (rtl:small-fixnum? expression)
+(define (rtl:constant-fixnum-test expression predicate)
   (and (rtl:object->fixnum? expression)
        (let ((expression (rtl:object->fixnum-expression expression)))
-	 (and (rtl:constant-fixnum? expression)
-	      (<= (abs (rtl:constant-value expression)) 64)))))
-
-(define (rtl:constant-power-of-2? expression)
-  (and (rtl:object->fixnum? expression)
-       (let ((expression (rtl:object->fixnum-expression expression)))
-	 (and (rtl:constant-fixnum? expression)
-	      (integer-log-base-2? (rtl:constant-value expression))))))
-
-(define (rtl:constant-power-of-2-magnitude? expression)
-  (and (rtl:object->fixnum? expression)
-       (let ((expression (rtl:object->fixnum-expression expression)))
-	 (and (rtl:constant-fixnum? expression)
-	      (integer-log-base-2? (abs (rtl:constant-value expression)))))))
+	 (and (rtl:constant? expression)
+	      (let ((n (rtl:constant-value expression)))
+		(and (fix:fixnum? n)
+		     (predicate n)))))))
 
 (define (rtl:object->fixnum-of-register? expression)
    (and (rtl:object->fixnum? expression)
