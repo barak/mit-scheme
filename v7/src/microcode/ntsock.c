@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.16 2003/03/29 05:35:55 cph Exp $
+$Id: ntsock.c,v 1.17 2003/07/12 03:15:47 cph Exp $
 
 Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -201,10 +201,19 @@ void
 OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 {
   struct sockaddr_in address;
+  BOOL one = 1;
+
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
+
+  VOID_SOCKET_CALL
+    (setsockopt, ((CHANNEL_SOCKET (channel)),
+		  SOL_SOCKET,
+		  SO_REUSEADDR,
+		  (&one),
+		  (sizeof (one))));
   VOID_SOCKET_CALL
     (bind, ((CHANNEL_SOCKET (channel)),
 	    ((struct sockaddr *) (&address)),
@@ -212,7 +221,7 @@ OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG
-#define SOCKET_LISTEN_BACKLOG 5
+#  define SOCKET_LISTEN_BACKLOG 5
 #endif
 
 void
