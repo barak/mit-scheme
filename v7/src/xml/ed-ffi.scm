@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.1 2001/07/06 20:50:39 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.2 2001/07/12 03:24:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -22,5 +22,6 @@
 ;;;; XML: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("xml-struct" (runtime xml structure) system-global-syntax-table)
+ '#(("xml-chars" (runtime xml parser) system-global-syntax-table)
+    ("xml-struct" (runtime xml structure) system-global-syntax-table)
     ("xml-parser" (runtime xml parser) system-global-syntax-table)))

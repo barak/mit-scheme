@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.1 2001/07/06 20:50:37 cph Exp $
+;;; $Id: compile.scm,v 1.2 2001/07/12 03:20:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -25,6 +25,7 @@
     (load "parser-macro")
     (for-each compile-file
 	      '("xml-struct"
+		"xml-chars"
 		"xml-parser"
 		;;"xml-output"
 		))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-parser.scm,v 1.6 2001/07/10 19:34:32 cph Exp $
+;;; $Id: xml-parser.scm,v 1.7 2001/07/12 03:21:00 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -28,26 +28,6 @@
 (declare (usual-integrations))
 
 ;;;; Utilities
-
-(define char-set:xml-char		;[2], loose UTF-8
-  ;; The upper range of this alphabet would normally be #xFE, but XML
-  ;; doesn't use any characters larger than #x10FFFF, so the largest
-  ;; byte that can be seen is #xF4.
-  (char-set-union (char-set #\tab #\linefeed #\return)
-		  (ascii-range->char-set #x20 #xF5)))
-
-(define char-set:char-data
-  (char-set-difference char-set:xml-char (char-set #\< #\&)))
-
-(define char-set:xml-whitespace
-  (char-set #\space #\tab #\return #\linefeed))
-
-(define (string-parser description alphabet)
-  (let ((a1 (char-set-difference alphabet (char-set #\")))
-	(a2 (char-set-difference alphabet (char-set #\'))))
-    (*parser
-     (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
-	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
 
 (define (perror ptr msg . irritants)
   (apply error
@@ -97,64 +77,17 @@
 	      (perror ptr (string-append "Malformed " description) value))
 	  v)
 	(vector value))))
-
-(define (make-xml-char-reference n p)
-  (if (not (valid-xml-code-point? n))
-      (perror p "Disallowed Unicode code point" n))
-  (integer->unicode-string n))
 
-(define (valid-xml-code-point? n)
-  (and (< n #x110000)
-       (if (< n #xD800)
-	   (or (>= n #x20)
-	       (= n #x9)
-	       (= n #xA)
-	       (= n #xD))
-	   (and (>= n #xE000)
-		(not (or (= n #xFFFE)
-			 (= n #xFFFF)))))))
+(define (string-parser description alphabet)
+  (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
+	(a2 (alphabet- alphabet (string->alphabet "'"))))
+    (*parser
+     (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
+	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
 
-(define (integer->unicode-string n)
-
-  (define-integrable (initial-char n offset)
-    (integer->char
-     (fix:or (fix:and (fix:lsh #xFF (fix:+ n 1)) #xFF)
-	     (fix:lsh n (fix:- 0 offset)))))
-
-  (define-integrable (subsequent-char offset)
-    (integer->char
-     (fix:or #x80
-	     (fix:and (fix:lsh n (fix:- 0 offset)) #x3F))))
-
-  (if (not (and (<= 0 n) (< n #x80000000)))
-      (error:bad-range-argument n 'INTEGER->UNICODE-STRING))
-  (cond ((< n #x00000080)
-	 (string (integer->char n)))
-	((< n #x00000800)
-	 (string (initial-char 5 6)
-		 (subsequent-char 6)))
-	((< n #x00010000)
-	 (string (initial-char 4 12)
-		 (subsequent-char 12)
-		 (subsequent-char 6)))
-	((< n #x00200000)
-	 (string (initial-char 3 18)
-		 (subsequent-char 18)
-		 (subsequent-char 12)
-		 (subsequent-char 6)))
-	((< n #x04000000)
-	 (string (initial-char 2 24)
-		 (subsequent-char 24)
-		 (subsequent-char 18)
-		 (subsequent-char 12)
-		 (subsequent-char 6)))
-	(else
-	 (string (initial-char 1 30)
-		 (subsequent-char 30)
-		 (subsequent-char 24)
-		 (subsequent-char 18)
-		 (subsequent-char 12)
-		 (subsequent-char 6)))))
+(define alphabet:alphabetic (char-set->alphabet char-set:alphabetic))
+(define alphabet:numeric (char-set->alphabet char-set:numeric))
+(define alphabet:alphanumeric (char-set->alphabet char-set:alphanumeric))
 
 ;;;; Top level
 
@@ -197,8 +130,7 @@
      (* (top-level
 	 (alt parse-comment
 	      parse-processing-instructions
-	      (map normalize-line-endings
-		   (match (+ (alphabet char-set:xml-whitespace))))))))))
+	      (map normalize-line-endings (match S))))))))
 
 (define parse-declaration		;[23,24,32,80]
   (*parser
@@ -259,14 +191,14 @@
 	    (finish (caddr results) (cadr results) (car results)))))))
 
 (define match-xml-version		;[26]
-  (let ((a (char-set-union char-set:alphanumeric (string->char-set "_.:-"))))
+  (let ((a (alphabet+ alphabet:alphanumeric (string->alphabet "_.:-"))))
     (*matcher (complete (+ (alphabet a))))))
 
 (define match-encoding			;[81]
-  (let ((a (char-set-union char-set:alphanumeric (string->char-set "_.-"))))
+  (let ((a (alphabet+ alphabet:alphanumeric (string->alphabet "_.-"))))
     (*matcher
      (complete
-      (seq (alphabet char-set:alphabetic)
+      (seq (alphabet alphabet:alphabetic)
 	   (* (alphabet a)))))))
 
 ;;;; Elements
@@ -327,8 +259,7 @@
 ;;;; Other markup
 
 (define (bracketed-region-parser description start end)
-  (let ((parser
-	 (terminated-region-parser description char-set:xml-char end)))
+  (let ((parser (terminated-region-parser description alphabet:xml-char end)))
     (*parser (sbracket description start end parser))))
 
 (define (terminated-region-parser description alphabet . ends)
@@ -343,16 +274,16 @@
 		      (lambda (end)
 			(match-parser-buffer-string-no-advance buffer
 							       end))))
-	       (match-parser-buffer-char-in-set buffer alphabet))
+	       (match-utf8-char-in-alphabet buffer alphabet))
 	  (loop)
 	  #t))))
 
 (define parse-char-data			;[14]
-  (terminated-region-parser "character data" char-set:char-data "]]>"))
+  (terminated-region-parser "character data" alphabet:char-data "]]>"))
 
 (define parse-comment			;[15]
   (let ((match-body
-	 (terminated-region-matcher "comment" char-set:xml-char "--")))
+	 (terminated-region-matcher "comment" alphabet:xml-char "--")))
     (*parser
      (sbracket "comment" "<!--" "-->"
        (noise match-body)))))
@@ -365,7 +296,7 @@
 	(start "<?")
 	(end "?>"))
     (let ((parse-body
-	   (terminated-region-parser description char-set:xml-char end)))
+	   (terminated-region-parser description alphabet:xml-char end)))
       (*parser
        (encapsulate
 	   (lambda (v)
@@ -389,10 +320,12 @@
 (define maybe-parse-name		;[5]
   (*parser (map xml-intern (match match-name))))
 
-(define match-name
-  (*matcher
-   (seq (alphabet char-set:name-initial)
-	(* (alphabet char-set:name-subsequent)))))
+(define (match-name buffer)		;[5]
+  (and (match-utf8-char-in-alphabet buffer alphabet:name-initial)
+       (let loop ()
+	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	     (loop)
+	     #t))))
 
 (define parse-name-token
   (*parser
@@ -400,31 +333,30 @@
      maybe-parse-name-token)))
 
 (define maybe-parse-name-token		;[7]
-  (*parser
-   (map xml-intern
-	(match (+ (alphabet char-set:name-subsequent))))))
+  (*parser (map xml-intern (match match-name-token))))
 
-(define char-set:name-initial
-  (char-set-union char-set:alphabetic
-		  (string->char-set "_:")
-		  (ascii-range->char-set #x80 #xF5)))
-
-(define char-set:name-subsequent	;[4], loose UTF-8
-  (char-set-union char-set:alphanumeric
-		  (string->char-set ".-_:")
-		  (ascii-range->char-set #x80 #xF5)))
+(define (match-name-token buffer)
+  (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+       (let loop ()
+	 (if (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
+	     (loop)
+	     #t))))
 
 (define parse-char-reference		;[66]
-  (*parser
-   (with-pointer p
-     (sbracket "character reference" "&#" ";"
-       (alt (map (lambda (s)
-		   (make-xml-char-reference (string->number s 10) p))
-		 (match (+ (alphabet char-set:numeric))))
-	    (seq (noise (string "x"))
-		 (map (lambda (s)
-			(make-xml-char-reference (string->number s 16) p))
-		      (match (+ (alphabet "0-9a-fA-f"))))))))))
+  (let ((make-ref
+	 (lambda (s r p)
+	   (let ((n (string->number s r)))
+	     (if (not (code-point-in-alphabet? n alphabet:xml-char))
+		 (perror p "Disallowed Unicode code point" n))
+	     (code-point->utf8-string n)))))
+    (*parser
+     (with-pointer p
+       (sbracket "character reference" "&#" ";"
+	 (alt (map (lambda (s) (make-ref s 10 p))
+		   (match (+ (alphabet alphabet:numeric))))
+	      (seq (noise (string "x"))
+		   (map (lambda (s) (make-ref s 16 p))
+			(match (+ (char-set "0-9a-fA-f")))))))))))
 
 (define parse-reference			;[67]
   (*parser
@@ -443,8 +375,8 @@
    (match
     (seq (string "&")
 	 (alt (seq (string "#")
-		   (alt (+ (alphabet char-set:numeric))
-			(seq (string "x") (+ (alphabet "0-9a-fA-f")))))
+		   (alt (+ (alphabet alphabet:numeric))
+			(seq (string "x") (+ (char-set "0-9a-fA-f")))))
 	      match-name)
 	 (string ";")))))
 
@@ -486,8 +418,8 @@
 	  parse-attribute-value))))
 
 (define (attribute-value-parser alphabet parse-reference)
-  (let ((a1 (char-set-difference alphabet (char-set #\")))
-	(a2 (char-set-difference alphabet (char-set #\'))))
+  (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
+	(a2 (alphabet- alphabet (string->alphabet "'"))))
     (*parser
      (encapsulate (lambda (v) (coalesce-elements (vector->list v)))
        (alt (sbracket "attribute value" "\"" "\""
@@ -499,7 +431,7 @@
 
 (define parse-entity-value		;[9]
   (attribute-value-parser
-   (char-set-difference char-set:xml-char (char-set #\% #\&))
+   (alphabet- alphabet:xml-char (string->alphabet "%&"))
    (*parser
     (alt parse-char-reference
 	 parse-entity-reference-deferred
@@ -507,7 +439,7 @@
 
 (define parse-attribute-value		;[10]
   (let ((parser
-	 (attribute-value-parser char-set:char-data
+	 (attribute-value-parser alphabet:char-data
 				 parse-reference-deferred)))
     (*parser
      (with-pointer p
@@ -764,13 +696,13 @@
 				      S?
 				      parse-cp)))))
 		  S?)
-		(? (match (alphabet "?*+")))))))
+		(? (match (char-set "?*+")))))))
 
        (parse-cp			;[48]
 	 (*parser
 	  (alt (encapsulate encapsulate-suffix
 		 (seq maybe-parse-name
-		      (? (match (alphabet "?*+")))))
+		      (? (match (char-set "?*+")))))
 	       parse-children)))
 
        (encapsulate-suffix
@@ -941,13 +873,12 @@
 		 parse-system-literal))))))
 
 (define parse-system-literal		;[11]
-  (string-parser "system literal" char-set:xml-char))
+  (string-parser "system literal" alphabet:xml-char))
 
 (define parse-public-id-literal		;[12,13]
-  (string-parser
-   "public-ID literal"
-   (char-set-union char-set:alphanumeric
-		   (string->char-set " \r\n-'()+,./:=?;!*#@$_%"))))
+  (string-parser "public-ID literal"
+		 (alphabet+ alphabet:alphanumeric
+			    (string->alphabet " \r\n-'()+,./:=?;!*#@$_%"))))
 
 ;;;; External subset
 
@@ -964,9 +895,9 @@
 	   parse-decl-separator))))
 
 (define external-decl-parser
-  (let ((a1 (char-set-difference char-set:xml-char (char-set #\% #\" #\' #\>)))
-	(a2 (char-set-difference char-set:xml-char (char-set #\")))
-	(a3 (char-set-difference char-set:xml-char (char-set #\'))))
+  (let ((a1 (alphabet- alphabet:xml-char (string->alphabet "%\"'>")))
+	(a2 (alphabet- alphabet:xml-char (string->alphabet "\"")))
+	(a3 (alphabet- alphabet:xml-char (string->alphabet "'"))))
     (lambda (prefix parse-decl)
       (*parser
        (with-pointer p
@@ -979,7 +910,7 @@
 	   (seq
 	    (match prefix)
 	    (require-success "Malformed markup declaration"
-	      (seq 
+	      (seq
 	       (* (alt (match
 			(alt (* (alphabet a1))
 			     (seq (char #\") (* (alphabet a2)) (char #\"))
@@ -1051,7 +982,7 @@
 		match-!ignore)))))
 
 (define match-!ignore			;[65]
-  (terminated-region-matcher "ignore section" char-set:xml-char
+  (terminated-region-matcher "ignore section" alphabet:xml-char
 			     conditional-start conditional-end))
 
 (define parse-parameterized-conditional
