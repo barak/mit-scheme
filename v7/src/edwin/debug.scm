@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.37 1996/04/24 18:35:06 cph Exp $
+;;;	$Id: debug.scm,v 1.38 1996/05/12 02:34:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -977,17 +977,19 @@ The buffer below describes the current subproblem or reduction.
 		  "Another debugger buffer exists.  Delete it")
 		 (ref-variable debugger-one-at-a-time?)))
 	(kill-buffer (car buffers))))
-  (let ((buffer (continuation-browser-buffer object)))
-    (let ((thread (and (not (default-object? thread)) thread)))
-      (if thread
-	  (buffer-put! buffer 'THREAD thread)))
-    (let ((screen (make-debug-screen buffer)))
-      (if screen
-	  (let ((window (screen-window0 screen)))
-	    (select-buffer-in-window buffer window #t)
-	    (select-window window))
-	  (select-buffer buffer))))
-  ((ref-command browser-select-line)))
+  (cleanup-pop-up-buffers
+   (lambda ()
+     (let ((buffer (continuation-browser-buffer object)))
+       (let ((thread (and (not (default-object? thread)) thread)))
+	 (if thread
+	     (buffer-put! buffer 'THREAD thread)))
+       (let ((screen (make-debug-screen buffer)))
+	 (if screen
+	     (let ((window (screen-window0 screen)))
+	       (select-buffer-in-window buffer window #t)
+	       (select-window window))
+	     (select-buffer buffer))))
+     ((ref-command browser-select-line)))))
 
 (define (make-debug-screen buffer)
   (and (multiple-screens?)
