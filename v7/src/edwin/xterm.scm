@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.60 1999/12/10 17:55:22 cph Exp $
+;;; $Id: xterm.scm,v 1.61 1999/12/10 17:56:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -1028,7 +1028,7 @@
 	    (hash-table/put! table display result)
 	    result)))))
 
-;;; **** In the next two procedures, we must allow TIME to be 0, even
+;;; In the next two procedures, we must allow TIME to be 0, even
 ;;; though the ICCCM forbids this, because existing clients use that
 ;;; value.  An example of a broken client is GTK+ version 1.2.6.
 
