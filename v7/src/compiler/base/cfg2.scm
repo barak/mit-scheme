@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 1.2 1987/08/07 17:03:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg2.scm,v 1.3 1987/08/31 21:17:26 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -117,20 +117,21 @@ MIT in each case. |#
 
 ;;;; Noops
 
-(define noop-node-tag (make-vector-tag snode-tag 'NOOP))
 (define *noop-nodes*)
+
+(define (cleanup-noop-nodes thunk)
+  (fluid-let ((*noop-nodes* '()))
+    (let ((value (thunk)))
+      (for-each snode-delete! *noop-nodes*)
+      value)))
+
+(define noop-node-tag
+  (make-vector-tag snode-tag 'NOOP))
 
 (define-integrable (make-noop-node)
   (let ((node (make-snode noop-node-tag)))
     (set! *noop-nodes* (cons node *noop-nodes*))
     node))
-
-(define (delete-noop-nodes!)
-  (for-each snode-delete! *noop-nodes*)
-  (set! *noop-nodes* '()))
-
-(define (constant->pcfg value)
-  ((if value make-true-pcfg make-false-pcfg)))
 
 (define (make-false-pcfg)
   (let ((node (make-noop-node)))
