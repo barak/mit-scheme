@@ -1,9 +1,29 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Id: y700.lcl,v 1.7 1993/06/25 21:18:52 gjr Exp $
+   $Id: y700.lcl,v 1.8 1993/07/23 20:06:58 nick Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
+
+/* Foreign function interface
+   The following are reasonable defaults
+   Make a file called "ffi" with the scheme-like definitions of the
+functions you want to call.  Then load "gen-prim.scm" into a scheme,
+and call "(gen-prim "ffi"), which will generate an "ffi.c" and an
+"ffi.scm".  Edit these as appropriate.  Then add your stuff to the
+three lines below and do 'make xmkfile' followed by 'make -f xmkfile scmffi'.
+ */
+
+FFI_SOURCES = ffi.c
+FFI_OBJECTS = ffi.o
+FFI_LIBS    = -ldld -lcl -lisamstub -lc
+
+ALL_FFI_SOURCES = $(X_SOURCES) $(TERMCAP_OBJECTS) $(GRAPHICS_SOURCES)\
+	SOURCES_SYSTEM SOURCES_MACHINE $(FFI_SOURCES)
+ALL_FFI_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
+	OBJECTS_SYSTEM OBJECTS_MACHINE ffi.o $(FFI_OBJECTS) usrFFI.o
+ALL_FFI_LIBS =  $(USER_LIBS) $(FFI_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
+	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 
 /* There is some hair here since scmsig (the signal-processing schemne
@@ -48,6 +68,18 @@ install.world: install scmsig scm6003
 	-rm -f $(BINDIR)/scmsig.busy
 	$(INSTALL) scmsig $(BINDIR)/scmsig
 
+
+scmffi : $(COMMON_OBJECTS) $(ALL_FFI_OBJECTS)
+	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
+	$(CC) $(LDFLAGS) -o $@ $(COMMON_OBJECTS) $(ALL_FFI_OBJECTS) $(ALL_FFI_LIBS)
+
+usrFFI.c : $(ALL_FFI_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) usrdef.tch findprim xmkfile
+	@ECHO "#** Re-making" $@ because of $?
+	rm -f usrFFI.c
+	./findprim $(ALL_FFI_SOURCES) $(SOURCES) $(OS_PRIM_SOURCES) > usrFFI.c
+
+
 scm6003 : $(COMMON_OBJECTS) $(6003_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
 	rm -f $@
@@ -73,6 +105,7 @@ sgraph.o sgraph_x.o sgx.o : scheme.tch prims.h sgraph.h
 sgraph_a.o : scheme.tch prims.h sgraph.h array.h
 fft.o : scheme.tch prims.h zones.h array.h image.h
 array.o image.o : scheme.tch prims.h array.h
+ffi.o : scheme.tch prims.h
 
 d_sgraph_a.o: scheme.tch prims.h sgraph.h array.h d_sgraph_a.c
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
@@ -101,4 +134,3 @@ clean.world:
 	rm -f usrSIG.o usr6003.o usrkit.o usrLYN.o
 	rm -f usrSIG.c usr6003.c usrkit.c usrLYN.c
 	rm -f d_sgraph_a.c d_fft.c d_array.c d_image.c
-
