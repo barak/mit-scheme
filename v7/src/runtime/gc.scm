@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.14 1993/09/20 19:30:50 gjr Exp $
+$Id: gc.scm,v 14.15 1993/09/20 20:10:29 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -162,7 +162,8 @@ MIT in each case. |#
 	   ((ucode-primitive primitive-purify) item
 					       pure-space?
 					       safety-margin)))
-      (gc-finish start-value (cdr result))
+      (if result
+	  (gc-finish start-value (cdr result)))
       result)))
 
 (define (default/gc-start)
