@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.33 1993/09/11 02:45:00 gjr Exp $
+;;;	$Id: hppa.m4,v 1.34 1993/12/07 20:28:23 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -411,27 +411,32 @@ flonum_atan2_hook
 	B	flonum_atan2+4
 	COPY	22,18
 
-compiled_code_bkpt_hook
+compiled_code_bkpt_hook				; hook 44 (offset 451 + 1)
 	B	compiled_code_bkpt+4
 	LDO	-8(31),31
 
-compiled_closure_bkpt_hook
+compiled_closure_bkpt_hook			; hook 45 (offset 451 + 9)
 	B	compiled_closure_bkpt+4
 	LDO	-12(31),31
+
+copy_closure_pattern_hook
+	B	copy_closure_pattern+4
+	LDW	-3(0,31),29			; offset
+
+copy_multiclosure_pattern_hook
+	B	copy_multiclosure_pattern+4
+	LDW	-3(0,31),29			; offset	
+
+closure_entry_bkpt_hook				; hook 48 (offset 451 + 33)
+	B	closure_entry_bkpt+4
+	LDO	-8(31),31			; bump back to entry point
 
 ;;
 ;; Provide dummy trapping hooks in case a newer version of compiled
 ;; code that expects more hooks is run.
 ;;
+
 no_hook
-	BREAK	0,45
-	NOP
-	BREAK	0,46
-	NOP
-	BREAK	0,47
-	NOP
-	BREAK	0,48
-	NOP
 	BREAK	0,49
 	NOP
 	BREAK	0,50
@@ -453,6 +458,14 @@ no_hook
 	BREAK	0,58
 	NOP
 	BREAK	0,59
+	NOP
+	BREAK	0,60
+	NOP
+	BREAK	0,61
+	NOP
+	BREAK	0,62
+	NOP
+	BREAK	0,63
 	NOP
 
 ifelse(ASM_DEBUG,1,"interface_break
@@ -1097,6 +1110,67 @@ compiled_closure_bkpt
 	B	trampoline_to_interface
 	LDI	0x3d,28
 
+closure_entry_bkpt
+	LDO	-4(31),31			; bump back to entry point
+	B	trampoline_to_interface
+	LDI	0x3c,28
+
+;; On arrival, 31 has a return address.  The word at the return
+;; address has the offset between the return address and the
+;; closure pattern.
+;; Returns the address of the entry point in 25
+;; Used: 29, 28, 26, 25, fp11, fp10 [31]
+
+copy_closure_pattern
+	LDW	-3(0,31),29			; offset
+	DEPI	4,31,3,21			; quad align
+	ADD	29,31,29			; addr of pattern
+	LDWS,MA	4(0,29),28			; load pattern header
+	LDO	8(21),25			; preserve for FDC & FIC
+	STWS,MA	28,4(0,21)			; store pattern header
+	FLDDS,MA	8(0,29),10		; load entry
+	FLDDS,MA	8(0,29),11
+	FSTDS,MA	10,8(0,21)		; store entry
+	FSTDS,MA	11,8(0,21)
+	FDC	0(0,25)
+	FDC	0(0,21)
+	SYNC
+	FIC	0(5,25)
+	BE	4(5,31)
+	SYNC
+
+;; On arrival, 31 has a return address and 1 contains the number of
+;; entries in the closure.  The word at the return address has the
+;; offset between the return address and the closure pattern.
+;; Returns the address of the entry point in 25
+;; Used: 29, 28, 26, 25, fp11, fp10 [31, 1]
+
+copy_multiclosure_pattern
+	LDW	-3(0,31),29			; offset
+	DEPI	4,31,3,21			; quad align
+	ADD	29,31,29			; addr of pattern
+	LDWS,MA	4(0,29),28			; load pattern header
+	LDO	12(21),25			; preserve for FIC
+	STWS,MA	28,4(0,21)			; store pattern header
+	LDI	-16,26				; FDC index
+	
+copy_multiclosure_pattern_loop
+	FLDDS,MA	8(0,29),10		; load entry
+	FLDDS,MA	8(0,29),11
+	FSTDS,MA	10,8(0,21)		; store entry
+	FSTDS,MA	11,8(0,21)
+	ADDIB,>	-1,1,copy_multiclosure_pattern_loop
+	FDC	26(0,21)
+
+	LDWS,MA	4(0,29),28			; load pattern tail
+	COPY	21,26
+	STWS,MA 28,4(0,21)			; store pattern tail
+	FDC	0(0,26)
+	SYNC
+	FIC	0(5,25)
+	BE	4(5,31)				; return
+	SYNC
+
 ;; This label is used by the trap handler
 
 ep_scheme_hooks_high
@@ -1222,6 +1296,8 @@ $1_string
 	builtin(flonum_atan2)
 	builtin(compiled_code_bkpt)
 	builtin(compiled_closure_bkpt)
+	builtin(copy_closure_pattern)
+	builtin(copy_multiclosure_pattern)
 	builtin(ep_scheme_hooks_high)
 changequote(",")
 						; Return
@@ -1497,15 +1573,16 @@ bkpt_closure_proceed
 	BL	bkpt_closure_cont,1
 	DEP	0,31,2,1
 bkpt_closure_cont
+	LDW	bkpt_closure_entry-bkpt_closure_cont(0,1),25
 	LDW	bkpt_closure_closure-bkpt_closure_cont(0,1),31
-	LDW	bkpt_closure_entry-bkpt_closure_cont(0,1),1
-	BV,N	0(1)	
+	BV	0(25)	
+	COPY	31,25
 bkpt_closure_closure
 	NOP					; Closure object pointer
 bkpt_closure_entry
 	NOP					; Eventual entry point
 bkpt_closure_proceed_end
-	NOP
+	NOP	
 
 	.SPACE	$TEXT$
 	.SUBSPA $LIT$,QUAD=0,ALIGN=8,ACCESS=44
