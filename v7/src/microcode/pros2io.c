@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.6 1997/10/22 05:24:52 cph Exp $
+$Id: pros2io.c,v 1.7 1997/10/22 20:00:17 cph Exp $
 
 Copyright (c) 1994-97 Massachusetts Institute of Technology
 
@@ -38,11 +38,6 @@ MIT in each case. */
 #include "osproc.h"
 
 extern qid_t OS2_channel_thread_descriptor (Tchannel);
-extern Tprocess OS2_make_subprocess
-  (const char *, PSZ, PSZ, const char *,
-   enum process_channel_type, Tchannel,
-   enum process_channel_type, Tchannel,
-   enum process_channel_type, Tchannel);
 
 DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-LUB", Prim_OS2_select_registry_lub, 0, 0, 0)
 {
@@ -195,11 +190,11 @@ STDERR is the error channel for the subprocess.\n\
 {
   PRIMITIVE_HEADER (7);
   {
-    CONST char * filename = (STRING_ARG (1));
-    CONST char * command_line = (STRING_ARG (2));
-    CONST char * env = (((ARG_REF (3)) == SHARP_F) ? 0 (STRING_ARG (3)));
-    CONST char * working_directory
-      = (((ARG_REF (4)) == SHARP_F) ? 0 (STRING_ARG (4)));
+    const char * filename = (STRING_ARG (1));
+    const char * command_line = (STRING_ARG (2));
+    const char * env = (((ARG_REF (3)) == SHARP_F) ? 0 : (STRING_ARG (3)));
+    const char * working_directory
+      = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     enum process_channel_type channel_in_type;
     Tchannel channel_in;
     enum process_channel_type channel_out_type;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.4 1997/10/22 05:24:30 cph Exp $
+$Id: os2proc.c,v 1.5 1997/10/22 19:59:57 cph Exp $
 
 Copyright (c) 1995-97 Massachusetts Institute of Technology
 
@@ -542,8 +542,8 @@ find_process (PID pid)
 
 /* OBSOLETE */
 
-static PSZ rewrite_arguments (const char **);
-static PSZ rewrite_environment (const char **);
+static const char * rewrite_arguments (const char **);
+static const char * rewrite_environment (const char **);
 
 Tprocess
 OS_make_subprocess (const char * filename,
@@ -573,7 +573,7 @@ OS_make_subprocess (const char * filename,
 			       channel_err_type, channel_err));
 }
 
-static PSZ
+static const char *
 rewrite_arguments (const char ** argv)
 {
   unsigned long nargs = 0;
@@ -584,8 +584,8 @@ rewrite_arguments (const char ** argv)
       nargs += 1;
     }
   {
-    PSZ result = (dstack_alloc (length + ((nargs < 2) ? 2 : nargs) + 1));
-    PSZ scan_result = result;
+    char * result = (dstack_alloc (length + ((nargs < 2) ? 2 : nargs) + 1));
+    char * scan_result = result;
     if (nargs == 0)
       (*scan_result++) = '\0';
     else
@@ -614,17 +614,17 @@ rewrite_arguments (const char ** argv)
   }
 }
 
-static PSZ
+static const char *
 rewrite_environment (const char ** envp)
 {
-  unsigned long length;
-  const char ** scan_env;
+  unsigned long length = 0;
+  const char ** scan_env = envp;
   const char * binding;
-  PSZ result;
-  PSZ scan_result;
+  char * result;
+  char * scan_result;
 
-  length = 0;
-  scan_env = envp;
+  if (envp == 0)
+    return (0);
   while ((binding = (*scan_env++)) != 0)
     length += ((strlen (binding)) + 1);
   result = (dstack_alloc (length + 1));
