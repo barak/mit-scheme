@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.7 1995/02/21 23:26:40 cph Exp $
+$Id: graphics.scm,v 1.8 1995/06/28 01:59:38 adams Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -723,6 +723,8 @@ MIT in each case. |#
     ("white"        255 255 255)
     ("purple"	    127   0 127)
     ("dark green"     0 127   0)
+    ("orange"       255 135   0)
+    ("pink"         255 181 197)
     ("brown"        127  63   0)))
 
     

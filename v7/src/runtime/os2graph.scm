@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.9 1995/05/20 10:17:55 cph Exp $
+$Id: os2graph.scm,v 1.10 1995/06/28 01:59:24 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -616,6 +616,8 @@ MIT in each case. |#
     ("white"        255 255 255)
     ("purple"	    127   0 127)
     ("dark green"     0 127   0)
+    ("orange"       255 135   0)
+    ("pink"         255 181 197)
     ("brown"        127  63   0)))
 
 ;;;; Console Window
