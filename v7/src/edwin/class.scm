@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/class.scm,v 1.70 1989/05/01 21:10:16 cph Rel $
+;;;	$Id: class.scm,v 1.71 1993/01/10 10:42:57 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,20 +52,19 @@
 ;;; likely will not ever, be supported as a part of the Scheme system.
 ;;; ******************************************************************
 
-(define-structure (class (type vector)
-			 (constructor false)
-			 (initial-offset 1))
+(define-structure (class (constructor %make-class))
   (name false read-only true)
   (superclass false read-only true)
-  (object-size false read-only true)
-  (instance-transforms false read-only true)
+  object-size
+  instance-transforms
   (methods false read-only true))
 
 (define (class-method class name)
   (class-methods/ref (class-methods class) name))
 
 (define (class-methods/ref methods name)
-  (or (method-lookup methods name) (error "unknown method" name)))
+  (or (method-lookup methods name)
+      (error "Unknown method:" name)))
 
 (define (method-lookup methods name)
   (let loop ((methods methods))
@@ -92,10 +91,10 @@
 	(and class
 	     (or (eq? class class*)
 		 (loop (class-superclass class)))))))
-
+
 (define (make-object class)
   (if (not (class? class))
-      (error "not a class" class))
+      (error:wrong-type-argument class "class" 'MAKE-OBJECT))
   (let ((object (make-vector (class-object-size class) false)))
     (vector-set! object 0 class)
     object))
@@ -118,11 +117,6 @@
 
 (define-integrable (object-method object name)
   (class-method (object-class object) name))
-
-(define (object-description object)
-  (map (lambda (transform)
-	 (list (car transform) (vector-ref object (cdr transform))))
-       (class-instance-transforms (object-class object))))
 
 (define (send object operation . args)
   (apply (object-method object operation) object args))

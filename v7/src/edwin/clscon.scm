@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/clscon.scm,v 1.5 1991/11/21 10:02:56 cph Exp $
+;;;	$Id: clscon.scm,v 1.6 1993/01/10 10:43:05 cph Exp $
 ;;;
-;;;	Copyright (c) 1986-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -54,25 +54,27 @@
 
 (define (make-class name superclass variables)
   (let ((entry (assq name class-descriptors))
-	(object-size (if superclass
-			 (+ (length variables) (class-object-size superclass))
-			 (1+ (length variables))))
+	(object-size
+	 (+ (length variables)
+	    (if superclass (class-object-size superclass) 1)))
 	(transforms (make-instance-transforms superclass variables)))
     (let ((make-class
 	   (lambda ()
 	     (let ((class
-		    (vector class-tag
-			    name
-			    superclass
-			    object-size
-			    transforms
-			    (cons '()
-				  (and superclass
-				       (class-methods superclass))))))
-	       (unparser/set-tagged-vector-method!
+		    (%make-class name
+				 superclass
+				 object-size
+				 transforms
+				 (cons '()
+				       (and superclass
+					    (class-methods superclass))))))
+	       (named-structure/set-tag-description!
 		class
-		(unparser/standard-method name))
-	       (named-structure/set-tag-description! class object-description)
+		(make-define-structure-type 'VECTOR
+					    name
+					    (map car transforms)
+					    (map cdr transforms)
+					    (unparser/standard-method name)))
 	       class))))
       (if (not entry)
 	  (let ((class (make-class)))
@@ -83,25 +85,14 @@
 		   (let ((class (make-class)))
 		     (set-cdr! entry class)
 		     class))
-		  ((or (not (= object-size (vector-ref class 3)))
-		       (not (equal? transforms (vector-ref class 4))))
-		   (warn "Redefining class" name)
-		   (vector-set! class 3 object-size)
-		   (vector-set! class 4 transforms)
+		  ((and (= object-size (class-object-size class))
+			(equal? transforms (class-instance-transforms class)))
 		   class)
 		  (else
+		   (warn "Redefining class:" name)
+		   (set-class-object-size! class object-size)
+		   (set-class-instance-transforms! class transforms)
 		   class)))))))
-
-(define (class? x)
-  (and (vector? x)
-       (not (zero? (vector-length x)))
-       (eq? class-tag (vector-ref x 0))))
-
-(define (name->class name)
-  (cdr (or (assq name class-descriptors)
-	   (error "unknown class name" name))))
-
-(define class-tag "Class")
 
 (define (make-instance-transforms superclass variables)
   (define (generate variables n tail)
@@ -115,8 +106,11 @@
 		(class-instance-transforms superclass))
       (generate variables 1 '())))
 
-(unparser/set-tagged-vector-method! class-tag
-				    (unparser/standard-method 'CLASS))
+(define (name->class name)
+  (let ((entry (assq name class-descriptors)))
+    (if (not entry)
+	(error "Unknown class name:" name))
+    (cdr entry)))
 
 (define class-descriptors
   '())

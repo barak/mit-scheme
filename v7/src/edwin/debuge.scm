@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debuge.scm,v 1.49 1992/11/12 18:00:17 cph Exp $
+;;;	$Id: debuge.scm,v 1.50 1993/01/10 10:43:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -153,25 +153,17 @@
 
 ;;;; Object System Debugging
 
-(define (po object)
-  (for-each (lambda (entry)
-	      (newline)
-	      (write (car entry))
-	      (write-string ": ")
-	      (write (vector-ref object (cdr entry))))
-	    (class-instance-transforms (object-class object))))
-
 (define (instance-ref object name)
   (let ((entry (assq name (class-instance-transforms (object-class object)))))
-    (if entry
-	(vector-ref object (cdr entry))
-	(error "Not a valid instance-variable name" name))))
+    (if (not entry)
+	(error "Not a valid instance-variable name:" name))
+    (vector-ref object (cdr entry))))
 
 (define (instance-set! object name value)
   (let ((entry (assq name (class-instance-transforms (object-class object)))))
-    (if entry
-	(vector-set! object (cdr entry) value)
-	(error "Not a valid instance-variable name" name))))
+    (if (not entry)
+	(error "Not a valid instance-variable name:" name))
+    (vector-set! object (cdr entry) value)))
 
 ;;;; Screen Trace
 
@@ -186,7 +178,7 @@
 	 (if (default-object? screen)
 	     (begin
 	       (if (not edwin-editor)
-		   (error "no screen to trace"))
+		   (error "No screen to trace."))
 	       (editor-selected-screen edwin-editor))
 	     screen)))
     (set! trace-output '())
@@ -200,7 +192,7 @@
 	 (if (default-object? screen)
 	     (begin
 	       (if (not edwin-editor)
-		   (error "no screen to trace"))
+		   (error "No screen to trace."))
 	       (editor-selected-screen edwin-editor))
 	     screen)))
     (for-each (lambda (window)
