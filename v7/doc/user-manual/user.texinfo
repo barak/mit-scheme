@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.42 1996/03/21 15:35:39 adams Exp $
+@comment $Id: user.texinfo,v 1.43 1996/03/21 15:54:09 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -2225,6 +2225,7 @@ These options do not actually work.
 
 @item @code{MITSCHEME_FONT} (default: determined by operating system)
 @findex MITSCHEME_FONT
+@cindex fonts
 Windows and Windows NT only.
 A string specifying a font name and characteristics, for example,
 @samp{Courier New 16 bold}.
@@ -2242,6 +2243,7 @@ Once in Edwin, the font can be changed with the @samp{set-font} and
 
 @item @code{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
 @findex MITSCHEME_GEOMETRY
+@cindex window position
 Windows and Windows NT only.  Four integers separated by
 commas or spaces that specify the placement and size of the MIT Scheme
 window as a @var{left,top,width,height} quadruple.  The units are screen
@@ -2252,6 +2254,7 @@ the window border and title.
 
 @item @code{MITSCHEME_FOREGROUND} (default: according to desktop color scheme)
 @findex MITSCHEME_FOREGROUND
+@cindex window color
 Windows and Windows NT only.  An value specifying the window
 text color.  The color is specified as hex blue, green and red values
 (@emph{not} RGB): e.g.@: @code{0xff0000} for blue.
