@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.45 1991/08/27 19:36:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.46 1992/02/03 22:39:43 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,7 @@ MIT in each case. */
 #include "ansidecl.h"
 #include "psbmap.h"
 #include "float.h"
+#include "limits.h"
 #define portable_file input_file
 #define internal_file output_file
 
@@ -93,7 +94,7 @@ DEFUN_VOID (inconsistency)
   /*NOTREACHED*/
 }
 
-#define OUT(c)	return ((long) ((c) & MAX_CHAR))
+#define OUT(c)	return ((long) ((c) & UCHAR_MAX))
 
 long
 DEFUN_VOID (read_a_char)
@@ -588,7 +589,7 @@ DEFUN (Read_External, (N, Table, To),
   return (To);
 }
 
-#if false
+#if FALSE
 
 void
 DEFUN (Move_Memory, (From, N, To),
@@ -609,7 +610,7 @@ DEFUN (Move_Memory, (From, N, To),
 
 #endif
 
-#if false
+#if FALSE
 
 /* This appears to be a fossil. */
 
@@ -693,7 +694,7 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
   int The_Type;
   long The_Datum;
 
-#if false
+#if FALSE
   ALIGN_FLOAT (to);
 #endif
 
@@ -777,7 +778,7 @@ DEFUN (Read_Pointers_and_Relocate, (how_many, to),
 	continue;
     }
   }
-#if false
+#if FALSE
   ALIGN_FLOAT (to);
 #endif
   return (to);
@@ -931,7 +932,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
     NPChars,
     Size;
 
-#if 0
+#if FALSE
   READ_HEADER ("Portable Version", "%ld", Portable_Version);
 #else
   if (fscanf (portable_file, "%ld", &Portable_Version) == EOF)
@@ -1017,7 +1018,7 @@ DEFUN_VOID (Read_Header_and_Allocate)
   READ_HEADER ("CPU type", "%ld", compiler_processor_type);
   READ_HEADER ("Compiled code interface version", "%ld",
 	       compiler_interface_version);
-#if false
+#if FALSE
   READ_HEADER ("Compiler utilities vector", "%ld", compiler_utilities);
 #endif
 
