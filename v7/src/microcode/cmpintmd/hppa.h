@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.14 1990/08/08 20:28:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.15 1990/08/16 14:45:24 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -435,6 +435,7 @@ do {									\
 
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index)			\
 {									\
+  extern void cache_flush_region ();					\
   unsigned long *PC;							\
 									\
   PC = ((unsigned long *) (entry_address));				\
@@ -448,6 +449,7 @@ do {									\
 									\
   *PC++ = (((unsigned long) 0x341c0000) +				\
 	   (((unsigned long) (index)) << 1));				\
+  cache_flush_region (PC, (TRAMPOLINE_ENTRY_SIZE - 1));			\
 }
 
 /* Execute cache entries.
