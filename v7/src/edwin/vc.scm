@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.77 2001/05/10 18:22:37 cph Exp $
+;;; $Id: vc.scm,v 1.78 2001/06/07 17:44:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2001 Massachusetts Institute of Technology
 ;;;
@@ -232,17 +232,6 @@ Otherwise, the mod time of the file is the checkout time."
 	       (append! (ref-variable find-file-hooks)
 			(list (lambda (buffer) (vc-hook:find-file buffer)))))
 
-(set-variable!
- find-file-not-found-hooks
- (append! (ref-variable find-file-not-found-hooks)
-	  (list (lambda (buffer) (vc-hook:find-file-not-found buffer)))))
-
-(add-event-receiver! event:after-buffer-save
-		     (lambda (buffer) (vc-hook:after-buffer-save buffer)))
-
-(add-event-receiver! event:set-buffer-pathname
-		     (lambda (buffer) (vc-hook:set-buffer-pathname buffer)))
-
 (define (vc-hook:find-file buffer)
   (cond ((buffer-vc-master buffer #f)
 	 => (lambda (master)
@@ -284,6 +273,11 @@ Otherwise, the mod time of the file is the checkout time."
 			   buffer)))
 		    (else (follow)))))))
 	(else buffer)))
+
+(set-variable!
+ find-file-not-found-hooks
+ (append! (ref-variable find-file-not-found-hooks)
+	  (list (lambda (buffer) (vc-hook:find-file-not-found buffer)))))
 
 (define (vc-hook:find-file-not-found buffer)
   (let ((master (buffer-vc-master buffer #f)))
@@ -296,13 +290,30 @@ Otherwise, the mod time of the file is the checkout time."
 		(vc-checkout master #f)
 		#t)))))))
 
+(add-event-receiver! event:after-buffer-save
+		     (lambda (buffer) (vc-hook:after-buffer-save buffer)))
+
 (define (vc-hook:after-buffer-save buffer)
   (let ((master (buffer-vc-master buffer #f)))
     (if master
 	(vc-mode-line master buffer))))
 
+(add-event-receiver! event:set-buffer-pathname
+		     (lambda (buffer) (vc-hook:set-buffer-pathname buffer)))
+
 (define (vc-hook:set-buffer-pathname buffer)
   (buffer-remove! buffer 'VC-MASTER))
+
+(add-event-receiver! event:set-buffer-major-mode
+		     (lambda (buffer) (vc-hook:set-buffer-major-mode buffer)))
+
+(define (vc-hook:set-buffer-major-mode buffer)
+  (let ((master (buffer-vc-master buffer #f)))
+    (if master
+	(begin
+	  (vc-mode-line master buffer)
+	  (if (not (ref-variable vc-make-backup-files buffer))
+	      (local-set-variable! make-backup-files #f buffer))))))
 
 ;;;; Mode line
 
