@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.1 2000/03/31 14:10:45 cph Exp $
+$Id: load.scm,v 1.2 2000/08/20 04:10:57 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -20,6 +20,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
 (load-option 'HASH-TABLE)
+(load-option 'REGULAR-EXPRESSION)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (package/system-loader "rcs" '() 'QUERY)))
