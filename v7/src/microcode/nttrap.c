@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.19 2001/12/16 06:01:32 cph Exp $
+$Id: nttrap.c,v 1.20 2002/07/02 18:38:46 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -373,9 +373,9 @@ DEFUN (display_exception_information, (info, context, flags),
 			  "\nContext contains floating-point registers."));
     bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
     bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
-    bufptr += (sprintf (bufptr, "\nStack_Pointer       = 0x%lx.", Stack_Pointer));
-    bufptr += (sprintf (bufptr, "\nadj (Stack_Pointer) = 0x%lx.",
-			(ADDR_TO_SCHEME_ADDR (Stack_Pointer))));
+    bufptr += (sprintf (bufptr, "\nsp_register         = 0x%lx.", sp_register));
+    bufptr += (sprintf (bufptr, "\nadj (sp_register) = 0x%lx.",
+			(ADDR_TO_SCHEME_ADDR (sp_register))));
   }
 #endif /* W32_TRAP_DEBUG */
 
@@ -424,7 +424,7 @@ WinntExceptionTransferHook (void)
   static int size;
   static SCHEME_OBJECT * temp_stack_ptr, * new_sp;
 
-  temp_stack_ptr = Stack_Pointer;
+  temp_stack_ptr = sp_register;
   size = (temp_stack_limit - temp_stack_ptr);
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "WinntExceptionTransferHook."));
 
@@ -432,14 +432,14 @@ WinntExceptionTransferHook (void)
     INITIALIZE_STACK ();
   else
   {
-    Stack_Pointer = real_stack_pointer;
+    sp_register = real_stack_pointer;
     Stack_Guard = real_stack_guard;
   }
     
   new_sp = (real_stack_pointer - size);
   if (new_sp != temp_stack_ptr)
     memcpy (new_sp, temp_stack_ptr, (size * (sizeof (SCHEME_OBJECT))));
-  Stack_Pointer = new_sp;
+  sp_register = new_sp;
   SET_INTERRUPT_MASK ((FETCH_INTERRUPT_MASK ()));
   if (return_by_aborting)
     abort_to_interpreter (PRIM_APPLY);
@@ -495,9 +495,9 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
     if (! stack_recovered_p)
       INITIALIZE_STACK ();
     clear_real_stack = FALSE;
-    real_stack_pointer = Stack_Pointer;
+    real_stack_pointer = sp_register;
     real_stack_guard = Stack_Guard;
-    temp_stack_limit = Stack_Pointer;
+    temp_stack_limit = sp_register;
   }
   else
   {
@@ -505,7 +505,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
     real_stack_pointer = new_stack_pointer;
     real_stack_guard = Stack_Guard;
     temp_stack_limit = temp_stack_end;
-    Stack_Pointer = temp_stack_end;
+    sp_register = temp_stack_end;
     Stack_Guard = temp_stack;
   }
 
@@ -621,8 +621,8 @@ DEFUN (continue_from_trap, (code, context),
     IFVERBOSE
       (TellUserEx
        (MB_OKCANCEL,
-	"continue_from_trap: SS = C DS; Stack_Pointer = 0x%lx; Esp = 0x%lx.",
-	Stack_Pointer, context->Esp));
+	"continue_from_trap: SS = C DS; sp_register = 0x%lx; Esp = 0x%lx.",
+	sp_register, context->Esp));
     scheme_sp = (context->Esp);
   }
   else
@@ -683,9 +683,9 @@ pc_in_hyperspace:
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
      : ((pc_in_C
-	&& (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Stack_Bottom))
-        ? Stack_Pointer
+	&& (sp_register < Stack_Top)
+	&& (sp_register > Stack_Bottom))
+        ? sp_register
         : ((SCHEME_OBJECT *) 0)));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 3"));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.39 2002/07/02 18:15:28 cph Exp $
+$Id: stack.h,v 9.40 2002/07/02 18:39:04 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -40,7 +40,7 @@ USA.
   *Free =								\
     (MAKE_OBJECT (TC_MANIFEST_VECTOR, (Default_Stacklet_Size - 1)));	\
   Free += Default_Stacklet_Size;					\
-  Stack_Pointer = Free;							\
+  sp_register = Free;							\
   Free_Stacklets = NULL;						\
   Prev_Restore_History_Stacklet = NULL;					\
   Prev_Restore_History_Offset = 0;					\
@@ -52,7 +52,7 @@ USA.
 
 #define Internal_Will_Push(N)						\
 {									\
-  if ((Stack_Pointer - (N)) < Stack_Guard)				\
+  if ((sp_register - (N)) < Stack_Guard)				\
   {									\
     Allocate_New_Stacklet((N));						\
   }									\
@@ -72,17 +72,17 @@ USA.
 {									\
   Current_Stacklet[STACKLET_REUSE_FLAG] = SHARP_T;			\
   Current_Stacklet[STACKLET_UNUSED_LENGTH] =				\
-    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (Stack_Pointer - Stack_Guard));	\
+    MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (sp_register - Stack_Guard));	\
 }
 
 #ifdef ENABLE_DEBUGGING_TOOLS
 
 #define Terminate_Old_Stacklet()					\
 {									\
-  if (Stack_Pointer < Stack_Guard)					\
+  if (sp_register < Stack_Guard)					\
   {									\
-    outf_fatal ("\nStack_Pointer: 0x%lx, Guard: 0x%lx\n",		\
-                ((long) Stack_Pointer), ((long) Stack_Guard));		\
+    outf_fatal ("\nsp_register: 0x%lx, Guard: 0x%lx\n",			\
+                ((long) sp_register), ((long) Stack_Guard));		\
     Microcode_Termination(TERM_EXIT);					\
   }									\
   Internal_Terminate_Old_Stacklet();					\
@@ -113,7 +113,7 @@ USA.
 									\
   Our_Where = (Where);							\
   SET_STACK_GUARD (MEMORY_LOC (Our_Where, STACKLET_HEADER_SIZE));	\
-  Stack_Pointer = Previous_Stack_Pointer(Our_Where);			\
+  sp_register = Previous_Stack_Pointer(Our_Where);			\
 }
 
 #define STACKLET_SLACK	(STACKLET_HEADER_SIZE + CONTINUATION_SIZE)
@@ -197,7 +197,7 @@ Pushed()
 									\
       Free_Stacklets =							\
 	((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);	\
-      Stack_Pointer = Get_End_Of_Stacklet();				\
+      sp_register = Get_End_Of_Stacklet();				\
       Prev_Restore_History_Stacklet = NULL;				\
       Prev_Restore_History_Offset = 0
 
@@ -237,7 +237,7 @@ Pushed()
 	OBJECT_DATUM (Old_Stacklet_Top[STACKLET_UNUSED_LENGTH]) +	\
         STACKLET_HEADER_SIZE;						\
       temp += Unused_Length;						\
-      Stack_Pointer = temp;						\
+      sp_register = temp;						\
       Used_Length =							\
         (OBJECT_DATUM (Old_Stacklet_Top[STACKLET_LENGTH]) -		\
          Unused_Length) + 1;						\
@@ -275,7 +275,7 @@ Pushed()
     }									\
 } while (0)
 
-#define Internal_Will_Push(N)	Stack_Check(Stack_Pointer - (N))
+#define Internal_Will_Push(N)	Stack_Check(sp_register - (N))
 
 #define Terminate_Old_Stacklet()
 
@@ -327,7 +327,7 @@ Pushed()
   To_Where = (Stack_Top - valid);					\
   From_Where = MEMORY_LOC (Control_Point, invalid);			\
   Stack_Check (To_Where);						\
-  Stack_Pointer = To_Where;						\
+  sp_register = To_Where;						\
   while (--valid >= 0)							\
     *To_Where++ = *From_Where++;					\
   if (Consistency_Check)						\

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.91 2001/12/16 06:01:32 cph Exp $
+$Id: fasload.c,v 9.92 2002/07/02 18:38:16 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -936,7 +936,7 @@ DEFUN (abort_band_load, (ap), PTR ap)
   Free_Constant = mp->free_constant;
   Constant_Space = mp->constant_space;
   Constant_Top = mp->constant_top;
-  Stack_Pointer = mp->stack_pointer;
+  sp_register = mp->stack_pointer;
   Stack_Bottom = mp->stack_bottom;
   Stack_Top = mp->stack_top;
   Stack_Guard = mp->stack_guard;
@@ -1003,7 +1003,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       mp->free_constant = Free_Constant;
       mp->constant_space = Constant_Space;
       mp->constant_top = Constant_Top;
-      mp->stack_pointer = Stack_Pointer;
+      mp->stack_pointer = sp_register;
       mp->stack_bottom = Stack_Bottom;
       mp->stack_top = Stack_Top;
       mp->stack_guard = Stack_Guard;

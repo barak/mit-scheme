@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.95 2001/12/16 06:01:32 cph Exp $
+$Id: cmpint.c,v 1.96 2002/07/02 18:37:52 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -398,7 +398,7 @@ DEFUN (open_gap,
 
   gap_location = STACK_LOC (delta);
   source_location = STACK_LOC (0);
-  Stack_Pointer = gap_location;
+  sp_register = gap_location;
   while ((--nactuals) > 0)
   {
     STACK_LOCATIVE_POP (gap_location) = STACK_LOCATIVE_POP (source_location);
@@ -515,7 +515,7 @@ DEFUN (setup_lexpr_invocation,
       (STACK_LOCATIVE_PUSH (gap_location)) =
         (STACK_LOCATIVE_PUSH (source_location));
     }
-    Stack_Pointer = gap_location;
+    sp_register = gap_location;
     return (PRIM_DONE);
   }
 }
@@ -684,7 +684,7 @@ DEFUN (apply_compiled_from_primitive, (arity), int arity)
       if (result == PRIM_DONE)
       {
 	STACK_PUSH (procedure);
-	Stack_Pointer = (STACK_LOC (- arity));
+	sp_register = (STACK_LOC (- arity));
 	return (SHARP_F);
       }
       else
@@ -703,7 +703,7 @@ defer_application:
 
   STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_INTERNAL_APPLY);
   STACK_PUSH (reflect_to_interface);
-  Stack_Pointer = (STACK_LOC (- arity));
+  sp_register = (STACK_LOC (- arity));
   return (SHARP_F);
 }
 
@@ -732,7 +732,7 @@ DEFUN (compiled_with_interrupt_mask, (old_mask, receiver, new_mask),
     STACK_PUSH (reflect_to_interface);
   }
 
-  Stack_Pointer = (STACK_LOC (- 2));
+  sp_register = (STACK_LOC (- 2));
   return (SHARP_F);
 }
 
@@ -756,7 +756,7 @@ DEFUN (compiled_with_stack_marker, (thunk), SCHEME_OBJECT thunk)
     STACK_PUSH (reflect_to_interface);
   }
 
-  Stack_Pointer = (STACK_LOC (- 3));
+  sp_register = (STACK_LOC (- 3));
   return (SHARP_F);
 }
 
@@ -1473,7 +1473,7 @@ DEFUN_VOID (comp_op_lookup_trap_restart)
 
   /* Discard name, env. and nargs */
 
-  Stack_Pointer = (STACK_LOC (3));
+  sp_register = (STACK_LOC (3));
   old_trampoline = (OBJECT_ADDRESS (STACK_POP ()));
   code_block = ((TRAMPOLINE_STORAGE (old_trampoline))[1]);
   offset = (OBJECT_DATUM ((TRAMPOLINE_STORAGE (old_trampoline))[2]));
@@ -1668,7 +1668,7 @@ DEFNX (comutil_operator_4_0_trap,
 {									\
   if (Free >= MemTop)							\
     Request_GC (Free - MemTop);						\
-  if (Stack_Pointer <= Stack_Guard)					\
+  if (sp_register <= Stack_Guard)					\
     REQUEST_INTERRUPT (INT_Stack_Overflow);				\
 }
 
@@ -2911,7 +2911,7 @@ DEFUN (bkpt_proceed, (ep, handle, state),
 
   STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
   STACK_PUSH (reflect_to_interface);
-  Stack_Pointer = (STACK_LOC (- BKPT_PROCEED_FRAME_SIZE));
+  sp_register = (STACK_LOC (- BKPT_PROCEED_FRAME_SIZE));
   return (SHARP_F);
 }
 #endif /* HAVE_BKPT_SUPPORT */
@@ -2954,7 +2954,7 @@ DEFNX (comutil_compiled_code_bkpt,
   else
     state = Val;
 
-  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, Stack_Pointer));
+  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, sp_register));
   STACK_PUSH (state);		/* state to preserve */
   STACK_PUSH (stack_ptr);	/* "Environment" pointer */
   STACK_PUSH (entry_point);	/* argument to handler */
@@ -2975,7 +2975,7 @@ DEFNX (comutil_compiled_closure_bkpt,
 
   STACK_PUSH (entry_point);	/* return address */
 
-  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, Stack_Pointer));
+  stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, sp_register));
   STACK_PUSH (SHARP_F);		/* state to preserve */
   STACK_PUSH (stack_ptr);	/* "Environment" pointer */
   STACK_PUSH (entry_point);	/* argument to handler */

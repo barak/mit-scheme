@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bkpt.c,v 9.30 1999/01/02 06:11:34 cph Exp $
+$Id: bkpt.c,v 9.31 2002/07/02 18:37:39 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains breakpoint utilities.
@@ -64,20 +65,20 @@ extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
 void
 DEFUN_VOID (Handle_Pop_Return_Break)
 {
-  SCHEME_OBJECT *Old_Stack = Stack_Pointer;
+  SCHEME_OBJECT *Old_Stack = sp_register;
 
-  printf ("Pop Return Break: SP = 0x%lx\n", ((long) Stack_Pointer));
+  printf ("Pop Return Break: SP = 0x%lx\n", ((long) sp_register));
   (void) (Print_One_Continuation_Frame (Return));
-  Stack_Pointer = Old_Stack;
+  sp_register = Old_Stack;
   return;
 }
 
 void
 DEFUN_VOID (Pop_Return_Break_Point)
 {
-  fast SCHEME_OBJECT *SP = Stack_Pointer;
-  fast sp_record_list previous = &One_Before;
-  fast sp_record_list this = previous->next; /* = SP_List */
+  SCHEME_OBJECT * SP = sp_register;
+  sp_record_list previous = &One_Before;
+  sp_record_list this = previous->next; /* = SP_List */
 
   for ( ;
        this != sp_nil;

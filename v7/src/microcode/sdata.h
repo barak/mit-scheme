@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.39 2001/12/21 04:36:11 cph Exp $
+$Id: sdata.h,v 9.40 2002/07/02 18:38:57 cph Exp $
 
-Copyright (c) 1987-1989, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1989, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -116,7 +116,7 @@ USA.
         |    |               ...                   |\
         |    |     not yet in use -- garbage       | > m
      n <     _______________________________________/
-        |    | Top of Stack, useful contents       | <---Stack_Pointer
+        |    | Top of Stack, useful contents       | <---sp_register
         |    _______________________________________
         \    |               ...                   |
          \   |           useful stuff              |

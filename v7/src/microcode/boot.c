@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.105 2001/07/31 03:10:57 cph Exp $
+$Id: boot.c,v 9.106 2002/07/02 18:37:45 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -472,7 +472,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   Store_Expression (expr);
 
   /* Go to it! */
-  if ((Stack_Pointer <= Stack_Guard) || (Free > MemTop))
+  if ((sp_register <= Stack_Guard) || (Free > MemTop))
   {
     outf_fatal ("Configuration won't hold initial data.\n");
     termination_init_error ();

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.47 2000/12/05 21:23:48 cph Exp $
+$Id: sysprim.c,v 9.48 2002/07/02 18:39:15 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Random system primitives.  Most are implemented in terms of
@@ -134,7 +135,7 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
   heap_high = Heap_Top;
 #ifndef USE_STACKLETS
   stack_low = Stack_Bottom;
-  stack_free = Stack_Pointer;
+  stack_free = sp_register;
   stack_limit = Stack_Guard;
   stack_high = Stack_Top;
 #endif /* USE_STACKLETS */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.7 2000/12/05 21:23:43 cph Exp $
+$Id: cmpint.h,v 10.8 2002/07/02 18:37:58 cph Exp $
 
-Copyright (c) 1987-1990, 1999, 2000 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Macros for the interface between compiled code and interpreted code. */
@@ -30,13 +31,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define With_Stack_Gap(Gap_Size, Gap_Position, Code)			\
 {									\
-  fast long size_to_move = (Gap_Position);				\
-  fast SCHEME_OBJECT * Destination = (STACK_LOC (- (Gap_Size)));	\
+  long size_to_move = (Gap_Position);					\
+  SCHEME_OBJECT * Destination = (STACK_LOC (- (Gap_Size)));		\
   SCHEME_OBJECT * Saved_Destination = Destination;			\
   while ((--size_to_move) >= 0)						\
     (STACK_LOCATIVE_POP (Destination)) = (STACK_POP ());		\
   Code;									\
-  Stack_Pointer = Saved_Destination;					\
+  sp_register = Saved_Destination;					\
 }
 
 /* Close_Stack_Gap closes a gap Gap_Size wide Gap_Position cells above the
@@ -45,12 +46,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #define Close_Stack_Gap(Gap_Size, Gap_Position, extra_code)		\
 {									\
-  fast long size_to_move;						\
-  fast SCHEME_OBJECT *Source;						\
+  long size_to_move;							\
+  SCHEME_OBJECT *Source;						\
 									\
   size_to_move = (Gap_Position);					\
   Source = (STACK_LOC (size_to_move));					\
-  Stack_Pointer = (STACK_LOC ((Gap_Size) + size_to_move));		\
+  sp_register = (STACK_LOC ((Gap_Size) + size_to_move));		\
   extra_code;								\
   while (--size_to_move >= 0)						\
   {									\

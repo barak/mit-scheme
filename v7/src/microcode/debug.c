@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.53 2001/07/31 03:11:17 cph Exp $
+$Id: debug.c,v 9.54 2002/07/02 18:38:03 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -706,7 +706,7 @@ DEFUN (print_one_continuation_frame, (stream, Temp),
       ((OBJECT_DATUM (Temp)) == RC_HALT))
     return (true);
   if ((OBJECT_DATUM (Temp)) == RC_JOIN_STACKLETS)
-    Stack_Pointer = (Previous_Stack_Pointer (Expr));
+    sp_register = (Previous_Stack_Pointer (Expr));
   return (false);
 }
 
@@ -728,7 +728,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
   SCHEME_OBJECT Temp, * Old_Stack;
 
   Back_Trace_Entry_Hook();
-  Old_Stack = Stack_Pointer;
+  Old_Stack = sp_register;
   while (true)
   {
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
@@ -768,28 +768,24 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
       print_expression (stream, Temp, "  ...");
       if ((OBJECT_TYPE (Temp)) == TC_MANIFEST_NM_VECTOR)
       {
-	Stack_Pointer = (STACK_LOC (- ((long) (OBJECT_DATUM (Temp)))));
+	sp_register = (STACK_LOC (- ((long) (OBJECT_DATUM (Temp)))));
         outf (stream, " (skipping)");
       }
       outf (stream, "\n");
     }
   }
-  Stack_Pointer = Old_Stack;
+  sp_register = Old_Stack;
   Back_Trace_Exit_Hook();
   outf_flush (stream);
-  return;
 }
 
 void
 DEFUN (print_stack, (sp), SCHEME_OBJECT * sp)
 {
-  SCHEME_OBJECT * saved_sp;
-
-  saved_sp = Stack_Pointer;
-  Stack_Pointer = sp;
+  SCHEME_OBJECT * saved_sp = sp_register;
+  sp_register = sp;
   Back_Trace (console_output);
-  Stack_Pointer = saved_sp;
-  return;
+  sp_register = saved_sp;
 }
 
 extern void

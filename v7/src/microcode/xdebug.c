@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: xdebug.c,v 9.34 2000/12/05 21:23:49 cph Exp $
+$Id: xdebug.c,v 9.35 2002/07/02 18:39:33 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains primitives to debug memory management. */
@@ -165,7 +166,7 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
 		    Find_Mode, print_p, store_p);
 #ifndef USE_STACKLETS
   n += Find_In_Area("the Stack",
-		    Stack_Pointer, Stack_Top, Obj,
+		    sp_register, Stack_Top, Obj,
 		    Find_Mode, print_p, store_p);
 #endif
   if (print_p)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.31 2001/12/16 06:01:33 cph Exp $
+$Id: uxtrap.c,v 1.32 2002/07/02 18:39:27 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -320,7 +320,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
      Pushed ();
     }
   else
-    Stack_Pointer = new_stack_pointer;
+    sp_register = new_stack_pointer;
  Will_Push (7 + CONTINUATION_SIZE);
   STACK_PUSH (trinfo -> extra_trap_info);
   STACK_PUSH (trinfo -> pc_info_2);
@@ -364,8 +364,8 @@ DEFUN_VOID (soft_reset)
 {
   struct trap_recovery_info trinfo;
   SCHEME_OBJECT * new_stack_pointer =
-    (((Stack_Pointer <= Stack_Top) && (Stack_Pointer > Stack_Guard))
-     ? Stack_Pointer
+    (((sp_register <= Stack_Top) && (sp_register > Stack_Guard))
+     ? sp_register
      : 0);
   if ((Regs[REGBLOCK_PRIMITIVE]) != SHARP_F)
     {
@@ -489,9 +489,9 @@ DEFUN (continue_from_trap, (signo, info, scp),
   new_stack_pointer =
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
-     : (pc_in_C && (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Stack_Bottom))
-     ? Stack_Pointer
+     : (pc_in_C && (sp_register < Stack_Top)
+	&& (sp_register > Stack_Bottom))
+     ? sp_register
      : ((SCHEME_OBJECT *) 0));
 
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))

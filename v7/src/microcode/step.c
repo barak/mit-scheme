@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.34 1999/01/02 06:11:34 cph Exp $
+$Id: step.c,v 9.35 2002/07/02 18:39:09 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Support for the stepper */
@@ -113,7 +114,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 	fast SCHEME_OBJECT scan_list;
 	fast long i;
 	Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
-	Stack_Pointer = scan_stack;
+	sp_register = scan_stack;
 	TOUCH_IN_PRIMITIVE (argument_list, scan_list);
 	for (i = number_of_args; (i > 0); i -= 1)
 	  {

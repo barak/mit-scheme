@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.9 2001/12/16 06:01:32 cph Exp $
+$Id: os2xcpt.c,v 1.10 2002/07/02 18:38:52 cph Exp $
 
-Copyright (c) 1994-2001 Massachusetts Institute of Technology
+Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -449,7 +449,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
     case pc_in_utility:
     case pc_in_primitive:
     case pc_in_c:
-      new_sp = Stack_Pointer;
+      new_sp = sp_register;
       break;
     default:
       new_sp = 0;
@@ -753,7 +753,7 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
 
   /* Make sure the stack is correctly initialized.  */
   if (new_sp != 0)
-    Stack_Pointer = new_sp;
+    sp_register = new_sp;
   else
     {
       INITIALIZE_STACK ();

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.16 2002/07/02 18:15:23 cph Exp $
+$Id: liarc.h,v 1.17 2002/07/02 18:38:34 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ typedef union machine_word_u machine_word;
 #define Rvl Val
 #define Rhp Free
 #define Rrb Regs
-#define Rsp Stack_Pointer
+#define Rsp sp_register
 
 #define DECLARE_VARIABLES() int unsed_variable_to_keep_C_happy
 #define UNCACHE_VARIABLES() do {} while (0)
@@ -160,11 +160,11 @@ typedef union machine_word_u machine_word;
 #define DECLARE_VARIABLES()						\
 REGISTER SCHEME_OBJECT Rvl = Val;					\
 REGISTER SCHEME_OBJECT * Rhp = Free;					\
-REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
+REGISTER SCHEME_OBJECT * Rsp = sp_register
 
 #define UNCACHE_VARIABLES() do						\
 {									\
-  Stack_Pointer = Rsp;							\
+  sp_register = Rsp;							\
   Free = Rhp;								\
   Val = Rvl;								\
 } while (0)
@@ -173,7 +173,7 @@ REGISTER SCHEME_OBJECT * Rsp = Stack_Pointer
 {									\
   Rvl = Val;								\
   Rhp = Free;								\
-  Rsp = Stack_Pointer;							\
+  Rsp = sp_register;							\
 } while (0)
 
 #endif /* USE_GLOBAL_VARIABLES */

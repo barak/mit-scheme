@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.79 2001/07/31 03:12:15 cph Exp $
+$Id: utils.c,v 9.80 2002/07/02 18:39:20 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -701,7 +701,7 @@ DEFUN_VOID (Stop_History)
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
  Pushed();
   Prev_Restore_History_Stacklet = NULL;
-  Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - Stack_Pointer) +
+  Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - sp_register) +
 				 CONTINUATION_RETURN_CODE);
   Store_Expression(Saved_Expression);
   Store_Return(Saved_Return_Code);
@@ -835,14 +835,14 @@ DEFUN (primitive_apply_internal, (primitive), SCHEME_OBJECT primitive)
   if (Primitive_Debug)
     Print_Primitive (primitive);
   {
-    SCHEME_OBJECT * saved_stack = Stack_Pointer;
+    SCHEME_OBJECT * saved_stack = sp_register;
     PRIMITIVE_APPLY_INTERNAL (result, primitive);
-    if (saved_stack != Stack_Pointer)
+    if (saved_stack != sp_register)
       {
 	int arity = (PRIMITIVE_N_ARGUMENTS (primitive));
 	Print_Expression (primitive, "Stack bad after ");
 	outf_fatal ("\nStack was 0x%lx, now 0x%lx, #args=%ld.\n",
-		    ((long) saved_stack), ((long) Stack_Pointer), ((long) arity));
+		    ((long) saved_stack), ((long) sp_register), ((long) arity));
 	Microcode_Termination (TERM_EXIT);
       }
   }
@@ -915,7 +915,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
     Free[STACKLET_LENGTH] = MAKE_OBJECT (TC_MANIFEST_VECTOR, (size - 1));
     SET_STACK_GUARD (& (Free[STACKLET_HEADER_SIZE]));
     Free += size;
-    Stack_Pointer = Free;
+    sp_register = Free;
   }
   else
   {
@@ -926,7 +926,7 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
     New_Stacklet = Free_Stacklets;
     Free_Stacklets =
       ((SCHEME_OBJECT *) Free_Stacklets[STACKLET_FREE_LIST_LINK]);
-    Stack_Pointer =
+    sp_register =
       &New_Stacklet[1 + (OBJECT_DATUM (New_Stacklet[STACKLET_LENGTH]))];
     SET_STACK_GUARD (& (New_Stacklet[STACKLET_HEADER_SIZE]));
   }
@@ -1123,7 +1123,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
     if (! (PRIMITIVE_P (primitive)))
       abort_to_interpreter (ERR_CANNOT_RECURSE);
       /*NOTREACHED*/
-    sp = Stack_Pointer;
+    sp = sp_register;
 
    Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
     {
@@ -1145,7 +1145,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
    Pushed ();
     result = (Re_Enter_Interpreter ());
 
-    if (Stack_Pointer != sp)
+    if (sp_register != sp)
       signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
       /*NOTREACHED*/
 

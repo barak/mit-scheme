@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.60 2001/07/31 03:11:31 cph Exp $
+$Id: hooks.c,v 9.61 2002/07/02 18:38:22 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 #else
   /* Don't use Will_Push for this -- if the length of the list is too
      large to fit on the stack, it could cause Scheme to terminate.  */
-  if ((Stack_Pointer - (number_of_args + STACK_ENV_EXTRA_SLOTS + 1))
+  if ((sp_register - (number_of_args + STACK_ENV_EXTRA_SLOTS + 1))
       <= Stack_Guard)
     error_bad_range_arg (2);
   POP_PRIMITIVE_FRAME (2);
@@ -127,7 +127,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
     }
   }
-  Stack_Pointer = (STACK_LOC (- number_of_args));
+  sp_register = (STACK_LOC (- number_of_args));
   STACK_PUSH (procedure);
   STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
 #ifdef USE_STACKLETS
@@ -166,7 +166,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 #else /* not USE_STACKLETS */
 
 #define CWCC_STACK_SIZE()						\
-  ((Stack_Top - Stack_Pointer) + STACKLET_HEADER_SIZE			\
+  ((Stack_Top - sp_register) + STACKLET_HEADER_SIZE			\
    + CONTINUATION_SIZE + HISTORY_SIZE)
 
 /* When there are no stacklets, the two versions of CWCC are identical. */
@@ -272,7 +272,7 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
   }
 #else /* not USE_STACKLETS */
   {
-    fast long n_words = (Stack_Top - Stack_Pointer);
+    fast long n_words = (Stack_Top - sp_register);
     control_point = (allocate_marked_vector
 		     (TC_CONTROL_POINT,
 		      (n_words + (STACKLET_HEADER_SIZE - 1)),
@@ -287,7 +287,7 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
       while ((n_words--) > 0)
 	(*scan++) = (STACK_POP ());
     }
-    if (Consistency_Check && (Stack_Pointer != Stack_Top))
+    if (Consistency_Check && (sp_register != Stack_Top))
       Microcode_Termination (TERM_BAD_STACK);
     CLEAR_INTERRUPT (INT_Stack_Overflow);
     STACK_RESET ();
@@ -373,7 +373,7 @@ Invoke THUNK with CONTROL-POINT as its control stack.")
   thunk = (ARG_REF (2));
 
   /* This KNOWS the direction of stack growth. */
-  Stack_Pointer = (Get_End_Of_Stacklet ());
+  sp_register = (Get_End_Of_Stacklet ());
   /* We've discarded the history with the stack contents.  */
   Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = 0;

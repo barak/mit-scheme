@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.98 2000/12/05 21:34:56 cph Exp $
+$Id: bchmmg.c,v 9.99 2002/07/02 18:37:33 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Memory management top level.  Garbage collection to disk. */
@@ -3160,7 +3161,7 @@ void
 DEFUN (initialize_weak_pair_transport, (limit), SCHEME_OBJECT * limit)
 {
   Weak_Chain = EMPTY_WEAK_CHAIN;
-  weak_pair_stack_ptr = Stack_Pointer;
+  weak_pair_stack_ptr = sp_register;
   weak_pair_stack_limit = (limit + 1); /* in case it's odd */
   return;
 }
@@ -3173,7 +3174,7 @@ DEFUN (fix_weak_chain_1, (low_heap), SCHEME_OBJECT * low_heap)
   chain = Weak_Chain;
   initialize_new_space_buffer (chain, low_heap);
 
-  limit = Stack_Pointer;
+  limit = sp_register;
   for (ptr = weak_pair_stack_ptr; ptr < limit ; ptr += 2)
     *ptr = (update_weak_pointer (*ptr, low_heap));
 
@@ -3196,9 +3197,9 @@ DEFUN (fix_weak_chain_1, (low_heap), SCHEME_OBJECT * low_heap)
 void
 DEFUN_VOID (fix_weak_chain_2)
 {
-  fast SCHEME_OBJECT * ptr, * limit, new_car, * addr;
+  SCHEME_OBJECT * ptr, * limit, new_car, * addr;
 
-  limit = Stack_Pointer;
+  limit = sp_register;
   for (ptr = weak_pair_stack_ptr; ptr < limit ; )
   {
     new_car = *ptr++;
