@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.1 1992/08/29 12:13:47 jinx Exp $
+$Id: alpha.h,v 1.2 1992/08/29 12:53:22 jinx Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -58,6 +58,8 @@ case. */
 #define COMPILER_MIPS_TYPE			11
 
 /* Machine parameters to be set by the user. */
+
+#define PAGE_SIZE (8 * 1024)
 
 /* Processor type.  Choose a number from the above list, or allocate your own.
  */
