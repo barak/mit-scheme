@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-struct.scm,v 1.4 2001/07/14 11:43:50 cph Exp $
+;;; $Id: xml-struct.scm,v 1.5 2001/07/16 18:54:12 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -63,25 +63,6 @@
 (define-structure (xml-uninterpreted
 		   (type-descriptor xml-uninterpreted-rtd))
   text)
-
-(define-structure (xml-entity-reference
-		   (type-descriptor xml-entity-reference-rtd)
-		   (print-procedure
-		    (standard-unparser-method 'XML-ENTITY-REFERENCE
-		      (lambda (reference port)
-			(write-char #\space port)
-			(write (xml-entity-reference-name reference) port)))))
-  name)
-
-(define-structure (xml-parameter-entity-reference
-		   (type-descriptor xml-parameter-entity-reference-rtd)
-		   (print-procedure
-		    (standard-unparser-method 'XML-PARAMETER-ENTITY-REFERENCE
-		      (lambda (reference port)
-			(write-char #\space port)
-			(write (xml-parameter-entity-reference-name reference)
-			       port)))))
-  name)
 
 (define (xml-intern string)
   ;; Prevents XML names from cluttering the symbol table.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.4 2001/07/14 11:43:47 cph Exp $
+;;; $Id: xml.pkg,v 1.5 2001/07/16 18:54:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -40,10 +40,8 @@
 	  make-xml-document
 	  make-xml-dtd
 	  make-xml-element
-	  make-xml-entity-reference
 	  make-xml-external-id
 	  make-xml-parameter-!entity
-	  make-xml-parameter-entity-reference
 	  make-xml-processing-instructions
 	  make-xml-uninterpreted
 	  make-xml-unparsed-!entity
@@ -70,7 +68,6 @@
 	  set-xml-element-attributes!
 	  set-xml-element-contents!
 	  set-xml-element-name!
-	  set-xml-entity-reference-name!
 	  set-xml-external-id-id!
 	  set-xml-external-id-uri!
 	  set-xml-parameter-!entity-name!
@@ -120,9 +117,6 @@
 	  xml-element-name
 	  xml-element-rtd
 	  xml-element?
-	  xml-entity-reference-name
-	  xml-entity-reference-rtd
-	  xml-entity-reference?
 	  xml-external-id-id
 	  xml-external-id-rtd
 	  xml-external-id-uri
@@ -132,8 +126,6 @@
 	  xml-parameter-!entity-rtd
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
-	  xml-parameter-entity-reference-rtd
-	  xml-parameter-entity-reference?
 	  xml-processing-instructions-name
 	  xml-processing-instructions-rtd
 	  xml-processing-instructions-text
