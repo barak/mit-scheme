@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.2 1988/08/15 20:51:21 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.3 1988/09/29 04:59:28 jinx Rel $
  *
  * This file contains environment manipulation primitives.
  * It makes heavy use of procedures in lookup.c
@@ -70,22 +70,30 @@ do									\
   CHECK_ARG(2, SYMBOL_P);						\
 } while (0)
 
-#define lookup_primitive_end(Result)					\
+#define lookup_primitive_action(action)					\
 {									\
-  if (Result == PRIM_DONE)						\
-    PRIMITIVE_RETURN(Val);						\
-  if (Result == PRIM_INTERRUPT)						\
-    signal_interrupt_from_primitive();					\
-  signal_error_from_primitive(Result);					\
+  long result;								\
+									\
+  result = (action);							\
+  if (result != PRIM_DONE)						\
+  {									\
+    if (result == PRIM_INTERRUPT)					\
+      signal_interrupt_from_primitive();				\
+    else								\
+      signal_error_from_primitive(result);				\
+  }									\
+}
+
+#define lookup_primitive_end(value, action)				\
+{									\
+  lookup_primitive_action(action);					\
+  PRIMITIVE_RETURN(value);						\
 }
 
 #define standard_lookup_primitive(action)				\
 {									\
-  long Result;								\
-									\
   lookup_primitive_type_test();						\
-  Result = action;							\
-  lookup_primitive_end(Result);						\
+  lookup_primitive_end(Val, action);					\
   /*NOTREACHED*/							\
 }
 
@@ -216,11 +224,12 @@ Pointer
 extract_or_create_cache(frame, sym)
      Pointer frame, sym;
 {
+  extern Pointer compiler_cache_variable[];
   extern long compiler_cache();
   Pointer *cell, value;
   long trap_kind, result;
 
-  cell = deep_lookup(frame, sym, fake_variable_object);
+  cell = deep_lookup(frame, sym, compiler_cache_variable);
   value = Fetch(cell[0]);
   if (REFERENCE_TRAP_P(value))
   {
@@ -240,7 +249,8 @@ extract_or_create_cache(frame, sym)
         break;
     }
   }
-  result = compiler_cache(cell, sym, NIL, 0, TRAP_REFERENCES_LOOKUP);
+  result = compiler_cache(cell, frame, sym, NIL, 0,
+			  TRAP_REFERENCES_LOOKUP, true);
   if (result != PRIM_DONE)
   {
     if (result == PRIM_INTERRUPT)
@@ -286,17 +296,16 @@ error_bad_environment(arg)
    *UNDEFINE*: If undefine is ever implemented, the code below may be
    affected.  It will have to be rethought.
 
-   NOTE: The following code has NOT been parallelized.  It needs thinking.
+   NOTE: The following procedure and extract_or_create_cache have NOT
+   been parallelized.  They needs thinking.
 */
 
 DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 {
   extern Pointer *scan_frame();
-  extern long compiler_uncache();
 
   Pointer target, source, sym;
-  Pointer cache, *cell;
-  long result;
+  Pointer cache, *cell, *value_cell;
   PRIMITIVE_HEADER (3);
 
   target = ARG_REF (1);
@@ -349,20 +358,18 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
       case TRAP_COMPILER_CACHED:
       case TRAP_COMPILER_CACHED_DANGEROUS:
       {
-	long result;
-
 	if (Vector_Ref(Vector_Ref(value, TRAP_EXTRA), TRAP_EXTENSION_CELL) !=
 	    UNBOUND_OBJECT)
-	  /* It is bound */
-	  signal_error_from_primitive(ERR_BAD_SET);
-	result = compiler_uncache(cell, sym);
-	if (result != PRIM_DONE)
 	{
-	  if (result == PRIM_INTERRUPT)
-	    signal_interrupt_from_primitive();
-	  else
-	    signal_error_from_primitive(result);
+	  /* It is bound */
+
+	  signal_error_from_primitive(ERR_BAD_SET);
 	}
+	lookup_primitive_action(compiler_uncache(cell, sym));
+	value_cell = Nth_Vector_Loc(cache, TRAP_EXTENSION_CELL);
+	lookup_primitive_action
+	  (compiler_recache(shadowed_value_cell, value_cell, target,
+			    sym, Fetch(value_cell[0]), false, true));
 	Vector_Set(value, TRAP_EXTRA, cache);
 	PRIMITIVE_RETURN(SHARP_T);
       }
@@ -379,8 +386,8 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
         signal_error_from_primitive(ERR_ILLEGAL_REFERENCE_TRAP);
     }
   }
-  else
 
+  else
   {
     Pointer *trap;
 
@@ -390,7 +397,9 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
 
     if ((cell != ((Pointer *) NULL)) &&
 	(Fetch(cell[0]) != DANGEROUS_UNBOUND_OBJECT))
+    {
       signal_error_from_primitive(ERR_BAD_SET);
+    }
 
     /* Allocate new trap object. */
 
@@ -399,38 +408,27 @@ DEFINE_PRIMITIVE ("ENVIRONMENT-LINK-NAME", Prim_environment_link_name, 3, 3, 0)
     Free += 2;
     trap[1] = cache;
 
-    /* The Local_Set is done to uncache anything being shadowed. */
+    lookup_primitive_action(extend_frame(target, sym, NIL, target, false));
 
-    result = Local_Set(target, sym, UNASSIGNED_OBJECT);
-    if (result != PRIM_DONE)
-    {
-      if (result == PRIM_INTERRUPT)
-	signal_interrupt_from_primitive();
-      else
-	signal_error_from_primitive(result);
-    }
-    
     if (cell == ((Pointer *) NULL))
     {
+      trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED);
       cell = scan_frame(target, sym, fake_variable_object, 0, true);
       if (cell == ((Pointer *) NULL))
 	signal_error_from_primitive(ERR_BAD_FRAME);
     }
-
-    switch(Fetch(cell[0]))
+    else
     {
-      case UNASSIGNED_OBJECT:
-        trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED);
-	break;
-
-      case DANGEROUS_UNASSIGNED_OBJECT:
-	trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED_DANGEROUS);
-	break;
-
-      default:
-        /* What? */
-        signal_error_from_primitive(ERR_BAD_FRAME);
+      trap[0] = MAKE_UNSIGNED_FIXNUM(TRAP_COMPILER_CACHED_DANGEROUS);
     }
+
+    if (Fetch(cell[0]) != DANGEROUS_UNBOUND_OBJECT)
+      signal_error_from_primitive(ERR_BAD_FRAME);
+
+    value_cell = Nth_Vector_Loc(cache, TRAP_EXTENSION_CELL);
+    lookup_primitive_action
+      (compiler_recache(shadowed_value_cell, value_cell, target,
+			sym, Fetch(value_cell[0]), false, true));
     Store(cell[0], Make_Pointer(TC_REFERENCE_TRAP, trap));
     PRIMITIVE_RETURN(SHARP_T);
   }

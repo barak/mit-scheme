@@ -30,13 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/locks.h,v 9.22 1988/08/15 20:51:13 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/locks.h,v 9.23 1988/09/29 04:59:13 jinx Rel $
 
 	Contains everything needed to lock and unlock parts of
 		the heap, pure/constant space and the like.
-	It also contains intercommunication stuff as well. */
+	It also contains intercommunication stuff as well. 
+*/
 
-#define Lock_Handle 		long *	/* Address of lock word */
+typedef long *Lock_Handle;		/* Address of lock word */
 #define CONTENTION_DELAY	10	/* For "slow" locks, back off */
 #define Lock_Cell(Cell)		NULL	/* Start lock */
 #define Unlock_Cell(Cell)		/* End lock */
@@ -44,4 +45,4 @@ MIT in each case. */
 #define Do_Store_No_Lock(To, F)	*(To) = F
 #define Sleep(How_Long)		{ }	/* Delay for locks, etc. */
 
-
+#define LOCK_FIRST(cell1, cell2)	(cell1 < cell2)

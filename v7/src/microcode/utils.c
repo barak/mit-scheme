@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.38 1988/08/15 20:57:46 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.39 1988/09/29 05:03:12 jinx Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -1015,4 +1015,15 @@ Translate_To_Point (Target)
   }
   PRIMITIVE_ABORT(PRIM_POP_RETURN);
   /*NOTREACHED*/
+}
+
+extern Pointer Compiler_Get_Fixed_Objects();
+
+Pointer
+Compiler_Get_Fixed_Objects()
+{
+  if (Valid_Fixed_Obj_Vector())
+    return (Get_Fixed_Obj_Slot(Me_Myself));
+  else
+    return (NIL);
 }

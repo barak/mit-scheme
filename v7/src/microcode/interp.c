@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.45 1988/08/15 20:50:06 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.46 1988/09/29 04:58:42 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -1796,7 +1796,7 @@ return_from_compiled_code:
       break;
 
     case RC_NORMAL_GC_DONE:
-      End_GC_Hook();
+      Val = Fetch_Expression();
       if (GC_Space_Needed < 0)
       {
 	/* Paranoia */
@@ -1808,7 +1808,7 @@ return_from_compiled_code:
 	Microcode_Termination(TERM_GC_OUT_OF_SPACE);
       }
       GC_Space_Needed = 0;
-      Val = Fetch_Expression();
+      End_GC_Hook();
       break;
 
     case RC_PCOMB1_APPLY:

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.40 1988/08/15 20:51:32 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookup.c,v 9.41 1988/09/29 04:59:45 jinx Rel $
  *
  * This file contains symbol lookup and modification routines.  See
  * Hal Abelson for a paper describing and justifying the algorithm.
@@ -215,6 +215,49 @@ deep_lookup(env, sym, hunk)
   return (Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE));
 }
 
+/* Shallow lookup performed "out of line" by various procedures.
+   It takes care of invoking deep_lookup when necessary.
+ */
+
+extern Pointer *lookup_cell();
+
+Pointer *
+lookup_cell(hunk, env)
+     Pointer *hunk, env;
+{
+  Pointer *cell, value;
+  long trap_kind;
+
+  lookup(cell, env, hunk, repeat_lookup_cell);
+
+  value = Fetch(cell[0]);
+
+  if (OBJECT_TYPE(value) != TC_REFERENCE_TRAP)
+  {
+    return (cell);
+  }
+
+  get_trap_kind(trap_kind, value);
+  switch(trap_kind)
+  {
+    case TRAP_DANGEROUS:
+    case TRAP_UNBOUND_DANGEROUS:
+    case TRAP_UNASSIGNED_DANGEROUS:
+    case TRAP_FLUID_DANGEROUS:
+    case TRAP_COMPILER_CACHED_DANGEROUS:
+      return (deep_lookup(env, hunk[VARIABLE_SYMBOL], hunk));
+
+    case TRAP_COMPILER_CACHED:
+    case TRAP_FLUID:
+    case TRAP_UNBOUND:
+    case TRAP_UNASSIGNED:
+      return (cell);
+
+    default:
+      return (illegal_trap_object);
+  }
+}
+
 /* Full lookup end code.
    deep_lookup_end handles all the complicated and dangerous cases.
    cell is the value cell (supposedly found by deep_lookup).  Hunk is
@@ -261,7 +304,7 @@ deep_lookup_end(cell, hunk)
       case TRAP_UNASSIGNED_DANGEROUS:
 	return_value = ERR_UNASSIGNED_VARIABLE;
 	break;
-
+
       case TRAP_DANGEROUS:
       {
 	Pointer trap_value;
@@ -373,14 +416,13 @@ lookup_end_restart:
 }
 
 /* Complete assignment finalization.
+
    deep_assignment_end handles all dangerous cases, and busts compiled
    code operator reference caches as appropriate.  It is similar to
    deep_lookup_end.
    value is the new value for the variable.
    force forces an assignment if the variable is unbound.  This is
-   used for redefinition in the global environment, and for Common
-   Lisp style fluid binding, which creates a value cell if there was
-   none.
+   used for redefinition in the global environment
 
    Notes on multiprocessor locking:
 
@@ -404,6 +446,23 @@ lookup_end_restart:
    affect an operation must acquire the same locks and in the same
    order, thus if there is no interleaving of these operations, the
    result will be correct.
+
+   Important:
+
+   A re-definition can take place before the lock is grabbed in this
+   code and we will be clobbering the wrong cell.  To be paranoid we
+   should redo the lookup while we have the cell locked and confirm
+   that this is still valid, but this is hard to do here.
+   Alternatively the lock could be grabbed by the caller and passed as
+   an argument after confirming the correctness of the binding.  A
+   third option (the one in place now) is not to worry about this,
+   saying that there is a race condition in the user code and that the
+   definition happened after this assignment.  For more precise
+   sequencing, the user should synchronize her/his assignments and
+   definitions her/himself.
+
+   assignment_end suffers from this problem as well.
+
  */
 
 #define RESULT(value)							\
@@ -597,8 +656,16 @@ compiler_cache_assignment:
       update_lock(set_serializer,
 		  Nth_Vector_Loc(saved_extension, TRAP_EXTENSION_CELL));
     }
-    return_value = recache_uuo_links(saved_extension, saved_value);
 
+    /* NOTE:
+       recache_uuo_links can take an arbitrary amount of time since
+       there may be an internal lock and the code may have to uncache
+       arbitrarily many links.
+       Deadlock should not occur since both locks are always acquired 
+       in the same order.
+     */
+
+    return_value = recache_uuo_links(saved_extension, saved_value);
     remove_lock(set_serializer);
 
     if (return_value != PRIM_DONE)
@@ -614,6 +681,7 @@ compiler_cache_assignment:
   /* This must be done after the assignment lock has been removed,
      to avoid potential deadlock.
    */
+
   if (uncompile_p)
   {
     /* The reference was dangerous, uncompile the variable. */
@@ -628,12 +696,12 @@ compiler_cache_assignment:
 
   return (return_value);
 }
-
+
 #undef ABORT
 #undef REDO
 #undef RESULT
 #undef UNCOMPILE
-
+
 /* Simple assignment end.
    assignment_end lets deep_assignment_end handle all the hairy cases.
    It is similar to lookup_end, but there is some hair for
@@ -784,6 +852,36 @@ lookup_fluid(trap)
   deep_assignment_end(cell, fake_variable_object, value, true)
 
 long
+definition(cell, value, shadowed_p)
+     Pointer *cell, value;
+     Boolean shadowed_p;
+{
+  if (shadowed_p)
+    return (redefinition(cell, value));
+  else
+  {
+    Lock_Handle set_serializer;
+
+    setup_lock(set_serializer, cell);
+    if (*cell == DANGEROUS_UNBOUND_OBJECT)
+    {
+      *cell = value;
+      remove_lock(set_serializer);
+      return (PRIM_DONE);
+    }
+    else
+    {
+      /* Unfortunate fact of life: This binding will be dangerous
+	 even if there was no need, but this is the only way to
+	 guarantee consistent values.
+       */
+      remove_lock(set_serializer);
+      return (redefinition(cell, value));
+    }
+  }
+}  
+
+long
 dangerize(cell, sym)
      fast Pointer *cell;
      Pointer sym;
@@ -806,7 +904,7 @@ dangerize(cell, sym)
     *Free++ = *cell;
     *cell = trap;
     remove_lock(set_serializer);
-    return (PRIM_DONE);
+    return (simple_uncache(cell, sym));
   }
 
   get_trap_kind(temp, *cell);
@@ -816,7 +914,6 @@ dangerize(cell, sym)
     case TRAP_UNASSIGNED_DANGEROUS:
     case TRAP_DANGEROUS:
     case TRAP_FLUID_DANGEROUS:
-      temp = PRIM_DONE;
       break;
 
     case TRAP_COMPILER_CACHED:
@@ -827,8 +924,6 @@ dangerize(cell, sym)
 
     case TRAP_COMPILER_CACHED_DANGEROUS:
     {
-      long compiler_uncache();
-
       remove_lock(set_serializer);
       return (compiler_uncache(cell, sym));
     }
@@ -837,30 +932,29 @@ dangerize(cell, sym)
       Do_Store_No_Lock
 	((Nth_Vector_Loc (*cell, TRAP_TAG)),
 	 (Make_Unsigned_Fixnum (TRAP_FLUID_DANGEROUS)));
-      temp = PRIM_DONE;
       break;
 
     case TRAP_UNBOUND:
       *cell = DANGEROUS_UNBOUND_OBJECT;
-      temp = PRIM_DONE;
       break;
 
     case TRAP_UNASSIGNED:
       *cell = DANGEROUS_UNASSIGNED_OBJECT;
-      temp = PRIM_DONE;
       break;
 
     default:
-      temp = ERR_ILLEGAL_REFERENCE_TRAP;
-      break;
+      remove_lock(set_serializer);
+      return (ERR_ILLEGAL_REFERENCE_TRAP);
   }
   remove_lock(set_serializer);
-  return (temp);
+  return (simple_uncache(cell, sym));
 }
 
 /* The core of the incremental definition mechanism.
+
    It takes care of dangerizing any bindings being shadowed by this
-   definition, extending the frames appropriately, and uncaching any
+   definition, extending the frames appropriately, and uncaching or
+   recaching (according to the DEFINITION_RECACHES_EAGERLY flag) any
    compiled code reference caches which might be affected by the new
    definition.
 
@@ -871,9 +965,9 @@ dangerize(cell, sym)
  */
 
 long
-extend_frame(env, sym, value, original_frame_p)
-     Pointer env, sym, value;
-     Boolean original_frame_p;
+extend_frame(env, sym, value, original_frame, recache_p)
+     Pointer env, sym, value, original_frame;
+     Boolean recache_p;
 {
   Lock_Handle extension_serializer;
   Pointer extension, the_procedure;
@@ -888,9 +982,9 @@ extend_frame(env, sym, value, original_frame_p)
      */
     if (OBJECT_DATUM(env) != GO_TO_GLOBAL)
     {
-      return (original_frame_p ? ERR_BAD_FRAME : PRIM_DONE);
+      return ((env == original_frame) ? ERR_BAD_FRAME : PRIM_DONE);
     }
-    else if (original_frame_p)
+    else if (env == original_frame)
     {
       return (redefinition(Nth_Vector_Loc(sym, SYMBOL_GLOBAL_VALUE),
 			   value));
@@ -929,7 +1023,7 @@ extend_frame(env, sym, value, original_frame_p)
 	long offset;
 
 	offset = 1 + Vector_Length(formals) - count;
-	if (original_frame_p)
+	if (env == original_frame)
 	{
 	  return (redefinition(Nth_Vector_Loc(env, offset), value));
 	}
@@ -1004,7 +1098,6 @@ redo_aux_lookup:
 	 */
 	if (Fetch(scan[0]) == DANGEROUS_UNBOUND_OBJECT)
 	{
-	  long compiler_uncache();
 	  long temp;
 	  
 	  temp =
@@ -1014,13 +1107,15 @@ redo_aux_lookup:
 			   sym,
 			   fake_variable_object),
 	       sym);
-	  if (temp != PRIM_DONE)
+
+	  if ((temp != PRIM_DONE) || (env != original_frame))
 	  {
 	    return (temp);
 	  }
+	  return shadowing_recache(scan, env, sym, value, true);
 	}
 
-	if (original_frame_p)
+	if (env == original_frame)
 	{
 	  return (redefinition(scan, value));
 	}
@@ -1040,13 +1135,13 @@ redo_aux_lookup:
 
     temp =
       extend_frame(Fast_Vector_Ref(extension, ENV_EXTENSION_PARENT_FRAME),
-		   sym, NIL, false);
+		   sym, NIL, original_frame, recache_p);
 
     if (temp != PRIM_DONE)
     {
       return (temp);
     }
-
+
     /* Proceed to extend the frame:
        - If the frame is the one where the definition is occurring,
 	 put the value in the new value cell.
@@ -1064,7 +1159,7 @@ redo_aux_lookup:
       remove_lock(extension_serializer);
       goto redo_aux_lookup;
     }
-	
+	
     scan = Get_Pointer(extension);
 
     if ((temp + (AUX_LIST_FIRST - 1)) == Get_Integer(scan[VECTOR_LENGTH]))
@@ -1110,13 +1205,18 @@ redo_aux_lookup:
 
       result = Make_Pointer(TC_LIST, Free);
       *Free++ = sym;
-      *Free++ = ((original_frame_p) ? value : DANGEROUS_UNBOUND_OBJECT);
+      *Free++ = DANGEROUS_UNBOUND_OBJECT;
 
       scan[temp + AUX_LIST_FIRST] = result;
       scan[AUX_LIST_COUNT] = Make_Local_Offset(temp + 1);
+
+      remove_lock(extension_serializer);
+
+      if ((env != original_frame) || (!recache_p))
+	return (PRIM_DONE);
+      else
+	return (shadowing_recache((Free - 1), env, sym, value, false));
     }
-    remove_lock(extension_serializer);
-    return (PRIM_DONE);
   }
 }
 
@@ -1178,7 +1278,7 @@ Local_Set(env, sym, value)
 	    "\n;; Local_Set: defining %s.",
 	    Scheme_String_To_C_String(Vector_Ref(sym, SYMBOL_NAME)));
   }
-  result = extend_frame(env, sym, value, true);
+  result = extend_frame(env, sym, value, env, true);
   Val = sym;
   return (result);
 }
@@ -1304,6 +1404,53 @@ force_definition(env, symbol, message)
     deep_lookup(previous, symbol, fake_variable_object);
 }
 
+/* Macros to allow multiprocessor interlocking in
+   compiler caching and recaching.
+
+   The defaults are NOPs, but can be overriden by machine dependent
+   include files or config.h
+ */
+
+#ifndef update_uuo_prolog
+#define update_uuo_prolog()
+#endif
+
+#ifndef update_uuo_epilog
+#define update_uuo_epilog()
+#endif
+
+#ifndef compiler_cache_prolog
+#define compiler_cache_prolog()
+#endif
+
+#ifndef compiler_cache_epilog
+#define compiler_cache_epilog()
+#endif
+
+#ifndef compiler_trap_prolog
+#define compiler_trap_prolog()
+#endif
+
+#ifndef compiler_trap_epilog
+#define compiler_trap_epilog()
+#endif
+
+#ifndef compiler_uncache_prolog
+#define compiler_uncache_prolog()
+#endif
+
+#ifndef compiler_uncache_epilog
+#define compiler_uncache_epilog()
+#endif
+
+#ifndef compiler_recache_prolog
+#define compiler_recache_prolog()
+#endif
+
+#ifndef compiler_recache_epilog
+#define compiler_recache_epilog()
+#endif
+
 /* Fast variable reference mechanism for compiled code.
 
    compiler_cache is the core of the variable caching mechanism.
@@ -1328,25 +1475,69 @@ force_definition(env, symbol, message)
    a fake cache is created and all the assignment references are
    updated to point to it.
  */    
+
+#ifndef PARALLEL_PROCESSOR
 
+#define compiler_cache_consistency_check()
+
+#else /* PARALLEL_PROCESSOR */
+
+/* The purpose of this code is to avoid a lock gap.
+   A re-definition can take place before the lock is grabbed
+   and we will be caching to the wrong cell.
+   To be paranoid we redo the lookup while we have the
+   cell locked and confim that we still have the correct cell.
+
+   Note that this lookup can be "shallow" since the result of
+   the previous lookup is saved in my_variable.  The "shallow"
+   lookup code takes care of performing a deep lookup if the
+   cell has been "dangerized".
+ */
+
+#define compiler_cache_consistency_check()				\
+{									\
+  Pointer *new_cell;							\
+									\
+  compiler_cache_variable[VARIABLE_SYMBOL] = name;			\
+  new_cell = lookup_cell(compiler_cache_variable, env);			\
+  if (cell != new_cell)							\
+  {									\
+    remove_lock(set_serializer);					\
+    cell = new_cell;							\
+    goto compiler_cache_retry;						\
+  }									\
+}
+
+#endif /* PARALLEL_PROCESSOR */
+
+extern Pointer compiler_cache_variable[];
 extern long compiler_cache();
 
+Pointer compiler_cache_variable[3];
+
 long
-compiler_cache(cell, name, block, offset, kind)
+compiler_cache(cell, env, name, block, offset, kind, first_time)
      fast Pointer *cell;
-     Pointer name, block;
+     Pointer env, name, block;
      long offset, kind;
+     Boolean first_time;
 {
+  long cache_reference_end();
   Lock_Handle set_serializer;
   fast Pointer trap, references, extension;
   Pointer trap_value, store_trap_tag, store_extension;
   long trap_kind, return_value;
-    
+
   store_trap_tag = NIL;
   store_extension = NIL;
   trap_kind = TRAP_COMPILER_CACHED;
 
+compiler_cache_retry:
+
   setup_lock(set_serializer, cell);
+  compiler_cache_consistency_check();
+  compiler_cache_prolog();
+
   trap = *cell;
   trap_value = trap;
 
@@ -1392,6 +1583,7 @@ compiler_cache(cell, name, block, offset, kind)
 	break;
 
       default:
+	compiler_cache_epilog();
 	remove_lock(set_serializer);
 	return (ERR_ILLEGAL_REFERENCE_TRAP);
     }
@@ -1416,6 +1608,7 @@ compiler_cache(cell, name, block, offset, kind)
 
   if (GC_allocate_test(MAXIMUM_CACHE_SIZE))
   {
+    compiler_cache_epilog();
     remove_lock(set_serializer);
     Request_GC(MAXIMUM_CACHE_SIZE);
     return (PRIM_INTERRUPT);
@@ -1436,10 +1629,11 @@ compiler_cache(cell, name, block, offset, kind)
 
 #if false
     /* This is included in the check above. */
-    if (GC_allocate_test(7))
+    if (GC_allocate_test(9))
     {
+      compiler_cache_epilog();
       remove_lock(set_serializer);
-      Request_GC(7);
+      Request_GC(9);
       return (PRIM_INTERRUPT);
     }
 #endif
@@ -1474,6 +1668,7 @@ compiler_cache(cell, name, block, offset, kind)
     /* It is not really from compiled code.
        The environment linking stuff wants a cc cache instead.
      */
+    compiler_cache_epilog();
     remove_lock(set_serializer);
     return (PRIM_DONE);
   }
@@ -1501,6 +1696,7 @@ compiler_cache(cell, name, block, offset, kind)
 
 	if (GC_allocate_test(4))
 	{
+	  compiler_cache_epilog();
 	  remove_lock(set_serializer);
 	  Request_GC(4);
 	  return (PRIM_INTERRUPT);
@@ -1527,16 +1723,35 @@ compiler_cache(cell, name, block, offset, kind)
 				 Make_Unsigned_Fixnum(offset));
     if (return_value != PRIM_DONE)
     {
+      compiler_cache_epilog();
       remove_lock(set_serializer);
       return (return_value);
     }
   }
 
-  /* Install an extension or a uuo link in the cc block, and remove
-     the lock.
-   */
+  /* Install an extension or a uuo link in the cc block. */
 
-  return_value = PRIM_DONE;
+  return_value = cache_reference_end(kind, extension, store_extension,
+				     block, offset, trap_value);
+
+  /* Unlock and return */
+
+  compiler_cache_epilog();
+  remove_lock(set_serializer);
+  return (return_value);
+}
+
+long
+cache_reference_end(kind, extension, store_extension,
+		    block, offset, value)
+     long kind, offset;
+     Pointer extension, store_extension, block, value;
+{
+  extern void
+    store_variable_cache();
+  extern long
+    make_uuo_link(),
+    make_fake_uuo_link();
 
   switch(kind)
   {
@@ -1544,53 +1759,43 @@ compiler_cache(cell, name, block, offset, kind)
     case TRAP_REFERENCES_ASSIGNMENT:
       if (store_extension != NIL)
       {
-	extern void store_variable_cache();
-
 	store_variable_cache(store_extension, block, offset);
-	break;
+	return (PRIM_DONE);
       }
       /* Fall through */
 
     case TRAP_REFERENCES_LOOKUP:
-    {
-      extern void store_variable_cache();
-
       store_variable_cache(extension, block, offset);
-      break;
-    }
+      return (PRIM_DONE);
 
     case TRAP_REFERENCES_OPERATOR:
     {
-      extern long make_uuo_link(), make_fake_uuo_link();
-
-      if (REFERENCE_TRAP_P(trap_value))
+      if (REFERENCE_TRAP_P(value))
       {
-	return_value = make_fake_uuo_link(extension, block, offset);
+	return (make_fake_uuo_link(extension, block, offset));
       }
       else
       {
-	return_value = make_uuo_link(trap_value, extension, block, offset);
+	return (make_uuo_link(value, extension, block, offset));
       }
-      break;
     }
   }
-
-  remove_lock(set_serializer);
-  return (return_value);
+  /*NOTREACHED*/
 }
 
-/* This procedure invokes cache_reference after finding the top-level
+/* This procedure invokes compiler_cache after finding the top-level
    value cell associated with (env, name).
  */
 
 long
-compiler_cache_reference(env, name, block, offset, kind)
+compiler_cache_reference(env, name, block, offset, kind, first_time)
      Pointer env, name, block;
      long offset, kind;
+     Boolean first_time;
 {
   Pointer *cell;
 
-  cell = deep_lookup(env, name, fake_variable_object);
+  cell = deep_lookup(env, name, compiler_cache_variable);
   if (cell == unbound_trap_object)
   {
     long message;
@@ -1601,9 +1806,9 @@ compiler_cache_reference(env, name, block, offset, kind)
       return (message);
     }
   }
-  return (compiler_cache(cell, name, block, offset, kind));
+  return (compiler_cache(cell, env, name, block, offset, kind, first_time));
 }
-
+
 /* This procedure updates all the references in the cached reference
    list pointed at by slot to hold value.  It also eliminates "empty"
    pairs (pairs whose weakly held block has vanished).  
@@ -1677,10 +1882,23 @@ add_reference(slot, block, offset)
   return (PRIM_DONE);
 }
 
+extern Pointer compiled_block_environment();
+
+static long
+  trap_map_table[] = {
+    TRAP_REFERENCES_LOOKUP,
+    TRAP_REFERENCES_ASSIGNMENT,
+    TRAP_REFERENCES_OPERATOR
+    };
+
+#define TRAP_MAP_TABLE_SIZE (sizeof(trap_map_table) / sizeof(long))
+
+#ifndef DEFINITION_RECACHES_EAGERLY
+
 /* compiler_uncache_slot uncaches all references in the list pointed
    at by slot, and clears the list.  If the references are operator
    references, a fake compiled procedure which will recache when
-   invoke is created and installed.
+   invoked is created and installed.
  */
 
 long
@@ -1709,6 +1927,7 @@ compiler_uncache_slot(slot, sym, kind)
       *Free++ = sym;
       *Free++ = block;
       *Free++ = offset;
+
       if (kind == TRAP_REFERENCES_OPERATOR)
       {
 	extern long make_fake_uuo_link();
@@ -1739,13 +1958,6 @@ compiler_uncache_slot(slot, sym, kind)
    sym is the name of the variable.
  */
 
-static long trap_map_table[] =
-  { TRAP_REFERENCES_LOOKUP,
-    TRAP_REFERENCES_ASSIGNMENT,
-    TRAP_REFERENCES_OPERATOR};
-
-extern long compiler_uncache();
-
 long
 compiler_uncache(value_cell, sym)
      Pointer *value_cell, sym;
@@ -1772,13 +1984,15 @@ compiler_uncache(value_cell, sym)
     return (PRIM_DONE);
   }
 
+  compiler_uncache_prolog();
+
   extension = Fast_Vector_Ref(val, TRAP_EXTRA);
   references = Fast_Vector_Ref(extension, TRAP_EXTENSION_REFERENCES);
   update_lock(set_serializer, Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL));
 
   /* Uncache all of the lists. */
 
-  for (i = 0; i < 3; i++)
+  for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
   {
     index = trap_map_table[i];
     temp = compiler_uncache_slot(Nth_Vector_Loc(references, index),
@@ -1786,6 +2000,7 @@ compiler_uncache(value_cell, sym)
     if (temp != PRIM_DONE)
     {
       remove_lock(set_serializer);
+      compiler_uncache_epilog();
       return (temp);
     }
   }
@@ -1795,9 +2010,395 @@ compiler_uncache(value_cell, sym)
   /* Remove the clone extension if there is one. */
 
   Fast_Vector_Set(extension, TRAP_EXTENSION_CLONE, NIL);
+  compiler_uncache_epilog();
   remove_lock(set_serializer);
   return (PRIM_DONE);
 }
+
+#endif /* DEFINITION_RECACHES_EAGERLY */
+
+#ifdef DEFINITION_RECACHES_EAGERLY
+
+/*
+   compiler_recache is invoked when a redefinition occurs.  It
+   recaches (at the definition point) all the references that need to
+   point to the new cell.
+
+   It does this in two phases:  
+
+   - First (by means of compiler_recache_split) it splits all
+   references into those that need to be updated and those that do
+   not.  This is done by side-effecting the list so that all those
+   that need updating are at the end, and when we actually decide to
+   go ahead, we can just clip it and install it in the new location.
+   compiler_recache_split also counts how many entries are affected,
+   so the total amount of gc space needed can be computed.
+
+   - After checking that there is enough space to proceed, (rather
+   than aborting) it actually does the recaching.  It caches to the
+   new location/value by using compiler_recache_slot.  Note that the
+   eventual trap extension has already been allocated so the recached
+   links can point to it.
+ */
+
+/* Required by compiler_uncache macro. */
+
+Pointer *shadowed_value_cell = ((Pointer *) NULL);
+
+/* Each extension is a hunk4. */
+
+#define SPACE_PER_EXTENSION	4
+
+/* Trap, extension, and one cache-list hunk. */
+
+#define SPACE_PER_TRAP		(2 + SPACE_PER_EXTENSION + 3)
+
+/* 1 Pair and 1 Weak pair.
+   Not really needed since the pairs and weak pairs are reused.
+ */
+
+#define SPACE_PER_ENTRY		(2 + 2)
+
+/* Hopefully a conservative guesstimate. */
+
+#ifndef SPACE_PER_LINK		/* So it can be overriden from config.h */
+#define SPACE_PER_LINK		10
+#endif SPACE_PER_LINK
+
+/* The spaces are 0 because the pairs are reused!  If that ever changes,
+   they should all become SPACE_PER_ENTRY + curent value.
+ */
+
+#define SPACE_PER_LOOKUP	0
+#define SPACE_PER_ASSIGNMENT	0
+#define SPACE_PER_OPERATOR	(0 + SPACE_PER_LINK)
+
+static long
+  trap_size_table[TRAP_MAP_TABLE_SIZE] = {
+    SPACE_PER_LOOKUP,
+    SPACE_PER_ASSIGNMENT,
+    SPACE_PER_OPERATOR
+    };
+
+static long
+  trap_conflict_table[TRAP_MAP_TABLE_SIZE] = {
+    0,				/* lookup */
+    1,				/* assignment */
+    1				/* operator */
+    };
+
+Boolean
+environment_ancestor_or_self_p(ancestor, descendant)
+     fast Pointer ancestor, descendant;
+{
+  while (OBJECT_TYPE(descendant) != GLOBAL_ENV)
+  {
+    if (descendant == ancestor)
+      return (true);
+    descendant = Fast_Vector_Ref(Vector_Ref(descendant,
+					    ENVIRONMENT_FUNCTION),
+				 PROCEDURE_ENVIRONMENT);
+  }
+  return (descendant == ancestor);
+}
+
+/* This reorders the entries in slot so that the entries that are
+   not affected by the redefinition appear first, and the affected
+   ones appear last.  A pointer to the first affected cell is stored
+   in memoize_cell, and this will be given to compiler_recache_slot
+   in order to avoid recomputing the division.
+
+   Note: There is an implicit assumption throughout that none of the
+   pairs (or weak pairs) are in pure space.  If they are, they cannot
+   be sorted or reused.
+ */
+
+long
+compiler_recache_split(slot, sym, definition_env, memoize_cell)
+     fast Pointer *slot;
+     Pointer sym, definition_env, **memoize_cell;
+{
+  fast long count;
+  Pointer weak_pair, block, reference_env, invalid_head;
+  fast Pointer *last_invalid;
+
+  count = 0;
+  last_invalid = &invalid_head;
+
+  while (*slot != NIL)
+  {
+    weak_pair = Fast_Vector_Ref(*slot, CONS_CAR);
+    block = Fast_Vector_Ref(weak_pair, CONS_CAR);
+    if (block == NIL)
+    {
+      *slot = Fast_Vector_Ref(*slot, CONS_CDR);
+      continue;
+    }
+    reference_env = compiled_block_environment(block);
+    if (!environment_ancestor_or_self_p(definition_env, reference_env))
+    {
+      slot = Nth_Vector_Loc(*slot, CONS_CDR);
+    }
+    else
+    {
+      count += 1;
+      *last_invalid = *slot;
+      last_invalid = Nth_Vector_Loc(*slot, CONS_CDR);
+      *slot = *last_invalid;
+    }
+  }
+  *last_invalid = NIL;
+  *memoize_cell = slot;
+  *slot = invalid_head;
+  return (count);
+}
+
+/* This recaches the entries pointed out by cell and adds them
+   to the list in slot.  It also sets to NIL the contents
+   of cell.
+
+   Note that this reuses the pairs and weak pairs that used to be
+   in cell.
+ */
+
+long
+compiler_recache_slot(extension, sym, kind, slot, cell, value)
+     Pointer extension, sym, value;
+     fast Pointer *slot, *cell;
+     long kind;
+{
+  fast Pointer pair, weak_pair;
+  Pointer clone, tail;
+  long result;
+
+  /* This is NIL if there isn't one.
+     This makes cache_reference_end do the right thing.
+   */
+  clone = Fast_Vector_Ref(extension, TRAP_EXTENSION_CLONE);
+  tail = *slot;
+
+  for (pair = *cell; pair != NULL; pair = *cell)
+  {
+    weak_pair = Fast_Vector_Ref(pair, CONS_CAR);
+    result = cache_reference_end(kind, extension, clone,
+				 Fast_Vector_Ref(weak_pair, CONS_CAR),
+				 Get_Integer(Fast_Vector_Ref(weak_pair,
+							     CONS_CDR)),
+				 value);
+    if (result != PRIM_DONE)
+    {
+      /* We are severely screwed.
+	 compiler_recache will do the appropriate thing.
+       */
+      *slot = tail;
+      return (result);
+    }
+
+    *slot = pair;
+    slot = Nth_Vector_Loc(pair, CONS_CDR);
+    *cell = *slot;
+  }
+  *slot = tail;
+  return (PRIM_DONE);
+}
+
+long
+compiler_recache(old_value_cell, new_value_cell, env, sym, value,
+		 shadowed_p, link_p)
+     Pointer *old_value_cell, *new_value_cell, env, sym, value;
+     Boolean shadowed_p, link_p;
+{
+  Lock_Handle set_serializer_1, set_serializer_2;
+  Pointer
+    old_value, references, extension, new_extension, new_trap,
+    *trap_info_table[TRAP_MAP_TABLE_SIZE];
+  long
+    trap_kind, temp, i, index, total_size, total_count, conflict_count;
+    
+  setup_locks(set_serializer_1, old_value_cell,
+	      set_serializer_2, new_value_cell);
+  
+  if ((!link_p) && (*new_value_cell != DANGEROUS_UNBOUND_OBJECT))
+  {
+    /* Another processor has redefined this word in the meantime.
+       The other processor must have recached all the compiled code
+       caches since it is shadowing the same variable.
+       The definition has become a redefinition.
+     */
+    remove_locks(set_serializer_1, set_serializer_2);
+    return (redefinition(new_value_cell, value));
+  }
+
+  old_value = *old_value_cell;
+
+  if (!(REFERENCE_TRAP_P(old_value)))
+  {
+    remove_locks(set_serializer_1, set_serializer_2);
+    return (link_p ?
+	    PRIM_DONE :
+	    definition(new_value_cell, value, shadowed_p));
+  }
+
+  get_trap_kind(trap_kind, old_value);
+  if ((trap_kind != TRAP_COMPILER_CACHED) &&
+      (trap_kind != TRAP_COMPILER_CACHED_DANGEROUS))
+  {
+    remove_locks(set_serializer_1, set_serializer_2);
+    return (link_p ?
+	    PRIM_DONE :
+	    definition(new_value_cell, value, shadowed_p));
+  }
+
+  compiler_recache_prolog();
+
+  extension = Fast_Vector_Ref(old_value, TRAP_EXTRA);
+  references = Fast_Vector_Ref(extension, TRAP_EXTENSION_REFERENCES);
+  update_lock(set_serializer_1,
+	      Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL));
+
+  /*
+     Split each slot and compute the amount to allocate.
+   */
+
+  conflict_count = 0;
+  total_size = (link_p ? 0 : SPACE_PER_TRAP);
+  total_count = 0;
+
+  for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
+  {
+    index = trap_map_table[i];
+    temp = compiler_recache_split(Nth_Vector_Loc(references, index),
+				  sym, env, &trap_info_table[i]);
+    
+    if (temp != 0)
+    {
+      conflict_count += trap_conflict_table[i];
+      total_size += (temp * trap_size_table[i]);
+      total_count += temp;
+    }
+  }
+
+  if (total_count == 0)
+  {
+    compiler_recache_epilog();
+    remove_locks(set_serializer_1, set_serializer_2);
+    return (link_p ?
+	    PRIM_DONE :
+	    definition(new_value_cell, value, shadowed_p));
+  }
+
+  if ((conflict_count == 2) &&
+      ((!link_p) ||
+       (new_value_cell[TRAP_EXTENSION_CLONE] == NIL)))
+  {
+    total_size += SPACE_PER_EXTENSION;
+  }
+
+  if (GC_allocate_test(total_size))
+  {
+    /* Unfortunate fact of life: This binding will be dangerous
+       even if there is no need, but this is the only way to
+       guarantee consistent values.
+     */
+    compiler_recache_epilog();
+    remove_locks(set_serializer_1, set_serializer_2);
+    Request_GC(total_size);
+    return (PRIM_INTERRUPT);
+  }
+
+  /*
+     Allocate and initialize all the cache structures if necessary.
+   */
+
+  if (link_p)
+  {
+    new_extension = Make_Pointer(TRAP_EXTENSION_TYPE, new_value_cell);
+    references = new_value_cell[TRAP_EXTENSION_REFERENCES];
+  }
+  else
+  {
+    /* The reference trap is created here, but is not installed in the
+       environment structure until the end.  The new binding contains
+       a DANGEROUS_UNBOUND_OBJECT so that other parallel lookups will
+       skip this binding.
+     */
+
+    references = Make_Pointer(TRAP_REFERENCES_TYPE, Free);
+
+    *Free++ = NIL;
+    *Free++ = NIL;
+    *Free++ = NIL;
+
+    new_extension = Make_Pointer(TRAP_EXTENSION_TYPE, Free);
+
+    *Free++ = value;
+    *Free++ = sym;
+    *Free++ = NIL;
+    *Free++ = references;
+
+    new_trap = Make_Pointer(TC_REFERENCE_TRAP, Free);
+    *Free++ = Make_Unsigned_Fixnum((shadowed_p ?
+				    TRAP_COMPILER_CACHED_DANGEROUS :
+				    TRAP_COMPILER_CACHED));
+    *Free++ = new_extension;
+  }
+  
+  if ((conflict_count == 2) &&
+      (Vector_Ref(new_extension, TRAP_EXTENSION_CLONE) == NIL))
+  {
+    Pointer clone;
+
+    clone = Make_Pointer(TRAP_EXTENSION_TYPE, Free);
+
+    *Free++ = EXPENSIVE_ASSIGNMENT_OBJECT;
+    *Free++ = sym;
+    *Free++ = new_extension;
+    *Free++ = references;
+    Fast_Vector_Set(new_extension, TRAP_EXTENSION_CLONE, clone);
+  }
+
+  /*
+     Now we actually perform the recaching, allocating freely.
+   */
+
+  for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
+  {
+    index = trap_map_table[i];
+    temp = compiler_recache_slot(new_extension, sym, index,
+				 Nth_Vector_Loc(references, index),
+				 trap_info_table[i],
+				 value);
+    if (temp != PRIM_DONE)
+    {
+      extern char *Abort_Names[], *Error_Names[];
+
+      /* We've lost BIG. */
+
+      if (temp == PRIM_INTERRUPT)
+	fprintf(stderr,
+		"\ncompiler_recache: Ran out of guaranteed space!\n");
+      else if (temp > 0)
+	fprintf(stderr,
+		"\ncompiler_recache: Unexpected error value %d (%s)\n",
+		temp, Abort_Names[temp]);
+      else
+	fprintf(stderr,
+		"\ncompiler_recache: Unexpected abort value %d (%s)\n",
+		-temp, Abort_Names[(-temp) - 1]);
+      Microcode_Termination(TERM_EXIT);
+    }
+  }
+
+  if (!link_p)
+  {
+    *new_value_cell = new_trap;
+  }
+  compiler_recache_epilog();
+  remove_locks(set_serializer_1, set_serializer_2);
+  return (PRIM_DONE);
+}
+
+#endif /* DEFINITION_RECACHES_EAGERLY */
 
 /* recache_uuo_links is invoked when an assignment occurs to a
    variable which has cached operator references (uuo links).
@@ -1884,6 +2485,7 @@ update_uuo_links(value, extension, handler)
   fast Pointer *slot;
   long return_value;
 
+  update_uuo_prolog();
   references = Fast_Vector_Ref(extension, TRAP_EXTENSION_REFERENCES);
   slot = Nth_Vector_Loc(references, TRAP_REFERENCES_OPERATOR);
 
@@ -1902,6 +2504,7 @@ update_uuo_links(value, extension, handler)
 		   Get_Integer(Fast_Vector_Ref(pair, CONS_CDR)));
       if (return_value != PRIM_DONE)
       {
+	update_uuo_epilog();
 	return (return_value);
       }
       slot = Nth_Vector_Loc(*slot, CONS_CDR);
@@ -1920,6 +2523,7 @@ update_uuo_links(value, extension, handler)
     fix_references(Nth_Vector_Loc(references, TRAP_REFERENCES_ASSIGNMENT),
 		   extension);
   }
+  update_uuo_epilog();
   return (PRIM_DONE);
 }
 
@@ -1928,8 +2532,6 @@ update_uuo_links(value, extension, handler)
    the special REQUEST_RECACHE_OBJECT, the reference is recached.
    Otherwise the reference is done normally, and the process continued.
  */
-
-extern Pointer compiled_block_environment();
 
 long
 compiler_reference_trap(extension, kind, handler)
@@ -1940,6 +2542,8 @@ compiler_reference_trap(extension, kind, handler)
   long offset, temp;
   Pointer block;
 
+try_again:
+
   if (Vector_Ref(extension, TRAP_EXTENSION_CELL) != REQUEST_RECACHE_OBJECT)
   {
     return ((*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
@@ -1948,12 +2552,13 @@ compiler_reference_trap(extension, kind, handler)
 
   block = Fast_Vector_Ref(extension, TRAP_EXTENSION_BLOCK);
   offset = Get_Integer(Fast_Vector_Ref(extension, TRAP_EXTENSION_OFFSET));
+
+  compiler_trap_prolog();
   temp = 
     compiler_cache_reference(compiled_block_environment(block),
 			     Fast_Vector_Ref(extension, TRAP_EXTENSION_NAME),
-			     block,
-			     offset,
-			     kind);
+			     block, offset, kind, false);
+  compiler_trap_epilog();
   if (temp != PRIM_DONE)
   {
     return (temp);
@@ -1963,13 +2568,17 @@ compiler_reference_trap(extension, kind, handler)
   {
     case TRAP_REFERENCES_OPERATOR:
     {
+
       /* Note that this value may cause another operator trap when
 	 invoked, since it may be a uuo-link to an interpreted
-	 procedure, or to a variable with a trap in it.  It should not
-	 go into a loop however, because the reference will be cached
-	 to the correct place, so the extension will no longer have a
-	 REQUEST_RECACHE_OBJECT in it.  The first branch in this
-	 procedure will be taken in this case.
+	 procedure, or to a variable with a trap in it.  However, it
+	 should not go into a loop because the reference should be
+	 cached to the correct place, so the extension will no longer
+	 have a REQUEST_RECACHE_OBJECT in it.  The first branch in
+	 this procedure will be taken in this case.  On a
+	 multiprocessor it may in fact loop if some other processor
+	 redefines the variable before we have a chance to invoke the
+	 value.
        */
 
       extern Pointer extract_uuo_link();
@@ -1983,11 +2592,13 @@ compiler_reference_trap(extension, kind, handler)
     default:
     {
       extern Pointer extract_variable_cache();
-      Pointer extension;
 
       extension = extract_variable_cache(block, offset);
-      return ((*handler)(Nth_Vector_Loc(extension, TRAP_EXTENSION_CELL),
-			 fake_variable_object));
+      /* This is paranoid on a single processor, but it does not hurt.
+	 On a multiprocessor, we need to do it because some other processor
+	 may have redefined this variable in the meantime.
+       */
+      goto try_again;
     }
   }
 }
@@ -2006,7 +2617,7 @@ compiler_cache_lookup(name, block, offset)
 {
   return (compiler_cache_reference(compiled_block_environment(block),
 				   name, block, offset,
-				   TRAP_REFERENCES_LOOKUP));
+				   TRAP_REFERENCES_LOOKUP, true));
 }
 
 long
@@ -2016,7 +2627,7 @@ compiler_cache_assignment(name, block, offset)
 {
   return (compiler_cache_reference(compiled_block_environment(block),
 				   name, block, offset,
-				   TRAP_REFERENCES_ASSIGNMENT));
+				   TRAP_REFERENCES_ASSIGNMENT, true));
 }
 
 long
@@ -2026,7 +2637,7 @@ compiler_cache_operator(name, block, offset)
 {
   return (compiler_cache_reference(compiled_block_environment(block),
 				   name, block, offset,
-				   TRAP_REFERENCES_OPERATOR));
+				   TRAP_REFERENCES_OPERATOR, true));
 }
 
 extern long complr_operator_reference_trap();

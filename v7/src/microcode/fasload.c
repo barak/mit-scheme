@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.37 1988/08/15 20:46:15 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.38 1988/09/29 04:57:52 jinx Exp $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -390,6 +390,50 @@ Relocate_Block(Scan, Stop_At)
   return;
 }
 
+Boolean
+check_primitive_numbers(table, length)
+     fast Pointer *table;
+     fast long length;
+{
+  fast long count, top;
+
+  top = NUMBER_OF_DEFINED_PRIMITIVES();
+  if (length < top)
+    top = length;
+
+  for (count = 0; count < top; count += 1)
+  {
+    if (table[count] != MAKE_PRIMITIVE_OBJECT(0, count))
+      return (false);
+  }
+  /* Is this really correct?  Can't this screw up if there
+     were more implemented primitives in the dumping microcode
+     than in the loading microcode and they all fell after the
+     last implemented primitive in the loading microcode?
+   */
+  if (length == top)
+    return (true);
+  for (count = top; count < length; count += 1)
+  {
+    if (table[count] != MAKE_PRIMITIVE_OBJECT(count, top))
+      return (false);
+  }
+  return (true);
+}
+
+extern void get_band_parameters();
+
+void
+get_band_parameters(heap_size, const_size)
+     long *heap_size, *const_size;
+{
+  /* This assumes we have just aborted out of a band load. */
+
+  *heap_size = Heap_Count;
+  *const_size = Const_Count;
+  return;
+}
+
 extern void Intern();
 
 void
@@ -403,14 +447,14 @@ Intern_Block(Next_Pointer, Stop_At)
 
   while (Next_Pointer < Stop_At)
   {
-    switch (Type_Code(*Next_Pointer))
+    switch (OBJECT_TYPE(*Next_Pointer))
     {
       case TC_MANIFEST_NM_VECTOR:
         Next_Pointer += (1 + Get_Integer(*Next_Pointer));
         break;
 
       case TC_INTERNED_SYMBOL:
-	if (Type_Code(Vector_Ref(*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
+	if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_GLOBAL_VALUE)) ==
 	    TC_BROKEN_HEART)
 	{
 	  Pointer Old_Symbol;
@@ -428,11 +472,11 @@ Intern_Block(Next_Pointer, Stop_At)
 		       Make_New_Pointer(TC_BROKEN_HEART, *Next_Pointer));
 	  }
 	}
-	else if (Type_Code(Vector_Ref(*Next_Pointer, SYMBOL_NAME)) ==
+	else if (OBJECT_TYPE(Vector_Ref(*Next_Pointer, SYMBOL_NAME)) ==
 		TC_BROKEN_HEART)
 	{
 	  *Next_Pointer =
-	    Make_New_Pointer(Type_Code(*Next_Pointer),
+	    Make_New_Pointer(OBJECT_TYPE(*Next_Pointer),
 			     Fast_Vector_Ref(*Next_Pointer,
 					     SYMBOL_NAME));
 	}
@@ -480,7 +524,9 @@ load_file(from_band_load)
   /*
     Magic!
     The relocation of compiled code entry points depends on the fact
-    that fasdump never dumps a constant section.
+    that fasdump never dumps the compiler utilities vector (which
+    contains entry points used by compiled code to invoke microcode
+    provided utilities, like return_to_interpreter).
 
     If the file is not a band, any pointers into constant space are
     pointers into the compiler utilities vector.  const_relocation is
@@ -522,22 +568,31 @@ load_file(from_band_load)
 			  Primitive_Table_Length,
 			  from_band_load);
 
-  if (Reloc_Debug)
+  if ((!from_band_load)					||
+      (heap_relocation != ((relocation_type) 0))	||
+      (const_relocation != ((relocation_type) 0))	||
+      (stack_relocation != ((relocation_type) 0))	||
+      (!check_primitive_numbers(load_renumber_table,
+				Primitive_Table_Length)))
   {
-    printf("heap_relocation = %d = %x; const_relocation = %d = %x\n",
-	   heap_relocation, heap_relocation, 
-           const_relocation,  const_relocation);
+    /* We need to relocate.  Oh well. */
+    if (Reloc_Debug)
+    {
+      printf("heap_relocation = %d = %x; const_relocation = %d = %x\n",
+	     heap_relocation, heap_relocation, 
+	     const_relocation,  const_relocation);
+    }
+
+    /*
+      Relocate the new data.
+
+      There are no pointers in the primitive table, thus
+      there is no need to relocate it.
+      */
+
+    Relocate_Block(Orig_Heap, primitive_table);
+    Relocate_Block(Orig_Constant, Free_Constant);
   }
-
-  /*
-    Relocate the new data.
-
-    There are no pointers in the primitive table, thus
-    there is no need to relocate it.
-    */
-
-  Relocate_Block(Orig_Heap, primitive_table);
-  Relocate_Block(Orig_Constant, Free_Constant);
 
 #ifdef BYTE_INVERSION
   Finish_String_Inversion();
@@ -632,6 +687,30 @@ compiler_reset_error()
    however, be any file which can be loaded with BINARY-FASLOAD.
 */
 
+#ifndef start_band_load
+#define start_band_load()
+#endif
+
+#ifndef end_band_load
+#define end_band_load(success, dying)					\
+{									\
+  if (success || dying)							\
+  {									\
+    extern Boolean OS_file_close();					\
+    int i;								\
+									\
+    for (i = 0; i < FILE_CHANNELS; i++)					\
+    {									\
+      if (Channels[i] != NULL)						\
+      {									\
+	OS_file_close(Channels[i]);					\
+	Channels[i] = NULL;						\
+      }									\
+    }									\
+  }									\
+}
+#endif
+
 DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
 {
   extern char *malloc();
@@ -639,34 +718,47 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   extern void compiler_reset();
   extern Pointer compiler_utilities;
 
-  jmp_buf swapped_buf, *saved_buf;
-  Pointer *saved_free, *saved_free_constant, *saved_stack_pointer;
+  jmp_buf
+    swapped_buf,
+    *saved_buf;
+  Pointer
+    *saved_free,
+    *saved_memtop,
+    *saved_free_constant,
+    *saved_stack_pointer;
   long temp, length;
-  Pointer result;
+  Pointer result, cutl;
   char *band_name;
   Primitive_1_Arg();
-
+
   saved_free = Free;
   Free = Heap_Bottom;
+  saved_memtop = MemTop;
+  SET_MEMTOP(Heap_Top);
+
+  start_band_load();
+
   saved_free_constant = Free_Constant;
   Free_Constant = Constant_Space;
   saved_stack_pointer = Stack_Pointer;
   Stack_Pointer = Highest_Allocated_Address;
 
-  result = read_file_start(Arg1);
-  if (result != PRIM_DONE)
+  temp = read_file_start(Arg1);
+  if (temp != PRIM_DONE)
   {
     Free = saved_free;
+    SET_MEMTOP(saved_memtop);
     Free_Constant = saved_free_constant;
     Stack_Pointer = saved_stack_pointer;
+    end_band_load(false, false);
 
-    if (result == PRIM_INTERRUPT)
+    if (temp == PRIM_INTERRUPT)
     {
-      Primitive_Interrupt();
+      Primitive_Error(ERR_FASL_FILE_TOO_BIG);
     }
     else
     {
-      Primitive_Error(result);
+      Primitive_Error(temp);
     }
   }
 
@@ -688,7 +780,9 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   temp = setjmp(swapped_buf);
   if (temp != 0)
   {
-    extern char *Error_Names[], *Abort_Names[];
+    extern char
+      *Error_Names[],
+      *Abort_Names[];
 
     if (temp > 0)
     {
@@ -708,6 +802,8 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       fprintf(stderr, "band-name = \"%s\".\n", band_name);
       free(band_name);
     }
+    end_band_load(false, true);
+    Back_To_Eval = saved_buf;
     Microcode_Termination(TERM_DISK_RESTORE);
     /*NOTREACHED*/
   }
@@ -722,17 +818,47 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   }
   reload_band_name = band_name;
 
-  History = Make_Dummy_History();
+  /* Reset implementation state paramenters */
+
+  INITIALIZE_INTERRUPTS();
   Initialize_Stack();
+  Set_Pure_Top();
+  cutl = Vector_Ref(result, 1);
+  if (cutl != NIL)
+  {
+    compiler_utilities = cutl;
+    compiler_reset(cutl);
+  }
+  else
+  {
+    compiler_initialize(true);
+  }
+  Restore_Fixed_Obj(NIL);
+  Fluid_Bindings = NIL;
+  Current_State_Point = NIL;
+
+  /* Setup initial program */
+
   Store_Return(RC_END_OF_COMPUTATION);
   Store_Expression(NIL);
   Save_Cont();
+
   Store_Expression(Vector_Ref(result, 0));
-  compiler_utilities = Vector_Ref(result, 1);
-  compiler_reset(compiler_utilities);
   Store_Env(Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL));
-  Set_Pure_Top();
+
+  /* Clear various interpreter state parameters. */
+
+  Trapping = false;
+  Return_Hook_Address = NULL;
+  History = Make_Dummy_History();
+  Prev_Restore_History_Stacklet = NIL;
+  Prev_Restore_History_Offset = 0;
+
+  end_band_load(true, false);
   Band_Load_Hook();
+
+  /* Return in a non-standard way. */
+
   PRIMITIVE_ABORT(PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
 }
@@ -760,7 +886,7 @@ Finish_String_Inversion()
       Pointer Next;
 
       Count = Get_Integer(Fast_Vector_Ref(String_Chain, STRING_HEADER));
-      Count = 4*(Count-2)+Type_Code(String_Chain)-MAGIC_OFFSET;
+      Count = 4*(Count-2)+OBJECT_TYPE(String_Chain)-MAGIC_OFFSET;
       if (Reloc_Debug)
       {
 	printf("String at 0x%x: restoring length of %d.\n",
@@ -789,7 +915,7 @@ String_Inversion(Orig_Pointer)
     return;
   }
 
-  Code = Type_Code(Orig_Pointer[STRING_LENGTH]);
+  Code = OBJECT_TYPE(Orig_Pointer[STRING_LENGTH]);
   if (Code == 0)	/* Already reversed? */
   {
     long Count, old_size, new_size, i;
@@ -841,7 +967,7 @@ String_Inversion(Orig_Pointer)
     {
       int C1, C2, C3, C4;
 
-      C4 = Type_Code(*Pointer_Address) & 0xFF;
+      C4 = OBJECT_TYPE(*Pointer_Address) & 0xFF;
       C3 = (((long) *Pointer_Address)>>16) & 0xFF;
       C2 = (((long) *Pointer_Address)>>8) & 0xFF;
       C1 = ((long) *Pointer_Address) & 0xFF;

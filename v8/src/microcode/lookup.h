@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.40 1988/05/03 19:21:57 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.h,v 9.41 1988/09/29 05:02:21 jinx Exp $ */
 
 /* Macros and declarations for the variable lookup code. */
 
@@ -120,15 +120,41 @@ extern Pointer
 
 #define setup_lock(handle, cell)		handle = Lock_Cell(cell)
 #define remove_lock(handle)			Unlock_Cell(handle)
+
+/* This should prevent a deadly embrace if whole contiguous
+   regions are locked, rather than individual words.
+ */
 
-#else
+#define setup_locks(hand1, cel1, hand2, cel2)				\
+{									\
+  if (LOCK_FIRST(cel1, cel2))						\
+  {									\
+    setup_lock(hand1, cel1);						\
+    setup_lock(hand2, cel2);						\
+  }									\
+  else									\
+  {									\
+    setup_lock(hand2, cel2);						\
+    setup_lock(hand1, cel1);						\
+  }									\
+}
+
+#define remove_locks(hand1, hand2)					\
+{									\
+  remove_lock(hand2);							\
+  remove_lock(hand1);							\
+}
+
+#else /* not PARALLEL_PROCESSOR */
 
 #define verify(type_code, variable, code, label)
 #define verified_offset(variable, code)		code
 #define setup_lock(handle, cell)
 #define remove_lock(ignore)
+#define setup_locks(hand1, cel1, hand2, cel2)
+#define remove_locks(ign1, ign2)
 
-#endif
+#endif /* PARALLEL_PROCESSOR */
 
 /* This is provided as a separate macro so that it can be made
    atomic if necessary.
@@ -237,3 +263,37 @@ label:									\
   cell = Nth_Vector_Loc(frame, CONS_CDR);				\
   break;								\
 }
+
+/* Macros and exports for incremental definition and hooks. */
+
+extern long extend_frame();
+
+#ifndef DEFINITION_RECACHES_EAGERLY
+
+extern long compiler_uncache();
+
+#define simple_uncache(cell, sym)		PRIM_DONE
+
+#define shadowing_recache(cell, env, sym, value, shadowed_p)		\
+  definition(cell, value, shadowed_p)
+
+#define compiler_recache(old, new, env, sym, val, shadowed_p, link_p)	\
+  PRIM_DONE
+
+#else /* DEFINITION_RECACHES_EAGERLY */
+
+extern long compiler_recache();
+
+extern Pointer *shadowed_value_cell;
+
+#define compiler_uncache(cell, sym)					\
+  (shadowed_value_cell = cell, PRIM_DONE)
+
+#define simple_uncache(cell, sym)					\
+  compiler_uncache(cell, sym)
+
+#define shadowing_recache(cell, env, sym, value, shadowed_p)		\
+  compiler_recache(shadowed_value_cell, cell, env, sym, value,		\
+	  	   shadowed_p, false)
+
+#endif /* DEFINITION_RECACHES_EAGERLY */
