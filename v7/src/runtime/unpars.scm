@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.21 1991/06/10 22:50:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.22 1991/06/15 00:08:45 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -431,25 +431,19 @@ MIT in each case. |#
 
 (define (unparse-tail l n)
   (cond ((pair? l)
-	 (let ((prefix ))
-	   (cond #|
-	         ((unparse-list/prefix-pair? l)
-		  => (lambda (prefix)
-		       (*unparse-string " . ")
-		       (unparse-list/prefix-pair prefix l)))
-		 |#
-		 ((unparse-list/unparser l)
-		  => (lambda (method)
-		       (*unparse-string " . ")
-		       (invoke-user-method method l)))
-		 (else
-		  (*unparse-char #\space)
-		  (*unparse-object (car l))
-		  (if (and *unparser-list-breadth-limit*
-			   (>= n *unparser-list-breadth-limit*)
-			   (not (null? (cdr l))))
-		      (*unparse-string " ...")
-		      (unparse-tail (cdr l) (1+ n)))))))
+	 (let ((method (unparse-list/unparser l)))
+	   (if method
+	       (begin
+		 (*unparse-string " . ")
+		 (invoke-user-method method l))
+	       (begin
+		 (*unparse-char #\space)
+		 (*unparse-object (car l))
+		 (if (and *unparser-list-breadth-limit*
+			  (>= n *unparser-list-breadth-limit*)
+			  (not (null? (cdr l))))
+		     (*unparse-string " ...")
+		     (unparse-tail (cdr l) (1+ n)))))))
 	((not (null? l))
 	 (*unparse-string " . ")
 	 (*unparse-object l))))
