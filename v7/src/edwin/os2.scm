@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.4 1995/01/19 19:41:55 cph Exp $
+;;;	$Id: os2.scm,v 1.5 1995/01/23 20:05:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -91,15 +91,11 @@ Includes the new backup.  Must be > 0."
 	    (else (string-tail string start))))))
 
 (define (os/pathname->display-string pathname)
-  (let ((homedir (user-homedir-pathname)))
-    (if (let ((d1 (pathname-device pathname))
-	      (d2 (pathname-device homedir)))
-	  (and d1 d2 (string-ci=? d1 d2)))
-	(let ((pathname (enough-pathname pathname homedir)))
-	  (if (pathname-absolute? pathname)
-	      (->namestring pathname)
-	      (string-append "~\\" (->namestring pathname))))
-	(->namestring pathname))))
+  (or (let ((relative (enough-pathname pathname (user-homedir-pathname))))
+	(and (not (pathname-device relative))
+	     (not (pathname-absolute? relative))
+	     (string-append "~\\" (->namestring relative))))
+      (->namestring pathname)))
 
 (define (os/truncate-filename-for-modeline filename width)
   (let ((length (string-length filename)))
@@ -269,7 +265,7 @@ Includes the new backup.  Must be > 0."
 (define (os/completion-ignore-filename? filename)
   (or (os/backup-filename? filename)
       (os/auto-save-filename? filename)
-      (and (not (os/file-directory? filename))
+      (and (not (file-directory? filename))
 	   (there-exists? (ref-variable completion-ignored-extensions)
    	     (lambda (extension)
 	       (string-suffix? extension filename))))))
@@ -489,18 +485,3 @@ Includes the new backup.  Must be > 0."
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
-
-(define os/file-directory?
-  file-directory?)
-
-(define-integrable (os/make-filename directory filename)
-  (->namestring (merge-pathnames filename directory)))
-
-(define-integrable (os/filename-as-directory filename)
-  (->namestring (pathname-as-directory filename)))
-
-(define os/filename-non-directory
-  file-namestring)
-
-(define os/filename->display-string
-  os/pathname->display-string)

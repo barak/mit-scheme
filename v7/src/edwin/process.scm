@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.34 1995/01/06 01:14:37 cph Exp $
+;;;	$Id: process.scm,v 1.35 1995/01/23 20:05:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -544,8 +544,7 @@ after the listing is made.)"
 	(set! process
 	      (start-subprocess
 	       program
-	       (list->vector
-		(cons (os/filename-non-directory program) arguments))
+	       (list->vector (cons (file-namestring program) arguments))
 	       (if directory
 		   (cons false (->namestring directory))
 		   false)

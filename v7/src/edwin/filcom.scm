@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.182 1995/01/16 20:46:15 cph Exp $
+;;;	$Id: filcom.scm,v 1.183 1995/01/23 20:05:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -645,9 +645,9 @@ If a file with the new name already exists, confirmation is requested first."
 	(filename-complete-string
 	 (prompt-string->pathname string directory)
 	 (lambda (filename)
-	   (if-unique (os/filename->display-string filename)))
+	   (if-unique (os/pathname->display-string filename)))
 	 (lambda (prefix get-completions)
-	   (if-not-unique (os/filename->display-string prefix)
+	   (if-not-unique (os/pathname->display-string prefix)
 			  get-completions))
 	 if-not-found))
       (lambda (string)
@@ -664,22 +664,22 @@ If a file with the new name already exists, confirmation is requested first."
   (define (loop directory filenames)
     (let ((unique-case
 	   (lambda (filename)
-	     (let ((filename (os/make-filename directory filename)))
-	       (if (os/file-directory? filename)
+	     (let ((pathname (merge-pathnames filename directory)))
+	       (if (file-directory? pathname)
 		   ;; Note: We assume here that all directories contain
 		   ;; at least one file.  Thus directory names should 
 		   ;; complete, but not uniquely.
-		   (let ((dir (os/filename-as-directory filename)))
+		   (let ((dir (->namestring (pathname-as-directory pathname))))
 		     (if-not-unique dir
 				    (lambda ()
 				      (canonicalize-filename-completions
 				       dir
 				       (os/directory-list dir)))))
-		   (if-unique filename)))))
+		   (if-unique (->namestring pathname))))))
 	  (non-unique-case
 	   (lambda (filenames*)
 	     (let ((string (string-greatest-common-prefix filenames*)))
-	       (if-not-unique (os/make-filename directory string)
+	       (if-not-unique (->namestring (merge-pathnames string directory))
 			      (lambda ()
 				(canonicalize-filename-completions
 				 directory
@@ -692,7 +692,7 @@ If a file with the new name already exists, confirmation is requested first."
 		 (list-transform-negative filenames
 		   (lambda (filename)
 		     (completion-ignore-filename?
-		      (os/make-filename directory filename))))))
+		      (merge-pathnames filename directory))))))
 	    (cond ((null? filtered-filenames)
 		   (non-unique-case filenames))
 		  ((null? (cdr filtered-filenames))
@@ -701,7 +701,7 @@ If a file with the new name already exists, confirmation is requested first."
 		   (non-unique-case filtered-filenames)))))))
   (let ((directory (directory-namestring pathname))
 	(prefix (file-namestring pathname)))
-    (cond ((not (os/file-directory? directory))
+    (cond ((not (file-directory? directory))
 	   (if-not-found))
 	  ((string-null? prefix)
 	   ;; This optimization assumes that all directories
@@ -734,9 +734,10 @@ If a file with the new name already exists, confirmation is requested first."
 (define (canonicalize-filename-completions directory filenames)
   (do ((filenames filenames (cdr filenames)))
       ((null? filenames))
-    (if (os/file-directory? (os/make-filename directory (car filenames)))
-	(set-car! filenames (os/filename-as-directory (car filenames)))))
+    (if (file-directory? (merge-pathnames (car filenames) directory))
+	(set-car! filenames
+		  (->namestring (pathname-as-directory (car filenames))))))
   (sort filenames string<?))
 
 (define-integrable (completion-ignore-filename? filename)
-  (os/completion-ignore-filename? filename))
+  (os/completion-ignore-filename? (->namestring filename)))

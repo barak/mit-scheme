@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.19 1994/12/19 19:41:51 cph Exp $
+;;;	$Id: dos.scm,v 1.20 1995/01/23 20:05:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-1994 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -134,23 +134,8 @@ Includes the new backup.  Must be > 0."
 
   (trim-for-duplicate-device (trim-for-duplicate-top-level-directory string)))
 
-(define (os/pathname->display-string pathname)
-  (os/filename->display-string (->namestring pathname)))
-
-(define (os/filename->display-string filename)
-  (let ((name (string-copy filename)))
-    (slash->backslash! name)
-    name))
-
-(define (slash->backslash! name)
-  (let ((end (string-length name)))
-    (let loop ((index 0))
-      (let ((slash (substring-find-next-char name index end #\/)))
-        (if (not slash)
-            '()
-            (begin
-              (string-set! name slash #\\)
-	      (loop (1+ slash))))))))
+(define os/pathname->display-string
+  ->namestring)
 
 (define (file-type->version type version)
   (let ((version-string
@@ -278,30 +263,6 @@ Includes the new backup.  Must be > 0."
 
 (define (os/directory-list directory)
   (os/directory-list-completions directory ""))
-
-(define-integrable os/file-directory?
-  (ucode-primitive file-directory?))
-
-(define-integrable (os/make-filename directory filename)
-  (string-append directory filename))
-
-(define-integrable (os/filename-as-directory filename)
-  (string-append filename "\\"))
-
-(define (os/filename-directory filename)
-  (let ((end (string-length filename)))
-    (let ((index (substring-find-previous-char-in-set
-    		  filename 0 end os/directory-char-set)))
-      (and index
-	   (substring filename 0 (+ index 1))))))
-
-(define (os/filename-non-directory filename)
-  (let ((end (string-length filename)))
-    (let ((index (substring-find-previous-char-in-set
-		  filename 0 end os/directory-char-set)))
-      (if index
-	  (substring filename (+ index 1) end)
-	  filename))))
 
 (define dos/encoding-pathname-types '())
 
@@ -340,7 +301,7 @@ Includes the new backup.  Must be > 0."
 (define (os/completion-ignore-filename? filename)
   (or (os/backup-filename? filename)
       (os/auto-save-filename? filename)
-      (and (not (os/file-directory? filename))
+      (and (not (file-directory? filename))
 	   (there-exists? (ref-variable completion-ignored-extensions)
    	     (lambda (extension)
 	       (string-suffix? extension filename))))))

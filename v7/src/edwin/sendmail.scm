@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.19 1994/03/08 20:20:21 cph Exp $
+;;;	$Id: sendmail.scm,v 1.20 1995/01/23 20:06:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -522,7 +522,7 @@ Numeric argument means justify as well."
 	    (let ((process
 		   (start-pipe-subprocess
 		    program
-		    (vector (os/filename-non-directory program)
+		    (vector (file-namestring program)
 			    "-oi" "-t"
 			    (string-append "-f" user-name)
 			    ;; These mean "report errors by mail" and

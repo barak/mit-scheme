@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.44 1995/01/06 01:08:47 cph Exp $
+;;;	$Id: unix.scm,v 1.45 1995/01/23 20:06:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -109,17 +109,6 @@ Includes the new backup.  Must be > 0."
     (if (pathname-absolute? pathname)
 	(->namestring pathname)
 	(string-append "~/" (->namestring pathname)))))
-
-(define (os/filename->display-string filename)
-  (let ((home (unix/current-home-directory)))
-    (cond ((not (string-prefix? home filename))
-	   filename)
-	  ((string=? home filename)
-	   "~")
-	  ((char=? #\/ (string-ref filename (string-length home)))
-	   (string-append "~" (string-tail filename (string-length home))))
-	  (else
-	   filename))))
 
 (define (os/auto-save-pathname pathname buffer)
   (let ((wrap
@@ -285,28 +274,6 @@ Includes the new backup.  Must be > 0."
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
-
-(define-integrable os/file-directory?
-  (ucode-primitive file-directory?))
-
-(define-integrable (os/make-filename directory filename)
-  (string-append directory filename))
-
-(define-integrable (os/filename-as-directory filename)
-  (string-append filename "/"))
-
-(define (os/filename-directory filename)
-  (let ((end (string-length filename)))
-    (let ((index (substring-find-previous-char filename 0 end #\/)))
-      (and index
-	   (substring filename 0 (+ index 1))))))
-
-(define (os/filename-non-directory filename)
-  (let ((end (string-length filename)))
-    (let ((index (substring-find-previous-char filename 0 end #\/)))
-      (if index
-	  (substring filename (+ index 1) end)
-	  filename))))
 
 (define unix/encoding-pathname-types
   '("Z" "gz" "KY"))
@@ -354,7 +321,7 @@ Includes the new backup.  Must be > 0."
 	type)))
 
 (define (os/completion-ignore-filename? filename)
-  (and (not (os/file-directory? filename))
+  (and (not (file-directory? filename))
        (there-exists? (ref-variable completion-ignored-extensions)
          (lambda (extension)
 	   (string-suffix? extension filename)))))
