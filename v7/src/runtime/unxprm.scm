@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.24 1993/04/27 09:14:10 cph Exp $
+$Id: unxprm.scm,v 1.25 1993/07/27 00:46:19 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -249,7 +249,10 @@ MIT in each case. |#
 ;;; Queues after-restart daemon to clean up environment space
 
 (define (initialize-system-primitives!)
-  (add-event-receiver! event:after-restart reset-environment-variables!))
+  (add-event-receiver! event:after-restart reset-environment-variables!)
+  (discard-select-registry-result-vectors!)
+  (add-event-receiver! event:after-restart
+		       discard-select-registry-result-vectors!))
 
 (define (make-select-registry . descriptors)
   (let ((registry (make-string ((ucode-primitive select-registry-size 0)))))
@@ -265,29 +268,6 @@ MIT in each case. |#
 (define (remove-from-select-registry! registry descriptor)
   ((ucode-primitive select-registry-clear 2) registry descriptor))
 
-(define (select-registry-test registry block?)
-  (let ((result-vector
-	 (make-vector ((ucode-primitive select-registry-lub 0)) #f)))
-    (let ((result
-	   ((ucode-primitive select-registry-test 3) registry block?
-						     result-vector)))
-      (cond ((fix:> result 0)
-	     (let loop ((index (fix:- result 1)) (descriptors '()))
-	       (let ((descriptors
-		      (cons (vector-ref result-vector index) descriptors)))
-		 (if (fix:= 0 index)
-		     descriptors
-		     (loop (fix:- index 1) descriptors)))))
-	    ((fix:= 0 result)
-	     #f)
-	    ((fix:= -1 result)
-	     (subprocess-global-status-tick)
-	     'PROCESS-STATUS-CHANGE)
-	    ((fix:= -2 result)
-	     'INTERRUPT)
-	    (else
-	     (error "Illegal result from SELECT-REGISTRY-TEST:" result))))))
-
 (define (select-descriptor descriptor block?)
   (let ((result ((ucode-primitive select-descriptor 2) descriptor block?)))
     (case result
@@ -302,3 +282,61 @@ MIT in each case. |#
        'INTERRUPT)
       (else
        (error "Illegal result from CHANNEL-SELECT:" result)))))
+
+(define (select-registry-test registry block?)
+  (let ((result-vector (allocate-select-registry-result-vector)))
+    (let ((result
+	   ((ucode-primitive select-registry-test 3) registry block?
+						     result-vector)))
+      (if (fix:> result 0)
+	  (let loop ((index (fix:- result 1)) (descriptors '()))
+	    (let ((descriptors
+		   (cons (vector-ref result-vector index) descriptors)))
+	      (if (fix:= 0 index)
+		  (begin
+		    (deallocate-select-registry-result-vector result-vector)
+		    descriptors)
+		  (loop (fix:- index 1) descriptors))))
+	  (begin
+	    (deallocate-select-registry-result-vector result-vector)
+	    (cond ((fix:= 0 result)
+		   #f)
+		  ((fix:= -1 result)
+		   (subprocess-global-status-tick)
+		   'PROCESS-STATUS-CHANGE)
+		  ((fix:= -2 result)
+		   'INTERRUPT)
+		  (else
+		   (error "Illegal result from SELECT-REGISTRY-TEST:"
+			  result))))))))
+
+(define select-registry-result-vectors)
+
+(define (discard-select-registry-result-vectors!)
+  (set! select-registry-result-vectors '())
+  unspecific)
+
+(define (allocate-select-registry-result-vector)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((v
+	   (let loop ((rv select-registry-result-vectors))
+	     (cond ((null? rv)
+		    (make-vector ((ucode-primitive select-registry-lub 0)) #f))
+		   ((car rv)
+		    => (lambda (v) (set-car! rv #f) v))
+		   (else
+		    (loop (cdr rv)))))))
+      (set-interrupt-enables! interrupt-mask)
+      v)))
+
+(define (deallocate-select-registry-result-vector v)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let loop ((rv select-registry-result-vectors))
+      (cond ((null? rv)
+	     (set! select-registry-result-vectors
+		   (cons v select-registry-result-vectors)))
+	    ((car rv)
+	     (loop (cdr rv)))
+	    (else
+	     (set-car! rv v))))
+    (set-interrupt-enables! interrupt-mask)))
