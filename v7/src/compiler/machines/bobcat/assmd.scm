@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.34 1988/06/14 08:46:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.35 1988/08/31 05:55:31 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,36 +36,37 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(let-syntax ((fold
+	      (macro (expression)
+		(eval expression system-global-environment))))
+
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-object-width 32)
 (define-integrable endianness 'BIG)
 
-;; Instruction length is always a multiple of 16
-;; Pad with ILLEGAL instructions
+(define-integrable maximum-padding-length
+  ;; Instruction length is always a multiple of 16 bits
+  16)
 
-(define-integrable maximum-padding-length 16)
+(define-integrable padding-string
+  ;; Pad with ILLEGAL instructions
+  (fold (unsigned-integer->bit-string 16 #b0100101011111100)))
 
-(define padding-string
-  (unsigned-integer->bit-string 16 #b0100101011111100))
+(define-integrable block-offset-width
+  ;; Block offsets are always 16 bit words
+  16)
 
-;; Block offsets are always words
-
-(define-integrable maximum-block-offset (- (expt 2 16) 2))
-(define-integrable block-offset-width 16)
+(define-integrable maximum-block-offset
+  (fold (- (expt 2 16) 2)))
 
 (define-integrable (block-offset->bit-string offset start?)
-  (unsigned-integer->bit-string block-offset-width
-				(+ offset
-				   (if start? 0 1))))
+  (unsigned-integer->bit-string block-offset-width (+ offset (if start? 0 1))))
 
-(define make-nmv-header
-  (let ((nmv-type-string
-	 (unsigned-integer->bit-string 8 (microcode-type
-					  'MANIFEST-NM-VECTOR))))
+(define-integrable nmv-type-string
+  (fold (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR))))
 
-    (named-lambda (make-nmv-header n)
-      (bit-string-append (unsigned-integer->bit-string 24 n)
-			 nmv-type-string))))
+(define (make-nmv-header n)
+  (bit-string-append (unsigned-integer->bit-string 24 n) nmv-type-string))
 
 (define (object->bit-string object)
   (bit-string-append
@@ -83,5 +84,7 @@ MIT in each case. |#
     (bit-substring-move-right! bits 0 l block new-position)
     (receiver new-position)))
 
-(define instruction-append
+(define-integrable instruction-append
   bit-string-append-reversed)
+;;; end let-syntax
+)
