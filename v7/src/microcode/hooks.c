@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.46 1992/10/27 22:00:13 jinx Exp $
+$Id: hooks.c,v 9.47 1992/11/25 06:27:09 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -42,7 +42,8 @@ MIT in each case. */
 
 #define APPLY_AVOID_CANONICALIZATION
 
-DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
+DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
+  "Invoke first argument on the arguments contained in the second argument.")
 {
   SCHEME_OBJECT procedure;
   SCHEME_OBJECT argument_list;
@@ -99,7 +100,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
     if (scan_list != EMPTY_LIST)
       error_wrong_type_arg (2);
   }
-
+
 #ifdef USE_STACKLETS
   /* This is conservative: if the number of arguments is large enough
      the Will_Push below may try to allocate space on the heap for the
@@ -117,22 +118,22 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
     fast SCHEME_OBJECT scan_list;
     TOUCH_IN_PRIMITIVE (argument_list, scan_list);
     for (i = number_of_args; (i > 0); i -= 1)
-      {
+    {
 #ifdef LOSING_PARALLEL_PROCESSOR
-	/* This half-measure should be replaced by some kind of lock
-	   or something else that guarantees that the code will win.  */
-	/* Check for abominable case of someone bashing the arg list. */
-	if (! (PAIR_P (scan_list)))
-	  {
-	    /* Re-push the primitive's frame. */
-	    STACK_PUSH (argument_list);
-	    STACK_PUSH (procedure);
-	    error_bad_range_arg (2);
-	  }
-#endif
-	(*scan_stack++) = (PAIR_CAR (scan_list));
-	TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+      /* This half-measure should be replaced by some kind of lock
+	 or something else that guarantees that the code will win.  */
+      /* Check for abominable case of someone bashing the arg list. */
+      if (! (PAIR_P (scan_list)))
+      {
+	/* Re-push the primitive's frame. */
+	STACK_PUSH (argument_list);
+	STACK_PUSH (procedure);
+	error_bad_range_arg (2);
       }
+#endif /* LOSING_PARALLEL_PROCESSOR */
+      (*scan_stack++) = (PAIR_CAR (scan_list));
+      TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+    }
   }
   Stack_Pointer = (STACK_LOC (- number_of_args));
   STACK_PUSH (procedure);
@@ -143,7 +144,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   if (COMPILED_CODE_ADDRESS_P (STACK_REF (number_of_args + 2)))
   {
     extern SCHEME_OBJECT EXFUN (apply_compiled_from_primitive, (int));
-    return (apply_compiled_from_primitive (2));
+    PRIMITIVE_RETURN (apply_compiled_from_primitive (2));
   }
 #endif /* APPLY_AVOID_CANONICALIZATION */
 
@@ -151,101 +152,169 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   /*NOTREACHED*/
 }
 
-/* Implementation detail: in addition to setting aside the old
+/* CALL-WITH-CURRENT-CONTINUATION
+
+   Implementation detail: in addition to setting aside the old
    stacklet on a catch, the new stacklet is cleared and a return
    code is placed at the base of the (now clear) stack indicating
    that a return back through here requires restoring the stacklet.
    The current enabled interrupts are also saved in the old stacklet.
 
    >>> Temporarily (maybe) the act of doing a CATCH will disable any
-   >>> return hook that may be in the stack. */
+   >>> return hook that may be in the stack.
+ */
 
-#define CWCC(return_code, reuse_flag, receiver_expression)		\
-{									\
-  SCHEME_OBJECT receiver = (receiver_expression);			\
-  CWCC_1 ();								\
-  POP_PRIMITIVE_FRAME (1);						\
-  if (Return_Hook_Address != NULL)					\
-    {									\
-      (* Return_Hook_Address) = Old_Return_Code;			\
-      Return_Hook_Address = NULL;					\
-    }									\
-  /* Put down frames to restore history and interrupts so that these	\
-     operations will be performed on a throw. */			\
- Will_Push (HISTORY_SIZE);						\
-  Save_History (return_code);						\
- Pushed ();								\
-  preserve_interrupt_mask ();						\
-  /* There is no history to use since the				\
-     last control point was formed. */					\
-  Prev_Restore_History_Stacklet = NULL;					\
-  Prev_Restore_History_Offset = 0;					\
-  {									\
-    SCHEME_OBJECT control_point;					\
-    CWCC_2 (control_point, reuse_flag);					\
-    /* we just cleared the stack so there MUST be room */		\
-    /* Will_Push(3); */							\
-    STACK_PUSH (control_point);						\
-    STACK_PUSH (receiver);						\
-    STACK_PUSH (STACK_FRAME_HEADER + 1);				\
-    /*  Pushed(); */							\
-  }									\
-}
-
 #ifdef USE_STACKLETS
 
-#define CWCC_1()							\
-{									\
-  Primitive_GC_If_Needed (2 * Default_Stacklet_Size);			\
-}
-
-#define CWCC_2(target, reuse_flag)					\
-{									\
-  (target) = (Get_Current_Stacklet ());					\
-  Allocate_New_Stacklet (3);						\
-}
+#define CWCC_STACK_SIZE()		(2 * Default_Stacklet_Size)
+#define NON_REENTRANT_RC_RESTORE	RC_RESTORE_DONT_COPY_HISTORY
+#define NON_REENTRANT_FLAG		SHARP_T
 
 #else /* not USE_STACKLETS */
 
-#define CWCC_1()							\
-{									\
-  Primitive_GC_If_Needed						\
-    ((Stack_Top - Stack_Pointer) +					\
-     STACKLET_HEADER_SIZE +						\
-     CONTINUATION_SIZE +						\
-     HISTORY_SIZE);							\
-}
+#define CWCC_STACK_SIZE()						\
+  ((Stack_Top - Stack_Pointer) + STACKLET_HEADER_SIZE			\
+   + CONTINUATION_SIZE + HISTORY_SIZE)
 
-#define CWCC_2(target, reuse_flag)					\
-{									\
-  fast long n_words = (Stack_Top - Stack_Pointer);			\
-  (target) =								\
-    (allocate_marked_vector						\
-     (TC_CONTROL_POINT,							\
-      (n_words + (STACKLET_HEADER_SIZE - 1)),				\
-      false));								\
-  FAST_MEMORY_SET ((target), STACKLET_REUSE_FLAG, (reuse_flag));	\
-  FAST_MEMORY_SET							\
-    ((target),								\
-     STACKLET_UNUSED_LENGTH,						\
-     (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)));				\
-  {									\
-    fast SCHEME_OBJECT * scan =						\
-      (MEMORY_LOC ((target), STACKLET_HEADER_SIZE));			\
-    while ((n_words--) > 0)						\
-      (*scan++) = (STACK_POP ());					\
-  }									\
-  if (Consistency_Check && (Stack_Pointer != Stack_Top))		\
-    Microcode_Termination (TERM_BAD_STACK);				\
-  STACK_RESET ();							\
- Will_Push (CONTINUATION_SIZE);						\
-  Store_Return (RC_JOIN_STACKLETS);					\
-  Store_Expression (target);						\
-  Save_Cont ();								\
- Pushed ();								\
-}
+/* When there are no stacklets, the two versions of CWCC are identical. */
+
+#define NON_REENTRANT_RC_RESTORE	RC_RESTORE_HISTORY
+#define NON_REENTRANT_FLAG		SHARP_F
 
 #endif /* USE_STACKLETS */
+
+void
+DEFUN (CWCC, (return_code, reuse_flag, receiver),
+       long return_code
+       AND SCHEME_OBJECT reuse_flag
+       AND SCHEME_OBJECT receiver)
+{
+  SCHEME_OBJECT control_point;
+
+  Primitive_GC_If_Needed (CWCC_STACK_SIZE ());
+  POP_PRIMITIVE_FRAME (1);
+  if (Return_Hook_Address != NULL)
+  {
+    (* Return_Hook_Address) = Old_Return_Code;
+    Return_Hook_Address = NULL;
+  }
+
+  /* Tail recursion hacking in CWCC.
+     If the current stack contains only a frame to restore
+     another control point that looks like the result of CWCC,
+     then there is no need to push anything else on the stack
+     or cons anything on the heap.
+
+     This hackery would be considerably simpler if the interrupt
+     mask and history information were kept explicitly instead
+     of implicitly (pushed with appropriate restore return codes).
+   */
+
+  if (((STACK_LOC (CONTINUATION_SIZE)) == (Get_End_Of_Stacklet ()))
+      && ((OBJECT_DATUM (STACK_REF (CONTINUATION_RETURN_CODE)))
+	  == RC_JOIN_STACKLETS))
+  {
+    control_point = (STACK_REF (CONTINUATION_EXPRESSION));
+
+    if (((OBJECT_TYPE (control_point)) == TC_CONTROL_POINT)
+	&& ((reuse_flag == SHARP_F)
+	    || ((MEMORY_REF (control_point, STACKLET_REUSE_FLAG))
+		== SHARP_F)))
+    {
+      SCHEME_OBJECT * prev_stack
+	= (MEMORY_LOC (control_point,
+		       (STACKLET_HEADER_SIZE
+			+ (OBJECT_DATUM (MEMORY_REF
+					 (control_point,
+					  STACKLET_UNUSED_LENGTH))))));
+      SCHEME_OBJECT * ret_ptr
+	= (STACK_LOCATIVE_OFFSET (prev_stack,
+				  (CONTINUATION_SIZE
+				   + CONTINUATION_RETURN_CODE)));
+
+      if ((ret_ptr
+	   <= (VECTOR_LOC (control_point, (VECTOR_LENGTH (control_point)))))
+	  && ((OBJECT_DATUM (STACK_LOCATIVE_REFERENCE
+			     (prev_stack,
+			      CONTINUATION_RETURN_CODE)))
+	      == RC_RESTORE_INT_MASK))
+      {
+	long ret_code = (OBJECT_DATUM (*ret_ptr));
+
+	if ((ret_code == RC_RESTORE_HISTORY) || (ret_code == return_code))
+	{
+	  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
+	  STACK_RESET ();
+	  /* Will_Push(3); */
+	  STACK_PUSH (control_point);
+	  STACK_PUSH (receiver);
+	  STACK_PUSH (STACK_FRAME_HEADER + 1);
+	  /*  Pushed(); */
+
+	  PRIMITIVE_ABORT (PRIM_APPLY);
+	  /*NOTREACHED*/
+	}
+      }
+    }
+  }
+
+  /*
+    Put down frames to restore history and interrupts so that these
+    operations will be performed on a throw.
+   */
+ Will_Push (HISTORY_SIZE);
+  Save_History (return_code);
+ Pushed ();
+  preserve_interrupt_mask ();
+  /* There is no history to use since the
+     last control point was formed.
+   */
+  Prev_Restore_History_Stacklet = NULL;
+  Prev_Restore_History_Offset = 0;
+
+#ifdef USE_STACKLETS
+  {
+    control_point = (Get_Current_Stacklet ());
+    Allocate_New_Stacklet (3);
+  }
+#else /* not USE_STACKLETS */
+  {
+    fast long n_words = (Stack_Top - Stack_Pointer);
+    control_point = (allocate_marked_vector
+		     (TC_CONTROL_POINT,
+		      (n_words + (STACKLET_HEADER_SIZE - 1)),
+		      false));
+    FAST_MEMORY_SET (control_point, STACKLET_REUSE_FLAG, reuse_flag);
+    FAST_MEMORY_SET (control_point,
+		     STACKLET_UNUSED_LENGTH,
+		     (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0)));
+    {
+      fast SCHEME_OBJECT * scan =
+	(MEMORY_LOC (control_point, STACKLET_HEADER_SIZE));
+      while ((n_words--) > 0)
+	(*scan++) = (STACK_POP ());
+    }
+    if (Consistency_Check && (Stack_Pointer != Stack_Top))
+      Microcode_Termination (TERM_BAD_STACK);
+    STACK_RESET ();
+    Will_Push (CONTINUATION_SIZE);
+    Store_Return (RC_JOIN_STACKLETS);
+    Store_Expression (control_point);
+    Save_Cont ();
+    Pushed ();
+  }
+#endif /* USE_STACKLETS */
+
+  /* we just cleared the stack so there MUST be room */
+  /* Will_Push(3); */
+  STACK_PUSH (control_point);
+  STACK_PUSH (receiver);
+  STACK_PUSH (STACK_FRAME_HEADER + 1);
+  /*  Pushed(); */
+
+  PRIMITIVE_ABORT (PRIM_APPLY);
+  /*NOTREACHED*/
+}
 
 /* (CALL-WITH-CURRENT-CONTINUATION PROCEDURE)
 
@@ -259,47 +328,65 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
    will be copied on every throw.  The user level CATCH is built on
    this primitive but is not the same, since it handles dynamic state
    while the primitive does not; it assumes that the microcode sets
-   and clears the appropriate reuse flags for copying. */
+   and clears the appropriate reuse flags for copying. 
+*/
 
-DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1, 0)
+DEFINE_PRIMITIVE ("CALL-WITH-CURRENT-CONTINUATION", Prim_catch, 1, 1,
+  "Invoke argument with a reentrant copy of the current control stack.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CWCC (RC_RESTORE_HISTORY, SHARP_F, (ARG_REF (1)));
-  PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
 }
 
-DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION", Prim_non_reentrant_catch, 1, 1, 0)
+DEFINE_PRIMITIVE ("NON-REENTRANT-CALL-WITH-CURRENT-CONTINUATION",
+		  Prim_non_reentrant_catch, 1, 1,
+  "Invoke argument with a non-reentrant copy of the current control stack.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT();
-#ifdef USE_STACKLETS
-  CWCC (RC_RESTORE_DONT_COPY_HISTORY, SHARP_T, (ARG_REF (1)));
-#else
-  /* When there are no stacklets, it is identical to the reentrant version. */
-  CWCC (RC_RESTORE_HISTORY, SHARP_F, (ARG_REF (1)));
-#endif
-  PRIMITIVE_ABORT (PRIM_APPLY);
+  CWCC (NON_REENTRANT_RC_RESTORE, NON_REENTRANT_FLAG, (ARG_REF (1)));
   /*NOTREACHED*/
 }
+
+/* (WITHIN-CONTROL-POINT control-point thunk)
 
-DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2, 0)
+   Invoke THUNK (a procedure of no arguments) with CONTROL-POINT as
+   the pending stack.  control-point is created by CWCC.
+   The restoration of the stack is delayed until THUNK returns.
+   If THUNK never returns (it diverges or throws elsewhere),
+   the stack is never restored.
+   WITHIN-CONTROL-POINT clears the current stack, pushes a frame
+   that restores control-point when THUNK returns, and sets up
+   an apply frame for THUNK.
+ */   
+
+DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
+  "Invoke second argument with the first argument as its control stack.")
 {
+  SCHEME_OBJECT control_point, thunk;
   PRIMITIVE_HEADER (2);
+
   PRIMITIVE_CANONICALIZE_CONTEXT();
   CHECK_ARG (1, CONTROL_POINT_P);
-  {
-    fast SCHEME_OBJECT control_point = (ARG_REF (1));
-    SCHEME_OBJECT thunk = (ARG_REF (2));
-    Our_Throw (false, control_point);
-    Within_Stacklet_Backout ();
-    Our_Throw_Part_2 ();
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-    STACK_PUSH (thunk);
-    STACK_PUSH (STACK_FRAME_HEADER);
-  Pushed ();
-  }
+  control_point = (ARG_REF (1));
+  thunk = (ARG_REF (2));
+
+  /* This KNOWS the direction of stack growth. */
+  Stack_Pointer = (Get_End_Of_Stacklet ());
+
+ Will_Push (CONTINUATION_SIZE);
+  Store_Expression (control_point);
+  Store_Return (RC_JOIN_STACKLETS);
+  Save_Cont ();
+ Pushed ();
+
+ Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
+  STACK_PUSH (thunk);
+  STACK_PUSH (STACK_FRAME_HEADER);
+ Pushed ();
+
   PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
 }
