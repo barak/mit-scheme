@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.19 1989/11/30 16:06:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.20 1989/12/05 20:15:12 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -181,7 +181,9 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER 12))
-  (generate/move-frame-up frame-size (offset-reference 12 0)))
+  (let ((temp (allocate-temporary-register! 'ADDRESS)))
+    (LAP (MOV L ,(register-reference 12) ,(register-reference temp))
+	 ,@(generate/move-frame-up* frame-size temp))))
 
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
