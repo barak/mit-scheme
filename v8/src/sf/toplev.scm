@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.4 1989/06/09 16:56:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/sf/toplev.scm,v 4.5 1989/12/07 05:39:36 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -407,7 +407,7 @@ Currently only the 68000 implementation needs this."
   (newline)
   (write-string prefix)
   (write-string ": ")
-  (write (/ process-time 1000))
+  (write (/ (exact->inexact process-time) 1000))
   (write-string " (process time); ")
-  (write (/ real-time 1000))
+  (write (/ (exact->inexact real-time) 1000))
   (write-string " (real time)"))
