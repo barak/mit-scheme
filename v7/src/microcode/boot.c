@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.107 2002/07/02 20:49:05 cph Exp $
+$Id: boot.c,v 9.108 2002/10/23 02:03:13 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -647,11 +647,11 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
     CONST char ** scan = option_library_path;
     CONST char ** end = option_library_path;
     while (1)
-      if ((*end++) == 0)
-	{
-	  end -= 1;
+      {
+	if ((*end) == 0)
 	  break;
-	}
+	end += 1;
+      }
     {
       SCHEME_OBJECT result =
 	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
