@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.12 1993/08/16 19:00:03 jbank Exp $
+;;;	$Id: debug.scm,v 1.13 1993/08/17 21:32:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -1115,21 +1115,12 @@ The buffer below describes the current subproblem or reduction.
 		   (newline port))))))
 	  (insert-blines browser 0 blines)
 	  (buffer-put! buffer 'THREAD break-thread) ;  adds thread
-	  (wait-processor-time 100)   ;  lose because the synch of new
-	                              ; screen stuff is off
 	  (select-screen debug-screen)
 	  (select-window (screen-window0 debug-screen))
 	  (if (null? blines)
 	      (set-buffer-point! buffer (buffer-end buffer))
 	      (select-bline (car blines)))
 	  buffer)))))
-
-;;;kludge to deal with the screen synch 
-(define (wait-processor-time ticks)
-  (let ((end (+ (process-time-clock) ticks)))
-    (let wait-loop ()
-      (if (< (process-time-clock) end)
-	  (wait-loop)))))
 
 (define (find-debugger-buffers)
   (list-transform-positive (buffer-list)
