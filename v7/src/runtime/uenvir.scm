@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.33 1994/01/29 22:04:08 adams Exp $
+$Id: uenvir.scm,v 14.34 1994/12/15 22:19:37 adams Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -338,6 +338,9 @@ MIT in each case. |#
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))
     (let ((block (dbg-procedure/block procedure)))
+      (if (not block)
+	  (error "Unable to obtain closing environment (missing block info)"
+		 entry))
       (let ((parent (dbg-block/parent block)))
 	(case (dbg-block/type parent)
 	  ((CLOSURE)
