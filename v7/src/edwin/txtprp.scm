@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.2 1993/08/10 06:35:54 cph Exp $
+;;;	$Id: txtprp.scm,v 1.3 1993/08/10 09:44:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -178,6 +178,17 @@
 		  (if (equal? p (assq prop (interval-properties prev)))
 		      (loop (previous-interval prev))
 		      (interval-start prev))))))))
+
+(define (interval-properties-equal? p1 p2)
+  ;; Slow but effective.
+  (let ((subset?
+	 (lambda (p1 p2)
+	   (let loop ((p1 p1))
+	     (or (null? p1)
+		 (and (assq (caar p1) p2)
+		      (loop (cdr p1))))))))
+    (and (subset? p1 p2)
+	 (subset? p2 p1))))
 
 ;;; The READ-ONLY property is applied to a contiguous region of
 ;;; characters.  No insertions are allowed within that region, and no
