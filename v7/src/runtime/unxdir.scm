@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.4 1989/08/04 02:14:09 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxdir.scm,v 14.5 1991/07/17 08:54:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -44,9 +44,15 @@ MIT in each case. |#
 
 (define (directory-read-nosort pattern)
   (let ((pattern
-	 (pathname-default (pathname->absolute-pathname (->pathname pattern))
-			   false false false
-			   'WILD 'WILD 'WILD)))
+	 (let ((pattern (pathname->absolute-pathname (->pathname pattern))))
+	   (if (or (pathname-name pattern)
+		   (pathname-type pattern)
+		   (pathname-version pattern))
+	       pattern
+	       (make-pathname (pathname-host pathname)
+			      (pathname-device pathname)
+			      (pathname-directory pathname)
+			      'WILD 'WILD 'WILD)))))
     (let ((directory-path (pathname-directory-path pattern)))
       (let ((pathnames (generate-directory-pathnames directory-path)))
 	(cond ((and (eq? 'WILD (pathname-name pattern))
