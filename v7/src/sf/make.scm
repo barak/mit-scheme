@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.31 1995/01/06 18:36:17 cph Exp $
+$Id: make.scm,v 4.32 1998/02/12 04:27:00 cph Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,4 +47,4 @@ MIT in each case. |#
        (package/system-loader "sf" '() 'QUERY)))
     ((package/reference (find-package '(SCODE-OPTIMIZER))
 			'USUAL-INTEGRATIONS/CACHE!))))
-(add-system! (make-system "SF" 4 31 '()))
+(add-identification! "SF" 4 32)
