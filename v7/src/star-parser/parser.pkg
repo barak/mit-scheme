@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parser.pkg,v 1.21 2003/02/14 18:28:35 cph Exp $
+$Id: parser.pkg,v 1.22 2003/03/08 02:09:05 cph Exp $
 
-Copyright 2001, 2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,6 +39,7 @@ USA.
 	  define-*parser-expander
 	  define-*parser-macro
 	  global-parser-macros
+	  guarantee-parser-macros
 	  make-parser-macros
 	  parser-macros?
 	  set-current-parser-macros!
