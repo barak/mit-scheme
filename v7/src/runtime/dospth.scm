@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.31 1995/10/23 06:38:26 cph Exp $
+$Id: dospth.scm,v 1.32 1995/10/23 07:10:07 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -371,4 +371,4 @@ MIT in each case. |#
   (hook/dos/end-of-line-string pathname))
 
 (define (default/dos/end-of-line-string pathname)
-  (os/file-end-of-line-translation pathname))
+  (or (os/file-end-of-line-translation pathname) "\n"))
