@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.2 1991/06/17 21:20:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.3 1991/08/12 22:10:29 cph Exp $
 $MC68020-Header: dassm2.scm,v 4.16 89/12/11 06:16:42 GMT cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -156,25 +156,8 @@ MIT in each case. |#
   'INSTRUCTION-NEXT)
 
 (define (disassembler/next-state instruction state)
-  (cond ((not disassembler/compiled-code-heuristics?)
-	 'INSTRUCTION)
-	((and (eq? state 'INSTRUCTION)
-	      (equal? instruction '(BL () 1 (@PCO 0))))
-	 'PC-REL-DEP)
-	((and (eq? state 'PC-REL-DEP)
-	      (equal? instruction '(DEP () 0 31 2 1)))
-	 'PC-REL-OFFSET)
-	((and (eq? state 'PC-REL-OFFSET)
-	      (= (length instruction) 4)
-	      (equal? (list (car instruction)
-			    (cadr instruction)
-			    (cadddr instruction))
-		      '(ADDIL () 1)))
-	 (list 'PC-REL-LOW-OFFSET (caddr instruction)))
-	((memq (car instruction) '(B BV BLE))
-	 'EXTERNAL-LABEL)
-	(else
-	 'INSTRUCTION)))
+  instruction state
+  'INSTRUCTION)
 
 (set! disassembler/lookup-symbol
   (lambda (symbol-table offset)
@@ -205,13 +188,15 @@ MIT in each case. |#
   `(UWORD ,(bit-string->unsigned-integer bit-string)))
 
 (define (make-external-label bit-string)
-  (if (eq? endianness 'LITTLE)
-      `(EXTERNAL-LABEL
-	(FORMAT ,(extract bit-string 0 16))
-	(@PCO ,(* 2 (extract bit-string 16 32))))
-      `(EXTERNAL-LABEL
-	(FORMAT ,(extract bit-string 16 32))
-	(@PCO ,(* 2 (extract bit-string 0 16))))))
+  (let ((do-it
+	 (lambda (format-word offset)
+	   `(EXTERNAL-LABEL (FORMAT ,format-word)
+			    ,(offset->@pcr (* 2 offset))))))
+    (if (eq? endianness 'LITTLE)
+	(do-it (extract bit-string 0 16)
+	       (extract bit-string 16 32))
+	(do-it (extract bit-string 16 32)
+	       (extract bit-string 0 16)))))
 
 #|
 ;;; 68k version
