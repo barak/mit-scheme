@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.6 1989/10/26 07:35:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/infnew.scm,v 4.7 1990/01/22 23:44:42 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -250,20 +250,20 @@ MIT in each case. |#
 
 (define (info-generation-phase-3 expression procedures continuations
 				 label-bindings external-labels)
-  (let ((dbg-labels (labels->dbg-labels label-bindings)))
+  (let ((label-bindings (labels->dbg-labels label-bindings)))
     (let ((labels (make-btree)))
-      (for-each (lambda (dbg-label)
+      (for-each (lambda (label-binding)
 		  (for-each (lambda (name)
 			      (btree-insert! labels string<? car name
 				(lambda (name)
-				  (cons name dbg-label))
+				  (cons name (cdr label-binding)))
 				(lambda (association)
 				  (error "redefining label" association))
 				(lambda (association)
 				  association
 				  unspecific)))
-			    (dbg-label/names dbg-label)))
-		dbg-labels)
+			    (car label-binding)))
+		label-bindings)
       (let ((map-label
 	     (lambda (label)
 	       (btree-lookup labels string<? car (system-pair-car label)
@@ -297,32 +297,28 @@ MIT in each case. |#
      expression
      (list->vector (sort procedures dbg-procedure<?))
      (list->vector (sort continuations dbg-continuation<?))
-     (list->vector dbg-labels))))
+     (list->vector (map cdr label-bindings)))))
 
 (define (labels->dbg-labels label-bindings)
-  (let ((dbg-labels
-	 (let ((labels (make-btree)))
-	   (for-each
-	    (lambda (binding)
-	      (let ((name (system-pair-car (car binding))))
-		(btree-insert! labels < dbg-label/offset (cdr binding)
-		  (lambda (offset)
-		    (make-dbg-label name offset))
-		  (lambda (dbg-label)
-		    (set-dbg-label/names!
-		     dbg-label
-		     (cons name (dbg-label/names dbg-label))))
-		  (lambda (dbg-label)
-		    dbg-label
-		    unspecific))))
-	    label-bindings)
-	   (btree-fringe labels))))
-    (for-each (lambda (dbg-label)
-		(set-dbg-label/name!
-		 dbg-label
-		 (choose-distinguished-label (dbg-label/names dbg-label))))
-	      dbg-labels)
-    dbg-labels))
+  (map (lambda (offset-binding)
+	 (let ((names (cdr offset-binding)))
+	   (cons names
+		 (make-dbg-label-2 (choose-distinguished-label names)
+				   (car offset-binding)))))
+       (let ((offsets (make-btree)))
+	 (for-each (lambda (binding)
+		     (let ((name (system-pair-car (car binding))))
+		       (btree-insert! offsets < car (cdr binding)
+			 (lambda (offset)
+			   (list offset name))
+			 (lambda (offset-binding)
+			   (set-cdr! offset-binding
+				     (cons name (cdr offset-binding))))
+			 (lambda (offset-binding)
+			   offset-binding
+			   unspecific))))
+		   label-bindings)
+	 (btree-fringe offsets))))
 
 (define (choose-distinguished-label names)
   (if (null? (cdr names))

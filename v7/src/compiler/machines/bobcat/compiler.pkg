@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.26 1990/01/18 22:43:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.27 1990/01/22 23:45:02 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -279,11 +279,8 @@ MIT in each case. |#
 	  dbg-block-name/return-address
 	  dbg-block-name/static-link
 
-	  make-dbg-label
-	  dbg-label/names
-	  set-dbg-label/names!
+	  make-dbg-label-2
 	  dbg-label/offset
-	  set-dbg-label/name!
 	  set-dbg-label/external?!))
 
 (define-package (compiler constraints)
