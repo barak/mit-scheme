@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.26 1993/07/16 19:27:56 gjr Exp $
+$Id: rulfix.scm,v 1.27 1993/07/17 04:59:41 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -502,15 +502,14 @@ MIT in each case. |#
 				  source2))))
 
 (define (do-division target source1 source2 result-reg)
-  (let ((load-dividend (load-machine-register! source1 eax)))
-    (need-register! eax)
-    (require-register! edx)
-    (rtl-target:=machine-register! target result-reg)
-    (let ((source2 (any-reference source2)))
-      (LAP ,@load-dividend
-	   (MOV W (R ,edx) (R ,eax))
-	   (SAR W (R ,edx) (& 31))
-	   (IDIV W (R ,eax) ,source2)))))  
+  (prefix-instructions! (load-machine-register! source1 eax))
+  (need-register! eax)
+  (require-register! edx)
+  (rtl-target:=machine-register! target result-reg)
+  (let ((source2 (any-reference source2)))
+    (LAP (MOV W (R ,edx) (R ,eax))
+	 (SAR W (R ,edx) (& 31))
+	 (IDIV W (R ,eax) ,source2))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
