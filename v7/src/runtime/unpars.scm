@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.14 1989/10/26 06:47:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.15 1989/10/27 07:20:32 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -492,7 +492,10 @@ MIT in each case. |#
      (if closure? 'COMPILED-CLOSURE type)
      entry
      (lambda ()
-       (let ((name (compiled-procedure/name entry)))	 (with-values (lambda () (compiled-entry/filename entry))
+       (let ((name
+	      (and (eq? type 'COMPILED-PROCEDURE)
+		   (compiled-procedure/name entry))))
+	 (with-values (lambda () (compiled-entry/filename entry))
 	   (lambda (filename block-number)
 	     (*unparse-char #\()
 	     (if name
