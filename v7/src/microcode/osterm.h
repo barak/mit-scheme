@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.7 1991/03/14 04:22:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osterm.h,v 1.8 1992/02/03 23:34:09 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,8 +37,8 @@ MIT in each case. */
 
 #include "os.h"
 
-extern unsigned int EXFUN (OS_terminal_get_ispeed, (Tchannel channel));
-extern unsigned int EXFUN (OS_terminal_get_ospeed, (Tchannel channel));
+extern unsigned long EXFUN (OS_terminal_get_ispeed, (Tchannel channel));
+extern unsigned long EXFUN (OS_terminal_get_ospeed, (Tchannel channel));
 extern unsigned int EXFUN (arg_baud_index, (unsigned int argument));
 extern unsigned int EXFUN (OS_baud_index_to_rate, (unsigned int index));
 extern int EXFUN (OS_baud_rate_to_index, (unsigned int rate));
