@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.18 1993/09/03 06:59:24 cph Exp $
+$Id: thread.scm,v 1.19 1993/09/10 17:54:35 cph Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -479,7 +479,7 @@ MIT in each case. |#
   (let ((dentry
 	 (let loop ((dentry input-registrations))
 	   (and dentry
-		(if (= descriptor (dentry/descriptor dentry))
+		(if (eqv? descriptor (dentry/descriptor dentry))
 		    dentry
 		    (loop (dentry/next dentry)))))))
     (if (not dentry)
@@ -551,7 +551,7 @@ MIT in each case. |#
 	      (if (let ((descriptor (dentry/descriptor dentry)))
 		    (let loop ((descriptors descriptors))
 		      (and (not (null? descriptors))
-			   (or (= descriptor (car descriptors))
+			   (or (eqv? descriptor (car descriptors))
 			       (loop (cdr descriptors))))))
 		  (cons (dentry/first-tentry dentry) tentries)
 		  tentries)))))
