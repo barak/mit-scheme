@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.11 2000/07/21 17:24:10 cph Exp $
+@comment $Id: imail.texinfo,v 1.12 2000/07/21 20:51:37 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.4 for IMAIL Version 1.4
-@subtitle 19 July 2000
+@subtitle Edition 0.5 for IMAIL Version 1.4
+@subtitle 21 July 2000
 @author by Chris Hanson
 
 @page
@@ -662,6 +662,20 @@ message if the current message is deleted.  Otherwise it moves backward
 to previous messages until a deleted message is found, and undeletes
 that message.
 
+@vindex imail-expunge-confirmation
+Because @code{imail-expunge} irreversibly deletes mail, @acronym{IMAIL}
+normally requires confirmation before it performs the expunge.  This
+confirmation is controlled by the value of the variable
+@code{imail-expunge-confirmation}, which is a list of symbols.  There
+are two independent behaviors controlled by this: whether to prompt, and
+whether to show the messages being expunged.  If the list contains the
+symbol @code{verbose} (the default), the user is prompted for a
+yes-or-no style confirmation; if the list contains the symbol
+@code{brief}, the user is prompted for a y-or-n style confirmation; if
+neither of these symbols is present, no confirmation is done.  If the
+list contains the symbol @code{show-messages}, a window is popped up
+showing the messages to be expunged; otherwise the list is not shown.
+
 You can usually undo a @kbd{d} with a @kbd{u} because the @kbd{u} moves
 back to and undeletes the message that the @kbd{d} deleted.  But this
 does not work when the @kbd{d} skips a few already-deleted messages that
@@ -782,6 +796,17 @@ next periodic mail check.  The command @kbd{M-x imail} has the same
 effect as @code{imail-get-new-mail} if the primary folder is already
 open in a buffer.
 
+@vindex imail-update-interval
+@vindex imail-global-mail-notification
+@acronym{IMAIL} normally checks for new mail in @acronym{IMAP} folders
+according to the value of the variable @code{imail-update-interval}.
+This variable specifies the time between checks in seconds.  It may also
+be set to @code{#f}, which disables automatic mail checking.  When
+@acronym{IMAIL} detects new mail, it normally modifies the mode line of
+all buffers to contain the string @samp{[New Mail]}.  This can be
+disabled by setting the variable @code{imail-global-mail-notification}
+to @code{#f}.
+
 @findex imail-input-from-folder
 To copy messages from another folder into the current folder, give the
 @kbd{g} key a numeric argument, as in @kbd{C-u g}.  This runs the
@@ -845,12 +870,112 @@ message-copying commands automatically create folders as needed.
 @node MIME Support, Flags, Multiple Folders, Commands
 @section MIME Support
 
+@acronym{IMAIL} provides simple support for @acronym{MIME} messages.
+@acronym{MIME} attachments are shown in the @acronym{IMAIL} buffer by
+special abbreviations, and may be written to a file.  Complex
+@acronym{MIME} structures are recognized and displayed in a clean format
+that suppresses unnecessary clutter.  And @acronym{MIME} encodings such
+as @dfn{quoted-printable} and @dfn{base64} are automatically decoded
+prior to displaying the message.
+
+End-user formatting of @acronym{MIME} messages is a complex process,
+partly because these messages can be arbitrarily complex in their
+internal structure.  @acronym{IMAIL} provides several variables that
+give you some control over the formatting prcess.
+
+@vindex imail-use-original-mime-boundaries
+Many @acronym{MIME} messages have multiple subparts; for example, a
+message with an attachment normally contains at least two subparts: the
+message text and the attachment.  By default, @acronym{IMAIL} displays
+these parts separated by long lines of hyphen characters.  However,
+@acronym{MIME} specifies particular kinds of separators, called
+@dfn{boundaries}, that have certain useful syntactic properties.
+@acronym{IMAIL} allows you to use the original @acronym{MIME} boundaries
+rather than the hyphen lines, by setting the variable
+@code{imail-use-original-mime-boundaries} to @code{#t}.
+
+@vindex imail-mime-show-alternatives
+@acronym{MIME} also specifies a particular kind of multipart message,
+called multipart/alternative, in which the parts are different
+representations of the same message.  A typical example of this is a
+mailer that sends both plain text and @acronym{HTML} versions of the
+message text.  Normally @acronym{IMAIL} shows only the simplest of these
+subparts (which is almost always plain text), and suppresses the
+alternatives.  However, if you set the variable
+@code{imail-mime-show-alternatives} to @code{#t}, @acronym{IMAIL} will
+show these alternative forms as attachments.
+
+As a general rule, any @acronym{MIME} subpart that contains non-textual
+information is displayed as an attachment.  Attachments are normally
+shown as specially-formatted abbreviations; here is an example:
+
 @example
-(@code{imail-mouse-save-mime-entity})
-(@code{imail-save-attachment})
-(@code{imail-save-mime-entity})
-(@code{imail-toggle-mime-entity})
+@group
+<IMAIL-ATTACHMENT name="foo.doc"
+                  type=application/msword
+                  length=55499>
+@end group
 @end example
+
+@noindent
+This shows various things about the attachment, including its (optional)
+name, its @acronym{MIME} type, and the length of the attachment in
+bytes.  (The length is computed on the encoded form of the attachment,
+and is generally slightly larger than the decoded length.)
+
+@acronym{IMAIL} uses somewhat more complicated rules for deciding when a
+@acronym{MIME} subpart is displayed in this abbreviated format, and when
+it is expanded in line.  In general, all non-text subparts are
+abbreviated.  Additionally, if a text subpart is given a
+@dfn{disposition} of @code{attachment}, it is abbreviated.  Finally, if
+the character set of the subpart is unknown, if the encoding type is
+unknown, or if the subtype is unknown, it is abbreviated.
+
+@vindex imail-known-mime-charsets
+Two variables control the abbreviation of text subparts.
+@code{imail-known-mime-charsets} is a list of regular expressions that
+specify the known character sets; by default it specifies
+@acronym{US-ASCII}, the @acronym{ISO} 8859 character sets, and some
+random but commonly-seen Microsoft Windows character sets.  The variable
+@code{imail-inline-mime-text-subtypes} contains a list of symbols, each
+of which is the name of a text subtype that should be shown in line.
+For example, if the symbol @code{html} is in this list, then
+@acronym{MIME} parts of type @code{text/html} are shown in-line.  Text
+subtypes not appearing in this list are abbreviated as attachments.
+
+Here are @acronym{IMAIL}'s @acronym{MIME}-specific commands:
+
+@table @kbd
+@item C-o
+Save a @acronym{MIME} attachment to a file
+(@code{imail-save-attachment}).
+
+@item w
+Save an arbitrary @acronym{MIME} entity (message part) to a file
+(@code{imail-save-mime-entity}).
+
+@item C-t
+Toggle a @acronym{MIME} entity between its formatted and raw forms
+(@code{imail-toggle-mime-entity}).
+@end table
+
+@findex imail-save-attachment
+The primary @acronym{MIME} command is @kbd{C-o}
+(@code{imail-save-attachment}), which saves a single attachment to a
+file.  If point is on an attachment, that is the attachment to be saved,
+otherwise @acronym{IMAIL} prompts for the attachment to be saved.  If a
+prefix argument is specified, prompting is performed even if point is on
+an attachment.  Once the attachment is determined, @acronym{IMAIL}
+prompts for the name of a file to save the attachment to.  The filename
+is initialized from the name specified by the attachment, if any.  The
+directory of the filename is initialized to the directory in which the
+last attachment was saved, or the user's home directory if no
+attachments have previously been saved.
+
+@vindex imail-mime-attachment-directory
+If you want to save attachments to a specific directory, change the
+variable @code{imail-mime-attachment-directory} to contain the name of
+that directory.
 
 @node Flags, Sending Replies, MIME Support, Commands
 @section Flags
@@ -986,13 +1111,16 @@ address of the person who sent the message you received, and the
 message.
 
 @vindex imail-dont-reply-to-names
+@vindex imail-default-dont-reply-to-names
 You can exclude certain recipients from being placed automatically in
 the @samp{CC}, using the variable @code{imail-dont-reply-to-names}.  Its
 value should be a regular expression (as a string); any recipient that
 the regular expression matches is excluded from the @samp{CC} field.
 The default value matches your own name, and any name starting with
-@samp{info-}.  (Those names are excluded because there is a convention
-of using them for large mailing lists to broadcast announcements.)
+@samp{info-} (the value of the variable
+@code{imail-default-dont-reply-to-names}).  (Those names are excluded
+because there is a convention of using them for large mailing lists to
+broadcast announcements.)
 
 To omit the @samp{CC} field completely for a particular reply, enter
 the reply command with a numeric argument: @kbd{C-u r} or @kbd{1 r}.
@@ -1230,24 +1358,15 @@ folder and switching to another buffer.
 
 @example
 (@code{imail-auto-wrap})
-(@code{imail-global-mail-notification})
 (@code{imail-ignored-headers})
-(@code{imail-inline-mime-text-subtypes})
 (@code{imail-kept-headers})
-(@code{imail-known-mime-charsets})
 (@code{imail-message-filter})
-(@code{imail-mime-show-alternatives})
-(@code{imail-use-original-mime-boundaries})
 @end example
 
 @node Mail-Sending Options, Summary Options, Appearance Options, Variables
 @section Mail-Sending Options
 
 @example
-(@code{imail-default-dont-reply-to-names})
-(@code{imail-dont-reply-to-names})
-(@code{imail-forward-all-headers})
-(@code{imail-forward-using-mime})
 (@code{imail-reply-with-re})
 @end example
 
@@ -1267,12 +1386,8 @@ folder and switching to another buffer.
 
 @example
 (@code{imail-body-cache-limit})
-(@code{imail-delete-after-output})
-(@code{imail-expunge-confirmation})
-(@code{imail-mime-attachment-directory})
 (@code{imail-mode-hook})
 (@code{imail-pass-phrase-retention-time})
-(@code{imail-update-interval})
 @end example
 
 @node GNU Free Documentation License, Key Index, Variables, Top
