@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.4 1991/02/15 18:13:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.5 1991/05/06 00:54:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -236,7 +236,7 @@ Prompts for a value to give the continuation as an argument."
   ()
   (debugger-command-invocation command/condition-restart))
 
-(define-major-mode continuation-browser fundamental "Debug"
+(define-major-mode continuation-browser read-only "Debug"
   "You are in the Scheme debugger, where you can do the following:
 
 \\[continuation-browser-show-all-frames] shows All bindings of the current environment and its ancestors.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.101 1991/04/24 00:37:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.102 1991/05/06 00:55:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -102,7 +102,7 @@ or #F if file has no tag table.")
   "Mark pointing at end of current Info file's tag table,
 or #F if file has no tag table.")
 
-(define-major-mode info fundamental "Info"
+(define-major-mode info read-only-noarg "Info"
   "Info mode provides commands for browsing through the Info documentation tree.
 Documentation in Info is divided into \"nodes\", each of which
 discusses one topic and contains references to other nodes

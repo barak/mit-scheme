@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.125 1991/05/02 01:13:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.126 1991/05/06 00:55:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -55,12 +55,7 @@ All normal editing modes are defined relative to this mode."
 
 (define-major-mode fundamental #f "Fundamental"
   "Major mode not specialized for anything in particular.
-Most other major modes are defined by comparison to this one."
-  (event-distributor/invoke! (ref-variable fundamental-mode-hook)))
-
-(define-variable fundamental-mode-hook
-  "An event distributor that is invoked when entering Fundamental mode."
-  (make-event-distributor))
+Most other major modes are defined by comparison to this one.")
 
 (define-variable editor-default-mode
   "The default major mode for new buffers."
@@ -78,13 +73,26 @@ This is an alist, the cars of which are pathname types,
 and the cdrs of which are major modes."
   (os/file-type-to-major-mode))
 
-(define-default-key 'fundamental '^r-bad-command)
-
+(define-default-key 'fundamental 'undefined)
 (define-key 'fundamental char-set:graphic 'self-insert-command)
 (define-key 'fundamental char-set:numeric 'auto-digit-argument)
 (define-key 'fundamental #\- 'auto-negative-argument)
-
 (define-key 'fundamental #\rubout 'delete-backward-char)
+
+(define-major-mode read-only fundamental "Read-only"
+  "Major mode for read-only buffers.
+Like Fundamental mode, but no self-inserting characters.
+Digits and - are bound to prefix argument commands.")
+
+(define-key 'read-only char-set:graphic 'undefined)
+(define-key 'read-only char-set:numeric 'digit-argument)
+(define-key 'read-only #\- 'negative-argument)
+
+(define-major-mode read-only-noarg fundamental "Read-only-noarg"
+  "Major mode for read-only buffers.
+Like Fundamental mode, but no self-inserting characters.")
+
+(define-key 'read-only char-set:graphic 'undefined)
 
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)

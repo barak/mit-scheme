@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.114 1991/05/02 01:12:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.115 1991/05/06 00:56:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -112,7 +112,7 @@ Type q immediately to make the buffer menu go away."
   (set-buffer-point! buffer (line-start (buffer-start buffer) 2))
   (set-buffer-read-only! buffer))
 
-(define-major-mode buffer-menu fundamental "Buffer Menu"
+(define-major-mode buffer-menu read-only-noarg "Buffer Menu"
   "Major mode for editing a list of buffers.
 Each line describes a buffer in the editor.
 m -- mark buffer to be displayed.
