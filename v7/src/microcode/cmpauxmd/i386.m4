@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.43 1995/10/30 07:52:35 cph Exp $
+###	$Id: i386.m4,v 1.44 1996/03/04 20:31:56 cph Exp $
 ###
-###	Copyright (c) 1992-95 Massachusetts Institute of Technology
+###	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -146,8 +146,7 @@
 ###	switched between the two automatically.  Currently works only
 ###	for Win32s.
 ### LINUX_ELF
-###	If defined, expand to run under Linux ELF.  This is the
-###	remains of a failed experiment; do NOT define this symbol.
+###	If defined, expand to run under Linux ELF.
 ### TYPE_CODE_LENGTH
 ###	Normally defined to be 6.  Don't change this unless you know
 ###	what you're doing.
@@ -414,7 +413,6 @@ define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
 IF_WIN32(`define(HACK_SEGMENT_REGS,1)')
-IF_LINUX_ELF(`define(HACK_SEGMENT_REGS,1)')
 
 ifdef(`HACK_SEGMENT_REGS',`
 
@@ -443,10 +441,7 @@ define_data(C_Stack_Segment_Selector)
 allocate_word(C_Stack_Segment_Selector)
 
 IF_WIN32(`define(LRET,`db	0cbh')')
-IF_LINUX_ELF(`define(LRET,`lret')')
-
 IF_WIN32(`define(SEGMENT_DELTA,`EVR(winnt_address_delta)')')
-IF_LINUX_ELF(`define(SEGMENT_DELTA,`IMM(0x08000000)')')
 
 ',`IFDOS(`
 
