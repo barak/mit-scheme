@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.19 1992/11/03 22:41:30 jinx Exp $
+$Id: parse.scm,v 14.20 1993/08/02 21:12:17 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -68,6 +68,9 @@ MIT in each case. |#
 	  (REST . ,lambda-rest-tag)))
 
   (set! *parser-radix* 10)
+  (set! *parser-associate-positions?* false)
+  (set! *parser-associate-position* parser-associate-positions/default)
+  (set! *parser-current-position* parser-current-position/default)
   (set! system-global-parser-table (make-system-global-parser-table))
   (set-current-parser-table! system-global-parser-table))
 
@@ -165,7 +168,11 @@ MIT in each case. |#
        (*parser-parse-object-special-table*
 	(parser-table/parse-object-special parser-table))
        (*parser-collect-list-special-table*
-	(parser-table/collect-list-special parser-table)))
+	(parser-table/collect-list-special parser-table))
+       (*parser-current-position*
+	(if (not *parser-associate-positions?*)
+	    parser-current-position/default
+	    (current-position-getter port))))
     (thunk)))
 
 ;;;; Character Operations
@@ -252,9 +259,63 @@ MIT in each case. |#
   (parse-error "No such special reader macro" (peek-char))
   (collect-list/dispatch))
 
+;;;; Recording the position of objects for the compiler
+
+(define *parser-associate-position*)
+(define *parser-associate-positions?*)
+(define *parser-current-position*)
+
+(define-macro (define-accretor param-list-1 param-list-2 . body)
+  (let ((real-param-list (if (number? param-list-1)
+			     param-list-2
+			     param-list-1))
+	(real-body (if (number? param-list-1)
+		       body
+		       (cons param-list-2 body)))
+	(offset (if (number? param-list-1)
+		    param-list-1
+		    0)))
+    `(define ,real-param-list
+       (let ((core (lambda () ,@real-body)))
+	 (if *parser-associate-positions?*
+	     (recording-object-position ,offset core)
+	     (core))))))
+
+(define (current-position-getter port)
+  (cond ((input-port/operation port 'POSITION)
+	 => (lambda (operation)
+	      (lambda (offset)
+		(- (operation port) offset))))
+	((input-port/operation port 'CHARS-REMAINING)
+	 => (lambda (chars-rem)
+	      (let ((len (input-port/operation port 'LENGTH)))
+		(if (not len)
+		    parser-current-position/default
+		    (let ((total-length (len port)))
+		      (lambda (offset)
+			(- total-length
+			   (+ (chars-rem port) offset))))))))
+	(else
+	 parser-current-position/default)))	 
+
+(define (parser-associate-positions/default object position)
+  position				; fnord
+  object)
+
+(define (parser-current-position/default offset)
+  false)
+
+;; Do not integrate this!!! -- GJR
+
+(define (recording-object-position offset parser)
+  (let* ((position (*parser-current-position* offset))
+	 (object (parser)))
+    (*parser-associate-position* object position)
+    object))
+
 ;;;; Symbols/Numbers
 
-(define (parse-object/atom)
+(define-accretor (parse-object/atom)
   (build-atom (read-atom)))
 
 (define-integrable (read-atom)
@@ -273,17 +334,17 @@ MIT in each case. |#
   (substring-downcase! string 0 (string-length string))
   (string->symbol string))
 
-(define (parse-object/symbol)
+(define-accretor (parse-object/symbol)
   (intern-string! (read-atom)))
 
-(define (parse-object/numeric-prefix)
+(define-accretor 1 (parse-object/numeric-prefix)
   (let ((number
 	 (let ((char (read-char)))
 	   (string-append (string #\# char) (read-atom)))))
     (or (parse-number number)
 	(parse-error "Bad number syntax" number))))
 
-(define (parse-object/bit-string)
+(define-accretor 1 (parse-object/bit-string)
   (discard-char)
   (let ((string (read-atom)))
     (let ((length (string-length string)))
@@ -303,11 +364,11 @@ MIT in each case. |#
 
 ;;;; Lists/Vectors
 
-(define (parse-object/list-open)
+(define-accretor (parse-object/list-open)
   (discard-char)
   (collect-list/top-level))
 
-(define (parse-object/vector-open)
+(define-accretor 1 (parse-object/vector-open)
   (discard-char)
   (list->vector (collect-list/top-level)))
 
@@ -404,15 +465,15 @@ MIT in each case. |#
 
 ;;;; Quoting
 
-(define (parse-object/quote)
+(define-accretor (parse-object/quote)
   (discard-char)
   (list 'QUOTE (parse-object/dispatch)))
 
-(define (parse-object/quasiquote)
+(define-accretor (parse-object/quasiquote)
   (discard-char)
   (list 'QUASIQUOTE (parse-object/dispatch)))
 
-(define (parse-object/unquote)
+(define-accretor (parse-object/unquote)
   (discard-char)
   (if (char=? #\@ (peek-char))
       (begin
@@ -420,7 +481,7 @@ MIT in each case. |#
 	(list 'UNQUOTE-SPLICING (parse-object/dispatch)))
       (list 'UNQUOTE (parse-object/dispatch))))
 
-(define (parse-object/string-quote)
+(define-accretor (parse-object/string-quote)
   (discard-char)
   (let loop ()
     (let ((head (read-string char-set/string-delimiters)))
@@ -455,7 +516,7 @@ MIT in each case. |#
 		 (string #\\ c1 c2 c3)))
       (ascii->char sum))))
 
-(define (parse-object/char-quote)
+(define-accretor 1 (parse-object/char-quote)
   (discard-char)
   (if (char=? #\\ (peek-char))
       (read-char)
@@ -478,15 +539,15 @@ MIT in each case. |#
 
 ;;;; Constants
 
-(define (parse-object/false)
+(define-accretor (parse-object/false)
   (discard-char)
   false)
 
-(define (parse-object/true)
+(define-accretor (parse-object/true)
   (discard-char)
   true)
 
-(define (parse-object/named-constant)
+(define-accretor 1 (parse-object/named-constant)
   (discard-char)
   (let ((object-name (parse-object/dispatch)))
     (cdr (or (assq object-name named-objects)
@@ -494,7 +555,7 @@ MIT in each case. |#
 
 (define named-objects)
 
-(define (parse-object/unhash)
+(define-accretor 1 (parse-object/unhash)
   (discard-char)
   (let ((number (parse-object/dispatch)))
     (if (not (exact-nonnegative-integer? number))
