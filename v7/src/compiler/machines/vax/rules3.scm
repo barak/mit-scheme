@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.4 1988/02/23 19:47:03 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.5 1988/03/21 21:45:31 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -233,13 +233,9 @@ MIT in each case. |#
 	       (LAP (MOVA L (@PCR ,(cdar references)) (R 9))
 		    ,@(if (null? (cdr references))
 			  (LAP (JSB ,entry:single))
-			  (LAP ,(load-rnw (length references) 1)
+			  (LAP ,(load-rnw (length references) 7)
 			       (JSB ,entry:multiple)))
 		    ,@(make-external-label (generate-label)))))))
-;;;
-;;; Break Point
-;;; Code above this point has been changed
-;;;
     (lambda (block-label constants references assignments uuo-links)
       (declare-constants uuo-links
        (declare-constants references
@@ -317,6 +313,10 @@ MIT in each case. |#
 	 (CMP L ,reg:compiled-memtop (R 12))
 	 ;; *** LEQU ? ***
 	 (B B LEQ (@PCR ,gc-label)))))
+
+(define-rule statement
+  (CONTINUATION-ENTRY (? internal-label))
+  (LAP ,@(make-external-label internal-label)))
 
 (define (procedure-header procedure gc-label)
   (let ((internal-label (rtl-procedure/label procedure))
