@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.8 2001/02/28 14:41:56 cph Exp $
+$Id: tterm.c,v 1.9 2001/03/01 04:25:29 cph Exp $
 
 Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
@@ -28,19 +28,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifdef HAVE_TERMCAP_H
 #  include <termcap.h>
 #else
+   extern int EXFUN (tgetent, (char *, char *));
+   extern int EXFUN (tgetnum, (char *));
+   extern int EXFUN (tgetflag, (char *));
+   extern char * EXFUN (tgetstr, (char *, char **));
+   extern char * EXFUN (tgoto, (char *, int, int));
+   extern int EXFUN (tputs, (char *, int, void (*) (int)));
    extern char * BC;
    extern char * UP;
    extern char PC;
    extern short ospeed;
 #endif
 
-extern int EXFUN (tgetent, (char *, char *));
-extern int EXFUN (tgetnum, (char *));
-extern int EXFUN (tgetflag, (char *));
-extern char * EXFUN (tgetstr, (char *, char **));
 extern char * EXFUN (tparam, (char *, char*, int, int, ...));
-extern char * EXFUN (tgoto, (char *, int, int));
-extern int EXFUN (tputs, (char *, int, void (*) (int)));
 
 #ifndef TERMCAP_BUFFER_SIZE
 #define TERMCAP_BUFFER_SIZE 2048
@@ -53,10 +53,11 @@ static char * tgetstr_pointer;
 static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
-static void
+static int
 DEFUN (tputs_write_char, (c), int c)
 {
   (*tputs_output_scan++) = c;
+  return (c);
 }
 
 DEFINE_PRIMITIVE ("TERMCAP-INITIALIZE", Prim_termcap_initialize, 1, 1, 0)
