@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.41 2003/03/13 20:13:03 cph Exp $
+$Id: record.scm,v 1.42 2003/03/13 21:50:15 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -565,13 +565,9 @@ USA.
 	     (eq? (structure-type/physical-type structure-type) type)
 	     structure-type))))
 
-(define (structure-tag/default-value tag type field-name)
-  (let ((type (tag->structure-type tag type)))
-    (if (not type)
-	(error:wrong-type-argument tag "structure tag"
-				   'STRUCTURE-TAG/DEFAULT-VALUE))
-    ((vector-ref (structure-type/default-inits type)
-		 (structure-type/field-name-index type field-name)))))
+(define (define-structure/default-value type field-name)
+  ((vector-ref (structure-type/default-inits type)
+	       (structure-type/field-name-index type field-name))))
 
 ;;;; Support for safe accessors
 
@@ -660,61 +656,42 @@ USA.
 		(structure-type/name type)
 		`(,accessor-type ,type ',field-name)))))
 
-(define (define-structure/keyword-parser type arguments)
-  (let ((names (structure-type/field-names type))
-	(inits (structure-type/default-inits type)))
-    (let ((n (vector-length names)))
-      (let* ((unseen (list 'UNSEEN))
-	     (values (make-vector n unseen)))
-	(do ((args arguments (cddr args)))
-	    ((not (pair? args)))
-	  (if (not (pair? (cdr args)))
-	      (error "Keyword list does not have even length:" arguments))
-	  (let ((i (structure-type/field-name-index type (car args))))
-	    (if (eq? (vector-ref values i) unseen)
-		(vector-set! values i (cadr args)))))
-	(do ((i (fix:- n 1) (fix:- i 1))
-	     (l '()
-		(cons (if (eq? (vector-ref values i) unseen)
-			  (vector-ref values i)
-			  ((vector-ref inits i)))
-		      l)))
-	    ((not (fix:>= i 0)) l))))))
-
-(define (define-structure/keyword-parser* type arguments)
+(define (define-structure/keyword-constructor type)
   (let ((names (structure-type/field-names type))
 	(indexes (structure-type/field-indexes type))
 	(inits (structure-type/default-inits type))
-	(v (vector-cons (structure-type/length type) #f)))
+	(tag (structure-type/tag type))
+	(len (structure-type/length type)))
     (let ((n (vector-length names)))
-      (let ((tag (structure-type/tag type)))
-	(if tag
-	    (vector-set! v 0 tag)))
-      (let ((seen? (make-vector n #f)))
-	(do ((args arguments (cddr args)))
-	    ((not (pair? args)))
-	  (if (not (pair? (cdr args)))
-	      (error "Keyword list does not have even length:" arguments))
-	  (let ((field-name (car args)))
-	    (let loop ((i 0))
-	      (if (not (fix:< i n))
-		  (error:no-such-slot type field-name))
-	      (if (eq? (vector-ref names i) field-name)
-		  (if (not (vector-ref seen? i))
-		      (begin
-			(vector-set! v
-				     (vector-ref indexes i)
-				     (cadr args))
-			(vector-set! seen? i #t)))
-		  (loop (fix:+ i 1))))))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)))
-	  (if (not (vector-ref seen? i))
-	      (vector-set! v
-			   (vector-ref indexes i)
-			   ((vector-ref inits i))))))
-      (if (eq? (structure-type/physical-type type) 'LIST)
-	  (do ((i (fix:- n 1) (fix:- i 1))
-	       (l '() (cons (vector-ref v i) l)))
-	      ((not (fix:>= i 0)) l))
-	  v))))
+      (lambda arguments
+	(let ((v (vector-cons len #f)))
+	  (if tag
+	      (vector-set! v 0 tag))
+	  (let ((seen? (make-vector n #f)))
+	    (do ((args arguments (cddr args)))
+		((not (pair? args)))
+	      (if (not (pair? (cdr args)))
+		  (error "Keyword list does not have even length:" arguments))
+	      (let ((field-name (car args)))
+		(let loop ((i 0))
+		  (if (not (fix:< i n))
+		      (error:no-such-slot type field-name))
+		  (if (eq? (vector-ref names i) field-name)
+		      (if (not (vector-ref seen? i))
+			  (begin
+			    (vector-set! v
+					 (vector-ref indexes i)
+					 (cadr args))
+			    (vector-set! seen? i #t)))
+		      (loop (fix:+ i 1))))))
+	    (do ((i 0 (fix:+ i 1)))
+		((not (fix:< i n)))
+	      (if (not (vector-ref seen? i))
+		  (vector-set! v
+			       (vector-ref indexes i)
+			       ((vector-ref inits i))))))
+	  (if (eq? (structure-type/physical-type type) 'LIST)
+	      (do ((i (fix:- len 1) (fix:- i 1))
+		   (list '() (cons (vector-ref v i) list)))
+		  ((not (fix:>= i 0)) list))
+	      v))))))

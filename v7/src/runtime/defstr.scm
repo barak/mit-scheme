@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.52 2003/03/13 20:06:41 cph Exp $
+$Id: defstr.scm,v 14.53 2003/03/13 21:50:00 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -561,6 +561,9 @@ differences:
   (offset structure/offset)
   (slots structure/slots))
 
+(define-integrable (structure/record-type? structure)
+  (eq? (structure/physical-type structure) 'RECORD))
+
 (define-record-type <parser-context>
     (make-parser-context name environment closing-environment)
     parser-context?
@@ -661,61 +664,33 @@ differences:
 
 (define (constructor-definitions structure)
   `(,@(map (lambda (constructor)
-	     (if (pair? (cdr constructor))
-		 (constructor-definition/boa structure
-					     (car constructor)
-					     (cadr constructor))
-		 (constructor-definition/default structure (car constructor))))
+	     (constructor-definition/boa
+	      structure
+	      (car constructor)
+	      (if (pair? (cdr constructor))
+		  (cadr constructor)
+		  (map slot/name (structure/slots structure)))))
 	   (structure/constructors structure))
-    ,@(map (lambda (constructor)
-	     (constructor-definition/keyword structure (car constructor)))
-	   (structure/keyword-constructors structure))))
+    ,@(let ((context (structure/context structure)))
+	(let ((p (absolute (if (structure/record-type? structure)
+			       'RECORD-KEYWORD-CONSTRUCTOR
+			       'DEFINE-STRUCTURE/KEYWORD-CONSTRUCTOR)
+			   context))
+	      (t (close (structure/type-descriptor structure) context)))
+	  (map (lambda (constructor) `(DEFINE ,(car constructor) (,p ,t)))
+	       (structure/keyword-constructors structure))))))
 
-(define (constructor-definition/default structure name)
-  (let ((slot-names (map slot/name (structure/slots structure))))
-    (make-constructor structure name slot-names
-      (lambda (tag-expression)
+(define (constructor-definition/boa structure name lambda-list)
+  (make-constructor structure name lambda-list
+    (lambda (tag-expression)
+      (let ((context (structure/context structure)))
 	`(,(absolute (case (structure/physical-type structure)
 		       ((RECORD) '%RECORD)
 		       ((VECTOR) 'VECTOR)
 		       ((LIST) 'LIST))
-		     (structure/context structure))
-	  ,@(constructor-prefix-slots structure tag-expression)
-	  ,@slot-names)))))
-
-(define (constructor-definition/keyword structure name)
-  (let ((context (structure/context structure)))
-    (let ((type-descriptor
-	   (close (structure/type-descriptor structure) context)))
-      (if (eq? (structure/physical-type structure) 'RECORD)
-	  `(DEFINE ,name
-	     (,(absolute 'RECORD-KEYWORD-CONSTRUCTOR context)
-	      ,type-descriptor))
-	  (make-constructor structure name 'KEYWORD-LIST
-	    (lambda (tag-expression)
-	      (let ((list-cons
-		     `(,@(constructor-prefix-slots structure tag-expression)
-		       (,(absolute 'DEFINE-STRUCTURE/KEYWORD-PARSER context)
-			,type-descriptor
-			KEYWORD-LIST))))
-		(case (structure/physical-type structure)
-		  ((VECTOR)
-		   `(,(absolute 'APPLY context) ,(absolute 'VECTOR context)
-						,@list-cons))
-		  ((LIST)
-		   `(,(absolute 'CONS* context) ,@list-cons))))))))))
-
-(define (constructor-definition/boa structure name lambda-list)
-  (make-constructor structure name lambda-list
-    (lambda (tag-expression)
-      (let ((type (structure/physical-type structure))
-	    (context (structure/context structure)))
-	`(,(absolute (case type
-		       ((RECORD) '%RECORD)
-		       ((VECTOR) 'VECTOR)
-		       ((LIST) 'LIST))
 		     context)
-	  ,@(constructor-prefix-slots structure tag-expression)
+	  ,@(if (structure/tagged? structure) `(,tag-expression) '())
+	  ,@(make-list (structure/offset structure) '#F)
 	  ,@(call-with-values (lambda () (parse-mit-lambda-list lambda-list))
 	      (lambda (required optional rest)
 		(let ((name->slot
@@ -726,53 +701,39 @@ differences:
 			(optional (map name->slot optional))
 			(rest (and rest (name->slot rest))))
 		    (map (lambda (slot)
-			   (let ((name (slot/name slot)))
-			     (if (or (memq slot required)
-				     (eq? slot rest))
-				 name
-				 (let ((dv
-					(cond ((eq? type 'RECORD)
-					       `(,(absolute
-						   'RECORD-TYPE-DEFAULT-VALUE
-						   context)
-						 ,(close
-						   (structure/type-descriptor
-						    structure)
-						   context)
-						 ',name))
-					      (tag-expression
-					       `(,(absolute
-						   'STRUCTURE-TAG/DEFAULT-VALUE
-						   context)
-						 ,tag-expression
-						 ',type
-						 ',name))
-					      (else
-					       (close (slot/default slot)
-						      context)))))
-				   (if (memq slot optional)
-				       `(IF (DEFAULT-OBJECT? ,name) ,dv ,name)
-				       dv)))))
+			   (let* ((name (slot/name slot))
+				  (dv (default-value-expr structure name)))
+			     (cond ((or (memq slot required)
+					(eq? slot rest))
+				    name)
+				   ((memq slot optional)
+				    `(IF (DEFAULT-OBJECT? ,name) ,dv ,name))
+				   (else dv))))
 			 (structure/slots structure)))))))))))
 
 (define (make-constructor structure name lambda-list generate-body)
-  (let ((tag-expression
-	 (close (structure/tag-expression structure)
-		(structure/context structure))))
-    (if (eq? (structure/physical-type structure) 'RECORD)
-	(let ((tag (make-synthetic-identifier 'TAG)))
-	  `(DEFINE ,name
-	     (LET ((,tag (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
-	       (NAMED-LAMBDA (,name ,@lambda-list)
-		 ,(generate-body tag)))))
+  (let* ((context (structure/context structure))
+	(tag-expression (close (structure/tag-expression structure) context)))
+    (if (structure/record-type? structure)
+	`(DEFINE ,name
+	   (LET ((TAG
+		  (,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
+		   ,tag-expression)))
+	     ,(capture-syntactic-environment
+	       (lambda (environment)
+		 `(NAMED-LAMBDA (,name ,@lambda-list)
+		    ,(generate-body (close-syntax 'TAG environment)))))))
 	`(DEFINE (,name ,@lambda-list)
 	   ,(generate-body tag-expression)))))
 
-(define (constructor-prefix-slots structure tag-expression)
-  (let ((offsets (make-list (structure/offset structure) '#F)))
-    (if (structure/tagged? structure)
-	(cons tag-expression offsets)
-	offsets)))
+(define (default-value-expr structure name)
+  (let ((context (structure/context structure)))
+    `(,(absolute (if (structure/record-type? structure)
+		     'RECORD-TYPE-DEFAULT-VALUE
+		     'DEFINE-STRUCTURE/DEFAULT-VALUE)
+		 context)
+      ,(close (structure/type-descriptor structure) context)
+      ',name)))
 
 (define (copier-definitions structure)
   (let ((copier-name (structure/copier structure)))
@@ -818,8 +779,7 @@ differences:
 	'())))
 
 (define (type-definitions structure)
-  (let ((physical-type (structure/physical-type structure))
-	(type-name (structure/type-descriptor structure))
+  (let ((type-name (structure/type-descriptor structure))
 	(tag-expression (structure/tag-expression structure))
 	(slots (structure/slots structure))
 	(context (structure/context structure))
@@ -831,14 +791,14 @@ differences:
 		  `(LAMBDA () ,(close (slot/default slot) context)))
 		slots)))
       `((DEFINE ,type-name
-	  ,(if (eq? physical-type 'RECORD)
+	  ,(if (structure/record-type? structure)
 	       `(,(absolute 'MAKE-RECORD-TYPE context)
 		 ',name
 		 ',field-names
 		 (LIST ,@inits)
 		 ,(close print-procedure context))
 	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
-		 ',physical-type
+		 ',(structure/physical-type structure)
 		 ',name
 		 ',field-names
 		 ',(map slot/index slots)
