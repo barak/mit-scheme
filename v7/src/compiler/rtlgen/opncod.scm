@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.52 1992/12/16 09:20:06 gjr Exp $
+$Id: opncod.scm,v 4.53 1992/12/16 12:12:18 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -585,14 +585,12 @@ MIT in each case. |#
    (lambda (combination expressions finish)
      (let ((type (car expressions))
 	   (object (cadr expressions)))
-       (let* ((operand (rvalue-known-value type))
-	      (ok? (and operand
-			(rvalue/constant? operand)))
+       (let* ((ok? (rtl:constant? type))
 	      (tag (and ok?
-			(constant-value operand))))
+			(rtl:constant-value type))))
 	 (if (and ok?
-		(exact-nonnegative-integer? tag)
-		(< tag (expt 2 scheme-type-width)))
+		  (exact-nonnegative-integer? tag)
+		  (< tag (expt 2 scheme-type-width)))
 	     (finish
 	      (rtl:make-type-test (rtl:make-object->type object)
 				  tag))
