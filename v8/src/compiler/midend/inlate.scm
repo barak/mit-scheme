@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.3 1995/02/22 04:09:20 adams Exp $
+$Id: inlate.scm,v 1.4 1995/04/29 00:57:15 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,7 +59,7 @@ MIT in each case. |#
 	 (if (sequence? form*)
 	     (beginnify
 	      (inlate/map-declarations
-	       (lmap inlate/scode (sequence-actions form*))))
+	       (map inlate/scode (sequence-actions form*))))
 	     (inlate/scode form*)))
        (new-dbg-expression/make form))))
 
@@ -158,14 +158,14 @@ MIT in each case. |#
 	  `(UNASSIGNED? ,(cadr rands))
 	  `(CALL ,(inlate/scode rator)
 		 (QUOTE #F)		; continuation
-		 ,@(lmap inlate/scode rands))))))
+		 ,@(map inlate/scode rands))))))
 
 (define-inlator COMMENT (text body)
   text					; ignored
   (inlate/scode body))
 
 (define-inlator SEQUENCE (actions)
-  (beginnify (lmap inlate/scode actions)))
+  (beginnify (map inlate/scode actions)))
      
 (define-inlator CONDITIONAL (pred conseq alt)
   `(IF ,(inlate/scode pred)

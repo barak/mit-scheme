@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.4 1995/02/27 23:05:55 adams Exp $
+$Id: expand.scm,v 1.5 1995/04/29 00:57:30 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -79,9 +79,9 @@ MIT in each case. |#
 		   (if (null? auxes)
 		       `(LAMBDA ,rest ,body)
 		       (let ((body*
-			      `(LET ,(lmap (lambda (aux)
-					     (list aux `(QUOTE ,%unassigned)))
-					   auxes)
+			      `(LET ,(map (lambda (aux)
+					    (list aux `(QUOTE ,%unassigned)))
+					  auxes)
 				 ,(expand/aux/sort auxes body))))
 			 (expand/split-block body* form)
 			 `(LAMBDA ,rest
@@ -271,17 +271,17 @@ MIT in each case. |#
 	`(CALL (QUOTE ,%vector)
 	       (QUOTE #F)
 	       ,@exprs)
-	`(QUOTE ,(list->vector (lmap cadr exprs)))))
+	`(QUOTE ,(list->vector (map cadr exprs)))))
 
   (define (->multi-define defns)
     `(CALL (QUOTE ,%*define*)
 	   (QUOTE #F)
 	   ,(list-ref (car defns) 3)
-	   (QUOTE ,(list->vector (lmap (lambda (defn)
-					 (cadr (list-ref defn 4)))
-				       defns)))
+	   (QUOTE ,(list->vector (map (lambda (defn)
+					(cadr (list-ref defn 4)))
+				      defns)))
 	   ,(->vector
-	     (lmap (lambda (defn)
+	     (map (lambda (defn)
 		     (list-ref defn 5))
 		   defns))))
 

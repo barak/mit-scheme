@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.7 1994/12/06 16:30:09 adams Exp $
+$Id: envconv.scm,v 1.8 1995/04/29 00:55:01 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,16 +153,16 @@ MIT in each case. |#
 			    (envconv/env/block env))))))
 
 (define-environment-converter LET (env bindings body)
-  (let ((bindings* (lmap (lambda (binding)
-			   (list (car binding)
-				 (envconv/expr env (cadr binding))))
-			 bindings)))
+  (let ((bindings* (map (lambda (binding)
+			  (list (car binding)
+				(envconv/expr env (cadr binding))))
+			bindings)))
     (envconv/binding-body (let ((context (envconv/env/context env)))
 			    (if (eq? context 'TOP-LEVEL)
 				'ONCE-ONLY
 				context))
 			  env
-			  (lmap car bindings)
+			  (map car bindings)
 			  body
 			  (lambda (body*)
 			    `(LET ,bindings*
@@ -321,9 +321,9 @@ MIT in each case. |#
   (envconv/expr-with-name env expr #f))
 
 (define (envconv/expr* env exprs)
-  (lmap (lambda (expr)
-	  (envconv/expr env expr))
-	exprs))
+  (map (lambda (expr)
+	 (envconv/expr env expr))
+       exprs))
 
 (define (envconv/remember new old block)
   (call-with-values
@@ -552,9 +552,9 @@ MIT in each case. |#
 	       (LOOKUP ,(envconv/env/reified-name (envconv/env/parent env*)))
 	       (QUOTE ,(list->vector (cons lambda-tag:make-environment
 					   names)))
-	       ,@(lmap (lambda (name)
-			 `(LOOKUP ,name))
-		       names))
+	       ,@(map (lambda (name)
+			`(LOOKUP ,name))
+		      names))
 	body*))
 
 (define (envconv/process-root! top-level-env top-level-program)
@@ -863,10 +863,10 @@ MIT in each case. |#
 
 (define (envconv/wrap-with-cache-bindings env cells body)
   (let ((body*
-	 `(CALL (LAMBDA (,(new-continuation-variable) ,@(lmap cadr cells))
+	 `(CALL (LAMBDA (,(new-continuation-variable) ,@(map cadr cells))
 		  ,body)
 		(QUOTE #F)
-		,@(lmap caddr cells))))
+		,@(map caddr cells))))
     (if (or (eq? (envconv/env/context env) 'TOP-LEVEL)
 	    (not envconv/variable-caches-must-be-static?))
 	body*

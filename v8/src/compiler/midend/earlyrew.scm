@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.7 1995/02/28 01:39:12 adams Exp $
+$Id: earlyrew.scm,v 1.8 1995/04/29 00:55:26 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -78,17 +78,17 @@ MIT in each case. |#
 	 (default))))
 
 (define-early-rewriter LET (bindings body)
-  `(LET ,(lmap (lambda (binding)
-		 (list (car binding)
-		       (earlyrew/expr (cadr binding))))
-	       bindings)
+  `(LET ,(map (lambda (binding)
+		(list (car binding)
+		      (earlyrew/expr (cadr binding))))
+	      bindings)
      ,(earlyrew/expr body)))
 
 (define-early-rewriter LETREC (bindings body)
-  `(LETREC ,(lmap (lambda (binding)
-		    (list (car binding)
-			  (earlyrew/expr (cadr binding))))
-		  bindings)
+  `(LETREC ,(map (lambda (binding)
+		   (list (car binding)
+			 (earlyrew/expr (cadr binding))))
+		 bindings)
      ,(earlyrew/expr body)))
 
 (define-early-rewriter QUOTE (object)
@@ -134,9 +134,9 @@ MIT in each case. |#
      (illegal expr))))
 
 (define (earlyrew/expr* exprs)
-  (lmap (lambda (expr)
-	  (earlyrew/expr expr))
-	exprs))
+  (map (lambda (expr)
+	 (earlyrew/expr expr))
+       exprs))
 
 (define (earlyrew/remember new old)
   (code-rewrite/remember new old))
