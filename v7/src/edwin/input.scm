@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: input.scm,v 1.100 1999/01/02 06:11:34 cph Exp $
+;;; $Id: input.scm,v 1.101 2000/04/30 22:17:05 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -83,23 +83,23 @@ B 3BAB8C
 (define auto-save-keystroke-count)
 
 (define (initialize-typeout!)
-  (set! command-prompt-string false)
-  (set! command-prompt-displayed? false)
-  (set! message-string false)
-  (set! message-should-be-erased? false)
+  (set! command-prompt-string #f)
+  (set! command-prompt-displayed? #f)
+  (set! message-string #f)
+  (set! message-should-be-erased? #f)
   (set! auto-save-keystroke-count 0)
   unspecific)
 
 (define (reset-command-prompt!)
   ;; Should only be called by the command reader.  This prevents
   ;; carryover from one command to the next.
-  (set! command-prompt-string false)
+  (set! command-prompt-string #f)
   (if command-prompt-displayed?
       ;; To make it more visible, the command prompt is erased after
       ;; timeout instead of right away.
       (begin
-	(set! command-prompt-displayed? false)
-	(set! message-should-be-erased? true)))
+	(set! command-prompt-displayed? #f)
+	(set! message-should-be-erased? #t)))
   unspecific)
 
 (define-integrable (command-prompt)
@@ -115,18 +115,26 @@ B 3BAB8C
 (define (append-command-prompt! string)
   (if (not (string-null? string))
       (set-command-prompt! (string-append (command-prompt) string))))
-
+
 (define (message . args)
-  (%message (message-args->string args) false))
+  (%message (message-args->string args) #f))
 
 (define (temporary-message . args)
-  (%message (message-args->string args) true))
+  (%message (message-args->string args) #t))
+
+(define (message-wrapper temporary? . args)
+  (let ((msg (message-args->string args)))
+    (lambda (thunk)
+      (%message (string-append msg "...") temporary?)
+      (let ((value (thunk)))
+	(%message (string-append msg "...done") temporary?)
+	value))))
 
 (define (%message string temporary?)
   (if command-prompt-displayed?
       (begin
-	(set! command-prompt-string false)
-	(set! command-prompt-displayed? false)))
+	(set! command-prompt-string #f)
+	(set! command-prompt-displayed? #f)))
   (set! message-string string)
   (set! message-should-be-erased? temporary?)
   (set-current-message! string))
@@ -137,6 +145,7 @@ B 3BAB8C
 	      args)))
 
 (define (append-message . args)
+  ;; Deprecated.  Don't use this.
   (if (not message-string)
       (error "Attempt to append to nonexistent message"))
   (let ((string (string-append message-string (message-args->string args))))
@@ -146,8 +155,8 @@ B 3BAB8C
 (define (clear-message)
   (if message-string
       (begin
-	(set! message-string false)
-	(set! message-should-be-erased? false)
+	(set! message-string #f)
+	(set! message-should-be-erased? #f)
 	(if (not command-prompt-displayed?)
 	    (clear-current-message!)))))
 
@@ -219,31 +228,31 @@ B 3BAB8C
 		  (begin
 		    (do-auto-save)
 		    (set! auto-save-keystroke-count 0)))
-	      (update-screens! false)))
+	      (update-screens! #f)))
 	(let ((wait
 	       (lambda (timeout)
 		 (let ((t (+ (real-time-clock) timeout)))
 		   (let loop ()
-		     (cond ((peek-no-hang) false)
-			   ((>= (real-time-clock) t) true)
+		     (cond ((peek-no-hang) #f)
+			   ((>= (real-time-clock) t) #t)
 			   (else (loop))))))))
 	  ;; Perform the appropriate juggling of the minibuffer message.
 	  (cond ((within-typein-edit?)
 		 (if message-string
 		     (begin
 		       (wait read-key-timeout/slow)
-		       (set! message-string false)
-		       (set! message-should-be-erased? false)
+		       (set! message-string #f)
+		       (set! message-should-be-erased? #f)
 		       (clear-current-message!))))
 		((and (or message-should-be-erased?
 			  (and command-prompt-string
 			       (not command-prompt-displayed?)))
 		      (wait read-key-timeout/fast))
-		 (set! message-string false)
-		 (set! message-should-be-erased? false)
+		 (set! message-string #f)
+		 (set! message-should-be-erased? #f)
 		 (if command-prompt-string
 		     (begin
-		       (set! command-prompt-displayed? true)
+		       (set! command-prompt-displayed? #t)
 		       (set-current-message! command-prompt-string))
 		     (clear-current-message!)))))
 	(reader)))

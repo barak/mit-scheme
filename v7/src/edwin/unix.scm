@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.107 2000/03/23 03:19:24 cph Exp $
+;;; $Id: unix.scm,v 1.108 2000/04/30 22:17:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -398,50 +398,49 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
   '("gz" "bz2" "Z"))
 
 (define (read-compressed-file program pathname mark)
-  (message "Uncompressing file " (->namestring pathname) "...")
-  (let ((value
-	 (call-with-temporary-file-pathname
-	  (lambda (temporary)
-	    (if (not (equal? '(EXITED . 0)
-			     (shell-command #f #f
-					    (directory-pathname pathname)
-					    #f
-					    (string-append
-					     program
-					     " < "
-					     (file-namestring pathname)
-					     " > "
-					     (->namestring temporary)))))
-		(error:file-operation pathname
-				      program
-				      "file"
-				      "[unknown]"
-				      read-compressed-file
-				      (list pathname mark)))
-	    (group-insert-file! (mark-group mark)
-				(mark-index mark)
-				temporary
-				(pathname-newline-translation pathname))))))
-    (append-message "done")
-    value))
+  ((message-wrapper #f "Uncompressing file " (->namestring pathname))
+   (lambda ()
+     (call-with-temporary-file-pathname
+      (lambda (temporary)
+	(if (not (equal? '(EXITED . 0)
+			 (shell-command #f #f
+					(directory-pathname pathname)
+					#f
+					(string-append
+					 program
+					 " < "
+					 (file-namestring pathname)
+					 " > "
+					 (->namestring temporary)))))
+	    (error:file-operation pathname
+				  program
+				  "file"
+				  "[unknown]"
+				  read-compressed-file
+				  (list pathname mark)))
+	(group-insert-file! (mark-group mark)
+			    (mark-index mark)
+			    temporary
+			    (pathname-newline-translation pathname)))))))
 
 (define (write-compressed-file program region pathname)
-  (message "Compressing file " (->namestring pathname) "...")
-  (if (not (equal? '(EXITED . 0)
-		   (shell-command region
-				  #f
-				  (directory-pathname pathname)
-				  #f
-				  (string-append program
-						 " > "
-						 (file-namestring pathname)))))
-      (error:file-operation pathname
-			    program
-			    "file"
-			    "[unknown]"
-			    write-compressed-file
-			    (list region pathname)))
-  (append-message "done"))
+  ((message-wrapper #f "Compressing file " (->namestring pathname))
+   (lambda ()
+     (if (not (equal?
+	       '(EXITED . 0)
+	       (shell-command region
+			      #f
+			      (directory-pathname pathname)
+			      #f
+			      (string-append program
+					     " > "
+					     (file-namestring pathname)))))
+	 (error:file-operation pathname
+			       program
+			       "file"
+			       "[unknown]"
+			       write-compressed-file
+			       (list region pathname))))))
 
 ;;;; Dired customization
 

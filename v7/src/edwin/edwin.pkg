@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.253 2000/04/30 21:52:50 cph Exp $
+$Id: edwin.pkg,v 1.254 2000/04/30 22:17:04 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -442,6 +442,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  keyboard-read-char
 	  message
 	  message-args->string
+	  message-wrapper
 	  reset-command-prompt!
 	  set-command-prompt!
 	  temporary-message))

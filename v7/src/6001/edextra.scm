@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.30 2000/03/23 22:35:30 cph Exp $
+$Id: edextra.scm,v 1.31 2000/04/30 22:17:19 cph Exp $
 
 Copyright (c) 1992-2000 Massachusetts Institute of Technology
 
@@ -125,29 +125,28 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (editor-error "Not a window object!"))))))
 
 (define (print-given-x-window x-window-id)
-  (message "Spooling...")
-  (shell-command
-   false false false false
-   (string-append (->namestring
-		   (merge-pathnames "bin/print-given-x-window"
-				    student-root-directory))
-		  " 0x"
-		  (number->string x-window-id 16)
-		  " "
-		  (print/assemble-switches "Scheme Picture" '())))
-  (append-message "done"))
+  ((message-wrapper #f "Spooling")
+   (lambda ()
+     (shell-command
+      false false false false
+      (string-append (->namestring
+		      (merge-pathnames "bin/print-given-x-window"
+				       student-root-directory))
+		     " 0x"
+		     (number->string x-window-id 16)
+		     " "
+		     (print/assemble-switches "Scheme Picture" '()))))))
 
 (define (print-pointed-x-window)
-  (message "Click desired window...")
-  (shell-command
-   false false false false
-   (string-append (->namestring
-		   (merge-pathnames "bin/print-pointed-x-window"
-				    student-root-directory))
-		  " "
-		  (print/assemble-switches "Scheme Picture" '())))
-  (append-message "done"))
-
+  ((message-wrapper #f "Click desired window")
+   (lambda ()
+     (shell-command
+      false false false false
+      (string-append (->namestring
+		      (merge-pathnames "bin/print-pointed-x-window"
+				       student-root-directory))
+		     " "
+		     (print/assemble-switches "Scheme Picture" '()))))))
 #|
 ;;; If using pointer (mouse).
 
@@ -273,15 +272,19 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 		(groups/files-to-reference groups))
       (for-each (lambda (file)
 		  (let ((filename (merge-pathnames file pset-path)))
-		    (message "Evaluating file " (->namestring filename))
-		    (load-quietly filename '(STUDENT))
-		    (append-message " -- done")))
+		    ((message-wrapper #f
+				      "Evaluating file "
+				      (->namestring filename))
+		     (lambda ()
+		       (load-quietly filename '(STUDENT))))))
 		(groups/files-to-load groups))
       (for-each (lambda (file)
 		  (let ((filename (merge-pathnames file pset-path)))
-		    (message "Evaluating file " (->namestring filename))
-		    (load-quietly filename '(STUDENT))
-		    (append-message " -- done")
+		    ((message-wrapper #f
+				      "Evaluating file "
+				      (->namestring filename))
+		     (lambda ()
+		       (load-quietly filename '(STUDENT))))
 		    (find-file-noselect filename #t)))
 		(groups/files-to-load&reference groups))
       (for-each (lambda (file)

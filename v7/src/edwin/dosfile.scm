@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.36 2000/02/28 04:23:08 cph Exp $
+;;; $Id: dosfile.scm,v 1.37 2000/04/30 22:17:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -534,51 +534,49 @@ filename suffix \".gz\"."
        (equal? "gz" (pathname-type pathname))))
 
 (define (read-compressed-file program arguments pathname mark)
-  (message "Uncompressing file " (->namestring pathname) "...")
-  (let ((value
-	 (call-with-temporary-file-pathname
-	  (lambda (temporary)
-	    (if (not (equal? '(EXITED . 0)
-			     (shell-command #f #f
-					    (directory-pathname pathname)
-					    #f
-					    (string-append
-					     (quote-program program arguments)
-					     " < "
-					     (file-namestring pathname)
-					     " > "
-					     (->namestring temporary)))))
-		(error:file-operation pathname
-				      program
-				      "file"
-				      "[unknown]"
-				      read-compressed-file
-				      (list pathname mark)))
-	    (group-insert-file! (mark-group mark)
-				(mark-index mark)
-				temporary
-				(pathname-newline-translation pathname))))))
-    (append-message "done")
-    value))
+  ((message-wrapper #f "Uncompressing file " (->namestring pathname))
+   (lambda ()
+     (call-with-temporary-file-pathname
+      (lambda (temporary)
+	(if (not (equal? '(EXITED . 0)
+			 (shell-command #f #f
+					(directory-pathname pathname)
+					#f
+					(string-append
+					 (quote-program program arguments)
+					 " < "
+					 (file-namestring pathname)
+					 " > "
+					 (->namestring temporary)))))
+	    (error:file-operation pathname
+				  program
+				  "file"
+				  "[unknown]"
+				  read-compressed-file
+				  (list pathname mark)))
+	(group-insert-file! (mark-group mark)
+			    (mark-index mark)
+			    temporary
+			    (pathname-newline-translation pathname)))))))
 
 (define (write-compressed-file program arguments region pathname)
-  (message "Compressing file " (->namestring pathname) "...")
-  (if (not (equal? '(EXITED . 0)
-		   (shell-command region
-				  #f
-				  (directory-pathname pathname)
-				  #f
-				  (string-append (quote-program program
-								arguments)
-						 " > "
-						 (file-namestring pathname)))))
-      (error:file-operation pathname
-			    program
-			    "file"
-			    "[unknown]"
-			    write-compressed-file
-			    (list region pathname)))
-  (append-message "done"))
+  ((message-wrapper #f "Compressing file " (->namestring pathname))
+   (lambda ()
+     (if (not (equal?
+	       '(EXITED . 0)
+	       (shell-command region
+			      #f
+			      (directory-pathname pathname)
+			      #f
+			      (string-append (quote-program program arguments)
+					     " > "
+					     (file-namestring pathname)))))
+	 (error:file-operation pathname
+			       program
+			       "file"
+			       "[unknown]"
+			       write-compressed-file
+			       (list region pathname))))))
 
 (define (quote-program program arguments)
   (string-append (if (eq? 'NT microcode-id/operating-system)

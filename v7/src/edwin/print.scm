@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: print.scm,v 1.18 1999/01/28 03:59:55 cph Exp $
+;;; $Id: print.scm,v 1.19 2000/04/30 22:17:07 cph Exp $
 ;;;
-;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -51,32 +51,32 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
     (print-region/internal region true)))
 
 (define (print-region/internal region print-headers?)
-  (message "Spooling...")
-  (let ((buffer (mark-buffer (region-start region)))
-	(print-headers? (and print-headers? (not lpr-print-not-special?)))
-	(title (print-region-title-string region)))
-    (let ((call-printer
-	   (lambda (region)
-	     ((or (ref-variable lpr-procedure buffer)
-		  (case microcode-id/operating-system
-		    ((NT) print-region/nt)
-		    (else print-region/default)))
-	      region print-headers? title buffer)))
-	  (width (ref-variable tab-width buffer)))
-      (if (= width 8)
-	  (call-printer region)
-	  (call-with-temporary-buffer " *spool temp*"
-	    (lambda (temp-buffer)
-	      (insert-region (region-start region)
-			     (region-end region)
-			     (buffer-point temp-buffer))
-	      (define-variable-local-value! temp-buffer
-		(ref-variable-object tab-width)
-		width)
-	      (untabify-region (buffer-start temp-buffer)
-			       (buffer-end temp-buffer))
-	      (call-printer (buffer-region temp-buffer)))))))
-  (append-message "done"))
+  ((message-wrapper #f "Spooling")
+   (lambda ()
+     (let ((buffer (mark-buffer (region-start region)))
+	   (print-headers? (and print-headers? (not lpr-print-not-special?)))
+	   (title (print-region-title-string region)))
+       (let ((call-printer
+	      (lambda (region)
+		((or (ref-variable lpr-procedure buffer)
+		     (case microcode-id/operating-system
+		       ((NT) print-region/nt)
+		       (else print-region/default)))
+		 region print-headers? title buffer)))
+	     (width (ref-variable tab-width buffer)))
+	 (if (= width 8)
+	     (call-printer region)
+	     (call-with-temporary-buffer " *spool temp*"
+	       (lambda (temp-buffer)
+		 (insert-region (region-start region)
+				(region-end region)
+				(buffer-point temp-buffer))
+		 (define-variable-local-value! temp-buffer
+		   (ref-variable-object tab-width)
+		   width)
+		 (untabify-region (buffer-start temp-buffer)
+				  (buffer-end temp-buffer))
+		 (call-printer (buffer-region temp-buffer))))))))))
 
 (define (print-region/default region print-headers? title buffer)
   (shell-command region false false false

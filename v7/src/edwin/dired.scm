@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.181 2000/04/01 05:18:55 cph Exp $
+;;; $Id: dired.scm,v 1.182 2000/04/30 22:17:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -204,13 +204,12 @@ Type `h' after entering dired for more info."
 	(file-list (cdr directory-spec)))
     (set-buffer-writeable! buffer)
     (region-delete! (buffer-region buffer))
-    (temporary-message
-     (string-append "Reading directory " (->namestring pathname) "..."))
-    (read-directory pathname
-		    file-list
-		    (ref-variable dired-listing-switches buffer)
-		    (buffer-point buffer))
-    (append-message "done")
+    ((message-wrapper #t "Reading directory " (->namestring pathname))
+     (lambda ()
+       (read-directory pathname
+		       file-list
+		       (ref-variable dired-listing-switches buffer)
+		       (buffer-point buffer))))
     (let ((point (mark-left-inserting-copy (buffer-point buffer)))
 	  (group (buffer-group buffer)))
       (let ((index (mark-index (buffer-start buffer))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: abbrev.scm,v 1.3 2000/04/04 16:53:05 cph Exp $
+;;; $Id: abbrev.scm,v 1.4 2000/04/30 22:16:57 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -569,9 +569,9 @@ it defaults to the value of `abbrev-file-name'."
 			       (list (ref-variable abbrev-file-name #f)))))
   (lambda (filename)
     (let ((filename (abbrev-file/filename filename)))
-      (message "Loading " filename "...")
-      (quietly-read-abbrev-file filename)
-      (append-message "done"))))
+      ((message-wrapper #f "Loading " filename)
+       (lambda ()
+	 (quietly-read-abbrev-file filename))))))
 
 (define (quietly-read-abbrev-file #!optional filename)
   (let ((filename

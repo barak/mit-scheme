@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: autold.scm,v 1.55 1999/02/02 19:50:11 cph Exp $
+;;;$Id: autold.scm,v 1.56 2000/04/30 22:16:58 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -194,9 +194,9 @@ Second arg is prefix arg when called interactively."
 			    evaluation-error-handler
 			  (lambda ()
 			    (fluid-let ((load/suppress-loading-message? #t))
-			      (message "Loading " (car library) "...")
-			      (do-it library)
-			      (append-message "done"))))))
+			      ((message-wrapper #f "Loading " (car library))
+			       (lambda ()
+				 (do-it library))))))))
 		     (do-it library))))))
 	(cond ((not (library-loaded? name))
 	       (do-it))
@@ -211,9 +211,9 @@ Second arg PURIFY? means purify the file's contents after loading;
  this is the prefix arg when called interactively."
   "fLoad file\nP"
   (lambda (filename purify?)
-    (temporary-message "Loading " filename "...")
-    (load-edwin-file filename '(EDWIN) purify?)
-    (append-message "done")))
+    ((message-wrapper #f "Loading " filename)
+     (lambda ()
+       (load-edwin-file filename '(EDWIN) purify?)))))
 
 (define (load-edwin-file filename environment purify?)
   (with-output-to-transcript-buffer

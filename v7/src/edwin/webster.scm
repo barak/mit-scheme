@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: webster.scm,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: webster.scm,v 1.4 2000/04/30 22:17:10 cph Exp $
 
-Copyright (c) 1998-1999 Massachusetts Institute of Technology
+Copyright (c) 1998-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -75,12 +75,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (let ((server
 	     (or (ref-variable webster-server buffer)
 		 (editor-error "Variable webster-server not set."))))
-	(message "Opening webster connection to " server "...")
-	(set! webster-server-port
-	      (open-tcp-stream-socket server
-				      (ref-variable webster-port buffer)
-				      4096))
-	(append-message "done")
+	((message-wrapper #f "Opening webster connection to " server)
+	 (lambda ()
+	   (set! webster-server-port
+		 (open-tcp-stream-socket server
+					 (ref-variable webster-port buffer)
+					 4096))))
 	(global-window-modeline-event!
 	 (lambda (window) window 'WEBSTER-CONNECTION-STATUS)))))
 

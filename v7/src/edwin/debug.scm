@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.49 2000/03/23 03:19:04 cph Exp $
+;;; $Id: debug.scm,v 1.50 2000/04/30 22:17:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -327,31 +327,32 @@
 	buffer
 	(let ((write-description
 	       (bline-type/write-description (bline/type bline))))
-	  (temporary-message "Computing, please wait...")
-	  (and write-description
-	       (let ((buffer (browser/new-buffer (bline/browser bline) #f)))
-		 (call-with-output-mark (buffer-start buffer)
-		   (lambda (port)
-		     (write-description bline port)
-		     (if env-exists?
-			 (begin
-			   (debugger-newline port)
-			   (write-string evaluation-line-marker port)
-			   (debugger-newline port)))))
-		     (set-buffer-point! buffer (buffer-start buffer))
-		 (1d-table/put! (bline/properties bline)
-				'DESCRIPTION-BUFFER
-				buffer)
-		 (read-only-between (buffer-start buffer) (buffer-end buffer))
-		 (buffer-not-modified! buffer)
-		 (if env-exists?
-		     (start-inferior-repl!
-		      buffer
-		      environment
-		      (evaluation-syntax-table buffer environment)
-		      #f))
-		 (append-message "done")
-		 buffer))))))
+	  ((message-wrapper #t "Computing, please wait")
+	   (lambda ()
+	     (and write-description
+		  (let ((buffer (browser/new-buffer (bline/browser bline) #f)))
+		    (call-with-output-mark (buffer-start buffer)
+		      (lambda (port)
+			(write-description bline port)
+			(if env-exists?
+			    (begin
+			      (debugger-newline port)
+			      (write-string evaluation-line-marker port)
+			      (debugger-newline port)))))
+			(set-buffer-point! buffer (buffer-start buffer))
+		    (1d-table/put! (bline/properties bline)
+				   'DESCRIPTION-BUFFER
+				   buffer)
+		    (read-only-between (buffer-start buffer)
+				       (buffer-end buffer))
+		    (buffer-not-modified! buffer)
+		    (if env-exists?
+			(start-inferior-repl!
+			 buffer
+			 environment
+			 (evaluation-syntax-table buffer environment)
+			 #f))
+		    buffer))))))))
 
 (define evaluation-line-marker
   ";EVALUATION may occur below in the environment of the selected frame.")
