@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.22 1987/06/01 21:05:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.23 1987/06/02 21:19:34 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -316,7 +316,7 @@ MIT in each case. |#
 					  (scfg-next-hooks n4)))))
 	      (let ((block (reference-block operator)))
 		(rtl:make-invocation:lookup
-		 frame-size
+		 frame-size*
 		 (prefix combination frame-size)
 		 continuation
 		 (nearest-ic-block-expression block)
