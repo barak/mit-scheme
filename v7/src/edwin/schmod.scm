@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.50 2001/06/18 04:18:25 cph Exp $
+;;; $Id: schmod.scm,v 1.51 2001/07/12 21:05:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -162,6 +162,7 @@ The following commands evaluate Scheme expressions:
 
 	    ;; Remainder are MIT Scheme specific.
 
+	    (DEFINE-STRUCTURE . 2)
 	    (FLUID-LET . 1)
 	    (IN-PACKAGE . 1)
 	    (LET-SYNTAX . 1)
