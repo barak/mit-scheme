@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.20 2003/02/14 18:28:03 cph Exp $
+$Id: lapgen.scm,v 1.21 2004/07/01 01:19:58 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1997,1998 Massachusetts Institute of Technology
+Copyright 2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,8 +32,7 @@ USA.
 ;;;; Register-Allocator Interface
 
 (define (register->register-transfer source target)
-  (if (not (register-types-compatible? source target))
-      (error "Moving between incompatible register types" source target))
+  (guarantee-registers-compatible source target)
   (case (register-type source)
     ((GENERAL) (copy source target))
     ((FLOAT) (fp-copy source target))
@@ -95,9 +95,6 @@ USA.
 
 (define-integrable (word-register? register)
   (eq? (register-type register) 'GENERAL))
-      
-(define (register-types-compatible? type1 type2)
-  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (register-type register)
   (cond ((machine-register? register)

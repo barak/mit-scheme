@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.34 2003/02/14 18:28:03 cph Exp $
+$Id: lapgen.scm,v 1.35 2004/07/01 01:19:58 cph Exp $
 
 Copyright 1992,1993,1998,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,9 +66,6 @@ USA.
 	 'FLOAT)
 	(else
 	 (error "unable to determine register type" register))))
-
-(define (register-types-compatible? type1 type2)
-  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
@@ -136,8 +134,7 @@ USA.
 ;;;; Utilities for the register allocator interface
 
 (define-integrable (machine->machine-register source target)
-  (if (not (register-types-compatible? source target))
-      (error "Moving between incompatible register types" source target))
+  (guarantee-registers-compatible source target)
   (if (not (float-register? source))
       (LAP (MOV W ,(register-reference target) ,(register-reference source)))
       (let ((ssti (floreg->sti source))

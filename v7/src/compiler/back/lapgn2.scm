@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgn2.scm,v 1.23 2003/02/14 18:28:00 cph Exp $
+$Id: lapgn2.scm,v 1.24 2004/07/01 01:19:57 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1993 Massachusetts Institute of Technology
+Copyright 1994,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,6 +164,16 @@ USA.
       (and (register-type? register type) register)
       (maybe-need-register!
        (pseudo-register-alias *register-map* type register))))
+
+(define (guarantee-registers-compatible r1 r2)
+  (if (not (registers-compatible? r1 r2))
+      (error "Incompatible register types:" source target)))
+
+(define (registers-compatible? r1 r2)
+  (register-types-compatible? (register-type r1) (register-type r2)))
+
+(define (register-types-compatible? type1 type2)
+  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (load-alias-register! register type)
   ;; Returns an alias for `register', of the given `type'.  If no such

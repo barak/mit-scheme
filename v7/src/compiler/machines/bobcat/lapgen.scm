@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.55 2003/02/14 18:28:02 cph Exp $
+$Id: lapgen.scm,v 4.56 2004/07/01 01:19:58 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1998,2001,2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -62,9 +63,6 @@ USA.
 	a0 a1 a2 a3
 	fp0 fp1 fp2 fp3 fp4 fp5 fp6 fp7))
 
-(define (register-types-compatible? type1 type2)
-  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
-
 (define (register-type register)
   (cond ((machine-register? register)
 	 (vector-ref
@@ -119,8 +117,7 @@ USA.
        (value-class=word? (pseudo-register-value-class register))))
 
 (define (machine->machine-register source target)
-  (if (not (register-types-compatible? source target))
-      (error "Moving between incompatible register types" source target))
+  (guarantee-registers-compatible source target)
   (if (float-register? source)
       (LAP (FMOVE ,(register-reference source)
 		  ,(register-reference target)))
