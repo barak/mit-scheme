@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.32 2000/05/04 18:52:30 cph Exp $
+;;; $Id: imail-top.scm,v 1.33 2000/05/04 19:03:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -123,6 +123,9 @@ May be called with an IMAIL folder URL as argument;
 					'(READ-ONLY SHRINK-WINDOW
 						    FLUSH-ON-SPACE)
 					procedure))
+
+(define imail-message-wrapper
+  message-wrapper)
 
 (define (associate-imail-folder-with-buffer folder buffer)
   (buffer-put! buffer 'IMAIL-FOLDER folder)
