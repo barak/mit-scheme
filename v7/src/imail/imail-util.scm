@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.11 2000/04/28 19:05:53 cph Exp $
+;;; $Id: imail-util.scm,v 1.12 2000/05/02 20:59:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,7 @@
 		  (fix:+ count 1)
 		  count))
 	count)))
-
+
 (define (remove-duplicates items predicate)
   (let loop ((items items) (items* '()))
     (if (pair? items)
@@ -86,6 +86,35 @@
 		  items*
 		  (cons (car items) items*)))
 	(reverse! items*))))
+
+(define (remove-duplicates! items predicate)
+  (define (trim-initial-segment items)
+    (cond ((pair? items)
+	   (if (test-item items)
+	       (trim-initial-segment (cdr items))
+	       (begin
+		 (locate-initial-segment items (cdr items))
+		 items)))
+	  ((null? items) items)
+	  (else (lose))))
+
+  (define (locate-initial-segment prev this)
+    (cond ((pair? this)
+	   (if (test-item this)
+	       (set-cdr! prev (trim-initial-segment (cdr this)))
+	       (locate-initial-segment this (cdr this))))
+	  ((not (null? this)) (lose))))
+
+  (define (test-item items)
+    (let loop ((items* (cdr items)))
+      (and (pair? items*)
+	   (or (predicate (car items) (car items*))
+	       (loop (cdr items*))))))
+
+  (define (lose)
+    (error:wrong-type-argument items "list" 'REMOVE-DUPLICATES!))
+
+  (trim-initial-segment items))
 
 ;; The cryptic LWSP means Linear White SPace.  We use it because it
 ;; is the terminology from RFC 822.
