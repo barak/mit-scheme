@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.52 2002/01/07 03:38:47 cph Exp $
+$Id: uenvir.scm,v 14.53 2002/01/07 05:01:33 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -662,8 +662,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (environment-assign! (stack-ccenv/parent environment) name value))))
 
 (define (stack-ccenv/get-value environment index)
-  (stack-frame/ref (stack-ccenv/frame environment)
-		   (+ (stack-ccenv/start-index environment) index)))
+  (let ((cell (list #f)))
+    (set-car!
+     cell
+     (stack-frame/ref (stack-ccenv/frame environment)
+		      (+ (stack-ccenv/start-index environment) index)))
+    (map-reference-trap (lambda () (car cell)))))
 
 (define (stack-ccenv/static-link environment)
   (let ((static-link
@@ -777,10 +781,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		     (closure-ccenv/closure-block environment)
 		     index))
 
-(define-integrable (closure/get-value closure closure-block index)
-  (compiled-closure/ref closure
-			index
-			(dbg-block/layout-first-offset closure-block)))
+(define (closure/get-value closure closure-block index)
+  (let ((cell (list #f)))
+    (set-car!
+     cell
+     (compiled-closure/ref closure
+			   index
+			   (dbg-block/layout-first-offset closure-block)))
+    (map-reference-trap (lambda () (car cell)))))
 
 (define (closure-ccenv/has-parent? environment)
   (or (let ((stack-block (closure-ccenv/stack-block environment)))
