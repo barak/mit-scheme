@@ -105,8 +105,10 @@ Summary:
 #define __OBSTACKS__
 
 #include "config.h"
+#include "ansidecl.h"
 
 #ifdef STDC_HEADERS
+#  include <stdlib.h>
 #  include <string.h>
 #endif
 
@@ -146,15 +148,11 @@ struct obstack		/* control current object in current chunk */
 
 /* Declare the external functions we use; they are in obstack.c.  */
 
-#ifndef _SUNOS4
-extern void EXFUN (abort, (void));
-#endif
-
 #ifdef HAVE_STDC
   extern void _obstack_newchunk (struct obstack *, int);
   extern void _obstack_free (struct obstack *, void *);
   extern void _obstack_begin (struct obstack *, int, long,
-			      void *(*) (), void (*) ());
+			      void * (*) (size_t), void (*) (void *));
 #else
   extern void _obstack_newchunk ();
   extern void _obstack_free ();

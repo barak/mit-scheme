@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dstack.h,v 1.11 2003/02/14 18:28:18 cph Exp $
+$Id: dstack.h,v 1.12 2004/01/07 04:43:29 cph Exp $
 
 Copyright (C) 1990-1999 Massachusetts Institute of Technology
 
@@ -26,14 +26,12 @@ USA.
 #ifndef __DSTACK_H__
 #define __DSTACK_H__
 
+#include "config.h"
 #include "ansidecl.h"
 #include <setjmp.h>
 
-#ifndef _SUNOS4
-extern void
-  EXFUN (abort, (void)),
-  EXFUN (exit, (int)),
-  EXFUN (free, (void *));
+#ifdef STDC_HEADERS
+#  include <stdlib.h>
 #endif
 
 extern void EXFUN (dstack_initialize, (void));
