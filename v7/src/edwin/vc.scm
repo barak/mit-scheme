@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.15 1994/09/09 01:21:50 adams Exp $
+;;;	$Id: vc.scm,v 1.16 1994/10/12 01:52:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -460,7 +460,7 @@ If the current buffer is named `F', the version is named `F.~REV~'.
 If `F.~REV~' already exists, it is used instead of being re-created."
   "sVersion to visit (default is latest version)"
   (lambda (revision)
-    (let ((master (current-vc-master)))
+    (let ((master (current-vc-master #t)))
       (let ((revision
 	     (or (vc-normalize-version revision)
 		 (vc-backend-default-version master))))
@@ -478,7 +478,7 @@ If `F.~REV~' already exists, it is used instead of being re-created."
 Headers are inserted at the start of the buffer."
   ()
   (lambda ()
-    (let ((master (current-vc-master)))
+    (let ((master (current-vc-master #t)))
       (let ((buffer
 	     (or (vc-workfile-buffer master)
 		 (find-file-other-window (vc-workfile-pathname master)))))
@@ -503,7 +503,7 @@ Headers are inserted at the start of the buffer."
   "List the change log of the current buffer in a window."
   ()
   (lambda ()
-    (vc-backend-print-log (current-vc-master))
+    (vc-backend-print-log (current-vc-master #t))
     (pop-up-vc-command-buffer #f)))
 
 (define-command vc-list-locked-files
@@ -512,7 +512,7 @@ Normally lists only those files locked by the user;
 prefix arg says to list all locked files regardless."
   "P"
   (lambda (all-lockers?)
-    (vc-backend-list-locked-files (current-vc-master) all-lockers?)
+    (vc-backend-list-locked-files (current-vc-master #t) all-lockers?)
     (pop-up-vc-command-buffer #f)))
 
 (define-command vc-revert-buffer
