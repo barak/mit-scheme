@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.4 2000/12/05 22:35:09 cph Exp $
+# $Id: Makefile.std,v 1.5 2000/12/05 22:45:39 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -33,6 +33,16 @@ setup:
 
 tags TAGS:
 	etags *.scm
+
+mostlyclean:
+	rm -f *.bin *.ext *.com *.bci
+
+clean: mostlyclean
+
+distclean: clean
+
+maintainer-clean: distclean
+	rm -f Makefile .edwin-ffi
 
 stage1:
 	mkdir STAGE1 && mv -f *.com *.bci STAGE1/.
@@ -79,7 +89,7 @@ cpstage3:
 lnstage3:
 	ln -f STAGE3/* .
 
-.PHONY: all setup tags TAGS
+.PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
 .PHONY: stage1 unstage1 rmstage1 cpstage1 lnstage1
 .PHONY: stage2 unstage2 rmstage2 cpstage2 lnstage2
 .PHONY: stage3 unstage3 rmstage3 cpstage3 lnstage3
