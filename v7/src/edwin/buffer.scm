@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.136 1989/08/12 08:31:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.137 1990/10/03 04:54:07 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -73,13 +73,16 @@
      (unparse-object state (buffer-name buffer)))))
 
 (define-variable buffer-creation-hook
-  "If not false, a procedure to call when a new buffer is created.
-The procedure is passed the new buffer as its argument.
+  "An event distributor that is invoked when a new buffer is created.
+The new buffer is passed as its argument.
 The buffer is guaranteed to be deselected at that time."
-  false)
+  (make-event-distributor))
 
 (define (make-buffer name #!optional mode)
-  (let ((mode (if (default-object? mode) (ref-mode-object fundamental) mode)))
+  (let ((mode
+	 (if (default-object? mode)
+	     (ref-variable editor-default-mode)
+	     mode)))
     (let ((group (region-group (string->region ""))))
       (let ((buffer (%make-buffer)))
 	(vector-set! buffer buffer-index:name name)
@@ -110,8 +113,7 @@ The buffer is guaranteed to be deselected at that time."
 	(vector-set! buffer buffer-index:save-length 0)
 	(vector-set! buffer buffer-index:backed-up? false)
 	(vector-set! buffer buffer-index:modification-time false)
-	(let ((hook (ref-variable buffer-creation-hook)))
-	  (if hook (hook buffer)))
+	(event-distributor/invoke! (ref-variable buffer-creation-hook) buffer)
 	buffer))))
 
 (define (buffer-modeline-event! buffer type)
@@ -261,9 +263,12 @@ The buffer is guaranteed to be deselected at that time."
   (set-buffer-modified! buffer true))
 
 (define (set-buffer-modified! buffer sense)
-  (set-group-modified! (buffer-group buffer) sense)
-  (vector-set! buffer buffer-index:auto-save-modified? sense)
-  (buffer-modeline-event! buffer 'BUFFER-MODIFIED))
+  (let ((group (buffer-group buffer)))
+    (if (not (eq? sense (group-modified? group)))
+	(begin
+	  (set-group-modified! group sense)
+	  (vector-set! buffer buffer-index:auto-save-modified? sense)
+	  (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))
 
 (define (buffer-modification-daemon buffer)
   (lambda (group start end)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.137 1990/08/31 20:12:48 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.138 1990/10/03 04:55:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,21 +47,11 @@
 
 (declare (usual-integrations))
 
-(define-variable enable-recursive-minibuffers
-  "If true, allow minibuffers to invoke commands which use
-recursive minibuffers."
-  false)
-
-(define-variable completion-auto-help
-  "*True means automatically provide help for invalid completion input."
-  true)
-
 (define typein-edit-abort-flag "Abort")
-
 (define typein-edit-continuation)
 (define typein-edit-depth)
 (define typein-saved-buffers)
-(define typein-saved-window)
+(define typein-saved-windows)
 (define map-name/internal->external)
 (define map-name/external->internal)
 
@@ -69,10 +59,13 @@ recursive minibuffers."
   (set! typein-edit-continuation false)
   (set! typein-edit-depth -1)
   (set! typein-saved-buffers '())
-  (set! typein-saved-window)
+  (set! typein-saved-windows '())
   (set! map-name/internal->external identity-procedure)
   (set! map-name/external->internal identity-procedure)
   unspecific)
+
+(define (make-typein-buffer-name depth)
+  (string-append " *Typein-" (number->string depth) "*"))
 
 (define (within-typein-edit thunk)
   (let ((value
@@ -83,17 +76,17 @@ recursive minibuffers."
 			(typein-saved-buffers
 			 (cons (window-buffer (typein-window))
 			       typein-saved-buffers))
-			(typein-saved-window (current-window)))
+			(typein-saved-windows
+			 (cons (current-window)
+			       typein-saved-windows)))
 	      (dynamic-wind
 	       (lambda ()
 		 (let ((window (typein-window)))
 		   (select-window window)
 		   (select-buffer
 		    (bufferset-find-or-create-buffer
-		     (editor-frame-typein-bufferset (current-editor-frame))
-		     (string-append " *Typein-"
-				    (number->string typein-edit-depth)
-				    "*")))
+		     (current-typein-bufferset)
+		     (make-typein-buffer-name typein-edit-depth)))
 		   (buffer-reset! (current-buffer))
 		   (reset-command-prompt!)
 		   (window-clear-override-message! window)))
@@ -102,14 +95,15 @@ recursive minibuffers."
 		 (let ((window (typein-window)))
 		   (select-window window)
 		   (let ((buffer (car typein-saved-buffers)))
-		     (bufferset-guarantee-buffer! (current-bufferset) buffer)
+		     (bufferset-guarantee-buffer! (current-typein-bufferset)
+						  buffer)
 		     (select-buffer buffer))
 		   (reset-command-prompt!)
 		   (window-clear-override-message! window))
 		 (if (zero? typein-edit-depth)
 		     (buffer-reset! (current-buffer)))
-		 (cond ((window-visible? typein-saved-window)
-			(select-window typein-saved-window))
+		 (cond ((window-visible? (car typein-saved-windows))
+			(select-window (car typein-saved-windows)))
 		       ((zero? typein-edit-depth)
 			(select-window (other-window)))))))))))
     (if (eq? value typein-edit-abort-flag)
@@ -117,8 +111,24 @@ recursive minibuffers."
 	value)))
 
 (define-integrable (within-typein-edit?)
-  (not (false? typein-edit-continuation)))
+  (not (null? typein-saved-windows)))
+
+(define (typein-edit-other-window)
+  (let loop ((windows typein-saved-windows))
+    (and (not (null? windows))
+	 (if (typein-window? (car windows))
+	     (loop (cdr windows))
+	     (car windows)))))
 
+(define-variable enable-recursive-minibuffers
+  "If true, allow minibuffers to invoke commands which use
+recursive minibuffers."
+  false)
+
+(define-variable completion-auto-help
+  "*True means automatically provide help for invalid completion input."
+  true)
+
 (define (prompt-for-typein prompt-string check-recursion? thunk)
   (if (and check-recursion?
 	   (not (ref-variable enable-recursive-minibuffers))

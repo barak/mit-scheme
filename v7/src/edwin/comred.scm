@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.82 1989/08/29 20:03:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.83 1990/10/03 04:54:25 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -55,21 +55,40 @@
 (define keyboard-chars-read)	;# of chars read from keyboard
 (define command-history)
 (define command-history-limit 30)
+(define command-reader-reset-thunk)
+(define command-reader-reset-continuation)
 
 (define (initialize-command-reader!)
   (set! keyboard-chars-read 0)
   (set! command-history (make-circular-list command-history-limit false))
+  (set! command-reader-reset-thunk false)
   unspecific)
 
 (define (top-level-command-reader initialization)
   (let loop ((initialization initialization))
     (with-keyboard-macro-disabled
      (lambda ()
-       (intercept-^G-interrupts (lambda () unspecific)
-	 (lambda ()
-	   (command-reader initialization)))))
+       (call-with-current-continuation
+	(lambda (continuation)
+	  (fluid-let ((command-reader-reset-continuation continuation))
+	    (dynamic-wind
+	     (lambda () unspecific)
+	     (lambda ()
+	       (intercept-^G-interrupts (lambda () unspecific)
+		 (lambda ()
+		   (command-reader initialization))))
+	     (lambda ()
+	       (let ((thunk command-reader-reset-thunk))
+		 (if thunk
+		     (begin
+		       (set! command-reader-reset-thunk false)
+		       (thunk)))))))))))
     (loop false)))
 
+(define (command-reader/reset-and-execute thunk)
+  (set! command-reader-reset-thunk thunk)
+  (command-reader-reset-continuation false))
+
 (define (command-reader #!optional initialization)
   (define (command-reader-loop)
     (let ((value (with-command-variables start-next-command)))

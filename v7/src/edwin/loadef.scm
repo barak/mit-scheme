@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.6 1989/08/14 09:22:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/loadef.scm,v 1.7 1990/10/03 04:55:26 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -132,16 +132,6 @@ Previous contents of that buffer are killed first.")
 (define-autoload-command 'describe-bindings 'COMMAND-SUMMARY
   "Show a list of all defined keys, and their definitions.
 The list is put in a buffer, which is displayed.")
-
-(define-library 'RESTRICT-SCREEN
-  '("rescrn" (EDWIN WINDOW)))
-
-(define-autoload-command 'toggle-screen-width 'RESTRICT-SCREEN
-  "Restrict the editor's width on the screen.
-With no argument, restricts the width to 80 columns,
- unless it is already restricted, in which case it undoes the restriction.
-With \\[universal-argument] only, undoes all restrictions.
-Otherwise, the argument is the number of columns desired.")
 
 ;;;; Tags Package
 
@@ -195,8 +185,8 @@ replace with the command \\[tags-loop-continue].")
   "Enter Midas mode.")
 
 (define-variable midas-mode-hook
-  "If not false, a thunk to call when entering Midas mode."
-  false)
+  "An event distributor that is invoked when entering Midas mode."
+  (make-event-distributor))
 
 (define-library 'PASCAL-MODE
   '("pasmod" (EDWIN)))
@@ -208,8 +198,8 @@ replace with the command \\[tags-loop-continue].")
   "Enter Pascal mode.")
 
 (define-variable pascal-mode-hook
-  "If not false, a thunk to call when entering Pascal mode."
-  false)
+  "An event distributor that is invoked when entering Pascal mode."
+  (make-event-distributor))
 
 (define-variable pascal-shift-increment
   "Indentation increment for Pascal Shift commands."
@@ -234,8 +224,8 @@ modified version of TeX input format.")
   "Make the current mode be Texinfo mode.")
 
 (define-variable texinfo-mode-hook
-  "A procedure to be called when Texinfo mode is entered, or false."
-  false)
+  "An event distributor that is invoked when entering Texinfo mode."
+  (make-event-distributor))
 
 (define-library 'C-MODE
   '("c-mode" (EDWIN))
@@ -275,8 +265,8 @@ Variables controlling indentation style:
   "Enter C mode.")
 
 (define-variable c-mode-hook
-  "If not false, a thunk to call when entering C mode."
-  false)
+  "An event distributor that is invoked when entering C mode."
+  (make-event-distributor))
 
 (define-variable c-indent-level
   "Indentation of C statements with respect to containing block."

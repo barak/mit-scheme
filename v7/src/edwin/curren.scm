@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.87 1990/08/31 20:11:51 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.88 1990/10/03 04:54:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,121 +46,104 @@
 
 (declare (usual-integrations))
 
-;;;; Editor frames
-
-(define (change-frame new-frame)
-  (set-editor-current-frame-window! current-editor new-frame))
-
-(define (create-new-frame #!optional buffer)
-  (without-interrupts
-   (lambda ()
-     (let* ((new-screen (make-editor-screen #f))
-	    (new-frame
-	     (make-editor-frame
-	      new-screen
-	      (if (default-object? buffer)
-		  (current-buffer)
-		  buffer)
-	      (make-buffer " *Typein-0*"))))
-       (set-screen-window! new-screen new-frame)
-       (editor-add-screen! current-editor new-screen)
-       (editor-add-frame! current-editor new-frame)
-       (let ((hook (ref-variable select-buffer-hook)))
-	 (if hook (hook buffer new-frame)))))))
-
-(define (delete-frame! frame)
-  (let ((screen (editor-frame-screen frame)))
-    (editor-delete-screen! current-editor screen)
-    (editor-delete-frame! current-editor frame)
-    (screen-discard! screen)))
-
-(define (delete-current-frame!) (delete-frame! (current-editor-frame)))
-
 ;;;; Screens
 
-;; This version of change-screen was meant to be used in conjunction
-;; with the reader-continuation stuff in edtfrm.scm and input.scm. But
-;; since that stuff doesn't quite work I'm commenting out this
-;; version.
-#|
-(define (change-screen screen)
-  (let ((old-frame (current-editor-frame))
-	(my-frame (screen-window screen)))
-    (change-frame  my-frame)
-    (set-editor-input-port! (current-editor-input-port))
-    (without-interrupts
-     (lambda ()
-       (change-local-bindings!
-	(window-buffer (editor-frame-selected-window old-frame))
-	(window-buffer (editor-frame-selected-window my-frame))
-	(lambda () unspecific))))
-    (update-screens! #t)
-    (change-reading my-frame old-frame)))
-|#
+(define (select-buffer-in-new-screen buffer)
+  (without-interrupts
+   (lambda ()
+     (let ((screen (make-editor-screen)))
+       (initialize-screen-root-window! screen buffer)
+       (editor-add-screen! current-editor screen)
+       (select-screen screen)
+       (event-distributor/invoke! (ref-variable select-buffer-hook)
+				  buffer
+				  (screen-selected-window screen))))))
 
-(define (change-screen screen)
-  (let ((old-frame (current-editor-frame))
-	(my-frame (screen-window screen)))
-    (set-reader-do-before-next-read!
-     (lambda ()
-       (change-frame  my-frame)
-       (set-editor-input-port! (current-editor-input-port))
-       (without-interrupts
-	(lambda ()
+(define (select-screen screen)
+  (command-reader/reset-and-execute
+   (lambda ()
+     (without-interrupts
+      (lambda ()
+	(let ((buffer (window-buffer (screen-selected-window screen))))
 	  (change-local-bindings!
-	   (window-buffer (editor-frame-selected-window old-frame))
-	   (window-buffer (editor-frame-selected-window my-frame))
-	   (lambda () unspecific))))
-       (update-screens! #t)))
-    (^G-signal)))
+	   (window-buffer (screen-selected-window (selected-screen)))
+	   buffer
+	   (lambda () (set-editor-selected-screen! current-editor screen)))
+	  (bufferset-select-buffer! (current-bufferset) buffer)))))))
 
 (define (delete-screen! screen)
-  (let ((frame (screen-window screen)))
-    (editor-delete-frame! current-editor frame)
-    (editor-delete-screen! current-editor screen)
-    (screen-discard! screen)))
+  (editor-delete-screen! current-editor screen)
+  (screen-discard! screen))
 
-(define (delete-current-screen!) (delete-screen! (current-screen)))
+(define (update-screens! display-style)
+  (let loop ((screens (screen-list)))
+    (or (null? screens)
+	(and (not (screen-in-update? (car screens)))
+	     (update-screen! (car screens) display-style)
+	     (loop (cdr screens))))))
+
+(define (update-selected-screen! display-style)
+  (update-screen! (selected-screen) display-style))
+
+(define-integrable (selected-screen? screen)
+  (eq? screen (selected-screen)))
+
+(define-integrable (current-typein-bufferset)
+  (screen-typein-bufferset (selected-screen)))
+
+(define (screen-next screen)
+  (let ((screens (screen-list)))
+    (let ((s (memq screen screens)))
+      (if (not s)
+	  (error "not a member of screen-list" screen))
+      (if (null? (cdr s))
+	  (car screens)
+	  (cadr s)))))
+
+(define (screen-previous screen)
+  (let ((screens (screen-list)))
+    (if (eq? screen (car screens))
+	(car (last-pair screens))
+	(let loop ((previous screens) (screens (cdr screens)))
+	  (if (null? screens)
+	      (error "not a member of screen-list" screen))
+	  (if (eq? screen (car screens))
+	      (car previous)
+	      (loop screens (cdr screens)))))))
 
 ;;;; Windows
 
 (define-integrable (current-window)
-  (editor-frame-selected-window (current-editor-frame)))
+  (screen-selected-window (selected-screen)))
+
+(define (window-list)
+  (append-map screen-window-list (screen-list)))
 
 (define-integrable (current-window? window)
   (eq? window (current-window)))
 
 (define-integrable (window0)
-  (editor-frame-window0 (current-editor-frame)))
+  (screen-window0 (selected-screen)))
 
 (define-integrable (typein-window)
-  (editor-frame-typein-window (current-editor-frame)))
+  (screen-typein-window (selected-screen)))
 
 (define-integrable (typein-window? window)
-  (eq? window (typein-window)))
+  (eq? window (screen-typein-window (window-screen window))))
 
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (let ((frame (current-editor-frame))
+     (let ((screen (window-screen window))
 	   (buffer (window-buffer window)))
        (change-local-bindings!
-	(window-buffer (editor-frame-selected-window frame))
+	(window-buffer (screen-selected-window screen))
 	buffer
-	(lambda ()
-	  (editor-frame-select-window! frame window)))
+	(lambda () (screen-select-window! screen window)))
        (bufferset-select-buffer! (current-bufferset) buffer)))))
 
 (define-integrable (select-cursor window)
-  (editor-frame-select-cursor! (current-editor-frame) window))
-
-(define (window-list)
-  (let ((window0 (window0)))
-    (let loop ((window (window1+ window0)))
-      (cons window
-	    (if (eq? window window0)
-		'()
-		(loop (window1+ window)))))))
+  (screen-select-cursor! (window-screen window) window))
 
 (define (window-visible? window)
   (or (typein-window? window)
@@ -260,11 +243,10 @@
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
 (define-variable select-buffer-hook
-  "If not false, a procedure to call when a buffer is selected.
-The procedure is passed the new buffer and the window in which 
-it is selected.
+  "An event distributor that is invoked when a buffer is selected.
+The new buffer and the window in which it is selected are passed as arguments.
 The buffer is guaranteed to be selected at that time."
-  false)
+  (make-event-distributor))
 
 (define-integrable (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))
@@ -284,11 +266,13 @@ The buffer is guaranteed to be selected at that time."
 	    (window-buffer window)
 	    buffer
 	    (lambda () (%set-window-buffer! window buffer)))
-	   (if record? (bufferset-select-buffer! (current-bufferset) buffer)))
-	 (%set-window-buffer! window buffer))
-     (if (not (minibuffer? buffer))
-	 (let ((hook (ref-variable select-buffer-hook)))
-	   (if hook (hook buffer window)))))))
+	   (if record?
+	       (bufferset-select-buffer! (current-bufferset) buffer))
+	   (if (not (minibuffer? buffer))
+	       (event-distributor/invoke! (ref-variable select-buffer-hook)
+					  buffer
+					  window)))
+	 (%set-window-buffer! window buffer)))))
 
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))

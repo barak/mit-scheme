@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.14 1989/04/28 22:51:23 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/midas.scm,v 1.15 1990/10/03 04:55:33 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -63,7 +63,7 @@
   (local-set-variable! paragraph-start "^$")
   (local-set-variable! paragraph-separate (ref-variable paragraph-start))
   (local-set-variable! indent-line-procedure (ref-command insert-tab))
-  (if (ref-variable midas-mode-hook) ((ref-variable midas-mode-hook))))
+  (event-distributor/invoke! (ref-variable midas-mode-hook)))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")

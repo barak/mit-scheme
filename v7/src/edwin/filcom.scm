@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.140 1990/08/31 20:12:39 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.141 1990/10/03 04:55:07 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -53,7 +53,7 @@
   (select-buffer-other-window (find-file-noselect filename true)))
 
 (define (find-file-in-new-screen filename)
-  (create-new-frame (find-file-noselect filename true)))
+  (select-buffer-in-new-screen (find-file-noselect filename true)))
 
 (define (find-file-noselect filename warn?)
   (let ((pathname (pathname->absolute-pathname (->pathname filename))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.7 1989/08/09 13:17:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.8 1990/10/03 04:55:22 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,11 +52,14 @@
     (let ((point (window-point window))
 	  (y-point (window-point-y window)))
       (let ((result
-	     (with-editor-interrupts-disabled
+	     (dynamic-wind
+	      (lambda () unspecific)
 	      (lambda ()
-		(isearch-loop
-		 (initial-search-state false forward? regexp? point))))))
-	(clear-message)
+		(with-editor-interrupts-disabled
+		 (lambda ()
+		   (isearch-loop
+		    (initial-search-state false forward? regexp? point)))))
+	      clear-message)))
 	(cond ((eq? result 'ABORT)
 	       (set-window-point! window point)
 	       (window-scroll-y-absolute! window y-point))

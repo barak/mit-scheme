@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.104 1989/08/12 08:31:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.105 1990/10/03 04:53:58 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -249,7 +249,7 @@ procedure when it fails to find a command."
   (keyboard-macro-disable))
 
 (define-integrable (editor-beep)
-  (screen-beep (current-screen)))
+  (screen-beep (selected-screen)))
 
 (define (not-implemented)
   (editor-error "Not yet implemented"))
@@ -295,11 +295,13 @@ With prefix arg, silently save all file-visiting buffers, then kill."
   "P"
   (lambda (no-confirmation?)
     (save-some-buffers no-confirmation?)
-    (set! edwin-finalization
-	  (lambda ()
-	    (set! edwin-finalization false)
-	    (%exit)))
-    ((ref-command suspend-edwin))))
+    (if (prompt-for-yes-or-no? "Kill Scheme")
+	(begin
+	  (set! edwin-finalization
+		(lambda ()
+		  (set! edwin-finalization false)
+		  (%exit)))
+	  ((ref-command suspend-edwin))))))
 
 (define-command save-buffers-kill-edwin
   "Offer to save each buffer, then kill Edwin, returning to Scheme.

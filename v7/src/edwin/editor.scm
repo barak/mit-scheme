@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.194 1990/08/31 20:12:00 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.195 1990/10/03 04:54:47 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -136,14 +136,18 @@
 	unspecific))
   (if (not (ref-variable inhibit-startup-message))
       (let ((window (current-window)))
-	(with-output-to-mark (window-point window)
-	  write-initial-buffer-greeting!)
 	(let ((buffer (window-buffer window)))
-	  (set-window-start-mark! window (buffer-start buffer) false)
-	  (buffer-not-modified! buffer)
-	  (sit-for 120000)
-	  (region-delete! (buffer-unclipped-region buffer))
-	  (buffer-not-modified! buffer)))))
+	  (dynamic-wind
+	   (lambda () unspecific)
+	   (lambda ()
+	     (with-output-to-mark (window-point window)
+				  write-initial-buffer-greeting!)
+	     (set-window-start-mark! window (buffer-start buffer) false)
+	     (buffer-not-modified! buffer)
+	     (sit-for 120000))
+	   (lambda ()
+	     (region-delete! (buffer-unclipped-region buffer))
+	     (buffer-not-modified! buffer)))))))
 
 (define inhibit-editor-init-file? false)
 (define init-file-loaded? false)
@@ -172,7 +176,7 @@ with the contents of the startup message."
   (fluid-let ((current-editor editor)
 	      (recursive-edit-continuation false)
 	      (recursive-edit-level 0))
-    (using-screen (current-screen)
+    (using-screen (selected-screen)
       (lambda ()
 	(with-editor-input-port (current-editor-input-port)
 	  thunk)))))
@@ -242,9 +246,9 @@ This does not affect editor errors or evaluation errors."
 
 (define (^G-signal)
   (let ((continuations *^G-interrupt-continuations*))
-    (if (pair? continuations)
-	((car continuations))
-	(error "can't signal ^G interrupt"))))
+    (if (not (pair? continuations))
+	(error "can't signal ^G interrupt"))
+    ((car continuations))))
 
 (define (intercept-^G-interrupts interceptor thunk)
   (let ((signal-tag "signal-tag"))

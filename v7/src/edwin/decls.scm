@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.12 1990/09/07 18:39:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.13 1990/10/03 04:54:38 cph Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,7 +95,6 @@ MIT in each case. |#
 	      "rename"
 	      "rgxcmp"
 	      "ring"
-	      "screen"
 	      "search"
 	      "simple"
 	      "strpad"
@@ -155,6 +154,7 @@ MIT in each case. |#
 	      "replaz"
 	      "schmod"
 	      "scrcom"
+	      "screen"
 	      "sercom"
 	      "struct"
 	      "syntax"
@@ -172,8 +172,7 @@ MIT in each case. |#
 	      "modwin"
 	      "buffrm"
 	      "edtfrm"
-	      "winmis"
-	      "rescrn"))
+	      "winmis"))
   (sf-edwin "grpops" "struct")
   (sf-edwin "regops" "struct")
   (sf-edwin "motion" "struct")

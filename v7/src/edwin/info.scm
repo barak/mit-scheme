@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.94 1989/08/11 11:06:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.95 1990/10/03 04:55:12 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -243,7 +243,7 @@ s	Search through this Info file for specified regexp,
       (with-selected-buffer buffer
 	(lambda ()
 	  (let loop ()
-	    (update-screens! false)
+	    (update-selected-screen! false)
 	    (let ((end-visible?
 		   (window-mark-visible? (current-window)
 					 (buffer-end buffer))))

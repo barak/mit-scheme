@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.122 1989/08/14 09:22:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.123 1990/10/03 04:55:37 cph Rel $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,12 +56,11 @@ All normal editing modes are defined relative to this mode."
 (define-major-mode fundamental #f "Fundamental"
   "Major mode not specialized for anything in particular.
 Most other major modes are defined by comparison to this one."
-  (if (ref-variable fundamental-mode-hook)
-      ((ref-variable fundamental-mode-hook))))
+  (event-distributor/invoke! (ref-variable fundamental-mode-hook)))
 
 (define-variable fundamental-mode-hook
-  "If not false, a thunk to call when entering Fundamental mode."
-  false)
+  "An event distributor that is invoked when entering Fundamental mode."
+  (make-event-distributor))
 
 (define-variable editor-default-mode
   "The default major mode for new buffers."

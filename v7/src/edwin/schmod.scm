@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.13 1989/08/09 13:18:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.14 1990/10/03 04:55:57 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -78,11 +78,11 @@ normally they record the associated output in a transcript buffer:
   (local-set-variable! paragraph-start "^$")
   (local-set-variable! paragraph-separate (ref-variable paragraph-start))
   (local-set-variable! indent-line-procedure (ref-command lisp-indent-line))
-  (if (ref-variable scheme-mode-hook) ((ref-variable scheme-mode-hook))))
+  (event-distributor/invoke! (ref-variable scheme-mode-hook)))
 
 (define-variable scheme-mode-hook
-  "If not false, a thunk to call when entering Scheme mode."
-  false)
+  "An event distributor that is invoked when entering Scheme mode."
+  (make-event-distributor))
 
 (define-key 'scheme #\rubout 'backward-delete-char-untabify)
 (define-key 'scheme #\tab 'lisp-indent-line)

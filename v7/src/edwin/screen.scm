@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.81 1989/04/28 22:53:06 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.82 1990/10/03 04:56:04 cph Exp $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -50,41 +50,57 @@
 		   (constructor make-screen
 				(state
 				 operation/beep
+				 operation/discard!
+				 operation/enter!
+				 operation/exit!
 				 operation/finish-update!
 				 operation/flush!
 				 operation/inverse-video!
+				 operation/modeline-event!
 				 operation/start-update!
 				 operation/subscreen-clear!
+				 operation/wipe!
 				 operation/write-char!
 				 operation/write-cursor!
 				 operation/write-substring!
 				 operation/write-substrings!
-				 operation/x-size
-				 operation/y-size
-				 operation/wipe!
-				 operation/enter!
-				 operation/exit!
-				 operation/discard!)))
+				 x-size
+				 y-size)))
   (state false read-only true)
   (operation/beep false read-only true)
+  (operation/discard! false read-only true)
+  (operation/enter! false read-only true)
+  (operation/exit! false read-only true)
   (operation/finish-update! false read-only true)
   (operation/flush! false read-only true)
   (operation/inverse-video! false read-only true)
+  (operation/modeline-event! false read-only true)
   (operation/start-update! false read-only true)
   (operation/subscreen-clear! false read-only true)
+  (operation/wipe! false read-only true)
   (operation/write-char! false read-only true)
   (operation/write-cursor! false read-only true)
   (operation/write-substring! false read-only true)
   (operation/write-substrings! false read-only true)
   (operation/x-size false read-only true)
   (operation/y-size false read-only true)
-  (operation/wipe! false read-only true)
-  (operation/enter! false read-only true)
-  (operation/exit! false read-only true)
-  (operation/discard! false read-only true)
-  (window false)
-  (in-update? false))
+  (root-window false)
+  (in-update? false)
+  (x-size false)
+  (y-size false)
+  (typein-bufferset (make-bufferset 
+		     (make-buffer (make-typein-buffer-name 0)
+				  (ref-mode-object fundamental)))
+		    read-only true))
 
+(define (initialize-screen-root-window! screen buffer)
+  (set-screen-root-window!
+   screen
+   (make-editor-frame screen
+		      buffer
+		      (bufferset-find-buffer (screen-typein-bufferset screen)
+					     (make-typein-buffer-name 0)))))
+
 (define (using-screen screen thunk)
   (dynamic-wind (lambda ()
 		  ((screen-operation/enter! screen) screen))
@@ -94,31 +110,45 @@
 
 (define (with-screen-in-update! screen thunk)
   (let ((old-flag)
-	(new-flag true))
+	(new-flag true)
+	(transition
+	 (lambda (old new)
+	   (if old
+	       (if (not new)
+		   ((screen-operation/finish-update! screen) screen))
+	       (if new
+		   ((screen-operation/start-update! screen) screen))))))
     (dynamic-wind (lambda ()
-		    ((screen-operation/start-update! screen) screen)
 		    (set! old-flag (screen-in-update? screen))
-		    (set-screen-in-update?! screen new-flag))
+		    (set-screen-in-update?! screen new-flag)
+		    (transition old-flag new-flag))
 		  thunk
 		  (lambda ()
 		    (set! new-flag (screen-in-update? screen))
 		    (set-screen-in-update?! screen old-flag)
-		    ((screen-operation/finish-update! screen) screen)))))
+		    (transition new-flag old-flag)))))
+
+(define (with-screen-inverse-video! screen thunk)
+  (let ((old-highlight?)
+	(new-highlight? true))
+    (dynamic-wind (lambda ()
+		    (set! old-highlight?
+			  (screen-inverse-video! screen new-highlight?))
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set! new-highlight?
+			  (screen-inverse-video! screen old-highlight?))
+		    unspecific))))
+
+(define (screen-inverse-video! screen highlight?)
+  ((screen-operation/inverse-video! screen) screen highlight?))
 
-(define (screen-x-size screen)
-  ((screen-operation/x-size screen) screen))
-
-(define (screen-y-size screen)
-  ((screen-operation/y-size screen) screen))
-
 (define (screen-beep screen)
   ((screen-operation/beep screen) screen))
 
 (define (screen-flush! screen)
   ((screen-operation/flush! screen) screen))
-
-(define (screen-inverse-video! screen highlight?)
-  ((screen-operation/inverse-video! screen) screen highlight?))
 
 (define (subscreen-clear! screen xl xu yl yu)
   ((screen-operation/subscreen-clear! screen) screen xl xu yl yu))
@@ -136,9 +166,6 @@
   ((screen-operation/write-substrings! screen)
    screen x y strings bil biu bjl bju))
 
-(define (screen-wipe! screen)
-  ((screen-operation/wipe! screen) screen))
-
 (define (screen-enter! screen)
   ((screen-operation/enter! screen) screen))
 
@@ -146,4 +173,35 @@
   ((screen-operation/exit! screen) screen))
 
 (define (screen-discard! screen)
+  (for-each (lambda (window) (send window ':kill!))
+	    (screen-window-list screen))
   ((screen-operation/discard! screen) screen))
+
+(define (screen-modeline-event! screen window type)
+  ((screen-operation/modeline-event! screen) screen window type))
+
+(define-integrable (screen-selected-window screen)
+  (editor-frame-selected-window (screen-root-window screen)))
+
+(define-integrable (screen-select-window! screen window)
+  (editor-frame-select-window! (screen-root-window screen) window)
+  (screen-modeline-event! screen window 'SELECT-WINDOW))
+
+(define-integrable (screen-select-cursor! screen window)
+  (editor-frame-select-cursor! (screen-root-window screen) window))
+
+(define-integrable (screen-window-list screen)
+  (editor-frame-windows (screen-root-window screen)))
+
+(define-integrable (screen-window0 screen)
+  (editor-frame-window0 (screen-root-window screen)))
+
+(define-integrable (screen-typein-window screen)
+  (editor-frame-typein-window (screen-root-window screen)))
+
+(define (window-screen window)
+  (editor-frame-screen (window-root-window window)))
+
+(define (update-screen! screen display-style)
+  (if display-style ((screen-operation/wipe! screen) screen))
+  (editor-frame-update-display! (screen-root-window screen) display-style))

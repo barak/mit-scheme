@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.17 1990/09/12 16:45:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.18 1990/10/03 04:55:02 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -205,6 +205,7 @@ MIT in each case. |#
   (files "screen")
   (parent (edwin))
   (export (edwin)
+	  initialize-screen-root-window!
 	  make-screen
 	  screen-beep
 	  screen-discard!
@@ -212,20 +213,32 @@ MIT in each case. |#
 	  screen-exit!
 	  screen-flush!
 	  screen-in-update?
-	  screen-inverse-video!
+	  screen-modeline-event!
+	  screen-root-window
+	  screen-select-cursor!
+	  screen-select-window!
+	  screen-selected-window
 	  screen-state
-	  screen-window
-	  screen-wipe!
+	  screen-typein-bufferset
+	  screen-typein-window
+	  screen-window-list
+	  screen-window0
 	  screen-write-char!
 	  screen-write-cursor!
 	  screen-write-substring!
 	  screen-write-substrings!
 	  screen-x-size
 	  screen-y-size
-	  set-screen-window!
+	  set-screen-root-window!
 	  subscreen-clear!
+	  update-screen!
 	  using-screen
-	  with-screen-in-update!))
+	  window-screen
+	  with-screen-in-update!
+	  with-screen-inverse-video!)
+  (export (edwin x-screen)
+	  set-screen-x-size!
+	  set-screen-y-size!))
 
 (define-package (edwin x-screen)
   (files "xterm")
@@ -249,7 +262,9 @@ MIT in each case. |#
 
 (define-package (edwin x-commands)
   (files "xcom")
-  (parent (edwin)))
+  (parent (edwin))
+  (export (edwin x-screen)
+	  update-xterm-screen-names!))
 
 (define-package (edwin console-screen)
   (files "cterm")
@@ -277,28 +292,14 @@ MIT in each case. |#
 	  button-downify
 	  button-upify
 	  button?
-	  change-reading
-	  editor-frame-input-port
-	  editor-frame-select-cursor!
-	  editor-frame-select-window!
-	  editor-frame-selected-window
-	  editor-frame-typein-window
-	  editor-frame-typein-bufferset
-	  editor-frame-window0
-	  editor-frame-windows
-	  editor-frame-screen
 	  edwin-variable$cursor-centering-point
 	  edwin-variable$mode-line-inverse-video
 	  edwin-variable$scroll-step
 	  edwin-variable$truncate-lines
 	  edwin-variable$truncate-partial-width-windows
 	  initialize-buttons!
-	  make-editor-frame
 	  set-window-point!
 	  set-window-start-mark!
-	  update-screen!
-	  update-screens!
-	  update-window-screen!
 	  window-buffer
 	  window-clear-override-message!
 	  window-coordinates->mark
@@ -334,7 +335,17 @@ MIT in each case. |#
 	  clear-override-message!
 	  frame-text-inferior
 	  home-cursor!
-	  set-override-message!))
+	  set-override-message!)
+  (export (edwin screen)
+	  editor-frame-screen
+	  editor-frame-select-cursor!
+	  editor-frame-select-window!
+	  editor-frame-selected-window
+	  editor-frame-typein-window
+	  editor-frame-update-display!
+	  editor-frame-window0
+	  editor-frame-windows
+	  make-editor-frame))
 
 (define-package (edwin window combination)
   (files "comwin")
@@ -370,6 +381,7 @@ MIT in each case. |#
 	  edwin-variable$mode-line-modified
 	  edwin-variable$mode-line-procedure
 	  edwin-variable$mode-line-process
+	  format-modeline-string
 	  modeline-string))
 
 (define-package (edwin command-reader)
@@ -380,6 +392,7 @@ MIT in each case. |#
 	  command-history-list
 	  command-message-receive
 	  command-reader
+	  command-reader/reset-and-execute
 	  current-command
 	  current-command-char
 	  dispatch-on-char
@@ -414,7 +427,6 @@ MIT in each case. |#
 	  reset-command-prompt!
 	  set-command-prompt!
 	  set-editor-input-port!
-	  set-reader-do-before-next-read!
 	  temporary-message
 	  with-editor-input-port))
 
@@ -438,11 +450,14 @@ MIT in each case. |#
 	  prompt-for-typein
 	  prompt-for-variable
 	  prompt-for-yes-or-no?
+	  typein-edit-other-window
 	  within-typein-edit
 	  within-typein-edit?)
   (export (edwin keyboard)
 	  clear-message!
-	  set-message!))
+	  set-message!)
+  (export (edwin screen)
+	  make-typein-buffer-name))
 
 (define-package (edwin buffer-input-port)
   (files "bufinp")

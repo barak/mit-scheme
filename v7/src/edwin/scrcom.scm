@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/scrcom.scm,v 1.2 1990/09/12 19:56:55 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/scrcom.scm,v 1.3 1990/10/03 04:56:01 cph Rel $
 ;;;
-;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,21 +45,11 @@
 ;;;; Screen Commands
 
 (declare (usual-integrations))
-
+
 (define-command delete-screen
-  "Delete the screen that point is in. If this is the last screen,
-then a message is diplayed and the screen is not deleted."
+  "Delete the screen that point is in."
   ()
   (lambda ()
-    (message "Not yet implemented")
-#|
-    (if (> (length (all-screens)) 1)
-	(delete-current-screen!)
-	(message "Can't delete the last screen."))
-|#
-    ))
-
-(define-command create-new-screen
-  "Create a new screen with the current buffer in it."
-  ()
-  (lambda () (create-new-frame (current-buffer))))
+    (if (null? (cdr (screen-list)))
+	(editor-error "Can't delete the only screen"))
+    (delete-screen! (selected-screen))))

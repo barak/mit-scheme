@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.32 1989/04/28 22:53:52 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.33 1990/10/03 04:56:08 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -49,7 +49,7 @@
 (define-major-mode text fundamental "Text"
   "Major mode for editing english text."
   (local-set-variable! syntax-table text-mode:syntax-table)
-  (if (ref-variable text-mode-hook) ((ref-variable text-mode-hook))))
+  (event-distributor/invoke! (ref-variable text-mode-hook)))
 
 (define-key 'text #\m-s 'center-line)
 
@@ -63,8 +63,8 @@
 (modify-syntax-entry! text-mode:syntax-table #\' "w   ")
 
 (define-variable text-mode-hook
-  "If not false, a thunk to call when entering Text mode."
-  false)
+  "An event distributor that is invoked when entering Text mode."
+  (make-event-distributor))
 
 (define (turn-on-auto-fill)
   (enable-current-minor-mode! (ref-mode-object auto-fill)))

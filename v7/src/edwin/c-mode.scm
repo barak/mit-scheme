@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.43 1989/04/28 22:48:10 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.44 1990/10/03 04:54:21 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -93,7 +93,7 @@ Variables controlling indentation style:
   (local-set-variable! comment-start "/* ")
   (local-set-variable! comment-end " */")
   (local-set-variable! comment-column 32)
-  (if (ref-variable c-mode-hook) ((ref-variable c-mode-hook))))
+  (event-distributor/invoke! (ref-variable c-mode-hook)))
 
 (define-key 'c #\linefeed 'reindent-then-newline-and-indent)
 (define-key 'c #\{ 'electric-c-brace)

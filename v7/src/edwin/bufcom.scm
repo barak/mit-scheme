@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.84 1990/08/31 20:11:47 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.85 1990/10/03 04:54:03 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -76,17 +76,9 @@ specifying a non-existent buffer will cause it to be created."
 
 (define-command switch-to-buffer-in-new-screen
   "Select buffer in a new screen."
-  (prompt-for-select-buffer "Switch to buffer in a new screen.")
+  (prompt-for-select-buffer "Switch to buffer in new screen")
   (lambda (buffer)
-    (create-new-frame (find-buffer buffer))))
-
-(define-command create-buffer-in-new-screen
-  "Create a new buffer with a given name, and select it in a new screen."
-  "sCreate buffer in a new screen"
-  (lambda (name)
-    (let ((buffer (new-buffer name)))
-      (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
-      (create-new-frame buffer))))
+    (select-buffer-in-new-screen (find-buffer buffer))))
 
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
@@ -98,9 +90,13 @@ specifying a non-existent buffer will cause it to be created."
   "Create a new buffer with a given name, and select it."
   "sCreate buffer"
   (lambda (name)
-    (let ((buffer (new-buffer name)))
-      (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
-      (select-buffer buffer))))
+    (select-buffer (new-buffer name))))
+
+(define-command create-buffer-in-new-screen
+  "Create a new buffer with a given name, and select it in a new screen."
+  "sCreate buffer in new screen"
+  (lambda (name)
+    (select-buffer-in-new-screen (new-buffer name))))
 
 (define-command insert-buffer
   "Insert the contents of a specified buffer at point."
@@ -112,7 +108,7 @@ specifying a non-existent buffer will cause it to be created."
        (region->string (buffer-region (find-buffer buffer))))
       (push-current-mark! (current-point))
       (set-current-point! point))))
-
+
 (define-command twiddle-buffers
   "Select previous buffer."
   ()
@@ -134,7 +130,7 @@ thus, the least likely buffer for \\[switch-to-buffer] to select by default."
 	  (begin
 	    (select-buffer previous)
 	    (bury-buffer buffer))))))
-
+
 (define-command kill-buffer
   "One arg, a string or a buffer.  Get rid of the specified buffer."
   "bKill buffer"
@@ -164,9 +160,7 @@ thus, the least likely buffer for \\[switch-to-buffer] to select by default."
 		      (kill-buffer-interactive buffer)
 		      (let ((dummy (new-buffer "*Dummy*")))
 			(kill-buffer-interactive buffer)
-			(set-buffer-major-mode!
-			 (create-buffer initial-buffer-name)
-			 (ref-variable editor-default-mode))
+			(create-buffer initial-buffer-name)
 			(kill-buffer dummy)))))
 	    (buffer-list)))
 
@@ -197,15 +191,14 @@ Just like what happens when the file is first visited."
       (write-buffer-interactive buffer)))
 
 (define (new-buffer name)
-  (define (search-loop n)
-    (let ((new-name (string-append name "<" (write-to-string n) ">")))
-      (if (find-buffer new-name)
-	  (search-loop (1+ n))
-	  new-name)))
-  (create-buffer (let ((buffer (find-buffer name)))
-		   (if buffer
-		       (search-loop 2)
-		       name))))
+  (create-buffer
+   (if (find-buffer name)
+       (let search-loop ((n 2))
+	 (let ((new-name (string-append name "<" (write-to-string n) ">")))
+	   (if (find-buffer new-name)
+	       (search-loop (1+ n))
+	       new-name)))
+       name)))
 
 (define (string->temporary-buffer string name)
   (let ((buffer (temporary-buffer name)))
@@ -230,7 +223,6 @@ Just like what happens when the file is first visited."
   (let ((name (prompt-for-buffer-name prompt default-buffer false)))
     (or (find-buffer name)
 	(let ((buffer (create-buffer name)))
-	  (set-buffer-major-mode! buffer (ref-variable editor-default-mode))
 	  (temporary-message "(New Buffer)")
 	  buffer))))
 

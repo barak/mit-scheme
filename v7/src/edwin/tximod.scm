@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.12 1989/04/28 22:54:08 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tximod.scm,v 1.13 1990/10/03 04:56:12 cph Rel $
 ;;;
-;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -70,7 +70,7 @@ modified version of TeX input format."
   (local-set-variable! paragraph-separate
 		       (string-append "^\\|^@[a-z]*[ \n]\\|"
 				      (ref-variable paragraph-separate)))
-  (if (ref-variable texinfo-mode-hook) ((ref-variable texinfo-mode-hook))))
+  (event-distributor/invoke! (ref-variable texinfo-mode-hook)))
 
 (define texinfo-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.96 1989/08/14 10:23:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.97 1990/10/03 04:56:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -92,7 +92,7 @@ negative args count from the bottom."
       (if (not argument)
 	  (begin
 	    (window-redraw! window false)
-	    (update-screens! true))
+	    (update-selected-screen! true))
 	  (window-scroll-y-absolute!
 	   window
 	   (modulo argument (window-y-size window)))))))
@@ -461,3 +461,29 @@ Also kills any pop up window it may have created."
 	(begin
 	  (window-delete! window)
 	  (loop (window1+ window))))))
+
+(define-command toggle-screen-width
+  "Restrict the editor's width on the screen.
+With no argument, restricts the width to 80 columns,
+ unless it is already restricted, in which case it undoes the restriction.
+With \\[universal-argument] only, undoes all restrictions.
+Otherwise, the argument is the number of columns desired."
+  "P"
+  (lambda (argument)
+    (let ((screen (selected-screen)))
+      (let ((window (screen-root-window screen)))
+	(send window ':set-size!
+	      (let ((x-size (screen-x-size screen)))
+		(cond ((command-argument-multiplier-only?)
+		       x-size)
+		      ((not argument)
+		       (let ((x-size* (window-x-size window)))
+			 (if (< x-size* x-size)
+			     x-size
+			     (min 80 x-size))))
+		      (else
+		       (if (< argument 10)
+			   (editor-error "restriction too small: " argument))
+		       (min x-size argument))))
+	      (screen-y-size screen)))
+      (update-screen! screen true))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.283 1989/08/14 10:23:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.284 1990/10/03 04:54:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -157,7 +157,7 @@ and this buffer is not full-screen width."
 (let ((setup-truncate-lines!
        (lambda (variable)
 	 variable			;ignore
-	 (for-each window-setup-truncate-lines! (all-windows)))))
+	 (for-each window-setup-truncate-lines! (window-list)))))
   (add-variable-assignment-daemon!
    (ref-variable-object truncate-lines)
    setup-truncate-lines!)
@@ -463,8 +463,7 @@ and this buffer is not full-screen width."
 	(begin
 	  (set-inferior-position! cursor-inferior
 				  (%window-mark->coordinates window point))
-	  (set! point-moved? false)
-	  (window-modeline-event! superior 'CURSOR-MOVED))
+	  (set! point-moved? false))
 	(if-not-visible window))))
 
 (define (maybe-recenter! window)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.34 1989/08/11 11:49:58 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.35 1990/10/03 04:54:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -185,7 +185,8 @@
 (define (window-modeline-event! frame type)
   (with-instance-variables buffer-frame frame (type)
     (if modeline-inferior
-	(=> (inferior-window modeline-inferior) :event! type))))
+	(=> (inferior-window modeline-inferior) :event! type)))
+  (screen-modeline-event! (window-screen frame) frame type))
 
 (define-integrable (window-set-override-message! window message)
   (set-override-message! (frame-text-inferior window) message))

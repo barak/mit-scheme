@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.32 1989/08/14 10:23:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.33 1990/10/03 04:55:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -45,15 +45,12 @@
 ;;;; Modeline Window
 
 (declare (usual-integrations))
-
-(define-class modeline-window vanilla-window
-  (old-buffer-modified?))
+
+(define-class modeline-window vanilla-window ())
 
 (define-method modeline-window (:initialize! window window*)
   (usual=> window :initialize! window*)
-  (set! y-size 1)
-  (set! old-buffer-modified? 'UNKNOWN)
-  unspecific)
+  (set! y-size 1))
 
 (define-method modeline-window (:update-display! window screen x-start y-start
 						 xl xu yl yu display-style)
@@ -68,7 +65,7 @@
 	(if (variable-local-value
 	     (window-buffer superior)
 	     (ref-variable-object mode-line-inverse-video))
-	    (with-inverse-video! screen thunk)
+	    (with-screen-inverse-video! screen thunk)
 	    (thunk))))
   true)
 
@@ -76,30 +73,5 @@
   "*True means use inverse video, or other suitable display mode, for the mode line."
   true)
 
-(define (with-inverse-video! screen thunk)
-  (let ((old-inverse? (screen-inverse-video! screen false))
-	(new-inverse? true))
-    (screen-inverse-video! screen old-inverse?)
-    (dynamic-wind (lambda ()
-		    (set! old-inverse?
-			  (screen-inverse-video! screen new-inverse?)))
-		  thunk
-		  (lambda ()
-		    (set! new-inverse?
-			  (screen-inverse-video! screen old-inverse?))))))
-
 (define-method modeline-window (:event! window type)
-  (case type
-    ((BUFFER-MODIFIED)
-     (let ((new (buffer-modified? (window-buffer superior))))
-       (if (not (eq? old-buffer-modified? new))
-	   (begin
-	     (setup-redisplay-flags! redisplay-flags)
-	     (set! old-buffer-modified? new)))))
-     ((NEW-BUFFER)
-      (set! old-buffer-modified? 'UNKNOWN))
-     ((CURSOR-MOVED)
-      unspecific)
-     (else 
-      (setup-redisplay-flags! redisplay-flags)))
-  unspecific)
+  (setup-redisplay-flags! redisplay-flags))

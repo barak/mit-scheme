@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.9 1990/10/03 04:54:57 cph Exp $
+;;;
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -47,69 +49,41 @@
 (define-structure (editor (constructor %make-editor))
   (name false read-only true)
   (screens false)
-  (current-frame-window false)
+  (selected-screen false)
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
-  (button-event false)
-  (frame-windows false))
+  (input-port false read-only true)
+  (button-event false))
 
 (define (make-editor name screen)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
-    (let ((bufferset (make-bufferset initial-buffer)))
-      (let ((frame
-	     (make-editor-frame screen
-				initial-buffer
-				(make-buffer " *Typein-0*"))))
-	(set-screen-window! screen frame)
-	(%make-editor name
-		      (list screen)
-		      frame
-		      bufferset
-		      (make-ring 10)
-		      (make-ring 100)
-		      false
-		      (list frame))))))
+    (initialize-screen-root-window! screen initial-buffer)
+    (%make-editor name
+		  (list screen)
+		  screen
+		  (make-bufferset initial-buffer)
+		  (make-ring 10)
+		  (make-ring 100)
+		  (make-editor-input-port screen)
+		  false)))
 
 (define (editor-add-screen! editor screen)
-  (if (not (memq screen (editor-screens editor)))
-      (set-editor-screens! editor
-			   (cons screen
-				 (editor-screens editor)))))
+  (set-editor-screens! editor (cons screen (editor-screens editor))))
 
 (define (editor-delete-screen! editor screen)
-  (set-editor-screens! editor
-		       (delq screen
-			     (editor-screens editor))))
+  (let ((screens (delq! screen (editor-screens editor))))
+    (if (null? screens)
+	(error "deleted only editor screen" editor))
+    (set-editor-screens! editor screens)
+    (if (eq? screen (editor-selected-screen editor))
+	(set-editor-selected-screen! editor (car screens)))))
+
+(define (screen-list)
+  (editor-screens (if (within-editor?) current-editor edwin-editor)))
 
-(define (editor-add-frame! editor screen)
-  (if (not (memq screen (editor-frame-windows editor)))
-      (set-editor-frame-windows! editor
-			   (cons screen
-				 (editor-frame-windows editor)))))
-
-(define (editor-delete-frame! editor screen)
-  (set-editor-frame-windows! editor
-		       (delq screen
-			     (editor-frame-windows editor))))
-
-(define-integrable (current-screen)
-  (editor-frame-screen (current-editor-frame)))
-
-(define-integrable (all-screens)
-  (editor-screens current-editor))
-
-(define-integrable (current-editor-input-port)
-  (editor-frame-input-port (current-editor-frame)))
-
-(define-integrable (current-editor-frame)
-  (editor-current-frame-window current-editor))
-
-(define-integrable (all-editor-frames)
-  (editor-frame-windows current-editor))
-
-(define-integrable (all-windows)
-  (append-map editor-frame-windows (all-editor-frames)))
+(define-integrable (selected-screen)
+  (editor-selected-screen current-editor))
 
 (define-integrable (current-bufferset)
   (editor-bufferset current-editor))
@@ -119,9 +93,11 @@
 
 (define-integrable (current-char-history)
   (editor-char-history current-editor))
-
-(define-structure (button-event
-		   (conc-name button-event/))
+
+(define-integrable (current-editor-input-port)
+  (editor-input-port current-editor))
+
+(define-structure (button-event (conc-name button-event/))
   (window false read-only true)
   (x false read-only true)
   (y false read-only true))

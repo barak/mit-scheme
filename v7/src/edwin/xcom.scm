@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.4 1990/08/31 20:13:00 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.5 1990/10/03 04:56:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,40 +48,39 @@
   (x-close-display 1)
   (x-close-all-displays 0)
   (x-close-window 1)
-  (x-window-x-size 1)
-  (x-window-y-size 1)
-  (x-window-set-size 3)
-  (x-window-set-position 3)
-  (x-window-map 1)
-  (x-window-unmap 1)
   (x-window-beep 1)
   (x-window-clear 1)
-  (x-window-flush 1)
   (x-window-get-default 3)
-  (x-window-set-foreground-color 2)
+  (x-window-map 1)
   (x-window-set-background-color 2)
   (x-window-set-border-color 2)
+  (x-window-set-border-width 2)
   (x-window-set-cursor-color 2)
+  (x-window-set-font 2)
+  (x-window-set-foreground-color 2)
+  (x-window-set-icon-name 2)
+  (x-window-set-internal-border-width 2)
   (x-window-set-mouse-color 2)
   (x-window-set-mouse-shape 2)
-  (x-window-set-font 2)
-  (x-window-set-border-width 2)
-  (x-window-set-internal-border-width 2)
+  (x-window-set-name 2)
+  (x-window-set-position 3)
+  (x-window-set-size 3)
+  (x-window-unmap 1)
+  (x-window-x-size 1)
+  (x-window-y-size 1)
   (xterm-x-size 1)
   (xterm-y-size 1)
-  (xterm-set-size 3)
-  (x-set-window-name 2)
-  (x-set-icon-name 2))
+  (xterm-set-size 3))
 
 (define (current-xterm)
-  (screen-xterm (current-screen)))
-
+  (screen-xterm (selected-screen)))
+
 (define-command x-set-foreground-color
   "Set foreground (text) color to COLOR."
   "sSet foreground color"
   (lambda (color)
     (x-window-set-foreground-color (current-xterm) color)
-    (update-screen! (current-screen) true)))
+    (update-screen! (selected-screen) true)))
 
 (define-command x-set-background-color
   "Set background color to COLOR."
@@ -90,7 +89,7 @@
     (let ((xterm (current-xterm)))
       (x-window-set-background-color xterm color)
       (x-window-clear xterm))
-    (update-screen! (current-screen) true)))
+    (update-screen! (selected-screen) true)))
 
 (define-command x-set-border-color
   "Set border color to COLOR."
@@ -120,7 +119,7 @@
 	(if (not (x-window-set-font xterm font))
 	    (editor-error "Unknown font name: " font))
 	(xterm-set-size xterm x-size y-size)))))
-
+
 (define-command x-set-size
   "Set size of editor screen to WIDTH x HEIGHT."
   "nScreen width (chars)\nnScreen height (chars)"
@@ -138,13 +137,67 @@
   "nSet border width"
   (lambda (width)
     (x-window-set-border-width (current-xterm) (max 0 width))
-    (update-screen! (current-screen) true)))
+    (update-screen! (selected-screen) true)))
 
 (define-command x-set-internal-border-width
   "Set width of internal border to WIDTH."
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
+
+(define-command x-set-window-name
+  "Set X window name to NAME.
+Useful only if `x-screen-name-format' is false."
+  "sSet X window name"
+  (lambda (name)
+    (x-window-set-name (current-xterm) name)))
+
+(define-command x-set-icon-name
+  "Set X window icon name to NAME.
+Useful only if `x-screen-icon-name-format' is false."
+  "sSet X window icon name"
+  (lambda (name)
+    (x-window-set-icon-name (current-xterm) name)))
+
+(define-variable x-screen-name-format
+  "If not false, template for displaying X window name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable x-screen-icon-name-format
+  "If not false, template for displaying X window icon name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable x-screen-icon-name-length
+  "Maximum length of X window icon name.
+Used only if `x-screen-icon-name-format' is non-false."
+  32)
+
+(define (update-xterm-screen-names! screen)
+  (let ((window
+	 (if (and (selected-screen? screen)
+		  (within-typein-edit?))
+	     (typein-edit-other-window)
+	     (screen-selected-window screen)))
+	(xterm (screen-xterm screen)))
+    (let ((update-name
+	   (lambda (set-name variable length)
+	     (let ((format
+		    (variable-local-value (window-buffer window) variable)))
+	       (if format
+		   (set-name
+		    xterm
+		    (string-trim-right
+		     (format-modeline-string window format length))))))))
+      (update-name x-window-set-name
+		   (ref-variable-object x-screen-name-format)
+		   (screen-x-size screen))
+      (update-name x-window-set-icon-name
+		   (ref-variable-object x-screen-icon-name-format)
+		   (variable-local-value
+		    (window-buffer window)
+		    (ref-variable-object x-screen-icon-name-length))))))
 
 (define-command x-set-mouse-shape
   "Set mouse cursor shape to SHAPE.
@@ -245,18 +298,6 @@ When called interactively, completion is available on the input."
      "watch"
      "xterm"))
 
-(define-command x-set-window-name
-  "Set X window name to NAME."
-  "sSet X window name"
-  (lambda (name)
-    (x-set-window-name (current-xterm) name)))
-
-(define-command x-set-icon-name
-  "Set X window icon name to NAME."
-  "sSet X window icon name"
-  (lambda (name)
-    (x-set-icon-name (current-xterm) name)))
-
 ;;;; Mouse Commands
 
 (define-command x-mouse-select
@@ -331,22 +372,3 @@ Display cursor at that position for a second."
 (define-key 'fundamental button5-up 'x-mouse-ignore)
 
 (define-key 'fundamental button1-down 'x-mouse-set-point)
-
-;;; set X window name and X icon name to current buffer name
-(let ((old-hook (ref-variable select-buffer-hook))
-      (new-hook
-       (lambda (buffer window)
-	 (if (eq? (editor-display-type) x-display-type-name)
-	     (let ((xterm
-		    (screen-xterm
-		     (editor-frame-screen (window-root-window window))))
-		   (name (buffer-name buffer)))
-	       (x-set-window-name xterm name)
-	       (x-set-icon-name xterm name))))))
-  (set-variable!
-   select-buffer-hook
-   (if old-hook
-       (lambda (buffer window)
-	 (old-hook buffer window)
-	 (new-hook buffer window))
-       new-hook)))

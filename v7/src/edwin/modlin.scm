@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.2 1989/08/11 11:28:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.3 1990/10/03 04:55:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -115,15 +115,15 @@ If #F, the normal method is used."
 			       (ref-variable-object mode-line-procedure))))
     (if procedure
 	(procedure window)
-	(standard-modeline-string window))))
+	(format-modeline-string
+	 window
+	 (variable-local-value (window-buffer window)
+			       (ref-variable-object mode-line-format))
+	 (window-x-size window)))))
 
-(define (standard-modeline-string window)
-  (let* ((x-size (window-x-size window))
-	 (line (string-allocate x-size)))
-    (display-mode-element
-     (variable-local-value (window-buffer window)
-			   (ref-variable-object mode-line-format))
-     window line 0 x-size x-size)
+(define (format-modeline-string window format size)
+  (let ((line (string-allocate size)))
+    (display-mode-element format window line 0 size size)
     line))
 
 (define (display-mode-element element window line column min-end max-end)
