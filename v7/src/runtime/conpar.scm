@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.20 1990/10/03 21:53:21 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/conpar.scm,v 14.21 1990/12/28 01:34:25 hal Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -640,7 +640,7 @@ MIT in each case. |#
 
 ;;;; Hardware trap parsing
 
-(define-integrable hardware-trap/frame-size 8)
+(define-integrable hardware-trap/frame-size 9)
 
 (define-integrable hardware-trap/signal-index 1)
 (define-integrable hardware-trap/signal-name-index 2)
