@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.3 1988/08/01 23:10:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.4 1989/04/15 01:22:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -106,8 +106,16 @@ MIT in each case. |#
 (define-integrable string->symbol
   (ucode-primitive string->symbol))
 
-(define-integrable (symbol->string symbol)
-  (string-copy (system-pair-car symbol)))
+(define symbol->string/downcase?
+  true)
+
+(define (symbol->string symbol)
+  (let ((string (system-pair-car symbol)))
+    (if (and symbol->string/downcase?
+	     (object-type? (ucode-type interned-symbol) symbol)
+	     (not (string-find-next-char-in-set string char-set:lower-case)))
+	(string-downcase string)
+	(string-copy string))))
 
 (define (make-named-tag name)
   (string->symbol (string-append "#[" name "]")))
@@ -116,10 +124,10 @@ MIT in each case. |#
   (string->symbol (string-upcase string)))
 
 (define-integrable (symbol-hash symbol)
-  (string-hash (symbol->string symbol)))
+  (string-hash (system-pair-car symbol)))
 
 (define (symbol-append . symbols)
-  (string->symbol (apply string-append (map symbol->string symbols))))
+  (string->symbol (apply string-append (map system-pair-car symbols))))
 
 ;;;; Variable
 
