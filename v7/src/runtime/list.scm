@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.25 2001/08/15 02:55:55 cph Exp $
+$Id: list.scm,v 14.26 2001/09/25 05:09:36 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,45 +16,46 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; List Operations
 ;;; package: (runtime list)
 
-;;; Note: Many list operations (like LIST-COPY and DELQ) have been
-;;  replaced with iterative versions which are slightly longer than
-;;  the recursive ones.  The iterative versions have the advantage
-;;  that they are not limited by the stack size.  If you can execute
-;;  (MAKE-LIST 100000) you should be able to process it.  Some
-;;  machines have a problem with large stacks - Win32s as a max stack
-;;  size of 128k.
-;;
-;;  The disadvantage of the iterative versions is that side-effects are
-;;  detectable in horrible ways with CALL-WITH-CURRENT-CONTINUATION.
-;;  Due to this only those procedures which call procedures known NOT
-;;  to use CALL-WITH-CURRENT-CONTINUATION can be written this way, so
-;;  MAP is still recursive, but LIST-COPY is iterative.  The
-;;  assumption is that any other way of grabbing the continuation
-;;  (e.g. the threads package via a timer interrupt) will invoke the
-;;  continuation at most once.
-;;
-;;  We did some performance measurements.  The iterative versions were
-;;  slightly faster.  These comparisons should be checked after major
-;;  compiler work.
-;;
-;;  Each interative version appears after the commented-out recursive
-;;  version.  Please leave them in the file, we may want them in the
-;;  future.  We have commented them out with ;; rather than block (i.e
-;;  #||#) comments deliberately.  [Note from CPH: commented-out code
-;;  deleted as it can always be recovered from version control.]
-;;
-;;  -- Yael & Stephen
+;;; Many list operations (like LIST-COPY and DELQ) have been replaced
+;;; with iterative versions which are slightly longer than the
+;;; recursive ones.  The iterative versions have the advantage that
+;;; they are not limited by the stack size.  If you can execute
+;;; (MAKE-LIST 100000) you should be able to process it.  Some
+;;; machines have a problem with large stacks - Win32s as a max stack
+;;; size of 128k.
+;;;
+;;; The disadvantage of the iterative versions is that side-effects are
+;;; detectable in horrible ways with CALL-WITH-CURRENT-CONTINUATION.
+;;; Due to this only those procedures which call procedures known NOT
+;;; to use CALL-WITH-CURRENT-CONTINUATION can be written this way, so
+;;; MAP is still recursive, but LIST-COPY is iterative.  The
+;;; assumption is that any other way of grabbing the continuation
+;;; (e.g. the threads package via a timer interrupt) will invoke the
+;;; continuation at most once.
+;;;
+;;; We did some performance measurements.  The iterative versions were
+;;; slightly faster.  These comparisons should be checked after major
+;;; compiler work.
+;;;
+;;; Each interative version appears after the commented-out recursive
+;;; version.  Please leave them in the file, we may want them in the
+;;; future.  We have commented them out with ;; rather than block (i.e
+;;; #||#) comments deliberately.  [Note from CPH: commented-out code
+;;; deleted as it can always be recovered from version control.]
+;;;
+;;; -- Yael & Stephen
 
 (declare (usual-integrations))
 
 (define-primitives
-  cons pair? null? length car cdr set-car! set-cdr! general-car-cdr)
+  cons pair? null? car cdr set-car! set-cdr! general-car-cdr)
 
 (define (list . items)
   items)
@@ -103,6 +104,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	result
 	(loop (- index 1)
 	      (cons (initialization index) result)))))
+
+(define (length items)
+  (let ((lose
+	 (lambda () (error:wrong-type-argument items "proper list" 'LENGTH))))
+    (let loop ((l1 items) (l2 items) (length 0))
+      (if (pair? l1)
+	  (begin
+	    (if (eq? (cdr l1) l2)
+		(lose))
+	    (if (pair? (cdr l1))
+		(loop (cddr l1) (cdr l2) (fix:+ length 2))
+		(begin
+		  (if (not (null? (cdr l1)))
+		      (lose))
+		  (fix:+ length 1))))
+	  (begin
+	    (if (not (null? l1))
+		(lose))
+	    length)))))
 
 (define (list-ref list index)
   (let ((tail (list-tail list index)))
