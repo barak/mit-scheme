@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.30 1994/02/18 21:14:18 cph Exp $
+$Id: uxsig.c,v 1.31 1994/05/03 08:01:16 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -501,15 +501,29 @@ DEFUN_VOID (OS_restartable_exit)
   stop_signal_default (SIGTSTP);
 }
 
+/* The following conditionalization would more naturally be expressed
+   by conditionalizing the code inside the handler, but the Sun
+   compiler won't accept this conditionalization.  */
+
+#ifdef HAVE_ITIMER
+
 static
 DEFUN_STD_HANDLER (sighnd_timer,
 {
-#ifndef HAVE_ITIMER
-  extern void EXFUN (reschedule_alarm, (void));
-  reschedule_alarm ();
-#endif
   request_timer_interrupt ();
 })
+
+#else /* not HAVE_ITIMER */
+
+static
+DEFUN_STD_HANDLER (sighnd_timer,
+{
+  extern void EXFUN (reschedule_alarm, (void));
+  reschedule_alarm ();
+  request_timer_interrupt ();
+})
+
+#endif /* not HAVE_ITIMER */
 
 static
 DEFUN_STD_HANDLER (sighnd_save_then_terminate,
