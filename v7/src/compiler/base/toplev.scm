@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.48 1993/11/09 04:14:01 gjr Exp $
+$Id: toplev.scm,v 4.49 1993/11/29 18:38:35 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -139,26 +139,29 @@ MIT in each case. |#
 ;;;; Alternate Entry Points
 
 (define (compile-scode scode #!optional keep-debugging-info?)
-  (let ((keep-debugging-info?
-	 (and (or (default-object? keep-debugging-info?)
-		  keep-debugging-info?)
-	      'KEEP)))
-    (fluid-let ((compiler:noisy? false)
-		(*info-output-filename* keep-debugging-info?))
-      (compile-scode/internal scode
-			      keep-debugging-info?))))
+  (compiler-output->compiled-expression
+   (compile-scode/no-file
+    scode
+    (and (or (default-object? keep-debugging-info?)
+	     keep-debugging-info?)
+	 'KEEP))))
 
 (define (compile-procedure procedure #!optional keep-debugging-info?)
-  (compiled-scode->procedure
-   (let ((keep-debugging-info?
-	  (and (or (default-object? keep-debugging-info?)
-		   keep-debugging-info?)
-	       'KEEP)))
-     (fluid-let ((compiler:noisy? false)
-		 (*info-output-filename* keep-debugging-info?))
-       (compile-scode/internal (procedure-lambda procedure)
-			       keep-debugging-info?)))
+  (compiler-output->procedure
+   (compile-scode/no-file
+    scode
+    (and (or (default-object? keep-debugging-info?)
+	     keep-debugging-info?)
+	 'KEEP))
    (procedure-environment procedure)))
+
+(define (compile-scode/no-file scode keep-debugging-info?)
+  (fluid-let ((compiler:noisy? false)
+	      (*info-output-filename* keep-debugging-info?))
+    (compile-scode/internal/hook
+     (lambda ()
+       (compile-scode/internal scode
+			       keep-debugging-info?)))))
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? true))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.8 1993/11/13 19:34:48 gjr Exp $
+$Id: asstop.scm,v 1.9 1993/11/29 18:38:12 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -44,8 +44,14 @@ MIT in each case. |#
 (define (compiler-file-output object pathname)
   (fasdump object pathname))
 
-(define (compiled-scode->procedure scode environment)
+(define (compiler-output->procedure scode environment)
   (scode-eval scode environment))
+
+(define (compiler-output->compiled-expression cexp)
+  cexp)
+
+(define (compile-scode/internal/hook action)
+  (action))
 
 ;;; Global variables for the assembler and linker
 
