@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.5 2004/05/26 10:52:11 cph Exp $
+$Id: xml-names.scm,v 1.6 2004/10/14 02:33:37 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -221,7 +221,7 @@ USA.
 
 (define (xml-qname-string qname)
   (guarantee-xml-qname qname 'XML-QNAME-STRING)
-  (symbol-name qname))
+  (symbol->string qname))
 
 (define (xml-qname-local qname)
   (let ((s (symbol-name qname)))
