@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.28 1987/04/16 02:29:45 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.29 1987/04/21 15:00:46 cph Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -72,7 +72,7 @@ long IntCode,		/* Interrupts requesting */
      IntEnb,		/* Interrupts enabled */
      Lookup_Offset,	/* Slot lookup result return */
      GC_Reserve = 4500,	/* Scheme pointer overflow space in heap */
-     GC_Space_Needed, 	/* Amount of space needed when GC triggered */
+     GC_Space_Needed = 0, /* Amount of space needed when GC triggered */
      /* Used to signal microcode errors from compiled code. */
      compiled_code_error_code;
 
