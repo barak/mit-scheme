@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: print.sh,v 1.8 2000/06/29 22:06:11 cph Exp $
+# $Id: print.sh,v 1.9 2001/05/26 03:01:00 cph Exp $
 #
-# Copyright (c) 1999-2000 Massachusetts Institute of Technology
+# Copyright (c) 1999-2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -16,9 +16,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
-prlist todo.txt imail-top.scm imail-summary.scm imail-core.scm \
+prlist todo.txt imail-top.scm imail-summary.scm imail-browser.scm \
+  imail-core.scm \
   imail-imap.scm imap-response.scm imap-syntax.scm \
   imail-file.scm imail-rmail.scm imail-umail.scm \
   imail-util.scm url.scm parser.scm rexp.scm

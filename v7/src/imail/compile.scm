@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.10 2000/06/08 18:08:25 cph Exp $
+;;; $Id: compile.scm,v 1.11 2001/05/26 02:58:25 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: compilation
 
@@ -40,7 +41,8 @@
 		     (access edwin-syntax-table (->environment '(EDWIN)))))
 		(lambda (filename)
 		  (compile-file filename '() syntax-table)))
-	      '("imail-summary"
+	      '("imail-browser"
+		"imail-summary"
 		"imail-top"))
     (cref/generate-constructors "imail")
     (sf "imail.con")

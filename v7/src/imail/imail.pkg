@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.82 2001/05/18 19:21:12 cph Exp $
+;;; $Id: imail.pkg,v 1.83 2001/05/26 02:58:30 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: packaging
 
@@ -355,6 +356,21 @@
 	  write-imail-summary-line!))
 
 (define-package (edwin imail front-end folder-browser)
-  ;;(files "imail-browser")
+  (files "imail-browser")
   (parent (edwin imail front-end))
-  (export (edwin)))
+  (export (edwin)
+	  edwin-command$imail-browse-container
+	  edwin-command$imail-browser-backup-unmark
+	  edwin-command$imail-browser-do-deletions
+	  edwin-command$imail-browser-flag-folder-deletion
+	  edwin-command$imail-browser-mark-folder
+	  edwin-command$imail-browser-mouse-toggle-container
+	  edwin-command$imail-browser-quit
+	  edwin-command$imail-browser-revert
+	  edwin-command$imail-browser-toggle-container
+	  edwin-command$imail-browser-unmark
+	  edwin-command$imail-browser-unmark-all-folders
+	  edwin-command$imail-browser-view-container
+	  edwin-command$imail-browser-view-folder
+	  edwin-mode$imail-browser
+	  edwin-variable$imail-browser-mode-hook))

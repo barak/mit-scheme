@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.13 2000/07/05 00:13:18 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.14 2001/05/26 02:58:27 cph Exp $
 ;;;
-;;; Copyright (c) 2000 Massachusetts Institute of Technology
+;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,12 +16,15 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: Edwin buffer packaging info
 
 (standard-scheme-find-file-initialization
- '#(("imail-core"	(edwin imail)
+ '#(("imail-browser"	(edwin imail front-end folder-browser)
+			edwin-syntax-table)
+    ("imail-core"	(edwin imail)
 			system-global-syntax-table)
     ("imail-file"	(edwin imail file-folder)
 			system-global-syntax-table)
