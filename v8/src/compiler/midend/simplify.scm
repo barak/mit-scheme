@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.5 1995/02/14 00:44:06 adams Exp $
+$Id: simplify.scm,v 1.6 1995/02/15 21:54:14 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -367,8 +367,10 @@ MIT in each case. |#
 	(operator-refs  (simplify/binding/operator-refs node)))
     (define copy-value
       ;; We only copy the value if we are making substituting in several
-      ;; places, and then we only copy for the 2nd substitution onwards
-      (let ((all-refs (append ordinary-refs operator-refs)))
+      ;; places, and then we only copy for the 2nd substitution
+      ;; onwards.  This saves work because we tend to copy one huge
+      ;; thing or many tiny things.
+      (let* ((all-refs (append ordinary-refs operator-refs)))
 	(lambda (ref)
 	  (if (eq? ref (car all-refs))
 	      value
@@ -398,12 +400,11 @@ MIT in each case. |#
 	(variable/rename name)))
   (define (walk renames form)
     (define (extend old new) (map* renames cons old new))
-    (define (reference form kind)
-      (let ((name  (lookup/name form)))
-	(cond ((assq name renames)
-	       => (lambda (place) `(LOOKUP ,(cdr place))))
-	      (else
-	       (simplify/lookup*! env name `(LOOKUP ,name) kind)))))
+    (define (reference name wrap kind)
+      (cond ((assq name renames)
+	     => (lambda (place) (wrap (cdr place))))
+	    (else
+	     (simplify/lookup*! env name (wrap name) kind))))
     (define (let/letrec keyword)
       (let* ((old      (map first (second form)))
 	     (new      (map rename old))
@@ -412,12 +413,15 @@ MIT in each case. |#
 	`(,keyword ,(map (lambda (name binding)
 			   (list name (walk renames** (second binding))))
 			 new
-			 bindings)
+			 (second form))
 		   ,(walk renames* (third form)))))
     (define (walk* forms)
       (map (lambda (form*) (walk renames form*)) forms))
     (cond ((QUOTE/? form)  form)
-	  ((LOOKUP/? form) (reference form 'ORDINARY))
+	  ((LOOKUP/? form)
+	   (let ((name  (lookup/name form)))
+	     (define (lookup x) `(LOOKUP ,x))
+	     (reference name lookup 'ORDINARY)))
 	  ((LAMBDA/? form)
 	   (let* ((old  (lambda/formals form))
 		  (new  (map rename old)))
@@ -434,8 +438,11 @@ MIT in each case. |#
 	  ((DECLARE/? form) `(DECLARE ,@(cdr form)))
 	  ((CALL/? form)
 	   (if (LOOKUP/? (call/operator form))
-	       `(CALL ,(reference (call/operator form) 'OPERATOR)
-		      ,@(walk* (call/cont-and-operands form)))
+	       (let ((name (lookup/name (call/operator form))))
+		 (define (call name)
+		   `(CALL (LOOKUP ,name)
+			  ,@(walk* (call/cont-and-operands form))))
+		 (reference name call 'OPERATOR))
 	       `(CALL ,@(walk* (cdr form)))))
 	  (else
 	   (internal-error "Unexpected syntax" form))))
@@ -456,13 +463,13 @@ MIT in each case. |#
   (let ((body (lambda/body value)))
     (or (QUOTE/? body)
 	(LOOKUP/? body)
-	;;(and (CALL/? body)
-	;;     (QUOTE/? (call/operator body))
-	;;     (known-operator? (quote/text (call/operator body)))
-	;;     (for-all? (call/cont-and-operands body)
-	;;       (lambda (element)
-	;;	 (or (QUOTE/? element)
-	;;	     (LOOKUP/? element)))))
+	(and (CALL/? body)
+	     (QUOTE/? (call/operator body))
+	     (known-operator? (quote/text (call/operator body)))
+	     (for-all? (call/cont-and-operands body)
+	       (lambda (element)
+		 (or (QUOTE/? element)
+		     (LOOKUP/? element)))))
 	(and *after-cps-conversion?*
 	     (CALL/? body)
 	     (<= (length (call/cont-and-operands body))
