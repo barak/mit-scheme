@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.15 1998/01/03 05:02:52 cph Exp $
+;;;	$Id: dosfile.scm,v 1.16 1998/03/09 05:17:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-98 Massachusetts Institute of Technology
 ;;;
@@ -332,46 +332,49 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 		      version))))))
 
 (define (os/auto-save-filename? filename)
-  (or (re-string-match "^#.+#$" (file-namestring filename))
+  (if (dos/fs-long-filenames? filename)
+      (re-string-match "^#.+#$" (file-namestring filename))
       (let ((type (pathname-type filename)))
 	(and (string? type)
 	     (string-ci=? "sav" type)))))
 
 (define (os/precious-backup-pathname pathname)
-  (if (dos/fs-long-filenames? pathname)
-      (let ((directory (directory-pathname pathname)))
-	(let loop ((i 0))
-	  (let ((pathname
-		 (merge-pathnames (string-append "#tmp#" (number->string i))
-				  directory)))
-	    (if (allocate-temporary-file pathname)
-		(begin
-		  (deallocate-temporary-file pathname)
-		  pathname)
-		(loop (+ i 1))))))
-      (os/auto-save-pathname pathname #f)))
+  (let ((directory (directory-pathname pathname)))
+    (let loop ((i 0))
+      (let ((pathname
+	     (merge-pathnames (string-append "#tmp#" (number->string i))
+			      directory)))
+	(if (allocate-temporary-file pathname)
+	    (begin
+	      (deallocate-temporary-file pathname)
+	      pathname)
+	    (loop (+ i 1)))))))
 
 (define (os/auto-save-pathname pathname buffer)
   (let ((pathname
 	 (or pathname
-	     (let ((directory (buffer-default-directory buffer)))
-	       (merge-pathnames
-		(if (dos/fs-long-filenames? directory)
-		    (string-append "%" (dos/buffer-long-name buffer))
-		    "%buffer%")
-		directory)))))
+	     (merge-pathnames (dos/buffer-auto-save-name buffer)
+			      (buffer-default-directory buffer)))))
     (if (dos/fs-long-filenames? pathname)
 	(merge-pathnames (string-append "#" (file-namestring pathname) "#")
 			 (directory-pathname pathname))
 	(pathname-new-type pathname "sav"))))
 
-(define (dos/buffer-long-name buffer)
-  (if (string-ci=? "hpfs"
-		   (car (dos/fs-drive-type (buffer-default-directory buffer))))
-      (dos/buffer-hpfs-name buffer)
-      (buffer-name buffer)))
+(define (dos/buffer-auto-save-name buffer)
+  (string-append
+   "%"
+   (let ((directory (buffer-default-directory buffer)))
+     (cond ((not (dos/fs-long-filenames? directory))
+	    (let ((name (dos/buffer-short-name buffer char-set:valid-fat)))
+	      (if (string-null? name)
+		  "buffer%"
+		  name)))
+	   ((string-ci=? "hpfs" (car (dos/fs-drive-type directory)))
+	    (dos/buffer-long-name buffer char-set:valid-hpfs))
+	   (else
+	    (dos/buffer-long-name buffer char-set:valid-windows-long))))))
 
-(define (dos/buffer-hpfs-name buffer)
+(define (dos/buffer-long-name buffer valid-chars)
   (let ((name (buffer-name buffer)))
     (let ((length (string-length name)))
       (let ((copy (make-string length)))
@@ -380,17 +383,41 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	  (string-set!
 	   copy i
 	   (let ((char (string-ref name i)))
-	     (if (char-set-member? char-set:valid-hpfs-chars
-				   char)
+	     (if (char-set-member? valid-chars char)
 		 char
 		 #\_))))
 	copy))))
 
-(define char-set:valid-hpfs-chars
-  (char-set-invert
-   (char-set-union (char-set #\\ #\/ #\: #\* #\? #\" #\< #\> #\|)
-		   (char-set-union (ascii-range->char-set 0 #x21)
-				   (ascii-range->char-set #x7F #x100)))))
+(define (dos/buffer-short-name buffer valid-chars)
+  (let ((name
+	 (list->string
+	  (let loop ((chars (string->list (buffer-name buffer))))
+	    (cond ((null? chars)
+		   '())
+		  ((char-set-member? valid-chars (car chars))
+		   (cons (car chars) (loop (cdr chars))))
+		  (else
+		   (loop (cdr chars))))))))
+    (let ((n (string-length name)))
+      (if (fix:<= n 7)
+	  name
+	  (string-head name 7)))))
+
+(define char-set:valid-hpfs)
+(define char-set:valid-windows-long)
+(let ((reserved-chars
+       (char-set-union (string->char-set "\"/:<>\\|")
+		       (string->char-set "*?"))))
+  (set! char-set:valid-hpfs
+	(char-set-difference (ascii-range->char-set #x21 #x7F)
+			     reserved-chars))
+  (set! char-set:valid-windows-long
+	(char-set-difference (ascii-range->char-set #x20 #x100)
+			     reserved-chars)))
+
+(define char-set:valid-fat
+  (char-set-union char-set:alphanumeric
+		  (string->char-set "!#$%'()-@^_`{}~")))
 
 ;;;; Miscellaneous
 
