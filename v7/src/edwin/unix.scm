@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.109 2000/07/28 15:15:35 cph Exp $
+;;; $Id: unix.scm,v 1.110 2002/10/26 04:24:00 cph Exp $
 ;;;
-;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1989-2000, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Unix Customizations for Edwin
 
@@ -313,6 +314,7 @@ Includes the new backup.  Must be > 0."
      ("h" . c)
      ("htm" . html)
      ("html" . html)
+     ("inc" . php)
      ("java" . java)
      ("pas" . pascal)
      ("php" . php)
@@ -322,6 +324,7 @@ Includes the new backup.  Must be > 0."
      ("text" . text)
      ("txi" . texinfo)
      ("txt" . text)
+     ("xml" . html)
      ("y" . c))))
 
 (define (os/init-file-name)
