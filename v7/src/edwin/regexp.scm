@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.65 1993/10/11 11:39:30 cph Exp $
+;;;	$Id: regexp.scm,v 1.66 1995/02/02 21:20:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -261,41 +261,52 @@
    (syntax-table-argument syntax-table)
    registers string start end))
 
-(define (search-forward string start end #!optional case-fold-search)
-  (%re-search string start end
-	      (if (default-object? case-fold-search)
-		  (group-case-fold-search (mark-group start))
-		  case-fold-search)
+(define-macro (default-end-mark start end)
+  `(IF (DEFAULT-OBJECT? ,end)
+       (GROUP-END ,start)
+       (BEGIN
+	 (IF (NOT (MARK<= ,start ,end))
+	     (ERROR "Marks incorrectly related:" ,start ,end))
+	 ,end)))
+
+(define-macro (default-start-mark start end)
+  `(IF (DEFAULT-OBJECT? ,start)
+       (GROUP-START ,end)
+       (BEGIN
+	 (IF (NOT (MARK<= ,start ,end))
+	     (ERROR "Marks incorrectly related:" ,start ,end))
+	 ,start)))
+
+(define-macro (default-case-fold-search case-fold-search mark)
+  `(IF (DEFAULT-OBJECT? ,case-fold-search)
+       (GROUP-CASE-FOLD-SEARCH (MARK-GROUP ,mark))
+       ,case-fold-search))
+
+(define (search-forward string start #!optional end case-fold-search)
+  (%re-search string start (default-end-mark start end)
+	      (default-case-fold-search case-fold-search start)
 	      re-compile-string
 	      re-search-buffer-forward))
 
-(define (search-backward string end start #!optional case-fold-search)
-  (%re-search string start end
-	      (if (default-object? case-fold-search)
-		  (group-case-fold-search (mark-group start))
-		  case-fold-search)
+(define (search-backward string end #!optional start case-fold-search)
+  (%re-search string (default-start-mark start end) end
+	      (default-case-fold-search case-fold-search end)
 	      re-compile-string
 	      re-search-buffer-backward))
 
-(define (re-search-forward regexp start end #!optional case-fold-search)
-  (%re-search regexp start end
-	      (if (default-object? case-fold-search)
-		  (group-case-fold-search (mark-group start))
-		  case-fold-search)
+(define (re-search-forward regexp start #!optional end case-fold-search)
+  (%re-search regexp start (default-end-mark start end)
+	      (default-case-fold-search case-fold-search start)
 	      re-compile-pattern
 	      re-search-buffer-forward))
 
-(define (re-search-backward regexp end start #!optional case-fold-search)
-  (%re-search regexp start end
-	      (if (default-object? case-fold-search)
-		  (group-case-fold-search (mark-group start))
-		  case-fold-search)
+(define (re-search-backward regexp end #!optional start case-fold-search)
+  (%re-search regexp (default-start-mark start end) end
+	      (default-case-fold-search case-fold-search end)
 	      re-compile-pattern
 	      re-search-buffer-backward))
 
 (define (%re-search string start end case-fold-search compile-string search)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related:" start end))
   (let ((group (mark-group start)))
     (let ((index
 	   (search (compile-string string case-fold-search)
@@ -308,25 +319,16 @@
 	   (make-mark group index)))))
 
 (define (re-match-forward regexp start #!optional end case-fold-search)
-  (let ((group (mark-group start)))
-    (let ((end
-	   (if (default-object? end)
-	       (group-end-mark group)
-	       (begin
-		 (if (not (mark<= start end))
-		     (error "Marks incorrectly related:" start end))
-		 end)))
-	  (case-fold-search
-	   (if (default-object? case-fold-search)
-	       (group-case-fold-search group)
-	       case-fold-search)))
-      (let ((index
-	     (re-match-buffer-forward (re-compile-pattern regexp
-							  case-fold-search)
-				      case-fold-search
-				      (group-syntax-table group)
-				      group
-				      (mark-index start)
-				      (mark-index end))))
-	(and index
-	     (make-mark group index))))))
+  (let ((end (default-end-mark start end))
+	(case-fold-search (default-case-fold-search case-fold-search start))
+	(group (mark-group start)))
+    (let ((index
+	   (re-match-buffer-forward (re-compile-pattern regexp
+							case-fold-search)
+				    case-fold-search
+				    (group-syntax-table group)
+				    group
+				    (mark-index start)
+				    (mark-index end))))
+      (and index
+	   (make-mark group index)))))
