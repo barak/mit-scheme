@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.24 1987/12/31 18:51:55 pas Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.25 1988/01/07 19:17:54 pas Exp $ */
 
 
 #define REAL float
@@ -80,39 +80,31 @@ MIT in each case. */
    so as to avoid name shadowing other variables when substituted.
    */
 
-/* Array_Scale
- */
 #define C_Array_Scale(a,scale, len)  \
 { register long mcrindx;             \
   for (mcrindx=0;mcrindx<len;mcrindx++) a[mcrindx] = a[mcrindx] * scale; }
-
 #define Array_Scale(ar,scale) \
   C_Array_Scale(Scheme_Array_To_C_Array(ar), \
 		scale,                       \
 		Array_Length(ar))
 
-/* Array_Copy
- */
 #define C_Array_Copy(ar1,ar2, len) \
-{ register long mcrindx;           \
-  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx]; }
-
+{ register long mcrindx; for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx]; }
 #define Array_Copy(ar1,ar2) \
   C_Array_Copy(Scheme_Array_To_C_Array(ar1), \
 	       Scheme_Array_To_C_Array(ar2), \
 	       Array_Length(ar1))
 
-/* Array_Add_Into_Second_One
-   */
 #define C_Array_Add_Into_Second_One(ar1,ar2,len) \
-{ register long mcrindx;                         \
-  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] + ar2[mcrindx]; }
-
+{ register long mcrindx; for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] + ar2[mcrindx]; }
 #define Array_Add_Into_Second_One(ar1,ar2) \
   C_Array_Add_Into_Second_One(Scheme_Array_To_C_Array(ar1), \
 			      Scheme_Array_To_C_Array(ar2), \
 			      Array_Length(ar1))
 
+#define C_Array_Multiply_Into_Second_One(ar1,ar2, len) \
+{ register long mcrindx;                               \
+  for (mcrindx=0; mcrindx<len; mcrindx++) ar2[mcrindx] = ar1[mcrindx] * ar2[mcrindx] ; }
 
 /* More Macros about random things
  */
@@ -161,7 +153,6 @@ MIT in each case. */
 #define max(x,y)	(((x)<(y)) ? (y) : (x))
 #define min(x,y)	(((x)<(y)) ? (x) : (y))
 
-
 /* FROM ARRAY.C */
 extern int    Scheme_Number_To_REAL();
 extern int    Scheme_Number_To_Double();
@@ -169,6 +160,7 @@ extern int    Scheme_Number_To_Double();
 extern void   C_Array_Find_Min_Max();   /* Find the index of the minimum (*nmin), maximum (*nmax). */
 extern void   C_Array_Find_Average();
 extern void   C_Array_Make_Histogram();  /* REAL *Array,*Histogram; long Length,npoints */
+extern void   C_Array_Complex_Multiply_Into_First_One(); 
 
 /* Datatype Conversions
  */
