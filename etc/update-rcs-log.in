@@ -14,8 +14,6 @@
 			      (string-append subdirectory "/RCS"))
 			    subdirectories))))))
 
-    (make-log "/raid/jmiller/scheme/bench")
-
     ;;(make-log "/scheme/8.0/src/6001")
     (make-log "/scheme/8.0/src/compiler" "back" "base" "documentation" "etc"
 	      "machines/i386" "machines/spectrum"
@@ -29,7 +27,7 @@
     (make-log "/scheme/8.0/src/sf")
     ;;(make-log "/scheme/8.0/src/sicp")
     ;;(make-log "/scheme/8.0/src/win32" "dibutils")
-
+    (make-log "/scheme/8.0/src/bench")
 
     ;;(make-log "/scheme/7.4/src/6001")
     (make-log "/scheme/7.4/src/compiler" "back" "base" "documentation" "etc" "fggen"
