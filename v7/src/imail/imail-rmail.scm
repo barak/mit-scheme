@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.56 2001/03/19 19:33:01 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.57 2001/03/19 20:01:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -209,7 +209,9 @@
 		 (+ (string-length line) 1)))
 	     (else
 	      (skip-past-blank-line port)
-	      (- (xstring-port/position port) 1)))))))
+	      (let ((end (- (xstring-port/position port) 1)))
+		(skip-rmail-message-headers-separator port)
+		end)))))))
 
 (define (read-rmail-displayed-headers port)
   (let ((start (xstring-port/position port)))
