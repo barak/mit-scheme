@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.25 1996/10/07 17:59:56 cph Exp $
+$Id: ntscreen.c,v 1.26 1996/10/09 15:41:36 cph Exp $
 
 Copyright (c) 1993-96 Massachusetts Institute of Technology
 
@@ -182,7 +182,7 @@ static BOOL SelectScreenBackColor (SCREEN, HWND);
 static HFONT set_font_1 (char *, LOGFONT *);
 static BOOL parse_logfont (char *, LOGFONT *);
 static long points_to_logical_units (long);
-static ENUMLOGFONT * search_for_font (LOGFONT *);
+static BOOL search_for_font (LOGFONT *);
 static int CALLBACK search_for_font_proc
   (ENUMLOGFONT *, NEWTEXTMETRIC *, int, LPARAM);
 
@@ -3394,11 +3394,7 @@ set_font_1 (char * description, LOGFONT * lf)
   HFONT hfont = NULL;
   if (parse_logfont (description, lf))
     {
-#if 0
-      ENUMLOGFONT * elf = (search_for_font (lf));
-      if (elf != 0)
-	free (elf);
-#endif
+      (void) search_for_font (lf);
       hfont = (CreateFontIndirect (lf));
     }
   return (hfont);
@@ -3488,28 +3484,24 @@ struct enum_font_args
 {
   LOGFONT * lf;
   ENUMLOGFONT elf;
+  BOOL foundp;
 };
 
-static ENUMLOGFONT *
+static BOOL
 search_for_font (LOGFONT * lf)
 {
   HDC hdc = (CreateDC ("DISPLAY", NULL, NULL, NULL));
   struct enum_font_args args;
-  ENUMLOGFONT * result;
-  
   (args . lf) = lf;
-  if (EnumFontFamilies (hdc,
-			(lf -> lfFaceName),
-			search_for_font_proc,
-			((LPARAM) (&args))))
-    result = 0;
-  else
-    {
-      result = (xmalloc (sizeof (ENUMLOGFONT)));
-      (*result) = (args . elf);
-    }
+  (args . foundp) = FALSE;
+  (void) EnumFontFamilies (hdc,
+			   (lf -> lfFaceName),
+			   search_for_font_proc,
+			   ((LPARAM) (&args)));
+  if (args . foundp)
+    (*lf) = (args . elf . elfLogFont);
   DeleteDC (hdc);
-  return (result);
+  return (args . foundp);
 }
 
 static int CALLBACK
@@ -3517,13 +3509,14 @@ search_for_font_proc (ENUMLOGFONT * elf, NEWTEXTMETRIC * ntm, int type,
 		      LPARAM a)
 {
   struct enum_font_args * args = ((struct enum_font_args *) a);
-  if ((((elf -> elfLogFont) . lfHeight) == (args -> lf -> lfHeight))
+  if ((((elf -> elfLogFont) . lfHeight) == (- (args -> lf -> lfHeight)))
       && (((elf -> elfLogFont) . lfWeight) == (args -> lf -> lfWeight))
       && (((elf -> elfLogFont) . lfItalic) == (args -> lf -> lfItalic))
       && (((elf -> elfLogFont) . lfUnderline) == (args -> lf -> lfUnderline))
       && (((elf -> elfLogFont) . lfStrikeOut) == (args -> lf -> lfStrikeOut)))
     {
       (args -> elf) = (*elf);
+      (args -> foundp) = TRUE;
       return (0);
     }
   else
