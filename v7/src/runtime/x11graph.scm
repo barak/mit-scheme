@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.46 1997/05/15 00:11:39 cph Exp $
+$Id: x11graph.scm,v 1.47 1998/11/03 05:38:18 cph Exp $
 
-Copyright (c) 1989-97 Massachusetts Institute of Technology
+Copyright (c) 1989-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -365,20 +365,20 @@ MIT in each case. |#
 		(lambda (window)
 		  (eq? (x-window/xw window) xw))))))
        (if window
-	   (begin
-	     (let ((handler (vector-ref event-handlers (vector-ref event 0))))
+	   (let ((type (vector-ref event 0)))
+	     (let ((handler (vector-ref event-handlers type)))
 	       (if handler
 		   (handler window event)))
-	     (if (not (fix:= 0
-			     (fix:and (fix:lsh 1 (vector-ref event 0))
-				      (x-window/user-event-mask window))))
+	     (if (or (fix:= event-type:delete-window type)
+		     (not (fix:= 0
+				 (fix:and (fix:lsh 1 type)
+					  (x-window/user-event-mask window)))))
 		 (begin
 		   ;; This would prefer to be the graphics device, but
 		   ;; that's not available from here.
 		   (vector-set! event 1 window)
-		   (enqueue!/unsafe
-		    (x-display/event-queue (x-window/display window))
-		    event)))))))))
+		   (enqueue!/unsafe (x-display/event-queue display)
+				    event)))))))))
 
 (define event-handlers
   (make-vector number-of-event-types false))
@@ -724,19 +724,24 @@ MIT in each case. |#
 	    (vector-ref result 4))))
 
 (define (x-graphics/read-button device)
-  (let ((event
-	 (read-event-of-type (x-graphics/display device)
-			     event-type:button-down)))
+  (let ((event (read-event-of-type device event-type:button-down)))
     (values (vector-ref event 2)
 	    (vector-ref event 3)
 	    (vector-ref event 4))))
 
-(define (read-event-of-type display event-type)
+(define (read-event-of-type device event-type)
+  (let ((window (graphics-device/descriptor device))
+	(display (x-graphics/display device)))
   (let loop ()
     (let ((event (read-event display)))
-      (if (fix:= (vector-ref event 0) event-type)
-	  event
-	  (loop)))))
+      (if (eq? window (vector-ref event 1))
+	  (begin
+	    (if (fix:= (vector-ref event 0) event-type:delete-window)
+		(error "Window closed while waiting to read event."))
+	    (if (fix:= (vector-ref event 0) event-type)
+		event
+		(loop)))
+	  (loop))))))
 
 (define (x-graphics/read-user-event device)
   (read-event (x-graphics/display device)))
