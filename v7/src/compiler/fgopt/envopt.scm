@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: envopt.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
+$Id: envopt.scm,v 1.9 2001/11/01 18:30:05 cph Exp $
 
-Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1990, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Procedure environment optimization
@@ -207,16 +208,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(add-free-callee! procedure on-whom var)
 	(add-free-caller! on-whom procedure))))
 
-(define (add-free-callee! procedure on-whom var)
-  (let ((bucket (procedure-free-callees procedure)))
-    (if (null? bucket)
-	(set-procedure-free-callees! procedure (list (list on-whom var)))
-	(let ((place (assq on-whom bucket)))
-	  (if (false? place)
-	      (set-procedure-free-callees! procedure
-					   (cons (list on-whom var) bucket))
-	      (set-cdr! place (cons var (cdr place)))))))
-  unspecific)
+(define (add-free-callee! procedure on-whom variable)
+  (let ((entries (procedure-free-callees procedure))
+	(block (variable-block variable)))
+    (let ((entry (assq on-whom entries)))
+      (if entry
+	  (if (not (memq block (cdr entry)))
+	      (set-cdr! entry (cons block (cdr entry))))
+	  (set-procedure-free-callees! procedure
+				       (cons (list on-whom block) entries))))))
 
 (define (add-free-caller! procedure on-whom)
   (let ((bucket (procedure-free-callers procedure)))
