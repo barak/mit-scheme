@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.60 1993/08/04 20:21:00 cph Exp $
+;;;	$Id: intmod.scm,v 1.61 1993/08/05 08:36:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -160,7 +160,7 @@ REPL uses current evaluation environment."
   (set! repl-buffers '())
   unspecific)
 
-(define (wait-for-input port level mode)
+(define (wait-for-input port level mode ready?)
   (signal-thread-event editor-thread
     (lambda ()
       (maybe-switch-modes! port mode)
@@ -176,7 +176,8 @@ REPL uses current evaluation environment."
   ;; This doesn't do any output, but prods the editor to notice that
   ;; the modeline has changed and a redisplay is needed.
   (inferior-thread-output! (port/output-registration port))
-  (suspend-current-thread))
+  (do () ((ready? port))
+    (suspend-current-thread)))
 
 (define (end-input-wait port)
   (set-run-light! (port/buffer port) true)
@@ -750,14 +751,18 @@ If this is an error, the debugger examines the error condition."
 (define read-expression
   (let ((empty (cons '() '())))
     (lambda (port level)
-      (let loop ()
-	(let ((expression (dequeue! (port/expression-queue port) empty)))
-	  (if (eq? expression empty)
-	      (begin
-		(standard-prompt-spacing port)
-		(wait-for-input port level (ref-mode-object inferior-repl))
-		(loop))
-	      expression))))))
+      (let ((mode (ref-mode-object inferior-repl))
+	    (ready?
+	     (lambda (port)
+	       (not (queue-empty? (port/expression-queue port))))))
+	(let loop ()
+	  (let ((expression (dequeue! (port/expression-queue port) empty)))
+	    (if (eq? expression empty)
+		(begin
+		  (standard-prompt-spacing port)
+		  (wait-for-input port level mode ready?)
+		  (loop))
+		expression)))))))
 
 ;;; Debugger
 
@@ -849,11 +854,8 @@ If this is an error, the debugger examines the error condition."
 
 (define (read-command-char port level)
   (set-port/command-char! port false)
-  (let ((mode (ref-mode-object inferior-cmdl)))
-    (let loop ()
-      (wait-for-input port level mode)
-      (or (port/command-char port)
-	  (loop)))))
+  (wait-for-input port level (ref-mode-object inferior-cmdl) port/command-char)
+  (port/command-char port))
 
 (define (parse-command-prompt prompt)
   (and (re-match-string-forward (re-compile-pattern "\\([0-9]+\\) " false)
