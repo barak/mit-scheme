@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.73 2000/07/05 00:20:59 cph Exp $
+;;; $Id: imail.pkg,v 1.74 2000/07/05 00:34:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -139,7 +139,7 @@
 	  umail-folder?
 	  umail-message?
 	  umail-url?)
-  (export (edwin imail rmail-folder)
+  (export (edwin imail file-folder rmail-folder)
 	  read-umail-message
 	  umail-delimiter?))
 
