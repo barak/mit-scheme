@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.5 2004/11/01 19:14:15 cph Exp $
+$Id: compile.scm,v 1.6 2004/11/01 19:18:21 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; SSP/XDOC compilation
+;;;; SSP compilation
 
 (load-option 'CREF)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
