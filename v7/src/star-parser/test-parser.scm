@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: test-parser.scm,v 1.1 2001/06/26 18:03:26 cph Exp $
+;;; $Id: test-parser.scm,v 1.2 2001/06/26 18:53:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -50,7 +50,7 @@
 	  (noise (string ")"))))))
 
 (define parse-element
-  (*parser (alt parse-identifier parse-num-10 parse-list)))
+  (*parser (alt parse-num-10 parse-identifier parse-list)))
 
 (define parse-identifier
   (*parser (element-transform intern (match match-identifier))))
