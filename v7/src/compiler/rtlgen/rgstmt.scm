@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.3 1988/03/14 20:55:03 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.4 1988/06/14 08:43:06 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -137,8 +137,9 @@ MIT in each case. |#
   (generate/rvalue operand offset scfg*scfg->scfg!
     (lambda (expression)
       (rtl:make-assignment register expression))))
-
+
 (define (generate/continuation-cons block continuation)
+  block
   (let ((closing-block (continuation/closing-block continuation)))
     (scfg*scfg->scfg!
      (if (ic-block? closing-block)
@@ -201,7 +202,7 @@ MIT in each case. |#
 	      (generate/node consequent)
 	      (generate/node alternative)))
 	    ((and (rvalue/constant? value)
-		  (scode/unassigned-object? (constant-value value)))
+		  (unassigned-reference-trap? (constant-value value)))
 	     (generate/node consequent))
 	    (else
 	     (generate/node alternative))))))

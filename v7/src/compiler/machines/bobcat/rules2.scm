@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.3 1988/04/22 16:21:29 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.4 1988/06/14 08:48:37 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -53,8 +53,9 @@ MIT in each case. |#
   (TYPE-TEST (REGISTER (? register)) (? type))
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-byte type
-		   (register-reference (load-alias-register! register 'DATA)))))
+  (LAP ,(test-byte
+	 type
+	 (register-reference (load-alias-register! register 'DATA)))))
 
 (define-rule predicate
   (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
@@ -85,8 +86,8 @@ MIT in each case. |#
 (define (eq-test/constant*register constant register)
   (set-standard-branches! 'EQ)
   (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (primitive-type constant)
-			      (primitive-datum constant)
+      (LAP ,(test-non-pointer (object-type constant)
+			      (object-datum constant)
 			      (coerce->any register)))
       (LAP (CMP L (@PCR ,(constant->label constant))
 		,(coerce->machine-register register)))))
@@ -94,8 +95,8 @@ MIT in each case. |#
 (define (eq-test/constant*memory constant memory-reference)
   (set-standard-branches! 'EQ)
   (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (primitive-type constant)
-			      (primitive-datum constant)
+      (LAP ,(test-non-pointer (object-type constant)
+			      (object-datum constant)
 			      memory-reference))
       (let ((temp (reference-temporary-register! false)))
 	(LAP (MOV L ,memory-reference ,temp)
@@ -208,14 +209,14 @@ MIT in each case. |#
 (define (fixnum-pred/constant*register constant register cc)
   (set-standard-branches! cc)
   (if (non-pointer-object? constant)
-      (LAP (CMPI L (& ,(primitive-datum constant)) ,(coerce->any register)))
+      (LAP (CMPI L (& ,(object-datum constant)) ,(coerce->any register)))
       (LAP (CMP L (@PCR ,(constant->label constant))
 		,(coerce->machine-register register)))))
 
 (define (fixnum-pred/constant*memory constant memory-reference cc)
   (set-standard-branches! cc)
   (if (non-pointer-object? constant)
-      (LAP (CMPI L (& ,(primitive-datum constant)) ,memory-reference))
+      (LAP (CMPI L (& ,(object-datum constant)) ,memory-reference))
       (let ((temp (reference-temporary-register! false)))
 	(LAP (MOV L ,memory-reference ,temp)
 	     (CMP L (@PCR ,(constant->label constant))
@@ -264,19 +265,22 @@ MIT in each case. |#
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? register)) (? offset)) (CONSTANT (? constant)))
+		      (OFFSET (REGISTER (? register)) (? offset))
+		      (CONSTANT (? constant)))
   (fixnum-pred/constant*memory constant (indirect-reference! register offset)
 			       (fixnum-pred->cc predicate)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (CONSTANT (? constant)) (OFFSET (REGISTER (? register)) (? offset)))
+		      (CONSTANT (? constant))
+		      (OFFSET (REGISTER (? register)) (? offset)))
   (fixnum-pred/constant*memory constant (indirect-reference! register offset)
 			       (invert-cc (fixnum-pred->cc predicate))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (CONSTANT (? constant)) (POST-INCREMENT (REGISTER 15) 1))
+		      (CONSTANT (? constant))
+		      (POST-INCREMENT (REGISTER 15) 1))
   (fixnum-pred/constant*memory constant (INST-EA (@A+ 7))
 			       (invert-cc (fixnum-pred->cc predicate))))
 
@@ -331,7 +335,7 @@ MIT in each case. |#
   (FIXNUM-PRED-1-ARG (? predicate) (CONSTANT (? constant)))
   (set-standard-branches! (fixnum-pred->cc predicate))
     (if (non-pointer-object? constant)
-      (test-fixnum (INST-EA (& ,(primitive-datum constant))))
+      (test-fixnum (INST-EA (& ,(object-datum constant))))
       (test-fixnum (INST-EA (@PCR ,(constant->label constant))))))
 
 (define-rule predicate

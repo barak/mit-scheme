@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.4 1988/04/15 02:10:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.5 1988/06/14 08:34:06 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,17 +67,14 @@ MIT in each case. |#
 	   (loop (cdr items) passed (cons (car items) failed))))))
 
 (define (generate-label #!optional prefix)
-  (if (unassigned? prefix) (set! prefix 'LABEL))
+  (if (default-object? prefix) (set! prefix 'LABEL))
   (string->symbol
    (string-append
     (symbol->string
      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
 	   ((eq? prefix lambda-tag:let) 'LET)
 	   ((eq? prefix lambda-tag:make-environment) 'MAKE-ENVIRONMENT)
-	   ((or (eq? prefix lambda-tag:shallow-fluid-let)
-		(eq? prefix lambda-tag:deep-fluid-let)
-		(eq? prefix lambda-tag:common-lisp-fluid-let))
-	    'FLUID-LET)
+	   ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
 	   (else prefix)))
     "-"
     (number->string (generate-label-number) 10))))
@@ -89,37 +86,6 @@ MIT in each case. |#
     (set! *current-label-number* (1+ *current-label-number*))
     number))
 
-(define (copy-alist alist)
-  (if (null? alist)
-      '()
-      (cons (cons (caar alist) (cdar alist))
-	    (copy-alist (cdr alist)))))
-
-(define (boolean=? x y)
-  (if x y (not y)))
-
-(define (warn message . irritants)
-  (newline)
-  (write-string "Warning: ")
-  (write-string message)
-  (for-each (lambda (irritant)
-	      (write-string " ")
-	      (write irritant))
-	    irritants))
-
-(define (show-time thunk)
-  (let ((process-start (process-time-clock))
-	(real-start (real-time-clock)))
-    (let ((value (thunk)))
-      (let ((process-end (process-time-clock))
-	    (real-end (real-time-clock)))
-	(newline)
-	(write-string "process time: ")
-	(write (- process-end process-start))
-	(write-string "; real time: ")
-	(write (- real-end real-start)))
-      value)))
-
 (define (list-filter-indices items indices)
   (let loop ((items items) (indices indices) (index 0))
     (cond ((null? indices) '())
@@ -128,18 +94,6 @@ MIT in each case. |#
 		 (loop (cdr items) (cdr indices) (1+ index))))
 	  (else
 	   (loop (cdr items) indices (1+ index))))))
-
-(define (there-exists? items predicate)
-  (let loop ((items items))
-    (and (not (null? items))
-	 (or (predicate (car items))
-	     (loop (cdr items))))))
-
-(define (for-all? items predicate)
-  (let loop ((items items))
-    (or (null? items)
-	(and (predicate (car items))
-	     (loop (cdr items))))))
 
 (define (all-eq? items)
   (if (null? items)
@@ -148,7 +102,7 @@ MIT in each case. |#
       (for-all? (cdr items)
 	(let ((item (car items)))
 	  (lambda (item*)
-	    (eq? item item))))))
+	    (eq? item item*))))))
 
 (define (all-eq-map? items map)
   (if (null? items)
@@ -195,7 +149,7 @@ MIT in each case. |#
 
 (let-syntax ((define-type-code
 	       (macro (var-name #!optional type-name)
-		 (if (unassigned? type-name) (set! type-name var-name))
+		 (if (default-object? type-name) (set! type-name var-name))
 		 `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: var-name)
 		    ',(microcode-type type-name)))))
   (define-type-code lambda)
@@ -209,9 +163,9 @@ MIT in each case. |#
   (define-type-code compiled-entry))
 
 (define (scode/procedure-type-code *lambda)
-  (cond ((primitive-type? type-code:lambda *lambda)
+  (cond ((object-type? type-code:lambda *lambda)
 	 type-code:procedure)
-	((primitive-type? type-code:extended-lambda *lambda)
+	((object-type? type-code:extended-lambda *lambda)
 	 type-code:extended-procedure)
 	(else
 	 (error "SCODE/PROCEDURE-TYPE-CODE: Unknown lambda type" *lambda))))
@@ -235,9 +189,9 @@ MIT in each case. |#
 	    (= arity argument-count)))))
 
 (define (primitive-procedure-safe? object)
-  (and (primitive-type? (ucode-type primitive) object)
+  (and (object-type? (ucode-type primitive) object)
        (not (memq object unsafe-primitive-procedures))))
-
+
 (define unsafe-primitive-procedures
   (let-syntax ((primitives
 		(macro names
@@ -284,14 +238,15 @@ MIT in each case. |#
   (make-named-tag "DELAY-LAMBDA"))
 
 (define (non-pointer-object? object)
-  (or (primitive-type? (ucode-type false) object)
-      (primitive-type? (ucode-type true) object)
-      (primitive-type? (ucode-type fixnum) object)
-      (primitive-type? (ucode-type character) object)
-      (primitive-type? (ucode-type unassigned) object)
-      (primitive-type? (ucode-type the-environment) object)
-      (primitive-type? (ucode-type manifest-nm-vector) object)
-      (primitive-type? (ucode-type manifest-special-nm-vector) object)))
+  ;; Any reason not to use `object/non-pointer?' here? -- cph
+  (or (object-type? (ucode-type false) object)
+      (object-type? (ucode-type true) object)
+      (object-type? (ucode-type fixnum) object)
+      (object-type? (ucode-type character) object)
+      (object-type? (ucode-type unassigned) object)
+      (object-type? (ucode-type the-environment) object)
+      (object-type? (ucode-type manifest-nm-vector) object)
+      (object-type? (ucode-type manifest-special-nm-vector) object)))
 
 (define (object-immutable? object)
   (or (non-pointer-object? object)
@@ -308,14 +263,14 @@ MIT in each case. |#
    (list-transform-positive
        (map (lambda (name)
 	      (lexical-reference system-global-environment name))
-	    '(PRIMITIVE-TYPE PRIMITIVE-TYPE?
+	    '(OBJECT-TYPE OBJECT-TYPE?
 	      EQ? NULL? PAIR? NUMBER? COMPLEX? REAL? RATIONAL? INTEGER?
 	      ZERO? POSITIVE? NEGATIVE? ODD? EVEN? EXACT? INEXACT?
 	      = < > <= >= MAX MIN
 	      + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
 	      GCD LCM FLOOR CEILING TRUNCATE ROUND
 	      EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN))
-     (access primitive-procedure? system-global-environment))
+     (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
    (list
     (ucode-primitive &+) (ucode-primitive &-)
     (ucode-primitive &*) (ucode-primitive &/)

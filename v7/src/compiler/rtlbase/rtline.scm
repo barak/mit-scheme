@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.2 1987/12/30 07:07:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.3 1988/06/14 08:37:09 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -75,6 +75,7 @@ MIT in each case. |#
 	(else (bblock-linearize-rtl bblock))))
 
 (define (linearize-pblock pblock predicate cn an)
+  pblock
   (if (node-marked? cn)
       (if (node-marked? an)
 	  `(,(rtl:make-jumpc-statement predicate (bblock-label! cn))

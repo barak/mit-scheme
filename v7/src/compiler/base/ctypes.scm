@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.2 1987/12/30 06:58:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.3 1988/06/14 08:31:42 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,16 +62,18 @@ MIT in each case. |#
     (make-scfg application '())))
 
 (define-vector-tag-unparser application-tag
-  (lambda (application)
-    (let ((type (application-type application)))
-      (cond ((eq? type 'COMBINATION)
-	     (write-string "COMBINATION"))
-	    ((eq? type 'RETURN)
-	     (write-string "RETURN ")
-	     (write (return/operand application)))
-	    (else
-	     (write-string "APPLICATION ")
-	     (write type))))))
+  (lambda (state application)
+    ((case (application-type application)
+       ((COMBINATION)
+	(standard-unparser "COMBINATION"))
+       ((RETURN)
+	(standard-unparser "RETURN"
+	  (lambda (state return)
+	    (unparse-object state (return/operand return)))))
+       (else
+	(standard-unparser "APPLICATION"	  (lambda (state application)
+	    (unparse-object state (application-type application))))))
+     state application)))
 
 (define-snode parallel
   application-node

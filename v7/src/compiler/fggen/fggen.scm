@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.5 1988/04/15 02:06:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.6 1988/06/14 08:36:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -369,7 +369,7 @@ MIT in each case. |#
 		       (map* actions scode/make-assignment names values)))
 		     (map (lambda (name)
 			    name ;; ignored
-			    (scode/make-unassigned-object))
+			    (make-unassigned-reference-trap))
 			  auxiliary)))))))
 
 (define (parse-procedure-body* names actions)
@@ -723,7 +723,7 @@ MIT in each case. |#
 
 (define generate/expression
   (let ((dispatch-vector
-	 (make-vector number-of-microcode-types generate/constant))
+	 (make-vector (microcode-type/code-limit) generate/constant))
 	(generate/combination
 	 (lambda (block continuation expression)
 	   (let ((operator (scode/combination-operator expression))
@@ -778,5 +778,5 @@ MIT in each case. |#
 			generate/combination)
       (dispatch-entry comment generate/comment))
     (named-lambda (generate/expression block continuation expression)
-      ((vector-ref dispatch-vector (primitive-type expression))
+      ((vector-ref dispatch-vector (object-type expression))
        block continuation expression))))

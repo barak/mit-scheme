@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.123 1987/07/30 07:08:55 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insmac.scm,v 1.124 1988/06/14 08:47:02 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,11 +38,12 @@ MIT in each case. |#
 
 ;;;; Effective addressing
 
-(define ea-database-name 'ea-database)
+(define ea-database-name
+  'EA-DATABASE)
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
   (macro rules
-    `(define ,ea-database-name
+    `(DEFINE ,ea-database-name
        ,(compile-database rules
 	 (lambda (pattern actions)
 	   (if (null? (cddr actions))
@@ -83,6 +84,7 @@ MIT in each case. |#
       ,(integer-syntaxer mode 'UNSIGNED 3)
       ,(integer-syntaxer register 'UNSIGNED 3)
       (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+	IMMEDIATE-SIZE			;ignore if not referenced
 	,(if (null? extension)
 	     'INSTRUCTION-TAIL
 	     `(CONS-SYNTAX ,(car extension) INSTRUCTION-TAIL)))
@@ -115,6 +117,7 @@ MIT in each case. |#
 	  ,(process-ea-field mode)
 	  ,(process-ea-field register)
 	  (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
+	    IMMEDIATE-SIZE		;ignore if not referenced
 	    ,(if (null? extension)
 		 'INSTRUCTION-TAIL
 		 `(CONS (LIST 'LABEL ,name)
@@ -143,16 +146,17 @@ MIT in each case. |#
     `(define (,name expression)
        (let ((match-result (pattern-lookup ,ea-database-name expression)))
 	 (and match-result
-	      ,(if (unassigned? categories)
+	      ,(if (default-object? categories)
 		    `(match-result)
 		    `(let ((ea (match-result)))
 		       (and ,@(filter categories
 				      (lambda (cat exp) `(memq ',cat ,exp))
 				      `(ea-categories ea))
-			    ,@(if (unassigned? keywords)
+			    ,@(if (default-object? keywords)
 				  `()
 				  (filter keywords
-					  (lambda (key exp) `(not (eq? ',key ,exp)))
+					  (lambda (key exp)
+					    `(not (eq? ',key ,exp)))
 					  `(ea-keyword ea)))
 			    ea))))))))
 
@@ -187,7 +191,7 @@ MIT in each case. |#
       (else
        (error "PARSE-INSTRUCTION: unknown expression" expression))))
     
-  (if (or (unassigned? early?) (not early?))
+  (if (not early?)
       (with-normal-selectors kernel)
       (with-early-selectors kernel)))
 
@@ -203,16 +207,15 @@ MIT in each case. |#
 	(cadr binding)
 	(map (lambda (clause)
 	       (if (not (null? (cddr clause)))
-		   (error "PARSE-GROWING-WORD: Extension found in clause" clause))
+		   (error "Extension found in clause" clause))
 	       (expand-descriptors
 		(cdadr clause)
 		(lambda (instruction size src dst)
 		  (if (not (zero? (remainder size 16)))
-		      (error "PARSE-GROWING-WORD: Instructions must be 16 bit multiples"
-			     size)
-		      `(,(collect-word instruction src dst '())
-			,size
-			,@(car clause)))))) ; Range
+		      (error "Instructions must be 16 bit multiples" size))
+		  `(,(collect-word instruction src dst '())
+		    ,size
+		    ,@(car clause)))))	; Range
 	     (cddr expression))))))
 
 ;;;; Fixed width instruction parsing

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.9 1988/06/03 23:54:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.10 1988/06/14 08:44:03 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,7 +70,7 @@ MIT in each case. |#
 	   (walk-bblock (cdr entry))))
 	((not (queue-empty? *initial-queue*))
 	 (state/reset!)
-	 (walk-bblock (dequeue! *initial-queue*)))))
+	 (walk-bblock (dequeue!/unsafe *initial-queue*)))))
 
 (define-structure (state (type vector) (conc-name state/))
   (register-tables false read-only true)
@@ -112,10 +112,10 @@ MIT in each case. |#
 	(if (walk-next? consequent)
 	    (if (walk-next? alternative)
 		(if (node-previous>1? consequent)
-		    (begin (enqueue! *initial-queue* consequent)
+		    (begin (enqueue!/unsafe *initial-queue* consequent)
 			   (walk-next alternative))
 		    (begin (if (node-previous>1? alternative)
-			       (enqueue! *initial-queue* alternative)
+			       (enqueue!/unsafe *initial-queue* alternative)
 			       (set! *branch-queue*
 				     (cons (cons (state/get) alternative)
 					   *branch-queue*)))
@@ -184,7 +184,8 @@ MIT in each case. |#
 	       (let ((address (expression-canonicalize address)))
 		 (rtl:set-assign-address! statement address)
 		 (full-expression-hash address
-		   (lambda (hash volatile?* in-memory?*)
+		   (lambda (hash volatile?* in-memory?)
+		     in-memory?
 		     (let ((memory-invalidate!
 			    (cond ((stack-push/pop? address)
 				   (lambda () 'DONE))
@@ -235,6 +236,7 @@ MIT in each case. |#
       (memory-invalidate!)
       (insert-memory-destination! address element false)))
   |#
+  hash
   (insert-source!)
   (memory-invalidate!)
   (mention-registers! address))
@@ -274,6 +276,7 @@ MIT in each case. |#
   rtl:type-test-expression rtl:set-unassigned-test-expression!)
 
 (define (method/noop statement)
+  statement
   'DONE)
 
 (define-cse-method 'POP-RETURN method/noop)
@@ -308,6 +311,7 @@ MIT in each case. |#
 
 (define-cse-method 'CONS-CLOSURE
   (lambda (statement)
+    statement
     (expression-invalidate! (interpreter-register:enclose))))
 
 (define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP

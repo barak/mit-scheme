@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.2 1987/12/31 10:01:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 4.3 1988/06/14 08:33:23 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -103,9 +103,9 @@ MIT in each case. |#
 	  constant))))
 
 (define-vector-tag-unparser constant-tag
-  (lambda (constant)
-    (write-string "CONSTANT ")
-    (write (constant-value constant))))
+  (standard-unparser "CONSTANT"
+    (lambda (state constant)
+      (unparse-object state (constant-value constant)))))
 
 (define-integrable (rvalue/constant? rvalue)
   (eq? (tagged-vector/tag rvalue) constant-tag))
@@ -121,9 +121,9 @@ MIT in each case. |#
   (make-rvalue reference-tag block lvalue safe?))
 
 (define-vector-tag-unparser reference-tag
-  (lambda (reference)
-    (write-string "REFERENCE ")
-    (write (variable-name (reference-lvalue reference)))))
+  (standard-unparser "REFERENCE"
+    (lambda (state reference)
+      (unparse-object state (variable-name (reference-lvalue reference))))))
 
 (define-integrable (rvalue/reference? rvalue)
   (eq? (tagged-vector/tag rvalue) reference-tag))
@@ -157,9 +157,8 @@ MIT in each case. |#
   (make-rvalue unassigned-test-tag block lvalue))
 
 (define-vector-tag-unparser unassigned-test-tag
-  (lambda (unassigned-test)
-    (write-string "UNASSIGNED-TEST ")
-    (write (unassigned-test-lvalue unassigned-test))))
+  (standard-unparser "UNASSIGNED-TEST"    (lambda (state unassigned-test)
+      (unparse-object state (unassigned-test-lvalue unassigned-test)))))
 
 (define-integrable (rvalue/unassigned-test? rvalue)
   (eq? (tagged-vector/tag rvalue) unassigned-test-tag))

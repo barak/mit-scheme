@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.4 1988/04/26 18:56:24 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.5 1988/06/14 08:44:38 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,11 +94,11 @@ MIT in each case. |#
 			  (for-each increment-register-live-length! dead)
 			  (set-rinst-dead-registers!
 			   next
-			   (eqv-set-union dead
-					  (delv! register
-						 (rinst-dead-registers next)))))
+			   (eqv-set-union
+			    dead
+			    (delv! register (rinst-dead-registers next)))))
 			(for-each-regset-member live 
-						decrement-register-live-length!)
+			  decrement-register-live-length!)
 			(rtl:modify-subexpressions
 			 (rinst-rtl next)
 			 (lambda (expression set-expression!)

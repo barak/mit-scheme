@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/regset.scm,v 1.1 1987/06/26 02:21:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/regset.scm,v 1.2 1988/06/14 08:36:51 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -37,9 +37,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define-integrable (make-regset n-registers)
+  n-registers
   (list 'REGSET))
 
 (define-integrable (regset-allocate n-registers)
+  n-registers
   (list 'REGSET))
 
 (define-integrable (for-each-regset-member regset procedure)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.12 1988/05/28 04:11:13 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.13 1988/06/14 08:48:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -140,6 +140,12 @@ MIT in each case. |#
   (LAP))
 
 (define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target (move-to-alias-register! source 'DATA target)))
+    (LAP (RO L L (& 8) ,target))))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? source))))
   (QUALIFIER (pseudo-register? target))
   (let ((target (reference-assignment-alias! target 'DATA)))
@@ -153,19 +159,65 @@ MIT in each case. |#
     (LAP (AND L ,mask-reference ,target))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (OFFSET (REGISTER (? address)) (? offset))))
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->ADDRESS (OFFSET (REGISTER (? address)) (? offset))))
   (QUALIFIER (pseudo-register? target))
   (let ((source (indirect-reference! address offset)))
     (delete-dead-registers!)
-    (let ((target-ref (register-reference (allocate-alias-register! target 'DATA))))
+    (let ((target-ref
+	   (register-reference (allocate-alias-register! target 'DATA))))
       (LAP (MOV L ,source ,target-ref)))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? datum))))
   (QUALIFIER (pseudo-register? target))
-  (let ((target (move-to-alias-register! source 'DATA target)))
-    (LAP (RO L L (& 8) ,target))))
+  (delete-dead-registers!)
+  (let ((target-ref
+	 (register-reference (allocate-alias-register! target 'DATA))))
+    (load-constant-datum datum target-ref)))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target-ref (move-to-alias-register! source 'DATA target)))
+    (LAP ,(scheme-object->datum target-ref))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->DATUM (OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((source (indirect-reference! address offset)))
+    (delete-dead-registers!)
+    (let ((target-ref
+	   (register-reference (allocate-alias-register! target 'DATA))))
+      (LAP (MOV L ,source ,target-ref)
+	   ,(scheme-object->datum target-ref)))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? datum))))
+  (QUALIFIER (pseudo-register? target))
+  (delete-dead-registers!)
+  (let ((target-ref
+	 (register-reference (allocate-alias-register! target 'DATA))))
+    (load-fixnum-constant datum target-ref)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target-ref (move-to-alias-register! source 'DATA target)))
+    (LAP ,(remove-type-from-fixnum target-ref))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->FIXNUM (OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((source (indirect-reference! address offset)))
+    (delete-dead-registers!)
+    (let ((target-ref
+	   (register-reference (allocate-alias-register! target 'DATA))))
+      (LAP (MOV L ,source ,target-ref)
+	   ,(remove-type-from-fixnum target-ref)))))
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
@@ -211,38 +263,18 @@ MIT in each case. |#
     (delete-dead-registers!)
     (let ((target* (coerce->any target)))
       (if (register-effective-address? target*)
-	  (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
-		    ,temp)
-	       (MOV L ,temp ,reg:temp)
-	       (MOV B (& ,type) ,reg:temp)
-	       (MOV L ,reg:temp ,target*))
-	  (LAP (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
-		    ,temp)
-	       (MOV L ,temp ,target*)
-	       (MOV B (& ,type) ,target*))))))
+	  (LAP
+	   (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
+		,temp)
+	   (MOV L ,temp ,reg:temp)
+	   (MOV B (& ,type) ,reg:temp)
+	   (MOV L ,reg:temp ,target*))
+	  (LAP
+	   (LEA (@PCR ,(rtl-procedure/external-label (label->object label)))
+		,temp)
+	   (MOV L ,temp ,target*)
+	   (MOV B (& ,type) ,target*))))))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? datum))))
-  (QUALIFIER (pseudo-register? target))
-  (delete-dead-registers!)
-  (let ((target-ref (register-reference (allocate-alias-register! target 'DATA))))
-    (load-fixnum-constant datum target-ref)))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((target-ref (move-to-alias-register! source 'DATA target)))
-    (LAP ,(remove-type-from-fixnum target-ref))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((source (indirect-reference! address offset)))
-    (delete-dead-registers!)
-    (let ((target-ref (register-reference (allocate-alias-register! target 'DATA))))
-      (LAP (MOV L ,source ,target-ref)
-	   ,(remove-type-from-fixnum target-ref)))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
@@ -257,7 +289,7 @@ MIT in each case. |#
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (let ((operation
 	   (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
-		,@(put-type-in-ea (ucode fixnum) temp-reg))))
+		,@(put-type-in-ea (ucode-type fixnum) temp-reg))))
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
@@ -270,7 +302,7 @@ MIT in each case. |#
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (let ((operation
 	   (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
-		,@(put-type-in-ea (ucode fixnum) temp-reg))))
+		,@(put-type-in-ea (ucode-type fixnum) temp-reg))))
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
@@ -296,34 +328,6 @@ MIT in each case. |#
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
-
-;;;; OBJECT->DATUM rules.  Assignment is always to a register.
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? datum))))
-  (QUALIFIER (pseudo-register? target))
-  (delete-dead-registers!)
-  (let ((target-ref
-	 (register-reference (allocate-alias-register! target 'DATA))))
-    (load-constant-datum datum target-ref)))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((target-ref (move-to-alias-register! source 'DATA target)))
-    (LAP ,(scheme-object->datum target-ref))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (OBJECT->DATUM (OFFSET (REGISTER (? address)) (? offset))))
-  (QUALIFIER (pseudo-register? target))
-  (let ((source (indirect-reference! address offset)))
-    (delete-dead-registers!)
-    (let ((target-ref
-	   (register-reference (allocate-alias-register! target 'DATA))))
-      (LAP (MOV L ,source ,target-ref)
-	   ,(scheme-object->datum target-ref)))))
-
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
@@ -367,7 +371,8 @@ MIT in each case. |#
 	    ,(indirect-byte-reference! address offset))))
 
 (define-rule statement
-  (ASSIGN (REGISTER (? target)) (BYTE-OFFSET (REGISTER (? address)) (? offset)))
+  (ASSIGN (REGISTER (? target))
+	  (BYTE-OFFSET (REGISTER (? address)) (? offset)))
   (QUALIFIER (pseudo-register? target))
   (byte-offset->register (indirect-byte-reference! address offset)
 			 (indirect-register address)
@@ -390,7 +395,9 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (UNASSIGNED))
-  (LAP ,(load-non-pointer (ucode-type unassigned) 0 (indirect-reference! a n))))
+  (LAP ,(load-non-pointer (ucode-type unassigned)
+			  0
+			  (indirect-reference! a n))))
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))

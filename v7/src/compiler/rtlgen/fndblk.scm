@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.6 1988/03/31 21:39:16 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.7 1988/06/14 08:42:14 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,6 +62,7 @@ MIT in each case. |#
 (define (find-known-variable block variable offset)
   (find-variable block variable offset identity-procedure
     (lambda (environment name)
+      environment
       (error "Known variable found in IC frame" name))
     (lambda (name)
       (error "Known variable found in IC frame" name))))
@@ -70,6 +71,7 @@ MIT in each case. |#
   (find-variable-internal block variable offset
     identity-procedure
     (lambda (block locative)
+      block locative
       (error "Closure variable in IC frame" variable))))
 
 (define (find-variable-internal block variable offset if-compiler if-ic)
@@ -98,9 +100,12 @@ MIT in each case. |#
 (define (find-definition-variable block lvalue offset)
   (find-block/variable block lvalue offset
     (lambda (offset-locative)
+      offset-locative
       (lambda (block locative)
+	block locative
 	(error "Definition of compiled variable" lvalue)))
     (lambda (block locative)
+      block
       (return-2 locative (variable-name lvalue)))))
 
 (define (find-block/variable block variable offset if-known if-ic)
@@ -213,6 +218,7 @@ MIT in each case. |#
   (transmit-values
       (find-block/loop start-block (find-block/same-block? end-block) locative)
     (lambda (end-block locative)
+      end-block
       locative)))
 
 (define (internal-block/parent-locative block locative)
@@ -242,9 +248,11 @@ MIT in each case. |#
 ;; This value should make anyone trying to look at it crash.
 
 (define (trivial-closure/bogus-locative block locative)
+  block locative
   'TRIVIAL-CLOSURE-BOGUS-LOCATIVE)
 
 (define (closure-block/parent-locative block locative)
+  block
   (rtl:make-fetch
    (rtl:locative-offset locative
 			closure-block-first-offset)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.5 1988/04/15 02:09:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/lvalue.scm,v 4.6 1988/06/14 08:32:14 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,9 +92,8 @@ MIT in each case. |#
       (variable-normal-offset variable)))
 
 (define-vector-tag-unparser variable-tag
-  (lambda (variable)
-    (write-string "VARIABLE ")
-    (write (variable-name variable))))
+  (standard-unparser "VARIABLE"    (lambda (state variable)
+      (unparse-object state (variable-name variable)))))
 
 (define-integrable (lvalue/variable? lvalue)
   (eq? (tagged-vector/tag lvalue) variable-tag))

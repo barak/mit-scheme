@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.2 1987/12/30 06:57:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.3 1988/06/14 08:31:26 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -100,12 +100,14 @@ from the continuation, and then "glued" into place afterwards.
     block))
 
 (define-vector-tag-unparser block-tag
-  (lambda (block)
-    (write-string "BLOCK")
-    (let ((procedure (block-procedure block)))
-      (if (and procedure (rvalue/procedure? procedure))
-	  (begin (write-string " ")
-		 (write (procedure-label procedure)))))))
+  (lambda (state block)
+    ((standard-unparser
+      "BLOCK"      (and (let ((procedure (block-procedure block)))
+	     (and procedure (rvalue/procedure? procedure)))
+	   (lambda (state block)
+	     (unparse-object state
+			     (procedure-label (block-procedure block))))))
+     state block)))
 
 (define-integrable (rvalue/block? rvalue)
   (eq? (tagged-vector/tag rvalue) block-tag))

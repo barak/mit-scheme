@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.5 1988/06/03 14:50:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.6 1988/06/14 08:31:51 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,7 +93,7 @@ MIT in each case. |#
 	       (pathname-new-type input-path "brtl")))))
     (let ((output-path
 	   (let ((default (pathname-new-type input-path "rtl")))
-	     (if (unassigned? output-path)
+	     (if (default-object? output-path)
 		 default
 		 (merge-pathnames (->pathname output-path) default)))))
       (write-instructions
@@ -117,9 +117,7 @@ MIT in each case. |#
    (lambda ()
      (with-output-to-file (pathname-new-type (->pathname filename) "rtl")
        (lambda ()
-	 (for-each show-rtl-instruction
-		   ((access linearize-rtl rtl-generator-package)
-		    *rtl-graphs*)))))))
+	 (for-each show-rtl-instruction (linearize-rtl *rtl-graphs*)))))))
 
 (define (show-rtl rtl)
   (pp-instructions
@@ -140,7 +138,7 @@ MIT in each case. |#
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pp)
-	      ((access *pp-primitives-by-name* scheme-pretty-printer) false)
+	      (*pp-primitives-by-name* false)
 	      (*unparser-radix* 16))
     (thunk)))
 
@@ -153,12 +151,10 @@ MIT in each case. |#
       (newline))
   (*show-instruction* rtl))
 
-(package (show-fg show-fg-node)
-
 (define *procedure-queue*)
 (define *procedures*)
 
-(define-export (show-fg)
+(define (show-fg)
   (fluid-let ((*procedure-queue* (make-queue))
 	      (*procedures* '()))
     (write-string "\n---------- Expression ----------")
@@ -166,7 +162,7 @@ MIT in each case. |#
     (with-new-node-marks
      (lambda ()
        (fg/print-entry-node (expression-entry-node *root-expression*))
-       (queue-map! *procedure-queue*
+       (queue-map!/unsafe *procedure-queue*
 	 (lambda (procedure)
 	   (if (procedure-continuation? procedure)
 	       (write-string "\n\n---------- Continuation ----------")
@@ -176,7 +172,7 @@ MIT in each case. |#
     (write-string "\n\n---------- Blocks ----------")
     (fg/print-blocks (expression-block *root-expression*))))
 
-(define-export (show-fg-node node)
+(define (show-fg-node node)
   (fluid-let ((*procedure-queue* false))
     (with-new-node-marks
      (lambda ()
@@ -240,7 +236,7 @@ MIT in each case. |#
 		 (not (memq rvalue *procedures*)))
 	    (begin
 	      (set! *procedures* (cons rvalue *procedures*))
-	      (enqueue! *procedure-queue* rvalue))))))
+	      (enqueue!/unsafe *procedure-queue* rvalue))))))
 
 (define (fg/print-subproblem subproblem)
   (fg/print-object subproblem)
@@ -249,6 +245,3 @@ MIT in each case. |#
   (let ((prefix (subproblem-prefix subproblem)))
     (if (not (cfg-null? prefix))
 	(fg/print-node (cfg-entry-node prefix)))))
-
-;;; end SHOW-FG
-)

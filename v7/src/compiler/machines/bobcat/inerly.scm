@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.4 1987/07/30 07:08:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/inerly.scm,v 1.5 1988/06/14 08:46:53 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,13 +52,14 @@ MIT in each case. |#
     (mapcan (lambda (rule)
 	      (apply
 	       (lambda (pattern variables categories expression)
-		 (if (and (or (unassigned? modes) (eq-subset? modes categories))
-			  (or (unassigned? keywords) (not (memq (car pattern) keywords))))
+		 (if (and (or (default-object? modes)
+			      (eq-subset? modes categories))
+			  (or (default-object? keywords)
+			      (not (memq (car pattern) keywords))))
 		     (list (early-make-rule pattern variables expression))
 		     '()))
 	       rule))
 	    early-ea-database)))
-
 
 (define (eq-subset? s1 s2)
   (or (null? s1)
@@ -67,15 +68,16 @@ MIT in each case. |#
 
 (syntax-table-define early-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name . restrictions)
-    `(define-early-transformer ',name (apply make-ea-transformer ',restrictions))))
+    `(DEFINE-EARLY-TRANSFORMER ',name
+       (APPLY MAKE-EA-TRANSFORMER ',restrictions))))
 
 (syntax-table-define early-syntax-table 'DEFINE-SYMBOL-TRANSFORMER
   (macro (name . assoc)
-    `(define-early-transformer ',name (make-symbol-transformer ',assoc))))
+    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-SYMBOL-TRANSFORMER ',assoc))))
 
 (syntax-table-define early-syntax-table 'DEFINE-REG-LIST-TRANSFORMER
   (macro (name . assoc)
-    `(define-early-transformer ',name (make-bit-mask-transformer 16 ',assoc))))
+    `(DEFINE-EARLY-TRANSFORMER ',name (MAKE-BIT-MASK-TRANSFORMER 16 ',assoc))))
 
 ;;;; Instruction and addressing mode macros
 
@@ -136,13 +138,16 @@ MIT in each case. |#
 	       rules)))))
 
 (define (make-ea-selector-expander late-name index)
-  ((access scode->scode-expander package/expansion package/scode-optimizer)
+  (scode->scode-expander
    (lambda (operands if-expanded if-not-expanded)
-     (define (default)
-       (if-expanded (scode/make-combination (scode/make-variable late-name)
-					    operands)))
-
-     (let ((operand (car operands)))
+     if-not-expanded
+     (let ((default
+	     (lambda ()
+	       (if-expanded
+		(scode/make-combination
+		 (scode/make-variable late-name)
+		 operands))))
+	   (operand (car operands)))
        (if (not (scode/combination? operand))
 	   (default)
 	   (scode/combination-components operand
@@ -163,7 +168,8 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define (make-position-independent-early pattern categories mode register . extension)
+(define (make-position-independent-early pattern categories mode register
+					 . extension)
   (let ((keyword (car pattern)))
     `(early-parse-rule
       ',pattern
@@ -178,10 +184,10 @@ MIT in each case. |#
 		,(integer-syntaxer register 'UNSIGNED 3)
 		(LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
 		  (DECLARE (INTEGRATE IMMEDIATE-SIZE INSTRUCTION-TAIL))
+		  IMMEDIATE-SIZE	;ignore if not referenced
 		  ,(if (null? extension)
 		       'INSTRUCTION-TAIL
-		       `(CONS-SYNTAX ,(car extension)
-				     INSTRUCTION-TAIL)))
+		       `(CONS-SYNTAX ,(car extension) INSTRUCTION-TAIL)))
 		',categories)))))))
 
 (define (make-position-dependent-early pattern categories code-list)
@@ -205,6 +211,7 @@ MIT in each case. |#
 		    ,(process-ea-field register)
 		    (LAMBDA (IMMEDIATE-SIZE INSTRUCTION-TAIL)
 		      (DECLARE (INTEGRATE IMMEDIATE-SIZE INSTRUCTION-TAIL))
+		      IMMEDIATE-SIZE	;ignore if not referenced
 		      ,(if (null? extension)
 			   'INSTRUCTION-TAIL
 			   `(CONS (LIST 'LABEL ,name)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.4 1988/03/14 20:53:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.5 1988/06/14 08:42:37 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,9 +77,9 @@ MIT in each case. |#
 		 ((OPEN-EXTERNAL) (finish invocation/jump true))
 		 ((OPEN-INTERNAL) (finish invocation/jump false))
 		 ((CLOSURE)
-		  ;; *** For the time being, known lexpr closures are invoked through
-		  ;; apply.  This makes the code simpler and probably does not matter
-		  ;; much. ***
+		  ;; *** For the time being, known lexpr closures are
+		  ;; invoked through apply.  This makes the code
+		  ;; simpler and probably does not matter much. ***
 		  (if (procedure-rest callee)
 		      (finish invocation/apply true)
 		      (finish invocation/jump true)))
@@ -106,6 +106,7 @@ MIT in each case. |#
 	    (procedure-label callee)))))))
 
 (define (invocation/apply operator offset frame-size continuation prefix)
+  operator
   (invocation/apply* offset frame-size continuation prefix))
 
 (define (invocation/apply* offset frame-size continuation prefix)
@@ -257,6 +258,7 @@ MIT in each case. |#
     (scfg*scfg->scfg! (prefix offset frame-size) (prefix* offset frame-size))))
 
 (define (prefix/null offset frame-size)
+  offset frame-size
   (make-null-cfg))
 
 (define (generate/link-prefix block callee continuation callee-external?)
@@ -273,6 +275,7 @@ MIT in each case. |#
 	  (reduction-continuation/popping-limit continuation)))))
 
 (define (link-prefix/subproblem offset frame-size)
+  offset
   (rtl:make-assignment
    register:dynamic-link
    (rtl:make-address
@@ -281,6 +284,7 @@ MIT in each case. |#
 
 (define (link-prefix/reduction block block*)
   (lambda (offset frame-size)
+    frame-size
     (rtl:make-assignment register:dynamic-link
 			 (popping-limit/locative block offset block* 0))))
 

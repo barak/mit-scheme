@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.2 1988/03/14 20:18:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.3 1988/06/14 08:48:58 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,7 +83,8 @@ MIT in each case. |#
 	     ,@clear-map
 	     ,(load-constant name (INST-EA (A 1)))
 	     (JSR ,entry)
-	     ,@(make-external-label continuation-code-word (generate-label)))))))
+	     ,@(make-external-label continuation-code-word
+				    (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
@@ -110,23 +111,24 @@ MIT in each case. |#
 	     (MOV L ,reg:temp (A 2))
 	     ,(load-constant name (INST-EA (A 1)))
 	     (JSR ,entry)
-	     ,@(make-external-label continuation-code-word (generate-label)))))))
+	     ,@(make-external-label continuation-code-word
+				    (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? environment) (? name)
 			   (CONS-POINTER (CONSTANT (? type))
 					 (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-pointer entry:compiler-define environment name type
-				label))
+  (assignment-call:cons-procedure entry:compiler-define environment name type
+				  label))
 
 (define-rule statement
   (INTERPRETER-CALL:SET! (? environment) (? name)
 			 (CONS-POINTER (CONSTANT (? type))
 				       (ENTRY:PROCEDURE (? label))))
-  (assignment-call:cons-pointer entry:compiler-set! environment name type
-				label))
+  (assignment-call:cons-procedure entry:compiler-set! environment name type
+				  label))
 
-(define (assignment-call:cons-pointer entry environment name type label)
+(define (assignment-call:cons-procedure entry environment name type label)
   (let ((set-environment (expression->machine-register! environment a0)))
     (LAP ,@set-environment
 	 ,@(clear-map!)
@@ -158,7 +160,8 @@ MIT in each case. |#
 	     ,@set-value
 	     ,@clear-map
 	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label continuation-code-word (generate-label)))))))
+	     ,@(make-external-label continuation-code-word
+				    (generate-label)))))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
@@ -173,12 +176,14 @@ MIT in each case. |#
 	     ,@clear-map
 	     (MOV L ,reg:temp (A 1))
 	     (JSR ,entry:compiler-assignment-trap)
-	     ,@(make-external-label continuation-code-word (generate-label)))))))
+	     ,@(make-external-label continuation-code-word
+				    (generate-label)))))))
 
 (define-rule statement
-  (INTERPRETER-CALL:CACHE-ASSIGNMENT (? extension)
-				     (CONS-POINTER (CONSTANT (? type))
-						   (ENTRY:PROCEDURE (? label))))
+  (INTERPRETER-CALL:CACHE-ASSIGNMENT
+   (? extension)
+   (CONS-POINTER (CONSTANT (? type))
+		 (ENTRY:PROCEDURE (? label))))
   (let ((set-extension (expression->machine-register! extension a0)))
     (LAP ,@set-extension
 	 ,@(clear-map!)

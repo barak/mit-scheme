@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.2 1987/12/30 07:10:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgretn.scm,v 4.3 1988/06/14 08:42:48 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,7 @@ MIT in each case. |#
 (define (trivial-return-operand operand)
   (make-return-operand
    (lambda (offset)
+     offset
      (make-null-cfg))
    (lambda (offset finish)
      (generate/rvalue operand offset scfg*scfg->scfg!

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.4 1988/05/09 19:51:06 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty2.scm,v 4.5 1988/06/14 08:37:23 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,7 +44,7 @@ MIT in each case. |#
 (define-integrable rtl:test-expression second)
 
 (define (rtl:make-constant value)
-  (if (scode/unassigned-object? value)
+  (if (unassigned-reference-trap? value)
       (rtl:make-unassigned)
       (%make-constant value)))
 

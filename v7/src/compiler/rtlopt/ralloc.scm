@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.14 1988/04/12 18:42:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.15 1988/06/14 08:43:53 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,6 +76,7 @@ MIT in each case. |#
     (let ((conflict-matrix
 	   (make-initialized-vector next-renumber
 	     (lambda (i)
+	       i
 	       (make-regset next-renumber)))))
       (for-each (lambda (bblock)
 		  (let ((live (make-regset next-renumber)))

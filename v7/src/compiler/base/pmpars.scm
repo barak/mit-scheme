@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.2 1987/07/08 21:53:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmpars.scm,v 1.3 1988/06/14 08:33:06 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,24 +51,18 @@ MIT in each case. |#
 ;;; arguments, will return either false, indicating that the
 ;;; qualifications failed, or the result of the body.
 
-(define rule-result-expression)
-(define parse-rule)
-
-(let ()
-
-(set! parse-rule
-      (named-lambda (parse-rule pattern body receiver)
-	(extract-variables
-	 pattern
-	 (lambda (pattern variables)
-	   (extract-qualifier
-	    body
-	    (lambda (qualifiers actions)
-	      (let ((names (pattern-variables pattern)))
-		(receiver pattern
-			  (reorder-variables variables names)
-			  qualifiers
-			  actions))))))))
+(define (parse-rule pattern body receiver)
+  (extract-variables
+   pattern
+   (lambda (pattern variables)
+     (extract-qualifier
+      body
+      (lambda (qualifiers actions)
+	(let ((names (pattern-variables pattern)))
+	  (receiver pattern
+		    (reorder-variables variables names)
+		    qualifiers
+		    actions)))))))
 
 (define (extract-variables pattern receiver)
   (if (pair? pattern)
@@ -100,7 +94,7 @@ MIT in each case. |#
 	       (cons (car x)
 		     (merge-variables-lists (cdr x)
 					    y)))))))
-
+
 (define (extract-qualifier body receiver)
   (if (and (pair? (car body))
 	   (eq? (caar body) 'QUALIFIER))
@@ -110,57 +104,52 @@ MIT in each case. |#
 (define (reorder-variables variables names)
   (map (lambda (name) (assq name variables))
        names))
-
-(set! rule-result-expression
-      (named-lambda (rule-result-expression variables qualifiers body)
-	(let ((body `(lambda () ,body)))
-	  (process-transformations variables
-	   (lambda (outer-vars inner-vars xforms xqualifiers)
-	     (if (null? inner-vars)
-		 `(lambda ,outer-vars
-		    ,(if (null? qualifiers)
-			 body
-			 `(and ,@qualifiers ,body)))
-		 `(lambda ,outer-vars
-		    (let ,(map list inner-vars xforms)
-		      (and ,@xqualifiers
-			   ,@qualifiers
-			   ,body)))))))))
+
+(define (rule-result-expression variables qualifiers body)
+  (let ((body `(lambda () ,body)))
+    (process-transformations variables
+      (lambda (outer-vars inner-vars xforms xqualifiers)
+	(if (null? inner-vars)
+	    `(lambda ,outer-vars
+	       ,(if (null? qualifiers)
+		    body
+		    `(and ,@qualifiers ,body)))
+	    `(lambda ,outer-vars
+	       (let ,(map list inner-vars xforms)
+		 (and ,@xqualifiers
+		      ,@qualifiers
+		      ,body))))))))
 
 (define (process-transformations variables receiver)
   (if (null? variables)
       (receiver '() '() '() '())
-      (process-transformations
-       (cdr variables)
-       (lambda (outer inner xform qual)
-	 (let ((name (caar variables))
-	       (variable (cdar variables)))
-	   (cond ((null? variable)
-		  (receiver (cons name outer)
-			    inner
-			    xform
-			    qual))
-		 ((not (null? (cdr variable)))
-		  (error "process-trasformations: Multiple qualifiers"
-			 (car variables)))
-		 (else
-		  (let ((var (car variable)))
-		    (define (handle-xform rename)
-		      (if (eq? (car var) '?)
-			  (receiver (cons rename outer)
-				    (cons name inner)
-				    (cons `(,(cadr var) ,rename)
-					  xform)
-				    (cons name qual))
-			  (receiver (cons rename outer)
-				    (cons name inner)
-				    (cons `(MAP ,(cadr var) ,rename)
-					  xform)
-				    (cons `(ALL-TRUE? ,name) qual))))
-		    (handle-xform
-		     (if (null? (cddr var))
-			 name
-			 (caddr var)))))))))))
-
-;; End of PARSE-RULE environment.
-)
+      (process-transformations (cdr variables)
+	(lambda (outer inner xform qual)
+	  (let ((name (caar variables))
+		(variable (cdar variables)))
+	    (cond ((null? variable)
+		   (receiver (cons name outer)
+			     inner
+			     xform
+			     qual))
+		  ((not (null? (cdr variable)))
+		   (error "process-trasformations: Multiple qualifiers"
+			  (car variables)))
+		  (else
+		   (let ((var (car variable)))
+		     (define (handle-xform rename)
+		       (if (eq? (car var) '?)
+			   (receiver (cons rename outer)
+				     (cons name inner)
+				     (cons `(,(cadr var) ,rename)
+					   xform)
+				     (cons name qual))
+			   (receiver (cons rename outer)
+				     (cons name inner)
+				     (cons `(MAP ,(cadr var) ,rename)
+					   xform)
+				     (cons `(APPLY BOOLEAN/AND ,name) qual))))
+		     (handle-xform
+		      (if (null? (cddr var))
+			  name
+			  (caddr var)))))))))))

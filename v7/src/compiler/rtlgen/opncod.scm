@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.7 1988/05/19 15:10:36 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.8 1988/06/14 08:42:24 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -87,12 +87,15 @@ MIT in each case. |#
 				    (inliner/operands inliner))))
 			  (make-return-operand
 			   (lambda (offset)
+			     offset
 			     ((vector-ref handler 1) generator expressions))
 			   (lambda (offset finish)
+			     offset
 			     ((vector-ref handler 2) generator
 						     expressions
 						     finish))
 			   (lambda (offset finish)
+			     offset
 			     ((vector-ref handler 3) generator
 						     expressions
 						     finish))
@@ -137,6 +140,7 @@ MIT in each case. |#
 	 (finish (rtl:make-fetch temporary)))))))
 
 (define (invoke/value->effect generator expressions)
+  generator expressions
   (make-null-cfg))
 
 (define (invoke/value->predicate generator expressions finish)
@@ -159,7 +163,7 @@ MIT in each case. |#
 		 (set! name->open-coders
 		       (cons (cons name item) name->open-coders)))))))
     (lambda (name handler)
-      (if (pair? name)
+      (if (list? name)
 	  (for-each (lambda (name)
 		      (per-name name handler))
 		    name)
@@ -212,6 +216,7 @@ MIT in each case. |#
 
 (define-open-coder/predicate 'NULL?
   (lambda (operands)
+    operands
     (return-2 (lambda (expressions finish)
 		(finish (pcfg-invert (rtl:make-true-test (car expressions)))))
 	      '(0))))
@@ -227,12 +232,13 @@ MIT in each case. |#
 	  (lambda (name type)
 	    (define-open-coder/predicate name
 	      (lambda (operands)
+		operands
 		(return-2 (open-code/type-test type) '(0)))))))
     (define/type-test 'PAIR? (ucode-type pair))
     (define/type-test 'STRING? (ucode-type string))
     (define/type-test 'BIT-STRING? (ucode-type vector-1b)))
 
-  (define-open-coder/predicate 'PRIMITIVE-TYPE?
+  (define-open-coder/predicate 'OBJECT-TYPE?
     (lambda (operands)
       (filter/nonnegative-integer (car operands)
 	(lambda (type)
@@ -243,6 +249,7 @@ MIT in each case. |#
 	 (finish (rtl:make-eq-test (car expressions) (cadr expressions))))))
   (define-open-coder/predicate 'EQ?
     (lambda (operands)
+      operands
       (return-2 open-code/eq-test '(0 1)))))
 
 (let ((open-code/pair-cons
@@ -255,6 +262,7 @@ MIT in each case. |#
 
   (define-open-coder/value 'CONS
     (lambda (operands)
+      operands
       (return-2 (open-code/pair-cons (ucode-type pair)) '(0 1))))
 
   (define-open-coder/value 'SYSTEM-PAIR-CONS
@@ -291,6 +299,7 @@ MIT in each case. |#
 	  (lambda (name index)
 	    (define-open-coder/value name
 	      (lambda (operands)
+		operands
 		(return-2 (open-code/memory-length index) '(0)))))))
     (define/length '(VECTOR-LENGTH SYSTEM-VECTOR-SIZE) 0)
     (define/length '(STRING-LENGTH BIT-STRING-LENGTH) 1)))
@@ -324,6 +333,7 @@ MIT in each case. |#
 	  (lambda (name index)
 	    (define-open-coder/value name
 	      (lambda (operands)
+		operands
 		(return-2 (open-code/memory-ref/constant index) '(0)))))))
     (define/ref '(CAR SYSTEM-PAIR-CAR CELL-CONTENTS SYSTEM-HUNK3-CXR0) 0)
     (define/ref '(CDR SYSTEM-PAIR-CDR SYSTEM-HUNK3-CXR1) 1)
@@ -339,7 +349,7 @@ MIT in each case. |#
 	    good-constant-index
 	    (return-2 open-code/memory-ref/non-constant
 		      '(0 1)))))))
-
+
 (let ((open-code/general-car-cdr
        (lambda (pattern)
 	 (lambda (expressions finish)
@@ -358,7 +368,7 @@ MIT in each case. |#
       (filter/positive-integer (cadr operands)
 	(lambda (pattern)
 	  (return-2 (open-code/general-car-cdr pattern) '(0)))))))
-
+
 (let ((open-code/memory-assignment
        (lambda (index locative-generator)
 	 (lambda (expressions finish)
@@ -369,80 +379,77 @@ MIT in each case. |#
 				lvalue-locative
 				index)))
 		 (let ((assignment
-			(rtl:make-assignment locative (car (last-pair expressions)))))
+			(rtl:make-assignment locative
+					     (car (last-pair expressions)))))
 		   (if finish
 		       (let ((temporary (rtl:make-pseudo-register)))
 			 (scfg-append!
-			  (rtl:make-assignment temporary (rtl:make-fetch locative))
+			  (rtl:make-assignment temporary
+					       (rtl:make-fetch locative))
 			  assignment
 			  (finish (rtl:make-fetch temporary))))
 		       assignment)))))))))
+
+  ;; For now SYSTEM-XXXX side effect procedures are considered
+  ;; dangerous to the garbage collector's health.  Some day we will
+  ;; again be able to enable them.
 
   (let ((define/set!
 	  (lambda (name index)
 	    (define-open-coder/effect name
 	      (lambda (operands)
+		operands
 		(return-2 (open-code/memory-assignment index
 						       (lambda (exp finish)
 							 (finish (car exp))))
 			  '(0 1)))))))
-;;;  For now SYSTEM-XXXX procedures with side effects are considered
-;;; dangerous to the garbage collectors health. Some day we will again
-;;; be able to do the following:
-;;; (define/set! '(SET-CAR! SYSTEM-PAIR-SET-CAR!
-;;;                SET-CELL-CONTENTS!
-;;; 	           SYSTEM-HUNK3-SET-CXR0!)
-;;;   0)
-;;;   (define/set! '(SET-CDR! SYSTEM-PAIR-SET-CDR!
-;;;                  SYSTEM-HUNK3-SET-CXR1!) 1)
-;;;                  (define/set! 'SYSTEM-HUNK3-SET-CXR2!
-;;;   2))
-    (define/set! '(SET-CAR! SET-CELL-CONTENTS!) 0)
-    (define/set! '(SET-CDR!) 1))
+    (define/set! '(SET-CAR!
+		   SET-CELL-CONTENTS!
+		   #| SYSTEM-PAIR-SET-CAR! |#
+		   #| SYSTEM-HUNK3-SET-CXR0! |#)
+      0)
+    (define/set! '(SET-CDR!
+		   #| SYSTEM-PAIR-SET-CDR! |#
+		   #| SYSTEM-HUNK3-SET-CXR1! |#)
+      1)
+    (define/set! '(#| SYSTEM-HUNK3-SET-CXR2! |#)
+      2))
 
-
-;;;  For now SYSTEM-XXXX procedures with side effects are considered
-;;; dangerous to the garbage collectors health. Some day we will again
-;;; be able to do the following:
-;;; (define-open-coder-effect '(vECTOR-SET! SYSTEM-VECTOR-SET!)
-
-  (define-open-coder/effect '(VECTOR-SET!)
+  (define-open-coder/effect '(VECTOR-SET! #| SYSTEM-VECTOR-SET! |#)
     (lambda (operands)
-      (let ((good-constant-index
-	     (filter/nonnegative-integer (cadr operands)
-	       (lambda (index)
-		 (return-2 (open-code/memory-assignment
-			    (1+ index)
-			    (lambda (exp finish)
-			      (finish (car exp))))
-			   '(0 2))))))
-	(if good-constant-index
-	    good-constant-index
-	    (return-2 (open-code/memory-assignment
-		       1
-		       (lambda (expressions finish)
-			 (let ((temporary (rtl:make-pseudo-register)))
-			   (scfg-append!
-			    (rtl:make-assignment
-			     temporary
-			     (rtl:make-fixnum-2-args
-			      'PLUS-FIXNUM
-			      (rtl:make-object->address (car expressions))
-			      (rtl:make-fixnum-2-args
-			       'MULTIPLY-FIXNUM
-			       (rtl:make-object->fixnum
-				(rtl:make-constant
-				 (quotient scheme-object-width
-					   addressing-granularity)))
-			       (rtl:make-object->fixnum
-				(cadr expressions)))))
-			    (finish (rtl:make-fetch temporary))))))
-		      '(0 1 2)))))))
-
+      (or (filter/nonnegative-integer (cadr operands)
+	    (lambda (index)
+	      (return-2 (open-code/memory-assignment
+			 (1+ index)
+			 (lambda (exp finish)
+			   (finish (car exp))))
+			'(0 2))))
+	  (return-2 (open-code/memory-assignment
+		     1
+		     (lambda (expressions finish)
+		       (let ((temporary (rtl:make-pseudo-register)))
+			 (scfg-append!
+			  (rtl:make-assignment
+			   temporary
+			   (rtl:make-fixnum-2-args
+			    'PLUS-FIXNUM
+			    (rtl:make-object->address (car expressions))
+			    (rtl:make-fixnum-2-args
+			     'MULTIPLY-FIXNUM
+			     (rtl:make-object->fixnum
+			      (rtl:make-constant
+			       (quotient scheme-object-width
+					 addressing-granularity)))
+			     (rtl:make-object->fixnum
+			      (cadr expressions)))))
+			  (finish (rtl:make-fetch temporary))))))
+		    '(0 1 2))))))
+
 (let ((define-fixnum-2-args
 	(lambda (fixnum-operator)
 	  (define-open-coder/value fixnum-operator
 	    (lambda (operands)
+	      operands
 	      (return-2
 	       (lambda (expressions finish)
 		 (finish (rtl:make-fixnum->object
@@ -454,13 +461,13 @@ MIT in each case. |#
   (for-each
    define-fixnum-2-args
     '(PLUS-FIXNUM MINUS-FIXNUM MULTIPLY-FIXNUM
-      ;; DIVIDE-FIXNUM GCD-FIXNUM
-     )))
+      #| DIVIDE-FIXNUM GCD-FIXNUM |#)))
 
 (let ((define-fixnum-1-arg
 	(lambda (fixnum-operator)
 	  (define-open-coder/value fixnum-operator
 	    (lambda (operand)
+	      operand
 	      (return-2
 	       (lambda (expressions finish)
 		 (finish (rtl:make-fixnum->object
@@ -476,6 +483,7 @@ MIT in each case. |#
 	(lambda (fixnum-pred)
 	  (define-open-coder/predicate fixnum-pred
 	    (lambda (operands)
+	      operands
 	      (return-2
 	       (lambda (expressions finish)
 		 (finish (rtl:make-fixnum-pred-2-args
@@ -491,6 +499,7 @@ MIT in each case. |#
 	(lambda (fixnum-pred)
 	  (define-open-coder/predicate fixnum-pred
 	    (lambda (operand)
+	      operand
 	      (return-2
 	       (lambda (expressions finish)
 		 (finish (rtl:make-fixnum-pred-1-arg
@@ -508,6 +517,7 @@ MIT in each case. |#
 	(lambda (character->fixnum rtl:coercion)
 	  (define-open-coder/value character->fixnum
 	    (lambda (operand)
+	      operand
 	      (return-2 (lambda (expressions finish)
 			  (finish (rtl:make-cons-pointer
 				   (rtl:make-constant (ucode-type fixnum))
@@ -529,8 +539,9 @@ MIT in each case. |#
 	   (finish (rtl:make-cons-pointer 
 		    (rtl:make-constant (ucode-type character))
 		    (rtl:make-fetch
-		     (rtl:locative-byte-offset (car expressions)
-					       (+ string-header-size index))))))
+		     (rtl:locative-byte-offset
+		      (car expressions)
+		      (+ string-header-size index))))))
 	 '(0))))))
 
 (define-open-coder/effect 'STRING-SET!
@@ -548,10 +559,11 @@ MIT in each case. |#
 	     (if finish
 		 (let ((temporary (rtl:make-pseudo-register)))
 		   (scfg-append!
-		    (rtl:make-assignment temporary
-					 (rtl:make-cons-pointer
-					  (rtl:make-constant (ucode-type character))
-					  (rtl:make-fetch locative)))
+		    (rtl:make-assignment
+		     temporary
+		     (rtl:make-cons-pointer
+		      (rtl:make-constant (ucode-type character))
+		      (rtl:make-fetch locative)))
 		    assignment
 		    (finish (rtl:make-fetch temporary))))
 		 assignment)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.4 1988/04/15 02:15:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.5 1988/06/14 08:46:36 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -51,7 +51,7 @@ MIT in each case. |#
       (lambda ()
 	(let ((object (fasload (pathname-new-type pathname "com")))
 	      (info (let ((pathname (pathname-new-type pathname "binf")))
-		      (and (if (unassigned? symbol-table?)
+		      (and (if (default-object? symbol-table?)
 			       (file-exists? pathname)
 			       symbol-table?)
 			   (fasload pathname)))))
@@ -86,14 +86,14 @@ MIT in each case. |#
   (let ((the-block (compiled-code-address->block entry)))
     (fluid-let ((disassembler/write-offsets? true)
 		(disassembler/write-addresses? true)
-		(disassembler/base-address (primitive-datum the-block)))
+		(disassembler/base-address (object-datum the-block)))
       (newline)
       (newline)
       (disassembler/write-compiled-code-block
        the-block
        (->compiler-info
 	(system-vector-ref the-block
-			   (-  (system-vector-size the-block) 2)))))))
+			   (-  (system-vector-length the-block) 2)))))))
 
 ;;; Operations exported from the disassembler package
 
@@ -108,12 +108,12 @@ MIT in each case. |#
    (number->string (object-hash block) '(HEUR (RADIX D S))))
   (write-string " ")
   (write-string
-   (number->string (primitive-datum block) '(HEUR (RADIX X E))))
+   (number->string (object-datum block) '(HEUR (RADIX X E))))
   (write-string "]"))
 
 (define (disassembler/write-compiled-code-block block info #!optional page?)
   (let ((symbol-table (compiler-info/symbol-table info)))
-    (if (or (unassigned? page?) page?)
+    (if (or (default-object? page?) page?)
 	(begin
 	  (write-char #\page)
 	  (newline)))
@@ -160,24 +160,20 @@ MIT in each case. |#
 	    (procedure offset instruction)
 	    (loop (instruction-stream)))))))
 
-(define disassembler/write-constants-block)
-(let ()
-
-(set! disassembler/write-constants-block
-  (named-lambda (disassembler/write-constants-block block symbol-table)
-    (fluid-let ((*unparser-radix* 16))
-      (let ((end (system-vector-size block)))
-	(let loop ((index (compiled-code-block/constants-start block)))
-	  (if (< index end)
-	      (begin
-		(disassembler/write-instruction
-		 symbol-table
-		 (compiled-code-block/index->offset index)
-		 (lambda ()
-		   (write-constant block
-				   symbol-table
-				   (system-vector-ref block index))))
-		(loop (1+ index)))))))))
+(define (disassembler/write-constants-block block symbol-table)
+  (fluid-let ((*unparser-radix* 16))
+    (let ((end (system-vector-length block)))
+      (let loop ((index (compiled-code-block/constants-start block)))
+	(if (< index end)
+	    (begin
+	      (disassembler/write-instruction
+	       symbol-table
+	       (compiled-code-block/index->offset index)
+	       (lambda ()
+		 (write-constant block
+				 symbol-table
+				 (system-vector-ref block index))))
+	      (loop (1+ index))))))))
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))
@@ -188,7 +184,8 @@ MIT in each case. |#
 	       (begin
 		 (write-string "  (")
 		 (let ((offset (compiled-code-address->offset expression)))
-		   (let ((label (disassembler/lookup-symbol symbol-table offset)))
+		   (let ((label
+			  (disassembler/lookup-symbol symbol-table offset)))
 		     (if label
 			 (write-string (string-downcase label))
 			 (write offset))))
@@ -199,7 +196,7 @@ MIT in each case. |#
 	 (write-string " in ")
 	 (write-block (compiled-code-address->block constant))
 	 (write-string ")"))
-	(else false))))
+	(else false)))
 
 (define (disassembler/write-instruction symbol-table offset write-instruction)
   (if symbol-table
@@ -213,16 +210,13 @@ MIT in each case. |#
   (if disassembler/write-addresses?
       (begin
 	(write-string
-	 ((access unparse-number-heuristically number-unparser-package)
-	  (+ offset disassembler/base-address) 16 false false))
+	 (number->string (+ offset disassembler/base-address)
+			 '(HEUR (RADIX X S))))
 	(write-char #\Tab)))
   
   (if disassembler/write-offsets?
       (begin
-	(write-string
-	 ((access unparse-number-heuristically number-unparser-package)
-	  offset 16 false false))
-	(write-char #\Tab)))
+	(write-string (number->string offset '(HEUR (RADIX X S))))	(write-char #\Tab)))
 
   (if symbol-table
       (write-string "    "))

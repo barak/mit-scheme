@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.9 1988/05/19 15:32:53 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.10 1988/06/14 08:48:01 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,34 @@ MIT in each case. |#
 (define closure-block-first-offset
   2)
 
+(define (rtl:machine-register? rtl-register)
+  (case rtl-register
+    ((STACK-POINTER) (interpreter-stack-pointer))
+    ((DYNAMIC-LINK) (interpreter-dynamic-link))
+    ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
+    ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
+     (interpreter-register:cache-reference))
+    ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
+     (interpreter-register:cache-unassigned?))
+    ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
+    ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
+    ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
+    (else false)))
+
+(define (rtl:interpreter-register? rtl-register)
+  (case rtl-register
+    ((MEMORY-TOP) 0)
+    ((STACK-GUARD) 1)
+    ((VALUE) 2)
+    ((ENVIRONMENT) 3)
+    ((TEMPORARY) 4)
+    ((INTERPRETER-CALL-RESULT:ENCLOSE) 5)
+    (else false)))
+
+(define (rtl:interpreter-register->offset locative)
+  (or (rtl:interpreter-register? locative)
+      (error "Unknown register type" locative)))
+
 (define (rtl:expression-cost expression)
   ;; Returns an estimate of the cost of evaluating the expression.
   ;; For simplicity, we try to estimate the actual number of cycles
@@ -111,7 +139,8 @@ MIT in each case. |#
        ;; move.l reg,reg = 3
        ;; sub.l  reg,reg = 3
        ((MINUS-FIXNUM) 6)
-       (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
+       (else
+	(error "RTL:EXPRESSION-COST: unknown fixnum operator" expression))))
     ((FIXNUM-1-ARG)
      (case (rtl:fixnum-1-arg-operator expression)
        ;; move.l reg,reg = 3
@@ -120,39 +149,12 @@ MIT in each case. |#
        ;; move.l reg,reg = 3
        ;; subq.l #1,reg = 3
        ((MINUS-ONE-PLUS-FIXNUM) 6)
-       (else (error "rtl:expression-cost - unknown fixnum operator" expression))))
+       (else
+	(error "RTL:EXPRESSION-COST: unknown fixnum operator" expression))))
     ;; The following are preliminary. Check with Jinx (mhwu)
     ((CHAR->ASCII) 4)
     ((BYTE-OFFSET) 12)
     (else (error "Unknown expression type" expression))))
-
-(define (rtl:machine-register? rtl-register)
-  (case rtl-register
-    ((STACK-POINTER) (interpreter-stack-pointer))
-    ((DYNAMIC-LINK) (interpreter-dynamic-link))
-    ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
-    ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
-     (interpreter-register:cache-reference))
-    ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
-     (interpreter-register:cache-unassigned?))
-    ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
-    ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
-    ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
-    (else false)))
-
-(define (rtl:interpreter-register? rtl-register)
-  (case rtl-register
-    ((MEMORY-TOP) 0)
-    ((STACK-GUARD) 1)
-    ((VALUE) 2)
-    ((ENVIRONMENT) 3)
-    ((TEMPORARY) 4)
-    ((INTERPRETER-CALL-RESULT:ENCLOSE) 5)
-    (else false)))
-
-(define (rtl:interpreter-register->offset locative)
-  (or (rtl:interpreter-register? locative)
-      (error "Unknown register type" locative)))
 
 (define-integrable d0 0)
 (define-integrable d1 1)
@@ -255,9 +257,3 @@ MIT in each case. |#
 
 (define-integrable (interpreter-dynamic-link? register)
   (= (rtl:register-number register) regnum:dynamic-link))
-
-;;;; Exports from machines/lapgen
-
-(define lap:make-label-statement)
-(define lap:make-unconditional-branch)
-(define lap:make-entry-point)

@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.6 1988/04/21 06:58:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.7 1988/06/14 08:42:56 cph Exp $
 #| -*-Scheme-*-
-Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.6 1988/04/21 06:58:23 jinx Exp $
+Copyright (c) 1988 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.7 1988/06/14 08:42:56 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -59,10 +59,12 @@ promotional, or sales literature without prior written consent from
     (return-2 (scfg*scfg->scfg! prefix (rtl:make-assignment register result))
 	      (rtl:make-fetch register))))
      (values (scfg*scfg->scfg! prefix assignment) reference))
+#|
 (define-integrable (expression-value/transform expression-value transform)
   (transmit-values expression-value
     (lambda (prefix expression)
       (return-2 prefix (transform expression)))))
+|#
 
    result
   (lambda (constant offset)
@@ -205,7 +207,8 @@ promotional, or sales literature without prior written consent from
 		   (loop (cdr entries)
 			 (scfg*scfg->scfg!
 			  (rtl:make-assignment
-			     (cond ;; This is a waste.  It should be integrated.
+			     (cond ;; This is a waste.
+				   ;; It should be integrated.
 				   ((and value
 					 (rvalue/procedure? value)
 					 (procedure/closure? value)

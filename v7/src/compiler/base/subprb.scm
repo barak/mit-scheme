@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.2 1987/12/30 06:59:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.3 1988/06/14 08:33:38 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -106,11 +106,11 @@ known that the continuation need not be used.
 		   (constructor virtual-continuation/%make (block parent type))
 		   (conc-name virtual-continuation/)
 		   (print-procedure
-		    (standard-unparser 'VIRTUAL-CONTINUATION
-		      (lambda (continuation)
+		    (standard-unparser "VIRTUAL-CONTINUATION"		      (lambda (state continuation)
 			(let ((type (virtual-continuation/type continuation)))
 			  (if type
-			      (write
+			      (unparse-object
+			       state
 			       (enumeration/index->name continuation-types
 							type))))))))
   block

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.58 1987/08/07 17:08:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.59 1988/06/14 08:44:45 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -136,6 +136,7 @@ MIT in each case. |#
 (define (mark-set-registers! needed dead rtl bblock)
   ;; **** This code safely ignores PRE-INCREMENT and POST-INCREMENT
   ;; modes, since they are only used on the stack pointer.
+  needed
   (if (rtl:assign? rtl)
       (let ((address (rtl:assign-address rtl)))
 	(if (interesting-register? address)

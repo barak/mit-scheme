@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.7 1988/06/03 14:56:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse2.scm,v 4.8 1988/06/14 08:44:13 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -268,6 +268,7 @@ MIT in each case. |#
 (define (expression-hash expression)
   (full-expression-hash expression
     (lambda (hash do-not-record? hash-arg-in-memory?)
+      do-not-record? hash-arg-in-memory?
       hash)))
 
 (define (full-expression-hash expression receiver)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.4 1988/03/14 20:51:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.5 1988/06/14 08:35:17 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -194,7 +194,7 @@ MIT in each case. |#
       rest))
 
 (define (push-unassigned block n rest)
-  (let ((unassigned (make-constant (scode/make-unassigned-object))))
+  (let ((unassigned (make-constant (make-unassigned-reference-trap))))
     (let loop ((n n) (rest rest))
       (if (zero? n)
 	  rest

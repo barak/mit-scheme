@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.4 1988/03/14 20:55:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.5 1988/06/14 08:43:15 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,7 @@ MIT in each case. |#
 	      (*queued-procedures* '())
 	      (*queued-continuations* '()))
     (set! *rtl-expression* (generate/expression expression))
-    (queue-map! *generation-queue* (lambda (thunk) (thunk)))
+    (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
     (set! *rtl-graphs*
 	  (list-transform-positive (reverse! *rtl-graphs*)
 	    (lambda (rgraph)
@@ -57,21 +57,21 @@ MIT in each case. |#
 (define (enqueue-procedure! procedure)
   (if (not (memq procedure *queued-procedures*))
       (begin
-	(enqueue! *generation-queue*
-		  (lambda ()
-		    (set! *rtl-procedures*
-			  (cons (generate/procedure procedure)
-				*rtl-procedures*))))
+	(enqueue!/unsafe *generation-queue*
+			 (lambda ()
+			   (set! *rtl-procedures*
+				 (cons (generate/procedure procedure)
+				       *rtl-procedures*))))
 	(set! *queued-procedures* (cons procedure *queued-procedures*)))))
 
 (define (enqueue-continuation! continuation)
   (if (not (memq continuation *queued-continuations*))
       (begin
-	(enqueue! *generation-queue*
-		  (lambda ()
-		    (set! *rtl-continuations*
-			  (cons (generate/continuation continuation)
-				*rtl-continuations*))))
+	(enqueue!/unsafe *generation-queue*
+			 (lambda ()
+			   (set! *rtl-continuations*
+				 (cons (generate/continuation continuation)
+				       *rtl-continuations*))))
 	(set! *queued-continuations*
 	      (cons continuation *queued-continuations*)))))
 

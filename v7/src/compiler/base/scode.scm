@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.3 1988/04/15 02:09:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/scode.scm,v 4.4 1988/06/14 08:33:30 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -60,7 +60,7 @@ MIT in each case. |#
     make-delay delay? delay-components
     delay-expression
     make-disjunction disjunction? disjunction-components
-    conditional-predicate conditional-alternative
+    disjunction-predicate disjunction-alternative
     make-in-package in-package? in-package-components
     in-package-environment in-package-expression
     make-lambda lambda? lambda-components
@@ -70,9 +70,7 @@ MIT in each case. |#
     make-sequence sequence-actions sequence-components
     symbol?
     make-the-environment the-environment?
-    make-unassigned-object unassigned-object?
     make-unassigned? unassigned?? unassigned?-name
-    make-unbound? unbound?? unbound?-name
     make-variable variable? variable-components variable-name
     ))
 
@@ -98,46 +96,61 @@ MIT in each case. |#
 
 ;;;; Absolute variables and combinations
 
-(define (scode/make-absolute-reference variable-name)
+(define-integrable (scode/make-absolute-reference variable-name)
   (scode/make-access '() variable-name))
 
 (define (scode/absolute-reference? object)
   (and (scode/access? object)
        (null? (scode/access-environment object))))
 
-(define (scode/absolute-reference-name reference)
+(define-integrable (scode/absolute-reference-name reference)
   (scode/access-name reference))
 
-(define (scode/make-absolute-combination name operands)
+(define-integrable (scode/make-absolute-combination name operands)
   (scode/make-combination (scode/make-absolute-reference name) operands))
 
 (define (scode/absolute-combination? object)
   (and (scode/combination? object)
        (scode/absolute-reference? (scode/combination-operator object))))
 
-(define (scode/absolute-combination-components combination receiver)
-  (scode/combination-components combination
-    (lambda (operator operands)
-      (receiver (scode/absolute-reference-name operator) operands))))
+(define-integrable (scode/absolute-combination-name combination)
+  (scode/absolute-reference-name (scode/combination-operator combination)))
 
-(define scode/error-combination?
-  (type-object-predicate error-combination-type))
+(define-integrable (scode/absolute-combination-operands combination)
+  (scode/combination-operands combination))
+
+(define (scode/absolute-combination-components combination receiver)
+  (receiver (scode/absolute-combination-name combination)
+	    (scode/absolute-combination-operands combination)))
+
+(define (scode/error-combination? object)
+  (or (and (scode/combination? object)
+	   (eq? (scode/combination-operator object) error-procedure))
+      (and (scode/absolute-combination? object)
+	   (eq? (scode/absolute-combination-name object) 'ERROR-PROCEDURE))))
 
 (define (scode/error-combination-components combination receiver)
   (scode/combination-components combination
     (lambda (operator operands)
-      (receiver (car operands)
-		(let ((irritant (cadr operands)))
-		  (cond ((scode/access? irritant) '())
-			((scode/absolute-combination? irritant)
-			 (scode/absolute-combination-components irritant
-			   (lambda (name operands)
-			     (if (eq? name 'LIST)
-				 operands
-				 (list irritant)))))
-			(else (list irritant))))))))
+      operator
+      (receiver
+       (car operands)
+       (let loop ((irritants (cadr operands)))
+	 (cond ((null? irritants) '())
+	       ((and (scode/absolute-combination? irritants)
+		     (eq? (scode/absolute-combination-name irritants) 'LIST))
+		(scode/absolute-combination-operands irritants))
+	       ((and (scode/combination? irritants)
+		     (eq? (scode/combination-operator irritants) cons))
+		(let ((operands (scode/combination-operands irritants)))
+		  (cons (car operands)
+			(loop (cadr operands)))))
+	       (else
+		(error "Illegal irritants" (cadr operands)))))))))
 
 (define (scode/make-error-combination message operand)
   (scode/make-absolute-combination
    'ERROR-PROCEDURE
-   (list message operand (scode/make-the-environment))))
+   (list message
+	 (scode/make-combination cons (list operand '()))
+	 (scode/make-the-environment))))

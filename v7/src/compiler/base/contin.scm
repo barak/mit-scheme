@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.2 1987/12/30 06:58:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.3 1988/06/14 08:31:35 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,6 +40,7 @@ MIT in each case. |#
 ;;; something other than PROCEDURE.
 
 (define (make-continuation block continuation type)
+  continuation
   (let ((block (make-block block 'CONTINUATION)))
     (let ((required (list (make-value-variable block))))
       (set-block-bound-variables! block required)

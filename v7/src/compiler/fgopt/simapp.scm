@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.2 1987/12/30 06:45:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.3 1988/06/14 08:35:26 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,7 @@ MIT in each case. |#
 (define process-application-methods
   (make-method-table rvalue-types
 		     (lambda (old operator apply-operator)
+		       old apply-operator
 		       (warn "Unapplicable operator" operator)
 		       operator)))
 
@@ -119,7 +120,7 @@ MIT in each case. |#
 			     "Primitive called with wrong number of arguments"
 			     value
 			     number-supplied)))
-		       ((not (scode/unassigned-object? value))
+		       ((not (unassigned-reference-trap? value))
 			(warn "Inapplicable operator" value)))))
 	      (else
 	       (warn "Inapplicable operator" operator)))))))
@@ -138,7 +139,7 @@ MIT in each case. |#
 		   (map lvalue-initial-values (cdr lvalues)))))
 
 (define (lvalue-unassigned! lvalue)
-  (lvalue-connect! lvalue (make-constant (scode/make-unassigned-object))))
+  (lvalue-connect! lvalue (make-constant (make-unassigned-reference-trap))))
 
 (define-integrable (lvalue-connect! lvalue rvalue)
   (if (rvalue/reference? rvalue)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.65 1987/07/30 07:09:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr1.scm,v 1.66 1988/06/14 08:47:12 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,11 +36,10 @@ MIT in each case. |#
 ;;; Originally from GJS (who did the hard part).
 
 (declare (usual-integrations))
-
+
 ;;; Effective Address description database
 
 (define-ea-database
-
   ((D (? r)) (DATA ALTERABLE) #b000 r)
 
   ((A (? r)) (ALTERABLE) #b001 r)

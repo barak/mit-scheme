@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.8 1988/04/23 12:37:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.9 1988/06/14 08:48:47 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,17 +46,20 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
+  continuation
   (LAP ,@(clear-map!)
        ,(load-dnw frame-size 0)
        (JMP ,entry:compiler-apply)))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
+  frame-size continuation
   (LAP ,@(clear-map!)
        (BRA (@PCR ,label))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
+  continuation
   (LAP ,@(clear-map!)
        ,(load-dnw number-pushed 0)
        (LEA (@PCR ,label) (A 0))
@@ -64,6 +67,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
+  continuation
   (LAP ,@(clear-map!)
        ;; The following assumes that at label there is
        ;;	(JMP (L <entry>))
@@ -74,6 +78,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
+  continuation
   (let ((set-extension (expression->machine-register! extension a3)))
     (delete-dead-registers!)
     (LAP ,@set-extension
@@ -84,6 +89,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
+  continuation
   (let ((set-environment (expression->machine-register! environment d4)))
     (delete-dead-registers!)
     (LAP ,@set-environment
@@ -94,6 +100,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
+  continuation
   (LAP ,@(clear-map!)
        ,@(if (eq? primitive compiled-error-procedure)
 	     (LAP ,(load-dnw frame-size 0)
@@ -121,6 +128,7 @@ MIT in each case. |#
 	     (? frame-size)
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
+	    frame-size continuation
 	    ,(list 'LAP
 		   (list 'UNQUOTE-SPLICING '(clear-map!))
 		   (list 'JMP

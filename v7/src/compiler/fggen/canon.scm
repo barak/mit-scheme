@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.1 1988/04/15 02:07:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.2 1988/06/14 08:36:01 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -260,21 +260,21 @@ HIGH:	package bodies are treated as top level expressions to be
 
 ;;;; More hairy expressions
 
-(define (canonicalize/definition expr bound context)
-  (scode/definition-components
-   expr
-   (lambda (name old-value)
-     (let ((value (canonicalize/expression old-value bound context)))
-       (if (memq context '(ONCE-ONLY ARBITRARY))
-	   (error "canonicalize/definition: unscanned definition"
-		  definition)
-	   (make-canout
-	    (scode/make-combination
-	     (ucode-primitive LOCAL-ASSIGNMENT)
-	     (list (scode/make-variable environment-variable)
-		   name
-		   (canout-expr value)))
-	    (canout-safe? value) true false))))))
+(define (canonicalize/definition expression bound context)
+  (scode/definition-components expression
+    (lambda (name value)
+      (let ((value (canonicalize/expression value bound context)))
+	(if (memq context '(ONCE-ONLY ARBITRARY))
+	    (error "canonicalize/definition: unscanned definition"
+		   expression))
+	(make-canout (scode/make-combination
+		      (ucode-primitive local-assignment)
+		      (list (scode/make-variable environment-variable)
+			    name
+			    (canout-expr value)))
+		     (canout-safe? value)
+		     true
+		     false)))))
 
 (define (canonicalize/the-environment expr bound context)
   expr bound context ;; ignored
@@ -317,7 +317,8 @@ HIGH:	package bodies are treated as top level expressions to be
 	      (macro (value name)
 		`(or (eq? ,value (ucode-primitive ,name))
 		     (and (scode/absolute-reference? ,value)
-			  (eq? (scode/absolute-reference-name ,value) ',name))))))
+			  (eq? (scode/absolute-reference-name ,value)
+			       ',name))))))
 
   (define (canonicalize/combination expr bound context)
     (scode/combination-components
@@ -529,7 +530,7 @@ HIGH:	package bodies are treated as top level expressions to be
 
 (define canonicalize/expression
   (let ((dispatch-vector
-	 (make-vector number-of-microcode-types canonicalize/constant)))
+	 (make-vector (microcode-type/code-limit) canonicalize/constant)))
 
     (let-syntax
 	((dispatch-entry
@@ -576,5 +577,5 @@ HIGH:	package bodies are treated as top level expressions to be
       (dispatch-entries (lambda lexpr extended-lambda) canonicalize/lambda)
       (dispatch-entries (sequence-2 sequence-3) canonicalize/sequence))
     (named-lambda (canonicalize/expression expression bound context)
-      ((vector-ref dispatch-vector (primitive-type expression))
+      ((vector-ref dispatch-vector (object-type expression))
        expression bound context))))

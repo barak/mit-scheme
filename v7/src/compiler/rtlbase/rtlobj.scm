@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.2 1987/12/30 07:07:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlobj.scm,v 4.3 1988/06/14 08:37:16 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,9 +40,9 @@ MIT in each case. |#
 		   (conc-name rtl-expr/)
 		   (constructor make-rtl-expr (rgraph label entry-edge))
 		   (print-procedure
-		    (standard-unparser 'RTL-EXPR
-		      (lambda (expression)
-			(write (rtl-expr/label expression))))))
+		    (standard-unparser "RTL-EXPR"
+		      (lambda (state expression)
+			(unparse-object state (rtl-expr/label expression))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true))
@@ -63,9 +63,10 @@ MIT in each case. |#
 				(rgraph label entry-edge name n-required
 					n-optional rest? closure? type))
 		   (print-procedure
-		    (standard-unparser 'RTL-PROCEDURE
-		      (lambda (procedure)
-			(write (rtl-procedure/label procedure))))))
+		    (standard-unparser "RTL-PROCEDURE"
+		      (lambda (state procedure)
+			(unparse-object state
+					(rtl-procedure/label procedure))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -106,9 +107,10 @@ MIT in each case. |#
 		   (constructor make-rtl-continuation
 				(rgraph label entry-edge))
 		   (print-procedure
-		    (standard-unparser 'RTL-CONTINUATION
-		      (lambda (continuation)
-			(write (rtl-continuation/label continuation))))))
+		    (standard-unparser "RTL-CONTINUATION"		      (lambda (state continuation)
+			(unparse-object
+			 state
+			 (rtl-continuation/label continuation))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true))
@@ -136,9 +138,10 @@ MIT in each case. |#
 					   procedure))
 	      procedures)
     (for-each (lambda (continuation)
-		(symbol-hash-table/insert! hash-table
-					   (rtl-continuation/label continuation)
-					   continuation))
+		(symbol-hash-table/insert!
+		 hash-table
+		 (rtl-continuation/label continuation)
+		 continuation))
 	      continuations)
     (make/label->object* hash-table)))
 

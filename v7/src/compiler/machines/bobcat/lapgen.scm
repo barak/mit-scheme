@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.8 1988/05/19 18:37:36 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.9 1988/06/14 08:47:38 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,9 +93,8 @@ MIT in each case. |#
 (define-export byte-offset-reference
   (make-offset-reference
    (quotient 8 addressing-granularity)))
-;;; End PACKAGE
-)
 
+)
 
 (define (load-dnw n d)
   (cond ((zero? n)
@@ -121,8 +120,8 @@ MIT in each case. |#
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
-      (load-non-pointer (primitive-type constant)
-			(primitive-datum constant)
+      (load-non-pointer (object-type constant)
+			(object-datum constant)
 			target)
       (INST (MOV L
 		 (@PCR ,(constant->label constant))
@@ -134,7 +133,7 @@ MIT in each case. |#
       (LAP  (MOV L
 		 (@PCR ,(constant->label constant))
 		 ,register-ref)
-	    ,(remove-type-from-fixmum register-ref))))
+	    ,(remove-type-from-fixnum register-ref))))
 
 (define (load-non-pointer type datum target)
   (cond ((not (zero? type))
@@ -231,7 +230,6 @@ MIT in each case. |#
 (define-integrable (register-effective-address? effective-address)
   (memq (lap:ea-keyword effective-address) '(A D)))
 
-
 (package (indirect-reference! indirect-byte-reference!)
 
 (define ((make-indirect-reference offset-reference) register offset)
@@ -250,9 +248,10 @@ MIT in each case. |#
 
 (define-export indirect-reference!
   (make-indirect-reference offset-reference))
+
 (define-export indirect-byte-reference!
   (make-indirect-reference byte-offset-reference))
-;;; End PACKAGE
+
 )
 
 (define (coerce->any register)
@@ -280,10 +279,12 @@ MIT in each case. |#
       (let ((alias (register-alias register false)))
 	(if alias
 	    (register-reference alias)
-	    (indirect-char/ascii-reference! regnum:regs-pointer
-					    (pseudo-register-offset register))))))
+	    (indirect-char/ascii-reference!
+	     regnum:regs-pointer
+	     (pseudo-register-offset register))))))
 
 (define (code-object-label-initialize code-object)
+  code-object
   false)
 
 (define (generate-n-times n limit instruction-gen with-counter)
@@ -301,16 +302,15 @@ MIT in each case. |#
 	    (LAP ,(instruction-gen)
 		 ,@(loop (-1+ n)))))))
 
-
-;;; this fixnum stuff will be moved to fixlap.scm after we can include
+;;; This fixnum stuff will be moved to fixlap.scm after we can include
 ;;; fixlap.scm's dependencies in decls.scm
 
 (define (expression->fixnum-register! expression register)
-;;; inputs:
-;;;   - an rtl expression
-;;;   - a register into which the produced code should place the
-;;;     result of evaluating the expression.
-;;; output: the lap code to move the expression into the register.
+  ;; inputs:
+  ;;   - an rtl expression
+  ;;   - a register into which the produced code should place the
+  ;;     result of evaluating the expression.
+  ;; output: the lap code to move the expression into the register.
   (let ((target (register-reference register)))
     (case (rtl:expression-type expression)
       ((REGISTER)
@@ -318,88 +318,107 @@ MIT in each case. |#
       ((OFFSET)
        (LAP
 	(MOV L
-	     ,(indirect-reference! (rtl:register-number (rtl:offset-register expression))
-				   (rtl:offset-number expression))
+	     ,(indirect-reference!
+	       (rtl:register-number (rtl:offset-register expression))
+	       (rtl:offset-number expression))
 	     ,target)))
       ((CONSTANT)
-       (LAP (MOV L (& ,(fixnum-constant (rtl:constant-value expression))) ,target)))
+       (LAP (MOV L (& ,(fixnum-constant (rtl:constant-value expression)))
+		 ,target)))
       ((UNASSIGNED)
        (LAP ,(load-non-pointer type-code:unassigned 0 target)))
       (else
-       (error "expression->fixnum-register!:Unknown expression type" (expression))))))
+       (error "EXPRESSION->FIXNUM-REGISTER!: Unknown expression type"
+	      expression)))))
 
 (define (remove-type-from-fixnum register-reference)
-;;; input: a register reference of a register  containing some fixnum
-;;;        with a type-code
-;;; output: the lap code to get rid of the type-code and sign extend
+  ;; input: a register reference of a register  containing some fixnum
+  ;;        with a type-code
+  ;; output: the lap code to get rid of the type-code and sign extend
   (LAP (LS L L (& 8) ,register-reference)
        (AS R L (& 8) ,register-reference)))
 
 (define (put-type-in-ea type-code effective-address)
-;;; inputs:
-;;;   - a type-code
-;;;   - an effective address
-;;; output: the lap code to stick the type in the top byte of the register
+  ;; inputs:
+  ;;   - a type-code
+  ;;   - an effective address
+  ;; output: the lap code to stick the type in the top byte of the register
   (if (register-effective-address? effective-address)
       (LAP (AND L ,mask-reference ,effective-address)
 	   (OR L (& ,(make-non-pointer-literal type-code 0))
-		 ,effective-address))
+	       ,effective-address))
       (INST (MOV B (& ,type-code) ,effective-address))))
-	     
+
 (define (fixnum-constant x)
   (if (<= (abs x) maximum-positive-fixnum)
       x
       (error "Not a fixnum" x)))
 
 (define (fixnum-expression? expression)
-;;; input: an rtl expression
-;;; output: true, if the expression is of some fixnum type. false, otherwise
+  ;; input: an rtl expression
+  ;; output: true, if the expression is of some fixnum type. false, otherwise
   (eq? (rtl:expression-type expression) 'FIXNUM))
 
 (define (commutative-op? op)
-;;; input: An operator
-;;; output: True, if the op is commutative.
+  ;; input: An operator
+  ;; output: True, if the op is commutative.
   (memq op '(PLUS-FIXNUM MULTIPLY-FIXNUM)))
-
+
 (define (fixnum-do-2-args! operator operand-1 operand-2 register)
-;;; inputs: 
-;;;    - a fixnum operator
-;;;    - an operand
-;;;    - another operand
-;;;    - the register into which the generated code should place the
-;;;      result of the calculation 
-;;; output: the lap code to calculate the fixnum expression
-;;;
-;;; Note that the final placement of the type-code in the result is
-;;; not done here. It must be done in the caller.
+  ;; inputs: 
+  ;;    - a fixnum operator
+  ;;    - an operand
+  ;;    - another operand
+  ;;    - the register into which the generated code should place the
+  ;;      result of the calculation 
+  ;; output: the lap code to calculate the fixnum expression
+  ;;
+  ;; Note that the final placement of the type-code in the result is
+  ;; not done here. It must be done in the caller.
   (let ((finish
-	  (lambda (operand-1 operand-2)
-	    (LAP ,(expression->fixnum-register! operand-1 register)
-		 ,((fixnum-code-gen operator) operand-2 register)))))
+	 (lambda (operand-1 operand-2)
+	   (LAP ,(expression->fixnum-register! operand-1 register)
+		,((fixnum-code-gen operator) operand-2 register)))))
     (if (and (commutative-op? operator)
 	     (rtl:constant? operand-1))
 	(finish operand-2 operand-1)
 	(finish operand-1 operand-2))))
 
-
 (define (fixnum-do-1-arg! operator operand register)
-;;; inputs: 
-;;;    - a fixnum operator
-;;;    - an operand
-;;;    - the register into which the generated code should place the
-;;;      result of the calculation 
-;;; output: the lap code to calculate the fixnum expression
-;;;
-;;; Note that the final placement of the type-code in the result is
-;;; not done here. It must be done in the caller.
+  ;; inputs: 
+  ;;    - a fixnum operator
+  ;;    - an operand
+  ;;    - the register into which the generated code should place the
+  ;;      result of the calculation 
+  ;; output: the lap code to calculate the fixnum expression
+  ;;
+  ;; Note that the final placement of the type-code in the result is
+  ;; not done here. It must be done in the caller.
   (LAP ,(expression->fixnum-register! operand register)
        ,((fixnum-code-gen operator) register)))
 
+(define (fixnum-code-gen operator)
+  ;; input: a fixnum operator
+  ;; output: a procedure with the following behavior
+  ;;           inputs:
+  ;;             - an operand to a fixnum expression
+  ;;             - a register which already should contain the other
+  ;;               operand to the fixnum expression
+  ;;           output: the lap code to apply the operator to the
+  ;;                   operand and register, putting the result in the register
+  (case operator
+    ((PLUS-FIXNUM) fixnum-plus-gen)
+    ((MULTIPLY-FIXNUM) fixnum-multiply-gen)
+    ((MINUS-FIXNUM) fixnum-minus-gen)
+    ((ONE-PLUS-FIXNUM) fixnum-one-plus-gen)
+    ((MINUS-ONE-PLUS-FIXNUM) fixnum-minus-one-plus-gen)
+    (else (error "Unknown operator" operator))))
+
 (define fixnum-plus-gen
-;;;   inputs:
-;;;     - an rtl expression representing the addend
-;;;     - a register to which the addend will be added
-;;;   output: lap code to add the addend to the register
+  ;;   inputs:
+  ;;     - an rtl expression representing the addend
+  ;;     - a register to which the addend will be added
+  ;;   output: lap code to add the addend to the register
   (lambda (addend register)
     (let ((target (register-reference register)))
       (case (rtl:expression-type addend)
@@ -407,10 +426,10 @@ MIT in each case. |#
 	 (INST (ADD L ,(coerce->any (rtl:register-number addend)) ,target)))
 	((OFFSET)
 	 (INST (ADD L
-		   ,(indirect-reference!
-		     (rtl:register-number (rtl:offset-register addend))
-		     (rtl:offset-number addend))
-		   ,target)))
+		    ,(indirect-reference!
+		      (rtl:register-number (rtl:offset-register addend))
+		      (rtl:offset-number addend))
+		    ,target)))
 	((CONSTANT)
 	 (let ((constant (fixnum-constant (rtl:constant-value addend))))
 	   (if (and (<= constant 8) (>= constant 1))
@@ -422,52 +441,55 @@ MIT in each case. |#
 	 (error "fixnum-plus-gen: Unknown expression type"  addend))))))
 
 (define fixnum-multiply-gen
-;;;   inputs:
-;;;     - an rtl expression representing the multiplicand
-;;;     - a register to which the multiplicand will be multiplied
-;;;   output: lap code to add the multiplicand to the register
+  ;;   inputs:
+  ;;     - an rtl expression representing the multiplicand
+  ;;     - a register to which the multiplicand will be multiplied
+  ;;   output: lap code to add the multiplicand to the register
   (lambda (multiplicand register)
     (let ((target (register-reference register)))
       (case (rtl:expression-type multiplicand)
 	((REGISTER)
-	 (INST (MUL S L ,(coerce->any (rtl:register-number multiplicand)) ,target)))
+	 (INST (MUL S L ,(coerce->any (rtl:register-number multiplicand))
+		    ,target)))
 	((OFFSET)
 	 (INST (MUL S L
-		   ,(indirect-reference!
-		     (rtl:register-number (rtl:offset-register multiplicand))
-		     (rtl:offset-number multiplicand))
-		   ,target)))
+		    ,(indirect-reference!
+		      (rtl:register-number (rtl:offset-register multiplicand))
+		      (rtl:offset-number multiplicand))
+		    ,target)))
 	((CONSTANT)
 	 (let* ((constant (fixnum-constant (rtl:constant-value multiplicand)))
-	       (power-of-2?
-		(let loop ((power 1) (exponent 0))
-		  (cond ((< constant power) false)
-			((= constant power) exponent)
-			(else (loop (* 2 power) (1+ exponent)))))))
+		(power-of-2?
+		 (let loop ((power 1) (exponent 0))
+		   (cond ((< constant power) false)
+			 ((= constant power) exponent)
+			 (else (loop (* 2 power) (1+ exponent)))))))
 	   (if power-of-2?
 	       (INST (AS L L (& ,power-of-2?) ,target))
 	       (INST (MUL S L (& ,(fixnum-constant constant)) ,target)))))
 	((UNASSIGNED)			; this needs to be looked at
 	 (LAP ,(load-non-pointer type-code:unassigned 0 target)))
 	(else
-	 (error "fixnum-multiply-gen: Unknown expression type"  multiplicand))))))
-
+	 (error "FIXNUM-MULTIPLY-GEN: Unknown expression type"
+		multiplicand))))))
+
 (define fixnum-minus-gen
-;;;   inputs:
-;;;     - an rtl expression representing the subtrahend
-;;;     - a register to which the subtrahend will be subtracted
-;;;   output: lap code to add the subtrahend to the register
+  ;;   inputs:
+  ;;     - an rtl expression representing the subtrahend
+  ;;     - a register to which the subtrahend will be subtracted
+  ;;   output: lap code to add the subtrahend to the register
   (lambda (subtrahend register)
     (let ((target (register-reference register)))
       (case (rtl:expression-type subtrahend)
 	((REGISTER)
-	 (INST (SUB L ,(coerce->any (rtl:register-number subtrahend)) ,target)))
+	 (INST (SUB L ,(coerce->any (rtl:register-number subtrahend))
+		    ,target)))
 	((OFFSET)
 	 (INST (SUB L
-		   ,(indirect-reference!
-		     (rtl:register-number (rtl:offset-register subtrahend))
-		     (rtl:offset-number subtrahend))
-		   ,target)))
+		    ,(indirect-reference!
+		      (rtl:register-number (rtl:offset-register subtrahend))
+		      (rtl:offset-number subtrahend))
+		    ,target)))
 	((CONSTANT)
 	 (let ((constant (fixnum-constant (rtl:constant-value subtrahend))))
 	   (if (and (<= constant 8) (>= constant 1))
@@ -479,42 +501,25 @@ MIT in each case. |#
 	 (error "fixnum-minus-gen: Unknown expression type"  subtrahend))))))
 
 (define fixnum-one-plus-gen
-;;;   inputs:
-;;;     - a register to be incremented
-;;;   output: lap code to add one to the register
+  ;;   inputs:
+  ;;     - a register to be incremented
+  ;;   output: lap code to add one to the register
   (lambda (register)
     (INST (ADDQ  L (& 1) ,(register-reference register)))))
 
 (define fixnum-minus-one-plus-gen
-;;;   inputs:
-;;;     - a register to be deccremented
-;;;   output: lap code to subtract one from the register
+  ;;   inputs:
+  ;;     - a register to be deccremented
+  ;;   output: lap code to subtract one from the register
   (lambda (register)
     (INST (SUBQ  L (& 1) ,(register-reference register)))))
-
-(define (fixnum-code-gen operator)
-;;; input: a fixnum operator
-;;; output: a procedure with the following behavior
-;;;           inputs:
-;;;             - an operand to a fixnum expression
-;;;             - a register which already should contain the other
-;;;               operand to the fixnum expression
-;;;           output: the lap code to apply the operator to the
-;;;                   operand and register, putting the result in the register
-  (case operator
-    ((PLUS-FIXNUM) fixnum-plus-gen)
-    ((MULTIPLY-FIXNUM) fixnum-multiply-gen)
-    ((MINUS-FIXNUM) fixnum-minus-gen)
-    ((ONE-PLUS-FIXNUM) fixnum-one-plus-gen)
-    ((MINUS-ONE-PLUS-FIXNUM) fixnum-minus-one-plus-gen)
-    ))
 
 ;;;; OBJECT->DATUM rules - Mhwu
 ;;;  Similar to fixnum rules, but no sign extension
 
 (define (load-constant-datum constant register-ref)
   (if (non-pointer-object? constant)
-      (INST (MOV L (& ,(primitive-datum constant)) ,register-ref))
+      (INST (MOV L (& ,(object-datum constant)) ,register-ref))
       (LAP  (MOV L
 		 (@PCR ,(constant->label constant))
 		 ,register-ref)
@@ -532,14 +537,14 @@ MIT in each case. |#
   (let ((ascii (char->ascii character)))
     (if (< ascii 128) ascii (- ascii 256))))
 
-;;; This code uses a temporary register because right now the register
-;;; allocator thinks that it could use the same register for the target
-;;; and source, while what we want to happen is to first clear the target
-;;; and then move from source to target.
-;;; Optimal Code: (CLR L ,target-ref)
-;;;               (MOV B ,source ,target)
-;;; source-register is passed in to check for this. Yuck.
 (define (byte-offset->register source source-reg target)
+  ;; This code uses a temporary register because right now the register
+  ;; allocator thinks that it could use the same register for the target
+  ;; and source, while what we want to happen is to first clear the target
+  ;; and then move from source to target.
+  ;; Optimal Code: (CLR L ,target-ref)
+  ;;               (MOV B ,source ,target)
+  ;; source-register is passed in to check for this. Yuck.
   (delete-dead-registers!)
   (let* ((temp-ref (register-reference (allocate-temporary-register! 'DATA)))
 	 (target (allocate-alias-register! target 'DATA)))
@@ -555,6 +560,8 @@ MIT in each case. |#
       register
       (register-alias register false)))
 
+;;;; Registers/Entries
+
 (define-integrable (data-register? register)
   (< register 8))
 
@@ -564,17 +571,16 @@ MIT in each case. |#
 (define-integrable (lap:ea-keyword expression)
   (car expression))
 
-(define-export (lap:make-label-statement label)
+(define (lap:make-label-statement label)
   (INST (LABEL ,label)))
 
-(define-export (lap:make-unconditional-branch label)
+(define (lap:make-unconditional-branch label)
   (INST (BRA (@PCR ,label))))
 
-(define-export (lap:make-entry-point label block-start-label)
+(define (lap:make-entry-point label block-start-label)
+  block-start-label
   (LAP (ENTRY-POINT ,label)
        ,@(make-external-label expression-code-word label)))
-
-;;;; Registers/Entries
 
 (let-syntax ((define-entries
 	       (macro (start . names)

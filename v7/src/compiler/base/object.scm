@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.1 1987/12/04 20:04:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.2 1988/06/14 08:32:36 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,8 +49,8 @@ MIT in each case. |#
   (let ((root-tag (%make-vector-tag false 'OBJECT false)))
     (set-vector-tag-%unparser!
      root-tag
-     (lambda (object)
-       (write (vector-tag-name (tagged-vector/tag object)))))
+     (lambda (state object)
+       (unparse-object state (vector-tag-name (tagged-vector/tag object)))))
     (named-lambda (make-vector-tag parent name enumeration)
       (let ((tag
 	     (%make-vector-tag (or parent root-tag)
@@ -58,9 +58,7 @@ MIT in each case. |#
 			       (and enumeration
 				    (enumeration/name->index enumeration
 							     name)))))
-	((access add-unparser-special-object! unparser-package)
-	 tag
-	 tagged-vector/unparse)
+	(unparser/set-tagged-vector-method! tag tagged-vector/unparse)
 	tag))))
 
 (define (define-vector-tag-unparser tag unparser)
@@ -114,12 +112,12 @@ MIT in each case. |#
 (define (tagged-vector? object)
   (and (vector? object)
        (not (zero? (vector-length object)))
-       (let ((tag (tagged-vector/tag object)))
-	 (or (vector-tag? tag)
-	     (type-object? tag)))))
+       (vector-tag? (tagged-vector/tag object))))
 
 (define (->tagged-vector object)
-  (let ((object (if (integer? object) (unhash object) object)))    (and (tagged-vector? object) object)))
+  (let ((object (if (integer? object) (unhash object) object)))    (and (or (tagged-vector? object)
+	     (named-structure? object))
+	 object)))
 
 (define (tagged-vector/predicate tag)
   (lambda (object)
@@ -137,12 +135,12 @@ MIT in each case. |#
 		    (loop (vector-tag-parent tag*))))))))
 
 (define (tagged-vector/description object)
-  (if (tagged-vector? object)
-      (let ((tag (tagged-vector/tag object)))
-	(cond ((vector-tag? tag) (vector-tag-description tag))
-	      ((type-object? tag) (type-object-description tag))
-	      (else (error "Unknown vector tag" tag))))
-      (error "Not a tagged vector" object)))
+  (cond ((named-structure? object)
+	 (named-structure/description object))
+	((tagged-vector? object)
+	 (vector-tag-description (tagged-vector/tag object)))
+	(else
+	 (error "Not a tagged vector" object))))
 
 (define (type-object-description type-object)
   (2d-get type-object type-object-description))
@@ -151,29 +149,10 @@ MIT in each case. |#
   (2d-put! type-object type-object-description description))
 
 (define (standard-unparser name unparser)
-  (lambda (object)
-    (unparse-with-brackets
-     (lambda ()
-       (standard-unparser/prefix object)
-       (write name)
-       (if unparser
-	   (begin (write-string " ")
-		  (unparser object)))))))
+  (let ((name (string-append "LIAR " name)))    (if unparser
+	(unparser/standard-method name unparser)
+	(unparser/standard-method name))))
 
-(define (tagged-vector/unparse vector)
-  (unparse-with-brackets
-   (lambda ()
-     (standard-unparser/prefix vector)
-     (fluid-let ((*unparser-radix* 16))
-       ((tagged-vector/unparser vector) vector)))))
-
-(define (standard-unparser/prefix object)
-  (if *tagged-vector-unparse-prefix-string*
-      (begin (write-string *tagged-vector-unparse-prefix-string*)
-	     (write-string " ")))
-  (if *tagged-vector-unparse-show-hash*
-      (begin (write-string (number->string (hash object) 10))
-	     (write-string " "))))
-
-(define *tagged-vector-unparse-prefix-string* "LIAR")
-(define *tagged-vector-unparse-show-hash* true)
+(define (tagged-vector/unparse state vector)
+  (fluid-let ((*unparser-radix* 16))
+    ((tagged-vector/unparser vector) state vector)))

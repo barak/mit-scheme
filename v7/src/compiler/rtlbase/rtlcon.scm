@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.8 1988/05/19 15:22:46 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.9 1988/06/14 08:37:00 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,16 +50,18 @@ MIT in each case. |#
 		     ;; times, then all of those assignments should be
 		     ;; address valued expressions.  This constraint is not
 		     ;; enforced.
-		     (add-rgraph-address-register! *current-rgraph*
-						   (rtl:register-number address)))
+		     (add-rgraph-address-register!
+		      *current-rgraph*
+		      (rtl:register-number address)))
 		    ((rtl:fixnum-valued-expression? expression)
 		     ;; We don't know for sure that this register is assigned
 		     ;; only once.  However, if it is assigned multiple
 		     ;; times, then all of those assignments should be
 		     ;; fixnum valued expressions.  This constraint is not
 		     ;; enforced.
-		     (add-rgraph-fixnum-register! *current-rgraph*
-						  (rtl:register-number address)))))
+		     (add-rgraph-fixnum-register!
+		      *current-rgraph*
+		      (rtl:register-number address)))))
 	  (%make-assign address expression))))))
 
 (define (rtl:make-eq-test expression-1 expression-2)
@@ -268,7 +270,9 @@ MIT in each case. |#
     (lambda (register)
       (receiver register offset granularity))
     (lambda (register offset* granularity*)
-      (receiver (make-offset register offset* granularity*) offset granularity))))
+      (receiver (make-offset register offset* granularity*)
+		offset
+		granularity))))
 
 (define (guarantee-address expression scfg-append! receiver)
   (if (rtl:address-valued-expression? expression)
@@ -282,7 +286,8 @@ MIT in each case. |#
       (receiver expression)
       (assign-to-temporary expression scfg-append! receiver)))
 
-(define (generate-offset-address expression offset granularity scfg-append! receiver)
+(define (generate-offset-address expression offset granularity scfg-append!
+				 receiver)
   (if (eq? granularity 'OBJECT)
       (guarantee-address expression scfg-append!
         (lambda (address)
@@ -344,6 +349,7 @@ MIT in each case. |#
   (lambda (receiver scfg-append! locative)
     (locative-dereference-1 locative scfg-append! locative-fetch-1
       (lambda (register)
+	register
 	(error "Can't take ADDRESS of a register" locative))
       (generator receiver scfg-append!))))
 
@@ -443,6 +449,7 @@ MIT in each case. |#
 
 (define-expression-method 'TYPED-CONS:PROCEDURE
   (lambda (receiver scfg-append! type entry min max size)
+    scfg-append!
     (receiver (rtl:make-typed-cons:procedure type entry min max size))))
 
 (define (object-selector make-object-selector)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.5 1987/07/30 07:10:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/insutl.scm,v 1.6 1988/06/14 08:47:30 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -170,7 +170,8 @@ MIT in each case. |#
 			((POST)
 			 (+ #b100 outer-displacement-size))
 			(else
-			 (error "bad memory indirection-type" memory-indirection-type)))))
+			 (error "bad memory indirection-type"
+				memory-indirection-type)))))
    (append-syntax!
     (output-displacement base-displacement-size base-displacement)
     (output-displacement outer-displacement-size outer-displacement))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.6 1987/08/25 02:18:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmerly.scm,v 1.7 1988/06/14 08:32:44 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,24 +35,13 @@ MIT in each case. |#
 ;;;; Very Simple Pattern Matcher: Early rule compilation and lookup
 
 (declare (usual-integrations))
-
-;;; Exports
-
-(define early-parse-rule)
-(define early-pattern-lookup)
-(define early-make-rule)
-(define make-database-transformer)
-(define make-symbol-transformer)
-(define make-bit-mask-transformer)
-
-(let ()
 
 ;;;; Database construction
 
-(define-export (early-make-rule pattern variables body)
+(define (early-make-rule pattern variables body)
   (list pattern variables body))
 
-(define-export (early-parse-rule pattern receiver)
+(define (early-parse-rule pattern receiver)
   (extract-variables pattern receiver))
 
 (define (extract-variables pattern receiver)
@@ -96,10 +85,10 @@ MIT in each case. |#
 
 ;;;; Early rule processing and code compilation
 
-(define-export (early-pattern-lookup
-		rules instance #!optional transformers unparsed receiver limit)
-  (if (unassigned? limit) (set! limit *rule-limit*))
-  (if (or (unassigned? receiver) (null? receiver))
+(define (early-pattern-lookup rules instance #!optional transformers unparsed
+			      receiver limit)
+  (if (default-object? limit) (set! limit *rule-limit*))
+  (if (or (default-object? receiver) (null? receiver))
       (set! receiver
 	    (lambda (result code)
 	      (cond ((false? result)
@@ -117,13 +106,13 @@ MIT in each case. |#
 			    (scode/make-block bindings '() program)
 			    false)))
 	    (fluid-let ((*rule-limit* limit)
-			(*transformers* (if (unassigned? transformers)
+			(*transformers* (if (default-object? transformers)
 					    '()
 					    transformers)))
 	      (try-rules rules expression
 			 (scode/make-error-combination
 			  "early-pattern-lookup: No pattern matches"
-			  (if (or (unassigned? unparsed) (null? unparsed))
+			  (if (or (default-object? unparsed) (null? unparsed))
 			      (scode/make-constant instance)
 			      unparsed))
 			 list))))))
@@ -168,7 +157,8 @@ MIT in each case. |#
 		    ((eq? result 'MAYBE)
 		     (let ((var (make-variable-name 'TRY-NEXT-RULE-)))
 		       (loop (cdr rules)
-			     (scode/make-combination (scode/make-variable var) '())
+			     (scode/make-combination (scode/make-variable var)
+						     '())
 			     (cons (cons var code)
 				   bindings)
 			     (1+ nrules))))
@@ -181,8 +171,9 @@ MIT in each case. |#
 	   (receiver 'MAYBE
 		     (scode/make-letrec
 		      (map (lambda (pair)
-			     (scode/make-binding (car pair)
-						 (scode/make-thunk (cdr pair))))
+			     (scode/make-binding
+			      (car pair)
+			      (scode/make-thunk (cdr pair))))
 			   bindings)
 		      null-form)))))
   (loop rules null-form '() 0))
@@ -248,10 +239,11 @@ MIT in each case. |#
 	(build-comparison (cdr evaluation)
 			  (cdar evaluation)
 			  (lambda (new-test new-bindings)
-			    (process-evaluations (cdr evaluations)
-						 (scode/merge-tests new-test test)
-						 (append new-bindings bindings)
-						 receiver))))))
+			    (process-evaluations
+			     (cdr evaluations)
+			     (scode/merge-tests new-test test)
+			     (append new-bindings bindings)
+			     receiver))))))
 
 ;;;; Early variable processing
 
@@ -387,8 +379,10 @@ MIT in each case. |#
 					   (merge-path path expression))
 			  (append car-bindings cdr-bindings))))))))))))))
 
-  (walk pattern '() expression (lambda (pure? test bindings)
-				 (receiver test bindings))))
+  (walk pattern '() expression
+	(lambda (pure? test bindings)
+	  pure?
+	  (receiver test bindings))))
 
 ;;; car/cdr decomposition
 
@@ -399,8 +393,10 @@ MIT in each case. |#
 			 (scode/merge-tests car-test cdr-test))
       (combination-components car-test
 	(lambda (car-operator car-operands)
+	  car-operator
 	  (combination-components cdr-test
 	    (lambda (cdr-operator cdr-operands)
+	      cdr-operator
 	      (scode/make-absolute-combination 'EQUAL?
 	       (list
 		(scode/make-constant
@@ -452,7 +448,8 @@ MIT in each case. |#
     (cond ((null? info)
 	   (receiver step expression))
 	  ((null? (cadr info))
-	   (receiver step (scode/make-absolute-combination path (list expression))))
+	   (receiver step
+		     (scode/make-absolute-combination path (list expression))))
 	  (else
 	   (receiver (if (eq? step 'CAR) (caadr info) (cdadr info))
 		     expression)))))
@@ -488,7 +485,7 @@ MIT in each case. |#
 
 ;;;; Database transformers
 
-(define-export (make-database-transformer database)
+(define (make-database-transformer database)
   (lambda (texp name rename exp receiver)
     (let ((null-form
 	   (scode/make-constant (generate-uninterned-symbol 'NOT-FOUND-))))
@@ -522,16 +519,17 @@ MIT in each case. |#
       (scode/let-components
        code
        (lambda (names values decls body)
-	  (and (not (null? names))
-	       (let ((place (assq 'INTEGRATE decls)))
-		 (and (not (null? place))
-		      (let ((integrated (cdr place)))
-			(let loop ((left names))
-			  (cond ((null? left)
-				 (can-integrate? body))
-				((memq (car left) integrated)
-				 (loop (cdr left)))
-				(else false)))))))))))			     
+	 values
+	 (and (not (null? names))
+	      (let ((place (assq 'INTEGRATE decls)))
+		(and (not (null? place))
+		     (let ((integrated (cdr place)))
+		       (let loop ((left names))
+			 (cond ((null? left)
+				(can-integrate? body))
+			       ((memq (car left) integrated)
+				(loop (cdr left)))
+			       (else false)))))))))))
 
 (define-integrable (make-simple-transformer-test name tag)
   (scode/make-absolute-combination 'NOT
@@ -553,8 +551,9 @@ MIT in each case. |#
 
 ;;;; Symbol transformers
 
-(define-export (make-symbol-transformer alist)
+(define (make-symbol-transformer alist)
   (lambda (texp name rename exp receiver)
+    texp
     (cond ((null? alist)
 	   (receiver false false))
 	  ((symbol? exp)
@@ -594,7 +593,7 @@ MIT in each case. |#
 
 ;;;; Accumulation transformers
 
-(define-export (make-bit-mask-transformer size alist)
+(define (make-bit-mask-transformer size alist)
   (lambda (texp name rename exp receiver)
     (cond ((null? alist)
 	   (transformer-fail receiver))
@@ -639,10 +638,12 @@ MIT in each case. |#
        (scode/combination-components
 	obj
 	(lambda (operator operands)
+	  operands
 	  (and (scode/lambda? operator)
 	       (scode/lambda-components
 		operator
 		(lambda (name . ignore)
+		  ignore
 		  (eq? name lambda-tag:let))))))))
 
 (define (scode/make-let names values declarations body)
@@ -661,6 +662,7 @@ MIT in each case. |#
    (lambda (operator values)
      (scode/lambda-components operator
       (lambda (tag names opt rest aux decls body)
+	tag opt rest aux
 	(receiver names values decls body))))))				     
 
 ;;;; Scode utilities (continued)
@@ -679,7 +681,7 @@ MIT in each case. |#
   (scode/make-let
    (map scode/binding-variable bindings)
    (make-list (length bindings)
-	      (scode/make-unassigned-object))
+	      (make-unassigned-reference-trap))
    '()
    (scode/make-sequence
     (map* body
@@ -725,6 +727,3 @@ MIT in each case. |#
 
 (define-integrable (evaluation-expression exp)
   (cdr exp))
-
-;; End of early rule parsing package
-)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.2 1988/01/02 16:45:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/offset.scm,v 4.3 1988/06/14 08:35:09 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,7 +45,7 @@ MIT in each case. |#
   (fluid-let ((*procedure-queue* (make-queue))
 	      (*procedures* '()))
     (walk-node (expression-entry-node root-expression) 0)
-    (queue-map! *procedure-queue*
+    (queue-map!/unsafe *procedure-queue*
       (lambda (procedure)
 	(if (procedure-continuation? procedure)
 	    (walk-node (continuation/entry-node procedure)
@@ -75,9 +75,10 @@ MIT in each case. |#
 
 (define (enqueue-procedure! procedure)
   (set! *procedures* (cons procedure *procedures*))
-  (enqueue! *procedure-queue* procedure))
+  (enqueue!/unsafe *procedure-queue* procedure))
 
 (define (walk-return operator operand offset)
+  offset
   (walk-rvalue operator)
   (let ((continuation (rvalue-known-value operator)))
     (if (not (and continuation

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.4 1987/12/31 10:43:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.5 1988/06/14 08:32:22 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,8 +36,38 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (for-each (lambda (entry)
+	      (syntax-table-define compiler-syntax-table (car entry)
+		(cadr entry)))
+	    `((CFG-NODE-CASE ,transform/cfg-node-case)
+	      (DEFINE-ENUMERATION ,transform/define-enumeration)
+	      (DEFINE-EXPORT ,transform/define-export)
+	      (DEFINE-LVALUE ,transform/define-lvalue)
+	      (DEFINE-PNODE ,transform/define-pnode)
+	      (DEFINE-ROOT-TYPE ,transform/define-root-type)
+	      (DEFINE-RTL-EXPRESSION ,transform/define-rtl-expression)
+	      (DEFINE-RTL-PREDICATE ,transform/define-rtl-predicate)
+	      (DEFINE-RTL-STATEMENT ,transform/define-rtl-statement)
+	      (DEFINE-RULE ,transform/define-rule)
+	      (DEFINE-RVALUE ,transform/define-rvalue)
+	      (DEFINE-SNODE ,transform/define-snode)
+	      (DEFINE-VECTOR-SLOTS ,transform/define-vector-slots)
+	      (DESCRIPTOR-LIST ,transform/descriptor-list)
+	      (ENUMERATION-CASE ,transform/enumeration-case)
+	      (INST ,transform/inst)
+	      (INST-EA ,transform/inst-ea)
+	      (LAP ,transform/lap)
+	      (MAKE-LVALUE ,transform/make-lvalue)
+	      (MAKE-PNODE ,transform/make-pnode)
+	      (MAKE-RVALUE ,transform/make-rvalue)
+	      (MAKE-SNODE ,transform/make-snode)
+	      (PACKAGE ,transform/package)))
+  (syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
+    transform/define-rule))
+
 (define compiler-syntax-table
-  (make-syntax-table system-global-syntax-table))
+  (make-syntax-table syntax-table/system-internal))
 
 (define lap-generator-syntax-table
   (make-syntax-table compiler-syntax-table))
@@ -48,100 +78,38 @@ MIT in each case. |#
 (define early-syntax-table
   (make-syntax-table compiler-syntax-table))
 
-(syntax-table-define compiler-syntax-table 'PACKAGE
-  (in-package system-global-environment
-    (declare (usual-integrations))
-    (lambda (expression)
-      (apply (lambda (names . body)
-	       (make-sequence
-		`(,@(map (lambda (name)
-			   (make-definition name (make-unassigned-object)))
-			 names)
-		  ,(make-combination
-		    (let ((block (syntax* body)))
-		      (if (open-block? block)
-			  (open-block-components block
-			    (lambda (names* declarations body)
-			      (make-lambda lambda-tag:let '() '() false
-					   (list-transform-negative names*
-					     (lambda (name)
-					       (memq name names)))
-					   declarations
-					   body)))
-			  (make-lambda lambda-tag:let '() '() false '()
-				       '() block)))
-		    '()))))
-	     (cdr expression)))))
-
-(let ()
+(define (transform/package names . body)
+  (make-syntax-closure
+   (make-sequence
+    `(,@(map (lambda (name)
+	       (make-definition name (make-unassigned-reference-trap)))
+	     names)
+      ,(make-combination
+	(let ((block (syntax* body)))
+	  (if (open-block? block)
+	      (open-block-components block
+		(lambda (names* declarations body)
+		  (make-lambda lambda-tag:let '() '() false
+			       (list-transform-negative names*
+				 (lambda (name)
+				   (memq name names)))
+			       declarations
+			       body)))
+	      (make-lambda lambda-tag:let '() '() false '()
+			   '() block)))
+	'())))))
 
-(define (parse-define-syntax pattern body if-variable if-lambda)
-  (cond ((pair? pattern)
-	 (let loop ((pattern pattern) (body body))
-	   (cond ((pair? (car pattern))
-		  (loop (car pattern) `((LAMBDA ,(cdr pattern) ,@body))))
-		 ((symbol? (car pattern))
-		  (if-lambda pattern body))
-		 (else
-		  (error "Illegal name" (car pattern))))))
-	((symbol? pattern)
-	 (if-variable pattern body))
-	(else
-	 (error "Illegal name" pattern))))
-
-(define lambda-list->bound-names
-  (letrec ((lambda-list->bound-names
-	    (lambda (lambda-list)
-	      (cond ((null? lambda-list)
-		     '())
-		    ((pair? lambda-list)
-		     (if (eq? (car lambda-list)
-			      (access lambda-optional-tag lambda-package))
-			 (if (pair? (cdr lambda-list))
-			     (accumulate (cdr lambda-list))
-			     (error "Missing optional variable" lambda-list))
-			 (accumulate lambda-list)))
-		    ((symbol? lambda-list)
-		     (list lambda-list))
-		    (else
-		     (error "Illegal rest variable" lambda-list)))))
-	   (accumulate
-	    (lambda (lambda-list)
-	      (cons (let ((parameter (car lambda-list)))
-		      (if (pair? parameter) (car parameter) parameter))
-		    (lambda-list->bound-names (cdr lambda-list))))))
-    lambda-list->bound-names))
-
-(syntax-table-define compiler-syntax-table 'DEFINE-EXPORT
+(define transform/define-export
   (macro (pattern . body)
     (parse-define-syntax pattern body
       (lambda (name body)
+	name
 	`(SET! ,pattern ,@body))
       (lambda (pattern body)
 	`(SET! ,(car pattern)
 	       (NAMED-LAMBDA ,pattern ,@body))))))
-
-(syntax-table-define compiler-syntax-table 'DEFINE-INTEGRABLE
-  (macro (pattern . body)
-    (if compiler:enable-integration-declarations?
-	(parse-define-syntax pattern body
-	  (lambda (name body)
-	    `(BEGIN (DECLARE (INTEGRATE ,pattern))
-		    (DEFINE ,pattern ,@body)))
-	  (lambda (pattern body)
-	    `(BEGIN (DECLARE (INTEGRATE-OPERATOR ,(car pattern)))
-		    (DEFINE ,pattern
-		      ,@(if (list? (cdr pattern))
-			    `((DECLARE
-			       (INTEGRATE
-				,@(lambda-list->bound-names (cdr pattern)))))
-			    '())
-		      ,@body))))
-	`(DEFINE ,pattern ,@body))))
-
-)
 
-(syntax-table-define compiler-syntax-table 'DEFINE-VECTOR-SLOTS
+(define transform/define-vector-slots
   (macro (class index . slots)
     (define (loop slots n)
       (if (null? slots)
@@ -163,7 +131,7 @@ MIT in each case. |#
 	'*THE-NON-PRINTING-OBJECT*
 	`(BEGIN ,@(loop slots index)))))
 
-(syntax-table-define compiler-syntax-table 'DEFINE-ROOT-TYPE
+(define transform/define-root-type
   (macro (type . slots)
     (let ((tag-name (symbol-append type '-TAG)))
       `(BEGIN (DEFINE ,tag-name
@@ -176,7 +144,7 @@ MIT in each case. |#
 	       (LAMBDA (,type)
 		 (DESCRIPTOR-LIST ,type ,@slots)))))))
 
-(syntax-table-define compiler-syntax-table 'DESCRIPTOR-LIST
+(define transform/descriptor-list
   (macro (type . slots)
     (let ((ref-name (lambda (slot) (symbol-append type '- slot))))
       `(LIST ,@(map (lambda (slot)
@@ -191,8 +159,7 @@ MIT in each case. |#
  ((define-type-definition
     (macro (name reserved enumeration)
       (let ((parent (symbol-append name '-TAG)))
-	`(SYNTAX-TABLE-DEFINE COMPILER-SYNTAX-TABLE
-			      ',(symbol-append 'DEFINE- name)
+	`(DEFINE ,(symbol-append 'TRANSFORM/DEFINE- name)
 	   (macro (type . slots)
 	     (let ((tag-name (symbol-append type '-TAG)))
 	       `(BEGIN (DEFINE ,tag-name
@@ -213,22 +180,22 @@ MIT in each case. |#
 
 ;;; Kludge to make these compile efficiently.
 
-(syntax-table-define compiler-syntax-table 'MAKE-SNODE
+(define transform/make-snode
   (macro (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE ,@extra)))
 
-(syntax-table-define compiler-syntax-table 'MAKE-PNODE
+(define transform/make-pnode
   (macro (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE '() '() FALSE FALSE ,@extra)))
 
-(syntax-table-define compiler-syntax-table 'MAKE-RVALUE
+(define transform/make-rvalue
   (macro (tag . extra)
     `((ACCESS VECTOR ,system-global-environment)
       ,tag FALSE ,@extra)))
 
-(syntax-table-define compiler-syntax-table 'MAKE-LVALUE
+(define transform/make-lvalue
   (macro (tag . extra)
     (let ((result (generate-uninterned-symbol)))
       `(let ((,result
@@ -238,6 +205,9 @@ MIT in each case. |#
 	 (SET! *LVALUES* (CONS ,result *LVALUES*))
 	 ,result))))
 
+(define transform/define-rtl-expression)
+(define transform/define-rtl-statement)
+(define transform/define-rtl-predicate)
 (let ((rtl-common
        (lambda (type prefix components wrap-constructor)
 	 `(BEGIN
@@ -261,29 +231,21 @@ MIT in each case. |#
 			,@(loop (cdr components)
 				(* ref-index 2)
 				(* set-index 2))))))))))
-  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-EXPRESSION
-    (macro (type prefix . components)
-      (rtl-common type prefix components identity-procedure)))
+  (set! transform/define-rtl-expression
+	(macro (type prefix . components)
+	  (rtl-common type prefix components identity-procedure)))
 
-  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-STATEMENT
-    (macro (type prefix . components)
-      (rtl-common type prefix components
-		  (lambda (expression) `(STATEMENT->SRTL ,expression)))))
+  (set! transform/define-rtl-statement
+	(macro (type prefix . components)
+	  (rtl-common type prefix components
+		      (lambda (expression) `(STATEMENT->SRTL ,expression)))))
 
-  (syntax-table-define compiler-syntax-table 'DEFINE-RTL-PREDICATE
-    (macro (type prefix . components)
-      (rtl-common type prefix components
-		  (lambda (expression) `(PREDICATE->PRTL ,expression))))))
-
-(syntax-table-define compiler-syntax-table 'UCODE-TYPE
-  (macro (name)
-    (microcode-type name)))
+  (set! transform/define-rtl-predicate
+	(macro (type prefix . components)
+	  (rtl-common type prefix components
+		      (lambda (expression) `(PREDICATE->PRTL ,expression))))))
 
-(syntax-table-define compiler-syntax-table 'UCODE-PRIMITIVE
-  (macro (name)
-    (make-primitive-procedure name)))
-
-(syntax-table-define lap-generator-syntax-table 'DEFINE-RULE
+(define transform/define-rule
   (macro (type pattern . body)
     (parse-rule pattern body
       (lambda (pattern variables qualifier actions)
@@ -301,7 +263,7 @@ MIT in each case. |#
 ;; syntax-instruction actually returns a bit-level instruction sequence.
 ;; Kept separate for clarity and because it does not have to be like that.
 
-(syntax-table-define compiler-syntax-table 'LAP
+(define transform/lap
   (macro some-instructions
     (define (handle current remaining)
       (let ((processed
@@ -319,18 +281,18 @@ MIT in each case. |#
 	`EMPTY-INSTRUCTION-SEQUENCE
 	(handle (car some-instructions) (cdr some-instructions)))))
 
-(syntax-table-define compiler-syntax-table 'INST
+(define transform/inst
   (macro (the-instruction)
     `(LAP:SYNTAX-INSTRUCTION
       ,(list 'QUASIQUOTE the-instruction))))
 
 ;; This is a NOP for now.
 
-(syntax-table-define compiler-syntax-table 'INST-EA
+(define transform/inst-ea
   (macro (ea)
     (list 'QUASIQUOTE ea)))
 
-(syntax-table-define compiler-syntax-table 'DEFINE-ENUMERATION
+(define transform/define-enumeration
   (macro (name elements)
     (let ((enumeration (symbol-append name 'S)))
       `(BEGIN (DEFINE ,enumeration
@@ -366,16 +328,17 @@ MIT in each case. |#
 	       ,body)
 	    body)))))
 
-(syntax-table-define compiler-syntax-table 'ENUMERATION-CASE
+(define transform/enumeration-case
   (macro (name expression . clauses)
     (macros/case-macro expression
 		       clauses
 		       (lambda (expression element)
 			 `(EQ? ,expression ,(symbol-append name '/ element)))
 		       (lambda (expression)
+			 expression
 			 '()))))
 
-(syntax-table-define compiler-syntax-table 'CFG-NODE-CASE
+(define transform/cfg-node-case
   (macro (expression . clauses)
     (macros/case-macro expression
 		       clauses

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.6 1988/05/19 01:47:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.7 1988/06/14 08:46:44 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -142,14 +142,11 @@ MIT in each case. |#
 
 (define (read-bits offset size-in-bits)
   (let ((word (bit-string-allocate size-in-bits)))
-    (with-interrupt-mask interrupt-mask-none
-      (lambda (old)
-	old				; ignored
-	(read-bits! (if *block
-			(+ (primitive-datum *block) offset)
-			offset)
-		    0
-		    word)))
+    (with-absolutely-no-interrupts
+     (lambda ()
+       (read-bits! (if *block (+ (object-datum *block) offset) offset)
+		   0
+		   word)))
     word))
 
 ;;;; Compiler specific information
@@ -233,16 +230,15 @@ MIT in each case. |#
        (let ((entry (assq offset interpreter-register-assignments)))
 	 (if entry
 	     (cdr entry)
-	     (let ((entry (assq word-offset interpreter-register-assignments)))
-	       (and entry
-		    (if (= residue 0)
-			(cdr entry)
-			`(,@(cdr entry) (,residue)))))))))
-
-(define (with-aligned-offset offset receiver)
-  (let ((q/r (integer-divide offset 4)))
-    (receiver (* (car q/r) 4) (cdr q/r))))
-
+	     (let ((qr (integer-divide offset 2)))
+	       (let ((entry
+		      (assq (integer-divide-quotient qr)
+			    interpreter-register-assignments)))
+		 (and entry
+		      (if (= (integer-divide-quotient qr) 0)
+			  (cdr entry)
+			  `(,@(cdr entry)
+			    (,(integer-divide-quotient qr)))))))))))
 
 (define interpreter-register-pointer
   6)
@@ -276,7 +272,8 @@ MIT in each case. |#
 		interrupt-continuation interrupt-ic-procedure
 		interrupt-procedure interrupt-closure
 		lookup safe-lookup set! access unassigned? unbound? define
-		reference-trap safe-reference-trap assignment-trap unassigned?-trap
+		reference-trap safe-reference-trap assignment-trap
+		unassigned?-trap
 		&+ &- &* &/ &= &< &> 1+ -1+ zero? positive? negative?))))))
 
 (define (make-pc-relative thunk)

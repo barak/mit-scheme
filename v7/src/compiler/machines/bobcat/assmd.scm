@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.33 1988/02/17 19:12:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/assmd.scm,v 1.34 1988/06/14 08:46:27 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,36 +36,24 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(declare
- (integrate addressing-granularity
-	    scheme-object-width
-	    endianness
-	    maximum-padding-length
-	    maximum-block-offset
-	    block-offset-width)
- (integrate-operator block-offset->bit-string
-		     instruction-initial-position
-		     instruction-insert!))
-
-(define addressing-granularity 8)
-(define scheme-object-width 32)
-(define endianness 'BIG)
+(define-integrable addressing-granularity 8)
+(define-integrable scheme-object-width 32)
+(define-integrable endianness 'BIG)
 
 ;; Instruction length is always a multiple of 16
 ;; Pad with ILLEGAL instructions
 
-(define maximum-padding-length 16)
+(define-integrable maximum-padding-length 16)
 
 (define padding-string
   (unsigned-integer->bit-string 16 #b0100101011111100))
 
 ;; Block offsets are always words
 
-(define maximum-block-offset (- (expt 2 16) 2))
-(define block-offset-width 16)
+(define-integrable maximum-block-offset (- (expt 2 16) 2))
+(define-integrable block-offset-width 16)
 
-(define (block-offset->bit-string offset start?)
-  (declare (integrate offset start?))
+(define-integrable (block-offset->bit-string offset start?)
   (unsigned-integer->bit-string block-offset-width
 				(+ offset
 				   (if start? 0 1))))
@@ -81,20 +69,19 @@ MIT in each case. |#
 
 (define (object->bit-string object)
   (bit-string-append
-   (unsigned-integer->bit-string 24 (primitive-datum object))
-   (unsigned-integer->bit-string 8 (primitive-type object))))
-
+   (unsigned-integer->bit-string 24 (object-datum object))
+   (unsigned-integer->bit-string 8 (object-type object))))
+
 ;;; Machine dependent instruction order
 
-(define (instruction-initial-position block)
-  (declare (integrate block))
+(define-integrable (instruction-initial-position block)
   (bit-string-length block))
 
 (define (instruction-insert! bits block position receiver)
-  (declare (integrate block position receiver))
   (let* ((l (bit-string-length bits))
 	 (new-position (- position l)))
     (bit-substring-move-right! bits 0 l block new-position)
     (receiver new-position)))
 
-(set! instruction-append bit-string-append-reversed)
+(define instruction-append
+  bit-string-append-reversed)

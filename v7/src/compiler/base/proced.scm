@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.4 1988/04/15 02:09:17 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.5 1988/06/14 08:33:14 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,18 +76,19 @@ MIT in each case. |#
     procedure))
 
 (define-vector-tag-unparser procedure-tag
-  (lambda (procedure)
-    (let ((type
-	   (enumeration/index->name continuation-types
-				    (procedure-type procedure))))
-      (if (eq? type 'PROCEDURE)
-	  (begin
-	    (write-string "PROCEDURE ")
-	    (write (procedure-label procedure)))
-	  (begin
-	    (write (procedure-label procedure))
-	    (write-string " ")
-	    (write type))))))
+  (lambda (state procedure)
+    ((let ((type
+	    (enumeration/index->name continuation-types
+				     (procedure-type procedure))))
+       (if (eq? type 'PROCEDURE)
+	   (standard-unparser "PROCEDURE"
+	     (lambda (state procedure)
+	       (unparse-object state (procedure-label procedure))))
+	   (standard-unparser (symbol->string (procedure-label procedure))
+	     (lambda (state procedure)
+	       procedure
+	       (unparse-object state type)))))
+     state procedure)))
 
 (define-integrable (rvalue/procedure? rvalue)
   (eq? (tagged-vector/tag rvalue) procedure-tag))

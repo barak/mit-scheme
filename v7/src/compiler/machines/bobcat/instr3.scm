@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.14 1987/07/30 07:09:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr3.scm,v 1.15 1988/06/14 08:47:21 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -368,7 +368,8 @@ MIT in each case. |#
    (WORD (13 #b0100111001100)
 	 (3 rx))))
 
-;; MOV is a special case, separated for efficiency so there are less rules to try.
+;; MOV is a special case, separated for efficiency so there are less
+;; rules to try.
 
 (define-instruction MOV
   ((B (? sea ea-all-A) (? dea ea-d&a))
