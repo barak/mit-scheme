@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.70 2003/01/22 20:30:25 cph Exp $
+$Id: io.scm,v 14.71 2003/01/23 02:53:22 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -244,8 +244,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		   (lambda (k)
 		     (let ((result (test-for-io-on-channel channel 'READ)))
 		       (case result
-			 ((READ) (do-read))
-			 ((HANGUP ERROR) 0)
+			 ((READ HANGUP ERROR) (do-read))
 			 ((PROCESS-STATUS-CHANGE)
 			  (handle-subprocess-status-change)
 			  (if (channel-closed? channel) 0 (k)))
@@ -273,8 +272,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		   (lambda (k)
 		     (let ((result (test-for-io-on-channel channel 'WRITE)))
 		       (case result
-			 ((WRITE) (do-write))
-			 ((HANGUP ERROR) 0)
+			 ((WRITE HANGUP ERROR) (do-write))
 			 ((PROCESS-STATUS-CHANGE)
 			  (handle-subprocess-status-change)
 			  (if (channel-closed? channel) 0 (k)))
