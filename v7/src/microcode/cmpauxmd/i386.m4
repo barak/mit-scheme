@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.21 1992/03/16 02:08:47 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.22 1992/03/30 21:10:50 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -116,7 +116,7 @@ ifdef(`DISABLE_387',
       `define(IFN387,`')')
 
 ifdef(`DOS',
-      `define(use_external_data,`	extrn _$1')',
+      `define(use_external_data,`	extrn _$1':dword)',
       `define(use_external_data,`')')
 
 ifdef(`DOS',
@@ -368,7 +368,7 @@ ifdef(`DOS',
 define_debugging_label(scheme_to_interface_return)
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 ifdef(`DOS',
-`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx)),
+`	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
 ')
 	jmp	IJMP(REG(eax))				# Invoke handler
@@ -459,45 +459,45 @@ define_call_indirection(primitive_error,36)
 
 ###	Assembly language hooks used to increase speed.
 
-# define_jump_indirection(shortcircuit_apply,14)
+# define_jump_indirection(sc_apply,14)
 # 
 # define(define_apply_fixed_size,
-# `define_c_label(asm_shortcircuit_apply_size_$1)
+# `define_c_label(asm_sc_apply_size_$1)
 # 	OP(mov,l)	TW(IMM($1),REG(edx))
 # 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 # 	jmp	scheme_to_interface')
 
 declare_alignment(2)
-define_c_label(asm_shortcircuit_apply)
+define_c_label(asm_sc_apply)
 	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
 	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
 	OP(and,l)	TW(rmask,REG(ebx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
-	jne	asm_shortcircuit_apply_generic
+	jne	asm_sc_apply_generic
 	OP(movs,bl,x)	TW(BOF(-4,REG(ebx)),REG(eax))	# Extract frame size
 	OP(cmp,l)	TW(REG(eax),REG(edx))		# Compare to nargs+1
-	jne	asm_shortcircuit_apply_generic
+	jne	asm_sc_apply_generic
 	jmp	IJMP(REG(ebx))				# Invoke
 
-define_debugging_label(asm_shortcircuit_apply_generic)
+define_debugging_label(asm_sc_apply_generic)
 	OP(mov,l)	TW(IMM(HEX(14)),REG(eax))
 	jmp	scheme_to_interface	
 
 define(define_apply_fixed_size,
 `declare_alignment(2)
-define_c_label(asm_shortcircuit_apply_size_$1)
+define_c_label(asm_sc_apply_size_$1)
 	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
 	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
 	OP(and,l)	TW(rmask,REG(ebx))		# Select datum
 	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
-	jne	asm_shortcircuit_apply_generic_$1
+	jne	asm_sc_apply_generic_$1
 	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(ebx)))	# Compare frame size
-	jne	asm_shortcircuit_apply_generic_$1	# to nargs+1
+	jne	asm_sc_apply_generic_$1	# to nargs+1
 	jmp	IJMP(REG(ebx))
 
-asm_shortcircuit_apply_generic_$1:
+asm_sc_apply_generic_$1:
 	OP(mov,l)	TW(IMM($1),REG(edx))
 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 	jmp	scheme_to_interface')
