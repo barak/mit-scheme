@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.11 2000/11/28 17:32:10 cph Exp $
+# $Id: make-src-files,v 1.12 2000/12/05 21:59:20 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -25,7 +25,7 @@ destination="${prefix}/src"
 
 (
     cd ${prefix}
-    cvs -d /scheme/cvsroot checkout -d src v7/src
+    cvs -d /scheme/cvsroot checkout -P -d src v7/src
     cd src
     etc/build-tree.sh
 )
