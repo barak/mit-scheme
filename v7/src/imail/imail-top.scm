@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.224 2000/12/21 04:21:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.225 2000/12/21 04:28:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -403,7 +403,8 @@ Instead, these commands are available:
     (if folder
 	(begin
 	  (close-folder folder)
-	  (unmemoize-folder (folder-url folder))))))
+	  (unmemoize-folder (folder-url folder)))))
+  (set-variable! global-mode-string #f buffer))
 
 (define-key 'imail #\a		'imail-add-flag)
 (define-key 'imail #\b		'imail-bury)
@@ -1913,9 +1914,9 @@ Negative argument means search in reverse."
 		   (eq? (folder-url folder) (imail-default-url "imap")))
 	      (begin
 		(set-variable! global-mode-string
-			       (if (> (count-unseen-messages folder) 0)
-				   "[New Mail]"
-				   ""))
+			       (and (> (count-unseen-messages folder) 0)
+				    "[New Mail]")
+			       buffer)
 		(global-window-modeline-event!)))
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
 
