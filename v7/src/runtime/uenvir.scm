@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.9 1989/05/25 16:22:58 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.10 1989/08/03 23:01:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -112,10 +112,8 @@ MIT in each case. |#
 	(else (error "Illegal environment" environment))))
 
 (define (environment-bound? environment name)
-  (cond ((system-global-environment? environment)
-	 (system-global-environment/bound? environment name))
-	((ic-environment? environment)
-	 (ic-environment/bound? environment name))
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/bound? environment name))
 	((stack-ccenv? environment)
 	 (stack-ccenv/bound? environment name))
 	((closure-ccenv? environment)
@@ -123,14 +121,30 @@ MIT in each case. |#
 	(else (error "Illegal environment" environment))))
 
 (define (environment-lookup environment name)
-  (cond ((system-global-environment? environment)
-	 (system-global-environment/lookup environment name))
-	((ic-environment? environment)
-	 (ic-environment/lookup environment name))
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/lookup environment name))
 	((stack-ccenv? environment)
 	 (stack-ccenv/lookup environment name))
 	((closure-ccenv? environment)
 	 (closure-ccenv/lookup environment name))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-assignable? environment name)
+  (cond ((interpreter-environment? environment)
+	 true)
+	((stack-ccenv? environment)
+	 (stack-ccenv/assignable? environment name))
+	((closure-ccenv? environment)
+	 (closure-ccenv/assignable? environment name))
+	(else (error "Illegal environment" environment))))
+
+(define (environment-assign! environment name value)
+  (cond ((interpreter-environment? environment)
+	 (interpreter-environment/assign! environment name value))
+	((stack-ccenv? environment)
+	 (stack-ccenv/assign! environment name value))
+	((closure-ccenv? environment)
+	 (closure-ccenv/assign! environment name value))
 	(else (error "Illegal environment" environment))))
 
 ;;;; Interpreter Environments
@@ -142,13 +156,17 @@ MIT in each case. |#
 (define-integrable (system-global-environment? object)
   (eq? system-global-environment object))
 
-(define (system-global-environment/bound? environment name)
+(define (interpreter-environment/bound? environment name)
   (not (lexical-unbound? environment name)))
 
-(define (system-global-environment/lookup environment name)
+(define (interpreter-environment/lookup environment name)
   (if (lexical-unassigned? environment name)
       (make-unassigned-reference-trap)
       (lexical-reference environment name)))
+
+(define (interpreter-environment/assign! environment name value)
+  (lexical-assignment environment name value)
+  unspecific)
 
 (define (system-global-environment/bound-names environment)
   (list-transform-negative (obarray->list (fixed-objects-item 'OBARRAY))
@@ -180,14 +198,6 @@ MIT in each case. |#
 		  '())))
     (lambda (name)
       (lexical-unbound? environment name))))
-
-(define (ic-environment/bound? environment name)
-  (not (lexical-unbound? environment name)))
-
-(define (ic-environment/lookup environment name)
-  (if (lexical-unassigned? environment name)
-      (make-unassigned-reference-trap)
-      (lexical-reference environment name)))
 
 (define (ic-environment/arguments environment)
   (lambda-components* (select-lambda (ic-environment->external environment))
@@ -195,7 +205,7 @@ MIT in each case. |#
       name body
       (let ((lookup
 	     (lambda (name)
-	       (ic-environment/lookup environment name))))
+	       (interpreter-environment/lookup environment name))))
 	(map* (map* (if rest (lookup rest) '())
 		    lookup
 		    optional)
@@ -222,6 +232,11 @@ MIT in each case. |#
 
 (define null-environment
   (object-new-type (ucode-type null) 1))
+
+(define (make-null-interpreter-environment)
+  (let ((environment (the-environment)))
+    (ic-environment/remove-parent! environment)
+    environment))
 
 (define (ic-environment->external environment)
   (let ((procedure (select-procedure environment)))
@@ -267,7 +282,8 @@ MIT in each case. |#
 	      ((STACK)
 	       (make-stack-ccenv parent
 				 frame
-				 (1+ (dbg-continuation/offset continuation))))
+				 (+ (dbg-continuation/offset continuation)
+				    (vector-length (dbg-block/layout block)))))
 	      ((IC)
 	       (let ((index (dbg-block/ic-parent-index block)))
 		 (if index
