@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.216 1993/11/18 15:08:56 gjr Exp $
+$Id: runtime.pkg,v 14.217 1993/11/20 07:09:15 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2638,11 +2638,3 @@ MIT in each case. |#
           wt-tree/delete-min
           wt-tree/delete-min!
 	  ))
-
-(define-package (runtime apropos)
-  (files "apropos")
-  (parent ())
-  (export ()
-	  apropos
-	  apropos-list))
-
