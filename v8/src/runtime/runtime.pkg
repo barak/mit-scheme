@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.167 1992/12/10 01:25:45 cph Exp $
+$Id: runtime.pkg,v 14.168 1993/01/07 21:00:12 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1770,6 +1770,7 @@ MIT in each case. |#
 	  initial-top-level-repl
 	  make-cmdl
 	  make-repl
+	  make-repl-history
 	  make-repl-message
 	  nearest-cmdl
 	  nearest-cmdl/level
@@ -1788,6 +1789,8 @@ MIT in each case. |#
 	  repl-history/read
 	  repl-history/record!
 	  repl-history/size
+	  repl-printer-history-size
+	  repl-reader-history-size
 	  repl/base
 	  repl/condition
 	  repl/environment

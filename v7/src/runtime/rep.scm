@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.28 1992/09/14 23:53:03 cph Exp $
+$Id: rep.scm,v 14.29 1993/01/07 21:00:23 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -537,8 +537,8 @@ MIT in each case. |#
   environment
   syntax-table
   (condition false read-only true)
-  (reader-history (make-repl-history reader-history-size))
-  (printer-history (make-repl-history printer-history-size)))
+  (reader-history (make-repl-history repl-reader-history-size))
+  (printer-history (make-repl-history repl-printer-history-size)))
 
 (define (repl? object)
   (and (cmdl? object)
@@ -610,8 +610,8 @@ MIT in each case. |#
 
 ;;;; History
 
-(define reader-history-size 5)
-(define printer-history-size 10)
+(define repl-reader-history-size 5)
+(define repl-printer-history-size 10)
 
 (define-structure (repl-history (constructor %make-repl-history)
 				(conc-name repl-history/))
