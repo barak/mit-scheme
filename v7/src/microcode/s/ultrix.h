@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for Ultrix
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.4 1989/08/03 19:56:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/ultrix.h,v 1.5 1990/04/12 21:07:04 jinx Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -32,6 +32,9 @@ there shall be no use of the name of the Massachusetts Institute of
 Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
+
+/* Why? -- ask JMiller */
+#undef	ultrix
 
 /* This says we have curses terminal support for Edwin. */
 #define HAVE_CURSES
