@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ansi.scm,v 1.1 1992/04/22 21:20:37 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/ansi.scm,v 1.2 1992/05/11 04:54:27 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. |#
 (define (make-ansi-terminal-description columns lines)
   (define (defined? sym)
     (not (lexical-unreferenceable? (the-environment) sym)))
+
   (define (get-numstring scheme shell)
     (or (and (defined? scheme)
 	     (exact-nonnegative-integer?
@@ -46,17 +47,44 @@ MIT in each case. |#
 	     (number->string
 	      (lexical-reference (the-environment) scheme)))
 	(get-environment-variable shell)))
+
+  (define (valid-mode? color-string)
+    (and (string? color-string)
+	 (= (string-length color-string) 2)
+	 (member (string-ref color-string 0)
+		 '(#\3 #\4))
+	 (member (string-ref color-string 1)
+		 '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7))))
+
+  (define (invert-mode color-string)
+    (make-mode (string (if (eqv? (string-ref color-string 0) #\3)
+			   #\4
+			   #\3)
+		       (string-ref color-string 1))))
+
   (define (make-mode color-string)
-    (or (and (string? color-string)
-	     (string->number color-string)
+    (or (and (valid-mode? color-string)
 	     (string-append ";" color-string))
 	""))
+
   (let ((foregnd (get-numstring 'edwin:foreground-color "FOREGROUND"))
 	(backgnd (get-numstring 'edwin:background-color "BACKGROUND")))
-    (let ((standout
-	   (string-append "\033[7" (make-mode foregnd) (make-mode backgnd) "m"))
-	  (normal
-	   (string-append "\033[0" (make-mode foregnd) (make-mode backgnd) "m")))
+    (let ((normal
+	   (string-append "\033[0"
+			  (make-mode foregnd)
+			  (make-mode backgnd)
+			  "m"))
+	  (standout
+	   (if (or (not (valid-mode? foregnd)) (not (valid-mode? backgnd)))
+	       (string-append "\033[7"
+			      (make-mode foregnd)
+			      (make-mode backgnd)
+			      "m")
+	       (string-append "\033[0"
+			      (invert-mode backgnd)
+			      (invert-mode foregnd)
+			      "m"))))
+
       (%make-termcap-description
        "ansi.sys"		        ; terminal-type-name
        false				; delete-is-insert-mode?
