@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.42 1987/11/18 00:08:54 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/primutl.c,v 9.43 1987/11/18 19:30:52 jinx Exp $
  *
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
@@ -163,7 +163,7 @@ primitive_code_to_arity(code, table, size)
     return ((long) table[code]);
   }
 }
-
+
 /* Externally visible utilities */
 
 extern Pointer make_primitive();
@@ -172,14 +172,24 @@ Pointer
 make_primitive(name)
      char *name;
 {
-  long i;
+  Pointer search_for_primitive();
 
-  i = primitive_name_to_code(name,
-			     &Primitive_Name_Table[0],
-			     MAX_PRIMITIVE);
-  return ((i == ((long) -1)) ?
-	  NIL :
-	  Make_Non_Pointer(TC_PRIMITIVE, i));
+  return (search_for_primitive(NIL, name, true, true,
+			       UNKNOWN_PRIMITIVE_ARITY));
+}
+
+extern Pointer find_primitive();
+
+Pointer
+find_primitive(name, intern_p, allow_p, arity)
+     Pointer name;
+     Boolean intern_p, allow_p;
+     int arity;
+{
+  Pointer search_for_primitive();
+
+  return (search_for_primitive(name, Scheme_String_To_C_String(name),
+			       intern_p, allow_p, arity));
 }
 
 extern long primitive_to_arity();
@@ -288,19 +298,23 @@ primitive_name(code)
   return (string_to_symbol(scheme_string));
 }
 
-extern Pointer find_primitive();
+/*
+  scheme_name can be NIL, meaning cons up from c_name as needed.
+  c_name must always be provided.
+ */
 
 Pointer
-find_primitive(Name, intern_p, allow_p, arity)
-     Pointer Name;
+search_for_primitive(scheme_name, c_name, intern_p, allow_p, arity)
+     Pointer scheme_name;
+     char *c_name;
      Boolean intern_p, allow_p;
      int arity;
 {
-  extern Boolean string_equal();
+  extern int strcmp();
   long i, Max, old_arity;
   Pointer *Next;
 
-  i = primitive_name_to_code(Scheme_String_To_C_String(Name),
+  i = primitive_name_to_code(c_name,
 			     &Primitive_Name_Table[0],
 			     MAX_PRIMITIVE);
   if (i != -1)
@@ -315,14 +329,13 @@ find_primitive(Name, intern_p, allow_p, arity)
       return (MAKE_SIGNED_FIXNUM(old_arity));
     }
   }
-
   /* Search the undefined primitives table if allowed. */
 
   if (!allow_p)
   {
     return (NIL);
   }
-
+
   /* The vector should be sorted for faster comparison. */
 
   Max = NUMBER_OF_UNDEFINED_PRIMITIVES();
@@ -334,7 +347,8 @@ find_primitive(Name, intern_p, allow_p, arity)
     {
       Pointer temp;
 
-      if (string_equal(Name, *Next++))
+      temp = *Next++;
+      if (strcmp(c_name, Scheme_String_To_C_String(temp)) == 0)
       {
 	if (arity != UNKNOWN_PRIMITIVE_ARITY)
 	{
@@ -358,7 +372,7 @@ find_primitive(Name, intern_p, allow_p, arity)
       }
     }
   }
-
+
   /*
     Intern the primitive name by adding it to the vector of
     undefined primitives, if interning is allowed.
@@ -369,6 +383,11 @@ find_primitive(Name, intern_p, allow_p, arity)
     return (NIL);
   }
 
+  if (scheme_name == NIL)
+  {
+    scheme_name = C_String_To_Scheme_String(c_name);
+  }
+
   if ((Max % CHUNK_SIZE) == 0)
   {
     Primitive_GC_If_Needed(2 * (Max + CHUNK_SIZE + 2));
@@ -383,7 +402,7 @@ find_primitive(Name, intern_p, allow_p, arity)
     {
       *Free++ = Fetch(*Next++);
     }
-    *Free++ = Name;
+    *Free++ = scheme_name;
     for (i = 1; i < CHUNK_SIZE; i++)
     {
       *Free++ = NIL;
@@ -411,7 +430,7 @@ find_primitive(Name, intern_p, allow_p, arity)
   else
   {
     Max += 1;
-    User_Vector_Set(Undefined_Primitives, Max, Name);
+    User_Vector_Set(Undefined_Primitives, Max, scheme_name);
     if (arity != UNKNOWN_PRIMITIVE_ARITY)
     {
       User_Vector_Set(Undefined_Primitives_Arity,
@@ -566,8 +585,9 @@ install_primitive_table(table, length, flush_p)
     Sign_Extend(*table, arity);
     table += 1;
     result =
-      find_primitive(Make_Pointer(TC_CHARACTER_STRING, table),
-		     true, true, arity);
+      search_for_primitive(Make_Pointer(TC_CHARACTER_STRING, table),
+			   ((char *) (&table[STRING_CHARS])),
+			   true, true, arity);
     if (OBJECT_TYPE(result) != TC_PRIMITIVE)
     {
       Primitive_Error(ERR_WRONG_ARITY_PRIMITIVES);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.40 1987/11/17 08:07:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.41 1987/11/18 19:31:34 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -412,27 +412,34 @@ Start_Scheme(Start_Prim, File_Name)
 	depending on the value of Start_Prim.
 */
 
-  FName = C_String_To_Scheme_String(File_Name);
-  Fasload_Call = Free;
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
-      *Free++ = make_primitive("BINARY-FASLOAD");
+      FName = C_String_To_Scheme_String(File_Name);
+      prim = make_primitive("BINARY-FASLOAD");
+      Fasload_Call = Free;
+      *Free++ = prim;
       *Free++ = FName;
+      prim = make_primitive("SCODE-EVAL");
       Init_Prog = Make_Pointer(TC_PCOMB2, Free);
-      *Free++ = make_primitive("SCODE-EVAL");
+      *Free++ = prim;
       *Free++ = Make_Pointer(TC_PCOMB1, Fasload_Call);
       *Free++ = Make_Non_Pointer(GLOBAL_ENV, GO_TO_GLOBAL);
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
-      *Free++ = make_primitive("LOAD-BAND");
+      FName = C_String_To_Scheme_String(File_Name);
+      prim = make_primitive("LOAD-BAND");
+      Fasload_Call = Free;
+      *Free++ = prim;
       *Free++ = FName;
       Init_Prog = Make_Pointer(TC_PCOMB1, Fasload_Call);
       break;
 
     case BOOT_GET_WORK:		/* ((GET-WORK)) */
-      *Free++ = make_primitive("GET-WORK");
+      prim = make_primitive("GET-WORK");
+      Fasload_Call = Free;
+      *Free++ = prim;
       *Free++ = NIL;
       Init_Prog = Make_Pointer(TC_COMBINATION, Free);
       *Free++ = Make_Non_Pointer(TC_MANIFEST_VECTOR, 1);
