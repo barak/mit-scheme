@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.21 1987/01/22 14:29:59 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.c,v 9.22 1987/02/03 15:59:58 jinx Exp $
  *
  * The leftovers ... primitives that don't seem to belong elsewhere
  *
@@ -80,6 +80,15 @@ Built_In_Primitive(Prim_Make_Non_Pointer, 1, "MAKE-NON-POINTER")
   return Arg1;
 }
 
+/* (PRIMITIVE_DATUM OBJECT)
+      [Primitive number 0xB0]
+      Returns the address part of OBJECT.
+*/
+Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
+{ Primitive_1_Arg();
+  return Make_New_Pointer(TC_ADDRESS, Arg1);
+}
+
 /* (PRIMITIVE-TYPE OBJECT)
       [Primitive number 0x10]
       Returns the type code of OBJECT as a number.  This includes the
@@ -91,13 +100,15 @@ Built_In_Primitive(Prim_Prim_Type, 1, "PRIMITIVE-TYPE")
   return FIXNUM_0+Type_Code(Arg1);
 }
 
-/* (PRIMITIVE_DATUM OBJECT)
-      [Primitive number 0xB0]
-      Returns the address part of OBJECT.
+/* (GC_TYPE OBJECT)
+      [Primitive number 0xBC]
+      Returns a fixnum indicating the GC type of the object.  The object
+      is NOT touched first.
 */
-Built_In_Primitive(Prim_Primitive_Datum, 1, "PRIMITIVE-DATUM")
-{ Primitive_1_Arg();
-  return Make_New_Pointer(TC_ADDRESS, Arg1);
+
+Built_In_Primitive(Prim_Gc_Type, 1, "GC-TYPE")
+{ Primitive_1_Arg(); 
+  return Make_Non_Pointer(TC_FIXNUM, GC_Type(Arg1));
 }
 
 /* (PRIMITIVE-TYPE? TYPE-CODE OBJECT)
