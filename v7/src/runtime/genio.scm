@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.25 2004/02/24 01:45:53 cph Exp $
+$Id: genio.scm,v 1.26 2004/02/24 04:23:12 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -1197,11 +1197,11 @@ USA.
   (or (fix:= (fix:and #xF800 n) #xD800)
       (fix:= (fix:and #xFFFE n) #xFFFE)))
 
-(define-decoder 'UTF-16-BE
+(define-decoder 'UTF-16BE
   (lambda (ib)
     (decode-utf-16 ib be-bytes->digit16)))
 
-(define-decoder 'UTF-16-LE
+(define-decoder 'UTF-16LE
   (lambda (ib)
     (decode-utf-16 ib le-bytes->digit16)))
 
@@ -1229,11 +1229,11 @@ USA.
 		   (error:char-decoding ib)
 		   (done d0 (fix:+ bs 2))))))))
 
-(define-encoder 'UTF-16-BE
+(define-encoder 'UTF-16BE
   (lambda (ob cp)
     (encode-utf-16 ob cp high-byte low-byte)))
 
-(define-encoder 'UTF-16-LE
+(define-encoder 'UTF-16LE
   (lambda (ob cp)
     (encode-utf-16 ob cp low-byte high-byte)))
 
@@ -1267,7 +1267,7 @@ USA.
 		 (extract n1 #x3FF 0))
 	 #x10000))
 
-(define-decoder 'UTF-32-BE
+(define-decoder 'UTF-32BE
   (lambda (ib)
     (let ((bv (input-buffer-bytes ib))
 	  (bs (input-buffer-start ib)))
@@ -1283,7 +1283,7 @@ USA.
 		   cp)
 		 (error:char-decoding ib)))))))
 
-(define-decoder 'UTF-32-LE
+(define-decoder 'UTF-32LE
   (lambda (ib)
     (let ((bv (input-buffer-bytes ib))
 	  (bs (input-buffer-start ib)))
@@ -1299,7 +1299,7 @@ USA.
 		   cp)
 		 (error:char-decoding ib)))))))
 
-(define-encoder 'UTF-32-BE
+(define-encoder 'UTF-32BE
   (lambda (ob cp)
     (if (fix:< cp #x110000)
 	(let ((bv (output-buffer-bytes ob))
@@ -1310,7 +1310,7 @@ USA.
 	  (put-byte bv bs 3 (fix:and cp #xFF)))
 	(error:char-encoding ob cp))))
 
-(define-encoder 'UTF-32-LE
+(define-encoder 'UTF-32LE
   (lambda (ob cp)
     (if (fix:< cp #x110000)
 	(let ((bv (output-buffer-bytes ob))
