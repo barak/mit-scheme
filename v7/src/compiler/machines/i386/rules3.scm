@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.3 1992/01/30 06:32:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.4 1992/01/30 14:07:02 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -83,7 +83,7 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
-  (with-pc-relative-address
+  (with-pc
     (lambda (pc-label pc-register)
       (LAP ,@(clear-map!)
 	   (LEA (R ,ecx) (@RO ,pc-register (- ,label ,pc-label)))
@@ -465,7 +465,7 @@ MIT in each case. |#
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((target (target-register-reference))
 	 (temp (temporary-register-reference)))
-    (with-pc-relative-address
+    (with-pc
       (lambda (pc-label pc-reg)
 	(define (generate-entries entries offset)
 	  (let ((entry (car entries))
@@ -534,44 +534,38 @@ MIT in each case. |#
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
 
-;; **** here ****
-
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (LAP (LEA (@PCR ,environment-label) (A 0))
-       (MOV L ,reg:environment (@A 0))
-       (LEA (@PCR ,*block-label*) (A 0))
-       (MOV L (A 0) (D 2))
-       (LEA (@PCR ,free-ref-label) (A 0))
-       (MOV L (A 0) (D 3))
-       ,(load-dnl n-sections 4)
-       (JSR ,entry:compiler-link)
-       ,@(make-external-label (continuation-code-word false)
-			      (generate-label))))
+  (pc->reg eax
+	   (lambda (pc-label prefix)
+	     (LAP ,@prefix
+		  (MOV W (R ,ecx) ,reg:environment)
+		  (MOV W (@RO ,eax (- ,environment-label ,pc-label)) (R ,ecx))
+		  (LEA (R ,edx) (@RO ,eax (- ,*block-label* ,pc-label)))
+		  (LEA (R ,ebx) (@RO ,eax (- ,free-ref-label ,pc-label)))
+		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
+		  (CALL ,entry:compiler-link)
+		  ,@(make-external-label (continuation-code-word false)
+					 (generate-label))))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (let ((load-offset
-	 (lambda (offset)
-	   (if (<= -32768 offset 32767)
-	       (INST (LEA (@AO 0 ,offset) (A 1)))
-	       (INST (LEA (@AOF 0 E (,offset L) #F
-				((D 0) L 1) Z
-				(0 N))
-			  (A 1)))))))
-    (LAP (MOV L (@PCR ,code-block-label) (D 2))
-	 (AND L ,mask-reference (D 2))
-	 (MOV L (D 2) (A 0))
-	 ,(load-offset environment-offset)
-	 (MOV L ,reg:environment (@A 1))
-	 ,(load-offset free-ref-offset)
-	 (MOV L (A 1) (D 3))
-	 ,(load-dnl n-sections 4)
-	 (JSR ,entry:compiler-link)
-	 ,@(make-external-label (continuation-code-word false)
-				(generate-label)))))
+  (pc->reg eax
+	   (lambda (pc-label prefix)
+	     (LAP ,@prefix
+		  (MOV W (R ,edx) (@RO ,eax (- ,code-block-label ,pc-label)))
+		  (AND W (R ,edx) (R ,regnum:pointer-mask))
+		  (LEA (R ,ebx) (@RO ,edx ,free-ref-offset))
+		  (MOV W (R ,ecx) ,reg:environment)
+		  (MOV W (@RO ,edx ,environment-offset) (R ,ecx))
+		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
+		  (CALL ,entry:compiler-link)
+		  ,@(make-external-label (continuation-code-word false)
+					 (generate-label))))))
 
+;;; **** here ****
+
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
   (let ((constant-info

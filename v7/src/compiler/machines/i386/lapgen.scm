@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.1 1992/01/30 06:33:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.2 1992/01/30 14:07:23 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -95,14 +95,33 @@ MIT in each case. |#
       (load-pc-relative target (free-constant-label obj))))
 
 (define (load-pc-relative target label-expr)
-  (with-pc-relative-address
+  (with-pc
     (lambda (pc-label pc-register)
       (LAP (MOV W ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))
 
 (define (load-pc-relative-address target label-expr)
-  (with-pc-relative-address
+  (with-pc
     (lambda (pc-label pc-register)
       (LAP (LEA ,target (@RO ,pc-register (- ,label-expr ,pc-label)))))))
+
+(define (with-pc recvr)
+  (let ((pc-info (pc-registered?)))
+    (if pc-info
+	(recvr (pc-info/label pc-info)
+	       (pc-info/reg pc-info))
+	(let ((reg (allocate-temporary-register! 'GENERAL)))
+	  (pc->reg reg
+		   (lambda (label code)
+		     (pc-register! (make-pc-info label reg))
+		     (LAP ,@code
+			  (recvr label reg))))))))
+
+(define (pc->reg reg recvr)
+  (let ((label (generate-label 'get-pc)))
+    (recvr label
+	   (LAP (CALL (@PCR ,label))
+		(LABEL ,label)
+		(POP (R ,reg))))))  
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
