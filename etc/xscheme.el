@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986, 1987, 1989 Free Software Foundation, Inc.
+;; Copyright (C) 1986, 1987, 1989, 1990 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.24 1990/02/09 00:57:43 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.25 1990/09/11 00:07:43 cph Exp $
 
 (require 'scheme)
 
@@ -679,6 +679,8 @@ When called, the current buffer will be the Scheme process-buffer.")
 (defvar xscheme-process-filter-alist
   '((?D xscheme-enter-debugger-mode
 	xscheme-process-filter:string-action)
+    (?E xscheme-eval
+	xscheme-process-filter:string-action)
     (?P xscheme-set-prompt-variable
 	xscheme-process-filter:string-action)
     (?R xscheme-enter-interaction-mode
@@ -773,6 +775,9 @@ the remaining input.")
 (defun xscheme-unsolicited-read-char ()
   nil)
 
+(defun xscheme-eval (string)
+  (eval (car (read-from-string string))))
+
 (defun xscheme-message (string)
   (if (not (zerop (length string)))
       (xscheme-write-message-1 string (format ";%s" string))))
