@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.25 2000/03/22 17:44:39 cph Exp $
+$Id: datime.scm,v 14.26 2000/05/15 17:39:28 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -234,7 +234,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (lambda ()
 	   (error "Ill-formed RFC-822 time string:" string))))
     (let ((tokens
-	   (let ((tokens (burst-string string #\space #t)))
+	   (let ((tokens (burst-string string char-set:whitespace #t)))
 	     (case (length tokens)
 	       ((5) tokens)
 	       ((6)
