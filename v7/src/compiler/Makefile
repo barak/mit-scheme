@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.17 2000/12/06 04:45:45 cph Exp $
+# $Id: Makefile,v 1.18 2000/12/06 04:51:51 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -59,7 +59,7 @@ clean: mostlyclean
 distclean: clean
 
 maintainer-clean: distclean
-	rm -f Makefile .edwin-ffi
+	rm -f .edwin-ffi
 
 stage1:
 	@for SUBDIR in $(SUBDIRS); do \
