@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.109 2000/07/02 05:09:07 cph Exp $
+$Id: todo.txt,v 1.110 2000/07/05 19:17:58 cph Exp $
 
 Bug fixes
 ---------
@@ -55,8 +55,3 @@ Design changes
 
 * Try to leverage IMAP MIME parser by building compatible
   interface for file-based folders.
-
-* Change file URLs to follow specification in RFC1738, which requires
-  the use of forward slashes and encoding.  Take advantage of relative
-  URLs as specified in RFC1808.  Maybe change URL representation to
-  have a heirarchical path structure so that we can write MERGE-URLS.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.53 2000/07/05 19:13:11 cph Exp $
+;;; $Id: imail-file.scm,v 1.54 2000/07/05 19:16:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -45,17 +45,12 @@
 (define (pathname->url-body pathname)
   (case (host/type-name (pathname-host pathname))
     ((UNIX)
-     (let ((string (->namestring pathname)))
-       (if (pathname-absolute? pathname)
-	   (string-append "//localhost" string)
-	   string)))
+     (->namestring pathname))
     ((DOS)
      (let ((string (string-replace (->namestring pathname) #\\ #\/)))
-       (cond ((pathname-device pathname)
-	      (string-append "//localhost/" string))
-	     ((pathname-absolute? pathname)
-	      (string-append "//localhost" string))
-	     (else string))))
+       (if (pathname-device pathname)
+	   (string-append "/" string)
+	   string)))
     (else (error "Unknown host type:" pathname))))
 
 (define (parse-file-url-body string default-pathname)
