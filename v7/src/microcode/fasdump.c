@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.37 1988/03/21 21:15:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.38 1988/04/03 18:12:58 jinx Rel $
 
    This file contains code for fasdump and dump-band.
 */
@@ -84,11 +84,11 @@ static Boolean compiled_code_present_p;
    contents (e) To_Pointer is now NewFree.
 */
 
-#define Setup_Pointer_for_Dump(Extra_Code)			\
+#define Setup_Pointer_for_Dump(Extra_Code)				\
 Dump_Pointer(Fasdump_Setup_Pointer(Extra_Code, Normal_BH(false, continue)))
 
-#define Dump_Pointer(Code)					\
-Old = Get_Pointer(Temp);					\
+#define Dump_Pointer(Code)						\
+Old = Get_Pointer(Temp);						\
 Code
 
 #define Dump_Compiled_Entry()						\
@@ -115,6 +115,7 @@ DumpLoop(Scan, Dump_Mode)
      int Dump_Mode;
 {
   fast Pointer *To, *Old, Temp, New_Address, *Fixes;
+  long result;
 
   To = NewFree;
   Fixes = Fixup;
@@ -149,9 +150,35 @@ DumpLoop(Scan, Dump_Mode)
       case TC_STACK_ENVIRONMENT:
       case_Fasload_Non_Pointer:
 	break;
-
+
       /* Compiled code relocation. */
 
+      case_compiled_entry_point:
+	compiled_code_present_p = true;
+	Dump_Compiled_Entry();
+	break;
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr;
+
+	compiled_code_present_p = true;
+	Scan += 1;
+	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	start_ptr = word_ptr;
+
+	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
+	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  Temp = *Scan;
+	  Dump_Compiled_Entry();
+	}
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	break;
+      }
+
       case TC_LINKAGE_SECTION:
       {
 	compiled_code_present_p = true;
@@ -196,31 +223,6 @@ DumpLoop(Scan, Dump_Mode)
 	}
       }
 
-      case TC_MANIFEST_CLOSURE:
-      {
-	machine_word *start_ptr;
-	fast machine_word *word_ptr;
-
-	Scan += 1;
-	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
-	start_ptr = word_ptr;
-
-	while (VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
-	{
-	  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);
-	  word_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
-	  Temp = *Scan;
-	  Dump_Compiled_Entry();
-	}
-	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
-	break;
-      }
-
-      case_compiled_entry_point:
-	compiled_code_present_p = true;
-	Dump_Compiled_Entry();
-	break;
-
       case_Cell:
 	Setup_Pointer_for_Dump(Transport_Cell());
 	break;
@@ -253,11 +255,7 @@ DumpLoop(Scan, Dump_Mode)
       case TC_VARIABLE:
 	Setup_Pointer_for_Dump(Fasdump_Variable());
 	break;
-
-/* DumpLoop continues on the next page */
 
-/* DumpLoop, continued */
-
       case_Quadruple:
 	Setup_Pointer_for_Dump(Transport_Quadruple());
 	break;
@@ -275,7 +273,8 @@ DumpLoop(Scan, Dump_Mode)
 
       case TC_ENVIRONMENT:
 	/* Make fasdump fail */
-	return (ERR_FASDUMP_ENVIRONMENT);
+	result = ERR_FASDUMP_ENVIRONMENT;
+	goto exit_dumploop;
 
       case TC_FUTURE:
 	Setup_Pointer_for_Dump(Transport_Future());
@@ -290,9 +289,12 @@ DumpLoop(Scan, Dump_Mode)
 	/*NOTREACHED*/
       }
   }
+  result = PRIM_DONE;
+
+exit_dumploop:
   NewFree = To;
   Fixup = Fixes;
-  return (PRIM_DONE);
+  return (result);
 }
 
 #define DUMPLOOP(obj, code)						\
@@ -452,9 +454,9 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 			((long) (table_end - table_start)),
 			compiled_code_present_p, false);
   }
-
   else
 #endif /* Dumping for reload into heap */
+
   {
     DUMPLOOP(New_Object, NORMAL_GC);
 #if false
@@ -475,8 +477,6 @@ DEFINE_PRIMITIVE("PRIMITIVE-FASDUMP", Prim_Prim_Fasdump, 3)
 			((long) (table_end - table_start)),
 			compiled_code_present_p, false);
   }
-
-  /* The and is short-circuit, so it must be done in this order. */
 
   PRIMITIVE_RETURN(Fasdump_Exit(result ? PRIM_DONE : PRIM_INTERRUPT));
 }
