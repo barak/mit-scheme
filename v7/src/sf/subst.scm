@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.8 1988/03/22 21:10:18 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/subst.scm,v 3.9 1988/04/23 08:51:21 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,9 +34,10 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Beta Substitution
 
-(declare (usual-integrations))
-(declare (eta-substitution))
-(declare (open-block-optimizations))
+(declare (usual-integrations)
+	 (eta-substitution)
+	 (open-block-optimizations)
+	 (integrate-external "object" "mvalue" "lsets"))
 
 
 (using-syntax sf-syntax-table

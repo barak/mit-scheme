@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.7 1988/03/25 20:48:02 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 3.8 1988/04/23 08:55:34 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,10 +34,11 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Transform Input Expression
 
-(declare (usual-integrations))
-(declare (eta-substitution))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
+(declare (usual-integrations)
+	 (eta-substitution)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (integrate-external "object" "mvalue"))
 
 ;;; GLOBAL-BLOCK is used to handle (USUAL-INTEGRATIONS), as follows.
 ;;; This declaration refers to a large group of names, which are

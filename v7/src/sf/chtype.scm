@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 1.2 1988/03/22 17:35:34 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/chtype.scm,v 1.3 1988/04/23 08:49:52 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,8 +34,9 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Intern object types
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (integrate-external "object" "mvalue"))
 
 (define (change-type/external block expression)
   (change-type/block block)

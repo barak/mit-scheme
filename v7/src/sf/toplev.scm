@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.10 1988/04/23 08:24:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.11 1988/04/23 08:52:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -34,9 +34,10 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Top Level
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (integrate-external "mvalue"))
 
 ;;;; User Interface
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.6 1988/03/22 17:40:40 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 3.7 1988/04/23 08:52:33 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,10 +34,11 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Usual Integrations: Combination Expansions
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
-(declare (eta-substitution))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (eta-substitution)
+	 (integrate-external "object"))
 
 ;;;; N-ary Arithmetic Predicates
 

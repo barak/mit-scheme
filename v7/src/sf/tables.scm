@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/tables.scm,v 3.2 1988/03/22 17:40:04 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/tables.scm,v 3.3 1988/04/23 08:51:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,8 +34,8 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Tables
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
+(declare (usual-integrations)
+	 (integrate-external "object"))
 
 ;;;; Operations
 

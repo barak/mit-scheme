@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.6 1988/03/22 17:38:09 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/pardec.scm,v 3.7 1988/04/23 08:50:50 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,10 +34,11 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Parse Declarations
 
-(declare (usual-integrations))
-(declare (open-block-optimizations))
-(declare (automagic-integrations))
-(declare (eta-substitution))
+(declare (usual-integrations)
+	 (open-block-optimizations)
+	 (automagic-integrations)
+	 (eta-substitution)
+	 (integrate-external "object" "mvalue"))
 
 (define (declarations/make-null)
   (declarations/make '() '() '()))

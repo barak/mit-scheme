@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.3 1988/03/22 17:36:49 jrm Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/free.scm,v 3.4 1988/04/23 08:50:35 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,12 +34,12 @@ MIT in each case. |#
 
 ;;;; SCode Optimizer: Free Variable Analysis
 
-(declare (usual-integrations))
-(declare (automagic-integrations))
-(declare (open-block-optimizations))
-(declare (eta-substitution))
+(declare (usual-integrations)
+	 (automagic-integrations)
+	 (open-block-optimizations)
+	 (eta-substitution)
+	 (integrate-external "object" "lsets"))
 
-
 (declare (integrate-operator no-free-variables singleton-variable
 			     list->variable-set))
 
