@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.81 1992/03/25 21:41:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.82 1992/03/26 00:02:40 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -270,7 +270,8 @@ MIT in each case. |#
   (files "xterm")
   (parent (edwin))
   (export (edwin)
-	  x-display-type)
+	  x-display-type
+	  x-screen-auto-raise)
   (export (edwin x-commands)
 	  screen-xterm)
   (initialization (initialize-package!)))
