@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.54 1995/02/14 00:30:37 cph Exp $
+$Id: edwin.ldr,v 1.55 1995/04/13 23:38:09 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -179,8 +179,7 @@ MIT in each case. |#
 	  ((UNIX)
 	   (load-set-and-initialize! '("xterm")
 				     (->environment '(EDWIN SCREEN X-SCREEN)))
-	   (load-set-and-initialize! '("key-x11")
-				     (->environment '(EDWIN X-KEYS))))
+	   (load "key-x11" (->environment '(EDWIN X-KEYS))))
 	  ((OS/2)
 	   (load-set-and-initialize! '("os2term")
 				     (->environment
