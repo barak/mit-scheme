@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.16 1993/01/12 21:13:22 cph Exp $
+$Id: edextra.scm,v 1.17 1993/01/12 23:31:46 gjs Exp $
 
 Copyright (c) 1992-93 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. |#
 
 (load-edwin-library 'PRINT)
 
+#|
 (define-command print-graphics
   "Print out the last displayed picture."
   '()
@@ -59,6 +60,7 @@ MIT in each case. |#
 (environment-link-name '(edwin)
 		       '(student pictures)
 		       'call-with-last-picture-file)
+|#
 
 (define (restore-focus-to-editor)
   (let ((screen (selected-screen)))
@@ -68,6 +70,50 @@ MIT in each case. |#
 (environment-link-name '(student pictures)
 		       '(edwin)
 		       'restore-focus-to-editor)
+
+(define-command print-graphics
+  "Print out window with graphics."
+  '()
+  (lambda ()
+    (let ((window (prompt-for-expression-value "Window to print" 'mouse)))
+      (if (eq? window 'mouse)
+	  (print-pointed-x-window)
+	  (if (graphics-device? window)
+	      (print-given-x-window (x-graphics/window-id window))
+	      (editor-error "Not a window object!"))))))
+
+(define (print-given-x-window x-window-id)
+  (message "Spooling...")
+  (shell-command
+   false false false false
+   (string-append "/users/u6001/bin/print-given-x-window "
+		  "0x"
+		  (number->string x-window-id 16)
+		  " "
+		  (print/assemble-switches "Scheme Picture" '())))
+  (append-message "done"))
+
+(define (print-pointed-x-window)
+  (message "Click desired window...")
+  (shell-command
+   false false false false
+   (string-append "/users/u6001/bin/print-pointed-x-window "
+		  (print/assemble-switches "Scheme Picture" '())))
+  (append-message "done"))
+
+
+#|
+;;; If using pointer (mouse).
+
+xwd | /usr/local/pbmbin/xwdtopnm | /usr/local/pbmbin/ppmtopgm | /usr/local/pbmbin/pnmscale 4 | /usr/local/pbmbin/pgmtopbm -cluster4 | /usr/local/pbmbin/pbmtolj -resolution 300 | lpr -h
+
+
+;;; If using *** = x-graphics/window-id
+
+xwd -id *** | /usr/local/pbmbin/xwdtopnm | /usr/local/pbmbin/ppmtopgm | /usr/local/pbmbin/pnmscale 4 | /usr/local/pbmbin/pgmtopbm -cluster4 | /usr/local/pbmbin/pbmtolj -resolution 300 | lpr -h
+
+Now, there is formatting stuff to be considered here, in print-pgm.sh.
+|#
 
 ;;;; EDWIN Command "Load Problem Set"
 
