@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: create-dirs.sh,v 1.7 2000/12/07 23:05:08 cph Exp $
+# $Id: Clean.sh,v 1.1 2000/12/08 04:50:26 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,33 +18,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Create build directories and links.
+# Utility for cleaning up the MIT Scheme edwin directory.
+# The working directory must be the edwin directory.
 
-maybe_mkdir ()
-{
-    if test ! -e ${1}; then
-	echo "mkdir ${1}"
-	mkdir ${1}
-    fi
-}
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <command>"
+    exit 1
+fi
 
-maybe_link ()
-{
-    if test ! -e ${1}; then
-	echo "ln -s ${2} ${1}"
-	ln -s ${2} ${1}
-    fi
-}
+../etc/Clean.sh "${1}" recursive
 
-# lib
-maybe_mkdir lib
-maybe_link lib/SRC ..
-maybe_link lib/optiondb.scm ../etc/optiondb.scm
-maybe_link lib/options ../runtime
-maybe_link lib/utabmd.bin ../microcode/utabmd.bin
+echo "rm -f edwin.bld edwinunx.* edwinw32.* edwinos2.*"
+rm -f edwin.bld edwinunx.* edwinw32.* edwinos2.*
 
-# lib/edwin
-maybe_mkdir lib/edwin
-maybe_mkdir lib/edwin/etc
-maybe_mkdir lib/edwin/info
-maybe_link lib/edwin/autoload ../../edwin
+exit 0

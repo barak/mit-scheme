@@ -1,6 +1,6 @@
 #!/bin/sh
-
-# $Id: Mclean.sh,v 1.3 2000/12/06 05:54:55 cph Exp $
+#
+# $Id: Clean.sh,v 1.1 2000/12/08 04:49:28 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,7 +18,35 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Program to do "maintainer-clean" rule.
+# Utility for cleaning up MIT Scheme build directories.
+# The working directory must be the top-level source directory.
 
-test ! -f Makefile && test -f configure && ./configure
-test ! -f Makefile || make maintainer-clean
+if [ $# -le 1 ]; then
+    echo "usage: $0 <command> <directory> ..."
+    exit 1
+fi
+
+COMMAND=$1
+shift
+
+case "${COMMAND}" in
+mostlyclean)
+    ;;
+clean | distclean)
+    rm -f lib/*.com
+    ;;
+maintainer-clean)
+    rm -rf lib
+    ;;
+*)
+    echo "$0: Unknown command ${COMMAND}"
+    exit 1
+    ;;
+esac
+
+for SUBDIR; do
+    if test -x $${SUBDIR}/Clean.sh; then
+	echo "making ${COMMAND} in $${SUBDIR}"
+	( cd $${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
+    fi
+done

@@ -1,4 +1,6 @@
-# $Id: Makefile,v 1.17 2000/12/08 04:49:31 cph Exp $
+#!/bin/sh
+#
+# $Id: Stage.sh,v 1.1 2000/12/08 04:49:59 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -16,26 +18,35 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-SHELL = /bin/sh
+# Utility for MIT Scheme compiler staging.
 
-SUBDIRS = 6001 compiler cref edwin imail microcode \
-	  rcs runtime runtime-check sf sos win32
+if [ $# -ne 2 ]; then
+    echo "usage: $0 <command> <tag>"
+    exit 1
+fi
 
-all:
-	( cd microcode && $(MAKE) $@ )
-	scheme -compiler -heap 4000 < etc/compile.scm
-	etc/build-bands.sh
+DIRNAME="STAGE${2}"
 
-setup:
-	./Setup.sh $(SUBDIRS)
+case "${1}" in
+make)
+    mkdir "${DIRNAME}" && mv -f *.com *.bci "${DIRNAME}/."
+    ;;
+unmake)
+    mv -f "${DIRNAME}/*" . && rmdir "${DIRNAME}"
+    ;;
+remove)
+    rm -rf "${DIRNAME}"
+    ;;
+copy)
+    cp "${DIRNAME}/*" .
+    ;;
+link)
+    ln "${DIRNAME}/*" .
+    ;;
+*)
+    echo "$0: Unknown command ${1}"
+    exit 1
+    ;;
+esac
 
-mostlyclean clean distclean maintainer-clean:
-	./Clean.sh $@ $(SUBDIRS)
-
-tags TAGS:
-	@for SUBDIR in $(SUBDIRS); do \
-	    echo "making $@ in $${SUBDIR}"; \
-	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
-	done
-
-.PHONY: all setup mostlyclean clean distclean maintainer-clean tags TAGS
+exit 0

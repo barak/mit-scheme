@@ -1,4 +1,4 @@
-# $Id: Makefile.std,v 1.8 2000/12/07 22:20:38 cph Exp $
+# $Id: Makefile.std,v 1.9 2000/12/08 04:49:34 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -27,78 +27,31 @@ all:
 	echo "No ALL action"
 
 setup:
-	test ! -e ed-ffi.scm \
-	|| test -e .edwin-ffi \
-	|| ln -s ed-ffi.scm .edwin-ffi
+	./Setup.sh
 
 tags TAGS:
 	etags *.scm
 
-mostlyclean:
-	rm -f *.bin *.ext *.com *.bci *.bco *.bld *.crf *.fre *.glo
-	@for FN in *.con; do \
-	    test "${FN}" = "triv.con" \
-	    || rm -f "${FN}"; \
-	done
-	@for FN in *.ldr; do \
-	    test "${FN}" = "edwin.ldr" \
-	    || test "${FN}" = "triv.ldr" \
-	    || rm -f "${FN}"; \
-	done
-
-clean: mostlyclean
-
-distclean: clean
-
-maintainer-clean: distclean
-	rm -f Makefile .edwin-ffi
+mostlyclean clean distclean maintainer-clean:
+	./Clean.sh $@
 
 stage1:
-	mkdir STAGE1 && mv -f *.com *.bci STAGE1/.
+	./Stage.sh make 1
 
 unstage1:
-	mv -f STAGE1/* . && rmdir STAGE1
-
-rmstage1:
-	rm -rf STAGE1
-
-cpstage1:
-	cp -p STAGE1/* .
-
-lnstage1:
-	ln -f STAGE1/* .
+	./Stage.sh unmake 1
 
 stage2:
-	mkdir STAGE2 && mv -f *.com *.bci STAGE2/.
+	./Stage.sh make 2
 
 unstage2:
-	mv -f STAGE2/* . && rmdir STAGE2
-
-rmstage2:
-	rm -rf STAGE2
-
-cpstage2:
-	cp -p STAGE2/* .
-
-lnstage2:
-	ln -f STAGE2/* .
+	./Stage.sh unmake 2
 
 stage3:
-	mkdir STAGE3 && mv -f *.com *.bci STAGE3/.
+	./Stage.sh make 3
 
 unstage3:
-	mv -f STAGE3/* . && rmdir STAGE3
-
-rmstage3:
-	rm -rf STAGE3
-
-cpstage3:
-	cp -p STAGE3/* .
-
-lnstage3:
-	ln -f STAGE3/* .
+	./Stage.sh unmake 3
 
 .PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
-.PHONY: stage1 unstage1 rmstage1 cpstage1 lnstage1
-.PHONY: stage2 unstage2 rmstage2 cpstage2 lnstage2
-.PHONY: stage3 unstage3 rmstage3 cpstage3 lnstage3
+.PHONY: stage1 unstage1 stage2 unstage2 stage3 unstage3

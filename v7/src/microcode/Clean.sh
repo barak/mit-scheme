@@ -1,4 +1,6 @@
-# $Id: Makefile,v 1.17 2000/12/08 04:49:31 cph Exp $
+#!/bin/sh
+#
+# $Id: Clean.sh,v 1.1 2000/12/08 04:51:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -16,26 +18,30 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-SHELL = /bin/sh
+# Utility for cleaning up the MIT Scheme microcode directory.
+# The working directory must be the microcode directory.
 
-SUBDIRS = 6001 compiler cref edwin imail microcode \
-	  rcs runtime runtime-check sf sos win32
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <command>"
+    exit 1
+fi
 
-all:
-	( cd microcode && $(MAKE) $@ )
-	scheme -compiler -heap 4000 < etc/compile.scm
-	etc/build-bands.sh
+case "${1}" in
+mostlyclean | clean | distclean)
+    ;;
+maintainer-clean)
+    if [ ! -f Makefile ] && [ -f configure ]; then
+	./configure
+    fi
+    ;;
+*)
+    echo "$0: Unknown command ${1}"
+    exit 1
+    ;;
+esac
 
-setup:
-	./Setup.sh $(SUBDIRS)
+if [ -f Makefile ]; then
+    make ${1}
+fi
 
-mostlyclean clean distclean maintainer-clean:
-	./Clean.sh $@ $(SUBDIRS)
-
-tags TAGS:
-	@for SUBDIR in $(SUBDIRS); do \
-	    echo "making $@ in $${SUBDIR}"; \
-	    ( cd $${SUBDIR} && $(MAKE) $@ ) || exit 1; \
-	done
-
-.PHONY: all setup mostlyclean clean distclean maintainer-clean tags TAGS
+exit 0
