@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.2 1988/01/06 22:28:39 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.3 1988/01/12 16:38:52 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -69,9 +69,7 @@ MIT in each case. |#
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,(load-rnw frame-size 0)
-;;;
-;;; Should this be MOVA L?
-;;;
+	 ;; MOVAB for consistency with JMP instruction.
 	 (MOVA B (@PCR ,*block-start-label*) (R 8))
 	 (JMP ,entry:compiler-cache-reference-apply))))
 
@@ -95,9 +93,6 @@ MIT in each case. |#
        (BIC L (R 11) (@R 1) (R 1))
        (JMP (@R 1))))
 
-;;;
-;;; Can I use R 9 below?
-;;;
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   (LAP ,@(clear-map!)
@@ -106,19 +101,18 @@ MIT in each case. |#
 		  (JMP ,entry:compiler-error))
 	     (let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
-		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 9))
+		      (LAP (MOV L (@PCR ,(constant->label primitive)) (R 8))
 			   (JMP ,entry:compiler-primitive-apply)))
 		     ((= arity -1)
 		      (LAP (MOV L (& ,(-1+ frame-size))
 				,reg:lexpr-primitive-arity)
-			   (MOV L (@PCR ,(constant->label primitive)) (R 9))
+			   (MOV L (@PCR ,(constant->label primitive)) (R 8))
 			   (JMP ,entry:compiler-primitive-lexpr-apply)))
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
 		      (LAP ,(load-rnw frame-size 0)
-			   (MOV L (@PCR ,(constant->label primitive)) (@-R 14))
+			   (PUSH L (@PCR ,(constant->label primitive)))
 			   (JMP ,entry:compiler-apply))))))))
-
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -197,10 +191,7 @@ MIT in each case. |#
     (let ((temp-ref (register-reference temp)))
       (LAP (MOVA L ,(indirect-reference! base offset) ,temp-ref)
 	   (CMP L ,temp-ref (R 12))
-;;;
-;;; *** GEQU ? ***
-;;;
-	   (B B GEQ (@PCR ,label))
+	   (B B GEQU (@PCR ,label))
 	   (MOV L (R 12) ,temp-ref)
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
@@ -217,9 +208,6 @@ MIT in each case. |#
 	    frame-size 5
 	    (lambda ()
 	      (INST (MOV L
-;;;
-;;; Should these be (- temp 8) and (- destination 8)?
-;;;
 			 (@-R temp)
 			 (@-R destination))))
 	    (lambda (generator)
