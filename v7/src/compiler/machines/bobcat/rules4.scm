@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.10 1990/01/18 22:44:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules4.scm,v 4.11 1990/01/20 07:26:13 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -49,25 +49,25 @@ MIT in each case. |#
 
 (define (interpreter-call-argument->machine-register! expression register)
   (let ((target (register-reference register)))
-    (let ((result
-	   (case (car expression)
-	     ((REGISTER)
-	      (load-machine-register! (rtl:register-number expression)
-				      register))
-	     ((CONSTANT)
-	      (LAP ,(load-constant (rtl:constant-value expression) target)))
-	     ((CONS-POINTER)
-	      (LAP ,(load-non-pointer (rtl:machine-constant-value
-				       (rtl:cons-pointer-type expression))
-				      (rtl:machine-constant-value
-				       (rtl:cons-pointer-datum expression))
-				      target)))
-	     ((OFFSET)
-	      (LAP (MOV L ,(offset->indirect-reference! expression) ,target)))
-	     (else
-	      (error "Unknown expression type" (car expression))))))
-      (delete-register! register)
-      result)))
+    (case (car expression)
+      ((REGISTER)
+       (load-machine-register! (rtl:register-number expression) register))
+      ((CONSTANT)
+       (LAP ,@(clear-registers! register)
+	    ,(load-constant (rtl:constant-value expression) target)))
+      ((CONS-POINTER)
+       (LAP ,@(clear-registers! register)
+	    ,(load-non-pointer (rtl:machine-constant-value
+				(rtl:cons-pointer-type expression))
+			       (rtl:machine-constant-value
+				(rtl:cons-pointer-datum expression))
+			       target)))
+      ((OFFSET)
+       (let ((source-reference (offset->indirect-reference! expression)))
+	 (LAP ,@(clear-registers! register)
+	      (MOV L ,source-reference ,target))))
+      (else
+       (error "Unknown expression type" (car expression))))))
 
 (define-rule statement
   (INTERPRETER-CALL:ACCESS (? environment) (? name))

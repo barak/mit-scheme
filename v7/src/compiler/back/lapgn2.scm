@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.14 1990/01/18 22:42:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn2.scm,v 1.15 1990/01/20 07:26:22 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -334,14 +334,17 @@ MIT in each case. |#
 (define (load-machine-register! source-register machine-register)
   ;; Copy the contents of `source-register' to `machine-register'.
   (if (machine-register? source-register)
-      (if (eqv? source-register machine-register)
-	  (LAP)
-	  (register->register-transfer source-register machine-register))
+      (LAP ,@(clear-registers! machine-register)
+	   (if (eqv? source-register machine-register)
+	       (LAP)
+	       (register->register-transfer source-register machine-register)))
       (if (is-alias-for-register? machine-register source-register)
-	  (LAP)
-	  (reference->register-transfer
-	   (standard-register-reference source-register false true)
-	   machine-register))))
+	  (clear-registers! machine-register)
+	  (let ((source-reference
+		 (standard-register-reference source-register false true)))
+	    (LAP ,@(clear-registers! machine-register)
+		 ,@(reference->register-transfer source-reference
+						 machine-register))))))
 
 (define (move-to-alias-register! source type target)
   ;; Performs an assignment from register `source' to register
