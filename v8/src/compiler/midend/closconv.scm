@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.4 1995/01/22 04:51:43 adams Exp $
+$Id: closconv.scm,v 1.5 1995/04/17 03:55:03 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -752,7 +752,7 @@ MIT in each case. |#
 				  name*)))))
 			circular)))
 		   closed circ-results circular)))))
-       (let ((envs (append (lmap closconv/binding/value trivial) envs)))
+       (let ((envs (map* envs closconv/binding/value trivial)))
 	 (for-each (lambda (closed-env)
 		     (for-each closconv/rewrite!
 			       (closconv/env/children closed-env)))
