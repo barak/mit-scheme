@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.190 1989/08/11 11:50:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.191 1989/08/11 16:17:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -68,18 +68,15 @@
 			       (dynamic-wind
 				(lambda () (update-screens! true))
 				(lambda ()
-				  ;; Should this be in a dynamic wind? -- Jinx
-				  (if edwin-initialization
-				      (edwin-initialization))
 				  (let ((message (cmdl-message/null)))
 				    (push-cmdl (lambda (cmdl)
 						 cmdl ;ignore
-						 (top-level-command-reader)
+						 (top-level-command-reader
+						  edwin-initialization)
 						 message)
 					       false
 					       message)))
 				(lambda () unspecific)))))))))))))))))
-  ;; Should this be here or in a dynamic wind? -- Jinx
   (if edwin-finalization (edwin-finalization))
   unspecific)
 
@@ -88,7 +85,8 @@
 
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
-;; loop is started.  [Should this bind the ^G interrupt also? -- CPH](define edwin-initialization false)
+;; loop is started.
+(define edwin-initialization false)
 
 ;; Set this while in the editor to get something done after leaving
 ;; the editor's dynamic environment; for example, this can be used to

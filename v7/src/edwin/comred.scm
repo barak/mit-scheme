@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.79 1989/08/11 10:51:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.80 1989/08/11 16:17:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -61,38 +61,30 @@
   (set! command-history (make-circular-list command-history-limit false))
   unspecific)
 
-(define (command-history-list)
-  (let loop ((history command-history))
-    (if (car history)
-	(let loop ((history (cdr history)) (result (list (car history))))
-	  (if (eq? history command-history)
-	      result
-	      (loop (cdr history) (cons (car history) result))))
-	(let ((history (cdr history)))
-	  (if (eq? history command-history)
-	      '()
-	      (loop history))))))
-
-(define (top-level-command-reader)
+(define (top-level-command-reader initialization)
   (let loop ()
     (with-keyboard-macro-disabled
      (lambda ()
        (intercept-^G-interrupts (lambda () unspecific)
-				command-reader)))
+	 (lambda ()
+	   (command-reader initialization)))))
     (loop)))
 
-(define (command-reader)
+(define (command-reader #!optional initialization)
   (define (command-reader-loop)
-    (let ((value
-	   (call-with-current-continuation
-	    (lambda (continuation)
-	      (fluid-let ((*command-continuation* continuation)
-			  (*command-char*)
-			  (*command*)
-			  (*next-message* false))
-		(start-next-command))))))
-      (if (not (eq? value 'ABORT)) (value)))
+    (let ((value (with-command-variables start-next-command)))
+      (if (not (eq? value 'ABORT))
+	  (value)))
     (command-reader-loop))
+
+  (define (with-command-variables start-next-command)
+    (call-with-current-continuation
+     (lambda (continuation)
+       (fluid-let ((*command-continuation* continuation)
+		   (*command-char*)
+		   (*command*)
+		   (*next-message* false))
+	 (start-next-command)))))
 
   (define (start-next-command)
     (reset-command-state!)
@@ -110,7 +102,14 @@
 
   (fluid-let ((*command-message*)
 	      (*non-undo-count* 0))
-    (with-command-argument-reader command-reader-loop)))
+    (with-command-argument-reader
+     (lambda ()
+       (if (and (not (default-object? initialization)) initialization)
+	   (with-command-variables
+	    (lambda ()
+	      (reset-command-state!)
+	      (initialization))))
+       (command-reader-loop)))))
 
 (define (reset-command-state!)
   (reset-command-argument-reader!)
@@ -166,7 +165,20 @@
   (if (and *command-message*
 	   (eq? (car *command-message*) tag))
       (apply if-received (cdr *command-message*))
-      (if-not-received)))
+      (if-not-received)))
+
+(define (command-history-list)
+  (let loop ((history command-history))
+    (if (car history)
+	(let loop ((history (cdr history)) (result (list (car history))))
+	  (if (eq? history command-history)
+	      result
+	      (loop (cdr history) (cons (car history) result))))
+	(let ((history (cdr history)))
+	  (if (eq? history command-history)
+	      '()
+	      (loop history))))))
+
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
