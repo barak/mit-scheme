@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.161 2000/06/15 16:34:35 cph Exp $
+;;; $Id: imail-top.scm,v 1.162 2000/06/15 20:16:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1196,6 +1196,9 @@ With prefix argument N moves backward N messages with these flags."
 		encoding
 		(mime-body-one-part-encoding body)))))
     (if (and (or (not enclosure)
+		 (let ((disposition (mime-body-disposition body)))
+		   (and disposition
+			(eq? (car disposition) 'INLINE)))
 		 (let ((subtype (mime-body-subtype body)))
 		   (or (eq? subtype 'PLAIN)
 		       (memq subtype
