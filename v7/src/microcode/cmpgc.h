@@ -30,20 +30,20 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.3 1989/10/26 04:25:29 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.4 1989/10/27 13:28:23 jinx Exp $
    $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
 
 This file is conditionally included by gccode.h.
 
-See cmpint.txt, cmpint.h, cmpint.c, and cmpaux.m4 for more details.
+See cmpint.txt, cmpint2.h, cmpint.c, and cmpaux.m4 for more details.
 */
 
 #ifndef CMPGC_H_INCLUDED
 #define CMPGC_H_INCLUDED
 
-#include "cmpint.h"
+#include "cmpint2.h"
 
 /* The following is a kludge which is used to get
    return_to_interpreter to work.  The return to interpreter block is
@@ -54,14 +54,14 @@ See cmpint.txt, cmpint.h, cmpint.c, and cmpaux.m4 for more details.
 
 #ifndef In_Fasdump
 
-#define Compiled_Code_Pre_Test(then_what)
+#define COMPILED_CODE_PRE_TEST(then_what)
 
 #else
 
 extern SCHEME_OBJECT compiler_utilities;
 
-#define Compiled_Code_Pre_Test(then_what)				\
-if (Old == (OBJECT_ADDRESS(compiler_utilities)))			\
+#define COMPILED_CODE_PRE_TEST(then_what)				\
+if (Old == (OBJECT_ADDRESS (compiler_utilities)))			\
   then_what;								\
 else
 
@@ -103,7 +103,7 @@ else
 		    (((char *) (OBJECT_ADDRESS(object))) -		\
 		     ((char *) old_block))))
 
-#define Relocate_Compiled(object, new_block, old_block)			\
+#define RELOCATE_COMPILED(object, new_block, old_block)			\
 MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 		    (RELOCATE_COMPILED_ADDRESS(object, new_block, old_block)))
 
@@ -111,11 +111,11 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 {									\
   /* Has it already been relocated? */					\
 									\
-  Get_Compiled_Block(Old, Old);						\
-  Compiled_Code_Pre_Test(then_what)					\
-  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  Get_Compiled_Block (Old, Old);					\
+  COMPILED_CODE_PRE_TEST (then_what)					\
+  if (BROKEN_HEART_P (*Old))						\
   {									\
-    *Scan = Relocate_Compiled(Temp, (OBJECT_ADDRESS(*Old)), Old);	\
+    Temp = (RELOCATE_COMPILED (Temp, (OBJECT_ADDRESS (*Old)), Old));	\
     then_what;								\
   }									\
 }
@@ -126,46 +126,82 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 									\
   Real_Transport_Vector();						\
   *Saved_Old = New_Address;						\
-  *Scan = Relocate_Compiled(Temp,					\
-			    (OBJECT_ADDRESS (New_Address)),		\
-			    Saved_Old);					\
+  Temp = (RELOCATE_COMPILED (Temp,					\
+			     (OBJECT_ADDRESS (New_Address)),		\
+			     Saved_Old));				\
 }
 
 /* Manifest and implied types */
 
 /* Manifest closures */
 
-/* Bump back to header. */
+/* A manifest closure header is followed by one or more closure entry
+   points.  Each entry point consist of a pair of machine words (16
+   bits each) that contain a format word and a GC offset followed by
+   the machine code for the closure (typically a jsr-type
+   instruction).  If there is only one entry point to a closure, the
+   GC offset will be 8 bytes, pointing back to the manifest closure
+   header itself.  Otherwise the object consists of a manifest vector
+   header followed by a count of entry points, followed by a manifest
+   closure header, followed by the entry points themselves.  After the
+   entry points there are the values of the variables closed over:
 
-#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-  ((machine_word *) (((SCHEME_OBJECT *) scan) - 1))
+          >=1 Entry Point		  =1 Entry Point
+   (offset in bytes from 1st instruction of 1st (only) entry)
+     -16: Manifest Vector|total length
+     -12: FIXNUM | # of entry points
+     - 8: Manifest Closure | length      Manifest Closure | tot. length
+     - 4: Format word, 1st entry         Format word, only entry
+     - 2: GC offset to -16               GC offset to -8
+       0: jsr instr., 1st entry		 jsr instr.
+      xx: more instructions if needed    same
+        : Format word, 2nd entry         closed over variable values
+        : GC offset to -16
+     ...: etc.
+     ...: closed over variable values
 
-#define VALID_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
-  ((OBJECT_TYPE(*((SCHEME_OBJECT *) word_ptr))) == TC_MANIFEST_CLOSURE)
+   FIRST_MANIFEST_CLOSURE_ENTRY receives the address of the word past
+   the manifest closure header (-4 in the above picture).  It 
+   bumps it to the first entry point, past the format word and the gc
+   offset (i.e. to 0 above).
 
-/* *** THIS DOES NOT WORK *** */
+   MANIFEST_CLOSURE_COUNT receives the address of the first entry
+   point (0 in the above picture).  It returns the number of entry
+   points in this closure block.
 
-/* The macro is more general and needs a destination.
-   The garbage collector must be changed for that.
+   CLOSURE_HEADER_TO_ENTRY is the distance (in bytes) from the
+   manifest closure header to the 1st instruction of the (1st) entry.
  */
 
-#define MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr)		\
-  (COMPILED_CLOSURE_ENTRY_ADDRESS(word_ptr))
+#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
+  (((machine_word *) scan) + 2)
 
-#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)			\
-  ((machine_word *)						\
-   (((SCHEME_OBJECT *) word_ptr) +				\
+#define CLOSURE_HEADER_TO_ENTRY						\
+((sizeof(SCHEME_OBJECT)) + (2 * (sizeof(machine_word))))
+
+#define MANIFEST_CLOSURE_COUNT(start_ptr)				\
+(((((machine_word *) (start_ptr))[-1]) ==				\
+  ((machine_word)							\
+   (BYTE_OFFSET_TO_OFFSET_WORD (CLOSURE_HEADER_TO_ENTRY))))		\
+ 1 :									\
+ (OBJECT_DATUM (((SCHEME_OBJECT *)					\
+		 (((char *) (start_ptr)) -				\
+		  CLOSURE_HEADER_TO_ENTRY))[-1])))
+
+#define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)				\
+  ((machine_word *)							\
+   (((SCHEME_OBJECT *) word_ptr) +					\
     (COMPILED_CLOSURE_ENTRY_SIZE + 1)))
 
 /* This takes into account the fact that the relocation loop increments
    by 1 on each major iteration.
  */
 
-#define MANIFEST_CLOSURE_END(end_ptr, start_ptr)		\
+#define MANIFEST_CLOSURE_END(end_ptr, start_ptr)			\
   (((SCHEME_OBJECT *) end_ptr) - 1)
 
-#define MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, top)		\
-  ((NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)) <=			\
+#define MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, top)			\
+  ((NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)) <=				\
    ((machine_word *) top))
 
 /* Linkage sections */
@@ -174,37 +210,38 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 #define REFERENCE_LINKAGE_KIND			0x010000
 #define ASSIGNMENT_LINKAGE_KIND			0x020000
 
-#define READ_LINKAGE_KIND(header)				\
+#define READ_LINKAGE_KIND(header)					\
   ((header) & 0xff0000)
 
-#define READ_CACHE_LINKAGE_COUNT(header)			\
+#define READ_CACHE_LINKAGE_COUNT(header)				\
   ((header) & 0xffff)
 
-#define READ_OPERATOR_LINKAGE_COUNT(header)			\
-  (OPERATOR_LINK_COUNT_TO_ENTRIES((header) & 0xffff))
+#define READ_OPERATOR_LINKAGE_COUNT(header)				\
+  (EXECUTE_CACHE_COUNT_TO_ENTRIES((header) & 0xffff))
   
 /* This takes into account the 1 added by the main loop of the
    relocators.
  */
 
-#define END_OPERATOR_LINKAGE_AREA(scan, count)			\
-  (((SCHEME_OBJECT *) (scan)) + ((count) * OPERATOR_LINK_ENTRY_SIZE))
+#define END_OPERATOR_LINKAGE_AREA(scan, count)				\
+  (((SCHEME_OBJECT *) (scan)) + ((count) * EXECUTE_CACHE_ENTRY_SIZE))
 
-#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)			\
+#define FIRST_OPERATOR_LINKAGE_ENTRY(scan)				\
   ((machine_word *) (((SCHEME_OBJECT *) (scan)) + 1))
 
-/* *** THIS DOES NOT WORK *** */
+#define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)				\
+  ((machine_word *) (((SCHEME_OBJECT *) (word_ptr)) +			\
+		     EXECUTE_CACHE_ENTRY_SIZE))
 
-/* The macro is more general and needs a destination.
-   The garbage collector must be changed for that.
- */
+#define EXTRACT_OPERATOR_LINKAGE_ADDRESS(target, source)		\
+{									\
+  EXTRACT_EXECUTE_CACHE_ADDRESS(target, source);			\
+}
 
-#define OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr)		\
-  (OPERATOR_LINK_ADDRESS(word_ptr))
-
-#define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)			\
-  ((machine_word *) (((SCHEME_OBJECT *) (word_ptr)) +		\
-		     OPERATOR_LINK_ENTRY_SIZE))
+#define STORE_OPERATOR_LINKAGE_ADDRESS(source, target)			\
+{									\
+  STORE_EXECUTE_CACHE_ADDRESS(target, source);				\
+}
 
 /* Heuristic recovery aid.  See unix.c for details. */
 
@@ -212,7 +249,8 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
   (CC_BLOCK_FIRST_ENTRY_OFFSET - (sizeof(machine_word)))
 
 #define PLAUSIBLE_CC_BLOCK_P(block)					\
-((*((machine_word *) (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==	\
+((*((machine_word *)							\
+    (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==			\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
 
 #endif /* CMPGC_H_INCLUDED */
