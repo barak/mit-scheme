@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.11 1991/11/04 20:51:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.12 1991/12/06 00:58:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -850,9 +850,9 @@ original message into it."
        false
        false
        false)
-      (let ((mark (buffer-end (current-buffer))))
-	(insert-newline mark)
-	(insert-region (buffer-start buffer) (buffer-end buffer) mark)))))
+      (insert-region (buffer-start buffer)
+		     (buffer-end buffer)
+		     (buffer-end (current-buffer))))))
 
 (define-command rmail-reply
   "Reply to the current message.
