@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.8 1992/09/24 18:55:43 cph Exp $
+$Id: floppy.scm,v 1.9 1992/09/24 20:21:04 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -527,7 +527,7 @@ M-x rename-file, or use the `r' command in Dired.")
      (lambda (continue)
        (bind-condition-handler (list condition-type:floppy-error)
 	   (lambda (condition)
-	     (if (string-prefix? "/usr/bin/dosrm: cannot open "
+	     (if (string-prefix? "dosrm: cannot open "
 				 (floppy-error/output condition))
 		 (continue unspecific)))
 	 (lambda ()
@@ -674,25 +674,21 @@ M-x rename-file, or use the `r' command in Dired.")
 ;;;; Floppy Command Subprocesses
 
 (define (run-dosll-command directory)
-  (run-dos-command (string-append "/usr/bin/dosls -Al "
-				  (floppy-quote-shell-chars directory))))
+  (run-dos-command "/usr/bin/dosls" "-Al" directory))
 
 (define (run-doscp-command from to)
-  (run-dos-command (string-append "/usr/bin/doscp -f "
-				  (floppy-quote-shell-chars from)
-				  " "
-				  (floppy-quote-shell-chars to))))
+  (run-dos-command "/usr/bin/doscp" "-f" from to))
 
 (define (run-dosrm-command filename)
-  (run-dos-command (string-append "/usr/bin/dosrm -f "
-				  (floppy-quote-shell-chars filename))))
+  (run-dos-command "/usr/bin/dosrm" "-f" filename))
 
-(define (run-dos-command command)
+(define (run-dos-command program . arguments)
   (call-with-temporary-buffer " *dos-floppy-command*"
     (lambda (buffer)
       (let ((result
-	     (shell-command false (buffer-start buffer) false false
-			    (floppy-quote-shell-chars command))))
+	     (apply run-synchronous-process
+		    false (buffer-start buffer) false false
+		    program arguments)))
 	(let ((output
 	       (extract-string (buffer-start buffer) (buffer-end buffer))))
 	  (if (equal? result '(EXITED . 0))
@@ -710,29 +706,16 @@ M-x rename-file, or use the `r' command in Dired.")
 		      make-condition:floppy-write-protected)
 		     (else
 		      make-condition:floppy-error))
-	       command output)))))))
+	       (form-floppy-command program arguments) output)))))))
 
-(define floppy-quote-shell-chars
-  (let ((quoted
-	 (char-set-invert
-	  (char-set-union char-set:alphanumeric
-			  (char-set #\+ #\, #\- #\. #\/ #\: #\= #\@ #\_)))))
-    (lambda (string)
-      (let ((end (string-length string)))
-	(let loop ((start 0))
-	  (cond ((substring-find-next-char-in-set string start end quoted)
-		 =>
-		 (lambda (index)
-		   (let ((start* (+ index 1)))
-		     (string-append (substring string start index)
-				    "\\"
-				    (substring string index start*)
-				    (loop start*)))))
-		((= start 0)
-		 string)
-		(else
-		 (substring string start end))))))))
-
+(define (form-floppy-command program arguments)
+  (apply string-append
+	 program
+	 (let loop ((arguments arguments))
+	   (if (null? arguments)
+	       '()
+	       (cons* " " (car arguments) (loop (cdr arguments)))))))
+
 (define no-floppy-in-drive
   "Error reading. block = 0 on device /dev/rfd")
 
