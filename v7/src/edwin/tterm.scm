@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.38 2003/02/14 18:28:13 cph Exp $
+$Id: tterm.scm,v 1.39 2004/01/16 20:32:40 cph Exp $
 
 Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -97,13 +97,10 @@ USA.
 	 (terminal-output-baud-rate channel))))
 
 (define (output-port/buffered-chars port)
-  (let ((operation (output-port/operation port 'BUFFERED-CHARS)))
+  (let ((operation (port/operation port 'BUFFERED-OUTPUT-CHARS)))
     (if operation
 	(operation port)
 	0)))
-
-(define (output-port/y-size port)
-  ((output-port/operation port 'Y-SIZE) port))
 
 (define (console-available?)
   (let ((description (console-termcap-description)))
