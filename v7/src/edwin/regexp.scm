@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.52 1991/04/26 03:11:40 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.53 1991/04/29 10:16:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -94,7 +94,7 @@
 		  (if (and (not (default-object? literal?)) literal?)
 		      replacement
 		      (re-substitute-registers replacement))))
-	     (if (and (not (default-object? preserve-case?) preserve-case?))
+	     (if (and (not (default-object? preserve-case?)) preserve-case?)
 		 ;; Emacs uses a more complicated algorithm here,
 		 ;; which breaks the replaced string into words,
 		 ;; makes the decision based on examining all the
