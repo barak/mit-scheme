@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.46 1996/04/24 03:48:36 cph Exp $
+$Id: io.scm,v 14.47 1996/05/15 18:47:19 cph Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -1056,9 +1056,7 @@ MIT in each case. |#
 		   (begin
 		     (substring-move-left! bstring bstart bend string index)
 		     (set-input-buffer/start-index! buffer bend)
-		     (if (channel-open? (input-buffer/channel buffer))
-			 (read-directly (fix:+ index available))
-			 (fix:+ index available))))))
+		     (fix:+ index available)))))
 	    ((or (fix:= (input-buffer/real-end buffer) 0)
 		 (channel-closed? (input-buffer/channel buffer)))
 	     index)
