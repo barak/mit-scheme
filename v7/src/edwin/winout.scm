@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.7 1991/11/26 08:03:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/winout.scm,v 1.8 1992/02/13 22:19:34 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -99,10 +99,6 @@
 	  (region-insert-string! point string)))))
 
 (define (operation/flush-output port)
-  ;; Calling `editor-char-ready?' gives the screen abstraction a
-  ;; chance to do refresh if it needs to (e.g. if an X exposure event
-  ;; is received).
-  ((editor-char-ready? current-editor))
   (let ((window (port/state port)))
     (if (window-needs-redisplay? window)
 	(window-direct-update! window false))))
