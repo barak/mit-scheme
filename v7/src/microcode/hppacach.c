@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.1 1990/08/08 20:21:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.c,v 1.2 1990/12/01 00:21:19 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -34,10 +34,8 @@ MIT in each case. */
 
 #include <stdio.h>
 #include <math.h>
-
 #include <sys/stat.h>
 #include <memory.h>
-
 #include <nlist.h>
 
 #include "hppacache.h"
@@ -52,9 +50,9 @@ MIT in each case. */
 
 #else
 
-#define DEBUGGING(stmt)							\
-do {									\
-}while (0)
+#define DEBUGGING(stmt) do						\
+{									\
+} while (0)
 
 #endif
 
@@ -69,38 +67,33 @@ do {									\
 #define UTSNAME_SYMBOL		"utsname"
 #define PDC_CACHE_SYMBOL	"cache_tlb_parms"
 
-/* File where cached locations (to avoid nlist search) live */
-
-#define LOCATIONS_CACHE_FILE	"/tmp/hppa.cache"
-
-/* Operating system name */
-
-#define SYSNAME			"HP-UX"
-
 static struct utsname sysinfo;
 static char **the_argv;
-
+
 void
-io_error (format, fname)
-     char *format, *fname;
+io_error (pname, format, fname)
+     char * pname;
+     char * format;
+     char * fname;
 {
   char errmsg[MAXPATHLEN + 257];
   char errstring[MAXPATHLEN + 257];
 
   sprintf (&errmsg[0], format, fname);
-  sprintf (&errstring[0], "%s: %s", (the_argv[0]), (&errmsg[0]));
+  sprintf (&errstring[0], "%s: %s: %s", (the_argv[0]), pname, (&errmsg[0]));
   perror (&errstring[0]);
-  return;
 }
 
 void
-io_lose (format, fname)
-     char *format, *fname;
+io_lose (pname, format, fname)
+     char * pname;
+     char * format;
+     char * fname;
 {
-  io_error (format, fname);
+  io_error (pname, format, fname);
   exit (1);
 }
-
+
 struct kernel_locations
 {
   long utsname_location;
@@ -114,17 +107,14 @@ struct nlist nl[] =
   { 0 },
 };
 
-int
+void
 read_nlist (kloc)
      struct kernel_locations *kloc;
 {
   DEBUGGING (printf ("reading nlist...\n"));
 
   if ((nlist (KERNEL_FILE, nl)) != 0)
-  {
-    io_error ("nlist: failed on %s", KERNEL_FILE);
-    return (-1);
-  }
+    io_lose ("read_nlist", "failed on %s", KERNEL_FILE);
 
   DEBUGGING (printf ("reading nlist done.\n"));
 
@@ -133,114 +123,36 @@ read_nlist (kloc)
 
   DEBUGGING (printf ("utsname location = 0x%x\n", kloc->utsname_location));
   DEBUGGING (printf ("pdc_cache location = 0x%x\n", kloc->pdc_cache_location));
-
-  return (0);
 }
-
-void
-read_model (pdc_cache)
-     struct pdc_cache_dump *pdc_cache;
-{
-  int fd, read_result;
-  static char filename[MAXPATHLEN + 1];
 
-  sprintf ((&filename[0]),
-	   MODELS_FILENAME,
-	   CACHE_FILENAME_PATH);
-  fprintf (stderr, "%s:\n", (the_argv[0]));
-  fprintf (stderr,
-	   "\tReading cache information from the model-based database (%s).\n",
-	   (&filename[0]));
-  fd = (open ((&filename[0]), O_RDONLY));
-  if (fd < 0)
-  {
-    io_lose ("read_model: open (%s) failed", (&filename[0]));
-  }
-
-  while (true)
-  {
-    read_result = (read (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
-    if (read_result != (sizeof (struct pdc_cache_dump)))
-    {
-      break;
-    }
-    if ((strcmp (sysinfo.machine, pdc_cache->hardware)) == 0)
-    {
-      close (fd);
-      fprintf (stderr,
-	       "\tFound information for model %s in %s.\n",
-	       sysinfo.machine, (&filename[0]));
-      return;
-    }
-  }
-  close (fd);
-  fprintf (stderr,
-	   "\tCould not find information for model %s in %s.\n",
-	   sysinfo.machine, (&filename[0]));
-  exit (1);
-}
-
 void
 read_parameters (pdc_cache)
      struct pdc_cache_dump *pdc_cache;
 {
-  int kmem;
-
   struct kernel_locations kloc;
   struct utsname kerninfo;
-
-  if ((read_nlist (&kloc)) < 0)
-  {
-    read_model (pdc_cache);
-    return;
-  }
-  kmem = (open (KERNEL_MEMORY_FILE, O_RDONLY));
+  int kmem = (open (KERNEL_MEMORY_FILE, O_RDONLY));
   if (kmem < 0)
-  {
-    io_error ("read_parameters: open (%s) failed", KERNEL_MEMORY_FILE);
-    read_model (pdc_cache);
-    return;
-  }
-  else
-  {
-    if ((lseek (kmem, kloc.utsname_location, 0)) < 0)
-    {
-      io_lose ("read_parameters: lseek (%s) failed", KERNEL_MEMORY_FILE);
-    }
-
-    if ((read (kmem, &kerninfo, (sizeof (kerninfo)))) !=
-	(sizeof (kerninfo)))
-    {
-      io_lose ("read_parameters: read (%s) failed", KERNEL_MEMORY_FILE);
-    }
-
-    if ((memcmp (&kerninfo, &sysinfo, (sizeof (sysinfo)))) != 0)
-    {
-      fprintf (stderr, "read_parameters: uname and %s in %s differ.\n",
-	       kloc.utsname_location, KERNEL_MEMORY_FILE);
-    }
-
-    strncpy (pdc_cache->hardware, (kerninfo.machine),
-	     (sizeof (kerninfo.machine)));
-
-    if ((lseek (kmem, (kloc.pdc_cache_location), 0)) < 0)
-    {
-      io_lose ("read_parameters: lseek (%s) failed", KERNEL_MEMORY_FILE);
-    }
-
-    if  ((read (kmem, pdc_cache->cache_format,
-		(sizeof (pdc_cache->cache_format)))) !=
-	 (sizeof (pdc_cache->cache_format)))
-    {
-      io_lose ("read_parameters: read (%s) failed", KERNEL_MEMORY_FILE);
-    }
-
-    if ((close (kmem)) < 0)
-    {
-      io_lose ("read_parameters: close (%s) failed", KERNEL_MEMORY_FILE);
-    }
-  }
-  return;
+    io_lose ("read_parameters", "open (%s) failed", KERNEL_MEMORY_FILE);
+  read_nlist (&kloc);
+  if ((lseek (kmem, kloc.utsname_location, 0)) < 0)
+    io_lose ("read_parameters", "lseek (%s) failed", KERNEL_MEMORY_FILE);
+  if ((read (kmem, (&kerninfo), (sizeof (kerninfo)))) !=
+      (sizeof (kerninfo)))
+    io_lose ("read_parameters", "read (%s) failed", KERNEL_MEMORY_FILE);
+  if ((memcmp ((&kerninfo), (&sysinfo), (sizeof (sysinfo)))) != 0)
+    fprintf (stderr, "read_parameters: uname and %s in %s differ.\n",
+	     kloc.utsname_location, KERNEL_MEMORY_FILE);
+  strncpy (pdc_cache->hardware, (kerninfo.machine),
+	   (sizeof (kerninfo.machine)));
+  if ((lseek (kmem, (kloc.pdc_cache_location), 0)) < 0)
+    io_lose ("read_parameters", "lseek (%s) failed", KERNEL_MEMORY_FILE);
+  if  ((read (kmem, pdc_cache->cache_format,
+	      (sizeof (pdc_cache->cache_format)))) !=
+       (sizeof (pdc_cache->cache_format)))
+    io_lose ("read_parameters", "read (%s) failed", KERNEL_MEMORY_FILE);
+  if ((close (kmem)) < 0)
+    io_lose ("read_parameters", "close (%s) failed", KERNEL_MEMORY_FILE);
 }
 
 void
@@ -429,64 +341,78 @@ print_parameters (pdc_cache)
   return;
 }
 
-static char dumpname[MAXPATHLEN + 1];
-
-void
-dump_parameters (pdc_cache)
-     struct pdc_cache_dump *pdc_cache;
+int
+search_pdc_database (fd, pdc_cache, filename)
+     int fd;
+     struct pdc_cache_dump * pdc_cache;
+     char * filename;
 {
-  int file;
-
-  sprintf (&dumpname[0],
-	   CACHE_FILENAME,
-	   CACHE_FILENAME_PATH,
-	   sysinfo.nodename,
-	   sysinfo.machine);
-
-  file = open (&dumpname[0], (O_WRONLY | O_CREAT | O_TRUNC), 0664);
-  if (file < 0)
-  {
-    io_lose ("dump_parameters: open (%s) failed", dumpname);
-  }
-  if ((write (file, pdc_cache, (sizeof (struct pdc_cache_dump)))) !=
-      (sizeof (struct pdc_cache_dump)))
-  {
-    io_lose ("dump_parameters: write (%s) failed", dumpname);
-  }
-  if ((close (file)) != 0)
-  {
-    io_lose ("dump_parameters: close (%s) failed", dumpname);
-  }
-  return;
+  while (1)
+    {
+      int scr =
+	(read (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
+      if (scr < 0)
+	io_lose ("update_pdc_database", "read (%s) failed", filename);
+      if (scr != (sizeof (struct pdc_cache_dump)))
+	{
+	  if (scr == 0)
+	    return (0);
+	  fprintf (stderr, "%s: %s: incomplete read (%s)\n",
+		   (the_argv[0]), "update_pdc_database", filename);
+	  fflush (stderr);
+	  exit (1);
+	}
+      if ((strcmp ((sysinfo . machine), (pdc_cache -> hardware))) == 0)
+	return (1);
+    }
 }
 
 void
-read_stored_parameters (old_pdc_cache)
-     struct pdc_cache_dump *old_pdc_cache;
+update_pdc_database (pdc_cache, filename)
+     struct pdc_cache_dump * pdc_cache;
+     char * filename;
 {
-  int file;
+  int fd = (open (filename, (O_RDWR | O_CREAT), 0666));
+  if (fd < 0)
+    io_lose ("update_pdc_database", "open (%s) failed", filename);
+  if (! (search_pdc_database (fd, pdc_cache, filename)))
+    {
+      read_parameters (pdc_cache);
+      {
+	int scr =
+	  (write (fd, ((char *) pdc_cache), (sizeof (struct pdc_cache_dump))));
+	if (scr < 0)
+	  io_lose ("update_pdc_database", "write (%s) failed", filename);
+	if (scr != (sizeof (struct pdc_cache_dump)))
+	  {
+	    fprintf (stderr, "%s: %s: incomplete write (%s)\n",
+		     (the_argv[0]), "update_pdc_database", filename);
+	    fflush (stderr);
+	    exit (1);
+	  }
+      }
+    }
+  if ((close (fd)) < 0)
+    io_lose ("update_pdc_database", "close (%s) failed", filename);
+}
 
-  sprintf (&dumpname[0],
-	   CACHE_FILENAME,
-	   CACHE_FILENAME_PATH,
-	   sysinfo.nodename,
-	   sysinfo.machine);
-
-  file = open (&dumpname[0], (O_RDONLY), 0);
-  if (file < 0)
-  {
-    io_lose ("read_stored_parameters: open (%s) failed", dumpname);
-  }
-  if ((read (file, old_pdc_cache, (sizeof (struct pdc_cache_dump)))) !=
-      (sizeof (struct pdc_cache_dump)))
-  {
-    io_lose ("read_stored_parameters: read (%s) failed", dumpname);
-  }
-  if ((close (file)) != 0)
-  {
-    io_lose ("read_stored_parameters: close (%s) failed", dumpname);
-  }
-  return;
+void
+read_stored_parameters (pdc_cache, filename)
+     struct pdc_cache_dump * pdc_cache;
+     char * filename;
+{
+  int fd = (open (filename, (O_RDONLY), 0));
+  if (fd < 0)
+    io_lose ("read_stored_parameters", "open (%s) failed", filename);
+  if (! (search_pdc_database (fd, pdc_cache, filename)))
+    {
+      fprintf (stderr, "%s: %s: unable to find entry in models database\n",
+	       (the_argv[0]), "read_stored_parameters");
+      fflush (stderr);
+      exit (1);
+    }
+  if ((close (fd)) < 0)
+    io_lose ("read_stored_parameters", "close (%s) failed", filename);
 }
 
 void
@@ -516,89 +442,51 @@ verify_parameters (new_pdc_cache, old_pdc_cache)
   return;
 }
 
+void
+usage ()
+{
+  fprintf (stderr, "usage: one of:\n");
+  fprintf (stderr, " %s -update FILENAME\n");
+  fprintf (stderr, " %s -print FILENAME\n");
+  fprintf (stderr, " %s -verify FILENAME\n");
+  fflush (stderr);
+  exit (1);
+}
+
+void
 main (argc, argv)
      int argc;
      char **argv;
 {
-  int
-    count,
-    uname_result;
-  struct pdc_cache_dump
-    new_pdc_cache_s, old_pdc_cache_s,
-    *new_pdc_cache, *old_pdc_cache;
-
   the_argv = argv;
-  new_pdc_cache = ((struct pdc_cache_dump *) NULL);
-  old_pdc_cache = ((struct pdc_cache_dump *) NULL);
-
-  uname_result = (uname (&sysinfo));
-  if (uname_result < 0)
+  if ((uname (&sysinfo)) < 0)
+    io_lose ("main", "uname failed", 0);
+  if (argc != 3)
+    usage ();
   {
-    fprintf (stderr, "%s: uname failed.\n", argv[0]);
-    exit (1);
-  }
-
-  if (argc <= 1)
-  {
-    if (new_pdc_cache == ((struct pdc_cache_dump *) NULL))
-    {
-      read_parameters (&new_pdc_cache_s);
-      new_pdc_cache = &new_pdc_cache_s;
-    }
-    dump_parameters (new_pdc_cache);
-  }
-  else
-  {
-    for (count = 1; count < argc; count++)
-    {
-      if ((strcmp ((argv[count]), "-printnew")) == 0)
+    char * keyword = (argv[1]);
+    char * filename = (argv[2]);
+    if ((strcmp (keyword, "-update")) == 0)
       {
-	if (new_pdc_cache == ((struct pdc_cache_dump *) NULL))
-	{
-	  read_parameters (&new_pdc_cache_s);
-	  new_pdc_cache = &new_pdc_cache_s;
-	}
-	print_parameters (new_pdc_cache);
+	struct pdc_cache_dump pdc_cache;
+	update_pdc_database ((&pdc_cache), filename);
       }
-      else if ((strcmp ((argv[count]), "-printold")) == 0)
+    else if ((strcmp (keyword, "-print")) == 0)
       {
-	if (old_pdc_cache == ((struct pdc_cache_dump *) NULL))
-	{
-	  read_stored_parameters (&old_pdc_cache_s);
-	  old_pdc_cache = &old_pdc_cache_s;
-	}
-	print_parameters (old_pdc_cache);
+	struct pdc_cache_dump pdc_cache;
+	update_pdc_database ((&pdc_cache), filename);
+	print_parameters (&pdc_cache);
       }
-      else if ((strcmp ((argv[count]), "-dump")) == 0)
+    else if ((strcmp (keyword, "-verify")) == 0)
       {
-	if (new_pdc_cache == ((struct pdc_cache_dump *) NULL))
-	{
-	  read_parameters (&new_pdc_cache_s);
-	  new_pdc_cache = &new_pdc_cache_s;
-	}
-	dump_parameters (new_pdc_cache);
+	struct pdc_cache_dump old_pdc_cache;
+	struct pdc_cache_dump new_pdc_cache;
+	read_stored_parameters ((&old_pdc_cache), filename);
+	read_parameters (&new_pdc_cache);
+	verify_parameters ((&new_pdc_cache), (&old_pdc_cache));
       }
-      else if ((strcmp ((argv[count]), "-verify")) == 0)
-      {
-	if (new_pdc_cache == ((struct pdc_cache_dump *) NULL))
-	{
-	  read_parameters (&new_pdc_cache_s);
-	  new_pdc_cache = &new_pdc_cache_s;
-	}
-	if (old_pdc_cache == ((struct pdc_cache_dump *) NULL))
-	{
-	  read_stored_parameters (&old_pdc_cache_s);
-	  old_pdc_cache = &old_pdc_cache_s;
-	}
-	verify_parameters (new_pdc_cache, old_pdc_cache);
-      }
-      else
-      {
-	fprintf (stderr, "usage: %s [-dump] [-verify] [-printnew] [-printold]\n",
-		 argv[0]);
-	exit (1);
-      }
-    }
+    else
+      usage ();
   }
   exit (0);
 }

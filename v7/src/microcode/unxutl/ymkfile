@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.37 1990/11/28 21:14:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.38 1990/12/01 00:21:34 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -190,7 +190,7 @@ MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4 dmpwrld.c
 MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o dmpwrld.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
-XTRA_TARGETS = HPPACACHE
+XTRA_TARGETS = hppacache
 #endif /* PROC_TYPE_HPPA */
 
 #if (PROC_TYPE == PROC_TYPE_MIPS)
@@ -553,13 +553,10 @@ float.h : hard-params
 hard-params : hard-params.c
 	$(CC) -DNO_SC $(LDFLAGS) -o hard-params hard-params.c
 
-HPPACACHE : hppacache
-	chgrp sys hppacache
-	chmod g+s hppacache
-	./hppacache -dump
+hppacache.o : hppacache.h
 
-hppacache : hppacache.c hppacache.h option.h
-	$(CC) $(CFLAGS) -o hppacache hppacache.c
+hppacache : hppacache.o
+	$(CC) $(CFLAGS) -o hppacache hppacache.o
 
 lint.out : $(SOURCES) $(SCHEME_SOURCES) $(CSRC) usrdef.c $(HEAD_FILES)
 	rm -f lint.out

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.18 1990/11/30 02:45:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.19 1990/12/01 00:22:03 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -236,6 +236,7 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
  */
 
 #include "hppacache.h"
+#include "option.h"
 
 static struct pdc_cache_dump cache_info;
 
@@ -245,59 +246,69 @@ void
 flush_i_cache ()
 {
   extern void cache_flush_all ();
-
-  cache_flush_all ((D_CACHE | I_CACHE),
-		   &cache_info.cache_format);
-  return;
+  /* Newer machines can interrupt this call, so do it twice.
+     Probability of two interrupts in the same cache line is
+     exceedingly small, so this is likely to win. */
+  cache_flush_all ((D_CACHE | I_CACHE), (& (cache_info . cache_format)));
+  cache_flush_all ((D_CACHE | I_CACHE), (& (cache_info . cache_format)));
 }
 
-int
+#ifndef MODELS_FILENAME
+#define MODELS_FILENAME "HPPAmodels"
+#endif
+
+void
 flush_i_cache_initialize ()
 {
-  int fd, read_result;
   struct utsname sysinfo;
-  char filename[MAXPATHLEN];
-
+  CONST char * models_filename =
+    (search_path_for_file (0, MODELS_FILENAME, 1));
   if ((uname (&sysinfo)) < 0)
+    {
+      fprintf (stderr, "\nflush_i_cache: uname failed.\n");
+      goto loser;
+    }
   {
-    fprintf (stderr, "\nflush_i_cache: uname failed.\n");
-    return (-1);
+    int fd = (open (models_filename, O_RDONLY));
+    if (fd < 0)
+      {
+	fprintf (stderr, "\nflush_i_cache: open (%s) failed.\n",
+		 models_filename);
+	goto loser;
+      }
+    while (1)
+      {
+	int read_result =
+	  (read (fd,
+		 ((char *) (&cache_info)),
+		 (sizeof (struct pdc_cache_dump))));
+	if (read_result == 0)
+	  {
+	    close (fd);
+	    break;
+	  }
+	if (read_result != (sizeof (struct pdc_cache_dump)))
+	  {
+	    close (fd);
+	    fprintf (stderr, "\nflush_i_cache: read (%s) failed.\n",
+		     models_filename);
+	    goto loser;
+	  }
+	if ((strcmp ((sysinfo . machine), (cache_info . hardware))) == 0)
+	  {
+	    close (fd);
+	    return;
+	  }
+      }
   }
-    
-  sprintf (&filename[0],
-	   CACHE_FILENAME,
-	   CACHE_FILENAME_PATH,
-	   sysinfo.nodename,
-	   sysinfo.machine);
-
-  fd = (open ((&filename[0]), O_RDONLY));
-  if (fd < 0)
-  {
-    fprintf (stderr, "\nflush_i_cache: open (%s) failed.\n",
-	     (&filename[0]));
-    return (-1);
-  }
-
-  read_result = (read (fd,
-		       ((char *) (&cache_info)),
-		       (sizeof (struct pdc_cache_dump))));
-  close (fd);
-
-  if (read_result != (sizeof (struct pdc_cache_dump)))
-  {
-    fprintf (stderr, "\nflush_i_cache: read (%s) failed.\n",
-	     (&filename[0]));
-    return (-1);
-  }
-
-  if ((strcmp (sysinfo.machine, cache_info.hardware)) != 0)
-  {
-    fprintf (stderr,
-	     "\nflush_i_cache: information in %s does not match hardware.\n",
-	     (&filename[0]));
-    return (-1);
-  }
-  return (0);
+  fprintf (stderr,
+	   "The cache parameters database has no entry for the %s model.\n",
+	   (sysinfo . machine));
+  fprintf (stderr, "Please make an entry in the database;\n");
+  fprintf (stderr, "the installation notes contain instructions for doing so.\n");
+ loser:
+  fprintf (stderr, "\nASM_RESET_HOOK: Unable to read cache parameters.\n");
+  termination_init_error ();
 }
 
 #endif	/* IN_CMPINT_C */
@@ -569,8 +580,8 @@ do {									\
    processor might have old copies of.
  */
 
-#define FLUSH_I_CACHE()							\
-do {									\
+#define FLUSH_I_CACHE() do						\
+{									\
   extern void flush_i_cache ();						\
 									\
   flush_i_cache ();							\
@@ -581,8 +592,8 @@ do {									\
    Not needed during GC because FLUSH_I_CACHE will be used.
  */   
 
-#define FLUSH_I_CACHE_REGION(address, nwords)				\
-do {									\
+#define FLUSH_I_CACHE_REGION(address, nwords) do			\
+{									\
   extern void cache_flush_region ();					\
 									\
   cache_flush_region (((void *) (address)), nwords);			\
@@ -591,15 +602,7 @@ do {									\
 /* This loads the cache information structure for use by flush_i_cache.
  */
 
-#define ASM_RESET_HOOK()						\
-do {									\
-  if ((flush_i_cache_initialize ()) < 0)				\
-  {									\
-    fprintf (stderr,							\
-	     "\nASM_RESET_HOOK: Unable to read cache parameters.\n");	\
-    Microcode_Termination (TERM_COMPILER_DEATH);			\
-  }									\
-} while (0)
+#define ASM_RESET_HOOK() flush_i_cache_initialize ()
 
 /* Derived parameters and macros.
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.h,v 1.2 1990/11/13 08:44:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hppacach.h,v 1.3 1990/12/01 00:21:04 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -35,39 +35,6 @@ MIT in each case. */
 #ifndef HPPACACHE_H		/* Prevent multiple inclusion */
 #define HPPACACHE_H
 
-#ifdef MIT_SCHEME
-#include "option.h"
-#define CACHE_FILENAME "%s/%s.cache"
-#define CACHE_FILENAME_PATH "/usr/local/lib/mit-scheme"
-#define MODELS_FILENAME "HPPAmodels"
-#endif
-
-/*
-   Format strings used to determine the name of the file
-   where to store (and examine) the cache description.
-
-   The strings are used as in
-   printf (CACHE_FILENAME, CACHE_FILENAME_PATH, hostname_string, model_string);
-
-   The default value (below) would generate the file name
-   /tmp/altdorf.cache
-   when running on a machine named altdorf.
-
-   To ignore a string parameter, use the %.0s format.
- */
-
-#ifndef CACHE_FILENAME_PATH
-#define CACHE_FILENAME_PATH "/tmp/"
-#endif
-
-#ifndef CACHE_FILENAME
-#define CACHE_FILENAME "%s%s.cache"
-#endif /* CACHE_FILENAME */
-
-#ifndef MODELS_FILENAME
-#define MODELS_FILENAME "%shppamodels"
-#endif
-
 #define I_CACHE		1
 #define D_CACHE		2
 
@@ -77,7 +44,7 @@ MIT in each case. */
 #include <machine/cpu.h>
 #include <machine/pdc_rqsts.h>
 #include <fcntl.h>
-
+
 /* PDC_CACHE (processor dependent code cache information call)
    return data destructuring.
 
@@ -86,8 +53,7 @@ MIT in each case. */
    section of the I/O Architecture Manual.
 
    The main difference is the cache configuration field.
-   Which is correct?
- */
+   Which is correct?  */
 
 union cache_conf
 {
