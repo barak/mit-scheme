@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.10 2003/03/08 02:25:19 cph Exp $
+$Id: symbol.scm,v 1.11 2003/07/29 03:45:02 cph Exp $
 
 Copyright 1992,1993,2001,2003 Massachusetts Institute of Technology
 
@@ -82,9 +82,8 @@ USA.
   (string-copy (symbol-name symbol)))
 
 (define (symbol-append . symbols)
-  (let ((string (apply string-append (map symbol-name symbols))))
-    (string-downcase! string)
-    ((ucode-primitive string->symbol) string)))
+  ((ucode-primitive string->symbol)
+   (apply string-append (map symbol-name symbols))))
 
 (define-integrable (symbol-hash symbol)
   (string-hash (symbol-name symbol)))
