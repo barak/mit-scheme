@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.8 1991/07/19 04:19:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.9 1991/08/29 01:47:58 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,74 +48,104 @@
 
 #| TO DO
 
-Make environment browsing mode; the debugger mode can be a superset of
-that mode: Add optional marker lines for environments.  If you do the
-C-c A command to describe the environment frames in the current
+Change RETURN-TO and RETURN-FROM to not prompt, but evaluate the
+expression before the point.
+
+Make environment browsing mode; the debugger mode can be a superset
+of that mode: Add optional marker lines for environments.  If you do
+the C-c C-a command to describe the environment frames in the current
 subproblem or reduction, the debugger should use the correct
-environment when you do evaluations in those environment frames.  Make
-commands for moving by environment level.  Later, change this to
+environment when you do evaluations in those environment frames.
+Make commands for moving by environment level.  Later, change this to
 execute Where in another buffer depending on the state of a flag.
 
-Make C-c k evaluate in the environment in which the error occurred.
+Add variable to optionally prompt the user if more than a certain
+number of variables are about to be printed during an
+environment-browsing command.
+
+Make C-c C-k evaluate in the environment in which the error occurred.
 Otherwise, the "Define x to a given value" restart for unbound
 variable errors won't work.
 
-Make C-c k and C-c z not get confused about where to finish their
-output if you evaluate buggy code in *scratch*, causing Debug to fire,
-then restart or return when buffer *foo* is the next buffer instead of
-*scratch*.  Currently, this causes output intended for *foo* to go to
-*scratch*.
+Make C-c C-k and C-c C-z not get confused about where to finish their
+output if you evaluate buggy code in *scratch*, causing Debug to
+fire, then restart or return when buffer *foo* is the next buffer
+instead of *scratch*.  Currently, this causes output intended for
+*foo* to go to *scratch*.
 
-Make C-c z, if given a argument, use the value resulting from the
-previous evaluation instead of prompting for a value.
+Make C-c C-z work in the case where an error happens during
+evaluation of the return expression, the debugger starts on the new
+error, and return is done from the second debugger straight through
+the first back into the original computation.  The restart itself
+works, but the message "Scheme error" is printed upon starting the
+second debugger.
 
-Make C-c z work in the case where an error happens during evaluation
-of the return expression, the debugger starts on the new error, and
-return is done from the second debugger straight through the first
-back into the original computation.  The restart itself works, but the
-message "Scheme error" is printed upon starting the second debugger.
+By default, when the debugger starts, don't show history levels inside
+the system.  To detect system code to ignore it in the debugger, see
+~arthur/new6001/detect.scm.
+
+MarkF has code to use the correct syntax tables for evaluation.
+
+Jinx: Depending on the state of a flag, never invoke debugger on
+unbound variabe errors from the expression you eval in the
+interaction buffer (or debugger buffer).  Actually, how about a
+general filter on conditions that will start the debugger?  Provide a
+default filter for unbound variables.
+
+Jinx: Display the offending expression evaluated by the user.  Display
+it just above the error message line.
+
+Make command to redraw marker lines when window width changes.
+
+Add limits to the depth and breadth of objects printed by the
+debugger, to avoid problems causes by displaying circular objects.
+Note $se/evlcom.scm: TRANSCRIPT-LIST-DEPTH-LIMIT and
+TRANSCRIPT-LIST-BREADTH-LIMIT.
 
 Make a way to restrict the possible restarts to not include restarts
 that could stop Edwin.
 
-Make reductions display "-I-" and "-C-" appropriately.
-
-MORE-SUBPROBLEMS-MESSAGE doesn't work quite right when auto-expanding
-subproblems with DEBUGGER-OPEN-MARKERS? false; it leaves extra space.
-
-By default, when the debugger starts, don't show history levels inside
-the system.  To detect system code to ignore it in the debugger:
-
-  (define (make-dummy-thunk value)
-    (lambda () value))
-
-  (define (with-stack-mark thunk mark-value)
-    (let ((dummy (make-dummy-thunk mark-value)))
-      (dynamic-wind dummy thunk dummy)))
-
-  Look for the DYNAMIC-WIND on the stack.
-
-  Define CLOSURE/LAST-VARIABLE in $sr/uproc.scm.  It should do
-
-    (system-vector-ref
-     (-1+
-      (system-vector-length
-       (compiled-code-address->block closure))))
+The debugger might be better if it didn't use the DSTATE data
+structure.
 
 Make a narrow interface between Edwin and the debugger so it will be
 easy to write this debugger for Emacs.
 
-Perhaps indent everything except level separator lines.
-
-Number input lines so that it is possible to tell what order you
-evaluated your expressions.  This could be particularly useful for
-TA's looking over students' shoulders.
+Number input lines so that it is possible to tell the order in which
+you evaluated your expressions.  This could be particularly useful
+for TAs looking over students' shoulders.
 
 Once outline mode has been written for Edwin, add commands to expand
 and contract subproblems and reductions.
 
 |#
 
+(define-variable debugger-split-window?
+  "True means use another window for the debugger buffer; false means
+use the current window."
+  true
+  boolean?)
+
+(define-variable debugger-one-at-a-time?
+  "True means delete an existing debugger buffer before before
+starting a new debugger, ASK means ask the user, and false means
+always create a new debugger buffer.  If there is more than one
+debugger buffer at the time a new debugger is started, the debugger
+will always create a new buffer."
+  'ask
+  (lambda (value)
+    (or (boolean? value)
+	(eq? value 'ask))))
+
+(define-variable debugger-start-on-error?
+  "True means always start the debugger on evaluation errors, false
+means never start the debugger on errors, and ASK means ask the user
+each time."
+  'ask
+  (lambda (value)
+    (or (boolean? value)
+	(eq? value 'ask))))
+
 (define-variable debugger-quit-on-return?
   "True means quit debugger when executing a \"return\" command."
   true
@@ -133,10 +163,10 @@ and contract subproblems and reductions.
 
 (define-variable debugger-verbose-mode?
   "True means display extra information without the user requesting it."
-  true
+  false
   boolean?)
 
-(define-variable debugger-automatically-expand-reductions?
+(define-variable debugger-expand-reductions?
   "True says to insert reductions when reduction motion commands are used
 in a subproblem whose reductions aren't already inserted."
   true
@@ -145,7 +175,7 @@ in a subproblem whose reductions aren't already inserted."
 (define-variable debugger-max-subproblems
   "Maximum number of subproblems displayed when debugger starts,
 or #F meaning no limit."
-  10
+  3
   (lambda (number)
     (or (not number)
 	(and (exact-integer? number)
@@ -172,41 +202,18 @@ or #F meaning no limit."
 (define (debug-scheme-error condition)
   (cond (in-debugger?
 	 (exit-editor-and-signal-error condition))
-	((and in-debugger-evaluation?
-	      (not (ref-variable debugger-debug-evaluations?)))
+	((not (and (if in-debugger-evaluation?
+		       (ref-variable debugger-debug-evaluations?)
+		       (ref-variable debugger-start-on-error?))
+		   (or (not (eq? (ref-variable debugger-start-on-error?) 'ask))
+		       (prompt-for-confirmation? "Start debugger"))))
 	 (%editor-error))
 	(else
 	 (fluid-let ((in-debugger? true))
-	   (let ((buffer (continuation-browser condition)))
-	     (select-buffer buffer)
-	     (if (ref-variable debugger-show-help-message?)
-		 (with-output-to-mark
-		   (buffer-start buffer)
-		   (lambda ()
-		     (with-group-undo-disabled
-		       (buffer-group buffer)
-		       (lambda ()
-			 (write-string
-			  (substitute-command-keys
-			   "This is a debugger buffer:
-
-  Subproblems and reductions are marked with lines of dashes.  Any
-    evaluations you do when the point is between the ----- lines for
-    one subproblem or reduction level will happen in the environment
-    of that level, if possible.
-  The subproblem number appears before the comma.  The reduction
-    number (or range of reduction numbers in the subproblem) appears
-    after the comma.
-  Type \\[continuation-browser-print-subproblem-or-reduction] for a description of the current subproblem or reduction.
-  Type \\[continuation-browser-quit] when you are finished using the debugger.
-  Type \\[describe-mode] for information on debugger commands.
-
-The error that started the debugger is:
-"))
-			 (write-condition-report condition
-						 (current-output-port))
-			 (newline)
-			 (buffer-not-modified! buffer)))))))))))
+	   ((if (ref-variable debugger-split-window?)
+		select-buffer-other-window
+		select-buffer)
+	    (continuation-browser condition))))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
@@ -214,32 +221,100 @@ The error that started the debugger is:
   (lambda (continuation)
     (if (not (continuation? continuation)) (editor-error "Not a continuation"))
     (let ((buffer (continuation-browser continuation)))
-      (select-buffer buffer))))
+      ((if (ref-variable debugger-split-window?)
+	   select-buffer-other-window
+	   select-buffer)
+       buffer))))
 
 (define-integrable (buffer-dstate buffer)
   (buffer-get buffer 'DEBUG-STATE))
-
-(define more-subproblems-message
-  "\nThere are more subproblems below this one.")
 
+(define debugger-help-message
+  "This is a debugger buffer:
+
+  Expressions appear one to a line, most recent first.  Expressions
+  are evaluated in the environment of the line above the point.
+
+  In the marker lines,
+
+    -C- means frame was generated by Compiled code
+    -I- means frame was generated by Interpreted code
+
+    S=x means frame is in subproblem number x
+    R=y means frame is reduction number y
+    #R=z means there are z reductions in the subproblem
+      Use \\[continuation-browser-forward-reduction] to see them
+
+  \\[continuation-browser-print-subproblem-or-reduction] describes the current subproblem or reduction.
+  \\[describe-mode] shows information about debugger commands.
+  Use \\[kill-buffer] to quit the debugger.
+")
+
+(define (with-buffer-selected buffer thunk)
+  (let ((current (current-buffer)))
+    (dynamic-wind
+     (lambda ()
+       (select-buffer buffer))
+     thunk
+     (lambda ()
+       (select-buffer current)))))
+
+(define (print-help-message buffer object)
+  (with-buffer-selected
+   buffer
+   (lambda ()
+     (write-string
+      (substitute-command-keys debugger-help-message))))
+  (if (condition? object)
+      (let ((port (current-output-port)))
+	(write-string "\nThe error that started the debugger is:\n" port)
+	(write-condition-report object port)))
+  (newline))
+
+(define (find-debugger-buffers)
+  (let ((debugger-mode (ref-mode-object continuation-browser)))
+    (let loop ((buffers (buffer-list)))
+      (cond ((null? buffers) buffers)
+	    ((eq? (buffer-major-mode (car buffers))
+		  debugger-mode)
+	     (cons (car buffers)
+		   (loop (cdr buffers))))
+	    (else (loop (cdr buffers)))))))
+
 (define (continuation-browser object)
-  (message "Starting debugger...")
-  (let ((buffer (new-buffer "*debug*"))
+  (let ((buffer (let ((existing-buffers (find-debugger-buffers)))
+		  (and existing-buffers
+		       (null? (cdr existing-buffers))
+		       (case (ref-variable debugger-one-at-a-time?)
+			 ((ask)
+			  (prompt-for-confirmation?
+			   "Another debugger buffer exists.  Delete it"))
+			 ((#t) #t)
+			 (else #f))
+		       (kill-buffer (car existing-buffers)))
+		  (new-buffer "*debug*")))
 	(dstate (make-initial-dstate object)))
-    (set-buffer-major-mode! buffer (ref-mode-object continuation-browser))
-    (buffer-put! buffer 'DEBUG-STATE dstate)
-    (let ((hide-system-code? (ref-variable debugger-hide-system-code? buffer))
-	  (max-subproblems (ref-variable debugger-max-subproblems buffer))
-	  (top-subproblem
-	   (let ((previous-subproblems (dstate/previous-subproblems dstate)))
-	     (if (null? previous-subproblems)
-		 (dstate/subproblem dstate)
-		 (car (last-pair previous-subproblems))))))
-      (with-group-undo-disabled
-	(buffer-group buffer)
-	(lambda ()
-	  (with-output-to-mark (buffer-start buffer)
+    (let ((start-message (string-append "Starting debugger in buffer "
+					(buffer-name buffer)
+					" ...")))
+      (set-buffer-major-mode! buffer (ref-mode-object continuation-browser))
+      (buffer-put! buffer 'DEBUG-STATE dstate)
+      (let ((hide-system-code?
+	     (ref-variable debugger-hide-system-code? buffer))
+	    (max-subproblems (ref-variable debugger-max-subproblems buffer))
+	    (top-subproblem
+	     (let ((previous-subproblems (dstate/previous-subproblems dstate)))
+	       (if (null? previous-subproblems)
+		   (dstate/subproblem dstate)
+		   (car (last-pair previous-subproblems))))))
+	(with-group-undo-disabled
+	 (buffer-group buffer)
+	 (lambda ()
+	   (with-output-to-mark
+	    (buffer-start buffer)
 	    (lambda ()
+	      (if (ref-variable debugger-show-help-message?)
+		  (print-help-message buffer object))
 	      (case
 		  (non-reentrant-call-with-current-continuation
 		   (lambda (finish)
@@ -264,15 +339,15 @@ The error that started the debugger is:
 				     (1+ level))))
 			   'ALL-SHOWN))))
 		((NOT-ALL-SHOWN)
-		 (display more-subproblems-message)))))))
-      (let ((point (forward-one-subproblem (buffer-start buffer))))
-	(set-buffer-point! buffer point)
-	(if (ref-variable debugger-verbose-mode? buffer)
-	    (invoke-debugger-command command/print-subproblem-or-reduction point))
-	(push-buffer-mark! buffer point)
-	(buffer-not-modified! buffer)
-	(temporary-message "Starting debugger...done")
-	buffer))))
+		 (display-more-subproblems-message buffer)))))))
+	(let ((point (forward-one-subproblem (buffer-start buffer))))
+	  (set-buffer-point! buffer point)
+	  (if (ref-variable debugger-verbose-mode? buffer)
+	      (print-subproblem-or-reduction point (debug-dstate point)))
+	  (push-buffer-mark! buffer point)
+	  (buffer-not-modified! buffer)
+	  (temporary-message (string-append start-message "done"))
+	  buffer)))))
 
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
@@ -304,8 +379,8 @@ The error that started the debugger is:
 	(subproblem-number (current-subproblem-number mark)))
     (let ((reductions (stack-frame/reductions frame)))
       (if (pair? reductions)
-	  (let next-reduction ((reductions (cdr reductions))
-			       (reduction-level 1))
+	  (let next-reduction ((reductions reductions)
+			       (reduction-level 0))
 	    (if (pair? reductions)
 		(begin
 		  (newline)
@@ -313,48 +388,41 @@ The error that started the debugger is:
 		   (car reductions) subproblem-number reduction-level)
 		  (next-reduction (cdr reductions) (1+ reduction-level)))))))))
 
-(define compiled-marker "-C- ")
-(define interpreted-marker "-I- ")
-(define no-marker "--- ")		;THIS SHOULD NOT BE NEEDED!
-
-(define (print-history-level compiled? subproblem-number reduction-id string)
+(define (print-history-level compiled? subproblem-number reduction-id thunk)
+  (fresh-line)
   (let ((level-identification
-	 (string-append (case compiled?
-			  ((unknown) no-marker)
-			  ((#t) compiled-marker)
-			  (else interpreted-marker))
+	 (string-append (if compiled? "-C- S=" "-I- S=")
 			(number->string subproblem-number)
-			", "
 			reduction-id)))
-    (let ((pad-width (max 0 (- 74 (string-length level-identification)))))
+    (let ((pad-width (max 0 (- 78 (string-length level-identification)))))
       (write-string level-identification)
-      (write-string " --- ")
       (write-string
-       (string-pad-right (string-append string " ") pad-width #\-)))))
+       (string-pad-right
+	(string-append
+	 (cdr (with-output-to-truncated-string pad-width thunk)) " ")
+	pad-width
+	#\-)))))
 
-(define (max-reduction-number frame)
-  (max 0 (-1+ (improper-list-length (stack-frame/reductions frame)))))
-
 (define (print-subproblem-level subproblem-number frame expression environment)
   (print-history-level
    (stack-frame/compiled-code? frame)
    subproblem-number
-   (string-append "0-" (number->string (max-reduction-number frame)))
+   (let ((reductions
+	  (improper-list-length (stack-frame/reductions frame))))
+     (if (zero? reductions)
+	 " -------- "
+	 (string-append " #R=" (number->string reductions) " --- ")))
    (cond ((debugging-info/compiled-code? expression)
-	  ";compiled code")
+	  (lambda () (write-string ";compiled code")))
 	 ((not (debugging-info/undefined-expression? expression))
-	  (output-to-string
-	   57
-	   (lambda ()
-	     (fluid-let ((*unparse-primitives-by-name?* true))
-	       (write (unsyntax expression))))))
+	  (lambda ()
+	    (fluid-let ((*unparse-primitives-by-name?* true))
+	      (write (unsyntax expression)))))
 	 ((debugging-info/noise? expression)
-	  (output-to-string
-	   57
-	   (lambda ()
-	     (write-string ((debugging-info/noise expression) false)))))
+	  (lambda ()
+	    (write-string ((debugging-info/noise expression) false))))
 	 (else
-	  ";undefined expression")))
+	  (lambda () (write-string ";undefined expression")))))
   (if (ref-variable debugger-verbose-mode?)
       (begin
 	(newline)
@@ -366,14 +434,12 @@ The error that started the debugger is:
 
 (define (print-reduction-level reduction subproblem-number reduction-level)
   (print-history-level
-   'unknown				;SHOULD KNOW!
+   #f
    subproblem-number
-   (number->string reduction-level)
-   (output-to-string
-    60
-    (lambda ()
-      (fluid-let ((*unparse-primitives-by-name?* true))
-	(write (unsyntax (reduction-expression reduction)))))))
+   (string-append ", R=" (number->string reduction-level) " --- ")
+   (lambda ()
+     (fluid-let ((*unparse-primitives-by-name?* true))
+       (write (unsyntax (reduction-expression reduction))))))
   (if (ref-variable debugger-verbose-mode?)
       (let ((environment (reduction-environment reduction)))
 	(begin
@@ -385,53 +451,95 @@ The error that started the debugger is:
   (if (ref-variable debugger-open-markers?)
       (newline)))
 
-;; Regular expressions for finding subproblem and reduction markers.
-;; REDUCTION-REGEXP must match anything that SUBPROBLEM-REGEXP
-;; matches.  After a match on REDUCTION-REGEXP, register 1 must match
+;; Regular expressions for finding subproblem and reduction marker
+;; lines.  After a match on REDUCTION-REGEXP, register 1 must match
 ;; the subproblem number and register 2 must match the reduction
-;; number; register 3 doesn't matter.  After a match on
-;; SUBPROBLEM-REGEXP, register 1 must match the subproblem number and
-;; register 2 must match the maximum reduction number.  The FIND-
-;; procedures below must use these regexps.
+;; number.  After a match on SUBPROBLEM-REGEXP, register 1 must match
+;; the subproblem number and register 3 must match the maximum
+;; reduction number in that subproblem.  The FIND- procedures below
+;; use these regexps.
 
 (define reduction-regexp
-  "^-[---CI]- \\([0-9]+\\), \\([0-9]\\)\\(-[0-9]+\\|\\)")
+  "^-I- S=\\([0-9]+\\), R=\\([0-9]+\\)")
 (define subproblem-regexp
-  "^-[---CI]- \\([0-9]+\\), 0-\\([0-9]+\\)")
+  "^-[CI]- S=\\([0-9]+\\) \\(#R=\\([0-9]+\\)\\|\\)")
+(define subproblem-or-reduction-regexp
+  "^-[CI]- S=\\([0-9]+\\)\\(, R=[0-9]+\\| #R=[0-9]+\\|\\)")
 
-(define (find-next-subproblem-marker point)
+(define (region-contains-marker? region)
+  (let ((start (line-start (region-start region) 0))
+	(end (line-end (region-end region) 0)))
+    (or (re-search-forward subproblem-regexp start end)
+	(re-search-forward reduction-regexp start end))))
+
+(define (find-next-subproblem-marker mark)
   (let ((found
 	 (re-search-forward subproblem-regexp
-			    point
-			    (buffer-end (mark-buffer point)))))
+			    mark
+			    (group-end mark))))
     (and found (line-start found 0))))
 
-(define (find-next-reduction-marker point)
+(define (find-next-reduction-marker mark)
   (let ((found
 	 (re-search-forward reduction-regexp
-			    point
-			    (buffer-end (mark-buffer point)))))
+			    mark
+			    (group-end mark))))
     (and found (line-start found 0))))
 
-(define (find-previous-subproblem-marker point)
-  (re-search-backward subproblem-regexp
-		      point
-		      (buffer-start (mark-buffer point))))
+(define (find-next-subproblem-or-reduction-marker mark)
+  (let ((found (re-search-forward subproblem-or-reduction-regexp
+				  mark
+				  (group-end mark))))
+    (and found (line-start found 0))))
 
-(define (find-previous-reduction-marker point)
+(define (find-previous-subproblem-marker mark)
+  (re-search-backward subproblem-regexp
+		      mark
+		      (group-start mark)))
+
+(define (find-previous-reduction-marker mark)
   (re-search-backward reduction-regexp
-		      point
-		      (buffer-start (mark-buffer point))))
+		      mark
+		      (group-start mark)))
+
+(define (find-previous-subproblem-or-reduction-marker mark)
+  (re-search-backward subproblem-or-reduction-regexp
+		      mark
+		      (group-start mark)))
 
 (define (end-of-subproblem mark)
   (let ((subproblem-below (find-next-subproblem-marker mark)))
     (if subproblem-below
 	(line-end subproblem-below -1)
-	(buffer-end (mark-buffer mark)))))
+	(group-end mark))))
 
 (define (re-match-extract-number register-number)
-  (string->number (extract-string (re-match-end register-number)
-				  (re-match-start register-number))))
+  (let ((start (re-match-start register-number))
+	(end (re-match-end register-number)))
+    (and start
+	 end
+	 (string->number (extract-string end start)))))
+
+(define (re-match-extract-subproblem)
+  (or (re-match-extract-number 1)
+      (editor-error "Bad subproblem marker.")))
+
+(define (re-match-extract-reduction)
+  (or (re-match-extract-number 2)
+      (editor-error "Bad reduction marker.")))
+
+(define (re-match-extract-reduction-count)
+  (re-match-extract-number 3))
+
+(define (current-subproblem-number mark)
+  (and (find-previous-subproblem-or-reduction-marker mark)
+       (re-match-extract-subproblem)))
+
+(define (current-reduction-number mark)
+  (and (not (below-subproblem-marker? mark))
+       (begin
+	 (find-previous-reduction-marker mark)
+	 (re-match-extract-reduction))))
 
 ;; Return true whenever expansion is impossible at MARK, even if
 ;; because MARK is outside any subproblem or because there are no
@@ -442,86 +550,94 @@ The error that started the debugger is:
 (define (reductions-expanded? mark)
   (let ((subproblem-above (find-previous-subproblem-marker mark)))
     (or (not subproblem-above)
-	(let ((subproblem-number-above (re-match-extract-number 1))
-	      (max-reduction-number (re-match-extract-number 2)))
-	  (or (zero? max-reduction-number)
+	(let ((subproblem-number-above (re-match-extract-subproblem))
+	      (reduction-count (re-match-extract-reduction-count)))
+	  (and reduction-count
 	      (let ((reduction-below
-		     (find-next-reduction-marker
+		     (find-next-subproblem-or-reduction-marker
 		      (line-end subproblem-above 0))))
 		(and reduction-below
-		     (= (re-match-extract-number 1)
+		     (= (re-match-extract-subproblem)
 			subproblem-number-above))))))))
 
 (define (perhaps-expand-reductions mark)
-  (if (and (ref-variable debugger-automatically-expand-reductions?)
+  (if (and (ref-variable debugger-expand-reductions?)
 	   (not (reductions-expanded? mark)))
       (with-output-to-mark (end-of-subproblem mark)
 	(lambda ()
-	  (message "Automatically expanding reductions...")
+	  (message "Expanding reductions...")
 	  (print-reductions mark)
-	  (temporary-message "Automatically expanding reductions...done")))))
+	  (temporary-message "Expanding reductions...done")))))
 
-(define (above-subproblem-boundary? mark)
-  (let ((next-reduction (find-next-reduction-marker mark))
+(define (above-subproblem-marker? mark)
+  (let ((next-marker
+	 (find-next-subproblem-or-reduction-marker mark))
 	(next-subproblem (find-next-subproblem-marker mark)))
-    (and next-reduction
-	 (mark= next-reduction next-subproblem))))
+    (and next-marker
+	 (mark= next-marker next-subproblem))))
 
-(define (below-subproblem-boundary? mark)
-  (let ((previous-reduction (find-previous-reduction-marker mark))
+(define (below-subproblem-marker? mark)
+  (let ((previous-marker
+	 (find-previous-subproblem-or-reduction-marker mark))
 	(previous-subproblem (find-previous-subproblem-marker mark)))
-    (and previous-reduction
-	 (mark= previous-reduction previous-subproblem))))
+    (and previous-marker
+	 (mark= previous-marker previous-subproblem))))
 
-(define (remove-more-subproblems-message start)
-  (let ((found
-	 (search-forward more-subproblems-message
-			 start
-			 (buffer-end (mark-buffer start))
-			 #t)))
-    (and found
-	 (delete-string (re-match-start 0)
-			(re-match-end 0)))))
+(define (display-more-subproblems-message buffer)
+  (with-buffer-selected buffer
+    (lambda ()
+      (local-set-variable! mode-line-process
+			   '(run-light
+			     (": more-subproblems " run-light)
+			     ": more-subproblems"))))
+  (buffer-modeline-event! buffer 'PROCESS-STATUS))
+
+(define (remove-more-subproblems-message buffer)
+  (with-buffer-selected buffer
+    (lambda ()
+	(local-set-variable! mode-line-process
+			     (variable-default-value
+			      (ref-variable-object mode-line-process)))))
+  (buffer-modeline-event! buffer 'PROCESS-STATUS))
 
 (define (forward-one-level start finder)
   (let ((next-level (finder start)))
     (if next-level
 	(let ((second-next-level
-	       (find-next-reduction-marker (line-end next-level 0))))
+	       (find-next-subproblem-or-reduction-marker
+		(line-end next-level 0))))
 	  (if second-next-level
 	      (line-end second-next-level -1)
-	      (buffer-end (mark-buffer next-level))))
-	(let* ((buffer (mark-buffer start))
-	       (buf-end (buffer-end buffer))
-	       (number (or (current-subproblem-number start)
-			   (current-subproblem-number (buffer-end buffer)))))
+	      (group-end next-level)))
+	(let ((buffer (mark-buffer start))
+	      (buf-end (group-end start))
+	      (number (current-subproblem-number (group-end start))))
 	  (if number
 	      (let ((count (count-subproblems (buffer-dstate buffer))))
 		(if (< number (-1+ count))
-		    (with-output-to-mark (buffer-end buffer)
-		      (lambda ()
-			(remove-more-subproblems-message
-			 (find-previous-subproblem-marker buf-end))
-			(fresh-line)
-			(newline)
-			(let ((subproblem (nth-subproblem buffer (1+ number))))
-			  (with-values
-			      (lambda ()
-				(stack-frame/debugging-info subproblem))
-			    (lambda (expression environment subexpression)
-			      subexpression
-			      (message
-			       "Automatically expanding subproblems...")
-			      (print-subproblem-level
-			       (1+ number)
-			       subproblem
-			       expression
-			       environment)
-			      (temporary-message
-			       "Automatically expanding subproblems...done"))))
-			(if (< number (- count 2))
-			    (display more-subproblems-message))
-			(buffer-end buffer)))
+		    (with-output-to-mark
+		     (group-end start)
+		     (lambda ()
+		       (remove-more-subproblems-message buffer)
+		       (let ((subproblem (nth-subproblem buffer (1+ number))))
+			 (with-values
+			     (lambda ()
+			       (stack-frame/debugging-info subproblem))
+			   (lambda (expression environment subexpression)
+			     subexpression
+			     (message
+			      "Expanding subproblems...")
+			     (newline)
+			     (print-subproblem-level
+			      (1+ number)
+			      subproblem
+			      expression
+			      environment)
+			     (temporary-message
+			      "Expanding subproblems...done"))))
+		       (if (< number (- count 2))
+			   (display-more-subproblems-message buffer))
+		       (group-end start)))
 		    (editor-error "No more subproblems or reductions")))
 	      (editor-error "No subproblem or reduction marks"))))))
 
@@ -530,7 +646,7 @@ The error that started the debugger is:
 (define (forward-one-reduction start)
   (let ((mark (mark-right-inserting-copy start)))
     (perhaps-expand-reductions mark)
-    (forward-one-level mark find-next-reduction-marker)))
+    (forward-one-level mark find-next-subproblem-or-reduction-marker)))
 
 (define (backward-one-level start finder)
   (let ((level-top (finder start)))
@@ -545,10 +661,10 @@ The error that started the debugger is:
   (backward-one-level start find-previous-subproblem-marker))
 (define (backward-one-reduction start)
   (let ((mark (mark-left-inserting-copy start)))
-    (if (below-subproblem-boundary? mark)
+    (if (below-subproblem-marker? mark)
 	(let ((previous-subproblem (backward-one-subproblem mark)))
 	  (perhaps-expand-reductions previous-subproblem)))
-    (backward-one-level mark find-previous-reduction-marker)))
+    (backward-one-level mark find-previous-subproblem-or-reduction-marker)))
 
 (define forward-reduction)
 (define backward-reduction)
@@ -563,19 +679,6 @@ The error that started the debugger is:
   (lambda (f b)
     (set! forward-subproblem f)
     (set! backward-subproblem b)))
-
-(define (current-subproblem-number mark)
-  (and (find-previous-reduction-marker mark)
-       (re-match-extract-number 1)))
-
-(define (current-reduction-number mark)
-  (and (find-previous-reduction-marker mark)
-       (re-match-extract-number 2)))
-
-(define (current-subproblem-and-reduction-numbers mark)
-  (and (find-previous-reduction-marker mark)
-       (values (re-match-extract-number 1)
-	       (re-match-extract-number 2))))
 
 (define (change-subproblem! dstate subproblem-number)
   (let ((finish-move-to-subproblem!
@@ -613,28 +716,30 @@ The error that started the debugger is:
 
 (define (debug-dstate mark)
   (let ((dstate (buffer-dstate (mark-buffer mark))))
-    (let ((marker-numbers (current-subproblem-and-reduction-numbers mark)))
-      (and marker-numbers
-	   (with-values (lambda () marker-numbers)
-	     (lambda (subproblem-number reduction-number)
-	       (change-subproblem! dstate subproblem-number)
-	       (if (positive? (dstate/number-of-reductions dstate))
-		 (change-reduction! dstate reduction-number)
-		 (set-dstate/reduction-number! dstate false))
-	     dstate))))))
+    (let ((subproblem-number (current-subproblem-number mark))
+	  (reduction-number (current-reduction-number mark)))
+      (if subproblem-number
+	  (begin (change-subproblem! dstate subproblem-number)
+		 (if (and reduction-number
+			  (positive? (dstate/number-of-reductions dstate)))
+		     (change-reduction! dstate reduction-number)
+		     (set-dstate/reduction-number! dstate false))
+		 dstate)
+	  (editor-error "Cannot find environment for evaluation.")))))
 
-(define (debug-evaluation-environment mark)
+(define (debug-evaluation-information mark)
   (let ((dstate (debug-dstate mark)))
     (if dstate
-	(let ((environment-list (dstate/environment-list dstate)))
-	  (if (and (pair? environment-list)
-		   (environment? (car environment-list)))
-	      (car environment-list)
-	      (let ((environment (ref-variable scheme-environment)))
-		(if (eq? 'DEFAULT environment)
-		    (nearest-repl/environment)
-		    (->environment environment)))))
-	(editor-error "Point must be between frame markers (\"------\")"))))
+	(values (let ((environment-list (dstate/environment-list dstate)))
+		  (if (and (pair? environment-list)
+			   (environment? (car environment-list)))
+		      (car environment-list)
+		      (let ((environment (ref-variable scheme-environment)))
+			(if (eq? 'DEFAULT environment)
+			    (nearest-repl/environment)
+			    (->environment environment)))))
+		(stack-frame->continuation (dstate/subproblem dstate)))
+	(editor-error "Point must be between frame marker lines"))))
 
 (define (debugger-command-invocation command)
   (lambda ()
@@ -678,16 +783,47 @@ The error that started the debugger is:
       (newline)
       (newline))))
 
-(define-command continuation-browser-evaluate-previous-expression
+(define (continuation-browser-evaluate-region region)
+  (fluid-let ((in-debugger-evaluation? true))
+    (if (region-contains-marker? region)
+	(editor-error "Cannot evaluate a region that contains markers.")
+	(let ((end (region-end region)))
+	  (set-buffer-point! (mark-buffer end) end)
+	  (with-values
+	      (lambda ()
+		(debug-evaluation-information (region-start region)))
+	    (lambda (environment continuation)
+	      (call-with-current-continuation
+	       (lambda (new-continuation)
+		 (within-continuation
+		  continuation
+		  (lambda ()
+		    (new-continuation
+		     (evaluate-region region environment))))))))))))
+
+(define (continuation-browser-evaluate-from-mark input-mark)
+  (continuation-browser-evaluate-region
+   (make-region input-mark (forward-sexp input-mark 1 'ERROR))))
+
+(define-command continuation-browser-eval-last-expression
   "Evaluate the expression before the point."
   ()
   (lambda ()
-    (let ((cp (current-point)))
-      (let* ((region (make-region (backward-sexp cp 1) cp))
-	     (expression (with-input-from-region region read)))
-	(fluid-let ((in-debugger-evaluation? true))
-	  (editor-eval expression
-		       (debug-evaluation-environment cp)))))))
+    (continuation-browser-evaluate-from-mark
+     (backward-sexp (current-point) 1))))
+
+(define-command continuation-browser-eval-region
+  "Evaluate the expressions in the region.  Give an error if the
+region includes part of any subproblem or reduction marker."
+  "r"
+  (lambda (region)
+    (continuation-browser-evaluate-region region)))
+
+(define-command continuation-browser-eval-definition
+  "Evaluate the definition the point is in or before."
+  ()
+  (lambda ()
+    (continuation-browser-evaluate-from-mark (current-definition-start))))
 
 (define (print-subproblem-or-reduction mark dstate)
   (edwin-debugger-presentation mark
@@ -744,22 +880,61 @@ expanded, move the point to one of the reductions."
 	    (lambda ()
 	      (print-reductions (current-point))))))))
 
-(define-command continuation-browser-goto
-  "Move to an arbitrary subproblem.
-Prompt for the subproblem number if not given as an argument."
+(define-command continuation-browser-go-to
+  "Move to an arbitrary subproblem.  Prompt for the subproblem number
+if not given as an argument.  Move to the last subproblem if the
+subproblem number is too high."
   "NSubproblem number"
-  (lambda (subproblem-number)
-    (let* ((buffer (current-buffer))
-	   (max-subproblem-number
-	    (-1+ (count-subproblems (buffer-dstate buffer)))))
-      (if (and (exact-nonnegative-integer? subproblem-number)
-	       (<= subproblem-number max-subproblem-number))
-	  (set-buffer-point!
-	   buffer
-	   (forward-subproblem (buffer-start buffer)
-			       (1+ subproblem-number)))
-	  (editor-error "Subproblem number must be an integer between 0 and "
-			max-subproblem-number)))))
+  (lambda (destination-subproblem-number)
+    (let ((end (group-end (current-point)))
+	  (not-found
+	   (lambda ()
+	     (editor-error "Cannot find subproblem"
+			   destination-subproblem-number))))
+      (let ((last-subproblem-number (current-subproblem-number end)))
+	(if last-subproblem-number
+	    (set-buffer-point!
+	     (current-buffer)
+	     (cond ((< destination-subproblem-number last-subproblem-number)
+		    (let loop ((point (backward-subproblem end 1)))
+		      (if point
+			  (let ((subproblem (current-subproblem-number point)))
+			    (if subproblem
+				(if (= subproblem
+				       destination-subproblem-number)
+				    point
+				    (loop (backward-subproblem point 1)))
+				(not-found)))
+			  (not-found))))
+		   ((> destination-subproblem-number last-subproblem-number)
+		    (forward-subproblem
+		     end
+		     (- destination-subproblem-number last-subproblem-number)
+		     'limit))
+		   (else end)))
+	    (not-found))))))
+
+(define-command continuation-browser-expand-subproblems
+  "Expand all subproblems, or ARG more subproblems if argument is given."
+  "P"
+  (lambda (argument)
+    (let ((subproblem-number
+	   (if argument
+	       (let ((argument
+		      (if (pair? argument)
+			  (car argument)
+			  argument)))
+		 (let ((number
+			(current-subproblem-number
+			 (group-end (current-point)))))
+		   (if number
+		       (+ number argument)
+		       (editor-error "Cannot find subproblem marker."))))
+	       (-1+ (count-subproblems
+		     (buffer-dstate (current-buffer)))))))
+      (let ((point (mark-right-inserting-copy (current-point))))
+	((ref-command continuation-browser-go-to) subproblem-number)
+	(set-current-point! point)))))
 
 ;; The subproblem and reduction motion commands rely, in many places,
 ;; on the assumption that subproblem and reduction numbers increase
@@ -802,32 +977,84 @@ reduction shown in the previous subproblem."
   (lambda (argument)
     (move-thing backward-subproblem argument)))
 
+(define (show-frame environment depth brief?)
+  (show-environment-name environment)
+  (if (not (negative? depth))
+      (begin (newline)
+	     (write-string "Depth (relative to initial environment): ")
+	     (write depth)))
+  (if (not (and (environment->package environment) brief?))
+      (begin
+	(newline)
+	(show-environment-bindings environment brief?))))
+
+(define (show-current-frame dstate brief?)
+  (edwin-debugger-presentation
+   (current-point)
+   (lambda ()
+     (let ((environment-list (dstate/environment-list dstate)))
+       (show-frame (car environment-list)
+		   (length (cdr environment-list))
+		   brief?)))))
+
+(define (command/show-all-frames dstate)
+  (let ((environment-list (dstate/environment-list dstate)))
+    (if (pair? environment-list)
+	(show-frames (car (last-pair environment-list)) 0)
+	(undefined-environment))))
+
+(define (show-frames environment depth)
+  (edwin-debugger-presentation
+   (current-point)
+   (lambda ()
+     (let loop ((environment environment) (depth depth))
+       (write-string "----------------------------------------")
+       (newline)
+       (show-frame environment depth true)
+       (if (eq? true (environment-has-parent? environment))
+	   (begin
+	     (newline)
+	     (newline)
+	     (loop (environment-parent environment) (1+ depth))))))))
+
 (define-command continuation-browser-show-current-frame
   "Print the bindings of the current frame of the current environment."
   ()
-  (debugger-command-invocation command/show-current-frame))
+  (lambda ()
+    (show-current-frame (debug-dstate (current-point)) false)))
 
 (define-command continuation-browser-show-all-frames
   "Print the bindings of all frames of the current environment."
   ()
   (debugger-command-invocation command/show-all-frames))
 
-(define-command continuation-browser-quit
-  "Kill the current continuation browser."
-  ()
-  (lambda ()
-    (kill-buffer-interactive (current-buffer))))
-
-(define-command continuation-browser-return
-  "Invoke the continuation that is the current subproblem.
-Prompts for a value to give the continuation as an argument."
-  ()
-  (lambda ()
+(define-command continuation-browser-return-from
+  "Return FROM the current subproblem with a value.
+Invoke the continuation that is waiting for the value of the current
+subproblem, prompting for an expression to evaluate to yield a value.
+Prefix argument means do not kill the debugger buffer."
+  "P"
+  (lambda (avoid-deletion?)
     (fluid-let ((hook/debugger-before-return
 		 (lambda ()
-		   (if (ref-variable debugger-quit-on-return?)
+		   (if (and (not avoid-deletion?)
+			    (ref-variable debugger-quit-on-return?))
 		       (kill-buffer-interactive (current-buffer))))))
-      (invoke-debugger-command command/return (current-point)))))
+      (invoke-debugger-command command/return-from (current-point)))))
+
+(define-command continuation-browser-return-to
+  "Return TO the current subproblem with a value.
+Invoke the continuation corresponding to this subproblem, prompting
+for an expression to yield a value.
+Prefix argument means do not kill the debugger buffer."
+  "P"
+  (lambda (avoid-deletion?)
+    (fluid-let ((hook/debugger-before-return
+		 (lambda ()
+		   (if (and (not avoid-deletion?)
+			    (ref-variable debugger-quit-on-return?))
+		       (kill-buffer-interactive (current-buffer))))))
+      (invoke-debugger-command command/return-to (current-point)))))
 
 (define-command continuation-browser-frame
   "Show the current subproblem's stack frame in internal format."
@@ -845,11 +1072,25 @@ Prompts for a value to give the continuation as an argument."
       (invoke-debugger-command command/condition-restart (current-point)))))
 
 (define-major-mode continuation-browser scheme "Debug"
-  "You are in the Scheme debugger, where you can do the following:
+  "Major mode for debugging Scheme programs and browsing Scheme continuations.
+Editing and evaluation commands are similar to those of Scheme Interaction mode.
+
+  Expressions appear one to a line, most recent first.  Expressions
+  are evaluated in the environment of the line above the point.
+
+  In the marker lines,
+
+    -C- means frame was generated by Compiled code
+    -I- means frame was generated by Interpreted code
+
+    S=x means frame is in subproblem number x
+    R=y means frame is reduction number y
+    #R=z means there are z reductions in the subproblem
+      Use \\[continuation-browser-forward-reduction] to see them
 
 Evaluate expressions
 
-  \\[continuation-browser-evaluate-previous-expression] evaluates the expression preceding the point in the
+  \\[continuation-browser-eval-last-expression] evaluates the expression preceding the point in the
   environment of the current frame.
 
 Move between subproblems and reductions
@@ -860,7 +1101,7 @@ Move between subproblems and reductions
   \\[continuation-browser-forward-subproblem] moves forward one subproblem (earlier in time).
   \\[continuation-browser-backward-subproblem] moves backward one subproblem (later in time).
 
-  \\[continuation-browser-goto] moves directly to a subproblem (given its number).
+  \\[continuation-browser-go-to] moves directly to a subproblem (given its number).
 
 Display debugging information
 
@@ -869,15 +1110,17 @@ Display debugging information
   \\[continuation-browser-print-environment] describes the current Environment.
   \\[continuation-browser-print-expression] pretty prints the current expression.
   \\[continuation-browser-print-environment-procedure] pretty prints the procedure that created the current environment.
-  \\[continuation-browser-expand-reductions] shows the execution history (Reductions) of the current subproblem level.
+  \\[continuation-browser-expand-reductions] shows the Reductions of the current subproblem level.
   \\[continuation-browser-print-subproblem-or-reduction] describes the current subproblem or reduction.
+  \\[continuation-browser-expand-subproblems] shows subproblems not already displayed.
   \\[continuation-browser-frame] displays the current stack frame in internal format.
 
 Miscellany
 
   \\[continuation-browser-condition-restart] continues the program using a standard restart option.
-  \\[continuation-browser-quit] Quits the debugger, killing the debugging buffer.
-  \\[continuation-browser-return] returns (continues with) an expression after evaluating it."
+  \\[continuation-browser-return] returns (continues with) an expression after evaluating it.
+
+Use \\[kill-buffer] to quit the debugger."
   (local-set-variable! enable-transcript-buffer true)
   (local-set-variable! transcript-buffer-name (current-buffer))
   (local-set-variable! transcript-buffer-mode
@@ -903,53 +1146,71 @@ Miscellany
       thunk))))
 
 ;; Disable EVAL-CURRENT-BUFFER in Debugger Mode; it is inherited from
-;; Interaction mode but does not make sense here:
+;; Scheme mode but does not make sense here:
 
 (define-key 'continuation-browser #\M-o
   (ref-command-object undefined))
 
 ;; Evaluation
 
-(define-key 'continuation-browser '(#\c-x #\c-e)
-  'continuation-browser-evaluate-previous-expression)
+(define-key 'continuation-browser '(#\C-x #\C-e)
+  'continuation-browser-eval-last-expression)
+(define-key 'continuation-browser #\M-z
+  'continuation-browser-eval-definition)
+(define-key 'continuation-browser '(#\M-C-z)
+  'continuation-browser-eval-region)
+
+;; Comint history
+
+(define-key 'continuation-browser #\M-p
+  'comint-previous-input)
+(define-key 'continuation-browser #\M-n
+  'comint-next-input)
+
+(define-key 'continuation-browser '(#\C-c #\C-r)
+  'comint-history-search-backward)
+(define-key 'continuation-browser '(#\C-c #\C-s)
+  'comint-history-search-forward)
 
 ;; Subproblem/reduction motion
 
-(define-key 'continuation-browser #\M-n
+(define-key 'continuation-browser '(#\C-c #\C-f)
   'continuation-browser-forward-reduction)
-(define-key 'continuation-browser #\M-C-n
+(define-key 'continuation-browser '(#\C-c #\C-n)
   'continuation-browser-forward-subproblem)
-(define-key 'continuation-browser #\M-p
+(define-key 'continuation-browser '(#\C-c #\C-b)
   'continuation-browser-backward-reduction)
-(define-key 'continuation-browser '(#\c-c #\g)
-  'continuation-browser-goto)
-(define-key 'continuation-browser #\M-C-p
+(define-key 'continuation-browser '(#\C-c #\C-p)
   'continuation-browser-backward-subproblem)
+(define-key 'continuation-browser '(#\C-c #\C-w)
+  'continuation-browser-go-to)
 
 ;; Information display
 
-(define-key 'continuation-browser '(#\c-c #\a)
+(define-key 'continuation-browser '(#\C-c #\C-a)
   'continuation-browser-show-all-frames)
-(define-key 'continuation-browser '(#\c-c #\c)
+(define-key 'continuation-browser '(#\C-c #\C-c)
   'continuation-browser-show-current-frame)
-(define-key 'continuation-browser '(#\c-c #\e)
+(define-key 'continuation-browser '(#\C-c #\C-e)
   'continuation-browser-print-environment)
-(define-key 'continuation-browser '(#\c-c #\l)
+(define-key 'continuation-browser '(#\C-c #\C-l)
   'continuation-browser-print-expression)
-(define-key 'continuation-browser '(#\c-c #\o)
+(define-key 'continuation-browser '(#\C-c #\C-o)
   'continuation-browser-print-environment-procedure)
-(define-key 'continuation-browser '(#\c-c #\r)
+(define-key 'continuation-browser '(#\C-c #\C-r)
   'continuation-browser-expand-reductions)
-(define-key 'continuation-browser '(#\c-c #\t)
+(define-key 'continuation-browser '(#\C-c #\C-t)
   'continuation-browser-print-subproblem-or-reduction)
-(define-key 'continuation-browser '(#\c-c #\y)
+(define-key 'continuation-browser '(#\C-c #\C-x)
+  'continuation-browser-expand-subproblems)
+(define-key 'continuation-browser '(#\C-c #\C-y)
   'continuation-browser-frame)
 
 ;; Miscellany
 
-(define-key 'continuation-browser '(#\c-c #\k)
+(define-key 'continuation-browser '(#\C-c #\C-k)
   'continuation-browser-condition-restart)
-(define-key 'continuation-browser '(#\c-c #\q)
-  'continuation-browser-quit)
-(define-key 'continuation-browser '(#\c-c #\z)
-  'continuation-browser-return)
+(define-key 'continuation-browser '(#\C-c #\C-j)
+  'continuation-browser-return-to)
+(define-key 'continuation-browser '(#\C-c #\C-z)
+  'continuation-browser-return-from)
