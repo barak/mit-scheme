@@ -1,31 +1,35 @@
-#!/bin/csh -f
+#!/bin/sh
 ###
-###	$Id: ultrix.m4,v 1.6 1993/06/24 07:32:21 gjr Exp $
+###	$Id: ultrix.m4,v 1.7 1995/06/28 22:05:35 cph Exp $
 ###
-###	Copyright (c) 1989-1993 Massachusetts Institute of Technology
+###	Copyright (c) 1989-1995 Massachusetts Institute of Technology
 ###
 ####	Postprocessing to make m4 work correctly under Ultrix & BSD.
 
-if ($#argv == 0) then
+if [ $# = 0 ]
+then
   sed -e '/^#/D' | m4 | sed -e 's/@/$/g' -e 's/^$//'
 else
-  set tmpfil = "m4.tmp"
-  set seen_input = 0
+  tmpfil="m4.tmp"
+  seen_input=0
   rm -f "$tmpfil"
-  
-  while ($#argv != 0)
-    if ("$argv[1]" == "-P") then
-      echo "$argv[2]" >> "$tmpfil"
+
+  while [ $# != 0 ]
+  do
+    if [ "$1" = "-P" ]
+    then
+      echo "$2" >> "$tmpfil"
       shift
     else
-      set seen_input = 1
-      sed -e '/^#/D' < "$argv[1]" >> "$tmpfil"
-    endif
+      seen_input=1
+      sed -e '/^#/D' < "$1" >> "$tmpfil"
+    fi
     shift
-  end
-  if ($seen_input == 0) then
+  done
+  if [ $seen_input = 0 ]
+  then
     sed -e '/^#/D' >> "$tmpfil"
-  endif
+  fi
   m4 < "$tmpfil" | sed -e 's/@/$/g' -e 's/^$//'
   rm -f "$tmpfil"
-endif
+fi
