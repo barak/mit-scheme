@@ -55,4 +55,4 @@ rm -rf doc-html
 mkdir doc-html
 mv ${tldir}/*.html doc-html
 
-rm -rf ${tldir}
+rm -rf ${prefix}
