@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.6 1993/07/07 20:44:44 gjr Exp $
+$Id: dassm1.scm,v 1.7 1997/07/15 16:05:24 adams Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -147,7 +147,7 @@ MIT in each case. |#
 (define (disassembler/write-constants-block block symbol-table)
   (fluid-let ((*unparser-radix* 16))
     (let ((end (system-vector-length block)))
-      (let loop ((index (compiled-code-block/constants-start block)))
+      (let loop ((index (compiled-code-block/marked-start block)))
 	(cond ((not (< index end)) 'DONE)
 	      ((object-type?
 		(let-syntax ((ucode-type
