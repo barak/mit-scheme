@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/safety.txt,v 1.2 1990/10/01 22:17:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/safety.txt,v 1.3 1990/10/01 23:04:37 jinx Exp $
 
 		COMPILER SAFETY INFORMATION 
 		Liar versions 4.77 and later
@@ -67,9 +67,9 @@ that could be generated assuming that no violations will occur at
 runtime.  This code requires space, and time to execute, but
 furthermore, may cause other performance degradation with respect to
 the version where no violations are guaranteed to occur.  This
-additional performance degradation arises from preventing the compiler
-to make better register assignments or reuse the results of previous
-computations.
+additional performance degradation arises because the compiler is
+prevented from making better register assignments or reusing the
+results of previous computations.
 
 For a translation to be safe, ie. completely correct, all these checks
 must be performed at runtime except in those situations when the
@@ -101,12 +101,12 @@ future.
 - Type checks and range checks: A Scheme program can be considered to
 be a set of calls to primitive operations and some higher-level glue
 that pieces them together.  The higher-level glue does not directly
-manipulate objects, but instead passes it around to the various
+manipulate objects, but instead passes them around to the various
 primitives in a controlled fashion.  Thus type and range checks are
 not needed in the higher-level glue, but only in the primitives
 themselves.  There are various switches that control how primitives
 are treated by the compiler, and they provide the main form of user
-control of the safety of the compilation process.
+control of the safety of compiled code.
 
 	Control of the open coding (in-lining) of primitives
 
@@ -214,7 +214,7 @@ turning both of these switches on bumps COMPILER:OPEN-CODE-PRIMITIVES?
 to ALLOW-WRITES unless it is false.
 
 
-	COMPILER:PRIMITIVE-ERROR-RESTARTABLE?
+	COMPILER:PRIMITIVE-ERRORS-RESTARTABLE?
 
 This boolean switch controls how errors will be signalled if they are
 detected at runtime due to incorrect arguments found by checks in the
