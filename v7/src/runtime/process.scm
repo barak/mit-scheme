@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.15 1992/03/24 23:30:08 cph Exp $
+$Id: process.scm,v 1.16 1995/04/14 19:06:04 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -84,24 +84,33 @@ MIT in each case. |#
 
 (define (subprocess-remove! process key)
   (1d-table/remove! (subprocess-properties process) key))
-
-(define (subprocess-i/o-port process)
-  (without-interrupts
-   (lambda ()
-     (or (subprocess-%i/o-port process)
-	 (let ((port
-		(let ((input-channel (subprocess-input-channel process))
-		      (output-channel (subprocess-output-channel process)))
-		  (if input-channel
-		      (if output-channel
-			  (make-generic-i/o-port input-channel output-channel
-						 512 512)
-			  (make-generic-input-port input-channel 512))
-		      (if output-channel
-			  (make-generic-output-port output-channel 512)
-			  false)))))
-	   (set-subprocess-%i/o-port! process port)
-	   port)))))
+
+(define (subprocess-i/o-port process #!optional line-translation)
+  (let ((line-translation
+	 (if (default-object? line-translation)
+	     'DEFAULT
+	     line-translation)))
+    (without-interrupts
+     (lambda ()
+       (or (subprocess-%i/o-port process)
+	   (let ((port
+		  (let ((input-channel (subprocess-input-channel process))
+			(output-channel (subprocess-output-channel process)))
+		    (if input-channel
+			(if output-channel
+			    (make-generic-i/o-port input-channel output-channel
+						   512 512
+						   line-translation)
+			    (make-generic-input-port input-channel
+						     512
+						     line-translation))
+			(if output-channel
+			    (make-generic-output-port output-channel
+						      512
+						      line-translation)
+			    false)))))
+	     (set-subprocess-%i/o-port! process port)
+	     port))))))
 
 (define (subprocess-input-port process)
   (let ((port (subprocess-i/o-port process)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.3 1993/10/21 14:52:37 cph Exp $
+$Id: genio.scm,v 1.4 1995/04/14 19:06:09 cph Exp $
 
-Copyright (c) 1991-93 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -92,21 +92,44 @@ MIT in each case. |#
 (define generic-output-template)
 (define generic-i/o-template)
 
-(define (make-generic-input-port input-channel input-buffer-size)
-  (make-generic-port generic-input-template
-		     (make-input-buffer input-channel input-buffer-size)
-		     false))
+(define (make-generic-input-port input-channel input-buffer-size
+				 #!optional line-translation)
+  (let ((line-translation
+	 (if (default-object? line-translation)
+	     'DEFAULT
+	     line-translation)))
+    (make-generic-port generic-input-template
+		       (make-input-buffer input-channel
+					  input-buffer-size
+					  line-translation)
+		       #f)))
 
-(define (make-generic-output-port output-channel output-buffer-size)
-  (make-generic-port generic-output-template
-		     false
-		     (make-output-buffer output-channel output-buffer-size)))
+(define (make-generic-output-port output-channel output-buffer-size
+				  #!optional line-translation)
+  (let ((line-translation
+	 (if (default-object? line-translation)
+	     'DEFAULT
+	     line-translation)))
+    (make-generic-port generic-output-template
+		       #f
+		       (make-output-buffer output-channel
+					   output-buffer-size
+					   line-translation))))
 
 (define (make-generic-i/o-port input-channel output-channel
-			       input-buffer-size output-buffer-size)
-  (make-generic-port generic-i/o-template
-		     (make-input-buffer input-channel input-buffer-size)
-		     (make-output-buffer output-channel output-buffer-size)))
+			       input-buffer-size output-buffer-size
+			       #!optional line-translation)
+  (let ((line-translation
+	 (if (default-object? line-translation)
+	     'DEFAULT
+	     line-translation)))
+    (make-generic-port generic-i/o-template
+		       (make-input-buffer input-channel
+					  input-buffer-size
+					  line-translation)
+		       (make-output-buffer output-channel
+					   output-buffer-size
+					   line-translation))))
 
 (define (make-generic-port template input-buffer output-buffer)
   (let ((port (port/copy template (vector input-buffer output-buffer))))
