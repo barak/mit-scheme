@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.6 1993/11/02 20:59:08 jmiller Exp $
+$Id: pruxdld.c,v 1.7 1993/11/04 04:00:48 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -177,7 +177,7 @@ the corresponding Scheme integer.")
   PRIMITIVE_HEADER (1);
   
   address = ((long) (arg_integer (1)));
-  thunk = ((unsigned long EXFUN ((*), (void))) address);
+  thunk = ((long EXFUN ((*), (void))) address);
   result = ((* thunk) ());
   PRIMITIVE_RETURN (long_to_integer (result));
 }
