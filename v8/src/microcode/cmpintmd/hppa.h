@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.17 1990/09/08 00:09:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.18 1990/11/30 02:45:43 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -235,7 +235,6 @@ hppa_store_absolute_address (addr, sourcev, nullify_p)
    Uses routines from cmpaux-hppa.m4.
  */
 
-#define C_SCHEME
 #include "hppacache.h"
 
 static struct pdc_cache_dump cache_info;
