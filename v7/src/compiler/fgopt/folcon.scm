@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.5 1988/12/06 18:56:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/folcon.scm,v 4.6 1988/12/15 17:25:26 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -97,11 +97,10 @@ MIT in each case. |#
 			 (null? (cdr values))
 			 (or (rvalue/procedure? (car values))
 			     (rvalue/constant? (car values))))))))))
-    (for-each (lambda (lvalue) (lvalue-mark-set! lvalue 'KNOWABLE))
-	      knowable-nodes)
-    (transitive-closure false delete-if-known! knowable-nodes)
-    (for-each (lambda (lvalue) (lvalue-mark-clear! lvalue 'KNOWABLE))
-	      knowable-nodes))
+    (with-new-lvalue-marks
+     (lambda ()
+       (for-each lvalue-mark! knowable-nodes)
+       (transitive-closure false delete-if-known! knowable-nodes))))
   (list-transform-negative lvalues lvalue-known-value))
 
 (define (delete-if-known! lvalue)
@@ -109,7 +108,7 @@ MIT in each case. |#
 	   (for-all? (lvalue-source-links lvalue) lvalue-known-value))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
-		    (if (lvalue-mark-set? lvalue* 'KNOWABLE)
+		    (if (lvalue-marked? lvalue*)
 			(enqueue-node! lvalue*)))
 		  (lvalue-forward-links lvalue))
 	(set-lvalue-known-value! lvalue value))))
@@ -117,22 +116,21 @@ MIT in each case. |#
 
 (define (eliminate-known-nodes lvalues)
   (list-transform-negative lvalues
-      (lambda (lvalue)
-	(and (not (or (lvalue-passed-in? lvalue)
-		      (and (variable? lvalue)
-			   (variable-assigned? lvalue)
-			   (not (memq 'CONSTANT
-				      (variable-declarations lvalue))))))
-		 
-	     (let ((values (lvalue-values lvalue)))
-	       (and (not (null? values))
-		    (null? (cdr values))
-		    (let ((value (car values)))
-		      (and (or (rvalue/procedure? value)
-			       (rvalue/constant? value))
-			   (begin
-			     (set-lvalue-known-value! lvalue value)
-			     true)))))))))
+    (lambda (lvalue)
+      (and (not (or (lvalue-passed-in? lvalue)
+		    (and (variable? lvalue)
+			 (variable-assigned? lvalue)
+			 (not (memq 'CONSTANT
+				    (variable-declarations lvalue))))))
+	   (let ((values (lvalue-values lvalue)))
+	     (and (not (null? values))
+		  (null? (cdr values))
+		  (let ((value (car values)))
+		    (and (or (rvalue/procedure? value)
+			     (rvalue/constant? value))
+			 (begin
+			   (set-lvalue-known-value! lvalue value)
+			   true)))))))))
 
 (define (fold-combinations combinations)
   (if (null? combinations)
