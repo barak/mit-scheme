@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.17 2001/06/05 02:46:59 cph Exp $
+$Id: socket.scm,v 1.18 2002/10/07 02:13:14 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -83,7 +83,8 @@ USA.
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
 
-(define (tcp-server-connection-accept server-socket block? peer-address)
+(define (tcp-server-connection-accept server-socket block? peer-address
+				      #!optional line-translation)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
@@ -111,7 +112,13 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-generic-i/o-port channel channel 4096 4096))))
+	 (let ((line-translation
+		(if (or (default-object? line-translation)
+			(not line-translation))
+		    'DEFAULT
+		    line-translation)))
+	   (make-generic-i/o-port channel channel 4096 4096
+				  line-translation line-translation)))))
 
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
