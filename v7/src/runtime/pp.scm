@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.25 1992/05/20 18:29:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.26 1992/06/01 22:18:51 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ MIT in each case. |#
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
-(define *pp-named-lambda->define?* true)
+(define *pp-named-lambda->define?* false)
 (define *pp-primitives-by-name* true)
 (define *pp-uninterned-symbols-by-name* true)
 (define *pp-no-highlights?* true)
@@ -97,9 +97,13 @@ MIT in each case. |#
 			     (unsyntax object))))
 		    (if (and as-code?
 			     (pair? sexp)
-			     *pp-named-lambda->define?*
-			     (eq? (car sexp) 'NAMED-LAMBDA))
-			`(DEFINE ,@(cdr sexp))
+			     (eq? (car sexp) 'NAMED-LAMBDA)
+			     *pp-named-lambda->define?*)
+			(if (and (eq? 'LAMBDA *pp-named-lambda->define?*)
+				 (pair? (cdr sexp))
+				 (pair? (cadr sexp)))
+			    `(LAMBDA ,(cdadr sexp) ,@(cddr sexp))
+			    `(DEFINE ,@(cdr sexp)))
 			sexp))
 		  (if (default-object? port) (current-output-port) port)
 		  as-code?
