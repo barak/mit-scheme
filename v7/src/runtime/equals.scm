@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: equals.scm,v 14.6 1993/11/20 21:33:38 cph Exp $
+$Id: equals.scm,v 14.7 1994/01/29 21:40:06 adams Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -43,12 +43,13 @@ MIT in each case. |#
   ;; for everything but numbers, so we take advantage of that.
   (or (eq? x y)
       (if (object-type? (object-type x) y)
-	  (if (number? y)
-	      (and (= x y)
-		   (boolean=? (exact? x) (exact? y)))
-	      (and (object-type? (ucode-type vector) y)
-		   (fix:zero? (vector-length x))
-		   (fix:zero? (vector-length y))))
+	  (and (not (fix:fixnum? x))
+	       (if (number? y)
+		   (and (= x y)
+			(boolean=? (exact? x) (exact? y)))
+		   (and (object-type? (ucode-type vector) y)
+			(fix:zero? (vector-length x))
+			(fix:zero? (vector-length y)))))
 	  (and (number? x)
 	       (number? y)
 	       (= x y)
