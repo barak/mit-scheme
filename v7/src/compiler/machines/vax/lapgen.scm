@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.12 1992/05/14 03:07:25 jinx Exp $
-$MC68020-Header: lapgen.scm,v 4.39 1991/01/30 22:48:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/lapgen.scm,v 4.13 1992/08/05 21:42:20 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -541,10 +540,11 @@ MIT in each case. |#
 
 ;;; Layout of the Scheme register array.
 
-(define-integrable reg:compiled-memtop (INST-EA (@R 10)))
-(define-integrable reg:environment (INST-EA (@RO B 10 #x000C)))
-(define-integrable reg:temp (INST-EA (@RO B 10 #x0010)))
-(define-integrable reg:lexpr-primitive-arity (INST-EA (@RO B 10 #x001C)))
+(define-integrable reg:compiled-memtop		(INST-EA (@R 10)))
+(define-integrable reg:stack-guard		(INST-EA (@RO B 10 #x0004)))
+(define-integrable reg:environment		(INST-EA (@RO B 10 #x000C)))
+(define-integrable reg:temp			(INST-EA (@RO B 10 #x0010)))
+(define-integrable reg:lexpr-primitive-arity	(INST-EA (@RO B 10 #x001C)))
 
 (let-syntax ((define-codes
 	       (macro (start . names)

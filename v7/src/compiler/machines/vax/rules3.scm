@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.9 1991/10/18 09:55:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.10 1992/08/05 21:40:15 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -392,9 +392,17 @@ MIT in each case. |#
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define-integrable (simple-procedure-header code-word label
-					    ;; entry:compiler-interrupt
-					    code:compiler-interrupt)
+(define (interrupt-check interrupt-label)
+  (LAP (CMP L (R ,regnum:free-pointer) ,reg:compiled-memtop)
+       (B B GEQ (@PCR ,interrupt-label))
+       ,@(if compiler:generate-stack-checks?
+	     (LAP (CMP L (R ,regnum:stack-pointer) ,reg:stack-guard)
+		  (B B LSS (@PCR ,interrupt-label)))
+	     (LAP))))
+
+(define (simple-procedure-header code-word label
+				 ;; entry:compiler-interrupt
+				 code:compiler-interrupt)
   (let ((gc-label (generate-label)))
     (LAP (LABEL ,gc-label)
 	 #|
@@ -402,8 +410,7 @@ MIT in each case. |#
 	 |#
 	 ,@(invoke-interface-jsb code:compiler-interrupt)
 	 ,@(make-external-label code-word label)
-	 (CMP L (R 12) ,reg:compiled-memtop)
-	 (B B GEQ (@PCR ,gc-label)))))
+	 ,@(interrupt-check gc-label))))
 
 (define (dlink-procedure-header code-word label)
   (let ((gc-label (generate-label)))    
@@ -415,8 +422,7 @@ MIT in each case. |#
 	 ,@(invoke-interface-jsb code:compiler-interrupt-dlink)
 	 ;; 'Til here
 	 ,@(make-external-label code-word label)
-	 (CMP L (R 12) ,reg:compiled-memtop)
-	 (B B GEQ (@PCR ,gc-label)))))
+	 ,@(interrupt-check gc-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -497,8 +503,7 @@ MIT in each case. |#
 				      external-label)
 	       (ADD L (&U ,(make-magic-closure-constant entry)) (@R 14))
 	       (LABEL ,internal-label)
-	       (CMP L (R 12) ,reg:compiled-memtop)
-	       (B B GEQ (@PCR ,gc-label)))))))
+	       ,@(interrupt-check gc-label))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
