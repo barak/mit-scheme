@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.101 1989/08/07 08:44:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.102 1989/08/08 10:05:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -249,7 +249,20 @@ With prefix arg, silently save all file-visiting buffers, then kill."
     (set! edwin-finalization
 	  (lambda ()
 	    (set! edwin-finalization false)
-	    (%exit)))    ((ref-command suspend-edwin))))
+	    (%exit)))
+    ((ref-command suspend-edwin))))
+
+(define-command save-buffers-kill-edwin
+  "Offer to save each buffer, then kill Edwin, returning to Scheme.
+With prefix arg, silently save all file-visiting buffers, then kill."
+  "P"
+  (lambda (no-confirmation?)
+    (save-some-buffers no-confirmation?)
+    (set! edwin-finalization
+	  (lambda ()
+	    (set! edwin-finalization false)
+	    (reset-editor)))
+    ((ref-command suspend-edwin))))
 
 (define-command exit-recursive-edit
   "Exit normally from a subsystem of a level of editing."

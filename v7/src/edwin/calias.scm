@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.6 1989/08/07 08:44:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.7 1989/08/08 10:05:40 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -74,7 +74,15 @@
 	  (else char))))
 
 (define (unmap-alias-char char)
-  (if (and (ascii-controlified? char)	   (even? (quotient (char-bits char) 2)))
+  (if (and (ascii-controlified? char)
+	   (let ((code (char-code char)))
+	     (not (or (= code #x09)	;tab
+		      (= code #x0A)	;linefeed
+		      (= code #x0C)	;page
+		      (= code #x0D)	;return
+		      (= code #x1B)	;altmode
+		      )))
+	   (even? (quotient (char-bits char) 2)))
       (unmap-alias-char
        (make-char (let ((code (char-code char)))
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))

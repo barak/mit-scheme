@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.44 1989/04/28 22:49:55 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.45 1989/08/08 10:06:07 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -59,8 +59,9 @@ Point stays the same."
   (lambda (region)
     (fill-region region)))
 
-(define-variable fill-column
-  "Controls where \\[fill-paragraph] and auto-fill mode put the right margin."
+(define-variable-per-buffer fill-column
+  "*Column beyond which automatic line-wrapping should happen.
+Automatically becomes local when set in any fashion."
   70)
 
 (define-command set-fill-column
@@ -200,8 +201,11 @@ With argument, turn auto-fill mode on iff argument is positive."
   (and (> (mark-column point) (ref-variable fill-column))
        (line-end? (horizontal-space-end point))))
 
-(define-variable left-margin
-  "The number of columns to indent each line."  0)
+(define-variable-per-buffer left-margin
+  "*Column for the default indent-line-function to indent to.
+Linefeed indents to this column in Fundamental mode.
+Automatically becomes local when set in any fashion."
+  0)
 
 (define (center-line mark)
   (let ((mark (mark-permanent! mark)))

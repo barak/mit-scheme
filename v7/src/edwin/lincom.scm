@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.103 1989/04/28 22:50:51 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.104 1989/08/08 10:06:12 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -341,8 +341,10 @@ moves down one line first (killing newline after current line)."
   "\\[delete-indentation] won't insert a space to the left of these."
   (char-set #\)))
 
-(define-variable tab-width
-  "Distance between tab stops (for display of tab characters), in columns."  8)
+(define-variable-per-buffer tab-width
+  "Distance between tab stops (for display of tab characters), in columns.
+Automatically becomes local when set in any fashion."
+  8)
 
 (define-variable indent-tabs-mode
   "If false, do not use tabs for indentation or horizontal spacing."

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.32 1989/04/28 22:47:21 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.33 1989/08/08 10:05:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,9 @@
 
 (define (make-buffer-frame superior new-buffer modeline?)
   (let ((frame (=> superior :make-inferior buffer-frame)))
-    (initial-buffer! (frame-text-inferior frame) new-buffer)
+    (let ((window (frame-text-inferior frame)))
+      (initial-buffer! window new-buffer)
+      (%window-setup-truncate-lines! window false))
     (initial-modeline! frame modeline?)
     frame))
 
@@ -169,16 +171,12 @@
   (let ((window (frame-text-inferior frame)))
     (%set-window-point! window (clip-mark-to-display window point))))
 
-(define (window-redraw! frame #!optional preserve-point?)
-  (let ((window (frame-text-inferior frame)))
-    (%window-redraw! window
-		     (if (and (not (default-object? preserve-point?))
-			      preserve-point?)
-			 (%window-point-y window)
-			 (%window-y-center window)))))
+(define (window-redraw! frame redraw-type)
+  (%window-force-redraw! (frame-text-inferior frame) redraw-type))
 
-(define-integrable (window-redraw-preserving-point! window)
-  (window-redraw! window true))
+(define (window-redraw-preserving-point! frame)
+  (let ((window (frame-text-inferior frame)))
+    (%window-force-redraw! window (%window-point-y window))))
 
 (define-integrable (window-needs-redisplay? frame)
   (with-instance-variables buffer-frame frame ()
@@ -302,3 +300,6 @@
   (let ((window (frame-text-inferior frame)))
     (maybe-recompute-image! window)
     (%window-coordinates->mark window x y)))
+
+(define (window-setup-truncate-lines! frame)
+  (%window-setup-truncate-lines! (frame-text-inferior frame) 'START))

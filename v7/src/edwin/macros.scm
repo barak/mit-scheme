@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.47 1989/06/19 22:46:06 markf Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.48 1989/08/08 10:06:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -136,6 +136,19 @@
 			  ',description
 			  ,(if (default-object? value) '#F value)))
 	 ',name))))
+
+(syntax-table-define edwin-syntax-table 'DEFINE-VARIABLE-PER-BUFFER
+  (lambda (name description #!optional value)
+    (let ((name (canonicalize-name name)))
+      (let ((scheme-name (variable-name->scheme-name name)))
+	`(BEGIN
+	   (DEFINE ,scheme-name
+	     (MAKE-VARIABLE ',name
+			    ',description
+			    ,(if (default-object? value) '#F value)))
+	   (MAKE-VARIABLE-BUFFER-LOCAL! ,scheme-name)
+	   ',name)))))
+
 (syntax-table-define edwin-syntax-table 'REF-VARIABLE-OBJECT
   (lambda (name)
     (variable-name->scheme-name (canonicalize-name name))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.188 1989/08/07 08:44:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.189 1989/08/08 10:05:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -99,6 +99,8 @@
 	      (recursive-edit-continuation false)
 	      (recursive-edit-level 0))
     (thunk)))
+(define (within-editor?)
+  (not (unassigned? current-editor)))
 (define (enter-recursive-edit)
   (let ((value
 	 (call-with-current-continuation

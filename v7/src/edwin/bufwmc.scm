@@ -1,5 +1,7 @@
 ;;; -*-Scheme-*-
 ;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.5 1989/08/08 10:05:36 cph Exp $
+;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
@@ -87,12 +89,15 @@
 		(done start columns y-start)
 		(search-downwards (1+ end)
 				  (+ y-start
-				     (column->y-size columns x-size)))))))
+				     (column->y-size columns
+						     x-size
+						     truncate-lines?)))))))
 
       (define-integrable (done start columns y-start)
 	(let ((xy
 	       (column->coordinates columns
 				    x-size
+				    truncate-lines?
 				    (group-column-length group
 							 start
 							 index
@@ -138,11 +143,20 @@
 		       (search-downwards end y-end)))))))
 
       (define-integrable (y-delta start end)
-	(column->y-size (group-column-length group start end 0) x-size))
+	(column->y-size (group-column-length group start end 0)
+			x-size
+			truncate-lines?))
 
-      (define-integrable (done start end y-start)
-	(group-column->index group start end 0
-			     (coordinates->column x (- y y-start) x-size)))
+      (define (done start end y-start)
+	(let ((column-size (group-column-length group start end 0)))
+	  (if (and truncate-lines? (= x (-1+ x-size)))
+	      column-size
+	      (group-column->index group start end 0
+				   (min (coordinates->column x
+							     (- y y-start)
+							     x-size)
+					column-size)))))
+
       (let ((start (inferior-y-start (first-line-inferior window)))
 	    (end (inferior-y-end last-line-inferior)))
 	(cond ((< y start)

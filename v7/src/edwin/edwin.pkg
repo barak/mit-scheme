@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.7 1989/08/07 08:44:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.8 1989/08/08 10:06:04 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -262,6 +262,7 @@ MIT in each case. |#
 	  editor-frame-selected-window
 	  editor-frame-typein-window
 	  editor-frame-window0
+	  editor-frame-windows
 	  edwin-discard-state!
 	  edwin-display
 	  edwin-editor
@@ -307,6 +308,7 @@ MIT in each case. |#
 	  window-scroll-y-relative!
 	  window-select-time
 	  window-set-override-message!
+	  window-setup-truncate-lines!
 	  window-start-mark
 	  window-y-center
 	  with-editor-interrupts

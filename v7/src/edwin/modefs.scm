@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.118 1989/08/07 08:45:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.119 1989/08/08 10:06:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -278,7 +278,9 @@ and the cdrs of which are major modes."
 (define-key 'fundamental '(#\c-x #\[) 'backward-page)
 (define-key 'fundamental '(#\c-x #\]) 'forward-page)
 (define-key 'fundamental '(#\c-x #\^) 'enlarge-window)
-(define-key 'fundamental '(#\c-x #\b) 'switch-to-buffer)(define-key 'fundamental '(#\c-x #\d) 'dired)
+(define-key 'fundamental '(#\c-x #\b) 'switch-to-buffer)
+(define-key 'fundamental '(#\c-x #\c) 'save-buffers-kill-edwin)
+(define-key 'fundamental '(#\c-x #\d) 'dired)
 (define-key 'fundamental '(#\c-x #\e) 'call-last-kbd-macro)
 (define-key 'fundamental '(#\c-x #\f) 'set-fill-column)
 (define-key 'fundamental '(#\c-x #\g) 'insert-register)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.77 1989/06/21 10:35:31 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.78 1989/08/08 10:05:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -132,6 +132,15 @@
 (define-integrable (editor-frame-screen window)
   (with-instance-variables editor-frame window ()
     screen))
+(define (editor-frame-windows window)
+  (cons (editor-frame-typein-window window)
+	(let ((start (editor-frame-window0 window)))
+	  (cons start
+		(let loop ((window (window1+ start)))
+		  (if (eq? window start)
+		      '()
+		      (cons window (loop (window1+ window)))))))))
+
 (define (editor-frame-select-window! window window*)
   (with-instance-variables editor-frame window (window*)
     (if (not (buffer-frame? window*))

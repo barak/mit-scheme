@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.130 1989/04/28 22:47:15 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.131 1989/08/08 10:05:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -324,7 +324,8 @@ The buffer is guaranteed to be deselected at that time."
    (lambda ()
      (let ((buffer (current-buffer))
 	   (old-value (variable-value variable)))
-       (set-variable-value! variable new-value)
+       (%set-variable-value! variable new-value)
+       (invoke-variable-assignment-daemons! variable)
        (let ((bindings (buffer-local-bindings buffer)))
 	 (let ((binding (assq variable bindings)))
 	   (if (not binding)
@@ -341,7 +342,8 @@ The buffer is guaranteed to be deselected at that time."
 	 (let ((binding (assq variable bindings)))
 	   (if binding
 	       (begin
-		 (set-variable-value! variable (cdr binding))
+		 (%set-variable-value! variable (cdr binding))
+		 (invoke-variable-assignment-daemons! variable)
 		 (vector-set! buffer
 			      buffer-index:local-bindings
 			      (delq! binding bindings)))))))
@@ -352,20 +354,91 @@ The buffer is guaranteed to be deselected at that time."
    (lambda ()
      (let ((buffer (current-buffer)))
        (for-each (lambda (binding)
-		   (set-variable-value! (car binding) (cdr binding)))
+		   (let ((variable (car binding)))
+		     (%set-variable-value! variable (cdr binding))
+		     (invoke-variable-assignment-daemons! variable)))
 		 (buffer-local-bindings buffer))
        (vector-set! buffer buffer-index:local-bindings '()))
      unspecific)))
 
-(define (%wind-local-bindings! buffer)
-  ;; Assumes that interrupts are disabled and that BUFFER is selected.
-  (for-each (lambda (binding)
-	      (let ((variable (car binding)))
-		(let ((old-value (variable-value variable)))
-		  (set-variable-value! variable (cdr binding))
-		  (set-cdr! binding old-value)))
+(define (change-local-bindings! old-buffer new-buffer select-buffer!)
+  ;; Assumes that interrupts are disabled and that OLD-BUFFER is selected.
+  (let ((variables '()))
+    (for-each (lambda (binding)
+		(let ((variable (car binding)))
+		  (let ((old-value (variable-value variable)))
+		    (%set-variable-value! variable (cdr binding))
+		    (set-cdr! binding old-value))
+		  (if (not (null? (variable-assignment-daemons variable)))
+		      (begin
+			(set! variables (cons variable variables))
+			unspecific))))
+	      (buffer-local-bindings old-buffer))
+    (select-buffer!)
+    (for-each (lambda (binding)
+		(let ((variable (car binding)))
+		  (let ((old-value (variable-value variable)))
+		    (%set-variable-value! variable (cdr binding))
+		    (set-cdr! binding old-value))
+		  (if (and (not (null? (variable-assignment-daemons variable)))
+			   (not (memq variable variables)))
+		      (begin
+			(set! variables (cons variable variables))
+			unspecific))))
+	      (buffer-local-bindings new-buffer))
+    (perform-buffer-initializations! new-buffer)
+    (if (not (null? variables))
+	(for-each invoke-variable-assignment-daemons! variables))))
+
+(define (variable-local-value buffer variable)
+  (let ((buffer* (current-buffer))
+	(in-cell
+	 (lambda ()
+	   (variable-value variable))))
+    (if (eq? buffer buffer*)
+	(in-cell)
+	(let ((binding (assq variable (buffer-local-bindings buffer))))
+	  (cond (binding
+		 (cdr binding))
+		((variable-buffer-local? variable)
+		 (let ((binding
+			(assq variable (buffer-local-bindings buffer*))))
+		   (if binding
+		       (cdr binding)
+		       (in-cell))))
+		(else
+		 (in-cell)))))))
+
+(define (set-variable-local-value! buffer variable value)
+  (if (eq? buffer (current-buffer))
+      (set-variable-value! variable value)
+      (let ((binding (assq variable (buffer-local-bindings buffer))))
+	(if binding
+	    (begin
+	      (set-cdr! binding value)
 	      unspecific)
-	    (buffer-local-bindings buffer)))
+	    (set-variable-value! variable value)))))
+
+(define (variable-local-value? buffer variable)
+  (assq variable (buffer-local-bindings buffer)))
+
+(define (variable-default-value variable)
+  (let ((binding (assq variable (buffer-local-bindings (current-buffer)))))
+    (if binding
+	(cdr binding)
+	(variable-value variable))))
+
+(define (set-variable-default-value! variable value)
+  (let ((binding (assq variable (buffer-local-bindings (current-buffer)))))
+    (if binding
+	(begin
+	  (set-cdr! binding value)
+	  unspecific)
+	(without-interrupts
+	 (lambda ()
+	   (%set-variable-value! variable value)
+	   (invoke-variable-assignment-daemons! variable))))))
+
 ;;;; Modes
 
 (define-integrable (buffer-major-mode buffer)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.83 1989/04/28 22:49:03 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.84 1989/08/08 10:05:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -66,13 +66,13 @@
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (let ((frame (current-editor-frame)))
-       (%wind-local-bindings!
-	(window-buffer (editor-frame-selected-window frame)))
-       (editor-frame-select-window! frame window))
-     (let ((buffer (window-buffer window)))
-       (%wind-local-bindings! buffer)
-       (perform-buffer-initializations! buffer)
+     (let ((frame (current-editor-frame))
+	   (buffer (window-buffer window)))
+       (change-local-bindings!
+	(window-buffer (editor-frame-selected-window frame))
+	buffer
+	(lambda ()
+	  (editor-frame-select-window! frame window)))
        (bufferset-select-buffer! (current-bufferset) buffer)))))
 
 (define-integrable (select-cursor window)
@@ -190,10 +190,11 @@
    (lambda ()
      (if (current-window? window)
 	 (begin
-	   (%wind-local-bindings! (window-buffer window))
-	   (%set-window-buffer! window buffer)
-	   (%wind-local-bindings! buffer)
-	   (perform-buffer-initializations! buffer)	   (if record? (bufferset-select-buffer! (current-bufferset) buffer)))
+	   (change-local-bindings!
+	    (window-buffer window)
+	    buffer
+	    (lambda () (%set-window-buffer! window buffer)))
+	   (if record? (bufferset-select-buffer! (current-bufferset) buffer)))
 	 (%set-window-buffer! window buffer)))))
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))

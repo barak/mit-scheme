@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.279 1989/04/28 22:47:54 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.280 1989/08/08 10:05:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,7 @@
 	  start-clip-mark end-clip-mark
 	  saved-screen saved-x-start saved-y-start
 	  saved-xl saved-xu saved-yl saved-yu
-	  override-inferior))
+	  override-inferior truncate-lines? force-redraw?))
 
 (define-method buffer-window (:initialize! window window*)
   (usual=> window :initialize! window*)
@@ -64,6 +64,7 @@
   (set! changes-daemon (make-changes-daemon window))
   (set! clip-daemon (make-clip-daemon window))
   (set! override-inferior false)
+  (set! force-redraw? 'BUFFER-CURSOR-Y)
   unspecific)
 
 (define-method buffer-window (:kill! window)
@@ -81,15 +82,37 @@
 (define (set-buffer-window-size! window x y)
   (with-instance-variables buffer-window window (x y)
     (set! saved-screen false)
-    (%window-redraw! window
-		     (let ((old-y y-size))
-		       (usual=> window :set-size! x y)
-		       ;; Preserve point y unless it is offscreen now.
-		       (or (and old-y
-				(let ((y (inferior-y-start cursor-inferior)))
-				  (and (< y y-size) y)))
-			   (let ((y (buffer-cursor-y buffer)))
-			     (and y (< y y-size) y)))))))
+    (let ((old-y y-size))
+      (usual=> window :set-size! x y)
+      ;; Preserve point y unless it is offscreen now.
+      (%window-setup-truncate-lines! window false)
+      (%window-force-redraw!
+       window
+       (or (and old-y
+		(let ((y (inferior-y-start cursor-inferior)))
+		  (and (< y y-size) y)))
+	   (%window-buffer-cursor-y window))))))
+
+(define (%window-setup-truncate-lines! window redraw-type)
+  (with-instance-variables buffer-window window ()
+    (if (not (within-editor?))
+	(begin
+	  (set! truncate-lines?
+		(variable-value (ref-variable-object truncate-lines)))
+	  unspecific)
+	(let ((new-truncate-lines?
+	       (or (and (variable-local-value
+			 buffer
+			 (ref-variable-object truncate-partial-width-windows))
+			(window-has-horizontal-neighbor? superior))
+		   (variable-local-value
+		    buffer
+		    (ref-variable-object truncate-lines)))))
+	  (if (not (boolean=? truncate-lines? new-truncate-lines?))
+	      (begin
+		(set! truncate-lines? new-truncate-lines?)
+		(if (and redraw-type (not force-redraw?))
+		    (%window-force-redraw! window redraw-type))))))))
 
 (define-method buffer-window :set-size!
   set-buffer-window-size!)
@@ -160,9 +183,12 @@
     (delete-window-buffer! window)
     (initial-buffer! window new-buffer)
     (window-modeline-event! superior 'NEW-BUFFER)
-    (%window-redraw! window
-		     (let ((y (buffer-cursor-y buffer)))
-		       (and y (< y y-size) y)))))
+    (%window-force-redraw! window (%window-buffer-cursor-y window))))
+
+(define (%window-buffer-cursor-y window)
+  (with-instance-variables buffer-window window (new-buffer)
+    (let ((y (buffer-cursor-y buffer)))
+      (and y (< y y-size) y))))
 
 (define (initial-buffer! window new-buffer)
   (with-instance-variables buffer-window window (new-buffer)
@@ -226,7 +252,7 @@
 		(list override-inferior cursor-inferior blank-inferior))
 	  (set-inferior-start! override-inferior 0 0)))
     (let ((override-window (inferior-window override-inferior)))
-      (set-line-window-string! override-window message)
+      (set-line-window-string! override-window message truncate-lines?)
       (set-inferior-position!
        cursor-inferior
        (string-base:index->coordinates override-window
@@ -258,7 +284,8 @@
     (let ((inferior (make-inferior window line-window)))
       (set-line-window-string! (inferior-window inferior)
 			       (group-extract-string (buffer-group buffer)
-						     start end))
+						     start end)
+			       truncate-lines?)
       inferior)))
 
 (define-integrable (first-line-inferior window)
@@ -391,28 +418,52 @@
 
 (define (maybe-recenter! window)
   (with-instance-variables buffer-window window ()
-    (let ((threshold (ref-variable cursor-centering-threshold)))
+    (let ((threshold (ref-variable cursor-centering-threshold))
+	  (recenter!
+	   (lambda ()
+	     (%window-redraw! window (%window-y-center window)))))
       (if (zero? threshold)
-	  (%window-redraw! window (%window-y-center window))
+	  (recenter!)
 	  (if (< (mark-index point) (mark-index start-mark))
 	      (let ((limit
 		     (%window-coordinates->index window 0 (- threshold))))
-		(if (or (not limit)
-			(>= (mark-index point) limit))
+		(if (or (not limit) (>= (mark-index point) limit))
 		    (%window-scroll-y-relative! window
 						(%window-point-y window))
-		    (%window-redraw! window (%window-y-center window))))
+		    (recenter!)))
 	      (let ((limit
 		     (%window-coordinates->index window
 						 0
 						 (+ (window-y-size window)
 						    threshold))))
-		(if (or (not limit)
-			(< (mark-index point) limit))
+		(if (or (not limit) (< (mark-index point) limit))
 		    (%window-scroll-y-relative!
 		     window
 		     (- (%window-point-y window) (-1+ (window-y-size window))))
-		    (%window-redraw! window (%window-y-center window)))))))))
+		    (recenter!))))))))
+
+(define (%window-force-redraw! window redraw-type)
+  (with-instance-variables buffer-window window ()
+    (set! force-redraw? (or redraw-type 'CENTER))
+    (setup-redisplay-flags! redisplay-flags)))
+
+(define (%window-redraw-preserving-start! window)
+  (with-instance-variables buffer-window window ()
+    (let ((group (mark-group start-mark))
+	  (start-line (mark-index start-line-mark)))
+      (let ((start (if truncate-lines? start-line (mark-index start-mark)))
+	    (end (line-end-index group start-line)))
+	(let ((inferior (make-line-inferior window start-line end)))
+	  (set-inferior-start!
+	   inferior
+	   0
+	   (- (string-base:index->y (inferior-window inferior)
+				    (- start start-line))))
+	  (set-line-inferiors!
+	   window
+	   (cons inferior (fill-bottom window (inferior-y-end inferior) end))
+	   start)))))
+  (everything-changed! window maybe-recenter!))
 
 (define (%window-redraw! window y)
   (with-instance-variables buffer-window window (y)
@@ -422,10 +473,10 @@
 			(begin
 			  (if (or (< y 0) (>= y y-size))
 			      (error "Attempt to scroll point off window" y))
-			  y)))
-    (everything-changed! window
-      (lambda (w)
-	(error "%WINDOW-REDRAW! left point offscreen -- get a wizard" w)))))
+			  y))))
+  (everything-changed! window
+    (lambda (w)
+      (error "%WINDOW-REDRAW! left point offscreen -- get a wizard" w))))
 
 (define (redraw-screen! window y)
   (with-instance-variables buffer-window window (y)
@@ -467,7 +518,9 @@
     (set! start-changes-mark false)
     (set! end-changes-mark false)
     (set! start-clip-mark false)
-    (set! end-clip-mark false)    unspecific))
+    (set! end-clip-mark false)
+    (set! force-redraw? false)
+    unspecific))
 
 (define (start-mark-changed! window)
   (with-instance-variables buffer-window window ()

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.51 1989/04/28 22:54:27 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.52 1989/08/08 10:06:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@
 ;;;  from which methods can be built.
 
 (define-class string-base vanilla-window
-  (image representation))
+  (image representation truncate-lines?))
 
 (define-method string-base (:update-display! window screen x-start y-start
 					     xl xu yl yu display-style)
@@ -66,7 +66,8 @@
 #|
 		(subscreen-clear! screen
 				  (+ x-start xl) (+ x-start xu)
-				  (+ y-start yl) (+ y-start yu))|#
+				  (+ y-start yl) (+ y-start yu))
+|#
 		)
 	       ((< yl yu)
 		(let ((start (cdr representation))
@@ -102,103 +103,122 @@
 		      (let ((x-start (+ x-start end)))
 			(subscreen-clear! screen
 					  (+ x-start xl) (+ x-start xu)
-					  ayl ayu))))|#
+					  ayl ayu))))
+|#
 		  ))))
 	(else
 	 (screen-write-substrings! screen (+ x-start xl) (+ y-start yl)
 				   representation xl xu yl yu)))
   true)
 
-(define (string-base:set-size-given-x! window x)
-  (with-instance-variables string-base window (x)
+(define (string-base:set-size-given-x! window x *truncate-lines?)
+  (with-instance-variables string-base window (x *truncate-lines?)
+    (set! truncate-lines? *truncate-lines?)
     (set! x-size x)
     (set! y-size (string-base:desired-y-size window x))
     (string-base:refresh! window)))
 
-(define (string-base:set-size-given-y! window y)
-  (with-instance-variables string-base window (y)
+(define (string-base:set-size-given-y! window y *truncate-lines?)
+  (with-instance-variables string-base window (y *truncate-lines?)
+    (set! truncate-lines? *truncate-lines?)
     (set! x-size (string-base:desired-x-size window y))
     (set! y-size y)
     (string-base:refresh! window)))
 
-(define-integrable (string-base:desired-x-size window y-size)
+(define (string-base:desired-x-size window y-size)
   (with-instance-variables string-base window (y-size)
-    (column->x-size (image-column-size image) y-size)))
+    (column->x-size (image-column-size image) y-size truncate-lines?)))
 
-(define-integrable (string-base:desired-y-size window x-size)
+(define (string-base:desired-y-size window x-size)
   (with-instance-variables string-base window (x-size)
-    (column->y-size (image-column-size image) x-size)))
+    (column->y-size (image-column-size image) x-size truncate-lines?)))
 
 (define (string-base:index->coordinates window index)
   (with-instance-variables string-base window (index)
     (column->coordinates (image-column-size image)
 			 x-size
+			 truncate-lines?
 			 (image-index->column image index))))
 
 (define (string-base:index->x window index)
   (with-instance-variables string-base window (index)
     (column->x (image-column-size image)
 	       x-size
+	       truncate-lines?
 	       (image-index->column image index))))
 
 (define (string-base:index->y window index)
   (with-instance-variables string-base window (index)
     (column->y (image-column-size image)
 	       x-size
+	       truncate-lines?
 	       (image-index->column image index))))
 
 (define (string-base:coordinates->index window x y)
   (with-instance-variables string-base window (x y)
     (image-column->index image
-			 (min (coordinates->column x y x-size)
-			      (image-column-size image)))))
+			 (let ((column-size (image-column-size image)))
+			   (if (and truncate-lines? (= x (-1+ x-size)))
+			       column-size
+			       (min (coordinates->column x y x-size)
+				    column-size))))))
 
-(define (column->x-size column-size y-size)
+(define (column->x-size column-size y-size truncate-lines?)
   ;; Assume Y-SIZE > 0.
-  (let ((qr (integer-divide column-size y-size)))
-    (if (zero? (integer-divide-remainder qr))
-	(integer-divide-quotient qr)
-	(1+ (integer-divide-quotient qr)))))
+  (if truncate-lines?
+      column-size
+      (let ((qr (integer-divide column-size y-size)))
+	(if (zero? (integer-divide-remainder qr))
+	    (integer-divide-quotient qr)
+	    (1+ (integer-divide-quotient qr))))))
 
-(define (column->y-size column-size x-size)
+(define (column->y-size column-size x-size truncate-lines?)
   ;; Assume X-SIZE > 1.
-  (if (zero? column-size)
+  (if (or truncate-lines? (zero? column-size))
       1
       (let ((qr (integer-divide column-size (-1+ x-size))))
 	(if (zero? (integer-divide-remainder qr))
 	    (integer-divide-quotient qr)
 	    (1+ (integer-divide-quotient qr))))))
 
-(define (column->coordinates column-size x-size column)
+(define (column->coordinates column-size x-size truncate-lines? column)
   (let ((-1+x-size (-1+ x-size)))
-    (if (< column -1+x-size)
-	(cons column 0)
-	(let ((qr (integer-divide column -1+x-size)))
-	  (if (and (zero? (integer-divide-remainder qr))
-		   (= column column-size))
-	      (cons -1+x-size
-		    (-1+ (integer-divide-quotient qr)))
-	      (cons (integer-divide-remainder qr)
-		    (integer-divide-quotient qr)))))))
+    (cond ((< column -1+x-size)
+	   (cons column 0))
+	  (truncate-lines?
+	   (cons -1+x-size 0))
+	  (else
+	   (let ((qr (integer-divide column -1+x-size)))
+	     (if (and (zero? (integer-divide-remainder qr))
+		      (= column column-size))
+		 (cons -1+x-size
+		       (-1+ (integer-divide-quotient qr)))
+		 (cons (integer-divide-remainder qr)
+		       (integer-divide-quotient qr))))))))
 
-(define (column->x column-size x-size column)
+(define (column->x column-size x-size truncate-lines? column)
   (let ((-1+x-size (-1+ x-size)))
-    (if (< column -1+x-size)
-	column
-	(let ((r (remainder column -1+x-size)))
-	  (if (and (zero? r) (= column column-size))
-	      -1+x-size
-	      r)))))
+    (cond ((< column -1+x-size)
+	   column)
+	  (truncate-lines?
+	   -1+x-size)
+	  (else
+	   (let ((r (remainder column -1+x-size)))
+	     (if (and (zero? r) (= column column-size))
+		 -1+x-size
+		 r))))))
 
-(define (column->y column-size x-size column)
-  (let ((-1+x-size (-1+ x-size)))
-    (if (< column -1+x-size)
-	0
-	(let ((qr (integer-divide column -1+x-size)))
-	  (if (and (zero? (integer-divide-remainder qr))
-		   (= column column-size))
-	      (-1+ (integer-divide-quotient qr))
-	      (integer-divide-quotient qr))))))
+(define (column->y column-size x-size truncate-lines? column)
+  (if truncate-lines?
+      0
+      (let ((-1+x-size (-1+ x-size)))
+	(if (< column -1+x-size)
+	    0
+	    (let ((qr (integer-divide column -1+x-size)))
+	      (if (and (zero? (integer-divide-remainder qr))
+		       (= column column-size))
+		  (-1+ (integer-divide-quotient qr))
+		  (integer-divide-quotient qr)))))))
 
 (define-integrable (coordinates->column x y x-size)
   (+ x (* y (-1+ x-size))))
@@ -237,33 +257,47 @@
 
 (define (string-base:refresh! window)
   (with-instance-variables string-base window ()
-    (let ((string (image-representation image)))
-      (let ((column-size (string-length string)))
-	(if (< column-size x-size)
-	    (let ((start 
-		   (string-find-next-char-in-set string char-set:not-space)))
-	      (if (not (and (pair? representation)
-			    (string=? (car representation) string)
-			    (eqv? (cdr representation) start)))
-		  (begin (set! representation (cons string start))
-			 (setup-redisplay-flags! redisplay-flags))))
-	    (let ((rep (make-vector y-size '()))
-		  (x-max (-1+ x-size)))
-	      (define (loop start y)
-		(let ((s (string-allocate x-size))
-		      (end (+ start x-max)))
-		  (vector-set! rep y s)
-		  (cond ((<= column-size end)
+    (define (one-liner string)
+      (let ((start 
+	     (string-find-next-char-in-set string char-set:not-space)))
+	(if (not (and (pair? representation)
+		      (string=? (car representation) string)
+		      (eqv? (cdr representation) start)))
+	    (begin
+	      (set! representation (cons string start))
+	      (setup-redisplay-flags! redisplay-flags)))))
+    (let* ((string (image-representation image))
+	   (column-size (string-length string)))
+      (cond ((< column-size x-size)
+	     (one-liner string))
+	    (truncate-lines?
+	     (one-liner
+	      (let ((s (string-allocate x-size))
+		    (x-max (-1+ x-size)))
+		(substring-move-right! string 0 x-max s 0)
+		(string-set! s x-max #\$)
+		s)))
+	    (else
+	     (let ((rep (make-vector y-size '()))
+		   (x-max (-1+ x-size)))
+	       (let loop ((start 0) (y 0))
+		 (let ((s (string-allocate x-size))
+		       (end (+ start x-max)))
+		   (vector-set! rep y s)
+		   (if (<= column-size end)
+		       (begin
 			 (substring-move-right! string start column-size s 0)
-			 (substring-fill! s (- column-size start) x-size
+			 (substring-fill! s
+					  (- column-size start)
+					  x-size
 					  #\space))
-			(else
+		       (begin
 			 (substring-move-right! string start end s 0)
 			 (string-set! s x-max #\\)
 			 (loop end (1+ y))))))
-	      (loop 0 0)
-	      (set! representation rep)
-	      (setup-redisplay-flags! redisplay-flags)))))))
+	       (set! representation rep)
+	       (setup-redisplay-flags! redisplay-flags)))))))
+
 ;;;; Blank Window
 
 (define-class blank-window vanilla-window

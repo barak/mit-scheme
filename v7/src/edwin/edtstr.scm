@@ -71,8 +71,17 @@
 (define-integrable (current-screen)
   (editor-screen current-editor))
 
+(define-integrable (all-screens)
+  (list (current-screen)))
 (define-integrable (current-editor-frame)
   (editor-frame-window current-editor))
+
+(define-integrable (all-editor-frames)
+  (list (current-editor-frame)))
+
+(define-integrable (all-windows)
+  #|(append-map editor-frame-windows (all-editor-frames))|#
+  (editor-frame-windows (current-editor-frame)))
 (define-integrable (current-bufferset)
   (editor-bufferset current-editor))
 

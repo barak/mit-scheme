@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.54 1989/04/28 22:53:17 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.55 1989/08/08 10:06:29 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -48,8 +48,10 @@
 
 ;;;; Variables
 
-(define-variable case-fold-search
-  "*True if searches should ignore case."  true)
+(define-variable-per-buffer case-fold-search
+  "*True if searches should ignore case.
+Automatically becomes local when set in any fashion."
+  true)
 
 (define-variable search-last-string
   "Last string search for by a non-regexp search command.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.58 1989/04/28 22:48:38 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.59 1989/08/08 10:05:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -93,8 +93,9 @@
 (define-named-structure "Variable"
   name
   description
-  value)
-
+  value
+  assignment-daemons
+  buffer-local?)
 (define (variable-name-string variable)
   (editor-name/internal->external (symbol->string (variable-name variable))))
 
@@ -108,7 +109,26 @@
     (vector-set! variable variable-index:name name)
     (vector-set! variable variable-index:description description)
     (vector-set! variable variable-index:value value)
+    (vector-set! variable variable-index:assignment-daemons '())
+    (vector-set! variable variable-index:buffer-local? false)
     variable))
+
+(define-integrable (make-variable-buffer-local! variable)
+  (vector-set! variable variable-index:buffer-local? true)
+  unspecific)
+
+(define (add-variable-assignment-daemon! variable daemon)
+  (let ((daemons (variable-assignment-daemons variable)))
+    (if (not (memq daemon daemons))
+	(begin
+	  (vector-set! variable
+		       variable-index:assignment-daemons
+		       (cons daemon daemons))
+	  unspecific))))
+
+(define (invoke-variable-assignment-daemons! variable)
+  (for-each (lambda (daemon) (daemon variable))
+	    (variable-assignment-daemons variable)))
 
 (define editor-variables
   (make-string-table 50))
@@ -117,7 +137,16 @@
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-variables (symbol->string name))
 	(make-variable name "" false))))
-(define-integrable (set-variable-value! variable value)  (vector-set! variable variable-index:value value)
+(define (set-variable-value! variable value)
+  (if (variable-buffer-local? variable)
+      (make-local-binding! variable value)
+      (without-interrupts
+       (lambda ()
+	 (%set-variable-value! variable value)
+	 (invoke-variable-assignment-daemons! variable)))))
+
+(define-integrable (%set-variable-value! variable value)
+  (vector-set! variable variable-index:value value)
   unspecific)
 (define (with-variable-value! variable new-value thunk)
   (let ((old-value))

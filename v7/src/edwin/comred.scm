@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.76 1989/08/07 08:44:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.77 1989/08/08 10:05:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -213,7 +213,9 @@
 			((eq? procedure (ref-command backward-char))
 			 (if (and (not (group-start? point))
 				  (char-graphic? (mark-left-char point))
-				  (positive? point-x))			     (window-direct-output-backward-char! window)
+				  (positive? point-x)
+				  (< point-x (-1+ (window-x-size window))))
+			     (window-direct-output-backward-char! window)
 			     (normal)))
 			(else
 			 (if (not (typein-window? window))

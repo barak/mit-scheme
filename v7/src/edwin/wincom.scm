@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.93 1989/04/28 22:54:32 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.94 1989/08/08 10:06:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -87,6 +87,31 @@ Do not set this variable below 1."
   "Pop-up windows would prefer to split the largest window if this large.
 If there is only one window, it is split regardless of this value."
   500)
+
+(define-variable-per-buffer truncate-lines
+  "*True means do not display continuation lines;
+give each line of text one screen line.
+Automatically becomes local when set in any fashion.
+
+Note that this is overridden by the variable
+truncate-partial-width-windows if that variable is true
+and this buffer is not full-screen width."
+  false)
+
+(define-variable truncate-partial-width-windows
+  "*True means truncate lines in all windows less than full screen wide."
+  true)
+
+(let ((setup-truncate-lines!
+       (lambda (variable)
+	 variable			;ignore
+	 (for-each window-setup-truncate-lines! (all-windows)))))
+  (add-variable-assignment-daemon!
+   (ref-variable-object truncate-lines)
+   setup-truncate-lines!)
+  (add-variable-assignment-daemon!
+   (ref-variable-object truncate-partial-width-windows)
+   setup-truncate-lines!))
 
 (define-command redraw-display
   "Redraws the entire display from scratch."
@@ -450,16 +475,16 @@ Also kills any pop up window it may have created."
 
 (define (largest-window)
   (let ((start (window0)))
-    (define (loop window largest largest-area)
+    (let loop
+	((window (window1+ start))
+	 (largest start)
+	 (largest-area (* (window-x-size start) (window-y-size start))))
       (if (eq? window start)
 	  largest
 	  (let ((area (* (window-x-size window) (window-y-size window))))
 	    (if (> area largest-area)
 		(loop (window1+ window) window area)
-		(loop (window1+ window) largest largest-area)))))
-    (loop (window1+ start)
-	  start
-	  (* (window-x-size start) (window-y-size start)))))
+		(loop (window1+ window) largest largest-area)))))))
 
 (define (lru-window)
   (let ((start (window0)))
@@ -492,8 +517,8 @@ Also kills any pop up window it may have created."
     (search-full-width (window1+ start) false false)))
 
 (define (delete-other-windows start)
-  (define (loop window)
+  (let loop ((window (window1+ start)))
     (if (not (eq? window start))
-	(begin (window-delete! window)
-	       (loop (window1+ window)))))
-  (loop (window1+ start)))
+	(begin
+	  (window-delete! window)
+	  (loop (window1+ window))))))
