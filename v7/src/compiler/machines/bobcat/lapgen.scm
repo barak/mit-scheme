@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.37 1990/09/07 22:35:43 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.38 1991/01/30 22:03:36 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -363,9 +363,17 @@ MIT in each case. |#
 (define-integrable (allocate-indirection-register! register)
   (load-alias-register! register 'ADDRESS))
 
+#|
+
+;; This is believed to be a fossil.
+;; Left here until the first compilation to make sure that it really is.
+;; Can be removed the next time it is seen.
+
 (define (code-object-label-initialize code-object)
   code-object
   false)
+
+|#
 
 (define (generate-n-times n limit instruction-gen with-counter)
   (if (> n limit)
