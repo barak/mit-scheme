@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.6 1987/08/22 22:44:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.7 1987/08/24 21:22:04 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 
 (define ea-tag 'Effective-Address)
 
-(define-integrable (make-effective-address keyword categories value)
+(define (make-effective-address keyword categories value)
   (vector ea-tag keyword categories value))
 
 (define (effective-address? object)
