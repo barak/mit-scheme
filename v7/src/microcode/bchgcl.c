@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.34 1988/08/15 20:36:15 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.35 1989/06/08 00:19:13 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -82,7 +82,9 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	   and if so we need a new bufferfull. */
 	Scan += Get_Integer(Temp);
 	if (Scan < scan_buffer_top)
+	{
 	  break;
+	}
 	else
 	{
 	  unsigned long overflow;
@@ -93,9 +95,6 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
-
-      case_Non_Pointer:
-	break;
 
       case_compiled_entry_point:
 	relocate_compiled_entry(true);
@@ -260,12 +259,11 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 	relocate_normal_pointer(copy_weak_pair(), 2);
 
       default:
-	sprintf(gc_death_message_buffer,
-		"gcloop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("gcloop");
+	/* Fall Through */
+
+      case_Non_Pointer:
+	break;
       }
   }
 end_gcloop:

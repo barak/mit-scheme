@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.43 1988/08/15 20:35:56 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.44 1989/06/08 00:19:08 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -337,10 +337,6 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case TC_PCOMB0:
 	*Scan = dump_renumber_primitive(*Scan);
 	break;
-
-      case TC_STACK_ENVIRONMENT:
-      case_Fasload_Non_Pointer:
-	break;
 
       case_compiled_entry_point:
 	fasdump_compiled_entry();
@@ -540,12 +536,13 @@ dumploop(Scan, To_ptr, To_Address_ptr)
 	continue;
 
       default:
-	sprintf(gc_death_message_buffer,
-		"dumploop: bad type code (0x%02x)",
-		OBJECT_TYPE(Temp));
-	gc_death(TERM_INVALID_TYPE_CODE, gc_death_message_buffer,
-		 Scan, To);
-	/*NOTREACHED*/
+	GC_BAD_TYPE("dumploop");
+	/* Fall Through */
+
+      case TC_STACK_ENVIRONMENT:
+      case_Fasload_Non_Pointer:
+	break;
+
       }
   }
 end_dumploop:
