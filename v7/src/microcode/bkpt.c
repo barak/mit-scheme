@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.c,v 9.31 2002/07/02 18:37:39 cph Exp $
+$Id: bkpt.c,v 9.32 2002/07/02 20:48:54 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ DEFUN_VOID (Handle_Pop_Return_Break)
   SCHEME_OBJECT *Old_Stack = sp_register;
 
   printf ("Pop Return Break: SP = 0x%lx\n", ((long) sp_register));
-  (void) (Print_One_Continuation_Frame (Return));
+  (void) (Print_One_Continuation_Frame (ret_register));
   sp_register = Old_Stack;
   return;
 }

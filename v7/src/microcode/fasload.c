@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.93 2002/07/02 19:03:26 cph Exp $
+$Id: fasload.c,v 9.94 2002/07/02 20:49:32 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -1056,10 +1056,10 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Current_State_Point = SHARP_F;
   /* Setup initial program */
   Store_Return (RC_END_OF_COMPUTATION);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Save_Cont ();
-  Store_Expression (MEMORY_REF (result, 0));
-  Store_Env (THE_GLOBAL_ENV);
+  exp_register = (MEMORY_REF (result, 0));
+  env_register = THE_GLOBAL_ENV;
   /* Clear various interpreter state parameters. */
   Trapping = false;
   Return_Hook_Address = 0;

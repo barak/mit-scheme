@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.62 2002/07/02 19:04:07 cph Exp $
+$Id: purify.c,v 9.63 2002/07/02 20:50:43 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -517,7 +517,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (result);
+  exp_register = result;
   Save_Cont ();
  Pushed ();
 

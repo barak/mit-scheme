@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.33 2002/07/02 19:04:25 cph Exp $
+$Id: uxtrap.c,v 1.34 2002/07/02 20:51:14 cph Exp $
 
 Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
@@ -315,7 +315,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
       INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
      Pushed ();
     }
@@ -330,7 +330,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
   STACK_PUSH (signal_code);
   STACK_PUSH (signal_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (long_to_integer (signo));
+  exp_register = (long_to_integer (signo));
   Save_Cont ();
  Pushed ();
   if (stack_recovered_p

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: history.h,v 9.30 2002/07/02 19:03:32 cph Exp $
+$Id: history.h,v 9.31 2002/07/02 20:49:47 cph Exp $
 
 Copyright (c) 1987-1990, 1999, 2002 Massachusetts Institute of Technology
 
@@ -63,8 +63,8 @@ USA.
      : (MAKE_POINTER_OBJECT						\
 	(TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));		\
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (Prev_Restore_History_Offset));	\
-  Store_Expression							\
-    (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));	\
+  exp_register								\
+    = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));	\
   Store_Return (Return_Code);						\
   Save_Cont ();								\
   history_register							\

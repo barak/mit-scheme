@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.35 2002/07/02 18:39:09 cph Exp $
+$Id: step.c,v 9.36 2002/07/02 20:50:58 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -68,8 +68,8 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
     PRIMITIVE_CANONICALIZE_CONTEXT ();
     POP_PRIMITIVE_FRAME (3);
     Install_Traps (hooks);
-    Store_Expression (expression);
-    Store_Env (environment);
+    exp_register = expression;
+    env_register = environment;
   }
   PRIMITIVE_ABORT (PRIM_NO_TRAP_EVAL);
   /*NOTREACHED*/
@@ -149,7 +149,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
 
     POP_PRIMITIVE_FRAME (2); 
     Install_Traps (hooks);
-    Val = (value);
+    val_register = value;
     PRIMITIVE_ABORT (PRIM_NO_TRAP_POP_RETURN);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }

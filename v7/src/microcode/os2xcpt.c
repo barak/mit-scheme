@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.11 2002/07/02 19:04:01 cph Exp $
+$Id: os2xcpt.c,v 1.12 2002/07/02 20:50:28 cph Exp $
 
 Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
@@ -759,7 +759,7 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
       INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
      Pushed ();
     }
@@ -780,7 +780,7 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
   STACK_PUSH (long_to_integer (report -> ExceptionNum));
   STACK_PUSH (trap_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (UNSPECIFIC);
+  exp_register = UNSPECIFIC;
   Save_Cont ();
  Pushed ();
 

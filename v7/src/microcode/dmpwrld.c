@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dmpwrld.c,v 9.40 2000/12/05 21:23:44 cph Exp $
+$Id: dmpwrld.c,v 9.41 2002/07/02 20:49:27 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains a primitive to dump an executable version of Scheme.
@@ -211,7 +212,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
   saved_dumped_p = scheme_dumped_p;
 
   scheme_dumped_p = true;
-  Val = SHARP_T;
+  val_register = SHARP_T;
   POP_PRIMITIVE_FRAME (1);
 
   /* Dump! */
@@ -225,7 +226,7 @@ DEFINE_PRIMITIVE ("DUMP-WORLD", Prim_dump_world, 1, 1, 0)
 
   /* Restore State */
 
-  Val = SHARP_F;
+  val_register = SHARP_F;
   scheme_dumped_p = saved_dumped_p;
 
   /* IO: Restoring cached input for this job. */

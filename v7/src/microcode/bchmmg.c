@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.100 2002/07/02 19:03:15 cph Exp $
+$Id: bchmmg.c,v 9.101 2002/07/02 20:48:43 cph Exp $
 
 Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
@@ -3396,7 +3396,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
   Save_Cont ();
  Pushed ();
 

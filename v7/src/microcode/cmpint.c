@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.96 2002/07/02 18:37:52 cph Exp $
+$Id: cmpint.c,v 1.97 2002/07/02 20:49:11 cph Exp $
 
 Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
@@ -597,12 +597,12 @@ DEFUN_VOID (enter_compiled_expression)
   instruction * compiled_entry_address;
 
   compiled_entry_address =
-    ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
+    ((instruction *) (OBJECT_ADDRESS (exp_register)));
   if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
       FORMAT_WORD_EXPR)
   {
     /* It self evaluates. */
-    Val = (Fetch_Expression ());
+    val_register = exp_register;
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
   }
   ENTER_SCHEME (compiled_entry_address);
@@ -797,7 +797,7 @@ static utility_result
 {									\
   if (((long) (ADDR_TO_SCHEME_ADDR (Free)))				\
       >= ((long) (Regs[REGBLOCK_MEMTOP])))				\
-    return (compiler_interrupt_common (0, Val));			\
+    return (compiler_interrupt_common (0, val_register));		\
   else									\
     RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
 } while (0)
@@ -821,7 +821,7 @@ DEFNX (comutil_primitive_apply,
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 { 
-  PRIMITIVE_APPLY (Val, primitive);
+  PRIMITIVE_APPLY (val_register, primitive);
   POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
   INVOKE_RETURN_ADDRESS ();
 }
@@ -840,7 +840,7 @@ DEFNX (comutil_primitive_lexpr_apply,
        SCHEME_OBJECT primitive
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
-  PRIMITIVE_APPLY (Val, primitive);
+  PRIMITIVE_APPLY (val_register, primitive);
   POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
   INVOKE_RETURN_ADDRESS ();
 }
@@ -1168,7 +1168,7 @@ DEFUN (link_cc_block,
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (count + 1));
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (total_count));
 
-        Store_Expression (SHARP_F);
+        exp_register = SHARP_F;
         Store_Return (RC_COMP_LINK_CACHES_RESTART);
         Save_Cont ();
 
@@ -1240,7 +1240,7 @@ DEFNX (comutil_link,
   unsigned long offset;
 
 #ifdef AUTOCLOBBER_BUG
-  block_address[OBJECT_DATUM (* block_address)] = Regs[REGBLOCK_ENV];
+  block_address[OBJECT_DATUM (* block_address)] = env_register;
 #endif
 
   offset = (constant_address - block_address);
@@ -1274,7 +1274,7 @@ DEFUN_VOID (comp_link_caches_restart)
   (void) STACK_POP ();		/* Loop count, for debugger */
   block = (STACK_POP ());
   environment = (compiled_block_environment (block));
-  Store_Env (environment);
+  env_register = environment;
   offset = (OBJECT_DATUM (STACK_POP ()));
   last_header_offset = (OBJECT_DATUM (STACK_POP ()));
   sections = (OBJECT_DATUM (STACK_POP ()));
@@ -1451,7 +1451,7 @@ DEFNX (comutil_operator_lookup_trap,
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));
     STACK_PUSH (compiled_block_environment (block));
     STACK_PUSH (compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
-    Store_Expression (SHARP_F);
+    exp_register = SHARP_F;
     Store_Return (RC_COMP_OP_REF_TRAP_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -1659,9 +1659,9 @@ DEFNX (comutil_operator_4_0_trap,
    The code that handles RC_COMP_INTERRUPT_RESTART in "interp.c" will
    return control to comp_interrupt_restart (below).  This assumes
    that the Scheme stack contains a compiled code entry address
-   (start of continuation, procedure, etc.).  The Expression register
+   (start of continuation, procedure, etc.).  The exp_register
    saved with the continuation is a piece of state that will be
-   returned to Val and Env (both) upon return.
+   returned to val_register and env_register (both) upon return.
  */
 
 #define MAYBE_REQUEST_INTERRUPTS()					\
@@ -1685,7 +1685,7 @@ DEFUN (compiler_interrupt_common, (entry_point_raw, state),
     STACK_PUSH (ENTRY_TO_OBJECT (entry_point));
   }
   STACK_PUSH (state);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Store_Return (RC_COMP_INTERRUPT_RESTART);
   Save_Cont ();
   RETURN_TO_C (PRIM_INTERRUPT);
@@ -1726,7 +1726,7 @@ DEFNX (comutil_interrupt_procedure,
   return (compiler_interrupt_common (entry_point_raw, SHARP_F));
 }
 
-/* Val has live data, and there is no entry address on the stack */
+/* val_register has live data, and there is no entry address on the stack */
 
 SCHEME_UTILITY utility_result
 DEFNX (comutil_interrupt_continuation,
@@ -1736,10 +1736,10 @@ DEFNX (comutil_interrupt_continuation,
        long ignore_3 AND
        long ignore_4)
 {
-  return (compiler_interrupt_common (return_address_raw, Val));
+  return (compiler_interrupt_common (return_address_raw, val_register));
 }
 
-/* Env has live data; no entry point on the stack */
+/* env_register has live data; no entry point on the stack */
 
 SCHEME_UTILITY utility_result
 DEFNX (comutil_interrupt_ic_procedure,
@@ -1749,7 +1749,7 @@ DEFNX (comutil_interrupt_ic_procedure,
        long ignore_3 AND
        long ignore_4)
 {
-  return (compiler_interrupt_common (entry_point_raw, (Fetch_Env ())));
+  return (compiler_interrupt_common (entry_point_raw, env_register));
 }
 
 SCHEME_UTILITY utility_result
@@ -1760,15 +1760,15 @@ DEFNX (comutil_interrupt_continuation_2,
        long ignore_3 AND
        long ignore_4)
 {
-  return (compiler_interrupt_common (0, Val));
+  return (compiler_interrupt_common (0, val_register));
 }
 
 C_TO_SCHEME long
 DEFUN_VOID (comp_interrupt_restart)
 {
   SCHEME_OBJECT state = (STACK_POP ());
-  Store_Env (state);
-  Val = state;
+  env_register = state;
+  val_register = state;
   ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
 }
 
@@ -1789,7 +1789,7 @@ DEFNX (comutil_assignment_trap,
   SCHEME_OBJECT cache
     = (MAKE_POINTER_OBJECT
        (CACHE_TYPE, (SCHEME_ADDR_TO_ADDR (cache_addr_raw))));
-  long code = (compiler_assignment_trap (cache, value, (&Val)));
+  long code = (compiler_assignment_trap (cache, value, (&val_register)));
   if (code == PRIM_DONE)
     RETURN_TO_SCHEME (return_address);
   else
@@ -1801,7 +1801,7 @@ DEFNX (comutil_assignment_trap,
       STACK_PUSH (compiled_block_environment (block));
       STACK_PUSH
 	(compiler_var_error (cache, block, CACHE_REFERENCES_ASSIGNMENT));
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
       Save_Cont ();
       RETURN_TO_C (code);
@@ -1814,7 +1814,7 @@ DEFUN_VOID (comp_assignment_trap_restart)
   SCHEME_OBJECT name = (STACK_POP ());
   SCHEME_OBJECT environment = (STACK_POP ());
   SCHEME_OBJECT value = (STACK_POP ());
-  long code = (assign_variable (environment, name, value, (&Val)));
+  long code = (assign_variable (environment, name, value, (&val_register)));
   if (code == PRIM_DONE)
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
   else
@@ -1822,7 +1822,7 @@ DEFUN_VOID (comp_assignment_trap_restart)
       STACK_PUSH (value);
       STACK_PUSH (environment);
       STACK_PUSH (name);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_COMP_ASSIGNMENT_TRAP_RESTART);
       Save_Cont ();
       return (code);
@@ -1852,7 +1852,7 @@ DEFNX (comutil_cache_lookup_apply,
     STACK_PUSH (compiled_block_environment (block));
     STACK_PUSH
       (compiler_var_error (cache, block, CACHE_REFERENCES_OPERATOR));
-    Store_Expression (SHARP_F);
+    exp_register = SHARP_F;
     Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -1879,7 +1879,7 @@ DEFUN_VOID (comp_cache_lookup_apply_restart)
     {
       STACK_PUSH (environment);
       STACK_PUSH (name);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_COMP_CACHE_REF_APPLY_RESTART);
       Save_Cont ();
       return (code);
@@ -1904,7 +1904,7 @@ DEFNX (name,								\
   SCHEME_OBJECT cache							\
     = (MAKE_POINTER_OBJECT						\
        (CACHE_TYPE, (SCHEME_ADDR_TO_ADDR (cache_addr_raw))));		\
-  long code = (c_trap (cache, (&Val)));					\
+  long code = (c_trap (cache, (&val_register)));			\
   if (code == PRIM_DONE)						\
     RETURN_TO_SCHEME (return_address);					\
   else									\
@@ -1916,7 +1916,7 @@ DEFNX (name,								\
       STACK_PUSH							\
 	(compiler_var_error						\
 	 (cache, block, CACHE_REFERENCES_LOOKUP));			\
-      Store_Expression (SHARP_F);					\
+      exp_register = SHARP_F;						\
       Store_Return (ret_code);						\
       Save_Cont ();							\
       RETURN_TO_C (code);						\
@@ -1926,16 +1926,16 @@ DEFNX (name,								\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart)							\
 {									\
-  SCHEME_OBJECT name = (Fetch_Expression ());				\
+  SCHEME_OBJECT name = exp_register;					\
   SCHEME_OBJECT environment = (STACK_POP ());				\
-  long code = (c_lookup (environment, name, (&Val)));			\
+  long code = (c_lookup (environment, name, (&val_register)));		\
   if (code == PRIM_DONE)						\
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
   else									\
     {									\
       STACK_PUSH (environment);						\
       STACK_PUSH (name);						\
-      Store_Expression (SHARP_F);					\
+      exp_register = SHARP_F;						\
       Store_Return (ret_code);						\
       Save_Cont ();							\
       return (code);							\
@@ -2017,7 +2017,7 @@ DEFNX (util_name,							\
     = ((instruction *) (SCHEME_ADDR_TO_ADDR (ret_add_raw)));		\
   long code;								\
 									\
-  code = (c_proc (environment, variable, (&Val)));			\
+  code = (c_proc (environment, variable, (&val_register)));		\
   if (code == PRIM_DONE)						\
   {									\
     RETURN_TO_SCHEME (ret_add);						\
@@ -2027,7 +2027,7 @@ DEFNX (util_name,							\
     STACK_PUSH (ENTRY_TO_OBJECT (ret_add));				\
     STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
-    Store_Expression (SHARP_F);						\
+    exp_register = SHARP_F;						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     RETURN_TO_C (code);							\
@@ -2042,17 +2042,17 @@ DEFUN_VOID (restart_name)						\
 									\
   environment = (STACK_POP ());						\
   variable = (STACK_POP ());						\
-  code = (c_proc (environment, variable, (&Val)));			\
+  code = (c_proc (environment, variable, (&val_register)));		\
   if (code == PRIM_DONE)						\
   {									\
-    Regs[REGBLOCK_ENV] = environment;					\
+    env_register = environment;						\
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
   }									\
   else									\
   {									\
     STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
-    Store_Expression (SHARP_F);						\
+    exp_register = SHARP_F;						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     return (code);							\
@@ -2081,7 +2081,7 @@ DEFNX (util_name,							\
     STACK_PUSH (value);							\
     STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
-    Store_Expression (SHARP_F);						\
+    exp_register = SHARP_F;						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     RETURN_TO_C (code);							\
@@ -2094,13 +2094,13 @@ DEFUN_VOID (restart_name)						\
   SCHEME_OBJECT environment, variable, value;				\
   long code;								\
 									\
-  environment = (Fetch_Expression ());					\
+  environment = exp_register;						\
   variable = (STACK_POP ());						\
   value = (STACK_POP ());						\
   code = (c_proc (environment, variable, value));			\
   if (code == PRIM_DONE)						\
   {									\
-    Regs[REGBLOCK_ENV] = environment;					\
+    env_register = environment;						\
     ENTER_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
   }									\
   else									\
@@ -2108,7 +2108,7 @@ DEFUN_VOID (restart_name)						\
     STACK_PUSH (value);							\
     STACK_PUSH (variable);						\
     STACK_PUSH (environment);						\
-    Store_Expression (SHARP_F);						\
+    exp_register = SHARP_F;						\
     Store_Return (ret_code);						\
     Save_Cont ();							\
     return (code);							\
@@ -2144,7 +2144,7 @@ static long
 compiler_assign_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 			  SCHEME_OBJECT value)
 {
-  return (assign_variable (environment, symbol, value, (&Val)));
+  return (assign_variable (environment, symbol, value, (&val_register)));
 }
 
 CMPLR_ASSIGNMENT(comutil_assignment,
@@ -2158,7 +2158,7 @@ compiler_define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 {
   long result = (define_variable (environment, symbol, value));
   if (result == PRIM_DONE)
-    Val = symbol;
+    val_register = symbol;
   return (result);
 }
 
@@ -2173,14 +2173,14 @@ DEFNX (comutil_lookup_apply,
        SCHEME_OBJECT environment AND SCHEME_OBJECT variable
        AND long nactuals AND long ignore_4)
 {
-  long code = (lookup_variable (environment, variable, (&Val)));
+  long code = (lookup_variable (environment, variable, (&val_register)));
   if (code == PRIM_DONE)
-    return (comutil_apply (Val, nactuals, 0, 0));
+    return (comutil_apply (val_register, nactuals, 0, 0));
   {
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
     STACK_PUSH (variable);
     STACK_PUSH (environment);
-    Store_Expression (SHARP_F);
+    exp_register = SHARP_F;
     Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
     Save_Cont ();
     RETURN_TO_C (code);
@@ -2208,7 +2208,7 @@ DEFUN_VOID (comp_lookup_apply_restart)
     {
       STACK_PUSH (variable);
       STACK_PUSH (environment);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_COMP_LOOKUP_APPLY_RESTART);
       Save_Cont ();
       return (code);
@@ -2227,7 +2227,7 @@ DEFNX (comutil_primitive_error,
 
   STACK_PUSH (ENTRY_TO_OBJECT (ret_add));
   STACK_PUSH (primitive);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Store_Return (RC_COMP_ERROR_RESTART);
   Save_Cont ();
   RETURN_TO_C (ERR_COMPILED_CODE_ERROR);
@@ -2952,7 +2952,7 @@ DEFNX (comutil_compiled_code_bkpt,
     state = (MAKE_POINTER_OBJECT
 	     (TC_STACK_ENVIRONMENT, (SCHEME_ADDR_TO_ADDR (state_raw))));
   else
-    state = Val;
+    state = val_register;
 
   stack_ptr = (MAKE_POINTER_OBJECT (TC_STACK_ENVIRONMENT, sp_register));
   STACK_PUSH (state);		/* state to preserve */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.15 2000/12/05 21:23:48 cph Exp $
+$Id: term.c,v 1.16 2002/07/02 20:51:04 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2000, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 #include "scheme.h"
@@ -83,14 +84,14 @@ DEFUN (attempt_termination_backout, (code), int code)
 		+ STACK_ENV_EXTRA_SLOTS
 		+ ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
       Store_Return (RC_HALT);
-      Store_Expression (LONG_TO_UNSIGNED_FIXNUM (code));
+      exp_register = (LONG_TO_UNSIGNED_FIXNUM (code));
       Save_Cont ();
       if (code == TERM_NO_ERROR_HANDLER)
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (death_blow));
-      STACK_PUSH (Val);			/* Arg 3 */
-      STACK_PUSH (Fetch_Env ());	/* Arg 2 */
-      STACK_PUSH (Fetch_Expression ()); /* Arg 1 */
-      STACK_PUSH (Handler);		/* The handler function */
+      STACK_PUSH (val_register); /* Arg 3 */
+      STACK_PUSH (env_register); /* Arg 2 */
+      STACK_PUSH (exp_register); /* Arg 1 */
+      STACK_PUSH (Handler);	/* The handler function */
       STACK_PUSH (STACK_FRAME_HEADER
 		  + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
      Pushed ();
@@ -188,7 +189,7 @@ void
 DEFUN_VOID (termination_end_of_computation)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
-  Print_Expression (Val, "Final result");
+  Print_Expression (val_register, "Final result");
   outf_console("\n");
   termination_suffix (TERM_END_OF_COMPUTATION, 0, 0);
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.51 1999/01/02 06:06:43 cph Exp $
+$Id: hppa.h,v 1.52 2002/07/02 20:51:54 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /*
@@ -921,7 +922,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       buffer[len - 2] = ((unsigned long) clos_entry);
       buffer[len - 1] = real_entry_point;
 
-      Val = SHARP_F;
+      val_register = SHARP_F;
       * value = ((unsigned long) buffer);
       return (TRUE);
     }
@@ -938,7 +939,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       cache_flush_region (((PTR) buffer), (len - 1), (D_CACHE | I_CACHE));
       buffer[len - 1] = (((unsigned long) (OBJECT_ADDRESS (ep))) + 4);
 
-      Val = state;
+      val_register = state;
       * value = ((unsigned long) buffer);
       return (TRUE);
     }
@@ -996,7 +997,7 @@ DEFUN (do_bkpt_proceed, (value), unsigned long * value)
       buffer[len - 1] = ((((unsigned long) instrs) + 8)
 			 + offset);
       
-      Val = state;
+      val_register = state;
       * value = ((unsigned long) &buffer[clobber]);
       return (TRUE);
     }

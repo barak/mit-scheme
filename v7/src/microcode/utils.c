@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.81 2002/07/02 19:04:19 cph Exp $
+$Id: utils.c,v 9.82 2002/07/02 20:51:09 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -220,7 +220,7 @@ DEFUN_VOID (preserve_interrupt_mask)
 {
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_RESTORE_INT_MASK);
-  Store_Expression (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
+  exp_register = (LONG_TO_FIXNUM (FETCH_INTERRUPT_MASK ()));
   Save_Cont ();
  Pushed ();
   return;
@@ -251,10 +251,10 @@ DEFUN_VOID (back_out_of_primitive_internal)
     compiler_apply_procedure (nargs);
   STACK_PUSH (primitive);
   STACK_PUSH (STACK_FRAME_HEADER + nargs);
-  Store_Env (THE_NULL_ENV);
-  Val = SHARP_F;
+  env_register = THE_NULL_ENV;
+  val_register = SHARP_F;
   Store_Return (RC_INTERNAL_APPLY);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   (Regs [REGBLOCK_PRIMITIVE]) = SHARP_F;
   return;
 }
@@ -553,9 +553,9 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   if (Consistency_Check)
   {
     err_print(Err, error_output);
-    Print_Expression(Fetch_Expression(), "Expression was");
+    Print_Expression(exp_register, "Expression was");
     outf_error ("\nEnvironment 0x%lx (#%lo).\n",
-	    ((long) (Fetch_Env ())), ((long) (Fetch_Env ())));
+	    ((long) exp_register), ((long) env_register));
     Print_Return("Return code");
     outf_error ("\n");
   }
@@ -598,9 +598,9 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
 
  Will_Push (CONTINUATION_SIZE + (From_Pop_Return ? 0 : 1));
   if (From_Pop_Return)
-    Store_Expression (Val);
+    exp_register = val_register;
   else
-    STACK_PUSH (Fetch_Env ());
+    STACK_PUSH (env_register);
   Store_Return ((From_Pop_Return) ?
 		RC_POP_RETURN_ERROR :
 		RC_EVAL_ERROR);
@@ -695,15 +695,15 @@ DEFUN_VOID (Stop_History)
   SCHEME_OBJECT Saved_Expression;
   long Saved_Return_Code;
 
-  Saved_Expression = Fetch_Expression();
-  Saved_Return_Code = Fetch_Return();
+  Saved_Expression = exp_register;
+  Saved_Return_Code = ret_register;
  Will_Push(HISTORY_SIZE);
   Save_History(RC_RESTORE_DONT_COPY_HISTORY);
  Pushed();
   Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = ((Get_End_Of_Stacklet() - sp_register) +
 				 CONTINUATION_RETURN_CODE);
-  Store_Expression(Saved_Expression);
+  exp_register = Saved_Expression;
   Store_Return(Saved_Return_Code);
   return;
 }
@@ -930,15 +930,15 @@ DEFUN (Allocate_New_Stacklet, (N), long N)
       &New_Stacklet[1 + (OBJECT_DATUM (New_Stacklet[STACKLET_LENGTH]))];
     SET_STACK_GUARD (& (New_Stacklet[STACKLET_HEADER_SIZE]));
   }
-  Old_Expression = Fetch_Expression();
-  Old_Return = Fetch_Return();
-  Store_Expression(MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Old_Stacklet));
+  Old_Expression = exp_register;
+  Old_Return = ret_register;
+  exp_register = (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Old_Stacklet));
   Store_Return(RC_JOIN_STACKLETS);
   /*
     Will_Push omitted because size calculation includes enough room.
    */
   Save_Cont();
-  Store_Expression(Old_Expression);
+  exp_register = Old_Expression;
   Store_Return(Old_Return);
   return;
 }
@@ -1062,7 +1062,7 @@ DEFUN (Translate_To_Point, (Target), SCHEME_OBJECT Target)
   STACK_PUSH (Target);
   STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));
   STACK_PUSH (Current_Location);
-  Store_Expression(State_Space);
+  exp_register = State_Space;
   Store_Return(RC_MOVE_TO_ADJACENT_POINT);
   Save_Cont();
  Pushed();
@@ -1130,7 +1130,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       long i;
 
       Store_Return (RC_END_OF_COMPUTATION);
-      Store_Expression (primitive);
+      exp_register = primitive;
       Save_Cont ();
 
       for (i = nargs; --i >= 0; )
@@ -1139,7 +1139,7 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       STACK_PUSH (STACK_FRAME_HEADER + nargs);
 
       Store_Return (RC_INTERNAL_APPLY);
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Save_Cont ();
     }
    Pushed ();

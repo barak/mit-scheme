@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: futures.h,v 9.29 1999/01/02 06:11:34 cph Exp $
+$Id: futures.h,v 9.30 2002/07/02 20:49:42 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1990, 1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains macros useful for dealing with futures */
@@ -133,7 +134,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	}								\
       else								\
 	{								\
-	  Val = Value;							\
+	  val_register = Value;						\
 	  PRIMITIVE_ABORT (PRIM_TOUCH);					\
 	}								\
     }									\

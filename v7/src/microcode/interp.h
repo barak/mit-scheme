@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.45 2002/07/02 19:03:44 cph Exp $
+$Id: interp.h,v 9.46 2002/07/02 20:50:08 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -27,36 +27,25 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 
 #define Regs		Registers
 
-#define Env		(Registers[REGBLOCK_ENV])
-#define Val		(Registers[REGBLOCK_VAL])
-#define Expression	(Registers[REGBLOCK_EXPR])
-#define Return		(Registers[REGBLOCK_RETURN])
+#define env_register (Registers[REGBLOCK_ENV])
+#define val_register (Registers[REGBLOCK_VAL])
+#define exp_register (Registers[REGBLOCK_EXPR])
+#define ret_register (Registers[REGBLOCK_RETURN])
 
-/* Fetch from register */
-
-#define Fetch_Expression()	(Registers[REGBLOCK_EXPR])
-#define Fetch_Env()		(Registers[REGBLOCK_ENV])
-#define Fetch_Return()		(Registers[REGBLOCK_RETURN])
-
-/* Store into register */
-
-#define Store_Expression(P)	(Registers[REGBLOCK_EXPR]) = (P)
-#define Store_Env(P)		(Registers[REGBLOCK_ENV]) = (P)
-#define Store_Return(P)							\
-  (Registers[REGBLOCK_RETURN]) = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
+#define Store_Return(P) ret_register = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
 
 /* Note: Save_Cont must match the definitions in sdata.h */
 
 #define Save_Cont()							\
 {									\
-  STACK_PUSH (Registers[REGBLOCK_EXPR]);				\
-  STACK_PUSH (Registers[REGBLOCK_RETURN]);				\
+  STACK_PUSH (exp_register);						\
+  STACK_PUSH (ret_register);						\
 }
 
 #define Restore_Cont()							\
 {									\
-  Registers[REGBLOCK_RETURN] = (STACK_POP ());				\
-  Registers[REGBLOCK_EXPR] = (STACK_POP ());				\
+  ret_register = (STACK_POP ());					\
+  exp_register = (STACK_POP ());					\
 }
 
 #define Stop_Trapping() Trapping = 0

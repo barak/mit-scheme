@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: stack.h,v 9.41 2002/07/02 19:04:13 cph Exp $
+$Id: stack.h,v 9.42 2002/07/02 20:50:53 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -128,10 +128,10 @@ USA.
 
 #define Apply_Stacklet_Backout()					\
 Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 2));	\
-  Store_Expression(SHARP_F);						\
+  exp_register = SHARP_F;						\
   Store_Return(RC_END_OF_COMPUTATION);					\
   Save_Cont();								\
-  STACK_PUSH (Val);							\
+  STACK_PUSH (val_register);						\
   STACK_PUSH (Previous_Stacklet);					\
   STACK_PUSH (STACK_FRAME_HEADER + 1);					\
   Store_Return(RC_INTERNAL_APPLY);					\
@@ -151,11 +151,11 @@ Pushed()
 {									\
   SCHEME_OBJECT Old_Expression;						\
 									\
-  Old_Expression = Fetch_Expression();					\
-  Store_Expression(Previous_Stacklet);					\
+  Old_Expression = exp_register;					\
+  exp_register = Previous_Stacklet;					\
   Store_Return(RC_JOIN_STACKLETS);					\
   Save_Cont();								\
-  Store_Expression(Old_Expression);					\
+  exp_register = Old_Expression;					\
 }
 
 /* Our_Throw is used in chaining from one stacklet to another.  In

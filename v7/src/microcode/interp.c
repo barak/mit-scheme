@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.93 2002/07/02 18:15:13 cph Exp $
+$Id: interp.c,v 9.94 2002/07/02 20:50:03 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -91,7 +91,7 @@ extern void EXFUN (preserve_signal_mask, (void));
   Store_Return(Return_Code);						\
   Save_Cont();								\
   Store_Return(RC_RESTORE_VALUE);					\
-  (Registers[REGBLOCK_EXPR]) = temp;					\
+  exp_register = temp;							\
   Save_Cont();								\
 }
 
@@ -117,7 +117,7 @@ if (GC_Check(Amount))							\
 #define Prepare_Eval_Repeat()						\
 {									\
  Will_Push(CONTINUATION_SIZE+1);					\
-  STACK_PUSH (Registers[REGBLOCK_ENV]);					\
+  STACK_PUSH (env_register);					\
   Store_Return(RC_EVAL_ERROR);						\
   Save_Cont();								\
  Pushed();								\
@@ -142,23 +142,19 @@ if (GC_Check(Amount))							\
 
 #define Reduces_To(Expr)						\
 {									\
-  (Registers[REGBLOCK_EXPR]) = Expr;					\
-  New_Reduction								\
-    ((Registers[REGBLOCK_EXPR]), (Registers[REGBLOCK_ENV]));		\
+  exp_register = Expr;							\
+  New_Reduction (exp_register, env_register);				\
   goto Do_Expression;							\
 }
 
-#define Reduces_To_Nth(N)						\
-        Reduces_To(FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), (N)))
+#define Reduces_To_Nth(N) (Reduces_To (FAST_MEMORY_REF (exp_register, (N))))
 
 #define Do_Nth_Then(Return_Code, N, Extra)				\
 {									\
   Store_Return (Return_Code);						\
   Save_Cont ();								\
-  (Registers[REGBLOCK_EXPR])						\
-    = (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), (N)));		\
-  New_Subproblem							\
-    ((Registers[REGBLOCK_EXPR]), (Registers[REGBLOCK_ENV]));		\
+  exp_register = (FAST_MEMORY_REF (exp_register, (N)));			\
+  New_Subproblem (exp_register, env_register);				\
   Extra;								\
   goto Do_Expression;							\
 }
@@ -167,10 +163,8 @@ if (GC_Check(Amount))							\
 {									\
   Store_Return (Return_Code);						\
   Save_Cont ();								\
-  (Registers[REGBLOCK_EXPR])						\
-    = (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), (N)));		\
-  Reuse_Subproblem							\
-    ((Registers[REGBLOCK_EXPR]), (Registers[REGBLOCK_ENV]));		\
+  exp_register = (FAST_MEMORY_REF (exp_register, (N)));			\
+  Reuse_Subproblem (exp_register, env_register);			\
   goto Do_Expression;							\
 }
 
@@ -265,26 +259,26 @@ if (GC_Check(Amount))							\
 
 #define Pop_Return_Val_Check()						\
 {									\
-  SCHEME_OBJECT Orig_Val = Val;						\
+`  SCHEME_OBJECT Orig_Val = val_register;				\
 									\
-  while (OBJECT_TYPE (Val) == TC_FUTURE)				\
+  while (OBJECT_TYPE (val_register) == TC_FUTURE)			\
   {									\
-    if (Future_Has_Value(Val))						\
+    if (Future_Has_Value(val_register))					\
     {									\
-      if (Future_Is_Keep_Slot(Val))					\
+      if (Future_Is_Keep_Slot(val_register))				\
       {									\
-	Log_Touch_Of_Future(Val);					\
+	Log_Touch_Of_Future(val_register);				\
       }									\
-      Val = Future_Value(Val);						\
+      val_register = Future_Value(val_register);			\
     }									\
     else								\
     {									\
       Save_Cont();							\
      Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 2));	\
       Store_Return(RC_RESTORE_VALUE);					\
-      (Registers[REGBLOCK_EXPR]) = Orig_Val;				\
+      exp_register = Orig_Val;						\
       Save_Cont();							\
-      STACK_PUSH (Val);							\
+      STACK_PUSH (val_register);					\
       STACK_PUSH (Get_Fixed_Obj_Slot(System_Scheduler));		\
       STACK_PUSH (STACK_FRAME_HEADER + 1);				\
      Pushed();								\
@@ -294,9 +288,8 @@ if (GC_Check(Amount))							\
 }
 
 /* This saves stuff unnecessarily in most cases.
-   For example, when Which_Way is PRIM_APPLY, Val, Env, Expr,
-   and Return_Code are undefined.
- */
+   For example, when Which_Way is PRIM_APPLY, val_register,
+   env_register, exp_register, and ret_register are undefined.  */
 
 #define LOG_FUTURES()							\
 {									\
@@ -304,11 +297,10 @@ if (GC_Check(Amount))							\
   {									\
     Save_Cont();							\
    Will_Push(CONTINUATION_SIZE + 2);					\
-    STACK_PUSH (Val);							\
-    STACK_PUSH (Registers[REGBLOCK_ENV]);				\
+    STACK_PUSH (val_register);						\
+    STACK_PUSH (env_register);						\
     Store_Return (RC_REPEAT_DISPATCH);					\
-    (Registers[REGBLOCK_EXPR])						\
-      = (LONG_TO_FIXNUM (CODE_MAP (Which_Way)));			\
+    exp_register = (LONG_TO_FIXNUM (CODE_MAP (Which_Way)));		\
     Save_Cont();							\
    Pushed();								\
     Call_Future_Logging();						\
@@ -447,7 +439,7 @@ DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
   /* Primitives jump back here for errors, requests to evaluate an
    * expression, apply a function, or handle an interrupt request.  On
    * errors or interrupts they leave their arguments on the stack, the
-   * primitive itself in Expression.  The code should do a primitive
+   * primitive itself in exp_register.  The code should do a primitive
    * backout in these cases, but not in others (apply, eval, etc.), since
    * the primitive itself will have left the state of the interpreter ready
    * for operation.
@@ -472,16 +464,16 @@ Repeat_Dispatch:
       goto Apply_Non_Trapping;
 
     case PRIM_DO_EXPRESSION:
-      Val = (Registers[REGBLOCK_EXPR]);
+      val_register = exp_register;
       PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_DO_EXPRESSION):
-      Reduces_To(Val);
+      Reduces_To(val_register);
 
     case PRIM_NO_TRAP_EVAL:
-      Val = (Registers[REGBLOCK_EXPR]);
+      val_register = exp_register;
       PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_NO_TRAP_EVAL):
-      New_Reduction(Val, (Registers[REGBLOCK_ENV]));
+      New_Reduction(val_register, env_register);
       goto Eval_Non_Trapping;
 
     case 0:			/* first time */
@@ -510,14 +502,14 @@ Repeat_Dispatch:
       {
 	SCHEME_OBJECT temp;
 
-	temp = Val;
+	temp = val_register;
 	BACK_OUT_AFTER_PRIMITIVE();
-	Val = temp;
+	val_register = temp;
 	LOG_FUTURES();
       }
     /* fall through */
     case CODE_MAP(PRIM_TOUCH):
-      TOUCH_SETUP(Val);
+      TOUCH_SETUP(val_register);
       goto Internal_Apply;
 
     case PRIM_INTERRUPT:
@@ -568,12 +560,12 @@ Do_Expression:
 
   if (0 && Eval_Debug)
     {
-      Print_Expression ((Registers[REGBLOCK_EXPR]), "Eval, expression");
+      Print_Expression (exp_register, "Eval, expression");
       outf_console ("\n");
     }
 
-  /* The expression register has an Scode item in it which
-   * should be evaluated and the result left in Val.
+  /* exp_register has an Scode item in it that
+   * should be evaluated and the result left in val_register.
    *
    * A "break" after the code for any operation indicates that
    * all processing for this operation has been completed, and
@@ -588,8 +580,7 @@ Do_Expression:
    * the current Scode item is the value returned when the
    * new expression is evaluated.  Therefore no new
    * continuation is created and processing continues at
-   * Do_Expression with the new expression in the expression
-   * register.
+   * Do_Expression with the new expression in exp_register.
    *
    * Finally, an operation can terminate with a Do_Nth_Then
    * macro.  This indicates that another expression must be
@@ -597,8 +588,7 @@ Do_Expression:
    * performed before the value of this S-Code item available.
    * Thus a new continuation is created and placed on the
    * stack (using Save_Cont), the new expression is placed in
-   * the Expression register, and processing continues at
-   * Do_Expression.
+   * the exp_register, and processing continues at Do_Expression.
    */
 
   /* Handling of Eval Trapping.
@@ -615,8 +605,8 @@ Do_Expression:
     {
       Stop_Trapping ();
       Will_Push (4);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
-      STACK_PUSH (Registers[REGBLOCK_EXPR]);
+      STACK_PUSH (env_register);
+      STACK_PUSH (exp_register);
       STACK_PUSH (Fetch_Eval_Trapper ());
       STACK_PUSH (STACK_FRAME_HEADER + 2);
       Pushed ();
@@ -625,7 +615,7 @@ Do_Expression:
 
 Eval_Non_Trapping:
   Eval_Ucode_Hook();
-  switch (OBJECT_TYPE (Registers[REGBLOCK_EXPR]))
+  switch (OBJECT_TYPE (exp_register))
     {
     default:
 #if 0
@@ -663,7 +653,7 @@ Eval_Non_Trapping:
     case TC_VECTOR:
     case TC_VECTOR_16B:
     case TC_VECTOR_1B:
-      Val = (Registers[REGBLOCK_EXPR]);
+      val_register = exp_register;
       break;
 
     case TC_ACCESS:
@@ -672,7 +662,7 @@ Eval_Non_Trapping:
 
     case TC_ASSIGNMENT:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_EXECUTE_ASSIGNMENT_FINISH, ASSIGN_VALUE, Pushed());
 
     case TC_BROKEN_HEART:
@@ -680,9 +670,7 @@ Eval_Non_Trapping:
 
     case TC_COMBINATION:
       {
-	long Array_Length;
-
-	Array_Length = (VECTOR_LENGTH (Registers[REGBLOCK_EXPR]) - 1);
+	long Array_Length = ((VECTOR_LENGTH (exp_register)) - 1);
 #ifdef USE_STACKLETS
 	/* Finger */
         Eval_GC_Check
@@ -698,18 +686,18 @@ Eval_Non_Trapping:
 	    STACK_PUSH (STACK_FRAME_HEADER);   /* Frame size */
 	    Do_Nth_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT, {});
 	  }
-	STACK_PUSH (Registers[REGBLOCK_ENV]);
+	STACK_PUSH (env_register);
 	Do_Nth_Then(RC_COMB_SAVE_VALUE, Array_Length+1, {});
       }
 
     case TC_COMBINATION_1:
       Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_COMB_1_PROCEDURE, COMB_1_ARG_1, {});
 
     case TC_COMBINATION_2:
       Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_COMB_2_FIRST_OPERAND, COMB_2_ARG_2, {});
 
     case TC_COMMENT:
@@ -717,58 +705,55 @@ Eval_Non_Trapping:
 
     case TC_CONDITIONAL:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_CONDITIONAL_DECIDE, COND_PREDICATE, Pushed());
 
     case TC_COMPILED_ENTRY:
       {
-	SCHEME_OBJECT compiled_expression;
-
-	compiled_expression = (Registers[REGBLOCK_EXPR]);
+	SCHEME_OBJECT compiled_expression = exp_register;
 	execute_compiled_setup();
-	(Registers[REGBLOCK_EXPR]) = compiled_expression;
+	exp_register = compiled_expression;
 	Which_Way = enter_compiled_expression();
 	goto return_from_compiled_code;
       }
 
     case TC_DEFINITION:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_EXECUTE_DEFINITION_FINISH, DEFINE_VALUE, Pushed());
 
     case TC_DELAY:
       /* Deliberately omitted: Eval_GC_Check(2); */
-      Val = MAKE_POINTER_OBJECT (TC_DELAYED, Free);
-      Free[THUNK_ENVIRONMENT] = (Registers[REGBLOCK_ENV]);
-      Free[THUNK_PROCEDURE] =
-        FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), DELAY_OBJECT);
+      val_register = MAKE_POINTER_OBJECT (TC_DELAYED, Free);
+      Free[THUNK_ENVIRONMENT] = env_register;
+      Free[THUNK_PROCEDURE] = (FAST_MEMORY_REF (exp_register, DELAY_OBJECT));
       Free += 2;
       break;
 
     case TC_DISJUNCTION:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_DISJUNCTION_DECIDE, OR_PREDICATE, Pushed());
 
     case TC_EXTENDED_LAMBDA:	/* Close the procedure */
       /* Deliberately omitted: Eval_GC_Check(2); */
-      Val = MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free);
-      Free[PROCEDURE_LAMBDA_EXPR] = (Registers[REGBLOCK_EXPR]);
-      Free[PROCEDURE_ENVIRONMENT] = (Registers[REGBLOCK_ENV]);
+      val_register = MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free);
+      Free[PROCEDURE_LAMBDA_EXPR] = exp_register;
+      Free[PROCEDURE_ENVIRONMENT] = env_register;
       Free += 2;
       break;
 
 #ifdef COMPILE_FUTURES
     case TC_FUTURE:
-      if (Future_Has_Value(Registers[REGBLOCK_EXPR]))
+      if (Future_Has_Value (exp_register))
 	{
-	  SCHEME_OBJECT Future = (Registers[REGBLOCK_EXPR]);
+	  SCHEME_OBJECT Future = exp_register;
 	  if (Future_Is_Keep_Slot(Future)) Log_Touch_Of_Future(Future);
 	  Reduces_To_Nth(FUTURE_VALUE);
 	}
       Prepare_Eval_Repeat();
       Will_Push(STACK_ENV_EXTRA_SLOTS+2);
-      STACK_PUSH (Registers[REGBLOCK_EXPR]);	/* Arg: FUTURE object */
+      STACK_PUSH (exp_register);	/* Arg: FUTURE object */
       STACK_PUSH (Get_Fixed_Obj_Slot(System_Scheduler));
       STACK_PUSH (STACK_FRAME_HEADER+1);
       Pushed();
@@ -783,9 +768,9 @@ Eval_Non_Trapping:
     case TC_LAMBDA:             /* Close the procedure */
     case TC_LEXPR:
       /* Deliberately omitted: Eval_GC_Check(2); */
-      Val = MAKE_POINTER_OBJECT (TC_PROCEDURE, Free);
-      Free[PROCEDURE_LAMBDA_EXPR] = (Registers[REGBLOCK_EXPR]);
-      Free[PROCEDURE_ENVIRONMENT] = (Registers[REGBLOCK_ENV]);
+      val_register = MAKE_POINTER_OBJECT (TC_PROCEDURE, Free);
+      Free[PROCEDURE_LAMBDA_EXPR] = exp_register;
+      Free[PROCEDURE_ENVIRONMENT] = env_register;
       Free += 2;
       break;
 
@@ -801,8 +786,7 @@ Eval_Non_Trapping:
     case TC_PCOMB0:
       Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      (Registers[REGBLOCK_EXPR])
-	= (OBJECT_NEW_TYPE (TC_PRIMITIVE, (Registers[REGBLOCK_EXPR])));
+      exp_register = (OBJECT_NEW_TYPE (TC_PRIMITIVE, exp_register));
       goto Primitive_Internal_Apply;
 
     case TC_PCOMB1:
@@ -811,30 +795,30 @@ Eval_Non_Trapping:
 
     case TC_PCOMB2:
       Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_PCOMB2_DO_1, PCOMB2_ARG_2_SLOT, {});
 
     case TC_PCOMB3:
       Will_Eventually_Push(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 3);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_PCOMB3_DO_2, PCOMB3_ARG_3_SLOT, {});
 
     case TC_SCODE_QUOTE:
-      Val = FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), SCODE_QUOTE_OBJECT);
+      val_register = FAST_MEMORY_REF (exp_register, SCODE_QUOTE_OBJECT);
       break;
 
     case TC_SEQUENCE_2:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_SEQ_2_DO_2, SEQUENCE_1, Pushed());
 
     case TC_SEQUENCE_3:
       Will_Push(CONTINUATION_SIZE + 1);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      STACK_PUSH (env_register);
       Do_Nth_Then(RC_SEQ_3_DO_2, SEQUENCE_1, Pushed());
 
     case TC_THE_ENVIRONMENT:
-      Val = (Registers[REGBLOCK_ENV]);
+      val_register = env_register;
       break;
 
     case TC_VARIABLE:
@@ -842,10 +826,7 @@ Eval_Non_Trapping:
 	long temp;
 
 	Set_Time_Zone(Zone_Lookup);
-	temp
-	  = (lookup_variable ((Registers[REGBLOCK_ENV]),
-			      (Registers[REGBLOCK_EXPR]),
-			      (&Val)));
+	temp = (lookup_variable (env_register, exp_register, (&val_register)));
 	if (temp == PRIM_DONE)
 	  goto Pop_Return;
 
@@ -877,7 +858,7 @@ Pop_Return:
     {
       Will_Push(3);
       Stop_Trapping();
-      STACK_PUSH (Val);
+      STACK_PUSH (val_register);
       STACK_PUSH (Fetch_Return_Trapper());
       STACK_PUSH (STACK_FRAME_HEADER+1);
       Pushed();
@@ -887,16 +868,16 @@ Pop_Return_Non_Trapping:
   Pop_Return_Ucode_Hook();
   Restore_Cont();
   if (Consistency_Check &&
-      (OBJECT_TYPE (Registers[REGBLOCK_RETURN]) != TC_RETURN_CODE))
+      (OBJECT_TYPE (ret_register) != TC_RETURN_CODE))
     {
-      STACK_PUSH (Val);			/* For possible stack trace */
+      STACK_PUSH (val_register); /* For possible stack trace */
       Save_Cont();
       Microcode_Termination (TERM_BAD_STACK);
     }
   if (0 && Eval_Debug)
     {
       Print_Return ("Pop_Return, return code");
-      Print_Expression (Val, "Pop_Return, value");
+      Print_Expression (val_register, "Pop_Return, value");
       outf_console ("\n");
     };
 
@@ -905,26 +886,26 @@ Pop_Return_Non_Trapping:
    * common occurrence.
    */
 
-  switch (OBJECT_DATUM (Registers[REGBLOCK_RETURN]))
+  switch (OBJECT_DATUM (ret_register))
     {
     case RC_COMB_1_PROCEDURE:
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      STACK_PUSH (Val);                /* Arg. 1 */
-      STACK_PUSH (SHARP_F);                /* Operator */
+      env_register = (STACK_POP ());
+      STACK_PUSH (val_register); /* Arg. 1 */
+      STACK_PUSH (SHARP_F);	/* Operator */
       STACK_PUSH (STACK_FRAME_HEADER + 1);
       Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_1_FN);
 
     case RC_COMB_2_FIRST_OPERAND:
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      STACK_PUSH (Val);
-      STACK_PUSH (Registers[REGBLOCK_ENV]);
+      env_register = (STACK_POP ());
+      STACK_PUSH (val_register);
+      STACK_PUSH (env_register);
       Do_Another_Then(RC_COMB_2_PROCEDURE, COMB_2_ARG_1);
 
     case RC_COMB_2_PROCEDURE:
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      STACK_PUSH (Val);                /* Arg 1, just calculated */
-      STACK_PUSH (SHARP_F);		/* Function */
+      env_register = (STACK_POP ());
+      STACK_PUSH (val_register); /* Arg 1, just calculated */
+      STACK_PUSH (SHARP_F);	/* Function */
       STACK_PUSH (STACK_FRAME_HEADER + 2);
       Finished_Eventual_Pushing(CONTINUATION_SIZE);
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_2_FN);
@@ -936,21 +917,21 @@ Pop_Return_Non_Trapping:
     case RC_COMB_SAVE_VALUE:
       {	long Arg_Number;
 
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
+      env_register = (STACK_POP ());
       Arg_Number = OBJECT_DATUM (STACK_REF(STACK_COMB_FINGER))-1;
-      STACK_REF(STACK_COMB_FIRST_ARG+Arg_Number) = Val;
+      STACK_REF(STACK_COMB_FIRST_ARG+Arg_Number) = val_register;
       STACK_REF(STACK_COMB_FINGER) =
 	MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Arg_Number);
       /* DO NOT count on the type code being NMVector here, since
 	 the stack parser may create them with #F here! */
       if (Arg_Number > 0)
         {
-	  STACK_PUSH (Registers[REGBLOCK_ENV]);
+	  STACK_PUSH (env_register);
 	  Do_Another_Then(RC_COMB_SAVE_VALUE,
 			  (COMB_ARG_1_SLOT - 1) + Arg_Number);
         }
       /* Frame Size */
-      STACK_PUSH (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), 0));
+      STACK_PUSH (FAST_MEMORY_REF (exp_register, 0));
       Do_Another_Then(RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
       }
 
@@ -1022,15 +1003,16 @@ Pop_Return_Non_Trapping:
     case RC_CONDITIONAL_DECIDE:
       Pop_Return_Val_Check();
       End_Subproblem();
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      Reduces_To_Nth ((Val == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
+      env_register = (STACK_POP ());
+      Reduces_To_Nth
+	((val_register == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
 
     case RC_DISJUNCTION_DECIDE:
       /* Return predicate if it isn't #F; else do ALTERNATIVE */
       Pop_Return_Val_Check();
       End_Subproblem();
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      if (Val != SHARP_F) goto Pop_Return;
+      env_register = (STACK_POP ());
+      if (val_register != SHARP_F) goto Pop_Return;
       Reduces_To_Nth(OR_ALTERNATIVE);
 
     case RC_END_OF_COMPUTATION:
@@ -1055,8 +1037,8 @@ Pop_Return_Non_Trapping:
 
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      Reduces_To(Registers[REGBLOCK_EXPR]);
+      env_register = (STACK_POP ());
+      Reduces_To (exp_register);
 
     case RC_EXECUTE_ACCESS_FINISH:
       {
@@ -1064,15 +1046,15 @@ Pop_Return_Non_Trapping:
 	SCHEME_OBJECT value;
 
 	Pop_Return_Val_Check();
-	value = Val;
+	value = val_register;
 
-	if (ENVIRONMENT_P (Val))
+	if (ENVIRONMENT_P (val_register))
 	  {
 	    Result
 	      = (lookup_variable (value,
-				  (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]),
+				  (FAST_MEMORY_REF (exp_register,
 						    ACCESS_NAME)),
-				  (&Val)));
+				  (&val_register)));
 	    if (Result == PRIM_DONE)
 	      {
 		End_Subproblem();
@@ -1080,13 +1062,13 @@ Pop_Return_Non_Trapping:
 	      }
 	    if (Result != PRIM_INTERRUPT)
 	      {
-		Val = value;
+		val_register = value;
 		Pop_Return_Error(Result);
 	      }
 	    Prepare_Pop_Return_Interrupt(RC_EXECUTE_ACCESS_FINISH, value);
 	    Interrupt(PENDING_INTERRUPTS());
 	  }
-	Val = value;
+	val_register = value;
 	Pop_Return_Error(ERR_BAD_FRAME);
       }
 
@@ -1098,15 +1080,15 @@ Pop_Return_Non_Trapping:
 	DECLARE_LOCK (set_serializer);
 #endif
 
-	value = Val;
+	value = val_register;
 	Set_Time_Zone(Zone_Lookup);
-	(Registers[REGBLOCK_ENV]) = (STACK_POP ());
+	env_register = (STACK_POP ());
 	temp
 	  = (assign_variable
-	     ((Registers[REGBLOCK_ENV]),
-	      (MEMORY_REF ((Registers[REGBLOCK_EXPR]), ASSIGN_NAME)),
+	     (env_register,
+	      (MEMORY_REF (exp_register, ASSIGN_NAME)),
 	      value,
-	      (&Val)));
+	      (&val_register)));
 	if (temp == PRIM_DONE)
 	  {
 	    End_Subproblem();
@@ -1115,10 +1097,10 @@ Pop_Return_Non_Trapping:
 	  }
 
 	Set_Time_Zone(Zone_Working);
-	STACK_PUSH (Registers[REGBLOCK_ENV]);
+	STACK_PUSH (env_register);
 	if (temp != PRIM_INTERRUPT)
 	  {
-	    Val = value;
+	    val_register = value;
 	    Pop_Return_Error(temp);
 	  }
 
@@ -1129,43 +1111,42 @@ Pop_Return_Non_Trapping:
 
     case RC_EXECUTE_DEFINITION_FINISH:
       {
-	SCHEME_OBJECT name
-	  = (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), DEFINE_NAME));
-	SCHEME_OBJECT value = Val;
+	SCHEME_OBJECT name = (FAST_MEMORY_REF (exp_register, DEFINE_NAME));
+	SCHEME_OBJECT value = val_register;
         long result;
 
-        (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-        result = (define_variable ((Registers[REGBLOCK_ENV]), name, value));
+        env_register = (STACK_POP ());
+        result = (define_variable (env_register, name, value));
         if (result == PRIM_DONE)
 	  {
 	    End_Subproblem();
-	    Val = name;
+	    val_register = name;
 	    break;
 	  }
-	STACK_PUSH (Registers[REGBLOCK_ENV]);
+	STACK_PUSH (env_register);
 	if (result == PRIM_INTERRUPT)
 	  {
 	    Prepare_Pop_Return_Interrupt(RC_EXECUTE_DEFINITION_FINISH,
 					 value);
 	    Interrupt(PENDING_INTERRUPTS());
 	  }
-	Val = value;
+	val_register = value;
         Pop_Return_Error(result);
       }
 
     case RC_EXECUTE_IN_PACKAGE_CONTINUE:
       Pop_Return_Val_Check();
-      if (ENVIRONMENT_P (Val))
+      if (ENVIRONMENT_P (val_register))
 	{
 	  End_Subproblem();
-	  (Registers[REGBLOCK_ENV]) = Val;
+	  env_register = val_register;
 	  Reduces_To_Nth(IN_PACKAGE_EXPRESSION);
 	}
       Pop_Return_Error(ERR_BAD_FRAME);
 
 #ifdef COMPILE_FUTURES
     case RC_FINISH_GLOBAL_INT:
-      Val = Global_Int_Part_2((Registers[REGBLOCK_EXPR]), Val);
+      val_register = Global_Int_Part_2(exp_register, val_register);
       break;
 #endif
 
@@ -1210,24 +1191,24 @@ Pop_Return_Non_Trapping:
        */
 
 #define Prepare_Apply_Interrupt()					\
-      {									\
-	(Registers[REGBLOCK_EXPR]) = SHARP_F;				\
-	Prepare_Pop_Return_Interrupt					\
-	  (RC_INTERNAL_APPLY_VAL, (STACK_REF (STACK_ENV_FUNCTION)));	\
-      }
+{									\
+  exp_register = SHARP_F;						\
+  Prepare_Pop_Return_Interrupt						\
+    (RC_INTERNAL_APPLY_VAL, (STACK_REF (STACK_ENV_FUNCTION)));		\
+}
 
 #define Apply_Error(N)							\
-      {									\
-	(Registers[REGBLOCK_EXPR]) = SHARP_F;				\
-	Store_Return (RC_INTERNAL_APPLY_VAL);				\
-	Val = (STACK_REF (STACK_ENV_FUNCTION));				\
-	Pop_Return_Error (N);						\
-      }
+{									\
+  exp_register = SHARP_F;						\
+  Store_Return (RC_INTERNAL_APPLY_VAL);					\
+  val_register = (STACK_REF (STACK_ENV_FUNCTION));			\
+  Pop_Return_Error (N);							\
+}
 
     case RC_INTERNAL_APPLY_VAL:
     Internal_Apply_Val:
 
-    STACK_REF (STACK_ENV_FUNCTION) = Val;
+    STACK_REF (STACK_ENV_FUNCTION) = val_register;
 
     case RC_INTERNAL_APPLY:
     Internal_Apply:
@@ -1383,7 +1364,7 @@ Pop_Return_Non_Trapping:
 	      while(--nargs >= 0)
 		*scan++ = (STACK_POP ());
 	      Free = scan;
-	      (Registers[REGBLOCK_ENV]) = temp;
+	      env_register = temp;
 	      Reduces_To(FAST_MEMORY_REF (Function, LAMBDA_SCODE));
 	    }
           }
@@ -1395,7 +1376,7 @@ Pop_Return_Non_Trapping:
 	      {
 		Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	      }
-            Val = (STACK_REF (STACK_ENV_FIRST_ARG));
+            val_register = (STACK_REF (STACK_ENV_FIRST_ARG));
             Our_Throw(0, Function);
 	    Apply_Stacklet_Backout();
 	    Our_Throw_Part_2();
@@ -1434,12 +1415,12 @@ Pop_Return_Non_Trapping:
 	      }
 
             sp_register = (STACK_LOC (STACK_ENV_FIRST_ARG));
-            (Registers[REGBLOCK_EXPR]) = Function;
-	    APPLY_PRIMITIVE_FROM_INTERPRETER (Val, Function);
+            exp_register = Function;
+	    APPLY_PRIMITIVE_FROM_INTERPRETER (val_register, Function);
 	    POP_PRIMITIVE_FRAME (nargs);
 	    if (Must_Report_References())
 	      {
-		(Registers[REGBLOCK_EXPR]) = Val;
+		exp_register = val_register;
 		Store_Return(RC_RESTORE_VALUE);
 		Save_Cont();
 		Call_Future_Logging();
@@ -1532,7 +1513,7 @@ Pop_Return_Non_Trapping:
 	      }
 
 	    Free = scan;
-            (Registers[REGBLOCK_ENV]) = temp;
+            env_register = temp;
             Reduces_To(Get_Body_Elambda(lambda));
           }
 
@@ -1596,9 +1577,8 @@ Pop_Return_Non_Trapping:
 		     */
 
 		  execute_compiled_backout ();
-		  Val
-		    = (OBJECT_NEW_TYPE
-		       (TC_COMPILED_ENTRY, (Registers[REGBLOCK_EXPR])));
+		  val_register
+		    = (OBJECT_NEW_TYPE (TC_COMPILED_ENTRY, exp_register));
 		  Pop_Return_Error (Which_Way);
 		}
 
@@ -1609,7 +1589,7 @@ Pop_Return_Non_Trapping:
 		     in a system without compiler support.
 		     */
 
-		  (Registers[REGBLOCK_EXPR]) = SHARP_F;
+		  exp_register = SHARP_F;
 		  Store_Return (RC_REENTER_COMPILED_CODE);
 		  Pop_Return_Error (Which_Way);
 		}
@@ -1627,7 +1607,7 @@ Pop_Return_Non_Trapping:
     }         /* End of RC_INTERNAL_APPLY case */
 
     case RC_MOVE_TO_ADJACENT_POINT:
-      /* Expression contains the space in which we are moving */
+      /* exp_register contains the space in which we are moving */
       {
 	long From_Count;
 	SCHEME_OBJECT Thunk, New_Location;
@@ -1676,11 +1656,9 @@ Pop_Return_Non_Trapping:
 		Save_Cont ();
 	      }
 	  }
-	if ((Registers[REGBLOCK_EXPR]) != SHARP_F)
+	if (exp_register != SHARP_F)
 	  {
-	    MEMORY_SET ((Registers[REGBLOCK_EXPR]),
-			STATE_SPACE_NEAREST_POINT,
-			New_Location);
+	    MEMORY_SET (exp_register, STATE_SPACE_NEAREST_POINT, New_Location);
 	  }
 	else
 	  {
@@ -1696,20 +1674,20 @@ Pop_Return_Non_Trapping:
     case RC_INVOKE_STACK_THREAD:
       /* Used for WITH_THREADED_STACK primitive */
       Will_Push(3);
-      STACK_PUSH (Val);        /* Value calculated by thunk */
-      STACK_PUSH (Registers[REGBLOCK_EXPR]);
+      STACK_PUSH (val_register); /* Value calculated by thunk */
+      STACK_PUSH (exp_register);
       STACK_PUSH (STACK_FRAME_HEADER+1);
       Pushed();
       goto Internal_Apply;
 
     case RC_JOIN_STACKLETS:
-      Our_Throw(1, (Registers[REGBLOCK_EXPR]));
+      Our_Throw (1, exp_register);
       Join_Stacklet_Backout();
       Our_Throw_Part_2();
       break;
 
     case RC_NORMAL_GC_DONE:
-      Val = (Registers[REGBLOCK_EXPR]);
+      val_register = exp_register;
       if (GC_Space_Needed < 0)
 	{
 	  /* Paranoia */
@@ -1725,10 +1703,9 @@ Pop_Return_Non_Trapping:
 
     case RC_PCOMB1_APPLY:
       End_Subproblem();
-      STACK_PUSH (Val);		/* Argument value */
+      STACK_PUSH (val_register);		/* Argument value */
       Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      (Registers[REGBLOCK_EXPR])
-	= (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), PCOMB1_FN_SLOT));
+      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB1_FN_SLOT));
 
     Primitive_Internal_Apply:
       if (Microcode_Does_Stepping &&
@@ -1740,10 +1717,10 @@ Pop_Return_Non_Trapping:
 	     We may have a non-contiguous frame. -- Jinx
 	     */
 	  Will_Push(3);
-	  STACK_PUSH (Registers[REGBLOCK_EXPR]);
+	  STACK_PUSH (exp_register);
 	  STACK_PUSH (Fetch_Apply_Trapper());
 	  STACK_PUSH (STACK_FRAME_HEADER + 1 +
-		      PRIMITIVE_N_PARAMETERS(Registers[REGBLOCK_EXPR]));
+		      PRIMITIVE_N_PARAMETERS(exp_register));
 	  Pushed();
 	  Stop_Trapping();
 	  goto Apply_Non_Trapping;
@@ -1759,12 +1736,12 @@ Pop_Return_Non_Trapping:
 	 */
 
       {
-	SCHEME_OBJECT primitive = (Registers[REGBLOCK_EXPR]);
-	APPLY_PRIMITIVE_FROM_INTERPRETER (Val, primitive);
+	SCHEME_OBJECT primitive = exp_register;
+	APPLY_PRIMITIVE_FROM_INTERPRETER (val_register, primitive);
 	POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
 	if (Must_Report_References ())
 	  {
-	    (Registers[REGBLOCK_EXPR]) = Val;
+	    exp_register = val_register;
 	    Store_Return (RC_RESTORE_VALUE);
 	    Save_Cont ();
 	    Call_Future_Logging ();
@@ -1774,61 +1751,59 @@ Pop_Return_Non_Trapping:
 
     case RC_PCOMB2_APPLY:
       End_Subproblem();
-      STACK_PUSH (Val);		/* Value of arg. 1 */
+      STACK_PUSH (val_register); /* Value of arg. 1 */
       Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      (Registers[REGBLOCK_EXPR])
-	= (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), PCOMB2_FN_SLOT));
+      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB2_FN_SLOT));
       goto Primitive_Internal_Apply;
 
     case RC_PCOMB2_DO_1:
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      STACK_PUSH (Val);		/* Save value of arg. 2 */
+      env_register = (STACK_POP ());
+      STACK_PUSH (val_register); /* Save value of arg. 2 */
       Do_Another_Then(RC_PCOMB2_APPLY, PCOMB2_ARG_1_SLOT);
 
     case RC_PCOMB3_APPLY:
       End_Subproblem();
-      STACK_PUSH (Val);		/* Save value of arg. 1 */
+      STACK_PUSH (val_register); /* Save value of arg. 1 */
       Finished_Eventual_Pushing(CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      (Registers[REGBLOCK_EXPR])
-	= (FAST_MEMORY_REF ((Registers[REGBLOCK_EXPR]), PCOMB3_FN_SLOT));
+      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB3_FN_SLOT));
       goto Primitive_Internal_Apply;
 
     case RC_PCOMB3_DO_1:
       {
 	SCHEME_OBJECT Temp;
 
-	Temp = (STACK_POP ());		/* Value of arg. 3 */
-	(Registers[REGBLOCK_ENV]) = (STACK_POP ());
-	STACK_PUSH (Temp);		/* Save arg. 3 again */
-	STACK_PUSH (Val);		/* Save arg. 2 */
+	Temp = (STACK_POP ());	/* Value of arg. 3 */
+	env_register = (STACK_POP ());
+	STACK_PUSH (Temp);	/* Save arg. 3 again */
+	STACK_PUSH (val_register); /* Save arg. 2 */
 	Do_Another_Then(RC_PCOMB3_APPLY, PCOMB3_ARG_1_SLOT);
       }
 
     case RC_PCOMB3_DO_2:
-      (Registers[REGBLOCK_ENV]) = (STACK_REF (0));
-      STACK_PUSH (Val);		/* Save value of arg. 3 */
+      env_register = (STACK_REF (0));
+      STACK_PUSH (val_register); /* Save value of arg. 3 */
       Do_Another_Then(RC_PCOMB3_DO_1, PCOMB3_ARG_2_SLOT);
 
     case RC_POP_RETURN_ERROR:
     case RC_RESTORE_VALUE:
-      Val = (Registers[REGBLOCK_EXPR]);
+      val_register = exp_register;
       break;
 
     case RC_PRIMITIVE_CONTINUE:
-      Val = (continue_primitive ());
+      val_register = (continue_primitive ());
       break;
 
     case RC_REPEAT_DISPATCH:
-      Which_Way = (FIXNUM_TO_LONG (Registers[REGBLOCK_EXPR]));
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
-      Val = (STACK_POP ());
+      Which_Way = (FIXNUM_TO_LONG (exp_register));
+      env_register = (STACK_POP ());
+      val_register = (STACK_POP ());
       Restore_Cont();
       goto Repeat_Dispatch;
 
       /* The following two return codes are both used to restore
 	 a saved history object.  The difference is that the first
 	 does not copy the history object while the second does.
-	 In both cases, the Expression register contains the history
+	 In both cases, the exp_register contains the history
 	 object and the next item to be popped off the stack contains
 	 the offset back to the previous restore history return code.
 
@@ -1841,7 +1816,7 @@ Pop_Return_Non_Trapping:
 
 	Prev_Restore_History_Offset = OBJECT_DATUM (STACK_POP ());
 	Stacklet = (STACK_POP ());
-	history_register = OBJECT_ADDRESS (Registers[REGBLOCK_EXPR]);
+	history_register = OBJECT_ADDRESS (exp_register);
 	if (Prev_Restore_History_Offset == 0)
 	  {
 	    Prev_Restore_History_Stacklet = NULL;
@@ -1861,11 +1836,11 @@ Pop_Return_Non_Trapping:
       {
 	SCHEME_OBJECT Stacklet;
 
-	if (! Restore_History(Registers[REGBLOCK_EXPR]))
+	if (! Restore_History(exp_register))
 	  {
 	    Save_Cont();
 	    Will_Push(CONTINUATION_SIZE);
-	    (Registers[REGBLOCK_EXPR]) = Val;
+	    exp_register = val_register;
 	    Store_Return(RC_RESTORE_VALUE);
 	    Save_Cont();
 	    Pushed();
@@ -1894,17 +1869,17 @@ Pop_Return_Non_Trapping:
       }
 
     case RC_RESTORE_FLUIDS:
-      Fluid_Bindings = (Registers[REGBLOCK_EXPR]);
+      Fluid_Bindings = exp_register;
       break;
 
     case RC_RESTORE_INT_MASK:
-      SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (Registers[REGBLOCK_EXPR]));
+      SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (exp_register));
       if (GC_Check (0))
         Request_GC (0);
       if ((PENDING_INTERRUPTS ()) != 0)
 	{
 	  Store_Return (RC_RESTORE_VALUE);
-	  (Registers[REGBLOCK_EXPR]) = Val;
+	  exp_register = val_register;
 	  Save_Cont ();
 	  Interrupt (PENDING_INTERRUPTS ());
 	}
@@ -1912,17 +1887,17 @@ Pop_Return_Non_Trapping:
 
     case RC_STACK_MARKER:
       /* Frame consists of the return code followed by two objects.
-	 The first object has already been popped into the Expression
-	 register, so just pop the second argument. */
+	 The first object has already been popped into exp_register,
+         so just pop the second argument.  */
       sp_register = (STACK_LOCATIVE_OFFSET (sp_register, 1));
       break;
 
     case RC_RESTORE_TO_STATE_POINT:
       {
-	SCHEME_OBJECT Where_To_Go = (Registers[REGBLOCK_EXPR]);
+	SCHEME_OBJECT Where_To_Go = exp_register;
 	Will_Push(CONTINUATION_SIZE);
-	/* Restore the contents of Val after moving to point */
-	(Registers[REGBLOCK_EXPR]) = Val;
+	/* Restore the contents of val_register after moving to point */
+	exp_register = val_register;
 	Store_Return(RC_RESTORE_VALUE);
 	Save_Cont();
 	Pushed();
@@ -1932,27 +1907,27 @@ Pop_Return_Non_Trapping:
 
     case RC_SEQ_2_DO_2:
       End_Subproblem();
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
+      env_register = (STACK_POP ());
       Reduces_To_Nth(SEQUENCE_2);
 
     case RC_SEQ_3_DO_2:
-      (Registers[REGBLOCK_ENV]) = (STACK_REF (0));
+      env_register = (STACK_REF (0));
       Do_Another_Then(RC_SEQ_3_DO_3, SEQUENCE_2);
 
     case RC_SEQ_3_DO_3:
       End_Subproblem();
-      (Registers[REGBLOCK_ENV]) = (STACK_POP ());
+      env_register = (STACK_POP ());
       Reduces_To_Nth(SEQUENCE_3);
 
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might
 	 have snapped it already.  */
-      if ((MEMORY_REF ((Registers[REGBLOCK_EXPR]), THUNK_SNAPPED)) == SHARP_T)
-	Val = (MEMORY_REF ((Registers[REGBLOCK_EXPR]), THUNK_VALUE));
+      if ((MEMORY_REF (exp_register, THUNK_SNAPPED)) == SHARP_T)
+	val_register = (MEMORY_REF (exp_register, THUNK_VALUE));
       else
 	{
-	  MEMORY_SET ((Registers[REGBLOCK_EXPR]), THUNK_SNAPPED, SHARP_T);
-	  MEMORY_SET ((Registers[REGBLOCK_EXPR]), THUNK_VALUE, Val);
+	  MEMORY_SET (exp_register, THUNK_SNAPPED, SHARP_T);
+	  MEMORY_SET (exp_register, THUNK_VALUE, val_register);
 	}
       break;
 

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: returns.h,v 9.42 1999/01/02 06:06:43 cph Exp $
+$Id: returns.h,v 9.43 2002/07/02 20:50:48 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,10 +16,11 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
-/* Return codes.  These are placed in Return when an
+/* Return codes.  These are placed in ret_register when an
    interpreter operation needs to operate in several phases. */
 
 #define RC_END_OF_COMPUTATION		0x00

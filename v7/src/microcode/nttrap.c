@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.21 2002/07/02 19:03:55 cph Exp $
+$Id: nttrap.c,v 1.22 2002/07/02 20:50:23 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -518,7 +518,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
   STACK_PUSH (trap_code);
   STACK_PUSH (trap_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (long_to_integer (code));
+  exp_register = (long_to_integer (code));
   Save_Cont ();
  Pushed ();
   if (stack_recovered_p

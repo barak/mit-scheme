@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.54 2002/07/02 18:38:03 cph Exp $
+$Id: debug.c,v 9.55 2002/07/02 20:49:22 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -268,7 +268,7 @@ void
 DEFUN (Print_Return, (String), char * String)
 {
   outf_console ("%s: ", String);
-  print_return_name (console_output, Fetch_Return ());
+  print_return_name (console_output, ret_register);
   outf_console ("\n");
 }
 

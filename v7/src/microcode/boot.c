@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.106 2002/07/02 18:37:45 cph Exp $
+$Id: boot.c,v 9.107 2002/07/02 20:49:05 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -458,18 +458,18 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   /* Setup registers */
   INITIALIZE_INTERRUPTS ();
   SET_INTERRUPT_MASK (0);
-  Env = THE_GLOBAL_ENV;
+  env_register = THE_GLOBAL_ENV;
   Trapping = false;
   Return_Hook_Address = NULL;
 
   /* Give the interpreter something to chew on, and ... */
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_END_OF_COMPUTATION);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Save_Cont ();
  Pushed ();
 
-  Store_Expression (expr);
+  exp_register = expr;
 
   /* Go to it! */
   if ((sp_register <= Stack_Guard) || (Free > MemTop))
@@ -514,8 +514,8 @@ extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 SCHEME_OBJECT
 DEFUN_VOID (Re_Enter_Interpreter)
 {
-  Interpret (true);
-  return  Val;
+  Interpret (1);
+  return (val_register);
 }
 
 /* Garbage collection debugging utilities. */

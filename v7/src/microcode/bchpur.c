@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchpur.c,v 9.71 2002/07/02 19:03:20 cph Exp $
+$Id: bchpur.c,v 9.72 2002/07/02 20:48:48 cph Exp $
 
 Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
@@ -79,7 +79,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (result);
+  exp_register = result;
   Save_Cont ();
  Pushed ();
 

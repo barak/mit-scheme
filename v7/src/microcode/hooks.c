@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.62 2002/07/02 19:03:38 cph Exp $
+$Id: hooks.c,v 9.63 2002/07/02 20:49:53 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -294,7 +294,7 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
     STACK_RESET ();
     Will_Push (CONTINUATION_SIZE);
     Store_Return (RC_JOIN_STACKLETS);
-    Store_Expression (control_point);
+    exp_register = control_point;
     Save_Cont ();
     Pushed ();
   }
@@ -381,7 +381,7 @@ Invoke THUNK with CONTROL-POINT as its control stack.")
   CLEAR_INTERRUPT (INT_Stack_Overflow);
 
  Will_Push (CONTINUATION_SIZE);
-  Store_Expression (control_point);
+  exp_register = control_point;
   Store_Return (RC_JOIN_STACKLETS);
   Save_Cont ();
  Pushed ();
@@ -435,8 +435,8 @@ Evaluate SCODE-EXPRESSION in ENVIRONMENT.")
     fast SCHEME_OBJECT expression = (ARG_REF (1));
     fast SCHEME_OBJECT environment = (ARG_REF (2));
     POP_PRIMITIVE_FRAME (2);
-    Store_Env (environment);
-    Store_Expression (expression);
+    env_register = environment;
+    exp_register = expression;
   }
   PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
@@ -462,7 +462,7 @@ memoized yet.")
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
       Store_Return (RC_SNAP_NEED_THUNK);
-      Store_Expression (thunk);
+      exp_register = thunk;
       Save_Cont ();
       STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
       STACK_PUSH (STACK_FRAME_HEADER);
@@ -478,11 +478,11 @@ memoized yet.")
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_SNAP_NEED_THUNK);
-      Store_Expression (thunk);
+      exp_register = thunk;
       Save_Cont ();
      Pushed ();
-      Store_Env (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
-      Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
+      env_register = (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
+      exp_register = (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
@@ -532,7 +532,7 @@ space is used as the starting point.")
     Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 1));
       /* Push a continuation to go back to the current state after the
 	 body is evaluated */
-      Store_Expression (old_point);
+      exp_register = old_point;
       Store_Return (RC_RESTORE_TO_STATE_POINT);
       Save_Cont ();
       /* Push a stack frame which will call the body after we have moved
@@ -540,7 +540,7 @@ space is used as the starting point.")
       STACK_PUSH (during_thunk);
       STACK_PUSH (STACK_FRAME_HEADER);
       /* Push the continuation to go with the stack frame */
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_INTERNAL_APPLY);
       Save_Cont ();
     Pushed ();
@@ -740,8 +740,8 @@ identified by the continuation parser.")
     {
       SCHEME_OBJECT thunk = (STACK_POP ());
       STACK_PUSH (STACK_FRAME_HEADER + (nargs - 2));
-      Store_Env (THE_NULL_ENV);
-      Store_Expression (SHARP_F);
+      env_register = THE_NULL_ENV;
+      exp_register = SHARP_F;
       Store_Return (RC_INTERNAL_APPLY);
       Save_Cont ();
     Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
@@ -872,7 +872,7 @@ Set the interpreter's history object to HISTORY.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CHECK_ARG (1, HUNK3_P);
-  Val = (*history_register);
+  val_register = (*history_register);
 #ifndef DISABLE_HISTORY
   history_register = (OBJECT_ADDRESS (ARG_REF (1)));
 #else

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.h,v 9.33 2002/07/02 18:15:02 cph Exp $
+$Id: bkpt.h,v 9.34 2002/07/02 20:48:59 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ typedef struct sp_record * sp_record_list;
 
 #define Eval_Ucode_Hook()						\
 {									\
-  (local_circle [local_slotno++]) = (Fetch_Expression ());		\
+  (local_circle [local_slotno++]) = exp_register;			\
   if (local_slotno >= debug_maxslots)					\
     local_slotno = 0;							\
   if (local_nslots < debug_maxslots)					\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.8 2002/07/02 18:37:58 cph Exp $
+$Id: cmpint.h,v 10.9 2002/07/02 20:49:17 cph Exp $
 
 Copyright (c) 1987-1990, 1999, 2000, 2002 Massachusetts Institute of Technology
 
@@ -119,7 +119,7 @@ USA.
     long segment_size;							\
 									\
     Restore_Cont();							\
-    segment_size = OBJECT_DATUM (Fetch_Expression());			\
+    segment_size = OBJECT_DATUM (exp_register);				\
     last_return_code = (STACK_LOC (segment_size));			\
     /* Undo the subproblem rotation. */					\
     Compiler_End_Subproblem();						\
@@ -139,7 +139,7 @@ USA.
 
 #define compiled_code_restart()						\
 {									\
-  long segment_size = OBJECT_DATUM (Fetch_Expression());		\
+  long segment_size = OBJECT_DATUM (exp_register);			\
   last_return_code = (STACK_LOC (segment_size));			\
   /* Undo the subproblem rotation. */					\
   Compiler_End_Subproblem();						\
@@ -176,7 +176,7 @@ USA.
 	   long segment_size =						\
 	     (STACK_LOCATIVE_DIFFERENCE					\
 	      (last_return_code, (STACK_LOC (0))));			\
-	   Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));	\
+	   exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));	\
 	   Store_Return (RC_REENTER_COMPILED_CODE);			\
 	   Save_Cont ();						\
 	 });								\
@@ -215,7 +215,7 @@ USA.
   {									\
     long segment_size =							\
       (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
+    exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
     Store_Return (RC_REENTER_COMPILED_CODE);				\
     Save_Cont ();							\
     /* Rotate history to a new subproblem. */				\
@@ -239,10 +239,10 @@ USA.
   Restore_Cont();							\
   segment_size =							\
     (STACK_LOCATIVE_DIFFERENCE (last_return_code, (STACK_LOC (0))));	\
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (segment_size));		\
   /* The Store_Return is a NOP, the Save_Cont is done by the code	\
      that follows. */							\
-  /* Store_Return (OBJECT_DATUM (Fetch_Return ())); */			\
+  /* Store_Return (OBJECT_DATUM (ret_register)); */			\
   /* Save_Cont (); */							\
   Compiler_New_Subproblem ();						\
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.48 2001/03/08 17:03:32 cph Exp $
+$Id: prims.h,v 9.49 2002/07/02 20:50:33 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This file contains some macros for defining primitives,
@@ -40,7 +41,7 @@ SCHEME_OBJECT DEFUN_VOID (fn_name)
 
 /* Primitives should have this as their first statement. */
 #ifdef ENABLE_PRIMITIVE_PROFILING
-#define PRIMITIVE_HEADER(n_args) record_primitive_entry (Fetch_Expression ())
+#define PRIMITIVE_HEADER(n_args) record_primitive_entry (exp_register)
 #else
 #define PRIMITIVE_HEADER(n_args) {}
 #endif

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.17 2002/07/02 18:38:34 cph Exp $
+$Id: liarc.h,v 1.18 2002/07/02 20:50:13 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -142,7 +142,7 @@ typedef union machine_word_u machine_word;
 
 #ifdef USE_GLOBAL_VARIABLES
 
-#define Rvl Val
+#define Rvl val_register
 #define Rhp Free
 #define Rrb Regs
 #define Rsp sp_register
@@ -158,7 +158,7 @@ typedef union machine_word_u machine_word;
 #define Rrb Regs
 
 #define DECLARE_VARIABLES()						\
-REGISTER SCHEME_OBJECT Rvl = Val;					\
+REGISTER SCHEME_OBJECT Rvl = val_register;				\
 REGISTER SCHEME_OBJECT * Rhp = Free;					\
 REGISTER SCHEME_OBJECT * Rsp = sp_register
 
@@ -166,12 +166,12 @@ REGISTER SCHEME_OBJECT * Rsp = sp_register
 {									\
   sp_register = Rsp;							\
   Free = Rhp;								\
-  Val = Rvl;								\
+  val_register = Rvl;							\
 } while (0)
 
 #define CACHE_VARIABLES() do						\
 {									\
-  Rvl = Val;								\
+  Rvl = val_register;							\
   Rhp = Free;								\
   Rsp = sp_register;							\
 } while (0)
@@ -201,7 +201,7 @@ REGISTER SCHEME_OBJECT * Rsp = sp_register
   SCHEME_OBJECT * destination;						\
 									\
   UNCACHE_VARIABLES ();							\
-  PRIMITIVE_APPLY (Val, primitive);					\
+  PRIMITIVE_APPLY (val_register, primitive);				\
   POP_PRIMITIVE_FRAME (primitive_nargs);				\
   destination = (OBJECT_ADDRESS (STACK_POP ()));			\
   CACHE_VARIABLES ();							\
