@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.41 1990/11/21 07:03:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/ppband.c,v 9.42 1990/11/21 21:07:33 jinx Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -35,6 +35,7 @@ MIT in each case. */
 /* Dumps Scheme FASL in user-readable form. */
 
 #include <stdio.h>
+#include <ctype.h>
 #include "ansidecl.h"
 #include "config.h"
 #include "errors.h"
@@ -110,6 +111,87 @@ static long Relocate_Temp;
 
 static SCHEME_OBJECT *Data, *end_of_memory;
 
+void
+DEFUN (print_long_as_string, (string), char *string)
+{
+  int i;
+  char *temp;
+  unsigned char c;
+
+  temp = string;
+  putchar ('"');
+  for (i = 0; i < (sizeof (long)); i++)
+  {
+    c = *temp++;
+    if (isgraph ((int) c))
+    {
+      putchar (c);
+    }
+    else
+    {
+      putchar (' ');
+    }
+  }
+  printf ("\" = ");
+
+  temp = string;
+  for (i = 0; i < (sizeof (long)); i++)
+  {
+    c = *temp++;
+    if (isgraph ((int) c))
+    {
+      printf ("    ");
+      putchar (c);
+    }
+    else
+    {
+      switch (c)
+      {
+	case '\0':
+	  printf ("   \\0");
+	  break;
+
+	case ' ':
+	  printf ("     ");
+	  break;
+
+	case '\a':
+	  printf ("   \\a");
+	  break;
+
+	case '\b':
+	  printf ("   \\b");
+	  break;
+
+	case '\f':
+	  printf ("   \\f");
+	  break;
+
+	case '\n':
+	  printf ("   \\n");
+	  break;
+
+	case '\r':
+	  printf ("   \\r");
+	  break;
+
+	case '\t':
+	  printf ("   \\t");
+	  break;
+
+	case '\v':
+	  printf ("   \\v");
+	  break;
+
+	default:
+	  printf (" \\%03o", c);
+	  break;
+      }
+    }
+  }
+  return;
+}
+
 Boolean
 DEFUN (scheme_string, (From, Quoted), long From AND Boolean Quoted)
 {
@@ -245,7 +327,7 @@ DEFUN (Display, (Location, Type, The_Datum),
 
     case TC_FIXNUM:
       PRINT_OBJECT ("FIXNUM", The_Datum);
-      Points_To = (FIXNUM_TO_LONG (The_Datum));
+      Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
       printf (" = %ld\n", Points_To);
       return;
 
@@ -292,9 +374,9 @@ DEFUN (show_area, (area, start, end, name),
   printf ("\n%s contents:\n\n", name);
   for (i = start; i < end;  area++, i++)
   {
-    if ((OBJECT_TYPE (*area) == TC_MANIFEST_NM_VECTOR) ||
-	(OBJECT_TYPE (*area) == TC_MANIFEST_CLOSURE) ||
-	(OBJECT_TYPE (*area) == TC_LINKAGE_SECTION))
+    if (((OBJECT_TYPE (*area)) == TC_MANIFEST_NM_VECTOR) ||
+	((OBJECT_TYPE (*area)) == TC_MANIFEST_CLOSURE) ||
+	((OBJECT_TYPE (*area)) == TC_LINKAGE_SECTION))
     {
       fast long j, count;
 
@@ -302,12 +384,13 @@ DEFUN (show_area, (area, start, end, name),
 	((OBJECT_TYPE (*area) == TC_LINKAGE_SECTION)
 	 ? (READ_CACHE_LINKAGE_COUNT (*area))
 	 : (OBJECT_DATUM (*area)));
-      Display (i, OBJECT_TYPE (*area), OBJECT_DATUM (*area));
+      Display (i, (OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
       area += 1;
       for (j = 0; j < count ; j++, area++)
       {
-        printf ("          %02lx%06lx\n",
-		(OBJECT_TYPE (*area)), (OBJECT_DATUM (*area)));
+        printf ("          %08lx    = ", ((unsigned long) (*area)));
+	print_long_as_string ((char *) area);
+	putchar ('\n');
       }
       i += count;
       area -= 1;
