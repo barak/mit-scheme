@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.14 1991/09/10 13:53:21 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.15 1991/10/03 19:48:20 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -275,9 +275,10 @@ RECIPIENTS is a string of names separated by commas."
 	    ((re-search-forward "\\([^0-9:]\\)\\([0-3]?[0-9]\\)\\([- \t_]+\\)\\([adfjmnos][aceopu][bcglnprtvy]\\)"
 				the-mark the-end-of-line)
 	     (string-append
-	      (string-pad-left (extract-string (re-match-start 2)
-					       (re-match-end 2))
-			       2)
+	      (let ((date-string (extract-string (re-match-start 2) (re-match-end 2))))
+		(if (char=? #\0 (string-ref date-string 0))
+		    (string-set! date-string 0 #\space))
+		(string-pad-left date-string 2))
 	      "-"
 	      (extract-string (re-match-start 4) (re-match-end 4))))
 	    ((re-search-forward "\\([^a-z]\\)\\([adfjmnos][acepou][bcglnprtvy]\\)\\([-a-z \t_]*\\)\\([0-9][0-9]?\\)"
