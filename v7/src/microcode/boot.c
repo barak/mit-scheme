@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.55 1989/06/02 21:43:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.56 1989/06/12 17:36:22 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -599,7 +599,8 @@ Microcode_Termination(code)
     else
       printf("%s", Term_Messages [code]);
 
-    if (WITHIN_CRITICAL_SECTION_P())
+    if ((WITHIN_CRITICAL_SECTION_P()) &&
+	(code != TERM_HALT))
     {
       printf(" within critical section \"%s\"",
 	     CRITICAL_SECTION_NAME());
