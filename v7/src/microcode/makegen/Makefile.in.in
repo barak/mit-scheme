@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.15 2001/03/08 18:05:12 cph Exp $
+# $Id: Makefile.in.in,v 1.16 2001/03/09 15:49:20 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -87,9 +87,15 @@ OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
 STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
 X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
-CRYPTO_TARGETS = @CRYPTO_TARGETS@
 PRBFISH_LIBS = @PRBFISH_LIBS@
 PRMD5_LIBS = @PRMD5_LIBS@
+
+MODULE_TARGETS = @MODULE_TARGETS@
+MODULE_CFLAGS = @MODULE_CFLAGS@
+MODULE_LDFLAGS = @MODULE_LDFLAGS@
+COMPILE_MODULE = $(COMPILE) $(MODULE_CFLAGS)
+LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
+MODULE_LIBS = -lc
 
 # **** Non-configured files ****
 
@@ -115,7 +121,7 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 
 bin_PROGRAMS = scheme bchscheme
 aux_PROGRAMS = gcdrone
-aux_LIBS = $(CRYPTO_TARGETS)
+aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
 
@@ -222,16 +228,18 @@ utabmd.bin: utabmd.scm
 	scheme -compiler -eval '(sf "utabmd")' < /dev/null
 
 prbfish.so: prbfish.o
-	ld -shared -o $@ $^ $(PRBFISH_LIBS)
+	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
 
 prmd5.so: prmd5.o
-	ld -shared -o $@ $^ $(PRMD5_LIBS)
+	$(LINK_MODULE) $^ $(PRMD5_LIBS) $(MODULE_LIBS)
 
 prmhash.so: prmhash.o
-	ld -shared -o $@ $^ -lmhash
+	$(LINK_MODULE) $^ -lmhash $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o
-	ld -shared -o $@ $^ -lmcrypt -lltdl
+	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
+
+@MODULE_RULES@
 
 tags: TAGS
 TAGS:

@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.8 2001/03/08 06:27:58 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.9 2001/03/09 15:49:03 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -44,11 +44,13 @@ STATIC_LIBS=
 QUASI_STATIC_LIBS=
 STATIC_PREFIX=
 STATIC_SUFFIX=
-CRYPTO_TARGETS=
 PRBFISH_LIBS=
 PRMD5_LIBS=
 SCHEME_DEFS=
 DLD_LDFLAGS=
+MODULE_BASES=
+MODULE_CFLAGS=
+MODULE_LDFLAGS=
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -124,7 +126,7 @@ dnl The OpenSSL crypto library provides support for both, and is preferred.
 if test "${scheme_cv_lib_crypto}" = "yes"; then
     AC_DEFINE(HAVE_LIBCRYPTO)
     if test "${enable_dynamic_crypto}" = "yes"; then
-	CRYPTO_TARGETS="${CRYPTO_TARGETS} prbfish.so prmd5.so"
+	MODULE_BASES="${MODULE_BASES} prbfish prmd5"
 	PRBFISH_LIBS="-lcrypto"
 	PRMD5_LIBS="-lcrypto"
     else
@@ -140,7 +142,7 @@ dnl to other MD5 libraries and provides a rich set of hashes.
 if test "${scheme_cv_lib_mhash}" = "yes"; then
     AC_DEFINE(HAVE_LIBMHASH)
     if test "${enable_dynamic_crypto}" = "yes"; then
-	CRYPTO_TARGETS="${CRYPTO_TARGETS} prmhash.so"
+	MODULE_BASES="${MODULE_BASES} prmhash"
     else
 	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmhash"
 	OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
@@ -154,7 +156,7 @@ dnl But mcrypt provides many ciphers and can be loaded in addition.
 if test "${scheme_cv_lib_mcrypt}" = "yes"; then
     AC_DEFINE(HAVE_LIBMCRYPT)
     if test "${enable_dynamic_crypto}" = "yes"; then
-	CRYPTO_TARGETS="${CRYPTO_TARGETS} prmcrypt.so"
+	MODULE_BASES="${MODULE_BASES} prmcrypt"
     else
 	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmcrypt -lltdl"
 	OPTIONAL_BASES="${OPTIONAL_BASES} prmcrypt"
@@ -168,7 +170,7 @@ if test "${HAVE_BLOWFISH}" = "no"; then
     if test "${scheme_cv_lib_blowfish}" = "yes"; then
 	AC_DEFINE(HAVE_LIBBLOWFISH)
 	if test "${enable_dynamic_crypto}" = "yes"; then
-	    CRYPTO_TARGETS="${CRYPTO_TARGETS} prbfish.so"
+	    MODULE_BASES="${MODULE_BASES} prbfish"
 	    PRBFISH_LIBS="-lblowfish"
 	else
 	    STATIC_LIBS="${STATIC_LIBS} -lblowfish"
@@ -183,7 +185,7 @@ if test "${HAVE_MD5}" = "no"; then
     if test "${scheme_cv_lib_md5}" = "yes"; then
 	AC_DEFINE(HAVE_LIBMD5)
 	if test "${enable_dynamic_crypto}" = "yes"; then
-	    CRYPTO_TARGETS="${CRYPTO_TARGETS} prmd5.so"
+	    MODULE_BASES="${MODULE_BASES} prmd5"
 	    PRMD5_LIBS="-lmd5"
 	else
 	    STATIC_LIBS="${STATIC_LIBS} -lmd5"
@@ -497,7 +499,9 @@ linux-gnu)
 	STATIC_PREFIX="-Xlinker -Bstatic"
 	STATIC_SUFFIX="-Xlinker -Bdynamic"
     fi
-    DLD_LDFLAGS="-export-dynamic"
+    DLD_LDFLAGS="${DLD_LDFLAGS} -export-dynamic"
+    MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared"
     AC_MSG_CHECKING([for ELF binaries])
     AC_TRY_RUN(
 [int
@@ -580,6 +584,21 @@ for base in ${OPTIONAL_BASES}; do
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
 
+
+MODULE_TARGETS=
+if test "${MODULE_BASES}" = ""; then
+    MODULE_RULES="/dev/null"
+else
+    MODULE_RULES="config.modrules"
+    rm -f "${MODULE_RULES}"
+    for BASE in ${MODULE_BASES}; do
+	MODULE_TARGETS="${MODULE_TARGETS} ${BASE}.so"
+	echo "" >> "${MODULE_RULES}"
+	echo "${BASE}.o: ${BASE}.c" >> "${MODULE_RULES}"
+	echo "	\$(COMPILE_MODULE) -c \$*.c" >> "${MODULE_RULES}"
+    done
+fi
+
 AC_SUBST(AS_FLAGS)
 AC_SUBST(GC_HEAD_FILES)
 AC_SUBST(LIB_X11)
@@ -589,10 +608,17 @@ AC_SUBST(OPTIONAL_SOURCES)
 AC_SUBST(STATIC_LIBS)
 AC_SUBST(STATIC_PREFIX)
 AC_SUBST(STATIC_SUFFIX)
-AC_SUBST(CRYPTO_TARGETS)
 AC_SUBST(PRBFISH_LIBS)
 AC_SUBST(PRMD5_LIBS)
 AC_SUBST(SCHEME_DEFS)
 AC_SUBST(DLD_LDFLAGS)
+AC_SUBST(MODULE_TARGETS)
+AC_SUBST_FILE(MODULE_RULES)
+AC_SUBST(MODULE_CFLAGS)
+AC_SUBST(MODULE_LDFLAGS)
 
 AC_OUTPUT(Makefile)
+
+if test "${MODULE_RULES}" != "/dev/null"; then
+    rm -f "${MODULE_RULES}"
+fi
