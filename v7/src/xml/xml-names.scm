@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.2 2004/02/16 05:50:37 cph Exp $
+$Id: xml-names.scm,v 1.3 2004/02/23 20:53:22 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -105,8 +105,7 @@ USA.
   (eq? (string-is-xml-nmtoken? string) 'NAME))
 
 (define (string-is-xml-nmtoken? string)
-  (let ((buffer
-	 (wide-string->parser-buffer (utf8-string->wide-string string))))
+  (let ((buffer (string->parser-buffer (utf8-string->wide-string string))))
     (let ((check-char
 	   (lambda ()
 	     (match-parser-buffer-char-in-alphabet buffer
