@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.25 2001/09/25 05:10:59 cph Exp $
+$Id: gconst.scm,v 4.26 2001/09/25 16:53:25 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -200,12 +200,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     STRING-REF
     STRING-SET!
     STRING?
-    SUBSTRING-MATCH-BACKWARD
-    SUBSTRING-MATCH-FORWARD
     SUBSTRING-MOVE-LEFT!
     SUBSTRING-MOVE-RIGHT!
-    SUBSTRING<?
-    SUBSTRING=?
     SUBVECTOR->LIST
     SUBVECTOR-FILL!
     SUBVECTOR-MOVE-LEFT!
