@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.149 2003/02/14 18:28:14 cph Exp $
+$Id: imail-core.scm,v 1.150 2003/03/07 05:49:18 cph Exp $
 
 Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -904,8 +904,8 @@ USA.
   (and (string? object)
        (rfc822:header-field-name? object 0 (string-length object))))
 
-(define (copy-header-field header)
-  (record-copy header))
+(define copy-header-field
+  copy-record)
 
 (define (->header-fields object)
   (cond ((or (pair? object) (null? object)) object)
