@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.3 1995/01/06 21:58:40 cph Exp $
+$Id: os2fs.c,v 1.4 1995/01/16 20:57:00 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -84,12 +84,17 @@ OS2_read_file_status (const char * filename)
      {
        if ((rc == ERROR_FILE_NOT_FOUND)
 	   || (rc == ERROR_PATH_NOT_FOUND)
-	   || (rc == ERROR_INVALID_PATH)
-	   || (rc == ERROR_INVALID_FSD_NAME)
 	   /* ERROR_ACCESS_DENIED can occur if the file is a symbolic
 	      link on a unix system mounted via NFS, and if the
 	      symbolic link points to a nonexistent file.  */
-	   || (rc == ERROR_ACCESS_DENIED))
+	   || (rc == ERROR_ACCESS_DENIED)
+	   || (rc == ERROR_INVALID_DRIVE)
+	   || (rc == ERROR_NOT_READY)
+	   || (rc == ERROR_NOT_DOS_DISK)
+	   || (rc == ERROR_DISK_CHANGE)
+	   || (rc == ERROR_FILENAME_EXCED_RANGE)
+	   || (rc == ERROR_INVALID_FSD_NAME)
+	   || (rc == ERROR_INVALID_PATH))
 	 return (0);
      });
   return (&info);
@@ -158,15 +163,11 @@ OS2_drive_type (char drive_letter)
   static char cbuf [(sizeof (FSQBUFFER2)) + (3 * CCHMAXPATH)];
   FSQBUFFER2 * buffer = ((FSQBUFFER2 *) cbuf);
   ULONG size = (sizeof (cbuf));
-  APIRET rc;
   (name [0]) = drive_letter;
   (name [1]) = ':';
   (name [2]) = '\0';
-  (void) DosError (FERR_DISABLEEXCEPTION | FERR_DISABLEHARDERR);
-  rc = (dos_query_fs_attach (name, 0, FSAIL_QUERYNAME, buffer, (& size)));
-  (void) DosError (FERR_ENABLEEXCEPTION | FERR_ENABLEHARDERR);
-  if (rc != NO_ERROR)
-    OS2_error_system_call (rc, syscall_dos_query_fs_attach);
+  STD_API_CALL
+    (dos_query_fs_attach, (name, 0, FSAIL_QUERYNAME, buffer, (& size)));
   return
     ((((buffer -> iType) == FSAT_LOCALDRV)
       || ((buffer -> iType) == FSAT_REMOTEDRV))
