@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.51 2000/10/20 00:44:31 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.52 2000/10/20 02:14:59 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -301,7 +301,7 @@
   (let loop
       ((flags
 	(if (flags-member? "seen" flags)
-	    (flags-delete! "seen" flags)
+	    (flags-delete "seen" flags)
 	    (cons "unseen" flags)))
        (attributes '())
        (labels '()))
