@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/chrset.scm,v 14.2 1988/06/13 11:41:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/chrset.scm,v 14.3 1988/07/15 22:30:00 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,7 +38,11 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (char-set? object)
-  (and (string? object) (= (string-length object) 256)))
+  (and (string? object)
+       (= (string-length object) 256)
+       (not (string-find-next-char-in-set object char-set:not-01))))
+
+(define char-set:not-01)
 
 (define (char-set . chars)
   (chars->char-set chars))
@@ -105,6 +109,7 @@ MIT in each case. |#
 (define char-set:lower-case)
 (define char-set:numeric)
 (define char-set:graphic)
+(define char-set:not-graphic)
 (define char-set:whitespace)
 (define char-set:not-whitespace)
 (define char-set:alphabetic)
@@ -116,6 +121,7 @@ MIT in each case. |#
   (set! char-set:lower-case (ascii-range->char-set #x61 #x7B))
   (set! char-set:numeric (ascii-range->char-set #x30 #x3A))
   (set! char-set:graphic (ascii-range->char-set #x20 #x7F))
+  (set! char-set:not-graphic (char-set-invert char-set:graphic))
   (set! char-set:whitespace
 	(char-set char:newline #\Tab #\Linefeed #\Page #\Return #\Space))
   (set! char-set:not-whitespace (char-set-invert char-set:whitespace))
@@ -124,7 +130,8 @@ MIT in each case. |#
   (set! char-set:alphanumeric
 	(char-set-union char-set:alphabetic char-set:numeric))
   (set! char-set:standard
-	(char-set-union char-set:graphic (char-set char:newline))))
+	(char-set-union char-set:graphic (char-set char:newline)))
+  (set! char-set:not-01 (ascii-range->char-set #x02 #x100)))
 
 (define-integrable (char-upper-case? char)
   (char-set-member? char-set:upper-case char))
