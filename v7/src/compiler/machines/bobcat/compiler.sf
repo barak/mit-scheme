@@ -1,10 +1,47 @@
-;;; -*- Scheme -*-
+#| -*-Scheme-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.sf,v 1.5 1988/08/31 06:49:59 cph Exp $
+
+Copyright (c) 1988 Massachusetts Institute of Technology
+
+This material was developed by the Scheme project at the Massachusetts
+Institute of Technology, Department of Electrical Engineering and
+Computer Science.  Permission to copy this software, to redistribute
+it, and to use it for any purpose is granted, subject to the following
+restrictions and understandings.
+
+1. Any copy made of this software must include this copyright notice
+in full.
+
+2. Users of this software agree to make their best efforts (a) to
+return to the MIT Scheme project any improvements or extensions that
+they make, so that these may be included in future releases; and (b)
+to inform MIT of noteworthy uses of this software.
+
+3. All materials developed as a consequence of the use of this
+software shall duly acknowledge such use, in accordance with the usual
+standards of acknowledging credit in academic research.
+
+4. MIT has made no warrantee or representation that the operation of
+this software will be error-free, and MIT is under no obligation to
+provide any services, by way of maintenance, update, or otherwise.
+
+5. In conjunction with products arising from the use of this material,
+there shall be no use of the name of the Massachusetts Institute of
+Technology nor of any adaptation thereof in any advertising,
+promotional, or sales literature without prior written consent from
+MIT in each case. |#
+
+;;;; Script to incrementally syntax the compiler
+
+;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))
     (with-working-directory-pathname "/scheme/cref" (lambda () (load "make"))))
 
+;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
     (begin
+      ;; If there is no existing package constructor, generate one.
       (if (not (file-exists? "comp.bcon"))
 	  (begin
 	    ((package/reference (find-package '(CROSS-REFERENCE))
@@ -13,52 +50,52 @@
 	    (sf "comp.con" "comp.bcon")))
       (load "comp.bcon")))
 
-(let ((sf-and-load
-       (lambda (files package)
-	 (sf-conditionally files)
-	 (let ((environment (package/environment (find-package package))))
-	   (for-each (lambda (file)
-		       (load (string-append file ".bin") environment))
-		     files))))
-      (compiler-package (find-package '(COMPILER))))
-  (write-string "\n\n---- Loading compile-time files ----")
-  (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
-  (sf-and-load '("base/macros") '(COMPILER MACROS))
-  ((package/reference (find-package '(COMPILER MACROS)) 'INITIALIZE-PACKAGE!))
-  (sf-and-load '("machines/bobcat/decls") '(COMPILER DECLARATIONS))
-  (let ((environment
-	 (package/environment (find-package '(COMPILER DECLARATIONS)))))
-    (set! (access source-file-expression environment) "*.scm")
-    ((access initialize-package! environment)))
-  (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
-  (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-  (sf-and-load '("machines/bobcat/assmd") '(COMPILER ASSEMBLER))
-  (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
-  (sf-and-load '("machines/bobcat/coerce" "back/asmmac"
-					  "machines/bobcat/insmac")
-	       '(COMPILER LAP-SYNTAXER))
-  (if (package/reference compiler-package
-			 'COMPILER:ENABLE-EXPANSION-DECLARATIONS?)
-      (begin
-	(sf-and-load '("base/scode") '(COMPILER))
-	(sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
-	(sf-and-load '("machines/bobcat/inerly" "back/syerly")
-		     '(COMPILER LAP-SYNTAXER))
-	(let ((environment
-	       (package/environment (find-package '(COMPILER LAP-SYNTAXER))))
-	      (syntax-table
-	       (package/reference compiler-package 'EARLY-SYNTAX-TABLE)))
-	  (fluid-let ((load-noisily? false))
-	    (for-each (lambda (name)
-			(write-string "\nPre-loading instruction set from ")
-			(write name)
-			(load (string-append "machines/bobcat/" name ".scm")
-			      environment
-			      syntax-table)
-			(write-string " -- done"))
-		      '("instr1" "instr2" "instr3" "instr4")))))))
+;; Guarantee that the necessary syntactic transforms and optimizers
+;; are loaded.
+(if (lexical-unreferenceable? (package/environment (find-package '(COMPILER)))
+			      'SYNTAX-FILES!)
+    (let ((sf-and-load
+	   (lambda (files package)
+	     (sf-conditionally files)
+	     (for-each (lambda (file)
+			 (load (string-append file ".bin") package))
+		       files))))
+      (write-string "\n\n---- Loading compile-time files ----")
+      (sf-and-load '("base/switch" "base/hashtb") '(COMPILER))
+      (sf-and-load '("base/macros") '(COMPILER MACROS))
+      ((access initialize-package!
+	       (package/environment (find-package '(COMPILER MACROS)))))
+      (sf-and-load '("machines/bobcat/decls") '(COMPILER DECLARATIONS))
+      (let ((environment
+	     (package/environment (find-package '(COMPILER DECLARATIONS)))))
+	(set! (access source-file-expression environment) "*.scm")
+	((access initialize-package! environment)))
+      (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
+      (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
+      (sf-and-load '("machines/bobcat/assmd") '(COMPILER ASSEMBLER))      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("machines/bobcat/coerce" "back/asmmac"
+					      "machines/bobcat/insmac")
+		   '(COMPILER LAP-SYNTAXER))
+      (sf-and-load '("base/scode") '(COMPILER))
+      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
+      (sf-and-load '("machines/bobcat/inerly" "back/syerly")
+		   '(COMPILER LAP-SYNTAXER))))
 
-((package/reference (find-package '(COMPILER DECLARATIONS)) 'SYNTAX-FILES!))
-(cref/generate-all "comp")
-(sf "comp.con" "comp.bcon")
+;; Load the assembler instruction database.
+(in-package (package/environment (find-package '(COMPILER LAP-SYNTAXER)))
+  (if (and compiler:enable-expansion-declarations?
+	   (null? early-instructions))
+      (fluid-let ((load-noisily? false))
+	(for-each (lambda (name)
+		    (write-string "\nPre-loading instruction set from ")
+		    (write name)
+		    (load (string-append "machines/bobcat/" name ".scm")
+			  '(COMPILER LAP-SYNTAXER)
+			  early-syntax-table)
+		    (write-string " -- done"))		  '("instr1" "instr2" "instr3" "instr4")))))
+;; Resyntax any files that need it.
+((access syntax-files! (package/environment (find-package '(COMPILER)))))
+
+;; Rebuild the package constructors and cref.
+(cref/generate-all "comp")(sf "comp.con" "comp.bcon")
 (sf "comp.ldr" "comp.bldr")
