@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.50 1996/04/04 18:32:09 cph Exp $
+;;;	$Id: xterm.scm,v 1.51 1996/04/04 18:37:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -56,6 +56,7 @@
   (x-delete-property 3)
   (x-display-descriptor 1)
   (x-display-flush 1)
+  (x-display-get-default 3)
   (x-display-process-events 2)
   (x-display-sync 2)
   (x-get-atom-name 2)
@@ -148,11 +149,8 @@
   ;; Don't map the window until all of the data structures are in
   ;; place.  This guarantees that no events will be missed.
   (let ((xterm
-	 (xterm-open-window (or (get-x-display)
-				(error "unable to open display"))
-			    (and (not (default-object? geometry))
-				 geometry)
-			    '#(#F "edwin" "Emacs"))))
+	 (open-window (null? screen-list)
+		      (if (default-object? geometry) #f geometry))))
     (x-window-set-event-mask xterm event-mask)
     (let ((screen
 	   (make-screen (make-xterm-screen-state xterm
@@ -182,6 +180,36 @@
       (x-window-map xterm)
       (x-window-flush xterm)
       screen)))
+
+(define (open-window primary? geometry)
+  (let ((display (or (get-x-display) (error "Unable to open display.")))
+	(instance (if primary? "edwin" "edwinSecondary"))
+	(class "Emacs"))
+    (xterm-open-window display
+		       (or geometry
+			   (get-geometry display primary? instance class))
+		       (vector #f instance class))))
+
+(define (get-geometry display primary? instance class)
+  (or (x-display-get-geometry display instance)
+      (let ((geometry (x-display-get-geometry display class)))
+	(and geometry
+	     (if primary?
+		 geometry
+		 (strip-position-from-geometry geometry))))
+      "80x40"))
+
+(define (x-display-get-geometry display key)
+  (or (x-display-get-default display key "geometry")
+      (x-display-get-default display key "Geometry")))
+
+(define (strip-position-from-geometry geometry)
+  (let ((sign
+	 (or (string-find-next-char geometry #\+)
+	     (string-find-next-char geometry #\-))))
+    (if sign
+	(string-head geometry sign)
+	geometry)))
 
 ;;; According to the Xlib manual, we're not allowed to draw anything
 ;;; on the window until the first Expose event arrives.  The manual
