@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.3 1988/08/18 01:36:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.4 1988/10/24 22:18:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -79,16 +79,17 @@ MIT in each case. |#
 		   (lambda (rvalue) (not (rvalue/procedure? rvalue))))))))))
 
 (define (analyze/continuation continuation)
-  (and (not (continuation/passed-out? continuation))
-       (3-logic/and
-	(for-some? (continuation/returns continuation)
-	  (lambda (return)
-	    (eq? (rvalue-known-value (return/operator return))
-		 continuation)))
-	(for-some? (continuation/combinations continuation)
-	  (lambda (combination)
-	    (eq? (rvalue-known-value (combination/continuation combination))
-		 continuation))))))
+  (3-logic/and
+   (and (not (continuation/passed-out? continuation)) 'ALWAYS)
+   (3-logic/and
+    (for-some? (continuation/returns continuation)
+      (lambda (return)
+	(eq? (rvalue-known-value (return/operator return))
+	     continuation)))
+    (for-some? (continuation/combinations continuation)
+      (lambda (combination)
+	(eq? (rvalue-known-value (combination/continuation combination))
+	     continuation))))))
 
 (define (for-some? items predicate)
   (let loop ((items items) (default false))
