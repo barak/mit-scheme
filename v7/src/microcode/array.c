@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.39 1989/09/20 23:05:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.40 1989/12/20 18:03:32 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -53,11 +53,12 @@ MIT in each case. */
 #ifdef PI
 #undef PI
 #endif
-#define PI    3.141592653589793238462643
-#define TWOPI 6.283185307179586476925287
+#define PI           3.141592653589793238462643
+#define PI_OVER_2    1.570796326794896619231322
+#define TWOPI        6.283185307179586476925287
 #define SQRT_2          1.4142135623730950488
 #define ONE_OVER_SQRT_2  .7071067811865475244
-/* Abramowitz and Stegun */
+/* Abramowitz and Stegun p.3 */
 
 REAL
 flonum_to_real (argument, arg_number)
@@ -916,7 +917,7 @@ DEFINE_PRIMITIVE ("ARRAY-SEARCH-VALUE-TOLERANCE-FROM", Prim_array_search_value_t
   tolerance = (arg_real (3));
   {
     fast long i;
-    for (i = (arg_index_integer (4, length)); (i < length); i += 1)
+    for (i = (arg_index_integer (4, length)); i<length; i+=1)
       if (tolerance >= (fabs ((double) ((a [i]) - value))))
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (i));
   }
@@ -936,10 +937,14 @@ DEFINE_PRIMITIVE ("SUBARRAY-MIN-MAX-INDEX", Prim_subarray_min_max_index, 3, 3, 0
     long nmax;
     if (mplus > (ARRAY_LENGTH (ARG_REF (1))))
       error_bad_range_arg (3);
+    
     C_Array_Find_Min_Max ((& (a [at])), m, (&nmin), (&nmax));
+    nmin = nmin + at;		/* offset appropriately */
+    nmax = nmax + at;
+    
     PRIMITIVE_RETURN
-      (cons ((LONG_TO_FIXNUM (nmin + at)),
-	     (cons ((LONG_TO_FIXNUM (nmax + at)),
+      (cons ((LONG_TO_FIXNUM (nmin)),
+	     (cons ((LONG_TO_FIXNUM (nmax)),
 		    EMPTY_LIST))));
   }
 }
@@ -950,31 +955,34 @@ C_Array_Find_Min_Max (x, n, nmin, nmax)
      fast long n;
      long * nmin;
      long * nmax;
-{
-  fast REAL xmin = (*x++);
-  fast REAL xmax = xmin;
-  fast long nnmin = 0;
-  fast long nnmax = 0;
-  fast long count = 1;
-  while ((n--) > 0)
-    {
-      if ((*x) < xmin)
-	{
-	  nnmin = count;
-	  xmin = (*x);
-	}
-      else if ((*x) > xmax)
-	{
-	  nnmax = count;
-	  xmax = (*x);
-	}
-      count += 1;
-      x += 1;
-    }
-  (*nmin) = nnmin;
-  (*nmax) = nnmax;
-  return;
+{ REAL *xold = x;
+  register REAL xmin, xmax;
+  register long nnmin, nnmax;
+  register long count;
+
+  nnmin = nnmax = 0;
+  xmin = xmax = *x++;
+  n--;
+  count = 1;
+  if(n>0)
+  {
+    do {
+      if(*x < xmin) {
+	nnmin = count++ ;
+	xmin = *x++ ;
+      } else if(*x > xmax) {
+	nnmax = count++ ;
+	xmax = *x++ ;
+      } else {
+	count++ ;
+	x++ ;
+      }
+    } while( --n > 0 ) ;
+  }
+  *nmin = nnmin ;
+  *nmax = nnmax ;
 }
+
 
 /* array-average
    can be done with (array-reduce +) and division by array-length.
@@ -1089,7 +1097,8 @@ Find_Offset_Scale_For_Linear_Map (Min, Max, New_Min, New_Max, Offset, Scale)
     }
   return;
 }
-
+
+
 DEFINE_PRIMITIVE ("ARRAY-CLIP-MIN-MAX!", Prim_array_clip_min_max, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -1127,7 +1136,7 @@ DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-1!", Prim_complex_array_operation_1, 
   REAL *a, *b;
   void complex_array_to_polar(), complex_array_exp(), complex_array_sqrt();
   void complex_array_sin(), complex_array_cos();
-  void complex_array_asin(), complex_array_acos();
+  void complex_array_asin(), complex_array_acos(), complex_array_atan();
   PRIMITIVE_HEADER (3);
   CHECK_ARG (1, FIXNUM_P);	/* operation opcode */
   CHECK_ARG (2, ARRAY_P);	/* input array -- n      real part         */
@@ -1143,14 +1152,20 @@ DEFINE_PRIMITIVE ("COMPLEX-ARRAY-OPERATION-1!", Prim_complex_array_operation_1, 
     complex_array_exp(a,b,n);
   else if (opcode==3)
     complex_array_sqrt(a,b,n);
+
   else if (opcode==4)
     complex_array_sin(a,b,n);
   else if (opcode==5)
     complex_array_cos(a,b,n);
+  /* for tan(z) use sin(z)/cos(z) */
+  
   else if (opcode==6)
     complex_array_asin(a,b,n);
   else if (opcode==7)
     complex_array_acos(a,b,n);
+  else if (opcode==8)
+    complex_array_atan(a,b,n);
+  
   else
     error_bad_range_arg(1);	/* illegal opcode */
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -1258,53 +1273,81 @@ complex_array_cos (a,b,n)
     }
 }
 
+
 void
 complex_array_asin (a,b,n)
      REAL *a,*b;
      long n;
-{
-  long i;
-  double x,y, alfa,beta, xp1,xm1;
-
+{ /* logarithmic formula as in R3.99, about 21ops plus log,atan - see my notes */
+  long i; 
+  double oldx,oldy, x,y, real,imag, r;
+  
   for (i=0; i<n; i++)
-    {
-      x = (double) a[i];
-      y = (double) b[i];
-      xp1 = x+1;        xm1 = x-1;
-      xp1 = xp1*xp1;    xm1 = xm1*xm1;
-      y = y*y;
-      x = sqrt(xp1+y);		/* use again as temp var */
-      y = sqrt(xm1+y);		/* use again as temp var */
-      alfa = (x+y)*0.5;
-      beta = (x-y)*0.5;		/* Abramowitz p.81 4.4.37 */
-      a[i]   = (REAL) asin(beta);
-      b[i]   = (REAL) log(alfa + sqrt(alfa*alfa - 1));
-    }
+  {
+    oldx = (double) a[i];
+    oldy = (double) b[i];
+    
+    x = 1.0 - oldx*oldx + oldy*oldy; /* 1 - z*z */
+    y = -2.0 * oldx * oldy;
+    
+    r = sqrt(x*x + y*y);	/* sqrt(1-z*z)  */
+    real = sqrt((r+x)/2.0);
+    if (y>0.0)
+      imag =  sqrt((r-x)/2.0);	/* choose principal root */
+    else			/* see Abramowitz (p.17 3.7.27) */
+      imag = -sqrt((r-x)/2.0);
+    
+    real = real - oldy;		/* i*z + sqrt(...) */
+    imag = imag + oldx;
+    
+    b[i] = (REAL) (- log (sqrt (real*real + imag*imag))); /* -i*log(...) */
+    a[i] = (REAL) atan2( imag, real); /* chosen angle is okay 
+					 Also 0/0 doesnot occur */
+  }
 }
-
+
 void
 complex_array_acos (a,b,n)
      REAL *a,*b;
      long n;
 {
   long i;
-  double x,y, alfa,beta, xp1,xm1;
 
+  complex_array_asin (a,b,n);
+  
   for (i=0; i<n; i++)
     {
-      x = (double) a[i];
-      y = (double) b[i];
-      xp1 = x+1;        xm1 = x-1;
-      xp1 = xp1*xp1;    xm1 = xm1*xm1;
-      y = y*y;
-      x = sqrt(xp1+y);		/* use again as temp var */
-      y = sqrt(xm1+y);		/* use again as temp var */
-      alfa = (x+y)*0.5;
-      beta = (x-y)*0.5;		/* Abramowitz p.81 4.4.38 */
-      a[i]   = (REAL) acos(beta);
-      b[i]   = (REAL) -log(alfa + sqrt(alfa*alfa - 1));
+      a[i] = PI_OVER_2 - a[i];
+      b[i] =           - b[i];
     }
 }
+  
+
+void
+complex_array_atan (a,b,n)
+     REAL *a,*b;
+     long n;
+{ /* logarithmic formula, expanded, simplified - see my notes */
+  long i; 
+  double x,y, xx, real,imag, d;
+  
+  for (i=0; i<n; i++)
+  {
+    x = (double) a[i];
+    y = (double) b[i];
+    
+    xx = x*x;
+    imag = 1.0 + y;		/* temp var */
+    d  = xx + imag*imag;
+    
+    real = (1 - y*y - xx) / d;
+    imag = (2.0 * x)  / d;
+    
+    b[i] = (REAL) ((log (sqrt (real*real + imag*imag))) / -2.0);
+    a[i] = (atan2 (imag,real)) / 2.0;
+  }
+}
+
 
 /* complex-array-operation-1b!
    groups together procedures that use 1 complex-array & 1 number
@@ -1406,12 +1449,13 @@ complex_array_angle (a,b,c,n)
 {
   long i;
   for (i=0; i<n; i++)
-    {
-      if ((a[i] == 0.0) && (b[i]==0.0))
-	c[i] = 0.0;		/* choose angle=0 for point (0,0) */
-      else
-	c[i] = (REAL) atan2( (double) b[i], (double) a[i]);
-    }
+  {
+    if ((a[i] == 0.0) && (b[i]==0.0))
+      c[i] = 0.0;		/* choose angle=0 for point (0,0) */
+    else
+      c[i] = (REAL) atan2( (double) b[i], (double) a[i]);
+    /* angle ==   -pi (exclusive) to +pi (inclusive) */
+  }
 }
 
 DEFINE_PRIMITIVE ("CS-ARRAY-MAGNITUDE!", Prim_cs_array_magnitude, 1, 1, 0)

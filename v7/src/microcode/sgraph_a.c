@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.8 1989/09/20 23:05:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/sgraph_a.c,v 1.9 1989/12/20 18:03:19 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. */
 #include "Sgraph.h"
 #include "array.h"
 
+#define SB_DEVICE_ARG(arg) (arg_nonnegative_integer (arg))
+
 #ifndef STARBASE_COLOR_TABLE_START
 #define STARBASE_COLOR_TABLE_START 0
 #endif
@@ -73,24 +75,31 @@ arg_plotting_box (arg_number, plotting_box)
     error_wrong_type_arg (arg_number);
   return;
 }
-
-DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_with_offset_scale, 5, 5, 0)
+
+/* plot-array-0 is suffixed -0   in case we need more versions of array plot */
+
+DEFINE_PRIMITIVE ("PLOT-ARRAY-0", 
+		  Prim_plot_array_0, 6, 6, 
+		  "(PLOT-ARRAY-0 DEVICE ARRAY BOX OFFSET SCALE FILL)")
 {
-  fast SCHEME_OBJECT array;
+  SCHEME_OBJECT array;
   float plotting_box [4];
-  REAL scale;
-  REAL offset;
-  PRIMITIVE_HEADER (5);
-  CHECK_ARG (1, ARRAY_P);
-  array = (ARG_REF (1));
-  arg_plotting_box (2, plotting_box);
-  offset = (arg_real (3));
-  scale = (arg_real (4));
+  REAL offset, scale;
+  int device;
+  PRIMITIVE_HEADER (6);
+  device = (SB_DEVICE_ARG (1));
+  
+  CHECK_ARG (2, ARRAY_P);
+  array = (ARG_REF (2));
+  arg_plotting_box (3, plotting_box);
+  offset = (arg_real (4));	/* arg_real is defined in array.h */
+  scale = (arg_real (5));
   Plot_C_Array_With_Offset_Scale
-    ((ARRAY_CONTENTS (array)),
+    (device,
+     (ARRAY_CONTENTS (array)),
      (ARRAY_LENGTH (array)),
      plotting_box,
-     (arg_index_integer (5, 2)),
+     (arg_index_integer (6, 2)),
      offset,
      scale);
   PRIMITIVE_RETURN
@@ -99,140 +108,141 @@ DEFINE_PRIMITIVE ("PLOT-ARRAY-IN-BOX-WITH-OFFSET-SCALE", Prim_plot_array_in_box_
 		  EMPTY_LIST))));
 }
 
-Plot_C_Array_With_Offset_Scale (Array, Length, Plotting_Box, fill_with_lines,
+Plot_C_Array_With_Offset_Scale (device, Array, Length, Plotting_Box, fill_with_lines,
 				Offset, Scale)
+     int device; 
      float *Plotting_Box; long Length;
      int fill_with_lines;	/* plots filled with lines from 0 to y(t) */
      REAL *Array, Scale, Offset;
 {
-  float box_x_min = Plotting_Box[0],
-        box_y_min=Plotting_Box[1];
-  float box_x_max = Plotting_Box[2],
-        box_y_max = Plotting_Box[3];
-  float Box_Length = box_x_max - box_x_min,
-        Box_Height = box_y_max - box_y_min;
+  float box_x_min = Plotting_Box[0];
+  float box_y_min=Plotting_Box[1];
+  float box_x_max = Plotting_Box[2];
+  float box_y_max = Plotting_Box[3];
+  float Box_Length = box_x_max - box_x_min;
+  float Box_Height = box_y_max - box_y_min;
   fast float x_position, y_position, index_inc, clipped_offset;
   long i;
 
   index_inc = ((float) Box_Length/Length);
   x_position = box_x_min;
   if (fill_with_lines == 0)
-  { /* plot just the points */
+  {				/* plot just the points */
     for (i = 0; i < Length; i++)
     {
       y_position = ((float) (Offset + (Scale * Array[i])));
-      move2d(screen_handle, x_position, y_position);
-      draw2d(screen_handle, x_position, y_position);
+      move2d(device, x_position, y_position);
+      draw2d(device, x_position, y_position);
       x_position = x_position + index_inc;
     }
   }
   else
-  { /* fill with lines */
+  {				/* fill with lines */
     clipped_offset = min( max(box_y_min, ((float) Offset)), box_y_max);
     /* fill from zero-line but do not go outside box,
        (don't bother with starbase clipping) */
     for (i = 0; i < Length; i++)
     {
       y_position = ((float) (Offset + (Scale * Array[i])));
-      move2d(screen_handle, x_position, clipped_offset);
-      draw2d(screen_handle, x_position, y_position);
+      move2d(device, x_position, clipped_offset);
+      draw2d(device, x_position, y_position);
       x_position = x_position + index_inc;
     }
   }
-  make_picture_current(screen_handle);
+  make_picture_current(device);
 }
 
-Plot_Box(Box)
-     float *Box;
+DEFINE_PRIMITIVE ("POLYGON2D", Prim_polygon2d, 2,2, 0)
 {
-  perimeter_color_index(screen_handle, 1);
-  interior_style(screen_handle, INT_HOLLOW, TRUE);
-  rectangle(screen_handle, Box[0], Box[1], Box[2], Box[3]);
-  make_picture_current(screen_handle);
-}
-
-DEFINE_PRIMITIVE ("CLEAR-BOX", Prim_clear_box, 1, 1, 0)
-{
-  float Plotting_Box [4];	/* x_min, y_min, x_max, y_max */
-  PRIMITIVE_HEADER (1);
-  arg_plotting_box (1, Plotting_Box);
-  C_Clear_Rectangle (Plotting_Box);
+  float clist [TWICE_MAX_NUMBER_OF_CORNERS];
+  int count;
+  fast SCHEME_OBJECT object;
+  int device; 
+  PRIMITIVE_HEADER (2); 
+  
+  device = (SB_DEVICE_ARG (1));
+  CHECK_ARG (2, PAIR_P);
+  count = 0;
+    
+  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), object);
+  while (PAIR_P (object))
+  {
+    fast SCHEME_OBJECT number = (PAIR_CAR (object));
+    if (! (REAL_P (number)))
+      error_wrong_type_arg (2);
+    if (! (real_number_to_double_p (number)))
+      error_bad_range_arg (2);
+    (clist [count]) = (real_number_to_double (number));
+    count += 1;
+    if (count == (TWICE_MAX_NUMBER_OF_CORNERS - 2))
+      error_bad_range_arg (2);
+    TOUCH_IN_PRIMITIVE ((PAIR_CDR (object)), object);
+  }
+  if (object != EMPTY_LIST)
+    error_wrong_type_arg (2);
+
+  (clist [count]) = (clist [0]);
+  (clist [count + 1]) = (clist [1]);
+  polygon2d (device, clist, ((long) ((count + 2) / 2)), 0);
+  make_picture_current (device);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-C_Clear_Rectangle(Box)
+
+DEFINE_PRIMITIVE ("BOX-CLEAR", Prim_box_clear, 2,2, 0)
+{
+  int device; 
+  float Plotting_Box [4];	/* x_min, y_min, x_max, y_max */
+  PRIMITIVE_HEADER (2);
+  device = (SB_DEVICE_ARG (1));  
+  arg_plotting_box (2, Plotting_Box);
+  C_Clear_Rectangle (device, Plotting_Box);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+C_Clear_Rectangle(device, Box)
+     int device;
      float *Box;
 {
   xposition = 0.0;
   yposition = 0.0;
-  move2d(screen_handle, xposition, yposition);
+  move2d(device, xposition, yposition);
   /* shuffle around the coords */
-  clip_rectangle (screen_handle, Box[0], Box[2], Box[1], Box[3]);
-  clear_control(screen_handle, CLEAR_CLIP_RECTANGLE);
-  clear_view_surface(screen_handle);
-  make_picture_current(screen_handle);
-  /* back to the default */
-  clear_control(screen_handle, CLEAR_DISPLAY_SURFACE);
-  clip_rectangle(screen_handle, sb_xmin, sb_xmax, sb_ymin, sb_ymax);
+  clip_rectangle (device, Box[0], Box[2], Box[1], Box[3]);
+  clear_control (device, CLEAR_CLIP_RECTANGLE);
+  clear_view_surface(device);
+  make_picture_current(device);
+  /*                               back to default values */
+  clear_control(device, CLEAR_DISPLAY_SURFACE);
+  clip_rectangle(device, sb_xmin, sb_xmax, sb_ymin, sb_ymax);
 }
-
-DEFINE_PRIMITIVE ("BOX-MOVE", Prim_box_move, 2, 2, 0)
+
+DEFINE_PRIMITIVE ("BOX-MOVE", Prim_box_move, 3,3, 0)
 {
-  float From_Box[4];   /* x_min, y_min, x_max, y_max */
+  int device;
+  float From_Box[4];		/* x_min, y_min, x_max, y_max */
   float To_Box[4];
   float x_source, y_source, x_dest, y_dest, x_length, y_length;
-  PRIMITIVE_HEADER (2);
-  arg_plotting_box (1, From_Box);
-  arg_plotting_box (1, To_Box);
+  PRIMITIVE_HEADER (3);
+  device = (SB_DEVICE_ARG (1));  
+  arg_plotting_box (2, From_Box);
+  arg_plotting_box (3, To_Box);
   x_source = From_Box[0]; y_source = From_Box[3];
   x_dest   =   To_Box[0]; y_dest   =   To_Box[3];
   /* notice convention of matrix row, column! */
-  y_length = From_Box[3] - From_Box[1];
-  x_length = From_Box[2] - From_Box[0];
-  if ((y_length != (To_Box[3]-To_Box[1])) ||
-      (x_length != (To_Box[2]-To_Box[0])))
-    error_bad_range_arg (2);
+  y_length = From_Box[3] - From_Box[1] + 1;
+  x_length = From_Box[2] - From_Box[0] + 1;
+  if ((y_length != (To_Box[3]-To_Box[1]+1)) ||
+      (x_length != (To_Box[2]-To_Box[0]+1)))
+    error_bad_range_arg (3);
   block_move
-    (screen_handle,
+    (device,
      x_source, y_source,
      ((int) x_length), ((int) y_length),
      x_dest, y_dest);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("BOX-ROTATE-MOVE", Prim_box_rotate_move, 2, 2, 0)
-{
-  float From_Box[4];
-  float   To_Box[4];
-  float x_source, y_source, x_dest, y_dest, x_length, y_length;
-  PRIMITIVE_HEADER (2);
-  arg_plotting_box (1, From_Box);
-  arg_plotting_box (1, To_Box);
-  x_source = From_Box[0]; y_source = From_Box[3];
-  x_dest   =   To_Box[0]; y_dest   =   To_Box[3];
-  x_length = From_Box[3] - From_Box[1];
-  y_length = From_Box[2] - From_Box[0];
-  if ((x_length != (To_Box[3]-To_Box[1])) ||
-      (y_length != (To_Box[2]-To_Box[0])))
-    error_bad_range_arg (2);
-  block_read
-    (screen_handle,
-     x_source, y_source,
-     ((int) x_length), ((int) y_length),
-     x_dest, y_dest);
-#if false
-  Char_Array_90clw ();
-#else
-  fprintf (stderr, "\nPrim_Box_Rotate_Move: Char_Array_90clw undefined.\n");
-  error_external_return ();
-#endif
-  block_read
-    (screen_handle,
-     x_source, y_source,
-     ((int) x_length), ((int) y_length),
-     x_dest, y_dest);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
 
 /* Image Drawing (halftoning)
    HG = Hard Grey levels (i.e. output device greys)
@@ -253,73 +263,81 @@ DEFINE_PRIMITIVE ("BOX-ROTATE-MOVE", Prim_box_rotate_move, 2, 2, 0)
    following 2 primitives simply take in arguments, and allocate
    space, They call C_image_psam_atxy_wmm to do the actual drawing. */
 
-DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WMM", Prim_image_psam_atxy_wmm, 5, 5, 0)
+DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WMM", Prim_image_psam_atxy_wmm, 6,6, 0)
 {
+  int device;
   long nrows, ncols;
   REAL * Array;
-  PRIMITIVE_HEADER (5);
-  arg_image (1, (&nrows), (&ncols), (&Array));
+  PRIMITIVE_HEADER (6);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
   Primitive_GC_If_Needed (BYTES_TO_WORDS (16 * ncols));
   C_image_psam_atxy_wmm
-    (Array,
+    (device, Array,
      ((unsigned char *) Free),
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
-     (arg_real (4)),
-     (arg_real (5)));
+     ((float) (arg_real (4))),
+     (arg_real (5)),
+     (arg_real (6)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WOMM", Prim_image_psam_atxy_womm, 5, 5, 0)
+DEFINE_PRIMITIVE ("IMAGE-PSAM-ATXY-WOMM", Prim_image_psam_atxy_womm, 6,6, 0)
 {
+  int device;
   long nrows, ncols;
   REAL * Array;
-  PRIMITIVE_HEADER (5);
-  arg_image (1, (&nrows), (&ncols), (&Array));
+  PRIMITIVE_HEADER (6);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
   Primitive_GC_If_Needed (BYTES_TO_WORDS (16 * ncols));
   C_image_psam_atxy_womm
-    (Array,
+    (device, Array,
      ((unsigned char *) Free),
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
-     (arg_real (4)),
-     (arg_real (5)));
+     ((float) (arg_real (4))),
+     (arg_real (5)),
+     (arg_real (6)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("IMAGE-HT-OD-ATXY-WMM", Prim_image_ht_od_atxy_wmm, 7, 7, 0)
+DEFINE_PRIMITIVE ("IMAGE-HT-OD-ATXY-WMM", Prim_image_ht_od_atxy_wmm, 8,8, 0)
 {
+  int device;
   long nrows, ncols;
   REAL * Array;
-  PRIMITIVE_HEADER (7);
-  arg_image (1, (&nrows), (&ncols), (&Array));
+  PRIMITIVE_HEADER (8);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
   Primitive_GC_If_Needed (BYTES_TO_WORDS (ncols));
   C_image_ht_od_atxy_wmm
-    (Array,
+    (device, Array,
      ((unsigned char *) Free),
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
-     (arg_real (4)),
+     ((float) (arg_real (4))),
      (arg_real (5)),
-     (arg_integer_in_range (6, 1, 257)),
-     (arg_integer_in_range (7, 0, 8)));
+     (arg_real (6)),
+     (arg_integer_in_range (7, 1, 257)),
+     (arg_integer_in_range (8, 0, 8)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("IMAGE-HT-BN-ATXY-WMM", Prim_image_ht_bn_atxy_wmm, 7, 7, 0)
+DEFINE_PRIMITIVE ("IMAGE-HT-BN-ATXY-WMM", Prim_image_ht_bn_atxy_wmm, 8,8, 0)
 {
+  int device;
   long nrows, ncols;
   REAL * Array;
   unsigned char * pdata;
   float ** er_rows;
-  PRIMITIVE_HEADER (7);
-  arg_image (1, (&nrows), (&ncols), (&Array));
+  PRIMITIVE_HEADER (8);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
   Primitive_GC_If_Needed
     (BYTES_TO_WORDS
      (/* pdata */
@@ -334,30 +352,32 @@ DEFINE_PRIMITIVE ("IMAGE-HT-BN-ATXY-WMM", Prim_image_ht_bn_atxy_wmm, 7, 7, 0)
   (er_rows [1]) = ((er_rows [0]) + (ncols + 4));
   (er_rows [2]) = ((er_rows [1]) + (ncols + 4));
   C_image_ht_bn_atxy_wmm
-    (Array,
+    (device, Array,
      pdata,
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
-     (arg_real (4)),
+     ((float) (arg_real (4))),
      (arg_real (5)),
-     (arg_integer_in_range (6, 1, 257)),
-     (arg_nonnegative_integer (7, 3)),
+     (arg_real (6)),
+     (arg_integer_in_range (7, 1, 257)),
+     (arg_nonnegative_integer (8, 3)),
      er_rows);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #define MINTEGER long
 
-DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 8, 8, 0)
+DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 9,9, 0)
 {
+  int device;
   long nrows, ncols;
   REAL * Array;
   unsigned char * pdata;
   MINTEGER ** er_rows;
-  PRIMITIVE_HEADER (8);
-  arg_image (1, (&nrows), (&ncols), (&Array));
+  PRIMITIVE_HEADER (9);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
   Primitive_GC_If_Needed
     (BYTES_TO_WORDS
      (/* pdata */
@@ -372,19 +392,19 @@ DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 8, 8, 0)
   (er_rows [1]) = (er_rows [0]) + (ncols + 4);
   (er_rows [2]) = (er_rows [1]) + (ncols + 4);
   C_image_ht_ibn_atxy_wmm
-    (Array,
+    (device, Array,
      pdata,
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
-     (arg_real (4)),
+     ((float) (arg_real (4))),
      (arg_real (5)),
-     (arg_integer_in_range (6, 1, 257)),
-     (arg_index_integer (7, 3)),
+     (arg_real (6)),
+     (arg_integer_in_range (7, 1, 257)),
+     (arg_index_integer (8, 3)),
      er_rows,
      (arg_integer_in_range
-      (8, 1, ((1 << ((8 * (sizeof (MINTEGER))) - 2)) / 64))));
+      (9, 1, ((1 << ((8 * (sizeof (MINTEGER))) - 2)) / 64))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -399,23 +419,21 @@ DEFINE_PRIMITIVE ("IMAGE-HT-IBN-ATXY-WMM", Prim_image_ht_ibn_atxy_wmm, 8, 8, 0)
 #define MINIMUM_INTENSITY_INDEX 2
 #define MAXIMUM_INTENSITY_INDEX 15
 
-/* ARGS = (image x_at y_at magnification) magnification can be 1, 2, or 3 */
+/* ARGS = (device image x_at y_at magnification) magnification can be 1, 2, or 3 */
 
-DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 4, 4, 0)
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 5,5, 0)
 {
-  long nrows;
-  long ncols;
-  long Length;
+  int device;
+  long nrows, ncols, Length;
   REAL * Array;
   long Magnification;
-  REAL Offset;
-  REAL Scale;
+  REAL Offset, Scale;
   REAL Array_Min, Array_Max;
-  long nmin;
-  long nmax;
-  PRIMITIVE_HEADER (4);
-  arg_image (1, (&nrows), (&ncols), (&Array));
-  Magnification = (arg_integer_in_range (4, 1, 101));
+  long nmin, nmax;
+  PRIMITIVE_HEADER (5);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
+  Magnification = (arg_integer_in_range (5, 1, 101));
   Length = (nrows * ncols);
   {
     C_Array_Find_Min_Max (Array, Length, &nmin, &nmax);
@@ -426,12 +444,12 @@ DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 4, 
       (Array_Min, Array_Max, 2.0, 15.0, &Offset, &Scale);
     Primitive_GC_If_Needed (BYTES_TO_WORDS (Magnification * ncols));
     Image_Draw_Magnify_N_Times_With_Offset_Scale
-      (Array,
+      (device, Array,
        ((unsigned char *) Free),
        nrows,
        ncols,
-       ((float) (arg_real (2))),
        ((float) (arg_real (3))),
+       ((float) (arg_real (4))),
        Offset,
        Scale,
        Magnification);
@@ -439,56 +457,58 @@ DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY", Prim_draw_magnify_image_at_xy, 4, 
   }
 }
 
-DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-WITH-MIN-MAX", Prim_draw_magnify_image_at_xy_with_min_max, 6, 6, 0)
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-WITH-MIN-MAX",
+		  Prim_draw_magnify_image_at_xy_with_min_max, 7,7, 0)
 {
-  long nrows;
-  long ncols;
+  int device;
+  long nrows, ncols;
   REAL * Array;
-  REAL Offset;
-  REAL Scale;
+  REAL Offset, Scale;
   long Magnification;
-  PRIMITIVE_HEADER (6);
-  arg_image (1, (&nrows), (&ncols), (&Array));
-  Magnification = (arg_integer_in_range (4, 1, 101));
+  PRIMITIVE_HEADER (7);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
+  Magnification = (arg_integer_in_range (5, 1, 101));
   /* Do not use colors 0 and 1 */
   Find_Offset_Scale_For_Linear_Map
-    ((arg_real (4)), (arg_real (5)), 2.0, 15.0, &Offset, &Scale);
+    ((arg_real (6)), (arg_real (7)), 2.0, 15.0, &Offset, &Scale);
   Primitive_GC_If_Needed (BYTES_TO_WORDS (Magnification * ncols));
   Image_Draw_Magnify_N_Times_With_Offset_Scale
-    (Array,
+    (device, Array,
      ((unsigned char *) Free),
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
+     ((float) (arg_real (4))),
      Offset,
      Scale,
      Magnification);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-ONLY-BETWEEN-MIN-MAX", Prim_draw_magnify_image_at_xy_only_between_min_max, 6, 6, 0)
+DEFINE_PRIMITIVE ("DRAW-MAGNIFY-IMAGE-AT-XY-ONLY-BETWEEN-MIN-MAX",
+		  Prim_draw_magnify_image_at_xy_only_between_min_max, 7,7, 0)
 {
-  long nrows;
-  long ncols;
+  int device;
+  long nrows, ncols;
   REAL * Array;
-  REAL Offset;
-  REAL Scale;
+  REAL Offset, Scale;
   long Magnification;
-  PRIMITIVE_HEADER (6);
-  arg_image (1, (&nrows), (&ncols), (&Array));
-  Magnification = (arg_integer_in_range (4, 1, 101));
+  PRIMITIVE_HEADER (7);
+  device = (SB_DEVICE_ARG (1));
+  arg_image (2, (&nrows), (&ncols), (&Array));
+  Magnification = (arg_integer_in_range (5, 1, 101));
   /* Do not use colors 0 and 1 */
   Find_Offset_Scale_For_Linear_Map
-    ((arg_real (4)), (arg_real (5)), 2.0, 15.0, &Offset, &Scale);
+    ((arg_real (6)), (arg_real (7)), 2.0, 15.0, &Offset, &Scale);
   Primitive_GC_If_Needed (BYTES_TO_WORDS (Magnification * ncols));
   Image_Draw_Magnify_N_Times_With_Offset_Scale_Only
-    (Array,
+    (device, Array,
      ((unsigned char *) Free),
      nrows,
      ncols,
-     ((float) (arg_real (2))),
      ((float) (arg_real (3))),
+     ((float) (arg_real (4))),
      Offset,
      Scale,
      Magnification);
@@ -566,8 +586,9 @@ static int ht_od_table[8][2+36] =
    ODmethod is index for ht_od method
    */
 
-C_image_ht_od_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
+C_image_ht_od_atxy_wmm (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
 			HG,ODmethod)
+     int device; 
      REAL Array[], Min,Max;
      unsigned char *pdata;
      int nrows,ncols,HG,ODmethod;
@@ -598,7 +619,7 @@ C_image_ht_od_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
       dither = SGarray[ (i%SGarray_nrows)*SGarray_nrows + (j%SGarray_nrows) ];
       /* integer division */ }
       pdata[j] = ((unsigned char) ((pixel + SG - dither) / SG));
-    block_write(screen_handle, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
+    block_write(device, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
   }
 }
 
@@ -617,29 +638,25 @@ C_image_ht_od_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
    all cases in a uniform manner (for better explanation get PAS
    halftoning notes). */
 
-C_image_ht_bn_atxy_wmm (Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
+C_image_ht_bn_atxy_wmm (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
 			HG, BNmethod, er_rows)
-     REAL Array [];
-     REAL Min;
-     REAL Max;
+     int device;
+     REAL Array [], Min, Max;
      unsigned char * pdata;
-     int nrows;
-     int ncols;
-     int HG;
-     int BNmethod;
-     float x_at;
-     float y_at;
+     int nrows, ncols;
+     int HG, BNmethod;
+     float x_at, y_at;
      float ** er_rows;
 {
   if (BNmethod == 0)
     C_image_ht_bn_atxy_wmm_0_
-      (Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
+      (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
   else if (BNmethod == 1)
     C_image_ht_bn_atxy_wmm_1_
-      (Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
+      (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
   else if (BNmethod == 2)
     C_image_ht_bn_atxy_wmm_2_
-      (Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
+      (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max, HG, er_rows);
   else
     {
       fprintf (stderr, "\nHT_BN methods 0,1,2 only\n");
@@ -652,8 +669,9 @@ C_image_ht_bn_atxy_wmm (Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
    the sole reason for this duplication is speed (if any) */
 
 /* FLOYD-STEINBERG-75 */
-C_image_ht_bn_atxy_wmm_0_ (Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
+C_image_ht_bn_atxy_wmm_0_ (device, Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
 			   HG, er_rows)
+     int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
      int nrows,ncols,HG;
@@ -703,7 +721,7 @@ C_image_ht_bn_atxy_wmm_0_ (Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
 	}
       /* paint a row */
       block_write
-	(screen_handle, x_at, (y_at - ((float) i)), ncols, 1, pdata, 0);
+	(device, x_at, (y_at - ((float) i)), ncols, 1, pdata, 0);
       /* rotate rows */
       {
 	float * temp = (er_rows [0]);
@@ -718,8 +736,9 @@ C_image_ht_bn_atxy_wmm_0_ (Array, pdata, nrows, ncols, x_at, y_at, Min, Max,
 }
 
 /* JARVIS-JUDICE-NINKE-76 mask */
-C_image_ht_bn_atxy_wmm_1_ (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
+C_image_ht_bn_atxy_wmm_1_ (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
 			   HG, er_rows)
+     int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
      int nrows,ncols,HG;
@@ -767,7 +786,7 @@ C_image_ht_bn_atxy_wmm_1_ (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
       er_rows[ER_R1][ER_C +j] = (pixel/2.0) - ((float) INT_pixel);
     }
     /* paint a row */
-    block_write(screen_handle, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
+    block_write(device, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
     temp = er_rows[0];		/* rotate rows */
     er_rows[0] = er_rows[1];
     er_rows[1] = er_rows[2];
@@ -778,8 +797,9 @@ C_image_ht_bn_atxy_wmm_1_ (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
 }
 
 /* STUCKI-81 mask */
-C_image_ht_bn_atxy_wmm_2_ (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
+C_image_ht_bn_atxy_wmm_2_ (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
 			   HG, er_rows)
+     int device;
      REAL Array[], Min,Max;
      unsigned char *pdata;
      int nrows,ncols,HG;
@@ -823,7 +843,7 @@ C_image_ht_bn_atxy_wmm_2_ (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
       /*  error estimate */
       er_rows[ER_R1][ER_C +j] = (pixel/2.0) - ((float) INT_pixel);
     }
-    block_write (screen_handle, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
+    block_write (device, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
     temp = er_rows[0];		/* rotate rows */
     er_rows[0] = er_rows[1];
     er_rows[1] = er_rows[2];
@@ -872,8 +892,9 @@ static int ht_ibn_table[3][2+(3*12)] =
   Also, the code handles all cases in a uniform manner.
   (for better explanation get pas halftoning notes) */
 
-C_image_ht_ibn_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
+C_image_ht_ibn_atxy_wmm (device, Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
 			 HG,BNmethod, er_rows, PREC_SCALE)
+     int device; 
      REAL Array[], Min,Max;
      unsigned char *pdata;
      int nrows,ncols,HG,BNmethod;
@@ -919,7 +940,7 @@ C_image_ht_ibn_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
       pdata[j] = ((unsigned char) ersum);
       er_rows[ER_R1][ER_C +j] = pixel - (PREC_2*ersum);
     }
-    block_write (screen_handle, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
+    block_write (device, x_at, (y_at-((float) i)), ncols, 1, pdata, 0);
     temp = er_rows[0];		/* rotate rows */
     er_rows[0] = er_rows[1];
     er_rows[1] = er_rows[2];
@@ -927,93 +948,113 @@ C_image_ht_ibn_atxy_wmm (Array, pdata, nrows,ncols, x_at,y_at, Min,Max,
     for (m=0;m<(ncols+(2*ER_C));m++) er_rows[2][m]=0;
   }
 }
-
+
+
+/* PSAM drawing (see scheme primitives definition for description)
+   Pdata must be (16 * ncols) bytes in size. */
+
+C_image_psam_atxy_wmm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Min,Max)
+     int device;
+     REAL Array[], Min,Max;
+     unsigned char *pdata; /* pdata should have length 16*4*ncols */
+     long nrows, ncols;
+     float x_origin, y_origin;
+{ register long i,j, i4;
+  register long array_index, pdata_index;
+  long ncols4 = 4 * ncols;
+  long color_index;
+  REAL REAL_pixel, value, offset,scale;
+
+  Find_Offset_Scale_For_Linear_Map(Min, Max,
+				   0.0, 15.0,  &offset, &scale); /* 16 grey levels */
+  
+  array_index=0;    i4=0;
+  for (i=0; i<nrows; i++) 
+  { pdata_index = 0;
+    for (j=0; j<ncols; j++) 
+    { value = Array[array_index++];
+      Adjust_Value_Wmm(value, REAL_pixel, 0.0, 15.0, Min,Max, offset,scale);
+      color_index = ((long) (REAL_pixel + .5));	/* integer between 0 and 15 */
+      /* */
+      my_write_dither(pdata, pdata_index, ncols4, color_index);
+      pdata_index = pdata_index + 4; /* dependency between this and my_write_dither */
+    }
+    block_write(device, x_origin, y_origin-i4, ncols4, 4, pdata, 0);
+    i4 = i4+4;
+  }
+  /* A(i,j) --> Array[i*ncols + j] */
+}
+
+/* Same as above, except use Adjust_Value_Womm.
+ */
+C_image_psam_atxy_womm(device, Array, pdata, nrows, ncols, x_origin, y_origin, Min,Max)
+     int device;
+     REAL Array[], Min,Max;
+     unsigned char *pdata; /* pdata should have length 16*4*ncols */
+     long nrows, ncols;
+     float x_origin, y_origin;
+{ register long i,j, i4;
+  register long array_index, pdata_index;
+  long ncols4 = 4*ncols;
+  long color_index;
+  REAL REAL_pixel, value, offset,scale;
+  
+  Find_Offset_Scale_For_Linear_Map(Min, Max,
+				   0.0, 15.0,  &offset, &scale); /* 16 grey levels */
+  array_index=0;    i4=0;
+  for (i=0; i<nrows; i++) 
+  { pdata_index = 0;
+    for (j=0; j<ncols; j++) 
+    { value = Array[array_index++];
+      Adjust_Value_Womm(value, REAL_pixel, 0.0, 15.0, Min,Max, offset,scale);
+      /* ONLY DIFFERENCE WITH PREVIOUS ONE */
+      color_index = ((long) (REAL_pixel + .5));	/* integer between 0 and 15 */
+      /* */
+      my_write_dither(pdata, pdata_index, ncols4, color_index);
+      pdata_index = pdata_index + 4; /* dependency between this and my_write_dither */
+    }
+    block_write(device, x_origin, y_origin-i4, ncols4, 4, pdata, 0);
+    i4 = i4+4;
+  }
+  /* A(i,j) --> Array[i*ncols + j] */
+}
+
 /* psam dither[11] is left out, { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,1,1 } */
 
 /* The following routine writes a 4x4 dither cell
    in 4 consecutive rows of pdata. It assumes a lot about
-   pdata and the other args passed to it; read carefully.
-   Designed to be used by C_image_psam_atxy_wmm. */
+   pdata and the other args passed to it. READ carefully.
+   Designed TO BE USED BY C_image_psam_atxy_wmm
+*/
 
-static void
-write_dither (pdata, ncols, color_index)
-     unsigned char * pdata;
-     long ncols;
-     long color_index;		/* should be 0 to 15 */
-{
-  static unsigned char dither_table [16] [16] =
-    {
-      { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
-      { 0,0,0,0, 0,1,0,0, 0,0,0,0, 0,0,0,0 },
-      { 0,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,0 },
-      { 0,0,0,0, 0,1,1,0, 0,0,1,0, 0,0,0,0 },
-      { 0,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
-      { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
-      { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
-      { 1,0,0,1, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
-      { 1,0,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
-      { 1,1,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
-      { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,0,1 },
-      { 1,1,0,1, 1,1,1,0, 0,1,1,1, 1,0,1,1 },
-      { 1,1,0,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
-      { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
-      { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,1,1,1 },
-      { 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1 }
-    };
-  long dither_index = 0;
-  long i;
-  for (i = 0; (i < 4); i += 1)
-    {
-      fast unsigned char * scan_row = (pdata + (i * ncols));
-      fast unsigned char * end_row = (scan_row + 4);
-      while (scan_row < end_row)
-	(*scan_row++) = (dither_table [color_index] [dither_index++]);
-    }
+my_write_dither(pdata, pdata_row_index, ncols , color_index)
+     unsigned char *pdata;
+     long pdata_row_index, ncols;
+     long color_index; /* should be 0 to 15 */
+{ static unsigned char dither_table[16][16] = {{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
+					       { 0,0,0,0, 0,1,0,0, 0,0,0,0, 0,0,0,0 },
+					       { 0,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,0 },
+					       { 0,0,0,0, 0,1,1,0, 0,0,1,0, 0,0,0,0 },
+					       { 0,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
+					       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,0 },
+					       { 1,0,0,0, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
+					       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 0,0,0,1 },
+					       { 1,0,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
+					       { 1,1,0,1, 0,1,1,0, 0,1,1,0, 1,0,0,1 },
+					       { 1,1,0,1, 1,1,1,0, 0,1,1,0, 1,0,0,1 },
+					       { 1,1,0,1, 1,1,1,0, 0,1,1,1, 1,0,1,1 },
+					       { 1,1,0,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
+					       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,0,1,1 },
+					       { 1,1,1,1, 1,1,1,0, 1,1,1,1, 1,1,1,1 },
+					       { 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1 }};
+  long i, row_start,m;
+  long dither_index;		/* do not mix up the counters, indexes */
+  dither_index=0;
+  for (i=0;i<4;i++) { row_start = pdata_row_index + (i*ncols);
+		      for (m=row_start; m<row_start+4; m++) 
+			pdata[m] = dither_table[color_index][dither_index++]; }
 }
-
-/* PSAM drawing (see scheme primitives above, for description)
-   Pdata must be (16 * ncols) bytes in size. */
-
-#define DEFINE_PSAM_DRAWING(procedure_name, adjustment)			\
-procedure_name (array, pdata, nrows, ncols, x_origin, y_origin, Min, Max) \
-     fast REAL * array;							\
-     REAL Min;								\
-     REAL Max;								\
-     unsigned char * pdata;						\
-     long nrows;							\
-     long ncols;							\
-     float x_origin;							\
-     float y_origin;							\
-{									\
-  long ncols4 = (4 * ncols);						\
-  fast float y = y_origin;						\
-  fast long i;								\
-  long color_index;							\
-  REAL REAL_pixel;							\
-  REAL offset;								\
-  REAL scale;								\
-  Find_Offset_Scale_For_Linear_Map					\
-    (Min, Max, 0.0, 15.0, &offset, &scale);				\
-  for (i = 0; (i < nrows); i += 1)					\
-    {									\
-      fast unsigned char * scan_pdata = pdata;				\
-      fast unsigned char * end_pdata = (scan_pdata + ncols4);		\
-      while (scan_pdata < end_pdata)					\
-	{								\
-	  REAL value = (*array++);					\
-	  adjustment							\
-	    (value, REAL_pixel, 0.0, 15.0, Min, Max, offset, scale);	\
-	  color_index = ((long) (REAL_pixel + 0.5));			\
-	  write_dither (scan_pdata, ncols4, color_index);		\
-	  scan_pdata += 4;						\
-	}								\
-      block_write (screen_handle, x_origin, y, ncols4, 4, pdata, 0);	\
-      y += 4;								\
-    }									\
-}
-
-DEFINE_PSAM_DRAWING (C_image_psam_atxy_wmm, Adjust_Value_Wmm)
-DEFINE_PSAM_DRAWING (C_image_psam_atxy_womm, Adjust_Value_Womm)
+    
 
 
 /* Below are the OLD DRAWING ROUTINES for 16 color monitors.
@@ -1023,9 +1064,9 @@ DEFINE_PSAM_DRAWING (C_image_psam_atxy_womm, Adjust_Value_Womm)
 
 /* Image_Draw_Magnify_N_Times : N^2 in area
  */
-Image_Draw_Magnify_N_Times_With_Offset_Scale (Array, pdata, nrows, ncols,
-					      x_origin, y_origin,
-					      Offset, Scale, N)
+Image_Draw_Magnify_N_Times_With_Offset_Scale (device, Array, pdata, nrows, ncols,
+					      x_origin,y_origin,Offset,Scale,N)
+     int device;
      REAL Array[], Offset, Scale;
      unsigned char *pdata;
      long nrows, ncols, N;
@@ -1051,7 +1092,7 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale (Array, pdata, nrows, ncols,
 			    j++; }
     }
     for (m=0; m<N; m++) {
-      block_write(screen_handle, x_origin, y_origin-i, ncolsN, 1, pdata, 0);
+      block_write(device, x_origin, y_origin-i, ncolsN, 1, pdata, 0);
       i++; }
     /* A(i,j) --> Array[i*ncols + j] */
   }
@@ -1061,9 +1102,10 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale (Array, pdata, nrows, ncols,
    This procedure throws away (i.e. maps to SCREEN_BACKGROUND_COLOR)
    all values outside the range given by Offset,Scale.
    */
-Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (Array, pdata, nrows, ncols,
+Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (device, Array, pdata, nrows, ncols,
 						   x_origin, y_origin,
 						   Offset, Scale, N)
+     int device;
      REAL Array[], Offset, Scale;
      unsigned char *pdata;
      long nrows, ncols, N;
@@ -1090,7 +1132,7 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (Array, pdata, nrows, ncols,
 	j++; }
     }
     for (m=0; m<N; m++) {
-      block_write(screen_handle, x_origin, y_origin - i, ncolsN, 1, pdata, 0);
+      block_write(device, x_origin, y_origin - i, ncolsN, 1, pdata, 0);
       i++; }
     /* A(i,j) --> Array[i*ncols + j] */
   }
@@ -1103,41 +1145,44 @@ Image_Draw_Magnify_N_Times_With_Offset_Scale_Only (Array, pdata, nrows, ncols,
 
 /* Grey Level Manipulations */
 
-DEFINE_PRIMITIVE ("NEW-COLOR", Prim_new_color, 4, 4, 0)
+DEFINE_PRIMITIVE ("NEW-COLOR", Prim_new_color, 5,5, 0)
 {
+  int device;
   long index;
-  PRIMITIVE_HEADER (4);
+  PRIMITIVE_HEADER (5);
+  device = (SB_DEVICE_ARG (1));
   index =
     (arg_integer_in_range
-     (1, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE));
+     (2, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE));
   inquire_color_table
-    (screen_handle,
+    (device,
      STARBASE_COLOR_TABLE_START,
      STARBASE_COLOR_TABLE_SIZE,
      Color_Table);
   (Color_Table [index] [0]) =
-    (arg_real_in_range (2, ((double) 0), ((double) 1)));
-  (Color_Table [index] [1]) =
     (arg_real_in_range (3, ((double) 0), ((double) 1)));
-  (Color_Table [index] [2]) =
+  (Color_Table [index] [1]) =
     (arg_real_in_range (4, ((double) 0), ((double) 1)));
+  (Color_Table [index] [2]) =
+    (arg_real_in_range (5, ((double) 0), ((double) 1)));
   define_color_table
-    (screen_handle,
+    (device,
      STARBASE_COLOR_TABLE_START,
      STARBASE_COLOR_TABLE_SIZE,
      Color_Table);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 1, 1, 0)
+DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 2,2, 0)
 {
-  int index;
-  PRIMITIVE_HEADER (1);
+  int device, index;
+  PRIMITIVE_HEADER (2);
+  device = (SB_DEVICE_ARG (1));
   index =
     (arg_integer_in_range
-     (1, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE));
+     (2, STARBASE_COLOR_TABLE_START, STARBASE_COLOR_TABLE_SIZE));
   inquire_color_table
-    (screen_handle,
+    (device,
      STARBASE_COLOR_TABLE_START,
      STARBASE_COLOR_TABLE_SIZE,
      Color_Table);
@@ -1147,16 +1192,20 @@ DEFINE_PRIMITIVE ("INQUIRE-COLOR", Prim_inquire_color, 1, 1, 0)
 		  (cons ((double_to_flonum ((double) (Color_Table[index][2]))),
 			 EMPTY_LIST))))));
 }
-
-DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 1, 1, 0)
+
+
+DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 2,2, 0)
 {
+  int device;
   long i;
   FILE * fp;
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
+  PRIMITIVE_HEADER (2);
+  device = (SB_DEVICE_ARG (1));
+  CHECK_ARG (2, STRING_P);
+
+  fp = (fopen ((ARG_REF (2)), "r"));
   if (fp == ((FILE *) 0))
-    error_bad_range_arg (1);
+    error_bad_range_arg (2);
   if (feof (fp))
     {
       fprintf (stderr, "\nColor Datafile is empty!\n");
@@ -1170,24 +1219,26 @@ DEFINE_PRIMITIVE ("READ-COLORS-FROM-FILE", Prim_read_colors_from_file, 1, 1, 0)
   if ((fclose (fp)) != 0)
     error_external_return ();
   define_color_table
-    (screen_handle,
+    (device,
      STARBASE_COLOR_TABLE_START,
      STARBASE_COLOR_TABLE_SIZE,
      Color_Table);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("SAVE-COLORS-IN-FILE", Prim_save_colors_in_file, 1, 1, 0)
+DEFINE_PRIMITIVE ("SAVE-COLORS-IN-FILE", Prim_save_colors_in_file, 2,2, 0)
 {
+  int device;
   long i;
   FILE * fp;
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, STRING_P);
-  fp = (fopen ((ARG_REF (1)), "r"));
+  PRIMITIVE_HEADER (2);
+  device = (SB_DEVICE_ARG (1));
+  CHECK_ARG (2, STRING_P);
+  fp = (fopen ((ARG_REF (2)), "w"));
   if (fp == ((FILE *) 0))
-    error_bad_range_arg (1);
+    error_bad_range_arg (2);
   inquire_color_table
-    (screen_handle,
+    (device,
      STARBASE_COLOR_TABLE_START,
      STARBASE_COLOR_TABLE_SIZE,
      Color_Table);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.27 1989/09/20 23:08:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.28 1989/12/20 18:03:39 pas Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -83,7 +83,7 @@ DEFINE_PRIMITIVE ("PAS-CFT!", Prim_pas_cft, 5, 5, 0)
   CHECK_ARG (4, ARRAY_P);	/* twiddle tables, total length = 3*(length/4)  */
   CHECK_ARG (5, FIXNUM_P);	/* (1)=tables precomputed, else recompute */
 
-  flag = (arg_nonnegative_integer (1));
+  flag = (arg_integer (1));
   length = ARRAY_LENGTH(ARG_REF(2));
   if (length != (ARRAY_LENGTH(ARG_REF(3)))) error_bad_range_arg(2);
 
@@ -381,7 +381,7 @@ DEFINE_PRIMITIVE ("PAS-RFT-CSFT!", Prim_pas_rft_csft, 5, 5, 0)
   CHECK_ARG (4, FIXNUM_P);	/* (1)=tables precomputed, else recompute */
   CHECK_ARG (5, FIXNUM_P);	/* ft_type = 1 or 3
 				   1 means compute rft, 3 means compute csft */
-  flag = (arg_nonnegative_integer (1));
+  flag = (arg_integer (1));
   f1   = ARRAY_CONTENTS(ARG_REF(2));
   length = ARRAY_LENGTH(ARG_REF(2));
   for (power=0, i=length; i>1; power++)
@@ -875,7 +875,7 @@ DEFINE_PRIMITIVE ("PAS-CFT2D!", Prim_pas_cft2d, 5,5, 0)
   CHECK_ARG (3, ARRAY_P);	/* imag part */
   CHECK_ARG (4, ARRAY_P);	/* twiddle tables, length = 3*(rows/4)  */
 
-  flag = (arg_nonnegative_integer (1));
+  flag = (arg_integer (1));
   length = ARRAY_LENGTH(ARG_REF(2));
   if (length != (ARRAY_LENGTH(ARG_REF(3)))) error_bad_range_arg(2);
 
@@ -965,7 +965,7 @@ DEFINE_PRIMITIVE ("PAS-RFT2D-CSFT2D!", Prim_pas_rft2d_csft2d, 5,5, 0)
   CHECK_ARG (2, ARRAY_P);	/* Input data (real or cs) */
   CHECK_ARG (3, ARRAY_P);	/* CFT twiddle tables, length = 3*(rows/4)  */
   CHECK_ARG (4, FIXNUM_P);	/* (1)=tables precomputed, else recompute */
-  flag = (arg_nonnegative_integer (1));
+  flag = (arg_integer (1));
   f1 = ARRAY_CONTENTS(ARG_REF(2));
   length = ARRAY_LENGTH(ARG_REF(2));
   for (power=0, i=length; i>1; power++)	/* length must be power of 2 */
@@ -1581,7 +1581,7 @@ DEFINE_PRIMITIVE ("ARRAY-FFT!", Prim_array_fft, 3, 3, 0)
   REAL *Work_Here;
 
   PRIMITIVE_HEADER (4);
-  flag = arg_nonnegative_integer(1); /* forward or backward  */
+  flag = arg_integer(1);	/* forward or backward  */
   CHECK_ARG (2, ARRAY_P);	/*      input real */
   CHECK_ARG (3, ARRAY_P);	/*      input imag */
 
@@ -1675,14 +1675,14 @@ DEFINE_PRIMITIVE ("ARRAY-2D-FFT!", Prim_array_2d_fft, 5, 5, 0)
     if (real_image == imag_image)
       error_wrong_type_arg (5);
     Set_Time_Zone (Zone_Math);
-    {
-      long length = (ARRAY_LENGTH (real_image));
-      if ((length != (ARRAY_LENGTH (imag_image))) ||
-	  (length != (nrows * ncols)))
-	error_bad_range_arg (5);
-    }
+  {
+    long length = (ARRAY_LENGTH (real_image));
+    if ((length != (ARRAY_LENGTH (imag_image))) ||
+	(length != (nrows * ncols)))
+      error_bad_range_arg (5);
+  }
     C_Array_2D_FFT_In_Scheme_Heap
-      ((arg_nonnegative_integer (1)),
+      ((arg_integer (1)),	/* flag 1=forward else backward */
        nrows,
        ncols,
        (ARRAY_CONTENTS (real_image)),
