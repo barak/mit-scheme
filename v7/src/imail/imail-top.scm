@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.72 2000/05/19 18:21:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.73 2000/05/19 20:57:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -123,7 +123,7 @@ May be called with an IMAIL folder URL as argument;
 		    (associate-imail-with-buffer buffer folder #f)
 		    buffer))))
 	 (select-message folder
-			 (or (navigator/first-unseen-message folder)
+			 (or (first-unseen-message folder)
 			     (selected-message #f buffer))
 			 #t)
 	 buffer)))))
@@ -319,7 +319,7 @@ DEL	Scroll to previous screen of this message.
 	  (select-message
 	   folder
 	   (or (selected-message #f buffer)
-	       (navigator/first-unseen-message folder))
+	       (first-unseen-message folder))
 	   #t)))))
 
 (define (imail-kill-buffer buffer)
@@ -339,6 +339,13 @@ DEL	Scroll to previous screen of this message.
       (if (not (<= 1 index (folder-length folder)))
 	  (editor-error "Message index out of bounds:" index))
       (select-message folder (- index 1)))))
+
+(define-command imail-first-message
+  "Show first message in folder."
+  ()
+  (lambda ()
+    (let ((folder (selected-folder)))
+      (select-message folder (navigator/first-message folder)))))
 
 (define-command imail-last-message
   "Show last message in folder."
@@ -460,7 +467,7 @@ With prefix argument N moves backward N messages with these flags."
 		       selector
 		       (loop (message-index selector))))
 		 ((not selector)
-		  (navigator/last-message folder))
+		  (last-message folder))
 		 ((and (exact-integer? selector)
 		       (<= 0 selector)
 		       (< selector (folder-length folder)))
@@ -577,7 +584,7 @@ With prefix argument N moves backward N messages with these flags."
 	     (if (or (default-object? buffer) (not buffer))
 		 (selected-buffer)
 		 buffer)))
-	(let ((method (navigator/selected-message)))
+	(let ((method (navigator/selected-message buffer)))
 	  (if method
 	      (method buffer)
 	      (let ((buffer (chase-imail-buffer buffer)))
@@ -681,7 +688,7 @@ With prefix argument N moves backward N messages with these flags."
    message
    (if (default-object? predicate) #f predicate)))
 
-(define (navigator/previous-message message)
+(define (navigator/previous-message message #!optional predicate)
   ((or (imail-navigator imail-navigators/previous-message)
        previous-message)
    message
@@ -692,8 +699,8 @@ With prefix argument N moves backward N messages with these flags."
     (and navigators
 	 (accessor navigators))))
 
-(define (navigator/selected-message)
-  (let ((navigators (buffer-get (selected-buffer) 'IMAIL-NAVIGATORS #f)))
+(define (navigator/selected-message buffer)
+  (let ((navigators (buffer-get buffer 'IMAIL-NAVIGATORS #f)))
     (and navigators
 	 (imail-navigators/selected-message navigators))))
 
@@ -716,6 +723,8 @@ With prefix argument N moves backward N messages with these flags."
 
 (define-command imail-delete-forward
   "Delete this message and move to next nondeleted one.
+With prefix argument N, deletes forward N messages,
+ or backward if N is negative.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
   "p"
   (lambda (delta)
@@ -723,6 +732,8 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 
 (define-command imail-delete-backward
   "Delete this message and move to previous nondeleted one.
+With prefix argument N, deletes backward N messages,
+ or forward if N is negative.
 Deleted messages stay in the file until the \\[imail-expunge] command is given."
   "p"
   (lambda (delta)
@@ -741,6 +752,20 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 		(editor-error "No previous deleted message."))
 	    (undelete-message message)
 	    (select-message (message-folder message) message))))))
+
+(define-command imail-undelete-forward
+  "Undelete this message and move to next one.
+With prefix argument N, undeletes forward N messages,
+ or backward if N is negative."
+  "p"
+  (lambda (delta) (move-relative delta #f "message" undelete-message)))
+
+(define-command imail-undelete-backward
+  "Undelete this message and move to previous one.
+With prefix argument N, undeletes backward N messages,
+ or forward if N is negative."
+  "p"
+  (lambda (delta) ((ref-command imail-undelete-forward) (- delta))))
 
 (define-command imail-expunge
   "Actually erase all deleted messages in the folder."

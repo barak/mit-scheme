@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.12 2000/05/19 17:52:34 cph Exp $
+;;; $Id: imail-summary.scm,v 1.13 2000/05/19 20:57:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -109,17 +109,17 @@ The recipients are specified as a comma-separated list of names."
 					  imail-summary-modification-event)
 		     (buffer-put! folder-buffer 'IMAIL-SUMMARY-BUFFER buffer)
 		     (associate-buffer-with-imail-buffer folder-buffer buffer)
-		     (buffer-put! buffer 'IMAIL-MESSAGE-METHOD
-				  imail-summary-selected-message)))
+		     (buffer-put! buffer 'IMAIL-NAVIGATORS
+				  (imail-summary-navigators buffer))))
 		  buffer)))))
     (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
     (buffer-put! buffer 'IMAIL-SUMMARY-PREDICATE predicate)
-    (rebuild-imail-summary-buffer buffer)
     (if (not (selected-buffer? buffer))
 	(let ((windows (buffer-windows buffer)))
 	  (if (pair? windows)
 	      (select-window (car windows))
-	      (select-buffer buffer))))))
+	      (select-buffer buffer))))
+    (rebuild-imail-summary-buffer buffer)))
 
 (define (imail-summary-detach buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
@@ -128,74 +128,46 @@ The recipients are specified as a comma-separated list of names."
 	  (buffer-remove! folder-buffer 'IMAIL-SUMMARY-BUFFER)
 	  (let ((folder (buffer-get folder-buffer 'IMAIL-FOLDER #f)))
 	    (if folder
-		(add-event-receiver! (folder-modification-event folder)
-				     imail-summary-modification-event)))))))
+		(remove-event-receiver! (folder-modification-event folder)
+					imail-summary-modification-event)))))))
 
+(define (imail-folder->summary-buffer folder error?)
+  (or (let ((buffer (imail-folder->buffer folder error?)))
+	(and buffer
+	     (buffer-get buffer 'IMAIL-SUMMARY-BUFFER #f)))
+      (and error?
+	   (error:bad-range-argument folder 'IMAIL-FOLDER->SUMMARY-BUFFER))))
+
+(define (imail-summary-buffer->folder buffer error?)
+  (or (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+	(and folder-buffer
+	     (buffer-get folder-buffer 'IMAIL-FOLDER #f)))
+      (and error?
+	   (error:bad-range-argument buffer 'IMAIL-SUMMARY-BUFFER->FOLDER))))
+
 (define (imail-summary-modification-event folder type parameters)
   (let ((buffer (imail-folder->summary-buffer folder #f)))
     (if buffer
 	(case type
 	  ((FLAGS)
-	   (let ((mark (imail-summary-message-mark buffer (car parameters))))
-	     (if mark
-		 (begin
-		   (with-read-only-defeated mark
-		     (lambda ()
-		       (group-replace-string!
-			(mark-group mark)
-			(mark-index mark)
-			(message-flag-markers (car parameters)))))
-		   (buffer-not-modified! buffer)))))
+	   (let ((message (car parameters)))
+	     (call-with-values
+		 (lambda () (imail-summary-find-message buffer message))
+	       (lambda (mark approximate?)
+		 (if (and mark (not approximate?))
+		     (begin
+		       (let ((mark (mark+ mark 1 'ERROR)))
+			 (with-read-only-defeated mark
+			   (lambda ()
+			     (group-replace-string!
+			      (mark-group mark)
+			      (mark-index mark)
+			      (message-flag-markers message)))))
+		       (buffer-not-modified! buffer)))))))
 	  ((SELECT-MESSAGE)
 	   (imail-summary-select-message buffer (car parameters)))
 	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH)
 	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
-
-(define (imail-folder->summary-buffer folder error?)
-  (let ((buffer (imail-folder->buffer folder error?)))
-    (and buffer
-	 (or (buffer-get buffer 'IMAIL-SUMMARY-BUFFER #f)
-	     (and error?
-		  (error:bad-range-argument folder
-					    'IMAIL-FOLDER->SUMMARY-BUFFER))))))
-
-;;;; Navigation
-
-(define (imail-summary-selected-message buffer)
-  (let ((folder (selected-folder #f buffer))
-	(start (imail-summary-first-line buffer))
-	(here (line-start (buffer-point buffer) 0)))
-    (and folder
-	 (mark<= start here)
-	 (let ((index (count-lines start here)))
-	   (and (< index (folder-length folder))
-		(get-message folder index))))))
-
-(define (imail-summary-select-message buffer message)
-  (highlight-region (buffer-unclipped-region buffer) #f)
-  (let ((mark (imail-summary-message-mark buffer message)))
-    (if mark
-	(begin
-	  (set-buffer-point! buffer mark)
-	  (if (ref-variable imail-summary-highlight-message buffer)
-	      (begin
-		(highlight-region (make-region mark (line-start mark 1 'LIMIT))
-				  #t))))))
-  (if (ref-variable imail-summary-pop-up-message buffer)
-      (imail-summary-pop-up-message-buffer buffer)))
-
-(define (imail-summary-message-mark buffer message)
-  (let ((index (message-index message)))
-    (and index
-	 (line-start (imail-summary-first-line buffer) index))))
-
-(define (imail-summary-pop-up-message-buffer buffer)
-  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
-    (if (and folder-buffer (selected-buffer? buffer))
-	(pop-up-buffer folder-buffer))))
-
-(define (imail-summary-first-line buffer)
-  (line-start (buffer-start buffer) 2 'LIMIT))
 
 ;;;; Summary content generation
 
@@ -212,10 +184,7 @@ The recipients are specified as a comma-separated list of names."
   (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
   (buffer-not-modified! buffer)
   (set-buffer-point! buffer (imail-summary-first-line buffer))
-  (let ((message
-	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER))))
-    (if message
-	(imail-summary-select-message buffer message))))
+  (sync-imail-summary-buffer buffer))
 
 (define (fill-imail-summary-buffer! buffer folder predicate)
   (let ((end (folder-length folder)))
@@ -371,11 +340,18 @@ The columns describing the message are, left to right:
    characters whereas Edwin counts them as one.)
 
 4. The date the message was sent, abbreviated by the day and month.
+   The date field is optional; see imail-summary-show-date.
 
 5. The subject line from the message, truncated if it is too long to
-   fit in the available space.
+   fit in the available space.  The width of the subject area is
+   controlled by the variable imail-summary-subject-width.
 
 6. The sender of the message, from the message's `From:' header.
+
+Additional variables controlling this mode:
+
+imail-summary-pop-up-message       keep message buffer visible
+imail-summary-highlight-message    highlight line for current message
 
 The commands in this buffer are mostly the same as those for IMAIL
 mode (the mode used by the buffer that shows the message contents),
@@ -404,53 +380,23 @@ with some additions to make navigation more natural.
   (if (or dont-confirm?
 	  (prompt-for-yes-or-no? "Revert summary buffer"))
       (rebuild-imail-summary-buffer buffer)))
-
+
 (define-key 'imail-summary #\space	'imail-summary-select-message)
 (define-key 'imail-summary #\rubout	'imail-undelete-previous-message)
-(define-key 'imail-summary #\c-n	'imail-summary-next-message)
-(define-key 'imail-summary #\c-p	'imail-summary-previous-message)
+(define-key 'imail-summary #\c-n	'imail-next-message)
+(define-key 'imail-summary #\c-p	'imail-previous-message)
 (define-key 'imail-summary #\.		'undefined)
 (define-key 'imail-summary #\q		'imail-summary-quit)
-(define-key 'imail-summary #\u		'imail-summary-undelete-forward)
-(define-key 'imail-summary #\m-<	'imail-select-message)
+(define-key 'imail-summary #\u		'imail-undelete-forward)
+(define-key 'imail-summary #\m-<	'imail-first-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
-
+
 (define-command imail-summary-select-message
   "Select the message that point is on and show it in another window."
   ()
   (lambda ()
     (select-message (selected-folder) (selected-message) #t)
     (imail-summary-pop-up-message-buffer (selected-buffer))))
-
-(define-command imail-summary-next-message
-  "Show following message whether deleted or not.
-With prefix argument N, moves forward N messages,
-or backward if N is negative."
-  "p"
-  (lambda (delta)
-    (if (selected-message #f)
-	((ref-command imail-next-message) delta)
-	(begin
-	  ((ref-command next-line) delta)
-	  (let ((message (selected-message #f)))
-	    (if message
-		(select-message (selected-folder) message)))))))
-
-(define-command imail-summary-previous-message
-  "Show previous message whether deleted or not.
-With prefix argument N, moves backward N messages,
-or forward if N is negative."
-  "p"
-  (lambda (delta)
-    ((ref-command imail-summary-next-message) (- delta))))
-
-(define-command imail-summary-undelete-forward
-  "Undelete following message whether deleted or not.
-With prefix argument N, undeletes forward N messages,
-or backward if N is negative."
-  "p"
-  (lambda (delta)
-    (move-relative delta #f "message" undelete-message)))
 
 (define-command imail-summary-quit
   "Quit out of IMAIL."
@@ -462,3 +408,147 @@ or backward if N is negative."
 	  (for-each window-delete! (buffer-windows folder-buffer))))
     ((ref-command imail-quit))
     ((ref-command bury-buffer))))
+
+;;;; Navigation
+
+(define (imail-summary-navigators buffer)
+
+  (define (first-unseen-message folder)
+    (let loop ((message (first-message folder)))
+      (and message
+	   (if (message-unseen? message)
+	       message
+	       (loop (next-message message #f))))))
+
+  (define (first-message folder)
+    (imail-summary-navigator/edge buffer folder
+				  (imail-summary-first-line buffer)))
+
+  (define (last-message folder)
+    (imail-summary-navigator/edge buffer folder
+				  (imail-summary-last-line buffer)))
+
+  (define (next-message message predicate)
+    (imail-summary-navigator/delta buffer message predicate 1))
+
+  (define (previous-message message predicate)
+    (imail-summary-navigator/delta buffer message predicate -1))
+
+  (make-imail-navigators first-unseen-message
+			 first-message
+			 last-message
+			 next-message
+			 previous-message
+			 imail-summary-navigator/selected-message))
+
+(define (imail-summary-navigator/edge buffer folder mark)
+  (and folder
+       (eq? folder (imail-summary-buffer->folder buffer #f))
+       (let ((index (imail-summary-selected-message-index mark)))
+	 (and index
+	      (< index (folder-length folder))
+	      (get-message folder index)))))
+
+(define (imail-summary-navigator/delta buffer message predicate delta)
+  (let ((folder (message-folder message)))
+    (and folder
+	 (eq? folder (imail-summary-buffer->folder buffer #f))
+	 (let loop
+	     ((m
+	       (call-with-values
+		   (lambda () (imail-summary-find-message buffer message))
+		 (lambda (m approximate?)
+		   (if (and approximate?
+			    ((if (< delta 0) < >)
+			     (imail-summary-selected-message-index m)
+			     (message-index message)))
+		       m
+		       (and m (line-start m delta #f)))))))
+	   (and m
+		(let ((index (imail-summary-selected-message-index m)))
+		  (and index
+		       (< index (folder-length folder))
+		       (let ((message (get-message folder index)))
+			 (if (or (not predicate) (predicate message))
+			     message
+			     (loop (line-start m delta #f)))))))))))
+
+(define (imail-summary-navigator/selected-message buffer)
+  (let ((index (imail-summary-selected-message-index (buffer-point buffer))))
+    (and index
+	 (let ((folder (imail-summary-buffer->folder buffer #t)))
+	   (and (< index (folder-length folder))
+		(get-message folder index))))))
+
+(define (imail-summary-selected-message-index mark)
+  (let ((regs
+	 (re-match-forward "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\) "
+			   (line-start mark 0)
+			   (line-end mark 0)
+			   #f)))
+    (and regs
+	 (- (string->number
+	     (extract-string (re-match-start 1) (re-match-end 1)))
+	    1))))
+
+(define (imail-summary-select-message buffer message)
+  (highlight-region (buffer-unclipped-region buffer) #f)
+  (call-with-values (lambda () (imail-summary-find-message buffer message))
+    (lambda (mark approximate?)
+      (if mark
+	  (begin
+	    (set-buffer-point! buffer mark)
+	    (if (and (not approximate?)
+		     (ref-variable imail-summary-highlight-message buffer))
+		(begin
+		  (highlight-region (make-region mark (line-end mark 0))
+				    #t)))))))
+  (if (ref-variable imail-summary-pop-up-message buffer)
+      (imail-summary-pop-up-message-buffer buffer)))
+
+(define (imail-summary-pop-up-message-buffer buffer)
+  (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
+    (if (and folder-buffer (selected-buffer? buffer))
+	(pop-up-buffer folder-buffer))))
+
+(define (sync-imail-summary-buffer buffer)
+  (let ((message
+	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER))))
+    (if message
+	(imail-summary-select-message buffer message))))
+
+(define (imail-summary-find-message buffer message)
+  (let ((index (message-index message)))
+    (if index
+	(let ((m (imail-summary-first-line buffer)))
+	  (let ((index* (imail-summary-selected-message-index m)))
+	     (cond ((not index*)
+		    (values #f #f))
+		   ((< index* index)
+		    (let loop ((last m))
+		      (let ((m (line-start last 1 #f)))
+			(if m
+			    (let ((index*
+				   (imail-summary-selected-message-index m)))
+			       (cond ((or (not index*)
+					  (> index* index))
+				      (values last #t))
+				     ((= index index*)
+				      (values m #f))
+				     (else
+				      (loop m))))
+			    (values last #t)))))
+		   (else
+		    (values m (> index* index))))))
+	(values #f #f))))
+
+(define (imail-summary-first-line buffer)
+  (line-start (buffer-start buffer) 2 'LIMIT))
+
+(define (imail-summary-last-line buffer)
+  (let ((end (buffer-end buffer)))
+    (let ((last (line-start end -1 #f)))
+      (if (and last
+	       (mark>= last (imail-summary-first-line buffer)))
+	  last
+	  end))))
