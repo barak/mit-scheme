@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsys.h,v 1.1 1993/02/10 22:39:46 adams Exp $
+$Id: ntsys.h,v 1.2 1993/06/24 02:09:18 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,8 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef SCM_DOSSYS_H
-#define SCM_DOSSYS_H
+#ifndef SCM_NTSYS_H
+#define SCM_NTSYS_H
 
 #define DOS_SUCCESS	(0)
 #define DOS_FAILURE	(-1)
@@ -175,4 +175,4 @@ extern unsigned char dos_set_kbd_modifier_mask (unsigned char);
 
 #define MAX_DOS_INTVECT			(0xFF)
 
-#endif /* SCM_DOSSYS_H */
+#endif /* SCM_NTSYS_H */
