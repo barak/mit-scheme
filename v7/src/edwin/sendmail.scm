@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.57 2000/06/14 02:35:09 cph Exp $
+;;; $Id: sendmail.scm,v 1.58 2000/06/15 20:24:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -361,6 +361,7 @@ Here are commands that move to a header field (and create it if there isn't):
 \\[mail-yank-original]  mail-yank-original (insert current message, in Rmail).
 \\[mail-fill-yanked-message]  mail-fill-yanked-message (fill what was yanked)."
   (lambda (buffer)
+    (add-kill-buffer-hook buffer mail-kill-buffer)
     (local-set-variable!
      paragraph-start
      (string-append "^"
@@ -381,11 +382,17 @@ Here are commands that move to a header field (and create it if there isn't):
   "An event distributor that is invoked when entering Mail mode."
   (make-event-distributor))
 
+(define (mail-kill-buffer buffer)
+  (let ((attachments-buffer (buffer-get buffer 'MIME-ATTACHMENTS-BROWSER #f)))
+    (if attachments-buffer
+	(kill-buffer attachments-buffer))))
+
 (define-key 'mail '(#\C-c #\?) 'describe-mode)
 (define-key 'mail '(#\C-c #\C-f #\C-t) 'mail-to)
 (define-key 'mail '(#\C-c #\C-f #\C-b) 'mail-bcc)
 (define-key 'mail '(#\C-c #\C-f #\C-c) 'mail-cc)
 (define-key 'mail '(#\C-c #\C-f #\C-s) 'mail-subject)
+(define-key 'mail '(#\C-c #\C-a) 'mail-browse-attachments)
 (define-key 'mail '(#\C-c #\C-w) 'mail-signature)
 (define-key 'mail '(#\C-c #\C-y) 'mail-yank-original)
 (define-key 'mail '(#\C-c #\C-q) 'mail-fill-yanked-message)
@@ -881,46 +888,59 @@ the user from the mailer."
     (insert-mime-boundary boundary #t output-mark)))
 
 (define (insert-mime-attachment attachment m)
-  (let ((type (vector-ref attachment 0))
-	(subtype (vector-ref attachment 1))
-	(parameters (vector-ref attachment 2))
-	(disposition (vector-ref attachment 3)))
+  (let ((type (mime-attachment-type attachment))
+	(subtype (mime-attachment-subtype attachment)))
     (mail-insert-field-value
      m
      "Content-Type"
      (string-append (symbol->string type)
 		    "/"
 		    (symbol->string subtype)
-		    (mime-parameters->string parameters)))
+		    (mime-parameters->string
+		     (mime-attachment-parameters attachment))))
     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
 	(if (not (ref-variable mail-abbreviate-mime m))
 	    (mail-insert-field-value m "Content-Transfer-Encoding" "7bit"))
-	(mail-insert-field-value m "Content-Transfer-Encoding" "base64"))
-    (if disposition
-	(mail-insert-field-value m
-				 "Content-Disposition"
-				 (mime-disposition->string disposition)))
+	(mail-insert-field-value m "Content-Transfer-Encoding"
+				 (if (eq? type 'TEXT)
+				     "quoted-printable"
+				     "base64")))
+    (let ((disposition (mime-attachment-disposition attachment)))
+      (if disposition
+	  (mail-insert-field-value m
+				   "Content-Disposition"
+				   (mime-disposition->string disposition))))
     (insert-newline m)
     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
 	(begin
-	  (insert-headers (vector-ref attachment 4) m)
+	  (insert-headers (mime-attachment-message-headers attachment) m)
 	  (insert-newline m)
-	  (insert-string (vector-ref attachment 5) m))
+	  (insert-string (mime-attachment-message-body attachment) m))
 	(call-with-output-mark m
 	  (lambda (output-port)
-	    (let ((context
-		   (encode-base64:initialize output-port
-					     (vector-ref attachment 4))))
-	      (call-with-input-file (vector-ref attachment 5)
-		(lambda (input-port)
-		  (let ((buffer (make-string 4096)))
-		    (let loop ()
-		      (let ((n-read (read-string! buffer input-port)))
-			(if (> n-read 0)
-			    (begin
-			      (encode-base64:update context buffer 0 n-read)
-			      (loop))))))))
-	      (encode-base64:finalize context)))))))
+	    (call-with-values
+		(lambda ()
+		  (if (eq? type 'TEXT)
+		      (values encode-quoted-printable:initialize
+			      encode-quoted-printable:update
+			      encode-quoted-printable:finalize
+			      #t)
+		      (values encode-base64:initialize
+			      encode-base64:update
+			      encode-base64:finalize
+			      #f)))
+	      (lambda (initialize update finalize text?)
+		(let ((context (initialize output-port text?)))
+		  (call-with-input-file (mime-attachment-pathname attachment)
+		    (lambda (input-port)
+		      (let ((buffer (make-string 4096)))
+			(let loop ()
+			  (let ((n-read (read-string! buffer input-port)))
+			    (if (> n-read 0)
+				(begin
+				  (update context buffer 0 n-read)
+				  (loop))))))))
+		  (finalize context)))))))))
 
 (define (enable-buffer-mime-processing! buffer)
   (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
@@ -934,11 +954,17 @@ the user from the mailer."
 (define (add-buffer-mime-attachment! buffer
 				     type subtype parameters disposition
 				     . rest)
-  (set-buffer-mime-attachments!
-   buffer
-   (cons (list->vector
-	  (cons* type subtype parameters disposition rest))
-	 (buffer-mime-attachments buffer))))
+  (let ((attachment
+	 (list->vector (cons* type subtype parameters disposition rest))))
+    (set-buffer-mime-attachments! buffer
+				  (cons attachment
+					(buffer-mime-attachments buffer)))
+    attachment))
+
+(define (delete-buffer-mime-attachment! buffer attachment)
+  (set-buffer-mime-attachments! buffer
+				(delq! attachment
+				       (buffer-mime-attachments buffer))))
 
 (define (buffer-mime-attachments buffer)
   (buffer-get buffer 'MAIL-MIME-ATTACHMENTS '()))
@@ -956,6 +982,27 @@ the user from the mailer."
 			      ")")))
 		       buffer)
   (buffer-modeline-event! buffer 'PROCESS-STATUS))
+
+(define-integrable (mime-attachment-type attachment)
+  (vector-ref attachment 0))
+
+(define-integrable (mime-attachment-subtype attachment)
+  (vector-ref attachment 1))
+
+(define-integrable (mime-attachment-parameters attachment)
+  (vector-ref attachment 2))
+
+(define-integrable (mime-attachment-disposition attachment)
+  (vector-ref attachment 3))
+
+(define-integrable (mime-attachment-message-headers attachment)
+  (vector-ref attachment 4))
+
+(define-integrable (mime-attachment-message-body attachment)
+  (vector-ref attachment 5))
+
+(define-integrable (mime-attachment-pathname attachment)
+  (vector-ref attachment 4))
 
 (define (mime-parameters->string parameters)
   (decorated-string-append
@@ -1021,6 +1068,254 @@ the user from the mailer."
       (if (fix:> (string-length s) n)
 	  (set-string-maximum-length! s n))
       s)))
+
+;;;; Attachment browser
+
+(define-command mail-browse-attachments
+  "Visit a buffer showing a list of the MIME attachments for this message.
+You can add and delete attachments from that buffer."
+  ()
+  (lambda ()
+    (select-buffer (mail-mime-attachments-browser (selected-buffer)))))
+
+(define (mail-mime-attachments-browser mail-buffer)
+  (let ((buffer (get-mime-attachments-buffer mail-buffer #t)))
+    (rebuild-mime-attachments-buffer buffer)
+    buffer))
+
+(define (get-mime-attachments-buffer mail-buffer intern?)
+  (or (let ((buffer
+	     (buffer-get mail-buffer 'MIME-ATTACHMENTS-BROWSER #f)))
+	(and buffer
+	     (if (buffer-alive? buffer)
+		 buffer
+		 (begin
+		   (buffer-remove! mail-buffer 'MIME-ATTACHMENTS-BROWSER)
+		   #f))))
+      (and intern?
+	   (let ((buffer
+		  (new-buffer
+		   (string-append (buffer-name mail-buffer)
+				  "-attachments"))))
+	     (buffer-put! mail-buffer 'MIME-ATTACHMENTS-BROWSER buffer)
+	     (buffer-put! buffer 'MAIL-BUFFER mail-buffer)
+	     buffer))))
+
+(define (rebuild-mime-attachments-buffer buffer)
+  (buffer-widen! buffer)
+  (with-read-only-defeated (buffer-start buffer)
+    (lambda ()
+      (fill-mime-attachments-buffer buffer)))
+  (set-buffer-major-mode! buffer (ref-mode-object mime-attachments))
+  (buffer-not-modified! buffer)
+  (set-buffer-point! buffer (line-start (buffer-start buffer) 2 'ERROR)))
+
+(define (fill-mime-attachments-buffer buffer)
+  (let ((mail-buffer (buffer-get buffer 'MAIL-BUFFER #f)))
+    (if (not (and mail-buffer (buffer-alive? mail-buffer)))
+	(error "Missing mail buffer:" buffer))
+    (region-delete! (buffer-region buffer))
+    (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+      (insert-string-pad-right "Type" 30 #\space mark)
+      (insert-char #\space mark)
+      (insert-string "Filename" mark)
+      (insert-newline mark)
+      (insert-chars #\- 30 mark)
+      (insert-char #\space mark)
+      (insert-chars #\-
+		    (max 8 (- (mark-x-size mark) (+ (mark-column mark) 1)))
+		    mark)
+      (insert-newline mark)
+      (for-each (lambda (attachment)
+		  (write-mime-attachment-line attachment mark))
+		(buffer-mime-attachments mail-buffer))
+      (mark-temporary! mark))))
+
+(define (write-mime-attachment-line attachment mark)
+  (let ((start (mark-right-inserting-copy mark))
+	(type (mime-attachment-type attachment))
+	(subtype (mime-attachment-subtype attachment)))
+    (insert-string-pad-right (string-append (symbol->string type)
+					    "/"
+					    (symbol->string subtype))
+			     30 #\space mark)
+    (if (not (and (eq? type 'MESSAGE) (eq? subtype 'RFC822)))
+	(begin
+	  (insert-char #\space mark)
+	  (insert-string
+	   (->namestring (mime-attachment-pathname attachment))
+	   mark)))
+    (insert-newline mark)
+    (region-put! start mark 'MIME-ATTACHMENT attachment)
+    (mark-temporary! start)))
+
+(define-major-mode mime-attachments read-only "MIME Attachments"
+  "Major mode for browsing MIME mail attachments.
+Commands available in this mode:
+
+\\{mime-attachments}"
+  (lambda (buffer)
+    (buffer-put! buffer 'REVERT-BUFFER-METHOD mime-attachments-revert-buffer)
+    (add-kill-buffer-hook buffer mime-attachments-kill-buffer)
+    (local-set-variable! truncate-lines #t buffer)
+    (local-set-variable! mode-line-modified "--- " buffer)
+    (set-buffer-read-only! buffer)
+    (disable-group-undo! (buffer-group buffer))
+    (event-distributor/invoke! (ref-variable mime-attachments-mode-hook buffer)
+			       buffer)))
+
+(define-variable mime-attachments-mode-hook
+  "An event distributor that is invoked when entering MIME Attachments mode."
+  (make-event-distributor))
+
+(define-key 'mime-attachments #\+ 'add-mime-file-attachment)
+(define-key 'mime-attachments #\- 'kill-mime-attachment)
+(define-key 'mime-attachments #\? 'describe-mode)
+(define-key 'mime-attachments #\q 'mime-attachments-quit)
+
+(define (mime-attachments-revert-buffer buffer
+					dont-use-auto-save? dont-confirm?)
+  dont-use-auto-save?
+  (if (or dont-confirm? (prompt-for-yes-or-no? "Revert attachments buffer"))
+      (rebuild-mime-attachments-buffer buffer)))
+
+(define (mime-attachments-kill-buffer buffer)
+  (let ((mail-buffer (buffer-get buffer 'MAIL-BUFFER #f)))
+    (if mail-buffer
+	(buffer-remove! mail-buffer 'MIME-ATTACHMENTS-BROWSER))))
+
+(define (selected-mail-buffer)
+  (let ((buffer (selected-buffer)))
+    (or (buffer-get buffer 'MAIL-BUFFER #f)
+	buffer)))
+
+(define-command add-mime-file-attachment
+  "Add a file as a MIME attachment to the current mail message."
+  "FFile to attach"
+  (lambda (pathname)
+    (let ((mail-buffer (selected-mail-buffer)))
+      (let ((attachment
+	     (call-with-values
+		 (lambda () (pathname->mime-type pathname mail-buffer))
+	       (lambda (type subtype parameters)
+		 (add-buffer-mime-attachment!
+		  mail-buffer type subtype parameters
+		  `(,(if (eq? type 'TEXT)
+			 'INLINE
+			 'ATTACHMENT)
+		    (FILENAME ,(file-namestring pathname)))
+		  pathname)))))
+	(let ((buffer (get-mime-attachments-buffer mail-buffer #f)))
+	  (if buffer
+	      (let ((mark (mark-left-inserting-copy (buffer-end buffer))))
+		(with-read-only-defeated mark
+		  (lambda ()
+		    (write-mime-attachment-line attachment mark)))
+		(mark-temporary! mark))))))))
+
+(define-command kill-mime-attachment
+  "Delete the MIME attachment that point is on."
+  ()
+  (lambda ()
+    (let ((point (current-point)))
+      (let ((attachment (region-get point 'MIME-ATTACHMENT #f)))
+	(if (not attachment)
+	    (editor-error "No attachment on current line."))
+	(if (prompt-for-yes-or-no? "Delete attachment")
+	    (begin
+	      (delete-buffer-mime-attachment! (selected-mail-buffer)
+					      attachment)
+	      (with-read-only-defeated point
+		(lambda ()
+		  (delete-string (line-start point 0)
+				 (line-start point 1 'ERROR))))))))))
+
+(define-command mime-attachments-quit
+  "Delete the MIME attachments buffer, returning to the message buffer."
+  ()
+  (lambda ()
+    (let ((buffer (selected-buffer)))
+      (let ((mail-buffer (buffer-get buffer 'MAIL-BUFFER #f)))
+	(if (not mail-buffer)
+	    (editor-error "No mail buffer found!"))
+	(select-buffer mail-buffer))
+      (kill-buffer-interactive buffer))))
+
+(define (pathname->mime-type pathname buffer)
+  (let ((type (pathname-type pathname))
+	(finish
+	 (lambda (type subtype)
+	   (values type
+		   subtype
+		   (if (eq? type 'TEXT)
+		       '((CHARSET "iso-8859-1"))
+		       '())))))
+    (let ((entry
+	   (list-search-positive (ref-variable file-type-to-mime-type buffer)
+	     (lambda (entry)
+	       (if type
+		   (string-ci=? (car entry) type)
+		   (not (car entry)))))))
+      (if entry
+	  (finish (cadr entry) (caddr entry))
+	  (let ((ts (search-mime-types-file pathname)))
+	    (if ts
+		(finish (car ts) (cadr ts))
+		(let ((type
+		       (prompt-for-alist-value "MIME type"
+					       mime-top-level-types
+					       #f
+					       #t)))
+		  (finish type
+			  (string->symbol
+			   (prompt-for-string "MIME subtype" #f))))))))))
+
+(define (search-mime-types-file pathname)
+  (let ((filename (file-namestring pathname)))
+    (call-with-input-file (system-library-pathname "edwin/etc/mime.types")
+      (lambda (port)
+	(let loop ()
+	  (let ((line (read-line port)))
+	    (and (not (eof-object? port))
+		 (let ((line (string-trim line)))
+		   (if (or (string-null? line)
+			   (char=? (string-ref line 0) #\#))
+		       (loop)
+		       (let ((tokens
+			      (burst-string line char-set:whitespace #t)))
+			 (if (there-exists? (cdr tokens)
+			       (lambda (suffix)
+				 (string-suffix-ci? (string-append "." suffix)
+						    filename)))
+			     (map intern
+				  (burst-string (car tokens) #\/ #f))
+			     (loop))))))))))))
+
+(define-variable file-type-to-mime-type
+  "Specifies the MIME type/subtype for files with a given type.
+This is a list, each element of which is a list of three items:
+1. The file type as a string, e.g. \"jpg\".
+   This can also be #F for files with no type.
+2. The MIME type, one of the following symbols:
+      TEXT IMAGE AUDIO VIDEO APPLICATION
+3. The MIME subtype, also specified as a symbol."
+  '(("scm" TEXT X-SCHEME)
+    ("text" TEXT PLAIN)
+    ("txi" TEXT X-TEXINFO))
+  (lambda (x)
+    (list-of-type? x
+      (lambda (x)
+	(and (list? x)
+	     (= (length x) 3)
+	     (or (not (car x)) (string? (car x)))
+	     (there-exists? mime-top-level-types
+	       (lambda (e)
+		 (eq? (cdr e) (cadr x))))
+	     (symbol? (caddr x)))))))
+
+(define mime-top-level-types
+  (map (lambda (s) (cons (symbol->string s) s))
+       '(TEXT IMAGE AUDIO VIDEO APPLICATION)))
 
 ;;;; Direct SMTP
 
