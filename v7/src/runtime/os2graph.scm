@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.5 1995/02/14 00:36:58 cph Exp $
+$Id: os2graph.scm,v 1.6 1995/02/21 23:15:58 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -39,17 +39,13 @@ MIT in each case. |#
 (declare (integrate-external "graphics"))
 (declare (integrate-external "os2winp"))
 
-(define os2-graphics-device-type)
-(define event-descriptor)
-(define event-previewer-registration)
-(define window-list)
-(define color-table)
-
 (define (initialize-package!)
   (set! os2-graphics-device-type
 	(make-graphics-device-type
+	 'OS/2
 	 `((activate-window ,os2-graphics/activate-window)
 	   (available? ,os2-graphics/available?)
+	   (capture-image ,os2-graphics/capture-image)
 	   (clear ,os2-graphics/clear)
 	   (close ,os2-graphics/close)
 	   (color? ,os2-graphics/color?)
@@ -58,6 +54,7 @@ MIT in each case. |#
 	   (define-color ,os2-graphics/define-color)
 	   (desktop-size ,os2-graphics/desktop-size)
 	   (device-coordinate-limits ,os2-graphics/device-coordinate-limits)
+	   (discard-events ,os2-graphics/discard-events)
 	   (drag-cursor ,os2-graphics/drag-cursor)
 	   (draw-line ,os2-graphics/draw-line)
 	   (draw-lines ,os2-graphics/draw-lines)
@@ -72,30 +69,59 @@ MIT in each case. |#
 	   (move-cursor ,os2-graphics/move-cursor)
 	   (open ,os2-graphics/open)
 	   (raise-window ,os2-graphics/raise-window)
+	   (read-button ,os2-graphics/read-button)
+	   (read-user-event ,os2-graphics/read-user-event)
 	   (reset-clip-rectangle ,os2-graphics/reset-clip-rectangle)
 	   (restore-window ,os2-graphics/restore-window)
+	   (select-user-events ,os2-graphics/select-user-events)
 	   (set-background-color ,os2-graphics/set-background-color)
 	   (set-clip-rectangle ,os2-graphics/set-clip-rectangle)
 	   (set-coordinate-limits ,os2-graphics/set-coordinate-limits)
 	   (set-drawing-mode ,os2-graphics/set-drawing-mode)
 	   (set-font ,os2-graphics/set-font)
 	   (set-foreground-color ,os2-graphics/set-foreground-color)
+	   (set-image-colormap ,os2-graphics/set-image-colormap)
 	   (set-line-style ,os2-graphics/set-line-style)
 	   (set-window-position ,os2-graphics/set-window-position)
 	   (set-window-size ,os2-graphics/set-window-size)
 	   (set-window-title ,os2-graphics/set-window-title)
 	   (window-position ,os2-graphics/window-position)
 	   (window-size ,os2-graphics/window-size))))
-  (register-graphics-device-type 'OS/2 os2-graphics-device-type)
+  (1d-table/put!
+   (graphics-type-properties os2-graphics-device-type)
+   'IMAGE-TYPE
+   (make-image-type
+    `((create ,os2-image/create)
+      (destroy ,os2-image/destroy)
+      (width ,os2-image/width)
+      (height ,os2-image/height)
+      (draw ,os2-image/draw)
+      (draw-subimage ,os2-image/draw-subimage)
+      (fill-from-byte-vector ,os2-image/fill-from-byte-vector))))
   (set! event-descriptor #f)
   (set! event-previewer-registration #f)
   (set! window-list (make-protection-list))
+  (set! image-list (make-protection-list))
   (set! color-table '())
+  (set! user-event-mask user-event-mask:default)
+  (set! user-event-queue (make-queue))
   (for-each (lambda (entry)
 	      (os2-graphics/define-color #f (car entry) (cdr entry)))
 	    initial-color-definitions)
   (add-event-receiver! event:before-exit finalize-pm-state!)
   (add-gc-daemon! close-lost-objects-daemon))
+
+(define os2-graphics-device-type)
+(define event-descriptor)
+(define event-previewer-registration)
+(define window-list)
+(define image-list)
+(define color-table)
+(define user-event-mask)
+(define user-event-queue)
+
+;; This event mask contains just button events.
+(define user-event-mask:default #x0001)
 
 (define (finalize-pm-state!)
   (if event-descriptor
@@ -103,29 +129,30 @@ MIT in each case. |#
 	(do ((windows (protection-list-elements window-list) (cdr windows)))
 	    ((null? windows))
 	  (close-window (car windows)))
+	(do ((images (protection-list-elements image-list) (cdr images)))
+	    ((null? images))
+	  (destroy-image (car images)))
 	(deregister-input-thread-event event-previewer-registration)
 	(set! event-previewer-registration #f)
+	(set! user-event-mask user-event-mask:default)
+	(flush-queue! user-event-queue)
 	(os2win-close-event-qid event-descriptor)
 	(set! event-descriptor #f)
 	unspecific)))
 
 (define (close-lost-objects-daemon)
-  (clean-lost-protected-objects window-list os2win-close))
+  (clean-lost-protected-objects window-list os2win-close)
+  (clean-lost-protected-objects image-list destroy-memory-ps))
 
 ;;;; Window Abstraction
 
 (define-structure (window
 		   (conc-name window/)
-		   (constructor %make-window
-				(wid pel-width
-				     pel-height
-				     backing-store
-				     backing-store-bitmap)))
+		   (constructor %make-window (wid pel-width pel-height)))
   wid
   pel-width
   pel-height
-  (backing-store #f read-only #t)
-  backing-store-bitmap
+  backing-image
   (changes #f)
   (x-gcursor 0)
   (y-gcursor 0)
@@ -133,27 +160,25 @@ MIT in each case. |#
   (y-bottom -1)
   (x-right 1)
   (y-top 1)
-  (x-slope (/ (- pel-width 1) 2))
-  (y-slope (/ (- pel-height 1) 2))
+  (x-slope (exact->inexact (/ (- pel-width 1) 2)))
+  (y-slope (exact->inexact (/ (- pel-height 1) 2)))
   font-specifier
   font-metrics
   (foreground-color #xFFFFFF)
-  (background-color #x000000))
+  (background-color #x000000)
+  (image-colormap #f)
+  device)
 
-(define (make-window wid)
-  (let ((window
-	 (let ((w.h (os2win-get-size wid))
-	       (psid (os2ps-create-memory-ps)))
-	   (let ((bid (os2ps-create-bitmap psid pel-width pel-height)))
-	     (os2ps-set-bitmap psid bid)
-	     (%make-window wid (car w.h) (cdr w.h) psid bid)))))
+(define (make-window wid width height)
+  (let ((window (%make-window wid width height)))
+    (set-window/backing-image! window (create-image window width height))
     (add-to-protection-list! window-list window wid)
     window))
 
 (define (close-window window)
   (if (window/wid window)
       (begin
-	(os2ps-destroy-memory-ps (window/backing-store window))
+	(destroy-image (window/backing-image window))
 	(os2win-close (window/wid window))
 	(set-window/wid! window #f)
 	(remove-from-protection-list! window-list window))))
@@ -164,50 +189,65 @@ MIT in each case. |#
 (define-integrable (os2-graphics-device/psid device)
   (window/backing-store (graphics-device/descriptor device)))
 
-(define (compute-window-slopes! window)
-  (set-window/x-slope! window
-		       (/ (- (window/pel-width window) 1)
-			  (- (window/x-right window) (window/x-left window))))
-  (set-window/y-slope! window
-		       (/ (- (window/pel-height window) 1)
-			  (- (window/y-top window) (window/y-bottom window)))))
+(define-integrable (window/backing-store window)
+  (image/ps (window/backing-image window)))
 
-(define (set-window-font! window font-specifier)
-  (set-window/font-specifier! window font-specifier)
-  (set-window/font-metrics!
+(define (compute-window-slopes! window)
+  (set-window/x-slope!
    window
-   (let ((metrics
-	  (os2ps-set-font (window/backing-store window) 1 font-specifier)))
-     (if (not metrics)
-	 (error "Unknown font name:" font-specifier))
-     metrics)))
+   (exact->inexact
+    (/ (- (window/pel-width window) 1)
+       (- (window/x-right window) (window/x-left window)))))
+  (set-window/y-slope!
+   window
+   (exact->inexact
+    (/ (- (window/pel-height window) 1)
+       (- (window/y-top window) (window/y-bottom window))))))
 
 (define (window/x->device window x)
   (round->exact (* (window/x-slope window) (- x (window/x-left window)))))
 
 (define (window/y->device window y)
   (round->exact (* (window/y-slope window) (- y (window/y-bottom window)))))
+
+(define (window/device->x window x)
+  (+ (/ x (window/x-slope window)) (window/x-left window)))
+
+(define (window/device->y window y)
+  (+ (/ y (window/y-slope window)) (window/y-bottom window)))
 
 ;;;; Standard Operations
 
 (define (os2-graphics/available?)
   (implemented-primitive-procedure? os2win-open))
 
-(define (os2-graphics/open descriptor->device)
+(define (os2-graphics/open descriptor->device #!optional width height)
   (if (not event-descriptor)
-      (let ((descriptor (os2win-open-event-qid)))
-	(set! event-previewer-registration (make-event-previewer descriptor))
-	(set! event-descriptor descriptor)))
+      (begin
+	(set! event-descriptor (os2win-open-event-qid))
+	(set! event-previewer-registration
+	      (permanently-register-input-thread-event
+	       event-descriptor
+	       (current-thread)
+	       read-and-process-event))))
+  (open-window descriptor->device
+	       (if (default-object? width) 256 width)
+	       (if (default-object? height) 256 height)))
+
+(define (open-window descriptor->device width height)
   (let ((wid (os2win-open event-descriptor "Scheme Graphics")))
     (os2win-show-cursor wid #f)
     (os2win-show wid #t)
+    (os2win-set-size wid width height)
+    (pm-synchronize)
     (os2win-set-state wid window-state:deactivate)
     (os2win-set-state wid window-state:top)
-    (let ((window (make-window wid)))
+    (let ((window (make-window wid width height)))
       (update-colors window)
       (set-window-font! window "4.System VIO")
       (let ((device (descriptor->device window)))
 	(os2-graphics/clear device)
+	(set-window/device! window device)
 	device))))
 
 (define (os2-graphics/close device)
@@ -258,7 +298,7 @@ MIT in each case. |#
 	   (os2ps-line (window/backing-store window) xe ye)
 	   (set-window/x-gcursor! window xe)
 	   (set-window/y-gcursor! window ye)
-	   (invalidate-rectangle device xl yl xh yh)))))))
+	   (invalidate-rectangle device xl xh yl yh)))))))
 
 (define (os2-graphics/draw-line device x-start y-start x-end y-end)
   (os2-graphics/move-cursor device x-start y-start)
@@ -275,7 +315,7 @@ MIT in each case. |#
 	       (xh (fix:+ (fix:vector-max xv) 1))
 	       (yh (fix:+ (fix:vector-max yv) 1)))
 	   (os2ps-poly-line-disjoint (window/backing-store window) xv yv)
-	   (invalidate-rectangle device xl yl xh yh)))))))
+	   (invalidate-rectangle device xl xh yl yh)))))))
 
 (define (os2-graphics/draw-point device x y)
   ;; This sucks.  Implement a real point-drawing primitive.
@@ -285,7 +325,7 @@ MIT in each case. |#
        (let ((x (window/x->device window x))
 	     (y (window/y->device window y)))
 	 (os2ps-draw-point (window/backing-store window) x y)
-	 (invalidate-rectangle device x y (fix:+ x 1) (fix:+ y 1)))))))
+	 (invalidate-rectangle device x (fix:+ x 1) y (fix:+ y 1)))))))
 
 (define (os2-graphics/draw-text device x y string)
   (let ((window (graphics-device/descriptor device))
@@ -304,9 +344,9 @@ MIT in each case. |#
 		      length)
 	 (invalidate-rectangle device
 			       x
-			       y
 			       (fix:+ x
 				      (os2ps-text-width psid string 0 length))
+			       y
 			       (fix:+ y (font-metrics/height metrics))))))))
 
 (define (os2-graphics/flush device)
@@ -450,13 +490,9 @@ MIT in each case. |#
   (os2win-set-size (os2-graphics-device/wid device) width height))
 
 (define (os2-graphics/window-frame-size device)
-  (let ((w.h (os2win-get-size (os2-graphics-device/wid device))))
+  (let ((w.h (os2win-get-frame-size (os2-graphics-device/wid device))))
     (values (car w.h)
 	    (cdr w.h))))
-
-(define (os2-graphics/display-size device)
-  device
-  (values (os2win-desktop-width) (os2win-desktop-height)))
 
 (define (os2-graphics/window-position device)
   (let ((x.y (os2win-get-pos (os2-graphics-device/wid device))))
@@ -574,6 +610,23 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Support
 
+(define (set-window-font! window font-specifier)
+  (set-window/font-specifier! window font-specifier)
+  (set-window/font-metrics!
+   window
+   (let ((metrics
+	  (os2ps-set-font (window/backing-store window) 1 font-specifier)))
+     (if (not metrics)
+	 (error "Unknown font name:" font-specifier))
+     metrics)))
+
+(define (without-thread-events thunk)
+  (let ((block-events? (block-thread-events)))
+    (let ((value (thunk)))
+      (if (not block-events?)
+	  (unblock-thread-events))
+      value)))
+
 (define (fix:vector-min v)
   (let ((length (vector-length v))
 	(min (vector-ref v 0)))
@@ -634,28 +687,31 @@ MIT in each case. |#
 
 ;;;; Events
 
-(define (make-event-previewer descriptor)
-  (permanently-register-input-thread-event
-   descriptor
-   (current-thread)
-   (lambda ()
-     (let ((event (os2win-get-event descriptor #f)))
-       (if event
-	   (process-event event))))))
+(define (pm-synchronize)
+  (os2pm-synchronize)
+  (without-thread-events (lambda () (do () ((not (read-and-process-event)))))))
+
+(define (read-and-process-event)
+  (let ((event (os2win-get-event event-descriptor #f)))
+    (and event
+	 (begin (process-event event) #t))))
 
 (define (process-event event)
-  (let ((window
-	 (search-protection-list window-list
-	   (let ((wid (event-wid event)))
-	     (lambda (window)
-	       (eq? (window/wid window) wid))))))
-    (if window
-	(let ((handler (vector-ref event-handlers (event-type event))))
-	  (if handler
-	      (handler window event))))))
+  (without-interrupts
+   (lambda ()
+     (let ((window
+	    (search-protection-list window-list
+	      (let ((wid (event-wid event)))
+		(lambda (window)
+		  (eq? (window/wid window) wid))))))
+       (if window
+	   (begin
+	     (let ((handler (vector-ref event-handlers (event-type event))))
+	       (if handler
+		   (handler window event)))
+	     (maybe-queue-user-event window event)))))))
 
-(define event-handlers
-  (make-vector number-of-event-types #f))
+(define event-handlers (make-vector number-of-event-types #f))
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
@@ -701,13 +757,352 @@ MIT in each case. |#
 			  BBO_IGNORE)
 	    (os2ps-set-bitmap new #f)
 	    (os2ps-destroy-memory-ps new))
-	  (os2ps-destroy-bitmap (os2ps-set-bitmap old bitmap))
-	  (set-window/backing-store-bitmap! window bitmap)))
+	  (os2ps-destroy-bitmap (os2ps-set-bitmap old bitmap))))
       (set-window/pel-width! window width)
       (set-window/pel-height! window height)
       (compute-window-slopes! window)
       (os2win-invalidate (window/wid window) 0 width 0 height)
       (set-window/changes! window #f))))
+
+;;;; User Events
+
+(define (maybe-queue-user-event window event)
+  (if (not (fix:= 0 (fix:and (fix:lsh 1 (event-type event)) user-event-mask)))
+      (begin
+	(set-event-wid! event (window/device window))
+	(enqueue!/unsafe user-event-queue event))))
+
+(define (os2-graphics/select-user-events device mask)
+  device
+  (if (not (and (exact-nonnegative-integer? mask)
+		(< mask (expt 2 number-of-event-types))))
+      (error:bad-range-argument mask 'SELECT-USER-EVENTS))
+  (set! user-event-mask mask)
+  unspecific)
+
+(define (os2-graphics/read-user-event device)
+  device
+  (without-thread-events
+   (lambda ()
+     (let loop ()
+       (if (queue-empty? user-event-queue)
+	   (begin
+	     (if (eq? 'INPUT-AVAILABLE
+		      (test-for-input-on-descriptor event-descriptor #t))
+		 (read-and-process-event))
+	     (loop))
+	   (dequeue! user-event-queue))))))
+
+(define (os2-graphics/read-button device)
+  (let ((window (graphics-device/descriptor device))
+	(event
+	 (let loop ()
+	   (let ((event (os2-graphics/read-user-event device)))
+	     (if (and (eq? event-type:button (event-type event))
+		      (eq? button-event-type:down (button-event/type event)))
+		 event
+		 (loop))))))
+    (values (button-event/number event)
+	    (window/device->x window (button-event/x event))
+	    (window/device->y window (button-event/y event))
+	    (event-wid event))))
+
+(define (os2-graphics/discard-events device)
+  device
+  (without-thread-events
+   (lambda ()
+     (let loop ()
+       (flush-queue! user-event-queue)
+       (if (read-and-process-event)
+	   (loop))))))
+
+(define (flush-queue! queue)
+  (without-interrupts
+   (lambda ()
+     (let loop ()
+       (if (not (queue-empty? queue))
+	   (begin
+	     (dequeue!/unsafe queue)
+	     (loop)))))))
+
+;;;; Images
+
+(define-structure (image (conc-name image/))
+  ps
+  (width #f read-only #t)
+  (height #f read-only #t)
+  (colormap #f read-only #t))
+
+(define (os2-graphics/set-image-colormap device colormap)
+  ;; Random kludge.  The 6.001 picture code assumes that the colormap
+  ;; information is stored in the window, but in OS/2 it should be
+  ;; associated with the image.  So this kludge stores the colormap in
+  ;; the window, where it is retrieved when an image is created.
+  (set-window/image-colormap! (graphics-device/descriptor device) colormap))
+
+(define (os2-graphics/capture-image device x-left y-bottom x-right y-top)
+  (let ((window (graphics-device/descriptor device)))
+    (let ((x (window/x->device window x-left))
+	  (y (window/y->device window y-bottom)))
+      (let ((width (+ (- (window/x->device window x-right) x) 1))
+	    (height (+ (- (window/y->device window y-top) y) 1)))
+	(let ((image (image/create (image-type device) device width height)))
+	  (os2ps-bitblt (image/ps (image/descriptor image))
+			(window/backing-store window)
+			(vector x (+ x width) 0)
+			(vector y (+ y height) 0)
+			ROP_SRCCOPY
+			BBO_OR)
+	  image)))))
+
+(define (os2-image/create device width height)
+  (create-image (graphics-device/descriptor device) width height))
+
+(define (create-image window width height)
+  (let ((ps (os2ps-create-memory-ps)))
+    (os2ps-set-bitmap ps (os2ps-create-bitmap ps width height))
+    (let ((image (make-image ps width height (window/image-colormap window))))
+      (add-to-protection-list! image-list image ps)
+      image)))
+
+(define (os2-image/destroy image)
+  (destroy-image (image/descriptor image)))
+
+(define (destroy-image image)
+  (if (image/ps image)
+      (begin
+	(destroy-memory-ps (image/ps image))
+	(set-image/ps! image #f)
+	(remove-from-protection-list! image-list image))))
+
+(define (destroy-memory-ps ps)
+  (let ((bitmap (os2ps-set-bitmap ps #f)))
+    (os2ps-destroy-memory-ps ps)
+    (if bitmap
+	(os2ps-destroy-bitmap bitmap))))
+
+(define (os2-image/width image)
+  (image/width (image/descriptor image)))
+
+(define (os2-image/height image)
+  (image/height (image/descriptor image)))
+
+(define (os2-image/fill-from-byte-vector image bytes)
+  (let ((image (image/descriptor image)))
+    (set-bitmap-bits
+     (image/ps image)
+     (let ((width (image/width image))
+	   (height (image/height image)))
+       (make-bitmap-info width height 8
+			 (image/colormap image)
+			 (convert-bitmap-data width height bytes))))))
+
+(define (convert-bitmap-data width height bytes)
+  ;; Convert Scheme bitmap data layout to OS/2 bitmap layout.  Scheme
+  ;; layout is row-major with upper-left corner at index zero with no
+  ;; padding.  OS/2 layout is row-major with lower-left corner at
+  ;; index zero and rows padded to 32-bit boundaries.  This conversion
+  ;; uses the OS/2 standard 8-bit-per-pixel bitmap format.
+  (let ((row-size (* (ceiling (/ (* 8 width) 32)) 4)))
+    (let ((copy (make-string (* row-size height))))
+      (let loop ((from 0) (to (string-length copy)))
+	(if (not (fix:= to 0))
+	    (let ((from* (fix:+ from width))
+		  (to (fix:- to row-size)))
+	      (substring-move-right! bytes from from* copy to)
+	      (loop from* to))))
+      copy)))
+
+(define (os2-image/draw device x y image)
+  (let ((window (graphics-device/descriptor device))
+	(image (image/descriptor image)))
+    (draw-image window
+		(window/x->device window x)
+		(window/y->device window y)
+		image
+		0
+		0
+		(image/width image)
+		(image/height image))))
+
+(define (os2-image/draw-subimage device x y image
+				 image-x image-y image-width image-height)
+  (let ((window (graphics-device/descriptor device))
+	(image (image/descriptor image)))
+    (draw-image window
+		(window/x->device window x)
+		(window/y->device window y)
+		image
+		image-x
+		;; IMAGE-Y must be inverted because Scheme images have
+		;; origin in upper left and OS/2 bitmaps have origin
+		;; in lower left.
+		(- (image/height image) (+ image-y image-height))
+		image-width
+		image-height)))
+
+(define (draw-image window window-x window-y
+		    image image-x image-y image-width image-height)
+  (os2ps-bitblt (window/backing-store window)
+		(image/ps image)
+		(vector window-x (+ window-x image-width) image-x)
+		(vector window-y (+ window-y image-height) image-y)
+		ROP_SRCCOPY
+		BBO_OR))
+
+;;;; Bitmap I/O
+
+;;; This code uses the OS/2 C datatype modelling code to manipulate
+;;; OS/2 C data types which are contained in Scheme character strings.
+
+(define (get-bitmap-bits psid n-bits)
+  (if (not (memv n-bits '(1 4 8 24)))
+      (error:bad-range-argument n-bits 'GET-BITMAP-BITS))
+  (maybe-initialize-bitmaps!)
+  (call-with-values (lambda () (get-bitmap-dimensions (os2ps-get-bitmap psid)))
+    (lambda (width height)
+      (let ((info (make-bytes:bitmap-info-2 1 n-bits))
+	    (data (make-bytes:bitmap-data width height 1 n-bits)))
+	(let ((n (os2ps-get-bitmap-bits psid 0 height data info)))
+	  (if (not (= height n))
+	      (error "Only able to read part of bitmap data:" n height)))
+	(bytes->bitmap-info info data)))))
+
+(define (set-bitmap-bits psid info)
+  (maybe-initialize-bitmaps!)
+  (let ((height (bitmap-info/height info)))
+    (call-with-values (lambda () (bitmap-info->bytes info))
+      (lambda (info data)
+	(let ((n (os2ps-set-bitmap-bits psid 0 height data info)))
+	  (if (not (= height n))
+	      (error "Only able to write part of bitmap data:" n height)))))))
+
+(define bitmaps-initialized? #f)
+(define (maybe-initialize-bitmaps!)
+  (without-interrupts
+   (lambda ()
+     (if (not bitmaps-initialized?)
+	 (begin
+	   (initialize-c-types!)
+	   (define-c-type "USHORT" "unsigned short")
+	   (define-c-type "ULONG"  "unsigned long")
+	   (define-c-type "BITMAPINFOHEADER"
+	     '(struct ("ULONG"  "cbFix")
+		      ("USHORT" "cx")
+		      ("USHORT" "cy")
+		      ("USHORT" "cPlanes")
+		      ("USHORT" "cBitCount")))
+	   (define-c-type "BITMAPINFO2"
+	     '(struct ("ULONG"  "cbFix")
+		      ("ULONG"  "cx")
+		      ("ULONG"  "cy")
+		      ("USHORT" "cPlanes")
+		      ("USHORT" "cBitCount")
+		      ("ULONG"  "ulCompression")
+		      ("ULONG"  "cbImage")
+		      ("ULONG"  "cxResolution")
+		      ("ULONG"  "cyResolution")
+		      ("ULONG"  "cclrUsed")
+		      ("ULONG"  "cclrImportant")
+		      ("USHORT" "usUnits")
+		      ("USHORT" "usReserved")
+		      ("USHORT" "usRecording")
+		      ("USHORT" "usRendering")
+		      ("ULONG"  "cSize1")
+		      ("ULONG"  "cSize2")
+		      ("ULONG"  "ulColorEncoding")
+		      ("ULONG"  "ulIdentifier")
+		      ((array "ULONG" 1) "argbColor")))
+	   (set! get-bitmap-dimensions (make:get-bitmap-dimensions))
+	   (set! bytes->bitmap-info (make:bytes->bitmap-info))
+	   (set! bitmap-info->bytes (make:bitmap-info->bytes))
+	   (set! make-bytes:bitmap-info-2 (make:make-bytes:bitmap-info-2))
+	   (set! bitmaps-initialized? #t)
+	   unspecific)))))
+
+(define get-bitmap-dimensions)
+(define (make:get-bitmap-dimensions)
+  (let ((type (lookup-c-type "BITMAPINFOHEADER")))
+    (let ((width (c-number-reader type 0 "cx"))
+	  (height (c-number-reader type 0 "cy")))
+      (lambda (bid)
+	(let ((bytes (os2ps-get-bitmap-parameters bid)))
+	  (values (width bytes) (height bytes)))))))
+
+(define bytes->bitmap-info)
+(define (make:bytes->bitmap-info)
+  (let ((type (lookup-c-type "BITMAPINFO2")))
+    (let ((width (c-number-reader type 0 "cx"))
+	  (height (c-number-reader type 0 "cy"))
+	  (n-bits (c-number-reader type 0 "cBitCount"))
+	  (get-color (c-array-reader type 0 "argbColor")))
+      (lambda (bytes data)
+	(let ((n-bits (n-bits bytes)))
+	  (make-bitmap-info (width bytes)
+			    (height bytes)
+			    n-bits
+			    (if (= n-bits 24)
+				#f
+				(make-initialized-vector (expt 2 n-bits)
+				  (lambda (index)
+				    (get-color bytes index))))
+			    data))))))
+
+(define bitmap-info->bytes)
+(define (make:bitmap-info->bytes)
+  (let ((type (lookup-c-type "BITMAPINFO2")))
+    (let ((set-width! (c-number-writer type 0 "cx"))
+	  (set-height! (c-number-writer type 0 "cy"))
+	  (set-color! (c-array-writer type 0 "argbColor")))
+      (lambda (info)
+	(let ((n-bits (bitmap-info/n-bits info)))
+	  (let ((bytes (make-bytes:bitmap-info-2 1 n-bits)))
+	    (set-width! bytes (bitmap-info/width info))
+	    (set-height! bytes (bitmap-info/height info))
+	    (if (not (= n-bits 24))
+		(let ((n-colors (expt 2 n-bits))
+		      (colormap (bitmap-info/colormap info)))
+		  (do ((index 0 (fix:+ index 1)))
+		      ((fix:= index n-colors))
+		    (set-color! bytes index (vector-ref colormap index)))))
+	    (values bytes (bitmap-info/data info))))))))
+
+(define-structure (bitmap-info (conc-name bitmap-info/))
+  (width #f read-only #t)
+  (height #f read-only #t)
+  (n-bits #f read-only #t)
+  (colormap #f read-only #t)
+  (data #f read-only #t))
+
+(define (make-bytes:bitmap-data width height n-planes n-bits)
+  (make-string (* (ceiling (/ (* n-bits width) 32)) 4 height n-planes)))
+
+;;; OS2PS-GET-BITMAP-BITS and OS2PS-SET-BITMAP-BITS both require an
+;;; argument of type BITMAPINFO2.  On input, this argument specifies
+;;; the external format of the bitmap, which is just the size and
+;;; depth of the information.  The colormap information is output from
+;;; OS2PS-GET-BITMAP-BITS and input to OS2PS-SET-BITMAP-BITS.
+
+(define make-bytes:bitmap-info-2)
+(define (make:make-bytes:bitmap-info-2)
+  (let ((type (lookup-c-type "BITMAPINFO2")))
+    (call-with-values (lambda () (select-c-type type 0 "argbColor"))
+      (lambda (rgb-type size-base)
+	(let ((size-increment (c-array-type/element-spacing rgb-type))
+	      (set-struct-size! (c-number-writer type 0 "cbFix"))
+	      (set-n-planes! (c-number-writer type 0 "cPlanes"))
+	      (set-n-bits! (c-number-writer type 0 "cBitCount")))
+	  (lambda (n-planes n-bits)
+	    (let ((info
+		   (make-string (+ size-base
+				   (if (= n-bits 24)
+				       0
+				       (* size-increment (expt 2 n-bits))))
+				(ascii->char 0))))
+	      (set-struct-size! info size-base)
+	      (set-n-planes! info n-planes)
+	      (set-n-bits! info n-bits)
+	      info)))))))
 
 ;;;; Protection lists
 
