@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.52 1993/06/24 05:50:22 gjr Exp $
+$Id: lookup.c,v 9.53 1993/09/09 18:16:08 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2332,7 +2332,7 @@ DEFUN (compiler_recache_slot,
   clone = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE));
   tail = *slot;
 
-  for (pair = *cell; pair != NULL; pair = *cell)
+  for (pair = (* cell); pair != ((SCHEME_OBJECT) NULL); pair = (* cell))
   {
     weak_pair = (FAST_PAIR_CAR (pair));
     result = (cache_reference_end (kind, extension, clone,
