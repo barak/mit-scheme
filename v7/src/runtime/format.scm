@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.2 1988/07/07 15:17:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/format.scm,v 14.3 1988/07/07 15:45:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ MIT in each case. |#
   (let ((start
 	 (lambda (port)
 	   (format-loop port format-string arguments)
-	   ((output-port/flush-output port) port)
+	   (output-port/flush-output port)
 	   *the-non-printing-object*)))
     (cond ((not destination)
 	   (with-output-to-string (lambda () (start (current-output-port)))))
@@ -77,27 +77,21 @@ MIT in each case. |#
 	   (start destination))
 	  (else
 	   (error "FORMAT: illegal destination" destination)))))
-
-(define-integrable (*unparse-char port char)
-  ((output-port/write-char port) port char))
-
-(define-integrable (*unparse-string port string)
-  ((output-port/write-string port) port string))
 
 (define (format-loop port string arguments)
   (let ((index (string-find-next-char string #\~)))
     (cond (index
 	   (if (not (zero? index))
-	       (*unparse-string port (substring string 0 index)))
+	       (output-port/write-string port (substring string 0 index)))
 	   (parse-dispatch port
 			   (string-tail string (1+ index))
 			   arguments
 			   '()
 			   '()))
 	  ((null? arguments)
-	   (*unparse-string port string))
+	   (output-port/write-string port string))
 	  (else
-	   (error "Too many arguments" 'FORMAT arguments)))))
+	   (error "FORMAT: Too many arguments" arguments)))))
 
 (define (parse-dispatch port string supplied-arguments parsed-arguments
 			modifiers)
@@ -168,10 +162,10 @@ MIT in each case. |#
 (define (((format-insert-character character) modifiers #!optional n)
 	 port string arguments)
   (if (default-object? n)
-      (*unparse-char port character)
+      (output-port/write-char port character)
       (let loop ((i 0))
 	(if (not (= i n))
-	    (begin (*unparse-char port character)
+	    (begin (output-port/write-char port character)
 		   (loop (1+ i))))))
   (format-loop port string arguments))
 
@@ -208,14 +202,14 @@ MIT in each case. |#
       (error "FORMAT: too few arguments" string))
   (if (default-object? n-columns)
       (write (car arguments) port)
-      (*unparse-string port
-		       ((if (memq 'AT modifiers)
-			    string-pad-left
-			    string-pad-right)
-			(with-output-to-string
-			  (lambda ()
-			    (write (car arguments))))
-			n-columns)))
+      (output-port/write-string port
+				((if (memq 'AT modifiers)
+				     string-pad-left
+				     string-pad-right)
+				 (with-output-to-string
+				   (lambda ()
+				     (write (car arguments))))
+				 n-columns)))
   (format-loop port string (cdr arguments)))
 
 ;;;; Dispatcher Setup
