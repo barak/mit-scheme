@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 5.2 1986/12/17 06:35:06 cph Exp $
- *
- * This file contains definitions pertaining to the C view of 
- * Scheme pointers: widths of fields, extraction macros, pre-computed
- * extraction masks, etc.
- *
- */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 5.3 1987/01/12 17:17:33 cph Exp $ */
+
+/* This file contains definitions pertaining to the C view of 
+   Scheme pointers: widths of fields, extraction macros, pre-computed
+   extraction masks, etc. */
 
 /* The C type Pointer is defined at the end of CONFIG.H
    The definition of POINTER_LENGTH here assumes that Pointer is the same
@@ -52,8 +50,7 @@ MIT in each case. */
    particular binding of a variable to a value has been shadowed by an
    auxiliary variable in a nested environment.  It means that variables
    cached to this address must be recached since the address may be invalid.
-   See lookup.c 
-*/ 
+   See lookup.c */ 
 
 #define DANGER_TYPE		0x80	/* (1<<(TYPE_CODE_LENGTH-1)) */
 #define MAX_SAFE_TYPE   	0x7F	/* (MAX_TYPE_CODE & ~DANGER_TYPE) */
@@ -88,73 +85,82 @@ MIT in each case. */
 #endif
 
 #ifndef UNSIGNED_SHIFT		/* Safe version */
-#define Type_Code(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
-#define Safe_Type_Code(P)	(((P) >> ADDRESS_LENGTH) & SAFE_TYPE_MASK)
+#define pointer_type(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
+#define safe_pointer_type(P)	(((P) >> ADDRESS_LENGTH) & SAFE_TYPE_MASK)
 #else				/* Faster for logical shifts */
-#define Type_Code(P)		((P) >> ADDRESS_LENGTH)
-#define Safe_Type_Code(P)	(Type_Code(P) & SAFE_TYPE_MASK)
+#define pointer_type(P)		((P) >> ADDRESS_LENGTH)
+#define safe_pointer_type(P)	((pointer_type (P)) & SAFE_TYPE_MASK)
 #endif
 
-#define Datum(P)		((P) & ADDRESS_MASK)
+#define pointer_datum(P)	((P) & ADDRESS_MASK)
+
+/* compatibility definitions */
+#define Type_Code(P)		(pointer_type (P))
+#define Safe_Type_Code(P) 	(safe_pointer_type (P))
+#define Datum(P)		(pointer_datum (P))
 
 #define Make_Object(TC, D)					\
-  ((((unsigned) (TC)) << ADDRESS_LENGTH) | (Datum(D)))
+((((unsigned) (TC)) << ADDRESS_LENGTH) | (pointer_datum (D)))
 
 #ifndef Heap_In_Low_Memory	/* Safe version */
 
-typedef Pointer *relocation_type;	/* Used to relocate pointers on fasload */
+typedef Pointer *relocation_type; /* Used to relocate pointers on fasload */
 
 extern Pointer *Memory_Base;
+
 /* The "-1" in the value returned is guarantee that there is one
    word reserved exclusively for use by the garbage collector. */
+
 #define Allocate_Heap_Space(space)				\
-  (Memory_Base = (Pointer *) malloc(sizeof(Pointer) * (space)),	\
+  (Memory_Base = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))), \
    Heap = Memory_Base,						\
-   Memory_Base + (space) - 1)
-#define Get_Pointer(P)		((Pointer *) (Memory_Base+Datum(P)))
-#define C_To_Scheme(P)		((Pointer) ((P)-Memory_Base))
+   ((Memory_Base + (space)) - 1))
+
+#define Get_Pointer(P) ((Pointer *) (Memory_Base + (pointer_datum (P))))
+#define C_To_Scheme(P) ((Pointer) ((P) - Memory_Base))
 
 #else				/* Storing absolute addresses */
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
+#define Allocate_Heap_Space(space)				\
+  (Heap = ((Pointer *) (malloc ((sizeof (Pointer)) * (space)))), \
+   ((Heap + (space)) - 1))
+
 #ifdef spectrum
 
 #define Quad1_Tag 	0x40000000
-#define Allocate_Heap_Space(space)				\
-  (Heap = (Pointer *) malloc(sizeof(Pointer) * (space)),	\
-   Heap + (space) - 1)
 #define Get_Pointer(P)	((Pointer *) (((P) & ADDRESS_MASK) | Quad1_Tag))
 #define C_To_Scheme(P)  ((Pointer) (((long) (P)) & ADDRESS_MASK))
 
 #else /* Not Spectrum, fast case */
 
-#define Allocate_Heap_Space(space)				\
-  (Heap = (Pointer *) malloc(sizeof(Pointer) * (space)),	\
-   Heap + (space) - 1)
-#define Get_Pointer(P)		((Pointer *) Datum(P))
+#define Get_Pointer(P)		((Pointer *) (pointer_datum (P)))
 #define C_To_Scheme(P)          ((Pointer) (P))
 
 #endif /* spectrum */
 #endif /* Heap_In_Low_Memory */
-
+
 #define Make_Pointer(TC, A)	Make_Object((TC), C_To_Scheme(A))
 #define Make_Non_Pointer(TC, D)	Make_Object(TC, ((Pointer) (D)))
 #define Make_Unsigned_Fixnum(N)	(FIXNUM_0 + (N))
 #define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
 
-/* Make_New_Pointer(TC, A) may be more efficient than
-   Make_Pointer(TC, Get_Pointer(A))
-*/
-#define Make_New_Pointer(TC, A) Make_Object(TC, ((Pointer) A))
+/* (Make_New_Pointer (TC, A)) may be more efficient than
+   (Make_Pointer (TC, (Get_Pointer (A)))) */
 
-#define Store_Type_Code(P, TC)	P = Make_Object((TC), (P))
+#define Make_New_Pointer(TC, A) (Make_Object (TC, ((Pointer) A)))
+
+#define Store_Type_Code(P, TC)	P = (Make_Object ((TC), (P)))
+
 #define Store_Address(P, A)					\
-  P = (((P) & TYPE_CODE_MASK) | Datum((Pointer) (A)))
-#define Address(P)			Datum(P)
+  P = (((P) & TYPE_CODE_MASK) | (pointer_datum ((Pointer) (A))))
+
+#define Address(P) (pointer_datum (P))
 
 /* These are used only where the object is known to be immutable.
    On a parallel processor they don't require atomic references */
+
 #define Fast_Vector_Ref(P, N)		((Get_Pointer(P))[N])
 #define Fast_Vector_Set(P, N, S)	Fast_Vector_Ref(P, N) = (S)
 #define Fast_User_Vector_Ref(P, N) 	Fast_Vector_Ref(P, (N)+1)
@@ -163,25 +169,37 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define Vector_Length(P)		(Get_Integer(Fast_Vector_Ref((P), 0)))
 
 /* General case vector handling requires atomicity for parallel processors */
+
 #define Vector_Ref(P, N)		Fetch(Fast_Vector_Ref(P, N))
 #define Vector_Set(P, N, S)     	Store(Fast_Vector_Ref(P, N), S)
 #define User_Vector_Ref(P, N)		Vector_Ref(P, (N)+1)
 #define User_Vector_Set(P, N, S)  	Vector_Set(P, (N)+1, S)
 
 #ifdef FLOATING_ALIGNMENT
-#define Align_Float(Where)				\
-while ((((long) (Where+1)) & FLOATING_ALIGNMENT) != 0)	\
-  *Where++ = Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);                                                                      
-#else
+
+#define Align_Float(Where)					\
+while ((((long) ((Where) + 1)) & FLOATING_ALIGNMENT) != 0)	\
+  *Where++ = (Make_Non_Pointer (TC_MANIFEST_NM_VECTOR, 0));
+
+#else /* ifdef FLOATING_ALIGNMENT */
+
 #define Align_Float(Where)
-#endif
-#define Get_Float(P)			(* ((double *) Nth_Vector_Loc((P), 1)))
-#define Get_Integer(P)			Datum(P)
+
+#endif /* ifdef FLOATING_ALIGNMENT */
+
+#define fixnum_p(P)    ((pointer_type (P)) == TC_FIXNUM)
+#define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
+#define Get_Integer(P) (pointer_datum (P))
+
+#define fixnum_negative_p(P) (((P) & FIXNUM_SIGN_BIT) != 0)
+
 #define Sign_Extend(P, S)					\
-  { (S) = Get_Integer(P);					\
-    if (((S) & FIXNUM_SIGN_BIT) != 0)				\
-      (S) |= (-1 << ADDRESS_LENGTH);				\
-  }
+{								\
+  (S) = (Get_Integer (P));					\
+  if (((S) & FIXNUM_SIGN_BIT) != 0)				\
+    (S) |= (-1 << ADDRESS_LENGTH);				\
+}
+
 #define Fixnum_Fits(x)						\
   ((((x) & SIGN_MASK) == 0) ||					\
    (((x) & SIGN_MASK) == SIGN_MASK))
@@ -195,18 +213,14 @@ while ((((long) (Where+1)) & FLOATING_ALIGNMENT) != 0)	\
 /* Side effect testing */
 
 #define Is_Constant(address) 					\
-(((address) >= Constant_Space) && ((address) < Free_Constant))
+  (((address) >= Constant_Space) && ((address) < Free_Constant))
 
 #define Is_Pure(address)					\
-((Is_Constant(address)) && (Pure_Test(address)))
+  ((Is_Constant (address)) && (Pure_Test (address)))
 
 #define Side_Effect_Impurify(Old_Pointer, Will_Contain)		\
-if ((Is_Constant(Get_Pointer(Old_Pointer))) &&			\
-    (GC_Type(Will_Contain) != GC_Non_Pointer) &&		\
-    (!(Is_Constant(Get_Pointer(Will_Contain)))) &&		\
-    (Pure_Test(Get_Pointer(Old_Pointer))))			\
-  Primitive_Error(ERR_WRITE_INTO_PURE_SPACE);
-
-
-
-
+if ((Is_Constant (Get_Pointer (Old_Pointer))) &&		\
+    (GC_Type (Will_Contain) != GC_Non_Pointer) &&		\
+    (! (Is_Constant (Get_Pointer (Will_Contain)))) &&		\
+    (Pure_Test (Get_Pointer (Old_Pointer))))			\
+  Primitive_Error (ERR_WRITE_INTO_PURE_SPACE);

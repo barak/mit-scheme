@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1986 Massachusetts Institute of Technology
+Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,13 +30,11 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* File: primitive.h
- *
- * This file contains some macros for defining primitives,
- * for argument type or value checking, and for accessing
- * the arguments.
- *
- */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 5.2 1987/01/12 17:18:44 cph Exp $ */
+
+/* This file contains some macros for defining primitives,
+   for argument type or value checking, and for accessing
+   the arguments. */
 
 /* Definition of primitives.  See storage.c for some information. */
 
@@ -86,63 +84,114 @@ Built_In_Primitive(C_Name, Number_of_args, Scheme_Name)		\
 /* Various utilities */
 
 #define Primitive_Error(Err_No)					\
-        { Back_Out_Of_Primitive();				\
-          longjmp(*Back_To_Eval, Err_No);			\
-        }
+{								\
+  signal_error_from_primitive (Err_No);				\
+}
 
 #define Primitive_Interrupt()					\
-        { Back_Out_Of_Primitive();				\
-          longjmp(*Back_To_Eval, PRIM_INTERRUPT);		\
-        }
+{								\
+  signal_interrupt_from_primitive ();				\
+}
 
 #define Primitive_GC(Amount)					\
-        { Request_GC(Amount);					\
-          Primitive_Interrupt();				\
-        }
+{								\
+  Request_GC (Amount);						\
+  Primitive_Interrupt ();					\
+}
 
 #define Primitive_GC_If_Needed(Amount)				\
-        if (GC_Check(Amount)) Primitive_GC(Amount)
+if (GC_Check (Amount)) Primitive_GC(Amount)
 
+#define Range_Check(To_Where, P, Low, High, Error)		\
+{								\
+  To_Where = Get_Integer (P);					\
+  if ((To_Where < (Low)) || (To_Where > (High)))		\
+    Primitive_Error (Error);					\
+}
+
+#define Sign_Extend_Range_Check(To_Where, P, Low, High, Error)	\
+{								\
+  Sign_Extend ((P), To_Where);					\
+  if ((To_Where < (Low)) || (To_Where > (High)))		\
+    Primitive_Error (Error);					\
+}
+
 #define Arg_1_Type(TC)  					\
-if (Type_Code(Arg1) != (TC)) Primitive_Error(ERR_ARG_1_WRONG_TYPE)
+if ((pointer_type (Arg1)) != (TC)) error_wrong_type_arg_1 ()
 
 #define Arg_2_Type(TC)  					\
-if (Type_Code(Arg2) != (TC)) Primitive_Error(ERR_ARG_2_WRONG_TYPE)
+if ((pointer_type (Arg2)) != (TC)) error_wrong_type_arg_2 ()
 
 #define Arg_3_Type(TC)						\
-if (Type_Code(Arg3) != (TC)) Primitive_Error(ERR_ARG_3_WRONG_TYPE)
+if ((pointer_type (Arg3)) != (TC)) error_wrong_type_arg_3 ()
 
 #define Arg_4_Type(TC)  					\
-if (Type_Code(Arg4) != (TC)) Primitive_Error(ERR_ARG_4_WRONG_TYPE)
+if ((pointer_type (Arg4)) != (TC)) error_wrong_type_arg_4 ()
 
 #define Arg_5_Type(TC)  					\
-if (Type_Code(Arg5) != (TC)) Primitive_Error(ERR_ARG_5_WRONG_TYPE)
+if ((pointer_type (Arg5)) != (TC)) error_wrong_type_arg_5 ()
 
 #define Arg_6_Type(TC)						\
-if (Type_Code(Arg6) != (TC)) Primitive_Error(ERR_ARG_6_WRONG_TYPE)
+if ((pointer_type (Arg6)) != (TC)) error_wrong_type_arg_6 ()
 
 #define Arg_7_Type(TC)						\
-if (Type_Code(Arg7) != (TC)) Primitive_Error(ERR_ARG_7_WRONG_TYPE)
+if ((pointer_type (Arg7)) != (TC)) error_wrong_type_arg_7 ()
+
+#define Arg_8_Type(TC)						\
+if ((pointer_type (Arg8)) != (TC)) error_wrong_type_arg_8 ()
+
+#define Arg_9_Type(TC)						\
+if ((pointer_type (Arg9)) != (TC)) error_wrong_type_arg_9 ()
+
+#define Arg_10_Type(TC)						\
+if ((pointer_type (Arg10)) != (TC)) error_wrong_type_arg_10 ()
 
 
 #define Arg_1_GC_Type(GCTC)                                     \
-if (GC_Type(Arg1) != GCTC) Primitive_Error(ERR_ARG_1_WRONG_TYPE)
+if ((GC_Type (Arg1)) != GCTC) error_wrong_type_arg_1 ()
 
 #define Arg_2_GC_Type(GCTC)                                     \
-if (GC_Type(Arg2) != GCTC) Primitive_Error(ERR_ARG_2_WRONG_TYPE)
+if ((GC_Type (Arg2)) != GCTC) error_wrong_type_arg_2 ()
 
 #define Arg_3_GC_Type(GCTC)                                     \
-if (GC_Type(Arg3) != GCTC) Primitive_Error(ERR_ARG_3_WRONG_TYPE)
+if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg_3 ()
+
+#define guarantee_fixnum_arg_1()				\
+if (! (fixnum_p (Arg1))) error_wrong_type_arg_1 ()
 
+#define guarantee_fixnum_arg_2()				\
+if (! (fixnum_p (Arg2))) error_wrong_type_arg_2 ()
 
-/* And a procedure or two for range checking */
+#define guarantee_fixnum_arg_3()				\
+if (! (fixnum_p (Arg3))) error_wrong_type_arg_3 ()
 
-#define Range_Check(To_Where, P, Low, High, Error)		\
-        { To_Where = Get_Integer(P);				\
-          if ((To_Where < (Low)) || (To_Where > (High)))	\
-            Primitive_Error(Error); }
+#define guarantee_fixnum_arg_4()				\
+if (! (fixnum_p (Arg4))) error_wrong_type_arg_4 ()
 
-#define Sign_Extend_Range_Check(To_Where, P, Low, High, Error)	\
-        { Sign_Extend(P,To_Where);				\
-          if ((To_Where < (Low)) || (To_Where > (High)))	\
-            Primitive_Error(Error); }
+#define guarantee_fixnum_arg_5()				\
+if (! (fixnum_p (Arg5))) error_wrong_type_arg_5 ()
+
+#define guarantee_fixnum_arg_6()				\
+if (! (fixnum_p (Arg6))) error_wrong_type_arg_6 ()
+
+extern long guarantee_nonnegative_integer_arg_1();
+extern long guarantee_nonnegative_integer_arg_2();
+extern long guarantee_nonnegative_integer_arg_3();
+extern long guarantee_nonnegative_integer_arg_4();
+extern long guarantee_nonnegative_integer_arg_5();
+extern long guarantee_nonnegative_integer_arg_6();
+extern long guarantee_nonnegative_integer_arg_7();
+extern long guarantee_nonnegative_integer_arg_8();
+extern long guarantee_nonnegative_integer_arg_9();
+extern long guarantee_nonnegative_integer_arg_10();
+
+extern long guarantee_index_arg_1();
+extern long guarantee_index_arg_2();
+extern long guarantee_index_arg_3();
+extern long guarantee_index_arg_4();
+extern long guarantee_index_arg_5();
+extern long guarantee_index_arg_6();
+extern long guarantee_index_arg_7();
+extern long guarantee_index_arg_8();
+extern long guarantee_index_arg_9();
+extern long guarantee_index_arg_10();
