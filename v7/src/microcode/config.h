@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.66 1992/02/10 13:04:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.67 1992/02/19 18:46:18 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -378,7 +378,10 @@ typedef unsigned long SCHEME_OBJECT;
 /* These are really OS-dependent.  They are correct for the sequent
    and for SYSV3, but we don't know about other 386 systems. */
 #define HEAP_IN_LOW_MEMORY
-#define HAS_FLOOR
+#ifndef _MACH_UNIX
+/* Bug in Mach 3.0 for 386s floating point library. */
+#  define HAS_FLOOR
+#endif
 #define HAS_FREXP
 
 #endif /* i386 */
