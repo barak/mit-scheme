@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.32 1995/11/10 23:48:51 cph Exp $
+;;;	$Id: dos.scm,v 1.33 1995/11/10 23:49:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ;;;
@@ -152,7 +152,6 @@
 
 (define (generate-dired-entry! file point)
   (define (file-attributes/ls-time-string attr)
-    ;; Swap year around to the start
     (let ((time-string
 	   (file-time->string (file-attributes/modification-time attr))))
       ;; Move the year from end to start, carrying leading space.
