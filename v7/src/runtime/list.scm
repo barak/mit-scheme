@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.15 1993/02/25 19:53:29 cph Exp $
+$Id: list.scm,v 14.16 1993/02/25 19:59:36 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -198,7 +198,7 @@ MIT in each case. |#
 	  '()))))
 
 (define (list->weak-list items)
-  (let ((items* items))
+  (let loop ((items* items))
     (if (pair? items*)
 	(weak-cons (car items*) (loop (cdr items*)))
 	(begin
