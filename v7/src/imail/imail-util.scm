@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.33 2001/03/19 19:33:06 cph Exp $
+;;; $Id: imail-util.scm,v 1.34 2001/03/19 20:01:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -433,7 +433,7 @@
 
 (define (read-xstring-buffer state)
   (let ((xstring (xstring-input-state/xstring state))
-	(start (xstring-input-state/buffer-end state)))
+	(start (xstring-input-state/position state)))
     (let ((xend (external-string-length xstring)))
       (and (< start xend)
 	   (let* ((buffer (xstring-input-state/buffer state))
@@ -452,34 +452,38 @@
 
 (define xstring-input-type
   (make-port-type
-   (let ((peek
-	  (lambda (port)
+   (let ((read
+	  (lambda (port discard?)
 	    (let ((state (port/state port)))
 	      (let ((position (xstring-input-state/position state)))
-		(if (or (< position (xstring-input-state/buffer-end state))
-			(read-xstring-buffer state))
-		    (string-ref (xstring-input-state/buffer state)
-				(- position
-				   (xstring-input-state/buffer-start state)))
-		    (make-eof-object port))))))
+		(and (or (< position (xstring-input-state/buffer-end state))
+			 (read-xstring-buffer state))
+		     (let ((char
+			    (string-ref
+			     (xstring-input-state/buffer state)
+			     (- position
+				(xstring-input-state/buffer-start state)))))
+		       (if discard?
+			   (set-xstring-input-state/position!
+			    state (+ position 1)))
+		       char)
+		     (make-eof-object port))))))
 	 (xlength
 	  (lambda (state)
 	    (external-string-length (xstring-input-state/xstring state)))))
-     `((READ-CHAR
+     `((READ-CHAR ,(lambda (port) (read port #t)))
+       (PEEK-CHAR ,(lambda (port) (read port #f)))
+       (DISCARD-CHAR
 	,(lambda (port)
-	   (let ((char (peek port))
-		 (state (port/state port)))
-	     (if (char? char)
-		 (set-xstring-input-state/position!
-		  state
-		  (+ (xstring-input-state/position state) 1)))
-	     char)))
-       (PEEK-CHAR ,peek)
+	   (let* ((state (port/state port))
+		  (position (xstring-input-state/position state)))
+	     (if (< position (xlength state))
+		 (set-xstring-input-state/position! state (+ position 1))))))
        (LENGTH ,(lambda (port) (xlength (port/state port))))
        (EOF?
 	,(lambda (port)
 	   (let ((state (port/state port)))
-	     (< (xstring-input-state/position state) (xlength state)))))
+	     (>= (xstring-input-state/position state) (xlength state)))))
        (CLOSE
 	,(lambda (port)
 	   (let ((state (port/state port)))
