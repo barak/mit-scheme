@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.186 2001/09/28 19:18:30 cph Exp $
+;;; $Id: imail-imap.scm,v 1.187 2001/09/28 19:22:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1662,12 +1662,6 @@
   (call-with-input-file pathname
     (lambda (port)
       ((input-port/custom-operation port 'REST->STRING) port))))
-
-(define (simple-write-file object pathname)
-  (call-with-output-file pathname
-    (lambda (port)
-      (write object port)
-      (newline port))))
 
 (define (delete-file-recursively pathname)
   (call-with-append-file "/tmp/foo"
