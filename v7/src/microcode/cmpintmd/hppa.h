@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.12 1990/04/23 02:41:47 jinx Exp $
+
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.11 1990/01/22 22:31:26 jinx Exp $
+/*
  *
  * Compiled code interface macros.
  *
@@ -263,6 +265,12 @@ procedures and continuations differ from closures) */
   the closure object itself.
 
  */
+
+/* A NOP on machines where instructions are longword-aligned. */
+
+#define ADJUST_CLOSURE_AT_CALL(entry_point, location)			\
+do {									\
+} while (0)
 
 /* Compiled closures */
 
