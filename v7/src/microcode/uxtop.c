@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.8 1991/01/24 11:26:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.9 1992/06/05 20:09:00 jinx Exp $
 
 Copyright (c) 1990-1 Massachusetts Institute of Technology
 
@@ -213,7 +213,9 @@ DEFUN (error_code_to_syserr, (code), int code)
     case EISDIR:	return (syserr_is_a_directory);
     case EMFILE:	return (syserr_too_many_open_files);
     case EMLINK:	return (syserr_too_many_links);
+#ifdef ENAMETOOLONG
     case ENAMETOOLONG:	return (syserr_filename_too_long);
+#endif
     case ENFILE:	return (syserr_too_many_open_files_in_system);
     case ENODEV:	return (syserr_no_such_device);
     case ENOENT:	return (syserr_no_such_file_or_directory);
@@ -223,7 +225,9 @@ DEFUN (error_code_to_syserr, (code), int code)
     case ENOSPC:	return (syserr_no_space_left_on_device);
     case ENOSYS:	return (syserr_function_not_implemented);
     case ENOTDIR:	return (syserr_not_a_directory);
+#ifdef ENOTEMPTY
     case ENOTEMPTY:	return (syserr_directory_not_empty);
+#endif
     case ENOTTY:	return (syserr_inappropriate_io_control_operation);
     case ENXIO:		return (syserr_no_such_device_or_address);
     case EPERM:		return (syserr_operation_not_permitted);
@@ -246,12 +250,16 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     case syserr_bad_address:				return (EFAULT);
     case syserr_bad_file_descriptor:			return (EBADF);
     case syserr_broken_pipe:				return (EPIPE);
+#ifdef ENOTEMPTY
     case syserr_directory_not_empty:			return (ENOTEMPTY);
+#endif
     case syserr_domain_error:				return (EDOM);
     case syserr_exec_format_error:			return (ENOEXEC);
     case syserr_file_exists:				return (EEXIST);
     case syserr_file_too_large:				return (EFBIG);
+#ifdef ENAMETOOLONG
     case syserr_filename_too_long:			return (ENAMETOOLONG);
+#endif
     case syserr_function_not_implemented:		return (ENOSYS);
     case syserr_improper_link:				return (EXDEV);
     case syserr_inappropriate_io_control_operation:	return (ENOTTY);
