@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: prompt.scm,v 1.201 2003/02/14 18:28:13 cph Exp $
+$Id: prompt.scm,v 1.202 2005/04/01 05:07:18 cph Exp $
 
-Copyright 1986, 1989-2001 Massachusetts Institute of Technology
+Copyright 1987.1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -101,13 +103,12 @@ USA.
 
 (define (typein-edit-other-window)
   (let loop ((windows typein-saved-windows))
-    (cond ((null? windows)
-	   (window0))
-	  ((and (not (typein-window? (car windows)))
-		(window-visible? (car windows)))
-	   (car windows))
-	  (else
-	   (loop (cdr windows))))))
+    (if (pair? windows)
+	(if (and (not (typein-window? (car windows)))
+		 (window-visible? (car windows)))
+	    (car windows)
+	    (loop (cdr windows)))
+	(window0))))
 
 (define-variable enable-recursive-minibuffers
   "True means allow minibuffers to invoke commands that use recursive minibuffers."
@@ -841,7 +842,7 @@ a repetition of this command will exit."
 		  (lambda ()
 		    (delete-string start end)
 		    (set-current-point! point)))))
-
+
 ;;;; Character Prompts
 
 (define (prompt-for-char prompt)
@@ -986,7 +987,8 @@ it is added to the front of the command history."
       (prompt-for-string "Redo" #f
 			 'DEFAULT-TYPE 'INSERTED-DEFAULT
 			 'HISTORY 'REPEAT-COMPLEX-COMMAND
-			 'HISTORY-INDEX (- argument 1))))))
+			 'HISTORY-INDEX (- argument 1))
+      (->environment '(EDWIN))))))
 
 ;;;; Pass-phrase Prompts
 

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: artdebug.scm,v 1.34 2004/02/16 05:42:42 cph Exp $
+$Id: artdebug.scm,v 1.35 2005/04/01 05:06:51 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1998 Massachusetts Institute of Technology
-Copyright 1999,2001,2003,2004 Massachusetts Institute of Technology
+Copyright 1999,2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -515,11 +515,11 @@ The evaluation occurs in the dynamic state of the current frame."
       (let ((environment (dstate-evaluation-environment dstate))
 	    (continuation
 	     (stack-frame->continuation (dstate/subproblem dstate)))
-	    (repl-eval hook/repl-eval))
+	    (old-hook hook/repl-eval))
 	(fluid-let
 	    ((in-debugger-evaluation? #t)
 	     (hook/repl-eval
-	      (lambda (expression environment)
+	      (lambda (expression environment repl)
 		(let ((unique (cons 'unique 'id)))
 		  (let ((result
 			 (call-with-current-continuation
@@ -532,8 +532,9 @@ The evaluation occurs in the dynamic state of the current frame."
 				      (continuation* (cons unique condition)))
 				  (lambda ()
 				    (continuation*
-				     (repl-eval expression
-						environment))))))))))
+				     (old-hook expression
+					       environment
+					       repl))))))))))
 		    (if (and (pair? result)
 			     (eq? unique (car result)))
 			(error (cdr result))
@@ -1332,8 +1333,8 @@ Prefix argument means do not kill the debugger buffer."
   (newline port)
   (newline port))
 
-(define (operation/prompt-for-expression port prompt)
-  port
+(define (operation/prompt-for-expression port environment prompt)
+  port environment
   (prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.68 2004/12/06 21:26:13 cph Exp $
+$Id: debug.scm,v 1.69 2005/04/01 05:06:57 cph Exp $
 
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -443,23 +443,18 @@ USA.
 	  (fluid-let ((prompt-for-confirmation
 		       (lambda (prompt #!optional port)
 			 port
-			 (call-with-interface-port
-			  (buffer-end buffer)
-			  (lambda (port)
-			    port
-			    (prompt-for-yes-or-no? prompt)))))
+			 (call-with-interface-port (buffer-end buffer)
+			   (lambda (port)
+			     port
+			     (prompt-for-yes-or-no? prompt)))))
 		      (prompt-for-evaluated-expression
 		       (lambda (prompt #!optional environment port)
 			 port
-			 (call-with-interface-port
-			  (buffer-end buffer)
-			  (lambda (port)
-			    port
-			    (hook/repl-eval #f
-					    (prompt-for-expression prompt)
-					    (if (default-object? environment)
-						(nearest-repl/environment)
-						environment))))))
+			 (call-with-interface-port (buffer-end buffer)
+			   (lambda (port)
+			     port
+			     (repl-eval (prompt-for-expression prompt)
+					environment)))))
 		      (hook/invoke-restart
 		       (lambda (continuation arguments)
 			 (invoke-continuation continuation
@@ -494,7 +489,9 @@ USA.
      (PROMPT-FOR-CONFIRMATION
       ,(lambda (port prompt) port (prompt-for-confirmation? prompt)))
      (PROMPT-FOR-EXPRESSION
-      ,(lambda (port prompt) port (prompt-for-expression prompt))))
+      ,(lambda (port environment prompt)
+	 port environment
+	 (prompt-for-expression prompt))))
    #f))
 
 (define (invoke-continuation continuation arguments avoid-deletion?)

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: 6001.pkg,v 1.16 2003/02/14 18:28:00 cph Exp $
+$Id: 6001.pkg,v 1.17 2005/04/01 05:09:21 cph Exp $
 
-Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,8 +35,6 @@ USA.
 (define-package (student scode-rewriting)
   (files "nodefs")
   (parent (student))
-  (import (runtime rep)
-	  hook/repl-eval)
   (initialization (initialize-package!)))
 
 (define-package (student number)
