@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.1 1994/10/25 01:46:12 adams Exp $
+;;;	$Id: win32com.scm,v 1.2 1994/11/02 19:32:20 adams Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -44,3 +44,69 @@
 
 (declare (usual-integrations))
 
+(define (current-win32-window)
+  (screen->handle (selected-screen)))
+
+(define-command set-icon
+  "Set the current window's icon to ICON.
+ICON must be the (string) name of one of the known icons.
+When called interactively, completion is available on the input."
+  (lambda ()
+    (list (prompt-for-alist-value "Set Icon"
+				  (map (lambda (x) (cons x x))
+				       (vector->list icon-names)))))
+  (lambda (icon-name)
+    (let  ((icon  (load-icon (get-handle 0) icon-name)))
+      (if (zero? icon)
+	  (error "Unknown icon name" icon-name)
+	  ((ucode-primitive win32-screen-set-icon!)
+	   (current-win32-window)
+	   icon)))))
+
+(define icon-names
+  '#("shield3_icon"
+     "shield4_icon"
+     "shield2_icon"
+     "shield1_icon"
+     "lambda_icon"
+     "lambda2_icon"
+     "edwin_icon"
+     "liar1_icon"
+     "liar2_icon"
+     "liar3_icon"
+     "graphics_icon"
+     "coffee_icon"
+     "conses_icon"
+     "environment_icon"
+     "mincer_icon"
+     "bch_ico"))
+
+
+
+(define (update-win32-screen-name! screen)
+  (let ((window
+	 (if (and (selected-screen? screen) (within-typein-edit?))
+	     (typein-edit-other-window)
+	     (screen-selected-window screen))))
+    (let ((buffer (window-buffer window))
+	  (update-name
+	   (lambda (set-name format length)
+	     (if format
+		 (set-name
+		  screen
+		  (string-trim-right
+		   (format-modeline-string window format length)))))))
+      (update-name win32-screen/set-name!
+		   (ref-variable screen-name-format buffer)
+		   (ref-variable screen-name-length buffer)))))
+
+(define-variable screen-name-format
+  "If not false, template for displaying window name.
+Has same format as `mode-line-format'."
+  'mode-line-buffer-identification)
+
+(define-variable screen-name-length
+  "Maximum length of window name.
+Used only if `screen-name-format' is non-false."
+  64
+  exact-nonnegative-integer?)
