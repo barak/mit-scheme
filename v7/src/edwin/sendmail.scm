@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.22 1995/04/09 23:06:17 cph Exp $
+;;;	$Id: sendmail.scm,v 1.23 1995/04/10 20:21:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -519,7 +519,7 @@ Numeric argument means justify as well."
 	    ;; user as soon as possible.
 	    (let ((process
 		   (start-pipe-subprocess
-		    program
+		    (os/find-program program #f)
 		    (vector (file-namestring program)
 			    "-oi" "-t"
 			    (string-append "-f" user-name)
