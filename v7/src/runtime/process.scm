@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.6 1991/03/01 01:06:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.7 1991/03/07 04:30:58 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -55,13 +55,22 @@ MIT in each case. |#
 (define-structure (subprocess
 		   (constructor %make-subprocess)
 		   (conc-name subprocess-))
+  (filename false read-only true)
+  (arguments false read-only true)
   index
   pty-master
   (id false read-only true)
   input-channel
   output-channel
   %input-port
-  %output-port)
+  %output-port
+  (properties (make-1d-table) read-only true))
+
+(define (subprocess-get process key)
+  (1d-table/get (subprocess-properties process) key false))
+
+(define (subprocess-put! process key datum)
+  (1d-table/put! (subprocess-properties process) key datum))
 
 (define (subprocess-input-port process)
   (without-interrupts

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.93 1991/03/06 23:03:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.94 1991/03/07 04:31:16 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1934,9 +1934,12 @@ MIT in each case. |#
 	  start-pipe-subprocess
 	  start-pty-subprocess
 	  start-subprocess-in-background
+	  subprocess-arguments
 	  subprocess-continue-background
 	  subprocess-continue-foreground
 	  subprocess-delete
+	  subprocess-filename
+	  subprocess-get
 	  subprocess-id
 	  subprocess-input-channel
 	  subprocess-input-port
@@ -1947,7 +1950,9 @@ MIT in each case. |#
 	  subprocess-list
 	  subprocess-output-channel
 	  subprocess-output-port
+	  subprocess-properties
 	  subprocess-pty-master
+	  subprocess-put!
 	  subprocess-quit
 	  subprocess-signal
 	  subprocess-status
