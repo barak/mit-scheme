@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.12 1992/09/14 23:00:50 cph Exp $
+$Id: edextra.scm,v 1.13 1992/09/17 05:15:08 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -348,15 +348,47 @@ The following filenames are reserved and may not be used:
   ;; be exported in order to eliminate this redundant definition.
   (or (buffer-get buffer 'DIRED-DIRECTORY)
       (buffer-default-directory buffer)))
-
-(define (student-directory? pathname)
-  (string-prefix? working-directory (->namestring pathname)))
-
+
 (set! standard-editor-initialization
       (let ((usual standard-editor-initialization))
 	(lambda ()
 	  (usual)
 	  (standard-login-initialization))))
+
+(set! prompt-for-pathname*
+      (let ((usual prompt-for-pathname*))
+	(lambda (prompt directory verify-final-value? require-match?)
+	  (let ((pathname
+		 (usual prompt directory verify-final-value? require-match?)))
+	    (if (or (not (student-directory? pathname))
+		    (valid-dos-filename? (file-namestring pathname))
+		    (file-exists? pathname)
+		    (with-saved-configuration
+		     (lambda ()
+		       (delete-other-windows (current-window))
+		       (select-buffer
+			(temporary-buffer " *invalid-filename-dialog*"))
+		       (append-string
+			"The file name you have specified,\n\n\t")
+		       (append-string (file-namestring pathname))
+		       (append-string
+			"
+
+is not a valid name for a DOS disk.  If you create a file with this
+name, you will not be able to save it to your floppy disk.
+
+If you want to use this name anyway, answer \"yes\" to the question
+below.  Otherwise, answer \"no\" to use a different name.
+----------------------------------------------------------------------
+")
+		       (append-string dos-filename-description)
+		       (prompt-for-yes-or-no? "Use this non-DOS name"))))
+		pathname
+		(prompt-for-pathname* prompt directory
+				      verify-final-value? require-match?))))))
+
+(define (student-directory? pathname)
+  (string-prefix? working-directory (->namestring pathname)))
 
 ;;;; Customization
 
