@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.6 1993/06/24 04:32:16 gjr Exp $
+$Id: dosio.c,v 1.7 1993/09/01 20:21:25 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -509,34 +509,3 @@ DEFUN (OS_channel_unregister, (channel), Tchannel channel)
 
 /* No SELECT in DOS */
 CONST int OS_have_select_p = 0;
-
-long
-DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
-       Tchannel channel AND
-       PTR buffer AND
-       size_t nbytes)
-{ /* We can't really select amongst channels in DOS, but still need
-     to keep track of whether the read was interrupted.
-   */
-  while (1)
-  {
-    long scr = (dos_channel_read (channel, buffer, nbytes));
-
-    if (scr < 0)
-    {
-      if (errno == ERRNO_NONBLOCK)
-	return -1;
-      else if (errno == EINTR)
-	return -4;
-      else
-      {
-	DOS_prim_check_errno (syscall_read);
-	continue;
-      }
-    }
-    else if (scr > nbytes)
-      error_external_return ();
-    else
-      return (scr);
-  }
-}
