@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.106 1991/08/08 18:57:17 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.107 1991/08/23 00:23:45 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -194,6 +194,17 @@ Just minus as an argument moves down full screen."
 	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
+
+(define-command scroll-other-window-down
+  "Scroll text of next window down ARG lines, or near full screen if no arg."
+  "P"
+  (lambda (argument)
+    (let ((window
+	   (or (and (typein-window? (current-window))
+		    (object-unhash *minibuffer-scroll-window*))
+	       (other-window-interactive 1))))
+      (scroll-window window
+		     (standard-scroll-window-argument window argument -1)))))
 
 (define-command scroll-other-window-several-screens
   "Scroll other window up several screenfuls.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.132 1991/08/08 19:00:04 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.133 1991/08/23 00:23:35 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -245,6 +245,8 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-m-t 'transpose-sexps)
 (define-key 'fundamental #\c-m-u 'backward-up-list)
 (define-key 'fundamental #\c-m-v 'scroll-other-window)
+(define-key 'fundamental (make-special-key 'next 1) 'scroll-other-window)
+(define-key 'fundamental (make-special-key 'prior 1) 'scroll-other-window-down)
 (define-key 'fundamental #\c-m-w 'append-next-kill)
 (define-key 'fundamental #\c-m-rubout 'backward-kill-sexp)
 
