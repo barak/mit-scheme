@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.1 1994/11/19 02:08:04 adams Exp $
+$Id: lapgen.scm,v 1.2 1994/11/26 19:24:41 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -107,7 +107,8 @@ MIT in each case. |#
    g6 g7 g8 g9
    g10 g11 g12 g13 g14 g15 g16 g17
    ;; g18: holds '()
-   ;; g19 g20 g21 g22
+   g19 
+   ;;g20 g21 g22
    g23 g24 ;; g25
    g26
    ;; g27
@@ -794,7 +795,9 @@ MIT in each case. |#
     interrupt-closure/new
     quotient
     remainder
-    interpreter-call))
+    interpreter-call
+    profile-count
+    profile-count/2))
 
 ;; There is a NOP here because otherwise the return address would have 
 ;; to be adjusted by the hook code.  This gives more flexibility to the
