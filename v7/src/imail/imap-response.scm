@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.2 2000/04/22 05:06:56 cph Exp $
+;;; $Id: imap-response.scm,v 1.3 2000/04/23 03:04:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -86,10 +86,13 @@
     (discard-known-char #\space port)
     (let ((delim (read-nstring port)))
       (discard-known-char #\space port)
-      (list flags delim (read-astring port)))))
+      (cons* delim (read-astring port) flags))))
 
 (define (read-search-response port)
-  (read-open-list read-nz-number port))
+  (let ((numbers (read-open-list read-nz-number port)))
+    (if (pair? numbers)
+	numbers
+	(error "Empty search response."))))
 
 (define (read-status-response port)
   (discard-known-char #\space port)
@@ -98,7 +101,7 @@
     (list mailbox
 	  (read-list port
 		     (lambda (port)
-		       (let ((name (read-atom port)))
+		       (let ((name (read-interned-atom port)))
 			 (discard-known-char #\space port)
 			 (cons name (read-number port))))))))
 
@@ -122,6 +125,11 @@
 	   (case x
 	     ((ALERT PARSE READ-ONLY READ-WRITE TRYCREATE)
 	      x)
+	     ((NEWNAME)
+	      (discard-known-char #\space port)
+	      (let ((old (read-xstring port)))
+		(discard-known-char #\space port)
+		(list x old (read-xstring port))))
 	     ((UIDVALIDITY UNSEEN)
 	      (discard-known-char #\space port)
 	      (list x (read-nz-number port)))
@@ -164,12 +172,15 @@
 		     (let ((section
 			    (parse-section (read-bracketed-string port))))
 		       (discard-known-char #\space port)
-		       (let ((n
-			      (and (char-numeric? (peek-char-no-eof port))
+		       (cons section
+			     (if (char=? #\< (peek-char-no-eof port))
+				 (begin
+				   (read-char port)
 				   (let ((n (read-number port)))
+				     (discard-known-char #\> port)
 				     (discard-known-char #\space port)
-				     n))))
-			 (list section n (read-nstring port))))
+				     (list n (read-nstring port))))
+				 (list (read-nstring port)))))
 		     (begin
 		       (discard-known-char #\space port)
 		       (list (read-generic port)))))
@@ -194,9 +205,9 @@
 	  ((char=? #\( char) (read-list port))
 	  ((imap:atom-char? char)
 	   (let ((atom (read-atom port)))
-	     (if (atom-is-number? atom)
-		 (string->number atom)
-		 (intern atom))))
+	     (cond ((atom-is-number? atom) (string->number atom))
+		   ((string-ci=? "NIL" atom) #f)
+		   (else (intern atom)))))
 	  (else (error "Illegal IMAP syntax:" char)))))
 
 (define (read-astring port)
@@ -206,11 +217,22 @@
 	  ((imap:atom-char? char) (read-atom port))
 	  (else (error "Illegal astring syntax:" char)))))
 
+(define (read-xstring port)
+  (let ((char (peek-char-no-eof port)))
+    (cond ((char=? #\" char) (read-quoted port))
+	  ((char=? #\{ char) (read-literal port))
+	  (else (error "Illegal astring syntax:" char)))))
+
 (define (read-nstring port)
-  (let ((v (read-astring port)))
-    (if (and (symbol? v) (not (eq? v 'NIL)))
-	(error "Illegal nstring:" v)
-	v)))
+  (let ((char (peek-char-no-eof port)))
+    (cond ((char=? #\" char) (read-quoted port))
+	  ((char=? #\{ char) (read-literal port))
+	  ((imap:atom-char? char)
+	   (let ((atom (read-atom port)))
+	     (if (string-ci=? "NIL" atom)
+		 #f
+		 (error "Illegal nstring:" atom))))
+	  (else (error "Illegal astring syntax:" char)))))
 
 (define (read-quoted port)
   (discard-known-char #\" port)
