@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.29 1987/06/19 15:53:28 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.30 1987/08/06 05:05:07 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -158,6 +158,11 @@ typedef unsigned long Pointer;
    (i.e. Pointer) results in a logical (vs. arithmetic) shift.
    Setting the flag allows faster type code extraction.
 
+   VAX_BYTE_ORDER is defined if the least significant byte of a
+   longword in memory lies at the lowest address, not defined if the
+   opposite convention holds (ie. Motorola MC6820), or the concept
+   does not apply (ie. DEC PDP-10).
+
    BELL is the character which rings the terminal bell.
 
    The following switches are used to use the system provided library
@@ -196,6 +201,7 @@ typedef unsigned long Pointer;
 #define FASL_HP_SPECTRUM	10
 #define FASL_UMAX		11
 #define FALS_PYR		12
+#define FASL_ALLIANT		13
 
 /* These (pdp10 and nu) haven't worked in a while.
  * Should be upgraded or flushed some day. 
@@ -229,9 +235,12 @@ typedef unsigned long Pointer;
 #endif
 
 #ifdef vax
+
 /* Amazingly unix and vms agree on all these */
+
 #define Heap_In_Low_Memory
 #define UNSIGNED_SHIFT
+#define VAX_BYTE_ORDER
 #define CHAR_SIZE 		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
@@ -448,6 +457,21 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define FLONUM_EXPT_SIZE     11
 #define FLONUM_MANTISSA_BITS 52
 #define MAX_FLONUM_EXPONENT  2047
+#endif
+
+#ifdef alliant
+#define Heap_In_Low_Memory
+#define UNSIGNED_SHIFT
+#define CHAR_SIZE		8
+#define USHORT_SIZE		16
+#define ULONG_SIZE		32
+#define BELL 			'\007'
+#define FASL_INTERNAL_FORMAT	FASL_ALLIANT
+#define FLONUM_EXPT_SIZE	10
+#define FLONUM_MANTISSA_BITS 	53
+#define MAX_FLONUM_EXPONENT	1023
+#define HAS_FLOOR
+#define HAS_FREXP
 #endif
 
 /* Make sure that some definition applies. 

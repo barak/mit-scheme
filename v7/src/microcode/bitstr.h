@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.2 1987/05/14 13:47:34 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.3 1987/08/06 05:03:44 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,19 +32,128 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* Bit string macros. */
+/* Bit string macros.  "Little indian" version. */
 
+#define BIT_STRING_LENGTH_OFFSET	1
+#define BIT_STRING_FIRST_WORD		2			     
+
+#define bits_to_pointers(bits)					\
+(((bits) + (POINTER_LENGTH - 1)) / POINTER_LENGTH)
+
+#define low_mask(nbits) ((1 << (nbits)) - 1)
+#define any_mask(nbits, offset) ((low_mask (nbits)) << (offset))
+
 #define bit_string_length(bit_string)				\
-(Fast_Vector_Ref (bit_string, NM_ENTRY_COUNT))
+(Fast_Vector_Ref (bit_string, BIT_STRING_LENGTH_OFFSET))
 
 #define bit_string_start_ptr(bit_string)			\
-(Nth_Vector_Loc (bit_string, NM_DATA))
+(Nth_Vector_Loc (bit_string, BIT_STRING_FIRST_WORD))
 
 #define bit_string_end_ptr(bit_string)				\
 (Nth_Vector_Loc (bit_string, ((Vector_Length (bit_string)) + 1)))
 
-#define any_mask(nbits, offset) ((low_mask (nbits)) << (offset))
-#define low_mask(nbits) ((1 << (nbits)) - 1)
+#define bit_string_msw(bit_string)				\
+(bit_string_word(bit_string_high_ptr(bit_string)))
+
+#define bit_string_lsw(bit_string)				\
+(bit_string_word(Nth_Vector_Loc(bit_string, index_to_word(bit_string, 0))))
+
+#define index_pair_to_bit_fixnum(string, word, bit)		\
+(Make_Unsigned_Fixnum (index_pair_to_bit_number (string, word, bit)))
+
+/* Byte order dependencies. */
+
+#ifdef VAX_BYTE_ORDER
+
+/*
+
+Memory layout of bit strings:
+
++-------+-------+-------+-------+
+|  NMV	|  GC size (longwords)	| 0
++-------+-------+-------+-------+
+|	   Size in bits		| 1
++-------+-------+-------+-------+
+|			     LSB| 2
++-------+-------+-------+-------+
+|				| 3
++-------+-------+-------+-------+
+.				. .
+.				. .
+.				. .
++-------+-------+-------+-------+
+|MSB			        | N
++-------+-------+-------+-------+
+
+The last data word (marked as word "N" above) is where any excess
+bits are kept.
+
+The "size in bits" is a C "long" integer.
+
+*/
+
+#define bit_string_high_ptr		bit_string_end_ptr
+
+#define bit_string_low_ptr		bit_string_start_ptr
+
+#define bit_string_word(ptr)		(*((ptr) - 1))
+
+#define dec_bit_string_ptr(ptr)		(--(ptr))
+
+#define inc_bit_string_ptr(ptr)		((ptr)++)
+
+#define object_msw_ptr(object, length)				\
+(Get_Pointer(object) + bits_to_pointers(length - 1))
+
+/* This is off by one so bit_string_word will get the correct word. */
+
+#define index_to_word(bit_string, index)			\
+((BIT_STRING_FIRST_WORD + 1) + (index / POINTER_LENGTH))
+
+#define index_pair_to_bit_number(string, word, bit)		\
+(((word) * POINTER_LENGTH) + (bit))
+
+
+
+#else /* not VAX_BYTE_ORDER */
+
+/*
+
+Memory layout of bit strings:
+
++-------+-------+-------+-------+
+|  NMV	|  GC size (longwords)	| 0
++-------+-------+-------+-------+
+|	   Size in bits		| 1
++-------+-------+-------+-------+
+|MSB				| 2
++-------+-------+-------+-------+
+|				| 3
++-------+-------+-------+-------+
+.				. .
+.				. .
+.				. .
++-------+-------+-------+-------+
+|			     LSB| N
++-------+-------+-------+-------+
+
+The first data word (marked as word "2" above) is where any excess
+bits are kept.
+
+The "size in bits" is a C "long" integer.
+*/
+
+#define bit_string_high_ptr		bit_string_start_ptr
+
+#define bit_string_low_ptr		bit_string_end_ptr
+
+#define bit_string_word(ptr)		(*(ptr))
+
+#define dec_bit_string_ptr(ptr)		((ptr)++)
+
+#define inc_bit_string_ptr(ptr)		(--(ptr))
+
+#define object_msw_ptr(object, length)	(Get_Pointer(object))
 
 /* This is especially clever.  To understand it, note that the index
    of the last pointer of a vector is also the GC length of the
@@ -54,11 +163,8 @@ MIT in each case. */
 #define index_to_word(bit_string, index)			\
 ((Vector_Length (bit_string)) - (index / POINTER_LENGTH))
 
-#define bits_to_pointers(bits)					\
-(((bits) + (POINTER_LENGTH - 1)) / POINTER_LENGTH)
-
 #define index_pair_to_bit_number(string, word, bit)		\
 ((((Vector_Length (string)) - (word)) * POINTER_LENGTH) + (bit))
 
-#define index_pair_to_bit_fixnum(string, word, bit)		\
-(Make_Unsigned_Fixnum (index_pair_to_bit_number (string, word, bit)))
+
+#endif /* VAX_BYTE_ORDER */

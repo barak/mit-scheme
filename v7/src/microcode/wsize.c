@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.22 1987/07/07 02:22:55 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.23 1987/08/06 05:04:42 jinx Rel $ */
 
 #include <stdio.h>
 #include <math.h>
@@ -78,6 +78,7 @@ main()
   int count, expt_size, char_size, mant_size;
   unsigned long to_be_shifted;
   unsigned bogus;
+  char buffer[sizeof(long)];
   char *temp;
 
   setup_error();
@@ -87,17 +88,24 @@ main()
       count += 1)
     bogus >>= 1;
 
-  char_size = count/(sizeof(unsigned));
+  char_size = count / (sizeof(unsigned));
+
   temp = malloc(MEM_SIZE*sizeof(long));
   if (temp == NULL)
+  {
     printf("/%c Cannot allocate %d Pointers. %c/\n",
            '*', MEM_SIZE, '*');
-  else count = free(temp);
-
-  if (((unsigned long) temp) < (1 << ((char_size*sizeof(long))-8)))
-    printf("#define Heap_In_Low_Memory\n");
+    printf("/%c Will not assume that the Heap is in Low Memory. %c\n",
+	   '*', '*');
+  }
   else
-    printf("/%c Heap is not in Low Memory. %c/\n", '*', '*');
+  {
+    count = free(temp);
+    if (((unsigned long) temp) < (1 << ((char_size * sizeof(long)) - 8)))
+      printf("#define Heap_In_Low_Memory\n");
+    else
+      printf("/%c Heap is not in Low Memory. %c/\n", '*', '*');
+  }
   	
   to_be_shifted = -1;
   if ((to_be_shifted >> 1) != to_be_shifted)
@@ -105,6 +113,22 @@ main()
   else
     printf("/%c unsigned longs use arithmetic shifting. %c/\n", 
            '*', '*');
+
+  if (sizeof(long) == sizeof(char))
+  {
+    printf("/%c sizeof(long) == sizeof(char); no byte order problems! %c/\n",
+	   '*', '*');
+  }
+  else
+  {
+    buffer[0] = 1;
+    for (count = 1; count < sizeof(long); )
+      buffer[count++] = 0;
+    if (*((long *) &buffer[0]) == 1)
+      printf("#define VAX_BYTE_ORDER\n");
+    else
+      printf("/%c VAX_BYTE_ORDER not used. %c/\n", '*', '*');
+  }
 
   printf("#define CHAR_SIZE            %d\n",
 	 char_size);
@@ -139,8 +163,8 @@ main()
   printf("#define FLONUM_EXPT_SIZE     %d\n", expt_size);
   printf("#define FLONUM_MANTISSA_BITS %d\n", mant_size);
   printf("#define MAX_FLONUM_EXPONENT  %d\n", ((1 << expt_size) - 1));
-  printf("/%c Representation %s hidden bit. %c/\n", '*',
-	 (((2+expt_size+mant_size) > (char_size*sizeof(double))) ?
+  printf("/%c Floating point representation %s hidden bit. %c/\n", '*',
+	 (((2 + expt_size + mant_size) > (char_size * sizeof(double))) ?
 	  "uses" :
 	  "does not use"), '*');
   return;	
