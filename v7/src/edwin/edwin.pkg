@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.50 1991/08/13 02:30:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.51 1991/08/16 01:31:50 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -550,6 +550,7 @@ MIT in each case. |#
   (files "bufout")
   (parent (edwin))
   (export (edwin)
+	  default-window-width
 	  fresh-line
 	  fresh-lines
 	  mark->output-port
