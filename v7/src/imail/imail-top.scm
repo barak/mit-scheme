@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.269 2001/09/14 17:22:55 cph Exp $
+;;; $Id: imail-top.scm,v 1.270 2001/09/14 21:16:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -491,6 +491,7 @@ Instead, these commands are available:
 (define-key 'imail '(#\c-c #\c-s #\c-d)	'imail-sort-by-date)
 (define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
 (define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
+(define-key 'imail '(#\c-c #\c-s #\c-v)	'imail-sort-by-arrival)
 (define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)
 (define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
 (define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
