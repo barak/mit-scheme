@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.275 2001/10/01 16:22:50 cph Exp $
+;;; $Id: imail-top.scm,v 1.276 2001/10/25 15:57:16 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2620,7 +2620,10 @@ Negative argument means search in reverse."
     (insert-newline mark)))
 
 (define (known-mime-encoding? encoding)
-  (memq encoding '(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64)))
+  (memq encoding
+	'(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64
+	       ;; Microsoft sometimes uses these non-standard values:
+	       7-BIT 8-BIT)))
 
 (define (mime-attachment-name info provide-default?)
   (or (mime-body-parameter (mime-info-body info) 'NAME #f)
