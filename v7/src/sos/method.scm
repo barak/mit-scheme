@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: method.scm,v 1.7 1997/06/19 21:45:12 cph Exp $
+;;; $Id: method.scm,v 1.8 1997/06/19 21:52:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -288,11 +288,8 @@
 	      (specializers=? (cdr s1) (cdr s2))))))
 
 (define (specializer=? s1 s2)
-  (or (eq? s1 s2)
-      (and (union-specializer? s1)
-	   (union-specializer? s2)
-	   (eq-set=? (union-specializer-classes s1)
-		     (union-specializer-classes s2)))))
+  (eq-set=? (specializer-classes s1)
+	    (specializer-classes s2)))
 
 (define (eq-set=? x y)
   (and (for-all? x (lambda (x) (memq x y)))
