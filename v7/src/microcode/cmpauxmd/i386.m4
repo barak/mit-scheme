@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.33 1994/11/28 04:15:49 cph Exp $
+###	$Id: i386.m4,v 1.34 1994/11/28 05:21:39 cph Exp $
 ###
 ###	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ###
@@ -483,8 +483,8 @@ IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segme
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
 
-IFOS2(`	OP(sub,l)	TW(IMM(8),REG(esp))')	# alloc space for struct return
-
+IFOS2(`	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
+')
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
 ')
 	OP(push,l)	REG(ebx)
@@ -502,7 +502,8 @@ IFOS2(`	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
 	call	IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-IFOS2(`	OP(add,l)	TW(IMM(4),REG(esp))')	# Pop pointer to struct return
+IFOS2(`	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
+')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
 	ifdef(`WINNT',
