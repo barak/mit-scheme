@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.41 1987/05/28 17:39:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.42 1987/06/24 04:53:40 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,40 +36,45 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (make-symbol-table)
-  (cons "Symbol Table" '()))
+(define-integrable (make-symbol-table)
+  (symbol-hash-table/make 271))
 
-(define (symbol-table-bindings table)
+(define-integrable (symbol-table-bindings table)
   (map (lambda (entry)
 	 (cons (car entry)
-	       (or (vector-ref (cdr entry) 0)
+	       (or (binding-value (cdr entry))
 		   (error "Missing binding value" entry))))
-       (cdr table)))
+       (symbol-hash-table/bindings table)))
 
 (define (symbol-table-define! table key value)
-  (let ((entry (assq key (cdr table))))
-    (if entry
-	(set-binding-value! (cdr entry) value)
-	(set-cdr! table (cons (cons key (vector value '())) (cdr table))))))
+  (symbol-hash-table/modify! table key
+    (lambda (binding)
+      (set-binding-value! binding value)
+      binding)
+    (lambda ()
+      (make-binding value))))
 
 (define (symbol-table-binding table key)
-  (let ((entry (assq key (cdr table))))
-    (if entry
-	(cdr entry)
-	(let ((nothing (vector #F '())))
-	  (set-cdr! table (cons (cons key nothing) (cdr table)))
-	  nothing))))
+  (symbol-hash-table/lookup* table key
+    identity-procedure
+    (lambda ()
+      (let ((nothing (make-binding #F)))
+	(symbol-hash-table/insert! table key nothing)
+	nothing))))
 
 (define (symbol-table-value table key)
-  (let ((entry (assq key (cdr table))))
-    (or (and entry (vector-ref (cdr entry) 0))
-	(error "SYMBOL-TABLE-VALUE: Undefined key" key))))
+  (symbol-hash-table/lookup* table key
+    (lambda (binding)
+      (or (binding-value binding)
+	  (error "SYMBOL-TABLE-VALUE: no value" key)))
+    (lambda ()
+      (error "SYMBOL-TABLE-VALUE: Undefined key" key))))
 
-(define (symbol-table-undefined-names table)
-  (let loop ((entries (cdr table)))
-    (cond ((null? entries) '())
-	  ((binding-value (cdr (car entries))) (loop (cdr entries)))
-	  (else (cons (car (car entries)) (loop (cdr entries)))))))
+(define-integrable (symbol-table-undefined-names table)
+  (map car (symbol-hash-table/negative-bindings table binding-value)))
+
+(define-integrable (make-binding initial-value)
+  (vector initial-value '()))
 
 (define-integrable (binding-value binding)
   (vector-ref binding 0))
