@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.21 2001/11/01 18:42:59 cph Exp $
+$Id: closan.scm,v 4.22 2001/11/01 21:29:00 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -319,6 +319,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define *undrifting-constraints*)
 
+(define debug-constraints? #f)
+(define (debug-constraints key block block* condition)
+  (if debug-constraints?
+      (write-line (list key block block* condition))))
+
 (define (undrifting-constraint! block block* procedure reason1 reason2)
   ;; Undrift `block' so it is a descendant of `block*' in order not
   ;; to close `procedure' for <`reason1',`reason2'>
@@ -335,6 +340,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		   (loop (block-parent block))
 		   block)))
 	    (condition (and procedure (list procedure reason1 reason2))))
+	(debug-constraints 'ADD block block* condition)
 	(let ((entry (assq block *undrifting-constraints*))
 	      (generate-caller-constraints
 	       (lambda ()
@@ -376,7 +382,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (set-cdr! entry*
 		    (list-transform-negative! (cdr entry*)
 		      (lambda (condition)
-			(and condition (eq? procedure (car condition)))))))
+			(and condition
+			     (eq? procedure (car condition))
+			     (begin
+			       (debug-constraints 'REMOVE
+						  (car entry)
+						  (car entry*)
+						  condition)
+			       #t))))))
 	(cdr entry))
        (if (there-exists? (cdr entry)
 	     (lambda (entry*)
