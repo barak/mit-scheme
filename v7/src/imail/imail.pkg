@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.7 2000/04/13 15:36:01 cph Exp $
+;;; $Id: imail.pkg,v 1.8 2000/04/13 15:43:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -41,6 +41,7 @@
 	  rexp-not-word-char
 	  rexp-not-word-edge
 	  rexp-optional
+	  rexp-sequence
 	  rexp-string-end
 	  rexp-string-start
 	  rexp-syntax-char
