@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triv.pkg,v 1.2 2001/08/16 20:58:15 cph Exp $
+$Id: triv.pkg,v 1.3 2001/08/16 20:59:00 cph Exp $
 
 Copyright (c) 2001 Massachusetts Institute of Technology
 
@@ -24,9 +24,9 @@ USA.
 
 (let ((v
        (let ((package
-	      (lambda (package-name parent-name files exported-names)
+	      (lambda (package-name ancestors files exported-names)
 		(vector package-name
-			(list parent-name)
+			ancestors
 			(list (cons #f files))
 			#f
 			#f
@@ -37,7 +37,7 @@ USA.
 			      exported-names))
 			'#()))))
 	 (vector (package '(cross-reference)
-			  '()
+			  '(())
 			  '("mset" "object" "toplev")
 			  '(cref/generate-all
 			    cref/generate-constructors
@@ -45,22 +45,22 @@ USA.
 			    cref/generate-cref-unusual
 			    cref/generate-trivial-constructor))
 		 (package '(cross-reference analyze-file)
-			  '(cross-reference)
+			  '((cross-reference) ())
 			  '("anfile")
 			  '(analyze-file))
 		 (package '(cross-reference constructor)
-			  '(cross-reference)
+			  '((cross-reference) ())
 			  '("conpkg")
 			  '(construct-external-descriptions))
 
 		 (package '(cross-reference formatter)
-			  '(cross-reference)
+			  '((cross-reference) ())
 			  '("forpkg")
 			  '(format-packages
 			    format-packages-unusual))
 
 		 (package '(cross-reference reader)
-			  '(cross-reference)
+			  '((cross-reference) ())
 			  '("redpkg")
 			  '(read-file-analyses!
 			    read-package-model
