@@ -1,8 +1,9 @@
 ### -*- Fundamental -*-
 ###
-### $Id: makefile.cmn,v 1.15 2003/02/14 18:28:31 cph Exp $
+### $Id: makefile.cmn,v 1.16 2003/07/22 02:19:51 cph Exp $
 ###
-### Copyright (c) 1994-2000 Massachusetts Institute of Technology
+### Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
+### Copyright 2003 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -356,7 +357,6 @@ TRAP_H = trap.h
 TYPES_H = types.h
 USRDEF_H = usrdef.h $(SCHEME_H) $(PRIMS_H)
 UXSOCK_H = uxsock.h $(OSIO_H)
-VERSION_H = version.h
 WINDER_H = winder.h
 ZONES_H = zones.h
 
@@ -382,8 +382,7 @@ avltree.$(OBJ): avltree.c $(AVLTREE_H)
 bignum.$(OBJ): bignum.c $(SCHEME_H) $(BIGNMINT_H) $(LIMITS_H)
 bigprm.$(OBJ): bigprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
 bitstr.$(OBJ): bitstr.c $(SCHEME_H) $(PRIMS_H) $(BITSTR_H)
-boot.$(OBJ): boot.c $(SCHEME_H) $(PRIMS_H) $(VERSION_H) $(OPTION_H) \
-	$(OSTOP_H) $(OSTTY_H)
+boot.$(OBJ): boot.c $(SCHEME_H) $(PRIMS_H) $(OPTION_H) $(OSTOP_H) $(OSTTY_H)
 char.$(OBJ): char.c $(SCHEME_H) $(PRIMS_H)
 cmpauxmd.$(OBJ): cmpauxmd.$(ASM)
 cmpauxmd.$(ASM): cmpauxmd.m4
@@ -444,6 +443,7 @@ wind.$(OBJ): wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 prbfish.$(OBJ): prbfish.c $(SCHEME_H) $(PRIMS_H)
 prgdbm.$(OBJ): prgdbm.c $(SCHEME_H) $(PRIMS_H) $(OS_H)
 prmd5.$(OBJ): prmd5.c $(SCHEME_H) $(PRIMS_H)
+prpgsql.$(OBJ): prpgsql.c $(SCHEME_H) $(PRIMS_H) $(USRDEF_H) $(OS_H)
 prosenv.$(OBJ): prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) \
 	$(LIMITS_H)
 prosfile.$(OBJ): prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
@@ -485,7 +485,7 @@ os2io.$(OBJ): os2io.c $(OS2_H)
 os2msg.$(OBJ): os2msg.c $(OS2_H)
 os2pipe.$(OBJ): os2pipe.c $(OS2_H)
 os2pm.$(OBJ): os2pm.c $(OS2_H) os2pm-id.h os2pm-mi.h os2pm-dc.h os2pm-rp.h
-os2pmcon.$(OBJ): os2pmcon.c $(OS2_H) $(OS2PMCON_H) $(VERSION_H)
+os2pmcon.$(OBJ): os2pmcon.c $(OS2_H) $(OS2PMCON_H)
 os2proc.$(OBJ): os2proc.c $(OS2_H) $(OSPROC_H) $(OSENV_H)
 os2sock.$(OBJ): os2sock.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OS2_H) \
 	$(UXSOCK_H)

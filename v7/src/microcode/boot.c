@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.115 2003/03/21 17:28:21 cph Exp $
+$Id: boot.c,v 9.116 2003/07/22 02:19:51 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -29,7 +29,6 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "version.h"
 #include "option.h"
 #ifndef islower
 #include <ctype.h>
@@ -140,8 +139,7 @@ DEFUN (main_name, (argc, argv),
       compiler_reset (compiler_utilities);
       if (!option_band_specified)
 	{
-	  outf_console ("Scheme Microcode Version %d.%d\n",
-	                SCHEME_VERSION, SCHEME_SUBVERSION);
+	  outf_console ("Scheme Microcode Version %s\n", PACKAGE_VERSION);
 	  OS_initialize ();
 	  Enter_Interpreter ();
 	}
@@ -595,16 +593,14 @@ DEFUN (stack_death, (name), CONST char * name)
 
 DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 {
-  fast SCHEME_OBJECT Result;
+  SCHEME_OBJECT Result;
   PRIMITIVE_HEADER (0);
   Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
+  FAST_VECTOR_SET (Result, ID_RELEASE, SHARP_F);
   FAST_VECTOR_SET
-    (Result, ID_RELEASE,
-     (char_pointer_to_string ((unsigned char *) SCHEME_RELEASE)));
-  FAST_VECTOR_SET
-    (Result, ID_MICRO_VERSION, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_VERSION)));
-  FAST_VECTOR_SET
-    (Result, ID_MICRO_MOD, (LONG_TO_UNSIGNED_FIXNUM (SCHEME_SUBVERSION)));
+    (Result, ID_MICRO_VERSION,
+     (char_pointer_to_string ((unsigned char *) PACKAGE_VERSION)));
+  FAST_VECTOR_SET (Result, ID_MICRO_MOD, SHARP_F);
   FAST_VECTOR_SET
     (Result, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
   FAST_VECTOR_SET

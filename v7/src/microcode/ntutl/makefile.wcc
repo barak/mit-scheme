@@ -1,8 +1,9 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.19 2003/02/14 18:28:31 cph Exp $
+###     $Id: makefile.wcc,v 1.20 2003/07/22 02:19:51 cph Exp $
 ###
-###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
+###     Copyright 1995,1996,1997,1999 Massachusetts Institute of Technology
+###     Copyright 2000,2001,2003 Massachusetts Institute of Technology
 ###
 ###     This file is part of MIT/GNU Scheme.
 ###
@@ -25,9 +26,9 @@
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
 ###  This makefile is meant to be used with Watcom make.
 
-#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c
-#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj
-#USER_LIBS = library blowfish.lib,gdbm.lib,md5.lib
+#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c prpgsql.c
+#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj prpgsql.obj
+#USER_LIBS = library blowfish.lib,gdbm.lib,md5.lib,pq.lib
 
 CC = wcc386
 M4 = m4
@@ -478,7 +479,6 @@ TRAP_H = trap.h
 TYPES_H = types.h
 USRDEF_H = usrdef.h $(SCHEME_H) $(PRIMS_H)
 UXSOCK_H = uxsock.h $(OSIO_H)
-VERSION_H = version.h
 WINDER_H = winder.h
 ZONES_H = zones.h
 
@@ -503,8 +503,7 @@ avltree.obj: avltree.c $(AVLTREE_H)
 bignum.obj: bignum.c $(SCHEME_H) $(BIGNMINT_H) $(LIMITS_H)
 bigprm.obj: bigprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
 bitstr.obj: bitstr.c $(SCHEME_H) $(PRIMS_H) $(BITSTR_H)
-boot.obj: boot.c $(SCHEME_H) $(PRIMS_H) $(VERSION_H) $(OPTION_H) $(OSTOP_H) &
-	$(OSTTY_H)
+boot.obj: boot.c $(SCHEME_H) $(PRIMS_H) $(OPTION_H) $(OSTOP_H) $(OSTTY_H)
 char.obj: char.c $(SCHEME_H) $(PRIMS_H)
 cmpauxmd.obj: cmpauxmd.asm
 cmpint.obj: cmpint.c $(CONFIG_H) $(DSTACK_H) $(OUTF_H) $(TYPES_H) $(CONST_H) &
@@ -563,6 +562,7 @@ wind.obj: wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 prbfish.obj: prbfish.c $(SCHEME_H) $(PRIMS_H)
 prgdbm.obj: prgdbm.c $(SCHEME_H) $(PRIMS_H) $(OS_H)
 prmd5.obj: prmd5.c $(SCHEME_H) $(PRIMS_H)
+prpgsql.obj: prpgsql.c $(SCHEME_H) $(PRIMS_H) $(USRDEF_H) $(OS_H)
 prosenv.obj: prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) $(LIMITS_H)
 prosfile.obj: prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
 prosfs.obj: prosfs.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(OSIO_H)

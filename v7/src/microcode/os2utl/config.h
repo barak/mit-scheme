@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.6 2003/02/14 18:28:31 cph Exp $
+$Id: config.h,v 1.7 2003/07/22 02:19:51 cph Exp $
 
-Copyright (c) 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -79,6 +79,21 @@ typedef unsigned char cc_t;
 
 /* Define if you have the <md5.h> header file.  */
 #define HAVE_MD5_H 1
+
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT "bug-mit-scheme@gnu.org"
+
+/* Define to the full name of this package. */
+#define PACKAGE_NAME "MIT/GNU Scheme"
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING "MIT/GNU Scheme 14.11"
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME "mit-scheme"
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "14.11"
 
 /* Include the shared configuration header.  */
 #include "confshared.h"

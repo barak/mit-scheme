@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.6 2003/05/17 02:21:13 cph Exp $
+$Id: confshared.h,v 11.7 2003/07/22 02:19:51 cph Exp $
 
 Copyright 2000,2002,2003 Massachusetts Institute of Technology
 
@@ -212,8 +212,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define ADDRESS_TO_DATUM(address)					\
   ((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_MASK))))
 
-#if (SCHEME_VERSION > 11)
-
 /* SHARP_F is a magic value:
    Typecode TC_CONSTANT, high datum bits #b100, low datum bits are the top
    TYPE_CODE_LENGTH bits of HPPA_QUAD_BIT
@@ -226,7 +224,6 @@ typedef unsigned long SCHEME_OBJECT;
    See also cmpauxmd/hppa.m4.  */
 
 #define SHARP_F         0x22000010
-#endif /* (SCHEME_VERSION > 11) */
 
 #endif /* hp9000s800 */
 

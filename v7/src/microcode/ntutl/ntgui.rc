@@ -1,7 +1,6 @@
 #include "windows.h"
 #include "ntgui.h"
 #include "ntdialog.h"
-#include "version.h"
 
 SHIELD3_ICON ICON shield3.ico
 SHIELD4_ICON ICON shield4.ico
@@ -22,12 +21,9 @@ BCH_ICO ICON bch.ico
 
 GC_CURSOR  CURSOR gc.cur
 
-#define MAKEFILEVERSIONSTRINGHELPER(a,b,c) #a b #c
-#define MAKEFILEVERSIONSTRING(v,s) MAKEFILEVERSIONSTRINGHELPER(##v,".",##s)
-
 1 VERSIONINFO
 	FILEVERSION	0,0,0,65
-	PRODUCTVERSION	7,2,0,65
+	PRODUCTVERSION	7,8,0,65
 	FILEOS		VOS__WINDOWS32
 	FILETYPE	VFT_APP
 BEGIN
@@ -35,14 +31,14 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
+	VALUE "CompanyName", "GNU Project"
 	VALUE "FileDescription", "MIT/GNU Scheme Microcode"
-	VALUE "FileVersion", MAKEFILEVERSIONSTRING(SCHEME_VERSION,SCHEME_SUBVERSION)
+	VALUE "FileVersion", PACKAGE_VERSION
 	VALUE "InternalName", "SCHEME"
-	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2000"
+	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2003"
 	VALUE "OriginalFilename", "SCHEME.EXE"
-	VALUE "ProductName", "MIT/GNU Scheme"
-	VALUE "ProductVersion", SCHEME_RELEASE
+	VALUE "ProductName", PACKAGE_NAME
+	VALUE "ProductVersion", PACKAGE_VERSION
     END
   END
 

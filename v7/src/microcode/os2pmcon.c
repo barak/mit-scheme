@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.30 2003/04/08 04:31:32 cph Exp $
+$Id: os2pmcon.c,v 1.31 2003/07/22 02:19:51 cph Exp $
 
 Copyright 1994-2000 Massachusetts Institute of Technology
 
@@ -26,9 +26,6 @@ USA.
 #define INCL_WIN
 #include "os2.h"
 #include "os2pmcon.h"
-
-/* For the "about" dialog box.  */
-#include "version.h"
 
 /* #define CONSOLE_WRAP */
 
@@ -428,10 +425,8 @@ process_events (int blockp)
 		    (void) WinMessageBox
 		      (HWND_DESKTOP,
 		       NULLHANDLE,
-		       ("This is MIT/GNU Scheme Release "
-			SCHEME_RELEASE
-			", the Uncommon Lisp"),
-		       "MIT/GNU Scheme",
+		       ("This is " PACKAGE_STRING),
+		       PACKAGE_VERSION,
 		       0,
 		       MB_OK);
 		    break;
