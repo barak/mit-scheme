@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.15 1992/12/28 22:02:50 cph Exp $
+$Id: rules3.scm,v 1.16 1993/01/12 10:45:20 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -157,34 +157,40 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				;ignore
-  (if (eq? primitive compiled-error-procedure)
-      (LAP ,@(clear-map!)
-	   ,@(load-immediate regnum:second-arg frame-size #F)
-	   ,@(invoke-interface code:compiler-error))
-      (let* ((clear-second-arg (clear-registers! regnum:second-arg))
-	     (load-second-arg
-	      (load-pc-relative regnum:second-arg
-				'CONSTANT
-				(constant->label primitive)
-				false)))
-	(LAP ,@clear-second-arg
-	     ,@load-second-arg
-	     ,@(clear-map!)
-	     ,@(let ((arity (primitive-procedure-arity primitive)))
-		 (cond ((not (negative? arity))
-			(invoke-interface code:compiler-primitive-apply))
-		       ((= arity -1)
-			(LAP ,@(load-immediate regnum:assembler-temp
-						(-1+ frame-size)
-						#F)
-			     (SW ,regnum:assembler-temp
-				 ,reg:lexpr-primitive-arity)
-			     ,@(invoke-interface
-				code:compiler-primitive-lexpr-apply)))
-		       (else
-			;; Unknown primitive arity.  Go through apply.
-			(LAP ,@(load-immediate regnum:third-arg frame-size #F)
-			     ,@(invoke-interface code:compiler-apply)))))))))
+  (cond ((eq? primitive compiled-error-procedure)
+	 (LAP ,@(clear-map!)
+	      ,@(load-immediate regnum:second-arg frame-size #F)
+	      ,@(invoke-interface code:compiler-error)))
+	((eq? primitive (ucode-primitive set-interrupt-enables!))
+	 (LAP ,@(clear-map!)
+	      (ADDI ,regnum:assembler-temp ,regnum:scheme-to-interface -48)
+	      (JR ,regnum:assembler-temp)
+	      (NOP)))
+	(else
+	 (let* ((clear-second-arg (clear-registers! regnum:second-arg))
+		(load-second-arg
+		 (load-pc-relative regnum:second-arg
+				   'CONSTANT
+				   (constant->label primitive)
+				   false)))
+	   (LAP ,@clear-second-arg
+		,@load-second-arg
+		,@(clear-map!)
+		,@(let ((arity (primitive-procedure-arity primitive)))
+		    (cond ((not (negative? arity))
+			   (invoke-interface code:compiler-primitive-apply))
+			  ((= arity -1)
+			   (LAP ,@(load-immediate regnum:assembler-temp
+						   (-1+ frame-size)
+						   #F)
+				(SW ,regnum:assembler-temp
+				    ,reg:lexpr-primitive-arity)
+				,@(invoke-interface
+				   code:compiler-primitive-lexpr-apply)))
+			  (else
+			   ;; Unknown primitive arity.  Go through apply.
+			   (LAP ,@(load-immediate regnum:third-arg frame-size #F)
+				,@(invoke-interface code:compiler-apply))))))))))
 
 (let-syntax
     ((define-special-primitive-invocation
