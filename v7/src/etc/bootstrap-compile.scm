@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap-compile.scm,v 1.3 2000/10/16 18:24:03 cph Exp $
+$Id: bootstrap-compile.scm,v 1.4 2000/10/16 18:25:36 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -21,7 +21,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (begin
   (sf "microcode/utabmd")
-  (with-working-directory-pathname name
+  (with-working-directory-pathname "cref"
     (lambda ()
       (load "cref.sf")
       (load "cref.cbf")))
