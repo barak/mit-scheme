@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.68 1993/09/11 02:45:46 gjr Exp $
+$Id: cmpint.c,v 1.69 1993/09/11 14:20:38 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -758,7 +758,7 @@ DEFUN (comutil_return_to_interpreter,
 
 #if (COMPILER_PROCESSOR_TYPE != COMPILER_I386_TYPE)
 
-# define RETURN_FROM_PRIMITIVE()					\
+#define RETURN_FROM_PRIMITIVE()					\
   RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
 
 #else /* i386 */
@@ -766,7 +766,7 @@ DEFUN (comutil_return_to_interpreter,
 static utility_result
   EXFUN (compiler_interrupt_common, (SCHEME_ADDR, SCHEME_OBJECT));
 
-# define RETURN_FROM_PRIMITIVE() do					\
+#define RETURN_FROM_PRIMITIVE() do					\
 {									\
   if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))		\
     return (compiler_interrupt_common (0, Val));			\
@@ -2924,16 +2924,6 @@ DEFUN (comutil_reflect_to_interface,
       return (comutil_apply (procedure, frame_size, ignore_3, ignore_4));
     }
 
-    case REFLECT_CODE_CC_BKPT:
-    {
-      unsigned long value;
-
-      if (do_bkpt_proceed (& value))
-	RETURN_TO_SCHEME (value);
-      else
-	RETURN_TO_C (value);
-    }
-
     case REFLECT_CODE_RESTORE_INTERRUPT_MASK:
     {
       SET_INTERRUPT_MASK (OBJECT_DATUM (STACK_POP ()));
@@ -2945,6 +2935,25 @@ DEFUN (comutil_reflect_to_interface,
       STACK_POP ();		/* marker1 */
       STACK_POP ();		/* marker2 */
       RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));
+    }
+
+    case REFLECT_CODE_CC_BKPT:
+    {
+      unsigned long value;
+
+      /* Attempt to process interrupts before really proceeding. */
+
+      if (((long) Free) >= ((long) (Registers[REGBLOCK_MEMTOP])))
+      {
+	STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
+	STACK_PUSH (reflect_to_interface);
+	return (compiler_interrupt_common (0, SHARP_F));
+      }
+
+      if (do_bkpt_proceed (& value))
+	RETURN_TO_SCHEME (value);
+      else
+	RETURN_TO_C (value);
     }
 
     default:
