@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.116 1989/04/15 00:51:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/linden.scm,v 1.117 1989/04/28 03:53:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -186,30 +186,25 @@
 (define (lisp-indent-special-form n state indent-point normal-indent)
   (if (negative? n) (error "Special form indent hook negative" n))
   (let ((container (parse-state-containing-sexp state)))
-    (let ((body-indent (+ (ref-variable lisp-body-indent)
-			  (mark-column container)))
+    (let ((body-indent
+	   (+ (mark-column container) (ref-variable lisp-body-indent)))
 	  (normal-indent (mark-column normal-indent)))
-      (let ((second-sexp
-	     (forward-to-sexp-start (forward-one-sexp (mark1+ container)
-						      indent-point)
-				    indent-point)))
-	(cond ((mark< second-sexp indent-point)
-	       (let loop ((n n) (mark second-sexp))
-		 (cond ((not mark)
-			(cons normal-indent container))
-		       ((zero? n)
-			(if (forward-one-sexp mark indent-point)
-			    normal-indent
-			    (min body-indent normal-indent)))
-		       (else
-			(loop (-1+ n) (forward-one-sexp mark indent-point))))))
-	      ((zero? n)
-	       body-indent)
-	      (else
-	       (cons (if (< n 3)
-			 (+ body-indent (ref-variable lisp-body-indent))
-			 normal-indent)
-		     container)))))))
+      (let loop ((count n) (mark (mark1+ container)))
+	(let ((mark
+	       (let ((mark (forward-one-sexp mark indent-point)))
+		 (and mark
+		      (forward-to-sexp-start mark indent-point)))))
+	  (cond ((and mark (mark< mark indent-point))
+		 (loop (-1+ count) mark))
+		((positive? count)
+		 (cons (+ body-indent (ref-variable lisp-body-indent))
+		       (mark-permanent! container)))
+		((and (zero? count)
+		      (or (zero? n)
+			  (<= body-indent normal-indent)))
+		 body-indent)
+		(else
+		 normal-indent)))))))
 
 ;;;; Indent Line
 
@@ -278,24 +273,23 @@
 	  (let next-line-start ((index index) (state false))
 	    (let ((start (line-start index 1)))
 	      (let ((state (parse-partial-sexp index start false false state)))
-		(if (or (not (or (parse-state-in-string? state)
-				 (parse-state-in-comment? state)))
-			(mark= start end))
-		    (let ((stack
-			   (adjust-stack (parse-state-depth state) stack)))
-		      (cond ((mark= start end)
-			     (if (not (or (parse-state-in-string? state)
-					  (parse-state-in-comment? state)))
-				 (indent-expression-line start stack)))
-			    ((indent-comment-line start stack)
-			     (loop start stack))
-			    ((line-blank? start)
-			     (delete-horizontal-space start)
-			     (loop start stack))
-			    (else
-			     (indent-expression-line start stack)
-			     (loop start stack))))
-		    (next-line-start start state)))))))))
+		(let ((stack (adjust-stack (parse-state-depth state) stack)))
+		  (cond ((not (mark= start end))
+			 (let ((start (mark-right-inserting start)))
+			   (if (or (parse-state-in-string? state)
+				   (parse-state-in-comment? state))
+			       (next-line-start start state)
+			       (begin
+				 (cond ((indent-comment-line start stack)
+					unspecific)
+				       ((line-blank? start)
+					(delete-horizontal-space start))
+				       (else
+					(indent-expression-line start stack)))
+				 (loop start stack)))))
+			((not (or (parse-state-in-string? state)
+				  (parse-state-in-comment? state)))
+			 (indent-expression-line start stack)))))))))))
 
 (define (indent-comment-line start stack)
   (let ((mark (horizontal-space-end start)))
