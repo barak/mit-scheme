@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.11 1995/08/06 19:55:45 adams Exp $
+$Id: compat.scm,v 1.12 1995/08/19 16:09:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -40,6 +40,8 @@ MIT in each case. |#
 ;;  stack, with earlier arguments deeper to facilitate lexprs.  The
 ;;  number of parameters passed in registers is determined by the
 ;;  back-end (*rtlgen/argument-registers*)
+;;
+;;  Also expands cache operators to full form.
 
 
 ;;; package: (compiler midend)
@@ -97,8 +99,8 @@ MIT in each case. |#
 	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
       (lambda (names code)
 	`(DEFINE ,proc-name
-	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	   (NAMED-LAMBDA (,proc-name ENV FORM)
+	     (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
 	       (COMPAT/REMEMBER ,code FORM))))))))
 
 (define-compatibility-rewrite LOOKUP (env name)
@@ -148,11 +150,11 @@ MIT in each case. |#
        ,(compat/expr env alt)))
 
 (define-compatibility-rewrite CALL (env rator cont #!rest rands)
-  (compat/rewrite-call env rator cont rands))
+  (compat/rewrite-call env form rator cont rands))
 
-(define (compat/rewrite-call env rator cont rands)
+(define (compat/rewrite-call env form rator cont rands)
   (define (possibly-pass-some-args-on-stack)
-    (compat/standard-call-handler env rator cont rands))
+    (compat/standard-call-handler env form rator cont rands))
 
   (define (dont-split-cookie-call)
     `(CALL ,(compat/expr env rator)
@@ -163,7 +165,7 @@ MIT in each case. |#
 	 (possibly-pass-some-args-on-stack))
 	((rewrite-operator/compat? (quote/text rator))
 	 => (lambda (handler)
-	      (handler env rator cont rands)))
+	      (handler env form rator cont rands)))
 	#| Hooks into the compiler interface, when they must tail
 	into another computation, are now called with the default
 	(args. in registers) calling convention.  This is not a
@@ -198,6 +200,9 @@ MIT in each case. |#
        exprs))
 
 (define (compat/remember new old)
+  (code-rewrite/remember new old))
+
+(define (compat/remember* new old)
   (code-rewrite/remember new old))
 
 (define (compat/new-name prefix)
@@ -357,14 +362,16 @@ MIT in each case. |#
 (define (define-rewrite/compat operator handler)
   (hash-table/put! *compat-rewritten-operators* operator handler))
 
-(define (compat/standard-call-handler env rator cont rands)
+(define (compat/standard-call-handler env form rator cont rands)
+  form ;ignored
   (call-with-values (lambda () (compat/split-register&stack rands))
     (lambda (reg-rands stack-rands)
       (compat/rewrite-call/split env rator cont reg-rands stack-rands))))
 
 (let* ((compat/invocation-cookie
 	(lambda (n)
-	  (lambda (env rator cont rands)
+	  (lambda (env form rator cont rands)
+	    form			;ignored
 	    (call-with-values
 		(lambda () (compat/split-register&stack (list-tail rands n)))
 	      (lambda (reg-rands stack-rands)
@@ -402,8 +409,8 @@ MIT in each case. |#
 ;;	   ,(compat/expr env (second rands)))))
 		       
 (define-rewrite/compat %stack-closure-ref
-  (lambda (env rator cont rands)
-    rator cont
+  (lambda (env form rator cont rands)
+    form rator cont
     ;; rands = (<frame> '<vector> '<name>)
     ;; Copy, possibly replacing vector
     `(CALL (QUOTE ,%stack-closure-ref)
@@ -424,7 +431,7 @@ MIT in each case. |#
 (define-rewrite/compat %make-heap-closure
   ;; The lambda expression in a heap closure is special the closure
   ;; formal is passed by a special mechanism
-  (lambda (env rator cont rands)
+  (lambda (env form rator cont rands)
     rator				; ignored
     (let ((lam-expr  (first rands)))
       (if (not (LAMBDA/? lam-expr))
@@ -448,8 +455,9 @@ MIT in each case. |#
 (define-rewrite/compat %variable-cache-ref
   ;; (CALL %variable-cache-ref '#F <read-variable-cache> 'IGNORE-TRAPS? 'NAME)
   ;;       ------ rator ------ cont -------- rands -----------
-  (lambda (env rator cont rands)
+  (lambda (env form rator cont rands)
     rator				; ignored
+    (define (equivalent form*) (compat/remember* form* form))
     (let ((cont  (compat/expr env cont))
 	  (cell  (compat/expr env (first rands)))
 	  (ignore-traps? (compat/expr env (second rands)))
@@ -481,17 +489,19 @@ MIT in each case. |#
 		 (IF (CALL (QUOTE ,%reference-trap?)
 			   (QUOTE #F)
 			   (LOOKUP ,value-name))
-		     (CALL (QUOTE ,%hook-variable-cell-ref)
-			   ,cont
-			   (LOOKUP ,cell-name))
+		     ,(equivalent
+		       `(CALL (QUOTE ,%hook-variable-cell-ref)
+			      ,cont
+			      (LOOKUP ,cell-name)))
 		     ,(%continue `(LOOKUP ,value-name))))))))))
 
 (define-rewrite/compat %safe-variable-cache-ref
-  (lambda (env rator cont rands)
+  (lambda (env form rator cont rands)
     ;; (CALL ',%safe-variable-cache-ref '#F <read-variable-cache>
     ;;       'IGNORE-TRAPS? 'NAME)
     ;;       --------- rator --------- cont -------- rands -----------
     rator				; ignored
+    (define (equivalent form*) (compat/remember* form* form))
     (let ((cont  (compat/expr env cont))
 	  (cell  (compat/expr env (first rands)))
 	  (ignore-traps? (compat/expr env (second rands)))
@@ -525,9 +535,10 @@ MIT in each case. |#
 				 (LOOKUP ,value-name))
 			   (QUOTE #T))
 		       ,(%continue `(LOOKUP ,value-name))
-		       (CALL (QUOTE ,%hook-safe-variable-cell-ref)
-			     ,cont
-			     (LOOKUP ,cell-name))))))))))
+		       ,(equivalent
+			 `(CALL (QUOTE ,%hook-safe-variable-cell-ref)
+				,cont
+				(LOOKUP ,cell-name)))))))))))
 
 ;; NOTE: This is never in value position because envconv expands
 ;; all cell sets into begins.  In particular, this means that cont
@@ -537,10 +548,11 @@ MIT in each case. |#
 ;; for the read and the write.
 
 (define-rewrite/compat %variable-cache-set!
-  (lambda (env rator cont rands)
+  (lambda (env form rator cont rands)
     ;; (CALL ',%variable-cache-set! '#F <write-variable-cache> 'IGNORE-TRAPS? 'NAME)
     ;;       ------- rator -------- cont -------- rands -----------
     rator				; ignored
+    (define (equivalent form*) (compat/remember* form* form))
     (let ((cont          (compat/expr env cont))
 	  (cell          (compat/expr env (first rands)))
 	  (value         (compat/expr env (second rands)))
@@ -581,10 +593,11 @@ MIT in each case. |#
 			       ,cont
 			       (LOOKUP ,cell-name)
 			       (LOOKUP ,value-name))
-			 (CALL (QUOTE ,%hook-variable-cell-set!)
-			       ,cont
-			       (LOOKUP ,cell-name)
-			       (LOOKUP ,value-name)))))))))))
+			 ,(equivalent
+			   `(CALL (QUOTE ,%hook-variable-cell-set!)
+				  ,cont
+				  (LOOKUP ,cell-name)
+				  (LOOKUP ,value-name))))))))))))
 
 (define (compat/verify-cache cell name)
   (if (and (LOOKUP/? cell)
@@ -623,7 +636,8 @@ MIT in each case. |#
 
 
 (let ((known-operator->primitive
-       (lambda (env rator cont rands)
+       (lambda (env form rator cont rands)
+	 form				; ignored
 	 (compat/->stack-closure
 	  env cont (cddr rands)
 	  (lambda (cont*)
@@ -677,8 +691,8 @@ MIT in each case. |#
   (define (define-primitive-call rator arity name)
     (let ((prim (make-primitive-procedure name)))
       (define-rewrite/compat rator
-	(lambda (env rator cont rands)
-	  rator				; ignored
+	(lambda (env form rator cont rands)
+	  form rator			; ignored
 	  (compat/->stack-closure
 	   env cont rands
 	   (lambda (cont*)
@@ -690,8 +704,8 @@ MIT in each case. |#
   (define (define-truncated-call rator arity name)
     (let ((prim (make-primitive-procedure name)))
       (define-rewrite/compat rator
-	(lambda (env rator cont rands)
-	  rator				; ignored
+	(lambda (env form rator cont rands)
+	  form rator			; ignored
 	  (compat/->stack-closure
 	   env cont (list-head rands arity)
 	   (lambda (cont*)
@@ -702,12 +716,13 @@ MIT in each case. |#
 
   (define (define-global-call rator arity name)
     (define-rewrite/compat rator
-      (lambda (env rator cont rands)
-	rator				; ignored
+      (lambda (env form rator cont rands)
+	form rator			; ignored
 	(let ((desc (list name (or arity (length rands)))))
 	  ;; This way ensures it works with very small numbers of
 	  ;; argument registers:
 	  (compat/rewrite-call env
+			       form
 			       `(QUOTE ,%invoke-remote-cache)
 			       cont
 			       (cons* `(QUOTE ,desc)
