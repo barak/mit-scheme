@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.35 1994/04/05 21:22:05 cph Exp $
+;;;	$Id: hppa.m4,v 1.36 1994/04/05 21:22:20 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
