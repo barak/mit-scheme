@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 1.6 1996/07/20 18:08:36 adams Exp $
+$Id: switch.scm,v 1.7 1996/07/23 14:57:33 adams Exp $
 
 Copyright (c) 1988-1996  Massachusetts Institute of Technology
 
@@ -69,6 +69,7 @@ MIT in each case. |#
 (define compiler:open-code-flonum-checks? false)
 (define compiler:use-multiclosures? true)
 (define compiler:coalescing-constant-warnings? true)
+(define compiler:type-error-warnings? true)
 (define compiler:cross-compiling? false)
 (define compiler:compress-top-level? false)
 (define compiler:avoid-scode? true)
