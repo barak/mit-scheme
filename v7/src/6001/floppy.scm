@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.7 1992/09/17 23:48:42 cph Exp $
+$Id: floppy.scm,v 1.8 1992/09/24 18:55:43 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -674,19 +674,25 @@ M-x rename-file, or use the `r' command in Dired.")
 ;;;; Floppy Command Subprocesses
 
 (define (run-dosll-command directory)
-  (run-dos-command (string-append "/usr/bin/dosls -Al " directory)))
+  (run-dos-command (string-append "/usr/bin/dosls -Al "
+				  (floppy-quote-shell-chars directory))))
 
 (define (run-doscp-command from to)
-  (run-dos-command (string-append "/usr/bin/doscp -f " from " " to)))
+  (run-dos-command (string-append "/usr/bin/doscp -f "
+				  (floppy-quote-shell-chars from)
+				  " "
+				  (floppy-quote-shell-chars to))))
 
 (define (run-dosrm-command filename)
-  (run-dos-command (string-append "/usr/bin/dosrm -f " filename)))
+  (run-dos-command (string-append "/usr/bin/dosrm -f "
+				  (floppy-quote-shell-chars filename))))
 
 (define (run-dos-command command)
   (call-with-temporary-buffer " *dos-floppy-command*"
     (lambda (buffer)
       (let ((result
-	     (shell-command false (buffer-start buffer) false false command)))
+	     (shell-command false (buffer-start buffer) false false
+			    (floppy-quote-shell-chars command))))
 	(let ((output
 	       (extract-string (buffer-start buffer) (buffer-end buffer))))
 	  (if (equal? result '(EXITED . 0))
@@ -706,6 +712,27 @@ M-x rename-file, or use the `r' command in Dired.")
 		      make-condition:floppy-error))
 	       command output)))))))
 
+(define floppy-quote-shell-chars
+  (let ((quoted
+	 (char-set-invert
+	  (char-set-union char-set:alphanumeric
+			  (char-set #\+ #\, #\- #\. #\/ #\: #\= #\@ #\_)))))
+    (lambda (string)
+      (let ((end (string-length string)))
+	(let loop ((start 0))
+	  (cond ((substring-find-next-char-in-set string start end quoted)
+		 =>
+		 (lambda (index)
+		   (let ((start* (+ index 1)))
+		     (string-append (substring string start index)
+				    "\\"
+				    (substring string index start*)
+				    (loop start*)))))
+		((= start 0)
+		 string)
+		(else
+		 (substring string start end))))))))
+
 (define no-floppy-in-drive
   "Error reading. block = 0 on device /dev/rfd")
 
