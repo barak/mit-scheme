@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.50 1992/09/26 02:54:55 cph Exp $
+$Id: cmpint.c,v 1.51 1992/09/26 03:12:30 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -2752,15 +2752,6 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 /* Stubs for compiler utilities.
    All entries error out or kill the microcode.
  */
-
-#include "ansidecl.h"	/* Macros to support ANSI declarations */
-#include "config.h"	/* Machine configurations */
-#include "object.h"	/* Making pointers */
-#include "sdata.h"	/* Needed by const.h */
-#include "types.h"	/* Needed by const.h */
-#include "errors.h"	/* Error codes and Termination codes */
-#include "const.h"	/* REGBLOCK_MINIMUM_LENGTH */
-#include "returns.h"	/* RC_POP_FROM_COMPILED_CODE */
 
 extern void EXFUN (Microcode_Termination, (int code));
 extern void EXFUN (compiler_reset_error, (void));
