@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.4 1990/02/08 00:04:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.5 1990/10/04 02:25:12 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -47,14 +47,14 @@ MIT in each case. |#
 	   (= (vector-length object) size)
 	   (eq? (vector-ref object 0) the-descriptor)))
 
-    (define (guarantee record)
+    (define (guarantee record procedure-name)
       (if (not (predicate record))
-	  (error "invalid argument to record accessor" record type-name)))
+	  (error:illegal-datum record procedure-name)))
 
-    (define (field-index name)
+    (define (field-index name procedure-name)
       (let loop ((names field-names) (index 1))
 	(if (null? names)
-	    (error "bad field name" name))
+	    (error:datum-out-of-range name procedure-name))
 	(if (eq? name (car names))
 	    index
 	    (loop (cdr names) (+ index 1)))))
@@ -64,7 +64,10 @@ MIT in each case. |#
     (vector-set! the-descriptor 2
       (lambda (names)
 	(let ((number-of-inits (length names))
-	      (indexes (map field-index names)))
+	      (indexes
+	       (map (lambda (name)
+		      (field-index name 'RECORD-CONSTRUCTOR))
+		    names)))
 	  (lambda field-values
 	    (if (not (= (length field-values) number-of-inits))
 		(error "wrong number of arguments to record constructor"
@@ -78,49 +81,60 @@ MIT in each case. |#
 	      record)))))
     (vector-set! the-descriptor 3
       (lambda (name)
-	(let ((index (field-index name)))
+	(let ((index (field-index name 'RECORD-ACCESSOR))
+	      (procedure-name `(RECORD-ACCESSOR ,the-descriptor ',name)))
 	  (lambda (record)
-	    (guarantee record)
+	    (guarantee record procedure-name)
 	    (vector-ref record index)))))
     (vector-set! the-descriptor 4
       (lambda (name)
-	(let ((index (field-index name)))
+	(let ((index (field-index name 'RECORD-UPDATER))
+	      (procedure-name `(RECORD-UPDATER ,the-descriptor ',name)))
 	  (lambda (record new-value)
-	    (guarantee record)
+	    (guarantee record procedure-name)
 	    (vector-set! record index new-value)))))
     (vector-set! the-descriptor 5 type-name)
     (vector-set! the-descriptor 6 (list-copy field-names))
     (unparser/set-tagged-vector-method! the-descriptor
 					(unparser/standard-method type-name))
     (named-structure/set-tag-description! the-descriptor
-      (lambda (record)
-	(guarantee record)
-	(map (lambda (name)
-	       (list name (vector-ref record (field-index name))))
-	     field-names)))
+      (letrec ((description
+		(lambda (record)
+		  (guarantee record description)
+		  (map (lambda (name)
+			 (list name
+			       (vector-ref record
+					   (field-index name description))))
+		       field-names))))
+	description))
     the-descriptor))
 
 (define (record-constructor record-type #!optional field-names)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-CONSTRUCTOR))
   ((vector-ref record-type 2)
    (if (default-object? field-names)
        (record-type-field-names record-type)
        field-names)))
 
 (define (record-predicate record-type)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-PREDICATE))
   (vector-ref record-type 1))
 
 (define (record-accessor record-type field-name)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-ACCESSOR))
   ((vector-ref record-type 3) field-name))
 
 (define (record-updater record-type field-name)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-UPDATER))
   ((vector-ref record-type 4) field-name))
 
 (define (set-record-type-unparser-method! record-type method)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!))
   (unparser/set-tagged-vector-method! record-type method))
 
 ;;; Abstraction-Breaking Operations
@@ -138,7 +152,8 @@ MIT in each case. |#
 	   (unparse-object state (vector-ref record-type 5)))))
       (named-structure/set-tag-description! tag
 	(lambda (record-type)
-	  (guarantee-record-type record-type)
+	  (if (not (record-type? record-type))
+	      (error:illegal-datum record-type))
 	  `((PREDICATE ,(vector-ref record-type 1))
 	    (CONSTRUCTOR-CONSTRUCTOR ,(vector-ref record-type 2))
 	    (ACCESSOR-CONSTRUCTOR ,(vector-ref record-type 3))
@@ -152,17 +167,14 @@ MIT in each case. |#
 		   (eq? (vector-ref object 0) tag))))))
   unspecific)
 
-(define (guarantee-record-type object)
-  (if (not (record-type? object))
-      (error "not a record type descriptor" object))
-  object)
-
 (define (record-type-name record-type)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-TYPE-NAME))
   (vector-ref record-type 5))
 
 (define (record-type-field-names record-type)
-  (guarantee-record-type record-type)
+  (if (not (record-type? record-type))
+      (error:illegal-datum record-type 'RECORD-TYPE-FIELD-NAMES))
   (list-copy (vector-ref record-type 6)))
 
 (define (record? object)
@@ -170,11 +182,7 @@ MIT in each case. |#
        (not (zero? (vector-length object)))
        (record-type? (vector-ref object 0))))
 
-(define (guarantee-record object)
-  (if (not (record? object))
-      (error "not a record" object))
-  object)
-
 (define (record-type-descriptor record)
-  (guarantee-record record)
+  (if (not (record? object))
+      (error:illegal-datum object 'RECORD-TYPE-DESCRIPTOR))
   (vector-ref record 0))
