@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.15 1992/09/01 20:43:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.16 1992/09/01 22:41:37 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -287,7 +287,7 @@ MIT in each case. |#
   (if *last-picture-displayed*
       (call-with-temporary-filename
        (lambda (filename)
-	 (picture->pgm-file *last-picture-displayed*)
+	 (picture->pgm-file *last-picture-displayed* filename)
 	 (procedure filename)))
       (procedure false)))
 
