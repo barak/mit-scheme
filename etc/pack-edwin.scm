@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-edwin.scm,v 1.4 1992/10/20 21:36:31 jinx Exp $
+$Id: pack-edwin.scm,v 1.5 1992/11/23 21:38:03 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -77,6 +77,7 @@ MIT in each case. |#
 		    "modwin.com"
 		    "buffrm.com"
 		    "edtfrm.com"
+		    "calias.com"
 		    ;; "xterm.com"
 		    ;; "key.com"
 		    "termcap.com"
@@ -87,8 +88,7 @@ MIT in each case. |#
 		    "editor.com"
 		    "curren.com"
 		    "simple.com"
-		    "debuge.com"
-		    "calias.com"
+		    ;; "debuge.com"
 		    "modlin.com"
 		    "input.com"
 		    "prompt.com"
@@ -102,8 +102,10 @@ MIT in each case. |#
 		    "regexp.com"
 		    "rgxcmp.com"
 		    "linden.com"
+		    ;; "unix.com"
 		    "dos.com"
 		    "fileio.com"
+		    ;; "process.com"
 		    "dosproc.com"
 		    "argred.com"
 		    "autold.com"
@@ -116,6 +118,7 @@ MIT in each case. |#
 		    "comhst.com"
 		    ;; "comint.com"
 		    ;; "compile.com"
+		    ;; "dabbrev.com"
 		    "debug.com"
 		    "dired.com"
 		    ;; "dirunx.com"
@@ -133,6 +136,7 @@ MIT in each case. |#
 		    ;; "malias.com"
 		    "motcom.com"
 		    ;; "occur.com"
+		    ;; "outline.com"
 		    ;; "rcs.com"
 		    "reccom.com"
 		    "regcom.com"
@@ -156,5 +160,4 @@ MIT in each case. |#
 		    ;; "bochser.com"
 		    ;; "bochsmod.com"
 		    ;; "notify.com"
-		    ;; "outline.com"
 		    ))))
