@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.19 1995/04/09 23:06:31 cph Exp $
+;;;	$Id: vc.scm,v 1.20 1995/04/15 06:14:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -637,24 +637,11 @@ Normally shows only locked files; prefix arg says to show all files."
     " "
     (pad-on-left-to (number->string (file-attributes/length attr)) 8)
     " "
-    (ls-file-time-string attr)
+    (os/ls-file-time-string (file-attributes/modification-time attr))
     " "
     (file-namestring file)
     "\n")
    mark))
-
-(define (ls-file-time-string attr)
-  ;; **** This assumes that file times are just integers in units of
-  ;; seconds, as in unix.  This won't work for OS/2 where that isn't
-  ;; the case.
-  (let ((time (file-attributes/modification-time attr)))
-    (let ((s (file-time->string time))
-	  (delta (- (current-file-time) time)))
-      (if (<= delta (* 60 60 24 180))
-	  (substring s 4 16)
-	  (string-append (substring s 4 11)
-			 " "
-			 (substring s 20 24))))))
 
 ;;;; Log Entries
 
