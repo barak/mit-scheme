@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: mc68k.m4,v 1.24 1993/02/19 17:47:46 cph Exp $
+###	$Id: mc68k.m4,v 1.25 1993/10/20 20:49:57 gjr Exp $
 ###
 ###	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ###
@@ -723,12 +723,11 @@ define_debugging_label(set_interrupt_enables)
 set_interrupt_enables_1:
 	mov.l	%d1,regblock_memtop(regs)
 	# Setup compiled stack_guard register: Stack_Guard if
-	# stack-overflow enabled, else Absolute_Stack_Base (alias for
-	# Constant_Top).
+	# stack-overflow enabled, else Stack_Bottom
 	mov.l	extern_c_label(Stack_Guard),%d1
 	btst	&0,%d0
 	bne.b	set_interrupt_enables_2
-	mov.l	extern_c_label(Constant_Top),%d1
+	mov.l	extern_c_label(Stack_Bottom),%d1
 set_interrupt_enables_2:
 	mov.l	%d1,regblock_stack_guard(regs)
 	mov.l	(%sp)+,%d0
