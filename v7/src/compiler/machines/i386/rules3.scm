@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.4 1992/01/30 14:07:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.5 1992/01/31 04:35:11 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -104,13 +104,13 @@ MIT in each case. |#
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCR ,(free-uuo-link-label name frame-size)))))
+       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 2))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCR ,(global-uuo-link-label name frame-size)))))
+       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 2))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -407,60 +407,34 @@ MIT in each case. |#
 				  internal-label
 				  entry:compiler-interrupt-procedure)))
 
-;;;; Closures:
+;;;; Closures:			 
 
-(define (generate/closure-header internal-label nentries entry)
-  nentries				; ignored
-  (let ((rtl-proc (label->object internal-label)))
-    (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label rtl-proc)))
-      (if (zero? nentries)
-	  (LAP (EQUATE ,external-label ,internal-label)
-	       ,@(simple-procedure-header
-		  (internal-procedure-code-word rtl-proc)
-		  internal-label
-		  entry:compiler-interrupt-procedure))
-	  (LAP (LABEL ,gc-label)
-	       ,@(if (zero? entry)
-		     (LAP)
-		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-	       (JMP ,entry:compiler-interrupt-closure)
-	       ,@(make-external-label internal-entry-code-word
-				      external-label)
-	       (ADD W (@R ,esp)
-		    (&U ,(generate/make-magic-closure-constant entry)))
-	       (LABEL ,internal-label)
-	       (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	       (JGE (@PCR ,gc-label)))))))
-
-(define (generate/make-magic-closure-constant entry)
-  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
-     (+ (* entry 10) 5)))
-
-(define (make-closure-longword code-word pc-offset)
-  (+ code-word (* #x20000 pc-offset)))
-
-(define (make-closure-code-longword frame/min frame/max pc-offset)
-  (make-closure-longword (make-procedure-code-word frame/min frame/max)
-			 pc-offset))			 
+;; Since i386 instructions are pc-relative, the GC can't relocate them unless
+;; there is a way to find where the closure was in old space before being
+;; transported.  The first entry point (tagged as an object) is always
+;; the last component of closures with any entry points.
 
 (define (generate/cons-closure target procedure-label min max size)
   (let* ((target (target-register-reference))
-	 (temporary (temporary-register-reference)))
+	 (temp (temporary-register-reference)))
     (LAP ,@(load-pc-relative-address
-	    temporary
+	    temp
 	    `(- ,(rtl-procedure/external-label (label->object procedure-label))
 		5))
 	 (MOV W (@R ,regnum:free-pointer)
 	      (&U ,(make-non-pointer-literal (ucode-type manifest-closure)
-					     (+ 3 size))))
+					     (+ 4 size))))
 	 (MOV W (@RO ,regnum:free-pointer 4)
 	      (&U ,(make-closure-code-longword min max 8)))
-	 (LEA ,target (@RO ,regnum:fre-pointer 8))
+	 (LEA ,target (@RO ,regnum:free-pointer 8))
 	 (MOV B (@RO ,regnum:free-pointer 8) (&U #xe8))	; (CALL (@PCR <entry>))
-	 (SUB W ,temporary ,target)
-	 (MOV L (@RO ,regnum:free-pointer 9) ,temporary) ; displacement
-	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 4 size)))))))
+	 (SUB W ,temp ,target)
+	 (MOV L (@RO ,regnum:free-pointer 9) ,temp) ; displacement
+	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
+	 (LEA ,temp (@RO ,target
+			 ,(make-non-pointer-literal (ucode-type compiled-entry)
+						    0)))
+	 (MOV W (@RO ,regnum:free-pointer -4) ,temp))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((target (target-register-reference))
@@ -488,18 +462,54 @@ MIT in each case. |#
 	(LAP (MOV W (@R ,regnum:free-pointer)
 		  (&U ,(make-non-pointer-literal
 			(ucode-type manifest-closure)
-			(+ size
-			   (quotient (+ 3 (* 5 nentries))
-				     2)))))
+			(+ size (quotient (* 5 (1+ nentries)) 2)))))
 	     (MOV W (@RO ,regnum:free-pointer 4)
 		  (&U ,(make-closure-longword nentries 0)))
 	     (LEA ,target (@RO ,regnum:free-pointer 12))
 	     (ADD W (R ,regnum:free-pointer) (& 17))
 	     ,@(generate-entries entries 12)
 	     (ADD W (R ,regnum:free-pointer)
-		  (& ,(+ (* 4 size) (if (odd? nentries) 3 1)))))))))
+		  (& ,(+ (* 4 size) (if (odd? nentries) 7 5))))
+	     (LEA ,temp
+		  (@RO ,target
+		       ,(make-non-pointer-literal (ucode-type compiled-entry)
+						  0)))
+	     (MOV W (@RO ,regnum:free-pointer -4) ,temp))))))
 
-;;;; The rules themselves.
+(define (generate/closure-header internal-label nentries entry)
+  nentries				; ignored
+  (let ((rtl-proc (label->object internal-label)))
+    (let ((gc-label (generate-label))
+	  (external-label (rtl-procedure/external-label rtl-proc)))
+      (if (zero? nentries)
+	  (LAP (EQUATE ,external-label ,internal-label)
+	       ,@(simple-procedure-header
+		  (internal-procedure-code-word rtl-proc)
+		  internal-label
+		  entry:compiler-interrupt-procedure))
+	  (LAP (LABEL ,gc-label)
+	       ,@(if (zero? entry)
+		     (LAP)
+		     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
+	       (JMP ,entry:compiler-interrupt-closure)
+	       ,@(make-external-label internal-entry-code-word
+				      external-label)
+	       (ADD W (@R ,esp)
+		    (&U ,(generate/make-magic-closure-constant entry)))
+	       (LABEL ,internal-label)
+	       (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	       (JGE (@PCR ,gc-label)))))))
+
+(define (generate/make-magic-closure-constant entry)
+  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
+     (+ (* entry 10) 5)))
+
+(define (make-closure-longword code-word pc-offset)
+  (+ code-word (* #x20000 pc-offset)))
+
+(define (make-closure-code-longword frame/min frame/max pc-offset)
+  (make-closure-longword (make-procedure-code-word frame/min frame/max)
+			 pc-offset))
 
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
@@ -617,18 +627,31 @@ MIT in each case. |#
 		  . ,label)
 		 ,@constants))))
       (cons (car info) (inner constants))))
+
+;; IMPORTANT:
+;; frame-size and uuo-label are switched (with respect to the 68k
+;; version) in order to preserve the arity in a constant position (the
+;; i386 is little-endian).  The invocation rule for uuo-links has been
+;; changed to take the extra 2 bytes into account.
+;;
+;; Like closures, execute caches use pc-relative JMP instructions,
+;; which can only be relocated if the old address is available.
+;; Thus execute-cache blocks are extended by a single word that
+;; contains its own address.
 
 (define (transmogrifly uuos)
   (define (inner name assoc)
     (if (null? assoc)
 	(transmogrifly (cdr uuos))
-	(cons (cons name (cdar assoc)) 		; uuo-label
-	      (cons (cons (caar assoc)		; frame-size
-			  (allocate-constant-label))
+	(cons (cons (caar assoc)			; frame-size
+		    (cdar assoc))			; uuo-label
+	      (cons (cons name				; variable name
+			  (allocate-constant-label))	; dummy label
 		    (inner name (cdr assoc))))))
   (if (null? uuos)
       '()
-      (inner (caar uuos) (cdar uuos))))
+      (cons (cons false (allocate-constant-label))	; relocation address
+	    (inner (caar uuos) (cdar uuos)))))
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
