@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.9 1988/11/04 02:26:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.10 1988/11/06 14:53:29 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -78,7 +78,24 @@ MIT in each case. |#
 
 	 "back/insseq"			;LAP instruction sequences
 	 )
-  (parent ()))
+  (parent ())
+  (export ()
+	  compiler:cache-free-variables?
+	  compiler:code-compression?
+	  compiler:cse?
+	  compiler:default-top-level-declarations
+	  compiler:enable-expansion-declarations?
+	  compiler:enable-integration-declarations?
+	  compiler:generate-range-checks?
+	  compiler:generate-rtl-files?
+	  compiler:generate-type-checks?
+	  compiler:implicit-self-static?
+	  compiler:open-code-flonum-checks?
+	  compiler:open-code-primitives?
+	  compiler:optimize-environments?
+	  compiler:package-optimization-level
+	  compiler:preserve-data-structures?
+	  compiler:show-subphases?))
 
 (define-package (compiler macros)
   (files "base/macros")
