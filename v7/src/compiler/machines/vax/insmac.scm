@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.9 1987/08/23 07:56:16 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.10 1987/08/24 14:39:29 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -126,15 +126,15 @@ MIT in each case. |#
 		    `(EA-VALUE ,(caddar fields)))
 	       ,tail)
 	     tail-size))
+	   ;; Displacements are like signed bytes.  They are a different
+	   ;; keyword to allow the disassembler to do its thing correctly.
 	   ((DISPLACEMENT)
-	    (let ((desc (cadar fields)))
-	      (let ((expression (cadr desc))
-		    (size (car desc)))
-		(receiver
-		 `(CONS-SYNTAX
-		   ,(displacement-syntaxer expression size)
-		   ,tail)
-		 (+ size tail-size)))))
+	    (let* ((desc (cadar fields))
+		   (size (car desc)))
+	      (receiver
+	       `(CONS-SYNTAX ,(integer-syntaxer (cadr desc) 'SIGNED size)
+			     ,tail)
+	       (+ size tail-size))))
 	   ((IMMEDIATE)
 	    (receiver
 	     `(CONS-SYNTAX
@@ -144,33 +144,6 @@ MIT in each case. |#
 	   (else
 	    (error "expand-fields: Unknown field kind" (caar fields))))))))
 
-(define (displacement-syntaxer expression size)
-  (cond ((not (pair? expression))
-	 `(SYNTAX-DISPLACEMENT ,expression
-			       ,(make-coercion-name 'SIGNED size)))
-	((eq? '@PCO (car expression))
-	 (integer-syntaxer (cadr expression) 'SIGNED size))
-	((eq? '@PCR (car expression))
-	 (nteger-syntaxer `(- ,(cadr expression)
-			      (+ *PC* ,(/ size 8))) 'SIGNED size))
-	(else
-	 `(SYNTAX-DISPLACEMENT ,expression
-			       ,(make-coercion-name 'SIGNED size)))))
-
-(define (syntax-displacement expression coercion)
-  (cond ((not (pair? expression))
-	 (error "syntax-displacement: bad displacement specifier"
-		expression))
-	((eq? (car expression) '@PCO)
-	 (syntax-evaluation (cadr expression) coercion))
-	((eq? (car expression) '@PCR)
-	 (syntax-evaluation `(- ,(cadr expression)
-				(+ *PC* ,(/ (coercion-size coercion) 8)))
-			    coercion))
-	(else
-	 (error "syntax-displacement: bad displacement specifier"
-		expression))))
-
 (define (collect-byte components tail receiver)
   (define (inner components receiver)
     (if (null? components)

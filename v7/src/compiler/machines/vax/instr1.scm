@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.4 1987/08/19 04:40:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr1.scm,v 1.5 1987/08/24 14:43:17 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 
 #|
 
-A) There are three types of operand specifiers:
+A) There are two types of operand specifiers:
 
     - General addressing mode operand specifier, with matching pattern syntax
 
@@ -52,14 +52,10 @@ A) There are three types of operand specifiers:
       Handbook", on Appendix E. 
       They are implemented in insutl.scm
 
-    - Displacement for branch instructions.  The matching pattern syntax is
-
-      (? value displacement)
-
-      This matches either (@PCO offset) or (@PCR label).
-
-    - Immediate operand.  Only the BUG instruction uses this.  The
-      matching syntax is (? value).      
+    - Immediate operands.  The matching syntax is (? value).  The operand
+      is processed appropriately by the body of the instruction definition.
+      It is used for instruction displacements (ie. the SOB instruction), or
+      immediate operands (ie. the BUG instruction).
 
 B) The instruction set is currently incomplete.  In particular, none
 of the instructions in chapters 14 or 16 are below.  The missing
