@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.7 1989/07/25 12:40:35 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm3.scm,v 4.8 1990/03/14 21:06:06 cph Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -623,7 +623,9 @@ MIT in each case. |#
 			    (src-reg (extract ext 7 10)))
 			(if (eq? dst-fmt 'P)
 			    '(FMOVE packed decimal)
-			    `(FMOVE ,dst-fmt (FP ,src-reg) ,(decode-ea-d 'L)))))
+			    `(FMOVE ,dst-fmt
+				    (FP ,src-reg)
+				    ,(decode-ea-d 'L)))))
 		     (FMOVE-FPcr
 		      (let ((reg
 			     (cdr (assoc (extract ext 10 13) 
@@ -664,9 +666,7 @@ MIT in each case. |#
 	  ,(floating-specifier->mnemonic src-spec)
 	  ,(decode-ea-d 'L)
 	  (FP ,dst-reg))
-	(if (= src-spec dst-reg)
-	    `(,opcode-name (FP ,dst-reg))
-	    `(,opcode-name (FP ,src-spec) (FP ,dst-reg))))))
+	`(,opcode-name (FP ,src-spec) (FP ,dst-reg)))))
 
 (define (floating-opcode->mnemonic n)
   (let ((entry (assoc n 
@@ -732,7 +732,8 @@ MIT in each case. |#
 		   (4 . MI) (3 . PL)
 		   (7 . GLE) (8 . NGLE)
 		   (0 . F) (15 . T)))
-      (error "DECODE-FLOAT-CC: Unrecognized floating point condition code" bits))))
+      (error "DECODE-FLOAT-CC: Unrecognized floating point condition code"
+	     bits))))
 
 (define (match-bits? high low pattern-list)
   (let high-loop ((i 15) (l pattern-list))
