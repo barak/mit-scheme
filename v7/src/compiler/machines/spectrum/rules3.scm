@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.39 1993/02/28 06:16:06 gjr Exp $
+$Id: rules3.scm,v 4.40 1993/07/01 03:23:35 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -152,22 +152,33 @@ MIT in each case. |#
       (LAP ,@(clear-map!)
 	   ,@(load-immediate frame-size regnum:first-arg)
 	   ,@(invoke-interface code:compiler-error))
-      (LAP ,@(clear-map!)
-	   ,@(load-pc-relative (constant->label primitive)
-			       regnum:first-arg
-			       'CONSTANT)
-	   ,@(let ((arity (primitive-procedure-arity primitive)))
-	       (cond ((not (negative? arity))
-		      (invoke-interface code:compiler-primitive-apply))
-		     ((= arity -1)
-		      (LAP ,@(load-immediate (-1+ frame-size) 1)
-			   (STW () 1 ,reg:lexpr-primitive-arity)
-			   ,@(invoke-interface
-			      code:compiler-primitive-lexpr-apply)))
-		     (else
-		      ;; Unknown primitive arity.  Go through apply.
-		      (LAP ,@(load-immediate frame-size regnum:second-arg)
-			   ,@(invoke-interface code:compiler-apply))))))))
+      (let ((arity (primitive-procedure-arity primitive)))
+	(if (not (negative? arity))
+	    (invoke-primitive primitive
+			      hook:compiler-invoke-primitive)
+	    (LAP ,@(clear-map!)
+		 ,@(load-pc-relative (constant->label primitive)
+				     regnum:first-arg
+				     'CONSTANT)
+		 ,@(cond ((= arity -1)
+			  (LAP ,@(load-immediate (-1+ frame-size) 1)
+			       (STW () 1 ,reg:lexpr-primitive-arity)
+			       ,@(invoke-interface
+				  code:compiler-primitive-lexpr-apply)))
+			 #|
+			 ((not (negative? arity))
+			  (invoke-interface code:compiler-primitive-apply))
+			 |#
+			 (else
+			  ;; Unknown primitive arity.  Go through apply.
+			  (LAP ,@(load-immediate frame-size regnum:second-arg)
+			       ,@(invoke-interface code:compiler-apply)))))))))
+
+(define (invoke-primitive primitive hook)
+  ;; Only for known, fixed-arity primitives
+  (LAP ,@(clear-map!)
+       ,@(invoke-hook hook)
+       (WORD () (- ,(constant->label primitive) *PC*))))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -190,7 +201,19 @@ MIT in each case. |#
 	     ,(make-primitive-procedure name true))
 	    frame-size continuation
 	    (optimized-primitive-invocation
-	     ,(symbol-append 'HOOK:COMPILER- name))))))
+	     ,(symbol-append 'HOOK:COMPILER- name)))))
+
+     (define-allocation-primitive
+       (macro (name)
+	 (let ((prim (make-primitive-procedure name true)))
+	 `(define-rule statement
+	    (INVOCATION:SPECIAL-PRIMITIVE
+	     (? frame-size)
+	     (? continuation)
+	     ,prim)
+	    (open-code-block-allocation ',name ',prim
+					,(symbol-append 'HOOK:COMPILER- name)
+					frame-size continuation))))))
 
   (define-optimized-primitive-invocation &+)
   (define-optimized-primitive-invocation &-)
@@ -205,7 +228,10 @@ MIT in each case. |#
   (define-optimized-primitive-invocation positive?)
   (define-optimized-primitive-invocation negative?)
   (define-special-primitive-invocation quotient)
-  (define-special-primitive-invocation remainder))
+  (define-special-primitive-invocation remainder)
+  (define-allocation-primitive vector-cons)
+  (define-allocation-primitive string-allocate)
+  (define-allocation-primitive floating-vector-cons))
 
 (define (special-primitive-invocation code)
   (LAP ,@(clear-map!)
@@ -214,6 +240,78 @@ MIT in each case. |#
 (define (optimized-primitive-invocation hook)
   (LAP ,@(clear-map!)
        ,@(invoke-hook/no-return hook)))
+
+(define (open-code-block-allocation name prim hook frame-size cont-label)
+  name frame-size cont-label			; ignored
+  (invoke-primitive prim hook))
+
+#|
+(define (open-code-block-allocation name prim hook frame-size cont-label)
+  ;; One argument (length in units) on top of the stack.
+  ;; Note: The length checked is not necessarily the complete length
+  ;; of the object, but is off by a constant number of words, which
+  ;; is OK, since we can cons a finite number of words without
+  ;; checking.
+  (define (default)
+    (LAP ,@(clear-map!)
+	 ,@(load-pc-relative (constant->label prim)
+			     regnum:first-arg
+			     'CONSTANT)
+	 ,@(invoke-interface code:compiler-primitive-apply)))
+
+  hook					; ignored
+  (cond ((not (= frame-size 2))
+	 (error "open-code-allocate-block: Wrong number of arguments"
+		prim frame-size))
+	((not compiler:open-code-primitives?)
+	 (default))
+	(else
+	 (let ((label (generate-label))
+	       (rsp regnum:stack-pointer)
+	       (rfp regnum:free-pointer)
+	       (rmp regnum:memtop-pointer)
+	       (ra1 regnum:first-arg)
+	       (ra2 regnum:second-arg)
+	       (ra3 regnum:third-arg)
+	       (rrv regnum:return-value))
+
+	   (define (end tag rl)
+	     (LAP ,@(deposit-type (ucode-type manifest-nm-vector) rl)
+		  (STW () ,rl (OFFSET 0 0 ,rrv))
+		  ,@(deposit-type tag rrv)
+		  (LDO () (OFFSET ,(* 4 frame-size) 0 ,rsp) ,rsp)
+		  (B (N) (@PCR ,cont-label))
+		  (LABEL ,label)
+		  ,@(default)))
+	     
+	   (case name
+	     ((STRING-ALLOCATE)
+	      (LAP (LDW () (OFFSET 0 0 ,rsp) ,ra1)
+		   (COPY () ,rfp ,rrv)
+		   ,@(object->datum ra1 ra1)
+		   (ADD () ,ra1 ,rfp ,ra2)
+		   (COMB (>= N) ,ra2 ,rmp (@PCR ,label))
+		   (STB () 0 (OFFSET 8 0 ,ra2))
+		   (SHD () 0 ,ra1 2 ,ra3)
+		   (LDO () (OFFSET 2 0 ,ra3) ,ra3)
+		   (STWS (MB) ,ra1 (OFFSET 4 0 ,rfp))
+		   (SH2ADD () ,ra3 ,rfp ,rfp)
+		   ,@(end (ucode-type string) ra3)))
+	     ((FLOATING-VECTOR-CONS)
+	      (LAP (LDW () (OFFSET 0 0 ,rsp) ,ra1)
+		   ;; (STW () 0 (OFFSET 0 0 ,rfp))
+		   (DEPI () #b100 31 3 ,rfp)
+		   (COPY () ,rfp ,rrv)
+		   ,@(object->datum ra1 ra1)
+		   (SH3ADD () ,ra1 ,rfp ,ra2)
+		   (COMB (>= N) ,ra2 ,rmp (@PCR ,label))
+		   (SHD () ,ra1 0 31 ,ra1)
+		   (LDO () (OFFSET 4 0 ,ra2) ,rfp)
+		   ,@(end (ucode-type flonum) ra1)))
+	     (else
+	      (error "open-code-block-allocation: Unknown primitive"
+		     name)))))))
+|#		    
 
 ;;;; Invocation Prefixes
 
@@ -240,8 +338,10 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Move <frame-size> words back to SP+offset
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? reg)) (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER (? reg))
+		   (MACHINE-CONSTANT (? offset))))
   (QUALIFIER (= reg regnum:stack-pointer))
   (let ((how-far (* 4 (- offset frame-size))))
     (cond ((zero? how-far)
@@ -270,9 +370,10 @@ MIT in each case. |#
 
 (define-rule statement
   ;; Move <frame-size> words back to base virtual register + offset
-  (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER (? base))
-						   (? offset)))
+  (INVOCATION-PREFIX:MOVE-FRAME-UP
+   (? frame-size)
+   (OFFSET-ADDRESS (REGISTER (? base))
+		   (MACHINE-CONSTANT (? offset))))
   (generate/move-frame-up frame-size
     (lambda (reg)
       (load-offset (* 4 offset) (standard-source! base) reg))))
@@ -676,7 +777,8 @@ MIT in each case. |#
 	    ,@segment
 	    (STW () 2 (OFFSET 0 0 1))
 	    ,@(load-pc-relative-address *block-label* regnum:second-arg 'CODE)
-	    ,@(load-pc-relative-address free-ref-label regnum:third-arg 'CONSTANT)
+	    ,@(load-pc-relative-address free-ref-label regnum:third-arg
+					'CONSTANT)
 	    ,@(load-immediate n-sections regnum:fourth-arg)
 	    ,@(invoke-interface-ble code:compiler-link)
 	    ,@(make-external-label (continuation-code-word false)
@@ -692,7 +794,8 @@ MIT in each case. |#
    (list regnum:first-arg regnum:second-arg
 	 regnum:third-arg regnum:fourth-arg)
    (lambda ()
-     (let ((segment (load-pc-relative code-block-label regnum:second-arg 'CONSTANT)))
+     (let ((segment (load-pc-relative code-block-label regnum:second-arg
+				      'CONSTANT)))
        (LAP ,@segment
 	    ,@(object->address regnum:second-arg)
 	    (LDW () ,reg:environment 2)
