@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.2 1989/06/27 10:18:01 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/graphics.scm,v 1.3 1990/01/22 23:39:37 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -183,9 +183,10 @@ MIT in each case. |#
   (buffer? false))
 
 (define (make-graphics-device type . arguments)
-  (%make-graphics-device type
-			 (apply (graphics-device-type/operation/open type)
-				arguments)))
+  (let ((descriptor
+	 (apply (graphics-device-type/operation/open type) arguments)))
+    (and descriptor
+	 (%make-graphics-device type descriptor))))
 
 (let-syntax
     ((define-graphics-operation
