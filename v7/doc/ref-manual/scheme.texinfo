@@ -152,7 +152,7 @@ MIT in each case.
 @end enumerate
 @end titlepage
 
-@node Top, Overview, (dir), (dir)
+@node Top, Acknowledgements, (dir), (dir)
 
 @ifinfo
 Scheme is the UnCommon Lisp.  This Info file is the programmer reference
@@ -11669,6 +11669,7 @@ operations, such as control of colors.
 * Clipping of Graphics Output::  Clipping of Graphics Output
 * Custom Graphics Operations::  Custom Graphics Operations
 * X Graphics::                  X Graphics
+* Pictures::                    Pictures (MIT 6.001 implementation only)
 * Starbase Graphics::           Starbase Graphics
 @end menu
 
@@ -12038,7 +12039,7 @@ For information on the custom operations for a particular device, see
 the documentation for its type.
 @end deffn
 
-@node X Graphics, Starbase Graphics, Custom Graphics Operations, Graphics
+@node X Graphics, Pictures, Custom Graphics Operations, Graphics
 @section X Graphics
 @cindex X graphics
 
@@ -12299,7 +12300,141 @@ These procedures extract components of objects of type
 in documentation of the @code{XLoadQueryFont} Xlib call.
 @end deffn
 
-@node Starbase Graphics,  , X Graphics, Graphics
+@node Pictures, Starbase Graphics, X Graphics, Graphics
+@section Pictures (MIT 6.001 implementation only)
+
+@cindex pictures
+A `picture' data object is a two-dimensional array of floating point
+numbers that represents a grey-scale image on the screen. The grey
+level that the value of each element represents is determined relative
+to the range of values of the array.
+
+The width of a picture is the number of elements in each row and the height is
+the number of elements in each column. The elements are referenced by giving
+the horizontal component first and the vertical one second, with the origin at
+the bottom left corner of the displayed picture.
+
+Coordinates (i,j) are "valid coordinates" of picture p if and only if:
+
+	i,j are both exact integers and
+	0 <= i < (picture-width p)  and	 0 <= j < (picture-height p) 
+
+@subsection Construction of Pictures
+
+@findex make-picture
+@deffn {procedure+} make-picture X Y [K]
+     Returns a picture of width X and height Y. If K is specified then each 
+     picture element is initialized to K, otherwise the value of each is
+     unspecified. X and Y must be exact integers and K must be real (if 
+     specified).
+@end deffn
+
+@findex procedure->picture
+@deffn {procedure+} procedure->picture X Y F
+     F must be a real-valued function of two variables.
+     Returns a picture of width X and height Y, such that the value of each 
+     element is the value of F at its indices, in floating point notation.
+
+@example
+@group
+(picture-ref (procedure->picture width height f) i j)
+@result {} (exact->inexact (f i j)) for all valid coordinates (i,j)
+@end group
+@end example
+@end deffn
+
+@cindex pgm-file
+@findex pgm-file->picture
+@deffn {procedure+} pgm-file->picture FILENAME
+     Converts a grey-scale image stored in pgm format into a picture whose
+     graphical representation will closely resemble that of the saved image.
+@end deffn
+
+@subsection Selecting Picture Components
+
+@findex picture? 
+@deffn {procedure+} picture? OBJECT
+     Returns `#t' if OBJECT is a picture, otherwise returns `#f'. Note that 
+     this means that the type-descriptor for OBJECT must be `eq?' to that of
+     the picture-type for this procedure to return `#t'.
+@end deffn
+
+@findex picture-width 
+@findex picture-height
+@deffn {procedure+} picture-width PICTURE
+@deffnx {procedure+} picture-height PICTURE
+     These procedures return the width and height, respectively, of PICTURE.
+@end deffn
+
+@findex picture-min 
+@findex picture-max 
+@deffn {procedure+} picture-min PICTURE
+@deffnx {procedure+} picture-max PICTURE
+     These procedures return the least and the greatest values stored in
+     PICTURE.
+@end deffn
+
+@findex picture-ref
+@deffn {procedure+} picture-ref PICTURE I J
+     Returns the value of element (I,J) of PICTURE (always a floating point
+     number). I and J must both be valid coordinates of PICTURE.
+@end deffn
+
+@findex picture-set!
+@deffn {procedure+} picture-set! PICTURE I J K
+     Stores K at element (I,J) in PICTURE and returns an unspecified value.
+     K must be a real number and I and J must be valid coordinates of PICTURE.
+@end deffn
+
+@subsection Picture Operations
+
+@findex picture-map
+@deffn {procedure+} picture-map F PICTURE ...
+     F must be an n-ary function where n is the number of PICTURE arguments
+     passed to picture-map, and each PICTURE argument must have the same
+     dimensions. Returns a newly allocated picture with each element containing
+     the value of F applied to the list of corresponding elements of the 
+     PICTURE arguments.
+
+     i.e. (picture-ref (picture-map f p1 p2 ... ) i j)
+	       => (f (picture-ref p1 i j) (picture-ref p2 i j) ... ).
+@end deffn
+
+@subsection Displaying and Saving Pictures
+
+     To display pictures, a scheme graphics window must first be created.
+     Although, any scheme window may be used, the colormap will not be 
+     guaranteed to be correct for grey-scale pictures, therefore the 
+     recommended way of creating windows for displaying pictures is to use the
+     MAKE-WINDOW procedure.
+
+@findex picture-display
+@deffn {procedure+} picture-display W PICTURE [MIN [MAX]]
+     Displays, in the window W, the largest integer scaling of PICTURE that
+     can be contained in W. If MIN and MAX are specified then the grey levels 
+     will be computed using these values as PICTURE's minimum and maximum
+     values, otherwise the actual least and greatest values of PICTURE will be
+     used. The value returned by this procedure is unspecified.
+@end deffn
+
+@cindex pgm-file
+@findex picture->pgm-file
+@deffn {procedure+} picture->pgm-file PICTURE FILENAME
+     Saves the contents of PICTURE in a file in the current directory with the
+     name FILENAME. The PICTURE is written in pgm format. If FILENAME
+     already exists, then it will be lost after evaluating this procedure.
+@end deffn
+
+@subsection Windows for Pictures
+
+@findex make-window
+@deffn {procedure+} make-window W H X Y
+     Returns a scheme graphics device of width W, height H and screen-position
+     X,Y (as would be given in an X geometry string) with a grey scale colormap
+     attached.
+@end deffn
+
+@node Starbase Graphics,  , Pictures, Graphics
 @section Starbase Graphics
 @cindex starbase graphics
 
