@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.38 1988/02/20 06:16:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.39 1988/03/21 21:10:17 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -45,16 +45,17 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 #include "bchgcc.h"
-
-/* Stub.  Not needed by this version.  Terminates Scheme if invoked. */
 
-Pointer 
-Purify_Pass_2(info)
-     Pointer info;
-{
-  gc_death(TERM_EXIT, "Purify_Pass_2 invoked", NULL, NULL);
-  /*NOTREACHED*/
-}
+#ifdef FLOATING_ALIGNMENT
+/* This must be fixed. */
+#include "error: bchpur does not handle floating alignment."
+#endif
+
+/* Purify modes */
+
+#define	NORMAL_GC	0
+#define PURE_COPY	1
+#define CONSTANT_COPY	2
 
 /* Some utility macros. */
 
@@ -134,20 +135,143 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       case_compiled_entry_point:
 	if (purify_mode == PURE_COPY)
 	  break;
-	Old = Get_Pointer(Temp);
-	if (Old >= Low_Constant)
-	  continue;
-	Compiled_BH(true, continue);
+	relocate_compiled_entry(false);
+
+      case TC_LINKAGE_SECTION:
+      {
+	if (purify_mode == PURE_COPY)
 	{
-	  Pointer *Saved_Old = Old;
-
-	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector(NULL);
-	  *Saved_Old = New_Address;
-	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
-	  continue;
+	  gc_death(TERM_COMPILER_DEATH,
+		   "purifyloop: linkage section in pure area",
+		   Scan, To);
+	  /*NOTREACHED*/
 	}
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* count typeless pointers to quads follow. */
 
+	  fast long count;
+	  long max_count, max_here;
+
+	  Scan++;
+	  max_here = (scan_buffer_top - Scan);
+	  max_count = READ_CACHE_LINKAGE_COUNT(Temp);
+	  while (max_count != 0)
+	  {
+	    count = ((max_count > max_here) ? max_here : max_count);
+	    max_count -= count;
+	    for ( ; --count >= 0; Scan += 1)
+	    {
+	      Temp = *Scan;
+	      relocate_typeless_pointer(copy_quadruple(), 4);
+	    }
+	    if (max_count != 0)
+	    {
+	      /* We stopped because we needed to relocate too many. */
+	      Scan = dump_and_reload_scan_buffer(0, NULL);
+	      max_here = GC_DISK_BUFFER_SIZE;
+	    }
+	  }
+	  /* The + & -1 are here because of the Scan++ in the for header. */
+	  Scan -= 1;
+	  break;
+	}
+
+	else
+	{
+	  /* Operator linkage */
+
+	  fast long count;
+	  fast machine_word *word_ptr, *next_ptr;
+	  long overflow;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  overflow = ((END_OPERATOR_LINKAGE_AREA(Scan, count)) -
+		      scan_buffer_top);
+
+	  for (next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	       (--count >= 0);
+	       word_ptr = next_ptr,
+	       next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr))
+	  {
+	    if (next_ptr > ((machine_word *) scan_buffer_top))
+	    {
+	      extend_scan_buffer((char *) next_ptr, To);
+	      ONCE_ONLY(relocate_linked_operator(false));
+	      next_ptr = ((machine_word *)
+			  end_scan_buffer_extension((char *) next_ptr));
+	      overflow -= GC_DISK_BUFFER_SIZE;
+	    }
+	    else
+	    {
+	      relocate_linked_operator(false);
+	    }
+	  }
+	  Scan = scan_buffer_top + overflow;
+	  break;
+	}	
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	if (purify_mode == PURE_COPY)
+	{
+	  gc_death(TERM_COMPILER_DEATH,
+		   "purifyloop: manifest closure in pure area",
+		   Scan, To);
+	  /*NOTREACHED*/
+	}
+      }
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr, *next_ptr;
+
+	Scan += 1;
+	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	
+	for (word_ptr = start_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	     true;
+	     word_ptr = next_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  if (!MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, scan_buffer_top))
+	  {
+	    long dw, ds;
+
+	    dw = (word_ptr - ((machine_word *) scan_buffer_top));
+	    ds = (word_ptr - start_ptr);
+	    word_ptr = (((machine_word *)
+			 (dump_and_reload_scan_buffer(0, NULL))) +
+			dw);
+	    start_ptr = word_ptr - ds;
+	    next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  }
+	  if (!VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	  {
+	    break;
+	  }
+	  else if (next_ptr > ((machine_word *) scan_buffer_top))
+	  {
+	    long ds;
+
+	    ds = (next_ptr - start_ptr);
+	    extend_scan_buffer((char *) next_ptr, To);
+	    ONCE_ONLY(relocate_manifest_closure(false));
+	    next_ptr = ((machine_word *)
+			end_scan_buffer_extension((char *) next_ptr));
+	    start_ptr = next_ptr - ds;
+	  }
+	  else
+	  {
+	    relocate_manifest_closure(false);
+	  }
+	}
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	break;
+      }
+
       case_Cell:
 	relocate_normal_pointer(copy_cell(), 1);
 
@@ -190,14 +314,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  break;
 	/* Fall through */
 
-#ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
-	/* This must be fixed. */
-#include "error: bchpur does not handle floating alignment."
-#else
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
       case_Purify_Vector:
 	relocate_normal_setup();
       Move_Vector:
@@ -295,7 +412,7 @@ purify(object, flag)
   {
     free_buffer = purify_header_overflow(free_buffer);
   }
-
+
   if (flag == TRUTH)
   {
     Result = purifyloop(initialize_scan_buffer(),
@@ -338,7 +455,17 @@ purify(object, flag)
   *block_start = Make_Non_Pointer(PURE_PART, (length - 1));
   GC(Weak_Chain);
   Set_Pure_Top();
-  return TRUTH;
+  return (TRUTH);
+}
+
+/* Stub.  Not needed by this version.  Terminates Scheme if invoked. */
+
+Pointer 
+Purify_Pass_2(info)
+     Pointer info;
+{
+  gc_death(TERM_EXIT, "Purify_Pass_2 invoked", NULL, NULL);
+  /*NOTREACHED*/
 }
 
 /* (PRIMITIVE-PURIFY OBJECT PURE?)

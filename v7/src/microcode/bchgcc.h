@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.31 1988/02/20 06:16:05 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.32 1988/03/21 21:09:28 jinx Rel $ */
 
 #include "gccode.h"
 #ifdef bsd
@@ -38,23 +38,28 @@ MIT in each case. */
 #else
 #include <fcntl.h>
 #endif
-
+
 /* All of these are in objects (Pointer), not bytes. */
 
-#define GC_EXTRA_BUFFER_SIZE	512
-#define GC_DISK_BUFFER_SIZE	1024
-#define GC_BUFFER_SPACE		(GC_DISK_BUFFER_SIZE + GC_EXTRA_BUFFER_SIZE)
-#define GC_BUFFER_BYTES		(GC_DISK_BUFFER_SIZE * sizeof(Pointer))
+#define GC_EXTRA_BUFFER_SIZE		512
+#define GC_DISK_BUFFER_SIZE		1024
+#define GC_BUFFER_SPACE			(GC_DISK_BUFFER_SIZE + GC_EXTRA_BUFFER_SIZE)
+#define GC_BUFFER_BYTES			(GC_DISK_BUFFER_SIZE * sizeof(Pointer))
+#define GC_BUFFER_OVERLAP_BYTES		(GC_EXTRA_BUFFER_SIZE * sizeof(Pointer))
+#define GC_BUFFER_REMAINDER_BYTES	(GC_BUFFER_BYTES - GC_BUFFER_OVERLAP_BYTES)			 
 
 #define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
 #define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
 #define GC_DEFAULT_FILE_NAME	"/tmp/GCXXXXXX"
 
-extern Pointer *scan_buffer_top;
-extern Pointer *free_buffer_top;
+extern Pointer *scan_buffer_top, *scan_buffer_bottom;
+extern Pointer *free_buffer_top, *free_buffer_bottom;
 extern Pointer *dump_and_reload_scan_buffer();
 extern Pointer *dump_and_reset_free_buffer();
 extern void    dump_free_directly(), load_buffer();
+
+extern void    extend_scan_buffer();
+extern char    *end_scan_buffer_extension();
 
 extern Pointer *GCLoop();
 extern Pointer *initialize_free_buffer(), *initialize_scan_buffer();
@@ -81,7 +86,7 @@ extern char gc_death_message_buffer[];
 {									\
   long Car_Type;							\
 									\
-  Car_Type = Type_Code(*Old);						\
+  Car_Type = OBJECT_TYPE(*Old);						\
   *To++ = Make_New_Pointer(TC_NULL, *Old);				\
   Old += 1;								\
   *To++ = *Old;								\
@@ -136,7 +141,9 @@ extern char gc_death_message_buffer[];
     Scan = To + (overflow % GC_DISK_BUFFER_SIZE);			\
   }									\
   while (To != Scan)							\
+  {									\
     *To++ = *Old++;							\
+  }									\
   Scan = Saved_Scan;							\
 }
 
@@ -147,9 +154,9 @@ extern char gc_death_message_buffer[];
   Old = Get_Pointer(Temp);						\
   if (Old >= Low_Constant)						\
     continue;								\
-  if (Type_Code(*Old) == TC_BROKEN_HEART)				\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
   {									\
-    *Scan = Make_New_Pointer(Type_Code(Temp), *Old);			\
+    *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
     continue;								\
   }									\
   New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
@@ -160,13 +167,15 @@ extern char gc_death_message_buffer[];
   copy_code;								\
   To_Address += (length);						\
   if (To >= free_buffer_top)						\
+  {									\
     To = dump_and_reset_free_buffer((To - free_buffer_top), NULL);	\
+  }									\
 }
 
 #define relocate_normal_end()						\
 {									\
   *Get_Pointer(Temp) = New_Address;					\
-  *Scan = Make_New_Pointer(Type_Code(Temp), New_Address);		\
+  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), New_Address);		\
   continue;								\
 }
 
@@ -176,3 +185,76 @@ extern char gc_death_message_buffer[];
   relocate_normal_transport(copy_code, length);				\
   relocate_normal_end();						\
 }
+
+/* Typeless objects (implicit types). */
+
+#define relocate_typeless_setup()					\
+{									\
+  Old = ((Pointer *) Temp);						\
+  if (Old >= Low_Constant)						\
+    continue;								\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
+  {									\
+    *Scan = ((Pointer) Get_Pointer(*Old));				\
+    continue;								\
+  }									\
+  New_Address = ((Pointer) To_Address);					\
+}
+
+#define relocate_typeless_transport(copy_code, length)			\
+{									\
+  relocate_normal_transport(copy_code, length);				\
+}
+
+#define relocate_typeless_end()						\
+{									\
+  *((Pointer *) Temp) = Make_Broken_Heart(C_To_Scheme(New_Address));	\
+  *Scan = New_Address;							\
+  continue;								\
+}
+
+#define relocate_typeless_pointer(copy_code, length)			\
+{									\
+  relocate_typeless_setup();						\
+  relocate_typeless_transport(copy_code, length);			\
+  relocate_typeless_end();						\
+}
+
+#define relocate_compiled_entry(in_gc_p)				\
+{									\
+  Old = Get_Pointer(Temp);						\
+  if (Old >= Low_Constant)						\
+    continue;								\
+  Compiled_BH(in_gc_p, continue);					\
+  {									\
+    Pointer *Saved_Old = Old;						\
+									\
+    New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
+    copy_vector(NULL);							\
+    *Saved_Old = New_Address;						\
+    *Scan = Relocate_Compiled(Temp,					\
+			      Get_Pointer(New_Address),			\
+			      Saved_Old);				\
+    continue;								\
+  }									\
+}
+
+#define relocate_linked_operator(in_gc_p)				\
+{									\
+  Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);			\
+  Temp = *Scan;								\
+  relocate_compiled_entry(in_gc_p);					\
+}
+
+#define relocate_manifest_closure(in_gc_p)				\
+{									\
+  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);			\
+  Temp = *Scan;								\
+  relocate_compiled_entry(in_gc_p);					\
+}
+
+#define ONCE_ONLY(stmt)							\
+do									\
+{									\
+  stmt;									\
+} while (false)

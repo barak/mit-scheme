@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.41 1988/02/20 06:15:49 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.42 1988/03/21 21:09:06 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -45,6 +45,11 @@ MIT in each case. */
 #include "bchgcc.h"
 #include "fasl.h"
 #include "dump.c"
+
+#ifdef FLOATING_ALIGNMENT
+/* This must be fixed. */
+#include "error: bchdmp does not handle floating alignment."
+#endif
 
 extern Pointer
   dump_renumber_primitive(),
@@ -63,12 +68,22 @@ static Boolean compiled_code_present_p;
 
 /* Utility macros. */
 
+#define fasdump_remember_to_fix(location, contents)			\
+{									\
+  if ((fixup == fixup_buffer) && (!reset_fixes()))			\
+  {									\
+    return (PRIM_INTERRUPT);						\
+  }									\
+  *--fixup = contents;							\
+  *--fixup = ((Pointer) location);					\
+}
+
 #define fasdump_normal_setup()						\
 {									\
   Old = Get_Pointer(Temp);						\
-  if (Type_Code(*Old) == TC_BROKEN_HEART)				\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
   {									\
-    *Scan = Make_New_Pointer(Type_Code(Temp), *Old);			\
+    *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);			\
     continue;								\
   }									\
   New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
@@ -97,7 +112,7 @@ static Boolean compiled_code_present_p;
 #define fasdump_normal_end()						\
 {									\
   *Get_Pointer(Temp) = New_Address;					\
-  *Scan = Make_New_Pointer(Type_Code(Temp), New_Address);		\
+  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), New_Address);		\
   continue;								\
 }
 
@@ -107,15 +122,67 @@ static Boolean compiled_code_present_p;
   fasdump_normal_transport(copy_code, length);				\
   fasdump_normal_end();							\
 }
-
-#define fasdump_remember_to_fix(location, contents)			\
+
+#define fasdump_typeless_setup()					\
 {									\
-  if ((fixup == fixup_buffer) && (!reset_fixes()))			\
+  Old = ((Pointer *) Temp);						\
+  if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)				\
   {									\
-    return (PRIM_INTERRUPT);						\
+    *Scan = ((Pointer) Get_Pointer(*Old));				\
+    continue;								\
   }									\
-  *--fixup = contents;							\
-  *--fixup = ((Pointer) location);					\
+  New_Address = ((Pointer) To_Address);					\
+  fasdump_remember_to_fix(Old, *Old);					\
+}
+
+#define fasdump_typeless_end()						\
+{									\
+  *Get_Pointer(Temp) = Make_Broken_Heart(C_To_Scheme(New_Address));	\
+  *Scan = ((Pointer) New_Address);					\
+  continue;								\
+}
+
+#define fasdump_typeless_pointer(copy_code, length)			\
+{									\
+  fasdump_typeless_setup();						\
+  fasdump_normal_transport(copy_code, length);				\
+  fasdump_typeless_end();						\
+}
+
+#define fasdump_compiled_entry()					\
+{									\
+  compiled_code_present_p = true;					\
+  Old = Get_Pointer(Temp);						\
+  Compiled_BH(false, continue);						\
+  {									\
+    Pointer *Saved_Old = Old;						\
+									\
+    fasdump_remember_to_fix(Old, *Old);					\
+    New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));		\
+    copy_vector(&success);						\
+    if (!success)							\
+    {									\
+      return (PRIM_INTERRUPT);						\
+    }									\
+    *Saved_Old = New_Address;						\
+    *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address),		\
+			      Saved_Old);				\
+    continue;								\
+  }									\
+}
+
+#define fasdump_linked_operator()					\
+{									\
+  Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);			\
+  Temp = *Scan;								\
+  fasdump_compiled_entry();						\
+}
+
+#define fasdump_manifest_closure()					\
+{									\
+  Scan = MANIFEST_CLOSURE_ENTRY_ADDRESS(word_ptr);			\
+  Temp = *Scan;								\
+  fasdump_compiled_entry();						\
 }
 
 Boolean
@@ -274,26 +341,128 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case TC_STACK_ENVIRONMENT:
       case_Fasload_Non_Pointer:
 	break;
-
+
       case_compiled_entry_point:
-	compiled_code_present_p = true;
-	Old = Get_Pointer(Temp);
-	Compiled_BH(true, continue);
-	{
-	  Pointer *Saved_Old = Old;
+	fasdump_compiled_entry();
 
-	  fasdump_remember_to_fix(Old, *Old);
-	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector(&success);
-	  if (!success)
+      case TC_LINKAGE_SECTION:
+      {
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
+	{
+	  /* count typeless pointers to quads follow. */
+
+	  fast long count;
+	  long max_count, max_here;
+
+	  Scan++;
+	  max_here = (scan_buffer_top - Scan);
+	  max_count = READ_CACHE_LINKAGE_COUNT(Temp);
+	  while (max_count != 0)
 	  {
-	    return (PRIM_INTERRUPT);
+	    count = ((max_count > max_here) ? max_here : max_count);
+	    max_count -= count;
+	    for ( ; --count >= 0; Scan += 1)
+	    {
+	      Temp = *Scan;
+	      fasdump_typeless_pointer(copy_quadruple(), 4);
+	    }
+	    if (max_count != 0)
+	    {
+	      /* We stopped because we needed to relocate too many. */
+	      Scan = dump_and_reload_scan_buffer(0, NULL);
+	      max_here = GC_DISK_BUFFER_SIZE;
+	    }
 	  }
-	  *Saved_Old = New_Address;
-	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address),
-				    Saved_Old);
-	  continue;
+	  /* The + & -1 are here because of the Scan++ in the for header. */
+	  Scan -= 1;
+	  break;
 	}
+
+	else
+	{
+	  /* Operator linkage */
+
+	  fast long count;
+	  fast machine_word *word_ptr, *next_ptr;
+	  long overflow;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  overflow = ((END_OPERATOR_LINKAGE_AREA(Scan, count)) -
+		      scan_buffer_top);
+
+	  for (next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	       (--count >= 0);
+	       word_ptr = next_ptr,
+	       next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr))
+	  {
+	    if (next_ptr > ((machine_word *) scan_buffer_top))
+	    {
+	      extend_scan_buffer((char *) next_ptr, To);
+	      ONCE_ONLY(fasdump_linked_operator());
+	      next_ptr = ((machine_word *)
+			  end_scan_buffer_extension((char *) next_ptr));
+	      overflow -= GC_DISK_BUFFER_SIZE;
+	    }
+	    else
+	    {
+	      fasdump_linked_operator();
+	    }
+	  }
+	  Scan = scan_buffer_top + overflow;
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr, *next_ptr;
+
+	Scan += 1;
+	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	
+	for (word_ptr = start_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	     true;
+	     word_ptr = next_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  if (!MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, scan_buffer_top))
+	  {
+	    long dw, ds;
+
+	    dw = (word_ptr - ((machine_word *) scan_buffer_top));
+	    ds = (word_ptr - start_ptr);
+	    word_ptr = (((machine_word *)
+			 (dump_and_reload_scan_buffer(0, NULL))) +
+			dw);
+	    start_ptr = word_ptr - ds;
+	    next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  }
+	  if (!VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	  {
+	    break;
+	  }
+	  else if (next_ptr > ((machine_word *) scan_buffer_top))
+	  {
+	    long ds;
+
+	    ds = (next_ptr - start_ptr);
+	    extend_scan_buffer((char *) next_ptr, To);
+	    ONCE_ONLY(fasdump_manifest_closure());
+	    next_ptr = ((machine_word *)
+			end_scan_buffer_extension((char *) next_ptr));
+	    start_ptr = next_ptr - ds;
+	  }
+	  else
+	  {
+	    fasdump_manifest_closure();
+	  }
+	}
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	break;
+      }
 
       case_Cell:
 	fasdump_normal_pointer(copy_cell(), 1);
@@ -344,14 +513,7 @@ dumploop(Scan, To_ptr, To_Address_ptr)
       case_Quadruple:
 	fasdump_normal_pointer(copy_quadruple(), 4);
 
-#ifdef FLOATING_ALIGNMENT
       case TC_BIG_FLONUM:
-	/* This must be fixed. */
-#include "error: bchdmp does not handle floating alignment."
-#else
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
       case TC_COMPILED_CODE_BLOCK:
       case_Purify_Vector:
 	fasdump_normal_setup();
@@ -520,7 +682,7 @@ DEFINE_PRIMITIVE("DUMP-BAND", Prim_Band_Dump, 2)
   Primitive_2_Args();
 
   Band_Dump_Permitted();
-  Arg1Type = Type_Code(Arg1);
+  Arg1Type = OBJECT_TYPE(Arg1);
   if ((Arg1Type != TC_CONTROL_POINT) &&
       (Arg1Type != TC_EXTENDED_PROCEDURE) &&
       (Arg1Type != TC_PRIMITIVE))

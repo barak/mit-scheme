@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.32 1988/02/20 06:16:15 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcl.c,v 9.33 1988/03/21 21:09:41 jinx Rel $ */
 
 /* bchgcl, bchmmg, bchpur, and bchdmp can replace gcloop, memmag,
    purify, and fasdump, respectively, to provide garbage collection
@@ -39,6 +39,11 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "bchgcc.h"
+
+#ifdef FLOATING_ALIGNMENT
+/* This must be fixed. */
+#include "error: bchgcl does not handle floating alignment."
+#endif
 
 Pointer *
 GCLoop(Scan, To_ptr, To_Address_ptr)
@@ -88,30 +93,137 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 		   (overflow % GC_DISK_BUFFER_SIZE)) - 1);
 	  break;
 	}
-
+
       case_Non_Pointer:
 	break;
-
+
       case_compiled_entry_point:
-	Old = Get_Pointer(Temp);
-	if (Old >= Low_Constant)
-	  continue;
-	Compiled_BH(true, continue);
+	relocate_compiled_entry(true);
+
+      case TC_LINKAGE_SECTION:
+      {
+	if (READ_LINKAGE_KIND(Temp) != OPERATOR_LINKAGE_KIND)
 	{
-	  Pointer *Saved_Old = Old;
+	  /* count typeless pointers to quads follow. */
 
-	  New_Address = Make_Broken_Heart(C_To_Scheme(To_Address));
-	  copy_vector(NULL);
-	  *Saved_Old = New_Address;
-	  *Scan = Relocate_Compiled(Temp, Get_Pointer(New_Address), Saved_Old);
-	  continue;
+	  fast long count;
+	  long max_count, max_here;
+
+	  Scan++;
+	  max_here = (scan_buffer_top - Scan);
+	  max_count = READ_CACHE_LINKAGE_COUNT(Temp);
+	  while (max_count != 0)
+	  {
+	    count = ((max_count > max_here) ? max_here : max_count);
+	    max_count -= count;
+	    for ( ; --count >= 0; Scan += 1)
+	    {
+	      Temp = *Scan;
+	      relocate_typeless_pointer(copy_quadruple(), 4);
+	    }
+	    if (max_count != 0)
+	    {
+	      /* We stopped because we needed to relocate too many. */
+	      Scan = dump_and_reload_scan_buffer(0, NULL);
+	      max_here = GC_DISK_BUFFER_SIZE;
+	    }
+	  }
+	  /* The + & -1 are here because of the Scan++ in the for header. */
+	  Scan -= 1;
+	  break;
 	}
+
+	else
+	{
+	  /* Operator linkage */
 
+	  fast long count;
+	  fast machine_word *word_ptr, *next_ptr;
+	  long overflow;
+
+	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
+	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
+	  overflow = ((END_OPERATOR_LINKAGE_AREA(Scan, count)) -
+		      scan_buffer_top);
+
+	  for (next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
+	       (--count >= 0);
+	       word_ptr = next_ptr,
+	       next_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr))
+	  {
+	    if (next_ptr > ((machine_word *) scan_buffer_top))
+	    {
+	      extend_scan_buffer((char *) next_ptr, To);
+	      ONCE_ONLY(relocate_linked_operator(true));
+	      next_ptr = ((machine_word *)
+			  end_scan_buffer_extension((char *) next_ptr));
+	      overflow -= GC_DISK_BUFFER_SIZE;
+	    }
+	    else
+	    {
+	      relocate_linked_operator(true);
+	    }
+	  }
+	  Scan = scan_buffer_top + overflow;
+	  break;
+	}
+      }
+
+      case TC_MANIFEST_CLOSURE:
+      {
+	machine_word *start_ptr;
+	fast machine_word *word_ptr, *next_ptr;
+
+	Scan += 1;
+	start_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
+	
+	for (word_ptr = start_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	     true;
+	     word_ptr = next_ptr,
+	     next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	{
+	  if (!MANIFEST_CLOSURE_VALID_FITS_P(word_ptr, scan_buffer_top))
+	  {
+	    long dw, ds;
+
+	    dw = (word_ptr - ((machine_word *) scan_buffer_top));
+	    ds = (word_ptr - start_ptr);
+	    word_ptr = (((machine_word *)
+			 (dump_and_reload_scan_buffer(0, NULL))) +
+			dw);
+	    start_ptr = word_ptr - ds;
+	    next_ptr = NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr);
+	  }
+	  if (!VALID_MANIFEST_CLOSURE_ENTRY(word_ptr))
+	  {
+	    break;
+	  }
+	  else if (next_ptr > ((machine_word *) scan_buffer_top))
+	  {
+	    long ds;
+
+	    ds = (next_ptr - start_ptr);
+	    extend_scan_buffer((char *) next_ptr, To);
+	    ONCE_ONLY(relocate_manifest_closure(true));
+	    next_ptr = ((machine_word *)
+			end_scan_buffer_extension((char *) next_ptr));
+	    start_ptr = next_ptr - ds;
+	  }
+	  else
+	  {
+	    relocate_manifest_closure(true);
+	  }
+	}
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
+	break;
+      }
+
       case_Cell:
 	relocate_normal_pointer(copy_cell(), 1);
 
       case TC_REFERENCE_TRAP:
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  /* It is a non pointer. */
 	  break;
@@ -126,15 +238,8 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
 
       case_Quadruple:
 	relocate_normal_pointer(copy_quadruple(), 4);
-
-#ifdef FLOATING_ALIGNMENT
+
       case TC_BIG_FLONUM:
-	/* This must be fixed. */
-#include "error: bchgcl does not handle floating alignment."
-#else
-      case TC_BIG_FLONUM:
-	/* Fall through */
-#endif
       case_Vector:
 	relocate_normal_setup();
       Move_Vector:
@@ -144,7 +249,9 @@ GCLoop(Scan, To_ptr, To_Address_ptr)
       case TC_FUTURE:
 	relocate_normal_setup();
 	if (!(Future_Spliceable(Temp)))
+	{
 	  goto Move_Vector;
+	}
 	*Scan = Future_Value(Temp);
 	Scan -= 1;
 	continue;

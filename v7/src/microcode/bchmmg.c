@@ -30,14 +30,17 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.40 1988/02/20 19:50:27 jinx Exp $ */
-
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.41 1988/03/21 21:09:57 jinx Rel $ */
+
 /* Memory management top level.  Garbage collection to disk.
 
    The algorithm is basically the same as for the 2 space collector,
    except that new space is on the disk, and there are two windows to
-   it (the scan and free buffers).  For information on the 2 space
-   collector, read the comments in the replaced files.
+   it (the scan and free buffers).  The two windows are physically the
+   same whent hey correspond to the same section of the disk.
+
+   For information on the 2 space collector, read the comments in the
+   replaced files.
 
    The memory management code is spread over 3 files:
    - bchmmg.c: initialization and top level.  Replaces memmag.c
@@ -46,15 +49,14 @@ MIT in each case. */
    - bchdmp.c: object world image dumping.    Replaces fasdump.c
 
    Problems with this implementation right now:
-   - It only works on Unix (or systems which support Unix i/o calls).
-   - Purify is not implemented.
-   - Fasdump is not implemented.
+   - Purify kills Scheme if there is not enough space in constant space
+     for the new object.
    - Floating alignment is not implemented.
-   - Dumpworld will not work because the file is not closed at dump time.
+   - It only works on Unix (or systems which support Unix i/o calls).
+   - Dumpworld cannot work because the file is not closed at dump time or
+     reopened at restart time.
    - Command line supplied gc files are not locked, so two processes can try
-     to share them.
-   - Compiled code handling in bchgcl is not generic, may only work for 68k
-     family processors.
+     to share them and get very confused.
 */
 
 #include "scheme.h"
@@ -98,6 +100,9 @@ static long scan_position, free_position;
 static Pointer *gc_disk_buffer_1, *gc_disk_buffer_2;
 Pointer *scan_buffer_top, *scan_buffer_bottom;
 Pointer *free_buffer_top, *free_buffer_bottom;
+
+static Boolean extension_overlap_p;
+static long extension_overlap_length;
 
 /* Hacking the gc file */
 
@@ -134,7 +139,9 @@ open_gc_file(size)
   {
     gc_file = open(gc_file_name, flags, GC_FILE_MASK);
     if (gc_file != -1)
+    {
       break;
+    }
     if (gc_file_name != gc_default_file_name)
     {
       fprintf(stderr,
@@ -168,11 +175,15 @@ void
 close_gc_file()
 {
   if (close(gc_file) == -1)
+  {
     fprintf(stderr,
 	    "%s: Problems closing GC file \"%s\".\n",
 	    Saved_argv[0], gc_file_name);
+  }
   if (gc_file_name == gc_default_file_name)
+  {
     unlink(gc_file_name);
+  }
   return;
 }
 
@@ -333,12 +344,8 @@ reload_scan_buffer()
     scan_buffer_top = free_buffer_top;
     return;
   }
-  scan_buffer_bottom = ((free_buffer_bottom == gc_disk_buffer_1) ?
-			gc_disk_buffer_2 :
-			gc_disk_buffer_1);
   load_buffer(scan_position, scan_buffer_bottom,
 	      GC_BUFFER_BYTES, "the scan buffer");
-  scan_buffer_top = scan_buffer_bottom + GC_DISK_BUFFER_SIZE;
   *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
   return;
 }
@@ -347,12 +354,18 @@ Pointer *
 initialize_scan_buffer()
 {
   scan_position = 0;
+  scan_buffer_bottom = ((free_buffer_bottom == gc_disk_buffer_1) ?
+			gc_disk_buffer_2 :
+			gc_disk_buffer_1);
+  scan_buffer_top = scan_buffer_bottom + GC_DISK_BUFFER_SIZE;
   reload_scan_buffer();
-  return scan_buffer_bottom;
+  return (scan_buffer_bottom);
 }
 
 /* This hacks the scan buffer also so that Scan is always below
    scan_buffer_top until the scan buffer is initialized.
+   Various parts of the garbage collector depend on scan_buffer_top
+   always pointing to a valid buffer.
 */
 Pointer *
 initialize_free_buffer()
@@ -360,10 +373,11 @@ initialize_free_buffer()
   free_position = 0;
   free_buffer_bottom = gc_disk_buffer_1;
   free_buffer_top = free_buffer_bottom + GC_DISK_BUFFER_SIZE;
+  extension_overlap_p = false;
   scan_position = -1;
   scan_buffer_bottom = gc_disk_buffer_2;
   scan_buffer_top = scan_buffer_bottom + GC_DISK_BUFFER_SIZE;
-  return free_buffer_bottom;
+  return (free_buffer_bottom);
 }
 
 void
@@ -375,6 +389,123 @@ end_transport(success)
   return;
 }
 
+/* These utilities are needed when pointers fall accross window boundaries.
+
+   Between both they effectively do a dump_and_reload_scan_buffer, in two
+   stages.
+
+   Having bcopy would be nice here.
+*/
+
+void
+extend_scan_buffer(to_where, current_free)
+     fast char *to_where;
+     Pointer *current_free;
+{
+  long new_scan_position;
+
+  new_scan_position = (scan_position + GC_BUFFER_BYTES);
+
+  /* Is there overlap?, ie. is the next bufferfull the one cached
+     in the free pointer window? */
+
+  if (new_scan_position == free_position)
+  {
+    fast char *source, *dest;
+    long temp;
+
+    extension_overlap_p = true;
+    source = ((char *) free_buffer_bottom);
+    dest = ((char *) scan_buffer_top);
+    extension_overlap_length = (to_where - dest);
+    temp = (((char *) current_free) - source);
+    if (temp < extension_overlap_length)
+    {
+      /* This should only happen when Scan and Free are very close. */
+      extension_overlap_length = temp;
+    }
+
+    while (dest < to_where)
+    {
+      *dest++ = *source++;
+    }
+  }
+  else
+  {
+    extension_overlap_p = false;
+    load_buffer(new_scan_position, scan_buffer_top,
+		GC_BUFFER_OVERLAP_BYTES, "the scan buffer");
+  }
+  return;
+}
+
+char *
+end_scan_buffer_extension(to_relocate)
+     char *to_relocate;
+{
+  char *result;
+
+  dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan",
+	      ((Boolean *) NULL));
+  if (!extension_overlap_p)
+  {
+    /* There was no overlap */
+
+    fast Pointer *source, *dest, *limit;
+
+    source = scan_buffer_top;
+    dest = scan_buffer_bottom;
+    limit = &source[GC_EXTRA_BUFFER_SIZE];
+    result = (((char *) scan_buffer_bottom) +
+	      (to_relocate - ((char *) scan_buffer_top)));
+
+    while (source < limit)
+    {
+      *dest++ = *source++;
+    }
+    load_buffer((scan_position + GC_BUFFER_OVERLAP_BYTES),
+		dest,
+		GC_BUFFER_REMAINDER_BYTES,
+		"the scan buffer");
+    *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+  }
+  else
+  {
+    fast char *source, *dest, *limit;
+
+    source = ((char *) scan_buffer_top);
+    dest = ((scan_position == free_position) ?
+	    ((char *) free_buffer_bottom) :
+	    ((char *) scan_buffer_bottom));
+    limit = &source[extension_overlap_length];
+    result = &dest[to_relocate - source];
+
+    while (source < limit)
+    {
+      *dest++ = *source++;
+    }
+    if (scan_position == free_position)
+    {
+      /* There was overlap, and there still is. */
+
+      scan_buffer_bottom = free_buffer_bottom;
+      scan_buffer_top = free_buffer_top;
+    }
+    else
+    {
+      /* There was overlap, but there no longer is. */
+
+      load_buffer((scan_position + extension_overlap_length),
+		  dest,
+		  (GC_BUFFER_BYTES - extension_overlap_length),
+		  "the scan buffer");
+      *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+    }
+  }
+  extension_overlap_p = false;
+  return (result);
+}
+
 Pointer *
 dump_and_reload_scan_buffer(number_to_skip, success)
      long number_to_skip;
@@ -382,9 +513,11 @@ dump_and_reload_scan_buffer(number_to_skip, success)
 {
   dump_buffer(scan_buffer_bottom, &scan_position, 1, "scan", success);
   if (number_to_skip != 0)
+  {
     scan_position += (number_to_skip * GC_BUFFER_BYTES);
+  }
   reload_scan_buffer();
-  return scan_buffer_bottom;
+  return (scan_buffer_bottom);
 }
 
 Pointer *
@@ -408,17 +541,25 @@ dump_and_reset_free_buffer(overflow, success)
     free_buffer_top = free_buffer_bottom + GC_DISK_BUFFER_SIZE;
   }
   else
+  {
     dump_buffer(free_buffer_bottom, &free_position, 1, "free", success);
+  }
 
   for (into = free_buffer_bottom; --overflow >= 0; )
+  {
     *into++ = *from++;
+  }
 
-  /* This only needs to be done when they were the same buffer,
-     but it does not hurt.
-  */
-  *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);    
-
-  return into;
+  /* This need only be done when free_buffer_bottom was scan_buffer_bottom,
+     but it does not hurt otherwise unless we were in the
+     extend_scan_buffer/end_scan_buffer_extension window.
+     It must also be done after the for loop above.
+   */
+  if (!extension_overlap_p)
+  {
+    *scan_buffer_top = Make_Pointer(TC_BROKEN_HEART, scan_buffer_top);
+  }
+  return (into);
 }
 
 void
@@ -444,7 +585,9 @@ void
 flush_new_space_buffer()
 {
   if (current_buffer_position == -1)
+  {
     return;
+  }
   dump_buffer(gc_disk_buffer_1, &current_buffer_position,
 	      1, "weak pair buffer", NULL);
   current_buffer_position = -1;
@@ -458,7 +601,9 @@ guarantee_in_memory(addr)
   long position, offset;
 
   if (addr >= Constant_Space)
-    return addr;
+  {
+    return (addr);
+  }
 
   position = (addr - Heap_Bottom);
   offset = (position % GC_DISK_BUFFER_SIZE);
@@ -471,7 +616,7 @@ guarantee_in_memory(addr)
 		GC_BUFFER_BYTES, "the weak pair buffer");
     current_buffer_position = position;
   }
-  return &gc_disk_buffer_1[offset];
+  return (&gc_disk_buffer_1[offset]);
 }
 
 /* For a description of the algorithm, see memmag.c.
@@ -494,21 +639,22 @@ Fix_Weak_Chain()
     Scan = guarantee_in_memory(Get_Pointer(*Old_Weak_Cell++));
     Weak_Chain = *Old_Weak_Cell;
     Old_Car = *Scan;
-    Temp = Make_New_Pointer(Type_Code(Weak_Chain), Old_Car);
+    Temp = Make_New_Pointer(OBJECT_TYPE(Weak_Chain), Old_Car);
     Weak_Chain = Make_New_Pointer(TC_NULL, Weak_Chain);
 
     switch(GC_Type(Temp))
-    { case GC_Non_Pointer:
+    {
+      case GC_Non_Pointer:
         *Scan = Temp;
 	continue;
 
       case GC_Special:
-	if (Type_Code(Temp) != TC_REFERENCE_TRAP)
+	if (OBJECT_TYPE(Temp) != TC_REFERENCE_TRAP)
 	{
 	  /* No other special type makes sense here. */
 	  goto fail;
 	}
-	if (Datum(Temp) <= TRAP_MAX_IMMEDIATE)
+	if (OBJECT_DATUM(Temp) <= TRAP_MAX_IMMEDIATE)
 	{
 	  *Scan = Temp;
 	  continue;
@@ -533,9 +679,9 @@ Fix_Weak_Chain()
 	  *Scan = Temp;
 	  continue;
 	}
-	if (Type_Code(*Old) == TC_BROKEN_HEART)
+	if (OBJECT_TYPE(*Old) == TC_BROKEN_HEART)
 	{
-	  *Scan = Make_New_Pointer(Type_Code(Temp), *Old);
+	  *Scan = Make_New_Pointer(OBJECT_TYPE(Temp), *Old);
 	  continue;
 	}
 	*Scan = NIL;
@@ -558,7 +704,7 @@ Fix_Weak_Chain()
       fail:
         fprintf(stderr,
 		"\nFix_Weak_Chain: Bad Object: Type = 0x%02x; Datum = %x\n",
-		Type_Code(Temp), Datum(Temp));
+		OBJECT_TYPE(Temp), OBJECT_DATUM(Temp));
 	Microcode_Termination(TERM_INVALID_TYPE_CODE);
 	/*NOTREACHED*/
     }
