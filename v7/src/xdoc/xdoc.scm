@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xdoc.scm,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: xdoc.scm,v 1.2 2004/11/26 15:17:27 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -78,7 +78,7 @@ USA.
 	  0))))
 
 (define (with-xdoc-expansion-context ps-number pathname procedure)
-  (with-database-connection ps-number pathname
+  (with-database-connection ps-number
     (lambda ()
       (let ((environment (make-expansion-environment pathname)))
 	(fluid-let ((*in-xdoc-context?* #t)

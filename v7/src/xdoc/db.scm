@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.4 2004/11/22 20:08:42 cph Exp $
+$Id: db.scm,v 1.5 2004/11/26 15:17:18 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -27,73 +27,51 @@ USA.
 
 (declare (usual-integrations))
 
-(define default-db-name "six002x_spring04")
-(define pgsql-conn #f)
+(define database-connections '())
 (define *database-connection* #f)
 (define *user-name*)
 (define *ps-number*)
-(define *page-pathname*)
 (define *page-key*)
 
-(define (with-database-connection ps-number pathname thunk)
-  (if (not (and pgsql-conn (pgsql-conn-open? pgsql-conn)))
-      (set! pgsql-conn (open-pgsql-conn (get-db-open-args pathname))))
-  (let ((page-key (enough-namestring pathname (server-root-dir))))
-    (if *database-connection*
-	(begin
-	  (set! *database-connection* pgsql-conn)
-	  (fluid-let ((*ps-number* ps-number)
-		      (*page-pathname* pathname)
-		      (*page-key* page-key))
-	    (thunk)))
-	(fluid-let ((*database-connection* pgsql-conn)
-		    (*user-name* (http-request-user-name))
-		    (*ps-number* ps-number)
-		    (*page-pathname* pathname)
-		    (*page-key* page-key))
-	  (database-transaction thunk)))))
+(define (with-database-connection ps-number thunk)
+  (fluid-let ((*database-connection* (open-database-connection))
+	      (*user-name* (http-request-user-name))
+	      (*ps-number* ps-number)
+	      (*page-key* (http-request-url)))
+    (let ((commit? #f))
+      (dynamic-wind (lambda ()
+		      (db-run-cmd "BEGIN"))
+		    (lambda ()
+		      (let ((v (thunk)))
+			(set! commit? #t)
+			v))
+		    (lambda ()
+		      (db-run-cmd (if commit? "COMMIT" "ROLLBACK")))))))
 
 (define (database-connection)
-  (let ((conn *database-connection*))
-    (if (pgsql-conn-open? conn)
-	conn
-	(let ((conn (open-pgsql-conn (get-db-open-args *page-pathname*))))
-	  (set! pgsql-conn conn)
-	  (set! *database-connection* conn)
-	  conn))))
+  (if (not *database-connection*)
+      (error "No database connection available."))
+  (if (not (pgsql-conn-open? *database-connection*))
+      (set! *database-connection* (open-database-connection)))
+  *database-connection*)
 
-(define (get-db-open-args pathname)
-  (string-append "dbname=" (get-db-name pathname)))
-
-(define (get-db-name pathname)
-  (let loop ((directory (directory-pathname pathname)))
-    (let ((pathname (merge-pathnames ".xdoc-db" directory)))
-      (if (file-exists? pathname)
-	  (call-with-input-file pathname read-line)
-	  (let ((path (pathname-directory directory)))
-	    (if (pair? (cdr path))
-		(loop
-		 (pathname-new-directory directory (except-last-pair path)))
-		default-db-name))))))
-
-(define (database-transaction thunk)
-  (let ((commit? #f))
-    (dynamic-wind (lambda ()
-		    (db-run-cmd "BEGIN"))
-		  (lambda ()
-		    (let ((v (thunk)))
-		      (set! commit? #t)
-		      v))
-		  (lambda ()
-		    (db-run-cmd (if commit? "COMMIT" "ROLLBACK"))))))
+(define (open-database-connection)
+  (let ((name (url-binding-value (http-request-url) 'xdoc-db-name #t)))
+    (let ((p (assoc name database-connections)))
+      (if (and p (pgsql-conn-open? (cdr p)))
+	  (cdr p)
+	  (let ((connection (open-pgsql-conn (string-append "dbname=" name))))
+	    (set! database-connections
+		  (cons (cons name connection)
+			database-connections))
+	    connection)))))
 
 (define (close-database)
-  (if pgsql-conn
-      (begin
-	(if (pgsql-conn-open? pgsql-conn)
-	    (close-pgsql-conn pgsql-conn))
-	(set! pgsql-conn #f)
-	unspecific)))
+  (do () ((not (pair? database-connections)))
+    (let ((connection (cdar database-connections)))
+      (set! database-connections (cdr database-connections))
+      (if (pgsql-conn-open? connection)
+	  (close-pgsql-conn connection)))))
 
 (define (db-run-query . strings)
   (let ((query (string-append (apply string-append strings) ";")))
