@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.37 1994/03/25 01:02:05 gjr Exp $
+$Id: fixobj.h,v 9.38 1995/07/26 21:07:44 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -140,4 +140,9 @@ MIT in each case. */
 						  indicating if there may be more.
 					      */
 
-#define NFixed_Objects			0x41
+#define Linker_Cache_Generator		0x41 /* Procedure for generating
+						compiled code substitutes
+						for tramplines.
+					     */
+
+#define NFixed_Objects			0x42
