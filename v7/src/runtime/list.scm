@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.13 1991/03/01 01:06:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.14 1992/08/11 15:32:02 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -349,6 +349,14 @@ MIT in each case. |#
 
 ;;;; Sequence Operations
 
+#|
+;; This version is simple, but uses a linear amount of stack (on the
+;; number of elements being copied).  The version below uses a finite
+;; amount of stack and therefore half the memory.
+;; In addition, a clever compiler could optimize the second version
+;; into the obvious loop that everyone would write in assembly language.
+;; It is much harder to do the same with the first version.
+
 (define (append . lists)
   (if (null? lists)
       '()
@@ -362,6 +370,37 @@ MIT in each case. |#
 		    (if (not (null? list))
 			(error "APPEND: Argument not a list" current))
 		    (outer (car remaining) (cdr remaining)))))))))
+|#
+
+(define (append . lists)
+  (define (append-2 l1 l2)
+    (cond ((pair? l1)
+	   (let ((root (cons (car l1) #f)))
+	     (let loop ((cell root)
+			(next (cdr l1)))
+	       (cond ((pair? next)
+		      (let ((cell* (cons (car next) #f)))
+			(set-cdr! cell cell*)
+			(loop cell* (cdr next))))
+		     ((null? next)
+		      (set-cdr! cell l2))
+		     (else
+		      (error "APPEND: Argument not a list" l1))))
+	     root))
+	  ((null? l1)
+	   l2)
+	  (else
+	   (error "APPEND: Argument not a list" l1))))
+
+  (let ((lists (reverse! lists)))
+    (if (null? lists)
+	'()
+	(let loop ((accum (car lists))
+		   (rest (cdr lists)))
+	  (if (null? rest)
+	      accum
+	      (loop (append-2 (car rest) accum)
+		    (cdr rest)))))))
 
 (define (append! . lists)
   (if (null? lists)
