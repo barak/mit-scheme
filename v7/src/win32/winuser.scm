@@ -1,85 +1,25 @@
-;;/*++ BUILD Version: 0003    // Increment this if a change has global effects
-;;
-;;Copyright (c) 1985-91, Microsoft Corporation
-;;
-;;Module Name:
-;;
-;;    winuser.h
-;;
-;;Abstract:
-;;
-;;    Procedure declarations, constant definitions and macros for the User
-;;    component.
-;;
-;;--*/
-;;
-;;#ifndef _WINUSER_
-;;#define _WINUSER_
-;;
-;;#ifdef __cplusplus
-;;extern "C" {
-;;#endif /* __cplusplus */
-;;
-;;#ifndef WINVER
-;;#define WINVER  0x0314      // version 3.2
-;;#endif /* !WINVER */
-;;
-;;#include "stdarg.h"
-;;
-;;#ifndef NOUSER
-;;
-;;typedef HANDLE HDWP;
-;;typedef VOID MENUTEMPLATEA;
-;;typedef VOID MENUTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef MENUTEMPLATEW MENUTEMPLATE;
-;;#else
-;;typedef MENUTEMPLATEA MENUTEMPLATE;
-;;#endif // UNICODE
-;;typedef PVOID LPMENUTEMPLATEA;
-;;typedef PVOID LPMENUTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef LPMENUTEMPLATEW LPMENUTEMPLATE;
-;;#else
-;;typedef LPMENUTEMPLATEA LPMENUTEMPLATE;
-;;#endif // UNICODE
-;;
-;;typedef LRESULT (CALLBACK* WNDPROC)(HWND, UINT, WPARAM, LPARAM);
-;;#ifdef STRICT
-;;typedef BOOL (CALLBACK* DLGPROC)(HWND, UINT, WPARAM, LPARAM);
-;;typedef VOID (CALLBACK* TIMERPROC)(HWND, UINT, UINT, DWORD);
-;;typedef BOOL (CALLBACK* GRAYSTRINGPROC)(HDC, LPARAM, int);
-;;typedef BOOL (CALLBACK* PROPENUMPROC)(HWND, LPCSTR, HANDLE);
-;;typedef BOOL (CALLBACK* PROPENUMPROCEX)(HWND, LPTSTR, HANDLE, DWORD);
-;;typedef BOOL (CALLBACK* WNDENUMPROC)(HWND, LPARAM);
-;;typedef LRESULT (CALLBACK* HOOKPROC)(int code, WPARAM wParam, LPARAM lParam);
-;;typedef int (CALLBACK* EDITWORDBREAKPROC)(LPSTR lpch, int ichCurrent, int cch, int code);
-;;typedef VOID (CALLBACK* SENDASYNCPROC)(HWND, UINT, DWORD, LRESULT);
-;;#else /* !STRICT */
-;;typedef FARPROC DLGPROC;
-;;typedef FARPROC TIMERPROC;
-;;typedef FARPROC GRAYSTRINGPROC;
-;;typedef FARPROC PROPENUMPROC;
-;;typedef FARPROC PROPENUMPROCEX;
-;;typedef FARPROC WNDENUMPROC;
-;;typedef FARPROC HOOKPROC;
-;;typedef FARPROC EDITWORDBREAKPROC;
-;;typedef FARPROC SENDASYNCPROC;
-;;#endif /* !STRICT */
-;;
-;;#define MAKEINTRESOURCEA(i) (LPSTR)((DWORD)((WORD)(i)))
-;;#define MAKEINTRESOURCEW(i) (LPWSTR)((DWORD)((WORD)(i)))
-;;#ifdef UNICODE
-;;#define MAKEINTRESOURCE  MAKEINTRESOURCEW
-;;#else
-;;#define MAKEINTRESOURCE  MAKEINTRESOURCEA
-;;#endif // !UNICODE
-;;
-;;#ifndef NORESOURCE
-;;
-;;/*
-;; * Predefined Resource Types
-;; */
+#| -*-Scheme-*-
+
+$Id: winuser.scm,v 1.2 1999/01/09 03:37:06 cph Exp $
+
+Copyright (c) 1993, 1999 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+|#
+
+;;Predefined Resource Types
 (define-integrable RT_CURSOR           1)
 (define-integrable RT_BITMAP           2)
 (define-integrable RT_ICON             3)
@@ -97,37 +37,14 @@
 (define-integrable RT_GROUP_ICON       (+ RT_ICON DIFFERENCE))
 (define-integrable RT_VERSION          16)
 (define-integrable RT_DLGINCLUDE       17)
-;;
-;;#endif /* !NORESOURCE */
-;;
-;;int WINAPI wvsprintfA(LPSTR, LPCSTR, CONST VOID *arglist);
-;;int WINAPI wvsprintfW(LPWSTR, LPCWSTR, CONST VOID *arglist);
-;;#ifdef UNICODE
-;;#define wvsprintf  wvsprintfW
-;;#else
-;;#define wvsprintf  wvsprintfA
-;;#endif // !UNICODE
-;;int WINAPI wsprintfA(LPSTR, LPCSTR, ...);
-;;int WINAPI wsprintfW(LPWSTR, LPCWSTR, ...);
-;;#ifdef UNICODE
-;;#define wsprintf  wsprintfW
-;;#else
-;;#define wsprintf  wsprintfA
-;;#endif // !UNICODE
-;;
-;;#ifndef NOSCROLL
-;;
-;;/*
-;; * Scroll Bar Constants
-;; */
+
+;;Scroll Bar Constants
 (define-integrable SB_HORZ             0)
 (define-integrable SB_VERT             1)
 (define-integrable SB_CTL              2)
 (define-integrable SB_BOTH             3)
 
-;;/*
-;; * Scroll Bar Commands
-;; */
+;;Scroll Bar Commands
 (define-integrable SB_LINEUP           0)
 (define-integrable SB_LINELEFT         0)
 (define-integrable SB_LINEDOWN         1)
@@ -144,13 +61,7 @@
 (define-integrable SB_RIGHT            7)
 (define-integrable SB_ENDSCROLL        8)
 
-;;#endif /* !NOSCROLL */
-;;
-;;#ifndef NOSHOWWINDOW
-;;
-;;/*
-;; * ShowWindow() Commands
-;; */
+;;ShowWindow Commands
 (define-integrable SW_HIDE             0)
 (define-integrable SW_SHOWNORMAL       1)
 (define-integrable SW_NORMAL           1)
@@ -166,44 +77,32 @@
 (define-integrable SW_SHOWDEFAULT      10)
 (define-integrable SW_MAX              10)
 
-;;/*
-;; * Old ShowWindow() Commands
-;; */
+;;Old ShowWindow Commands
 (define-integrable HIDE_WINDOW         0)
 (define-integrable SHOW_OPENWINDOW     1)
 (define-integrable SHOW_ICONWINDOW     2)
 (define-integrable SHOW_FULLSCREEN     3)
 (define-integrable SHOW_OPENNOACTIVATE 4)
 
-;;/*
-;; * Identifiers for the WM_SHOWWINDOW message
-;; */
+;;Identifiers for the WM_SHOWWINDOW message
 (define-integrable SW_PARENTCLOSING    1)
 (define-integrable SW_OTHERZOOM        2)
 (define-integrable SW_PARENTOPENING    3)
 (define-integrable SW_OTHERUNZOOM      4)
 
-;;#endif /* !NOSHOWWINDOW */
-;;
-;;/*
-;; * WM_KEYUP/DOWN/CHAR HIWORD(lParam) flags
-;; */
+;;WM_KEYUP/DOWN/CHAR HIWORD(lParam) flags
 (define-integrable KF_EXTENDED         #x0100)
 (define-integrable KF_DLGMODE          #x0800)
 (define-integrable KF_MENUMODE         #x1000)
 (define-integrable KF_ALTDOWN          #x2000)
 (define-integrable KF_REPEAT           #x4000)
 (define-integrable KF_UP               #x8000)
-;;
-;;#ifndef NOVIRTUALKEYCODES
-;;
-;;/*
-;; * Virtual Keys, Standard Set
-;; */
+
+;;Virtual Keys, Standard Set
 (define-integrable VK_LBUTTON        #x01)
 (define-integrable VK_RBUTTON        #x02)
 (define-integrable VK_CANCEL         #x03)
-(define-integrable VK_MBUTTON        #x04)  ;   /* NOT contiguous with L & RBUTTON */
+(define-integrable VK_MBUTTON        #x04) ;NOT contiguous with L & RBUTTON
 
 (define-integrable VK_BACK           #x08)
 (define-integrable VK_TAB            #x09)
@@ -236,8 +135,8 @@
 (define-integrable VK_DELETE         #x2E)
 (define-integrable VK_HELP           #x2F)
 
-;;/* VK_0 thru VK_9 are the same as ASCII '0' thru '9' (0x30 - 0x39) */
-;;/* VK_A thru VK_Z are the same as ASCII 'A' thru 'Z' (0x41 - 0x5A) */
+;;VK_0 thru VK_9 are the same as ASCII '0' thru '9' (0x30 - 0x39)
+;;VK_A thru VK_Z are the same as ASCII 'A' thru 'Z' (0x41 - 0x5A)
 
 (define-integrable VK_NUMPAD0        #x60)
 (define-integrable VK_NUMPAD1        #x61)
@@ -283,11 +182,9 @@
 (define-integrable VK_NUMLOCK        #x90)
 (define-integrable VK_SCROLL         #x91)
 
-;;/*
-;; * VK_L* & VK_R* - left and right Alt, Ctrl and Shift virtual keys.
-;; * Used only as parameters to GetAsyncKeyState() and GetKeyState().
-;; * No other API or message will distinguish left and right keys in this way.
-;; */
+;; VK_L* & VK_R* - left and right Alt, Ctrl and Shift virtual keys.
+;; Used only as parameters to GetAsyncKeyState and GetKeyState.
+;; No other API or message will distinguish left and right keys in this way.
 (define-integrable VK_LSHIFT         #xA0)
 (define-integrable VK_RSHIFT         #xA1)
 (define-integrable VK_LCONTROL       #xA2)
@@ -305,13 +202,7 @@
 (define-integrable VK_PA1            #xFD)
 (define-integrable VK_OEM_CLEAR      #xFE)
 
-;;#endif /* !NOVIRTUALKEYCODES */
-;;
-;;#ifndef NOWH
-;;
-;;/*
-;; * SetWindowsHook() codes
-;; */
+;; SetWindowsHook codes
 (define-integrable WH_MIN              -1)
 (define-integrable WH_MSGFILTER        -1)
 (define-integrable WH_JOURNALRECORD    0)
@@ -328,9 +219,7 @@
 (define-integrable WH_FOREGROUNDIDLE  11)
 (define-integrable WH_MAX             11)
 
-;;/*
 ;; * Hook Codes
-;; */
 (define-integrable HC_ACTION           0)
 (define-integrable HC_GETNEXT          1)
 (define-integrable HC_SKIP             2)
@@ -339,9 +228,7 @@
 (define-integrable HC_SYSMODALON       4)
 (define-integrable HC_SYSMODALOFF      5)
 
-;;/*
 ;; * CBT Hook Codes
-;; */
 (define-integrable HCBT_MOVESIZE       0)
 (define-integrable HCBT_MINMAX         1)
 (define-integrable HCBT_QS             2)
@@ -353,42 +240,7 @@
 (define-integrable HCBT_SYSCOMMAND     8)
 (define-integrable HCBT_SETFOCUS       9)
 
-;;/*
-;; * HCBT_CREATEWND parameters pointed to by lParam
-;; */
-;;typedef struct tagCBT_CREATEWNDA
-;;{
-;;    struct tagCREATESTRUCTA *lpcs;
-;;    HWND           hwndInsertAfter;
-;;} CBT_CREATEWNDA, *LPCBT_CREATEWNDA;
-;;/*
-;; * HCBT_CREATEWND parameters pointed to by lParam
-;; */
-;;typedef struct tagCBT_CREATEWNDW
-;;{
-;;    struct tagCREATESTRUCTW *lpcs;
-;;    HWND           hwndInsertAfter;
-;;} CBT_CREATEWNDW, *LPCBT_CREATEWNDW;
-;;#ifdef UNICODE
-;;typedef CBT_CREATEWNDW CBT_CREATEWND;
-;;typedef LPCBT_CREATEWNDW LPCBT_CREATEWND;
-;;#else
-;;typedef CBT_CREATEWNDA CBT_CREATEWND;
-;;typedef LPCBT_CREATEWNDA LPCBT_CREATEWND;
-;;#endif // UNICODE
-;;
-;;/*
-;; * HCBT_ACTIVATE structure pointed to by lParam
-;; */
-;;typedef struct tagCBTACTIVATESTRUCT
-;;{
-;;    BOOL    fMouse;
-;;    HWND    hWndActive;
-;;} CBTACTIVATESTRUCT, *LPCBTACTIVATESTRUCT;
-;;
-;;/*
 ;; * WH_MSGFILTER Filter Proc Codes
-;; */
 (define-integrable MSGF_DIALOGBOX      0)
 (define-integrable MSGF_MESSAGEBOX     1)
 (define-integrable MSGF_MENU           2)
@@ -400,16 +252,12 @@
 (define-integrable MSGF_MAX            8)
 (define-integrable MSGF_USER           4096)
 
-;;/*
 ;; * Shell support
-;; */
 (define-integrable HSHELL_WINDOWCREATED       1)
 (define-integrable HSHELL_WINDOWDESTROYED     2)
 (define-integrable HSHELL_ACTIVATESHELLWINDOW 3)
 
-;;/*
 ;; * Window Manager Hook Codes
-;; */
 (define-integrable WC_INIT             1)
 (define-integrable WC_SWP              2)
 (define-integrable WC_DEFWINDOWPROC    3)
@@ -418,52 +266,7 @@
 (define-integrable WC_SIZE             6)
 (define-integrable WC_DRAWCAPTION      7)
 
-;;/*
-;; * Message Structure used in Journaling
-;; */
-;;typedef struct tagEVENTMSG {
-;;    UINT    message;
-;;    UINT    paramL;
-;;    UINT    paramH;
-;;    DWORD    time;
-;;    HWND     hwnd;
-;;} EVENTMSG, *PEVENTMSGMSG, NEAR *NPEVENTMSGMSG, FAR *LPEVENTMSGMSG;
-;;
-;;typedef struct tagEVENTMSG *PEVENTMSG, NEAR *NPEVENTMSG, FAR *LPEVENTMSG;
-;;
-;;/*
-;; * Message structure used by WH_CALLWNDPROC
-;; */
-;;typedef struct tagCWPSTRUCT {
-;;    LPARAM  lParam;
-;;    WPARAM  wParam;
-;;    DWORD   message;
-;;    HWND    hwnd;
-;;} CWPSTRUCT, *PCWPSTRUCT, NEAR *NPCWPSTRUCT, FAR *LPCWPSTRUCT;
-;;
-;;/*
-;; * Structure used by WH_DEBUG
-;; */
-;;typedef struct tagDEBUGHOOKINFO
-;;{
-;;    DWORD   idThread;
-;;    LPARAM  reserved;
-;;    LPARAM  lParam;
-;;    WPARAM  wParam;
-;;    int     code;
-;;} DEBUGHOOKINFO, *PDEBUGHOOKINFO, NEAR *NPDEBUGHOOKINFO, FAR* LPDEBUGHOOKINFO;
-;;
-;;typedef struct tagMOUSEHOOKSTRUCT {
-;;    POINT   pt;
-;;    HWND    hwnd;
-;;    UINT    wHitTestCode;
-;;    DWORD   dwExtraInfo;
-;;} MOUSEHOOKSTRUCT, FAR *LPMOUSEHOOKSTRUCT, *PMOUSEHOOKSTRUCT;
-;;#endif /* !NOWH */
-;;
-;;/*
 ;; * Keyboard Layout API
-;; */
 (define-integrable HKL_PREV            0)
 (define-integrable HKL_NEXT            1)
 
@@ -472,32 +275,10 @@
 (define-integrable KLF_UNLOADPREVIOUS  #x00000004)
 (define-integrable KLF_REORDER         #x00000008)
 
-;;/*
 ;; * Size of KeyboardLayoutName (number of characters), including nul terminator
-;; */
 (define-integrable KL_NAMELENGTH       9)
 
-;;HKL WINAPI LoadKeyboardLayoutA(LPCSTR pwszKLID, UINT Flags);
-;;HKL WINAPI LoadKeyboardLayoutW(LPCWSTR pwszKLID, UINT Flags);
-;;#ifdef UNICODE
-;;#define LoadKeyboardLayout  LoadKeyboardLayoutW
-;;#else
-;;#define LoadKeyboardLayout  LoadKeyboardLayoutA
-;;#endif // !UNICODE
-;;BOOL WINAPI ActivateKeyboardLayout(HKL hkl, UINT Flags);
-;;BOOL WINAPI UnloadKeyboardLayout(HKL hkl);
-;;BOOL WINAPI GetKeyboardLayoutNameA(LPSTR pwszKLID);
-;;BOOL WINAPI GetKeyboardLayoutNameW(LPWSTR pwszKLID);
-;;#ifdef UNICODE
-;;#define GetKeyboardLayoutName  GetKeyboardLayoutNameW
-;;#else
-;;#define GetKeyboardLayoutName  GetKeyboardLayoutNameA
-;;#endif // !UNICODE
-;;
-;;#ifndef NODESKTOP
-;;/*
 ;; * Desktop-specific access flags
-;; */
 (define-integrable DESKTOP_ENUMWINDOWS         #x0001)
 (define-integrable DESKTOP_CREATEWINDOW        #x0002)
 (define-integrable DESKTOP_CREATEMENU          #x0004)
@@ -506,17 +287,7 @@
 (define-integrable DESKTOP_JOURNALPLAYBACK     #x0020)
 (define-integrable DESKTOP_ENUMERATE           #x0040)
 
-;;HDESK
-;;WINAPI
-;;GetThreadDesktop(
-;;    DWORD);
-;;
-;;#endif  /* !NODESKTOP */
-;;
-;;#ifndef NOWINDOWSTATION
-;;/*
 ;; * Windowstation-specific access flags
-;; */
 (define-integrable WINSTA_ENUMDESKTOPS         #x0001)
 (define-integrable WINSTA_READATTRIBUTES       #x0002)
 (define-integrable WINSTA_ACCESSCLIPBOARD      #x0004)
@@ -527,107 +298,13 @@
 (define-integrable WINSTA_ENUMERATE            #x0100)
 (define-integrable WINSTA_READSCREEN           #x0200)
 
-;;HWINSTA
-;;WINAPI
-;;GetProcessWindowStation(
-;;    VOID);
-;;#endif  /* !NOWINDOWSTATION */
-;;
-;;#ifndef NOSECURITY
-;;/*
 ;; * window-specific access flags
-;; */
 (define-integrable WIN_ACCESSWINDOW            #x0001)
 
-;;/*
 ;; * menu-specific access flags
-;; */
 (define-integrable MENU_ACCESSMENU             #x0001)
 
-;;BOOL
-;;WINAPI
-;;SetUserObjectSecurity(
-;;    HANDLE hObj,
-;;    PSECURITY_INFORMATION pSIRequested,
-;;    PSECURITY_DESCRIPTOR pSID);
-;;
-;;BOOL
-;;WINAPI
-;;GetUserObjectSecurity(
-;;    HANDLE hObj,
-;;    PSECURITY_INFORMATION pSIRequested,
-;;    PSECURITY_DESCRIPTOR pSID,
-;;    DWORD nLength,
-;;    LPDWORD lpnLengthNeeded);
-;;
-;;#endif  /* !NOSECURITY */
-;;
-;;typedef struct tagWNDCLASSA {
-;;    UINT        style;
-;;    WNDPROC     lpfnWndProc;
-;;    int         cbClsExtra;
-;;    int         cbWndExtra;
-;;    HINSTANCE   hInstance;
-;;    HICON       hIcon;
-;;    HCURSOR     hCursor;
-;;    HBRUSH      hbrBackground;
-;;    LPCSTR      lpszMenuName;
-;;    LPCSTR      lpszClassName;
-;;} WNDCLASSA, *PWNDCLASSA, NEAR *NPWNDCLASSA, FAR *LPWNDCLASSA;
-;;typedef struct tagWNDCLASSW {
-;;    UINT        style;
-;;    WNDPROC     lpfnWndProc;
-;;    int         cbClsExtra;
-;;    int         cbWndExtra;
-;;    HINSTANCE   hInstance;
-;;    HICON       hIcon;
-;;    HCURSOR     hCursor;
-;;    HBRUSH      hbrBackground;
-;;    LPCWSTR     lpszMenuName;
-;;    LPCWSTR     lpszClassName;
-;;} WNDCLASSW, *PWNDCLASSW, NEAR *NPWNDCLASSW, FAR *LPWNDCLASSW;
-;;#ifdef UNICODE
-;;typedef WNDCLASSW WNDCLASS;
-;;typedef PWNDCLASSW PWNDCLASS;
-;;typedef NPWNDCLASSW NPWNDCLASS;
-;;typedef LPWNDCLASSW LPWNDCLASS;
-;;#else
-;;typedef WNDCLASSA WNDCLASS;
-;;typedef PWNDCLASSA PWNDCLASS;
-;;typedef NPWNDCLASSA NPWNDCLASS;
-;;typedef LPWNDCLASSA LPWNDCLASS;
-;;#endif // UNICODE
-
-
-;;#ifndef NOMSG
-;;
-;;/*
-;; * Message structure
-;; */
-;;typedef struct tagMSG {
-;;    HWND        hwnd;
-;;    UINT        message;
-;;    WPARAM      wParam;
-;;    LPARAM      lParam;
-;;    DWORD       time;
-;;    POINT       pt;
-;;} MSG, *PMSG, NEAR *NPMSG, FAR *LPMSG;
-;;
-;;#define POINTSTOPOINT(pt,pts)  {(pt).x = (SHORT)LOWORD(pts); \
-;;                                (pt).y = (SHORT)HIWORD(pts);}
-;;#define POINTTOPOINTS(pt)      (MAKELONG((short)((pt).x), (short)((pt).y)))
-;;#define MAKEWPARAM(l, h)      (WPARAM)MAKELONG(l, h)
-;;#define MAKELPARAM(l, h)      (LPARAM)MAKELONG(l, h)
-;;#define MAKELRESULT(l, h)     (LRESULT)MAKELONG(l, h)
-
-
-;;#endif /* !NOMSG */
-;;
-;;#ifndef NOWINOFFSETS
-;;
-;;/*
-;; * Window field offsets for GetWindowLong()
-;; */
+;; * Window field offsets for GetWindowLong
 (define-integrable GWL_WNDPROC         -4)
 (define-integrable GWL_HINSTANCE       -6)
 (define-integrable GWL_HWNDPARENT      -8)
@@ -636,9 +313,7 @@
 (define-integrable GWL_USERDATA        -21)
 (define-integrable GWL_ID              -12)
 
-;;/*
-;; * Class field offsets for GetClassLong()
-;; */
+;; * Class field offsets for GetClassLong
 (define-integrable GCL_MENUNAME        -8)
 (define-integrable GCL_HBRBACKGROUND   -10)
 (define-integrable GCL_HCURSOR         -12)
@@ -650,13 +325,7 @@
 (define-integrable GCL_STYLE           -26)
 
 
-;;#endif /* !NOWINOFFSETS */
-;;
-;;#ifndef NOWINMESSAGES
-;;
-;;/*
 ;; * Window Messages
-;; */
 
 (define-integrable WM_NULL                         #x0000)
 (define-integrable WM_CREATE                       #x0001)
@@ -665,9 +334,7 @@
 (define-integrable WM_SIZE                         #x0005)
 
 (define-integrable WM_ACTIVATE                     #x0006)
-;;/*
 ;; * WM_ACTIVATE state values
-;; */
 (define-integrable     WA_INACTIVE     0)
 (define-integrable     WA_ACTIVE       1)
 (define-integrable     WA_CLICKACTIVE  2)
@@ -700,16 +367,7 @@
 (define-integrable WM_QUEUESYNC                    #x0023)
 
 (define-integrable WM_GETMINMAXINFO                #x0024)
-;;/*
 ;; * STRUCT POINTED TO BY WM_GETMINMAXINFO LPARAM
-;; */
-;;TYPEDEF STRUCT TAGMINMAXINFO {
-;;    POINT PTRESERVED;
-;;    POINT PTMAXSIZE;
-;;    POINT PTMAXPOSITION;
-;;    POINT PTMINTRACKSIZE;
-;;    POINT PTMAXTRACKSIZE;
-;;} MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
 
 (define-integrable WM_PAINTICON                    #x0026)
 (define-integrable WM_ICONERASEBKGND               #x0027)
@@ -735,9 +393,8 @@
 (define-integrable WM_WINDOWPOSCHANGED             #x0047)
 
 (define-integrable WM_POWER                        #x0048)
-;;/*
+
 ;; * WPARAM FOR WM_POWER WINDOW MESSAGE AND DRV_POWER DRIVER NOTIFICATION
-;; */
 (define-integrable PWR_OK              1)
 (define-integrable PWR_FAIL           -1)
 (define-integrable PWR_SUSPENDREQUEST  1)
@@ -746,14 +403,6 @@
 
 (define-integrable WM_COPYDATA                     #x004A)
 (define-integrable WM_CANCELJOURNAL                #x004B)
-;;/*
-;; * LPARAM OF WM_COPYDATA MESSAGE POINTS TO...
-;; */
-;;TYPEDEF STRUCT TAGCOPYDATASTRUCT {
-;;    DWORD DWDATA;
-;;    DWORD CBDATA;
-;;    PVOID LPDATA;
-;;} COPYDATASTRUCT, *PCOPYDATASTRUCT;
 
 (define-integrable WM_NCCREATE                     #x0081)
 (define-integrable WM_NCDESTROY                    #x0082)
@@ -833,7 +482,6 @@
 (define-integrable WM_DROPFILES                    #x0233)
 (define-integrable WM_MDIREFRESHMENU               #x0234)
 
-
 (define-integrable WM_CUT                          #x0300)
 (define-integrable WM_COPY                         #x0301)
 (define-integrable WM_PASTE                        #x0302)
@@ -860,24 +508,17 @@
 
 
 
-;;/*
 ;; * NOTE: ALL MESSAGE NUMBERS BELOW 0X0400 ARE RESERVED.
-;; *
+
 ;; * PRIVATE WINDOW MESSAGES START HERE:
-;; */
+
 (define-integrable WM_USER                         #x0400)
 
-;;#IFNDEF NONCMESSAGES
-;;
-;;/*
 ;; * WM_SYNCTASK COMMANDS
-;; */
 (define-integrable ST_BEGINSWP         0)
 (define-integrable ST_ENDSWP           1)
 
-;;/*
 ;; * WM_NCHITTEST AND MOUSEHOOKSTRUCT MOUSE POSITION CODES
-;; */
 (define-integrable HTERROR             -2)
 (define-integrable HTTRANSPARENT       -1)
 (define-integrable HTNOWHERE           0)
@@ -905,79 +546,32 @@
 (define-integrable HTSIZEFIRST         10)
 (define-integrable HTSIZELAST          17)
 
-;;/*
 ;; * SENDMESSAGETIMEOUT VALUES
-;; */
 (define-integrable SMTO_NORMAL         #x0000)
 (define-integrable SMTO_BLOCK          #x0001)
 (define-integrable SMTO_ABORTIFHUNG    #x0002)
 
-;;#ENDIF /* !NONCMESSAGES */
-;;
-;;/*
 ;; * WM_MOUSEACTIVATE RETURN CODES
-;; */
 (define-integrable MA_ACTIVATE         1)
 (define-integrable MA_ACTIVATEANDEAT   2)
 (define-integrable MA_NOACTIVATE       3)
 (define-integrable MA_NOACTIVATEANDEAT 4)
 
-;;UINT
-;;WINAPI
-;;REGISTERWINDOWMESSAGEA(
-;;    LPCSTR LPSTRING);
-;;UINT
-;;WINAPI
-;;REGISTERWINDOWMESSAGEW(
-;;    LPCWSTR LPSTRING);
-;;#IFDEF UNICODE
-;;#DEFINE REGISTERWINDOWMESSAGE  REGISTERWINDOWMESSAGEW
-;;#ELSE
-;;#DEFINE REGISTERWINDOWMESSAGE  REGISTERWINDOWMESSAGEA
-;;#ENDIF // !UNICODE
-;;
-;;/*
 ;; * WM_SIZE MESSAGE WPARAM VALUES
-;; */
 (define-integrable SIZE_RESTORED       0)
 (define-integrable SIZE_MINIMIZED      1)
 (define-integrable SIZE_MAXIMIZED      2)
 (define-integrable SIZE_MAXSHOW        3)
 (define-integrable SIZE_MAXHIDE        4)
 
-;;/*
 ;; * OBSOLETE CONSTANT NAMES
-;; */
 (define-integrable SIZENORMAL          0)
 (define-integrable SIZEICONIC          1)
 (define-integrable SIZEFULLSCREEN      2)
 (define-integrable SIZEZOOMSHOW        3)
 (define-integrable SIZEZOOMHIDE        4)
 
-;;/*
-;; * WM_WINDOWPOSCHANGING/CHANGED STRUCT POINTED TO BY LPARAM
-;; */
-;;TYPEDEF STRUCT TAGWINDOWPOS {
-;;    HWND    HWND;
-;;    HWND    HWNDINSERTAFTER;
-;;    INT     X;
-;;    INT     Y;
-;;    INT     CX;
-;;    INT     CY;
-;;    UINT    FLAGS;
-;;} WINDOWPOS, *LPWINDOWPOS, *PWINDOWPOS;
-;;
-;;/*
-;; * WM_NCCALCSIZE PARAMETER STRUCTURE
-;; */
-;;TYPEDEF STRUCT TAGNCCALCSIZE_PARAMS {
-;;    RECT       RGRC[3];
-;;    PWINDOWPOS LPPOS;
-;;} NCCALCSIZE_PARAMS, *LPNCCALCSIZE_PARAMS;
-;;
-;;/*
 ;; * WM_NCCALCSIZE "WINDOW VALID RECT" RETURN VALUES
-;; */
 (define-integrable WVR_ALIGNTOP        #x0010)
 (define-integrable WVR_ALIGNLEFT       #x0020)
 (define-integrable WVR_ALIGNBOTTOM     #x0040)
@@ -988,27 +582,14 @@
                                           WVR_VREDRAW))
 (define-integrable WVR_VALIDRECTS      #x0400)
 
-
-;;#IFNDEF NOKEYSTATES
-;;
-;;/*
 ;; * KEY STATE MASKS FOR MOUSE MESSAGES
-;; */
 (define-integrable MK_LBUTTON          #x0001)
 (define-integrable MK_RBUTTON          #x0002)
 (define-integrable MK_SHIFT            #x0004)
 (define-integrable MK_CONTROL          #x0008)
 (define-integrable MK_MBUTTON          #x0010)
-;;
-;;#ENDIF /* !NOKEYSTATES */
-;;
-;;#ENDIF /* !NOWINMESSAGES */
-;;
-;;#IFNDEF NOWINSTYLES
-;;
-;;/*
+
 ;; * WINDOW STYLES
-;; */
 (define-integrable WS_OVERLAPPED       #x00000000)
 (define-integrable WS_POPUP            #x80000000)
 (define-integrable WS_CHILD            #x40000000)
@@ -1036,9 +617,7 @@
 (define-integrable WS_SIZEBOX          WS_THICKFRAME)
 (define-integrable WS_TILEDWINDOW      (+ WS_OVERLAPPED WS_CAPTION WS_SYSMENU WS_THICKFRAME WS_MINIMIZEBOX WS_MAXIMIZEBOX))
 
-;;/*
 ;; * COMMON WINDOW STYLES
-;; */
 (define-integrable WS_OVERLAPPEDWINDOW (+ WS_OVERLAPPED 
                                           WS_CAPTION
                                           WS_SYSMENU
@@ -1052,18 +631,14 @@
 
 (define-integrable WS_CHILDWINDOW      WS_CHILD)
 
-;;/*
 ;; * EXTENDED WINDOW STYLES
-;; */
 (define-integrable WS_EX_DLGMODALFRAME  #x00000001)
 (define-integrable WS_EX_NOPARENTNOTIFY #x00000004)
 (define-integrable WS_EX_TOPMOST        #x00000008)
 (define-integrable WS_EX_ACCEPTFILES    #x00000010)
 (define-integrable WS_EX_TRANSPARENT    #x00000020)
 
-;;/*
 ;; * CLASS STYLES
-;; */
 (define-integrable CS_VREDRAW          #x0001)
 (define-integrable CS_HREDRAW          #x0002)
 (define-integrable CS_KEYCVTWINDOW     #x0004)
@@ -1078,13 +653,7 @@
 (define-integrable CS_BYTEALIGNWINDOW  #X2000)
 (define-integrable CS_GLOBALCLASS      #X4000)
 
-;;#ENDIF /* !NOWINSTYLES */
-;;
-;;#IFNDEF NOCLIPBOARD
-;;
-;;/*
 ;; * PREDEFINED CLIPBOARD FORMATS
-;; */
 (define-integrable CF_TEXT             1)
 (define-integrable CF_BITMAP           2)
 (define-integrable CF_METAFILEPICT     3)
@@ -1106,1664 +675,89 @@
 (define-integrable CF_DSPMETAFILEPICT  #x0083)
 (define-integrable CF_DSPENHMETAFILE   #x008E)
 
-;;/*
-;; * "PRIVATE" FORMATS DON'T GET GLOBALFREE()'D
-;; */
+;; * "PRIVATE" FORMATS DON'T GET GLOBALFREE'D
 (define-integrable CF_PRIVATEFIRST     #x0200)
 (define-integrable CF_PRIVATELAST      #x02FF)
 
-;;/*
-;; * "GDIOBJ" FORMATS DO GET DELETEOBJECT()'D
-;; */
+;; * "GDIOBJ" FORMATS DO GET DELETEOBJECT'D
 (define-integrable CF_GDIOBJFIRST      #x0300)
 (define-integrable CF_GDIOBJLAST       #x03FF)
 
-;;#ENDIF /* !NOCLIPBOARD */
-;;
-;;/*
 ;; * DEFINES FOR THE FVIRT FIELD OF THE ACCELERATOR TABLE STRUCTURE.
-;; */
 (define-integrable FVIRTKEY  #t)
 (define-integrable FNOINVERT #x02)
 (define-integrable FSHIFT    #x04)
 (define-integrable FCONTROL  #x08)
 (define-integrable FALT      #X10)
 
-;;TYPEDEF STRUCT TAGACCEL {
-;;    BYTE   FVIRT;               /* ALSO CALLED THE FLAGS FIELD */
-;;    WORD   KEY;
-;;    WORD   CMD;
-;;} ACCEL, *LPACCEL;
-;;
-;;TYPEDEF STRUCT TAGPAINTSTRUCT {
-;;    HDC         HDC;
-;;    BOOL        FERASE;
-;;    RECT        RCPAINT;
-;;    BOOL        FRESTORE;
-;;    BOOL        FINCUPDATE;
-;;    BYTE        RGBRESERVED[32];
-;;} PAINTSTRUCT, *PPAINTSTRUCT, *NPPAINTSTRUCT, *LPPAINTSTRUCT;
-;;
-;;TYPEDEF STRUCT TAGCREATESTRUCTA {
-;;    LPVOID      LPCREATEPARAMS;
-;;    HINSTANCE   HINSTANCE;
-;;    HMENU       HMENU;
-;;    HWND        HWNDPARENT;
-;;    INT         CY;
-;;    INT         CX;
-;;    INT         Y;
-;;    INT         X;
-;;    LONG        STYLE;
-;;    LPCSTR      LPSZNAME;
-;;    LPCSTR      LPSZCLASS;
-;;    DWORD       DWEXSTYLE;
-;;} CREATESTRUCTA, *LPCREATESTRUCTA;
-;;TYPEDEF STRUCT TAGCREATESTRUCTW {
-;;    LPVOID      LPCREATEPARAMS;
-;;    HINSTANCE   HINSTANCE;
-;;    HMENU       HMENU;
-;;    HWND        HWNDPARENT;
-;;    INT         CY;
-;;    INT         CX;
-;;    INT         Y;
-;;    INT         X;
-;;    LONG        STYLE;
-;;    LPCWSTR     LPSZNAME;
-;;    LPCWSTR     LPSZCLASS;
-;;    DWORD       DWEXSTYLE;
-;;} CREATESTRUCTW, *LPCREATESTRUCTW;
-;;#IFDEF UNICODE
-;;TYPEDEF CREATESTRUCTW CREATESTRUCT;
-;;TYPEDEF LPCREATESTRUCTW LPCREATESTRUCT;
-;;#ELSE
-;;TYPEDEF CREATESTRUCTA CREATESTRUCT;
-;;TYPEDEF LPCREATESTRUCTA LPCREATESTRUCT;
-;;#ENDIF // UNICODE
-
-;;TYPEDEF STRUCT TAGWINDOWPLACEMENT {
-;;    UINT  LENGTH;
-;;    UINT  FLAGS;
-;;    UINT  SHOWCMD;
-;;    POINT PTMINPOSITION;
-;;    POINT PTMAXPOSITION;
-;;    RECT  RCNORMALPOSITION;
-;;} WINDOWPLACEMENT;
-;;TYPEDEF WINDOWPLACEMENT *PWINDOWPLACEMENT, *LPWINDOWPLACEMENT;
-
 (define-integrable WPF_SETMINPOSITION      #x0001)
 (define-integrable WPF_RESTORETOMAXIMIZED  #x0002)
 
-;;/*
 ;; * OWNER DRAW CONTROL TYPES
-;; */
 (define-integrable ODT_MENU        1)
 (define-integrable ODT_LISTBOX     2)
 (define-integrable ODT_COMBOBOX    3)
 (define-integrable ODT_BUTTON      4)
 
-;;/*
 ;; * OWNER DRAW ACTIONS
-;; */
 (define-integrable ODA_DRAWENTIRE  #x0001)
 (define-integrable ODA_SELECT      #x0002)
 (define-integrable ODA_FOCUS       #x0004)
 
-;;/*
 ;; * OWNER DRAW STATE
-;; */
 (define-integrable ODS_SELECTED    #x0001)
 (define-integrable ODS_GRAYED      #x0002)
 (define-integrable ODS_DISABLED    #x0004)
 (define-integrable ODS_CHECKED     #x0008)
 (define-integrable ODS_FOCUS       #x0010)
 
-;;/*
-;; * MEASUREITEMSTRUCT FOR OWNERDRAW
-;; */
-;;TYPEDEF STRUCT TAGMEASUREITEMSTRUCT {
-;;    UINT       CTLTYPE;
-;;    UINT       CTLID;
-;;    UINT       ITEMID;
-;;    UINT       ITEMWIDTH;
-;;    UINT       ITEMHEIGHT;
-;;    DWORD      ITEMDATA;
-;;} MEASUREITEMSTRUCT, NEAR *PMEASUREITEMSTRUCT, FAR *LPMEASUREITEMSTRUCT;
-
-
-
-;;/*
-;; * DRAWITEMSTRUCT FOR OWNERDRAW
-;; */
-;;TYPEDEF STRUCT TAGDRAWITEMSTRUCT {
-;;    UINT        CTLTYPE;
-;;    UINT        CTLID;
-;;    UINT        ITEMID;
-;;    UINT        ITEMACTION;
-;;    UINT        ITEMSTATE;
-;;    HWND        HWNDITEM;
-;;    HDC         HDC;
-;;    RECT        RCITEM;
-;;    DWORD       ITEMDATA;
-;;} DRAWITEMSTRUCT, NEAR *PDRAWITEMSTRUCT, FAR *LPDRAWITEMSTRUCT;
-;;
-;;/*
-;; * DELETEITEMSTRUCT FOR OWNERDRAW
-;; */
-;;TYPEDEF STRUCT TAGDELETEITEMSTRUCT {
-;;    UINT       CTLTYPE;
-;;    UINT       CTLID;
-;;    UINT       ITEMID;
-;;    HWND       HWNDITEM;
-;;    UINT       ITEMDATA;
-;;} DELETEITEMSTRUCT, NEAR *PDELETEITEMSTRUCT, FAR *LPDELETEITEMSTRUCT;
-;;
-;;/*
-;; * COMPAREITEMSTUCT FOR OWNERDRAW SORTING
-;; */
-;;TYPEDEF STRUCT TAGCOMPAREITEMSTRUCT {
-;;    UINT        CTLTYPE;
-;;    UINT        CTLID;
-;;    HWND        HWNDITEM;
-;;    UINT        ITEMID1;
-;;    DWORD       ITEMDATA1;
-;;    UINT        ITEMID2;
-;;    DWORD       ITEMDATA2;
-;;    DWORD       DWLOCALEID;
-;;} COMPAREITEMSTRUCT, NEAR *PCOMPAREITEMSTRUCT, FAR *LPCOMPAREITEMSTRUCT;
-;;
-;;#IFNDEF NOMSG
-
-;;/*
-;; * MESSAGE FUNCTION TEMPLATES
-;; */
-;;BOOL
-;;WINAPI
-;;GETMESSAGEA(
-;;    LPMSG LPMSG,
-;;    HWND HWND ,
-;;    UINT WMSGFILTERMIN,
-;;    UINT WMSGFILTERMAX);
-;;/*
-;; * MESSAGE FUNCTION TEMPLATES
-;; */
-;;BOOL
-;;WINAPI
-;;GETMESSAGEW(
-;;    LPMSG LPMSG,
-;;    HWND HWND ,
-;;    UINT WMSGFILTERMIN,
-;;    UINT WMSGFILTERMAX);
-;;#IFDEF UNICODE
-;;#DEFINE GETMESSAGE  GETMESSAGEW
-;;#ELSE
-;;#DEFINE GETMESSAGE  GETMESSAGEA
-;;#ENDIF // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;TRANSLATEMESSAGE(
-;;    CONST MSG *LPMSG);
-
-;;LONG
-;;WINAPI
-;;DISPATCHMESSAGEA(
-;;    CONST MSG *LPMSG);
-;;LONG
-;;WINAPI
-;;DISPATCHMESSAGEW(
-;;    CONST MSG *LPMSG);
-;;#IFDEF UNICODE
-;;#DEFINE DISPATCHMESSAGE  DISPATCHMESSAGEW
-;;#ELSE
-;;#DEFINE DISPATCHMESSAGE  DISPATCHMESSAGEA
-;;#ENDIF // !UNICODE
-
-
-;;BOOL
-;;WINAPI
-;;SETMESSAGEQUEUE(
-;;    INT CMESSAGESMAX);
-;;
-;;BOOL
-;;WINAPI
-;;PEEKMESSAGEA(
-;;    LPMSG LPMSG,
-;;    HWND HWND ,
-;;    UINT WMSGFILTERMIN,
-;;    UINT WMSGFILTERMAX,
-;;    UINT WREMOVEMSG);
-;;BOOL
-;;WINAPI
-;;PEEKMESSAGEW(
-;;    LPMSG LPMSG,
-;;    HWND HWND ,
-;;    UINT WMSGFILTERMIN,
-;;    UINT WMSGFILTERMAX,
-;;    UINT WREMOVEMSG);
-;;#IFDEF UNICODE
-;;#DEFINE PEEKMESSAGE  PEEKMESSAGEW
-;;#ELSE
-;;#DEFINE PEEKMESSAGE  PEEKMESSAGEA
-;;#ENDIF // !UNICODE
-;;
-;;/*
-;; * PEEKMESSAGE() OPTIONS
-;; */
+;; * PEEKMESSAGE OPTIONS
 (define-integrable PM_NOREMOVE         #x0000)
 (define-integrable PM_REMOVE           #x0001)
 (define-integrable PM_NOYIELD          #x0002)
-
-;;#ENDIF /* !NOMSG */
-;;
-;;BOOL
-;;WINAPI
-;;REGISTERHOTKEY(
-;;    HWND HWND ,
-;;    INT ID,
-;;    UINT FSMODIFIERS,
-;;    UINT VK);
-;;
-;;BOOL
-;;WINAPI
-;;UNREGISTERHOTKEY(
-;;    HWND HWND,
-;;    INT ID);
 
 (define-integrable MOD_ALT         #x0001)
 (define-integrable MOD_CONTROL     #x0002)
 (define-integrable MOD_SHIFT       #x0004)
 
-(define-integrable IDHOT_SNAPWINDOW        -1)   ;  /* SHIFT-PRINTSCRN  */
-(define-integrable IDHOT_SNAPDESKTOP       -2)   ;  /* PRINTSCRN        */
-
-;;#IFDEF WIN_INTERNAL
-;;    #IFNDEF LSTRING
-;;    #DEFINE NOLSTRING
-;;    #ENDIF /* LSTRING */
-;;    #IFNDEF LFILEIO
-;;    #DEFINE NOLFILEIO
-;;    #ENDIF /* LFILEIO */
-;;#ENDIF /* WIN_INTERNAL */
-
+(define-integrable IDHOT_SNAPWINDOW  -1)   ;SHIFT-PRINTSCRN
+(define-integrable IDHOT_SNAPDESKTOP -2)   ;PRINTSCRN
 
 (define-integrable EWX_LOGOFF   0)
 (define-integrable EWX_SHUTDOWN 1)
 (define-integrable EWX_REBOOT   2)
 (define-integrable EWX_FORCE    4)
 
-
-;;#DEFINE EXITWINDOWS(DWRESERVED, CODE) EXITWINDOWSEX(EWX_LOGOFF, 0XFFFFFFFF)
-;;
-;;BOOL
-;;WINAPI
-;;EXITWINDOWSEX(
-;;    UINT UFLAGS,
-;;    DWORD DWRESERVED);
-;;
-;;BOOL
-;;WINAPI
-;;SWAPMOUSEBUTTON(
-;;    BOOL FSWAP);
-;;
-;;DWORD
-;;WINAPI
-;;GETMESSAGEPOS(
-;;    VOID);
-;;
-;;LONG
-;;WINAPI
-;;GETMESSAGETIME(
-;;    VOID);
-;;
-;;LONG
-;;WINAPI
-;;GETMESSAGEEXTRAINFO(
-;;    VOID);
-;;
-;;LRESULT
-;;WINAPI
-;;SENDMESSAGEA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;LRESULT
-;;WINAPI
-;;SENDMESSAGEW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE SENDMESSAGE  SENDMESSAGEW
-;;#ELSE
-;;#DEFINE SENDMESSAGE  SENDMESSAGEA
-;;#ENDIF // !UNICODE
-;;
-;;LRESULT
-;;WINAPI
-;;SENDMESSAGETIMEOUTA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM,
-;;    UINT FUFLAGS,
-;;    UINT UTIMEOUT,
-;;    LPDWORD LPDWRESULT);
-;;LRESULT
-;;WINAPI
-;;SENDMESSAGETIMEOUTW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM,
-;;    UINT FUFLAGS,
-;;    UINT UTIMEOUT,
-;;    LPDWORD LPDWRESULT);
-;;#IFDEF UNICODE
-;;#DEFINE SENDMESSAGETIMEOUT  SENDMESSAGETIMEOUTW
-;;#ELSE
-;;#DEFINE SENDMESSAGETIMEOUT  SENDMESSAGETIMEOUTA
-;;#ENDIF // !UNICODE
-
-;;BOOL
-;;WINAPI
-;;SENDNOTIFYMESSAGEA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;BOOL
-;;WINAPI
-;;SENDNOTIFYMESSAGEW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE SENDNOTIFYMESSAGE  SENDNOTIFYMESSAGEW
-;;#ELSE
-;;#DEFINE SENDNOTIFYMESSAGE  SENDNOTIFYMESSAGEA
-;;#ENDIF // !UNICODE
-
-;;BOOL
-;;WINAPI
-;;SENDMESSAGECALLBACKA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM,
-;;    SENDASYNCPROC LPRESULTCALLBACK,
-;;    DWORD DWDATA);
-;;BOOL
-;;WINAPI
-;;SENDMESSAGECALLBACKW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM,
-;;    SENDASYNCPROC LPRESULTCALLBACK,
-;;    DWORD DWDATA);
-;;#IFDEF UNICODE
-;;#DEFINE SENDMESSAGECALLBACK  SENDMESSAGECALLBACKW
-;;#ELSE
-;;#DEFINE SENDMESSAGECALLBACK  SENDMESSAGECALLBACKA
-;;#ENDIF // !UNICODE
-
-;;BOOL
-;;WINAPI
-;;POSTMESSAGEA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;BOOL
-;;WINAPI
-;;POSTMESSAGEW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE POSTMESSAGE  POSTMESSAGEW
-;;#ELSE
-;;#DEFINE POSTMESSAGE  POSTMESSAGEA
-;;#ENDIF // !UNICODE
-
-;;BOOL
-;;WINAPI
-;;POSTTHREADMESSAGEA(
-;;    DWORD IDTHREAD,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;BOOL
-;;WINAPI
-;;POSTTHREADMESSAGEW(
-;;    DWORD IDTHREAD,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE POSTTHREADMESSAGE  POSTTHREADMESSAGEW
-;;#ELSE
-;;#DEFINE POSTTHREADMESSAGE  POSTTHREADMESSAGEA
-;;#ENDIF // !UNICODE
-
-;;#DEFINE POSTAPPMESSAGEA(IDTHREAD, WMSG, WPARAM, LPARAM)\
-;;        POSTTHREADMESSAGEA((DWORD)IDTHREAD, WMSG, WPARAM, LPARAM)
-;;#DEFINE POSTAPPMESSAGEW(IDTHREAD, WMSG, WPARAM, LPARAM)\
-;;        POSTTHREADMESSAGEW((DWORD)IDTHREAD, WMSG, WPARAM, LPARAM)
-;;#IFDEF UNICODE
-;;#DEFINE POSTAPPMESSAGE  POSTAPPMESSAGEW
-;;#ELSE
-;;#DEFINE POSTAPPMESSAGE  POSTAPPMESSAGEA
-;;#ENDIF // !UNICODE
-
-;;/*
-;; * SPECIAL HWND VALUE FOR USE WITH POSTMESSAGE() AND SENDMESSAGE()
-;; */
+;; * SPECIAL HWND VALUE FOR USE WITH POSTMESSAGE AND SENDMESSAGE
 (define-integrable HWND_BROADCAST  #xFFFF) ;  ((HWND)0XFFFF)
-
-;;BOOL
-;;WINAPI
-;;ATTACHTHREADINPUT(
-;;    DWORD IDATTACH,
-;;    DWORD IDATTACHTO,
-;;    BOOL FATTACH);
-;;
-;;
-;;BOOL
-;;WINAPI
-;;REPLYMESSAGE(
-;;    LRESULT LRESULT);
-;;
-;;BOOL
-;;WINAPI
-;;WAITMESSAGE(
-;;    VOID);
-;;
-;;DWORD
-;;WINAPI
-;;WAITFORINPUTIDLE(
-;;    HANDLE HPROCESS,
-;;    DWORD DWMILLISECONDS);
-;;
-;;LRESULT
-;;WINAPI
-;;DEFWINDOWPROCA(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;LRESULT
-;;WINAPI
-;;DEFWINDOWPROCW(
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE DEFWINDOWPROC  DEFWINDOWPROCW
-;;#ELSE
-;;#DEFINE DEFWINDOWPROC  DEFWINDOWPROCA
-;;#ENDIF // !UNICODE
-;;
-;;VOID
-;;WINAPI
-;;POSTQUITMESSAGE(
-;;    INT NEXITCODE);
-;;
-;;#IFDEF STRICT
-;;
-;;LRESULT
-;;WINAPI
-;;CALLWINDOWPROCA(
-;;    WNDPROC LPPREVWNDFUNC,
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;LRESULT
-;;WINAPI
-;;CALLWINDOWPROCW(
-;;    WNDPROC LPPREVWNDFUNC,
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE CALLWINDOWPROC  CALLWINDOWPROCW
-;;#ELSE
-;;#DEFINE CALLWINDOWPROC  CALLWINDOWPROCA
-;;#ENDIF // !UNICODE
-;;
-;;#ELSE /* !STRICT */
-;;
-;;LRESULT
-;;WINAPI
-;;CALLWINDOWPROCA(
-;;    FARPROC LPPREVWNDFUNC,
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;LRESULT
-;;WINAPI
-;;CALLWINDOWPROCW(
-;;    FARPROC LPPREVWNDFUNC,
-;;    HWND HWND,
-;;    UINT MSG,
-;;    WPARAM WPARAM,
-;;    LPARAM LPARAM);
-;;#IFDEF UNICODE
-;;#DEFINE CALLWINDOWPROC  CALLWINDOWPROCW
-;;#ELSE
-;;#DEFINE CALLWINDOWPROC  CALLWINDOWPROCA
-;;#ENDIF // !UNICODE
-;;
-;;#ENDIF /* !STRICT */
-;;
-;;BOOL
-;;WINAPI
-;;INSENDMESSAGE(
-;;    VOID);
-;;
-;;UINT
-;;WINAPI
-;;GETDOUBLECLICKTIME(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;SETDOUBLECLICKTIME(
-;;    UINT);
-;;
-;;ATOM
-;;WINAPI
-;;REGISTERCLASSA(
-;;    CONST WNDCLASSA *LPWNDCLASS);
-;;ATOM
-;;WINAPI
-;;REGISTERCLASSW(
-;;    CONST WNDCLASSW *LPWNDCLASS);
-;;#IFDEF UNICODE
-;;#DEFINE REGISTERCLASS  REGISTERCLASSW
-;;#ELSE
-;;#DEFINE REGISTERCLASS  REGISTERCLASSA
-;;#ENDIF // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;UNREGISTERCLASSA(
-;;    LPCSTR LPCLASSNAME,
-;;    HINSTANCE HINSTANCE);
-;;BOOL
-;;WINAPI
-;;UNREGISTERCLASSW(
-;;    LPCWSTR LPCLASSNAME,
-;;    HINSTANCE HINSTANCE);
-;;#IFDEF UNICODE
-;;#DEFINE UNREGISTERCLASS  UNREGISTERCLASSW
-;;#ELSE
-;;#DEFINE UNREGISTERCLASS  UNREGISTERCLASSA
-;;#ENDIF // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;GETCLASSINFOA(
-;;    HINSTANCE HINSTANCE ,
-;;    LPCSTR LPCLASSNAME,
-;;    LPWNDCLASSA LPWNDCLASS);
-;;BOOL
-;;WINAPI
-;;GETCLASSINFOW(
-;;    HINSTANCE HINSTANCE ,
-;;    LPCWSTR LPCLASSNAME,
-;;    LPWNDCLASSW LPWNDCLASS);
-;;#IFDEF UNICODE
-;;#DEFINE GETCLASSINFO  GETCLASSINFOW
-;;#ELSE
-;;#DEFINE GETCLASSINFO  GETCLASSINFOA
-;;#ENDIF // !UNICODE
 
 (define-integrable CW_USEDEFAULT       #x80000000) ; ((UINT)0X80000000)
 
-;;/*
 ;; * SPECIAL VALUE FOR CREATEWINDOW, ET AL.
-;; */
 (define-integrable HWND_DESKTOP        0)          ; ((HWND)0)
 
-;;HWND
-;;WINAPI
-;;CreateWindowExA(
-;;    DWORD dwExStyle,
-;;    LPCSTR lpClassName,
-;;    LPCSTR lpWindowName,
-;;    DWORD dwStyle,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight,
-;;    HWND hWndParent ,
-;;    HMENU hMenu,
-;;    HINSTANCE hInstance,
-;;    LPVOID lpParam);
-;;HWND
-;;WINAPI
-;;CreateWindowExW(
-;;    DWORD dwExStyle,
-;;    LPCWSTR lpClassName,
-;;    LPCWSTR lpWindowName,
-;;    DWORD dwStyle,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight,
-;;    HWND hWndParent ,
-;;    HMENU hMenu,
-;;    HINSTANCE hInstance,
-;;    LPVOID lpParam);
-;;#ifdef UNICODE
-;;#define CreateWindowEx  CreateWindowExW
-;;#else
-;;#define CreateWindowEx  CreateWindowExA
-;;#endif // !UNICODE
-;;
-;;#define CreateWindowA(lpClassName, lpWindowName, dwStyle, x, y,\
-;;nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam)\
-;;CreateWindowExA(0L, lpClassName, lpWindowName, dwStyle, x, y,\
-;;nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam)
-;;#define CreateWindowW(lpClassName, lpWindowName, dwStyle, x, y,\
-;;nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam)\
-;;CreateWindowExW(0L, lpClassName, lpWindowName, dwStyle, x, y,\
-;;nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam)
-;;#ifdef UNICODE
-;;#define CreateWindow  CreateWindowW
-;;#else
-;;#define CreateWindow  CreateWindowA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;IsWindow(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;IsMenu(
-;;    HMENU hMenu);
-;;
-;;BOOL
-;;WINAPI
-;;IsChild(
-;;    HWND hWndParent,
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;DestroyWindow(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;ShowWindow(
-;;    HWND hWnd,
-;;    int nCmdShow);
-;;
-;;BOOL
-;;WINAPI
-;;FlashWindow(
-;;    HWND hWnd,
-;;    BOOL bInvert);
-;;
-;;BOOL
-;;WINAPI
-;;ShowOwnedPopups(
-;;    HWND hWnd,
-;;    BOOL fShow);
-;;
-;;BOOL
-;;WINAPI
-;;OpenIcon(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;CloseWindow(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;MoveWindow(
-;;    HWND hWnd,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight,
-;;    BOOL bRepaint);
-;;
-;;BOOL
-;;WINAPI
-;;SetWindowPos(
-;;    HWND hWnd,
-;;    HWND hWndInsertAfter ,
-;;    int X,
-;;    int Y,
-;;    int cx,
-;;    int cy,
-;;    UINT uFlags);
-;;
-;;BOOL
-;;WINAPI
-;;GetWindowPlacement(
-;;    HWND hWnd,
-;;    WINDOWPLACEMENT *lpwndpl);
-;;
-;;BOOL
-;;WINAPI
-;;SetWindowPlacement(
-;;    HWND hWnd,
-;;    CONST WINDOWPLACEMENT *lpwndpl);
-;;
-;;
-;;#ifndef NODEFERWINDOWPOS
-;;
-;;HDWP
-;;WINAPI
-;;BeginDeferWindowPos(
-;;    int nNumWindows);
-;;
-;;HDWP
-;;WINAPI
-;;DeferWindowPos(
-;;    HDWP hWinPosInfo,
-;;    HWND hWnd,
-;;    HWND hWndInsertAfter ,
-;;    int x,
-;;    int y,
-;;    int cx,
-;;    int cy,
-;;    UINT uFlags);
-;;
-;;BOOL
-;;WINAPI
-;;EndDeferWindowPos(
-;;    HDWP hWinPosInfo);
-;;
-;;#endif /* !NODEFERWINDOWPOS */
-;;
-;;BOOL
-;;WINAPI
-;;IsWindowVisible(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;IsIconic(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;AnyPopup(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;BringWindowToTop(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;IsZoomed(
-;;    HWND hWnd);
-;;
-;;/*
 ;; * SetWindowPos Flags
-;; */
 (define-integrable SWP_NOSIZE          #x0001)
 (define-integrable SWP_NOMOVE          #x0002)
 (define-integrable SWP_NOZORDER        #x0004)
 (define-integrable SWP_NOREDRAW        #x0008)
 (define-integrable SWP_NOACTIVATE      #x0010)
-(define-integrable SWP_FRAMECHANGED    #x0020) ;  /* The frame changed: send WM_NCCALCSIZE */
+(define-integrable SWP_FRAMECHANGED    #x0020) ;The frame changed: send WM_NCCALCSIZE
 (define-integrable SWP_SHOWWINDOW      #x0040)
 (define-integrable SWP_HIDEWINDOW      #x0080)
 (define-integrable SWP_NOCOPYBITS      #x0100)
-(define-integrable SWP_NOOWNERZORDER   #x0200) ;  /* Don't do owner Z ordering */
+(define-integrable SWP_NOOWNERZORDER   #x0200) ;Don't do owner Z ordering
 
 (define-integrable SWP_DRAWFRAME       SWP_FRAMECHANGED)
 (define-integrable SWP_NOREPOSITION    SWP_NOOWNERZORDER)
-
 
 (define-integrable HWND_TOP        0)  ;((HWND)0)
 (define-integrable HWND_BOTTOM     1)  ;((HWND)1)
 (define-integrable HWND_TOPMOST    -1)  ;((HWND)-1)
 (define-integrable HWND_NOTOPMOST  -2)  ;((HWND)-2)
 
-;;#ifndef NOCTLMGR
-
-;;#ifndef RC_INVOKED       // RC can't handle #pragmas
-;;
-;;/*
-;; * WARNING:
-;; * The following structures must NOT be DWORD padded because they are
-;; * followed by strings, etc that do not have to be DWORD aligned.
-;; */
-;;#pragma pack(2)
-
-;;typedef struct {
-;;    DWORD style;
-;;    DWORD dwExtendedStyle;
-;;    WORD cdit;
-;;    short x;
-;;    short y;
-;;    short cx;
-;;    short cy;
-;;} DLGTEMPLATE;
-;;typedef DLGTEMPLATE *LPDLGTEMPLATEA;
-;;typedef DLGTEMPLATE *LPDLGTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef LPDLGTEMPLATEW LPDLGTEMPLATE;
-;;#else
-;;typedef LPDLGTEMPLATEA LPDLGTEMPLATE;
-;;#endif // UNICODE
-;;typedef CONST DLGTEMPLATE *LPCDLGTEMPLATEA;
-;;typedef CONST DLGTEMPLATE *LPCDLGTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef LPCDLGTEMPLATEW LPCDLGTEMPLATE;
-;;#else
-;;typedef LPCDLGTEMPLATEA LPCDLGTEMPLATE;
-;;#endif // UNICODE
-;;
-;;/*
-;; * Dialog item template (dit)
-;; */
-;;typedef struct {
-;;    DWORD style;
-;;    DWORD dwExtendedStyle;
-;;    short x;
-;;    short y;
-;;    short cx;
-;;    short cy;
-;;    WORD id;
-;;} DLGITEMTEMPLATE;
-;;typedef DLGITEMTEMPLATE *PDLGITEMTEMPLATEA;
-;;typedef DLGITEMTEMPLATE *PDLGITEMTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef PDLGITEMTEMPLATEW PDLGITEMTEMPLATE;
-;;#else
-;;typedef PDLGITEMTEMPLATEA PDLGITEMTEMPLATE;
-;;#endif // UNICODE
-;;typedef DLGITEMTEMPLATE *LPDLGITEMTEMPLATEA;
-;;typedef DLGITEMTEMPLATE *LPDLGITEMTEMPLATEW;
-;;#ifdef UNICODE
-;;typedef LPDLGITEMTEMPLATEW LPDLGITEMTEMPLATE;
-;;#else
-;;typedef LPDLGITEMTEMPLATEA LPDLGITEMTEMPLATE;
-;;#endif // UNICODE
-;;
-;;#pragma pack()      // Resume normal packing
-;;#endif  /* !RC_INVOKED */
-;;
-;;HWND
-;;WINAPI
-;;CreateDialogParamA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpTemplateName,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;HWND
-;;WINAPI
-;;CreateDialogParamW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpTemplateName,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;#ifdef UNICODE
-;;#define CreateDialogParam  CreateDialogParamW
-;;#else
-;;#define CreateDialogParam  CreateDialogParamA
-;;#endif // !UNICODE
-;;
-;;HWND
-;;WINAPI
-;;CreateDialogIndirectParamA(
-;;    HINSTANCE hInstance,
-;;    LPCDLGTEMPLATEA lpTemplate,
-;;    HWND hWndParent,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;HWND
-;;WINAPI
-;;CreateDialogIndirectParamW(
-;;    HINSTANCE hInstance,
-;;    LPCDLGTEMPLATEW lpTemplate,
-;;    HWND hWndParent,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;#ifdef UNICODE
-;;#define CreateDialogIndirectParam  CreateDialogIndirectParamW
-;;#else
-;;#define CreateDialogIndirectParam  CreateDialogIndirectParamA
-;;#endif // !UNICODE
-
-;;#define CreateDialogA(hInstance, lpName, hWndParent, lpDialogFunc) \
-;;CreateDialogParamA(hInstance, lpName, hWndParent, lpDialogFunc, 0L)
-;;#define CreateDialogW(hInstance, lpName, hWndParent, lpDialogFunc) \
-;;CreateDialogParamW(hInstance, lpName, hWndParent, lpDialogFunc, 0L)
-;;#ifdef UNICODE
-;;#define CreateDialog  CreateDialogW
-;;#else
-;;#define CreateDialog  CreateDialogA
-;;#endif // !UNICODE
-;;
-;;#define CreateDialogIndirectA(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;CreateDialogIndirectParamA(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#define CreateDialogIndirectW(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;CreateDialogIndirectParamW(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#ifdef UNICODE
-;;#define CreateDialogIndirect  CreateDialogIndirectW
-;;#else
-;;#define CreateDialogIndirect  CreateDialogIndirectA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;DialogBoxParamA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpTemplateName,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;int
-;;WINAPI
-;;DialogBoxParamW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpTemplateName,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;#ifdef UNICODE
-;;#define DialogBoxParam  DialogBoxParamW
-;;#else
-;;#define DialogBoxParam  DialogBoxParamA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;DialogBoxIndirectParamA(
-;;    HINSTANCE hInstance,
-;;    LPCDLGTEMPLATEA hDialogTemplate,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;int
-;;WINAPI
-;;DialogBoxIndirectParamW(
-;;    HINSTANCE hInstance,
-;;    LPCDLGTEMPLATEW hDialogTemplate,
-;;    HWND hWndParent ,
-;;    DLGPROC lpDialogFunc,
-;;    LPARAM dwInitParam);
-;;#ifdef UNICODE
-;;#define DialogBoxIndirectParam  DialogBoxIndirectParamW
-;;#else
-;;#define DialogBoxIndirectParam  DialogBoxIndirectParamA
-;;#endif // !UNICODE
-;;
-;;#define DialogBoxA(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;DialogBoxParamA(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#define DialogBoxW(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;DialogBoxParamW(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#ifdef UNICODE
-;;#define DialogBox  DialogBoxW
-;;#else
-;;#define DialogBox  DialogBoxA
-;;#endif // !UNICODE
-;;
-;;#define DialogBoxIndirectA(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;DialogBoxIndirectParamA(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#define DialogBoxIndirectW(hInstance, lpTemplate, hWndParent, lpDialogFunc) \
-;;DialogBoxIndirectParamW(hInstance, lpTemplate, hWndParent, lpDialogFunc, 0L)
-;;#ifdef UNICODE
-;;#define DialogBoxIndirect  DialogBoxIndirectW
-;;#else
-;;#define DialogBoxIndirect  DialogBoxIndirectA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;EndDialog(
-;;    HWND hDlg,
-;;    int nResult);
-;;
-;;HWND
-;;WINAPI
-;;GetDlgItem(
-;;    HWND hDlg,
-;;    int nIDDlgItem);
-
-;;BOOL
-;;WINAPI
-;;SetDlgItemInt(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    UINT uValue,
-;;    BOOL bSigned);
-;;
-;;UINT
-;;WINAPI
-;;GetDlgItemInt(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    BOOL *lpTranslated,
-;;    BOOL bSigned);
-;;
-;;BOOL
-;;WINAPI
-;;SetDlgItemTextA(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    LPCSTR lpString);
-;;BOOL
-;;WINAPI
-;;SetDlgItemTextW(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    LPCWSTR lpString);
-;;#ifdef UNICODE
-;;#define SetDlgItemText  SetDlgItemTextW
-;;#else
-;;#define SetDlgItemText  SetDlgItemTextA
-;;#endif // !UNICODE
-;;
-;;UINT
-;;WINAPI
-;;GetDlgItemTextA(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    LPSTR lpString,
-;;    int nMaxCount);
-;;UINT
-;;WINAPI
-;;GetDlgItemTextW(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    LPWSTR lpString,
-;;    int nMaxCount);
-;;#ifdef UNICODE
-;;#define GetDlgItemText  GetDlgItemTextW
-;;#else
-;;#define GetDlgItemText  GetDlgItemTextA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;CheckDlgButton(
-;;    HWND hDlg,
-;;    int nIDButton,
-;;    UINT uCheck);
-
-;;BOOL
-;;WINAPI
-;;CheckRadioButton(
-;;    HWND hDlg,
-;;    int nIDFirstButton,
-;;    int nIDLastButton,
-;;    int nIDCheckButton);
-;;
-;;UINT
-;;WINAPI
-;;IsDlgButtonChecked(
-;;    HWND hDlg,
-;;    int nIDButton);
-;;
-;;LONG
-;;WINAPI
-;;SendDlgItemMessageA(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    UINT Msg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;LONG
-;;WINAPI
-;;SendDlgItemMessageW(
-;;    HWND hDlg,
-;;    int nIDDlgItem,
-;;    UINT Msg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;#ifdef UNICODE
-;;#define SendDlgItemMessage  SendDlgItemMessageW
-;;#else
-;;#define SendDlgItemMessage  SendDlgItemMessageA
-;;#endif // !UNICODE
-;;
-;;HWND
-;;WINAPI
-;;GetNextDlgGroupItem(
-;;    HWND hDlg,
-;;    HWND hCtl,
-;;    BOOL bPrevious);
-;;
-;;HWND
-;;WINAPI
-;;GetNextDlgTabItem(
-;;    HWND hDlg,
-;;    HWND hCtl,
-;;    BOOL bPrevious);
-;;
-;;int
-;;WINAPI
-;;GetDlgCtrlID(
-;;    HWND hWnd);
-;;
-;;long
-;;WINAPI
-;;GetDialogBaseUnits(VOID);
-;;
-;;LRESULT
-;;WINAPI
-;;DefDlgProcA(
-;;    HWND hDlg,
-;;    UINT Msg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;LRESULT
-;;WINAPI
-;;DefDlgProcW(
-;;    HWND hDlg,
-;;    UINT Msg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;#ifdef UNICODE
-;;#define DefDlgProc  DefDlgProcW
-;;#else
-;;#define DefDlgProc  DefDlgProcA
-;;#endif // !UNICODE
-;;
-;;/*
 ;; * Window extra byted needed for private dialog classes.
-;; */
 (define DLGWINDOWEXTRA 30)
-
-;;#endif /* !NOCTLMGR */
-;;
-;;#ifndef NOMSG
-;;BOOL
-;;WINAPI
-;;CallMsgFilter(
-;;    LPMSG lpMsg,
-;;    int nCode);
-;;#endif /* !NOMSG */
-;;
-;;#ifndef NOCLIPBOARD
-;;
-;;/*
-;; * Clipboard Manager Functions
-;; */
-;;BOOL
-;;WINAPI
-;;OpenClipboard(
-;;    HWND hWndNewOwner);
-;;
-;;BOOL
-;;WINAPI
-;;CloseClipboard(
-;;    VOID);
-;;
-;;HWND
-;;WINAPI
-;;GetClipboardOwner(
-;;    VOID);
-;;
-;;HWND
-;;WINAPI
-;;SetClipboardViewer(
-;;    HWND hWndNewViewer);
-;;
-;;HWND
-;;WINAPI
-;;GetClipboardViewer(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;ChangeClipboardChain(
-;;    HWND hWndRemove,
-;;    HWND hWndNewNext);
-;;
-;;HANDLE
-;;WINAPI
-;;SetClipboardData(
-;;    UINT uFormat,
-;;    HANDLE hMem);
-;;
-;;HANDLE
-;;WINAPI
-;;    GetClipboardData(
-;;    UINT uFormat);
-;;
-;;UINT
-;;WINAPI
-;;RegisterClipboardFormatA(
-;;    LPCSTR lpszFormat);
-;;UINT
-;;WINAPI
-;;RegisterClipboardFormatW(
-;;    LPCWSTR lpszFormat);
-;;#ifdef UNICODE
-;;#define RegisterClipboardFormat  RegisterClipboardFormatW
-;;#else
-;;#define RegisterClipboardFormat  RegisterClipboardFormatA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;CountClipboardFormats(
-;;    VOID);
-;;
-;;UINT
-;;WINAPI
-;;EnumClipboardFormats(
-;;    UINT format);
-;;
-;;int
-;;WINAPI
-;;GetClipboardFormatNameA(
-;;    UINT format,
-;;    LPSTR lpszFormatName,
-;;    int cchMaxCount);
-;;int
-;;WINAPI
-;;GetClipboardFormatNameW(
-;;    UINT format,
-;;    LPWSTR lpszFormatName,
-;;    int cchMaxCount);
-;;#ifdef UNICODE
-;;#define GetClipboardFormatName  GetClipboardFormatNameW
-;;#else
-;;#define GetClipboardFormatName  GetClipboardFormatNameA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;EmptyClipboard(
-;;    VOID);
-
-;;BOOL
-;;WINAPI
-;;IsClipboardFormatAvailable(
-;;    UINT format);
-;;
-;;int
-;;WINAPI
-;;GetPriorityClipboardFormat(
-;;    UINT *paFormatPriorityList,
-;;    int cFormats);
-;;
-;;HWND
-;;WINAPI
-;;GetOpenClipboardWindow(
-;;    VOID);
-;;
-;;#endif /* !NOCLIPBOARD */
-;;
-;;/*
-;; * Character Translation Routines
-;; */
-;;
-;;BOOL
-;;WINAPI
-;;CharToOemA(
-;;    LPCSTR lpszSrc,
-;;    LPSTR lpszDst);
-;;BOOL
-;;WINAPI
-;;CharToOemW(
-;;    LPCWSTR lpszSrc,
-;;    LPSTR lpszDst);
-;;#ifdef UNICODE
-;;#define CharToOem  CharToOemW
-;;#else
-;;#define CharToOem  CharToOemA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;OemToCharA(
-;;    LPCSTR lpszSrc,
-;;    LPSTR lpszDst);
-;;BOOL
-;;WINAPI
-;;OemToCharW(
-;;    LPCSTR lpszSrc,
-;;    LPWSTR lpszDst);
-;;#ifdef UNICODE
-;;#define OemToChar  OemToCharW
-;;#else
-;;#define OemToChar  OemToCharA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;CharToOemBuffA(
-;;    LPCSTR lpszSrc,
-;;    LPSTR lpszDst,
-;;    DWORD cchDstLength);
-;;BOOL
-;;WINAPI
-;;CharToOemBuffW(
-;;    LPCWSTR lpszSrc,
-;;    LPSTR lpszDst,
-;;    DWORD cchDstLength);
-;;#ifdef UNICODE
-;;#define CharToOemBuff  CharToOemBuffW
-;;#else
-;;#define CharToOemBuff  CharToOemBuffA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;OemToCharBuffA(
-;;    LPCSTR lpszSrc,
-;;    LPSTR lpszDst,
-;;    DWORD cchDstLength);
-;;BOOL
-;;WINAPI
-;;OemToCharBuffW(
-;;    LPCSTR lpszSrc,
-;;    LPWSTR lpszDst,
-;;    DWORD cchDstLength);
-;;#ifdef UNICODE
-;;#define OemToCharBuff  OemToCharBuffW
-;;#else
-;;#define OemToCharBuff  OemToCharBuffA
-;;#endif // !UNICODE
-;;
-;;LPSTR
-;;WINAPI
-;;CharUpperA(
-;;    LPSTR lpsz);
-;;LPWSTR
-;;WINAPI
-;;CharUpperW(
-;;    LPWSTR lpsz);
-;;#ifdef UNICODE
-;;#define CharUpper  CharUpperW
-;;#else
-;;#define CharUpper  CharUpperA
-;;#endif // !UNICODE
-;;
-;;DWORD
-;;WINAPI
-;;CharUpperBuffA(
-;;    LPSTR lpsz,
-;;    DWORD cchLength);
-;;DWORD
-;;WINAPI
-;;CharUpperBuffW(
-;;    LPWSTR lpsz,
-;;    DWORD cchLength);
-;;#ifdef UNICODE
-;;#define CharUpperBuff  CharUpperBuffW
-;;#else
-;;#define CharUpperBuff  CharUpperBuffA
-;;#endif // !UNICODE
-;;
-;;LPSTR
-;;WINAPI
-;;CharLowerA(
-;;    LPSTR lpsz);
-;;LPWSTR
-;;WINAPI
-;;CharLowerW(
-;;    LPWSTR lpsz);
-;;#ifdef UNICODE
-;;#define CharLower  CharLowerW
-;;#else
-;;#define CharLower  CharLowerA
-;;#endif // !UNICODE
-;;
-;;DWORD
-;;WINAPI
-;;CharLowerBuffA(
-;;    LPSTR lpsz,
-;;    DWORD cchLength);
-;;DWORD
-;;WINAPI
-;;CharLowerBuffW(
-;;    LPWSTR lpsz,
-;;    DWORD cchLength);
-;;#ifdef UNICODE
-;;#define CharLowerBuff  CharLowerBuffW
-;;#else
-;;#define CharLowerBuff  CharLowerBuffA
-;;#endif // !UNICODE
-;;
-;;LPSTR
-;;WINAPI
-;;CharNextA(
-;;    LPCSTR lpsz);
-;;LPWSTR
-;;WINAPI
-;;CharNextW(
-;;    LPCWSTR lpsz);
-;;#ifdef UNICODE
-;;#define CharNext  CharNextW
-;;#else
-;;#define CharNext  CharNextA
-;;#endif // !UNICODE
-;;
-;;LPSTR
-;;WINAPI
-;;CharPrevA(
-;;    LPCSTR lpszStart,
-;;    LPCSTR lpszCurrent);
-;;LPWSTR
-;;WINAPI
-;;CharPrevW(
-;;    LPCWSTR lpszStart,
-;;    LPCWSTR lpszCurrent);
-;;#ifdef UNICODE
-;;#define CharPrev  CharPrevW
-;;#else
-;;#define CharPrev  CharPrevA
-;;#endif // !UNICODE
-;;
-;;/*
-;; * Compatibility defines for character translation routines
-;; */
-;;#define AnsiToOem CharToOemA
-;;#define OemToAnsi OemToCharA
-;;#define AnsiToOemBuff CharToOemBuffA
-;;#define OemToAnsiBuff OemToCharBuffA
-;;#define AnsiUpper CharUpperA
-;;#define AnsiUpperBuff CharUpperBuffA
-;;#define AnsiLower CharLowerA
-;;#define AnsiLowerBuff CharLowerBuffA
-;;#define AnsiNext CharNextA
-;;#define AnsiPrev CharPrevA
-;;
-;;#ifndef  NOLANGUAGE
-;;/*
-;; * Language dependent Routines
-;; */
-;;
-;;BOOL
-;;WINAPI
-;;IsCharAlphaA(
-;;    CHAR ch);
-;;BOOL
-;;WINAPI
-;;IsCharAlphaW(
-;;    WCHAR ch);
-;;#ifdef UNICODE
-;;#define IsCharAlpha  IsCharAlphaW
-;;#else
-;;#define IsCharAlpha  IsCharAlphaA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;IsCharAlphaNumericA(
-;;    CHAR ch);
-;;BOOL
-;;WINAPI
-;;IsCharAlphaNumericW(
-;;    WCHAR ch);
-;;#ifdef UNICODE
-;;#define IsCharAlphaNumeric  IsCharAlphaNumericW
-;;#else
-;;#define IsCharAlphaNumeric  IsCharAlphaNumericA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;IsCharUpperA(
-;;    CHAR ch);
-;;BOOL
-;;WINAPI
-;;IsCharUpperW(
-;;    WCHAR ch);
-;;#ifdef UNICODE
-;;#define IsCharUpper  IsCharUpperW
-;;#else
-;;#define IsCharUpper  IsCharUpperA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;IsCharLowerA(
-;;    CHAR ch);
-;;BOOL
-;;WINAPI
-;;IsCharLowerW(
-;;    WCHAR ch);
-;;#ifdef UNICODE
-;;#define IsCharLower  IsCharLowerW
-;;#else
-;;#define IsCharLower  IsCharLowerA
-;;#endif // !UNICODE
-;;
-;;#endif  /* !NOLANGUAGE */
-;;
-;;HWND
-;;WINAPI
-;;SetFocus(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;GetActiveWindow(
-;;    VOID);
-;;
-;;HWND
-;;WINAPI
-;;GetFocus(
-;;    VOID);
-;;
-;;UINT
-;;WINAPI
-;;GetKBCodePage(
-;;    VOID);
-;;
-;;SHORT
-;;WINAPI
-;;GetKeyState(
-;;    int nVirtKey);
-;;
-;;SHORT
-;;WINAPI
-;;GetAsyncKeyState(
-;;    int vKey);
-;;
-;;BOOL
-;;WINAPI
-;;GetKeyboardState(
-;;    PBYTE lpKeyState);
-;;
-;;BOOL
-;;WINAPI
-;;SetKeyboardState(
-;;    LPBYTE lpKeyState);
-;;
-;;int
-;;WINAPI
-;;GetKeyNameTextA(
-;;    LONG lParam,
-;;    LPSTR lpString,
-;;    int nSize
-;;    );
-;;int
-;;WINAPI
-;;GetKeyNameTextW(
-;;    LONG lParam,
-;;    LPWSTR lpString,
-;;    int nSize
-;;    );
-;;#ifdef UNICODE
-;;#define GetKeyNameText  GetKeyNameTextW
-;;#else
-;;#define GetKeyNameText  GetKeyNameTextA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;GetKeyboardType(
-;;    int nTypeFlag);
-;;
-;;int
-;;WINAPI
-;;ToAscii(
-;;    UINT uVirtKey,
-;;    UINT uScanCode,
-;;    PBYTE lpKeyState,
-;;    LPWORD lpChar,
-;;    UINT uFlags);
-;;
-;;int
-;;WINAPI
-;;ToUnicode(
-;;    UINT wVirtKey,
-;;    UINT wScanCode,
-;;    PBYTE lpKeyState,
-;;    LPWSTR pwszBuff,
-;;    int cchBuff,
-;;    UINT wFlags);
-;;
-;;DWORD
-;;WINAPI
-;;OemKeyScan(
-;;    WORD wOemChar);
-;;
-;;SHORT
-;;WINAPI
-;;VkKeyScanA(
-;;    CHAR ch);
-;;SHORT
-;;WINAPI
-;;VkKeyScanW(
-;;    WCHAR ch);
-;;#ifdef UNICODE
-;;#define VkKeyScan  VkKeyScanW
-;;#else
-;;#define VkKeyScan  VkKeyScanA
-;;#endif // !UNICODE
-;;
-;;#define KEYEVENTF_EXTENDEDKEY 0x0001
-;;#define KEYEVENTF_KEYUP       0x0002
-;;
-;;VOID WINAPI
-;;keybd_event(
-;;    BYTE bVk,
-;;    BYTE bScan,
-;;    DWORD dwFlags,
-;;    DWORD dwExtraInfo);
 
 (define-integrable MOUSEEVENTF_MOVE        #x0001) ;  // mouse move
 (define-integrable MOUSEEVENTF_LEFTDOWN    #x0002) ;  // left button down
@@ -2774,67 +768,7 @@
 (define-integrable MOUSEEVENTF_MIDDLEUP    #x0040) ;  // middle button up
 (define-integrable MOUSEEVENTF_ABSOLUTE    #x8000) ;  // absolute move
 
-;;VOID WINAPI
-;;mouse_event(
-;;    DWORD dwFlags,
-;;    DWORD dx,
-;;    DWORD dy,
-;;    DWORD cButtons,
-;;    DWORD dwExtraInfo);
-;;
-;;UINT
-;;WINAPI
-;;MapVirtualKeyA(
-;;    UINT uCode,
-;;    UINT uMapType);
-;;UINT
-;;WINAPI
-;;MapVirtualKeyW(
-;;    UINT uCode,
-;;    UINT uMapType);
-;;#ifdef UNICODE
-;;#define MapVirtualKey  MapVirtualKeyW
-;;#else
-;;#define MapVirtualKey  MapVirtualKeyA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;GetInputState(
-;;    VOID);
-;;
-;;DWORD
-;;WINAPI
-;;GetQueueStatus(
-;;    UINT flags);
-;;
-;;HWND
-;;WINAPI
-;;GetCapture(
-;;    VOID);
-;;
-;;HWND
-;;WINAPI
-;;SetCapture(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;ReleaseCapture(
-;;    VOID);
-;;
-;;DWORD
-;;WINAPI
-;;MsgWaitForMultipleObjects(
-;;    DWORD nCount,
-;;    LPHANDLE pHandles,
-;;    BOOL fWaitAll,
-;;    DWORD dwMilliseconds,
-;;    DWORD dwWakeMask);
-;;
-;;/*
-;; * Queue status flags for GetQueueStatus() and MsgWaitForMultipleObjects()
-;; */
+;; * Queue status flags for GetQueueStatus and MsgWaitForMultipleObjects
 (define-integrable QS_KEY           #x01)
 (define-integrable QS_MOUSEMOVE     #x02)
 (define-integrable QS_MOUSEBUTTON   #x04)
@@ -2856,14 +790,7 @@
                                       QS_PAINT
                                       QS_HOTKEY))
 
-;;UINT
-;;WINAPI
-;;GetSysInputMode(
-;;    VOID);
-;;
-;;/*
 ;; * GetSysInputMode return values
-;; */
 (define-integrable IMD_NONE                0)
 (define-integrable IMD_MENU                1)
 (define-integrable IMD_DIALOGBOX           2)
@@ -2875,107 +802,7 @@
 (define-integrable IMD_DRAGOBJECT          8)
 (define-integrable IMD_DRAGDETECT          9)
 
-
-;;/*
-;; * Windows Functions
-;; */
-;;UINT
-;;WINAPI
-;;SetTimer(
-;;    HWND hWnd ,
-;;    UINT nIDEvent,
-;;    UINT uElapse,
-;;    TIMERPROC lpTimerFunc);
-;;
-;;BOOL
-;;WINAPI
-;;KillTimer(
-;;    HWND hWnd,
-;;    UINT uIDEvent);
-;;
-;;BOOL
-;;WINAPI
-;;IsWindowUnicode(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;EnableWindow(
-;;    HWND hWnd,
-;;    BOOL bEnable);
-;;
-;;BOOL
-;;WINAPI
-;;IsWindowEnabled(
-;;    HWND hWnd);
-;;
-;;HACCEL
-;;WINAPI
-;;LoadAcceleratorsA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpTableName);
-;;HACCEL
-;;WINAPI
-;;LoadAcceleratorsW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpTableName);
-;;#ifdef UNICODE
-;;#define LoadAccelerators  LoadAcceleratorsW
-;;#else
-;;#define LoadAccelerators  LoadAcceleratorsA
-;;#endif // !UNICODE
-;;
-;;HACCEL
-;;WINAPI
-;;CreateAcceleratorTableA(
-;;    LPACCEL, int);
-;;HACCEL
-;;WINAPI
-;;CreateAcceleratorTableW(
-;;    LPACCEL, int);
-;;#ifdef UNICODE
-;;#define CreateAcceleratorTable  CreateAcceleratorTableW
-;;#else
-;;#define CreateAcceleratorTable  CreateAcceleratorTableA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;DestroyAcceleratorTable(
-;;    HACCEL hAccel);
-;;
-;;int
-;;WINAPI
-;;CopyAcceleratorTableA(
-;;    HACCEL hAccelSrc,
-;;    LPACCEL lpAccelDst,
-;;    int cAccelEntries);
-;;int
-;;WINAPI
-;;CopyAcceleratorTableW(
-;;    HACCEL hAccelSrc,
-;;    LPACCEL lpAccelDst,
-;;    int cAccelEntries);
-;;#ifdef UNICODE
-;;#define CopyAcceleratorTable  CopyAcceleratorTableW
-;;#else
-;;#define CopyAcceleratorTable  CopyAcceleratorTableA
-;;#endif // !UNICODE
-;;
-;;#ifndef NOMSG
-;;int
-;;WINAPI
-;;TranslateAccelerator(
-;;    HWND hWnd,
-;;    HACCEL hAccTable,
-;;    LPMSG lpMsg);
-;;#endif /* !NOMSG */
-;;
-;;#ifndef NOSYSMETRICS
-;;
-;;/*
-;; * GetSystemMetrics() codes
-;; */
+;; * GetSystemMetrics codes
 (define-integrable SM_CXSCREEN         0)
 (define-integrable SM_CYSCREEN         1)
 (define-integrable SM_CXVSCROLL        2)
@@ -3022,304 +849,14 @@
 (define-integrable SM_CMOUSEBUTTONS     43)
 (define-integrable SM_CMETRICS          44)
 
-;;int
-;;WINAPI
-;;GetSystemMetrics(
-;;    int nIndex);
-;;
-;;#endif /* !NOSYSMETRICS */
-;;
-;;#ifndef NOMENUS
-;;
-;;HMENU
-;;WINAPI
-;;LoadMenuA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpMenuName);
-;;HMENU
-;;WINAPI
-;;LoadMenuW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpMenuName);
-;;#ifdef UNICODE
-;;#define LoadMenu  LoadMenuW
-;;#else
-;;#define LoadMenu  LoadMenuA
-;;#endif // !UNICODE
-;;
-;;HMENU
-;;WINAPI
-;;LoadMenuIndirectA(
-;;    CONST MENUTEMPLATEA *lpMenuTemplate);
-;;HMENU
-;;WINAPI
-;;LoadMenuIndirectW(
-;;    CONST MENUTEMPLATEW *lpMenuTemplate);
-;;#ifdef UNICODE
-;;#define LoadMenuIndirect  LoadMenuIndirectW
-;;#else
-;;#define LoadMenuIndirect  LoadMenuIndirectA
-;;#endif // !UNICODE
-;;
-;;HMENU
-;;WINAPI
-;;GetMenu(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;SetMenu(
-;;    HWND hWnd,
-;;    HMENU hMenu);
-;;
-;;BOOL
-;;WINAPI
-;;ChangeMenuA(
-;;    HMENU hMenu,
-;;    UINT cmd,
-;;    LPCSTR lpszNewItem,
-;;    UINT cmdInsert,
-;;    UINT flags);
-;;BOOL
-;;WINAPI
-;;ChangeMenuW(
-;;    HMENU hMenu,
-;;    UINT cmd,
-;;    LPCWSTR lpszNewItem,
-;;    UINT cmdInsert,
-;;    UINT flags);
-;;#ifdef UNICODE
-;;#define ChangeMenu  ChangeMenuW
-;;#else
-;;#define ChangeMenu  ChangeMenuA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;HiliteMenuItem(
-;;    HWND hWnd,
-;;    HMENU hMenu,
-;;    UINT uIDHiliteItem,
-;;    UINT uHilite);
-;;
-;;int
-;;WINAPI
-;;GetMenuStringA(
-;;    HMENU hMenu,
-;;    UINT uIDItem,
-;;    LPSTR lpString,
-;;    int nMaxCount,
-;;    UINT uFlag);
-;;int
-;;WINAPI
-;;GetMenuStringW(
-;;    HMENU hMenu,
-;;    UINT uIDItem,
-;;    LPWSTR lpString,
-;;    int nMaxCount,
-;;    UINT uFlag);
-;;#ifdef UNICODE
-;;#define GetMenuString  GetMenuStringW
-;;#else
-;;#define GetMenuString  GetMenuStringA
-;;#endif // !UNICODE
-;;
-;;UINT
-;;WINAPI
-;;GetMenuState(
-;;    HMENU hMenu,
-;;    UINT uId,
-;;    UINT uFlags);
-;;
-;;BOOL
-;;WINAPI
-;;DrawMenuBar(
-;;    HWND hWnd);
-;;
-;;HMENU
-;;WINAPI
-;;GetSystemMenu(
-;;    HWND hWnd,
-;;    BOOL bRevert);
-;;
-;;HMENU
-;;WINAPI
-;;CreateMenu(
-;;    VOID);
-;;
-;;HMENU
-;;WINAPI
-;;CreatePopupMenu(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;DestroyMenu(
-;;    HMENU hMenu);
-;;
-;;DWORD
-;;WINAPI
-;;CheckMenuItem(
-;;    HMENU hMenu,
-;;    UINT uIDCheckItem,
-;;    UINT uCheck);
-;;
-;;BOOL
-;;WINAPI
-;;EnableMenuItem(
-;;    HMENU hMenu,
-;;    UINT uIDEnableItem,
-;;    UINT uEnable);
-;;
-;;HMENU
-;;WINAPI
-;;GetSubMenu(
-;;    HMENU hMenu,
-;;    int nPos);
-;;
-;;UINT
-;;WINAPI
-;;GetMenuItemID(
-;;    HMENU hMenu,
-;;    int nPos);
-;;
-;;int
-;;WINAPI
-;;GetMenuItemCount(
-;;    HMENU hMenu);
-;;
-;;BOOL
-;;WINAPI
-;;InsertMenuA(
-;;    HMENU hMenu,
-;;    UINT uPosition,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCSTR lpNewItem
-;;    );
-;;BOOL
-;;WINAPI
-;;InsertMenuW(
-;;    HMENU hMenu,
-;;    UINT uPosition,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCWSTR lpNewItem
-;;    );
-;;#ifdef UNICODE
-;;#define InsertMenu  InsertMenuW
-;;#else
-;;#define InsertMenu  InsertMenuA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;AppendMenuA(
-;;    HMENU hMenu,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCSTR lpNewItem
-;;    );
-;;BOOL
-;;WINAPI
-;;AppendMenuW(
-;;    HMENU hMenu,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCWSTR lpNewItem
-;;    );
-;;#ifdef UNICODE
-;;#define AppendMenu  AppendMenuW
-;;#else
-;;#define AppendMenu  AppendMenuA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;ModifyMenuA(
-;;    HMENU hMnu,
-;;    UINT uPosition,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCSTR lpNewItem
-;;    );
-;;BOOL
-;;WINAPI
-;;ModifyMenuW(
-;;    HMENU hMnu,
-;;    UINT uPosition,
-;;    UINT uFlags,
-;;    UINT uIDNewItem,
-;;    LPCWSTR lpNewItem
-;;    );
-;;#ifdef UNICODE
-;;#define ModifyMenu  ModifyMenuW
-;;#else
-;;#define ModifyMenu  ModifyMenuA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI RemoveMenu(
-;;    HMENU hMenu,
-;;    UINT uPosition,
-;;    UINT uFlags);
-;;
-;;BOOL
-;;WINAPI
-;;DeleteMenu(
-;;    HMENU hMenu,
-;;    UINT uPosition,
-;;    UINT uFlags);
-;;
-;;BOOL
-;;WINAPI
-;;SetMenuItemBitmaps(
-;;    HMENU hMenu,
-;;    UINT uPosition,
-;;    UINT uFlags,
-;;    HBITMAP hBitmapUnchecked,
-;;    HBITMAP hBitmapChecked);
-;;
-;;LONG
-;;WINAPI
-;;GetMenuCheckMarkDimensions(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;TrackPopupMenu(
-;;    HMENU hMenu,
-;;    UINT uFlags,
-;;    int x,
-;;    int y,
-;;    int nReserved,
-;;    HWND hWnd,
-;;    CONST RECT *prcRect);
-;;
-;;/*
 ;; * Flags for TrackPopupMenu
-;; */
 (define-integrable TPM_LEFTBUTTON  #x0000)
 (define-integrable TPM_RIGHTBUTTON #x0002)
 (define-integrable TPM_LEFTALIGN   #x0000)
 (define-integrable TPM_CENTERALIGN #x0004)
 (define-integrable TPM_RIGHTALIGN  #x0008)
 
-;;#endif /* !NOMENUS */
-;;
-;;BOOL
-;;WINAPI
-;;DrawIcon(
-;;    HDC hDC,
-;;    int X,
-;;    int Y,
-;;    HICON hIcon);
-;;
-;;#ifndef NODRAWTEXT
-;;
-;;/*
-;; * DrawText() Format Flags
-;; */
+;; * DrawText Format Flags
 (define-integrable DT_TOP              #x0000)
 (define-integrable DT_LEFT             #x0000)
 (define-integrable DT_CENTER           #x0001)
@@ -3336,148 +873,7 @@
 (define-integrable DT_NOPREFIX         #x0800)
 (define-integrable DT_INTERNAL         #x1000)
 
-;;#endif /* !NODRAWTEXT */
-;;
-;;int
-;;WINAPI DrawTextA(
-;;    HDC hDC,
-;;    LPCSTR lpString,
-;;    int nCount,
-;;    LPRECT lpRect,
-;;    UINT uFormat);
-;;int
-;;WINAPI DrawTextW(
-;;    HDC hDC,
-;;    LPCWSTR lpString,
-;;    int nCount,
-;;    LPRECT lpRect,
-;;    UINT uFormat);
-;;#ifdef UNICODE
-;;#define DrawText  DrawTextW
-;;#else
-;;#define DrawText  DrawTextA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;GrayStringA(
-;;    HDC hDC,
-;;    HBRUSH hBrush,
-;;    GRAYSTRINGPROC lpOutputFunc,
-;;    LPARAM lpData,
-;;    int nCount,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight);
-;;BOOL
-;;WINAPI
-;;GrayStringW(
-;;    HDC hDC,
-;;    HBRUSH hBrush,
-;;    GRAYSTRINGPROC lpOutputFunc,
-;;    LPARAM lpData,
-;;    int nCount,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight);
-;;#ifdef UNICODE
-;;#define GrayString  GrayStringW
-;;#else
-;;#define GrayString  GrayStringA
-;;#endif // !UNICODE
-;;
-;;LONG
-;;WINAPI
-;;TabbedTextOutA(
-;;    HDC hDC,
-;;    int X,
-;;    int Y,
-;;    LPCSTR lpString,
-;;    int nCount,
-;;    int nTabPositions,
-;;    LPINT lpnTabStopPositions,
-;;    int nTabOrigin);
-;;LONG
-;;WINAPI
-;;TabbedTextOutW(
-;;    HDC hDC,
-;;    int X,
-;;    int Y,
-;;    LPCWSTR lpString,
-;;    int nCount,
-;;    int nTabPositions,
-;;    LPINT lpnTabStopPositions,
-;;    int nTabOrigin);
-;;#ifdef UNICODE
-;;#define TabbedTextOut  TabbedTextOutW
-;;#else
-;;#define TabbedTextOut  TabbedTextOutA
-;;#endif // !UNICODE
-;;
-;;DWORD
-;;WINAPI
-;;GetTabbedTextExtentA(
-;;    HDC hDC,
-;;    LPCSTR lpString,
-;;    int nCount,
-;;    int nTabPositions,
-;;    LPINT lpnTabStopPositions);
-;;DWORD
-;;WINAPI
-;;GetTabbedTextExtentW(
-;;    HDC hDC,
-;;    LPCWSTR lpString,
-;;    int nCount,
-;;    int nTabPositions,
-;;    LPINT lpnTabStopPositions);
-;;#ifdef UNICODE
-;;#define GetTabbedTextExtent  GetTabbedTextExtentW
-;;#else
-;;#define GetTabbedTextExtent  GetTabbedTextExtentA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;UpdateWindow(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;SetActiveWindow(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;GetForegroundWindow(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;SetForegroundWindow(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;WindowFromDC(
-;;    HDC hDC);
-;;
-;;HDC
-;;WINAPI
-;;GetDC(
-;;    HWND hWnd);
-;;
-;;HDC
-;;WINAPI
-;;GetDCEx(
-;;    HWND hWnd ,
-;;    HRGN hrgnClip,
-;;    DWORD flags);
-;;
-;;/*
-;; * GetDCEx() flags
-;; */
+;; * GetDCEx flags
 (define-integrable DCX_WINDOW           #x00000001)
 (define-integrable DCX_CACHE            #x00000002)
 (define-integrable DCX_NORESETATTRS     #x00000004)
@@ -3496,86 +892,7 @@
 (define-integrable DCX_NORECOMPUTE      #x00100000)
 (define-integrable DCX_VALIDATE         #x00200000)
 
-
-;;HDC
-;;WINAPI
-;;GetWindowDC(
-;;    HWND hWnd);
-;;
-;;int
-;;WINAPI
-;;ReleaseDC(
-;;    HWND hWnd,
-;;    HDC hDC);
-;;
-;;HDC
-;;WINAPI
-;;BeginPaint(
-;;    HWND hWnd,
-;;    LPPAINTSTRUCT lpPaint);
-;;
-;;BOOL
-;;WINAPI
-;;EndPaint(
-;;    HWND hWnd,
-;;    CONST PAINTSTRUCT *lpPaint);
-;;
-;;BOOL
-;;WINAPI
-;;GetUpdateRect(
-;;    HWND hWnd,
-;;    LPRECT lpRect,
-;;    BOOL bErase);
-;;
-;;int
-;;WINAPI
-;;GetUpdateRgn(
-;;    HWND hWnd,
-;;    HRGN hRgn,
-;;    BOOL bErase);
-;;
-;;int
-;;WINAPI
-;;ExcludeUpdateRgn(
-;;    HDC hDC,
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;InvalidateRect(
-;;    HWND hWnd ,
-;;    CONST RECT *lpRect,
-;;    BOOL bErase);
-;;
-;;BOOL
-;;WINAPI
-;;ValidateRect(
-;;    HWND hWnd ,
-;;    CONST RECT *lpRect);
-;;
-;;BOOL
-;;WINAPI
-;;InvalidateRgn(
-;;    HWND hWnd,
-;;    HRGN hRgn,
-;;    BOOL bErase);
-;;
-;;BOOL
-;;WINAPI
-;;ValidateRgn(
-;;    HWND hWnd,
-;;    HRGN hRgn);
-;;
-;;
-;;BOOL WINAPI RedrawWindow(
-;;    HWND hWnd,
-;;    CONST RECT *lprcUpdate,
-;;    HRGN hrgnUpdate,
-;;    UINT flags);
-;;
-;;/*
-;; * RedrawWindow() flags
-;; */
+;; * RedrawWindow flags
 (define-integrable RDW_INVALIDATE          #x0001)
 (define-integrable RDW_INTERNALPAINT       #x0002)
 (define-integrable RDW_ERASE               #x0004)
@@ -3593,102 +910,12 @@
 (define-integrable RDW_FRAME               #x0400)
 (define-integrable RDW_NOFRAME             #x0800)
 
-
-;;/*
 ;; * LockWindowUpdate API
-;; */
-;;BOOL
-;;WINAPI
-;;LockWindowUpdate(
-;;    HWND hWndLock);
-;;
-;;BOOL
-;;WINAPI
-;;ScrollWindow(
-;;    HWND hWnd,
-;;    int XAmount,
-;;    int YAmount,
-;;    CONST RECT *lpRect,
-;;    CONST RECT *lpClipRect);
-;;
-;;BOOL
-;;WINAPI
-;;ScrollDC(
-;;    HDC hDC,
-;;    int dx,
-;;    int dy,
-;;    CONST RECT *lprcScroll,
-;;    CONST RECT *lprcClip ,
-;;    HRGN hrgnUpdate,
-;;    LPRECT lprcUpdate);
-;;
-;;int
-;;WINAPI
-;;ScrollWindowEx(
-;;    HWND hWnd,
-;;    int dx,
-;;    int dy,
-;;    CONST RECT *prcScroll,
-;;    CONST RECT *prcClip ,
-;;    HRGN hrgnUpdate,
-;;    LPRECT prcUpdate,
-;;    UINT flags);
+(define-integrable SW_SCROLLCHILDREN   #x0001) ;Scroll children within *lprcScroll.
+(define-integrable SW_INVALIDATE       #x0002) ;Invalidate after scrolling
+(define-integrable SW_ERASE            #x0004) ;If SW_INVALIDATE, don't send WM_ERASEBACKGROUND
 
-(define-integrable SW_SCROLLCHILDREN   #x0001) ;  /* Scroll children within *lprcScroll. */
-(define-integrable SW_INVALIDATE       #x0002) ;  /* Invalidate after scrolling */
-(define-integrable SW_ERASE            #x0004) ;  /* If SW_INVALIDATE, don't send WM_ERASEBACKGROUND */
-
-
-;;#ifndef NOSCROLL
-;;int
-;;WINAPI
-;;SetScrollPos(
-;;    HWND hWnd,
-;;    int nBar,
-;;    int nPos,
-;;    BOOL bRedraw);
-;;
-;;int
-;;WINAPI
-;;GetScrollPos(
-;;    HWND hWnd,
-;;    int nBar);
-;;
-;;BOOL
-;;WINAPI
-;;SetScrollRange(
-;;    HWND hWnd,
-;;    int nBar,
-;;    int nMinPos,
-;;    int nMaxPos,
-;;    BOOL bRedraw);
-;;
-;;BOOL
-;;WINAPI
-;;GetScrollRange(
-;;    HWND hWnd,
-;;    int nBar,
-;;    LPINT lpMinPos,
-;;    LPINT lpMaxPos);
-;;
-;;BOOL
-;;WINAPI
-;;ShowScrollBar(
-;;    HWND hWnd,
-;;    int wBar,
-;;    BOOL bShow);
-;;
-;;BOOL
-;;WINAPI
-;;EnableScrollBar(
-;;    HWND hWnd,
-;;    UINT wSBflags,
-;;    UINT wArrows);
-;;
-;;
-;;/*
-;; * EnableScrollBar() flags
-;; */
+;; * EnableScrollBar flags
 (define-integrable ESB_ENABLE_BOTH     #x0000)
 (define-integrable ESB_DISABLE_BOTH    #x0003)
 
@@ -3701,173 +928,7 @@
 (define-integrable ESB_DISABLE_LTUP    ESB_DISABLE_LEFT)
 (define-integrable ESB_DISABLE_RTDN    ESB_DISABLE_RIGHT)
 
-
-;;#endif  /* !NOSCROLL */
-;;
-;;BOOL
-;;WINAPI
-;;SetPropA(
-;;    HWND hWnd,
-;;    LPCSTR lpString,
-;;    HANDLE hData);
-;;BOOL
-;;WINAPI
-;;SetPropW(
-;;    HWND hWnd,
-;;    LPCWSTR lpString,
-;;    HANDLE hData);
-;;#ifdef UNICODE
-;;#define SetProp  SetPropW
-;;#else
-;;#define SetProp  SetPropA
-;;#endif // !UNICODE
-;;
-;;HANDLE
-;;WINAPI
-;;GetPropA(
-;;    HWND hWnd,
-;;    LPCSTR lpString);
-;;HANDLE
-;;WINAPI
-;;GetPropW(
-;;    HWND hWnd,
-;;    LPCWSTR lpString);
-;;#ifdef UNICODE
-;;#define GetProp  GetPropW
-;;#else
-;;#define GetProp  GetPropA
-;;#endif // !UNICODE
-;;
-;;HANDLE
-;;WINAPI
-;;RemovePropA(
-;;    HWND hWnd,
-;;    LPCSTR lpString);
-;;HANDLE
-;;WINAPI
-;;RemovePropW(
-;;    HWND hWnd,
-;;    LPCWSTR lpString);
-;;#ifdef UNICODE
-;;#define RemoveProp  RemovePropW
-;;#else
-;;#define RemoveProp  RemovePropA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;EnumPropsExA(
-;;    HWND hWnd,
-;;    PROPENUMPROC lpEnumFunc,
-;;    LPARAM lParam);
-;;int
-;;WINAPI
-;;EnumPropsExW(
-;;    HWND hWnd,
-;;    PROPENUMPROC lpEnumFunc,
-;;    LPARAM lParam);
-;;#ifdef UNICODE
-;;#define EnumPropsEx  EnumPropsExW
-;;#else
-;;#define EnumPropsEx  EnumPropsExA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;EnumPropsA(
-;;    HWND hWnd,
-;;    PROPENUMPROC lpEnumFunc);
-;;int
-;;WINAPI
-;;EnumPropsW(
-;;    HWND hWnd,
-;;    PROPENUMPROC lpEnumFunc);
-;;#ifdef UNICODE
-;;#define EnumProps  EnumPropsW
-;;#else
-;;#define EnumProps  EnumPropsA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;SetWindowTextA(
-;;    HWND hWnd,
-;;    LPCSTR lpString);
-;;BOOL
-;;WINAPI
-;;SetWindowTextW(
-;;    HWND hWnd,
-;;    LPCWSTR lpString);
-;;#ifdef UNICODE
-;;#define SetWindowText  SetWindowTextW
-;;#else
-;;#define SetWindowText  SetWindowTextA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;GetWindowTextA(
-;;    HWND hWnd,
-;;    LPSTR lpString,
-;;    int nMaxCount);
-;;int
-;;WINAPI
-;;GetWindowTextW(
-;;    HWND hWnd,
-;;    LPWSTR lpString,
-;;    int nMaxCount);
-;;#ifdef UNICODE
-;;#define GetWindowText  GetWindowTextW
-;;#else
-;;#define GetWindowText  GetWindowTextA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;GetWindowTextLengthA(
-;;    HWND hWnd);
-;;int
-;;WINAPI
-;;GetWindowTextLengthW(
-;;    HWND hWnd);
-;;#ifdef UNICODE
-;;#define GetWindowTextLength  GetWindowTextLengthW
-;;#else
-;;#define GetWindowTextLength  GetWindowTextLengthA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;GetClientRect(
-;;    HWND hWnd,
-;;    LPRECT lpRect);
-;;
-;;BOOL
-;;WINAPI
-;;GetWindowRect(
-;;    HWND hWnd,
-;;    LPRECT lpRect);
-;;
-;;BOOL
-;;WINAPI
-;;AdjustWindowRect(
-;;    LPRECT lpRect,
-;;    DWORD dwStyle,
-;;    BOOL bMenu);
-;;
-;;BOOL
-;;WINAPI
-;;AdjustWindowRectEx(
-;;    LPRECT lpRect,
-;;    DWORD dwStyle,
-;;    BOOL bMenu,
-;;    DWORD dwExStyle);
-;;
-;;#ifndef NOMB
-;;
-;;/*
-;; * MessageBox() Flags
-;; */
+;; * MessageBox Flags
 (define-integrable MB_OK                       #x00000000)
 (define-integrable MB_OKCANCEL                 #x00000001)
 (define-integrable MB_ABORTRETRYIGNORE         #x00000002)
@@ -3901,171 +962,7 @@
 (define-integrable MB_MODEMASK                 #x00003000)
 (define-integrable MB_MISCMASK                 #x0000C000)
 
-;;int
-;;WINAPI
-;;MessageBoxA(
-;;    HWND hWnd ,
-;;    LPCSTR lpText,
-;;    LPCSTR lpCaption ,
-;;    UINT uType);
-;;int
-;;WINAPI
-;;MessageBoxW(
-;;    HWND hWnd ,
-;;    LPCWSTR lpText,
-;;    LPCWSTR lpCaption ,
-;;    UINT uType);
-;;#ifdef UNICODE
-;;#define MessageBox  MessageBoxW
-;;#else
-;;#define MessageBox  MessageBoxA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;MessageBoxExA(
-;;    HWND hWnd ,
-;;    LPCSTR lpText,
-;;    LPCSTR lpCaption ,
-;;    UINT uType,
-;;    WORD wLanguageId);
-;;int
-;;WINAPI
-;;MessageBoxExW(
-;;    HWND hWnd ,
-;;    LPCWSTR lpText,
-;;    LPCWSTR lpCaption ,
-;;    UINT uType,
-;;    WORD wLanguageId);
-;;#ifdef UNICODE
-;;#define MessageBoxEx  MessageBoxExW
-;;#else
-;;#define MessageBoxEx  MessageBoxExA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;MessageBeep(
-;;    UINT uType);
-;;
-;;#endif /* !NOMB */
-;;
-;;int
-;;WINAPI
-;;ShowCursor(
-;;    BOOL bShow);
-;;
-;;BOOL
-;;WINAPI
-;;SetCursorPos(
-;;    int X,
-;;    int Y);
-;;
-;;HCURSOR
-;;WINAPI
-;;SetCursor(
-;;    HCURSOR hCursor);
-;;
-;;BOOL
-;;WINAPI
-;;GetCursorPos(
-;;    LPPOINT lpPoint);
-;;
-;;BOOL
-;;WINAPI
-;;ClipCursor(
-;;    CONST RECT *lpRect);
-;;
-;;BOOL
-;;WINAPI
-;;GetClipCursor(
-;;    LPRECT lpRect);
-;;
-;;HCURSOR
-;;WINAPI
-;;GetCursor(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;CreateCaret(
-;;    HWND hWnd,
-;;    HBITMAP hBitmap ,
-;;    int nWidth,
-;;    int nHeight);
-;;
-;;UINT
-;;WINAPI
-;;GetCaretBlinkTime(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;SetCaretBlinkTime(
-;;    UINT uMSeconds);
-;;
-;;BOOL
-;;WINAPI
-;;DestroyCaret(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;HideCaret(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;ShowCaret(
-;;    HWND hWnd);
-;;
-;;BOOL
-;;WINAPI
-;;SetCaretPos(
-;;    int X,
-;;    int Y);
-;;
-;;BOOL
-;;WINAPI
-;;GetCaretPos(
-;;    LPPOINT lpPoint);
-;;
-;;BOOL
-;;WINAPI
-;;ClientToScreen(
-;;    HWND hWnd,
-;;    LPPOINT lpPoint);
-;;
-;;BOOL
-;;WINAPI
-;;ScreenToClient(
-;;    HWND hWnd,
-;;    LPPOINT lpPoint);
-;;
-;;int
-;;WINAPI
-;;MapWindowPoints(
-;;    HWND hWndFrom,
-;;    HWND hWndTo,
-;;    LPPOINT lpPoints,
-;;    UINT cPoints);
-;;
-;;HWND
-;;WINAPI
-;;WindowFromPoint(
-;;    POINT Point);
-;;
-;;HWND
-;;WINAPI
-;;ChildWindowFromPoint(
-;;    HWND hWndParent,
-;;    POINT Point);
-;;
-;;#ifndef NOCOLOR
-;;
-;;/*
 ;; * Color Types
-;; */
 (define-integrable CTLCOLOR_MSGBOX         0)
 (define-integrable CTLCOLOR_EDIT           1)
 (define-integrable CTLCOLOR_LISTBOX        2)
@@ -4073,7 +970,7 @@
 (define-integrable CTLCOLOR_DLG            4)
 (define-integrable CTLCOLOR_SCROLLBAR      5)
 (define-integrable CTLCOLOR_STATIC         6)
-(define-integrable CTLCOLOR_MAX            8)  ;     /* three bits max */
+(define-integrable CTLCOLOR_MAX            8)  ;three bits max
 
 (define-integrable COLOR_SCROLLBAR         0)
 (define-integrable COLOR_BACKGROUND        1)
@@ -4097,319 +994,7 @@
 (define-integrable COLOR_INACTIVECAPTIONTEXT 19)
 (define-integrable COLOR_BTNHIGHLIGHT      20)
 
-;;DWORD
-;;WINAPI
-;;GetSysColor(
-;;    int nIndex);
-;;
-;;BOOL
-;;WINAPI
-;;SetSysColors(
-;;    int cElements,
-;;    CONST INT * lpaElements,
-;;    CONST COLORREF * lpaRgbValues);
-;;
-;;#endif /* !NOCOLOR */
-;;
-;;BOOL
-;;WINAPI
-;;DrawFocusRect(
-;;    HDC hDC,
-;;    CONST RECT * lprc);
-;;
-;;int
-;;WINAPI
-;;FillRect(
-;;    HDC hDC,
-;;    CONST RECT *lprc,
-;;    HBRUSH hbr);
-;;
-;;int
-;;WINAPI
-;;FrameRect(
-;;    HDC hDC,
-;;    CONST RECT *lprc,
-;;    HBRUSH hbr);
-;;
-;;BOOL
-;;WINAPI
-;;InvertRect(
-;;    HDC hDC,
-;;    CONST RECT *lprc);
-;;
-;;BOOL
-;;WINAPI
-;;SetRect(
-;;    LPRECT lprc,
-;;    int xLeft,
-;;    int yTop,
-;;    int xRight,
-;;    int yBottom);
-;;
-;;BOOL
-;;WINAPI
-;;    SetRectEmpty(
-;;    LPRECT lprc);
-;;
-;;BOOL
-;;WINAPI
-;;CopyRect(
-;;    LPRECT lprcDst,
-;;    CONST RECT *lprcSrc);
-;;
-;;BOOL
-;;WINAPI
-;;InflateRect(
-;;    LPRECT lprc,
-;;    int dx,
-;;    int dy);
-;;
-;;BOOL
-;;WINAPI
-;;IntersectRect(
-;;    LPRECT lprcDst,
-;;    CONST RECT *lprcSrc1,
-;;    CONST RECT *lprcSrc2);
-;;
-;;BOOL
-;;WINAPI
-;;UnionRect(
-;;    LPRECT lprcDst,
-;;    CONST RECT *lprcSrc1,
-;;    CONST RECT *lprcSrc2);
-;;
-;;BOOL
-;;WINAPI
-;;SubtractRect(
-;;    LPRECT lprcDst,
-;;    CONST RECT *lprcSrc1,
-;;    CONST RECT *lprcSrc2);
-;;
-;;BOOL
-;;WINAPI
-;;OffsetRect(
-;;    LPRECT lprc,
-;;    int dx,
-;;    int dy);
-;;
-;;BOOL
-;;WINAPI
-;;IsRectEmpty(
-;;    CONST RECT *lprc);
-;;
-;;BOOL
-;;WINAPI
-;;EqualRect(
-;;    CONST RECT *lprc1,
-;;    CONST RECT *lprc2);
-;;
-;;BOOL
-;;WINAPI
-;;PtInRect(
-;;    CONST RECT *lprc,
-;;    POINT pt);
-;;
-;;#ifndef NOWINOFFSETS
-;;
-;;WORD
-;;WINAPI
-;;GetWindowWord(
-;;    HWND hWnd,
-;;    int nIndex);
-;;
-;;WORD
-;;WINAPI
-;;SetWindowWord(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    WORD wNewWord);
-;;
-;;LONG
-;;WINAPI
-;;GetWindowLongA(
-;;    HWND hWnd,
-;;    int nIndex);
-;;LONG
-;;WINAPI
-;;GetWindowLongW(
-;;    HWND hWnd,
-;;    int nIndex);
-;;#ifdef UNICODE
-;;#define GetWindowLong  GetWindowLongW
-;;#else
-;;#define GetWindowLong  GetWindowLongA
-;;#endif // !UNICODE
-;;
-;;LONG
-;;WINAPI
-;;SetWindowLongA(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    LONG dwNewLong);
-;;LONG
-;;WINAPI
-;;SetWindowLongW(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    LONG dwNewLong);
-;;#ifdef UNICODE
-;;#define SetWindowLong  SetWindowLongW
-;;#else
-;;#define SetWindowLong  SetWindowLongA
-;;#endif // !UNICODE
-;;
-;;WORD
-;;WINAPI
-;;GetClassWord(
-;;    HWND hWnd,
-;;    int nIndex);
-;;
-;;WORD
-;;WINAPI
-;;SetClassWord(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    WORD wNewWord);
-;;
-;;DWORD
-;;WINAPI
-;;GetClassLongA(
-;;    HWND hWnd,
-;;    int nIndex);
-;;DWORD
-;;WINAPI
-;;GetClassLongW(
-;;    HWND hWnd,
-;;    int nIndex);
-;;#ifdef UNICODE
-;;#define GetClassLong  GetClassLongW
-;;#else
-;;#define GetClassLong  GetClassLongA
-;;#endif // !UNICODE
-;;
-;;DWORD
-;;WINAPI
-;;SetClassLongA(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    LONG dwNewLong);
-;;DWORD
-;;WINAPI
-;;SetClassLongW(
-;;    HWND hWnd,
-;;    int nIndex,
-;;    LONG dwNewLong);
-;;#ifdef UNICODE
-;;#define SetClassLong  SetClassLongW
-;;#else
-;;#define SetClassLong  SetClassLongA
-;;#endif // !UNICODE
-;;
-;;#endif /* !NOWINOFFSETS */
-;;
-;;HWND
-;;WINAPI
-;;GetDesktopWindow(
-;;    VOID);
-;;
-;;BOOL
-;;WINAPI
-;;SetDeskWallpaper(
-;;    LPCSTR lpString);
-;;
-;;HWND
-;;WINAPI
-;;GetParent(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;SetParent(
-;;    HWND hWndChild,
-;;    HWND hWndNewParent);
-;;
-;;BOOL
-;;WINAPI
-;;EnumChildWindows(
-;;    HWND hWndParent,
-;;    WNDENUMPROC lpEnumFunc,
-;;    LPARAM lParam);
-;;
-;;HWND
-;;WINAPI
-;;FindWindowA(
-;;    LPCSTR lpClassName ,
-;;    LPCSTR lpWindowName);
-;;HWND
-;;WINAPI
-;;FindWindowW(
-;;    LPCWSTR lpClassName ,
-;;    LPCWSTR lpWindowName);
-;;#ifdef UNICODE
-;;#define FindWindow  FindWindowW
-;;#else
-;;#define FindWindow  FindWindowA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;EnumWindows(
-;;    WNDENUMPROC lpEnumFunc,
-;;    LPARAM lParam);
-;;
-;;BOOL
-;;WINAPI
-;;EnumThreadWindows(
-;;    DWORD dwThreadId,
-;;    WNDENUMPROC lpfn,
-;;    LPARAM lParam);
-;;
-;;#define EnumTaskWindows(hTask, lpfn, lParam) EnumThreadWindows((DWORD)hTask, lpfn, lParam)
-;;
-;;int
-;;WINAPI
-;;GetClassNameA(
-;;    HWND hWnd,
-;;    LPSTR lpClassName,
-;;    int nMaxCount);
-;;int
-;;WINAPI
-;;GetClassNameW(
-;;    HWND hWnd,
-;;    LPWSTR lpClassName,
-;;    int nMaxCount);
-;;#ifdef UNICODE
-;;#define GetClassName  GetClassNameW
-;;#else
-;;#define GetClassName  GetClassNameA
-;;#endif // !UNICODE
-;;
-;;HWND
-;;WINAPI
-;;GetTopWindow(
-;;    HWND hWnd);
-;;
-;;#define GetNextWindow(hWnd, wCmd) GetWindow(hWnd, wCmd)
-;;#define GetSysModalWindow() (NULL)
-;;#define SetSysModalWindow(hWnd) (NULL)
-;;
-;;DWORD
-;;WINAPI
-;;GetWindowThreadProcessId(
-;;    HWND hWnd,
-;;    LPDWORD lpdwProcessId);
-;;
-;;#define GetWindowTask(hWnd) \
-;;        ((HANDLE)GetWindowThreadProcessId(hWnd, NULL))
-;;
-;;HWND
-;;WINAPI
-;;GetLastActivePopup(
-;;    HWND hWnd);
-;;
-;;/*
-;; * GetWindow() Constants
-;; */
+;; * GetWindow Constants
 (define-integrable GW_HWNDFIRST        0)
 (define-integrable GW_HWNDLAST         1)
 (define-integrable GW_HWNDNEXT         2)
@@ -4418,108 +1003,7 @@
 (define-integrable GW_CHILD            5)
 (define-integrable GW_MAX              5)
 
-;;HWND
-;;WINAPI
-;;GetWindow(
-;;    HWND hWnd,
-;;    UINT uCmd);
-;;
-;;#ifndef NOWH
-;;
-;;#ifdef STRICT
-;;
-;;HHOOK
-;;WINAPI
-;;SetWindowsHookA(
-;;    int nFilterType,
-;;    HOOKPROC pfnFilterProc);
-;;HHOOK
-;;WINAPI
-;;SetWindowsHookW(
-;;    int nFilterType,
-;;    HOOKPROC pfnFilterProc);
-;;#ifdef UNICODE
-;;#define SetWindowsHook  SetWindowsHookW
-;;#else
-;;#define SetWindowsHook  SetWindowsHookA
-;;#endif // !UNICODE
-;;
-;;#else /* !STRICT */
-;;
-;;HOOKPROC
-;;WINAPI
-;;SetWindowsHookA(
-;;    int nFilterType,
-;;    HOOKPROC pfnFilterProc);
-;;HOOKPROC
-;;WINAPI
-;;SetWindowsHookW(
-;;    int nFilterType,
-;;    HOOKPROC pfnFilterProc);
-;;#ifdef UNICODE
-;;#define SetWindowsHook  SetWindowsHookW
-;;#else
-;;#define SetWindowsHook  SetWindowsHookA
-;;#endif // !UNICODE
-;;
-;;#endif /* !STRICT */
-;;
-;;BOOL
-;;WINAPI
-;;UnhookWindowsHook(
-;;    int nCode,
-;;    HOOKPROC pfnFilterProc);
-;;
-;;HHOOK
-;;WINAPI
-;;SetWindowsHookExA(
-;;    int idHook,
-;;    HOOKPROC lpfn,
-;;    HINSTANCE hmod,
-;;    DWORD dwThreadId);
-;;HHOOK
-;;WINAPI
-;;SetWindowsHookExW(
-;;    int idHook,
-;;    HOOKPROC lpfn,
-;;    HINSTANCE hmod,
-;;    DWORD dwThreadId);
-;;#ifdef UNICODE
-;;#define SetWindowsHookEx  SetWindowsHookExW
-;;#else
-;;#define SetWindowsHookEx  SetWindowsHookExA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;UnhookWindowsHookEx(
-;;    HHOOK hhk);
-;;
-;;LRESULT
-;;WINAPI CallNextHookEx(
-;;    HHOOK hhk,
-;;    int nCode,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;
-;;/*
-;; * Macros for source-level compatibility with old functions.
-;; */
-;;#ifdef STRICT
-;;#define DefHookProc(nCode, wParam, lParam, phhk)\
-;;        CallNextHookEx(*phhk, nCode, wParam, lParam)
-;;#else
-;;#define DefHookProc(nCode, wParam, lParam, phhk)\
-;;        CallNextHookEx((HHOOK)*phhk, nCode, wParam, lParam)
-;;#endif // STRICT
-;;
-;;#endif /* !NOWH */
-;;
-;;#ifndef NOMENUS
-;;
-;;/*
-;; * Menu flags for Add/Check/EnableMenuItem()
-;; */
+;; * Menu flags for Add/Check/EnableMenuItem
 (define-integrable MF_INSERT          #x00000000)
 (define-integrable MF_CHANGE          #x00000080)
 (define-integrable MF_APPEND          #x00000100)
@@ -4554,30 +1038,7 @@
 (define-integrable MF_HELP            #x00004000)
 (define-integrable MF_MOUSESELECT     #x00008000)
 
-
-;;/*
-;; * Menu item resource format
-;; */
-;;typedef struct {
-;;    WORD versionNumber;
-;;    WORD offset;
-;;} MENUITEMTEMPLATEHEADER;
-;;
-;;typedef struct {
-;;    WORD mtOption;
-;;    WORD mtID;
-;;    char mtString[1];
-;;} MENUITEMTEMPLATE;
-;;
-;;#define MF_END             0x00000080L
-;;
-;;#endif /* !NOMENUS */
-;;
-;;#ifndef NOSYSCOMMANDS
-;;
-;;/*
 ;; * System Menu Command Values
-;; */
 (define-integrable SC_SIZE         #xF000)
 (define-integrable SC_MOVE         #xF010)
 (define-integrable SC_MINIMIZE     #xF020)
@@ -4595,71 +1056,11 @@
 (define-integrable SC_SCREENSAVE   #xF140)
 (define-integrable SC_HOTKEY       #xF150)
 
-;;/*
 ;; * Obsolete names
-;; */
 (define-integrable SC_ICON         SC_MINIMIZE)
 (define-integrable SC_ZOOM         SC_MAXIMIZE)
 
-;;#endif /* !NOSYSCOMMANDS */
-;;
-;;/*
-;; * Resource Loading Routines
-;; */
-;;
-;;HBITMAP
-;;WINAPI
-;;LoadBitmapA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpBitmapName);
-;;HBITMAP
-;;WINAPI
-;;LoadBitmapW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpBitmapName);
-;;#ifdef UNICODE
-;;#define LoadBitmap  LoadBitmapW
-;;#else
-;;#define LoadBitmap  LoadBitmapA
-;;#endif // !UNICODE
-;;
-;;HCURSOR
-;;WINAPI
-;;LoadCursorA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpCursorName);
-;;HCURSOR
-;;WINAPI
-;;LoadCursorW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpCursorName);
-;;#ifdef UNICODE
-;;#define LoadCursor  LoadCursorW
-;;#else
-;;#define LoadCursor  LoadCursorA
-;;#endif // !UNICODE
-;;
-;;HCURSOR
-;;WINAPI
-;;CreateCursor(
-;;    HINSTANCE hInst,
-;;    int xHotSpot,
-;;    int yHotSpot,
-;;    int nWidth,
-;;    int nHeight,
-;;    CONST VOID *pvANDPlane,
-;;    CONST VOID *pvXORPlane);
-;;
-;;BOOL
-;;WINAPI
-;;DestroyCursor(
-;;    HCURSOR hCursor);
-;;
-;;#define CopyCursor(pcur) ((HCURSOR)CopyIcon((HICON)(pcur)))
-;;
-;;/*
 ;; * Standard Cursor IDs
-;; */
 (define-integrable IDC_ARROW           32512)
 (define-integrable IDC_IBEAM           32513)
 (define-integrable IDC_WAIT            32514)
@@ -4675,82 +1076,7 @@
 (define-integrable IDC_NO              32648) ; //not in win3.1
 (define-integrable IDC_APPSTARTING     32650) ; //not in win3.1
 
-;;typedef struct _ICONINFO {
-;;    BOOL    fIcon;
-;;    DWORD   xHotspot;
-;;    DWORD   yHotspot;
-;;    HBITMAP hbmMask;
-;;    HBITMAP hbmColor;
-;;} ICONINFO;
-;;typedef ICONINFO *PICONINFO;
-;;
-;;HICON
-;;WINAPI
-;;LoadIconA(
-;;    HINSTANCE hInstance,
-;;    LPCSTR lpIconName);
-;;HICON
-;;WINAPI
-;;LoadIconW(
-;;    HINSTANCE hInstance,
-;;    LPCWSTR lpIconName);
-;;#ifdef UNICODE
-;;#define LoadIcon  LoadIconW
-;;#else
-;;#define LoadIcon  LoadIconA
-;;#endif // !UNICODE
-;;
-;;HICON
-;;WINAPI
-;;CreateIcon(
-;;    HINSTANCE hInstance,
-;;    int nWidth,
-;;    int nHeight,
-;;    BYTE cPlanes,
-;;    BYTE cBitsPixel,
-;;    CONST BYTE *lpbANDbits,
-;;    CONST BYTE *lpbXORbits);
-;;
-;;BOOL
-;;WINAPI
-;;DestroyIcon(
-;;    HICON hIcon);
-;;
-;;int
-;;WINAPI
-;;LookupIconIdFromDirectory(
-;;    PBYTE presbits,
-;;    BOOL fIcon);
-;;
-;;HICON
-;;WINAPI
-;;CreateIconFromResource(
-;;    PBYTE presbits,
-;;    DWORD dwResSize,
-;;    BOOL fIcon,
-;;    DWORD dwVer);
-;;
-;;HICON
-;;WINAPI
-;;CreateIconIndirect(
-;;    PICONINFO piconinfo);
-;;
-;;HICON
-;;WINAPI
-;;CopyIcon(
-;;    HICON hIcon);
-;;
-;;BOOL
-;;WINAPI
-;;GetIconInfo(
-;;    HICON hIcon,
-;;    PICONINFO piconinfo);
-;;
-;;#ifdef OEMRESOURCE
-;;
-;;/*
 ;; * OEM Resource Ordinal Numbers
-;; */
 (define-integrable OBM_CLOSE           32754)
 (define-integrable OBM_UPARROW         32753)
 (define-integrable OBM_DNARROW         32752)
@@ -4808,48 +1134,16 @@
 (define-integrable OIC_BANG            32515)
 (define-integrable OIC_NOTE            32516)
 
-;;#endif /* OEMRESOURCE */
+(define-integrable ORD_LANGDRIVER    1)   ;The ordinal number for the entry point of
 
-(define-integrable ORD_LANGDRIVER    1)   ;     /* The ordinal number for the entry point of
-;;                                              ** language drivers.
-;;                                              */
-;;
-;;#ifndef NOICONS
-;;
-;;/*
 ;; * Standard Icon IDs
-;; */
 (define-integrable IDI_APPLICATION   32512)
 (define-integrable IDI_HAND          32513)
 (define-integrable IDI_QUESTION      32514)
 (define-integrable IDI_EXCLAMATION   32515)
 (define-integrable IDI_ASTERISK      32516)
 
-;;#endif /* !NOICONS */
-;;
-;;int
-;;WINAPI
-;;LoadStringA(
-;;    HINSTANCE hInstance,
-;;    UINT uID,
-;;    LPSTR lpBuffer,
-;;    int nBufferMax);
-;;int
-;;WINAPI
-;;LoadStringW(
-;;    HINSTANCE hInstance,
-;;    UINT uID,
-;;    LPWSTR lpBuffer,
-;;    int nBufferMax);
-;;#ifdef UNICODE
-;;#define LoadString  LoadStringW
-;;#else
-;;#define LoadString  LoadStringA
-;;#endif // !UNICODE
-;;
-;;/*
 ;; * Dialog Box Command IDs
-;; */
 (define-integrable IDOK                1)
 (define-integrable IDCANCEL            2)
 (define-integrable IDABORT             3)
@@ -4858,17 +1152,7 @@
 (define-integrable IDYES               6)
 (define-integrable IDNO                7)
 
-;;#ifndef NOCTLMGR
-;;
-;;/*
-;; * Control Manager Structures and Definitions
-;; */
-;;
-;;#ifndef NOWINSTYLES
-;;
-;;/*
 ;; * Edit Control Styles
-;; */
 (define-integrable ES_LEFT             #x0000)
 (define-integrable ES_CENTER           #x0001)
 (define-integrable ES_RIGHT            #x0002)
@@ -4884,11 +1168,7 @@
 (define-integrable ES_WANTRETURN       #x1000)
 
 
-;;#endif /* !NOWINSTYLES */
-;;
-;;/*
 ;; * Edit Control Notification Codes
-;; */
 (define-integrable EN_SETFOCUS         #x0100)
 (define-integrable EN_KILLFOCUS        #x0200)
 (define-integrable EN_CHANGE           #x0300)
@@ -4898,11 +1178,7 @@
 (define-integrable EN_HSCROLL          #x0601)
 (define-integrable EN_VSCROLL          #x0602)
 
-;;#ifndef NOWINMESSAGES
-;;
-;;/*
 ;; * Edit Control Messages
-;; */
 (define-integrable EM_GETSEL               #x00B0)
 (define-integrable EM_SETSEL               #x00B1)
 (define-integrable EM_GETRECT              #x00B2)
@@ -4935,18 +1211,12 @@
 (define-integrable EM_GETWORDBREAKPROC     #x00D1)
 (define-integrable EM_GETPASSWORDCHAR      #x00D2)
 
-;;#endif /* !NOWINMESSAGES */
-;;
-;;/*
 ;; * EDITWORDBREAKPROC code values
-;; */
 (define-integrable WB_LEFT            0)
 (define-integrable WB_RIGHT           1)
 (define-integrable WB_ISDELIMITER     2)
 
-;;/*
 ;; * Button Control Styles
-;; */
 (define-integrable BS_PUSHBUTTON      #x00)
 (define-integrable BS_DEFPUSHBUTTON   #x01)
 (define-integrable BS_CHECKBOX        #x02)
@@ -4960,10 +1230,7 @@
 (define-integrable BS_OWNERDRAW       #x0B)
 (define-integrable BS_LEFTTEXT        #x20)
 
-
-;;/*
 ;; * User Button Notification Codes
-;; */
 (define-integrable BN_CLICKED         0)
 (define-integrable BN_PAINT           1)
 (define-integrable BN_HILITE          2)
@@ -4971,18 +1238,14 @@
 (define-integrable BN_DISABLE         4)
 (define-integrable BN_DOUBLECLICKED   5)
 
-;;/*
 ;; * Button Control Messages
-;; */
 (define-integrable BM_GETCHECK        #x00F0)
 (define-integrable BM_SETCHECK        #x00F1)
 (define-integrable BM_GETSTATE        #x00F2)
 (define-integrable BM_SETSTATE        #x00F3)
 (define-integrable BM_SETSTYLE        #x00F4)
 
-;;/*
 ;; * Static Control Constants
-;; */
 (define-integrable SS_LEFT            #x00)
 (define-integrable SS_CENTER          #x01)
 (define-integrable SS_RIGHT           #x02)
@@ -4996,72 +1259,22 @@
 (define-integrable SS_USERITEM        #x0A)
 (define-integrable SS_SIMPLE          #x0B)
 (define-integrable SS_LEFTNOWORDWRAP  #x0C)
-(define-integrable SS_NOPREFIX        #x80)  ;    /* Don't do "&" character translation */
+(define-integrable SS_NOPREFIX        #x80)  ;Don't do "&" character translation
 
-;;#ifndef NOWINMESSAGES
-;;/*
 ;; * Static Control Mesages
-;; */
 (define-integrable STM_SETICON        #x170)
 (define-integrable STM_GETICON        #x171)
 (define-integrable STM_MSGMAX         #x172)
-;;#endif /* !NOWINMESSAGES */
 
-;;/*
 ;; * Dialog window class
-;; */
 (define-integrable WC_DIALOG       #x8002)  ;    (MAKEINTATOM(0x8002))
 
-;;/*
 ;; * Get/SetWindowWord/Long offsets for use with WC_DIALOG windows
-;; */
 (define-integrable DWL_MSGRESULT   0)
 (define-integrable DWL_DLGPROC     4)
 (define-integrable DWL_USER        8)
 
-;;/*
-;; * Dialog Manager Routines
-;; */
-;;
-;;#ifndef NOMSG
-;;BOOL
-;;WINAPI
-;;IsDialogMessage(
-;;    HWND hDlg,
-;;    LPMSG lpMsg);
-;;#endif /* !NOMSG */
-;;
-;;BOOL
-;;WINAPI
-;;MapDialogRect(
-;;    HWND hDlg,
-;;    LPRECT lpRect);
-;;
-;;int
-;;WINAPI
-;;DlgDirListA(
-;;    HWND hDlg,
-;;    LPSTR lpPathSpec,
-;;    int nIDListBox,
-;;    int nIDStaticPath,
-;;    UINT uFileType);
-;;int
-;;WINAPI
-;;DlgDirListW(
-;;    HWND hDlg,
-;;    LPWSTR lpPathSpec,
-;;    int nIDListBox,
-;;    int nIDStaticPath,
-;;    UINT uFileType);
-;;#ifdef UNICODE
-;;#define DlgDirList  DlgDirListW
-;;#else
-;;#define DlgDirList  DlgDirListA
-;;#endif // !UNICODE
-;;
-;;/*
 ;; * DlgDirList, DlgDirListComboBox flags values
-;; */
 (define-integrable DDL_READWRITE       #x0000)
 (define-integrable DDL_READONLY        #x0001)
 (define-integrable DDL_HIDDEN          #x0002)
@@ -5073,123 +1286,42 @@
 (define-integrable DDL_DRIVES          #x4000)
 (define-integrable DDL_EXCLUSIVE       #x8000)
 
-
-;;BOOL
-;;WINAPI
-;;DlgDirSelectExA(
-;;    HWND hDlg,
-;;    LPSTR lpString,
-;;    int nCount,
-;;    int nIDListBox);
-;;BOOL
-;;WINAPI
-;;DlgDirSelectExW(
-;;    HWND hDlg,
-;;    LPWSTR lpString,
-;;    int nCount,
-;;    int nIDListBox);
-;;#ifdef UNICODE
-;;#define DlgDirSelectEx  DlgDirSelectExW
-;;#else
-;;#define DlgDirSelectEx  DlgDirSelectExA
-;;#endif // !UNICODE
-;;
-;;int
-;;WINAPI
-;;DlgDirListComboBoxA(
-;;    HWND hDlg,
-;;    LPSTR lpPathSpec,
-;;    int nIDComboBox,
-;;    int nIDStaticPath,
-;;    UINT uFiletype);
-;;int
-;;WINAPI
-;;DlgDirListComboBoxW(
-;;    HWND hDlg,
-;;    LPWSTR lpPathSpec,
-;;    int nIDComboBox,
-;;    int nIDStaticPath,
-;;    UINT uFiletype);
-;;#ifdef UNICODE
-;;#define DlgDirListComboBox  DlgDirListComboBoxW
-;;#else
-;;#define DlgDirListComboBox  DlgDirListComboBoxA
-;;#endif // !UNICODE
-;;
-;;BOOL
-;;WINAPI
-;;DlgDirSelectComboBoxExA(
-;;    HWND hDlg,
-;;    LPSTR lpString,
-;;    int nCount,
-;;    int nIDComboBox);
-;;BOOL
-;;WINAPI
-;;DlgDirSelectComboBoxExW(
-;;    HWND hDlg,
-;;    LPWSTR lpString,
-;;    int nCount,
-;;    int nIDComboBox);
-;;#ifdef UNICODE
-;;#define DlgDirSelectComboBoxEx  DlgDirSelectComboBoxExW
-;;#else
-;;#define DlgDirSelectComboBoxEx  DlgDirSelectComboBoxExA
-;;#endif // !UNICODE
-;;
-;;/*
 ;; * Dialog Styles
-;; */
 (define-integrable DS_ABSALIGN         #x01)
 (define-integrable DS_SYSMODAL         #x02)
-(define-integrable DS_LOCALEDIT        #x20)  ;   /* Edit items get Local storage. */
-(define-integrable DS_SETFONT          #x40)  ;   /* User specified font for Dlg controls */
-(define-integrable DS_MODALFRAME       #x80)  ;   /* Can be combined with WS_CAPTION  */
-(define-integrable DS_NOIDLEMSG        #x100) ;   /* WM_ENTERIDLE message will not be sent */
+(define-integrable DS_LOCALEDIT        #x20)  ;Edit items get Local storage.
+(define-integrable DS_SETFONT          #x40)  ;User specified font for Dlg controls
+(define-integrable DS_MODALFRAME       #x80)  ;Can be combined with WS_CAPTION
+(define-integrable DS_NOIDLEMSG        #x100) ;WM_ENTERIDLE message will not be sent
 (define-integrable DS_SETFOREGROUND    #x200) ;   //not in win3.1
 
 (define-integrable DM_GETDEFID         (+ WM_USER 0))
 (define-integrable DM_SETDEFID         (+ WM_USER 1))
 
-;;/*
-;; * Returned in HIWORD() of DM_GETDEFID result if msg is supported
-;; */
+;; * Returned in HIWORD of DM_GETDEFID result if msg is supported
 (define-integrable DC_HASDEFID         #x534B)
 
-;;/*
 ;; * Dialog Codes
-;; */
-(define-integrable DLGC_WANTARROWS     #x0001) ;      /* Control wants arrow keys         */
-(define-integrable DLGC_WANTTAB        #x0002) ;      /* Control wants tab keys           */
-(define-integrable DLGC_WANTALLKEYS    #x0004) ;      /* Control wants all keys           */
-(define-integrable DLGC_WANTMESSAGE    #x0004) ;      /* Pass message to control          */
-(define-integrable DLGC_HASSETSEL      #x0008) ;      /* Understands EM_SETSEL message    */
-(define-integrable DLGC_DEFPUSHBUTTON  #x0010) ;      /* Default pushbutton               */
-(define-integrable DLGC_UNDEFPUSHBUTTON #x0020) ;     /* Non-default pushbutton           */
-(define-integrable DLGC_RADIOBUTTON    #x0040) ;      /* Radio button                     */
-(define-integrable DLGC_WANTCHARS      #x0080) ;      /* Want WM_CHAR messages            */
-(define-integrable DLGC_STATIC         #x0100) ;      /* Static item: don't include       */
-(define-integrable DLGC_BUTTON         #x2000) ;      /* Button item: can be checked      */
+(define-integrable DLGC_WANTARROWS     #x0001) ;Control wants arrow keys
+(define-integrable DLGC_WANTTAB        #x0002) ;Control wants tab keys
+(define-integrable DLGC_WANTALLKEYS    #x0004) ;Control wants all keys
+(define-integrable DLGC_WANTMESSAGE    #x0004) ;Pass message to control
+(define-integrable DLGC_HASSETSEL      #x0008) ;Understands EM_SETSEL message
+(define-integrable DLGC_DEFPUSHBUTTON  #x0010) ;Default pushbutton
+(define-integrable DLGC_UNDEFPUSHBUTTON #x0020) ;Non-default pushbutton
+(define-integrable DLGC_RADIOBUTTON    #x0040) ;Radio button
+(define-integrable DLGC_WANTCHARS      #x0080) ;Want WM_CHAR messages
+(define-integrable DLGC_STATIC         #x0100) ;Static item: don't include
+(define-integrable DLGC_BUTTON         #x2000) ;Button item: can be checked
 
 (define-integrable LB_CTLCODE          0)
 
-;;/*
 ;; * Listbox Return Values
-;; */
 (define-integrable LB_OKAY             0)
 (define-integrable LB_ERR              -1)
 (define-integrable LB_ERRSPACE         -2)
 
-;;/*
-;;**  The idStaticPath parameter to DlgDirList can have the following values
-;;**  ORed if the list box should show other details of the files along with
-;;**  the name of the files;
-;;*/
-;;                                  /* all other details also will be returned */
-;;
-;;
-;;/*
 ;; * Listbox Notification Codes
-;; */
 (define-integrable LBN_ERRSPACE        -2)
 (define-integrable LBN_SELCHANGE       1)
 (define-integrable LBN_DBLCLK          2)
@@ -5197,13 +1329,7 @@
 (define-integrable LBN_SETFOCUS        4)
 (define-integrable LBN_KILLFOCUS       5)
 
-
-
-;;#ifndef NOWINMESSAGES
-;;
-;;/*
 ;; * Listbox messages
-;; */
 (define-integrable LB_ADDSTRING            #x0180)
 (define-integrable LB_INSERTSTRING         #x0181)
 (define-integrable LB_DELETESTRING         #x0182)
@@ -5244,13 +1370,7 @@
 (define-integrable LB_SETCOUNT             #x01A7)
 (define-integrable LB_MSGMAX               #x01A8)
 
-;;#endif /* !NOWINMESSAGES */
-;;
-;;#ifndef NOWINSTYLES
-;;
-;;/*
 ;; * Listbox Styles
-;; */
 (define-integrable LBS_NOTIFY            #x0001)
 (define-integrable LBS_SORT              #x0002)
 (define-integrable LBS_NOREDRAW          #x0004)
@@ -5267,20 +1387,12 @@
 (define-integrable LBS_NODATA            #x2000)
 (define-integrable LBS_STANDARD          (+ LBS_NOTIFY LBS_SORT WS_VSCROLL WS_BORDER))
 
-;;#endif /* !NOWINSTYLES */
-;;
-;;
-;;/*
 ;; * Combo Box return Values
-;; */
 (define-integrable CB_OKAY             0)
 (define-integrable CB_ERR              -1)
 (define-integrable CB_ERRSPACE         -2)
 
-
-;;/*
 ;; * Combo Box Notification Codes
-;; */
 (define-integrable CBN_ERRSPACE        -1)
 (define-integrable CBN_SELCHANGE       1)
 (define-integrable CBN_DBLCLK          2)
@@ -5293,10 +1405,7 @@
 (define-integrable CBN_SELENDOK        9)
 (define-integrable CBN_SELENDCANCEL    10)
 
-;;/*
 ;; * Combo Box styles
-;; */
-;;#ifndef NOWINSTYLES
 (define-integrable CBS_SIMPLE            #x0001)
 (define-integrable CBS_DROPDOWN          #x0002)
 (define-integrable CBS_DROPDOWNLIST      #x0003)
@@ -5308,13 +1417,8 @@
 (define-integrable CBS_HASSTRINGS        #x0200)
 (define-integrable CBS_NOINTEGRALHEIGHT  #x0400)
 (define-integrable CBS_DISABLENOSCROLL   #x0800)
-;;#endif  /* !NOWINSTYLES */
 
-
-;;/*
 ;; * Combo Box messages
-;; */
-;;#ifndef NOWINMESSAGES
 (define-integrable CB_GETEDITSEL               #x0140)
 (define-integrable CB_LIMITTEXT                #x0141)
 (define-integrable CB_SETEDITSEL               #x0142)
@@ -5343,15 +1447,8 @@
 (define-integrable CB_SETLOCALE                #x0159)
 (define-integrable CB_GETLOCALE                #x015a)
 (define-integrable CB_MSGMAX                   #x015b)
-;;#endif  /* !NOWINMESSAGES */
 
-
-
-;;#ifndef NOWINSTYLES
-;;
-;;/*
 ;; * Scroll Bar Styles
-;; */
 (define-integrable SBS_HORZ                    #x0000)
 (define-integrable SBS_VERT                    #x0001)
 (define-integrable SBS_TOPALIGN                #x0002)
@@ -5361,263 +1458,40 @@
 (define-integrable SBS_SIZEBOXTOPLEFTALIGN     #x0002)
 (define-integrable SBS_SIZEBOXBOTTOMRIGHTALIGN #x0004)
 (define-integrable SBS_SIZEBOX                 #x0008)
-;;#endif /* !NOWINSTYLES */
 
-;;/*
 ;; * Scroll bar messages
-;; */
-;;#ifndef NOWINMESSAGES
 (define-integrable SBM_SETPOS                  #x00E0)  ;   //not in win3.1
 (define-integrable SBM_GETPOS                  #x00E1)  ;   //not in win3.1
 (define-integrable SBM_SETRANGE                #x00E2)  ;   //not in win3.1
 (define-integrable SBM_SETRANGEREDRAW          #x00E6)  ;   //not in win3.1
 (define-integrable SBM_GETRANGE                #x00E3)  ;   //not in win3.1
 (define-integrable SBM_ENABLE_ARROWS           #x00E4)  ;   //not in win3.1
-;;#endif /* !NOWINMESSAGES */
-;;#endif /* !NOCTLMGR */
 
-;;#ifndef NOMDI
-
-;;/*
 ;; * MDI client style bits
-;; */
 (define-integrable MDIS_ALLCHILDSTYLES    #x0001)
 
-;;/*
 ;; * wParam Flags for WM_MDITILE and WM_MDICASCADE messages.
-;; */
 (define-integrable MDITILE_VERTICAL       #x0000)  ;   //not in win3.1
 (define-integrable MDITILE_HORIZONTAL     #x0001)  ;   //not in win3.1
 (define-integrable MDITILE_SKIPDISABLED   #x0002)  ;   //not in win3.1
 
-;;typedef struct tagMDICREATESTRUCTA {
-;;    LPCSTR   szClass;
-;;    LPCSTR   szTitle;
-;;    HANDLE hOwner;
-;;    int x;
-;;    int y;
-;;    int cx;
-;;    int cy;
-;;    DWORD style;
-;;    LPARAM lParam;        /* app-defined stuff */
-;;} MDICREATESTRUCTA, *LPMDICREATESTRUCTA;
-;;typedef struct tagMDICREATESTRUCTW {
-;;    LPCWSTR  szClass;
-;;    LPCWSTR  szTitle;
-;;    HANDLE hOwner;
-;;    int x;
-;;    int y;
-;;    int cx;
-;;    int cy;
-;;    DWORD style;
-;;    LPARAM lParam;        /* app-defined stuff */
-;;} MDICREATESTRUCTW, *LPMDICREATESTRUCTW;
-;;#ifdef UNICODE
-;;typedef MDICREATESTRUCTW MDICREATESTRUCT;
-;;typedef LPMDICREATESTRUCTW LPMDICREATESTRUCT;
-;;#else
-;;typedef MDICREATESTRUCTA MDICREATESTRUCT;
-;;typedef LPMDICREATESTRUCTA LPMDICREATESTRUCT;
-;;#endif // UNICODE
-;;
-;;typedef struct tagCLIENTCREATESTRUCT {
-;;    HANDLE hWindowMenu;
-;;    UINT idFirstChild;
-;;} CLIENTCREATESTRUCT, *LPCLIENTCREATESTRUCT;
-;;
-;;LRESULT
-;;WINAPI
-;;DefFrameProcA(
-;;    HWND hWnd,
-;;    HWND hWndMDIClient ,
-;;    UINT uMsg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;LRESULT
-;;WINAPI
-;;DefFrameProcW(
-;;    HWND hWnd,
-;;    HWND hWndMDIClient ,
-;;    UINT uMsg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;#ifdef UNICODE
-;;#define DefFrameProc  DefFrameProcW
-;;#else
-;;#define DefFrameProc  DefFrameProcA
-;;#endif // !UNICODE
-;;
-;;LRESULT
-;;WINAPI
-;;DefMDIChildProcA(
-;;    HWND hWnd,
-;;    UINT uMsg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;LRESULT
-;;WINAPI
-;;DefMDIChildProcW(
-;;    HWND hWnd,
-;;    UINT uMsg,
-;;    WPARAM wParam,
-;;    LPARAM lParam);
-;;#ifdef UNICODE
-;;#define DefMDIChildProc  DefMDIChildProcW
-;;#else
-;;#define DefMDIChildProc  DefMDIChildProcA
-;;#endif // !UNICODE
-;;
-;;#ifndef NOMSG
-;;BOOL
-;;WINAPI
-;;TranslateMDISysAccel(
-;;    HWND hWndClient,
-;;    LPMSG lpMsg);
-;;#endif /* !NOMSG */
-;;
-;;UINT
-;;WINAPI
-;;ArrangeIconicWindows(
-;;    HWND hWnd);
-;;
-;;HWND
-;;WINAPI
-;;CreateMDIWindowA(
-;;    LPSTR lpClassName,
-;;    LPSTR lpWindowName,
-;;    DWORD dwStyle,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight,
-;;    HWND hWndParent,
-;;    HINSTANCE hInstance,
-;;    LPARAM lParam
-;;    );
-;;HWND
-;;WINAPI
-;;CreateMDIWindowW(
-;;    LPWSTR lpClassName,
-;;    LPWSTR lpWindowName,
-;;    DWORD dwStyle,
-;;    int X,
-;;    int Y,
-;;    int nWidth,
-;;    int nHeight,
-;;    HWND hWndParent,
-;;    HINSTANCE hInstance,
-;;    LPARAM lParam
-;;    );
-;;#ifdef UNICODE
-;;#define CreateMDIWindow  CreateMDIWindowW
-;;#else
-;;#define CreateMDIWindow  CreateMDIWindowA
-;;#endif // !UNICODE
-;;
-;;#endif /* !NOMDI */
-;;#endif /* !NOUSER */
-;;
-;;/****** Help support ********************************************************/
-;;
-;;#ifndef NOHELP
-;;
-;;typedef DWORD HELPPOLY;
-;;typedef struct tagMULTIKEYHELPA {
-;;    DWORD mkSize;
-;;    CHAR   mkKeylist;
-;;    CHAR   szKeyphrase[1];
-;;} MULTIKEYHELPA, *PMULTIKEYHELPA, *LPMULTIKEYHELPA;
-;;typedef struct tagMULTIKEYHELPW {
-;;    DWORD mkSize;
-;;    WCHAR  mkKeylist;
-;;    WCHAR  szKeyphrase[1];
-;;} MULTIKEYHELPW, *PMULTIKEYHELPW, *LPMULTIKEYHELPW;
-;;#ifdef UNICODE
-;;typedef MULTIKEYHELPW MULTIKEYHELP;
-;;typedef PMULTIKEYHELPW PMULTIKEYHELP;
-;;typedef LPMULTIKEYHELPW LPMULTIKEYHELP;
-;;#else
-;;typedef MULTIKEYHELPA MULTIKEYHELP;
-;;typedef PMULTIKEYHELPA PMULTIKEYHELP;
-;;typedef LPMULTIKEYHELPA LPMULTIKEYHELP;
-;;#endif // UNICODE
-;;
-;;typedef struct tagHELPWININFOA {
-;;    int  wStructSize;
-;;    int  x;
-;;    int  y;
-;;    int  dx;
-;;    int  dy;
-;;    int  wMax;
-;;    CHAR   rgchMember[2];
-;;} HELPWININFOA, *PHELPWININFOA, *LPHELPWININFOA;
-;;typedef struct tagHELPWININFOW {
-;;    int  wStructSize;
-;;    int  x;
-;;    int  y;
-;;    int  dx;
-;;    int  dy;
-;;    int  wMax;
-;;    WCHAR  rgchMember[2];
-;;} HELPWININFOW, *PHELPWININFOW, *LPHELPWININFOW;
-;;#ifdef UNICODE
-;;typedef HELPWININFOW HELPWININFO;
-;;typedef PHELPWININFOW PHELPWININFO;
-;;typedef LPHELPWININFOW LPHELPWININFO;
-;;#else
-;;typedef HELPWININFOA HELPWININFO;
-;;typedef PHELPWININFOA PHELPWININFO;
-;;typedef LPHELPWININFOA LPHELPWININFO;
-;;#endif // UNICODE
-;;
-;;/*
-;; * Commands to pass to WinHelp()
-;; */
-(define-integrable HELP_CONTEXT      #x0001) ;   /* Display topic in ulTopic */
-(define-integrable HELP_QUIT         #x0002) ;   /* Terminate help */
-(define-integrable HELP_INDEX        #x0003) ;   /* Display index */
+;; * Commands to pass to WinHelp
+(define-integrable HELP_CONTEXT      #x0001) ;Display topic in ulTopic
+(define-integrable HELP_QUIT         #x0002) ;Terminate help
+(define-integrable HELP_INDEX        #x0003) ;Display index
 (define-integrable HELP_CONTENTS     #x0003)
-(define-integrable HELP_HELPONHELP   #x0004) ;   /* Display help on using help */
-(define-integrable HELP_SETINDEX     #x0005) ;   /* Set current Index for multi index help */
+(define-integrable HELP_HELPONHELP   #x0004) ;Display help on using help
+(define-integrable HELP_SETINDEX     #x0005) ;Set current Index for multi index help
 (define-integrable HELP_SETCONTENTS  #x0005)
 (define-integrable HELP_CONTEXTPOPUP #x0008)
 (define-integrable HELP_FORCEFILE    #x0009)
-(define-integrable HELP_KEY          #x0101) ;   /* Display topic for keyword in offabData */
+(define-integrable HELP_KEY          #x0101) ;Display topic for keyword in offabData
 (define-integrable HELP_COMMAND      #x0102)
 (define-integrable HELP_PARTIALKEY   #x0105)
 (define-integrable HELP_MULTIKEY     #x0201)
 (define-integrable HELP_SETWINPOS    #x0203)
 
-
-;;BOOL
-;;WINAPI
-;;WinHelpA(
-;;    HWND hWndMain,
-;;    LPCSTR lpszHelp,
-;;    UINT uCommand,
-;;    DWORD dwData
-;;    );
-;;BOOL
-;;WINAPI
-;;WinHelpW(
-;;    HWND hWndMain,
-;;    LPCWSTR lpszHelp,
-;;    UINT uCommand,
-;;    DWORD dwData
-;;    );
-;;#ifdef UNICODE
-;;#define WinHelp  WinHelpW
-;;#else
-;;#define WinHelp  WinHelpA
-;;#endif // !UNICODE
-;;
-;;#endif /* !NOHELP */
-;;
-;;#ifndef NOSYSPARAMSINFO
-;;/*
-;; * Parameter for SystemParametersInfo()
-;; */
-
+;; * Parameter for SystemParametersInfo
 (define-integrable SPI_GETBEEP                 1)
 (define-integrable SPI_SETBEEP                 2)
 (define-integrable SPI_GETMOUSE                3)
@@ -5652,38 +1526,6 @@
 (define-integrable SPI_GETFASTTASKSWITCH      35)
 (define-integrable SPI_SETFASTTASKSWITCH      36)
 
-;;/*
 ;; * Flags
-;; */
 (define-integrable SPIF_UPDATEINIFILE    #x0001)
 (define-integrable SPIF_SENDWININICHANGE #x0002)
-
-
-;;BOOL
-;;WINAPI
-;;SystemParametersInfoA(
-;;    UINT uiAction,
-;;    UINT uiParam,
-;;    PVOID pvParam,
-;;    UINT fWinIni);
-;;BOOL
-;;WINAPI
-;;SystemParametersInfoW(
-;;    UINT uiAction,
-;;    UINT uiParam,
-;;    PVOID pvParam,
-;;    UINT fWinIni);
-;;#ifdef UNICODE
-;;#define SystemParametersInfo  SystemParametersInfoW
-;;#else
-;;#define SystemParametersInfo  SystemParametersInfoA
-;;#endif // !UNICODE
-;;
-;;#endif  /* !NOSYSPARAMSINFO  */
-;;
-;;
-;;#ifdef __cplusplus
-;;}
-;;#endif  /* __cplusplus */
-;;
-;;#endif /* !_WINUSER_ */
