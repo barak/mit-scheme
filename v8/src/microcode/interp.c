@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.48 1989/03/27 23:15:19 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.49 1989/03/28 20:39:19 jinx Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -377,6 +377,12 @@ if (GC_Check(Amount))							\
 #define CODE_MAPPED_P(code)						\
 ((code < (- PRIM_BIAS_AMOUNT)) ||					\
  (code >= PRIM_BIAS_AMOUNT))
+
+#define PROCEED_AFTER_PRIMITIVE()					\
+{									\
+  Regs[REGBLOCK_PRIMITIVE] = NIL;					\
+  LOG_FUTURES();							\
+}
 
 /*
   The EVAL/APPLY ying/yang
@@ -412,24 +418,24 @@ Repeat_Dispatch:
   switch (Which_Way)
   {
     case PRIM_APPLY:
-      LOG_FUTURES();
+      PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_APPLY):
       goto Internal_Apply;
 
     case PRIM_NO_TRAP_APPLY:
-      LOG_FUTURES();
+      PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_NO_TRAP_APPLY):
       goto Apply_Non_Trapping;
 
     case PRIM_DO_EXPRESSION:
       Val = Fetch_Expression();
-      LOG_FUTURES();
+      PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_DO_EXPRESSION):
       Reduces_To(Val);
 
     case PRIM_NO_TRAP_EVAL:
       Val = Fetch_Expression();
-      LOG_FUTURES();
+      PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_NO_TRAP_EVAL):
       New_Reduction(Val, Fetch_Env());
       goto Eval_Non_Trapping;
@@ -445,7 +451,7 @@ Repeat_Dispatch:
       }
 
     case PRIM_POP_RETURN:
-      LOG_FUTURES();
+      PROCEED_AFTER_PRIMITIVE();
     case CODE_MAP(PRIM_POP_RETURN):
       goto Pop_Return;
 
