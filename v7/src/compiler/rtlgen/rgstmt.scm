@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.5 1987/06/01 16:06:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 1.6 1987/06/01 20:30:23 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -116,12 +116,14 @@ MIT in each case. |#
 				      (ucode-type reference-trap)))
 	      (n3 (rtl:make-unassigned-test contents))
 	      (n4 (rtl:make-assignment cell value))
-	      (n5 (rtl:make-interpreter-call:cache-assignment cell value)))
+	      (n5 (rtl:make-interpreter-call:cache-assignment cell value))
+	      (n6 (rtl:make-assignment cell value)))
 	  (scfg-next-connect! n1 n2)
 	  (pcfg-consequent-connect! n2 n3)
 	  (pcfg-alternative-connect! n2 n4)
-	  (pcfg-consequent-connect! n3 n4)
+	  (pcfg-consequent-connect! n3 n6)
 	  (pcfg-alternative-connect! n3 n5)
 	  (make-scfg (cfg-entry-node n1)
 		     (hooks-union (scfg-next-hooks n4)
+				  (hooks-union (scfg-next-hooks n5)
 					       (scfg-next-hooks n6)))))))))
