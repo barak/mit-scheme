@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.48 1992/12/15 20:37:46 cph Exp $
+$Id: hooks.c,v 9.49 1993/01/18 05:13:19 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,9 +109,17 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
     (New_Stacklet_Size (number_of_args + STACK_ENV_EXTRA_SLOTS + 1));
 #endif /* USE_STACKLETS */
 
+#ifdef USE_STACKLETS
   POP_PRIMITIVE_FRAME (2);
-
  Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
+#else
+  /* Don't use Will_Push for this -- if the length of the list is too
+     large to fit on the stack, it could cause Scheme to terminate.  */
+  if ((Stack_Pointer - (number_of_args + STACK_ENV_EXTRA_SLOTS + 1))
+      <= Stack_Guard)
+    error_bad_range_arg (2);
+  POP_PRIMITIVE_FRAME (2);
+#endif
   {
     fast long i;
     fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
@@ -138,7 +146,9 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2,
   Stack_Pointer = (STACK_LOC (- number_of_args));
   STACK_PUSH (procedure);
   STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
+#ifdef USE_STACKLETS
  Pushed ();
+#endif
 
 #ifdef APPLY_AVOID_CANONICALIZATION
   if (COMPILED_CODE_ADDRESS_P (STACK_REF (number_of_args + 2)))
