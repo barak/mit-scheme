@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.40 1994/03/04 21:32:09 cph Exp $
+;;;	$Id: unix.scm,v 1.41 1994/03/08 20:18:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -530,16 +530,12 @@ filename suffix \".KY\"."
 		(message "krypt: Checksum error!")
 		x))
      mark)
-    ;; CPH says that this doesn't work because mode initialization
-    ;; zaps the buffer's variables afterwards:
-#|
     ;; Disable auto-save here since we don't want to
     ;; auto-save the unencrypted contents of the 
     ;; encrypted file.
     (define-variable-local-value! (mark-buffer mark)
-      (name->variable 'auto-save-default) #f)
-|#
-    ))
+	(ref-variable-object auto-save-default)
+      #f)))
 
 (define (maybe-write-encrypted-file region pathname visit?)
   visit?
