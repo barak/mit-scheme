@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.26 1991/05/02 01:12:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.27 1991/05/14 02:03:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -150,11 +150,22 @@ This file is not the file you visited; that changes only when you save."
 	(begin
 	  (temporary-message "Auto saving...")
 	  (for-each auto-save-buffer buffers)
-	  (append-message "done")))))
+	  (temporary-message "Auto saving...done")))))
 
 (define (auto-save-buffer buffer)
-  (write-region (buffer-unclipped-region buffer)
-		(buffer-auto-save-pathname buffer)
-		false)
-  (set-buffer-save-length! buffer)
-  (set-buffer-auto-saved! buffer))
+  (catch-file-errors
+   (lambda ()
+     (editor-beep)
+     (let ((name (buffer-name buffer)))
+       (message "Autosaving...error for " name)
+       (sleep-for 500)
+       (message "Autosaving...error!for " name)
+       (sleep-for 500)
+       (message "Autosaving...error for " name)
+       (sleep-for 500)))
+   (lambda ()
+     (write-region (buffer-unclipped-region buffer)
+		   (buffer-auto-save-pathname buffer)
+		   false)
+     (set-buffer-save-length! buffer)
+     (set-buffer-auto-saved! buffer))))
