@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.28 2000/05/28 15:29:22 cph Exp $
+;;; $Id: imap-response.scm,v 1.29 2000/05/29 04:35:29 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -285,10 +285,10 @@
       (let loop ((start 0))
 	(if (fix:< start n)
 	    (let ((m
-		   (read-substring! s
-				    start
-				    (fix:min (fix:+ start 4096) n)
-				    port)))
+		   (read-substring!-internal s
+					     start
+					     (fix:min (fix:+ start 4096) n)
+					     port)))
 	      (if (fix:= m 0)
 		  (error "Premature EOF:" port))
 	      (let ((start (fix:+ start m)))
@@ -297,8 +297,6 @@
 			 (fix:<= start n))
 		    (*read-literal-progress-hook* start n))
 		(loop start)))))
-      (if imap-transcript-port
-	  (write-string s imap-transcript-port))
       (let ((n* (translate-line-endings!:network->scheme string 0 n)))
 	(if (fix:< n* n)
 	    (set-string-maximum-length! s n*)))
@@ -513,6 +511,13 @@
 	(write-string s imap-transcript-port))
     s))
 
+(define (read-substring!-internal string start end port)
+  (let ((n-read (read-substring! string start end port)))
+    (if imap-transcript-port
+	(write-substring string start (fix:+ start n-read)
+			 imap-transcript-port))
+    n-read))
+
 (define (start-imap-transcript pathname)
   (set! imap-transcript-port (open-output-file pathname))
   unspecific)
