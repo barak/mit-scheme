@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.66 1993/06/09 20:32:08 jawilson Exp $
+$Id: ymkfile,v 1.67 1993/06/15 18:59:34 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -273,10 +273,13 @@ prim.h \
 $(GC_HEAD_FILES)
 cmpaux-C.o : cmpaux-C.c liarc.touch bignum.h
 compinit.o : compinit.c liarc.touch compinit.h
-compinit.h : $(COMPILED_SOURCES) xmakefile
+/* The following includes liarc.touch in case COMPILED_SOURCES is empty,
+   to prevent fgrep from reading stdin.
+ */
+compinit.h : $(COMPILED_SOURCES) liarc.touch xmakefile
 	@echo "#*** Generating" $@ "because of" $?
 	rm -f $@
-	fgrep DECLARE_COMPILED_CODE $(COMPILED_SOURCES) | \
+	fgrep DECLARE_COMPILED_CODE liarc.touch $(COMPILED_SOURCES) | \
 	sed -e 's/.*:/  /' -e 's/)/);' > $@
 
 $(COMPILED_OBJECTS) : liarc.touch
