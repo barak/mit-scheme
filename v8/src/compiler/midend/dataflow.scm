@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dataflow.scm,v 1.14 1995/05/01 03:36:18 adams Exp $
+$Id: dataflow.scm,v 1.15 1995/05/06 20:57:08 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -2092,7 +2092,7 @@ MIT in each case. |#
       (else
        (vector-grow v (fix:quotient (fix:* (vector-length v) 4) 3)))))
   
-  (define (add! structure item accessor setter!)
+  (define-integrable (add! structure item accessor setter!)
     (let ((set  (accessor structure)))
       (if set
 	  (let ((index  (fix:+ (vector-ref set 0) 1))
@@ -2196,13 +2196,14 @@ MIT in each case. |#
 (define-integrable (node-set/empty? set)
   (eq? set '#F))
 
-(define (node-set/for-each set proc)
-  (if set
-      (let loop ((i  (vector-ref set 0)))
-	(if (fix:> i 0)
-	    (begin
-	      (proc (vector-ref set i))
-	      (loop (fix:- i 1)))))))
+(define-integrable (node-set/for-each set proc)
+  (let ((set set))
+    (if set
+	(let loop ((i  (vector-ref set 0)))
+	  (if (fix:> i 0)
+	      (begin
+		(proc (vector-ref set i))
+		(loop (fix:- i 1))))))))
 
 (define (node-set/size set)
   (if set
