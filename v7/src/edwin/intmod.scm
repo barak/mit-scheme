@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.79 1994/04/22 05:19:43 cph Exp $
+;;;	$Id: intmod.scm,v 1.80 1994/04/23 04:52:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -764,36 +764,36 @@ If this is an error, the debugger examines the error condition."
 
 (define (process-output-queue port)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
-	(mark (mark-left-inserting-copy (port/mark port)))
 	(result #t))
-    (call-with-transcript-output-mark (port/buffer port)
-      (lambda (transcript-mark)
-	(let ((run-operation
-	       (lambda (operation mark transcript?)
-		 (let ((flag (operation mark transcript?)))
-		   (if (eq? flag 'FORCE-RETURN)
-		       (set! result flag)))
-		 unspecific)))
-	  (let loop ()
-	    (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
-	      (if operation
-		  (begin
-		    (run-operation operation mark false)
+    (let ((mark (mark-left-inserting-copy (port/mark port))))
+      (call-with-transcript-output-mark (port/buffer port)
+	(lambda (transcript-mark)
+	  (let ((run-operation
+		 (lambda (operation mark transcript?)
+		   (let ((flag (operation mark transcript?)))
+		     (if (eq? flag 'FORCE-RETURN)
+			 (set! result flag)))
+		   unspecific)))
+	    (let loop ()
+	      (let ((operation (dequeue!/unsafe (port/output-queue port) #f)))
+		(if operation
+		    (begin
+		      (run-operation operation mark #f)
+		      (if transcript-mark
+			  (run-operation operation transcript-mark #t))
+		      (loop))))))
+	  (let ((strings (port/output-strings port)))
+	    (if (not (null? strings))
+		(begin
+		  (set-port/output-strings! port '())
+		  (do ((strings (reverse! strings) (cdr strings)))
+		      ((null? strings))
+		    (region-insert-string! mark (car strings))
 		    (if transcript-mark
-			(run-operation operation transcript-mark true))
-		    (loop))))))
-	(let ((strings (port/output-strings port)))
-	  (if (not (null? strings))
-	      (begin
-		(set-port/output-strings! port '())
-		(do ((strings (reverse! strings) (cdr strings)))
-		    ((null? strings))
-		  (region-insert-string! mark (car strings))
-		  (if transcript-mark
-		      (region-insert-string! transcript-mark
-					     (car strings)))))))))
-    (move-mark-to! (port/mark port) mark)
-    (mark-temporary! mark)
+			(region-insert-string! transcript-mark
+					       (car strings)))))))))
+      (move-mark-to! (port/mark port) mark)
+      (mark-temporary! mark))
     (set-interrupt-enables! interrupt-mask)
     result))
 
