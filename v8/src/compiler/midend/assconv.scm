@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.13 1995/07/21 14:37:35 adams Exp $
+$Id: assconv.scm,v 1.14 1996/02/08 17:10:59 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -409,7 +409,7 @@ MIT in each case. |#
   ;; 1. Decide on cell structure for bindings.  This is done by using
   ;;    multicells for variables with the same dynamic extent or by a
   ;;    simpler method.
-  ;; 2. Returns a let of LET-bindings to create the cells
+  ;; 2. Returns a list of LET-bindings to create the cells
 
   ;; A PARTITION is a list of headed lists.
   ;; The first two elements of the list are the cell name and format.
