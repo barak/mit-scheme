@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.12 1989/04/21 17:05:12 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.13 1989/05/08 22:20:50 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -170,6 +170,12 @@ MIT in each case. |#
 
 (define-integrable (procedure-application-unique? procedure)
   (null? (cdr (procedure-applications procedure))))
+
+(define (delete-procedure-application! procedure application)
+  (let ((applications (delq! application (procedure-applications procedure))))
+    (set-procedure-applications! procedure applications)
+    (if (null? applications)
+	(set-procedure-always-known-operator?! procedure false))))
 
 (define-integrable (procedure/simplified? procedure)
   (assq 'SIMPLIFIED (procedure-properties procedure)))

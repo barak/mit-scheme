@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.5 1989/04/17 17:07:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/operan.scm,v 4.6 1989/05/08 22:21:09 cph Rel $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -73,17 +73,21 @@ MIT in each case. |#
 		   (lambda (rvalue) (not (rvalue/procedure? rvalue))))))))))
 
 (define (analyze/continuation continuation)
-  (3-logic/and
-   (and (not (continuation/passed-out? continuation)) 'ALWAYS)
-   (3-logic/and
-    (for-some? (continuation/returns continuation)
-      (lambda (return)
-	(eq? (rvalue-known-value (return/operator return))
-	     continuation)))
-    (for-some? (continuation/combinations continuation)
-      (lambda (combination)
-	(eq? (rvalue-known-value (combination/continuation combination))
-	     continuation))))))
+  (let ((returns (continuation/returns continuation))
+	(combinations (continuation/combinations continuation)))
+    (and (or (not (null? returns))
+	     (not (null? combinations)))
+	 (3-logic/and
+	  (and (not (continuation/passed-out? continuation)) 'ALWAYS)
+	  (3-logic/and
+	   (for-some? returns
+	     (lambda (return)
+	       (eq? (rvalue-known-value (return/operator return))
+		    continuation)))
+	   (for-some? combinations
+	     (lambda (combination)
+	       (eq? (rvalue-known-value (combination/continuation combination))
+		    continuation))))))))
 
 (define (for-some? items predicate)
   (let loop ((items items) (default false))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.7 1988/12/16 13:36:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/contin.scm,v 4.8 1989/05/08 22:20:37 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,7 +77,7 @@ MIT in each case. |#
 (define-integrable continuation/debugging-info procedure-debugging-info)
 (define-integrable set-continuation/debugging-info!
   set-procedure-debugging-info!)
-
+
 (define (continuation/register continuation)
   (or (procedure-register continuation)
       (let ((register (rtl:make-pseudo-register)))
@@ -111,3 +111,11 @@ MIT in each case. |#
 
 (define-integrable (uni-continuation/parameter continuation)
   (car (procedure-original-required continuation)))
+
+(define (delete-continuation/combination! continuation combination)
+  (let ((combinations
+	 (delq! combination (continuation/combinations continuation))))
+    (set-continuation/combinations! continuation combinations)
+    (if (and (null? combinations)
+	     (null? (continuation/returns continuation)))
+	(set-procedure-always-known-operator?! continuation false))))
