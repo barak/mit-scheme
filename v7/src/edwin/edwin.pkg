@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.271 2001/03/16 21:54:24 cph Exp $
+$Id: edwin.pkg,v 1.272 2001/06/02 16:50:47 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -688,7 +688,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  edwin-command$list-directory
 	  edwin-mode$dired
 	  edwin-variable$dired-backup-overwrite
-	  edwin-variable$dired-copy-preserve-time
 	  edwin-variable$dired-kept-versions
 	  edwin-variable$dired-mode-hook
 	  edwin-variable$dired-trivial-filenames

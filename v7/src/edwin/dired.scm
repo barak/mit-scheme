@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.185 2001/05/24 19:07:15 cph Exp $
+;;; $Id: dired.scm,v 1.186 2001/06/02 16:51:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -39,12 +39,6 @@ A value of #t means move to first file."
   "When cleaning directory, number of versions to keep."
   2
   exact-nonnegative-integer?)
-
-(define-variable dired-copy-preserve-time
-  "If true, Dired preserves the last-modified time in a file copy.
-\(This works on only some systems.)"
-  #t
-  boolean?)
 
 (define-variable dired-backup-overwrite
   "True if Dired should ask about making backups before overwriting files.
@@ -545,16 +539,8 @@ and new copies are made in that directory
 with the same names that the files currently have."
   "P"
   (lambda (argument)
-    (dired-create-files
-     argument "copy" "copies"
-     (dired-create-file-operation
-      (lambda (from to)
-	(if (ref-variable dired-copy-preserve-time)
-	    (let ((access-time (file-access-time from))
-		  (modification-time (file-modification-time from)))
-	      (copy-file from to)
-	      (set-file-times! to access-time modification-time))
-	    (copy-file from to)))))))
+    (dired-create-files argument "copy" "copies"
+			(dired-create-file-operation copy-file))))
 
 (define-command dired-do-rename
   "Rename current file or all marked (or next ARG) files.
