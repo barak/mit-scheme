@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.16 1991/05/10 05:13:43 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.17 1991/05/20 22:05:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -93,6 +93,7 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\m-z 'eval-defun)
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
+(define-key 'scheme #\m-tab 'scheme-complete-symbol)
 
 ;;;; Read Syntax
 
@@ -187,3 +188,77 @@ normally they record the associated output in a transcript buffer:
 	    (FOR-ALL? . 1)
 	    (THERE-EXISTS? . 1)
 	    ))
+
+;;;; Completion
+
+(define-command scheme-complete-symbol
+  "Perform completion on Scheme symbol preceding point.
+That symbol is compared against the symbols that exist
+and any additional characters determined by what is there
+are inserted."
+  "P"
+  (lambda (bound-only?)
+    (let ((end
+	   (let ((point (current-point)))
+	     (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
+				   point
+				   (group-end point)
+				   false)
+		 (let ((start (group-start point)))
+		   (if (not (and (mark< start point)
+				 (re-match-forward "\\sw\\|\\s_"
+						   (mark-1+ point)
+						   point
+						   false)))
+		       (editor-error "No symbol preceding point"))
+		   point)))))
+      (let ((start (forward-prefix-chars (backward-sexp end 1 'LIMIT) end)))
+	(let ((prefix (extract-string start end)))
+	  (let ((completions
+		 (let ((completions (obarray-completions prefix)))
+		   (if (not bound-only?)
+		       completions
+		       (let ((environment (evaluation-environment false)))
+			 (list-transform-positive completions
+			   (lambda (name)
+			     (environment-bound? environment name))))))))
+	    (cond ((null? completions)
+		   (editor-beep)
+		   (message "Can't find completion for \"" prefix "\""))
+		  ((null? (cdr completions))
+		   (let ((completion (system-pair-car (car completions))))
+		     (if (not (string=? completion prefix))
+			 (begin
+			   (delete-string start end)
+			   (insert-string completion start)))))
+		  (else
+		   (let ((completions (map system-pair-car completions)))
+		     (let ((completion
+			    (string-greatest-common-prefix completions)))
+		       (if (not (string=? completion prefix))
+			   (begin
+			     (delete-string start end)
+			     (insert-string completion start))
+			   (comint-list-filename-completions
+			    (lambda ()
+			      (sort completions string<=?))))))))))))))
+
+(define (obarray-completions prefix)
+  (let ((obarray (fixed-objects-item 'OBARRAY)))
+    (let ((prefix-length (string-length prefix))
+	  (obarray-length (vector-length obarray)))
+      (let index-loop ((i 0))
+	(if (fix:< i obarray-length)
+	    (let bucket-loop ((symbols (vector-ref obarray i)))
+	      (if (null? symbols)
+		  (index-loop (fix:+ i 1))
+		  (let ((string (system-pair-car (car symbols))))
+		    (if (and (fix:<= prefix-length (string-length string))
+			     (let loop ((index 0))
+			       (or (fix:= index prefix-length)
+				   (and (char=? (string-ref prefix index)
+						(string-ref string index))
+					(loop (fix:+ index 1))))))
+			(cons (car symbols) (bucket-loop (cdr symbols)))
+			(bucket-loop (cdr symbols))))))
+	    '())))))
