@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: search.scm,v 1.158 2003/02/14 18:28:13 cph Exp $
+$Id: search.scm,v 1.159 2004/11/19 16:54:23 cph Exp $
 
 Copyright 1986,1989,1990,1991,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -256,9 +256,7 @@ USA.
 		  (fix:<= start-index end-index)))
 	(error "Marks incorrectly related:" start end))
     (let ((index
-	   (if (if (default-object? case-fold-search)
-		   (group-case-fold-search group)
-		   case-fold-search)
+	   (if (default-case-fold-search case-fold-search start)
 	       (group-find-next-char-ci group start-index end-index char)
 	       (group-find-next-char group start-index end-index char))))
       (and index
@@ -272,55 +270,46 @@ USA.
 		  (fix:>= start-index end-index)))
 	(error "Marks incorrectly related:" start end))
     (let ((index
-	   (if (if (default-object? case-fold-search)
-		   (group-case-fold-search group)
-		   case-fold-search)
+	   (if (default-case-fold-search case-fold-search start)
 	       (group-find-previous-char-ci group end-index start-index char)
 	       (group-find-previous-char group end-index start-index char))))
       (and index
 	   (make-mark group index)))))
 
-(define-syntax default-end-mark
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,end)
-	    (GROUP-END ,start)
-	    (BEGIN
-	      (IF (NOT (MARK<= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,end))))))
-
-(define-syntax default-start-mark
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((start (close-syntax (cadr form) environment))
-	   (end (close-syntax (caddr form) environment)))
-       `(IF (DEFAULT-OBJECT? ,start)
-	    (GROUP-START ,end)
-	    (BEGIN
-	      (IF (NOT (MARK<= ,start ,end))
-		  (ERROR "Marks incorrectly related:" ,start ,end))
-	      ,start))))))
-
 (define (char-match-forward char start #!optional end case-fold-search)
   (and (mark< start (default-end-mark start end))
        (let ((group (mark-group start)))
-	 (if (if (default-object? case-fold-search)
-		 (group-case-fold-search group)
-		 case-fold-search)
+	 (if (default-case-fold-search case-fold-search start)
 	     (char-ci=? char (group-right-char group (mark-index start)))
 	     (char=? char (group-right-char group (mark-index start)))))))
 
 (define (char-match-backward char end #!optional start case-fold-search)
   (and (mark< (default-start-mark start end) end)
        (let ((group (mark-group end)))
-	 (if (if (default-object? case-fold-search)
-		 (group-case-fold-search group)
-		 case-fold-search)
+	 (if (default-case-fold-search case-fold-search end)
 	     (char-ci=? char (group-left-char group (mark-index end)))
 	     (char=? char (group-left-char group (mark-index end)))))))
+
+(define (default-start-mark start end)
+  (if (default-object? start)
+      (group-start end)
+      (begin
+	(if (not (mark<= start end))
+	    (error "Marks incorrectly related:" start end))
+	start)))
+
+(define (default-end-mark start end)
+  (if (default-object? end)
+      (group-end start)
+      (begin
+	(if (not (mark<= start end))
+	    (error "Marks incorrectly related:" start end))
+	end)))
+
+(define (default-case-fold-search case-fold-search mark)
+  (if (default-object? case-fold-search)
+      (group-case-fold-search (mark-group mark))
+      case-fold-search))
 
 (define (skip-chars-forward pattern #!optional start end limit?)
   (let ((start (if (default-object? start) (current-point) start))
@@ -356,9 +345,7 @@ USA.
 	(length (string-length string)))
     (let ((i (fix:+ start-index length)))
       (and (fix:<= i (mark-index end))
-	   (fix:= (if (if (default-object? case-fold-search)
-			  (group-case-fold-search group)
-			  case-fold-search)
+	   (fix:= (if (default-case-fold-search case-fold-search start)
 		      (group-match-substring-forward-ci group start-index i
 							string 0 length)
 		      (group-match-substring-forward group start-index i
@@ -373,9 +360,7 @@ USA.
 	(length (string-length string)))
     (let ((i (fix:- end-index length)))
       (and (fix:>= i (mark-index start))
-	   (fix:= (if (if (default-object? case-fold-search)
-			  (group-case-fold-search group)
-			  case-fold-search)
+	   (fix:= (if (default-case-fold-search case-fold-search start)
 		      (group-match-substring-backward-ci group i end-index
 							 string 0 length)
 		      (group-match-substring-backward group i end-index
