@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.16 1992/02/27 00:44:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.17 1992/05/07 19:43:55 cph Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -418,8 +418,9 @@ MIT in each case. |#
 
 (define (console-wrap-update! screen thunk)
   screen
-  (thunk)
-  (output-port/flush-output console-output-port))
+  (let ((finished? (thunk)))
+    (output-port/flush-output console-output-port)
+    finished?))
 
 (define (console-discretionary-flush screen)
   (let ((n (output-port/buffered-chars console-output-port)))
