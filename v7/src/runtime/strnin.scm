@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.6 1999/02/16 20:11:55 cph Exp $
+$Id: strnin.scm,v 14.7 1999/02/18 04:14:22 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -68,16 +68,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (end #f read-only #t))
 
 (define-integrable (input-port/string port)
-  (input-string-state/string (input-port/state port)))
+  (input-string-state/string (port/state port)))
 
 (define-integrable (input-port/start port)
-  (input-string-state/start (input-port/state port)))
+  (input-string-state/start (port/state port)))
 
 (define-integrable (set-input-port/start! port index)
-  (set-input-string-state/start! (input-port/state port) index))
+  (set-input-string-state/start! (port/state port) index))
 
 (define-integrable (input-port/end port)
-  (input-string-state/end (input-port/state port)))
+  (input-string-state/end (port/state port)))
 
 (define (operation/char-ready? port interval)
   interval

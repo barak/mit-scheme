@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.29 1999/02/18 04:04:05 cph Exp $
+$Id: tterm.scm,v 1.30 1999/02/18 04:14:36 cph Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -25,7 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (make-console-screen)
   (let ((description (console-termcap-description)))
-    (cond ((not (output-port/baud-rate console-output-port))
+    (cond ((not (output-port/baud-rate console-i/o-port))
 	   (error "standard output not a terminal"))
 	  ((not description)
 	   (error "terminal type not set"))
@@ -37,9 +37,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  ((not (no-undesirable-characteristics? description))
 	   (error "terminal type has undesirable characteristics"
 		  (terminal-type-name description))))
-    (let ((baud-rate (output-port/baud-rate console-output-port))
-	  (x-size (output-port/x-size console-output-port))
-	  (y-size (output-port/y-size console-output-port)))
+    (let ((baud-rate (output-port/baud-rate console-i/o-port))
+	  (x-size (output-port/x-size console-i/o-port))
+	  (y-size (output-port/y-size console-i/o-port)))
       (make-screen (with-values
 		       (lambda ()
 			 (compute-scrolling-costs description
@@ -86,7 +86,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (tty-set-interrupt-enables 1))
 
 (define (output-port/baud-rate port)
-  (let ((channel (output-port/channel port)))
+  (let ((channel (port/output-channel port)))
     (and channel
 	 (channel-type=terminal? channel)
 	 (terminal-output-baud-rate channel))))
@@ -98,7 +98,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	0)))
 
 (define (output-port/y-size port)
-  ((output-port/custom-operation port 'Y-SIZE) port))
+  ((output-port/operation port 'Y-SIZE) port))
 
 (define (console-available?)
   (let ((description (console-termcap-description)))
@@ -111,7 +111,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (set! console-description
 	    (let ((term (get-environment-variable "TERM")))
 	      (and term
-		   (or (and (output-port/baud-rate console-output-port)
+		   (or (and (output-port/baud-rate console-i/o-port)
 			    (make-termcap-description term))
 		       term)))))
   console-description)
@@ -158,7 +158,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      )))
 
 (define (get-console-input-operations terminal-state)
-  (let ((channel (input-port/channel console-input-port))
+  (let ((channel (port/input-channel console-i/o-port))
         (string  (make-string (* 3 input-buffer-size)))
         (start   0)
         (end     0)
@@ -353,9 +353,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (bind-console-state false
     (lambda (get-outside-state)
       (terminal-operation terminal-raw-input
-			  (input-port/channel console-input-port))
+			  (port/input-channel console-i/o-port))
       (terminal-operation terminal-raw-output
-			  (output-port/channel console-output-port))
+			  (port/output-channel console-i/o-port))
       (tty-set-interrupt-enables 2)
       (receiver
        (lambda (thunk)
@@ -378,14 +378,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (set-console-state! outside-state)))))
 
 (define (console-state)
-  (vector (channel-state (input-port/channel console-input-port))
-	  (channel-state (output-port/channel console-output-port))
+  (vector (channel-state (port/input-channel console-i/o-port))
+	  (channel-state (port/output-channel console-i/o-port))
 	  (tty-get-interrupt-enables)))
 
 (define (set-console-state! state)
-  (set-channel-state! (input-port/channel console-input-port)
+  (set-channel-state! (port/input-channel console-i/o-port)
 		      (vector-ref state 0))
-  (set-channel-state! (output-port/channel console-output-port)
+  (set-channel-state! (port/output-channel console-i/o-port)
 		      (vector-ref state 1))
   (tty-set-interrupt-enables (vector-ref state 2)))
 
@@ -491,7 +491,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (exit-standout-mode screen)
     (exit-insert-mode screen)
     (maybe-output screen (ts-exit-termcap-mode description)))
-  (output-port/flush-output console-output-port))
+  (output-port/flush-output console-i/o-port))
 
 (define (console-modeline-event! screen window type)
   screen window type
@@ -500,14 +500,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (console-wrap-update! screen thunk)
   screen
   (let ((finished? (thunk)))
-    (output-port/flush-output console-output-port)
+    (output-port/flush-output console-i/o-port)
     finished?))
 
 (define (console-discretionary-flush screen)
-  (let ((n (output-port/buffered-chars console-output-port)))
+  (let ((n (output-port/buffered-chars console-i/o-port)))
     (if (fix:< 20 n)
 	(begin
-	  (output-port/flush-output console-output-port)
+	  (output-port/flush-output console-i/o-port)
 	  (let ((baud-rate (screen-baud-rate screen)))
 	    (if (fix:< baud-rate 2400)
 		(let ((msec (quotient (* n 10000) baud-rate)))
@@ -522,7 +522,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (console-flush! screen)
   screen
-  (output-port/flush-output console-output-port))
+  (output-port/flush-output console-i/o-port))
 
 (define (console-write-cursor! screen x y)
   (move-cursor screen x y))
@@ -536,7 +536,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(exit-insert-mode screen)
 	(move-cursor screen x y)
 	(highlight-if-desired screen highlight)
-	(output-port/write-char console-output-port char)
+	(output-port/write-char console-i/o-port char)
 	(record-cursor-after-output screen (fix:1+ x)))))
 
 (define (console-write-substring! screen x y string start end highlight)
@@ -553,7 +553,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (screen-x-size screen))))
 		   (fix:-1+ end)
 		   end)))
-	  (output-port/write-substring console-output-port string start end)
+	  (output-port/write-substring console-i/o-port string start end)
 	  (record-cursor-after-output screen (fix:+ x (fix:- end start)))))))
 
 (define (console-clear-line! screen x y first-unused-x)
@@ -685,7 +685,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       first-unused-x)))
 	      (do ((x (screen-cursor-x screen) (fix:1+ x)))
 		  ((fix:= x first-unused-x))
-		(output-port/write-char console-output-port #\space))
+		(output-port/write-char console-i/o-port #\space))
 	      (record-cursor-after-output screen first-unused-x)))))))
 
 (define (clear-multi-char screen n)
@@ -710,7 +710,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   x-end))))
 		(do ((x cursor-x (fix:1+ x)))
 		    ((fix:= x x-end))
-		  (output-port/write-char console-output-port #\space))
+		  (output-port/write-char console-i/o-port #\space))
 		(record-cursor-after-output screen x-end))))))))
 
 (define (insert-lines screen yl yu n)
@@ -1031,7 +1031,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (output-n screen command 1))
 
 (define-integrable (output-n screen command n-lines)
-  (output-port/write-string console-output-port
+  (output-port/write-string console-i/o-port
 			    (pad-string screen command n-lines)))
 
 (define (maybe-output screen command)
@@ -1163,7 +1163,7 @@ Note that the multiply factors are in tenths of characters.  |#
 	 (state (screen-state screen)))
     (if (not (terminal-state? state))
 	(editor-error "Not a terminal screen")
-	(let ((port console-output-port)
+	(let ((port console-i/o-port)
 	      (desc (terminal-state/description state)))
 	  (let ((x-size (output-port/x-size port))
 		(y-size (output-port/y-size port)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;$Id: bufinp.scm,v 1.6 1999/02/16 20:12:24 cph Exp $
+;;;$Id: bufinp.scm,v 1.7 1999/02/18 04:14:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -29,7 +29,7 @@
 	  value
 	  (receiver
 	   value
-	   (let ((state (input-port/state port)))
+	   (let ((state (port/state port)))
 	     (make-mark (buffer-input-port-state/group state)
 			(buffer-input-port-state/current-index state))))))))
 
@@ -54,12 +54,12 @@
 
 (define (operation/char-ready? port interval)
   interval				;ignore
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (< (buffer-input-port-state/current-index state)
        (buffer-input-port-state/end-index state))))
 
 (define (operation/peek-char port)
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state)))
       (if (< current-index (buffer-input-port-state/end-index state))
 	  (group-right-char (buffer-input-port-state/group state)
@@ -67,13 +67,13 @@
 	  (make-eof-object port)))))
 
 (define (operation/discard-char port)
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (set-buffer-input-port-state/current-index!
      state
      (1+ (buffer-input-port-state/current-index state)))))
 
 (define (operation/read-char port)
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state)))
       (if (< current-index (buffer-input-port-state/end-index state))
 	  (let ((char
@@ -85,7 +85,7 @@
 	  (make-eof-object port)))))
 
 (define (operation/read-string port delimiters)
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state))
 	  (end-index (buffer-input-port-state/end-index state))
 	  (group (buffer-input-port-state/group state)))
@@ -101,7 +101,7 @@
 	      string))))))
 
 (define (operation/discard-chars port delimiters)
-  (let ((state (input-port/state port)))
+  (let ((state (port/state port)))
     (let ((current-index (buffer-input-port-state/current-index state))
 	  (end-index (buffer-input-port-state/end-index state)))
       (if (< current-index end-index)
@@ -118,7 +118,7 @@
   (unparse-string state "from buffer at ")
   (unparse-object
    state
-   (let ((state (input-port/state port)))
+   (let ((state (port/state port)))
      (make-mark (buffer-input-port-state/group state)
 		(buffer-input-port-state/current-index state)))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.10 1999/02/16 20:11:47 cph Exp $
+$Id: strout.scm,v 14.11 1999/02/18 04:14:15 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (operation/write-char port char)
   (without-interrupts
    (lambda ()
-     (let* ((state (output-port/state port))
+     (let* ((state (port/state port))
 	    (n (output-string-state/counter state))
 	    (n* (fix:+ n 1)))
        (if (fix:= (string-length (output-string-state/accumulator state)) n)
@@ -79,7 +79,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (operation/write-substring port string start end)
   (without-interrupts
    (lambda ()
-     (let* ((state (output-port/state port))
+     (let* ((state (port/state port))
 	    (n (output-string-state/counter state))
 	    (n* (fix:+ n (fix:- end start))))
        (if (fix:> n* (string-length (output-string-state/accumulator state)))

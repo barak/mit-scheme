@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosproc.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id: dosproc.scm,v 1.3 1999/02/18 04:14:10 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -47,7 +47,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (lambda (port*)
 		      (recvr
 		       (channel-descriptor
-			(output-port/channel port*)))))))
+			(port/output-channel port*)))))))
 	     (call-with-input-file fname
 	       (lambda (input)
 		 (let ((string (read-string (char-set) input)))
@@ -67,7 +67,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (lambda (port*)
 	       (recvr
 		(channel-descriptor
-		 (input-port/channel port*))))))))	
+		 (port/input-channel port*))))))))	
 
       (define (with-output-channel in out)
 	(cond ((default-object? stderr)
@@ -76,7 +76,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (run in out -1))
 	      ((not (output-port? stderr))
 	       (error "run: stderr not an output port" stderr))
-	      ((output-port/channel stderr)
+	      ((port/output-channel stderr)
 	       =>
 	       (lambda (channel)
 		 (output-port/flush-output stderr)
@@ -98,7 +98,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (with-output-channel in -1))
 		((not (output-port? stdout))
 		 (error "run: stdout not an output port" stdout))
-		((output-port/channel stdout)
+		((port/output-channel stdout)
 		 =>
 		 (lambda (channel)
 		   (output-port/flush-output stdout)
@@ -113,7 +113,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (with-input-channel -1))
 	    ((not (input-port? stdin))
 	     (error "run: stdin not an input port" stdin))
-	    ((input-port/channel stdin)
+	    ((port/input-channel stdin)
 	     => (lambda (channel)
 		  (with-input-channel (channel-descriptor channel))))
 	    (else

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.7 1999/02/16 20:11:51 cph Exp $
+$Id: strott.scm,v 14.8 1999/02/18 04:14:19 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   counter)
 
 (define (operation/write-char port char)
-  (let ((state (output-port/state port)))
+  (let ((state (port/state port)))
     (let ((accumulator (output-string-state/accumulator state))
 	  (counter (output-string-state/counter state)))
       (if (zero? counter)
@@ -67,7 +67,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (set-output-string-state/counter! state (-1+ counter)))))))
 
 (define (operation/write-substring port string start end)
-  (let ((state (output-port/state port)))
+  (let ((state (port/state port)))
     (let ((accumulator
 	   (cons (substring string start end)
 		 (output-string-state/accumulator state)))

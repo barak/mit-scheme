@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.53 1999/01/02 06:11:34 cph Exp $
+$Id: load.scm,v 14.54 1999/02/18 04:14:03 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -624,7 +624,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (with-binary-input-file file action)
   (with-binary-file-channel file action
     open-binary-input-file
-    input-port/channel
+    port/input-channel
     'with-binary-input-file))
 
 (define (with-binary-file-channel file action open extract-channel name)
