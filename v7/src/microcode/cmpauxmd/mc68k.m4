@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.18 1991/03/28 20:07:19 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.19 1991/05/06 18:11:35 jinx Exp $
 ###
 ###	Copyright (c) 1989-1991 Massachusetts Institute of Technology
 ###
@@ -350,6 +350,9 @@ define_interface_jsr_indirection(interrupt_continuation,1b)
 define_interface_jsr_indirection(assignment_trap,1d)
 define_interface_jsr_indirection(reference_trap,1f)
 define_interface_jsr_indirection(safe_reference_trap,20)
+###
+### These are handled directly below.
+###
 ### define_interface_indirection(generic_decrement,22)
 ### define_interface_indirection(generic_divide,23)
 ### define_interface_indirection(generic_equal,24)
@@ -362,7 +365,11 @@ define_interface_jsr_indirection(safe_reference_trap,20)
 ### define_interface_indirection(generic_add,2b)
 ### define_interface_indirection(generic_positive,2c)
 ### define_interface_indirection(generic_zero,2d)
+###
 define_interface_jsr_indirection(primitive_error,36)
+define_interface_indirection(generic_quotient,37)
+define_interface_indirection(generic_remainder,38)
+define_interface_indirection(generic_modulo,39)
 
 # Save an additional instruction here to load the dynamic link.
 define_c_label(asm_interrupt_dlink)
@@ -457,12 +464,13 @@ define_apply_size_n(8)
 define_c_label(asm_allocate_closure)
 	switch_to_C_registers()
 	mov.l	%a1,-(%sp)		# Preserve reg.
-	mov.l	%d1,-(%sp)		# Push args
-	mov.l	%d0,-(%sp)
+	mov.l	%d1,-(%sp)		# Preserve reg.
+	mov.l	%d0,-(%sp)		# Push arg.
 	jsr	extern_c_label(allocate_closure)
-	addq.l	&8,%sp			# Pop args
+	addq.l	&4,%sp			# Pop arg.
 	mov.l	%d0,%a0			# Return value
-	mov.l	(%sp)+,%a1		# Restore regs
+	mov.l	(%sp)+,%d1		# Restore reg.
+	mov.l	(%sp)+,%a1		# Restore reg.
 	switch_to_scheme_registers()
 	rts
 
