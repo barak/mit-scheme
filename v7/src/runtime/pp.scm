@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /nfs/altdorf/root/scheme/src/runtime/RCS/pp.scm,v 14.20 1991/08/29
-17:40:09 sybok Exp sybok $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/pp.scm,v 14.22 1991/10/30 19:47:47 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,24 +57,6 @@ MIT in each case. |#
   (set! cocked-object (generate-uninterned-symbol 'cocked-object))
   unspecific)
 
-
-
-  
-(define-structure (pretty-printer-highlight
-		   (conc-name pph/)
-		   (constructor
-		    make-pretty-printer-highlight
-		    (object #!optional
-			    start-string end-string
-			    as-code? depth-limit
-			    breadth-limit)))
-  (object false)
-  (start-string "*=>")
-  (end-string "<=*")
-  (as-code? 'DEFAULT)
-  (depth-limit 'DEFAULT)
-  (breadth-limit 'DEFAULT))
-
 (define *pp-named-lambda->define?* true)
 (define *pp-primitives-by-name* true)
 (define *pp-uninterned-symbols-by-name* true)
@@ -102,7 +83,7 @@ MIT in each case. |#
 	       object))))))
 
 (define (pretty-print object #!optional port as-code? indentation)
-  (let ((as-code? 
+  (let ((as-code?
 	 (if (default-object? as-code?)
 	     (not (scode-constant? object))
 	     as-code?)))
@@ -122,12 +103,27 @@ MIT in each case. |#
 		  0)
     unspecific))
 
+(define-structure (pretty-printer-highlight
+		   (conc-name pph/)
+		   (constructor
+		    make-pretty-printer-highlight
+		    (object #!optional
+			    start-string end-string
+			    as-code? depth-limit
+			    breadth-limit)))
+  (object false)
+  (start-string "*=>")
+  (end-string "<=*")
+  (as-code? 'DEFAULT)
+  (depth-limit 'DEFAULT)
+  (breadth-limit 'DEFAULT))
+
 (define (pp-top-level expression port as-code? indentation list-depth)
   (fluid-let ((x-size (or *pp-forced-x-size* (output-port/x-size port)))
 	      (output-port port))
-    (let* ((numerical-walk 
-	    (if *pp-avoid-circularity?* 
-		numerical-walk-avoid-circularities 
+    (let* ((numerical-walk
+	    (if *pp-avoid-circularity?*
+		numerical-walk-avoid-circularities
 		numerical-walk))
 	   (node (numerical-walk expression list-depth)))
       (if (positive? indentation)
@@ -188,12 +184,12 @@ MIT in each case. |#
 	 (*unparse-symbol node))
 	((prefix-node? node)
 	 (*unparse-string (prefix-node-prefix node))
-	 (let ((new-column 
+	 (let ((new-column
 		(+ column (string-length (prefix-node-prefix node))))
 	       (subnode (prefix-node-subnode node)))
 	   (if (null? dispatch-list)
 	       (print-node subnode new-column depth)
-	       (print-non-code-node subnode new-column depth))))	   
+	       (print-non-code-node subnode new-column depth))))
 	((highlighted-node? node)
 	 (let ((highlight (highlighted-node/highlight node)))
 	   (let ((start-string (pph/start-string highlight))
@@ -202,7 +198,7 @@ MIT in each case. |#
 	     (let ((handler
 		    (let ((as-code? (pph/as-code? highlight))
 			  (currently-as-code? (not (null? dispatch-list))))
-		      (cond ((or (eq? as-code? 'DEFAULT)
+		      (cond ((or (eq? as-code? 'default)
 				 (eq? as-code? currently-as-code?))
 			     print-node)
 			    (as-code?
@@ -308,12 +304,10 @@ MIT in each case. |#
 	     (last-size (node-size (vector-ref nodev (-1+ n-nodes)))))
 
 	(define (fit? n-cols widths)
-	  ;; This must check that all rows fit.
-	  ;; The last one must be treated specially because it is
+	  ;; this must check that all rows fit.
+	  ;; the last one must be treated specially because it is
 	  ;; followed by depth tokens (close parens).
-	  (and (>= available-space
-		   (+ (-1+ n-cols)
-		      (reduce + 0 widths)))
+	  (and (>= available-space (+ (-1+ n-cols) (reduce + 0 widths)))
 	       (let ((last-n-1 (remainder (-1+ n-nodes) n-cols)))
 		 (>= available-space
 		     (+ (+ last-n-1 (reduce + 0 (list-head widths last-n-1)))
@@ -326,16 +320,13 @@ MIT in each case. |#
 		width
 		(let ((next (node-size (vector-ref nodev posn))))
 		  (loop (+ posn step)
-			(if (> next width)
-			    next
-			    width))))))		      
+			(if (> next width) next width))))))
 
 	(define (find-widths n)
 	  (let recur ((start 0))
 	    (if (= start n)
 		'()
-		(cons (find-max-width start n)
-		      (recur (1+ start))))))
+		(cons (find-max-width start n) (recur (1+ start))))))
 
 	(define (try n)
 	  (if (< n 2)
@@ -345,7 +336,7 @@ MIT in each case. |#
 		    (try (- n 1))
 		    (print-guaranteed-table
 		     nodes column
-		     ;; Try to make it look pretty
+		     ;; try to make it look pretty
 		     (let ((next-n (-1+ n)))
 		       (if (or (= n 2)
 			       (not (= (quotient (+ n-nodes next-n) n)
@@ -360,15 +351,15 @@ MIT in each case. |#
 	(try n-columns)))
 
     (if (< n-nodes 4)
-	;; It's silly to tabulate 3 or less things.
+	;; it's silly to tabulate 3 or less things.
 	(default)
 	(let loop ((n 1)
 		   (nodes (cdr nodes))
 		   (space (- available-space
 			     (node-size (car nodes)))))
 	  (cond ((> n max-cols)
-		 ;; Make sure there are at least two relatively full rows.
-		 ;; This also guarantees that nodes is not null?
+		 ;; make sure there are at least two relatively full rows.
+		 ;; this also guarantees that nodes is not null?
 		 (try-columns max-cols))
 		((>= space 0)
 		 (loop (1+ n)
@@ -379,7 +370,7 @@ MIT in each case. |#
 		(else
 		 (try-columns (-1+ n))))))))
 
-;;;; Printers
+;;;; printers
 
 (define (print-combination nodes column depth)
   (*unparse-open)
@@ -388,7 +379,7 @@ MIT in each case. |#
     (cond ((null? (cdr nodes))
 	   (print-node (car nodes) column depth))
 	  ((two-on-first-line? nodes column depth)
-	   (print-guaranteed-node (car nodes)) 
+	   (print-guaranteed-node (car nodes))
 	   (*unparse-space)
 	   (print-guaranteed-column (cdr nodes)
 				    (+ column 1 (node-size (car nodes)))))
@@ -411,14 +402,14 @@ MIT in each case. |#
 		 (+ depth 1)))
   (*unparse-close))
 
-;;; Force the indentation to be an optimistic column.
+;;; force the indentation to be an optimistic column.
 
 (define forced-indentation)
 (define (kernel/forced-indentation nodes optimistic pessimistic depth)
   pessimistic
   (print-column nodes optimistic depth))
 
-;;; Pressure the indentation to be an optimistic column; no matter
+;;; pressure the indentation to be an optimistic column; no matter
 ;;; what happens, insist on a column, but accept a pessimistic one if
 ;;; necessary.
 
@@ -430,9 +421,9 @@ MIT in each case. |#
 	(tab-to pessimistic)
 	(print-column nodes pessimistic depth))))
 
-;;; Print a procedure definition.  The bound variable pattern goes on
+;;; print a procedure definition.  the bound variable pattern goes on
 ;;; the same line as the keyword, while everything else gets indented
-;;; pessimistically.  We may later want to modify this to make higher
+;;; pessimistically.  we may later want to modify this to make higher
 ;;; order procedure patterns be printed more carefully.
 
 (define print-procedure)
@@ -444,13 +435,13 @@ MIT in each case. |#
 	  (tab-to pessimistic)
 	  (print-column (cdr nodes) pessimistic depth)))))
 
-;;; Print a binding form.  There is a great deal of complication here,
+;;; print a binding form.  there is a great deal of complication here,
 ;;; some of which is to gracefully handle the case of a badly-formed
-;;; binder.  But most important is the code that handles the name when
-;;; we encounter a named LET; it must go on the same line as the
-;;; keyword.  In that case, the bindings try to fit on that line or
+;;; binder.  but most important is the code that handles the name when
+;;; we encounter a named let; it must go on the same line as the
+;;; keyword.  in that case, the bindings try to fit on that line or
 ;;; start on that line if possible; otherwise they line up under the
-;;; name.  The body, of course, is always indented pessimistically.
+;;; name.  the body, of course, is always indented pessimistically.
 
 (define print-let-expression)
 (define (kernel/print-let-expression nodes optimistic pessimistic depth)
@@ -464,7 +455,7 @@ MIT in each case. |#
 	   ;; screw case
 	   (print-node (car nodes) optimistic depth))
 	  ((symbol? (car nodes))
-	   ;; named LET
+	   ;; named let
 	   (*unparse-symbol (car nodes))
 	   (let ((new-optimistic
 		  (+ optimistic (+ 1 (symbol-length (car nodes))))))
@@ -486,17 +477,17 @@ MIT in each case. |#
 		    (print-node (cadr nodes) optimistic 0)
 		    (print-body (cddr nodes))))))
 	  (else
-	   ;; ordinary LET
+	   ;; ordinary let
 	   (print-node (car nodes) optimistic 0)
 	   (print-body (cdr nodes))))))
 
-;;;; Alignment
+;;;; alignment
 
 (define-integrable (fits-within? node column depth)
   (> (- x-size depth)
      (+ column (node-size node))))
 
-;;; Fits if each node fits when stacked vertically at the given column.
+;;; fits if each node fits when stacked vertically at the given column.
 
 (define (fits-as-column? nodes column depth)
   (let loop ((nodes nodes))
@@ -506,15 +497,15 @@ MIT in each case. |#
 		(+ column (node-size (car nodes))))
 	     (loop (cdr nodes))))))
 
-;;; Fits if first two nodes fit on same line, and rest fit under the
-;;; second node.  Assumes at least two nodes are given.
+;;; fits if first two nodes fit on same line, and rest fit under the
+;;; second node.  assumes at least two nodes are given.
 
 (define (two-on-first-line? nodes column depth)
   (let ((column (+ column (+ 1 (node-size (car nodes))))))
     (and (> x-size column)
 	 (fits-as-column? (cdr nodes) column depth))))
 
-;;; Starts a new line with the specified indentation.
+;;; starts a new line with the specified indentation.
 
 (define (tab-to column)
   (*unparse-newline)
@@ -523,7 +514,7 @@ MIT in each case. |#
 (define-integrable (pad-with-spaces n-spaces)
   (*unparse-string (make-string n-spaces #\space)))
 
-;;;; Numerical Walk
+;;;; numerical walk
 
 (define (numerical-walk object list-depth)
   (cond ((pair? object)
@@ -575,7 +566,7 @@ MIT in each case. |#
 				    true
 				    (current-unparser-table))
 	       object))))
-
+
 (define (walk-pair pair list-depth)
   (if (and *unparser-list-depth-limit*
 	   (>= list-depth *unparser-list-depth-limit*)
@@ -625,8 +616,8 @@ MIT in each case. |#
 
 (define (walk-highlighted-object object list-depth)
   (let ((dl (pph/depth-limit object))
-	(numerical-walk 
-	 (if *pp-avoid-circularity?*  
+	(numerical-walk
+	 (if *pp-avoid-circularity?*
 	     numerical-walk-avoid-circularities
 	     numerical-walk)))
     (fluid-let ((*unparser-list-breadth-limit*
@@ -644,30 +635,29 @@ MIT in each case. |#
 			  0)))))
 
 
-;;;     The following are circular list/vector handing procedures.  They allow
+;;;     the following are circular list/vector handing procedures.  they allow
 ;;;  arbitary circular constructions made from pairs and vectors to be printed
-;;;  in closed form.  The term "current parenthetical level" means the lowest
-;;;  parethetical level which contains the circularity object.  Expressions
+;;;  in closed form.  the term "current parenthetical level" means the lowest
+;;;  parethetical level which contains the circularity object.  expressions
 ;;;  like "up 1 parenthetical level" refer to the object which is one
 ;;;  parenthetical level above the lowest parenthetical level which contains
-;;;  the circularity object--i.e., the second lowest parenthetical level 
+;;;  the circularity object--i.e., the second lowest parenthetical level
 ;;;  which contains the circularity object.
-;;;     Finally, the expression, "up 1 parenthetical level, downstream 1 cdr,"
+;;;     finally, the expression, "up 1 parenthetical level, downstream 1 cdr,"
 ;;;  means that to find the object being referred to, you should go to the
 ;;;  parenthetical level one level above the lowest parenthetical level which
 ;;;  contains the circularity object, and then take the cdr of that list.
-;;;  This notation must be used because while a new parenthetical level is
+;;;  this notation must be used because while a new parenthetical level is
 ;;;  generated for each car and each vector-ref, a new parenthetical level
-;;;  obtains from cdring iff the result of said cdring is NOT a pair.
+;;;  obtains from cdring iff the result of said cdring is not a pair.
 
-;; This is the master procedure which all circularity-proof printing
+;; this is the master procedure which all circularity-proof printing
 ;; goes through.
 
 (define (numerical-walk-avoid-circularities exp list-depth)
   (numerical-walk-terminating exp (cons exp (make-queue)) list-depth))
 
-
-;; This numerical walker has special pair and vector walkers to guarantee
+;; this numerical walker has special pair and vector walkers to guarantee
 ;; proper termination.
 
 (define (numerical-walk-terminating object half-pointer/queue list-depth)
@@ -678,14 +668,14 @@ MIT in each case. |#
 	   (if prefix
 	       (make-prefix-node
 		prefix
-		(numerical-walk-terminating 
-		 (cadr object) 
+		(numerical-walk-terminating
+		 (cadr object)
 		 (advance half-pointer (update-queue queue '(cdr car)))
 		 list-depth))
 	       (let ((unparser (unparse-list/unparser object)))
 		 (if unparser
 		     (walk-custom unparser object list-depth)
-		     (walk-pair-terminating object half-pointer/queue 
+		     (walk-pair-terminating object half-pointer/queue
 					    list-depth))))))
 	((symbol? object)
 	 (if (or *pp-uninterned-symbols-by-name*
@@ -708,10 +698,10 @@ MIT in each case. |#
 	     (let ((unparser (unparse-vector/unparser object)))
 	       (if unparser
 		   (walk-custom unparser object list-depth)
-		   (make-prefix-node 
-		    "#" 
-		    (walk-vector-terminating 
-		     (vector->list object) 
+		   (make-prefix-node
+		    "#"
+		    (walk-vector-terminating
+		     (vector->list object)
 		     half-pointer/queue list-depth))))))
 	((primitive-procedure? object)
 	 (if *pp-primitives-by-name*
@@ -719,8 +709,8 @@ MIT in each case. |#
 	     (walk-custom unparse-object object list-depth)))
 	(else
 	 (walk-custom unparse-object object list-depth))))
-
-;; The following two procedures walk lists and vectors, respectively.
+
+;;; The following two procedures walk lists and vectors, respectively.
 
 (define (walk-pair-terminating pair half-pointer/queue list-depth)
 	(if (and *unparser-list-depth-limit*
@@ -728,7 +718,7 @@ MIT in each case. |#
 	   (no-highlights? pair))
       "..."
       (let ((list-depth (+ list-depth 1)))
-	(let loop ((pair pair) (list-breadth 0) 
+	(let loop ((pair pair) (list-breadth 0)
 			       (half-pointer/queue half-pointer/queue))
 	  (cond ((and *unparser-list-breadth-limit*
 		      (>= list-breadth *unparser-list-breadth-limit*)
@@ -736,58 +726,58 @@ MIT in each case. |#
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
-		  (let ((half-pointer/queue 
-			 (advance 
-			  (car half-pointer/queue) 
+		  (let ((half-pointer/queue
+			 (advance
+			  (car half-pointer/queue)
 			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
-			(numerical-walk-terminating 
+			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))))
 		(else
 		 (make-list-node
-		  (let ((half-pointer/queue 
-			 (advance 
-			  (car half-pointer/queue) 
+		  (let ((half-pointer/queue
+			 (advance
+			  (car half-pointer/queue)
 			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
-			(numerical-walk-terminating 
+			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
 		  (let ((list-breadth (+ list-breadth 1)))
-		    (if 
+		    (if
 		     (and (pair? (cdr pair))
 			  (not (unparse-list/unparser (cdr pair))))
-		     (let ((half-pointer/queue 
-			    (advance 
-			     (car half-pointer/queue) 
+		     (let ((half-pointer/queue
+			    (advance
+			     (car half-pointer/queue)
 			     (update-queue (cdr half-pointer/queue) '(cdr)))))
 		       (if (eq? (car half-pointer/queue) (cdr pair))
-			   (make-singleton-list-node 
-			    (string-append 
-			     ". " 
+			   (make-singleton-list-node
+			    (string-append
+			     ". "
 			     (circularity-string (cdr half-pointer/queue))))
 			   (loop (cdr pair) list-breadth half-pointer/queue)))
 		     (make-list-node
 		      "."
 		      (make-singleton-list-node
-		       (if 
+		       (if
 			(and *unparser-list-breadth-limit*
 			     (>= list-breadth
 				 *unparser-list-breadth-limit*)
 			     (no-highlights? pair))
 			"..."
-			(let ((half-pointer/queue 
-			       (advance 
-				(car half-pointer/queue) 
-				(update-queue 
+			(let ((half-pointer/queue
+			       (advance
+				(car half-pointer/queue)
+				(update-queue
 				 (cdr half-pointer/queue) '(cdr)))))
 			  (if (eq? (car half-pointer/queue) (cdr pair))
 			      (circularity-string (cdr half-pointer/queue))
-			      (numerical-walk-terminating 
-			       (cdr pair) 
+			      (numerical-walk-terminating
+			       (cdr pair)
 			       half-pointer/queue list-depth)))))))))))))))
-
+
 (define (walk-vector-terminating pair half-pointer/queue list-depth)
   (if (and *unparser-list-depth-limit*
 	   (>= list-depth *unparser-list-depth-limit*)
@@ -801,24 +791,24 @@ MIT in each case. |#
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
-		  (let ((half-pointer/queue 
-			 (advance 
-			  (car half-pointer/queue) 
-			  (update-queue 
+		  (let ((half-pointer/queue
+			 (advance
+			  (car half-pointer/queue)
+			  (update-queue
 			   (cdr half-pointer/queue) (list list-breadth)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
-			(numerical-walk-terminating 
+			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))))
 		(else
 		 (make-list-node
-		  (let ((half-pointer/queue 
-			 (advance (car half-pointer/queue) 
-				  (update-queue (cdr half-pointer/queue) 
+		  (let ((half-pointer/queue
+			 (advance (car half-pointer/queue)
+				  (update-queue (cdr half-pointer/queue)
 						(list list-breadth)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
-			(numerical-walk-terminating 
+			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
 		  (let ((list-breadth (+ list-breadth 1)))
 		    (if (not (unparse-list/unparser (cdr pair)))
@@ -831,11 +821,9 @@ MIT in each case. |#
 				       *unparser-list-breadth-limit*)
 				   (no-highlights? pair))
 			      "..."
-			      (numerical-walk-terminating 
-			       (cdr pair) 
+			      (numerical-walk-terminating
+			       (cdr pair)
 			       half-pointer/queue list-depth)))))))))))))
-
-
 
 ;;;; These procedures allow the walkers to interact with the queue.
 
@@ -866,7 +854,7 @@ MIT in each case. |#
 	  ((eq? (car command-list) 'cdr)
 	   (uq-iter (add-cdr queue) (cdr command-list)))
 	  (else
-	   (uq-iter (add-vector-ref (car command-list) queue) 
+	   (uq-iter (add-vector-ref (car command-list) queue)
 		    (cdr command-list)))))
   (uq-iter queue command-list))
 
@@ -883,7 +871,7 @@ MIT in each case. |#
 ;;;; The Queue Abstraction.  Queues are data structures allowing fifo
 ;;;  access without mutation.  The following procedures implement them.
 
-(define-structure (queue 
+(define-structure (queue
 		   (conc-name queue/)
 		   (constructor
 		    make-queue
@@ -913,7 +901,7 @@ MIT in each case. |#
 
 (define (make-fluid-vector)
   (make-vector default-fluid-vector-length #f))
-
+
 ;;; The actual queue constructors/extractors
 
 (define (queue-cons queue object)
@@ -926,7 +914,7 @@ MIT in each case. |#
 	  (make-queue (cons head (cons 1 (cdr tail))) (queue/past-cdrs queue)))
 	(begin
 	  (fluid-vector-set! (cdr tail) (car tail) object)
-	  (make-queue (cons 
+	  (make-queue (cons
 		       head
 		       (if (= (car tail) (-1+ virtual-fluid-vector-length))
 				(cons 0 (fluid-vector-extend (cdr tail)))
@@ -941,7 +929,7 @@ MIT in each case. |#
   (define head (car (queue/cons-cell queue)))
   (define tail (cdr (queue/cons-cell queue)))
   (make-queue
-   (cons 
+   (cons
     (if (= (car head) (-1+ virtual-fluid-vector-length))
 	(cons 0 (vector-ref (cdr head) virtual-fluid-vector-length))
 	(cons (1+ (car head)) (cdr head)))
@@ -950,7 +938,7 @@ MIT in each case. |#
        (1+ (queue/past-cdrs queue))
        0)))
 
-;; Auxilary queue handlers.
+;;; Auxilary queue handlers.
 
 (define (null-queue? queue)
   (define cell (queue/cons-cell queue))
@@ -960,11 +948,11 @@ MIT in each case. |#
   (define (flatten starting-vector starting-n ending-vector ending-n)
     (if (eq? starting-vector ending-vector)
 	(vector->list (subvector starting-vector starting-n ending-n))
-	(append 
-	 (vector->list 
+	(append
+	 (vector->list
 	  (subvector starting-vector starting-n virtual-fluid-vector-length))
-	 (flatten 
-	  (vector-ref starting-vector virtual-fluid-vector-length) 0 
+	 (flatten
+	  (vector-ref starting-vector virtual-fluid-vector-length) 0
 	  ending-vector ending-n))))
   (define (proc-list-iter list code-cache)
     (cond ((null? list) (if (eq? code-cache -2) 1 0))
@@ -978,28 +966,29 @@ MIT in each case. |#
   (let* ((cell (queue/cons-cell queue))
 	 (head (car cell))
 	 (tail (cdr cell))
-	 (operating-list 
+	 (operating-list
 	  (flatten (cdr head) (car head) (cdr tail) (car tail))))
     (proc-list-iter operating-list #f)))
 
 
-;;;; This procedure creates the circularity object which is printed within circular structures.
+;;; This procedure creates the circularity object which is printed
+;;; within circular structures.
 
 (define (circularity-string queue)
-	(let ((depth (queue-depth queue))
-	      (cdrs (queue/past-cdrs queue)))
-	  (string-append
-	   (cond ((= depth 1) "#[circularity (current parenthetical level")
-		 ((= depth 2) "#[circularity (up 1 parenthetical level")
-		 (else
-		  (string-append "#[circularity (up " 
-				 (number->string (-1+ depth)) 
-				 " parenthetical levels")))
-	   (cond ((= cdrs 0) ")]")
-		 ((= cdrs 1) ", downstream 1 cdr.)]")
-		 (else
-		  (string-append ", downstream " 
-				 (number->string cdrs) " cdrs.)]"))))))
+  (let ((depth (queue-depth queue))
+	(cdrs (queue/past-cdrs queue)))
+    (string-append
+     (cond ((= depth 1) "#[circularity (current parenthetical level")
+	   ((= depth 2) "#[circularity (up 1 parenthetical level")
+	   (else
+	    (string-append "#[circularity (up "
+			   (number->string (-1+ depth))
+			   " parenthetical levels")))
+     (cond ((= cdrs 0) ")]")
+	   ((= cdrs 1) ", downstream 1 cdr.)]")
+	   (else
+	    (string-append ", downstream "
+			   (number->string cdrs) " cdrs.)]"))))))
 
 
 ;;;; Node Model
@@ -1069,14 +1058,3 @@ MIT in each case. |#
   (size false read-only true)
   (highlight false read-only true)
   (subnode false read-only true))
-
-
-
-
-
-
-
-
-
-
-
