@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.6 1996/04/24 03:39:38 cph Exp $
+$Id: ntprm.scm,v 1.7 1996/05/03 07:41:10 cph Exp $
 
 Copyright (c) 1992-96 Massachusetts Institute of Technology
 
@@ -382,10 +382,14 @@ MIT in each case. |#
   (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
-	(merge-pathnames (apply string-append
-				(append-map (lambda (string) (list "/" string))
-					    specifier))
-			 long-base)
+	(if (null? specifier)
+	    (directory-pathname-as-file long-base)
+	    (merge-pathnames
+	     (apply string-append
+		    (cons (car specifier)
+			  (append-map (lambda (string) (list "/" string))
+				      (cdr specifier))))
+	     long-base))
 	(let ((short-base
 	       (merge-pathnames "mitschem.ini/" (user-homedir-pathname))))
 	  (let ((file-map-pathname (merge-pathnames "filemap.dat" short-base)))
