@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.2 1992/04/13 19:19:45 hal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/pic-imag.scm,v 1.3 1992/04/13 19:45:09 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -51,17 +51,22 @@ MIT in each case. |#
 	 (py-max (- pic-height 1))
 	 (rect-index-height (fix:* v-sf image-width))
 	 (range (flo:- pic-max pic-min))
+	 (index-range (string-length gray-map))
 	 (mul (if (flo:< range 1e-12)
 		  0.
-		  (/ (string-length gray-map)
+		  (/ index-range
 		     (flo:* (flo:+ 1. 7.142e-8)	; 1+epsilon
-			    range)))))
-
-    ;; The range was slightly adjusted so that an illegal grey level would
-    ;; never be generated. epsilon was carefully chosen so that no error would
-    ;; be incurred in transforming to actual grey levels up to a gray-levels
-    ;; of 2^24. In general, choose epsilon such that:
-    ;;            gray-levels < (/ (1+ epsilon) epsilon)
+			    range))))
+	 (gray-pixel
+	  (lambda (pixel-value)
+	    (vector-8b-ref
+	     gray-map
+	     (let ((pixel
+		    (flo:floor->exact
+		     (flo:* mul (flo:- pixel-value pic-min)))))
+	       (cond ((fix:< pixel 0) 0)
+		     ((fix:< pixel index-range) pixel)
+		     (else (fix:- index-range 1))))))))
 
     (cond ((and (fix:= 1 h-sf) (fix:= 1 v-sf))
 	   (let y-loop ((py py-max) (iy-index 0))
@@ -74,12 +79,7 @@ MIT in each case. |#
 			     (vector-8b-set!
 			      byte-string
 			      (fix:+ px iy-index)
-			      (vector-8b-ref
-			       gray-map
-			       (flo:floor->exact
-				(flo:* mul 
-				       (flo:- (floating-vector-ref pic-row px) 
-					      pic-min)))))
+			      (gray-pixel (floating-vector-ref pic-row px)))
 			     (x-loop (fix:+ px 1))))))
 		   (y-loop (fix:- py 1) (fix:+ iy-index rect-index-height))))))
 
@@ -92,13 +92,8 @@ MIT in each case. |#
 			 (let* ((n-is-0 (fix:+ ix iy-index))
 				(n-is-1 (fix:+ n-is-0 image-width))
 				(v
-				 (vector-8b-ref
-				  gray-map
-				  (flo:floor->exact
-				   (flo:* mul 
-					  (flo:- (floating-vector-ref pic-row
-								      px)
-						 pic-min))))))
+				 (gray-pixel
+				  (floating-vector-ref pic-row px))))
 			   (vector-8b-set! byte-string n-is-0 v)
 			   (vector-8b-set! byte-string (fix:+ n-is-0 1) v)
 			   (vector-8b-set! byte-string n-is-1 v)
@@ -117,13 +112,8 @@ MIT in each case. |#
 				(row1 (fix:+ row0 image-width))
 				(row2 (fix:+ row1 image-width))
 				(v
-				 (vector-8b-ref
-				  gray-map
-				  (flo:floor->exact
-				   (flo:* mul 
-					  (flo:- (floating-vector-ref pic-row
-								      px)
-						 pic-min))))))
+				 (gray-pixel
+				  (floating-vector-ref pic-row px))))
 			   (vector-8b-set! byte-string row0 v)
 			   (vector-8b-set! byte-string (fix:+ row0 1) v)
 			   (vector-8b-set! byte-string (fix:+ row0 2) v)
@@ -148,13 +138,8 @@ MIT in each case. |#
 				(row2 (fix:+ row1 image-width))
 				(row3 (fix:+ row2 image-width))
 				(v
-				 (vector-8b-ref
-				  gray-map
-				  (flo:floor->exact
-				   (flo:* mul 
-					  (flo:- (floating-vector-ref pic-row
-								      px)
-						 pic-min))))))
+				 (gray-pixel
+				  (floating-vector-ref pic-row px))))
 			   (vector-8b-set! byte-string row0 v)
 			   (vector-8b-set! byte-string (fix:+ row0 1) v)
 			   (vector-8b-set! byte-string (fix:+ row0 2) v)
@@ -182,13 +167,7 @@ MIT in each case. |#
 		   (let x-loop ((px 0) (ix 0))
 		     (if (fix:< px pic-width)
 			 (let* ((v
-				 (vector-8b-ref
-				  gray-map
-				  (flo:floor->exact
-				   (flo:* mul 
-					  (flo:- (floating-vector-ref pic-row
-								      px)
-						 pic-min)))))
+				 (gray-pixel (floating-vector-ref pic-row px)))
 				(n-start (fix:+ ix iy-index))
 				(n-end (fix:+ n-start rect-index-height)))
 			   (let n-loop ((n n-start))
