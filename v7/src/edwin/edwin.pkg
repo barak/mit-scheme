@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.160 1995/01/06 20:37:18 cph Exp $
+$Id: edwin.pkg,v 1.161 1995/01/16 20:12:06 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -35,15 +35,8 @@ MIT in each case. |#
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
-(os-type-case
- ((dos nt)
-  (global-definitions "../win32/win32")))
 
 (define-package (edwin)
-  (file-case os-type
-    ((unix) "unix")
-    ((dos nt) "dos")
-    ((os/2) "os2"))
   (files "utils"
 	 "nvector"
 	 "ring"
@@ -292,26 +285,6 @@ MIT in each case. |#
 	  update-screen!
 	  window-screen
 	  with-screen-in-update))
-
-(define-package (edwin screen console-screen)
-  (file-case os-type
-    ((unix dos nt) "termcap" "tterm"))
-  (file-case os-type
-    ((dos nt) "ansi" "bios"))
-  (parent (edwin screen))
-  (export (edwin)
-	  resize-screen)
-  (import (runtime primitive-io)
-	  channel-type=terminal?
-	  have-select?
-	  terminal-get-state
-	  terminal-output-baud-rate
-	  terminal-raw-input
-	  terminal-raw-output
-	  terminal-set-state)
-  (import (runtime transcript)
-	  transcript-port)
-  (initialization (initialize-package!)))
 
 (define-package (edwin window)
   (files "window"
@@ -694,8 +667,6 @@ MIT in each case. |#
 
 (define-package (edwin dired)
   (files "dired")
-  (file-case os-type
-    ((unix) "dirunx"))
   (parent (edwin))
   (export (edwin)
 	  dired-filename-start
@@ -706,11 +677,7 @@ MIT in each case. |#
 	  edwin-command$dired
 	  edwin-command$dired-abort
 	  edwin-command$dired-backup-unmark
-	  edwin-command$dired-chgrp
-	  edwin-command$dired-chmod
-	  edwin-command$dired-chown
 	  edwin-command$dired-clean-directory
-	  edwin-command$dired-do-compress
 	  edwin-command$dired-do-copy
 	  edwin-command$dired-do-deletions
 	  edwin-command$dired-do-rename
@@ -925,9 +892,6 @@ MIT in each case. |#
 	  reinsert-properties-size))
 
 (define-package (edwin process)
-  (file-case os-type
-    ((unix os/2) "process")
-    ((dos nt)  "dosproc"))
   (parent (edwin))
   (export (edwin)
 	  accept-process-output
@@ -979,15 +943,48 @@ MIT in each case. |#
 	  stop-process
 	  subprocesses-available?		; always present
 	  run-synchronous-process))
-
+
 (os-type-case
  ((dos)
   (define-package (edwin dosjob)
     (files "doscom" "dosshell")
     (parent (edwin)))))
-
+
+(os-type-case
+ ((unix dos nt)
+  (define-package (edwin screen console-screen)
+    (files "termcap" "tterm")
+    (parent (edwin screen))
+    (export (edwin)
+	    resize-screen)
+    (import (runtime primitive-io)
+	    channel-type=terminal?
+	    have-select?
+	    terminal-get-state
+	    terminal-output-baud-rate
+	    terminal-raw-input
+	    terminal-raw-output
+	    terminal-set-state)
+    (import (runtime transcript)
+	    transcript-port)
+    (initialization (initialize-package!)))))
+
 (os-type-case
  ((unix)
+  (extend-package (edwin)
+    (files "unix"))
+
+  (extend-package (edwin dired)
+    (files "dirunx")
+    (export (edwin)
+	    edwin-command$dired-chgrp
+	    edwin-command$dired-chmod
+	    edwin-command$dired-chown
+	    edwin-command$dired-do-compress))
+
+  (extend-package (edwin process)
+    (files "process"))
+  
   (define-package (edwin screen x-screen)
     (files "xterm")
     (parent (edwin screen))
@@ -1043,9 +1040,76 @@ MIT in each case. |#
 	    x-button5-down
 	    x-button5-up)
     (export (edwin screen x-screen)
-	    update-xterm-screen-names!)))
+	    update-xterm-screen-names!))
+
+  (define-package (edwin vc)
+    (files "vc")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$vc-cancel-version
+	    edwin-command$vc-diff
+	    edwin-command$vc-finish-logentry
+	    edwin-command$vc-insert-headers
+	    edwin-command$vc-next-action
+	    edwin-command$vc-print-log
+	    edwin-command$vc-register
+	    edwin-command$vc-revert-buffer
+	    edwin-command$vc-toggle-read-only
+	    edwin-command$vc-version-diff
+	    edwin-command$vc-version-other-window
+	    edwin-mode$vc-log
+	    edwin-variable$diff-switches
+	    edwin-variable$vc-checkin-hooks
+	    edwin-variable$vc-checkin-switches
+	    edwin-variable$vc-checkout-carefully
+	    edwin-variable$vc-command-messages
+	    edwin-variable$vc-initial-comment
+	    edwin-variable$vc-keep-workfiles
+	    edwin-variable$vc-log-mode-hook
+	    edwin-variable$vc-make-backup-files
+	    edwin-variable$vc-mode-line-status
+	    edwin-variable$vc-rcs-preserve-mod-times
+	    edwin-variable$vc-rcs-status
+	    edwin-variable$vc-suppress-confirm))
+
+  (define-package (edwin rcs-parse)
+    (files "rcsparse")
+    (parent (edwin))
+    (export (edwin)
+	    parse-rcs-admin
+	    rcs-admin/access-list
+	    rcs-admin/branch
+	    rcs-admin/comment
+	    rcs-admin/description
+	    rcs-admin/expand
+	    rcs-admin/head
+	    rcs-admin/locks
+	    rcs-admin/strict?
+	    rcs-admin/symbols
+	    rcs-admin?
+	    rcs-delta/author
+	    rcs-delta/branches
+	    rcs-delta/date
+	    rcs-delta/next
+	    rcs-delta/number
+	    rcs-delta/state
+	    rcs-delta?
+	    rcs-find-delta
+	    rcs-number-head
+	    rcs-number-length)))
 
  ((dos nt)
+  (global-definitions "../win32/win32")
+
+  (extend-package (edwin)
+    (files "dos"))
+
+  (extend-package (edwin screen console-screen)
+    (files "ansi" "bios"))
+
+  (extend-package (edwin process)
+    (files "dosproc"))
+
   (define-package (edwin screen win32)
     (files "win32")
     (parent (edwin screen))
@@ -1089,6 +1153,12 @@ MIT in each case. |#
 	    update-win32-screen-name!)))
 
  ((os/2)
+  (extend-package (edwin)
+    (files "os2"))
+
+  (extend-package (edwin process)
+    (files "process"))
+
   (define-package (edwin screen os2-screen)
     (files "os2term")
     (parent (edwin screen))
@@ -1244,64 +1314,6 @@ MIT in each case. |#
 	    edwin-command$set-screen-size
 	    edwin-command$show-screen-position
 	    edwin-command$show-screen-size))))
-
-(os-type-case
- ((unix)
-  (define-package (edwin vc)
-    (files "vc")
-    (parent (edwin))
-    (export (edwin)
-	    edwin-command$vc-cancel-version
-	    edwin-command$vc-diff
-	    edwin-command$vc-finish-logentry
-	    edwin-command$vc-insert-headers
-	    edwin-command$vc-next-action
-	    edwin-command$vc-print-log
-	    edwin-command$vc-register
-	    edwin-command$vc-revert-buffer
-	    edwin-command$vc-toggle-read-only
-	    edwin-command$vc-version-diff
-	    edwin-command$vc-version-other-window
-	    edwin-mode$vc-log
-	    edwin-variable$diff-switches
-	    edwin-variable$vc-checkin-hooks
-	    edwin-variable$vc-checkin-switches
-	    edwin-variable$vc-checkout-carefully
-	    edwin-variable$vc-command-messages
-	    edwin-variable$vc-initial-comment
-	    edwin-variable$vc-keep-workfiles
-	    edwin-variable$vc-log-mode-hook
-	    edwin-variable$vc-make-backup-files
-	    edwin-variable$vc-mode-line-status
-	    edwin-variable$vc-rcs-preserve-mod-times
-	    edwin-variable$vc-rcs-status
-	    edwin-variable$vc-suppress-confirm))
-
-  (define-package (edwin rcs-parse)
-    (files "rcsparse")
-    (parent (edwin))
-    (export (edwin)
-	    parse-rcs-admin
-	    rcs-admin/access-list
-	    rcs-admin/branch
-	    rcs-admin/comment
-	    rcs-admin/description
-	    rcs-admin/expand
-	    rcs-admin/head
-	    rcs-admin/locks
-	    rcs-admin/strict?
-	    rcs-admin/symbols
-	    rcs-admin?
-	    rcs-delta/author
-	    rcs-delta/branches
-	    rcs-delta/date
-	    rcs-delta/next
-	    rcs-delta/number
-	    rcs-delta/state
-	    rcs-delta?
-	    rcs-find-delta
-	    rcs-number-head
-	    rcs-number-length))))
 
 (define-package (edwin sendmail)
   (files "sendmail")
