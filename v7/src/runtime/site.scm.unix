@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: site.scm.unix,v 1.10 1993/09/02 19:17:00 cph Exp $
+$Id: site.scm.unix,v 1.11 1993/11/13 02:21:15 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -33,25 +33,41 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Switzerland site specific stuff
+;;;; call/cc is used by the C back end!
 
 (declare (usual-integrations))
 
 ;;; Local hacks
 
+(define *call/cc-warn?* true)
+(define *call/cc-c-compiler* "cc")
+
 (define (call/cc . args)
   (let ((command-line
 	 (with-output-to-string
 	   (lambda ()
-	     (display "cc")
+	     (write-string *call/cc-c-compiler*)
 	     (let loop ((args args))
 	       (if (not (null? args))
 		   (begin
-		     (display " ")
+		     (write-string " ")
 		     (display (car args))
 		     (loop (cdr args)))))))))
-    (warn "call/cc: Invoking the C compiler:" command-line)
-    ((ucode-primitive system)
-     command-line)))
+    (if *call/cc-warn?*
+	(warn "call/cc: Invoking the C compiler:" command-line))
+    (let ((inside (working-directory-pathname))
+	  (outside false))
+      (dynamic-wind
+       (lambda ()
+	 (stop-thread-timer)
+	 (set! outside ((ucode-primitive working-directory-pathname 0)))
+	 ((ucode-primitive set-working-directory-pathname! 1) inside))
+       (lambda ()
+	 ((ucode-primitive system) command-line))
+       (lambda ()
+	 (set! inside ((ucode-primitive working-directory-pathname 0)))
+	 ((ucode-primitive set-working-directory-pathname! 1) outside)
+	 (start-thread-timer))))))
 
 ;;; Normalization of various directory structures.
 
