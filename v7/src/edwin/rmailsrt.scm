@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.6 1991/11/26 21:18:56 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.7 1992/09/24 22:13:25 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -133,6 +133,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	   (sort-vect (make-vector (1+ nummsg))))
       (message "Finding sort keys...")
       (widen)
+      (set-buffer-writeable! (current-buffer))
       (let loop ((n 0)
 		 (the-memo (msg-memo/first (current-msg-memo))))
 	(let ((next (msg-memo/next the-memo)))
@@ -145,6 +146,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 		  (msg-memo/start the-memo)
 		  (msg-memo/end the-memo))
 		 the-memo))
+	  (delete-string
+	   (msg-memo/start the-memo)
+	   (msg-memo/end the-memo))
 	  (if next (loop (1+ n) next))))
       (if reverse
 	  (set! sort-vect
@@ -153,7 +157,6 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	     (lambda (x y)
 	       (cmpfunc (car x) (car y))))
       (message "Reordering buffer...")
-      (set-buffer-writeable! (current-buffer))
       (delete-string
        (msg-memo/start (msg-memo/first (current-msg-memo)))
        (msg-memo/end (msg-memo/last (current-msg-memo))))
@@ -168,8 +171,9 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	(if (< n nummsg)
 	    (begin
 	      (insert-string (cadr (vector-ref sort-vect n)))
+	      (vector-set! sort-vect n #f)
 	      (if (= 9 (modulo n 10))
-		  (message "reordering buffer..." (1+ n)))
+		  (message "Reordering buffer..." (1+ n)))
 	      (loop (1+ n) the-memo next
 		    (if (< (1+ n) nummsg)
 			(caddr (vector-ref sort-vect (1+ n)))
@@ -192,12 +196,14 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     ;; Can understand the following styles:
     ;; (1) 14 Apr 89 03:20:12 GMT
     ;; (2) Fri, 17 Mar 89 4:01:33 GMT
+    ;; (3) Fri, 3 Apr 92 18:55 EST
     ;;
     ;; added [ ]+ to the regexp to handle date string put out
     ;; by hx.lcs.mit.edu (they use 2 spaces instead of 1)
+    ;; made seconds optional since research.att.com doesn't send it out
       (if (re-search-string-forward
 	   (re-compile-pattern
-	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9:]+\\)" true)
+	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]+\\):\\([0-9]+\\)\\([0-9:]*\\)" true)
 	   true false date)
 	  (string-append
 	   ;; Year
@@ -224,7 +230,12 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 			     (re-match-end-index 1))))
 	     (string-pad-left day 2 #\0))
 	   ;; Time
-	   (substring date (re-match-start-index 4) (re-match-end-index 4)))
+	   (string-pad-left
+	    (substring date (re-match-start-index 4) (re-match-end-index 4)) 2 #\0)
+	   (string-pad-left
+	    (substring date (re-match-start-index 5) (re-match-end-index 5)) 2 #\0)
+	   (string-pad-left
+	    (substring date (re-match-start-index 6) (re-match-end-index 6)) 2 #\0))
       ;; Cannot understand DATE string.
 	  date))))
 
