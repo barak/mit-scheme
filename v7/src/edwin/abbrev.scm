@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: abbrev.scm,v 1.2 2000/02/29 01:34:47 cph Exp $
+;;; $Id: abbrev.scm,v 1.3 2000/04/04 16:53:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -450,7 +450,7 @@ or may be omitted (it is usually omitted)."
 (define (prepare-abbrev-list-buffer)
   (let ((buffer (find-or-create-buffer "*Abbrevs*")))
     (buffer-reset! buffer)
-    (insert-abbrev-table-descriptions)
+    (insert-abbrev-table-descriptions (buffer-start buffer))
     (buffer-not-modified! buffer)
     (set-buffer-point! buffer (buffer-start buffer))
     (set-buffer-major-mode! buffer (ref-mode-object edit-abbrevs))
@@ -461,41 +461,47 @@ or may be omitted (it is usually omitted)."
 Mark is set after the inserted text."
   ()
   (lambda ()
-    (insert-abbrev-table-descriptions)
-    (set-current-mark! (current-point))))
+    (let ((point (mark-right-inserting-copy (current-point))))
+      (insert-abbrev-table-descriptions (current-point))
+      (set-current-mark! (current-point))
+      (set-current-point! point))))
 
-(define (insert-abbrev-table-descriptions)
-  (for-each
-   (lambda (name)
-     (let ((table (get-named-abbrev-table name)))
-       (insert-string "(")
-       (insert-string (symbol->string name))
-       (insert-string ")\n\n")
-       (hash-table/for-each table
-	 (lambda (abbrev entry)
-	   (if (abbrev-entry-expansion entry)
-	       (begin
-		 (insert-string abbrev)
-		 (indent-to 15 1)
-		 (insert-string (number->string (abbrev-entry-count entry)))
-		 (indent-to 20 1)
-		 (insert-string (abbrev-entry-expansion entry))
-		 (if (abbrev-entry-hook entry)
-		     (begin
-		       (indent-to 45 1)
-		       (insert-string (abbrev-entry-hook entry))))
-		 (insert-newline)))))
-       (insert-string "\n\n")))
-   (ref-variable abbrev-table-name-list #f)))
+(define (insert-abbrev-table-descriptions mark)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (for-each
+     (lambda (name)
+       (let ((table (get-named-abbrev-table name)))
+	 (insert-string "(" mark)
+	 (insert-string (symbol->string name) mark)
+	 (insert-string ")\n\n" mark)
+	 (hash-table/for-each table
+	   (lambda (abbrev entry)
+	     (if (abbrev-entry-expansion entry)
+		 (begin
+		   (insert abbrev mark)
+		   (indent-to 15 1 mark)
+		   (insert (abbrev-entry-count entry) mark)
+		   (indent-to 20 1 mark)
+		   (insert (abbrev-entry-expansion entry) mark)
+		   (if (abbrev-entry-hook entry)
+		       (begin
+			 (indent-to 45 1 mark)
+			 (insert (abbrev-entry-hook entry) mark)))
+		   (insert-newline mark)))))
+	 (insert-string "\n\n" mark)))
+     (ref-variable abbrev-table-name-list #f))
+    (mark-temporary! mark)))
 
 (define-major-mode edit-abbrevs fundamental "Edit-Abbrevs"
-  "Major mode for editing the list of abbrev definitions."
+  "Major mode for editing the list of abbrev definitions.
+
+\\{edit-abbrevs}"
   (lambda (buffer)
     buffer
     unspecific))
 
 (define-key 'edit-abbrevs '(#\C-x #\C-s) 'edit-abbrevs-redefine)
-(define-key 'edit-abbrevs '(#\C-x #\C-c) 'edit-abbrevs-redefine)
+(define-key 'edit-abbrevs '(#\C-c #\C-c) 'edit-abbrevs-redefine)
 
 (define-command edit-abbrevs-redefine
   "Redefine abbrevs according to current buffer contents."
@@ -534,8 +540,9 @@ the ones defined from the buffer now."
 			       (expansion (read-expr)))
 			  (set! m (skip-chars-backward " \t\n\f" m))
 			  (let ((hook
-				 (and (not (line-end? m))
-				      (read-expr))))
+				 (if (line-end? m)
+				     'NIL
+				     (read-expr))))
 			    (set! m (skip-chars-backward " \t\n\f" m))
 			    (cons (list abbrev expansion hook count)
 				  (loop)))))))
@@ -559,7 +566,7 @@ it defaults to the value of `abbrev-file-name'."
   (lambda ()
     (list
      (prompt-for-existing-file "Read abbrev file"
-			       (ref-variable abbrev-file-name #f))))
+			       (list (ref-variable abbrev-file-name #f)))))
   (lambda (filename)
     (let ((filename (abbrev-file/filename filename)))
       (message "Loading " filename "...")
