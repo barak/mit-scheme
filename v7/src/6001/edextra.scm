@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.18 1993/10/25 17:13:41 cph Exp $
+$Id: edextra.scm,v 1.19 1993/11/02 23:33:32 cph Exp $
 
 Copyright (c) 1992-93 Massachusetts Institute of Technology
 
@@ -209,66 +209,129 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
     (lambda (file)
       (file-exists? (merge-pathnames directory file)))))
 
+(define-command load-problem-set
+  "Load a 6.001 problem set."
+  ()
+  (lambda ()
+    (load-quietly pset-list-file '(EDWIN))
+    (let* ((ps
+	    (prompt-for-string "Load Problem Set"
+			       (->string
+				(problem-sets/default-ps problem-sets))))
+	   (error-handler
+	    (lambda ()
+	      (editor-error "There doesn't appear to be a problem set "
+			    ps
+			    " installed; ask a TA for help.")))
+	   (groups (ps-groups ps error-handler))
+	   (pset-path (merge-pathnames (string-append "ps" ps "/") pset-dir)))
+      (if (not (files-all-exist? (groups/all-files groups) pset-path))
+	  (error-handler))
+      (for-each (lambda (file)
+		  (find-file-noselect (merge-pathnames file pset-path) #t))
+		(groups/files-to-reference groups))
+      (for-each (lambda (file)
+		  (let ((filename (merge-pathnames file pset-path)))
+		    (message "Evaluating file " (->namestring filename))
+		    (load-quietly filename '(STUDENT))
+		    (append-message " -- done")))
+		(groups/files-to-load groups))
+      (for-each (lambda (file)
+		  (let ((filename (merge-pathnames file pset-path)))
+		    (message "Evaluating file " (->namestring filename))
+		    (load-quietly filename '(STUDENT))
+		    (append-message " -- done")
+		    (find-file-noselect filename #t)))
+		(groups/files-to-load&reference groups))
+      (for-each (lambda (file)
+		  (load-ps-copy-file file pset-path student-dir))
+		(groups/files-to-copy groups)))))
+
+(define (load-quietly pathname environment)
+  (fluid-let ((load/suppress-loading-message? #t))
+    (load pathname environment)))
+
 (define (->string object)
   (if (string? object)
       object
       (with-output-to-string (lambda () (display object)))))
+
+(define (load-ps-copy-file file source-dir dest-dir)
+  (let ((source-file (merge-pathnames file source-dir))
+	(dest-file (merge-pathnames file dest-dir))
+	(filename (->namestring file)))
+    (if (file-exists? dest-file)
+	(let* ((backup-pathname (pathname-new-type file "bak"))
+	       (backup-filename (->namestring backup-pathname)))
+	  (with-saved-configuration
+	   (lambda ()
+	     (delete-other-windows (current-window))
+	     (let ((buffer (temporary-buffer " *load-problem-set-dialog*")))
+	       (select-buffer buffer)
+	       (append-string
+		"This problem set contains a file named ")
+	       (append-string
+		(write-to-string filename))
+	       (append-string ",
+but your working directory already contains a file of that name.
 
-(define-command Load-Problem-Set
-  "Load a 6.001 problem set."
-  ()
-  (lambda ()
-    (fluid-let ((load/suppress-loading-message? #t))
-      (load pset-list-file (->environment '(edwin)))
-      (let* ((default-ps (problem-sets/default-ps problem-sets))
-	     (ps (prompt-for-string "Load Problem Set" (->string default-ps))))
-	(let* ((error-handler
-		(lambda ()
-		  (editor-error "There doesn't appear to be a problem set "
-				ps
-				" installed; ask a TA for help.")))
-	       (groups (ps-groups ps error-handler))
-	       (pset-path
-		(merge-pathnames (string-append "ps" (->string ps) "/") 
-				 pset-dir)))
-	  (if (not (files-all-exist? (groups/all-files groups) pset-path))
-	      (error-handler))
-	  (map (lambda (file)
-		 (find-file (merge-pathnames pset-path (->pathname file))))
-	       (groups/files-to-reference groups))
-	  (map (lambda (file)
-		 (let ((filename
-			(merge-pathnames pset-path (->pathname file))))
-		   (message "Evaluating file " (->namestring filename))
-		   (load filename (->environment '(student)))
-		   (append-message " -- done")))
-	       (groups/files-to-load groups))
-	  (map (lambda (file)
-		 (let ((filename
-			(merge-pathnames pset-path (->pathname file))))
-		   (message "Evaluating file " (->namestring filename))
-		   (load filename (->environment '(student)))
-		   (append-message " -- done")
-		   (find-file filename)))
-	       (groups/files-to-load&reference groups))
-	  (map (lambda (file)
-		 (let ((source-file
-			(merge-pathnames pset-path (->pathname file)))
-		       (dest-file
-			(merge-pathnames student-dir (->pathname file))))
-		   (message "Copying file "
-			    (->namestring file)
-			    " to working area")
-		   (let ((buffer (find-buffer (->namestring dest-file))))
-		     (if buffer (kill-buffer buffer)))
-		   (find-file source-file)
-		   (let ((buffer (current-buffer)))
-		     (set-buffer-writable! buffer)
-		     (set-visited-pathname buffer dest-file)
-		     (write-buffer buffer))
-		   (append-message " -- done")
-		   (find-file dest-file)))
-	       (groups/files-to-copy groups)))))))
+Answer \"yes\" to replace your file with the file from the problem set.
+If you choose this option your file will be renamed \"")
+	       (append-string backup-filename)
+	       (append-string "\".
+
+Otherwise answer \"no\" to leave your file unchanged; if you choose this
+option the file from the problem set will not be installed.
+"))
+	     (if (prompt-for-yes-or-no? "Install problem set file")
+		 (begin
+		   (append-string
+		    (string-append "\nRenaming \""
+				   filename
+				   "\" to \""
+				   backup-filename
+				   "\"..."))
+		   (rename-ps-file dest-file backup-pathname)
+		   (append-string
+		    (string-append "done\n\nCopying file \""
+				   filename
+				   "\" to working area..."))
+		   (copy-ps-file source-file dest-file)
+		   (append-string "done"))
+		 (begin
+		   (append-string "\nOK, not using problem set file.")
+		   (find-file-noselect dest-file #t))))))
+	(let ((msg
+	       (string-append "Copying file \""
+			      filename
+			      "\" to working area...")))
+	  (message msg)
+	  (copy-ps-file source-file dest-file)
+	  (message msg "done")))))
+
+(define (rename-ps-file from-file to-file)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:file-error
+				   condition-type:port-error)
+	 (lambda (condition)
+	   condition
+	   (k unspecific))
+       (lambda ()
+	 (delete-file to-file)))))
+  (bind-condition-handler (list condition-type:file-error
+				condition-type:port-error)
+      (lambda (condition)
+	(editor-error "Rename failed: "
+		      (condition/report-string condition)))
+    (lambda ()
+      (rename-file from-file to-file))))
+
+(define (copy-ps-file from-file to-file)
+  (let ((buffer (find-file-noselect from-file #t)))
+    (set-buffer-writable! buffer)
+    (set-visited-pathname buffer to-file)
+    (write-buffer buffer)))
 
 ;;;; DOS Filenames
 
