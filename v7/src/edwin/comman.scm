@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.81 1999/11/01 01:05:36 cph Exp $
+$Id: comman.scm,v 1.82 2000/02/23 19:20:42 cph Exp $
 
-Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -69,18 +69,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define editor-commands
   (make-string-table 500))
 
-(define (name->command name)
+(define (name->command name #!optional error?)
   (let ((name (canonicalize-name name)))
     (or (string-table-get editor-commands (symbol->string name))
-	(letrec ((command
-		  (make-command
-		   name
-		   "undefined command"
-		   '()
-		   (lambda ()
-		     (editor-error "Undefined command: "
-				   (command-name-string command))))))
-	  command))))
+	(case (if (default-object? error?) 'INTERN error?)
+	  ((#F) #f)
+	  ((INTERN)
+	   (letrec ((command
+		     (make-command
+		      name
+		      "undefined command"
+		      '()
+		      (lambda ()
+			(editor-error "Undefined command: "
+				      (command-name-string command))))))
+	     command))
+	  (else
+	   (error "Undefined command:" (command-name-string command)))))))
 
 (define (->command object)
   (if (command? object)
