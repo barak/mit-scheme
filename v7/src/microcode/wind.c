@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.3 1991/07/05 23:28:57 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/wind.c,v 1.4 1991/07/06 21:42:41 cph Exp $ */
 
 #include <stdio.h>
 #include "obstack.h"
@@ -141,7 +141,14 @@ DEFUN (dstack_set_position, (position), PTR position)
 	{
 	  PTR sp = dstack_position;
 	  struct winding_record * record = current_winding_record;
+	  /* Must unblock signals while the protector runs, and
+	     re-block afterwards, in case the protector does something
+	     to change the signal mask.  Otherwise, the change to the
+	     signal mask will be undone when the final call to
+	     unblock_signals is performed.  */
+	  unblock_signals ();
 	  (* (record -> protector)) (record -> environment);
+	  block_signals ();
 	  if (sp != dstack_position)
 	    error ("dstack_set_position", "stack slipped during unwind");
 	  current_winding_record = (record -> next);
