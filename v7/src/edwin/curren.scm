@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.128 2000/10/26 02:30:07 cph Exp $
+;;; $Id: curren.scm,v 1.129 2000/10/26 02:42:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -511,11 +511,15 @@ The buffer is guaranteed to be selected at that time."
 
 (define (create-buffer-layout selector buffers)
   (let ((layout (cons selector (list->weak-list buffers))))
-    (for-each (lambda (buffer)
-		(if (buffer-get buffer buffer-layout-key #f)
-		    (error "Can't add buffer to multiple layouts:" buffer))
-		(buffer-put! buffer buffer-layout-key layout))
-	      buffers)))
+    (without-interrupts
+     (lambda ()
+       (for-each (lambda (buffer)
+		   (if (buffer-get buffer buffer-layout-key #f)
+		       (error "Can't add buffer to multiple layouts:" buffer)))
+		 buffers)
+       (for-each (lambda (buffer)
+		   (buffer-put! buffer buffer-layout-key layout))
+		 buffers)))))
 
 (define (maybe-select-buffer-layout window buffer)
   (let ((screen (window-screen window)))
@@ -523,29 +527,31 @@ The buffer is guaranteed to be selected at that time."
 	  (and layout
 	       (not (weak-memq buffer (cdr layout)))))
 	(begin
-	  (delete-other-windows window)
-	  (hash-table/remove! screen-buffer-layouts screen)))
+	  (hash-table/remove! screen-buffer-layouts screen)
+	  (delete-other-windows window)))
     (let ((layout (buffer-get buffer buffer-layout-key #f)))
       (if layout
 	  (begin
 	    (hash-table/put! screen-buffer-layouts screen layout)
 	    (delete-other-windows window)
-	    ((car layout) window (cdr layout)))
+	    ((car layout) window (weak-list->list (cdr layout))))
 	  (set-window-buffer! window buffer)))))
 
 (define (delete-buffer-layout buffer)
   (let ((layout (buffer-get buffer buffer-layout-key #f)))
     (if layout
 	(begin
-	  (do ((buffers (cdr layout) (weak-cdr buffers)))
-	      ((not (weak-pair? buffers)))
-	    (let ((buffer (weak-car buffers)))
-	      (if buffer
-		  (buffer-remove! buffer buffer-layout-key))))
 	  (hash-table/for-each screen-buffer-layouts
 	    (lambda (screen layout*)
 	      (if (eq? layout layout*)
-		  (hash-table/remove! screen-buffer-layouts screen))))))))
+		  (hash-table/remove! screen-buffer-layouts screen))))
+	  (without-interrupts
+	   (lambda ()
+	     (do ((buffers (cdr layout) (weak-cdr buffers)))
+		 ((not (weak-pair? buffers)))
+	       (let ((buffer (weak-car buffers)))
+		 (if buffer
+		     (buffer-remove! buffer buffer-layout-key))))))))))
 
 (define buffer-layout-key
   (list 'BUFFER-LAYOUT))
