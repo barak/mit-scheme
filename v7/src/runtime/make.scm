@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.48 1993/08/30 19:57:13 ziggy Exp $
+$Id: make.scm,v 14.49 1993/09/19 22:38:02 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -463,9 +463,9 @@ MIT in each case. |#
    (RUNTIME DEBUGGER)
    ;; Misc (e.g., version)
    (RUNTIME)
-   ;; Graphics
-   (RUNTIME X-GRAPHICS)
+   ;; Graphics.  The last system loaded is the default for MAKE-GRAPHICS-DEVICE
    (RUNTIME STARBASE-GRAPHICS)
+   (RUNTIME X-GRAPHICS)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
