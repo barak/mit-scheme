@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.54 1998/03/07 08:54:02 cph Exp $
+;;;	$Id: evlcom.scm,v 1.55 1998/03/08 07:26:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -489,67 +489,14 @@ Set by Scheme evaluation code to update the mode line."
 	evaluation-error-handler
       (lambda ()
 	(hook/repl-eval #f expression environment syntax-table)))))
-
+
 (define (evaluation-error-handler condition)
-  (default-report-error condition "evaluation")
-  (if (ref-variable debug-on-evaluation-error)
-      (debug-scheme-error condition "evaluation")
-      (begin
-	(editor-beep)
-	(return-to-command-loop condition))))
-
-(define (default-report-error condition error-type-name)
-  (let ((report-string (condition/report-string condition)))
-    (let ((typein-report
-	   (lambda ()
-	     (message (string-capitalize error-type-name)
-		      " error: "
-		      report-string)))
-	  (error-buffer-report
-	   (lambda ()
-	     (string->temporary-buffer report-string "*error*")
-	     (update-screens! #f)
-	     (message (string-capitalize error-type-name) " error")))
-	  (transcript-report
-	   (lambda ()
-	     (and (ref-variable enable-transcript-buffer)
-		  (begin
-		    (with-output-to-transcript-buffer
-			(lambda ()
-			  (fresh-line)
-			  (write-string ";Error: ")
-			  (write-string report-string)
-			  (newline)
-			  (newline)))
-		    #t)))))
-      (let ((fit-report
-	     (lambda ()
-	       (if (and (not (string-find-next-char report-string #\newline))
-			(< (string-columns report-string 0 8
-					   default-char-image-strings)
-			   (window-x-size (typein-window))))
-		   (typein-report)
-		   (error-buffer-report)))))
-	(case (ref-variable error-display-mode)
-	  ((STANDARD) (transcript-report) (fit-report))
-	  ((TRANSCRIPT) (or (transcript-report) (fit-report)))
-	  ((ERROR-BUFFER) (error-buffer-report))
-	  ((TYPEIN) (typein-report))
-	  ((FIT) (fit-report)))))))
-
-(define-variable error-display-mode
-  "Value of this variable controls the way evaluation error messages
-are displayed:
-STANDARD      like FIT, except messages also appear in transcript buffer,
-                if it is enabled.
-FIT           messages appear in typein window if they fit;
-                in *error* buffer if they don't.
-TYPEIN        messages appear in typein window.
-ERROR-BUFFER  messages appear in *error* buffer.
-TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
-                otherwise this is the same as FIT."
-  'STANDARD
-  (lambda (value) (memq value '(STANDARD TRANSCRIPT ERROR-BUFFER TYPEIN FIT))))
+  (maybe-debug-scheme-error (ref-variable-object debug-on-evaluation-error)
+			    condition
+			    "evaluation")
+  (standard-error-report condition "evaluation" #f)
+  (editor-beep)
+  (return-to-command-loop condition))
 
 ;;;; Transcript Buffer
 
@@ -572,7 +519,7 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		   unspecific))))
 	  (if (and (not (string-null? output))
 		   (not (ref-variable evaluation-output-receiver)))
-	      (string->temporary-buffer output "*Unsolicited-Output*")))
+	      (string->temporary-buffer output "*Unsolicited-Output*" '())))
 	value)))
 
 (define (transcript-write value buffer)

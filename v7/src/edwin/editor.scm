@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.242 1997/12/23 04:36:56 cph Exp $
+;;;	$Id: editor.scm,v 1.243 1998/03/08 07:26:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -296,9 +296,10 @@ with the contents of the startup message."
 	 (exit-editor))
 	(debug-internal-errors?
 	 (error condition))
-	((ref-variable debug-on-internal-error)
-	 (debug-scheme-error condition "internal"))
 	(else
+	 (maybe-debug-scheme-error
+	  (ref-variable-object debug-on-internal-error)
+	  condition "internal")
 	 (editor-beep)
 	 (message (condition/report-string condition))
 	 (return-to-command-loop condition))))
@@ -306,9 +307,10 @@ with the contents of the startup message."
 (define-variable debug-on-internal-error
   "True means enter debugger if error is signalled while the editor is running.
 This does not affect editor errors or evaluation errors."
-  false)
+  #f
+  boolean?)
 
-(define debug-internal-errors? false)
+(define debug-internal-errors? #f)
 
 (define condition-type:editor-error
   (make-condition-type 'EDITOR-ERROR condition-type:error '(STRINGS)
@@ -329,18 +331,73 @@ This does not affect editor errors or evaluation errors."
   (condition-accessor condition-type:editor-error 'STRINGS))
 
 (define (editor-error-handler condition)
-  (if (ref-variable debug-on-editor-error)
-      (debug-scheme-error condition "editor")
-      (begin
-	(editor-beep)
-	(let ((strings (editor-error-strings condition)))
-	  (if (not (null? strings))
-	      (apply message strings)))
-	(return-to-command-loop condition))))
+  (maybe-debug-scheme-error (ref-variable-object debug-on-editor-error)
+			    condition "editor")
+  (editor-beep)
+  (let ((strings (editor-error-strings condition)))
+    (if (not (null? strings))
+	(apply message strings)))
+  (return-to-command-loop condition))
 
 (define-variable debug-on-editor-error
   "True means signal Scheme error when an editor error occurs."
-  false)
+  #f
+  boolean?)
+
+(define (standard-error-report condition error-type-name in-prompt?)
+  (let ((report-string (condition/report-string condition)))
+    (let ((typein-report
+	   (lambda ()
+	     (message (string-capitalize error-type-name)
+		      " error: "
+		      report-string)))
+	  (error-buffer-report
+	   (lambda ()
+	     (string->temporary-buffer report-string "*error*"
+				       '(SHRINK-WINDOW))
+	     (message (string-capitalize error-type-name) " error")
+	     (update-screens! #f)))
+	  (transcript-report
+	   (lambda ()
+	     (and (ref-variable enable-transcript-buffer)
+		  (begin
+		    (with-output-to-transcript-buffer
+		      (lambda ()
+			(fresh-line)
+			(write-string ";Error: ")
+			(write-string report-string)
+			(newline)
+			(newline)))
+		    #t)))))
+      (let ((fit-report
+	     (lambda ()
+	       (if (and (not in-prompt?)
+			(not (string-find-next-char report-string #\newline))
+			(< (string-columns report-string 0 8
+					   default-char-image-strings)
+			   (window-x-size (typein-window))))
+		   (typein-report)
+		   (error-buffer-report)))))
+	(case (ref-variable error-display-mode)
+	  ((STANDARD) (transcript-report) (fit-report))
+	  ((TRANSCRIPT) (or (transcript-report) (fit-report)))
+	  ((ERROR-BUFFER) (error-buffer-report))
+	  ((TYPEIN) (if in-prompt? (error-buffer-report) (typein-report)))
+	  ((FIT) (fit-report)))))))
+
+(define-variable error-display-mode
+  "Value of this variable controls the way evaluation error messages
+are displayed:
+STANDARD      like FIT, except messages also appear in transcript buffer,
+                if it is enabled.
+FIT           messages appear in typein window if they fit;
+                in *error* buffer if they don't.
+TYPEIN        messages appear in typein window.
+ERROR-BUFFER  messages appear in *error* buffer.
+TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
+                otherwise this is the same as FIT."
+  'STANDARD
+  (lambda (value) (memq value '(STANDARD TRANSCRIPT ERROR-BUFFER TYPEIN FIT))))
 
 (define condition-type:abort-current-command
   (make-condition-type 'ABORT-CURRENT-COMMAND #f '(INPUT)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.221 1998/02/12 05:57:40 cph Exp $
+$Id: edwin.pkg,v 1.222 1998/03/08 07:26:25 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -829,7 +829,8 @@ MIT in each case. |#
 	  edwin-variable$debugger-start-new-screen?
 	  edwin-variable$debugger-start-on-error?
 	  edwin-variable$debugger-verbose-mode?
-	  edwin-variable$environment-package-limit)
+	  edwin-variable$environment-package-limit
+	  maybe-debug-scheme-error)
   (import (runtime debugger)
 	  command/condition-restart
 	  command/frame

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.41 1997/03/04 06:42:58 cph Exp $
+;;;	$Id: debug.scm,v 1.42 1998/03/08 07:25:49 cph Exp $
 ;;;
-;;;	Copyright (c) 1992-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -359,9 +359,8 @@
 		     (write-description bline port)
 		     (if env-exists?
 			 (begin
-			   (debugger-newline port)	
-			   (write-string
-			    ";EVALUATION may occur below in the environment of the selected frame." port)
+			   (debugger-newline port)
+			   (write-string evaluation-line-marker port)
 			   (debugger-newline port)))))
 		     (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
@@ -377,6 +376,9 @@
 		      #f))
 		 (append-message "done")
 		 buffer))))))
+
+(define evaluation-line-marker
+  ";EVALUATION may occur below in the environment of the selected frame.")
 
 (define-command browser-quit
   "Exit the current browser, deleting its buffer."
@@ -960,7 +962,6 @@ a fixed size terminal."
 
 ;;;The help messages for the debugger
 
-
 (define where-help-message
 "     COMMANDS:  ? - Help   q - Quit Environment browser
 
@@ -985,6 +986,11 @@ The buffer below describes the current subproblem or reduction.
 -----------")
 
 ;;;; Debugger Entry
+
+(define-command browse-continuation
+  "Invoke the continuation-browser on CONTINUATION."
+  "XBrowse Continuation"
+  select-continuation-browser-buffer)
 
 (define (select-continuation-browser-buffer object #!optional thread)
   (set! value? #f)
@@ -1141,26 +1147,32 @@ The buffer below describes the current subproblem or reduction.
 	bkvalue
 	(apply proc args))))
 
-(define-command browse-continuation
-  "Invoke the continuation-browser on CONTINUATION."
-  "XBrowse Continuation"
-  select-continuation-browser-buffer)
+;;;; External Entry Point
+
+(define (maybe-debug-scheme-error switch-variable condition error-type-name)
+  (if (variable-value switch-variable)
+      (debug-scheme-error condition error-type-name)))
 
 (define (debug-scheme-error condition error-type-name)
-  (if starting-debugger?
-      (quit-editor-and-signal-error condition)
-      (begin
-	(editor-beep)
-	(if (if (eq? 'ASK (ref-variable debugger-start-on-error?))
-		(prompt-for-confirmation? "Start debugger")
-		(ref-variable debugger-start-on-error?))
-	    (begin
-	      (fluid-let ((starting-debugger? true))
-		(select-continuation-browser-buffer condition))
-	      (message error-type-name " error")))
-	(return-to-command-loop condition))))
+  (cond (starting-debugger?
+	 (quit-editor-and-signal-error condition))
+	((let ((start? (ref-variable debugger-start-on-error?)))
+	   (if (eq? 'ASK start?)
+	       (debug-scheme-error? condition error-type-name)
+	       start?))
+	 (fluid-let ((starting-debugger? #t))
+	   (select-continuation-browser-buffer condition))
+	 (message (string-capitalize error-type-name) " error")
+	 (return-to-command-loop condition))))
 
-(define starting-debugger? false)
+(define starting-debugger? #f)
+
+(define (debug-scheme-error? condition error-type-name)
+  (cleanup-pop-up-buffers
+   (lambda ()
+     (standard-error-report condition error-type-name #t)
+     (editor-beep)
+     (prompt-for-confirmation? "Start debugger"))))
 
 ;;;; Continuation Browser Mode
 
@@ -1616,7 +1628,6 @@ they are automatically deleted when you quit the debugger.  If you wish
 to keep one of these buffers, simply rename it using `M-x rename-buffer':
 once it has been renamed, it will not be deleted automatically.")
 
-
 (define-key 'environment-browser down 'browser-next-line)
 (define-key 'environment-browser up 'browser-previous-line)
 (define-key 'environment-browser button1-down	'debugger-mouse-select-bline)
@@ -1625,7 +1636,6 @@ once it has been renamed, it will not be deleted automatically.")
 (define-key 'environment-browser #\? 'describe-mode)
 (define-key 'environment-browser #\q 'browser-quit)
 (define-key 'environment-browser #\space 'browser-select-line)
-
 
 (define (environment/write-summary bline port)
   (write-string "E" port)
@@ -1743,7 +1753,6 @@ once it has been renamed, it will not be deleted automatically.")
    "---------------------------------------------------------------------"
    port))
 
-
 (define (debugger-newline port)
   (if (ref-variable debugger-compact-display?)
       (fresh-line port)
@@ -1777,7 +1786,7 @@ once it has been renamed, it will not be deleted automatically.")
 	   (show-frames (reverse env-list)
 			(make-initialized-list (length env-list)
 			  (lambda (i) (make-string (* i 2) #\space))))))))
-
+
 (define (print-the-local-bindings environment port)
   (let ((names (get-all-local-bindings environment)))
     (let ((n-bindings (length names))
@@ -1806,7 +1815,7 @@ once it has been renamed, it will not be deleted automatically.")
 	     (write-string "  Local Bindings:" port)
 	     (debugger-newline port)
 	     (finish names))))))
-
+
 (define (show-environment-name environment port)
   (write-string "ENVIRONMENT " port)
   (let ((package (environment->package environment)))
@@ -1841,8 +1850,7 @@ once it has been renamed, it will not be deleted automatically.")
 			 (string<? (symbol->string x)
 				   (symbol->string y))))))
     names4))
-
-
+
 (define (show-environment-bindings-with-ind environment ind port)
   (let ((names (environment-bound-names environment)))
     (let ((n-bindings (length names))
@@ -1868,7 +1876,7 @@ once it has been renamed, it will not be deleted automatically.")
 	     (debugger-newline port))
 	    (else
 	     (finish names))))))
-
+
 (define (print-binding-with-ind name value ind port)
   (let ((x-size (- (output-port/x-size port) (string-length ind) 4)))
     (write-string (string-append ind "    ")
@@ -1888,8 +1896,7 @@ once it has been renamed, it will not be deleted automatically.")
 		  (write value)))))))
      port)
     (debugger-newline port)))
-
-
+
 ;;;; Interface Port
 
 (define (operation/write-char port char)

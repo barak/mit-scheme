@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: artdebug.scm,v 1.24 1993/10/26 00:37:55 cph Exp $
+;;;	$Id: artdebug.scm,v 1.25 1998/03/08 07:26:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -189,24 +189,33 @@ or #F meaning no limit."
 (define in-debugger? false)
 (define in-debugger-evaluation? false)
 
+(define (maybe-debug-scheme-error switch-variable condition error-type-name)
+  (if (variable-value switch-variable)
+      (debug-scheme-error condition error-type-name)))
+
 (define (debug-scheme-error condition error-type-name)
-  (if in-debugger?
-      (quit-editor-and-signal-error condition)
-      (begin
-	(editor-beep)
-	(if (and (if in-debugger-evaluation?
-		     (ref-variable debugger-debug-evaluations?)
-		     (ref-variable debugger-start-on-error?))
-		 (or (not (eq? (ref-variable debugger-start-on-error?) 'ASK))
-		     (prompt-for-confirmation? "Start debugger")))
-	    (begin
-	      (fluid-let ((in-debugger? true))
-		((if (ref-variable debugger-split-window?)
-		     select-buffer-other-window
-		     select-buffer)
-		 (continuation-browser-buffer condition)))
-	      (message error-type-name " error")))
-	(return-to-command-loop condition))))
+  (cond (in-debugger?
+	 (quit-editor-and-signal-error condition))
+	((and (if in-debugger-evaluation?
+		  (ref-variable debugger-debug-evaluations?)
+		  (ref-variable debugger-start-on-error?))
+	      (or (not (eq? (ref-variable debugger-start-on-error?) 'ASK))
+		  (debug-scheme-error? condition error-type-name)))
+	 (fluid-let ((in-debugger? true))
+	   ((if (ref-variable debugger-split-window?)
+		select-buffer-other-window
+		select-buffer)
+	    (continuation-browser-buffer condition)))
+	 (message error-type-name " error")
+	 (editor-beep)
+	 (return-to-command-loop condition))))
+
+(define (debug-scheme-error? condition error-type-name)
+  (cleanup-pop-up-buffers
+   (lambda ()
+     (standard-error-report condition error-type-name #t)
+     (editor-beep)
+     (prompt-for-confirmation? "Start debugger"))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
