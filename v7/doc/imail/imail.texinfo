@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: imail.texinfo,v 1.34 2004/10/16 13:31:28 cph Exp $
+@comment $Id: imail.texinfo,v 1.35 2004/10/16 23:43:06 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename mit-scheme-imail
 @set EDITION 1.8
@@ -9,7 +9,6 @@
 @syncodeindex pg cp
 @syncodeindex tp cp
 @comment %**end of header (This is for running Texinfo on a region.)
-@setchapternewpage odd
 @finalout
 
 @copying
@@ -51,6 +50,11 @@ Software Foundation raise funds for GNU development.''
 @vskip 0pt plus 1filll
 @insertcopying
 @end titlepage
+
+@setchapternewpage on
+@headings double
+
+@contents
 
 @ifnottex
 @node Top, Introduction, (dir), (dir)
@@ -2501,5 +2505,4 @@ to permit their use in free software.
 @appendix Concept Index
 @printindex cp
 
-@contents
 @bye
