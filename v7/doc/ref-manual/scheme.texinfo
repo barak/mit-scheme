@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.74 1999/08/04 01:42:54 cph Exp $
+@comment $Id: scheme.texinfo,v 1.75 1999/08/09 18:12:11 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -12522,6 +12522,15 @@ flushing, and returns an unspecified value.
 Writes @var{string} to @var{output-port}, performs discretionary output
 flushing, and returns an unspecified value.  This is equivalent to
 writing the contents of @var{string}, one character at a time using
+@code{write-char}, except that it is usually much faster.
+@end deffn
+
+@deffn {procedure+} write-substring string start end [output-port]
+@cindex string, output to port
+Writes the substring defined by @var{string}, @var{start}, and @var{end}
+to @var{output-port}, performs discretionary output flushing, and
+returns an unspecified value.  This is equivalent to writing the
+contents of the substring, one character at a time using
 @code{write-char}, except that it is usually much faster.
 @end deffn
 
