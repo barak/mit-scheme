@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.c,v 1.2 1992/07/28 14:34:05 jinx Exp $
+$Id: dosexcp.c,v 1.3 1992/09/18 05:54:21 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -40,115 +40,6 @@ MIT in each case. */
 #include "dossys.h"
 #include "dosinsn.h"
 #include "dosexcp.h"
-
-/* It would be nice to be able to use something akin to Zortech's int_intercept
-   to get control of trap handlers, but Zortech's DOSX does not
-   provide that ability.  In fact, it shadows the exception numbers
-   with DOS interrupts (for compatibility), but does not map the traps
-   to an accessible region.
-
-   In the meantime, exceptions are only caught under DPMI if running DOSX,
-   or everywhere if running X32.
-*/
-
-#if 0
-
-#include <int.h>
-
-static unsigned long *
-DEFUN (store_trap_data, (trap_stack_ptr, intno, code, pd), 
-       unsigned long ** trap_stack_ptr 
-       AND unsigned char intno AND unsigned char code
-       AND struct INT_DATA * pd)
-{
-  unsigned long 
-    * trap_stack,
-    * trapped_stack;
-  
-  union
-  { 
-    unsigned long long_value;
-    struct
-    { 
-      unsigned char code;
-      unsigned char ss_is_ds;
-      unsigned char intno;
-      unsigned char padding;
-    } byte_values;
-  } code_word;
-
-  trap_stack = (* trap_stack_ptr);
-  trapped_stack = ((unsigned long) pd->regs.oldstack_off);
-
-  code_word.byte_values.code = code;
-  code_word.byte_values.intno = intno;
-  code_word.byte_values.ss_is_ds = (pd->oldstack_seg == pd->sregs.ds);
-  code_word.byte_values.padding = 0;
-
-  *--trap_stack = code_word.long_value;
-  *--trap_stack = pd->regs.e.eax;
-  *--trap_stack = pd->regs.e.ecx;
-  *--trap_stack = pd->regs.e.edx;
-  *--trap_stack = pd->regs.e.ebx;
-
-  /* The following checks whether there was a ring change when the
-     interrupt was taken.  If there was, the old SP is pushed on the
-     exception trap frame which lives on the stack of the new
-     privilege level, otherwise the trap frame was pushed on the 
-     interrupted stack, which is shared by the low-level handler.
-     Compare the PL of the two PCs.
-   */
-  *--trap_stack = (((pd->regs.sregs.cs & 0x3) == (trapped_stack[3] & 0x3))
-                   ? (trapped_stack + 5)
-		   : (trapped_stack[5]));	/* esp */
-  *--trap_stack = trapped_stack[0];		/* ebp */
-  *--trap_stack = pd->regs.e.esi;
-  *--trap_stack = pd->regs.e.edi;
-  *--trap_stack = trapped_stack[2];		/* eip */
-  *--trap_stack = pd->regs.e.flags;
-  (* trap_stack_ptr) = trap_stack;
-  return (trapped_stack + 2);
-}
-
-static int
-DEFUN (dosx_trap_handler, (intno, pd), 
-       unsigned char intno AND struct INT_DATA * pd)
-{
-  extern void asm_trap_handler ();
-  extern unsigned long
-    * asm_trap_stack,
-    * asm_trap_stack_limit,
-    * asm_trap_stack_base;
-  unsigned long * pc_loc;
-  int code;
-
-  code = 0;
-  if (asm_trap_stack <= asm_trap_stack_limit)
-  {
-    /* Lose badly.  Too many nested traps. */
-    asm_trap_stack = asm_trap_stack_base;
-    code = 1;
-  }
-  pc_loc = store_trap_data (&asm_trap_stack, intno, code, pd);
-  (* pc_loc) = ((unsigned long) asm_trap_handler);
-  return (0);
-}
-
-#define DEFINE_TRAP_HANDLER(name,intno)		\
-extern int EXFUN (name, (struct INT_DATA *));	\
-int						\
-DEFUN (name, (pd), struct INT_DATA * pd)	\
-{						\
-  return (dosx_trap_handler (intno, pd));	\
-}
-
-DEFINE_TRAP_HANDLER (handle_integer_divide_by_0, DOS_INTVECT_DIVIDE_BY_0)
-DEFINE_TRAP_HANDLER (handle_overflow, DOS_INTVECT_OVERFLOW)
-DEFINE_TRAP_HANDLER (handle_bounds_check, DOS_INTVECT_PRINT_SCREEN)
-DEFINE_TRAP_HANDLER (handle_invalid_opcode, DOS_INVALID_OPCODE)
-/* And many more friends. */
-
-#endif /* 0 */
 
 int
 DPMI_get_exception_vector (unsigned exception,
@@ -226,11 +117,7 @@ make_DPMI_exception_trampoline (unsigned exception,
 
   PUSH_INSN (exception);
   PUSH_INSN (getDS ());
-#if 0
-  PUSH_INSN (getCS ());
-#else
   PUSH_INSN (0);		/* Use same CS and near calls and returns */
-#endif
   PUSH_INSN (funcptr);
   PUSH_INSN (getDS ());		/* Assumed to be on Heap if not null! */
   PUSH_INSN (stack);
@@ -306,6 +193,82 @@ DPMI_restore_exception_handler (unsigned exception,
 	  != DOS_SUCCESS))
     return (DOS_FAILURE);
   free ((void *) current_eip);
+  return (DOS_SUCCESS);
+}
+
+extern int DPMI_free_scheme_stack (unsigned short);
+extern int DPMI_alloc_scheme_stack (unsigned short *,
+				    unsigned short *,
+				    unsigned long);
+
+int
+DPMI_free_scheme_stack (unsigned short ss)
+{
+  union REGS regs;
+
+  regs.x.ax = 0x1;
+  regs.x.bx = ss;
+  int86 (0x31, &regs, &regs);
+  return ((regs.e.cflag != 0) ? DOS_FAILURE : DOS_SUCCESS);
+}
+
+#define I386_PAGE_BITS	12
+#define I386_PAGE_SIZE	(1 << I386_PAGE_BITS)
+#define I386_PAGE_MASK	(I386_PAGE_SIZE - 1) 
+
+int
+DPMI_alloc_scheme_stack (unsigned short * ds,
+			 unsigned short * ss,
+			 unsigned long limit)
+{
+  unsigned short ds_sel, css_sel, ss_sel;
+  unsigned long descriptor[2];
+  struct SREGS sregs;
+  union REGS regs;
+
+  limit = ((limit + I386_PAGE_MASK) & (~ I386_PAGE_MASK));
+
+  segread (&sregs);
+  css_sel = sregs.ss;
+  ds_sel = sregs.ds;
+
+  regs.x.ax = 0x0;		/* Allocate LDT Descriptor */
+  regs.x.cx = 1;
+  int86 (0x31, &regs, &regs);
+  if (regs.e.cflag != 0)
+    return (DOS_FAILURE);
+  ss_sel = regs.x.ax;
+
+  sregs.es = ds_sel;
+  regs.x.ax = 0xb;		/* Get Descriptor */
+  regs.x.bx = css_sel;
+  regs.e.edi = ((unsigned long) &descriptor[0]);
+  int86x (0x31, &regs, &regs, &sregs);
+  if (regs.e.cflag != 0)
+  {
+fail:
+    DPMI_free_scheme_stack (ss_sel);
+    fprintf (stderr, "DPMI_alloc_scheme_stack: failed.\n");
+    return (DOS_FAILURE);    
+  }
+  
+  /* Set the granularity bit and the limit */
+  descriptor[1] = (descriptor[1] | (1UL << 23));
+  descriptor[1] &= (~ (0xfUL << 16));
+  descriptor[1] |= ((limit >> (I386_PAGE_BITS + 16)) << 16);
+
+  descriptor[0] &= 0xffff0000UL;
+  descriptor[0] |= ((limit >> I386_PAGE_BITS) & I386_PAGE_MASK);
+
+  regs.x.ax = 0xc;		/* Set Descriptor */
+  regs.x.bx = ss_sel;
+  regs.e.edi = ((unsigned long) &descriptor[0]);
+  int86x (0x31, &regs, &regs, &sregs);
+  if (regs.e.cflag != 0)
+    goto fail;
+
+  *ds = ds_sel;
+  *ss = ss_sel;
   return (DOS_SUCCESS);
 }
 

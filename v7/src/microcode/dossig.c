@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.5 1992/09/03 07:29:39 jinx Exp $
+$Id: dossig.c,v 1.6 1992/09/18 05:53:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -822,6 +822,15 @@ DEFUN_VOID (DOS_initialize_interrupts)
   return;
 } 
 
+extern int EXFUN (DPMI_free_scheme_stack, (unsigned short));
+extern int EXFUN (DPMI_alloc_scheme_stack,
+		  (unsigned short *, unsigned short *, unsigned long));
+
+extern unsigned short Scheme_Stack_Segment_Selector;
+extern unsigned short scheme_ss, scheme_ds;
+unsigned short scheme_ds = 0;
+unsigned short scheme_ss = 0;
+
 static char i386_exceptions_to_handle[] =
 {
   DOS_EXCP_Integer_divide_by_zero,
@@ -862,6 +871,11 @@ DEFUN (restore_exception_handler, (iv, restore),
     return (DOS_FAILURE);
   if (excp == DOS_EXCP_Stack_exception)
   {
+    if (scheme_ss != 0)
+    {
+      Scheme_Stack_Segment_Selector = scheme_ds;
+      DPMI_free_scheme_stack (scheme_ss);
+    }
     free (stack_exception_fault_stack);
     stack_exception_fault_stack = ((void *) NULL);
   }
@@ -888,6 +902,25 @@ DEFUN (exception_handler, (trapno, trapcode, scp),
 {
   trap_handler ("hardware exception", ((int) trapno), trapcode, scp);
   /*NOTREACHED*/
+}
+
+static void
+DEFUN (DPMI_stack_fault_handler, (trapno, trapcode, scp),
+       unsigned trapno AND unsigned trapcode AND struct sigcontext * scp)
+{
+  Scheme_Stack_Segment_Selector = scheme_ds;
+  trap_handler ("hardware exception", ((int) trapno), trapcode, scp);
+  /*NOTREACHED*/
+}
+
+extern void EXFUN (dos386_stack_reset, (void));
+
+void
+DEFUN_VOID (dos386_stack_reset)
+{
+  if (scheme_ss != 0)
+    Scheme_Stack_Segment_Selector = scheme_ss;
+  return;
 }
 
 static void
@@ -918,19 +951,33 @@ DEFUN (install_exception_handlers, (get_vector, set_handler, restore),
       continue;
     if (excp == DOS_EXCP_Stack_exception)
     {
+      void EXFUN ((* handler), (unsigned, unsigned, struct sigcontext *));
       char * stack;
 
       stack = ((char *) (malloc (STACK_EXCEPTION_STACK_SIZE)));
       if (stack == ((char *) NULL))
 	continue;
+      handler = exception_handler;
+      if ((under_DPMI_p ())
+	  && ((DPMI_alloc_scheme_stack (&scheme_ds, &scheme_ss,
+					(Regs[REGBLOCK_STACK_GUARD])))
+	      == DOS_SUCCESS))
+      {
+	Scheme_Stack_Segment_Selector = scheme_ss;
+	handler = DPMI_stack_fault_handler;
+      }
       if (((* set_handler) (((unsigned) excp),
-			    exception_handler,
-			    ((void *)
-			     (stack 
-			      + STACK_EXCEPTION_STACK_SIZE))))
+			    handler,
+			    ((void *) (stack + STACK_EXCEPTION_STACK_SIZE))))
 	  != DOS_SUCCESS)
       {
 	free (stack);
+	if (handler != exception_handler)
+	{
+	  Scheme_Stack_Segment_Selector = scheme_ds;
+	  DPMI_free_scheme_stack (scheme_ss);
+	  scheme_ss = 0;
+	}
 	continue;
       }
       stack_exception_fault_stack = ((void *) stack);

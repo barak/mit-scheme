@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dostrap.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Id: dostrap.c,v 1.2 1992/09/18 05:54:06 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -413,6 +413,7 @@ DEFUN (setup_trap_frame, (trapno, info, scp, trinfo, new_stack_pointer),
       ((handler = (Get_Fixed_Obj_Slot (Trap_Handler))) == SHARP_F))
     {
       fprintf (stderr, "There is no trap handler for recovery!\n");
+      fprintf (stderr, "Trap = %s.\n", (find_trap_name (trapno)));
       fflush (stderr);
       termination_trap ();
     }
@@ -569,6 +570,7 @@ DEFUN (continue_from_trap, (trapno, info, scp),
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
+  extern unsigned short scheme_ss;
   int pc_in_C;
   int pc_in_heap;
   int pc_in_constant_space;
@@ -625,7 +627,9 @@ DEFUN (continue_from_trap, (trapno, info, scp),
 
   scheme_sp_valid =
     (pc_in_scheme
-     && ((scp->sc_ss & 0xffff) == (scp->sc_ds & 0xffff))
+     && (((scp->sc_ss & 0xffff) == (scp->sc_ds & 0xffff))
+	 || ((scheme_ss != 0)
+	     && ((scp->sc_ss & 0xffff) == scheme_ss)))
      && ((scp->sc_ds & 0xffff) == (initial_C_ds & 0xffff))
      && ((scheme_sp < ((long) Stack_Top)) &&
 	 (scheme_sp >= ((long) Absolute_Stack_Base)) &&
