@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.3 1991/04/11 03:06:39 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.4 1991/04/21 00:51:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -454,123 +454,119 @@ after the listing is made.)"
 ;;;; Synchronous Subprocesses
 
 (define (shell-command command output-mark)
-  (let ((process
-	 (start-pipe-subprocess "/bin/sh" (vector "sh" "-c" command) false))
-	(output-mark (mark-left-inserting output-mark)))
-    (channel-close (subprocess-output-channel process))
-    (let ((output-channel (subprocess-input-channel process)))
-      (channel-nonblocking output-channel)
-      (let ((copy-output
-	     (let ((buffer (make-string 512)))
-	       (lambda ()
-		 (let loop ()
-		   (let ((n (channel-read output-channel buffer 0 512)))
-		     (if (and n (positive? n))
-			 (begin
-			   (insert-substring buffer 0 n output-mark)
-			   (loop)))))))))
-	(let loop ()
-	  (copy-output)
-	  (let ((status (subprocess-status process)))
-	    (if (eq? status 'RUNNING)
-		(loop)
-		(begin
-		  (channel-blocking output-channel)
-		  (copy-output)
-		  (process-termination-message process
-					       status
-					       output-mark)))))))))
+  (run-synchronous-process false output-mark "/bin/sh" "-c" command))
 
-(define (process-termination-message process status output-mark)
-  (let ((reason (subprocess-exit-reason process)))
-    (let ((abnormal-termination
-	   (lambda (message)
-	     (guarantee-newlines 2 output-mark)
-	     (insert-string "Process " output-mark)
-	     (insert-string message output-mark)
-	     (insert-string " " output-mark)
-	     (insert-string (number->string reason) output-mark)
-	     (insert-string "." output-mark)
-	     (insert-newline output-mark))))
-      (case status
-	((STOPPED)
-	 (abnormal-termination "stopped with signal")
-	 (subprocess-kill process)
-	 (subprocess-wait process))
-	((SIGNALLED)
-	 (abnormal-termination "terminated with signal"))
-	((EXITED)
-	 (if (not (eqv? 0 reason))
-	     (abnormal-termination "exited abnormally with code"))))))
-  (subprocess-delete process))
-
 (define (shell-command-region command output-mark input-region)
+  (run-synchronous-process input-region output-mark "/bin/sh" "-c" command))
+
+(define (run-synchronous-process input-region output-mark program . arguments)
   (let ((process
-	 (start-pipe-subprocess "/bin/sh" (vector "sh" "-c" command) false))
-	(output-mark (mark-left-inserting output-mark))
-	(group (region-group input-region))
-	(start-index (region-start-index input-region))
-	(end-index (region-end-index input-region)))
-    (let ((input-channel (subprocess-output-channel process))
-	  (output-channel (subprocess-input-channel process)))
-      (channel-nonblocking input-channel)
-      (channel-nonblocking output-channel)
-      (let ((copy-output
-	     (let ((buffer (make-string 512)))
-	       (lambda ()
-		 (let loop ()
-		   (let ((n (channel-read output-channel buffer 0 512)))
-		     (if (and n (positive? n))
-			 (begin
-			   (insert-substring buffer 0 n output-mark)
-			   (loop)))))))))
+	 (start-pipe-subprocess program
+				(list->vector
+				 (cons (os/filename-non-directory program)
+				       arguments))
+				false)))
+    (call-with-output-copier process output-mark
+      (lambda (copy-output)
+	(call-with-input-copier process input-region
+	  (lambda (copy-input)
+	    (let loop ()
+	      (copy-input)
+	      (copy-output)
+	      (let ((status (subprocess-status process)))
+		(if (eq? status 'RUNNING)
+		    (loop)
+		    status)))))))))
+
+(define (call-with-output-copier process output-mark receiver)
+  (let ((output-mark (and output-mark (mark-left-inserting output-mark))))
+    (let ((status
+	   (if output-mark
+	       (let ((output-channel (subprocess-input-channel process)))
+		 (let ((copy-output
+			(let ((buffer (make-string 512)))
+			  (lambda ()
+			    (let loop ()
+			      (let ((n (channel-read output-channel
+						     buffer 0 512)))
+				(if (and n (positive? n))
+				    (begin
+				      (insert-substring buffer 0 n output-mark)
+				      (loop)))))))))
+		   (channel-nonblocking output-channel)
+		   (let ((status (receiver copy-output)))
+		     (channel-blocking output-channel)
+		     (copy-output)
+		     status)))
+	       (receiver (lambda () unspecific)))))
+      (let ((reason (subprocess-exit-reason process)))
+	(let ((abnormal-termination
+	       (lambda (message)
+		 (if output-mark
+		     (begin
+		       (guarantee-newlines 2 output-mark)
+		       (insert-string "Process " output-mark)
+		       (insert-string message output-mark)
+		       (insert-string " " output-mark)
+		       (insert-string (number->string reason) output-mark)
+		       (insert-string "." output-mark)
+		       (insert-newline output-mark))))))
+	  (case status
+	    ((STOPPED)
+	     (abnormal-termination "stopped with signal")
+	     (subprocess-kill process)
+	     (subprocess-wait process))
+	    ((SIGNALLED)
+	     (abnormal-termination "terminated with signal"))
+	    ((EXITED)
+	     (if (not (eqv? 0 reason))
+		 (abnormal-termination "exited abnormally with code")))))
+	(subprocess-delete process)
+	(cons status reason)))))
+
+(define (call-with-input-copier process input-region receiver)
+  (if input-region
+      (let ((group (region-group input-region))
+	    (start-index (region-start-index input-region))
+	    (end-index (region-end-index input-region))
+	    (input-channel (subprocess-output-channel process)))
+	(channel-nonblocking input-channel)
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (bind-condition-handler (list condition-type:system-call-error)
 	       (lambda (condition)
-		 (if (and (eq? 'WRITE
-			       (access-condition condition 'SYSTEM-CALL))
-			  (eq? 'BROKEN-PIPE
-			       (access-condition condition 'ERROR-TYPE)))
-		     (begin
-		       (channel-blocking output-channel)
-		       (copy-output)
-		       (guarantee-newlines 2 output-mark)
-		       (insert-string "broken pipe" output-mark)
-		       (insert-newline output-mark)
-		       (continuation
-			(process-termination-message process
-						     (subprocess-wait process)
-						     output-mark)))))
+		 (if (and (eq? 'WRITE (system-call-name condition))
+			  (eq? 'BROKEN-PIPE (system-call-error condition)))
+		     (continuation (subprocess-wait process))))
 	     (lambda ()
-	       (let loop ()
-		 (if (< start-index end-index)
-		     (let ((index (min (+ start-index 512) end-index)))
-		       (let ((buffer
-			      (group-extract-string group
-						    start-index
-						    index)))
-			 (let ((n
-				(channel-write input-channel
-					       buffer
-					       0
-					       (string-length buffer))))
-			   (if n
-			       (begin
-				 (set! start-index (+ start-index n))
-				 (if (= start-index end-index)
-				     (channel-close input-channel)))))))
-		     (channel-close input-channel))
-		 (copy-output)
-		 (let ((status (subprocess-status process)))
-		   (if (eq? status 'RUNNING)
-		       (loop)
-		       (begin
-			 (channel-blocking output-channel)
-			 (copy-output)
-			 (process-termination-message process
-						      status
-						      output-mark)))))))))))))
+	       (receiver
+		(lambda ()
+		  (if (< start-index end-index)
+		      (let ((index (min (+ start-index 512) end-index)))
+			(let ((buffer
+			       (group-extract-string group
+						     start-index
+						     index)))
+			  (let ((n
+				 (channel-write input-channel
+						buffer
+						0
+						(string-length buffer))))
+			    (if n
+				(begin
+				  (set! start-index (+ start-index n))
+				  (if (= start-index end-index)
+				      (channel-close input-channel)))))))
+		      (channel-close input-channel)))))))))
+      (begin
+	(channel-close (subprocess-output-channel process))
+	(receiver (lambda () unspecific)))))
+
+(define system-call-name
+  (condition-accessor condition-type:system-call-error 'SYSTEM-CALL))
+
+(define system-call-error
+  (condition-accessor condition-type:system-call-error 'ERROR-TYPE))
 
 ;;; These procedures are not specific to the process abstraction.
 

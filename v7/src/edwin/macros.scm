@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.50 1991/03/15 23:26:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.51 1991/04/21 00:51:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,8 @@
 
 (syntax-table-define edwin-syntax-table 'LOCAL-SET-VARIABLE!
   (lambda (name #!optional value)
-    `(MAKE-LOCAL-BINDING!
+    `(DEFINE-VARIABLE-LOCAL-VALUE!
+      (CURRENT-BUFFER)
       ,(variable-name->scheme-name (canonicalize-name name))
       ,(if (default-object? value) '#F value))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.49 1991/03/15 23:27:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.50 1991/04/21 00:51:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,64 +46,129 @@
 
 (declare (usual-integrations))
 
-(define match-group)
 (define registers (make-vector 20))
+(define match-group)
+(define standard-syntax-table (make-syntax-table))
+
+(define-integrable (re-match-start-index i)
+  (vector-ref registers i))
+
+(define-integrable (re-match-end-index i)
+  (vector-ref registers (+ i 10)))
 
 (define (re-match-start i)
-  (let ((group (unhash match-group)))
+  (guarantee-re-register i 'RE-MATCH-START)
+  (let ((group (object-unhash match-group)))
     (if (not group)
 	(error "No match registers" i))
     (make-mark group (re-match-start-index i))))
 
-(define (re-match-start-index i)
-  (if (or (negative? i) (> i 9))
-      (error "No such register" i))
-  (vector-ref registers i))
-
 (define (re-match-end i)
-  (let ((group (unhash match-group)))
+  (guarantee-re-register i 'RE-MATCH-END)
+  (let ((group (object-unhash match-group)))
     (if (not group)
 	(error "No match registers" i))
     (make-mark group (re-match-end-index i))))
 
-(define (re-match-end-index i)
-  (if (or (negative? i) (> i 9))
-      (error "No such register" i))
-  (vector-ref registers (+ i 10)))
+(define (guarantee-re-register i operator)
+  (if (not (and (exact-nonnegative-integer? i) (< i 10)))
+      (error:wrong-type-argument i "RE register" operator)))
 
-(define (%re-finish group index)
-  (if index
-      (begin
-	(set! match-group (hash group))
-	(make-mark group index))
-      (begin
-	(set! match-group (hash false))
-	false)))
+(define (replace-match replacement)
+  (let ((m (mark-left-inserting-copy (re-match-start 0))))
+    (delete-string m (re-match-end 0))
+    (insert-string m replacement)
+    (mark-temporary! m)
+    m))
 
-(define pattern-cache
-  (make-list 32 (cons* "" "" "")))
+(define (delete-match)
+  (let ((m (mark-left-inserting-copy (re-match-start 0))))
+    (delete-string m (re-match-end 0))
+    (mark-temporary! m)
+    m))
 
-(define (compile-pattern regexp)
-  ;; Incredible hair here to prevent excessive consing.
-  ((if (ref-variable case-fold-search) cdr car)
-   (cdr (or (assq regexp pattern-cache)
-	    (let ((entry
-		   (cons regexp
-			 (cons (re-compile-pattern regexp false)
-			       (re-compile-pattern regexp true)))))
-	      (set! pattern-cache
-		    (cons entry
-			  (except-last-pair! pattern-cache)))
-	      entry)))))
-
-(define (compile-char char)
-  (re-compile-char char (ref-variable case-fold-search)))
-
-(define (compile-string string)
-  (re-compile-string string (ref-variable case-fold-search)))
+(define-integrable (syntax-table-argument syntax-table)
+  (syntax-table/entries (or syntax-table standard-syntax-table)))
 
-;;;; Search
+(define (re-search-buffer-forward pattern case-fold-search syntax-table
+				  group start end)
+  (let ((index
+	 ((ucode-primitive re-search-buffer-forward)
+	  pattern
+	  (re-translation-table case-fold-search)
+	  (syntax-table-argument syntax-table)
+	  registers
+	  group start end)))
+    (set! match-group (object-hash (and index group)))
+    index))
 
+(define (re-search-buffer-backward pattern case-fold-search syntax-table
+				   group start end)
+  (let ((index
+	 ((ucode-primitive re-search-buffer-backward)
+	  pattern
+	  (re-translation-table case-fold-search)
+	  (syntax-table-argument syntax-table)
+	  registers
+	  group start end)))
+    (set! match-group (object-hash (and index group)))
+    index))
+
+(define (re-match-buffer-forward pattern case-fold-search syntax-table
+				 group start end)
+  (let ((index
+	 ((ucode-primitive re-match-buffer)
+	  pattern
+	  (re-translation-table case-fold-search)
+	  (syntax-table-argument syntax-table)
+	  registers
+	  group start end)))
+    (set! match-group (object-hash (and index group)))
+    index))
+
+(define (re-match-string-forward pattern case-fold-search syntax-table string)
+  (re-match-substring-forward pattern case-fold-search syntax-table
+			      string 0 (string-length string)))
+
+(define (re-match-substring-forward pattern case-fold-search syntax-table
+				    string start end)
+  (set! match-group (object-hash false))
+  ((ucode-primitive re-match-substring)
+   pattern
+   (re-translation-table case-fold-search)
+   (syntax-table-argument syntax-table)
+   registers
+   string start end))
+
+(define (re-search-string-forward pattern case-fold-search syntax-table string)
+  (re-search-substring-forward pattern case-fold-search syntax-table
+			       string 0 (string-length string)))
+
+(define (re-search-substring-forward pattern case-fold-search syntax-table
+				     string start end)
+  (set! match-group (object-hash false))
+  ((ucode-primitive re-search-substring-forward)
+   pattern
+   (re-translation-table case-fold-search)
+   (syntax-table-argument syntax-table)
+   registers
+   string start end))
+
+(define (re-search-string-backward pattern case-fold-search syntax-table
+				   string)
+  (re-search-substring-backward pattern case-fold-search syntax-table
+				string 0 (string-length string)))
+
+(define (re-search-substring-backward pattern case-fold-search syntax-table
+				      string start end)
+  (set! match-group (object-hash false))
+  ((ucode-primitive re-search-substring-backward)
+   pattern
+   (re-translation-table case-fold-search)
+   (syntax-table-argument syntax-table)
+   registers
+   string start end))
+
 (define-macro (define-search name key-name searcher compile-key
 		mark-limit mark-compare)
   `(DEFINE (,name ,key-name #!OPTIONAL START END LIMIT?)
@@ -114,213 +179,64 @@
 	       (ERROR ,(string-append (symbol->string name)
 				      ": Marks incorrectly related")
 		      START END))
-	   (OR (,searcher (MARK-GROUP START)
-			  (MARK-INDEX START)
-			  (MARK-INDEX END)
-			  (,compile-key ,key-name))
-	       (LIMIT-MARK-MOTION LIMIT? END)))))))
-
-(define-search char-search-forward char
-  %re-search-forward compile-char group-end mark<=)
-
-(define-search search-forward string
-  %re-search-forward compile-string group-end mark<=)
-
-(define-search re-search-forward regexp
-  %re-search-forward compile-pattern group-end mark<=)
-
-(define (%re-search-forward group start end pattern)
-  (%re-finish group
-	      ((ucode-primitive re-search-buffer-forward)
-	       pattern
-	       (re-translation-table (ref-variable case-fold-search))
-	       (syntax-table/entries (ref-variable syntax-table))
-	       registers
-	       group start end)))
-
-(define-search char-search-backward char
-  %re-search-backward compile-char group-start mark>=)
-
-(define-search search-backward string
-  %re-search-backward compile-string group-start mark>=)
-
-(define-search re-search-backward regexp
-  %re-search-backward compile-pattern group-start mark>=)
-
-(define (%re-search-backward group start end pattern)
-  (%re-finish group
-	      ((ucode-primitive re-search-buffer-backward)
-	       pattern
-	       (re-translation-table (ref-variable case-fold-search))
-	       (syntax-table/entries (ref-variable syntax-table))
-	       registers
-	       group end start)))
-
-;;;; Match
-
-(define-macro (define-forward-match name key-name compile-key)
-  `(DEFINE (,name ,key-name #!OPTIONAL START END)
-     (LET ((START (IF (DEFAULT-OBJECT? START) (CURRENT-POINT) START)))
-       (LET ((END (IF (DEFAULT-OBJECT? END) (GROUP-END START) END)))
-	 (IF (NOT (MARK<= START END))
-	     (ERROR ,(string-append (symbol->string name)
-				    ": Marks incorrectly related")
-		    START END))
-	 (%RE-MATCH-FORWARD (MARK-GROUP START)
+	   (OR (LET ((GROUP (MARK-GROUP START)))
+		 (,searcher GROUP
 			    (MARK-INDEX START)
 			    (MARK-INDEX END)
-			    (,compile-key ,key-name))))))
+			    (,compile-key ,key-name
+					  (GROUP-CASE-FOLD-SEARCH GROUP))))
+	       (LIMIT-MARK-MOTION LIMIT? END)))))))
 
-(define-forward-match char-match-forward char compile-char)
-(define-forward-match match-forward string compile-string)
-(define-forward-match re-match-forward regexp compile-pattern)
+(define-search search-forward string
+  %re-search-forward re-compile-string group-end mark<=)
 
-(define-macro (define-backward-match name key-name key-length compile-key)
-  `(DEFINE (,name ,key-name #!OPTIONAL START END)
-     (LET ((START (IF (DEFAULT-OBJECT? START) (CURRENT-POINT) START)))
-       (LET ((END (IF (DEFAULT-OBJECT? END) (GROUP-START START) END)))
-	 (IF (NOT (MARK>= START END))
-	     (ERROR ,(string-append (symbol->string name)
-				    ": Marks incorrectly related")
-		    START END))
-	 (LET ((GROUP (MARK-GROUP START))
-	       (START-INDEX (MARK-INDEX START))
-	       (END-INDEX (MARK-INDEX END)))
-	   (LET ((INDEX (- START-INDEX ,key-length)))
-	     (AND (<= END-INDEX INDEX)
-		  (%RE-MATCH-FORWARD GROUP
-				     INDEX
-				     START-INDEX
-				     (,compile-key ,key-name))
-		  (MAKE-MARK GROUP INDEX))))))))
+(define-search re-search-forward regexp
+  %re-search-forward re-compile-pattern group-end mark<=)
 
-(define-backward-match char-match-backward
-  char
-  1
-  compile-char)
+(define (%re-search-forward group start end pattern)
+  (let ((index
+	 (re-search-buffer-forward pattern
+				   (group-case-fold-search group)
+				   (group-syntax-table group)
+				   group start end)))
+    (and index
+	 (make-mark group index))))
 
-(define-backward-match match-backward
-  string
-  (string-length string)
-  compile-string)
+(define-search search-backward string
+  %re-search-backward re-compile-string group-start mark>=)
 
-(define (%re-match-forward group start end pattern)
-  (%re-finish group
-	      ((ucode-primitive re-match-buffer)
-	       pattern
-	       (re-translation-table (ref-variable case-fold-search))
-	       (syntax-table/entries (ref-variable syntax-table))
-	       registers
-	       group start end)))
-
-;;;; Quote
+(define-search re-search-backward regexp
+  %re-search-backward re-compile-pattern group-start mark>=)
 
-(define re-quote-string
-  (let ((special (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$)))
-    (lambda (string)
-      (let ((end (string-length string)))
-	(let ((n
-	       (let loop ((start 0) (n 0))
-		 (let ((index
-			(substring-find-next-char-in-set string start end
-							 special)))
-		   (if index
-		       (loop (1+ index) (1+ n))
-		       n)))))
-	  (if (zero? n)
-	      string
-	      (let ((result (string-allocate (+ end n))))
-		(let loop ((start 0) (i 0))
-		  (let ((index
-			 (substring-find-next-char-in-set string start end
-							  special)))
-		    (if index
-			(begin
-			  (substring-move-right! string start index result i)
-			  (let ((i (+ i (- index start))))
-			    (string-set! result i #\\)
-			    (string-set! result
-					 (1+ i)
-					 (string-ref string index))
-			    (loop (1+ index) (+ i 2))))
-			(substring-move-right! string start end result i))))
-		result)))))))
+(define (%re-search-backward group start end pattern)
+  (let ((index
+	 (re-search-buffer-backward pattern
+				    (group-case-fold-search group)
+				    (group-syntax-table group)
+				    group end start)))
+    (and index
+	 (make-mark group index))))
 
-;;;; Char Skip
-
-(define (skip-chars-forward pattern #!optional start end limit?)
-  (let ((start (if (default-object? start) (current-point) start)))
-    (let ((end (if (default-object? end) (group-end start) end)))
-      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
-	(if (not (mark<= start end))
-	    (error "SKIP-CHARS-FORWARD: Marks incorrectly related" start end))
-	(let ((index
-	       (%find-next-char-in-set (mark-group start)
-				       (mark-index start)
-				       (mark-index end)
-				       (re-compile-char-set pattern true))))
-	  (if index
-	      (make-mark (mark-group start) index)
-	      (limit-mark-motion limit? end)))))))
-
-(define (skip-chars-backward pattern #!optional start end limit?)
-  (let ((start (if (default-object? start) (current-point) start)))
-    (let ((end (if (default-object? end) (group-start start) end)))
-      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
-	(if (not (mark>= start end))
-	    (error "SKIP-CHARS-BACKWARD: Marks incorrectly related" start end))
-	(let ((index
-	       (%find-previous-char-in-set (mark-group start)
-					   (mark-index start)
-					   (mark-index end)
-					   (re-compile-char-set pattern
-								true))))
-	  (if index
-	      (make-mark (mark-group start) index)
-	      (limit-mark-motion limit? end)))))))
-
-;;;; String Operations
-
-(define (re-match-string-forward pattern string)
-  (re-match-substring-forward pattern string 0 (string-length string)))
-
-(define (re-match-substring-forward pattern string start end)
-  ((ucode-primitive re-match-substring)
-   (re-compile-pattern pattern false)
-   (re-translation-table false)
-   (syntax-table/entries (ref-variable syntax-table))
-   registers
-   string start end))
-
-(define (re-match-string-forward-ci pattern string)
-  (re-match-substring-forward-ci pattern string 0 (string-length string)))
-
-(define (re-match-substring-forward-ci pattern string start end)
-  ((ucode-primitive re-match-substring)
-   (re-compile-pattern pattern true)
-   (re-translation-table false)
-   (syntax-table/entries (ref-variable syntax-table))
-   registers
-   string start end))
-
-(define (re-search-string-forward pattern string)
-  (re-search-substring-forward pattern string 0 (string-length string)))
-
-(define (re-search-substring-forward pattern string start end)
-  ((ucode-primitive re-search-substring-forward)
-   (re-compile-pattern pattern false)
-   (re-translation-table false)
-   (syntax-table/entries (ref-variable syntax-table))
-   registers
-   string start end))
-
-(define (re-search-string-forward-ci pattern string)
-  (re-search-substring-forward-ci pattern string 0 (string-length string)))
-
-(define (re-search-substring-forward-ci pattern string start end)
-  ((ucode-primitive re-search-substring-forward)
-   (re-compile-pattern pattern true)
-   (re-translation-table false)
-   (syntax-table/entries (ref-variable syntax-table))
-   registers
-   string start end))
+(define (re-match-forward regexp start #!optional end case-fold-search)
+  (let ((group (mark-group start)))
+    (let ((case-fold-search
+	   (if (default-object? case-fold-search)
+	       (group-case-fold-search group)
+	       case-fold-search)))
+      (let ((index
+	     (re-match-buffer-forward
+	      (re-compile-pattern regexp case-fold-search)
+	      case-fold-search
+	      (group-syntax-table group)
+	      group
+	      (mark-index start)
+	      (if (default-object? end)
+		  (group-end-index group)
+		  (begin
+		    (if (not (and (eq? group (mark-group end))
+				  (fix:<= (mark-index start)
+					  (mark-index end))))
+			(error "Marks incorrectly related:" start end))
+		    (mark-index end))))))
+	(and index
+	     (make-mark group index))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.106 1991/04/11 03:12:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.107 1991/04/21 00:49:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -160,16 +160,16 @@ CANNOT contain the 'F' option."
    (string-append "Reading directory "
 		  (pathname->string pathname)
 		  "..."))
-  (with-working-directory-pathname (pathname-directory-path pathname)
-    (lambda ()
-      (shell-command
-       (string-append "ls "
-		      (ref-variable dired-listing-switches)
-		      " "
-		      (if (file-directory? pathname)
-			  (pathname->string pathname)
-			  (pathname-name-path pathname)))
-       (buffer-point buffer))))
+  (let ((directory (pathname-directory-path pathname)))
+    (with-working-directory-pathname directory
+      (lambda ()
+	(run-synchronous-process false
+				 (buffer-point buffer)
+				 (find-program "ls" directory)
+				 (ref-variable dired-listing-switches)
+				 (if (file-directory? pathname)
+				     (pathname->string pathname)
+				     (pathname-name-path pathname))))))
   (append-message "done")
   (let ((point (mark-left-inserting-copy (buffer-point buffer)))
 	(group (buffer-group buffer)))
@@ -186,19 +186,18 @@ CANNOT contain the 'F' option."
   (set-buffer-read-only! buffer))
 
 (define (add-dired-entry pathname)
-  (let ((lstart (line-start (current-point) 0)))
-    (if (pathname=? (buffer-default-directory (mark-buffer lstart))
-		    (pathname-directory-path pathname))
+  (let ((lstart (line-start (current-point) 0))
+	(directory (pathname-directory-path pathname)))
+    (if (pathname=? (buffer-default-directory (mark-buffer lstart)) directory)
 	(let ((start (mark-right-inserting lstart)))
-	  (shell-command
-	   (string-append "ls -d "
-			  (ref-variable dired-listing-switches)
-			  " "
-			  (pathname->string pathname))
-	   lstart)
+	  (run-synchronous-process false
+				   lstart
+				   (find-program "ls" directory)
+				   "-d"
+				   (ref-variable dired-listing-switches)
+				   (pathname->string pathname))
 	  (insert-string "  " start)
-	  (let ((start
-		 (mark-right-inserting (dired-filename-start start))))
+	  (let ((start (mark-right-inserting (dired-filename-start start))))
 	    (insert-string
 	     (pathname-name-string
 	      (string->pathname
@@ -319,38 +318,27 @@ CANNOT contain the 'F' option."
 (define-command dired-chmod
   "Change mode of this file."
   "sChange to Mode"
-  (lambda (mode)
-    (let ((pathname (dired-current-pathname)))
-      (subprocess-wait
-       (start-batch-subprocess
-	(find-program "chmod" (buffer-default-directory (current-buffer)))
-	(vector "chmod" mode (pathname->string pathname))
-	false))
-      (dired-redisplay pathname))))
+  (lambda (mode) (dired-change-line "chmod" mode)))
 
 (define-command dired-chgrp
   "Change group of this file."
   "sChange to Group"
-  (lambda (group)
-    (let ((pathname (dired-current-pathname)))
-      (subprocess-wait
-       (start-batch-subprocess
-	(find-program "chgrp" (buffer-default-directory (current-buffer)))
-	(vector "chgrp" group (pathname->string pathname))
-	false))
-      (dired-redisplay pathname))))
+  (lambda (group) (dired-change-line "chgrp" group)))
 
 (define-command dired-chown
   "Change owner of this file."
   "sChange to Owner"
-  (lambda (owner)
-    (let ((pathname (dired-current-pathname)))
-      (subprocess-wait
-       (start-batch-subprocess
-	(find-program "chown" (buffer-default-directory (current-buffer)))
-	(vector "chown" owner (pathname->string pathname))
-	false))
-      (dired-redisplay pathname))))
+  (lambda (owner) (dired-change-line "chown" owner)))
+
+(define (dired-change-line program argument)
+  (let ((pathname (dired-current-pathname)))
+    (run-synchronous-process false
+			     false
+			     (find-program program
+					   (pathname-directory-path pathname))
+			     argument
+			     (pathname->string pathname))
+    (dired-redisplay pathname)))
 
 (define (dired-redisplay pathname)
   (let ((lstart (mark-right-inserting (line-start (current-point) 0))))

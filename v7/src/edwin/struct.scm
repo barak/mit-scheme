@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.76 1991/04/02 19:56:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.77 1991/04/21 00:52:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -203,7 +203,7 @@
   (vector-set! group group-index:modified? sense))
 
 (define-integrable (set-group-point! group point)
-  (vector-set! group group-index:point (mark-left-inserting point)))
+  (vector-set! group group-index:point (mark-left-inserting-copy point)))
 
 (define (with-narrowed-region! region thunk)
   (with-group-text-clipped! (region-group region)
@@ -282,8 +282,22 @@
 	       group-index:clip-daemons
 	       (delq! daemon (vector-ref group group-index:clip-daemons))))
 
+(define (group-local-ref group variable)
+  (variable-local-value (let ((buffer (group-buffer group)))
+			  (if (not buffer)
+			      (error:bad-range-argument group
+							'GROUP-LOCAL-REF))
+			  buffer)
+			variable))
+
 (define-integrable (group-tab-width group)
-  (variable-local-value (group-buffer group) (ref-variable-object tab-width)))
+  (group-local-ref group (ref-variable-object tab-width)))
+
+(define-integrable (group-case-fold-search group)
+  (group-local-ref group (ref-variable-object case-fold-search)))
+
+(define-integrable (group-syntax-table group)
+  (group-local-ref group (ref-variable-object syntax-table)))
 
 ;;;; Marks
 
@@ -357,6 +371,9 @@
 					    mark
 					    (group-marks group)))))
   mark)
+
+(define-integrable (mark-local-ref mark variable)
+  (group-local-ref (mark-group mark) variable))
 
 (define-integrable (mark~ mark1 mark2)
   (eq? (mark-group mark1) (mark-group mark2)))

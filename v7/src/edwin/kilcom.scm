@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.59 1991/03/22 00:32:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kilcom.scm,v 1.60 1991/04/21 00:51:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -163,20 +163,27 @@ appropriate number of spaces and then one space is deleted."
   "P"
   (lambda (argument)
     (define (back n)
-      (let ((m1 (mark- (current-point) n 'LIMIT)))
-	(if (not (char-search-backward #\Tab (current-point) m1))
-	    m1
-	    (begin (convert-tab-to-spaces! (re-match-start 0))
-		   (back n)))))
+      (let ((point (current-point)))
+	(let ((m1 (mark- point n 'LIMIT)))
+	  (let ((tab (char-search-backward #\tab point m1)))
+	    (if (not tab)
+		m1
+		(begin
+		  (convert-tab-to-spaces! tab)
+		  (back n)))))))
     (define (forth n)
-      (let ((m1 (mark+ (current-point) n 'LIMIT)))
-	(if (not (char-search-forward #\Tab (current-point) m1))
-	    m1
-	    (begin (convert-tab-to-spaces! (re-match-start 0))
-		   (forth n)))))
+      (let ((point (current-point)))
+	(let ((m1 (mark+ point n 'LIMIT)))
+	  (let ((tab (char-search-forward #\tab point m1)))
+	    (if (not tab)
+		m1
+		(begin
+		  (convert-tab-to-spaces! (mark-1+ tab))
+		  (forth n)))))))
     (cond ((not argument)
-	   (if (char-match-backward #\Tab)
-	       (convert-tab-to-spaces! (mark-1+ (current-point))))
+	   (let ((point (current-point)))
+	     (if (char-match-backward #\Tab point)
+		 (convert-tab-to-spaces! (mark-1+ point))))
 	   (delete-region (mark-1+ (current-point))))
 	  ((positive? argument)
 	   (kill-region (back argument)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.55 1989/08/08 10:06:29 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.56 1991/04/21 00:52:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -231,7 +231,10 @@ Special characters:
 (define (character-search forward?)
   (define (char-search char)
     (search-finish
-     ((if forward? char-search-forward char-search-backward) char)))
+     (let ((point (current-point)))
+       (if forward?
+	   (char-search-forward char point (group-end point))
+	   (char-search-backward char point (group-start point))))))
 
   (define (string-search operator)
     (search-finish (operator (ref-variable search-last-string))))

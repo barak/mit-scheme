@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.1 1991/03/16 00:00:00 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.2 1991/04/21 00:52:05 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -155,13 +155,20 @@ Otherwise, one argument `-i' is passed to the shell."
 
 (define (shell-directory-tracker string)
   (if (ref-variable shell-dirtrack?)
-      (let ((start (re-match-string-forward "^\\s *" string))
+      (let ((start
+	     (re-match-string-forward (re-compile-pattern "^\\s *" false)
+				      false
+				      (ref-variable syntax-table)
+				      string))
 	    (end (string-length string)))
 	(let ((try
 	       (let ((match
 		      (lambda (regexp start)
-			(re-match-substring-forward regexp
-						    string start end))))
+			(re-match-substring-forward
+			 (re-compile-pattern regexp false)
+			 false
+			 (ref-variable syntax-table)
+			 string start end))))
 		 (lambda (command)
 		   (let ((eoc (match command start)))
 		     (cond ((not eoc)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.4 1991/03/15 23:37:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.5 1991/04/21 00:49:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -211,16 +211,17 @@
 	 (char-match-forward #\( container))))
 
 (define (backward-to-noncomment start end)
-  (define (loop start)
+  (let loop ((start start))
     (let ((mark (whitespace-start start end)))
-      (if (match-backward "*/" mark)
-	  (and (search-backward "/*" (re-match-start 0) end)
-	       (loop (re-match-start 0)))
-	  (let ((mark* (indentation-end mark)))
-	    (cond ((not (char-match-forward #\# mark*)) mark)
-		  ((mark<= mark* end) mark*)
-		  (else (loop mark*)))))))
-  (loop start))
+      (let ((m (match-backward "*/" mark)))
+	(if m
+	    (let ((m (search-backward "/*" m end)))
+	      (and m
+		   (loop m)))
+	    (let ((mark* (indentation-end mark)))
+	      (cond ((not (char-match-forward #\# mark*)) mark)
+		    ((mark<= mark* end) mark*)
+		    (else (loop mark*)))))))))
 
 (define (backward-to-start-of-continued-exp start end)
   (let ((mark

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.147 1990/11/02 03:13:38 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/search.scm,v 1.148 1991/04/21 00:51:57 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -44,334 +44,334 @@
 
 ;;;; Search/Match Primitives
 
-;;; The operations in this file are for internal editor use only.  For
-;;; the user level search and match primitives, see the regular
-;;; expression search and match procedures.
-
 (declare (usual-integrations))
 
-;;;; Character Search
-#|
-(define (find-next-char start end char)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related: FIND-NEXT-CHAR" start end))
-  (let ((index (%find-next-char (mark-group start)
-				(mark-index start)
-				(mark-index end)
-				char)))
-    (and index (make-mark (mark-group start) index))))
+;;;; Character Search and Match
 
-(define (find-previous-char start end char)
-  (if (not (mark>= start end))
-      (error "Marks incorrectly related: FIND-PREVIOUS-CHAR" start end))
-  (let ((index (%find-previous-char (mark-group start)
-				    (mark-index start)
-				    (mark-index end)
-				    char)))
-    (and index (make-mark (mark-group start) index))))
-|#
-(define (%find-next-newline group start end)
-  ;; Assume (FIX:<= START END)
-  (and (not (fix:= start end))
-       (let ((start (group-index->position group start true))
-	     (end (group-index->position group end false)))
-	 (let ((position
-		(if (and (fix:<= start (group-gap-start group))
-			 (fix:<= (group-gap-end group) end))
-		    (or (substring-find-next-char (group-text group)
-						  start
-						  (group-gap-start group)
-						  #\newline)
-			(substring-find-next-char (group-text group)
-						  (group-gap-end group)
-						  end
-						  #\newline))
-		    (substring-find-next-char (group-text group)
-					      start
-					      end
-					      #\newline))))
-	   (and position
-		(group-position->index group position))))))
+(let-syntax
+    ((define-forward-search
+       (macro (name find-next)
+	 `(DEFINE (,name GROUP START END CHAR)
+	    ;; Assume (FIX:<= START END)
+	    (AND (NOT (FIX:= START END))
+		 (COND ((FIX:<= END (GROUP-GAP-START GROUP))
+			(,find-next (GROUP-TEXT GROUP) START END CHAR))
+		       ((FIX:<= (GROUP-GAP-START GROUP) START)
+			(LET ((POSITION
+			       (,find-next
+				(GROUP-TEXT GROUP)
+				(FIX:+ START (GROUP-GAP-LENGTH GROUP))
+				(FIX:+ END (GROUP-GAP-LENGTH GROUP))
+				CHAR)))
+			  (AND POSITION
+			       (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
+		       ((,find-next (GROUP-TEXT GROUP)
+				    START
+				    (GROUP-GAP-START GROUP)
+				    CHAR))
+		       (ELSE
+			(LET ((POSITION
+			       (,find-next (GROUP-TEXT GROUP)
+					   (GROUP-GAP-END GROUP)
+					   (FIX:+ END (GROUP-GAP-LENGTH GROUP))
+					   CHAR)))
+			  (AND POSITION
+			       (FIX:- POSITION
+				      (GROUP-GAP-LENGTH GROUP)))))))))))
+(define-forward-search group-find-next-char substring-find-next-char)
+(define-forward-search group-find-next-char-ci substring-find-next-char-ci)
+(define-forward-search group-find-next-char-in-set
+  substring-find-next-char-in-set))
 
-(define (%find-previous-newline group start end)
-  ;; Assume (FIX:>= START END)
-  (and (not (fix:= start end))
-       (let ((start (group-index->position group start false))
-	     (end (group-index->position group end true)))
-	 (let ((position
-		(if (and (fix:<= end (group-gap-start group))
-			 (fix:<= (group-gap-end group) start))
-		    (or (substring-find-previous-char (group-text group)
-						      (group-gap-end group)
-						      start
-						      #\newline)
-			(substring-find-previous-char (group-text group)
-						      end
-						      (group-gap-start group)
-						      #\newline))
-		    (substring-find-previous-char (group-text group)
-						  end
-						  start
-						  #\newline))))
-	   (and position
-		(fix:+ (group-position->index group position) 1))))))
-
-;;;; Character-set Search
-#|
-(define ((char-set-forward-search char-set) start end #!optional limit?)
-  (or (find-next-char-in-set start end char-set)
-      (limit-mark-motion (and (not (default-object? limit?)) limit?) end)))
+(let-syntax
+    ((define-backward-search
+       (macro (name find-previous)
+	 `(DEFINE (,name GROUP START END CHAR)
+	    ;; Assume (FIX:<= START END)
+	    (AND (NOT (FIX:= START END))
+		 (COND ((FIX:<= END (GROUP-GAP-START GROUP))
+			(,find-previous (GROUP-TEXT GROUP) START END CHAR))
+		       ((FIX:<= (GROUP-GAP-START GROUP) START)
+			(LET ((POSITION
+			       (,find-previous
+				(GROUP-TEXT GROUP)
+				(FIX:+ START (GROUP-GAP-LENGTH GROUP))
+				(FIX:+ END (GROUP-GAP-LENGTH GROUP))
+				CHAR)))
+			  (AND POSITION
+			       (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
+		       ((,find-previous (GROUP-TEXT GROUP)
+					(GROUP-GAP-END GROUP)
+					(FIX:+ END (GROUP-GAP-LENGTH GROUP))
+					CHAR)
+			=> (LAMBDA (POSITION)
+			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP))))
+		       (else
+			(,find-previous (GROUP-TEXT GROUP)
+					START
+					(GROUP-GAP-START GROUP)
+					CHAR))))))))
+(define-backward-search group-find-previous-char substring-find-previous-char)
+(define-backward-search group-find-previous-char-ci
+  substring-find-previous-char-ci)
+(define-backward-search group-find-previous-char-in-set
+  substring-find-previous-char-in-set))
 
-(define ((char-set-backward-search char-set) start end #!optional limit?)
-  (or (find-previous-char-in-set start end char-set)
-      (limit-mark-motion (and (not (default-object? limit?)) limit?) end)))
+(define-integrable (%find-next-newline group start end)
+  (group-find-next-char group start end #\newline))
 
-(define (find-next-char-in-set start end char-set)
-  (if (not (mark<= start end))
-      (error "Marks incorrectly related: FIND-NEXT-CHAR-IN-SET" start end))
-  (let ((index
-	 (%find-next-char-in-set (mark-group start)
-				 (mark-index start)
-				 (mark-index end)
-				 char-set)))
+(define-integrable (%find-previous-newline group start end)
+  ;; Note reversal of index arguments here.
+  (let ((index (group-find-previous-char group end start #\newline)))
     (and index
-	 (make-mark (mark-group start) index))))
-
-(define (find-previous-char-in-set start end char-set)
-  (if (not (mark>= start end))
-      (error "Marks incorrectly related: FIND-PREVIOUS-CHAR-IN-SET" start end))
-  (let ((index
-	 (%find-previous-char-in-set (mark-group start)
-				     (mark-index start)
-				     (mark-index end)
-				     char-set)))
-    (and index
-	 (make-mark (mark-group start) index))))
-|#
-(define (%find-next-char-in-set group start end char-set)
-  (and (not (= start end))
-       (let ((start (group-index->position group start true))
-	     (end (group-index->position group end false))
-	     (gap-start (group-gap-start group))
-	     (gap-end (group-gap-end group))
-	     (text (group-text group)))
-	 (let ((pos
-		(if (and (<= start gap-start)
-			 (<= gap-end end))
-		    (or (substring-find-next-char-in-set text start gap-start
-							 char-set)
-			(substring-find-next-char-in-set text gap-end end
-							 char-set))
-		    (substring-find-next-char-in-set text start end
-						     char-set))))
-	   (and pos (group-position->index group pos))))))
-
-(define (%find-previous-char-in-set group start end char-set)
-  (and (not (= start end))
-       (let ((start (group-index->position group start false))
-	     (end (group-index->position group end true))
-	     (gap-start (group-gap-start group))
-	     (gap-end (group-gap-end group))
-	     (text (group-text group)))
-	 (let ((pos
-		(if (and (<= end gap-start)
-			 (<= gap-end start))
-		    (or (substring-find-previous-char-in-set text gap-end start
-							     char-set)
-			(substring-find-previous-char-in-set text end gap-start
-							     char-set))
-		    (substring-find-previous-char-in-set text end start
-							 char-set))))
-	   (and pos (1+ (group-position->index group pos)))))))
+	 (fix:+ index 1))))
 
-;;;; String Search
-#|
-(define (find-next-string start-mark end-mark string)
-  (find-next-substring start-mark end-mark string 0 (string-length string)))
+(define (char-search-forward char start end #!optional case-fold-search)
+  (let ((group (mark-group start))
+	(start-index (mark-index start))
+	(end-index (mark-index end)))
+    (if (not (and (eq? group (mark-group end))
+		  (fix:<= start-index end-index)))
+	(error "Marks incorrectly related:" start end))
+    (let ((index
+	   (if (if (default-object? case-fold-search)
+		   (group-case-fold-search group)
+		   case-fold-search)
+	       (group-find-next-char-ci group start-index end-index char)
+	       (group-find-next-char group start-index end-index char))))
+      (and index
+	   (make-mark group (fix:+ index 1))))))
 
-(define (find-next-substring start-mark end-mark string start end)
-  (if (not (mark<= start-mark end-mark))
-      (error "Marks incorrectly related: FIND-NEXT-SUBSTRING"
-	     start-mark end-mark))
-  (if (= start end)
-      start-mark
-      (let ((index
-	     (%find-next-substring (mark-group start-mark)
-				   (mark-index start-mark)
-				   (mark-index end-mark)
-				   string start end)))
-	(and index (make-mark (mark-group start-mark) index)))))
+(define (char-search-backward char start end #!optional case-fold-search)
+  (let ((group (mark-group start))
+	(start-index (mark-index start))
+	(end-index (mark-index end)))
+    (if (not (and (eq? group (mark-group end))
+		  (fix:>= start-index end-index)))
+	(error "Marks incorrectly related:" start end))
+    (let ((index
+	   (if (if (default-object? case-fold-search)
+		   (group-case-fold-search group)
+		   case-fold-search)
+	       (group-find-next-char-ci group end-index start-index char)
+	       (group-find-next-char group end-index start-index char))))
+      (and index
+	   (make-mark group index)))))
 
-(define (%find-next-string group start-index end-index string)
-  (%find-next-substring group start-index end-index
-			string 0 (string-length string)))
+(define (char-match-forward char mark #!optional case-fold-search)
+  (let ((group (mark-group mark))
+	(index (mark-index mark)))
+    (and (not (group-end-index? group index))
+	 (if (if (default-object? case-fold-search)
+		 (group-case-fold-search group)
+		 case-fold-search)
+	     (char-ci=? char (group-right-char group index))
+	     (char=? char (group-right-char group index))))))
 
-(define (find-previous-string start-mark end-mark string)
-  (find-previous-substring start-mark end-mark
-			   string 0 (string-length string)))
+(define (char-match-backward char mark #!optional case-fold-search)
+  (let ((group (mark-group mark))
+	(index (mark-index mark)))
+    (and (not (group-start-index? group index))
+	 (if (if (default-object? case-fold-search)
+		 (group-case-fold-search group)
+		 case-fold-search)
+	     (char-ci=? char (group-left-char group index))
+	     (char=? char (group-left-char group index))))))
 
-(define (find-previous-substring start-mark end-mark string start end)
-  (if (not (mark>= start-mark end-mark))
-      (error "Marks incorrectly related: FIND-PREVIOUS-SUBSTRING"
-	     start-mark end-mark))
-  (if (= start end)
-      end-mark
-      (let ((index
-	     (%find-previous-substring (mark-group start-mark)
-				       (mark-index start-mark)
-				       (mark-index end-mark)
-				       string start end)))
-	(and index (make-mark (mark-group start-mark) index)))))
+(define (skip-chars-forward pattern #!optional start end limit?)
+  (let ((start (if (default-object? start) (current-point) start)))
+    (let ((end (if (default-object? end) (group-end start) end)))
+      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(if (not (mark<= start end))
+	    (error "SKIP-CHARS-FORWARD: Marks incorrectly related" start end))
+	(let ((index
+	       (group-find-next-char-in-set (mark-group start)
+					    (mark-index start)
+					    (mark-index end)
+					    (re-compile-char-set pattern
+								 true))))
+	  (if index
+	      (make-mark (mark-group start) index)
+	      (limit-mark-motion limit? end)))))))
 
-(define (%find-previous-string group start-index end-index string)
-  (%find-previous-substring group start-index end-index
-			    string 0 (string-length string)))
-
-(define (%find-next-substring group start-index end-index string start end)
-  (let ((char (string-ref string start))
-	(bound (- end-index (-1+ (- end start)))))
-    (define (loop first)
-      (and first
-	   (if (%match-next-substring group first end-index string start end)
-	       first
-	       (and (< first bound)
-		    (loop (%find-next-char group (1+ first) bound char))))))
-    (and (< start-index bound)
-	 (loop (%find-next-char group start-index bound char)))))
-
-(define (%find-previous-substring group start-index end-index string start end)
-  (let ((char (string-ref string (-1+ end)))
-	(bound (+ end-index (-1+ (- end start)))))
-    (define (loop first)
-      (and first
-	   (if (%match-previous-substring group first end-index
-					  string start end)
-	       first
-	       (and (> first bound)
-		    (loop (%find-previous-char group (-1+ first) bound
-					       char))))))
-    (and (> start-index bound)
-	 (loop (%find-previous-char group start-index bound char)))))
+(define (skip-chars-backward pattern #!optional start end limit?)
+  (let ((start (if (default-object? start) (current-point) start)))
+    (let ((end (if (default-object? end) (group-start start) end)))
+      (let ((limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(if (not (mark>= start end))
+	    (error "SKIP-CHARS-BACKWARD: Marks incorrectly related" start end))
+	(let ((index
+	       (group-find-previous-char-in-set (mark-group start)
+						(mark-index end)
+						(mark-index start)
+						(re-compile-char-set pattern
+								     true))))
+	  (if index
+	      (make-mark (mark-group start) (fix:+ index 1))
+	      (limit-mark-motion limit? end)))))))
 
-;;;; String Match
+;;;; String Search and Match
 
-(define (match-next-strings start end strings)
-  (let loop ((strings strings))
-    (and (not (null? strings))
-	 (or (match-next-string start end (car strings))
-	     (loop (cdr strings))))))
+(define (group-match-substring-forward group start end
+				       string string-start string-end)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-length (group-gap-length group)))
+    (let ((match
+	   (lambda (s1 e1 s2)
+	     (let loop ((i1 s1) (i2 s2))
+	       (if (or (fix:= i1 e1)
+		       (fix:= i2 string-end)
+		       (not (char=? (string-ref text i1)
+				    (string-ref string i2))))
+		   i1
+		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+      (cond ((fix:<= end gap-start)
+	     (match start end string-start))
+	    ((fix:<= gap-start start)
+	     (fix:- (match (fix:+ start gap-length)
+			   (fix:+ end gap-length)
+			   string-start)
+		    gap-length))
+	    (else
+	     (let ((index (match start gap-start string-start)))
+	       (if (fix:= index gap-start)
+		   (fix:- (match (fix:+ gap-start gap-length)
+				 (fix:+ end gap-length)
+				 (fix:+ string-start (fix:- gap-start start)))
+			  gap-length)
+		   index)))))))
 
-(define (match-next-string start end string)
-  (match-next-substring start end string 0 (string-length string)))
-
-(define (match-next-substring start-mark end-mark string start end)
-  (if (not (mark<= start-mark end-mark))
-      (error "marks incorrectly related" start-mark end-mark))
-  (let ((index
-	 (%match-next-substring (mark-group start-mark)
-				(mark-index start-mark)
-				(mark-index end-mark)
-				string start end)))
-    (and index
-	 (make-mark (mark-group start-mark) index))))
-
-(define (match-previous-strings start end strings)
-  (let loop ((strings strings))
-    (and (not (null? strings))
-	 (or (match-previous-string start end (car strings))
-	     (loop (cdr strings))))))
-
-(define (match-previous-string start end string)
-  (match-previous-substring start end string 0 (string-length string)))
-
-(define (match-previous-substring start-mark end-mark string start end)
-  (if (not (mark>= start-mark end-mark))
-      (error "marks incorrectly related" start-mark end-mark))
-  (let ((index
-	 (%match-previous-substring (mark-group start-mark)
-				    (mark-index start-mark)
-				    (mark-index end-mark)
-				    string start end)))
-    (and index
-	 (make-mark (mark-group start-mark) index))))
-
-(define (%match-next-string group start-index end-index string)
-  (%match-next-substring group start-index end-index
-			 string 0 (string-length string)))
-
-(define (%match-previous-string group start-index end-index string)
-  (%match-previous-substring group start-index end-index
-			     string 0 (string-length string)))
-
-(define (%match-next-substring group start-index end-index string start end)
-  (let ((end-index* (+ start-index (- end start))))
-    (and (<= end-index* end-index)
-	 (%%match-substring group start-index end-index* string start end)
-	 end-index*)))
-
-(define (%match-previous-substring group start-index end-index
-				   string start end)
-  (let ((end-index* (- start-index (- end start))))
-    (and (>= end-index* end-index)
-	 (%%match-substring group end-index* start-index string start end)
-	 end-index*)))
-
-(define (%%match-substring group start-index end-index string start end)
-  (and (not (= start-index end-index))
-       (let ((start* (group-index->position group start-index true))
-	     (end* (group-index->position group end-index false))
-	     (gap-start (group-gap-start group))
-	     (gap-end (group-gap-end group))
-	     (text (group-text group)))
-	 (if (and (<= start* gap-start) (<= gap-end end*))
-	     (let ((split (+ start (- gap-start start*))))
-	       (and (substring-ci=? text start* gap-start string start split)
-		    (substring-ci=? text gap-end end* string split end)))
-	     (substring-ci=? text start* end* string start end)))))
+(define (group-match-substring-backward group start end
+					string string-start string-end)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-length (group-gap-length group)))
+    (let ((match
+	   (lambda (s1 e1 e2)
+	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
+	       (cond ((not (char=? (string-ref text i1)
+				   (string-ref string i2)))
+		      (fix:+ i1 1))
+		     ((or (fix:= i1 s1) (fix:= i2 string-start))
+		      i1)
+		     (else
+		      (loop (fix:- i1 1) (fix:- i2 1))))))))
+      (cond ((or (fix:= start end) (fix:= string-start string-end))
+	     end)
+	    ((fix:<= end gap-start)
+	     (match start end string-end))
+	    ((fix:<= gap-start start)
+	     (fix:- (match (fix:+ start gap-length)
+			   (fix:+ end gap-length)
+			   string-end)
+		    gap-length))
+	    (else
+	     (let ((index
+		    (fix:- (match (fix:+ gap-start gap-length)
+				  (fix:+ end gap-length)
+				  string-end)
+			   gap-length)))
+	       (if (fix:= index gap-start)
+		   (match start
+			  gap-start
+			  (fix:- string-end (fix:- end gap-start)))
+		   index)))))))
 
-;;;; Character Match
+(define (group-match-substring-forward-ci group start end
+					  string string-start string-end)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-length (group-gap-length group)))
+    (let ((match
+	   (lambda (s1 e1 s2)
+	     (let loop ((i1 s1) (i2 s2))
+	       (if (or (fix:= i1 e1)
+		       (fix:= i2 string-end)
+		       (not (char-ci=? (string-ref text i1)
+				       (string-ref string i2))))
+		   i1
+		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
+      (cond ((fix:<= end gap-start)
+	     (match start end string-start))
+	    ((fix:<= gap-start start)
+	     (fix:- (match (fix:+ start gap-length)
+			   (fix:+ end gap-length)
+			   string-start)
+		    gap-length))
+	    (else
+	     (let ((index (match start gap-start string-start)))
+	       (if (fix:= index gap-start)
+		   (fix:- (match (fix:+ gap-start gap-length)
+				 (fix:+ end gap-length)
+				 (fix:+ string-start (fix:- gap-start start)))
+			  gap-length)
+		   index)))))))
 
-(define (match-next-char start end char)
-  (%match-next-char (mark-group start)
-		    (mark-index start)
-		    (mark-index end)
-		    char))
+(define (group-match-substring-backward-ci group start end
+					   string string-start string-end)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-length (group-gap-length group)))
+    (let ((match
+	   (lambda (s1 e1 e2)
+	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
+	       (cond ((not (char-ci=? (string-ref text i1)
+				      (string-ref string i2)))
+		      (fix:+ i1 1))
+		     ((or (fix:= i1 s1) (fix:= i2 string-start))
+		      i1)
+		     (else
+		      (loop (fix:- i1 1) (fix:- i2 1))))))))
+      (cond ((or (fix:= start end) (fix:= string-start string-end))
+	     end)
+	    ((fix:<= end gap-start)
+	     (match start end string-end))
+	    ((fix:<= gap-start start)
+	     (fix:- (match (fix:+ start gap-length)
+			   (fix:+ end gap-length)
+			   string-end)
+		    gap-length))
+	    (else
+	     (let ((index
+		    (fix:- (match (fix:+ gap-start gap-length)
+				  (fix:+ end gap-length)
+				  string-end)
+			   gap-length)))
+	       (if (fix:= index gap-start)
+		   (match start
+			  gap-start
+			  (fix:- string-end (fix:- end gap-start)))
+		   index)))))))
+
+(define (match-forward string mark #!optional case-fold-search)
+  (let ((group (mark-group mark))
+	(start (mark-index mark))
+	(length (string-length string)))
+    (let ((end (fix:+ start length)))
+      (and (fix:<= end (group-end-index group))
+	   (fix:= (if (if (default-object? case-fold-search)
+			  (group-case-fold-search group)
+			  case-fold-search)
+		      (group-match-substring-forward-ci group start end
+							string 0 length)
+		      (group-match-substring-forward group start end
+						     string 0 length))
+		  end)
+	   (make-mark group end)))))
 
-(define (%match-next-char group start end char)
-  (and (< start end)
-       (char=? char (group-right-char group start))
-       (1+ start)))
-
-(define (match-previous-char start end char)
-  (%match-previous-char (mark-group start)
-			(mark-index start)
-			(mark-index end)
-			char))
-
-(define (%match-previous-char group start end char)
-  (and (> start end)
-       (char=? char (group-left-char group start))
-       (-1+ start)))
-
-(define (match-next-char-in-set start end char-set)
-  (%match-next-char-in-set (mark-group start)
-			   (mark-index start)
-			   (mark-index end)
-			   char-set))
-
-(define (%match-next-char-in-set group start end char-set)
-  (and (< start end)
-       (char-set-member? char-set (group-right-char group start))
-       (1+ start)))
-
-(define (match-previous-char-in-set start end char-set)
-  (%match-previous-char-in-set (mark-group start)
-			       (mark-index start)
-			       (mark-index end)
-			       char-set))
-
-(define (%match-previous-char-in-set group start end char-set)
-  (and (> start end)
-       (char-set-member? char-set (group-left-char group start))
-       (-1+ start)))
-|#
+(define (match-backward string mark #!optional case-fold-search)
+  (let ((group (mark-group mark))
+	(end (mark-index mark))
+	(length (string-length string)))
+    (let ((start (fix:- end length)))
+      (and (fix:>= start (group-start-index group))
+	   (fix:= (if (if (default-object? case-fold-search)
+			  (group-case-fold-search group)
+			  case-fold-search)
+		      (group-match-substring-backward-ci group start end
+							 string 0 length)
+		      (group-match-substring-backward group start end
+						      string 0 length))
+		  start)
+	   (make-mark group start)))))

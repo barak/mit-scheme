@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.98 1991/04/12 23:28:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.99 1991/04/21 00:50:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -444,26 +444,26 @@ except for \\[info-cease-edit] to return to Info."
 
 (define (menu-item-keyword item)
   (let ((end (char-search-forward #\: item (line-end item 0))))
-    (if end
-	(extract-string item (re-match-start 0))
-	(error "Menu item missing colon"))))
+    (if (not end)
+	(error "Menu item missing colon"))
+    (extract-string item (mark-1+ end))))
 
 (define (menu-item-name item)
   (let ((colon (char-search-forward #\: item (line-end item 0))))
-    (cond ((not colon) (error "Menu item missing colon"))
-	  ((match-forward "::" (re-match-start 0))
-	   (extract-string item (re-match-start 0)))
-	  (else
-	   (%menu-item-name (horizontal-space-end colon))))))
+    (if (not colon)
+	(error "Menu item missing colon."))
+    (if (match-forward "::" (mark-1+ colon))
+	(extract-string item (re-match-start 0))
+	(%menu-item-name (horizontal-space-end colon)))))
 
 (define (%menu-item-name start)
   (if (line-end? start)
-      (error "Menu item missing node name")
-      (extract-string start
-		      (let ((end (line-end start 0)))
-			(if (re-search-forward "[.,\t]" start end)
-			    (re-match-start 0)
-			    end)))))
+      (error "Menu item missing node name"))
+  (extract-string start
+		  (let ((end (line-end start 0)))
+		    (if (re-search-forward "[.,\t]" start end)
+			(re-match-start 0)
+			end))))
 
 ;;;; Cross References
 
@@ -490,10 +490,10 @@ The name may be an abbreviation of the reference name."
   (re-search-forward "\\*Note[ \t\n]*" start))
 
 (define (cref-item-keyword item)
-  (let ((colon (char-search-forward #\: item)))
-    (if colon
-	(%cref-item-keyword item (re-match-start 0))
-	(error "Cross reference missing colon"))))
+  (let ((colon (char-search-forward #\: item (group-end item))))
+    (if (not colon)
+	(error "Cross reference missing colon."))
+    (%cref-item-keyword item (mark-1+ colon))))
 
 (define (%cref-item-keyword item colon)
   (let ((string (extract-string item colon)))
@@ -501,12 +501,12 @@ The name may be an abbreviation of the reference name."
     (string-trim string)))
 
 (define (cref-item-name item)
-  (let ((colon (char-search-forward #\: item)))
-    (cond ((not colon) (error "Cross reference missing colon"))
-	  ((match-forward "::" (re-match-start 0))
-	   (%cref-item-keyword item (re-match-start 0)))
-	  (else
-	   (%menu-item-name (cref-item-space-end colon))))))
+  (let ((colon (char-search-forward #\: item (group-end item))))
+    (if (not colon)
+	(error "Cross reference missing colon."))
+    (if (match-forward "::" (mark-1+ colon))
+	(%cref-item-keyword item (re-match-start 0))
+	(%menu-item-name (cref-item-space-end colon)))))
 
 (define (cref-item-space-end mark)
   (skip-chars-forward " \t\n" mark))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.21 1991/02/15 18:14:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.22 1991/04/21 00:52:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -183,3 +183,8 @@
 (define (pathname=? x y)
   (string=? (pathname->string x)
 	    (pathname->string y)))
+
+(define (string-or-false? object)
+  ;; Useful as a type for option variables.
+  (or (false? object)
+      (string? object)))

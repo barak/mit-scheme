@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.24 1991/04/13 03:58:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.25 1991/04/21 00:48:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -112,10 +112,16 @@ This file is not the file you visited; that changes only when you save."
   (set-buffer-auto-save-pathname! buffer false))
 
 (define (delete-auto-save-file! buffer)
-  (if (ref-variable delete-auto-save-files)
-      (let ((pathname (buffer-auto-save-pathname buffer)))
-	(if (and pathname (file-exists? pathname))
-	    (delete-file pathname)))))
+  (and (ref-variable delete-auto-save-files)
+       (let ((auto-save-pathname (buffer-auto-save-pathname buffer)))
+	 (and auto-save-pathname
+	      (not (let ((pathname (buffer-pathname buffer)))
+		     (and pathname
+			  (pathname=? auto-save-pathname pathname))))
+	      (catch-file-errors (lambda () false)
+		(lambda ()
+		  (delete-file auto-save-pathname)
+		  true))))))
 
 (define (rename-auto-save-file! buffer)
   (let ((old-pathname (buffer-auto-save-pathname buffer)))
@@ -124,7 +130,10 @@ This file is not the file you visited; that changes only when you save."
       (if (and old-pathname
 	       new-pathname
 	       (not (pathname=? new-pathname old-pathname))
-	       (not (pathname=? new-pathname (buffer-pathname buffer)))
+	       (not (let ((pathname (buffer-pathname buffer)))
+		      (and pathname
+			   (or (pathname=? new-pathname pathname)
+			       (pathname=? old-pathname pathname)))))
 	       (file-exists? old-pathname))
 	  (rename-file old-pathname new-pathname)))))
 
@@ -143,7 +152,8 @@ This file is not the file you visited; that changes only when you save."
 	  (append-message "done")))))
 
 (define (auto-save-buffer buffer)
-  (region->file (buffer-unclipped-region buffer)
-		(buffer-auto-save-pathname buffer))
+  (write-region (buffer-unclipped-region buffer)
+		(buffer-auto-save-pathname buffer)
+		false)
   (set-buffer-save-length! buffer)
   (set-buffer-auto-saved! buffer))

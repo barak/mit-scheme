@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.95 1991/04/12 23:28:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.96 1991/04/21 00:50:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -233,13 +233,13 @@ If you want VALUE to be a string, you must surround it with doublequotes."
     (let ((variable (name->variable variable)))
       (if (not (variable-value-valid? variable value))
 	  (editor-error "illegal value for variable:" value))
-      (make-local-binding! variable value))))
+      (define-variable-local-value! (current-buffer) variable value))))
 
 (define-command kill-local-variable
   "Make a variable use its global value in the current buffer."
   "vKill local variable"
   (lambda (name)
-    (unmake-local-binding! (name->variable name))))
+    (undefine-variable-local-value! (current-buffer) (name->variable name))))
 
 ;;;; Other Stuff
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.79 1991/03/22 00:33:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/things.scm,v 1.80 1991/04/21 00:52:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -173,31 +173,45 @@
 (define (horizontal-space-end mark)
   (skip-chars-forward " \t" mark (line-end mark 0)))
 
-(define (compute-horizontal-space c1 c2 receiver)
+(define (compute-horizontal-space c1 c2 tab-width)
   ;; Compute the number of tabs/spaces required to fill from column C1
   ;; to C2 with whitespace.  It is assumed that C1 >= C2.
-  (if (ref-variable indent-tabs-mode)
-      (let ((tab-width (ref-variable tab-width)))
-	(let ((qr1 (integer-divide c1 tab-width))
-	      (qr2 (integer-divide c2 tab-width)))
-	  (if (> (integer-divide-quotient qr1) (integer-divide-quotient qr2))
-	      (receiver (- (integer-divide-quotient qr1)
-			   (integer-divide-quotient qr2))
-			(integer-divide-remainder qr1))
-	      (receiver 0
-			(- (integer-divide-remainder qr1)
-			   (integer-divide-remainder qr2))))))
-      (receiver 0 (- c2 c1))))
+  (if tab-width
+      (let ((qr1 (integer-divide c1 tab-width))
+	    (qr2 (integer-divide c2 tab-width)))
+	(if (> (integer-divide-quotient qr1) (integer-divide-quotient qr2))
+	    (values (- (integer-divide-quotient qr1)
+		       (integer-divide-quotient qr2))
+		    (integer-divide-remainder qr1))
+	    (values 0
+		    (- (integer-divide-remainder qr1)
+		       (integer-divide-remainder qr2)))))
+      (values 0 (- c2 c1))))
 
-(define (insert-horizontal-space target-column #!optional point)
-  (let ((point
-	 (if (default-object? point)
-	     (current-point)
-	     (mark-left-inserting point))))
-    (compute-horizontal-space target-column (mark-column point)
+(define (insert-horizontal-space target-column #!optional point tab-width)
+  (let* ((point
+	  (mark-left-inserting-copy
+	   (if (default-object? point) (current-point) point)))
+	 (tab-width
+	  (if (default-object? tab-width)
+	      (let ((buffer (mark-buffer point)))
+		(and buffer
+		     (variable-local-value
+		      buffer
+		      (ref-variable-object indent-tabs-mode))
+		     (variable-local-value
+		      buffer
+		      (ref-variable-object tab-width))))
+	      tab-width)))
+    (with-values
+	(lambda ()
+	  (compute-horizontal-space target-column
+				    (mark-column point)
+				    tab-width))
       (lambda (n-tabs n-spaces)
-	(insert-chars #\Tab n-tabs point)
-	(insert-chars #\Space n-spaces point)))))
+	(insert-chars #\tab n-tabs point)
+	(insert-chars #\space n-spaces point)))
+    (mark-temporary! point)))
 
 (define (delete-horizontal-space #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))

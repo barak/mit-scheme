@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.95 1991/04/12 23:28:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.96 1991/04/21 00:50:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -74,11 +74,13 @@
   (initialize-buffer-local-variables! buffer))
 
 (define (insert-file mark filename)
-  (let ((pathname (->pathname filename)))
-    (let ((truename (pathname->input-truename pathname)))
-      (if truename
-	  (%insert-file mark truename)
-	  (editor-error "File " (pathname->string pathname) " not found")))))
+  (%insert-file
+   mark
+   (let ((pathname (->pathname filename)))
+     (let ((truename (pathname->input-truename pathname)))
+       (if (not truename)
+	   (editor-error "File " (pathname->string pathname) " not found"))
+       truename))))
 
 (define-variable read-file-message
   "If true, messages are displayed when files are read into the editor."
@@ -236,10 +238,11 @@ at the end of a file."
 			(editor-error
 			 "Local variables entry is missing the prefix"))
 		    start))))
-	  (let ((m2 (if (char-search-forward #\: m1 end)
-			(re-match-start 0)
-			(editor-error
-			 "Missing colon in local variables entry"))))
+	  (let ((m2
+		 (let ((m2 (char-search-forward #\: m1 end)))
+		   (if (not m2)
+		       (editor-error "Missing colon in local variables entry"))
+		   (mark-1+ m2))))
 	    (let ((var (extract-string m1 (horizontal-space-start m2)))
 		  (m3 (horizontal-space-end (mark1+ m2))))
 	      (if (not (string-ci=? var "End"))
@@ -274,8 +277,10 @@ at the end of a file."
 				      (let ((variable (name->variable var))
 					    (value (evaluate val)))
 					(lambda ()
-					  (make-local-binding! variable
-							       value))))))))))
+					  (define-variable-local-value!
+					   (current-buffer)
+					   variable
+					   value))))))))))
 		      (loop m4))))))))
 
       (loop start))))
@@ -369,8 +374,10 @@ Otherwise asks confirmation."
 
 (define (write-buffer buffer)
   (let ((truename
-	 (write-region (buffer-unclipped-region buffer)
-		       (buffer-pathname buffer))))
+	 (string->pathname
+	  (write-region (buffer-unclipped-region buffer)
+			(buffer-pathname buffer)
+			true))))
     (if truename
 	(begin
 	  (set-buffer-truename! buffer truename)
@@ -379,18 +386,78 @@ Otherwise asks confirmation."
 	  (buffer-not-modified! buffer)
 	  (set-buffer-modification-time! buffer
 					 (file-modification-time truename))))))
+
+(define-variable enable-emacs-write-file-message
+  "If true, generate Emacs-style message when writing files."
+  true
+  boolean?)
 
-(define (write-region region filename)
-  (let ((truename (pathname->output-truename (->pathname filename))))
-    (temporary-message "Writing file \"" (pathname->string truename) "\"")
-    (region->file region truename)
-    (append-message " -- done")
-    truename))
+(define (write-region region filename message?)
+  (let ((filename (canonicalize-output-filename filename)))
+    (let ((do-it
+	   (lambda ()
+	     (group-write-to-file (region-group region)
+				  (region-start-index region)
+				  (region-end-index region)
+				  filename))))
+      (cond ((not message?)
+	     (do-it))
+	    ((ref-variable enable-emacs-write-file-message)
+	     (do-it)
+	     (message "Wrote " filename))
+	    (else
+	     (temporary-message "Writing file \"" filename "\"")
+	     (do-it)
+	     (append-message " -- done"))))
+    filename))
 
-(define (region->file region pathname)
-  (call-with-output-file pathname
-    (lambda (port)
-      (write-string (region->string region) port))))
+(define (append-to-file region filename message?)
+  (let ((filename (canonicalize-overwrite-filename filename)))
+    (let ((do-it
+	   (lambda ()
+	     (group-append-to-file (region-group region)
+				   (region-start-index region)
+				   (region-end-index region)
+				   filename))))
+      (cond ((not message?)
+	     (do-it))
+	    ((ref-variable enable-emacs-write-file-message)
+	     (do-it)
+	     (message "Wrote " filename))
+	    (else
+	     (temporary-message "Writing file \"" filename "\"")
+	     (do-it)
+	     (append-message " -- done"))))
+    filename))
+
+(define (group-write-to-file group start end filename)
+  (let ((channel (file-open-output-channel filename)))
+    (group-write-to-channel group start end channel)
+    (channel-close channel)))
+
+(define (group-append-to-file group start end filename)
+  (let ((channel (file-open-append-channel filename)))
+    (group-write-to-channel group start end channel)
+    (channel-close channel)))
+
+(define (group-write-to-channel group start end channel)
+  (let ((text (group-text group))
+	(gap-start (group-gap-start group))
+	(gap-end (group-gap-end group))
+	(gap-length (group-gap-length group)))
+    (cond ((fix:<= end gap-start)
+	   (channel-write-block channel text start end))
+	  ((fix:<= gap-start start)
+	   (channel-write-block channel
+				text
+				(fix:+ start gap-length)
+				(fix:+ end gap-length)))
+	  (else
+	   (channel-write-block channel text start gap-start)
+	   (channel-write-block channel
+				text
+				gap-end
+				(fix:+ end gap-length))))))
 
 (define (require-newline buffer)
   (let ((require-final-newline? (ref-variable require-final-newline)))

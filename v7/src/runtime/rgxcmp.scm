@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.105 1991/03/15 23:28:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.106 1991/04/21 00:51:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -184,6 +184,37 @@
 		     (let ((j (fix:+ i 255)))
 		       (substring-move-right! string i j result (fix:+ p 2))
 		       (loop (fix:- n 255) j (fix:+ p 257)))))))))))
+
+(define re-quote-string
+  (let ((special (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$)))
+    (lambda (string)
+      (let ((end (string-length string)))
+	(let ((n
+	       (let loop ((start 0) (n 0))
+		 (let ((index
+			(substring-find-next-char-in-set string start end
+							 special)))
+		   (if index
+		       (loop (1+ index) (1+ n))
+		       n)))))
+	  (if (zero? n)
+	      string
+	      (let ((result (string-allocate (+ end n))))
+		(let loop ((start 0) (i 0))
+		  (let ((index
+			 (substring-find-next-char-in-set string start end
+							  special)))
+		    (if index
+			(begin
+			  (substring-move-right! string start index result i)
+			  (let ((i (+ i (- index start))))
+			    (string-set! result i #\\)
+			    (string-set! result
+					 (1+ i)
+					 (string-ref string index))
+			    (loop (1+ index) (+ i 2))))
+			(substring-move-right! string start end result i))))
+		result)))))))
 
 ;;;; Char-Set Compiler
 

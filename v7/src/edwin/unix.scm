@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.14 1991/04/13 03:58:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.15 1991/04/21 00:52:35 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -284,6 +284,20 @@ Includes the new backup.  Must be > 0"
 (define-integrable (os/filename-as-directory filename)
   (string-append filename "/"))
 
+(define (os/filename-directory filename)
+  (let ((end (string-length filename)))
+    (let ((index (substring-find-previous-char filename 0 end #\/)))
+      (if index
+	  (substring filename 0 (+ index 1))
+	  "./"))))
+
+(define (os/filename-non-directory filename)
+  (let ((end (string-length filename)))
+    (let ((index (substring-find-previous-char filename 0 end #\/)))
+      (if index
+	  (substring filename (+ index 1) end)
+	  filename))))
+
 (define (os/completion-ignored-extensions)
   (list-copy
    '(".o" ".elc" "~" ".bin" ".lbin" ".fasl"
@@ -308,7 +322,7 @@ Includes the new backup.  Must be > 0"
 
 (define (os/init-file-name)
   "~/.edwin")
-
+
 (define os/find-file-initialization-filename
   (let ((name-path (string->pathname ".edwin-ffi")))
     (lambda (pathname)

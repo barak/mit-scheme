@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.29 1991/04/12 23:23:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.30 1991/04/21 00:50:10 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -492,32 +492,26 @@ MIT in each case. |#
   (files "regexp")
   (parent (edwin))
   (export (edwin)
-	  char-match-backward
-	  char-match-forward
-	  char-search-backward
-	  char-search-forward
-	  match-backward
-	  match-forward
+	  delete-match
+	  re-match-buffer-forward
 	  re-match-end
 	  re-match-end-index
 	  re-match-forward
 	  re-match-start
 	  re-match-start-index
 	  re-match-string-forward
-	  re-match-string-forward-ci
 	  re-match-substring-forward
-	  re-match-substring-forward-ci
-	  re-quote-string
 	  re-search-backward
+	  re-search-buffer-backward
+	  re-search-buffer-forward
 	  re-search-forward
+	  re-search-string-backward
 	  re-search-string-forward
-	  re-search-string-forward-ci
+	  re-search-substring-backward
 	  re-search-substring-forward
-	  re-search-substring-forward-ci
+	  replace-match
 	  search-backward
-	  search-forward
-	  skip-chars-backward
-	  skip-chars-forward))
+	  search-forward))
 
 (define-package (edwin regular-expression-compiler)
   (files "rgxcmp")
@@ -529,6 +523,7 @@ MIT in each case. |#
 	  re-compile-pattern
 	  re-compile-string
 	  re-disassemble-pattern
+	  re-quote-string
 	  re-translation-table))
 
 (define-package (edwin lisp-indentation)
@@ -716,4 +711,22 @@ MIT in each case. |#
 	  shell-command
 	  shell-command-region
 	  start-process
-	  stop-process))
+	  stop-process
+	  run-synchronous-process))
+
+(define-package (edwin sendmail)
+  (files "sendmail")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-mode$mail
+	  edwin-variable$mail-archive-file-name
+	  edwin-variable$mail-default-reply-to
+	  edwin-variable$mail-header-separator
+	  edwin-variable$mail-interactive
+	  edwin-variable$mail-mode-hook
+	  edwin-variable$mail-reply-buffer
+	  edwin-variable$mail-self-blind
+	  edwin-variable$mail-yank-ignored-headers
+	  edwin-variable$send-mail-procedure
+	  edwin-variable$sendmail-program
+	  make-mail-buffer))

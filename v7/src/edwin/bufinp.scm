@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufinp.scm,v 1.3 1990/11/09 08:56:14 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufinp.scm,v 1.4 1991/04/21 00:49:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -116,8 +116,8 @@
       (if (>= current-index end-index)
 	  (make-eof-object port)
 	  (let ((new-index
-		 (or (%find-next-char-in-set group current-index end-index
-					     delimiters)
+		 (or (group-find-next-char-in-set group current-index end-index
+						  delimiters)
 		     end-index)))
 	    (let ((string
 		   (group-extract-string group current-index new-index)))
@@ -131,10 +131,11 @@
       (if (< current-index end-index)
 	  (set-buffer-input-port-state/current-index!
 	   state
-	   (or (%find-next-char-in-set (buffer-input-port-state/group state)
-				       current-index
-				       end-index
-				       delimiters)
+	   (or (group-find-next-char-in-set
+		(buffer-input-port-state/group state)
+		current-index
+		end-index
+		delimiters)
 	       end-index))))))
 
 (define (operation/print-self state port)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.17 1991/03/22 00:31:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.18 1991/04/21 00:49:38 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -92,7 +92,6 @@ MIT in each case. |#
 	      "rename"
 	      "rgxcmp"
 	      "ring"
-	      "search"
 	      "simple"
 	      "strpad"
 	      "strtab"
@@ -154,6 +153,7 @@ MIT in each case. |#
 	      "schmod"
 	      "scrcom"
 	      "screen"
+	      "sendmail"
 	      "sercom"
 	      "shell"
 	      "struct"
@@ -176,6 +176,7 @@ MIT in each case. |#
   (sf-edwin "grpops" "struct")
   (sf-edwin "regops" "struct")
   (sf-edwin "motion" "struct")
+  (sf-edwin "search" "struct")
   (sf-edwin "buffer" "comman" "modes")
   (sf-edwin "curren" "buffer")
   (sf-class "window" "class")

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.123 1990/10/03 04:55:37 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.124 1991/04/21 00:51:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -270,6 +270,7 @@ and the cdrs of which are major modes."
 (define-key 'fundamental '(#\c-x #\4 #\b) 'switch-to-buffer-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\d) 'dired-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\f) 'find-file-other-window)
+(define-key 'fundamental '(#\c-x #\4 #\m) 'mail-other-window)
 (define-key 'fundamental '(#\c-x #\5) 'split-window-horizontally)
 (define-key 'fundamental '(#\c-x #\;) 'set-comment-column)
 (define-key 'fundamental '(#\c-x #\=) 'what-cursor-position)
@@ -287,6 +288,7 @@ and the cdrs of which are major modes."
 (define-key 'fundamental '(#\c-x #\j) 'register-to-point)
 (define-key 'fundamental '(#\c-x #\k) 'kill-buffer)
 (define-key 'fundamental '(#\c-x #\l) 'count-lines-page)
+(define-key 'fundamental '(#\c-x #\m) 'mail)
 (define-key 'fundamental '(#\c-x #\n) 'narrow-to-region)
 (define-key 'fundamental '(#\c-x #\o) 'other-window)
 (define-key 'fundamental '(#\c-x #\p) 'narrow-to-page)

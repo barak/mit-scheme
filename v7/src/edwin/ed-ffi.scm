@@ -159,6 +159,8 @@
 	       edwin-syntax-table)
     ("search"  (edwin)
 	       syntax-table/system-internal)
+    ("sendmail" (edwin sendmail)
+		edwin-syntax-table)
     ("sercom"  (edwin)
 	       edwin-syntax-table)
     ("shell"   (edwin)

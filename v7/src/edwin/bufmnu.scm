@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.112 1991/04/03 04:03:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.113 1991/04/21 00:49:05 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -346,8 +346,9 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 
 (define (buffer-line-name lstart)
   (let ((start (mark+ lstart 4)))
-    (char-search-forward #\Space start (line-end start 0))
-    (extract-string start (re-match-start 0))))
+    (extract-string
+     start
+     (mark-1+ (char-search-forward #\space start (line-end start 0))))))
 
 (define (buffer-menu-mark lstart column)
   (guarantee-buffer-line lstart)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.107 1991/04/12 23:20:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.108 1991/04/21 00:51:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -195,7 +195,7 @@ by the variable indent-line-procedure."
   (lambda (argument)
     (let ((indent-line-procedure (ref-variable indent-line-procedure)))
       (if (eq? indent-line-procedure indent-to-left-margin)
-	  (insert-chars #\Tab argument)
+	  (insert-chars #\tab argument)
 	  (indent-line-procedure)))))
 
 (define-command newline-and-indent
@@ -224,6 +224,122 @@ and indent the new line indent according to mode."
     ((ref-command indent-according-to-mode))
     ((ref-command newline) false)
     ((ref-command indent-according-to-mode))))
+
+(define-variable indent-tabs-mode
+  "If false, do not use tabs for indentation or horizontal spacing."
+  true
+  boolean?)
+
+(define-command indent-tabs-mode
+  "Enables or disables use of tabs as indentation.
+A positive argument turns use of tabs on;
+zero or negative, turns it off.
+With no argument, the mode is toggled."
+  "P"
+  (lambda (argument)
+    (set-variable! indent-tabs-mode
+		   (if argument
+		       (positive? argument)
+		       (not (ref-variable indent-tabs-mode))))))
+
+(define-command insert-tab
+  "Insert a tab character."
+  ()
+  (lambda ()
+    (if (ref-variable indent-tabs-mode)
+	(insert-char #\tab)
+	(maybe-change-column
+	 (let ((tab-width (ref-variable tab-width)))
+	   (* tab-width (1+ (quotient (current-column) tab-width))))))))
+
+(define-command indent-relative
+  "Space out to under next indent point in previous nonblank line.
+An indent point is a non-whitespace character following whitespace."
+  ()
+  (lambda ()
+    (let ((point (current-point)))
+      (let ((indentation (indentation-of-previous-non-blank-line point)))
+	(cond ((not (= indentation (current-indentation point)))
+	       (change-indentation indentation point))
+	      ((line-start? (horizontal-space-start point))
+	       (set-current-point! (horizontal-space-end point))))))))
+
+(define (indentation-of-previous-non-blank-line mark)
+  (let ((start (find-previous-non-blank-line mark)))
+    (if start
+	(current-indentation start)
+	0)))
+
+(define-variable indent-region-procedure
+  "Function which is short cut to indent each line in region with Tab.
+#F means really call Tab on each line."
+  false
+  (lambda (object)
+    (or (false? object)
+	(and (procedure? object)
+	     (procedure-arity-valid? object 2)))))
+
+(define-command indent-region
+  "Indent each nonblank line in the region.
+With no argument, indent each line with Tab.
+With argument COLUMN, indent each line to that column."
+  "r\nP"
+  (lambda (region argument)
+    (let ((start (region-start region))
+	  (end (region-end region)))
+      (cond (argument
+	     (indent-region start end argument))
+	    ((ref-variable indent-region-procedure)
+	     ((ref-variable indent-region-procedure) start end))
+	    (else
+	     (for-each-line-in-region start end
+	       (let ((indent-line (ref-variable indent-line-procedure)))
+		 (lambda (start)
+		   (set-current-point! start)
+		   (indent-line)))))))))
+
+(define (indent-region start end n-columns)
+  (if (exact-nonnegative-integer? n-columns)
+      (for-each-line-in-region start end
+	(lambda (start)
+	  (delete-string start (horizontal-space-end start))
+	  (insert-horizontal-space n-columns start)))))
+
+(define-command indent-rigidly
+  "Indent all lines starting in the region sideways by ARG columns."
+  "r\nP"
+  (lambda (region argument)
+    (if argument
+	(indent-rigidly (region-start region) (region-end region) argument))))
+
+(define (indent-rigidly start end n-columns)
+  (for-each-line-in-region start end
+    (lambda (start)
+      (let ((end (horizontal-space-end start)))
+	(if (line-end? end)
+	    (delete-string start end)
+	    (let ((new-column (max 0 (+ n-columns (mark-column end)))))
+	      (delete-string start end)
+	      (insert-horizontal-space new-column start)))))))
+
+(define (for-each-line-in-region start end procedure)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (let ((start (mark-right-inserting-copy (line-start start 0))))
+    (let ((end
+	   (mark-left-inserting-copy
+	    (if (and (line-start? end) (mark< start end))
+		(mark-1+ end)
+		(line-end end 0)))))
+      (let loop ()
+	(procedure start)
+	(let ((m (line-end start 0)))
+	  (if (mark< m end)
+	      (begin
+		(move-mark-to! start (mark1+ m))
+		(loop)))))
+      (mark-temporary! start)
+      (mark-temporary! end))))
 
 (define-command newline
   "Insert newline, or move onto blank line.
@@ -340,119 +456,50 @@ moves down one line first (killing newline after current line)."
   "\\[delete-indentation] won't insert a space to the left of these."
   (char-set #\)))
 
-(define-variable indent-tabs-mode
-  "If false, do not use tabs for indentation or horizontal spacing."
-  true)
-
-(define-command indent-tabs-mode
-  "Enables or disables use of tabs as indentation.
-A positive argument turns use of tabs on;
-zero or negative, turns it off.
-With no argument, the mode is toggled."
-  "P"
-  (lambda (argument)
-    (set-variable! indent-tabs-mode
-		   (if argument
-		       (positive? argument)
-		       (not (ref-variable indent-tabs-mode))))))
-
-(define-command insert-tab
-  "Insert a tab character."
-  ()
-  (lambda ()
-    (if (ref-variable indent-tabs-mode)
-	(insert-char #\Tab)
-	(maybe-change-column
-	 (let ((tab-width (ref-variable tab-width)))
-	   (* tab-width (1+ (quotient (current-column) tab-width))))))))
-
-(define-command indent-region
-  "Indent all lines between point and mark.
-With argument, indents each line to exactly that column.
-Otherwise, does Tab on each line.
-A line is processed if its first character is in the region.
-The mark is left after the last line processed."
-  "P"
-  (lambda (argument)
-    (cond ((not argument)
-	   (not-implemented))
-	  ((not (negative? argument))
-	   (current-region-of-lines
-	    (lambda (start end)
-	      (let loop ((mark start))
-		(change-indentation argument mark)
-		(if (not (mark= mark end))
-		    (loop (mark-right-inserting (line-start mark 1)))))))))))
-
-(define-command indent-rigidly
-  "Shift text in region sideways as a unit.
-All the lines in the region (first character between point and mark)
-have their indentation incremented by the numeric argument
-of this command (which may be negative).
-Exception: lines containing just spaces and tabs become empty."
-  "P"
-  (lambda (argument)
-    (if argument
-	(current-region-of-lines
-	 (lambda (start end)
-	   (define (loop mark)
-	     (if (line-blank? mark)
-		 (delete-horizontal-space mark)
-		 (change-indentation
-		  (max (+ argument (current-indentation mark)) 0)
-		  mark))
-	     (if (not (mark= mark end))
-		 (loop (mark-right-inserting (line-start mark 1)))))
-	   (loop start))))))
-
-(define (current-region-of-lines receiver)
-  (let ((r (current-region)))
-    (let ((start (mark-right-inserting (line-start (region-start r) 0))))
-      (receiver start
-		(if (mark= start (line-start (region-end r) 0))
-		    start
-		    (mark-right-inserting
-		     (line-start (region-end r)
-				 (if (line-start? (region-end r)) -1 0))))))))
-
-(define (untabify-region region)
-  (let ((end (region-end region)))
-    (let loop ((start (region-start region)))
-      (if (char-search-forward #\Tab start end)
-	  (let ((tab (re-match-start 0))
-		(next (mark-left-inserting (re-match-end 0))))
-	    (let ((n-spaces (- (mark-column next) (mark-column tab))))
-	      (delete-string tab next)
-	      (insert-chars #\Space n-spaces next))
-	    (loop next))))))
+;;;; Tabification
 
 (define-command untabify
   "Convert all tabs in region to multiple spaces, preserving columns.
 The variable tab-width controls the action."
   "r"
-  untabify-region)
+  (lambda (region)
+    (untabify-region (region-start region) (region-end region))))
+
+(define (untabify-region start end)
+  (let ((start (mark-right-inserting-copy start))
+	(end (mark-left-inserting-copy end)))
+    (do ()
+	((not (char-search-forward #\tab start end)))
+      (let ((tab (re-match-start 0)))
+	(move-mark-to! start (re-match-end 0))
+	(let ((n-spaces (- (mark-column start) (mark-column tab))))
+	  (delete-string tab start)
+	  (insert-chars #\space n-spaces start))))
+    (mark-temporary! start)
+    (mark-temporary! end)))
 
 (define-command tabify
   "Convert multiple spaces in region to tabs when possible.
 A group of spaces is partially replaced by tabs
 when this can be done without changing the column they end at.
 The variable tab-width controls the action."
-  ()
-  (lambda ()
-    (not-implemented)))
+  "r"
+  (lambda (region)
+    (tabify-region (region-start region) (region-end region))))
 
-(define-command indent-relative
-  "Space out to under next indent point in previous nonblank line.
-An indent point is a non-whitespace character following whitespace."
-  ()
-  (lambda ()
-    (let ((point (current-point)))
-      (let ((indentation (indentation-of-previous-non-blank-line point)))
-	(cond ((not (= indentation (current-indentation point)))
-	       (change-indentation indentation point))
-	      ((line-start? (horizontal-space-start point))
-	       (set-current-point! (horizontal-space-end point))))))))
-
-(define (indentation-of-previous-non-blank-line mark)
-  (let ((start (find-previous-non-blank-line mark)))
-    (if start (current-indentation start) 0)))
+(define (tabify-region start end)
+  (let ((start (mark-left-inserting-copy start))
+	(end (mark-left-inserting-copy end))
+	(pattern (re-compile-pattern "[ \t][ \t]+" false))
+	(tab-width (group-tab-width (mark-group start))))
+    (do ()
+	((not (re-search-buffer-forward pattern false false
+					(mark-group start)
+					(mark-index start)
+					(mark-index end))))
+      (move-mark-to! start (re-match-start 0))
+      (let ((end-column (mark-column (re-match-end 0))))
+	(delete-string start (re-match-end 0))
+	(insert-horizontal-space end-column start tab-width)))
+    (mark-temporary! start)
+    (mark-temporary! end)))

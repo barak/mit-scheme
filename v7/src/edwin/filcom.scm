@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.148 1991/04/12 23:26:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.149 1991/04/21 00:50:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -363,29 +363,42 @@ if you wish to make buffer not be visiting any file."
       (buffer-modified! buffer)))
 
 (define-command write-file
-  "Store buffer in specified file.
-This file becomes the one being visited."
+  "Write current buffer into file FILENAME.
+Makes buffer visit that file, and marks it not modified."
   "FWrite file"
   (lambda (filename)
     (write-file (current-buffer) filename)))
 
 (define (write-file buffer filename)
-  (set-visited-pathname buffer (->pathname filename))
-  (write-buffer-interactive buffer))
+  (if (and filename
+	   (not (string-null? filename)))
+      (set-visited-pathname buffer (->pathname filename)))
+  (buffer-modified! buffer)
+  (save-buffer buffer))
 
 (define-command write-region
-  "Store the region in specified file."
-  "FWrite region"
-  (lambda (filename)
-    (write-region (current-region) filename)))
+  "Write current region into specified file."
+  "r\nFWrite region to file"
+  (lambda (region filename)
+    (write-region region filename true)))
+
+(define-command append-to-file
+  "Write current region into specified file."
+  "r\nFAppend to file"
+  (lambda (region filename)
+    (append-to-file region filename true)))
 
 (define-command insert-file
   "Insert contents of file into existing text.
 Leaves point at the beginning, mark at the end."
   "FInsert file"
   (lambda (filename)
-    (set-current-region! (insert-file (current-point) filename))))
-
+    (let ((point (mark-right-inserting (current-point))))
+      (let ((mark (mark-left-inserting point)))
+	(insert-file point filename)
+	(set-current-point! point)
+	(push-current-mark! mark)))))
+
 (define (pathname->buffer-name pathname)
   (let ((name (pathname-name pathname)))
     (if name

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.65 1991/03/15 23:49:11 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.66 1991/04/21 00:49:23 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -132,7 +132,7 @@
     (vector-set! variable variable-index:value-validity-test false)
     variable))
 
-(define-integrable (%set-variable-value! variable value)
+(define-integrable (%%set-variable-value! variable value)
   (vector-set! variable variable-index:value value))
 
 (define-integrable (make-variable-buffer-local! variable)
@@ -171,14 +171,18 @@
 (define (->variable object)
   (if (variable? object) object (name->variable object)))
 
+(define-integrable (%set-variable-value! variable value)
+  (%%set-variable-value! variable value)
+  (invoke-variable-assignment-daemons! variable))
+
 (define (set-variable-value! variable value)
   (if (variable-buffer-local? variable)
-      (make-local-binding! variable value)
-      (without-interrupts
-       (lambda ()
-	 (check-variable-value-validity! variable value)
-	 (%set-variable-value! variable value)
-	 (invoke-variable-assignment-daemons! variable)))))
+      (define-variable-local-value! (current-buffer) variable value)
+      (begin
+	(check-variable-value-validity! variable value)
+	(without-interrupts
+	 (lambda ()
+	   (%set-variable-value! variable value))))))
 
 (define (with-variable-value! variable new-value thunk)
   (let ((old-value))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.34 1991/04/11 03:04:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.35 1991/04/21 00:52:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -109,7 +109,7 @@
       (if (group-end-index? group index)
 	  (editor-error "Attempt to delete past end of buffer")
 	  (group-delete-right-char! group index)))))
-
+
 (define (insert-string string #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (group-insert-string! (mark-group point) (mark-index point) string)))
@@ -118,6 +118,45 @@
   (let ((point (if (default-object? point) (current-point) point)))
     (group-insert-substring! (mark-group point) (mark-index point)
 			     string start end)))
+
+(define (insert-region start end #!optional point)
+  (if (not (mark<= start end))
+      (error "Marks incorrectly related:" start end))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (if (mark~ start point)
+	(error "Can't copy to same group:" start))
+    (let ((group (mark-group start))
+	  (start (mark-index start))
+	  (end (mark-index end)))
+      (let ((text (group-text group))
+	    (gap-start (group-gap-start group))
+	    (gap-end (group-gap-end group))
+	    (gap-length (group-gap-length group)))
+	(cond ((<= end gap-start)
+	       (group-insert-substring! (mark-group point)
+					(mark-index point)
+					text
+					start
+					end))
+	      ((<= gap-end start)
+	       (group-insert-substring! (mark-group point)
+					(mark-index point)
+					text
+					(+ start gap-length)
+					(+ end gap-length)))
+	      (else
+	       (let ((point (mark-left-inserting-copy point)))
+		 (group-insert-substring! (mark-group point)
+					  (mark-index point)
+					  text
+					  start
+					  gap-start)
+		 (group-insert-substring! (mark-group point)
+					  (mark-index point)
+					  text
+					  gap-end
+					  (+ end gap-length))
+		 (mark-temporary! point))))))))
 
 (define (extract-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))

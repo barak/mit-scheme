@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.2 1991/03/27 23:36:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.3 1991/04/21 00:49:16 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -216,7 +216,8 @@ Thus it can, for instance, track cd/pushd/popd commands issued to the shell."
 Only inputs answering true to this procedure are saved on the input
 history list.  Default is to save anything that isn't all whitespace."
   (lambda (string)
-    (not (re-match-string-forward "\\`\\s *\\'" string))))
+    (not (re-match-string-forward (re-compile-pattern "\\`\\s *\\'" false)
+				  false (ref-variable syntax-table) string))))
 
 (define-command comint-previous-input
   "Cycle backwards through input history."
@@ -271,7 +272,8 @@ history list.  Default is to save anything that isn't all whitespace."
 
 (define (comint-history-search string backward?)
   (let ((ring (ref-variable comint-input-ring))
-	(regexp (re-quote-string string)))
+	(syntax-table (ref-variable syntax-table))
+	(pattern (re-compile-pattern (re-quote-string string) false)))
     (let ((size (+ (ring-size ring) 1)))
       (let ((start
 	     (command-message-receive comint-input-ring-tag
@@ -282,7 +284,9 @@ history list.  Default is to save anything that isn't all whitespace."
 	    (cond ((if backward? (>= index size) (< index 0))
 		   (set-command-message! comint-input-ring-tag start)
 		   (editor-failure "Not found"))
-		  ((re-search-string-forward regexp
+		  ((re-search-string-forward pattern
+					     false
+					     syntax-table
 					     (ring-ref ring (- index 1)))
 		   (set-variable! comint-last-input-match string)
 		   ((ref-command comint-previous-input) (- index start)))

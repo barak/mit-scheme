@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.46 1991/04/13 04:00:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.47 1991/04/21 00:50:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -116,12 +116,13 @@ Otherwise the current position of the cursor is used."
 		  (let ((end (match-forward fill-prefix point)))
 		    (if end
 			(delete-string point end))))
-	      (if (char-search-forward #\newline point)
-		  (begin
-		    (move-mark-to! point (re-match-start 0))
-		    (delete-string point (mark1+ point))
-		    (insert-char #\space point)
-		    (loop))))
+	      (let ((m (char-search-forward #\newline point end)))
+		(if m
+		    (begin
+		      (move-mark-to! point m)
+		      (delete-left-char point)
+		      (insert-char #\space point)
+		      (loop)))))
 	    (delete-horizontal-space end)
 	    (move-mark-to! point start)
 	    (let loop ()
@@ -132,13 +133,18 @@ Otherwise the current position of the cursor is used."
 		    (let ((target (move-to-column point fill-column)))
 		      (if (not (group-end? target))
 			  (let ((end
-				 (cond ((char-search-backward #\space
+				 (let ((end
+					(char-search-backward #\space
 							      (mark1+ target)
-							      point)
-					(re-match-end 0))
-				       ((char-search-forward #\space target)
-					(re-match-start 0))
-				       (else false))))
+							      point)))
+				   (if end
+				       (mark1+ end)
+				       (let ((m
+					      (char-search-forward #\space
+								   target
+								   end)))
+					 (and m
+					      (mark-1+ m)))))))
 			    (if end
 				(begin
 				  (move-mark-to! point end)
