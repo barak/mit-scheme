@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/make.scm,v 1.2 1992/02/28 20:22:42 jinx Exp $
+$Id: make.scm,v 1.3 1992/10/07 01:29:36 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,3 +37,5 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ((load "base/make") "Intel i386")
+(set! (access compiler:generate-stack-checks? (->environment '(compiler)))
+      false)
