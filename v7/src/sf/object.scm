@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.5 1993/01/02 07:33:36 cph Exp $
+$Id: object.scm,v 4.6 1993/08/03 03:09:47 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -133,13 +133,16 @@ MIT in each case. |#
 
 (let-syntax
     ((define-simple-type
-       (macro (name slots)
+       (macro (name slots #!optional scode?)
 	 `(DEFINE-STRUCTURE (,name (TYPE VECTOR)
 				   (NAMED ,(symbol-append name '/ENUMERAND))
 				   (CONC-NAME ,(symbol-append name '/))
 				   (CONSTRUCTOR ,(symbol-append name '/MAKE)))
+	    ,@(if (or (default-object? scode?) scode?)
+		  `((scode false read-only true))
+		  `())
 	    ,@slots))))
-  (define-simple-type variable (block name flags))
+  (define-simple-type variable (block name flags) #F)
   (define-simple-type access (environment name))
   (define-simple-type assignment (block variable value))
   (define-simple-type combination (operator operands))
@@ -156,11 +159,21 @@ MIT in each case. |#
   (define-simple-type sequence (actions))
   (define-simple-type the-environment (block)))
 
+;; Abstraction violations
+
 (define-integrable (object/enumerand object)
   (vector-ref object 0))
 
 (define-integrable (set-object/enumerand! object enumerand)
   (vector-set! object 0 enumerand))
+
+(define-integrable (object/scode object)
+  (vector-ref object 1))
+
+(define (with-new-scode scode object)
+  (let ((new (vector-copy object)))
+    (vector-set! new 1 scode)
+    new))
 
 ;;;; Miscellany
 
@@ -203,7 +216,9 @@ MIT in each case. |#
 	      (enumeration/name->index enumeration/expression name)))
 
 (define-integrable (global-ref/make name)
-  (access/make (constant/make system-global-environment) name))
+  (access/make false
+	       (constant/make false system-global-environment)
+	       name))
 
 (define (global-ref? object)
   (and (access? object)
@@ -213,7 +228,7 @@ MIT in each case. |#
        (access/name object)))
 
 (define-integrable (constant->integration-info constant)
-  (make-integration-info (constant/make constant)))
+  (make-integration-info (constant/make false constant)))
 
 (define-integrable (integration-info? object)
   (and (pair? object)

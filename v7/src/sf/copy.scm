@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: copy.scm,v 4.2 1993/01/02 07:33:34 cph Exp $
+$Id: copy.scm,v 4.3 1993/08/03 03:09:45 gjr Exp $
 
-Copyright (c) 1988, 1993 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Copy Expression
+;;; package: (scode-optimizer copy)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
@@ -98,7 +99,8 @@ MIT in each case. |#
   (fluid-let ((root-block false))
     (let ((block (quotation/block quotation))
 	  (environment (environment/make)))
-      (quotation/make block
+      (quotation/make (quotation/scode quotation)
+		      block
 		      (copy/expression block
 				       environment
 				       (quotation/expression quotation))))))
@@ -175,7 +177,8 @@ MIT in each case. |#
 
 (define-method/copy 'ACCESS
   (lambda (block environment expression)
-    (access/make (copy/expression block
+    (access/make (access/scode expression)
+		 (copy/expression block
 				  environment
 				  (access/environment expression))
 		 (access/name expression))))
@@ -183,6 +186,7 @@ MIT in each case. |#
 (define-method/copy 'ASSIGNMENT
   (lambda (block environment expression)
     (assignment/make
+     (assignment/scode expression)
      block
      (copy/variable block environment (assignment/variable expression))
      (copy/expression block environment (assignment/value expression)))))
@@ -190,12 +194,14 @@ MIT in each case. |#
 (define-method/copy 'COMBINATION
   (lambda (block environment expression)
     (combination/make
+     (combination/scode expression)
      (copy/expression block environment (combination/operator expression))
      (copy/expressions block environment (combination/operands expression)))))
 
 (define-method/copy 'CONDITIONAL
   (lambda (block environment expression)
     (conditional/make
+     (conditional/scode expression)
      (copy/expression block environment (conditional/predicate expression))
      (copy/expression block environment (conditional/consequent expression))
      (copy/expression block
@@ -210,6 +216,7 @@ MIT in each case. |#
 (define-method/copy 'DECLARATION
   (lambda (block environment expression)
     (declaration/make
+     (declaration/scode expression)
      (copy/declarations block
 			environment
 			(declaration/declarations expression))
@@ -218,11 +225,13 @@ MIT in each case. |#
 (define-method/copy 'DELAY
   (lambda (block environment expression)
     (delay/make
+     (delay/scode expression)
      (copy/expression block environment (delay/expression expression)))))
 
 (define-method/copy 'DISJUNCTION
   (lambda (block environment expression)
     (disjunction/make
+     (disjunction/scode expression)
      (copy/expression block environment (disjunction/predicate expression))
      (copy/expression block
 		      environment
@@ -231,6 +240,7 @@ MIT in each case. |#
 (define-method/copy 'IN-PACKAGE
   (lambda (block environment expression)
     (in-package/make
+     (in-package/scode expression)
      (copy/expression block environment (in-package/environment expression))
      (copy/quotation (in-package/quotation expression)))))
 
@@ -241,7 +251,8 @@ MIT in each case. |#
 	  (copy/block block environment (procedure/block procedure)))
       (lambda (block environment)
 	(let ((rename (make-renamer environment)))
-	  (procedure/make block
+	  (procedure/make (procedure/scode procedure)
+			  block
 			  (procedure/name procedure)
 			  (map rename (procedure/required procedure))
 			  (map rename (procedure/optional procedure))
@@ -259,6 +270,7 @@ MIT in each case. |#
 	  (copy/block block environment (open-block/block expression)))
       (lambda (block environment)
 	(open-block/make
+	 (open-block/scode expression)
 	 block
 	 (map (make-renamer environment) (open-block/variables expression))
 	 (copy/expressions block environment (open-block/values expression))
@@ -276,13 +288,15 @@ MIT in each case. |#
 
 (define-method/copy 'REFERENCE
   (lambda (block environment expression)
-    (reference/make block
+    (reference/make (reference/scode expression)
+		    block
 		    (copy/variable block environment
 				   (reference/variable expression)))))
 
 (define-method/copy 'SEQUENCE
   (lambda (block environment expression)
     (sequence/make
+     (sequence/scode expression)
      (copy/expressions block environment (sequence/actions expression)))))
 
 (define-method/copy 'THE-ENVIRONMENT

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usicon.scm,v 4.2 1991/04/20 06:10:10 cph Exp $
+$Id: usicon.scm,v 4.3 1993/08/03 03:09:51 gjr Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Usual Integrations: Constants
+;;; package: (scode-optimizer)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
@@ -80,6 +81,7 @@ MIT in each case. |#
 	(map (lambda (name)
 	       (cons name
 		     (constant/make
+		      false
 		      (lexical-reference system-global-environment name))))
 	     usual-integrations/constant-names))
   'DONE)

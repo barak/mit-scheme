@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.4 1993/01/02 07:33:39 cph Exp $
+$Id: xform.scm,v 4.5 1993/08/03 03:09:54 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Transform Input Expression
+;;; package: (scode-optimizer transform)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
@@ -67,7 +68,8 @@ MIT in each case. |#
 	    (call-with-values
 		(lambda () (open-block-components expression values))
 	      (lambda (auxiliary declarations body)
-		(transform/open-block* block
+		(transform/open-block* expression
+				       block
 				       environment
 				       auxiliary
 				       declarations
@@ -103,13 +105,14 @@ MIT in each case. |#
 (define (transform/open-block block environment expression)
   (call-with-values (lambda () (open-block-components expression values))
     (lambda (auxiliary declarations body)
-      (transform/open-block* (block/make block true '())
+      (transform/open-block* expression
+			     (block/make block true '())
 			     environment
 			     auxiliary
 			     declarations
 			     body))))
 
-(define (transform/open-block* block environment auxiliary declarations body)
+(define (transform/open-block* expression block environment auxiliary declarations body)
   (let ((variables
 	 (map (lambda (name) (variable/make&bind! block name))
 	      auxiliary)))
@@ -149,10 +152,11 @@ MIT in each case. |#
 				   (cons (transform (car actions))
 					 actions*))))))))))
       (lambda (vals actions)
-	(open-block/make block variables vals actions false)))))
+	(open-block/make expression block variables vals actions false)))))
 
 (define (transform/variable block environment expression)
-  (reference/make block
+  (reference/make expression
+		  block
 		  (environment/lookup environment
 				      (variable-name expression))))
 
@@ -161,7 +165,8 @@ MIT in each case. |#
     (lambda (name value)
       (let ((variable (environment/lookup environment name)))
 	(variable/side-effect! variable)
-	(assignment/make block
+	(assignment/make expression
+			 block
 			 variable
 			 (transform/expression block environment value))))))
 
@@ -181,7 +186,7 @@ MIT in each case. |#
 		   (environment/bind environment
 				     (block/bound-variables-list block))))
 	      (procedure/make
-	       block name required optional rest
+	       expression block name required optional rest
 	       (transform/procedure-body block
 					 environment
 					 body)))))))))
@@ -203,21 +208,26 @@ MIT in each case. |#
     (lambda (name value)
       (if (not (eq? block top-level-block))
 	  (error "Unscanned definition encountered (unable to proceed):" name))
-      (transform/combination
-       block environment
+      (transform/combination*
+       expression block environment
        (make-combination (make-primitive-procedure 'LOCAL-ASSIGNMENT)
 			 (list (make-the-environment) name value))))))
 
 (define (transform/access block environment expression)
   (access-components expression
     (lambda (environment* name)
-      (access/make (transform/expression block environment environment*)
+      (access/make expression
+		   (transform/expression block environment environment*)
 		   name))))
 
 (define (transform/combination block environment expression)
-  (combination-components expression
+  (transform/combination* expression block environment expression))
+
+(define (transform/combination* expression block environment expression*)
+  (combination-components expression*
     (lambda (operator operands)
-      (combination/make (transform/expression block environment operator)
+      (combination/make expression
+			(transform/expression block environment operator)
 			(transform/expressions block environment operands)))))
 
 (define (transform/comment block environment expression)
@@ -227,53 +237,61 @@ MIT in each case. |#
   (conditional-components expression
     (lambda (predicate consequent alternative)
       (conditional/make
+       expression
        (transform/expression block environment predicate)
        (transform/expression block environment consequent)
        (transform/expression block environment alternative)))))
 
 (define (transform/constant block environment expression)
   block environment ; ignored
-  (constant/make expression))
+  (constant/make expression expression))
 
 (define (transform/declaration block environment expression)
   (declaration-components expression
-    (lambda (declarations expression)
-      (declaration/make (declarations/parse block declarations)
-			(transform/expression block environment expression)))))
+    (lambda (declarations expression*)
+      (declaration/make expression
+			(declarations/parse block declarations)
+			(transform/expression block environment expression*)))))
 
 (define (transform/delay block environment expression)
   (delay/make
+   expression
    (transform/expression block environment (delay-expression expression))))
 
 (define (transform/disjunction block environment expression)
   (disjunction-components expression
     (lambda (predicate alternative)
       (disjunction/make
+       expression
        (transform/expression block environment predicate)
        (transform/expression block environment alternative)))))
 
 (define (transform/in-package block environment expression)
   (in-package-components expression
-    (lambda (environment* expression)
-      (in-package/make (transform/expression block environment environment*)
-		       (transform/quotation* expression)))))
+    (lambda (environment* expression*)
+      (in-package/make expression
+		       (transform/expression block environment environment*)
+		       (transform/quotation* false expression*)))))
 
 (define (transform/quotation block environment expression)
   block environment			;ignored
-  (transform/quotation* (quotation-expression expression)))
+  (transform/quotation* expression (quotation-expression expression)))
 
-(define (transform/quotation* expression)
-  (call-with-values (lambda () (transform/top-level expression '()))
-    quotation/make))
+(define (transform/quotation* expression expression*)
+  (call-with-values
+   (lambda () (transform/top-level expression* '()))
+   (lambda (block expression**)
+     (quotation/make expression block expression**))))
 
 (define (transform/sequence block environment expression)
   (sequence/make
+   expression
    (transform/expressions block environment (sequence-actions expression))))
 
 (define (transform/the-environment block environment expression)
-  environment expression ; ignored
+  environment ; ignored
   (block/unsafe! block)
-  (the-environment/make block))
+  (the-environment/make expression block))
 
 (define transform/dispatch
   (make-scode-walker

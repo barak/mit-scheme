@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sf.pkg,v 4.8 1993/01/02 07:33:37 cph Exp $
+$Id: sf.pkg,v 4.9 1993/08/03 03:09:48 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,7 @@ MIT in each case. |#
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block
+	  reassign
 	  variable/final-value)
   (import (runtime parser)
 	  lambda-optional-tag))
@@ -101,6 +102,7 @@ MIT in each case. |#
   (files "cgen")
   (parent (scode-optimizer))
   (export (scode-optimizer)
+	  *sf-associate*
 	  cgen/external)
   (export (scode-optimizer expansion)
 	  cgen/external-with-declarations))

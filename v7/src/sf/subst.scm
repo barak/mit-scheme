@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.9 1993/01/02 07:33:37 cph Exp $
+$Id: subst.scm,v 4.10 1993/08/03 03:09:49 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -48,6 +48,9 @@ MIT in each case. |#
 (define *current-block-names*)
 
 (define (integrate/top-level block expression)
+  (integrate/top-level* (object/scode expression) block expression))
+
+(define (integrate/top-level* scode block expression)
   (fluid-let ((*top-level-block* block)
 	      (*current-block-names* '()))
     (call-with-values
@@ -67,7 +70,10 @@ MIT in each case. |#
 						    environment
 						    expression))))))))
      (lambda (operations environment expression)
-       (values operations environment (quotation/make block expression))))))
+       (values operations environment
+	       (quotation/make scode
+			       block
+			       expression))))))
 
 (define (integrate/expressions operations environment expressions)
   (map (lambda (expression)
@@ -101,7 +107,8 @@ MIT in each case. |#
       ;; The value of an assignment is the old value
       ;; of the variable, hence, it is refernced.
       (variable/reference! variable)
-      (assignment/make (assignment/block assignment)
+      (assignment/make (assignment/scode assignment)
+		       (assignment/block assignment)
 		       variable
 		       (integrate/expression operations
 					     environment
@@ -122,7 +129,8 @@ MIT in each case. |#
 		  expression))
 	       (try-safe-integration
 		(lambda ()
-		  (integrate/name-if-safe expression environment operations
+		  (integrate/name-if-safe expression expression
+					  environment operations
 					  integration-success
 					  integration-failure))))
 	(operations/lookup operations variable
@@ -132,9 +140,8 @@ MIT in each case. |#
 	      (variable/reference! variable)
 	      expression)
 	     ((INTEGRATE)
-	      (integrate/name expression info environment
-			      integration-success
-			      integration-failure))
+	      (integrate/name expression expression info environment
+			      integration-success integration-failure))
 	     ((INTEGRATE-SAFELY)
 	      (try-safe-integration))
 	     (else
@@ -144,8 +151,8 @@ MIT in each case. |#
 	       (try-safe-integration)
 	       (integration-failure))))))))
 
-(define (integrate/name-if-safe reference environment operations
-				if-win if-fail)
+(define (integrate/name-if-safe expr reference environment
+				operations if-win if-fail)
   (let ((variable (reference/variable reference)))
     (if (or (variable/side-effected variable)
 	    (not (block/safe? (variable/block variable))))
@@ -154,8 +161,10 @@ MIT in each case. |#
 	       (lambda (value)
 		 (if (constant-value? value environment operations)
 		     (if-win
-		      (copy/expression/intern (reference/block reference)
-					      value))
+		      (reassign
+		       expr
+		       (copy/expression/intern (reference/block reference)
+					       value)))
 		     (if-fail)))))
 	  (environment/lookup environment variable
             (lambda (value)
@@ -166,6 +175,12 @@ MIT in each case. |#
 		  (finish value)))
 	    (lambda () (if-fail))
 	    (lambda () (if-fail)))))))
+
+(define (reassign expr object)
+  (if (and expr (object/scode expr))
+      ;; Abstraction violation
+      (with-new-scode (object/scode expr) object)
+      object))
 
 (define (constant-value? value environment operations)
   (let check ((value value) (top? true))
@@ -191,7 +206,8 @@ MIT in each case. |#
 			    ;; not found variable
 			    true)))))))))
 
-(define (integrate/reference-operator operations environment operator operands)
+(define (integrate/reference-operator expression operations
+				      environment operator operands)
   (let ((variable (reference/variable operator)))
     (letrec ((mark-integrated!
 	      (lambda ()
@@ -199,15 +215,17 @@ MIT in each case. |#
 	     (integration-failure
 	      (lambda ()
 		(variable/reference! variable)
-		(combination/optimizing-make operator operands)))
+		(combination/optimizing-make expression operator operands)))
 	     (integration-success
 	      (lambda (operator)
 		(mark-integrated!)
-		(integrate/combination operations environment
+		(integrate/combination expression
+				       operations environment
 				       operator operands)))
 	     (try-safe-integration
 	      (lambda ()
-		(integrate/name-if-safe operator environment operations
+		(integrate/name-if-safe expression operator
+					environment operations
 					integration-success
 					integration-failure))))
       (operations/lookup operations variable
@@ -215,13 +233,15 @@ MIT in each case. |#
 	 (case operation
 	   ((#F) (integration-failure))
 	   ((INTEGRATE INTEGRATE-OPERATOR)
-	    (integrate/name operator info environment
+	    (integrate/name expression
+			    operator info environment
 			    integration-success
 			    integration-failure))
 	   ((INTEGRATE-SAFELY)
 	    (try-safe-integration))
 	   ((EXPAND)
-	    (info operands
+	    (info expression
+		  operands
 		  (lambda (new-expression)
 		    (mark-integrated!)
 		    (integrate/expression operations environment
@@ -269,10 +289,13 @@ MIT in each case. |#
 		(values operations
 			environment
 			(if (open-block/optimized expression)
-			    (open-block/make block variables vals actions true)
+			    (open-block/make
+			     (and expression (object/scode expression))
+			     block variables
+			     vals actions true)
 			    (open-block/optimizing-make
-			     block variables vals actions operations
-			     environment)))))))))))
+			     expression block variables vals
+			     actions operations environment)))))))))))
 
 (define-method/integrate 'OPEN-BLOCK
   (lambda (operations environment expression)
@@ -387,7 +410,8 @@ you ask for.
 		       (list->set variable? eq? required)
 		       (free/expression (combination/operator body)))))
 		(combination/operator body)
-		(procedure/make block
+		(procedure/make (procedure/scode procedure)
+				block
 				(procedure/name procedure)
 				required
 				optional
@@ -403,52 +427,48 @@ you ask for.
 	     (and (reference? this-operand)
 		  (eq? (reference/variable this-operand) this-required)
 		  (match-up? (cdr operands) (cdr required)))))))
-
 
 (define-method/integrate 'COMBINATION
   (lambda (operations environment combination)
     (integrate/combination
-     operations
-     environment
+     combination operations environment
      (combination/operator combination)
      (integrate/expressions operations
 			    environment
 			    (combination/operands combination)))))
 
-(define (integrate/combination operations environment operator operands)
+(define (integrate/combination expression operations environment
+			       operator operands)
   (cond ((reference? operator)
-	 (integrate/reference-operator operations
-				       environment
-				       operator
-				       operands))
+	 (integrate/reference-operator expression operations environment
+				       operator operands))
 	((and (access? operator)
 	      (system-global-environment? (access/environment operator)))
-	 (integrate/access-operator operations environment operator operands))
+	 (integrate/access-operator expression operations environment
+				    operator operands))
 	((and (constant? operator)
 	      (eq? (constant/value operator) (ucode-primitive apply))
 	      (integrate/hack-apply? operands))
 	 => (lambda (operands*)
-	      (integrate/combination operations environment
+	      (integrate/combination expression
+				     operations environment
 				     (car operands*) (cdr operands*))))
 	(else
 	 (combination/optimizing-make
+	  expression
 	  (if (procedure? operator)
-	      (integrate/procedure-operator operations
-					    environment
-					    operator
-					    operands)
+	      (integrate/procedure-operator operations environment
+					    operator operands)
 	      (let ((operator
 		     (integrate/expression operations environment operator)))
 		(if (procedure? operator)
-		    (integrate/procedure-operator operations
-						  environment
-						  operator
-						  operands)
+		    (integrate/procedure-operator operations environment
+						  operator operands)
 		    operator)))
 	  operands))))
 
-(define (integrate/procedure-operator operations environment procedure
-				      operands)
+(define (integrate/procedure-operator operations environment
+				      procedure operands)
   (integrate/procedure operations
 		       (simulate-application environment procedure operands)
 		       procedure))
@@ -458,6 +478,7 @@ you ask for.
     (let ((declarations (declaration/declarations declaration))
 	  (expression (declaration/expression declaration)))
       (declaration/make
+       (declaration/scode declaration)
        declarations
        (integrate/expression (declarations/bind operations declarations)
 			     environment
@@ -500,7 +521,8 @@ you ask for.
 	  (if (null? (constant/value predicate))
 	      alternative
 	      consequent)
-	  (conditional/make predicate consequent alternative)))))
+	  (conditional/make (conditional/scode expression)
+			    predicate consequent alternative)))))
 
 ;; Optimize (or () a) => a; (or #t a) => #t
 
@@ -515,13 +537,15 @@ you ask for.
 	  (if (null? (constant/value predicate))
 	      alternative
 	      predicate)
-	  (disjunction/make predicate alternative)))))
+	  (disjunction/make (disjunction/scode expression)
+			    predicate alternative)))))
 
 (define-method/integrate 'SEQUENCE
   (lambda (operations environment expression)
     ;; Optimize (begin (foo)) => (foo)
     ;; Optimize (begin a b (foo) 22 (bar)) => (begin (foo) (bar))
     (sequence/optimizing-make
+     expression
      (integrate/actions operations environment
 			(sequence/actions expression)))))
 
@@ -542,11 +566,12 @@ you ask for.
 		     (integrate/expression operations environment action)))
 	      (integrate/actions operations environment (cdr actions))))))
 
-(define (sequence/optimizing-make actions)
+(define (sequence/optimizing-make expression actions)
   (let ((actions (remove-non-side-effecting actions)))
     (if (null? (cdr actions))
 	(car actions)
-	(sequence/make actions))))
+	(sequence/make (and expression (object/scode expression))
+		       actions))))
 
 (define (remove-non-side-effecting actions)
   ;; Do not remove references from sequences, because they have
@@ -577,11 +602,14 @@ you ask for.
       (if (system-global-environment? environment*)
 	  (let ((entry (assq name usual-integrations/constant-alist)))
 	    (if entry
-		(cdr entry)
-		(access/make environment* name)))
-	  (access/make (integrate/expression operations environment
+		(constant/make (access/scode expression)
+			       (constant/value (cdr entry)))
+		(access/make (access/scode expression)
+			     environment* name)))
+	  (access/make (access/scode expression)
+		       (integrate/expression operations environment
 					     environment*)
-		       name)))))  
+		       name)))))
 
 (define (system-global-environment? expression)
   (and (constant? expression)
@@ -590,42 +618,49 @@ you ask for.
 (define-method/integrate 'DELAY
   (lambda (operations environment expression)
     (delay/make
+     (delay/scode expression)
      (integrate/expression operations environment
 			   (delay/expression expression)))))
 
 (define-method/integrate 'IN-PACKAGE
   (lambda (operations environment expression)
-    (in-package/make (integrate/expression operations environment
+    (in-package/make (in-package/scode expression)
+		     (integrate/expression operations environment
 					   (in-package/environment expression))
 		     (integrate/quotation (in-package/quotation expression)))))
 
 (define (integrate/quotation quotation)
   (call-with-values
       (lambda ()
-	(integrate/top-level (quotation/block quotation)
-			     (quotation/expression quotation)))
+	(integrate/top-level* (quotation/scode quotation)
+			      (quotation/block quotation)
+			      (quotation/expression quotation)))
     (lambda (operations environment expression)
       operations environment		;ignore
       expression)))
 
-(define (integrate/access-operator operations environment operator operands)
+(define (integrate/access-operator expression operations
+				   environment operator operands)
   (let ((name (access/name operator))
 	(dont-integrate
 	 (lambda ()
-	   (combination/make operator operands))))
+	   (combination/make (and expression (object/scode expression))
+			     operator operands))))
     (cond ((and (eq? name 'APPLY)
 		(integrate/hack-apply? operands))
 	   => (lambda (operands*)
-		(integrate/combination operations environment
+		(integrate/combination expression
+				       operations environment
 				       (car operands*) (cdr operands*))))
 	  ((assq name usual-integrations/constant-alist)
 	   => (lambda (entry)
-		(integrate/combination operations environment
+		(integrate/combination expression
+				       operations environment
 				       (cdr entry) operands)))
 	  ((assq name usual-integrations/expansion-alist)
 	   => (lambda (entry)
-		((cdr entry) operands identity-procedure
-			     dont-integrate false)))
+		((cdr entry) expression operands
+			     identity-procedure dont-integrate false)))
 	  (else
 	   (dont-integrate)))))
 
@@ -646,12 +681,14 @@ you ask for.
 		vals)
       (values environment (map delayed-integration/force vals)))))
 
-(define (integrate/name reference info environment if-integrated if-not)
+(define (integrate/name expr reference info environment if-integrated if-not)
   (let ((variable (reference/variable reference)))
     (let ((finish
 	   (lambda (value)
 	     (if-integrated
-	      (copy/expression/intern (reference/block reference) value)))))
+	      (reassign
+	       expr
+	       (copy/expression/intern (reference/block reference) value))))))
       (if info
 	  (finish (integration-info/expression info))
 	  (environment/lookup environment variable
@@ -731,19 +768,21 @@ you ask for.
 
 (define (simulate-application environment procedure operands)
   (define (procedure->pretty procedure)
-    (let ((arg-list (append (procedure/required procedure)
-			    (if (null? (procedure/optional procedure))
-				'()
-				(cons lambda-optional-tag
-				      (procedure/optional procedure)))
-			    (if (not (procedure/rest procedure))
-				'()
-				(procedure/rest procedure)))))
-      (if (procedure/name procedure)
-	  `(named-lambda (,(procedure/name procedure) ,@arg-list)
-	     ...)
-	  `(lambda ,arg-list
-	     ...))))
+    (if (procedure/scode procedure)
+	(unsyntax (procedure/scode procedure))
+	(let ((arg-list (append (procedure/required procedure)
+				(if (null? (procedure/optional procedure))
+				    '()
+				    (cons lambda-optional-tag
+					  (procedure/optional procedure)))
+				(if (not (procedure/rest procedure))
+				    '()
+				    (procedure/rest procedure)))))
+	  (if (procedure/name procedure)
+	      `(named-lambda (,(procedure/name procedure) ,@arg-list)
+		 ...)
+	      `(lambda ,arg-list
+		 ...)))))
 
   (define (match-required environment required operands)
     (cond ((null? required)
@@ -774,14 +813,14 @@ you ask for.
 			   (cdr operands)))))
 
   (define (listify-tail operands)
-    (let ((const-null (constant/make '())))
+    (let ((const-null (constant/make false '())))
       (if (null? operands)
 	  const-null
-	  (let ((const-cons (constant/make (ucode-primitive cons))))
+	  (let ((const-cons (constant/make false (ucode-primitive cons))))
 	    (let walk ((operands operands))
 	      (if (null? operands)
 		  const-null
-		  (combination/make const-cons
+		  (combination/make false const-cons
 				    (list (car operands)
 					  (walk (cdr operands))))))))))
 
@@ -899,12 +938,13 @@ forms are simply removed.
 ;;; Actually, we really don't want to hack with these for various
 ;;; reasons
 
-(define (combination/optimizing-make operator operands)
+(define (combination/optimizing-make expression operator operands)
   (cond (
 	 ;; fold constants
 	 (and (foldable-operator? operator)
 	      (foldable-constants? operands))
-	 (constant/make (apply (constant/value operator)
+	 (constant/make (and expression (object/scode expression))
+			(apply (constant/value operator)
 			       (map foldable-constant-value operands))))
 
 	(
@@ -935,9 +975,11 @@ forms are simply removed.
 			    ;; optimizing into
 			    ;; (foo bar (define (baz) ..) ..)
 			    (not (open-block? (procedure/body operator))))
-		       (procedure/body operator)
+		       (reassign expression (procedure/body operator))
 		       (combination/make
+			(and expression (object/scode expression))
 			(procedure/make
+			 (procedure/scode operator)
 			 (procedure/block operator)
 			 (procedure/name operator)
 			 required
@@ -948,9 +990,11 @@ forms are simply removed.
 	      (if (null? unreferenced-operands)
 		  form
 		  (sequence/optimizing-make
+		   expression
 		   (append unreferenced-operands (list form))))))))
 	(else
-	 (combination/make operator operands))))
+	 (combination/make (and expression (object/scode expression))
+			   operator operands))))
 
 (define (delete-unreferenced-parameters parameters rest body operands receiver)
   (let ((free-in-body (free/expression body)))
@@ -1008,8 +1052,8 @@ forms are simply removed.
 ;; 5 Re-optimize the code in the body.  This can help if the
 ;;    eta-substitution-switch is on.
 
-(define (open-block/optimizing-make block vars values actions
-				    operations environment)
+(define (open-block/optimizing-make expression block vars values
+				    actions operations environment)
   (if (and *block-optimizing-switch
 	   (block/safe? block))
       (let ((table:var->vals (associate-vars-and-vals vars values))
@@ -1030,10 +1074,13 @@ forms are simply removed.
 	      ;; (print-template template)
 	      (integrate/expression
 	       operations environment
-	       (build-new-code template
+	       (build-new-code expression
+			       template
 			       (block/parent block)
 			       table:var->vals actions))))))
-      (open-block/make block vars values actions #t)))
+      (open-block/make
+       (and expression (object/scode expression))
+       block vars values actions #t)))
 
 #|
 (define (print-template template)
@@ -1332,8 +1379,8 @@ forms are simply removed.
 (define (linearize graph)
   (collapse-parallel-nodelist 0 (%node-needs graph)))
 
-(define (build-new-code template parent vars->vals actions)
-  (let ((body (sequence/optimizing-make (get-body actions))))
+(define (build-new-code expression template parent vars->vals actions)
+  (let ((body (sequence/optimizing-make expression (get-body actions))))
     (let loop ((template template)
 	       (block    parent)
 	       (code     body))
@@ -1354,7 +1401,9 @@ forms are simply removed.
 		     (loop (cdr template)
 			   block
 			   (combination/optimizing-make
+			    (and expression (object/scode expression))
 			    (procedure/make
+			     false
 			     block
 			     lambda-tag:let
 			     this-vars
@@ -1366,6 +1415,7 @@ forms are simply removed.
 		     (loop (cdr template)
 			   block
 			   (open-block/make
+			    (and expression (object/scode expression))
 			    block this-vars this-vals
 			    (append (make-list
 				     (length this-vals)

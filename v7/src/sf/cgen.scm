@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/cgen.scm,v 4.1 1988/06/13 12:29:04 cph Rel $
+$Id: cgen.scm,v 4.2 1993/08/03 03:09:44 gjr Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; SCode Optimizer: Generate SCode from Expression
+;;; package: (scode-optimizer cgen)
 
 (declare (usual-integrations)
 	 (automagic-integrations)
@@ -40,9 +41,19 @@ MIT in each case. |#
 	 (eta-substitution)
 	 (integrate-external "object"))
 
+(define *sf-associate*
+  (lambda (new old)
+    old new
+    false))
+
+(define (cgen/output old new)
+  (*sf-associate* new (and old (object/scode old)))
+  new)
+
 (define (cgen/external quotation)
   (fluid-let ((flush-declarations? true))
-    (cgen/top-level quotation)))
+    (cgen/output quotation
+		 (cgen/top-level quotation))))
 
 (define (cgen/external-with-declarations expression)
   (fluid-let ((flush-declarations? false))
@@ -91,8 +102,13 @@ MIT in each case. |#
 (define dispatch-vector
   (expression/make-dispatch-vector))
 
-(define define-method/cgen
+(define %define-method/cgen
   (expression/make-method-definer dispatch-vector))
+
+(define-integrable (define-method/cgen type handler)
+  (%define-method/cgen type
+   (lambda (interns expression)
+     (cgen/output expression (handler interns expression)))))
 
 (define (cgen/variable interns variable)
   (cdr (or (assq variable (cdr interns))
