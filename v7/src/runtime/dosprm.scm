@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.11 1992/09/17 00:47:35 jinx Exp $
+$Id: dosprm.scm,v 1.12 1992/09/18 16:38:47 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -38,22 +38,25 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (file-directory? filename)
-  ((ucode-primitive file-directory?)
+  ((ucode-primitive file-directory? 1)
    (->namestring (merge-pathnames filename))))
 
 (define (file-symbolic-link? filename)
-  ((ucode-primitive file-symlink?) (->namestring (merge-pathnames filename))))
+  false)
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1)
+   (->namestring (merge-pathnames filename))))
 
 (define-integrable (set-file-modes! filename modes)
-  ((ucode-primitive set-file-modes!) (->namestring (merge-pathnames filename))
-				     modes))
+  ((ucode-primitive set-file-modes! 2)
+   (->namestring (merge-pathnames filename))
+   modes))
 
 (define (file-access filename amode)
-  ((ucode-primitive file-access) (->namestring (merge-pathnames filename))
-				 amode))
+  ((ucode-primitive file-access 2)
+   (->namestring (merge-pathnames filename))
+   amode))
 
 ;; upwards compatability
 (define dos/file-access file-access)
@@ -64,10 +67,11 @@ MIT in each case. |#
 (define (file-writable? filename)
   (let ((pathname (merge-pathnames filename)))
     (let ((filename (->namestring pathname)))
-      (or ((ucode-primitive file-access) filename 2)
-	  (and (not ((ucode-primitive file-exists?) filename))
-	       ((ucode-primitive file-access) (directory-namestring pathname)
-					      2))))))
+      (or ((ucode-primitive file-access 2) filename 2)
+	  (and (not ((ucode-primitive file-exists? 1) filename))
+	       ((ucode-primitive file-access 2)
+		(directory-namestring pathname)
+		2))))))
 
 (define (call-with-temporary-filename receiver)
   (let find-eligible-directory
@@ -98,7 +102,7 @@ MIT in each case. |#
 	      (find-eligible-directory (cdr eligible-directories)))))))
 
 (define (file-attributes filename)
-  ((ucode-primitive file-attributes)
+  ((ucode-primitive file-attributes 1)
    (->namestring (merge-pathnames filename))))
 
 (define file-attributes-direct
@@ -149,7 +153,7 @@ MIT in each case. |#
 	(time (or modification-time
 		  access-time
 		  (file-modification-time-direct filename))))
-    ((ucode-primitive set-file-times!)
+    ((ucode-primitive set-file-times! 3)
      filename
      (or access-time time)
      (or modification-time time))))
@@ -170,7 +174,7 @@ MIT in each case. |#
 		     variable)
 	      (let ((variable (string-upcase variable)))
 		(cond ((assoc variable environment-variables) => cdr)
-		      (else ((ucode-primitive get-environment-variable)
+		      (else ((ucode-primitive get-environment-variable 1)
 			     variable)))))))
   (set! set-environment-variable!
 	(lambda (variable value)
@@ -195,7 +199,7 @@ MIT in each case. |#
 ) ; End LET
 
 (define (dos/user-home-directory user-name)
-  (let ((directory ((ucode-primitive get-user-home-directory) user-name)))
+  (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
     directory))
@@ -205,16 +209,16 @@ MIT in each case. |#
       (dos/user-home-directory (dos/current-user-name))))
 
 (define-integrable dos/current-user-name
-  (ucode-primitive current-user-name))
+  (ucode-primitive current-user-name 0))
 
 (define-integrable dos/current-file-time
-  (ucode-primitive current-file-time))
+  (ucode-primitive current-file-time 0))
 
 (define-integrable dos/file-time->string
-  (ucode-primitive file-time->string))
+  (ucode-primitive file-time->string 1))
 
 (define (file-touch filename)
-  ((ucode-primitive file-touch)
+  ((ucode-primitive file-touch 1)
    (->namestring (merge-pathnames filename))))
 
 (define (make-directory name)
