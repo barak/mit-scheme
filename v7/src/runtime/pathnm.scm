@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.24 1992/12/03 03:20:15 cph Exp $
+$Id: pathnm.scm,v 14.25 1993/01/12 23:08:57 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -156,6 +156,16 @@ these rules:
 (define (pathname-end-of-line-string pathname)
   (let ((pathname (->pathname pathname)))
     ((host-operation/end-of-line-string (%pathname-host pathname))
+     pathname)))
+
+(define (pathname-end-of-file-marker/input pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/end-of-file-marker/input (%pathname-host pathname))
+     pathname)))
+
+(define (pathname-end-of-file-marker/output pathname)
+  (let ((pathname (->pathname pathname)))
+    ((host-operation/end-of-file-marker/output (%pathname-host pathname))
      pathname)))
 
 (define (pathname=? x y)
@@ -449,7 +459,9 @@ these rules:
   (operation/init-file-pathname false read-only true)
   (operation/pathname-simplify false read-only true)
   (operation/end-of-line-string false read-only true)
-  (operation/pathname-canonicalize false read-only true))
+  (operation/pathname-canonicalize false read-only true)
+  (operation/end-of-file-marker/input false read-only true)
+  (operation/end-of-file-marker/output false read-only true))
 
 (define-structure (host (type vector)
 			(named ((ucode-primitive string->symbol)
@@ -508,6 +520,12 @@ these rules:
 
 (define (host-operation/pathname-canonicalize host)
   (host-type/operation/pathname-canonicalize (host/type host)))
+
+(define (host-operation/end-of-file-marker/input host)
+  (host-type/operation/end-of-file-marker/input (host/type host)))
+
+(define (host-operation/end-of-file-marker/output host)
+  (host-type/operation/end-of-file-marker/output (host/type host)))
 
 ;;;; File System Stuff
 
@@ -572,7 +590,8 @@ these rules:
 (define known-host-types
   '((UNIX . 0)
     (DOS . 1)
-    (VMS . 2)))
+    (VMS . 2)
+    (MS-NT . 3)))
 
 (define (make-unimplemented-host-type index)
   (let* ((name (let loop ((types known-host-types))
@@ -588,7 +607,7 @@ these rules:
     (make-host-type index name
 		    fail fail fail fail fail
 		    fail fail fail fail fail
-		    fail fail)))
+		    fail fail fail fail)))
 
 (define available-host-types
   '())

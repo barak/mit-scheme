@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.31 1992/12/07 19:06:45 cph Exp $
+$Id: io.scm,v 14.32 1993/01/12 23:08:46 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -525,7 +525,8 @@ MIT in each case. |#
   string
   position
   line-translation			; string that newline maps to
-  logical-size)
+  logical-size
+  end-marker)
 
 (define (output-buffer-sizes translation buffer-size)
   (let ((logical-size
@@ -538,7 +539,8 @@ MIT in each case. |#
 		(fix:+ logical-size
 		       (fix:- (string-length translation) 1))))))
 
-(define (make-output-buffer channel buffer-size #!optional line-translation)
+(define (make-output-buffer channel buffer-size
+			    #!optional line-translation end-marker)
   (let ((translation (and (not (default-object? line-translation))
 			  line-translation)))
     (with-values
@@ -551,9 +553,14 @@ MIT in each case. |#
 				  (make-string string-size))
 			     0
 			     translation
-			     logical-size)))))
+			     logical-size
+			     (and (not (default-object? end-marker))
+				  end-marker))))))
 
 (define (output-buffer/close buffer)
+  (cond ((output-buffer/end-marker buffer)
+	 => (lambda (marker)
+	      (output-buffer/write-char-block buffer marker))))
   (output-buffer/drain-block buffer)
   (channel-close (output-buffer/channel buffer)))
 
@@ -718,7 +725,8 @@ MIT in each case. |#
   ;; END-INDEX is zero iff CHANNEL is closed.
   end-index
   line-translation			; string that maps to newline
-  real-end)
+  real-end
+  end-marker)
 
 (define (input-buffer-size translation buffer-size)
   (cond ((not translation)
@@ -730,7 +738,8 @@ MIT in each case. |#
 	(else
 	 buffer-size)))
 
-(define (make-input-buffer channel buffer-size #!optional line-translation)
+(define (make-input-buffer channel buffer-size
+			   #!optional line-translation end-marker)
   (let* ((translation (and (not (default-object? line-translation))
 			   line-translation))
 	 (string-size (input-buffer-size translation buffer-size)))
@@ -739,7 +748,9 @@ MIT in each case. |#
 			string-size
 			string-size
 			translation
-			string-size)))
+			string-size
+			(and (not (default-object? end-marker))
+			     end-marker))))
 
 (define (input-buffer/close buffer)
   (set-input-buffer/end-index! buffer 0)
@@ -785,6 +796,7 @@ MIT in each case. |#
     (and (channel-open? channel)
 	 (channel-type=file? channel)
 	 (not (input-buffer/line-translation buffer)) ; Can't tell otherwise
+	 (not (input-buffer/end-marker buffer))	      ; Can't tell otherwise
 	 (let ((n (fix:- (file-length channel) (file-position channel))))
 	   (and (fix:>= n 0)
 		(fix:+ (input-buffer/buffered-chars buffer) n))))))
@@ -834,18 +846,34 @@ MIT in each case. |#
 	  (let ((n-read
 		 (channel-read channel string delta (string-length string))))
 	    (and n-read
-		 (let ((end-index (fix:+ delta n-read)))
-		   (set-input-buffer/start-index! buffer 0)
-		   (set-input-buffer/end-index! buffer end-index)
-		   (set-input-buffer/real-end! buffer end-index)
-		   (cond ((and (input-buffer/line-translation buffer)
-			       (not (fix:= end-index 0)))
-			  (input-buffer/translate! buffer))
-			 ((fix:= n-read 0)
-			  (channel-close channel)
-			  end-index)
-			 (else
-			  end-index)))))))))
+		 (let ((n-read
+			(cond ((input-buffer/end-marker buffer)
+			       => (lambda (marker)
+				    (if (and (fix:> n-read 0)
+					     (channel-type=file? channel)
+					     (fix:= (file-position channel)
+						    (file-length channel))
+					     (char=?
+					      (string-ref string
+							  (+ delta
+							     (-1+ n-read)))
+						     marker))
+					(-1+ n-read)
+					n-read)))
+			      (else
+			       n-read))))
+		   (let ((end-index (fix:+ delta n-read)))
+		     (set-input-buffer/start-index! buffer 0)
+		     (set-input-buffer/end-index! buffer end-index)
+		     (set-input-buffer/real-end! buffer end-index)
+		     (cond ((and (input-buffer/line-translation buffer)
+				 (not (fix:= end-index 0)))
+			    (input-buffer/translate! buffer))
+			   ((fix:= n-read 0)
+			    (channel-close channel)
+			    end-index)
+			   (else
+			    end-index))))))))))
 
 (define-integrable (input-buffer/fill* buffer)
   (let ((n (input-buffer/fill buffer)))

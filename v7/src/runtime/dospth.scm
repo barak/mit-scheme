@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dospth.scm,v 1.17 1992/11/03 22:42:35 jinx Exp $
+$Id: dospth.scm,v 1.18 1993/01/12 23:09:04 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define hook/dos/end-of-line-string)
+(define hook/dos/end-of-file-marker/input)
+(define hook/dos/end-of-file-marker/output)
 
 (define sub-directory-delimiters
   ;; Allow forward slashes as well as backward slashes so that
@@ -65,10 +67,14 @@ MIT in each case. |#
 		  dos/init-file-pathname
 		  dos/pathname-simplify
 		  dos/end-of-line-string
-		  dos/canonicalize))
+		  dos/canonicalize
+		  dos/end-of-file-marker/input
+		  dos/end-of-file-marker/output))
 
 (define (initialize-package!)
   (set! hook/dos/end-of-line-string default/dos/end-of-line-string)
+  (set! hook/dos/end-of-file-marker/input default/dos/end-of-file-marker/input)
+  (set! hook/dos/end-of-file-marker/output default/dos/end-of-file-marker/output)
   (add-pathname-host-type! 'DOS make-dos-host-type))
 
 ;;;; Pathname Parser
@@ -404,3 +410,20 @@ MIT in each case. |#
 (define (default/dos/end-of-line-string pathname)
   pathname				; ignored
   "\r\n")
+
+;; Scheme understands files that end in ^Z, but does not create them
+
+(define (dos/end-of-file-marker/input pathname)
+  (hook/dos/end-of-file-marker/input pathname))
+
+(define (default/dos/end-of-file-marker/input pathname)
+  pathname				; ignored
+  #\Call				; ^Z
+  )
+
+(define (dos/end-of-file-marker/output pathname)
+  (hook/dos/end-of-file-marker/output pathname))
+
+(define (default/dos/end-of-file-marker/output pathname)
+  pathname				; ignored
+  false)
