@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.24 2001/11/09 21:38:43 cph Exp $
+;;; $Id: parser.scm,v 1.25 2001/11/10 06:31:47 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -283,6 +283,8 @@
 
 (define-parser (with-pointer identifier expression)
   pointer
+  ;; Ignore the POINTER context.  This is a kludge that prevents the
+  ;; binding of IDENTIFIER from being discarded by the optimizer.
   `((LAMBDA (,identifier)
       ,(compile-parser-expression expression identifier ks kf))
     ,(fetch-pointer)))

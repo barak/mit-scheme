@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.21 2001/11/09 21:38:47 cph Exp $
+;;; $Id: matcher.scm,v 1.22 2001/11/10 06:31:16 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -278,6 +278,8 @@
 
 (define-matcher (with-pointer identifier expression)
   pointer
+  ;; Ignore the POINTER context.  This is a kludge that prevents the
+  ;; binding of IDENTIFIER from being discarded by the optimizer.
   `((LAMBDA (,identifier)
       ,(compile-matcher-expression expression identifier ks kf))
     ,(fetch-pointer)))
