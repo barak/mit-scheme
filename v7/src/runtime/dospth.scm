@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.8 1992/08/12 08:49:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.9 1992/08/12 08:57:22 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -205,15 +205,14 @@ MIT in each case. |#
   ;; This should really canonicalize the directory as well.
   (let ((name (%pathname-name pathname))
 	(type (%pathname-type pathname)))
-    (if (and (valid? name 8)
-	     (valid? type 3)
+    (if (and (valid? name 8) (valid? type 3))
 	pathname
 	(%make-pathname (%pathname-host pathname)
 			(%pathname-device pathname)
 			(%pathname-directory pathname)
 			(canonicalize-field name 8)
 			(canonicalize-field type 3)
-			(%pathname-version pathname))))))
+			(%pathname-version pathname)))))
 
 ;;;; Pathname Unparser
 
