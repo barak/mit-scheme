@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 14.1 1988/06/13 11:47:52 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 14.2 1996/11/26 17:32:06 adams Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -70,6 +70,12 @@ MIT in each case. |#
 ;; <=, rather than like <).
 
 (define (sort! v pred)
+
+  (define-integrable < fix:<)
+  (define-integrable > fix:>)
+  (define-integrable 1+ fix:1+)
+  (define-integrable + fix:+)
+
   (define (sort-internal! vec temp low high)
     (if (< low high)
 	(let* ((middle (quotient (+ low high) 2))
