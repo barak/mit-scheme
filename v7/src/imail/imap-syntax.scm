@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.15 2000/07/05 01:23:05 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.16 2000/07/05 03:25:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -415,8 +415,8 @@
 						    #\-)))
 		     (if (not index*) (lose))
 		     (loop (fix:+ index* 1)
-			   (fix:+ n
-				  (let ((m (fix:- index* index)))
+			   (fix:+ (fix:+ n (fix:- index start))
+				  (let ((m (fix:- index* (fix:+ index 1))))
 				    (if (fix:= m 1)
 					1
 					(let ((q (fix:quotient m 4))
