@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.11 1991/06/15 00:40:12 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.12 1991/07/11 04:02:34 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -75,6 +75,11 @@ case $# in
 	hp9k300 | bobcat)		# HP9000 series 300
 		system_file=hpux
 		machine_file=hp9k300
+		cmpint_file=cmpint-mc68k.h
+		;;
+	hp9k400 | bobcat)		# HP9000 series 400
+		system_file=hpux
+		machine_file=hp9k400
 		cmpint_file=cmpint-mc68k.h
 		;;
 	hp9k800 | spectrum | hppa)	# HP9000 series 800
@@ -199,7 +204,7 @@ case $# in
 *)
 	echo "Usage: $progname machine"
 	echo "Where \`machine' is one of:"
-	echo "vax-bsd42 vax-bsd43 vax-ultrix mips-ultrix hp9k300 hp9k800"
+	echo "vax-bsd42 vax-bsd43 vax-ultrix mips-ultrix hp9k300 hp9k400 hp9k800"
 	echo "sun3 sun3-nfp sun4 umax next i386-sysv"
 	if [ -r config.status ]
 	then
