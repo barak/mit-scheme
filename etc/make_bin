@@ -1,22 +1,27 @@
-#!/bin/csh -f
+#!/bin/sh
 
-set scheme=`pwd`
+scheme=`pwd`
 
-if (! -e $scheme/microcode/Psbtobin ) then
+if [ ! -x $scheme/microcode/Psbtobin ]
+then
   (cd $scheme/microcode; make Psbtobin)
-endif
+fi
 
 cd $scheme/psb
-foreach i (`find * -type d -print | xargs echo`)
-  if (! -d $scheme/$i) then
+for i in `find * -type d -print | xargs echo`
+do
+  if [ ! -d $scheme/$i ]
+  then
     echo "mkdir $scheme/$i"
     mkdir $scheme/$i
-  endif
+  fi
   cd $scheme/psb/$i
-  foreach j (*)
-    if (-f $j) then
+  for j in *
+  do
+    if [ -f $j ]
+    then
       echo "Psbtobin $scheme/$i/$j"
-      $scheme/microcode/Psbtobin < $j >! $scheme/$i/$j
-    endif
-  end
-end
+      $scheme/microcode/Psbtobin < $j > $scheme/$i/$j
+    fi
+  done
+done
