@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.99 2000/06/01 20:08:26 cph Exp $
+;;; $Id: imail-imap.scm,v 1.100 2000/06/02 01:52:46 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -785,18 +785,26 @@
 		    x))
 	      selector)))
     (imap:response:fetch-body-part
-     (imap:command:uid-fetch
-      (imap-folder-connection (message-folder message))
-      (imap-message-uid message)
-      `(',(string-append "body["
-			 (decorated-string-append
-			  "" "." ""
-			  (map (lambda (x)
-				 (if (exact-nonnegative-integer? x)
-				     (number->string x)
-				     (symbol->string x)))
-			       section))
-			 "]")))
+     (let ((suffix 
+	    (string-append
+	     " body part for message "
+	     (number->string (+ (message-index message) 1)))))
+       ((imail-message-wrapper "Reading" suffix)
+	(lambda ()
+	  (imap:read-literal-progress-hook imail-progress-meter
+	    (lambda ()
+	      (imap:command:uid-fetch
+	       (imap-folder-connection (message-folder message))
+	       (imap-message-uid message)
+	       `(',(string-append "body["
+				  (decorated-string-append
+				   "" "." ""
+				   (map (lambda (x)
+					  (if (exact-nonnegative-integer? x)
+					      (number->string x)
+					      (symbol->string x)))
+					section))
+				  "]"))))))))
      section
      #f)))
 
