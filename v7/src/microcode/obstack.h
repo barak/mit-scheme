@@ -103,6 +103,8 @@ Summary:
 #ifndef __OBSTACKS__
 #define __OBSTACKS__
 
+#include "ansidecl.h"
+
 /* We use subtraction of (char *)0 instead of casting to int
    because on word-addressable machines a simple cast to int
    may ignore the byte-within-word field of the pointer.  */
@@ -112,7 +114,7 @@ Summary:
 #endif
 
 #ifndef __INT_TO_PTR
-#define __INT_TO_PTR(P) ((P) + (char *)0)
+#define __INT_TO_PTR(P) ((PTR) ((P) + (char *)0))
 #endif
 
 struct _obstack_chunk		/* Lives at front of each chunk. */
