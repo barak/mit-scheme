@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.78 1994/04/22 05:05:34 cph Exp $
+;;;	$Id: intmod.scm,v 1.79 1994/04/22 05:19:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -718,14 +718,24 @@ If this is an error, the debugger examines the error condition."
 		(apply min (map window-x-size windows)))))))
 
 (define (operation/write-result port expression value hash-number)
-  (let ((buffer (port/buffer port)))
-    (if (and (not (ref-variable inferior-repl-write-results buffer))
-	     (memq (operation/current-expression-context port expression)
-		   '(EXPRESSION OTHER-BUFFER)))
+  (let ((buffer (port/buffer port))
+	(other-buffer?
+	 (memq (operation/current-expression-context port expression)
+	       '(OTHER-BUFFER EXPRESSION))))
+    (if (and other-buffer?
+	     (not (ref-variable inferior-repl-write-results buffer)))
 	(transcript-write value
 			  (and (ref-variable enable-transcript-buffer buffer)
 			       (transcript-buffer)))
-	(default/write-result port expression value hash-number))))
+	(begin
+	  (default/write-result port expression value hash-number)
+	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
+	      (transcript-write value #f))))))
+
+(define (mark-visible? mark)
+  (there-exists? (buffer-windows (mark-buffer mark))
+    (lambda (window)
+      (window-mark-visible? window mark))))
 
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
