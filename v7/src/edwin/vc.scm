@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.63 2000/04/06 03:10:45 cph Exp $
+;;; $Id: vc.scm,v 1.64 2000/04/07 19:54:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -1035,7 +1035,8 @@ There is a special command, `*l', to mark all files currently locked.
 	  (if buffer
 	      (buffer-put! log-buffer 'VC-PARENT-BUFFER buffer)
 	      (buffer-remove! log-buffer 'VC-PARENT-BUFFER)))
-	(let ((window (selected-window)))
+	(let ((window (selected-window))
+	      (buffer (selected-buffer)))
 	  (let ((log-window (pop-up-buffer log-buffer #t)))
 	    (buffer-put! log-buffer
 			 'VC-LOG-FINISH-ENTRY
@@ -1043,10 +1044,11 @@ There is a special command, `*l', to mark all files currently locked.
 					  finish-entry
 					  after
 					  (weak-cons log-window #f)
-					  (weak-cons window #f)))))
+					  (weak-cons window #f)
+					  (weak-cons buffer #f)))))
 	(message msg "  Type C-c C-c when done."))))
 
-(define (vc-finish-entry reference finish-entry after log-window window)
+(define (vc-finish-entry reference finish-entry after log-window window buffer)
   (lambda (log-buffer)
     (if (vc-master? reference)
 	(begin
@@ -1054,34 +1056,37 @@ There is a special command, `*l', to mark all files currently locked.
 	  (vc-backend-check-log-entry reference log-buffer)))
     (guarantee-newline (buffer-end log-buffer))
     (let ((comment (buffer-string log-buffer))
-	  (buffer (chase-parent-buffer log-buffer)))
+	  (parent-buffer (chase-parent-buffer log-buffer)))
       (comint-record-input vc-comment-ring comment)
       (if (buffer-alive? log-buffer)
 	  (begin
 	    ;; Save any changes the user might have made while editing
 	    ;; the comment.
-	    (if (not (vc-dired-buffer? buffer))
-		(vc-save-buffer buffer #t))
-	    (pop-up-buffer buffer #t)))
+	    (if (not (vc-dired-buffer? parent-buffer))
+		(vc-save-buffer parent-buffer #t))
+	    (pop-up-buffer parent-buffer #t)))
+      ;; If a new window was created to hold the log buffer, and the log
+      ;; buffer is still selected in that window, delete it.
+      (let ((log-window (weak-car log-window)))
+	(if (and log-window
+		 (window-live? log-window)
+		 (eq? log-buffer (window-buffer log-window))
+		 (not (window-has-no-neighbors? log-window)))
+	    (window-delete! log-window)))
+      ;; Either kill or bury the log buffer.
+      (if (buffer-alive? log-buffer)
+	  (if (ref-variable vc-delete-logbuf-window log-buffer)
+	      (kill-buffer log-buffer)
+	      (bury-buffer log-buffer)))
+      (let ((window (weak-car window)))
+	(if (and window (window-live? window))
+	    (begin
+	      (select-window window)
+	      (let ((buffer (weak-car buffer)))
+		(if (and buffer (buffer-alive? buffer))
+		    (select-buffer-in-window buffer window #f))))))
       ;; Do the log operation.
       (finish-entry comment))
-    ;; If a new window was created to hold the log buffer, and the log
-    ;; buffer is still selected in that window, delete it.
-    (let ((log-window (weak-car log-window)))
-      (if (and log-window
-	       (window-live? log-window)
-	       (eq? log-buffer (window-buffer log-window))
-	       (not (window-has-no-neighbors? log-window)))
-	  (window-delete! log-window)))
-    ;; Either kill or bury the log buffer.
-    (if (buffer-alive? log-buffer)
-	(if (ref-variable vc-delete-logbuf-window log-buffer)
-	    (kill-buffer log-buffer)
-	    (bury-buffer log-buffer)))
-    (let ((window (weak-car window)))
-      (if (and window
-	       (window-live? window))
-	  (select-window window)))
     (if after (after))))
 
 (define vc-comment-ring
