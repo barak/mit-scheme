@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.15 1990/11/14 11:40:00 cph Exp $
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y300.lcl,v 1.16 1990/11/15 23:20:35 cph Rel $
  */
 
 /* These extra files are for 6003.  They assume we're using HP-UX. */
@@ -34,9 +34,9 @@
 #endif
 
 KIT_SOURCES = $(X_SOURCES) $(TERMCAP_SOURCES) $(GRAPHICS_SOURCES)\
-	SOURCES_SYSTEM SOURCES_MACHINE gpio.c dmpwrld.c
+	SOURCES_SYSTEM SOURCES_MACHINE gpio.c
 KIT_OBJECTS = $(X_OBJECTS) $(TERMCAP_OBJECTS) $(GRAPHICS_OBJECTS)\
-	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o dmpwrld.o usrkit.o
+	OBJECTS_SYSTEM OBJECTS_MACHINE gpio.o usrkit.o
 KIT_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(TERMCAP_LIBS)\
 	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD LIB_DVIO
 
