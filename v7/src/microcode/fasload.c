@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.59 1990/11/21 07:04:18 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.60 1991/02/24 01:10:39 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -116,7 +116,7 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
     print_fasl_information();
   }
 
-  if (!Test_Pure_Space_Top (Free_Constant + Const_Count))
+  if (!(TEST_CONSTANT_TOP (Free_Constant + Const_Count)))
   {
     if (mode != MODE_CHANNEL)
     {
@@ -247,7 +247,7 @@ DEFUN (read_file_start, (file_name, from_band_load),
 static SCHEME_OBJECT *
 DEFUN (read_file_end, (mode), int mode)
 {
-  SCHEME_OBJECT *table;
+  SCHEME_OBJECT *table, *ignore;
   extern unsigned long checksum_area ();
 
   if ((Load_Data (Heap_Count, ((char *) Free))) != Heap_Count)
@@ -265,8 +265,9 @@ DEFUN (read_file_end, (mode), int mode)
   NORMALIZE_REGION(((char *) Free), Heap_Count);
   Free += Heap_Count;
 
-  if ((Load_Data(Const_Count, ((char *) Free_Constant))) != Const_Count)
+  if ((Load_Data (Const_Count, ((char *) Free_Constant))) != Const_Count)
   {
+    SET_CONSTANT_TOP ();
     if (mode != MODE_CHANNEL)
     {
       OS_channel_close_noerror (load_channel);
@@ -277,11 +278,12 @@ DEFUN (read_file_end, (mode), int mode)
     (checksum_area (((unsigned long *) Free_Constant),
 		    Const_Count,
 		    computed_checksum));
-  NORMALIZE_REGION(((char *) Free_Constant), Const_Count);
+  NORMALIZE_REGION (((char *) Free_Constant), Const_Count);
   Free_Constant += Const_Count;
+  SET_CONSTANT_TOP ();
 
   table = Free;
-  if ((Load_Data(Primitive_Table_Size, ((char *) Free))) !=
+  if ((Load_Data (Primitive_Table_Size, ((char *) Free))) !=
       Primitive_Table_Size)
   {
     if (mode != MODE_CHANNEL)
@@ -294,7 +296,7 @@ DEFUN (read_file_end, (mode), int mode)
     (checksum_area (((unsigned long *) Free),
 		    Primitive_Table_Size,
 		    computed_checksum));
-  NORMALIZE_REGION(((char *) table), Primitive_Table_Size);
+  NORMALIZE_REGION (((char *) table), Primitive_Table_Size);
   Free += Primitive_Table_Size;
 
   if (mode != MODE_CHANNEL)
@@ -762,7 +764,7 @@ DEFUN (load_file, (mode), int mode)
       */
 
     Relocate_Block (Orig_Heap, primitive_table);
-    Relocate_Block (Orig_Constant, Free_Constant);
+    Relocate_Block (Orig_Constant, Constant_End);
   }
 
 #ifdef BYTE_INVERSION
@@ -777,8 +779,7 @@ DEFUN (load_file, (mode), int mode)
     Intern_Block (Orig_Constant, Constant_End);
   }
 
-  Set_Pure_Top ();
-  FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table, Orig_Constant, Free_Constant);
+  FASLOAD_RELOCATE_HOOK (Orig_Heap, primitive_table, Orig_Constant, Constant_End);
   Relocate_Into (temp, Dumped_Object);
   return (*temp);
 }
@@ -1003,7 +1004,6 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   /* Reset implementation state paramenters */
   INITIALIZE_INTERRUPTS ();
   Initialize_Stack ();
-  Set_Pure_Top (); 
   SET_MEMTOP (Heap_Top - GC_Reserve);
   {
     SCHEME_OBJECT cutl = (MEMORY_REF (result, 1));

@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.40 1991/02/24 01:11:04 jinx Exp $
+
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,8 +32,6 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purutl.c,v 9.39 1990/06/28 18:18:11 jinx Rel $ */
-
 /* Pure/Constant space utilities. */
 
 #include "scheme.h"
@@ -40,8 +40,12 @@ MIT in each case. */
 #include "zones.h"
 
 static void
-Update(From, To, Was, Will_Be)
-     fast SCHEME_OBJECT *From, *To, *Was, *Will_Be;
+DEFUN (Update,
+       (From, To, Was, Will_Be),
+       fast SCHEME_OBJECT *From AND
+       fast SCHEME_OBJECT *To AND
+       fast SCHEME_OBJECT *Was AND
+       fast SCHEME_OBJECT *Will_Be)
 {
   fast long count;
 
@@ -95,8 +99,10 @@ Update(From, To, Was, Will_Be)
 }
 
 long
-Make_Impure(Object, New_Object)
-     SCHEME_OBJECT Object, *New_Object;
+DEFUN (Make_Impure,
+       (Object, New_Object),
+       SCHEME_OBJECT Object AND
+       SCHEME_OBJECT *New_Object)
 {
   SCHEME_OBJECT *New_Address, *End_Of_Area;
   fast SCHEME_OBJECT *Obj_Address, *Constant_Address;
@@ -164,40 +170,41 @@ Make_Impure(Object, New_Object)
 
   Constant_Address = Free_Constant;
 
-  Obj_Address = OBJECT_ADDRESS (Object);
-  if (!Test_Pure_Space_Top(Constant_Address + Length))
+  Obj_Address = (OBJECT_ADDRESS (Object));
+  if (!(TEST_CONSTANT_TOP (Constant_Address + Length)))
   {
     return (ERR_IMPURIFY_OUT_OF_SPACE);
   }
-  Block_Length = OBJECT_DATUM (*(Constant_Address-1));
+  Block_Length = (OBJECT_DATUM (* (Constant_Address - 1)));
   Constant_Address -= 2;
   New_Address = Constant_Address;
 
   for (i = Length; --i >= 0; )
   {
     *Constant_Address++ = *Obj_Address;
-    *Obj_Address++ = MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, i);
+    *Obj_Address++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, i));
   }
-
-  *Constant_Address++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *Constant_Address++ = MAKE_OBJECT (END_OF_BLOCK, Block_Length + Length);
+
+  *Constant_Address++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *Constant_Address++ = (MAKE_OBJECT (END_OF_BLOCK, Block_Length + Length));
   *(New_Address + 2 - Block_Length) =
-    MAKE_OBJECT (PURE_PART, Block_Length + Length);
+    (MAKE_OBJECT (PURE_PART, Block_Length + Length));
   Obj_Address -= Length;
   Free_Constant = Constant_Address;
+  SET_CONSTANT_TOP ();
 
   /* Run through memory relocating pointers to this object, including
    * those in pure areas.
    */
 
-  Set_Pure_Top();
-  Terminate_Old_Stacklet();
-  Terminate_Constant_Space(End_Of_Area);
+  Terminate_Old_Stacklet ();
+  SEAL_CONSTANT_SPACE ();
+  End_Of_Area = (CONSTANT_SPACE_SEAL ());
 
   ENTER_CRITICAL_SECTION ("impurify");
 
-  Update(Heap_Bottom, Free, Obj_Address, New_Address);
-  Update(Constant_Space, End_Of_Area, Obj_Address, New_Address);
+  Update (Heap_Bottom, Free, Obj_Address, New_Address);
+  Update (Constant_Space, End_Of_Area, Obj_Address, New_Address);
 
   EXIT_CRITICAL_SECTION ({});
 
@@ -222,12 +229,13 @@ The object is placed in constant space instead.")
     PRIMITIVE_RETURN (new_object);
   }
 }
-
-extern SCHEME_OBJECT * find_constant_space_block();
+
+extern SCHEME_OBJECT * EXFUN (find_constant_space_block, (SCHEME_OBJECT *));
 
 SCHEME_OBJECT *
-find_constant_space_block(obj_address)
-     fast SCHEME_OBJECT *obj_address;
+DEFUN (find_constant_space_block,
+       (obj_address),
+       fast SCHEME_OBJECT *obj_address)
 {
   fast SCHEME_OBJECT *where, *low_constant;
 
@@ -246,12 +254,13 @@ find_constant_space_block(obj_address)
 }
 
 Boolean
-Pure_Test(obj_address)
-     SCHEME_OBJECT *obj_address;
+DEFUN (Pure_Test,
+       (obj_address),
+       SCHEME_OBJECT *obj_address)
 {
   SCHEME_OBJECT *block;
 
-  block = find_constant_space_block (obj_address);
+  block = (find_constant_space_block (obj_address));
   if (block == ((SCHEME_OBJECT *) NULL))
   {
     return (false);
@@ -314,33 +323,35 @@ DEFINE_PRIMITIVE ("GET-NEXT-CONSTANT", Prim_get_next_constant, 0, 0,
 extern SCHEME_OBJECT *copy_to_constant_space();
 
 SCHEME_OBJECT *
-copy_to_constant_space(source, nobjects)
-     fast SCHEME_OBJECT *source;
-     long nobjects;
+DEFUN (copy_to_constant_space,
+       (source, nobjects),
+       fast SCHEME_OBJECT *source AND
+       long nobjects)
 {
   fast SCHEME_OBJECT *dest;
   fast long i;
   SCHEME_OBJECT *result;
 
   dest = Free_Constant;
-  if (!Test_Pure_Space_Top(dest + nobjects + 6))
+  if (!(TEST_CONSTANT_TOP (dest + nobjects + 6)))
   {
-    fprintf(stderr,
+    fprintf (stderr,
 	    "copy_to_constant_space: Not enough constant space!\n");
-    Microcode_Termination(TERM_NO_SPACE);
+    Microcode_Termination (TERM_NO_SPACE);
   }
-  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 3);
-  *dest++ = MAKE_OBJECT (PURE_PART, nobjects + 5);
-  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *dest++ = MAKE_OBJECT (CONSTANT_PART, 3);
+  *dest++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 3));
+  *dest++ = (MAKE_OBJECT (PURE_PART, nobjects + 5));
+  *dest++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *dest++ = (MAKE_OBJECT (CONSTANT_PART, 3));
   result = dest;
   for (i = nobjects; --i >= 0; )
   {
     *dest++ = *source++;
   }
-  *dest++ = MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
-  *dest++ = MAKE_OBJECT (END_OF_BLOCK, nobjects + 5);
+  *dest++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
+  *dest++ = (MAKE_OBJECT (END_OF_BLOCK, nobjects + 5));
   Free_Constant = dest;
+  SET_CONSTANT_TOP ();
 
   return result;
 }

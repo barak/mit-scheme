@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.28 1990/06/20 17:42:03 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.29 1991/02/24 01:11:10 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -104,9 +104,14 @@ MIT in each case. */
 
 /* Used by garbage collector to detect the end of constant space */
 
-#define Terminate_Constant_Space(Where)					\
-  *Free_Constant = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant);\
-  Where = Free_Constant
+#define CONSTANT_SCAN_SEAL()  Free_Constant
+
+#define SEAL_CONSTANT_SPACE()						\
+  *Free_Constant =							\
+    (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant));
+
+#define CONSTANT_SPACE_SEALED()						\
+((*Free_Constant) == (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Free_Constant)))
 
 #define Get_Current_Stacklet()						\
   (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Current_Stacklet))
@@ -302,14 +307,22 @@ do									\
 /* Used by garbage collector to detect the end of constant space, and to
    skip over the gap between constant space and the stack. */
 
-#define Terminate_Constant_Space(Where)					\
+#define CONSTANT_SPACE_SEAL()  Stack_Top
+
+#define SEAL_CONSTANT_SPACE()						\
+do									\
 {									\
   *Free_Constant =							\
     (MAKE_OBJECT							\
      (TC_MANIFEST_NM_VECTOR, ((Stack_Pointer - Free_Constant) - 1)));	\
-  *Stack_Top = MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Top);	\
-  Where = Stack_Top;							\
-}
+  *(Free_Constant + 1) =						\
+    (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, (Free_Constant + 1)));	\
+  *Stack_Top = (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, Stack_Top));	\
+} while (0)
+
+#define CONSTANT_SPACE_SEALED()						\
+((*(Free_Constant + 1)) ==						\
+ (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, (Free_Constant + 1))))
 
 #define Get_Current_Stacklet() SHARP_F
 

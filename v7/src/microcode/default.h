@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.35 1990/11/13 08:44:27 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/default.h,v 9.36 1991/02/24 01:10:32 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -77,7 +77,7 @@ MIT in each case. */
   (* (locative)) = (object);						\
 }
 #endif
-
+
 #ifndef USE_STACKLETS
 
 #define Absolute_Stack_Base Constant_Top
@@ -92,14 +92,33 @@ do									\
 } while (0)
 #endif
 
+#endif /* USE_STACKLETS */
+
+#ifndef SET_CONSTANT_TOP
+#define SET_CONSTANT_TOP()						\
+do									\
+{									\
+  ALIGN_FLOAT (Free_Constant);						\
+  SEAL_CONSTANT_SPACE ();						\
+} while (0)
 #endif
 
-#ifndef Set_Pure_Top
-#define Set_Pure_Top()	ALIGN_FLOAT (Free_Constant)
+#ifndef TEST_CONSTANT_TOP
+#define TEST_CONSTANT_TOP(New_Top) ((New_Top) <= Constant_Top)
 #endif
 
-#ifndef Test_Pure_Space_Top
-#define Test_Pure_Space_Top(New_Top) ((New_Top) <= Constant_Top)
+#ifndef STACK_SANITY_CHECK
+#define STACK_SANITY_CHECK(name)					\
+do									\
+{									\
+  if (!(CONSTANT_SPACE_SEALED ()))					\
+  {									\
+    extern void EXFUN (stack_death, (const char *));			\
+									\
+    stack_death (name);							\
+    /*NOTREACHED */							\
+  }									\
+} while (0)
 #endif
 
 /* Used in debug.c */

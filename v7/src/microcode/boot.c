@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.66 1990/11/15 23:17:06 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.67 1991/02/24 01:10:24 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -104,9 +104,10 @@ DEFUN (usage, (error_string), CONST char * error_string)
 #endif
 
 main_type
-main (argc, argv)
-     int argc;
-     CONST char ** argv;
+DEFUN (main,
+       (argc, argv),
+       int argc AND
+       CONST char ** argv)
 {
   init_exit_scheme ();
   scheme_program_name = (argv[0]);
@@ -168,7 +169,7 @@ main (argc, argv)
 }
 
 SCHEME_OBJECT
-make_fixed_objects_vector ()
+DEFUN_VOID (make_fixed_objects_vector)
 {
   extern SCHEME_OBJECT initialize_history ();
   extern SCHEME_OBJECT make_primitive ();
@@ -261,9 +262,10 @@ make_fixed_objects_vector ()
 /* Boot Scheme */
 
 void
-Start_Scheme (Start_Prim, File_Name)
-     int Start_Prim;
-     char * File_Name;
+DEFUN (Start_Scheme,
+       (Start_Prim, File_Name),
+       int Start_Prim AND
+       char * File_Name)
 {
   extern SCHEME_OBJECT make_primitive ();
   SCHEME_OBJECT FName, Init_Prog, *Fasload_Call, prim;
@@ -357,7 +359,7 @@ Start_Scheme (Start_Prim, File_Name)
 }
 
 void
-Enter_Interpreter ()
+DEFUN_VOID (Enter_Interpreter)
 {
   Interpret (scheme_dumped_p);
   fprintf (stderr, "\nThe interpreter returned to top level!\n");
@@ -373,8 +375,9 @@ extern SCHEME_OBJECT
 extern unsigned long
   gc_counter;
 
-extern void
-  gc_death();
+extern void EXFUN (gc_death,
+		   (long code, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
+extern void EXFUN (stack_death, (const char *));
 
 extern char
   gc_death_message_buffer[];
@@ -390,16 +393,30 @@ char
   gc_death_message_buffer[100];
 
 void
-gc_death (code, message, scan, free)
-     long code;
-     char *message;
-     SCHEME_OBJECT *scan, *free;
+DEFUN (gc_death,
+       (code, message, scan, free),
+       long code AND
+       char *message AND
+       SCHEME_OBJECT *scan AND
+       SCHEME_OBJECT *free)
 {
   fprintf (stderr, "\n%s.\n", message);
   fprintf (stderr, "scan = 0x%lx; free = 0x%lx\n", scan, free);
   deadly_scan = scan;
   deadly_free = free;
   Microcode_Termination (code);
+  /*NOTREACHED*/
+}
+
+void
+DEFUN (stack_death, (name), const char *name)
+{
+  fprintf (stderr,
+	   "\n%s: Constant space is no longer sealed!\n",
+	   name);
+  fprintf (stderr,
+	   "Perhaps a runaway recursion has overflowed the stack.\n");
+  Microcode_Termination (TERM_STACK_OVERFLOW);
   /*NOTREACHED*/
 }
 

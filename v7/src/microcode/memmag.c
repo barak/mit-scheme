@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.44 1990/06/20 17:41:31 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.45 1991/02/24 01:10:48 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -82,58 +82,60 @@ extern void Clear_Memory(), Setup_Memory(), Reset_Memory();
    special: it always points to a cell which is in use. */
 
 void
-Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+DEFUN (Clear_Memory,
+       (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
+       int Our_Heap_Size AND int Our_Stack_Size AND int Our_Constant_Size)
 {
   GC_Reserve = 4500;
   GC_Space_Needed = 0;
   Heap_Top = (Heap_Bottom + Our_Heap_Size);
   Local_Heap_Base = Heap_Bottom;
   Unused_Heap_Top = (Heap_Bottom + (2 * Our_Heap_Size));
-  SET_MEMTOP(Heap_Top - GC_Reserve);
+  SET_MEMTOP (Heap_Top - GC_Reserve);
   Free = Heap_Bottom;
   Constant_Top = (Constant_Space + Our_Constant_Size);
-  Free_Constant = Constant_Space;
-  Set_Pure_Top ();
   Initialize_Stack ();
+  Free_Constant = Constant_Space;
+  SET_CONSTANT_TOP ();
   return;
 }
 
 /* This procedure allocates and divides the total memory. */
 
 void
-Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
-     int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
+DEFUN (Setup_Memory,
+       (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
+       int Our_Heap_Size AND int Our_Stack_Size AND int Our_Constant_Size)
 {
   SCHEME_OBJECT test_value;
 
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
   {
-    fprintf(stderr, "Configuration won't hold initial data.\n");
-    exit(1);
+    fprintf (stderr, "Configuration won't hold initial data.\n");
+    exit (1);
   }
 
   /* Allocate */
   Highest_Allocated_Address =
-    ALLOCATE_HEAP_SPACE(Stack_Allocation_Size(Our_Stack_Size) +
-	                (2 * Our_Heap_Size) +
-			Our_Constant_Size +
-			HEAP_BUFFER_SPACE);
+    ALLOCATE_HEAP_SPACE (Stack_Allocation_Size(Our_Stack_Size) +
+			 (2 * Our_Heap_Size) +
+			 Our_Constant_Size +
+			 HEAP_BUFFER_SPACE);
 
   /* Consistency check 2 */
   if (Heap == NULL)
   {
-    fprintf(stderr, "Not enough memory for this configuration.\n");
-    exit(1);
+    fprintf (stderr, "Not enough memory for this configuration.\n");
+    exit (1);
   }
 
   /* Initialize the various global parameters */
   Heap += HEAP_BUFFER_SPACE;
-  INITIAL_ALIGN_FLOAT(Heap);
-  Unused_Heap = Heap + Our_Heap_Size;
+  INITIAL_ALIGN_FLOAT (Heap);
+  Unused_Heap = (Heap + Our_Heap_Size);
   ALIGN_FLOAT (Unused_Heap);
-  Constant_Space = Heap + 2*Our_Heap_Size;
+  Constant_Space = (Heap + (2 * Our_Heap_Size));
   ALIGN_FLOAT (Constant_Space);
 
   /* Consistency check 3 */
@@ -143,22 +145,22 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
   if (((OBJECT_TYPE (test_value)) != LAST_TYPE_CODE) ||
       ((OBJECT_ADDRESS (test_value)) != Highest_Allocated_Address))
   {
-    fprintf(stderr,
-	    "Largest address does not fit in datum field of object.\n");
-    fprintf(stderr,
-	    "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
-    exit(1);
+    fprintf (stderr,
+	     "Largest address does not fit in datum field of object.\n");
+    fprintf (stderr,
+	     "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
+    exit (1);
   }
 
   Heap_Bottom = Heap;
-  Clear_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
+  Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
   return;
 }
 
 /* In this version, this does nothing. */
 
 void
-Reset_Memory()
+DEFUN_VOID (Reset_Memory)
 {
   return;
 }
@@ -170,7 +172,7 @@ Reset_Memory()
 /* Flip into unused heap */
 
 void
-GCFlip()
+DEFUN_VOID (GCFlip)
 {
   SCHEME_OBJECT *Temp;
 
@@ -199,7 +201,7 @@ GCFlip()
 SCHEME_OBJECT Weak_Chain;
 
 void
-Fix_Weak_Chain()
+DEFUN_VOID (Fix_Weak_Chain)
 {
   fast SCHEME_OBJECT *Old_Weak_Cell, *Scan, Old_Car, Temp, *Old, *Low_Constant;
 
@@ -300,7 +302,8 @@ Fix_Weak_Chain()
    new space.
 */
 
-void GC()
+void 
+DEFUN_VOID (GC)
 {
   SCHEME_OBJECT
     *Root, *Result, *Check_Value,
@@ -308,66 +311,65 @@ void GC()
 
   /* Save the microcode registers so that they can be relocated */
 
-  Terminate_Old_Stacklet();
-  Terminate_Constant_Space(Check_Value);
-
+  Terminate_Old_Stacklet ();
+  SEAL_CONSTANT_SPACE ();
+  Check_Value = (CONSTANT_SPACE_SEAL ());
   Root = Free;
-  The_Precious_Objects = Get_Fixed_Obj_Slot(Precious_Objects);
-  Set_Fixed_Obj_Slot(Precious_Objects, SHARP_F);
-  Set_Fixed_Obj_Slot(Lost_Objects_Base, SHARP_F);
+  The_Precious_Objects = (Get_Fixed_Obj_Slot (Precious_Objects));
+  Set_Fixed_Obj_Slot (Precious_Objects, SHARP_F);
+  Set_Fixed_Obj_Slot (Lost_Objects_Base, SHARP_F);
 
   *Free++ = Fixed_Objects;
-  *Free++ = MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History);
+  *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
   *Free++ = Undefined_Primitives;
   *Free++ = Undefined_Primitives_Arity;
-  *Free++ = Get_Current_Stacklet();
+  *Free++ = Get_Current_Stacklet ();
   *Free++ =
     ((Prev_Restore_History_Stacklet == NULL)
      ? SHARP_F
-     : MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Prev_Restore_History_Stacklet));
+     : (MAKE_POINTER_OBJECT (TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));
   *Free++ = Current_State_Point;
   *Free++ = Fluid_Bindings;
 
   /* The 4 step GC */
 
-  Result = GCLoop(Constant_Space, &Free);
+  Result = (GCLoop (Constant_Space, &Free));
   if (Result != Check_Value)
   {
-    fprintf(stderr, "\nGC: Constant Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
+    fprintf (stderr, "\nGC: Constant Scan ended too early.\n");
+    Microcode_Termination (TERM_BROKEN_HEART);
   }
 
-  Result = GCLoop(Root, &Free);
+  Result = (GCLoop (Root, &Free));
   if (Free != Result)
   {
-    fprintf(stderr, "\nGC-1: Heap Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
+    fprintf (stderr, "\nGC-1: Heap Scan ended too early.\n");
+    Microcode_Termination (TERM_BROKEN_HEART);
   }
 
   Root2 = Free;
   *Free++ = The_Precious_Objects;
-  Result = GCLoop(Root2, &Free);
+  Result = (GCLoop (Root2, &Free));
   if (Free != Result)
   {
-    fprintf(stderr, "\nGC-2: Heap Scan ended too early.\n");
-    Microcode_Termination(TERM_BROKEN_HEART);
+    fprintf (stderr, "\nGC-2: Heap Scan ended too early.\n");
+    Microcode_Termination (TERM_BROKEN_HEART);
   }
 
-  Fix_Weak_Chain();
+  Fix_Weak_Chain ();
 
   /* Make the microcode registers point to the copies in new-space. */
 
   Fixed_Objects = *Root++;
-  Set_Fixed_Obj_Slot(Precious_Objects, *Root2);
+  Set_Fixed_Obj_Slot (Precious_Objects, *Root2);
   Set_Fixed_Obj_Slot
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
-  History = OBJECT_ADDRESS (*Root++);
+  History = (OBJECT_ADDRESS (*Root++));
   Undefined_Primitives = *Root++;
   Undefined_Primitives_Arity = *Root++;
 
-  /* Set_Current_Stacklet is sometimes a No-Op! */
-  Set_Current_Stacklet(*Root);
+  Set_Current_Stacklet (*Root);
   Root += 1;
   if (*Root == SHARP_F)
   {
@@ -376,12 +378,13 @@ void GC()
   }
   else
   {
-    Prev_Restore_History_Stacklet = OBJECT_ADDRESS (*Root++);
+    Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (*Root++));
   }
   Current_State_Point = *Root++;
   Fluid_Bindings = *Root++;
   Free_Stacklets = NULL;
   FLUSH_I_CACHE ();
+  CLEAR_INTERRUPT (INT_GC);
   return;
 }
 
@@ -401,45 +404,47 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
   extern unsigned long gc_counter;
   SCHEME_OBJECT GC_Daemon_Proc;
   PRIMITIVE_HEADER (1);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
 
-  PRIMITIVE_CANONICALIZE_CONTEXT();
+  STACK_SANITY_CHECK ("GC");
   new_gc_reserve = (arg_nonnegative_integer (1));
   if (Free > Heap_Top)
   {
-    fprintf(stderr,
-	    "\nGC has been delayed too long, and you are out of room!\n");
-    fprintf(stderr,
-	    "Free = 0x%x; MemTop = 0x%x; Heap_Top = 0x%x\n",
-	    Free, MemTop, Heap_Top);
-    Microcode_Termination(TERM_NO_SPACE);
+    fprintf (stderr,
+	     "\nGARBAGE-COLLECT: GC has been delayed too long!\n");
+    fprintf (stderr,
+	     "Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
+	     Free, MemTop, Heap_Top);
+    Microcode_Termination (TERM_NO_SPACE);
   }
+
   ENTER_CRITICAL_SECTION ("garbage collector");
   gc_counter += 1;
   GC_Reserve = new_gc_reserve;
-  GCFlip();
-  GC();
-  CLEAR_INTERRUPT(INT_GC);
+  GCFlip ();
+  GC ();
   POP_PRIMITIVE_FRAME (1);
-  GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
+  GC_Daemon_Proc = (Get_Fixed_Obj_Slot (GC_Daemon));
+
   RENAME_CRITICAL_SECTION ("garbage collector daemon");
   if (GC_Daemon_Proc == SHARP_F)
   {
-   Will_Push(CONTINUATION_SIZE);
-    Store_Return(RC_NORMAL_GC_DONE);
-    Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
-    Save_Cont();
-   Pushed();
-    PRIMITIVE_ABORT(PRIM_POP_RETURN);
+   Will_Push (CONTINUATION_SIZE);
+    Store_Return (RC_NORMAL_GC_DONE);
+    Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+    Save_Cont ();
+   Pushed ();
+    PRIMITIVE_ABORT (PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
- Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
-  Store_Return(RC_NORMAL_GC_DONE);
-  Store_Expression(LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
-  Save_Cont();
+ Will_Push (CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
+  Store_Return (RC_NORMAL_GC_DONE);
+  Store_Expression (LONG_TO_UNSIGNED_FIXNUM(MemTop - Free));
+  Save_Cont ();
   STACK_PUSH (GC_Daemon_Proc);
   STACK_PUSH (STACK_FRAME_HEADER);
- Pushed();
-  PRIMITIVE_ABORT(PRIM_APPLY);
+ Pushed ();
+  PRIMITIVE_ABORT (PRIM_APPLY);
   /* The following comment is by courtesy of LINT, your friendly sponsor. */
   /*NOTREACHED*/
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.7 1991/01/16 00:34:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.8 1991/02/24 01:11:22 jinx Exp $
 
-Copyright (c) 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -108,6 +108,7 @@ DEFUN (trap_handler, (message, signo, code, scp),
        int code AND
        struct FULL_SIGCONTEXT * scp)
 {
+  Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
   enum trap_state old_trap_state = trap_state;
   trap_state = trap_state_trapped;
   if (WITHIN_CRITICAL_SECTION_P ())
@@ -118,12 +119,18 @@ DEFUN (trap_handler, (message, signo, code, scp),
       fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	       signo, (find_signal_name (signo)), code);
     }
-  else if (old_trap_state != trap_state_recover)
+  else if (constant_space_broken || (old_trap_state != trap_state_recover))
     {
       fprintf (stdout, "\n>> A %s has occurred.\n", message);
       fprintf (stdout, ">> [signal %d (%s), code %d]\n",
 	      signo, (find_signal_name (signo)), code);
     }
+  if (constant_space_broken)
+  {
+    fputs (">> Constant space has been overwritten.\n", stdout);
+    fputs (">> Probably a runaway recursion has overflowed the stack.\n",
+	   stdout);
+  }
   fflush (stdout);
   switch (old_trap_state)
     {
@@ -147,7 +154,7 @@ DEFUN (trap_handler, (message, signo, code, scp),
       else
 	trap_immediate_termination ();
     case trap_state_recover:
-      if (WITHIN_CRITICAL_SECTION_P ())
+      if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
       {
 	fputs (">> Successful recovery is unlikely.\n", stdout);
 	break;

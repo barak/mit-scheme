@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.44 1990/06/28 18:19:53 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.45 1991/02/24 01:10:56 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,8 +42,9 @@ MIT in each case. */
 
 /* Imports */
 
-extern void GCFlip(), GC();
-extern SCHEME_OBJECT *GCLoop();
+extern void EXFUN (GCFlip, (void));
+extern void EXFUN (GC, (void));
+extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 /* This is a copy of GCLoop, with mode handling added, and
    debugging printout removed.
@@ -57,7 +58,7 @@ extern SCHEME_OBJECT *GCLoop();
 
 #define Purify_Pointer(Code)						\
 {									\
-  Old = OBJECT_ADDRESS (Temp);						\
+  Old = (OBJECT_ADDRESS (Temp));					\
   if ((GC_Mode == CONSTANT_COPY) &&					\
       (Old > Low_Constant))						\
     continue;								\
@@ -71,21 +72,22 @@ extern SCHEME_OBJECT *GCLoop();
 
 #define Indirect_BH(In_GC)						\
 {									\
-  if (OBJECT_TYPE (*Old) == TC_BROKEN_HEART)				\
+  if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
     continue;								\
 }
 
 #define Transport_Vector_Indirect()					\
 {									\
-  Real_Transport_Vector();						\
-  *OBJECT_ADDRESS (Temp) = New_Address;					\
+  Real_Transport_Vector ();						\
+  *(OBJECT_ADDRESS (Temp)) = New_Address;				\
 }
 
 SCHEME_OBJECT *
-PurifyLoop(Scan, To_Pointer, GC_Mode)
-     fast SCHEME_OBJECT *Scan;
-     SCHEME_OBJECT **To_Pointer;
-     int GC_Mode;
+DEFUN (PurifyLoop,
+       (Scan, To_Pointer, GC_Mode),
+       fast SCHEME_OBJECT *Scan AND
+       SCHEME_OBJECT **To_Pointer AND
+       int GC_Mode)
 {
   fast SCHEME_OBJECT *To, *Old, Temp, *Low_Constant, New_Address;
 
@@ -376,8 +378,10 @@ N <     |                      |    |
 #define Purify_N_Slots		2
 
 SCHEME_OBJECT
-Purify (Object, Purify_Object)
-     SCHEME_OBJECT Object, Purify_Object;
+DEFUN (Purify,
+       (Object, Purify_Object),
+       SCHEME_OBJECT Object AND
+       SCHEME_OBJECT Purify_Object)
 {
   long Length;
   SCHEME_OBJECT *Heap_Start, *Result, Answer;
@@ -405,14 +409,16 @@ Purify (Object, Purify_Object)
 }
 
 SCHEME_OBJECT
-Purify_Pass_2 (Info)
-     SCHEME_OBJECT Info;
+DEFUN (Purify_Pass_2,
+       (Info),
+       SCHEME_OBJECT Info)
 {
   long Length;
   Boolean Purify_Object;
   SCHEME_OBJECT *New_Object, Relocated_Object, *Result;
   long Pure_Length, Recomputed_Length;
 
+  STACK_SANITY_CHECK ("PURIFY");
   Length = (OBJECT_DATUM (FAST_MEMORY_REF (Info, Purify_Length)));
   if (FAST_MEMORY_REF (Info, Purify_Really_Pure) == SHARP_F)
   {
@@ -423,7 +429,7 @@ Purify_Pass_2 (Info)
     Purify_Object = true;
   }
   Relocated_Object = *Heap_Bottom;
-  if (!(Test_Pure_Space_Top (Free_Constant + Length + 6)))
+  if (!(TEST_CONSTANT_TOP (Free_Constant + Length + 6)))
   {
     return (SHARP_F);
   }
@@ -474,7 +480,7 @@ Purify_Pass_2 (Info)
   Recomputed_Length = ((Free_Constant - New_Object) - 4);
   *Free_Constant++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *Free_Constant++ = (MAKE_OBJECT (END_OF_BLOCK, (Recomputed_Length + 5)));
-  if (!(Test_Pure_Space_Top (Free_Constant)))
+  if (!(TEST_CONSTANT_TOP (Free_Constant)))
   {
     fprintf (stderr,
 	     "\nPurify overrun: Constant_Top = 0x%lx, Free_Constant = 0x%lx\n",
@@ -484,8 +490,8 @@ Purify_Pass_2 (Info)
   *New_Object++ =
     (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, Pure_Length));
   *New_Object = (MAKE_OBJECT (PURE_PART, (Recomputed_Length + 5)));
+  SET_CONSTANT_TOP ();
   GC ();
-  Set_Pure_Top ();
   return (SHARP_T);
 }
 
@@ -514,9 +520,11 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
   long new_gc_reserve;
   SCHEME_OBJECT Object, Purify_Result, Daemon;
   PRIMITIVE_HEADER (3);
+  PRIMITIVE_CANONICALIZE_CONTEXT ();
 
-  PRIMITIVE_CANONICALIZE_CONTEXT();
-  Save_Time_Zone(Zone_Purify);
+  STACK_SANITY_CHECK ("PURIFY");
+  Save_Time_Zone (Zone_Purify);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), Object);
   CHECK_ARG (2, BOOLEAN_P);
   new_gc_reserve = (arg_nonnegative_integer (3));
 
@@ -524,33 +532,33 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
      run, and then Purify_Pass_2 is called to copy back.
   */
 
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), Object);
   GC_Reserve = new_gc_reserve;
   ENTER_CRITICAL_SECTION ("purify pass 1");
   Purify_Result = (Purify (Object, (ARG_REF (2))));
   POP_PRIMITIVE_FRAME (3);
-  Daemon = Get_Fixed_Obj_Slot(GC_Daemon);
+  Daemon = (Get_Fixed_Obj_Slot (GC_Daemon));
   if (Daemon == SHARP_F)
   {
     SCHEME_OBJECT words_free;
 
     RENAME_CRITICAL_SECTION ("purify pass 2");
-    Purify_Result = Purify_Pass_2(Purify_Result);
+    Purify_Result = (Purify_Pass_2 (Purify_Result));
     words_free = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
     Val = (MAKE_POINTER_OBJECT (TC_LIST, Free));
     (*Free++) = Purify_Result;
     (*Free++) = words_free;
-    PRIMITIVE_ABORT(PRIM_POP_RETURN);
+    PRIMITIVE_ABORT (PRIM_POP_RETURN);
     /*NOTREACHED*/
   }
+
   RENAME_CRITICAL_SECTION ("purify daemon 1");
-  Store_Expression(Purify_Result);
-  Store_Return(RC_PURIFY_GC_1);
- Will_Push(CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
-  Save_Cont();
+  Store_Expression (Purify_Result);
+  Store_Return (RC_PURIFY_GC_1);
+ Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
+  Save_Cont ();
   STACK_PUSH (Daemon);
   STACK_PUSH (STACK_FRAME_HEADER);
- Pushed();
-  PRIMITIVE_ABORT(PRIM_APPLY);
+ Pushed ();
+  PRIMITIVE_ABORT (PRIM_APPLY);
   /*NOTREACHED*/
 }
