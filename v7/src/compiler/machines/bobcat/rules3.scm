@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.6 1988/03/25 21:20:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.7 1988/04/01 23:43:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -370,7 +370,7 @@ MIT in each case. |#
 	 (MOVE W (& #x4eb9) (@A+ 5))			; (JSR (L <entry>))
 	 (MOVE L ,temp-ref (@A+ 5))
 	 (CLR W (@A+ 5))
-	 ,@(increment-machine-register 15 size))))
+	 ,@(increment-machine-register 13 size))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
