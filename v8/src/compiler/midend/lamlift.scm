@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: lamlift.scm,v 1.2 1994/11/25 23:04:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -41,7 +41,7 @@ MIT in each case. |#
   (let* ((env (lamlift/env/%make 'STATIC #F 0))
 	 (program* (lamlift/expr env (lifter/letrecify program))))
     (lamlift/analyze! env)
-    program*))
+    (lamlift/remember program* program)))
 
 (define lamlift/*lift-stubs-aggressively?* #F)
 
@@ -80,6 +80,18 @@ MIT in each case. |#
     (set-lamlift/env/form! env* expr*)
     (values expr* env*)))
 
+(define (lamlift/lambda** context env lam-expr)
+  ;; (values expr* env*)
+  (call-with-values
+   (lambda ()
+     (lamlift/lambda* context
+		      env
+		      (lambda/formals lam-expr)
+		      (lambda/body lam-expr)))
+   (lambda (expr* env*)
+     (values (lamlift/remember expr* lam-expr)
+	     env*))))
+
 (define-lambda-lifter LET (env bindings body)
   (lamlift/let* 'LET env bindings body))
 
@@ -101,22 +113,21 @@ MIT in each case. |#
 	       result))))
 	((LAMBDA/? rator)
 	 (let ((ll   (lambda/formals rator))
-	       (body (lambda/body rator))
 	       (cont+rands (cons cont rands)))
 	   (guarantee-simple-lambda-list ll)
 	   (guarantee-argument-list cont+rands (length ll))
 	   (let ((bindings (map list ll cont+rands)))
 	     (call-with-values
 		 (lambda ()
-		   (lamlift/lambda*
+		   (lamlift/lambda**
 		    (binding-context-type 'CALL
 					  (lamlift/env/context env)
 					  bindings)
-		    env ll body))
+		    env rator))
 	       (lambda (rator* env*)
 		 (let ((bindings* (lamlift/bindings env* env bindings)))
 		   (set-lamlift/env/split?! env* 'UNNECESSARY)
-		   `(CALL ,(lamlift/remember rator* rator)
+		   `(CALL ,rator*
 			  ,@(lmap cadr bindings*))))))))
 	(else
 	 `(CALL ,(lamlift/expr env rator)
@@ -339,10 +350,9 @@ MIT in each case. |#
 		 (lamlift/expr body-env value)
 		 (call-with-values
 		  (lambda ()
-		    (lamlift/lambda* 'DYNAMIC ; bindings are dynamic
-				     body-env
-				     (lambda/formals value)
-				     (lambda/body value)))
+		    (lamlift/lambda** 'DYNAMIC ; bindings are dynamic
+				      body-env
+				      value))
 		  (lambda (value* lambda-body-env)
 		    (let ((binding
 			   (or (lamlift/binding/find
