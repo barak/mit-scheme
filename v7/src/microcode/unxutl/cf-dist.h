@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cf-dist.h,v 1.15 1993/06/24 03:57:26 gjr Exp $
+$Id: cf-dist.h,v 1.16 1993/06/24 08:25:15 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -55,6 +55,9 @@ MIT in each case. */
 /* Define this macro to use a non-standard assembler. */
 /* #define ALTERNATE_AS gashp */
 
+/* Define this macro to use a non-standard install program. */
+/* #define INSTALL_PROGRAM ginstall -c */
+
 #include "s.h"
 #include "m.h"
 
@@ -68,10 +71,14 @@ MIT in each case. */
 /* Define HAVE_STARBASE_GRAPHICS if you want Starbase graphics support.
    This is specific to HP-UX. */
 /* #define HAVE_STARBASE_GRAPHICS */
-/* #define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98700 -ldd98710 -ldd98556 */
+/* #define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98556 -lddgcrx */
 
 /* Some compilation options:
-   -DDISABLE_HISTORY		turns off history recording mechanism */
+   -DDISABLE_HISTORY		turns off history recording mechanism
+   -DCOMPILE_STEPPER		turns on support for the stepper    
+    				Done by config.h
+ */
+
 #define C_SWITCH_FEATURES
 
 /* The following two switches are mutually exclusive for most C compilers.
