@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.66 1996/10/08 20:21:14 cph Exp $
+$Id: x11base.c,v 1.67 1996/12/10 22:48:18 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -2021,11 +2021,63 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-SIZE", Prim_x_window_set_size, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+DEFINE_PRIMITIVE ("X-WINDOW-RAISE", Prim_x_window_raise, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XRaiseWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    XLowerWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+/* Considerable hair to detect whether the window has been
+   reparented by the window manager, and to translate the position to
+   the parent's coordinates if so.  */
+
+DEFINE_PRIMITIVE ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    Display * display = (XW_DISPLAY (xw));
+    Window w = (XW_WINDOW (xw));
+    Window root;
+    Window parent;
+    Window child;
+    Window * children;
+    unsigned int n_children;
+    int rx, ry;
+
+    while (1)
+      {
+	if (! (XQueryTree (display, w,
+			   (&root), (&parent), (&children), (&n_children))))
+	  error_external_return ();
+	XFree ((caddr_t) children);
+	if (parent == root)
+	  break;
+	w = parent;
+      }
+    if (! (XTranslateCoordinates
+	   (display, w, root, 0, 0, (&rx), (&ry), (&child))))
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (cons ((long_to_integer (rx)), (long_to_integer (ry))));
+  }
+}
+
 DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
 {
-  /* Considerable hair to detect whether the window has been
-     reparented by the window manager, and to translate the
-     position to the parent's coordinates if so.  */
   PRIMITIVE_HEADER (3);
   {
     struct xwindow * xw = (x_window_arg (1));
@@ -2066,26 +2118,6 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0)
 	y = py;
       }
     XMoveWindow (display, me, x, y);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("X-WINDOW-RAISE", Prim_x_window_raise, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    XRaiseWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    XLowerWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
