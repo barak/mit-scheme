@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: curren.scm,v 1.121 1996/04/24 01:49:03 cph Exp $
+;;;	$Id: curren.scm,v 1.122 1997/05/18 07:53:03 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -536,7 +536,10 @@ The buffer is guaranteed to be selected at that time."
   (let ((window (selected-window)))
     (if (eq? buffer (window-buffer window))
 	(set-window-point! window mark)
-	(%set-buffer-point! buffer mark))))
+	(let ((windows (buffer-windows buffer)))
+	  (if (pair? windows)
+	      (set-window-point! (car windows) mark)
+	      (%set-buffer-point! buffer mark))))))
 
 (define (with-current-point point thunk)
   (let ((old-point))
