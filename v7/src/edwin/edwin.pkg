@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.105 1992/11/20 19:09:51 cph Exp $
+$Id: edwin.pkg,v 1.106 1992/11/20 19:35:38 cph Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -905,10 +905,6 @@ MIT in each case. |#
   (files "xterm")
   (parent (edwin screen))
   (export (edwin)
-	  edwin-variable$x-screen-name-format
-	  edwin-variable$x-screen-name-length
-	  edwin-variable$x-screen-icon-name-format
-	  edwin-variable$x-screen-icon-name-length
 	  x-screen-auto-raise
 	  xterm-screen/flush!
 	  xterm-screen/grab-focus!)
@@ -945,6 +941,10 @@ MIT in each case. |#
 	  edwin-command$x-set-position
 	  edwin-command$x-set-size
 	  edwin-command$x-set-window-name
+	  edwin-variable$x-screen-icon-name-format
+	  edwin-variable$x-screen-icon-name-length
+	  edwin-variable$x-screen-name-format
+	  edwin-variable$x-screen-name-length
 	  x-button1-down
 	  x-button1-up
 	  x-button2-down
