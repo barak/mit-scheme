@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.6 1991/02/15 18:14:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.7 1991/05/27 17:56:12 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -55,7 +55,7 @@ MIT in each case. |#
 		  (newline port))
 		(here 'next))
 	    (lambda ()
-	      (let ((touch-created-file?))
+	      (let ((touch-created-file? false))
 		(dynamic-wind
 		 (lambda ()
 		   ;; file-touch returns #T if the file did not exist,
