@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.4 1989/10/26 06:45:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/advice.scm,v 14.5 1989/12/14 23:05:44 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -341,25 +341,27 @@ MIT in each case. |#
 	  (newline)
 	  (write-string "      <== ")))
     (write-truncated procedure (- width 11))
-    (newline)
-    (let ((write-args
-	   (lambda (arguments)
-	     (let loop ((prefix "    Args: ") (arguments arguments))
-	       (write-string prefix)
-	       (write-truncated (car arguments) (- width 11))
-	       (if (not (null? (cdr arguments)))
-		   (begin
-		     (newline)
-		     (loop "          " (cdr arguments))))))))
-      (cond ((null? arguments)
-	     (write-string "]"))
-	    ((<= (length arguments) 10)
-	     (write-args arguments)
-	     (write-string "]"))
-	    (else
-	     (write-args (list-head arguments 10))
-	     (newline)
-	     (write-string "          ...]"))))))
+    (if (null? arguments)
+	(write-string "]")
+	(begin
+	  (newline)
+	  (let ((write-args
+		 (lambda (arguments)
+		   (let loop ((prefix "    Args: ") (arguments arguments))
+		     (write-string prefix)
+		     (write-truncated (car arguments) (- width 11))
+		     (if (not (null? (cdr arguments)))
+			 (begin
+			   (newline)
+			   (loop "          " (cdr arguments))))))))
+	    (if (<= (length arguments) 10)
+		(begin
+		  (write-args arguments)
+		  (write-string "]"))
+		(begin
+		  (write-args (list-head arguments 10))
+		  (newline)
+		  (write-string "          ...]"))))))))
 
 (define primitive-trace-entry)
 (define primitive-trace-exit)
