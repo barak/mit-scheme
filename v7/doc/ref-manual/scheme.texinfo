@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.66 1999/03/16 06:21:07 cph Exp $
+@comment $Id: scheme.texinfo,v 1.67 1999/03/31 02:59:58 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.65
+@subtitle Edition 1.67
 @subtitle for Scheme Release 7.5
-@subtitle 26 February 1999
+@subtitle 30 March 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -147,12 +147,13 @@ facilities available for developing programs in MIT Scheme, and the
 * Procedures::                  
 * Environments::                
 * Input/Output::                
-* File-System Interface::       
+* Operating-System Interface::       
 * Error System::                
 * Graphics::                    
 * Win32 Package Reference::     
 * Index::                       
 
+@detailmenu
  --- The Detailed Node Listing ---
 
 Overview
@@ -350,12 +351,13 @@ Port Primitives
 * Blocking Mode::               
 * Terminal Mode::               
 
-File-System Interface
+Operating-System Interface
 
 * Pathnames::                   
 * Working Directory::           
 * File Manipulation::           
 * Directory Reader::            
+* Time::                        
 
 Pathnames
 
@@ -363,6 +365,14 @@ Pathnames
 * Components of Pathnames::     
 * Operations on Pathnames::     
 * Miscellaneous Pathnames::     
+
+Time
+
+* Universal Time::              
+* Decoded Time::                
+* File Time::                   
+* Time-Format Conversion::      
+* External Representation of Time::  
 
 Error System
 
@@ -436,6 +446,8 @@ Device Independent Bitmap Utilities
 
 * DIB procedures::              
 * Other parts of the DIB Utilities implementation::  
+
+@end detailmenu
 @end menu
 
 @node Acknowledgements, Overview, Top, Top
@@ -11513,7 +11525,7 @@ Returns @code{#t} if @var{object} is an interpreter environment;
 otherwise returns @code{#f}.
 @end deffn
 
-@node Input/Output, File-System Interface, Environments, Top
+@node Input/Output, Operating-System Interface, Environments, Top
 @chapter Input/Output
 
 @cindex input
@@ -13374,13 +13386,13 @@ by @code{dynamic-wind}, which guarantees that the output terminal mode is
 restored if @var{thunk} escapes from its continuation.
 @end deffn
 
-@node File-System Interface, Error System, Input/Output, Top
-@chapter File-System Interface
-@cindex file-system interface
+@node Operating-System Interface, Error System, Input/Output, Top
+@chapter Operating-System Interface
+@cindex Operating-System Interface
 
 The Scheme standard provides a simple mechanism for reading and writing
 files: file ports.  MIT Scheme provides additional tools for
-dealing with other aspects of the file system:
+dealing with other aspects of the operating system:
 
 @itemize @bullet
 @item
@@ -13401,6 +13413,10 @@ particular file, such as its type (directory, link, etc.) or length.
 
 @item
 A facility for reading the contents of a directory.
+
+@item
+A facility for obtaining times in various formats, converting between
+the formats, and generating human-readable time strings.
 @end itemize
 
 @menu
@@ -13408,9 +13424,10 @@ A facility for reading the contents of a directory.
 * Working Directory::           
 * File Manipulation::           
 * Directory Reader::            
+* Time::                        
 @end menu
 
-@node Pathnames, Working Directory, File-System Interface, File-System Interface
+@node Pathnames, Working Directory, Operating-System Interface, Operating-System Interface
 @section Pathnames
 
 @comment **** begin CLTL ****
@@ -14139,7 +14156,7 @@ error of type @code{condition-type:file-operation-error} is signalled if
 @end example
 @end deffn
 
-@node Working Directory, File Manipulation, Pathnames, File-System Interface
+@node Working Directory, File Manipulation, Pathnames, Operating-System Interface
 @section Working Directory
 
 @cindex absolute pathname (defn)
@@ -14223,7 +14240,7 @@ are performed in exactly the same way as dynamic binding of a variable
 (@pxref{Dynamic Binding}).
 @end deffn
 
-@node File Manipulation, Directory Reader, Working Directory, File-System Interface
+@node File Manipulation, Directory Reader, Working Directory, Operating-System Interface
 @section File Manipulation
 
 This section describes procedures that manipulate files and directories.
@@ -14584,7 +14601,7 @@ The allocated length of the file, which can be larger than the length of
 the file due to fixed-length allocation units.
 @end deffn
 
-@node Directory Reader,  , File Manipulation, File-System Interface
+@node Directory Reader, Time, File Manipulation, Operating-System Interface
 @section Directory Reader
 @cindex directory, reading
 
@@ -14605,7 +14622,376 @@ anything'' and ``match any character'', respectively.  This ``globbing''
 is supported only in the file part of @var{directory}.
 @end deffn
 
-@node Error System, Graphics, File-System Interface, Top
+@node Time,  , Directory Reader, Operating-System Interface
+@section Time
+
+MIT Scheme provides a simple set of procedures for manipulating date
+and time information.  There are three time representations, each of
+which serves a different purpose.  Each representation may be
+converted to any of the others.
+
+The primary time representation, @dfn{universal time}, is an exact
+non-negative integer counting the number of seconds that have elapsed
+since midnight January 1, 1900 UTC.  This format is produced by
+@code{get-universal-time} and @code{encode-universal-time}.
+
+The second representation, @dfn{decoded time}, is a record structure
+in which the time is broken down into components, such as month,
+minute, etc.  This format is produced by @code{decode-universal-time}
+and @code{get-decoded-time}.
+
+The final representation, @dfn{file time}, is an exact non-negative
+integer that is larger for increasing time.  Unlike universal time,
+this representation is operating-system dependent.  This format is
+produced by all of the file-attribute procedures, for example
+@code{file-modification-time} and @code{file-attributes}.
+
+Within this section, argument variables named @var{universal-time},
+@var{decoded-time}, and @var{file-time} are respectively required to be
+of the corresponding format.
+
+@menu
+* Universal Time::              
+* Decoded Time::                
+* File Time::                   
+* Time-Format Conversion::      
+* External Representation of Time::  
+@end menu
+
+@node Universal Time, Decoded Time, Time, Time
+@subsection Universal Time
+
+@deffn {procedure+} get-universal-time
+Return the current time in universal format.
+
+@example
+(get-universal-time) @result{} 3131453078
+@end example
+@end deffn
+
+@defvr {variable+} epoch
+@code{epoch} is the representation of midnight January 1, 1970 UTC in
+universal-time format.
+
+@example
+epoch @result{} 2208988800
+@end example
+@end defvr
+
+@node Decoded Time, File Time, Universal Time, Time
+@subsection Decoded Time
+
+Objects representing standard time components, such as seconds and
+minutes, are required to be exact non-negative integers.  Seconds and
+minutes must be inclusively between @code{0} and @code{59}; hours
+between @code{0} and @code{23}; days between @code{1} and @code{31};
+months between @code{1} and @code{12}; years are represented in
+``four-digit'' form, in which 1999 is represented as @code{1999} ---
+@emph{not} @code{99}.
+
+@deffn {procedure+} get-decoded-time
+Return the current time in decoded format.
+
+@example
+@group
+(pp (get-decoded-time))
+#[decoded-time 14]
+(second 30)
+(minute 4)
+(hour 11)
+(day 26)
+(month 3)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 0)
+(zone 5)
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} make-decoded-time second minute hour day month year
+Return a new decoded-time object representing the given time in the
+local time zone.  The arguments must be valid components according to
+the above rules, and must form a valid date.
+
+@strong{Warning}: because this procedure depends on the operating
+system's runtime library, it is not capable of representing all dates.
+In particular, on most unix systems, it is not possible to encode dates
+that occur prior to midnight, January 1, 1970 GMT.  Attempting to do
+this will signal an error.
+
+@example
+@group
+(pp (make-decoded-time 0 9 11 26 3 1999))
+#[decoded-time 19]
+(second 0)
+(minute 9)
+(hour 11)
+(day 26)
+(month 3)
+(year 1999)
+(day-of-week 4)
+(daylight-savings-time 0)
+(zone 5)
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time/second decoded-time
+@deffnx {procedure+} decoded-time/minute decoded-time
+@deffnx {procedure+} decoded-time/hour decoded-time
+@deffnx {procedure+} decoded-time/day decoded-time
+@deffnx {procedure+} decoded-time/month decoded-time
+@deffnx {procedure+} decoded-time/year decoded-time
+Return the corresponding component of @var{decoded-time}.
+
+@example
+@group
+(decoded-time/second (get-decoded-time)) @result{} 17
+(decoded-time/year (get-decoded-time)) @result{} 1999
+(decoded-time/day (get-decoded-time)) @result{} 26
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time/day-of-week decoded-time
+Return the day of the week on which @var{decoded-time} falls, encoded
+as an exact integer between @code{0} (Monday) and @code{6} (Sunday),
+inclusive.
+
+@example
+(decoded-time/day-of-week (get-decoded-time)) @result{} 4
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time/daylight-savings-time? decoded-time
+Return @code{#t} if @var{decoded-time} is represented using daylight
+savings time.  Otherwise return @code{#f}.
+
+@example
+(decoded-time/daylight-savings-time? (get-decoded-time))
+                  @result{} #f
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time/zone decoded-time
+Return the time zone in which @var{decoded-time} is represented.  This
+is an exact rational number between @code{-24} and @code{+24} inclusive,
+that when multiplied by @code{3600} is an integer.  The value is the
+number of hours west of GMT.
+
+@example
+(decoded-time/zone (get-decoded-time)) @result{} 5
+@end example
+@end deffn
+
+@deffn {procedure+} time-zone? object
+Returns @code{#t} if @var{object} is an exact number between @code{-24}
+and @code{+24} inclusive, that when multiplied by @code{3600} is an
+integer.
+
+@example
+@group
+(time-zone? -5)   @result{} #t
+(time-zone? 11/2) @result{} #t
+(time-zone? 11/7) @result{} #f
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} month/max-days month
+Returns the maximum number of days possible in @var{month}.  @var{Month}
+must be an exact integer between @code{1} and @code{12} inclusive.
+
+@example
+@group
+(month/max-days 2) @result{} 29
+(month/max-days 3) @result{} 31
+(month/max-days 4) @result{} 30
+@end group
+@end example
+@end deffn
+
+@node File Time, Time-Format Conversion, Decoded Time, Time
+@subsection File Time
+
+As stated above, file time is operating-system dependent.  As of this
+writing, two formats are used.  For unix and Windows systems, file time
+is the number of seconds since midnight January 1, 1970 UTC (the
+standard unix time convention).
+
+OS/2 represents file time as a 32-bit unsigned integer, in which the
+time components are broken down into unsigned bit fields.  The
+components are always stated in local time.  The fields, from MSB to
+LSB, are:
+
+@itemize @bullet
+@item
+7 bits representing the year, relative to 1900.
+
+@item
+4 bits representing the month, numbered 1 to 12.
+
+@item
+5 bits representing the day of the month, numbered 1 to 31.
+
+@item
+5 bits representing the hour of the day, numbered 0 to 23.
+
+@item
+6 bits representing the minute, numbered 0 to 59.
+
+@item
+5 bits representing the second.  This field is unusual in that it counts
+units of two seconds, so it is a number between 0 and 29, representing
+second counts corresponding to 0 through 58.
+@end itemize
+
+The following procedures generate their results in file-time format:
+
+@example
+@group
+file-access-time
+file-access-time-direct
+file-access-time-indirect
+file-modification-time
+file-modification-time-direct
+file-modification-time-indirect
+file-attributes/access-time
+file-attributes/modification-time
+file-attributes/change-time
+@end group
+@end example
+
+@noindent
+Additionally, @code{set-file-times!} accepts its time arguments in
+file-time format.
+
+@node Time-Format Conversion, External Representation of Time, File Time, Time
+@subsection Time-Format Conversion
+
+The procedures described in this section convert times from one format
+to another.
+
+@deffn {procedure+} decode-universal-time universal-time
+Converts an argument in universal-time format to decoded-time format.
+@end deffn
+
+@deffn {procedure+} encode-universal-time decoded-time
+Converts an argument in decoded-time format to universal-time format.
+@end deffn
+
+@deffn {procedure+} decode-file-time file-time
+Converts an argument in file-time format to decoded-time format.
+@end deffn
+
+@deffn {procedure+} encode-file-time decoded-time
+Converts an argument in decoded-time format to file-time format.
+@end deffn
+
+@deffn {procedure+} file-time->universal-time file-time
+Converts an argument in universal-time format to file-time format.
+@end deffn
+
+@deffn {procedure+} universal-time->file-time universal-time
+Converts an argument in file-time format to universal-time format.
+@end deffn
+
+@node External Representation of Time,  , Time-Format Conversion, Time
+@subsection External Representation of Time
+
+The procedures in this section generate external representations of
+time.  The most common external representation is that defined in
+RFC-822, @cite{Standard for the format of ARPA Internet text messages}.
+MIT Scheme also supports a more verbose format that is solely intended
+for human readability.
+
+At present, MIT Scheme does not support procedures to convert RFC-822
+times into internal formats.
+
+@deffn {procedure+} universal-time->string universal-time
+@deffnx {procedure+} decoded-time->string decoded-time
+@deffnx {procedure+} file-time->string file-time
+These procedures convert the given time argument into RFC-822 format,
+returning the converted time as a string.  For universal and file time
+formats, the returned value always represents local time.  For decoded
+time format, the returned value represents the time zone of the
+argument.
+
+@example
+@group
+(universal-time->string (get-universal-time))
+    @result{} "Tue, 30 Mar 1999 11:21:04 -0500"
+(file-time->string (file-modification-time "/cdrom"))
+    @result{} "Sun, 24 May 1998 07:46:02 -0400"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} decoded-time/date-string decoded-time
+@deffnx {procedure+} decoded-time/time-string decoded-time
+These procedures return strings containing external representations of
+the date and time, respectively, represented by @var{decoded-time}.  The
+results are implicitly in local time.
+
+@example
+@group
+(decoded-time/date-string (get-decoded-time))
+    @result{} "Tuesday March 30, 1999"
+(decoded-time/time-string (get-decoded-time))
+    @result{} "11:22:38 AM"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} day-of-week/long-string day-of-week
+@deffnx {procedure+} day-of-week/short-string day-of-week
+Returns a string representing the given @var{day-of-week}.  The argument
+must be an exact non-negative integer between @code{0} and @code{6}
+inclusive.  @code{day-of-week/long-string} returns a long string that
+fully spells out the name of the day.  @code{day-of-week/short-string}
+returns a shortened string that abbreviates the day to three letters.
+
+@example
+@group
+(day-of-week/long-string 0)  @result{} "Monday"
+(day-of-week/short-string 0) @result{} "Mon"
+(day-of-week/short-string 3) @result{} "Thu"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} month/long-string month
+@deffnx {procedure+} month/short-string month
+Returns a string representing the given @var{month}.  The argument must
+be an exact non-negative integer between @code{1} and @code{12}
+inclusive.  @code{month/long-string} returns a long string that fully
+spells out the name of the month.  @code{month/short-string} returns a
+shortened string that abbreviates the month to three letters.
+
+@example
+@group
+(month/long-string 1)   @result{} "January"
+(month/short-string 1)  @result{} "Jan"
+(month/short-string 10) @result{} "Oct"
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} time-zone->string
+Returns a string corresponding to the given time zone.  This string is
+the same string that is used to generate RFC-822 time strings.
+
+@example
+@group
+(time-zone->string 5)    @result{} "-0500"
+(time-zone->string -4)   @result{} "+0400"
+(time-zone->string 11/2) @result{} "-0530"
+@end group
+@end example
+@end deffn
+
+@node Error System, Graphics, Operating-System Interface, Top
 @chapter Error System
 
 @findex error
