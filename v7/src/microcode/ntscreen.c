@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.7 1993/08/07 00:09:39 adams Exp $
+$Id: ntscreen.c,v 1.8 1993/08/11 20:28:55 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -2881,6 +2881,24 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 
       switch (virtual_key)
       {
+        case VK_LEFT:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'B'-64)));
+
+        case VK_RIGHT:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'F'-64)));
+
+        case VK_UP:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'P'-64)));
+
+        case VK_DOWN:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'N'-64)));
+
+        case VK_HOME:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'A'-64)));
+
+        case VK_END:
+	  return (MIT_post_char_message (lpmsg, ((WPARAM) 'E'-64)));
+
 	case VK_BACK:
 	  return (MIT_post_char_message (lpmsg, ((WPARAM) ASCII_DEL)));
 
