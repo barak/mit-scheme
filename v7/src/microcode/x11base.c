@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.52 1993/11/22 03:21:08 gjr Exp $
+$Id: x11base.c,v 1.53 1994/09/14 23:01:49 adams Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -1901,6 +1901,11 @@ DEFINE_PRIMITIVE ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0)
 
 /* Font Structure Primitive */
 
+#define FONT_STRUCTURE_MAX_CONVERTED_SIZE (10+1 + 256+1 + ((5+1) * (256+2)))
+  /* font-structure-words  + 
+     char-struct-vector +
+     char-struct-words * maximum-number-possible */
+
 static SCHEME_OBJECT
 DEFUN (convert_char_struct, (char_struct), XCharStruct * char_struct)
 {
@@ -1921,49 +1926,85 @@ DEFUN (convert_char_struct, (char_struct), XCharStruct * char_struct)
   }
 }
 
-DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2, 0)
+static SCHEME_OBJECT
+DEFUN (convert_font_struct, (font_name, font),
+       SCHEME_OBJECT font_name AND
+       XFontStruct * font)
+{
+  SCHEME_OBJECT result;
+  if (font == 0)
+    return  SHARP_F;
+  /* Handle only 8-bit fonts because of laziness. */
+  if (((font -> min_byte1) != 0) || ((font -> max_byte1) != 0))
+    return  SHARP_F;
+
+  result = (allocate_marked_vector (TC_VECTOR, 10, true));
+  if ((font -> per_char) == NULL)
+    VECTOR_SET (result, 6, SHARP_F);
+  else
+    {
+      unsigned int start_index = (font -> min_char_or_byte2);
+      unsigned int length = ((font -> max_char_or_byte2) - start_index + 1);
+      SCHEME_OBJECT character_vector =
+	(allocate_marked_vector (TC_VECTOR, length, true));
+      unsigned int index;
+      for (index = 0; (index < length); index += 1)
+	VECTOR_SET (character_vector,
+		    index,
+		    (convert_char_struct ((font -> per_char) + index)));
+      VECTOR_SET (result, 6, (long_to_integer (start_index)));
+      VECTOR_SET (result, 7, character_vector);
+    }
+  VECTOR_SET (result, 0, font_name);
+  VECTOR_SET (result, 1, (long_to_integer (font -> direction)));
+  VECTOR_SET (result, 2,
+	      (BOOLEAN_TO_OBJECT ((font -> all_chars_exist) == True)));
+  VECTOR_SET (result, 3, (long_to_integer (font -> default_char)));
+  VECTOR_SET (result, 4, convert_char_struct (& (font -> min_bounds)));
+  VECTOR_SET (result, 5, convert_char_struct (& (font -> max_bounds)));
+  VECTOR_SET (result, 8, (long_to_integer (font -> ascent)));
+  VECTOR_SET (result, 9, (long_to_integer (font -> descent)));
+
+  return  result;
+}
+
+
+DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
+ "(display font)\n\
+  FONT is either a font name or a font ID.")
 {
   PRIMITIVE_HEADER (2);
+  Primitive_GC_If_Needed (FONT_STRUCTURE_MAX_CONVERTED_SIZE);
   {
-    SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
     SCHEME_OBJECT font_name = (ARG_REF (2));
     Display * display = (XD_DISPLAY (x_display_arg (1)));
-    XFontStruct * font =
-      (XLoadQueryFont (display, ((char *) (STRING_LOC (font_name, 0)))));
+    XFontStruct * font = 0;
+    Boolean  by_name  =  STRING_P (font_name);
+    SCHEME_OBJECT result;
+
+    if (by_name)
+      font = XLoadQueryFont (display, ((char *) (STRING_LOC (font_name, 0))));
+    else
+      font = XQueryFont (display, ((XID) integer_to_ulong (ARG_REF (2))));
+
     if (font == 0)
       PRIMITIVE_RETURN (SHARP_F);
-    /* Handle only 8-bit fonts because of laziness. */
-    if (((font -> min_byte1) != 0) || ((font -> max_byte1) != 0))
-      {
-	XFreeFont (display, font);
-	PRIMITIVE_RETURN (SHARP_F);
-      }
-    if ((font -> per_char) == NULL)
-      VECTOR_SET (result, 6, SHARP_F);
-    else
-      {
-	unsigned int start_index = (font -> min_char_or_byte2);
-	unsigned int length = ((font -> max_char_or_byte2) - start_index + 1);
-	SCHEME_OBJECT character_vector =
-	  (allocate_marked_vector (TC_VECTOR, length, true));
-	unsigned int index;
-	for (index = 0; (index < length); index += 1)
-	  VECTOR_SET (character_vector,
-		      index,
-		      (convert_char_struct ((font -> per_char) + index)));
-	VECTOR_SET (result, 6, (long_to_integer (start_index)));
-	VECTOR_SET (result, 7, character_vector);
-      }
-    VECTOR_SET (result, 0, font_name);
-    VECTOR_SET (result, 1, (long_to_integer (font -> direction)));
-    VECTOR_SET (result, 2,
-		(BOOLEAN_TO_OBJECT ((font -> all_chars_exist) == True)));
-    VECTOR_SET (result, 3, (long_to_integer (font -> default_char)));
-    VECTOR_SET (result, 4, convert_char_struct (& (font -> min_bounds)));
-    VECTOR_SET (result, 5, convert_char_struct (& (font -> max_bounds)));
-    VECTOR_SET (result, 8, (long_to_integer (font -> ascent)));
-    VECTOR_SET (result, 9, (long_to_integer (font -> descent)));
-    XFreeFont (display, font);
+    
+    result = convert_font_struct (font_name, font);
+
+    if (by_name)
+      XFreeFont (display, font);
     PRIMITIVE_RETURN (result);
   }
+}
+
+
+DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
+		  0)
+{
+  XFontStruct *font;
+  PRIMITIVE_HEADER (1);
+  Primitive_GC_If_Needed (FONT_STRUCTURE_MAX_CONVERTED_SIZE);
+  font = XW_FONT (x_window_arg (1));
+  PRIMITIVE_RETURN (convert_font_struct (ulong_to_integer (font), font));
 }
