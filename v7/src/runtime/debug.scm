@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.16 1989/10/26 06:45:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.17 1989/12/19 15:37:09 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -567,10 +567,8 @@ MIT in each case. |#
 (define (command/frame dstate)
   (presentation
    (lambda ()
-     (write-string "Stack frame ")
+     (write-string "Stack frame: ")
      (write (dstate/subproblem dstate))
-     (write-string " :")
-     (newline)
      (for-each (lambda (element)
 		 (newline)
 		 (pretty-print element))
