@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 4.1 1988/06/13 12:29:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/object.scm,v 4.2 1989/04/18 16:32:34 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -171,7 +171,7 @@ MIT in each case. |#
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and
   ;; fasload it back in.
-  (make-named-tag "open-block/value-marker"))
+  (intern "#[(scode-optimizer)open-block/value-marker]"))
 
 ;;;; Expression Types
 
