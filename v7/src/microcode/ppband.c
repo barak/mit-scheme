@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.47 1993/10/14 21:42:03 gjr Exp $
+$Id: ppband.c,v 9.48 1999/01/02 02:52:37 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -299,7 +299,7 @@ DEFUN (Display, (Location, Type, The_Datum),
       }
       NON_POINTER ("NULL");
 
-    case TC_TRUE:
+    case TC_CONSTANT:
       if (The_Datum == 0)
       {
 	printf ("#T\n");

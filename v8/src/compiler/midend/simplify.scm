@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.19 1996/07/30 19:25:02 adams Exp $
+$Id: simplify.scm,v 1.20 1999/01/02 02:52:46 cph Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -162,23 +162,23 @@ MIT in each case. |#
     (do-simplification env0 #T bindings* body* simplify/letrecify)))
 
 (define-simplifier LETREC (env bindings body)
-  (let* ((frame (map (lambda (binding) (simplify/binding/make (car binding)))
+  (let* ((n-bindings (length bindings))
+	 (frame (map (lambda (binding) (simplify/binding/make (car binding)))
 		     bindings))
 	 (env0 (simplify/env/make env frame))
 	 (body* (simplify/expr env0 body)))
 
-    (let ((bindings* '())
-	  (initial-queue (map cons frame bindings)))
+    (let ((bindings* (make-vector n-bindings))
+	  (initial-queue (map cons* frame (iota n-bindings) bindings)))
 
       (define (finish unused)
-	(let ((bindings*
-	       (map* bindings*
-		     (lambda (bnd+var+exp)
-		       (list false (second bnd+var+exp) (third bnd+var+exp)))
-		     unused)))
-	  (let ((x
-		 (do-simplification env0 #T bindings* body* simplify/letrecify)))
-	    x)))
+	(define (insert! elt)
+	  (vector-set! bindings*
+		       (second elt)
+		       (list false (third elt) (fourth elt))))
+	(for-each insert! unused)
+	(do-simplification env0 #T (vector->list bindings*)
+			   body* simplify/letrecify))
 
       ;; We scan a queue of bindings to check.  If a binding is referenced, add
       ;; it to the set.  If it is unreferenced, put it in a retry
@@ -200,10 +200,11 @@ MIT in each case. |#
 		       (null? (simplify/binding/ordinary-refs (car head))))
 		  (loop rest (cons head retry) found-one?)
 		  (begin
-		    (set! bindings*
-			  (cons (simplify/binding&value env0 (second head) (third head))
-				bindings*))
+		    (vector-set! bindings*
+				 (second head)
+				 (simplify/binding&value env0 (third head) (fourth head)))
 		    (loop (cdr queue) retry #T)))))))))
+
 
 (define (simplify/binding&value env name value)
   (if (not (LAMBDA/? value))

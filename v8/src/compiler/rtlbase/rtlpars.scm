@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlpars.scm,v 1.3 1994/12/16 20:18:34 adams Exp $
+$Id: rtlpars.scm,v 1.4 1999/01/02 02:52:56 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -227,12 +227,13 @@ MIT in each case. |#
     unspecific))
 
 (define (link-up! slot labels->segments)
-  (define (find-bblock label)
+  (define (find-bblock label seen)
     (let ((desc (hash-table/get labels->segments label false)))
       (if (not desc)
 	  (internal-error "Missing label" label))
-      (if (eq? (car desc) 'EMPTY)
-	  (find-bblock (cadr desc))
+      (if (and (eq? (car desc) 'EMPTY)
+	       (not (memq label seen)))
+	  (find-bblock (cadr desc) (cons label seen))
 	  (caddr desc))))
 
   (if (not (eq? (car slot) 'EMPTY))
@@ -242,14 +243,14 @@ MIT in each case. |#
 	      ((not (pair? next))
 	       (create-edge! bblock
 			     set-snode-next-edge!
-			     (find-bblock next)))
+			     (find-bblock next '())))
 	      (else
 	       (create-edge! bblock
 			     set-pnode-consequent-edge!
-			     (find-bblock (car next)))
+			     (find-bblock (car next) '()))
 	       (create-edge! bblock
 			     set-pnode-alternative-edge!
-			     (find-bblock (cadr next))))))))
+			     (find-bblock (cadr next) '())))))))
 
 (define-macro (%push! object collection)
   `(begin (set! ,collection (cons ,object ,collection))

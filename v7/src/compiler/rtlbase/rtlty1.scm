@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlty1.scm,v 4.21 1993/07/01 03:25:47 gjr Exp $
+$Id: rtlty1.scm,v 4.22 1999/01/02 02:52:22 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -137,6 +137,10 @@ MIT in each case. |#
 
 (define-rtl-predicate eq-test % expression-1 expression-2)
 (define-rtl-predicate type-test % expression type)
+
+;; General predicates
+(define-rtl-predicate pred-1-arg % predicate operand)
+(define-rtl-predicate pred-2-args % predicate operand-1 operand-2)
 
 (define-rtl-predicate overflow-test rtl:)
 

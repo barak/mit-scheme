@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 1.3 1994/11/26 19:59:00 gjr Exp $
+$Id: lapgn3.scm,v 1.4 1999/01/02 02:52:51 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -232,6 +232,8 @@ MIT in each case. |#
 			(- (system-vector-length block) 3)
 			counts)))
 
+
+;; These belong in the runtime system
 
 (define (compiled-code-block/read-profile-count block count)
   block
