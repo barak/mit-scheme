@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.14 1991/11/15 05:15:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/process.scm,v 1.15 1992/03/24 23:30:08 cph Exp $
 
-Copyright (c) 1989-91 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -211,7 +211,7 @@ MIT in each case. |#
   (without-interrupts
    (lambda ()
      (let ((index (subprocess-index process)))
-       (if ((ucode-primitive process-status-sync 1) index)
+       (if (and index ((ucode-primitive process-status-sync 1) index))
 	   (begin
 	     (set-subprocess-%status!
 	      process
