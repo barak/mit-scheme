@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.11 1992/06/08 18:17:14 aragorn Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.12 1992/06/11 17:31:22 u6001 Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -334,5 +334,24 @@ MIT in each case. |#
 		'done
 		(let ((rowvals
 		       (map char-function
-			    (vector->list (vector-ref data row)))))
+			    (floating-vector->list (vector-ref data row)))))
 		  (begin (write-string (list->string rowvals) port)
+			 (rowloop (- row 1)))))))))))
+
+
+(define (floating-vector->list vector)
+  (generate-list (floating-vector-length vector) 
+		 (lambda (i)
+		   (floating-vector-ref vector i))))
+
+
+(define (generate-list n proc) ; ==> ( (proc 0) (proc 1) ... (proc n-1) )
+  (let loop ((i (- n 1)) (list '()))
+    (if (< i 0)
+        list
+        (loop (- i 1) (cons (proc i) list)))))
+
+
+
+
+
