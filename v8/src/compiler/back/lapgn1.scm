@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 1.1 1994/11/19 01:54:17 adams Exp $
+$Id: lapgn1.scm,v 1.2 1994/11/26 19:06:58 adams Exp $
 
 Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
@@ -177,6 +177,7 @@ MIT in each case. |#
 	      (*register-map* map)
 	      (*preserved-registers* '())
 	      (*recomputed-registers* '()))
+    (profile-info/start)
     (set-bblock-instructions! bblock
 			      (let loop ((rinst (bblock-instructions bblock)))
 				(if (rinst-next rinst)
@@ -184,6 +185,7 @@ MIT in each case. |#
 				      (LAP ,@instructions
 					   ,@(loop (rinst-next rinst))))
 				    (cgen-rinst rinst))))
+    (profile-info/end)
     (set-bblock-register-map! bblock *register-map*)))
 
 (define (cgen-rinst rinst)
@@ -216,6 +218,11 @@ MIT in each case. |#
 		 (LAP)))
 	    ((eq? (car rtl) 'RESTORE)
 	     (cgen-restore rtl loop dead-registers))
+	    ((eq? (car rtl) 'PROFILE-DATA)
+	     (profile-info/add (second (second rtl)))
+	     (if *insert-rtl?*
+		 (LAP (COMMENT (RTL ,rtl)))
+		 (LAP)))
 	    (else
 	     (error "CGEN-RINST: No matching rules" rtl)
 	     (loop rtl dead-registers))))))
