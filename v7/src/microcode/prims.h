@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.47 2001/01/04 22:07:41 cph Exp $
+$Id: prims.h,v 9.48 2001/03/08 17:03:32 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -80,6 +80,7 @@ extern void EXFUN (signal_interrupt_from_primitive, (void));
 extern void EXFUN (error_wrong_type_arg, (int));
 extern void EXFUN (error_bad_range_arg, (int));
 extern void EXFUN (error_external_return, (void));
+extern void EXFUN (error_with_argument, (SCHEME_OBJECT));
 extern long EXFUN (arg_integer, (int));
 extern long EXFUN (arg_nonnegative_integer, (int));
 extern long EXFUN (arg_index_integer, (int, long));

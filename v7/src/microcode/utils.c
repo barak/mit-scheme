@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.75 2000/12/05 21:23:48 cph Exp $
+$Id: utils.c,v 9.76 2001/03/08 17:03:35 cph Exp $
 
 Copyright (c) 1987-2000 Massachusetts Institute of Technology
 
@@ -367,16 +367,27 @@ DEFUN_VOID (error_external_return)
   signal_error_from_primitive (ERR_EXTERNAL_RETURN);
 }
 
-unsigned int syscall_error_code;
-unsigned int syscall_error_name;
+static SCHEME_OBJECT error_argument;
+
+void
+DEFUN (error_with_argument, (argument), SCHEME_OBJECT argument)
+{
+  error_argument = argument;
+  signal_error_from_primitive (ERR_WITH_ARGUMENT);
+  /*NOTREACHED*/
+}
 
 void
 DEFUN (error_in_system_call, (err, name),
        enum syserr_names err AND enum syscall_names name)
 {
-  syscall_error_code = ((unsigned int) err);
-  syscall_error_name = ((unsigned int) name);
-  signal_error_from_primitive (ERR_IN_SYSTEM_CALL);
+  /* System call errors have some additional information.
+     Encode this as a vector in place of the error code.  */
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 0));
+  VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+  VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) err)));
+  VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM ((unsigned int) name)));
+  error_with_argument (v);
   /*NOTREACHED*/
 }
 
@@ -384,8 +395,7 @@ void
 DEFUN (error_system_call, (code, name),
        int code AND enum syscall_names name)
 {
-  error_in_system_call ((OS_error_code_to_syserr (code)),
-			name);
+  error_in_system_call ((OS_error_code_to_syserr (code)), name);
   /*NOTREACHED*/
 }
 
@@ -630,20 +640,12 @@ DEFUN (Do_Micro_Error, (Err, From_Pop_Return),
   /* Arg 2:     Int. mask */
   STACK_PUSH (LONG_TO_FIXNUM(FETCH_INTERRUPT_MASK()));
   /* Arg 1:     Err. No   */
-  if (Err == ERR_IN_SYSTEM_CALL)
-    {
-      /* System call errors have some additional information.
-	 Encode this as a vector in place of the error code.  */
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 0));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (LONG_TO_UNSIGNED_FIXNUM (syscall_error_code)));
-      VECTOR_SET (v, 2, (LONG_TO_UNSIGNED_FIXNUM (syscall_error_name)));
-      STACK_PUSH (v);
-    }
+  if (Err == ERR_WITH_ARGUMENT)
+    STACK_PUSH (error_argument);
   else if ((Err >= SMALLEST_FIXNUM) && (Err <= BIGGEST_FIXNUM))
-      STACK_PUSH (LONG_TO_FIXNUM (Err));
+    STACK_PUSH (LONG_TO_FIXNUM (Err));
   else
-      STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (ERR_BAD_ERROR_CODE));
   /* Procedure: Handler   */
   STACK_PUSH (Handler);
   STACK_PUSH (STACK_FRAME_HEADER + 2);

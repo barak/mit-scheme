@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.42 1999/01/02 06:11:34 cph Exp $
+$Id: errors.h,v 9.43 2001/03/08 17:03:30 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define ERR_UNASSIGNED_VARIABLE			0x02
 #define ERR_INAPPLICABLE_OBJECT			0x03
 #define ERR_IN_SYSTEM_CALL			0x04
-/* #define ERR_ENVIRONMENT_CHAIN_TOO_DEEP	0x05 */
+#define ERR_WITH_ARGUMENT			0x05
 #define ERR_BAD_FRAME				0x06
 #define ERR_BROKEN_COMPILED_VARIABLE		0x07
 #define ERR_UNDEFINED_USER_TYPE			0x08
