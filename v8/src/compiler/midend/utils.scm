@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.9 1995/01/22 16:20:56 adams Exp $
+$Id: utils.scm,v 1.10 1995/01/25 20:20:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -547,9 +547,9 @@ Example use of FORM/COPY-TRANSFORMING:
        (case (car form)
 	 ((LOOKUP QUOTE LAMBDA) true)
 	 ((IF)
-	  (and (form/simple&side-effect-free? (cadr form))
-	       (form/simple&side-effect-free? (caddr form))
-	       (form/simple&side-effect-free? (caddr form))))
+	  (and (form/simple&side-effect-free? (if/predicate form))
+	       (form/simple&side-effect-free? (if/consequent form))
+	       (form/simple&side-effect-free? (if/alternate form))))
 	 ((CALL)
 	  (let ((rator (call/operator form)))
 	    (and (QUOTE/? rator)
