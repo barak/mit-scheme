@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.104 1987/05/18 23:24:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.105 1987/05/28 17:59:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -94,54 +94,55 @@ MIT in each case. |#
 		       statement
     (lambda (volatile? insert-source!)
       (let ((address (rtl:assign-address statement)))
-	(cond ((rtl:register? address)
-	       (register-expression-invalidate! address)
-	       (if (and (not volatile?)
-			;; This is a kludge.  If the address is the
-			;; frame pointer, then the source is the stack
-			;; pointer.  If this is not done then some of
-			;; the references to stack locations use the
-			;; stack pointer instead of the frame pointer.
-			;; This is not a bug but I want the stack
-			;; addressing to be uniform for now.  -- cph
-			(not (interpreter-frame-pointer? address)))
-		   (insert-register-destination! address (insert-source!))))
-	      (else
-	       (full-expression-hash address
-		 (lambda (hash volatile?* in-memory?*)
-		   (let ((memory-invalidate!
-			  (cond ((and (memq (rtl:expression-type address)
-					    '(PRE-INCREMENT POST-INCREMENT))
-				      (or (interpreter-stack-pointer?
-					   (rtl:address-register address))
-					  (interpreter-free-pointer?
-					   (rtl:address-register address))))
-				 (lambda ()
-				   (register-expression-invalidate!
-				    (rtl:address-register address))))
-				((expression-address-varies? address)
-				 (lambda ()
-				   (hash-table-delete-class!
-				    element-in-memory?)))
-				(else
-				 (lambda ()
-				   (hash-table-delete!
-				    hash
-				    (hash-table-lookup hash address))
-				   (hash-table-delete-class!
-				    element-address-varies?))))))
-		     (cond (volatile?* (memory-invalidate!))
-			   ((not volatile?)
-			    (let ((address
-				   (find-cheapest-expression address hash
-							     false)))
-			      (let ((element (insert-source!)))
-				(memory-invalidate!)
-				(insert-memory-destination!
-				 address
-				 element
-				 (modulo (+ (symbol-hash 'ASSIGN) hash)
-					 n-buckets)))))))))))))))
+	(if (rtl:register? address)
+	    (begin 
+	      (register-expression-invalidate! address)
+	      (if (and (not volatile?)
+		       (not (rtl:machine-register-expression?
+			     (rtl:assign-expression statement)))
+		       ;; This is a kludge.  If the address is the
+		       ;; frame pointer, then the source is the stack
+		       ;; pointer.  If this is not done then some of
+		       ;; the references to stack locations use the
+		       ;; stack pointer instead of the frame pointer.
+		       ;; This is not a bug but I want the stack
+		       ;; addressing to be uniform for now.  -- cph
+		       (not (interpreter-frame-pointer? address)))
+		  (insert-register-destination! address (insert-source!))))
+	    (full-expression-hash address
+	      (lambda (hash volatile?* in-memory?*)
+		(let ((memory-invalidate!
+		       (cond ((and (memq (rtl:expression-type address)
+					 '(PRE-INCREMENT POST-INCREMENT))
+				   (or (interpreter-stack-pointer?
+					(rtl:address-register address))
+				       (interpreter-free-pointer?
+					(rtl:address-register address))))
+			      (lambda ()
+				(register-expression-invalidate!
+				 (rtl:address-register address))))
+			     ((expression-address-varies? address)
+			      (lambda ()
+				(hash-table-delete-class! element-in-memory?)))
+			     (else
+			      (lambda ()
+				(hash-table-delete!
+				 hash
+				 (hash-table-lookup hash address))
+				(hash-table-delete-class!
+				 element-address-varies?))))))
+		  (cond (volatile?* (memory-invalidate!))
+			((not volatile?)
+			 (let ((address
+				(find-cheapest-expression address hash
+							  false)))
+			   (let ((element (insert-source!)))
+			     (memory-invalidate!)
+			     (insert-memory-destination!
+			      address
+			      element
+			      (modulo (+ (symbol-hash 'ASSIGN) hash)
+				      n-buckets))))))))))))))
 
 (define (trivial-action volatile? insert-source!)
   (if (not volatile?)
