@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.24 1995/05/06 18:04:53 adams Exp $
+$Id: utils.scm,v 1.25 1995/05/06 18:28:45 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -238,7 +238,7 @@ MIT in each case. |#
 	   (if incremental?
 	       (loop (cdr actions)
 		     (append (begin/exprs (car actions)) actions*))
-	       (loop (append (reverse (begin/expr (car actions)))
+	       (loop (append (reverse (begin/exprs (car actions)))
 			     (cdr actions))
 		     actions*)))
 	  ((and (not (null? actions*))
