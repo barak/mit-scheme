@@ -37,7 +37,7 @@
 
 ;;;; Compiler Utilities
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.74 1986/12/16 23:52:14 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.75 1986/12/17 08:02:18 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -52,11 +52,11 @@
        (unparse-with-brackets
 	(lambda ()
 	  (write-string "LIAR ")
-	  (fluid-let ((*unparser-radix* 16))
-	    ((vector-method object ':UNPARSE) object))
-	  (write-string " ")
 	  (fluid-let ((*unparser-radix* 10))
-	    (write (hash object)))))))
+	    (write (hash object)))
+	  (write-string " ")
+	  (fluid-let ((*unparser-radix* 16))
+	    ((vector-method object ':UNPARSE) object))))))
     tag))
 
 (define (vector-tag-put! tag key value)
@@ -90,7 +90,7 @@
       (error "Unbound method" vector name)))
 
 (define (define-unparser tag unparser)
-  (vector-tag-put! tag ':UNPARSE unparser))
+  (define-vector-method tag ':UNPARSE unparser))
 
 (define-integrable make-tagged-vector
   vector)
@@ -103,24 +103,25 @@
 (define (tagged-vector-subclass-predicate tag)
   (define (loop tag*)
     (or (eq? tag tag*)
-	(and (not (null? (cdr tag*)))
+	(and (pair? tag*)
 	     (loop (cdr tag*)))))
   (lambda (object)
     (and (vector? object)
 	 (not (zero? (vector-length object)))
 	 (loop (vector-tag object)))))
 
+(define tagged-vector?
+  (tagged-vector-subclass-predicate vector-tag:object))
+
 (define-unparser vector-tag:object
   (lambda (object)
     (write (vector-method object ':TYPE-NAME))))
 
-(define (po object)
-  (let ((object (if (integer? object)
-		    (unhash object)
-		    object)))
-    (fluid-let ((*unparser-radix* 16))
-      (write-line object)
-      (for-each pp ((vector-method object ':DESCRIBE) object)))))
+(define (->tagged-vector object)
+  (or (and (tagged-vector? object) object)
+      (and (integer? object)
+	   (let ((object (unhash object)))
+	     (and (tagged-vector? object) object)))))
 
 ;;;; Queue
 
