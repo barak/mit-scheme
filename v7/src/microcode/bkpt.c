@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.23 1989/09/20 23:06:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bkpt.c,v 9.24 1990/08/07 23:06:06 jinx Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,46 +41,59 @@ MIT in each case. */
 #include "Error: Not debugging but bkpt.c included"
 #endif
 
+#define sp_nil ((struct sp_record *) 0)
+
 sp_record_list SP_List = sp_nil;
 
-extern Boolean Add_a_Pop_Return_Breakpoint();
+extern Boolean Add_a_Pop_Return_Breakpoint ();
 
 static struct sp_record One_Before =
-{ ((SCHEME_OBJECT *) 0),
+{
+  ((SCHEME_OBJECT *) 0),
   sp_nil
 };
 
-Boolean Add_a_Pop_Return_Breakpoint(SP)
-SCHEME_OBJECT *SP;
-{ sp_record_list old = SP_List;
-  SP_List = ((sp_record_list) malloc(sizeof(struct sp_record)));
+Boolean
+Add_a_Pop_Return_Breakpoint (SP)
+     SCHEME_OBJECT *SP;
+{
+  sp_record_list old = SP_List;
+  SP_List = ((sp_record_list) (malloc (sizeof(struct sp_record))));
+
   if (SP_List == sp_nil)
-  { fprintf(stderr, "Could not allocate a breakpoint structure\n");
+  {
+    fprintf (stderr, "Could not allocate a breakpoint structure\n");
     SP_List = old;
     return false;
   }
   SP_List->sp = SP;
   SP_List->next = old;
   One_Before.next = SP_List;
-  return true;
+  return (true);
 }
 
 /* This uses register rather than fast because it is invoked
  * very often and would make things too slow.
  */
 
-void Pop_Return_Break_Point()
-{ fast SCHEME_OBJECT *SP = Stack_Pointer;
+void
+Pop_Return_Break_Point ()
+{
+  fast SCHEME_OBJECT *SP = Stack_Pointer;
   fast sp_record_list previous = &One_Before;
   fast sp_record_list this = previous->next; /* = SP_List */
+
   for ( ;
        this != sp_nil;
        previous = this, this = this->next)
+  {
     if (this->sp == SP)
-    { Handle_Pop_Return_Break();
+    {
+      Handle_Pop_Return_Break ();
       previous->next = this->next;
       break;
     }
+  }
   SP_List = One_Before.next;
   return;
 }
@@ -88,14 +101,15 @@ void Pop_Return_Break_Point()
 /* A breakpoint can be placed here from a C debugger to examine
    the state of the world. */
 
-extern Boolean Print_One_Continuation_Frame();
+extern Boolean Print_One_Continuation_Frame ();
 
-Handle_Pop_Return_Break()
-{ Boolean ignore;
+Handle_Pop_Return_Break ()
+{
+  Boolean ignore;
   SCHEME_OBJECT *Old_Stack = Stack_Pointer;
 
-  printf("Pop Return Break: SP = 0x%x\n", Stack_Pointer);
-  ignore = Print_One_Continuation_Frame();
+  printf ("Pop Return Break: SP = 0x%x\n", Stack_Pointer);
+  ignore = (Print_One_Continuation_Frame ());
   Stack_Pointer = Old_Stack;
   return;
 }
