@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.43 1987/07/02 20:01:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.44 1987/07/02 20:05:19 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -101,6 +101,7 @@
     ("Error->" . "[Error REPL]")
     ("Debug-->" . "[Debugger]")
     ("Debugger-->" . "[Debugger REPL]")
+    ("Visiting->" . "[Visiting environment]")
     ("Where-->" . "[Environment Inspector]")
     ("Which-->" . "[Task Inspector]")))
 
