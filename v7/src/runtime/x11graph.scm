@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.28 1993/04/27 09:14:12 cph Exp $
+$Id: x11graph.scm,v 1.29 1993/09/01 22:45:36 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -52,6 +52,7 @@ MIT in each case. |#
 
   (x-window-beep 1)
   (x-window-clear 1)
+  (x-window-event-mask 1)
   (x-window-iconify 1)
   (x-window-id 1)
   (x-window-lower 1)
@@ -137,7 +138,14 @@ MIT in each case. |#
 
 ;; This mask contains button-down, configure, delete-window, map, unmap,
 ;; and visibility.
-(define-integrable event-mask #x5c05)
+(define-integrable default-event-mask #x5c05)
+
+;; This mask additionally contains take-focus.
+(define-integrable system-event-mask #x7c05)
+
+;; This mask contains button-down, button-up, enter, focus-in,
+;; focus-out, key-press, leave, and motion.
+(define-integrable user-event-mask #x01fb)
 
 ;;;; Protection lists
 
@@ -389,6 +397,14 @@ MIT in each case. |#
 	       (loop)))))
     (if (not block-events?)
 	(unblock-thread-events))))
+
+(define (read-event-of-type device event-type)
+  (let ((display (x-graphics/display device)))
+    (let loop ()
+      (let ((event (read-event display)))
+	(if (fix:= (vector-ref event 0) event-type)
+	    event
+	    (loop))))))
 
 (define (process-event display event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0))))
@@ -437,10 +453,30 @@ MIT in each case. |#
       ((2) (set-x-window/visibility! window 'OBSCURED)))
     false))
 
-(define-event-handler event-type:button-down
-  (lambda (window event)
-    (enqueue! (x-display/event-queue (x-window/display window)) event)
-    true))
+(let ((mouse-event-handler
+       (lambda (window event)
+	 (vector-set! event 2
+		      (x-graphics-map-x-coordinate window
+						   (vector-ref event 2)))
+	 (vector-set! event 3
+		      (x-graphics-map-y-coordinate window
+						   (vector-ref event 3)))
+	 (enqueue! (x-display/event-queue (x-window/display window)) event)
+	 true)))
+  (define-event-handler event-type:button-down mouse-event-handler)
+  (define-event-handler event-type:button-up mouse-event-handler)
+  (define-event-handler event-type:motion mouse-event-handler))
+
+(let ((user-event-handler
+       (lambda (window event)
+	 (enqueue! (x-display/event-queue (x-window/display window)) event)
+	 true)))
+  ;; ENTER and LEAVE events should be modified to have X,Y coordinates.
+  (define-event-handler event-type:enter user-event-handler)
+  (define-event-handler event-type:focus-in user-event-handler)
+  (define-event-handler event-type:focus-out user-event-handler)
+  (define-event-handler event-type:key-press user-event-handler)
+  (define-event-handler event-type:leave user-event-handler))
 
 ;;;; Standard Operations
 
@@ -478,7 +514,7 @@ MIT in each case. |#
 				   geometry
 				   (and (not (default-object? suppress-map?))
 					suppress-map?))))
-      (x-window-set-event-mask xw event-mask)
+      (x-window-set-event-mask xw default-event-mask)
       (let ((window (make-x-window xw display)))
 	(add-to-protection-list! (x-display/window-list display) window xw)
 	window))))
@@ -624,6 +660,14 @@ MIT in each case. |#
   (x-display-get-default (x-graphics-device/xd device)
 			 resource-name class-name))
 
+(define (x-graphics/starbase-filename device)
+  (x-window-starbase-filename (x-graphics-device/xw device)))
+
+(define (x-graphics/window-id device)
+  (x-window-id (x-graphics-device/xw device)))
+
+;;;; Event-Handling Operations
+
 (define (x-graphics/set-input-hint device input?)
   (x-window-set-input-hint (x-graphics-device/xw device) input?))
 
@@ -631,8 +675,25 @@ MIT in each case. |#
   ;; Tell the window to participate in the TAKE-FOCUS protocol.  Since
   ;; there is no handler for this event, focus will never be given to
   ;; the window.
-  (x-window-set-event-mask (x-graphics-device/xw device)
-			   (fix:or #x2000 event-mask)))
+  (let ((xw (x-graphics-device/xw device)))
+    (x-window-set-event-mask xw
+			     (fix:or system-event-mask
+				     (fix:and user-event-mask
+					      (x-window-event-mask xw))))))
+
+(define (x-graphics/enable-keyboard-focus device)
+  (let ((xw (x-graphics-device/xw device)))
+    (x-window-set-event-mask xw
+			     (fix:or default-event-mask
+				     (fix:and user-event-mask
+					      (x-window-event-mask xw))))))
+
+(define (x-graphics/select-user-events device mask)
+  (let ((xw (x-graphics-device/xw device)))
+    (x-window-set-event-mask
+     xw
+     (fix:or (fix:and user-event-mask mask)
+	     (fix:and system-event-mask (x-window-event-mask xw))))))
 
 (define (x-graphics/query-pointer device)
   (let* ((window (x-graphics-device/xw device))
@@ -642,20 +703,18 @@ MIT in each case. |#
 	    (vector-ref result 4))))
 
 (define (x-graphics/read-button device)
-  (let ((event (read-event (x-graphics/display device))))
-    (let ((window (vector-ref event 1)))
-      (values (x-graphics-map-x-coordinate window (vector-ref event 2))
-	      (x-graphics-map-y-coordinate window (vector-ref event 3))
-	      (vector-ref event 4)))))
+  (let ((event
+	 (read-event-of-type (x-graphics/display device)
+			     event-type:button-down)))
+    (values (vector-ref event 2)
+	    (vector-ref event 3)
+	    (vector-ref event 4))))
+
+(define (x-graphics/read-user-event device)
+  (read-event (x-graphics/display device)))
 
 (define (x-graphics/discard-events device)
   (discard-events (x-graphics/display device)))
-
-(define (x-graphics/starbase-filename device)
-  (x-window-starbase-filename (x-graphics-device/xw device)))
-
-(define (x-graphics/window-id device)
-  (x-window-id (x-graphics-device/xw device)))
 
 ;;;; Font Operations
 
