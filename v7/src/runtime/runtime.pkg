@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.487 2004/06/12 02:14:56 cph Exp $
+$Id: runtime.pkg,v 14.488 2004/07/02 00:54:07 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2710,7 +2710,9 @@ USA.
 	  make-macro-reference-trap-expression)
   (export (runtime unsyntaxer)
 	  macro-reference-trap-expression-transformer
-	  macro-reference-trap-expression?))
+	  macro-reference-trap-expression?)
+  (export (runtime miscellaneous-global)
+	  trap-max-immediate))
 
 (define-package (runtime rep)
   (files "rep")

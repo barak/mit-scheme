@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.61 2003/04/14 19:56:15 cph Exp $
+$Id: global.scm,v 14.62 2004/07/02 00:53:27 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +44,6 @@ USA.
 
   ;; Pointers
   (object-type 1)
-  (object-gc-type 1)
   (object-datum 1)
   (object-type? 2)
   (object-new-type object-set-type 2)
@@ -260,11 +259,67 @@ USA.
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
-(define-integrable (object-non-pointer? object)
-  (zero? (object-gc-type object)))
+(define (object-gc-type object)
+  (let ((t ((ucode-primitive object-gc-type 1) object)))
+    (if (not (and (fix:fixnum? t)
+		  (fix:>= t -4)
+		  (fix:<= t 4)))
+	(error "Illegal GC-type value:" t))
+    (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
+				  CELL PAIR TRIPLE QUADRUPLE)
+		(fix:+ t 4))))
 
-(define-integrable (object-pointer? object)
-  (not (object-non-pointer? object)))
+(define (object-non-pointer? object)
+  (case (object-gc-type object)
+    ((NON-POINTER) #t)
+    ((GC-INTERNAL)
+     (or (object-type? (ucode-type manifest-nm-vector) object)
+	 (object-type? (ucode-type manifest-special-nm-vector) object)
+	 (and (object-type? (ucode-type reference-trap) object)
+	      (<= (object-datum object) trap-max-immediate))))
+    (else #f)))
+
+(define (object-pointer? object)
+  (case (object-gc-type object)
+    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
+    ((GC-INTERNAL)
+     (or (object-type? (ucode-type broken-heart) object)
+	 (and (object-type? (ucode-type reference-trap) object)
+	      (> (object-datum object) trap-max-immediate))))
+    (else #f)))
+
+(define (undefined-value? object)
+  ;; Note: the unparser takes advantage of the fact that objects
+  ;; satisfying this predicate also satisfy:
+  ;; (object-type? (ucode-type constant) object)
+  (or (eq? object undefined-conditional-branch)
+      ;; same as `undefined-conditional-branch'.
+      ;; (eq? object *the-non-printing-object*)
+      ;; (eq? object unspecific)
+      (eq? object (microcode-object/unassigned))))
+
+(define unspecific
+  (object-new-type (ucode-type constant) 1))
+
+(define *the-non-printing-object*
+  unspecific)
+
+(define (obarray->list #!optional obarray)
+  (let ((obarray
+	 (if (default-object? obarray)
+	     (fixed-objects-item 'OBARRAY)
+	     obarray)))
+    (let per-bucket
+	((index (fix:- (vector-length obarray) 1))
+	 (accumulator '()))
+      (if (fix:< index 0)
+	  accumulator
+	  (let per-symbol
+	      ((bucket (vector-ref obarray index))
+	       (accumulator accumulator))
+	    (if (pair? bucket)
+		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
+		(per-bucket (fix:- index 1) accumulator)))))))
 
 (define (impurify object)
   (if (and (object-pointer? object) (object-pure? object))
@@ -302,36 +357,3 @@ USA.
 		   (write-string " -- done" port)
 		   (newline port))))
 	(do-it no-print no-print))))
-
-(define (undefined-value? object)
-  ;; Note: the unparser takes advantage of the fact that objects
-  ;; satisfying this predicate also satisfy:
-  ;; (object-type? (microcode-type 'CONSTANT) object)
-  (or (eq? object undefined-conditional-branch)
-      ;; same as `undefined-conditional-branch'.
-      ;; (eq? object *the-non-printing-object*)
-      ;; (eq? object unspecific)
-      (eq? object (microcode-object/unassigned))))
-
-(define unspecific
-  (object-new-type (ucode-type constant) 1))
-
-(define *the-non-printing-object*
-  unspecific)
-
-(define (obarray->list #!optional obarray)
-  (let ((obarray
-	 (if (default-object? obarray)
-	     (fixed-objects-item 'OBARRAY)
-	     obarray)))
-    (let per-bucket
-	((index (fix:- (vector-length obarray) 1))
-	 (accumulator '()))
-      (if (fix:< index 0)
-	  accumulator
-	  (let per-symbol
-	      ((bucket (vector-ref obarray index))
-	       (accumulator accumulator))
-	    (if (pair? bucket)
-		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
-		(per-bucket (fix:- index 1) accumulator)))))))
