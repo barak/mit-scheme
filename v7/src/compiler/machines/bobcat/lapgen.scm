@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.160 1987/05/09 06:23:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.161 1987/05/13 11:00:33 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -114,13 +114,6 @@ MIT in each case. |#
   (if (and (zero? n) (TSTable-expression? expression))
       `(TST B ,expression)
       `(CMP B (& ,n) ,expression)))
-
-(define (test-constant constant expression)
-  (if (non-pointer-object? constant)
-      (test-non-pointer (primitive-type constant)
-			(primitive-datum constant)
-			expression)
-      `(CMP L (@PCR ,(constant->label constant)) ,expression)))
 
 (define (test-non-pointer type datum expression)
   (if (and (zero? type) (zero? datum) (TSTable-expression? expression))
@@ -473,57 +466,100 @@ MIT in each case. |#
   `(,(test-non-pointer (ucode-type unassigned) 0
 		       (indirect-reference! register offset))))
 
+(define (eq-test/constant*register constant register)
+  (set-standard-branches! 'EQ)
+  (if (non-pointer-object? constant)
+      `(,(test-non-pointer (primitive-type constant)
+			   (primitive-datum constant)
+			   (coerce->any register)))
+      `((CMP L
+	     (@PCR ,(constant->label constant))
+	     ,(reference-alias-register! register false)))))
+
+(define (eq-test/constant*memory constant register offset)
+  (set-standard-branches! 'EQ)
+  (let ((source (indirect-reference! register offset)))
+    (if (non-pointer-object? constant)
+	`(,(test-non-pointer (primitive-type constant)
+			     (primitive-datum constant)
+			     source))
+	(let ((temp (reference-temporary-register! false)))
+	  `((MOVE L ,source ,temp)
+	    (CMP L (@PCR ,(constant->label constant)) ,temp))))))
+
+(define (eq-test/register*register register-1 register-2)
+  (set-standard-branches! 'EQ)
+  (let ((finish
+	 (lambda (register-1 register-2)
+	   `((CMP L
+		  ,(coerce->any register-2)
+		  ,(reference-alias-register! register-1 false))))))
+    (if (or (and (not (register-has-alias? register-1 'DATA))
+		 (register-has-alias? register-2 'DATA))
+	    (and (not (register-has-alias? register-1 'ADDRESS))
+		 (register-has-alias? register-2 'ADDRESS)))
+	(finish register-2 register-1)
+	(finish register-1 register-2))))
+
+(define (eq-test/register*memory register-1 register-2 offset-2)
+  (set-standard-branches! 'EQ)
+  `((CMP L
+	 ,(indirect-reference! register-2 offset-2)
+	 ,(reference-alias-register! register-1 false))))
+
+(define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
+  (set-standard-branches! 'EQ)
+  (let ((temp (reference-temporary-register! false)))
+    (let ((finish
+	   (lambda (register-1 offset-1 register-2 offset-2)
+	     `((MOVE L ,(indirect-reference! register-1 offset-1) ,temp)
+	       (CMP L ,(indirect-reference! register-2 offset-2) ,temp)))))
+      (if (or (and (not (register-has-alias? register-1 'ADDRESS))
+		   (register-has-alias? register-2 'ADDRESS))
+	      (and (not (register-has-alias? register-1 'DATA))
+		   (register-has-alias? register-2 'DATA)))
+	  (finish register-2 offset-2 register-1 offset-1)
+	  (finish register-1 offset-1 register-2 offset-2)))))
+
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
   (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQ)
-  `(,(test-constant constant (coerce->any register))))
+  (eq-test/constant*register constant register))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
   (QUALIFIER (pseudo-register? register))
-  (set-standard-branches! 'EQ)
-  `(,(test-constant constant (coerce->any register))))
+  (eq-test/constant*register constant register))
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register)) (? offset)) (CONSTANT (? constant)))
-  (set-standard-branches! 'EQ)
-  `(,(test-constant constant (indirect-reference! register))))
+  (eq-test/constant*memory constant register offset))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? register)) (? offset)))
-  (set-standard-branches! 'EQ)
-  `(,(test-constant constant (indirect-reference! register))))
+  (eq-test/constant*memory constant register offset))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
   (QUALIFIER (pseudo-register? register-1) (pseudo-register? register-2))
-  (set-standard-branches! 'EQ)
-  `((CMP L ,(coerce->any register-1) ,(coerce->any register-2))))
+  (eq-test/register*register register-1 register-2))
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (REGISTER (? register-2)))
   (QUALIFIER (pseudo-register? register-2))
-  (set-standard-branches! 'EQ)
-  (let ((expression-1 (indirect-reference! register-1 offset-1)))
-    `((CMP L ,expression-1 ,(coerce->any register-2)))))
+  (eq-test/register*memory register-2 register-1 offset-1))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
   (QUALIFIER (pseudo-register? register-1))
-  (set-standard-branches! 'EQ)
-  (let ((expression-2 (indirect-reference! register-2 offset-2)))
-    `((CMP L ,(coerce->any register-1) ,expression-2))))
+  (eq-test/register*memory register-1 register-2 offset-2))
 
 (define-rule predicate
   (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
 	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (set-standard-branches! 'EQ)
-  `((CMP L
-	 ,(indirect-reference! register-1 offset-1)
-	 ,(indirect-reference! register-2 offset-2))))
+  (eq-test/memory*memory register-1 offset-1register-2 offset-2))
 
 ;;;; Invocations
 
