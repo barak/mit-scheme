@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.13 1993/09/01 18:48:27 gjr Exp $
+$Id: ntscreen.c,v 1.14 1993/09/03 18:01:28 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -35,6 +35,8 @@ MIT in each case. */
 #include <stdlib.h>
 #include "ntscreen.h"
 //#include "screen.rh"
+/* Allow conditionalization for underlying OS. */
+extern BOOL win32_under_win32s_p (void);
 
 // constant definitions
 
@@ -207,13 +209,16 @@ VOID UnregisterScreen (SCREEN);
 BOOL
 init_color (char * color_symbol, HWND hWnd, DWORD * color)
 {
+  HDC hdc;
   char * envvar = (getenv (color_symbol));
   if (envvar == NULL)
     return (FALSE);
   /* Use GetNearestColor to ensure consistency with the background
      text color.
    */
-  * color = (GetNearestColor ((GetDC (hWnd)), (strtoul (envvar, NULL, 0))));
+  hdc = (GetDC (hWnd));
+  * color = (GetNearestColor (hdc, (strtoul (envvar, NULL, 0))));
+  ReleaseDC (hWnd, hdc);
   return (TRUE);
 }
 
@@ -369,22 +374,12 @@ Screen_Create (HANDLE hParent, LPCSTR title, int nCmdShow)
 			params[2], params[3],
 			hParent, NULL, ghInstance,
 			((LPVOID) nCmdShow)));
-#if 0
-  if ((hParent == ((HWND) NULL)) && (hwnd != NULL))
-    if (! (RegisterHotKey (hwnd, 0x0001, MOD_CONTROL, VK_F10)))
-      MessageBox (NULL, "No hot key", "MIT Scheme", MB_OK);
-#endif
-  
   return (hwnd);
 }
 
 void
 Screen_Destroy (BOOL root, HANDLE hwnd)
 {
-#if 0
-  if (root)
-    UnregisterHotKey (hwnd, 0x0001);
-#endif
   DestroyWindow (hwnd);
   return;
 }
@@ -650,7 +645,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	goto use_default;
       }
 
-#if 0
+#ifdef USE_WM_TIMER
       case WM_TIMER:
       {
 	extern VOID TimerProc (HWND, UINT, UINT, DWORD);
@@ -658,7 +653,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	TimerProc (hWnd, uMsg, wParam, lParam);
 	return (0L);
       }
-#endif
+#endif /* USE_WM_TIMER */
 
       case WM_HOTKEY:
       {
@@ -1024,7 +1019,7 @@ ResetScreen (SCREEN screen)
 	           min(maxsz.x,max(minsz.x,width)),
 		   min(maxsz.y,max(minsz.y,height)), TRUE);
      else
-       SendMessage (hWnd, WM_SIZE, SIZENORMAL,
+       PostMessage (hWnd, WM_SIZE, SIZENORMAL,
 		    ((LPARAM) (MAKELONG (width,height))));
    }
 
@@ -1223,8 +1218,6 @@ ScrollScreenBufferUp (SCREEN  screen,  int count)
 //
 //---------------------------------------------------------------------------
 
-extern BOOL win32_under_win32s_p (void);
-
 static BOOL
 SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
 {
@@ -1331,7 +1324,21 @@ SizeScreen (HWND hWnd, WORD wVertSize, WORD wHorzSize )
      }
    }
 
-   InvalidateRect (hWnd, NULL, TRUE);
+   {
+     /* The SendMessage stuff works fine under NT, but wedges Win 3.1.
+	The only solution I've found is to redraw the whole screen.
+      */
+
+     if (win32_under_win32s_p ())
+       InvalidateRect (NULL, NULL, TRUE);
+     else
+     {
+       HDC hdc = (GetDC (hWnd));
+       InvalidateRect (hWnd, NULL, TRUE);
+       SendMessage (hWnd, WM_ERASEBKGND, ((WPARAM) hdc), ((LPARAM) 0));
+       ReleaseDC (hWnd, hdc);
+     }
+   }
    return  TRUE;
 
 } // end of SizeScreen
@@ -2816,8 +2823,12 @@ SelectScreenFont (SCREEN  screen,  HWND owner)
    cfTTYFont.hDC            = NULL ;
    cfTTYFont.rgbColors      = screen->rgbFGColour;
    cfTTYFont.lpLogFont      = &screen->lfFont;
-   cfTTYFont.Flags          = CF_SCREENFONTS | CF_FIXEDPITCHONLY |
-                              CF_EFFECTS | CF_INITTOLOGFONTSTRUCT ;
+   cfTTYFont.Flags          = (
+			         CF_FIXEDPITCHONLY
+			       | CF_SCREENFONTS
+                               | CF_EFFECTS
+			       | CF_INITTOLOGFONTSTRUCT
+			       );
    cfTTYFont.lCustData      = 0 ;
    cfTTYFont.lpfnHook       = NULL ;
    cfTTYFont.lpTemplateName = NULL ;
@@ -2876,6 +2887,7 @@ SelectScreenBackColor (SCREEN  screen,  HWND owner)
      screen->bkgnd_brush = (CreateSolidBrush (screen->rgbBGColour));
      InvalidateRect (owner, NULL, TRUE);
      SendMessage (owner, WM_ERASEBKGND, ((WPARAM) hdc), ((LPARAM) 0));
+     ReleaseDC (owner, hdc);
    }
    return (TRUE);
 }
@@ -3029,20 +3041,36 @@ alloc_event (SCREEN screen,  SCREEN_EVENT_TYPE type)
 
     return  &link->event;
 }
+
+BOOL
+Screen_GetEvent (HANDLE hwnd, SCREEN_EVENT *event)
+{
+  SCREEN_EVENT_LINK *link;
+  SCREEN screen = (GETSCREEN (hwnd));
+
+  if ((screen == ((SCREEN) NULL))
+      || (screen->n_events == 0))
+    return (FALSE);
+  screen->n_events -= 1;
+  link = screen->queue_head;
+  (*event) = link->event;
+  screen->queue_head = link->next;
+  link->next = screen->free_events;
+  screen->free_events = link;
+  return TRUE;
+}
 
 BOOL
-Screen_GetEvent (SCREEN screen, SCREEN_EVENT *event)
+Screen_PeekEvent (HANDLE hwnd, SCREEN_EVENT * event)
 {
-    SCREEN_EVENT_LINK *link;
-    if (screen->n_events == 0)
-      return  FALSE;
-    screen->n_events -= 1;
-    link = screen->queue_head;
-    (*event) = link->event;
-    screen->queue_head = link->next;
-    link->next = screen->free_events;
-    screen->free_events = link;
-    return TRUE;
+  SCREEN screen = (GETSCREEN (hwnd));
+
+  if ((screen == ((SCREEN) NULL))
+      || (screen->n_events == 0))
+    return (FALSE);
+  if (event != ((SCREEN_EVENT *) NULL))
+    (* event) = screen->queue_head->event;
+  return (TRUE);
 }
 
 //---------------------------------------------------------------------------
