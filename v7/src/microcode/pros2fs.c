@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.4 1995/03/21 01:05:22 cph Exp $
+$Id: pros2fs.c,v 1.5 1995/04/23 02:42:47 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -40,6 +40,8 @@ MIT in each case. */
 extern FILESTATUS3 * OS2_read_file_status (const char *);
 extern void OS2_write_file_status (const char *, FILESTATUS3 *);
 extern char * OS2_drive_type (char);
+extern long OS2_timezone (void);
+extern long OS2_daylight_savings_p (void);
 
 #ifndef FILE_TOUCH_OPEN_TRIES
 #define FILE_TOUCH_OPEN_TRIES 5
@@ -405,4 +407,16 @@ DEFINE_PRIMITIVE ("DOS-QUERY-MEMORY", Prim_dos_query_memory, 2, 2, 0)
     PRIMITIVE_RETURN (cons ((ulong_to_integer (length)),
 			    (ulong_to_integer (flags))));
   }
+}
+
+DEFINE_PRIMITIVE ("OS2-TIMEZONE", Prim_OS2_timezone, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (OS2_timezone ()));
+}
+
+DEFINE_PRIMITIVE ("OS2-DAYLIGHT-SAVINGS-TIME?", Prim_OS2_dst_p, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS2_daylight_savings_p ()));
 }

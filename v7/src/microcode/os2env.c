@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.2 1994/12/19 22:31:27 cph Exp $
+$Id: os2env.c,v 1.3 1995/04/23 02:42:38 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,6 +110,18 @@ OS_encode_time (struct time_structure * buffer)
       OS2_error_system_call (errno, syscall_mktime);
     return (t);
   }
+}
+
+long
+OS2_timezone (void)
+{
+  return (_timezone);
+}
+
+int
+OS2_daylight_savings_p (void)
+{
+  return (_daylight);
 }
 
 static double initial_rtc;
