@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.4 1995/02/14 00:41:31 cph Exp $
+$Id: os2pmcon.c,v 1.5 1995/02/21 22:55:42 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -126,8 +126,11 @@ OS2_initialize_pm_console (void)
   {
     unsigned short width;
     unsigned short height;
+    unsigned short max_width = (80 * CHAR_WIDTH);
     OS2_window_size (console_wid, (& width), (& height));
     console_resize (width, height);
+    if (width > max_width)
+      OS2_window_set_size (console_wid, max_width, height);
   }
 }
 
