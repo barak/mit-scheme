@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.210 1993/10/26 22:48:47 cph Exp $
+$Id: runtime.pkg,v 14.211 1993/11/02 20:07:36 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -2593,3 +2593,43 @@ MIT in each case. |#
 	  rb-tree/size
 	  rb-tree?
 	  make-rb-tree))
+
+(define-package (runtime wt-tree)
+  (file-case options
+    ((load) "wttree")
+    (else))
+  (parent ())
+  (export ()
+          make-wt-tree-type
+	  number-wt-type
+	  string-wt-type
+          make-wt-tree
+          singleton-wt-tree
+          alist->wt-tree
+          wt-tree?
+	  wt-tree/empty?
+          wt-tree/size
+          wt-tree/add
+          wt-tree/add!
+          wt-tree/member?
+          wt-tree/lookup
+          wt-tree/delete
+          wt-tree/delete!
+          wt-tree/split<
+          wt-tree/split>
+          wt-tree/union
+          wt-tree/intersection
+          wt-tree/difference
+          wt-tree/subset?
+          wt-tree/set-equal?
+          wt-tree/fold
+          wt-tree/for-each
+          wt-tree/index
+          wt-tree/index-datum
+          wt-tree/index-pair
+          wt-tree/rank
+          wt-tree/min
+          wt-tree/min-datum
+          wt-tree/min-pair
+          wt-tree/delete-min
+	  ))
