@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.12 1990/01/29 22:35:09 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.13 1990/02/21 23:24:25 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -530,8 +530,10 @@ MIT in each case. |#
     (define-standard-frame-handler 'BROKEN-CVARIABLE 'ASSIGNMENT-CONTINUE true
       assignment-name)
 
-    (define-error-handler 'WRONG-NUMBER-OF-ARGUMENTS 'INTERNAL-APPLY true
-      wrong-number-of-arguments-error)
+    (define-apply-handler
+      (lambda (return-address)
+	(define-error-handler 'WRONG-NUMBER-OF-ARGUMENTS return-address true
+	  wrong-number-of-arguments-error)))
 
     (define-operator-handler 'UNDEFINED-PROCEDURE)
     (define-operator-handler 'UNDEFINED-PRIMITIVE-OPERATION)
@@ -581,29 +583,35 @@ MIT in each case. |#
     (define-operand-handler 'FASDUMP-ENVIRONMENT 0
       internal-apply-frame/fasdump?)
 
-    (define-error-handler 'BAD-RANGE-ARGUMENT-0 'INTERNAL-APPLY
-      (internal-apply-frame/operator-filter
-       (ucode-primitive file-open-channel)
-       (ucode-primitive make-directory))
-      open-file-error)
+    (define-apply-handler
+      (lambda (return-address)
+	(define-error-handler 'BAD-RANGE-ARGUMENT-0 return-address
+	  (internal-apply-frame/operator-filter
+	   (ucode-primitive file-open-channel)
+	   (ucode-primitive make-directory))
+	  open-file-error)))
 
-    (define-error-handler 'OUT-OF-FILE-HANDLES 'INTERNAL-APPLY
-      (internal-apply-frame/operator-filter
-       (ucode-primitive file-open-channel))
-      out-of-file-handles-error)
+    (define-apply-handler
+      (lambda (return-address)
+	(define-error-handler 'OUT-OF-FILE-HANDLES return-address
+	  (internal-apply-frame/operator-filter
+	   (ucode-primitive file-open-channel))
+	  out-of-file-handles-error)))
 
-    (define-error-handler 'EXTERNAL-RETURN 'INTERNAL-APPLY
-      (internal-apply-frame/operator-filter
-       (ucode-primitive file-length)
-       (ucode-primitive file-read-char)
-       (ucode-primitive file-write-char)
-       (ucode-primitive file-write-string)
-       (ucode-primitive copy-file)
-       (ucode-primitive rename-file)
-       (ucode-primitive remove-file)
-       (ucode-primitive link-file)
-       (ucode-primitive set-file-modes! 2))
-      file-error)
+    (define-apply-handler
+      (lambda (return-address)
+	(define-error-handler 'EXTERNAL-RETURN return-address
+	  (internal-apply-frame/operator-filter
+	   (ucode-primitive file-length)
+	   (ucode-primitive file-read-char)
+	   (ucode-primitive file-write-char)
+	   (ucode-primitive file-write-string)
+	   (ucode-primitive copy-file)
+	   (ucode-primitive rename-file)
+	   (ucode-primitive remove-file)
+	   (ucode-primitive link-file)
+	   (ucode-primitive set-file-modes! 2))
+	  file-error)))
 
     (define-total-error-handler 'WRITE-INTO-PURE-SPACE
       write-into-pure-space-error)
