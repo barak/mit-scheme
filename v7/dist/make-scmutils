@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.2 2002/07/11 16:41:40 cph Exp $
+# $Id: make-scmutils,v 1.3 2002/07/11 16:47:42 cph Exp $
 #
 # Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 #
@@ -18,6 +18,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
+
+# To use this script:
+#
+# 1. Create an empty directory somewhere and cd into it:
+#
+#	mkdir foo
+#	cd foo
+#
+# 2. Link or copy a scheme binary release into it:
+#
+#	ln /scheme/v7/dist/X.Y.Z/scheme-X.Y.Z-ix86-gnu-linux.tar.gz .
+#
+# 3. Run this script:
+#
+#	/scheme/v7/dist/make-scmutils
 
 set -e
 
