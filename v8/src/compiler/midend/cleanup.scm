@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cleanup.scm,v 1.9 1995/02/26 16:35:19 adams Exp $
+$Id: cleanup.scm,v 1.10 1995/02/27 16:30:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -92,11 +92,26 @@ MIT in each case. |#
   `(DECLARE ,@anything))
 
 (define-cleanup-handler IF (env pred conseq alt)
-  (let ((pred*    (cleanup/expr env pred))
-	(conseq*  (cleanup/expr env conseq))
+  (cleanup/if/un-not env pred conseq alt #T))
+
+(define (cleanup/if/un-not env pred conseq alt source-pred?)
+  ;; repeatedly transform (IF (not p) c a) => (if p a c)
+  (cond ((and (CALL/? pred)
+	      (QUOTE/? (call/operator pred))
+	      (eq? (quote/text (call/operator pred)) not)
+	      (equal? (call/continuation pred) `(QUOTE #F)))
+	 (cleanup/if/un-not env (first (call/operands pred))
+			    alt conseq
+			    source-pred?))
+	(source-pred?			; try again with cleaned-up pred
+	 (cleanup/if/un-not env (cleanup/expr env pred) conseq alt #F))
+	(else
+	 (cleanup/if/try-2 env pred conseq alt))))
+
+(define (cleanup/if/try-2 env pred* conseq alt)
+  (let ((conseq*  (cleanup/expr env conseq))
 	(alt*     (cleanup/expr env alt)))
-    (define (default)
-      `(IF ,pred* ,conseq* ,alt*))
+    (define (default) `(IF ,pred* ,conseq* ,alt*))
     (cond ((QUOTE/? pred*)
 	   (case (boolean/discriminate (quote/text pred*))
 	     ((FALSE)    alt*)
@@ -107,16 +122,7 @@ MIT in each case. |#
 		(equal? pred* conseq*)
 		(form/simple&side-effect-free? pred*))
 	   pred*)
-	  (;; (if (not p) c a) => (if p a c)
-	   (and (CALL/? pred*)
-		(QUOTE/? (call/operator pred*))
-		(eq? (quote/text (call/operator pred*)) not)
-		(equal? (call/continuation pred*) `(QUOTE #F)))
-	   `(IF ,(first (call/operands pred*))
-		,alt*
-		,conseq*))
-	  (else
-	   (default)))))
+	  (else  (default)))))
 
 (define-cleanup-handler BEGIN (env #!rest actions)
   (beginnify (cleanup/expr* env actions)))
@@ -236,6 +242,7 @@ MIT in each case. |#
 		     (cons (cons arity handler) slot)))
   name)
 
+
 (let ()
   ;; Arithmetic constant folding
   (define (quote-unmapped v)
@@ -291,7 +298,29 @@ MIT in each case. |#
   (careful-binary (make-primitive-procedure 'QUOTIENT) careful/quotient)
   (careful-binary (make-primitive-procedure 'REMAINDER) careful/remainder)
 )
-
+
+;;
+(let ((NOT-primitive  (make-primitive-procedure 'NOT)))
+  (define (form-absorbs-not? form)
+    ;; Assumption: non out-of-line predicates can be compiled with negated
+    ;; tests.
+    (or (and (CALL/? form)
+	     (QUOTE/? (call/operator form))
+	     (let ((rator  (quote/text (call/operator form))))
+	       (and (operator/satisfies? rator '(PROPER-PREDICATE))
+		    (not (operator/satisfies? rator '(OUT-OF-LINE-HOOK))))))
+	(QUOTE/? form)
+	(LOOKUP/? form)))
+  (define-cleanup-rewrite NOT-primitive 1
+    (lambda (expr)
+      ;; (NOT (IF p c a)) =>  (IF p (NOT c) (NOT a))
+      (if (and (IF/? expr)
+	       (or (form-absorbs-not? (if/consequent expr))
+		   (form-absorbs-not? (if/alternate expr))))
+	  `(IF ,(if/predicate expr)
+	       (CALL (QUOTE ,NOT-primitive) '#F ,(if/consequent expr))
+	       (CALL (QUOTE ,NOT-primitive) '#F ,(if/alternate expr)))
+	  `(CALL (QUOTE ,NOT-primitive) '#F ,expr)))))
 
 (define (cleanup/call/maybe-flush-closure call* env match-result)
   (let ((lambda-expr    (cadr (assq cleanup/?lam-expr match-result)))
