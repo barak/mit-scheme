@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.146 1991/03/22 00:21:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.147 1991/04/01 06:14:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -357,7 +357,9 @@ Leaves point at the beginning, mark at the end."
 	       (let ((directory (pathname-directory pathname)))
 		 (and (pair? directory)
 		      (car (last-pair directory))))))
-	  (if (string? name) name "*random*")))))
+	  (if (string? name)
+	      name
+	      (pathname->string pathname))))))
 
 (define (pathname->buffer pathname)
   (or (list-search-positive (buffer-list)
