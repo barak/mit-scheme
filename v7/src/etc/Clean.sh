@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.7 2002/11/20 19:46:05 cph Exp $
+# $Id: Clean.sh,v 1.8 2002/11/21 03:39:27 cph Exp $
 #
-# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 #
 # This file is part of MIT Scheme.
 #
@@ -25,10 +25,10 @@
 # The working directory must be the build directory.
 
 if [ $# -eq 1 ]; then
-    COMMAND="$1"
-    KEYWORDS="rm-bin rm-com rm-old-pkg rm-pkg"
+    COMMAND="${1}"
+    KEYWORDS="rm-bin rm-com rm-pkg"
 elif [ $# -ge 2 ]; then
-    COMMAND="$1"
+    COMMAND="${1}"
     shift
     KEYWORDS="$*"
 else
@@ -36,31 +36,48 @@ else
     exit 1
 fi
 
+FULL="no"
+DIST="no"
+MAINTAINER="no"
 case "${COMMAND}" in
-mostlyclean | clean)
+mostlyclean)
+    ;;
+clean)
+    FULL="yes"
     ;;
 distclean)
+    FULL="yes"
+    DIST="yes"
+    ;;
+maintainer-clean)
+    FULL="yes"
+    DIST="yes"
+    MAINTAINER="yes"
+    ;;
+*)
+    echo "$0: Unknown command ${COMMAND}"
+    exit 1
+    ;;
+esac
+
+if [ "${DIST}" = "yes" ]; then
     if [ -f Makefile.in ] && [ -f Makefile ]; then
 	echo "rm Makefile"
 	rm Makefile
     fi
-    ;;
-maintainer-clean)
+fi
+
+if [ "${MAINTAINER}" = "yes" ]; then
     for FN in .edwin-ffi Clean.sh Makefile Setup.sh Stage.sh Tags.sh; do
 	if [ -L ${FN} ]; then
 	    echo "rm ${FN}"
 	    rm ${FN}
 	fi
     done
-    ;;
-*)
-    echo "$0: Unknown command ${1}"
-    exit 1
-    ;;
-esac
+fi
 
 for KEYWORD in ${KEYWORDS}; do
-    case ${KEYWORD} in
+    case "${KEYWORD}" in
     rm-bin)
 	echo "rm -f *.bin *.ext"
 	rm -f *.bin *.ext

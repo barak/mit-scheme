@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.6 2002/11/20 19:45:57 cph Exp $
+# $Id: Clean.sh,v 1.7 2002/11/21 03:39:51 cph Exp $
 #
-# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+# Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
 #
 # This file is part of MIT Scheme.
 #
@@ -29,7 +29,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-../etc/Clean.sh "${1}" rm-bin rm-com rm-pkg
+../etc/Clean.sh "${1}"
 
 echo "rm -f edwin-unx.* edwin-w32.* edwin-os2.* edwin.bld"
 rm -f edwin-unx.* edwin-w32.* edwin-os2.* edwin.bld
