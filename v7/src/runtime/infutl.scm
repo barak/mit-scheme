@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.14 1989/10/26 06:46:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.15 1989/11/21 00:00:31 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -55,8 +55,7 @@ MIT in each case. |#
 	(car old-info)
 	(and demand-load?
 	     (let ((dbg-info (read-debugging-info old-info)))
-	       (if dbg-info
-		   (memoize-debugging-info! block dbg-info))
+	       (if dbg-info (memoize-debugging-info! block dbg-info))
 	       dbg-info)))))
 
 (define (discard-debugging-info!)
@@ -89,7 +88,12 @@ MIT in each case. |#
 
 (define (read-binf-file filename)
   (and (file-exists? filename)
-       (fasload filename true)))
+       (call-with-current-continuation
+	(lambda (k)
+	  (bind-condition-handler (list error-type:fasload)
+	      (lambda (condition) condition (k false))
+	    (lambda () (fasload filename true)))))))
+
 (define (memoize-debugging-info! block dbg-info)
   (without-interrupts
    (lambda ()
