@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.14 1996/07/20 17:59:37 adams Exp $
+$Id: typerew.scm,v 1.15 1996/07/22 18:04:14 adams Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -790,15 +790,30 @@ MIT in each case. |#
 				     asserted-argument-types
 				     result-type
 				     effects-performed)
-  (lambda (quantities types env form receiver)
-    form				; No operator replacement
-    (let ((env* (q-env:restrict
-		 (q-env:glb* env quantities types asserted-argument-types)
-		 effects-performed)))
-      (typerew/send receiver
-		    (quantity:combination rator quantities)
-		    result-type
-		    env*))))
+  (let ((adjusted-asserted-argument-types ; handles #!rest args
+	 (if (list? asserted-argument-types)
+	     (lambda (Ts) Ts asserted-argument-types)
+	     (lambda (Ts)
+	       ;; Note: we do not detect any arity errors for procedures with
+	       ;; #!rest and !#optional arguments, but it is harmless in the
+	       ;; sense that we infer what would happen if the program did not
+	       ;; terminate with an error.
+	       (let loop ((As asserted-argument-types) (Ts Ts) (As* '()))
+		 (cond ((null? Ts) (reverse! As*))
+		       ((pair? As)
+			(loop (cdr As) (cdr Ts) (cons (car As) As*)))
+		       (else
+			(loop As (cdr Ts) (cons As As*)))))))))
+    (lambda (quantities types env form receiver)
+      form				; No operator replacement
+      (let ((env* (q-env:restrict
+		   (q-env:glb* env quantities types
+			       (adjusted-asserted-argument-types types))
+		   effects-performed)))
+	(typerew/send receiver
+		      (quantity:combination rator quantities)
+		      result-type
+		      env*)))))
 
 (let ((OBJECT-TYPE? (make-primitive-procedure 'OBJECT-TYPE?)))
   (define-typerew-type-method OBJECT-TYPE? 2
@@ -1284,20 +1299,23 @@ MIT in each case. |#
     (apply typerew-binary-variants-replacement-method spec)))
 
 (define-typerew-unary-variants-type-method 'EXACT->INEXACT
-  type:number  type:inexact-number  effect:none
-  type:real    type:inexact-real
+  type:number  type:inexact-number   effect:none
+  type:real    type:inexact-real	;i.e. flonum
   type:recnum  type:inexact-recnum)
 
+(define-typerew-unary-variants-replacement-method 'EXACT->INEXACT
+  type:fixnum  type:flonum      %fixnum->flonum)
+
 (define-typerew-unary-variants-type-method 'INEXACT->EXACT
-  type:number    type:exact-number  effect:none
-  type:real      type:exact-real
-  type:recnum    type:exact-recnum)
+  type:number  type:exact-number  effect:none
+  type:real    type:exact-real
+  type:recnum  type:exact-recnum)
 
 
 (let ()
   (define (def op flo:op)
     (define-typerew-unary-variants-type-method op
-      type:number    type:exact-integer effect:none)
+      type:number    type:exact-integer  effect:none)
     (define-typerew-unary-variants-replacement-method op
       type:flonum    type:exact-integer  FLO:op))
 
@@ -1392,8 +1410,32 @@ MIT in each case. |#
 (define-typerew-unary-variants-replacement-method 'SYMBOL-NAME
   type:symbol    type:string    system-pair-car)
 
+(define (typerew/rewrite/coerced-arguments op coerce-left coerce-right)
+  (lambda (form)
+    (define (make args)
+      `(CALL (QUOTE ,op)
+	     '#F
+	     ,(coerce-left  (first args))
+	     ,(coerce-right (second args))))
+    (if (eq? (quote/text (call/operator form)) %invoke-remote-cache)
+	(make (cddr (cddddr form)))
+	(make (cdddr form)))))
 
-(let ((&+ (make-primitive-procedure '&+)))
+(define (typerew/coerce/fixnum->flonum expr)
+  (if (QUOTE/? expr)
+      `(QUOTE ,(exact->inexact (quote/text expr)))
+      `(CALL (QUOTE ,%fixnum->flonum) '#F ,expr)))
+
+(define (typerew/%l flo:op)
+  (typerew/rewrite/coerced-arguments flo:op typerew/coerce/fixnum->flonum
+				     identity-procedure))
+
+(define (typerew/%r flo:op)
+  (typerew/rewrite/coerced-arguments flo:op identity-procedure
+				     typerew/coerce/fixnum->flonum))
+
+(let ((&+ (make-primitive-procedure '&+))
+      (type:not-fixnum (type:not type:fixnum)))
 
   (define (generic-addition-inference op)
     (define-typerew-binary-variants-type-method op
@@ -1407,6 +1449,8 @@ MIT in each case. |#
       type:small-fixnum     type:small-fixnum      type:fixnum
       type:fixnum>=0        type:fixnum-ve         type:fixnum
       type:fixnum-ve        type:fixnum>=0         type:fixnum
+      type:fixnum           type:flonum            type:flonum
+      type:flonum           type:fixnum            type:flonum
       type:flonum           type:flonum            type:flonum
       type:exact-integer    type:exact-integer     type:exact-integer
       type:exact-number     type:exact-number      type:exact-number
@@ -1417,14 +1461,18 @@ MIT in each case. |#
   (generic-addition-inference %+)
 
   (define-typerew-binary-variants-replacement-method &+
-    type:fixnum            type:fixnum            type:fixnum        fix:+
-    type:flonum            type:flonum            type:flonum        flo:+
-    (type:not type:fixnum) type:any               type:any           %+
-    type:any               (type:not type:fixnum) type:any           %+)
+    type:fixnum         type:fixnum         type:fixnum     fix:+
+    type:flonum         type:flonum         type:flonum     flo:+
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:+)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:+)
+    type:not-fixnum     type:any            type:any        %+
+    type:any            type:not-fixnum     type:any        %+)
 
   (define-typerew-binary-variants-replacement-method %+
-    type:fixnum            type:fixnum            type:fixnum        fix:+
-    type:flonum            type:flonum            type:flonum        flo:+))
+    type:fixnum         type:fixnum         type:fixnum     fix:+
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:+)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:+)
+    type:flonum         type:flonum         type:flonum     flo:+))
 
 
 (define-typerew-binary-variants-type-method fix:+
@@ -1436,30 +1484,58 @@ MIT in each case. |#
   type:small-fixnum>=0  type:small-fixnum-ve   type:small-fixnum
   type:small-fixnum-ve  type:small-fixnum>=0   type:small-fixnum)
 
-(define-typerew-binary-variants-type-method (make-primitive-procedure '&-)
-  type:number           type:number           type:number
-  effect:none
-  type:small-fixnum     type:small-fixnum     type:fixnum
-  type:fixnum>=0        type:fixnum>=0        type:fixnum
-  type:flonum           type:flonum           type:flonum
-  type:exact-integer    type:exact-integer    type:exact-integer
-  type:exact-number     type:exact-number     type:exact-number
-  type:inexact-number   type:number           type:inexact-number
-  type:number           type:inexact-number   type:inexact-number)
+(let ((&- (make-primitive-procedure '&-))
+      (type:not-fixnum (type:not type:fixnum)))
 
-(define-typerew-binary-variants-replacement-method
-  (make-primitive-procedure '&-)
-  type:fixnum             type:fixnum             type:fixnum       fix:-
-  type:flonum             type:flonum             type:flonum       flo:-
-  (type:not type:fixnum)  type:any                type:any          %-
-  type:any                (type:not type:fixnum)  type:any          %-)
+  (define (generic-subtraction-inference op)
+    (define-typerew-binary-variants-type-method op
+      type:number           type:number           type:number
+      effect:none
+      type:small-fixnum     type:small-fixnum     type:fixnum
+      type:fixnum>=0        type:fixnum>=0        type:fixnum
+      type:fixnum           type:flonum           type:flonum
+      type:flonum           type:fixnum           type:flonum
+      type:flonum           type:flonum           type:flonum
+      type:exact-integer    type:exact-integer    type:exact-integer
+      type:exact-number     type:exact-number     type:exact-number
+      type:inexact-number   type:number           type:inexact-number
+      type:number           type:inexact-number   type:inexact-number))
 
-(let ((type:inexact+0    (type:or type:inexact-number type:exact-zero)))
-  (define (generic-multiply op)
+  (generic-subtraction-inference &-)
+  (generic-subtraction-inference %-)
+
+  (define-typerew-binary-variants-replacement-method &-
+    type:fixnum         type:fixnum         type:fixnum     fix:-
+    type:flonum         type:flonum         type:flonum     flo:-
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:-)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:-)
+    type:not-fixnum     type:any            type:any        %-
+    type:any            type:not-fixnum     type:any        %-)
+
+  (define-typerew-binary-variants-replacement-method %-
+    type:fixnum         type:fixnum         type:fixnum     fix:-
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:-)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:-)
+    type:flonum         type:flonum         type:flonum     flo:-))
+
+
+(let ((&*                 (make-primitive-procedure '&*))
+      (&/                 (make-primitive-procedure '&/))
+      (type:inexact+0     (type:or type:inexact-number type:exact-zero))
+      (type:fixnum-not-0  (type:except type:fixnum type:exact-zero))
+      (type:exact-int-not-0  (type:except type:exact-integer type:exact-zero))
+      (type:flonum+0      (type:or type:flonum type:exact-zero))
+      (type:not-fixnum    (type:not type:fixnum)))
+
+  (define (generic-multiply-inference op)
     (define-typerew-binary-variants-type-method op
       type:number           type:number           type:number
       effect:none
       type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0
+      type:exact-int-not-0  type:flonum           type:flonum
+      type:flonum           type:exact-int-not-0  type:flonum
+      type:exact-integer    type:flonum           type:flonum+0
+      type:flonum           type:exact-integer    type:flonum+0
       type:flonum           type:flonum           type:flonum
       type:exact-integer    type:exact-integer    type:exact-integer
       type:exact-number     type:exact-number     type:exact-number
@@ -1468,41 +1544,48 @@ MIT in each case. |#
       type:inexact-number   type:number           type:inexact+0
       type:number           type:inexact-number   type:inexact+0))
 
-  (generic-multiply (make-primitive-procedure '&*))
-  (generic-multiply %*))
+  (generic-multiply-inference &*)
+  (generic-multiply-inference %*)
 
-(define-typerew-binary-variants-replacement-method
-  (make-primitive-procedure '&*)
-  type:fixnum             type:fixnum             type:fixnum     fix:*
-  type:flonum             type:flonum             type:flonum     flo:*
-  (type:not type:fixnum)  type:any                type:any        %*
-  type:any                (type:not type:fixnum)  type:any        %*)
+  (define-typerew-binary-variants-replacement-method &*
+    type:fixnum         type:fixnum         type:fixnum     fix:*
+    type:flonum         type:flonum         type:flonum     flo:*
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:*)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:*)
+    type:not-fixnum     type:any            type:any        %*
+    type:any            type:not-fixnum     type:any        %*)
 
-(define-typerew-binary-variants-replacement-method %*
-  type:fixnum             type:fixnum             type:fixnum     fix:*
-  type:flonum             type:flonum             type:flonum     flo:*)
+  (define-typerew-binary-variants-replacement-method %*
+    type:fixnum         type:fixnum         type:fixnum     fix:*
+    type:fixnum         type:flonum         type:flonum     (typerew/%l flo:*)
+    type:flonum         type:fixnum         type:flonum     (typerew/%r flo:*)
+    type:flonum         type:flonum         type:flonum     flo:*)
+  
 
+  (define (generic-divide-inference op)
+    (define-typerew-binary-variants-type-method op
+      type:number           type:number           type:number
+      effect:none
+      type:flonum           type:flonum           type:flonum
+      type:flonum           type:fixnum           type:flonum
+      type:exact-int-not-0  type:flonum           type:flonum
+      type:exact-integer    type:flonum           type:flonum+0
+      type:inexact-number   type:number           type:inexact-number
+      type:number           type:inexact-number   type:inexact-number))
 
-(let ((&/ (make-primitive-procedure '&/)))
-  (define-typerew-binary-variants-type-method &/
-    type:number           type:number           type:number
-    effect:none
-    type:flonum           type:flonum           type:flonum
-    type:inexact-number   type:number           type:inexact-number
-    type:number           type:inexact-number   type:inexact-number)
+  (generic-divide-inference &/)
+  (generic-divide-inference %/)
 
   (define-typerew-binary-variants-replacement-method &/
-    type:flonum           type:flonum           type:flonum   flo:/))
+    type:fixnum          type:flonum          type:flonum   (typerew/%l flo:/)
+    type:flonum          type:fixnum          type:flonum   (typerew/%r flo:/)
+    type:flonum          type:flonum          type:flonum   flo:/)
 
-(define-typerew-binary-variants-type-method %/
-  type:number           type:number           type:number
-  effect:none
-  type:flonum           type:flonum           type:flonum
-  type:inexact-number   type:number           type:inexact-number
-  type:number           type:inexact-number   type:inexact-number)
+  (define-typerew-binary-variants-replacement-method %/
+    type:fixnum          type:flonum          type:flonum   (typerew/%l flo:/)
+    type:flonum          type:fixnum          type:flonum   (typerew/%r flo:/)
+    type:flonum          type:flonum          type:flonum   flo:/))
 
-(define-typerew-binary-variants-replacement-method %/
-  type:flonum           type:flonum           type:flonum   flo:/)
 
 (let* ((type:fixnum-not-0 (type:except type:fixnum type:exact-zero))
        (type:fixnum-not-0/-1
@@ -1560,7 +1643,7 @@ MIT in each case. |#
   ;; MODULO is not integrated.
   )
 
-(let ((INTEGER-ADD-1     (ucode-primitive INTEGER-ADD-1))
+(let ((INTEGER-ADD-1      (ucode-primitive INTEGER-ADD-1))
       (INTEGER-SUBTRACT-1 (ucode-primitive INTEGER-SUBTRACT-1))
       (INTEGER-ADD        (ucode-primitive INTEGER-ADD))
       (INTEGER-SUBTRACT   (ucode-primitive INTEGER-SUBTRACT))
@@ -1604,12 +1687,21 @@ MIT in each case. |#
     type:small-fixnum   type:small-fixnum  type:fixnum)
 
   (define-typerew-binary-variants-type-method INTEGER-MULTIPLY
-    type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
+    type:exact-integer  type:exact-integer  type:exact-integer  effect:none
+    type:unsigned-byte  type:unsigned-byte  type:small-fixnum>=0)
+
   (define-typerew-binary-variants-type-method INTEGER-QUOTIENT
     type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
   (define-typerew-binary-variants-type-method INTEGER-REMAINDER
     type:exact-integer  type:exact-integer  type:exact-integer  effect:none)
-)
+
+  (define-typerew-binary-variants-replacement-method INTEGER-ADD
+    type:fixnum         type:fixnum         type:fixnum     fix:+)
+  (define-typerew-binary-variants-replacement-method INTEGER-SUBTRACT
+    type:fixnum         type:fixnum         type:fixnum     fix:-)
+  (define-typerew-binary-variants-replacement-method INTEGER-MULTIPLY
+    type:fixnum         type:fixnum         type:fixnum     fix:*)
+  )
 #|
 (let ()
   ;; Binary MIN and MAX.  We can replace
@@ -1675,7 +1767,7 @@ MIT in each case. |#
 			',negative-one))))
 	      (else typerew-no-replacement))))))
 
-(let ()
+(let ((type:not-fixnum  (type:not type:fixnum)))
   (define (define-relational-method name fix:op flo:op %op)
     (let ((primitive  (make-primitive-procedure name)))
       (define-typerew-binary-variants-type-method  primitive
@@ -1683,25 +1775,30 @@ MIT in each case. |#
 	effect:none)
 
       (define-typerew-binary-variants-replacement-method primitive
-	type:fixnum             type:fixnum             type:any      fix:op
-	type:flonum             type:flonum             type:any      flo:op
-	(type:not type:fixnum)  type:any                type:any      %op
-	type:any                (type:not type:fixnum)  type:any      %op)
+	type:fixnum       type:fixnum       type:any      fix:op
+	type:fixnum       type:flonum       type:any      (typerew/%l flo:op)
+	type:flonum       type:fixnum       type:any      (typerew/%r flo:op)
+	type:flonum       type:flonum       type:any      flo:op
+	type:not-fixnum   type:any          type:any      %op
+	type:any          type:not-fixnum   type:any      %op)
 
       (define-typerew-binary-variants-type-method  %op
 	type:number             type:number             type:boolean
 	effect:none)
 
       (define-typerew-binary-variants-replacement-method %op
-	type:fixnum             type:fixnum             type:any      fix:op
-	type:flonum             type:flonum             type:any      flo:op)))
+	type:fixnum       type:fixnum       type:any      fix:op
+	type:fixnum       type:flonum       type:any      (typerew/%l flo:op)
+	type:flonum       type:fixnum       type:any      (typerew/%r flo:op)
+	type:flonum       type:flonum       type:any      flo:op)))
 
   (define-relational-method  '&<  fix:<  flo:<  %<)
   (define-relational-method  '&>  fix:>  flo:>  %>))
 
 (let ((&=  (make-primitive-procedure '&=))
       (EQ? (make-primitive-procedure 'EQ?))
-      (INT= (make-primitive-procedure 'INTEGER-EQUAL?)))
+      (INT= (make-primitive-procedure 'INTEGER-EQUAL?))
+      (type:not-fixnum  (type:not type:fixnum)))
   (define-typerew-binary-variants-type-method  &=
     type:number                 type:number             type:boolean
     effect:none)
@@ -1715,15 +1812,20 @@ MIT in each case. |#
     ;; Representation note: EQ? works for comparing any exact number to a
     ;; fixnum because the generic arithmetic canonicalizes values to
     ;; fixnums wherever possible.
-    type:fixnum             type:exact-number       type:any    EQ?
-    type:exact-number       type:fixnum             type:any    EQ?
-    type:flonum             type:flonum             type:any    flo:=
-    (type:not type:fixnum)  type:any                type:any    %=
-    type:any                (type:not type:fixnum)  type:any    %=)
+    type:fixnum          type:exact-number   type:any      EQ?
+    type:exact-number    type:fixnum         type:any      EQ?
+    type:flonum          type:flonum         type:any      flo:=
+    type:fixnum          type:flonum         type:any      (typerew/%l flo:=)
+    type:flonum          type:fixnum         type:any      (typerew/%r flo:=)
+    type:not-fixnum      type:any            type:any      %=
+    type:any             type:not-fixnum     type:any      %=)
   (define-typerew-binary-variants-replacement-method  %=
-    type:fixnum             type:exact-number       type:any    EQ?
-    type:exact-number       type:fixnum             type:any    EQ?
-    type:flonum             type:flonum             type:any    flo:=)
+    type:fixnum          type:exact-number   type:any      EQ?
+    type:exact-number    type:fixnum         type:any      EQ?
+    type:flonum          type:flonum         type:any      flo:=
+    type:fixnum          type:flonum         type:any      (typerew/%l flo:=)
+    type:flonum          type:fixnum         type:any      (typerew/%r flo:=))
+
   (define-typerew-binary-variants-replacement-method  INT=
     type:fixnum             type:exact-integer      type:any    EQ?
     type:exact-integer      type:fixnum             type:any    EQ?))    
@@ -1973,6 +2075,12 @@ MIT in each case. |#
 	    (let ((argtypes (procedure-type/argument-assertions proc-type)))
 	      (if (list? argtypes)
 		  (define-typerew-type-method operator (length argtypes)
+		    (typerew/general-type-method
+		     operator
+		     argtypes
+		     (procedure-type/result-type proc-type)
+		     (procedure-type/effects-performed proc-type)))
+		  (define-typerew-type-method operator #F
 		    (typerew/general-type-method
 		     operator
 		     argtypes
