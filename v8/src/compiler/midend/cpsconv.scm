@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.3 1994/11/22 19:52:24 gjr Exp $
+$Id: cpsconv.scm,v 1.4 1994/11/26 16:56:47 gjr Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -291,7 +291,7 @@ MIT in each case. |#
 		 ,(cpsconv/expr
 		   (cpsconv/begin-continuation
 		    next-name
-		    (cspconv/dbg-continuation/make 'BEGIN form next))
+		    (cpsconv/dbg-continuation/make 'BEGIN form next))
 		   next)))))))
 
 (define-cps-converter IF (cont pred conseq alt)
