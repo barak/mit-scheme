@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.9 1991/05/10 04:51:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.10 1992/04/07 08:39:01 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -95,7 +95,7 @@
   (let ((buffer
 	 (make-buffer name
 		      (ref-variable editor-default-mode)
-		      (if (within-editor?)
+		      (if within-editor?
 			  (buffer-default-directory (current-buffer))
 			  (working-directory-pathname)))))
     (string-table-put! (bufferset-names bufferset) name buffer)

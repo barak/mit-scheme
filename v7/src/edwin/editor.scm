@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.219 1992/04/04 13:07:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.220 1992/04/07 08:38:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -49,7 +49,7 @@
 (define (edit . args)
   (call-with-current-continuation
    (lambda (continuation)
-     (cond ((within-editor?)
+     (cond (within-editor?
 	    (error "edwin: Editor already running"))
 	   ((not edwin-editor)
 	    (apply create-editor args))
@@ -64,6 +64,7 @@
 		     unspecific)))))
      (fluid-let ((editor-abort continuation)
 		 (current-editor edwin-editor)
+		 (within-editor? true)
 		 (editor-thread (current-thread))
 		 (editor-thread-root-continuation)
 		 (editor-initial-threads '())
@@ -100,11 +101,11 @@
 	      message))))))))
 
 (define (edwin . args) (apply edit args))
-(define (within-editor?) (not (unassigned? current-editor)))
 
-(define editor-abort)
 (define edwin-editor false)
+(define editor-abort)
 (define current-editor)
+(define within-editor? false)
 (define editor-thread)
 (define editor-thread-root-continuation)
 (define editor-initial-threads)
