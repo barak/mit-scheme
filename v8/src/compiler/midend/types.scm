@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: types.scm,v 1.1 1995/09/01 18:53:32 adams Exp $
+$Id: types.scm,v 1.2 1995/09/05 19:07:29 adams Exp $
 
 Copyright (c) 1995-1995 Massachusetts Institute of Technology
 
@@ -173,7 +173,7 @@ MIT in each case. |#
 		   type:true		; special values
 		   type:false
 		   type:empty-list
-		   type:unspecific
+		   type:unspecific-frob
 		   type:other-constant
 
 		   type:primitive-procedure
@@ -209,7 +209,7 @@ MIT in each case. |#
 
   (alias  type:small-fixnum>1   type:small-fixnum:2..255 type:small-fixnum>255)
   (alias  type:unsigned-byte
-	  type:exact-zero type:exact-one type:small-fixnum>1)
+	  type:exact-zero type:exact-one type:small-fixnum:2..255)
   (alias  type:small-fixnum+ve  type:exact-one type:small-fixnum>1)
   (alias  type:small-fixnum-ve  type:exact-minus-one type:small-fixnum<-1)
   (alias  type:small-fixnum
@@ -242,7 +242,8 @@ MIT in each case. |#
 
   (alias  type:list             type:empty-list type:pair)
 
-  (alias  type:tc-constant type:true type:false type:empty-list type:unspecific
+  (alias  type:tc-constant
+	  type:true type:false type:empty-list type:unspecific-frob
 	  type:other-constant)
 
   (alias* type:compiled-entry
@@ -250,6 +251,11 @@ MIT in each case. |#
 
   (alias  type:procedure
 	  type:compiled-procedure type:entity type:primitive-procedure)
+
+  ;; It is horrible, but this is how flonum vectors are represented
+  (alias  type:flonum-vector    type:flonum)
+
+  (alias  type:unspecified type:any)
   )
 
 ;; Note: these are processed in last-to-first order to construct a description.
@@ -261,7 +267,7 @@ MIT in each case. |#
 (define-type-name type:exact-number   'EXACT-NUMBER)
 (define-type-name type:inexact-number 'INEXACT-NUMBER)
 (define-type-name type:number         'NUMBER)
-
+(define-type-name type:not-false      'NOT-FALSE)
 (define-type-name type:any    'type:ANY)
 
 
@@ -269,10 +275,15 @@ MIT in each case. |#
 ;;
 
 ;; The tag is `covered' by this type.
-(define type:tag->covering-type (make-vector 64 #F))
+
+(define type:number-of-typecodes 64)
+
+(define type:tag->covering-type (make-vector type:number-of-typecodes #F))
 
 (define (type:typecode->type typecode)
   (vector-ref type:tag->covering-type typecode))
+
+(define type:tag->type-pair (make-vector type:number-of-typecodes #F))
 
 ;; This primitive type is `covered' by these tags.
 (define type:primitive-type->covering-tags
@@ -310,16 +321,28 @@ MIT in each case. |#
 	 (do ((i 0 (+ i 1))  
 	      (t type:empty
 		 (type:or t (or (vector-ref type:tag->covering-type i) type:empty))))
-	     ((= i 64) (type:not t)))))
+	     ((= i type:number-of-typecodes) (type:not t)))))
     (type:for-each-primitive-type
      (type:except unallocated-types type:other)
      (lambda (t)
        (internal-warning "Type has not been allocated to typecode(s)" t)))
 				  
     (do ((i 0 (+ i 1)))
-	((= i 64))
+	((= i type:number-of-typecodes))
       (if (not (vector-ref type:tag->covering-type i))
-	  (vector-set! type:tag->covering-type i unallocated-types)))))
+	  (vector-set! type:tag->covering-type i unallocated-types)))
+
+    ;; Now for each typecode, calculate type-pairs
+    (do ((i 0 (+ i 1)))
+	((= i type:number-of-typecodes))
+      (do ((j 0 (+ j 1))
+	   (t type:empty
+	      (if (= i j)
+		  t
+		  (type:or t (vector-ref type:tag->covering-type j)))))
+	  ((= j type:number-of-typecodes)
+	   (vector-set! type:tag->type-pair i
+			(cons (vector-ref type:tag->covering-type i) t)))))))
 
 (define type:of-object
   (let* ((max-fixnum        (object-new-type 0 -1))
@@ -340,7 +363,7 @@ MIT in each case. |#
 	    ((object-type? (object-type #F) x)
 	     (cond ((eq? x #F)  type:false)
 		   ((eq? x #T)  type:true)
-		   ((eq? x unspecific)  type:unspecific)
+		   ((eq? x unspecific)  type:unspecific-frob)
 		   ((eq? x '()) type:empty-list)
 		   (else type:other-constant)))
 	    (else
@@ -389,14 +412,20 @@ MIT in each case. |#
   (define-predicate-test-types %compiled-entry? type:compiled-entry)
   )
 
-
+(define (type:tag->test-types tag)
+  (vector-ref type:tag->type-pair tag))
+  
 
-;;______________________________________________________________________
+;;  Procedure types
 ;;
-;;
-#|
+
+
 (define-structure
-    (procedure-type
+    (%procedure-type
+     (type vector)
+     (named (string->symbol "#[liar:procedure-type]"))
+     (constructor make-procedure-type)
+     (predicate procedure-type?)
      (conc-name procedure-type/))
   argument-types			; can be called on these types
   argument-assertions			; returning guarantees these types
@@ -405,70 +434,31 @@ MIT in each case. |#
   effects-observed
   (implementation-type))
 
-;; Note[1] The RESULT-TYPE should be TYPE:ANY for an operator without a
-;; specified return value.  TYPE:NONE means that there is no value
-;; (divergence) and TYPE:UNSPECIFIC means exactly the `unspecific'
-;; object.
-
-(define (procedure-type/new-argument-types base new)
-  (make-procedure-type new
-		       (procedure-type/argument-assertions base)
-		       (procedure-type/result-type base)
-		       (procedure-type/effects-performed base)
-		       (procedure-type/effects-observed base)
-		       (procedure-type/implementation-type base)))
-
-(define (procedure-type/new-argument-assertions base new)
-  (make-procedure-type (procedure-type/argument-types base)
-		       new
-		       (procedure-type/result-type base)
-		       (procedure-type/effects-performed base)
-		       (procedure-type/effects-observed base)
-		       (procedure-type/implementation-type base)))
-
-(define (procedure-type/new-result-type base new)
-  (make-procedure-type (procedure-type/argument-types base)
-		       (procedure-type/argument-assertions base)
-		       new
-		       (procedure-type/effects-performed base)
-		       (procedure-type/effects-observed base)
-		       (procedure-type/implementation-type base)))
-
-(define (procedure-type/new-effects-performed base new)
-  (make-procedure-type (procedure-type/argument-types base)
-		       (procedure-type/argument-assertions base)
-		       (procedure-type/result-type base)
-		       new
-		       (procedure-type/effects-observed base)
-		       (procedure-type/implementation-type base)))
-
-(define (procedure-type/new-effects-observed base new)
-  (make-procedure-type (procedure-type/argument-types base)
-		       (procedure-type/argument-assertions base)
-		       (procedure-type/result-type base)
-		       (procedure-type/effects-performed base)
-		       new
-		       (procedure-type/implementation-type base)))
-
-(define (procedure-type/new-implementation-type base new)
-  (make-procedure-type (procedure-type/argument-types base)
-		       (procedure-type/argument-assertions base)
-		       (procedure-type/result-type base)
-		       (procedure-type/effects-performed base)
-		       (procedure-type/effects-observed base)
-		       new))
-
-
-(define (make-primitive-procedure-type result-type . argument-types)
-  (make-procedure-type result-type argument-types type:primitive-procedure))
+;; Note[1] The RESULT-TYPE should be TYPE:UNSPECIFIED for an operator
+;; without a specified return value (e.g SET-CAR!).  TYPE:NONE means
+;; that there is no value because the procedure never returns
+;; (divergence) and TYPE:UNSPECIFIC-FROB means exactly the
+;; `unspecific' object.
+;;
+;; Note[2] If the ARGUMENT-ASSERTIONS are a subset of the ARGUMENT-TYPES
+;; then the procedure has a control flow element (i.e. signalling an
+;; error), even if it is otherwise effect-insensitive.
+;;
+;; Note that we cannot make inferences from the ARGUMENT-ASSERTIONS of a
+;; procedure that, like the primitives, is allowed to restart with an
+;; new value, or return
 
 
 (define *operator-types* (make-monotonic-strong-eq-hash-table))
-(define *operator-variants* (make-monotonic-strong-eq-hash-table))
+;;(define *operator-variants* (make-monotonic-strong-eq-hash-table))
 
 
-(define (operator-variants op)
-  (monotonic-strong-eq-hash-table/get *operator-variants* op '()))
+;;(define (operator-variants op)
+;;  (monotonic-strong-eq-hash-table/get *operator-variants* op '()))
+
+
+(define (define-operator-type op type)
+  (monotonic-strong-eq-hash-table/put! *operator-types* op type))
 
 (define (operator-type op)
   (monotonic-strong-eq-hash-table/get *operator-types* op #F))
@@ -476,183 +466,66 @@ MIT in each case. |#
 (define (operator-sensitive-effects op)
   (cond ((operator-type op)
 	 => procedure-type/effects-observed)
+	((operator/satisfies? op '(SIDE-EFFECT-INSENSITIVE))
+	 effect:none)
 	(else effect:unknown)))
+
+(define (procedure-type base . initial-qualifiers)
+  ;; alternative interface: (procedure-type domain range . <qualifiers>)
+  (define (full-domain domain)
+    (let loop ((Ts domain))
+      (cond ((null? Ts) '())
+	    ((pair? Ts) (cons type:any (loop (cdr Ts))))
+	    (else       type:any))))
+  (define (qualify qualifiers
+		   asserted-domain domain range
+		   effects-observed effects-performed
+		   implementation-type)
+    (let loop ((qualifiers qualifiers))
+      (cond ((not (pair? qualifiers))
+	     (make-procedure-type asserted-domain domain range
+				  effects-observed effects-performed
+				  implementation-type))
+	    ((eq? (car qualifiers) 'EFFECT-FREE)
+	     (set! effects-performed effect:none)
+	     (loop (cdr qualifiers)))
+	    ((eq? (car qualifiers) 'EFFECT-INSENSITIVE)
+	     (set! effects-observed effect:none)
+	     (loop (cdr qualifiers)))
+	    ((eq? (car qualifiers) 'FUNCTION)
+	     (loop (cons* 'EFFECT-FREE 'EFFECT-INSENSITIVE (cdr qualifiers))))
+	    ((eq? (car qualifiers) 'EFFECT)
+	     (set! effects-performed (cadr qualifiers))
+	     (loop (cddr qualifiers)))
+	    ((eq? (car qualifiers) 'EFFECT-SENSITIVE)
+	     (set! effects-observed (cadr qualifiers))
+	     (loop (cddr qualifiers)))
+	    ((eq? (car qualifiers) 'IMPLEMENTATION-TYPE)
+	     (set! implementation-type (cadr qualifiers))
+	     (loop (cddr qualifiers)))
+	    ((eq? (car qualifiers) 'UNCHECKED)
+	     ;; Not sure what this really means.
+	     (loop (cdr qualifiers)))
+	    (else (internal-error "Bad PROCEDURE-TYPE qualifiers"
+				  base initial-qualifiers)))))
 
+  (if (procedure-type? base)
+      (qualify initial-qualifiers
+	       (procedure-type/argument-assertions base)
+	       (procedure-type/argument-types base)
+	       (procedure-type/result-type base)
+	       (procedure-type/effects-observed base)
+	       (procedure-type/effects-performed base)
+	       (procedure-type/implementation-type base))
+      (let ((domain base)
+	    (range (car initial-qualifiers)))
+	(qualify (cdr initial-qualifiers)
+		 (and domain (full-domain domain))
+		 domain
+		 range
+		 effect:unknown effect:unknown
+		 type:procedure))))
 
-(let ()
-  ;; The basic type from which most variants are derived is the
-  ;; non-restartable primitive type whcih checks its arguments.
-  (define (type eff1 eff2 result-type . argument-types)
-    (make-procedure-type (make-list (length argument-types) type:any)
-			 argument-types
-			 result-type 
-			 eff1 eff2
-			 type:primitive-procedure))
-
-  (define -> '->)
-  (define (signature . sig)
-    (let* ((t* (reverse sig))
-	   (result-type (car t*))
-	   (argument-types (reverse (cddr t*))))
-      (if (not (eq? (cadr t*) ->))
-	  (internal-error "Illegal signature" sig))
-      (make-procedure-type (make-list (length argument-types) type:any)
-			   argument-types
-			   result-type 
-			   effect:unknown effect:unknown
-			   type:primitive-procedure)))
-
-  (define (def operator type)
-    (monotonic-strong-eq-hash-table/put! *operator-types* operator type))
-
-  (define (prim . spec) (apply make-primitive-procedure spec))
-
-  (define (restartable base)
-    (procedure-type/new-argument-assertions
-     base
-     (procedure-type/argument-types base)))
-
-  (define ((sub-range result-type) base)
-    (procedure-type/new-result-type base result-type))
-
-  (define ((sub-domain . argument-types) base)
-    (procedure-type/new-argument-types base argument-types))
-
-  (define (unchecked base)
-    ;; unchecked version: enforces nothing but only works on enforced
-    ;; sub-domain of base
-    (let ((assertions (procedure-type/argument-assertions base)))
-      (procedure-type/new-argument-types
-       (procedure-type/new-argument-assertions
-	base
-	(make-list (length assertions) type:any))
-       assertions)))
-
-  (define (inlined base)
-    (procedure-type/new-implementation-type base type:empty))
-
-  (define ((effects do! see) base)
-    (procedure-type/new-effects-observed
-     (procedure-type/new-effects-performed base do!) see))
-
-  (define ((sensitive . effects) base)
-    (procedure-type/new-effects-observed base (apply effect:union* effects)))
-
-  (define (effect-free base)
-    (procedure-type/new-effects-performed base effect:none))
-
-  (define (variant base . modifiers)
-    (let loop ((m modifiers) (base base))
-      (if (null? m)
-	  base
-	  (loop (cdr m) ((car m) base)))))
-
-  (define (def-variant var-op base-op . modifiers)
-    (let ((base
-	   (monotonic-strong-eq-hash-table/get *operator-types* base-op #F)))
-      (if (not base)
-	  (internal-error "Base op does not have defined type" base-op))
-	  
-      (def var-op (apply variant base modifiers))
-      (monotonic-strong-eq-hash-table/put! *operator-variants* base-op
-					   (append (operator-variants base-op)
-						   (list var-op)))))
-
-  (define (def-global name base)
-    (def name (procedure-type/new-implementation-type base type:procedure)))
-
-  (define effect-insensitive (sensitive effect:none))
-  (define function  (effects effect:none effect:none))
-  (define allocates (effects effect:allocation effect:none))
-
-  (define binary-generic-arithmetic
-    (variant (signature  type:number type:number -> type:number)
-	     effect-insensitive
-	     allocates))
-  
-  (define simple-predicate
-    (variant (signature  type:any -> type:boolean)
-	     effect-insensitive
-	     effect-free))
-
-  (define binary-generic-predicate
-    (variant (signature  type:number type:number -> type:boolean)
-	     effect-insensitive
-	     effect-free))
-  
-  (def (prim 'CONS)
-       (variant (signature type:any type:any -> type:pair)
-		effect-insensitive
-		allocates))
- 
-  (def (prim 'CAR)
-       (variant (signature type:pair -> type:any)
-		effect-free
-		(sensitive effect:set-car!)))
-  (def-variant %car   (prim 'CAR) inlined unchecked)
-  (def-variant "#CAR" (prim 'CAR) restartable)
-  
-  (def (prim 'CDR)
-       (variant (signature type:pair -> type:any)
-		effect-free
-		(sensitive effect:set-cdr!)))
-  (def-variant %cdr   (prim 'CDR) inlined unchecked)
-  (def-variant "#CDR" (prim 'CDR) restartable)
-  
-  (def (prim 'SET-CAR!)
-       (variant (signature type:pair type:any -> type:any)
-		(effects effect:set-car! effect:none)))
-  (def-variant %set-car!   (prim 'SET-CAR!) inlined unchecked)
-  (def-variant "#SET-CAR!" (prim 'SET-CAR!) restartable)
-  
-  (def (prim 'SET-CDR!)
-       (variant (signature type:pair type:any -> type:any)
-		(effects effect:set-cdr! effect:none)))
-  (def-variant %set-cdr!   (prim 'SET-CDR!) inlined unchecked)
-  (def-variant "#SET-CDR!" (prim 'SET-CDR!) restartable)
-  
-
-  (define (add-like gen:op fix:op flo:op out-of-line:op)
-    (def gen:op binary-generic-arithmetic)
-    (def-variant fix:op gen:op
-      inlined unchecked function
-      (sub-domain type:small-fixnum type:small-fixnum)
-      (sub-range type:fixnum))
-    (def-variant flo:op gen:op
-      inlined unchecked allocates
-      (sub-domain type:flonum type:flonum)
-      (sub-range type:flonum))
-    (def-variant out-of-line:op gen:op inlined))
-
-  (add-like (prim '&+) fix:+ flo:+ %+)
-  (add-like (prim '&-) fix:- flo:- "#-")
-
-  (define (arith-pred gen:op fix:op flo:op out-of-line:op)
-    (def gen:op binary-generic-predicate)
-    (def-variant fix:op gen:op
-      inlined unchecked (sub-domain type:fixnum type:fixnum))
-    (def-variant flo:op gen:op
-      inlined unchecked (sub-domain type:flonum type:flonum))
-    (def-variant out-of-line:op gen:op inlined))
-
-  (arith-pred (prim '&<) fix:< flo:< "#<")
-  (arith-pred (prim '&=) fix:= flo:= "#=")
-  (arith-pred (prim '&>) fix:> flo:> "#>")
-
-  (def fixnum? simple-predicate)
-  (def pair?   simple-predicate)
-
-  (def (prim 'VECTOR-LENGTH)
-       (variant (signature type:vector -> type:vector-length)
-		function))
-  (def-variant %vector-length  (prim 'VECTOR-LENGTH) inlined unchecked)
-
-  (def-global 'SUBSTRING?
-    (variant (signature type:string type:string -> type:boolean)
-	     function))
-
-  (def-global 'ERROR:WRONG-TYPE-ARGUMENT
-    (variant (signature type:any type:any -> type:empty)
-	     function))
-  unspecific)
-|#
+(define (primitive-procedure-type . spec)
+  (apply procedure-type
+	 (append spec (list 'implementation-type type:primitive-procedure))))
