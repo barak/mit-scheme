@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.35 1987/05/29 17:57:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.36 1987/06/11 20:44:20 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -171,6 +171,10 @@ MIT in each case. |#
 
 (define-integrable (need-register! register)
   (set! *needed-registers* (cons register *needed-registers*)))
+
+(define-integrable (need-registers! registers)
+  ;; **** Assume EQ? works on registers here. ****
+  (set! *needed-registers* (eq-set-union registers *needed-registers*)))
 
 (define (maybe-need-register! register)
   (if register (need-register! register))
