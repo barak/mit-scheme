@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.54 1993/01/09 09:44:40 cph Exp $
+;;;	$Id: intmod.scm,v 1.55 1993/01/20 04:50:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -738,7 +738,7 @@ If this is an error, the debugger examines the error condition."
   (unsolicited-prompt port prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
-  (unsolicited-prompt port prompt-for-confirmation prompt))
+  (unsolicited-prompt port prompt-for-confirmation? prompt))
 
 (define unsolicited-prompt
   (let ((unique (list false)))
