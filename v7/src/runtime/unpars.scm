@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.52 2003/02/14 18:28:34 cph Exp $
+$Id: unpars.scm,v 14.53 2003/07/30 04:37:22 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
+Copyright 1996,2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,21 +33,24 @@ USA.
   (set! string-delimiters
 	(char-set-union char-set:not-graphic (char-set #\" #\\)))
   (set! hook/interned-symbol unparse-symbol)
-  (set! hook/procedure-unparser false)
+  (set! hook/procedure-unparser #f)
   (set! *unparser-radix* 10)
-  (set! *unparser-list-breadth-limit* false)
-  (set! *unparser-list-depth-limit* false)
-  (set! *unparser-string-length-limit* false)
-  (set! *unparse-primitives-by-name?* false)
-  (set! *unparse-uninterned-symbols-by-name?* false)
-  (set! *unparse-with-maximum-readability?* false)
-  (set! *unparse-disambiguate-null-as-itself?* true)
-  (set! *unparse-disambiguate-null-lambda-list?* false)
-  (set! *unparse-compound-procedure-names?* true)
-  (set! *unparse-with-datum?* false)
+  (set! *unparser-list-breadth-limit* #f)
+  (set! *unparser-list-depth-limit* #f)
+  (set! *unparser-string-length-limit* #f)
+  (set! *unparse-primitives-by-name?* #f)
+  (set! *unparse-uninterned-symbols-by-name?* #f)
+  (set! *unparse-with-maximum-readability?* #f)
+  (set! *unparse-disambiguate-null-as-itself?* #t)
+  (set! *unparse-disambiguate-null-lambda-list?* #f)
+  (set! *unparse-compound-procedure-names?* #t)
+  (set! *unparse-with-datum?* #f)
   (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *default-list-depth* 0)
+  (set! symbol-delimiters
+	(char-set-difference char-set/atom-delimiters
+			     char-set:upper-case))
   (set-current-unparser-table! system-global-unparser-table))
 
 (define *unparser-radix*)
@@ -63,6 +67,7 @@ USA.
 (define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
 (define *default-list-depth*)
+(define symbol-delimiters)
 (define *current-unparser-table*)
 
 (define (current-unparser-table)
@@ -107,7 +112,7 @@ USA.
 
 (define-structure (unparser-table (constructor %make-unparser-table)
 				  (conc-name unparser-table/))
-  (dispatch-vector false read-only true))
+  (dispatch-vector #f read-only #t))
 
 (define (guarantee-unparser-table table procedure)
   (if (not (unparser-table? table))
@@ -131,10 +136,10 @@ USA.
 	       method))
 
 (define-structure (unparser-state (conc-name unparser-state/))
-  (port false read-only true)
-  (list-depth false read-only true)
-  (slashify? false read-only true)
-  (unparser-table false read-only true))
+  (port #f read-only #t)
+  (list-depth #f read-only #t)
+  (slashify? #f read-only #t)
+  (unparser-table #f read-only #t))
 
 (define (guarantee-unparser-state state procedure)
   (if (not (unparser-state? state))
@@ -231,15 +236,15 @@ USA.
 	    (*unparse-object name))
 	(if object
 	    (begin
-	      (*unparse-char #\Space)
+	      (*unparse-char #\space)
 	      (*unparse-hash object)))
 	(if thunk
 	    (begin
-	      (*unparse-char #\Space)
+	      (*unparse-char #\space)
 	      (thunk))
 	    (if *unparse-with-datum?*
 		(begin
-		  (*unparse-char #\Space)
+		  (*unparse-char #\space)
 		  (*unparse-datum object))))
 	(*unparse-char #\]))))
 
@@ -249,13 +254,13 @@ USA.
   (let ((type (user-object-type object)))
     (case ((ucode-primitive primitive-object-gc-type 1) object)
       ((1 2 3 4 -3 -4)		; cell pair triple quad vector compiled
-       (*unparse-with-brackets type object false))
+       (*unparse-with-brackets type object #f))
       ((0)			; non pointer
        (*unparse-with-brackets type object
 	 (lambda ()
 	   (*unparse-datum object))))
       (else			; undefined, gc special
-       (*unparse-with-brackets type false
+       (*unparse-with-brackets type #f
 	 (lambda ()
 	   (*unparse-datum object)))))))
 
@@ -326,19 +331,41 @@ USA.
 (define hook/interned-symbol)
 
 (define (unparse/uninterned-symbol symbol)
-  (let ((unparse-symbol (lambda () (unparse-symbol symbol))))
-    (if *unparse-uninterned-symbols-by-name?*
-	(unparse-symbol)
-	(*unparse-with-brackets 'UNINTERNED-SYMBOL symbol unparse-symbol))))
+  (if *unparse-uninterned-symbols-by-name?*
+      (unparse-symbol symbol)
+      (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol
+	(lambda ()
+	  (unparse-symbol symbol)))))
 
 (define (unparse-symbol symbol)
-  (*unparse-string (symbol-name symbol)))
+  (let ((s (symbol-name symbol)))
+    (if (or (string-find-next-char-in-set s symbol-delimiters)
+	    (string->number s))
+	(begin
+	  (*unparse-char #\|)
+	  (let ((end (string-length s)))
+	    (let loop ((start 0))
+	      (if (fix:< start end)
+		  (let ((i
+			 (substring-find-next-char-in-set
+			  s start end
+			  char-set/quoted-symbol-delimiters)))
+		    (if i
+			(begin
+			  (*unparse-substring s start i)
+			  (*unparse-char #\\)
+			  (*unparse-char (string-ref s i))
+			  (loop (fix:+ i 1)))
+			(*unparse-substring s start end))))))
+	  (*unparse-char #\|))
+	(*unparse-string s))))
 
 (define (unparse/character character)
   (if (or *slashify?*
 	  (not (char-ascii? character)))
-      (begin (*unparse-string "#\\")
-	     (*unparse-string (char->name character true)))
+      (begin
+	(*unparse-string "#\\")
+	(*unparse-string (char->name character #t)))
       (*unparse-char character)))
 
 (define (unparse/string string)
@@ -362,17 +389,17 @@ USA.
 			(let ((char (string-ref string index)))
 			  (cond ((char=? char char:newline)
 				 (*unparse-char #\n))
-				((char=? char #\Tab)
+				((char=? char #\tab)
 				 (*unparse-char #\t))
-				((char=? char #\VT)
+				((char=? char #\vt)
 				 (*unparse-char #\v))
-				((char=? char #\BS)
+				((char=? char #\bs)
 				 (*unparse-char #\b))
-				((char=? char #\Return)
+				((char=? char #\return)
 				 (*unparse-char #\r))
-				((char=? char #\Page)
+				((char=? char #\page)
 				 (*unparse-char #\f))
-				((char=? char #\BEL)
+				((char=? char #\bel)
 				 (*unparse-char #\a))
 				((or (char=? char #\\)
 				     (char=? char #\"))
@@ -432,7 +459,7 @@ USA.
 			   (>= index *unparser-list-breadth-limit*))
 		      (*unparse-string " ...)"))
 		     (else
-		      (*unparse-char #\Space)
+		      (*unparse-char #\space)
 		      (*unparse-object (safe-vector-ref vector index))
 		      (loop (1+ index)))))))))))
 
@@ -528,7 +555,7 @@ USA.
 	 ((QUASIQUOTE) "`")
 	 ((UNQUOTE) ",")
 	 ((UNQUOTE-SPLICING) ",@")
-	 (else false))))
+	 (else #f))))
 
 ;;;; Procedures
 
@@ -568,9 +595,9 @@ USA.
 	      (*unparse-with-maximum-readability?*
 	       (*unparse-readable-hash procedure))
 	      (else
-	       (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false
+	       (*unparse-with-brackets 'PRIMITIVE-PROCEDURE #f
 		 unparse-name)))))))
-
+
 (define (unparse/compiled-entry entry)
   (let* ((type (compiled-entry-type entry))
 	 (procedure? (eq? type 'COMPILED-PROCEDURE))
@@ -593,20 +620,20 @@ USA.
 		      (if filename
 			  (begin
 			    (if name
-				(*unparse-char #\Space))
+				(*unparse-char #\space))
 			    (*unparse-object (pathname-name filename))
 			    (if block-number
 				(begin
-				  (*unparse-char #\Space)
+				  (*unparse-char #\space)
 				  (*unparse-hex block-number)))))
 		      (*unparse-char #\)))))
-		(*unparse-char #\Space)
+		(*unparse-char #\space)
 		(*unparse-hex (compiled-entry/offset entry))
 		(if closure?
 		    (begin
-		      (*unparse-char #\Space)
+		      (*unparse-char #\space)
 		      (*unparse-datum (compiled-closure->entry entry))))
-		(*unparse-char #\Space)
+		(*unparse-char #\space)
 		(*unparse-datum entry))))))
     (if procedure?
 	(unparse-procedure entry usual-method)
@@ -616,7 +643,8 @@ USA.
 
 (define (unparse/variable variable)
   (*unparse-with-brackets 'VARIABLE variable
-    (lambda () (*unparse-object (variable-name variable)))))
+    (lambda ()
+      (*unparse-object (variable-name variable)))))
 
 (define (unparse/number object)
   (*unparse-string
@@ -644,36 +672,39 @@ USA.
 
 (define (unparse/floating-vector v)
   (let ((length ((ucode-primitive floating-vector-length) v)))
-    (*unparse-with-brackets
-     "floating-vector"
-     v
-     (and (not (zero? length))
-	  (lambda ()
-	    (let ((limit (if (not *unparser-list-breadth-limit*)
-			     length
-			     (min length *unparser-list-breadth-limit*))))
-	      (unparse/flonum ((ucode-primitive floating-vector-ref) v 0))
-	      (do ((i 1 (1+ i)))
-		  ((>= i limit))
-		(*unparse-char #\Space)
-		(unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
-	      (if (< limit length)
-		  (*unparse-string " ..."))))))))
+    (*unparse-with-brackets "floating-vector" v
+      (and (not (zero? length))
+	   (lambda ()
+	     (let ((limit (if (not *unparser-list-breadth-limit*)
+			      length
+			      (min length *unparser-list-breadth-limit*))))
+	       (unparse/flonum ((ucode-primitive floating-vector-ref) v 0))
+	       (do ((i 1 (+ i 1)))
+		   ((>= i limit))
+		 (*unparse-char #\space)
+		 (unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
+	       (if (< limit length)
+		   (*unparse-string " ..."))))))))
 
 (define (unparse/future future)
-  (*unparse-with-brackets 'FUTURE false
+  (*unparse-with-brackets 'FUTURE #f
     (lambda ()
       (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
+
   (define (plain name)
-    (*unparse-with-brackets name entity false))
+    (*unparse-with-brackets name entity #f))
+
   (define (named-arity-dispatched-procedure name)
-    (*unparse-with-brackets 'ARITY-DISPATCHED-PROCEDURE
-			    entity
-			    (lambda () (*unparse-string name))))
-  (cond ((continuation? entity) (plain 'CONTINUATION))
-	((apply-hook? entity)   (plain 'APPLY-HOOK))
+    (*unparse-with-brackets 'ARITY-DISPATCHED-PROCEDURE entity
+      (lambda ()
+	(*unparse-string name))))
+
+  (cond ((continuation? entity)
+	 (plain 'CONTINUATION))
+	((apply-hook? entity)
+	 (plain 'APPLY-HOOK))
 	((arity-dispatched-procedure? entity)
 	 (let ((proc  (entity-procedure entity)))
 	   (cond ((and (compiled-code-address? proc)
@@ -681,4 +712,5 @@ USA.
 		       (compiled-procedure/name proc))
 		  => named-arity-dispatched-procedure)
 		 (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
-	(else (plain 'ENTITY))))
+	(else
+	 (plain 'ENTITY))))
