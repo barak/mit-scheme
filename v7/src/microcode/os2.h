@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.3 1994/12/19 22:30:20 cph Exp $
+$Id: os2.h,v 1.4 1995/10/30 07:54:29 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,10 +45,8 @@ MIT in each case. */
    Scheme's definition not needed in OS/2 files.  */
 #undef END_OF_CHAIN
 
-#define INCL_DOS
-#define INCL_DOSERRORS
-#define INCL_KBD
-#define INCL_VIO
+#define INCL_BASE
+#define INCL_PM
 #include <os2.h>
 #include <stdio.h>
 #include <stdlib.h>
