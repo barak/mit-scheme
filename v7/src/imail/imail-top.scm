@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.261 2001/06/02 05:50:19 cph Exp $
+;;; $Id: imail-top.scm,v 1.262 2001/06/03 01:23:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1435,7 +1435,7 @@ With prefix argument, closes and buries only selected IMAIL folder."
   (lambda (selected-only?)
     (let ((quit
 	   (lambda (folder)
-	     (close-resource folder)
+	     (close-resource folder #t)
 	     (imail-bury folder))))
       (if selected-only?
 	  (quit (selected-folder))
