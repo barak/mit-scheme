@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.89 1991/05/02 20:38:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.90 1991/08/06 15:38:30 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -175,26 +175,32 @@ B 3BAB8C
 	(if (not command-prompt-displayed?)
 	    (clear-current-message!)))))
 
-(define (keyboard-peek-char)
+(define (keyboard-peek)
   (if *executing-keyboard-macro?*
-      (keyboard-macro-peek-char)
-      (keyboard-read-char-1 (editor-peek-char current-editor))))
+      (keyboard-macro-peek-key)
+      (keyboard-read-1 (editor-peek-char current-editor))))
+
+(define (keyboard-read)
+  (set! keyboard-keys-read (1+ keyboard-keys-read))
+  (if *executing-keyboard-macro?*
+      (keyboard-macro-read-key)
+      (let ((key (keyboard-read-1 (editor-read-char current-editor))))
+	(set! auto-save-keystroke-count (1+ auto-save-keystroke-count))
+	(ring-push! (current-char-history) key)
+	(if *defining-keyboard-macro?* (keyboard-macro-write-key key))
+	key)))
 
 (define (keyboard-read-char)
-  (set! keyboard-chars-read (1+ keyboard-chars-read))
-  (if *executing-keyboard-macro?*
-      (keyboard-macro-read-char)
-      (let ((char (keyboard-read-char-1 (editor-read-char current-editor))))
-	(set! auto-save-keystroke-count (1+ auto-save-keystroke-count))
-	(ring-push! (current-char-history) char)
-	(if *defining-keyboard-macro?* (keyboard-macro-write-char char))
-	char)))
+  (let loop ((key (keyboard-read)))
+    (if (char? key)
+	key
+	(loop (keyboard-read)))))
 
-(define read-char-timeout/fast 500)
-(define read-char-timeout/slow 2000)
+(define read-key-timeout/fast 500)
+(define read-key-timeout/slow 2000)
 
-(define (keyboard-read-char-1 read-char)
-  (remap-alias-char
+(define (keyboard-read-1 read-key)
+  (remap-alias-key
    (let ((char-ready? (editor-char-ready? current-editor)))
      (if (not (char-ready?))
 	 (begin
@@ -220,14 +226,14 @@ B 3BAB8C
        (cond ((within-typein-edit?)
 	      (if message-string
 		  (begin
-		    (wait read-char-timeout/slow)
+		    (wait read-key-timeout/slow)
 		    (set! message-string false)
 		    (set! message-should-be-erased? false)
 		    (clear-current-message!))))
 	     ((and (or message-should-be-erased?
 		       (and command-prompt-string
 			    (not command-prompt-displayed?)))
-		   (wait read-char-timeout/fast))
+		   (wait read-key-timeout/fast))
 	      (set! message-string false)
 	      (set! message-should-be-erased? false)
 	      (if command-prompt-string
@@ -236,7 +242,7 @@ B 3BAB8C
 		    (set-current-message! command-prompt-string))
 		  (clear-current-message!)))))
      (let loop ()
-       (or (read-char)
+       (or (read-key)
 	   (begin
 	     (accept-process-output)
 	     (notify-process-status-changes)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.86 1991/05/02 01:12:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.87 1991/08/06 15:40:25 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -47,21 +47,21 @@
 (declare (usual-integrations))
 
 (define *command-continuation*)	;Continuation of current command
-(define *command-char*)		;Character read to find current command
+(define *command-key*)		;Key read to find current command
 (define *command*)		;The current command
 (define *command-argument*)	;Argument from last command
 (define *next-argument*)	;Argument to next command
 (define *command-message*)	;Message from last command
 (define *next-message*)		;Message to next command
 (define *non-undo-count*)	;# of self-inserts since last undo boundary
-(define keyboard-chars-read)	;# of chars read from keyboard
+(define keyboard-keys-read)	;# of keys read from keyboard
 (define command-history)
 (define command-history-limit 30)
 (define command-reader-reset-thunk)
 (define command-reader-reset-continuation)
 
 (define (initialize-command-reader!)
-  (set! keyboard-chars-read 0)
+  (set! keyboard-keys-read 0)
   (set! command-history (make-circular-list command-history-limit false))
   (set! command-reader-reset-thunk false)
   unspecific)
@@ -102,7 +102,7 @@
     (call-with-current-continuation
      (lambda (continuation)
        (fluid-let ((*command-continuation* continuation)
-		   (*command-char* false)
+		   (*command-key* false)
 		   (*command*)
 		   (*next-argument* false)
 		   (*next-message* false))
@@ -112,19 +112,19 @@
 
   (define (start-next-command)
     (reset-command-state!)
-    (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
-      (set! *command-char* char)
+    (let ((key (with-editor-interrupts-disabled keyboard-read)))
+      (set! *command-key* key)
       (clear-message)
       (set-command-prompt!
        (if (not *command-argument*)
-	   (char-name char)
+	   (key-name key)
 	   (string-append-separated (command-argument-prompt)
-				    (char-name char))))
+				    (key-name key))))
       (let ((window (current-window)))
 	(%dispatch-on-command window
 			      (comtab-entry (buffer-comtabs
 					     (window-buffer window))
-					    char)
+					    key)
 			      false)))
     (start-next-command))
 
@@ -146,7 +146,7 @@
   (if *command-argument*
       (set-command-prompt! (command-argument-prompt))
       (reset-command-prompt!))
-  (if *defining-keyboard-macro?* (keyboard-macro-finalize-chars)))
+  (if *defining-keyboard-macro?* (keyboard-macro-finalize-keys)))
 
 ;;; The procedures for executing commands come in two flavors.  The
 ;;; difference is that the EXECUTE-foo procedures reset the command
@@ -154,23 +154,23 @@
 ;;; latter should only be used by "prefix" commands such as C-X or
 ;;; C-4, since they want arguments, messages, etc. to be passed on.
 
-(define-integrable (execute-char comtab char)
+(define-integrable (execute-key comtab key)
   (reset-command-state!)
-  (dispatch-on-char comtab char))
+  (dispatch-on-key comtab key))
 
 (define-integrable (execute-command command)
   (reset-command-state!)
   (%dispatch-on-command (current-window) command false))
 
-(define (read-and-dispatch-on-char)
-  (dispatch-on-char (current-comtabs)
-		    (with-editor-interrupts-disabled keyboard-read-char)))
+(define (read-and-dispatch-on-key)
+  (dispatch-on-key (current-comtabs)
+		   (with-editor-interrupts-disabled keyboard-read)))
 
-(define (dispatch-on-char comtab char)
-  (set! *command-char* char)
+(define (dispatch-on-key comtab key)
+  (set! *command-key* key)
   (set-command-prompt!
-   (string-append-separated (command-argument-prompt) (xchar->name char)))
-  (%dispatch-on-command (current-window) (comtab-entry comtab char) false))
+   (string-append-separated (command-argument-prompt) (xkey->name key)))
+  (%dispatch-on-command (current-window) (comtab-entry comtab key) false))
 
 (define (dispatch-on-command command #!optional record?)
   (%dispatch-on-command (current-window)
@@ -181,13 +181,13 @@
   (keyboard-macro-disable)
   (*command-continuation* (if (default-object? value) 'ABORT value)))
 
-(define-integrable (current-command-char)
-  *command-char*)
+(define-integrable (current-command-key)
+  *command-key*)
 
-(define (last-command-char)
-  (if (char? *command-char*)
-      *command-char*
-      (car (last-pair *command-char*))))
+(define (last-command-key)
+  (if (key? *command-key*)
+      *command-key*
+      (car (last-pair *command-key*))))
 
 (define-integrable (current-command)
   *command*)
@@ -250,16 +250,17 @@
 		      (< point-x (-1+ (window-x-size window))))
 		 (window-direct-output-backward-char! window)
 		 (normal)))
-	    ((or (eq? command (ref-command-object self-insert-command))
-		 (and (eq? command (ref-command-object auto-fill-space))
-		      (not (auto-fill-break? point)))
-		 (command-argument-self-insert? command))
-	     (let ((char *command-char*))
+	    ((and (not (special-key? *command-key*))
+		  (or (eq? command (ref-command-object self-insert-command))
+		      (and (eq? command (ref-command-object auto-fill-space))
+			   (not (auto-fill-break? point)))
+		      (command-argument-self-insert? command)))
+	     (let ((key *command-key*))
 	       (if (let ((buffer (window-buffer window)))
 		     (and (buffer-auto-save-modified? buffer)
 			  (null? (cdr (buffer-windows buffer)))
 			  (line-end? point)
-			  (char-graphic? char)
+			  (char-graphic? key)
 			  (< point-x (-1+ (window-x-size window)))))
 		   (begin
 		     (if (or (zero? *non-undo-count*)
@@ -268,8 +269,8 @@
 			   (set! *non-undo-count* 0)
 			   (undo-boundary! point)))
 		     (set! *non-undo-count* (1+ *non-undo-count*))
-		     (window-direct-output-insert-char! window char))
-		   (region-insert-char! point char))))
+		     (window-direct-output-insert-char! window key))
+		   (region-insert-char! point key))))
 	    (else
 	     (normal))))))
 
@@ -320,17 +321,17 @@
 	     (lambda (arguments expressions any-from-tty?)
 	       (if (or record?
 		       (and any-from-tty?
-			    (not (prefix-char-list? (current-comtabs)
-						    (current-command-char)))))
+			    (not (prefix-key-list? (current-comtabs)
+						   (current-command-key)))))
 		   (record-command-arguments expressions))
 	       arguments)))
 	  ((null? specification)
 	   (if record? (record-command-arguments '()))
 	   '())
 	  (else
-	   (let ((old-chars-read keyboard-chars-read))
+	   (let ((old-keys-read keyboard-keys-read))
 	     (let ((arguments (specification)))
-	       (if (or record? (not (= keyboard-chars-read old-chars-read)))
+	       (if (or record? (not (= keyboard-keys-read old-keys-read)))
 		   (record-command-arguments (map quotify-sexp arguments)))
 	       arguments))))))
 
@@ -350,7 +351,7 @@
 		  (eval-with-history expression environment)))
 	      (cdr entry))))
 
-(define (interactive-argument char prompt)
+(define (interactive-argument key prompt)
   (let ((prompting
 	 (lambda (value)
 	   (values value (quotify-sexp value) true)))
@@ -360,7 +361,7 @@
 	(varies
 	 (lambda (value expression)
 	   (values value expression false))))
-    (case char
+    (case key
       ((#\b)
        (prompting
 	(buffer-name (prompt-for-existing-buffer prompt (current-buffer)))))
@@ -403,7 +404,7 @@
        (prompting (prompt-for-expression-value prompt)))
       (else
        (editor-error "Invalid control letter "
-		     char
+		     key
 		     " in interactive calling string")))))
 
 (define (quotify-sexp sexp)

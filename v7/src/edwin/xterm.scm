@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.20 1991/07/26 21:56:09 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.21 1991/08/06 15:39:21 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -43,6 +43,7 @@
 ;;;
 
 ;;;; X Terminal
+;;; Package: (edwin x-screen)
 
 (declare (usual-integrations))
 
@@ -228,10 +229,14 @@
 
 ;;;; Event Handling
 
+(define-integrable control-bucky-bit 2)
+
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
 	(bucky-bits 0)
+	(keysym false)
+	(special-key? false)
 	(string false)
 	(start 0)
 	(end 0)
@@ -240,9 +245,12 @@
 	   (lambda (event)
 	     (set! string (vector-ref event 2))
 	     (set! bucky-bits (vector-ref event 3))
+	     (set! keysym (vector-ref event 4))
 	     (set! start 0)
 	     (set! end (string-length string))
-	     (if signal-interrupts?
+	     (set! special-key? (zero? end))
+	     (if (and signal-interrupts?
+		      (not special-key?))
 		 (let ((i (string-find-previous-char string #\BEL)))
 		   (if i
 		       (begin
@@ -263,9 +271,12 @@
 			    (error "#F returned from blocking read"))
 			   ((eq? true event)
 			    false)
-			   ((fix:= event-type:key-press (vector-ref event 0))
+			   ((fix:= event-type:key-press
+				   (vector-ref event 0))
 			    (process-key-press-event event)
-			    (if (fix:< start end) true (loop)))
+			    (if (or special-key? (fix:< start end))
+				true
+				(loop)))
 			   (else
 			    (process-special-event event)
 			    (loop)))))))
@@ -274,11 +285,12 @@
 		 (if (and (zero? start)
 			  (= end 1))
 		     (make-char (char-code character)
-				bucky-bits)
+				(fix:andc bucky-bits
+					  control-bucky-bit))
 		     character))))
 	  (values
 	   (lambda ()			;halt-update?
-	     (if (or (fix:< start end) pending-event)
+	     (if (or special-key? (fix:< start end) pending-event)
 		 true
 		 (let ((event (get-next-event 0)))
 		   (and event
@@ -286,7 +298,7 @@
 			  (set! pending-event event)
 			  true)))))
 	   (lambda ()			;char-ready?
-	     (if (fix:< start end)
+	     (if (or special-key? (fix:< start end))
 		 true
 		 (let loop ()
 		   (let ((event (get-next-event 0)))
@@ -294,20 +306,27 @@
 			    false)
 			   ((fix:= event-type:key-press (vector-ref event 0))
 			    (process-key-press-event event)
-			    (if (fix:< start end) true (loop)))
+			    (if (or special-key? (fix:< start end))
+				true
+				(loop)))
 			   (else
 			    (process-special-event event)
 			    (loop)))))))
 	   (lambda ()			;peek-char
-	     (and (or (fix:< start end) (guarantee-input))
-		  (apply-bucky-bits (string-ref string start))))
+	     (and (or special-key? (fix:< start end) (guarantee-input))
+		  (if special-key?
+		      (x-make-special-key keysym bucky-bits)
+		      (apply-bucky-bits (string-ref string start)))))
 	   (lambda ()			;read-char
-	     (and (or (fix:< start end) (guarantee-input))
-		  (let ((char
-			 (apply-bucky-bits
-			  (string-ref string start))))
-		    (set! start (fix:+ start 1))
-		    char)))))))))
+	     (and (or special-key? (fix:< start end) (guarantee-input))
+		  (if special-key?
+		      (begin (set! special-key? false)
+			     (x-make-special-key keysym bucky-bits))
+		      (let ((char
+			     (apply-bucky-bits
+			      (string-ref string start))))
+			(set! start (fix:+ start 1))
+			char))))))))))
 
 (define (read-event queue display time-limit)
   ;; If no time-limit, we're reading from the keyboard.  In that case,

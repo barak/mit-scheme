@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.104 1991/05/16 23:14:02 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.105 1991/08/06 15:38:47 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -268,10 +268,11 @@ s	Search through this Info file for specified regexp,
 	      (message (if end-visible?
 			   "Type Space to return to Info"
 			   "Type Space to see more"))
-	      (let ((char (keyboard-peek-char)))
-		(if (char=? char #\Space)
+	      (let ((key (keyboard-peek)))
+		(if (and (char? key)
+			 (char=? key #\Space))
 		    (begin
-		      (keyboard-read-char)
+		      (keyboard-read)
 		      (if (not end-visible?)
 			  (begin
 			    ((ref-command scroll-up) false)

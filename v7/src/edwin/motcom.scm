@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.41 1991/05/10 05:12:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/motcom.scm,v 1.42 1991/08/06 15:37:33 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -169,3 +169,9 @@ Continuation lines are skipped."
 	   (move-to-column (line-start (current-point) (- argument) 'FAILURE)
 			   column)))
       (set-command-message! temporary-goal-column-tag column))))
+
+(define-command hyper-space
+  "Engage warp drive."
+  ()
+  (lambda ()
+    (message "Sorry, but superluminal travel is not available now.")))

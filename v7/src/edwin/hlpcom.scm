@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.99 1991/05/10 05:08:13 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.100 1991/08/06 15:39:10 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,7 @@
 It reads another character (a subcommand) and dispatches on it."
   "cA B C F I K L M T V W or C-h for more help"
   (lambda (char)
-    (dispatch-on-char
+    (dispatch-on-key
      (current-comtabs)
      (list #\Backspace
 	   (if (or (char=? char #\Backspace)
@@ -88,7 +88,7 @@ W  where-is.  Type a command name and get its key binding."
 				"A B C F I K L M T V W or space to scroll")))
 			  (let ((test-for
 				 (lambda (char*)
-				   (char=? char (remap-alias-char char*)))))
+				   (char=? char (remap-alias-key char*)))))
 			    (cond ((or (test-for #\C-h)
 				       (test-for #\?))
 				   (loop))
@@ -149,7 +149,7 @@ Prints the full documentation for the given command."
 	(if (null? bindings)
 	    (message (command-name-string command) " is not on any keys")
 	    (message (command-name-string command) " is on "
-		     (xchar->name (car bindings))))))))
+		     (xkey->name (car bindings))))))))
 
 (define-command describe-key-briefly
   "Prompts for a key, and describes the command it is bound to.
@@ -159,7 +159,7 @@ Prints the brief documentation for that command."
     (let ((command (comtab-entry (current-comtabs) key)))
       (if (eq? command (ref-command-object undefined))
 	  (help-describe-unbound-key key)
-	  (message (xchar->name key)
+	  (message (xkey->name key)
 		   " runs the command "
 		   (command-name-string command))))))
 
@@ -174,7 +174,7 @@ Prints the full documentation for that command."
 	  (help-describe-command command)))))
 
 (define (help-describe-unbound-key key)
-  (message (xchar->name key) " is undefined"))
+  (message (xkey->name key) " is undefined"))
 
 ;;;; Variables
 
@@ -249,8 +249,8 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (lambda ()
     (with-output-to-help-display
      (lambda ()
-       (for-each (lambda (char)
-		   (write-string (string-append (char-name char) " ")))
+       (for-each (lambda (key)
+		   (write-string (string-append (key-name key) " ")))
 		 (reverse (ring-list (current-char-history))))))))
 
 (define-command describe-mode
@@ -303,16 +303,16 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (let ((bindings (comtab-key-bindings (current-comtabs) command)))
     (if (not (null? bindings))
 	(begin (write-string "    which is bound to:    ")
-	       (write-string (char-list-string bindings))
+	       (write-string (key-list-string bindings))
 	       (newline)))))
 
-(define (char-list-string xchars)
-  (let loop ((xchars (sort xchars xchar<?)))
-    (if (null? (cdr xchars))
-	(xchar->name (car xchars))
-	(string-append (xchar->name (car xchars))
+(define (key-list-string xkeys)
+  (let loop ((xkeys (sort xkeys xkey<?)))
+    (if (null? (cdr xkeys))
+	(xkey->name (car xkeys))
+	(string-append (xkey->name (car xkeys))
 		       ", "
-		       (loop (cdr xchars))))))
+		       (loop (cdr xkeys))))))
 
 (define (print-variable-binding variable)
   (write-string "    which is bound to: ")
@@ -382,4 +382,4 @@ If you want VALUE to be a string, you must surround it with doublequotes."
   (let ((bindings (comtab-key-bindings (current-comtabs) command)))
     (if (null? bindings)
 	(string-append "M-x " (command-name-string command))
-	(xchar->name (car bindings)))))
+	(xkey->name (car bindings)))))

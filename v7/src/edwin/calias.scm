@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.9 1991/05/17 00:26:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/calias.scm,v 1.10 1991/08/06 15:38:59 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -42,58 +42,60 @@
 ;;; of that license should have been included along with this file.
 ;;;
 
-;;;; Alias Characters
+;;;; Alias Keys
 
 (declare (usual-integrations))
 
-(define alias-characters '())
+(define alias-keys '())
 
-(define (define-alias-char char alias)
-  (let ((entry (assq char alias-characters)))
+(define (define-alias-key key alias)
+  (let ((entry (assq key alias-keys)))
     (if entry
 	(set-cdr! entry alias)
-	(set! alias-characters (cons (cons char alias) alias-characters))))
+	(set! alias-keys (cons (cons key alias) alias-keys))))
   unspecific)
 
-(define (undefine-alias-char char)
-  (set! alias-characters (del-assq! char alias-characters))
+(define (undefine-alias-key key)
+  (set! alias-keys (del-assq! key alias-keys))
   unspecific)
 
-(define (remap-alias-char char)
-  (let ((entry (assq char alias-characters)))
+(define (remap-alias-key key)
+  (let ((entry (assq key alias-keys)))
     (cond (entry
-	   (remap-alias-char (cdr entry)))
-	  ((odd? (quotient (char-bits char) 2)) ;Control bit is set
-	   (let ((code (char-code char))
+	   (remap-alias-key (cdr entry)))
+	  ((and (char? key)
+		(odd? (quotient (char-bits key) 2))) ;Control bit is set
+	   (let ((code (char-code key))
 		 (remap
 		  (lambda (code)
-		    (make-char code (- (char-bits char) 2)))))
+		    (make-char code (- (char-bits key) 2)))))
 	     (cond ((<= #x40 code #x5F) (remap (- code #x40)))
 		   ((<= #x61 code #x7A) (remap (- code #x60)))
-		   (else char))))
-	  (else char))))
+		   (else key))))
+	  (else key))))
 
-(define (unmap-alias-char char)
-  (if (and (ascii-controlified? char)
-	   (let ((code (char-code char)))
+(define (unmap-alias-key key)
+  (if (and (char? key)
+	   (ascii-controlified? key)
+	   (let ((code (char-code key)))
 	     (not (or (= code #x09)	;tab
 		      (= code #x0A)	;linefeed
 		      (= code #x0C)	;page
 		      (= code #x0D)	;return
 		      (= code #x1B)	;altmode
 		      )))
-	   (even? (quotient (char-bits char) 2)))
-      (unmap-alias-char
-       (make-char (let ((code (char-code char)))
+	   (even? (quotient (char-bits key) 2)))
+      (unmap-alias-key
+       (make-char (let ((code (char-code key)))
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
-		  (+ (char-bits char) 2)))
+		  (+ (char-bits key) 2)))
       (let ((entry
-	     (list-search-positive alias-characters
+	     (list-search-positive alias-keys
 	       (lambda (entry)
-		 (eqv? (cdr entry) char)))))
+		 (eqv? (cdr entry) key)))))
 	(if entry
-	    (unmap-alias-char (car entry))
-	    char))))
+	    (unmap-alias-key (car entry))
+	    key))))
 
 (define-integrable (ascii-controlified? char)
   (< (char-code char) #x20))
@@ -103,75 +105,114 @@
   true
   boolean?)
 
-(define (char-name char)
-  (if (ref-variable enable-emacs-key-names)
-      (emacs-char-name char true)
-      (char->name (unmap-alias-char char))))
+(define (key-name key)
+  (cond ((ref-variable enable-emacs-key-names)
+	 (emacs-key-name key true))
+	((special-key? key)
+	 (special-key/name key))
+	(else
+	 (char->name (unmap-alias-key key)))))
 
-(define (xchar->name xchar)
-  (let ((chars (xchar->list xchar)))
+(define (xkey->name xkey)
+  (let ((keys (xkey->list xkey)))
     (string-append-separated
-     (char-name (car chars))
-     (let ((char-name
+     (key-name (car keys))
+     (let ((key-name
 	    (if (ref-variable enable-emacs-key-names)
-		(lambda (char)
-		  (emacs-char-name char false))
-		(lambda (char)
-		  (char->name (unmap-alias-char char))))))
-       (let loop ((chars (cdr chars)))
-	 (if (null? chars)
+		(lambda (key)
+		  (emacs-key-name key false))
+		(lambda (key)
+		  (key->name (unmap-alias-key key))))))
+       (let loop ((keys (cdr keys)))
+	 (if (null? keys)
 	     ""
 	     (string-append-separated
-	      (char-name (car chars))
-	      (loop (cdr chars)))))))))
+	      (key-name (car keys))
+	      (loop (cdr keys)))))))))
 
-(define (emacs-char-name char handle-prefixes?)
-  (let ((code (char-code char))
-	(bits (char-bits char)))
-    (let ((prefix
-	   (lambda (bits suffix)
-	     (if (zero? bits)
-		 suffix
-		 (string-append "M-" suffix)))))
-      (let ((process-code
-	     (lambda (bits)
-	       (cond ((< #x20 code #x7F)
-		      (prefix bits (string (ascii->char code))))
-		     ((= code #x09) (prefix bits "TAB"))
-		     ((= code #x0A) (prefix bits "LFD"))
-		     ((= code #x0D) (prefix bits "RET"))
-		     ((= code #x1B) (prefix bits "ESC"))
-		     ((= code #x20) (prefix bits "SPC"))
-		     ((= code #x7F) (prefix bits "DEL"))
-		     (else
-		      (string-append
-		       (if (zero? bits) "C-" "C-M-")
-		       (string
-			(ascii->char
-			 (+ code (if (<= #x01 code #x1A) #x60 #x40))))))))))
-	(cond ((< bits 2)
-	       (process-code bits))
-	      ((and handle-prefixes? (< bits 4))
-	       (string-append (if (= 2 bits) "C-^ " "C-z ") (process-code 0)))
-	      (else
-	       (char->name (unmap-alias-char char))))))))
+(define (emacs-key-name key handle-prefixes?)
+  (if (special-key? key)
+      (special-key/name key)
+      (let ((code (char-code key))
+	    (bits (char-bits key)))
+	(let ((prefix
+	       (lambda (bits suffix)
+		 (if (zero? bits)
+		     suffix
+		     (string-append "M-" suffix)))))
+	  (let ((process-code
+		 (lambda (bits)
+		   (cond ((< #x20 code #x7F)
+			  (prefix bits (string (ascii->char code))))
+			 ((= code #x09) (prefix bits "TAB"))
+			 ((= code #x0A) (prefix bits "LFD"))
+			 ((= code #x0D) (prefix bits "RET"))
+			 ((= code #x1B) (prefix bits "ESC"))
+			 ((= code #x20) (prefix bits "SPC"))
+			 ((= code #x7F) (prefix bits "DEL"))
+			 (else
+			  (string-append
+			   (if (zero? bits) "C-" "C-M-")
+			   (string
+			    (ascii->char
+			     (+ code (if (<= #x01 code #x1A) #x60 #x40))))))))))
+	    (cond ((< bits 2)
+		   (process-code bits))
+		  ((and handle-prefixes? (< bits 4))
+		   (string-append (if (= 2 bits) "C-^ " "C-z ") (process-code 0)))
+		  (else
+		   (char->name (unmap-alias-key key)))))))))
 
-(define (xchar<? x y)
-  (let loop ((x (xchar->list x)) (y (xchar->list y)))
-    (or (char<? (car x) (car y))
-	(and (char=? (car x) (car y))
+(define (key? object)
+  (or (char? object)
+      (special-key? object)))
+
+(define (key<? key1 key2)
+  (cond ((char? key2)
+	 (char>? key2
+		 (if (char? key1)
+		     key1
+		     (string-ref (special-key/name key1) 0))))
+	((char? key1)
+	 (not (or (key=? key1 key2)
+		  (key<? key2 key1))))
+	(else (let ((name1 (special-key/name key1))
+		    (name2 (special-key/name key2)))
+		(if (string=? name1 name2)
+		    (< (special-key/bucky-bits key1)
+		       (special-key/bucky-bits key2))
+		    (string<? name1 name2))))))
+
+(define (key=? key1 key2)
+  (if (and (char? key1)
+	   (char? key2))
+      (char=? key1 key2)
+      (and (special-key? key1)
+	   (special-key? key2)
+	   (string=? (special-key/name key1)
+		     (special-key/name key2))
+	   (= (special-key/bucky-bits key1)
+	      (special-key/bucky-bits key2)))))
+
+(define (xkey<? x y)
+  (let loop ((x (xkey->list x)) (y (xkey->list y)))
+    (or (key<? (car x) (car y))
+	(and (key=? (car x) (car y))
 	     (not (null? (cdr y)))
 	     (or (null? (cdr x))
 		 (loop (cdr x) (cdr y)))))))
 
-(define (xchar->list xchar)
-  (cond ((char? xchar)
-	 (list xchar))
-	((and (not (null? xchar))
-	      (list-of-type? xchar char?))
-	 xchar)
-	((and (string? xchar)
-	      (not (string-null? xchar)))
-	 (string->list xchar))
+(define (xkey->list xkey)
+  (cond ((key? xkey)
+	 (list xkey))
+	((and (not (null? xkey))
+	      (list-of-type? xkey
+			     (lambda (element)
+			       (or (char? element)
+				   (special-key? element)))))
+	 xkey)
+	((and (string? xkey)
+	      (not (string-null? xkey)))
+	 (string->list xkey))
 	(else
-	 (error "Not a character or list of characters" xchar))))
+	 (error "Not a key or list of keys" xkey))))

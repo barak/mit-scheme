@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.19 1991/05/10 04:58:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regcom.scm,v 1.20 1991/08/06 15:39:38 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -148,11 +148,11 @@ With prefix arg, delete as well."
   (lambda (register)
     (let ((value (get-register register)))
       (if (not value)
-	  (message "Register " (char-name register) " is empty")
+	  (message "Register " (key-name register) " is empty")
 	  (with-output-to-temporary-buffer "*Output*"
 	    (lambda ()
 	      (write-string "Register ")
-	      (write-string (char-name register))
+	      (write-string (key-name register))
 	      (write-string " contains ")
 	      (cond ((integer? value)
 		     (write value))
@@ -174,7 +174,7 @@ With prefix arg, delete as well."
 		     (write value)))))))))
 
 (define (register-error register . strings)
-  (apply editor-error "Register " (char-name register) " " strings))
+  (apply editor-error "Register " (key-name register) " " strings))
 
 (define (get-register char)
   (let ((entry (assv char register-alist)))

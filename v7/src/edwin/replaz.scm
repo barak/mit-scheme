@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.70 1991/05/04 20:14:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/replaz.scm,v 1.71 1991/08/06 15:40:39 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -176,9 +176,9 @@ and \\<n> means insert what matched <n>th \\(...\\) in REGEXP."
       (let ((char (with-editor-interrupts-disabled keyboard-peek-char)))
 	(let ((test-for
 	       (lambda (char*)
-		 (and (char=? char (remap-alias-char char*))
+		 (and (char=? char (remap-alias-key char*))
 		      (begin
-			(keyboard-read-char)
+			(keyboard-read)
 			true)))))
 	  (cond ((test-for #\C-h)
 		 (with-output-to-help-display

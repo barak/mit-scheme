@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.111 1991/05/18 03:01:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.112 1991/08/06 15:38:01 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -95,7 +95,9 @@ Also:
 (define-key 'dired #\h 'describe-mode)
 (define-key 'dired #\space 'dired-next-line)
 (define-key 'dired #\c-n 'dired-next-line)
+(define-key 'dired down 'dired-next-line)
 (define-key 'dired #\c-p 'dired-previous-line)
+(define-key 'dired up 'dired-previous-line)
 (define-key 'dired #\n 'dired-next-line)
 (define-key 'dired #\p 'dired-previous-line)
 (define-key 'dired #\g 'dired-revert)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.59 1991/05/17 18:39:00 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/sercom.scm,v 1.60 1991/08/06 15:39:42 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -298,7 +298,7 @@ Special characters:
   (let ((char (prompt-for-char "Character search")))
     (let ((test-for
 	   (lambda (char*)
-	     (char=? char (remap-alias-char char*)))))
+	     (char=? char (remap-alias-key char*)))))
       (if (test-for #\C-a)
 	  (dispatch-on-command
 	   (if forward?

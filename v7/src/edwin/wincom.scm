@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.104 1991/05/18 03:23:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.105 1991/08/06 15:39:34 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -237,7 +237,7 @@ means scroll one screenful down."
 		     ""
 		     (let ((char (mark-right-char point)))
 		       (let ((n (char->ascii char)))
-			 (string-append "Char: " (char-name char)
+			 (string-append "Char: " (key-name char)
 					" ("
 					(if (zero? n) "" "0")
 					(number->string n 8)

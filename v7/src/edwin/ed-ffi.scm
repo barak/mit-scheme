@@ -1,3 +1,7 @@
+;;; -*- Scheme -*-
+
+(declare (usual-integrations))
+
 (standard-scheme-find-file-initialization
  '#(("argred"  (edwin command-argument)
 	       edwin-syntax-table)
@@ -90,6 +94,8 @@
     ("intmod"  (edwin)
 	       edwin-syntax-table)
     ("iserch"  (edwin incremental-search)
+	       edwin-syntax-table)
+    ("key"     (edwin keys)
 	       edwin-syntax-table)
     ("keymap"  (edwin command-summary)
 	       edwin-syntax-table)

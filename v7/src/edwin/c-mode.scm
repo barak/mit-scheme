@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.46 1991/04/12 23:17:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/c-mode.scm,v 1.47 1991/08/06 15:39:50 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -157,7 +157,7 @@ and after colons and semicolons, inserted in C code."
 		  (insert-newline)
 		  ((ref-command c-indent-line) false))))
 	  ((ref-command self-insert-command) false))
-      (if (eqv? #\} (current-command-char))
+      (if (eqv? #\} (current-command-key))
 	  (mark-flash (backward-one-sexp (current-point)) 'RIGHT)))))
 
 (define-command electric-c-semi

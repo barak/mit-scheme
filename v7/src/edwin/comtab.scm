@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.59 1991/05/06 01:02:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.60 1991/08/06 15:39:30 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -50,42 +50,42 @@
   (dispatch-alists (cons '() '()) read-only true)
   (button-alist '()))
 
-(define (set-comtab-entry! alists char command)
-  (let ((entry (assq char (cdr alists))))
+(define (set-comtab-entry! alists key command)
+  (let ((entry (assq key (cdr alists))))
     (if entry
 	(set-cdr! entry command)
-	(set-cdr! alists (cons (cons char command) (cdr alists))))))
+	(set-cdr! alists (cons (cons key command) (cdr alists))))))
 
-(define (make-prefix-char! alists char alists*)
-  (let ((entry (assq char (car alists))))
+(define (make-prefix-key! alists key alists*)
+  (let ((entry (assq key (car alists))))
     (if entry
 	(set-cdr! entry alists*)
 	(set-car! alists
-		  (cons (cons char alists*)
+		  (cons (cons key alists*)
 			(car alists))))))
 
 (define (comtab-lookup-prefix comtabs key if-undefined if-defined)
   (let ((alists (comtab-dispatch-alists (car comtabs))))
-    (cond ((char? key)
-	   (if-defined alists (remap-alias-char key)))
+    (cond ((key? key)
+	   (if-defined alists (remap-alias-key key)))
 	  ((pair? key)
-	   (let ((chars (map remap-alias-char key)))
-	     (let loop ((alists alists) (chars chars))
-	       (let ((char (car chars))
-		     (chars (cdr chars)))
-		 (cond ((null? chars)
-			(if-defined alists char))
-		       ((assq char (car alists))
-			=> (lambda (entry) (loop (cdr entry) chars)))
-		       ((assq char (cdr alists))
+	   (let ((keys (map remap-alias-key key)))
+	     (let loop ((alists alists) (keys keys))
+	       (let ((key (car keys))
+		     (keys (cdr keys)))
+		 (cond ((null? keys)
+			(if-defined alists key))
+		       ((assq key (car alists))
+			=> (lambda (entry) (loop (cdr entry) keys)))
+		       ((assq key (cdr alists))
 			(error "Illegal prefix key:" key))
 		       ((not if-undefined)
 			(set-comtab-entry! alists
-					   char
-					   (ref-command-object prefix-char))
+					   key
+					   (ref-command-object prefix-key))
 			(let ((alists* (cons '() '())))
-			  (make-prefix-char! alists char alists*)
-			  (loop alists* chars)))
+			  (make-prefix-key! alists key alists*)
+			  (loop alists* keys)))
 		       (else
 			(if-undefined)))))))
 	  (else
@@ -111,26 +111,26 @@
 	       (if entry
 		   (cdr entry)
 		   (continue))))))
-      (cond ((or (char? key) (pair? key))
+      (cond ((or (key? key) (pair? key))
 	     (comtab-lookup-prefix comtabs key continue
-	       (lambda (alists char)
-		 (try char (cdr alists)))))
+	       (lambda (alists key)
+		 (try key (cdr alists)))))
 	    ((button? key)
 	     (try key (comtab-button-alist (car comtabs))))
 	    (else
 	     (error "Illegal comtab key" key))))))
 
-(define (prefix-char-list? comtabs chars)
+(define (prefix-key-list? comtabs keys)
   (let loop
-      ((char->alist (car (comtab-dispatch-alists (car comtabs))))
-       (chars (if (list? chars) chars (list chars))))
-    (or (null? chars)
-	(let ((entry (assq (remap-alias-char (car chars)) char->alist)))
+      ((key->alist (car (comtab-dispatch-alists (car comtabs))))
+       (keys (if (list? keys) keys (list keys))))
+    (or (null? keys)
+	(let ((entry (assq (remap-alias-key (car keys)) key->alist)))
 	  (if entry
-	      (loop (cadr entry) (cdr chars))
+	      (loop (cadr entry) (cdr keys))
 	      (and (not (null? (cdr comtabs)))
 		   (comtab? (cadr comtabs))
-		   (prefix-char-list? (cdr comtabs) chars)))))))
+		   (prefix-key-list? (cdr comtabs) keys)))))))
 
 (define (define-key mode key command)
   (let ((comtabs (mode-comtabs (->mode mode)))
@@ -145,9 +145,9 @@
 	(let ((normal-key
 	       (lambda (key)
 		 (comtab-lookup-prefix comtabs key false
-		   (lambda (alists char)
-		     (set-comtab-entry! alists char command))))))
-	  (cond ((or (char? key) (pair? key))
+		   (lambda (alists key)
+		     (set-comtab-entry! alists key command))))))
+	  (cond ((or (key? key) (pair? key))
 		 (normal-key key))
 		((char-set? key)
 		 (for-each normal-key (char-set-members key)))
@@ -158,12 +158,12 @@
 (define (define-prefix-key mode key command)
   (let ((comtabs (mode-comtabs (->mode mode)))
 	(command (->command command)))
-    (if (not (or (char? key) (pair? key)))
+    (if (not (or (key? key) (pair? key)))
 	(error "Illegal comtab key" key))
     (comtab-lookup-prefix comtabs key false
-      (lambda (alists char)
-	(set-comtab-entry! alists char command)
-	(make-prefix-char! alists char (cons '() '())))))
+      (lambda (alists key)
+	(set-comtab-entry! alists key command)
+	(make-prefix-key! alists key (cons '() '())))))
   key)
 
 (define (define-default-key mode command)
@@ -186,7 +186,7 @@
   (define (search-comtab prefix dispatch-alists)
     (define (search-prefix-map alist)
       (if (null? alist)
-	  (map (lambda (char) (append prefix (list char)))
+	  (map (lambda (key) (append prefix (list key)))
 	       (search-command-map (cdr dispatch-alists)))
 	  (append! (search-comtab (append prefix (list (caar alist)))
 				  (cdar alist))
@@ -204,8 +204,8 @@
 
   ;; Filter out shadowed bindings.
   (list-transform-positive (search-comtabs comtabs)
-    (lambda (xchar)
-      (eq? command (comtab-entry comtabs xchar)))))
+    (lambda (xkey)
+      (eq? command (comtab-entry comtabs xkey)))))
 
 (define (comtab->alist comtab)
   (let loop ((prefix '()) (da (comtab-dispatch-alists comtab)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.153 1991/07/31 18:24:47 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.154 1991/08/06 15:39:46 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -201,11 +201,14 @@ If this would place point off screen, nothing happens."
   "Insert one or more close parens, flashing the matching open paren."
   "p"
   (lambda (argument)
-    (insert-chars (current-command-char) argument)
-    (if (positive? argument)
-	(let ((point (current-point)))
-	  (if (not (mark-left-char-quoted? point))
-	      (mark-flash (backward-one-sexp point) 'RIGHT))))))
+    (let ((key (current-command-key)))
+      (if (char? key)
+	  (begin
+	    (insert-chars key argument)
+	    (if (positive? argument)
+		(let ((point (current-point)))
+		  (if (not (mark-left-char-quoted? point))
+		      (mark-flash (backward-one-sexp point) 'RIGHT)))))))))
 
 (define-command lisp-indent-line
   "Indent current line as lisp code.

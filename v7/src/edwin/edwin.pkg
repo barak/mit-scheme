@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.46 1991/08/01 17:51:07 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.47 1991/08/06 15:40:49 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -181,7 +181,7 @@ MIT in each case. |#
 	  define-key
 	  define-prefix-key
 	  make-comtab
-	  prefix-char-list?))
+	  prefix-key-list?))
 
 (define-package (edwin undo)
   (files "undo")
@@ -284,6 +284,47 @@ MIT in each case. |#
 	  x-button5-up)
   (export (edwin x-screen)
 	  update-xterm-screen-names!))
+
+(define-package (edwin keys)
+  (files "key")
+  (parent (edwin))
+  (export (edwin x-screen)
+	  x-make-special-key)
+  (export (edwin)
+	  make-special-key
+	  special-key?
+	  special-key/name
+	  special-key/bucky-bits
+	  stop
+	  f1
+	  f2
+	  f3
+	  f4
+	  menu
+	  system
+	  user
+	  f5
+	  f6
+	  f7
+	  f8
+	  f9
+	  f10
+	  f11
+	  f12
+	  insertline
+	  deleteline
+	  insertchar
+	  deletechar
+	  home
+	  prior
+	  next
+	  up
+	  down
+	  left
+	  right
+	  select
+	  print)
+  (initialization (initialize-package!)))
 
 (define-package (edwin console-screen)
   (files "termcap" "tterm")
@@ -411,16 +452,16 @@ MIT in each case. |#
 	  command-reader
 	  command-reader/reset-and-execute
 	  current-command
-	  current-command-char
-	  dispatch-on-char
+	  current-command-key
+	  dispatch-on-key
 	  dispatch-on-command
-	  execute-char
+	  execute-key
 	  execute-command
 	  execute-command-history-entry
 	  initialize-command-reader!
-	  keyboard-chars-read
-	  last-command-char
-	  read-and-dispatch-on-char
+	  keyboard-keys-read
+	  last-command-key
+	  read-and-dispatch-on-key
 	  set-command-argument!
 	  set-command-message!
 	  top-level-command-reader))
@@ -438,7 +479,8 @@ MIT in each case. |#
 	  clear-message
 	  command-prompt
 	  initialize-typeout!
-	  keyboard-peek-char
+	  keyboard-read
+	  keyboard-peek
 	  keyboard-read-char
 	  message
 	  message-args->string

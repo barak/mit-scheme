@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.113 1991/05/17 00:27:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.114 1991/08/06 15:38:20 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -51,25 +51,28 @@
 With an argument, insert the character that many times."
   "P"
   (lambda (argument)
-    (insert-chars (last-command-char)
+    (insert-chars (last-command-key)
 		  (command-argument-numeric-value argument))))
 
 (define-command quoted-insert
   "Reads a character and inserts it."
   "p"
   (lambda (argument)
-    (let ((read-char
+    (let ((read-ascii-char
 	   (lambda ()
-	     (let ((char (with-editor-interrupts-disabled keyboard-read-char)))
+	     (let ((key (with-editor-interrupts-disabled keyboard-read)))
+	       (or (and (char? key)
+			(char-ascii? key))
+		   (editor-error "Not an ASCII character" (key-name key)))
 	       (set-command-prompt!
-		(string-append (command-prompt) (char-name char)))
-	       char))))
+		(string-append (command-prompt) (key-name key)))
+	       key))))
       (let ((read-digit
 	     (lambda ()
-	       (or (char->digit (read-char) 8)
+	       (or (char->digit (read-ascii-char) 8)
 		   (editor-error "Not an octal digit")))))
 	(set-command-prompt! "Quote Character: ")
-	(insert-chars (let ((char (read-char)))
+	(insert-chars (let ((char (read-ascii-char)))
 			(let ((digit (char->digit char 4)))
 			  (if digit
 			      (ascii->char
@@ -125,7 +128,7 @@ The key is bound in fundamental mode."
 This command followed by an = is equivalent to a Control-=."
   ()
   (lambda ()
-    (read-extension-char char-controlify)))
+    (read-extension-key char-controlify)))
 
 (define-command meta-prefix
   "Sets Meta-bit of following character. 
@@ -134,8 +137,8 @@ If the Metizer character is Altmode, it turns ^A
 into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
   ()
   (lambda ()
-    (read-extension-char
-     (if (let ((char (current-command-char)))
+    (read-extension-key
+     (if (let ((char (current-command-key)))
 	   (and (char? char)
 		(char=? #\altmode char)))
 	 char-metafy
@@ -147,9 +150,9 @@ into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
 Turns a following A (or C-A) into a Control-Meta-A."
   ()
   (lambda ()
-    (read-extension-char char-control-metafy)))
+    (read-extension-key char-control-metafy)))
 
-(define execute-extended-chars?
+(define execute-extended-keys?
   true)
 
 (define extension-commands
@@ -157,32 +160,32 @@ Turns a following A (or C-A) into a Control-Meta-A."
 	(name->command 'meta-prefix)
 	(name->command 'control-meta-prefix)))
 
-(define (read-extension-char modifier)
-  (if execute-extended-chars?
+(define (read-extension-key modifier)
+  (if execute-extended-keys?
       (set-command-prompt-prefix!))
-  (let ((char (modifier (with-editor-interrupts-disabled keyboard-read-char))))
-    (if execute-extended-chars?
-	(dispatch-on-char (current-comtabs) char)
-	char)))
+  (let ((key (modifier (with-editor-interrupts-disabled keyboard-read))))
+    (if execute-extended-keys?
+	(dispatch-on-key (current-comtabs) key)
+	key)))
 
-(define-command prefix-char
+(define-command prefix-key
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
   ()
   (lambda ()
     (set-command-prompt-prefix!)
-    (let ((prefix-char (current-command-char)))
-      (dispatch-on-char
+    (let ((prefix-key (current-command-key)))
+      (dispatch-on-key
        (current-comtabs)
-       ((if (pair? prefix-char) append cons)
-	prefix-char
-	(list (with-editor-interrupts-disabled keyboard-read-char)))))))
+       ((if (pair? prefix-key) append cons)
+	prefix-key
+	(list (with-editor-interrupts-disabled keyboard-read)))))))
 
 (define (set-command-prompt-prefix!)
   (set-command-prompt!
    (string-append-separated
     (command-argument-prompt)
-    (string-append (xchar->name (current-command-char)) " -"))))
+    (string-append (xkey->name (current-command-key)) " -"))))
 
 (define-command execute-extended-command
   "Read an extended command from the terminal with completion.
@@ -194,7 +197,7 @@ For more information type the HELP key while entering the name."
     (dispatch-on-command
      (prompt-for-command
       ;; Prompt with the name of the command char.
-      (list (string-append (xchar->name (current-command-char)) " ")))
+      (list (string-append (xkey->name (current-command-key)) " ")))
      true)))
 
 ;;;; Errors
@@ -211,7 +214,7 @@ For more information type the HELP key while entering the name."
   "This command is used to capture undefined keys."
   ()
   (lambda ()
-    (editor-error "Undefined command: " (xchar->name (current-command-char)))))
+    (editor-error "Undefined command: " (xkey->name (current-command-key)))))
 
 (define (barf-if-read-only)
   (editor-error "Trying to modify read only text."))
@@ -222,9 +225,9 @@ For more information type the HELP key while entering the name."
 	     (buffer-truename buffer)
 	     (buffer-modification-time buffer)
 	     (not (verify-visited-file-modification-time? buffer)))
-	(ask-user-about-supercession-threat buffer))))
+	(ask-user-about-supersession-threat buffer))))
 
-(define (ask-user-about-supercession-threat buffer)
+(define (ask-user-about-supersession-threat buffer)
   (if (not
        (with-selected-buffer buffer
 	 (lambda ()

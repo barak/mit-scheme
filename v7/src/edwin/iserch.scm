@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.13 1991/05/17 04:52:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.14 1991/08/06 15:39:15 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -67,7 +67,7 @@
 	       (dispatch-on-command result))
 	      (else
 	       (push-current-mark! point)
-	       (if result (execute-char (current-comtabs) result))))))))
+	       (if result (execute-key (current-comtabs) result))))))))
 
 (define (isearch-loop state)
   (if (not ((editor-char-ready? current-editor)))
@@ -77,7 +77,7 @@
   (let ((char (keyboard-read-char)))
     (let ((test-for
 	   (lambda (char*)
-	     (char=? char (remap-alias-char char*)))))
+	     (char=? char (remap-alias-key char*)))))
       (cond ((test-for (ref-variable search-quote-char))
 	     (isearch-append-char
 	      state
@@ -120,7 +120,7 @@
 	     (isearch-append-char state char))))))
 
 (define (nonincremental-search forward? regexp?)
-  (cond ((char=? (remap-alias-char (ref-variable search-yank-word-char))
+  (cond ((char=? (remap-alias-key (ref-variable search-yank-word-char))
 		 (prompt-for-typein
 		  (if regexp?
 		      (prompt-for-string/prompt

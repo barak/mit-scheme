@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.9 1991/05/06 22:27:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.10 1991/08/06 15:39:26 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -166,9 +166,9 @@ Previous contents of that buffer are killed first."
 
 (define (sort-and-simplify elements)
   (map (lambda (element)
-	 (cons (xchar->name (car element))
+	 (cons (xkey->name (car element))
 	       (command-name-string (cdr element))))
-       (sort elements (lambda (a b) (xchar<? (car a) (car b))))))
+       (sort elements (lambda (a b) (xkey<? (car a) (car b))))))
 
 (define (sort-by-prefix elements)
   (let ((prefix-alist '()))

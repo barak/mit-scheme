@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.33 1991/03/16 00:02:29 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.34 1991/08/06 15:40:44 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -88,20 +88,20 @@
 (define (keyboard-macro-event)
   (window-modeline-event! (current-window) 'KEYBOARD-MACRO-EVENT))
 
-(define (keyboard-macro-read-char)
-  (let ((char (keyboard-macro-peek-char)))
+(define (keyboard-macro-read-key)
+  (let ((key (keyboard-macro-peek-key)))
     (set! *keyboard-macro-position* (cdr *keyboard-macro-position*))
-    char))
+    key))
 
-(define (keyboard-macro-peek-char)
+(define (keyboard-macro-peek-key)
   (if (null? *keyboard-macro-position*)
       (*keyboard-macro-continuation* true)
       (car *keyboard-macro-position*)))
 
-(define (keyboard-macro-write-char char)
-  (set! keyboard-macro-buffer (cons char keyboard-macro-buffer)))
+(define (keyboard-macro-write-key key)
+  (set! keyboard-macro-buffer (cons key keyboard-macro-buffer)))
 
-(define (keyboard-macro-finalize-chars)
+(define (keyboard-macro-finalize-keys)
   (set! keyboard-macro-buffer-end keyboard-macro-buffer))
 
 (define (keyboard-macro-execute *macro repeat)
@@ -268,7 +268,7 @@ Without argument, reads a character.  Your options are:
 		       (keyboard-read-char)))))
 	       (let ((test-for
 		      (lambda (char*)
-			(char=? char (remap-alias-char char*)))))
+			(char=? char (remap-alias-key char*)))))
 		 (cond ((test-for #\space)
 			unspecific)
 		       ((test-for #\rubout)

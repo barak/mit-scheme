@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.146 1991/05/21 02:04:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.147 1991/08/06 15:38:39 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -570,10 +570,11 @@ a repetition of this command will exit."
 	      (begin
 		(message "Hit space to flush.")
 		(reset-command-prompt!)
-		(let ((char (keyboard-peek-char)))
-		  (if (char=? #\space char)
+		(let ((char (keyboard-peek)))
+		  (if (and (char? char)
+			   (char=? #\space char))
 		      (begin
-			(keyboard-read-char)
+			(keyboard-read)
 			(kill-pop-up-buffer false))))
 		(clear-message)))))))
 
@@ -620,9 +621,12 @@ a repetition of this command will exit."
    (lambda ()
      (prompt-for-typein (string-append prompt ": ") false
        (lambda ()
-	 (let ((char (keyboard-read-char)))
-	   (set-typein-string! (char-name char) true)
-	   char))))))
+	 (let ((key (keyboard-read)))
+	   (if (not (and (char? key)
+			 (char-ascii? key)))
+	       (editor-error "Not an ASCII character" key))
+	   (set-typein-string! (key-name key) true)
+	   key))))))
 
 (define (prompt-for-key prompt #!optional comtab)
   (let ((comtab (if (default-object? comtab) (current-comtabs) comtab)))
@@ -631,10 +635,10 @@ a repetition of this command will exit."
 	(with-editor-interrupts-disabled
 	 (lambda ()
 	   (let outer-loop ((prefix '()))
-	     (let inner-loop ((char (keyboard-read-char)))
+	     (let inner-loop ((char (keyboard-read)))
 	       (let ((chars (append! prefix (list char))))
-		 (set-typein-string! (xchar->name chars) true)
-		 (if (prefix-char-list? comtab chars)
+		 (set-typein-string! (xkey->name chars) true)
+		 (if (prefix-key-list? comtab chars)
 		     (outer-loop chars)
 		     (let ((command (comtab-entry comtab chars)))
 		       (if (memq command extension-commands)
@@ -649,13 +653,15 @@ a repetition of this command will exit."
   (prompt-for-typein (string-append prompt " (y or n)? ") false
     (lambda ()
       (let loop ((lost? false))
-	(let ((char (keyboard-read-char)))
-	  (cond ((or (char-ci=? char #\y)
-		     (char-ci=? char #\space))
+	(let ((char (keyboard-read)))
+	  (cond ((and (char? char)
+		      (or (char-ci=? char #\y)
+			  (char-ci=? char #\space)))
 		 (set-typein-string! "y" true)
 		 true)
-		((or (char-ci=? char #\n)
-		     (char-ci=? char #\rubout))
+		((and (char? char)
+		      (or (char-ci=? char #\n)
+			  (char-ci=? char #\rubout)))
 		 (set-typein-string! "n" true)
 		 false)
 		(else

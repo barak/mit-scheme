@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.30 1991/05/02 01:11:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/argred.scm,v 1.31 1991/08/06 15:39:54 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -54,21 +54,24 @@ Used more than once, this command multiplies the argument by 4 each time."
   "P"
   (lambda (argument)
     (set-command-argument! (list (* (if (pair? argument) (car argument) 1) 4)))
-    (set-command-message! 'AUTO-ARGUMENT (char-name (last-command-char)))))
+    (set-command-message! 'AUTO-ARGUMENT (key-name (last-command-key)))))
 
 (define-command digit-argument
   "Part of the numeric argument for the next command."
   "P"
   (lambda (argument)
-    (let ((digit (char->digit (char-base (last-command-char)))))
-      (if digit
-	  (begin
-	    (set-command-argument!
-	     (cond ((eq? '- argument) (- digit))
-		   ((not (number? argument)) digit)
-		   ((negative? argument) (- (* 10 argument) digit))
-		   (else (+ (* 10 argument) digit))))
-	    (set-command-message! 'AUTO-ARGUMENT (auto-argument-mode?)))))))
+    (let ((key (last-command-key)))
+      (if (char? key)
+	  (let ((digit (char->digit (char-base key))))
+	    (if digit
+		(begin
+		  (set-command-argument!
+		   (cond ((eq? '- argument) (- digit))
+			 ((not (number? argument)) digit)
+			 ((negative? argument) (- (* 10 argument) digit))
+			 (else (+ (* 10 argument) digit))))
+		  (set-command-message! 'AUTO-ARGUMENT
+					(auto-argument-mode?)))))))))
 
 (define-command negative-argument
   "Begin a negative numeric argument for the next command."
@@ -104,7 +107,9 @@ Otherwise, the character inserts itself."
 Digits following this command become part of the argument."
   "P"
   (lambda (argument)
-    (if (char=? #\- (char-base (last-command-char)))
+    (if (let ((key (last-command-key)))
+	  (and (char? key)
+	       (char=? #\- (char-base key))))
 	(if (not (number? argument))
 	    ((ref-command negative-argument) argument))
 	((ref-command digit-argument) argument))
