@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.31 1992/02/08 15:08:40 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.32 1992/02/27 22:43:33 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -480,7 +480,10 @@ MIT in each case. |#
 					name))))
 		   ((eq? (ucode-primitive environment-link-name) operator)
 		    (signal-other (apply-frame/operand frame 0)
-				  (apply-frame/operand frame 2))))))
+				  (apply-frame/operand frame 2)))
+		   ((eq? (ucode-primitive lexical-unassigned?) operator)
+		    (signal-other (apply-frame/operand frame 0)
+				  (apply-frame/operand frame 1))))))
 	  ((COMPILER-REFERENCE-TRAP-RESTART
 	    COMPILER-SAFE-REFERENCE-TRAP-RESTART)
 	   (signal-reference (reference-trap-frame/environment frame)
