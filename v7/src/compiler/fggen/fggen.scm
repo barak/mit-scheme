@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.9 1988/08/18 01:35:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.10 1988/08/18 02:02:37 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -496,7 +496,7 @@ MIT in each case. |#
 	   (lambda () (make-combination false continuation))
 	   (lambda ()
 	     (if (variable? continuation)
-		 (make-combination continuation)
+		 (make-combination false continuation)
 		 (with-reified-continuation block
 					    continuation
 					    scfg*scfg->scfg!
