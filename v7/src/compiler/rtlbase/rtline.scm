@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.6 1988/09/15 08:41:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.7 1988/11/02 21:48:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -132,9 +132,14 @@ MIT in each case. |#
 			    (loop (rinst-next rinst))))
 		     ((sblock? bblock)
 		      (cons (rinst-rtl rinst)
-			    (linearize-sblock-next
-			     (or (snode-next bblock)
-				 (sblock-continuation bblock)))))
+			    (let ((next (snode-next bblock)))
+			      (if next
+				  (linearize-sblock-next next)
+				  (let ((bblock (sblock-continuation bblock)))
+				    (if (and bblock
+					     (not (node-marked? bblock)))
+					(linearize-bblock bblock)
+					'()))))))
 		     (else
 		      (linearize-pblock bblock
 					(rinst-rtl rinst)
@@ -144,13 +149,10 @@ MIT in each case. |#
 	  `(,(rtl:make-label-statement (bblock-label bblock)) ,@(kernel))
 	  (kernel))))
 
-  (define (linearize-sblock-next sblock)
-    (cond ((not sblock)
-	   '())
-	  ((node-marked? sblock)
-	   `(,(rtl:make-jump-statement (bblock-label sblock))))
-	  (else
-	   (linearize-bblock sblock))))
+  (define (linearize-sblock-next bblock)
+    (if (node-marked? bblock)
+	`(,(rtl:make-jump-statement (bblock-label bblock)))
+	(linearize-bblock bblock)))
 
   (define (linearize-pblock pblock predicate cn an)
     pblock

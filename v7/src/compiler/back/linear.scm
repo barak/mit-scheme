@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.5 1988/09/15 08:39:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.6 1988/11/02 21:49:33 cph Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -48,9 +48,13 @@ MIT in each case. |#
 	   (lambda ()
 	     (LAP ,@(bblock-instructions bblock)
 		  ,@(if (sblock? bblock)
-			(linearize-sblock-next
-			 (or (snode-next bblock)
-			     (sblock-continuation bblock)))
+			(let ((next (snode-next bblock)))
+			  (if next
+			      (linearize-sblock-next next (bblock-label next))
+			      (let ((bblock (sblock-continuation bblock)))
+				(if (and bblock (not (node-marked? bblock)))
+				    (linearize-bblock bblock)
+				    (LAP)))))
 			(linearize-pblock bblock
 					  (pnode-consequent bblock)
 					  (pnode-alternative bblock)))))))
@@ -58,13 +62,10 @@ MIT in each case. |#
 	  (LAP ,(lap:make-label-statement (bblock-label bblock)) ,@(kernel))
 	  (kernel))))
 
-  (define (linearize-sblock-next bblock)
-    (cond ((not bblock)
-	   (LAP))
-	  ((node-marked? bblock)
-	   (LAP ,(lap:make-unconditional-branch (bblock-label bblock))))
-	  (else
-	   (linearize-bblock bblock))))
+  (define (linearize-sblock-next bblock label)
+    (if (node-marked? bblock)
+	(LAP ,(lap:make-unconditional-branch label))
+	(linearize-bblock bblock)))
 
   (define (linearize-pblock pblock cn an)
     (if (node-marked? cn)
