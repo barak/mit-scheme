@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.27 1992/11/25 01:41:33 cph Exp $
+;;;	$Id: process.scm,v 1.28 1993/02/10 16:24:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -199,7 +199,7 @@ Initialized from the SHELL environment variable."
        (if (process-runnable? process)
 	   (begin
 	     (subprocess-kill subprocess)
-	     (perform-status-notification process 'SIGNALLED false)))
+	     (%perform-status-notification process 'SIGNALLED false)))
        (let ((channel (subprocess-input-channel subprocess)))
 	 (if (and channel (channel-open? channel))
 	     (channel-unregister channel)))
@@ -292,32 +292,34 @@ Initialized from the SHELL environment variable."
 				      (process-exit-reason process)))))
 
 (define (perform-status-notification process status reason)
-  (set-process-notification-tick! process (process-status-tick process))
-  (let ((value
-	 (cond ((process-sentinel process)
-		=>
-		(lambda (sentinel)
-		  (sentinel process (status->emacs-status status) reason)
-		  true))
-	       ((eq? status 'RUNNING)
-		false)
-	       (else
-		(let ((message
-		       (string-append "\nProcess "
-				      (process-name process)
-				      " "
-				      (process-status-message
-				       (status->emacs-status status)
-				       reason)
-				      "\n")))
-		  (output-substring process
-				    message
-				    (string-length message)))))))
+  (let ((value (%perform-status-notification process status reason)))
     (if (and (or (eq? 'EXITED status)
 		 (eq? 'SIGNALLED status))
 	     (ref-variable delete-exited-processes))
 	(delete-process process))
     value))
+
+(define (%perform-status-notification process status reason)
+  (set-process-notification-tick! process (process-status-tick process))
+  (cond ((process-sentinel process)
+	 =>
+	 (lambda (sentinel)
+	   (sentinel process (status->emacs-status status) reason)
+	   true))
+	((eq? status 'RUNNING)
+	 false)
+	(else
+	 (let ((message
+		(string-append "\nProcess "
+			       (process-name process)
+			       " "
+			       (process-status-message
+				(status->emacs-status status)
+				reason)
+			       "\n")))
+	   (output-substring process
+			     message
+			     (string-length message))))))
 
 (define (process-status-message status reason)
   (let ((message-with-reason
