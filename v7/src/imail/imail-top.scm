@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.2 2000/01/14 22:43:01 cph Exp $
+;;; $Id: imail-top.scm,v 1.3 2000/01/15 05:25:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -113,39 +113,6 @@ May be called with an imail folder URL as argument;
   "An event distributor that is invoked when IMAIL incorporates new mail."
   (make-event-distributor))
 
-(define (select-message buffer index)
-  (if (not (exact-nonnegative-integer? index))
-      (error:wrong-type-argument index "exact non-negative integer"
-				 'SELECT-MESSAGE))
-  (let ((folder (imail-buffer->folder buffer #t)))
-    (let ((count (count-messages folder)))
-      (let ((index
-	     (cond ((< index count) index)
-		   ((< 0 count) (- count 1))
-		   (else 0))))
-	(buffer-reset! buffer)
-	(buffer-put! buffer 'IMAIL-INDEX index)
-	(let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-	  (if (< index count)
-	      (let ((message (get-message folder index)))
-		(for-each (lambda (line)
-			    (insert-string line mark)
-			    (insert-newline mark))
-			  (let ((displayed
-				 (get-message-property
-				  message
-				  "displayed-header-fields"
-				  '())))
-			    (if (eq? '() displayed)
-				(message-header-fields message)
-				displayed)))
-		(insert-newline mark)
-		(insert-string (message-body message) mark))
-	      (insert-string "[This folder has no messages in it.]" mark))
-	  (guarantee-newline mark)
-	  (mark-temporary! mark))
-	(set-buffer-major-mode! buffer (ref-mode-object imail))))))
-
 (define-major-mode imail read-only "IMAIL"
   "IMAIL Mode is used by \\[imail] for editing IMAIL files.
 All normal editing commands are turned off.
@@ -182,24 +149,24 @@ DEL	Scroll to previous screen of this message.
 \\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-input]	Append messages from a specified folder.
 
-\\[imail-add-label]	Add label to message.  It will be displayed in the mode line.
-\\[imail-kill-label]	Remove a label from current message.
-\\[imail-next-labeled-message]	Move to next message with specified label
-          (label defaults to last one specified).
-          Standard labels:
+\\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
+\\[imail-kill-flag]	Remove a flag from current message.
+\\[imail-next-flagged-message]	Move to next message with specified flag
+          (flag defaults to last one specified).
+          Standard flags:
 	    answered, deleted, edited, filed, forwarded, resent, seen.
-          Any other label is present only if you add it with `\\[imail-add-label]'.
-\\[imail-previous-labeled-message]   Move to previous message with specified label.
+          Any other flag is present only if you add it with `\\[imail-add-flag]'.
+\\[imail-previous-flagged-message]   Move to previous message with specified flag.
 
 \\[imail-summary]	Show headers buffer, with a one line summary of each message.
-\\[imail-summary-by-labels]	Like \\[imail-summary] only just messages with particular label(s) are summarized.
+\\[imail-summary-by-flags]	Like \\[imail-summary] only just messages with particular flag(s) are summarized.
 \\[imail-summary-by-recipients]   Like \\[imail-summary] only just messages with particular recipient(s) are summarized.
 
 \\[imail-toggle-header]	Toggle between full headers and reduced headers.
 	  Normally only reduced headers are shown.
-\\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to Rmail."
+\\[imail-edit-current-message]	Edit the current message.  C-c C-c to return to imail."
   (lambda (buffer)
-    (local-set-variable! mode-line-modified "--- " buffer)
+    ;;(local-set-variable! mode-line-modified "--- " buffer)
     (local-set-variable! imail-last-output-url
 			 (ref-variable imail-last-output-url buffer)
 			 buffer)
@@ -223,10 +190,10 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\j		'imail-select-message)
 (define-key 'imail #\>		'imail-last-message)
 
-(define-key 'imail #\a		'imail-add-label)
-(define-key 'imail #\k		'imail-kill-label)
-(define-key 'imail #\c-m-n	'imail-next-labeled-message)
-(define-key 'imail #\c-m-p	'imail-previous-labeled-message)
+(define-key 'imail #\a		'imail-add-flag)
+(define-key 'imail #\k		'imail-kill-flag)
+(define-key 'imail #\c-m-n	'imail-next-flagged-message)
+(define-key 'imail #\c-m-p	'imail-previous-flagged-message)
 
 (define-key 'imail #\d		'imail-delete-forward)
 (define-key 'imail #\c-d	'imail-delete-backward)
@@ -237,7 +204,7 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\g		'imail-get-new-mail)
 
 (define-key 'imail #\c-m-h	'imail-summary)
-(define-key 'imail #\c-m-l	'imail-summary-by-labels)
+(define-key 'imail #\c-m-l	'imail-summary-by-flags)
 (define-key 'imail #\c-m-r	'imail-summary-by-recipients)
 
 (define-key 'imail #\m		'imail-mail)
@@ -255,7 +222,7 @@ DEL	Scroll to previous screen of this message.
 
 (define-key 'imail-edit '(#\c-c #\c-c)	'imail-cease-edit)
 (define-key 'imail-edit '(#\c-c #\c-])	'imail-abort-edit)
-
+
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   )
 
@@ -277,6 +244,169 @@ Currently meaningless for file-based folders."
   ()
   (lambda ()
     (synchronize-folder (imail-buffer->folder (selected-buffer) #t))))
+
+;;;; Navigation
+
+(define-command imail-select-message
+  "Show message number N (prefix argument), counting from start of folder."
+  "p"
+  (lambda (index)
+    (select-message (selected-buffer) index)))
+
+(define-command imail-last-message
+  "Show last message in folder."
+  ()
+  (lambda ()
+    (let* ((buffer (selected-buffer))
+	   (folder (imail-buffer->folder buffer #t))
+	   (count (count-messages folder)))
+      (select-message buffer (if (> count 0) (- count 1) 0)))))
+
+(define-command imail-next-message
+  "Show following message whether deleted or not.
+With prefix argument N, moves forward N messages,
+or backward if N is negative."
+  "p"
+  (lambda (delta)
+    (move-relative delta (lambda (message) message #t) "message")))
+
+(define-command imail-previous-message
+  "Show previous message whether deleted or not.
+With prefix argument N, moves backward N messages,
+or forward if N is negative."
+  "p"
+  (lambda (delta)
+    ((ref-command imail-next-message) (- delta))))
+
+(define-command imail-next-undeleted-message
+  "Show following non-deleted message.
+With prefix argument N, moves forward N non-deleted messages,
+or backward if N is negative."
+  "p"
+  (lambda (delta)
+    (move-to-message delta message-undeleted? "undeleted message")))
+
+(define-command imail-previous-undeleted-message
+  "Show previous non-deleted message.
+With prefix argument N, moves backward N non-deleted messages,
+or forward if N is negative."
+  "p"
+  (lambda (delta)
+    ((ref-command imail-next-undeleted-message) (- delta))))
+
+(define-command imail-next-flagged-message
+  "Show next message with one of the flags FLAGS.
+FLAGS should be a comma-separated list of flag names.
+If FLAGS is empty, the last set of flags specified is used.
+With prefix argument N moves forward N messages with these flags."
+  (lambda ()
+    (flagged-message-arguments "Move to next message with flags"))
+  (lambda (n flags)
+    (let ((flags
+	   (if (string-null? flags)
+	       imail-last-multi-flags
+	       flags)))
+      (if (not flags)
+	  (editor-error "No flags to find have been previously specified."))
+      (set! imail-last-multi-flags flags)
+      (move-to-message n
+		       (let ((flags (map string->message-flag flags)))
+			 (lambda (message)
+			   (there-exists? flags
+			     (lambda (flag)
+			       (message-flagged? message flag)))))
+		       (string-append "message with flags " flags)))))
+
+(define-command imail-previous-flagged-message
+  "Show previous message with one of the flags FLAGS.
+FLAGS should be a comma-separated list of flag names.
+If FLAGS is empty, the last set of flags specified is used.
+With prefix argument N moves backward N messages with these flags."
+  (lambda ()
+    (flagged-message-arguments "Move to previous message with flags"))
+  
+  (lambda (n flags)
+    ((ref-command imail-next-flagged-message) (- n) flags)))
+
+(define (flagged-message-arguments prompt)
+  (list (command-argument)
+	(prompt-for-string prompt
+			   #f
+			   'DEFAULT-TYPE 'INSERTED-DEFAULT
+			   'HISTORY 'IMAIL-NEXT-FLAGGED-MESSAGE
+			   'HISTORY-INDEX 0)))
+
+(define (move-relative delta predicate noun)
+  (if (not (= 0 delta))
+      (let* ((buffer (selected-buffer))
+	     (folder (imail-buffer->folder buffer #t)))
+	(call-with-values
+	    (lambda ()
+	      (if (< delta 0)
+		  (values (- delta)
+			  (lambda (index)
+			    (and (> index 0)
+				 (- index 1)))
+			  "previous")
+		  (values delta
+			  (let ((count (count-messages folder)))
+			    (lambda (index)
+			      (let ((index (+ index 1)))
+				(and (< index count)
+				     index))))
+			  "next")))
+	  (lambda (delta step direction)
+	    (let loop
+		((delta delta)
+		 (index (imail-buffer-index buffer))
+		 (winner #f))
+	      (let ((next
+		     (let loop ((index index))
+		       (let ((next (step index)))
+			 (if (or (not next)
+				 (predicate (get-message folder next)))
+			     next
+			     (loop next))))))
+		(cond ((not next)
+		       (if winner (select-message buffer winner))
+		       (message "No " direction " " noun))
+		      ((= delta 1)
+		       (select-message buffer next))
+		      (else
+		       (loop (- delta 1) next next))))))))))
+
+(define (select-message buffer index)
+  (if (not (exact-nonnegative-integer? index))
+      (error:wrong-type-argument index "exact non-negative integer"
+				 'SELECT-MESSAGE))
+  (let ((folder (imail-buffer->folder buffer #t)))
+    (let ((count (count-messages folder)))
+      (let ((index
+	     (cond ((< index count) index)
+		   ((< 0 count) (- count 1))
+		   (else 0))))
+	(buffer-reset! buffer)
+	(buffer-put! buffer 'IMAIL-INDEX index)
+	(let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	  (if (< index count)
+	      (let ((message (get-message folder index)))
+		(for-each (lambda (line)
+			    (insert-string line mark)
+			    (insert-newline mark))
+			  (let ((displayed
+				 (get-message-property
+				  message
+				  "displayed-header-fields"
+				  '())))
+			    (if (eq? '() displayed)
+				(message-header-fields message)
+				displayed)))
+		(insert-newline mark)
+		(insert-string (message-body message) mark))
+	      (insert-string "[This folder has no messages in it.]" mark))
+	  (guarantee-newline mark)
+	  (mark-temporary! mark))
+	(set-buffer-major-mode! buffer (ref-mode-object imail))))))
 
 ;;; Edwin Variables:
 ;;; scheme-environment: '(edwin)
