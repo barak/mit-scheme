@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.38 1992/05/26 16:09:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.39 1992/08/27 06:32:33 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -52,7 +52,9 @@ MIT in each case. |#
 			   (list-transform-positive dependencies
 			     (if source-time
 				 (lambda (dependency)
-				   (< source-time (bin-time dependency)))
+				   (let ((bin-time (bin-time dependency)))
+				     (or (not bin-time)
+					 (< source-time bin-time))))
 				 (lambda (dependency)
 				   dependency ;ignore
 				   true))))))))
@@ -79,6 +81,7 @@ MIT in each case. |#
        (sf-class (sf-dependent 'class-syntax-table)))
   (for-each sf-global
 	    '("ansi"
+	      "bios"
 	      "class"
 	      "clscon"
 	      "clsmac"
