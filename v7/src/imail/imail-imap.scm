@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.185 2001/09/14 02:06:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.186 2001/09/28 19:18:30 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -832,7 +832,8 @@
      (if (imap-folder-uidvalidity folder)
 	 (set-imap-folder-unseen! folder #f))
      (set-imap-folder-uidvalidity! folder uidvalidity)))
-  (read-message-headers! folder 0))
+  (read-message-headers! folder 0)
+  (clean-cache-directory folder))
 
 (define (detach-all-messages! folder)
   (let ((v (imap-folder-messages folder))
@@ -857,6 +858,7 @@
 				   start #f '(UID FLAGS))))))
 
 (define (remove-imap-folder-message folder index)
+  (delete-cached-message (%get-message folder index))
   (without-interrupts
    (lambda ()
      (let ((v (imap-folder-messages folder))
@@ -989,7 +991,8 @@
 				     (imap-message-uid m*))
 				  (error "Message inserted into folder:" m*))
 			      (loop (fix:+ i 1) i*)))))))
-	      (object-modified! folder 'SET-LENGTH n count)))))))
+	      (object-modified! folder 'SET-LENGTH n count))))))
+  (clean-cache-directory folder))
 
 ;;;; Message datatype
 
@@ -1042,13 +1045,8 @@
        '(\SEEN \ANSWERED \FLAGGED \DELETED \DRAFT \RECENT)))
 
 (define-method message-internal-time ((message <imap-message>))
-  (with-imap-message-open message
-    (lambda (connection)
-      (imap:response:fetch-attribute
-       (imap:command:uid-fetch connection
-			       (imap-message-uid message)
-			       '(INTERNALDATE))
-       'INTERNALDATE))))
+  (imap:response:fetch-attribute (fetch-message-items message '(INTERNALDATE))
+				 'INTERNALDATE))
 
 (define-method message-length ((message <imap-message>))
   (with-imap-message-open message
@@ -1093,21 +1091,16 @@
 
 (define (guarantee-slot-initialized message initpred noun keywords)
   (if (not (initpred message))
-      (with-imap-message-open message
-	(lambda (connection)
-	  (let ((uid (imap-message-uid message)))
-	    (let ((suffix
-		   (string-append
-		    " " noun " for message "
-		    (number->string (+ (%message-index message) 1)))))
-	      ((imail-ui:message-wrapper "Reading" suffix)
-	       (lambda ()
-		 (imap:read-literal-progress-hook imail-ui:progress-meter
-		   (lambda ()
-		     (imap:command:uid-fetch connection uid keywords)
-		     (if (not (initpred message))
-			 (error
-			  (string-append "Unable to obtain" suffix)))))))))))))
+      (let ((suffix
+	     (string-append " " noun " for message "
+			    (number->string (+ (%message-index message) 1)))))
+	((imail-ui:message-wrapper "Reading" suffix)
+	 (lambda ()
+	   (imap:read-literal-progress-hook imail-ui:progress-meter
+	     (lambda ()
+	       (fetch-message-items message keywords)
+	       (if (not (initpred message))
+		   (error (string-append "Unable to obtain" suffix))))))))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)
@@ -1141,6 +1134,12 @@
 				  '(BODYSTRUCTURE)))))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
+  (for-each-message folder
+    (lambda (message)
+      (if (not (imap-message-header-fields-initialized? message))
+	  (preload-cached-message-item message 'RFC822.HEADER))
+      (if (not (imap-message-length-initialized? message))
+	  (preload-cached-message-item message 'RFC822.SIZE))))
   (let* ((connection (guarantee-imap-folder-open folder))
 	 (messages
 	  (messages-satisfying folder
@@ -1148,12 +1147,13 @@
 	      (not (and (imap-message-header-fields-initialized? message)
 			(imap-message-length-initialized? message)))))))
     (if (pair? messages)
-	((imail-ui:message-wrapper "Reading message headers")
-	 (lambda ()
-	   (imap:command:fetch-set connection
-				   (message-list->set messages)
-				   '(RFC822.HEADER RFC822.SIZE)))))))
-	
+	(let ((keywords '(RFC822.HEADER RFC822.SIZE)))
+	  (cache-preload-responses folder keywords
+	    ((imail-ui:message-wrapper "Reading message headers")
+	     (lambda ()
+	       (imap:command:fetch-set connection
+				       (message-list->set messages)
+				       keywords))))))))
 
 (define imap-message-header-fields-initialized?
   (slot-initpred <imap-message> 'HEADER-FIELDS))
@@ -1171,6 +1171,12 @@
 		      (cons message messages)
 		      messages)))
 	  (reverse! messages)))))
+
+(define (for-each-message folder procedure)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1)))
+	((= i n))
+      (procedure (get-message folder i)))))
 
 (define (message-list->set messages)
   (let loop ((indexes (map %message-index messages)) (groups '()))
@@ -1218,7 +1224,7 @@
 				  (exact-nonnegative-integer? limit))
 			     (< cache? limit)
 			     #t))))
-	     (let ((part (%imap-message-body-part message section)))
+	     (let ((part (fetch-message-body-part message section)))
 	       (set-imap-message-body-parts!
 		message
 		(cons (cons section part)
@@ -1227,35 +1233,7 @@
 	    (else
 	     (imap:bind-fetch-body-part-port port
 	       (lambda ()
-		 (%imap-message-body-part message section))))))))
-
-(define (%imap-message-body-part message section)
-  (imap:response:fetch-body-part
-   (let ((suffix 
-	  (string-append " body"
-			 (if (equal? section '(TEXT)) "" " part")
-			 " for message "
-			 (number->string (+ (%message-index message) 1)))))
-     ((imail-ui:message-wrapper "Reading" suffix)
-      (lambda ()
-	(imap:read-literal-progress-hook imail-ui:progress-meter
-	  (lambda ()
-	    (with-imap-message-open message
-	      (lambda (connection)
-		(imap:command:uid-fetch
-		 connection
-		 (imap-message-uid message)
-		 `(',(string-append "body["
-				    (decorated-string-append
-				     "" "." ""
-				     (map (lambda (x)
-					    (if (exact-nonnegative-integer? x)
-						(number->string x)
-						(symbol->string x)))
-					  section))
-				    "]"))))))))))
-   section
-   #f))
+		 (fetch-message-body-part message section))))))))
 
 (define (parse-mime-body body)
   (cond ((not (and (pair? body) (list? body))) (parse-mime-body:lose body))
@@ -1420,6 +1398,299 @@
 		(else (lose))))
 	(loop addr-list '() '()))
       '()))
+
+;;;; IMAP disk cache
+
+;; The disk cache has following structure:
+;;
+;; There is a root directory for the cache.  Under this directory,
+;; there is one subdirectory for each server.  The server directory
+;; name is a variant of the server information from the URL
+;;
+;; Under each server directory, there is one subdirectory for each
+;; folder on that server.  The folder directory name is formed by
+;; taking the folder's mailbox name and mapping the characters into a
+;; safe subset.  The safe subset preserves all alphanumeric
+;; characters, hypens, and underscores, converts "/" to ".", and
+;; converts everything else to "=XX" form.
+;;
+;; Under each folder directory, there is a file called "uidvalidity"
+;; that contains the UIDVALIDITY number, as a text string.  For each
+;; message in the folder, there is a subdirectory whose name is the
+;; UID of the message.
+;;
+;; Under each message directory, there is a file called
+;; "rfc822.header" that contains the header information.  There may
+;; also be files called "envelope", "bodystructure", "rfc822.size",
+;; "internaldate", "text", and "body[...]", all corresponding to the
+;; IMAP FETCH keys.
+
+(define (clean-cache-directory folder)
+  (let ((directory (imap-folder-cache-pathname folder))
+	(uidvalidity (imap-folder-uidvalidity folder)))
+    (if uidvalidity
+	(let ((up (merge-pathnames "uidvalidity" directory)))
+	  (if (file-directory? directory)
+	      (let ((uidvalidity* (simple-read-file up)))
+		(if (and (file-regular? up)
+			 (eqv? uidvalidity* uidvalidity))
+		    (remove-expunged-messages folder directory)
+		    (begin
+		      (call-with-append-file "/tmp/foo"
+			(lambda (port)
+			  (write `(uidvalidity= ,uidvalidity ,uidvalidity*)
+				 port)
+			  (newline port)
+			  (write `(delete-directory-contents ,directory) port)
+			  (newline port)))
+		      (delete-directory-contents directory)
+		      (simple-write-file uidvalidity up))))
+	      (begin
+		(delete-file-no-errors directory)
+		(guarantee-init-file-directory directory)
+		(simple-write-file uidvalidity up)))))))
+
+(define (remove-expunged-messages folder directory)
+  (call-with-append-file "/tmp/foo"
+    (lambda (port)
+      (write `(remove-expunged-messages ,folder ,directory) port)
+      (newline port)))
+  (for-each (lambda (pathname)
+	      (let ((ns (file-namestring pathname)))
+		(if (not (or (string=? ns ".")
+			     (string=? ns "..")
+			     (string=? ns "uidvalidity")
+			     (let ((uid (string->number ns 10)))
+			       (and uid
+				    (get-imap-message-by-uid folder uid)
+				    (file-directory? pathname)))))
+		    (delete-file-recursively pathname))))
+	    (directory-read directory #f)))
+
+(define (get-imap-message-by-uid folder uid)
+  (let loop ((low 0) (high (folder-length folder)))
+    (if (fix:< low high)
+	(let ((index (fix:quotient (fix:+ low high) 2)))
+	  (let ((message (%get-message folder index)))
+	    (let ((uid* (imap-message-uid message)))
+	      (cond ((< uid uid*) (loop low index))
+		    ((> uid uid*) (loop (fix:+ index 1) high))
+		    (else message)))))
+	#f)))
+
+(define (fetch-message-items message keywords)
+  (if (equal? keywords '(FLAGS))
+      (fetch-message-items-1 message keywords)
+      (let ((alist
+	     (map (lambda (keyword)
+		    (cons keyword
+			  (let ((pathname
+				 (message-item-pathname message keyword)))
+			    (if (file-exists? pathname)
+				(list
+				 (read-cached-message-item message
+							   keyword
+							   pathname))
+				'()))))
+		  keywords)))
+	(let ((uncached
+	       (list-transform-positive alist
+		 (lambda (entry)
+		   (null? (cdr entry))))))
+	  (if (pair? uncached)
+	      (let ((response
+		     (fetch-message-items-1 message
+					    (map car uncached))))
+		(cache-fetch-response message response
+		  (lambda (keyword)
+		    (assq keyword alist))
+		  (lambda (keyword item)
+		    (set-cdr! (assq keyword alist) (list item)))))))
+	`(FETCH ,(+ (message-index message) 1) ,@alist))))
+
+(define (cache-fetch-response message response keyword-predicate save-item)
+  (for-each (lambda (keyword)
+	      (if (keyword-predicate keyword)
+		  (let ((item (imap:response:fetch-attribute response keyword))
+			(pathname (message-item-pathname message keyword)))
+		    (guarantee-init-file-directory pathname)
+		    (if (memq keyword message-items-cached-as-string)
+			(string->file item pathname)
+			(simple-write-file item pathname))
+		    (save-item keyword item))))
+	    (imap:response:fetch-attribute-keywords response)))
+
+(define message-items-cached-as-string
+  '(RFC822.HEADER))
+
+(define (fetch-message-items-1 message keywords)
+  (with-imap-message-open message
+    (lambda (connection)
+      (imap:command:uid-fetch connection
+			      (imap-message-uid message)
+			      keywords))))
+
+(define (fetch-message-body-part message section)
+  (let ((keyword (imap-body-section->keyword section)))
+    (let ((pathname (message-item-pathname message keyword)))
+      (if (file-exists? pathname)
+	  (file->string pathname)
+	  (let ((part (fetch-message-body-part-1 message section keyword)))
+	    (guarantee-init-file-directory pathname)
+	    (string->file part pathname)
+	    part)))))
+
+(define (fetch-message-body-part-1 message section keyword)
+  (imap:response:fetch-body-part
+   (let ((suffix 
+	  (string-append " body"
+			 (if (equal? section '(TEXT)) "" " part")
+			 " for message "
+			 (number->string (+ (%message-index message) 1)))))
+     ((imail-ui:message-wrapper "Reading" suffix)
+      (lambda ()
+	(imap:read-literal-progress-hook imail-ui:progress-meter
+	  (lambda ()
+	    (with-imap-message-open message
+	      (lambda (connection)
+		(imap:command:uid-fetch connection
+					(imap-message-uid message)
+					`(',keyword)))))))))
+   section
+   #f))
+
+(define (imap-body-section->keyword section)
+  (string-append "body["
+		 (decorated-string-append
+		  "" "." ""
+		  (map (lambda (x)
+			 (if (exact-nonnegative-integer? x)
+			     (number->string x)
+			     (symbol-name x)))
+		       section))
+		 "]"))
+
+(define (preload-cached-message-item message keyword)
+  (let ((pathname (message-item-pathname message keyword)))
+    (if (file-exists? pathname)
+	(read-cached-message-item message keyword pathname))))
+
+(define (cache-preload-responses folder keywords responses)
+  (for-each
+   (lambda (response)
+     (cache-fetch-response
+      (%get-message folder (- (imap:response:fetch-index response) 1))
+      response
+      (lambda (keyword) (memq keyword keywords))
+      (lambda (keyword item) keyword item unspecific)))
+   responses))
+
+(define (delete-cached-message message)
+  (delete-file-recursively (imap-message-cache-pathname message)))
+
+(define (message-item-pathname message keyword)
+  (init-file-specifier->pathname
+   `(,@(imap-message-cache-specifier message)
+     ,(if (symbol? keyword) (symbol-name keyword) keyword))))
+
+(define (imap-message-cache-pathname message)
+  (pathname-as-directory
+   (init-file-specifier->pathname (imap-message-cache-specifier message))))
+
+(define (imap-message-cache-specifier message)
+  `(,@(imap-folder-cache-specifier (message-folder message))
+    ,(write-to-string (imap-message-uid message))))
+
+(define (imap-folder-cache-pathname folder)
+  (pathname-as-directory
+   (init-file-specifier->pathname (imap-folder-cache-specifier folder))))
+
+(define (imap-folder-cache-specifier folder)
+  (let ((url (resource-locator folder)))
+    (list "imail-cache"
+	  (string-append (encode-cache-namestring (imap-url-user-id url))
+			 "@"
+			 (string-downcase (imap-url-host url))
+			 ":"
+			 (number->string (imap-url-port url)))
+	  (encode-cache-namestring (imap-url-mailbox url)))))
+
+(define (encode-cache-namestring string)
+  (with-string-output-port
+    (lambda (port)
+      (let ((n (string-length string)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (let ((char (string-ref string i)))
+	    (cond ((char-set-member? char-set:cache-namestring-safe char)
+		   (write-char char port))
+		  ((char=? char #\/)
+		   (write-char #\. port))
+		  (else
+		   (write-char #\= port)
+		   (let ((n (char->integer char)))
+		     (if (fix:< n #x10)
+			 (write-char #\0 port))
+		     (write n port))))))))))
+
+(define char-set:cache-namestring-safe
+  (char-set-union char-set:alphanumeric (string->char-set "-_")))
+
+(define (read-cached-message-item message keyword pathname)
+  (let ((item
+	 (if (memq keyword message-items-cached-as-string)
+	     (file->string pathname)
+	     (simple-read-file pathname))))
+    (process-fetch-attribute message keyword item)
+    item))
+
+(define (simple-read-file pathname)
+  (call-with-input-file pathname read))
+
+(define (simple-write-file object pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write object port)
+      (newline port))))
+
+(define (string->file string pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write-string string port))))
+
+(define (file->string pathname)
+  (call-with-input-file pathname
+    (lambda (port)
+      ((input-port/custom-operation port 'REST->STRING) port))))
+
+(define (simple-write-file object pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (write object port)
+      (newline port))))
+
+(define (delete-file-recursively pathname)
+  (call-with-append-file "/tmp/foo"
+    (lambda (port)
+      (write `(delete-file-recursively ,pathname) port)
+      (newline port)))
+  (if (file-directory? pathname)
+      (begin
+	(delete-directory-contents (pathname-as-directory pathname))
+	(delete-directory pathname))
+      (delete-file-no-errors pathname)))
+
+(define (delete-directory-contents directory)
+  (call-with-append-file "/tmp/foo"
+    (lambda (port)
+      (write `(delete-directory-contents ,directory) port)
+      (newline port)))
+  (for-each (lambda (pathname)
+	      (if (not (let ((ns (file-namestring pathname)))
+			 (or (string=? ns ".")
+			     (string=? ns ".."))))
+		  (delete-file-recursively pathname)))
+	    (directory-read directory #f)))
 
 ;;;; Server operations
 
