@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.6 1989/07/27 06:30:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.7 1989/07/27 08:19:55 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -184,13 +184,21 @@ USER_LIBS =
 
 SHELL = /bin/sh
 
-#ifdef __GNUC__
-CC = gcc
+#ifdef ALTERNATE_CC
+CC = ALTERNATE_CC
 #else
 CC = cc
 #endif
+#ifdef ALTERNATE_M4
+M4 = ALTERNATE_M4
+#else
 M4 = m4
+#endif
+#ifdef ALTERNATE_AS
+AS = ALTERNATE_AS
+#else
 AS = as
+#endif
 
 #ifdef SUPPRESS_C_OPTIMIZER
 #undef C_OPTIMIZE_SWITCH
@@ -206,8 +214,7 @@ AS = as
 
 LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE
 
-CFLAGS = C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM \
-	C_SWITCH_FEATURES $(MACHINE_SWITCHES)
+CFLAGS = C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM C_SWITCH_FEATURES $(MACHINE_SWITCHES)
 
 #ifndef ECHO
 #define ECHO echo
@@ -219,7 +226,7 @@ CFLAGS = C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM \
 	$(CC) $(CFLAGS) -c $*.c
 
 .c.cpp: ; @ECHO "#** Generating" $@
-	make Breakup
+	make -f xmakefile Breakup
 	$(CC) $(CFLAGS) -E $*.c | \
 	./Breakup | \
 	sed -e 's/^#.*//' -e 's/^[ 	]*$$//' -e 's/^$$//' | \
@@ -228,28 +235,17 @@ CFLAGS = C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM \
 .c.s: ; @ECHO "#** Generating" $@
 	$(CC) $(CFLAGS) -S $*.c
 
-#ifdef M4_RULE
-M4_RULE
-#else
 .m4.s: ; @ECHO "#** Generating" $@ because of $?
 	$(M4) M4_SWITCH_SYSTEM M4_SWITCH_MACHINE $*.m4 > $*.s
-#endif
 
-#ifdef AS_RULE
-AS_RULE
-#else
 .s.o: ; @ECHO "#** Generating" $@ because of $?
 	$(AS) AS_SWITCH_SYSTEM AS_SWITCH_MACHINE -o $*.o $*.s
-#endif
 
 /* Source and object files */
 
-SCHEME_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES) \
-	SOURCES_SYSTEM SOURCES_MACHINE $(USER_PRIM_SOURCES)
-SCHEME_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS) \
-	OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) usrdef.o
-SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB) \
-	LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
+SCHEME_SOURCES = $(X_SOURCES) $(CTERM_SOURCES) $(GRAPHICS_SOURCES) SOURCES_SYSTEM SOURCES_MACHINE $(USER_PRIM_SOURCES)
+SCHEME_OBJECTS = $(X_OBJECTS) $(CTERM_OBJECTS) $(GRAPHICS_OBJECTS) OBJECTS_SYSTEM OBJECTS_MACHINE $(USER_PRIM_OBJECTS) usrdef.o
+SCHEME_LIB = $(USER_LIBS) $(GRAPHICS_LIBS) $(X_LIB) $(CTERM_LIB) LIB_MATH LIBS_SYSTEM LIBS_MACHINE LIB_DEBUG LIB_STANDARD
 
 SOURCES = \
 $(MACHINE_SOURCES) \
@@ -351,10 +347,6 @@ BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) os.o
 
 all: Psbtobin scheme
 
-world: all bchscheme
-
-everything: world Bintopsb Ppband
-
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
 	-mv -f $@ $@.busy
@@ -431,6 +423,8 @@ scheme.touch os.touch psbmap.touch usrdef.touch :
 	rm -f $@
 	touch $@
 
+#include "ymake.local"
+
 /* scheme.touch depends also on butterfly.h rename.c */
 scheme.touch : scheme.h config.h bkpt.h object.h scode.h sdata.h \
 	gc.h interp.h stack.h futures.h types.h errors.h returns.h \
@@ -496,7 +490,8 @@ Ppband.o : config.h types.h const.h object.h sdata.h fasl.h load.c
 
 dmpwrld.o : unexec.c getpagesize.h
 
-x11base.o x11graph.o x11term.o : x11.h
+x11base.o x11graph.o x11term.o : scheme.touch prims.h x11.h
+cterm.o : scheme.touch prims.h string.h
 starbase.o : scheme.touch prims.h flonum.h
 starbasex.o : scheme.touch prims.h x11.h
 

@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.3 1989/07/27 06:02:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.4 1989/07/27 08:17:21 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. */
 #define AS_SWITCH_MACHINE +X
 #endif
 
-#ifndef __GNUC__
+#ifndef ALTERNATE_CC
 
 /* For hp-ux version 6.2 and earlier, comment out this definition. */
 #define C_OPTIMIZE_SWITCH +O1
@@ -55,16 +55,6 @@ MIT in each case. */
 #endif
 
 #if defined(HAVE_STARBASE_GRAPHICS) && !defined(STARBASE_DEVICE_DRIVERS)
-/* Add additional Starbase device drivers here.
-   If HAVE_X_WINDOWS is defined, -lddsox11 is
-   automatically included, so don't add it here. */
+/* Add additional Starbase device drivers here. */
 #define STARBASE_DEVICE_DRIVERS -ldd300h
-#endif
-
-#if (defined (__GNUC__)) && (! (defined (__HPUX_ASM__)))
-#define AS_RULE								\
-.s.o: ; @ECHO "#** Generating" $@ because of $?				@@\
-	$(AS) AS_SWITCH_SYSTEM AS_SWITCH_MACHINE -o $*.ohp $*.s		@@\
-	hpxt $*.ohp $*.o						@@\
-	rm -f $*.ohp
 #endif
