@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.24 1993/11/22 19:01:41 gjr Exp $
+$Id: uxtrap.h,v 1.25 1996/08/19 18:46:52 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -108,6 +108,15 @@ MIT in each case. */
  */
 
 #ifdef _HPUX
+
+/* HPUX 09.x does not have siginfo, but HPUX 10.x does.  This can be
+tested by the definition of SA_SIGINFO.  Since we want to support
+both, we use the no-siginfo way */
+
+#ifdef SA_SIGINFO
+#undef SA_SIGINFO
+#endif
+
 # include <sys/sysmacros.h>
 
 /* See <machine/save_state.h> included by <signal.h> */
