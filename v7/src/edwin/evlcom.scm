@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: evlcom.scm,v 1.60 1999/01/28 03:59:51 cph Exp $
+;;; $Id: evlcom.scm,v 1.61 1999/01/31 04:09:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -374,14 +374,16 @@ Has no effect if evaluate-in-inferior-repl is false."
 			(editor-error "Package not loaded: " object))))))))
     (let ((environment (ref-variable scheme-environment buffer)))
       (if (eq? 'DEFAULT environment)
-	  (if (ref-variable evaluate-in-inferior-repl buffer)
-	      (let ((environment
-		     (ref-variable scheme-environment
-				   (current-repl-buffer buffer))))
-		(if (eq? 'DEFAULT environment)
-		    (nearest-repl/environment)
-		    (non-default environment)))
-	      (nearest-repl/environment))
+	  (let ((repl-buffer
+		 (and (ref-variable evaluate-in-inferior-repl buffer)
+		      (current-repl-buffer* buffer))))
+	    (if repl-buffer
+		(let ((environment
+		       (ref-variable scheme-environment repl-buffer)))
+		  (if (eq? 'DEFAULT environment)
+		      (nearest-repl/environment)
+		      (non-default environment)))
+		(nearest-repl/environment)))
 	  (non-default environment)))))
 
 (define (evaluation-syntax-table buffer environment)
