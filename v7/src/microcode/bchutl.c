@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.13 2002/11/20 20:49:46 cph Exp $
+$Id: bchutl.c,v 1.14 2002/11/21 03:13:33 cph Exp $
 
 Copyright (c) 1991-2000, 2002 Massachusetts Institute of Technology
 
@@ -32,6 +32,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
+#endif
+
+#ifdef STDC_HEADERS
+#  include <string.h>
 #endif
 
 #ifdef HAVE_STRERROR
