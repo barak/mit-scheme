@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmcon.c,v 1.4 2002/07/02 20:50:38 cph Exp $
+$Id: prmcon.c,v 1.5 2002/07/03 02:33:41 cph Exp $
 
 Copyright (c) 1990-1999, 2002 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ DEFUN (suspend_primitive,
     /* NOTREACHED */
   }
 
-  primitive = (Regs[REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (!PRIMITIVE_P (primitive))
   {
     outf_fatal ("\nsuspend_primitive invoked when not in primitive!\n");
@@ -131,12 +131,12 @@ DEFUN_VOID (continue_primitive)
       STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));
       immediate_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
     }
-    Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) nargs);
+    (Registers[REGBLOCK_LEXPR_ACTUALS]) = ((SCHEME_OBJECT) nargs);
   }
   exp_register = primitive;
-  Regs[REGBLOCK_PRIMITIVE] = primitive;
+  (Registers[REGBLOCK_PRIMITIVE]) = primitive;
   result = (*(continuation_procedures[continuation]))(buffer);
-  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   POP_PRIMITIVE_FRAME (nargs);
   return (result);
 }

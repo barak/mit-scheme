@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.18 2002/07/02 20:50:13 cph Exp $
+$Id: liarc.h,v 1.19 2002/07/03 02:32:58 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -64,7 +64,7 @@ USA.
 extern PTR dstack_position;
 extern SCHEME_OBJECT * Free;
 extern SCHEME_OBJECT * sp_register;
-extern SCHEME_OBJECT Registers[];
+extern SCHEME_OBJECT Registers [];
 
 union machine_word_u
 {
@@ -144,7 +144,7 @@ typedef union machine_word_u machine_word;
 
 #define Rvl val_register
 #define Rhp Free
-#define Rrb Regs
+#define Rrb Registers
 #define Rsp sp_register
 
 #define DECLARE_VARIABLES() int unsed_variable_to_keep_C_happy
@@ -155,7 +155,7 @@ typedef union machine_word_u machine_word;
 
 #define REGISTER register
 
-#define Rrb Regs
+#define Rrb Registers
 
 #define DECLARE_VARIABLES()						\
 REGISTER SCHEME_OBJECT Rvl = val_register;				\

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.34 2002/07/02 20:51:14 cph Exp $
+$Id: uxtrap.c,v 1.35 2002/07/03 02:33:55 cph Exp $
 
 Copyright (c) 1990-2002 Massachusetts Institute of Technology
 
@@ -367,12 +367,12 @@ DEFUN_VOID (soft_reset)
     (((sp_register <= Stack_Top) && (sp_register > Stack_Guard))
      ? sp_register
      : 0);
-  if ((Regs[REGBLOCK_PRIMITIVE]) != SHARP_F)
+  if ((Registers[REGBLOCK_PRIMITIVE]) != SHARP_F)
     {
       (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Regs[REGBLOCK_PRIMITIVE]);
+      (trinfo . pc_info_1) = (Registers[REGBLOCK_PRIMITIVE]);
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
       (trinfo . extra_trap_info) = SHARP_F;
     }
   else
@@ -565,7 +565,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {
@@ -585,7 +585,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
     }
     if ((new_stack_pointer == 0)
 	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)
@@ -835,7 +835,7 @@ DEFUN (find_ccblock, (the_pc),
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {

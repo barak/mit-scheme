@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.82 2002/07/02 20:51:09 cph Exp $
+$Id: utils.c,v 9.83 2002/07/03 02:33:49 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -239,7 +239,7 @@ DEFUN_VOID (back_out_of_primitive_internal)
   /* Setup a continuation to return to compiled code if the primitive is
      restarted and completes successfully. */
 
-  primitive = (Regs [REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
       outf_fatal(
@@ -255,7 +255,7 @@ DEFUN_VOID (back_out_of_primitive_internal)
   val_register = SHARP_F;
   Store_Return (RC_INTERNAL_APPLY);
   exp_register = SHARP_F;
-  (Regs [REGBLOCK_PRIMITIVE]) = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   return;
 }
 
@@ -281,7 +281,7 @@ DEFUN_VOID (canonicalize_primitive_context)
   long nargs;
   SCHEME_OBJECT primitive;
 
-  primitive = (Regs [REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (! (PRIMITIVE_P (primitive)))
     {
       outf_fatal
@@ -1116,8 +1116,8 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
 #endif
 #endif
   {  
-    primitive = (Regs [REGBLOCK_PRIMITIVE]);
-    prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
+    primitive = (Registers[REGBLOCK_PRIMITIVE]);
+    prim_lexpr = (Registers[REGBLOCK_LEXPR_ACTUALS]);
     callers_last_return_code = last_return_code;
 
     if (! (PRIMITIVE_P (primitive)))
@@ -1150,8 +1150,8 @@ DEFUN (C_call_scheme, (proc, nargs, argvec),
       /*NOTREACHED*/
 
     last_return_code = callers_last_return_code;
-    Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
-    Regs [REGBLOCK_PRIMITIVE] = primitive;
+    Registers[REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
+    Registers[REGBLOCK_PRIMITIVE] = primitive;
   }
 #ifdef __IA32__
 #ifdef CL386

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.22 2002/07/02 20:50:23 cph Exp $
+$Id: nttrap.c,v 1.23 2002/07/03 02:33:06 cph Exp $
 
 Copyright (c) 1992-2002 Massachusetts Institute of Technology
 
@@ -758,7 +758,7 @@ pc_in_hyperspace:
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {
@@ -778,7 +778,7 @@ pc_in_hyperspace:
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
     }
     if ((new_stack_pointer == 0)
 	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intercom.c,v 9.32 2002/07/02 20:49:58 cph Exp $
+$Id: intercom.c,v 9.33 2002/07/03 02:32:52 cph Exp $
 
 Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
@@ -164,7 +164,7 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     /* This gets this primitive's code which is in the expression register. */
-    SCHEME_OBJECT primitive = (Regs [REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
     SCHEME_OBJECT queue_head =
       ((queue == EMPTY_LIST) ? EMPTY_LIST : (PAIR_CAR (queue)));

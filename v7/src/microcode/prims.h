@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.49 2002/07/02 20:50:33 cph Exp $
+$Id: prims.h,v 9.50 2002/07/03 02:33:35 cph Exp $
 
 Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ extern void EXFUN (canonicalize_primitive_context, (void));
 
 #define ARG_LOC(argument) (STACK_LOC (argument - 1))
 #define ARG_REF(argument) (STACK_REF (argument - 1))
-#define LEXPR_N_ARGUMENTS() (Regs [REGBLOCK_LEXPR_ACTUALS])
+#define LEXPR_N_ARGUMENTS() (Registers[REGBLOCK_LEXPR_ACTUALS])
 
 extern void EXFUN (signal_error_from_primitive, (long error_code));
 extern void EXFUN (signal_interrupt_from_primitive, (void));

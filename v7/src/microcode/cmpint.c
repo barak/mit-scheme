@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.97 2002/07/02 20:49:11 cph Exp $
+$Id: cmpint.c,v 1.98 2002/07/03 02:32:45 cph Exp $
 
 Copyright (c) 1989-2002 Massachusetts Institute of Technology
 
@@ -796,7 +796,7 @@ static utility_result
 #define INVOKE_RETURN_ADDRESS() do					\
 {									\
   if (((long) (ADDR_TO_SCHEME_ADDR (Free)))				\
-      >= ((long) (Regs[REGBLOCK_MEMTOP])))				\
+      >= ((long) (Registers[REGBLOCK_MEMTOP])))				\
     return (compiler_interrupt_common (0, val_register));		\
   else									\
     RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()));			\
@@ -841,7 +841,7 @@ DEFNX (comutil_primitive_lexpr_apply,
        AND long ignore_2 AND long ignore_3 AND long ignore_4)
 {
   PRIMITIVE_APPLY (val_register, primitive);
-  POP_PRIMITIVE_FRAME (((long) Regs[REGBLOCK_LEXPR_ACTUALS]));
+  POP_PRIMITIVE_FRAME (((long) (Registers[REGBLOCK_LEXPR_ACTUALS])));
   INVOKE_RETURN_ADDRESS ();
 }
 
@@ -932,7 +932,7 @@ loop:
         goto callee_is_interpreted;
 
       /* "Lexpr" primitive. */
-      Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) (nactuals - 1));
+      (Registers[REGBLOCK_LEXPR_ACTUALS]) = ((SCHEME_OBJECT) (nactuals - 1));
       return (comutil_primitive_lexpr_apply (procedure, 0, 0, 0));
     }
 
@@ -1388,7 +1388,7 @@ DEFNX (comutil_operator_lexpr_trap,
      TRAMPOLINE_K_LEXPR_PRIMITIVE
    */
 
-  Regs[REGBLOCK_LEXPR_ACTUALS] =
+  (Registers[REGBLOCK_LEXPR_ACTUALS]) =
     ((SCHEME_OBJECT) ((OBJECT_DATUM (tramp_data[1])) - 1));
   return (comutil_primitive_lexpr_apply ((tramp_data[0]), 0, 0, 0));
 }
@@ -3021,7 +3021,7 @@ DEFNX (comutil_reflect_to_interface,
       /* Attempt to process interrupts before really proceeding. */
 
       if (((long) (ADDR_TO_SCHEME_ADDR (Free)))
-	  >= ((long) (Regs[REGBLOCK_MEMTOP])))
+	  >= ((long) (Registers[REGBLOCK_MEMTOP])))
       {
 	STACK_PUSH (FIXNUM_ZERO + REFLECT_CODE_CC_BKPT);
 	STACK_PUSH (reflect_to_interface);
@@ -3491,8 +3491,7 @@ SCHEME_OBJECT
   return_to_interpreter;
 
 #if !defined(REGBLOCK_ALLOCATED_BY_INTERFACE) && !defined(__WIN32__)
-SCHEME_OBJECT
-  Registers[REGBLOCK_LENGTH];
+SCHEME_OBJECT Registers [REGBLOCK_LENGTH];
 #endif
 
 static void
@@ -3514,9 +3513,9 @@ DEFUN_VOID (compiler_reset_internal)
     (ENTRY_TO_OBJECT (((char *) block)
 		      + ((unsigned long) (block [len]))));
 
-  Regs[REGBLOCK_CLOSURE_FREE] = ((SCHEME_OBJECT) NULL);
-  Regs[REGBLOCK_CLOSURE_SPACE] = ((SCHEME_OBJECT) 0);
-  Regs[REGBLOCK_REFLECT_TO_INTERFACE] = reflect_to_interface;
+  (Registers[REGBLOCK_CLOSURE_FREE]) = ((SCHEME_OBJECT) NULL);
+  (Registers[REGBLOCK_CLOSURE_SPACE]) = ((SCHEME_OBJECT) 0);
+  (Registers[REGBLOCK_REFLECT_TO_INTERFACE]) = reflect_to_interface;
 
   ASM_RESET_HOOK();
 
@@ -3532,7 +3531,7 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
   /* Start-up of whole interpreter */
 
-  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   compiler_processor_type = COMPILER_PROCESSOR_TYPE;
   compiler_interface_version = COMPILER_INTERFACE_VERSION;
   if (fasl_p)
@@ -3724,7 +3723,7 @@ extern void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
 
 SCHEME_OBJECT
 #ifndef __WIN32__
-  Registers[REGBLOCK_MINIMUM_LENGTH],
+  Registers [REGBLOCK_MINIMUM_LENGTH],
 #endif
   compiler_utilities,
   return_to_interpreter;
@@ -3971,7 +3970,7 @@ DEFUN (compiler_reset, (new_block), SCHEME_OBJECT new_block)
 void
 DEFUN (compiler_initialize, (fasl_p), long fasl_p)
 {
-  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   compiler_processor_type = 0;
   compiler_interface_version = 0;
   compiler_utilities = SHARP_F;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.12 2002/07/02 20:50:28 cph Exp $
+$Id: os2xcpt.c,v 1.13 2002/07/03 02:33:14 cph Exp $
 
 Copyright (c) 1994-2002 Massachusetts Institute of Technology
 
@@ -419,7 +419,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
 	pc_location = pc_in_builtin;
       else if ((pc_to_utility_index (pc)) != (-1))
 	pc_location = pc_in_utility;
-      else if (PRIMITIVE_P (Regs [REGBLOCK_PRIMITIVE]))
+      else if (PRIMITIVE_P (Registers[REGBLOCK_PRIMITIVE]))
 	pc_location = pc_in_primitive;
       else
 	pc_location = pc_in_c;
@@ -496,9 +496,9 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
       break;
     case pc_in_primitive:
       (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Regs [REGBLOCK_PRIMITIVE]);
+      (trinfo . pc_info_1) = (Registers[REGBLOCK_PRIMITIVE]);
       (trinfo . pc_info_2)
-	= (LONG_TO_UNSIGNED_FIXNUM (Regs [REGBLOCK_LEXPR_ACTUALS]));
+	= (LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
       Free = ((new_sp == 0) ? MemTop : (interpreter_free (0)));
       break;
     default:
