@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm1.scm,v 4.14 1990/01/25 16:31:23 jinx Exp $
-$MC68020-Header: dassm1.scm,v 4.14 89/10/26 07:37:28 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm1.scm,v 4.15 1990/07/22 18:50:59 jinx Rel $
+$MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Disassembler: User Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
@@ -199,22 +200,24 @@ MIT in each case. |#
 	(else false)))
 
 (define (disassembler/write-linkage-section block symbol-table index)
-  (define (write-caches index size how-many writer)
-    (let loop ((index index) (how-many how-many))
-      (if (zero? how-many)
-	  'DONE
-	  (begin
-	    (disassembler/write-instruction
-	     symbol-table
-	     (compiled-code-block/index->offset index)
-	     (lambda ()
-	       (writer block index)))
-	    (loop (+ size index) (-1+ how-many))))))
-
   (let* ((field (object-datum (system-vector-ref block index)))
 	 (descriptor (integer-divide field #x10000)))
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
+
+      (define (write-caches size writer)
+	(let loop ((index (1+ index))
+		   (how-many (quotient length size)))
+	  (if (zero? how-many)
+	      'DONE
+	      (begin
+		(disassembler/write-instruction
+		 symbol-table
+		 (compiled-code-block/index->offset index)
+		 (lambda ()
+		   (writer block index)))
+		(loop (+ size index) (-1+ how-many))))))
+
       (disassembler/write-instruction
        symbol-table
        (compiled-code-block/index->offset index)
@@ -222,22 +225,24 @@ MIT in each case. |#
 	 (write-string "#[LINKAGE-SECTION ")
 	 (write field)
 	 (write-string "]")))
-      (write-caches
-       (1+ index)
-       compiled-code-block/objects-per-procedure-cache
-       (quotient length compiled-code-block/objects-per-procedure-cache)
        (case kind
 	 ((0)
-	  disassembler/write-procedure-cache)
+	  (write-caches
+	   compiled-code-block/objects-per-procedure-cache
+	   disassembler/write-procedure-cache))
 	 ((1)
+	  (write-caches
+	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
-	    (disassembler/write-variable-cache "Reference" block index)))
+	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
+	  (write-caches
+	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
-	    (disassembler/write-variable-cache "Assignment" block index)))
+	    (disassembler/write-variable-cache "Assignment" block index))))
 	 (else
 	  (error "disassembler/write-linkage-section: Unknown section kind"
-		 kind))))
+		 kind)))
       (1+ (+ index length)))))
 
 (define-integrable (variable-cache-name cache)
