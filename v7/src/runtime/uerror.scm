@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uerror.scm,v 14.32 1992/02/27 22:43:33 jinx Exp $
+$Id: uerror.scm,v 14.33 1992/10/21 00:17:23 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -338,9 +338,7 @@ MIT in each case. |#
 	     (eq? primitive (ucode-primitive file-open-io-channel 1))
 	     (eq? primitive (ucode-primitive file-open-output-channel 1)))
 	 (values "open" "file"))
-	((or (eq? primitive (ucode-primitive directory-open 1))
-	     (eq? primitive (ucode-primitive directory-open-noread 1))
-	     (eq? primitive (ucode-primitive new-directory-open 1)))
+	((eq? primitive (ucode-primitive new-directory-open 1))
 	 (values "open" "directory"))
 	((or (eq? primitive (ucode-primitive file-modes 1))
 	     (eq? primitive (ucode-primitive file-access 2)))
