@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.70 2000/06/30 19:05:46 cph Exp $
+;;; $Id: imail.pkg,v 1.71 2000/07/01 04:10:38 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -107,25 +107,62 @@
 	  url:string-encoded?
 	  url:substring-encoded?))
 
+(define-package (edwin imail)
+  (files "imail-util"
+	 "imail-core")
+  (parent (edwin)))
+
+(define-package (edwin imail file-folder)
+  (files "imail-file")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  file-folder-pathname
+	  file-folder?
+	  file-message?
+	  file-url?
+	  message-time))
+
+(define-package (edwin imail rmail-folder)
+  (files "imail-rmail")
+  (parent (edwin imail file-folder))
+  (export (edwin imail)
+	  make-rmail-url
+	  rmail-folder?
+	  rmail-message?
+	  rmail-url?))
+
+(define-package (edwin imail umail-folder)
+  (files "imail-umail")
+  (parent (edwin imail file-folder))
+  (export (edwin imail)
+	  make-umail-url
+	  umail-folder?
+	  umail-message?
+	  umail-url?)
+  (export (edwin imail rmail-folder)
+	  read-umail-message
+	  umail-delimiter?))
+
 (define-package (edwin imail imap-syntax)
   (files "imap-syntax")
   (parent (edwin imail))
-  (export (edwin imail)
-	  imap:atom-char?
-	  imap:char-set:atom-char
-	  imap:char-set:tag-char
-	  imap:char-set:text-char
-	  imap:match:tag
+  (export (edwin imail imap-folder)
 	  imap:parse:enc-mailbox
-	  imap:parse:section
-	  imap:quoted-char?
-	  imap:quoted-special?
 	  imap:server-parser
 	  imap:string-may-be-quoted?
 	  imap:universal-time->date-time
 	  imap:write-literal-string-body
 	  imap:write-literal-string-header
-	  imap:write-quoted-string))
+	  imap:write-quoted-string)
+  (export (edwin imail imap-response)
+	  imap:atom-char?
+	  imap:char-set:atom-char
+	  imap:char-set:tag-char
+	  imap:char-set:text-char
+	  imap:match:tag
+	  imap:parse:section
+	  imap:quoted-char?
+	  imap:quoted-special?))
 
 (define-package (edwin imail imap-response)
   (files "imap-response")
@@ -136,6 +173,9 @@
 	  imap-transcript-write-char
 	  imap-transcript-write-string
 	  imap-transcript-write-substring
+	  start-imap-transcript
+	  stop-imap-transcript)
+  (export (edwin imail imap-folder)
 	  imap:bind-fetch-body-part-port
 	  imap:read-literal-progress-hook
 	  imap:read-server-response
@@ -186,20 +226,23 @@
 	  imap:response:search?
 	  imap:response:status-response?
 	  imap:response:status?
-	  imap:response:tag
-	  start-imap-transcript
-	  stop-imap-transcript))
+	  imap:response:tag))
 
-(define-package (edwin imail)
-  (files "imail-util"
-	 "imail-core"
-	 "imail-file"
-	 "imail-rmail"
-	 "imail-umail"
-	 "imail-imap"
-	 "imail-top"
-	 "imail-summary")
-  (parent (edwin))
+(define-package (edwin imail imap-folder)
+  (files "imail-imap")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  imap-folder?
+	  imap-message?
+	  imap-trace-port
+	  imap-url?
+	  make-imap-url
+	  start-imap-trace
+	  stop-imap-trace))
+
+(define-package (edwin imail front-end)
+  (files "imail-top")
+  (parent (edwin imail))
   (export (edwin)
 	  edwin-command$imail
 	  edwin-command$imail-add-flag
@@ -241,12 +284,6 @@
 	  edwin-command$imail-save-mime-entity
 	  edwin-command$imail-search
 	  edwin-command$imail-select-message
-	  edwin-command$imail-summary
-	  edwin-command$imail-summary-by-flags
-	  edwin-command$imail-summary-by-recipients
-	  edwin-command$imail-summary-by-regexp
-	  edwin-command$imail-summary-by-topic
-	  edwin-command$imail-summary-select-message
 	  edwin-command$imail-toggle-header
 	  edwin-command$imail-toggle-message
 	  edwin-command$imail-toggle-mime-entity
@@ -254,7 +291,6 @@
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
 	  edwin-mode$imail
-	  edwin-mode$imail-summary
 	  edwin-variable$imail-auto-wrap
 	  edwin-variable$imail-body-cache-limit
 	  edwin-variable$imail-default-dont-reply-to-names
@@ -278,10 +314,32 @@
 	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-reply-with-re
+	  edwin-variable$imail-update-interval
+	  edwin-variable$imail-use-original-mime-boundaries)
+  (export (edwin imail)
+	  imail-ui:body-cache-limit
+	  imail-ui:call-with-pass-phrase
+	  imail-ui:delete-stored-pass-phrase
+	  imail-ui:message-wrapper
+	  imail-ui:present-user-alert
+	  imail-ui:progress-meter
+	  imail-ui:prompt-for-yes-or-no?))
+
+(define-package (edwin imail front-end summary)
+  (files "imail-summary")
+  (parent (edwin imail front-end))
+  (export (edwin)
+	  edwin-command$imail-summary
+	  edwin-command$imail-summary-by-flags
+	  edwin-command$imail-summary-by-recipients
+	  edwin-command$imail-summary-by-regexp
+	  edwin-command$imail-summary-by-topic
+	  edwin-command$imail-summary-select-message
+	  edwin-mode$imail-summary
 	  edwin-variable$imail-summary-highlight-message
 	  edwin-variable$imail-summary-mode-hook
 	  edwin-variable$imail-summary-pop-up-message
 	  edwin-variable$imail-summary-show-date
-	  edwin-variable$imail-summary-subject-width
-	  edwin-variable$imail-update-interval
-	  edwin-variable$imail-use-original-mime-boundaries))
+	  edwin-variable$imail-summary-subject-width)
+  (export (edwin imail front-end)
+	  write-imail-summary-line!))

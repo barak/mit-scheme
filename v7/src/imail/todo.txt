@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.107 2000/06/30 19:05:50 cph Exp $
+$Id: todo.txt,v 1.108 2000/07/01 04:10:39 cph Exp $
 
 Bug fixes
 ---------
@@ -48,9 +48,6 @@ Design changes
 --------------
 
 * Move pathname-completion code into the runtime system.
-
-* Repackage the code so that each file now in the core is in a
-  separate package.
 
 * Implement something closer to the IMAP COPY operation, e.g.
   APPEND-MESSAGES.  Use this to make folder copying faster.
