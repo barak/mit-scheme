@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.13 1996/10/07 17:51:47 cph Exp $
+$Id: ntscreen.h,v 1.14 1997/04/03 04:40:53 cph Exp $
 
-Copyright (c) 1993-96 Massachusetts Institute of Technology
+Copyright (c) 1993-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -287,6 +287,13 @@ typedef LRESULT (*COMMAND_HANDLER)(HWND,WORD command);
 // Do user-level timer interrupts by using WM_TIMER
 
 #define USE_WM_TIMER
+
+#ifdef TRACE_SCREEN_MSGS
+extern FILE * trace_file;
+#ifndef TRACE_SCREEN_FILENAME
+#define TRACE_SCREEN_FILENAME "nttrace.out"
+#endif
+#endif
 
 //---------------------------------------------------------------------------
 //  End of File: screen.h
