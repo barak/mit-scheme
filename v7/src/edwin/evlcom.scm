@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.42 1993/08/02 23:54:26 cph Exp $
+;;;	$Id: evlcom.scm,v 1.43 1993/08/12 08:35:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -457,7 +457,7 @@ Set by Scheme evaluation code to update the mode line."
     (bind-condition-handler (list condition-type:error)
 	evaluation-error-handler
       (lambda ()
-	(hook/repl-eval expression environment syntax-table)))))
+	(hook/repl-eval #f expression environment syntax-table)))))
 
 (define (evaluation-error-handler condition)
   (default-report-error condition "evaluation")
