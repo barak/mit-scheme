@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.2 1988/06/16 06:38:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scomb.scm,v 14.3 1989/04/15 01:22:51 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -193,13 +193,18 @@ MIT in each case. |#
       (object-type? (ucode-type primitive-combination-3) object)))
 
 (define (make-combination operator operands)
-  (cond ((and (memq operator combination/constant-folding-operators)
-	      (let loop ((operands operands))
-		(or (null? operands)
-		    (and (scode-constant? (car operands))
-			 (loop (cdr operands))))))
-	 (apply operator operands))
-	((null? operands)
+  (if (and (memq operator combination/constant-folding-operators)
+	   (let loop ((operands operands))
+	     (or (null? operands)
+		 (and (scode-constant? (car operands))
+		      (loop (cdr operands))))))
+      (apply operator operands)
+      (%make-combination operator operands)))
+
+(define combination/constant-folding-operators)
+
+(define (%make-combination operator operands)
+  (cond ((null? operands)
 	 (if (and (primitive-procedure? operator)
 		  (= (primitive-procedure-arity operator) 0))
 	     (object-new-type (ucode-type primitive-combination-0) operator)
@@ -230,8 +235,6 @@ MIT in each case. |#
 	      (ucode-type primitive-combination-3)
 	      (ucode-type combination))
 	  (cons operator operands)))))
-
-(define combination/constant-folding-operators)
 
 (let-syntax
     ((combination-dispatch
