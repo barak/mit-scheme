@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.34 1993/02/25 08:52:14 gjr Exp $
+;;;	$Id: unix.scm,v 1.35 1993/04/15 09:47:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -302,7 +302,7 @@ Includes the new backup.  Must be > 0."
 	  filename))))
 
 (define unix/encoding-pathname-types
-  '("Z"))
+  '("Z" "z"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -390,29 +390,35 @@ Includes the new backup.  Must be > 0."
 
 (define-variable enable-compressed-files
   "If true, compressed files are automatically uncompressed when read,
-and recompressed when written.  A compressed file is identified by the
-filename suffix \".Z\"."
+and recompressed when written.  A compressed file is identified by one
+of the filename suffixes \".z\" or \".Z\"."
   true
   boolean?)
 
 (define (maybe-read-compressed-file pathname mark visit?)
   visit?
   (and (ref-variable enable-compressed-files mark)
-       (equal? "Z" (pathname-type pathname))
-       (begin
-	 (read-compressed-file pathname mark)
-	 true)))
+       (let ((type (pathname-type pathname)))
+	 (cond ((equal? "z" type)
+		(read-compressed-file "gunzip" pathname mark)
+		#t)
+	       ((equal? "Z" type)
+		(read-compressed-file "uncompress" pathname mark)
+		#t)
+	       (else
+		#f)))))
 
-(define (read-compressed-file pathname mark)
+(define (read-compressed-file program pathname mark)
   (if (not (equal? '(EXITED . 0)
 		   (shell-command false
 				  mark
 				  (directory-pathname pathname)
 				  false
-				  (string-append "uncompress < "
+				  (string-append program
+						 " < "
 						 (file-namestring pathname)))))
       (error:file-operation pathname
-			    "uncompress"
+			    program
 			    "file"
 			    "[unknown]"
 			    read-compressed-file
@@ -421,21 +427,27 @@ filename suffix \".Z\"."
 (define (maybe-write-compressed-file region pathname visit?)
   visit?
   (and (ref-variable enable-compressed-files (region-start region))
-       (equal? "Z" (pathname-type pathname))
-       (begin
-	 (write-compressed-file region pathname)
-	 true)))
+       (let ((type (pathname-type pathname)))
+	 (cond ((equal? "z" type)
+		(write-compressed-file "gzip" region pathname)
+		#t)
+	       ((equal? "Z" type)
+		(write-compressed-file "compress" region pathname)
+		#t)
+	       (else
+		#f)))))
 
-(define (write-compressed-file region pathname)
+(define (write-compressed-file program region pathname)
   (if (not (equal? '(EXITED . 0)
 		   (shell-command region
 				  false
 				  (directory-pathname pathname)
 				  false
-				  (string-append "compress > "
+				  (string-append program
+						 " > "
 						 (file-namestring pathname)))))
       (error:file-operation pathname
-			    "compress"
+			    program
 			    "file"
 			    "[unknown]"
 			    write-compressed-file
