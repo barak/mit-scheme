@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.33 1987/05/18 17:57:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.34 1987/05/19 18:04:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -96,15 +96,15 @@ MIT in each case. |#
 	(if next
 	    (begin
 	      (record-rnode-frame-pointer-offset! next offset)
+	      (if (node-previous>1? next)
+		  (let ((snode (statement->snode '(NOOP))))
+		    (set-rnode-lap! snode
+				    (clear-map-instructions
+				     (rnode-register-map rnode)))
+		    (node-mark! snode)
+		    (edge-insert-snode! edge snode)))
 	      (if (not (node-marked? next))
-		  (begin (if (node-previous>1? next)
-			     (let ((snode (statement->snode '(NOOP))))
-			       (set-rnode-lap! snode
-					       (clear-map-instructions
-						(rnode-register-map rnode)))
-			       (node-mark! snode)
-			       (edge-insert-snode! edge snode)))
-			 (cgen-rnode next)))))))
+		  (cgen-rnode next))))))
     (if (rtl-snode? rnode)
 	(cgen-right-node (snode-next-edge rnode))
 	(begin (cgen-right-node (pnode-consequent-edge rnode))
@@ -238,7 +238,7 @@ MIT in each case. |#
 (define (move-to-alias-register! source type target)
   (reuse-pseudo-register-alias! source type
     (lambda (reusable-alias)
-      (add-pseudo-register-alias! target reusable-alias))
+      (add-pseudo-register-alias! target reusable-alias false))
     (lambda ()
       (allocate-alias-register! target type))))
 
@@ -263,14 +263,15 @@ MIT in each case. |#
 	  (delete-dead-registers!)
 	  (let ((target (if-not)))
 	    (prefix-instructions!
-	     (if alias
-		 (register->register-transfer alias target)
-		 (home->register-transfer source target)))
+	    (cond ((not alias) (home->register-transfer source target))
+		  ((= alias target) '())
+		  (else (register->register-transfer alias target))))
 	    (register-reference target))))))
 
-(define (add-pseudo-register-alias! register alias)
+(define (add-pseudo-register-alias! register alias saved-into-home?)
   (set! *register-map*
-	(add-pseudo-register-alias *register-map* register alias))
+	(add-pseudo-register-alias *register-map* register alias
+				   saved-into-home?))
   (need-register! alias))
 
 (define (clear-map!)
