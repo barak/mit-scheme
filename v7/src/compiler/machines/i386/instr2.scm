@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.4 1992/08/10 21:07:21 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instr2.scm,v 1.5 1992/08/18 13:38:37 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -203,7 +203,7 @@ MIT in each case. |#
 	 (8 #x21))
    (ModR/M dreg `(R ,reg)))
 
-  (((TR (? dreg)) (R (? reg)))
+  (((TR (? treg)) (R (? reg)))
    (BYTE (8 #x0f)
 	 (8 #x26))
    (ModR/M treg `(R ,reg)))
