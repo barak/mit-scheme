@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.4 1995/04/20 03:24:29 adams Exp $
+$Id: frag.scm,v 1.5 1995/06/15 18:00:51 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -565,7 +565,7 @@ MIT in each case. |#
 
 (define (nasty-residual placeholder)
   (if *arity/failure*
-      (*arity/failure* placeholder)
+      (*arity/failure* (cons #F placeholder))
       (internal-error "Nasty residual & no handler" placeholder)))
 
 (define *arity/failure* #F)
@@ -587,29 +587,47 @@ MIT in each case. |#
 			  (+ low (length optional)))))
 	  (define (done)
 	    (arity/rewrite-arity-dispatched-procedure!
-	     form '(QUOTE default) low specializations)
+	     form '(QUOTE default) low (reverse! specializations))
 	    (a:pp `(transfomed-procedure: ,form)))
 	  (define (failed)
 	    'failed)
+	  (define (finish-up-search new-lambda.ph)
+	    ;; 
+	    (internal-warning "Bag out " new-lambda.ph)
+	    (arity/rewrite-arity-dispatched-procedure!
+	     form 
+	     `(LAMBDA (,(first (lambda/formals form))
+		       ,(new-variable 'UNUSED-SELF)
+		       ,@(cdr (lambda/formals form)))
+		,(lambda/body form))
+	     low (reverse! specializations))
+	    (a:pp `(transfomed-procedure: ,form)))
 	  (let loop ((arity low))
-	    (let ((new-lambda
+	    (let ((new-lambda.ph
 		   (call-with-current-continuation
 		    (lambda (k)
 		      (set! *arity/failure* k)
 		      (arity/generate-specialization
-		       required optional rest body arity #F)))))
-	      (cond ((LAMBDA/? new-lambda)
+		       required optional rest body arity #F #F)))))
+	      (cond ((LAMBDA/? (car new-lambda.ph))
 		     (set! specializations
-			   (cons new-lambda specializations))
-		     (if (= arity high)
-			 (done)
-			 (loop (+ arity 1))))
+			   (cons (car new-lambda.ph) specializations))
+		     (a:pp `(low: ,low high: ,high arity: ,arity
+			     ph: ,(cdr new-lambda.ph)))
+		     (cond ((= arity high)
+			    (done))
+			   ((or (not (cdr new-lambda.ph))
+				(placeholder/name-used? (cdr new-lambda.ph)))
+			    (loop (+ arity 1)))
+			   (rest  ;; unused rest slot
+			    (finish-up-search new-lambda.ph))
+			   (else
+			    (done))))
 		    ((< arity (+ low (length optional)))
 		     ;; Could not even do #!OPTIONALs
 		     (failed))
 		    (else
-		     (internal-warning "Bag out " new-lambda)
-		     (failed))))))))))
+		     (finish-up-search new-lambda.ph))))))))))
 
 
 
@@ -617,6 +635,10 @@ MIT in each case. |#
 	 form default low specializations)
   (sample/1 '(arity/dispatched-procedures histogram)
 	    (length specializations))
+  (internal-warning "Arity dispatch with"
+		    (length specializations)
+		    (error-irritant/noise " cases starting at arity")
+		    low)
   (form/rewrite! form
     `(CALL ',%make-entity
 	   '#F
@@ -625,20 +647,21 @@ MIT in each case. |#
 		 '#F
 		 ',%arity-dispatcher-tag
 		 ,@(make-list (- low 1) '(QUOTE #F))
-		 ,@(reverse specializations)))))
+		 ,@specializations))))
 
 
-(define (arity/generate-specialization required optional rest body arity rest?)
-  ;; ARITY is at least enough to satisfy the REQUIREDs
-  ;; returns either (1) a new LAMBDA expression or (2) a
-  (define (generate new-ll env)
+(define (arity/generate-specialization required optional rest body arity rest? rest-arity)
+  ;; ARITY is at least enough to satisfy the REQUIREDs returns a pair of
+  ;; (1) a new LAMBDA expression and (2) the last (possibly a #!rest)
+  ;; placeholder
+  (define (generate new-ll env last-placeholder)
     (a:pp '----------)
     (a:pp `(lambda-list: ,new-ll env: ,env))
     (let ((body  (form/copy body)))
       (a:pp `(before: ,body))
       (specialize/expr! env body)
       (remove-placeholders! env body)
-      `(LAMBDA ,new-ll ,body)))
+      (cons `(LAMBDA ,new-ll ,body) last-placeholder)))
 
   (let ((new-required (map variable/rename required)))
     (let loop ((env (map (lambda (n n*) (cons n `(LOOKUP ,n*)))
@@ -656,9 +679,11 @@ MIT in each case. |#
 				    (cons (cons rest
 						(quote-placeholder
 						 (make-placeholder #F '())))
-					  env))
+					  env)
+				    #F)
 			  (generate (append new-required (reverse new-args))
-				    env)))
+				    env
+				    #F)))
 		     (else
 		      (loop (cons (cons (car optional)
 					(quote-placeholder
@@ -667,8 +692,8 @@ MIT in each case. |#
 			    (cdr optional))))))
 	    ((null? optional)
 	     (let* ((rest-list-args 
-		     (map  (lambda (i) i (variable/rename rest))
-			   (make-list (- arity position))))
+		     (make-initialized-list (- arity position)
+		       (lambda (i) i (variable/rename rest))))
 		    (placeholders   (map make-placeholder rest-list-args))
 		    (new-rest-arg   (and rest? (variable/rename rest)))
 		    (terminal-ph    (if rest?
@@ -690,7 +715,10 @@ MIT in each case. |#
 				 (map bind-ph placeholders rest-list-args)
 				 (cons (cons rest
 					     (quote-placeholder rest-list-value))
-				       env)))))
+				       env))
+			 (if new-rest-arg
+			     new-rest-arg
+			     (car (last-pair placeholders))))))
 	    (else
 	     (let* ((name   (car optional))
 		    (name*  (variable/rename name))
@@ -760,4 +788,5 @@ MIT in each case. |#
 	  (else unspecific))))
 
 
-(define a:pp pp)
+(define a:pp (lambda (thing) thing unspecific))
+;(define a:pp pp)
