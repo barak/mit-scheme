@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.116 1991/09/20 13:34:08 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.117 1991/09/20 13:35:25 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -64,7 +64,7 @@ Type . to flag numerical backups for Deletion.
   (Spares dired-kept-versions or its numeric argument.)
 Type r to rename a file.
 Type c to copy a file.
-Type C to mark a file for Copying.
+Type k to mark a file for Copying.
 Type y to copy files marked for Copying.
 Type g to read the directory again.  This discards all deletion-flags.
 Space and Rubout can be used to move down and up by lines.
