@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.147 2001/01/24 22:51:35 cph Exp $
+;;; $Id: imail-imap.scm,v 1.148 2001/05/07 18:01:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: IMAP back end
 
@@ -86,16 +87,15 @@
        (= (imap-url-port url1) (imap-url-port url2))))
 
 (define-method url-exists? ((url <imap-url>))
-  (not
-   (condition?
-    (ignore-errors
-     (lambda ()
-       (with-open-imap-connection url
-	 (lambda (connection)
-	   (imap:command:status connection
-				(imap-url-server-mailbox url)
-				'(MESSAGES))))
-       #t)))))
+  (let ((responses
+	 (with-open-imap-connection url
+	   (lambda (connection)
+	     (imap:command:list connection
+				""
+				(imap-url-server-mailbox url))))))
+    (and (pair? responses)
+	 (null? (cdr responses))
+	 (not (memq '\NOSELECT (imap:response:list-flags (car responses)))))))
 
 (define-method url-pass-phrase-key ((url <imap-url>))
   (make-url-string (url-protocol url) (make-imap-url-string url #f)))
