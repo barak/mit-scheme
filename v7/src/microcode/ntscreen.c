@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.4 1993/07/27 21:00:53 gjr Exp $
+$Id: ntscreen.c,v 1.5 1993/07/28 20:29:07 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -916,18 +916,18 @@ ResetScreen (SCREEN screen)
 static BOOL 
 PaintScreen (HWND hWnd)
 {
-   SCREEN	screen = (GETSCREEN (hWnd));
-   HDC          hDC ;
-   PAINTSTRUCT  ps ;
-   RECT         rect ;
+  SCREEN	screen = (GETSCREEN (hWnd));
+  HDC		hDC ;
+  PAINTSTRUCT	ps ;
+  RECT		rect ;
 
-   if (NULL == screen)
-     return (FALSE);
+  if (NULL == screen)
+    return (FALSE);
 
-   hDC = BeginPaint (hWnd, &ps);
+  hDC = (BeginPaint (hWnd, &ps));
 
-   if (IsIconic(hWnd))
-   {
+  if (IsIconic (hWnd))
+  {
 //      // draw a minature version of the window
 //      int  ICONSIZE = 36;
 //      int  row, col;
@@ -971,82 +971,94 @@ PaintScreen (HWND hWnd)
 //      }
 //      SelectObject (hDC, hOldPen);
 //      DeleteObject (hPen);
-   }
+  }
 
-   else
-   {
-      int          nRow, nCol, nEndRow, nEndCol, nCount, nHorzPos, nVertPos ;
-      HFONT        hOldFont ;
+  else
+  {
+    int		nRow, nCol, nEndRow, nEndCol, nCount;
+    int		nHorzPos, nVertPos, bias;
+    HFONT	hOldFont;
+    DWORD	bgcolor;
 
-      hOldFont = SelectObject (hDC, screen->hFont);
-      SetTextColor (hDC, screen->rgbFGColour);
-      SetBkColor (hDC, GetSysColor (COLOR_WINDOW));
-      rect = ps.rcPaint ;
+    hOldFont = (SelectObject (hDC, screen->hFont));
+    rect = ps.rcPaint;
 
 //   nRow =
 //      min (MAXROWS - 1,
-//           max (0, (rect.top + screen->yOffset) / screen->yChar ));
+//           max (0, (rect.top + screen->yOffset) / screen->yChar));
 //   nEndRow =
 //      min (MAXROWS - 1,
-//           ((rect.bottom + screen->yOffset - 1) / screen->yChar ));
-      nRow =
-         min (screen->height - 1,
-              max (0, (rect.top + screen->yOffset) / screen->yChar ));
-      nEndRow =
-         min (screen->height - 1,
-              ((rect.bottom + screen->yOffset - 1) / screen->yChar ));
+//           ((rect.bottom + screen->yOffset - 1) / screen->yChar));
+    nRow =
+      min (screen->height - 1,
+	   max (0, (rect.top + screen->yOffset) / screen->yChar));
+    nEndRow =
+      min (screen->height - 1,
+	   ((rect.bottom + screen->yOffset - 1) / screen->yChar));
 //   nCol =
 //      min (MAXCOLS - 1,
-//           max (0, (rect.left + screen->xOffset) / screen->xChar ));
+//           max (0, (rect.left + screen->xOffset) / screen->xChar));
 //   nEndCol =
 //      min (MAXCOLS - 1,
-//           ((rect.right + screen->xOffset - 1) / screen->xChar ));
-      nCol =
-         min (screen->width - 1,
-              max (0, (rect.left + screen->xOffset) / screen->xChar ));
-      nEndCol =
-         min (screen->width - 1,
-              ((rect.right + screen->xOffset - 1) / screen->xChar ));
-      nCount = nEndCol - nCol + 1 ;
-      for (; nRow <= nEndRow; nRow++)
-      {
-         int   pos = 0;
-         while (pos < nCount)
-         {
-	    // find consistent run of attributes
-	    int bias = nRow*MAXCOLS + nCol;
-	    SCREEN_ATTRIBUTE attrib = screen->attrs[bias + pos];
-	    int  run_length = 1;
-	    while (run_length+pos<nCount &&
-	           screen->attrs[bias + pos + run_length]==attrib)
-	        run_length++;
+//           ((rect.right + screen->xOffset - 1) / screen->xChar));
+    nCol =
+      min (screen->width - 1,
+	   max (0, (rect.left + screen->xOffset) / screen->xChar));
+    nEndCol =
+      min (screen->width - 1,
+	   ((rect.right + screen->xOffset - 1) / screen->xChar));
+    nCount = ((nEndCol - nCol) + 1);
+    SetBkMode (hDC, OPAQUE);
+    bgcolor = (GetSysColor (COLOR_WINDOW));
+    SetTextColor (hDC, screen->rgbFGColour);
+    SetBkColor (hDC, bgcolor);
 
-	    nVertPos = (nRow * screen->yChar) - screen->yOffset;
-	    nHorzPos = ((nCol + pos) * screen->xChar) - screen->xOffset;
-	    rect.top = nVertPos ;
-	    rect.bottom = nVertPos + screen->yChar;
-	    rect.left = nHorzPos;
-	    rect.right = nHorzPos + screen->xChar * run_length ;
-	    SetBkMode (hDC, OPAQUE);
-	    if (attrib)
-	    {
-	       SetTextColor (hDC, GetSysColor (COLOR_WINDOW));
-	       SetBkColor (hDC, screen->rgbFGColour);
-	    } else {
-	       SetTextColor (hDC, screen->rgbFGColour);
-	       SetBkColor (hDC, GetSysColor (COLOR_WINDOW));
-	    }
-	    ExtTextOut(hDC, nHorzPos, nVertPos, ETO_OPAQUE|ETO_CLIPPED, &rect,
-	               screen->chars + bias + pos,
-		       run_length, NULL);
-	    pos += run_length;
-         }
+    for (bias = ((nRow * MAXCOLS) + nCol),
+	 nVertPos = ((nRow * screen->yChar) - screen->yOffset);	 
+	 nRow <= nEndRow;
+	 nRow++, bias += MAXCOLS, nVertPos += screen->yChar)
+    {
+      int pos = 0;
+      while (pos < nCount)
+      {
+	/* find consistent run of attributes */
+	SCREEN_ATTRIBUTE
+	  * attribp = &screen->attrs[bias + pos],
+	  attrib = *attribp;
+	int
+	  nposn = (pos + 1),
+	  run_length;
+
+	while ((nposn < nCount) && (*++attribp == attrib))
+	  nposn++;
+
+	run_length = (nposn - pos);
+	nHorzPos = (((nCol + pos) * screen->xChar) - screen->xOffset);
+	rect.top = nVertPos;
+	rect.bottom = (nVertPos + screen->yChar);
+	rect.left = nHorzPos;
+	rect.right = (nHorzPos + (screen->xChar * run_length));
+	if (attrib)
+	{
+	  SetTextColor (hDC, bgcolor);
+	  SetBkColor (hDC, screen->rgbFGColour);
+	}
+	ExtTextOut (hDC, nHorzPos, nVertPos, (ETO_OPAQUE | ETO_CLIPPED),
+		    &rect, &screen->chars[bias + pos],
+		    run_length, NULL);
+	if (attrib)
+	{
+	  SetTextColor (hDC, screen->rgbFGColour);
+	  SetBkColor (hDC, bgcolor);
+	}
+	pos = nposn;
       }
-      SelectObject (hDC, hOldFont);
-   }
-   EndPaint (hWnd, &ps);
-   MoveScreenCursor (screen);
-   return (TRUE);
+    }
+    SelectObject (hDC, hOldFont);
+  }
+  EndPaint (hWnd, &ps);
+  MoveScreenCursor (screen);
+  return (TRUE);
 }
 
 //---------------------------------------------------------------------------
@@ -1315,7 +1327,7 @@ ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
          break ;
 
       default:
-         return  FALSE;
+         return (FALSE);
    }
    if ((screen->xOffset + nScrollAmt) > screen->xScroll)
       nScrollAmt = screen->xScroll - screen->xOffset;
@@ -1325,7 +1337,7 @@ ScrollScreenHorz (HWND hWnd, WORD wScrollCmd, WORD wScrollPos)
    screen->xOffset = screen->xOffset + nScrollAmt ;
    SetScrollPos (hWnd, SB_HORZ, screen->xOffset, TRUE);
 
-   return  TRUE;
+   return (TRUE);
 
 }
 
@@ -1355,7 +1367,7 @@ SetScreenFocus (HWND hWnd)
       screen->CursorState = CS_SHOW ;
    }
    MoveScreenCursor (screen);
-   return  TRUE ;
+   return (TRUE);
 }
 
 //---------------------------------------------------------------------------
@@ -1383,7 +1395,7 @@ KillScreenFocus (HWND hWnd )
       DestroyCaret ();
       screen->CursorState = CS_HIDE;
    }
-   return  TRUE;
+   return (TRUE);
 }
 
 //---------------------------------------------------------------------------
@@ -1449,14 +1461,15 @@ ScreenPeekOrRead (SCREEN screen, int count, SCREEN_EVENT * buffer, BOOL remove)
       if (entry)
 	*entry++ = current->event;
       current = current->next;
-      if (remove) {
+      if (remove)
+      {
 	screen->queue_head->next = screen->events;
 	screen->events     = screen->queue_head;
 	screen->queue_head = current;
 	screen->n_events--;
       }
     }
-    return  processed;
+    return (processed);
 }
 
 //---------------------------------------------------------------------------
@@ -1489,7 +1502,8 @@ ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
    if (NULL == screen)
       return  FALSE;
     
-   switch (vk_code) {
+   switch (vk_code)
+   {
      case VK_SHIFT:
      case VK_CONTROL:
      case VK_CAPITAL:
@@ -1505,12 +1519,13 @@ ProcessScreenCharacter (HWND hWnd, int vk_code, int bOut,
    {
      int  i;
      for (i=0; i<screen->n_bindings; i++)
-       if (screen->bindings[i].key == bOut) {
+       if (screen->bindings[i].key == bOut)
+       {
 	 if (SendMessage (screen->hWnd,
 			  WM_COMMAND,
 			  MAKEWPARAM(screen->bindings[i].command, 0),
 			  0))
-	   return  TRUE;
+	   return (TRUE);
 	 else
 	   break;
        }
@@ -1557,8 +1572,8 @@ Screen_BS (SCREEN screen)
     screen->column -- ;
   else if (screen->row > 0)
   {
-    screen->row --;
-    screen->column = screen->width-1;
+    screen->row--;
+    screen->column = (screen->width - 1);
   }
   if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
     MoveScreenCursor (screen);
@@ -1574,7 +1589,7 @@ Screen_LF (SCREEN screen)
     ScrollWindow (screen->hWnd, 0, -screen->yChar, NULL, NULL);
     //InvalidateRect (hWnd, NULL, FALSE);
     //screen->row-- ;
-    screen->row = screen->height-1;
+    screen->row = (screen->height - 1);
   }
   if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
   {
@@ -1594,57 +1609,99 @@ Screen_CR (SCREEN screen)
     MoveScreenCursor (screen);
   return;
 }
+
+struct screen_write_char_s
+{
+  RECT rect;
+  int row;
+  int col;
+};
+
+#define INIT_SCREEN_WRITE_CHAR_STATE(state) state.row = -1
 
 static VOID _fastcall
-Screen_WriteCharUninterpreted (SCREEN screen, int ch)
+Screen_WriteCharUninterpreted (SCREEN screen, int ch,
+			       struct screen_write_char_s * rectp)
 {
-  RECT       rect ;
-
   screen->chars[screen->row * MAXCOLS + screen->column] = ch;
   screen->attrs[screen->row * MAXCOLS + screen->column] =
     screen->write_attribute;
-  rect.left = (screen->column * screen->xChar) - screen->xOffset;
-  rect.right = rect.left + screen->xChar;
-  rect.top = (screen->row * screen->yChar) - screen->yOffset;
-  rect.bottom = rect.top + screen->yChar;
-  InvalidateRect (screen->hWnd, &rect, FALSE);
+  if (rectp == ((struct screen_write_char_s *) NULL))
+  {
+    RECT       rect ;
+
+    rect.left = ((screen->column * screen->xChar) - screen->xOffset);
+    rect.right = rect.left + screen->xChar;
+    rect.top = ((screen->row * screen->yChar) - screen->yOffset);
+    rect.bottom = rect.top + screen->yChar;
+    InvalidateRect (screen->hWnd, &rect, FALSE);
+  }
+  else if ((rectp->row == screen->row) && (rectp->col == screen->column))
+  {
+    rectp->col += 1;
+    rectp->rect.right += screen->xChar;
+  }
+  else
+  {
+    if (rectp->row != -1)
+      InvalidateRect (screen->hWnd, &rectp->rect, FALSE);
+
+    rectp->rect.left = ((screen->column * screen->xChar) - screen->xOffset);
+    rectp->rect.right = rectp->rect.left + screen->xChar;
+    rectp->rect.top = ((screen->row * screen->yChar) - screen->yOffset);
+    rectp->rect.bottom = rectp->rect.top + screen->yChar;
+    rectp->col = (screen->column + 1);
+    rectp->row = screen->row;
+  }
 
   /* Line wrap */
-  if (screen->column < (screen->width - 1))
-    screen->column++ ;
-  else if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
+  screen->column += 1;
+  if (screen->column >= screen->width)
   {
-    Screen_CR (screen);
-    if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
-      Screen_LF (screen);
+    screen->column -= 1;
+    if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
+    {
+      Screen_CR (screen);
+      if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
+	Screen_LF (screen);
+    }
   }
+  return;
+}
+
+static VOID _fastcall
+Finish_ScreenWriteChar (SCREEN screen, struct screen_write_char_s * rectp)
+{
+  if (rectp->row != -1)
+    InvalidateRect (screen->hWnd, &rectp->rect, FALSE);
   return;
 }
 
 static VOID _fastcall
-Screen_TAB (SCREEN screen)
+Screen_TAB (SCREEN screen, struct screen_write_char_s * rectp)
 {
-  do Screen_WriteCharUninterpreted (screen, ' ');
+  do
+    Screen_WriteCharUninterpreted (screen, ' ', rectp);
   while ((screen->column % 8) != 0);
   return;
 }
 
 static VOID _fastcall
 clear_screen_rectangle (SCREEN screen,
-			int low_row, int low_col,
-			int high_row, int high_col)
+			int lo_row, int lo_col,
+			int hi_row, int hi_col)
 {
   RECT rect;
   int row, delta_col;
   char * screen_chars;
   SCREEN_ATTRIBUTE * screen_attrs;
 
-  delta_col = (high_col - low_col);
+  delta_col = (hi_col - lo_col);
 
-  for (row = low_row,
-       screen_chars = &screen->chars[low_row * MAXCOLS + low_col],
-       screen_attrs = &screen->attrs[low_row * MAXCOLS + low_col];
-       row < high_row;
+  for (row = lo_row,
+       screen_chars = &screen->chars[lo_row * MAXCOLS + lo_col],
+       screen_attrs = &screen->attrs[lo_row * MAXCOLS + lo_col];
+       row < hi_row;
        row++,
        screen_chars += MAXCOLS,
        screen_attrs += MAXCOLS)
@@ -1655,10 +1712,10 @@ clear_screen_rectangle (SCREEN screen,
 	      (delta_col * (sizeof (SCREEN_ATTRIBUTE))));
   }
 
-  rect.left = ((low_col * screen->xChar) - screen->xOffset);
-  rect.right = ((high_col * screen->xChar) - screen->xOffset);
-  rect.top = ((low_row * screen->yChar) - screen->yOffset);
-  rect.bottom = ((high_row * screen->yChar) - screen->yOffset);
+  rect.left = ((lo_col * screen->xChar) - screen->xOffset);
+  rect.right = ((hi_col * screen->xChar) - screen->xOffset);
+  rect.top = ((lo_row * screen->yChar) - screen->yOffset);
+  rect.bottom = ((hi_row * screen->yChar) - screen->yOffset);
   InvalidateRect (screen->hWnd, &rect, FALSE);
 
   return;
@@ -1682,31 +1739,112 @@ relocate_cursor (SCREEN screen, int row, int col)
   return;
 }
 
+static VOID _fastcall
+scroll_screen_vertically (SCREEN screen,
+			  int lo_row_from, int lo_col,
+			  int hi_row_from, int hi_col,
+			  int lo_row_to)
+{
+  RECT rect;
+  int row, delta_col, hi_row_to;
+  char * chars_from, * chars_to;
+  SCREEN_ATTRIBUTE * attrs_from, * attrs_to;
+
+  delta_col = (hi_col - lo_col);
+  hi_row_to = (lo_row_to + (hi_row_from - lo_row_from));
+
+  if (lo_row_from > lo_row_to)		/* Scrolling up. */
+    for (row = lo_row_from,
+	 chars_from = &screen->chars[lo_row_from * MAXCOLS + lo_col],
+	 attrs_from = &screen->attrs[lo_row_from * MAXCOLS + lo_col],
+	 chars_to = &screen->chars[lo_row_to * MAXCOLS + lo_col],
+	 attrs_to = &screen->attrs[lo_row_to * MAXCOLS + lo_col];
+	 row < hi_row_from;
+	 row++,
+	 chars_from += MAXCOLS,
+	 attrs_from += MAXCOLS,
+	 chars_to += MAXCOLS,
+	 attrs_to += MAXCOLS)
+    {
+      _fmemmove (((LPSTR) chars_to), ((LPSTR) chars_from), delta_col);
+      _fmemmove (((LPSTR) attrs_to), ((LPSTR) attrs_from), delta_col);
+    }
+  else					 /* Scrolling down. */
+    for (row = (hi_row_from - 1),
+	 chars_from =  &screen->chars[(hi_row_from - 1) * MAXCOLS + lo_col],
+	 attrs_from =  &screen->attrs[(hi_row_from - 1) * MAXCOLS + lo_col],
+	 chars_to =  &screen->chars[(hi_row_to - 1) * MAXCOLS + lo_col],
+	 attrs_to =  &screen->attrs[(hi_row_to - 1) * MAXCOLS + lo_col];
+	 row >= lo_row_from;
+	 row--,
+	 chars_from -= MAXCOLS,
+	 attrs_from -= MAXCOLS,
+	 chars_to -= MAXCOLS,
+	 attrs_to -= MAXCOLS)
+    {
+      _fmemmove (((LPSTR) chars_to), ((LPSTR) chars_from), delta_col);
+      _fmemmove (((LPSTR) attrs_to), ((LPSTR) attrs_from), delta_col);
+    }
+
+  rect.left = ((lo_col * screen->xChar) - screen->xOffset);
+  rect.right = ((hi_col * screen->xChar) - screen->xOffset);
+  rect.top = ((lo_row_to * screen->yChar) - screen->yOffset);
+  rect.bottom = ((hi_row_to * screen->yChar) - screen->yOffset);
+  InvalidateRect (screen->hWnd, &rect, FALSE);
+
+  return;
+}
+
+static VOID _fastcall
+scroll_screen_line_horizontally (SCREEN screen, int row,
+				 int lo_col_from, int hi_col_from, int lo_col_to)
+{
+  RECT rect;
+  int delta_col = (hi_col_from - lo_col_from);
+  int hi_col_to = (lo_col_to + delta_col);
+
+  _fmemmove (((LPSTR) &screen->chars[(row * MAXCOLS) + lo_col_to]),
+	     ((LPSTR) &screen->chars[(row * MAXCOLS) + lo_col_from]),
+	     delta_col);
+  _fmemmove (((LPSTR) &screen->attrs[(row * MAXCOLS) + lo_col_to]),
+	     ((LPSTR) &screen->attrs[(row * MAXCOLS) + lo_col_from]),
+	     delta_col);
+
+  rect.left = ((lo_col_to * screen->xChar) - screen->xOffset);
+  rect.right = ((hi_col_to * screen->xChar) - screen->xOffset);
+  rect.top = ((row * screen->yChar) - screen->yOffset);
+  rect.bottom = (((row + 1) * screen->yChar) - screen->yOffset);
+  InvalidateRect (screen->hWnd, &rect, FALSE);
+
+  return;
+}
+
 static int _fastcall
-read_decimal (LPSTR str, int low, int len, int * high)
+read_decimal (LPSTR str, int lo, int len, int * hi)
 {
   int ctr, result;
 
-  for (result = 0, ctr = low;
+  for (result = 0, ctr = lo;
        ctr < len;
        result = ((result * 10) + ((str[ctr]) - '0')), ctr++)
     if ((str[ctr] < '0') || (str[ctr] > '9'))
       break;
 
-  * high = ctr;
+  * hi = ctr;
   return (result);
 }
 
 static VOID _fastcall
-screen_write_octal (SCREEN screen, unsigned char the_char)
+screen_write_octal (SCREEN screen, unsigned char the_char,
+		    struct screen_write_char_s * rectp)
 {
-  Screen_WriteCharUninterpreted (screen, '\\');
-  Screen_WriteCharUninterpreted (screen, ((the_char / 0100) + '0'));
-  Screen_WriteCharUninterpreted (screen, (((the_char % 0100) / 010) + '0'));
-  Screen_WriteCharUninterpreted (screen, ((the_char % 010) + '0'));
+  Screen_WriteCharUninterpreted (screen, '\\', rectp);
+  Screen_WriteCharUninterpreted (screen, ((the_char / 0100) + '0'), rectp);
+  Screen_WriteCharUninterpreted (screen, (((the_char % 0100) / 010) + '0'), rectp);
+  Screen_WriteCharUninterpreted (screen, ((the_char % 010) + '0'), rectp);
   return;
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 //
@@ -1733,16 +1871,18 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
    int i;
    WORD saved_mode_flags;
    SCREEN screen = (GETSCREEN (hWnd));
+   struct screen_write_char_s state;
 
    if (NULL == screen)
       return (FALSE);
 
+   INIT_SCREEN_WRITE_CHAR_STATE (state);
    saved_mode_flags = (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE);
    screen->mode_flags &= (~ (SCREEN_MODE_EAGER_UPDATE));
-
+
    if ((screen->mode_flags & SCREEN_MODE_PROCESS_OUTPUT) == 0)
      for (i = 0 ; i < nLength; i++)
-       Screen_WriteCharUninterpreted (screen, (lpBlock[i]));
+       Screen_WriteCharUninterpreted (screen, (lpBlock[i]), &state);
    else for (i = 0 ; i < nLength; i++)
    {
      unsigned char the_char = ((unsigned char) (lpBlock[i]));
@@ -1758,7 +1898,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 	  break ;
 
        case '\t':
-	  Screen_TAB (screen);
+	  Screen_TAB (screen, &state);
 	  break;
 
 #if 0
@@ -1770,14 +1910,8 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
        case ASCII_CR:
 	  break;
 
-//	 case ASCII_LF:
-//	    Screen_LF (screen);
-//            break ;
-//
-//         case ASCII_CR:
-//	    Screen_CR (screen);
-//	    break;
-#endif
+#else /* not 0 */
+
        case ASCII_LF:
 	  Screen_LF (screen);
 	  break ;
@@ -1785,28 +1919,33 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
        case ASCII_CR:
 	  Screen_CR (screen);
 	  break;
+#endif /* 0 */
 
        case ASCII_FF:
 	  Screen_Clear (screen, 0);
 	  break;
 
        default:
+#if 0
 	  if (the_char < ' ')
 	  {
-	    Screen_WriteCharUninterpreted (screen, '^');
-	    Screen_WriteCharUninterpreted (screen, (the_char + '@'));
+	    Screen_WriteCharUninterpreted (screen, '^', &state);
+	    Screen_WriteCharUninterpreted (screen, (the_char + '@'), &state);
 	  }
 	  else if (the_char < ASCII_DEL)
-	    Screen_WriteCharUninterpreted (screen, the_char);
+	    Screen_WriteCharUninterpreted (screen, the_char, &state);
 	  else if (the_char == ASCII_DEL)
 	  {
-	    Screen_WriteCharUninterpreted (screen, '^');
-	    Screen_WriteCharUninterpreted (screen, '?');
+	    Screen_WriteCharUninterpreted (screen, '^', &state);
+	    Screen_WriteCharUninterpreted (screen, '?', &state);
 	  }
 	  else
-	    screen_write_octal (screen, ((unsigned char) the_char));
+	    screen_write_octal (screen, ((unsigned char) the_char), &state);
+#else
+	  Screen_WriteCharUninterpreted (screen, the_char, &state);
+#endif
 	  break;
-	    
+	    
        case ASCII_ESC:
 	{
 	  char dispatch;
@@ -1839,7 +1978,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 				      (screen->row + 1), screen->width);
 	      i += 2;		/* 1 added in for loop */
 	      continue;
-
+
 	    case 'J':
 	      /* Clear to bottom */
 	      if (screen->column == 0)
@@ -1862,16 +2001,59 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 	      i += 2;		/* 1 added in for loop */
 	      continue;
 
+	    case 'A':
+	      /* Cursor up */
+	      relocate_cursor (screen, (screen->row - 1), screen->column);
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
 	    case 'C':
 	      /* Cursor right */
 	      relocate_cursor (screen, screen->row, (screen->column + 1));
 	      i += 2;		/* 1 added in for loop */
 	      continue;
 
-	    case 'A':
-	      /* Cursor up */
-	      relocate_cursor (screen, (screen->row - 1), screen->column);
+	    case 'L':
+	      /* Insert line */
+	      scroll_screen_vertically (screen,
+					screen->row, screen->column,
+					(screen->height - 1), screen->width,
+					(screen->row + 1));
+	      clear_screen_rectangle (screen,
+				      screen->row, screen->column,
+				      (screen->row + 1), screen->width);
 	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'M':
+	      /* Delete line */
+	      scroll_screen_vertically (screen,
+					(screen->row + 1), screen->column,
+					screen->height, screen->width,
+					screen->row);
+	      clear_screen_rectangle (screen,
+				      (screen->height - 1), screen->column,
+				      screen->height, screen->width);
+	      i += 2;		/* 1 added in for loop */
+	      continue;
+
+	    case 'P':
+	      /* Delete char */
+	      scroll_screen_line_horizontally (screen, screen->row,
+					       (screen->column + 1), screen->width,
+					       screen->column);
+	      i += 2;
+	      continue;
+
+	    case '@':
+	      /* Insert char */
+	      scroll_screen_line_horizontally (screen, screen->row,
+					       screen->column, (screen->width - 1),
+					       (screen->column + 1));
+#if 0
+	      Screen_WriteCharUninterpreted (screen, ' ', &state);
+#endif
+	      i += 2;
 	      continue;
 
 	    default:
@@ -1909,6 +2091,62 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 		    } 
 		  }
 
+		  case 'A':
+		    /* Multi cursor up */
+		    relocate_cursor (screen, (screen->row - x_value), screen->column);
+		    i = j; /* 1 added in for loop */
+		    continue;
+		  
+		  case 'C':
+		    /* Multi cursor right */
+		    relocate_cursor (screen, screen->row, (screen->column + x_value));
+		    i = j; /* 1 added in for loop */
+		    continue;
+		  
+		  case 'L':
+		    /* Multi insert line */
+		    scroll_screen_vertically (screen,
+					      screen->row, screen->column,
+					      (screen->height - 1), screen->width,
+					      (screen->row + x_value));
+		    clear_screen_rectangle (screen,
+					    screen->row, screen->column,
+					    (screen->row + x_value), screen->width);
+		    i = j; /* 1 added in for loop */
+		    continue;
+
+		  case 'M':
+		    /* Multi delete line */
+		    scroll_screen_vertically (screen,
+					      (screen->row + x_value), screen->column,
+					      screen->height, screen->width,
+					      screen->row);
+		    clear_screen_rectangle (screen,
+					    (screen->height - x_value), screen->column,
+					    screen->height, screen->width);
+		    i = j; /* 1 added in for loop */
+		    continue;
+
+		  case 'P':
+		    /* Multi delete char */
+		    scroll_screen_line_horizontally (screen, screen->row,
+						     (screen->column + x_value), screen->width,
+						     screen->column);
+		    i = j; /* 1 added in for loop */
+		    continue;
+
+		  case '@':
+		    /* Multi insert char */
+		    scroll_screen_line_horizontally (screen, screen->row,
+						     screen->column, (screen->width - x_value),
+						     (screen->column + x_value));
+#if 0
+		    while (--x_value >= 0)
+		      Screen_WriteCharUninterpreted (screen, ' ', &state);
+#endif
+		    i = j; /* 1 added in for loop */
+		    continue;
+
 		  case 'm':
 		    if ((j == (i + 3)) && ((x_value == 0) || (x_value == 7)))
 		    {
@@ -1931,6 +2169,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
 	}
       }
    }
+   Finish_ScreenWriteChar (screen, &state);
    if (saved_mode_flags != 0)
    {
      UpdateWindow (screen->hWnd);
@@ -1957,7 +2196,7 @@ key_buffer_insert_self (SCREEN screen, int ch)
       } else
       {
 	char c = ((char) ch);
-	//Screen_WriteCharUninterpreted (screen, ch);
+	//Screen_WriteCharUninterpreted (screen, ch, NULL);
 	WriteScreenBlock (screen->hWnd, &c, 1);
       }
     }
@@ -1974,7 +2213,7 @@ key_buffer_erase_character (SCREEN screen)
     if (screen->mode_flags & SCREEN_MODE_ECHO)
     {
       Screen_BS (screen);
-      Screen_WriteCharUninterpreted (screen, ' ');
+      Screen_WriteCharUninterpreted (screen, ' ', NULL);
       Screen_BS (screen);
     }
   }
@@ -2087,7 +2326,7 @@ ReadScreen_raw (SCREEN screen, LPSTR buffer, int buflen)
 	if (screen->mode_flags & SCREEN_MODE_ECHO)
 	{
 	  char c = ((char) ch);
-	  // Screen_WriteCharUninterpreted (screen, ch);
+	  // Screen_WriteCharUninterpreted (screen, ch, NULL);
 	  WriteScreenBlock (screen->hWnd, &c, 1);
 	}
 	
