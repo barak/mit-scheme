@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.310 1999/02/16 00:34:29 cph Exp $
+$Id: runtime.pkg,v 14.311 1999/02/16 00:40:53 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -956,7 +956,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  operation/output-terminal-mode
 	  operation/peek-char
 	  operation/read-char
-	  operation/read-chars
 	  operation/read-string
 	  operation/read-substring
 	  operation/set-input-blocking-mode

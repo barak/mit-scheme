@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.9 1999/02/16 00:34:42 cph Exp $
+$Id: genio.scm,v 1.10 1999/02/16 00:41:03 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -40,7 +40,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (INPUT-TERMINAL-MODE ,operation/input-terminal-mode)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
-	   (READ-CHARS ,operation/read-chars)
 	   (READ-STRING ,operation/read-string)
 	   (READ-SUBSTRING ,operation/read-substring)
 	   (SET-INPUT-BLOCKING-MODE ,operation/set-input-blocking-mode)
@@ -176,12 +175,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (operation/read-char port)
   (input-buffer/read-char (port/input-buffer port)))
-
-(define (operation/read-chars port result-buffer)
-  (input-buffer/read-substring (port/input-buffer port)
-			       result-buffer
-			       0
-			       (string-length result-buffer)))
 
 (define (operation/read-substring port string start end)
   (input-buffer/read-substring (port/input-buffer port) string start end))

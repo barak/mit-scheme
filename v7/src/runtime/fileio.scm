@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.12 1999/02/16 00:34:36 cph Exp $
+$Id: fileio.scm,v 1.13 1999/02/16 00:40:59 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -41,7 +41,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (LENGTH ,operation/length)
 	   (PEEK-CHAR ,operation/peek-char)
 	   (READ-CHAR ,operation/read-char)
-	   (READ-CHARS ,operation/read-chars)
 	   (READ-STRING ,operation/read-string)
 	   (READ-SUBSTRING ,operation/read-substring)
 	   (REST->STRING ,operation/rest->string)
