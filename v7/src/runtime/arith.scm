@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.10 1989/11/30 07:52:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.11 1989/12/29 19:19:12 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -1390,7 +1390,9 @@ MIT in each case. |#
 	     ((copy real:asin) z))))))
 
 (define (complex:acos z)
-  (if (recnum? z)
+  (if (or (recnum? z)
+	  (real:< z -1)
+	  (real:< 1 z))
       (complex:- rec:pi/2 (complex:asin z))
       ((copy real:acos) z)))
 
@@ -1492,12 +1494,13 @@ MIT in each case. |#
       (real:abs z)))
 
 (define (complex:angle z)
-  (if (recnum? z)
-      (if (and (real:zero? (rec:real-part z))
-	       (real:zero? (rec:imag-part z)))
-	  (real:0 (complex:exact? z))
-	  (real:atan2 (rec:imag-part z) (rec:real-part z)))
-      (real:0 (real:exact? z))))
+  (cond ((recnum? z)
+	 (if (and (real:zero? (rec:real-part z))
+		  (real:zero? (rec:imag-part z)))
+	     (real:0 (complex:exact? z))
+	     (real:atan2 (rec:imag-part z) (rec:real-part z))))
+	((real:negative? z) rec:pi)
+	(else (real:0 (real:exact? z)))))
 
 (define (complex:exact->inexact z)
   (if (recnum? z)
