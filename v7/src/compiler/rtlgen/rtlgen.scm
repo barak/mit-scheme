@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.12 1987/05/07 00:22:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.13 1987/05/07 04:38:32 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -105,8 +105,11 @@ MIT in each case. |#
 
 (define (generate/normal-statement node subproblem? generator)
   (if (snode-next node)
-      (scfg*scfg->scfg! (generator node true)
-			(generate/node (snode-next node) subproblem?))
+      ;; Due to the side-effect on combination-value temporaries, we
+      ;; must generate the nodes in the control flow order.
+      (let ((cfg (generator node true)))
+	(scfg*scfg->scfg! cfg
+			  (generate/node (snode-next node) subproblem?)))
       (generator node subproblem?)))
 
 (define (define-predicate-generator tag generator)
@@ -114,10 +117,13 @@ MIT in each case. |#
 
 (define (normal-predicate-generator generator)
   (lambda (node subproblem?)
-    (pcfg*scfg->scfg!
-     (generator node)
-     (generate/node (pnode-consequent node) subproblem?)
-     (generate/node (pnode-alternative node) subproblem?))))
+    ;; Due to the side-effect on combination-value temporaries, we
+    ;; must generate the nodes in the control flow order.
+    (let ((cfg (generator node)))
+      (pcfg*scfg->scfg!
+       cfg
+       (generate/node (pnode-consequent node) subproblem?)
+       (generate/node (pnode-alternative node) subproblem?)))))
 
 (define-integrable (node-rtl-result node)
   (node-property-get node tag/node-rtl-result))
