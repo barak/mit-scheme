@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.3 1988/01/12 16:38:52 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.4 1988/02/23 19:47:03 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -42,8 +42,8 @@ MIT in each case. |#
 (define-rule statement
   (POP-RETURN)
   (LAP ,@(clear-map!)
-       (CLR B (@R 14))
-       (RTS)))
+       (CLR B (@RO B 14 3))
+       (RSB)))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -111,7 +111,7 @@ MIT in each case. |#
 		     (else
 		      ;; Unknown primitive arity.  Go through apply.
 		      (LAP ,(load-rnw frame-size 0)
-			   (PUSH L (@PCR ,(constant->label primitive)))
+			   (PUSHL (@PCR ,(constant->label primitive)))
 			   (JMP ,entry:compiler-apply))))))))
 
 (let-syntax
@@ -148,7 +148,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size)
-				   (OFFSET-ADDRESS (REGISTER 15) (? offset)))
+				   (OFFSET-ADDRESS (REGISTER 14) (? offset)))
   (let ((how-far (- offset frame-size)))
     (cond ((zero? how-far)
 	   (LAP))
@@ -178,21 +178,21 @@ MIT in each case. |#
   (generate/move-frame-up frame-size (indirect-reference! base offset)))
 
 (define-rule statement
-  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 15) (REGISTER 12))
+  (INVOCATION-PREFIX:DYNAMIC-LINK 0 (REGISTER 14) (REGISTER 10))
   (LAP))
 
 (define-rule statement
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (OFFSET-ADDRESS (REGISTER (? base))
 						  (? offset))
-				  (REGISTER 12))
+				  (REGISTER 10))
   (let ((label (generate-label))
 	(temp (allocate-temporary-register! 'GENERAL)))
     (let ((temp-ref (register-reference temp)))
       (LAP (MOVA L ,(indirect-reference! base offset) ,temp-ref)
-	   (CMP L ,temp-ref (R 12))
+	   (CMP L ,temp-ref (R 10))
 	   (B B GEQU (@PCR ,label))
-	   (MOV L (R 12) ,temp-ref)
+	   (MOV L (R 10) ,temp-ref)
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
 
@@ -208,8 +208,8 @@ MIT in each case. |#
 	    frame-size 5
 	    (lambda ()
 	      (INST (MOV L
-			 (@-R temp)
-			 (@-R destination))))
+			 (@-R ,temp)
+			 (@-R ,destination))))
 	    (lambda (generator)
 	      (generator (allocate-temporary-register! 'GENERAL))))
 	 (MOV L ,(register-reference destination) (R 14)))))
@@ -284,12 +284,11 @@ MIT in each case. |#
 
 (define-rule statement
   (PROCEDURE-HEAP-CHECK (? label))
-  (disable-frame-pointer-offset!
-   (let ((gc-label (generate-label)))
-     (LAP ,@(procedure-header (label->object label) gc-label)
-	  (CMP L ,reg:compiled-memtop (R 12))
-	  ;; *** LEQU ? ***
-	  (B B LEQ (@PCR ,gc-label))))))
+  (let ((gc-label (generate-label)))
+    (LAP ,@(procedure-header (label->object label) gc-label)
+	 (CMP L ,reg:compiled-memtop (R 12))
+	 ;; *** LEQU ? ***
+	 (B B LEQ (@PCR ,gc-label)))))
 
 ;;; Note: do not change the (& ,mumble) in the setup-lexpr call to a
 ;;; (S ,mumble).  The setup-lexpr code assumes a fixed calling
@@ -299,16 +298,15 @@ MIT in each case. |#
 
 (define-rule statement
   (SETUP-LEXPR (? label))
-  (disable-frame-pointer-offset!
-   (let ((procedure (label->object label)))
-     (LAP ,@(procedure-header procedure false)
-	  (MOV W
-	       (& ,(+ (rtl-procedure/n-required procedure)
-		      (rtl-procedure/n-optional procedure)
-		      (if (rtl-procedure/closure? procedure) 1 0)))
-	       (R 1))
-	  (MOV L (S ,(if (rtl-procedure/rest? procedure) 1 0)) (R 2))
-	  (JSB ,entry:compiler-setup-lexpr)))))
+  (let ((procedure (label->object label)))
+    (LAP ,@(procedure-header procedure false)
+	 (MOV W
+	      (& ,(+ (rtl-procedure/n-required procedure)
+		     (rtl-procedure/n-optional procedure)
+		     (if (rtl-procedure/closure? procedure) 1 0)))
+	      (R 1))
+	 (MOV L (S ,(if (rtl-procedure/rest? procedure) 1 0)) (R 2))
+	 (JSB ,entry:compiler-setup-lexpr))))
 
 (define-rule statement
   (CONTINUATION-HEAP-CHECK (? internal-label))
