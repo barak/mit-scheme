@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.43 1993/08/12 08:23:59 cph Exp $
+$Id: load.scm,v 14.44 1993/10/15 10:26:32 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -45,6 +45,10 @@ MIT in each case. |#
   (set! load/default-types '("com" "bin" "scm"))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! fasload/default-types '("com" "bin"))
+  (set! load/current-pathname)
+  (set! condition-type:not-loading
+	(make-condition-type 'NOT-LOADING condition-type:error '()
+	  "No file being loaded."))
   (initialize-command-line-parsers)
   (set! hook/process-command-line default/process-command-line)
   (add-event-receiver! event:after-restart process-command-line))
@@ -55,6 +59,7 @@ MIT in each case. |#
 (define load/default-types)
 (define load/after-load-hooks)
 (define load/current-pathname)
+(define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
 
@@ -157,9 +162,12 @@ MIT in each case. |#
 	    (for-each (lambda (hook) (hook)) (reverse hooks)))
 	result))))
 
+(define (current-load-pathname)
+  (if (not load/loading?) (error condition-type:not-loading))
+  load/current-pathname)
+
 (define (load/push-hook! hook)
-  (if (not load/loading?)
-      (error "not loading any file" 'LOAD/PUSH-HOOK!))
+  (if (not load/loading?) (error condition-type:not-loading))
   (set! load/after-load-hooks (cons hook load/after-load-hooks))
   unspecific)
 
@@ -233,12 +241,14 @@ MIT in each case. |#
 		 (eval-stream (read-stream port) environment syntax-table))))
 	  (if load-noisily?
 	      (write-stream (value-stream)
-			    (lambda (value)
-			      (hook/repl-write (nearest-repl) value)))
+			    (lambda (exp&value)
+			      (hook/repl-write (nearest-repl)
+					       (car exp&value)
+					       (cdr exp&value))))
 	      (loading-message load/suppress-loading-message? pathname
 		(lambda ()
 		  (write-stream (value-stream)
-				(lambda (value) value false)))))))))
+				(lambda (exp&value) exp&value false)))))))))
 
 (define *purification-root-marker*)
 
@@ -257,7 +267,7 @@ MIT in each case. |#
 			 (eq? (car frob) *purification-root-marker*)
 			 (cdr frob))))))
       object))
-
+
 (define (read-stream port)
   (parse-objects port
 		 (current-parser-table)
@@ -280,19 +290,20 @@ MIT in each case. |#
 			    (repl/syntax-table repl)
 			    syntax-table))))
 		  (lambda (s-expression)
-		    (hook/repl-eval #f
-				    s-expression
-				    environment
-				    syntax-table))))))
+		    (cons s-expression
+			  (hook/repl-eval #f
+					  s-expression
+					  environment
+					  syntax-table)))))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
-      (let loop ((value (stream-car stream)) (stream (stream-cdr stream)))
+      (let loop ((exp&value (stream-car stream)) (stream (stream-cdr stream)))
 	(if (stream-pair? stream)
 	    (begin
-	      (write value)
+	      (write exp&value)
 	      (loop (stream-car stream) (stream-cdr stream)))
-	    value))
+	    (cdr exp&value)))
       unspecific))
 
 (define (process-command-line)

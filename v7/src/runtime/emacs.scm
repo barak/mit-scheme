@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 14.13 1992/02/27 01:12:02 cph Exp $
+$Id: emacs.scm,v 14.14 1993/10/15 10:26:29 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -145,7 +145,8 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port object hash-number)
+(define (emacs/write-result port expression object hash-number)
+  expression
   (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
 	(hash-number

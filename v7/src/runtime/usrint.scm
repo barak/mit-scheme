@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.4 1993/08/12 08:23:52 cph Exp $
+$Id: usrint.scm,v 1.5 1993/10/15 10:26:42 cph Exp $
 
 Copyright (c) 1991-93 Massachusetts Institute of Technology
 
@@ -175,13 +175,14 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Hooks
 
-(define (port/write-result port value hash-number)
+(define (port/write-result port expression value hash-number)
   (let ((operation (port/operation port 'WRITE-RESULT)))
     (if operation
-	(operation port value hash-number)
-	(default/write-result port value hash-number))))
+	(operation port expression value hash-number)
+	(default/write-result port expression value hash-number))))
 
-(define (default/write-result port object hash-number)
+(define (default/write-result port expression object hash-number)
+  expression
   (port/with-output-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)

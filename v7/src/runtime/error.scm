@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.34 1993/07/01 22:19:21 cph Exp $
+$Id: error.scm,v 14.35 1993/10/15 10:26:30 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -528,16 +528,7 @@ MIT in each case. |#
     (if hook
 	(fluid-let ((standard-error-hook false))
 	  (hook condition))))
-  (let ((thread (current-thread))
-	(owner (thread-mutex-owner (port/thread-mutex (nearest-cmdl/port)))))
-    (if (and owner (not (eq? thread owner)))
-	(begin
-	  (signal-thread-event owner
-	    (lambda ()
-	      (unblock-thread-events)
-	      (error:derived-thread thread condition)))
-	  (stop-current-thread))
-	(repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))))
+  (repl/start (push-repl 'INHERIT 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
   (let ((hook standard-warning-hook))
@@ -844,7 +835,7 @@ MIT in each case. |#
 	    (write-string "The restart named " port)
 	    (write (access-condition condition 'NAME) port)
 	    (write-string " is not bound." port))))
-
+
   (let ((anonymous-error
 	 (lambda (type-name field-name)
 	   (make-condition-type type-name condition-type:error
@@ -857,7 +848,7 @@ MIT in each case. |#
     (set! condition-type:file-error (anonymous-error 'FILE-ERROR 'FILENAME))
     (set! condition-type:cell-error (anonymous-error 'CELL-ERROR 'LOCATION))
     (set! condition-type:thread-error (anonymous-error 'THREAD-ERROR 'THREAD)))
-
+
   (set! condition-type:derived-port-error
 	(make-condition-type 'DERIVED-PORT-ERROR condition-type:port-error
 	    '(CONDITION)
@@ -906,10 +897,15 @@ MIT in each case. |#
 	  (lambda (condition port)
 	    (write-string "The thread " port)
 	    (write (access-condition condition 'THREAD) port)
-	    (write-string " signalled an error:" port)
-	    (newline port)
-	    (write-condition-report (access-condition condition 'CONDITION)
-				    port))))
+	    (write-string " signalled " port)
+	    (let ((condition (access-condition condition 'CONDITION)))
+	      (write-string (if (condition/error? condition)
+				"an error"
+				"a condition")
+			    port)
+	      (write-string ":" port)
+	      (newline port)
+	      (write-condition-report condition port)))))
   (set! error:derived-thread
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-thread-error

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.11 1992/11/20 19:37:03 gjr Exp $
+$Id: advice.scm,v 14.12 1993/10/15 10:26:28 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -227,30 +227,33 @@ MIT in each case. |#
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-	   (bind-restart 'USE-VALUE
-	       "Return a value from the advised procedure."
-	       continuation
-	     (lambda (restart)
-	       (restart/put! restart 'INTERACTIVE
-		 (lambda ()
-		   (prompt-for-evaluated-expression "Procedure value")))
-	       (for-each (lambda (advice)
-			   (with-simple-restart 'CONTINUE
-			       "Continue with advised procedure."
-			     (lambda ()
-			       (advice procedure arguments environment))))
-			 (car state))
-	       (let ((value (scode-eval original-body environment)))
+	   (fluid-let ((advice-continuation continuation))
+	     (bind-restart 'USE-VALUE
+		 "Return a value from the advised procedure."
+		 continuation
+	       (lambda (restart)
+		 (restart/put! restart 'INTERACTIVE
+		   (lambda ()
+		     (prompt-for-evaluated-expression "Procedure value")))
 		 (for-each (lambda (advice)
 			     (with-simple-restart 'CONTINUE
-				 "Return from advised procedure."
+				 "Continue with advised procedure."
 			       (lambda ()
-				 (advice procedure
-					 arguments
-					 value
-					 environment))))
-			   (cdr state))
-		 value)))))))))
+				 (advice procedure arguments environment))))
+			   (car state))
+		 (let ((value (scode-eval original-body environment)))
+		   (for-each (lambda (advice)
+			       (with-simple-restart 'CONTINUE
+				   "Return from advised procedure."
+				 (lambda ()
+				   (advice procedure
+					   arguments
+					   value
+					   environment))))
+			     (cdr state))
+		   value))))))))))
+
+(define advice-continuation #f)
 
 ;;;; Primitive Advisors
 
@@ -406,16 +409,6 @@ MIT in each case. |#
 		  (newline)
 		  (write-string "          ...]"))))))))
 
-(define (break-rep environment message . info)
-  (breakpoint (cmdl-message/append
-	       (cmdl-message/active
-		(lambda (port)
-		  (with-output-to-port port
-		    (lambda ()
-		      (apply trace-display info)))))
-	       (cmdl-message/strings message))
-	      environment))
-
 (define (break-entry-advice procedure arguments environment)
   (fluid-let ((the-procedure procedure)
 	      (the-arguments arguments))
@@ -427,6 +420,16 @@ MIT in each case. |#
 	      (the-result result))
     (break-rep environment "Breakpoint on exit" procedure arguments result))
   result)
+
+(define (break-rep environment message . info)
+  (breakpoint (cmdl-message/append (cmdl-message/active
+				    (lambda (port)
+				      (with-output-to-port port
+					(lambda ()
+					  (apply trace-display info)))))
+				   message)
+	      environment
+	      advice-continuation))
 
 ;;;; Top Level Wrappers
 

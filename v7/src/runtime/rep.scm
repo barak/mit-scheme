@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.35 1993/08/13 00:07:10 cph Exp $
+$Id: rep.scm,v 14.36 1993/10/15 10:26:33 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
   (set! hook/repl-write default/repl-write)
   (set! hook/set-default-environment default/set-default-environment)
   (set! hook/error-decision false)
+  (initialize-breakpoint-condition!)
   unspecific)
 
 (define (initial-top-level-repl)
@@ -120,18 +121,16 @@ MIT in each case. |#
   (port/set-default-directory (cmdl/port cmdl) pathname))
 
 (define (cmdl/start cmdl message)
-  (let ((operation
-	 (let ((parent (cmdl/parent cmdl)))
-	   (and parent
-		(cmdl/local-operation parent 'START-CHILD))))
+  (let ((port (cmdl/port cmdl))
 	(thunk
 	 (lambda ()
 	   (fluid-let ((*nearest-cmdl* cmdl)
 		       (dynamic-handler-frames '())
 		       (*bound-restarts*
 			(if (cmdl/parent cmdl) *bound-restarts* '()))
-		       (standard-error-hook false)
-		       (standard-warning-hook false)
+		       (standard-error-hook #f)
+		       (standard-warning-hook #f)
+		       (standard-breakpoint-hook #f)
 		       (*working-directory-pathname*
 			*working-directory-pathname*)
 		       (*default-pathname-defaults*
@@ -144,17 +143,34 @@ MIT in each case. |#
 		      (lambda (interrupt-mask)
 			interrupt-mask
 			(unblock-thread-events)
-			(message cmdl)
+			((->cmdl-message message) cmdl)
 			(call-with-current-continuation
 			 (lambda (continuation)
 			   (with-create-thread-continuation continuation
 			     (lambda ()
 			       ((cmdl/driver cmdl) cmdl)))))))))))))))
-    (if operation
-	(operation cmdl thunk)
-	(with-thread-mutex-locked (port/thread-mutex (cmdl/port cmdl))
-	  thunk))))
-
+    (let ((mutex (port/thread-mutex port)))
+      (let ((thread (current-thread))
+	    (owner (thread-mutex-owner mutex)))
+	(cond ((and owner (not (eq? thread owner)))
+	       (signal-thread-event owner
+		 (let ((signaller
+			(or (cmdl/local-operation cmdl 'START-NON-OWNED)
+			    (lambda (cmdl thread)
+			      cmdl
+			      (error "Non-owner thread can't start CMDL:"
+				     thread)))))
+		   (lambda ()
+		     (unblock-thread-events)
+		     (signaller cmdl thread))))
+	       (stop-current-thread))
+	      ((let ((parent (cmdl/parent cmdl)))
+		 (and parent
+		      (cmdl/local-operation parent 'START-CHILD)))
+	       => (lambda (operation) (operation cmdl thunk)))
+	      (else
+	       (with-thread-mutex-locked mutex thunk)))))))
+
 (define (bind-abort-restart cmdl thunk)
   (call-with-current-continuation
    (lambda (continuation)
@@ -174,9 +190,7 @@ MIT in each case. |#
 		;; Inform the port that the default directory has changed.
 		(port/set-default-directory port
 					    (working-directory-pathname))))
-	     (if (default-object? message)
-		 (cmdl-message/strings "Abort!")
-		 message))))
+	     (if (default-object? message) "Abort!" message))))
        (lambda (restart)
 	 (restart/put! restart make-cmdl cmdl)
 	 (thunk))))))
@@ -243,6 +257,11 @@ MIT in each case. |#
 
 ;;;; Messages
 
+(define (->cmdl-message object)
+  (cond ((not object) (cmdl-message/null))
+	((string? object) (cmdl-message/strings object))
+	(else object)))
+
 (define ((cmdl-message/strings . strings) cmdl)
   (let ((port (cmdl/port cmdl)))
     (port/with-output-terminal-mode port 'COOKED
@@ -260,6 +279,9 @@ MIT in each case. |#
 	(actor port)))))
 
 (define (cmdl-message/append . messages)
+  (do ((messages messages (cdr messages)))
+      ((null? messages))
+    (set-car! messages (->cmdl-message (car messages))))
   (let ((messages (delq! %cmdl-message/null messages)))
     (cond ((null? messages)
 	   (cmdl-message/null))
@@ -327,8 +349,7 @@ MIT in each case. |#
 (define (invoke-abort restart message)
   (let ((effector (restart/effector restart)))
     (if (restart/get restart make-cmdl)
-	(effector
-	 (if (string? message) (cmdl-message/strings message) message))
+	(effector message)
 	(effector))))
 
 ;;;; REP Loops
@@ -359,7 +380,13 @@ MIT in each case. |#
 		     default-repl-operations)))
 
 (define default-repl-operations
-  `((START-CHILD ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))))
+  `((START-CHILD ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))
+    (START-NON-OWNED
+     ,(lambda (repl thread)
+	(let ((condition (repl/condition repl)))
+	  (if condition
+	      (error:derived-thread thread condition)
+	      (error "Non-owner thread can't start REPL:" thread)))))))
 
 (define (push-repl environment syntax-table
 		   #!optional condition operations prompt)
@@ -378,23 +405,20 @@ MIT in each case. |#
     (port/set-default-environment (cmdl/port repl) (repl/environment repl))
     (port/set-default-syntax-table (cmdl/port repl) (repl/syntax-table repl))
     (do () (false)
-      (hook/repl-write
-       repl
-       (let ((value
-	      (hook/repl-eval
-	       repl
-	       (let ((s-expression
-		      (hook/repl-prompt
-		       (string-append (number->string (cmdl/level repl))
-				      " "
-				      (repl/prompt repl))
-		       (cmdl/port repl))))
-		 (repl-history/record! reader-history s-expression)
-		 s-expression)
-	       (repl/environment repl)
-	       (repl/syntax-table repl))))
-	 (repl-history/record! printer-history value)
-	 value)))))
+      (let ((s-expression
+	     (hook/repl-prompt
+	      (string-append (number->string (cmdl/level repl))
+			     " "
+			     (repl/prompt repl))
+	      (cmdl/port repl))))
+	(repl-history/record! reader-history s-expression)
+	(let ((value
+	       (hook/repl-eval repl
+			       s-expression
+			       (repl/environment repl)
+			       (repl/syntax-table repl))))
+	  (repl-history/record! printer-history value)
+	  (hook/repl-write repl s-expression value))))))
 
 (define hook/repl-prompt)
 (define (default/repl-prompt prompt port)
@@ -419,8 +443,9 @@ MIT in each case. |#
    repl))
 
 (define hook/repl-write)
-(define (default/repl-write repl object)
+(define (default/repl-write repl s-expression object)
   (port/write-result (cmdl/port repl)
+		     s-expression
 		     object
 		     (and repl:write-result-hash-numbers?
 			  (object-pointer? object)
@@ -438,32 +463,24 @@ MIT in each case. |#
 (define (make-repl-message repl message)
   (let ((condition (repl/condition repl)))
     (cmdl-message/append
-     (cond ((not message)
-	    (if condition
-		(cmdl-message/strings
-		 (fluid-let ((*unparser-list-depth-limit* 25)
-			     (*unparser-list-breadth-limit* 100)
-			     (*unparser-string-length-limit* 500))
-		   (condition/report-string condition)))
-		(cmdl-message/null)))
-	   ((string? message)
-	    (cmdl-message/strings message))
-	   (else
-	    message))
-     (if condition
-	 (cmdl-message/append
-	  (if (condition/error? condition)
-	      (lambda (repl)
-		(cond ((cmdl/operation repl 'ERROR-DECISION)
-		       => (lambda (operation)
-			    (operation repl condition)))
-		      (hook/error-decision
-		       (hook/error-decision repl condition))))
-	      (cmdl-message/null))
-	  (if repl:allow-restart-notifications?
-	      (condition-restarts-message condition)
-	      (cmdl-message/null)))
-	 (cmdl-message/null))
+     (or message
+	 (and condition
+	      (cmdl-message/strings
+	       (fluid-let ((*unparser-list-depth-limit* 25)
+			   (*unparser-list-breadth-limit* 100)
+			   (*unparser-string-length-limit* 500))
+		 (condition/report-string condition)))))
+     (and condition
+	  (cmdl-message/append
+	   (and (condition/error? condition)
+		(lambda (repl)
+		  (cond ((cmdl/operation repl 'ERROR-DECISION)
+			 => (lambda (operation)
+			      (operation repl condition)))
+			(hook/error-decision
+			 (hook/error-decision repl condition)))))
+	   (and repl:allow-restart-notifications?
+		(condition-restarts-message condition))))
      repl/set-default-environment)))
 
 (define hook/error-decision)
@@ -747,27 +764,9 @@ MIT in each case. |#
 (define (out #!optional index)
   (repl-history/read (repl/printer-history (nearest-repl))
 		     (- (if (default-object? index) 1 index) 1)))
-
+
 (define (read-eval-print environment message prompt)
   (repl/start (push-repl environment 'INHERIT false '() prompt) message))
-
-(define (breakpoint #!optional message environment)
-  (with-simple-restart 'CONTINUE "Continue from breakpoint."
-    (lambda ()
-      (read-eval-print (if (default-object? environment) 'INHERIT environment)
-		       (if (default-object? message) "Break!" message)
-		       "break>"))))
-
-(define (breakpoint-procedure environment datum . arguments)
-  ;; BKPT expands into this.
-  (with-simple-restart 'CONTINUE "Return from BKPT."
-    (lambda ()
-      (read-eval-print environment
-		       (cmdl-message/active
-			(lambda (port)
-			  (newline port)
-			  (format-error-message datum arguments port)))
-		       "bkpt>"))))
 
 (define (ve environment)
   (read-eval-print (->environment environment) false 'INHERIT))
@@ -779,3 +778,125 @@ MIT in each case. |#
   (let ((port (nearest-cmdl/port)))
     (fresh-line port)
     (write-string ";Unable to PROCEED" port)))
+
+;;;; Breakpoints
+
+(define (new-bkpt datum . arguments)
+  (apply breakpoint-procedure 'CONTINUATION-ENVIRONMENT datum arguments))
+
+(define (breakpoint-procedure environment datum . arguments)
+  ;; BKPT expands into this.
+  (signal-breakpoint #f
+		     environment
+		     (cmdl-message/active
+		      (lambda (port)
+			(fresh-line port)
+			(format-error-message datum arguments port)))
+		     "bkpt>"))
+
+(define (breakpoint #!optional message environment continuation)
+  (signal-breakpoint (if (default-object? continuation)
+			 #f
+			 continuation)
+		     (if (default-object? environment)
+			 (nearest-repl/environment)
+			 environment)
+		     (if (default-object? message)
+			 "Break!"
+			 message)
+		     "break>"))
+
+(define (signal-breakpoint continuation environment message prompt)
+  (call-with-current-continuation
+   (lambda (restart-continuation)
+     (let ((continuation (or continuation restart-continuation)))
+       (bind-restart 'CONTINUE
+	   (if (string=? "bkpt>" prompt)
+	       "Return from BKPT."
+	       "Continue from breakpoint.")
+	   (lambda () (restart-continuation unspecific))
+	 (lambda (restart)
+	   restart
+	   (call-with-values
+	       (lambda ()
+		 (get-breakpoint-environment continuation environment message))
+	     (lambda (environment message)
+	       (%signal-breakpoint continuation
+				   environment
+				   message
+				   prompt)))))))))
+
+(define (get-breakpoint-environment continuation environment message)
+  (let ((environment
+	 (if (eq? 'CONTINUATION-ENVIRONMENT environment)
+	     (continuation/first-subproblem-environment continuation)
+	     environment)))
+    (if (eq? 'NO-ENVIRONMENT environment)
+	(values (nearest-repl/environment)
+		(cmdl-message/append
+		 message
+		 (cmdl-message/strings
+		  "Breakpoint environment unavailable;"
+		  "using REPL environment instead.")))
+	(values environment message))))
+
+(define (continuation/first-subproblem-environment continuation)
+  (let ((frame (continuation/first-subproblem continuation)))
+    (if frame
+	(call-with-values (lambda () (stack-frame/debugging-info frame))
+	  (lambda (expression environment subexpression)
+	    expression subexpression
+	    (if (debugging-info/undefined-environment? environment)
+		'NO-ENVIRONMENT
+		environment)))
+	'NO-ENVIRONMENT)))
+
+(define condition-type:breakpoint)
+(define condition/breakpoint?)
+(define breakpoint/environment)
+(define breakpoint/message)
+(define breakpoint/prompt)
+(define %signal-breakpoint)
+
+(define (initialize-breakpoint-condition!)
+  (set! condition-type:breakpoint
+	(make-condition-type 'BREAKPOINT #f '(ENVIRONMENT MESSAGE PROMPT)
+	  (lambda (condition port)
+	    condition
+	    (write-string "Breakpoint." port))))
+  (set! condition/breakpoint?
+	(condition-predicate condition-type:breakpoint))
+  (set! breakpoint/environment
+	(condition-accessor condition-type:breakpoint 'ENVIRONMENT))
+  (set! breakpoint/message
+	(condition-accessor condition-type:breakpoint 'MESSAGE))
+  (set! breakpoint/prompt
+	(condition-accessor condition-type:breakpoint 'PROMPT))
+  (set! %signal-breakpoint
+	(let ((make-condition
+	       (condition-constructor condition-type:breakpoint
+				      '(ENVIRONMENT MESSAGE PROMPT))))
+	  (lambda (continuation environment message prompt)
+	    (let ((condition
+		   (make-condition continuation
+				   'BOUND-RESTARTS
+				   environment
+				   message
+				   prompt)))
+	      (signal-condition condition)
+	      (standard-breakpoint-handler condition)))))
+  unspecific)
+
+(define (standard-breakpoint-handler condition)
+  (let ((hook standard-breakpoint-hook))
+    (if hook
+	(fluid-let ((standard-breakpoint-hook #f))
+	  (hook condition))))
+  (repl/start (push-repl (breakpoint/environment condition)
+			 'INHERIT
+			 condition
+			 '()
+			 (breakpoint/prompt condition))
+	      (breakpoint/message condition)))
+
+(define standard-breakpoint-hook #f)
