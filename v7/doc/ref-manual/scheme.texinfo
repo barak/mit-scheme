@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.48 1995/01/19 06:15:43 adams Exp $
+@comment $Id: scheme.texinfo,v 1.49 1995/03/02 04:56:36 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -10416,6 +10416,56 @@ The example prints the tree:
                   @var{wt-tree}))
 @end example
 @end deffn
+
+@deffn {procedure+} wt-tree/union-merge wt-tree-1 wt-tree-2 merge
+Returns a new tree containing all the associations from both trees.  If
+both trees have an association for the same key, the datum associated
+with that key in the result tree is computed by applying the procedure
+@var{merge} to the key, the value from @var{wt-tree-1} and the value
+from @var{wt-tree-2}.  @var{Merge} is of the form
+
+@example
+(lambda (@var{key} @var{datum-1} @var{datum-2}) ...)
+@end example
+
+If some key occurs only in one tree, that association will appear in the
+result tree without being processed by @var{merge}, so for this
+operation to make sense, either @var{merge} must have both a right and
+left identity which correspond to the association being absent in one of
+the trees, or some guarantee must be made, for example, all the keys in
+one tree are known to occur in the other.
+
+These are all reasonable procedures for @var{merge}
+
+@example
+(lambda (key val1 val2) (+ val1 val2))
+(lambda (key val1 val2) (append val1 val2))
+(lambda (key val1 val2) (wt-tree/union val1 val2))
+@end example
+
+However, a procedure like
+
+@example
+(lambda (key val1 val2) (- val1 val2))
+@end example
+
+would result in a subtraction of the data for all associations with keys
+occuring in both trees but associations with keys occuring in only the
+second tree would be copied, not negated, as is presumably be intent.
+The programmer might ensure that this never happens.
+
+This procedure has the same time behaviour as @code{wt-tree/union} but
+with a slightly worse constant factor.  Indeed, @code{wt-tree/union}
+might have beed defined like this:
+
+@example
+(define (wt-tree/union tree1 tree2)
+  (wt-tree/union-merge tree1 tree2 (lambda (key val1 val2) val2)))
+@end example
+@end deffn
+
+The @var{merge} procedure takes the @var{key} as a parameter in case the
+data are not independent of the key.
 
 
 @node Indexing Operations on Weight-Balanced Trees,  , Advanced Operations on Weight-Balanced Trees, Weight-Balanced Trees
