@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.21 2000/11/28 17:34:12 cph Exp $
+$Id: mklogs.scm,v 1.22 2000/11/28 18:24:12 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -48,11 +48,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 `((CHANGELOG? #t)
 				   (CHANGELOG-MAP ,changelog-map))))
 	    '("/scheme/v7/src"
-	      "/scheme/etc"
-	      "/scheme/v7/doc/imail"
-	      "/scheme/v7/doc/ref-manual"
-	      "/scheme/v7/doc/user-manual"
-	      "/scheme/v7/doc/sos")))
+	      "/scheme/v7/doc"
+	      "/scheme/etc")))
 (for-each (lambda (directory)
 	    (rcs-directory-log directory '()))
 	  '("/scheme/v8/src/bench"
