@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.50 1992/12/09 23:29:40 cph Exp $
+$Id: opncod.scm,v 4.51 1992/12/16 07:32:20 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -705,7 +705,7 @@ MIT in each case. |#
 	  (finish
 	   (rtl:make-cons-non-pointer
 	    (rtl:make-machine-constant (ucode-type fixnum))
-	    (rtl:make-object->datum (car expressions)))))
+	    (rtl:make-object->type (car expressions)))))
 	'(0)
 	false)))
   (define-open-coder/value 'OBJECT-TYPE open-coder)
