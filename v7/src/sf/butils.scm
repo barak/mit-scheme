@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.3 1989/08/17 15:59:21 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.4 1991/08/22 17:59:32 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -111,9 +111,9 @@ MIT in each case. |#
      (pathname-default-type pathname input-type)
      (pathname-new-type pathname output-type))))
 
-(define (compare-file-modification-times x y)
-  (let ((x (file-modification-time x)))
-    (and x
-	 (let ((y (file-modification-time y)))
-	   (and y
-		(< x y))))))
+(define (compare-file-modification-times source target)
+  (let ((source (file-modification-time source)))
+    (and source
+	 (let ((target (file-modification-time target)))
+	   (and target
+		(<= source target))))))
