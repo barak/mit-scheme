@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.2 1995/01/19 04:58:18 adams Exp $
+$Id: assconv.scm,v 1.3 1995/01/20 20:31:21 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
 ;;	    (named-lambda (,proc-name env form)
 ;;	      (assconv/remember ,code form))))))))
 
-;;______________________________________________________________________________
+;;_____________________________________________________________________________
 ;;
 ;; This version of assconv is an early attempt at getting a data
 ;; representation transformation into the debugging info.
@@ -84,8 +84,6 @@ MIT in each case. |#
 ;;    The filtering might be done frequently to avoid a great many
 ;;    descriptions, or rarely.
 
-
-variables
 
 (define-macro (define-assignment-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'ASSCONV/ keyword)))
