@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.469 2003/11/11 04:46:43 cph Exp $
+$Id: runtime.pkg,v 14.470 2004/01/06 06:22:37 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2666,13 +2666,24 @@ USA.
   (files "random")
   (parent (runtime))
   (export ()
+	  (random-source-state-ref export-random-state)
+	  (random-source? random-state?)
 	  *random-state*
+	  default-random-source
 	  export-random-state
 	  flo:random-unit
 	  import-random-state
+	  make-random-source
 	  make-random-state
 	  random
 	  random-byte-vector
+	  random-integer
+	  random-real
+	  random-source-make-integers
+	  random-source-make-reals
+	  random-source-pseudo-randomize!
+	  random-source-randomize!
+	  random-source-state-set!
 	  random-state?)
   (initialization (initialize-package!)))
 
