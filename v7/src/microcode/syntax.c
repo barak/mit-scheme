@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.15 1989/05/16 16:40:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.16 1989/05/16 17:00:37 cph Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -93,6 +93,13 @@ char syntax_code_spec[13] =
     ' ', '.', 'w', '_', '(', ')', '\'', '\"', '$', '\\', '/', '<', '>'
   };
 
+#define MERGE_PREFIX_BIT(result, bit)					\
+{									\
+  if ((result & bit) != 0)						\
+    error_bad_range_arg (1);						\
+  result |= bit;							\
+}
+
 DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 {
   long length, c, result;
@@ -101,7 +108,7 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
 
   CHECK_ARG (1, STRING_P);
   length = (string_length (ARG_REF (1)));
-  if (length > 6) error_bad_range_arg (1);
+  if (length > 7) error_bad_range_arg (1);
   scan = (string_pointer ((ARG_REF (1)), 0));
 
   if ((length--) > 0)
@@ -123,11 +130,11 @@ DEFINE_PRIMITIVE ("STRING->SYNTAX-ENTRY", Prim_string_to_syntax_entry, 1, 1, 0)
   while ((length--) > 0)
     switch (*scan++)
       {
-      case '1': result |= (1 << 16); break;
-      case '2': result |= (1 << 17); break;
-      case '3': result |= (1 << 18); break;
-      case '4': result |= (1 << 19); break;
-      case 'p': result |= (1 << 20); break;
+      case '1': MERGE_PREFIX_BIT (result, (1 << 16)); break;
+      case '2': MERGE_PREFIX_BIT (result, (1 << 17)); break;
+      case '3': MERGE_PREFIX_BIT (result, (1 << 18)); break;
+      case '4': MERGE_PREFIX_BIT (result, (1 << 19)); break;
+      case 'p': MERGE_PREFIX_BIT (result, (1 << 20)); break;
       case ' ': break;
       default: error_bad_range_arg (1);
       }
