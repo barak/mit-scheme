@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.30 1991/11/04 20:36:20 cph Exp $
+$Id: decls.scm,v 4.31 1992/10/19 19:18:23 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -333,11 +333,12 @@ MIT in each case. |#
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
+			      "toplev" "asstop" "crstop"
 			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
-			      "contin" "crstop" "ctypes" "debug" "enumer"
+			      "contin" "ctypes" "debug" "enumer"
 			      "infnew" "lvalue" "object" "pmerly" "proced"
 			      "refctx" "rvalue" "scode" "sets" "subprb"
-			      "switch" "toplev" "utils")
+			      "switch" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -409,7 +410,7 @@ MIT in each case. |#
 	(instruction-base
 	 (filename/append "machines/bobcat" "assmd" "machin"))
 	(lapgen-base
-	 (append (filename/append "back" "lapgn3" "regmap")
+	 (append (filename/append "back" "linear" "regmap")
 		 (filename/append "machines/bobcat" "lapgen")))
 	(assembler-base
 	 (append (filename/append "back" "symtab")
@@ -555,7 +556,6 @@ MIT in each case. |#
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
       "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
-    (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
     (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "mermap" "back" "regmap")

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.39 1992/09/24 22:07:15 cph Exp $
+$Id: compiler.pkg,v 1.40 1992/10/19 19:17:02 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -152,9 +152,11 @@ MIT in each case. |#
 
 (define-package (compiler top-level)
   (files "base/toplev"
-	 "base/crstop")
+	 "base/crstop"
+	 "base/asstop")
   (parent (compiler))
   (export ()
+	  cbf
 	  cf
 	  compile-bin-file
 	  compile-procedure
@@ -628,12 +630,13 @@ MIT in each case. |#
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  linearize-lap
+	  add-end-of-block-code!
 	  bblock-linearize-lap
-	  add-end-of-block-code!)
-  (export (compiler top-level)
 	  linearize-lap
-	  initialize-lap-linearizer!))
+	  set-current-branches!)
+  (export (compiler top-level)
+	  *end-of-block-code*
+	  linearize-lap))
 
 (define-package (compiler lap-optimizer)
   (files "machines/bobcat/lapopt")

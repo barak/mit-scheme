@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.30 1991/11/04 20:37:08 cph Exp $
-$MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
+$Id: decls.scm,v 4.31 1992/10/19 19:15:41 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compiler File Dependencies
+;;; package: (compiler declarations)
 
 (declare (usual-integrations))
 
@@ -45,7 +45,8 @@ MIT in each case. |#
   (set! source-filenames '())
   (set! source-hash)
   (set! source-nodes)
-  (set! source-nodes/by-rank))
+  (set! source-nodes/by-rank)
+  unspecific)
 
 (define (maybe-setup-source-nodes!)
   (if (null? source-filenames)
@@ -153,7 +154,8 @@ MIT in each case. |#
 (define (source-nodes/rank!)
   (compute-dependencies! source-nodes)
   (compute-ranks! source-nodes)
-  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes)))
+  (set! source-nodes/by-rank (source-nodes/sort-by-rank source-nodes))
+  unspecific)
 
 (define (compute-dependencies! nodes)
   (for-each (lambda (node)
@@ -333,11 +335,12 @@ MIT in each case. |#
 		     filenames))))
     (file-dependency/syntax/join
      (append (filename/append "base"
+			      "toplev" "asstop" "crstop"
 			      "blocks" "cfg1" "cfg2" "cfg3" "constr"
-			      "contin" "crstop" "ctypes" "debug" "enumer"
+			      "contin" "ctypes" "debug" "enumer"
 			      "infnew" "lvalue" "object" "pmerly" "proced"
 			      "refctx" "rvalue" "scode" "sets" "subprb"
-			      "switch" "toplev" "utils")
+			      "switch" "utils")
 	     (filename/append "back"
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
@@ -408,7 +411,7 @@ MIT in each case. |#
 	 (instruction-base
 	  (filename/append "machines/spectrum" "assmd" "machin"))
 	 (lapgen-base
-	  (append (filename/append "back" "lapgn3" "regmap")
+	  (append (filename/append "back" "linear" "regmap")
 		  (filename/append "machines/spectrum" "lapgen")))
 	 (assembler-base
 	  (append (filename/append "back" "symtab")
@@ -554,7 +557,6 @@ MIT in each case. |#
     (define-integration-dependencies "back" "lapgn1" "rtlbase"
       "rgraph" "rtlcfg")
     (define-integration-dependencies "back" "lapgn2" "rtlbase" "rtlreg")
-    (define-integration-dependencies "back" "lapgn3" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "linear" "base" "cfg1" "cfg2")
     (define-integration-dependencies "back" "linear" "rtlbase" "rtlcfg")
     (define-integration-dependencies "back" "mermap" "back" "regmap")

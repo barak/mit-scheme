@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.pkg,v 1.37 1992/07/29 19:56:08 cph Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
+$Id: compiler.pkg,v 1.38 1992/10/19 19:15:35 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,9 +152,11 @@ MIT in each case. |#
 
 (define-package (compiler top-level)
   (files "base/toplev"
-	 "base/crstop")
+	 "base/crstop"
+	 "base/asstop")
   (parent (compiler))
   (export ()
+	  cbf
 	  cf
 	  compile-bin-file
 	  compile-procedure
@@ -627,12 +628,13 @@ MIT in each case. |#
   (files "back/linear")
   (parent (compiler lap-syntaxer))
   (export (compiler lap-syntaxer)
-	  linearize-lap
+	  add-end-of-block-code!
 	  bblock-linearize-lap
-	  add-end-of-block-code!)
-  (export (compiler top-level)
 	  linearize-lap
-	  initialize-lap-linearizer!))
+	  set-current-branches!)
+  (export (compiler top-level)
+	  *end-of-block-code*
+	  linearize-lap))
 
 (define-package (compiler lap-optimizer)
   (files "machines/spectrum/lapopt")
