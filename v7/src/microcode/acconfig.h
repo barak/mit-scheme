@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: acconfig.h,v 11.3 2001/03/02 18:03:06 cph Exp $
+$Id: acconfig.h,v 11.4 2001/03/03 05:17:29 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -40,6 +40,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 /* Define to `unsigned char' if <termios.h> doesn't define.  */
 #undef cc_t
+
+/* Define to `short' if <termios.h> doesn't define.  */
+#undef speed_t
 
 /* Define if `struct ltchars' is defined in <bsdtty.h>.  */
 #undef HAVE_STRUCT_LTCHARS

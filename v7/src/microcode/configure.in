@@ -16,7 +16,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-AC_REVISION([$Id: configure.in,v 11.6 2001/03/02 18:02:58 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.7 2001/03/03 05:17:32 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -195,7 +195,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h)
 AC_CHECK_HEADERS(sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h)
 AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
-AC_CHECK_HEADERS(termcap.h termio.h termios.h unistd.h utime.h)
+AC_CHECK_HEADERS(termio.h termios.h unistd.h utime.h)
 AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
 
 dnl Checks for typedefs
@@ -275,6 +275,23 @@ AC_TRY_COMPILE([
 AC_MSG_RESULT(${scheme_cv_type_cc_t})
 if test "${scheme_cv_type_cc_t}" = "no"; then
     AC_DEFINE(cc_t, unsigned char)
+fi
+
+AC_MSG_CHECKING([for speed_t])
+AC_TRY_COMPILE([
+#ifdef HAVE_TERMIOS_H
+#  include <termios.h>
+#else
+#  ifdef HAVE_TERMIO_H
+#    include <termio.h>
+#  endif
+#endif],
+	[speed_t x;],
+	[scheme_cv_type_speed_t=yes],
+	[scheme_cv_type_speed_t=no])
+AC_MSG_RESULT(${scheme_cv_type_speed_t})
+if test "${scheme_cv_type_speed_t}" = "no"; then
+    AC_DEFINE(speed_t, short)
 fi
 
 dnl Checks for structures.
