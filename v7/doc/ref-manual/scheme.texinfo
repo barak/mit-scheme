@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.20 1993/09/30 22:42:06 adams Exp $
+@comment $Id: scheme.texinfo,v 1.21 1993/10/05 16:30:12 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -870,8 +870,8 @@ Procedure calls extend an environment, as do @code{let}, @code{let*},
 (@pxref{Internal Definitions}) also extend an environment.  (Actually,
 all the constructs that extend environments can be expressed in terms of
 procedure calls, so there is really just one fundamental mechanism for
-environment extension.)  A top-level definition (@pxref{Top-Level
-Definitions}) may add a binding to an existing environment.
+environment extension.)
+A top-level definition (@pxref{Top-Level Definitions}) may add a binding to an existing environment.
 
 @node Initial and Current Environments, Static Scoping, Environment Concepts, Scheme Concepts
 @subsection Initial and Current Environments
@@ -1311,8 +1311,8 @@ The following list describes additional notations used in Scheme.
 The plus sign, minus sign, and period are used in numbers, and may also
 occur in an identifier.  A delimited period (not occurring within a
 number or identifier) is used in the notation for pairs and to indicate
-a ``rest'' parameter in a formal parameter list (@pxref{Lambda
-Expressions}).
+a ``rest'' parameter in a formal parameter list
+(@pxref{Lambda Expressions}).
 
 @item ( )
 Parentheses are used for grouping and to notate lists (@pxref{Lists}).
@@ -2184,8 +2184,9 @@ prevent the evaluation of objects.
 @cindex literal, and quote
 @cindex constant, and quote
 @code{(quote @var{datum})} evaluates to @var{datum}.  @var{Datum} may be
-any external representation of a Scheme object (@pxref{External
-Representations}).  Use @code{quote} to include literal constants in
+any external representation of a Scheme object
+(@pxref{External Representations}).
+Use @code{quote} to include literal constants in
 Scheme code.
 
 @example
@@ -5113,8 +5114,9 @@ will contain the newline character (@code{#\newline}) at the line break.
 @cindex string index (defn)
 The @dfn{length} of a string is the number of characters that it
 contains.  This number is an exact non-negative integer that is
-established when the string is created (but @pxref{Variable-Length
-Strings}).  Each character in a string has an @dfn{index}, which is a
+established when the string is created
+(but @pxref{Variable-Length Strings}).
+Each character in a string has an @dfn{index}, which is a
 number that indicates the character's position in the string.  The index
 of the first (leftmost) character in a string is 0, and the index of the
 last character is one less than the length of the string.  The
@@ -6831,14 +6833,14 @@ least for the simple versions that take a fixed number of arguments.
 (define (reverse items)
   (fold-right (lambda (x r) (append r (list x))) '() items))
 @end example
-@end defn
+@end deffn
 
 @deffn {procedure+} fold-left procedure initial list
 Combines all the elements of @var{list} using the binary procedure
 @var{procedure}.  Elements are combined starting with @var{initial} and
 then the elements of @var{list} from left to right.  Whereas
 @code{fold-right} is recursive in nature, capturing the essence of
-@code{car}-ing down a list and then computing a result, @var{fold-left}
+@code{cdr}-ing down a list and then computing a result, @var{fold-left}
 is iterative in nature, combining the elements as the list is traversed.
 
 @example
@@ -6849,7 +6851,7 @@ is iterative in nature, combining the elements as the list is traversed.
 (define (reverse items)
   (fold-left (lambda (x y) (cons y x)) () items))
 @end example
-@end defn
+@end deffn
 
 
 @deffn {procedure+} there-exists? list predicate
@@ -11528,8 +11530,8 @@ This procedure temporarily rebinds the current working directory to
 restores the previous working directory and returns the value yielded by
 @var{thunk}.  @var{Filename} is canonicalized in exactly as does
 @code{set-working-directory-pathname!}.  The binding is performed in
-exactly the same way as fluid binding of a variable (@pxref{Fluid
-Binding}).
+exactly the same way as fluid binding of a variable
+(@pxref{Fluid Binding}).
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
@@ -11667,8 +11669,8 @@ errors and other exceptional conditions.  For most purposes, the only part
 of the error system that is needed is the special form @code{error}, which
 is used to signal simple errors, specifying a message and some irritant
 objects (@pxref{Simple Errors}).  In addition, an option to @code{error}
-permits users to do simple formatting of their error messages (@pxref{Error
-Messages}).
+permits users to do simple formatting of their error messages
+(@pxref{Error Messages}).
 
 More demanding applications require more powerful facilities.  To give a
 concrete example, suppose you want floating-point division to return a very
