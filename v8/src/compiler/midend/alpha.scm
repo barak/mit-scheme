@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: alpha.scm,v 1.7 1995/04/27 23:23:05 adams Exp $
+$Id: alpha.scm,v 1.8 1995/07/04 05:51:14 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,6 +62,11 @@ MIT in each case. |#
 	 (new-names (alphaconv/renamings env names))
 	 (env*      (alphaconv/env/extend env names new-names)))
     (alphaconv/remember-renames form env*)
+    (for-each (lambda (old new)
+		;; Introduced names, e.g. ENV-14 from envconv
+		(if (uninterned-symbol? old)
+		    (dbg-info/remember old `(LOOKUP ,new))))
+      names new-names)
     `(LAMBDA ,(alphaconv/rename-lambda-list lambda-list new-names)
        ,(alphaconv/expr state env* body))))
 
@@ -73,7 +78,21 @@ MIT in each case. |#
 	  (else
 	   (loop (cdr ll) (cdr nn) (cons (car nn) result))))))
 
-(define (alphaconv/remember-renames form env*)
+ (define (alphaconv/remember-renames form env*)
+  (let ((info (code-rewrite/original-form/previous form)))
+    (and info
+	 (new-dbg-procedure? info)
+	 (let ((block (new-dbg-procedure/block info)))
+	   (and block
+		(for-each
+		 (lambda (var)
+		   (let ((new-name
+			  (alphaconv/env/lookup (new-dbg-variable/name var)
+						env*)))
+		     (dbg-info/remember var `(LOOKUP ,new-name))))
+		 (new-dbg-block/variables block)))))))
+
+ (define (alphaconv/remember-renames form env*)
   (let ((info (code-rewrite/original-form/previous form)))
     (and info
 	 (new-dbg-procedure? info)
