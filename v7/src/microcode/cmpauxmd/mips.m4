@@ -1,6 +1,6 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Id: mips.m4,v 1.9 1992/12/28 21:54:20 cph Exp $
+ ###	$Id: mips.m4,v 1.10 1993/01/12 10:43:07 cph Exp $
  ###
  ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
  ###
@@ -157,6 +157,7 @@ define(closure_reg, 23)
 define(tramp_index, 25)
 
 define(TC_ENTITY, 0x10)
+define(TC_FIXNUM, 0x1A)
 define(TC_CCENTRY, 0x28)
 
  # Argument (in $C_arg1) is a compiled Scheme entry point
@@ -254,8 +255,9 @@ trampoline_to_interface:		# ...scheme_to_interface-96
 	j	shortcircuit_apply	# ...-56
 	lw	$C_arg2,0($stack)	# procedure -52
 
-	nop				# ...-48
-	nop				# ...-44
+	j	set_interrupt_enables	# ...-48
+	lw	$value,4($registers)	# ...-44
+
 	nop				# ...-40
 	nop				# ...-36
 	nop				# ...-32
@@ -518,6 +520,47 @@ shortcircuit_apply_lose:
 	addi	$stack,$stack,4
 	j	scheme_to_interface	# invoke the standard apply
 	addi	$tramp_index,$0,80
+
+	.globl	set_interrupt_enables
+set_interrupt_enables:
+	# 0($stack) has the new interrupt mask (a fixnum)
+	# 4($stack) has the return address (a compiled entry)
+	# $value has been set above to old interrupt mask
+	lui	$at,(TC_FIXNUM*0x400)	# slap fixnum type code on value
+	or	$value,$value,$at
+	lw	$C_arg1,0($stack)	# get new interrupt mask
+	lw	$C_arg2,48($registers)	# get interrupt code
+	and	$C_arg1,$C_arg1,$addr_mask
+	sw	$C_arg1,4($registers)	# store new mask in mask register
+	# Now, set up the memtop and stack_guard registers.
+	# Memtop is -1 if there are any pending interrupts, else
+	# "MemTop" if GC interrupt is enabled, else "Heap_Top".
+	and	$C_arg2,$C_arg2,$C_arg1	# get masked interrupts
+	bne	$C_arg2,$0,set_interrupt_enables_1
+	addi	$memtop,$0,-1
+	andi	$C_arg2,$C_arg1,4	# test for GC interrupt
+	lw	$memtop,MemTop
+	bne	$C_arg2,$0,set_interrupt_enables_1
+	nop
+	lw	$memtop,Heap_Top
+	.globl	set_interrupt_enables_1
+set_interrupt_enables_1:
+	andi	$C_arg2,$C_arg1,1	# test for stack-overflow interrupt
+	sw	$memtop,0($registers)
+	# Stack_guard's value depends on whether the stack-overflow
+	# interrupt is enabled.
+	lw	$C_arg3,Stack_Guard
+	bne	$C_arg2,$0,set_interrupt_enables_2
+	nop
+	lw	$C_arg3,Constant_Top
+	.globl	set_interrupt_enables_2
+set_interrupt_enables_2:
+	lw	$C_arg2,4($stack)	# get return address
+	sw	$C_arg3,44($registers)	# store stack_guard
+	and	$C_arg2,$C_arg2,$addr_mask # return to caller
+	or	$C_arg2,$C_arg2,$heap_bits
+	j	$C_arg2
+	addi	$stack,$stack,8
 
  # Argument 1 (in $C_arg1) is the returned value
 	.globl interface_to_C
