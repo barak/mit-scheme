@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.39 1993/10/14 19:22:57 gjr Exp $
+$Id: sysprim.c,v 9.40 1995/06/20 19:32:21 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -86,21 +86,27 @@ DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
 
-DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1, 
+  "(N-WORDS)\n
+Tests to see if there are at least N-WORDS words of heap storage available")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (BOOLEAN_TO_OBJECT ((Free + (arg_nonnegative_integer (1))) < MemTop));
 }
 
-DEFINE_PRIMITIVE ("PRIMITIVE-GET-FREE", Prim_get_free, 1, 1, 0)
+DEFINE_PRIMITIVE ("PRIMITIVE-GET-FREE", Prim_get_free, 1, 1,
+  "(TYPE-CODE)\n
+Return the value of the free pointer tagged with TYPE-CODE")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (MAKE_POINTER_OBJECT ((arg_index_integer (1, (MAX_TYPE_CODE + 1))), Free));
 }
 
-DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1, 0)
+DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1,
+  "(N-WORDS)\n
+Advance the free pointer by N-WORDS words")
 {
   PRIMITIVE_HEADER (1);
   Free += (arg_nonnegative_integer (1));
