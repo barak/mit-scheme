@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.75 1989/04/28 22:49:26 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.76 1989/06/20 16:09:08 markf Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -150,3 +150,87 @@
     (=> (window-cursor cursor-window) :disable!)
     (set! cursor-window window*)
     (=> (window-cursor cursor-window) :enable!)))
+
+;; Button events
+
+(define (make-down-button button-number)
+  (string->symbol
+   (string-append "#[button-down-"
+		  (number->string button-number)
+		  "]")))
+
+(define (make-up-button button-number)
+  (string->symbol
+   (string-append "#[button-up-"
+		  (number->string button-number)
+		  "]")))
+
+(define up-buttons
+  (do ((vec (make-vector (1+ (max-button-number))))
+       (i (max-button-number) (-1+ i)))
+      ((negative? i) vec)
+    (vector-set! vec i (make-up-button i))))
+
+(define down-buttons
+  (do ((vec (make-vector (1+ (max-button-number))))
+       (i (max-button-number) (-1+ i)))
+      ((negative? i) vec)
+    (vector-set! vec i (make-down-button i))))
+
+(define (button? object)
+  (or (vector-find-next-element up-buttons object)
+      (vector-find-next-element down-buttons object)))
+(define-integrable (get-up-button button-number)
+  (vector-ref up-buttons button-number))
+
+(define-integrable (get-down-button button-number)
+  (vector-ref down-buttons button-number))
+
+(define-integrable (button-upify button-number)
+  (get-up-button button-number))
+
+(define-integrable (button-downify button-number)
+  (get-down-button button-number))
+
+(define (buffer-button-down buffer button-number)
+  (comtab-entry (buffer-comtabs buffer)
+		(button-downify button-number)))
+
+(define (buffer-button-up buffer button-number)
+  (comtab-entry (buffer-comtabs buffer)
+		(button-upify button-number)))
+
+(define (editor-frame-button editor-frame button-number
+			     x-coord y-coord buffer-event)
+  (values-let
+   (((frame relative-x relative-y)
+     (find-buffer-frame editor-frame
+			x-coord
+			y-coord)))
+   (and frame
+	(let* ((buffer-window
+		(frame-text-inferior frame))
+	       (button-command
+		(buffer-event (%window-buffer buffer-window) button-number)))
+	  (and button-command
+	       (execute-command
+		button-command
+		(list frame relative-x relative-y)))))))
+			     
+(define-method editor-frame (:button-up window button-number x-coord y-coord)
+  (editor-frame-button window button-number x-coord y-coord buffer-button-up))
+
+(define-method editor-frame (:button-down window button-number x-coord y-coord)
+  (editor-frame-button window button-number x-coord y-coord buffer-button-down))
+
+(define (find-buffer-frame editor-frame x-coord y-coord)
+  (values-let
+   (((window relative-x relative-y)
+     (inferior-containing-coordinates editor-frame
+				      x-coord
+				      y-coord
+				      buffer-frame?)))
+   (if window
+       (=> window :leaf-containing-coordinates
+	   relative-x relative-y)
+       (values false 0 0))))
