@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: bootstrap.sh,v 1.1 2000/10/16 18:17:39 cph Exp $
+# $Id: bootstrap.sh,v 1.2 2000/10/16 18:24:10 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -56,7 +56,7 @@ cp -p etc/optiondb.scm lib/.
 )
 
 # Compile everything.
-scheme -compiler -load bootstrap-compile.scm
+scheme -compiler < etc/bootstrap-compile.scm
 
 cp -p microcode/utabmd.bin lib/.
 

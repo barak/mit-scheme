@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap-compile.scm,v 1.2 2000/10/16 18:19:51 cph Exp $
+$Id: bootstrap-compile.scm,v 1.3 2000/10/16 18:24:03 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -19,20 +19,18 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
-(sf "microcode/utabmd")
-
-(with-working-directory-pathname name
-  (lambda ()
-    (load "cref.sf")
-    (load "cref.cbf")))
-
-(for-each (lambda (name)
-	    (with-working-directory-pathname name
-	      (lambda ()
-		(load (pathname-new-type name "sf"))
-		(load (pathname-new-type name "cbf")))))
-	  '("runtime" "sf" "compiler" "edwin" "6001"))
-
-(for-each (lambda (name)
-	    (load (merge-pathnames "compile" (pathname-as-directory name))))
-	  '("sos" "imail"))
+(begin
+  (sf "microcode/utabmd")
+  (with-working-directory-pathname name
+    (lambda ()
+      (load "cref.sf")
+      (load "cref.cbf")))
+  (for-each (lambda (name)
+	      (with-working-directory-pathname name
+		(lambda ()
+		  (load (pathname-new-type name "sf"))
+		  (load (pathname-new-type name "cbf")))))
+	    '("runtime" "sf" "compiler" "edwin" "6001"))
+  (for-each (lambda (name)
+	      (load (merge-pathnames "compile" (pathname-as-directory name))))
+	    '("sos" "imail")))
