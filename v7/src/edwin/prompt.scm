@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.185 2000/05/23 02:09:15 cph Exp $
+;;; $Id: prompt.scm,v 1.186 2000/06/15 00:25:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -472,8 +472,8 @@ The following commands are special to this mode:
 (define-key 'minibuffer-local #\M-p 'previous-prompt-history-item)
 
 (define-major-mode minibuffer-local-completion minibuffer-local #f
-  (string-append (mode-description (ref-mode-object minibuffer-local))
-		 "
+  (description-append (mode-description (ref-mode-object minibuffer-local))
+		      "
 \\[minibuffer-complete] completes as much of the input as possible.
 \\[minibuffer-complete-word] completes the next word of the input.
 \\[minibuffer-completion-help] displays possible completions of the input."))

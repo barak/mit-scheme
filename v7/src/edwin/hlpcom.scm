@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: hlpcom.scm,v 1.116 2000/06/05 19:22:36 cph Exp $
+;;; $Id: hlpcom.scm,v 1.117 2000/06/15 00:25:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -333,18 +333,30 @@ If you want VALUE to be a string, you must surround it with doublequotes."
       (begin
 	(write-string prefix)
 	(write-string ": ")))
-  (write-description (string-first-line description))
+  (write-description (description-first-line description))
   (newline))
 
-(define (string-first-line string)
+(define (description-first-line description)
+  (let ((string (description->string description)))
     (let ((index (string-find-next-char string #\newline)))
       (if index
 	  (substring string 0 index)
-	  string)))
+	  string))))
+
+(define (description->string description)
+  (cond ((string? description) description)
+	((procedure? description) (description))
+	(else
+	 (error:wrong-type-argument description "description"
+				    'DESCRIPTION->STRING))))
+
+(define (description-append . descriptions)
+  (lambda () (apply string-append (map description->string descriptions))))
 
-(define (substitute-command-keys string #!optional buffer)
-  (let ((buffer (if (default-object? buffer) (current-buffer) buffer))
-	(end (string-length string)))
+(define (substitute-command-keys description #!optional buffer)
+  (let* ((string (description->string description))
+	 (buffer (if (default-object? buffer) (current-buffer) buffer))
+	 (end (string-length string)))
     (letrec
 	((find-escape
 	  (lambda (start* comtabs)
