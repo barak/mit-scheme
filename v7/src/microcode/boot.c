@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.95 1995/04/28 07:04:50 cph Exp $
+$Id: boot.c,v 9.96 1995/07/26 18:31:47 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -178,6 +178,11 @@ DEFUN (main_name, (argc, argv),
       Setup_Memory ((BLOCKS_TO_BYTES (Heap_Size)),
 		    (BLOCKS_TO_BYTES (Stack_Size)),
 		    (BLOCKS_TO_BYTES (Constant_Size)));
+      if (option_empty_list_eq_false)
+	EMPTY_LIST = SHARP_F;
+      else
+	EMPTY_LIST = EMPTY_LIST_VALUE;
+
       initialize_primitives ();
       if (! option_fasl_file)
 	{
@@ -248,7 +253,7 @@ DEFUN_VOID (initialize_fixed_objects_vector)
   Fixed_Objects = fixed_objects_vector;
   FAST_VECTOR_SET (fixed_objects_vector, Me_Myself, fixed_objects_vector);
   FAST_VECTOR_SET
-    (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_TRUE, 2)));
+    (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_CONSTANT, 2)));
   FAST_VECTOR_SET
     (fixed_objects_vector,
      System_Interrupt_Vector,
@@ -361,6 +366,13 @@ DEFUN_VOID (initialize_fixed_objects_vector)
     (fixed_objects_vector,
      ARITY_DISPATCHER_TAG,
      (MAKE_POINTER_OBJECT (TC_LIST, (Free - 2))));
+
+  /* Rather than the above, we use an unlikely interned symbol
+   */
+  FAST_VECTOR_SET
+    (fixed_objects_vector,
+     ARITY_DISPATCHER_TAG,
+     char_pointer_to_symbol("#[(microcode)arity-dispatcher-tag]"));
 
 #ifdef DOS386
   {
