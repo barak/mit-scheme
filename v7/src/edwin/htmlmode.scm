@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: htmlmode.scm,v 1.1 1999/10/07 17:00:07 cph Exp $
+;;; $Id: htmlmode.scm,v 1.2 2000/02/29 02:41:11 cph Exp $
 ;;;
-;;; Copyright (c) 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -23,7 +23,9 @@
 (declare (usual-integrations))
 
 (define-major-mode html text "HTML"
-  "Major mode for editing HTML."
+  "Major mode for editing HTML.
+
+\\{html}"
   (lambda (buffer)
     (local-set-variable! syntax-table html-syntax-table buffer)
     (local-set-variable! indent-line-procedure
@@ -40,6 +42,9 @@
      sentence-end
      "[.?!][]\"')}]*\\(<[^>]*>\\)*\\($\\| $\\|\t\\|  \\)[ \t\n]*"
      buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable html-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable html-mode-hook buffer) buffer)))
 
 (define html-paragraph-separator
@@ -49,6 +54,11 @@
   "Enter HTML mode."
   ()
   (lambda () (set-current-major-mode! (ref-mode-object html))))
+
+(define-variable html-mode-abbrev-table
+  "Mode-specific abbrev table for HTML."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable html-mode-hook
   "An event distributor that is invoked when entering HTML mode."

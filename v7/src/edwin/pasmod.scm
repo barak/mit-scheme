@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: pasmod.scm,v 1.47 1999/01/02 06:11:34 cph Exp $
+;;; $Id: pasmod.scm,v 1.48 2000/02/29 02:41:21 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -29,36 +29,36 @@
     (set-current-major-mode! (ref-mode-object pascal))))
 
 (define-major-mode pascal fundamental "Pascal"
-  "Major mode specialized for editing Pascal code."
+  "Major mode specialized for editing Pascal code.
+
+\\{pascal}"
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object syntax-table)
-      pascal-mode:syntax-table)
-    (define-variable-local-value! buffer
-	(ref-variable-object syntax-ignore-comments-backwards)
-      true)
-    (define-variable-local-value! buffer
-	(ref-variable-object indent-line-procedure)
-      (ref-command pascal-indent-line))
-    (define-variable-local-value! buffer (ref-variable-object comment-column)
-      32)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-locator-hook)
-      pascal-comment-locate)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-indent-hook)
-      pascal-comment-indentation)
-    (define-variable-local-value! buffer (ref-variable-object comment-start)
-      "(* ")
-    (define-variable-local-value! buffer (ref-variable-object comment-end)
-      " *)")
+    (local-set-variable! syntax-table pascal-mode:syntax-table buffer)
+    (local-set-variable! syntax-ignore-comments-backwards #t buffer)
+    (local-set-variable! indent-line-procedure
+			 (ref-command pascal-indent-line)
+			 buffer)
+    (local-set-variable! comment-column 32 buffer)
+    (local-set-variable! comment-locator-hook pascal-comment-locate buffer)
+    (local-set-variable! comment-indent-hook pascal-comment-indentation buffer)
+    (local-set-variable! comment-start "(* " buffer)
+    (local-set-variable! comment-end " *)" buffer)
     (let ((paragraph-start "^$"))
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-start)
-	paragraph-start)
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-separate)
-	paragraph-start))
+      (local-set-variable! paragraph-start paragraph-start buffer)
+      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (local-set-variable! local-abbrev-table
+			 (ref-variable pascal-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable pascal-mode-hook buffer) buffer)))
+
+(define-variable pascal-mode-abbrev-table
+  "Mode-specific abbrev table for Pascal code."
+  (make-abbrev-table)
+  abbrev-table?)
+
+(define-variable pascal-mode-hook
+  "An event distributor that is invoked when entering Pascal mode."
+  (make-event-distributor))
 
 (define pascal-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! pascal-mode:syntax-table #\( "()1 ")
@@ -139,7 +139,7 @@ With an argument, shifts left that many times."
 		      (line-start start 1)))))))
     (define (find-statement-start mark)
       (let ((start (find-previous-non-blank-line mark)))
-	(cond ((not start) false)
+	(cond ((not start) #f)
 	      ((mark< start def-start) def-start)
 	      (else
 	       (let ((container

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.8 1999/10/09 03:52:46 cph Exp $
+;;; $Id: javamode.scm,v 1.9 2000/02/29 02:41:07 cph Exp $
 ;;;
-;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1998-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -35,7 +35,9 @@
   "Major mode for editing Java code.
 This is just like C mode, except that
   (1) comments begin with // and end at the end of line, and
-  (2) c-continued-brace-offset defaults to -2 instead of 0."
+  (2) c-continued-brace-offset defaults to -2 instead of 0.
+
+\\{java}"
   (lambda (buffer)
     (local-set-variable! syntax-table java-syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -44,12 +46,20 @@ This is just like C mode, except that
     (local-set-variable! comment-start "// " buffer)
     (local-set-variable! comment-end "" buffer)
     (local-set-variable! c-continued-brace-offset -2 buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable java-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable java-mode-hook buffer) buffer)))
 
 (define-command java-mode
   "Enter Java mode."
   ()
   (lambda () (set-current-major-mode! (ref-mode-object java))))
+
+(define-variable java-mode-abbrev-table
+  "Mode-specific abbrev table for Java code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable java-mode-hook
   "An event distributor that is invoked when entering Java mode."
@@ -81,12 +91,14 @@ This is just like C mode, except that
 	column
 	(max (+ (mark-column (horizontal-space-start mark)) 1)
 	     column))))
-
+
 (define-major-mode php c "PHP"
   "Major mode for editing PHP code.
 This is just like C mode, except that
   (1) comments begin with // and end at the end of line, and
-  (2) $ is a symbol constituent rather than a word constituent."
+  (2) $ is a symbol constituent rather than a word constituent.
+
+\\{php}"
   (lambda (buffer)
     (local-set-variable! syntax-table php-syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -94,12 +106,20 @@ This is just like C mode, except that
     (local-set-variable! comment-indent-hook java-comment-indentation buffer)
     (local-set-variable! comment-start "// " buffer)
     (local-set-variable! comment-end "" buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable php-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable php-mode-hook buffer) buffer)))
 
 (define-command PHP-mode
   "Enter PHP mode."
   ()
   (lambda () (set-current-major-mode! (ref-mode-object php))))
+
+(define-variable php-mode-abbrev-table
+  "Mode-specific abbrev table for PHP code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable php-mode-hook
   "An event distributor that is invoked when entering PHP mode."

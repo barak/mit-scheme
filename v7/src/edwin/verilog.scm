@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: verilog.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+;;; $Id: verilog.scm,v 1.6 2000/02/29 02:41:29 cph Exp $
 ;;;
-;;; Copyright (c) 1996-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1996-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,7 +28,9 @@
   (lambda () (set-current-major-mode! (ref-mode-object verilog))))
 
 (define-major-mode verilog fundamental "Verilog"
-  "Major mode specialized for editing Verilog code."
+  "Major mode specialized for editing Verilog code.
+
+\\{verilog}"
   (lambda (buffer)
     (local-set-variable! syntax-table verilog-mode:syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -49,8 +51,20 @@
     (local-set-variable! require-final-newline #t buffer)
     (local-set-variable! keyparser-description verilog-description buffer)
     (local-set-variable! keyword-table verilog-keyword-table buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable verilog-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable verilog-mode-hook buffer)
 			       buffer)))
+
+(define-variable verilog-mode-abbrev-table
+  "Mode-specific abbrev table for Verilog code."
+  (make-abbrev-table)
+  abbrev-table?)
+
+(define-variable verilog-mode-hook
+  "An event distributor that is invoked when entering Verilog mode."
+  (make-event-distributor))
 
 (define verilog-mode:syntax-table
   (let ((syntax-table (make-syntax-table)))

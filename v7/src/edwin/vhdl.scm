@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vhdl.scm,v 1.5 1999/01/02 06:11:34 cph Exp $
+;;; $Id: vhdl.scm,v 1.6 2000/02/29 02:41:32 cph Exp $
 ;;;
-;;; Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1997-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -28,7 +28,9 @@
   (lambda () (set-current-major-mode! (ref-mode-object vhdl))))
 
 (define-major-mode vhdl fundamental "VHDL"
-  "Major mode specialized for editing VHDL code."
+  "Major mode specialized for editing VHDL code.
+
+\\{vhdl}"
   (lambda (buffer)
     (local-set-variable! syntax-table vhdl-mode:syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -48,8 +50,20 @@
     (local-set-variable! require-final-newline #t buffer)
     (local-set-variable! keyparser-description vhdl-description buffer)
     (local-set-variable! keyword-table vhdl-keyword-table buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable vhdl-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable vhdl-mode-hook buffer)
 			       buffer)))
+
+(define-variable vhdl-mode-abbrev-table
+  "Mode-specific abbrev table for VHDL code."
+  (make-abbrev-table)
+  abbrev-table?)
+
+(define-variable vhdl-mode-hook
+  "An event distributor that is invoked when entering VHDL mode."
+  (make-event-distributor))
 
 (define vhdl-mode:syntax-table
   (let ((syntax-table (make-syntax-table)))

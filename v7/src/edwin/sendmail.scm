@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.44 1999/02/01 03:46:56 cph Exp $
+;;; $Id: sendmail.scm,v 1.45 2000/02/29 02:41:44 cph Exp $
 ;;;
-;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -64,7 +64,7 @@ If set to the null string, no Organization: field is generated."
 
 (define-variable mail-default-reply-to
   "Address to insert as default Reply-to field of outgoing messages."
-  false
+  #f
   (lambda (object)
     (or (not object)
 	(string? object)
@@ -75,12 +75,12 @@ If set to the null string, no Organization: field is generated."
   "True means insert BCC to self in messages to be sent.
 This is done when the message is initialized,
 so you can remove or alter the BCC field to override the default."
-  false
+  #f
   boolean?)
 
 (define-variable mail-archive-file-name
-  "Name of file to write all outgoing messages in, or false for none."
-  false
+  "Name of file to write all outgoing messages in, or #f for none."
+  #f
   string-or-false?)
 
 (define-variable mail-relay-host
@@ -123,8 +123,8 @@ Otherwise, only one valid recipient is required."
 
 (define-variable mail-interactive
   "True means when sending a message wait for and display errors.
-False means let mailer mail back a message to report errors."
-  false
+#F means let mailer mail back a message to report errors."
+  #f
   boolean?)
 
 (define-variable mail-header-separator
@@ -135,7 +135,7 @@ False means let mailer mail back a message to report errors."
 (define-variable mail-header-function
   "A function of one argument, POINT (the current point), which inserts
 additional header lines into a mail message.  The function is called
-after all other headers are inserted.  If this variable is false, it
+after all other headers are inserted.  If this variable is #f, it
 is ignored."
   #f
   (lambda (object)
@@ -159,7 +159,7 @@ The headers are delimited by a string found in mail-header-separator."
 
 (define-variable mail-reply-buffer
   ""
-  false
+  #f
   (lambda (object) (or (false? object) (buffer? object))))
 (variable-permanent-local! (ref-variable-object mail-reply-buffer))
 
@@ -254,7 +254,7 @@ is inserted."
 	 (lambda (start end)
 	   (fill-region-as-paragraph start end
 				     "\t" (ref-variable fill-column buffer)
-				     false))))
+				     #f))))
     (let ((start (mark-right-inserting-copy point)))
       (for-each (lambda (header)
 		  (let ((key (car header))
@@ -381,15 +381,14 @@ The mail buffer is passed as an argument; it is not necessarily selected."
 
 (define-major-mode mail text "Mail"
   "Major mode for editing mail to be sent.
-Separate names of recipients (in To: and CC: fields) with commas.
 Like Text Mode but with these additional commands:
-C-c C-s  mail-send (send the message)    C-c C-c  mail-send-and-exit
-C-c C-f  move to a header field (and create it if there isn't):
-	 C-c C-f C-t  move to To:	C-c C-f C-s  move to Subj:
-	 C-c C-f C-b  move to BCC:	C-c C-f C-c  move to CC:
-C-c C-w  mail-signature (insert ~/.signature at end).
-C-c C-y  mail-yank-original (insert current message, in Rmail).
-C-c C-q  mail-fill-yanked-message (fill what was yanked)."
+\\[mail-send]  mail-send (send the message)    \\[mail-send-and-exit]  mail-send-and-exit
+Here are commands that move to a header field (and create it if there isn't):
+	 \\[mail-to]  move to To:	\\[mail-subject]  move to Subject:
+	 \\[mail-cc]  move to CC:	\\[mail-bcc]  move to BCC:
+\\[mail-signature]  mail-signature (insert ~/.signature file).
+\\[mail-yank-original]  mail-yank-original (insert current message, in Rmail).
+\\[mail-fill-yanked-message]  mail-fill-yanked-message (fill what was yanked)."
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object paragraph-start)
       (string-append "^"
@@ -566,7 +565,7 @@ and don't delete any header fields."
   (let ((start (mark-left-inserting-copy start))
 	(end
 	 (mark-left-inserting-copy
-	  (if (re-search-forward "\n\n" start end false)
+	  (if (re-search-forward "\n\n" start end #f)
 	      (mark1+ (re-match-start 0))
 	      end)))
 	(mail-yank-ignored-headers (ref-variable mail-yank-ignored-headers)))
@@ -574,11 +573,11 @@ and don't delete any header fields."
       (lambda ()
 	(do ()
 	    ((not
-	      (re-search-forward mail-yank-ignored-headers start end true)))
+	      (re-search-forward mail-yank-ignored-headers start end #t)))
 	  (move-mark-to! start (re-match-start 0))
 	  (delete-string
 	   start
-	   (if (re-search-forward "^[^ \t]" (line-end start 0) end false)
+	   (if (re-search-forward "^[^ \t]" (line-end start 0) end #f)
 	       (re-match-start 0)
 	       end)))))
     (mark-temporary! start)
@@ -595,7 +594,7 @@ Numeric argument means justify as well."
 				  (buffer-end buffer)
 				  (ref-variable fill-column)
 				  justify?
-				  true))))
+				  #t))))
 
 (define-command mail-send-and-exit
   "Send message like mail-send, then, if no errors, exit from mail buffer.
@@ -613,7 +612,7 @@ Prefix arg means don't delete this window."
 
 (define-command mail-send
   "Send the message in the current buffer.
-If  mail-interactive  is non-false, wait for success indication
+If  mail-interactive  is true, wait for success indication
 or error messages, and inform user.
 Otherwise any failure is reported in a message back to
 the user from the mailer."
@@ -734,7 +733,7 @@ the user from the mailer."
       ;;   that "^[>]+From " be quoted in the same transparent way.)
       (let ((m (mark-right-inserting-copy (mark+ start 2))))
 	(do ()
-	    ((not (re-search-forward "^From " m end false)))
+	    ((not (re-search-forward "^From " m end #f)))
 	  (move-mark-to! m (re-match-end 0))
 	  (insert-string ">" (re-match-start 0)))
 	(mark-temporary! m))
@@ -752,7 +751,7 @@ the user from the mailer."
 (define (digest-fcc-headers start header-end)
   (let ((m (mark-right-inserting-copy start)))
     (let loop ((pathnames '()))
-      (if (re-search-forward "^FCC:[ \t]*\\([^ \t\n]+\\)" m header-end true)
+      (if (re-search-forward "^FCC:[ \t]*\\([^ \t\n]+\\)" m header-end #t)
 	  (let ((filename
 		 (extract-string (re-match-start 1) (re-match-end 1))))
 	    (move-mark-to! m (line-start (re-match-start 0) 0))

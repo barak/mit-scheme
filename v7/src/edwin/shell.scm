@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.22 2000/02/24 01:23:42 cph Exp $
+$Id: shell.scm,v 1.23 2000/02/29 02:41:36 cph Exp $
 
 Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
@@ -67,7 +67,15 @@ to match their respective commands."
     (local-set-variable! comint-input-sentinel shell-directory-tracker buffer)
     (local-set-variable! shell-dirstack '() buffer)
     (local-set-variable! shell-dirtrack? #t buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable shell-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable shell-mode-hook buffer) buffer)))
+
+(define-variable shell-mode-abbrev-table
+  "Mode-specific abbrev table for Shell mode."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable shell-mode-hook
   "An event distributor that is invoked when entering Shell mode."
@@ -135,7 +143,7 @@ Otherwise, one argument `-i' is passed to the shell."
   "List of directories saved by pushd in this buffer's shell."
   '())
 
-(define-variable shell-dirtrack? "" false)
+(define-variable shell-dirtrack? "" #f)
 
 (define (shell-directory-tracker string)
   (if (ref-variable shell-dirtrack?)
@@ -259,8 +267,8 @@ Otherwise, one argument `-i' is passed to the shell."
      shell-dirtrack?
      (let ((argument (command-argument-value argument)))
        (cond ((not argument) (not (ref-variable shell-dirtrack?)))
-	     ((positive? argument) true)
-	     ((negative? argument) false)
+	     ((positive? argument) #t)
+	     ((negative? argument) #f)
 	     (else (ref-variable shell-dirtrack?)))))
     (message "Directory tracking "
 	     (if (ref-variable shell-dirtrack?) "on" "off")

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.44 1999/01/02 06:11:34 cph Exp $
+;;; $Id: schmod.scm,v 1.45 2000/02/29 02:41:02 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -40,7 +40,9 @@ The following commands evaluate Scheme expressions:
 \\[eval-last-sexp] evaluates the expression preceding point.
 \\[eval-defun] evaluates the current definition.
 \\[eval-current-buffer] evaluates the buffer.
-\\[eval-region] evaluates the current region."
+\\[eval-region] evaluates the current region.
+
+\\{scheme}"
   (lambda (buffer)
     (local-set-variable! syntax-table scheme-mode:syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
@@ -63,7 +65,15 @@ The following commands evaluate Scheme expressions:
     (local-set-variable! mode-line-process
 			 '(RUN-LIGHT (": " RUN-LIGHT) "")
 			 buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable scheme-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable scheme-mode-hook buffer) buffer)))
+
+(define-variable scheme-mode-abbrev-table
+  "Mode-specific abbrev table for Scheme code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable scheme-mode-hook
   "An event distributor that is invoked when entering Scheme mode."

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: tximod.scm,v 1.21 1999/01/02 06:11:34 cph Exp $
+;;; $Id: tximod.scm,v 1.22 2000/02/29 02:41:26 cph Exp $
 ;;;
-;;; Copyright (c) 1987-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1987-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -41,7 +41,9 @@ set up so expression commands skip Texinfo bracket groups.
 
   In addition, Texinfo mode provides commands that insert various
 frequently used @-sign commands into the buffer.  You can use these
-commands to save keystrokes."
+commands to save keystrokes.
+
+\\{texinfo}"
   (lambda (buffer)
     (local-set-variable! syntax-table texinfo-mode:syntax-table buffer)
     (local-set-variable! fill-column 72 buffer)
@@ -60,8 +62,20 @@ commands to save keystrokes."
 					(ref-variable paragraph-separate
 						      buffer))
 			 buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable texinfo-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable texinfo-mode-hook buffer)
 			       buffer)))
+
+(define-variable texinfo-mode-abbrev-table
+  "Mode-specific abbrev table for Texinfo."
+  (make-abbrev-table)
+  abbrev-table?)
+
+(define-variable texinfo-mode-hook
+  "An event distributor that is invoked when entering Texinfo mode."
+  (make-event-distributor))
 
 (define texinfo-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! texinfo-mode:syntax-table #\" " ")

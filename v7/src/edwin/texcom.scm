@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.41 2000/02/25 19:02:42 cph Exp $
+;;; $Id: texcom.scm,v 1.42 2000/02/29 02:41:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -25,8 +25,10 @@
 (define-major-mode text fundamental "Text"
   "Major mode for editing english text."
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object syntax-table)
-      text-mode:syntax-table)
+    (local-set-variable! syntax-table text-mode:syntax-table buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable text-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable text-mode-hook buffer) buffer)))
 
 (define-key 'text #\m-s 'center-line)
@@ -39,6 +41,11 @@
 (modify-syntax-entry! text-mode:syntax-table #\{ "(}  ")
 (modify-syntax-entry! text-mode:syntax-table #\} "){  ")
 (modify-syntax-entry! text-mode:syntax-table #\' "w   ")
+
+(define-variable scheme-mode-abbrev-table
+  "Mode-specific abbrev table for Text mode."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable text-mode-hook
   "An event distributor that is invoked when entering Text mode."

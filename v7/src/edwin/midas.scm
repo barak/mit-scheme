@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: midas.scm,v 1.18 1999/01/02 06:11:34 cph Exp $
+;;; $Id: midas.scm,v 1.19 2000/02/29 02:41:18 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -25,37 +25,34 @@
 (define-command midas-mode
   "Enter Midas mode."
   ()
-  (lambda ()
-    (set-current-major-mode! (ref-mode-object midas))))
+  (lambda () (set-current-major-mode! (ref-mode-object midas))))
 
 (define-major-mode midas fundamental "Midas"
   "Major mode for editing assembly code."
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object syntax-table)
-      midas-mode:syntax-table)
-    (define-variable-local-value! buffer (ref-variable-object comment-column)
-      40)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-locator-hook)
-      lisp-comment-locate)
-    (define-variable-local-value! buffer
-	(ref-variable-object comment-indent-hook)
-      midas-comment-indentation)
-    (define-variable-local-value! buffer (ref-variable-object comment-start)
-      ";")
-    (define-variable-local-value! buffer (ref-variable-object comment-end)
-      "")
+    (local-set-variable! syntax-table midas-mode:syntax-table buffer)
+    (local-set-variable! comment-column 40 buffer)
+    (local-set-variable! comment-locator-hook lisp-comment-locate buffer)
+    (local-set-variable! comment-indent-hook midas-comment-indentation buffer)
+    (local-set-variable! comment-start ";" buffer)
+    (local-set-variable! comment-end "" buffer)
     (let ((paragraph-start "^$"))
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-start)
-	paragraph-start)
-      (define-variable-local-value! buffer
-	  (ref-variable-object paragraph-separate)
-	paragraph-start))
-    (define-variable-local-value! buffer
-	(ref-variable-object indent-line-procedure)
-      (ref-command insert-tab))
+      (local-set-variable! paragraph-start paragraph-start buffer)
+      (local-set-variable! paragraph-separate paragraph-start buffer))
+    (local-set-variable! indent-line-procedure (ref-command insert-tab) buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable midas-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable midas-mode-hook buffer) buffer)))
+
+(define-variable midas-mode-abbrev-table
+  "Mode-specific abbrev table for assembly code."
+  (make-abbrev-table)
+  abbrev-table?)
+
+(define-variable midas-mode-hook
+  "An event distributor that is invoked when entering Midas mode."
+  (make-event-distributor))
 
 (define midas-mode:syntax-table (make-syntax-table))
 (modify-syntax-entry! midas-mode:syntax-table #\; "<   ")
@@ -69,5 +66,5 @@
 (define (midas-comment-indentation mark)
   (if (match-forward ";;;" mark)
       0
-      (max (1+ (mark-column (horizontal-space-start mark)))
-	   (ref-variable comment-column))))
+      (max (+ (mark-column (horizontal-space-start mark)) 1)
+	   (ref-variable comment-column mark))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: c-mode.scm,v 1.56 1999/10/07 15:13:09 cph Exp $
+;;; $Id: c-mode.scm,v 1.57 2000/02/29 02:41:14 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -62,7 +62,9 @@ Settings for K&R and BSD indentation styles are
   c-continued-statement-offset  5    8
   c-brace-offset               -5   -8
   c-argdecl-indent              0    8
-  c-label-offset               -5   -8"
+  c-label-offset               -5   -8
+
+\\{c}"
   (lambda (buffer)
     (local-set-variable! syntax-table c-syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #t buffer)
@@ -79,12 +81,20 @@ Settings for K&R and BSD indentation styles are
     (local-set-variable! comment-column 32 buffer)
     (local-set-variable! comment-locator-hook c-comment-locate buffer)
     (local-set-variable! comment-indent-hook c-comment-indent buffer)
+    (local-set-variable! local-abbrev-table
+			 (ref-variable c-mode-abbrev-table buffer)
+			 buffer)
     (event-distributor/invoke! (ref-variable c-mode-hook buffer) buffer)))
 
 (define-command c-mode
   "Enter C mode."
   ()
   (lambda () (set-current-major-mode! (ref-mode-object c))))
+
+(define-variable C-mode-abbrev-table
+  "Mode-specific abbrev table for C code."
+  (make-abbrev-table)
+  abbrev-table?)
 
 (define-variable c-mode-hook
   "An event distributor that is invoked when entering C mode."
