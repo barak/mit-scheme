@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.4 2000/04/12 03:08:15 cph Exp $
+;;; $Id: imail.pkg,v 1.5 2000/04/12 03:50:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -54,6 +54,10 @@
 	  url:encode-string
 	  url:encode-substring
 	  url:regexp:escape
+	  url:regexp:host
+	  url:regexp:hostname
+	  url:regexp:hostnumber
+	  url:regexp:hostport
 	  url:regexp:uchar
 	  url:regexp:xchar
 	  url:string-encoded?
