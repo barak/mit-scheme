@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.114 1993/01/12 19:06:35 gjr Exp $
+$Id: edwin.pkg,v 1.115 1993/02/10 16:21:07 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -720,8 +720,10 @@ MIT in each case. |#
 	  edwin-command$tags-loop-continue
 	  edwin-command$tags-query-replace
 	  edwin-command$tags-search
+	  edwin-command$visit-additional-tags-table
 	  edwin-command$visit-tags-table
-	  edwin-variable$tags-table-pathname))
+	  edwin-variable$new-tags-behavior?
+	  edwin-variable$tags-table-pathnames))
 
 (define-package (edwin occurrence)
   (files "occur")
