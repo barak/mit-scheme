@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.174 2001/05/31 20:34:17 cph Exp $
+;;; $Id: imail-imap.scm,v 1.175 2001/06/01 02:20:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -418,8 +418,12 @@
 ;;;; Server connection
 
 (define-class <imap-connection> ()
+  ;; The URL of the mailbox this connection has selected, if any.  If
+  ;; it doesn't have a mailbox selected, the URL will have a null
+  ;; string for its mailbox component.
   (url             define accessor)
-  (folder          define accessor initial-value #f)
+  ;; If a folder has claimed this connection, it is stored here.
+  (folder          define standard initial-value #f)
   (port            define standard initial-value #f)
   (greeting        define standard initial-value #f)
   (capabilities    define standard initial-value '())
@@ -437,20 +441,20 @@
 (define (reset-imap-connection connection)
   (without-interrupts
    (lambda ()
+     (set-imap-connection-url! connection #f)
      (set-imap-connection-greeting! connection #f)
      (set-imap-connection-capabilities! connection '())
      (set-imap-connection-sequence-number! connection 0)
      (let ((queue (imap-connection-response-queue connection)))
        (set-car! queue '())
-       (set-cdr! queue '()))
-     (set-imap-connection-folder! connection #f))))
+       (set-cdr! queue '())))))
 
-(define set-imap-connection-folder!
-  (let ((set-url! (slot-modifier <imap-connection> 'URL))
-	(set-folder! (slot-modifier <imap-connection> 'FOLDER)))
-    (lambda (connection folder)
-      (if folder (set-url! connection (resource-locator folder)))
-      (set-folder! connection folder))))
+(define set-imap-connection-url!
+  (let ((modifier (slot-modifier <imap-connection> 'URL)))
+    (lambda (connection url)
+      (modifier
+       connection
+       (or url (imap-url-new-mailbox (imap-connection-url connection) ""))))))
 
 (define (next-imap-command-tag connection)
   (let ((n (imap-connection-sequence-number connection)))
@@ -479,6 +483,16 @@
 					  'BASE26-STRING->NONNEGATIVE-INTEGER))
 	    (loop (fix:+ start 1) (+ (* n 26) digit)))
 	  n))))
+
+(define (increment-connection-reference-count! connection)
+  (set-imap-connection-reference-count!
+   connection
+   (+ (imap-connection-reference-count connection) 1)))
+
+(define (decrement-connection-reference-count! connection)
+  (set-imap-connection-reference-count!
+   connection
+   (- (imap-connection-reference-count connection) 1)))
 
 (define (enqueue-imap-response connection response)
   (let ((queue (imap-connection-response-queue connection)))
@@ -514,7 +528,7 @@
        (lambda (connection)
 	 (and (compatible-imap-urls? (imap-connection-url connection) url)
 	      (if (test-imap-connection-open connection) 1 0))))
-      (make-imap-connection (imap-url-new-mailbox url ""))))
+      (make-imap-connection url)))
 
 (define (search-imap-connections assessor)
   (let loop ((connections memoized-imap-connections) (prev #f) (winner #f))
@@ -539,7 +553,7 @@
 (define make-imap-connection
   (let ((constructor (instance-constructor <imap-connection> '(URL))))
     (lambda (url)
-      (let ((connection (constructor url)))
+      (let ((connection (constructor (imap-url-new-mailbox url ""))))
 	(without-interrupts
 	 (lambda ()
 	   (set! memoized-imap-connections
@@ -604,18 +618,14 @@
 (define (with-open-imap-connection url receiver)
   (let ((connection (get-compatible-imap-connection url)))
     (dynamic-wind (lambda ()
-		    (set-imap-connection-reference-count!
-		     connection
-		     (+ (imap-connection-reference-count connection) 1)))
+		    (increment-connection-reference-count! connection))
 		  (lambda ()
 		    (guarantee-imap-connection-open connection)
 		    (let ((v (receiver connection)))
-		      (maybe-close-imap-connection connection)
+		      (maybe-close-imap-connection connection 1)
 		      v))
 		  (lambda ()
-		    (set-imap-connection-reference-count!
-		     connection
-		     (- (imap-connection-reference-count connection) 1))))))
+		    (decrement-connection-reference-count! connection)))))
 
 (define (test-imap-connection-open connection)
   (let ((port (imap-connection-port connection)))
@@ -659,15 +669,15 @@
 	(close-port port)))
   (reset-imap-connection connection))
 
-(define (maybe-close-imap-connection connection)
-  (if (= (imap-connection-reference-count connection)
-	 (if (imap-connection-folder connection) 0 1))
+(define (maybe-close-imap-connection connection min-count)
+  (if (= (imap-connection-reference-count connection) min-count)
       (if (search-imap-connections
-	   (lambda (connection*)
-	     (and (not (eq? connection connection*))
-		  (compatible-imap-urls? (imap-connection-url connection)
-					 (imap-connection-url connection*))
-		  0)))
+	   (let ((url (imap-connection-url connection)))
+	     (lambda (connection*)
+	       (and (not (eq? connection* connection))
+		    (compatible-imap-urls? (imap-connection-url connection*)
+					   url)
+		    0))))
 	  (close-imap-connection-cleanly connection)
 	  (defer-closing-of-connection connection))))
 
@@ -729,14 +739,15 @@
 	unspecific)))
 
 (define connections-awaiting-closure '())
-(define connection-closure-delay (* 60 1000))
-(define connection-closure-thread-interval (* 10 1000))
+(define connection-closure-delay 60)	;seconds
+(define connection-closure-thread-interval (* 10 1000))	;milliseconds
 (define connection-closure-thread-registration #f)
 
 ;;;; Folder and container datatypes
 
-(define-class (<imap-folder> (constructor (locator connection))) (<folder>)
-  (connection define accessor)
+(define-class (<imap-folder> (constructor (locator))) (<folder>)
+  (connection define standard
+	      initial-value #f)
   (read-only? define standard)
   (allowed-flags define standard)
   (permanent-flags define standard)
@@ -768,27 +779,37 @@
      (set-imap-folder-length! folder 0)
      (set-imap-folder-messages! folder (initial-messages)))))
 
+(define (guarantee-imap-folder-connection folder)
+  (without-interrupts
+   (lambda ()
+     (or (imap-folder-connection folder)
+	 (let ((connection
+		(get-folder-imap-connection (resource-locator folder))))
+	   (set-imap-connection-folder! connection folder)
+	   (increment-connection-reference-count! connection)
+	   (set-imap-folder-connection! folder connection)
+	   connection)))))
+
 (define (guarantee-imap-folder-open folder)
-  (let ((connection (imap-folder-connection folder)))
+  (let ((connection (guarantee-imap-folder-connection folder))
+	(url (resource-locator folder)))
     (if (or (guarantee-imap-connection-open connection)
-	    (not (eq? folder (imap-connection-folder connection))))
+	    (not (eq? (imap-connection-url connection) url)))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
 	  (let ((selected? #f))
 	    (dynamic-wind
 	     (lambda ()
-	       (set-imap-connection-folder! connection folder))
+	       (set-imap-connection-url! connection url))
 	     (lambda ()
-	       (imap:command:select
-		connection
-		(imap-url-server-mailbox (resource-locator folder)))
+	       (imap:command:select connection (imap-url-server-mailbox url))
 	       (set! selected? #t)
 	       unspecific)
 	     (lambda ()
 	       (if (not selected?)
-		   (set-imap-connection-folder! connection #f)))))
-	  (object-modified! folder 'STATUS)
-	  #t))))
+		   (set-imap-connection-url! connection #f)))))
+	  (object-modified! folder 'STATUS)))
+    connection))
 
 (define (new-imap-folder-uidvalidity! folder uidvalidity)
   (without-interrupts
@@ -1017,9 +1038,7 @@
 (define (with-imap-message-open message receiver)
   (let ((folder (message-folder message)))
     (if folder
-	(begin
-	  (guarantee-imap-folder-open folder)
-	  (receiver (imap-folder-connection folder))))))
+	(receiver (guarantee-imap-folder-open folder)))))
 
 ;;; These reflectors are needed to guarantee that we read the
 ;;; appropriate information from the server.  Some message slots are
@@ -1101,16 +1120,17 @@
 				  '(BODYSTRUCTURE)))))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
-  (guarantee-imap-folder-open folder)
-  (let ((messages
-	 (messages-satisfying folder
-	   (lambda (message)
-	     (not (and (imap-message-header-fields-initialized? message)
-		       (imap-message-length-initialized? message)))))))
+  
+  (let* ((connection (guarantee-imap-folder-open folder))
+	 (messages
+	  (messages-satisfying folder
+	    (lambda (message)
+	      (not (and (imap-message-header-fields-initialized? message)
+			(imap-message-length-initialized? message)))))))
     (if (pair? messages)
 	((imail-ui:message-wrapper "Reading message headers")
 	 (lambda ()
-	   (imap:command:fetch-set (imap-folder-connection folder)
+	   (imap:command:fetch-set connection
 				   (message-list->set messages)
 				   '(RFC822.HEADER RFC822.SIZE)))))))
 	
@@ -1428,14 +1448,12 @@
     (if (let ((url* (resource-locator folder)))
 	  (and (imap-url? url*)
 	       (compatible-imap-urls? url url*)))
-	(begin
-	  (guarantee-imap-folder-open folder)
-	  (let ((connection (imap-folder-connection folder)))
-	    (maybe-create connection
-	      (lambda ()
-		(imap:command:uid-copy connection
-				       (imap-message-uid message)
-				       (imap-url-server-mailbox url))))))
+	(let ((connection (guarantee-imap-folder-open folder)))
+	  (maybe-create connection
+	    (lambda ()
+	      (imap:command:uid-copy connection
+				     (imap-message-uid message)
+				     (imap-url-server-mailbox url)))))
 	(with-open-imap-connection url
 	  (lambda (connection)
 	    (maybe-create connection
@@ -1458,16 +1476,26 @@
 ;;;; Folder operations
 
 (define-method %open-resource ((url <imap-folder-url>))
-  (let ((folder (make-imap-folder url (get-folder-imap-connection url))))
+  (let ((folder (make-imap-folder url)))
     (reset-imap-folder! folder)
     (guarantee-imap-folder-open folder)
     folder))
 
 (define-method %close-resource ((folder <imap-folder>))
-  (let ((connection (imap-folder-connection folder)))
-    (maybe-close-imap-connection connection)
-    (set-imap-connection-folder! connection #f))
-  (object-modified! folder 'STATUS))
+  (let ((connection
+	 (without-interrupts
+	  (lambda ()
+	    (let ((connection (imap-folder-connection folder)))
+	      (if connection
+		  (begin
+		    (set-imap-folder-connection! folder #f)
+		    (set-imap-connection-folder! connection #f)
+		    (decrement-connection-reference-count! connection)))
+	      connection)))))
+    (if connection
+	(begin
+	  (maybe-close-imap-connection connection 0)
+	  (object-modified! folder 'STATUS)))))
 
 (define-method %get-message ((folder <imap-folder>) index)
   (vector-ref (imap-folder-messages folder) index))
@@ -1476,14 +1504,12 @@
   (or (imap-folder-unseen folder) 0))
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
-  (guarantee-imap-folder-open folder)
-  (imap:command:expunge (imap-folder-connection folder)))
+  (imap:command:expunge (guarantee-imap-folder-open folder)))
 
 (define-method search-folder ((folder <imap-folder>) criteria)
-  (guarantee-imap-folder-open folder)
   (map (lambda (index) (- index 1))
        (imap:response:search-indices
-	(let ((connection (imap-folder-connection folder)))
+	(let ((connection (guarantee-imap-folder-open folder)))
 	  (cond ((string? criteria)
 		 (imap:command:search connection 'TEXT criteria))
 		(else
@@ -1506,11 +1532,12 @@
   (reset-imap-folder! folder))
 
 (define-method probe-folder ((folder <imap-folder>))
-  (guarantee-imap-folder-open folder)
-  (imap:command:noop (imap-folder-connection folder)))
+  (imap:command:noop (guarantee-imap-folder-open folder)))
 
 (define-method folder-connection-status ((folder <imap-folder>))
-  (if (test-imap-connection-open (imap-folder-connection folder))
+  (if (let ((connection (imap-folder-connection folder)))
+	(and connection
+	     (test-imap-connection-open connection)))
       'ONLINE
       'OFFLINE))
 

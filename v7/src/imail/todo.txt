@@ -1,27 +1,19 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.123 2001/05/29 20:42:17 cph Exp $
+$Id: todo.txt,v 1.124 2001/06/01 02:23:19 cph Exp $
 
 Bug fixes
 ---------
 
-* Problem: when running C-u M-x imail for the first time (and also M-x
-  imail-browse-container), we establish a connection to the server
-  just to probe the folder for FOLDER-URL-IS-SELECTABLE? (or
-  URL-EXISTS?), then tear down the connection.  Right after that, the
-  connection is re-established and thereafter held open.  The
-  situation is even worse for imail-browse-container, since it must
-  re-open the connection any time anything happens.
+* The PROBE-FOLDER thread is left running even when connection to
+  server is severed.  In fact it is running as long as the buffer is
+  around.  It should be started when the connection is established,
+  and stopped when the connection is dropped.
 
-  The problem with imail-browse-container can be ameliorated by
-  opening a connection as part of the process of opening the container
-  object, and then closing the connection when the buffer is killed.
-  This is analogous to the method used for folder buffers.
-
-  The other problem can be fixed by keeping unused connections open,
-  shutting them down only after they have been idle for a little while
-  (perhaps 10 seconds or even 5).  This has a different (minor) problem in
-  that actions of the user that are intended to shut down the
-  connection will have a delayed effect.
+* M-x imail-browse-container should open a connection to the IMAP
+  server and leave it open as long as the buffer is around.  The
+  connection need not be "owned", as is true for folder buffers,
+  because server operations do not require selection.  Merely
+  incrementing the reference count is sufficient.
 
 * The RENAME-FOLDER operation must change the folder object to refer
   to the new URL rather than the old.  The operation must close the
