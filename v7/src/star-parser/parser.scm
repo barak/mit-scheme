@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.1 2001/06/26 18:03:20 cph Exp $
+;;; $Id: parser.scm,v 1.2 2001/06/26 19:01:17 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -107,7 +107,7 @@
 		(check-2-args expression)
 		`(,(car expression) ,(cadr expression)
 				    ,(do-expression (caddr expression))))
-	       ((PARSER)
+	       ((SEXP)
 		(let ((expression (check-1-arg expression)))
 		  (if (symbol? expression)
 		      expression

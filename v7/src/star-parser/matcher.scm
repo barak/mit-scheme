@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.1 2001/06/26 18:03:15 cph Exp $
+;;; $Id: matcher.scm,v 1.2 2001/06/26 19:01:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -124,7 +124,7 @@
 			      `(RE-COMPILE-CHAR-SET ,(string-tail arg 1) #T)
 			      `(RE-COMPILE-CHAR-SET ,arg #F))
 			  arg)))))
-	       ((MATCHER)
+	       ((SEXP)
 		(handle-complex-expression (check-1-arg expression)))
 	       (else
 		(error "Unknown matcher expression:" expression))))
