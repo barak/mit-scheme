@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.46 1993/08/26 06:27:45 gjr Exp $
+$Id: compiler.pkg,v 1.47 1993/10/12 07:29:31 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -38,7 +38,6 @@ MIT in each case. |#
 
 (define-package (compiler)
   (files "base/switch"
-	 "base/hashtb"
 	 "base/object"			;tagged object support
 	 "base/enumer"			;enumerations
 	 "base/sets"			;set abstraction
@@ -119,16 +118,6 @@ MIT in each case. |#
 	  reference-context/procedure
 	  reference-context?
 	  set-reference-context/offset!))
-
-(define-package (compiler balanced-binary-tree)
-  (files "base/btree")
-  (parent (compiler))
-  (export (compiler)
-	  btree-delete!
-	  btree-fringe
-	  btree-insert!
-	  btree-lookup
-	  make-btree))
 
 (define-package (compiler macros)
   (files "base/macros")

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.cbf,v 1.1 1992/08/29 13:51:17 jinx Exp $
+$Id: compiler.cbf,v 1.2 1993/10/12 07:29:15 cph Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-93 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -36,12 +36,13 @@ case.
 
 ;;;; Script to incrementally compile the compiler (from .bins)
 
-(for-each compile-directory
-	  '("back"
-	    "base"
-	    "fggen"
-	    "fgopt"
-	    "machines/alpha"
-	    "rtlbase"
-	    "rtlgen"
-	    "rtlopt"))
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (for-each compile-directory
+	    '("back"
+	      "base"
+	      "fggen"
+	      "fgopt"
+	      "machines/alpha"
+	      "rtlbase"
+	      "rtlgen"
+	      "rtlopt")))

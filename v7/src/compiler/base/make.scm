@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.99 1993/07/01 03:11:07 gjr Exp $
+$Id: make.scm,v 4.100 1993/10/12 07:27:58 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (lambda (architecture-name)
+  (load-option 'HASH-TABLE)
+  (load-option 'RB-TREE)
   (package/system-loader "comp" '() 'QUERY)
   (let ((initialize-package!
 	 (lambda (package-name)
@@ -46,5 +48,5 @@ MIT in each case. |#
     (initialize-package! '(COMPILER DECLARATIONS)))
   (add-system!
    (make-system (string-append "Liar (" architecture-name ")")
-		4 99
+		4 100
 		'())))

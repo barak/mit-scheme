@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/symtab.scm,v 1.44 1990/05/03 14:59:34 jinx Rel $
+$Id: symtab.scm,v 1.45 1993/10/12 07:27:12 cph Exp $
 
-Copyright (c) 1987, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,24 +38,24 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (make-symbol-table)
-  (symbol-hash-table/make 1009))
+  (make-eq-hash-table))
 
 (define (symbol-table-define! table key value)
-  (symbol-hash-table/modify! table key
-    (lambda (binding)
-      (error "symbol-table-define!: Redefining" key)
-      (set-binding-value! binding value)
-      binding)
-    (lambda ()
-      (make-binding value))))
+  (let ((binding (hash-table/get table key #f)))
+    (if binding
+	(begin
+	  (error "Redefining symbol:" key)
+	  (set-binding-value! binding value))
+	(hash-table/put! table key (make-binding value)))))
 
 (define (symbol-table-value table key)
-  (symbol-hash-table/lookup* table key
-    (lambda (binding)
-      (or (binding-value binding)
-	  (error "SYMBOL-TABLE-VALUE: no value" key)))
-    (lambda ()
-      (error "SYMBOL-TABLE-VALUE: Undefined key" key))))
+  (let ((binding (hash-table/get table key #f)))
+    (if (not binding)
+	(error "Undefined key:" key))
+    (let ((value (binding-value binding)))
+      (if (not value)
+	  (error "Key has no value:" key))
+      value)))
 
 (define (symbol-table->assq-list table)
   (map (lambda (pair)
@@ -63,7 +63,7 @@ MIT in each case. |#
        (symbol-table-bindings table)))
 
 (define-integrable (symbol-table-bindings table)
-  (symbol-hash-table/bindings table))
+  (hash-table->alist table))
 
 (define-integrable (make-binding initial-value)
   (cons initial-value '()))

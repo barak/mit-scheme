@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/compiler.cbf,v 1.1 1990/01/29 21:29:09 jinx Rel $
+$Id: compiler.cbf,v 1.2 1993/10/12 07:30:11 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,12 +34,13 @@ MIT in each case. |#
 
 ;;;; Script to incrementally compile the compiler (from .bins)
 
-(for-each compile-directory
-	  '("back"
-	    "base"
-	    "fggen"
-	    "fgopt"
-	    "machines/spectrum"
-	    "rtlbase"
-	    "rtlgen"
-	    "rtlopt"))
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (for-each compile-directory
+	    '("back"
+	      "base"
+	      "fggen"
+	      "fgopt"
+	      "machines/spectrum"
+	      "rtlbase"
+	      "rtlgen"
+	      "rtlopt")))

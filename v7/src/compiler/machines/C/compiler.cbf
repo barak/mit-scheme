@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.cbf,v 1.1 1993/06/08 06:13:32 gjr Exp $
+$Id: compiler.cbf,v 1.2 1993/10/12 07:28:43 cph Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,12 +34,13 @@ MIT in each case. |#
 
 ;;;; Script to incrementally compile the compiler (from .bins)
 
-(for-each compile-directory
-	  '("back"
-	    "base"
-	    "fggen"
-	    "fgopt"
-	    "machines/C"
-	    "rtlbase"
-	    "rtlgen"
-	    "rtlopt"))
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (for-each compile-directory
+	    '("back"
+	      "base"
+	      "fggen"
+	      "fgopt"
+	      "machines/C"
+	      "rtlbase"
+	      "rtlgen"
+	      "rtlopt")))

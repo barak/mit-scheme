@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlobj.scm,v 4.10 1992/09/30 19:22:47 cph Exp $
+$Id: rtlobj.scm,v 4.11 1993/10/12 07:28:23 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -112,25 +112,26 @@ MIT in each case. |#
 
 (define (make/label->object expression procedures continuations)
   (let ((hash-table
-	 (symbol-hash-table/make
-	  (1+ (+ (length procedures) (length continuations))))))
+	 (make-eq-hash-table
+	  (+ (if expression 1 0)
+	     (length procedures)
+	     (length continuations)))))
     (if expression
-	(symbol-hash-table/insert! hash-table
-				   (rtl-expr/label expression)
-				   expression))
+	(hash-table/put! hash-table
+			 (rtl-expr/label expression)
+			 expression))
     (for-each (lambda (procedure)
-		(symbol-hash-table/insert! hash-table
-					   (rtl-procedure/label procedure)
-					   procedure))
+		(hash-table/put! hash-table
+				 (rtl-procedure/label procedure)
+				 procedure))
 	      procedures)
     (for-each (lambda (continuation)
-		(symbol-hash-table/insert!
-		 hash-table
-		 (rtl-continuation/label continuation)
-		 continuation))
+		(hash-table/put! hash-table
+				 (rtl-continuation/label continuation)
+				 continuation))
 	      continuations)
-    (make/label->object* hash-table)))
-
-(define (make/label->object* hash-table)
-  (lambda (label)
-    (symbol-hash-table/lookup hash-table label)))
+    (lambda (label)
+      (let ((datum (hash-table/get hash-table label #f)))
+	(if (not datum)
+	    (error "Undefined label:" label))
+	datum))))

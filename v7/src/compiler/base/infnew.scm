@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 4.9 1992/12/29 19:51:57 gjr Exp $
+$Id: infnew.scm,v 4.10 1993/10/12 07:27:38 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -262,33 +262,30 @@ MIT in each case. |#
 
 (define (info-generation-phase-3 expression procedures continuations
 				 label-bindings external-labels)
-  (let ((label-bindings (labels->dbg-labels label-bindings)))
-    (let ((labels (make-btree)))
+  (let ((label-bindings (labels->dbg-labels label-bindings))
+	(no-datum '(NO-DATUM)))
+    (let ((labels (make-string-hash-table)))
       (for-each (lambda (label-binding)
-		  (for-each (lambda (name)
-			      (btree-insert! labels string<? car name
-				(lambda (name)
-				  (cons name (cdr label-binding)))
-				(lambda (association)
-				  (error "redefining label" association))
-				(lambda (association)
-				  association
-				  unspecific)))
+		  (for-each (lambda (key)
+			      (let ((datum
+				     (hash-table/get labels key no-datum)))
+				(if (not (eq? datum no-datum))
+				    (error "Redefining label:" key datum)))
+			      (hash-table/put! labels
+					       key
+					       (cdr label-binding)))
 			    (car label-binding)))
 		label-bindings)
       (let ((map-label/fail
 	     (lambda (label)
-	       (btree-lookup labels string<? car (system-pair-car label)
-		 cdr
-		 (lambda (name)
-		   (error "Missing label" name)))))
+	       (let ((key (system-pair-car label)))
+		 (let ((datum (hash-table/get labels key no-datum)))
+		   (if (eq? datum no-datum)
+		       (error "Missing label:" key))
+		   datum))))
 	    (map-label/false
 	     (lambda (label)
-	       (btree-lookup labels string<? car (system-pair-car label)
-		 cdr
-		 (lambda (name)
-		   name			; ignored
-		   false)))))
+	       (hash-table/get labels (system-pair-car label) #f))))
 	(for-each (lambda (label)
 		    (set-dbg-label/external?! (map-label/fail label) true))
 		  external-labels)
@@ -303,8 +300,9 @@ MIT in each case. |#
 	     (set-dbg-procedure/label! procedure mapped-label)
 	     (cond ((dbg-procedure/external-label procedure)
 		    => (lambda (label)
-			 (set-dbg-procedure/external-label! procedure			 
-							    (map-label/fail label))))
+			 (set-dbg-procedure/external-label!
+			  procedure
+			  (map-label/fail label))))
 		   ((not mapped-label)
 		    (error "Missing label" internal-label)))))
 	 procedures)
@@ -326,20 +324,16 @@ MIT in each case. |#
 	   (cons names
 		 (make-dbg-label-2 (choose-distinguished-label names)
 				   (car offset-binding)))))
-       (let ((offsets (make-btree)))
+       (let ((offsets (make-rb-tree = <)))
 	 (for-each (lambda (binding)
-		     (let ((name (system-pair-car (car binding))))
-		       (btree-insert! offsets < car (cdr binding)
-			 (lambda (offset)
-			   (list offset name))
-			 (lambda (offset-binding)
-			   (set-cdr! offset-binding
-				     (cons name (cdr offset-binding))))
-			 (lambda (offset-binding)
-			   offset-binding
-			   unspecific))))
+		     (let ((offset (cdr binding))
+			   (name (system-pair-car (car binding))))
+		       (let ((datum (rb-tree/lookup offsets offset #f)))
+			 (if datum
+			     (set-cdr! datum (cons name (cdr datum)))
+			     (rb-tree/insert! offsets offset (list name))))))
 		   label-bindings)
-	 (btree-fringe offsets))))
+	 (rb-tree->alist offsets))))
 
 (define (choose-distinguished-label names)
   (if (null? (cdr names))

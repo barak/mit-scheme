@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/compiler.cbf,v 1.4 1991/02/15 00:41:03 jinx Exp $
+$Id: compiler.cbf,v 1.5 1993/10/12 07:30:28 cph Exp $
 
-Copyright (c) 1989, 1991 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,12 +34,13 @@ MIT in each case. |#
 
 ;;;; Script to incrementally compile the compiler (from .bins)
 
-(for-each compile-directory
-	  '("back"
-	    "base"
-	    "fggen"
-	    "fgopt"
-	    "machines/vax"
-	    "rtlbase"
-	    "rtlgen"
-	    "rtlopt"))
+(fluid-let ((compiler:coalescing-constant-warnings? #f))
+  (for-each compile-directory
+	    '("back"
+	      "base"
+	      "fggen"
+	      "fgopt"
+	      "machines/vax"
+	      "rtlbase"
+	      "rtlgen"
+	      "rtlopt")))

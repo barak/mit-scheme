@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 4.34 1992/11/18 03:56:42 gjr Exp $
+$Id: decls.scm,v 4.35 1993/10/12 07:29:32 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,19 +69,13 @@ MIT in each case. |#
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))
-  (set! source-hash
-	(make/hash-table
-	 101
-	 string-hash-mod
-	 (lambda (filename source-node)
-	   (string=? filename (source-node/filename source-node)))
-	 make/source-node))
+  (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
-	       (hash-table/intern! source-hash
-				   filename
-				   identity-procedure
-				   identity-procedure))
+	       (if (not (hash-table/get source-hash filename #f))
+		   (hash-table/put! source-hash
+				    filename
+				    (make/source-node filename))))
 	     source-filenames))
   (initialize/syntax-dependencies!)
   (initialize/integration-dependencies!)
@@ -114,10 +108,10 @@ MIT in each case. |#
   (modification-time false))
 
 (define (filename->source-node filename)
-  (hash-table/lookup source-hash
-		     filename
-		     identity-procedure
-		     (lambda () (error "Unknown source file" filename))))
+  (let ((node (hash-table/get source-hash filename #f)))
+    (if (not node)
+	(error "Unknown source file:" filename))
+    node))
 
 (define (source-node/circular? node)
   (memq node (source-node/backward-closure node)))

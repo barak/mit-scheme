@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.3 1992/11/18 03:53:38 gjr Exp $
+$Id: decls.scm,v 1.4 1993/10/12 07:29:16 cph Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
+Copyright (c) 1992-93 Digital Equipment Corporation (D.E.C.)
 
 This software was developed at the Digital Equipment Corporation
 Cambridge Research Laboratory.  Permission to copy this software, to
@@ -71,19 +71,13 @@ case.
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))
-  (set! source-hash
-	(make/hash-table
-	 101
-	 string-hash-mod
-	 (lambda (filename source-node)
-	   (string=? filename (source-node/filename source-node)))
-	 make/source-node))
+  (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
-	       (hash-table/intern! source-hash
-				   filename
-				   identity-procedure
-				   identity-procedure))
+	       (if (not (hash-table/get source-hash filename #f))
+		   (hash-table/put! source-hash
+				    filename
+				    (make/source-node filename))))
 	     source-filenames))
   (initialize/syntax-dependencies!)
   (initialize/integration-dependencies!)
@@ -116,10 +110,10 @@ case.
   (modification-time false))
 
 (define (filename->source-node filename)
-  (hash-table/lookup source-hash
-		     filename
-		     identity-procedure
-		     (lambda () (error "Unknown source file" filename))))
+  (let ((node (hash-table/get source-hash filename #f)))
+    (if (not node)
+	(error "Unknown source file:" filename))
+    node))
 
 (define (source-node/circular? node)
   (memq node (source-node/backward-closure node)))
