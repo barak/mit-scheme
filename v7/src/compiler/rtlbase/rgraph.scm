@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.1 1987/12/04 20:17:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.2 1988/04/25 21:34:43 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,6 +41,7 @@ MIT in each case. |#
 			  (constructor make-rgraph (n-registers)))
   n-registers
   (address-registers (reverse initial-address-registers))
+  (fixnum-registers)
   entry-edges
   bblocks
   register-bblock
@@ -58,6 +59,11 @@ MIT in each case. |#
   (set-rgraph-entry-edges! rgraph
 			   (cons (node->edge node)
 				 (rgraph-entry-edges rgraph))))
+
+(define (add-rgraph-fixnum-register! rgraph register)
+  (set-rgraph-fixnum-registers! rgraph
+				 (cons register
+				       (rgraph-fixnum-registers rgraph))))
 
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
