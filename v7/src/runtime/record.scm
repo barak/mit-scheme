@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.35 2003/03/07 21:18:22 cph Exp $
+$Id: record.scm,v 1.36 2003/03/08 02:05:50 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -400,9 +400,9 @@ USA.
 
 (define (->type-name object)
   (let* ((string
-	  (if (string? object)
-	      object
-	      (write-to-string object)))
+	  (cond ((string? object) object)
+		((symbol? object) (symbol-name object))
+		(else (error:wrong-type-argument object "type name" #f))))
 	 (n (string-length string)))
     (if (and (fix:> n 2)
 	     (char=? (string-ref string 0) #\<)
