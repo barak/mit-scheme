@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.13 1995/09/01 21:35:49 adams Exp $
+$Id: compat.scm,v 1.14 1996/07/24 17:07:07 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -317,15 +317,18 @@ MIT in each case. |#
 
 
 (define (compat/rewrite-call/split env operator continuation
+				   extra-operands ; e.g. arity
 				   register-operands stack-operands)
   
   (define (pushed-arg-name form)
     (compat/expression->name form))
 
   (define (make-call new-continuation)
-    `(CALL ,(compat/expr env operator)
-	   ,(compat/expr env new-continuation)
-	   ,@(compat/expr* env register-operands)))
+    (let ((operator*        (compat/expr env operator))
+	  (continuation*    (compat/expr env new-continuation))
+	  (extra-operands*  (compat/expr* env extra-operands))
+	  (operands*        (compat/expr* env register-operands)))
+      `(CALL ,operator* ,continuation* ,@extra-operands* ,@operands*)))
 
   (define (make-pushing-call continuation old-frame old-pushed-expressions)
     (make-call
@@ -366,7 +369,7 @@ MIT in each case. |#
   form ;ignored
   (call-with-values (lambda () (compat/split-register&stack rands))
     (lambda (reg-rands stack-rands)
-      (compat/rewrite-call/split env rator cont reg-rands stack-rands))))
+      (compat/rewrite-call/split env rator cont '() reg-rands stack-rands))))
 
 (let* ((compat/invocation-cookie
 	(lambda (n)
@@ -377,37 +380,22 @@ MIT in each case. |#
 	      (lambda (reg-rands stack-rands)
 		(compat/rewrite-call/split
 		 env rator cont
-		 (append (list-head rands n) reg-rands)
+		 (list-head rands n)
+		 reg-rands
 		 stack-rands))))))
        (invocation+2-handler (compat/invocation-cookie 2)))
 
-  ;; These are kinds of calls which have extra arguments like arity or cache
+  ;; These are kinds of calls which have extra arguments like arity
+  ;; or cache.
   (define-rewrite/compat %invoke-operator-cache     invocation+2-handler)
   (define-rewrite/compat %invoke-remote-cache       invocation+2-handler)
   (define-rewrite/compat %internal-apply            invocation+2-handler)
   (define-rewrite/compat %internal-apply-unchecked  invocation+2-handler)
+
+  ;; Continuations receive multiple arguments like normal procedures.
   (define-rewrite/compat %invoke-continuation    compat/standard-call-handler))
 
 
-;;(define-rewrite/compat %vector-index
-;;  (lambda (env rator cont rands)
-;;    rator cont
-;;    ;; rands = ('<vector> '<name>)
-;;    ;; Copy, possibly replacing vector
-;;    `(CALL (QUOTE ,%vector-index)
-;;	   (QUOTE #F)
-;;	   ,(compat/expr env
-;;			 (let ((vector-arg  (first rands)))
-;;			   (if (QUOTE/? vector-arg)
-;;			       (cond ((assq (quote/text vector-arg) env)
-;;				      => (lambda (old.new)
-;;					   `(QUOTE ,(second old.new))))
-;;				     (else vector-arg))
-;;			       (internal-error
-;;				"Illegal (unquoted) %vector-index arguments"
-;;				rands))))
-;;	   ,(compat/expr env (second rands)))))
-		       
 (define-rewrite/compat %stack-closure-ref
   (lambda (env form rator cont rands)
     form rator cont
