@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dired.scm,v 1.184 2001/05/10 18:22:29 cph Exp $
+;;; $Id: dired.scm,v 1.185 2001/05/24 19:07:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -77,8 +77,9 @@ Type \\[dired-do-rename] to rename a file or move the marked files to another di
 Type \\[dired-do-copy] to copy files.
 Type \\[dired-sort-toggle-or-edit] to toggle sorting by name/date or change the listing switches.
 Type \\[dired-revert] to read the directory again.  This discards all deletion-flags.
-Space and Rubout can be used to move down and up by lines."
-;;Type v to view a file in View mode, returning to Dired when done.
+Space and Rubout can be used to move down and up by lines.
+
+\\{dired}"
   (lambda (buffer)
     (event-distributor/invoke! (ref-variable dired-mode-hook buffer) buffer)))
 
