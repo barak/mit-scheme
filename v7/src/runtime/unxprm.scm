@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.23 1993/01/12 19:01:28 gjr Exp $
+$Id: unxprm.scm,v 1.24 1993/04/27 09:14:10 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -250,3 +250,55 @@ MIT in each case. |#
 
 (define (initialize-system-primitives!)
   (add-event-receiver! event:after-restart reset-environment-variables!))
+
+(define (make-select-registry . descriptors)
+  (let ((registry (make-string ((ucode-primitive select-registry-size 0)))))
+    ((ucode-primitive select-registry-clear-all 1) registry)
+    (do ((descriptors descriptors (cdr descriptors)))
+	((null? descriptors))
+      ((ucode-primitive select-registry-set 2) registry (car descriptors)))
+    registry))
+
+(define (add-to-select-registry! registry descriptor)
+  ((ucode-primitive select-registry-set 2) registry descriptor))
+
+(define (remove-from-select-registry! registry descriptor)
+  ((ucode-primitive select-registry-clear 2) registry descriptor))
+
+(define (select-registry-test registry block?)
+  (let ((result-vector
+	 (make-vector ((ucode-primitive select-registry-lub 0)) #f)))
+    (let ((result
+	   ((ucode-primitive select-registry-test 3) registry block?
+						     result-vector)))
+      (cond ((fix:> result 0)
+	     (let loop ((index (fix:- result 1)) (descriptors '()))
+	       (let ((descriptors
+		      (cons (vector-ref result-vector index) descriptors)))
+		 (if (fix:= 0 index)
+		     descriptors
+		     (loop (fix:- index 1) descriptors)))))
+	    ((fix:= 0 result)
+	     #f)
+	    ((fix:= -1 result)
+	     (subprocess-global-status-tick)
+	     'PROCESS-STATUS-CHANGE)
+	    ((fix:= -2 result)
+	     'INTERRUPT)
+	    (else
+	     (error "Illegal result from SELECT-REGISTRY-TEST:" result))))))
+
+(define (select-descriptor descriptor block?)
+  (let ((result ((ucode-primitive select-descriptor 2) descriptor block?)))
+    (case result
+      ((0)
+       #f)
+      ((1)
+       'INPUT-AVAILABLE)
+      ((-1)
+       (subprocess-global-status-tick)
+       'PROCESS-STATUS-CHANGE)
+      ((-2)
+       'INTERRUPT)
+      (else
+       (error "Illegal result from CHANNEL-SELECT:" result)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.33 1993/04/19 08:38:59 cph Exp $
+$Id: io.scm,v 14.34 1993/04/27 09:14:07 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -40,6 +40,7 @@ MIT in each case. |#
 (define open-channels-list)
 (define traversing?)
 (define open-directories-list)
+(define have-select?)
 
 (define (initialize-package!)
   (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
@@ -47,6 +48,7 @@ MIT in each case. |#
   (add-gc-daemon! close-lost-open-files-daemon)
   (set! open-directories-list (make-protection-list))
   (add-gc-daemon! close-lost-open-directories-daemon)
+  (set! have-select? ((ucode-primitive have-select? 0)))
   (add-event-receiver! event:after-restore primitive-io/reset!))
 
 (define-structure (channel (constructor %make-channel))
@@ -144,7 +146,9 @@ MIT in each case. |#
 
 (define (primitive-io/reset!)
   ;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
-  (close-all-open-files-internal (lambda (ignore) ignore)))
+  (close-all-open-files-internal (lambda (ignore) ignore))
+  (set! have-select? ((ucode-primitive have-select? 0)))
+  unspecific)
 
 (define (close-all-open-files-internal action)
   (fluid-let ((traversing? true))
@@ -201,12 +205,9 @@ MIT in each case. |#
   (list (ucode-primitive channel-blocking 1)
 	(ucode-primitive channel-blocking? 1)
 	(ucode-primitive channel-close 1)
+	(ucode-primitive channel-descriptor 1)
 	(ucode-primitive channel-nonblocking 1)
 	(ucode-primitive channel-read 4)
-	(ucode-primitive channel-register 1)
-	(ucode-primitive channel-registered? 1)
-	(ucode-primitive channel-select-then-read 4)
-	(ucode-primitive channel-unregister 1)
 	(ucode-primitive channel-write 4)
 	(ucode-primitive file-length-new 1)
 	(ucode-primitive file-position 1)
@@ -234,14 +235,38 @@ MIT in each case. |#
 	(ucode-primitive terminal-set-state 2)))
 
 (define (channel-read channel buffer start end)
-  ((ucode-primitive channel-read 4) (channel-descriptor channel)
-				    buffer start end))
+  (if (and have-select? (not (channel-type=file? channel)))
+      (let ((block-events? (block-thread-events)))
+	(let ((result
+	       (and (eq? 'INPUT-AVAILABLE (test-for-input-on-channel channel))
+		    ((ucode-primitive channel-read 4)
+		     (channel-descriptor channel) buffer start end))))
+	  (if (not block-events?)
+	      (unblock-thread-events))
+	  result))
+      ((ucode-primitive channel-read 4) (channel-descriptor channel)
+					buffer start end)))
 
 (define (channel-read-block channel buffer start end)
   (let loop ()
     (or (channel-read channel buffer start end)
 	(loop))))
 
+(define-integrable (test-for-input-on-channel channel)
+  (test-for-input-on-descriptor (channel-descriptor-for-select channel)
+				(channel-blocking? channel)))
+
+(define (test-for-input-on-descriptor descriptor block?)
+  (if block?
+      (or (select-descriptor descriptor #f)
+	  (if (block-on-input-descriptor descriptor)
+	      'INPUT-AVAILABLE
+	      'INTERRUPT))
+      (select-descriptor descriptor #f)))
+
+(define-integrable (channel-descriptor-for-select channel)
+  ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
+
 (define (channel-write channel buffer start end)
   ((ucode-primitive channel-write 4) (channel-descriptor channel)
 				     buffer start end))
@@ -287,19 +312,6 @@ MIT in each case. |#
 		     (channel-blocking channel)
 		     (channel-nonblocking channel)))))))
       (thunk)))
-
-(define (channel-registered? channel)
-  ((ucode-primitive channel-registered? 1) (channel-descriptor channel)))
-
-(define (channel-register channel)
-  ((ucode-primitive channel-register 1) (channel-descriptor channel)))
-
-(define (channel-unregister channel)
-  ((ucode-primitive channel-unregister 1) (channel-descriptor channel)))
-
-(define (channel-select-then-read channel buffer start end)
-  ((ucode-primitive channel-select-then-read 4) (channel-descriptor channel)
-						buffer start end))
 
 (define (channel-table)
   (fluid-let ((traversing? true))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.27 1993/03/16 05:12:32 gjr Exp $
+$Id: x11graph.scm,v 1.28 1993/04/27 09:14:12 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -44,6 +44,7 @@ MIT in each case. |#
   (x-close-display 1)
   (x-close-all-displays 0)
   (x-close-window 1)
+  (x-display-descriptor 1)
   (x-display-flush 1)
   (x-display-get-default 3)
   (x-display-process-events 2)
@@ -272,7 +273,6 @@ MIT in each case. |#
   (name false read-only true)
   xd
   (window-list (make-protection-list) read-only true)
-  (mutex (make-thread-mutex))
   (event-queue (make-queue))
   (properties (make-1d-table) read-only true))
 
@@ -297,7 +297,7 @@ MIT in each case. |#
 	      (error "Unable to open display:" name))
 	  (let ((display (make-x-display name xd)))
 	    (add-to-protection-list! display-list display xd)
-	    (create-thread false (make-event-previewer display))
+	    (make-event-previewer display)
 	    display)))))
 
 (define (x-graphics/close-display display)
@@ -326,77 +326,69 @@ MIT in each case. |#
   (drop-all-protected-objects display-list))
 
 (define (make-event-previewer display)
-  (lambda ()
-    (detach-thread (current-thread))
-    (bind-condition-handler (list condition-type:bad-range-argument
-				  condition-type:wrong-type-argument)
-	(lambda (condition)
-	  ;; If x-display-process-events signals an argument error on
-	  ;; its display argument, that means the display has been
-	  ;; closed.  When that happens, kill this thread.
-	  (if (and (eq? x-display-process-events
-			(access-condition condition 'OPERATOR))
-		   (eqv? 0 (access-condition condition 'OPERAND)))
-	      (exit-current-thread unspecific)))
-      (lambda ()
-	(let ((interval event-previewer-interval)
-	      (mutex (x-display/mutex display)))
-	  (do () (false)
-	    (lock-thread-mutex mutex)
-	    (let loop ()
-	      (let ((event
-		     (x-display-process-events (x-display/xd display) 2)))
-		(if event
-		    (begin
-		      (process-event display event)
-		      (loop)))))
-	    (unlock-thread-mutex mutex)
-	    (sleep-current-thread interval)))))))
+  (let ((registration))
+    (set! registration
+	  (permanently-register-input-thread-event
+	   (x-display-descriptor (x-display/xd display))
+	   (current-thread)
+	   (lambda ()
+	     (call-with-current-continuation
+	      (lambda (continuation)
+		(bind-condition-handler
+		    (list condition-type:bad-range-argument
+			  condition-type:wrong-type-argument)
+		    (lambda (condition)
+		      ;; If X-DISPLAY-PROCESS-EVENTS or
+		      ;; X-DISPLAY-DESCRIPTOR signals an argument error
+		      ;; on its display argument, that means the
+		      ;; display has been closed.
+		      condition
+		      (deregister-input-thread-event registration)
+		      (continuation unspecific))
+		  (lambda ()
+		    (let ((event
+			   (x-display-process-events (x-display/xd display)
+						     2)))
+		      (if event
+			  (process-event display event))))))))))
+    registration))
 
 (define (read-event display)
-  (let ((mutex (x-display/mutex display)))
-    (dynamic-wind
-     (lambda ()
-       (lock-thread-mutex mutex))
-     (lambda ()
-       (let ((queue (x-display/event-queue display)))
-	 (let loop ()
-	   (if (queue-empty? queue)
-	       (let ((event
-		      (let ((xd (x-display/xd display)))
-			(if (other-running-threads?)
-			    ;; Don't block process if any other threads
-			    ;; want to run.  Mutex will stop previewer.
-			    (or (x-display-process-events xd 2)
-				(begin
-				  (yield-current-thread)
-				  false))
-			    (x-display-process-events xd 1)))))
-		 (if event
-		     (process-event display event))
-		 (loop))
-	       (dequeue! queue)))))
-     (lambda ()
-       (unlock-thread-mutex mutex)))))
+  (let ((queue (x-display/event-queue display))
+	(block-events? (block-thread-events)))
+    (let ((event
+	   (let loop ()
+	     (if (queue-empty? queue)
+		 (let ((event
+			(and (eq? 'INPUT-AVAILABLE
+				  (test-for-input-on-descriptor
+				   (x-display-descriptor
+				    (x-display/xd display))
+				   #t))
+			     (x-display-process-events (x-display/xd display)
+						       1))))
+		   (if event
+		       (process-event display event))
+		   (loop))
+		 (dequeue! queue)))))
+      (if (not block-events?)
+	  (unblock-thread-events))
+      event)))
 
 (define (discard-events display)
-  (let ((mutex (x-display/mutex display)))
-    (dynamic-wind
-     (lambda ()
-       (lock-thread-mutex mutex))
-     (lambda ()
-       (let ((queue (x-display/event-queue display)))
-	 (let loop ()
-	   (cond ((not (queue-empty? queue))
-		  (dequeue! queue)
-		  (loop))
-		 ((x-display-process-events (x-display/xd display) 2)
-		  =>
-		  (lambda (event)
-		    (process-event display event)
-		    (loop)))))))
-     (lambda ()
-       (unlock-thread-mutex mutex)))))
+  (let ((queue (x-display/event-queue display))
+	(block-events? (block-thread-events)))
+    (let loop ()
+      (cond ((not (queue-empty? queue))
+	     (dequeue! queue)
+	     (loop))
+	    ((x-display-process-events (x-display/xd display) 2)
+	     =>
+	     (lambda (event)
+	       (process-event display event)
+	       (loop)))))
+    (if (not block-events?)
+	(unblock-thread-events))))
 
 (define (process-event display event)
   (let ((handler (vector-ref event-handlers (vector-ref event 0))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.176 1993/04/19 08:39:11 cph Exp $
+$Id: runtime.pkg,v 14.177 1993/04/27 09:14:09 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1556,15 +1556,12 @@ MIT in each case. |#
 	  channel-blocking?
 	  channel-close
 	  channel-closed?
+	  channel-descriptor-for-select
 	  channel-nonblocking
 	  channel-open?
 	  channel-port
 	  channel-read
 	  channel-read-block
-	  channel-register
-	  channel-registered?
-	  channel-select-then-read
-	  channel-unregister
 	  channel-table
 	  channel-type
 	  channel-type=block-device?
@@ -1616,6 +1613,8 @@ MIT in each case. |#
 	  terminal-raw-input
 	  terminal-raw-output
 	  terminal-set-state
+	  test-for-input-on-channel
+	  test-for-input-on-descriptor
 	  tty-input-channel
 	  tty-output-channel
 	  with-channel-blocking)
@@ -1683,6 +1682,8 @@ MIT in each case. |#
 	  set-channel-port!)
   (export (runtime microcode-errors)
 	  port-error-test)
+  (export (runtime x-graphics)
+	  have-select?)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -2226,8 +2227,10 @@ MIT in each case. |#
 	  %translate-to-state-point
 	  merge-dynamic-state)
   (export (runtime thread)
+	  current-state-point
 	  make-state-space
-	  state-space:local)
+	  state-space:local
+	  translate-to-state-point)
   (initialization (initialize-package!)))
 
 (define-package (runtime stream)
@@ -2449,12 +2452,15 @@ MIT in each case. |#
 	  create-thread
 	  create-thread-continuation
 	  current-thread
+	  deregister-input-thread-event
 	  detach-thread
 	  exit-current-thread
 	  join-thread
 	  lock-thread-mutex
 	  make-thread-mutex
 	  other-running-threads?
+	  permanently-register-input-thread-event
+	  register-input-thread-event
 	  set-thread-timer-interval!
 	  signal-thread-event
 	  sleep-current-thread
@@ -2463,10 +2469,12 @@ MIT in each case. |#
 	  suspend-current-thread
 	  thread-continuation
 	  thread-dead?
+	  thread-execution-state
 	  thread-mutex-owner
 	  thread-mutex?
 	  thread-timer-interval
 	  thread?
+	  threads-list
 	  try-lock-thread-mutex
 	  unblock-thread-events
 	  unlock-thread-mutex
@@ -2475,4 +2483,6 @@ MIT in each case. |#
 	  yield-current-thread)
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
+  (export (runtime primitive-io)
+	  block-on-input-descriptor)
   (initialization (initialize-package!)))
