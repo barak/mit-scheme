@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.28 1992/02/03 23:51:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/xdebug.c,v 9.29 1992/02/04 15:50:17 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -44,10 +44,11 @@ MIT in each case. */
 #define DATUM_EQ	3
 
 static SCHEME_OBJECT *
-Find_Occurrence(From, To, What, Mode)
-     fast SCHEME_OBJECT *From, *To;
-     SCHEME_OBJECT What;
-     int Mode;
+DEFUN (Find_Occurrence, (From, To, What, Mode),
+       fast SCHEME_OBJECT * From
+       AND fast SCHEME_OBJECT * To
+       AND SCHEME_OBJECT What
+       AND int Mode)
 {
   fast SCHEME_OBJECT Obj;
 
@@ -110,11 +111,11 @@ Find_Occurrence(From, To, What, Mode)
 #define STORE_P		2
 
 static long
-Find_In_Area(Name, From, To, Obj, Mode, print_p, store_p)
-     char *Name;
-     SCHEME_OBJECT *From, *To, Obj;
-     int Mode;
-     Boolean print_p, store_p;
+DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
+       char * Name
+       AND SCHEME_OBJECT * From AND SCHEME_OBJECT * To AND SCHEME_OBJECT Obj
+       AND int Mode
+       AND Boolean print_p AND Boolean store_p)
 {
   fast SCHEME_OBJECT *Where;
   fast long occurrences = 0;
@@ -143,9 +144,9 @@ Find_In_Area(Name, From, To, Obj, Mode, print_p, store_p)
 }
 
 SCHEME_OBJECT
-Find_Who_Points(Obj, Find_Mode, Collect_Mode)
-     SCHEME_OBJECT Obj;
-     int Find_Mode, Collect_Mode;
+DEFUN (Find_Who_Points (Obj, Find_Mode, Collect_Mode),
+       SCHEME_OBJECT Obj
+       AND int Find_Mode AND int Collect_Mode)
 {
   long n = 0;
   SCHEME_OBJECT *Saved_Free = Free;
@@ -195,9 +196,10 @@ Find_Who_Points(Obj, Find_Mode, Collect_Mode)
   }
 }
 
-Print_Memory(Where, How_Many)
-     SCHEME_OBJECT *Where;
-     long How_Many;
+void
+DEFUN (Print_Memory, (Where, How_Many)
+       SCHEME_OBJECT * Where
+       AND long How_Many)
 {
   fast SCHEME_OBJECT *End   = &Where[How_Many];
 
