@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.2 2000/12/19 20:57:10 cph Exp $
+$Id: compile.scm,v 1.3 2001/10/05 19:13:30 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Program to compile MIT Scheme.
@@ -43,7 +44,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "imail"))
+	    '("sos" "imail" "star-parser" "xml"))
   (with-working-directory-pathname "runtime-check"
     (lambda ()
       (load "runtime.cbf"))))
