@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.26 1995/04/13 22:24:05 cph Exp $
+$Id: syntax.scm,v 14.27 1995/07/06 22:07:23 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -357,7 +357,7 @@ MIT in each case. |#
 (define (syntax/in-package top-level? environment . body)
   top-level?
   (make-in-package (syntax-subexpression environment)
-		   (make-sequence (syntax-sequence-internal #t body))))
+		   (make-scode-sequence (syntax-sequence-internal #t body))))
 
 (define (syntax/delay top-level? expression)
   top-level?
