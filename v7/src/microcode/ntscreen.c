@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.6 1993/07/30 06:20:17 gjr Exp $
+$Id: ntscreen.c,v 1.7 1993/08/07 00:09:39 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -246,7 +246,7 @@ Screen_InitApplication (HANDLE hInstance)
    wndclass.cbClsExtra =    0;
    wndclass.cbWndExtra =    SCREENEXTRABYTES ;
    wndclass.hInstance =     hInstance ;
-   wndclass.hIcon =         LoadIcon (hInstance, "TERMINALICON");
+   wndclass.hIcon =         LoadIcon (hInstance, "SHIELD3_ICON");
    wndclass.hCursor =       LoadCursor (NULL, IDC_ARROW);
    wndclass.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1) ;
    wndclass.lpszMenuName =  0;
