@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.120 1992/02/06 22:51:59 arthur Exp $
+;;;	$Id: lincom.scm,v 1.121 1995/01/06 01:08:00 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -52,7 +52,11 @@
   "Type number of lines from point to mark."
   "r"
   (lambda (region)
-    (message "Region has " (region-count-lines region) " lines")))
+    (message "Region has "
+	     (region-count-lines region)
+	     " lines, "
+	     (- (region-end-index region) (region-start-index region))
+	     " characters.")))
 
 (define-command what-line
   "Print the current line number (in the buffer) of point."
