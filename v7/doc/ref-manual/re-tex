@@ -1,22 +1,8 @@
 #!/bin/sh
 
-
 tex scheme.texinfo
-texindex scheme.cp
-texindex scheme.fn
-texindex scheme.ky
-texindex scheme.pg
-texindex scheme.tp
-texindex scheme.vr
-
+texindex scheme.cp scheme.fn scheme.ky scheme.pg scheme.tp scheme.vr
 tex scheme.texinfo
-texindex scheme.cp
-texindex scheme.fn
-texindex scheme.ky
-texindex scheme.pg
-texindex scheme.tp
-texindex scheme.vr
-
+texindex scheme.cp scheme.fn scheme.ky scheme.pg scheme.tp scheme.vr
 tex scheme.texinfo
-
 # hopefully by now all the references have reached their correct pages
