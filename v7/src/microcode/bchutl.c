@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.12 2002/11/20 19:46:07 cph Exp $
+$Id: bchutl.c,v 1.13 2002/11/20 20:49:46 cph Exp $
 
-Copyright (c) 1991-2000 Massachusetts Institute of Technology
+Copyright (c) 1991-2000, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -34,6 +34,17 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #  include <unistd.h>
 #endif
 
+#ifdef HAVE_STRERROR
+
+char *
+DEFUN (error_name, (code), int code)
+{
+  static char buf [512];
+  sprintf (buf, "%d, %s", code, (strerror (code)));
+  return (buf);
+}
+
+#else /* not HAVE_STRERROR */
 #ifdef __WIN32__
 
 #define lseek _lseek
@@ -41,25 +52,24 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 char *
 DEFUN (error_name, (code), int code)
 {
-  static char buf[512];
-
-  sprintf (&buf[0], "%d, unknown error", code);
-  return (&buf[0]);
+  static char buf [512];
+  sprintf (buf, "%d, unknown error", code);
+  return (buf);
 }
 
 #else /* not __WIN32__ */
 #ifdef __OS2__
 
 #if defined(__IBMC__) || defined(__WATCOMC__) || defined(__EMX__)
-#include <io.h>
+# include <io.h>
 #endif
 
 char *
 DEFUN (error_name, (code), int code)
 {
   static char buf [512];
-  sprintf ((&buf[0]), "%d, unknown error", code);
-  return (&buf[0]);
+  sprintf (buf, "%d, unknown error", code);
+  return (buf);
 }
 
 #else /* not __OS2__ */
@@ -67,20 +77,20 @@ DEFUN (error_name, (code), int code)
 char *
 DEFUN (error_name, (code), int code)
 {
-  static char buf[512];
-
+  static char buf [512];
   if ((code >= 0) && (code <= sys_nerr))
-    sprintf (&buf[0], "%d, %s", code, sys_errlist[code]);
+    sprintf (buf, "%d, %s", code, sys_errlist[code]);
   else
-    sprintf (&buf[0], "%d, unknown error", code);
-  return (&buf[0]);
+    sprintf (buf, "%d, unknown error", code);
+  return (buf);
 }
 
 #endif /* not __OS2__ */
 #endif /* not __WIN32__ */
+#endif /* not HAVE_STRERROR */
 
 #ifndef SEEK_SET
-#define SEEK_SET 0
+#  define SEEK_SET 0
 #endif
 
 int

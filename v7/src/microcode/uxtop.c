@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.26 2002/11/20 19:46:15 cph Exp $
+$Id: uxtop.c,v 1.27 2002/11/20 20:49:57 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2000, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -289,13 +289,23 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     }
 }
 
+#ifdef HAVE_STRERROR
+
+CONST char *
+DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
+{
+  return (strerror (syserr_to_error_code ((enum syserr_names) syserr)));
+}
+
+#else /* not HAVE_STRERROR */
+
 #ifdef __HPUX__
-#define NEED_ERRLIST_DEFINITIONS
+# define NEED_ERRLIST_DEFINITIONS
 #endif
 
 #ifdef NEED_ERRLIST_DEFINITIONS
-extern char * sys_errlist [];
-extern int sys_nerr;
+  extern char * sys_errlist [];
+  extern int sys_nerr;
 #endif
 
 CONST char *
@@ -304,6 +314,8 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
   int code = (syserr_to_error_code ((enum syserr_names) syserr));
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }
+
+#endif /* not HAVE_STRERROR */
 
 static char * syscall_names_table [] =
 {
