@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.8 1991/02/15 18:06:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.9 1991/05/06 02:25:42 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -50,7 +50,9 @@ MIT in each case. |#
 		(let ((predicate (record-predicate record-type))
 		      (record-name
 		       (string-append "record of type "
-				      (write-to-string type-name))))
+				      (if (string? type-name)
+					  type-name
+					  (write-to-string type-name)))))
 		  (lambda (record)
 		    (if (not (predicate record))
 			(error:wrong-type-argument record record-name
