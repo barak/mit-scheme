@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.21 1992/02/12 02:23:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.22 1992/03/02 04:08:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -468,17 +468,14 @@ after the listing is made.)"
 	  (^G-signal))
       (lambda ()
 	(set! process
-	      (let ((start-process
-		     (lambda ()
-		       (start-subprocess
-			program
-			(list->vector
-			 (cons (os/filename-non-directory program) arguments))
-			false
-			pty?))))
-		(if directory
-		    (with-working-directory-pathname directory start-process)
-		    (start-process))))
+	      (start-subprocess
+	       program
+	       (list->vector
+		(cons (os/filename-non-directory program) arguments))
+	       (if directory
+		   (cons false (->namestring directory))
+		   false)
+	       pty?))
 	(let* ((output-mark
 		(and output-mark (mark-left-inserting-copy output-mark)))
 	       (status
