@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.9 1992/07/07 00:44:27 jinx Exp $
+$Id: dosprm.scm,v 1.10 1992/09/17 00:41:34 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -133,6 +133,28 @@ MIT in each case. |#
 
 (define file-modification-time
   file-modification-time-indirect)
+
+;; These are obviously incorrect, but there is no alternative.
+;; DOS only keeps track of modification times.
+
+(define file-access-time-direct
+  file-modification-time-direct)
+
+(define file-access-time-indirect
+  file-modification-time-indirect)
+
+(define file-access-time
+  file-modification-time)
+
+(define (set-file-times! filename access-time modification-time)
+  (let ((filename (->namestring (merge-pathnames filename)))
+	(time (or modification-time
+		  access-time
+		  (file-modification-time-direct filename))))
+    ((ucode-primitive set-file-times!)
+     filename
+     (or access-time time)
+     (or modification-time time))))
 
 (define get-environment-variable)
 (define set-environment-variable!)
