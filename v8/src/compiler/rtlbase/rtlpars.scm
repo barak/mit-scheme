@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlpars.scm,v 1.1 1994/11/19 02:05:54 adams Exp $
+$Id: rtlpars.scm,v 1.2 1994/11/26 19:20:28 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -267,43 +267,47 @@ MIT in each case. |#
 	 (rtl (rinst-rtl insts)))
     (case (car rtl)
       ((RETURN-ADDRESS)
-       (%push!
-	(make-rtl-continuation
-	 rgraph				; rgraph
-	 (cadr rtl)			; label
-	 (gen-edge)			; entry edge
-	 false				; next continuation offset
-	 false				; debugging info
-	 )
-	*continuations*))
+       (%push! (let ((label (cadr rtl))
+		     (debinfo (caddr rtl)))
+		 (make-rtl-continuation
+		  rgraph		; rgraph
+		  label			; label
+		  (gen-edge)		; entry edge
+		  false			; next continuation offset
+		  debinfo		; debugging info
+		  ))
+	       *continuations*))
       ((PROCEDURE CLOSURE TRIVIAL-CLOSURE)
-       (let ((proc
-	      (make-rtl-procedure
-	       rgraph			; rgraph
-	       (cadr rtl)		; label
-	       (gen-edge)		; entry edge
-	       (cadr rtl)		; name
-	       false			; nrequired
-	       false			; noptional
-	       false			; rest
-	       (not (eq? (car rtl) 'PROCEDURE)) ; closure?
-	       false			; dynamic link?
-	       (car rtl)		; type
-	       false			; debugging info
-	       false			; next continuation offset
-	       false			; stack leaf?
-	       )))
-       (set-rtl-procedure/%external-label! proc (cadr rtl))
-       (%push! proc *procedures*)))
+       (let* ((label (cadr rtl))
+	      (debinfo (caddr rtl))
+	      (proc
+	       (make-rtl-procedure
+		rgraph			; rgraph
+		label			; label
+		(gen-edge)		; entry edge
+		label			; name
+		false			; nrequired
+		false			; noptional
+		false			; rest
+		(not (eq? (car rtl) 'PROCEDURE)) ; closure?
+		false			; dynamic link?
+		(car rtl)		; type
+		debinfo			; debugging info
+		false			; next continuation offset
+		false			; stack leaf?
+		)))
+	 (set-rtl-procedure/%external-label! proc label)
+	 (%push! proc *procedures*)))
       ((EXPRESSION)
-       (%push!
-	(make-rtl-expr
-	 rgraph				; rgraph
-	 (cadr rtl)			; label
-	 (gen-edge)			; entry edge
-	 false				; debugging info
-	 )
-	*expressions*)))))
+       (%push! (let ((label (cadr rtl))
+		     (debinfo (caddr rtl)))
+		 (make-rtl-expr
+		  rgraph		; rgraph
+		  label			; label
+		  (gen-edge)		; entry edge
+		  debinfo		; debugging info
+		  ))
+	       *expressions*)))))
 
 (define (parse-rtl rtl-program)
   (cond ((null? rtl-program)
@@ -311,57 +315,73 @@ MIT in each case. |#
 	((not (memq (caar rtl-program) label-like-statements))
 	 (internal-error "Program does not start with label" rtl-program)))
   (let ((labels->segments (make-eq-hash-table)))
+
     (define (found-one label stmts)
       (hash-table/put! labels->segments
 		       label
 		       (list 'STATEMENTS stmts)))
 
+    (define (profile-count rtl-program)
+      (if compiler:generate-profiling-instructions?
+	  (cons '(PROFILE-COUNT) rtl-program)
+	  rtl-program))
+	
     (let loop ((program (cdr rtl-program))
-	       (label (cadr (car rtl-program)))
+	       (label   (cadr (car rtl-program)))
 	       (segment (if (eq? (caar rtl-program) 'LABEL)
 			    '()
-			    (list (car rtl-program)))))
+			    (list (car rtl-program))))
+	       (count-needed? #T))
       (if (null? program)
 	  (begin
 	    (if (not (null? segment))
 		(internal-error "Last segment falls through"
-				(reverse segment))))
-	  (let ((stmt (car program)))
-	    (cond ((memq (car stmt) jump-like-statements)
-		   (found-one label (cons stmt segment))
-		   (if (not (null? (cdr program)))
-		       (let ((next (cadr program)))
-			 (if (not (memq (car next) label-like-statements))
-			     (internal-error "No label following jump"
-					     program))
-			 (loop (cddr program)
-			       (cadr next)
-			       (if (eq? (car next) 'LABEL)
-				   '()
-				   (list next))))))
-		  ((eq? (car stmt) 'JUMPC)
-		   (if (null? (cdr program))
-		       (internal-error "Last segment falls through when false"
-				       (reverse (cons stmt segment))))
+				(reverse segment)))))
+      (let ((stmt (car program)))
+	(cond ((memq (car stmt) jump-like-statements)
+	       (found-one label
+			  (cons stmt (if count-needed?
+					 (profile-count segment)
+					 segment)))
+	       (if (not (null? (cdr program)))
 		   (let ((next (cadr program)))
-		     (if (eq? 'JUMP (car next))
-			 (loop (cdr program)
-			       label
-			       (cons stmt segment))
-			 (let ((label (generate-label)))
-			   (loop (cons `(LABEL ,label) (cdr program))
-				 label
-				 (cons stmt segment))))))
-		  ((memq (car stmt) label-like-statements)
-		   (if (not (eq? (car stmt) 'LABEL))
-		       (internal-error "Falling through to non-label label"
-				       (car stmt)))
-		   (found-one label (cons `(JUMP ,(cadr stmt)) segment))
-		   (loop (cdr program)
-			 (cadr stmt)
-			 '()))
-		  (else
-		   (loop (cdr program)
-			 label
-			 (cons stmt segment)))))))
+		     (if (not (memq (car next) label-like-statements))
+			 (internal-error "No label following jump"
+					 program))
+		     (loop (cddr program)
+			   (cadr next)
+			   (if (eq? (car next) 'LABEL)
+			       '()
+			       (list next))
+			   #T))))
+	      ((eq? (car stmt) 'JUMPC)
+	       (if (null? (cdr program))
+		   (internal-error "Last segment falls through when false"
+				   (reverse (cons stmt segment))))
+	       (let ((next (cadr program)))
+		 (if (eq? 'JUMP (car next))
+		     (loop (cdr program)
+			   label
+			   (cons stmt (profile-count segment))
+			   #F)
+		     (let ((label (generate-label)))
+		       (loop (cons `(LABEL ,label) (cdr program))
+			     label
+			     (cons stmt (profile-count segment))
+			     #T)))))
+	      ((memq (car stmt) label-like-statements)
+	       (if (not (eq? (car stmt) 'LABEL))
+		   (internal-error "Falling through to non-label label"
+				   (car stmt)))
+	       (found-one label (cons `(JUMP ,(cadr stmt)) 
+				      (profile-count segment)))
+	       (loop (cdr program)
+		     (cadr stmt)
+		     '()
+		     #T))
+	      (else
+	       (loop (cdr program)
+		     label
+		     (cons stmt segment)
+		     count-needed?)))))
     labels->segments))
