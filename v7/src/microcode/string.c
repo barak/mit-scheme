@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.43 2001/03/08 17:13:59 cph Exp $
+$Id: string.c,v 9.44 2001/03/08 17:14:36 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -87,7 +87,7 @@ SCHEME_OBJECT
 DEFUN (char_pointer_to_string, (char_pointer),
        CONST unsigned char * char_pointer)
 {
-  unsigned char * scan = char_pointer;
+  CONST unsigned char * scan = char_pointer;
   if (scan == 0)
     scan += 1;
   else
@@ -100,7 +100,7 @@ SCHEME_OBJECT
 DEFUN (char_pointer_to_string_no_gc, (char_pointer),
        CONST unsigned char * char_pointer)
 {
-  unsigned char * scan = char_pointer;
+  CONST unsigned char * scan = char_pointer;
   if (scan == 0)
     scan += 1;
   else
