@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mit-syntax.scm,v 14.2 2002/02/13 01:04:13 cph Exp $
+;;; $Id: mit-syntax.scm,v 14.3 2002/02/19 19:08:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -33,23 +33,31 @@
   (lambda (form environment definition-environment history)
     definition-environment		;ignore
     (syntax-check '(KEYWORD EXPRESSION) form history)
-    (let ((item
-	   (classify/subexpression (cadr form)
-				   environment
-				   history
-				   select-cadr)))
-      (make-transformer-item
-       (transformer->expander
-	(transformer-eval (compile-item/expression item)
-			  (syntactic-environment->environment environment))
-	environment)
-       (make-expression-item history
-	 (lambda ()
-	   (output/combination
-	    (output/access-reference transformer->expander-name
-				     system-global-environment)
-	    (list (compile-item/expression item)
-		  (output/the-environment)))))))))
+    (expression->transformer-item item
+				  (classify/subexpression (cadr form)
+							  environment
+							  history
+							  select-cadr)
+				  environment
+				  history
+				  transformer->expander-name
+				  transformer->expander)))
+
+(define (expression->transformer-item item environment history
+				      transformer->expander-name
+				      transformer->expander)
+  (make-transformer-item
+   (transformer->expander
+    (transformer-eval (compile-item/expression item)
+		      (syntactic-environment->environment environment))
+    environment)
+   (make-expression-item history
+     (lambda ()
+       (output/combination
+	(output/access-reference transformer->expander-name
+				 system-global-environment)
+	(list (compile-item/expression item)
+	      (output/the-environment)))))))
 
 (define-classifier 'SC-MACRO-TRANSFORMER system-global-environment
   ;; "Syntactic Closures" transformer
@@ -245,12 +253,21 @@
 		  history))
 
 (define (syntactic-binding-theory environment name item history)
-  (if (not (keyword-item? item))
-      (let ((history (item/history item)))
-	(syntax-error history
-		      "Syntactic binding value must be a keyword:"
-		      (history/original-form history))))
-  (overloaded-binding-theory environment name item history))
+  (let ((item
+	 (if (expression-item? item)
+	     ;; Kludge to support old syntax -- treat procedure
+	     ;; argument as non-hygienic transformer.
+	     (expression->transformer-item
+	      item environment history
+	      'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
+	      non-hygienic-macro-transformer->expander)
+	     item)))
+    (if (not (keyword-item? item))
+	(let ((history (item/history item)))
+	  (syntax-error history
+			"Syntactic binding value must be a keyword:"
+			(history/original-form history))))
+    (overloaded-binding-theory environment name item history)))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
@@ -291,7 +308,7 @@
 				 output/let))))))
     (lambda (form rename compare)
       compare				;ignore
-      (cond ((syntax-match? '(IDENTIFIER (* (IDENTIFIER EXPRESSION)) + FORM)
+      (cond ((syntax-match? '(IDENTIFIER (* (IDENTIFIER ? EXPRESSION)) + FORM)
 			    (cdr form))
 	     (let ((name (cadr form))
 		   (bindings (caddr form))
@@ -299,7 +316,11 @@
 	       `((,(rename 'LETREC)
 		  ((,name (,(rename 'LAMBDA) ,(map car bindings) ,@body)))
 		  ,name)
-		 ,@(map cadr bindings))))
+		 ,@(map (lambda (binding)
+			  (if (pair? (cdr binding))
+			      (cadr binding)
+			      (unassigned-expression)))
+			bindings))))
 	    ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
 	     `(,keyword ,@(cdr (normalize-let-bindings form))))
 	    (else
@@ -768,14 +789,22 @@
     compare
     (capture-expansion-history
      (lambda (history)
-       (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM)
+       (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM)
 		     form history)
        (let ((names (map car (cadr form)))
 	     (r-let (rename 'LET))
 	     (r-lambda (rename 'LAMBDA))
 	     (r-set! (rename 'SET!)))
-	 (let ((out-temps (map (make-name-generator) names))
-	       (in-temps (map (make-name-generator) names))
+	 (let ((out-temps
+		(map (lambda (name)
+		       name
+		       (make-synthetic-identifier 'OUT-TEMP))
+		     names))
+	       (in-temps
+		(map (lambda (name)
+		       name
+		       (make-synthetic-identifier 'IN-TEMP))
+		     names))
 	       (swap
 		(lambda (tos names froms)
 		  `(,r-lambda ()
