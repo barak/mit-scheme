@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.17 1995/08/18 23:53:54 adams Exp $
+$Id: dbgstr.scm,v 1.18 1995/09/08 02:44:17 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -185,32 +185,6 @@ MIT in each case. |#
 	 (set-new-dbg-procedure/label! new-info label)
 	 new-info)))
 
-(define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
-  (and new-info
-       (new-dbg-continuation/outer new-info)
-       (new-dbg-continuation/inner new-info)
-       (let ((frame-size (+ frame-size 1))
-	     (type (new-dbg-continuation/type new-info))
-	     (block (new-dbg-continuation/block new-info))
-	     (aggregate
-	      (new-dbg-expression/source-code
-	       (new-dbg-continuation/outer new-info)))
-	     (element
-	      (new-dbg-expression/source-code
-	       (new-dbg-continuation/inner new-info))))	     
-	 (make-dbg-continuation
-	  block
-	  label
-	  false				; ?? type
-	  frame-size
-	  (vector (case type
-		    ((COMBINATION-ELEMENT SEQUENCE-ELEMENT CONDITIONAL-PREDICATE)
-		     type)
-		    (else
-		     (internal-error "new-dbg-continuation->old-dbg-continuation: Unkown type"
-				     type)))
-		  aggregate
-		  element)))))
 
 (define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
   frame-size				; ignored
