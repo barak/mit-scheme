@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.239 2001/05/17 04:37:52 cph Exp $
+;;; $Id: imail-top.scm,v 1.240 2001/05/18 00:55:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,7 @@
 the variable `imail-dont-reply-to-names', for when the user does not set
 `imail-dont-reply-to-names' explicitly.  (The other part of the default
 value is the user's name.)
-It is useful to set this variable in the site customisation file."
+It is useful to set this variable in the site customization file."
   "info-"
   string?)
 
@@ -1864,15 +1864,12 @@ Negative argument means search in reverse."
     (folder-event folder 'SELECT-MESSAGE message)))
 
 (define (selected-folder #!optional error? buffer)
-  (or (let ((buffer
-	     (chase-imail-buffer
-	      (if (or (default-object? buffer) (not buffer))
-		  (selected-buffer)
-		  buffer))))
-	(let ((folder (buffer-get buffer 'IMAIL-FOLDER 'UNKNOWN)))
-	  (if (eq? 'UNKNOWN folder)
-	      (error "IMAIL-FOLDER property not bound:" buffer))
-	  folder))
+  (or (buffer-get (chase-imail-buffer
+		   (if (or (default-object? buffer) (not buffer))
+		       (selected-buffer)
+		       buffer))
+		  'IMAIL-FOLDER
+		  #f)
       (and (if (default-object? error?) #t error?)
 	   (error "No selected IMAIL folder."))))
 
@@ -1885,12 +1882,10 @@ Negative argument means search in reverse."
 	  (if method
 	      (method buffer)
 	      (let ((buffer (chase-imail-buffer buffer)))
-		(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-		  (if (eq? message 'UNKNOWN)
-		      (error "IMAIL-MESSAGE property not bound:" buffer))
+		(let ((message (buffer-get buffer 'IMAIL-MESSAGE #f)))
 		  (and message
 		       (let ((folder (selected-folder #f buffer)))
-			 (if (message-attached? message folder)
+			 (if (and folder (message-attached? message folder))
 			     message
 			     (begin
 			       (buffer-put! buffer 'IMAIL-MESSAGE #f)
