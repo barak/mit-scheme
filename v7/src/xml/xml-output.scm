@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-output.scm,v 1.7 2002/12/09 18:17:57 cph Exp $
+;;; $Id: xml-output.scm,v 1.8 2002/12/09 18:19:04 cph Exp $
 ;;;
 ;;; Copyright (c) 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -101,7 +101,10 @@
 	(write-xml-external-id (xml-dtd-external dtd) indent port))
     (if (pair? (xml-dtd-internal dtd))
 	(begin
-	  (write-string " [" port)
+	  (if (xml-dtd-external dtd)
+	      (newline port)
+	      (write-string " " port))
+	  (write-string "[" port)
 	  (newline port)
 	  (for-each (lambda (element)
 		      (write-xml element port)
