@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.48 1987/10/09 17:13:22 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/histry.scm,v 13.49 1987/10/12 20:59:10 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -96,9 +96,9 @@
   (declare (integrate object))
   (primitive-type? type-code:marked-history object))
 
-;; Vertebra operations
+;;; Vertebra operations
 
-(declare (integrate-operator make-vertebra))
+(declare (integrate-operator make-vertebra same-vertebra?))
 
 (define (make-vertebra rib deeper shallower)
   (declare (integrate rib deeper shallower))
@@ -119,9 +119,17 @@
   (system-hunk3-set-cxr1! vertebra
 			  (history:unmark (system-hunk3-cxr1 vertebra))))
 
-;; Reduction operations
+(define (same-vertebra? x y)
+  (declare (integrate x y))
+  (= (primitive-datum x) (primitive-datum y)))
 
-(declare (integrate-operator make-reduction))
+(define (link-vertebrae previous next)
+  (set-deeper-vertebra! previous next)
+  (set-shallower-vertebra! next previous))
+
+;;; Reduction operations
+
+(declare (integrate-operator make-reduction same-reduction?))
 
 (define (make-reduction expression environment next)
   (declare (integrate expression environment next))
@@ -142,9 +150,9 @@
   (system-hunk3-set-cxr2! reduction
 			  (history:unmark (system-hunk3-cxr2 reduction))))
 
-(define (link-vertebrae previous next)
-  (set-deeper-vertebra! previous next)
-  (set-shallower-vertebra! next previous))
+(define (same-reduction? x y)
+  (declare (integrate x y))
+  (= (primitive-datum x) (primitive-datum y)))
 
 ;;;; History Initialization
 
@@ -234,11 +242,10 @@
     (cons current
 	  (if (marked-vertebra? current)
 	      (cons (delay (unfold-and-reverse-rib (vertebra-rib current)))
-		    (delay
-		     (let ((next (shallower-vertebra current)))
-		       (if (eq? next history)
-			   the-empty-history
-			   (loop next)))))
+		    (delay (let ((next (shallower-vertebra current)))
+			     (if (same-vertebra? next history)
+				 the-empty-history
+				 (loop next)))))
 	      '()))))
 
 (define (unfold-and-reverse-rib rib)
@@ -253,7 +260,7 @@
 		 (cons (list (reduction-expression current)
 			     (reduction-environment current))
 		       tail)))))
-      (if (eq? current rib)
+      (if (same-reduction? current rib)
 	  step
 	  (loop (next-reduction current) step)))))
 
