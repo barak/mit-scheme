@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.45 1990/09/08 00:09:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.46 1990/09/20 03:02:26 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -393,6 +393,9 @@ copy_bits (source, source_offset, destination, destination_offset, nbits)
      aligned relative to one another, the main body of bits can be
      transferred as SCHEME_OBJECTs, and only the `head' and `tail' need be
      treated specially. */
+
+  if (nbits == 0)
+    return;
 
   if (source_offset == destination_offset)
     {
