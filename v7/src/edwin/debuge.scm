@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.39 1990/06/20 23:02:09 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.40 1990/11/02 03:23:28 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -59,12 +59,7 @@
 		      (and (y-or-n? "Save buffer "
 				    (buffer-name buffer)
 				    " (Y or N)? ")
-			   (begin
-			     (newline)
-			     (write-string "Filename: ")
-			     (->pathname
-			      (input-port/normal-mode (current-input-port)
-						      read)))))
+			   (->pathname (prompt-for-expression "Filename"))))
 		     ((integer? (pathname-version pathname))
 		      (pathname-new-version pathname 'NEWEST))
 		     (else
@@ -185,3 +180,41 @@
     (if entry
 	(vector-set! object (cdr entry) value)
 	(error "Not a valid instance-variable name" name))))
+
+;;;; Screen Trace
+
+(define trace-output '())
+
+(define (debug-tracer . args)
+  (set! trace-output (cons args trace-output))
+  unspecific)
+
+(define (screen-trace #!optional screen)
+  (let ((screen
+	 (if (default-object? screen)
+	     (begin
+	       (if (not edwin-editor)
+		   (error "no screen to trace"))
+	       (editor-selected-screen edwin-editor))
+	     screen)))
+    (set! trace-output '())
+    (for-each (lambda (window)
+		(set-window-debug-trace! window debug-tracer))
+	      (screen-window-list screen))
+    (set-screen-debug-trace! screen debug-tracer)))
+
+(define (screen-untrace #!optional screen)
+  (let ((screen
+	 (if (default-object? screen)
+	     (begin
+	       (if (not edwin-editor)
+		   (error "no screen to trace"))
+	       (editor-selected-screen edwin-editor))
+	     screen)))
+    (for-each (lambda (window)
+		(set-window-debug-trace! window false))
+	      (screen-window-list screen))
+    (set-screen-debug-trace! screen false)
+    (let ((result trace-output))
+      (set! trace-output '())
+      (map list->vector (reverse! result)))))

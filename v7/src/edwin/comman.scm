@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.62 1989/08/11 11:50:16 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.63 1990/11/02 03:23:13 cph Rel $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -104,7 +104,8 @@
   value
   buffer-local?
   initial-value
-  assignment-daemons)
+  assignment-daemons
+  value-validity-test)
 
 (unparser/set-tagged-vector-method!
  %variable-tag
@@ -128,24 +129,32 @@
     (vector-set! variable variable-index:buffer-local? buffer-local?)
     (vector-set! variable variable-index:initial-value value)
     (vector-set! variable variable-index:assignment-daemons '())
+    (vector-set! variable variable-index:value-validity-test false)
     variable))
 
 (define-integrable (%set-variable-value! variable value)
-  (vector-set! variable variable-index:value value)
-  unspecific)
+  (vector-set! variable variable-index:value value))
 
 (define-integrable (make-variable-buffer-local! variable)
-  (vector-set! variable variable-index:buffer-local? true)
-  unspecific)
+  (vector-set! variable variable-index:buffer-local? true))
 
+(define (define-variable-value-validity-test variable test)
+  (vector-set! variable variable-index:value-validity-test test))
+
+(define (check-variable-value-validity! variable value)
+  (if (not (variable-value-valid? variable value))
+      (error:illegal-datum value 'CHECK-VARIABLE-VALUE-VALIDITY)))
+
+(define (variable-value-valid? variable value)
+  (or (not (variable-value-validity-test variable))
+      ((variable-value-validity-test variable) value)))
+
 (define (add-variable-assignment-daemon! variable daemon)
   (let ((daemons (variable-assignment-daemons variable)))
     (if (not (memq daemon daemons))
-	(begin
-	  (vector-set! variable
-		       variable-index:assignment-daemons
-		       (cons daemon daemons))
-	  unspecific))))
+	(vector-set! variable
+		     variable-index:assignment-daemons
+		     (cons daemon daemons)))))
 
 (define (invoke-variable-assignment-daemons! variable)
   (for-each (lambda (daemon) (daemon variable))
@@ -166,6 +175,7 @@
       (make-local-binding! variable value)
       (without-interrupts
        (lambda ()
+	 (check-variable-value-validity! variable value)
 	 (%set-variable-value! variable value)
 	 (invoke-variable-assignment-daemons! variable)))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.98 1990/10/09 16:24:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.99 1990/11/02 03:24:57 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -96,7 +96,8 @@ negative args count from the bottom."
     (let ((window (current-window)))
       (if (not argument)
 	  (begin
-	    (window-redraw! window false)
+	    (window-scroll-y-absolute! window (window-y-center window))
+	    (window-redraw! window)
 	    (update-selected-screen! true))
 	  (window-scroll-y-absolute!
 	   window
@@ -184,11 +185,9 @@ means scroll one screenful down."
 		     (multi-scroll-window-argument window argument 1)))))
 
 (define (scroll-window window n #!optional limit)
-  (if (if (negative? n)
-	  (= (window-start-index window)
-	     (mark-index (buffer-start (window-buffer window))))
-	  (= (window-end-index window)
-	     (mark-index (buffer-end (window-buffer window)))))
+  (if (window-mark-visible?
+       window
+       ((if (negative? n) buffer-start buffer-end) (window-buffer window)))
       ((if (default-object? limit) editor-error limit))
       (window-scroll-y-relative! window n)))
 

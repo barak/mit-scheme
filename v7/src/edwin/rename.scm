@@ -1,6 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rename.scm,v 1.4 1990/11/02 03:24:41 cph Rel $
+;;;
+;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -43,7 +45,7 @@
 ;;;; Edwin Interpackage Renames
 
 (declare (usual-integrations))
-
+
 (let ((global (->environment '()))
       (edwin (->environment '(edwin)))
       (window (->environment '(edwin window))))
@@ -57,4 +59,5 @@
     (e<-w 'window? 'buffer-frame?)
     (e<-w 'window-x-size 'buffer-frame-x-size)
     (e<-w 'window-y-size 'buffer-frame-y-size)
+    (e<-w 'window-needs-redisplay? 'buffer-frame-needs-redisplay?)
     (e<-w '%set-window-buffer! 'set-window-buffer!)))

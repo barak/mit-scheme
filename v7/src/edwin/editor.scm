@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.197 1990/10/09 16:24:08 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.198 1990/11/02 03:23:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -48,42 +48,70 @@
 
 (define (edit)
   (if (not edwin-editor)
-      (apply create-editor create-editor-args))
+      (create-editor))
   (call-with-current-continuation
    (lambda (continuation)
      (fluid-let ((editor-abort continuation)
-		 (*auto-save-keystroke-count* 0))
-       (within-editor edwin-editor
-	 (lambda ()
-	   (with-current-local-bindings!
-	     (lambda ()
-	       (bind-condition-handler '() internal-error-handler
-		 (lambda ()
-		   (dynamic-wind
-		    (lambda () (update-screens! true))
-		    (lambda ()
-		      (let ((cmdl (nearest-cmdl))
-			    (message (cmdl-message/null)))
-			(let ((input-port (cmdl/input-port cmdl)))
-			  (input-port/immediate-mode input-port
-			    (lambda ()
-			      (make-cmdl cmdl
-					 input-port
-					 (cmdl/output-port cmdl)
-					 (lambda (cmdl)
-					   cmdl ;ignore
-					   (top-level-command-reader
-					    edwin-initialization)
-					   message)
-					 false
-					 message))))))
-		    (lambda () unspecific)))))))))))
+		 (*auto-save-keystroke-count* 0)
+		 (current-editor edwin-editor)
+		 (recursive-edit-continuation false)
+		 (recursive-edit-level 0))
+       (editor-grab-display edwin-editor
+	 (lambda (with-editor-ungrabbed)
+	   (let ((message (cmdl-message/null)))
+	     (push-cmdl (lambda (cmdl)
+			  cmdl ;ignore
+			  (top-level-command-reader edwin-initialization)
+			  message)
+			false
+			message
+			(editor-spawn-child-cmdl with-editor-ungrabbed))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)
 
-(define create-editor-args (list 'X))
+(define (editor-grab-display editor receiver)
+  (display-type/with-display-grabbed (editor-display-type editor)
+    (lambda (with-display-ungrabbed)
+      (with-current-local-bindings!
+	(lambda ()
+	  (let ((enter
+		 (lambda ()
+		   (let ((screen (selected-screen)))
+		     (screen-enter! screen)
+		     (update-screen! screen true))))
+		(exit (lambda () (screen-exit! (selected-screen)))))
+	    (dynamic-wind enter
+			  (lambda ()
+			    (receiver
+			     (lambda (thunk)
+			       (dynamic-wind exit
+					     (lambda ()
+					       (with-display-ungrabbed thunk))
+					     enter))))
+			  exit)))))))
+
+(define (editor-spawn-child-cmdl with-editor-ungrabbed)
+  (lambda (editor-cmdl input-port output-port driver state message spawn-child)
+    (with-editor-ungrabbed
+     (lambda ()
+       (make-cmdl editor-cmdl
+		  (if (eq? input-port (cmdl/input-port editor-cmdl))
+		      (cmdl/input-port (cmdl/parent editor-cmdl))
+		      input-port)
+		  (if (eq? output-port (cmdl/output-port editor-cmdl))
+		      (cmdl/output-port (cmdl/parent editor-cmdl))
+		      output-port)
+		  driver
+		  state
+		  message
+		  spawn-child)))))
+
+(define (within-editor?)
+  (not (unassigned? current-editor)))
+
 (define editor-abort)
 (define edwin-editor false)
+(define current-editor)
 
 ;; Set this before entering the editor to get something done after the
 ;; editor's dynamic environment is initialized, but before the command
@@ -95,39 +123,38 @@
 ;; reset and then reenter the editor.
 (define edwin-finalization false)
 
-(define (create-editor display-type-name . make-screen-args)
-  (reset-editor)
-  (initialize-typein!)
-  (initialize-typeout!)
-  (initialize-syntax-table!)
-  (initialize-command-reader!)
-  (set! edwin-editor
-	(make-editor "Edwin"
-		     (name->display-type display-type-name)
-		     make-screen-args))
-  (set! edwin-initialization
-	(lambda ()
-	  (set! edwin-initialization false)
-	  (with-editor-interrupts-disabled standard-editor-initialization)))
-  unspecific)
+(define create-editor-args
+  (list false))
 
-(define (reset-editor)
-  (without-interrupts
-   (lambda ()
-     (if edwin-editor
-	 (begin
-	   (for-each (lambda (screen)
-		       (screen-discard! screen))
-		     (editor-screens edwin-editor))
-	   (set! edwin-editor false)
-	   (set! *previous-popped-up-buffer* (object-hash false))
-	   (set! *previous-popped-up-window* (object-hash false))
-	   unspecific)))))
-
-(define (reset-editor-windows)
-  (for-each (lambda (screen)
-	      (send (screen-root-window screen) ':salvage!))
-	    (editor-screens edwin-editor)))
+(define (create-editor . args)
+  (let ((args
+	 (if (null? args)
+	     create-editor-args
+	     (begin
+	       (set! create-editor-args args)
+	       args))))
+    (reset-editor)
+    (initialize-typein!)
+    (initialize-typeout!)
+    (initialize-syntax-table!)
+    (initialize-command-reader!)
+    (set! edwin-editor
+	  (make-editor "Edwin"
+		       (let ((name (car args)))
+			 (cond (name
+				(name->display-type name))
+			       ((display-type/available? console-display-type)
+				console-display-type)
+			       ((display-type/available? x-display-type)
+				x-display-type)
+			       (else
+				(error "can't find usable display type"))))
+		       (cdr args)))
+    (set! edwin-initialization
+	  (lambda ()
+	    (set! edwin-initialization false)
+	    (with-editor-interrupts-disabled standard-editor-initialization)))
+    unspecific))
 
 (define (standard-editor-initialization)
   (if (not init-file-loaded?)
@@ -135,8 +162,7 @@
 	(let ((filename (os/init-file-name)))
 	  (if (file-exists? filename)
 	      (load-edwin-file filename '(EDWIN) true)))
-	(set! init-file-loaded? true)
-	unspecific))
+	(set! init-file-loaded? true)))
   (if (not (ref-variable inhibit-startup-message))
       (let ((window (current-window)))
 	(let ((buffer (window-buffer window)))
@@ -173,23 +199,24 @@ with the contents of the startup message."
 
 ")
 
-;;;; Recursive Edit Levels
+(define (reset-editor)
+  (without-interrupts
+   (lambda ()
+     (if edwin-editor
+	 (begin
+	   (for-each (lambda (screen)
+		       (screen-discard! screen))
+		     (editor-screens edwin-editor))
+	   (set! edwin-editor false)
+	   (set! init-file-loaded? false)
+	   (set! *previous-popped-up-buffer* (object-hash false))
+	   (set! *previous-popped-up-window* (object-hash false))
+	   unspecific)))))
 
-(define (within-editor editor thunk)
-  (fluid-let ((current-editor editor)
-	      (recursive-edit-continuation false)
-	      (recursive-edit-level 0))
-    (dynamic-wind
-     (lambda ()
-       (screen-enter! (selected-screen)))
-     (lambda ()
-       (display-type/with-interrupt-source (editor-display-type editor)
-					   thunk))
-     (lambda ()
-       (screen-exit! (selected-screen))))))
-
-(define (within-editor?)
-  (not (unassigned? current-editor)))
+(define (reset-editor-windows)
+  (for-each (lambda (screen)
+	      (send (screen-root-window screen) ':salvage!))
+	    (editor-screens edwin-editor)))
 
 ;;; There is a problem with recursive edits and multiple screens.
 ;;; When you switch screens the recursive edit aborts. The problem
@@ -225,31 +252,31 @@ with the contents of the startup message."
 
 (define recursive-edit-continuation)
 (define recursive-edit-level)
-(define current-editor)
 
-;;;; Internal Errors
-
 (define (internal-error-handler condition)
   (and (not (condition/internal? condition))
        (error? condition)
-       (if (ref-variable debug-on-internal-error)
-	   (begin
-	     (debug-scheme-error condition)
-	     (message "Scheme error")
-	     (%editor-error))
-	   (exit-editor-and-signal-error condition))))
+       (cond ((ref-variable debug-on-internal-error)
+	      (debug-scheme-error condition)
+	      (message "Scheme error")
+	      (%editor-error))
+	     (debug-internal-errors?
+	      (signal-error condition))
+	     (else
+	      (exit-editor-and-signal-error condition)))))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if error is signalled while the editor is running.
 This does not affect editor errors or evaluation errors."
   false)
 
+(define debug-internal-errors?
+  false)
+
 (define (exit-editor-and-signal-error condition)
   (within-continuation editor-abort
     (lambda ()
       (signal-error condition))))
-
-;;;; C-g Interrupts
 
 (define (^G-signal)
   (let ((continuations *^G-interrupt-continuations*))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.14 1990/10/09 16:23:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.15 1990/11/02 03:23:33 cph Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -85,7 +85,6 @@ MIT in each case. |#
 	      "clscon"
 	      "clsmac"
 	      "comtab"
-	      "cterm"
 	      "display"
 	      "image"
 	      "macros"
@@ -99,11 +98,13 @@ MIT in each case. |#
 	      "simple"
 	      "strpad"
 	      "strtab"
+	      "termcap"
 	      "utils"
 	      "winout"
 	      "winren"
 	      "xform"
 	      "xterm"))
+  (sf-global "tterm" "termcap")
   (for-each sf-edwin
 	    '("argred"
 	      "autold"
@@ -170,15 +171,14 @@ MIT in each case. |#
   (for-each sf-class
 	    '("comwin"
 	      "modwin"
-	      "buffrm"
 	      "edtfrm"))
   (sf-edwin "grpops" "struct")
   (sf-edwin "regops" "struct")
   (sf-edwin "motion" "struct")
   (sf-class "window" "class")
   (sf-class "utlwin" "window" "class")
-  (sf-class "linwin" "window" "class")
-  (sf-class "bufwin" "window" "class" "struct")
-  (sf-class "bufwfs" "bufwin" "window" "class" "struct")
-  (sf-class "bufwiu" "bufwin" "window" "class" "struct")
-  (sf-class "bufwmc" "bufwin" "window" "class" "struct"))
+  (sf-class "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwfs" "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwiu" "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "bufwmc" "bufwin" "window" "class" "buffer" "struct")
+  (sf-class "buffrm" "bufwin" "window" "class" "struct"))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.137 1990/10/03 04:54:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.138 1990/11/02 03:22:26 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -53,7 +53,7 @@
   modes
   comtabs
   windows
-  cursor-y
+  display-start
   pathname
   truename
   alist
@@ -100,7 +100,7 @@ The buffer is guaranteed to be deselected at that time."
 	(vector-set! buffer buffer-index:modes (list mode))
 	(vector-set! buffer buffer-index:comtabs (mode-comtabs mode))
 	(vector-set! buffer buffer-index:windows '())
-	(vector-set! buffer buffer-index:cursor-y false)
+	(vector-set! buffer buffer-index:display-start false)
 	(vector-set! buffer buffer-index:pathname false)
 	(vector-set! buffer buffer-index:truename false)
 	(vector-set! buffer buffer-index:alist '())
@@ -139,8 +139,7 @@ The buffer is guaranteed to be deselected at that time."
      (buffer-modeline-event! buffer 'BUFFER-PATHNAME)
      (vector-set! buffer buffer-index:auto-save-pathname false)
      (vector-set! buffer buffer-index:auto-save-modified? false)
-     (vector-set! buffer buffer-index:save-length 0)
-     unspecific)))
+     (vector-set! buffer buffer-index:save-length 0))))
 
 (define (set-buffer-name! buffer name)
   (vector-set! buffer buffer-index:name name)
@@ -155,31 +154,27 @@ The buffer is guaranteed to be deselected at that time."
   (buffer-modeline-event! buffer 'BUFFER-TRUENAME))
 
 (define-integrable (set-buffer-auto-save-pathname! buffer pathname)
-  (vector-set! buffer buffer-index:auto-save-pathname pathname)
-  unspecific)
+  (vector-set! buffer buffer-index:auto-save-pathname pathname))
 
 (define-integrable (set-buffer-auto-saved! buffer)
-  (vector-set! buffer buffer-index:auto-save-modified? false)
-  unspecific)
+  (vector-set! buffer buffer-index:auto-save-modified? false))
 
 (define-integrable (set-buffer-save-length! buffer)
-  (vector-set! buffer buffer-index:save-length (buffer-length buffer))
-  unspecific)
+  (vector-set! buffer buffer-index:save-length (buffer-length buffer)))
 
 (define-integrable (set-buffer-backed-up?! buffer flag)
-  (vector-set! buffer buffer-index:backed-up? flag)
-  unspecific)
+  (vector-set! buffer buffer-index:backed-up? flag))
 
 (define-integrable (set-buffer-modification-time! buffer flag)
-  (vector-set! buffer buffer-index:modification-time flag)
-  unspecific)
+  (vector-set! buffer buffer-index:modification-time flag))
 
 (define-integrable (set-buffer-comtabs! buffer comtabs)
-  (vector-set! buffer buffer-index:comtabs comtabs)
-  unspecific)
+  (vector-set! buffer buffer-index:comtabs comtabs))
 
-(define-integrable (buffer-point buffer)
-  (group-point (buffer-group buffer)))
+(define (buffer-point buffer)
+  (if (current-buffer? buffer)
+      (current-point)
+      (group-point (buffer-group buffer))))
 
 (define-integrable (%set-buffer-point! buffer mark)
   (set-group-point! (buffer-group buffer) mark))
@@ -211,18 +206,15 @@ The buffer is guaranteed to be deselected at that time."
 (define (add-buffer-window! buffer window)
   (vector-set! buffer
 	       buffer-index:windows
-	       (cons window (vector-ref buffer buffer-index:windows)))
-  unspecific)
+	       (cons window (vector-ref buffer buffer-index:windows))))
 
 (define (remove-buffer-window! buffer window)
   (vector-set! buffer
 	       buffer-index:windows
-	       (delq! window (vector-ref buffer buffer-index:windows)))
-  unspecific)
+	       (delq! window (vector-ref buffer buffer-index:windows))))
 
-(define-integrable (set-buffer-cursor-y! buffer cursor-y)
-  (vector-set! buffer buffer-index:cursor-y cursor-y)
-  unspecific)
+(define-integrable (set-buffer-display-start! buffer mark)
+  (vector-set! buffer buffer-index:display-start mark))
 
 (define-integrable (buffer-visible? buffer)
   (not (null? (buffer-windows buffer))))
@@ -238,18 +230,15 @@ The buffer is guaranteed to be deselected at that time."
 	(set-cdr! entry value)
 	(vector-set! buffer buffer-index:alist
 		     (cons (cons key value)
-			   (vector-ref buffer buffer-index:alist)))))
-  unspecific)
+			   (vector-ref buffer buffer-index:alist))))))
 
 (define (buffer-remove! buffer key)
   (vector-set! buffer
 	       buffer-index:alist
-	       (del-assq! key (vector-ref buffer buffer-index:alist)))
-  unspecific)
+	       (del-assq! key (vector-ref buffer buffer-index:alist))))
 
 (define-integrable (reset-buffer-alist! buffer)
-  (vector-set! buffer buffer-index:alist '())
-  unspecific)
+  (vector-set! buffer buffer-index:alist '()))
 
 ;;;; Modification Flags
 
@@ -278,8 +267,7 @@ The buffer is guaranteed to be deselected at that time."
 	(begin
 	  (set-group-modified! group true)
 	  (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))
-    (vector-set! buffer buffer-index:auto-save-modified? true)
-    unspecific))
+    (vector-set! buffer buffer-index:auto-save-modified? true)))
 
 (define (buffer-clip-daemon buffer)
   (lambda (group start end)
@@ -327,8 +315,7 @@ The buffer is guaranteed to be deselected at that time."
 	(begin
 	  ((car thunks))
 	  (loop (cdr thunks)))))
-  (vector-set! buffer buffer-index:initializations '())
-  unspecific)
+  (vector-set! buffer buffer-index:initializations '()))
 
 ;;;; Local Bindings
 
@@ -337,6 +324,7 @@ The buffer is guaranteed to be deselected at that time."
    (lambda ()
      (let ((buffer (current-buffer))
 	   (old-value (variable-value variable)))
+       (check-variable-value-validity! variable new-value)
        (%set-variable-value! variable new-value)
        (invoke-variable-assignment-daemons! variable)
        (let ((bindings (buffer-local-bindings buffer)))
@@ -344,8 +332,7 @@ The buffer is guaranteed to be deselected at that time."
 	   (if (not binding)
 	       (vector-set! buffer
 			    buffer-index:local-bindings
-			    (cons (cons variable old-value) bindings))))))
-     unspecific)))
+			    (cons (cons variable old-value) bindings)))))))))
 
 (define (unmake-local-binding! variable)
   (without-interrupts
@@ -359,8 +346,7 @@ The buffer is guaranteed to be deselected at that time."
 		 (invoke-variable-assignment-daemons! variable)
 		 (vector-set! buffer
 			      buffer-index:local-bindings
-			      (delq! binding bindings)))))))
-     unspecific)))
+			      (delq! binding bindings))))))))))
 
 (define (undo-local-bindings!)
   (let ((buffer (current-buffer)))
@@ -369,8 +355,7 @@ The buffer is guaranteed to be deselected at that time."
 		  (%set-variable-value! variable (cdr binding))
 		  (invoke-variable-assignment-daemons! variable)))
 	      (buffer-local-bindings buffer))
-    (vector-set! buffer buffer-index:local-bindings '()))
-  unspecific)
+    (vector-set! buffer buffer-index:local-bindings '())))
 
 (define (with-current-local-bindings! thunk)
   (let ((wind-bindings
@@ -420,34 +405,24 @@ The buffer is guaranteed to be deselected at that time."
 	(for-each invoke-variable-assignment-daemons! variables))))
 
 (define (variable-local-value buffer variable)
-  (let ((in-cell
-	 (lambda ()
-	   (variable-value variable))))
-    (if (current-buffer? buffer)
-	(in-cell)
-	(let ((binding (assq variable (buffer-local-bindings buffer))))
-	  (cond (binding
-		 (cdr binding))
-		((and (variable-buffer-local? variable)
-		      (within-editor?))
-		 (let ((binding
-			(assq variable
-			      (buffer-local-bindings (current-buffer)))))
-		   (if binding
-		       (cdr binding)
-		       (in-cell))))
-		(else
-		 (in-cell)))))))
+  (let ((binding
+	 (and (within-editor?)
+	      (not (current-buffer? buffer))
+	      (or (assq variable (buffer-local-bindings buffer))
+		  (and (variable-buffer-local? variable)
+		       (assq variable
+			     (buffer-local-bindings (current-buffer))))))))
+    (if binding
+	(cdr binding)
+	(variable-value variable))))
 
 (define (set-variable-local-value! buffer variable value)
-  (if (current-buffer? buffer)
-      (set-variable-value! variable value)
-      (let ((binding (assq variable (buffer-local-bindings buffer))))
-	(if binding
-	    (begin
-	      (set-cdr! binding value)
-	      unspecific)
-	    (set-variable-value! variable value)))))
+  (let ((binding
+	 (and (not (current-buffer? buffer))
+	      (assq variable (buffer-local-bindings buffer)))))
+    (if binding
+	(set-cdr! binding value)
+	(set-variable-value! variable value))))
 
 (define (define-variable-local-value! buffer variable value)
   (if (current-buffer? buffer)
@@ -460,8 +435,7 @@ The buffer is guaranteed to be deselected at that time."
 		 (set-cdr! binding value)
 		 (vector-set! buffer
 			      buffer-index:local-bindings
-			      (cons (cons variable value) bindings)))
-	     unspecific))))))
+			      (cons (cons variable value) bindings)))))))))
 
 (define (variable-local-value? buffer variable)
   (assq variable (buffer-local-bindings buffer)))
@@ -475,11 +449,10 @@ The buffer is guaranteed to be deselected at that time."
 (define (set-variable-default-value! variable value)
   (let ((binding (assq variable (buffer-local-bindings (current-buffer)))))
     (if binding
-	(begin
-	  (set-cdr! binding value)
-	  unspecific)
+	(set-cdr! binding value)
 	(without-interrupts
 	 (lambda ()
+	   (check-variable-value-validity! variable value)
 	   (%set-variable-value! variable value)
 	   (invoke-variable-assignment-daemons! variable))))))
 

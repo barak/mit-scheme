@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.2 1990/10/09 16:23:54 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/display.scm,v 1.3 1990/11/02 03:23:38 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -60,7 +60,7 @@
   (operation/available? false read-only true)
   (operation/make-screen false read-only true)
   (operation/make-input-port false read-only true)
-  (operation/with-interrupt-source false read-only true)
+  (operation/with-display-grabbed false read-only true)
   (operation/with-interrupts-enabled false read-only true)
   (operation/with-interrupts-disabled false read-only true))
 
@@ -69,7 +69,7 @@
 			   available?
 			   make-screen
 			   make-input-port
-			   with-interrupt-source
+			   with-display-grabbed
 			   with-interrupts-enabled
 			   with-interrupts-disabled)
   (let ((display-type
@@ -78,7 +78,7 @@
 			     available?
 			     make-screen
 			     make-input-port
-			     with-interrupt-source
+			     with-display-grabbed
 			     with-interrupts-enabled
 			     with-interrupts-disabled)))
     (set! display-types (cons display-type display-types))
@@ -95,8 +95,8 @@
 (define (display-type/make-input-port display-type screen)
   ((display-type/operation/make-input-port display-type) screen))
 
-(define (display-type/with-interrupt-source display-type thunk)
-  ((display-type/operation/with-interrupt-source display-type) thunk))
+(define (display-type/with-display-grabbed display-type thunk)
+  ((display-type/operation/with-display-grabbed display-type) thunk))
 
 (define (display-type/with-interrupts-enabled display-type thunk)
   ((display-type/operation/with-interrupts-enabled display-type) thunk))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.11 1990/10/09 16:24:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.12 1990/11/02 03:23:59 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -49,13 +49,14 @@
 (define-structure (editor (constructor %make-editor))
   (name false read-only true)
   (display-type false read-only true)
-  (screens false)
+  (screens '())
   (selected-screen false)
   (bufferset false read-only true)
   (kill-ring false read-only true)
   (char-history false read-only true)
   (input-port false read-only true)
-  (button-event false))
+  (button-event false)
+  (select-time 1))
 
 (define (make-editor name display-type make-screen-args)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
@@ -70,7 +71,8 @@
 		    (make-ring 10)
 		    (make-ring 100)
 		    (display-type/make-input-port display-type screen)
-		    false))))
+		    false
+		    1))))
 
 (define-integrable (current-display-type)
   (editor-display-type current-editor))
@@ -89,6 +91,11 @@
 
 (define-integrable (current-char-history)
   (editor-char-history current-editor))
+
+(define (increment-select-time!)
+  (let ((time (editor-select-time current-editor)))
+    (set-editor-select-time! current-editor (1+ time))
+    time))
 
 (define-structure (button-event (conc-name button-event/))
   (window false read-only true)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.34 1990/10/05 13:32:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.35 1990/11/02 03:24:36 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -45,29 +45,31 @@
 ;;;; Modeline Window
 
 (declare (usual-integrations))
-
+
 (define-class modeline-window vanilla-window ())
 
 (define-method modeline-window (:initialize! window window*)
   (usual=> window :initialize! window*)
   (set! y-size 1))
 
-(define-method modeline-window (:update-display! window screen x-start y-start
-						 xl xu yl yu display-style)
+(define (modeline-window:update-display! window screen x-start y-start
+					 xl xu yl yu display-style)
   display-style				;ignore
   (if (< yl yu)
-      (let ((thunk
-	     (lambda ()
-	       (screen-write-substring!
-		screen x-start y-start
-		(string-pad-right (modeline-string superior) x-size #\-)
-		xl xu))))
-	(if (variable-local-value
-	     (window-buffer superior)
-	     (ref-variable-object mode-line-inverse-video))
-	    (with-screen-inverse-video! screen thunk)
-	    (thunk))))
+      (let ((superior (window-superior window)))
+	(screen-output-substring
+	 screen x-start y-start
+	 (string-pad-right (modeline-string superior)
+			   (window-x-size window)
+			   #\space)
+	 xl xu
+	 (variable-local-value
+	  (window-buffer superior)
+	  (ref-variable-object mode-line-inverse-video)))))
   true)
+
+(define-method modeline-window :update-display!
+  modeline-window:update-display!)
 
 (define-variable mode-line-inverse-video
   "*True means use inverse video, or other suitable display mode, for the mode line."

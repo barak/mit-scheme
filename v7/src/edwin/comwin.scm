@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.138 1989/06/21 10:31:40 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comwin.scm,v 1.139 1990/11/02 03:23:19 cph Rel $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -104,8 +104,7 @@
 
 (define-integrable (set-window-next! window window*)
   (with-instance-variables combination-leaf-window window (window*)
-    (set! next-window window*)
-    unspecific))
+    (set! next-window window*)))
 
 (define-integrable (window-previous window)
   (with-instance-variables combination-leaf-window window ()
@@ -113,13 +112,12 @@
 
 (define-integrable (set-window-previous! window window*)
   (with-instance-variables combination-leaf-window window (window*)
-    (set! previous-window window*)
-    unspecific))
+    (set! previous-window window*)))
 
 (define (link-windows! previous next)
   (set-window-previous! next previous)
   (set-window-next! previous next))
-
+
 (define-class combination-window combination-leaf-window
   (vertical? child))
 
@@ -129,8 +127,7 @@
 
 (define-integrable (set-combination-vertical! window v)
   (with-instance-variables combination-window window (v)
-    (set! vertical? v)
-    unspecific))
+    (set! vertical? v)))
 
 (define-integrable (combination-child window)
   (with-instance-variables combination-window window ()
@@ -151,7 +148,7 @@
 
 (define-integrable (check-leaf-window window name)
   (if (not (leaf? window))
-      (error "Not a leaf window" name window)))
+      (error:illegal-datum window name)))
 
 ;;;; Leaf Ordering
 
@@ -188,7 +185,7 @@
 (define (window0 window)
   (if (not (and (object? window)
 		(subclass? (object-class window) combination-leaf-window)))
-      (error "WINDOW0: Window neither combination nor leaf" window))
+      (error:illegal-datum window 'WINDOW0))
   (window-leftmost-leaf (window-root window)))
 
 (define (%window1+ leaf)
@@ -310,55 +307,59 @@
 
 (define (window-split-horizontally! leaf #!optional n)
   (check-leaf-window leaf 'WINDOW-SPLIT-HORIZONTALLY!)
-  (let ((n
-	 (if (or (default-object? n) (not n))
-	     (quotient (window-x-size leaf) 2)
-	     n))
-	(x (window-x-size leaf))
-	(y (window-y-size leaf)))
-    (let ((n* (- x n))
-	  (new (allocate-leaf! leaf false)))
-      (let ((combination (window-superior leaf)))
-	(inferior-start (window-inferior combination leaf)
-	  (lambda (x y)
-	    (set-inferior-start! (window-inferior combination new)
-				 (+ x n)
-				 y))))
-      (if (or (< n (=> leaf :minimum-x-size))
-	      (< n* (=> new :minimum-x-size)))
-	  (begin
-	    (deallocate-leaf! new)
-	    false)
-	  (begin
-	    (=> leaf :set-x-size! n)
-	    (=> new :set-size! n* y)
-	    new)))))
+  (without-interrupts
+   (lambda ()
+     (let ((n
+	    (if (or (default-object? n) (not n))
+		(quotient (window-x-size leaf) 2)
+		n))
+	   (x (window-x-size leaf))
+	   (y (window-y-size leaf)))
+       (let ((n* (- x n))
+	     (new (allocate-leaf! leaf false)))
+	 (let ((combination (window-superior leaf)))
+	   (inferior-start (window-inferior combination leaf)
+	     (lambda (x y)
+	       (set-inferior-start! (window-inferior combination new)
+				    (+ x n)
+				    y))))
+	 (if (or (< n (=> leaf :minimum-x-size))
+		 (< n* (=> new :minimum-x-size)))
+	     (begin
+	       (deallocate-leaf! new)
+	       false)
+	     (begin
+	       (=> leaf :set-x-size! n)
+	       (=> new :set-size! n* y)
+	       new)))))))
 
 (define (window-split-vertically! leaf #!optional n)
   (check-leaf-window leaf 'WINDOW-SPLIT-VERTICALLY!)
-  (let ((n
-	 (if (or (default-object? n) (not n))
-	     (quotient (window-y-size leaf) 2)
-	     n))
-	(x (window-x-size leaf))
-	(y (window-y-size leaf)))
-    (let ((n* (- y n))
-	  (new (allocate-leaf! leaf true)))
-      (let ((combination (window-superior leaf)))
-	(inferior-start (window-inferior combination leaf)
-	  (lambda (x y)
-	    (set-inferior-start! (window-inferior combination new)
-				 x
-				 (+ y n)))))
-      (if (or (< n (=> leaf :minimum-y-size))
-	      (< n* (=> new :minimum-y-size)))
-	  (begin
-	    (deallocate-leaf! new)
-	    false)
-	  (begin
-	    (=> leaf :set-y-size! n)
-	    (=> new :set-size! x n*)
-	    new)))))
+  (without-interrupts
+   (lambda ()
+     (let ((n
+	    (if (or (default-object? n) (not n))
+		(quotient (window-y-size leaf) 2)
+		n))
+	   (x (window-x-size leaf))
+	   (y (window-y-size leaf)))
+       (let ((n* (- y n))
+	     (new (allocate-leaf! leaf true)))
+	 (let ((combination (window-superior leaf)))
+	   (inferior-start (window-inferior combination leaf)
+	     (lambda (x y)
+	       (set-inferior-start! (window-inferior combination new)
+				    x
+				    (+ y n)))))
+	 (if (or (< n (=> leaf :minimum-y-size))
+		 (< n* (=> new :minimum-y-size)))
+	     (begin
+	       (deallocate-leaf! new)
+	       false)
+	     (begin
+	       (=> leaf :set-y-size! n)
+	       (=> new :set-size! x n*)
+	       new)))))))
 
 (define (allocate-leaf! leaf v)
   (let ((superior (window-superior leaf)))
@@ -391,48 +392,47 @@
 
 (define (window-delete! leaf)
   (check-leaf-window leaf 'WINDOW-DELETE!)
-  (let ((superior (window-superior leaf))
-	(next (window-next leaf))
-	(previous (window-previous leaf))
-	(x-size (window-x-size leaf))
-	(y-size (window-y-size leaf)))
-    (if (not (combination? superior))
-	(editor-error "Window has no neighbors; can't delete"))
-    (unlink-leaf! leaf)
-    (let ((value
-	   (let ((adjust-size!
-		  (lambda (window)
-		    (if (combination-vertical? superior)
-			(=> window :set-y-size!
-			    (+ (window-y-size window) y-size))
-			(=> window :set-x-size!
-			    (+ (window-x-size window) x-size))))))
-	     (cond (next
-		    (adjust-size! next)
-		    (let ((inferior (window-inferior superior next)))
-		      (if (combination-vertical? superior)
-			  (set-inferior-y-start! inferior
-						 (- (inferior-y-start inferior)
-						    y-size))
-			  (set-inferior-x-start! inferior
-						 (- (inferior-x-start inferior)
-						    x-size))))
-		    next)
-		   (previous
-		    (adjust-size! previous)
-		    previous)
-		   (else
-		    (error "combination with single child" superior))))))
-      (maybe-delete-combination! superior)
-      (if (current-window? leaf)
-	  (select-window value)))))
+  (without-interrupts
+   (lambda ()
+     (let ((superior (window-superior leaf))
+	   (next (window-next leaf))
+	   (previous (window-previous leaf))
+	   (x-size (window-x-size leaf))
+	   (y-size (window-y-size leaf)))
+       (if (not (combination? superior))
+	   (editor-error "Window has no neighbors; can't delete"))
+       (let ((adjust-size!
+	      (lambda (window)
+		(if (current-window? leaf)
+		    (select-window window))
+		(unlink-leaf! leaf)
+		(if (combination-vertical? superior)
+		    (=> window :set-y-size!
+			(+ (window-y-size window) y-size))
+		    (=> window :set-x-size!
+			(+ (window-x-size window) x-size))))))
+	 (cond (next
+		(adjust-size! next)
+		(let ((inferior (window-inferior superior next)))
+		  (if (combination-vertical? superior)
+		      (set-inferior-y-start!
+		       inferior
+		       (- (inferior-y-start inferior) y-size))
+		      (set-inferior-x-start!
+		       inferior
+		       (- (inferior-x-start inferior) x-size)))))
+	       (previous
+		(adjust-size! previous))
+	       (else
+		(error "combination with single child" superior))))
+       (maybe-delete-combination! superior)))))
 
 (define (unlink-leaf! leaf)
   (let ((combination (window-superior leaf))
 	(next (window-next leaf))
 	(previous (window-previous leaf)))
-    (delete-inferior! combination leaf)
     (=> leaf :kill!)
+    (delete-inferior! combination leaf)
     (if previous
 	(set-window-next! previous next)
 	(set-combination-child! combination next))
@@ -484,73 +484,151 @@
 
 ;;;; Sizing
 
-(define (window-grow! leaf delta
-		      vertical? size min-size
-		      set-w-size! start set-start!)
-  (check-leaf-window leaf 'WINDOW-GROW!)
-  (let ((leaf
-	 (let loop ((leaf leaf))
-	   (let ((combination (window-superior leaf)))
-	     (cond ((not (combination? combination))
-		    (editor-error "Can't grow this window "
-				  (if vertical? "vertically" "horizontally")))
-		   ((boolean=? vertical? (combination-vertical? combination))
-		    leaf)
-		   (else
-		    (loop combination)))))))
-    (let ((new-size (+ (size leaf) delta))
-	  (combination (window-superior leaf))
-	  (next (window-next leaf))
-	  (previous (window-previous leaf)))
-      (if (> new-size (size combination))
-	  (begin
-	    (set! new-size (size combination))
-	    (set! delta (- new-size (size leaf)))))
-      (cond ((< new-size (min-size leaf))
-	     (window-delete! leaf))
-	    ((and next (>= (- (size next) delta) (min-size next)))
-	     (let ((inferior (window-inferior combination next)))
-	       (set-start! inferior (+ (start inferior) delta)))
-	     (set-w-size! next (- (size next) delta))
-	     (set-w-size! leaf new-size))
-	    ((and previous
-		  (>= (- (size previous) delta) (min-size previous)))
-	     (let ((inferior (window-inferior combination leaf)))
-	       (set-start! inferior (- (start inferior) delta)))
-	     (set-w-size! previous (- (size previous) delta))
-	     (set-w-size! leaf new-size))
-	    (else
-	     (scale-combination-inferiors! combination
-					   (- (size combination) new-size)
-					   leaf vertical? size min-size
-					   set-w-size! set-start!)
-	     ;; Scaling may have deleted all other inferiors.
-	     ;; If so, leaf has replaced combination.
-	     (set-w-size! leaf
-			  (if (eq? combination (window-superior leaf))
-			      new-size
-			      (size combination))))))))
+(define (window-grow! vertical? size min-size set-w-size! start set-start!
+		      scale-combination-inferiors!)
+  (lambda (leaf delta)
+    (check-leaf-window leaf 'WINDOW-GROW!)
+    (without-interrupts
+     (lambda ()
+       (let ((leaf
+	      (let loop ((leaf leaf))
+		(let ((combination (window-superior leaf)))
+		  (if (not (combination? combination))
+		      (editor-error "Can't grow this window "
+				    (if vertical?
+					"vertically"
+					"horizontally")))
+		  (if (boolean=? vertical? (combination-vertical? combination))
+		      leaf
+		      (loop combination))))))
+	 (let ((new-size (+ (size leaf) delta))
+	       (combination (window-superior leaf))
+	       (next (window-next leaf))
+	       (previous (window-previous leaf)))
+	   (if (> new-size (size combination))
+	       (begin
+		 (set! new-size (size combination))
+		 (set! delta (- new-size (size leaf)))))
+	   (cond ((< new-size (min-size leaf))
+		  (window-delete! leaf))
+		 ((and next (>= (- (size next) delta) (min-size next)))
+		  (let ((inferior (window-inferior combination next)))
+		    (set-start! inferior (+ (start inferior) delta)))
+		  (set-w-size! next (- (size next) delta))
+		  (set-w-size! leaf new-size))
+		 ((and previous
+		       (>= (- (size previous) delta) (min-size previous)))
+		  (let ((inferior (window-inferior combination leaf)))
+		    (set-start! inferior (- (start inferior) delta)))
+		  (set-w-size! previous (- (size previous) delta))
+		  (set-w-size! leaf new-size))
+		 (else
+		  (scale-combination-inferiors! combination
+						(- (size combination) new-size)
+						leaf)
+		  ;; Scaling may have deleted all other inferiors.
+		  ;; If so, leaf has replaced combination.
+		  (set-w-size! leaf
+			       (if (eq? combination (window-superior leaf))
+				   new-size
+				   (size combination)))))))))))
+
+;;; (SCALE-COMBINATION-INFERIORS! COMBINATION NEW-ROOM EXCEPT)
+
+;;; Change all of the inferiors of COMBINATION (except EXCEPT) to use
+;;; NEW-ROOM's worth of space.  EXCEPT, if given, should not be
+;;; changed in size, but should be moved if its neighbors change.  It
+;;; is assumed that EXCEPT is given only for case where the
+;;; combination's VERTICAL? flag is the same as V.
+
+;;; General strategy:
+
+;;; If the window is growing, we can simply change the sizes of the
+;;; inferiors.  However, if it is shrinking, we must be more careful
+;;; because some or all of the inferiors can be deleted.  So in that
+;;; case, before any sizes are changed, we find those inferiors that
+;;; will be deleted and delete them.  If we delete all of the
+;;; inferiors, then we are done: this window has also been deleted.
+;;; Otherwise, we can then perform all of the changes, knowing that no
+;;; window will grow too small.
 
-(define (window-grow-horizontally! leaf delta)
-  (window-grow! leaf delta false
-		window-x-size window-min-x-size
-		send-window-x-size! inferior-x-start set-inferior-x-start!))
-
-(define (window-grow-vertically! leaf delta)
-  (window-grow! leaf delta true
-		window-y-size window-min-y-size
-		send-window-y-size! inferior-y-start set-inferior-y-start!))
-
-(define (scale-combination-inferiors-x! combination x except)
-  (scale-combination-inferiors! combination x except false
-				window-x-size window-min-x-size
-				send-window-x-size! set-inferior-x-start!))
-
-(define (scale-combination-inferiors-y! combination y except)
-  (scale-combination-inferiors! combination y except true
-				window-y-size window-min-y-size
-				send-window-y-size! set-inferior-y-start!))
-
+(define (scale-combination-inferiors! v size min-size set-w-size! set-start!)
+  (lambda (combination new-room except)
+    (let ((kernel
+	   (lambda (old-room collect-deletions change-inferiors)
+	     (cond ((< old-room new-room)
+		    (change-inferiors))
+		   ((> old-room new-room)
+		    (for-each window-delete! (collect-deletions))
+		    (if (not (null? (window-inferiors combination)))
+			(change-inferiors))))))
+	  (child (combination-child combination))
+	  (c-size (size combination)))
+      (if (not (eq? (combination-vertical? combination) v))
+	  (kernel
+	   c-size
+	   (lambda ()
+	     (let loop ((window child))
+	       (let ((deletions
+		      (if (window-next window)
+			  (loop (window-next window))
+			  '())))
+		 (if (< new-room (min-size window))
+		     (cons window deletions)
+		     deletions))))
+	   (lambda ()
+	     (let loop ((window child))
+	       (set-w-size! window new-room)
+	       (if (window-next window)
+		   (loop (window-next window))))))
+	  (let ((old-room (if except (- c-size (size except)) c-size)))
+	    (kernel
+	     old-room
+	     (lambda ()
+	       (let loop
+		   ((window child) (old-room old-room) (new-room new-room))
+		 (cond ((eq? window except)
+			(if (window-next window)
+			    (loop (window-next window) old-room new-room)
+			    '()))
+		       ((not (window-next window))
+			(if (< new-room (min-size window))
+			    (list window)
+			    '()))
+		       (else
+			(let* ((old-s (size window))
+			       (new-s (quotient (* old-s new-room) old-room))
+			       (deletions
+				(loop (window-next window)
+				      (- old-room old-s)
+				      (- new-room new-s))))
+			  (if (< new-s (min-size window))
+			      (cons window deletions)
+			      deletions))))))
+	     (lambda ()
+	       (let loop
+		   ((window child)
+		    (start 0)
+		    (old-room old-room)
+		    (new-room new-room))
+		 (set-start! (window-inferior combination window) start)
+		 (cond ((eq? window except)
+			(if (window-next window)
+			    (loop (window-next window)
+				  start
+				  old-room
+				  new-room)))
+		       ((not (window-next window))
+			(set-w-size! window new-room))
+		       (else
+			(let* ((old-s (size window))
+			       (new-s (quotient (* old-s new-room) old-room)))
+			  (set-w-size! window new-s)
+			  (loop (window-next window)
+				(+ start new-s)
+				(- old-room old-s)
+				(- new-room new-s)))))))))))))
+
 (define (window-min-x-size window)
   (=> window :minimum-x-size))
 
@@ -562,6 +640,24 @@
 
 (define (send-window-y-size! window y)
   (=> window :set-y-size! y))
+
+(define scale-combination-inferiors-x!
+  (scale-combination-inferiors! false window-x-size window-min-x-size
+				send-window-x-size! set-inferior-x-start!))
+
+(define scale-combination-inferiors-y!
+  (scale-combination-inferiors! true window-y-size window-min-y-size
+				send-window-y-size! set-inferior-y-start!))
+
+(define window-grow-horizontally!
+  (window-grow! false window-x-size window-min-x-size send-window-x-size!
+		inferior-x-start set-inferior-x-start!
+		scale-combination-inferiors-x!))
+
+(define window-grow-vertically!
+  (window-grow! true window-y-size window-min-y-size send-window-y-size!
+		inferior-y-start set-inferior-y-start!
+		scale-combination-inferiors-y!))
 
 (define-method combination-window (:minimum-x-size combination)
   (=> (window-leftmost-leaf combination) :minimum-x-size))
@@ -592,92 +688,3 @@
 
 (define-method combination-leaf-window (:leaf-containing-coordinates leaf x y)
   (values leaf x y))
-
-(define (scale-combination-inferiors! combination new-room except
-				      v size min-size set-w-size! set-start!)
-  ;; Change all of the inferiors of COMBINATION (except EXCEPT) to
-  ;; use NEW-ROOM's worth of space.  EXCEPT, if given, should not be
-  ;; changed in size, but should be moved if its neighbors change.
-  ;; It is assumed that EXCEPT is given only for case where the
-  ;; combination's VERTICAL? flag is the same as V.
-
-  ;; General strategy:
-  ;; If the window is growing, we can simply change the sizes of the
-  ;; inferiors.  However, if it is shrinking, we must be more careful
-  ;; because some or all of the inferiors can be deleted.  So in that
-  ;; case, before any sizes are changed, we find those inferiors that
-  ;; will be deleted and delete them.  If we delete all of the
-  ;; inferiors, then we are done: this window has also been deleted.
-  ;; Otherwise, we can then perform all of the changes, knowing that
-  ;; no window will grow too small.
-
-  (let ((kernel
-	 (lambda (old-room collect-deletions change-inferiors)
-	   (cond ((< old-room new-room)
-		  (change-inferiors))
-		 ((> old-room new-room)
-		  (for-each window-delete! (collect-deletions))
-		  (if (not (null? (window-inferiors combination)))
-		      (change-inferiors))))))
-	(child (combination-child combination))
-	(c-size (size combination)))
-    (if (not (eq? (combination-vertical? combination) v))
-	(kernel
-	 c-size
-	 (lambda ()
-	   (let loop ((window child))
-	     (let ((deletions
-		    (if (window-next window)
-			(loop (window-next window))
-			'())))
-	       (if (< new-room (min-size window))
-		   (cons window deletions)
-		   deletions))))
-	 (lambda ()
-	   (let loop ((window child))
-	     (set-w-size! window new-room)
-	     (if (window-next window)
-		 (loop (window-next window))))))
-	(let ((old-room (if except (- c-size (size except)) c-size)))
-	  (kernel
-	   old-room
-	   (lambda ()
-	     (let loop ((window child) (old-room old-room) (new-room new-room))
-	       (cond ((eq? window except)
-		      (if (window-next window)
-			  (loop (window-next window) old-room new-room)
-			  '()))
-		     ((not (window-next window))
-		      (if (< new-room (min-size window))
-			  (list window)
-			  '()))
-		     (else
-		      (let* ((old-s (size window))
-			     (new-s (quotient (* old-s new-room) old-room))
-			     (deletions
-			      (loop (window-next window)
-				    (- old-room old-s)
-				    (- new-room new-s))))
-			(if (< new-s (min-size window))
-			    (cons window deletions)
-			    deletions))))))
-	   (lambda ()
-	     (let loop
-		 ((window child)
-		  (start 0)
-		  (old-room old-room)
-		  (new-room new-room))
-	       (set-start! (window-inferior combination window) start)
-	       (cond ((eq? window except)
-		      (if (window-next window)
-			  (loop (window-next window) start old-room new-room)))
-		     ((not (window-next window))
-		      (set-w-size! window new-room))
-		     (else
-		      (let* ((old-s (size window))
-			     (new-s (quotient (* old-s new-room) old-room)))
-			(set-w-size! window new-s)
-			(loop (window-next window)
-			      (+ start new-s)
-			      (- old-room old-s)
-			      (- new-room new-s))))))))))))

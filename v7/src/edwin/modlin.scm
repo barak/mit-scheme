@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.4 1990/10/09 16:24:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.5 1990/11/02 03:24:31 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -266,18 +266,23 @@ If #F, the normal method is used."
       ((#\s)
        "no processes")
       ((#\p)
-       (if (window-mark-visible? window (buffer-start buffer))
-	   (if (window-mark-visible? window (buffer-end buffer))
-	       "All" "Top")
-	   (if (window-mark-visible? window (buffer-end buffer))
-	       "Bottom"
+       (if (let ((end (buffer-end buffer)))
+	     (or (window-mark-visible? window end)
+		 (and (line-start? end)
+		      (not (group-start? end))
+		      (window-mark-visible? window (mark-1+ end)))))
+	   (if (window-mark-visible? window (buffer-start buffer))
+	       "All"
+	       "Bottom")
+	   (if (window-mark-visible? window (buffer-start buffer))
+	       "Top"
 	       (string-append
 		(string-pad-left
 		 (number->string
 		  (min
 		   (let ((start (mark-index (buffer-start buffer))))
 		     (integer-round
-		      (* 100 (- (window-start-index window) start))
+		      (* 100 (- (mark-index (window-start-mark window)) start))
 		      (- (mark-index (buffer-end buffer)) start)))
 		   99))
 		 2)

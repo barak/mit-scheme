@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.92 1989/08/14 09:30:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/hlpcom.scm,v 1.93 1990/11/02 03:24:19 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -216,7 +216,10 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	     (string-append "Set " (variable-name-string variable) " to value")
 	     (variable-value variable)))))
   (lambda (variable value)
-    (set-variable-value! (name->variable variable) value)))
+    (let ((variable (name->variable variable)))
+      (if (not (variable-value-valid? variable value))
+	  (editor-error "illegal value for variable:" value))
+      (set-variable-value! variable value))))
 
 (define-command make-local-variable
   "Make a variable have a local value in the current buffer."
@@ -227,7 +230,10 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	     (string-append "Set " (variable-name-string variable) " to value")
 	     (variable-value variable)))))
   (lambda (variable value)
-    (make-local-binding! (name->variable variable) value)))
+    (let ((variable (name->variable variable)))
+      (if (not (variable-value-valid? variable value))
+	  (editor-error "illegal value for variable:" value))
+      (make-local-binding! variable value))))
 
 (define-command kill-local-variable
   "Make a variable use its global value in the current buffer."

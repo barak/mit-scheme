@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.82 1990/10/06 00:15:44 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.83 1990/11/02 03:23:54 cph Rel $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,6 @@
    typein-inferior
    selected-window
    cursor-window
-   select-time
    properties))
 
 (define (make-editor-frame root-screen main-buffer typein-buffer)
@@ -75,27 +74,23 @@
 	(set! typein-inferior (find-inferior inferiors typein-window))
 	(set! selected-window main-window)
 	(set! cursor-window main-window)
-	(set! select-time 2)
-	(set-window-select-time! main-window 1)
-	(=> (window-cursor main-window) :enable!))
+	(window-cursor-enable! main-window))
       (set-editor-frame-size! window x-size y-size))
     window))
 
 (define (editor-frame-update-display! window display-style)
   ;; Returns true if update is successfully completed (or unnecessary).
+  ;; Assumes that interrupts are disabled.
   (with-instance-variables editor-frame window (display-style)
-    (with-screen-in-update! screen
-      (lambda ()
-	(if (and (not display-style)
-		 (not (car redisplay-flags)))
-	    true
-	    (let ((finished?
-		   (update-inferiors! window screen 0 0
-				      0 x-size 0 y-size
-				      display-style)))
-	      (if finished?
-		  (set-car! redisplay-flags false))
-	      finished?))))))
+    (if (and (not display-style)
+	     (not (car redisplay-flags)))
+	true
+	(let ((finished?
+	       (window-update-display! window screen 0 0 0 x-size 0 y-size
+				       display-style)))
+	  (if finished?
+	      (set-car! redisplay-flags false))
+	  finished?))))
 
 (define (set-editor-frame-size! window x y)
   (with-instance-variables editor-frame window (x y)
@@ -157,20 +152,19 @@
   (with-instance-variables editor-frame window (window*)
     (if (not (buffer-frame? window*))
 	(error "Attempt to select non-window" window*))
-    (=> (window-cursor cursor-window) :disable!)
+    (window-cursor-disable! cursor-window)
     (set! selected-window window*)
-    (set-window-select-time! window* select-time)
-    (set! select-time (1+ select-time))
+    (set-window-select-time! window* (increment-select-time!))
     (set! cursor-window window*)
-    (=> (window-cursor cursor-window) :enable!)))
+    (window-cursor-enable! window*)))
 
 (define (editor-frame-select-cursor! window window*)
   (with-instance-variables editor-frame window (window*)
     (if (not (buffer-frame? window*))
 	(error "Attempt to select non-window" window*))
-    (=> (window-cursor cursor-window) :disable!)
+    (window-cursor-disable! cursor-window)
     (set! cursor-window window*)
-    (=> (window-cursor cursor-window) :enable!)))
+    (window-cursor-enable! cursor-window)))
 
 (define-method editor-frame (:button-event! editor-frame button x y)
   (with-values

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.20 1990/10/09 16:24:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.21 1990/11/02 03:24:09 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -192,11 +192,12 @@ MIT in each case. |#
 	  editor-display-types)
   (export (edwin)
 	  display-type?
+	  display-type/available?
 	  display-type/make-input-port
 	  display-type/make-screen
 	  display-type/multiple-screens?
 	  display-type/name
-	  display-type/with-interrupt-source
+	  display-type/with-display-grabbed
 	  display-type/with-interrupts-disabled
 	  display-type/with-interrupts-enabled
 	  make-display-type
@@ -208,41 +209,41 @@ MIT in each case. |#
   (export (edwin)
 	  initialize-screen-root-window!
 	  screen-beep
+	  screen-clear-rectangle
+	  screen-direct-output-char
+	  screen-direct-output-move-cursor
+	  screen-direct-output-substring
 	  screen-discard!
 	  screen-enter!
 	  screen-exit!
-	  screen-flush!
-	  screen-highlight?
 	  screen-in-update?
 	  screen-modeline-event!
+	  screen-move-cursor
+	  screen-needs-update?
+	  screen-output-char
+	  screen-output-substring
 	  screen-root-window
+	  screen-scroll-lines-down
+	  screen-scroll-lines-up
 	  screen-select-cursor!
 	  screen-select-window!
 	  screen-selected-window
-	  screen-scroll-lines-down!
-	  screen-scroll-lines-up!
 	  screen-state
 	  screen-typein-window
 	  screen-window-list
 	  screen-window0
-	  screen-write-char!
-	  screen-write-cursor!
-	  screen-write-substring!
-	  screen-write-substrings!
 	  screen-x-size
 	  screen-y-size
+	  set-screen-debug-trace!
 	  set-screen-root-window!
-	  subscreen-clear!
 	  update-screen!
 	  window-screen
-	  with-screen-in-update!
-	  with-screen-inverse-video!)
+	  with-screen-in-update)
   (export (edwin console-screen)
 	  make-screen)
   (export (edwin x-screen)
 	  make-screen
-	  set-screen-x-size!
-	  set-screen-y-size!))
+	  set-screen-size!))
 
 (define-package (edwin x-screen)
   (files "xterm")
@@ -271,10 +272,17 @@ MIT in each case. |#
 	  update-xterm-screen-names!))
 
 (define-package (edwin console-screen)
-  (files "cterm")
+  (files "termcap" "tterm")
   (parent (edwin))
   (export (edwin)
 	  console-display-type)
+  (import (runtime primitive-io)
+	  channel-type=terminal?
+	  terminal-get-state
+	  terminal-output-baud-rate
+	  terminal-raw-input
+	  terminal-raw-output
+	  terminal-set-state)
   (import (runtime interrupt-handler)
 	  hook/^g-interrupt)
   (initialization (initialize-package!)))
@@ -282,7 +290,6 @@ MIT in each case. |#
 (define-package (edwin window)
   (files "window"
 	 "utlwin"
-	 "linwin"
 	 "bufwin"
 	 "bufwfs"
 	 "bufwiu"
@@ -297,6 +304,7 @@ MIT in each case. |#
 	  edwin-variable$scroll-step
 	  edwin-variable$truncate-lines
 	  edwin-variable$truncate-partial-width-windows
+	  set-window-debug-trace!
 	  set-window-point!
 	  set-window-start-mark!
 	  window-buffer
@@ -308,14 +316,12 @@ MIT in each case. |#
 	  window-direct-output-insert-newline!
 	  window-direct-output-insert-substring!
 	  window-direct-update!
-	  window-end-index
 	  window-home-cursor!
 	  window-mark->coordinates
 	  window-mark->x
 	  window-mark->y
 	  window-mark-visible?
 	  window-modeline-event!
-	  window-needs-redisplay?
 	  window-override-message
 	  window-point
 	  window-point-coordinates
@@ -323,13 +329,12 @@ MIT in each case. |#
 	  window-point-y
 	  window-root-window
 	  window-redraw!
-	  window-redraw-preserving-point!
 	  window-scroll-y-absolute!
 	  window-scroll-y-relative!
 	  window-select-time
 	  window-set-override-message!
 	  window-setup-truncate-lines!
-	  window-start-index
+	  window-start-mark
 	  window-y-center)
   (export (edwin screen)
 	  editor-frame-screen

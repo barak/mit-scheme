@@ -43,7 +43,6 @@
   (read-class-definitions "window")
   (read-class-definitions "utlwin")
   (read-class-definitions "modwin")
-  (read-class-definitions "linwin")
   (read-class-definitions "bufwin")
   (read-class-definitions "comwin")
   (read-class-definitions "buffrm")

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.12 1990/10/09 16:24:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.13 1990/11/02 03:25:13 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -55,7 +55,6 @@
   (x-display-process-events 2)
   (x-display-sync 2)
   (x-window-beep 1)
-  (x-window-clear 1)
   (x-window-display 1)
   (x-window-set-event-mask 2)
   (x-window-set-icon-name 2)
@@ -67,8 +66,8 @@
   (xterm-open-window 3)
   (xterm-restore-contents 6)
   (xterm-save-contents 5)
-  (xterm-scroll-lines-down 7)
-  (xterm-scroll-lines-up 7)
+  (xterm-scroll-lines-down 6)
+  (xterm-scroll-lines-up 6)
   (xterm-set-size 3)
   (xterm-write-char! 5)
   (xterm-write-cursor! 3)
@@ -98,19 +97,18 @@
 	   (make-screen (make-xterm-screen-state xterm
 						 (x-window-display xterm))
 			xterm-screen/beep
+			xterm-screen/clear-line!
+			xterm-screen/clear-rectangle!
+			xterm-screen/clear-screen!
 			xterm-screen/discard!
 			xterm-screen/enter!
 			xterm-screen/exit!
-			xterm-screen/finish-update!
 			xterm-screen/flush!
-			xterm-screen/inverse-video!
 			xterm-screen/modeline-event!
-			xterm-screen/normal-video!
+			xterm-screen/preempt-update?
 			xterm-screen/scroll-lines-down!
 			xterm-screen/scroll-lines-up!
-			xterm-screen/start-update!
-			xterm-screen/subscreen-clear!
-			xterm-screen/wipe!
+			xterm-screen/wrap-update!
 			xterm-screen/write-char!
 			xterm-screen/write-cursor!
 			xterm-screen/write-substring!
@@ -124,9 +122,6 @@
 
 (define-integrable (screen-display screen)
   (xterm-screen-state/display (screen-state screen)))
-
-(define-integrable (screen-highlight screen)
-  (if (screen-highlight? screen) 1 0))
 
 (define-integrable (screen-redisplay-flag screen)
   (xterm-screen-state/redisplay-flag (screen-state screen)))
@@ -147,19 +142,21 @@
 	     (car screens)
 	     (loop (cdr screens))))))
 
-(define (xterm-screen/start-update! screen)
-  (xterm-enable-cursor (screen-xterm screen) false))
-
-(define (xterm-screen/finish-update! screen)
-  (if (screen-selected? screen)
-      (let ((xterm (screen-xterm screen)))
-	(xterm-enable-cursor xterm true)
-	(xterm-draw-cursor xterm)))
-  (if (screen-redisplay-flag screen)
-      (begin
-	(update-xterm-screen-names! screen)
-	(set-screen-redisplay-flag! screen false)))
-  (xterm-screen/flush! screen))
+(define (xterm-screen/wrap-update! screen thunk)
+  (dynamic-wind
+   (lambda ()
+     (xterm-enable-cursor (screen-xterm screen) false))
+   thunk
+   (lambda ()
+     (if (screen-selected? screen)
+	 (let ((xterm (screen-xterm screen)))
+	   (xterm-enable-cursor xterm true)
+	   (xterm-draw-cursor xterm)))
+     (if (screen-redisplay-flag screen)
+	 (begin
+	   (update-xterm-screen-names! screen)
+	   (set-screen-redisplay-flag! screen false)))
+     (xterm-screen/flush! screen))))
 
 (define (xterm-screen/discard! screen)
   (set! screen-list (delq! screen screen-list))
@@ -183,21 +180,18 @@
     (xterm-erase-cursor xterm))
   (xterm-screen/flush! screen))
 
-(define (xterm-screen/inverse-video! screen)
+(define (xterm-screen/preempt-update? screen y)
   screen				; ignored
-  unspecific)
-
-(define (xterm-screen/normal-video! screen)
-  screen				; ignored
-  unspecific)
+  (fix:= (fix:remainder y 8) 0))
+  
 
 (define (xterm-screen/scroll-lines-down! screen xl xu yl yu amount)
-  (xterm-scroll-lines-down (screen-xterm screen) xl xu yl yu amount 0)
-  true)
+  (xterm-scroll-lines-down (screen-xterm screen) xl xu yl yu amount)
+  'UNCHANGED)
 
 (define (xterm-screen/scroll-lines-up! screen xl xu yl yu amount)
-  (xterm-scroll-lines-up (screen-xterm screen) xl xu yl yu amount 0)
-  true)
+  (xterm-scroll-lines-up (screen-xterm screen) xl xu yl yu amount)
+  'UNCHANGED)
 
 (define (xterm-screen/beep screen)
   (x-window-beep (screen-xterm screen))
@@ -206,22 +200,27 @@
 (define-integrable (xterm-screen/flush! screen)
   (x-display-flush (screen-display screen)))
 
-(define (xterm-screen/write-char! screen x y char)
-  (xterm-write-char! (screen-xterm screen) x y char (screen-highlight screen)))
+(define (xterm-screen/write-char! screen x y char highlight)
+  (xterm-write-char! (screen-xterm screen) x y char (if highlight 1 0)))
 
 (define (xterm-screen/write-cursor! screen x y)
   (xterm-write-cursor! (screen-xterm screen) x y))
 
-(define (xterm-screen/write-substring! screen x y string start end)
+(define (xterm-screen/write-substring! screen x y string start end highlight)
   (xterm-write-substring! (screen-xterm screen) x y string start end
-			  (screen-highlight screen)))
+			  (if highlight 1 0)))
 
-(define (xterm-screen/subscreen-clear! screen xl xu yl yu)
-  (xterm-clear-rectangle! (screen-xterm screen) xl xu yl yu
-			  (screen-highlight screen)))
+(define (xterm-screen/clear-line! screen x y first-unused-x)
+  (xterm-clear-rectangle! (screen-xterm screen)
+			  x first-unused-x y (fix:1+ y) 0))
 
-(define (xterm-screen/wipe! screen)
-  (x-window-clear (screen-xterm screen)))
+(define (xterm-screen/clear-rectangle! screen xl xu yl yu highlight)
+  (xterm-clear-rectangle! (screen-xterm screen)
+			  xl xu yl yu (if highlight 1 0)))
+
+(define (xterm-screen/clear-screen! screen)
+  (xterm-clear-rectangle! (screen-xterm screen)
+			  0 (screen-x-size screen) 0 (screen-y-size screen) 0))
 
 ;;;; Input Port
 
@@ -344,10 +343,10 @@
   (set! pending-interrupt? false)
   (^G-signal))
 
-(define (with-editor-interrupts-from-x thunk)
+(define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? true)
 	      (pending-interrupt? false))
-    (thunk)))
+    (receiver (lambda (thunk) (thunk)))))
 
 (define (with-x-interrupts-enabled thunk)
   (bind-signal-interrupts? true thunk))
@@ -400,9 +399,7 @@
       (if (not (and (= x-size (screen-x-size screen))
 		    (= y-size (screen-y-size screen))))
 	  (begin
-	    (set-screen-x-size! screen x-size)
-	    (set-screen-y-size! screen y-size)
-	    (send (screen-root-window screen) ':set-size! x-size y-size)
+	    (set-screen-size! screen x-size y-size)
 	    (update-screen! screen true))))))
 
 (define-event-handler event-type:button-down
@@ -433,6 +430,8 @@
 (define x-display-data)
 
 (define (get-x-display)
+  ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
+  ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
       (let ((display (x-open-display false)))
 	(set! x-display-data display)
