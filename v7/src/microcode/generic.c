@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.22 1987/04/16 02:23:19 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/generic.c,v 9.23 1987/07/23 21:47:55 cph Exp $ */
 
 #include "scheme.h"
 #include "primitive.h"
@@ -83,7 +83,7 @@ C_Integer_To_Scheme_Integer(C)
 }
 
 int
-Scheme_Integer_To_C_Integer(Arg1, C)
+Scheme_Integer_To_C_Integer (Arg1, C)
      Pointer Arg1;
      long *C;
 {
@@ -129,6 +129,58 @@ Pointer
 Fetch_Bignum_One()
 {
   return Get_Fixed_Obj_Slot(Bignum_One);
+}
+
+/* This is more suitable than `Scheme_Integer_To_C_Integer'
+   for some purposes. */
+
+long
+object_to_long (object, type_error, range_error)
+     Pointer object;
+     long type_error, range_error;
+{
+  fast long result;
+
+  switch (OBJECT_TYPE (object))
+    {
+    case TC_FIXNUM:
+      {
+	Sign_Extend (object, result);
+	return (result);
+      }
+
+    case TC_BIG_FIXNUM:
+      {
+	fast bigdigit *bignum, *scan;
+	fast long length;
+
+	bignum = (BIGNUM (Get_Pointer (object)));
+	length = (LEN (bignum));
+	if (length == 0)
+	  return (0);
+	if (length > C_INTEGER_LENGTH_AS_BIGNUM)
+	  signal_error_from_primitive (range_error);
+	scan = (Bignum_Top (bignum));
+	result = 0;
+	if (length < C_INTEGER_LENGTH_AS_BIGNUM)
+	  while ((length--) > 0)
+	    result = ((Mul_Radix (result)) + (*scan--));
+	else
+	  while ((length--) > 0)
+	    {
+	      result = (Mul_Radix (result));
+	      if (result < 0)
+		signal_error_from_primitive (range_error);
+	      result = (result + (*scan--));
+	      if (result < 0)
+		signal_error_from_primitive (range_error);
+	    }
+	return ((NEG_BIGNUM (bignum)) ? (- result) : result);
+      }
+
+    default:
+      signal_error_from_primitive (type_error);
+    }
 }
 
 #define Sign_Check(Normal_Op, Big_Op)					\
