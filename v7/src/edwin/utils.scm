@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.13 1989/04/23 23:28:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utils.scm,v 1.14 1989/04/28 03:56:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -41,6 +41,9 @@
 
 (declare (usual-integrations))
 
+(define-integrable set-string-maximum-length!
+  (ucode-primitive set-string-maximum-length! 2))
+
 (define (string-append-char string char)
   (let ((size (string-length string)))
     (let ((result (string-allocate (1+ size))))

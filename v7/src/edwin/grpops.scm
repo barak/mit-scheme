@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.4 1989/04/23 23:22:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/grpops.scm,v 1.5 1989/04/28 03:56:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -47,6 +47,14 @@
 ;;; limited ways.  To save an index across a modification, it must be
 ;;; consed into a permanent mark.
 
+;;; This parameter controls how much extra space (in characters) is
+;;; allocated when the gap is too small to contain a given insertion.
+(define gap-allocation-extra 2000)
+
+;;; This parameter controls how large the gap is allowed to be between
+;;; operations.  It must be at least `gap-allocation-extra'.
+(define gap-maximum-extra 20000)
+
 (define (group-extract-string group start end)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
@@ -70,11 +78,6 @@
   (string-ref (group-text group)
 	      (group-index->position group index true)))
 
-;;; This parameter controls how much extra space (in characters) is
-;;; allocated when the gap is too small to contain a given insertion.
-
-(define gap-allocation-extra 2000)
-
 (define (group-insert-char! group index char)
   (without-interrupts
    (lambda ()
@@ -90,7 +93,7 @@
   (let ((gap-start* (1+ index)))
     (vector-set! group group-index:gap-start gap-start*)
     (undo-record-insertion! group index gap-start*)))
-
+
 (define (group-insert-string! group index string)
   (group-insert-substring! group index string 0 (string-length string)))
 
@@ -110,7 +113,7 @@
     (let ((gap-start* (+ index n)))
       (vector-set! group group-index:gap-start gap-start*)
       (undo-record-insertion! group index gap-start*))))
-
+
 (define (group-delete-left-char! group index)
   (group-delete! group (-1+ index) index))
 
@@ -123,27 +126,51 @@
      (if (not (= start end))
 	 (begin
 	   (if (group-read-only? group) (barf-if-read-only))
-	   (let ((gap-start (group-gap-start group))
-		 (new-end (+ end (group-gap-length group))))
-	     ;; Guarantee that the gap is between START and END.
+	   ;; Guarantee that the gap is between START and END.
+	   (let ((gap-start (group-gap-start group)))
 	     (cond ((< gap-start start) (move-gap-to-right! group start))
-		   ((> gap-start end) (move-gap-to-left! group end)))
-	     (undo-record-deletion! group start end)
-	     (record-deletion! group start end)
-	     ;; Clear out any marks.
-	     (for-each-mark group
-	       (lambda (mark)
-		 (let ((position (mark-position mark)))
-		   (if (and (<= start position)
-			    (<= position new-end))
-		       (set-mark-position! mark
-					   (if (mark-left-inserting? mark)
-					       new-end
-					       start))))))
-	     ;; Widen the gap to the new boundaries.
-	     (vector-set! group group-index:gap-start start)
-	     (vector-set! group group-index:gap-end new-end)
-	     (vector-set! group group-index:gap-length (- new-end start))))))))
+		   ((> gap-start end) (move-gap-to-left! group end))))
+	   (undo-record-deletion! group start end)
+	   (record-deletion! group start end)
+	   (let* ((end (+ end (group-gap-length group)))
+		  (length (- end start))
+		  (max-length gap-maximum-extra))
+	     (if (> length max-length)
+		 (let* ((new-end (+ start max-length))
+			(difference (- length max-length))
+			(text (group-text group))
+			(end* (string-length text))
+			(new-end* (- end* difference)))
+		   (substring-move-left! text end end* text new-end)
+		   (set-string-maximum-length! text new-end*)
+		   (for-each-mark group
+		     (lambda (mark)
+		       (let ((position (mark-position mark)))
+			 (cond ((> position end)
+				(set-mark-position! mark
+						    (- position difference)))
+			       ((<= start position)
+				(set-mark-position!
+				 mark
+				 (if (mark-left-inserting? mark)
+				     new-end
+				     start)))))))
+		   (vector-set! group group-index:gap-start start)
+		   (vector-set! group group-index:gap-end new-end)
+		   (vector-set! group group-index:gap-length max-length))
+		 (begin
+		   (for-each-mark group
+		     (lambda (mark)
+		       (let ((position (mark-position mark)))
+			 (if (and (<= start position)
+				  (<= position end))
+			     (set-mark-position!
+			      mark
+			      (if (mark-left-inserting? mark) end start))))))
+		   (vector-set! group group-index:gap-start start)
+		   (vector-set! group group-index:gap-end end)
+		   (vector-set! group group-index:gap-length length))))
+	     unspecific)))))
 
 ;;;; The Gap
 
