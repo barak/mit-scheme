@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.32 1994/10/11 21:00:10 cph Exp $
+$Id: option.scm,v 14.33 1995/04/29 14:09:09 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -67,12 +67,15 @@ MIT in each case. |#
     (define (find-option)
       (cond ((assq name *options*) => load-entry)
 	    ((force* *parent*)     => search-parent)
-	    ((not no-error?) (error "Unknown option name:" name))))
+	    ((not no-error?)
+	     (error "Unknown option name:" name)
+	     #F)
+	    (else  #F)))
 
     (define (load-entry entry)
       (for-each (lambda (thunk) (thunk)) (cdr entry))
       (set! loaded-options (cons name loaded-options))
-      unspecific)
+      name)
 
     (define (search-parent file)
       (fluid-let ((*options* '())
@@ -88,8 +91,8 @@ MIT in each case. |#
       (eval '(LET () (THE-ENVIRONMENT)) system-global-environment))
 
     (if (not (memq name loaded-options))
-	(find-option))
-    name))
+	(find-option)
+	name)))
 
 (define loaded-options  '())
 (define *options* '())			; Current options.
