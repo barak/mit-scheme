@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcdemn.scm,v 14.6 1993/06/29 22:58:16 cph Exp $
+$Id: gcdemn.scm,v 14.7 1993/11/18 15:09:01 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -66,6 +66,11 @@ MIT in each case. |#
 (define gc-daemons)
 (define trigger-gc-daemons!)
 (define add-gc-daemon!)
+(define (add-gc-daemon!/no-restore daemon)
+  (add-gc-daemon!
+   (lambda ()
+     (if (not *within-restore-window?*)
+	 (daemon)))))  
 
 ;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
 ;;; reclaim storage that is either unlikely to be reclaimed or

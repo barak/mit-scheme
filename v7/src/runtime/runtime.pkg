@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.215 1993/11/18 04:36:21 adams Exp $
+$Id: runtime.pkg,v 14.216 1993/11/18 15:08:56 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -721,6 +721,7 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  add-gc-daemon!
+	  add-gc-daemon!/no-restore
 	  add-secondary-gc-daemon!
 	  gc-clean
 	  trigger-secondary-gc-daemons!)
@@ -1906,6 +1907,8 @@ MIT in each case. |#
 	  disk-save
 	  dump-world
 	  identify-world)
+  (export (runtime gc-daemons)
+	  *within-restore-window?*)
   (export (runtime user-interface)
 	  *within-restore-window?*)
   (initialization (initialize-package!)))
