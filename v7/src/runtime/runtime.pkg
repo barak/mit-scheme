@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.229 1994/08/04 00:26:06 adams Exp $
+$Id: runtime.pkg,v 14.230 1994/08/04 15:23:45 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -2465,7 +2465,7 @@ MIT in each case. |#
 	  *unparse-disambiguate-null-lambda-list?*
 	  *unparse-primitives-by-name?*
 	  *unparse-uninterned-symbols-by-name?*
-	  *unparse-with-addresses?*
+	  *unparse-with-datum?*
 	  *unparse-with-maximum-readability?*
 	  *unparser-list-breadth-limit*
 	  *unparser-list-depth-limit*
