@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.41 1992/01/20 13:16:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpint.c,v 1.42 1992/02/12 15:48:40 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -1258,8 +1258,8 @@ DEFUN (comutil_operator_lookup_trap,
     environment = (compiled_block_environment (tramp_data[1]));
     name = (compiler_var_error ((tramp_data[0]), environment));
 
-    STACK_PUSH (ENTRY_TO_OBJECT((SCHEME_OBJECT *) trampoline));
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM(nargs));	/* For debugger */
+    STACK_PUSH (ENTRY_TO_OBJECT (trampoline));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));	/* For debugger */
     STACK_PUSH (environment);				/* For debugger */
     STACK_PUSH (name);					/* For debugger */
     Store_Expression (SHARP_F);
@@ -2217,7 +2217,7 @@ DEFUN (compiled_closure_to_entry,
   SCHEME_OBJECT real_entry;
 
   EXTRACT_CLOSURE_ENTRY_ADDRESS (real_entry, (OBJECT_ADDRESS (entry)));
-  return (ENTRY_TO_OBJECT ((SCHEME_OBJECT *) real_entry));
+  return (ENTRY_TO_OBJECT (real_entry));
 }
 
 /*
@@ -2352,7 +2352,7 @@ DEFUN (extract_uuo_link,
 
   cache_address = (MEMORY_LOC (block, offset));
   EXTRACT_EXECUTE_CACHE_ADDRESS (compiled_entry_address, cache_address);
-  return (ENTRY_TO_OBJECT ((SCHEME_OBJECT *) compiled_entry_address));
+  return (ENTRY_TO_OBJECT (compiled_entry_address));
 }
 
 static void
@@ -2375,8 +2375,7 @@ DEFUN (store_uuo_link,
 }
 
 /* This makes a fake compiled procedure which traps to kind handler when
-   invoked.  WARNING: this won't work if instruction alignment is more
-   restricted than simple longword alignment.
+   invoked.
  */
 
 #define TRAMPOLINE_SIZE	(TRAMPOLINE_ENTRY_SIZE + 2)
@@ -2390,7 +2389,8 @@ DEFUN (make_trampoline,
        SCHEME_OBJECT value1 AND SCHEME_OBJECT value2
        AND SCHEME_OBJECT value3)
 {
-  SCHEME_OBJECT *block, *local_free, *entry_point;
+  SCHEME_OBJECT * block, * local_free;
+  instruction * entry_point;
 
   if (GC_Check (TRAMPOLINE_SIZE + size))
   {
@@ -2405,26 +2405,19 @@ DEFUN (make_trampoline,
 				((TRAMPOLINE_SIZE - 1) + size)));
   local_free[1] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,
 				TRAMPOLINE_ENTRY_SIZE));
-  local_free += TRAMPOLINE_BLOCK_TO_ENTRY;
-  entry_point = local_free;
-  local_free = (TRAMPOLINE_STORAGE(entry_point));
+  entry_point = ((instruction *) (TRAMPOLINE_ENTRY_POINT (local_free)));
+  local_free = (TRAMPOLINE_STORAGE (entry_point));
   (COMPILED_ENTRY_FORMAT_WORD (entry_point)) = fmt_word;
   (COMPILED_ENTRY_OFFSET_WORD (entry_point)) =
     (MAKE_OFFSET_WORD (entry_point, block, false));
   STORE_TRAMPOLINE_ENTRY (entry_point, kind);
 
   if ((--size) >= 0)
-  {
     *local_free++ = value1;
-  }
   if ((--size) >= 0)
-  {
     *local_free++ = value2;
-  }
   if ((--size) >= 0)
-  {
     *local_free++ = value3;
-  }
   *slot = (ENTRY_TO_OBJECT (entry_point));
   return (PRIM_DONE);
 }
@@ -2747,9 +2740,8 @@ DEFUN_VOID (compiler_reset_internal)
   ASM_RESET_HOOK();
 
   return_to_interpreter =
-    (ENTRY_TO_OBJECT ((SCHEME_OBJECT *)
-		      ((OBJECT_ADDRESS (compiler_utilities)) +
-		       TRAMPOLINE_BLOCK_TO_ENTRY)));
+    (ENTRY_TO_OBJECT (TRAMPOLINE_ENTRY_POINT
+		      (OBJECT_ADDRESS (compiler_utilities))));
 
   return;
 }
