@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.9 2003/04/14 19:40:04 cph Exp $
+$Id: unicode.scm,v 1.10 2003/06/14 05:00:33 cph Exp $
 
 Copyright 2001,2003 Massachusetts Institute of Technology
 
@@ -280,8 +280,7 @@ USA.
 	(values low '()))))
 
 (define (alphabet . chars)
-  (%code-points->alphabet
-   (sorted-chars->wfcp-list (remove-duplicate-chars chars))))
+  (%code-points->alphabet (chars->wfcp-list (remove-duplicate-chars chars))))
 
 (define (remove-duplicate-chars chars)
   (let ((table (make-eq-hash-table)))
@@ -291,7 +290,7 @@ USA.
 	      chars)
     (hash-table/key-list table)))
 
-(define (sorted-chars->wfcp-list chars)
+(define (chars->wfcp-list chars)
   (let ((chars (sort chars char<?)))
     (if (pair? chars)
 	(let loop
