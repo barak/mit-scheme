@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987, 1988 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.24 1988/08/15 20:52:09 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/mul.c,v 9.25 1989/02/17 15:05:19 jinx Exp $
  *
  * This file contains the portable fixnum multiplication procedure.
  * Returns NIL if the result does not fit in a fixnum.
@@ -46,7 +46,7 @@ MIT in each case. */
 
 Pointer
 Mul(Arg1, Arg2)
-     long Arg1, Arg2;
+     Pointer Arg1, Arg2;
 {
   long A, B, C;
   fast unsigned long Hi_A, Hi_B, Lo_A, Lo_B, Lo_C, Middle_C;
@@ -60,22 +60,22 @@ Mul(Arg1, Arg2)
   Hi_A = ((A >> HALF_WORD_SIZE) & HALF_WORD_MASK);
   Hi_B = ((B >> HALF_WORD_SIZE) & HALF_WORD_MASK);
   if ((Hi_A > 0) && (Hi_B > 0))
-    return NIL;
+    return (NIL);
   Lo_A = (A & HALF_WORD_MASK);
   Lo_B = (B & HALF_WORD_MASK);
   Lo_C = (Lo_A * Lo_B);
   if (Lo_C >= FIXNUM_SIGN_BIT)
-    return NIL;
+    return (NIL);
   Middle_C = (Lo_A * Hi_B) + (Hi_A * Lo_B);
   if (Middle_C >= MAX_MIDDLE)
-    return NIL;
+    return (NIL);
   C = Lo_C + (Middle_C << HALF_WORD_SIZE);
   if (Fixnum_Fits(C))
   {
     if (Sign || (C == 0))
-      return Make_Unsigned_Fixnum(C);
+      return (MAKE_UNSIGNED_FIXNUM(C));
     else
-      return Make_Unsigned_Fixnum(MAX_FIXNUM - C);
+      return (MAKE_UNSIGNED_FIXNUM(MAX_FIXNUM - C));
   }
-  return NIL;
+  return (NIL);
 }
