@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.1 1987/06/04 00:07:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.2 1987/06/05 16:25:22 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,16 +38,18 @@ MIT in each case. */
 #include "primitive.h"
 #include "gccode.h"
 
-#define RETURN_ADDRESS_P(object)					\
-  ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS)
+#define COMPILED_CODE_ADDRESS_P(object)					\
+  (((OBJECT_TYPE (object)) == TC_COMPILED_EXPRESSION) ||		\
+   ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS))
 
-Built_In_Primitive (Prim_return_address_block, 1, "RETURN-ADDRESS-BLOCK", 0xB5)
+Built_In_Primitive (Prim_compiled_code_address_block, 1,
+		    "COMPILED-CODE-ADDRESS-BLOCK", 0xB5)
 {
   Pointer *address;
   Primitive_1_Arg ();
 
 #ifdef CMPGCFILE
-  CHECK_ARG (1, RETURN_ADDRESS_P);
+  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
   address = (Get_Pointer (Arg1));
   return (Make_Pointer (TC_VECTOR, (Get_Compiled_Block (address))));
 #else /* not CMPGCFILE */

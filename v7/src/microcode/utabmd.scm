@@ -37,7 +37,7 @@
 
 ;;;; Machine Dependent Type Tables
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.32 1987/06/03 20:59:23 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.33 1987/06/05 16:25:42 cph Exp $
 
 (declare (usual-integrations))
 
@@ -509,7 +509,7 @@
 	       DEBUGGING-PRINTER			;$B2
 	       STRING-UPCASE     			;$B3
 	       PRIMITIVE-PURIFY				;$B4
-	       RETURN-ADDRESS-BLOCK			;$B5
+	       COMPILED-CODE-ADDRESS->BLOCK		;$B5
 	       COMPLETE-GARBAGE-COLLECT			;$B6
 	       DUMP-BAND				;$B7
 	       SUBSTRING-SEARCH				;$B8
@@ -863,4 +863,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.32 1987/06/03 20:59:23 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.33 1987/06/05 16:25:42 cph Exp $"
