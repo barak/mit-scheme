@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: scheme16.mak,v 1.2 1993/08/21 03:54:51 gjr Exp $
+###	$Id: scheme16.mak,v 1.3 1993/08/21 03:56:17 gjr Exp $
 ###
 ###	Copyright (c) 1993 Massachusetts Institute of Technology
 ###
@@ -44,7 +44,7 @@ all: ntw16lib.dll
 # These have to be compiled by a 16-bit compiler (e.g. C700)
 # with the Win16 SDK!
 
-ntw16lib.obj: ntw16lib.c ntw32lib.h
+ntw16lib.obj: ntw16lib.c ntscmlib.h
 	cl /c /ASw /G2 /Gsw /Ow /W2 /Zp1 ntw16lib.c
 
 ntw16lib.dll: ntw16lib.obj ntw16lib.def

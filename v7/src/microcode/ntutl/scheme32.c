@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.2 1993/08/03 22:27:42 gjr Exp $
+$Id: scheme32.c,v 1.3 1993/08/21 03:57:56 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -84,11 +84,12 @@ win32_unlock_memory_area (void * area, unsigned long size)
 
 struct win32_timer_closure_s
 {
-  unsigned long * intcode_addr;
-  unsigned long * intmask_addr;
-  unsigned long * memtop_addr;
-  unsigned long bit_mask;
   UINT timer_id;
+  unsigned long * block;
+  unsigned long memtop_off;
+  unsigned long int_code_off;
+  unsigned long int_mask_off;
+  unsigned long bit_mask;
 };
 
 static void _stdcall
@@ -97,9 +98,11 @@ win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
   struct win32_timer_closure_s * timer_closure =
     ((struct win32_timer_closure_s *) dwUser);
 
-  * timer_closure->intcode_addr |= timer_closure->bit_mask;
-  if (((* (timer_closure->intmask_addr)) & timer_closure->bit_mask) != 0)
-    * timer_closure->memtop_addr = ((unsigned long) -1);
+  timer_closure->block[timer_closure->int_code_off] |= timer_closure->bit_mask;
+  if ((timer_closure->block[timer_closure->int_mask_off]
+       & timer_closure->bit_mask)
+      != 0)
+    timer_closure->block[timer_closure->memtop_off] = ((unsigned long) -1);
   return;
 }
 
@@ -118,14 +121,15 @@ win32_flush_async_timer (void * state)
 			(((char *) win32_flush_async_timer)
 			 - ((char *) win32_nt_timer_tick)));
   (void) VirtualUnlock (timer_closure, (sizeof (struct win32_timer_closure_s)));
-  (void) free (timer_closure);
+  (void) free ((char *) timer_closure);
   return;
 }
 
 UINT
-win32_install_async_timer (unsigned long * intcode_addr,
-			   unsigned long * intmask_addr,
-			   unsigned long * memtop_addr,
+win32_install_async_timer (unsigned long * block,
+			   unsigned long memtop_off,
+			   unsigned long int_code_off,
+			   unsigned long int_mask_off,
 			   unsigned long bit_mask,
 			   void ** state_ptr)
 {
@@ -148,9 +152,10 @@ win32_install_async_timer (unsigned long * intcode_addr,
   if (timer_closure == ((struct win32_timer_closure_s *) NULL))
     return (WIN32_ASYNC_TIMER_NOMEM);
 
-  timer_closure->intcode_addr = intcode_addr;
-  timer_closure->intmask_addr = intmask_addr;
-  timer_closure->memtop_addr = memtop_addr;
+  timer_closure->block = block;
+  timer_closure->memtop_off = memtop_off;
+  timer_closure->int_code_off = int_code_off;
+  timer_closure->int_mask_off = int_mask_off;
   timer_closure->bit_mask = bit_mask;
   timer_closure->timer_id = 0;
 
@@ -179,4 +184,24 @@ win32_install_async_timer (unsigned long * intcode_addr,
 
   * state_ptr = ((void *) timer_closure);
   return (WIN32_ASYNC_TIMER_OK);
+}
+
+/* These are NOPs in this version. */
+
+BOOL
+win32_alloc_scheme_selectors (unsigned long base,
+			      unsigned long size,
+			      unsigned short * scheme_cs,
+			      unsigned short * scheme_ds,
+			      unsigned short * scheme_ss)
+{
+  return (FALSE);
+}
+
+void
+win32_release_scheme_selectors (unsigned short scheme_cs,
+				unsigned short scheme_ds,
+				unsigned short scheme_ss)
+{
+  return;
 }

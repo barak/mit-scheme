@@ -1,6 +1,6 @@
 ;;; -*-Fundamental-*-
 ;;;
-;;;	$Id: scm-p-nt.lst,v 1.2 1993/07/27 21:08:28 gjr Exp $
+;;;	$Id: scm-p-nt.lst,v 1.3 1993/08/21 04:02:56 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -94,13 +94,8 @@ prostty.c
 prntenv.c
 prntfs.c
 ;;;;	Bizarre NT primitive files
-ntconio.c
 ntgui.c
-;dosint10.c
-;dosprm.c
 nttterm.c
-ntscreen.c
-
 ;;;;	GC files
 fasdump.c
 gcloop.c

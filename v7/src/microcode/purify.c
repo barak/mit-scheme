@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.49 1993/06/24 06:18:24 gjr Exp $
+$Id: purify.c,v 9.50 1993/08/21 04:01:15 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -65,6 +65,15 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
   Code;									\
 }
 
+#define PURIFY_RAW_POINTER(Code)					\
+{									\
+  Old = (SCHEME_ADDR_TO_ADDR (Temp));					\
+  if ((GC_Mode == CONSTANT_COPY) &&					\
+      (Old > Low_Constant))						\
+    continue;								\
+  Code;									\
+}
+
 #define Setup_Pointer_for_Purify(Extra_Code)				\
 {									\
   Purify_Pointer(Setup_Pointer(false, Extra_Code));			\
@@ -72,7 +81,7 @@ extern SCHEME_OBJECT * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **));
 
 #define Indirect_BH(In_GC)						\
 {									\
-  if ((OBJECT_TYPE (*Old)) == TC_BROKEN_HEART)				\
+  if ((OBJECT_TYPE (* Old)) == TC_BROKEN_HEART)				\
     continue;								\
 }
 
@@ -145,12 +154,14 @@ DEFUN (PurifyLoop,
 	    fast long count;
 
 	    Scan++;
-	    for (count = READ_CACHE_LINKAGE_COUNT(Temp);
+	    for (count = (READ_CACHE_LINKAGE_COUNT (Temp));
 		 --count >= 0;
 		 Scan += 1)
 	    {
-	      Temp = *Scan;
-	      Setup_Pointer_for_Purify(Transport_Quadruple());
+	      Temp = (* Scan);
+	      PURIFY_RAW_POINTER (Setup_Internal (false,
+						  TRANSPORT_RAW_QUADRUPLE (),
+						  RAW_BH (false, continue)));
 	    }
 	    Scan -= 1;
 	    break;
@@ -173,10 +184,11 @@ DEFUN (PurifyLoop,
 	      Scan = ((SCHEME_OBJECT *) word_ptr);
 	      word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
 	      EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
-	      Purify_Pointer(Setup_Internal(false,
-					    Transport_Compiled(),
-					    Compiled_BH(false,
-							goto next_operator)));
+	      Purify_Pointer (Setup_Internal
+			      (false,
+			       Transport_Compiled (),
+			       Compiled_BH (false,
+					    goto next_operator)));
 	      next_operator:
 	      STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
 	    }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.41 1993/08/03 08:29:56 gjr Exp $
+$Id: object.h,v 9.42 1993/08/21 03:58:18 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -183,6 +183,12 @@ extern SCHEME_OBJECT * memory_base;
 #endif
 
 #endif /* HEAP_IN_LOW_MEMORY */
+
+#ifndef SCHEME_ADDR_TO_ADDR
+  typedef SCHEME_OBJECT * SCHEME_ADDR;
+# define SCHEME_ADDR_TO_ADDR(saddr) ((SCHEME_OBJECT *) (saddr))
+# define ADDR_TO_SCHEME_ADDR(caddr) ((SCHEME_OBJECT) (caddr))
+#endif /* SCHEME_ADDR_TO_ADDR */
 
 /* Lots of type predicates */
 

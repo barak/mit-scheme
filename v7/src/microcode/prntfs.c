@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntfs.c,v 1.1 1993/06/24 06:59:14 gjr Exp $
+$Id: prntfs.c,v 1.2 1993/08/21 04:00:47 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. */
 #endif
 
 extern int EXFUN
-  (DOS_read_file_status, (CONST char * filename, struct stat * s));
+  (NT_read_file_status, (CONST char * filename, struct stat * s));
 
 static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
 static void EXFUN (file_mode_string, (struct stat * s, char * a));
@@ -64,7 +64,7 @@ DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    ((DOS_read_file_status ((STRING_ARG (1)), (&stat_result)))
+    ((NT_read_file_status ((STRING_ARG (1)), (&stat_result)))
      ? (LONG_TO_UNSIGNED_FIXNUM ((stat_result . st_mode) & 07777))
      : SHARP_F);
 }
@@ -73,7 +73,7 @@ DEFINE_PRIMITIVE ("SET-FILE-MODES!", Prim_set_file_modes, 2, 2,
   "Set the mode bits of FILE to MODE.")
 {
   PRIMITIVE_HEADER (2);
-  if ((DOS_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
+  if ((NT_chmod ((STRING_ARG (1)), (arg_index_integer (2, 010000)))) < 0)
     error_system_call (errno, syscall_chmod);
   PRIMITIVE_RETURN (SHARP_F);
 }
@@ -83,7 +83,7 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
   struct stat s;
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    ((DOS_read_file_status ((STRING_ARG (1)), (&s)))
+    ((NT_read_file_status ((STRING_ARG (1)), (&s)))
      ? (long_to_integer (s . st_mtime))
      : SHARP_F);
 }
@@ -120,7 +120,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1,
 If the file exists and its status information is accessible, the result\n\
 is a vector of 10 items (see the reference manual for details).  Otherwise\n\
 the result is #F.")
-     FILE_ATTRIBUTES_PRIMITIVE (DOS_read_file_status)
+     FILE_ATTRIBUTES_PRIMITIVE (NT_read_file_status)
 
 static SCHEME_OBJECT
 DEFUN (file_attributes_internal, (s), struct stat * s)
@@ -282,7 +282,7 @@ DEFUN (file_touch, (filename), CONST char * filename)
       {
 	count += 1;
 	/* Use O_EXCL to prevent overwriting existing file. */
-	fd = (DOS_open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
+	fd = (NT_open (filename, (O_RDWR | O_CREAT | O_EXCL), MODE_REG));
 	if (fd >= 0)
 	  {
 	    protect_fd (fd);
@@ -291,13 +291,13 @@ DEFUN (file_touch, (filename), CONST char * filename)
 	  }
 	if (errno == EEXIST)
 	  {
-	    fd = (DOS_open (filename, O_RDWR, MODE_REG));
+	    fd = (NT_open (filename, O_RDWR, MODE_REG));
 	    if (fd >= 0)
 	      {
 		protect_fd (fd);
 		break;
 	      }
-	    else if ((errno == ENOENT) || (errno == ESTALE))
+	    else if (errno == ENOENT)
 	      continue;
 	  }
 	if (count >= FILE_TOUCH_OPEN_TRIES)
@@ -306,7 +306,7 @@ DEFUN (file_touch, (filename), CONST char * filename)
   }
   {
     struct stat file_status;
-    STD_VOID_SYSTEM_CALL (syscall_fstat, (DOS_fstat (fd, (&file_status))));
+    STD_VOID_SYSTEM_CALL (syscall_fstat, (NT_fstat (fd, (&file_status))));
     if (((file_status . st_mode) & S_IFMT) != S_IFREG)
       error_bad_range_arg (1);
     /* CASE 3: file length of 0 needs special treatment. */
@@ -314,15 +314,15 @@ DEFUN (file_touch, (filename), CONST char * filename)
      {
 	char buf [1];
 	(buf[0]) = '\0';
-	STD_VOID_SYSTEM_CALL (syscall_write, (DOS_write (fd, buf, 1)));
+	STD_VOID_SYSTEM_CALL (syscall_write, (NT_write (fd, buf, 1)));
 #ifdef HAVE_TRUNCATE
-	STD_VOID_SYSTEM_CALL (syscall_ftruncate, (DOS_ftruncate (fd, 0)));
+	STD_VOID_SYSTEM_CALL (syscall_ftruncate, (NT_ftruncate (fd, 0)));
 	transaction_commit ();
 #else /* not HAVE_TRUNCATE */
 	transaction_commit ();
-	fd = (DOS_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
+	fd = (NT_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
 	if (fd >= 0)
-	  STD_VOID_SYSTEM_CALL (syscall_close, (DOS_close (fd)));
+	  STD_VOID_SYSTEM_CALL (syscall_close, (NT_close (fd)));
 #endif /* HAVE_TRUNCATE */
 	return (SHARP_F);
       }
@@ -331,11 +331,11 @@ DEFUN (file_touch, (filename), CONST char * filename)
   {
     char buf [1];
     int scr;
-    STD_UINT_SYSTEM_CALL (syscall_read, scr, (DOS_read (fd, buf, 1)));
+    STD_UINT_SYSTEM_CALL (syscall_read, scr, (NT_read (fd, buf, 1)));
     if (scr > 0)
       {
-	STD_VOID_SYSTEM_CALL (syscall_lseek, (DOS_lseek (fd, 0, SEEK_SET)));
-	STD_VOID_SYSTEM_CALL (syscall_write, (DOS_write (fd, buf, 1)));
+	STD_VOID_SYSTEM_CALL (syscall_lseek, (NT_lseek (fd, 0, SEEK_SET)));
+	STD_VOID_SYSTEM_CALL (syscall_write, (NT_write (fd, buf, 1)));
       }
   }
   transaction_commit ();
@@ -345,7 +345,8 @@ DEFUN (file_touch, (filename), CONST char * filename)
 static void
 DEFUN (protect_fd_close, (ap), PTR ap)
 {
-  DOS_close (* ((int *) ap));
+  NT_close (* ((int *) ap));
+  return;
 }
 
 static void

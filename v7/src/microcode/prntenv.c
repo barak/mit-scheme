@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.2 1993/08/19 22:19:29 adams Exp $
+$Id: prntenv.c,v 1.3 1993/08/21 04:00:12 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -62,7 +62,7 @@ The result is either a string (the variable's value),\n\
 {
   PRIMITIVE_HEADER (1);
   {
-    CONST char * variable_value = (DOS_getenv (STRING_ARG (1)));
+    CONST char * variable_value = (NT_getenv (STRING_ARG (1)));
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F
