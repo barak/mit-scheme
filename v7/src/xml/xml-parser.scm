@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.38 2003/09/11 18:38:13 cph Exp $
+$Id: xml-parser.scm,v 1.39 2003/09/15 20:22:49 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -507,7 +507,9 @@ USA.
 				   (if (not (and uri (string=? uri xml-uri)))
 				       (forbidden-uri uri))
 				   (guarantee-legal-uri uri))
-			       (cons (cons (string-tail s 6) uri) tail)))
+			       (cons (cons (string->symbol (string-tail s 6))
+					   uri)
+				     tail)))
 			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
