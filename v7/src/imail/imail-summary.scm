@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.25 2000/08/05 01:53:54 cph Exp $
+;;; $Id: imail-summary.scm,v 1.26 2000/08/07 01:32:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -563,11 +563,12 @@ with some additions to make navigation more natural.
   (if (or dont-confirm? (prompt-for-yes-or-no? "Revert summary buffer"))
       (rebuild-imail-summary-buffer buffer)))
 
-(define-key 'imail-summary #\space	'imail-summary-select-message)
-(define-key 'imail-summary #\rubout	'imail-undelete-previous-message)
+(define-key 'imail-summary #\space	'imail-summary-scroll-msg-up)
+(define-key 'imail-summary #\rubout	'imail-summary-scroll-msg-down)
 (define-key 'imail-summary #\c-n	'imail-next-message)
 (define-key 'imail-summary #\c-p	'imail-previous-message)
-(define-key 'imail-summary #\.		'undefined)
+(define-key 'imail-summary #\.		'imail-summary-beginning-of-buffer)
+(define-key 'imail-summary #\e		'imail-summary-select-message)
 (define-key 'imail-summary #\u		'imail-undelete-forward)
 (define-key 'imail-summary #\m-<	'imail-first-message)
 (define-key 'imail-summary #\m->	'imail-last-message)
@@ -604,3 +605,55 @@ with some additions to make navigation more natural.
 			 (buffer-end (window-buffer window)))
 		     0))))
     ((ref-command imail-summary-select-message))))
+
+(define-command imail-summary-beginning-of-message
+  "Show current message from the beginning."
+  ()
+  (lambda ()
+    (let ((buffer (imail-folder->buffer (selected-folder) #t)))
+      (set-buffer-point! buffer (buffer-start buffer))
+      (pop-up-buffer buffer #f))))
+
+(define-command imail-summary-scroll-msg-up
+  "Scroll the IMAIL window forward.
+If the IMAIL window is displaying the end of a message,
+advance to the next message."
+  "P"
+  (lambda (argument)
+    (if (command-argument-negative-only? argument)
+	((ref-command imail-summary-scroll-msg-down) #f)
+	(let ((buffer (imail-folder->buffer (selected-folder) #t)))
+	  (let ((windows (buffer-windows buffer)))
+	    (if (pair? windows)
+		(let ((window (car windows)))
+		  (if (window-mark-visible? window (buffer-end buffer))
+		      ((ref-command imail-next-message)
+		       (if argument
+			   (command-argument-numeric-value argument)
+			   1))
+		      (scroll-window
+		       window
+		       (standard-scroll-window-argument window argument 1))))
+		((ref-command imail-summary-beginning-of-message))))))))
+
+(define-command imail-summary-scroll-msg-down
+  "Scroll the IMAIL window backward.
+If the IMAIL window is displaying the beginning of a message,
+advance to the previous message."
+  "P"
+  (lambda (argument)
+    (if (command-argument-negative-only? argument)
+	((ref-command imail-summary-scroll-msg-up) #f)
+	(let ((buffer (imail-folder->buffer (selected-folder) #t)))
+	  (let ((windows (buffer-windows buffer)))
+	    (if (pair? windows)
+		(let ((window (car windows)))
+		  (if (window-mark-visible? window (buffer-start buffer))
+		      ((ref-command imail-previous-message)
+		       (if argument
+			   (command-argument-numeric-value argument)
+			   1))
+		      (scroll-window
+		       window
+		       (standard-scroll-window-argument window argument -1))))
+		((ref-command imail-summary-beginning-of-message))))))))
