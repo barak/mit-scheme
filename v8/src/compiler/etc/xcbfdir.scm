@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.4 1991/02/06 02:51:10 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.5 1991/02/06 02:53:28 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -68,7 +68,8 @@ MIT in each case. |#
 			     (or (not one-time)
 				 (< one-time
 				    (file-modification-time pathname)))))
-		      (processor pathname)))
+		      (processor pathname
+				 (pathname-new-type pathname extension))))
 		(lambda ()
 		  (if touch-created-file?
 		      (delete-file two)))))))))))
