@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.43 1997/07/08 06:04:02 adams Exp $
+$Id: arith.scm,v 1.44 1997/07/11 03:24:10 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ MIT in each case. |#
 (define-primitives
   (listify-bignum 2)
   (integer->flonum 2)
+  (fixnum->flonum 1)
   (flo:denormalize flonum-denormalize 2)
   (integer-length-in-bits 1)
   (integer-shift-left 2))
@@ -773,63 +774,52 @@ MIT in each case. |#
 
 (define (ratio->flonum n d)
   (define (n>0 n d)
-    (if (and (int:< n int:flonum-integer-limit)  ; integer->flonum `exact'?
-	     (int:< d int:flonum-integer-limit)) ; integer->flonum `exact'?
-	(flo:/ (integer->flonum n #b11) (integer->flonum d #b11)) ; flo:/ rounds
-	(let ((k (int:- (integer-length-in-bits n)
-			(integer-length-in-bits d)))
-	      (p flo:significand-digits-base-2))
-	  (letrec
-	      ((step1
-		(lambda (n d)
-		  ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
-		  (if (int:negative? k)
-		      (step2 (integer-shift-left n (int:negate k)) d)
-		      (step2 n (integer-shift-left d k)))))
-	       (step2
-		(lambda (n d)
-		  ;; (assert (< 1/2 (/ n d) 2))
-		  (if (int:< n d)
-		      (step3 n d (int:- k p))
-		      (step3 n (int:* 2 d) (int:- (int:1+ k) p)))))
-	       (step3
-		(lambda (n d e)
-		  ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
-		  (let ((n (int:round (integer-shift-left n p) d)))
-		    (if (int:= n int:flonum-integer-limit)
-			(step4 (int:quotient n 2) (int:1+ e))
-			(step4 n e)))))
-	       (step4
-		(lambda (n e)
-		  (flo:denormalize (integer->flonum n #b11) e))))
-	    (step1 n d)))))
+    (let ((k (int:- (integer-length-in-bits n)
+		    (integer-length-in-bits d)))
+	  (p flo:significand-digits-base-2))
+      (letrec
+	  ((step1
+	    (lambda (n d)
+	      ;; (assert (< (expt 2 (- k 1)) (/ n d) (expt 2 (+ k 1))))
+	      (if (int:negative? k)
+		  (step2 (integer-shift-left n (int:negate k)) d)
+		  (step2 n (integer-shift-left d k)))))
+	   (step2
+	    (lambda (n d)
+	      ;; (assert (< 1/2 (/ n d) 2))
+	      (if (int:< n d)
+		  (step3 n d (int:- k p))
+		  (step3 n (int:* 2 d) (int:- (int:1+ k) p)))))
+	   (step3
+	    (lambda (n d e)
+	      ;; (assert (and (<= 1/2 (/ n d)) (< (/ n d) 1)))
+	      (let ((n (int:round (integer-shift-left n p) d)))
+		(if (int:= n int:flonum-integer-limit)
+		    (step4 (int:quotient n 2) (int:1+ e))
+		    (step4 n e)))))
+	   (step4
+	    (lambda (n e)
+	      (flo:denormalize (integer->flonum n #b11) e))))
+	(step1 n d))))
+  
+  (define (slow-method n d)
+    (if (int:positive? n)
+	(n>0 n d)
+	(flo:negate (n>0 (int:negate n) d))))
 
-  (cond ((fix:zero? n) flo:0)
-	((int:positive? n) (n>0 n d))
-	(else (flo:negate (n>0 (int:negate n) d)))))
+  (cond ((eq? n 0) flo:0)
+	((integer->flonum n #b01)
+	 => (lambda (n-exact-flonum)
+	      (cond ((integer->flonum d #b01)
+		     => (lambda (d-exact-flonum)
+			  (flo:/ n-exact-flonum d-exact-flonum)))
+		    (else (slow-method n d)))))
+	(else (slow-method n d))))
 
 (define (int:->inexact n)
-  (define (n>0 n)
-    (if (int:< n int:flonum-integer-limit) ; The flonum is `exact'
-	(integer->flonum n #b11)
-	(let ((e (int:- (integer-length-in-bits n)
-			flo:significand-digits-base-2))
-	      (finish
-	       (lambda (n e)
-		 (flo:denormalize (integer->flonum n #b11) e))))
-	  (cond ((fix:zero? e)
-		 (finish n e))
-		((int:positive? e)
-		 (let ((n (int:round n (integer-shift-left 1 e))))
-		   (if (int:= n int:flonum-integer-limit)
-		       (finish (int:quotient n 2) (int:1+ e))
-		       (finish n e))))
-		(else
-		 (finish (integer-shift-left n (int:negate e)) e))))))
-
-  (cond ((fix:zero? n) flo:0)
-	((int:positive? n) (n>0 n))
-	(else (flo:negate (n>0 (int:negate n))))))
+  (if (fixnum? n)
+      (fixnum->flonum n) ;; 8.0 compiler open-codes when is N fixnum (by test)
+      (integer->flonum n #b10)))
 
 (define (flo:significand-digits radix)
   (cond ((int:= radix 10)
