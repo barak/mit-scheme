@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.5 1994/12/02 20:43:46 cph Exp $
+$Id: outf.c,v 1.6 1994/12/19 22:26:11 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -117,6 +117,7 @@ DEFUN (outf_channel_to_FILE, (chan), outf_channel chan)
 
 #ifdef WINNT
 
+#define USE_WINDOWED_OUTPUT
 static int max_fatal_buf = 1000;
 static char fatal_buf[1000+1] = {0};
 
@@ -153,8 +154,33 @@ DEFUN (voutf_master_tty, (chan, format, args),
 #else /* not WINNT */
 #ifdef _OS2
 
+#define INCL_WIN
+#include <os2.h>
+
+#define USE_WINDOWED_OUTPUT
+static char fatal_buffer [1024] = "";
+
 static void
-voutf_os2_console (const char * format, va_list args)
+voutf_fatal (const char * format, va_list args)
+{
+  unsigned int end = (strlen (fatal_buffer));
+  vsprintf ((& (fatal_buffer [end])), format, args);
+}
+
+static void
+popup_outf_flush_fatal (void)
+{
+  (void) WinMessageBox (HWND_DESKTOP,
+			NULLHANDLE,
+			fatal_buffer,
+			"Scheme Terminating",
+			0,
+			(MB_OK | MB_ERROR));
+  (fatal_buffer[0]) = '\0';
+}
+
+static void
+voutf_master_tty (const outf_channel chan, const char * format, va_list args)
 {
   extern void OS2_console_write (const char *, size_t);
   char buffer [4096];
@@ -171,37 +197,21 @@ DEFUN (voutf, (chan, format, ap),
        CONST char * format AND
        va_list ap)
 {
-#ifdef WINNT
+#ifdef USE_WINDOWED_OUTPUT
 
   if (chan == fatal_output)
     voutf_fatal (format, ap);
   else if ((chan == console_output) || (chan == error_output))
     voutf_master_tty (chan, format, ap);
   else
+#endif
     vfprintf ((outf_channel_to_FILE (chan)), format, ap);
-
-#else /* not WINNT */
-#ifdef _OS2
-
-  if ((chan == fatal_output)
-      || (chan == console_output)
-      || (chan == error_output))
-    voutf_os2_console (format, ap);
-  else
-    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
-    
-#else /* not _OS2 */
-
-    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
-
-#endif /* not _OS2 */
-#endif /* not WINNT */
 }
 
 void
 DEFUN (outf_flush, (chan), outf_channel chan)
 {
-#ifdef WINNT
+#ifdef USE_WINDOWED_OUTPUT
   if (chan == fatal_output)
     popup_outf_flush_fatal ();
   else
