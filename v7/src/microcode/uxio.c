@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.21 1992/03/26 11:02:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.22 1992/06/11 12:50:02 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -179,10 +179,26 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
       long scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
       if (scr < 0)
 	{
+#ifdef _ULTRIX
+	/* This is needed for non-POSIX-ified master pseudo-terminal
+	   driver, which always returns EWOULDBLOCK, even to POSIX
+	   applications. */
+	if (CHANNEL_TYPE (channel) == channel_type_pty_master)
+	  {
+	    if (errno == EWOULDBLOCK)
+	      return (-1);
+	  }
+	else
+	  {
+	    if (errno == EAGAIN)
+	      return (-1);
+	  }
+#else
 #ifdef ERRNO_NONBLOCK
-	  if (errno == ERRNO_NONBLOCK)
-	    return (-1);
+	if (errno == ERRNO_NONBLOCK)
+	  return (-1);
 #endif
+#endif /* not _ULTRIX */
 	  UX_prim_check_errno (syscall_read);
 	  continue;
 	}
@@ -293,6 +309,15 @@ DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
   int flags = (get_flags (fd));
   if ((flags & FCNTL_NONBLOCK) == 0)
     set_flags (fd, (flags | FCNTL_NONBLOCK));
+#ifdef _ULTRIX
+  {
+    /* This is needed for non-POSIX-ified pseudo-terminal driver.  fcntl
+       sets driver's FIONBIO flag for FNDELAY, but not FNBLOCK.  Note that
+       driver will return EWOULDBLOCK, rather than EAGAIN. */
+    int true = 1;
+    ioctl(fd,FIONBIO,&true);
+  }
+#endif
   (CHANNEL_NONBLOCKING (channel)) = 1;
 }
 
@@ -303,6 +328,14 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
   int flags = (get_flags (fd));
   if ((flags & FCNTL_NONBLOCK) != 0)
     set_flags (fd, (flags &~ FCNTL_NONBLOCK));
+#ifdef _ULTRIX
+  {
+    /* This is needed for non-POSIX-ified pseudo-terminal driver.  fcntl
+       sets driver's FIONBIO flag for FNDELAY, but not FNBLOCK. */
+    int false = 0;
+    ioctl(fd,FIONBIO,&false);
+  }
+#endif
   (CHANNEL_NONBLOCKING (channel)) = 0;
 }
 
