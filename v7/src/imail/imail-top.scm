@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.17 2000/04/07 20:34:14 cph Exp $
+;;; $Id: imail-top.scm,v 1.18 2000/04/07 20:45:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -113,11 +113,18 @@ May be called with an IMAIL folder URL as argument;
 
 (define (associate-imail-folder-with-buffer folder buffer)
   (buffer-put! buffer 'IMAIL-FOLDER folder)
-  (folder-put! folder 'BUFFER buffer))
+  (folder-put! folder 'BUFFER buffer)
+  (add-event-receiver! (folder-modification-event folder)
+		       notice-folder-modifications))
 
 (define (imail-folder->buffer folder error?)
   (or (folder-get folder 'BUFFER #f)
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
+
+(define (notice-folder-modifications folder)
+  (let ((buffer (imail-folder->buffer folder #f)))
+    (if buffer
+	(imail-update-mode-line! buffer))))
 
 (define (selected-folder #!optional error? buffer)
   (let ((buffer
