@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.3 1995/05/24 00:19:54 ssmith Exp $
+$Id: rules2.scm,v 1.4 1995/11/01 21:04:32 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -53,6 +53,13 @@ MIT in each case. |#
   (TYPE-TEST (REGISTER (? register)) (? type))
   (set-equal-branches!)
   (LAP (CMP B ,(reference-alias-register! register 'GENERAL) (&U ,type))))
+
+(define-rule predicate
+  ;; Branch if virtual register contains the specified type number
+  (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) 0)
+  (set-specific-branches! 'JB 'JAE)
+  (LAP (CMP W ,(reference-alias-register! register 'GENERAL) (&U ,signed-fixnum/upper-limit))))
+
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
