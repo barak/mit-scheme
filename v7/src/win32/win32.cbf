@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/win32/win32.cbf,v 1.1 1993/09/20 01:13:04 adams Exp $
+$Id: win32.cbf,v 1.2 1993/11/10 21:31:37 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -32,4 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(compile-directory ".")
+(fluid-let ((compiler:coalescing-constant-warnings? #f)
+	    (compiler:generate-range-checks? true)
+	    (compiler:generate-stack-checks? true)
+	    (compiler:generate-type-checks? true))
+  (compile-directory "."))
