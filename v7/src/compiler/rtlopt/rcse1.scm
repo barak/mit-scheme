@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.18 1989/07/25 12:32:31 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 4.19 1989/10/28 09:41:27 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -319,42 +319,50 @@ MIT in each case. |#
   unspecific)
 
 (define-cse-method 'OVERFLOW-TEST method/noop)
-
 (define-cse-method 'POP-RETURN method/noop)
-
 (define-cse-method 'CONTINUATION-ENTRY method/noop)
 (define-cse-method 'CONTINUATION-HEADER method/noop)
 (define-cse-method 'IC-PROCEDURE-HEADER method/noop)
 (define-cse-method 'OPEN-PROCEDURE-HEADER method/noop)
 (define-cse-method 'PROCEDURE-HEADER method/noop)
 (define-cse-method 'CLOSURE-HEADER method/noop)
-
-(define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
-(define-cse-method 'INVOCATION:COMPUTED-JUMP method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
-(define-cse-method 'INVOCATION:COMPUTED-LEXPR method/noop)
-(define-cse-method 'INVOCATION:UUO-LINK method/noop)
-(define-cse-method 'INVOCATION:PRIMITIVE method/noop)
 
-(define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE
+(define (method/unknown-invocation statement)
+  (for-each-pseudo-register
+   (lambda (register)
+     (let ((expression (register-expression register)))
+       (if expression
+	   (register-expression-invalidate! expression)))))
+  (stack-pointer-adjust!
+   (stack->memory-offset (rtl:invocation-pushed statement)))
+  (expression-invalidate! (interpreter-value-register))
+  (expression-invalidate! (interpreter-free-pointer)))
+
+(define-cse-method 'INVOCATION:APPLY method/unknown-invocation)
+(define-cse-method 'INVOCATION:COMPUTED-JUMP method/unknown-invocation)
+(define-cse-method 'INVOCATION:COMPUTED-LEXPR method/unknown-invocation)
+(define-cse-method 'INVOCATION:UUO-LINK method/unknown-invocation)
+(define-cse-method 'INVOCATION:PRIMITIVE method/unknown-invocation)
+(define-cse-method 'INVOCATION:SPECIAL-PRIMITIVE method/unknown-invocation)
+
+(define-cse-method 'INVOCATION:CACHE-REFERENCE
   (lambda (statement)
-    (for-each-pseudo-register
-     (lambda (register)
-       (let ((expression (register-expression register)))
-	 (if expression
-	     (register-expression-invalidate! expression)))))
-    (stack-pointer-adjust!
-     (stack->memory-offset
-      (rtl:invocation:special-primitive-pushed statement)))
-    (expression-invalidate! (interpreter-value-register))
-    (expression-invalidate! (interpreter-free-pointer))))
+    (expression-replace! rtl:invocation:cache-reference-name
+			 rtl:set-invocation:cache-reference-name!
+			 statement
+			 trivial-action)
+    (method/unknown-invocation statement)))
 
-(define-trivial-one-arg-method 'INVOCATION:CACHE-REFERENCE
-  rtl:invocation:cache-reference-name rtl:set-invocation:cache-reference-name!)
+(define-cse-method 'INVOCATION:LOOKUP
+  (lambda (statement)
+    (expression-replace! rtl:invocation:lookup-environment
+			 rtl:set-invocation:lookup-environment!
+			 statement
+			 trivial-action)
+    (method/unknown-invocation statement)))
 
-(define-trivial-one-arg-method 'INVOCATION:LOOKUP
-  rtl:invocation:lookup-environment rtl:set-invocation:lookup-environment!)
 (define-cse-method 'INVOCATION-PREFIX:MOVE-FRAME-UP
   (lambda (statement)
     (expression-replace! rtl:invocation-prefix:move-frame-up-locative
