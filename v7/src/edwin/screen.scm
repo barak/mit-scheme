@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.92 1991/04/11 03:15:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.93 1991/04/21 00:38:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -670,13 +670,17 @@
 	    (ncy (vector-ref new-contents y))
 	    (nhy (vector-ref new-hl y))
 	    (nhey (boolean-vector-ref new-hl-enable y)))
-	(cond (nhey
-	       (update-line-ignore-current screen y ncy nhy x-size))
-	      ((and (boolean-vector-ref current-enable y)
-		    (not (boolean-vector-ref current-hl-enable y)))
-	       (update-line-no-highlight screen y ccy ncy))
+	(cond ((or (not (boolean-vector-ref current-enable y))
+		   (if (boolean-vector-ref current-hl-enable y)
+		       (not nhey)
+		       nhey))
+	       (if nhey
+		   (update-line-ignore-current screen y ncy nhy x-size)
+		   (update-line-trivial screen y ncy x-size)))
+	      (nhey
+	       (update-line-highlight screen y ccy chy ncy nhy x-size))
 	      (else
-	       (update-line-trivial screen y ncy x-size)))
+	       (update-line-no-highlight screen y ccy ncy x-size)))
 	(vector-set! current-contents y ncy)
 	(boolean-vector-set! current-enable y true)
 	(vector-set! new-contents y ccy)
@@ -714,63 +718,62 @@
     (if (fix:< xe x-size)
 	(terminal-clear-line screen xe y x-size))))
 
-(define (update-line-no-highlight screen y oline nline)
-  (let ((x-size (screen-x-size screen)))
-    (let ((olen (substring-non-space-end oline 0 x-size))
-	  (nlen (substring-non-space-end nline 0 x-size)))
-      (cond ((fix:= 0 olen)
-	     (let ((nstart (substring-non-space-start nline 0 nlen)))
-	       (if (fix:< nstart nlen)
-		   (terminal-output-substring screen nstart y
-					      nline nstart nlen false))))
-	    ((fix:= 0 nlen)
-	     (terminal-clear-line screen nlen y olen))
-	    (else
-	     (let ((len (fix:min olen nlen)))
-	       (let find-mismatch ((x 0))
-		 (cond ((fix:= x len)
-			(if (fix:< x nlen)
-			    (terminal-output-substring screen x y
-						       nline x nlen false)))
-		       ((fix:= (vector-8b-ref oline x)
-			       (vector-8b-ref nline x))
-			(find-mismatch (fix:+ x 1)))
-		       (else
-			(let find-match ((x* (fix:+ x 1)))
-			  (cond ((fix:= x* len)
-				 (terminal-output-substring
-				  screen x y nline x nlen false))
-				((not (fix:= (vector-8b-ref oline x*)
-					     (vector-8b-ref nline x*)))
-				 (find-match (fix:+ x* 1)))
-				(else
-				 ;; Ignore matches of 4 characters or less.
-				 ;; The overhead of moving the cursor and
-				 ;; drawing the characters is too much except
-				 ;; for very slow terminals.
-				 (let find-end-match ((x** (fix:+ x* 1)))
-				   (cond ((fix:= x** len)
-					  (if (fix:< (fix:- x** x*) 5)
+(define (update-line-no-highlight screen y oline nline x-size)
+  (let ((olen (substring-non-space-end oline 0 x-size))
+	(nlen (substring-non-space-end nline 0 x-size)))
+    (cond ((fix:= 0 olen)
+	   (let ((nstart (substring-non-space-start nline 0 nlen)))
+	     (if (fix:< nstart nlen)
+		 (terminal-output-substring screen nstart y
+					    nline nstart nlen false))))
+	  ((fix:= 0 nlen)
+	   (terminal-clear-line screen nlen y olen))
+	  (else
+	   (let ((len (fix:min olen nlen)))
+	     (let find-mismatch ((x 0))
+	       (cond ((fix:= x len)
+		      (if (fix:< x nlen)
+			  (terminal-output-substring screen x y
+						     nline x nlen false)))
+		     ((fix:= (vector-8b-ref oline x)
+			     (vector-8b-ref nline x))
+		      (find-mismatch (fix:+ x 1)))
+		     (else
+		      (let find-match ((x* (fix:+ x 1)))
+			(cond ((fix:= x* len)
+			       (terminal-output-substring
+				screen x y nline x nlen false))
+			      ((not (fix:= (vector-8b-ref oline x*)
+					   (vector-8b-ref nline x*)))
+			       (find-match (fix:+ x* 1)))
+			      (else
+			       ;; Ignore matches of 4 characters or less.
+			       ;; The overhead of moving the cursor and
+			       ;; drawing the characters is too much except
+			       ;; for very slow terminals.
+			       (let find-end-match ((x** (fix:+ x* 1)))
+				 (cond ((fix:= x** len)
+					(if (fix:< (fix:- x** x*) 5)
+					    (terminal-output-substring
+					     screen x y nline x nlen false)
+					    (begin
 					      (terminal-output-substring
-					       screen x y nline x nlen false)
-					      (begin
-						(terminal-output-substring
-						 screen x y nline x x* false)
-						(if (fix:< x** nlen)
-						    (terminal-output-substring
-						     screen x** y
-						     nline x** nlen false)))))
-					 ((fix:= (vector-8b-ref oline x**)
-						 (vector-8b-ref nline x**))
-					  (find-end-match (fix:+ x** 1)))
-					 ((fix:< (fix:- x** x*) 5)
-					  (find-match x**))
-					 (else
-					  (terminal-output-substring
-					   screen x y nline x x* false)
-					  (find-mismatch x**)))))))))))
-	     (if (fix:< nlen olen)
-		 (terminal-clear-line screen nlen y olen)))))))
+					       screen x y nline x x* false)
+					      (if (fix:< x** nlen)
+						  (terminal-output-substring
+						   screen x** y
+						   nline x** nlen false)))))
+				       ((fix:= (vector-8b-ref oline x**)
+					       (vector-8b-ref nline x**))
+					(find-end-match (fix:+ x** 1)))
+				       ((fix:< (fix:- x** x*) 5)
+					(find-match x**))
+				       (else
+					(terminal-output-substring
+					 screen x y nline x x* false)
+					(find-mismatch x**)))))))))))
+	   (if (fix:< nlen olen)
+	       (terminal-clear-line screen nlen y olen))))))
 
 (define (screen-line-draw-cost screen y)
   (let ((line (vector-ref (matrix-contents (screen-current-matrix screen)) y)))
@@ -778,6 +781,28 @@
       (if (fix:= 0 end)
 	  0
 	  (fix:- end (substring-non-space-start line 0 end))))))
+
+(define (update-line-highlight screen y oline ohl nline nhl x-size)
+  (let find-mismatch ((x 0))
+    (if (not (fix:= x x-size))
+	(if (and (fix:= (vector-8b-ref oline x) (vector-8b-ref nline x))
+		 (eq? (boolean-vector-ref ohl x) (boolean-vector-ref nhl x)))
+	    (find-mismatch (fix:+ x 1))
+	    (let ((hl (boolean-vector-ref nhl x)))
+	      (let find-match ((x* (fix:+ x 1)))
+		(cond ((fix:= x* x-size)
+		       (terminal-output-substring screen x y nline x x* hl))
+		      ((or (not (eq? hl (boolean-vector-ref nhl x*)))
+			   (and (eq? hl (boolean-vector-ref ohl x*))
+				(fix:= (vector-8b-ref oline x*)
+				       (vector-8b-ref nline x*))))
+		       ;; Either found a match, or the highlight
+		       ;; changed.  In either case, output the current
+		       ;; segment and continue from the top.
+		       (terminal-output-substring screen x y nline x x* hl)
+		       (find-mismatch x*))
+		      (else
+		       (find-match (fix:+ x* 1))))))))))
 
 (define-integrable (fix:min x y) (if (fix:< x y) x y))
 (define-integrable (fix:max x y) (if (fix:> x y) x y))
