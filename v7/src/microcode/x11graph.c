@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.25 1992/05/13 22:40:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.26 1992/05/13 22:45:18 bal Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -601,6 +601,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-FILL-POLYGON", Prim_x_graphics_fill_polygon, 2, 2,
   {
     struct xwindow * xw = x_window_arg (1);
     XPoint * points = (x_polygon_vector_arg (xw, 2));
+    unsigned long length = VECTOR_LENGTH (VECTOR_ARG (2));
     XFillPolygon ((XW_DISPLAY (xw)),
 		  (XW_WINDOW (xw)),
 		  (XW_NORMAL_GC (xw)),
