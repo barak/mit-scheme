@@ -37,7 +37,7 @@
 
 ;;;; RTL Rules for 68020
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.152 1987/01/10 03:12:31 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.153 1987/01/10 04:32:35 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access lap-generator-syntax-table compiler-package)
@@ -735,7 +735,9 @@
 
 (define-rule statement
   (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  (list '(MOVE L (& #x00200000) (@-A 7))))
+  `((PEA (@PCR ,(continuation-label continuation)))
+    (MOVE B (& ,type-code:return-address) (@A 7))
+    (MOVE L (& #x00200000) (@-A 7))))
 
 (define (apply-closure-sequence frame-size receiver-offset label)
   `(,(load-dnw frame-size 1)
