@@ -141,8 +141,10 @@ struct obstack		/* control current object in current chunk */
 
 /* Declare the external functions we use; they are in obstack.c.  */
 
+#ifndef _SUNOS4
 extern void
   EXFUN (abort, (void));
+#endif
 
 #ifdef __STDC__
   extern void _obstack_newchunk (struct obstack *, int);
