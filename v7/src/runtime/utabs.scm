@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.17 2003/07/22 02:32:30 cph Exp $
+$Id: utabs.scm,v 14.18 2003/07/22 02:40:31 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1991,1992,1994 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -80,7 +81,7 @@ USA.
 	       (number->string version)
 	       "."
 	       (number->string
-		(microcode-identification-item 'MICROCODE-VERSION))))))
+		(microcode-identification-item 'MICROCODE-MODIFICATION))))))
   (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
