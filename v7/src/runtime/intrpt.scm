@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.1 1988/06/13 11:46:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.2 1988/06/16 06:31:53 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -54,20 +54,19 @@ MIT in each case. |#
 		      (#\G ,(flush-typeahead ^G-interrupt-handler))
 		      (#\U ,(flush-typeahead ^U-interrupt-handler))
 		      (#\X ,(flush-typeahead ^X-interrupt-handler))
-		      ;; (#\S ,(keep-typeahead ^S-interrupt-handler))
-		      ;; (#\Q ,(keep-typeahead ^Q-interrupt-handler))
-		      ;; (#\P ,(flush-typeahead ^P-interrupt-handler))
-		      ;; (#\Z ,(flush-typeahead ^Z-interrupt-handler))
-		      ))
+		      #| (#\S ,(keep-typeahead ^S-interrupt-handler)) |#
+		      #| (#\Q ,(keep-typeahead ^Q-interrupt-handler)) |#
+		      #| (#\P ,(flush-typeahead ^P-interrupt-handler)) |#
+		      #| (#\Z ,(flush-typeahead ^Z-interrupt-handler)) |#))
 	  table))
   (set! hook/^B-interrupt default/^B-interrupt)
   (set! hook/^G-interrupt default/^G-interrupt)
   (set! hook/^U-interrupt default/^U-interrupt)
   (set! hook/^X-interrupt default/^X-interrupt)
-  (set! hook/^S-interrupt default/^S-interrupt)
-  (set! hook/^Q-interrupt default/^Q-interrupt)
-  (set! hook/^P-interrupt default/^P-interrupt)
-  (set! hook/^Z-interrupt default/^Z-interrupt)
+  #| (set! hook/^S-interrupt default/^S-interrupt) |#
+  #| (set! hook/^Q-interrupt default/^Q-interrupt) |#
+  #| (set! hook/^P-interrupt default/^P-interrupt) |#
+  #| (set! hook/^Z-interrupt default/^Z-interrupt) |#
   (install))
 
 (define-primitives
@@ -165,6 +164,7 @@ MIT in each case. |#
   character
   (hook/^X-interrupt interrupt-enables))
 
+#|
 (define (^S-interrupt-handler character interrupt-enables)
   character
   (hook/^S-interrupt interrupt-enables))
@@ -180,15 +180,16 @@ MIT in each case. |#
 (define (^Z-interrupt-handler character interrupt-enables)
   character
   (hook/^Z-interrupt interrupt-enables))
+|#
 
 (define hook/^B-interrupt)
 (define hook/^G-interrupt)
 (define hook/^U-interrupt)
 (define hook/^X-interrupt)
-(define hook/^S-interrupt)
-(define hook/^Q-interrupt)
-(define hook/^P-interrupt)
-(define hook/^Z-interrupt)
+#| (define hook/^S-interrupt) |#
+#| (define hook/^Q-interrupt) |#
+#| (define hook/^P-interrupt) |#
+#| (define hook/^Z-interrupt) |#
 
 (define (default/^B-interrupt interrupt-enables)
   interrupt-enables
@@ -206,6 +207,7 @@ MIT in each case. |#
   interrupt-enables
   (cmdl-interrupt/abort-nearest))
 
+#|
 (define (default/^S-interrupt interrupt-enables)
   (if (not busy-wait-continuation)
       (begin
@@ -231,6 +233,7 @@ MIT in each case. |#
 (define (default/^Z-interrupt interrupt-enables)
   (set-interrupt-enables! interrupt-enables)
   (edit))
+|#
 
 (define (install)
   (without-interrupts
