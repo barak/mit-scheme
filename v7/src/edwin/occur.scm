@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: occur.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+;;; $Id: occur.scm,v 1.5 2000/06/08 20:44:26 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -158,7 +158,7 @@ in the buffer that the occurrences were found in.")
       (let ((buffer (mark-buffer mark)))
 	(if (not (buffer-alive? buffer))
 	    (editor-error "Buffer in which occurences were found is deleted."))
-	(pop-up-buffer buffer true)
+	(pop-up-buffer buffer #t)
 	(set-buffer-point! buffer mark)))))
 
 (define-variable list-matching-lines-default-context-lines
@@ -167,7 +167,7 @@ match.  A negative number means to include that many lines before the match.
 A positive number means to include that many lines both before and after."
   0
   exact-integer?)
-
+
 (define-command occur
   "Show all lines following point containing a match for REGEXP.
 Display each line with NLINES lines before and after,
@@ -180,35 +180,40 @@ It serves as a menu to find any of the occurrences in this buffer.
 \\[describe-mode] in that buffer will explain how."
   "sList lines matching regexp\nP"
   (lambda (regexp argument)
-    (let ((occur-buffer (temporary-buffer "*Occur*")))
-      (let ((point (current-point))
-	    (output (mark-left-inserting-copy (buffer-start occur-buffer))))
-	(insert-string "Lines matching " output)
-	(insert-string (write-to-string regexp) output)
-	(insert-string " in buffer " output)
-	(insert-string (buffer-name (mark-buffer point)) output)
-	(insert-string ".\n" output)
-	(set-buffer-major-mode! occur-buffer (ref-mode-object occur))
-	(let ((occurrences
-	       (format-occurrences
-		(let ((occurrences
-		       (re-occurrences point (group-end point) regexp)))
-		  (for-each mark-permanent! occurrences)
-		  occurrences)
-		(if argument
-		    (command-argument-numeric-value argument)
-		    (ref-variable list-matching-lines-default-context-lines))
-		output)))
-	  (buffer-put! occur-buffer 'OCCURRENCES occurrences)
-	  (message (number->string (length occurrences)) " matching lines."))
-	(mark-temporary! output))
-      (set-buffer-point! occur-buffer (buffer-start occur-buffer))
-      (pop-up-buffer occur-buffer false))))
+    (pop-up-occur-buffer (current-point)
+			 (buffer-end (selected-buffer))
+			 regexp
+			 (and argument
+			      (command-argument-numeric-value argument)))))
 
 (define-command list-matching-lines
   (command-description (ref-command-object occur))
   (command-interactive-specification (ref-command-object occur))
   (command-procedure (ref-command-object occur)))
+
+(define (pop-up-occur-buffer start end regexp n-lines)
+  (let ((occur-buffer (temporary-buffer "*Occur*")))
+    (let ((output (mark-left-inserting-copy (buffer-start occur-buffer))))
+      (insert-string "Lines matching " output)
+      (insert-string (write-to-string regexp) output)
+      (insert-string " in buffer " output)
+      (insert-string (buffer-name (mark-buffer start)) output)
+      (insert-string ".\n" output)
+      (set-buffer-major-mode! occur-buffer (ref-mode-object occur))
+      (let ((occurrences
+	     (format-occurrences
+	      (let ((occurrences (re-occurrences start end regexp)))
+		(for-each mark-permanent! occurrences)
+		occurrences)
+	      (or n-lines
+		  (ref-variable list-matching-lines-default-context-lines
+				start))
+	      output)))
+	(buffer-put! occur-buffer 'OCCURRENCES occurrences)
+	(message (number->string (length occurrences)) " matching lines."))
+      (mark-temporary! output))
+    (set-buffer-point! occur-buffer (buffer-start occur-buffer))
+    (pop-up-buffer occur-buffer #f)))
 
 (define (re-occurrences start end regexp)
   (let ((pattern
@@ -261,7 +266,7 @@ It serves as a menu to find any of the occurrences in this buffer.
       (insert-region lstart (line-end lstart 0) output)
       (insert-newline output)
       (if (> nlines 0)
-	  (let ((lstart (line-start lstart 1 false)))
+	  (let ((lstart (line-start lstart 1 #f)))
 	    (if lstart
 		(let loop ((lstart lstart) (n nlines))
 		  (let ((lend (line-end lstart 0)))
