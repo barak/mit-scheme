@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.57 2001/03/19 20:01:35 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.58 2001/03/19 22:14:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -199,29 +199,24 @@
   (let ((start (xstring-port/position port)))
     (make-file-external-ref
      start
-     (let ((line (read-required-line port)))
-       (cond ((string-null? line)
-	      (let ((end (- (xstring-port/position port) 1)))
-		(skip-rmail-message-headers-separator port)
-		end))
-	     ((string=? line rmail-message:headers-separator)
-	      (- (xstring-port/position port)
-		 (+ (string-length line) 1)))
-	     (else
-	      (skip-past-blank-line port)
-	      (let ((end (- (xstring-port/position port) 1)))
-		(skip-rmail-message-headers-separator port)
-		end)))))))
+     (let loop ()
+       (let ((line (read-required-line port)))
+	 (cond ((string-null? line)
+		(let ((end (- (xstring-port/position port) 1)))
+		  (if (not (string=? rmail-message:headers-separator
+				     (read-required-line port)))
+		      (error "Missing RMAIL headers-separator string:" port))
+		  end))
+	       ((string=? line rmail-message:headers-separator)
+		(- (xstring-port/position port)
+		   (+ (string-length line) 1)))
+	       (else
+		(loop))))))))
 
 (define (read-rmail-displayed-headers port)
   (let ((start (xstring-port/position port)))
     (skip-past-blank-line port)
     (make-file-external-ref start (- (xstring-port/position port) 1))))
-
-(define (skip-rmail-message-headers-separator port)
-  (if (not (string=? rmail-message:headers-separator
-		     (read-required-line port)))
-      (error "Missing RMAIL headers-separator string:" port)))
 
 (define (read-rmail-body port)
   (let ((start (xstring-port/position port)))
