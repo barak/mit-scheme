@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.5 1992/03/31 01:15:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.6 1992/03/31 19:18:10 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -146,7 +146,7 @@ MIT in each case. |#
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
 		  (rtl:fixnum-value? operand-2)))
-  (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
+  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -175,7 +175,7 @@ MIT in each case. |#
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
 		  (rtl:constant-power-of-2-magnitude? operand-2)))
-  (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
+  (rtl:make-fixnum-2-args 'FIXNUM-QUOTIENT operand-1 operand-2 #F))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS FIXNUM-REMAINDER
@@ -184,7 +184,7 @@ MIT in each case. |#
 		 #F)
   (QUALIFIER (and (rtl:register? operand-1)
 		  (rtl:constant-power-of-2-magnitude? operand-2)))
-  (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 #F))
+  (rtl:make-fixnum-2-args 'FIXNUM-REMAINDER operand-1 operand-2 #F))
 
 ;; These are used by vector-ref and friends with computed indices.
 
@@ -268,6 +268,3 @@ MIT in each case. |#
 		  (spectrum-type-optimizable? (rtl:machine-constant-value type))))
   (rtl:make-cons-pointer type datum))
 |#
-
-
-	     
