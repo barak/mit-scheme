@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.6 1988/06/14 08:36:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/fggen.scm,v 4.7 1988/07/20 00:08:42 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,12 +56,13 @@ MIT in each case. |#
 		    (set-block-bound-variables! block variables)
 		    (generate/body block continuation declarations scode))))))
 	  ;; Delete as many noop nodes as possible.
-	  (for-each (lambda (procedure)
-		      (if (procedure-continuation? procedure)
-			  (set-procedure-entry-node!
-			   procedure
-			   (snode-next (procedure-entry-node procedure)))))
-		    *procedures*)
+	  (for-each
+	   (lambda (procedure)
+	     (if (procedure-continuation? procedure)
+		 (let ((next (snode-next (procedure-entry-node procedure))))
+		   (if next
+		       (set-procedure-entry-node! procedure next)))))
+	   *procedures*)
 	  (for-each (lambda (continuation)
 		      (set-virtual-continuation/parent! continuation false))
 		    *virtual-continuations*)
