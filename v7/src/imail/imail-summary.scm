@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.46 2001/09/20 18:13:01 cph Exp $
+;;; $Id: imail-summary.scm,v 1.47 2001/09/20 21:12:03 cph Exp $
 ;;;
 ;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
 ;;;
@@ -248,7 +248,8 @@ SUBJECT is a string of regexps separated by commas."
 (define (rebuild-imail-summary-buffer buffer)
   (let ((folder (selected-folder #f buffer)))
     (if folder
-	(begin
+	(let ((msg "Generating summary buffer..."))
+	  (message msg)
 	  (buffer-widen! buffer)
 	  (with-read-only-defeated (buffer-start buffer)
 	    (lambda ()
@@ -261,6 +262,7 @@ SUBJECT is a string of regexps separated by commas."
 	  (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
 	  (buffer-not-modified! buffer)
 	  (set-buffer-point! buffer (imail-summary-first-line buffer))
+	  (message msg "done")
 	  (let ((message
 		 (selected-message #f
 				   (buffer-get buffer
@@ -327,12 +329,12 @@ SUBJECT is a string of regexps separated by commas."
 	(insert-string (message-summary-date-string message) mark)))
   (insert-string "  " mark)
   (let ((target-column
-	 (+ (mark-column mark) (imail-summary-subject-width mark))))
+	 (fix:+ (mark-column mark) (imail-summary-subject-width mark))))
     (insert-string (message-summary-subject-string message) mark)
-    (if (> (mark-column mark) target-column)
+    (if (fix:> (mark-column mark) target-column)
 	(delete-string (move-to-column mark target-column) mark))
-    (if (< (mark-column mark) target-column)
-	(insert-chars #\space (- target-column (mark-column mark)) mark)))
+    (if (fix:< (mark-column mark) target-column)
+	(insert-chars #\space (fix:- target-column (mark-column mark)) mark)))
   (insert-string "  " mark)
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
