@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.9 1997/03/04 06:43:04 cph Exp $
+;;;	$Id: dosfile.scm,v 1.10 1997/03/14 05:12:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-97 Massachusetts Institute of Technology
 ;;;
@@ -195,7 +195,10 @@ Includes the new backup.  Must be > 0."
 				    (- (ref-variable kept-new-versions buffer)
 				       1))))
 			    (if (< start end)
-				(map car (sublist backups start end))
+				(map (let ((dir (directory-pathname truename)))
+				       (lambda (entry)
+					 (merge-pathnames (car entry) dir)))
+				     (sublist backups start end))
 				'()))))))))))
 
 (define (dos/make-backup-pathname pathname version suffix)
