@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.51 1992/02/03 23:54:38 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.52 1992/02/05 01:48:28 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -170,6 +170,10 @@ MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-mc68k.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-mc68k.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mc68k.h
+
+cmpaux-mc68k.o : cmpaux-mc68k.s
+cmpaux-mc68k.s : cmpaux-mc68k.m4 xmakefile
+
 #endif /* PROC_TYPE_68020 */
 
 #if (PROC_TYPE == PROC_TYPE_68000)
@@ -186,6 +190,10 @@ MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-vax.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-vax.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-vax.h
+
+cmpaux-vax.o : cmpaux-vax.s
+cmpaux-vax.s : cmpaux-vax.m4 xmakefile
+
 #endif /* PROC_TYPE_VAX */
 
 #if (PROC_TYPE == PROC_TYPE_HPPA)
@@ -196,6 +204,10 @@ MACHINE_SOURCES = cmpint.c cmpaux-hppa.m4
 MACHINE_OBJECTS = cmpint.o cmpaux-hppa.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-hppa.h hppacache.h
 XTRA_TARGETS = hppacache
+
+cmpaux-hppa.o : cmpaux-hppa.s
+cmpaux-hppa.s : cmpaux-hppa.m4 xmakefile
+
 #endif /* PROC_TYPE_HPPA */
 
 #if (PROC_TYPE == PROC_TYPE_MIPS)
@@ -205,6 +217,10 @@ MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
 MACHINE_SOURCES = cmpint.c cmpaux-mips.s
 MACHINE_OBJECTS = cmpint.o cmpaux-mips.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpint-mips.h
+
+cmpaux-mips.o : cmpaux-mips.s
+cmpaux-mips.s : cmpaux-mips.m4 xmakefile
+
 #endif /* PROC_TYPE_MIPS */
 
 #ifndef PROC_TYPE_KNOWN
