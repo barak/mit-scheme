@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.50 1992/02/11 21:14:38 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.51 1992/05/15 03:26:33 jinx Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -84,7 +84,7 @@ Boolean
 DEFUN (ispunct, (c),
        fast char c)
 {
-  fast char *;
+  fast char * s;
 
   s = &punctuation[0];
   while (*s != '\0')
