@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: nntp.scm,v 1.10 1996/10/23 22:59:36 cph Exp $
+;;;	$Id: nntp.scm,v 1.11 1996/10/24 03:17:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -1200,14 +1200,29 @@
 
 (define (news-header:guarantee-full-text! header)
   (let ((text (news-header:text header)))
-    (if (and (not (string-null? text))
-	     (char=? (string-ref text 0) #\newline))
+    (if (pruned-header-text? text)
 	(let ((reply
-	       (read-header (news-header:group header)
-			    (news-header:number header)
-			    #f)))
+	       (get-full-header (news-header:group header)
+				(news-header:number header))))
 	   (if (vector? reply)
 	       (set-news-header:text! header (vector-ref reply 2)))))))
+
+(define (get-full-header group number)
+  (let ((gdbf (news-group:header-gdbf group #t)))
+    (if gdbf
+	(let ((key (->key number)))
+	  (let ((reply (get-pre-read-header gdbf key)))
+	    (if (and (vector? reply)
+		     (pruned-header-text? (vector-ref reply 2)))
+		(let ((reply (read-header group number #f)))
+		  (store-header gdbf key reply)
+		  reply)
+		reply)))
+	(read-header group number #f))))
+
+(define (pruned-header-text? text)
+  (and (not (string-null? text))
+       (char=? (string-ref text 0) #\newline)))
 
 ;;;; Conversation Threads
 
