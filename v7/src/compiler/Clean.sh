@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Stage.sh,v 1.2 2000/12/08 05:48:56 cph Exp $
+# $Id: Clean.sh,v 1.1 2000/12/08 05:53:17 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,33 +18,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-# Utility for MIT Scheme compiler staging.
+# Utility for cleaning up the MIT Scheme runtime-check directory.
+# The working directory must be the runtime-check directory.
 
-if [ $# -ne 2 ]; then
-    echo "usage: $0 <command> <tag>"
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <command>"
     exit 1
 fi
 
-DIRNAME="STAGE${2}"
+../etc/Clean.sh "${1}" rm-pkg-src rm-pkg-bin
+
+for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
+    if [ -d ${SUBDIR} ]; then
+	echo "making ${COMMAND} in ${SUBDIR}"
+	(cd ${SUBDIR} && rm -f *.bin *.ext *.com *.bci)
+    fi
+done
 
 case "${1}" in
-make)
-    mkdir "${DIRNAME}" && mv -f *.com *.bci "${DIRNAME}/."
-    ;;
-unmake)
-    mv -f "${DIRNAME}/*" . && rmdir "${DIRNAME}"
-    ;;
-remove)
-    rm -rf "${DIRNAME}"
-    ;;
-copy)
-    cp "${DIRNAME}/*" .
-    ;;
-link)
-    ln "${DIRNAME}/*" .
-    ;;
-*)
-    echo "$0: Unknown command ${1}"
-    exit 1
+distclean | maintainer-clean)
+    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
     ;;
 esac
+
+exit 0

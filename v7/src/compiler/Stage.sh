@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Stage.sh,v 1.2 2000/12/08 05:48:56 cph Exp $
+# $Id: Stage.sh,v 1.1 2000/12/08 05:53:02 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -25,23 +25,34 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-DIRNAME="STAGE${2}"
+SUBDIRS="back base fggen fgopt machine rtlbase rtlgen rtlopt"
+S="STAGE${2}"
 
 case "${1}" in
 make)
-    mkdir "${DIRNAME}" && mv -f *.com *.bci "${DIRNAME}/."
+    for D in ${SUBDIRS}; do
+	(cd ${D} && mkdir "${S}" && mv -f *.com *.bci "${S}") || exit 1
+    done
     ;;
 unmake)
-    mv -f "${DIRNAME}/*" . && rmdir "${DIRNAME}"
+    for D in ${SUBDIRS}; do
+	(cd ${D} && mv -f "${S}/*" . && rmdir "${S}") || exit 1
+    done
     ;;
 remove)
-    rm -rf "${DIRNAME}"
+    for D in ${SUBDIRS}; do
+	rm -rf "${D}/${S}"
+    done
     ;;
 copy)
-    cp "${DIRNAME}/*" .
+    for D in ${SUBDIRS}; do
+	(cd ${D} && cp "${S}/*" .) || exit 1
+    done
     ;;
 link)
-    ln "${DIRNAME}/*" .
+    for D in ${SUBDIRS}; do
+	(cd ${D} && ln "${S}/*" .) || exit 1
+    done
     ;;
 *)
     echo "$0: Unknown command ${1}"
