@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.5 1990/11/15 23:32:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.6 1990/11/16 01:07:24 cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -39,14 +39,18 @@ MIT in each case. |#
 (define (edwin-binary-directory)
   (system-library-directory-pathname
    (merge-pathnames (string->pathname "autoload")
-		    (string->pathname "edwin"))))
+		    (pathname-as-directory (string->pathname "edwin")))))
 
 (define (edwin-info-directory)
   (system-library-directory-pathname
    (merge-pathnames (string->pathname "info")
-		    (string->pathname "edwin"))))
+		    (pathname-as-directory (string->pathname "edwin")))))
 
 (define (edwin-tutorial-pathname)
-  (system-library-pathname
-   (merge-pathnames (string->pathname "TUTORIAL")
-		    (string->pathname "edwin"))))
+  (bind-condition-handler (list error-type:open-file)
+      (lambda (condition)
+	(editor-error "Unable to find TUTORIAL file"))
+    (lambda ()
+      (system-library-pathname
+       (merge-pathnames (string->pathname "TUTORIAL")
+			(pathname-as-directory (string->pathname "edwin")))))))
