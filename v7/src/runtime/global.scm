@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.62 2004/07/02 00:53:27 cph Exp $
+$Id: global.scm,v 14.63 2004/07/04 05:28:37 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -260,14 +260,19 @@ USA.
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
 (define (object-gc-type object)
-  (let ((t ((ucode-primitive object-gc-type 1) object)))
-    (if (not (and (fix:fixnum? t)
-		  (fix:>= t -4)
-		  (fix:<= t 4)))
-	(error "Illegal GC-type value:" t))
-    (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
-				  CELL PAIR TRIPLE QUADRUPLE)
-		(fix:+ t 4))))
+  (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
+
+(define (type-code->gc-type code)
+  (%encode-gc-type ((ucode-primitive type-code->gc-type 1) code)))
+
+(define (%encode-gc-type t)
+  (if (not (and (fix:fixnum? t)
+		(fix:>= t -4)
+		(fix:<= t 4)))
+      (error "Illegal GC-type value:" t))
+  (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
+				CELL PAIR TRIPLE QUADRUPLE)
+	      (fix:+ t 4)))
 
 (define (object-non-pointer? object)
   (case (object-gc-type object)
@@ -286,6 +291,20 @@ USA.
      (or (object-type? (ucode-type broken-heart) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (> (object-datum object) trap-max-immediate))))
+    (else #f)))
+
+(define (non-pointer-type-code? code)
+  (case (type-code->gc-type code)
+    ((NON-POINTER) #t)
+    ((GC-INTERNAL)
+     (or (fix:= (ucode-type manifest-nm-vector) code)
+	 (fix:= (ucode-type manifest-special-nm-vector) code)))
+    (else #f)))
+
+(define (pointer-type-code? code)
+  (case (type-code->gc-type code)
+    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
+    ((GC-INTERNAL) (fix= (ucode-type broken-heart) code))
     (else #f)))
 
 (define (undefined-value? object)

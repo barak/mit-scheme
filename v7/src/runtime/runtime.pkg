@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.488 2004/07/02 00:54:07 cph Exp $
+$Id: runtime.pkg,v 14.489 2004/07/04 05:28:56 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -306,6 +306,7 @@ USA.
 	  local-assignment
 	  make-cell
 	  make-non-pointer-object
+	  non-pointer-type-code?
 	  null-procedure
 	  obarray->list
 	  object-component-binder
@@ -317,6 +318,7 @@ USA.
 	  object-type
 	  object-type?
 	  pa
+	  pointer-type-code?
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
@@ -345,6 +347,7 @@ USA.
 	  system-vector-set!
 	  system-vector?
 	  true-procedure
+	  type-code->gc-type
 	  unbind-variable
 	  undefined-value?
 	  unspecific
