@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.9 1993/11/01 15:30:24 gjr Exp $
+$Id: cout.scm,v 1.10 1993/11/09 04:08:10 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -106,7 +106,7 @@ MIT in each case. |#
 			    suffix))
 	    ((not path)
 	     (string-append default suffix time-stamp))
-	    (else
+	    ((string-null? suffix)
 	     (let ((dir (pathname-directory path)))
 	       (string-append (if (or (not dir) (null? dir))
 				  default
@@ -115,7 +115,14 @@ MIT in each case. |#
 			      "_"
 			      (canonicalize-label-name (pathname-name path))
 			      midfix
-			      suffix))))))
+			      suffix)))
+	    (else
+	     (string-append default
+			    "_"
+			    (canonicalize-label-name (pathname-name path))
+			    midfix
+			    suffix
+			    time-stamp)))))
 
   (define (subroutine-information-1)
     (cond ((eq? *invoke-interface* 'INFINITY)
