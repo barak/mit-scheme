@@ -1,8 +1,8 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.32 1993/08/26 05:38:06 gjr Exp $
+###	$Id: i386.m4,v 1.33 1994/11/28 04:15:49 cph Exp $
 ###
-###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
+###	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -116,6 +116,10 @@ ifdef(`DOS',
       `define(IFNDOS,`')',
       `define(IFNDOS,`$1')')
 
+ifdef(`OS2',
+      `define(IFOS2,`$1')',
+      `define(IFOS2,`')')
+
 ifdef(`DISABLE_387',
       `define(IF387,`')',
       `define(IF387,`$1')')
@@ -134,23 +138,23 @@ ifdef(`DOS',
       `define(use_external_code,`	extrn _$1:near')',
       `define(use_external_code,`')')
 
-ifdef(`DOS',
-      `define(external_data_reference,`_$1')',
+ifdef(`OS2',
+      `define(external_data_reference,`$1')',
       `define(external_data_reference,`_$1')')
 
 define(EDR,`external_data_reference($1)')
 
-ifdef(`DOS',
-      `define(external_code_reference,`_$1')',
+ifdef(`OS2',
+      `define(external_code_reference,`$1')',
       `define(external_code_reference,`_$1')')
 
 ifdef(`DOS',
       `define(define_code,`	public _$1')',
-      `define(define_code,`	.globl _$1')')
+      `define(define_code,`	.globl external_code_reference($1)')')
 
 ifdef(`DOS',
       `define(define_data,`	public _$1')',
-      `define(define_data,`	.globl _$1')')
+      `define(define_data,`	.globl external_code_reference($1)')')
 
 define(define_c_label,
 `define_code($1)
@@ -176,15 +180,15 @@ ifdef(`DOS',
 
 ifdef(`DOS',
       `define(allocate_word,`_$1 dw 0')',
-      `define(allocate_word,`	.comm _$1,2')')
+      `define(allocate_word,`	.comm EDR($1),2')')
 
 ifdef(`DOS',
       `define(allocate_longword,`_$1 dd 0')',
-      `define(allocate_longword,`	.comm _$1,4')')
+      `define(allocate_longword,`	.comm EDR($1),4')')
 
 ifdef(`DOS',
       `define(allocate_space,`_$1 db $2 dup (0)')',
-      `define(allocate_space,`_$1:
+      `define(allocate_space,`EDR($1):
 	.space $2')')
 
 ifdef(`DOS',
@@ -478,23 +482,36 @@ IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segme
 
 	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
+
+IFOS2(`	OP(sub,l)	TW(IMM(8),REG(esp))')	# alloc space for struct return
+
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
 ')
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
+
+IFOS2(`	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
+	OP(add,l)	TW(IMM(16),REG(ecx))
+	OP(push,l)	REG(ecx)
+')
+
 	OP(xor,l)	TW(REG(ecx),REG(ecx))
 	OP(mov,b)	TW(REG(al),REG(cl))
 	OP(mov,l)	TW(SDX(EDR(utility_table),REG(ecx),4),REG(eax))
 	call	IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
+IFOS2(`	OP(add,l)	TW(IMM(4),REG(esp))')	# Pop pointer to struct return
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
 	ifdef(`WINNT',
 	`',
 `IFDOS(`OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))')')
+
+IFOS2(`	OP(pop,l)	REG(eax)	# Pop struct return into registers
+	OP(pop,l)	REG(edx)')
 
 	jmp	IJMP(REG(eax))				# Invoke handler
 
