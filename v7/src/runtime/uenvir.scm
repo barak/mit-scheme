@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.27 1992/07/21 22:01:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.28 1992/08/04 23:48:59 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -187,15 +187,26 @@ MIT in each case. |#
 (define (ic-environment/parent environment)
   (select-parent (ic-environment->external environment)))
 
+(define (ic-environment/lambda environment)
+  (select-lambda (ic-environment->external environment)))
+
+(define (ic-environment/procedure environment)
+  (select-procedure (ic-environment->external environment)))
+
 (define (ic-environment/bound-names environment)
   (list-transform-negative
-      (map* (lambda-bound
-	     (select-lambda (ic-environment->external environment)))
-	    car
-	    (let ((extension (ic-environment/extension environment)))
-	      (if (environment-extension? extension)
-		  (environment-extension-aux-list extension)
-		  '())))
+      (let ((external (ic-environment->external environment))
+	    (parameters (lambda-bound (ic-environment/lambda environment)))
+	    (extension-names
+	     (lambda (environment tail)
+	       (let ((extension (select-extension environment)))
+		 (if (environment-extension? extension)
+		     (map* tail car (environment-extension-aux-list extension))
+		     tail)))))
+	(extension-names environment
+			 (if (eq? environment external)
+			     parameters
+			     (extension-names external parameters))))
     (lambda (name)
       (unbound-name? environment name))))
 
@@ -205,7 +216,7 @@ MIT in each case. |#
       (lexical-unbound? environment name)))
 
 (define (ic-environment/arguments environment)
-  (lambda-components* (select-lambda (ic-environment->external environment))
+  (lambda-components* (ic-environment/lambda environment)
     (lambda (name required optional rest body)
       name body
       (let ((lookup
@@ -217,21 +228,14 @@ MIT in each case. |#
 	      lookup
 	      required)))))
 
-(define (ic-environment/lambda environment)
-  (procedure-lambda (ic-environment/procedure environment)))
-
-(define (ic-environment/procedure environment)
-  (select-procedure (ic-environment->external environment)))
-
 (define (ic-environment/set-parent! environment parent)
-  (system-pair-set-cdr!
-   (let ((extension (ic-environment/extension environment)))
-     (if (environment-extension? extension)
-	 (begin
-	   (set-environment-extension-parent! extension parent)
-	   (environment-extension-procedure extension))
-	 extension))
-   parent))
+  (let ((extension (select-extension (ic-environment->external environment))))
+    (if (environment-extension? extension)
+	(begin
+	  (set-environment-extension-parent! extension parent)
+	  (system-pair-set-cdr! (environment-extension-procedure extension)
+				parent))
+	(system-pair-set-cdr! extension parent))))
 
 (define (ic-environment/remove-parent! environment)
   (ic-environment/set-parent! environment null-environment))
@@ -264,9 +268,6 @@ MIT in each case. |#
 
 (define (select-lambda environment)
   (procedure-lambda (select-procedure environment)))
-
-(define (ic-environment/extension environment)
-  (select-extension (ic-environment->external environment)))
 
 ;;;; Compiled Code Environments
 
