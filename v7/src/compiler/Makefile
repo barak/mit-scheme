@@ -1,13 +1,28 @@
+# $Id: Makefile,v 1.15 2000/12/06 02:58:24 cph Exp $
 #
-# $Id: Makefile,v 1.14 2000/12/05 23:04:57 cph Exp $
+# Copyright (c) 2000 Massachusetts Institute of Technology
 #
-# Makefile for Scheme compiler
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# Makefile for MIT Scheme compiler.
 # This makefile supports some utilities for the compiler.
 # The compiler provides its own tools for rebuilding itself,
 # written in Scheme.
-#
 
-SUBDIRS = back base fggen fgopt machine rtlbase rtlgen rtlopt
+FIXED_SUBDIRS = back base fggen fgopt rtlbase rtlgen rtlopt
+SUBDIRS = $(FIXED_SUBDIRS) machine
 
 SHELL = /bin/sh
 
@@ -23,6 +38,25 @@ setup:
 tags TAGS:
 	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
 	machines/*/*.scm rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm
+
+mostlyclean:
+	@for SUBDIR in $(FIXED_SUBDIRS); do \
+	    echo "making $@ in $${SUBDIR}"; \
+	    (cd $${SUBDIR} && rm -f *.bin *.ext *.com *.bci); \
+	done
+	if test -d machine/.; then \
+	    echo "making $@ in machine"; \
+	    (cd machine && rm -f *.bin *.ext *.com *.bci); \
+	fi
+	rm -f compiler.bco compiler.bld compiler.con compiler.crf \
+	      compiler.fre compiler.glo compiler.ldr
+
+clean: mostlyclean
+
+distclean: clean
+
+maintainer-clean: distclean
+	rm -f Makefile .edwin-ffi
 
 stage1:
 	@for SUBDIR in $(SUBDIRS); do \
@@ -114,7 +148,7 @@ lnstage3:
 	    (cd $${SUBDIR} && ln -f STAGE3/* .); \
 	done
 
-.PHONY: all setup tags TAGS index listing locked
+.PHONY: all setup tags TAGS mostlyclean clean distclean maintainer-clean
 .PHONY: stage1 unstage1 rmstage1 cpstage1 lnstage1
 .PHONY: stage2 unstage2 rmstage2 cpstage2 lnstage2
 .PHONY: stage3 unstage3 rmstage3 cpstage3 lnstage3
