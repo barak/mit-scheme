@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dos.scm,v 1.48 1999/01/02 06:11:34 cph Exp $
+;;; $Id: dos.scm,v 1.49 1999/02/01 03:33:56 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,23 +22,6 @@
 
 (declare (usual-integrations))
 
-(define (dos/windows-type)
-  (cond ((string-prefix? "Microsoft Windows NT"
-			 microcode-id/operating-system-variant)
-	 'WINNT)
-	((string-prefix? "Microsoft Windows 9"
-			 microcode-id/operating-system-variant)
-	 'WIN95)
-	((string-prefix? "Microsoft Windows"
-			 microcode-id/operating-system-variant)
-	 'WIN31)
-	(else #f)))
-
-(define (dos/default-shell-file-name)
-  (if (eq? 'WINNT (dos/windows-type))
-      "cmd.exe"
-      "command.com"))
-
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname
 		   (fix:andc (file-modes pathname) nt-file-mode/read-only)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: os2.scm,v 1.43 1999/01/02 06:11:34 cph Exp $
+;;; $Id: os2.scm,v 1.44 1999/02/01 03:34:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -22,9 +22,6 @@
 
 (declare (usual-integrations))
 
-(define (dos/default-shell-file-name)
-  "cmd.exe")
-
 (define (os/set-file-modes-writable! pathname)
   (set-file-modes! pathname
 		   (fix:andc (file-modes pathname) os2-file-mode/read-only)))
