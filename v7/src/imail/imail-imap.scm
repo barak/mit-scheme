@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.143 2000/08/05 01:53:44 cph Exp $
+;;; $Id: imail-imap.scm,v 1.144 2000/08/05 02:00:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -906,13 +906,11 @@
 	     (guarantee message initpred)
 	     (call-next-method message))))))
   (reflector message-header-fields 'HEADER-FIELDS
-	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "headers"
-					   '(RFC822.HEADER))))
+    (lambda (message initpred)
+      (guarantee-slot-initialized message initpred "header" '(RFC822.HEADER))))
   (reflector message-flags 'FLAGS
-	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "flags"
-					   '(FLAGS)))))
+    (lambda (message initpred)
+      (guarantee-slot-initialized message initpred "flags" '(FLAGS)))))
 
 (let ((reflector
        (lambda (generic-procedure slot-name guarantee)
@@ -922,17 +920,15 @@
 	     (guarantee message initpred)
 	     (accessor message))))))
   (reflector imap-message-length 'LENGTH
-	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "length"
-					   '(RFC822.SIZE))))
+    (lambda (message initpred)
+      (guarantee-slot-initialized message initpred "length" '(RFC822.SIZE))))
   (reflector imap-message-envelope 'ENVELOPE
-	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "envelope"
-					   '(ENVELOPE))))
+    (lambda (message initpred)
+      (guarantee-slot-initialized message initpred "envelope" '(ENVELOPE))))
   (reflector imap-message-bodystructure 'BODYSTRUCTURE
-	     (lambda (message initpred)
-	       (guarantee-slot-initialized message initpred "body structure"
-					   '(BODYSTRUCTURE)))))
+    (lambda (message initpred)
+      (guarantee-slot-initialized message initpred "MIME structure"
+				  '(BODYSTRUCTURE)))))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
   (guarantee-imap-folder-open folder)

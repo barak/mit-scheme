@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.57 2000/08/05 01:53:41 cph Exp $
+;;; $Id: imail-file.scm,v 1.58 2000/08/05 02:00:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -288,7 +288,7 @@
 	       folder
 	       (folder-modification-count folder)))
 	    (loop))))))
-
+
 (define-method discard-folder-cache ((folder <file-folder>))
   (close-folder folder))
 
