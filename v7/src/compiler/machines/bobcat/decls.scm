@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.1 1987/03/19 00:44:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.2 1987/04/17 10:50:59 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -41,16 +41,19 @@ MIT in each case. |#
       (begin (file-dependency/integration/make (car filenames) (cdr filenames))
 	     (file-dependency/integration/chain (cdr filenames)))))
 
-(define (file-dependency/integration/join filenames dependency)
+(define (file-dependency/integration/join filenames dependencies)
   (for-each (lambda (filename)
-	      (file-dependency/integration/make filename dependency))
+	      (file-dependency/integration/make filename dependencies))
 	    filenames))
 
-(define (file-dependency/integration/make filename dependency)
-#|
-  (sf/add-file-declarations! filename `((INTEGRATE-EXTERNAL ,@dependency)))
-|#
-  'DONE)
+(define (file-dependency/integration/make filename dependencies)
+  (if enable-integration-declarations
+      (sf/add-file-declarations!
+       filename
+       `((INTEGRATE-EXTERNAL
+	  ,@(map (lambda (dependency)
+		   (pathname->absolute-pathname (->pathname dependency)))
+		 dependencies))))))
 
 (define (filename/append directory . names)
   (map (lambda (name)
@@ -74,7 +77,8 @@ MIT in each case. |#
   (append (filename/append "base" "linear")
 	  (filename/append "alpha" "dflow" "graphc")
 	  (filename/append "front-end"
-			   "ralloc" "rcsesa" "rgcomb" "rlife" "rtlgen")
+			   "ralloc" "rcsesa" "rdeath" "rdebug" "rgcomb" "rlife"
+			   "rtlgen")
 	  (filename/append "back-end" "lapgen")))
 
 (file-dependency/integration/chain
@@ -93,7 +97,7 @@ MIT in each case. |#
 	 (filename/append "alpha" "dflow" "graphc")
 	 (filename/append "front-end"
 			  "ralloc" "rcse" "rcseep" "rcseht" "rcserq" "rcsesa"
-			  "rcsesr" "rgcomb" "rlife" "rtlgen")
+			  "rcsesr" "rdeath" "rdebug" "rgcomb" "rlife" "rtlgen")
 	 (filename/append "back-end"
 			  "asmmac" "block" "lapgen" "laptop" "regmap" "symtab")
 	 (filename/append "machines/bobcat" "insmac" "machin"))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.1 1987/04/17 07:59:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/pmlook.scm,v 1.2 1987/04/17 10:51:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,47 +36,53 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (pattern-lookup pattern-variables make-pattern-variable)
+(define pattern-lookup)
+(define pattern-variables)
+(define make-pattern-variable)
+(let ()
 
 ;;; PATTERN-LOOKUP returns either false or a pair whose car is the
 ;;; item matched and whose cdr is the list of variable values.  Use
 ;;; PATTERN-VARIABLES to get a list of names that is in the same order
 ;;; as the list of values.
 
-(define (pattern-lookup entries instance)
-  (define (lookup-loop entries values)
-    (define (match pattern instance)
-      (if (pair? pattern)
-	  (if (eq? (car pattern) pattern-variable-tag)
-	      (let ((entry (memq (cdr pattern) values)))
-		(if entry
-		    (eqv? (cdr entry) instance)
-		    (begin (set! values (cons instance values))
-			   true)))
-	      (and (pair? instance)
-		   (match (car pattern) (car instance))
-		   (match (cdr pattern) (cdr instance))))
-	  (eqv? pattern instance)))
-    (and (not (null? entries))
-	 (or (and (match (caar entries) instance)
-		  (apply (cdar entries) values))
-	     (lookup-loop (cdr entries) '()))))
-  (lookup-loop entries '()))
+(set! pattern-lookup
+  (named-lambda (pattern-lookup entries instance)
+    (define (lookup-loop entries values)
+      (define (match pattern instance)
+	(if (pair? pattern)
+	    (if (eq? (car pattern) pattern-variable-tag)
+		(let ((entry (memq (cdr pattern) values)))
+		  (if entry
+		      (eqv? (cdr entry) instance)
+		      (begin (set! values (cons instance values))
+			     true)))
+		(and (pair? instance)
+		     (match (car pattern) (car instance))
+		     (match (cdr pattern) (cdr instance))))
+	    (eqv? pattern instance)))
+      (and (not (null? entries))
+	   (or (and (match (caar entries) instance)
+		    (apply (cdar entries) values))
+	       (lookup-loop (cdr entries) '()))))
+    (lookup-loop entries '())))
 
-(define (pattern-variables pattern)
-  (let ((variables '()))
-    (define (loop pattern)
-      (if (pair? pattern)
-	  (if (eq? (car pattern) pattern-variable-tag)
-	      (if (not (memq (cdr pattern) variables))
-		  (set! variables (cons (cdr pattern) variables)))
-	      (begin (loop (car pattern))
-		     (loop (cdr pattern))))))
-    (loop pattern)
-    variables))
+(set! pattern-variables
+  (named-lambda (pattern-variables pattern)
+    (let ((variables '()))
+      (define (loop pattern)
+	(if (pair? pattern)
+	    (if (eq? (car pattern) pattern-variable-tag)
+		(if (not (memq (cdr pattern) variables))
+		    (set! variables (cons (cdr pattern) variables)))
+		(begin (loop (car pattern))
+		       (loop (cdr pattern))))))
+      (loop pattern)
+      variables)))
 
-(define (make-pattern-variable name)
-  (cons pattern-variable-tag name))
+(set! make-pattern-variable
+  (named-lambda (make-pattern-variable name)
+    (cons pattern-variable-tag name)))
 
 (define pattern-variable-tag
   (make-named-tag "Pattern Variable"))

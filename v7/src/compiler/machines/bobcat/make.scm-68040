@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.12 1987/03/20 05:29:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.13 1987/04/17 10:55:42 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -72,7 +72,8 @@ MIT in each case. |#
 		"base/rtlcfg"		;RTL: CFG types
 		"base/emodel"		;environment model
 		"base/rtypes"		;RTL analyzer datatypes
-		"base/nmatch"		;simple pattern matcher
+		"base/pmlook"		;pattern matcher: lookup
+		"base/pmpars"		;pattern matcher: parser
 		)
 
 	       (CONVERTER-PACKAGE
@@ -100,6 +101,8 @@ MIT in each case. |#
 
 	       (RTL-ANALYZER-PACKAGE
 		"front-end/rlife"	;RTL register lifetime analyzer
+		"front-end/rdeath"	;RTL dead code eliminations
+		"front-end/rdebug"	;RTL optimizer debugging output
 		"front-end/ralloc"	;RTL register allocator
 		)
 
@@ -136,7 +139,7 @@ MIT in each case. |#
       (define :version)
       (define :modification)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.12 1987/03/20 05:29:33 cph Exp $"
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.13 1987/04/17 10:55:42 cph Exp $"
 	(lambda (filename version date time author state)
 	  (set! :version (car version))
 	  (set! :modification (cadr version))))))

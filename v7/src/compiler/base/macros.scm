@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.56 1987/03/19 00:33:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.57 1987/04/17 10:51:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -70,6 +70,9 @@ MIT in each case. |#
 		    '()))))
 	     (cdr expression)))))
 
+(define enable-integration-declarations
+  true)
+
 (let ()
 
 (define (parse-define-syntax pattern body if-variable if-lambda)
@@ -117,22 +120,21 @@ MIT in each case. |#
 
 (syntax-table-define compiler-syntax-table 'DEFINE-INTEGRABLE
   (macro (pattern . body)
-#|
-    (parse-define-syntax pattern body
-      (lambda (name body)
-	`(BEGIN (DECLARE (INTEGRATE ,pattern))
-		(DEFINE ,pattern ,@body)))
-      (lambda (pattern body)
-	`(BEGIN (DECLARE (INTEGRATE-OPERATOR ,(car pattern)))
-		(DEFINE ,pattern
-		  ,@(if (list? (cdr pattern))
-			`(DECLARE
-			  (INTEGRATE
-			   ,@(lambda-list->bound-names (cdr pattern))))
-			'())
-		  ,@body))))
-|#
-    `(DEFINE ,pattern ,@body)))
+    (if enable-integration-declarations
+	(parse-define-syntax pattern body
+	  (lambda (name body)
+	    `(BEGIN (DECLARE (INTEGRATE ,pattern))
+		    (DEFINE ,pattern ,@body)))
+	  (lambda (pattern body)
+	    `(BEGIN (DECLARE (INTEGRATE-OPERATOR ,(car pattern)))
+		    (DEFINE ,pattern
+		      ,@(if (list? (cdr pattern))
+			    `((DECLARE
+			       (INTEGRATE
+				,@(lambda-list->bound-names (cdr pattern)))))
+			    '())
+		      ,@body))))
+	`(DEFINE ,pattern ,@body))))
 
 )
 
