@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.4 1993/07/21 04:43:21 gjr Exp $
+$Id: ntscreen.h,v 1.5 1993/08/27 05:56:10 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -244,6 +244,7 @@ typedef LRESULT (*COMMAND_HANDLER)(HWND,WORD command);
 
 #define SCREEN_COMMAND_CHOOSEFONT	0x400
 #define SCREEN_COMMAND_CLOSE		0x401
+#define SCREEN_COMMAND_CHOOSEBACKCOLOR	0x402
 
 extern VOID init_MIT_TranslateMessage (VOID);
 

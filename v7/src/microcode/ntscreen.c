@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.10 1993/08/24 16:15:06 adams Exp $
+$Id: ntscreen.c,v 1.11 1993/08/27 05:56:17 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -99,6 +99,7 @@ typedef struct tagSCREENINFO
    HFONT   hFont ;
    LOGFONT lfFont ;
    DWORD   rgbFGColour ;
+   DWORD   rgbBGColour ;
    int     xSize, ySize, xScroll, yScroll, xOffset, yOffset;
    int     column, row, xChar, yChar ;
    int     width, height;  //size in characters
@@ -120,10 +121,14 @@ typedef struct tagSCREENINFO
      WORD   command;
    } bindings[MAX_BINDINGS];
 
-   
    // for line input
    int n_chars;
    char  *line_buffer;
+
+   /* ANSI emulator overflow */
+   int n_pending;
+   LPSTR pending;
+   
 } SCREEN_STRUCT;
 
 //#define WIDTH(screen) (screen->width)
@@ -152,6 +157,7 @@ BOOL DestroyScreenInfo (HWND);
 BOOL ResetScreen (SCREEN);
 BOOL KillScreenFocus (HWND);
 BOOL PaintScreen (HWND);
+BOOL EraseScreen (HWND);
 BOOL SetScreenFocus (HWND);
 BOOL ScrollScreenHorz (HWND, WORD, WORD);
 BOOL ScrollScreenVert (HWND, WORD, WORD);
@@ -166,13 +172,17 @@ COMMAND_HANDLER ScreenSetCommand (SCREEN, WORD cmd, COMMAND_HANDLER handler);
 WORD ScreenSetBinding (SCREEN, char key, WORD command);
 VOID GetMinMaxSizes(HWND,LPPOINT,LPPOINT);
 VOID Screen_Clear (SCREEN,int);
+BOOL SelectScreenFont (SCREEN, HWND);
+BOOL SelectScreenBackColor (SCREEN, HWND);
+#if 0
 VOID GoModalDialogBoxParam (HINSTANCE, LPCSTR, HWND, DLGPROC, LPARAM);
 VOID FillComboBox (HINSTANCE, HWND, int, DWORD *, WORD, DWORD);
-BOOL SelectScreenFont (SCREEN, HWND);
 BOOL SettingsDlgInit (HWND);
 BOOL SettingsDlgTerm (HWND);
+#endif
 
 LRESULT ScreenCommand_ChooseFont (HWND, WORD);
+LRESULT ScreenCommand_ChooseBackColor (HWND, WORD);
 
 VOID SetDebuggingTitle (SCREEN);
 
@@ -184,11 +194,23 @@ int  GetControlKeyState(DWORD lKeyData);
 #define xmalloc malloc
 
 LRESULT FAR PASCAL ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
+#if 0
 BOOL FAR PASCAL SettingsDlgProc (HWND, UINT, WPARAM, LPARAM ) ;
+#endif
 
 VOID RegisterScreen (SCREEN);
 VOID UnregisterScreen (SCREEN);
 
+BOOL
+init_color (char * color_symbol, DWORD * color)
+{
+  char * envvar = (getenv (color_symbol));
+  if (envvar == NULL)
+    return (FALSE);
+  * color = (strtoul (envvar, NULL, 0));
+  return (TRUE);
+}
+
 #ifdef WINDOWSLOSES
 
 static BOOL
@@ -232,6 +254,8 @@ init_MIT_Keyboard (VOID)
 //
 //---------------------------------------------------------------------------
 
+static HGDIOBJ black_brush;
+
 BOOL 
 Screen_InitApplication (HANDLE hInstance)
 {
@@ -240,6 +264,8 @@ Screen_InitApplication (HANDLE hInstance)
 #ifdef WINDOWSLOSES
    init_MIT_Keyboard ();
 #endif /* WINDOWSLOSES */
+
+   black_brush = (GetStockObject (BLACK_BRUSH));
 
    wndclass.style =         0;
    wndclass.lpfnWndProc =   ScreenWndProc ;
@@ -473,6 +499,10 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
          PaintScreen (hWnd);
          break ;
 
+      case WM_ERASEBKGND:
+         EraseScreen (hWnd);
+         break ;
+
       case WM_SIZE:
         if (wParam!=SIZE_MINIMIZED)
 	  SizeScreen (hWnd, HIWORD(lParam), LOWORD(lParam));
@@ -584,7 +614,7 @@ CreateScreenInfo (HWND hWnd)
    SCREEN  screen;
 
    if (NULL == (screen =
-                   (SCREEN) LocalAlloc (LPTR, sizeof(SCREEN_STRUCT) )))
+		(SCREEN) LocalAlloc (LPTR, sizeof(SCREEN_STRUCT) )))
       return  (LRESULT) -1;
 
    screen->hWnd			= hWnd;
@@ -608,7 +638,10 @@ CreateScreenInfo (HWND hWnd)
    screen->xOffset		= 0 ;
    screen->yOffset		= 0 ;
    screen->hFont		= NULL;
-   screen->rgbFGColour		= RGB(0,0,0);
+   if (! (init_color ("MITSCHEME_FOREGROUND", &screen->rgbFGColour)))
+     screen->rgbFGColour	= RGB(0,0,0);
+   if (! (init_color ("MITSCHEME_BACKGROUND", &screen->rgbBGColour)))
+     screen->rgbBGColour	= (GetSysColor (COLOR_WINDOW));
    screen->width		= 0;
    screen->height		= 0;
       
@@ -657,15 +690,21 @@ CreateScreenInfo (HWND hWnd)
    hMenu = GetSystemMenu (hWnd, FALSE);
    AppendMenu (hMenu, MF_SEPARATOR, 0, 0);
 // AppendMenu (hMenu, MF_STRING, IDM_SETTINGS, "&Settings...");
-   AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEFONT,     "&Font...");
+   AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEFONT, "&Font...");
+   AppendMenu (hMenu, MF_STRING, SCREEN_COMMAND_CHOOSEBACKCOLOR, "&Background...");
     
    SendMessage (hWnd, SCREEN_SETCOMMAND,
                 SCREEN_COMMAND_CHOOSEFONT, (LPARAM)ScreenCommand_ChooseFont);
    SendMessage (hWnd, SCREEN_SETBINDING, 6, SCREEN_COMMAND_CHOOSEFONT);
+   SendMessage (hWnd, SCREEN_SETCOMMAND,
+                SCREEN_COMMAND_CHOOSEBACKCOLOR, (LPARAM)ScreenCommand_ChooseBackColor);
+   SendMessage (hWnd, SCREEN_SETBINDING, 7, SCREEN_COMMAND_CHOOSEBACKCOLOR);
 		  
    screen->n_chars = 0;
    screen->line_buffer = xmalloc (MAX_LINEINPUT + 1);
      
+   screen->n_pending = 0;
+   screen->pending = ((LPSTR) NULL);
    return  (LRESULT) TRUE;
 }
 
@@ -824,6 +863,16 @@ ScreenCommand_ChooseFont (HWND hWnd, WORD command)
   return (0L);
 }
 
+LRESULT
+ScreenCommand_ChooseBackColor (HWND hWnd, WORD command)
+{
+  SCREEN  screen = GETSCREEN (hWnd);
+  if (screen == 0)
+    return (1L);
+  SelectScreenBackColor (screen, hWnd);
+  return (0L);
+}
+
 //---------------------------------------------------------------------------
 //  Screen_SetMenu (SCREEN, HMENU)
 //---------------------------------------------------------------------------
@@ -865,7 +914,7 @@ ResetScreen (SCREEN screen)
    hWnd = screen->hWnd;
    
    if (screen->hFont)
-      DeleteObject (screen->hFont);
+     DeleteObject (screen->hFont);
 
    screen->hFont = CreateFontIndirect (&screen->lfFont);
 
@@ -963,6 +1012,7 @@ PaintScreen (HWND hWnd)
 //      rect = ps.rcPaint ;
 //      for (row = 0; row < (ICONSIZE-6)/2; row++) {
 //	if (row >= screen->height) break;
+
 //	for (col = 0; col < ICONSIZE-4; col++) {
 //	  int  run_length = 0;
 //	  char *s = & screen->chars[row*WIDTH(screen) + col];
@@ -979,13 +1029,11 @@ PaintScreen (HWND hWnd)
 //      SelectObject (hDC, hOldPen);
 //      DeleteObject (hPen);
   }
-
   else
   {
     int		nRow, nCol, nEndRow, nEndCol, nCount;
     int		nHorzPos, nVertPos, bias;
     HFONT	hOldFont;
-    DWORD	bgcolor;
 
     hOldFont = (SelectObject (hDC, screen->hFont));
     rect = ps.rcPaint;
@@ -1016,10 +1064,29 @@ PaintScreen (HWND hWnd)
 	   ((rect.right + screen->xOffset - 1) / screen->xChar));
     nCount = ((nEndCol - nCol) + 1);
     SetBkMode (hDC, OPAQUE);
-    bgcolor = (GetSysColor (COLOR_WINDOW));
     SetTextColor (hDC, screen->rgbFGColour);
-    SetBkColor (hDC, bgcolor);
-
+    SetBkColor (hDC, screen->rgbBGColour);
+    if ((nEndRow * screen->yChar) < (rect.bottom + screen->yOffset - 1))
+    {
+      RECT rbottom;
+      
+      rbottom.left = rect.left;
+      rbottom.right = rect.right;
+      rbottom.bottom = rect.bottom;
+      rbottom.top = ((nEndRow * screen->yChar) - screen->yOffset);
+      FillRect (hDC, &rbottom, black_brush);
+    }
+    if ((nEndCol * screen->xChar) < (rect.right + screen->xOffset - 1))
+    {
+      RECT rright;
+      
+      rright.top = rect.top;
+      rright.bottom = rect.bottom;
+      rright.right = rect.right;
+      rright.left = ((nEndCol * screen->xChar) - screen->xOffset);
+      FillRect (hDC, &rright, black_brush);
+    }
+
     for (bias = ((nRow * MAXCOLS) + nCol),
 	 nVertPos = ((nRow * screen->yChar) - screen->yOffset);	 
 	 nRow <= nEndRow;
@@ -1047,7 +1114,7 @@ PaintScreen (HWND hWnd)
 	rect.right = (nHorzPos + (screen->xChar * run_length));
 	if (attrib)
 	{
-	  SetTextColor (hDC, bgcolor);
+	  SetTextColor (hDC, screen->rgbBGColour);
 	  SetBkColor (hDC, screen->rgbFGColour);
 	}
 	ExtTextOut (hDC, nHorzPos, nVertPos, (ETO_OPAQUE | ETO_CLIPPED),
@@ -1056,7 +1123,7 @@ PaintScreen (HWND hWnd)
 	if (attrib)
 	{
 	  SetTextColor (hDC, screen->rgbFGColour);
-	  SetBkColor (hDC, bgcolor);
+	  SetBkColor (hDC, screen->rgbBGColour);
 	}
 	pos = nposn;
       }
@@ -1065,6 +1132,41 @@ PaintScreen (HWND hWnd)
   }
   EndPaint (hWnd, &ps);
   MoveScreenCursor (screen);
+  return (TRUE);
+}
+
+//---------------------------------------------------------------------------
+//  BOOL EraseScreen (HWND hWnd )
+//
+//  Description:
+//     Erases the rectangle determined by the paint struct of
+//     the DC.
+//
+//  Parameters:
+//     HWND hWnd
+//        handle to TTY window (as always)
+//
+//---------------------------------------------------------------------------
+
+static BOOL 
+EraseScreen (HWND hWnd)
+{
+  SCREEN	screen = (GETSCREEN (hWnd));
+  HDC		hDC ;
+  PAINTSTRUCT	ps ;
+  RECT		rect ;
+
+  if (NULL == screen)
+    return (FALSE);
+
+  hDC = (BeginPaint (hWnd, &ps));
+  SetBkColor (hDC, screen->rgbBGColour);
+  if (! (IsIconic (hWnd)))
+  {
+    rect = ps.rcPaint;
+    FillRect (hDC, &rect, black_brush);
+  }
+  EndPaint (hWnd, &ps);
   return (TRUE);
 }
 
@@ -1664,7 +1766,7 @@ Screen_WriteCharUninterpreted (SCREEN screen, int ch,
     
   if (screen->column >= screen->width)
   {
-    if (screen->mode_flags & SCREEN_MODE_AUTOWRAP)
+    if ((screen->mode_flags & SCREEN_MODE_AUTOWRAP) != 0)
     {
       if ((rectp != ((struct screen_write_char_s *) NULL))
 	  && (rectp->row != -1))
@@ -1720,15 +1822,22 @@ Screen_WriteCharUninterpreted (SCREEN screen, int ch,
   screen->column += 1;
   return;
 }
-
+
 static VOID _fastcall
 Finish_ScreenWriteChar (SCREEN screen, struct screen_write_char_s * rectp)
 {
   if (rectp->row != -1)
     InvalidateRect (screen->hWnd, &rectp->rect, FALSE);
+  if ((screen->column >= screen->width)
+      && ((screen->mode_flags & SCREEN_MODE_AUTOWRAP) != 0))
+  {
+    Screen_CR (screen);
+    if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
+      Screen_LF (screen);
+  }
   return;
 }
-
+
 static VOID _fastcall
 Screen_TAB (SCREEN screen, struct screen_write_char_s * rectp)
 {
@@ -1772,22 +1881,45 @@ clear_screen_rectangle (SCREEN screen,
 
   return;
 }
-
+
 static VOID _fastcall
 relocate_cursor (SCREEN screen, int row, int col)
 {
   screen->row = ((row < 0)
 		 ? 0
-		 : ((row > screen->height)
+		 : ((row >= screen->height)
 		    ? (screen->height - 1)
 		    : row));
   screen->column = ((col < 0)
 		    ? 0
-		    : ((col > screen->width)
+		    : ((col >= screen->width)
 		       ? (screen->width - 1)
 		       : col));
   if (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE)
     MoveScreenCursor (screen);
+  return;
+}
+
+static VOID _fastcall
+cursor_right (SCREEN screen, int delta)
+{
+  int new_col = (screen->column + delta);
+
+  if (new_col < screen->width)
+    screen->column = new_col;
+  else if ((screen->mode_flags & SCREEN_MODE_AUTOWRAP) == 0)
+    screen->column = (screen->width - 1);
+  else
+  {
+    while (new_col >= screen->width)
+    {
+      Screen_CR (screen);
+      if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
+	Screen_LF (screen);
+      new_col -= screen->width;
+    }
+    screen->column = new_col;
+  }
   return;
 }
 
@@ -1886,6 +2018,7 @@ read_decimal (LPSTR str, int lo, int len, int * hi)
   return (result);
 }
 
+#ifdef PRETTY_PRINT_CHARS
 static VOID _fastcall
 screen_write_octal (SCREEN screen, unsigned char the_char,
 		    struct screen_write_char_s * rectp)
@@ -1896,9 +2029,48 @@ screen_write_octal (SCREEN screen, unsigned char the_char,
   Screen_WriteCharUninterpreted (screen, ((the_char % 010) + '0'), rectp);
   return;
 }
+#endif /* PRETTY_PRINT_CHARS */
+
+static VOID
+WriteScreenBlock_suspend (SCREEN screen, LPSTR lpBlock, int i, int nLength)
+{
+  screen->n_pending = (nLength - i);
+  screen->pending = ((LPSTR) (LocalAlloc (NONZEROLPTR, screen->n_pending)));
+  if (screen->pending != ((LPSTR) NULL))
+    strncpy (screen->pending, (lpBlock + i), screen->n_pending);
+  else
+  {
+    screen->n_pending = 0;
+    MessageBeep (0);
+  }
+  return;
+}
+
+static VOID 
+WriteScreenBlock_continue (SCREEN screen,
+			   LPSTR lpBlock_in, int nLength_in,
+			   LPSTR * lpBlock, int * nLength)
+{
+  (* nLength) = (screen->n_pending + nLength_in);
+  (* lpBlock) = ((LPSTR) (LocalAlloc (NONZEROLPTR, (* nLength))));
+  if ((* lpBlock) == ((LPSTR) NULL))
+  {
+    MessageBeep (0);
+    (* nLength) = nLength_in;
+    (* lpBlock) = lpBlock_in;
+  }
+  else
+  {
+    strncpy ((* lpBlock), screen->pending, screen->n_pending);
+    strncpy (((* lpBlock) + screen->n_pending), lpBlock_in, nLength_in);
+  }
+  LocalFree (screen->pending);
+  screen->n_pending = 0;
+  return;
+}
 
 //---------------------------------------------------------------------------
-//  BOOL WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
+//  BOOL WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in )
 //
 //  Description:
 //     Writes block to TTY screen.  Nothing fancy - just
@@ -1918,317 +2090,319 @@ screen_write_octal (SCREEN screen, unsigned char the_char,
 //---------------------------------------------------------------------------
 
 static BOOL 
-WriteScreenBlock (HWND hWnd, LPSTR lpBlock, int nLength )
+WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 {
-   int i;
-   WORD saved_mode_flags;
-   SCREEN screen = (GETSCREEN (hWnd));
-   struct screen_write_char_s state;
+  int i;
+  LPSTR lpBlock;
+  int nLength;
+  WORD saved_mode_flags;
+  SCREEN screen = (GETSCREEN (hWnd));
+  struct screen_write_char_s state;
 
-   if (NULL == screen)
-      return (FALSE);
+  if (NULL == screen)
+    return (FALSE);
 
-   INIT_SCREEN_WRITE_CHAR_STATE (state);
-   saved_mode_flags = (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE);
-   screen->mode_flags &= (~ (SCREEN_MODE_EAGER_UPDATE));
+  INIT_SCREEN_WRITE_CHAR_STATE (state);
+  saved_mode_flags = (screen->mode_flags & SCREEN_MODE_EAGER_UPDATE);
+  screen->mode_flags &= (~ (SCREEN_MODE_EAGER_UPDATE));
 
-   if ((screen->mode_flags & SCREEN_MODE_PROCESS_OUTPUT) == 0)
-     for (i = 0 ; i < nLength; i++)
-       Screen_WriteCharUninterpreted (screen, (lpBlock[i]), &state);
-   else for (i = 0 ; i < nLength; i++)
-   {
-     unsigned char the_char = ((unsigned char) (lpBlock[i]));
+  if (screen->n_pending != 0)
+    WriteScreenBlock_continue (screen,
+			       lpBlock_in, nLength_in,
+			       &lpBlock, &nLength);
+  else
+  {
+    nLength = nLength_in;
+    lpBlock = lpBlock_in;
+  }
+    
+  if ((screen->mode_flags & SCREEN_MODE_PROCESS_OUTPUT) == 0)
+    for (i = 0 ; i < nLength; i++)
+      Screen_WriteCharUninterpreted (screen, (lpBlock[i]), &state);
+  else for (i = 0 ; i < nLength; i++)
+  {
+    unsigned char the_char = ((unsigned char) (lpBlock[i]));
 
-     switch (the_char)
-     {
-       case ASCII_BEL:
-	  MessageBeep (0);
-	  break ;
+    switch (the_char)
+    {
+    case ASCII_BEL:
+      MessageBeep (0);
+      break ;
 
-       case ASCII_BS:
-	  Screen_BS (screen);
-	  break ;
+    case ASCII_BS:
+      Screen_BS (screen);
+      break ;
 
-       case '\t':
-	  Screen_TAB (screen, &state);
-	  break;
-
-#if 0
-       case ASCII_LF:
-	  Screen_CR (screen);
-	  Screen_LF (screen);
-	  break ;
-
-       case ASCII_CR:
-	  break;
-
-#else /* not 0 */
+    case '\t':
+      Screen_TAB (screen, &state);
+      break;
 
-       case ASCII_LF:
-	  Screen_LF (screen);
-	  break ;
+#if 0
+    case ASCII_LF:
+      Screen_CR (screen);
+      Screen_LF (screen);
+      break ;
 
-       case ASCII_CR:
-	  Screen_CR (screen);
-	  break;
+    case ASCII_CR:
+      break;
+#else /* not 0 */
+    case ASCII_LF:
+      Screen_LF (screen);
+      break ;
+
+    case ASCII_CR:
+      Screen_CR (screen);
+      break;
 #endif /* 0 */
 
-       case ASCII_FF:
-	  Screen_Clear (screen, 0);
-	  break;
+    case ASCII_FF:
+      Screen_Clear (screen, 0);
+      break;
 
-       default:
-#if 0
-	  if (the_char < ' ')
-	  {
-	    Screen_WriteCharUninterpreted (screen, '^', &state);
-	    Screen_WriteCharUninterpreted (screen, (the_char + '@'), &state);
-	  }
-	  else if (the_char < ASCII_DEL)
-	    Screen_WriteCharUninterpreted (screen, the_char, &state);
-	  else if (the_char == ASCII_DEL)
-	  {
-	    Screen_WriteCharUninterpreted (screen, '^', &state);
-	    Screen_WriteCharUninterpreted (screen, '?', &state);
-	  }
-	  else
-	    screen_write_octal (screen, ((unsigned char) the_char), &state);
-#else
-	  Screen_WriteCharUninterpreted (screen, the_char, &state);
-#endif
-	  break;
-	    
-       case ASCII_ESC:
-	{
-	  char dispatch;
+    default:
+    char_default:
+#ifdef PRETTY_PRINT_CHARS
+      if (the_char < ' ')
+      {
+	Screen_WriteCharUninterpreted (screen, '^', &state);
+	Screen_WriteCharUninterpreted (screen, (the_char + '@'), &state);
+      }
+      else if (the_char < ASCII_DEL)
+	Screen_WriteCharUninterpreted (screen, the_char, &state);
+      else if (the_char == ASCII_DEL)
+      {
+	Screen_WriteCharUninterpreted (screen, '^', &state);
+	Screen_WriteCharUninterpreted (screen, '?', &state);
+      }
+      else
+	screen_write_octal (screen, ((unsigned char) the_char), &state);
+#else /* not PRETTY_PRINT_CHARS */
+      Screen_WriteCharUninterpreted (screen, the_char, &state);
+#endif /* PRETTY_PRINT_CHARS */
+      break;
 
-	  /* This emulates the subset of an ANSI terminal that
-	     Edwin uses.  Temporary until we write a real screen
-	     driver for Edwin.
-	     This assumes the command is not split.
-	   */
-	  if ((i + 2) >= nLength)
-	  {
-	    MessageBeep (0);
-	    break;
-	  }
+    case ASCII_ESC:
+    {
+      char dispatch;
 
-	  if (lpBlock[i+1] != '[')
-	  {
-	    i += 1;		/* 1 added in for loop */
-	    MessageBeep (0);
-	    break;
-	  }
+      if ((i + 2) >= nLength)
+      {
+	WriteScreenBlock_suspend (screen, lpBlock, i, nLength);
+	i = (nLength - 1);	/* 1 added in for loop */
+	break;
+      }
 
-	  dispatch = (lpBlock[i + 2]);
-	  switch (dispatch)
-	  {
-	    case 'K':
-	      /* Clear Line */
-	      clear_screen_rectangle (screen,
-				      screen->row, screen->column,
-				      (screen->row + 1), screen->width);
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      if (lpBlock[i + 1] != '[')
+	goto char_default;
+
+      dispatch = (lpBlock[i + 2]);
+      switch (dispatch)
+      {
+      case 'K':
+	/* Clear Line */
+	clear_screen_rectangle (screen,
+				screen->row, screen->column,
+				(screen->row + 1), screen->width);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'J':
-	      /* Clear to bottom */
-	      if (screen->column == 0)
-		clear_screen_rectangle (screen, screen->row, 0,
-					screen->height, screen->width);
-	      else
-	      {
-		clear_screen_rectangle (screen,
-					screen->row, screen->column,
-					(screen->row + 1), screen->width);
-		clear_screen_rectangle (screen, (screen->row + 1), 0,
-					screen->height, screen->width);
-	      }
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'J':
+	/* Clear to bottom */
+	if (screen->column == 0)
+	  clear_screen_rectangle (screen, screen->row, 0,
+				  screen->height, screen->width);
+	else
+	{
+	  clear_screen_rectangle (screen,
+				  screen->row, screen->column,
+				  (screen->row + 1), screen->width);
+	  clear_screen_rectangle (screen, (screen->row + 1), 0,
+				  screen->height, screen->width);
+	}
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'H':
-	      /* Cursor home */
-	      relocate_cursor (screen, 0, 0);
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'H':
+	/* Cursor home */
+	relocate_cursor (screen, 0, 0);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'A':
-	      /* Cursor up */
-	      relocate_cursor (screen, (screen->row - 1), screen->column);
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'A':
+	/* Cursor up */
+	relocate_cursor (screen, (screen->row - 1), screen->column);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'C':
-	      /* Cursor right */
-	      relocate_cursor (screen, screen->row, (screen->column + 1));
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'C':
+	/* Cursor right */
+	cursor_right (screen, 1);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'L':
-	      /* Insert line */
-	      scroll_screen_vertically (screen,
-					screen->row, screen->column,
-					(screen->height - 1), screen->width,
-					(screen->row + 1));
-	      clear_screen_rectangle (screen,
-				      screen->row, screen->column,
-				      (screen->row + 1), screen->width);
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'L':
+	/* Insert line */
+	scroll_screen_vertically (screen,
+				  screen->row, screen->column,
+				  (screen->height - 1), screen->width,
+				  (screen->row + 1));
+	clear_screen_rectangle (screen,
+				screen->row, screen->column,
+				(screen->row + 1), screen->width);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'M':
-	      /* Delete line */
-	      scroll_screen_vertically (screen,
-					(screen->row + 1), screen->column,
-					screen->height, screen->width,
-					screen->row);
-	      clear_screen_rectangle (screen,
-				      (screen->height - 1), screen->column,
-				      screen->height, screen->width);
-	      i += 2;		/* 1 added in for loop */
-	      continue;
+      case 'M':
+	/* Delete line */
+	scroll_screen_vertically (screen,
+				  (screen->row + 1), screen->column,
+				  screen->height, screen->width,
+				  screen->row);
+	clear_screen_rectangle (screen,
+				(screen->height - 1), screen->column,
+				screen->height, screen->width);
+	i += 2;		/* 1 added in for loop */
+	continue;
 
-	    case 'P':
-	      /* Delete char */
-	      scroll_screen_line_horizontally (screen, screen->row,
-					       (screen->column + 1), screen->width,
-					       screen->column);
-	      i += 2;
-	      continue;
-
-	    case '@':
-	      /* Insert char */
-	      scroll_screen_line_horizontally (screen, screen->row,
-					       screen->column, (screen->width - 1),
-					       (screen->column + 1));
+      case 'P':
+	/* Delete char */
+	scroll_screen_line_horizontally (screen, screen->row,
+					 (screen->column + 1), screen->width,
+					 screen->column);
+	i += 2;
+	continue;
+
+      case '@':
+	/* Insert char */
+	scroll_screen_line_horizontally (screen, screen->row,
+					 screen->column, (screen->width - 1),
+					 (screen->column + 1));
 #if 0
+	Screen_WriteCharUninterpreted (screen, ' ', &state);
+#endif
+	i += 2;
+	continue;
+
+      default:
+	if ((dispatch >= '0') && (dispatch <= '9'))
+	{
+	  int j, x_value;
+
+	  x_value = (read_decimal (&lpBlock[0], (i + 2), nLength, &j));
+	  if (j >= nLength)
+	  {
+	    WriteScreenBlock_suspend (screen, lpBlock, i, nLength);
+	    i = (j - 1); /* 1 added in for loop */
+	    continue;
+	  }
+	  else switch (lpBlock[j])
+	  {
+	  case ';':
+	  {
+	    int k, y_value;
+
+	    y_value = (read_decimal (&lpBlock[0], (j + 1), nLength, &k));
+	    if ((k < nLength) && (lpBlock[k] == 'H'))
+	      /* Direct cursor motion */
+	      relocate_cursor (screen, (x_value - 1), (y_value - 1));
+	    else if (k < nLength)
+	      MessageBeep (0);
+	    else
+	      WriteScreenBlock_suspend (screen, lpBlock, i, nLength);
+	    i = k;	/* 1 added in for loop */
+	    continue;
+	  }
+
+	  case 'A':
+	    /* Multi cursor up */
+	    relocate_cursor (screen, (screen->row - x_value), screen->column);
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case 'C':
+	    /* Multi cursor right */
+	    cursor_right (screen, x_value);
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case 'L':
+	    /* Multi insert line */
+	    scroll_screen_vertically (screen,
+				      screen->row, screen->column,
+				      (screen->height - 1), screen->width,
+				      (screen->row + x_value));
+	    clear_screen_rectangle (screen,
+				    screen->row, screen->column,
+				    (screen->row + x_value), screen->width);
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case 'M':
+	    /* Multi delete line */
+	    scroll_screen_vertically (screen,
+				      (screen->row + x_value), screen->column,
+				      screen->height, screen->width,
+				      screen->row);
+	    clear_screen_rectangle (screen,
+				    (screen->height - x_value), screen->column,
+				    screen->height, screen->width);
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case 'P':
+	    /* Multi delete char */
+	    scroll_screen_line_horizontally (screen, screen->row,
+					     (screen->column + x_value), screen->width,
+					     screen->column);
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case '@':
+	    /* Multi insert char */
+	    scroll_screen_line_horizontally (screen, screen->row,
+					     screen->column, (screen->width - x_value),
+					     (screen->column + x_value));
+#if 0
+	    while (--x_value >= 0)
 	      Screen_WriteCharUninterpreted (screen, ' ', &state);
 #endif
-	      i += 2;
+	    i = j; /* 1 added in for loop */
+	    continue;
+
+	  case 'm':
+	    if ((j == (i + 3)) && ((x_value == 0) || (x_value == 7)))
+	    {
+	      /* Enter stdout (7) or exit stdout (0) */
+	      screen->write_attribute = (x_value == 7);
+	      i = j;	/* 1 added in for loop */
 	      continue;
-
-	    default:
-	      if ((dispatch >= '0') && (dispatch <= '9'))
-	      {
-		int j, x_value;
+	    }
+	    /* fall through */
 
-		x_value = (read_decimal (&lpBlock[0], (i + 2), nLength, &j));
-		if (j >= nLength)
-		{
-		  MessageBeep (0);
-		  i = (j - 1); /* 1 added in for loop */
-		  continue;
-		}
-		else switch (lpBlock[j])
-		{
-		  case ';':
-		  {
-		    int k, y_value;
-
-		    y_value = (read_decimal (&lpBlock[0], (j + 1),
-					     nLength, &k));
-		    if ((k < nLength) && (lpBlock[k] == 'H'))
-		    {
-		      /* Direct cursor motion */
-		      relocate_cursor (screen, (x_value - 1), (y_value - 1));
-		      i = k;	/* 1 added in for loop */
-		      continue;
-		    }
-		    else
-		    {
-		      MessageBeep (0);
-		      i = k; /* 1 added in for loop */
-		      continue;
-		    } 
-		  }
-
-		  case 'A':
-		    /* Multi cursor up */
-		    relocate_cursor (screen, (screen->row - x_value), screen->column);
-		    i = j; /* 1 added in for loop */
-		    continue;
-		  
-		  case 'C':
-		    /* Multi cursor right */
-		    relocate_cursor (screen, screen->row, (screen->column + x_value));
-		    i = j; /* 1 added in for loop */
-		    continue;
-		  
-		  case 'L':
-		    /* Multi insert line */
-		    scroll_screen_vertically (screen,
-					      screen->row, screen->column,
-					      (screen->height - 1), screen->width,
-					      (screen->row + x_value));
-		    clear_screen_rectangle (screen,
-					    screen->row, screen->column,
-					    (screen->row + x_value), screen->width);
-		    i = j; /* 1 added in for loop */
-		    continue;
-
-		  case 'M':
-		    /* Multi delete line */
-		    scroll_screen_vertically (screen,
-					      (screen->row + x_value), screen->column,
-					      screen->height, screen->width,
-					      screen->row);
-		    clear_screen_rectangle (screen,
-					    (screen->height - x_value), screen->column,
-					    screen->height, screen->width);
-		    i = j; /* 1 added in for loop */
-		    continue;
-
-		  case 'P':
-		    /* Multi delete char */
-		    scroll_screen_line_horizontally (screen, screen->row,
-						     (screen->column + x_value), screen->width,
-						     screen->column);
-		    i = j; /* 1 added in for loop */
-		    continue;
-
-		  case '@':
-		    /* Multi insert char */
-		    scroll_screen_line_horizontally (screen, screen->row,
-						     screen->column, (screen->width - x_value),
-						     (screen->column + x_value));
-#if 0
-		    while (--x_value >= 0)
-		      Screen_WriteCharUninterpreted (screen, ' ', &state);
-#endif
-		    i = j; /* 1 added in for loop */
-		    continue;
-
-		  case 'm':
-		    if ((j == (i + 3)) && ((x_value == 0) || (x_value == 7)))
-		    {
-		      /* Enter stdout (7) or exit stdout (0) */
-		      screen->write_attribute = (x_value == 7);
-		      i = j;	/* 1 added in for loop */
-		      continue;
-		    }
-		    /* fall through */
-
-		  default:
-		    MessageBeep (0);
-		    i = j;	/* 1 added in for loop */
-		    continue;
-		}
-
-	      }
-	      break;
+	  default:
+	    MessageBeep (0);
+	    i = j;	/* 1 added in for loop */
+	    continue;
 	  }
+
 	}
+	break;
       }
-   }
-   Finish_ScreenWriteChar (screen, &state);
-   if (saved_mode_flags != 0)
-   {
-     UpdateWindow (screen->hWnd);
-     MoveScreenCursor (screen);
-     screen->mode_flags |= saved_mode_flags;
-   }
-   return (TRUE);
+    }
+    }
+  }
+
+  if (lpBlock != lpBlock_in)
+    LocalFree (lpBlock);
+
+  Finish_ScreenWriteChar (screen, &state);
+  if (saved_mode_flags != 0)
+  {
+    UpdateWindow (screen->hWnd);
+    MoveScreenCursor (screen);
+    screen->mode_flags |= saved_mode_flags;
+  }
+  return (TRUE);
 }
 
 /* Utilities for line-buffered input. */
@@ -2248,7 +2422,7 @@ key_buffer_insert_self (SCREEN screen, int ch)
       } else
       {
 	char c = ((char) ch);
-	//Screen_WriteCharUninterpreted (screen, ch, NULL);
+	// Screen_WriteCharUninterpreted (screen, ch, NULL);
 	WriteScreenBlock (screen->hWnd, &c, 1);
       }
     }
@@ -2481,6 +2655,8 @@ GetMinMaxSizes (HWND hWnd, LPPOINT min_size, LPPOINT max_size)
     return;
 }
 
+#if 0
+
 //---------------------------------------------------------------------------
 //  VOID GoModalDialogBoxParam (HINSTANCE hInstance,
 //                                   LPCSTR lpszTemplate, HWND hWnd,
@@ -2506,9 +2682,8 @@ GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
                                                 hInstance);
    DialogBoxParam (hInstance, lpszTemplate, hWnd, lpProcInstance, lParam);
    FreeProcInstance ((FARPROC) lpProcInstance);
-
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL SettingsDlgInit (HWND hDlg )
 //
@@ -2529,7 +2704,6 @@ GoModalDialogBoxParam (HINSTANCE hInstance, LPCSTR lpszTemplate,
 static BOOL
 SettingsDlgInit (HWND hDlg )
 {
-#if 0
    char       szBuffer[ MAXLEN_TEMPSTR ], szTemp[ MAXLEN_TEMPSTR ] ;
    NPTTYINFO  npTTYInfo ;
    WORD       wCount, wMaxCOM, wPosition ;
@@ -2562,9 +2736,9 @@ SettingsDlgInit (HWND hDlg )
    CheckDlgButton (hDlg, IDD_AUTOWRAP, AUTOWRAP (screen));
    CheckDlgButton (hDlg, IDD_NEWLINE, NEWLINE (screen));
    CheckDlgButton (hDlg, IDD_LOCALECHO, LOCALECHO (screen));
-#endif /* 0 */
    return (TRUE);
 }
+#endif /* 0 */
 
 //---------------------------------------------------------------------------
 //  BOOL SelectScreenFont (SCREEN screen, HWND owner)
@@ -2597,13 +2771,55 @@ SelectScreenFont (SCREEN  screen,  HWND owner)
    cfTTYFont.lpTemplateName = NULL ;
    cfTTYFont.hInstance      = GETHINST (owner);
 
-   if (ChooseFont (&cfTTYFont ))
+   if (ChooseFont (&cfTTYFont))
    {
-     screen->rgbFGColour = cfTTYFont.rgbColors ;
+     screen->rgbFGColour = cfTTYFont.rgbColors;
      ResetScreen (screen);
    }
    return (TRUE);
 }
+
+//---------------------------------------------------------------------------
+//  BOOL SelectScreenBackColor (SCREEN screen, HWND owner)
+//
+//  Description:
+//     Selects the background color for the TTY screen.
+//     Uses the Common Dialog ChooseColor() API.
+//
+//  Parameters:
+//     HWND hDlg
+//
+//---------------------------------------------------------------------------
+
+static BOOL
+SelectScreenBackColor (SCREEN  screen,  HWND owner)
+{
+   static DWORD custcolors[16];
+   CHOOSECOLOR backcolor;
+
+   if (NULL == screen)
+     return  FALSE;
+
+   backcolor.lStructSize    = sizeof (CHOOSECOLOR);
+   backcolor.hwndOwner      = owner ;
+   backcolor.hInstance      = GETHINST (owner);
+   backcolor.rgbResult      = screen->rgbBGColour;
+   backcolor.lpCustColors   = &custcolors[0];
+   backcolor.Flags          = (CC_RGBINIT);
+
+   backcolor.lCustData      = 0 ;
+   backcolor.lpfnHook       = NULL ;
+   backcolor.lpTemplateName = NULL ;
+
+   if (ChooseColor (&backcolor))
+   {
+     screen->rgbBGColour = backcolor.rgbResult;
+     ResetScreen (screen);
+   }
+   return (TRUE);
+}
+
+#if 0
 
 //---------------------------------------------------------------------------
 //  BOOL SettingsDlgTerm (HWND hDlg )
@@ -2620,7 +2836,6 @@ SelectScreenFont (SCREEN  screen,  HWND owner)
 static BOOL 
 SettingsDlgTerm (HWND hDlg)
 {
-#if 0
    NPTTYINFO  npTTYInfo ;
    WORD       wSelection ;
 
@@ -2634,7 +2849,6 @@ SettingsDlgTerm (HWND hDlg)
    LOCALECHO (screen) = IsDlgButtonChecked (hDlg, IDD_LOCALECHO);
 
    // control options
-#endif /*0*/
    return  TRUE;
 }
 
@@ -2707,6 +2921,7 @@ SettingsDlgProc (HWND hDlg, UINT uMsg,
    }
    return (FALSE);
 }
+#endif /* 0 */
 
 //---------------------------------------------------------------------------
 
@@ -2965,7 +3180,7 @@ MIT_TranslateMessage (CONST MSG * lpmsg)
 	    return ((BOOL) 0);
 	  break;
 #endif /* WINDOWSLOSES */
-
+
 	default:
 	{
 	  WPARAM control_char;
