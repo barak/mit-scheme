@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.35 1988/05/05 09:35:34 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.36 1989/05/15 22:06:49 jinx Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -960,6 +960,18 @@ Process_Area(Code, Area, Bound, Obj, FObj)
 		program_name);
 	quit(1);
       }
+
+
+      case TC_COMPILED_CODE_BLOCK:
+	compiled_p = true;
+	if (!allow_compiled_p)
+	{
+	  fprintf(stderr,
+		  "%s: File contains compiled code.\n",
+		  program_name);
+	  quit(1);
+	}
+	Do_Pointer(*Area, Do_Vector);
 
       case_compiled_entry_point:
 	compiled_p = true;
