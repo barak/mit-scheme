@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.3 1995/10/25 03:26:46 cph Exp $
+;;;	$Id: dosfile.scm,v 1.4 1995/10/25 03:49:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -63,6 +63,11 @@
 Includes the new backup.  Must be > 0."
   2
   (lambda (n) (and (exact-integer? n) (> n 0))))
+
+(define dos/backup-suffixes
+  (cons "~"
+	(map (lambda (type) (string-append "~." type))
+	     dos/encoding-pathname-types)))
 
 (define-variable completion-ignored-extensions
   "Completion ignores filenames ending in any string in this list."
@@ -225,11 +230,6 @@ Includes the new backup.  Must be > 0."
 	   (and (> version 0)
 		(cons (substring filename root-start root-end)
 		      version))))))
-
-(define dos/backup-suffixes
-  (cons "~"
-	(map (lambda (type) (string-append "~." type))
-	     dos/encoding-pathname-types)))
 
 (define (os/auto-save-filename? filename)
   (or (re-match-string-forward (re-compile-pattern "^#.+#$" #f)
