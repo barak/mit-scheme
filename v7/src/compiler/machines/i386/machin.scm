@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.12 1992/02/28 20:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/machin.scm,v 1.13 1992/08/17 16:35:58 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/machin.scm,v 4.26 1991/10/25 06:49:34 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -171,12 +171,12 @@ MIT in each case. |#
 	 (error "illegal machine register" register))))
 
 (define-integrable register-block/memtop-offset 0)
-(define-integrable register-block/stack-guard-offset 1)
 (define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
-(define-integrable register-block/utility-arg4-offset 9) ; closure free
 (define-integrable register-block/lexpr-primitive-arity-offset 7)
+(define-integrable register-block/utility-arg4-offset 9) ; closure free
+(define-integrable register-block/stack-guard-offset 11)
 
 (define-integrable (fits-in-signed-byte? value)
   (and (>= value -128) (< value 128)))
