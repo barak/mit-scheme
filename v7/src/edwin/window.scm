@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: window.scm,v 1.156 1996/05/14 01:24:18 cph Exp $
+;;;	$Id: window.scm,v 1.157 1996/05/14 01:44:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -211,7 +211,8 @@
   (update-inferiors! (window-inferiors window) screen x-start y-start
 		     xl xu yl yu display-style
     (lambda (window screen x-start y-start xl xu yl yu display-style)
-      (and (or display-style (not ((editor-halt-update? current-editor))))
+      (and (or (display-style/ignore-input? display-style)
+	       (not ((editor-halt-update? current-editor))))
 	   (=> window :update-display! screen x-start y-start xl xu yl yu
 	       display-style)))))
 
@@ -226,7 +227,8 @@
 
 (define (update-inferior! inferior screen x-start y-start xl xu yl yu
 			  display-style updater)
-  (or (not (or display-style (inferior-needs-redisplay? inferior)))
+  (or (not (or (display-style/ignore-redisplay-flags? display-style)
+	       (inferior-needs-redisplay? inferior)))
       (let ((window (inferior-window inferior))
 	    (xi (inferior-x-start inferior))
 	    (yi (inferior-y-start inferior)))
@@ -259,6 +261,25 @@
 
 (define (salvage-inferiors! window)
   (for-each-inferior-window window (lambda (window) (=> window :salvage!))))
+
+(define (display-style/discard-screen-contents? display-style)
+  (if (pair? display-style)
+      (memq 'DISCARD-SCREEN-CONTENTS display-style)
+      display-style))
+
+(define (display-style/screen-output? display-style)
+  (or (not (pair? display-style))
+      (memq 'SCREEN-OUTPUT display-style)))
+
+(define (display-style/ignore-redisplay-flags? display-style)
+  (if (pair? display-style)
+      (memq 'IGNORE-REDISPLAY-FLAGS display-style)
+      display-style))
+
+(define (display-style/ignore-input? display-style)
+  (if (pair? display-style)
+      (memq 'IGNORE-INPUT display-style)
+      display-style))
 
 ;;;; Standard Methods
 ;;;  All windows support these operations

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.195 1996/05/12 02:19:09 cph Exp $
+$Id: edwin.pkg,v 1.196 1996/05/14 01:43:50 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -299,6 +299,10 @@ MIT in each case. |#
 	 "edtfrm")
   (parent (edwin))
   (export (edwin)
+	  display-style/discard-screen-contents?
+	  display-style/ignore-input?
+	  display-style/ignore-redisplay-flags?
+	  display-style/screen-output?
 	  edwin-variable$cursor-centering-point
 	  edwin-variable$mode-line-inverse-video
 	  edwin-variable$scroll-step

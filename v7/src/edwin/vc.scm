@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.22 1996/04/24 02:38:08 cph Exp $
+;;;	$Id: vc.scm,v 1.23 1996/05/14 01:44:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -1347,7 +1347,7 @@ the value of vc-log-mode-hook."
 	(point-context (vc-mark-context (buffer-point buffer)))
 	(mark-context (vc-mark-context (buffer-mark buffer))))
     (revert-buffer buffer #t dont-confirm?)
-    (update-screens! 'NO-OUTPUT)
+    (update-screens! '(IGNORE-INPUT))
     (if (null? point-contexts)
 	(let ((m (vc-find-context buffer point-context)))
 	  (if m

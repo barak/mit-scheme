@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edtfrm.scm,v 1.88 1995/01/06 01:02:39 cph Exp $
+;;;	$Id: edtfrm.scm,v 1.89 1996/05/14 01:44:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -88,9 +88,8 @@
 	((eq? window start))
       (notice-window-changes! window)))
   (with-instance-variables editor-frame window (display-style)
-    (if (and (not display-style)
-	     (not (car redisplay-flags)))
-	true
+    (or (not (or (display-style/ignore-redisplay-flags? display-style)
+		 (car redisplay-flags)))
 	(let ((finished?
 	       (window-update-display! window screen 0 0 0 x-size 0 y-size
 				       display-style)))

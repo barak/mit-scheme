@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: screen.scm,v 1.107 1996/03/06 07:04:10 cph Exp $
+;;;	$Id: screen.scm,v 1.108 1996/05/14 01:44:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -172,7 +172,7 @@
   (eq? 'DELETED (screen-visibility screen)))
 
 (define (update-screen! screen display-style)
-  (if (and display-style (not (eq? 'NO-OUTPUT display-style)))
+  (if (display-style/discard-screen-contents? display-style)
       (screen-force-update screen))
   (let ((finished?
 	 (with-screen-in-update screen display-style
@@ -651,7 +651,8 @@
 		 (and (thunk)
 		      (if (screen-visible? screen)
 			  (and (or (not (screen-needs-update? screen))
-				   (and (not (eq? 'NO-OUTPUT display-style))
+				   (and (display-style/screen-output?
+					 display-style)
 					(screen-update screen display-style)))
 			       (begin
 				 (screen-update-cursor screen)
