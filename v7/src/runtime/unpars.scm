@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.29 1992/12/07 19:07:00 cph Exp $
+$Id: unpars.scm,v 14.30 1993/03/07 20:56:23 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,6 +41,8 @@ MIT in each case. |#
   (set! string-delimiters
 	(char-set-union char-set:not-graphic (char-set #\" #\\)))
   (set! hook/interned-symbol unparse-symbol)
+  (set! hook/unparse-record false)
+  (set! hook/procedure-unparser false)
   (set! *unparser-radix* 10)
   (set! *unparser-list-breadth-limit* false)
   (set! *unparser-list-depth-limit* false)
@@ -435,10 +437,17 @@ MIT in each case. |#
   (vector-ref vector index))
 
 (define (unparse/record record)
-  (let ((method (%record-unparser-method record)))
-    (if method
-	(invoke-user-method method record)
-	(unparse/default record))))
+  (if (record? record)
+      (let ((type (record-type-descriptor record)))
+	(let ((method
+	       (or (record-type-unparser-method type)
+		   hook/unparse-record)))
+	  (if method
+	      (invoke-user-method method record)
+	      (*unparse-with-brackets (record-type-name type) record #f))))
+      (unparse/default record)))
+
+(define hook/unparse-record)
 
 (define (unparse/pair pair)
   (let ((prefix (unparse-list/prefix-pair? pair)))
@@ -520,61 +529,80 @@ MIT in each case. |#
 
 ;;;; Procedures and Environments
 
+(define hook/procedure-unparser)
+
+(define (unparse-procedure procedure usual-method)
+  (let ((method
+	 (and hook/procedure-unparser
+	      (hook/procedure-unparser procedure))))
+    (if method
+	(invoke-user-method method procedure)
+	(usual-method))))
+
 (define (unparse/compound-procedure procedure)
-  (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure
-    (lambda-components* (procedure-lambda procedure)
-      (lambda (name required optional rest body)
-	required optional rest body
+  (unparse-procedure procedure
+    (lambda ()
+      (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure
 	(and *unparse-compound-procedure-names?*
-	     (not (eq? name lambda-tag:unnamed))
-	     (lambda () (*unparse-object name)))))))
+	     (lambda-components* (procedure-lambda procedure)
+	       (lambda (name required optional rest body)
+		 required optional rest body
+		 (and (not (eq? name lambda-tag:unnamed))
+		      (lambda () (*unparse-object name))))))))))
 
 (define (unparse/primitive-procedure procedure)
-  (let ((unparse-name
-	 (lambda ()
-	   (*unparse-object (primitive-procedure-name procedure)))))
-    (cond (*unparse-primitives-by-name?*
-	   (unparse-name))
-	  (*unparse-with-maximum-readability?*
-	   (*unparse-readable-hash procedure))
-	  (else
-	   (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false unparse-name)))))
+  (unparse-procedure procedure
+    (lambda ()
+      (let ((unparse-name
+	     (lambda ()
+	       (*unparse-object (primitive-procedure-name procedure)))))
+	(cond (*unparse-primitives-by-name?*
+	       (unparse-name))
+	      (*unparse-with-maximum-readability?*
+	       (*unparse-readable-hash procedure))
+	      (else
+	       (*unparse-with-brackets 'PRIMITIVE-PROCEDURE false
+		 unparse-name)))))))
 
 (define (unparse/compiled-entry entry)
   (let* ((type (compiled-entry-type entry))
+	 (procedure? (eq? type 'COMPILED-PROCEDURE))
 	 (closure?
-	  (and (eq? type 'COMPILED-PROCEDURE)
+	  (and procedure?
 	       (compiled-code-block/manifest-closure?
-		(compiled-code-address->block entry)))))
-    (*unparse-with-brackets
-     (if closure? 'COMPILED-CLOSURE type)
-     entry
-     (lambda ()
-       (let ((name
-	      (and (eq? type 'COMPILED-PROCEDURE)
-		   (compiled-procedure/name entry))))
-	 (with-values (lambda () (compiled-entry/filename entry))
-	   (lambda (filename block-number)
-	     (*unparse-char #\()
-	     (if name
-		 (*unparse-string name))
-	     (if filename
-		 (begin
-		   (if name
-		       (*unparse-char #\Space))
-		   (*unparse-object (pathname-name filename))
-		   (if block-number
-		       (begin
-			 (*unparse-char #\Space)
-			 (*unparse-hex block-number)))))
-	     (*unparse-char #\)))))
-       (*unparse-char #\Space)
-       (*unparse-hex (compiled-entry/offset entry))
-       (*unparse-char #\Space)
-       (if closure?
-	   (begin (*unparse-datum (compiled-closure->entry entry))
-		  (*unparse-char #\Space)))
-       (*unparse-datum entry)))))
+		(compiled-code-address->block entry))))
+	 (usual-method
+	  (lambda ()
+	    (*unparse-with-brackets (if closure? 'COMPILED-CLOSURE type)
+				    entry
+	      (lambda ()
+		(let ((name (and procedure? (compiled-procedure/name entry))))
+		  (with-values (lambda () (compiled-entry/filename entry))
+		    (lambda (filename block-number)
+		      (*unparse-char #\()
+		      (if name
+			  (*unparse-string name))
+		      (if filename
+			  (begin
+			    (if name
+				(*unparse-char #\Space))
+			    (*unparse-object (pathname-name filename))
+			    (if block-number
+				(begin
+				  (*unparse-char #\Space)
+				  (*unparse-hex block-number)))))
+		      (*unparse-char #\)))))
+		(*unparse-char #\Space)
+		(*unparse-hex (compiled-entry/offset entry))
+		(if closure?
+		    (begin
+		      (*unparse-char #\Space)
+		      (*unparse-datum (compiled-closure->entry entry))))
+		(*unparse-char #\Space)
+		(*unparse-datum entry))))))
+    (if procedure?
+	(unparse-procedure entry usual-method)
+	(usual-method))))
 
 ;;;; Miscellaneous
 

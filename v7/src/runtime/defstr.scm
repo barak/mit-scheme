@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.22 1992/12/28 21:56:38 cph Exp $
+$Id: defstr.scm,v 14.23 1993/03/07 20:56:20 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -129,7 +129,7 @@ differences:
 	(keyword-constructors '())
 	(copier-name false)
 	(predicate-name (symbol-append name '?))
-	(print-procedure `(,(absolute 'UNPARSER/STANDARD-METHOD) ',name))
+	(print-procedure default)
 	(type 'RECORD)
 	(type-name name)
 	(tag-expression)
@@ -279,7 +279,7 @@ differences:
 			  (cdr option-seen))))))
 	      (if predicate-name
 		  (check (assq 'PREDICATE options-seen)))
-	      (if print-procedure
+	      (if (and (not (eq? print-procedure default)) print-procedure)
 		  (check (assq 'PRINT-PROCEDURE options-seen)))))
 	(make-structure name
 			conc-name
@@ -293,13 +293,23 @@ differences:
 			       '()))
 			copier-name
 			(and named? predicate-name)
-			(and named? print-procedure)
+			(and named?
+			     (cond ((not (eq? print-procedure default))
+				    print-procedure)
+				   ((eq? type 'RECORD)
+				    false)
+				   (else
+				    `(,(absolute 'UNPARSER/STANDARD-METHOD)
+				      ',name))))
 			type
 			named?
 			(and named? type-name)
 			(and named? tag-expression)
 			offset
 			slots)))))
+
+(define default
+  (list 'DEFAULT))
 
 ;;;; Parse Slot-Descriptions
 

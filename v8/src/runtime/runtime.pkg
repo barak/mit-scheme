@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.174 1993/01/29 16:42:08 cph Exp $
+$Id: runtime.pkg,v 14.175 1993/03/07 20:56:22 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1712,7 +1712,6 @@ MIT in each case. |#
 	  %record-ref
 	  %record-set!
 	  %record-type-has-application-method!
-	  %record-unparser-method
 	  %record?
 	  make-record-type
 	  record-accessor
@@ -1724,12 +1723,14 @@ MIT in each case. |#
 	  record-type-application-method
 	  record-type-descriptor
 	  record-type-field-names
+	  record-type-method
 	  record-type-name
 	  record-type-unparser-method
 	  record-type?
 	  record-updater
 	  record?
 	  set-record-type-application-method!
+	  set-record-type-method!
 	  set-record-type-unparser-method!)
   (initialization (initialize-package!)))
 

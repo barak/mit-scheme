@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.19 1992/12/17 00:05:34 cph Exp $
+$Id: record.scm,v 1.20 1993/03/07 20:56:21 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -48,6 +48,30 @@ MIT in each case. |#
   (primitive-object-ref 2)
   (primitive-object-set! 3)
   (primitive-object-set-type 2))
+
+(define record-type-type)
+(define record-type-population)
+(define record-type-initialization-hook)
+
+(define (initialize-package!)
+  (set! record-type-type
+	(let ((record-type-type
+	       (%record false
+			false
+			"record-type"
+			'(RECORD-TYPE-APPLICATION-METHOD
+			  RECORD-TYPE-NAME
+			  RECORD-TYPE-FIELD-NAMES
+			  RECORD-TYPE-METHODS
+			  RECORD-TYPE-CLASS-WRAPPER)
+			'()
+			false)))
+	  (%record-set! record-type-type 0 record-type-type)
+	  (%record-type-has-application-method! record-type-type)
+	  record-type-type))
+  (set! record-type-population (make-population))
+  (set! record-type-initialization-hook false)
+  (add-to-population! record-type-population record-type-type))
 
 (define-integrable (%record? object)
   (object-type? (ucode-type record) object))
@@ -97,8 +121,12 @@ MIT in each case. |#
 		  false
 		  (->string type-name)
 		  (list-copy field-names)
+		  false
 		  false)))
     (%record-type-has-application-method! record-type)
+    (add-to-population! record-type-population record-type)
+    (if record-type-initialization-hook
+	(record-type-initialization-hook record-type))
     record-type))
 
 (define (record-type? object)
@@ -131,36 +159,31 @@ MIT in each case. |#
   (%record-ref record-type 3))
 
 (define (record-type-unparser-method record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-UNPARSER-METHOD)
-  (%record-type/unparser-method record-type))
-
-(define-integrable (%record-type/unparser-method record-type)
-  (%record-ref record-type 4))
+  (record-type-method record-type 'UNPARSER))
 
 (define (set-record-type-unparser-method! record-type method)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
   (if (not (or (not method) (procedure? method)))
       (error:wrong-type-argument method "unparser method"
 				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
-  (%record-set! record-type 4 method))
+  (set-record-type-method! record-type 'UNPARSER method))
 
-(define record-type-type)
+(define (record-type-method record-type keyword)
+  (guarantee-record-type record-type 'RECORD-TYPE-METHOD)
+  (let ((entry (assq keyword (%record-ref record-type 4))))
+    (and entry
+	 (cdr entry))))
 
-(define (initialize-package!)
-  (set! record-type-type
-	(let ((record-type-type
-	       (%record false
-			false
-			"record-type"
-			'(RECORD-TYPE-APPLICATION-METHOD
-			  RECORD-TYPE-NAME
-			  RECORD-TYPE-FIELD-NAMES
-			  RECORD-TYPE-UNPARSER-METHOD)
-			false)))
-	  (%record-set! record-type-type 0 record-type-type)
-	  (%record-type-has-application-method! record-type-type)
-	  record-type-type))
-  unspecific)
+(define (set-record-type-method! record-type keyword method)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-METHOD!)
+  (let ((methods (%record-ref record-type 4)))
+    (let ((entry (assq keyword methods)))
+      (if method
+	  (if entry
+	      (set-cdr! entry method)
+	      (%record-set! record-type 4
+			    (cons (cons keyword method) methods)))
+	  (if entry
+	      (%record-set! record-type 4 (delq! entry methods)))))))
 
 (define (record-type-field-index record-type field-name procedure-name)
   (let loop ((field-names (%record-type/field-names record-type)) (index 1))
@@ -209,18 +232,14 @@ MIT in each case. |#
   (guarantee-record record 'RECORD-COPY)
   (%record-copy record))
 
-(define (%record-unparser-method record)
-  ;; Used by unparser.  Assumes RECORD has type-code RECORD.
-  (let ((type (%record-ref record 0)))
-    (and (record-type? type)
-	 (or (%record-type/unparser-method type)
-	     (unparser/standard-method (record-type-name type))))))
-
 (define (record-description record)
   (let ((type (record-type-descriptor record)))
-    (map (lambda (field-name)
-	   `(,field-name ,((record-accessor type field-name) record)))
-	 (record-type-field-names type))))
+    (let ((method (record-type-method type 'DESCRIPTION)))
+      (if method
+	  (method record)
+	  (map (lambda (field-name)
+		 `(,field-name ,((record-accessor type field-name) record)))
+	       (record-type-field-names type))))))
 
 (define (record-predicate record-type)
   (guarantee-record-type record-type 'RECORD-PREDICATE)

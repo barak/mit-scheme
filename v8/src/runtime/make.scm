@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.44 1993/03/01 17:40:20 gjr Exp $
+$Id: make.scm,v 14.45 1993/03/07 20:56:21 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -337,10 +337,10 @@ MIT in each case. |#
 	 ("list" . (RUNTIME LIST))
 	 ("symbol" . ())
 	 ("uproc" . (RUNTIME PROCEDURE))
+	 ("poplat" . (RUNTIME POPULATION))
 	 ("record" . (RUNTIME RECORD))))
       (files2
        '(("defstr" . (RUNTIME DEFSTRUCT))
-	 ("poplat" . (RUNTIME POPULATION))
 	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))))
@@ -357,10 +357,10 @@ MIT in each case. |#
 		      'CONSTANT-SPACE/BASE
 		      constant-space/base)
   (package-initialize '(RUNTIME LIST) 'INITIALIZE-PACKAGE! true)
+  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(PACKAGE) 'FINALIZE-PACKAGE-RECORD-TYPE! true)
   (load-files files2)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! true)
   (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! true)
