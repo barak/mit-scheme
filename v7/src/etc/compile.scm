@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.3 2001/10/05 19:13:30 cph Exp $
+$Id: compile.scm,v 1.4 2002/03/02 04:21:44 cph Exp $
 
-Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+Copyright (c) 2000-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "imail" "star-parser" "xml"))
+	    '("sos" "star-parser" "imail" "xml"))
   (with-working-directory-pathname "runtime-check"
     (lambda ()
       (load "runtime.cbf"))))
