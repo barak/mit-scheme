@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: rmail.scm,v 1.66 2000/01/27 15:38:52 cph Exp $
+;;; $Id: rmail.scm,v 1.67 2000/03/22 17:36:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1576,7 +1576,7 @@ buffer visiting that file."
 	       (fetch-first-field "from" start (header-end start end)))
 	      "unknown")
 	  " "
-	  (universal-time->unix-ctime (get-universal-time))
+	  (universal-time->ctime-string (get-universal-time))
 	  "\n")
 	 start)))
     (define-variable-local-value! buffer
@@ -1601,25 +1601,6 @@ buffer visiting that file."
        (let ((addresses (rfc822-strip-quoted-names field)))
 	 (and (not (null? addresses))
 	      (car addresses)))))
-
-(define (universal-time->unix-ctime time)
-  (decoded-time->unix-ctime (universal-time->local-decoded-time time)))
-
-(define (decoded-time->unix-ctime dt)
-  (string-append
-   (day-of-week/short-string (decoded-time/day-of-week dt))
-   " "
-   (month/short-string (decoded-time/month dt))
-   " "
-   (string-pad-left (number->string (decoded-time/day dt)) 2)
-   " "
-   (string-pad-left (number->string (decoded-time/hour dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/minute dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/second dt)) 2 #\0)
-   " "
-   (number->string (decoded-time/year dt))))
 
 ;;;; Editing
 
