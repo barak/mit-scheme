@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.192 1989/08/12 08:31:48 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.193 1990/06/20 23:01:51 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -64,14 +64,21 @@
 		       (dynamic-wind
 			(lambda () (update-screens! true))
 			(lambda ()
-			  (let ((message (cmdl-message/null)))
-			    (push-cmdl (lambda (cmdl)
-					 cmdl ;ignore
-					 (top-level-command-reader
-					  edwin-initialization)
-					 message)
-				       false
-				       message)))
+			  (let ((cmdl (nearest-cmdl))
+				(message (cmdl-message/null)))
+			    (let ((input-port (cmdl/input-port cmdl)))
+			      (input-port/immediate-mode input-port
+				(lambda ()
+				  (make-cmdl cmdl
+					     input-port
+					     (cmdl/output-port cmdl)
+					     (lambda (cmdl)
+					       cmdl ;ignore
+					       (top-level-command-reader
+						edwin-initialization)
+					       message)
+					     false
+					     message))))))
 			(lambda () unspecific)))))))))))))
   (if edwin-finalization (edwin-finalization))
   unspecific)

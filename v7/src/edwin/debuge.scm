@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.38 1989/08/11 11:50:23 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debuge.scm,v 1.39 1990/06/20 23:02:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -62,7 +62,9 @@
 			   (begin
 			     (newline)
 			     (write-string "Filename: ")
-			     (->pathname (read)))))
+			     (->pathname
+			      (input-port/normal-mode (current-input-port)
+						      read)))))
 		     ((integer? (pathname-version pathname))
 		      (pathname-new-version pathname 'NEWEST))
 		     (else
