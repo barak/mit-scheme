@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.36 1991/05/05 00:41:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.37 1991/07/12 23:15:43 cph Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -2802,6 +2802,15 @@ DEFUN (compiler_initialize,
     /* Delay until after band-load, when compiler_reset will be invoked. */
     compiler_utilities = SHARP_F;
     return_to_interpreter = SHARP_F;
+#ifdef sonyrisc
+    /* On the Sony NEWS 3250, this procedure initializes the
+       floating-point CPU control register to enable the IEEE traps.
+       This is normally executed by `compiler_reset' from LOAD-BAND,
+       but the Sony operating system saves the control register in
+       `setjmp' and restores it on `longjmp', so we must initialize
+       the register before `setjmp' is called.  */
+    interface_initialize ();
+#endif
   }
   return;
 }

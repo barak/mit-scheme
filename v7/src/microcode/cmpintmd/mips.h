@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.8 1991/06/15 00:40:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mips.h,v 1.9 1991/07/12 23:15:20 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -430,6 +430,8 @@ do {									\
   (*opcode_addr) = (ADDI_OPCODE << 2);					\
 }
 
+extern void EXFUN (interface_initialize, (void));
+
 /* This flushes the Scheme portion of the I-cache.
    It is used after a GC or disk-restore.
    It's needed because the GC has moved code around, and closures
@@ -460,6 +462,13 @@ do {									\
 {									\
   ICACHEFLUSH ((address), ((sizeof (long)) * (nwords)));		\
 } while (0)
+
+
+#ifdef IN_CMPINT_C
+
+#define ASM_RESET_HOOK interface_initialize
+
+#endif /* IN_CMPINT_C */
 
 /* Derived parameters and macros.
 

@@ -1,9 +1,9 @@
 /* #define DEBUG_INTERFACE */
  ### -*-Midas-*-
  ###
- ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.3 1990/08/14 18:22:54 cph Rel $
+ ###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mips.m4,v 1.4 1991/07/12 23:14:52 cph Exp $
  ###
- ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+ ###	Copyright (c) 1989-91 Massachusetts Institute of Technology
  ###
  ###	This material was developed by the Scheme project at the
  ###	Massachusetts Institute of Technology, Department of
@@ -334,6 +334,18 @@ Bad_Free_Pointer:
 	j	Continue_Past_Free_Problem
 	addi	$0,$0,0
 #endif
+
+	.globl	interface_initialize
+	.ent	interface_initialize
+interface_initialize:
+	.frame	$sp,0,$31
+	cfc1	$25,$31		# read FPU control register
+	nop
+	ori	$25,$25,0xf00	# enable V, Z, O, U traps
+	ctc1	$25,$31		# write FPU control register
+	j	$31		# return
+	nop
+	.end	interface_initialize
 
 	.globl	generate_closure
 	.ent	generate_closure
