@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.25 1987/06/05 04:11:11 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.26 1987/07/01 17:55:37 jinx Rel $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -41,11 +41,37 @@ MIT in each case. */
 
 static Pointer *Memory_Base;
 
-extern int fread();
+long
+Load_Data(Count, To_Where)
+     long Count;
+     FILE *To_Where;
+{
+  extern int fread();
 
-#define Load_Data(Count,To_Where) \
-  fread(To_Where, sizeof(Pointer), Count, stdin)
+  return (fread(To_Where, sizeof(Pointer), Count, stdin));
+}
 
+long
+Write_Data()
+{
+  fprintf(stderr, "Write_Data called\n");
+  exit(1);
+}
+
+Boolean
+Open_Dump_File()
+{
+  fprintf(stderr, "Open_Dump_File called\n");
+  exit(1);
+}
+
+Boolean
+Close_Dump_File()
+{
+  fprintf(stderr, "Close_Dump_File called\n");
+  exit(1);
+}
+
 #define Reloc_or_Load_Debug true
 
 #include "load.c"
@@ -118,8 +144,9 @@ long From;
   return;
 }
 
+void
 Display(Location, Type, The_Datum)
-long Location, Type, The_Datum;
+     long Location, Type, The_Datum;
 {
   long Points_To;
 
@@ -128,7 +155,8 @@ long Location, Type, The_Datum;
     Points_To = Relocate((Pointer *) The_Datum);
   else
     Points_To = The_Datum;
-  if (Type > MAX_SAFE_TYPE) printf("*");
+  if (Type > MAX_SAFE_TYPE)
+    printf("*");
   switch (Type & SAFE_TYPE_MASK)
   { /* "Strange" cases */
     case TC_NULL: if (The_Datum == 0)
@@ -217,7 +245,8 @@ long Location, Type, The_Datum;
     case TC_STACK_ENVIRONMENT: printf("[STACK-ENVIRONMENT "); break;
     case TC_COMPLEX: printf("[COMPLEX "); break;
     case TC_QUAD: printf("[QUAD "); break;
-    default: printf("[02x%x ", Type); break;
+
+    default: printf("[0x%02x ", Type); break;
   }
   printf("%x]\n", Points_To);
 }
@@ -248,6 +277,11 @@ char **argv;
 	   Heap_Base, Const_Base, Heap_Count);
   }    
   Data = ((Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count)));
+  if (Data == NULL)
+  {
+    fprintf(stderr, "Allocation of %d words failed.\n", (Heap_Count + Const_Count));
+    exit(1);
+  }
   end_of_memory = &Data[Heap_Count + Const_Count];
   total_length = Load_Data(Heap_Count + Const_Count, Data);
   if (total_length != (Heap_Count + Const_Count))
