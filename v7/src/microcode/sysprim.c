@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.22 1987/04/16 12:21:36 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.23 1987/10/08 17:04:49 jinx Exp $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -154,7 +154,6 @@ Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
   extern Boolean Restartable_Exit();
   Primitive_0_Args();
 
-  Restartable_Exit();
   return ((Restartable_Exit() ? TRUTH : NIL));
 }
 
