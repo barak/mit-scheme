@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.50 1993/04/27 09:57:21 cph Exp $
+$Id: x11base.c,v 1.51 1993/08/17 21:25:39 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -659,6 +659,18 @@ DEFUN (x_decode_window_map_arg,
 	((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
       (*map_p) = 1;
     }
+  else if ((VECTOR_P (map_arg))
+	   && ((VECTOR_LENGTH (map_arg)) == 3)
+	   && (BOOLEAN_P (VECTOR_REF (map_arg, 0)))
+	   && (STRING_P (VECTOR_REF (map_arg, 1)))
+	   && (STRING_P (VECTOR_REF (map_arg, 2))))
+    {
+      (*resource_name) =
+	((CONST char *) (STRING_LOC ((VECTOR_REF (map_arg, 1)), 0)));
+      (*resource_class) =
+	((CONST char *) (STRING_LOC ((VECTOR_REF (map_arg, 2)), 0)));
+      (*map_p) = (OBJECT_TO_BOOLEAN (VECTOR_REF (map_arg, 0)));
+    }
 }
 
 void
@@ -683,7 +695,7 @@ DEFUN (xw_process_event, (xw, event),
        struct xwindow * xw AND
        XEvent * event)
 {
-  if (x_debug)
+  if (x_debug > 0)
     {
       char * type_name;
       fprintf (stderr, "\nX event: ");
@@ -797,6 +809,7 @@ enum event_type
 #define EVENT_1 3
 #define EVENT_2 4
 #define EVENT_3 5
+#define EVENT_4 6
 
 #define EVENT_INTEGER(event, slot, number)				\
   VECTOR_SET ((event), (slot), (long_to_integer (number)))
@@ -976,23 +989,25 @@ DEFUN (x_event_to_object, (event), XEvent * event)
     case Expose:
       if (EVENT_ENABLED (xw, event_type_expose))
 	{
-	  result = (make_event_object (xw, event_type_expose, 4));
+	  result = (make_event_object (xw, event_type_expose, 5));
 	  EVENT_INTEGER (result, EVENT_0, ((event -> xexpose) . x));
 	  EVENT_INTEGER (result, EVENT_1, ((event -> xexpose) . y));
 	  EVENT_INTEGER (result, EVENT_2, ((event -> xexpose) . width));
 	  EVENT_INTEGER (result, EVENT_3, ((event -> xexpose) . height));
+	  VECTOR_SET (result, EVENT_4, (LONG_TO_UNSIGNED_FIXNUM (0)));
 	}
       break;
     case GraphicsExpose:
       if (EVENT_ENABLED (xw, event_type_expose))
 	{
-	  result = (make_event_object (xw, event_type_expose, 4));
+	  result = (make_event_object (xw, event_type_expose, 5));
 	  EVENT_INTEGER (result, EVENT_0, ((event -> xgraphicsexpose) . x));
 	  EVENT_INTEGER (result, EVENT_1, ((event -> xgraphicsexpose) . y));
 	  EVENT_INTEGER (result, EVENT_2,
 			 ((event -> xgraphicsexpose) . width));
 	  EVENT_INTEGER (result, EVENT_3,
 			 ((event -> xgraphicsexpose) . height));
+	  VECTOR_SET (result, EVENT_4, (LONG_TO_UNSIGNED_FIXNUM (1)));
 	}
       break;
     case ClientMessage:
@@ -1132,7 +1147,7 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
   SCHEME_OBJECT result;
-  if (x_debug)
+  if (x_debug > 1)
     {
       fprintf (stderr, "Enter xd_process_events (%s)\n",
 	       (non_block_p ? "non-blocking" : "blocking"));
@@ -1203,7 +1218,7 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 	goto done;
     }
  done:
-  if (x_debug)
+  if (x_debug > 1)
     {
       fprintf (stderr, "Return from xd_process_events: ");
       if (result == SHARP_F)
@@ -1235,7 +1250,15 @@ DEFUN_VOID (initialize_once)
 DEFINE_PRIMITIVE ("X-DEBUG", Prim_x_debug, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  x_debug = (BOOLEAN_ARG (1));
+  {
+    SCHEME_OBJECT object = (ARG_REF (1));
+    if (object == SHARP_F)
+      x_debug = 0;
+    else if (UNSIGNED_FIXNUM_P (object))
+      x_debug = (UNSIGNED_FIXNUM_TO_LONG (object));
+    else
+      x_debug = 1;
+  }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -1405,6 +1428,13 @@ DEFINE_PRIMITIVE ("X-DISPLAY-FLUSH", Prim_x_display_flush, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   XFlush (XD_DISPLAY (x_display_arg (1)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  XFlush (XW_DISPLAY (x_window_arg (1)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
