@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.236 1994/11/14 00:12:23 cph Exp $
+$Id: runtime.pkg,v 14.237 1994/11/20 08:45:11 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1626,6 +1626,9 @@ MIT in each case. |#
 	  channel-close
 	  channel-closed?
 	  channel-descriptor-for-select
+	  channel-file-length
+	  channel-file-position
+	  channel-file-set-position
 	  channel-nonblocking
 	  channel-open?
 	  channel-port
@@ -1648,13 +1651,10 @@ MIT in each case. |#
 	  directory-channel-read
 	  directory-channel-read-matching
 	  directory-channel?
-	  file-length
 	  file-open-append-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
-	  file-position
-	  file-set-position
 	  make-pipe
 	  open-pty-master
 	  pty-master-continue
