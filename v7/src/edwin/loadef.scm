@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.30 1997/03/07 23:34:51 cph Exp $
+;;;	$Id: loadef.scm,v 1.31 1997/04/11 04:44:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -136,6 +136,10 @@ commands to save keystrokes.")
 
 (define-autoload-command 'manual-entry 'MANUAL
   "Display UNIX man page.")
+
+(define-autoload-command 'clean-manual-entry 'MANUAL
+  "Clean the unix manual entry in the current buffer.
+The current buffer should contain a formatted manual entry.")
 
 (define-variable manual-entry-reuse-buffer?
   "If true, MANUAL-ENTRY uses buffer *Manual-Entry* for all entries.

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: manual.scm,v 1.13 1997/03/04 06:43:19 cph Exp $
+;;;	$Id: manual.scm,v 1.14 1997/04/11 04:43:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -97,6 +97,12 @@ where SECTION is the desired section of the manual, as in `tty(4)'."
 	(set-buffer-point! buffer (buffer-start buffer))
 	(pop-up-buffer buffer false)
 	(message "Manual page ready")))))
+
+(define-command clean-manual-entry
+  "Clean the unix manual entry in the current buffer.
+The current buffer should contain a formatted manual entry."
+  ()
+  (lambda () (nuke-nroff-bs (current-buffer))))
 
 (define (nuke-nroff-bs buffer)
   (nuke-underlining buffer)
