@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-browser.scm,v 1.7 2001/06/04 17:40:15 cph Exp $
+;;; $Id: imail-browser.scm,v 1.8 2001/06/04 19:26:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -20,18 +20,6 @@
 ;;; 02111-1307, USA.
 
 ;;;; IMAIL mail reader: folder browser
-
-#|
-
-To do:
-
-* Change revert command to preserve the position of point as well as
-  possible.
-
-* Change revert command to preserve which folders are expanded and
-  collapsed.
-
-|#
 
 (declare (usual-integrations))
 
@@ -64,8 +52,11 @@ To do:
 	 (browser-line-info-url info))))
 
 (define (rebuild-imail-browser-buffer buffer)
-  (let ((container (selected-container #t buffer)))
-    (buffer-widen! buffer)
+  (buffer-widen! buffer)
+  (let ((container (selected-container #t buffer))
+	(url (selected-url #f (buffer-point buffer)))
+	(marks (all-marked-urls buffer))
+	(expanded (all-expanded-containers buffer)))
     (with-read-only-defeated (buffer-start buffer)
       (lambda ()
 	(region-delete! (buffer-region buffer))
@@ -76,11 +67,20 @@ To do:
 	    (insert-newline mark)
 	    (insert-chars #\- (string-length title) mark)
 	    (insert-newline mark))
-	  (insert-browser-lines container-url container-url mark))))
+	  (let ((point (mark-right-inserting-copy mark)))
+	    (insert-browser-lines container-url container-url mark)
+	    (set-buffer-point! buffer point)
+	    (mark-temporary! point)))))
     (set-buffer-major-mode! buffer (ref-mode-object imail-browser))
     (buffer-not-modified! buffer)
     (set-buffer-read-only! buffer)
-    (set-buffer-point! buffer (buffer-start buffer))))
+    (set-all-expanded-containers! buffer expanded)
+    (set-all-marked-urls! buffer marks)
+    (if url
+	(call-with-values (lambda () (find-browser-line-for url buffer))
+	  (lambda (mark match?)
+	    match?
+	    (set-buffer-point! buffer mark))))))
 
 (define (insert-browser-lines container-1 container-2 mark)
   (for-each (lambda (subfolder-url)
@@ -327,6 +327,7 @@ Type \\[imail-browser-revert] to read the container again.  This discards all de
 (define-key 'imail-browser #\x 'imail-browser-do-flagged-delete)
 (define-key 'imail-browser #\^ 'imail-browser-view-container)
 
+(define-key 'imail-browser #\return 'imail-browser-view-selected-folder)
 (define-key 'imail-browser #\rubout 'imail-browser-unmark-backward)
 (define-key 'imail-browser #\M-rubout 'imail-browser-unmark-all-folders)
 
@@ -369,7 +370,7 @@ With prefix arg, prompt for the container to browse."
 	   (if resource
 	       (container-url-for-prompt resource)
 	       (editor-error "This is not an IMAIL buffer.")))))))
-
+
 (define-command imail-browser-mouse-toggle-container
   "Show the contents of the container pointed at.
 Like \\[imail-browser-toggle-container] except that the container is
@@ -385,36 +386,43 @@ indented slightly to indicate where they are contained.
 If the containers contents are currently shown, then hide them instead."
   "d"
   (lambda (mark)
-    (let ((buffer (mark-buffer mark))
-	  (info (browser-line-info #t mark)))
-      (let ((container (browser-line-info-container-url info)))
-	(if (not container)
-	    (editor-error "Not on a container line."))
-	(with-buffer-open buffer
-	  (lambda ()
-	    (if (browser-line-info-container-expanded? info)
-		(let ((start (line-start mark 1 'LIMIT)))
-		  (let loop ((end start))
-		    (if (and (not (group-end? end))
-			     (let ((url (selected-url #f end)))
-			       (and url
-				    (url-contained? url container))))
-			(loop (line-start end 1 'LIMIT))
-			(delete-string start end)))
-		  (update-container-line-marker mark #\+)
-		  (remove-browser-expanded-container! buffer container)
-		  (browser-line-info-container-collapsed! info))
-		(begin
-		  (let ((mark
-			 (mark-left-inserting-copy
-			  (line-start mark 1 'LIMIT))))
-		    (insert-browser-lines container
-					  (selected-container-url #t buffer)
-					  mark)
-		    (mark-temporary! mark))
-		  (update-container-line-marker mark #\-)
-		  (add-browser-expanded-container! buffer container)
-		  (browser-line-info-container-expanded! info)))))))))
+    (let ((info (browser-line-info #t mark)))
+      (if (not (browser-line-info-container-url info))
+	  (editor-error "Not on a container line."))
+      (if (browser-line-info-container-expanded? info)
+	  (browser-collapse-container info mark)
+	  (browser-expand-container info mark)))))
+
+(define (browser-expand-container info mark)
+  (let ((container (browser-line-info-container-url info))
+	(buffer (mark-buffer mark)))
+    (with-buffer-open buffer
+      (lambda ()
+	(let ((mark (mark-left-inserting-copy (line-start mark 1 'LIMIT))))
+	  (insert-browser-lines container
+				(selected-container-url #t buffer)
+				mark)
+	  (mark-temporary! mark))
+	(update-container-line-marker mark #\-)
+	(add-browser-expanded-container! buffer container)
+	(browser-line-info-container-expanded! info)))))
+
+(define (browser-collapse-container info mark)
+  (let ((container (browser-line-info-container-url info))
+	(buffer (mark-buffer mark)))
+    (with-buffer-open buffer
+      (lambda ()
+	(let ((start (line-start mark 1 'LIMIT)))
+	  (let loop ((end start))
+	    (if (and (not (group-end? end))
+		     (let ((url (selected-url #f end)))
+		       (and url
+			    (url-contained? url container))))
+		(loop (line-start end 1 'LIMIT))
+		(delete-string start end))))
+	(update-container-line-marker mark #\+)
+	(remove-browser-expanded-container! buffer container)
+	(browser-line-info-container-collapsed! info)))))
 
 (define-command imail-browser-revert
   "Re-read the contents of the buffer."
@@ -640,3 +648,47 @@ When renaming multiple or marked folders, you specify a container."
 	(else
 	 (values (mark-left-inserting-copy (line-start mark 0))
 		 '()))))
+
+(define (all-marked-urls buffer)
+  (let loop ((mark (buffer-start buffer)) (result '()))
+    (let ((char (extract-right-char mark)))
+      (if char
+	  (loop (line-start mark 1 'ERROR)
+		(let ((url (selected-url #f mark)))
+		  (if url
+		      (cons (cons char url) result)
+		      result)))
+	  (reverse! result)))))
+
+(define (set-all-marked-urls! buffer alist)
+  (with-buffer-open buffer
+    (lambda ()
+      (for-each (lambda (c.u)
+		  (call-with-values
+		      (lambda () (find-browser-line-for (cdr c.u) buffer))
+		    (lambda (mark match?)
+		      (if match?
+			  (replace-right-char mark (car c.u))))))
+		alist))))
+
+(define (all-expanded-containers buffer)
+  (let loop ((mark (buffer-start buffer)) (result '()))
+    (let ((result
+	   (let ((info (browser-line-info #f mark)))
+	     (if (and info (browser-line-info-container-expanded? info))
+		 (cons (browser-line-info-container-url info) result)
+		 result)))
+	  (mark (line-start mark 1 #f)))
+      (if mark
+	  (loop mark result)
+	  (sort result browser-url<?)))))
+
+(define (set-all-expanded-containers! buffer urls)
+  ;; URLS is sorted so that all containers appear before their contents.
+  (for-each
+   (lambda (url)
+     (call-with-values (lambda () (find-browser-line-for url buffer))
+       (lambda (mark match?)
+	 (if match?
+	     (browser-expand-container (browser-line-info #t mark) mark)))))
+   urls))
