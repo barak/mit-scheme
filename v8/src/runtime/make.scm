@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.40 1993/01/29 00:11:17 adams Exp $
+$Id: make.scm,v 14.41 1993/02/25 01:58:17 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,14 +37,52 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-((ucode-primitive set-interrupt-enables!) 0)
+((ucode-primitive set-interrupt-enables! 1) 0)
 
-;; This definition is replaced when the 
-;; later in the boot sequence.
+;; This must be defined as follows so that it is no part of a multi-define
+;; itself.  It must also precede any other top-level defintiions in this file
+;; that are not performed directly using LOCAL-ASSIGNMENT.
+
+((ucode-primitive local-assignment 3)
+ (the-environment)
+ 'DEFINE-MULTIPLE
+ (named-lambda (define-multiple env names values)
+   (if (or (not (vector? names))
+	   (not (vector? values))
+	   (not (= (vector-length names) (vector-length values))))
+       (error "define-multiple: Invalid arguments" names values)
+       (let ((len (vector-length names)))
+	 (do ((i 0 (1+ i)))
+	     ((>= i len) 'done)
+	   (local-assignment env
+			     (vector-ref names i)
+			     (vector-ref values i)))))))
+
+;; This definition is replaced later in the boot sequence.
+
 (define apply (ucode-primitive apply 2))
 
-(define system-global-environment (the-environment))
+;; This must go before the uses of the-environment later,
+;; and after apply above.
 
+(define (*make-environment parent names . values)
+  (apply
+   ((ucode-primitive scode-eval 2)
+    #|
+    (make-slambda (vector-ref names 0)
+		  (subvector->list names 1 (vector-length names)))
+    |#
+    ((ucode-primitive system-pair-cons 3)	; &typed-pair-cons
+     (ucode-type lambda)			; slambda-type
+     ((ucode-primitive object-set-type 2)	; (make-the-environment)
+      (ucode-type the-environment)
+      0)
+     names)
+    parent)
+   values))
+
+(define system-global-environment (the-environment))
+
 (let ((environment-for-package (let () (the-environment))))
 
 (define-primitives
@@ -136,16 +174,44 @@ MIT in each case. |#
 (define fasload-purification-queue
   '())
 
+(define (remember-to-purify purify? filename value)
+  (if purify?
+      (set! fasload-purification-queue
+	    (cons (cons filename value)
+		  fasload-purification-queue)))
+  value)
+
 (define (fasload filename purify?)
   (tty-write-char newline-char)
   (tty-write-string filename)
   (let ((value (binary-fasload filename)))
     (tty-write-string " loaded")
-    (if purify?
-	(set! fasload-purification-queue
-	      (cons (cons filename value)
-		    fasload-purification-queue)))
-    value))
+    (remember-to-purify purify? filename value)))
+
+(define (map-filename filename)
+  (let ((com-file (string-append filename ".com")))
+    (if (file-exists? com-file)
+	com-file
+	(let ((bin-file (string-append filename ".bin")))
+	  (and (file-exists? bin-file)
+	       bin-file)))))
+
+(define (file->object filename purify? optional?)
+  (let* ((block-name (string-append "LiarC_" filename))
+	 (value ((ucode-primitive initialize-c-compiled-block 1)
+		 block-name)))
+    (cond (value
+	   (tty-write-char newline-char)
+	   (tty-write-string block-name)
+	   (tty-write-string " initialized")
+	   (remember-to-purify purify? filename value))
+	  ((map-filename filename)
+	   => (lambda (mapped)
+		(fasload mapped purify?)))
+	  ((not optional?)
+	   (fatal-error (string-append "Could not find " filename)))
+	  (else
+	   false))))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -218,24 +284,10 @@ MIT in each case. |#
 
 (define (intern string)
   (string->symbol (string-downcase string)))
-
-(define (implemented-primitive-procedure? primitive)
-  (get-primitive-address (intern (get-primitive-name (object-datum primitive)))
-			 #f))
-
-(define map-filename
-  (if (implemented-primitive-procedure? file-exists?)
-      (lambda (filename)
-	(let ((com-file (string-append filename ".com")))
-	  (if (file-exists? com-file)
-	      com-file
-	      (string-append filename ".bin"))))
-      (lambda (filename)
-	(string-append filename ".bin"))))
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
-(eval (fasload (map-filename "packag") #t) environment-for-package)
+(eval (file->object "packag" #t #f) environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
 	    '(ENVIRONMENT->PACKAGE
@@ -281,7 +333,7 @@ MIT in each case. |#
        (lambda (files)
 	 (do ((files files (cdr files)))
 	     ((null? files))
-	   (eval (fasload (map-filename (car (car files))) #t)
+	   (eval (file->object (car (car files)) #t #f)
 		 (package-reference (cdr (car files))))))))
   (load-files files1)
   (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! true)
@@ -307,8 +359,7 @@ MIT in each case. |#
   ((eval (fasload "runtim.bldr" #f) system-global-environment)
    (let ((to-avoid
 	  (cons "packag"
-		(map* (if (and (implemented-primitive-procedure? file-exists?)
-			       (file-exists? "runtim.bad"))
+		(map* (if (file-exists? "runtim.bad")
 			  (fasload "runtim.bad" #f)
 			  '())
 		      car
@@ -316,7 +367,7 @@ MIT in each case. |#
 	 (string-member? (member-procedure string=?)))
      (lambda (filename environment)
        (if (not (string-member? filename to-avoid))
-	   (eval (fasload (map-filename filename) #t) environment))
+	   (eval (file->object filename #t #f) environment))
        unspecific))
    `((SORT-TYPE . MERGE-SORT)
      (OS-TYPE . ,(intern os-name-string))
@@ -403,9 +454,9 @@ MIT in each case. |#
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)))
 
-(let ((filename (map-filename "site")))
-  (if (file-exists? filename)
-      (eval (fasload filename #t) system-global-environment)))
+(let ((obj (file->object "site" #t #t)))
+  (if obj
+      (eval obj system-global-environment)))
 
 (environment-link-name (->environment '(RUNTIME ENVIRONMENT))
 		       (->environment '(PACKAGE))
