@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.39 1987/07/31 02:18:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.40 1987/07/31 02:34:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,11 +46,11 @@ MIT in each case. |#
     (make-environment
       (define :name "Liar (Bobcat 68020)")
       (define :version 1)
-      (define :modification 39)
+      (define :modification 40)
       (define :files)
 
 ;      (parse-rcs-header
-;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.39 1987/07/31 02:18:55 cph Exp $"
+;       "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.40 1987/07/31 02:34:52 cph Exp $"
 ;       (lambda (filename version date time zone author state)
 ;	 (set! :version (car version))
 ;	 (set! :modification (cadr version))))
@@ -97,6 +97,7 @@ MIT in each case. |#
 		 "base/pmpars.bin"	;pattern matcher: parser
 		 "base/infutl.bin"	;utilities for info generation, shared
 		 "back-end/insseq.bin"	;lap instruction sequences
+		 "machines/bobcat/dassem.bin" ;disassembler
 		 ))
 
 	 (cons converter-package
@@ -163,6 +164,7 @@ MIT in each case. |#
 		 "machines/bobcat/instr1.bin" ;68000 Effective addressing
 		 "machines/bobcat/instr2.bin" ;68000 Instructions
 		 "machines/bobcat/instr3.bin" ;  "        "
+		 "machines/bobcat/instr4.bin" ;  "        "
 		 ))
 
 	 (cons bit-package
