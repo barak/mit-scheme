@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.55 1992/11/24 01:07:30 gjr Exp $
+$Id: utils.c,v 9.56 1993/02/23 02:38:36 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1025,4 +1025,58 @@ DEFUN_VOID (Compiler_Get_Fixed_Objects)
   {
     return (SHARP_F);
   }
+}
+
+extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
+extern SCHEME_OBJECT EXFUN (C_call_scheme,
+			    (SCHEME_OBJECT, long, SCHEME_OBJECT *));
+
+SCHEME_OBJECT
+DEFUN (C_call_scheme, (proc, nargs, argvec),
+       SCHEME_OBJECT proc
+       AND long nargs
+       AND SCHEME_OBJECT * argvec)
+{
+  SCHEME_OBJECT primitive, prim_lexpr, * sp, result;
+  
+  primitive = (Regs [REGBLOCK_PRIMITIVE]);
+  prim_lexpr = (Regs [REGBLOCK_LEXPR_ACTUALS]);
+
+  if (! (PRIMITIVE_P (primitive)))
+  {
+    abort_to_interpreter (ERR_CANNOT_RECURSE);
+    /*NOTREACHED*/
+  }
+  sp = Stack_Pointer;
+
+  Will_Push ((2 * CONTINUATION_SIZE) + (nargs + STACK_ENV_EXTRA_SLOTS + 1));
+  {
+    long i;
+
+    Store_Return (RC_END_OF_COMPUTATION);
+    Store_Expression (primitive);
+    Save_Cont ();
+
+    for (i = nargs; --i >= 0; )
+      STACK_PUSH (argvec[i]);
+    STACK_PUSH (proc);
+    STACK_PUSH (STACK_FRAME_HEADER + nargs);
+
+    Store_Return (RC_INTERNAL_APPLY);
+    Store_Expression (SHARP_F);
+    Save_Cont ();
+  }
+  Pushed ();
+  result = (Re_Enter_Interpreter ());
+
+  if (Stack_Pointer != sp)
+  {
+    signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
+    /*NOTREACHED*/
+  }
+
+  Regs [REGBLOCK_LEXPR_ACTUALS] = prim_lexpr;
+  Regs [REGBLOCK_PRIMITIVE] = primitive;
+
+  return (result);
 }

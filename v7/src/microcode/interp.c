@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.72 1992/12/09 23:38:37 cph Exp $
+$Id: interp.c,v 9.73 1993/02/23 02:38:43 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,6 +44,8 @@ MIT in each case. */
 #include "cmpint.h"
 #include "zones.h"
 #include "prmcon.h"
+
+extern void EXFUN (Interpret, (Boolean));
 
 extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
 extern void EXFUN (free, (PTR ptr));
@@ -393,13 +395,33 @@ if (GC_Check(Amount))							\
   The EVAL/APPLY ying/yang
  */
 
-static PTR interpreter_catch_dstack_position;
-static jmp_buf interpreter_catch_env;
-static int interpreter_throw_argument;
+typedef struct interpreter_state_s * interpreter_state_t;
+
+struct interpreter_state_s
+{
+  unsigned int nesting_level;
+  PTR dstack_position;
+  jmp_buf catch_env;
+  int throw_argument;
+  interpreter_state_t previous_state;
+};
+
+#define interpreter_catch_dstack_position interpreter_state->dstack_position
+#define interpreter_catch_env interpreter_state->catch_env
+#define interpreter_throw_argument interpreter_state->throw_argument
+#define NULL_INTERPRETER_STATE ((interpreter_state_t) NULL)
+
+static interpreter_state_t interpreter_state = NULL_INTERPRETER_STATE;
 
 void
 DEFUN (abort_to_interpreter, (argument), int argument)
 {
+  if (interpreter_state == NULL_INTERPRETER_STATE)
+  {
+    fprintf (stderr, "abort_to_interpreter: Interpreter not set up.\n");
+    termination_init_error ();
+  }
+  
   interpreter_throw_argument = argument;
   {
     long old_mask = (FETCH_INTERRUPT_MASK ());
@@ -417,16 +439,27 @@ DEFUN_VOID (abort_to_interpreter_argument)
 {
   return (interpreter_throw_argument);
 }
+
+extern void EXFUN (Interpret, (Boolean));
 
 void
-DEFUN (Interpret, (dumped_p), Boolean dumped_p)
+DEFUN (Interpret, (pop_return_p), Boolean pop_return_p)
 {
   long Which_Way;
   fast SCHEME_OBJECT * Reg_Block, * Reg_Stack_Pointer, * Reg_History;
-
+  struct interpreter_state_s new_state_s;
+  interpreter_state_t new_state = & new_state_s;
   extern long enter_compiled_expression();
   extern long apply_compiled_procedure();
   extern long return_to_compiled_code();
+
+  new_state->previous_state = interpreter_state;
+  new_state->nesting_level =
+    ((interpreter_state == NULL_INTERPRETER_STATE)
+     ? 0
+     : (1 + (interpreter_state->nesting_level)));
+
+  interpreter_state = new_state;
 
   Reg_Block = &Registers[0];
 
@@ -472,14 +505,10 @@ Repeat_Dispatch:
       goto Eval_Non_Trapping;
 
     case 0:			/* first time */
-      if (dumped_p)
-      {
+      if (pop_return_p)
 	goto Pop_Return;
-      }
       else
-      {
 	break;			/* fall into eval */
-      }
 
     case PRIM_POP_RETURN:
       PROCEED_AFTER_PRIMITIVE();
@@ -667,7 +696,7 @@ Eval_Non_Trapping:
 
     case TC_BROKEN_HEART:
       Export_Registers();
-      Microcode_Termination(TERM_BROKEN_HEART);
+      Microcode_Termination (TERM_BROKEN_HEART);
 
 /* Interpret() continues on the next page */
 
@@ -968,7 +997,7 @@ Pop_Return_Non_Trapping:
   { STACK_PUSH (Val);			/* For possible stack trace */
     Save_Cont();
     Export_Registers();
-    Microcode_Termination(TERM_BAD_STACK);
+    Microcode_Termination (TERM_BAD_STACK);
   }
   if (Eval_Debug)
   { Print_Return("Pop_Return, return code");
@@ -1118,9 +1147,25 @@ Pop_Return_Non_Trapping:
       Reduces_To_Nth(OR_ALTERNATIVE);
 
     case RC_END_OF_COMPUTATION:
+    {
       /* Signals bottom of stack */
+
+      interpreter_state_t previous_state;
+
+      previous_state = interpreter_state->previous_state;
       Export_Registers();
-      termination_end_of_computation ();
+      if (previous_state == NULL_INTERPRETER_STATE)
+      {
+	termination_end_of_computation ();
+	/*NOTREACHED*/
+      }
+      else
+      {
+	dstack_position = interpreter_catch_dstack_position;
+	interpreter_state = previous_state;
+	return;
+      }
+    }
 
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
@@ -1370,7 +1415,7 @@ external_assignment_return:
 
     case RC_HALT:
       Export_Registers();
-      Microcode_Termination(TERM_TERM_HANDLER);
+      Microcode_Termination (TERM_TERM_HANDLER);
 
     case RC_HARDWARE_TRAP:
     {

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.75 1992/11/23 04:00:50 gjr Exp $
+$Id: boot.c,v 9.76 1993/02/23 02:38:48 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -389,12 +389,24 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   Enter_Interpreter ();
 }
 
+extern void EXFUN (Interpret, (Boolean));
+extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
+
 static void
 DEFUN_VOID (Enter_Interpreter)
 {
   Interpret (scheme_dumped_p);
   fprintf (stderr, "\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
+}
+
+/* This must be used with care, and only synchronously. */
+
+SCHEME_OBJECT
+DEFUN_VOID (Re_Enter_Interpreter)
+{
+  Interpret (true);
+  return (Val);
 }
 
 /* Garbage collection debugging utilities. */
