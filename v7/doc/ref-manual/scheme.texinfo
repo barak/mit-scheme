@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.53 1995/07/12 21:10:07 adams Exp $
+@comment $Id: scheme.texinfo,v 1.54 1995/10/31 00:51:52 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -4477,11 +4477,10 @@ Here is an expression that determines the largest fixnum:
 
 @example
 @group
-(let loop ((n 0))
-  (let ((m (+ n 1)))
-    (if (fix:fixnum? m)
-        (loop m)
-        n)))
+(let loop ((n 1))
+  (if (fix:fixnum? n)
+      (loop (* n 2))
+      (- n 1)))
 @end group
 @end example
 
