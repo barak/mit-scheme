@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.109 2000/05/25 05:17:35 cph Exp $
+;;; $Id: imail-top.scm,v 1.110 2000/05/25 22:16:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -68,13 +68,13 @@ The procedure is called with one argument, a list of headers,
 
 (define-variable imail-expunge-confirmation
   "Control what kind of confirmation is required for expunging messages.
-The following symbols are permissible values:
-NONE		no confirmation
-BRIEF		`y' or `n'
-VERBOSE		`yes' or `no'
-COMPLETE	`yes' or `no', showing messages to be expunged"
-  'COMPLETE
-  (lambda (object) (memq object '(NONE BRIEF VERBOSE COMPLETE))))
+This variable's value is a list of symbols, as follows:
+BRIEF		Use \"y or n\"-style confirmation.
+VERBOSE		Use \"yes or no\"-style confirmation.
+SHOW-MESSAGES	Pop up window with messages to be expunged."
+  '(VERBOSE SHOW-MESSAGES)
+  (lambda (x)
+    (list-of-type? x (lambda (x) (memq x '(BRIEF VERBOSE SHOW-MESSAGES))))))
 
 (define-variable imail-reply-with-re
   "True means prepend subject with Re: in replies."
@@ -1037,22 +1037,24 @@ With prefix argument N, undeletes backward N messages,
 	(cond ((= n 0)
 	       (message "No messages to expunge"))
 	      ((let ((confirmation (ref-variable imail-expunge-confirmation)))
-		 (or (eq? confirmation 'NONE)
+		 (or (null? confirmation)
 		     (let ((prompt
 			    (string-append "Expunge "
 					   (number->string n)
 					   " message"
 					   (if (> n 1) "s" "")
 					   " marked for deletion")))
-		       (case (ref-variable imail-expunge-confirmation)
-			 ((BRIEF) (prompt-for-confirmation? prompt))
-			 ((VERBOSE) (prompt-for-yes-or-no? prompt))
-			 ((COMPLETE)
-			  (cleanup-pop-up-buffers
-			   (lambda ()
-			     (imail-expunge-pop-up-messages folder)
-			     (prompt-for-yes-or-no? prompt))))
-			 (else #t)))))
+		       (let ((do-prompt
+			      (lambda ()
+				(if (memq 'BRIEF confirmation)
+				    (prompt-for-confirmation? prompt)
+				    (prompt-for-yes-or-no? prompt)))))
+			 (if (memq 'SHOW-MESSAGES confirmation)
+			     (cleanup-pop-up-buffers
+			      (lambda ()
+				(imail-expunge-pop-up-messages folder)
+				(do-prompt)))
+			     (do-prompt))))))
 	       (let ((message
 		      (let ((message (selected-message)))
 			(if (message-deleted? message)
