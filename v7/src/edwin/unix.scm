@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.57 1995/10/03 21:12:37 cph Exp $
+;;;	$Id: unix.scm,v 1.58 1995/10/12 22:45:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -673,6 +673,80 @@ Value is a list of strings."
     (let ((start (skip-chars-backward chars point start)))
       (make-region start (skip-chars-forward chars start end)))))
 
+;;;; POP Mail
+
+(define-variable rmail-pop-delete
+  "If true, messages are deleted from the POP server after being retrieved.
+Otherwise, messages remain on the server and will be re-fetched later."
+  #t
+  boolean?)
+
+(define-variable rmail-popclient-is-debian
+  "If true, the popclient running on this machine is Debian popclient.
+Otherwise, it is the standard popclient.  Debian popclient differs from
+standard popclient in that it does not accept the -p <password>
+option, instead taking -P <filename>."
+  #f
+  boolean?)
+
+(define (os/rmail-pop-procedure)
+  (and (unix/find-program "popclient" (ref-variable exec-path) #f)
+       (lambda (server user-name password directory)
+	 (unix/pop-client server user-name password directory))))
+
+(define (unix/pop-client server user-name password directory)
+  (let ((target (->namestring (merge-pathnames ".popmail" directory))))
+    (let ((buffer (temporary-buffer "*popclient*")))
+      (let ((status.reason
+	     (unix/call-with-pop-client-password-options password
+	       (lambda (password-options)
+		 (let ((args
+			(append (list "-u" user-name)
+				password-options
+				(list "-o" target server))))
+		   (apply run-synchronous-process #f (buffer-end buffer) #f #f
+			  "popclient"
+			  "-3"
+			  (if (ref-variable rmail-pop-delete)
+			      args
+			      (cons "-k" args))))))))
+	(if (and (eq? 'EXITED (car status.reason))
+		 (memv (cdr status.reason) '(0 1)))
+	    (kill-buffer buffer)
+	    (begin
+	      (pop-up-buffer buffer)
+	      (editor-error "Error getting mail from POP server.")))))
+    target))
+
+(define (unix/call-with-pop-client-password-options password receiver)
+  (if (ref-variable rmail-popclient-is-debian)
+      (cond ((string? password)
+	     (call-with-temporary-filename
+	      (lambda (temporary-file)
+		(set-file-modes! temporary-file #o600)
+		(call-with-output-file temporary-file
+		  (lambda (port)
+		    (write-string password port)
+		    (newline port)))
+		(receiver (list "-P" filename)))))
+	    ((and (pair? password) (eq? 'FILE (car password)))
+	     (receiver
+	      (list "-P" (->namestring (merge-pathnames (cadr password))))))
+	    (else
+	     (error "Illegal password:" password)))
+      (cond ((string? password)
+	     (receiver (list "-p" password)))
+	    ((and (pair? password) (eq? 'FILE (car password)))
+	     (receiver
+	      (list "-p"
+		    (call-with-input-file (cadr password)
+		      (lambda (port)
+			(read-string (char-set #\newline) port))))))
+	    (else
+	     (error "Illegal password:" password)))))
+
+;;;; Miscellaneous
+
 (define (os/scheme-can-quit?)
   (subprocess-job-control-available?))
 
@@ -687,37 +761,6 @@ Value is a list of strings."
   (if (file-exists? "/usr/lib/sendmail")
       "/usr/lib/sendmail"
       "fakemail"))
-
-(define (os/rmail-pop-procedure)
-  (and (unix/find-program "popclient" (ref-variable exec-path) #f)
-       (lambda (server user-name password directory)
-	 (unix/pop-client server user-name password directory))))
-
-(define (unix/pop-client server user-name password directory)
-  (let ((target (->namestring (merge-pathnames ".popmail" directory))))
-    (let ((buffer (temporary-buffer "*popclient*")))
-      (let ((status.reason
-	     (let ((args
-		    (list "-u" user-name "-p" password "-o" target server)))
-	       (apply run-synchronous-process #f (buffer-end buffer) #f #f
-		      "popclient"
-		      "-3"
-		      (if (ref-variable rmail-pop-delete)
-			  args
-			  (cons "-k" args))))))
-	(if (and (eq? 'EXITED (car status.reason))
-		 (memv (cdr status.reason) '(0 1)))
-	    (kill-buffer buffer)
-	    (begin
-	      (pop-up-buffer buffer)
-	      (editor-error "Error getting mail from POP server.")))))
-    target))
-
-(define-variable rmail-pop-delete
-  "If true, messages are deleted from the POP server after being retrieved.
-Otherwise, messages remain on the server and will be re-fetched later."
-  #t
-  boolean?)
 
 (define os/hostname
   (ucode-primitive full-hostname 0))
