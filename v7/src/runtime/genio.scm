@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.10 1999/02/16 00:41:03 cph Exp $
+$Id: genio.scm,v 1.11 1999/02/16 00:50:04 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -58,7 +58,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (SET-OUTPUT-BUFFER-SIZE ,operation/set-output-buffer-size)
 	   (SET-OUTPUT-TERMINAL-MODE ,operation/set-output-terminal-mode)
 	   (WRITE-CHAR ,operation/write-char)
-	   (WRITE-STRING ,operation/write-string)
 	   (WRITE-SUBSTRING ,operation/write-substring)))
 	(other-operations
 	 `((CLOSE ,operation/close)
@@ -223,9 +222,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (operation/write-char port char)
   (output-buffer/write-char-block (port/output-buffer port) char))
-
-(define (operation/write-string port string)
-  (output-buffer/write-string-block (port/output-buffer port) string))
 
 (define (operation/write-substring port string start end)
   (output-buffer/write-substring-block (port/output-buffer port)

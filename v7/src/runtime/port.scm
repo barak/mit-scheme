@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.11 1999/01/02 06:11:34 cph Exp $
+$Id: port.scm,v 1.12 1999/02/16 00:49:21 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -40,7 +40,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       READ-SUBSTRING
       ;; output operations:
       WRITE-CHAR
-      WRITE-STRING
       WRITE-SUBSTRING
       FLUSH-OUTPUT
       DISCRETIONARY-FLUSH-OUTPUT)))
@@ -77,9 +76,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define output-port/operation/write-char
   (record-accessor port-rtd 'WRITE-CHAR))
-
-(define output-port/operation/write-string
-  (record-accessor port-rtd 'WRITE-STRING))
 
 (define output-port/operation/write-substring
   (record-accessor port-rtd 'WRITE-SUBSTRING))
@@ -129,7 +125,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  ((DISCARD-CHARS) (input-port/operation/discard-chars port))
 	  ((READ-SUBSTRING) (input-port/operation/read-substring port))
 	  ((WRITE-CHAR) (output-port/operation/write-char port))
-	  ((WRITE-STRING) (output-port/operation/write-string port))
 	  ((WRITE-SUBSTRING) (output-port/operation/write-substring port))
 	  ((FLUSH-OUTPUT) (output-port/operation/flush-output port))
 	  ((DISCRETIONARY-FLUSH-OUTPUT)
@@ -371,11 +366,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (default-operation/write-char port char)
   ((output-port/operation/write-substring port) port (string char) 0 1))
 
-(define (default-operation/write-string port string)
-  ((output-port/operation/write-substring port)
-   port
-   string 0 (string-length string)))
-
 (define (default-operation/write-substring port string start end)
   (let ((write-char (output-port/operation/write-char port)))
     (let loop ((index start))
@@ -390,12 +380,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define install-output-operations!
   (let ((operation-names
-	 '(WRITE-CHAR WRITE-SUBSTRING WRITE-STRING
-		      FLUSH-OUTPUT DISCRETIONARY-FLUSH-OUTPUT))
+	 '(WRITE-CHAR WRITE-SUBSTRING FLUSH-OUTPUT DISCRETIONARY-FLUSH-OUTPUT))
 	(operation-defaults
 	 (list default-operation/write-char
 	       default-operation/write-substring
-	       default-operation/write-string
 	       default-operation/flush-output
 	       default-operation/flush-output)))
     (let ((updaters

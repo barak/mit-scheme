@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.17 1999/01/02 06:11:34 cph Exp $
+$Id: output.scm,v 14.18 1999/02/16 00:49:02 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -30,7 +30,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   ((output-port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  ((output-port/operation/write-string port) port string))
+  (output-port/write-substring port string 0 (string-length string)))
 
 (define (output-port/write-substring port string start end)
   ((output-port/operation/write-substring port) port string start end))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.5 1999/01/02 06:19:10 cph Exp $
+$Id: strott.scm,v 14.6 1999/02/16 00:53:21 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -28,13 +28,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set! output-string-template
 	(make-output-port `((WRITE-SELF ,operation/write-self)
 			    (WRITE-CHAR ,operation/write-char)
-			    (WRITE-STRING ,operation/write-string))
-			  false)))
+			    (WRITE-SUBSTRING ,operation/write-substring))
+			  #f)))
 
 (define (with-output-to-truncated-string max thunk)
   (call-with-current-continuation
    (lambda (return)
-     (cons false
+     (cons #f
 	   (apply string-append
 		  (reverse!
 		   (let ((state
@@ -48,8 +48,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (output-string-state (type vector)
 				       (conc-name output-string-state/))
-  (return false read-only true)
-  (max-length false read-only true)
+  (return #f read-only #t)
+  (max-length #f read-only #t)
   accumulator
   counter)
 
@@ -59,21 +59,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (counter (output-string-state/counter state)))
       (if (zero? counter)
 	  ((output-string-state/return state)
-	   (cons true (apply string-append (reverse! accumulator))))
+	   (cons #t (apply string-append (reverse! accumulator))))
 	  (begin
 	    (set-output-string-state/accumulator!
 	     state
 	     (cons (string char) accumulator))
 	    (set-output-string-state/counter! state (-1+ counter)))))))
 
-(define (operation/write-string port string)
+(define (operation/write-substring port string start end)
   (let ((state (output-port/state port)))
-    (let ((accumulator (cons string (output-string-state/accumulator state)))
-	  (counter
-	   (- (output-string-state/counter state) (string-length string))))
+    (let ((accumulator
+	   (cons (substring string start end)
+		 (output-string-state/accumulator state)))
+	  (counter (- (output-string-state/counter state) (- end start))))
       (if (negative? counter)
 	  ((output-string-state/return state)
-	   (cons true
+	   (cons #t
 		 (substring (apply string-append (reverse! accumulator))
 			    0
 			    (output-string-state/max-length state))))

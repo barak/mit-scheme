@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.311 1999/02/16 00:40:53 cph Exp $
+$Id: runtime.pkg,v 14.312 1999/02/16 00:49:36 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -965,7 +965,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  operation/set-output-buffer-size
 	  operation/set-output-terminal-mode
 	  operation/write-char
-	  operation/write-string
 	  operation/write-substring)
   (initialization (initialize-package!)))
 
@@ -1128,7 +1127,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  output-port/operation/discretionary-flush
 	  output-port/operation/flush-output
 	  output-port/operation/write-char
-	  output-port/operation/write-string
 	  output-port/operation/write-substring
 	  output-port/state
 	  output-port?
