@@ -37,7 +37,7 @@
 
 ;;;; Equality
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 1.10 1986/12/16 19:36:12 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/equals.scm,v 13.40 1987/01/21 21:37:25 jinx Exp $
 
 (declare (usual-integrations))
 

@@ -63,7 +63,7 @@
 	      (*unparse-string (access :write-string port))
 	      (*unparser-list-depth* 0)
 	      (*slashify* slashify))
-    (*unparse-object object)))
+    (*unparse-object-or-future object)))
 
 (define (*unparse-object-or-future object)
   (if (future? object)
@@ -297,4 +297,5 @@
 (define-type 'COMPLEX unparse-number)
 
 ;;; end UNPARSER-PACKAGE.
+))
 ))

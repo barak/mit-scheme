@@ -37,7 +37,7 @@
 
 ;;;; List Operations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 1.64 1986/12/16 19:36:45 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 13.40 1987/01/21 21:39:50 jinx Exp $
 
 (declare (usual-integrations))
 

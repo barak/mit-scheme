@@ -37,7 +37,7 @@
 
 ;;;; Debugger
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 1.84 1987/01/15 02:55:47 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 13.40 1987/01/21 21:37:09 jinx Exp $
 
 (in-package debugger-package
 (declare (usual-integrations))

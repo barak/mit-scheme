@@ -37,7 +37,7 @@
 
 ;;;; Garbage Collector
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 1.92 1987/01/05 17:25:05 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.40 1987/01/21 21:38:21 jinx Exp $
 
 (declare (usual-integrations)
 	 (compilable-primitive-functions

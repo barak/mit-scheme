@@ -37,7 +37,7 @@
 
 ;;;; Number Parser
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 1.6 1987/01/08 22:39:48 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 13.40 1987/01/21 21:40:27 jinx Exp $
 
 (declare (usual-integrations))
 

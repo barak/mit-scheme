@@ -99,12 +99,14 @@
     (set! current-state (driver current-state))
     (loop))
 
-  (push-command-hook startup-hook driver initial-state
-   (lambda (startup-hook driver initial-state each-time)
-     (fluid-let ((current-level (1+ current-level))
-		 (previous-driver-hook nearest-driver-hook)
-		 (nearest-driver-hook)
-		 (current-state initial-state))
+  (fluid-let ((current-level (1+ current-level))
+	      (previous-driver-hook nearest-driver-hook)
+	      (nearest-driver-hook)
+	      (current-state))
+    (push-command-hook
+     startup-hook driver initial-state
+     (lambda (startup-hook driver initial-state each-time)
+       (set! current-state initial-state)
        (restart startup-hook each-time))))))
 
 (set! with-rep-continuation
@@ -323,4 +325,5 @@
 (set! printer-history
       (history-reader rep-state-printer-history 'PRINTER-HISTORY))
 
+)
 )

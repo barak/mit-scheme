@@ -37,7 +37,7 @@
 
 ;;;; Output
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 1.33 1986/12/20 01:26:33 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.40 1987/01/21 21:40:41 jinx Exp $
 
 (declare (usual-integrations))
 
