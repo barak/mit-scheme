@@ -26,7 +26,7 @@
     (make-log "/scheme/8.0/src/runtime")
     (make-log "/scheme/8.0/src/sf")
     ;;(make-log "/scheme/8.0/src/sicp")
-    ;;(make-log "/scheme/8.0/src/win32" "dibutils")
+    (make-log "/scheme/8.0/src/win32" "dibutils")
     (make-log "/scheme/8.0/src/bench")
 
     ;;(make-log "/scheme/7.4/src/6001")
