@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.39 2000/05/16 02:16:42 cph Exp $
+;;; $Id: imail-imap.scm,v 1.40 2000/05/16 03:13:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -518,16 +518,37 @@
 ;;;; Server operations
 
 (define-method %create-folder ((url <imap-url>))
-  ???)
+  (imap:command:create (get-imap-connection url)
+		       (imap-url-mailbox url)))
 
 (define-method %delete-folder ((url <imap-url>))
-  ???)
+  (imap:command:create (get-imap-connection url)
+		       (imap-url-mailbox url)))
 
 (define-method %rename-folder ((url <imap-url>) (new-url <imap-url>))
-  ???)
+  (if (compatible-imap-urls? url new-url)
+      (imap:command:create (get-imap-connection url)
+			   (imap-url-mailbox url)
+			   (imap-url-mailbox new-url))
+      (error "Unable to perform rename between different IMAP accounts:"
+	     url new-url)))
 
 (define-method %append-message ((message <message>) (url <imap-url>))
-  ???)
+  (if (let ((url* (folder-url (message-folder message))))
+	(and (imap-url? url*)
+	     (compatible-imap-urls? url url*)))
+      (imap:command:copy (imap-message-connection message)
+			 (message-index message)
+			 (imap-url-mailbox url))
+      (imap:command:append
+       (get-imap-connection url)
+       (imap-url-mailbox url)
+       (message-flags message)
+       (message-internal-time message)
+       (string-append
+	(header-fields->string (message-header-fields message))
+	"\n"
+	(message-body message)))))
 
 (define-method available-folder-names ((url <imap-url>))
   ???)
@@ -607,13 +628,13 @@
 (define (imap:command:login connection user-id passphrase)
   ((imail-message-wrapper "Logging in as " user-id)
    (lambda ()
-     (imap:command:no-response connection 'LOGIN user-id passphrase))))
+     (imap:command:no-response-1 connection 'LOGIN user-id passphrase))))
 
 (define (imap:command:select connection mailbox)
   ((imail-message-wrapper "Select mailbox " mailbox)
    (lambda ()
      (imap:response:ok?
-      (imap:command:no-response connection 'SELECT mailbox)))))
+      (imap:command:no-response-1 connection 'SELECT mailbox)))))
 
 (define (imap:command:fetch connection index items)
   (imap:command:single-response imap:response:fetch?
@@ -647,8 +668,34 @@
 
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
+
+(define (imap:command:create connection mailbox)
+  (imap:command:no-response connection 'CREATE mailbox))
+
+(define (imap:command:delete connection mailbox)
+  (imap:command:no-response connection 'DELETE mailbox))
+
+(define (imap:command:rename connection from to)
+  (imap:command:no-response connection 'RENAME from to))
+
+(define (imap:command:copy connection index mailbox)
+  (imap:command:no-response connection 'COPY (+ index 1) mailbox))
+
+(define (imap:command:append connection mailbox flags time text)
+  (imap:command:no-response connection
+			    'APPEND
+			    mailbox
+			    (and (pair? flags) flags)
+			    (imap:universal-time->date-time time)
+			    (cons 'LITERAL text)))
 
 (define (imap:command:no-response connection command . arguments)
+  (let ((response
+	 (apply imap:command:no-response-1 connection command . arguments)))
+    (if (not (imap:response:ok? response))
+	(error "Server signalled a command error:" response))))
+
+(define (imap:command:no-response-1 connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
     (if (not (null? (cdr responses)))
 	(error "Malformed response from IMAP server:" responses))
@@ -727,8 +774,10 @@
     (write-char #\space port)
     (write command port)
     (for-each (lambda (argument)
-		(write-char #\space port)
-		(imap:send-command-argument connection tag argument))
+		(if argument
+		    (begin
+		      (write-char #\space port)
+		      (imap:send-command-argument connection tag argument))))
 	      arguments)
     (write-char #\return port)
     (write-char #\linefeed port)
@@ -745,6 +794,10 @@
 		  (eq? (car argument) 'ATOM)
 		  (string? (cdr argument)))
 	     (write-string (cdr argument) port))
+	    ((and (pair? argument)
+		  (eq? (car argument) 'LITERAL)
+		  (string? (cdr argument)))
+	     (imap:write-literal-string connection tag (cdr argument)))
 	    ((string? argument)
 	     (if (imap:string-may-be-quoted? argument)
 		 (imap:write-quoted-string argument port)

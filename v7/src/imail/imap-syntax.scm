@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.7 2000/05/16 01:46:42 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.8 2000/05/16 03:13:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -599,3 +599,24 @@
 
 (define (imap:write-literal-substring-body string start end port)
   (write-substring string start end port))
+
+(define (imap:universal-time->date-time time)
+  (imap:decoded-time->date-time (universal-time->global-decoded-time time)))
+
+(define (imap:decoded-time->date-time dt)
+  (let ((2digit
+	 (lambda (n)
+	   (string-pad-left (number->string n) 2 #\0))))
+    (string-append (string-pad-left (number->string (decoded-time/day dt)) 2)
+		   "-"
+		   (month/short-string (decoded-time/month dt))
+		   "-"
+		   (number->string (decoded-time/year dt))
+		   " "
+		   (2digit (decoded-time/hour dt))
+		   ":"
+		   (2digit (decoded-time/minute dt))
+		   ":"
+		   (2digit (decoded-time/second dt))
+		   " "
+		   (time-zone->string (decoded-time/zone dt)))))
