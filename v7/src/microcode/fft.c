@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: fft.c,v 9.31 1993/02/11 02:20:22 adams Exp $
+$Id: fft.c,v 9.32 1994/10/09 22:03:20 cph Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -369,7 +369,7 @@ pas_cft_forward_loop (x,y,n,m, wcos,w3cos,w3sin)    /* n >= 4 */
   }				/* 104  CONTINUE */
   /* c-------------------------------------*/
   /* c */
-}				/* RETURN  END */
+}				/* RETURN ^M END */
 
 DEFINE_PRIMITIVE ("PAS-RFT-CSFT!", Prim_pas_rft_csft, 5, 5, 0)
 { long i, length, power, flag, ft_type;
@@ -671,7 +671,7 @@ void pas_rft_forward_loop(x,n,m, wcos,w3cos,w3sin)
       if (is < n) goto label36; /* IF (IS.LT.N) GOTO 36 */
     }				/* 32      CONTINUE */
   }				/* 10   CONTINUE */
-}				/* RETURN  END */
+}				/* RETURN ^M END */
 
 
 /*
@@ -856,7 +856,7 @@ void pas_csft_backward_loop(x,n,m, wcos,w3cos,w3sin)
     label103: j = j + k;
   }				/* 104  CONTINUE */
   /* c */
-}				/* RETURN  END */
+}				/* RETURN ^M END */
 
 
 

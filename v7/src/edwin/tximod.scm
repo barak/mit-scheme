@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tximod.scm,v 1.18 1992/11/17 17:52:14 cph Exp $
+;;;	$Id: tximod.scm,v 1.19 1994/10/09 21:59:24 cph Exp $
 ;;;
-;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -79,11 +79,11 @@ commands to save keystrokes."
     (define-variable-local-value! buffer (ref-variable-object page-delimiter)
       "^@\\(chapter\\|unnumbered \\|appendix \\|majorheading\\|chapheading\\)")
     (define-variable-local-value! buffer (ref-variable-object paragraph-start)
-      (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
+      (string-append "^\010\\|^@[a-zA-Z]*[ \n]\\|"
 		     (ref-variable paragraph-start buffer)))
     (define-variable-local-value! buffer
 	(ref-variable-object paragraph-separate)
-      (string-append "^\\|^@[a-zA-Z]*[ \n]\\|"
+      (string-append "^\010\\|^@[a-zA-Z]*[ \n]\\|"
 		     (ref-variable paragraph-separate buffer)))
     (event-distributor/invoke! (ref-variable texinfo-mode-hook buffer)
 			       buffer)))
