@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fill.scm,v 1.63 2000/03/02 05:37:06 cph Exp $
+;;; $Id: fill.scm,v 1.64 2000/06/02 00:42:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -148,14 +148,34 @@ Prefix arg means justify as well."
 		   (ref-variable fill-prefix start)
 		   (ref-variable fill-column start)
 		   justify?))))
-
+
 (define-command justify-current-line
   "Add spaces to line point is in, so it ends at fill-column."
   "d"
   (lambda (point)
     (justify-line point
-		  (mark-local-ref point (ref-variable-object fill-prefix))
-		  (mark-local-ref point (ref-variable-object fill-column)))))
+		  (ref-variable fill-prefix point)
+		  (ref-variable fill-column point))))
+
+(define-command center-line
+  "Center the line point is on, within the width specified by `fill-column'.
+This means adjusting the indentation to match
+the distance between the end of the text and `fill-column'."
+  "d"
+  (lambda (mark) (center-line mark)))
+
+(define (center-line mark)
+  (let ((mark (mark-permanent! mark)))
+    (delete-horizontal-space (line-start mark 0))
+    (delete-horizontal-space (line-end mark 0))
+    (let ((d
+	   (- (- (ref-variable fill-column mark)
+		 (ref-variable left-margin mark))
+	      (mark-column (line-end mark 0)))))
+      (if (positive? d)
+	  (insert-horizontal-space (+ (ref-variable left-margin mark)
+				      (quotient d 2))
+				   (line-start mark 0))))))
 
 (define (fill-region-as-paragraph start end fill-prefix fill-column justify?)
   (let ((start (mark-right-inserting-copy (skip-chars-forward "\n" start end)))
@@ -466,58 +486,33 @@ With argument, turn auto-fill mode on iff argument is positive."
 (define-minor-mode auto-fill "Fill"
   "Minor mode in which lines are automatically wrapped when long enough.")
 
-(define (auto-fill-break)
-  (let ((point (current-point)))
-    (if (auto-fill-break? point)
-	(let ((prefix
-	       (or (and (not (ref-variable paragraph-ignore-fill-prefix point))
-			(ref-variable fill-prefix point))
-		   (and (ref-variable adaptive-fill-mode point)
-			(fill-context-prefix (or (paragraph-text-start point)
-						 (line-start point 0))
-					     (or (paragraph-text-end point)
-						 (line-end point 0)))))))
-	  (if (re-search-backward "[^ \t][ \t]+"
+(define (auto-fill-break point)
+  (and (auto-fill-break? point)
+       (let ((prefix
+	      (or (and (not
+			(ref-variable paragraph-ignore-fill-prefix point))
+		       (ref-variable fill-prefix point))
+		  (and (ref-variable adaptive-fill-mode point)
+		       (fill-context-prefix (or (paragraph-text-start point)
+						(line-start point 0))
+					    (or (paragraph-text-end point)
+						(line-end point 0)))))))
+	 (and (re-search-backward "[^ \t][ \t]+"
 				  (move-to-column
 				   point
 				   (+ (ref-variable fill-column) 1))
 				  (line-start point 0))
 	      (let ((break (re-match-end 0)))
-		(if (let ((pe
-			   (and prefix
-				(mark+ (line-start point 0)
-				       (string-length prefix)
-				       #f))))
-		      (or (not pe)
-			  (mark> break pe)))
-		    (with-fill-prefix prefix
-		      (lambda ()
-			(with-current-point break
-			  (ref-command indent-new-comment-line)))))))))))
-
-(define (with-fill-prefix prefix thunk)
-  (with-variable-value! (ref-variable-object paragraph-ignore-fill-prefix) #f
-    (lambda ()
-      (with-variable-value! (ref-variable-object fill-prefix) prefix
-	thunk))))
+		(and (let ((pe
+			    (and prefix
+				 (mark+ (line-start point 0)
+					(string-length prefix)
+					#f))))
+		       (or (not pe)
+			   (mark> break pe)))
+		     (begin
+		       (indent-new-comment-line break prefix)
+		       #t)))))))
 
 (define (auto-fill-break? point)
   (> (mark-column point) (ref-variable fill-column)))
-
-(define (center-line mark)
-  (let ((mark (mark-permanent! mark)))
-    (delete-horizontal-space (line-start mark 0))
-    (delete-horizontal-space (line-end mark 0))
-    (let ((d (- (- (ref-variable fill-column) (ref-variable left-margin))
-		(mark-column (line-end mark 0)))))
-      (if (positive? d)
-	  (insert-horizontal-space (+ (ref-variable left-margin)
-				      (quotient d 2))
-				   (line-start mark 0))))))
-
-(define-command center-line
-  "Center the line point is on, within the width specified by `fill-column'.
-This means adjusting the indentation to match
-the distance between the end of the text and `fill-column'."
-  "d"
-  center-line)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: basic.scm,v 1.137 2000/02/29 01:34:38 cph Exp $
+;;; $Id: basic.scm,v 1.138 2000/06/02 00:43:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -51,7 +51,7 @@ Whichever character you type to run this command is inserted."
 		      (char=? #\newline char))
 		  (current-minor-mode? (ref-mode-object auto-fill)))
 	     (let ((t (group-modified-tick (mark-group point))))
-	       (auto-fill-break)
+	       (auto-fill-break (current-point))
 	       (if (not (fix:= t (group-modified-tick (mark-group point))))
 		   (set! hairy? #t))))
 	 hairy?)))
@@ -414,7 +414,7 @@ Otherwise, set the comment column to the argument."
 		   (current-column))))
 	  (set-variable! comment-column column)
 	  (message "comment-column set to " column)))))
-
+
 (define-command indent-for-comment
   "Indent this line's comment to comment column, or insert an empty comment."
   ()
@@ -434,7 +434,7 @@ Otherwise, set the comment column to the argument."
 		(begin
 		  (insert-string (ref-variable comment-start))
 		  (insert-comment-end)))))))))
-
+
 (define-variable comment-multi-line
   "True means \\[indent-new-comment-line] should continue same comment
 on new line, with no new terminator or starter."
@@ -445,30 +445,39 @@ on new line, with no new terminator or starter."
   "Break line at point and indent, continuing comment if presently within one."
   ()
   (lambda ()
-    (delete-horizontal-space)
-    (insert-newlines 1)
+    (indent-new-comment-line (current-point) (ref-variable fill-prefix))))
+
+(define (indent-new-comment-line mark fill-prefix)
+  (let ((mark (mark-left-inserting-copy mark)))
+    (delete-horizontal-space mark)
+    (insert-newlines 1 mark)
     (let ((if-not-in-comment
 	   (lambda ()
-	     (if (ref-variable fill-prefix)
-		 (insert-string (ref-variable fill-prefix))
-		 ((ref-command indent-according-to-mode))))))
-      (if (ref-variable comment-locator-hook)
-	  (let ((com ((ref-variable comment-locator-hook)
-		      (line-start (current-point) -1))))
+	     (if fill-prefix
+		 (insert-string fill-prefix mark)
+		 (with-selected-buffer (mark-buffer mark)
+		   (lambda ()
+		     (with-current-point mark
+		       (ref-command indent-according-to-mode))))))))
+      (if (ref-variable comment-locator-hook mark)
+	  (let ((com ((ref-variable comment-locator-hook mark)
+		      (line-start mark -1))))
 	    (if com
 		(let ((start-column (mark-column (car com)))
 		      (end-column (mark-column (cdr com)))
 		      (comment-start (extract-string (car com) (cdr com))))
-		  (if (ref-variable comment-multi-line)
-		      (maybe-change-column end-column)
-		      (begin (insert-string (ref-variable comment-end)
-					    (line-end (current-point) -1))
-			     (maybe-change-column start-column)
-			     (insert-string comment-start)))
-		  (if (line-end? (current-point))
-		      (insert-comment-end)))
+		  (if (ref-variable comment-multi-line mark)
+		      (maybe-change-column end-column mark)
+		      (begin
+			(insert-string (ref-variable comment-end mark)
+				       (line-end mark -1))
+			(maybe-change-column start-column mark)
+			(insert-string comment-start mark)))
+		  (if (line-end? mark)
+		      (insert-comment-end mark)))
 		(if-not-in-comment)))
-	  (if-not-in-comment)))))
+	  (if-not-in-comment)))
+    (mark-temporary! mark)))
 
 (define (insert-comment-end)
   (let ((point (mark-right-inserting (current-point))))
