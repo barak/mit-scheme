@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.44 1992/02/08 14:54:04 cph Exp $
+$Id: hooks.c,v 9.45 1992/09/18 05:53:31 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -203,6 +203,7 @@ DEFINE_PRIMITIVE ("APPLY", Prim_apply, 2, 2, 0)
   }									\
   if (Consistency_Check && (Stack_Pointer != Stack_Top))		\
     Microcode_Termination (TERM_BAD_STACK);				\
+  STACK_RESET ();							\
  Will_Push (CONTINUATION_SIZE);						\
   Store_Return (RC_JOIN_STACKLETS);					\
   Store_Expression (target);						\

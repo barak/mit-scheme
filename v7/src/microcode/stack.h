@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/stack.h,v 9.31 1992/07/29 19:54:55 cph Exp $
+$Id: stack.h,v 9.32 1992/09/18 05:53:14 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,19 @@ MIT in each case. */
 
 /* This file contains macros for manipulating stacks and stacklets. */
 
+#ifdef DOS386
+
+extern void EXFUN (dos386_stack_reset, (void));
+#define STACK_RESET() dos386_stack_reset()
+
+#else
+
+#define STACK_RESET() do						\
+{									\
+} while (0)
+
+#endif
+
 #ifdef USE_STACKLETS
 
 /*
@@ -390,6 +403,7 @@ do									\
       Microcode_Termination (TERM_BAD_STACK);				\
     }									\
   }									\
+  STACK_RESET ();							\
   if (!(From_Pop_Return))						\
   {									\
     Prev_Restore_History_Stacklet = NULL;				\
