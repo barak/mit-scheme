@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.15 1995/07/08 15:01:24 adams Exp $
+$Id: dbgstr.scm,v 1.16 1995/07/27 14:25:55 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -36,80 +36,100 @@ MIT in each case. |#
 
 (define-structure
     (new-dbg-expression
+     (type vector)
+     (named
+      ((ucode-primitive string->symbol)
+       "#[(runtime compiler-info)new-dbg-expression]"))
      (conc-name new-dbg-expression/)
-     (constructor new-dbg-expression/make (expr))
-     (constructor new-dbg-expression/make2 (expr block))
+     (constructor new-dbg-expression/make (source-code))
+     (constructor new-dbg-expression/make2 (source-code block))
      (print-procedure
       (standard-unparser-method 'NEW-DBG-EXPRESSION
 	(lambda (expr port)
 	  (write-char #\Space port)
-	  (display (new-dbg-expression/expr expr) port)))))
+	  (display (new-dbg-expression/source-code expr) port)))))
   (block false read-only false)
-  (label false read-only true)
-  (expr false read-only true))
+  (label false)
+  (source-code false))
 
 
 (define (new-dbg-expression/new-block dbg-expr block*)
-  (new-dbg-expression/make2 (new-dbg-expression/expr dbg-expr)
+  (new-dbg-expression/make2 (new-dbg-expression/source-code dbg-expr)
 			    block*))
 
 (define-structure
     (new-dbg-procedure
+     (type vector)
+     (named
+      ((ucode-primitive string->symbol)
+       "#[(runtime compiler-info)new-dbg-procedure]"))
      (conc-name new-dbg-procedure/)
-     (constructor new-dbg-procedure/make (lam-expr))
+     (constructor new-dbg-procedure/make (source-code))
      (constructor new-dbg-procedure/%make))
   (block false read-only false)
   (label false read-only false)
-  (lam-expr false read-only true))
+  (source-code false read-only true))
 
 (define (new-dbg-procedure/copy dbg-proc)
   (new-dbg-procedure/%make (new-dbg-procedure/block dbg-proc)
 			   (new-dbg-procedure/label dbg-proc)
-			   (new-dbg-procedure/lam-expr dbg-proc)))
+			   (new-dbg-procedure/source-code dbg-proc)))
 
 (define (new-dbg-procedure/new-block dbg-proc block*)
   (new-dbg-procedure/%make block*
 			   (new-dbg-procedure/label dbg-proc)
-			   (new-dbg-procedure/lam-expr dbg-proc)))
+			   (new-dbg-procedure/source-code dbg-proc)))
+
+(define (new-dbg-procedure/label-offset procedure)
+  (dbg-label/offset
+   (or ;;(dbg-procedure/external-label procedure)
+       (new-dbg-procedure/label procedure))))
+
+(define-integrable (new-dbg-procedure<? x y)
+  (< (new-dbg-procedure/label-offset x) (new-dbg-procedure/label-offset y)))
 
 (define-structure
     (new-dbg-continuation
+     (type vector)
+     (named
+      ((ucode-primitive string->symbol)
+       "#[(runtime compiler-info)new-dbg-continuation]"))
      (conc-name new-dbg-continuation/)
      (constructor new-dbg-continuation/make (type outer inner))
      (constructor new-dbg-continuation/%make))
+  (block false)
+  (label false)
   (type false read-only true)
-  (outer false read-only true)
-  (inner false read-only true)
-  (block false read-only false))
+  (outer false)
+  (inner false))
 
 (define (new-dbg-continuation/new-block dbg-cont block*)
-  (new-dbg-continuation/%make (new-dbg-continuation/type dbg-cont)
+  (new-dbg-continuation/%make block*
+			      (new-dbg-continuation/label dbg-cont)
+			      (new-dbg-continuation/type dbg-cont)
 			      (new-dbg-continuation/outer dbg-cont)
-			      (new-dbg-continuation/inner dbg-cont)
-			      block*))
+			      (new-dbg-continuation/inner dbg-cont)))
 
-(define-structure
-    (new-dbg-variable
-     (conc-name new-dbg-variable/)
-     (constructor new-dbg-variable/make (name))
-     (constructor new-dbg-variable/%make (name expression))
-     (print-procedure
-      (standard-unparser-method 'NEW-DBG-VARIABLE
-	(lambda (var port)
-	  (write-char #\Space port)
-	  (write (new-dbg-variable/name var) port)
-	  (write-char #\Space port)
-	  (write (new-dbg-variable/expression var) port)
-	  ))))
-  (name false read-only true)
-  (expression #F read-only false))
 
-(define (new-dbg-variable/new-expression variable expression*)
-  (new-dbg-variable/%make (new-dbg-variable/name variable)
-			  expression*))
+(define (new-dbg-variable? object)
+  (and (pair? object) (symbol? (car object))))
+
+(define-integrable (new-dbg-variable/make name) (cons name #F))
+(define-integrable (new-dbg-variable/name var) (car var))
+(define-integrable (new-dbg-variable/path var) (cdr var))
+(define-integrable (set-new-dbg-variable/path! var path) (set-cdr! var path))
+
+;;Copying version:
+(define (new-dbg-variable/new-path variable path*)
+  (cons (new-dbg-variable/name variable) path*))
+
 
 (define-structure 
   (new-dbg-block
+   (type vector)
+   (named
+    ((ucode-primitive string->symbol)
+     "#[(runtime compiler-info)new-dbg-block]"))
    (conc-name new-dbg-block/)
    (constructor new-dbg-block/make (type parent))
    (constructor new-dbg-block/%make)
@@ -145,43 +165,23 @@ MIT in each case. |#
   ;;   parent, prefix)
   (parent-path-prefix false read-only false)
   ;; VARIABLES is a vector of NEW-DBG-VARIABLEs
-  (variables '#() read-only false))
-
-(define (new-dbg-block/layout block)
-  (new-block/variables block))
-(define (set-new-dbg-block/layout! block layout)
-  (set-new-dbg-block/variables! block layout))
-
+  (variables '#() read-only false)
+  (procedure #F))
 
 (define (new-dbg-expression->old-dbg-expression label new-info)
   ;; The old info format does not contain source for expressions!
   (and new-info
-       (make-dbg-expression
-	(new-dbg-block->old-dbg-block (new-dbg-expression/block new-info))
-	label)))
+       (begin
+	 (set-new-dbg-expression/label! new-info label)
+	 (set-new-dbg-expression/source-code! new-info #F) ;save space
+	 new-info)))
 
 (define (new-dbg-procedure->old-dbg-procedure label type new-info)
+  type
   (and new-info
        (begin
-	 (if (not (new-dbg-procedure? new-info))
-	     (internal-error "Not a new-dbg-procedure" new-info))
-	 (let ((source-lambda (new-dbg-procedure/lam-expr new-info)))
-	   (lambda-components source-lambda
-	     (lambda (name required optional rest auxiliary block-decls body)
-	       block-decls body		; ignored
-	       (pp `(,source-lambda))
-	       ;; This does not set the external label!
-	       (make-dbg-procedure
-		(new-dbg-block->old-dbg-block
-		 (new-dbg-procedure/block new-info))
-		label			; internal-label
-		type
-		name
-		required
-		optional
-		rest
-		auxiliary
-		source-lambda)))))))
+	 (set-new-dbg-procedure/label! new-info label)
+	 new-info)))
 
 (define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
   (and new-info
@@ -189,38 +189,44 @@ MIT in each case. |#
        (new-dbg-continuation/inner new-info)
        (let ((frame-size (+ frame-size 1))
 	     (type (new-dbg-continuation/type new-info))
-	     (new-block (new-dbg-block->old-dbg-block
-			 (new-dbg-continuation/block new-info)))
+	     (block (new-dbg-continuation/block new-info))
 	     (aggregate
-	      (new-dbg-expression/expr
+	      (new-dbg-expression/source-code
 	       (new-dbg-continuation/outer new-info)))
 	     (element
-	      (new-dbg-expression/expr
+	      (new-dbg-expression/source-code
 	       (new-dbg-continuation/inner new-info))))	     
 	 (make-dbg-continuation
-	  new-block
+	  block
 	  label
 	  false				; ?? type
 	  frame-size
 	  (vector (case type
-		    ((RATOR-OR-RAND)
-		     'COMBINATION-ELEMENT)
-		    ((BEGIN)
-		     'SEQUENCE-ELEMENT)
-		    ((PREDICATE)
-		     'CONDITIONAL-PREDICATE)
+		    ((COMBINATION-ELEMENT SEQUENCE-ELEMENT CONDITIONAL-PREDICATE)
+		     type)
 		    (else
-		     "new-dbg-continuation->old-dbg-continuation: Unkown type"
-		     type))
+		     (internal-error "new-dbg-continuation->old-dbg-continuation: Unkown type"
+				     type)))
 		  aggregate
 		  element)))))
+
+(define (new-dbg-continuation->old-dbg-continuation label frame-size new-info)
+  frame-size
+  (and new-info
+       (new-dbg-continuation/outer new-info)
+       (new-dbg-continuation/inner new-info)
+       (let ((aggregate
+	      (new-dbg-expression/source-code
+	       (new-dbg-continuation/outer new-info)))
+	     (element
+	      (new-dbg-expression/source-code
+	       (new-dbg-continuation/inner new-info))))	     
+	 (set-new-dbg-continuation/label! new-info label)
+	 (set-new-dbg-continuation/outer! new-info aggregate)
+	 (set-new-dbg-continuation/inner! new-info element)
+	 new-info)))
+
 
-(define (new-dbg-block->old-dbg-block block)
-  ;; For now
-  block					; ignored
-  false)
-
-
 (define (new-dbg-form/block object)
   (cond ((new-dbg-expression? object)    (new-dbg-expression/block object))
 	((new-dbg-procedure? object)     (new-dbg-procedure/block object))
@@ -235,53 +241,18 @@ MIT in each case. |#
 	((new-dbg-continuation? object)
 	 (new-dbg-continuation/new-block object block*))
 	(else (internal-error "Not a dbg expression or procedure" object))))
-  
 
-(define-structure
-    (dbg-use
-     (conc-name dbg-use/)
-     (constructor dbg-use/make (name))
-     (print-procedure
-      (standard-unparser-method 'DBG-USE
-	(lambda (u port)
-	  (write-char #\Space port)
-	  (display (dbg-use/name u) port)))))
-  (name #F read-only true)		; e.g. n-15
-  (definitions '() read-only false)	; n-15 -> n-15-43
-					; n-15 -> cell-ref(n-15-cell)
-  ;;(indirect-definitions '() read-only false)
-  (expressions '() read-only false)	; accessor(accessor(n-15))
-  )
+#|
 
-(define *dbg-rewrites*)
+Invariants:
 
-(define (dbg-info/make-rewrites)
-  (cons 'HEAD '()))
+The block associated with a procedure, continuation, expression etc is
+the invocation frame.
 
-(define (dbg-info/remember from to)
-  (define (unconstructable? form)
-    (and (CALL/? form)
-	 (QUOTE/? (call/operator form))
-	 (hash-table/get *dbg-unconstructable-operators*
-			 (quote/text (call/operator form)) #F)))
-  (let ((to (if (LOOKUP/? to) (lookup/name to) to)))
-    (if (and (not (unconstructable? to))
-	     (not (continuation-variable? from))
-	     (not (eq? from to)))
-	(set-cdr! *dbg-rewrites*
-		  (cons (vector from to) (cdr *dbg-rewrites*))))))
+The parent of the invocation frame is parsable from (i.e. contains
+access paths rooted at)
 
-(define *dbg-unconstructable-operators* (make-eq-hash-table))
+ . the stack-frame object for closures
+ . the entry for other entry kinds
 
-(define (dbg-info/for-all-dbg-expressions! procedure)
-  (for-each (lambda (from+to)
-	      (procedure (vector-ref from+to 1)))
-    (cdr *dbg-rewrites*)))
-
-(let ((forbid
-       (lambda (operator)
-	 (hash-table/put! *dbg-unconstructable-operators* operator #T))))
-  (forbid %make-heap-closure)
-  (forbid CONS)
-  (forbid %cons)
-  (forbid %vector))
+|#
