@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: 6001.pkg,v 1.9 1994/01/08 21:37:20 gjr Exp $
+$Id: 6001.pkg,v 1.10 1995/03/06 23:32:39 cph Exp $
 
-Copyright (c) 1991-1994 Massachusetts Institute of Technology
+Copyright (c) 1991-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,6 +79,7 @@ MIT in each case. |#
 	  ceiling
 	  complex?
 	  cos
+	  dec
 	  denominator
 	  even?
 	  exact->inexact
@@ -87,6 +88,7 @@ MIT in each case. |#
 	  expt
 	  floor
 	  gcd
+	  inc
 	  inexact->exact
 	  inexact?
 	  integer?

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.4 1993/08/12 06:56:37 cph Exp $
+$Id: arith.scm,v 1.5 1995/03/06 23:32:34 cph Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -325,6 +325,12 @@ MIT in each case. |#
 
 (define (odd? n)
   (not (even? n)))
+
+(define (inc z)
+  (+ z 1))
+
+(define (dec z)
+  (- z 1))
 
 (define (= . zs)
   (reduce-comparator real:= zs '=))
