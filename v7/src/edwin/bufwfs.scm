@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.11 1991/04/01 10:06:21 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.12 1991/04/01 19:46:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -208,15 +208,24 @@
 	    (tab-width (%window-tab-width window))
 	    (results substring-image-results))
 	(let ((xm (fix:- xu 1))
+	      (yl (fix:+ y-start yl))
 	      (yu (fix:+ y-start yu)))
 	  (let ((columns (fix:- xm xl)))
 	    (let loop
 		((index start-index)
 		 (column-offset (fix:- start-column xl))
 		 (partial 0)
-		 (y (fix:+ y-start yl)))
+		 (y 0))
 	      (if (fix:< y yu)
-		  (let ((line (screen-get-output-line screen y xl xu false)))
+		  (let ((line
+			 ;; If line is clipped off top of window, draw
+			 ;; it anyway so that index and column
+			 ;; calculations get done.  Might as well use
+			 ;; first visible line for image output so as
+			 ;; to avoid consing a dummy image buffer.
+			 (screen-get-output-line screen
+						 (if (fix:< y yl) yl y)
+						 xl xu false)))
 		    (let ((fill-line
 			   (lambda (index xl)
 			     (group-image! group index end-index
