@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.41 2001/03/21 19:15:16 cph Exp $
+$Id: pp.scm,v 14.42 2001/07/02 18:47:51 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -55,14 +55,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
-(define *pp-named-lambda->define?* false)
-(define *pp-primitives-by-name* true)
-(define *pp-uninterned-symbols-by-name* true)
-(define *pp-no-highlights?* true)
-(define *pp-save-vertical-space?* false)
-(define *pp-lists-as-tables?* true)
-(define *pp-forced-x-size* false)
-(define *pp-avoid-circularity?* false)
+(define *pp-named-lambda->define?* #f)
+(define *pp-primitives-by-name* #t)
+(define *pp-uninterned-symbols-by-name* #t)
+(define *pp-no-highlights?* #t)
+(define *pp-save-vertical-space?* #f)
+(define *pp-lists-as-tables?* #t)
+(define *pp-forced-x-size* #f)
+(define *pp-avoid-circularity?* #f)
 (define *pp-default-as-code?* #t)
 (define *pp-auto-highlighter* #f)
 
@@ -181,12 +181,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			    start-string end-string
 			    as-code? depth-limit
 			    breadth-limit)))
-  (object false read-only true)
-  (start-string "*=>" read-only true)
-  (end-string   "<=*" read-only true)
-  (as-code? 'DEFAULT read-only true)
-  (depth-limit 'DEFAULT read-only true)
-  (breadth-limit 'DEFAULT read-only true))
+  (object #f read-only #t)
+  (start-string "*=>" read-only #t)
+  (end-string   "<=*" read-only #t)
+  (as-code? 'DEFAULT read-only #t)
+  (depth-limit 'DEFAULT read-only #t)
+  (breadth-limit 'DEFAULT read-only #t))
 
 (define (with-highlight-strings-printed pph thunk)
   (let ((print-string
@@ -552,9 +552,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		    (*unparse-space)
 		    (print-guaranteed-node (cadr nodes))
 		    (print-body (cddr nodes)))
-		   ((fits-as-column? (node-subnodes (cadr nodes))
-				     (+ new-optimistic 2)
-				     0)
+		   ((and (list-node? (cadr nodes))
+			 (fits-as-column? (node-subnodes (cadr nodes))
+					  (+ new-optimistic 2)
+					  0))
 		    (*unparse-space)
 		    (*unparse-open)
 		    (print-guaranteed-column (node-subnodes (cadr nodes))
@@ -685,7 +686,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (lambda (port)
      (unparser (make-unparser-state port
 				    list-depth
-				    true
+				    #t
 				    (current-unparser-table))
 	       object))))
 
@@ -730,11 +731,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (or (partially-highlighted? (car object))
 	     (partially-highlighted? (cdr object))))
 	((pretty-printer-highlight? object)
-	 true)
+	 #t)
 	((vector? object)
 	 (partially-highlighted? (vector->list object)))
 	(else
-	 false)))
+	 #f)))
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
@@ -1123,9 +1124,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-structure (prefix-node
 		   (conc-name prefix-node-)
 		   (constructor %make-prefix-node))
-  (size false read-only true)
-  (prefix false read-only true)
-  (subnode false read-only true))
+  (size #f read-only #t)
+  (prefix #f read-only #t)
+  (subnode #f read-only #t))
 
 (define (make-prefix-node prefix subnode)
   (cond ((string? subnode)
@@ -1167,9 +1168,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-structure (highlighted-node
 		   (conc-name highlighted-node/)
 		   (constructor make-highlighted-node))
-  (size false read-only true)
-  (highlight false read-only true)
-  (subnode false read-only true))
+  (size #f read-only #t)
+  (highlight #f read-only #t)
+  (subnode #f read-only #t))
 
 (define (unhighlight node)
   (if (highlighted-node? node)
