@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.54 2004/11/19 06:56:11 cph Exp $
+$Id: parse.scm,v 14.55 2004/11/19 07:11:43 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -489,6 +489,8 @@ USA.
 	  ((string-ci=? name "aux") lambda-aux-tag)
 	  ((string-ci=? name "eof") (make-eof-object #f))
 	  ((string-ci=? name "default") (default-object))
+	  ((string-ci=? name "unassigned") unassigned-object)
+	  ((string-ci=? name "unspecific") unspecific)
 	  (else (error:illegal-named-constant name)))))
 
 (define lambda-optional-tag (object-new-type (ucode-type constant) 3))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.70 2004/10/30 03:58:54 cph Exp $
+$Id: global.scm,v 14.71 2004/11/19 07:11:36 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -317,13 +317,13 @@ USA.
       ;; same as `undefined-conditional-branch'.
       ;; (eq? object *the-non-printing-object*)
       ;; (eq? object unspecific)
-      (eq? object (microcode-object/unassigned))))
+      (eq? object unassigned-object)))
 
 (define unspecific
   (object-new-type (ucode-type constant) 1))
 
-(define *the-non-printing-object*
-  unspecific)
+(define unassigned-object
+  (object-new-type (ucode-type constant) 2))
 
 (define (obarray->list #!optional obarray)
   (let ((obarray
