@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.17 1992/02/17 22:34:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.18 1992/02/18 04:34:43 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -657,18 +657,24 @@ MIT in each case. |#
 ;; contains its own address.
 
 (define (transmogrifly uuos)
-  (define (inner name assoc)
-    (if (null? assoc)
-	(transmogrifly (cdr uuos))
-	(cons (cons (caar assoc)			; frame-size
-		    (cdar assoc))			; uuo-label
-	      (cons (cons name				; variable name
-			  (allocate-constant-label))	; dummy label
-		    (inner name (cdr assoc))))))
+  (define (do-rest uuos)
+    (define (inner name assoc)
+      (if (null? assoc)
+	  (do-rest (cdr uuos))
+	  (cons (cons (caar assoc)			; frame-size
+		      (cdar assoc))			; uuo-label
+		(cons (cons name			; variable name
+			    (allocate-constant-label))	; dummy label
+		      (inner name (cdr assoc))))))
+
+    (if (null? uuos)
+	'()
+	(inner (caar uuos) (cdar uuos))))
+
   (if (null? uuos)
       '()
-      (cons (cons false (allocate-constant-label))	; relocation address
-	    (inner (caar uuos) (cdar uuos)))))
+      (cons (cons false (allocate-constant-label)) 	; relocation address
+	    (do-rest uuos))))
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
