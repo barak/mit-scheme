@@ -1,6 +1,7 @@
 #include "windows.h"
 #include "ntgui.h"
 #include "ntdialog.h"
+#include "version.h"
 
 SHIELD3_ICON ICON shield3.ico
 SHIELD4_ICON ICON shield4.ico
@@ -20,6 +21,9 @@ BCH_ICO ICON bch.ico
 
 GC_CURSOR  CURSOR gc.cur
 
+#define MAKEFILEVERSIONSTRINGHELPER(a,b,c) #a b #c
+#define MAKEFILEVERSIONSTRING(v,s) MAKEFILEVERSIONSTRINGHELPER(##v,".",##s)
+
 1 VERSIONINFO
 	FILEVERSION	0,0,0,65
 	PRODUCTVERSION	7,2,0,65
@@ -32,12 +36,12 @@ BEGIN
     BEGIN
 	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
 	VALUE "FileDescription", "MIT Scheme Microcode"
-	VALUE "FileVersion", "11.166"
+	VALUE "FileVersion", MAKEFILEVERSIONSTRING(VERSION,SUBVERSION)
 	VALUE "InternalName", "SCHEME"
 	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993"
 	VALUE "OriginalFilename", "SCHEME.EXE"
 	VALUE "ProductName", "MIT Scheme"
-	VALUE "ProductVersion", "7.3.0 (beta)"
+	VALUE "ProductVersion", RELEASE
     END
   END
 
