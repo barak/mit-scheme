@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.32 1988/03/12 16:07:11 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.33 1988/03/21 21:17:00 jinx Rel $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -160,7 +160,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 
 	  while(--count >= 0)
 	  {
-	    Scan = ((Pointer *) word_ptr);
+	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
 	    Temp = *Scan;
 	    Purify_Pointer(Setup_Internal(false,
@@ -176,7 +176,6 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
       {
 	machine_word *start_ptr;
 	fast machine_word *word_ptr;
-	Pointer *saved_scan;
 
 	if (GC_Mode == PURE_COPY)
 	{
@@ -186,7 +185,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	  /*NOTREACHED*/
 	}
 
-	saved_scan = ++Scan;
+	Scan += 1;
 	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
 	start_ptr = word_ptr;
 
@@ -199,7 +198,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 					Transport_Compiled(),
 					Compiled_BH(false, continue)));
 	}
-	Scan = saved_scan + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr);
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
 	break;
       }
 

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.27 1988/03/12 16:06:06 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gcloop.c,v 9.28 1988/03/21 21:16:41 jinx Rel $
  *
  * This file contains the code for the most primitive part
  * of garbage collection.
@@ -149,7 +149,7 @@ GCLoop(Scan, To_Pointer)
 
 	  while(--count >= 0)
 	  {
-	    Scan = ((Pointer *) word_ptr);
+	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
 	    Temp = *Scan;
 	    GC_Pointer(Setup_Internal(true,
@@ -165,9 +165,8 @@ GCLoop(Scan, To_Pointer)
       {
 	machine_word *start_ptr;
 	fast machine_word *word_ptr;
-	Pointer *saved_scan;
 
-	saved_scan = ++Scan;
+	Scan += 1;
 	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
 	start_ptr = word_ptr;
 
@@ -180,7 +179,7 @@ GCLoop(Scan, To_Pointer)
 				    Transport_Compiled(),
 				    Compiled_BH(true, continue)));
 	}
-	Scan = saved_scan + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr);
+	Scan = MANIFEST_CLOSURE_END(word_ptr, start_ptr);
 	break;
       }
 

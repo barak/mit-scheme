@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.11 1988/03/12 16:04:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.12 1988/03/21 21:15:35 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,9 +37,15 @@ MIT in each case. */
 #include "scheme.h"
 #include "primitive.h"
 
-extern Pointer *compiled_entry_to_block_address();
-extern long compiled_entry_to_block_offset();
-extern void compiled_entry_type();
+extern Pointer
+  *compiled_entry_to_block_address();
+
+extern long
+  compiled_entry_to_block_offset(),
+  coerce_to_compiled();
+
+extern void
+  compiled_entry_type();
 
 #define COMPILED_CODE_ADDRESS_P(object)			\
    ((OBJECT_TYPE (object)) == TC_COMPILED_ENTRY)
@@ -99,4 +105,29 @@ DEFINE_PRIMITIVE("COMPILED-ENTRY-KIND", Prim_Compiled_Entry_Type, 1)
   temp[1] = MAKE_SIGNED_FIXNUM(((long) temp[1]));
   temp[2] = MAKE_SIGNED_FIXNUM(((long) temp[2]));
   PRIMITIVE_RETURN (Make_Pointer(TC_HUNK3, temp));
+}
+
+DEFINE_PRIMITIVE("COERCE-TO-COMPILED-PROCEDURE", Prim_Coerce_To_Closure, 2)
+{
+  Pointer temp;
+  long value, result;
+  PRIMITIVE_HEADER(2);
+
+  CHECK_ARG (2, FIXNUM_P);
+
+  FIXNUM_VALUE(ARG_REF(2), value);
+  result = coerce_to_compiled(ARG_REF(1), value, &temp);
+  switch(result)
+  {
+    case PRIM_DONE:
+      PRIMITIVE_RETURN(temp);
+
+    case PRIM_INTERRUPT:
+      Primitive_GC(10);
+      /*NOTREACHED*/
+      
+    default:
+      Primitive_Error(ERR_ARG_2_BAD_RANGE);
+      /*NOTREACHED*/
+  }
 }

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.35 1988/03/12 16:05:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/gccode.h,v 9.36 1988/03/21 21:16:23 jinx Exp $
  *
  * This file contains the macros for use in code which does GC-like
  * loops over memory.  It is only included in a few files, unlike
@@ -425,11 +425,10 @@ typedef unsigned long machine_word;
 	   "relocate_compiled: No compiler support!",			\
 	   Scan, To)
 
-#define GC_NO_COMPILER_EXPR()						\
-  (GC_NO_COMPILER_STMT(), NIL)
+#define GC_NO_COMPILER_EXPR()			(GC_NO_COMPILER_STMT(), NIL)
 
-#define Relocate_Compiled(object, new_block, old_block)			\
-  GC_NO_COMPILER_EXPR()
+
+#define Relocate_Compiled(obj, nb, ob)		GC_NO_COMPILER_EXPR()
 
 #define Transport_Compiled()			GC_NO_COMPILER_STMT()
 
@@ -437,15 +436,24 @@ typedef unsigned long machine_word;
 
 #define Get_Compiled_Block(var, address)	GC_NO_COMPILER_STMT()
 
-#define READ_MANIFEST_CLOSURE_SIZE(scan)	GC_NO_COMPILER_EXPR()
 
 #define FIRST_MANIFEST_CLOSURE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
 
+#define VALID_MANIFEST_CLOSURE_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+
 #define NEXT_MANIFEST_CLOSURE_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
 
-#define END_MANIFEST_CLOSURE_AREA(scan, count)	GC_NO_COMPILER_EXPR()
+#define MANIFEST_CLOSURE_ENTRY_ADDRESS(ptr)	GC_NO_COMPILER_EXPR()
+
+#define MANIFEST_CLOSURE_END(end, start)	GC_NO_COMPILER_EXPR()
+
+#define MANIFEST_CLOSURE_VALID_FITS_P(end, st)	GC_NO_COMPILER_EXPR()
+
 
 #define READ_LINKAGE_KIND(header)		GC_NO_COMPILER_EXPR()
+
+#define OPERATOR_LINKAGE_KIND			0
+
 
 #define READ_CACHE_LINKAGE_COUNT(header)	GC_NO_COMPILER_EXPR()
 
@@ -453,10 +461,11 @@ typedef unsigned long machine_word;
   
 #define END_OPERATOR_LINKAGE_AREA(scan, count)	GC_NO_COMPILER_EXPR()
 
+
 #define FIRST_OPERATOR_LINKAGE_ENTRY(scan)	GC_NO_COMPILER_EXPR()
 
-#define NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr)	GC_NO_COMPILER_EXPR()
+#define NEXT_LINKAGE_OPERATOR_ENTRY(ptr)	GC_NO_COMPILER_EXPR()
 
-#define OPERATOR_LINKAGE_KIND			0
+#define OPERATOR_LINKAGE_ENTRY_ADDRESS(ptr)	GC_NO_COMPILER_EXPR()
 
 #endif

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.35 1988/03/12 16:05:26 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.36 1988/03/21 21:16:04 jinx Rel $
 
    The "fast loader" which reads in and relocates binary files and then
    interns symbols.  It is called with one argument: the (character
@@ -333,7 +333,7 @@ Relocate_Block(Scan, Stop_At)
 
 	  while(--count >= 0)
 	  {
-	    Scan = ((Pointer *) word_ptr);
+	    Scan = OPERATOR_LINKAGE_ENTRY_ADDRESS(word_ptr);
 	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
 	    address = ((long) *Scan);
 	    *Scan = ((Pointer) Relocate(address));
@@ -347,9 +347,8 @@ Relocate_Block(Scan, Stop_At)
       {
 	machine_word *start_ptr;
 	fast machine_word *word_ptr;
-	Pointer *saved_scan;
 
-	saved_scan = ++Scan;
+	Scan += 1;
 	word_ptr = FIRST_MANIFEST_CLOSURE_ENTRY(Scan);
 	start_ptr = word_ptr;
 
@@ -360,7 +359,7 @@ Relocate_Block(Scan, Stop_At)
 	  address = ((long) *Scan);
 	  *Scan = ((Pointer) Relocate(address));
 	}
-	Scan = saved_scan + (1 + MANIFEST_CLOSURE_SIZE(word_ptr, start_ptr));
+	Scan = &((MANIFEST_CLOSURE_END(word_ptr, start_ptr))[1]);
 	break;
       }
 
