@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.6 1992/12/10 01:34:17 cph Exp $
+$Id: uproc.scm,v 1.7 1995/01/12 17:02:26 adams Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -317,3 +317,21 @@ MIT in each case. |#
 
 (define-integrable (set-apply-hook-extra! apply-hook procedure)
   (system-hunk3-set-cxr2! (entity-extra apply-hook) procedure))
+
+;;;; Arity dispatched entities
+
+(define (make-arity-dispatched-procedure default . dispatched-cases)
+  ;; DISPATCHED-CASES are the procedures to invoke for 0, 1, 2 etc
+  ;; arguments, or #F if the DEFAULT is to be used.  The DEFAULT has a
+  ;; SELF argument.
+  (make-entity default
+	       (list->vector
+		(cons (fixed-objects-item 'ARITY-DISPATCHER-TAG)
+		      dispatched-cases))))
+
+(define (arity-dispatched-procedure? object)
+  (and (%entity? object)
+       (vector? (entity-extra object))
+       (< 0 (vector-length (entity-extra object)))
+       (eq? (vector-ref (entity-extra object) 0)
+	    (fixed-objects-item 'ARITY-DISPATCHER-TAG))))
