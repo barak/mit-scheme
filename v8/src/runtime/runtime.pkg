@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.262 1995/07/28 17:44:25 adams Exp $
+$Id: runtime.pkg,v 14.263 1995/08/08 15:30:29 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2901,7 +2901,8 @@ MIT in each case. |#
 	  process-time-clock
 	  real-time-clock
 	  runtime
-	  system-clock)
+	  system-clock
+	  with-timings)
   (export (runtime gc-statistics)
 	  increment-non-runtime!)
   (initialization (initialize-package!)))
