@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.1 2000/03/31 14:10:53 cph Exp $
+$Id: compile.scm,v 1.2 2000/03/31 14:19:37 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -23,9 +23,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (fluid-let ((sf/default-syntax-table system-global-syntax-table))
-      (sf-directory "."))
+    (for-each (lambda (filename)
+		(compile-file filename '() system-global-syntax-table))
+	      '("object" "format" "nparse" "logmer"))
     (cref/generate-constructors "rcs")
     (sf "rcs.con")
-    (sf "rcs.ldr")
-    (compile-directory ".")))
+    (sf "rcs.ldr")))
