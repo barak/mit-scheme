@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.7 1997/02/22 07:49:39 cph Exp $
+$Id: vector.scm,v 14.8 1997/02/23 06:10:13 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -228,7 +228,7 @@ MIT in each case. |#
 	     (loop (fix:+ index 1))))))
 
 (define (vector-filled? vector element)
-  (guarantee-subvector vector 'VECTOR-FILLED?)
+  (guarantee-vector vector 'VECTOR-FILLED?)
   (subvector-filled? vector 0 (vector-length vector) element))
 
 (define (subvector-uniform? vector start end)
