@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rgraph.scm,v 4.10 2003/02/14 18:28:08 cph Exp $
+$Id: rgraph.scm,v 4.11 2004/12/06 02:34:04 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,13 +26,13 @@ USA.
 ;;;; Program Graph Abstraction
 
 (declare (usual-integrations))
-
+
 (define-structure (rgraph (type vector)
-			  (copier false)
+			  (copier #f)
 			  (constructor make-rgraph (n-registers)))
   n-registers
-  entry-edges
-  bblocks
+  (entry-edges '())
+  (bblocks '())
   register-bblock
   register-n-refs
   register-n-deaths
