@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.15 1991/06/15 00:40:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxterm.c,v 1.16 1991/06/15 03:23:24 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -507,7 +507,7 @@ DEFUN_VOID (OS_have_ptys_p)
 
 #define PTY_SLAVE_NAME_SPRINTF(slave_name, fd)				\
 {									\
-  sprintf ((slave_name), "/dev/tty%c%x", c, i)				\
+  sprintf ((slave_name), "/dev/tty%c%x", c, i);				\
   if ((UX_access ((slave_name), (R_OK | W_OK))) < 0)			\
     {									\
       UX_close (fd);							\
