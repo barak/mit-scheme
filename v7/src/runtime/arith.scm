@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.59 2004/06/12 02:14:41 cph Exp $
+$Id: arith.scm,v 1.60 2004/10/13 02:02:23 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
@@ -1697,12 +1697,14 @@ USA.
 
 (define (complex:expt z1 z2)
   (cond ((complex:zero? z1)
-	 (cond ((complex:zero? z2)
-		(if (complex:exact? z2)
-		    1
-		    (error:bad-range-argument z2 'EXPT)))
-	       ((complex:positive? z2) (real:0 (complex:exact? z1)))
-	       (else (error:divide-by-zero 'EXPT (list z1 z2)))))
+	 (cond ((eqv? z2 0)
+		1)
+	       ((real:positive? (complex:real-part z2))
+		(real:0 (complex:exact? z1)))
+	       ((real:zero? (complex:real-part z2))
+		(error:bad-range-argument z2 'EXPT))
+	       (else
+		(error:divide-by-zero 'EXPT (list z1 z2)))))
 	((and (recnum? z1)
 	      (int:integer? z2))
 	 (let ((exact-method
