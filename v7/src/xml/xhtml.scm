@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.11 2004/07/24 03:19:18 cph Exp $
+$Id: xhtml.scm,v 1.12 2004/07/24 04:29:45 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -71,7 +71,7 @@ USA.
 
 (define (html-dtd? object)
   (and (xml-dtd? object)
-       (html:html? (xml-dtd-root object))
+       (eq? (xml-dtd-root object) 'html)
        (html-external-id? (xml-dtd-external object))
        (null? (xml-dtd-internal object))))
 
