@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlpars.scm,v 1.2 1994/11/26 19:20:28 adams Exp $
+$Id: rtlpars.scm,v 1.3 1994/12/16 20:18:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -309,12 +309,18 @@ MIT in each case. |#
 		  ))
 	       *expressions*)))))
 
+(define make-labels->segments
+  (let ((symbol-hash-mod
+	 (lambda (symbol modulus)
+	   (string-hash-mod (symbol-name symbol) modulus))))
+    (strong-hash-table/constructor symbol-hash-mod eq?)))
+
 (define (parse-rtl rtl-program)
   (cond ((null? rtl-program)
 	 (internal-error "Empty program"))
 	((not (memq (caar rtl-program) label-like-statements))
 	 (internal-error "Program does not start with label" rtl-program)))
-  (let ((labels->segments (make-eq-hash-table)))
+  (let ((labels->segments (make-labels->segments)))
 
     (define (found-one label stmts)
       (hash-table/put! labels->segments
