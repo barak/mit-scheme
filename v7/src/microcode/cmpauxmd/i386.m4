@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.4 1992/02/14 21:12:00 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.5 1992/02/14 22:17:07 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -219,7 +219,7 @@ define_call_indirection(interrupt_procedure,1a)
 define_call_indirection(interrupt_continuation,1b)
 define_jump_indirection(interrupt_closure,18)
 
-define_c_label(interrupt_dlink)
+define_c_label(asm_interrupt_dlink)
 	movl	REGBLOCK_DLINK()(regs),%edx
 	movl	IMMEDIATE(HEX(19)),%eax
 	jmp	scheme_to_interface_call
