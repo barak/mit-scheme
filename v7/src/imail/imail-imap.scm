@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.13 2000/05/03 20:29:41 cph Exp $
+;;; $Id: imail-imap.scm,v 1.14 2000/05/03 20:31:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -255,7 +255,8 @@
 		  (transform
 		   (translate-string-line-endings
 		    (car
-		     (imap:command:uid-fetch connection
+		     (imap:command:uid-fetch (imap-folder-connection
+					      (message-folder message))
 					     (imap-message-uid message)
 					     (list item-name)))))))
 	     (call-next-method message))))))
