@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.39 1992/07/29 19:56:09 cph Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.41 1991/05/06 23:05:51 jinx Exp $
+$Id: lapgen.scm,v 4.40 1992/09/11 22:34:34 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -588,7 +587,8 @@ MIT in each case. |#
     shortcircuit-apply-5
     shortcircuit-apply-6
     shortcircuit-apply-7
-    shortcircuit-apply-8))
+    shortcircuit-apply-8
+    stack-and-interrupt-check))
 
 (define (invoke-hook hook)
   (LAP (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
