@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.5 1995/02/22 05:32:50 adams Exp $
+$Id: fakeprim.scm,v 1.6 1995/02/27 22:39:39 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -892,7 +892,9 @@ MIT in each case. |#
 			  '(OUT-OF-LINE-HOOK)
 			  '(OPEN-CODED-PREDICATE)
 			  '(PROPER-PREDICATE))))
- '(&= &< &>))
+ '(&= &< &>
+   zero? negative? positive?  ; translated into &= &< &>
+   ))
 
 (for-each
  (lambda (prim-name)
