@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.15 2001/09/24 04:16:19 cph Exp $
+$Id: chrset.scm,v 14.16 2001/09/25 05:15:17 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -28,33 +28,47 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-structure (char-set (type-descriptor char-set-rtd))
   (table #f read-only #t))
 
+(define-integrable (guarantee-char-set object procedure)
+  (if (not (char-set? object))
+      (error:wrong-type-argument object "character set" procedure)))
+
 (define-integrable char-set-table-length 256)
 
 (define (char-set . chars)
   (chars->char-set chars))
 
 (define (chars->char-set chars)
+  (if (not (list-of-type? chars
+	     (lambda (char)
+	       (and (char? char)
+		    (fix:< (char->integer char) char-set-table-length)))))
+      (error:wrong-type-argument chars "ASCII chars" 'CHARS->CHAR-SET))
   (let ((table (make-string char-set-table-length)))
     (vector-8b-fill! table 0 char-set-table-length 0)
     (do ((chars chars (cdr chars)))
 	((not (pair? chars)))
-      (vector-8b-set! table
-		      (let ((code (char->integer (car chars))))
-			(if (fix:>= code char-set-table-length)
-			    (error:bad-range-argument chars 'CHARS->CHAR-SET))
-			code)
-		      1))
+      (vector-8b-set! table (char->integer (car chars)) 1))
     (make-char-set table)))
 
 (define (string->char-set string)
-  (let ((table (make-string char-set-table-length)))
+  (guarantee-string string 'STRING->CHAR-SET)
+  (let ((n-chars (string-length string))
+	(table (make-string char-set-table-length)))
     (vector-8b-fill! table 0 char-set-table-length 0)
-    (do ((i  (fix:- (string-length string) 1)  (fix:- i 1)))
-	((fix:< i 0))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i n-chars))
       (vector-8b-set! table (vector-8b-ref string i) 1))
     (make-char-set table)))
 
 (define (ascii-range->char-set lower upper)
+  (if (not (index-fixnum? lower))
+      (error:wrong-type-argument lower "index fixnum" 'ASCII-RANGE->CHAR-SET))
+  (if (not (index-fixnum? upper))
+      (error:wrong-type-argument upper "index fixnum" 'ASCII-RANGE->CHAR-SET))
+  (if (not (fix:<= lower upper))
+      (error:bad-range-argument lower 'ASCII-RANGE->CHAR-SET))
+  (if (not (fix:<= upper char-set-table-length))
+      (error:bad-range-argument upper 'ASCII-RANGE->CHAR-SET))
   (let ((table (make-string char-set-table-length)))
     (vector-8b-fill! table 0 lower 0)
     (vector-8b-fill! table lower upper 1)
@@ -63,58 +77,68 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (predicate->char-set predicate)
   (let ((table (make-string char-set-table-length)))
-    (let loop ((code 0))
-      (if (fix:< code char-set-table-length)
-	  (begin
-	    (vector-8b-set! table
-			    code
-			    (if (predicate (integer->char code)) 1 0))
-	    (loop (fix:+ code 1)))))
+    (do ((code 0 (fix:+ code 1)))
+	((fix:= code char-set-table-length))
+      (vector-8b-set! table code (if (predicate (integer->char code)) 1 0)))
     (make-char-set table)))
 
 (define (char-set-members char-set)
-  (if (not (char-set? char-set))
-      (error:wrong-type-argument char-set "character set" 'CHAR-SET-MEMBERS))
+  (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
   (let ((table (char-set-table char-set)))
-    (let loop ((code char-set-table-length) (chars '()))
-      (if (fix:< 0 code)
+    (let loop ((code (fix:- char-set-table-length 1)) (chars '()))
+      (if (fix:= code 0)
+	  (if (fix:= 0 (vector-8b-ref table code))
+	      chars
+	      (cons (integer->char code) chars))
 	  (loop (fix:- code 1)
-		(if (fix:= 0 (vector-8b-ref table (fix:- code 1)))
+		(if (fix:= 0 (vector-8b-ref table code))
 		    chars
-		    (cons (integer->char (fix:- code 1)) chars)))
-	  chars))))
+		    (cons (integer->char code) chars)))))))
 
 (define (char-set-member? char-set char)
-  (if (not (char-set? char-set))
-      (error:wrong-type-argument char-set "character set" 'CHAR-SET-MEMBER?))
-  (let ((code (char->integer char)))
-    (and (fix:< code char-set-table-length)
-	 (not (fix:= 0 (vector-8b-ref (char-set-table char-set) code))))))
+  (guarantee-char-set char-set 'CHAR-SET-MEMBER?)
+  (guarantee-char char 'CHAR-SET-MEMBER?)
+  (%char-set-member? char-set char))
+
+(define (%char-set-member? char-set char)
+  (and (fix:< (char->integer char) char-set-table-length)
+       (not (fix:= 0
+		   (vector-8b-ref (char-set-table char-set)
+				  (char->integer char))))))
 
 (define (char-set-invert char-set)
+  (guarantee-char-set char-set 'CHAR-SET-INVERT)
   (predicate->char-set
    (lambda (char)
-     (not (char-set-member? char-set char)))))
+     (not (%char-set-member? char-set char)))))
 
 (define (char-set-union . char-sets)
+  (guarantee-char-sets char-sets 'CHAR-SET-UNION)
   (predicate->char-set
    (lambda (char)
      (there-exists? char-sets
        (lambda (char-set)
-	 (char-set-member? char-set char))))))
+	 (%char-set-member? char-set char))))))
 
 (define (char-set-intersection . char-sets)
+  (guarantee-char-sets char-sets 'CHAR-SET-INTERSECTION)
   (predicate->char-set
    (lambda (char)
      (for-all? char-sets
        (lambda (char-set)
-	 (char-set-member? char-set char))))))
+	 (%char-set-member? char-set char))))))
+
+(define (guarantee-char-sets char-sets procedure)
+  (for-each (lambda (char-set) (guarantee-char-set char-set procedure))
+	    char-sets))
 
 (define (char-set-difference include exclude)
+  (guarantee-char-set include 'CHAR-SET-DIFFERENCE)
+  (guarantee-char-set exclude 'CHAR-SET-DIFFERENCE)
   (predicate->char-set
    (lambda (char)
-     (and (char-set-member? include char)
-	  (not (char-set-member? exclude char))))))
+     (and (%char-set-member? include char)
+	  (not (%char-set-member? exclude char))))))
 
 ;;;; System Character Sets
 
@@ -169,27 +193,59 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! char-set:not-alphanumeric (char-set-invert char-set:alphanumeric))
   (set! char-set:not-standard     (char-set-invert char-set:standard))
   unspecific)
-
+
 (define (char-upper-case? char)
-  (char-set-member? char-set:upper-case char))
+  (guarantee-char char 'CHAR-UPPER-CASE?)
+  (%char-upper-case? char))
+
+(define-integrable (%char-upper-case? char)
+  (%char-set-member? char-set:upper-case char))
 
 (define (char-lower-case? char)
-  (char-set-member? char-set:lower-case char))
+  (guarantee-char char 'CHAR-LOWER-CASE?)
+  (%char-lower-case? char))
+
+(define-integrable (%char-lower-case? char)
+  (%char-set-member? char-set:lower-case char))
 
 (define (char-numeric? char)
-  (char-set-member? char-set:numeric char))
+  (guarantee-char char 'CHAR-NUMERIC?)
+  (%char-numeric? char))
+
+(define-integrable (%char-numeric? char)
+  (%char-set-member? char-set:numeric char))
 
 (define (char-graphic? char)
-  (char-set-member? char-set:graphic char))
+  (guarantee-char char 'CHAR-GRAPHIC?)
+  (%char-graphic? char))
+
+(define-integrable (%char-graphic? char)
+  (%char-set-member? char-set:graphic char))
 
 (define (char-whitespace? char)
-  (char-set-member? char-set:whitespace char))
+  (guarantee-char char 'CHAR-WHITESPACE?)
+  (%char-whitespace? char))
+
+(define-integrable (%char-whitespace? char)
+  (%char-set-member? char-set:whitespace char))
 
 (define (char-alphabetic? char)
-  (char-set-member? char-set:alphabetic char))
+  (guarantee-char char 'CHAR-ALPHABETIC?)
+  (%char-alphabetic? char))
+
+(define-integrable (%char-alphabetic? char)
+  (%char-set-member? char-set:alphabetic char))
 
 (define (char-alphanumeric? char)
-  (char-set-member? char-set:alphanumeric char))
+  (guarantee-char char 'CHAR-ALPHANUMERIC?)
+  (%char-alphanumeric? char))
+
+(define-integrable (%char-alphanumeric? char)
+  (%char-set-member? char-set:alphanumeric char))
 
 (define (char-standard? char)
-  (char-set-member? char-set:standard char))
+  (guarantee-char char 'CHAR-STANDARD?)
+  (%char-standard? char))
+
+(define-integrable (%char-standard? char)
+  (%char-set-member? char-set:standard char))
