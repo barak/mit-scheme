@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.29 1991/05/07 17:44:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.30 1991/05/07 17:54:14 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
@@ -99,6 +99,12 @@ MIT in each case. |#
   continuation				;ignore
   (LAP ,@(clear-map!)
        (B (N) (@PCR ,(free-uuo-link-label name frame-size)))))
+
+(define-rule statement
+  (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
+  continuation				;ignore
+  (LAP ,@(clear-map!)
+       (B (N) (@PCR ,(global-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size)
