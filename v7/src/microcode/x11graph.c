@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.34 1995/09/18 22:33:08 cph Exp $
+$Id: x11graph.c,v 1.35 1996/07/12 17:52:28 adams Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -67,6 +67,10 @@ struct gw_extra
 
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
+
+#define X_COORDINATE(virtual_device_x,xw) (ROUND_FLOAT(((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))))))
+
+#define Y_COORDINATE(virtual_device_y,xw) (((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))))))
 
 static int
 DEFUN (arg_x_coordinate, (arg, xw),
@@ -456,6 +460,55 @@ Subsequently move the graphics cursor to those coordinates.")
        (XW_NORMAL_GC (xw)),
        (internal_border_width + (arg_x_coordinate (2, xw))),
        (internal_border_width + (arg_y_coordinate (3, xw))));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-ARC", Prim_x_graphics_draw_arc, 8, 8,
+  "(X-GRAPHICS-DRAW-ARC WINDOW X Y RADIUS-X RADIUS-Y START-ANGLE SWEEP-ANGLE FILL?)\n\
+Draw an arc at the given coordinates, with given X and Y radii.\n\
+START-ANGLE and SWEEP-ANGLE are in degrees, anti-clocwise.\n\
+START-ANGLE is from 3 o'clock, and SWEEP-ANGLE is relative to the START-ANGLE\n\
+If FILL? is true, the arc is filled.")
+{
+  PRIMITIVE_HEADER (3);
+  {
+    struct xwindow * xw = (x_window_arg (1));
+    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
+    float  virtual_device_x = arg_real_number (2);
+    float  virtual_device_y = arg_real_number (3);
+    float  radius_x = arg_real_number (4);
+    float  radius_y = arg_real_number (5);
+    float  angle_start = arg_real_number (6);
+    float  angle_sweep = arg_real_number (7);
+
+    int x1 = X_COORDINATE (virtual_device_x - radius_x,  xw);
+    int x2 = X_COORDINATE (virtual_device_x + radius_x,  xw);
+    int y1 = Y_COORDINATE (virtual_device_y - radius_y,  xw);
+    int y2 = Y_COORDINATE (virtual_device_y + radius_y,  xw);
+    int width, height;
+    int angle1 = ((int)(angle_start * 64));
+    int angle2 = ((int)(angle_sweep * 64));
+    if (x2<x1) { int t=x1; x1=x2; x2=t; }
+    if (y2<y1) { int t=y1; y1=y2; y2=t; }
+    width  = x2 - x1;
+    height = y2 - y1;
+    if (ARG_REF(8) == SHARP_F)
+      XDrawArc
+	((XW_DISPLAY (xw)),
+	 (XW_WINDOW (xw)),
+	 (XW_NORMAL_GC (xw)),
+	 (internal_border_width + x1),
+	 (internal_border_width + y1),
+	 width, height,  angle1, angle2);
+    else
+      XFillArc
+	((XW_DISPLAY (xw)),
+	 (XW_WINDOW (xw)),
+	 (XW_NORMAL_GC (xw)),
+	 (internal_border_width + x1),
+	 (internal_border_width + y1),
+	 width, height,  angle1, angle2);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
