@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.36 1987/04/16 02:27:34 jinx Rel $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prim.h,v 9.37 1987/10/28 21:57:38 jinx Rel $ */
 
 /*
    Primitive declarations.
@@ -49,7 +49,7 @@ extern int External_Arity_Table[];
 extern char *External_Name_Table[];
 extern long MAX_EXTERNAL_PRIMITIVE;
 
-extern Pointer Undefined_Externals, Make_Prim_Exts();
+extern Pointer Undefined_Externals;
 
 /* Utility macros */
 
