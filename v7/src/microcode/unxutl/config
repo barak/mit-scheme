@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Id: config,v 1.25 1993/11/03 22:08:32 gjr Exp $
+# $Id: config,v 1.26 1993/11/03 22:37:12 cph Exp $
 # Modelled on the configuration script for GNU CC
 # The section between lines is the copyright prefix from the GNU CC config.
 #----------------------------------------------------------------------
@@ -113,7 +113,7 @@ discriminate()
 		cmpaux_file=mc68k.m4
 		;;
 	next)
-		system_file=nextos.h
+		system_file=nextos
 		machine_file=next
 		cmpint_file=mc68k.h
 		cmpaux_file=mc68k.m4
