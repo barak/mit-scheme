@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: disload.scm,v 1.4 1993/07/01 21:48:35 gjr Exp $
+$Id: disload.scm,v 1.5 1993/07/01 21:49:02 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -92,4 +92,4 @@ MIT in each case. |#
 		(load "dinstr3")))
 	  (for-each export
 		    '(compiler:write-lap-file
-		      compiler:disassemble)))'))))
+		      compiler:disassemble)))))))
