@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.78 1991/05/02 01:14:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.79 1991/11/04 21:55:39 markf Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -102,6 +102,7 @@
   insert-daemons
   delete-daemons
   clip-daemons
+  move-point-daemons
   undo-data
   modified?
   point
@@ -126,6 +127,7 @@
     (vector-set! group group-index:insert-daemons '())
     (vector-set! group group-index:delete-daemons '())
     (vector-set! group group-index:clip-daemons '())
+    (vector-set! group group-index:move-point-daemons '())
     (vector-set! group group-index:undo-data false)
     (vector-set! group group-index:modified? false)
     (vector-set! group group-index:point (make-permanent-mark group 0 true))
@@ -202,8 +204,13 @@
 (define-integrable (set-group-modified! group sense)
   (vector-set! group group-index:modified? sense))
 
-(define-integrable (set-group-point! group point)
+(define-integrable (%set-group-point! group point)
   (vector-set! group group-index:point (mark-left-inserting-copy point)))
+
+(define (set-group-point! group point)
+  (let ((old-point (group-point group)))
+    (%set-group-point! group point)
+    (record-move-point! group point old-point)))
 
 (define (group-absolute-start group)
   (make-temporary-mark group 0 false))
@@ -305,6 +312,21 @@
   (vector-set! group
 	       group-index:clip-daemons
 	       (delq! daemon (vector-ref group group-index:clip-daemons))))
+
+(define (record-move-point! group start end)
+  (invoke-group-daemons! (group-move-point-daemons group) group start end))
+
+(define (add-group-move-point-daemon! group daemon)
+  (vector-set! group
+	       group-index:move-point-daemons
+	       (cons daemon (vector-ref group
+					group-index:move-point-daemons))))
+
+(define (remove-group-move-point-daemon! group daemon)
+  (vector-set! group
+	       group-index:move-point-daemons
+	       (delq! daemon (vector-ref group
+					 group-index:move-point-daemons))))
 
 (define (group-local-ref group variable)
   (variable-local-value (let ((buffer (group-buffer group)))
