@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.2 1995/10/25 03:26:02 cph Exp $
+;;;	$Id: dosfile.scm,v 1.3 1995/10/25 03:26:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -119,7 +119,7 @@ Includes the new backup.  Must be > 0."
 (define (os/buffer-backup-pathname truename)
   (call-with-values
       (lambda ()
-	(if (os/fs-long-filenames? truename)
+	(if (dos/fs-long-filenames? truename)
 	    (let ((type (pathname-type truename)))
 	      (if (member type dos/encoding-pathname-types)
 		  (values (pathname-new-type truename #f)
@@ -130,7 +130,7 @@ Includes the new backup.  Must be > 0."
       (if (eq? 'NEVER (ref-variable version-control))
 	  (values (dos/make-backup-pathname truename #f suffix) '())
 	  (let ((prefix
-		 (if (os/fs-long-filenames? truename)
+		 (if (dos/fs-long-filenames? truename)
 		     (string-append (file-namestring truename) ".~")
 		     (string-append (pathname-name truename) "."))))
 	    (let ((backups
@@ -170,7 +170,7 @@ Includes the new backup.  Must be > 0."
 				'()))))))))))
 
 (define (dos/make-backup-pathname pathname version suffix)
-  (if (os/fs-long-filenames? pathname)
+  (if (dos/fs-long-filenames? pathname)
       (string-append (->namestring pathname)
 		     (if version
 			 (string-append ".~" (number->string version) suffix)
@@ -241,7 +241,7 @@ Includes the new backup.  Must be > 0."
 	     (string-ci=? "sav" type)))))
 
 (define (os/precious-backup-pathname pathname)
-  (if (os/fs-long-filenames? pathname)
+  (if (dos/fs-long-filenames? pathname)
       (let ((directory (directory-pathname pathname)))
 	(let loop ((i 0))
 	  (let ((pathname
@@ -259,18 +259,18 @@ Includes the new backup.  Must be > 0."
 	 (or pathname
 	     (let ((directory (buffer-default-directory buffer)))
 	       (merge-pathnames
-		(if (os/fs-long-filenames? directory)
+		(if (dos/fs-long-filenames? directory)
 		    (string-append "%" (dos/buffer-long-name buffer))
 		    "%buffer%")
 		directory)))))
-    (if (os/fs-long-filenames? pathname)
+    (if (dos/fs-long-filenames? pathname)
 	(merge-pathnames (string-append "#" (file-namestring pathname) "#")
 			 (directory-pathname pathname))
 	(pathname-new-type pathname "sav"))))
 
 (define (dos/buffer-long-name buffer)
   (if (string-ci=? "hpfs"
-		   (car (os/fs-drive-type (buffer-default-directory buffer))))
+		   (car (dos/fs-drive-type (buffer-default-directory buffer))))
       (dos/buffer-hpfs-name buffer)
       (buffer-name buffer)))
 
