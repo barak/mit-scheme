@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.378 2001/10/05 15:58:18 cph Exp $
+$Id: runtime.pkg,v 14.379 2001/10/10 04:52:37 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3773,12 +3773,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  url:decode-substring
 	  url:encode-string
 	  url:encode-substring
-	  url:rexp:escape
-	  url:rexp:host
-	  url:rexp:hostname
-	  url:rexp:hostnumber
-	  url:rexp:hostport
-	  url:rexp:uchar
-	  url:rexp:xchar
+	  url:match:escape
+	  url:match:host
+	  url:match:hostname
+	  url:match:hostnumber
+	  url:match:uchar
+	  url:match:xchar
+	  url:parse:hostport
 	  url:string-encoded?
 	  url:substring-encoded?))

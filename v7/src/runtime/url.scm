@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.9 2001/10/05 15:57:43 cph Exp $
+$Id: url.scm,v 1.10 2001/10/10 04:52:12 cph Exp $
 
 Copyright (c) 2000, 2001 Massachusetts Institute of Technology
 
@@ -23,13 +23,14 @@ USA.
 ;;;; URL Encoding
 
 (declare (usual-integrations))
-(load-option 'REGULAR-EXPRESSION)
+(load-option '*PARSER)
 
 (define url:char-set:safe (string->char-set "$-_.+"))
 (define url:char-set:extra (string->char-set "!*'(),"))
 (define url:char-set:national (string->char-set "{}|\\^~[]`"))
 (define url:char-set:punctuation (string->char-set "<>#%\""))
 (define url:char-set:reserved (string->char-set ";/?:@&="))
+(define url:char-set:hex (string->char-set "0123456789abcdefABCDEF"))
 
 (define url:char-set:unreserved
   (char-set-union char-set:alphanumeric
@@ -43,51 +44,66 @@ USA.
 (define url:char-set:escaped
   (char-set-invert url:char-set:unescaped))
 
-(define url:rexp:escape
-  (let ((char-set:hex (string->char-set "0123456789ABCDEFabcdef")))
-    (rexp-sequence "%" char-set:hex char-set:hex)))
+(define url:match:escape
+  (*matcher
+   (seq "%"
+	(char-set url:char-set:hex)
+	(char-set url:char-set:hex))))
 
-(define url:rexp:uchar
-  (rexp-alternatives url:char-set:unreserved url:rexp:escape))
+(define url:match:uchar
+  (*matcher
+   (alt (char-set url:char-set:unreserved)
+	url:match:escape)))
 
-(define url:rexp:xchar
-  (rexp-alternatives url:char-set:unescaped url:rexp:escape))
+(define url:match:xchar
+  (*matcher
+   (alt (char-set url:char-set:unescaped)
+	url:match:escape)))
 
-(define url:rexp:hostname
-  (let ((tail
-	 (rexp-optional
-	  (rexp*
-	   (char-set-union char-set:alphanumeric (string->char-set "-")))
-	  char-set:alphanumeric)))
-    (rexp-sequence (rexp* char-set:alphanumeric tail ".")
-		   char-set:alphabetic
-		   tail)))
+(define url:parse:hostport
+  (*parser
+   (seq (match url:match:host)
+	(alt (map string->number
+		  (seq (noise ":")
+		       (match (+ (char-set char-set:numeric)))))
+	     (values #f)))))
 
-(define url:rexp:hostnumber
-  (let ((n (rexp+ char-set:numeric)))
-    (rexp-sequence n "." n "." n "." n)))
+(define url:match:host
+  (*matcher (alt url:match:hostname url:match:hostnumber)))
 
-(define url:rexp:host
-  (rexp-alternatives url:rexp:hostname url:rexp:hostnumber))
+(define url:match:hostname
+  (let ((match-tail
+	 (*matcher
+	  (* (alt (char-set char-set:alphanumeric)
+		  (seq (+ #\-)
+		       (char-set char-set:alphanumeric)))))))
+    (*matcher
+     (seq (* (seq (char-set char-set:alphanumeric)
+		  match-tail
+		  "."))
+	  (char-set char-set:alphabetic)
+	  match-tail))))
 
-(define url:rexp:hostport
-  (rexp-sequence url:rexp:host (rexp-optional ":" (rexp+ char-set:numeric))))
+(define url:match:hostnumber
+  (*matcher
+   (seq (+ (char-set char-set:numeric))
+	"."
+	(+ (char-set char-set:numeric))
+	"."
+	(+ (char-set char-set:numeric))
+	"."
+	(+ (char-set char-set:numeric)))))
 
 (define (url:string-encoded? string)
   (url:substring-encoded? string 0 (string-length string)))
 
+(define url:substring-encoded?
+  (let ((matcher (*matcher (complete (* url:match:xchar)))))
+    (lambda (string start end)
+      (matcher (substring->parser-buffer string start end)))))
+
 (define (url:encode-string string)
   (url:encode-substring string 0 (string-length string)))
-
-(define (url:decode-string string)
-  (url:decode-substring string 0 (string-length string)))
-
-(define url:substring-encoded?
-  (let ((pattern (rexp-compile (rexp* url:rexp:xchar))))
-    (lambda (string start end)
-      (let ((regs (re-substring-match pattern string start end)))
-	(and regs
-	     (fix:= end (re-match-end-index 0 regs)))))))
 
 (define (url:encode-substring string start end)
   (let ((n-to-encode
@@ -122,31 +138,41 @@ USA.
 		      (loop (fix:+ index 1) (fix:+ i 3))))
 		  (substring-move! string start end encoded i))))
 	  encoded))))
+
+(define (url:decode-string string)
+  (url:decode-substring string 0 (string-length string)))
 
 (define (url:decode-substring string start end)
-  (let ((patt (rexp-compile url:rexp:escape)))
-    (let ((n-encoded
-	   (let loop ((start start) (n-encoded 0))
-	     (let ((regs (re-substring-search-forward patt string start end)))
-	       (if regs
-		   (loop (re-match-end-index 0 regs) (fix:+ n-encoded 1))
-		   n-encoded)))))
-      (if (fix:= 0 n-encoded)
-	  (substring string start end)
-	  (let ((decoded
-		 (make-string (fix:- (fix:- end start) (fix:* 2 n-encoded)))))
-	    (let loop ((start start) (i 0))
-	      (let ((regs (re-substring-search-forward patt string start end)))
-		(if regs
-		    (let ((index (re-match-start-index 0 regs)))
+  (let ((n-encoded
+	 (let loop ((start start) (n-encoded 0))
+	   (let ((index (substring-find-next-char string start end #\%)))
+	     (if index
+		 (loop (fix:+ index 1) (fix:+ n-encoded 1))
+		 n-encoded))))
+	(lose
+	 (lambda ()
+	   (error "Malformed encoded URL string:"
+		  (substring string start end)))))
+    (if (fix:= 0 n-encoded)
+	(substring string start end)
+	(let ((decoded
+	       (make-string (fix:- (fix:- end start) (fix:* 2 n-encoded)))))
+	  (let loop ((start start) (i 0))
+	    (let ((index (substring-find-next-char string start end #\%)))
+	      (if index
+		  (begin
+		    (if (not (fix:<= (fix:+ index 3) end))
+			(lose))
+		    (let ((k
+			   (substring->number string
+					      (fix:+ index 1)
+					      (fix:+ index 3)
+					      16))
+			  (i* (fix:+ i (fix:- index start))))
+		      (if (not k)
+			  (lose))
 		      (substring-move! string start index decoded i)
-		      (let ((i (fix:+ i (fix:- index start))))
-			(vector-8b-set!
-			 decoded i
-			 (substring->number string
-					     (fix:+ index 1)
-					     (fix:+ index 3)
-					     16))
-			(loop (fix:+ index 3) (fix:+ i 1))))
-		    (substring-move! string start end decoded i))))
-	    decoded)))))
+		      (vector-8b-set! decoded i* k)
+		      (loop (fix:+ index 3) (fix:+ i* 1))))
+		  (substring-move! string start end decoded i))))
+	  decoded))))
