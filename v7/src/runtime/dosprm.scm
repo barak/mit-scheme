@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.7 1992/05/29 00:11:34 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dosprm.scm,v 1.8 1992/05/31 06:15:39 mhwu Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -85,20 +85,16 @@ MIT in each case. |#
 	      (let ((base-name (string-append dir "_scm_tmp.")))
 		(let unique-file ((ext 0))
 		  (let ((name (string-append base-name (number->string ext))))
-		    ;; Needs test-and-set here
-		    (if (file-exists? name)
+		    (if (or (file-exists? name) (not (file-touch name)))
 			(if (fix:> ext 999) ; don't get rediculous here
 			    (error "Cannot find unique temp file name"
 				   base-name)
 			    (unique-file (fix:+ ext 1)))
 			(dynamic-wind
-			 (lambda ()
-			   (close-output-port (open-output-file name)))
-			 (lambda ()
-			   (receiver name))
-			 (lambda ()
-			   (if (file-exists? name)
-			       (delete-file name))))))))
+			 (lambda () unspecific)
+			 (lambda () (receiver name))
+			 (lambda () (if (file-exists? name)
+					(delete-file name))))))))
 	      (find-eligible-directory (cdr eligible-directories)))))))
     
 
