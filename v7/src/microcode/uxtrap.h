@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.15 1992/07/30 15:03:01 jinx Exp $
+$Id: uxtrap.h,v 1.16 1992/08/29 13:10:09 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -423,6 +423,33 @@ struct full_sigcontext
 
 #endif /* i386 */
 
+#ifdef __alpha
+
+#define sc_sp				sc_regs[30]
+#define sc_rfree			sc_regs[4]
+#define sc_schsp			sc_regs[2]
+
+#define HAVE_FULL_SIGCONTEXT
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_rfree)
+#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
+#define FULL_SIGCONTEXT_NREGS		32
+#define PROCESSOR_NREGS			32
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_COMPLETE_FAULT, "software completion fault");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INVALID_FAULT, "invalid operation fault");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INEXACT_FAULT, "floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF_FAULT, "integer overflow fault");	\
+}
+
+#endif /* __alpha */
+
 #ifndef SIGINFO_T
 #define SIGINFO_T int
 #define SIGINFO_VALID_P(info) (1)
