@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.10 1995/11/03 01:31:08 cph Exp $
+$Id: os2winp.scm,v 1.11 1995/11/04 01:44:33 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -97,6 +97,7 @@ MIT in each case. |#
   (os2win-get-pos 1)
   (os2win-get-size 1)
   (os2win-invalidate 5)
+  (os2win-load-icon 3)
   (os2win-load-menu 3)
   (os2win-move-cursor 3)
   (os2win-open 2)
@@ -106,6 +107,7 @@ MIT in each case. |#
   (os2win-scroll 7)
   (os2win-set-capture 2)
   (os2win-set-grid 3)
+  (os2win-set-icon 2)
   (os2win-set-pos 3)
   (os2win-set-size 3)
   (os2win-set-state 2)
@@ -549,3 +551,21 @@ MIT in each case. |#
 (define-integrable SPTR_FOLDER 20)
 (define-integrable SPTR_MULTFILE 21)
 (define-integrable SPTR_PROGRAM 22)
+
+;;; Constants for use with os2win-load-pointer.
+(define-integrable IDI_BCH	10)
+(define-integrable IDI_COFFEE	11)
+(define-integrable IDI_CONSES	12)
+(define-integrable IDI_EDWIN	13)
+(define-integrable IDI_ENVIR1	14)
+(define-integrable IDI_GRAPHICS	15)
+(define-integrable IDI_LAMBDA	16)
+(define-integrable IDI_LAMBDA2	17)
+(define-integrable IDI_LIAR1	18)
+(define-integrable IDI_LIAR2	19)
+(define-integrable IDI_LIAR3	20)
+(define-integrable IDI_MINCER	21)
+(define-integrable IDI_SHIELD1	22)
+(define-integrable IDI_SHIELD2	23)
+(define-integrable IDI_SHIELD3	24)
+(define-integrable IDI_SHIELD4	25)

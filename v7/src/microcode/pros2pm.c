@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.12 1995/11/04 00:08:15 cph Exp $
+$Id: pros2pm.c,v 1.13 1995/11/04 01:42:27 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -939,6 +939,23 @@ DEFINE_PRIMITIVE ("OS2-SET-POINTER", Prim_OS2_set_pointer, 2, 2, 0)
     (BOOLEAN_TO_OBJECT (OS2_set_pointer (pm_qid,
 					 (HWND_ARG (1)),
 					 (arg_ulong_integer (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-LOAD-ICON", Prim_OS2_window_load_icon, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_load_icon ((wid_argument (1)),
+					     (arg_ulong_integer (2)),
+					     (arg_ulong_integer (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-SET-ICON", Prim_OS2_window_set_icon, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT
+     (OS2_window_set_icon ((wid_argument (1)), (arg_ulong_integer (2)))));
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)
