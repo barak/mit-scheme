@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.52 1993/08/03 08:29:52 gjr Exp $
+$Id: memmag.c,v 9.53 1993/08/03 22:15:14 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -48,10 +48,6 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "gccode.h"
-
-#ifdef WINNT
-#  include "ntcmp386.h"
-#endif
 
 /* Imports */
 
