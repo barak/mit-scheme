@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.160 1992/09/18 19:05:24 cph Exp $
+$Id: runtime.pkg,v 14.161 1992/09/21 20:34:43 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -2324,6 +2324,7 @@ MIT in each case. |#
   (export ()
 	  *unparse-compound-procedure-names?*
 	  *unparse-disambiguate-null-as-itself?*
+	  *unparse-disambiguate-null-lambda-list?*
 	  *unparse-primitives-by-name?*
 	  *unparse-uninterned-symbols-by-name?*
 	  *unparse-with-maximum-readability?*

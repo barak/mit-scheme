@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 14.27 1992/07/21 04:26:40 cph Exp $
+$Id: unpars.scm,v 14.28 1992/09/21 20:33:45 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -49,6 +49,7 @@ MIT in each case. |#
   (set! *unparse-uninterned-symbols-by-name?* false)
   (set! *unparse-with-maximum-readability?* false)
   (set! *unparse-disambiguate-null-as-itself?* true)
+  (set! *unparse-disambiguate-null-lambda-list?* false)
   (set! *unparse-compound-procedure-names?* true)
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set-current-unparser-table! system-global-unparser-table))
@@ -61,6 +62,7 @@ MIT in each case. |#
 (define *unparse-uninterned-symbols-by-name?*)
 (define *unparse-with-maximum-readability?*)
 (define *unparse-disambiguate-null-as-itself?*)
+(define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
 (define system-global-unparser-table)
 (define *current-unparser-table*)
@@ -433,9 +435,22 @@ MIT in each case. |#
     (if prefix
 	(unparse-list/prefix-pair prefix pair)
 	(let ((method (unparse-list/unparser pair)))
-	  (if method
-	      (invoke-user-method method pair)
-	      (unparse-list pair))))))
+	  (cond (method
+		 (invoke-user-method method pair))
+		((and *unparse-disambiguate-null-lambda-list?*
+		      (eq? (car pair) 'LAMBDA)
+		      (pair? (cdr pair))
+		      (null? (cadr pair))
+		      (pair? (cddr pair)))
+		 (limit-unparse-depth
+		  (lambda ()
+		    (*unparse-char #\()
+		    (*unparse-object (car pair))
+		    (*unparse-string " ()")
+		    (unparse-tail (cddr pair) 3)
+		    (*unparse-char #\)))))
+		(else
+		 (unparse-list pair)))))))
 
 (define (unparse-list list)
   (limit-unparse-depth
