@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.25 1992/11/11 19:11:56 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.26 1992/11/12 19:37:19 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.25 1992/11/11 19:11:56 bal Exp $"
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.26 1992/11/12 19:37:19 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -196,7 +196,7 @@ RECIPIENTS is a string of names separated by commas."
 	    (if next-memo
 		(loop next-memo))))
 	(select-buffer-other-window (ref-variable rmail-summary-buffer))
-	(set-buffer-writeable! (current-buffer))
+	(set-buffer-writable! (current-buffer))
 	(set-current-point! (buffer-start (current-buffer)))
 	(kill-string (buffer-start (current-buffer))
 		     (buffer-end (current-buffer)))
@@ -508,7 +508,7 @@ Entering this mode calls value of hook variable rmail-summary-mode-hook."
 		(begin
 		  (if (char=? (mark-right-char end) #\-)
 		      (begin
-			(set-buffer-writeable! (current-buffer))
+			(set-buffer-writable! (current-buffer))
 			(mark-delete-right-char! end)
 			(insert-char #\space end)
 			(set-buffer-read-only! (current-buffer))))
@@ -593,7 +593,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 		      (begin
 			(if (char=? (mark-right-char end) #\-)
 			    (begin
-			      (set-buffer-writeable! (current-buffer))
+			      (set-buffer-writable! (current-buffer))
 			      (mark-delete-right-char! end)
 			      (insert-char #\space end)
 			      (set-buffer-read-only! (current-buffer))))
@@ -625,7 +625,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	   (skip-chars-forward " " (line-start (current-point) 0))))
       (let ((the-mark
 	     (skip-chars-forward "[0-9]" the-mark1)))
-	(set-buffer-writeable! (current-buffer))
+	(set-buffer-writable! (current-buffer))
 	(delete-string the-mark (mark1+ the-mark))
 	(insert-string "D" the-mark)
 	(set-buffer-read-only! (current-buffer))))))
@@ -664,7 +664,7 @@ shown in the RMAIL buffer, warp to the appropriate message."
 	     (skip-chars-forward " " (line-start (current-point) 0))))
 	(let ((the-mark
 	       (skip-chars-forward "[0-9]" the-mark1)))
-	  (set-buffer-writeable! (current-buffer))
+	  (set-buffer-writable! (current-buffer))
 	  (delete-string the-mark (mark1+ the-mark))
 	  (insert-string " " the-mark)
 	  (set-buffer-read-only! (current-buffer)))))))

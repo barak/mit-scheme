@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.7 1992/09/24 22:13:25 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsrt.scm,v 1.8 1992/11/12 19:36:05 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -133,7 +133,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	   (sort-vect (make-vector (1+ nummsg))))
       (message "Finding sort keys...")
       (widen)
-      (set-buffer-writeable! (current-buffer))
+      (set-buffer-writable! (current-buffer))
       (let loop ((n 0)
 		 (the-memo (msg-memo/first (current-msg-memo))))
 	(let ((next (msg-memo/next the-memo)))
@@ -188,10 +188,14 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 
 (define rmail-sortable-date-string
   (lambda (date)
-    (let ((month '(("JAN" . " 1")("FEB" . " 2")("MAR" . " 3")
-				 ("APR" . " 4")("MAY" . " 5")("JUN" . " 6")
-				 ("JUL" . " 7")("AUG" . " 8")("SEP" . " 9")
-				 ("OCT" . "10")("NOV" . "11")("DEC" . "12")))
+    (let ((month '(("JAN" . "01")("FEB" . "02")("MAR" . "03")
+				 ("APR" . "04")("MAY" . "05")("JUN" . "06")
+				 ("JUL" . "07")("AUG" . "08")("SEP" . "09")
+				 ("OCT" . "10")("NOV" . "11")("DEC" . "12")
+				 ("JANUARY" . "01")("FEBRUARY" . "02")("MARCH" . "03")
+				 ("APRIL" . "04")("JUNE" . "06")("JULY" . "07")
+				 ("AUGUST" . "08")("SEPTEMBER" . "09")("OCTOBER" . "10")
+				 ("NOVEMBER" . "11")("DECEMBER" . "12")))
 	  (date (or date "")))
     ;; Can understand the following styles:
     ;; (1) 14 Apr 89 03:20:12 GMT
@@ -203,7 +207,7 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
     ;; made seconds optional since research.att.com doesn't send it out
       (if (re-search-string-forward
 	   (re-compile-pattern
-	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]+\\):\\([0-9]+\\)\\([0-9:]*\\)" true)
+	    "\\([0-9]+\\) \\([^ ,]+\\) \\([0-9]+\\)[ ]+\\([0-9]?[0-9]\\):?\\([0-9][0-9]\\):?\\([0-9]*\\)" true)
 	   true false date)
 	  (string-append
 	   ;; Year
@@ -232,10 +236,8 @@ If prefix argument REVERSE is non-nil, sort them in reverse order."
 	   ;; Time
 	   (string-pad-left
 	    (substring date (re-match-start-index 4) (re-match-end-index 4)) 2 #\0)
-	   (string-pad-left
-	    (substring date (re-match-start-index 5) (re-match-end-index 5)) 2 #\0)
-	   (string-pad-left
-	    (substring date (re-match-start-index 6) (re-match-end-index 6)) 2 #\0))
+	   (substring date (re-match-start-index 5) (re-match-end-index 5))
+	   (substring date (re-match-start-index 6) (re-match-end-index 6)))
       ;; Cannot understand DATE string.
 	  date))))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.20 1992/11/05 16:41:22 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.21 1992/11/12 19:36:15 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -447,10 +447,10 @@ and use that file as the inbox."
 	   (and (file-exists? pathname)
 		(let ((mark (mark-left-inserting-copy mark)))
 		  (insert-file mark pathname)
-		  (if (let ((char (mark-left-char mark)))
-			(and char
-			     (not (char=? char #\newline))))
-		      (insert-newline mark))
+;		  (if (let ((char (mark-left-char mark)))
+;			(and char
+;			     (not (char=? char #\newline))))
+;		      (insert-newline mark))
 		  (mark-temporary! mark)
 		  pathname)))))
     (let ((source (->pathname filename)))
@@ -1390,7 +1390,7 @@ buffer visiting that file."
 		   'RMAIL-OLD-TEXT
 		   (extract-string (buffer-start buffer)
 				   (buffer-end buffer)))
-      (set-buffer-writeable! buffer)
+      (set-buffer-writable! buffer)
       (message
        (substitute-command-keys
 	"Editing: Type \\[rmail-cease-edit] to return to Rmail, \\[rmail-abort-edit] to abort"
@@ -1894,7 +1894,7 @@ Leaves original message, deleted, before the undigestified messages."
     (sit-for 1)
     end)
 
-  (with-text-clipped start end (lambda () (loop start 0))))
+  (with-text-clipped start end (lambda () (loop (skip-chars-forward "\n" start end) 0))))
 
 (define (convert-buffer-to-babyl-format buffer)
   (with-buffer-open buffer
