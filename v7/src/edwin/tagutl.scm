@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.41 1991/05/15 01:12:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.42 1991/05/20 20:31:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -120,22 +120,23 @@ See documentation of variable tags-file-name."
   unspecific)
 
 (define (find-tag-default)
-  (let ((point (current-point)))
-    (let ((end (group-end point)))
-      (let ((mark
-	     (re-search-backward
-	      "\\sw\\|\\s_"
-	      (or (re-match-forward "\\(\\sw\\|\\s_\\)*" point end)
-		  point)
-	      (group-start point))))
-	(and mark
-	     (let ((mark (mark1+ mark)))
-	       (let ((mark*
-		      (re-search-forward "\\(\\s'\\)*"
-					 (backward-sexp mark 1 'LIMIT)
-					 mark)))
-		 (and mark*
-		      (extract-string mark* mark)))))))))
+  (let ((end
+	 (let ((point (current-point)))
+	   (or (re-match-forward "\\(\\sw\\|\\s_\\)+"
+				 point
+				 (group-end point)
+				 false)
+	       (let ((mark
+		      (re-search-backward "\\sw\\|\\s_"
+					  point
+					  (group-start point)
+					  false)))
+		 (and mark
+		      (mark1+ mark)))))))
+    (and end
+	 (extract-string (forward-prefix-chars (backward-sexp end 1 'LIMIT)
+					       end)
+			 end))))
 
 (define (find-tag string buffer start find-file)
   (let ((end (group-end start)))
