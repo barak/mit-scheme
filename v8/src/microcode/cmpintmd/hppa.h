@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.7 1989/11/28 13:08:51 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.8 1989/11/28 21:12:51 jinx Exp $
  *
  * Compiled code interface macros.
  *
@@ -354,29 +354,68 @@ procedures and continuations differ from closures) */
 
 #define EXECUTE_CACHE_ENTRY_SIZE        3
 
-/* Execute cache destructuring. */
-
-/* Given a target location and the address of the first word of an
-   execute cache entry, extract from the cache cell the number of
-   arguments supplied by the caller and store it in target. */
-
 /* For the HPPA, addresses in bytes from the start of the cache:
+
    Before linking
+
      +0: TC_SYMBOL || symbol address
      +4: #F
      +8: TC_FIXNUM || 0
     +10: number of supplied arguments, +1
+
    After linking
+
      +0: LDIL	L'target,26
      +4: BLE,n	R'target(5,26)
      +8: (unchanged)
     +10: (unchanged)
+
+   Important:
+
+     Currently the code below unconditionally nullifies the delay-slot
+     instruction for the BLE instruction.  This is wasteful and
+     unnecessary.  An EXECUTE_CACHE_ENTRY could be one word longer to
+     accomodate a delay-slot instruction, and the linker could do the
+     following:
+
+     - If the target instruction is not a branch instruction, use 4 +
+     the address of the target instruction, and copy the target
+     instruction to the delay slot.  Note that branch instructions are
+     those with opcodes (6 bits) in the range #b1xy0zw, for any bit
+     value for x, y, z, w.
+
+     - If the target instruction is the COMBT instruction of an
+     interrupt/gc check, use 4 + the address of the target
+     instruction, and insert a similar COMBT instruction in the delay
+     slot.  This COMBT instruction would then branch to an instruction
+     shared by all the cache cells in the same block.  This shared
+     instruction would be a BE instruction used to jump to an assembly
+     language handler.  This handler would recover the target address
+     from the link address left in register 31 by the BLE instruction
+     in the execute cache cell, and use it to compute the address of
+     and branch to the interrupt code for the entry.
+
+     - Otherwise use the address of the target instruction and insert
+     a NOP in the delay slot.
 */
+
+/* Execute cache destructuring. */
+
+/* Given a target location and the address of the first word of an
+   execute cache entry, extract from the cache cell the number of
+   arguments supplied by the caller and store it in target.
+ */
 
 #define EXTRACT_EXECUTE_CACHE_ARITY(target, address)			\
 {									\
   (target) = ((long) (* ((unsigned short *) (address)) + 5));		\
 }
+
+/* Given a target location and the address of the first word of an
+   execute cache entry, extract from the cache cell the name
+   of the variable whose value is being invoked.
+   This is valid only before linking.
+ */
 
 #define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address)			\
 {									\
