@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.19 2004/10/06 13:48:51 cph Exp $
+$Id: ttyio.scm,v 1.20 2004/10/06 18:46:59 cph Exp $
 
 Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
 
@@ -96,32 +96,28 @@ USA.
 (define console-input-port)
 (define console-output-port)
 
-(define *exit-on-eof?* #t)
-
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))
     (if (eof-object? char)
-	(if *exit-on-eof?*
-	    (begin
-	      (if (not (nearest-cmdl/batch-mode?))
-		  (begin
-		    (fresh-line port)
-		    (write-string "End of input stream reached." port)))
-	      (%exit)))
-	(maybe-echo-input port char))
+	(begin
+	  (if (not (nearest-cmdl/batch-mode?))
+	      (begin
+		(fresh-line port)
+		(write-string "End of input stream reached." port)))
+	  (%exit)))
+    (maybe-echo-input port char)
     char))
 
 (define (operation/read-finish port)
-  (fluid-let ((*exit-on-eof?* #f))
-    (let loop ()
-      (if (input-port/char-ready? port)
-	  (let ((char (input-port/read-char port)))
-	    (if (not (eof-object? char))
-		(if (char-whitespace? char)
-		    (begin
-		      (maybe-echo-input port char)
-		      (loop))
-		    (input-port/unread-char port char)))))))
+  (let loop ()
+    (if ((port-type/char-ready? generic-i/o-type) port)
+	(let ((char ((port-type/read-char generic-i/o-type) port)))
+	  (if (not (eof-object? char))
+	      (if (char-whitespace? char)
+		  (begin
+		    (maybe-echo-input port char)
+		    (loop))
+		  ((port-type/unread-char generic-i/o-type) port char))))))
   (output-port/discretionary-flush port))
 
 (define (maybe-echo-input port char)

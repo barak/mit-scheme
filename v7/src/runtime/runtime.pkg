@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.497 2004/10/01 02:48:06 cph Exp $
+$Id: runtime.pkg,v 14.498 2004/10/06 18:46:55 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1810,9 +1810,26 @@ USA.
 	  notification-output-port
 	  output-port-type?
 	  output-port?
+	  port-type/char-ready?
+	  port-type/discard-char
+	  port-type/discretionary-flush-output
+	  port-type/flush-output
+	  port-type/fresh-line
+	  port-type/get-transcript-port
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
+	  port-type/peek-char
+	  port-type/read-char
+	  port-type/read-external-substring
+	  port-type/read-substring
+	  port-type/read-wide-substring
+	  port-type/set-transcript-port
+	  port-type/unread-char
+	  port-type/write-char
+	  port-type/write-external-substring
+	  port-type/write-substring
+	  port-type/write-wide-substring
 	  port-type?
 	  port/coding
 	  port/copy
