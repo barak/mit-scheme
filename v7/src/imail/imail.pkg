@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.15 2000/04/18 21:50:34 cph Exp $
+;;; $Id: imail.pkg,v 1.16 2000/04/22 01:53:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -116,32 +116,19 @@
   (files "imap-syntax")
   (parent (edwin imail))
   (export (edwin imail)
-	  imap:char-set:achar
+	  imap:atom-char?
 	  imap:char-set:atom-char
-	  imap:char-set:list-wildcards
-	  imap:char-set:quoted-specials
-	  imap:match:achar+
-	  imap:match:astring
-	  imap:match:atom
-	  imap:match:bchar+
-	  imap:match:date
-	  imap:match:literal
-	  imap:match:number
-	  imap:match:nz-number
-	  imap:match:quoted-string
-	  imap:match:search-key
-	  imap:match:search-program
-	  imap:match:section
-	  imap:match:section-text
-	  imap:match:set
-	  imap:match:string
-	  imap:parse:enc-mailbox
-	  imap:parse:mailboxlist
-	  imap:parse:messagelist
-	  imap:parse:messagepart
-	  imap:parse:server
-	  imap:parse:simple-message
-	  imap:parse:uidvalidity))
+	  imap:char-set:tag-char
+	  imap:char-set:text-char
+	  imap:match:tag
+	  imap:quoted-char?
+	  imap:quoted-special?))
+
+(define-package (edwin imail imap-response)
+  (files "imap-response")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  imap:read-server-response))
 
 (define-package (edwin imail)
   (files "imail-util"

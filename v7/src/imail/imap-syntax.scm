@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.1 2000/04/18 21:30:57 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.2 2000/04/22 01:53:48 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -38,28 +38,79 @@
 (define imap:char-set:quoted-specials
   (char-set #\" #\\))
 
+(define (imap:quoted-special? char)
+  (char-set-member? imap:char-set:quoted-specials char))
+
 (define imap:char-set:list-wildcards
   (char-set #\% #\*))
 
-(define imap:char-set:atom-char
-  (char-set-invert
-   (char-set-union (char-set #\( #\) #\{ #\space #\rubout)
-		   imap:char-set:quoted-specials
-		   imap:char-set:list-wildcards
-		   (ascii-range->char-set #x00 #x20))))
+(define imap:char-set:char
+  (ascii-range->char-set #x01 #x80))
 
+(define imap:char-set:ctl
+  (char-set-union (ascii-range->char-set #x00 #x20)
+		  (char-set #\rubout)))
+
+(define imap:char-set:atom-char
+  (char-set-difference imap:char-set:char
+		       (char-set-union (char-set #\( #\) #\{ #\space)
+				       imap:char-set:ctl
+				       imap:char-set:list-wildcards
+				       imap:char-set:quoted-specials)))
+
+(define (imap:atom-char? char)
+  (char-set-member? imap:char-set:atom-char char))
+
+(define imap:char-set:text-char
+  (char-set-difference imap:char-set:char
+		       (char-set #\return #\linefeed)))
+
+(define imap:char-set:quoted-char
+  (char-set-difference imap:char-set:text-char
+		       imap:char-set:quoted-specials))
+
+(define (imap:quoted-char? char)
+  (char-set-member? imap:char-set:quoted-char char))
+
+(define imap:char-set:base64
+  (char-set-union char-set:alphanumeric
+		  (char-set #\+ #\/)))
+
+(define imap:char-set:tag-char
+  (char-set-difference imap:char-set:atom-char
+		       (char-set #\+)))
+
 (define imap:match:atom
   (rexp-matcher (rexp+ imap:char-set:atom-char)))
+
+(define imap:match:text
+  (rexp-matcher (rexp+ imap:char-set:text-char)))
+
+(define imap:match:tag
+  (rexp-matcher (rexp+ imap:char-set:tag-char)))
+
+(define imap:match:base64
+  (rexp-matcher
+   (rexp-sequence
+    (rexp* imap:char-set:base64
+	   imap:char-set:base64
+	   imap:char-set:base64
+	   imap:char-set:base64)
+    (rexp-optional
+     (rexp-alternatives
+      (rexp-sequence imap:char-set:base64
+		     imap:char-set:base64
+		     "==")
+      (rexp-sequence imap:char-set:base64
+		     imap:char-set:base64
+		     imap:char-set:base64
+		     "="))))))
 
 (define imap:match:quoted-string
   (rexp-matcher
    (rexp-sequence "\""
 		  (rexp* (rexp-alternatives
-			  (char-set-difference
-			   (char-set-difference
-			    (ascii-range->char-set #x01 #x80)
-			    (char-set #\return #\linefeed))
-			   imap:char-set:quoted-specials)
+			  imap:char-set:quoted-char
 			  (rexp-sequence "\\" imap:char-set:quoted-specials)))
 		  "\"")))
 
@@ -81,7 +132,7 @@
 (define imap:match:astring
   (alternatives-matcher imap:match:atom
 			imap:match:string))
-
+
 (define imap:match:number
   (rexp-matcher (rexp+ char-set:numeric)))
 
@@ -89,7 +140,7 @@
   (rexp-matcher
    (rexp-sequence (char-set-difference char-set:numeric (char-set #\0))
 		  (rexp* char-set:numeric))))
-
+
 (define imap:match:date
   (let ((date-text
 	 (rexp-matcher
@@ -278,5 +329,213 @@
 
 (define imap:parse:simple-message
   (sequence-parser imap:parse:enc-mailbox
-		   (noise-parser (ci-string-matcher "/;uid="))
-		   (simple-parser imap:match:nz-number 'UID)))
+		   (optional-parser
+		    (noise-parser (ci-string-matcher "/;uid="))
+		    (simple-parser imap:match:nz-number 'UID))))
+
+;;;; Mailbox-name encoding (modified UTF-7)
+
+(define (imap:encode-mailbox-name string start end)
+  (let ((n
+	 (let loop ((start start) (n 0))
+	   (let ((index
+		  (substring-find-next-char-in-set
+		   string start end imap:char-set:mailbox-name-encoded)))
+	     (if index
+		 (let ((n (fix:+ n (fix:+ (fix:- index start) 2))))
+		   (let ((index*
+			  (or (substring-find-next-char-in-set
+			       string (fix:+ index 1) end
+			       imap:char-set:mailbox-name-unencoded)
+			      end)))
+		     (loop index*
+			   (fix:+ n
+				  (let ((m (fix:- index* index)))
+				    (if (and (fix:= m 1)
+					     (char=? (string-ref string index)
+						     #\&))
+					0
+					(integer-ceiling (fix:* 8 m) 6)))))))
+		 (fix:+ n (fix:- end start)))))))
+    (let ((s (make-string n)))
+      (let loop ((start start) (j 0))
+	(let ((index
+	       (substring-find-next-char-in-set
+		string start end imap:char-set:mailbox-name-encoded)))
+	  (if index
+	      (let ((j (substring-move! string start index s j)))
+		(string-set! s j #\&)
+		(let ((j (fix:+ j 1))
+		      (index*
+		       (or (substring-find-next-char-in-set
+			    string (fix:+ index 1) end
+			    imap:char-set:mailbox-name-unencoded)
+			   end)))
+		  (let ((j
+			 (if (and (fix:= (fix:- index* index) 1)
+				  (char=? (string-ref string index) #\&))
+			     j
+			     (encode-mailbox-name-1 string index index* s j))))
+		    (string-set! s j #\-)
+		    (loop index* (fix:+ j 1))))))))
+      s)))
+
+(define (imap:decode-mailbox-name string start end)
+  (let ((lose
+	 (lambda ()
+	   (error "Malformed encoded mailbox name:"
+		  (substring string start end)))))
+    (let ((n
+	   (let loop ((start start) (n 0))
+	     (let ((index (substring-find-next-char string start end #\&)))
+	       (if index
+		   (let ((index*
+			  (substring-find-next-char string (fix:+ index 1) end
+						    #\-)))
+		     (if (not index*) (lose))
+		     (loop (fix:+ index* 1)
+			   (fix:+ n
+				  (let ((m (fix:- index* index)))
+				    (if (fix:= m 1)
+					1
+					(let ((q (fix:quotient m 4))
+					      (r (fix:remainder m 4)))
+					  (fix:+ (fix:* 3 q)
+						 (case r
+						   ((0) 0)
+						   ((2) 1)
+						   ((3) 2)
+						   (else (lose))))))))))
+		   (fix:+ n (fix:- end start)))))))
+      (let ((s (make-string n)))
+	(let loop ((start start) (j 0))
+	  (let ((index (substring-find-next-char string start end #\&)))
+	    (if index
+		(let ((index*
+		       (substring-find-next-char string (fix:+ index 1) end
+						 #\-)))
+		  (if (not index*) (lose))
+		  (let ((j (substring-move! string start end s j))
+			(m (fix:- index* index)))
+		    (if (fix:= m 1)
+			(begin
+			  (string-set! s j #\&)
+			  (loop (fix:+ index* 1) (fix:+ j 1)))
+			(loop (fix:+ index* 1)
+			      (decode-mailbox-name-1 string
+						     (fix:+ index 1)
+						     index*
+						     s
+						     j
+						     lose))))))))
+	s))))
+
+(define (encode-mailbox-name-1 string start end s j)
+  (let ((write
+	 (lambda (j v)
+	   (string-set! s j
+			(vector-8b-ref base64-digit-table
+				       (fix:and #x3f v))))))
+    (let loop ((start start) (j j))
+      (case (fix:- end start)
+	((0)
+	 j)
+	((1)
+	 (let ((d0 (string-ref string start)))
+	   (write j (fix:lsh d0 -2))
+	   (write (fix:+ j 1) (fix:lsh d0 4)))
+	 (fix:+ j 2))
+	((2)
+	 (let ((d0 (string-ref string start))
+	       (d1 (string-ref string (fix:+ start 1))))
+	   (write j (fix:lsh d0 -2))
+	   (write (fix:+ j 1) (fix:+ (fix:lsh d0 4) (fix:lsh d1 -4)))
+	   (write (fix:+ j 2) (fix:lsh d1 2)))
+	 (fix:+ j 3))
+	(else
+	 (let ((d0 (string-ref string start))
+	       (d1 (string-ref string (fix:+ start 1)))
+	       (d2 (string-ref string (fix:+ start 2))))
+	   (write j (fix:lsh d0 -2))
+	   (write (fix:+ j 1) (fix:+ (fix:lsh d0 4) (fix:lsh d1 -4)))
+	   (write (fix:+ j 2) (fix:+ (fix:lsh d1 2) (fix:lsh d2 -6)))
+	   (write (fix:+ j 3) d2)
+	   (loop (fix:+ start 3) (fix:+ j 4))))))))
+
+(define (decode-mailbox-name-1 string start end s j lose)
+  (let ((read (lambda (i) (decode-base64-char (vector-8b-ref string i))))
+	(write (lambda (j v) (vector-8b-set! s j v))))
+    (let loop ((start start) (j j))
+      (case (fix:- end start)
+	((0)
+	 j)
+	((1)
+	 (lose))
+	((2)
+	 (let ((d0 (read start))
+	       (d1 (read (fix:+ start 1))))
+	   (write j
+		  (fix:+ (fix:lsh d0 2)
+			 (fix:lsh d1 -4))))
+	 (fix:+ j 1))
+	((3)
+	 (let ((d0 (read start))
+	       (d1 (read (fix:+ start 1)))
+	       (d2 (read (fix:+ start 2))))
+	   (write j
+		  (fix:+ (fix:lsh d0 2)
+			 (fix:lsh d1 -4)))
+	   (write (fix:+ j 1)
+		  (fix:+ (fix:lsh (fix:and #x0f d1) 4)
+			 (fix:lsh d2 -2))))
+	 (fix:+ j 2))
+	(else
+	 (let ((d0 (read start))
+	       (d1 (read (fix:+ start 1)))
+	       (d2 (read (fix:+ start 2)))
+	       (d3 (read (fix:+ start 3))))
+	   (write j
+		  (fix:+ (fix:lsh d0 2)
+			 (fix:lsh d1 -4)))
+	   (write (fix:+ j 1)
+		  (fix:+ (fix:lsh (fix:and #x0f d1) 4)
+			 (fix:lsh d2 -2)))
+	   (write (fix:+ j 2)
+		  (fix:+ (fix:lsh (fix:and #x03 d2) 6)
+			 d3)))
+	 (loop (fix:+ start 4) (fix:+ j 3)))))))
+
+(define imap:char-set:mailbox-name-encoded
+  (char-set-union char-set:not-graphic (char-set #\&)))
+
+(define imap:char-set:mailbox-name-unencoded
+  (char-set-invert imap:char-set:mailbox-name-encoded))
+
+(define (decode-base64-char byte)
+  (let ((digit (vector-8b-ref base64-char-table byte)))
+    (if (>= digit #x40)
+	(error "Character not a base64 component:" (integer->char byte)))
+    digit))  
+
+(define base64-char-table)
+(define base64-digit-table)
+(let ((char-table (make-string 256 (integer->char #xff)))
+      (digit-table (make-string 64)))
+  (let ((do-single
+	 (lambda (index value)
+	   (vector-8b-set! char-table index value)
+	   (vector-8b-set! digit-table value index))))
+    (letrec
+	((do-range
+	  (lambda (low high value)
+	    (do-single low value)
+	    (if (fix:< low high)
+		(do-range (fix:+ low 1) high (fix:+ value 1))))))
+      (do-range (char->integer #\A) (char->integer #\Z) 0)
+      (do-range (char->integer #\a) (char->integer #\z) 26)
+      (do-range (char->integer #\0) (char->integer #\9) 52)
+      (do-single (char->integer #\+) 62)
+      (do-single (char->integer #\,) 63)))
+  (set! base64-char-table char-table)
+  (set! base64-digit-table digit-table)
+  unspecific)

@@ -6,6 +6,7 @@
 			       (in-package (package/environment package)
 				 (make-environment)))))))
   (new-child '(EDWIN) 'IMAIL)
+  (new-child '(EDWIN IMAIL) 'IMAP-response)
   (new-child '(EDWIN IMAIL) 'IMAP-SYNTAX)
   (new-child '(EDWIN IMAIL) 'PARSER)
   (new-child '(EDWIN IMAIL) 'REXP)

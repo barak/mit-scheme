@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: ed-ffi.scm,v 1.7 2000/04/18 21:44:46 cph Exp $
+;;; $Id: ed-ffi.scm,v 1.8 2000/04/22 01:53:43 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -28,6 +28,7 @@
     ("imail-top"	(edwin imail)		edwin-syntax-table)
     ("imail-umail"	(edwin imail)		system-global-syntax-table)
     ("imail-util"	(edwin imail)		system-global-syntax-table)
+    ("imap-response"	(edwin imail imap-response) system-global-syntax-table)
     ("imap-syntax"	(edwin imail imap-syntax) system-global-syntax-table)
     ("parser"		(edwin imail parser)	system-global-syntax-table)
     ("rexp"		(edwin imail rexp)	system-global-syntax-table)
