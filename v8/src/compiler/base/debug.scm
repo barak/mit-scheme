@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.2 1995/04/26 01:53:25 adams Exp $
+$Id: debug.scm,v 1.3 1995/05/11 14:06:13 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -40,34 +40,6 @@ MIT in each case. |#
   (let ((object (->tagged-vector object)))
     (write-line object)
     (for-each pp ((tagged-vector/description object) object))))
-
-(define (debug/find-procedure name)
-  (let loop ((procedures *procedures*))
-    (and (not (null? procedures))
-	 (if (and (not (procedure-continuation? (car procedures)))
-		  (or (eq? name (procedure-name (car procedures)))
-		      (eq? name (procedure-label (car procedures)))))
-	     (car procedures)
-	     (loop (cdr procedures))))))
-
-(define (debug/find-continuation number)
-  (let ((label
-	 (intern (string-append "continuation-" (number->string number)))))
-    (let loop ((procedures *procedures*))
-      (and (not (null? procedures))
-	   (if (and (procedure-continuation? (car procedures))
-		    (eq? label (procedure-label (car procedures))))
-	       (car procedures)
-	       (loop (cdr procedures)))))))
-
-(define (debug/find-entry-node node)
-  (let ((node (->tagged-vector node)))
-    (if (eq? (expression-entry-node *root-expression*) node)
-	(write-line *root-expression*))
-    (for-each (lambda (procedure)
-		(if (eq? (procedure-entry-node procedure) node)
-		    (write-line procedure)))
-	      *procedures*)))
 
 (define (debug/where object)
   (cond ((compiled-code-block? object)
