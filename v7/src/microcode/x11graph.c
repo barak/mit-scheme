@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.24 1992/05/13 21:27:12 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.25 1992/05/13 22:40:07 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -552,81 +552,65 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 7, 7, 0)
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
-
-/* PTR
-DEFUN (foreign_malloc, (size), unsigned int size)
+
+static XPoint *
+DEFUN (x_polygon_vector_arg, (xw, argno),
+       struct xwindow * xw AND
+       unsigned int argno)
 {
-  PTR result = (UX_malloc (size));
-  if (result == 0)
-    error_external_return ();
-  return (result);
-} */
-
-double
-DEFUN (obj_real_number, (obj), SCHEME_OBJECT obj)
-{
-  if (! (REAL_P (obj)))
-    error_external_return ();
-  if (! (real_number_to_double_p (obj)))
-    error_external_return ();
-  return (real_number_to_double (obj));
-}
-
-static unsigned short
-DEFUN (short_x_coordinate, (obj, xw),
-       SCHEME_OBJECT obj AND
-       struct xwindow * xw)
-{
-  float virtual_device_x = (obj_real_number (obj));
-  float device_x = ((XW_X_SLOPE (xw)) * (virtual_device_x - (XW_X_LEFT (xw))));
-  return (short) (ROUND_FLOAT (device_x));
-}
-
-static unsigned short
-DEFUN (short_y_coordinate, (obj, xw),
-       SCHEME_OBJECT obj AND
-       struct xwindow * xw)
-{
-  float virtual_device_y = (obj_real_number (obj));
-  float device_y =
-    ((XW_Y_SLOPE (xw)) * (virtual_device_y - (XW_Y_BOTTOM (xw))));
-  return (((int) ((XW_Y_SIZE (xw)) - 1)) + (ROUND_FLOAT (device_y)));
+  SCHEME_OBJECT vector = (VECTOR_ARG (argno));
+  unsigned long length = (VECTOR_LENGTH (vector));
+  unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
+  if ((length % 2) != 0)
+    error_bad_range_arg (argno);
+  {
+    XPoint * result = (x_malloc ((length / 2) * (sizeof (XPoint))));
+    XPoint * scan_result = result;
+    SCHEME_OBJECT * scan = (& (VECTOR_REF (vector, 0)));
+    SCHEME_OBJECT * end = (scan + length);
+    SCHEME_OBJECT coord;
+    while (scan < end)
+      {
+	coord = (*scan++);
+	if (! ((REAL_P (coord)) && (real_number_to_double_p (coord))))
+	  error_bad_range_arg (argno);
+	{
+	  double dx =
+	    ((XW_X_SLOPE (xw))
+	     * ((real_number_to_double (coord)) - (XW_X_LEFT (xw))));
+	  (scan_result -> x) = (border + (ROUND_FLOAT (dx)));
+	}
+	coord = (*scan++);
+	if (! ((REAL_P (coord)) && (real_number_to_double_p (coord))))
+	  error_bad_range_arg (argno);
+	{
+	  double dy =
+	    ((XW_Y_SLOPE (xw))
+	     * ((real_number_to_double (coord)) - (XW_Y_BOTTOM (xw))));
+	  (scan_result -> y) = (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (dy)));
+	}
+	scan_result += 1;
+      }
+    return (result);
+  }
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-FILL-POLYGON", Prim_x_graphics_fill_polygon, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    XPoint *points, *cur_point;
     struct xwindow * xw = x_window_arg (1);
-    unsigned int internal_border_width = (XW_INTERNAL_BORDER_WIDTH (xw));
-    SCHEME_OBJECT vector = (ARG_REF (2));
-    long length = (VECTOR_LENGTH (vector));
-    fast SCHEME_OBJECT * scan_source = (& (VECTOR_REF (vector, 0)));
-    fast SCHEME_OBJECT * end_source = (scan_source + length);
-
-    if ((length % 2)!=0) {
-	    error_bad_range_arg (1);
-    }
-    /* Warning, no check!!! */
-    points = (XPoint *) malloc((length/2)*sizeof(XPoint));
-    cur_point = points;
-    while (scan_source < end_source) {
-	    cur_point->x = (internal_border_width + short_x_coordinate(*(scan_source++),xw));
-	    cur_point->y = (internal_border_width + short_y_coordinate(*(scan_source++),xw));
-	    cur_point++;
-    }
+    XPoint * points = (x_polygon_vector_arg (xw, 2));
     XFillPolygon ((XW_DISPLAY (xw)),
 		  (XW_WINDOW (xw)),
 		  (XW_NORMAL_GC (xw)),
 		  points,
-		  (length/2),
+		  (length / 2),
 		  Nonconvex,
 		  CoordModeOrigin);
-    free(points);
-    XFlush (XW_DISPLAY (xw));
+    free (points);
     PRIMITIVE_RETURN (UNSPECIFIC);
-}
+  }
 }
 
 DEFINE_PRIMITIVE ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3,
