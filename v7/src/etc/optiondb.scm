@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.5 2000/12/23 06:22:37 cph Exp $
+$Id: optiondb.scm,v 1.6 2001/04/30 02:44:35 cph Exp $
 
-Copyright (c) 2000 Massachusetts Institute of Technology
+Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +16,25 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 (define (guarded-system-loader package-name place #!optional filename)
   (let ((dirs
-	 (list (directory-pathname (current-load-pathname))
-	       (or (get-environment-variable "MITSCHEME_INF_DIRECTORY")
-		   "/scheme/v7/linux")))
+	 (let ((here (directory-pathname (current-load-pathname))))
+	   `(,here
+	     ,@(let ((d (pathname-directory here)))
+		 (if (pair? (cdr d))
+		     (list (pathname-new-directory here (except-last-pair d)))
+		     '()))
+	     ,@(let ((d (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
+		 (if d
+		     (list d)
+		     '()))
+	     "/usr/local/scheme/linux"
+	     "/scheme/v7/linux")
+	   (cons here)))
 	(files
 	 (if (default-object? filename)
 	     (list "make" "load")
