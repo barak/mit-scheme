@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.3 1992/02/02 17:13:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulflo.scm,v 1.4 1992/02/03 06:26:30 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -94,12 +94,12 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-1-ARG (? operation) (REGISTER (? source)) (? overflow?)))
   overflow?				;ignore
-  (flonum-1-arg target source operation))
+  ((flonm-1-arg/operator operation) target source))
 
-(define (flonum-1-arg target source operation)
+(define ((flonum-unary-operation/general operate) target source)
   (let* ((source (flonum-source! source))
 	 (target (flonum-target! target)))
-    ((flonum-1-arg/operator operation) target source)))
+    (operate target source)))
 
 (define (flonum-1-arg/operator operation)
   (lookup-arithmetic-method operation flonum-methods/1-arg))
@@ -114,12 +114,13 @@ MIT in each case. |#
     ((define-flonum-operation
        (macro (primitive-name opcode)
 	 `(define-arithmetic-method ',primitive-name flonum-methods/1-arg
-	    (lambda (target source)
-	      (if (and (zero? target) (zero? source))
-		  (,opcode)
-		  (LAP (FLD D (ST ,', source))
-		       (,opcode)
-		       (FSTP D (ST ,',(1+ target))))))))))
+	    (flonum-unary-operation/general
+	     (lambda (target source)
+	       (if (and (zero? target) (zero? source))
+		   (,opcode)
+		   (LAP (FLD D (ST ,', source))
+			(,opcode)
+			(FSTP D (ST ,',(1+ target)))))))))))
   (define-flonum-operation flonum-negate FCHS)
   (define-flonum-operation flonum-abs FABS)
   (define-flonum-operation flonum-sin FSIN)
@@ -127,10 +128,113 @@ MIT in each case. |#
   (define-flonum-operation flonum-sqrt FSQRT)
   (define-flonum-operation flonum-round FRND))
 
-;; **** Missing: ****
-;; flonum-tan flonum-asin flonum-acos flonum-atan
-;; flonum-exp flonum-log flonum-truncate
-;; Most of the above can be done in a couple of instructions
+(define-arithmetic-method 'flonum-truncate flonum-methods/1-arg
+  (flonum-unary-operation/general
+   (lambda (target source)
+     (let ((temp (temporary-register-reference)))
+       (LAP (FSTCW (@R ,regnum:free-pointer))
+	    ,@(if (and (zero? target) (zero? source))
+		  (LAP)
+		  (LAP (FLD D (ST ,source))))
+	    (MOV B ,temp (@RO ,regnum:free-pointer 1))
+	    (OR B (@RO ,regnum:free-pointer 1) (&U #x0c))
+	    (FNLDCW (@R ,regnum:free-pointer))
+	    (FRNDINT)
+	    (MOV B (@RO ,regnum:free-pointer 1) ,temp)
+	    ,@(if (and (zero? target) (zero? source))
+		  (LAP)
+		  (LAP (FSTP (ST ,(1+ target)))))
+	    (FNLDCW (@R ,regnum:free-pointer)))))))
+
+;; This is used in order to avoid using two stack locations for
+;; the remainder unary operations.
+
+(define ((flonum-unary-operation/stack-top operate) target source)
+  ;; Perhaps this can be improved?
+  (let ((source->top (load-machine-register! source fr0)))
+    (rtl-target:=machine-register! target fr0)
+    (LAP ,@source->top
+	 (operate 0 0))))
+
+(define-arithmetic-method 'flonum-log flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda (target source)
+     (if (and (zero? target) (zero? source))
+	 (LAP (FLDLN2)
+	      (FXCH (ST 1))
+	      (FYL2X))
+	 (LAP (FLDLN2)
+	      (FLD D (ST ,(1+ source)))
+	      (FYL2X)
+	      (FSTP D (ST ,(1+ target))))))))
+
+(define-arithmetic-method 'flonum-exp flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda (target source)
+     (if (and (zero? target) (zero? source))
+	 (LAP (FLDL2E)
+	      (FMULP (ST 1) (ST))
+	      (F2XM1)
+	      (FLD1)
+	      (FADDP (ST 1) (ST)))
+	 (LAP (FLD D (ST ,source))
+	      (FLDL2E)
+	      (FMULP (ST 1) (ST))
+	      (F2XM1)
+	      (FLD1)
+	      (FADDP (ST 1) (ST))
+	      (FSTP D (ST ,(1+ target))))))))
+
+(define-arithmetic-method 'flonum-tan flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda (target source)
+     (if (and (zero? target) (zero? source))
+	 (LAP (FPTAN)
+	      (FSTP D (ST 0)))		; FPOP
+	 (LAP (FLD D (ST ,source))
+	      (FPTAN)
+	      (FSTP D (ST 0))		; FPOP
+	      (FSTP D (ST ,(1+ target))))))))
+
+(define-arithmetic-method 'flonum-atan flonum-methods/1-arg
+  (flonum-unary-operation/stack-top
+   (lambda (target source)
+     (if (and (zero? target) (zero? source))
+	 (LAP (FLD1)
+	      (FPATAN))
+	 (LAP (FLD D (ST ,source))
+	      (FLD1)
+	      (FPATAN)
+	      (FSTP D (ST ,(1+ target))))))))
+
+;; **** These appear to really need two locations.
+;; Perhaps they should be handled by RTL rewrite
+;; into rules using flonum-atan2. ****
+
+(define-arithmetic-method 'flonum-acos flonum-methods/1-arg
+  (flonum-unary-operation/general
+   (lambda (target source)
+     (LAP (FLD D (ST ,source))
+	  (FMUL D (ST) (ST 0))
+	  (FLD1)
+	  (FSUBP D (ST 1) (ST))
+	  (FSQRT)
+	  (FLD D (ST ,(1+ source)))
+	  (FPATAN)
+	  (FSTP D (ST ,(1+ target)))))))
+
+(define-arithmetic-method 'flonum-asin flonum-methods/1-arg
+  (flonum-unary-operation/general
+   (lambda (target source)
+     (LAP (FLD D (ST ,source))
+	  (FMUL D (ST) (ST 0))
+	  (FLD1)
+	  (FSUBP D (ST 1) (ST))
+	  (FSQRT)
+	  (FLD D (ST ,(1+ source)))
+	  (FXCH (ST 1))
+	  (FPATAN)
+	  (FSTP D (ST ,(1+ target)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -222,7 +326,7 @@ MIT in each case. |#
 	      (FSTP D (ST ,(1+ target))))
 	 #|
 	 ;; This sequence is one cycle shorter than the one below,
-	 ;; but needs two spare stack locations instead of 1.
+	 ;; but needs two spare stack locations instead of one.
 	 ;; Since FPREM1 is a variable, very slow instruction,
 	 ;; the difference in time will hardly be noticeable
 	 ;; but the availability of an extra "register" may be.
@@ -303,4 +407,5 @@ MIT in each case. |#
        (FSTSW (R ,eax))
        (SAHF)))
 
-;; **** Missing: 2 argument operations and predicates with constants! ****
+;; **** Missing: 2 argument operations and predicates with constant
+;; arguments.  Also missing with (OBJECT->FLOAT ...) operands. ****
