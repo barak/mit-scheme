@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.40 2001/01/04 22:24:15 cph Exp $
+$Id: string.c,v 9.41 2001/01/05 20:43:06 cph Exp $
 
 Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
@@ -727,7 +727,8 @@ DEFUN (ht_insert, (table, record),
       (HT_RECORD_NEXT (scan)) = record;
     }
   (HT_N_RECORDS (table)) += 1;
-  if ((HT_N_RECORDS (table)) >= (HT_N_BUCKETS (table)))
+  if (((HT_N_RECORDS (table)) >= (HT_N_BUCKETS (table)))
+      && ((HT_N_BUCKETS (table)) < (EXPT_TO_N (HT_MAX_EXPT))))
     {
       unsigned int e = HT_MIN_EXPT;
       while (e <= HT_MAX_EXPT)
@@ -766,7 +767,8 @@ DEFUN (ht_delete, (table, key),
   else
     (HT_RECORD_NEXT (prev)) = (HT_RECORD_NEXT (scan));
   (HT_N_RECORDS (table)) -= 1;
-  if ((HT_N_RECORDS (table)) < (HT_SHRINK_POINT (table)))
+  if (((HT_N_RECORDS (table)) < (HT_SHRINK_POINT (table)))
+      && ((HT_N_BUCKETS (table)) > (EXPT_TO_N (HT_MIN_EXPT))))
     {
       unsigned int e = HT_MAX_EXPT;
       while (e >= HT_MIN_EXPT)
@@ -777,7 +779,7 @@ DEFUN (ht_delete, (table, key),
 	      ht_resize (table, n);
 	      break;
 	    }
-	  e += 1;
+	  e -= 1;
 	}
     }
   return (scan);
