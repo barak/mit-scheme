@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.15 1988/07/16 09:43:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.16 1988/07/19 20:42:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1449,6 +1449,7 @@ MIT in each case. |#
 	  init-graphics
 	  position-pen
 	  print-graphics
+	  print-graphics-inverse
 	  set-graphics-drawing-mode
 	  set-graphics-line-style
 	  with-graphics-drawing-mode
