@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.51 1992/12/16 07:32:20 gjr Exp $
+$Id: opncod.scm,v 4.52 1992/12/16 09:20:06 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -570,16 +570,43 @@ MIT in each case. |#
 	     (simple-open-coder (open-code/type-test type) '(0) false)))))
     (simple-type-test 'PAIR? (ucode-type pair))
     (simple-type-test 'STRING? (ucode-type string))
-    (simple-type-test 'BIT-STRING? (ucode-type vector-1b)))
-
-  (define-open-coder/predicate 'OBJECT-TYPE?
-    (filter/type-code open-code/type-test 0 '(1) false)))
+    (simple-type-test 'BIT-STRING? (ucode-type vector-1b))))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
    (lambda (combination expressions finish)
      combination
      (finish (rtl:make-eq-test (car expressions) (cadr expressions))))
+   '(0 1)
+   false))
+
+(define-open-coder/predicate 'OBJECT-TYPE?
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((type (car expressions))
+	   (object (cadr expressions)))
+       (let* ((operand (rvalue-known-value type))
+	      (ok? (and operand
+			(rvalue/constant? operand)))
+	      (tag (and ok?
+			(constant-value operand))))
+	 (if (and ok?
+		(exact-nonnegative-integer? tag)
+		(< tag (expt 2 scheme-type-width)))
+	     (finish
+	      (rtl:make-type-test (rtl:make-object->type object)
+				  tag))
+	     (open-code:with-checks
+	      combination
+	      (list
+	       (open-code:type-check type (ucode-type fixnum))
+	       (open-code:range-check type (expt 2 scheme-type-width)))
+	      (finish
+	       (rtl:make-eq-test (rtl:make-object->datum type)
+				 (rtl:make-object->type object)))
+	      finish
+	      'OBJECT-TYPE?
+	      expressions)))))
    '(0 1)
    false))
 
