@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.66 2003/02/25 18:35:12 cph Exp $
+$Id: schmod.scm,v 1.67 2003/08/01 19:23:23 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -111,7 +111,7 @@ The following commands evaluate Scheme expressions:
 (set-char-syntax! scheme-mode:syntax-table #\] ")[")
 (set-char-syntax! scheme-mode:syntax-table #\{ "(}")
 (set-char-syntax! scheme-mode:syntax-table #\} "){")
-(set-char-syntax! scheme-mode:syntax-table #\| "  23")
+(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
 
 (set-char-syntax! scheme-mode:syntax-table #\; "< ")
 (set-char-syntax! scheme-mode:syntax-table #\newline "> ")
