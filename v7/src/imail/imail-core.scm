@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.125 2001/05/23 05:04:57 cph Exp $
+;;; $Id: imail-core.scm,v 1.126 2001/05/23 13:46:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -64,29 +64,29 @@
 (define (ignore-modification-events object procedure)
   (remove-event-receiver! (object-modification-event object) procedure))
 
-(define (object-modified! object type . parameters)
+(define (object-modified! object type . arguments)
   (without-interrupts
    (lambda ()
      (set-object-modification-count!
       object
       (+ (object-modification-count object) 1))))
-  (apply signal-modification-event object type parameters))
+  (apply signal-modification-event object type arguments))
 
-(define (signal-modification-event object type . parameters)
+(define (signal-modification-event object type . arguments)
   (if *deferred-modification-events*
       (set-cdr! *deferred-modification-events*
-		(cons (cons* object type parameters)
+		(cons (cons* object type arguments)
 		      (cdr *deferred-modification-events*)))
       (begin
 	(if imap-trace-port
 	    (begin
-	      (write-line (cons* 'OBJECT-EVENT object type parameters)
+	      (write-line (cons* 'OBJECT-EVENT object type arguments)
 			  imap-trace-port)
 	      (flush-output imap-trace-port)))
 	(event-distributor/invoke! (object-modification-event object)
 				   object
 				   type
-				   parameters))))
+				   arguments))))
 
 (define (with-modification-events-deferred thunk)
   (let ((events (list 'EVENTS)))
@@ -268,7 +268,7 @@
 
 (define (create-folder url)
   (let ((folder (%create-folder url)))
-    (signal-modification-event (url-container url) 'CREATE-FOLDER url)
+    (container-modified! url 'CREATE-FOLDER)
     folder))
 
 (define-generic %create-folder (url))
@@ -279,8 +279,8 @@
 
 (define (delete-folder url)
   (%delete-folder url)
-  (signal-modification-event (url-container url) 'DELETE-FOLDER url)
-  (unmemoize-resource url))
+  (unmemoize-resource url)
+  (container-modified! url 'DELETE-FOLDER))
 
 (define-generic %delete-folder (url))
 
@@ -293,9 +293,9 @@
 
 (define (rename-folder url new-url)
   (%rename-folder url new-url)
-  (signal-modification-event (url-container url) 'DELETE-FOLDER url)
   (unmemoize-resource url)
-  (signal-modification-event (url-container new-url) 'CREATE-FOLDER new-url))
+  (container-modified! url 'DELETE-FOLDER)
+  (container-modified! new-url 'CREATE-FOLDER))
 
 (define-generic %rename-folder (url new-url))
 
@@ -305,7 +305,7 @@
 
 (define (append-message message url)
   (if (%append-message message url)
-      (signal-modification-event (url-container url) 'CREATE-FOLDER url)))
+      (container-modified! url 'CREATE-FOLDER)))
 
 (define-generic %append-message (message url))
 
@@ -314,6 +314,11 @@
 ;; dynamic extent of THUNK.
 
 (define-generic with-open-connection (url thunk))
+
+(define (container-modified! url type . arguments)
+  (let ((container (get-memoized-resource (url-container url))))
+    (if container
+	(apply object-modified! container type url arguments))))
 
 ;;;; Resources
 
