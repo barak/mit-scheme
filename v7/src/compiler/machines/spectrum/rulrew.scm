@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.1 1990/01/25 16:46:40 jinx Exp $
-$MC68020-Header: rulrew.scm,v 1.1 90/01/18 22:48:52 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.2 1990/04/03 04:52:59 jinx Exp $
+$MC68020-Header: rulrew.scm,v 1.2 90/04/03 04:52:22 GMT jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -46,8 +46,6 @@ MIT in each case. |#
 		  (rtl:machine-constant? datum)))
   (rtl:make-cons-pointer type datum))
 
-;; I've copied these rules from the MC68020. -- Jinx.
-
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value)) (? datum))
   (QUALIFIER
@@ -55,8 +53,13 @@ MIT in each case. |#
 	(rtl:constant? (rtl:object->type-expression type))))
   (rtl:make-cons-pointer
    (rtl:make-machine-constant
-    (object-type (rtl:object->type-expression datum)))
+    (object-type (rtl:constant-value (rtl:object->type-expression datum))))
    datum))
+
+(define-rule rewriting
+  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
+  (QUALIFIER (rtl:machine-constant? datum))
+  (rtl:make-cons-pointer type datum))
 
 (define-rule rewriting
   (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
@@ -66,24 +69,23 @@ MIT in each case. |#
   (rtl:make-cons-pointer
    type
    (rtl:make-machine-constant
-    (careful-object-datum (rtl:object->datum-expression datum)))))
+    (careful-object-datum
+     (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant? source))
-  (rtl:make-machine-constant (object-type source)))
+  (rtl:make-machine-constant (object-type (rtl:constant-value source))))
 
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
-  (rtl:make-machine-constant (careful-object-datum source)))
+  (rtl:make-machine-constant (careful-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)
        (non-pointer-object? (rtl:constant-value expression))))
 
-;; I've modified these rules from the MC68020. -- Jinx
-
 ;;; These rules are losers because there's no abstract way to cons a
 ;;; statement or a predicate without also getting some CFG structure.
 

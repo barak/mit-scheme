@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.1 1990/01/18 22:48:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rulrew.scm,v 1.2 1990/04/03 04:52:22 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -50,7 +50,7 @@ MIT in each case. |#
 	(rtl:constant? (rtl:object->type-expression type))))
   (rtl:make-cons-pointer
    (rtl:make-machine-constant
-    (object-type (rtl:object->type-expression datum)))
+    (object-type (rtl:constant-value (rtl:object->type-expression datum))))
    datum))
 
 (define-rule rewriting
@@ -66,17 +66,18 @@ MIT in each case. |#
   (rtl:make-cons-pointer
    type
    (rtl:make-machine-constant
-    (careful-object-datum (rtl:object->datum-expression datum)))))
+    (careful-object-datum
+     (rtl:constant-value (rtl:object->datum-expression datum))))))
 
 (define-rule rewriting
   (OBJECT->TYPE (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant? source))
-  (rtl:make-machine-constant (object-type source)))
+  (rtl:make-machine-constant (object-type (rtl:constant-value source))))
 
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:constant-non-pointer? source))
-  (rtl:make-machine-constant (careful-object-datum source)))
+  (rtl:make-machine-constant (careful-object-datum (rtl:constant-value source))))
 
 (define (rtl:constant-non-pointer? expression)
   (and (rtl:constant? expression)
@@ -84,6 +85,10 @@ MIT in each case. |#
 
 ;;; These rules are losers because there's no abstract way to cons a
 ;;; statement or a predicate without also getting some CFG structure.
+
+;;; Shouldn't these rules use (rtl:make-machine-constant 0)
+;;; rather than comparand?  Of course, there would have to
+;;; be more translation rules, but... -- Jinx
 
 (define-rule rewriting
   ;; CLR.L instruction
