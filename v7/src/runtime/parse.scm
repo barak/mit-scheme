@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.7 1989/04/18 16:29:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/parse.scm,v 14.8 1989/08/16 01:06:14 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -482,10 +482,18 @@ MIT in each case. |#
 (define (parse-object/unhash)
   (discard-char)
   (let ((number (parse-object/dispatch)))
-    (if (not (integer? number))	(parse-error "Invalid unhash syntax" number)
-	(let ((object (object-unhash number)))
-	  ;; This knows that 0 is the hash of #f.
-	  (if (and (false? object) (not (zero? number)))
-	      (parse-error "Invalid hash number" number)
-	      ;; (list 'QUOTE object)
-	      object)))))
+    (if (not (integer? number))	(parse-error "Invalid unhash syntax" number))
+    (let ((object (object-unhash number)))
+      ;; This knows that 0 is the hash of #f.
+      (if (and (false? object) (not (zero? number)))
+	  (parse-error "Invalid hash number" number))
+      ;; This may seem a little random, because #@N doesn't just
+      ;; return an object.  However, the motivation for this piece of
+      ;; syntax is convenience -- and 99.99% of the time the result of
+      ;; this syntax will be evaluated, and the user will expect the
+      ;; result of the evaluation to be the object she was referring
+      ;; to.  If the quotation isn't there, the user just gets
+      ;; confused.
+      (if (scode-constant? object)
+	  object
+	  (make-quotation object)))))
