@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.84 1994/09/16 00:30:05 cph Exp $
+;;;	$Id: intmod.scm,v 1.85 1994/11/01 23:12:09 adams Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -473,6 +473,7 @@ Additionally, these commands abort the command loop:
 If this is an error, the debugger examines the error condition."
   ()
   (lambda ()
+    (temporary-message "Starting continuation browser...")
     (let ((port (buffer-interface-port (current-buffer))))
       (start-continuation-browser
        port
