@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.9 1994/03/09 21:33:05 cph Exp $
+;;;	$Id: vc.scm,v 1.10 1994/03/09 23:11:03 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -849,7 +849,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.9 1994/03/09 21:33:05 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.10 1994/03/09 23:11:03 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -1092,7 +1092,7 @@ the value of vc-log-mode-hook."
 	      arguments))
 
 (define (vc-run-shell-command master status-limit command . arguments)
-  (vc-run-command master 0 "/bin/sh" "-c"
+  (vc-run-command master status-limit "/bin/sh" "-c"
 		  (reduce string-append-separated
 			  ""
 			  (vc-command-arguments (cons command arguments)))))
