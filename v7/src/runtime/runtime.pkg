@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.23 1988/12/30 06:43:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.24 1988/12/30 23:30:13 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -218,9 +218,8 @@ MIT in each case. |#
 	  compiled-procedure/name
 	  discard-debugging-info!)
   (export (runtime load)	  fasload/update-debugging-info!)
-  (export (runtime debugger-utilities)
-	  dbg-name<?
-	  dbg-name=?)
+  (export (runtime debugger-command-loop)
+	  special-form-procedure-name?)
   (export (runtime environment)
 	  dbg-block/find-name
 	  dbg-block/ic-parent-index
@@ -359,7 +358,6 @@ MIT in each case. |#
 	  show-environment-bindings
 	  show-frame
 	  show-frames
-	  special-name?
 	  write-dbg-name)
   (initialization (initialize-package!)))
 

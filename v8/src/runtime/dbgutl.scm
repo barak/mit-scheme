@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.4 1988/12/30 06:42:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/dbgutl.scm,v 14.5 1988/12/30 23:29:46 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,33 +37,39 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! rename-list
-	`((,lambda-tag:unnamed . LAMBDA)
-	  (,lambda-tag:internal-lambda . LAMBDA)
-	  (,lambda-tag:internal-lexpr . LAMBDA)
-	  (,lambda-tag:let . LET)
-	  (,lambda-tag:fluid-let . FLUID-LET)
-	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT))))
-
 (define (print-user-friendly-name environment)
   (let ((name (environment-procedure-name environment)))
     (if name
-	(let ((rename (special-name? name)))
+	(let ((rename (special-form-procedure-name? name)))
 	  (if rename
 	      (begin (write-string "a ")
-		     (write (cdr rename))
+		     (write-string rename)
 		     (write-string " special form"))
 	      (begin (write-string "the procedure ")
 		     (write-dbg-name name))))
 	(write-string "an unknown procedure"))))
 
-(define (special-name? name)
-  (list-search-positive rename-list
-    (lambda (association)
-      (dbg-name=? (car association) name))))
+(define (show-frames environment depth)
+  (let loop ((environment environment) (depth depth))
+    (show-frame environment depth true)
+    (if (environment-has-parent? environment)
+	(begin
+	  (newline)
+	  (loop (environment-parent environment) (1+ depth))))))
 
-(define rename-list)
+(define (write-dbg-name name)
+  (if (string? name) (write-string name) (write name)))
+
+(define (debug/read-eval-print-1 environment)
+  (let ((value (debug/eval (prompt-for-expression "Eval--> ") environment)))
+    (newline)
+    (write value)))
+
+(define (output-to-string length thunk)
+  (let ((x (with-output-to-truncated-string length thunk)))
+    (if (and (car x) (> length 4))
+	(substring-move-right! " ..." 0 4 (cdr x) (- length 4)))
+    (cdr x)))
 
 (define (show-frame environment depth brief?)
   (write-string "Environment ")
@@ -114,14 +120,6 @@ MIT in each case. |#
 (define brief-bindings-limit
   16)
 
-(define (show-frames environment depth)
-  (let loop ((environment environment) (depth depth))
-    (show-frame environment depth true)
-    (if (environment-has-parent? environment)
-	(begin
-	  (newline)
-	  (loop (environment-parent environment) (1+ depth))))))
-
 (define (print-binding name value)
   (let ((x-size (output-port/x-size (current-output-port))))
     (newline)
@@ -138,17 +136,3 @@ MIT in each case. |#
 	      (output-to-string (max (- x-size (string-length s)) 0)
 		(lambda ()
 		  (write value))))))))))
-
-(define (output-to-string length thunk)
-  (let ((x (with-output-to-truncated-string length thunk)))
-    (if (and (car x) (> length 4))
-	(substring-move-right! " ..." 0 4 (cdr x) (- length 4)))
-    (cdr x)))
-
-(define (write-dbg-name name)
-  (if (string? name) (write-string name) (write name)))
-
-(define (debug/read-eval-print-1 environment)
-  (let ((value (debug/eval (prompt-for-expression "Eval--> ") environment)))
-    (newline)
-    (write value)))

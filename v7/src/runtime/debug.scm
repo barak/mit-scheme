@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.6 1988/12/30 06:42:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 14.7 1988/12/30 23:29:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -254,7 +254,7 @@ MIT in each case. |#
 	   (and (environment? environment)
 		(environment-procedure-name environment))))
       (if (or (not name)
-	      (special-name? name))
+	      (special-form-procedure-name? name))
 	  ""
 	  (output-to-string 20 (lambda () (write-dbg-name name)))))
     20))

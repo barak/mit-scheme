@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.4 1988/12/30 06:42:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/infutl.scm,v 1.5 1988/12/30 23:30:00 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -38,14 +38,26 @@ MIT in each case. |#
 (declare (usual-integrations))
 (declare (integrate-external "infstr"))
 
-(define (compiled-code-block/dbg-info block)
+(define (initialize-package!)
+  (set! blocks-with-memoized-debugging-info (make-population))
+  (set! special-form-procedure-names
+	`((,lambda-tag:unnamed . LAMBDA)
+	  (,lambda-tag:internal-lambda . LAMBDA)
+	  (,lambda-tag:internal-lexpr . LAMBDA)
+	  (,lambda-tag:let . LET)
+	  (,lambda-tag:fluid-let . FLUID-LET)
+	  (,lambda-tag:make-environment . MAKE-ENVIRONMENT)))
+  unspecific)
+
+(define (compiled-code-block/dbg-info block demand-load?)
   (let ((old-info (compiled-code-block/debugging-info block)))
     (if (and (pair? old-info) (dbg-info? (car old-info)))
 	(car old-info)
-	(let ((dbg-info (read-debugging-info old-info)))
-	  (if dbg-info
-	      (memoize-debugging-info! block dbg-info))
-	  dbg-info))))
+	(and demand-load?
+	     (let ((dbg-info (read-debugging-info old-info)))
+	       (if dbg-info
+		   (memoize-debugging-info! block dbg-info))
+	       dbg-info)))))
 
 (define (discard-debugging-info!)
   (without-interrupts
@@ -94,32 +106,33 @@ MIT in each case. |#
 	(set-compiled-code-block/debugging-info! block (cdr old-info)))))
 
 (define blocks-with-memoized-debugging-info)
-
-(define (initialize-package!)
-  (set! blocks-with-memoized-debugging-info (make-population))
-  unspecific)
 
-(define (compiled-entry/dbg-object entry)
+(define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
 	(offset (compiled-entry/offset entry)))
-    (let ((dbg-info (compiled-code-block/dbg-info block)))
-      (discriminate-compiled-entry entry
-	(lambda ()
-	  (vector-binary-search (dbg-info/procedures dbg-info)
-				<
-				dbg-procedure/label-offset
-				offset))
-	(lambda ()
-	  (vector-binary-search (dbg-info/continuations dbg-info)
-				<
-				dbg-continuation/label-offset
-				offset))
-	(lambda ()
-	  (let ((expression (dbg-info/expression dbg-info)))
-	    (and (= offset (dbg-expression/label-offset expression))
-		 expression)))
-	(lambda ()
-	  false)))))
+    (let ((dbg-info
+	   (compiled-code-block/dbg-info block
+					 (if (default-object? demand-load?)
+					     false
+					     demand-load?))))
+      (and dbg-info
+	   (discriminate-compiled-entry entry
+	     (lambda ()
+	       (vector-binary-search (dbg-info/procedures dbg-info)
+				     <
+				     dbg-procedure/label-offset
+				     offset))
+	     (lambda ()
+	       (vector-binary-search (dbg-info/continuations dbg-info)
+				     <
+				     dbg-continuation/label-offset
+				     offset))
+	     (lambda ()
+	       (let ((expression (dbg-info/expression dbg-info)))
+		 (and (= offset (dbg-expression/label-offset expression))
+		      expression)))
+	     (lambda ()
+	       false))))))
 
 (define (compiled-entry/block entry)
   (if (compiled-closure? entry)
@@ -143,15 +156,6 @@ MIT in each case. |#
 		 (else false)))
 	  (else
 	   false))))
-
-(define (compiled-procedure/name entry)
-  (and *compiler-info/load-on-demand?*
-       (let ((procedure (compiled-entry/dbg-object entry)))
-	 (and procedure
-	      (dbg-procedure/name procedure)))))
-
-(define *compiler-info/load-on-demand?*
-  false)
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
@@ -278,3 +282,23 @@ MIT in each case. |#
 	 (write-to-string name))
 	(else
 	 (error "Illegal dbg-name" name))))
+
+  (let ((procedure
+	 (compiled-entry/dbg-object entry *compiler-info/load-on-demand?*)))
+  (let ((procedure (compiled-entry/dbg-object entry)))
+    (and procedure
+	 (let ((name (dbg-procedure/name procedure)))
+	   (or (special-form-procedure-name? name)
+	       name)))))
+(define *compiler-info/load-on-demand?*
+  false)
+
+
+(define (special-form-procedure-name? name)
+  (let ((association
+	 (list-search-positive special-form-procedure-names
+	   (lambda (association)
+	     (dbg-name=? (car association) name)))))
+    (and association
+	 (symbol->string (cdr association)))))
+(define special-form-procedure-names)	entry)))

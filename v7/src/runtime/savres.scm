@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.6 1988/10/21 00:17:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.7 1988/12/30 23:30:21 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -61,6 +61,7 @@ MIT in each case. |#
     (let ((identify
 	   (if (default-object? identify) world-identification identify))
 	  (time (get-decoded-time)))
+      (discard-debugging-info!)
       (gc-flip)
       (trigger-secondary-gc-daemons!)
       (save-image filename

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.5 1988/10/29 00:12:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.6 1988/12/30 23:30:07 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -140,13 +140,20 @@ MIT in each case. |#
 
 ;;;; Utilities
 
-(define (fasload filename)
+(define fasload-saved-values
+  '())
+
+(define (fasload filename save-value?)
   (tty-write-char newline-char)
   (tty-write-string filename)
   (tty-flush-output)
   (let ((value (binary-fasload filename)))
     (tty-write-string " loaded")
     (tty-flush-output)
+    (if save-value?
+	(set! fasload-saved-values
+	      (cons (cons filename value)
+		    fasload-saved-values)))
     value))
 
 (define (eval object environment)
@@ -223,7 +230,7 @@ MIT in each case. |#
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
-(eval (cold-load/purify (fasload (map-filename "packag")))
+(eval (cold-load/purify (fasload (map-filename "packag") true))
       environment-for-package)
 ((access initialize-package! environment-for-package))
 (let loop ((names
@@ -246,7 +253,7 @@ MIT in each case. |#
 				    (car names))
 	     (loop (cdr names)))))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtim.bcon") system-global-environment)
+(eval (fasload "runtim.bcon" false) system-global-environment)
 
 ;; Global databases.  Load, then initialize.
 (let loop
@@ -261,7 +268,8 @@ MIT in each case. |#
 	("gc" . (RUNTIME GARBAGE-COLLECTOR)))))
   (if (not (null? files))
       (begin
-	(eval (cold-load/purify (fasload (map-filename (car (car files)))))
+	(eval (cold-load/purify
+	       (fasload (map-filename (car (car files))) true))
 	      (package-reference (cdr (car files))))
 	(loop (cdr files)))))
 (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE!)
@@ -279,7 +287,7 @@ MIT in each case. |#
 		    constant-space/base)
 
 ;; Load everything else.
-((eval (fasload "runtim.bldr") system-global-environment)
+((eval (fasload "runtim.bldr" false) system-global-environment)
  (lambda (filename environment)
    (if (not (or (string=? filename "packag")
 		(string=? filename "gcdemn")
@@ -290,7 +298,7 @@ MIT in each case. |#
 		(string=? filename "boot")
 		(string=? filename "queue")
 		(string=? filename "gc")))
-       (eval (purify (fasload (map-filename filename))) environment)))
+       (eval (purify (fasload (map-filename filename) true)) environment)))
  `((SORT-TYPE . MERGE-SORT)
    (OS-TYPE . ,(string->symbol (string-upcase os-name-string)))
    (OPTIONS . NO-LOAD)))
@@ -367,6 +375,14 @@ MIT in each case. |#
    ;; Emacs -- last because it grabs the kitchen sink.
    (RUNTIME EMACS-INTERFACE)
    ))
+
+(let ((fasload/update-debugging-info!
+       (access fasload/update-debugging-info!
+	       (->environment '(RUNTIME COMPILER-INFO)))))
+  (for-each (lambda (entry)
+	      (fasload/update-debugging-info! (cdr entry)
+					      (->pathname (car entry))))
+	    fasload-saved-values))
 
 )
 
