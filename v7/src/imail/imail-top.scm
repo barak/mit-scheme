@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.99 2000/05/23 05:32:20 cph Exp $
+;;; $Id: imail-top.scm,v 1.100 2000/05/23 18:36:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1079,10 +1079,7 @@ This command is meant to be used to move the contents of a folder
   (lambda (url-string)
     (let ((folder (selected-folder))
 	  (to (imail-parse-partial-url url-string)))
-      ;; Kludge: by opening the folder, we prevent a condition where
-      ;; writing messages to an IMAP folder opens a new connection for
-      ;; each message.
-      (with-open-folder to
+      (with-open-connection to
 	(lambda ()
 	  (let ((n (folder-length folder)))
 	    (do ((i 0 (+ i 1)))

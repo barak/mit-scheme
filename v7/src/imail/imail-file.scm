@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.38 2000/05/23 02:57:18 cph Exp $
+;;; $Id: imail-file.scm,v 1.39 2000/05/23 18:36:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -80,6 +80,10 @@
 (define-method available-folder-names ((url <file-url>))
   url
   (error "Unimplemented operation:" 'AVAILABLE-FOLDER-NAMES))
+
+(define-method with-open-connection ((url <file-url>) thunk)
+  url
+  (thunk))
 
 ;;;; Folder
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.88 2000/05/23 02:57:13 cph Exp $
+;;; $Id: imail-core.scm,v 1.89 2000/05/23 18:36:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -238,6 +238,12 @@
 ;; URL-PATTERN can contain wildcards.
 
 (define-generic available-folder-names (url-pattern))
+
+;; -------------------------------------------------------------------
+;; Keep a connection open to the server referenced by URL for the
+;; dynamic extent of THUNK.
+
+(define-generic with-open-connection (url thunk))
 
 ;;;; Folder type
 
@@ -302,15 +308,6 @@
       (memoize-folder (%open-folder url))))
 
 (define-generic %open-folder (url))
-
-(define (with-open-folder url thunk)
-  (let ((folder (get-memoized-folder url)))
-    (if folder
-	(thunk)
-	(let ((folder (%open-folder url)))
-	  (let ((v (thunk)))
-	    (close-folder folder)
-	    v)))))
 
 ;; -------------------------------------------------------------------
 ;; Close FOLDER, freeing up connections, memory, etc.  Subsequent use
