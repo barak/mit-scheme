@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.2 1987/12/30 06:56:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.3 1987/12/30 09:09:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -420,6 +420,11 @@ MIT in each case. |#
 	    (make/label->object *rtl-expression*
 				*rtl-procedures*
 				*rtl-continuations*))
+      (for-each (lambda (entry)
+		  (set-cdr! entry
+			    (rtl-procedure/external-label
+			     (label->object (cdr entry)))))
+		*ic-procedure-headers*)
       (let ((n-registers
 	     (map (lambda (rgraph)
 		    (- (rgraph-n-registers rgraph)
@@ -450,12 +455,11 @@ MIT in each case. |#
     (lambda ()
       ((access common-subexpression-elimination rtl-cse-package)
        *rtl-graphs*))))
-
-(define (phase/lifetime-analysis)
+(define (phase/lifetime-analysis)
   (compiler-subphase 'LIFETIME-ANALYSIS
     (lambda ()
       ((access lifetime-analysis rtl-optimizer-package) *rtl-graphs*))))
-
+
 (define (phase/code-compression)
   (compiler-subphase 'CODE-COMPRESSION
     (lambda ()
@@ -499,7 +503,7 @@ MIT in each case. |#
 		 (set! *rtl-expression*)
 		 (set! *rtl-procedures*)
 		 (set! *rtl-continuations*))))))
-
+
 (define (phase/bit-linearization)
   (compiler-phase 'BIT-LINEARIZATION
     (lambda ()
@@ -510,7 +514,7 @@ MIT in each case. |#
 		    (if compiler:preserve-data-structures?
 			*rtl-graphs*
 			(set! *rtl-graphs*))))))))
-
+
 (define (phase/assemble)
   (compiler-phase 'ASSEMBLE
     (lambda ()
