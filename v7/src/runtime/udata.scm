@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.8 1989/04/18 04:19:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/udata.scm,v 14.9 1989/06/13 21:57:05 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -305,8 +305,8 @@ that you cannot just vector-ref into.
 	  (if (false? result)
 	      (error "MAKE-PRIMITIVE-PROCEDURE: unknown name" name)
 	      (error "MAKE-PRIMITIVE-PROCEDURE: inconsistent arity" name
-		     (error-irritant/noise "new:") arity
-		     (error-irritant/noise "old:") result)))
+		     (error-irritant/noise " new:") arity
+		     (error-irritant/noise " old:") result)))
       result)))
 
 (define (implemented-primitive-procedure? object)
