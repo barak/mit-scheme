@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm3.scm,v 1.1 1990/01/25 16:33:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm3.scm,v 1.2 1990/07/22 18:52:45 jinx Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;; Spectrum Disassembler: Internals
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
@@ -84,18 +85,13 @@ MIT in each case. |#
 (define-integrable Mask-6-10  #b0000001111100000)
 (define-integrable Mask-11-15 #b0000000000011111)
 (define-integrable mask-copr  #b0000000111000000)
-
-(define (land x y)
-  (bit-string->unsigned-integer
-   (bit-string-and (signed-integer->bit-string 32 x)
-		   (signed-integer->bit-string 32 y))))
 
 ;;;; The disassembler proper
 
 (define (disassemble-word word)
   (let ((hi-halfword (extract word 16 32))
 	(lo-halfword (extract word 0 16)))
-    (let ((opcode (quotient hi-halfword #x400)))
+    (let ((opcode (fix:quotient hi-halfword #x400)))
       ((case opcode
 	 ((#x00) sysctl-1)
 	 ((#x01) sysctl-2)
@@ -129,38 +125,38 @@ MIT in each case. |#
   ;; Missing other system control:
   ;; MTSM, RSM, SSM, RFI.
   opcode				;ignore
-  (let ((opcode-extn (quotient (land lo-halfword Mask-3-10) #x20)))
+  (let ((opcode-extn (fix:quotient (fix:and lo-halfword Mask-3-10) #x20)))
     (case opcode-extn
       ((#x00)
-       (let ((immed-13-hi (land hi-halfword 1023))
-	     (immed-13-lo (quotient lo-halfword #x2000))
-	     (immed-5 (land lo-halfword #x1f)))
+       (let ((immed-13-hi (fix:and hi-halfword 1023))
+	     (immed-13-lo (fix:quotient lo-halfword #x2000))
+	     (immed-5 (fix:and lo-halfword #x1f)))
 	 `(BREAK () ,immed-5 ,(+ (* immed-13-hi #x100) immed-13-lo))))
       ((#x20)
        `(SYNC ()))
       ((#x25)
-       (let ((target-reg (land hi-halfword #x1f))
-	     (space-reg (quotient lo-halfword #x2000)))
+       (let ((target-reg (fix:and hi-halfword #x1f))
+	     (space-reg (fix:quotient lo-halfword #x2000)))
 	 `(MFSP () ,space-reg ,target-reg)))
       ((#x45)
-       (let ((ctl-reg (quotient (land Mask-6-10 hi-halfword)
-				#x20))
-	     (target-reg (land lo-halfword #x1f)))
+       (let ((ctl-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				    #x20))
+	     (target-reg (fix:and lo-halfword #x1f)))
 	 `(MFCTL () ,ctl-reg ,target-reg)))
       ((#xc1)
        (let ((source-reg hi-halfword)
-	     (space-reg (quotient lo-halfword #x2000)))
+	     (space-reg (fix:quotient lo-halfword #x2000)))
 	 `(MTSP () ,source-reg ,space-reg)))
       ((#xc2)
-       (let ((ctl-reg (quotient (land Mask-6-10 hi-halfword)
-				#x20))
-	     (source-reg (land hi-halfword #x1f)))
+       (let ((ctl-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				    #x20))
+	     (source-reg (fix:and hi-halfword #x1f)))
 	 `(MTCTL () ,source-reg ,ctl-reg)))
       ((#x85)
-       (let ((base-reg (quotient (land Mask-6-10 hi-halfword)
-				 #x20))
-	     (space-spec (quotient lo-halfword #x4000))
-	     (target-reg (land lo-halfword #x1f)))
+       (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				     #x20))
+	     (space-spec (fix:quotient lo-halfword #x4000))
+	     (target-reg (fix:and lo-halfword #x1f)))
 	 `(LDSID () (OFFSET ,space-spec ,base-reg)
 		 ,target-reg)))
       (else
@@ -172,28 +168,28 @@ MIT in each case. |#
   ;; LPA, LHA, PDTLB, PITLB, PDTLBE, PITLBE, IDTLBA, IITLBA,
   ;; IDTLBP, IITLBP, PDC, FDC, FIC, FDCE, FICE.
   opcode				;ignore
-  (let ((opcode-extn (quotient (land lo-halfword Mask-2-9) #x40)))
+  (let ((opcode-extn (fix:quotient (fix:and lo-halfword Mask-2-9) #x40)))
     (let ((mnemonic (case opcode-extn
 		      ((#x46) 'PROBER)
 		      ((#xc6) 'PROBERI)
 		      ((#x47) 'PROBEW)
 		      ((#xc7) 'PROBEWI)
 		      (else (invalid-instruction))))
-	  (base-reg (quotient (land Mask-6-10 hi-halfword)
-			      #x20))
-	  (priv-reg (land hi-halfword #x1f))
-	  (space-spec (quotient lo-halfword #x4000))
-	  (target-reg (land lo-halfword #x1f)))
+	  (base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				  #x20))
+	  (priv-reg (fix:and hi-halfword #x1f))
+	  (space-spec (fix:quotient lo-halfword #x4000))
+	  (target-reg (fix:and lo-halfword #x1f)))
       `(,mnemonic () (OFFSET ,space-spec ,base-reg)
 		  ,priv-reg ,target-reg))))
 
 (define (arith&log opcode hi-halfword lo-halfword)
   opcode				;ignore
-  (let ((opcode-extn (quotient (land Mask-4-10 lo-halfword) #x20)))
-    (let ((source-reg-2 (quotient (land Mask-6-10 hi-halfword)
-				  #x20))
-	  (source-reg-1 (land hi-halfword #x1f))
-	  (target-reg (land lo-halfword #x1f))
+  (let ((opcode-extn (fix:quotient (fix:and Mask-4-10 lo-halfword) #x20)))
+    (let ((source-reg-2 (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				      #x20))
+	  (source-reg-1 (fix:and hi-halfword #x1f))
+	  (target-reg (fix:and lo-halfword #x1f))
 	  (completer (x-arith-log-completer lo-halfword opcode-extn))
 	  (mnemonic
 	   (case opcode-extn
@@ -242,13 +238,13 @@ MIT in each case. |#
 (define (indexed-mem opcode hi-halfword lo-halfword)
   ;; LDBX/S LDHX/S LDWX/S LDCWX/S STWS STHS STBS STBYS
   opcode				;ignore
-  (let ((short-flag (land lo-halfword #x1000)))
-    (let ((base-reg (quotient (land Mask-6-10 hi-halfword)
-			      #x20))
-	  (index-or-source (land hi-halfword #x1f))
-	  (space-spec (quotient lo-halfword #x4000))
-	  (opcode-extn (quotient (land lo-halfword Mask-6-9) #x40))
-	  (target-or-index (land lo-halfword #x1f))
+  (let ((short-flag (fix:and lo-halfword #x1000)))
+    (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				  #x20))
+	  (index-or-source (fix:and hi-halfword #x1f))
+	  (space-spec (fix:quotient lo-halfword #x4000))
+	  (opcode-extn (fix:quotient (fix:and lo-halfword Mask-6-9) #x40))
+	  (target-or-index (fix:and lo-halfword #x1f))
 	  (cc-print-completer (cc-completer lo-halfword))
 	  (um-print-completer (um-completer short-flag lo-halfword)))
       (let ((mnemonic
@@ -287,22 +283,22 @@ MIT in each case. |#
 
 (define (ldil&addil opcode hi-halfword lo-halfword)
   ;; LDIL ADDIL
-  (let* ((reg (quotient (land Mask-6-10 hi-halfword) #x20))
-	 (hi-immed (land hi-halfword #x1f))
+  (let* ((reg (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
+	 (hi-immed (fix:and hi-halfword #x1f))
 	 (immed (assemble-21 (+ (* hi-immed #x10000) lo-halfword))))
     `(,(if (= opcode #x08) 'LDIL 'ADDIL) () ,immed ,reg)))
 
 (define (float-mem opcode hi-halfword lo-halfword)
   ;; FLDWX/S FLDDX/S FSTWX/S FSTDX/S 
-  (let ((short-flag (land lo-halfword #x1000))
-	(index (land hi-halfword #x1f)))
-    (let ((base-reg (quotient (land Mask-6-10 hi-halfword) #x20))
+  (let ((short-flag (fix:and lo-halfword #x1000))
+	(index (fix:and hi-halfword #x1f)))
+    (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
 	  (index (if (zero? short-flag)
 		     index
 		     (X-Signed-5-Bit index)))
-	  (space-spec (quotient lo-halfword #x4000))
-	  (opcode-extn (quotient (land lo-halfword Mask-6-9) #x40))
-	  (source-or-target (land lo-halfword #x1f))
+	  (space-spec (fix:quotient lo-halfword #x4000))
+	  (opcode-extn (fix:quotient (fix:and lo-halfword Mask-6-9) #x40))
+	  (source-or-target (fix:and lo-halfword #x1f))
 	  (cc-print-completer (cc-completer lo-halfword))
 	  (um-print-completer (um-completer short-flag lo-halfword)))
       (let ((mnemonic
@@ -325,10 +321,10 @@ MIT in each case. |#
 
 (define (scalar-load opcode hi-halfword lo-halfword)
   ;; LDO LDB LDH LDW LDWM
-  (let ((base-reg (quotient (land Mask-6-10 hi-halfword) #x20))
-	(space-spec (quotient lo-halfword #x4000))
-	(target-reg (land hi-halfword #x1f))
-	(displacement (XRight2s (land lo-halfword Mask-2-16)))
+  (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
+	(space-spec (fix:quotient lo-halfword #x4000))
+	(target-reg (fix:and hi-halfword #x1f))
+	(displacement (XRight2s (fix:and lo-halfword Mask-2-16)))
 	(mnemonic
 	 (case opcode
 	   ((#x0d) 'LDO)
@@ -350,11 +346,11 @@ MIT in each case. |#
 
 (define (scalar-store opcode hi-halfword lo-halfword)
   ;; STB STH STW STWM
-  (let ((base-reg (quotient (land Mask-6-10 hi-halfword)
-			    #x20))
-	(space-spec (quotient lo-halfword #x4000))
-	(source-reg (land hi-halfword #x1f))
-	(displacement (XRight2s (land lo-halfword Mask-2-16)))
+  (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				#x20))
+	(space-spec (fix:quotient lo-halfword #x4000))
+	(source-reg (fix:and hi-halfword #x1f))
+	(displacement (XRight2s (fix:and lo-halfword Mask-2-16)))
 	(mnemonic
 	 (case opcode
 	   ((#x18) 'STB)
@@ -367,13 +363,13 @@ MIT in each case. |#
 
 (define (cond-branch opcode hi-halfword lo-halfword)
   ;; MOVB MOVIB COMB COMIB ADDB ADDIB BVB BB
-  (let*  ((reg-2 (quotient (land Mask-6-10 hi-halfword) #x20))
+  (let*  ((reg-2 (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
 	  (reg-1 (if (and (not (= opcode #x31))
 			  (odd? opcode))
 		     ;; For odd opcodes, this is immed-5 data, not reg-1
-		     (X-Signed-5-Bit (land hi-halfword #x1f))
-		     (land hi-halfword #x1f)))
-	  (c (quotient lo-halfword #x2000))
+		     (X-Signed-5-Bit (fix:and hi-halfword #x1f))
+		     (fix:and hi-halfword #x1f)))
+	  (c (fix:quotient lo-halfword #x2000))
 	  (word-displacement (collect-14 lo-halfword))
 	  (null-completer (nullify-bit lo-halfword))
 	  (mnemonic (case opcode
@@ -400,11 +396,11 @@ MIT in each case. |#
 
 (define (addi&subi opcode hi-halfword lo-halfword)
   ;; ADDI-T-O SUBI-O COMICLR
-  (let ((opcode-extn (quotient (land 2048 lo-halfword) #x800)))
-    (let ((source-reg (quotient (land Mask-6-10 hi-halfword)
-				#x20))
-	  (target-reg (land hi-halfword #x1f))
-	  (immed-value (X-Signed-11-Bit (land lo-halfword 2047)))
+  (let ((opcode-extn (fix:quotient (fix:and 2048 lo-halfword) #x800)))
+    (let ((source-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				    #x20))
+	  (target-reg (fix:and hi-halfword #x1f))
+	  (immed-value (X-Signed-11-Bit (fix:and lo-halfword 2047)))
 	  (completer-symbol (x-arith-log-completer lo-halfword opcode))
 	  (mnemonic
 	   (if (= opcode-extn 0)
@@ -424,12 +420,12 @@ MIT in each case. |#
 
 (define (extr&dep opcode hi-halfword lo-halfword)
   ;; VEXTRU VEXTRS VDEP ZVDEP
-  (let*  ((reg-2 (quotient (land Mask-6-10 hi-halfword) #x20))
-	  (reg-1 (land hi-halfword #x1f))
-	  (c (quotient lo-halfword #x2000))
-	  (opcode-extn (quotient (land lo-halfword Mask-3-5) #x400))
-	  (cp (quotient (land lo-halfword Mask-6-10) #x20))
-	  (clen (land lo-halfword #x1f))
+  (let*  ((reg-2 (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
+	  (reg-1 (fix:and hi-halfword #x1f))
+	  (c (fix:quotient lo-halfword #x2000))
+	  (opcode-extn (fix:quotient (fix:and lo-halfword Mask-3-5) #x400))
+	  (cp (fix:quotient (fix:and lo-halfword Mask-6-10) #x20))
+	  (clen (fix:and lo-halfword #x1f))
 	  (completer-symbol (X-Extract-Deposit-Completers c))
 	  (mnemonic
 	   (vector-ref (if (= opcode #x34)
@@ -467,8 +463,8 @@ MIT in each case. |#
 
 (define (be&ble opcode hi-halfword lo-halfword)
   ;; BE BLE
-  (let ((base-reg (quotient (land Mask-6-10 hi-halfword) #x20))
-	(space-reg (Assemble-3 (quotient lo-halfword #x2000)))
+  (let ((base-reg (fix:quotient (fix:and Mask-6-10 hi-halfword) #x20))
+	(space-reg (Assemble-3 (fix:quotient lo-halfword #x2000)))
 	(null-completer (nullify-bit lo-halfword))
 	(word-displacement (collect-19 lo-halfword hi-halfword false))
 	(mnemonic (if (= opcode #x38) 'BE 'BLE)))
@@ -478,12 +474,12 @@ MIT in each case. |#
 (define (branch opcode hi-halfword lo-halfword)
   ;; B, BL, BLR, BV, GATE
   opcode				;ignore
-  (let ((opcode-extension (quotient lo-halfword #x2000)))
+  (let ((opcode-extension (fix:quotient lo-halfword #x2000)))
     (case opcode-extension
       ((0 1)
        ;; B BL GATE
-       (let ((return-reg (quotient (land Mask-6-10 hi-halfword)
-				   #x20))
+       (let ((return-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				       #x20))
 	     (word-displacement (collect-19 lo-halfword hi-halfword true))
 	     (null-completer (nullify-bit lo-halfword)))
 	 (let ((mnemonic (cond ((= opcode-extension 1) 'GATE)
@@ -494,9 +490,9 @@ MIT in each case. |#
 	       `(,mnemonic ,null-completer ,return-reg ,word-displacement)))))
       ((2 6)
        ;; BLR BV
-       (let ((return-reg (quotient (land Mask-6-10 hi-halfword)
-				   #x20))
-	     (offset-reg (land hi-halfword #x1f))
+       (let ((return-reg (fix:quotient (fix:and Mask-6-10 hi-halfword)
+				       #x20))
+	     (offset-reg (fix:and hi-halfword #x1f))
 	     (null-completer (nullify-bit lo-halfword))
 	     (mnemonic (if (= opcode-extension 2)
 			   'BLR
@@ -509,23 +505,23 @@ MIT in each case. |#
 (define (float-op opcode hi-halfword lo-halfword)
   ;; Copr 0 is the floating point copr.
   opcode				;ignore
-  (if (not (zero? (land (quotient lo-halfword #x40) 7)))
+  (if (not (zero? (fix:and (fix:quotient lo-halfword #x40) 7)))
       (invalid-instruction)
-      ((case (land (quotient lo-halfword #x200) 3)
+      ((case (fix:and (fix:quotient lo-halfword #x200) 3)
 	 ((0) float-op0)
 	 ((1) float-op1)
 	 ((2) float-op2)
-	 ((3) float-op3))
+	 (else float-op3))
        hi-halfword lo-halfword)))
 
 (define (float-op0 hi-halfword lo-halfword)
   (let ((mnemonic
 	 (vector-ref '#(COPR *INVALID* FCPY FABS FSQRT FRND
 			     *INVALID* *INVALID*)
-		     (quotient lo-halfword #x2000)))
-	(fmt (floating-format (land (quotient lo-halfword #x800) 3)))
-	(r (land (quotient hi-halfword #x20) #x1f))
-	(t (land lo-halfword #x1f)))
+		     (fix:quotient lo-halfword #x2000)))
+	(fmt (floating-format (fix:and (fix:quotient lo-halfword #x800) 3)))
+	(r (fix:and (fix:quotient hi-halfword #x20) #x1f))
+	(t (fix:and lo-halfword #x1f)))
     (if (eq? mnemonic '*INVALID*)
 	(invalid-instruction)
 	`(,mnemonic (,fmt) ,r ,t))))
@@ -533,21 +529,21 @@ MIT in each case. |#
 (define (float-op1 hi-halfword lo-halfword)
   (let ((mnemonic
 	 (vector-ref '#(FCNVFF FCNVXF FCNVFX FCNVFXT)
-		     (+ (* 2 (land hi-halfword 1))
-			(quotient lo-halfword #x8000))))
-	(sf (floating-format (land (quotient lo-halfword #x800) 3)))
-	(df (floating-format (land (quotient lo-halfword #x2000) 3)))
-	(r (land (quotient hi-halfword #x20) #x1f))
-	(t (land lo-halfword #x1f)))
+		     (+ (* 2 (fix:and hi-halfword 1))
+			(fix:quotient lo-halfword #x8000))))
+	(sf (floating-format (fix:and (fix:quotient lo-halfword #x800) 3)))
+	(df (floating-format (fix:and (fix:quotient lo-halfword #x2000) 3)))
+	(r (fix:and (fix:quotient hi-halfword #x20) #x1f))
+	(t (fix:and lo-halfword #x1f)))
     `(,mnemonic (,sf ,df) ,r ,t)))
 
 (define (float-op2 hi-halfword lo-halfword)
-  (case (quotient lo-halfword #x2000)
+  (case (fix:quotient lo-halfword #x2000)
     ((0)
-     (let ((fmt (floating-format (land (quotient lo-halfword #x800) 3)))
-	   (r1 (land (quotient hi-halfword #x20) #x1f))
-	   (r2 (land hi-halfword #x1f))
-	   (c (float-completer (land lo-halfword #x1f))))
+     (let ((fmt (floating-format (fix:and (fix:quotient lo-halfword #x800) 3)))
+	   (r1 (fix:and (fix:quotient hi-halfword #x20) #x1f))
+	   (r2 (fix:and hi-halfword #x1f))
+	   (c (float-completer (fix:and lo-halfword #x1f))))
        `(FCMP (,c ,fmt) ,r1 ,r2)))
     ((1)
      `(FTEST))
@@ -557,11 +553,11 @@ MIT in each case. |#
 (define (float-op3 hi-halfword lo-halfword)
   (let ((mnemonic
 	 (vector-ref '#(FADD FSUB FMPY FDIV FREM *INVALID* *INVALID* *INVALID*)
-		     (quotient lo-halfword #x2000)))
-	(fmt (floating-format (land (quotient lo-halfword #x800) 3)))
-	(r1 (land (quotient hi-halfword #x20) #x1f))
-	(r2 (land hi-halfword #x1f))
-	(t (land lo-halfword #x1f)))
+		     (fix:quotient lo-halfword #x2000)))
+	(fmt (floating-format (fix:and (fix:quotient lo-halfword #x800) 3)))
+	(r1 (fix:and (fix:quotient hi-halfword #x20) #x1f))
+	(r2 (fix:and hi-halfword #x1f))
+	(t (fix:and lo-halfword #x1f)))
     (if (eq? mnemonic '*INVALID*)
 	(invalid-instruction)
 	`(,mnemonic (,fmt) ,r1 ,r2 ,t))))
@@ -587,12 +583,12 @@ MIT in each case. |#
        (integer-divide-quotient split))))
 
 #|
-(define (assemble-21 x)                     ; Source        Dest            
-  (+ (* (* (land x 1) #x10000) #x10)        ; bit 20        bit 0
-        (* (land x #xffe) #x100)            ; bits 9-19     bits 1-11
-        (quotient (land x #xc000) #x80)     ; bits 5-6      bits 12-13
-        (quotient (land x #x1f0000) #x4000) ; bits 0-4      bits 14-18
-        (quotient (land x #x3000) #x1000))) ; bits 7-8      bits 19-20
+(define (assemble-21 x)				   ; Source        Dest
+  (+ (* (* (fix:and x 1) #x10000) #x10)		   ; bit 20        bit 0
+     (* (fix:and x #xffe) #x100)		   ; bits 9-19     bits 1-11
+     (fix:quotient (fix:and x #xc000) #x80)	   ; bits 5-6      bits 12-13
+     (fix:quotient (fix:and x #x1f0000) #x4000)	   ; bits 0-4      bits 14-18
+     (fix:quotient (fix:and x #x3000) #x1000)))	   ; bits 7-8      bits 19-20
 |#
 
 (define (assemble-21 x)
@@ -604,22 +600,22 @@ MIT in each case. |#
        (extract b 12 14))))
 
 (define (x-signed-5-bit x)		; Sign bit is lo.
-  (let ((sign-bit (land x 1))
-	(hi-bits (quotient x 2)))
+  (let ((sign-bit (fix:and x 1))
+	(hi-bits (fix:quotient x 2)))
     (if (= sign-bit 0)
 	hi-bits
 	(- hi-bits 16))))
 
 (define (x-signed-11-bit x)		; Sign bit is lo.
-  (let ((sign-bit (land x 1))
-	(hi-bits (quotient x 2)))
+  (let ((sign-bit (fix:and x 1))
+	(hi-bits (fix:quotient x 2)))
     (if (= sign-bit 0)
 	hi-bits
 	(- hi-bits #x400))))
 
 (define (xright2s d)
-  (let ((sign-bit (land d 1)))
-    (- (quotient d 2)
+  (let ((sign-bit (fix:and d 1)))
+    (- (fix:quotient d 2)
        (if (= sign-bit 0)
 	   0
 	   #x2000))))
@@ -628,17 +624,17 @@ MIT in each case. |#
   (offset->pc-relative value *current-offset))
 
 (define (collect-14 lo-halfword)
-  (let* ((sign (land lo-halfword 1))
-	 (w (* 4 (assemble-12 (quotient (land lo-halfword #x1ffc) 4)
+  (let* ((sign (fix:and lo-halfword 1))
+	 (w (* 4 (assemble-12 (fix:quotient (fix:and lo-halfword #x1ffc) 4)
 			      sign))))
     (make-pc-relative (if (= sign 1)
 			  (- w #x4000)	; (expt 2 14)
 			  w))))
 
 (define (collect-19 lo-halfword hi-halfword pc-rel?)
-  (let* ((sign (land 1 lo-halfword))
-	 (w (* 4 (assemble-17 (land Mask-11-15 hi-halfword)
-			      (quotient (land Mask-3-14 lo-halfword)
+  (let* ((sign (fix:and 1 lo-halfword))
+	 (w (* 4 (assemble-17 (fix:and Mask-11-15 hi-halfword)
+			      (fix:quotient (fix:and Mask-3-14 lo-halfword)
 					4)
 			      sign)))
 	 (disp (if (= sign 1)
@@ -652,8 +648,8 @@ MIT in each case. |#
 
 (define (x-arith-log-completer lo-halfword xtra)
   ;; c is 3-bit, f 1-bit
-  (let ((c (quotient lo-halfword #x2000))
-	(f (quotient (land lo-halfword 4096) #x1000)))
+  (let ((c (fix:quotient lo-halfword #x2000))
+	(f (fix:quotient (fix:and lo-halfword 4096) #x1000)))
     (let ((index (+ (* f 8) c)))
       (case xtra
 	((#x2c #x2d #x30 #x32 #x34 #x36 #x38 #x4c #x4e
@@ -700,11 +696,11 @@ MIT in each case. |#
 
 (define (cc-completer lo-halfword)
   (vector-ref '#(() (C) (Q) (P))
-	      (quotient (land lo-halfword Mask-4-5) #x400)))
+	      (fix:quotient (fix:and lo-halfword Mask-4-5) #x400)))
 
 (define (um-completer short-flag lo-halfword)
-  (let ((u-completer (land lo-halfword #x2000))
-	(m-completer (land lo-halfword #x20)))
+  (let ((u-completer (fix:and lo-halfword #x2000))
+	(m-completer (fix:and lo-halfword #x20)))
     (if (zero? short-flag)
 	(if (zero? u-completer)
 	    (if (zero? m-completer) '() '(M))
@@ -714,7 +710,7 @@ MIT in each case. |#
 	    (if (zero? u-completer) '(MA) '(MB))))))
 
 (define-integrable (nullify-bit lo-halfword)
-  (if (= (land lo-halfword 2) 2) '(N) '()))
+  (if (= (fix:and lo-halfword 2) 2) '(N) '()))
 
 (define-integrable (floating-format value)
   (vector-ref '#(SGL DBL FMT=2 QUAD) value))
