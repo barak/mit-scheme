@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.1 2003/04/15 03:29:46 cph Exp $
+@c $Id: io.texi,v 1.2 2003/04/26 02:43:49 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -369,7 +369,7 @@ their output and return it as a string.  It also describes
 ``truncating'' output ports, which can limit the length of the resulting
 string to a given value.
 
-@deffn procedure string->input-port string [start [end]]
+@deffn procedure open-input-string string [start [end]]
 @cindex string, converting to input port
 @cindex construction, of string input port
 Returns a new string port that delivers characters from @var{string}.
@@ -395,15 +395,32 @@ by @var{thunk}.
 Note: this procedure is equivalent to:
 
 @example
-(with-input-from-port (string->input-port @var{string}) @var{thunk})
+(with-input-from-port (open-input-string @var{string}) @var{thunk})
 @end example
 @end deffn
 
-@deffn procedure with-string-output-port procedure
+@deffn procedure open-output-string
+@deffnx procedure get-output-string
+@code{open-output-string} returns a new output port that accumulates in
+a buffer everything that is written to it.  The accumulated output can
+subsequently be obtained by calling @code{get-output-string} on the
+port.
+@end deffn
+
+@deffn procedure call-with-output-string procedure
 @var{Procedure} is called with one argument, an output port.  The value
 yielded by @var{procedure} is ignored.  When @var{procedure} returns,
-@code{with-string-output-port} returns the port's accumulated output as
-a newly allocated string.
+@code{call-with-output-string} returns the port's accumulated output as
+a newly allocated string.  This is equivalent to:
+
+@example
+@group
+(define (call-with-output-string procedure)
+  (let ((port (open-output-string)))
+    (procedure port)
+    (get-output-string port)))
+@end group
+@end example
 @end deffn
 
 @deffn procedure with-output-to-string thunk
@@ -430,7 +447,7 @@ Note: this procedure is equivalent to:
 
 @example
 @group
-(with-string-output-port
+(call-with-output-string
  (lambda (port)
    (with-output-to-port port @var{thunk})))
 @end group
