@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.3 1993/06/24 04:00:33 gjr Exp $
+$Id: c.h,v 1.4 1993/10/30 03:01:38 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -39,23 +39,6 @@ MIT in each case. */
 #include "cmptype.h"
 
 #define COMPILER_PROCESSOR_TYPE			COMPILER_LOSING_C_TYPE
-
-#define HALF_OBJECT_LENGTH (OBJECT_LENGTH / 2)
-#define HALF_OBJECT_LOW_MASK ((((unsigned long) 1) << HALF_OBJECT_LENGTH) - 1)
-#define HALF_OBJECT_HIGH_MASK (HALF_OBJECT_LOW_MASK << HALF_OBJECT_LENGTH)
-
-#define MAKE_LABEL_WORD(proc_tag,dispatch)				\
-((SCHEME_OBJECT)							\
- (((((unsigned long) proc_tag) & HALF_OBJECT_LOW_MASK)			\
-   << HALF_OBJECT_LENGTH)						\
-  | (((unsigned long) dispatch) & HALF_OBJECT_LOW_MASK)))
-
-#define LABEL_PROCEDURE(pc)						\
-(((* ((unsigned long *) (pc))) >> HALF_OBJECT_LENGTH)			\
- & HALF_OBJECT_LOW_MASK)
-
-#define LABEL_TAG(pc)							\
-((* ((unsigned long *) (pc))) & HALF_OBJECT_LOW_MASK)
 
 #define WRITE_LABEL_DESCRIPTOR(entry,kind,offset) do			\
 {									\
@@ -107,10 +90,13 @@ extern int pc_zero_bits;
   ((((SCHEME_OBJECT *) (tramp_entry)) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
    (2 + TRAMPOLINE_ENTRY_SIZE)) 
 
+/* This depends on knowledge that the trampoline block is the first
+   compiled code block.
+ */
+
 #define STORE_TRAMPOLINE_ENTRY(entry_address, index) do			\
 {									\
-  ((SCHEME_OBJECT *) (entry_address))[0]				\
-    = (MAKE_LABEL_WORD (0, (index)));					\
+  ((SCHEME_OBJECT *) (entry_address))[0] = ((SCHEME_OBJECT) (index));	\
 } while (0)
 
 /* An execute cache contains a compiled entry for the callee,
