@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.171 1998/08/30 01:50:29 cph Exp $
+;;;	$Id: prompt.scm,v 1.172 1998/11/18 03:17:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -202,6 +202,7 @@
 (define completion-procedure/list-completions)
 (define completion-procedure/verify-final-value?)
 (define *completion-confirm?*)
+(define *completion-case-insensitive?*)
 
 (define (prompt-for-string prompt default-string #!optional default-type mode)
   (fluid-let ((*default-string* default-string)
@@ -223,13 +224,15 @@
 				     complete-string
 				     list-completions
 				     verify-final-value?
-				     require-match?)
+				     require-match?
+				     case-insensitive?)
   (fluid-let ((*default-string* default-string)
 	      (*default-type* default-type)
 	      (completion-procedure/complete-string complete-string)
 	      (completion-procedure/list-completions list-completions)
 	      (completion-procedure/verify-final-value? verify-final-value?)
-	      (*completion-confirm?* (not (eq? require-match? true))))
+	      (*completion-confirm?* (not (eq? require-match? true)))
+	      (*completion-case-insensitive?* case-insensitive?))
     (%prompt-for-string
      prompt
      (if require-match?
@@ -300,7 +303,8 @@
      (string-table-completions string-table string))
    (lambda (string)
      (string-table-get string-table string))
-   require-match?))
+   require-match?
+   (string-table-ci? string-table)))
 
 (define (prompt-for-string-table-value prompt
 				       default-string
@@ -519,7 +523,9 @@ a repetition of this command will exit."
 	       (set! effected? #t)
 	       (if (not (string=? string original))
 		   (set-typein-string! string update?))
-	       (if (string-ci=? string original)
+	       (if (if *completion-case-insensitive?*
+		       (string-ci=? string original)
+		       (string=? string original))
 		   'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
 		   'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION))
 	     (lambda (string list-completions)
@@ -529,10 +535,14 @@ a repetition of this command will exit."
 		 (if (not (string=? string original))
 		     (set-typein-string! string update?))
 		 (if verified?
-		     (if (string-ci=? string original)
+		     (if (if *completion-case-insensitive?*
+			     (string-ci=? string original)
+			     (string=? string original))
 			 'WAS-ALREADY-EXACT-COMPLETION
 			 'COMPLETED-TO-EXACT-COMPLETION)
-		     (if (string-ci=? string original)
+		     (if (if *completion-case-insensitive?*
+			     (string-ci=? string original)
+			     (string=? string original))
 			 (begin
 			   (if (ref-variable completion-auto-help)
 			       (minibuffer-completion-help list-completions)
@@ -554,7 +564,9 @@ a repetition of this command will exit."
 	 (lambda (new-string)
 	   (let ((end (string-length new-string)))
 	     (let ((index
-		    (and (string-prefix-ci? string new-string)
+		    (and (if *completion-case-insensitive?*
+			     (string-prefix-ci? string new-string)
+			     (string-prefix? string new-string))
 			 (substring-find-next-char-not-of-syntax
 			  new-string (string-length string) end
 			  (ref-variable syntax-table) #\w))))
@@ -577,16 +589,23 @@ a repetition of this command will exit."
 			 (let ((completions
 				(list-transform-positive completions
 				  (let ((prefix (string-append string suffix)))
-				    (lambda (completion)
-				      (string-prefix-ci? prefix
-							 completion))))))
+				    (if *completion-case-insensitive?*
+					(lambda (completion)
+					  (string-prefix-ci? prefix
+							     completion))
+					(lambda (completion)
+					  (string-prefix? prefix
+							  completion)))))))
 			   (cond ((null? completions)
 				  (if-not-found))
 				 ((null? (cdr completions))
 				  (if-unique (car completions)))
 				 (else
 				  (if-not-unique
-				   (string-greatest-common-prefix completions)
+				   ((if *completion-case-insensitive?*
+					string-greatest-common-prefix-ci
+					string-greatest-common-prefix)
+				    completions)
 				   (lambda () completions))))))))
 		  (try-suffix "-"
 		    (lambda ()

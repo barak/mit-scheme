@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.43 1998/01/03 05:03:11 cph Exp $
+;;;	$Id: utils.scm,v 1.44 1998/11/18 03:18:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -198,8 +198,21 @@
       (%substring-move! string1 0 length1 result 0)
       (%substring-move! string2 start2 end2 result length1)
       result)))
-
+
 (define (string-greatest-common-prefix strings)
+  (let loop
+      ((strings (cdr strings))
+       (string (car strings))
+       (index (string-length (car strings))))
+    (if (null? strings)
+	(substring string 0 index)
+	(let ((string* (car strings)))
+	  (let ((index* (string-match-forward string string*)))
+	    (if (< index* index)
+		(loop (cdr strings) string* index*)
+		(loop (cdr strings) string index)))))))
+
+(define (string-greatest-common-prefix-ci strings)
   (let loop
       ((strings (cdr strings))
        (string (car strings))

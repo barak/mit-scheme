@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.43 1998/09/08 04:12:59 cph Exp $
+;;;	$Id: snr.scm,v 1.44 1998/11/18 03:18:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -877,7 +877,7 @@ Prompts for the News-group name, with completion."
 	      (ordered-vector-matches (group-names) string (lambda (s) s)
 				      string-order (prefix-matcher string))))
 	   string->group
-	   #t))))))
+	   #t #f))))))
 
 (define-command news-unsubscribe-group
   "Unsubscribe from the News group indicated by point.

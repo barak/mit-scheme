@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.194 1998/11/18 02:55:25 cph Exp $
+;;;	$Id: filcom.scm,v 1.195 1998/11/18 03:17:52 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -743,7 +743,8 @@ Prefix arg means treat the plaintext file as binary data."
 	(file-test-no-errors
 	 verify-final-value?
 	 (prompt-string->pathname string insertion directory)))
-      require-match?)
+      require-match?
+      #f)
      insertion
      directory)))
 
