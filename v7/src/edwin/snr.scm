@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.44 1998/11/18 03:18:00 cph Exp $
+;;;	$Id: snr.scm,v 1.45 1998/12/25 05:50:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-98 Massachusetts Institute of Technology
 ;;;
@@ -185,9 +185,13 @@ This is primarily used to enhance the context window."
 (define-variable news-group-truncate-subject
   "Maximum number of columns for the subject in a News-article header line.
 If zero, no truncation is performed.
+May also be a real number between 0 and 1 exclusive, in which case it
+ specifies the number of columns as a fraction of the buffer width.
 See also news-group-author-column."
-  50
-  exact-nonnegative-integer?)
+  0.7
+  (lambda (object)
+    (or (exact-nonnegative-integer? object)
+	(and (real? object) (< 0 object 1)))))
 
 (define-variable news-group-minimum-truncated-subject
   "Minimum number of columns that a subject can be truncated to.
@@ -1335,7 +1339,13 @@ This shows News groups that have been created since the last time that
     (insert-char #\space mark)
     (insert-chars #\space indentation mark)
     (if subject
-	(let ((ngts (ref-variable news-group-truncate-subject mark)))
+	(let ((ngts
+	       (let ((ngts (ref-variable news-group-truncate-subject mark)))
+		 (if (exact-nonnegative-integer? ngts)
+		     ngts
+		     (let ((x-size (mark-x-size mark)))
+		       (min x-size
+			    (round->exact (* ngts x-size))))))))
 	  (let ((subject-length
 		 (max (ref-variable news-group-minimum-truncated-subject mark)
 		      (- ngts indentation)))

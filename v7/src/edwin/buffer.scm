@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.169 1996/05/05 18:58:41 cph Exp $
+;;;	$Id: buffer.scm,v 1.170 1998/12/25 05:49:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -242,6 +242,18 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (buffer-visible? buffer)
   (there-exists? (buffer-windows buffer) window-visible?))
+
+(define (buffer-x-size buffer)
+  (let ((windows (buffer-windows buffer)))
+    (if (null? windows)
+	(screen-x-size (selected-screen))
+	(apply min (map window-x-size windows)))))
+
+(define (mark-x-size mark)
+  (let ((buffer (mark-buffer mark)))
+    (if buffer
+	(buffer-x-size buffer)
+	(screen-x-size (selected-screen)))))
 
 (define (buffer-get buffer key #!optional default)
   (let ((entry (assq key (buffer-alist buffer))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufout.scm,v 1.9 1993/08/12 06:03:21 cph Exp $
+;;;	$Id: bufout.scm,v 1.10 1998/12/25 05:49:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -103,11 +103,7 @@
   (mark-temporary! (port/mark port)))
 
 (define (operation/x-size port)
-  (let ((buffer (mark-buffer (port/mark port))))
-    (and buffer
-	 (let ((windows (buffer-windows buffer)))
-	   (and (not (null? windows))
-		(apply min (map window-x-size windows)))))))
+  (mark-x-size (port/mark port)))
 
 (define mark-output-port-template
   (make-output-port `((CLOSE ,operation/close)
