@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.151 1991/05/02 01:13:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.152 1991/05/08 22:49:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -62,23 +62,26 @@
 	(let ((buffer (pathname->buffer pathname)))
 	  (if buffer
 	      (begin
-		(if (and warn?
-			 (not (verify-visited-file-modification-time? buffer)))
-		    (cond ((not (file-exists? pathname))
-			   (editor-error "File "
-					 (pathname->string pathname)
-					 " no longer exists!"))
-			  ((prompt-for-yes-or-no?
-			    (string-append
-			     "File has changed since last visited or saved.  "
-			     (if (buffer-modified? buffer)
-				 "Flush your changes"
-				 "Read from disk")))
-			   (revert-buffer buffer true true))))
+		(if warn? (find-file-revert buffer))
 		buffer)
 	      (let ((buffer (new-buffer (pathname->buffer-name pathname))))
 		(visit-file buffer pathname)
 		buffer))))))
+
+(define (find-file-revert buffer)
+  (if (not (verify-visited-file-modification-time? buffer))
+      (let ((pathname (buffer-pathname buffer)))
+	(cond ((not (file-exists? pathname))
+	       (editor-error "File "
+			     (pathname->string pathname)
+			     " no longer exists!"))
+	      ((prompt-for-yes-or-no?
+		(string-append
+		 "File has changed since last visited or saved.  "
+		 (if (buffer-modified? buffer)
+		     "Flush your changes"
+		     "Read from disk")))
+	       (revert-buffer buffer true true))))))
 
 (define-command find-file
   "Visit a file in its own buffer.
@@ -126,97 +129,95 @@ Argument means don't offer to use auto-save file."
     (revert-buffer (current-buffer) argument false)))
 
 (define (revert-buffer buffer dont-use-auto-save? dont-confirm?)
-  (let ((method (buffer-get buffer 'REVERT-BUFFER-METHOD)))
-    (if method
-	(method buffer dont-use-auto-save? dont-confirm?)
-	(let ((auto-save?
-	       (and (not dont-use-auto-save?)
-		    (buffer-auto-saved? buffer)
-		    (buffer-auto-save-pathname buffer)
-		    (file-readable? (buffer-auto-save-pathname buffer))
-		    (prompt-for-confirmation?
-   "Buffer has been auto-saved recently.  Revert from auto-save file"))))
-	  (let ((pathname
-		 (if auto-save?
-		     (buffer-auto-save-pathname buffer)
-		     (buffer-pathname buffer))))
-	    (cond ((not pathname)
-		   (editor-error
-		    "Buffer does not seem to be associated with any file"))
-		  ((not (file-readable? pathname))
-		   (editor-error "File "
-				 (pathname->string pathname)
-				 " no longer "
-				 (if (file-exists? pathname)
-				     "exists"
-				     "readable")
-				 "!"))
-		  ((or dont-confirm?
-		       (prompt-for-yes-or-no?
-			(string-append "Revert buffer from file "
-				       (pathname->string pathname))))
-		   ;; If file was backed up but has changed since, we
-		   ;; should make another backup.
-		   (if (and (not auto-save?)
-			    (not
-			     (verify-visited-file-modification-time? buffer)))
-		       (set-buffer-backed-up?! buffer false))
-		   (let ((where (mark-index (buffer-point buffer)))
-			 (group (buffer-group buffer))
-			 (do-it
-			  (lambda ()
-			    (read-buffer buffer pathname (not auto-save?))
-			    (after-find-file buffer pathname false))))
-		     (if (group-undo-data group)
-			 (begin
-			   ;; Throw away existing undo data.
-			   (disable-group-undo! group)
-			   (do-it)
-			   (enable-group-undo! group))
-			 (do-it))
-		     (set-buffer-point!
-		      buffer
-		      (mark+ (buffer-start buffer) where 'LIMIT))))))))))
+  ((or (buffer-get buffer 'REVERT-BUFFER-METHOD)
+       revert-buffer-default)
+   buffer dont-use-auto-save? dont-confirm?))
 
-(define-command toggle-read-only
-  "Change whether this buffer is visiting its file read-only."
-  ()
-  (lambda ()
-    (let ((buffer (current-buffer)))
-      ((if (buffer-writeable? buffer)
-	   set-buffer-read-only!
-	   set-buffer-writeable!)
-       buffer))))
+(define (revert-buffer-default buffer dont-use-auto-save? dont-confirm?)
+  (let ((auto-save?
+	 (and (not dont-use-auto-save?)
+	      (buffer-auto-saved? buffer)
+	      (buffer-auto-save-pathname buffer)
+	      (file-readable? (buffer-auto-save-pathname buffer))
+	      (prompt-for-confirmation?
+"Buffer has been auto-saved recently.  Revert from auto-save file"))))
+    (let ((pathname
+	   (if auto-save?
+	       (buffer-auto-save-pathname buffer)
+	       (buffer-pathname buffer))))
+      (cond ((not pathname)
+	     (editor-error
+	      "Buffer does not seem to be associated with any file"))
+	    ((not (file-readable? pathname))
+	     (editor-error "File "
+			   (pathname->string pathname)
+			   " no longer "
+			   (if (file-exists? pathname) "exists" "readable")
+			   "!"))
+	    ((or dont-confirm?
+		 (prompt-for-yes-or-no?
+		  (string-append "Revert buffer from file "
+				 (pathname->string pathname))))
+	     ;; If file was backed up but has changed since, we
+	     ;; should make another backup.
+	     (if (and (not auto-save?)
+		      (not (verify-visited-file-modification-time? buffer)))
+		 (set-buffer-backed-up?! buffer false))
+	     (let ((where (mark-index (buffer-point buffer)))
+		   (group (buffer-group buffer))
+		   (do-it
+		    (lambda () (visit-file buffer pathname (not auto-save?)))))
+	       (if (group-undo-data group)
+		   (begin
+		     ;; Throw away existing undo data.
+		     (disable-group-undo! group)
+		     (do-it)
+		     (enable-group-undo! group))
+		   (do-it))
+	       (set-buffer-point!
+		buffer
+		(make-mark (buffer-group buffer)
+			   (min where (buffer-length buffer))))))))))
 
-(define (visit-file buffer pathname)
-  (after-find-file buffer
-		   pathname
-		   (catch-file-errors (lambda () true)
-		     (lambda ()
-		       (not (read-buffer buffer pathname true))))))
+(define (visit-file buffer pathname #!optional visit?)
+  (after-find-file
+   buffer
+   (or (read-buffer-interactive buffer
+				pathname
+				(or (default-object? visit?) visit?))
+       pathname)))
 
-(define (after-find-file buffer pathname error?)
-  (let ((pathname (or (buffer-truename buffer) pathname)))
-    (if (file-writable? pathname)
-	(set-buffer-writeable! buffer)
-	(set-buffer-read-only! buffer))
-    (let ((msg
-	   (cond ((not (buffer-read-only? buffer))
-		  (and error? "(New file)"))
-		 ((not error?)
-		  "File is write protected")
-		 ((file-attributes pathname)
-		  "File exists, but is read-protected.")
-		 ((file-attributes (pathname-directory-path pathname))
-		  "File not found and directory write-protected")
-		 (else
-		  "File not found and directory doesn't exist"))))
-      (if msg
-	  (message msg))))
+(define (read-buffer-interactive buffer pathname visit?)
+  (let ((truename
+	 (catch-file-errors (lambda () false)
+			    (lambda () (read-buffer buffer pathname visit?)))))
+    (let ((pathname (or truename pathname)))
+      (let ((msg
+	     (cond ((file-writable? pathname)
+		    (and (not truename) "(New file)"))
+		   (truename
+		    "File is write protected")
+		   ((file-attributes pathname)
+		    "File exists, but is read-protected.")
+		   ((file-attributes (pathname-directory-path pathname))
+		    "File not found and directory write-protected")
+		   (else
+		    "File not found and directory doesn't exist"))))
+	(if msg
+	    (message msg))))
+    truename))
+
+(define (after-find-file buffer pathname)
+  (if (file-writable? pathname)
+      (set-buffer-writeable! buffer)
+      (set-buffer-read-only! buffer))
   (setup-buffer-auto-save! buffer)
   (initialize-buffer! buffer)
+  (load-find-file-initialization buffer pathname))
+
+(define (load-find-file-initialization buffer pathname)
   (let ((filename (os/find-file-initialization-filename pathname)))
-    (if filename
+    (if (and filename (file-exists? filename))
 	(let ((database
 	       (with-output-to-transcript-buffer
 		(lambda ()
@@ -305,6 +306,10 @@ With argument, saves all with no questions."
 	     (prompt-for-pathname
 	      (string-append "Write buffer " (buffer-name buffer) " to file")
 	      false false)))
+	(if (> (buffer-length buffer) 50000)
+	    (message "Saving file "
+		     (pathname->string (buffer-pathname buffer))
+		     "..."))
 	(write-buffer-interactive buffer backup-mode))
       (message "(No changes need to be written)")))
 
