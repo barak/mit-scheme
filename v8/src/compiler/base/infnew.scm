@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.7 1995/07/28 15:56:55 adams Exp $
+$Id: infnew.scm,v 1.8 1995/07/31 19:13:14 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -103,8 +103,8 @@ MIT in each case. |#
 		    (cond ((and (pair? item)
 				(eq? (car item) 'CC-ENTRY)
 				(symbol? (cdr item)))
-			   (let ((label  (map-label/fail (cdr item))))
-			     (if (dbg-label/external? label)
+			   (let ((label  (map-label/false (cdr item))))
+			     (if (and label (dbg-label/external? label))
 				 (set-cdr! item (dbg-label/offset label))
 				 (set-new-dbg-variable/path! var #F))))
 			  ((and (pair? item)
