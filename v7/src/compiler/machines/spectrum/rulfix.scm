@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.41 1992/08/19 13:25:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.42 1992/08/19 13:36:01 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -731,7 +731,7 @@ MIT in each case. |#
 		(EXTRU (=) ,src 31 ,len ,tgt)
 		(DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt)
 		,@(if ovflw?
-		      (LAP (SKIP))
+		      (LAP (SKIP (TR)))
 		      (LAP)))))))))
 
 ;;;; Predicates
