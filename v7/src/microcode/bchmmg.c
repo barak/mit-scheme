@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.28 1987/04/16 02:06:52 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.29 1987/04/21 14:54:50 cph Exp $ */
 
 /* Memory management top level.  Garbage collection to disk.
 
@@ -651,19 +651,18 @@ Built_In_Primitive(Prim_Garbage_Collect, 1, "GARBAGE-COLLECT", 0x3A)
   GC_Reserve = Get_Integer(Arg1);
   GC();
   IntCode &= ~INT_GC;
-  if (GC_Check(GC_Space_Needed))
-  {
-    fprintf(stderr, "\nGC just ended.\n");
-    fprintf(stderr,
-	    "Free = 0x%x; MemTop = 0x%x; GC_Space_Needed = 0x%x.\n",
-	    Free, MemTop, GC_Space_Needed);
-    Microcode_Termination(TERM_NO_SPACE);
-    /*NOTREACHED*/
-  }
+  Pop_Primitive_Frame(1);
   GC_Daemon_Proc = Get_Fixed_Obj_Slot(GC_Daemon);
   if (GC_Daemon_Proc == NIL)
-    return Make_Unsigned_Fixnum(MemTop - Free);
-  Pop_Primitive_Frame(1);
+  {
+   Will_Push(CONTINUATION_SIZE);
+    Store_Return(RC_NORMAL_GC_DONE);
+    Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
+    Save_Cont();
+   Pushed();
+    longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+    /*NOTREACHED*/
+  }
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 1));
   Store_Return(RC_NORMAL_GC_DONE);
   Store_Expression(Make_Unsigned_Fixnum(MemTop - Free));
