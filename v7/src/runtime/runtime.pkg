@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.281 1997/06/12 21:10:43 cph Exp $
+$Id: runtime.pkg,v 14.282 1997/06/24 05:34:20 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -3325,6 +3325,7 @@ MIT in each case. |#
   (files "recslot")
   (parent ())
   (export ()
+	  condition-type:uninitialized-slot
 	  %record-accessor
 	  %record-accessor-generator
 	  %record-initpred
@@ -3332,6 +3333,7 @@ MIT in each case. |#
 	  %record-modifier
 	  %record-modifier-generator
 	  %record-slot-index
+	  %record-slot-name
 	  %record-slot-names))
 
 (define-package (runtime generic-procedure eqht)

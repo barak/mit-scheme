@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.61 1996/07/26 14:38:26 adams Exp $
+$Id: make.scm,v 14.62 1997/06/24 05:34:09 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -452,6 +452,7 @@ MIT in each case. |#
    (RUNTIME MICROCODE-ERRORS)
    ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS! #t)
    ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS! #t)
+   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS! #t)
    ;; System dependent stuff
    (() INITIALIZE-SYSTEM-PRIMITIVES! #f)
    ;; Threads
