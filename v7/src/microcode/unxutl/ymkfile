@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.77 1993/08/24 18:27:43 bal Exp $
+$Id: ymkfile,v 1.78 1993/08/28 05:45:00 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -85,6 +85,10 @@ MIT in each case. */
 /* If user wants to optimize, this is how.  */
 #ifndef C_OPTIMIZE_SWITCH
 #define C_OPTIMIZE_SWITCH -O
+#endif
+
+#ifndef LD_SWITCH_CF
+#define LD_SWITCH_CF
 #endif
 
 #ifndef LD_SWITCH_SYSTEM
@@ -297,9 +301,9 @@ MACHINE_OBJECTS = cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h
 #endif /* PROC_TYPE_KNOWN */
 
-USER_PRIM_SOURCES =
-USER_PRIM_OBJECTS =
-USER_LIBS =
+USER_PRIM_SOURCES = $(CF_USER_PRIM_SOURCES)
+USER_PRIM_OBJECTS = $(CF_USER_PRIM_OBJECTS)
+USER_LIBS = $(CF_USER_LIBS)
 
 SHELL = /bin/sh
 
@@ -341,7 +345,7 @@ AS = as
 #define LIB_DEBUG
 #endif
 
-LDFLAGS = LD_SWITCH_SYSTEM LD_SWITCH_MACHINE C_DEBUG_SWITCH
+LDFLAGS = LD_SWITCH_CF LD_SWITCH_SYSTEM LD_SWITCH_MACHINE C_DEBUG_SWITCH
 
 CFLAGS = -DMIT_SCHEME C_OPTIMIZE_SWITCH C_DEBUG_SWITCH C_SWITCH_MACHINE C_SWITCH_SYSTEM C_SWITCH_FEATURES $(MACHINE_SWITCHES)
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.138 1993/08/22 22:39:06 gjr Exp $
+$Id: version.h,v 11.139 1993/08/28 05:45:25 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -46,5 +46,5 @@ MIT in each case. */
 #define VERSION		11
 #endif
 #ifndef SUBVERSION
-#define SUBVERSION	138
+#define SUBVERSION	139
 #endif

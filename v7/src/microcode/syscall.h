@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.2 1993/08/03 17:40:04 gjr Exp $
+$Id: syscall.h,v 1.3 1993/08/28 05:43:32 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -96,7 +96,8 @@ enum syscall_names
   syscall_write,
   syscall_stat,
   syscall_lstat,
-  syscall_mktime
+  syscall_mktime,
+  syscall_dld
 };
 
 enum syserr_names

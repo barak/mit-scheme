@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.64 1993/08/04 22:21:35 cph Exp $
+$Id: primutl.c,v 9.65 1993/08/28 05:42:28 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -90,6 +90,7 @@ extern SCHEME_OBJECT
   EXFUN (make_primitive, (char *)),
   EXFUN (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int)),
   EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *)),
+  EXFUN (install_primitive, (char *, primitive_procedure_t, int, int, char *)),
   EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
   * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
   * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
@@ -461,19 +462,11 @@ DEFUN_VOID (initialize_primitives)
   return;
 }
 
-/* declare_primitive returns SHARP_F if it could not allocate
-   the storage needed for the new primitive, or a primitive object.
-   The primitive object may correspond to a pre-existend primitive
-   if there is already a primitive by the same name.
-   If it is a new primitive, its PRIMITIVE_NUMBER will be the
-   previous value of MAX_PRIMITIVE.
-   Note that it can return the value of an old primitive if it
-   was previously unimplemented and the arity matches.
- */
-
-SCHEME_OBJECT
-DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
-       char * name
+static SCHEME_OBJECT
+DEFUN (declare_primitive_internal,
+       (override_p, code, nargs_lo, nargs_hi, docstr),
+       Boolean override_p
+       AND char * name
        AND primitive_procedure_t code
        AND int nargs_lo
        AND int nargs_hi
@@ -482,16 +475,19 @@ DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 {
   int index;
   SCHEME_OBJECT primitive;
+  char * ndocstr = docstr;
   node prim = (tree_lookup (prim_procedure_tree, name));
 
   if (prim != ((node) NULL))
   {
     index = prim->value;
     primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
-    if ((IMPLEMENTED_PRIMITIVE_P (primitive))
-	|| (((PRIMITIVE_ARITY (primitive)) != nargs_hi)
-	    && ((PRIMITIVE_ARITY (primitive)) != UNKNOWN_PRIMITIVE_ARITY)))
-      return (primitive);
+    if ((((PRIMITIVE_ARITY (primitive)) != nargs_hi)
+	 && ((PRIMITIVE_ARITY (primitive)) != UNKNOWN_PRIMITIVE_ARITY))
+	|| ((IMPLEMENTED_PRIMITIVE_P (primitive)) && (! override_p)))
+      return (LONG_TO_UNSIGNED_FIXNUM (PRIMITIVE_NUMBER (primitive)));
+    if (docstr == ((char *) NULL))
+      ndocstr = Primitive_Documentation_Table[index];
   }
   else
   {
@@ -518,11 +514,51 @@ DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 
   Primitive_Procedure_Table[index]     = code;
   Primitive_Arity_Table[index]         = nargs_hi;
-  Primitive_Count_Table[index]         = (nargs_hi
-					  * (sizeof (SCHEME_OBJECT)));
-  Primitive_Documentation_Table[index] = docstr;
+  Primitive_Count_Table[index]         = (nargs_hi * (sizeof (SCHEME_OBJECT)));
+  Primitive_Documentation_Table[index] = ndocstr;
   UPDATE_PRIMITIVE_TABLE_HOOK (index, (index + 1));
   return (primitive);
+}
+
+/* declare_primitive installs a new primitive in the system.
+   It returns:
+   - A primitive object if it succeeds.
+   - SHARP_F if there was a problem trying to install it (e.g. out of memory).
+   - A fixnum whose value is the number of the pre-existing primitive
+     that it would replace.
+   Note that even if a primitive is returned, its number may not
+   be the previous value of MAX_PRIMITIVE, since the system may
+   have pre-existent references to the previously-unimplemented primitive.
+ */
+
+SCHEME_OBJECT
+DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
+       char * name
+       AND primitive_procedure_t code
+       AND int nargs_lo
+       AND int nargs_hi
+       AND char * docstr)
+{
+  return (declare_primitive_internal (false, name, code,
+				      nargs_lo, nargs_hi, docstr));
+}
+
+/* install_primitive is similar to declare_primitive, but will
+   replace a pre-existing primitive if the arities are consistent.
+   If they are not, it returns a fixnum whose value is the index
+   of the pre-existing primitive.
+ */
+
+SCHEME_OBJECT
+DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
+       char * name
+       AND primitive_procedure_t code
+       AND int nargs_lo
+       AND int nargs_hi
+       AND char * docstr)
+{
+  return (declare_primitive_internal (true, name, code,
+				      nargs_lo, nargs_hi, docstr));
 }
 
 /*
@@ -533,11 +569,16 @@ DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 SCHEME_OBJECT
 DEFUN (make_primitive, (name), char * name)
 {
-  return (declare_primitive (name,
-			     Prim_unimplemented,
-			     UNKNOWN_PRIMITIVE_ARITY,
-			     UNKNOWN_PRIMITIVE_ARITY,
-			     ((char *) NULL)));
+  SCHEME_OBJECT result;
+
+  result = (declare_primitive (name,
+			       Prim_unimplemented,
+			       UNKNOWN_PRIMITIVE_ARITY,
+			       UNKNOWN_PRIMITIVE_ARITY,
+			       ((char *) NULL)));
+  return ((result == SHARP_F)
+	  ? SHARP_F
+	  : (OBJECT_NEW_TYPE (TC_PRIMITIVE, result)));
 }
 
 /* This returns all sorts of different things that the runtime

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: usrdef.h,v 9.40 1993/08/03 08:30:02 gjr Exp $
+$Id: usrdef.h,v 9.41 1993/08/28 05:43:00 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -53,6 +53,9 @@ extern long MAX_STATIC_PRIMITIVE;
 
 extern SCHEME_OBJECT
   EXFUN (declare_primitive, (char *, primitive_procedure_t, int, int, char *));
+
+extern SCHEME_OBJECT
+  EXFUN (install_primitive, (char *, primitive_procedure_t, int, int, char *));
 
 extern void
   EXFUN (Microcode_Termination, (int)),
