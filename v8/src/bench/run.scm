@@ -56,4 +56,5 @@
 	    "tak"
 	    "takl"
 	    "traverse"
-	    "triangle"))
+	    "triangle"
+	    "wttree"))
