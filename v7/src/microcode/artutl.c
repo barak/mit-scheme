@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.10 1992/09/18 19:39:16 jinx Exp $
+$Id: artutl.c,v 1.11 1992/09/18 19:40:07 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -92,7 +92,7 @@ DEFUN (integer_to_ulong,
 SCHEME_OBJECT
 DEFUN (ulong_to_integer, (number), unsigned long number)
 {
-  long s_number; = ((long) number);
+  long s_number = ((long) number);
   if (s_number >= 0)
     return
       ((LONG_TO_FIXNUM_P (s_number))
