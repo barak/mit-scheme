@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.15 1994/12/19 21:06:39 cph Exp $
+$Id: sfile.scm,v 14.16 1995/02/07 23:56:33 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -102,6 +102,9 @@ MIT in each case. |#
        (lambda ()
 	 (if output-channel (channel-close output-channel))
 	 (if input-channel (channel-close input-channel)))))
+    (set-file-times! output-filename
+		     #f
+		     (file-modification-time input-filename))
     (set-file-modes! output-filename (file-modes input-filename))))
 
 (define (file-eq? x y)
