@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.70 1990/03/27 00:50:00 jinx Exp $
-$MC68020-Header: make.scm,v 4.70 90/03/21 02:12:51 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.71 1990/04/02 15:32:24 jinx Exp $
+$MC68020-Header: make.scm,v 4.71 90/04/01 22:31:56 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -42,4 +42,4 @@ MIT in each case. |#
 	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
 	  '((COMPILER MACROS)
 	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Liar (HP PA)" 4 70 '()))
+(add-system! (make-system "Liar (HP PA)" 4 71 '()))
