@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.54 1993/10/14 21:44:20 gjr Exp $
+$Id: storage.c,v 9.55 1993/11/03 19:22:03 jmiller Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -93,7 +93,7 @@ SCHEME_OBJECT * memory_base;
                     /* DEBUGGING SWITCHES */
                     /**********************/
 
-#ifdef ENABLE_DEBUGGING_TOOLS
+#ifdef ENABLE_DEBUGGING_FLAGS
 
 Boolean Eval_Debug	= false;
 Boolean Hex_Input_Debug	= false;
@@ -109,7 +109,7 @@ Boolean Upgrade_Debug	= false;
 Boolean Dump_Debug	= false;
 Boolean Trace_On_Error	= false;
 Boolean Bignum_Debug    = false;
-Boolean Per_File	= true;
+Boolean Per_File	= false;
 Boolean Fluids_Debug	= false;
 More_Debug_Flag_Allocs();
 
@@ -125,7 +125,7 @@ int local_circle[debug_maxslots];
 
 int debug_circle[100];
 int local_circle[100];
-#endif /* ENABLE_DEBUGGING_TOOLS */
+#endif /* ENABLE_DEBUGGING_FLAGS */
 
 		/****************************/
 		/* Debugging Macro Messages */
