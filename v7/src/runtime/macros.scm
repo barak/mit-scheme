@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.1 1994/12/09 03:32:03 adams Exp $
+$Id: macros.scm,v 1.2 1998/02/22 08:48:02 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -42,7 +42,6 @@ MIT in each case. |#
 	      (syntax-table-define system-global-syntax-table keyword
 		transform))
 	    '(AND
-	      BKPT
 	      CASE
 	      CONS-STREAM
 	      DEFINE-INTEGRABLE
@@ -53,7 +52,6 @@ MIT in each case. |#
 	      QUASIQUOTE
 	      SEQUENCE)
 	    (list transform/and
-		  transform/bkpt
 		  transform/case
 		  transform/cons-stream
 		  transform/define-integrable
@@ -87,11 +85,6 @@ MIT in each case. |#
 
 (define (transform/sequence . actions)
   `(BEGIN . ,actions))
-
-(define (transform/bkpt datum . arguments)
-  `(,(make-absolute-reference 'BREAKPOINT-PROCEDURE) (THE-ENVIRONMENT)
-						     ,datum
-						     ,@arguments))
 
 ;;;; Quasiquote
 

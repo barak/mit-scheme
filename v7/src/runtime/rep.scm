@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.50 1994/08/15 20:11:55 cph Exp $
+$Id: rep.scm,v 14.51 1998/02/22 08:47:47 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -811,11 +811,10 @@ MIT in each case. |#
 
 ;;;; Breakpoints
 
-(define (new-bkpt datum . arguments)
+(define (bkpt datum . arguments)
   (apply breakpoint-procedure 'CONTINUATION-ENVIRONMENT datum arguments))
 
 (define (breakpoint-procedure environment datum . arguments)
-  ;; BKPT expands into this.
   (signal-breakpoint #f
 		     environment
 		     (cmdl-message/active
