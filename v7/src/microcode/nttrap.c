@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.6 1993/09/08 04:41:06 gjr Exp $
+$Id: nttrap.c,v 1.7 1993/09/21 17:54:10 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -1263,8 +1263,9 @@ DEFUN_VOID (winnt_stack_reset)
      Stack_Guard is at least a page.
    */
 
-  boundary = (((unsigned long) Stack_Guard)
-	      & (~ ((unsigned long) (PAGE_SIZE - 1))));
+  boundary = ((((unsigned long) Stack_Guard)
+	       & (~ ((unsigned long) (PAGE_SIZE - 1))))
+	      - PAGE_SIZE);
   if (stack_protected && (protected_stack_base == boundary))
     return;
   winnt_unprotect_stack ();
@@ -1295,13 +1296,14 @@ DEFUN (WinntException, (code, info),
 				     MB_OK);
     trap_immediate_termination ();
   }
-  else if ((code == EXCEPTION_CODE_GUARDED_PAGE_ACCESS)
-	   && stack_protected
-	   && (context->Esp >= protected_stack_base)
-	   && (context->Esp <= protected_stack_end))
+  else if (code == EXCEPTION_CODE_GUARDED_PAGE_ACCESS)
   {
+    if (stack_protected
+	&& (context->Esp >= protected_stack_base)
+	&& (context->Esp <= protected_stack_end))
+      REQUEST_INTERRUPT (INT_Stack_Overflow);
+    /* Just in case */
     stack_protected = FALSE;
-    REQUEST_INTERRUPT (INT_Stack_Overflow);
     return (EXCEPTION_CONTINUE_EXECUTION);
   }
   else
