@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.207 1991/10/04 06:06:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.208 1991/11/04 20:47:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -266,12 +266,11 @@ with the contents of the startup message."
   (cond (debug-internal-errors?
 	 (exit-editor-and-signal-error condition))
 	((ref-variable debug-on-internal-error)
-	 (debug-scheme-error condition)
-	 (message "Scheme error")
-	 (%editor-error))
+	 (debug-scheme-error condition "internal"))
 	(else
+	 (editor-beep)
 	 (message (condition/report-string condition))
-	 (%editor-error))))
+	 (abort-current-command))))
 
 (define-variable debug-on-internal-error
   "True means enter debugger if error is signalled while the editor is running.
@@ -305,11 +304,13 @@ This does not affect editor errors or evaluation errors."
 
 (define (editor-error-handler condition)
   (if (ref-variable debug-on-editor-error)
-      (debug-scheme-error condition)
-      (let ((strings (editor-error-strings condition)))
-	(if (not (null? strings))
-	    (apply message strings))))
-  (%editor-error))
+      (debug-scheme-error condition "editor")
+      (begin
+	(editor-beep)
+	(let ((strings (editor-error-strings condition)))
+	  (if (not (null? strings))
+	      (apply message strings)))
+	(abort-current-command))))
 
 (define-variable debug-on-editor-error
   "True means signal Scheme error when an editor error occurs."

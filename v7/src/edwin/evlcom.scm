@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.29 1991/09/12 23:31:52 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.30 1991/11/04 20:47:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -349,30 +349,26 @@ kludge the mode line."
 	evaluation-error-handler
       (lambda ()
 	(hook/repl-eval (nearest-repl) expression environment syntax-table)))))
+
+(define (evaluation-error-handler condition)
+  (default-report-error condition "evaluation")
+  (if (ref-variable debug-on-evaluation-error)
+      (debug-scheme-error condition "evaluation")
+      (begin
+	(editor-beep)
+	(abort-current-command))))
 
-(define-variable error-display-mode
-  "ERROR-BUFFER => Error messages always appear in *Error* buffer.
-FIT => Error messages appear in Typein window if they fit and in *Error*
-buffer if they don't.
-TRANSCRIPT => Error messages appear in transcript buffer.
-TYPEIN or False => Error messages always appear in Typein window."
-  'transcript
-  (lambda (value)
-    (or (not value)
-	(memq value '(error-buffer fit transcript typein)))))
-
-(define (default-report-error condition)
-  (let ((report-string
-	 (with-output-to-string
-	   (lambda ()
-	     (write-condition-report condition (current-output-port))))))
+(define (default-report-error condition error-type-name)
+  (let ((report-string (condition/report-string condition)))
     (let ((typein-report
 	   (lambda ()
-	     (message "Evaluation error: " report-string)))
+	     (message (string-capitalize error-type-name)
+		      " error: "
+		      report-string)))
 	  (error-buffer-report
 	   (lambda ()
 	     (string->temporary-buffer report-string "*Error*")
-	     (message "Evaluation error"))))
+	     (message (string-capitalize error-type-name) " error"))))
       (case (ref-variable error-display-mode)
 	((TRANSCRIPT)
 	 (with-output-to-transcript-buffer
@@ -382,24 +378,26 @@ TYPEIN or False => Error messages always appear in Typein window."
 	     (display report-string)
 	     (newline)
 	     (newline))))
+	((ERROR-BUFFER)
+	 (error-buffer-report))
+	((TYPEIN)
+	 (typein-report))
 	((FIT)
 	 (if (and (not (string-find-next-char report-string #\newline))
 		  (< (string-columns report-string 18 false)
 		     (window-x-size (typein-window))))
 	     (typein-report)
-	     (error-buffer-report)))
-	((ERROR-BUFFER)
-	 (error-buffer-report))
-	((TYPEIN)
-	 (typein-report))
-	(else
-	 (typein-report))))))
+	     (error-buffer-report)))))))
 
-(define (evaluation-error-handler condition)
-  (default-report-error condition)
-  (if (ref-variable debug-on-evaluation-error)
-      (debug-scheme-error condition))
-  (%editor-error))
+(define-variable error-display-mode
+  "Value of this variable controls the way evaluation errors are displayed:
+TRANSCRIPT    Error messages appear in transcript buffer.
+ERROR-BUFFER  Error messages appear in *Error* buffer.
+TYPEIN        Error messages appear in typein window.
+FIT           Error messages appear in typein window if they fit;
+                in *Error* buffer if they don't."
+  'TRANSCRIPT
+  (lambda (value) (memq value '(TRANSCRIPT ERROR-BUFFER TYPEIN FIT))))
 
 ;;;; Transcript Buffer
 
