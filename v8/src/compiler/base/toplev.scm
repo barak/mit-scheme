@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.8 1995/07/27 14:18:57 adams Exp $
+$Id: toplev.scm,v 1.9 1995/08/02 03:11:55 adams Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -189,42 +189,48 @@ MIT in each case. |#
 (define (compile-scode scode #!optional keep-debugging-info?)
   (perhaps-issue-compatibility-warning)
   (compiler-output->compiled-expression
-   (let* ((kmp-file-name (temporary-file-pathname))
-	  (rtl-file-name (temporary-file-pathname))
-	  (lap-file-name (temporary-file-pathname))
-	  (info-output-pathname
-	   (and (or (default-object? keep-debugging-info?)
-		    keep-debugging-info?)
-		'KEEP)))
-     (warn "KMP Output to temporary file" (->namestring kmp-file-name))
-     (warn "RTL Output to temporary file" (->namestring rtl-file-name))
-     (warn "LAP Output to temporary file" (->namestring lap-file-name))
+   (let ((temp-files '())
+	 (info-output-pathname
+	  (and (or (default-object? keep-debugging-info?)
+		   keep-debugging-info?)
+	       'KEEP)))
+     (define (maybe-open-temporary-file open? kind receiver)
+       (if open?
+	   (let ((file-name  (temporary-file-pathname)))
+	     (set! temp-files (cons (cons kind file-name) temp-files))
+	     (warn (string-append kind " Output to temporary file")
+		   (->namestring file-name))
+	     (call-with-output-file file-name
+	       receiver))
+	   (receiver false)))
      (let ((win? false))
        (dynamic-wind
 	(lambda () unspecific)
 	(lambda ()
-	  (call-with-output-file kmp-file-name
-	    (lambda (kmp-output-port)
-	      (call-with-output-file rtl-file-name
-		(lambda (rtl-output-port)
-		  (call-with-output-file lap-file-name
-		    (lambda (lap-output-port)
-		      (let ((result
-			     (%compile scode
-				       false
-				       info-output-pathname
-				       kmp-output-port
-				       rtl-output-port
-				       lap-output-port)))
-			(set! win? true)
-			result))))))))
+	  (maybe-open-temporary-file
+	   compiler:generate-kmp-files?   "KMP"
+	   (lambda (kmp-output-port)
+	     (maybe-open-temporary-file
+	      compiler:generate-rtl-files?   "RTL"
+	      (lambda (rtl-output-port)
+		(maybe-open-temporary-file
+		 compiler:generate-lap-files?   "LAP"
+		 (lambda (lap-output-port)
+		   (let ((result
+			  (%compile scode
+				    false
+				    info-output-pathname
+				    kmp-output-port
+				    rtl-output-port
+				    lap-output-port)))
+		     (set! win? true)
+		     result))))))))
 	(lambda ()
+	  (define (delete kind.file)
+	    (warn (string-append "Deleting " (car kind.file) " output file"))
+	    (delete-file (cdr kind.file)))
 	  (if (not win?)
-	      (begin
-		(warn "Deleting KMP, RTL and LAP output files")
-		(delete-file kmp-file-name)
-		(delete-file rtl-file-name)
-		(delete-file lap-file-name)))))))))
+	      (for-each delete (reverse temp-files)))))))))
 
 ;; First set: phase/scode->kmp
 ;; Last used: phase/optimize-kmp
