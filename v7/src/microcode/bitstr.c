@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.24 1987/04/16 02:26:50 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.25 1987/04/17 03:50:09 cph Exp $
 
    Bit string primitives. 
 
@@ -283,7 +283,7 @@ Built_In_Primitive( Prim_bit_string_set_x, 2, "BIT-STRING-SET!", 0xD7)
 /* (BIT-STRING-ZERO? bit-string)
    Returns true the argument has no "set" bits. */
 
-Built_In_Primitive( Prim_bit_string_zero_p, 2, "BIT-STRING-ZERO?", 0xD9)
+Built_In_Primitive( Prim_bit_string_zero_p, 1, "BIT-STRING-ZERO?", 0xD9)
 {
   long length, odd_bits;
   Primitive_1_Args();
