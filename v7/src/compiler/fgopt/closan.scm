@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.26 2001/11/03 05:16:48 cph Exp $
+$Id: closan.scm,v 4.27 2001/11/05 18:12:13 cph Exp $
 
 Copyright (c) 1987-1991, 1998, 1999, 2001 Massachusetts Institute of Technology
 
@@ -302,10 +302,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (application-operator application))))
 		(block-applications block))
       (for-each loop (block-children block))
-      #|
-      (for-each loop (block-disowned-children block))
-      |#
-      )))
+      (for-each loop (block-disowned-children block)))))
 
 (define (undrifting-constraint! block block* condition)
   ;; Undrift BLOCK so it is a descendant of BLOCK*, due to CONDITION.
@@ -323,8 +320,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 						   block*))
 		     (loop (block-parent block))
 		     block))))
-	  (if (add-constraint block block* condition)
-	      (update-callers-and-callees! block block* condition))))))
+	  (if (not (and (eq? (condition-keyword condition) 'CONTAGION)
+			(let ((procedure (block-procedure block)))
+			  (and procedure
+			       (procedure/trivial-closure? procedure)))))
+	      (if (add-constraint block block* condition)
+		  (update-callers-and-callees! block block* condition)))))))
 
 (define (update-callers-and-callees! block block* condition)
   ;; The context of BLOCK has changed, so it may be necessary to
@@ -407,11 +408,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			    (and condition
 				 (or (eq? procedure
 					  (condition-procedure condition))
-				     #|
 				     (memq procedure
-					   (condition-dependencies condition))
-				     |#
-				     )
+					   (condition-dependencies condition)))
 				 (begin
 				   (debug:remove-condition (car entry)
 							   (car entry*)
