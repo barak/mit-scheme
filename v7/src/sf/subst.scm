@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.16 1999/01/02 06:06:43 cph Exp $
+$Id: subst.scm,v 4.17 2001/12/20 16:28:23 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Beta Substitution
@@ -633,13 +634,6 @@ you ask for.
      (delay/scode expression)
      (integrate/expression operations environment
 			   (delay/expression expression)))))
-
-(define-method/integrate 'IN-PACKAGE
-  (lambda (operations environment expression)
-    (in-package/make (in-package/scode expression)
-		     (integrate/expression operations environment
-					   (in-package/environment expression))
-		     (integrate/quotation (in-package/quotation expression)))))
 
 (define (integrate/quotation quotation)
   (call-with-values

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: codwlk.scm,v 14.3 1999/01/02 06:11:34 cph Exp $
+$Id: codwlk.scm,v 14.4 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Walker
@@ -26,26 +27,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (scode-walker (constructor %make-scode-walker)
 				(conc-name scode-walker/))
-  (access false read-only true)
-  (assignment false read-only true)
-  (combination false read-only true)
-  (comment false read-only true)
-  (conditional false read-only true)
-  (constant false read-only true)
-  (declaration false read-only true)
-  (definition false read-only true)
-  (delay false read-only true)
-  (disjunction false read-only true)
-  (error-combination false read-only true)
-  (in-package false read-only true)
-  (lambda false read-only true)
-  (open-block false read-only true)
-  (quotation false read-only true)
-  (sequence false read-only true)
-  (the-environment false read-only true)
-  (unassigned? false read-only true)
-  (variable false read-only true))
-
+  (access #f read-only #t)
+  (assignment #f read-only #t)
+  (combination #f read-only #t)
+  (comment #f read-only #t)
+  (conditional #f read-only #t)
+  (constant #f read-only #t)
+  (declaration #f read-only #t)
+  (definition #f read-only #t)
+  (delay #f read-only #t)
+  (disjunction #f read-only #t)
+  (error-combination #f read-only #t)
+  (lambda #f read-only #t)
+  (open-block #f read-only #t)
+  (quotation #f read-only #t)
+  (sequence #f read-only #t)
+  (the-environment #f read-only #t)
+  (unassigned? #f read-only #t)
+  (variable #f read-only #t))
+
 (define (make-scode-walker default alist)
   (let ((alist
 	 (map (lambda (entry)
@@ -74,7 +74,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				   (lookup 'DISJUNCTION default)
 				   (lookup 'ERROR-COMBINATION
 					   combination-handler)
-				   (lookup 'IN-PACKAGE default)
 				   (lookup 'LAMBDA default)
 				   (lookup 'OPEN-BLOCK sequence-handler)
 				   (lookup 'QUOTATION default)
@@ -118,7 +117,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (DEFINITION ,walk/definition)
 		      (DELAY ,walk/delay)
 		      (DISJUNCTION ,walk/disjunction)
-		      (IN-PACKAGE ,walk/in-package)
 		      ((LAMBDA LEXPR EXTENDED-LAMBDA) ,walk/lambda)
 		      (QUOTATION ,walk/quotation)
 		      ((SEQUENCE-2 SEQUENCE-3) ,walk/sequence)
@@ -149,7 +147,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (open-block? expression)
       (scode-walker/open-block walker)
       (scode-walker/sequence walker)))
-
+
 (define (walk/access walker expression)
   expression
   (scode-walker/access walker))
@@ -177,10 +175,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (walk/disjunction walker expression)
   expression
   (scode-walker/disjunction walker))
-
-(define (walk/in-package walker expression)
-  expression
-  (scode-walker/in-package walker))
 
 (define (walk/lambda walker expression)
   expression

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.21 2001/03/21 19:15:29 cph Exp $
+$Id: unsyn.scm,v 14.22 2001/12/20 16:28:22 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (DEFINITION ,unsyntax-DEFINITION-object)
 			     (DELAY ,unsyntax-DELAY-object)
 			     (DISJUNCTION ,unsyntax-DISJUNCTION-object)
-			     (IN-PACKAGE ,unsyntax-IN-PACKAGE-object)
 			     (LAMBDA ,unsyntax-LAMBDA-object)
 			     (OPEN-BLOCK ,unsyntax-OPEN-BLOCK-object)
 			     (QUOTATION ,unsyntax-QUOTATION)
@@ -47,14 +46,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			     (VARIABLE ,unsyntax-VARIABLE-object))))
   unspecific)
 
-(define unsyntaxer:macroize?
-  true)
-
-(define unsyntaxer:show-comments?
-  false)
-
-(define unsyntaxer:elide-global-accesses?
-  false)
+(define unsyntaxer:macroize? #t)
+(define unsyntaxer:show-comments? #f)
+(define unsyntaxer:elide-global-accesses? #f)
 
 (define substitutions '())
 
@@ -71,7 +65,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(action object))))
 
 (define-integrable (has-substitution? object)
-  (and (not (null? substitutions))
+  (and (pair? substitutions)
        (assq object substitutions)))
 
 (define bound (list #F '()))
@@ -100,10 +94,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define unsyntaxer/scode-walker)
 
 (define (unsyntax-objects objects)
-  (if (null? objects)
-      '()
+  (if (pair? objects)
       (cons (unsyntax-object (car objects))
-	    (unsyntax-objects (cdr objects)))))
+	    (unsyntax-objects (cdr objects)))
+      '()))
 
 (define (unsyntax-error keyword message . irritants)
   (apply error
@@ -145,7 +139,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       `(ACCESS ,@(unexpand-access object))))
 
 (define (unexpand-access object)
-  (let loop ((object object) (separate? true))
+  (let loop ((object object) (separate? #t))
     (if (and separate?
 	     (access? object)
 	     (not (has-substitution? object)))
@@ -207,8 +201,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (unsyntax-sequence-actions seq)
   (let ((actions (sequence-immediate-actions seq)))
     (let loop ((actions actions))
-      (if (null? actions)
-	  '()
+      (if (pair? actions)
 	  (let ((substitution (has-substitution? (car actions))))
 	    (cond (substitution
 		   (cons (cdr substitution)
@@ -219,7 +212,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			   (loop (cdr actions))))
 		  (else
 		   (cons (unsyntax-object (car actions))
-			 (loop (cdr actions))))))))))
+			 (loop (cdr actions))))))
+	  '()))))
 
 (define (unsyntax-OPEN-BLOCK-object open-block)
   (if (eq? #t unsyntaxer:macroize?)
@@ -232,12 +226,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (unsyntax-DELAY-object object)
   `(DELAY ,(unsyntax-object (delay-expression object))))
-
-(define (unsyntax-IN-PACKAGE-object object)
-  (in-package-components object
-    (lambda (environment expression)
-      `(IN-PACKAGE ,(unsyntax-object environment)
-	 ,@(unsyntax-sequence expression)))))
 
 (define (unsyntax-THE-ENVIRONMENT-object object)
   object
@@ -269,7 +257,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        ,(unsyntax-object alternative)))
 
 (define (unsyntax-conditional predicate consequent alternative)
-  (cond ((false? alternative)
+  (cond ((not alternative)
 	 `(AND ,@(unexpand-conjunction predicate consequent)))
 	((eq? alternative undefined-conditional-branch)
 	 `(IF ,(unsyntax-object predicate)
@@ -313,7 +301,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       `(,(unsyntax-object predicate)
 	,@(conditional-components consequent
 	    (lambda (predicate consequent alternative)
-	      (if (false? alternative)
+	      (if (not alternative)
 		  (unexpand-conjunction predicate consequent)
 		  `(,(unsyntax-conditional predicate
 					   consequent
@@ -406,7 +394,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(lambda-components** operator
 		  (lambda (name required optional rest body)
 		    (if (and (null? optional)
-			     (false? rest)
+			     (not rest)
 			     (= (length required) (length operands)))
 			(cond ((or (eq? name lambda-tag:unnamed)
 				   (eq? name lambda-tag:let))
@@ -474,7 +462,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       ;; the entire expresion to find out if it has any substitutable
       ;; subparts, we just treat it as malformed if there are active
       ;; substitutions.
-      (cond ((not (null? substitutions))
+      (cond ((pair? substitutions)
 	     (if-malformed))
 	    ((and (or (absolute-reference-to? operator 'SHALLOW-FLUID-BIND)
 		      (and (variable? operator)
@@ -490,7 +478,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ((and (eq? operator (ucode-primitive with-saved-fluid-bindings 1))
 		  (null? names)
 		  (null? values)
-		  (not (null? operands))
+		  (pair? operands)
 		  (lambda? (car operands))
 		  (null? (cdr operands)))
 	     (unsyntax/fluid-let/deep (car operands)))
@@ -503,9 +491,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(map extract-transfer-var
 		     (sequence-actions (lambda-body (car operands))))
 		(let every-other ((values values))
-		  (if (null? values)
-		      '()
-		      (cons (car values) (every-other (cddr values))))))
+		  (if (pair? values)
+		      (cons (car values) (every-other (cddr values)))
+		      '())))
      ,@(lambda-components** (cadr operands)
 	 (lambda (name required optional rest body)
 	   name required optional rest

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: anfile.scm,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: anfile.scm,v 1.7 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Free/Bound Variable Analysis
@@ -148,7 +149,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (DELAY ,analyze/delay)
      (DISJUNCTION ,analyze/disjunction)
      (ERROR-COMBINATION ,analyze/error-combination)
-     (IN-PACKAGE ,analyze/error)
      (LAMBDA ,analyze/lambda)
      (SEQUENCE ,analyze/sequence)
      (VARIABLE ,analyze/variable))))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.16 1999/01/02 06:11:34 cph Exp $
+$Id: scode.scm,v 14.17 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Abstraction
@@ -34,14 +35,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (scode-constant? object)
   (if (vector-ref scode-constant/type-vector (object-type object))
-      true
+      #t
       (and (compiled-code-address? object)
 	   (not (eq? (compiled-entry-type object) 'COMPILED-EXPRESSION)))))
 
 (define (make-scode-constant/type-vector)
-  (let ((type-vector (make-vector (microcode-type/code-limit) false)))
+  (let ((type-vector (make-vector (microcode-type/code-limit) #f)))
     (for-each (lambda (name)
-		(vector-set! type-vector (microcode-type name) true))
+		(vector-set! type-vector (microcode-type name) #t))
 	      '(BIGNUM
 		CHARACTER
 		COMPILED-CODE-BLOCK
@@ -88,7 +89,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Variable
 
 (define-integrable (make-variable name)
-  (system-hunk3-cons (ucode-type variable) name true '()))
+  (system-hunk3-cons (ucode-type variable) name #t '()))
 
 (define-integrable (variable? object)
   (object-type? (ucode-type variable) object))
@@ -239,9 +240,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (make-absolute-reference name . rest)
   (let loop ((reference (make-access system-global-environment name))
 	     (rest rest))
-    (if (null? rest)
-	reference
-	(loop (make-access reference (car rest)) (cdr rest)))))
+    (if (pair? rest)
+	(loop (make-access reference (car rest)) (cdr rest))
+	reference)))
 
 (define (absolute-reference? object)
   (and (access? object)
@@ -253,24 +254,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (absolute-reference-to? object name)
   (and (absolute-reference? object)
        (eq? (absolute-reference-name object) name)))
-
-;;;; In-Package
-
-(define-integrable (make-in-package environment expression)
-  (&typed-pair-cons (ucode-type in-package) environment expression))
-
-(define-integrable (in-package? object)
-  (object-type? (ucode-type in-package) object))
-
-(define-integrable (in-package-environment expression)
-  (&pair-car expression))
-
-(define-integrable (in-package-expression expression)
-  (&pair-cdr expression))
-
-(define (in-package-components expression receiver)
-  (receiver (in-package-environment expression)
-	    (in-package-expression expression)))
 
 ;;;; Delay
 

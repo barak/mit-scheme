@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: illdef.scm,v 1.4 1999/01/02 06:11:34 cph Exp $
+$Id: illdef.scm,v 1.5 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Check for Illegal Definitions
@@ -37,7 +38,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			     (DEFINITION ,walk/definition)
 			     (DELAY ,walk/delay)
 			     (DISJUNCTION ,walk/disjunction)
-			     (IN-PACKAGE ,walk/in-package)
 			     (LAMBDA ,walk/lambda)
 			     (SEQUENCE ,walk/sequence))))
   unspecific)
@@ -63,11 +63,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (lambda (name required optional rest auxiliary declarations body)
 	     name required optional rest
 	     (unscan-defines auxiliary declarations body))))))
-    (if (null? (cdr expressions))
-	(walk/no-definitions (car expressions))
+    (if (pair? (cdr expressions))
 	(begin
 	  (walk/expression (car expressions) 'LEGAL)
-	  (loop (cdr expressions))))))
+	  (loop (cdr expressions)))
+	(walk/no-definitions (car expressions)))))
 
 (define (walk/definition expression context)
   (case context
@@ -118,8 +118,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (walk/no-definitions (disjunction-predicate expression))
   (walk/expression (disjunction-alternative expression)
 		   (if (eq? 'LEGAL context) 'UNUSUAL context)))
-
-(define (walk/in-package expression context)
-  context
-  (walk/no-definitions (in-package-environment expression))
-  (check-for-illegal-definitions (in-package-expression expression)))

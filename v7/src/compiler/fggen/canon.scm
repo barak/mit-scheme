@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.16 1999/01/02 06:06:43 cph Exp $
+$Id: canon.scm,v 1.17 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Scode canonicalization.
@@ -60,10 +61,9 @@ FIRST-CLASS:	Treat every expression as if it appeared in a first class
 		environment.  This is used by the LOW optimization level.
 
 TOP-LEVEL:	The expression appears at top level of the original
-		expression or an in-package special form.  It is not
-		surrounded by any lambda expressions in the input form.
-		It is assumed that such expressions are only executed
-		(evaluated) once.
+		expression.  It is not surrounded by any lambda
+		expressions in the input form.  It is assumed that
+		such expressions are only executed (evaluated) once.
 
 ONCE-ONLY:	The expression will be executed only once (as long as
 		the corresponding top level expression is executed
@@ -640,49 +640,6 @@ ARBITRARY:	The expression may be executed more than once.  It
 			      (default)
 			      exp))))))))))))
 
-;;;; Hair squared
-
-(define (canonicalize/in-package expr bound context)
-  (scode/in-package-components
-   expr
-   (lambda (environment expression)
-     (let ((nexpr (canonicalize/expression
-		   expression '()
-		   (if (canonicalize/optimization-low? context)
-		       'FIRST-CLASS
-		       'TOP-LEVEL)))
-	   (nenv (canonicalize/expression environment bound context)))
-
-       (define (good expr)
-	 (canonicalize/combine-unary
-	  (lambda (env)
-	    (scode/make-evaluation expr
-				   env
-				   (and (not (eq? context 'TOP-LEVEL))
-					(not (eq? context 'ONCE-ONLY)))
-				   expr))
-	  nenv))
-
-       (cond ((canout-splice? nexpr)
-	      ;; Random optimization.  The in-package expression has no
-	      ;; free variables.  Turn it into a sequence.
-	      (canonicalize/combine-unary scode/make-sequence
-					  (combine-list (list nenv nexpr))))
-	     ((canonicalize/optimization-low? context)
-	      (canonicalize/combine-unary
-	       (lambda (exp)
-		 (canonicalize/bind-environment (canout-expr nexpr)
-						exp
-						expr))
-	       nenv))
-	     ((not (canout-needs? nexpr))
-	      (good (canout-expr nexpr)))
-	     (else
-	      (good
-	       (canonicalize/bind-environment (canout-expr nexpr)
-					      (scode/make-the-environment)
-					      expr))))))))
-
 ;;;; Hair cubed
 
 #|
@@ -874,7 +831,6 @@ ARBITRARY:	The expression may be executed more than once.  It
       (nary-entry unary delay)
       (binary-entry disjunction)
       (standard-entry variable)
-      (standard-entry in-package)
       (standard-entry the-environment)
       (dispatch-entries (combination-1 combination-2 combination
 				       primitive-combination-0

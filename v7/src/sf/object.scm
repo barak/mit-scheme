@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.9 1999/01/02 06:19:10 cph Exp $
+$Id: object.scm,v 4.10 2001/12/20 16:28:23 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Data Types
@@ -29,10 +30,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (enumeration/make names)
   (let ((enumerands 
 	 (let loop ((names names) (index 0))
-	   (if (null? names)
-	       '()
-	       (cons (vector false (car names) index)
-		     (loop (cdr names) (1+ index)))))))
+	   (if (pair? names)
+	       (cons (vector #f (car names) index)
+		     (loop (cdr names) (1+ index)))
+	       '()))))
     (let ((enumeration
 	   (cons (list->vector enumerands)
 		 (map (lambda (enumerand)
@@ -45,9 +46,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (enumerand (type vector)
 			     (conc-name enumerand/))
-  (enumeration false read-only true)
-  (name false read-only true)
-  (index false read-only true))
+  (enumeration #f read-only #t)
+  (name #f read-only #t)
+  (index #f read-only #t))
 
 (define-integrable (enumeration/cardinality enumeration)
   (vector-length (car enumeration)))
@@ -86,7 +87,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      declaration
      delay
      disjunction
-     in-package
      open-block
      procedure
      quotation
@@ -114,7 +114,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		   (conc-name delayed-integration/)
 		   (constructor delayed-integration/make (operations value)))
   (state 'NOT-INTEGRATED)
-  (environment false)
+  (environment #f)
   operations
   value)
 
@@ -126,7 +126,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				   (CONC-NAME ,(symbol-append name '/))
 				   (CONSTRUCTOR ,(symbol-append name '/MAKE)))
 	    ,@(if (or (default-object? scode?) scode?)
-		  `((scode false read-only true))
+		  `((scode #f read-only #t))
 		  `())
 	    ,@slots))))
   (define-simple-type variable (block name flags) #F)
@@ -138,7 +138,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (define-simple-type declaration (declarations expression))
   (define-simple-type delay (expression))
   (define-simple-type disjunction (predicate alternative))
-  (define-simple-type in-package (environment quotation))
   (define-simple-type open-block (block variables values actions optimized))
   (define-simple-type procedure (block name required optional rest body))
   (define-simple-type quotation (block expression))
@@ -203,8 +202,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	      (enumeration/name->index enumeration/expression name)))
 
 (define-integrable (global-ref/make name)
-  (access/make false
-	       (constant/make false system-global-environment)
+  (access/make #f
+	       (constant/make #f system-global-environment)
 	       name))
 
 (define (global-ref? object)
@@ -215,7 +214,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (access/name object)))
 
 (define-integrable (constant->integration-info constant)
-  (make-integration-info (constant/make false constant)))
+  (make-integration-info (constant/make #f constant)))
 
 (define-integrable (integration-info? object)
   (and (pair? object)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.10 2000/03/01 23:48:45 cph Exp $
+$Id: xform.scm,v 4.11 2001/12/20 16:28:23 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Optimizer: Transform Input Expression
@@ -266,13 +267,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (transform/expression block environment predicate)
        (transform/expression block environment alternative)))))
 
-(define (transform/in-package block environment expression)
-  (in-package-components expression
-    (lambda (environment* expression*)
-      (in-package/make expression
-		       (transform/expression block environment environment*)
-		       (transform/quotation* false expression*)))))
-
 (define (transform/quotation block environment expression)
   block environment			;ignored
   (transform/quotation* expression (quotation-expression expression)))
@@ -304,7 +298,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (DEFINITION ,transform/definition)
      (DELAY ,transform/delay)
      (DISJUNCTION ,transform/disjunction)
-     (IN-PACKAGE ,transform/in-package)
      (LAMBDA ,transform/lambda)
      (OPEN-BLOCK ,transform/open-block)
      (QUOTATION ,transform/quotation)

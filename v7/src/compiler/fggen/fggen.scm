@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.32 1999/01/02 06:06:43 cph Exp $
+$Id: fggen.scm,v 4.33 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Flow Graph Generation
@@ -26,28 +27,25 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-structure (context (conc-name context/)
 			   (constructor context/make))
-  (unconditional? false read-only true type boolean)
-  (static? false read-only true type boolean))
+  (unconditional? #f read-only #t type boolean)
+  (static? #f read-only #t type boolean))
 
 (define-integrable (context/make-initial)
-  (context/make true true))
+  (context/make #t #t))
 
 (define-integrable (context/make-internal)
-  (context/make true false))
+  (context/make #t #f))
 
 (define-integrable (context/conditional context)
-  (context/make false
-		(context/static? context)))
+  (context/make #f (context/static? context)))
 
 (define-integrable (context/unconditional context)
-  (context/make true
-		(context/static? context)))
-  
+  (context/make #t (context/static? context)))
 
 (define (construct-graph scode)
   (fluid-let ((*virtual-continuations* '())
 	      (*global-variables* '()))
-    (let ((block (make-block false 'EXPRESSION)))
+    (let ((block (make-block #f 'EXPRESSION)))
       (let ((continuation (make-continuation-variable block)))
 	(let ((expression
 	       (make-expression
@@ -76,7 +74,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       (set-procedure-entry-node! procedure next)))))
 	   *procedures*)
 	  (for-each (lambda (continuation)
-		      (set-virtual-continuation/parent! continuation false))
+		      (set-virtual-continuation/parent! continuation #f))
 		    *virtual-continuations*)
 	  (initialize-reference-contexts! expression *procedures*)
 	  expression)))))
@@ -150,14 +148,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (continuation/rvalue continuation)
   (make-reference (continuation/block continuation)
 		  (continuation/parameter continuation)
-		  true))
+		  #t))
 
 (define-integrable (continuation/next-hooks continuation)
   (list (make-hook (continuation/entry-node continuation)
 		   set-snode-next-edge!)))
 
 (define-integrable (continuation-reference block continuation)
-  (cond ((variable? continuation) (make-reference block continuation true))
+  (cond ((variable? continuation) (make-reference block continuation #t))
 	((procedure? continuation) continuation)
 	(else (error "Illegal continuation" continuation))))
 
@@ -180,7 +178,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (scfg*value->value! push
 			      (generator (cfg-entry-node push)
 					 continuation))))
-      (generator false continuation)))
+      (generator #f continuation)))
 
 (define (make-subproblem/canonical prefix continuation)
   (make-subproblem prefix
@@ -264,7 +262,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (continue/predicate-constant block continuation rvalue)
   block continuation ;; ignored
   (if (and (rvalue/constant? rvalue)
-	   (false? (constant-value rvalue)))
+	   (not (constant-value rvalue)))
       (snode->pcfg-false (make-fg-noop))
       (snode->pcfg-true (make-fg-noop))))
 
@@ -279,12 +277,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    rvalue))
 
 (define (continue/unknown block continuation rvalue)
-  (make-return block (make-reference block continuation true) rvalue))
+  (make-return block (make-reference block continuation #t) rvalue))
 
 (define (continue/effect block continuation rvalue)
   rvalue ;; ignored
   (if (variable? continuation)
-      (continue/unknown block continuation (make-constant false))
+      (continue/unknown block continuation (make-constant #f))
       (make-null-cfg)))
 
 (define-integrable (continue/predicate block continuation rvalue)
@@ -308,13 +306,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				     safe?))))
 
 (define generate/variable
-  (make-variable-generator scode/variable-name false))
+  (make-variable-generator scode/variable-name #f))
 
 (define generate/safe-variable
-  (make-variable-generator scode/safe-variable-name true))
+  (make-variable-generator scode/safe-variable-name #t))
 
 (define generate/global-variable
-  (make-variable-generator scode/global-variable-name false))
+  (make-variable-generator scode/global-variable-name #f))
 
 (define-integrable (scode/make-safe-variable name)
   (cons safe-variable-tag name))
@@ -370,7 +368,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (generate/lambda block continuation context expression)
   (generate/lambda* block continuation
 		    context (context/make-internal)
-		    expression false false))
+		    expression #f #f))
 
 ;; context is the context of the lambda expression.
 ;; context* is the context of its subexpressions.
@@ -399,7 +397,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (set-block-bound-variables! block `(,continuation ,@vars))
 		 (if (context/static? context*)
 		     (for-each (lambda (var)
-				 (lvalue-put! var 'STATIC true))
+				 (lvalue-put! var 'STATIC #t))
 			       vars)))
 	       (let ((procedure
 		      (make-procedure
@@ -413,14 +411,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			  ;; be either a constant or a procedure.
 			  (subproblem-rvalue
 			   (generate/subproblem/value block continuation
-						      context* value false)))
+						      context* value #f)))
 			values)
 		       (generate/body block continuation
 				      context* declarations body*))))
 		 (if closure-block
 		     (set-procedure-closure-context! procedure closure-block))
 		 (if (context/unconditional? context)
-		     (procedure-put! procedure 'UNCONDITIONAL true))
+		     (procedure-put! procedure 'UNCONDITIONAL #t))
 		 (set-procedure-debugging-info!
 		  procedure
 		  (if (and
@@ -441,7 +439,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (return-3 '() '()
 		    (scode/make-combination
 		     (scode/make-lambda
-		      lambda-tag:let auxiliary '() false names '()
+		      lambda-tag:let auxiliary '() #f names '()
 		      (scode/make-sequence
 		       (map* actions scode/make-assignment names values)))
 		     (map (lambda (name)
@@ -589,14 +587,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (generate/operands expression operands block continuation context index)
   (let walk ((operands operands) (index index))
-    (if (null? operands)
-	'()
+    (if (pair? operands)
 	;; This forces the order of evaluation
 	(let ((next (generate/subproblem/value block continuation context
 					       (car operands) 'COMBINATION-OPERAND
 					       expression index)))
 	  (cons next
-		(walk (cdr operands) (1+ index)))))))
+		(walk (cdr operands) (1+ index))))
+	'())))
 
 (define (generate/operator block continuation context expression operator operands*)
   (let ((make-combination
@@ -617,7 +615,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		       context (context/unconditional context)
 		       operator
 		       (continuation/known-type continuation)
-		       false))
+		       #f))
 		     ((scode/absolute-reference? operator)
 		      (generate/global-variable block continuation*
 						context operator))
@@ -627,10 +625,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    operands*
 	    push))))
     ((continuation/case continuation
-      (lambda () (make-combination false continuation))
+      (lambda () (make-combination #f continuation))
       (lambda ()
 	(if (variable? continuation)
-	    (make-combination false continuation)
+	    (make-combination #f continuation)
 	    (with-reified-continuation block
 	      continuation
 	      scfg*scfg->scfg!
@@ -674,7 +672,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (continuation/next-hooks (subproblem-continuation subproblem)))
 	 (subproblem-prefix subproblem))
      (maker block (find-name block name) (subproblem-rvalue subproblem))
-     (continue/effect block continuation false))))
+     (continue/effect block continuation #f))))
 
 (define (generate/assignment block continuation context expression)
   (scode/assignment-components expression
@@ -736,7 +734,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda (predicate alternative)
       (generate/conditional
        block continuation context
-       (scode/make-conditional predicate true alternative)))))
+       (scode/make-conditional predicate #t alternative)))))
 
 (define (generate/disjunction/value block continuation context expression)
   (scode/disjunction-components expression
@@ -746,7 +744,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(scode/combination-operator predicate)))
 	  (generate/conditional
 	   block continuation context
-	   (scode/make-conditional predicate true alternative))
+	   (scode/make-conditional predicate #t alternative))
 	  (generate/combination
 	   block continuation context
 	   (let ((temp (generate-uninterned-symbol "or-predicate-")))
@@ -764,7 +762,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (boolean-valued-function-variable?
 	  (scode/absolute-reference-name operator)))
 	(else
-	 false)))
+	 #f)))
 
 (define (generate/access block continuation context expression)
   (scode/access-components expression
@@ -792,8 +790,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	     (make-constant
 	      (compile-recursively
 	       (scode/quotation-expression expression)
-	       false
-	       false))))
+	       #f
+	       #f))))
 	   ((COMPILE-PROCEDURE)
 	    (let ((process
 		   (lambda (name)
@@ -801,7 +799,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			 (continue/rvalue-constant
 			  block continuation
 			  (make-constant
-			   (compile-recursively expression true name)))
+			   (compile-recursively expression #t name)))
 			 (generate/expression block continuation
 					      context expression))))
 		  (fail
@@ -871,11 +869,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (block-parent block) continuation
       context (context/make-internal)
       (scode/quotation-expression (car operands))
-      false
+      #f
       (make-reference block
 		      (find-name block
 				 (scode/variable-name (cadr operands)))
-		      false)))))
+		      #f)))))
 
 (define (generate/delay block continuation context expression)
   (generate/combination
@@ -884,7 +882,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (ucode-primitive system-pair-cons)
     (list (ucode-type delayed)
 	  0
-	  (scode/make-lambda lambda-tag:unnamed '() '() false '() '()
+	  (scode/make-lambda lambda-tag:unnamed '() '() #f '() '()
 			     (scode/delay-expression expression))))))
 
 (define (generate/error-combination block continuation context expression)
@@ -894,18 +892,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        block continuation context
        (scode/make-combination compiled-error-procedure
 			       (cons message irritants))))))
-
-(define (generate/in-package block continuation context expression)
-  (warn "generate/in-package: expression will be interpreted"
-	expression)
-  (scode/in-package-components expression
-   (lambda (environment expression)
-     (generate/combination
-      block continuation context
-      (scode/make-combination
-       (ucode-primitive scode-eval)
-       (list (scode/make-quotation expression)
-	     environment))))))
 
 (define (generate/quotation block continuation context expression)
   (generate/combination
@@ -985,7 +971,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (standard-entry definition)
       (standard-entry delay)
       (standard-entry disjunction)
-      (standard-entry in-package)
       (standard-entry pair)
       (standard-entry quotation)
       (standard-entry the-environment)

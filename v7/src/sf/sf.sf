@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sf.sf,v 4.10 2001/12/19 21:53:03 cph Exp $
+$Id: sf.sf,v 4.11 2001/12/20 16:28:23 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -29,7 +29,6 @@ USA.
 	       DECLARATION?
 	       DELAY?
 	       DISJUNCTION?
-	       IN-PACKAGE?
 	       OPEN-BLOCK?
 	       PROCEDURE?
 	       QUOTATION?

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: prgcop.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: prgcop.scm,v 1.7 2001/12/20 16:28:22 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Program copier
@@ -39,7 +40,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (DEFINITION ,(%copy-pair (ucode-type DEFINITION)))
 	   (DELAY ,(%copy-pair (ucode-type DELAY)))
 	   (DISJUNCTION ,(%copy-pair (ucode-type DISJUNCTION)))
-	   (IN-PACKAGE ,(%copy-pair (ucode-type IN-PACKAGE)))
 	   (LAMBDA ,copy-LAMBDA-object)
 	   (QUOTATION ,(%copy-pair (ucode-type QUOTATION)))
 	   (SEQUENCE ,copy-SEQUENCE-object)
@@ -49,7 +49,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Top level
 
-(define *default/copy-constants?* false)
+(define *default/copy-constants?* #f)
 
 (define *copy-constants?*)
 

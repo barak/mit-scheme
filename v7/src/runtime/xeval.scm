@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xeval.scm,v 1.6 1999/01/02 06:19:10 cph Exp $
+$Id: xeval.scm,v 1.7 2001/12/20 16:28:23 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SCode Evaluator extended for compiled-code environments
@@ -45,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			      (open-block-components expression
 				(lambda (names declarations body)
 				  declarations body
-				  (not (null? names))))))
+				  (pair? names)))))
 		     (error
 		      "Can't perform definition in compiled-code environment:"
 		      (unsyntax expression)))
@@ -102,7 +103,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (CONDITIONAL ,rewrite/conditional)
 	   (DELAY ,rewrite/delay)
 	   (DISJUNCTION ,rewrite/disjunction)
-	   (IN-PACKAGE ,rewrite/in-package)
 	   (LAMBDA ,rewrite/lambda)
 	   (SEQUENCE ,rewrite/sequence)
 	   (THE-ENVIRONMENT ,rewrite/the-environment)
@@ -204,12 +204,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		    (rewrite/expression (disjunction-alternative expression)
 					environment
 					bound-names)))
-
-(define (rewrite/in-package expression environment bound-names)
-  (make-in-package (rewrite/expression (in-package-environment expression)
-				       environment
-				       bound-names)
-		   (in-package-expression expression)))
 
 (define (rewrite/sequence expression environment bound-names)
   (make-sequence (rewrite/expressions (sequence-actions expression)
