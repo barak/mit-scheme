@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.4 1992/02/13 20:00:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.5 1992/08/28 16:05:58 jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -448,3 +448,20 @@ MIT in each case. |#
 		  (substring-fill! result 0 i char))
 		(substring-move-right! string 0 length result i)))
 	  result))))
+
+(define (substring? substring string)
+  ;; Returns starting-position or #f if not true.
+  (if (string-null? substring)
+      0
+      (let ((len (string-length substring))
+	    (end (string-length string))
+	    (char (string-ref substring 0)))
+	(let loop ((posn -1))
+	  (let ((posn* (substring-find-next-char string (1+ posn) end char)))
+	    (and posn*
+		 (let ((end* (+ posn* len)))
+		   (and (<= end* end)
+			(if (substring=? substring 0 len
+					 string posn* end*)
+			    posn*
+			    (loop posn*))))))))))
