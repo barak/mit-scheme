@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.252 2000/04/15 02:42:32 cph Exp $
+$Id: edwin.pkg,v 1.253 2000/04/30 21:52:50 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1193,6 +1193,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    sm_cymenu
 	    sw_showminnoactive
 	    swp_nomove
+	    swp_noredraw
 	    swp_nosize
 	    swp_nozorder
 	    update-window
