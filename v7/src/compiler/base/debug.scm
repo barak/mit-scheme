@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.4 1988/04/15 02:08:15 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/debug.scm,v 4.5 1988/06/03 14:50:41 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -85,23 +85,32 @@ MIT in each case. |#
 	(else
 	 (error "debug/where -- what?" object))))
 
-(define (compiler:write-rtl-file pathname)
-  (let ((pathname (->pathname pathname)))
-    (write-instructions
-     (lambda ()
-       (with-output-to-file (pathname-new-type pathname "rtl")
-	 (lambda ()
-	   (let ((obj (fasload (pathname-new-type pathname "brtl"))))
-	     (if (vector? obj)
-		 (for-each (lambda (block)
-			     (write-char #\page)
-			     (newline)
-			     (write-string "Disassembly for object ")
-			     (write (car block))
-			     (for-each show-rtl-instruction (cdr block))
-			     (newline))
-			   (vector->list obj))
-		 (for-each show-rtl-instruction obj)))))))))
+(define (compiler:write-rtl-file input-path #!optional output-path)
+  (let ((input-path
+	 (let ((input-path (->pathname input-path)))
+	   (if (pathname-type input-path)
+	       input-path
+	       (pathname-new-type input-path "brtl")))))
+    (let ((output-path
+	   (let ((default (pathname-new-type input-path "rtl")))
+	     (if (unassigned? output-path)
+		 default
+		 (merge-pathnames (->pathname output-path) default)))))
+      (write-instructions
+       (lambda ()
+	 (with-output-to-file output-path
+	   (lambda ()
+	     (let ((rtl (fasload input-path)))
+	       (if (vector? rtl)
+		   (for-each (lambda (block)
+			       (write-char #\page)
+			       (newline)
+			       (write-string "Disassembly for object ")
+			       (write (car block))
+			       (for-each show-rtl-instruction (cdr block))
+			       (newline))
+			     (vector->list rtl))
+		   (for-each show-rtl-instruction rtl))))))))))
 
 (define (dump-rtl filename)
   (write-instructions
