@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.4 1987/06/23 02:17:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.5 1987/06/23 03:31:43 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -65,8 +65,8 @@ MIT in each case. |#
 		 (scfg*scfg->scfg!
 		  prefix
 		  (rtl:make-interpreter-call:set!
-		   register:environment
-		   (intern-scode-variable! block name)
+		   (rtl:make-fetch register:environment)
+		   (intern-scode-variable! block (variable-name name))
 		   expression))))))
 	 (procedure-names procedure)
 	 (procedure-values procedure)))))
