@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.3 1988/01/12 16:33:36 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/assmd.scm,v 4.4 1988/02/23 18:18:47 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,9 +39,15 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(declare (integrate addressing-granularity scheme-object-width
+(declare (integrate addressing-granularity
+		    scheme-object-width
+		    endianness
 		    maximum-padding-length
-		    maximum-block-offset block-offset-width))
+		    maximum-block-offset
+		    block-offset-width)
+	 (integrate-operator block-offset->bit-string
+			     instruction-initial-position
+			     instruction-insert!))
 
 (define addressing-granularity 8)
 (define scheme-object-width 32)
@@ -49,34 +55,37 @@ MIT in each case. |#
 
 ;; Instructions can be any number of bytes long.
 ;; Thus the maximum padding is 3 bytes.
+;; Pad with HALT instructions
+
 (define maximum-padding-length 24)
+
+(define padding-string
+  (unsigned-integer->bit-string 8 #x00))
 
 ;; Block offsets are encoded words
 
 (define maximum-block-offset (- (expt 2 15) 1))
 (define block-offset-width 16)
 
-(define make-nmv-header)
-(let ()
+(define (block-offset->bit-string offset start?)
+  (declare (integrate offset start?))
+  (unsigned-integer->bit-string block-offset-width
+				(+ (* 2 offset)		; shift left
+				   (if start? 0 1))))
 
-(set! make-nmv-header
-(named-lambda (make-nmv-header n)
-  (bit-string-append (unsigned-integer->bit-string 24 n)
-		     nmv-type-string)))
-
-(define nmv-type-string
-  (unsigned-integer->bit-string 8 (microcode-type 'MANIFEST-NM-VECTOR)))
-
-)
+(define make-nmv-header
+  (let ((nmv-type-string
+	 (unsigned-integer->bit-string 8
+				       (microcode-type 'MANIFEST-NM-VECTOR))))
+    (named-lambda (make-nmv-header n)
+      (bit-string-append
+       (unsigned-integer->bit-string 24 n)
+       nmv-type-string))))
 
 (define (object->bit-string object)
   (bit-string-append
    (unsigned-integer->bit-string 24 (primitive-datum object))
    (unsigned-integer->bit-string 8 (primitive-type object))))
-
-(define (block-offset->bit-string offset start?)
-  (unsigned-integer->bit-string block-offset-width
-				(if start? offset (1+ offset))))
 
 ;;; Machine dependent instruction order
 
@@ -85,6 +94,7 @@ MIT in each case. |#
 ;; "forwards" or "backwards".
 
 (define (instruction-initial-position block)
+  (declare (integrate block))
   0)
 
 (define (instruction-insert! bits block position receiver)
