@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.9 1993/09/01 19:36:28 gjr Exp $
+$Id: ntio.c,v 1.10 1994/11/14 00:53:40 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -49,8 +49,6 @@ MIT in each case. */
 
 size_t OS_channel_table_size;
 struct channel * channel_table;
-
-unsigned int OS_channels_registered;
 
 #ifndef GUI
   HANDLE STDIN_HANDLE,  STDOUT_HANDLE,  STDERR_HANDLE;
@@ -105,8 +103,6 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
   {
-    if (CHANNEL_REGISTERED (channel))
-      OS_channel_unregister (channel);
     STD_BOOL_SYSTEM_CALL
       (syscall_close, (CloseHandle (CHANNEL_HANDLE (channel))));
     MARK_CHANNEL_CLOSED (channel);
@@ -119,8 +115,6 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
   {
-    if (CHANNEL_REGISTERED (channel))
-      OS_channel_unregister (channel);
     if (! Screen_IsScreenHandle (CHANNEL_HANDLE (channel)))
       CloseHandle (CHANNEL_HANDLE (channel));
     MARK_CHANNEL_CLOSED (channel);
@@ -517,29 +511,6 @@ DEFUN_VOID (OS_have_ptys_p)
   return (FALSE);
 }
 
-int
-DEFUN (OS_channel_registered_p, (channel), Tchannel channel)
-{
-  return (CHANNEL_REGISTERED (channel));
-}
-
-void
-DEFUN (OS_channel_register, (channel), Tchannel channel)
-{
-  error_unimplemented_primitive ();
-}
-
-void
-DEFUN (OS_channel_unregister, (channel), Tchannel channel)
-{
-  if (CHANNEL_REGISTERED (channel))
-  {
-    OS_channels_registered -= 1;
-    (CHANNEL_REGISTERED (channel)) = 0;
-  }
-  return;
-}
-
 /* Initialization/Termination code. */
 
 int OS_have_select_p = 0;
@@ -612,6 +583,4 @@ DEFUN_VOID (NT_initialize_channels)
       MARK_CHANNEL_CLOSED (channel);
   }
   add_reload_cleanup (NT_channel_close_all);
-  OS_channels_registered = 0;
-  return;
 }

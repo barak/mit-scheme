@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dosio.c,v 1.7 1993/09/01 20:21:25 gjr Exp $
+$Id: dosio.c,v 1.8 1994/11/14 00:53:57 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,8 +43,6 @@ MIT in each case. */
 size_t OS_channel_table_size;
 struct channel * channel_table;
 
-unsigned int OS_channels_registered;
-
 static void
 DEFUN_VOID (DOS_channel_close_all)
 {
@@ -73,8 +71,6 @@ DEFUN_VOID (DOS_initialize_channels)
       MARK_CHANNEL_CLOSED (channel);
   }
   add_reload_cleanup (DOS_channel_close_all);
-  OS_channels_registered = 0;
-  return;
 }
 
 void
@@ -111,8 +107,6 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
   {
-    if (CHANNEL_REGISTERED (channel))
-      OS_channel_unregister (channel);
     STD_VOID_SYSTEM_CALL
       (syscall_close, (DOS_close (CHANNEL_DESCRIPTOR (channel))));
     MARK_CHANNEL_CLOSED (channel);
@@ -125,8 +119,6 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
   {
-    if (CHANNEL_REGISTERED (channel))
-      OS_channel_unregister (channel);
     DOS_close (CHANNEL_DESCRIPTOR (channel));
     MARK_CHANNEL_CLOSED (channel);
   }
@@ -483,28 +475,6 @@ int
 DEFUN_VOID (OS_have_ptys_p)
 {
   return (FALSE);
-}
-
-int
-DEFUN (OS_channel_registered_p, (channel), Tchannel channel)
-{
-  return (CHANNEL_REGISTERED (channel));
-}
-
-void
-DEFUN (OS_channel_register, (channel), Tchannel channel)
-{
-  error_unimplemented_primitive ();
-}
-
-void
-DEFUN (OS_channel_unregister, (channel), Tchannel channel)
-{
-  if (CHANNEL_REGISTERED (channel))
-    {
-      OS_channels_registered -= 1;
-      (CHANNEL_REGISTERED (channel)) = 0;
-    }
 }
 
 /* No SELECT in DOS */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.10 1994/11/14 00:05:20 cph Exp $
+$Id: prosio.c,v 1.11 1994/11/14 00:54:04 cph Exp $
 
-Copyright (c) 1987-93 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -246,28 +246,4 @@ DEFINE_PRIMITIVE ("HAVE-SELECT?", Prim_have_select_p, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_have_select_p));
-}
-
-DEFINE_PRIMITIVE ("CHANNEL-REGISTERED?", Prim_channel_registered_p, 1, 1,
-  "Return #F iff CHANNEL is registered for selection.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (OS_channel_registered_p (arg_channel (1))));
-}
-
-DEFINE_PRIMITIVE ("CHANNEL-REGISTER", Prim_channel_register, 1, 1,
-  "Register CHANNEL for selection.")
-{
-  PRIMITIVE_HEADER (1);
-  OS_channel_register (arg_channel (1));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("CHANNEL-UNREGISTER", Prim_channel_unregister, 1, 1,
-  "Unregister CHANNEL for selection.")
-{
-  PRIMITIVE_HEADER (1);
-  OS_channel_unregister (arg_channel (1));
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }

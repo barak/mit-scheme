@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.5 1993/08/21 03:34:27 gjr Exp $
+$Id: ntio.h,v 1.6 1994/11/14 00:54:27 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,6 @@ struct channel
   enum channel_type type;
   unsigned int internal : 1;
   unsigned int nonblocking : 1;
-  unsigned int registered : 1;
   unsigned int buffered : 1;
   unsigned int cooked : 1;
 };
@@ -58,7 +57,6 @@ struct channel
   ((channel_table [(channel)]) . nonblocking)
 #define CHANNEL_BLOCKING_P(channel)					\
   (!CHANNEL_NONBLOCKING(channel))
-#define CHANNEL_REGISTERED(channel) ((channel_table [(channel)]) . registered)
 #define CHANNEL_BUFFERED(channel) ((channel_table [(channel)]) . buffered)
 #define CHANNEL_COOKED(channel) ((channel_table [(channel)]) . cooked)
 
@@ -69,7 +67,6 @@ struct channel
   (CHANNEL_TYPE (MAKE_CHANNEL_temp)) = (type);				\
   (CHANNEL_INTERNAL (MAKE_CHANNEL_temp)) = 0;				\
   (CHANNEL_NONBLOCKING (MAKE_CHANNEL_temp)) = 0;			\
-  (CHANNEL_REGISTERED (MAKE_CHANNEL_temp)) = 0;				\
   (CHANNEL_BUFFERED (MAKE_CHANNEL_temp)) = 1;				\
   (CHANNEL_COOKED (MAKE_CHANNEL_temp)) = 0;				\
   receiver (MAKE_CHANNEL_temp);						\

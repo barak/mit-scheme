@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.9 1994/11/13 23:47:37 cph Exp $
+$Id: osio.h,v 1.10 1994/11/14 00:53:17 cph Exp $
 
-Copyright (c) 1990-93 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -89,11 +89,5 @@ extern void EXFUN (OS_channel_nonblocking, (Tchannel channel));
 extern void EXFUN (OS_channel_blocking, (Tchannel channel));
 
 extern CONST int OS_have_select_p;
-extern unsigned int OS_channels_registered;
-extern int EXFUN (OS_channels_registered_p, (void));
-extern void EXFUN (OS_channel_register, (Tchannel channel));
-extern void EXFUN (OS_channel_unregister, (Tchannel channel));
-extern long EXFUN
-  (OS_channel_select_then_read, (Tchannel channel, PTR buffer, size_t nbytes));
 
 #endif /* SCM_OSIO_H */

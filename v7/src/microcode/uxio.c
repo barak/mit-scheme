@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.33 1993/11/18 00:35:24 gjr Exp $
+$Id: uxio.c,v 1.34 1994/11/14 00:53:27 cph Exp $
 
-Copyright (c) 1990-1993 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -50,7 +50,6 @@ struct channel * channel_table;
 #define FD_ZERO(p) ((*(p)) = 0)
 #endif
 
-unsigned int OS_channels_registered;
 static SELECT_TYPE input_descriptors;
 #ifdef HAVE_SELECT
 static struct timeval zero_timeout;
@@ -86,7 +85,6 @@ DEFUN_VOID (UX_initialize_channels)
   }
   add_reload_cleanup (UX_channel_close_all);
   FD_ZERO (&input_descriptors);
-  OS_channels_registered = 0;
 #ifdef HAVE_SELECT
   (zero_timeout . tv_sec) = 0;
   (zero_timeout . tv_usec) = 0;
@@ -132,8 +130,6 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      if (CHANNEL_REGISTERED (channel))
-	OS_channel_unregister (channel);
       STD_VOID_SYSTEM_CALL
 	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
       MARK_CHANNEL_CLOSED (channel);
@@ -145,8 +141,6 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      if (CHANNEL_REGISTERED (channel))
-	OS_channel_unregister (channel);
       UX_close (CHANNEL_DESCRIPTOR (channel));
       MARK_CHANNEL_CLOSED (channel);
     }
@@ -498,40 +492,6 @@ DEFUN (UX_select_descriptor, (fd, blockp),
 #endif
 }
 
-/* Old Global Registry Mechanism */
-
-int
-DEFUN (OS_channel_registered_p, (channel), Tchannel channel)
-{
-  return (CHANNEL_REGISTERED (channel));
-}
-
-void
-DEFUN (OS_channel_register, (channel), Tchannel channel)
-{
-#ifdef HAVE_SELECT
-  if (! (CHANNEL_REGISTERED (channel)))
-    {
-      FD_SET ((CHANNEL_DESCRIPTOR (channel)), (&input_descriptors));
-      OS_channels_registered += 1;
-      (CHANNEL_REGISTERED (channel)) = 1;
-    }
-#else
-  error_unimplemented_primitive ();
-#endif
-}
-
-void
-DEFUN (OS_channel_unregister, (channel), Tchannel channel)
-{
-  if (CHANNEL_REGISTERED (channel))
-    {
-      FD_CLR ((CHANNEL_DESCRIPTOR (channel)), (&input_descriptors));
-      OS_channels_registered -= 1;
-      (CHANNEL_REGISTERED (channel)) = 0;
-    }
-}
-
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {

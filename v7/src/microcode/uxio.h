@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.h,v 1.3 1993/06/24 07:10:10 gjr Exp $
+$Id: uxio.h,v 1.4 1994/11/14 00:54:19 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,7 +43,6 @@ struct channel
   enum channel_type type;
   unsigned int internal : 1;
   unsigned int nonblocking : 1;
-  unsigned int registered : 1;
 };
 
 #define MARK_CHANNEL_CLOSED(channel) ((CHANNEL_DESCRIPTOR (channel)) = (-1))
@@ -54,7 +53,6 @@ struct channel
 #define CHANNEL_INTERNAL(channel) ((channel_table [(channel)]) . internal)
 #define CHANNEL_NONBLOCKING(channel)					\
   ((channel_table [(channel)]) . nonblocking)
-#define CHANNEL_REGISTERED(channel) ((channel_table [(channel)]) . registered)
 
 #define MAKE_CHANNEL(descriptor, type, receiver)			\
 {									\
@@ -63,7 +61,6 @@ struct channel
   (CHANNEL_TYPE (MAKE_CHANNEL_temp)) = (type);				\
   (CHANNEL_INTERNAL (MAKE_CHANNEL_temp)) = 0;				\
   (CHANNEL_NONBLOCKING (MAKE_CHANNEL_temp)) = 0;			\
-  (CHANNEL_REGISTERED (MAKE_CHANNEL_temp)) = 0;				\
   receiver (MAKE_CHANNEL_temp);						\
 }
 
