@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.7 1989/06/06 22:41:04 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.8 1989/08/17 07:50:55 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -94,9 +94,10 @@ MIT in each case. |#
   (let loop ((list list) (index index))
     (if (zero? index)
 	list
-	(begin (if (not (pair? list))
-		   (error "LIST-TAIL: index too large" index))
-	       (loop (cdr list) (-1+ index))))))
+	(begin
+	  (if (not (pair? list))
+	      (error "LIST-TAIL: index too large" index))
+	  (loop (cdr list) (-1+ index))))))
 
 (define (list-head list index)
   (if (not (and (integer? index) (not (negative? index))))
@@ -130,18 +131,22 @@ MIT in each case. |#
   (let loop ((items items))
     (if (pair? items)
 	(cons (car items) (loop (cdr items)))
-	(begin (if (not (null? items))
-		   (error "LIST-COPY: argument not proper list" items))
-	       '()))))
+	(begin
+	  (if (not (null? items))
+	      (error "LIST-COPY: argument not proper list" items))
+	  '()))))
 
 (define (alist-copy alist)
   (if (pair? alist)
-      (begin (if (not (pair? (car alist)))
-		 (error "ALIST-COPY: illegal alist element" (car alist)))
-	     (cons (cons (caar alist) (cdar alist)) (alist-copy (cdr alist))))
-      (begin (if (not (null? alist))
-		 (error "ALIST-COPY: illegal alist" alist))
-	     '())))
+      (begin
+	(if (not (pair? (car alist)))
+	    (error "ALIST-COPY: illegal alist element" (car alist)))
+	(cons (cons (car (car alist)) (cdr (car alist)))
+	      (alist-copy (cdr alist))))
+      (begin
+	(if (not (null? alist))
+	    (error "ALIST-COPY: illegal alist" alist))
+	'())))
 
 (define (tree-copy tree)
   (let loop ((tree tree))
@@ -465,8 +470,9 @@ MIT in each case. |#
 	      (if (pair? items)
 		  (if (predicate (car items))
 		      (trim-initial-segment (cdr items))
-		      (begin (locate-initial-segment items (cdr items))
-			     items))
+		      (begin
+			(locate-initial-segment items (cdr items))
+			items))
 		  items)))
 	   (locate-initial-segment
 	    (lambda (last this)
@@ -546,7 +552,7 @@ MIT in each case. |#
 (define (assq key alist)
   (let loop ((alist alist))
     (and (pair? alist)
-	 (if (eq? (caar alist) key)
+	 (if (eq? (car (car alist)) key)
 	     (car alist)
 	     (loop (cdr alist))))))
 
@@ -564,8 +570,9 @@ MIT in each case. |#
 	      (if (pair? items)
 		  (if (eq? item (car items))
 		      (trim-initial-segment (cdr items))
-		      (begin (locate-initial-segment items (cdr items))
-			     items))
+		      (begin
+			(locate-initial-segment items (cdr items))
+			items))
 		  items)))
 	   (locate-initial-segment
 	    (lambda (last this)
@@ -599,9 +606,10 @@ MIT in each case. |#
   (if (not (pair? list))
       (error "EXCEPT-LAST-PAIR!: Argument not a pair" list))
   (if (pair? (cdr list))
-      (begin (let loop ((list list))
-	       (if (pair? (cddr list))
-		   (loop (cdr list))
-		   (set-cdr! list '())))
-	     list)
+      (begin
+	(let loop ((list list))
+	  (if (pair? (cdr (cdr list)))
+	      (loop (cdr list))
+	      (set-cdr! list '())))
+	list)
       '()))
