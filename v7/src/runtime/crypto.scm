@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.9 2000/04/11 16:01:42 cph Exp $
+$Id: crypto.scm,v 14.10 2000/04/13 02:59:12 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -295,24 +295,27 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; Package initialization
 
 (define (initialize-package!)
-  (set! mhash-algorithm-names
-	(let ((n ((ucode-primitive mhash_count 0))))
-	  (let ((v (make-vector n)))
-	    (do ((i 0 (fix:+ i 1)))
-		((fix:= i n))
-	      (vector-set!
-	       v i (intern ((ucode-primitive mhash_get_hash_name 1) i))))
-	    v)))
-  (set! mhash-contexts
-	(make-gc-finalizer (ucode-primitive mhash_end 1)))
-  (set! mhash-hmac-contexts
-	(make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
-  (set! mhash-keygen-names
-	(let ((n ((ucode-primitive mhash_keygen_count 0))))
-	  (let ((v (make-vector n)))
-	    (do ((i 0 (fix:+ i 1)))
-		((fix:= i n))
-	      (vector-set!
-	       v i (intern ((ucode-primitive mhash_get_keygen_name 1) i))))
-	    v)))
-  unspecific)
+  (if (mhash-available?)
+      (begin
+	(set! mhash-algorithm-names
+	      (let ((n ((ucode-primitive mhash_count 0))))
+		(let ((v (make-vector n)))
+		  (do ((i 0 (fix:+ i 1)))
+		      ((fix:= i n))
+		    (vector-set!
+		     v i (intern ((ucode-primitive mhash_get_hash_name 1) i))))
+		  v)))
+	(set! mhash-contexts
+	      (make-gc-finalizer (ucode-primitive mhash_end 1)))
+	(set! mhash-hmac-contexts
+	      (make-gc-finalizer (ucode-primitive mhash_hmac_end 1)))
+	(set! mhash-keygen-names
+	      (let ((n ((ucode-primitive mhash_keygen_count 0))))
+		(let ((v (make-vector n)))
+		  (do ((i 0 (fix:+ i 1)))
+		      ((fix:= i n))
+		    (vector-set!
+		     v i
+		     (intern ((ucode-primitive mhash_get_keygen_name 1) i))))
+		  v)))
+	unspecific)))
