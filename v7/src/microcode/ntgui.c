@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.9 1993/09/04 07:03:43 gjr Exp $
+$Id: ntgui.c,v 1.10 1993/09/07 19:08:01 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -194,20 +194,30 @@ extern void catatonia_trigger (void);
 void
 catatonia_trigger (void)
 {
-  if ((MessageBox (master_tty_window,
-		   "Scheme appears to have become catatonic.\n"
-		   "OK to kill it?",
-		   "MIT Scheme",
-		   (MB_ICONSTOP | MB_OKCANCEL)))
-      == IDOK)
-  {
-    extern void termination_normal (int);
-    termination_normal (0);
-  }
+  int mes_result;
+  static BOOL already_exitting = FALSE;
+  SCHEME_OBJECT saved = Registers[REGBLOCK_CATATONIA_LIMIT];
+
+  Registers[REGBLOCK_CATATONIA_LIMIT] = 0;
+
+  mes_result = (MessageBox (master_tty_window,
+			    "Scheme appears to have become catatonic.\n"
+			    "OK to kill it?",
+			    "MIT Scheme",
+			    (MB_ICONSTOP | MB_OKCANCEL)));
+
+  Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
+  Registers[REGBLOCK_CATATONIA_LIMIT] = saved;
+
+  if (mes_result != IDOK)
+    return;
+  else if (already_exitting)
+    exit (1);
   else
   {
-    Registers[REGBLOCK_CATATONIA_COUNTER] = 0;
-    return;
+    extern void termination_normal (int);
+    already_exitting = TRUE;
+    termination_normal (0);
   }
 }
 
