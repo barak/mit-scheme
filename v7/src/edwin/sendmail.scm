@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.18 1993/01/12 19:05:30 gjr Exp $
+;;;	$Id: sendmail.scm,v 1.19 1994/03/08 20:20:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,18 +46,14 @@
 
 (declare (usual-integrations))
 
-(define-variable mail-reply-buffer
-  ""
-  false
-  (lambda (object) (or (false? object) (buffer? object))))
-
 (define-variable mail-default-reply-to
   "Address to insert as default Reply-to field of outgoing messages."
   false
   (lambda (object)
     (or (not object)
 	(string? object)
-	(procedure? object))))
+	(and (procedure? object)
+	     (procedure-arity-valid? object 0)))))
 
 (define-variable mail-self-blind
   "True means insert BCC to self in messages to be sent.
@@ -70,6 +66,36 @@ so you can remove or alter the BCC field to override the default."
   "Name of file to write all outgoing messages in, or false for none."
   false
   string-or-false?)
+
+(define-variable mail-yank-ignored-headers
+  "Delete these headers from old message when it's inserted in a reply."
+  (reduce (lambda (x y) (string-append x "\\|" y))
+	  ""
+	  '("^via:"
+	    "^mail-from:"
+	    "^origin:"
+	    "^status:"
+	    "^remailed"
+	    "^received:"
+	    "^[a-z-]*message-id:"
+	    "^summary-line:"
+	    "^to:"
+	    "^cc:"
+	    "^subject:"
+	    "^in-reply-to:"
+	    "^return-path:"))
+  string?)
+
+(define-variable mail-interactive
+  "True means when sending a message wait for and display errors.
+False means let mailer mail back a message to report errors."
+  false
+  boolean?)
+
+(define-variable mail-header-separator
+  "Line used to separate headers from text in messages being composed."
+  "--text follows this line--"
+  string?)
 
 (define-variable mail-header-function
   "A function of one argument, POINT (the current point), which
@@ -89,18 +115,11 @@ variable is false, it is ignored."
 	     (insert-string 
 	      (system/identification-string system)
 	      point)))))
-    (insert-newline point)))
-
-(define-variable mail-header-separator
-  "Line used to separate headers from text in messages being composed."
-  "--text follows this line--"
-  string?)
-
-(define-variable mail-interactive
-  "True means when sending a message wait for and display errors.
-False means let mailer mail back a message to report errors."
-  false
-  boolean?)
+    (insert-newline point))
+  (lambda (object)
+    (or (false? object)
+	(and (procedure? object)
+	     (procedure-arity-valid? object 1)))))
 
 (define-variable sendmail-program
   "Filename of sendmail program."
@@ -109,18 +128,20 @@ False means let mailer mail back a message to report errors."
       "fakemail")
   string?)
 
-(define-variable mail-yank-ignored-headers
-  "Delete these headers from old message when it's inserted in a reply."
-  "^via:\\|^mail-from:\\|^origin:\\|^status:\\|^remailed\\|^received:\\|^[a-z-]*message-id:\\|^summary-line:\\|^to:\\|^cc:\\|^subject:\\|^in-reply-to:\\|^return-path:")
-
 (define-variable send-mail-procedure
   "Procedure to call to send the current buffer as mail.
 The headers are delimited by a string found in mail-header-separator."
-  (lambda () (sendmail-send-it)))
+  (lambda () (sendmail-send-it))
+  (lambda (object)
+    (and (procedure? object)
+	 (procedure-arity-valid? object 0))))
+(variable-permanent-local! (ref-variable-object send-mail-procedure))
 
-(define-variable mail-setup-hook
-  "An event distributor invoked immediately after a mail buffer initialized."
-  (make-event-distributor))
+(define-variable mail-reply-buffer
+  ""
+  false
+  (lambda (object) (or (false? object) (buffer? object))))
+(variable-permanent-local! (ref-variable-object mail-reply-buffer))
 
 (define-command mail
   "Edit a message to be sent.  Argument means resume editing (don't erase).
@@ -230,6 +251,10 @@ is inserted."
   (if (not (or to subject in-reply-to))
       (buffer-not-modified! buffer))
   (event-distributor/invoke! (ref-variable mail-setup-hook)))
+
+(define-variable mail-setup-hook
+  "An event distributor invoked immediately after a mail buffer initialized."
+  (make-event-distributor))
 
 (define-major-mode mail text "Mail"
   "Major mode for editing mail to be sent.
