@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.7 1995/05/19 03:41:13 adams Exp $
+$Id: lamlift.scm,v 1.8 1995/07/04 17:56:11 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -711,7 +711,7 @@ MIT in each case. |#
 		  (dbg-info/remember
 		   (lamlift/binding/name binding)
 		   (if (null? extra-formals)
-		       `(LOOKUP ,lifted-name)
+		       lifted-name
 		       `(CALL 'un-lambda-lift '#F (LOOKUP ,lifted-name))))
 		  (let ((reorder
 			 (lamlift/reorderer lambda-list** lifted-lambda-list)))
@@ -761,11 +761,13 @@ MIT in each case. |#
 	(form/rewrite!
 	 form
 	 (cond (lift-stub?
-		(let ((stub-name  (make-new-name)))
+		(let ((stub-name  (make-new-name))
+		      (binding    (lamlift/env/binding env)))
+		  (dbg-info/remember (lamlift/binding/name binding) stub-name)
 		  (for-each
 		      (lambda (reference)
 			(form/rewrite! reference `(LOOKUP ,stub-name)))
-		    (lamlift/binding/operand-uses (lamlift/env/binding env)))
+		    (lamlift/binding/operand-uses binding))
 		  (lift-to-drift-frame stub-name (stub-lambda lifted-name))
 		  `(QUOTE #F)))
 	       (split?
