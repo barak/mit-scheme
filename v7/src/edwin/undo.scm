@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.49 1992/02/04 04:04:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.50 1992/04/04 13:05:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -111,11 +111,19 @@
   (set-group-undo-data! group false))
 
 (define (with-group-undo-disabled group thunk)
-  (unwind-protect (lambda () (disable-group-undo! group))
+  (let ((outside-data)
+	(inside-data false))
+    (dynamic-wind (lambda ()
+		    (set! outside-data (group-undo-data group))
+		    (set-group-undo-data! group inside-data)
+		    (set! inside-data)
+		    unspecific)
 		  thunk
-		  (if (group-undo-data group)
-		      (lambda () (enable-group-undo! group))
-		      (lambda () unspecific))))
+		  (lambda ()
+		    (set! inside-data (group-undo-data group))
+		    (set-group-undo-data! group outside-data)
+		    (set! outside-data)
+		    unspecific))))
 
 (define (new-undo! undo-data type group start length)
   group
@@ -126,11 +134,11 @@
       (set-undo-record-start! undo-record start)
       (set-undo-record-length! undo-record length)
       (set-undo-data-last-undo-record! undo-data undo-record))
-    (let ((next (+ index 1)))
-      (cond ((< next (vector-length records))
+    (let ((next (fix:+ index 1)))
+      (cond ((fix:< next (vector-length records))
 	     (mark-not-undoable! (undo-records-ref records next))
 	     (set-undo-data-next-record! undo-data next))
-	    ((>= next maximum-undo-records)
+	    ((fix:>= next maximum-undo-records)
 	     (mark-not-undoable! (vector-ref records 0))
 	     (set-undo-data-next-record! undo-data 0))
 	    (else
@@ -138,11 +146,15 @@
 		   (length (vector-length records))
 		   (new-record (%make-undo-record))
 		   (max-record (%make-undo-record)))
-	       (subvector-move-right! records 0 length new-records 0)
+	       (do ((index 0 (fix:+ index 1)))
+		   ((fix:= index length))
+		 (vector-set! new-records index (vector-ref records index)))
 	       (mark-not-undoable! new-record)
 	       (mark-not-undoable! max-record)
 	       (vector-set! new-records length new-record)
-	       (vector-set! new-records (- maximum-undo-records 1) max-record)
+	       (vector-set! new-records
+			    (fix:- maximum-undo-records 1)
+			    max-record)
 	       (set-undo-data-records! undo-data new-records)
 	       (set-undo-data-next-record! undo-data next))))))
   (if (not (eq? 'BOUNDARY type))
@@ -150,49 +162,60 @@
 
 (define-integrable (mark-not-undoable! record)
   (set-undo-record-type! record 'NOT-UNDOABLE))
-
+
 (define (undo-store-substring! undo-data string start end)
   (let loop ((start start))
     (let ((chars (undo-data-chars undo-data))
 	  (i (undo-data-next-char undo-data)))
-      (let ((room (- (string-length chars) i))
-	    (needed (- end start)))
-	(cond ((> room needed)
-	       (substring-move-right! string start end chars i)
-	       (set-undo-data-next-char! undo-data (+ i needed))
+      (let ((room (fix:- (string-length chars) i))
+	    (needed (fix:- end start)))
+	(cond ((fix:> room needed)
+	       (do ((index start (fix:+ index 1))
+		    (i i (fix:+ i 1)))
+		   ((fix:= index end))
+		 (string-set! chars i (string-ref string index)))
+	       (set-undo-data-next-char! undo-data (fix:+ i needed))
 	       (set-undo-data-number-chars-left!
 		undo-data
-		(- (undo-data-number-chars-left undo-data) needed)))
-	      ((= room needed)
-	       (substring-move-right! string start end chars i)
+		(fix:- (undo-data-number-chars-left undo-data) needed)))
+	      ((fix:= room needed)
+	       (do ((index start (fix:+ index 1))
+		    (i i (fix:+ i 1)))
+		   ((fix:= index end))
+		 (string-set! chars i (string-ref string index)))
 	       (set-undo-data-next-char! undo-data 0)
 	       (set-undo-data-number-chars-left!
 		undo-data
-		(- (undo-data-number-chars-left undo-data) needed)))
-	      ((< (string-length chars) maximum-undo-chars)
+		(fix:- (undo-data-number-chars-left undo-data) needed)))
+	      ((fix:< (string-length chars) maximum-undo-chars)
 	       (let ((new-chars (string-allocate maximum-undo-chars)))
-		 (substring-move-right! chars 0 i new-chars 0)
+		 (do ((index 0 (fix:+ index 1)))
+		     ((fix:= index i))
+		   (string-set! new-chars index (string-ref chars index)))
 		 (set-undo-data-chars! undo-data new-chars))
 	       (set-undo-data-number-chars-left!
 		undo-data
-		     (+ (- maximum-undo-chars (string-length chars))
-			(undo-data-number-chars-left undo-data)))
+		(fix:+ (fix:- maximum-undo-chars (string-length chars))
+		       (undo-data-number-chars-left undo-data)))
 	       (loop start))
 	      (else
-	       (let ((new-start (+ start room)))
-		 (substring-move-right! string start new-start chars i)
+	       (let ((new-start (fix:+ start room)))
+		 (do ((index start (fix:+ index 1))
+		      (i i (fix:+ i 1)))
+		     ((fix:= index new-start))
+		   (string-set! chars i (string-ref string index)))
 		 (set-undo-data-next-char! undo-data 0)
 		 (set-undo-data-number-chars-left!
 		  undo-data
-		  (- (undo-data-number-chars-left undo-data) room))
+		  (fix:- (undo-data-number-chars-left undo-data) room))
 		 (loop new-start)))))))
   unspecific)
 
 ;;;; External Recording Hooks
 
-;;; These assume that they are called before the regular recording
-;;; daemons, for the following reason: to check the old status of the
-;;; GROUP-MODIFIED? flag before the buffer daemon updates it.
+;;; These must be called before the GROUP-MODIFIED? is updated, so
+;;; that they can read its old value.  In addition, the deletion
+;;; recording hook must be called before the deletion is performed.
 
 (define (undo-record-insertion! group start end)
   (let ((undo-data (group-undo-data group)))
@@ -200,14 +223,15 @@
 	(begin
 	  (undo-mark-modified! group start undo-data)
 	  (let ((last (undo-data-last-undo-record undo-data))
-		(length (- end start)))
+		(length (fix:- end start)))
 	    (if (and last
 		     (eq? 'DELETE (undo-record-type last))
-		     (= start
-			(+ (undo-record-start last)
-			   (undo-record-length last))))
+		     (fix:= start
+			    (fix:+ (undo-record-start last)
+				   (undo-record-length last))))
 		(set-undo-record-length! last
-					 (+ length (undo-record-length last)))
+					 (fix:+ length
+						(undo-record-length last)))
 		(new-undo! undo-data 'DELETE group start length)))))))
 
 (define (undo-record-deletion! group start end)
@@ -216,29 +240,30 @@
 	(begin
 	  (undo-mark-modified! group start undo-data)
 	  (let ((last (undo-data-last-undo-record undo-data))
-		(length (- end start)))
+		(length (fix:- end start)))
 	    (if (and last
 		     (eq? 'INSERT (undo-record-type last))
-		     (= start (undo-record-start last)))
+		     (fix:= start (undo-record-start last)))
 		(set-undo-record-length! last
-					 (+ length (undo-record-length last)))
+					 (fix:+ length
+						(undo-record-length last)))
 		(new-undo! undo-data 'INSERT group start length)))
 	  (let ((text (group-text group))
 		(gap-start (group-gap-start group))
 		(length (group-gap-length group)))
-	    (cond ((<= end gap-start)
+	    (cond ((fix:<= end gap-start)
 		   (undo-store-substring! undo-data text start end))
-		  ((>= start gap-start)
+		  ((fix:>= start gap-start)
 		   (undo-store-substring! undo-data
 					  text
-					  (+ start length)
-					  (+ end length)))
+					  (fix:+ start length)
+					  (fix:+ end length)))
 		  (else
 		   (undo-store-substring! undo-data text start gap-start)
 		   (undo-store-substring! undo-data
 					  text
 					  (group-gap-end group)
-					  (+ end length)))))))))
+					  (fix:+ end length)))))))))
 
 (define (undo-boundary! point)
   (without-interrupts
