@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.74 1989/04/28 22:48:42 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.75 1989/08/03 01:31:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -345,7 +345,8 @@
       ((#\r)
        (varies (current-region) '(CURRENT-REGION)))
       ((#\s)
-       (prompting (or (prompt-for-string prompt false) "")))      ((#\v)
+       (prompting (or (prompt-for-string prompt false 'NULL-DEFAULT) "")))
+      ((#\v)
        (prompting (variable-name (prompt-for-variable prompt))))
       ((#\x)
        (prompting (prompt-for-expression prompt false)))
