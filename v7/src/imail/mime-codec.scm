@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.5 2000/06/01 18:25:37 cph Exp $
+;;; $Id: mime-codec.scm,v 1.6 2000/06/01 19:29:05 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -100,23 +100,24 @@
 				pending-return?))
 
 (define (decode-base64-text-substring string start end pending-return?)
-  (decode-base64-internal string start end
-    (lambda (port)
-      (lambda (char)
-	(if pending-return?
-	    (case char
-	      ((#\linefeed)
-	       (set! pending-return? #f)
-	       (newline port))
-	      ((#\return)
-	       (write-char #\return port))
-	      (else
-	       (set! pending-return? #f)
-	       (write-char #\return port)))
-	    (if (char=? char #\return)
-		(set! pending-return? #t)
-		(write-char char port))))))
-  pending-return?)
+  (let ((result
+	 (decode-base64-internal string start end
+	   (lambda (port)
+	     (lambda (char)
+	       (if pending-return?
+		   (case char
+		     ((#\linefeed)
+		      (set! pending-return? #f)
+		      (newline port))
+		     ((#\return)
+		      (write-char #\return port))
+		     (else
+		      (set! pending-return? #f)
+		      (write-char #\return port)))
+		   (if (char=? char #\return)
+		       (set! pending-return? #t)
+		       (write-char char port))))))))
+    (values result pending-return?)))
 
 (define (decode-base64-internal string start end make-output)
   (let ((input (string->input-port string start end)))
