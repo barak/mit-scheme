@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: compile.scm,v 1.6 2001/10/04 17:06:15 cph Exp $
+;;; $Id: compile.scm,v 1.7 2001/11/09 21:37:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -21,6 +21,7 @@
 
 (load-option 'CREF)
 (load-option '*PARSER)
+(load-option 'SOS)
 
 (if (not (environment-bound? system-global-environment 'XML-PARSER-MACROS))
     (local-assignment system-global-environment
