@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.5 1995/05/10 21:19:49 cph Exp $
+$Id: os2.c,v 1.6 1995/06/23 07:40:25 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -201,17 +201,30 @@ OS2_close_mutex_semaphore (HMTX s)
 void
 OS2_request_mutex_semaphore (HMTX s)
 {
-  XTD_API_CALL (dos_request_mutex_sem, (s, SEM_INDEFINITE_WAIT),
-		{
-		  /* This return code has been sporadically occurring
-		     on my machine.  On a recent occurrence, I
-		     proceeded past the error in the debugger, and the
-		     program continued working without errors.  IBM
-		     tech support is mystified because this code
-		     appears nowhere in their sources.  */
-		  if (rc == 3000)
-		    return;
-		});
+  while (1)
+    {
+      APIRET rc = (dos_request_mutex_sem (s, SEM_INDEFINITE_WAIT));
+      if (rc == NO_ERROR)
+	break;
+      /* This return code has been regularly occurring on my machine.
+	 On one occurrence, I proceeded past the error in the
+	 debugger, and the program continued working without errors.
+	 However, more recently proceeding past this error has caused
+	 a subsequent error when unlocking the semaphore because the
+	 lock didn't succeed.  IBM tech support is mystified because
+	 this code appears nowhere in their sources.  */
+      if (rc == 3000)
+	{
+	  PID pid;
+	  TID tid;
+	  ULONG count;
+	  DosQueryMutexSem (s, (&pid), (&tid), (&count));
+	  if ((count > 0) && (tid == (OS2_current_tid ())))
+	    break;
+	}
+      else if (rc != ERROR_INTERRUPT)
+	OS2_error_system_call (rc, syscall_dos_request_mutex_sem);
+    }
 }
 
 void
