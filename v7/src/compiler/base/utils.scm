@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.5 1988/06/14 08:34:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 4.6 1988/11/08 21:25:58 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -269,7 +269,10 @@ MIT in each case. |#
 	      = < > <= >= MAX MIN
 	      + - * / 1+ -1+ ABS QUOTIENT REMAINDER MODULO INTEGER-DIVIDE
 	      GCD LCM FLOOR CEILING TRUNCATE ROUND
-	      EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN))
+	      EXP LOG EXPT SQRT SIN COS TAN ASIN ACOS ATAN
+	      FIX:ZERO? FIX:NEGATIVE? FIX:POSITIVE?
+	      FIX:= FIX:< FIX:> FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
+	      FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER))
      (lexical-reference system-global-environment 'PRIMITIVE-PROCEDURE?))
    (list
     (ucode-primitive &+) (ucode-primitive &-)
