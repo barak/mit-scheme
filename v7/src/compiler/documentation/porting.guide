@@ -1,10 +1,10 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.5 1991/02/23 15:00:19 jinx Exp $
 
 
-			LIAR PORTING GUIDE
-			(Very Preliminary)
+			LIAR INTERNALS AND PORTING GUIDE
+			       (Very Preliminary)
 
 
 Notes: 
@@ -13,8 +13,8 @@ This porting guide applies to Liar version 4.78, but most of the
 relevant information has not changed for a while, nor is it likely to
 change in a while.
 
-Text preceded with *** is meant mostly for the compiler developers and
-for the people writing this document.
+Text preceded with ==> is meant mostly for the compiler developers,
+and text preceded *** is meant for the people writing this document.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
@@ -543,7 +543,7 @@ compiler:primitives-with-no-open-coding
 	This parameter is defined in compiler/machines/port/machin.scm.
 It contains a list of primitive names that the port cannot open code.
 
-*** These last two parameters should probably be combined and their
+==> These last two parameters should probably be combined and their
 sense inverted, ie. there should be a
 compiler:primitives-with-known-open-codings parameter that would
 replace both of the above.  This has the advantage that if the RTL
@@ -564,20 +564,20 @@ track of the original version from which you started, and
 additionally, that on which your original is based.  For example, if
 you use machines/mips/assmd.scm as a model for your version, in it you
 would find something like
-  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
+  $ Header: assmd.scm,v 1.1 90/05/07 04:10:19 GMT jinx Exp $
   $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 In order to allow an easier merge in the future, it would
 be good if you transformed this header into
-  $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $
+  $ Header $
   $mips-Header: assmd.scm,v 1.1 90/05/07 04:10:19 GMT jinx Exp $
   $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
-The new $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.4 1991/02/23 05:34:01 jinx Exp $ line would be used by RCS to keep track of the
+The new $ Header $ line would be used by RCS to keep track of the
 versions of your port and the others could be used to find updates to
 the originals that would make updating your port easier.
 
 	Compiler building files:
 
-comp.pkg:
+* comp.pkg:
 	This file describes the Scheme package structure of the
 compiler, the files loaded into each package, and what names are
 exported and imported from each package.
@@ -586,13 +586,13 @@ port, change the name of the port (ie. mips -> sparc), and add or
 remove files as appropriate.  You should only need to add or remove
 assembler and LAPGEN files.
 
-comp.cbf:
+* comp.cbf:
 	This file is a script that can be used to compile the compiler
 from scratch.  You can copy this file from another port, and change
 the port name.  There is more information in a later section about how
 to build the compiler.
 
-comp.sf:
+* comp.sf:
 	This file is a script that is used to pre-process the compiler
 sources before they are loaded to be interpreted or compiled.  You
 should be able to copy the file from an existing port and replace the
@@ -604,7 +604,7 @@ The previous three files should be copied or linked to the top-level
 compiler directory.  Ie., compiler/comp.pkg should be a link (symbolic
 preferably) or copy of compiler/machines/port/comp.pkg .
 
-make.scm:
+* make.scm:
 	This file is used to load the compiler on top of a runtime
 system that has the file syntaxer (SF) loaded, and defines the version
 of the compiler.  The list of files does not appear here because the
@@ -612,7 +612,7 @@ comp.pkg already declares them, and when comp.pkg is pre-processed,
 two files, comp.con, and comp.ldr, that generate the package structure
 and load and link the files, are automatically generated.
 
-decls.scm:
+* decls.scm:
 	This file defines the pre-processing dependencies between the
 various source files.  There are three kinds of pre-processing
 dependencies:
@@ -637,22 +637,22 @@ doing this the correct way.
 You should be able to edit the version from another port in the
 appropriate way.  Mostly you will need to rename the port (ie. mips ->
 sparc), and add/delete instruction and rules files as needed.
-*** decls.scm should probably be split into two sections:  The
+==> decls.scm should probably be split into two sections:  The
 machine-independent dependency management code, and the actual
 declaration of the dependencies for each port.  This would allow us to
 share more of the code, and make the task of rewriting it less daunting.
 
 	Miscellaneous files:
 
-rgspcm.scm:
+* rgspcm.scm:
 	This file declares a set of primitives that can be coded by
 invoking runtime library procedures.  This file is no longer machine
 dependent, since the portable library has made all the sets identical.
 It lives in machines/port for historical reasons, and should probably
 move elsewhere.  Obviously, you can just copy it from another port.
-*** Let's move it or get rid of it!
+==> Let's move it or get rid of it!
 
-rulrew.scm:
+* rulrew.scm:
 	This file defines the simplifier rules that allow more
 efficient use of the hardware's addressing modes and other
 capabilities.  The rules use the same syntax as the LAPGEN rules, but
@@ -665,7 +665,7 @@ describes these rules in some detail.  It is possible to start out
 with no port-dependent rules and only add them as local inefficiencies
 are discovered in the output assembly language.
 
-machin.scm:
+* machin.scm:
 	This file defines architecture and port parameters needed by
 various parts of the compiler.  The following is the current list of
 the primary parameters.  The definitions of derived parameters not
@@ -725,7 +725,7 @@ should probably be copied verbatim.
 
 - execute-cache-size: This should match EXECUTE_CACHE_ENTRY_SIZE in
 microcode/cmpint-md.h, and is explained in microcode/cmpint.txt .
-*** We should probably rename one or the other to be alike.
+==> We should probably rename one or the other to be alike.
 
 The following parameters specify the format of closures containing
 multiple entry points to the front-end of the compiler.  These
@@ -785,17 +785,17 @@ pointer to the runtime library and interpreter's "register" array, and
 the dynamic link "register".  Typically each of these locations is a
 fixed machine register.  In addition, typically a processor register
 is reserved for returning values and another for holding a bit-mask
-used to clear type tags from objects.  All of these registers are
-given additional symbolic names.
+used to clear type tags from objects (the pointer or datum mask).  All
+of these registers should be given additional symbolic names.
 
-*** What the heck is machine-register-known-value used for?  It seems
-that the pointer mask is a known value, but...  Currently all the
+==> What the heck is machine-register-known-value used for?  It would
+seem that the datum mask is a known value, but...  Currently all the
 ports seem to have the same definition.
 
 The contents of pseudo registers are divided into various classes to
-allow some simple forms of consistency checking.  Some machine
-registers always contain values in a fixed class (eg. floating point
-registers and registers holding the pointer mask).
+allow some consistency checking.  Some machine registers always
+contain values in a fixed class (eg. floating point registers and
+the register holding the datum mask).
 
 - machine-register-value-class is a procedure that maps a register to
 its inherent value class.  The main value classes are
@@ -832,7 +832,9 @@ returns the long-word offset into the register  array.
 expensive is to generate a particular constant.  If the constant is
 cheaply reconstructed, the register allocator may decide to flush it
 (rather than spill it to memory) and re-generate it the next time it
-is needed.
+is needed.  The best estimate is the number of cycles that
+constructing the constant would take, but the number of bytes of
+instructions can be used instead.
 
 - copiler:open-code-floating-point-arithmetic? and
 compiler:primitives-with-no-open-coding have been described in the
@@ -840,48 +842,175 @@ section on compiler switches and parameters.
 
 	LAPGEN files:
 
-*** Mention that the partition could be done differently, but this is
-not bad.  The names are not great.
+The following files control the RTL -> LAP translation.  They define
+the rules used by the pattern matcher to perform the translation, and
+procedures used by the register allocator and linearizer to connect
+the code that results from each rule.  The rules, and how to write
+them, are described further in a later section.
 
-lapgen.scm:
+The rule set is partitioned into multiple subsets.  This is not
+necessary, but makes recompiling the compiler faster and reduces the
+memory requirements of the compiler.  The partition can be done in a
+different way, but is probably best left as uniform as possible
+between the different ports to facilitate comparison and updating.
 
-rules1.scm:
+The RTL->LAP rules are separated into two different data bases.  The
+larger is the statement data base, used to translate whole RTL
+instructions.  The smaller is the predicate data base, used to
+translate decisions to branch between the RTL basic blocks.
 
-rules2.scm:
+* lapgen.scm:
+	This file does not define any rules, but provides a set of
+utilities for the back end.  It provides utilities for the rules,
+typically procedures for generating code that manipulates the object
+representation, additional entry points to the register allocator that
+are better suited to the port, and the interface procedures for the
+register allocator and the linearizer.
 
-rules3.scm:
+The following definitions constitute the register allocator interface
+and must be provided by lapgen.scm:
+  available-machine-registers
+  sort-machine-registers
+  register-type
+  register-types-compatible?
+  register-reference
+  register->register-transfer
+  reference->register-transfer
+  pseudo-register-home
+  home->register-transfer
+  register->home-transfer
 
-rules4.scm:
+*** Describe, especially, homes, types, and references.
+
+The following definitions constitute the linearizer interface, and
+must be provided by lapgen.scm:
+  lap:make-label-statement
+  lap:make-unconditional-branch
+  lap:make-entry-point
 
-rulfix.scm:
+The rest of the code in lapgen.scm is a set of utilities for the rule
+code, and is port-specific.
 
-rulflo.scm:
+*** Describe useful abstractions:
+  standard-target-reference
+  standard-temporary-reference
+  indirect-reference!
+  set-standard-branches!
+  invoke-interface
+  invoke-interface-jsr
+
+* rules1.scm:
+	This file contains RTL statement rules for simple register assignments
+and operations.  In particular, it contains the rules for constructing
+and destructuring Scheme objects, allocating storage, and memory <->
+register transfers.
+
+* rules2.scm:
+	This file contains RTL predicate rules for simple equality
+predicates (EQ-TEST, TYPE-TEST).
+
+* rules3.scm:
+	This file contains RTL statement rules for control-flow
+statements like continuation (return address) invocation, several
+mechanisms for invoking procedures, stack reformatting prior to
+invocation, procedure headers, closure object allocation, expression
+headers and declaring the data segment of compiled code blocks for
+assembly.
+
+* rules4.scm:
+	This file contains RTL statement rules for the runtime library
+routines that handle manipulation of variables in first class
+environments.  Most of these rules are no longer used by the compiler
+unless some switch settings vary.
+
+* rulfix.scm:
+	This file contains statement and predicate rules for
+manipulating fixnums (small integers represented in immediate
+form).  The rules handle tagging and detagging fixnum objects,
+arithmetic on them, comparison predicates, and overflow tests.
+
+* rulflo.scm:
+	This file contains statement and predicate rules for
+manipulating flonums (floating point data in boxed form).  The rules
+handle boxing and unboxing of flonums, arithmetic on them, and
+comparison predicates.
 
 	Assembler files:
 
-assmd.scm:
+* assmd.scm:
+	This file defines the following machine-dependent parameters
+and utilities for the bit-level assembler:
 
-coerce.scm:
+- maximum-padding-length: If instructions are not always long-word
+aligned, the maximum distance in bits between the end of an
+instruction and the next (higher) long-word boundary.
 
-inerly.scm:
+- padding-string: A bit-string used for padding the instruction block
+to a long-word boundary.  If possible, it should encode a HALT or
+ILLEGAL instruction.  The length of this bit-string should evenly
+divide maximum-padding-length.
 
-insmac.scm:
+- block-offset-width: This should be the size in bits of format_word
+described in microcode/cmpint.txt.  It should be 16 for all
+byte-addressed machines where registers hold 32 bits.
 
-insutl.scm:
+- maximum-block-offset: The maximum byte offset that can be encoded in
+block-offset-width bits.  This depends on the encoding described in
+microcode/cmpint.txt.  The least significant bit is always used to
+indicate whether this block offset points to the start of the object
+or to another block offset, so the range may be smaller than the
+obvious value.  Furthermore, if instruction alignment constraints are
+tighter than byte boundaries, this range may be larger.  For example,
+if instructions always start on even long-word boundaries, the bottom
+two bits (always zero) are encoded implicitly, and the range is
+accordingly larger.
 
-instr<n>.scm:
+- block-offset->bit-string: This procedure is given a byte offset and
+a boolean flag indicating whether this is the offset to the start of a
+compiled code block or to another block-offset, and returns the
+encoded value of this offset.
+
+- make-nmv-header: This procedure is given the size in long-words of a
+block of instructions, and constructs the non-marked-vector header
+that must precede the instructions in memory in order to prevent the
+garbage collector from examining the data as Scheme objects.  This
+header is just an "object" whose type tag is manifest-nm-vector
+(TC_MANIFEST_NM_VECTOR in the microcode) and whose datum is the size
+in long-words (excluding the header itself).
+
+The following three parameters define how instruction fields are to be
+assembled in memory depending on the "endianness" (byte ordering) of
+the architecture.  You should be able to use the MC68020 (big endian)
+or the Vax (little endian) version.
+
+- instruction-insert! is a procedure, that given a bit-string
+encoding instruction fields, a larger bit-string into which the
+smaller should be inserted, a position within the larger one, and a
+continuation, it inserts the smaller bit-string into the larger at the
+specified position, and returns the new bit position at which the
+immediately following instruction field should be inserted.
+
+* coerce.scm:
+
+* inerly.scm:
+
+* insmac.scm:
+
+* insutl.scm:
+
+* instr<n>.scm:
 
 	Disassembler files:
 
-dassm1.scm:
+* dassm1.scm:
 
-dassm2.scm:
+* dassm2.scm:
 
-dassm3.scm:
+* dassm3.scm:
 
-dinstr.*:
+* dinstr<n>.scm:
 
-dsyn.scm:
+* dsyn.scm:
 
 		5. How to test the compiler once the port files have
 been written.
