@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.84 1994/06/21 19:38:40 cph Exp $
+$Id: make.scm,v 3.85 1994/12/19 19:41:06 cph Exp $
 
 Copyright (c) 1989-94 Massachusetts Institute of Technology
 
@@ -47,7 +47,6 @@ MIT in each case. |#
        (declare-shared-library "edwin" (lambda () true))
        (package/system-loader
 	"edwin"
-	`((os-type
-	   . ,(intern (microcode-identification-item 'OS-NAME-STRING))))
+	`((os-type . ,microcode-id/operating-system))
 	'QUERY)))))
 (add-system! (make-system "Edwin" 3 84 '()))

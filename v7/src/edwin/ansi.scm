@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ansi.scm,v 1.6 1994/11/01 23:04:22 adams Exp $
+$Id: ansi.scm,v 1.7 1994/12/19 19:37:10 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,7 +62,7 @@ MIT in each case. |#
 
   (let ((foregnd (get-numstring "FOREGROUND"))
 	(backgnd (get-numstring "BACKGROUND")))
-    (let ((full? (not (eq? (intern microcode-id/operating-system-name) "dos")))
+    (let ((full? (not (eq? 'DOS microcode-id/operating-system)))
 	  (normal
 	   (string-append "\033[0"
 			  (make-mode foregnd)

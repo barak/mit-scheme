@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.26 1994/10/12 00:30:42 cph Exp $
+;;;	$Id: loadef.scm,v 1.27 1994/12/19 19:40:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -220,7 +220,7 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 ;;;; DOS-specific commands
 
-(if (memq (intern microcode-id/operating-system-name) '(dos nt))
+(if (memq microcode-id/operating-system '(DOS NT))
     (begin
       (define-library 'DOSCOM
 	'("doscom" (EDWIN DOSJOB)))
