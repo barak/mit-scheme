@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.22 1991/05/06 02:35:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.23 1991/05/10 22:24:18 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -153,6 +153,11 @@ MIT in each case. |#
   (or (system-global-environment? object)
       (ic-environment? object)))
 
+(define (guarantee-interpreter-environment object)
+  (if (not (interpreter-environment? object))
+      (error:wrong-type-datum object "interpreter environment"))
+  object)
+
 (define-integrable (system-global-environment? object)
   (eq? system-global-environment object))
 
@@ -175,11 +180,6 @@ MIT in each case. |#
 
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
-
-(define (guarantee-ic-environment object)
-  (if (not (ic-environment? object))
-      (error "Bad IC environment" object))
-  object)
 
 (define (ic-environment/has-parent? environment)
   (not (eq? (ic-environment/parent environment) null-environment)))
@@ -295,7 +295,7 @@ MIT in each case. |#
 		 ((IC)
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
-			(guarantee-ic-environment
+			(guarantee-interpreter-environment
 			 (stack-frame/ref frame index))
 			default)))
 		 (else
@@ -332,7 +332,7 @@ MIT in each case. |#
 			       parent
 			       entry))
 	  ((IC)
-	   (guarantee-ic-environment
+	   (guarantee-interpreter-environment
 	    (compiled-code-block/environment
 	     (compiled-code-address->block entry))))
 	  (else
@@ -389,7 +389,7 @@ MIT in each case. |#
 				 parent
 				 (stack-ccenv/normal-closure environment)))
 	    ((IC)
-	     (guarantee-ic-environment
+	     (guarantee-interpreter-environment
 	      (if (dbg-block/static-link-index block)
 		  (stack-ccenv/static-link environment)
 		  (compiled-code-block/environment
@@ -603,7 +603,7 @@ MIT in each case. |#
 		   (make-closure-ccenv parent closure-block closure)
 		   (use-simulation))))
 	    ((IC)
-	     (guarantee-ic-environment
+	     (guarantee-interpreter-environment
 	      (let ((index (dbg-block/ic-parent-index closure-block)))
 		(if index
 		    (closure/get-value closure closure-block index)
