@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.6 1989/04/21 19:25:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.7 1989/06/06 22:41:04 cph Rel $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -294,9 +294,10 @@ MIT in each case. |#
 	    (let inner ((list current))
 	      (if (pair? list)
 		  (cons (car list) (inner (cdr list)))
-		  (begin (if (not (null? list))
-			     (error "APPEND: Argument not a list" current))
-			 (outer (car remaining) (cdr remaining)))))))))
+		  (begin
+		    (if (not (null? list))
+			(error "APPEND: Argument not a list" current))
+		    (outer (car remaining) (cdr remaining)))))))))
 
 (define (append! . lists)
   (if (null? lists)
@@ -316,56 +317,88 @@ MIT in each case. |#
   (let loop ((rest l) (so-far '()))
     (if (pair? rest)
 	(loop (cdr rest) (cons (car rest) so-far))
-	(begin (if (not (null? rest))
-		   (error "REVERSE: Argument not a list" l))
-	       so-far))))
+	(begin
+	  (if (not (null? rest))
+	      (error "REVERSE: Argument not a list" l))
+	  so-far))))
 
 (define (reverse! l)
   (let loop ((current l) (new-cdr '()))
     (if (pair? current)
 	(loop (set-cdr! current new-cdr) current)
-	(begin (if (not (null? current))
-		   (error "REVERSE!: Argument not a list" l))
-	       new-cdr))))
+	(begin
+	  (if (not (null? current))
+	      (error "REVERSE!: Argument not a list" l))
+	  new-cdr))))
 
 ;;;; Mapping Procedures
 
-(define (map f . lists)
-  ;; Compiler doesn't, but ought to, make this very fast.
-  (apply map* '() f lists))
+(let-syntax
+    ((mapping-procedure
+      (macro (name combiner initial-value procedure lists)
+	(let ((name (string-upcase (symbol->string name))))
+	  `(BEGIN
+	     (IF (NULL? ,lists)
+		 (ERROR ,(string-append name ": Too few arguments")
+			,procedure))
+	     (LET ((INITIAL-VALUE
+		    (LAMBDA (LIST)
+		      (IF (NOT (NULL? LIST))
+			  (ERROR ,(string-append name ": Argument not a list")
+				 LIST))
+		      ,initial-value)))
+	       (IF (NULL? (CDR ,lists))
+		   (LET 1-LOOP ((LIST (CAR ,lists)))
+		     (IF (PAIR? LIST)
+			 (,combiner (,procedure (CAR LIST))
+				    (1-LOOP (CDR LIST)))
+			 (INITIAL-VALUE LIST)))
+		   (LET N-LOOP ((LISTS ,lists))
+		     (LET PARSE-CARS
+			 ((LISTS LISTS)
+			  (RECEIVER
+			   (LAMBDA (CARS CDRS)
+			     (,combiner (APPLY ,procedure CARS)
+					(N-LOOP CDRS)))))
+		       (COND ((NULL? LISTS)
+			      (RECEIVER '() '()))
+			     ((PAIR? (CAR LISTS))
+			      (PARSE-CARS (CDR LISTS)
+					  (LAMBDA (CARS CDRS)
+					    (RECEIVER
+					     (CONS (CAR (CAR LISTS)) CARS)
+					     (CONS (CDR (CAR LISTS)) CDRS)))))
+			     (ELSE
+			      (INITIAL-VALUE (CAR LISTS)))))))))))))
 
-(define (map* initial-value f . lists)
-  (if (null? lists)
-      (error "MAP*: Too few arguments" f))
-  (if (null? (cdr lists))
-      (let 1-loop ((list (car lists)))
-	(if (pair? list)
-	    (cons (f (car list))
-		  (1-loop (cdr list)))
-	    (begin
-	      (if (not (null? list))
-		  (error "MAP*: Argument not a list" list))
-	      initial-value)))
-      (let n-loop ((lists lists))
-	(let parse-cars
-	    ((lists lists)
-	     (receiver
-	      (lambda (cars cdrs)
-		(cons (apply f cars)
-		      (n-loop cdrs)))))
-	  (cond ((null? lists)
-		 (receiver '() '()))
-		((pair? (car lists))
-		 (parse-cars (cdr lists)
-			     (lambda (cars cdrs)
-			       (receiver (cons (car (car lists)) cars)
-					 (cons (cdr (car lists)) cdrs)))))
-		(else
-		 (if (not (null? (car lists)))
-		     (error "MAP*: Argument not a list" (car lists)))
-		 initial-value))))))
+(define (for-each procedure . lists)
+  (mapping-procedure for-each begin unspecific procedure lists))
 
-(define (reduce f initial list)
+(define (map procedure . lists)
+  (mapping-procedure map cons '() procedure lists))
+
+(define (map* initial-value procedure . lists)
+  (mapping-procedure map* cons initial-value procedure lists))
+
+(define (append-map procedure . lists)
+  (mapping-procedure append-map append '() procedure lists))
+
+(define (append-map* initial-value procedure . lists)
+  (mapping-procedure append-map* append initial-value procedure lists))
+
+(define (append-map! procedure . lists)
+  (mapping-procedure append-map! append! '() procedure lists))
+
+(define (append-map*! initial-value procedure . lists)
+  (mapping-procedure append-map*! append! initial-value procedure lists))
+
+;;; end LET-SYNTAX
+)
+
+(define mapcan append-map!)
+(define mapcan* append-map*!)
+
+(define (reduce procedure initial list)
   (let ((result
 	 (lambda (l value)
 	   (if (not (null? l))
@@ -374,11 +407,11 @@ MIT in each case. |#
     (if (pair? list)
 	(let loop ((value (car list)) (l (cdr list)))
 	  (if (pair? l)
-	      (loop (f value (car l)) (cdr l))
+	      (loop (procedure value (car l)) (cdr l))
 	      (result l value)))
 	(result list initial))))
 
-(define (reduce-right f initial list)
+(define (reduce-right procedure initial list)
   (let ((result
 	 (lambda (l value)
 	   (if (not (null? l))
@@ -387,57 +420,9 @@ MIT in each case. |#
     (if (pair? list)
 	(let loop ((value (car list)) (l (cdr list)))
 	  (if (pair? l)
-	      (f value (loop (car l) (cdr l)))
+	      (procedure value (loop (car l) (cdr l)))
 	      (result l value)))
 	(result list initial))))
-
-(define (for-each f . lists)
-  (if (null? lists)
-      (error "FOR-EACH: Too few arguments" f))
-  (if (null? (cdr lists))
-      (let 1-loop ((list (car lists)))
-	(cond ((pair? list)
-	       (f (car list))
-	       (1-loop (cdr list)))
-	      ((not (null? list))
-	       (error "FOR-EACH: Argument not a list" list))))
-      (let n-loop ((lists lists))
-	(let parse-cars
-	    ((lists lists)
-	     (receiver
-	      (lambda (cars cdrs)
-		(apply f cars)
-		(n-loop cdrs))))
-	  (cond ((null? lists)
-		 (receiver '() '()))
-		((pair? (car lists))
-		 (parse-cars (cdr lists)
-			     (lambda (cars cdrs)
-			       (receiver (cons (car (car lists)) cars)
-					 (cons (cdr (car lists)) cdrs)))))
-		((not (null? (car lists)))
-		 (error "FOR-EACH: Argument not a list" (car lists)))))))
-  unspecific)
-
-(define (mapcan f . lists)
-  ;; Compiler doesn't, but ought to, make this very fast.
-  (apply mapcan* '() f lists))
-
-(define (mapcan* initial-value f . lists)
-  (if (null? lists)
-      (error "MAPCAN*: Too few arguments" f))
-  (let loop ((lists lists))
-    (let scan
-	((lists lists)
-	 (c (lambda (cars cdrs)
-	      (append! (apply f cars) (loop cdrs)))))
-      (cond ((null? lists) (c '() '()))
-	    ((null? (car lists)) initial-value)
-	    (else
-	     (scan (cdr lists)
-		   (lambda (cars cdrs)
-		     (c (cons (car (car lists)) cars)
-			(cons (cdr (car lists)) cdrs)))))))))
 
 ;;;; Generalized List Operations
 
