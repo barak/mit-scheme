@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.34 1992/09/02 02:35:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.35 1992/09/14 20:14:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -528,7 +528,8 @@
 (define-event-handler event-type:focus-in
   (lambda (screen event)
     event
-    (make-input-event select-screen screen)))
+    (and (not (selected-screen? screen))
+	 (make-input-event select-screen screen))))
 
 (define-event-handler event-type:delete-window
   (lambda (screen event)
