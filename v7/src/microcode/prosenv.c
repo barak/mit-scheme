@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.2 1990/06/21 23:06:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.3 1990/06/21 23:09:32 cph Rel $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -56,7 +56,7 @@ The vector's elements are:\n\
     FAST_VECTOR_SET (result, 4, (long_to_integer (ts . day)));
     FAST_VECTOR_SET (result, 5, (long_to_integer (ts . month)));
     FAST_VECTOR_SET (result, 6, (long_to_integer (ts . year)));
-    FAST_VECTOR_SET (result, 6, (long_to_integer (ts . day_of_week)));
+    FAST_VECTOR_SET (result, 7, (long_to_integer (ts . day_of_week)));
     PRIMITIVE_RETURN (result);
   }
 }
