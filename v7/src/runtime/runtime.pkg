@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.151 1992/05/26 17:40:49 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.152 1992/05/26 17:50:35 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -266,6 +266,9 @@ MIT in each case. |#
 	  dbg-procedure?
 	  dbg-procedure/source-code
 	  dbg-expression?
+	  )
+  (export (runtime compress)
+	  uncompress-internal
 	  )
   (initialization (initialize-package!)))
 
