@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulflo.scm,v 4.32 1990/01/25 16:45:49 jinx Rel $
-$MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulflo.scm,v 4.33 1991/10/25 12:29:54 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,10 +62,11 @@ MIT in each case. |#
 	   (FSTDS (MA) ,source (OFFSET 8 0 21))))))
 
 (define-rule statement
-  ;; convert a flonum object address to a floating-point number
-  (ASSIGN (REGISTER (? target)) (@ADDRESS->FLOAT (REGISTER (? source))))
-  (let ((source (standard-source! source)))
-    (LAP (FLDDS () (OFFSET 4 0 ,source) ,(flonum-target! target)))))
+  ;; convert a flonum object to a floating-point number
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
+  (let ((source (standard-move-to-temporary! source)))
+    (LAP ,@(object->address source)
+	 (FLDDS () (OFFSET 4 0 ,source) ,(flonum-target! target)))))
 
 ;;;; Flonum Arithmetic
 

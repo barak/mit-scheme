@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.87 1991/07/25 02:38:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/make.scm,v 4.88 1991/10/25 12:29:52 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -36,9 +36,4 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package/system-loader "comp" '() 'QUERY)
-(for-each (lambda (name)
-	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
-	  '((COMPILER MACROS)
-	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Liar (HP PA)" 4 87 '()))
+((load "base/make") "HP PA")

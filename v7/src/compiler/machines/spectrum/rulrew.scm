@@ -1,9 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.3 1990/07/22 18:56:39 jinx Rel $
-$MC68020-rulrew.scm,v 1.3 90/05/03 15:17:42 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulrew.scm,v 1.4 1991/10/25 12:29:56 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,6 +38,13 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Synthesized Data
+
+(define-rule rewriting
+  (CONS-NON-POINTER (? type) (? datum))
+  ;; Since we use DEP instructions to insert type codes, there's no
+  ;; difference between the way that pointers and non-pointers are
+  ;; constructed.
+  (rtl:make-cons-pointer type datum))
 
 (define-rule rewriting
   (CONS-POINTER (REGISTER (? type register-known-value))
