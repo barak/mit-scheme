@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.6 1989/09/20 23:06:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.7 1990/04/12 21:12:22 jinx Rel $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -101,7 +101,7 @@ The "size in bits" is a C "long" integer.
   ((BIT_STRING_FIRST_WORD + 1) + ((index) / OBJECT_LENGTH))
 
 #define BIT_STRING_INDEX_PAIR_TO_INDEX(string, word, bit)		\
-  (((word) * OBJECT_LENGTH) + (bit))
+  ((((word) - (BIT_STRING_FIRST_WORD + 1)) * OBJECT_LENGTH) + (bit))
 
 #define READ_BITS_PTR(object, offset, end)				\
   (MEMORY_LOC								\
