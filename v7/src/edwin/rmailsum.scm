@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.17 1992/01/07 16:47:33 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.18 1992/01/08 15:24:29 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -46,6 +46,11 @@
 
 (declare (usual-integrations))
 
+(define-variable rmailsum-rcs-header
+  "The RCS header of the rmailsum.scm file."
+  "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.18 1992/01/08 15:24:29 bal Exp $"
+  string?)
+
 (define-variable-per-buffer rmail-buffer
   "Corresponding RMAIL buffer for a summary buffer.
 FALSE means buffer is not a summary buffer."
