@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.5 1999/08/09 18:29:38 cph Exp $
+$Id: prbfish.c,v 1.6 1999/08/13 17:03:48 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -66,6 +66,34 @@ DEFUN (init_vector_arg, (arg), unsigned int arg)
   return (STRING_LOC ((ARG_REF (arg)), 0));
 }
 
+DEFINE_PRIMITIVE ("BLOWFISH-ECB", Prim_blowfish_ecb, 4, 4,
+  "(INPUT OUTPUT KEY-VECTOR ENCRYPT?)\n\
+Apply Blowfish in Electronic Code Book mode.\n\
+INPUT is an 8-byte string.\n\
+OUTPUT is an 8-byte string.\n\
+KEY is a Blowfish key.\n\
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
+{
+  SCHEME_OBJECT input_text;
+  SCHEME_OBJECT output_text;
+  PRIMITIVE_HEADER (4);
+
+  CHECK_ARG (1, STRING_P);
+  input_text = (ARG_REF (1));
+  if ((STRING_LENGTH (input_text)) != 8)
+    error_bad_range_arg (1);
+  CHECK_ARG (2, STRING_P);
+  output_text = (ARG_REF (2));
+  if ((STRING_LENGTH (output_text)) != 8)
+    error_bad_range_arg (2);
+  BF_ecb_encrypt ((STRING_LOC (input_text, 0)),
+		  (STRING_LOC (output_text, 0)),
+		  (STRING_LENGTH (input_text)),
+		  (key_arg (3)),
+		  ((BOOLEAN_ARG (4)) ? BF_ENCRYPT : BF_DECRYPT));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("BLOWFISH-CBC-V2", Prim_blowfish_cbc, 5, 5,
   "(INPUT OUTPUT KEY INIT-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Cipher Block Chaining mode.\n\
@@ -74,8 +102,7 @@ OUTPUT is a string whose length is the same as INPUT.\n\
 KEY is a Blowfish key.\n\
 INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
-ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
-Returned value is a string of the same length as INPUT.")
+ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
 {
   SCHEME_OBJECT input_text;
   SCHEME_OBJECT output_text;
@@ -95,7 +122,7 @@ Returned value is a string of the same length as INPUT.")
 		  (STRING_LENGTH (input_text)),
 		  (key_arg (3)),
 		  (init_vector_arg (4)),
-		  (BOOLEAN_ARG (5)));
+		  ((BOOLEAN_ARG (5)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -146,6 +173,55 @@ Returned value is the new value of NUM.")
 		    (key_arg (6)),
 		    (init_vector_arg (7)),
 		    (&num),
-		    (BOOLEAN_ARG (9)));
+		    ((BOOLEAN_ARG (9)) ? BF_ENCRYPT : BF_DECRYPT));
+  PRIMITIVE_RETURN (long_to_integer (num));
+}
+
+DEFINE_PRIMITIVE ("BLOWFISH-OFB64-SUBSTRING-V2", Prim_blowfish_ofb64_substring, 8, 8,
+  "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM)\n\
+Apply Blowfish in Output Feed-Back mode.\n\
+(INPUT,ISTART,IEND) is an arbitrary substring.\n\
+OUTPUT is a string as large as the input substring.\n\
+OSTART says where to start writing to the output string.\n\
+KEY is a Blowfish key.\n\
+INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+  The value from any call may be passed in to a later call.\n\
+  The initial value must be unique for each message/key pair.\n\
+NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
+  number of bytes that have previously been processed in this stream.\n\
+Returned value is the new value of NUM.")
+{
+  SCHEME_OBJECT input_text;
+  unsigned long l;
+  unsigned long istart;
+  unsigned long iend;
+  unsigned long ilen;
+  SCHEME_OBJECT output_text;
+  unsigned long ostart;
+  int num;
+  PRIMITIVE_HEADER (8);
+
+  CHECK_ARG (1, STRING_P);
+  input_text = (ARG_REF (1));
+  {
+    unsigned long l = (STRING_LENGTH (input_text));
+    istart = (arg_ulong_index_integer (2, l));
+    iend = (arg_integer_in_range (3, istart, (l + 1)));
+  }
+  ilen = (iend - istart);
+  CHECK_ARG (4, STRING_P);
+  output_text = (ARG_REF (4));
+  ostart = (arg_ulong_index_integer (5, (STRING_LENGTH (output_text))));
+  if ((output_text == input_text)
+      && (ostart < iend)
+      && (istart < (ostart + ilen)))
+    error_bad_range_arg (4);
+  num = (arg_index_integer (8, 8));
+  BF_ofb64_encrypt ((STRING_LOC (input_text, istart)),
+		    (STRING_LOC (output_text, ostart)),
+		    ilen,
+		    (key_arg (6)),
+		    (init_vector_arg (7)),
+		    (&num));
   PRIMITIVE_RETURN (long_to_integer (num));
 }
