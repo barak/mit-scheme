@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.4 1995/01/12 16:22:32 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.5 1995/01/12 16:28:23 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -47,7 +47,13 @@ MIT in each case. |#
     (define ins-vars '())
     (define instruction-data
       '((1 12 (a) (b) () mov ? (? a) (? b))
-	(1 12 (a) () () lea (? a) ())))
+	(1 12 (a) () () lea (? a) ())
+	(0 #f () () () comment ?)
+	(0 #f () () () scheme-object ? ?)
+	(0 #f () () () label ?)
+	(0 #f () () () block-offset ?)
+	(0 #f () () () entry-point ?)
+	(0 #f () () () word ? ?)))
       
     ;; Given a list of registers/variables from the instruction data,
     ;; this procedure creates a list containing all the registers referenced
@@ -111,7 +117,7 @@ MIT in each case. |#
 	  (begin
 	    (pp inst)
 	    '(0 0 () () ()))
-	  (if (is-all-match? (cdr (cdr (cdr (cdr (car data)))))
+	  (if (is-all-match? (cdr (cdr (cdr (cdr (cdr (car data))))))
 			     inst)
 	      (list (car (car data))
 		    (cadr (car data))
