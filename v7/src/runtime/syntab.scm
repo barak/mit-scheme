@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntab.scm,v 14.3 1989/05/25 16:23:46 cph Rel $
+$Id: syntab.scm,v 14.4 1993/12/29 18:35:39 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,14 +46,15 @@ MIT in each case. |#
   (%make-syntax-table '()
 		      (if (default-object? parent)
 			  false
-			  (guarantee-syntax-table parent))))
+			  (guarantee-syntax-table parent 'MAKE-SYNTAX-TABLE))))
 
-(define (guarantee-syntax-table table)
-  (if (not (syntax-table? table)) (error "Illegal syntax table" table))
+(define (guarantee-syntax-table table procedure)
+  (if (not (syntax-table? table))
+      (error:wrong-type-argument table "syntax table" procedure))
   table)
 
 (define (syntax-table/ref table name)
-  (guarantee-syntax-table table)
+  (guarantee-syntax-table table 'SYNTAX-TABLE/REF)
   (let loop ((table table))
     (and table
 	 (let ((entry (assq name (syntax-table/alist table))))
@@ -65,7 +66,7 @@ MIT in each case. |#
   syntax-table/ref)
 
 (define (syntax-table/define table name transform)
-  (guarantee-syntax-table table)
+  (guarantee-syntax-table table 'SYNTAX-TABLE/DEFINE)
   (let ((entry (assq name (syntax-table/alist table))))
     (if entry
 	(set-cdr! entry transform)
@@ -80,12 +81,12 @@ MIT in each case. |#
   (map car (syntax-table/alist table)))
 
 (define (syntax-table/copy table)
-  (guarantee-syntax-table table)
+  (guarantee-syntax-table table 'SYNTAX-TABLE/COPY)
   (let loop ((table table))
     (and table
 	 (%make-syntax-table (alist-copy (syntax-table/alist table))
 			     (loop (syntax-table/parent table))))))
 
 (define (syntax-table/extend table alist)
-  (guarantee-syntax-table table)
+  (guarantee-syntax-table table 'SYNTAX-TABLE/EXTEND)
   (%make-syntax-table (alist-copy alist) table))

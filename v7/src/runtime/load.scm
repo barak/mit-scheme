@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.47 1993/11/21 22:56:50 cph Exp $
+$Id: load.scm,v 14.48 1993/12/29 18:35:47 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ MIT in each case. |#
 	 (if (or (default-object? syntax-table)
 		 (eq? syntax-table default-object))
 	     default-object
-	     (guarantee-syntax-table syntax-table)))
+	     (guarantee-syntax-table syntax-table 'LOAD)))
 	(purify?
 	 (if (or (default-object? purify?)
 		 (eq? purify? default-object))

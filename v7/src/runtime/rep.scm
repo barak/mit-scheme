@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.47 1993/12/23 08:03:10 cph Exp $
+$Id: rep.scm,v 14.48 1993/12/29 18:36:01 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -754,7 +754,7 @@ MIT in each case. |#
 	   (package/environment package)))))
 
 (define (gst syntax-table)
-  (guarantee-syntax-table syntax-table)
+  (guarantee-syntax-table syntax-table 'GST)
   (set-repl/syntax-table! (nearest-repl) syntax-table))
 
 (define (re #!optional index)
