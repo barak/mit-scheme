@@ -1,10 +1,14 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.89 2000/06/19 22:15:25 cph Exp $
+$Id: todo.txt,v 1.90 2000/06/20 19:43:06 cph Exp $
 
 Bug fixes
 ---------
 
 * Change file URL completion to complete to any file name.
+
+* Preserve internal-date when copying to rmail folder from any other
+  type of folder, by writing a distinguished header field into the
+  rmail file.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
@@ -95,6 +99,12 @@ Design changes
   header value.  It can also strip whitespace at the ends of lines.
   Strictly speaking, this isn't correct, but I don't know of any
   situation in which it would cause problems.
+
+  More generally, the internal representation of a header field should
+  permit arbitrary value strings.  The conversion to RFC 822 form
+  should be done during I/O rather than being a required feature of
+  the representation.  This is safe to do for many headers, which are
+  defined to have arbitrary whitespace.
 
 * Move pathname-completion code into the runtime system.
 
