@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.15 1990/08/16 14:45:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/hppa.h,v 1.16 1990/08/17 23:39:55 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -545,11 +545,7 @@ do {									\
 
 #define STORE_EXECUTE_CACHE_ADDRESS(address, entry)			\
 {									\
-  extern void cache_flush_region ();					\
-  void *instr_addr = ((void *) (entry));				\
-									\
-  STORE_ABSOLUTE_ADDRESS(instr_addr, address, true);			\
-  cache_flush_region (instr_addr, EXECUTE_CACHE_ENTRY_SIZE);		\
+  STORE_ABSOLUTE_ADDRESS(entry, address, true);				\
 }
 
 /* This stores the fixed part of the instructions leaving the
@@ -566,10 +562,12 @@ do {									\
 {									\
 }
 
-/* This flushes the I-cache after a GC or disk-restore.  It's needed
-   because the GC has moved code around, and in addition, closures and
-   execute cache cells have absolute addresses that the processor
-   might have old copies of.
+/* This is supposed to flush the Scheme portion of the I-cache.
+   It flushes the entire I-cache instead, since it is easier.
+   It is used after a GC or disk-restore.
+   It's needed because the GC has moved code around, and closures
+   and execute cache cells have absolute addresses that the
+   processor might have old copies of.
  */
 
 #define FLUSH_I_CACHE()							\
@@ -578,6 +576,21 @@ do {									\
 									\
   flush_i_cache ();							\
 } while (0)
+
+/* This flushes a region of the I-cache.
+   It is used after updating an execute cache while running.
+   Not needed during GC because FLUSH_I_CACHE will be used.
+ */   
+
+#define FLUSH_I_CACHE_REGION(address, nwords)				\
+do {									\
+  extern void cache_flush_region ();					\
+									\
+  cache_flush_region (((void *) (address)), nwords);			\
+} while (0)
+
+/* This loads the cache information structure for use by flush_i_cache.
+ */
 
 #define ASM_RESET_HOOK()						\
 do {									\
