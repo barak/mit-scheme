@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.21 1995/04/30 15:09:15 adams Exp $
+$Id: hashtb.scm,v 1.22 1995/09/28 06:18:47 cph Exp $
 
 Copyright (c) 1990-1995 Massachusetts Institute of Technology
 
@@ -537,12 +537,7 @@ MIT in each case. |#
   (set-table-grow-size! table size)
   (let ((old-buckets (table-buckets table)))
     (reset-table! table)
-    (rehash-table-from-old-buckets! table old-buckets)
-    ;; Since the rehashing also deletes invalid entries, the count
-    ;; might have been reduced.  So check to see if it's necessary to
-    ;; shrink the table even further.
-    (if (< (table-count table) (table-shrink-size table))
-	(shrink-table! table))))
+    (rehash-table-from-old-buckets! table old-buckets)))
 
 (define (reset-table! table)
   (reset-shrink-size! table)
@@ -597,7 +592,8 @@ MIT in each case. |#
 	((fix:= i n-buckets))
       (let ((entries (vector-ref buckets i)))
 	(if (not (null? entries))
-	    (rehash-table-entries! table entries))))))
+	    (rehash-table-entries! table entries)))))
+  (maybe-shrink-table! table))
 
 (define (rehash-table-entries! table entries)
   (let ((buckets (table-buckets table))
@@ -616,10 +612,18 @@ MIT in each case. |#
 		  (decrement-table-count! table))
 	      (loop rest)))))))
 
+(define (maybe-shrink-table! table)
+  ;; Since the rehashing also deletes invalid entries, the count
+  ;; might have been reduced.  So check to see if it's necessary to
+  ;; shrink the table even further.
+  (if (< (table-count table) (table-shrink-size table))
+      (shrink-table! table)))
+
 (define (rehash-table! table)
   (let ((entries (extract-table-entries! table)))
     (set-table-needs-rehash?! table #f)
-    (rehash-table-entries! table entries)))
+    (rehash-table-entries! table entries))
+  (maybe-shrink-table! table))
 
 (define (extract-table-entries! table)
   (let ((buckets (table-buckets table)))
@@ -677,35 +681,24 @@ MIT in each case. |#
 ;;; rest would be incorrect.  This is not a problem because resizing
 ;;; (with one exception) is always the last thing done by an
 ;;; operation.  If the garbage collection occurs during a resizing,
-;;; the NEEDS-REHASH? flag will be set after the resizing is
+;;; the NEEDS-REHASH? flag will be true after the resizing is
 ;;; completed, and the next operation will rehash the table.
 
 ;;; The exception to this rule is COMPUTE-KEY-HASH, which might have
 ;;; to shrink the table due to keys which have been reclaimed by the
-;;; garbage collector.  COMPUTE-KEY-HASH explicitly checks for this
+;;; garbage collector.  REHASH-TABLE! explicitly checks for this
 ;;; possibility, and rehashes the table again if necessary.
 
 (define (compute-key-hash table key)
   (let ((key-hash (table-key-hash table)))
     (if (table-rehash-after-gc? table)
-	(let ((hash (key-hash key (vector-length (table-buckets table)))))
-	  (if (not (table-needs-rehash? table))
-	      hash
-	      (let ((interrupt-mask
-		     (set-interrupt-enables! interrupt-mask/none)))
-		(let loop ()
-		  (rehash-table! table)
-		  (if (< (table-count table) (table-shrink-size table))
-		      (begin
-			(set-interrupt-enables! interrupt-mask/gc-ok)
-			(shrink-table! table)
-			(set-interrupt-enables! interrupt-mask/none)
-			(if (table-needs-rehash? table)
-			    (loop)))))
-		(let ((hash
-		       (key-hash key (vector-length (table-buckets table)))))
-		  (set-interrupt-enables! interrupt-mask)
-		  hash))))
+	(let loop ()
+	  (let ((hash (key-hash key (vector-length (table-buckets table)))))
+	    (if (not (table-needs-rehash? table))
+		hash
+		(begin
+		  (without-interrupts (lambda () (rehash-table! table)))
+		  (loop)))))
 	(key-hash key (vector-length (table-buckets table))))))
 
 (define-integrable (eq-hash-mod key modulus)
