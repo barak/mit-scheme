@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.4 1995/04/22 21:07:12 cph Exp $
+$Id: os2pipe.c,v 1.5 1995/04/22 21:13:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -120,11 +120,11 @@ input_pipe_thread (void * arg)
       else
 	{
 	  OS2_destroy_message (message);
-	  if (rc == ERROR_INVALID_HANDLE)
+	  if ((rc == ERROR_INVALID_HANDLE) || (rc == ERROR_BROKEN_PIPE))
 	    /* Handle was closed on us -- no need to do anything else.  */
 	    break;
 	  message = (OS2_make_syscall_error (rc, syscall_dos_read));
-	  eofp = (rc == ERROR_BROKEN_PIPE);
+	  eofp = 0;
 	}
       OS2_send_message (qid, message);
       if (eofp)
