@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.43 1993/10/14 19:19:02 gjr Exp $
+$Id: object.h,v 9.44 1993/12/05 06:07:52 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -447,6 +447,8 @@ extern SCHEME_OBJECT * memory_base;
 
 /* Flonum Operations */
 
+#define FLONUM_SIZE (BYTES_TO_WORDS (sizeof (double)))
+
 #define FLONUM_TO_DOUBLE(object)					\
   (* ((double *) (MEMORY_LOC ((object), 1))))
 
@@ -455,6 +457,20 @@ extern SCHEME_OBJECT * memory_base;
 
 #define FLONUM_TRUNCATE(object)						\
   (double_to_flonum (double_truncate (FLONUM_TO_DOUBLE (object))))
+
+/* Flonum-vector Operations */
+
+#define FLOATING_VECTOR_LENGTH(vector)					\
+  ((VECTOR_LENGTH (vector)) / FLONUM_SIZE)
+
+#define FLOATING_VECTOR_LOC(vector, index)				\
+  ((double *) (VECTOR_LOC ((vector), ((index) * FLONUM_SIZE))))
+
+#define FLOATING_VECTOR_REF(vector, index)				\
+  (* (FLOATING_VECTOR_LOC ((vector), (index))))
+
+#define FLOATING_VECTOR_REF(vector, index, x)				\
+  (* (FLOATING_VECTOR_LOC ((vector), (index)))) = ((double) (x))
 
 /* Numeric Type Conversions */
 
