@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.23 1996/12/19 04:50:00 cph Exp $
+;;;	$Id: snr.scm,v 1.24 1996/12/24 08:50:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -3660,7 +3660,11 @@ With prefix arg, replaces the file with the list information."
 	    (ref-variable news-join-threads-with-same-subject buffer))))
       (message msg "done")
       (list->vector
-       (list-transform-negative threads news-thread:all-articles-seen?)))))
+       (if (or (command-argument-multiplier-only? argument)
+	       (ref-variable news-group-show-seen-headers buffer))
+	   threads
+	   (list-transform-negative threads
+	     news-thread:all-articles-seen?))))))
 
 (define (news-group:get-headers group argument buffer)
   (let ((connection (news-group:connection group))
@@ -3835,12 +3839,9 @@ With prefix arg, replaces the file with the list information."
 	   (news-group:maybe-defer-update buffer group))))
     (do-it group (news-header:number header))
     (if handle-xrefs?
-	(for-each (let ((connection (news-group:connection group)))
-		    (lambda (xref)
-		      (let ((group (find-news-group connection (car xref))))
-			(if (and group (news-group:subscribed? group))
-			    (do-it group (token->number (cdr xref)))))))
-		  (news-header:xref header)))))
+	(news-group:process-cross-posts group header
+	  (lambda (group xref)
+	    (do-it group (token->number (cdr xref))))))))
 
 (define (defer-marking-updates buffer thunk)
   (fluid-let ((news-group:adjust-article-status!:deferred-updates (list #t)))
@@ -3906,11 +3907,12 @@ With prefix arg, replaces the file with the list information."
     (if (not (fix:= 0 (string-length subject)))
 	(let ((process-group
 	       (ignore-subject-marker subject (get-universal-time))))
-	  (process-group group)
+	  (process-group group #f)
 	  (news-group:process-cross-posts group header process-group))))
   (news-group:article-seen! group header buffer))
 
-(define ((ignore-subject-marker subject t) group)
+(define ((ignore-subject-marker subject t) group xref)
+  xref
   (hash-table/put! (news-group:get-ignored-subjects group #t) subject t)
   (news-group:ignored-subjects-modified! group))
 
@@ -3919,13 +3921,14 @@ With prefix arg, replaces the file with the list information."
   (let ((subject (canonicalize-subject (news-header:subject header))))
     (if (not (fix:= 0 (string-length subject)))
 	(let ((process-group
-	       (lambda (group)
+	       (lambda (group xref)
+		 xref
 		 (let ((table (news-group:get-ignored-subjects group #f)))
 		   (if (and table (hash-table/get table subject #f))
 		       (begin
 			 (hash-table/remove! table subject)
 			 (news-group:ignored-subjects-modified! group)))))))
-	  (process-group group)
+	  (process-group group #f)
 	  (news-group:process-cross-posts group header process-group)))))
 
 (define (news-group:process-cross-posts group header process-group)
@@ -3933,7 +3936,7 @@ With prefix arg, replaces the file with the list information."
 	      (lambda (xref)
 		(let ((group (find-news-group connection (car xref))))
 		  (if (and group (news-group:subscribed? group))
-		      (process-group group)))))
+		      (process-group group xref)))))
 	    (news-header:xref header)))
 
 (define (news-group:get-ignored-subjects group intern?)
