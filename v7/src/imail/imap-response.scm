@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.12 2000/05/08 13:56:33 cph Exp $
+;;; $Id: imap-response.scm,v 1.13 2000/05/08 15:04:44 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -493,6 +493,9 @@
     ((BAD NO OK) (cddr response))
     ((PREAUTH BYE) (cdr response))
     (else (error:bad-range-argument response 'IMAP:RESPONSE:RESPONSE-TEXT))))
+
+(define (imap:response:fetch-attribute-keywords response)
+  (map car (cddr response)))
 
 (define (imap:response:fetch-attribute response keyword)
   (let ((entry (assq keyword (cddr response))))
