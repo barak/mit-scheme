@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.38 1995/04/10 20:24:07 cph Exp $
+;;;	$Id: rmail.scm,v 1.39 1995/04/23 06:08:53 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -667,7 +667,7 @@ This variable is ignored if rmail-pop-procedure is #F."
 
 (define (delete-saved-pop-server-password server user-name)
   (set! saved-pop-passwords
-	(delete (cons server user-name) saved-pop-passwords))
+	(del-assoc! (cons server user-name) saved-pop-passwords))
   unspecific)
 
 (define saved-pop-passwords '())
