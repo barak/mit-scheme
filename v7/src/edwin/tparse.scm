@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: tparse.scm,v 1.69 1994/03/03 07:46:52 cph Exp $
+;;;	$Id: tparse.scm,v 1.70 1995/05/09 10:32:36 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -285,18 +285,18 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 		   (re-match-forward para-separate ls end false)))))
 	(letrec ((skip-separators
 		  (lambda (ls)
-		    (and (mark< start ls)
-			 (let ((ls (prev-ls ls)))
-			   (cond ((separator? ls) (skip-separators ls))
-				 ((mark= ls start) ls)
-				 (else (skip-body ls)))))))
+		    (cond ((not (separator? ls)) (skip-body ls))
+			  ((mark<= ls start) #f)
+			  (else (skip-separators (prev-ls ls))))))
 		 (skip-body
 		  (if fill-prefix
 		      (lambda (ls)
-			(let ((ls* (prev-ls ls)))
-			  (if (separator? ls*)
-			      ls
-			      (skip-body ls*))))
+			(if (mark<= ls start)
+			    start
+			    (let ((ls* (prev-ls ls)))
+			      (if (separator? ls*)
+				  ls
+				  (skip-body ls*)))))
 		      (lambda (ls)
 			(let ((ps
 			       (re-search-backward para-start
@@ -306,10 +306,7 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 			  (cond ((not ps) start)
 				((separator? ps) (line-start ps 1))
 				(else ps)))))))
-	  (let ((ls (line-start mark 0)))
-	    (if (separator? ls)
-		(skip-separators ls)
-		(skip-body ls))))))))
+	  (skip-separators (line-start mark 0)))))))
 
 (define (paragraph-text-end mark)
   (let ((end (group-end mark))
@@ -344,11 +341,11 @@ This is desirable in modes where blank lines are the paragraph delimiters."
 	      (if fill-prefix
 		  (lambda (ls)
 		    (finish
-		     (let ((ls (next-ls ls)))
-		       (if (or (mark= ls end)
-			       (separator? ls))
-			   ls
-			   (skip-body ls)))))
+		     (let loop ((ls ls))
+		       (let ((ls (next-ls ls)))
+			 (if (or (mark= ls end) (separator? ls))
+			     ls
+			     (loop ls))))))
 		  (lambda (ls)
 		    (finish
 		     (let ((le (line-end ls 0)))
