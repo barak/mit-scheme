@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 3.89 1995/11/01 00:56:47 cph Exp $
+$Id: make.scm,v 3.90 1995/11/06 10:03:23 cph Exp $
 
-Copyright (c) 1989-94 Massachusetts Institute of Technology
+Copyright (c) 1989-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,4 +58,4 @@ MIT in each case. |#
 				     ((UNIX) "edwinunx")
 				     (else "edwinunk"))))))
 	'QUERY)))))
-(add-system! (make-system "Edwin" 3 86 '()))
+(add-system! (make-system "Edwin" 3 90 '()))
