@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.1 1988/06/13 11:48:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/numpar.scm,v 14.2 1988/07/09 02:24:02 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -52,7 +52,7 @@ MIT in each case. |#
 	 ((eq? exactness 'I) ->inexact)
 	 (else (error "Illegal exactness argument" exactness)))
    (fluid-let ((*radix*
-		(cond ((default-object? radix) *parser-radix*)
+		(cond ((default-object? radix) 10)
 		      ((memv radix '(2 8 10 16)) radix)
 		      ((eq? radix 'B) 2)
 		      ((eq? radix 'O) 8)
