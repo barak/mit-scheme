@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.6 1995/04/27 23:20:22 adams Exp $
+$Id: closconv.scm,v 1.7 1995/07/04 18:18:16 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -326,7 +326,6 @@ MIT in each case. |#
   (env false read-only true)
   (operator-refs '())
   (ordinary-refs '())
-  ;;(dbg-info-refs '())
   (value false))
 
 (define (closconv/env/make context parent bound-names)
@@ -573,13 +572,7 @@ MIT in each case. |#
        (lambda (free-ref)
 	 (let* ((binding    (car free-ref))
 		(name       (closconv/binding/name binding))
-		(references (cdr free-ref))
-		;;(references-and-dbg-references
-		;; (cond ((assq binding (closconv/env/dbg-free env))
-		;;	=> (lambda (dbg-ref)
-		;;	     (append references (cdr dbg-ref))))
-		;;       (else  references)))
-		)
+		(references (cdr free-ref)))
 
 	   (define (reference-expression)
 	     `(CALL (QUOTE ,%closure-ref)
@@ -590,13 +583,17 @@ MIT in each case. |#
 			  (QUOTE ,closed-over-names)
 			  (QUOTE ,name))
 		    (QUOTE ,name)))
+	   (define (self-reference-expression)
+	     `(LOOKUP ,closure-name))
 	   (define (rewrite-self-reference! ref)
-	     (form/rewrite! ref
-	       `(LOOKUP ,closure-name)))
+	     (form/rewrite! ref (self-reference-expression)))
 	   (define (rewrite-other-reference! ref)
 	     (form/rewrite! ref (reference-expression)))
 
-	   (dbg-info/remember name (reference-expression))
+	   (dbg-info/remember name
+			      (if (eq? binding self-binding)
+				  (self-reference-expression)
+				  (reference-expression)))
 
 	   (for-each (if (eq? (car free-ref) self-binding)
 			 rewrite-self-reference!
