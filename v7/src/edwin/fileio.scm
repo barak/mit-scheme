@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.119 1993/08/13 23:20:57 cph Exp $
+;;;	$Id: fileio.scm,v 1.120 1994/05/04 22:56:34 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -463,9 +463,7 @@ Otherwise, a message is written both before and after long file writes."
 			    (if rename-back?
 				(begin
 				  (set! rename-back? false)
-				  (catch-file-errors
-				   (lambda () unspecific)
-				   (lambda () (delete-file old))))))
+				  (delete-file-no-errors old))))
 			  (lambda ()
 			    (if rename-back?
 				(begin
@@ -661,9 +659,7 @@ Otherwise, a message is written both before and after long file writes."
 			      (copy-file truename backup-pathname)
 			      false)
 			    (begin
-			      (catch-file-errors
-			       (lambda () unspecific)
-			       (lambda () (delete-file backup-pathname)))
+			      (delete-file-no-errors backup-pathname)
 			      (rename-file truename backup-pathname)
 			      (file-modes backup-pathname)))))))
 		(set-buffer-backed-up?!
@@ -675,11 +671,7 @@ Otherwise, a message is written both before and after long file writes."
 			      (string-append
 			       "Delete excess backup versions of "
 			       (->namestring (buffer-pathname buffer))))))
-		    (for-each (lambda (target)
-				(catch-file-errors
-				 (lambda () unspecific)
-				 (lambda () (delete-file target))))
-			      targets))
+		    (for-each delete-file-no-errors targets))
 		modes)))))))
 
 ;;;; Utilities for text end-of-line translation

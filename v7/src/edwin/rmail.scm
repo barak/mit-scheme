@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.32 1994/03/22 17:08:20 cph Exp $
+;;;	$Id: rmail.scm,v 1.33 1994/05/04 22:55:54 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -437,10 +437,7 @@ and use that file as the inbox."
 			       false
 			       'NO-BACKUP))))
 	(if delete-inboxes?
-	    (for-each (lambda (pathname)
-			(catch-file-errors (lambda () unspecific)
-					   (lambda () (delete-file pathname))))
-		      inserted-inboxes))
+	    (for-each delete-file-no-errors inserted-inboxes))
 	(cond ((> new-messages 0)
 	       (message new-messages
 			" new message"

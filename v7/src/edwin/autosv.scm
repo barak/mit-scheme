@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: autosv.scm,v 1.29 1994/03/08 20:16:41 cph Exp $
+;;;	$Id: autosv.scm,v 1.30 1994/05/04 22:56:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -154,10 +154,7 @@ This file is not the file you visited; that changes only when you save."
 	      (not (let ((pathname (buffer-pathname buffer)))
 		     (and pathname
 			  (pathname=? auto-save-pathname pathname))))
-	      (catch-file-errors (lambda () false)
-		(lambda ()
-		  (delete-file auto-save-pathname)
-		  true))))))
+	      (delete-file-no-errors auto-save-pathname)))))
 
 (define (rename-auto-save-file! buffer)
   (let ((old-pathname (buffer-auto-save-pathname buffer)))
