@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.56 1999/09/11 03:27:41 cph Exp $
+$Id: unxprm.scm,v 1.57 1999/12/16 22:24:58 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -212,11 +212,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
     (if (not directory)
 	(error "Can't find user's home directory:" user-name))
-    directory))
+    (pathname-as-directory directory)))
 
 (define (current-home-directory)
-  (or (get-environment-variable "HOME")
-      (user-home-directory (current-user-name))))
+  (let ((home (get-environment-variable "HOME")))
+    (if home
+	(pathname-as-directory home)
+	(user-home-directory (current-user-name)))))
 
 (define (current-user-name)
   (or (get-environment-variable "USER")
