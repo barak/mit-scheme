@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.111 1989/08/11 11:50:01 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.112 1991/04/03 04:03:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -245,7 +245,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
   "Mark buffer on this line to be killed by X command."
   "p"
   (lambda (argument)
-    (set-multiple-marks! 0 #\K argument)))
+    (set-multiple-marks! 0 #\D argument)))
 
 (define-command buffer-menu-execute
   "Save and/or Kill buffers marked with \\[buffer-menu-save] or \\[buffer-menu-delete]."
@@ -294,7 +294,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 
 (define (buffer-menu-save-and-kill!)
   (for-each buffer-menu-save! (find-buffers-marked 1 #\S))
-  (for-each buffer-menu-kill! (find-buffers-marked 0 #\K)))
+  (for-each buffer-menu-kill! (find-buffers-marked 0 #\D)))
 
 (define (buffer-menu-save! lstart)
   (save-buffer (buffer-menu-buffer lstart))
