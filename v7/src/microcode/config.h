@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.75 1992/09/26 02:48:56 cph Exp $
+$Id: config.h,v 9.76 1992/09/26 03:21:24 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -34,6 +34,9 @@ MIT in each case. */
 
 /* This file contains the configuration information and the information
    given on the command line on Unix. */
+
+#ifdef SCM_CONFIG_H
+#define SCM_CONFIG_H
 
 /* Default pathnames. */
 
@@ -605,3 +608,5 @@ extern void * alpha_heap_malloc (long);
 #undef UNSIGNED_SHIFT_BUG
 #undef Conditional_Bug
 #endif
+
+#endif /* not SCM_CONFIG_H */
