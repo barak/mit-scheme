@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.23 1991/05/10 22:24:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.24 1991/07/21 07:02:17 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -575,7 +575,7 @@ MIT in each case. |#
 	(let ((parent (dbg-block/parent stack-block)))
 	  (and parent
 	       (case (dbg-block/type parent)
-		 ((CLOSURE) (dbg-block/original-parent stack-block))
+		 ((CLOSURE) (and (dbg-block/original-parent stack-block) true))
 		 ((STACK IC) true)
 		 (else (error "Illegal parent block" parent))))))
       'SIMULATED))
