@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.35 1995/08/10 13:40:43 adams Exp $
+$Id: rtlgen.scm,v 1.36 1995/08/14 15:11:24 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1059,7 +1059,7 @@ MIT in each case. |#
   true)
 
 (define (rtlgen/generate-stack-checks?)
-  true)
+  compiler:generate-stack-checks?)
 
 (define rtlgen/unassigned-object
   (let ((tag (machine-tag 'REFERENCE-TRAP)))
