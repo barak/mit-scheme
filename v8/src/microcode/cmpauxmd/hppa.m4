@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.8 1990/01/22 22:33:22 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.9 1990/08/07 15:36:22 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -112,9 +112,14 @@ changecom(`;');;; -*-Midas-*-
 ;;;;	arg3 = gr23; arg2 = gr24; arg1 = gr25; arg0 = gr26
 ;;;;	dp   = gr27; ret0 = gr28; ret1 = gr29; sp   = gr30; rp   = gr02
 
-define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+changequote(",")
+define(ASM_DEBUG,0)
+define(TC_LENGTH, ifdef("TYPE_CODE_LENGTH", TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
+define(FIXNUM_LENGTH, eval(32 - TC_LENGTH))
+define(FIXNUM_POS, eval(FIXNUM_LENGTH - 1))
+define(FIXNUM_BIT, eval(TC_LENGTH + 1))
 
 	.SPACE  $TEXT$
 	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -170,6 +175,14 @@ scheme_to_interface
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
 	ADDIL	L'Free-$global$,27
 	STW	21,R'Free-$global$(1)	; Update free
+	ifelse(ASM_DEBUG,1,"ADDIL	L'interface_counter-$global$,27
+	LDW	R'interface_counter-$global$(0,1),21
+	LDO	1(21),21
+	STW	21,R'interface_counter-$global$(0,1)
+	ADDIL	L'interface_limit-$global$,27
+	LDW	R'interface_limit-$global$(0,1),22
+	COMB,=,N	21,22,interface_break
+interface_proceed")
 	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
 	BLE	0(4,29)			; Call handler
 	COPY	31,2			; Setup return address
@@ -181,27 +194,97 @@ scheme_to_interface
 ;; world.  The compiler "knows" the distance between
 ;; scheme_to_interface_ble and hook_jump_table (100 bytes)
 
+	ifelse(ASM_DEBUG,1,"","NOP
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
-	NOP
-	NOP
+	NOP")
 	NOP
 	NOP
 	NOP
 
 hook_jump_table				; scheme_to_interface + 100
-store_closure_code
-	B	store_closure_code_real+4
+store_closure_code_hook
+	B	store_closure_code+4
 	LDIL	L'0x23400000,20		; LDIL opcode and register
 
+store_closure_entry_hook
+	B	store_closure_entry+4
+	DEP	0,31,2,1		; clear PC protection bits
+
+multiply_fixnum_hook
+	B	multiply_fixnum+4
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+
+fixnum_quotient_hook
+	B	fixnum_quotient+4
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+
+fixnum_remainder_hook
+	B	fixnum_remainder+4
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+
+fixnum_lsh_hook
+	B	fixnum_lsh+4
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+
+no_hook
+;;
+;; Provide dummy trapping hooks in case a newver version of compiled
+;; code that expects more hooks is run.
+;;
+	BREAK	0,6
+	NOP
+	BREAK	0,7
+	NOP
+	BREAK	0,8
+	NOP
+	BREAK	0,9
+	NOP
+	BREAK	0,10
+	NOP
+	BREAK	0,11
+	NOP
+	BREAK	0,12
+	NOP
+	BREAK	0,13
+	NOP
+	BREAK	0,14
+	NOP
+
+ifelse(ASM_DEBUG,1,"interface_break
+	COMB,=	21,22,interface_break
+	NOP
+	B,N	interface_proceed")
+
+store_closure_entry
+;;
+;; On arrival, 31 has a return address and 1 contains the address to
+;; which the closure should jump with pc protection bits.
+;; 26 contains the format/gc-offset word for this entry.
+;;
+	DEP	0,31,2,1		; clear PC protection bits
+	STWM	26,4(0,21)		; move format long to heap 
+;; fall through to store_closure_code
+
+store_closure_code
+;;
 ;; On arrival, 31 has a return address and 1 contains the address to
 ;; which the closure should jump.  The appropriate instructions (LDIL
 ;; and BLE and SUBI) are pushed on the heap.
-
-store_closure_code_real
+;;     Important:
+;; 3 words in memory are modified, but only 2 FDC instructions and one FIC
+;; instruction are issued.  The PDC_CACHE description in the I/O Architecture
+;; manual specifies that each flush will flush a multiple of 16 bytes, thus
+;; a flush of the first data word and a flush of the last data word suffice to
+;; flush all three.  A single FIC of the first instruction word suffices since
+;; the space is newly allocated and the whole I-cache was flushed at
+;; exec and relocation(GC) time.
+;; The SYNC is assumed to be separated by at least 7 instructions from
+;; the first execution of the new instructions.
+;;
 	LDIL	L'0x23400000,20		; LDIL opcode and register
 	EXTRU	1,0,1,5
 	DEP	5,31,1,20
@@ -211,20 +294,153 @@ store_closure_code_real
 	DEP	5,17,2,20
 	EXTRU	1,18,5,5
 	DEP	5,15,5,20
-	STWM	20,4(0,21)		; Store LDIL instruction
+	STW	20,0(0,21)		; Store LDIL instruction
 	LDIL	L'0xe7406000,20		; BLE opcode, register and nullify
 	LDO	R'0xe7406000(20),20
 	EXTRU	1,19,1,5
 	DEP	5,29,1,20
 	EXTRU	1,29,10,5
 	DEP	5,28,10,20
-	STWM	20,4(0,21)		; Store BLE instruction
+	STW	20,4(0,21)		; Store BLE instruction
 	LDIL	L'0xb7ff07e9,20
 	LDO	R'0xb7ff07e9(20),20
-	STWM	20,4(0,21)		; Store ADDI instruction
+	STW	20,8(0,21)		; Store ADDI instruction
+	LDI	12,20
+	FDC	0(0,21)			; flush 1st inst. from D-cache
+	FDC	20(0,21)		; flush last inst. from D-cache
+	SYNC
+	FIC,M	20(5,21)		; flush 1st inst. from I-cache
+	SYNC
 	LDW	0(0,4),20		; Reload memtop
 	BE	0(5,31)			; Return
 	LDI	QUAD_MASK,5		; Restore register 5
+
+multiply_fixnum
+;;
+;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
+;;
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	STW	26,0(0,21)
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	STW	25,4(0,21)
+	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26		; FIXNUM_LIMIT
+	FLDWS	0(0,21),4
+	FLDWS	4(0,21),5
+        FCNVXF,SGL,DBL  4,4				; arg1
+        FCNVXF,SGL,DBL  5,5				; arg2
+	FMPY,DBL	4,5,4
+	STW	26,0(0,21)				; FIXNUM_LIMIT
+	FCNVFXT,DBL,SGL	4,5
+	FSTWS	5,4(0,21)				; result
+	FLDWS	0(0,21),5				; FIXNUM_LIMIT
+	FCNVXF,SGL,DBL	5,5
+	FCMP,DBL,!>=	4,5				; result too large?
+	LDW	4(0,21),26
+	FSUB,DBL	0,5,5
+	FTEST
+	B,N	multiply_fixnum_ovflw
+	FCMP,DBL,!<	4,5				; result too small?
+	COPY	0,25					; signal no overflow
+	FTEST
+;;
+multiply_fixnum_ovflw
+	LDO	1(0),25					; signal overflow
+	BE	0(5,31)					; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+
+fixnum_quotient
+;;
+;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
+;; Note that quotient only overflows when dividing by 0 and when the
+;; divisor is -1 and the dividend is the most negative fixnum,
+;; producing the most positive fixnum plus 1.
+;;
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	COMB,=	0,25,fixnum_quotient_ovflw
+	STW	26,0(0,21)
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	STW	25,4(0,21)
+	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26		; FIXNUM_LIMIT
+	FLDWS	0(0,21),4
+	FLDWS	4(0,21),5
+        FCNVXF,SGL,DBL  4,4				; arg1
+        FCNVXF,SGL,DBL  5,5				; arg2
+	FDIV,DBL	4,5,4
+	STW	26,0(0,21)				; FIXNUM_LIMIT
+	FCNVFXT,DBL,SGL	4,5
+	FSTWS	5,4(0,21)				; result
+	FLDWS	0(0,21),5				; FIXNUM_LIMIT
+	FCNVXF,SGL,DBL	5,5
+	FCMP,DBL,!>=	4,5				; result too large?
+	LDW	4(0,21),26
+	COPY	0,25					; signal no overflow
+	FTEST
+;;
+fixnum_quotient_ovflw
+	LDO	1(0),25					; signal overflow
+	BE	0(5,31)					; return
+	ZDEP    26,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+
+fixnum_remainder
+;;
+;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
+;; Note that remainder only overflows when dividing by 0.
+;; Note also that the FREM instruction does not compute the same as
+;; the Scheme remainder operation.  The sign of the result must
+;; sometimes be adjusted.
+;;
+	EXTRS	26,FIXNUM_POS,FIXNUM_LENGTH,26		; arg1
+	COMB,=,N	0,25,fixnum_remainder_ovflw
+	STW	26,0(0,21)
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	STW	25,4(0,21)
+	FLDWS	0(0,21),4
+	FLDWS	4(0,21),5
+        FCNVXF,SGL,DBL  4,4				; arg1
+        FCNVXF,SGL,DBL  5,5				; arg2
+	FREM,DBL	4,5,4
+	FCNVFXT,DBL,SGL	4,5
+	FSTWS	5,4(0,21)				; result
+	LDW	4(0,21),1
+	XOR,<	26,1,0					; skip if signs !=
+	B,N	fixnum_remainder_done
+	COMB,=,N	0,1,fixnum_remainder_done
+	COMCLR,>	26,0,0				; skip if arg1 > 0
+	SUB,TR	1,25,1					; result -= arg2
+	ADD	1,25,1					; result += arg2
+;;
+fixnum_remainder_done
+	ZDEP    1,FIXNUM_POS,FIXNUM_LENGTH,26		; make into fixnum
+	BE	0(5,31)					; return
+	COPY	0,25					; signal no overflow
+;;
+fixnum_remainder_ovflw
+	BE	0(5,31)					; return
+	LDO	1(0),25					; signal overflow
+
+fixnum_lsh
+;;
+;; On arrival, 31 has a return address and 26 and 25 have the fixnum arguments.
+;; If arg2 is negative, it is a right shift, otherwise a left shift.
+;;
+	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25		; arg2
+	COMB,<,N	0,25,fixnum_lsh_positive
+	SUB	0,25,25			; negate, for right shift
+	COMICLR,>	FIXNUM_LENGTH,25,0
+	LDI	31,25			; shift right completely
+	MTSAR	25
+	VSHD	0,26,26			; shift right
+	DEP	0,31,TC_LENGTH,26	; normalize fixnum
+	BE	0(5,31)			; return	
+	COPY	0,25			; signal no overflow
+;;
+fixnum_lsh_positive
+	SUBI,>	32,25,25		; shift amount for right shift
+	COPY	0,25			; shift left completely
+	MTSAR	25
+	VSHD	26,0,26			; shift right (32 - arg2)
+	BE	0(5,31)			; return	
+	COPY	0,25			; signal no overflow
 
 interface_to_C
 	COPY	29,28			; Setup C value
@@ -249,6 +465,196 @@ interface_to_C
         LDWM    -112(0,30),3		; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
 
+;;;; Routine to flush some locations from the processor cache.
+;;; 
+;;; Its C signature is
+;;;
+;;; void
+;;; cache_flush_region (address, count)
+;;;     void *address;
+;;;     long count;		/* in long words */
+;;;
+;;; We only need to flush every 16 bytes, since cache lines are
+;;; architecturally required to have cache line sizes that are
+;;; multiples of 16 bytes.  This is wasteful on processors with cache
+;;; line sizes greater than 16 bytes, but this routine is typically
+;;; called to flush very small ranges.
+;;; We flush an additional time after flushing every 16 bytes since
+;;; the start address may not be aligned with a cache line, and thus
+;;; the end address may fall in a different cache line from the
+;;; expected one.  The extra flush is harmless when not necessary.
+
+cache_flush_region
+	.PROC
+        .CALLINFO CALLER,FRAME=0
+	.ENTRY
+	SHD	0,25,2,25		; divide count (in longs) by 4
+	COPY	25,28			; save for FIC loop
+	COPY	26,29			; save for FIC loop
+	LDI	16,1			; increment
+;;;
+flush_cache_fdc_loop
+	ADDIB,>	-1,25,flush_cache_fdc_loop
+	FDC,M	1(0,26)
+	SYNC
+;;;
+flush_cache_fic_loop
+	ADDIB,>	-1,28,flush_cache_fic_loop
+	FIC,M	1(5,29)
+	BV	0(2)
+	.EXIT
+	SYNC
+	.PROCEND			;in=25,26;
+
+;;;; Routine to flush the processor cache.
+;;;
+;;; Its C signature is
+;;;
+;;; void
+;;; cache_flush_all (cache_set, cache_info)
+;;;      unsigned int cache_set;
+;;;      struct pdc_cache_result *cache_info;
+;;;
+;;; cache_set is a bit mask of the flags I_CACHE (1) and D_CACHE (2).
+;;; the requested cache (or both) is flushed.
+;;;
+;;; struct pdc_cache_format is the structure returned by the PDC_CACHE
+;;; processor-dependent-code call, and stored in the kernel variable (HP-UX)
+;;; "cache_tlb_parms".
+;;; Only the cache parameters (and not the TLB parameters) are used.
+
+cache_flush_all
+	.PROC
+	.CALLINFO CALLER,FRAME=24
+	.ENTRY
+
+do_d_cache
+	BB,>=,N	26,30,do_i_cache	; if D_CACHE is not set, skip d-cache
+
+	LDW	32(0,25),31		; 31 <- address (initially base)
+	LDW	44(0,25),29		; 29 <- loop
+	LDW	36(0,25),23		; 23 <- stride
+	LDW	40(0,25),19		; 19 <- count
+
+	LDO	-1(19),19		; decrement count
+	COMIB,>,N	0,19,d_sync	; if (count < 0), no flush
+	COMIB,=,N	1,29,d_direct_l
+	COMIB,=,N	2,29,d_assoc2_l
+	COMIB,=,N	4,29,d_assoc4_l
+
+d_assoc_l				; set-associative cache flush-loop
+	COPY	29,20			; 20 (lcount) <- loop
+
+d_set_l					; set flush-loop
+	LDO	-1(20),20		; decrement lcount
+	COMIB,<=,N	0,20,d_set_l	; if (lcount >= 0), continue set loop
+	FDCE	0(0,31)			; flush entry at (address)
+
+	LDO	-1(19),19		; decrement count
+	COMIB,<=	0,19,d_assoc_l	; if (count >= 0), loop
+	ADD	31,23,31		; address++
+
+	B	do_i_cache		; next
+	SYNC				; synchronize after flush
+
+d_assoc4_l				; 4-way set-associative flush loop
+	FDCE	0(0,31)			; flush entry at (*address)
+	FDCE	0(0,31)			; flush entry at (*address)
+	FDCE	0(0,31)			; flush entry at (*address)
+	FDCE,M	23(0,31)		; flush entry at (*address++)
+	COMIB,<		0,19,d_assoc4_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+	B	do_i_cache		; next
+	SYNC				; synchronize after flush
+
+d_assoc2_l				; 2-way set-associative flush loop
+	FDCE	0(0,31)			; flush entry at (*address)
+	FDCE,M	23(0,31)		; flush entry at (*address++)
+	COMIB,<		0,19,d_assoc2_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+	B	do_i_cache		; next
+	SYNC				; synchronize after flush
+
+d_direct_l				; direct-mapped flush loop
+	FDCE,M	23(0,31)		; flush entry at (*address++)
+	COMIB,<		0,19,d_direct_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+d_sync
+	SYNC				; synchronize after flush
+
+do_i_cache
+	BB,>=,N	26,31,L$exit1		; if I_CACHE is not set, return
+
+	LDW	8(0,25),31		; 31 <- address (initially base)
+	LDW	20(0,25),29		; 29 <- loop
+	LDW	12(0,25),23		; 23 <- stride
+	LDW	16(0,25),19		; 19 <- count
+
+	LDO	-1(19),19		; decrement count
+	COMIB,>,N	0,19,i_sync	; if (count < 0), no flush
+	COMIB,=,N	1,29,i_direct_l
+	COMIB,=,N	2,29,i_assoc2_l
+	COMIB,=,N	4,29,i_assoc4_l
+
+i_assoc_l				; set-associative cache flush-loop
+	COPY	29,20			; 20 (lcount) <- loop
+
+i_set_l					; set flush-loop
+	LDO	-1(20),20		; decrement lcount
+	COMIB,<=,N	0,20,i_set_l	; if (lcount >= 0), continue set loop
+	FICE	0(5,31)			; flush entry at (address)
+
+	LDO	-1(19),19		; decrement count
+	COMIB,<=	0,19,i_assoc_l	; if (count >= 0), loop
+	ADD	31,23,31		; address++
+
+	B	i_skips			; next
+	SYNC				; synchronize after flush
+
+i_assoc4_l				; 4-way set-associative flush loop
+	FICE	0(5,31)			; flush entry at (*address)
+	FICE	0(5,31)			; flush entry at (*address)
+	FICE	0(5,31)			; flush entry at (*address)
+	FICE,M	23(5,31)		; flush entry at (*address++)
+	COMIB,<		0,19,i_assoc4_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+	B	i_skips			; next
+	SYNC				; synchronize after flush
+
+i_assoc2_l				; 2-way set-associative flush loop
+	FICE	0(5,31)			; flush entry at (*address)
+	FICE,M	23(5,31)		; flush entry at (*address++)
+	COMIB,<		0,19,i_assoc2_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+	B	i_skips			; next
+	SYNC				; synchronize after flush
+
+i_direct_l				; direct-mapped flush loop
+	FICE,M	23(5,31)		; flush entry at (*address++)
+	COMIB,<		0,19,i_direct_l	; if (count > 0), loop
+	LDO	-1(19),19		; decrement count
+
+i_sync
+	SYNC				; synchronize after flush
+
+i_skips
+	NOP				; 7 instructionss as prescribed
+	NOP				; by the programming note in the 
+	NOP				; description for SYNC.
+	NOP
+	NOP
+
+L$exit1
+	BV	0(2)
+	.EXIT
+	NOP
+	.PROCEND ;in=25,26;
+
 	.SPACE	$TEXT$
 	.SUBSPA $LIT$,QUAD=0,ALIGN=8,ACCESS=44
 ;	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
@@ -257,6 +663,11 @@ interface_to_C
 	.SPACE	$PRIVATE$
 	.SUBSPA $DATA$,QUAD=1,ALIGN=8,ACCESS=31
 $THISMODULE$
+ifelse(ASM_DEBUG,1,"interface_counter
+	.ALIGN	8
+	.WORD	0
+interface_limit
+	.WORD	0")
 	.SUBSPA $BSS$,QUAD=1,ALIGN=8,ACCESS=31,ZERO
 	.IMPORT $global$,DATA
 	.IMPORT	Registers,DATA
@@ -271,5 +682,7 @@ $THISMODULE$
 	.EXPORT scheme_to_interface_ble,PRIV_LEV=3
 	.EXPORT trampoline_to_interface,PRIV_LEV=3
 	.EXPORT scheme_to_interface,PRIV_LEV=3
-	.EXPORT store_closure_code,PRIV_LEV=3
+	.EXPORT hook_jump_table,PRIV_LEV=3
+	.EXPORT cache_flush_region,PRIV_LEV=3
+	.EXPORT cache_flush_all,PRIV_LEV=3
 	.END
