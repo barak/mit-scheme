@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.23 1991/09/02 04:11:42 sybok Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.24 1991/09/02 04:23:21 sybok Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1020,8 +1020,10 @@ MIT in each case. |#
 			     standard-error-handler))
   (set! stepping-off!
 	(lambda ()
-	  (in-package *old-hook-storage-environment*
-	    (set! old-stepper-hooks null-hooks))))
+	  (environment-assign! *old-hook-storage-environment*
+	    'old-stepper-hooks 
+	    (environment-lookup *old-hook-storage-environment*
+				'null-hooks))))
 
   unspecific)
 
