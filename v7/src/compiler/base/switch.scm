@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.8 1988/11/01 04:48:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.9 1988/11/02 21:52:31 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -57,3 +57,6 @@ MIT in each case. |#
 (define compiler:package-optimization-level
   ;; Possible values: NONE LOW HYBRID HIGH
   'HYBRID)
+
+(define compiler:default-top-level-declarations
+  '((UUO-LINK ALL)))
