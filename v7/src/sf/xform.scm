@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 4.1 1988/06/13 12:30:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/xform.scm,v 4.2 1988/10/29 00:07:15 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -54,33 +54,39 @@ MIT in each case. |#
 ;;; same variable object.  So, instead we intern them in GLOBAL-BLOCK,
 ;;; which never has any user defined names in it.
 
-(define try-deep-lookup?)
-
-(define (transform/top-level expression)
-  (fluid-let ((try-deep-lookup? false))
-    (let ((block (block/make (block/make false false) false)))
-      (values block (transform/top-level-1 true block block expression)))))
+(define (transform/top-level expression shadowed-names)
+  (let ((block (block/make (block/make false false) false)))
+    (set-block/bound-variables!
+     block
+     (map (lambda (name) (variable/make block name '())) shadowed-names))
+    (values block (transform/top-level-1 true block block expression))))
 
 (define (transform/recursive block top-level-block expression)
-  (fluid-let ((try-deep-lookup? true))
-    (transform/top-level-1 false block top-level-block expression)))
+  (transform/top-level-1 false block top-level-block expression))
 
-(define (transform/top-level-1 top-level? block top-level-block expression)
-  (fluid-let ((try-deep-lookup? (not top-level?))
+(define top-level?)
+(define global-block)
+
+(define (transform/top-level-1 top? block top-level-block expression)
+  (fluid-let ((top-level? top?)
 	      (global-block
 	       (let block/global-parent ((block top-level-block))
 		 (if (block/parent block)
 		     (block/global-parent (block/parent block))
 		     block))))
-    (let ((environment (environment/make)))
-      (cond ((not (scode-open-block? expression))
-	     (transform/expression block environment expression))
-	    ((not top-level?)
-	     (error "TRANSFORM/TOP-LEVEL-1: open blocks disallowed"
-		    expression))
-	    (else
-	     (open-block-components expression
-	       (transform/open-block* block environment)))))))
+    (let ((environment
+	   (if top-level?
+	       (environment/bind (environment/make)
+				 (block/bound-variables block))
+	       (environment/make))))
+      (if (scode-open-block? expression)
+	  (begin
+	    (if (not top-level?)
+		(error "TRANSFORM/TOP-LEVEL-1: open blocks disallowed"
+		       expression))
+	    (open-block-components expression
+	      (transform/open-block* block environment)))
+	  (transform/expression block environment expression)))))
 
 (define (transform/expressions block environment expressions)
   (map (lambda (expression)
@@ -92,17 +98,16 @@ MIT in each case. |#
 (define (transform/expression block environment expression)
   ((scode-walk transform/dispatch expression) block environment expression))
 
-(define global-block)
-
 (define (environment/make)
   '())
 
 (define (environment/lookup block environment name)
   (let ((association (assq name environment)))
-    (cond (association (cdr association))
-	  ((and try-deep-lookup?
-		(block/lookup-name block name false)))
-	  (else (block/lookup-name global-block name true)))))
+    (if association
+	(cdr association)
+	(or (and (not top-level?)
+		 (block/lookup-name block name false))
+	    (block/lookup-name global-block name true)))))
 
 (define (environment/bind environment variables)
   (map* environment
@@ -272,7 +277,7 @@ MIT in each case. |#
   (transform/quotation* (quotation-expression expression)))
 
 (define (transform/quotation* expression)
-  (with-values (lambda () (transform/top-level expression))
+  (with-values (lambda () (transform/top-level expression '()))
     quotation/make))
 
 (define (transform/sequence block environment expression)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.1 1988/06/13 12:30:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/usiexp.scm,v 4.2 1988/10/29 00:07:09 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -275,7 +275,7 @@ MIT in each case. |#
 ;;;; Miscellaneous
 
 (define (make-string-expansion operands if-expanded if-not-expanded block)
-  block ; ignored
+  block					;ignored
   (let ((n (length operands)))
     (cond ((zero? n)
 	   (error "MAKE-STRING-EXPANSION: No arguments"))
@@ -287,43 +287,201 @@ MIT in each case. |#
 #| ;; Not a desirable optimization with current compiler.
 (define (identity-procedure-expansion operands if-expanded if-not-expanded
 				      block)
-  if-not-expanded block ; ignored
+  if-not-expanded block			;ignored
   (if (not (= (length operands) 1))
       (error "IDENTITY-PROCEDURE-EXPANSION: wrong number of arguments"
 	     (length operands)))
   (if-expanded (car operands)))
 |#
+
+(define (type-test-expansion type-name)
+  (let ((type (microcode-type type-name)))
+    (lambda (operands if-expanded if-not-expanded block)
+      if-not-expanded block		;ignored
+      (let ((n-operands (length operands)))
+	(if (not (= n-operands 1))
+	    (error "TYPE-TEST-EXPANSION: wrong number of arguments"
+		   n-operands)))
+      (if-expanded
+       (make-combination object-type?
+			 (list (constant/make type) (car operands)))))))
+
+(define char?-expansion (type-test-expansion 'CHARACTER))
+(define vector?-expansion (type-test-expansion 'VECTOR))
+(define weak-pair?-expansion (type-test-expansion 'WEAK-CONS))
+
+(define compiled-code-address?-expansion (type-test-expansion 'COMPILED-ENTRY))
+(define compiled-code-block?-expansion
+  (type-test-expansion 'COMPILED-CODE-BLOCK))
+(define ic-environment?-expansion (type-test-expansion 'ENVIRONMENT))
+(define primitive-procedure?-expansion (type-test-expansion 'PRIMITIVE))
+(define promise?-expansion (type-test-expansion 'DELAYED))
+(define return-address?-expansion (type-test-expansion 'RETURN-ADDRESS))
+
+(define access?-expansion (type-test-expansion 'ACCESS))
+(define assignment?-expansion (type-test-expansion 'ASSIGNMENT))
+(define comment?-expansion (type-test-expansion 'COMMENT))
+(define conditional?-expansion (type-test-expansion 'CONDITIONAL))
+(define definition?-expansion (type-test-expansion 'DEFINITION))
+(define delay?-expansion (type-test-expansion 'DELAY))
+(define disjunction?-expansion (type-test-expansion 'DISJUNCTION))
+(define in-package?-expansion (type-test-expansion 'IN-PACKAGE))
+(define quotation?-expansion (type-test-expansion 'QUOTATION))
+(define the-environment?-expansion (type-test-expansion 'THE-ENVIRONMENT))
+(define variable?-expansion (type-test-expansion 'VARIABLE))
 
 ;;;; Tables
 
 (define usual-integrations/expansion-names
-  '(= < > <= >= + - * / quotient remainder fix:quotient fix:remainder
-      apply cons* list
-      caar cadr cdar cddr
-      caaar caadr cadar caddr cdaar cdadr cddar cdddr
-      caaaar caaadr caadar caaddr cadaar cadadr caddar cadddr
-      cdaaar cdaadr cdadar cdaddr cddaar cddadr cdddar cddddr
-      second third fourth fifth sixth seventh eighth
-      make-string
-      ))
+  '(
+    *
+    +
+    -
+    /
+    <
+    <=
+    =
+    >
+    >=
+    access?
+    apply
+    assignment?
+    caaaar
+    caaadr
+    caaar
+    caadar
+    caaddr
+    caadr
+    caar
+    cadaar
+    cadadr
+    cadar
+    caddar
+    cadddr
+    caddr
+    cadr
+    cdaaar
+    cdaadr
+    cdaar
+    cdadar
+    cdaddr
+    cdadr
+    cdar
+    cddaar
+    cddadr
+    cddar
+    cdddar
+    cddddr
+    cdddr
+    cddr
+    char?
+    comment?
+    compiled-code-address?
+    compiled-code-block?
+    conditional?
+    cons*
+    definition?
+    delay?
+    disjunction?
+    eighth
+    fifth
+    fix:quotient
+    fix:remainder
+    fourth
+    ic-environment?
+    in-package?
+    list
+    make-string
+    primitive-procedure?
+    promise?
+    quotation?
+    quotient
+    remainder
+    return-address?
+    second
+    seventh
+    sixth
+    the-environment?
+    third
+    variable?
+    vector?
+    weak-pair?
+    ))
 
 (define usual-integrations/expansion-values
-  (list =-expansion <-expansion >-expansion <=-expansion >=-expansion
-	+-expansion --expansion *-expansion /-expansion
-	quotient-expansion remainder-expansion
-	fix:quotient-expansion fix:remainder-expansion
-	apply*-expansion cons*-expansion list-expansion
-	caar-expansion cadr-expansion cdar-expansion cddr-expansion
-	caaar-expansion caadr-expansion cadar-expansion caddr-expansion
-	cdaar-expansion cdadr-expansion cddar-expansion cdddr-expansion
-	caaaar-expansion caaadr-expansion caadar-expansion caaddr-expansion
-	cadaar-expansion cadadr-expansion caddar-expansion cadddr-expansion
-	cdaaar-expansion cdaadr-expansion cdadar-expansion cdaddr-expansion
-	cddaar-expansion cddadr-expansion cdddar-expansion cddddr-expansion
-	second-expansion third-expansion fourth-expansion fifth-expansion
-	sixth-expansion seventh-expansion eighth-expansion
-	make-string-expansion
-	))
+  (list
+   *-expansion
+   +-expansion
+   --expansion
+   /-expansion
+   <-expansion
+   <=-expansion
+   =-expansion
+   >-expansion
+   >=-expansion
+   access?-expansion
+   apply*-expansion
+   assignment?-expansion
+   caaaar-expansion
+   caaadr-expansion
+   caaar-expansion
+   caadar-expansion
+   caaddr-expansion
+   caadr-expansion
+   caar-expansion
+   cadaar-expansion
+   cadadr-expansion
+   cadar-expansion
+   caddar-expansion
+   cadddr-expansion
+   caddr-expansion
+   cadr-expansion
+   cdaaar-expansion
+   cdaadr-expansion
+   cdaar-expansion
+   cdadar-expansion
+   cdaddr-expansion
+   cdadr-expansion
+   cdar-expansion
+   cddaar-expansion
+   cddadr-expansion
+   cddar-expansion
+   cdddar-expansion
+   cddddr-expansion
+   cdddr-expansion
+   cddr-expansion
+   char?-expansion
+   comment?-expansion
+   compiled-code-address?-expansion
+   compiled-code-block?-expansion
+   conditional?-expansion
+   cons*-expansion
+   definition?-expansion
+   delay?-expansion
+   disjunction?-expansion
+   eighth-expansion
+   fifth-expansion
+   fix:quotient-expansion
+   fix:remainder-expansion
+   fourth-expansion
+   ic-environment?-expansion
+   in-package?-expansion
+   list-expansion
+   make-string-expansion
+   primitive-procedure?-expansion
+   promise?-expansion
+   quotation?-expansion
+   quotient-expansion
+   remainder-expansion
+   return-address?-expansion
+   second-expansion
+   seventh-expansion
+   sixth-expansion
+   the-environment?-expansion
+   third-expansion
+   variable?-expansion
+   vector?-expansion
+   weak-pair?-expansion   ))
 
 (define usual-integrations/expansion-alist
   (map cons

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.2 1988/10/12 06:27:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.sf,v 4.3 1988/10/29 00:07:01 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -32,10 +32,24 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-(sf/set-default-syntax-table! system-global-syntax-table)
-(sf-conditionally "object")
-(sf-conditionally "lsets")
-(sf-directory ".")
+(fluid-let ((sf/default-syntax-table system-global-syntax-table)	    (sf/top-level-definitions 
+	     '(ACCESS?
+	       ASSIGNMENT?
+	       COMBINATION?
+	       CONDITIONAL?
+	       DECLARATION?
+	       DELAY?
+	       DISJUNCTION?
+	       IN-PACKAGE?
+	       OPEN-BLOCK?
+	       PROCEDURE?
+	       QUOTATION?
+	       SEQUENCE?
+	       THE-ENVIRONMENT?
+	       VARIABLE?)))
+  (sf-conditionally "object")
+  (sf-conditionally "lsets")
+  (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.
 (if (not (name->package '(CROSS-REFERENCE)))

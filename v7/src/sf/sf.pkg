@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.pkg,v 4.1 1988/06/13 12:28:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/sf.pkg,v 4.2 1988/10/29 00:06:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -61,8 +61,10 @@ MIT in each case. |#
   (export ()
 	  sf
 	  sf/add-file-declarations!
+	  sf/default-syntax-table
 	  sf/set-default-syntax-table!
 	  sf/set-file-syntax-table!
+	  sf/top-level-definitions
 	  sfu?)
   (export (scode-optimizer)
 	  integrate/procedure

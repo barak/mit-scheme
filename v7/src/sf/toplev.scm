@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.1 1988/06/13 12:30:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 4.2 1988/10/29 00:07:04 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -65,10 +65,7 @@ Currently only the 68000 implementation needs this."
     (syntax-file input-string bin-string spec-string)))
 
 (define (sf/set-default-syntax-table! syntax-table)
-  (if (not (or (false? syntax-table)
-	       (syntax-table? syntax-table)))
-      (error "Illegal syntax table" syntax-table))
-  (set! default-syntax-table syntax-table))
+  (set! sf/default-syntax-table syntax-table))
 
 (define (sf/set-file-syntax-table! pathname syntax-table)
   (pathname-map/insert! file-info/syntax-table
@@ -87,7 +84,7 @@ Currently only the 68000 implementation needs this."
     (values (pathname-map/lookup file-info/syntax-table
 				 pathname
 				 identity-procedure
-				 (lambda () default-syntax-table))
+				 (lambda () sf/default-syntax-table))
 	    (file-info/get-declarations pathname))))
 
 (define (file-info/get-declarations pathname)
@@ -103,11 +100,20 @@ Currently only the 68000 implementation needs this."
 (define file-info/syntax-table
   (pathname-map/make))
 
-(define default-syntax-table
-  false)
-
 (define file-info/declarations
   (pathname-map/make))
+
+(define sf/default-syntax-table
+  false)
+
+(define sf/top-level-definitions
+  '())
+
+(define (list-of-symbols? object)
+  (or (null? object)
+      (and (pair? object)
+	   (symbol? (car object))
+	   (list-of-symbols? (cdr object)))))
 
 ;;;; File Syntaxer
 
@@ -117,6 +123,13 @@ Currently only the 68000 implementation needs this."
 (define sfu? false)
 
 (define (syntax-file input-string bin-string spec-string)
+  (if (not (or (false? sf/default-syntax-table)
+	       (syntax-table? sf/default-syntax-table)))
+      (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE"
+	     sf/default-syntax-table))
+  (if (not (list-of-symbols? sf/top-level-definitions))
+      (error "Malformed binding of SF/TOP-LEVEL-DEFINITIONS"
+	     sf/top-level-definitions))
   (for-each (lambda (input-string)
 	      (with-values
 		  (lambda ()
@@ -341,7 +354,7 @@ Currently only the 68000 implementation needs this."
 
 (define (phase:transform scode)
   (mark-phase "Transform")
-  (transform/top-level scode))
+  (transform/top-level scode sf/top-level-definitions))
 
 (define (phase:optimize block expression)
   (mark-phase "Optimize")
