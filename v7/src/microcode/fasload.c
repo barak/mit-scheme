@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.66 1992/08/29 13:23:35 jinx Exp $
+$Id: fasload.c,v 9.67 1992/11/24 01:10:35 gjr Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -1036,6 +1036,8 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
     else
       compiler_initialize (true);
   }
+  /* Until the continuation is invoked. */
+  SET_INTERRUPT_MASK (0);
   Restore_Fixed_Obj (SHARP_F);
   Fluid_Bindings = EMPTY_LIST;
   Current_State_Point = SHARP_F;
