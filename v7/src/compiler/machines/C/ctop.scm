@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.7 1993/11/13 19:21:09 gjr Exp $
+$Id: ctop.scm,v 1.8 1993/11/13 19:35:10 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -431,7 +431,6 @@ MIT in each case. |#
 	       *info-output-filename*))))))
 
 (define (compiler:dump-bci-file binf pathname)
-  (load-option 'COMPRESS)
   (let ((bci-path (pathname-new-type pathname "bci")))
     (split-inf-structure! binf false)
     (call-with-temporary-filename

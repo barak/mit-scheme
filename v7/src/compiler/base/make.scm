@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.100 1993/10/12 07:27:58 cph Exp $
+$Id: make.scm,v 4.101 1993/11/13 19:33:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (lambda (architecture-name)
+  (load-option 'COMPRESS)
   (load-option 'HASH-TABLE)
   (load-option 'RB-TREE)
   (package/system-loader "comp" '() 'QUERY)

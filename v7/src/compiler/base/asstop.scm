@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.7 1993/11/09 04:13:55 gjr Exp $
+$Id: asstop.scm,v 1.8 1993/11/13 19:34:48 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -278,7 +278,6 @@ MIT in each case. |#
     (announce-info-files bif-path bsm-path)))
   
 (define (compiler:dump-bci/bcs-files binf pathname)
-  (load-option 'COMPRESS)
   (let ((bci-path (pathname-new-type pathname "bci"))
 	(bcs-path (pathname-new-type pathname "bcs")))
     (let ((bsm (split-inf-structure! binf bcs-path)))
@@ -293,7 +292,6 @@ MIT in each case. |#
     (announce-info-files bci-path bcs-path)))
   
 (define (compiler:dump-bci-file binf pathname)
-  (load-option 'COMPRESS)
   (let ((bci-path (pathname-new-type pathname "bci")))
     (split-inf-structure! binf false)
     (call-with-temporary-filename
