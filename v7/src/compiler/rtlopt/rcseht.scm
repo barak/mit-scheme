@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.5 1988/08/11 20:11:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.6 1988/08/29 23:19:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -119,6 +119,19 @@ MIT in each case. |#
 		   (else
 		    (loop next (element-next-value next)))))))
     element))
+
+(define (rtl:expression-cost expression)
+  (case (rtl:expression-type expression)
+    ((REGISTER) 1)
+    ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
+    (else
+     (let loop ((parts (cdr expression)) (cost 2))
+       (if (null? parts)
+	   cost
+	   (loop (cdr parts)
+		 (if (pair? (car parts))
+		     (+ cost (rtl:expression-cost (car parts)))
+		     cost)))))))
 
 (define (hash-table-delete! hash element)
   (if element
