@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.45 1992/06/11 13:40:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.46 1992/06/11 18:51:35 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -107,18 +107,6 @@ MIT in each case. */
 #  define PUSH_D_CACHE_REGION(addr, nwords) FLUSH_I_CACHE_REGION(addr, nwords)
 #endif
 
-/* Some compilers are unhappy with static procedure
-   declarations inside blocks.
- */
-
-#ifndef STATIC
-#  ifdef __GNUC__
-#    define STATIC static
-#  else
-#    define STATIC
-#  endif
-#endif /* STATIC */
-
 
 /* Make noise words invisible to the C compiler. */
 
@@ -151,6 +139,11 @@ struct utility_result
     instruction        *entry_point;
   } extra;
 };
+
+/* utility table entries. */
+
+typedef struct utility_result EXFUN
+  ((*utility_table_entry), (long, long, long, long));
 
 /* Some convenience macros */
 
@@ -273,141 +266,8 @@ extern C_TO_SCHEME long
   EXFUN (comp_definition_restart, (void)),
   EXFUN (comp_lookup_apply_restart, (void)),
   EXFUN (comp_error_restart, (void));
-
-extern SCHEME_UTILITY struct utility_result
-  EXFUN (comutil_return_to_interpreter, ()),
-  EXFUN (comutil_operator_apply_trap, ()),
-  EXFUN (comutil_operator_arity_trap, ()),
-  EXFUN (comutil_operator_entity_trap, ()),
-  EXFUN (comutil_operator_interpreted_trap, ()),
-  EXFUN (comutil_operator_lexpr_trap, ()),
-  EXFUN (comutil_operator_primitive_trap, ()),
-  EXFUN (comutil_operator_lookup_trap, ()),
-  EXFUN (comutil_operator_1_0_trap, ()),
-  EXFUN (comutil_operator_2_1_trap, ()),
-  EXFUN (comutil_operator_2_0_trap, ()),
-  EXFUN (comutil_operator_3_2_trap, ()),
-  EXFUN (comutil_operator_3_1_trap, ()),
-  EXFUN (comutil_operator_3_0_trap, ()),
-  EXFUN (comutil_operator_4_3_trap, ()),
-  EXFUN (comutil_operator_4_2_trap, ()),
-  EXFUN (comutil_operator_4_1_trap, ()),
-  EXFUN (comutil_operator_4_0_trap, ()),
-  EXFUN (comutil_primitive_apply, ()),
-  EXFUN (comutil_primitive_lexpr_apply, ()),
-  EXFUN (comutil_apply, ()),
-  EXFUN (comutil_error, ()),
-  EXFUN (comutil_lexpr_apply, ()),
-  EXFUN (comutil_link, ()),
-  EXFUN (comutil_interrupt_closure, ()),
-  EXFUN (comutil_interrupt_dlink, ()),
-  EXFUN (comutil_interrupt_procedure, ()),
-  EXFUN (comutil_interrupt_continuation, ()),
-  EXFUN (comutil_interrupt_ic_procedure, ()),
-  EXFUN (comutil_assignment_trap, ()),
-  EXFUN (comutil_cache_lookup_apply, ()),
-  EXFUN (comutil_lookup_trap, ()),
-  EXFUN (comutil_safe_lookup_trap, ()),
-  EXFUN (comutil_unassigned_p_trap, ()),
-  EXFUN (comutil_decrement, ()),
-  EXFUN (comutil_divide, ()),
-  EXFUN (comutil_equal, ()),
-  EXFUN (comutil_greater, ()),
-  EXFUN (comutil_increment, ()),
-  EXFUN (comutil_less, ()),
-  EXFUN (comutil_minus, ()),
-  EXFUN (comutil_modulo, ()),
-  EXFUN (comutil_multiply, ()),
-  EXFUN (comutil_negative, ()),
-  EXFUN (comutil_plus, ()),
-  EXFUN (comutil_positive, ()),
-  EXFUN (comutil_quotient, ()),
-  EXFUN (comutil_remainder, ()),
-  EXFUN (comutil_zero, ()),
-  EXFUN (comutil_access, ()),
-  EXFUN (comutil_reference, ()),
-  EXFUN (comutil_safe_reference, ()),
-  EXFUN (comutil_unassigned_p, ()),
-  EXFUN (comutil_unbound_p, ()),
-  EXFUN (comutil_assignment, ()),
-  EXFUN (comutil_definition, ()),
-  EXFUN (comutil_lookup_apply, ()),
-  EXFUN (comutil_primitive_error, ());
 
-extern struct utility_result
-  (*(utility_table[]))();
-
-/*
-  Utility table used by the assembly language interface to invoke
-  the SCHEME_UTILITY procedures that appear in this file.
-
-  Important: Do NOT reorder this table without changing the indices
-  defined on the following page and the corresponding table in the
-  compiler.
- */
-
-struct utility_result
-  (*(utility_table[]))() =
-{
-  comutil_return_to_interpreter,		/* 0x0 */
-  comutil_operator_apply_trap,			/* 0x1 */
-  comutil_operator_arity_trap,			/* 0x2 */
-  comutil_operator_entity_trap,			/* 0x3 */
-  comutil_operator_interpreted_trap,		/* 0x4 */
-  comutil_operator_lexpr_trap,			/* 0x5 */
-  comutil_operator_primitive_trap,		/* 0x6 */
-  comutil_operator_lookup_trap,			/* 0x7 */
-  comutil_operator_1_0_trap,			/* 0x8 */
-  comutil_operator_2_1_trap,			/* 0x9 */
-  comutil_operator_2_0_trap,			/* 0xa */
-  comutil_operator_3_2_trap,			/* 0xb */
-  comutil_operator_3_1_trap,			/* 0xc */
-  comutil_operator_3_0_trap,			/* 0xd */
-  comutil_operator_4_3_trap,			/* 0xe */
-  comutil_operator_4_2_trap,			/* 0xf */
-  comutil_operator_4_1_trap,			/* 0x10 */
-  comutil_operator_4_0_trap,			/* 0x11 */
-  comutil_primitive_apply,			/* 0x12 */
-  comutil_primitive_lexpr_apply,		/* 0x13 */
-  comutil_apply,				/* 0x14 */
-  comutil_error,				/* 0x15 */
-  comutil_lexpr_apply,				/* 0x16 */
-  comutil_link,					/* 0x17 */
-  comutil_interrupt_closure,			/* 0x18 */
-  comutil_interrupt_dlink,			/* 0x19 */
-  comutil_interrupt_procedure,			/* 0x1a */
-  comutil_interrupt_continuation,		/* 0x1b */
-  comutil_interrupt_ic_procedure,		/* 0x1c */
-  comutil_assignment_trap,			/* 0x1d */
-  comutil_cache_lookup_apply,			/* 0x1e */
-  comutil_lookup_trap,				/* 0x1f */
-  comutil_safe_lookup_trap,			/* 0x20 */
-  comutil_unassigned_p_trap,			/* 0x21 */
-  comutil_decrement,				/* 0x22 */
-  comutil_divide,				/* 0x23 */
-  comutil_equal,				/* 0x24 */
-  comutil_greater,				/* 0x25 */
-  comutil_increment,				/* 0x26 */
-  comutil_less,					/* 0x27 */
-  comutil_minus,				/* 0x28 */
-  comutil_multiply,				/* 0x29 */
-  comutil_negative,				/* 0x2a */
-  comutil_plus,					/* 0x2b */
-  comutil_positive,				/* 0x2c */
-  comutil_zero,					/* 0x2d */
-  comutil_access,				/* 0x2e */
-  comutil_reference,				/* 0x2f */
-  comutil_safe_reference,			/* 0x30 */
-  comutil_unassigned_p,				/* 0x31 */
-  comutil_unbound_p,				/* 0x32 */
-  comutil_assignment,				/* 0x33 */
-  comutil_definition,				/* 0x34 */
-  comutil_lookup_apply,				/* 0x35 */
-  comutil_primitive_error,			/* 0x36 */
-  comutil_quotient,				/* 0x37 */
-  comutil_remainder,				/* 0x38 */
-  comutil_modulo				/* 0x39 */
-  };
+extern utility_table_entry utility_table[];
 
 /* These definitions reflect the indices into the table above. */
 
@@ -431,155 +291,15 @@ struct utility_result
 #define TRAMPOLINE_K_4_0			0x11
 
 #define TRAMPOLINE_K_OTHER			TRAMPOLINE_K_INTERPRETED
-
-/* Main compiled code entry points.
-   These are the primary entry points that the interpreter
-   uses to execute compiled code.
-   The other entry points are special purpose return
-   points to compiled code invoked after the interpreter has been
-   employed to take corrective action (interrupt, error, etc).
-   They are coded adjacent to the place where the interpreter
-   is invoked.
- */
 
-C_TO_SCHEME long
-DEFUN_VOID (enter_compiled_expression)
-{
-  instruction *compiled_entry_address;
-  SCHEME_OBJECT *block_address, environment;
-  unsigned long length;
+/* Utilities for application of compiled procedures. */
 
-  compiled_entry_address =
-    ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
-  if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
-      (FORMAT_WORD_EXPR))
-  {
-    /* It self evaluates. */
-    Val = (Fetch_Expression ());
-    return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
-  }
-
-#ifdef SPLIT_CACHES
-  /* This is a kludge to handle the first execution. */
-
-  Get_Compiled_Block (block_address,
-		      ((SCHEME_OBJECT *) compiled_entry_address));
-  length = (OBJECT_DATUM (*block_address));
-  environment = (block_address [length]);
-  if (!(ENVIRONMENT_P (environment)))
-  {
-    /* We could actually flush just the non-marked section.
-       The uuo-section will be flushed when linked.
-     */
-
-    PUSH_D_CACHE_REGION (block_address, (length + 1));
-  }
-#endif /* SPLIT_CACHES */
-
-  return (C_to_interface (compiled_entry_address));
-}
-
-C_TO_SCHEME long
-DEFUN_VOID (apply_compiled_procedure)
-{
-  STATIC long EXFUN (setup_compiled_invocation, (long, instruction *));
-  SCHEME_OBJECT nactuals, procedure;
-  instruction *procedure_entry;
-  long result;
-
-  nactuals = (STACK_POP ());
-  procedure = (STACK_POP ());
-  procedure_entry = ((instruction *) (OBJECT_ADDRESS (procedure)));
-  result = setup_compiled_invocation ((OBJECT_DATUM (nactuals)),
-                                      procedure_entry);
-  if (result == PRIM_DONE)
-  {
-    /* Go into compiled code. */
-    return (C_to_interface (procedure_entry));
-  }
-  else
-  {
-    return (result);
-  }
-}
-
-/* Note that this does not check that compiled_entry_address
-   is a valid return address. -- Should it?
- */
-
-C_TO_SCHEME long
-DEFUN_VOID (return_to_compiled_code)
-{
-  instruction *compiled_entry_address;
-
-  compiled_entry_address =
-    ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
-  return (C_to_interface (compiled_entry_address));
-}
-
-/* NOTE: In the rest of this file, number of arguments (or minimum
+/* NOTE: In this file, the number of arguments (or minimum
    number of arguments, etc.) is always 1 greater than the number of
    arguments (it includes the procedure object).
  */
 
-static long
-DEFUN (setup_compiled_invocation,
-       (nactuals, compiled_entry_address),
-       long nactuals AND instruction * compiled_entry_address)
-{
-  STATIC long EXFUN (setup_lexpr_invocation, (long, long, instruction *));
-  STATIC SCHEME_OBJECT * EXFUN (open_gap, (long, long));
-  long nmin, nmax, delta;               /* all +1 */
-
-  nmax = (COMPILED_ENTRY_MAXIMUM_ARITY (compiled_entry_address));
-  if (nactuals == nmax)
-  {
-    /* Either the procedure takes exactly the number of arguments
-       given, or it has optional arguments, no rest argument, and
-       all the optional arguments have been provided.  Thus the
-       frame is in the right format and we are done.
-     */
-    return (PRIM_DONE);
-  }
-  nmin = (COMPILED_ENTRY_MINIMUM_ARITY (compiled_entry_address));
-  if (nmin < 0)
-  {
-    /* Not a procedure. */
-    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
-    return (ERR_INAPPLICABLE_OBJECT);
-  }
-  if (nactuals < nmin)
-  {
-    /* Too few arguments. */
-    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
-    return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-  }
-  delta = (nactuals - nmax);
-  if (delta <= 0)
-  {
-    /* The procedure takes optional arguments but no rest argument
-       and not all the optional arguments have been provided.
-       They must be defaulted.
-     */
-    ((void) (open_gap (nactuals, delta)));
-    return (PRIM_DONE);
-  }
-  if (nmax > 0)
-  {
-    /* Too many arguments */
-    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
-    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
-    return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-  }
-  /* The procedure can take arbitrarily many arguments, ie.
-     it is a lexpr.
-   */
-  return (setup_lexpr_invocation (nactuals, nmax, compiled_entry_address));
-}
-
-/* Default some optional parameters, and return the location
+/* open_gap: Default some optional parameters, and return the location
    of the return address (one past the last actual argument location).
  */
 
@@ -607,7 +327,7 @@ DEFUN (open_gap,
   return (source_location);
 }
 
-/* Setup a rest argument as appropriate. */
+/* setup_lexpr_invocation: Setup a rest argument as appropriate. */
 
 static long
 DEFUN (setup_lexpr_invocation,
@@ -664,7 +384,7 @@ DEFUN (setup_lexpr_invocation,
      */
     long list_size;
     register SCHEME_OBJECT *gap_location, *source_location;
-
+
     /* Allocate the list, and GC if necessary. */
 
     list_size = (2 * (delta + 1));
@@ -714,6 +434,151 @@ DEFUN (setup_lexpr_invocation,
     Stack_Pointer = gap_location;
     return (PRIM_DONE);
   }
+}
+
+/* setup_compiled_invocation: Prepare the application frame the way that
+   the called procedure expects it (optional arguments and rest argument
+   initialized.
+ */
+
+static long
+DEFUN (setup_compiled_invocation,
+       (nactuals, compiled_entry_address),
+       long nactuals AND instruction * compiled_entry_address)
+{
+  long nmin, nmax, delta;               /* all +1 */
+
+  nmax = (COMPILED_ENTRY_MAXIMUM_ARITY (compiled_entry_address));
+  if (nactuals == nmax)
+  {
+    /* Either the procedure takes exactly the number of arguments
+       given, or it has optional arguments, no rest argument, and
+       all the optional arguments have been provided.  Thus the
+       frame is in the right format and we are done.
+     */
+    return (PRIM_DONE);
+  }
+  nmin = (COMPILED_ENTRY_MINIMUM_ARITY (compiled_entry_address));
+  if (nmin < 0)
+  {
+    /* Not a procedure. */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
+    return (ERR_INAPPLICABLE_OBJECT);
+  }
+  if (nactuals < nmin)
+  {
+    /* Too few arguments. */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
+    return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+  }
+  delta = (nactuals - nmax);
+  if (delta <= 0)
+  {
+    /* The procedure takes optional arguments but no rest argument
+       and not all the optional arguments have been provided.
+       They must be defaulted.
+     */
+    ((void) (open_gap (nactuals, delta)));
+    return (PRIM_DONE);
+  }
+  if (nmax > 0)
+  {
+    /* Too many arguments */
+    STACK_PUSH (ENTRY_TO_OBJECT (compiled_entry_address));
+    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nactuals));
+    return (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+  }
+  /* The procedure can take arbitrarily many arguments, ie.
+     it is a lexpr.
+   */
+  return (setup_lexpr_invocation (nactuals, nmax, compiled_entry_address));
+}
+
+/* Main compiled code entry points.
+
+   These are the primary entry points that the interpreter
+   uses to execute compiled code.
+   The other entry points are special purpose return
+   points to compiled code invoked after the interpreter has been
+   employed to take corrective action (interrupt, error, etc).
+   They are coded adjacent to the place where the interpreter
+   is invoked.
+ */
+
+C_TO_SCHEME long
+DEFUN_VOID (enter_compiled_expression)
+{
+  instruction *compiled_entry_address;
+  SCHEME_OBJECT *block_address, environment;
+  unsigned long length;
+
+  compiled_entry_address =
+    ((instruction *) (OBJECT_ADDRESS (Fetch_Expression ())));
+  if ((COMPILED_ENTRY_FORMAT_WORD (compiled_entry_address)) !=
+      (FORMAT_WORD_EXPR))
+  {
+    /* It self evaluates. */
+    Val = (Fetch_Expression ());
+    return (C_to_interface ((instruction *) (OBJECT_ADDRESS (STACK_POP ()))));
+  }
+
+#ifdef SPLIT_CACHES
+  /* This is a kludge to handle the first execution. */
+
+  Get_Compiled_Block (block_address,
+		      ((SCHEME_OBJECT *) compiled_entry_address));
+  length = (OBJECT_DATUM (*block_address));
+  environment = (block_address [length]);
+  if (!(ENVIRONMENT_P (environment)))
+  {
+    /* We could actually flush just the non-marked section.
+       The uuo-section will be flushed when linked.
+     */
+
+    PUSH_D_CACHE_REGION (block_address, (length + 1));
+  }
+#endif /* SPLIT_CACHES */
+
+  return (C_to_interface (compiled_entry_address));
+}
+
+C_TO_SCHEME long
+DEFUN_VOID (apply_compiled_procedure)
+{
+  SCHEME_OBJECT nactuals, procedure;
+  instruction *procedure_entry;
+  long result;
+
+  nactuals = (STACK_POP ());
+  procedure = (STACK_POP ());
+  procedure_entry = ((instruction *) (OBJECT_ADDRESS (procedure)));
+  result = setup_compiled_invocation ((OBJECT_DATUM (nactuals)),
+                                      procedure_entry);
+  if (result == PRIM_DONE)
+  {
+    /* Go into compiled code. */
+    return (C_to_interface (procedure_entry));
+  }
+  else
+  {
+    return (result);
+  }
+}
+
+/* Note that this does not check that compiled_entry_address
+   is a valid return address. -- Should it?
+ */
+
+C_TO_SCHEME long
+DEFUN_VOID (return_to_compiled_code)
+{
+  instruction *compiled_entry_address;
+
+  compiled_entry_address =
+    ((instruction *) (OBJECT_ADDRESS (STACK_POP ())));
+  return (C_to_interface (compiled_entry_address));
 }
 
 /*
@@ -1823,19 +1688,19 @@ CMPLR_REF_TRAP(comutil_lookup_trap,
                compiler_lookup_trap,
                RC_COMP_LOOKUP_TRAP_RESTART,
                comp_lookup_trap_restart,
-               Symbol_Lex_Ref);
+               Symbol_Lex_Ref)
 
 CMPLR_REF_TRAP(comutil_safe_lookup_trap,
                compiler_safe_lookup_trap,
                RC_COMP_SAFE_REF_TRAP_RESTART,
                comp_safe_lookup_trap_restart,
-               safe_symbol_lex_ref);
+               safe_symbol_lex_ref)
 
 CMPLR_REF_TRAP(comutil_unassigned_p_trap,
                compiler_unassigned_p_trap,
                RC_COMP_UNASSIGNED_TRAP_RESTART,
                comp_unassigned_p_trap_restart,
-               Symbol_Lex_unassigned_p);
+               Symbol_Lex_unassigned_p)
 
 
 /* NUMERIC ROUTINES
@@ -1856,21 +1721,21 @@ DEFUN (name,								\
   return (comutil_apply (handler, (arity), 0, 0));			\
 }
 
-COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 2);
-COMPILER_ARITH_PRIM (comutil_divide, GENERIC_TRAMPOLINE_DIVIDE, 3);
-COMPILER_ARITH_PRIM (comutil_equal, GENERIC_TRAMPOLINE_EQUAL_P, 3);
-COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 3);
-COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 2);
-COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 3);
-COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_SUBTRACT, 3);
-COMPILER_ARITH_PRIM (comutil_modulo, GENERIC_TRAMPOLINE_MODULO, 3);
-COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 3);
-COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 2);
-COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_ADD, 3);
-COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 2);
-COMPILER_ARITH_PRIM (comutil_quotient, GENERIC_TRAMPOLINE_QUOTIENT, 3);
-COMPILER_ARITH_PRIM (comutil_remainder, GENERIC_TRAMPOLINE_REMAINDER, 3);
-COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2);
+COMPILER_ARITH_PRIM (comutil_decrement, GENERIC_TRAMPOLINE_PREDECESSOR, 2)
+COMPILER_ARITH_PRIM (comutil_divide, GENERIC_TRAMPOLINE_DIVIDE, 3)
+COMPILER_ARITH_PRIM (comutil_equal, GENERIC_TRAMPOLINE_EQUAL_P, 3)
+COMPILER_ARITH_PRIM (comutil_greater, GENERIC_TRAMPOLINE_GREATER_P, 3)
+COMPILER_ARITH_PRIM (comutil_increment, GENERIC_TRAMPOLINE_SUCCESSOR, 2)
+COMPILER_ARITH_PRIM (comutil_less, GENERIC_TRAMPOLINE_LESS_P, 3)
+COMPILER_ARITH_PRIM (comutil_minus, GENERIC_TRAMPOLINE_SUBTRACT, 3)
+COMPILER_ARITH_PRIM (comutil_modulo, GENERIC_TRAMPOLINE_MODULO, 3)
+COMPILER_ARITH_PRIM (comutil_multiply, GENERIC_TRAMPOLINE_MULTIPLY, 3)
+COMPILER_ARITH_PRIM (comutil_negative, GENERIC_TRAMPOLINE_NEGATIVE_P, 2)
+COMPILER_ARITH_PRIM (comutil_plus, GENERIC_TRAMPOLINE_ADD, 3)
+COMPILER_ARITH_PRIM (comutil_positive, GENERIC_TRAMPOLINE_POSITIVE_P, 2)
+COMPILER_ARITH_PRIM (comutil_quotient, GENERIC_TRAMPOLINE_QUOTIENT, 3)
+COMPILER_ARITH_PRIM (comutil_remainder, GENERIC_TRAMPOLINE_REMAINDER, 3)
+COMPILER_ARITH_PRIM (comutil_zero, GENERIC_TRAMPOLINE_ZERO_P, 2)
 
 /*
   Obsolete SCHEME_UTILITYs used to handle first class environments.
@@ -1997,37 +1862,37 @@ DEFUN_VOID (restart_name)						\
 CMPLR_REFERENCE(comutil_access,
 		Symbol_Lex_Ref,
 		RC_COMP_ACCESS_RESTART,
-		comp_access_restart);
+		comp_access_restart)
 
 CMPLR_REFERENCE(comutil_reference,
 		Lex_Ref,
 		RC_COMP_REFERENCE_RESTART,
-		comp_reference_restart);
+		comp_reference_restart)
 
 CMPLR_REFERENCE(comutil_safe_reference,
 		safe_lex_ref,
 		RC_COMP_SAFE_REFERENCE_RESTART,
-		comp_safe_reference_restart);
+		comp_safe_reference_restart)
 
 CMPLR_REFERENCE(comutil_unassigned_p,
 		Symbol_Lex_unassigned_p,
 		RC_COMP_UNASSIGNED_P_RESTART,
-		comp_unassigned_p_restart);
+		comp_unassigned_p_restart)
 
 CMPLR_REFERENCE(comutil_unbound_p,
 		Symbol_Lex_unbound_p,
 		RC_COMP_UNBOUND_P_RESTART,
-		comp_unbound_p_restart);
+		comp_unbound_p_restart)
 
 CMPLR_ASSIGNMENT(comutil_assignment,
 		 Lex_Set,
 		 RC_COMP_ASSIGNMENT_RESTART,
-		 comp_assignment_restart);
+		 comp_assignment_restart)
 
 CMPLR_ASSIGNMENT(comutil_definition,
 		 Local_Set,
 		 RC_COMP_DEFINITION_RESTART,
-		 comp_definition_restart);
+		 comp_definition_restart)
 
 SCHEME_UTILITY struct utility_result
 DEFUN (comutil_lookup_apply,
@@ -2697,6 +2562,81 @@ DEFUN (coerce_to_compiled,
   (*location) = procedure;
   return (PRIM_DONE);
 }
+
+/*
+  Utility table used by the assembly language interface to invoke
+  the SCHEME_UTILITY procedures that appear in this file.
+
+  Important: Do NOT reorder this table without changing the indices
+  defined on the following page and the corresponding table in the
+  compiler.
+
+  In addition, this table must be declared before compiler_reset_internal.
+ */
+
+#define UTE(name) ((utility_table_entry) name)
+
+utility_table_entry utility_table[] =
+{
+  UTE(comutil_return_to_interpreter),		/* 0x0 */
+  UTE(comutil_operator_apply_trap),		/* 0x1 */
+  UTE(comutil_operator_arity_trap),		/* 0x2 */
+  UTE(comutil_operator_entity_trap),		/* 0x3 */
+  UTE(comutil_operator_interpreted_trap),	/* 0x4 */
+  UTE(comutil_operator_lexpr_trap),		/* 0x5 */
+  UTE(comutil_operator_primitive_trap),		/* 0x6 */
+  UTE(comutil_operator_lookup_trap),		/* 0x7 */
+  UTE(comutil_operator_1_0_trap),		/* 0x8 */
+  UTE(comutil_operator_2_1_trap),		/* 0x9 */
+  UTE(comutil_operator_2_0_trap),		/* 0xa */
+  UTE(comutil_operator_3_2_trap),		/* 0xb */
+  UTE(comutil_operator_3_1_trap),		/* 0xc */
+  UTE(comutil_operator_3_0_trap),		/* 0xd */
+  UTE(comutil_operator_4_3_trap),		/* 0xe */
+  UTE(comutil_operator_4_2_trap),		/* 0xf */
+  UTE(comutil_operator_4_1_trap),		/* 0x10 */
+  UTE(comutil_operator_4_0_trap),		/* 0x11 */
+  UTE(comutil_primitive_apply),			/* 0x12 */
+  UTE(comutil_primitive_lexpr_apply),		/* 0x13 */
+  UTE(comutil_apply),				/* 0x14 */
+  UTE(comutil_error),				/* 0x15 */
+  UTE(comutil_lexpr_apply),			/* 0x16 */
+  UTE(comutil_link),				/* 0x17 */
+  UTE(comutil_interrupt_closure),		/* 0x18 */
+  UTE(comutil_interrupt_dlink),			/* 0x19 */
+  UTE(comutil_interrupt_procedure),		/* 0x1a */
+  UTE(comutil_interrupt_continuation),		/* 0x1b */
+  UTE(comutil_interrupt_ic_procedure),		/* 0x1c */
+  UTE(comutil_assignment_trap),			/* 0x1d */
+  UTE(comutil_cache_lookup_apply),		/* 0x1e */
+  UTE(comutil_lookup_trap),			/* 0x1f */
+  UTE(comutil_safe_lookup_trap),		/* 0x20 */
+  UTE(comutil_unassigned_p_trap),		/* 0x21 */
+  UTE(comutil_decrement),			/* 0x22 */
+  UTE(comutil_divide),				/* 0x23 */
+  UTE(comutil_equal),				/* 0x24 */
+  UTE(comutil_greater),				/* 0x25 */
+  UTE(comutil_increment),			/* 0x26 */
+  UTE(comutil_less),				/* 0x27 */
+  UTE(comutil_minus),				/* 0x28 */
+  UTE(comutil_multiply),			/* 0x29 */
+  UTE(comutil_negative),			/* 0x2a */
+  UTE(comutil_plus),				/* 0x2b */
+  UTE(comutil_positive),			/* 0x2c */
+  UTE(comutil_zero),				/* 0x2d */
+  UTE(comutil_access),				/* 0x2e */
+  UTE(comutil_reference),			/* 0x2f */
+  UTE(comutil_safe_reference),			/* 0x30 */
+  UTE(comutil_unassigned_p),			/* 0x31 */
+  UTE(comutil_unbound_p),			/* 0x32 */
+  UTE(comutil_assignment),			/* 0x33 */
+  UTE(comutil_definition),			/* 0x34 */
+  UTE(comutil_lookup_apply),			/* 0x35 */
+  UTE(comutil_primitive_error),			/* 0x36 */
+  UTE(comutil_quotient),			/* 0x37 */
+  UTE(comutil_remainder),			/* 0x38 */
+  UTE(comutil_modulo)				/* 0x39 */
+  };
 
 /* Initialization */
 
