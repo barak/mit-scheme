@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.3 2001/03/09 16:13:02 cph Exp $
+$Id: prmhash.c,v 11.4 2001/10/23 20:31:48 cph Exp $
 
 Copyright (c) 2000-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Interface to mhash library */
@@ -138,7 +139,7 @@ initialize_hashid_map (void)
       size_t j = 0;
       hashid_count = (mhash_count ());
       hashid_map = (OS_malloc ((sizeof (hashid)) * hashid_count));
-      while (j < hashid_count)
+      while (i <= hashid_count)
 	{
 	  if ((mhash_get_block_size (i)) != 0)
 	    (hashid_map[j++]) = ((hashid) i);
