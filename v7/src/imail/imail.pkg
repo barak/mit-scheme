@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.38 2000/05/21 00:03:03 cph Exp $
+;;; $Id: imail.pkg,v 1.39 2000/05/22 13:25:33 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -212,6 +212,7 @@
 	 "imail-top"
 	 "imail-summary")
   (parent (edwin))
+  #|
   (export (edwin)
 	  edwin-command$imail
 	  edwin-command$imail-add-flag
@@ -269,4 +270,6 @@
 	  edwin-variable$imail-summary-mode-hook
 	  edwin-variable$imail-summary-pop-up-message
 	  edwin-variable$imail-summary-show-date
-	  edwin-variable$imail-summary-subject-width))
+	  edwin-variable$imail-summary-subject-width)
+  |#
+  )
