@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.24 1987/02/09 00:36:08 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.25 1987/03/11 07:33:51 jinx Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -188,7 +188,7 @@ char Arg_Count_Table[] = {
 /* 022 */ (char) 1, /* CDR */
 /* 023 */ (char) 2, /* SET!-CAR */
 /* 024 */ (char) 2, /* SET!-CDR */
-/* 025 */ (char) 2, /* PRINT-STRING */
+/* 025 */ (char) 0, /* unused */
 /* 026 */ (char) 0, /* TTY-GET-CURSOR */
 /* 027 */ (char) 2, /* GENERAL-CAR-CDR */
 /* 028 */ (char) 3, /* HUNK3-CONS */
@@ -206,7 +206,7 @@ char Arg_Count_Table[] = {
 /* 02F */ (char) 1, /* SET-CURRENT-HISTORY */
 /* 030 */ (char) 3, /* VECTOR-SET! */
 /* 031 */ (char) 1, /* NON-MARKED-VECTOR-CONS */
-/* 032 */ (char) 1, /* GET-CHARACTER */
+/* 032 */ (char) 0, /* unused */
 /* 033 */ (char) 2, /* UNBOUND-TEST */
 /* 034 */ (char) 1, /* INTEGER->CHAR */
 /* 035 */ (char) 1, /* CHAR-DOWNCASE */
@@ -305,7 +305,7 @@ char Arg_Count_Table[] = {
 /* 088 */ (char) 2, /* Sys-PAIR-SET!-CAR */
 /* 089 */ (char) 2, /* Sys-PAIR-SET!-CDR */
 /* 08A */ (char) 0, /* unused */
-/* 08B */ (char) 1, /* GET-CHARACTER-IMMEDIATE */
+/* 08B */ (char) 0, /* unused */
 /* 08C */ (char) 2, /* SET-CONTENTS! */
 /* 08D */ (char) 2, /* &MAKE-OBJECT */
 /* 08E */ (char) 1, /* Sys-HUNK3-CXR0 */
@@ -371,7 +371,7 @@ char Arg_Count_Table[] = {
 /* 0C5 */ (char) 2, /* FILE-WRITE-CHAR */
 /* 0C6 */ (char) 2, /* FILE-WRITE-STRING */
 /* 0C7 */ (char) 1, /* CLOSE-LOST-OPEN-FILES */
-/* 0C8 */ (char) 2, /* PUT-CHARACTER-TO-OUTPUT-CHANNEL */
+/* 0C8 */ (char) 0, /* unused */
 
 /* Argument Count Table continues on next page */
 
@@ -645,8 +645,7 @@ extern Pointer
   Prim_Exp_Flonum(), Prim_File_Exists(), Prim_Floor(), Prim_Force(),
   Prim_Garbage_Collect(), Prim_Gcd_Fixnum(),
   Prim_Gc_Type(),
-  Prim_General_Car_Cdr(), Prim_Get_Character(),
-  Prim_Get_Char_Immediate(),
+  Prim_General_Car_Cdr(),
   Prim_Get_External_Count(), Prim_Get_Ext_Name(),
   Prim_Get_Ext_Number();
 
@@ -707,8 +706,7 @@ extern Pointer
   Prim_Primitive_Datum(), Prim_Prim_Fasdump(),
   Prim_Prim_Fasload(), Prim_Primitive_Purify(),
   Prim_Primitive_Set_Type(), Prim_Prim_Type(),
-  Prim_Prim_Type_QM(), Prim_Print_String(), Prim_Pure_P(),
-  Prim_Put_Char_To_Output_Channel(),
+  Prim_Prim_Type_QM(), Prim_Pure_P(),
   Prim_Raise_Char(), Prim_Raise_String(),
   Prim_Rehash(),
   Prim_Remove_File(), Prim_Rename_File(),
@@ -918,7 +916,7 @@ Pointer (*(Primitive_Table[]))() = {
 /* 022 */ Prim_Cdr,
 /* 023 */ Prim_Set_Car,
 /* 024 */ Prim_Set_Cdr,
-/* 025 */ Prim_Print_String,
+/* 025 */ Prim_Unused,
 /* 026 */ Prim_Tty_Get_Cursor,
 /* 027 */ Prim_General_Car_Cdr,
 /* 028 */ Prim_Hunk3_Cons,
@@ -936,7 +934,7 @@ Pointer (*(Primitive_Table[]))() = {
 /* 02F */ Prim_Set_Current_History,
 /* 030 */ Prim_Vector_Set,
 /* 031 */ Prim_Non_Marked_Vector_Cons,
-/* 032 */ Prim_Get_Character,
+/* 032 */ Prim_Unused,
 /* 033 */ Prim_Unbound_Test,
 /* 034 */ Prim_Integer_To_Char,
 /* 035 */ Prim_Char_Downcase,
@@ -1035,7 +1033,7 @@ Pointer (*(Primitive_Table[]))() = {
 /* 088 */ Prim_Sys_Set_Car,
 /* 089 */ Prim_Sys_Set_Cdr,
 /* 08A */ Prim_Unused,
-/* 08B */ Prim_Get_Char_Immediate,
+/* 08B */ Prim_Unused,
 /* 08C */ Prim_Set_Cell_Contents,
 /* 08D */ Prim_And_Make_Object,
 /* 08E */ Prim_Sys_H3_0,
@@ -1101,7 +1099,7 @@ Pointer (*(Primitive_Table[]))() = {
 /* 0C5 */ Prim_File_Write_Char,
 /* 0C6 */ Prim_File_Write_String,
 /* 0C7 */ Prim_Close_Lost_Open_Files,
-/* 0C8 */ Prim_Put_Char_To_Output_Channel,
+/* 0C8 */ Prim_Unused,
 /* 0C9 */ Prim_With_Interrupts_Reduced,
 
 /* Primitive dispatch table continues on next page */
@@ -1385,7 +1383,7 @@ char *Primitive_Names[] = {
 
 /* Primitive names, continued */
 
-/* 0x25 in io */	"PRINT-STRING",
+/* 0x25 not here */	No_Name,
 /* 0x26 in ttyio */	"TTY-GET-CURSOR",
 /* 0x27 in list */	"GENERAL-CAR-CDR",
 /* 0x28 in hunk */	"HUNK3-CONS",
@@ -1398,7 +1396,7 @@ char *Primitive_Names[] = {
 /* 0x2F in hooks */	"SET-CURRENT-HISTORY!",
 /* 0x30 in vector */	"VECTOR-SET!",
 /* 0x31 in prim */	"NON-MARKED-VECTOR-CONS",
-/* 0x32 in io */	"GET-CHARACTER-FROM-INPUT-CHANNEL",
+/* 0x32 not here */	No_Name,
 /* 0x33 in lookup */	"LEXICAL-UNBOUND?",
 /* 0x34 in character */	"INTEGER->CHAR",
 /* 0x35 in character */	"CHAR-DOWNCASE",
@@ -1497,7 +1495,7 @@ char *Primitive_Names[] = {
 /* 0x88 in list */	"SYSTEM-PAIR-SET-CAR!",
 /* 0x89 in list */	"SYSTEM-PAIR-SET-CDR!",
 /* 0x8A not here */	No_Name,
-/* 0x8B in io */	"GET-CHARACTER-FROM-INPUT-CHANNEL-IMMEDIATE",
+/* 0x8B not here */	No_Name,
 /* 0x8C in prim */	"SET-CELL-CONTENTS!",
 /* 0x8D in prim */	"&MAKE-OBJECT",
 /* 0x8E in hunk */	"SYSTEM-HUNK3-CXR0",
@@ -1568,7 +1566,7 @@ char *Primitive_Names[] = {
 /* Primitive names, continued */
 
 /* 0xC7 in daemon */	"CLOSE-LOST-OPEN-FILES",
-/* 0xC8 in io */	"PUT-CHARACTER-TO-OUTPUT-CHANNEL",
+/* 0xC8 not here */	No_Name,
 /* 0xC9 in hooks */	"WITH-INTERRUPTS-REDUCED",
 /* 0xCA in step */	"PRIMITIVE-EVAL-STEP",
 /* 0xCB in step */	"PRIMITIVE-APPLY-STEP",
