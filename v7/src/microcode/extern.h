@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.51 1993/10/14 19:14:51 gjr Exp $
+$Id: extern.h,v 9.52 1995/07/26 21:06:15 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -262,6 +262,8 @@ extern SCHEME_OBJECT EXFUN (Find_State_Space, (SCHEME_OBJECT));
 extern void EXFUN (debug_edit_flags, (void));
 
 extern void EXFUN (Back_Trace, (outf_channel));
+extern void EXFUN (Debug_Stack_Trace, (void));
+extern void EXFUN (Debug_Print, (SCHEME_OBJECT, Boolean));
 extern void EXFUN (Show_Env, (SCHEME_OBJECT));
 extern void EXFUN (Show_Pure, (void));
 extern void EXFUN (Print_Return, (char *));
