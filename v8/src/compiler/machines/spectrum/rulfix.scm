@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.3 1995/07/27 14:23:08 adams Exp $
+$Id: rulfix.scm,v 1.4 1996/07/23 19:11:20 adams Exp $
 
-Copyright (c) 1989-1994 Massachusetts Institute of Technology
+Copyright (c) 1989-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,143 +39,32 @@ MIT in each case. |#
 
 ;;;; Conversions
 
-;;; NOTE: The **only** part of the compiler that currently (12/28/93)
-;;; generates (OBJECT->FIXNUM ...) is opncod.scm and it guarantees
-;;; that these are either preceded by a type check for fixnum or the
-;;; user has open-coded a fixnum operation indicating that type
-;;; checking isn't necessary.  So we don't bother to clear type bits
-;;; if untagged-fixnums? is #T.
+;;  NOTE(1):  This file used to work for either tagged or untagged fixnums.
+;;  This is no longer true.  As the 8.0 compiler developed, it stopped
+;;  being convenient to test both, and bugs have crept into the tagged
+;;  code.  It seemed simplest to relegate the tagged code to RCS
+;;  history and clean up this file.
+;;
+;;  NOTE(2):  The 8.0 compiler does not generate the conversion operations
+;;  OBJECT->FIXNUM, FIXNUM->OBJECT and OBJECT->UNSIGNED-FIXNUM.
+;;
+;;  NOTE(3):  The new rtl generator  never generates overflow codes.
+;;
+;;  NOMENCLATURE:
+;;  OBJECT  means an object represented in standard Scheme form
+;;  ADDRESS means a hardware pointer to an address; on the PA this
+;;          means it has the quad bits set correctly
+;;  FIXNUM  means a value without type code, in a form suitable for
+;;          machine arithmetic.  If UNTAGGED-FIXNUMS? is #T (i.e.
+;;          POSITIVE-FIXNUM is type code 0, NEGATIVE-FIXNUM is type
+;;          code -1), then we simply use the standard hardware
+;;          representation of integers.  Otherwise, we shift the
+;;          integer so that the Scheme fixnum sign bit is stored in the
+;;          hardware sign bit: i.e. left shifted by typecode-width (6)
+;;          bits.  The tagged version is no longer working(see NOTE 1)
 
-;;; NOTE(2):  rulrew.scm removes all the occurences of
-;;;  OBJECT->FIXNUM, FIXNUM->OBJECT and OBJECT->UNSIGNED-FIXNUM
-;;;  as these are no-ops when using untagged fixnums
-
-;;; NOMENCLATURE:
-;;; OBJECT means an object represented in standard Scheme form
-;;; ADDRESS means a hardware pointer to an address; on the PA this
-;;;         means it has the quad bits set correctly
-;;; FIXNUM means a value without type code, in a form suitable for
-;;;        machine arithmetic.  If UNTAGGED-FIXNUMS? is #T (i.e.
-;;;        POSITIVE-FIXNUM is type code 0, NEGATIVE-FIXNUM is type
-;;;        code -1), then we simply use the standard hardware
-;;;        representation of integers.  Otherwise, we shift the
-;;;        integer so that the Scheme fixnum sign bit is stored in the
-;;;        hardware sign bit: i.e. left shifted by typecode-width (6)
-;;;        bits.
-
-;(define (copy-instead-of-object->fixnum source target)
-;  (standard-move-to-target! source target)
-;  (LAP))
-
-;(define (copy-instead-of-fixnum->object source target)
-;  (standard-move-to-target! source target)
-;   (LAP))
-
-
-(define-rule statement
-  ;; convert a memory address to a "fixnum integer"
-  (ASSIGN (REGISTER (? target)) (ADDRESS->FIXNUM (REGISTER (? source))))
-  (standard-unary-conversion source target address->fixnum))
-
-(define-rule statement
-  ;; convert an object's address to a "fixnum integer"
-  (ASSIGN (REGISTER (? target))
-	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (REGISTER (? source)))))
-  (if untagged-fixnums?
-      (standard-unary-conversion source target object->datum)
-      ;;(standard-unary-conversion source target object->fixnum)
-      ))
-
-(define-rule statement
-  ;; convert a "fixnum integer" to a memory address
-  (ASSIGN (REGISTER (? target)) (FIXNUM->ADDRESS (REGISTER (? source))))
-  (standard-unary-conversion source target fixnum->address))
-
-(let ((make-scaled-object->fixnum
-       (lambda (factor)
-	 (let ((shift (integer-log-base-2? factor)))
-	   (cond ((not shift)
-		  (error "make-scaled-object->fixnum: Not a power of 2"
-			 factor))
-		 ((> shift scheme-datum-width)
-		  (error "make-scaled-object->fixnum: shift too large" shift))
-		 (else
-		  (lambda (src tgt)
-		    (if untagged-fixnums?
-			(LAP (SHD () ,src 0 ,(- 32 shift) ,tgt))
-			(LAP (SHD () ,src 0 ,(- scheme-datum-width shift)
-				  ,tgt))))))))))
-
-  (define-rule statement
-    (ASSIGN (REGISTER (? target))
-	    (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			   (CONSTANT (? value))
-			   (REGISTER (? source))
-			   #F))
-    (QUALIFIER (integer-log-base-2? value))
-    (standard-unary-conversion source target
-			       (make-scaled-object->fixnum value)))
-
-  (define-rule statement
-    (ASSIGN (REGISTER (? target))
-	    (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			   (REGISTER (? source))
-			   (CONSTANT (? value))
-			   #F))
-    (QUALIFIER (integer-log-base-2? value))
-    (standard-unary-conversion source target
-			       (make-scaled-object->fixnum value))))
-
-(define-integrable (fixnum->index-fixnum src tgt)
-  ;; Takes a register containing a FIXNUM representing an index in
-  ;; units of Scheme object units and generates the
-  ;; corresponding FIXNUM for the byte offset: it multiplies by 4.
-  ;;! (if untagged-fixnums? 'nothing-different)
-  (LAP (SHD () ,src 0 30 ,tgt)))
-
-;(define-integrable (object->fixnum src tgt)
-;  ;; With untagged-fixnums this is called *only* when we are not
-;  ;; treating the src as containing a signed fixnum -- i.e. when we
-;  ;; have a pointer and want to do integer arithmetic on it.  In this
-;  ;; case it is OK to generate positive numbers in all cases.  Notice
-;  ;; that we *also* choose, in this case, to have "fixnums" be
-;  ;; unshifted, while with tagged-fixnums we shift to put the Scheme
-;  ;; sign bit in the hardware sign bit, and unshift later.
-;  (if untagged-fixnums?
-;      (begin
-;	(warn "object->fixum: " src tgt)
-;       ;; This is wrong!
-;	;;(deposit-type 0 (standard-move-to-target! src tgt))
-;	(LAP ,@(copy src tgt)
-;	     ,@(deposit-type 0 tgt)))
-;      (LAP (SHD () ,src 0 ,scheme-datum-width ,tgt))))
-
-(define-integrable (address->fixnum src tgt)
-  ;; This happens to be the same as object->fixnum
-  ;; With untagged-fixnums we need to clear the quad bits, With single tag
-  ;; fixnums shift the sign into the machine sign, shifting out the
-  ;; quad bits.
-  (if untagged-fixnums?
-      (deposit-type 0 (standard-move-to-target! src tgt))
-      (LAP (SHD () ,src 0 ,scheme-datum-width ,tgt))))
-
-(define (fixnum->address src tgt)
-  (if untagged-fixnums?
-      (LAP (DEP () ,regnum:quad-bitmask ,(-1+ scheme-type-width)
-		,scheme-type-width ,tgt))
-      (LAP (SHD () ,regnum:quad-bitmask ,src ,scheme-type-width ,tgt))))
-
-(define (fixnum->datum src tgt)
-  (if untagged-fixnums?
-      (deposit-type 0 (standard-move-to-target! src tgt))
-      (LAP (SHD () 0 ,src ,scheme-type-width ,tgt))))
-
-(define (load-fixnum-constant constant target)
-  (load-immediate (* constant fixnum-1) target))
-
-(define #|-integrable|# fixnum-1
-  ;; (expt 2 scheme-type-width) ***
-  (if untagged-fixnums? 1 64))
+(if (not untagged-fixnums?)
+    (error "RULFIX: no longer works for tagged fixnums."))
 
 ;;;; Arithmetic Operations
 
@@ -258,25 +147,15 @@ MIT in each case. |#
       (macro (name instr nsv fixed-operand)
 	`(define-arithmetic-method ',name fixnum-methods/1-arg
 	   (lambda (tgt src overflow?)
-	     (if untagged-fixnums?
-		 (begin
-		   (if overflow?  (no-overflow-branches!))
-		   (LAP (,instr () ,fixed-operand ,',src ,',tgt)))
-		 (if overflow?
-		     (LAP (,instr (,nsv) ,fixed-operand ,',src ,',tgt))
-		     (LAP (,instr () ,fixed-operand ,',src ,',tgt))))))))
+	     (if overflow?  (no-overflow-branches!))
+	     (LAP (,instr () ,fixed-operand ,',src ,',tgt))))))
 
      (binary-fixnum
       (macro (name instr nsv)
 	`(define-arithmetic-method ',name fixnum-methods/2-args
 	   (lambda (tgt src1 src2 overflow?)
-	     (if untagged-fixnums?
-		 (begin
-		   (if overflow?  (no-overflow-branches!))
-		   (LAP (,instr () ,',src1 ,',src2 ,',tgt)))
-		 (if overflow?
-		     (LAP (,instr (,nsv) ,',src1 ,',src2 ,',tgt))
-		     (LAP (,instr () ,',src1 ,',src2 ,',tgt))))))))
+	     (if overflow?  (no-overflow-branches!))
+	     (LAP (,instr () ,',src1 ,',src2 ,',tgt))))))
 
      (binary-out-of-line
       (macro (name . regs)
@@ -287,16 +166,16 @@ MIT in each case. |#
 			`(LAP)
 			`(require-registers! ,@regs))))))))
 
-  (unary-fixnum ONE-PLUS-FIXNUM ADDI NSV ,fixnum-1)
-  (unary-fixnum MINUS-ONE-PLUS-FIXNUM ADDI NSV ,(- fixnum-1))
-  (unary-fixnum FIXNUM-NOT SUBI TR ,(- fixnum-1));;?? XOR?
+  (unary-fixnum ONE-PLUS-FIXNUM ADDI NSV 1)
+  (unary-fixnum MINUS-ONE-PLUS-FIXNUM ADDI NSV -1)
+  (unary-fixnum FIXNUM-NOT SUBI TR -1)  ;;?? XOR?
 
-  (binary-fixnum PLUS-FIXNUM ADD NSV)
+  (binary-fixnum PLUS-FIXNUM  ADD NSV)
   (binary-fixnum MINUS-FIXNUM SUB NSV)
-  (binary-fixnum FIXNUM-AND AND TR)
-  (binary-fixnum FIXNUM-ANDC ANDCM TR)
-  (binary-fixnum FIXNUM-OR OR TR)
-  (binary-fixnum FIXNUM-XOR XOR TR)
+  (binary-fixnum FIXNUM-AND   AND TR)
+  (binary-fixnum FIXNUM-ANDC  ANDCM TR)
+  (binary-fixnum FIXNUM-OR    OR TR)
+  (binary-fixnum FIXNUM-XOR   XOR TR)
 
   (binary-out-of-line MULTIPLY-FIXNUM fp4 fp5)
   (binary-out-of-line FIXNUM-QUOTIENT fp4 fp5)
@@ -308,28 +187,6 @@ MIT in each case. |#
 ;; Arguments are passed in regnum:first-arg and regnum:second-arg.
 ;; Result is returned in regnum:first-arg, and a boolean is returned
 ;; in regnum:second-arg indicating wheter there was overflow.
-#|
-(define (special-binary-operation operation hook target source1 source2 ovflw?)
-  (if (not (pair? hook))
-      (error "special-binary-operation: Unknown operation" operation))
-
-  (let* ((extra ((cdr hook)))
-	 (load-1 (->machine-register source1 regnum:first-arg))		      
-	 (load-2 (->machine-register source2 regnum:second-arg)))
-    ;; Make regnum:first-arg the only alias for target
-    (delete-register! target)
-    (delete-dead-registers!)
-    (add-pseudo-register-alias! target regnum:first-arg)
-    (if (and untagged-fixnums? ovflw?)
-	(overflow-branch-if-not-nullified!))
-    (LAP ,@extra
-	 ,@load-1
-	 ,@load-2
-	 ,@(invoke-hook (car hook))
-	 ,@(if (not ovflw?)
-	       (LAP)
-	       (LAP (COMICLR (=) 0 ,regnum:second-arg 0))))))
-|#
 
 ;; This version fixes the problem with the previous that a reduction merge 
 ;; like (if ... (fix:remainder x y) 0) would never assign target (=r2)
@@ -343,8 +200,7 @@ MIT in each case. |#
 	 (load-2 (->machine-register source2 regnum:second-arg)))
     (let ((core
 	   (lambda (extra-2)
-	     (if (and untagged-fixnums? ovflw?)
-		 (overflow-branch-if-not-nullified!))
+	     (if ovflw? (error "RULFIX: overflow branches obsolete"))
 	     (LAP ,@extra
 		  ,@load-1
 		  ,@load-2
@@ -439,9 +295,7 @@ MIT in each case. |#
 (define fixnum-methods/2-args/constant*register
   (list 'FIXNUM-METHODS/2-ARGS/CONSTANT*REGISTER))
 
-(define (guarantee-signed-fixnum n)
-  (if (not (signed-fixnum? n)) (error "Not a signed fixnum" n))
-  n)
+;; precondition for considering a constant for fixnum operations:
 
 (define (signed-fixnum? n)
   (and (exact-integer? n)
@@ -462,206 +316,72 @@ MIT in each case. |#
 	  (else
 	   (loop (* 2 power) (1+ exponent))))))
 
-(if untagged-fixnums?
-
-    (define-arithconst-method 'PLUS-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?
-	;; ignored because success of generic arithmetic pretest
-	;; guarantees it won't overflow
-	(fits-in-14-bits-signed? (* constant fixnum-1)))
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(if overflow? (no-overflow-branches!))
-	(let ((value (* constant fixnum-1)))
-	  (load-offset value src tgt))))
-
-    (define-arithconst-method 'PLUS-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(fits-in-11-bits-signed? (* constant fixnum-1)))
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(let ((value (* constant fixnum-1)))
-	  (if overflow?
-	      (cond ((zero? constant)
-		     (LAP (ADD (TR) ,src 0 ,tgt)))
-		    ((fits-in-11-bits-signed? value)
-		     (LAP (ADDI (NSV) ,value ,src ,tgt)))
-		    (else
-		     (let ((temp (standard-temporary!)))
-		       (LAP ,@(load-fixnum-constant constant temp)
-			    (ADD (NSV) ,src ,temp ,tgt)))))
-	      (load-offset value src tgt)))))
-    )
+(define-arithconst-method 'PLUS-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    ovflw?
+    ;; ignored because success of generic arithmetic pretest
+    ;; guarantees it won't overflow
+    (fits-in-14-bits-signed? constant))
+  (lambda (tgt src constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (load-offset constant src tgt)))
 
-(if untagged-fixnums?
+(define-arithconst-method 'MINUS-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    ovflw?
+    ;; ignored because success of generic arithmetic pretest
+    ;; guarantees it won't overflow
+    (and (signed-fixnum? constant)
+	 (fits-in-14-bits-signed? (- constant))))
+  (lambda (tgt src constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (let ((value (- constant)))
+      (load-offset value src tgt))))
 
-    (define-arithconst-method 'MINUS-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?
-	;; ignored because success of generic arithmetic pretest
-	;; guarantees it won't overflow
-	(fits-in-14-bits-signed? (- (* constant fixnum-1))))
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(if overflow? (no-overflow-branches!))
-	(let ((value (- (* constant fixnum-1))))
-	  (load-offset value src tgt))))
+(define-arithconst-method 'MINUS-FIXNUM
+  fixnum-methods/2-args/constant*register
+  (lambda (constant ovflw?)
+    ovflw?				; ignored
+    (fits-in-11-bits-signed? constant))
+  (lambda (tgt constant src overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP (SUBI () ,constant ,src ,tgt))))
 
-    (define-arithconst-method 'MINUS-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(fits-in-11-bits-signed? (- (* constant fixnum-1))))
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(let ((value (- (* constant fixnum-1))))
-	  (if overflow?
-	      (cond ((zero? constant)
-		     (LAP (ADD (TR) ,src 0 ,tgt)))
-		    ((fits-in-11-bits-signed? value)
-		     (LAP (ADDI (NSV) ,value ,src ,tgt)))
-		    (else
-		     (let ((temp (standard-temporary!)))
-		       (LAP ,@(load-fixnum-constant constant temp)
-			    (ADD (NSV) ,src ,temp ,tgt)))))
-	      (load-offset value src tgt)))))
-    )
+(define-arithconst-method 'FIXNUM-AND
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    ovflw?				; ignored because can never happen
+    (and (signed-fixnum? constant)
+	 (integer-log-base-2? (+ constant 1))))
+  (lambda (tgt src constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (let ((bits (integer-log-base-2? (+ constant 1))))
+      (LAP (EXTRU () ,src 31 ,bits ,tgt)))))
 
-(if untagged-fixnums?
-    (define-arithconst-method 'MINUS-FIXNUM
-      fixnum-methods/2-args/constant*register
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(fits-in-11-bits-signed? (* constant fixnum-1)))
-      (lambda (tgt constant src overflow?)
-	(guarantee-signed-fixnum constant)
-	(if overflow? (no-overflow-branches!))
-	(let ((value (* constant fixnum-1)))
-	  (if (fits-in-11-bits-signed? value)
-	      (LAP (SUBI () ,value ,src ,tgt))
-	      (error "MINUS-FIXNUM <c>*<r> with bad constant" value)))))
-
-    (define-arithconst-method 'MINUS-FIXNUM
-      fixnum-methods/2-args/constant*register
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(fits-in-11-bits-signed? (* constant fixnum-1)))
-      (lambda (tgt constant src overflow?)
-	(guarantee-signed-fixnum constant)
-	(let ((value (* constant fixnum-1)))
-	  (if (fits-in-11-bits-signed? value)
-	      (if overflow?
-		  (LAP (SUBI (NSV) ,value ,src ,tgt))
-		  (LAP (SUBI () ,value ,src ,tgt)))
-	      (let ((temp (standard-temporary!)))
-		(LAP ,@(load-fixnum-constant constant temp)
-		     ,@(if overflow?
-			   (LAP (SUB (NSV) ,temp ,src ,tgt))
-			   (LAP (SUB () ,temp ,src ,tgt)))))))))
-    )
-
-
-(if untagged-fixnums?
-    (define-arithconst-method 'FIXNUM-AND
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?
-	;; ignored because can never happen
-	(integer-log-base-2? (+ constant 1)))
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(if overflow? (no-overflow-branches!))
-	(let ((bits (integer-log-base-2? (+ constant 1))))
-	  (LAP (EXTRU () ,src 31 ,bits ,tgt))))))
-
-(if untagged-fixnums?
-    (define-arithconst-method 'FIXNUM-LSH
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	(if ovflw? (error "RULFIX: FIXNUM-LSH with overflow check requested"))
-	constant			; ignored
-	true)
-      ;; OVERFLOW? should never be set, because there is no generic
-      ;; LSH operation and only generics cause overflow detection
-      (lambda (tgt src shift overflow?)
-	(if overflow?
-	    (error "RULFIX: FIXNUM-LSH with overflow check requested"))
-	(guarantee-signed-fixnum shift)
-	(cond ((zero? shift)
-	       (copy src tgt))
-	      ((negative? shift)
-	       ;; Right shift
-	       (let ((shift (- shift)))
-		 (if (>= shift scheme-datum-width)
-		     (copy 0 tgt)
-		     (LAP (SHD () 0 ,src ,shift ,tgt)))))
-	      (else
-	       ;; Left shift
-	       (if (>= shift scheme-datum-width)
-		   (copy 0 tgt)
-		   (LAP (SHD () ,src 0 ,(- 32 shift) ,tgt)))))))
-
-    (define-arithconst-method 'FIXNUM-LSH
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	constant ovflw?			; ignored
-	true)
-      (lambda (tgt src shift overflow?)
-	;; What does overflow mean for a logical shift?
-	;; The code commented out below corresponds to arithmetic shift
-	;; overflow conditions.
-	(guarantee-signed-fixnum shift)
-	(cond ((zero? shift)
-	       (cond ((not overflow?)
-		      (copy src tgt))
-		     ((= src tgt)
-		      (LAP (SKIP (TR))))
-		     (else
-		      (LAP (COPY (TR) ,src ,tgt)))))
-	      ((negative? shift)
-	       ;; Right shift
-	       (let ((shift (- shift)))
-		 (cond ((< shift scheme-datum-width)
-			(LAP (SHD () 0 ,src ,shift ,tgt)
-			     ;; clear shifted bits
-			     (DEP (,(if overflow? 'TR 'NV))
-				  0 31 ,scheme-type-width ,tgt)))
-		       ((not overflow?)
-			(copy 0 tgt))
-		       (else
-			(LAP (COPY (TR) 0 ,tgt))))))
-	      (else
-	       ;; Left shift
-	       (if (>= shift scheme-datum-width)
-		   (if (not overflow?)
-		       (copy 0 tgt)
-		       #| (LAP (COMICLR (=) 0 ,src ,tgt)) |#
-		       (LAP (COMICLR (TR) 0 ,src ,tgt)))
-		   (let ((nbits (- 32 shift)))
-		     (if overflow?
-			 #|
-			 ;; Arithmetic overflow condition accomplished
-			 ;; by skipping all over the place.
-			 ;; Another possibility is to use the shift-and-add
-			 ;; instructions, which compute correct signed overflow
-			 ;; conditions.
-			 (let ((nkept (- 32 shift))
-			       (temp (standard-temporary!)))
-			   (LAP (ZDEP () ,src ,(- nkept 1) ,nkept ,tgt)
-				(EXTRS (=) ,src ,(- shift 1) ,shift ,temp)
-				(COMICLR (<>) -1 ,temp 0)
-				(SKIP (TR))))
-			 |#
-			 (LAP (ZDEP (TR) ,src ,(- nbits 1) ,nbits ,tgt))
-			 (LAP (ZDEP () ,src ,(- nbits 1) ,nbits ,tgt)))))))))
-    )
+(define-arithconst-method 'FIXNUM-LSH
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    (if ovflw? (error "RULFIX: FIXNUM-LSH with overflow check requested"))
+    (signed-fixnum? constant))
+  (lambda (tgt src shift overflow?)
+    (cond ((zero? shift)
+	   (copy src tgt))
+	  ((negative? shift)
+	   ;; Right shift
+	   (let ((shift (- shift)))
+	     (if (>= shift scheme-datum-width)
+		 (copy 0 tgt)
+		 (LAP (SHD () 0 ,src ,shift ,tgt)))))
+	  (else
+	   ;; Left shift
+	   (if (>= shift scheme-datum-width)
+	       (copy 0 tgt)
+	       (LAP (SHD () ,src 0 ,(- 32 shift) ,tgt)))))))
 
 (define (no-overflow-branches!)
+  (error "RULFIX: overflow branches obsolete!")
   (set-current-branches!
    (lambda (if-overflow)
      if-overflow
@@ -675,6 +395,7 @@ MIT in each case. |#
     (LAP (EXTRS () ,source 31 ,len ,target))))
 
 (define (fix:fixnum?-overflow-branches! register)
+  (error "RULFIX: overflow branches obsolete")
   (let ((temp (standard-temporary!)))
     (set-current-branches!
      (lambda (if-overflow)
@@ -683,14 +404,6 @@ MIT in each case. |#
      (lambda (if-no-overflow)
        (LAP ,@(untagged-fixnum-sign-extend register temp)
 	    (COMBN (=) ,register ,temp (@PCR ,if-no-overflow)))))))
-
-(define (overflow-branch-if-not-nullified!)
-  (set-current-branches!
-   (lambda (if-overflow)
-     (LAP (B (N) (@PCR ,if-overflow))))
-   (lambda (if-no-overflow)
-     (LAP (SKIP (TR))
-	  (B (N) (@PCR ,if-no-overflow))))))
 
 (define (expand-factor tgt src factor skipping? condition skip)
   (define (sh3add condition src1 src2 tgt)
@@ -763,296 +476,126 @@ MIT in each case. |#
 			 ,@(skip))))))))
 					; end of EXPAND-FACTOR
 
-(if untagged-fixnums?
-    (define-arithconst-method 'MULTIPLY-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	(let ((factor (abs constant)))
-	  (or (not ovflw?)
-	      (< factor 64)		; Can't overflow out of 32-bit word
-	      (and
-	       (< (abs factor) (expt 2 (-1+ scheme-datum-width)))
-	       (integer-log-base-2? factor)))))
+(define-arithconst-method 'MULTIPLY-FIXNUM
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    (and (signed-fixnum? constant)
+	 (let ((factor (abs constant)))
+	   (or (not ovflw?)
+	       (< factor 64)		; Can't overflow out of 32-bit word
+	       (and
+		(< (abs factor) (expt 2 (-1+ scheme-datum-width)))
+		(integer-log-base-2? factor))))))
 
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(let* ((factor (abs constant))
-	       (xpt (integer-log-base-2? factor)))
-	  (case constant
-	    ((0) (if overflow? (no-overflow-branches!))
-		 (LAP (COPY () 0 ,tgt)))
-	    ((1) (if overflow? (no-overflow-branches!))
-		 (copy src tgt))
-	    ((-1) (if overflow? (fix:fixnum?-overflow-branches! tgt))
-		  (LAP (SUB () 0 ,src ,tgt)))
-	    ((and overflow? xpt (> xpt 6))
-	     (let ((true-src (if (negative? constant) tgt src))
-		   (temp     (standard-temporary!)))
-	       (set-current-branches!
-		(lambda (if-oflow)
-		  (LAP (COMBN (<>) ,true-src ,temp ,if-oflow)
-		       (SHD ,true-src 0 ,(- 32 xpt) ,tgt)))
-		(lambda (if-no-oflow)
-		  (LAP (COMB (=) ,true-src ,temp ,if-no-oflow)
-		       (SHD ,true-src 0 ,(- 32 xpt) ,tgt))))
-	       (LAP ,@(if (negative? constant)
-			  (LAP (SUB () 0 ,src ,true-src))
-			  (LAP))
-		    (EXTRS () ,true-src 31
-			   ,(- 31 (+ xpt scheme-type-width))
-			   ,temp))))
-	    (else
-	     ;; No overflow, or small constant
-	     (if overflow? (fix:fixnum?-overflow-branches! tgt))
-	     (let ((src+ (if (negative? constant) tgt src)))
-	       (LAP ,@(if (negative? constant)
-			  (LAP (SUB () 0 ,src ,tgt))
-			  (LAP))
-		    ,@(if xpt
-			  (LAP (SHD () ,src+ 0 ,(- 32 xpt) ,tgt))
-			  (expand-factor tgt src+ factor false '()
-					 (lambda () (LAP)))))))))))
-
-    (define-arithconst-method 'MULTIPLY-FIXNUM
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	(let ((factor (abs constant)))
-	  #|
-	  (or (integer-log-base-2? factor)
-	      (and (<= factor 64)
-		   (or (not ovflw?)
-		       (<= factor (expt 2 scheme-type-width)))))
-	  |#
-	  (or (not ovflw?)
-	      (<= factor 64)
-	      (integer-log-base-2? factor))))
-
-      (lambda (tgt src constant overflow?)
-	(guarantee-signed-fixnum constant)
-	(let ((skip (if overflow? 'NSV 'NV)))
-	  (case constant
-	    ((0)
-	     (if overflow?
-		 (LAP (COPY (TR) 0 ,tgt))
-		 (LAP (COPY () 0 ,tgt))))
-	    ((1)
-	     (if overflow?
-		 (LAP (COPY (TR) ,src ,tgt))
-		 (copy src tgt)))
-	    ((-1)
-	     (LAP (SUB (,skip) 0 ,src ,tgt)))
-	    (else
-	     (let* ((factor (abs constant))
-		    (src+ (if (negative? constant) tgt src))
-		    (xpt (integer-log-base-2? factor)))
-	       (cond ((not overflow?)
-		      (LAP ,@(if (negative? constant)
-				 (LAP (SUB () 0 ,src ,tgt))
-				 (LAP))
-			   ,@(if xpt
-				 (LAP (SHD () ,src+ 0 ,(- 32 xpt) ,tgt))
-				 (expand-factor tgt src+ factor false '()
-						(lambda ()
-						  (LAP))))))
-		     ((and xpt (> xpt 6))
-		      (let* ((high (standard-temporary!))
-			     (low (if (or (= src tgt) (negative? constant))
-				      (standard-temporary!)
-				      src))
-			     (nbits (- 32 xpt))
-			     (core
-			      (LAP (SHD () ,low 0 ,nbits ,tgt)
-				   (SHD (=) ,high ,low ,(-1+ nbits) ,high)
-				   (COMICLR (<>) -1 ,high 0)
-				   (SKIP (TR)))))
-			(if (negative? constant)
-			    (LAP (EXTRS () ,src 0 1 ,high)
-				 (SUB () 0 ,src ,low)
-				 (SUBB () 0 ,high ,high)
-				 ,@core)
-			    (LAP ,@(if (not (= src low))
-				       (LAP (COPY () ,src ,low))
-				       (LAP))
-				 (EXTRS () ,low 0 1 ,high)
-				 ,@core))))
-		     (else
-		      (LAP ,@(if (negative? constant)
-				 (LAP (SUB (SV) 0 ,src ,tgt))
-				 (LAP))
-			   ,@(expand-factor tgt src+ factor
-					    (negative? constant)
-					    '(NSV)
-					    (lambda ()
-					      (LAP (SKIP (TR))))))))))))))
-    )
+  (lambda (tgt src constant overflow?)
+    (let* ((factor (abs constant))
+	   (xpt (integer-log-base-2? factor)))
+      (case constant
+	((0) (if overflow? (no-overflow-branches!))
+	     (LAP (COPY () 0 ,tgt)))
+	((1) (if overflow? (no-overflow-branches!))
+	     (copy src tgt))
+	((-1) (if overflow? (fix:fixnum?-overflow-branches! tgt))
+	      (LAP (SUB () 0 ,src ,tgt)))
+	((and overflow? xpt (> xpt 6))
+	 (let ((true-src (if (negative? constant) tgt src))
+	       (temp     (standard-temporary!)))
+	   (set-current-branches!
+	    (lambda (if-oflow)
+	      (LAP (COMBN (<>) ,true-src ,temp ,if-oflow)
+		   (SHD ,true-src 0 ,(- 32 xpt) ,tgt)))
+	    (lambda (if-no-oflow)
+	      (LAP (COMB (=) ,true-src ,temp ,if-no-oflow)
+		   (SHD ,true-src 0 ,(- 32 xpt) ,tgt))))
+	   (LAP ,@(if (negative? constant)
+		      (LAP (SUB () 0 ,src ,true-src))
+		      (LAP))
+		(EXTRS () ,true-src 31
+		       ,(- 31 (+ xpt scheme-type-width))
+		       ,temp))))
+	(else
+	 ;; No overflow, or small constant
+	 (if overflow? (fix:fixnum?-overflow-branches! tgt))
+	 (let ((src+ (if (negative? constant) tgt src)))
+	   (LAP ,@(if (negative? constant)
+		      (LAP (SUB () 0 ,src ,tgt))
+		      (LAP))
+		,@(if xpt
+		      (LAP (SHD () ,src+ 0 ,(- 32 xpt) ,tgt))
+		      (expand-factor tgt src+ factor false '()
+				     (lambda () (LAP)))))))))))
 
 ;;;; Division
 
-(if untagged-fixnums?
-    (define-arithconst-method 'FIXNUM-QUOTIENT
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(integer-log-base-2? (abs constant)))
-      (lambda (tgt src constant ovflw?)
-	(guarantee-signed-fixnum constant)
-	(case constant
-	  ((1) (if ovflw? (no-overflow-branches!))
-	       (copy src tgt))
-	  ((-1)
-	   (if ovflw? (fix:fixnum?-overflow-branches!))
-	   (LAP (SUB () 0 ,src ,tgt)))
-	  (else
-	   (let* ((factor (abs constant))
-		  (xpt (integer-log-base-2? factor)))
-	     (cond ((not xpt)
-		    (error "fixnum-quotient: Inconsistency" constant))
-		   ((>= xpt scheme-datum-width)
-		    (if ovflw? (no-overflow-branches!))
-		    (copy 0 tgt))
-		   (else
-		    ;; Note: The following cannot overflow because we are
-		    ;; dividing by a constant whose absolute value is
-		    ;; strictly greater than 1.
-		    (if ovflw? (no-overflow-branches!))
-		    (let* ((posn (- 32 xpt))
-			   (delta (* (-1+ factor) fixnum-1))
-			   (fits? (fits-in-11-bits-signed? delta))
-			   (temp (and (not fits?) (standard-temporary!))))
-		      (LAP ,@(if fits?
-				 (LAP)
-				 (load-immediate delta temp))
-			   (ADD (>=) 0 ,src ,tgt) ; Copy to tgt & test
+(define-arithconst-method 'FIXNUM-QUOTIENT
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    ovflw?				; ignored
+    (and (signed-fixnum? constant)
+	 (integer-log-base-2? (abs constant))))
+  (lambda (tgt src constant ovflw?)
+    (case constant
+      ((1) (if ovflw? (no-overflow-branches!))
+	   (copy src tgt))
+      ((-1)
+       (if ovflw? (fix:fixnum?-overflow-branches!))
+       (LAP (SUB () 0 ,src ,tgt)))
+      (else
+       (let* ((factor (abs constant))
+	      (xpt (integer-log-base-2? factor)))
+	 (cond ((not xpt)
+		(error "fixnum-quotient: Inconsistency" constant))
+	       ((>= xpt scheme-datum-width)
+		(if ovflw? (no-overflow-branches!))
+		(copy 0 tgt))
+	       (else
+		;; Note: The following cannot overflow because we are
+		;; dividing by a constant whose absolute value is
+		;; strictly greater than 1.
+		(if ovflw? (no-overflow-branches!))
+		(let* ((posn (- 32 xpt))
+		       (delta (- factor 1))
+		       (fits? (fits-in-11-bits-signed? delta))
+		       (temp (and (not fits?) (standard-temporary!))))
+		  (LAP ,@(if fits?
+			     (LAP)
+			     (load-immediate delta temp))
+		       (ADD (>=) 0 ,src ,tgt) ; Copy to tgt & test
 					; negative dividend
-			   ,@(if fits?	; For negative dividend ONLY
-				 (LAP (ADDI () ,delta ,tgt ,tgt))
-				 (LAP (ADD () ,temp ,tgt ,tgt)))
-			   (EXTRS () ,tgt ,(-1+ posn) ,posn ,tgt)
-			   ,@(if (negative? constant)
-				 (LAP (SUB () 0 ,tgt ,tgt))
-				 (LAP)))))))))))
+		       ,@(if fits?	; For negative dividend ONLY
+			     (LAP (ADDI () ,delta ,tgt ,tgt))
+			     (LAP (ADD () ,temp ,tgt ,tgt)))
+		       (EXTRS () ,tgt ,(-1+ posn) ,posn ,tgt)
+		       ,@(if (negative? constant)
+			     (LAP (SUB () 0 ,tgt ,tgt))
+			     (LAP)))))))))))
 
-    (define-arithconst-method 'FIXNUM-QUOTIENT
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(integer-log-base-2? (abs constant)))
-      (lambda (tgt src constant ovflw?)
-	(guarantee-signed-fixnum constant)
-	(case constant
-	  ((1)
-	   (if ovflw?
-	       (LAP (COPY (TR) ,src ,tgt))
-	       (copy src tgt)))
-	  ((-1)
-	   (let ((skip (if ovflw? 'NSV 'NV)))
-	     (LAP (SUB (,skip) 0 ,src ,tgt))))
-	  (else
-	   (let* ((factor (abs constant))
-		  (xpt (integer-log-base-2? factor)))
-	     (cond ((not xpt)
-		    (error "fixnum-quotient: Inconsistency" constant))
-		   ((>= xpt scheme-datum-width)
-		    (if ovflw?
-			(LAP (COPY (TR) 0 ,tgt))
-			(copy 0 tgt)))
-		   (else
-		    ;; Note: The following cannot overflow because we are
-		    ;; dividing by a constant whose absolute value is
-		    ;; strictly greater than 1.  However, we need to
-		    ;; negate after shifting, not before, because negating
-		    ;; the input can overflow (if it is -0).
-		    ;; This unfortunately implies an extra instruction in the
-		    ;; case of negative constants because if this weren't the
-		    ;; case, we could substitute the first ADD instruction for
-		    ;; a SUB for negative constants, and eliminate the SUB later.
-		    (let* ((posn (- 32 xpt))
-			   (delta (* (-1+ factor) fixnum-1))
-			   (fits? (fits-in-11-bits-signed? delta))
-			   (temp (and (not fits?) (standard-temporary!))))
-
-		      (LAP ,@(if fits?
-				 (LAP)
-				 (load-immediate delta temp))
-			   (ADD (>=) 0 ,src ,tgt)
-			   ,@(if fits?
-				 (LAP (ADDI () ,delta ,tgt ,tgt))
-				 (LAP (ADD () ,temp ,tgt ,tgt)))
-			   (EXTRS () ,tgt ,(-1+ posn) ,posn ,tgt)
-			   ,@(let ((skip (if ovflw? 'TR 'NV)))
-			       (if (negative? constant)
-				   (LAP (DEP () 0 31 ,scheme-type-width ,tgt)
-					(SUB (,skip) 0 ,tgt ,tgt))
-				   (LAP
-				    (DEP (,skip) 0 31 ,scheme-type-width
-					 ,tgt)))))))))))))
-    )
-
-(if untagged-fixnums?
-    (define-arithconst-method 'FIXNUM-REMAINDER
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(integer-log-base-2? (abs constant)))
-      (lambda (tgt src constant ovflw?)
-	(guarantee-signed-fixnum constant)
-	(if ovflw? (no-overflow-branches!))
-	(case constant
-	  ((1 -1)
-	   (LAP (COPY () 0 ,tgt)))
-	  (else
-	   (let ((sign (standard-temporary!))
-		 (len  (integer-log-base-2? (abs constant))))
-	     (let ((sgn-len (- 32 len)))
-	       (LAP (EXTRS () ,src 0 1 ,sign)
-		    (EXTRU (=) ,src 31 ,len ,tgt)
-		    (DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt))))))))
-
-    (define-arithconst-method 'FIXNUM-REMAINDER
-      fixnum-methods/2-args/register*constant
-      (lambda (constant ovflw?)
-	ovflw?				; ignored
-	(integer-log-base-2? (abs constant)))
-      (lambda (tgt src constant ovflw?)
-	(guarantee-signed-fixnum constant)
-	(case constant
-	  ((1 -1)
-	   (if ovflw?
-	       (LAP (COPY (TR) 0 ,tgt))
-	       (LAP (COPY () 0 ,tgt))))
-	  (else
-	   (let ((sign (standard-temporary!))
-		 (len (let ((xpt (integer-log-base-2? (abs constant))))
-			(and xpt (+ xpt scheme-type-width)))))
-	     (let ((sgn-len (- 32 len)))
-	       (if (not len)
-		   (error "fixnum-remainder: Inconsistency" constant ovflw?))
-	       (LAP (EXTRS () ,src 0 1 ,sign)
-		    (EXTRU (=) ,src 31 ,len ,tgt)
-		    (DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt)
-		    ,@(if ovflw?
-			  (LAP (SKIP (TR)))
-			  (LAP)))))))))
-    )
+(define-arithconst-method 'FIXNUM-REMAINDER
+  fixnum-methods/2-args/register*constant
+  (lambda (constant ovflw?)
+    ovflw?				; ignored
+    (and (signed-fixnum? constant)
+	 (integer-log-base-2? (abs constant))))
+  (lambda (tgt src constant ovflw?)
+    (if ovflw? (no-overflow-branches!))
+    (case constant
+      ((1 -1)
+       (LAP (COPY () 0 ,tgt)))
+      (else
+       (let ((sign (standard-temporary!))
+	     (len  (integer-log-base-2? (abs constant))))
+	 (let ((sgn-len (- 32 len)))
+	   (LAP (EXTRS () ,src 0 1 ,sign)
+		(EXTRU (=) ,src 31 ,len ,tgt)
+		(DEP () ,sign ,(- sgn-len 1) ,sgn-len ,tgt))))))))
 
 ;;;; Predicates
-
-;; This is a kludge.  It assumes that the last instruction of the
-;; arithmetic operation that may cause an overflow condition will skip
-;; the following instruction if there was no overflow, ie., the last
-;; instruction will nullify using NSV (or TR if overflow is
-;; impossible).  The code for the alternative is a real kludge because
-;; we can't force the arithmetic instruction that precedes this code
-;; to use the inverted condition.  Hopefully a peep-hole optimizer
-;; will fix this.  The linearizer attempts to use the "good" branch.
 
 (define-rule predicate
   (OVERFLOW-TEST)
   ;; Overflow test handling for untagged-fixnums is embedded in the
   ;; code for the operator.
-  (if (not untagged-fixnums?)
-      (overflow-branch-if-not-nullified!))
-  (LAP))
+  (error "RULFIX: Overflow test obsolete"))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
@@ -1075,7 +618,8 @@ MIT in each case. |#
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source))
-		      (CONSTANT (? constant)))
+		      (CONSTANT (? constant))) 
+  (QUALIFIER (signed-fixnum? constant))
   (compare-fixnum/constant*register (invert-condition-noncommutative
 				     (fixnum-pred->cc predicate))
 				    constant
@@ -1085,13 +629,13 @@ MIT in each case. |#
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (CONSTANT (? constant))
 		      (REGISTER (? source)))
+  (QUALIFIER (signed-fixnum? constant))
   (compare-fixnum/constant*register (fixnum-pred->cc predicate)
 				    constant
 				    (standard-source! source)))
 
 (define-integrable (compare-fixnum/constant*register cc n r)
-  (guarantee-signed-fixnum n)
-  (compare-immediate cc (* n fixnum-1) r))
+  (compare-immediate cc n r))
 
 (define (fixnum-pred->cc predicate)
   (case predicate
@@ -1100,42 +644,6 @@ MIT in each case. |#
     ((POSITIVE-FIXNUM? GREATER-THAN-FIXNUM?) '>)
     (else
      (error "fixnum-pred->cc: unknown predicate" predicate))))
-
-;;;; New "optimizations"
-
-
-(define (constant->additive-operand operation constant)
-  (case operation
-    ((PLUS-FIXNUM ONE-PLUS-FIXNUM) constant)
-    ((MINUS-FIXNUM MINUS-ONE-PLUS-FIXNUM) (- constant))
-    (else
-     (error "constant->additive-operand: Unknown operation"
-	    operation))))
-
-(define (guarantee-fixnum-result target)
-  (if untagged-fixnums?
-      (if compiler:assume-safe-fixnums?
-	  (LAP)
-	  (untagged-fixnum-sign-extend target target))
-      (let ((default
-	      (lambda ()
-		(deposit-immediate (ucode-type positive-fixnum)
-				   (-1+ scheme-type-width)
-				   scheme-type-width
-				   target))))
-	#|
-	;; Unsafe at sign crossings until the tags are changed.
-	(if compiler:assume-safe-fixnums?
-	    (LAP)
-	    (default))
-	|#
-	(default))))
-
-
-(define (plus-or-minus? operation)
-  (and (memq operation '(PLUS-FIXNUM MINUS-FIXNUM))
-       operation))
-
 
 ;; This recognises the pattern for flo:vector-length:
 
@@ -1146,7 +654,7 @@ MIT in each case. |#
 				       (OBJECT->DATUM (REGISTER (? source)))
 				       (CONSTANT (? constant))
 				       #F)))
-  (QUALIFIER (and (integer? constant)
+  (QUALIFIER (and (exact-integer? constant)
 		  (<= (- 1 scheme-datum-width) constant -1)))
   (let* ((source  (standard-source! source))
 	 (target  (standard-target! target)))
@@ -1161,7 +669,7 @@ MIT in each case. |#
 			 (OBJECT->DATUM (REGISTER (? source)))
 			 (CONSTANT (? constant))
 			 #F))
-  (QUALIFIER (and (integer? constant)
+  (QUALIFIER (and (exact-integer? constant)
 		  (<= (- 1 scheme-datum-width) constant -1)))
   (let* ((source  (standard-source! source))
 	 (target  (standard-target! target)))
@@ -1175,7 +683,7 @@ MIT in each case. |#
 					   (REGISTER (? source))
 					   (CONSTANT (? constant))
 					   #F)))
-  (QUALIFIER (and (integer? constant)
+  (QUALIFIER (and (exact-integer? constant)
 		  (<= (- 1 scheme-datum-width) constant -1)))
   (let* ((source  (standard-source! source))
 	 (target  (standard-target! target)))
