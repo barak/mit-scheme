@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.105 1987/05/28 17:59:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.106 1987/05/31 22:56:55 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -180,8 +180,11 @@ MIT in each case. |#
 (define-cse-method 'CONTINUATION-HEAP-CHECK method/noop)
 (define-cse-method 'INVOCATION:APPLY method/noop)
 (define-cse-method 'INVOCATION:JUMP method/noop)
+(define-cse-method 'INVOCATION:CACHE-REFERENCE method/noop)
 (define-cse-method 'INVOCATION:LEXPR method/noop)
 (define-cse-method 'INVOCATION:PRIMITIVE method/noop)
+(define-cse-method 'INTERPRETER-CALL:CACHE-REFERENCE method/noop)
+(define-cse-method 'INTERPRETER-CALL:CACHE-UNASSIGNED? method/noop)
 
 (define (method/invalidate-stack statement)
   (stack-pointer-invalidate!))
@@ -203,6 +206,16 @@ MIT in each case. |#
 			 rtl:set-invocation:lookup-environment!
 			 statement
 			 trivial-action)))
+
+(define-cse-method 'INTERPRETER-CALL:CACHE-ASSIGNMENT
+  (lambda (statement)
+    (expression-replace! rtl:interpreter-call:cache-assignment-value
+			 rtl:set-interpreter-call:cache-assignment-value!
+			 statement
+      (lambda (volatile? insert-source!)
+	(hash-table-delete-class! element-address-varies?)
+	(non-object-invalidate!)
+	(if (not volatile?) (insert-source!))))))
 
 (define (define-lookup-method type get-environment set-environment! register)
   (define-cse-method type

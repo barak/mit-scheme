@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.47 1987/05/31 14:14:21 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.48 1987/05/31 23:00:05 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -91,6 +91,8 @@ MIT in each case. |#
     ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
      (interpreter-register:cache-reference))
+    ((INTERPRETER-CALL-RESULT:CACHE-UNASSIGNED?)
+     (interpreter-register:cache-unassigned?))
     ((INTERPRETER-CALL-RESULT:LOOKUP) (interpreter-register:lookup))
     ((INTERPRETER-CALL-RESULT:UNASSIGNED?) (interpreter-register:unassigned?))
     ((INTERPRETER-CALL-RESULT:UNBOUND?) (interpreter-register:unbound?))
@@ -144,7 +146,7 @@ MIT in each case. |#
 
 (define (pseudo-register=? x y)
   (= (register-renumber x) (register-renumber y)))
-
+
 (define register-type
   (let ((types (make-vector 16)))
     (let loop ((i 0) (j 8))
@@ -163,13 +165,16 @@ MIT in each case. |#
 		 (vector-set! references j `(A ,i))
 		 (loop (1+ i) (1+ j)))))    (lambda (register)
       (vector-ref references register))))
-
-(define mask-reference '(D 7))
 
+(define mask-reference '(D 7))
+
 (define-integrable (interpreter-register:access)
   (rtl:make-machine-register d0))
 
 (define-integrable (interpreter-register:cache-reference)
+  (rtl:make-machine-register d0))
+
+(define-integrable (interpreter-register:cache-unassigned?)
   (rtl:make-machine-register d0))
 
 (define-integrable (interpreter-register:enclose)
@@ -207,7 +212,7 @@ MIT in each case. |#
 
 (define-integrable (interpreter-stack-pointer? register)
   (= (rtl:register-number register) regnum:stack-pointer))
-
+
 (define (lap:make-label-statement label)
   `(LABEL ,label))
 

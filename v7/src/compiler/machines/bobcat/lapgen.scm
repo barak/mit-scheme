@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.170 1987/05/29 21:21:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.171 1987/05/31 23:00:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -238,7 +238,8 @@ MIT in each case. |#
     unassigned? unbound? set! define primitive-apply enclose setup-lexpr
     return-to-interpreter safe-lookup cache-variable reference-trap
     assignment-trap)
-  (define-entries #x0228 uuo-link uuo-link-trap))
+  (define-entries #x0228 uuo-link uuo-link-trap cache-reference-apply
+    safe-reference-trap unassigned?-trap))
 
 (define reg:temp '(@AO 6 #x0010))
 (define reg:enclose-result '(@AO 6 #x0014))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.6 1987/05/29 17:49:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.7 1987/05/31 22:56:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -135,6 +135,14 @@ MIT in each case. |#
 			  prefix
 			  (and continuation
 			       (continuation-label continuation))))
+
+(define (rtl:make-invocation:cache-reference frame-size prefix continuation
+					     name)
+  (%make-invocation:cache-reference frame-size
+				    prefix
+				    (and continuation
+					 (continuation-label continuation))
+				    name))
 
 (define (rtl:make-invocation:jump frame-size prefix continuation procedure)
   (%make-invocation:jump frame-size
