@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.9 1991/09/19 22:12:17 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comint.scm,v 1.10 1991/10/25 00:02:54 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -42,11 +42,11 @@ license should have been included along with this file. |#
 
 (declare (usual-integrations))
 
-(define (make-comint mode name program . switches)
+(define (make-comint mode buffer program . switches)
   (let ((buffer
-	 (if (pair? name)
-	     (new-buffer (string-append "*" (car name) "*"))
-	     (find-or-create-buffer (string-append "*" name "*")))))
+	 (if (buffer? buffer)
+	     buffer
+	     (find-or-create-buffer buffer))))
     (if (let ((process (get-buffer-process buffer)))
 	  (or (not process)
 	      (not (process-runnable? process))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.59 1991/08/28 02:54:31 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.60 1991/10/25 00:03:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -308,23 +308,24 @@
 
 (define (re-match-forward regexp start #!optional end case-fold-search)
   (let ((group (mark-group start)))
-    (let ((case-fold-search
+    (let ((end
+	   (if (default-object? end)
+	       (group-end-mark group)
+	       (begin
+		 (if (not (mark<= start end))
+		     (error "Marks incorrectly related:" start end))
+		 end)))
+	  (case-fold-search
 	   (if (default-object? case-fold-search)
 	       (group-case-fold-search group)
 	       case-fold-search)))
       (let ((index
-	     (re-match-buffer-forward
-	      (re-compile-pattern regexp case-fold-search)
-	      case-fold-search
-	      (group-syntax-table group)
-	      group
-	      (mark-index start)
-	      (mark-index
-	       (if (default-object? end)
-		   (group-end-mark group)
-		   (begin
-		     (if (not (mark<= start end))
-			 (error "Marks incorrectly related:" start end))
-		     end))))))
+	     (re-match-buffer-forward (re-compile-pattern regexp
+							  case-fold-search)
+				      case-fold-search
+				      (group-syntax-table group)
+				      group
+				      (mark-index start)
+				      (mark-index end))))
 	(and index
 	     (make-mark group index))))))

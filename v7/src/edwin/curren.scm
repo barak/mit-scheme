@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.92 1991/04/21 00:30:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.93 1991/10/25 00:02:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -48,16 +48,16 @@
 
 ;;;; Screens
 
-(define-integrable (screen-list)
+(define (screen-list)
   (editor-screens current-editor))
 
-(define-integrable (selected-screen)
+(define (selected-screen)
   (editor-selected-screen current-editor))
 
-(define-integrable (selected-screen? screen)
+(define (selected-screen? screen)
   (eq? screen (selected-screen)))
 
-(define-integrable (multiple-screens?)
+(define (multiple-screens?)
   (display-type/multiple-screens? (current-display-type)))
 
 (define (make-screen buffer . make-screen-args)
@@ -118,7 +118,7 @@
 (define (update-selected-screen! display-style)
   (update-screen! (selected-screen) display-style))
 
-(define-integrable (screen0)
+(define (screen0)
   (car (screen-list)))
 
 (define (screen1+ screen)
@@ -162,16 +162,16 @@
 
 ;;;; Windows
 
-(define-integrable (current-window)
+(define (current-window)
   (screen-selected-window (selected-screen)))
 
 (define (window-list)
   (append-map screen-window-list (screen-list)))
 
-(define-integrable (current-window? window)
+(define (current-window? window)
   (eq? window (current-window)))
 
-(define-integrable (window0)
+(define (window0)
   (screen-window0 (selected-screen)))
 
 (define (select-window window)
@@ -186,7 +186,7 @@
 	     (screen-select-window! screen window)
 	     (select-screen screen)))))))
 
-(define-integrable (select-cursor window)
+(define (select-cursor window)
   (screen-select-cursor! (window-screen window) window))
 
 (define (window-visible? window)
@@ -226,13 +226,13 @@
 	  (else
 	   window))))
 
-(define-integrable (typein-window)
+(define (typein-window)
   (screen-typein-window (selected-screen)))
 
-(define-integrable (typein-window? window)
+(define (typein-window? window)
   (eq? window (screen-typein-window (window-screen window))))
 
-(define-integrable (current-message)
+(define (current-message)
   (window-override-message (typein-window)))
 
 (define (set-current-message! message)
@@ -251,22 +251,22 @@
 
 ;;;; Buffers
 
-(define-integrable (buffer-list)
+(define (buffer-list)
   (bufferset-buffer-list (current-bufferset)))
 
-(define-integrable (buffer-alive? buffer)
+(define (buffer-alive? buffer)
   (memq buffer (buffer-list)))
 
-(define-integrable (buffer-names)
+(define (buffer-names)
   (bufferset-names (current-bufferset)))
 
-(define-integrable (current-buffer? buffer)
+(define (current-buffer? buffer)
   (eq? buffer (current-buffer)))
 
-(define-integrable (current-buffer)
+(define (current-buffer)
   (window-buffer (current-window)))
 
-(define-integrable (previous-buffer)
+(define (previous-buffer)
   (other-buffer (current-buffer)))
 
 (define (other-buffer buffer)
@@ -281,19 +281,19 @@
 	  (else
 	   (car buffers)))))
 
-(define-integrable (bury-buffer buffer)
+(define (bury-buffer buffer)
   (bufferset-bury-buffer! (current-bufferset) buffer))
 
-(define-integrable (find-buffer name)
+(define (find-buffer name)
   (bufferset-find-buffer (current-bufferset) name))
 
-(define-integrable (create-buffer name)
+(define (create-buffer name)
   (bufferset-create-buffer (current-bufferset) name))
 
-(define-integrable (find-or-create-buffer name)
+(define (find-or-create-buffer name)
   (bufferset-find-or-create-buffer (current-bufferset) name))
 
-(define-integrable (rename-buffer buffer new-name)
+(define (rename-buffer buffer new-name)
   (bufferset-rename-buffer (current-bufferset) buffer new-name))
 
 (define (kill-buffer buffer)
@@ -313,13 +313,13 @@
 	    (buffer-processes buffer))
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
-(define-integrable (select-buffer buffer)
+(define (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))
 
-(define-integrable (select-buffer-no-record buffer)
+(define (select-buffer-no-record buffer)
   (set-window-buffer! (current-window) buffer false))
 
-(define-integrable (select-buffer-in-window buffer window)
+(define (select-buffer-in-window buffer window)
   (set-window-buffer! window buffer true))
 
 (define (set-window-buffer! window buffer record?)
@@ -370,10 +370,10 @@ The buffer is guaranteed to be selected at that time."
 
 ;;;; Point
 
-(define-integrable (current-point)
+(define (current-point)
   (window-point (current-window)))
 
-(define-integrable (set-current-point! mark)
+(define (set-current-point! mark)
   (set-window-point! (current-window) mark))
 
 (define (set-buffer-point! buffer mark)
@@ -400,12 +400,12 @@ The buffer is guaranteed to be selected at that time."
 		    (set! old-point)
 		    unspecific))))
 
-(define-integrable (current-column)
+(define (current-column)
   (mark-column (current-point)))
 
 ;;;; Mark and Region
 
-(define-integrable (current-mark)
+(define (current-mark)
   (buffer-mark (current-buffer)))
 
 (define (buffer-mark buffer)
@@ -417,7 +417,7 @@ The buffer is guaranteed to be selected at that time."
 (define (set-current-mark! mark)
   (set-buffer-mark! (current-buffer) (guarantee-mark mark)))
 
-(define-integrable (set-buffer-mark! buffer mark)
+(define (set-buffer-mark! buffer mark)
   (ring-set! (buffer-mark-ring buffer) 0 (mark-right-inserting-copy mark)))
 
 (define-variable auto-push-point-notification
@@ -434,16 +434,16 @@ If false, don't display any message."
 	     (not (typein-window? (current-window))))
 	(temporary-message notification))))
 
-(define-integrable (push-buffer-mark! buffer mark)
+(define (push-buffer-mark! buffer mark)
   (ring-push! (buffer-mark-ring buffer) (mark-right-inserting-copy mark)))
 
-(define-integrable (pop-current-mark!)
+(define (pop-current-mark!)
   (pop-buffer-mark! (current-buffer)))
 
-(define-integrable (pop-buffer-mark! buffer)
+(define (pop-buffer-mark! buffer)
   (ring-pop! (buffer-mark-ring buffer)))
 
-(define-integrable (current-region)
+(define (current-region)
   (make-region (current-point) (current-mark)))
 
 (define (set-current-region! region)
@@ -456,23 +456,23 @@ If false, don't display any message."
 
 ;;;; Modes and Comtabs
 
-(define-integrable (current-major-mode)
+(define (current-major-mode)
   (buffer-major-mode (current-buffer)))
 
-(define-integrable (current-minor-modes)
+(define (current-minor-modes)
   (buffer-minor-modes (current-buffer)))
 
-(define-integrable (current-comtabs)
+(define (current-comtabs)
   (buffer-comtabs (current-buffer)))
 
-(define-integrable (set-current-major-mode! mode)
+(define (set-current-major-mode! mode)
   (set-buffer-major-mode! (current-buffer) mode))
 
-(define-integrable (current-minor-mode? mode)
+(define (current-minor-mode? mode)
   (buffer-minor-mode? (current-buffer) mode))
 
-(define-integrable (enable-current-minor-mode! mode)
+(define (enable-current-minor-mode! mode)
   (enable-buffer-minor-mode! (current-buffer) mode))
 
-(define-integrable (disable-current-minor-mode! mode)
+(define (disable-current-minor-mode! mode)
   (disable-buffer-minor-mode! (current-buffer) mode))

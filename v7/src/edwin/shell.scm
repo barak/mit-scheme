@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.6 1991/10/03 10:19:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.7 1991/10/25 00:03:10 cph Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ such as `explicit-csh-arguments'.  If that symbol is a variable,
 its value is used as a list of arguments when invoking the shell.
 Otherwise, one argument `-i' is passed to the shell."
   "P"
-  (lambda (#!optional arg)
+  (lambda (new-buffer?)
     (select-buffer
      (let ((program
 	    (or (ref-variable explicit-shell-file-name)
@@ -120,10 +120,7 @@ Otherwise, one argument `-i' is passed to the shell."
 		"/bin/sh")))
        (apply make-comint
 	      (ref-mode-object shell)
-	      (if (or (default-object? arg)
-		      (not arg))
-		  "shell"
-		  '("shell"))
+	      (if (not new-buffer?) "*shell*" (new-buffer "*shell*"))
 	      program
 	      (let ((variable
 		     (string-table-get editor-variables

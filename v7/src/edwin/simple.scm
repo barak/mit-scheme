@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.38 1991/05/14 02:02:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/simple.scm,v 1.39 1991/10/25 00:03:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -258,5 +258,5 @@
 	  (group-narrow! group index2 index1)))))
 
 (define (widen #!optional point)
-  (group-widen!
-   (mark-group (if (default-object? point) (current-point) point))))
+  (let ((point (if (default-object? point) (current-point) point)))
+    (group-widen! (mark-group point))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.73 1991/05/20 21:56:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/syntax.scm,v 1.74 1991/10/25 00:03:18 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -213,22 +213,24 @@ a comment ending."
 	  (ERROR "Marks incorrectly related:" ,start ,end))))
 
 (define (forward-prefix-chars start #!optional end)
-  (let ((group (mark-group start)))
+  (let ((group (mark-group start))
+	(end (default-end/forward start end)))
     (make-mark group
 	       ((ucode-primitive scan-forward-prefix-chars 4)
 		(syntax-table/entries (group-syntax-table group))
 		group
 		(mark-index start)
-		(mark-index (default-end/forward start end))))))
+		(mark-index end)))))
 
 (define (backward-prefix-chars start #!optional end)
-  (let ((group (mark-group start)))
+  (let ((group (mark-group start))
+	(end (default-end/backward start end)))
     (make-mark group
 	       ((ucode-primitive scan-backward-prefix-chars 4)
 		(syntax-table/entries (group-syntax-table group))
 		group
 		(mark-index start)
-		(mark-index (default-end/backward start end))))))
+		(mark-index end)))))
 
 (define (mark-right-char-quoted? mark)
   (let ((group (mark-group mark)))
