@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.3 1995/05/24 00:22:09 ssmith Exp $
+$Id: rulrew.scm,v 1.4 1995/11/01 20:43:25 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -389,3 +389,10 @@ MIT in each case. |#
   (COERCE-VALUE-CLASS (REGISTER (? frob register-known-expression)) (? class))
   class					; ignored
   frob)
+
+(define-rule add-pre-cse-rewriting-rule!
+  (PRED-1-ARG INDEX-FIXNUM? (? source))
+
+  ;; This is a predicate so we can't use rtl:make-type-test
+
+  (list 'TYPE-TEST (rtl:make-object->type source) (ucode-type positive-fixnum)))
