@@ -36,8 +36,8 @@
 ; Returns the wrong answer for quotients.
 ; Fortunately these aren't used in the benchmark.
  
-(define get 2d-get)
-(define put 2d-put!)
+;;(define get 2d-get)
+;;(define put 2d-put!)
 
 (define (dderiv-aux a)
   (list '_/ (dderiv a) a))
