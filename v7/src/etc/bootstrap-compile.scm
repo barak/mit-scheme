@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap-compile.scm,v 1.6 2000/10/16 18:28:45 cph Exp $
+$Id: bootstrap-compile.scm,v 1.7 2000/10/16 19:25:33 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -25,7 +25,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (lambda ()
       (load "cref.sf")
       (load "cref.cbf")
-      (load "make")))
+      (if (not (name->package '(CROSS-REFERENCE)))
+	  (load "make"))))
   (for-each (lambda (name)
 	      (with-working-directory-pathname name
 		(lambda ()
