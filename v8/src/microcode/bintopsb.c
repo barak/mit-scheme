@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.42 1989/11/27 21:57:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.43 1989/11/30 05:32:10 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -719,7 +719,7 @@ print_a_flonum(val)
   Get_Compiled_Block (Old_Address, saved);				\
   Old_Contents = (*Old_Address);					\
   (Mem_Base [(Scn)]) =							\
-   (OBJECT_NEW_DATUM							\
+   (MAKE_OBJECT								\
     (TC_COMPILED_ENTRY,							\
      (compiled_entry_pointer - compiled_entry_table)));			\
   offset = (((char *) saved) - ((char *) Old_Address));			\
