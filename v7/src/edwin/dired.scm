@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.162 1996/04/23 23:08:24 cph Exp $
+;;;	$Id: dired.scm,v 1.163 1996/04/24 02:19:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -613,7 +613,7 @@ When renaming multiple or marked files, you specify a directory."
 		(string-append "Make backup for existing file `"
 			       (->namestring to)
 			       "'"))))
-      (call-with-values (lambda () (os/buffer-backup-pathname to))
+      (call-with-values (lambda () (os/buffer-backup-pathname to #f))
 	(lambda (backup-pathname targets)
 	  targets
 	  (rename-file to backup-pathname)))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.65 1996/03/01 07:14:55 cph Exp $
+;;;	$Id: unix.scm,v 1.66 1996/04/24 02:18:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -189,7 +189,7 @@ Includes the new backup.  Must be > 0."
 		       (= (file-attributes/gid attributes)
 			  (unix/current-gid))))))))
 
-(define (os/buffer-backup-pathname truename)
+(define (os/buffer-backup-pathname truename buffer)
   (with-values
       (lambda ()
 	;; Handle compressed files specially.
@@ -202,7 +202,7 @@ Includes the new backup.  Must be > 0."
       (let ((no-versions
 	     (lambda ()
 	       (values (->pathname (string-append filename suffix)) '()))))
-	(if (eq? 'NEVER (ref-variable version-control))
+	(if (eq? 'NEVER (ref-variable version-control buffer))
 	    (no-versions)
 	    (let ((prefix (string-append (file-namestring filename) ".~")))
 	      (let ((filenames
@@ -238,7 +238,7 @@ Includes the new backup.  Must be > 0."
 				   (loop (cdr filenames))))))
 			<)))
 		  (let ((high-water-mark (apply max (cons 0 versions))))
-		    (if (or (ref-variable version-control)
+		    (if (or (ref-variable version-control buffer)
 			    (positive? high-water-mark))
 			(let ((version->pathname
 			       (let ((directory
@@ -251,10 +251,11 @@ Includes the new backup.  Must be > 0."
 				    directory)))))
 			  (values
 			   (version->pathname (+ high-water-mark 1))
-			   (let ((start (ref-variable kept-old-versions))
+			   (let ((start
+				  (ref-variable kept-old-versions buffer))
 				 (end
 				  (- (length versions)
-				     (- (ref-variable kept-new-versions)
+				     (- (ref-variable kept-new-versions buffer)
 					1))))
 			     (if (< start end)
 				 (map version->pathname

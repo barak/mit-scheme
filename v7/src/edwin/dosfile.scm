@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dosfile.scm,v 1.6 1996/02/29 22:16:23 cph Exp $
+;;;	$Id: dosfile.scm,v 1.7 1996/04/24 02:19:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ;;;
@@ -125,7 +125,7 @@ Includes the new backup.  Must be > 0."
 
 ;;;; Backup and Auto-Save Filenames
 
-(define (os/buffer-backup-pathname truename)
+(define (os/buffer-backup-pathname truename buffer)
   (call-with-values
       (lambda ()
 	(if (dos/fs-long-filenames? truename)
@@ -136,7 +136,7 @@ Includes the new backup.  Must be > 0."
 		  (values truename "~")))
 	    (values truename "")))
     (lambda (truename suffix)
-      (if (eq? 'NEVER (ref-variable version-control))
+      (if (eq? 'NEVER (ref-variable version-control buffer))
 	  (values (dos/make-backup-pathname truename #f suffix) '())
 	  (let ((prefix
 		 (if (dos/fs-long-filenames? truename)
@@ -163,17 +163,18 @@ Includes the new backup.  Must be > 0."
 	      (if (null? backups)
 		  (values (dos/make-backup-pathname
 			   truename
-			   (and (ref-variable version-control) 1)
+			   (and (ref-variable version-control buffer) 1)
 			   suffix)
 			  '())
 		  (values (dos/make-backup-pathname
 			   truename
 			   (+ (apply max (map cdr backups)) 1)
 			   suffix)
-			  (let ((start (ref-variable kept-old-versions))
+			  (let ((start (ref-variable kept-old-versions buffer))
 				(end
 				 (- (length backups)
-				    (- (ref-variable kept-new-versions) 1))))
+				    (- (ref-variable kept-new-versions buffer)
+				       1))))
 			    (if (< start end)
 				(map car (sublist backups start end))
 				'()))))))))))

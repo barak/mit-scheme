@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.133 1996/03/04 20:46:35 cph Exp $
+;;;	$Id: fileio.scm,v 1.134 1996/04/24 02:19:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -681,7 +681,7 @@ Otherwise, a message is written both before and after long file writes."
        (catch-file-errors
 	(lambda () false)
 	(lambda ()
-	  (with-values (lambda () (os/buffer-backup-pathname truename))
+	  (with-values (lambda () (os/buffer-backup-pathname truename buffer))
 	    (lambda (backup-pathname targets)
 	      (let ((modes
 		     (catch-file-errors
