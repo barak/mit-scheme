@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.76 2000/12/05 21:23:49 cph Exp $
+$Id: x11base.c,v 1.77 2001/07/02 01:55:25 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Common X11 support. */
@@ -39,6 +40,7 @@ extern void EXFUN (unblock_signals, (void));
 
 int x_debug = 0;
 static int initialization_done = 0;
+static const char * x_default_font = 0;
 
 #define INITIALIZE_ONCE()						\
 {									\
@@ -443,9 +445,11 @@ DEFUN (x_default_attributes,
   (attributes -> font) =
     (XLoadQueryFont
      (display,
-      (x_get_default
-       (display, resource_name, resource_class,
-	"font", "Font", X_DEFAULT_FONT))));
+      ((x_default_font != 0)
+       ? x_default_font
+       : (x_get_default
+	  (display, resource_name, resource_class,
+	   "font", "Font", X_DEFAULT_FONT)))));
   if ((attributes -> font) == 0)
     error_external_return ();
   {
@@ -1474,6 +1478,36 @@ DEFINE_PRIMITIVE ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0)
     XFlush (display);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("X-SET-DEFAULT-FONT", Prim_x_set_default_font, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    Display * display = (XD_DISPLAY (xd));
+    const char * name = (STRING_ARG (2));
+    XFontStruct * font = (XLoadQueryFont (display, name));
+    if (font == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    XFreeFont (display, font);
+    if (x_default_font != 0)
+      OS_free ((PTR) x_default_font);
+    {
+      char * copy = (OS_malloc ((strlen (name)) + 1));
+      const char * s1 = name;
+      char * s2 = copy;
+      while (1)
+	{
+	  char c = (*s1++);
+	  (*s2++) = c;
+	  if (c == '\0')
+	    break;
+	}
+      x_default_font = copy;
+    }
+  }
+  PRIMITIVE_RETURN (SHARP_T);
 }
 
 /* Event Processing Primitives */
