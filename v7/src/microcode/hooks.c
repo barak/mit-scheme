@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.24 1987/05/14 13:48:56 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.25 1987/08/01 06:56:26 jinx Exp $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -70,12 +70,14 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
   Touch_In_Primitive( Arg2, scan_list);
   number_of_args = 0;
   while (Type_Code( scan_list) == TC_LIST)
-    {
-      number_of_args += 1;
-      Touch_In_Primitive( Vector_Ref( scan_list, CONS_CDR), scan_list);
-    }
+  {
+    number_of_args += 1;
+    Touch_In_Primitive( Vector_Ref( scan_list, CONS_CDR), scan_list);
+  }
   if (scan_list != NIL)
-    Primitive_Error( ERR_ARG_2_WRONG_TYPE);
+  {
+    signal_error_from_primitive( ERR_ARG_2_WRONG_TYPE);
+  }
 #ifdef USE_STACKLETS
   /* This is conservative: if the number of arguments is large enough
      the Will_Push below may try to allocate space on the heap for the
@@ -94,23 +96,23 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
   i = number_of_args;
   Touch_In_Primitive( Arg2, scan_list);
   while (i > 0)
-    {
+  {
 #ifdef butterfly
-      /* Check for abominable case of someone bashing the arg list. */
-      if (Type_Code( scan_list) != TC_LIST)
-	{
-	  Stack_Pointer = saved_stack_pointer;
-	  Primitive_Error( ERR_ARG_2_BAD_RANGE);
-	}
-#endif
-      *scan_stack++ = Vector_Ref( scan_list, CONS_CAR);
-      Touch_In_Primitive( Vector_Ref( scan_list, CONS_CDR), scan_list);
-      i -= 1;
+    /* Check for abominable case of someone bashing the arg list. */
+    if (Type_Code( scan_list) != TC_LIST)
+    {
+      Stack_Pointer = saved_stack_pointer;
+      signal_error_from_primitive( ERR_ARG_2_BAD_RANGE);
     }
+#endif
+    *scan_stack++ = Vector_Ref( scan_list, CONS_CAR);
+    Touch_In_Primitive( Vector_Ref( scan_list, CONS_CDR), scan_list);
+    i -= 1;
+  }
   Push( Arg1);			/* The procedure */
   Push( (STACK_FRAME_HEADER + number_of_args));
  Pushed();
-  longjmp( *Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -135,7 +137,8 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
   */ 									\
   Pop_Primitive_Frame(1);						\
   if (Return_Hook_Address != NULL)					\
-  { *Return_Hook_Address = Old_Return_Code;				\
+  {									\
+    *Return_Hook_Address = Old_Return_Code;				\
     Return_Hook_Address = NULL;						\
   }									\
 /* Put down frames to restore history and interrupts so that these 	\
@@ -155,7 +158,7 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
 /* Will_Push(3); -- we just cleared the stack so there MUST be room */	\
   Push(Control_Point);							\
   Push(Arg1);	/* Function */						\
-  Push(STACK_FRAME_HEADER+1);
+  Push(STACK_FRAME_HEADER+1);						\
 /*  Pushed(); */
 
 #ifdef USE_STACKLETS
@@ -173,25 +176,32 @@ Built_In_Primitive(Prim_Apply, 2, "APPLY", 0x5)
 			 CONTINUATION_SIZE +			 	\
                          HISTORY_SIZE)
 
-#define CWCC_2()						\
-{ fast long i;							\
-  fast long Stack_Cells = (Stack_Top-Stack_Pointer);		\
-  Control_Point = Make_Pointer(TC_CONTROL_POINT, Free);		\
-  Free[STACKLET_LENGTH] =					\
-    Make_Non_Pointer(TC_MANIFEST_VECTOR,			\
-		     Stack_Cells + STACKLET_HEADER_SIZE - 1);	\
-  Free[STACKLET_UNUSED_LENGTH] =				\
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);			\
-  Free += STACKLET_HEADER_SIZE;					\
-  for (i=0; i < Stack_Cells; i++) *Free++ = Pop();		\
-  if (Consistency_Check)					\
-    if (Stack_Pointer != Stack_Top)				\
-      Microcode_Termination(TERM_BAD_STACK);			\
- Will_Push(CONTINUATION_SIZE);					\
-  Store_Return(RC_JOIN_STACKLETS);				\
-  Store_Expression(Control_Point);				\
-  Save_Cont();							\
- Pushed();							\
+#define CWCC_2()							\
+{									\
+  fast long i, Stack_Cells;						\
+									\
+  Stack_Cells = (Stack_Top-Stack_Pointer);				\
+  Control_Point = Make_Pointer(TC_CONTROL_POINT, Free);			\
+  Free[STACKLET_LENGTH] =						\
+    Make_Non_Pointer(TC_MANIFEST_VECTOR,				\
+		     Stack_Cells + STACKLET_HEADER_SIZE - 1);		\
+  Free[STACKLET_UNUSED_LENGTH] =					\
+    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR, 0);				\
+  Free += STACKLET_HEADER_SIZE;						\
+  for (i=0; i < Stack_Cells; i++)					\
+  {									\
+    *Free++ = Pop();							\
+  }									\
+  if (Consistency_Check)						\
+  {									\
+    if (Stack_Pointer != Stack_Top)					\
+      Microcode_Termination(TERM_BAD_STACK);				\
+  }									\
+ Will_Push(CONTINUATION_SIZE);						\
+  Store_Return(RC_JOIN_STACKLETS);					\
+  Store_Expression(Control_Point);					\
+  Save_Cont();								\
+ Pushed();								\
 }
 #endif
 
@@ -216,7 +226,7 @@ Built_In_Primitive(Prim_Catch, 1, "CALL-WITH-CURRENT-CONTINUATION", 0x3)
 
   CWCC(RC_RESTORE_HISTORY);
   Clear_Danger_Bit((Get_Pointer(Control_Point))[STACKLET_UNUSED_LENGTH]);
-  longjmp(*Back_To_Eval, PRIM_APPLY); 
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -237,7 +247,7 @@ Built_In_Primitive(Prim_Non_Reentrant_Catch, 1,
 
 #endif
 
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -253,9 +263,9 @@ Built_In_Primitive(Prim_Enable_Interrupts, 1, "ENABLE-INTERRUPTS!", 0x1E)
 
   Arg_1_Type(TC_FIXNUM);
   Result = Make_Non_Pointer(TC_FIXNUM, IntEnb);
-  IntEnb = Get_Integer(Arg1) | INT_Mask;
+  IntEnb = (Get_Integer(Arg1) | INT_Mask);
   New_Compiler_MemTop();
-  return Result;
+  PRIMITIVE_RETURN( Result);
 }
 
 /* (ERROR-PROCEDURE arg1 arg2 arg3)
@@ -277,7 +287,7 @@ Built_In_Primitive(Prim_Error_Procedure, 3, "ERROR-PROCEDURE", 0x18E)
   Push(Get_Fixed_Obj_Slot(Error_Procedure));
   Push(STACK_FRAME_HEADER+3);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -293,8 +303,9 @@ Built_In_Primitive(Prim_Get_Fixed_Objects_Vector, 0,
   Primitive_0_Args();
 
   if (Valid_Fixed_Obj_Vector())
-    return Get_Fixed_Obj_Slot(Me_Myself);
-  else return NIL;
+    PRIMITIVE_RETURN( Get_Fixed_Obj_Slot(Me_Myself));
+  else
+    PRIMITIVE_RETURN( NIL);
 }
 
 /* (FORCE DELAYED-OBJECT)
@@ -309,7 +320,7 @@ Built_In_Primitive(Prim_Force, 1, "FORCE", 0xAF)
 
   Arg_1_Type(TC_DELAYED);
   if (Vector_Ref(Arg1, THUNK_SNAPPED) == TRUTH)
-    return Vector_Ref(Arg1, THUNK_VALUE);
+    PRIMITIVE_RETURN( Vector_Ref(Arg1, THUNK_VALUE));
   Pop_Primitive_Frame(1);
  Will_Push(CONTINUATION_SIZE);
   Store_Return(RC_SNAP_NEED_THUNK);
@@ -318,7 +329,7 @@ Built_In_Primitive(Prim_Force, 1, "FORCE", 0xAF)
  Pushed();
   Store_Env(Fast_Vector_Ref(Arg1, THUNK_ENVIRONMENT));
   Store_Expression(Fast_Vector_Ref(Arg1, THUNK_PROCEDURE));
-  longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION);
+  PRIMITIVE_ABORT( PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
 }
 
@@ -335,12 +346,16 @@ Built_In_Primitive(Prim_Execute_At_New_Point, 4, "EXECUTE-AT-NEW-POINT", 0xE2)
   Primitive_4_Args();
 
   guarantee_state_point();
-  if (Arg1 == NIL) Old_Point = Current_State_Point;
+  if (Arg1 == NIL)
+    Old_Point = Current_State_Point;
   else
-  { Arg_1_Type(TC_VECTOR);
+  {
+    Arg_1_Type(TC_VECTOR);
     if (Vector_Ref(Arg1, STATE_SPACE_TAG) !=
         Get_Fixed_Obj_Slot(State_Space_Tag))
-      Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+    {
+      signal_error_from_primitive(ERR_ARG_1_WRONG_TYPE);
+    }
     Old_Point = Fast_Vector_Ref(Arg1, STATE_SPACE_NEAREST_POINT);
   }
   Primitive_GC_If_Needed(STATE_POINT_SIZE);
@@ -371,6 +386,7 @@ Built_In_Primitive(Prim_Execute_At_New_Point, 4, "EXECUTE-AT-NEW-POINT", 0xE2)
   Save_Cont();
  Pushed();
   Translate_To_Point(New_Point);
+  /*NOTREACHED*/
 }
 
 /* (MAKE-STATE-SPACE MUTABLE?)
@@ -396,18 +412,22 @@ Built_In_Primitive(Prim_Make_State_Space, 1, "MAKE-STATE-SPACE", 0xE1)
   Free[STATE_POINT_DISTANCE_TO_ROOT] = Make_Unsigned_Fixnum(0);
   Free += STATE_POINT_SIZE;
   if (Arg1 == NIL)
-  { Current_State_Point = New_Point;
-    return NIL;
+  {
+    Current_State_Point = New_Point;
+    PRIMITIVE_RETURN( NIL);
   }
   else
-  { Pointer New_Space = Make_Pointer(TC_VECTOR, Free);
+  {
+    Pointer New_Space;
+
+    New_Space = Make_Pointer(TC_VECTOR, Free);
     Free[STATE_SPACE_HEADER] =
       Make_Non_Pointer(TC_MANIFEST_VECTOR, STATE_SPACE_SIZE-1);
     Free[STATE_SPACE_TAG] = Get_Fixed_Obj_Slot(State_Space_Tag);
     Free[STATE_SPACE_NEAREST_POINT] = New_Point;
     Free += STATE_SPACE_SIZE;
     Fast_Vector_Set(New_Point, STATE_POINT_NEARER_POINT, New_Space);
-    return New_Space;
+    PRIMITIVE_RETURN( New_Space);
   }
 }
 
@@ -416,12 +436,17 @@ Built_In_Primitive(Prim_Current_Dynamic_State, 1, "CURRENT-DYNAMIC-STATE", 0xA)
   Primitive_1_Arg();
 
   guarantee_state_point();
-  if (Arg1 == NIL) return Current_State_Point;
+  if (Arg1 == NIL)
+  {
+    PRIMITIVE_RETURN( Current_State_Point);
+  }
   Arg_1_Type(TC_VECTOR);
   if (Fast_Vector_Ref(Arg1, STATE_SPACE_TAG) !=
       Get_Fixed_Obj_Slot(State_Space_Tag))
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  return Vector_Ref(Arg1, STATE_SPACE_NEAREST_POINT);
+  {
+    signal_error_from_primitive(ERR_ARG_1_WRONG_TYPE);
+  }
+  PRIMITIVE_RETURN( Vector_Ref(Arg1, STATE_SPACE_NEAREST_POINT));
 }
 
 Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!", 0xB)
@@ -432,9 +457,9 @@ Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!", 0xB)
   Arg_1_Type(TC_VECTOR);
   if (Fast_Vector_Ref(Arg1, STATE_POINT_TAG) !=
       Get_Fixed_Obj_Slot(State_Point_Tag))
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+    signal_error_from_primitive(ERR_ARG_1_WRONG_TYPE);
   State_Space = Find_State_Space(Arg1);
-  if (State_Space==NIL)
+  if (State_Space == NIL)
   {
     guarantee_state_point();
     Result = Current_State_Point;
@@ -445,7 +470,7 @@ Built_In_Primitive(Prim_Set_Dynamic_State, 1, "SET-CURRENT-DYNAMIC-STATE!", 0xB)
     Result = Vector_Ref(State_Space, STATE_SPACE_NEAREST_POINT);
     Vector_Set(State_Space, STATE_SPACE_NEAREST_POINT, Arg1);
   }
-  return Result;
+  PRIMITIVE_RETURN( Result);
 }
 
 /* (SCODE-EVAL SCODE-EXPRESSION ENVIRONMENT)
@@ -462,7 +487,7 @@ Built_In_Primitive(Prim_Scode_Eval, 2, "SCODE-EVAL", 0x4)
   Pop_Primitive_Frame(2);
   Store_Env(Arg2);
   Store_Expression(Arg1);
-  longjmp(*Back_To_Eval, PRIM_DO_EXPRESSION);
+  PRIMITIVE_ABORT( PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
 }
 
@@ -478,9 +503,9 @@ Built_In_Primitive(Prim_Set_Interrupt_Enables, 1, "SET-INTERRUPT-ENABLES!", 0x6)
 
   Arg_1_Type(TC_FIXNUM);
   Result = Make_Unsigned_Fixnum(IntEnb);
-  IntEnb = Get_Integer(Arg1) & INT_Mask;
+  IntEnb = (Get_Integer(Arg1) & INT_Mask);
   New_Compiler_MemTop();
-  return Result;
+  PRIMITIVE_RETURN( Result);
 }
 
 /* (SET-CURRENT-HISTORY! TRIPLE)
@@ -513,7 +538,7 @@ Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!", 0x2F)
   History = Get_Pointer(Get_Fixed_Obj_Slot(Dummy_History));
 #endif
   Pop_Primitive_Frame( 1);
-  longjmp( *Back_To_Eval, PRIM_POP_RETURN);
+  PRIMITIVE_ABORT( PRIM_POP_RETURN);
   /*NOTREACHED*/
 }
 
@@ -531,12 +556,22 @@ Built_In_Primitive(Prim_Set_Fixed_Objects_Vector, 1,
   Primitive_1_Arg();
 
   Arg_1_Type(TC_VECTOR);
+  if (Vector_Length(Arg1) < NFixed_Objects)
+  {
+    signal_error_from_primitive (ERR_ARG_1_BAD_RANGE);
+  }
+
   if (Valid_Fixed_Obj_Vector())
+  {
     Result = Get_Fixed_Obj_Slot(Me_Myself);
-  else Result = NIL;
+  }
+  else
+  {
+    Result = NIL;
+  }
   Set_Fixed_Obj_Hook(Arg1);
   Set_Fixed_Obj_Slot(Me_Myself, Arg1);
-  return Result;
+  PRIMITIVE_RETURN( Result);
 }
 
 /* (TRANSLATE-TO-STATE-POINT STATE_POINT)
@@ -551,10 +586,9 @@ Built_In_Primitive(Prim_Translate_To_Point, 1,
 
   Arg_1_Type(TC_VECTOR);
   if (Vector_Ref(Arg1, STATE_POINT_TAG) != Get_Fixed_Obj_Slot(State_Point_Tag))
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+    signal_error_from_primitive(ERR_ARG_1_WRONG_TYPE);
   Pop_Primitive_Frame(1);
   Translate_To_Point(Arg1);
-  /* This ends by longjmp-ing back to the interpreter */
   /*NOTREACHED*/
 }
 
@@ -578,11 +612,14 @@ Built_In_Primitive(Prim_With_History_Disabled, 1,
   Second_Rib = Get_Pointer(First_Rib[RIB_NEXT_REDUCTION]);
   if (!((Dangerous(First_Rib[RIB_MARK])) ||
        (First_Rib == Second_Rib)))
-  { Set_Danger_Bit(Second_Rib[RIB_MARK]);
+  {
+    Set_Danger_Bit(Second_Rib[RIB_MARK]);
     for (Rib = First_Rib;
          Get_Pointer(Rib[RIB_NEXT_REDUCTION]) != First_Rib;
          Rib = Get_Pointer(Rib[RIB_NEXT_REDUCTION]))
-    { /* Look for one that points to the first rib */ }
+    {
+      /* Look for one that points to the first rib */
+    }
     History[HIST_RIB] = Make_Pointer(Type_Code(History[HIST_RIB]), Rib);
   }
   Pop_Primitive_Frame(1);
@@ -591,7 +628,7 @@ Built_In_Primitive(Prim_With_History_Disabled, 1,
   Push(Arg1);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -612,8 +649,8 @@ Built_In_Primitive(Prim_With_Interrupt_Mask, 2,
   Push(Arg2);			/* Function to call */
   Push(STACK_FRAME_HEADER+1);
  Pushed();
-  IntEnb = INT_Mask & Get_Integer(Arg1);
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  IntEnb = (INT_Mask & Get_Integer(Arg1));
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -624,6 +661,7 @@ Built_In_Primitive(Prim_With_Interrupts_Reduced, 2,
 {
   long new_interrupt_mask;
   Primitive_2_Args();
+
   Arg_1_Type(TC_FIXNUM);
   Pop_Primitive_Frame(2);
  Will_Push(CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS+2));
@@ -639,7 +677,7 @@ Built_In_Primitive(Prim_With_Interrupts_Reduced, 2,
     IntEnb = new_interrupt_mask;
   else
     IntEnb = (new_interrupt_mask & IntEnb);
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -661,7 +699,7 @@ Built_In_Primitive(Prim_Within_Control_Point, 2,
   Push(Arg2);
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 
@@ -686,7 +724,7 @@ Built_In_Primitive(Prim_With_Threaded_Stack, 2,
   Push(Arg2);	/* Function to call now */
   Push(STACK_FRAME_HEADER);
  Pushed();
-  longjmp(*Back_To_Eval, PRIM_APPLY);
+  PRIMITIVE_ABORT( PRIM_APPLY);
   /*NOTREACHED*/
 }
 

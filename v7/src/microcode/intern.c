@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.41 1987/05/15 18:19:45 cph Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.42 1987/08/01 06:56:48 jinx Rel $
 
    Utilities for manipulating symbols. 
  */
@@ -50,8 +50,9 @@ Do_Hash (String_Ptr, String_Length)
   fast long i, Value, End_Count;
 
   Value = (LENGTH_MULTIPLIER * String_Length);
-  End_Count =
-    ((String_Length > MAX_HASH_CHARS) ? MAX_HASH_CHARS : String_Length);
+  End_Count = ((String_Length > MAX_HASH_CHARS) ?
+	       MAX_HASH_CHARS :
+	       String_Length);
   for (i = 0; i < End_Count; i++)
     Value = ((Value << SHIFT_AMOUNT) + (MAX_CHAR & String_Ptr[i]));
   return (Value);
@@ -70,7 +71,7 @@ Pointer
 Hash (string)
      Pointer string;
 {
-  return (Make_Signed_Fixnum (scheme_string_hash (string)));
+  return (MAKE_SIGNED_FIXNUM (scheme_string_hash (string)));
 }
 
 Boolean
@@ -180,36 +181,33 @@ string_to_symbol(String)
  */
 
 void 
-Find_Symbol(Scheme_String)
-     Pointer Scheme_String;
+Find_Symbol(scheme_string)
+     Pointer scheme_string;
 {
-  Pointer Ob_Array, The_Symbol, *Bucket;
-  char *String, *Temp_String;
-  long i, Hashed_Value;
+  Pointer the_obarray, symbol, *bucket;
+  long hash_of_string;
 
-  String = Scheme_String_To_C_String(Scheme_String);
-  for (Temp_String = String, i = 0; *Temp_String == '\0'; i++)
-    Temp_String++;
-  Hashed_Value = Do_Hash(String, i);
-  Ob_Array = Get_Fixed_Obj_Slot(OBArray);
-  Hashed_Value %= Vector_Length(Ob_Array);
-  Bucket = Nth_Vector_Loc(Ob_Array, Hashed_Value);
-  while (*Bucket != NIL)
+  hash_of_string = scheme_string_hash(scheme_string);
+  the_obarray = Get_Fixed_Obj_Slot(OBArray);
+  hash_of_string %= Vector_Length(the_obarray);
+  bucket = Nth_Vector_Loc(the_obarray, hash_of_string);
+  while (*bucket != NIL)
   {
-    if (string_equal(Scheme_String,
-                     Vector_Ref(Vector_Ref(*Bucket, CONS_CAR),
+    if (string_equal(scheme_string,
+                     Vector_Ref(Vector_Ref(*bucket, CONS_CAR),
                                 SYMBOL_NAME)))
     {
-      The_Symbol = Vector_Ref(*Bucket, CONS_CAR);
-      printf("\nInterned Symbol: 0x%x", The_Symbol);
-      Print_Expression(Vector_Ref(The_Symbol, SYMBOL_GLOBAL_VALUE),
+      symbol = Vector_Ref(*bucket, CONS_CAR);
+      printf("\nInterned Symbol: 0x%x", symbol);
+      Print_Expression(Vector_Ref(symbol, SYMBOL_GLOBAL_VALUE),
                        "Value");
       printf("\n");
       return;
     }
-    Bucket = Nth_Vector_Loc(*Bucket, CONS_CDR);
+    bucket = Nth_Vector_Loc(*bucket, CONS_CDR);
   }
   printf("\nNot interned.\n");
+  return;
 }
 
 /* (STRING->SYMBOL STRING)
@@ -221,7 +219,7 @@ Built_In_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL", 0x7)
   Primitive_1_Arg();
 
   Arg_1_Type(TC_CHARACTER_STRING);
-  return string_to_symbol(Arg1);
+  PRIMITIVE_RETURN( string_to_symbol(Arg1));
 }
 
 /* (INTERN-CHARACTER-LIST LIST)
@@ -239,7 +237,7 @@ Built_In_Primitive(Prim_Intern_Character_List, 1,
   extern Pointer list_to_string();
   Primitive_1_Arg();
 
-  return string_to_symbol(list_to_string(Arg1));
+  PRIMITIVE_RETURN( string_to_symbol(list_to_string(Arg1)));
 }
 
 /* (STRING-HASH STRING)
@@ -252,7 +250,7 @@ Built_In_Primitive(Prim_String_Hash, 1, "STRING-HASH", 0x83)
   Primitive_1_Arg();
 
   Arg_1_Type(TC_CHARACTER_STRING);
-  return Hash(Arg1);
+  PRIMITIVE_RETURN( Hash(Arg1));
 }
 
 Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
@@ -260,9 +258,9 @@ Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
   Primitive_2_Args ();
   CHECK_ARG (1, STRING_P);
 
-  return
-    (MAKE_UNSIGNED_FIXNUM
-     ((scheme_string_hash (Arg1)) % (arg_nonnegative_integer (2))));
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM
+		    ((scheme_string_hash (Arg1)) %
+		     (arg_nonnegative_integer (2))));
 }
 
 /* (CHARACTER-LIST-HASH LIST)
@@ -286,7 +284,9 @@ Built_In_Primitive(Prim_Character_List_Hash, 1,
     {
       Touch_In_Primitive(Vector_Ref(Arg1, CONS_CAR), This_Char);
       if (Type_Code(This_Char) != TC_CHARACTER) 
-        Primitive_Error(ERR_ARG_1_WRONG_TYPE);
+      {
+        signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
+      }
       Range_Check(String[Length], This_Char,
                    '\0', ((char) MAX_CHAR),
 		  ERR_ARG_1_WRONG_TYPE);
@@ -294,7 +294,8 @@ Built_In_Primitive(Prim_Character_List_Hash, 1,
     }
   }
   if (Arg1 != NIL)
-    Primitive_Error(ERR_ARG_1_WRONG_TYPE);
-  return
-    Make_Non_Pointer(TC_FIXNUM, Do_Hash(String, Length));
+  {
+    signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
+  }
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(Do_Hash(String, Length)));
 }
