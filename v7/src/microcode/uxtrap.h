@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.32 2003/02/14 18:28:24 cph Exp $
+$Id: uxtrap.h,v 1.33 2004/12/15 02:34:46 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1996,1998 Massachusetts Institute of Technology
+Copyright 2000,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -651,21 +652,25 @@ struct linux_sigcontext {
 # define PLAUSIBLE_CC_BLOCK_P(block) 0
 #endif
 
-#ifndef _NEXTOS
 #ifdef _AIX
-extern int _etext;
-#define get_etext() (&_etext)
-#else /* not _AIX */
-#ifdef __linux__
-extern unsigned int etext;
-#else
-extern int etext;
+   extern int _etext;
+#  define get_etext() (&_etext)
 #endif
-#endif /* _AIX */
-#ifndef get_etext
+
+#ifdef __linux__
+   extern unsigned int etext;
 #  define get_etext() (&etext)
-#endif /* get_etext */
-#endif /* _NEXTOS */
+#endif
+
+#ifdef __CYGWIN__
+   extern unsigned int end;
+#  define get_etext() (&end)
+#endif
+
+#ifndef get_etext
+   extern int etext;
+#  define get_etext() (&etext)
+#endif
 
 /* Machine/OS-independent section */
 
