@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.34 1991/02/21 16:17:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.35 1991/03/06 00:32:43 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -130,11 +130,11 @@ bignum_equal_p (x, y)
   return
     ((BIGNUM_ZERO_P (x))
      ? (BIGNUM_ZERO_P (y))
-     : ((! (BIGNUM_ZERO_P (y))) &&
-	((BIGNUM_NEGATIVE_P (x))
-	 ? (BIGNUM_NEGATIVE_P (x))
-	 : (! (BIGNUM_NEGATIVE_P (x)))) &&
-	(bignum_equal_p_unsigned (x, y))));
+     : ((! (BIGNUM_ZERO_P (y)))
+	&& ((BIGNUM_NEGATIVE_P (x))
+	    ? (BIGNUM_NEGATIVE_P (y))
+	    : (! (BIGNUM_NEGATIVE_P (y))))
+	&& (bignum_equal_p_unsigned (x, y))));
 }
 
 enum bignum_comparison
