@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.13 1990/11/10 00:32:55 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.14 1990/11/12 03:52:29 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -64,7 +64,8 @@ MIT in each case. |#
 		(types
 		 '#(#F FILE PIPE FIFO TERMINAL PTY-MASTER
 		       UNIX-STREAM-SOCKET TCP-STREAM-SOCKET
-		       TCP-SERVER-SOCKET DIRECTORY)))
+		       TCP-SERVER-SOCKET DIRECTORY CHARACTER-DEVICE
+		       BLOCK-DEVICE)))
 	    (and (< type (vector-length types))
 		 (vector-ref types type))))))
     (with-absolutely-no-interrupts
@@ -98,6 +99,12 @@ MIT in each case. |#
 
 (define-integrable (channel-type=directory? channel)
   (eq? 'DIRECTORY (channel-type channel)))
+
+(define-integrable (channel-type=character-device? channel)
+  (eq? 'CHARACTER-DEVICE (channel-type channel)))
+
+(define-integrable (channel-type=block-device? channel)
+  (eq? 'BLOCK-DEVICE (channel-type channel)))
 
 (define (channel-close channel)
   ;; This is locked from interrupts, but GC can occur since the
