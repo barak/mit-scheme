@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.2 1994/11/25 23:00:45 adams Exp $
+$Id: envconv.scm,v 1.3 1994/11/25 23:01:56 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -652,9 +652,9 @@ MIT in each case. |#
 			     (QUOTE #F)
 			     (LOOKUP ,env-name)
 			     (QUOTE ,var-name)
+			     ,(set!/expr reference)
 			     (QUOTE ,depth)
-			     (QUOTE ,offset)
-			     ,(set!/expr reference)))
+			     (QUOTE ,offset)))
 		     ((UNASSIGNED?)
 		      `(CALL (QUOTE ,%*unassigned?)
 			     (QUOTE #F)

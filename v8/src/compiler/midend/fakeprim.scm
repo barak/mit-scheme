@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.2 1994/11/25 22:57:50 adams Exp $
+$Id: fakeprim.scm,v 1.3 1994/11/25 22:59:37 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -148,14 +148,14 @@ MIT in each case. |#
 
 (define %*set!
   ;; (CALL ',%*set! <continuation> <environment>
-  ;;       'VARIABLE-NAME 'DEPTH 'OFFSET <value>)
+  ;;       'VARIABLE-NAME <value> 'DEPTH 'OFFSET)
   ;; Note:
   ;;   DEPTH and OFFSET are #F (unknown) or non-negative fixnums
   ;;   Introduced by envconv.scm, removed by compat.scm (replaced
   ;;     by a call to the primitive LEXICAL-ASSIGNMENT)
   (make-operator "#[*set!]"))
 
-(cookie-call %*set! cont environment 'VARIABLE-NAME 'DEPTH 'OFFSET value)
+(cookie-call %*set! cont environment 'VARIABLE-NAME value 'DEPTH 'OFFSET)
 
 (define %*unassigned?
   ;; (CALL ',%*unassigned? <continuation> <environment>

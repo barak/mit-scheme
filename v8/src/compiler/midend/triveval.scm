@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triveval.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: triveval.scm,v 1.2 1994/11/25 23:01:17 jmiller Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -383,7 +383,7 @@ MIT in each case. |#
 			depth offset	; ignored
 			(lexical-reference env name)))
     (declare-operator %*set!
-		      (lambda (env name depth offset value)
+		      (lambda (env name value depth offset)
 			depth offset	; ignored
 			(lexical-assignment env name value)))
     (declare-operator %*unassigned?
