@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.10 2004/11/02 04:37:12 cph Exp $
+$Id: mod-lisp.scm,v 1.11 2004/11/16 20:11:38 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -487,19 +487,22 @@ USA.
   (post-parameters '())
   (cookie-parameters '()))
 
-(define (add-header message keyword datum)
+(define (set-header message keyword datum)
   (let ((p (assq keyword (http-message-headers message))))
     (if p
 	(set-cdr! p datum)
-	(let ((new (list (cons keyword datum)))
-	      (tail (http-message-headers-tail message)))
-	  (if tail
-	      (set-cdr! tail new)
-	      (set-http-message-headers! message new))
-	  (set-http-message-headers-tail! message new)))))
+	(add-header message keyword datum))))
+
+(define (add-header message keyword datum)
+  (let ((new (list (cons keyword datum)))
+	(tail (http-message-headers-tail message)))
+    (if tail
+	(set-cdr! tail new)
+	(set-http-message-headers! message new))
+    (set-http-message-headers-tail! message new)))
 
 (define (set-entity message entity)
-  (add-header message
+  (set-header message
 	      'CONTENT-LENGTH
 	      (number->string
 	       (cond ((string? entity)
@@ -592,7 +595,7 @@ USA.
     (else (error "Unknown status code:" code))))
 
 (define (add-status-header message code)
-  (add-header message
+  (set-header message
 	      'STATUS
 	      (call-with-output-string
 		(lambda (port)
@@ -601,7 +604,7 @@ USA.
 		  (write-string (status-message code) port)))))
 
 (define (add-content-type-header message type)
-  (add-header message 'CONTENT-TYPE (symbol-name type)))
+  (set-header message 'CONTENT-TYPE (symbol-name type)))
 
 ;;;; Request/response accessors
 
@@ -658,12 +661,14 @@ USA.
 (define (http-request-pathname)
   *current-pathname*)
 
-(define (http-response-header keyword datum)
+(define (http-response-header keyword datum #!optional override?)
   (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
   (guarantee-string datum 'HTTP-RESPONSE-HEADER)
   (if (memq keyword '(STATUS CONTENT-LENGTH))
       (error "Illegal header keyword:" keyword))
-  (add-header *current-response* keyword datum))
+  (if (if (default-object? override?) #f override?)
+      (set-header *current-response* keyword datum)
+      (add-header *current-response* keyword datum)))
 
 (define (http-status-response code extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
