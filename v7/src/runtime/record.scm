@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.36 2003/03/08 02:05:50 cph Exp $
+$Id: record.scm,v 1.37 2003/03/08 05:28:29 cph Exp $
 
 Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
 Copyright 1997,2002,2003 Massachusetts Institute of Technology
@@ -68,19 +68,16 @@ USA.
 (define (initialize-record-type-type!)
   (let* ((type
 	  (%record #f
+		   #f
 		   "record-type"
 		   '#(RECORD-TYPE-NAME
-		      RECORD-TYPE-FIELD-NAMES
 		      RECORD-TYPE-DISPATCH-TAG
-		      RECORD-TYPE-DEFAULT-RECORD)
-		   #f
-		   #f)))
+		      RECORD-TYPE-FIELD-NAMES
+		      RECORD-TYPE-DEFAULT-VALUES)
+		   (vector-cons 4 #f))))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
-    (%record-set! type 3 record-type-type-tag)
-    (let ((default-record (%copy-record type)))
-      (%record-set! type 4 default-record)
-      (%record-set! default-record 4 default-record)))
+    (%record-set! type 1 record-type-type-tag))
   (initialize-structure-type-type!))
 
 (define (initialize-record-procedures!)
@@ -134,16 +131,14 @@ USA.
     (guarantee-list-of-unique-symbols field-names caller)
     (let* ((names (list->vector field-names))
 	   (n (vector-length names))
-	   (default-record (%make-record (fix:+ 1 n) #f))
 	   (record-type
 	    (%record record-type-type-tag
+		     #f
 		     (->type-name type-name)
 		     names
-		     #f
-		     default-record))
+		     (vector-cons n #f)))
 	   (tag (make-dispatch-tag record-type)))
-      (%record-set! record-type 3 tag)
-      (%record-set! default-record 0 tag)
+      (%record-set! record-type 1 tag)
       (if (not (default-object? default-values))
 	  (%set-record-type-default-values! record-type default-values caller))
       record-type)))
@@ -154,23 +149,23 @@ USA.
 (define-integrable (%record-type-descriptor record)
   (dispatch-tag-contents (%record-tag record)))
 
-(define-integrable (%record-type-name record-type)
+(define-integrable (%record-type-dispatch-tag record-type)
   (%record-ref record-type 1))
 
-(define-integrable (%record-type-field-names record-type)
+(define-integrable (%record-type-name record-type)
   (%record-ref record-type 2))
 
-(define-integrable (%record-type-dispatch-tag record-type)
+(define-integrable (%record-type-field-names record-type)
   (%record-ref record-type 3))
 
-(define-integrable (%record-type-default-record record-type)
+(define-integrable (%record-type-default-values record-type)
   (%record-ref record-type 4))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
 (define-integrable (%record-type-length record-type)
-  (%record-length (%record-type-default-record record-type)))
+  (fix:+ 1 (%record-type-n-fields record-type)))
 
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
@@ -184,13 +179,13 @@ USA.
 
 (define (record-type-default-values record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-VALUES)
-  (let* ((default-record (%record-type-default-record record-type))
-	 (n (%record-length default-record))
-	 (v (make-vector (fix:- n 1))))
-    (do ((i 1 (fix:+ i 1)))
+  (let* ((v (%record-type-default-values record-type))
+	 (n (vector-length v))
+	 (v* (vector-cons n #f)))
+    (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i n)))
-      (vector-set! v (fix:- i 1) (%record-ref default-record i)))
-    v))
+      (vector-set! v* i (vector-ref v i)))
+    v*))
 
 (define (set-record-type-default-values! record-type default-values)
   (let ((caller 'SET-RECORD-TYPE-DEFAULT-VALUES!))
@@ -201,11 +196,11 @@ USA.
   (if (not (fix:= (guarantee-list->length default-values caller)
 		  (%record-type-n-fields record-type)))
       (error:bad-range-argument default-values caller))
-  (let ((default-record (%record-type-default-record record-type)))
+  (let ((v (%record-type-default-values record-type)))
     (do ((values default-values (cdr values))
-	 (i 1 (fix:+ i 1)))
+	 (i 0 (fix:+ i 1)))
 	((not (pair? values)))
-      (%record-set! default-record i (car values)))))
+      (%record-set! v i (car values)))))
 
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
@@ -286,10 +281,29 @@ USA.
 	      constructor)))))))
 
 (define (%record-constructor-given-names record-type field-names)
-  (let ((indexes
-	 (map (lambda (field-name)
-		(record-type-field-index record-type field-name #t))
-	      field-names)))
+  (let* ((indexes
+	  (map (lambda (field-name)
+		 (record-type-field-index record-type field-name #t))
+	       field-names))
+	 (defaults
+	   (let* ((n (%record-type-length record-type))
+		 (seen? (vector-cons n #f)))
+	     (do ((indexes indexes (cdr indexes)))
+		 ((not (pair? indexes)))
+	       (vector-set! seen? (car indexes) #t))
+	     (do ((i 1 (fix:+ i 1))
+		  (k 0 (if (vector-ref seen? i) k (fix:+ k 1))))
+		 ((not (fix:< i n))
+		  (let ((v (vector-cons k #f)))
+		    (do ((i 1 (fix:+ i 1))
+			 (j 0
+			    (if (vector-ref seen? i)
+				j
+				(begin
+				  (vector-set! v j i)
+				  (fix:+ j 1)))))
+			((not (fix:< i n))))
+		    v))))))
     (letrec
 	((constructor
 	  (lambda field-values
@@ -298,7 +312,9 @@ USA.
 		     (error:wrong-number-of-arguments constructor
 						      (length indexes)
 						      field-values))))
-	      (let ((record (%copy-default-record record-type)))
+	      (let ((record
+		     (%make-record (%record-type-length record-type) #f)))
+		(%record-set! record 0 (%record-type-dispatch-tag record-type))
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
 		    ((not (pair? indexes))
@@ -307,32 +323,42 @@ USA.
 		  (if (not (pair? values))
 		      (lose))
 		  (%record-set! record (car indexes) (car values)))
-		record)))))
+		(let ((v (%record-type-default-values record-type))
+		      (n (vector-length defaults)))
+		  (do ((i 0 (fix:+ i 1)))
+		      ((not (fix:< i n)))
+		    (%record-set!
+		     record
+		     (vector-ref defaults i)
+		     (vector-ref v (fix:- (vector-ref defaults i) 1))))))))))
       constructor)))
 
 (define (record-keyword-constructor record-type)
   (letrec
       ((constructor
 	(lambda keyword-list
-	  (let* ((record (%copy-default-record record-type))
-		 (seen? (make-vector (%record-length record) #f)))
-	    (do ((kl keyword-list (cddr kl)))
-		((not (and (pair? kl)
-			   (symbol? (car kl))
-			   (pair? (cdr kl))))
-		 (if (not (null? kl))
-		     (error:wrong-type-argument keyword-list "keyword list"
-						constructor)))
-	      (let ((i (record-type-field-index record-type (car kl) #t)))
-		(if (not (vector-ref seen? i))
-		    (begin
-		      (%record-set! record i (cadr kl))
-		      (vector-set! seen? i #t)))))
-	    record))))
+	  (let ((n (%record-type-length record-type)))
+	    (let ((record (%make-record n #f))
+		  (seen? (vector-cons n #f)))
+	      (do ((kl keyword-list (cddr kl)))
+		  ((not (and (pair? kl)
+			     (symbol? (car kl))
+			     (pair? (cdr kl))))
+		   (if (not (null? kl))
+		       (error:wrong-type-argument keyword-list "keyword list"
+						  constructor)))
+		(let ((i (record-type-field-index record-type (car kl) #t)))
+		  (if (not (vector-ref seen? i))
+		      (begin
+			(%record-set! record i (cadr kl))
+			(vector-set! seen? i #t)))))
+	      (let ((v (%record-type-default-values record-type)))
+		(do ((i 1 (fix:+ i 1)))
+		    ((not (fix:< i n)))
+		  (if (not (vector-ref seen? i))
+		      (%record-set! record i (vector-ref v (fix:- i 1))))))
+	      record)))))
     constructor))
-
-(define-integrable (%copy-default-record record-type)
-  (%copy-record (%record-type-default-record record-type)))
 
 (define (record? object)
   (and (%record? object)
