@@ -1,8 +1,14 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.128 2001/06/03 06:03:47 cph Exp $
+$Id: todo.txt,v 1.129 2001/06/04 17:40:38 cph Exp $
 
 Bug fixes
 ---------
+
+* When browser pops up a window of URLs that it is operating on, the
+  strings shown should be relative to the container being browsed.
+
+* M-x imail should select the next unseen message when choosing an
+  existing buffer.
 
 * Various changes to Dired that might affect our browsers: RET selects
   the current object (preferred to f).  D command does immediate
@@ -48,6 +54,10 @@ MIME conformance
 
 New features
 ------------
+
+* Add feature to automatically bring up a summary window whenever
+  imail is started.  Perhaps this ought to allow specification of the
+  folders for which this is true.
 
 * Add ability to sort summary by sender.  May as well allow sorting on
   other fields as well.  And once that's done, allow user to specify
