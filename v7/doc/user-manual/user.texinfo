@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.30 1995/09/04 14:00:54 adams Exp $
+@comment $Id: user.texinfo,v 1.31 1995/10/30 21:37:29 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4037,7 +4037,7 @@ and @code{cdr} are called we still do not know that @var{lst} is a pair.
 The compiler must insert a type check, or if type checks are disabled,
 the program might give wrong results.  Since one of the fundamental
 properties of @code{map} is that it transforms lists, we should make the
-realationship between the input pairs and the result pairs more apparent
+relationship between the input pairs and the result pairs more apparent
 in the code:
 
 @lisp
@@ -4057,8 +4057,23 @@ greater that one.
 
 @subsubheading Internal procedures
 
-Calls to internal procedures are slightly faster than calls to global
-procedures.
+Calls to internal procedures are faster than calls to global procedures.
+There are two things tha make internal procedures faster: First, the
+procedure call is compiled to a direct jump to a known location, which
+is mare efficeint that jumping `via' a global binding.
+Second, there is a knock-on effect: since the compiler can see the
+internal procedure it can analyze it and possibly produce better code.
+
+@lisp
+(define (map f original-lst)
+  (let walk ((lst original-lst))
+    (cond ((pair? lst)
+           (cons (f (car lst)) (walk (cdr lst))))
+          ((null? lst)
+           '())
+          (else
+           (error "Not a proper list:"  original-lst)))))
+@end lisp
 
 
 @node Global variables, Flonum arithmetic, Coding style, Efficiency Tips
