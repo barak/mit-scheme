@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.9 1991/02/26 04:25:11 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.10 1991/02/27 15:15:02 jinx Exp $
 
 
 			LIAR PORTING GUIDE
@@ -1140,7 +1140,7 @@ assembler.
 * dassm1.scm:
 	This file contains the top-level of the disassembler.  It is
 not machine-dependent, and should probably be moved to another directory.
-==> Is back the right place for this?
+==> Is compiler/back the right place for this?
 
 * dassm2.scm:
 	This file contains various utilities for the disassembler.  In
@@ -1176,7 +1176,7 @@ instead of the assembler rule data base.
 		5. All about rules
 
 *** This section needs to be written.  What follows is a list of
-topics that need to be addressed. ***
+topics that need to be addressed:
 
 - Syntax of rules.  transformers, qualifiers, variables, etc.
 
@@ -1186,6 +1186,9 @@ hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
 are fossils.  On the other hand, they are easy to take care of because
 of the portable runtime library.
 - Branches, condition codes, set-current-branches!, etc.
+- You need multiplication by 4 rules in order to get variable-offset
+vector-ref and vector-set! to work, even if there are no other
+multiplication rules.
 
 - Important rules when writing RTL:
   - delete-dead-registers! must be invoked before allocating an alias
@@ -1521,20 +1524,23 @@ operation of the compiled code, you should also watch out for crashes
 and other forms of unexpected failure.  In particular, hardware traps
 (eg.  segmentation violations, illegal instructions) occurring during
 the recompilation process are a good clue that there is a problem
-somwhere.
+somewhere.
 
-The worst bugs to track are interrupt-related and
-garbage-collection-related bugs.  They will often make the compiler
-crash at almost-random points, and are very hard to reproduce.  Make
-sure that the rules for the various kinds of procedure headers
-generate the desired code, and that the desired code operates
-correctly.  You can test this explicitly by using an assembly-language
-debugger (eg. gdb, adb) to set breakpoints at the entry points of
-various kinds of procedures.  When the breakpoints are reached, you
-can bump the Free pointer to a value larger than MemTop, so that the
-interrupt branch will be taken.  If the code continues to execute
-correctly, you are probably safe.  You should especially check
-closures and procedures that expect dynamic links.
+The worst bugs to track are interrupt related or garbage-collection
+related.  They will often make the compiler crash at seemingly random
+points, and are very hard to reproduce.  A common source of this kind
+of bug is a problem in the rules for procedure headers.  Make sure
+that the rules for the various kinds of procedure headers generate the
+desired code, and that the desired code operates correctly.  You can
+test this explicitly by using an assembly-language debugger (eg. gdb,
+adb) to set breakpoints at the entry points of various kinds of
+procedures.  When the breakpoints are reached, you can bump the Free
+pointer to a value larger than MemTop, so that the interrupt branch
+will be taken.  If the code continues to execute correctly, you are
+probably safe.  You should especially procedures that expect dynamic
+links since they must be saved and restored correctly.  Closures
+should also be tested carefully, since they need to be reentered
+correctly, and the closure object on the stack may have to be bumped.
 
 Register allocation bugs also manifest themselves in unexpected ways.
 If you forget to use NEED-REGISTER! on a register used by a LAPGEN
@@ -1542,14 +1548,16 @@ rule, or if you allocate registers for the sources and target of a
 rule in the wrong order, you may not notice for a long time, but some
 poor program will hit it.  If this happens, you will be lucky if you
 can find and disassemble a relatively small procedure that does not
-operate properly, but typically the only notice you will have is when
+operate properly, but typically the only notice you will get is when
 Scheme crashes in an unrelated place.  Fortunately, this type of bug
 is reproducible.  In order to find the incorrectly compiled code, you
 can use binary search on the sources by mixing interpreted and
 compiled binaries.  When loading the compiler, .bin files will be used
 for those files for which the corresponding .com file does not exist.
 Thus you can move .com files in and out of the appropriate
-directories, reload, and test again.
+directories, reload, and test again.  Once you determine the procedure
+in which the bug occurs, recompiling the module and examining the
+resulting RTL and LAP programs should lead to identification of the
+bug.
 
-*** Here ***
-*** Bugs in the interface.
+*** Bugs in invoking the interface.
