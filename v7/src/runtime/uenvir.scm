@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.17 1990/06/20 20:30:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.18 1990/08/07 20:11:06 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -455,9 +455,15 @@ MIT in each case. |#
 		 index)))))
       (if (not (compiled-closure? closure))
 	  (error "frame missing closure" closure environment))
+#|
+      ;; Temporarily disable this consistency check until the compiler
+      ;; is modified to provide the correct information for
+      ;; multi-closed procedures.
       (if (not (eq? (compiled-entry/dbg-object closure)
 		    (dbg-block/procedure block)))
-	  (error "wrong closure in frame" closure environment))      closure)))
+	  (error "wrong closure in frame" closure environment))
+|#
+      closure)))
 
 (define-structure (closure-ccenv
 		   (named
