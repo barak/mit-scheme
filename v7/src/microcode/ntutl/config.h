@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.2 2000/12/05 21:23:50 cph Exp $
+$Id: config.h,v 1.3 2000/12/07 05:18:48 cph Exp $
 
 Copyright (c) 2000 Massachusetts Institute of Technology
 
@@ -67,6 +67,9 @@ typedef long ssize_t;
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
+
+/* Define if you have the <fcntl.h> header file.  */
+#define HAVE_FCNTL_H 1
 
 /* Define if architecture has native-code compiler support.  */
 #define HAS_COMPILER_SUPPORT 1
