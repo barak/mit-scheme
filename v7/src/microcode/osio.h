@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.17 2003/01/22 02:03:59 cph Exp $
+$Id: osio.h,v 1.18 2003/01/22 18:42:20 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,1997 Massachusetts Institute of Technology
 Copyright 2000,2003 Massachusetts Institute of Technology
@@ -85,6 +85,8 @@ extern CONST int OS_have_select_p;
 typedef PTR select_registry_t;
 #define SELECT_MODE_READ 1
 #define SELECT_MODE_WRITE 2
+#define SELECT_MODE_ERROR 4
+#define SELECT_MODE_HUP 8
 
 #define SELECT_INTERRUPT (-1)
 #define SELECT_PROCESS_STATUS_CHANGE (-2)

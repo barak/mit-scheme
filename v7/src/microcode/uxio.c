@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.48 2003/01/22 02:04:13 cph Exp $
+$Id: uxio.c,v 1.49 2003/01/22 18:42:32 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
@@ -374,7 +374,9 @@ struct select_registry_s
 
 #define ENCODE_MODE(revents)						\
 (((((revents) & POLLIN) != 0) ? SELECT_MODE_READ : 0)			\
- | ((((revents) & POLLOUT) != 0) ? SELECT_MODE_WRITE : 0))
+ | ((((revents) & POLLOUT) != 0) ? SELECT_MODE_WRITE : 0)		\
+ | ((((revents) & POLLERR) != 0) ? SELECT_MODE_ERROR : 0)		\
+ | ((((revents) & POLLHUP) != 0) ? SELECT_MODE_HUP : 0))
 
 select_registry_t
 DEFUN_VOID (OS_allocate_select_registry)

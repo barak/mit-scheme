@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.20 2003/01/22 02:04:06 cph Exp $
+$Id: prosio.c,v 1.21 2003/01/22 18:42:26 cph Exp $
 
 Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
@@ -327,7 +327,9 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
 	    if (mode > 0)
 	      {
 		SCHEME_OBJECT sfd = (long_to_integer (fd));
-		if ((mode & SELECT_MODE_READ) != 0)
+		if (((mode & SELECT_MODE_READ) != 0)
+		    || ((mode & SELECT_MODE_ERROR) != 0)
+		    || ((mode & SELECT_MODE_HUP) != 0))
 		  {
 		    VECTOR_SET (vr, ir, sfd);
 		    ir += 1;
