@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.18 2004/11/23 18:00:22 cph Exp $
+$Id: mod-lisp.scm,v 1.19 2004/11/23 18:19:24 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -805,11 +805,11 @@ USA.
 
 (define (http-request-user-name)
   (if *current-authenticator*
-      (*current-authenticator* *current-request*)
-      (http-authenticator:basic *current-request*)))
+      (*current-authenticator*)
+      (http-authenticator:basic)))
 
-(define (http-authenticator:basic message)
-  (let ((auth (http-message-header message 'authorization)))
+(define (http-authenticator:basic)
+  (let ((auth (http-request-header 'authorization)))
     (and auth
 	 (cond ((string-prefix? "Basic " auth)
 		(decode-basic-auth-header auth 6 (string-length auth)))
