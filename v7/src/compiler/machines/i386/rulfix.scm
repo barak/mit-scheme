@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.6 1992/01/27 14:24:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.7 1992/01/28 04:58:53 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -93,13 +93,6 @@ MIT in each case. |#
      (require-register! edx)))		; dividend high/remainder
   (fixnum-2-args target source1 source2 (fixnum-2-args/operate operator)))
 
-(define (require-register! machine-reg)
-  (flush-register! machine-reg)
-  (need-register! machine-reg))
-
-(define-integrable (flush-register! machine-reg)
-  (prefix-instructions! (clear-registers! machine-reg)))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS (? operator)
@@ -154,31 +147,31 @@ MIT in each case. |#
     (object->fixnum temp)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (? memory))
-  (QUALIFIER (predicate/memory-operand? memory))
+  (FIXNUM-PRED-1-ARG (? predicate) (OFFSET (REGISTER (? address)) (? offset)))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(predicate/memory-operand-reference memory) (& 0))))
+  (LAP (CMP W ,(source-indirect-reference! address offset) (& 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register-1))
 		      (REGISTER (? register-2)))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(source-register-reference register-1)
-	     ,(source-register-reference register-2))))
+  (compare/register*register register-1 register-2))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate) (REGISTER (? register)) (? memory))
-  (QUALIFIER (predicate/memory-operand? memory))
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? register))
+		      (OFFSET (REGISTER (? address)) (? offset)))
   (fixnum-branch! predicate)
   (LAP (CMP W ,(source-register-reference register)
-	    ,(predicate/memory-operand-reference memory))))
+	    ,(source-indirect-reference! address offset))))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate) (? memory) (REGISTER (? register)))
-  (QUALIFIER (predicate/memory-operand? memory))
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OFFSET (REGISTER (? address)) (? offset))
+		      (REGISTER (? register)))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(predicate/memory-operand-reference memory)
+  (LAP (CMP W ,(source-indirect-reference! address offset)
 	    ,(source-register-reference register))))
 
 (define-rule predicate
@@ -199,20 +192,18 @@ MIT in each case. |#
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
-		      (? memory)
+		      (OFFSET (REGISTER (? address)) (? offset))
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
-  (QUALIFIER (predicate/memory-operand? memory))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(predicate/memory-operand-reference memory)
+  (LAP (CMP W ,(source-indirect-reference! address offset)
 	    (& ,(fixnum-object->fixnum-word constant)))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
-		      (? memory))
-  (QUALIFIER (predicate/memory-operand? memory))
+		      (OFFSET (REGISTER (? address)) (? offset)))
   (fixnum-branch/commuted! predicate)
-  (LAP (CMP W ,(predicate/memory-operand-reference memory)
+  (LAP (CMP W ,(source-indirect-reference! address offset)
 	    (& ,(fixnum-object->fixnum-word constant)))))
 
 ;; This assumes that the last instruction sets the condition code bits
@@ -309,46 +300,50 @@ MIT in each case. |#
 	 operate commutative?
 	 target-type source-reference alternate-source-reference
 	 target source1 source2)
-  (let ((worst-case
-	 (lambda (target source1 source2)
-	   (LAP ,@(if (eq? target-type 'FLOAT)
-		      (load-float-register source1 target)
-		      (LAP (MOV W ,target ,source1)))
-		,@(operate target source2)))))
-    (reuse-machine-target! target-type target
-      (lambda (target)
-	(reuse-pseudo-register-alias source1 target-type
-	  (lambda (alias)
-	    (let ((source2 (if (= source1 source2)
-			       (register-reference alias)
-			       (source-reference source2))))
-	      (delete-register! alias)
-	      (delete-dead-registers!)
-	      (add-pseudo-register-alias! target alias)
-	      (operate (register-reference alias) source2)))
+  (let* ((worst-case
+	  (lambda (target source1 source2)
+	    (LAP ,@(if (eq? target-type 'FLOAT)
+		       (load-float-register source1 target)
+		       (LAP (MOV W ,target ,source1)))
+		 ,@(operate target source2))))
+	 (new-target-alias!
 	  (lambda ()
-	    (let ((new-target-alias!
-		   (lambda ()
-		     (let ((source1 (alternate-source-reference source1))
-			   (source2 (source-reference source2)))
-		       (delete-dead-registers!)
-		       (worst-case (reference-target-alias! target target-type)
-				   source1
-				   source2)))))
+	    (let ((source1 (alternate-source-reference source1))
+		  (source2 (source-reference source2)))
+	      (delete-dead-registers!)
+	      (worst-case (reference-target-alias! target target-type)
+			  source1
+			  source2)))))
+    (cond ((pseudo-register? target)
+	   (reuse-pseudo-register-alias
+	    source1 target-type
+	    (lambda (alias)
+	      (let ((source2 (if (= source1 source2)
+				 (register-reference alias)
+				 (source-reference source2))))
+		(delete-register! alias)
+		(delete-dead-registers!)
+		(add-pseudo-register-alias! target alias)
+		(operate (register-reference alias) source2)))
+	    (lambda ()
 	      (if commutative?
-		  (reuse-pseudo-register-alias source2 target-type
-		    (lambda (alias2)
-		      (let ((source1 (source-reference source1)))
-			(delete-register! alias2)
-			(delete-dead-registers!)
-			(add-pseudo-register-alias! target alias2)
-			(operate (register-reference alias2) source1)))
-		    new-target-alias!)
-		  (new-target-alias!))))))
-      (lambda (target)
-	(worst-case target
-		    (alternate-source-reference source1)
-		    (source-reference source2))))))
+		  (reuse-pseudo-register-alias
+		   source2 target-type
+		   (lambda (alias2)
+		     (let ((source1 (source-reference source1)))
+		       (delete-register! alias2)
+		       (delete-dead-registers!)
+		       (add-pseudo-register-alias! target alias2)
+		       (operate (register-reference alias2) source1)))
+		   new-target-alias!)
+		  (new-target-alias!)))))
+	  ((not (eq? target-type (register-type target)))
+	   (error "two-arg-register-operation: Wrong type register"
+		  target target-type))
+	  (else
+	   (worst-case (register-reference target)
+		       (alternate-source-reference source1)
+		       (source-reference source2))))))
 
 (define (fixnum-2-args/register*constant operator target source constant)
   (fixnum-1-arg
@@ -400,7 +395,7 @@ MIT in each case. |#
   (binary-operation FIXNUM-AND AND true)
   (binary-operation FIXNUM-OR OR true)
   (binary-operation FIXNUM-XOR XOR false))
-
+
 (define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args
   (lambda (target source2)
     (if (equal? target source2)
@@ -411,7 +406,7 @@ MIT in each case. |#
 		     (LAP (MOV W ,temp ,source2)))
 	       (NOT W ,temp)
 	       (AND W ,target ,temp))))))
-
+
 (define-fixnum-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target source2)
     (cond ((not (equal? target source2))
@@ -453,7 +448,7 @@ MIT in each case. |#
 	    (LAP (MOV W ,temp ,target)
 		 ,@(with-target temp)
 		 (MOV W ,target ,temp)))))))
-
+
 ;; ***** These should be rewritten.  Rather than use the standard 2 arg
 ;; register allocator, they should use their own to specify that the result
 ;; is in eax or edx after the rule.  This avoids unnecessary moves! ****
@@ -473,7 +468,7 @@ MIT in each case. |#
 	      (LAP (MOV W (R ,eax) ,target)
 		   ,@(do-divide)
 		   (MOV W ,target (R ,eax))))))))
-
+
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2)
     (if (ea/same? source1 source2)
@@ -515,7 +510,7 @@ MIT in each case. |#
 		,@(word->fixnum target)))
 	  (else
 	   (LAP (XOR W ,target (& ,(* n fixnum-1))))))))
-
+
 (define-fixnum-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n)
@@ -533,7 +528,7 @@ MIT in each case. |#
 	   (load-fixnum-constant 0 target))
 	  (else
 	   (LAP (AND W ,target (& ,(* (fix:not n) fixnum-1))))))))
-
+
 (define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n)
     (cond ((zero? n)
@@ -590,7 +585,7 @@ MIT in each case. |#
 			  (LAP))))))
 	  (else
 	   (error "Fixnum-quotient/constant: Bad value" n)))))
-
+
 (define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n)
     ;; (remainder x y) is 0 or has the sign of x.
@@ -615,51 +610,36 @@ MIT in each case. |#
 		      (LABEL ,label)))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
-
-;;;; Predicate utilities
 
-;; **** Here ****
+(define (fixnum-branch/commuted! predicate)
+  (fixnum-branch!
+   (case predicate
+     ((EQUAL-FIXNUM?) 'EQUAL-FIXNUM?)
+     ((LESS-THAN-FIXNUM?) 'GREATER-THAN-FIXNUM?)
+     ((GREATER-THAN-FIXNUM?) 'LESS-THAN-FIXNUM?)
+     (else
+      (error "FIXNUM-BRANCH/commuted!: Unknown predicate" predicate)))))
 
-(define (signed-fixnum? n)
-  (and (integer? n)
-       (>= n signed-fixnum/lower-limit)
-       (< n signed-fixnum/upper-limit)))
-
-(define (unsigned-fixnum? n)
-  (and (integer? n)
-       (not (negative? n))
-       (< n unsigned-fixnum/upper-limit)))
-
-(define (guarantee-signed-fixnum n)
-  (if (not (signed-fixnum? n)) (error "Not a signed fixnum" n))
-  n)
-
-(define (guarantee-unsigned-fixnum n)
-  (if (not (unsigned-fixnum? n)) (error "Not a unsigned fixnum" n))
-  n)
-
-(define (fixnum-predicate->cc predicate)
+(define (fixnum-branch! predicate)
   (case predicate
-    ((EQUAL-FIXNUM? ZERO-FIXNUM?) 'EQL)
-    ((LESS-THAN-FIXNUM? NEGATIVE-FIXNUM?) 'LSS)
-    ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?) 'GTR)
+    ((EQUAL-FIXNUM? ZERO-FIXNUM?)
+     (set-equal-branches!))
+    ((LESS-THAN-FIXNUM? NEGATIVE-FIXNUM?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JL (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JGE (@PCR ,label))))))
+    ((GREATER-THAN-FIXNUM? POSITIVE-FIXNUM?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JG (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JLE (@PCR ,label))))))
     (else
-     (error "FIXNUM-PREDICATE->CC: Unknown predicate" predicate))))
+     (error "FIXNUM-BRANCH!: Unknown predicate" predicate))))
 
-(define-integrable (test-fixnum/ea ea)
-  (LAP (TST L ,ea)))
+(define (require-register! machine-reg)
+  (flush-register! machine-reg)
+  (need-register! machine-reg))
 
-(define (fixnum-predicate/register*constant register constant cc)
-  (set-standard-branches! cc)
-  (guarantee-signed-fixnum constant)
-  (if (zero? constant)
-      (test-fixnum/ea (any-register-reference register))
-      (LAP (CMP L ,(any-register-reference register)
-		,(make-immediate (* constant fixnum-1))))))
-
-(define (fixnum-predicate/memory*constant memory constant cc)
-  (set-standard-branches! cc)
-  (guarantee-signed-fixnum constant)
-  (if (zero? constant)
-      (test-fixnum/ea memory)
-      (LAP (CMP L ,memory ,(make-immediate (* constant fixnum-1))))))
+(define-integrable (flush-register! machine-reg)
+  (prefix-instructions! (clear-registers! machine-reg)))
