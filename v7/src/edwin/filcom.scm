@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.218 2001/06/02 21:57:16 cph Exp $
+;;; $Id: filcom.scm,v 1.219 2001/06/07 17:45:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -190,6 +190,14 @@ procedures are called."
 	 (let ((b (file-modification-time-indirect b)))
 	   (or (not b)
 	       (> a b))))))
+
+(let ((procedure
+       (lambda (buffer)
+	 (let ((pathname (buffer-pathname buffer)))
+	   (if pathname
+	       (load-find-file-initialization buffer pathname))))))
+  (add-event-receiver! event:set-buffer-pathname procedure)
+  (add-event-receiver! event:set-buffer-major-mode procedure))
 
 (define (load-find-file-initialization buffer pathname)
   (let ((pathname
