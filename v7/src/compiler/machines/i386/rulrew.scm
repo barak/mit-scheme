@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.12 1993/07/16 19:27:58 gjr Exp $
+$Id: rulrew.scm,v 1.13 1998/02/18 07:56:05 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -211,7 +211,8 @@ MIT in each case. |#
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
-       (fix:fixnum? (rtl:constant-value expression))))
+       (fix:fixnum? (rtl:constant-value expression))
+       (rtl:constant-value expression)))
 
 (define (rtl:constant-fixnum-test expression predicate)
   (and (rtl:object->fixnum? expression)
@@ -224,9 +225,7 @@ MIT in each case. |#
 (define-rule rewriting
   (OBJECT->FLOAT (REGISTER (? operand register-known-value)))
   (QUALIFIER
-   (rtl:constant-flonum-test operand
-			     (lambda (v)
-			       (or (flo:zero? v) (flo:one? v)))))
+   (rtl:constant-flonum-test operand (lambda (v) v #T)))
   (rtl:make-object->float operand))
 
 (define-rule rewriting

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.24 1993/08/26 05:43:47 gjr Exp $
+$Id: lapgen.scm,v 1.25 1998/02/18 07:55:07 adams Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-1998 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -47,8 +47,20 @@ MIT in each case. |#
   ;; fr7 is not used so that we can always push on the stack once.
   (list eax ecx edx ebx fr0 fr1 fr2 fr3 fr4 fr5 fr6))
 
-(define-integrable (sort-machine-registers registers)
-  registers)
+(define (sort-machine-registers registers)
+  ;; FR0 is preferable to other FPU regs.  We promote it to the front
+  ;; if we find another FPU reg in front of it.
+  (let loop ((regs registers))
+    (cond ((null? regs) registers)	; no float regs at all
+	  ((general-register? (car regs)); ignore general regs
+	   (loop (cdr regs)))
+	  ((= (car regs) fr0)		; found FR0 first
+	   registers)
+	  ((memq fr0 regs)		; FR0 not first, is it present?
+	   (cons fr0 (delq fr0 registers)) ; move to front
+	   registers)
+	  (else				; FR0 absent
+	   registers))))
 
 (define (register-type register)
   (cond ((machine-register? register)
