@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.19 1991/03/01 21:22:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.20 1991/03/01 22:12:33 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -217,19 +217,25 @@ MIT in each case. |#
   ((ucode-primitive channel-nonblocking 1) (channel-descriptor channel)))
 
 (define (with-channel-blocking channel blocking? thunk)
-  (let ((blocking-outside?))
-    (dynamic-wind
-     (lambda ()
-       (set! blocking-outside? (channel-blocking? channel))
-       (if blocking?
-	   (channel-blocking channel)
-	   (channel-nonblocking channel)))
-     thunk
-     (lambda ()
-       (set! blocking? (channel-blocking? channel))
-       (if blocking-outside?
-	   (channel-blocking channel)
-	   (channel-nonblocking channel))))))
+  (if (channel-open? channel)
+      (let ((blocking-outside?))
+	(dynamic-wind
+	 (lambda ()
+	   (if (channel-open? channel)
+	       (begin
+		 (set! blocking-outside? (channel-blocking? channel))
+		 (if blocking?
+		     (channel-blocking channel)
+		     (channel-nonblocking channel)))))
+	 thunk
+	 (lambda ()
+	   (if (channel-open? channel)
+	       (begin
+		 (set! blocking? (channel-blocking? channel))
+		 (if blocking-outside?
+		     (channel-blocking channel)
+		     (channel-nonblocking channel)))))))
+      (thunk)))
 
 (define (channel-table)
   (fluid-let ((traversing? true))
