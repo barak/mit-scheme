@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.76 2003/11/11 01:53:38 cph Exp $
+$Id: io.scm,v 14.77 2004/01/11 07:18:01 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -994,18 +994,6 @@ USA.
 		      ((fix:= n 0) eof-object)
 		      (else
 		       (string-ref (input-buffer/string buffer) 0))))))))))
-
-(define (input-buffer/discard-char buffer)
-  (without-interrupts
-   (lambda ()
-     (let ((start-index (input-buffer/start-index buffer)))
-       (cond ((fix:< start-index (input-buffer/end-index buffer))
-	      (set-input-buffer/start-index! buffer (fix:+ start-index 1)))
-	     ((input-buffer/open? buffer)
-	      (if (let ((n (input-buffer/fill buffer)))
-		    (and n
-			 (not (fix:= n 0))))
-		  (set-input-buffer/start-index! buffer 1))))))))
 
 (define (input-buffer/read-substring buffer string start end)
   (define (transfer-input-buffer index)

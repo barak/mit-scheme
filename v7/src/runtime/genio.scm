@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.19 2003/03/21 17:50:58 cph Exp $
+$Id: genio.scm,v 1.20 2004/01/11 07:17:57 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,7 +35,7 @@ USA.
 	   (CHAR-READY? ,operation/char-ready?)
 	   (CHARS-REMAINING ,operation/chars-remaining)
 	   (CLOSE-INPUT ,operation/close-input)
-	   (DISCARD-CHAR ,operation/discard-char)
+	   (DISCARD-CHAR ,operation/read-char)
 	   (DISCARD-CHARS ,operation/discard-chars)
 	   (EOF? ,operation/eof?)
 	   (INPUT-BLOCKING-MODE ,operation/input-blocking-mode)
@@ -166,9 +166,6 @@ USA.
 
 (define (operation/chars-remaining port)
   (input-buffer/chars-remaining (port/input-buffer port)))
-
-(define (operation/discard-char port)
-  (input-buffer/discard-char (port/input-buffer port)))
 
 (define (operation/discard-chars port delimiters)
   (input-buffer/discard-until-delimiter (port/input-buffer port) delimiters))
