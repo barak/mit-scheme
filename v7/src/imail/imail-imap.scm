@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.55 2000/05/18 19:59:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.56 2000/05/18 22:11:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -103,6 +103,8 @@
 	      initial-value #f)
   (port define standard
 	initial-value #f)
+  (greeting define standard
+	    initial-value #f)
   (sequence-number define standard
 		   initial-value 0)
   (response-queue define accessor
@@ -200,7 +202,12 @@
 	    (user-id (imap-connection-user-id connection)))
 	(let ((port
 	       (open-tcp-stream-socket host (or ip-port "imap2") #f "\n")))
-	  (read-line port)	;discard server announcement
+	  (set-imap-connection-greeting!
+	   connection
+	   (let ((response (imap:read-server-response port)))
+	     (if (imap:response:ok? response)
+		 (imap:response:response-text-string response)
+		 response)))
 	  (set-imap-connection-port! connection port)
 	  (reset-imap-connection connection)
 	  (if (not (memq 'IMAP4REV1 (imap:command:capability connection)))
@@ -227,6 +234,12 @@
 
 (define (imap-connection-open? connection)
   (imap-connection-port connection))
+
+(define (imap-connection-server-type connection)
+  (let ((greeting (imap-connection-greeting connection)))
+    (cond ((not (string? greeting)) #f)
+	  ((string-search-forward " Cyrus " greeting) 'CYRUS)
+	  (else #f))))
 
 (define (call-with-memoized-passphrase connection receiver)
   (let ((passphrase (imap-connection-passphrase connection)))
@@ -587,7 +600,7 @@
 		       (imap-url-mailbox url)))
 
 (define-method %delete-folder ((url <imap-url>))
-  (imap:command:create (get-imap-connection url)
+  (imap:command:delete (get-imap-connection url)
 		       (imap-url-mailbox url)))
 
 (define-method %rename-folder ((url <imap-url>) (new-url <imap-url>))
@@ -743,26 +756,31 @@
   ((imail-message-wrapper "Expunging messages")
    (lambda ()
      (imap:command:no-response connection 'EXPUNGE))))
-
+
 (define (imap:command:noop connection)
   (imap:command:no-response connection 'NOOP))
 
 (define (imap:command:create connection mailbox)
-  (imap:command:no-response connection 'CREATE mailbox))
+  (imap:command:no-response connection 'CREATE
+			    (adjust-mailbox-name connection mailbox)))
 
 (define (imap:command:delete connection mailbox)
-  (imap:command:no-response connection 'DELETE mailbox))
+  (imap:command:no-response connection 'DELETE
+			    (adjust-mailbox-name connection mailbox)))
 
 (define (imap:command:rename connection from to)
-  (imap:command:no-response connection 'RENAME from to))
+  (imap:command:no-response connection 'RENAME
+			    (adjust-mailbox-name connection from)
+			    (adjust-mailbox-name connection to)))
 
 (define (imap:command:copy connection index mailbox)
-  (imap:command:no-response connection 'COPY (+ index 1) mailbox))
+  (imap:command:no-response connection 'COPY (+ index 1)
+			    (adjust-mailbox-name connection mailbox)))
 
 (define (imap:command:append connection mailbox flags time text)
   (imap:command:no-response connection
 			    'APPEND
-			    mailbox
+			    (adjust-mailbox-name connection mailbox)
 			    (and (pair? flags) flags)
 			    (imap:universal-time->date-time time)
 			    (cons 'LITERAL text)))
@@ -770,12 +788,22 @@
 (define (imap:command:search connection . key-plist)
   (apply imap:command:single-response imap:response:search?
 	 connection 'SEARCH key-plist))
+
+(define (adjust-mailbox-name connection mailbox)
+  (case (imap-connection-server-type connection)
+    ((CYRUS)
+     (if (or (string-ci=? "inbox" mailbox)
+	     (string-prefix-ci? "inbox." mailbox)
+	     (string-prefix-ci? "user." mailbox))
+	 mailbox
+	 (string-append "inbox." mailbox)))
+    (else mailbox)))
 
 (define (imap:command:no-response connection command . arguments)
   (let ((response
 	 (apply imap:command:no-response-1 connection command arguments)))
     (if (not (imap:response:ok? response))
-	(error "Server signalled a command error:" response))))
+	(imap:server-error response))))
 
 (define (imap:command:no-response-1 connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
@@ -791,7 +819,7 @@
 		 (null? (cddr responses)))
 	    (cadr responses)
 	    (error "Malformed response from IMAP server:" responses))
-	(error "Server signalled a command error:" (car responses)))))
+	(imap:server-error (car responses)))))
 
 (define (imap:command:multiple-response predicate
 					connection command . arguments)
@@ -800,7 +828,16 @@
 	(if (for-all? (cdr responses) predicate)
 	    (cdr responses)
 	    (error "Malformed response from IMAP server:" responses))
-	(error "Server signalled a command error:" (car responses)))))
+	(imap:server-error (car responses)))))
+
+(define (imap:server-error response)
+  (let ((msg
+	 (string-append "Server signalled a command error: "
+			(imap:response:response-text-string response)))
+	(code (imap:response:response-text-code response)))
+    (if code
+	(error msg code)
+	(error msg))))
 
 (define (imap:command connection command . arguments)
   (bind-condition-handler (list condition-type:system-call-error)

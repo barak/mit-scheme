@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.64 2000/05/18 19:53:27 cph Exp $
+;;; $Id: imail-top.scm,v 1.65 2000/05/18 22:11:15 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -219,6 +219,8 @@ DEL	Scroll to previous screen of this message.
 \\[imail-forward]	Forward this message to another user.
 \\[imail-continue]	Continue composing outgoing message started before.
 
+\\[imail-create-folder]	Create a new folder.
+\\[imail-delete-folder]	Delete an existing folder.
 \\[imail-output]       Output this message to a specified folder (append it).
 \\[imail-input]	Append messages from a specified folder.
 
@@ -285,6 +287,8 @@ DEL	Scroll to previous screen of this message.
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\i		'imail-input)
+(define-key 'imail #\+		'imail-create-folder)
+(define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
 
@@ -738,7 +742,7 @@ Completion is performed over known flags when reading."
   "sInput from folder"
   (lambda (url-string)
     (let ((folder (selected-folder)))
-      (let ((folder* (open-folder url-string))
+      (let ((folder* (open-folder (imail-parse-partial-url url-string)))
 	    (url (folder-url folder)))
 	(let ((n (folder-length folder*)))
 	  (do ((index 0 (+ index 1)))
@@ -754,10 +758,23 @@ Completion is performed over known flags when reading."
   "sOutput to folder"
   (lambda (url-string)
     (let ((message (selected-message)))
-      (append-message message url-string)
+      (append-message message (imail-parse-partial-url url-string))
       (message-filed message)
       (if (ref-variable imail-delete-after-output)
 	  ((ref-command imail-delete-forward) #f)))))
+
+(define-command imail-create-folder
+  "Create a new folder with the specified name.
+An error if signalled if the folder already exists."
+  "sCreate folder"
+  (lambda (url-string)
+    (create-folder (imail-parse-partial-url url-string))))
+
+(define-command imail-delete-folder
+  "Delete a specified folder."
+  "sDelete folder"
+  (lambda (url-string)
+    (delete-folder (imail-parse-partial-url url-string))))
 
 ;;;; Sending mail
 

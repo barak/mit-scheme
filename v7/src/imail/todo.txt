@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.21 2000/05/18 19:53:30 cph Exp $
+$Id: todo.txt,v 1.22 2000/05/18 22:11:16 cph Exp $
 
 Bug fixes
 ---------
@@ -41,7 +41,8 @@ Design changes
 New features
 ------------
 
-* Add commands to create, delete, and rename folders.
+* Add command to rename folders.  Add command to append all of the
+  messages from one folder to another.
 
 * Implement URL completion.
 
