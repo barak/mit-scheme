@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.31 1994/10/08 08:56:09 cph Exp $
+$Id: option.scm,v 14.32 1994/10/11 21:00:10 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ MIT in each case. |#
     (define (find-option)
       (cond ((assq name *options*) => load-entry)
 	    ((force* *parent*)     => search-parent)
-	    (else (error "Unknown option name:" name))))
+	    ((not no-error?) (error "Unknown option name:" name))))
 
     (define (load-entry entry)
       (for-each (lambda (thunk) (thunk)) (cdr entry))
