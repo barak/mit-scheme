@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.38 1988/08/15 20:44:24 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.39 1988/12/28 00:10:08 cph Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -471,10 +471,9 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define ULONG_SIZE           32
 #define BELL                 '\007'
 #define FASL_INTERNAL_FORMAT FASL_PYR
-/* Flonum (double) size is 64 bits. */
-#define FLONUM_EXPT_SIZE     11
-#define FLONUM_MANTISSA_BITS 52
-#define MAX_FLONUM_EXPONENT  2047
+#define FLONUM_EXPT_SIZE     10
+#define FLONUM_MANTISSA_BITS 53
+#define MAX_FLONUM_EXPONENT  1023
 #endif
 
 #ifdef alliant
