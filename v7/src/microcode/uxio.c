@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.38 1996/07/02 21:03:25 cph Exp $
+$Id: uxio.c,v 1.39 1996/07/02 21:13:29 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -44,27 +44,23 @@ struct channel * channel_table;
 #include <poll.h>
 
 #else /* not HAVE_POLL */
-#ifdef HAVE_SELECT
 
 #ifdef FD_SET
-
 #define SELECT_TYPE fd_set
-
-#else /* not FD_SET */
-
+#else
 #define SELECT_TYPE int
 #define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
 #define FD_SET(n, p) ((*(p)) |= (1 << (n)))
 #define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
 #define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
 #define FD_ZERO(p) ((*(p)) = 0)
-
-#endif /* not FD_SET */
+#endif
 
 static SELECT_TYPE input_descriptors;
+#ifdef HAVE_SELECT
 static struct timeval zero_timeout;
+#endif
 
-#endif /* HAVE_SELECT */
 #endif /* not HAVE_POLL */
 
 static void
@@ -97,8 +93,8 @@ DEFUN_VOID (UX_initialize_channels)
   }
   add_reload_cleanup (UX_channel_close_all);
 #ifndef HAVE_POLL
-#ifdef HAVE_SELECT
   FD_ZERO (&input_descriptors);
+#ifdef HAVE_SELECT
   (zero_timeout . tv_sec) = 0;
   (zero_timeout . tv_usec) = 0;
 #endif
@@ -376,14 +372,12 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 /* select(2) system call */
 
+#ifndef HAVE_POLL
+
 #if (defined(_HPUX) && (_HPUX_VERSION >= 80)) || defined(_SUNOS4) || defined(_AIX)
 #define SELECT_DECLARED
 #endif
 
-#ifdef HAVE_POLL
-CONST int OS_have_select_p = 1;
-extern int EXFUN (UX_process_any_status_change, (void));
-#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
 CONST int OS_have_select_p = 1;
 extern int EXFUN (UX_process_any_status_change, (void));
@@ -395,93 +389,41 @@ extern int EXFUN (UX_select,
 #else /* not HAVE_SELECT */
 CONST int OS_have_select_p = 0;
 #endif /* not HAVE_SELECT */
-#endif /* not HAVE_POLL */
 
 unsigned int
 DEFUN_VOID (UX_select_registry_size)
 {
-#ifdef HAVE_POLL
-  return ((sizeof (struct pollfd)) * OS_channel_table_size);
-#else
   return (sizeof (SELECT_TYPE));
-#endif
 }
 
 unsigned int
 DEFUN_VOID (UX_select_registry_lub)
 {
-#ifdef HAVE_POLL
-  return (OS_channel_table_size);
-#else
   return (FD_SETSIZE);
-#endif
 }
 
 void
 DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
 {
-#ifdef HAVE_POLL
-  struct pollfd * pfds = fds;
-  unsigned int i;
-  for (i = 0; (i < OS_channel_table_size); i += 1)
-    {
-      ((pfds [i]) . fd) = (-1);
-      ((pfds [i]) . events) = 0;
-    }
-#else
   FD_ZERO ((SELECT_TYPE *) fds);
-#endif
 }
 
 void
 DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
 {
-#ifdef HAVE_POLL
-  struct pollfd * pfds = fds;
-  unsigned int i;
-  for (i = 0; (i < OS_channel_table_size); i += 1)
-    if ((((pfds [i]) . fd) == (-1)) || (((pfds [i]) . fd) == fd))
-      {
-	((pfds [i]) . fd) = fd;
-	((pfds [i]) . events) = POLLNORM;
-	break;
-      }
-#else
   FD_SET (fd, ((SELECT_TYPE *) fds));
-#endif
 }
 
 void
 DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
 {
-#ifdef HAVE_POLL
-  struct pollfd * pfds = fds;
-  unsigned int i;
-  for (i = 0; (i < OS_channel_table_size); i += 1)
-    if (((pfds [i]) . fd) == fd)
-      {
-	((pfds [i]) . fd) = (-1);
-	((pfds [i]) . events) = 0;
-	break;
-      }
-#else
   FD_CLR (fd, ((SELECT_TYPE *) fds));
-#endif
 }
 
 int
 DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
 {
-#ifdef HAVE_POLL
-  struct pollfd * pfds = fds;
-  unsigned int i;
-  for (i = 0; (i < OS_channel_table_size); i += 1)
-    if (((pfds [i]) . fd) == fd)
-      return (1);
-  return (0);
-#else
   return (FD_ISSET (fd, ((SELECT_TYPE *) fds)));
-#endif
 }
 
 enum select_input
@@ -491,42 +433,6 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
        unsigned int * output_fds AND
        unsigned int * output_nfds)
 {
-#ifdef HAVE_POLL
-  struct pollfd * pfds = input_fds;
-  while (1)
-    {
-      int nfds = (poll (pfds, OS_channel_table_size, (blockp ? INFTIM : 0)));
-      if (nfds > 0)
-	{
-	  if (output_nfds != 0)
-	    (*output_nfds) = nfds;
-	  if (output_fds != 0)
-	    {
-	      unsigned int i;
-	      for (i = 0; (i < OS_channel_table_size); i += 1)
-		if ((((pfds [i]) . fd) != (-1))
-		    && ((((pfds [i]) . revents) & POLLNORM) != 0))
-		  {
-		    (*output_fds++) = ((pfds [i]) . fd);
-		    if ((--nfds) == 0)
-		      break;
-		  }
-	    }
-	  return (select_input_argument);
-	}
-      else if (nfds == 0)
-	{
-	  if (!blockp)
-	    return (select_input_none);
-	}
-      else if (! ((errno == EINTR) || (errno == EAGAIN)))
-	error_system_call (errno, syscall_select);
-      else if (UX_process_any_status_change ())
-	return (select_input_process_status);
-      if (pending_interrupts_p ())
-	return (select_input_interrupt);
-    }
-#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
   while (1)
     {
@@ -575,11 +481,10 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
     }
-#else /* not HAVE_SELECT */
+#else
   error_system_call (ENOSYS, syscall_select);
   return (select_input_argument);
-#endif /* not HAVE_SELECT */
-#endif /* not HAVE_POLL */
+#endif
 }
 
 enum select_input
@@ -587,7 +492,159 @@ DEFUN (UX_select_descriptor, (fd, blockp),
        unsigned int fd AND
        int blockp)
 {
-#ifdef HAVE_POLL
+#ifdef HAVE_SELECT
+  SELECT_TYPE readable;
+
+  FD_ZERO (&readable);
+  FD_SET (fd, (&readable));
+  return (UX_select_registry_test ((&readable), blockp, 0, 0));
+#else
+  error_system_call (ENOSYS, syscall_select);
+  return (select_input_argument);
+#endif
+}
+
+enum select_input
+DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
+{
+  SELECT_TYPE readable;
+  unsigned int fds [FD_SETSIZE];
+  unsigned int nfds;
+
+  readable = input_descriptors;
+  FD_SET (fd, (&readable));
+  {
+    enum select_input s =
+      (UX_select_registry_test ((&readable), blockp, fds, (&nfds)));
+    if (s != select_input_argument)
+      return (s);
+  }
+  {
+    unsigned int * scan = fds;
+    unsigned int * end = (scan + nfds);
+    while (scan < end)
+      if ((*scan++) == fd)
+	return (select_input_argument);
+  }
+  return (select_input_other);
+}
+
+#else /* HAVE_POLL */
+
+CONST int OS_have_select_p = 1;
+extern int EXFUN (UX_process_any_status_change, (void));
+
+unsigned int
+DEFUN_VOID (UX_select_registry_size)
+{
+  return ((sizeof (struct pollfd)) * OS_channel_table_size);
+}
+
+unsigned int
+DEFUN_VOID (UX_select_registry_lub)
+{
+  return (OS_channel_table_size);
+}
+
+void
+DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
+{
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    {
+      ((pfds [i]) . fd) = (-1);
+      ((pfds [i]) . events) = 0;
+    }
+}
+
+void
+DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
+{
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if ((((pfds [i]) . fd) == (-1)) || (((pfds [i]) . fd) == fd))
+      {
+	((pfds [i]) . fd) = fd;
+	((pfds [i]) . events) = POLLNORM;
+	break;
+      }
+}
+
+void
+DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
+{
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if (((pfds [i]) . fd) == fd)
+      {
+	((pfds [i]) . fd) = (-1);
+	((pfds [i]) . events) = 0;
+	break;
+      }
+}
+
+int
+DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
+{
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if (((pfds [i]) . fd) == fd)
+      return (1);
+  return (0);
+}
+
+enum select_input
+DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
+       PTR input_fds AND
+       int blockp AND
+       unsigned int * output_fds AND
+       unsigned int * output_nfds)
+{
+  struct pollfd * pfds = input_fds;
+  while (1)
+    {
+      int nfds = (poll (pfds, OS_channel_table_size, (blockp ? INFTIM : 0)));
+      if (nfds > 0)
+	{
+	  if (output_nfds != 0)
+	    (*output_nfds) = nfds;
+	  if (output_fds != 0)
+	    {
+	      unsigned int i;
+	      for (i = 0; (i < OS_channel_table_size); i += 1)
+		if ((((pfds [i]) . fd) != (-1))
+		    && ((((pfds [i]) . revents) & POLLNORM) != 0))
+		  {
+		    (*output_fds++) = ((pfds [i]) . fd);
+		    if ((--nfds) == 0)
+		      break;
+		  }
+	    }
+	  return (select_input_argument);
+	}
+      else if (nfds == 0)
+	{
+	  if (!blockp)
+	    return (select_input_none);
+	}
+      else if (! ((errno == EINTR) || (errno == EAGAIN)))
+	error_system_call (errno, syscall_select);
+      else if (UX_process_any_status_change ())
+	return (select_input_process_status);
+      if (pending_interrupts_p ())
+	return (select_input_interrupt);
+    }
+}
+
+enum select_input
+DEFUN (UX_select_descriptor, (fd, blockp),
+       unsigned int fd AND
+       int blockp)
+{
   struct pollfd pfds [1];
   int nfds;
 
@@ -610,45 +667,12 @@ DEFUN (UX_select_descriptor, (fd, blockp),
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
     }  
-#else /* not HAVE_POLL */
-#ifdef HAVE_SELECT
-  SELECT_TYPE readable;
-
-  FD_ZERO (&readable);
-  FD_SET (fd, (&readable));
-  return (UX_select_registry_test ((&readable), blockp, 0, 0));
-#else /* not HAVE_SELECT */
-  error_system_call (ENOSYS, syscall_select);
-  return (select_input_argument);
-#endif /* not HAVE_SELECT */
-#endif /* not HAVE_POLL */
 }
-
+
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
-#ifdef HAVE_POLL
   return (UX_select_descriptor (fd, blockp));
-#else /* not HAVE_POLL */
-  SELECT_TYPE readable;
-  unsigned int fds [FD_SETSIZE];
-  unsigned int nfds;
-
-  readable = input_descriptors;
-  FD_SET (fd, (&readable));
-  {
-    enum select_input s =
-      (UX_select_registry_test ((&readable), blockp, fds, (&nfds)));
-    if (s != select_input_argument)
-      return (s);
-  }
-  {
-    unsigned int * scan = fds;
-    unsigned int * end = (scan + nfds);
-    while (scan < end)
-      if ((*scan++) == fd)
-	return (select_input_argument);
-  }
-  return (select_input_other);
-#endif /* not HAVE_POLL */
 }
+
+#endif /* HAVE_POLL */
