@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.1 1987/05/03 20:39:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.2 1987/05/07 00:21:56 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.1 1987/05/03 20:39:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.2 1987/05/07 00:21:56 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -36,11 +36,11 @@ promotional, or sales literature without prior written consent from
 
 ;;;; RTL Generation: RValues
 ;;; package: (compiler rtl-generator generate/rvalue)
-(define (generate:rvalue rvalue offset)
-  ((vector-method rvalue generate:rvalue) rvalue offset))
+(define (generate/rvalue rvalue)
+  ((vector-method rvalue generate/rvalue) rvalue))
 
 (define (define-rvalue-generator tag generator)
-  (define-vector-method tag generate:rvalue generator))
+  (define-vector-method tag generate/rvalue generator))
   (with-values (lambda () (generate/rvalue* operand))
 (define rvalue-methods
   (return-2 (make-null-cfg) expression))
@@ -50,26 +50,25 @@ promotional, or sales literature without prior written consent from
     (lambda (prefix expression)
       (return-2 prefix (transform expression)))))
 
-(define (generate:constant constant offset)
+(define (generate/constant constant)
   (expression-value/simple (rtl:make-constant (constant-value constant))))
 
 (define-rvalue-generator constant-tag
-  generate:constant)
+  generate/constant)
 
 (define-rvalue-generator block-tag
-  (lambda (block offset)
+  (lambda (block)
 (define-method-table-entry 'BLOCK rvalue-methods
 
 (define-rvalue-generator reference-tag
-  (lambda (reference offset)
-    (generate:variable (reference-block reference)
-		       (reference-variable reference)
-		       offset)))
+  (lambda (reference)
+    (generate/variable (reference-block reference)
+		       (reference-variable reference))))
 
-(define (generate:variable block variable offset)
+(define (generate/variable block variable)
   (if (vnode-known-constant? variable)
-      (generate:constant (vnode-known-value variable) offset)
-      (find-variable block variable offset
+      (generate/constant (vnode-known-value variable))
+      (find-variable block variable
 	(lambda (locative)
 	  (expression-value/simple (rtl:make-fetch locative)))
 	(lambda (environment name)
@@ -80,9 +79,9 @@ promotional, or sales literature without prior written consent from
 	   (rtl:interpreter-call-result:lookup))))))
 
 (define-rvalue-generator temporary-tag
-  (lambda (temporary offset)
+  (lambda (temporary)
     (if (vnode-known-constant? temporary)
-	(generate:constant (vnode-known-value temporary) offset)
+	(generate/constant (vnode-known-value temporary))
 	(let ((type (temporary-type temporary)))
 	  (cond ((not type)
 		 (expression-value/simple (rtl:make-fetch temporary)))
@@ -92,18 +91,18 @@ promotional, or sales literature without prior written consent from
 		 (error "Illegal temporary reference" type)))))))
 
 (define-rvalue-generator access-tag
-  (lambda (*access offset)
-    (transmit-values (generate:expression (access-environment *access) offset)
+  (lambda (*access)
+    (transmit-values (generate/rvalue (access-environment *access))
       (lambda (prefix expression)
 	(return-2
 	 (rtl:make-interpreter-call:access expression (access-name *access))
 	 (rtl:interpreter-call-result:access))))))
 
 (define-rvalue-generator procedure-tag
-  (lambda (procedure offset)
+  (lambda (procedure)
 (define-method-table-entry 'PROCEDURE rvalue-methods
     (case (procedure/type procedure)
-       (expression-value/transform (make-closure-environment procedure offset)
+       (expression-value/transform (make-closure-environment procedure)
 	 (lambda (environment)
 	   (make-closure-cons procedure environment))))
 	 (else
@@ -137,14 +136,8 @@ promotional, or sales literature without prior written consent from
      ;; inside another IC procedure?
      (rtl:make-fetch register:environment))))
 	    ;; inside another IC procedure?
-(define (make-closure-environment procedure offset)
+(define (make-closure-environment procedure)
   (let ((block (block-parent (procedure-block procedure))))
-    (define (ic-locative closure-block block offset)
-      (let ((loser
-	     (lambda (locative)
-	       (error "Closure parent not IC block"))))
-	(find-block closure-block block offset loser loser
-	  (lambda (locative nearest-ic-locative) locative))))
 (define (make-non-trivial-closure-cons procedure block**)
 	   (expression-value/simple (rtl:make-constant false)))
 	  ((ic-block? block)
@@ -152,45 +145,37 @@ promotional, or sales literature without prior written consent from
 	    (let ((closure-block (procedure-closure-block procedure)))
 	      (if (ic-block? closure-block)
 		  (rtl:make-fetch register:environment)
-		  (ic-locative closure-block block offset)))))
+		  (closure-ic-locative closure-block block)))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
-	     (define (loop variables n)
-	       (cond ((null? variables)
-		      (return-3 offset n '()))
+	     (define (loop variables)
+	       (cond ((null? variables) '())
 		     ((integrated-vnode? (car variables))
-		      (loop (cdr variables) n))
-		     (else 
-		      (transmit-values (loop (cdr variables) (1+ n))
-			(lambda (offset n pushes)
-			  (return-3
-			   (1+ offset)
-			   n
-			   (cons (rtl:make-push
-				  (rtl:make-fetch
-				   (find-closure-variable closure-block
-							  (car variables)
-							  offset)))
-				 pushes)))))))
+		      (loop (cdr variables)))
+		     (else
+		      (cons (rtl:make-push
+			     (rtl:make-fetch
+			      (find-closure-variable closure-block
+						     (car variables))))
+			    (loop (cdr variables))))))
 
-	     (define (make-frame n pushes)
+	     (let ((pushes
+		    (let ((parent (block-parent block))
+			  (pushes (loop (block-bound-variables block))))
+		      (if parent
+			  (cons (rtl:make-push
+				 (closure-ic-locative closure-block
+						      parent))
+				pushes)
+			  pushes))))
 	       (return-2
 		(scfg*->scfg!
 		 (reverse!
-		  (cons (rtl:make-interpreter-call:enclose n) pushes)))
-		(rtl:interpreter-call-result:enclose)))
-
-	     (transmit-values (loop (block-bound-variables block) 0)
-	       (lambda (offset n pushes)
-		 (let ((parent (block-parent block)))
-		   (if parent
-		       (make-frame (1+ n)
-				   (cons (rtl:make-push
-					  (ic-locative closure-block parent
-						       offset))
-					 pushes))
-		       (make-frame n pushes)))))))
-	  (else (error "Unknown block type" block)))))
+		  (cons (rtl:make-interpreter-call:enclose (length pushes))
+			pushes)))
+		(rtl:interpreter-call-result:enclose)))))
+	  (else
+	   (error "Unknown block type" block)))))
 
 (define (make-closure-cons procedure environment)
   (rtl:make-typed-cons:pair (rtl:make-constant type-code:compiled-procedure)
