@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.9 1990/08/16 22:33:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ux.h,v 1.10 1990/08/17 20:05:32 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -113,7 +113,6 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
-#define HAVE_SELECT
 #define HAVE_TIMES
 #define HAVE_WAIT3
 /* MORE/BSD has this -- do all 4.3 implementations? */
@@ -165,7 +164,6 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_MKDIR
 #define HAVE_RENAME
 #define HAVE_RMDIR
-#define HAVE_SELECT
 #define HAVE_WAIT3
 
 #if (_HPUX_VERSION < 65)
@@ -215,6 +213,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_ITIMER
 #define HAVE_PTYS
 #define FIRST_PTY_LETTER 'p'
+#define HAVE_SELECT
 #define HAVE_SIGCONTEXT
 #define HAVE_SOCKETS
 #define HAVE_SYMBOLIC_LINKS
@@ -258,6 +257,7 @@ extern void EXFUN (error_system_call, (int code, CONST char * name));
 #define HAVE_NICE
 #define HAVE_PTYS
 #define FIRST_PTY_LETTER 'p'
+#define HAVE_SELECT
 #define HAVE_SIGCONTEXT
 #define HAVE_SOCKETS
 #define HAVE_SYMBOLIC_LINKS
