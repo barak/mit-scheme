@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.53 2001/08/09 03:04:44 cph Exp $
+$Id: global.scm,v 14.54 2001/10/02 18:51:54 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -236,6 +236,9 @@ USA.
 (define (environment-link-name target-environment source-environment name)
   ;; Obsolete; for backwards compatibility.
   (link-variables target-environment name source-environment name))
+
+(define (unbind-variable environment name)
+  ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
 (define-integrable (object-non-pointer? object)
   (zero? (object-gc-type object)))
