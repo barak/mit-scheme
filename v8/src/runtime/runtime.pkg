@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.2 1988/06/15 18:24:01 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.3 1988/06/16 06:37:44 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -214,7 +214,6 @@ MIT in each case. |#
 	  compiler-info-continuations
 	  compiler-info-labels
 
-	  label-info?
 	  make-label-info
 	  label-info-name
 	  label-info-offset
@@ -235,7 +234,7 @@ MIT in each case. |#
 
 	  block-symbol-table
 	  compiled-code-block->pathstring
-	  compiled-code-block->info
+	  compiled-code-block->compiler-info
 
 	  compiled-entry->name
 	  compiled-entry->pathname
@@ -376,6 +375,7 @@ MIT in each case. |#
   (files "defstr")
   (parent ())
   (export ()
+	  define-structure/keyword-parser
 	  named-structure/description
 	  named-structure?)
   (initialization (initialize-package!)))
@@ -554,6 +554,8 @@ MIT in each case. |#
 	  add-unparser-special-pair!
 	  event:after-restart
 	  event:after-restore
+	  named-structure/get-tag-description
+	  named-structure/set-tag-description!
 	  unparse-with-brackets
 	  unparser/set-tagged-pair-method!
 	  unparser/set-tagged-vector-method!
@@ -876,6 +878,7 @@ MIT in each case. |#
 	  atan
 	  ceiling
 	  complex?
+	  conjugate
 	  cos	  even?
 	  exact->inexact
 	  exact?
@@ -1291,6 +1294,8 @@ MIT in each case. |#
 	  string->symbol
 	  string->uninterned-symbol
 	  symbol->string
+	  symbol-append
+	  symbol-hash
 	  symbol?
 	  the-environment?
 	  variable-components
@@ -1393,8 +1398,7 @@ MIT in each case. |#
 	  open-block-components
 	  open-block?
 	  scan-defines
-	  unscan-defines)
-  (initialization (initialize-package!)))
+	  unscan-defines))
 
 (define-package (runtime scode-walker)
   (files "codwlk")
@@ -1484,6 +1488,7 @@ MIT in each case. |#
 	  syntax*
 	  syntax-closure/expression
 	  syntax-closure?
+	  syntaxer/cond-=>-helper
 	  system-global-syntax-table
 	  user-initial-syntax-table)
   (export (runtime defstruct)
@@ -1494,6 +1499,7 @@ MIT in each case. |#
   (files "system")
   (parent ())
   (export ()
+	  add-identification!
 	  add-system!
 	  for-each-system!
 	  load-system!
