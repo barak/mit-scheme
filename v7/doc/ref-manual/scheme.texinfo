@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.115 2002/03/01 03:23:23 cph Exp $
+@comment $Id: scheme.texinfo,v 1.116 2002/03/13 05:47:01 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -51,7 +51,7 @@ Free Documentation License".
 @title{MIT Scheme Reference Manual}
 @subtitle Edition 1.96
 @subtitle for Scheme Release 7.7.0
-@subtitle 28 February 2002
+@subtitle 13 March 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -13355,6 +13355,28 @@ both specified, they must be the same length, and each name in
 @var{names} will be bound to the corresponding value in @var{values}.
 If neither @var{names} nor @var{values} is specified, the environment
 will have no initial bindings.
+@end deffn
+
+@deffn procedure link-variables environment1 symbol1 environment2 symbol2
+Defines @var{symbol1} in @var{environment1} to have the same binding as
+@var{symbol2} in @var{environment2}, and returns an unspecified value.
+Prior to the call, @var{symbol2} must be bound in @var{environment2},
+but the type of binding is irrelevant; it may be a normal binding, an
+unassigned binding, or a keyword binding.  Signals an error if
+@var{symbol1} isn't definable in @var{environment1}, or if @var{symbol2}
+is unbound in @var{environment2}.
+
+By ``the same binding'', we mean that the value cell is shared between
+the two environments.  If a value is assigned to @var{symbol1} in
+@var{environment1}, a subsequent reference to @var{symbol2} in
+@var{environment2} will see that value, and vice versa.
+@end deffn
+
+@deffn procedure unbind-variable environment symbol
+If @var{symbol} is bound in @var{environment} or one of its ancestor
+environments, removes the binding, so that subsequent accesses to that
+symbol behave as if the binding never existed.  Returns @code{#t} if there
+was a binding prior to the call, and @code{#f} if there wasn't.
 @end deffn
 
 @node Input/Output, Operating-System Interface, Environments, Top
