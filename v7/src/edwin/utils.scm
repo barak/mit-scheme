@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utils.scm,v 1.46 1999/11/05 05:36:14 cph Exp $
+;;; $Id: utils.scm,v 1.47 2001/02/05 18:34:54 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -223,9 +223,6 @@
 
 (define char-set:not-space
   (char-set-invert (char-set #\Space)))
-
-(define char-set:not-graphic
-  (char-set-invert char-set:graphic))
 
 (define (char-controlify char)
   (if (ascii-controlified? char)
