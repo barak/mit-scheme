@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.31 1995/10/30 21:37:29 adams Exp $
+@comment $Id: user.texinfo,v 1.32 1995/10/31 02:14:12 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -209,6 +209,7 @@ Efficiency Tips
 
 * Coding style::                
 * Global variables::            
+* Fixnum arithmetic::           
 * Flonum arithmetic::           
 * Miscellaneous::               
 
@@ -4013,6 +4014,7 @@ explanations useful.
 @menu
 * Coding style::                
 * Global variables::            
+* Fixnum arithmetic::           
 * Flonum arithmetic::           
 * Miscellaneous::               
 @end menu
@@ -4062,7 +4064,8 @@ There are two things tha make internal procedures faster: First, the
 procedure call is compiled to a direct jump to a known location, which
 is mare efficeint that jumping `via' a global binding.
 Second, there is a knock-on effect: since the compiler can see the
-internal procedure it can analyze it and possibly produce better code.
+internal procedure it can analyze it and possibly produce better code
+for other expressions in the body of the loop too.
 
 @lisp
 (define (map f original-lst)
@@ -4076,7 +4079,7 @@ internal procedure it can analyze it and possibly produce better code.
 @end lisp
 
 
-@node Global variables, Flonum arithmetic, Coding style, Efficiency Tips
+@node Global variables, Fixnum arithmetic, Coding style, Efficiency Tips
 @subsection Global variables
 
 @cindex variable caches
@@ -4165,8 +4168,190 @@ For example, to ignore reference traps on all the variables except
 
 @end deffn
 
-@node Flonum arithmetic, Miscellaneous, Global variables, Efficiency Tips
+
+@node Fixnum arithmetic, Flonum arithmetic, Global variables, Efficiency Tips
+@subsection Fixnum arithmetic
+
+The usual arithmetic operations like @code{+} and @code{<} are called
+generic arithmetic operations because they work for all (appropriate)
+kinds of number.
+
+@cindex fixnum (defn)
+A @dfn{fixnum} is an exact integer that is small enough to fit in a
+machine word.  In MIT Scheme, fixnums are typically 24 or 26 bits,
+depending on the machine; it is reasonable to assume that fixnums are at
+least 24 bits.  Fixnums are signed; they are encoded using 2's
+complement.
+
+All exact integers that are small enough to be encoded as fixnums are
+always encoded as fixnums --- in other words, any exact integer that is
+not a fixnum is too big to be encoded as such.  For this reason, small
+constants such as @code{0} or @code{1} are guaranteed to be fixnums.  In
+addition, the lengths of and valid indexes into strings and vectors are
+also always fixnums.
+
+If you know that a value is always a small fixnum, you can substitute
+the equivalent fixnum operation for the generic operation.  However,
+care should be exercised: if used improperly, these operations can
+return incorrect answers, or even malformed objects that confuse the
+garbage collector.  The Scheme Reference Manual lists all the fixnum
+operations.
+
+A fruitful area for inserting fixnum operations is in the index
+operations in tight loops.
+
+Adding fixnum operations yourself is not always effective because the
+compiler sometimes can figure out that a value just has to be a fixnum
+and replaces the generic operation with the fixnum one.  For example, in
+the following code, the compiler knows that the result of
+@code{vector-length} is always a fixnum, and so replaces @code{-} with
+@code{fix:-}.
+
+@example
+(define (last-index v) (- (vector-length v)))
+@end example
+
+In the following example the compiler replaces @code{+} with
+@code{fix:+} because it knows that if @var{k} was not a fixnum then the
+@code{vector-ref} was an error:
+
+@example
+(define (ref-inc v k)
+  (display (vector-ref v k))
+  (+ k 1))
+@end example
+
+Unfortunately there is no reasonable way to tell which
+operations the compiler replaces.
+
+
+@node Flonum arithmetic, Miscellaneous, Fixnum arithmetic, Efficiency Tips
 @subsection Flonum arithmetic
+
+!INCOMPLETE
+
+Getting efficient flonum arithmetic is much more complicated and harder
+than getting efficient fixnum arithmetic.
+
+@subsubsection{Flonum consing}
+@cindex flonum consing
+One of the main disadvantages of generic arithmetic is that not all
+kinds of number fit in a machine register.
+Flonums have to be @dfn{boxed} because a 64 bit IEEE floating point
+number (the representation the MIT Scheme uses) does not fit in a
+regular machine word.
+Values are boxed by storing them in a small record in the heap.
+Every floating point value that you see at the REPL is boxed.
+Floating point values are only unboxed for short periods of time when
+they are in the machine's floating point unit and actual floating point
+operations are begin performed.
+
+
+Numerical calculations that happen to be using floating point numbers
+cause many temporary floating point numbers to be allocated.  It is not
+uncommon for numerical programs to spend over half of the time creating
+and garbage collecting the flonums.
+
+Consider the following procedure for computing the distance of a point
+@var{(x,y)} from the origin.
+
+@example
+(define (distance x y)
+  (sqrt (+ (* x x) (* y y))))
+@end example
+
+The call @code{(distance 0.3 0.4)} returns a new, boxed flonum, 0.5.
+The calculation also generates three intermediate boxed flonums.  This
+next version works only for flonum inputs, generates only one boxed
+flonum (the result) and runs eight times faster:
+
+@example
+(define (flo:distance x y)
+  (flo:sqrt (flo:+ (flo:* x x) (flo:* y y))))
+@end example
+
+Note that @code{flo:} operations are usually effective only within a
+single arithmetic expression.  If the expression contains conditionals
+or calls to procedures then the values tend to get boxed anyway.
+
+
+@subsubsection{Flonum vectors}
+
+Flonum vectors are vectors which contain only floating point values, in
+much the same way as a string is a `vector' containing only character
+values.
+
+Flonum vectors have the advantages of compact storage (about half of
+that of a conventional vector of flonums) and judicious use of flonum
+vectors can decrease flonum consing.
+
+The disadvantages are that flonum vectors are incompatible with ordinary
+vectors, and if not used carefully, can increase flonum consing.  Flonum
+vectors are a pain to use because they require you to make a decision
+about the representation and stick with that, and it might not be easy
+to assertain whether the advantages in one part of the program outweigh
+the disadvantages in another.
+
+@deffn {procedure+} flo:vector-cons n
+Create a flonum vector of length @var{N}.
+The contents of the vector are arbitrary and might not be valid floating
+point numbers.
+The contents should not be used until initialized.
+@end deffn
+
+@deffn {procedure+} flo:vector-ref flonum-vector index
+@deffnx {procedure+} flo:vector-set! flonum-vector index value
+@defnnx {procedure+} flo:vector-length flonum-vector
+These operations are analogous to the ordinary vector operations.
+@end deffn
+
+This next operation causes no flonum consing because the flonum is
+loaded directly from the flonum vector into a floating point machine
+register, added, and stored again.  There is no need for a temporary
+boxed flonum.
+
+@example
+(flo:vector-set v 0 (flo:+ (flo:vector-ref v 0) 1.2))
+@end example
+
+In this example, every time @code{g} is called, a new boxed flonum has
+to be created so that a valid Scheme object can be returned.
+If @code{g} is called more often than the elements of @var{v} are
+changed then an ordinary vector might be more efficient.
+
+@example
+(define (g i)
+  (flo:vector-ref v i))
+@end example
+
+
+
+@subsubsection{Common pitfalls}
+
+Pitfall 1:
+Make sure that your literals are floating point constants:
+
+@example
+(define (f1 a) (flo:+ a 1))
+(define (f2 a) (flo:+ a 1.))
+@end example
+
+@code{F1} will most likely cause a hardware error, and certainly give
+the wrong answer.
+
+
+Pitfall 2:
+It is tempting to insert calls to @code{exact->inexact} to coerce values
+into flonums.
+This does not always work because complex numbers may be exact or inexact too.
+In addition, the current implementation of @code{exact->inexact} is slow.
+
+
+Pitfall 3:
+A great deal of care has to be taken with the standard math procedures.
+For example, when called with a flonum, both @code{sqrt} and @code{asin}
+can return a complex number.
+
 
 
 @node Miscellaneous,  , Flonum arithmetic, Efficiency Tips
