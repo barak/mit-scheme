@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	Copyright (c) 1985 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -18,9 +18,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -37,28 +37,42 @@
 
 ;;;; Debugger
 
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/debug.scm,v 1.84 1987/01/15 02:55:47 cph Exp $
+
 (in-package debugger-package
 (declare (usual-integrations))
 
 (define debug-package
-  (make-package debug-package
-		((current-continuation)
-		 (previous-continuations)
-		 (command-set (make-command-set 'DEBUG-COMMANDS))
-		 (current-reduction-number)
-		 (current-number-of-reductions)
-		 (current-reduction)
-		 (current-environment)
-		 (reduction-wrap-around-tag 'WRAP-AROUND)
-		 (print-user-friendly-name
-		  (access print-user-friendly-name env-package))
-		 (print-expression pp)
-		 (student-walk? #!FALSE)
-		 (print-return-values? #!FALSE))
+  (make-environment
+
+(define current-continuation)
+(define previous-continuations)
+(define current-reduction-number)
+(define current-number-of-reductions)
+(define current-reduction)
+(define current-environment)
+
+(define command-set
+  (make-command-set 'DEBUG-COMMANDS))
+
+(define reduction-wrap-around-tag
+  'WRAP-AROUND)
+
+(define print-user-friendly-name
+  (access print-user-friendly-name env-package))
+
+(define print-expression
+  pp)
+
+(define student-walk?
+  false)
+
+(define print-return-values?
+  false)
 
 (define (define-debug-command letter function help-text)
   (define-letter-command command-set letter function help-text))
-
+
 ;;; Basic Commands
 
 (define-debug-command #\? (standard-help-command command-set)
@@ -71,16 +85,15 @@
 	      (previous-continuations '())
 	      (current-reduction-number)
 	      (current-number-of-reductions)
-	      (current-reduction #!FALSE)
+	      (current-reduction false)
 	      (current-environment '()))
-
     (debug-abstract-continuation
      (cond ((unassigned? the-continuation) (rep-continuation))
 	   ((raw-continuation? the-continuation); Must precede next test!
 	    (raw-continuation->continuation the-continuation))
 	   ((continuation? the-continuation) the-continuation)
-	   (else (Error "DEBUG: Not a continuation" the-continuation))))))
-
+	   (else (error "DEBUG: Not a continuation" the-continuation))))))
+
 (define (debug-abstract-continuation continuation)
   (set-current-continuation! continuation initial-reduction-number)
   (letter-commands command-set
@@ -152,11 +165,11 @@
 	  (format "~%applied to ~@68o" (environment-arguments env))
 	  (format " applied to ~@68o" (environment-arguments env))))
 
-    (let ((output (with-output-to-string (lambda () (do-it #!FALSE)))))
+    (let ((output (with-output-to-string (lambda () (do-it false)))))
       (if (< (string-length output)
 	     (access printer-width implementation-dependencies))
 	  (format "~%~s" output)
-	  (do-it #!TRUE))))
+	  (do-it true))))
 
   (if (null-continuation? current-continuation)
       (format "~%Null continuation")
@@ -172,7 +185,7 @@
 
 (define-debug-command #\S print-current-expression
   "Print the current subproblem/reduction")
-
+
 (define (reductions-command)
   (if (null-continuation? current-continuation)
       (format "~%Null continuation")
@@ -218,24 +231,21 @@
   (let ((top-continuation (if (null? previous-continuations)
 			      current-continuation
 			      (car (last-pair previous-continuations)))))
-
     (if (null-continuation? top-continuation)
 	(format "~%No history available")
 	(begin
 	 (format "~%Sub Prb. Procedure Name    Expression~%")
 	 (print-continuations top-continuation 0)))))
 
-(define terse-print-expression
-  (let ((the-non-printing-symbol (make-symbol "")))
-    (named-lambda (terse-print-expression level expression environment)
-      (format "~%~@3o~:20o~4x~@:52c"
-	      level
-	      ;; procedure name
-	      (if (or (undefined-environment? environment)
-		      (special-name? (environment-name environment)))
-		  the-non-printing-symbol
-		  (environment-name environment))
-	      expression))))
+(define (terse-print-expression level expression environment)
+  (format "~%~@3o~:20o~4x~@:52c"
+	  level
+	  ;; procedure name
+	  (if (or (undefined-environment? environment)
+		  (special-name? (environment-name environment)))
+	      *the-non-printing-object*
+	      (environment-name environment))
+	  expression))
 
 (define-debug-command #\H summarize-history-command
   "Prints a summary of the entire history")
@@ -419,8 +429,8 @@
   (define (confirm)
     (format "~%Confirm: [Y or N] ")
     (let ((ans (read)))
-      (cond ((eq? ans 'Y) #!TRUE)
-	    ((eq? ans 'N) #!FALSE)
+      (cond ((eq? ans 'Y) true)
+	    ((eq? ans 'N) false)
 	    (else (confirm)))))
 
   (define (return-read)
@@ -491,7 +501,7 @@
   (if (and (not (= current-number-of-reductions 0)) (>= number 0))
       (set! current-reduction 
 	    (list-ref (continuation-reductions current-continuation) number))
-      (set! current-reduction #!FALSE))
+      (set! current-reduction false))
   (set! current-environment 
 	(if current-reduction
 	    (reduction-environment current-reduction)
@@ -514,6 +524,7 @@
 
 ;;; end DEBUG-PACKAGE.
 ))
+
 ;;; end IN-PACKAGE DEBUGGER-PACKAGE.
 )
 
@@ -532,5 +543,4 @@
 	       lambda-tag:make-environment
 	       lambda-tag:make-package)))
     (named-lambda (special-name? symbol)
-      (memq symbol the-special-names))))
       (memq symbol the-special-names))))
