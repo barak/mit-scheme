@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.6 1988/12/30 06:43:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/packag.scm,v 14.7 1989/05/21 17:13:47 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -116,12 +116,16 @@ MIT in each case. |#
 			     (prompt-for-confirmation "Load interpreted? ")			     load-interpreted?)
 			 '("bin" "scm")
 			 load/default-types)))
-	  (load (pathname-new-type pathname "bcon") system-global-environment)
-	  ((load (pathname-new-type pathname "bldr") system-global-environment)
-	   (let ((syntax-table (nearest-repl/syntax-table)))
+	  (let ((syntax-table (nearest-repl/syntax-table)))
+	    (load (pathname-new-type pathname "bcon")
+		  system-global-environment
+		  syntax-table false)
+	    ((load (pathname-new-type pathname "bldr")
+		   system-global-environment
+		   syntax-table false)
 	     (lambda (filename environment)
-	       (load filename environment syntax-table true)))
-	   options)))))
+	       (load filename environment syntax-table true))
+	     options))))))
   unspecific)
 (define-integrable (package/reference package name)
   (lexical-reference (package/environment package) name))
