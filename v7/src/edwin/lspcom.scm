@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.154 1991/08/06 15:39:46 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.155 1991/10/29 13:46:08 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -265,7 +265,7 @@ indent after it."
 		 (delete-more-indentation (current-point)))))
     (move-thing mark+ 1)
     ((ref-command newline-and-indent))))
-
+
 ;;;; Motion Covers
 
 (define forward-sexp)
@@ -273,39 +273,45 @@ indent after it."
 (make-motion-pair forward-one-sexp backward-one-sexp
   (lambda (f b)
     (set! forward-sexp f)
-    (set! backward-sexp b)))
+    (set! backward-sexp b)
+    unspecific))
 
 (define forward-list)
 (define backward-list)
 (make-motion-pair forward-one-list backward-one-list
   (lambda (f b)
     (set! forward-list f)
-    (set! backward-list b)))
+    (set! backward-list b)
+    unspecific))
 
 (define forward-down-list)
 (define backward-down-list)
 (make-motion-pair forward-down-one-list backward-down-one-list
   (lambda (f b)
     (set! forward-down-list f)
-    (set! backward-down-list b)))
+    (set! backward-down-list b)
+    unspecific))
 
 (define forward-up-list)
 (define backward-up-list)
 (make-motion-pair forward-up-one-list backward-up-one-list
   (lambda (f b)
     (set! forward-up-list f)
-    (set! backward-up-list b)))
+    (set! backward-up-list b)
+    unspecific))
 
 (define forward-definition-start)
 (define backward-definition-start)
 (make-motion-pair forward-one-definition-start backward-one-definition-start
   (lambda (f b)
     (set! forward-definition-start f)
-    (set! backward-definition-start b)))
+    (set! backward-definition-start b)
+    unspecific))
 
 (define forward-definition-end)
 (define backward-definition-end)
 (make-motion-pair forward-one-definition-end backward-one-definition-end
   (lambda (f b)
     (set! forward-definition-end f)
-    (set! backward-definition-end b)))
+    (set! backward-definition-end b)
+    unspecific))
