@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.287 2003/02/14 18:28:14 cph Exp $
+$Id: imail-top.scm,v 1.288 2003/10/31 05:30:33 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -1800,7 +1800,7 @@ Negative argument means search in reverse."
       (apply prompt-for-container prompt #f options)))
 
 (define (prompt-for-url prompt default . options)
-  (%prompt-for-url prompt default options url-exists?))
+  (%prompt-for-url prompt default options #f))
 
 (define (prompt-for-folder prompt default . options)
   (%prompt-for-url prompt default options
@@ -1845,8 +1845,9 @@ Negative argument means search in reverse."
 				  if-unique if-not-unique if-not-found))
 	   (lambda (string)
 	     (url-string-completions string imail-default-url))
-	   (lambda (string)
-	     (predicate (imail-parse-partial-url string)))
+	   (and predicate
+		(lambda (string)
+		  (predicate (imail-parse-partial-url string))))
 	   'DEFAULT-TYPE 'INSERTED-DEFAULT
 	   options)))
 
