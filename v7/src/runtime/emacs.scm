@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.14 1993/10/15 10:26:29 cph Exp $
+$Id: emacs.scm,v 14.15 1993/10/16 05:59:35 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -54,41 +54,25 @@ MIT in each case. |#
   (transmit-signal-with-argument
    port
    #\p
-   (with-values (lambda () (parse-repl-prompt prompt))
-     (lambda (prefix prompt)
-       (if prefix
-	   (string-append prefix
-			  (let ((entry (assoc prompt cmdl-prompt-alist)))
-			    (if entry
-				(cadr entry)
-				"[Evaluator]")))
-	   prompt)))))
-
-(define (parse-repl-prompt prompt)
-  ;; If the prompt is of the form "NNN foo", then it is a REP loop
-  ;; prompt and should be treated specially.
-  (let ((end (string-length prompt)))
-    (let ((index
-	   (and (> end 0)
-		(char-numeric? (string-ref prompt 0))
-		(let skip-digits ((index 1))
-		  (and (< index end)
-		       (cond ((char-numeric? (string-ref prompt index))
-			      (skip-digits (+ index 1)))
-			     ((char=? #\space (string-ref prompt index))
-			      (let ((index (+ index 1)))
-				(and (< index end)
-				     index)))
-			     (else
-			      false)))))))
-      (if index
-	  (values (string-head prompt index) (string-tail prompt index))
-	  (values false prompt)))))
+   (let ((prefix (string-append (number->string (nearest-cmdl/level)) " ")))
+     (string-append prefix
+		    (let ((prompt
+			   (if (and (string-prefix? prefix prompt)
+				    (not (string=? prefix prompt)))
+			       (string-tail prompt (string-length prefix))
+			       prompt)))
+		      (let ((entry (assoc prompt cmdl-prompt-alist)))
+			(if entry
+			    (cadr entry)
+			    (string-append "[Evaluator] " prompt))))))))
 
 (define cmdl-prompt-alist
-  '(("debug>" "[Debugger]")
-    ("where>" "[Environment Inspector]")
-    ("which>" "[Task Inspector]")))
+  '(("]=>" "[Evaluator]")
+    ("error>" "[Evaluator]")
+    ("break>" "[Evaluator]")
+    ("bkpt>" "[Evaluator]")
+    ("debug>" "[Debug]")
+    ("where>" "[Where]")))
 
 (define (emacs/prompt-for-expression port prompt)
   (transmit-signal-with-argument port #\i (string-append prompt ": "))
