@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.44 1993/08/20 00:17:32 cph Exp $
+;;;	$Id: xterm.scm,v 1.45 1993/09/09 22:40:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -505,7 +505,14 @@
 		   (case flag
 		     ((#F) #f)
 		     ((PROCESS-STATUS-CHANGE) event:process-status)
-		     ((INTERRUPT) (loop))
+		     ((INTERRUPT)
+		      ;; Must independently check for this condition
+		      ;; because TEST-FOR-INPUT-ON-DESCRIPTOR can't
+		      ;; reliably produce the PROCESS-STATUS-CHANGE
+		      ;; result.
+		      (if (process-status-changes?)
+			  event:process-status
+			  (loop)))
 		     (else (read-event-1 display block?))))))))))
 
 (define (preview-event-stream)
