@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.65 2000/06/20 19:27:27 cph Exp $
+;;; $Id: imail.pkg,v 1.66 2000/06/26 15:28:14 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -271,6 +271,7 @@
 	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-reply-with-re
+	  edwin-variable$imail-mime-show-alternatives
 	  edwin-variable$imail-summary-highlight-message
 	  edwin-variable$imail-summary-mode-hook
 	  edwin-variable$imail-summary-pop-up-message

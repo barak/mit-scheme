@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.188 2000/06/24 01:39:16 cph Exp $
+;;; $Id: imail-top.scm,v 1.189 2000/06/26 15:28:25 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -180,6 +180,13 @@ Otherwise, simple dashed-line separators are used."
 Either #F or a pathname."
   #f
   (lambda (x) (or (not x) (string? x) (pathname? x))))
+
+(define-variable imail-mime-show-alternatives
+  "If true, all parts of a multipart/alternative message are shown.
+\(Only one of the parts will be shown in line; the others as attachments.)
+Otherwise, only one of the parts is shown."
+  #f
+  boolean?)
 
 (define-command imail
   "Read and edit incoming mail.
@@ -1998,7 +2005,9 @@ Negative argument means search in reverse."
 	  body
 	  (if (ref-variable imail-use-original-mime-boundaries mark)
 	      (mime-body-parameter body 'BOUNDARY "----------")
-	      'SIMPLE))))
+	      'SIMPLE)))
+	(show-alternatives?
+	 (ref-variable imail-mime-show-alternatives mark)))
     (do ((parts (mime-body-multipart-parts body) (cdr parts))
 	 (i 0 (fix:+ i 1)))
 	((null? parts))
@@ -2006,8 +2015,9 @@ Negative argument means search in reverse."
 	    (selector `(,@selector ,i)))
 	(if (and (fix:> i 0)
 		 (eq? (mime-body-subtype body) 'ALTERNATIVE))
-	    (insert-mime-message-attachment 'ALTERNATIVE part selector context
-					    mark)
+	    (if show-alternatives?
+		(insert-mime-message-attachment 'ALTERNATIVE part selector
+						context mark))
 	    (insert-mime-message-part message part selector context mark))))))
 
 (define-method insert-mime-message-part
