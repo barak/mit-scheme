@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.39 1991/05/17 04:51:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.40 1991/05/18 03:06:32 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -448,6 +448,21 @@ MIT in each case. |#
   (files "prompt")
   (parent (edwin))
   (export (edwin)
+	  edwin-command$exit-minibuffer
+	  edwin-command$exit-minibuffer-yes-or-no
+	  edwin-command$minibuffer-complete
+	  edwin-command$minibuffer-complete-and-exit
+	  edwin-command$minibuffer-complete-word
+	  edwin-command$minibuffer-completion-help
+	  edwin-command$minibuffer-yank-default
+	  edwin-command$next-complex-command
+	  edwin-command$previous-complex-command
+	  edwin-command$repeat-complex-command
+	  edwin-mode$minibuffer-local
+	  edwin-mode$minibuffer-local-completion
+	  edwin-mode$minibuffer-local-must-match
+	  edwin-mode$minibuffer-local-yes-or-no
+	  edwin-mode$repeat-complex-command
 	  edwin-variable$enable-recursive-minibuffers
 	  edwin-variable$completion-auto-help
 	  initialize-typein!
