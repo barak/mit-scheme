@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.24 1990/05/03 15:17:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 4.25 1990/08/21 02:20:55 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -323,9 +323,12 @@ MIT in each case. |#
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
 
-(define (frame-size->code-word offset)
+(define internal-continuation-code-word
+  (make-code-word #xff #xfc))
+
+(define (frame-size->code-word offset default)
   (cond ((not offset)
-	 (make-code-word #xff #xfc))
+	 default)
 	((< offset #x2000)
 	 ;; This uses up through (#xff #xdf).
 	 (let ((qr (integer-divide offset #x80)))
@@ -338,7 +341,13 @@ MIT in each case. |#
   (frame-size->code-word
    (if label
        (rtl-continuation/next-continuation-offset (label->object label))
-       0)))
+       0)
+   internal-continuation-code-word))
+
+(define (internal-procedure-code-word rtl-proc)
+  (frame-size->code-word
+   (rtl-procedure/next-continuation-offset rtl-proc)
+   internal-entry-code-word))
 
 ;;;; Procedure headers
 
@@ -405,7 +414,7 @@ MIT in each case. |#
 	    (lambda (code-word label)
 	      (simple-procedure-header code-word label
 				       entry:compiler-interrupt-procedure)))
-	internal-entry-code-word
+	(internal-procedure-code-word rtl-proc)
 	internal-label))))
 
 (define-rule statement
@@ -429,14 +438,15 @@ MIT in each case. |#
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
   nentries				; ignored
-  (let ((procedure (label->object internal-label)))
+  (let ((rtl-proc (label->object internal-label)))
     (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label procedure)))
+	  (external-label (rtl-procedure/external-label rtl-proc)))
       (if (zero? nentries)
 	  (LAP (EQUATE ,external-label ,internal-label)
-	       ,@(simple-procedure-header internal-entry-code-word
-					  internal-label
-					  entry:compiler-interrupt-procedure))
+	       ,@(simple-procedure-header
+		  (internal-procedure-code-word rtl-proc)
+		  internal-label
+		  entry:compiler-interrupt-procedure))
 	  (LAP (LABEL ,gc-label)
 	       ,@(let ((distance (* 10 entry)))
 		   (cond ((zero? distance)
