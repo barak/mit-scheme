@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.22 1992/02/28 20:23:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.23 1992/08/05 21:32:27 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -385,13 +385,20 @@ MIT in each case. |#
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define-integrable (simple-procedure-header code-word label entry)
+(define (interrupt-check interrupt-label)
+  (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+       (JGE (@PCR ,interrupt-label))
+       ,@(if compiler:generate-stack-checks?
+	     (LAP (CMP W (R ,regnum:stack-pointer) ,reg:stack-guard)
+		  (JL (@PCR ,interrupt-label)))
+	     (LAP))))
+
+(define (simple-procedure-header code-word label entry)
   (let ((gc-label (generate-label)))    
     (LAP (LABEL ,gc-label)
 	 ,@(invoke-hook/call entry)
 	 ,@(make-external-label code-word label)
-	 (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	 (JGE (@PCR ,gc-label)))))
+	 ,@(interrupt-check gc-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -414,8 +421,7 @@ MIT in each case. |#
 	   (LABEL ,gc-label)
 	   ,@(invoke-interface/call code:compiler-interrupt-ic-procedure)
 	   ,@(make-external-label expression-code-word internal-label)
-	   (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	   (JGE (@PCR ,gc-label))))))
+	   ,@(interrupt-check gc-label)))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -533,8 +539,7 @@ MIT in each case. |#
 	       (ADD W (@R ,esp)
 		    (&U ,(generate/make-magic-closure-constant entry)))
 	       (LABEL ,internal-label)
-	       (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-	       (JGE (@PCR ,gc-label)))))))
+	       ,@(interrupt-check gc-label))))))
 
 (define (generate/make-magic-closure-constant entry)
   (- (make-non-pointer-literal (ucode-type compiled-entry) 0)

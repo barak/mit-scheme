@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.20 1992/05/14 03:06:55 jinx Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.21 1992/08/05 21:34:38 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -400,6 +399,11 @@ MIT in each case. |#
 (define reg:utility-arg-4
   (offset-reference regnum:regs-pointer
 		    register-block/utility-arg4-offset))
+
+(define reg:stack-guard
+  (offset-reference regnum:regs-pointer
+		    register-block/stack-guard-offset))
+
 
 (let-syntax ((define-codes
 	       (macro (start . names)
