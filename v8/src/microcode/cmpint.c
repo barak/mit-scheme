@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.2 1989/06/03 15:07:11 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.3 1989/06/06 17:15:44 jinx Exp $
  *
  * This file corresponds to
  * $COMPILER-Header: compiler.c,v 9.35 88/10/26 20:02:13 GMT cph Exp $
@@ -87,13 +87,18 @@ MIT in each case. */
 #include "trap.h"	/* UNASSIGNED_OBJECT */
 #include "interp.h"	/* Interpreter state and primitive destructuring */
 #include "prims.h"	/* LEXPR */
-#include "cmpint.h"	/* Compiled code object destructuring */
+#include "cmpgc.h"	/* Compiled code object destructuring */
 #include "default.h"	/* Metering_Apply_Primitive */
 
 /* Imports from the rest of the "microcode" */
 
 extern term_type
   Microcode_Termination();
+
+extern long
+  compiler_cache_operator(),
+  compiler_cache_lookup(),
+  compiler_cache_assignment();
 
 /* Exports to the rest of the "microcode" */
 
@@ -139,7 +144,10 @@ extern long
   comutil_error(),
   comutil_apply(),
   comutil_setup_lexpr(),
-  comutil_remove_me();
+  comutil_link();
+
+extern Pointer
+  comutil_invoke_primitive();
 
 /* Main compiled code entry points. */
 
@@ -535,6 +543,142 @@ comutil_invoke_primitive (primitive)
   Metering_Apply_Primitive(result, primitive);
   return (result);
 }
+
+/* Core of comutil_link and comutil_continue_linking. */
+
+#define MAKE_LINKAGE_SECTION_HEADER(kind, count)			\
+Make_Non_Pointer(TC_LINKAGE_SECTION,					\
+		 (kind |						\
+		  ((kind != OPERATOR_LINKAGE_KIND) ?			\
+		   count :						\
+		   (count * OPERATOR_LINK_ENTRY_SIZE))))
+
+static long
+link_cc_block (block_address, offset, last_header_offset,
+	       sections, original_count)
+     register Pointer block_address;
+     register long offset;
+     long last_header_offset, sections, original_count;
+{
+  register long entry_size, count;
+  register Pointer block;
+  Pointer header;
+  long result, kind, total_count;
+  long (*cache_handler)();
+
+  block = Make_Pointer(TC_COMPILED_CODE_BLOCK, block_address);
+
+  while ((--sections) >= 0)
+  {
+    header = (block_address[last_header_offset]);
+    kind = (READ_LINKAGE_KIND(header));
+    if (kind == OPERATOR_LINKAGE_KIND)
+    {
+      entry_size = OPERATOR_LINK_ENTRY_SIZE;
+      cache_handler = compiler_cache_operator;
+      count = (READ_OPERATOR_LINKAGE_COUNT(header)); 
+    }
+    else
+    {
+      entry_size = 1;
+      cache_handler = ((kind == REFERENCE_LINKAGE_KIND) ?
+		       compiler_cache_lookup :
+		       compiler_cache_assignment);
+      count = (READ_CACHE_LINKAGE_COUNT(header)); 
+    }
+    total_count = ((OBJECT_TYPE(header) == TC_LINKAGE_SECTION) ?
+		   original_count :
+		   count);
+    block_address[last_header_offset] =
+      (MAKE_LINKAGE_SECTION_HEADER(kind, total_count));
+
+    for (offset += 1; ((--count) >= 0); offset += entry_size)
+    {
+      result = ((*cache_handler)
+		(block_address[offset],	/* symbol */
+		 block,
+		 offset));
+
+      if (result != PRIM_DONE)
+      {
+	/* Save enough state to continue. */
+
+	Push(MAKE_UNSIGNED_FIXNUM(sections + 1));
+	Push(MAKE_UNSIGNED_FIXNUM(last_header_offset));
+	Push(MAKE_UNSIGNED_FIXNUM(offset - 1));
+	Push(block);
+	Push(MAKE_UNSIGNED_FIXNUM(total_count));
+
+	/* Smash header for the garbage collector. */
+
+	block_address[last_header_offset] =
+	  (MAKE_LINKAGE_SECTION_HEADER(kind, (total_count - (count + 1))));
+	return (result);
+      }
+    }
+    last_header_offset = offset;
+  }
+  return (PRIM_DONE);
+}
+
+/*
+  comutil_link is used to initialize all the variable cache slots for
+  a compiled code block.  It is called at load time, by the compiled
+  code itself.  It assumes that the return address has been saved on
+  the stack.
+  It returns PRIM_DONE if finished, or PRIM_INTERRUPT if the garbage
+  collector must be run.  In the latter case, the stack is all set
+  for reentry.
+*/
+
+SCHEME_UTILITY long
+comutil_link (block_address, constant_address, sections)
+     Pointer *block_address, *constant_address;
+     long sections;
+{
+  long offset;
+
+  offset = (constant_address - block_address);
+  return (link_cc_block (block_address,
+			 offset,
+			 offset,
+			 sections,
+			 -1));
+}
+
+/*
+  comutil_continue_linking is used to continue the linking process
+  started by comutil_link after the garbage collector has run.
+  It expects the top of the stack to be as left by comutil_link.
+ */
+
+SCHEME_UTILITY long
+comutil_continue_linking ()
+{
+  Pointer block;
+  long original_count, offset, last_header_offset, sections;
+
+  original_count = (OBJECT_DATUM(Pop()));
+  block = (Pop());
+  offset = (OBJECT_DATUM(Pop()));
+  last_header_offset = (OBJECT_DATUM(Pop()));
+  sections = (OBJECT_DATUM(Pop()));
+  return (link_cc_block ((Get_Pointer(block)),
+			 last_header_offset,
+			 offset,
+			 sections,
+			 original_count));
+}
+
+/* *** HERE *** */
+
+/* Priorities:
+
+   - uuo link manipulation
+   - initialization and register block
+   - error back outs
+   - arithmetic
+ */
 
 Pointer
   Registers[REGBLOCK_MINIMUM_LENGTH],
