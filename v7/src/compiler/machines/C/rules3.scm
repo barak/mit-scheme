@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.7 1993/10/31 04:08:27 gjr Exp $
+$Id: rules3.scm,v 1.8 1993/11/13 06:44:04 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -264,10 +264,10 @@ MIT in each case. |#
 				  (REGISTER (? choice-2)))
   (let ((choice-1 (standard-source! choice-1 'SCHEME_OBJECT*))
 	(choice-2 (standard-source! choice-2 'SCHEME_OBJECT*)))
-    (LAP "{\n\t  SCHEME_OBJECT * new_frame;\n\t"
-	 "  new_frame = ((" ,choice-1 " <= " ,choice-2 ") ? "
+    (LAP "{\n\t  SCHEME_OBJECT * new_frame_1;\n\t"
+	 "  new_frame_1 = ((" ,choice-1 " <= " ,choice-2 ") ? "
 	 ,choice-1 " : " ,choice-2 ");\n\t"
-	 ,@(move-frame-up frame-size "new_frame" "  ")
+	 ,@(move-frame-up frame-size "new_frame_1" "  ")
 	 "}\n\t")))
 
 ;;; Entry point types
