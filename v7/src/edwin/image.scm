@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.127 1991/03/22 00:31:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/image.scm,v 1.128 1991/04/01 10:07:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -141,74 +141,6 @@
      4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
      4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4))
 
-(define (string-line-image string column tab-width)
-  (substring-line-image string 0 (string-length string) column tab-width))
-
-(define (substring-line-image string start end column tab-width)
-  (let ((i&c (substring-line-columns string start end column tab-width)))
-    (let ((end (car i&c)))
-      (let ((image (make-string (fix:- (cdr i&c) column))))
-	(%substring-image string start end column tab-width image 0)
-	(cons image end)))))
-
-(define (string-image string column tab-width)
-  (substring-image string 0 (string-length string) column tab-width))
-
-(define (substring-image string start end column tab-width)
-  (let ((image
-	 (make-string
-	  (fix:- (substring-columns string start end column tab-width)
-		 column))))
-    (%substring-image string start end column tab-width image 0)
-    image))
-
-(define (%substring-image string start end column tab-width image start-image)
-  (let loop ((string-index start) (image-index start-image))
-    (if (not (fix:= string-index end))
-	(loop
-	 (fix:+ string-index 1)
-	 (let ((ascii (vector-8b-ref string string-index)))
-	   (cond ((fix:< ascii #o040)
-		  (if (and tab-width (fix:= ascii (char->integer #\tab)))
-		      (let ((n
-			     (fix:- tab-width
-				    (fix:remainder (fix:+ image-index column)
-						   tab-width))))
-			(let ((end (fix:+ image-index n)))
-			  (do ((image-index image-index
-					    (fix:+ image-index 1)))
-			      ((fix:= image-index end) image-index)
-			    (string-set! image image-index #\space))))
-		      (begin
-			(string-set! image image-index #\^)
-			(vector-8b-set! image
-					(fix:+ image-index 1)
-					(fix:+ ascii #o100))
-			(fix:+ image-index 2))))
-		 ((fix:< ascii #o177)
-		  (vector-8b-set! image image-index ascii)
-		  (fix:+ image-index 1))
-		 ((fix:= ascii #o177)
-		  (string-set! image image-index #\^)
-		  (string-set! image image-index #\?)
-		  (fix:+ image-index 2))
-		 (else
-		  (string-set! image image-index #\\)
-		  (let ((q (fix:quotient ascii 8)))
-		    (vector-8b-set! image
-				    (fix:+ image-index 1)
-				    (fix:+ (fix:quotient q 8)
-					   (char->integer #\0)))
-		    (vector-8b-set! image
-				    (fix:+ image-index 2)
-				    (fix:+ (fix:remainder q 8)
-					   (char->integer #\0))))
-		  (vector-8b-set! image
-				  (fix:+ image-index 3)
-				  (fix:+ (fix:remainder ascii 8)
-					 (char->integer #\0)))
-		  (fix:+ image-index 4))))))))
-
 (define (group-line-columns group start end column tab-width)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
@@ -286,75 +218,161 @@
 			gap-length)
 		 (car i&c)))))))
 
-(define (group-line-image group start end column tab-width)
-  (let ((text (group-text group))
-	(gap-start (group-gap-start group))
-	(gap-end (group-gap-end group))
-	(gap-length (group-gap-length group)))
-    (cond ((fix:<= end gap-start)
-	   (substring-line-image text start end column tab-width))
-	  ((fix:<= gap-start start)
-	   (let ((image&index
-		  (substring-line-image text
-					(fix:+ start gap-length)
-					(fix:+ end gap-length)
-					column
-					tab-width)))
-	     (cons (car image&index) (fix:- (cdr image&index) gap-length))))
-	  (else
-	   (let ((index&column
-		  (substring-line-columns text start gap-start
-					  column tab-width)))
-	     (let ((end-1 (car index&column))
-		   (column-1 (cdr index&column)))
-	       (if (fix:= end-1 gap-start)
-		   (let ((index&column
-			  (substring-line-columns text
-						  gap-end
-						  (fix:+ end gap-length)
-						  column-1
-						  tab-width)))
-		     (let ((end-2 (car index&column))
-			   (column-2 (cdr index&column)))
-		       (let ((image (make-string (fix:- column-2 column))))
-			 (%substring-image text start end-1
-					   column tab-width
-					   image 0)
-			 (%substring-image text gap-end end-2
-					   column tab-width
-					   image (fix:- column-1 column))
-			 (cons image (fix:- end-2 gap-length)))))
-		   (let ((image (make-string (fix:- column-1 column))))
-		     (%substring-image text start end-1
-				       column tab-width
-				       image 0)
-		     (cons image end-1)))))))))
+(define (substring-image! string string-start string-end
+			  image image-start image-end
+			  tab-width column-offset results)
+  (let loop ((string-index string-start) (image-index image-start))
+    (if (or (fix:= image-index image-end)
+	    (fix:= string-index string-end))
+	(begin
+	  (vector-set! results 0 string-index)
+	  (vector-set! results 1 image-index)
+	  (vector-set! results 2 0))
+	(let ((ascii (vector-8b-ref string string-index))
+	      (partial
+	       (lambda (partial)
+		 (vector-set! results 0 string-index)
+		 (vector-set! results 1 image-end)
+		 (vector-set! results 2 partial))))
+	  (cond ((fix:< ascii #o040)
+		 (if (and (fix:= ascii (char->integer #\tab)) tab-width)
+		     (let ((n
+			    (fix:- tab-width
+				   (fix:remainder (fix:+ column-offset
+							 image-index)
+						  tab-width))))
+		       (let ((end (fix:+ image-index n)))
+			 (if (fix:<= end image-end)
+			     (begin
+			       (do ((image-index image-index
+						 (fix:+ image-index 1)))
+				   ((fix:= image-index end))
+				 (string-set! image image-index #\space))
+			       (loop (fix:+ string-index 1) end))
+			     (begin
+			       (do ((image-index image-index
+						 (fix:+ image-index 1)))
+				   ((fix:= image-index image-end))
+				 (string-set! image image-index #\space))
+			       (partial (fix:- end image-end))))))
+		     (begin
+		       (string-set! image image-index #\^)
+		       (if (fix:= (fix:+ image-index 1) image-end)
+			   (partial 1)
+			   (begin
+			     (vector-8b-set! image
+					     (fix:+ image-index 1)
+					     (fix:+ ascii #o100))
+			     (loop (fix:+ string-index 1)
+				   (fix:+ image-index 2)))))))
+		((fix:< ascii #o177)
+		 (vector-8b-set! image image-index ascii)
+		 (loop (fix:+ string-index 1) (fix:+ image-index 1)))
+		((fix:= ascii #o177)
+		 (string-set! image image-index #\^)
+		 (if (fix:= (fix:+ image-index 1) image-end)
+		     (partial 1)
+		     (begin
+		       (string-set! image (fix:+ image-index 1) #\?)
+		       (loop (fix:+ string-index 1) (fix:+ image-index 2)))))
+		(else
+		 (string-set! image image-index #\\)
+		 (let ((q (fix:quotient ascii 8)))
+		   (let ((d1 (fix:+ (fix:quotient q 8) (char->integer #\0)))
+			 (d2 (fix:+ (fix:remainder q 8) (char->integer #\0)))
+			 (d3
+			  (fix:+ (fix:remainder ascii 8) (char->integer #\0))))
+		     (cond ((fix:<= (fix:+ image-index 4) image-end)
+			    (vector-8b-set! image (fix:+ image-index 1) d1)
+			    (vector-8b-set! image (fix:+ image-index 2) d2)
+			    (vector-8b-set! image (fix:+ image-index 3) d3)
+			    (loop (fix:+ string-index 1)
+				  (fix:+ image-index 4)))
+			   ((fix:= (fix:+ image-index 1) image-end)
+			    (partial 3))
+			   ((fix:= (fix:+ image-index 2) image-end)
+			    (vector-8b-set! image (fix:+ image-index 1) d1)
+			    (partial 2))
+			   (else
+			    (vector-8b-set! image (fix:+ image-index 1) d1)
+			    (vector-8b-set! image (fix:+ image-index 2) d2)
+			    (partial 1)))))))))))
+
+(define (string-image string start-column tab-width)
+  (substring-image string 0 (string-length string) start-column tab-width))
 
-(define (group-image group start end column tab-width)
+(define (substring-image string start end start-column tab-width)
+  (let ((columns
+	 (fix:- (substring-columns string start end start-column tab-width)
+		start-column)))
+    (let ((image (make-string columns)))
+      (substring-image! string start end
+			image 0 columns
+			tab-width start-column substring-image-results)
+      image)))
+
+(define substring-image-results
+  (make-vector 3))
+
+(define (group-image! group start end
+		      image image-start image-end
+		      tab-width column-offset results)
   (let ((text (group-text group))
 	(gap-start (group-gap-start group))
 	(gap-end (group-gap-end group))
 	(gap-length (group-gap-length group)))
     (cond ((fix:<= end gap-start)
-	   (substring-image text start end column tab-width))
+	   (substring-image! text start end
+			     image image-start image-end
+			     tab-width column-offset results))
 	  ((fix:<= gap-start start)
-	   (substring-image text
-			    (fix:+ start gap-length)
-			    (fix:+ end gap-length)
-			    column
-			    tab-width))
+	   (substring-image! text
+			     (fix:+ start gap-length) (fix:+ end gap-length)
+			     image image-start image-end
+			     tab-width column-offset results)
+	   (vector-set! results 0 (fix:- (vector-ref results 0) gap-length)))
 	  (else
-	   (let ((column-1
-		  (substring-columns text start gap-start
-				     column tab-width))
-		 (end (fix:+ end gap-length)))
-	     (let ((image
-		    (make-string
-		     (fix:- (substring-columns text gap-end end
-					       column-1 tab-width)
-			    column))))
-	       (%substring-image text start gap-start column tab-width
-				 image 0)
-	       (%substring-image text gap-end end column tab-width
-				 image (fix:- column-1 column))
-	       image))))))
+	   (substring-image! text start gap-start
+			     image image-start image-end
+			     tab-width column-offset results)
+	   (if (fix:< (vector-ref results 1) image-end)
+	       (begin
+		 (substring-image! text gap-end (fix:+ end gap-length)
+				   image (vector-ref results 1) image-end
+				   tab-width column-offset results)
+		 (vector-set! results 0
+			      (fix:- (vector-ref results 0) gap-length))))))))
+
+(define (partial-image! char n image image-start image-end tab-width)
+  ;; Assume that (< IMAGE-START IMAGE-END) and that N is less than the
+  ;; total width of the image for the character.
+  (let ((ascii (char->integer char)))
+    (cond ((fix:< ascii #o040)
+	   (if (and (fix:= ascii (char->integer #\tab)) tab-width)
+	       (let ((end
+		      (let ((end (fix:+ image-start n)))
+			(if (fix:< end image-end) end image-end))))
+		 (do ((image-index image-start (fix:+ image-index 1)))
+		     ((fix:= image-index end))
+		   (string-set! image image-index #\space)))
+	       (vector-8b-set! image image-start (fix:+ ascii #o100))))
+	  ((fix:= ascii #o177)
+	   (string-set! image image-start #\?))
+	  (else
+	   (let ((q (fix:quotient ascii 8)))
+	     (let ((d1 (fix:+ (fix:quotient q 8) (char->integer #\0)))
+		   (d2 (fix:+ (fix:remainder q 8) (char->integer #\0)))
+		   (d3 (fix:+ (fix:remainder ascii 8) (char->integer #\0))))
+	       (case n
+		 ((1)
+		  (vector-8b-set! image image-start d3))
+		 ((2)
+		  (vector-8b-set! image image-start d2)
+		  (if (fix:< (fix:+ image-start 1) image-end)
+		      (vector-8b-set! image (fix:+ image-start 1) d3)))
+		 (else
+		  (vector-8b-set! image image-start d1)
+		  (if (fix:< (fix:+ image-start 1) image-end)
+		      (vector-8b-set! image (fix:+ image-start 1) d2))
+		  (if (fix:< (fix:+ image-start 2) image-end)
+		      (vector-8b-set! image (fix:+ image-start 2) d3))))))))))

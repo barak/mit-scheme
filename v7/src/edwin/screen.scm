@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.90 1991/03/22 00:32:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.91 1991/04/01 10:07:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -314,33 +314,37 @@
 				x highlight)))))
 
 (define (screen-output-substring screen x y string start end highlight)
+  (substring-move-left! string start end
+			(screen-get-output-line screen y x
+						(fix:+ x (fix:- end start))
+						highlight)
+			x))
+
+(define (screen-get-output-line screen y xl xu highlight)
   (if (screen-debug-trace screen)
-      ((screen-debug-trace screen) 'screen screen 'output-substring
-				   x y (string-copy string) start end
-				   highlight))
-  (let ((new-matrix (screen-new-matrix screen))
-	(xu (fix:+ x (fix:- end start))))
-    (let ((full-line? (and (fix:= x 0) (fix:= xu (screen-x-size screen)))))
+      ((screen-debug-trace screen) 'screen screen 'output-line
+				   y xl xu highlight))
+  (let ((new-matrix (screen-new-matrix screen)))
+    (let ((full-line? (and (fix:= xl 0) (fix:= xu (screen-x-size screen)))))
       (if (not (boolean-vector-ref (matrix-enable new-matrix) y))
 	  (begin
 	    (boolean-vector-set! (matrix-enable new-matrix) y true)
 	    (set-screen-needs-update?! screen true)
 	    (if (not full-line?) (initialize-new-line-contents screen y))))
-      (substring-move-left! string start end
-			    (vector-ref (matrix-contents new-matrix) y) x)
       (cond ((boolean-vector-ref (matrix-highlight-enable new-matrix) y)
 	     (if (and full-line? (not highlight))
 		 (boolean-vector-set! (matrix-highlight-enable new-matrix)
 				      y false)
 		 (boolean-subvector-fill!
 		  (vector-ref (matrix-highlight new-matrix) y)
-		  x xu highlight)))
+		  xl xu highlight)))
 	    (highlight
 	     (boolean-vector-set! (matrix-highlight-enable new-matrix) y true)
 	     (if (not full-line?) (initialize-new-line-highlight screen y))
 	     (boolean-subvector-fill!
 	      (vector-ref (matrix-highlight new-matrix) y)
-	      x xu highlight))))))
+	      xl xu highlight))))
+    (vector-ref (matrix-contents new-matrix) y)))
 
 (define-integrable (initialize-new-line-contents screen y)
   (if (boolean-vector-ref (matrix-enable (screen-current-matrix screen)) y)
@@ -467,18 +471,36 @@
 	    x cursor-x highlight)))
     (set-matrix-cursor-x! current-matrix cursor-x)
     (set-matrix-cursor-x! (screen-new-matrix screen) cursor-x)))
-
+
 (define (screen-force-update screen)
   (if (screen-debug-trace screen)
       ((screen-debug-trace screen) 'screen screen 'force-update))
   (let ((y-size (screen-y-size screen))
-	(current-matrix (screen-current-matrix screen)))
+	(current-matrix (screen-current-matrix screen))
+	(new-matrix (screen-new-matrix screen)))
     (terminal-clear-screen screen)
     (let ((current-contents (matrix-contents current-matrix))
+	  (current-hl (matrix-highlight current-matrix))
 	  (current-enable (matrix-enable current-matrix))
-	  (current-hl-enable (matrix-highlight-enable current-matrix)))
+	  (current-hl-enable (matrix-highlight-enable current-matrix))
+	  (new-contents (matrix-contents new-matrix))
+	  (new-hl (matrix-highlight new-matrix))
+	  (new-enable (matrix-enable new-matrix))
+	  (new-hl-enable (matrix-highlight-enable new-matrix)))
       (do ((y 0 (fix:1+ y)))
 	  ((fix:= y y-size))
+	(if (not (boolean-vector-ref new-enable y))
+	    (begin
+	      (let ((c (vector-ref new-contents y)))
+		(vector-set! new-contents y (vector-ref current-contents y))
+		(vector-set! current-contents y c))
+	      (boolean-vector-set! new-enable y true)
+	      (if (boolean-vector-ref current-hl-enable y)
+		  (begin
+		    (let ((h (vector-ref current-hl y)))
+		      (vector-set! new-hl y (vector-ref current-hl y))
+		      (vector-set! current-hl y h))
+		    (boolean-vector-set! new-hl-enable y true)))))
 	(string-fill! (vector-ref current-contents y) #\space)
 	(boolean-vector-set! current-enable y true)
 	(boolean-vector-set! current-hl-enable y false))))

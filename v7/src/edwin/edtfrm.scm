@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.83 1990/11/02 03:23:54 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.84 1991/04/01 10:06:58 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -99,7 +99,17 @@
     (let ((y* (- y typein-y-size)))
       (set-inferior-start! typein-inferior 0 y*)
       (set-inferior-size! root-inferior x y*))
-    (set-inferior-size! typein-inferior x-size typein-y-size)))
+    (set-inferior-size! typein-inferior x-size typein-y-size)
+    (if (< x (screen-x-size screen))
+	(screen-clear-rectangle screen
+				x (screen-x-size screen)
+				0 (screen-y-size screen)
+				false))
+    (if (< y (screen-y-size screen))
+	(screen-clear-rectangle screen
+				0 (screen-x-size screen)
+				y (screen-y-size screen)
+				false))))
 
 (define-method editor-frame :set-size!
   set-editor-frame-size!)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.11 1991/03/23 02:22:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwmc.scm,v 1.12 1991/04/01 10:06:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -45,7 +45,7 @@
 ;;;; Buffer Windows: Mark <-> Coordinate Maps
 
 (declare (usual-integrations))
-
+
 (define-integrable (buffer-window/mark->x window mark)
   (buffer-window/index->x window (mark-index mark)))
 
@@ -63,120 +63,114 @@
 
 (define-integrable (buffer-window/point-coordinates window)
   (buffer-window/index->coordinates window (%window-point-index window)))
-
+
 (define (buffer-window/index->x window index)
-  (if (and (line-inferiors-valid? window)
-	   (line-inferiors-contain-index? window index))
-      (with-values (lambda () (find-inferior-containing-index window index))
-	(lambda (inferior start)
-	  (fix:+ (inferior-x-start inferior)
-		 (string-base:index->x (inferior-window inferior)
-				       (fix:- index start)))))
-      (let ((start (%window-line-start-index window index))
-	    (group (%window-group window))
-	    (tab-width (%window-tab-width window)))
-	(column->x (cdr (group-line-columns group start
-					    (%window-group-end-index window)
-					    0 tab-width))
-		   (window-x-size window)
-		   (%window-truncate-lines? window)
-		   (group-columns group start index 0 tab-width)))))
+  (let ((start (%window-line-start-index window index))
+	(group (%window-group window))
+	(tab-width (%window-tab-width window)))
+    (column->x (cdr (group-line-columns group start
+					(%window-group-end-index window)
+					0 tab-width))
+	       (window-x-size window)
+	       (%window-truncate-lines? window)
+	       (group-columns group start index 0 tab-width))))
 
 (define (buffer-window/index->y window index)
-  (if (and (line-inferiors-valid? window)
-	   (line-inferiors-contain-index? window index))
-      (with-values (lambda () (find-inferior-containing-index window index))
-	(lambda (inferior start)
-	  (fix:+ (inferior-y-start inferior)
-		 (string-base:index->y (inferior-window inferior)
-				       (fix:- index start)))))
-      (begin
-	(guarantee-start-mark! window)
-	(predict-y window
-		   (%window-start-line-index window)
-		   (%window-start-line-y window)
-		   index))))
+  (with-values (lambda () (start-point-for-index window index))
+    (lambda (start-index start-y line-start-index)
+      line-start-index
+      (predict-y window start-index start-y index))))
 
 (define (buffer-window/index->coordinates window index)
-  (if (and (line-inferiors-valid? window)
-	   (line-inferiors-contain-index? window index))
-      (with-values (lambda () (find-inferior-containing-index window index))
-	(lambda (inferior start)
-	  (let ((xy
-		 (string-base:index->coordinates (inferior-window inferior)
-						 (fix:- index start))))
-	    (cons (fix:+ (car xy) (inferior-x-start inferior))
-		  (fix:+ (cdr xy) (inferior-y-start inferior))))))
-      (begin
-	(guarantee-start-mark! window)
-	(let ((start (%window-line-start-index window index))
-	      (group (%window-group window))
-	      (tab-width (%window-tab-width window)))
-	  (let ((xy
-		 (column->coordinates
-		  (cdr (group-line-columns group start
-					   (%window-group-end-index window)
-					   0 tab-width))
-		  (window-x-size window)
-		  (%window-truncate-lines? window)
-		  (group-columns group start index 0 tab-width))))
-	    (cons (car xy)
-		  (fix:+ (cdr xy)
-			 (predict-y window
-				    (%window-start-line-index window)
-				    (%window-start-line-y window)
-				    start))))))))
-
+  (with-values (lambda () (start-point-for-index window index))
+    (lambda (start-index start-y line-start-index)
+      (let ((group (%window-group window))
+	    (tab-width (%window-tab-width window)))
+	(let ((xy
+	       (column->coordinates
+		(cdr (group-line-columns group line-start-index
+					 (%window-group-end-index window)
+					 0 tab-width))
+		(window-x-size window)
+		(%window-truncate-lines? window)
+		(group-columns group line-start-index index 0 tab-width))))
+	  (cons (car xy)
+		(fix:+ (cdr xy)
+		       (predict-y window
+				  start-index
+				  start-y
+				  line-start-index))))))))
+
 (define (buffer-window/coordinates->mark window x y)
   (let ((index (buffer-window/coordinates->index window x y)))
     (and index
 	 (make-mark (%window-group window) index))))
 
 (define (buffer-window/coordinates->index window x y)
-  (with-values
-      (lambda ()
-	(if (line-inferiors-valid? window)
-	    (find-inferior-containing-y window y)
-	    (values false false)))
-    (lambda (inferior start)
-      (if inferior
-	  (fix:+ start
-		 (string-base:coordinates->index
-		  (inferior-window inferior)
-		  x
-		  (fix:- y (inferior-y-start inferior))))
-	  (begin
-	    (guarantee-start-mark! window)
-	    (predict-index window
-			   (%window-start-line-index window)
-			   (%window-start-line-y window)
-			   x
-			   y))))))
+  (with-values (lambda () (start-point-for-y window y))
+    (lambda (start-index start-y)
+      (predict-index window start-index start-y x y))))
 
 (define (buffer-window/mark-visible? window mark)
   ;; True iff cursor at this position would be on-screen.
   (let ((index (mark-index mark)))
-    (if (line-inferiors-valid? window)
-	(and (line-inferiors-contain-index? window index)
-	     (fix:<= (%window-start-index window) index)
-	     (with-values
-		 (lambda () (find-inferior-containing-index window index))
-	       (lambda (inferior start)
-		 (let ((limit
-			(fix:- (window-y-size window)
-			       (inferior-y-start inferior))))
-		   (or (fix:< (inferior-y-size inferior) limit)
-		       (fix:< (string-base:index->y (inferior-window inferior)
-						    (fix:- index start))
-			      limit))))))
-	(begin
-	  (guarantee-start-mark! window)
-	  (predict-index-visible? window
-				  (%window-start-line-index window)
-				  (%window-start-line-y window)
-				  index)))))
+    (with-values (lambda () (start-point-for-index window index))
+      (lambda (start-index start-y line-start-index)
+	line-start-index
+	(predict-index-visible? window start-index start-y index)))))
 
-(define-integrable (line-inferiors-valid? window)
+(define (start-point-for-index window index)
+  (if (outlines-valid? window)
+      (let ((start-index (%window-current-start-index window))
+	    (start-y (%window-current-start-y window)))
+	(if (and (fix:<= start-index index)
+		 (fix:<= index (%window-current-end-index window)))
+	    (let loop
+		((outline (%window-start-outline window))
+		 (index* start-index)
+		 (y start-y))
+	      (let ((index**
+		     (fix:+ index* (fix:+ (outline-index-length outline) 1))))
+		(if (fix:< index index**)
+		    (values index* y index*)
+		    (loop (outline-next outline)
+			  index**
+			  (fix:+ y (outline-y-size outline))))))
+	    (values start-index
+		    start-y
+		    (%window-line-start-index window index))))
+      (begin
+	(guarantee-start-mark! window)
+	(values (%window-start-line-index window)
+		(%window-start-line-y window)
+		(%window-line-start-index window index)))))
+
+(define (start-point-for-y window y)
+  (if (outlines-valid? window)
+      (let ((start-index (%window-current-start-index window))
+	    (start-y (%window-current-start-y window)))
+	(if (fix:< y start-y)
+	    (values start-index start-y)
+	    (let loop
+		((outline (%window-start-outline window))
+		 (index start-index)
+		 (y* start-y))
+	      (let ((y** (fix:+ y* (outline-y-size outline))))
+		(cond ((fix:< y y**)
+		       (values index y*))
+		      ((not (outline-next outline))
+		       (values start-index start-y))
+		      (else
+		       (loop (outline-next outline)
+			     (fix:+ index
+				    (fix:+ (outline-index-length outline) 1))
+			     y**)))))))
+      (begin
+	(guarantee-start-mark! window)
+	(values (%window-start-line-index window)
+		(%window-start-line-y window)))))
+
+(define-integrable (outlines-valid? window)
   (and (not (%window-start-changes-mark window))
        (not (%window-start-clip-mark window))
        (not (%window-point-moved? window))
@@ -184,35 +178,6 @@
        (%window-start-line-mark window)
        (fix:= (mark-position (%window-start-line-mark window))
 	      (mark-position (%window-current-start-mark window)))))
-
-(define-integrable (line-inferiors-contain-index? window index)
-  (and (fix:<= (%window-current-start-index window) index)
-       (fix:<= index (%window-current-end-index window))))
-
-(define (find-inferior-containing-index window index)
-  (let loop
-      ((inferiors (%window-line-inferiors window))
-       (start (%window-current-start-index window)))
-    (let ((start* (fix:+ start (line-inferior-length (car inferiors)))))
-      (if (fix:< index start*)
-	  (values (car inferiors) start)
-	  (loop (cdr inferiors) start*)))))
-
-(define (find-inferior-containing-y window y)
-  (let ((inferiors (%window-line-inferiors window)))
-    (if (fix:< y (inferior-y-start (car inferiors)))
-	(values false false)
-	(let loop
-	    ((inferiors inferiors)
-	     (start (%window-current-start-index window)))
-	  (cond ((fix:< y (%inferior-y-end (car inferiors)))
-		 (values (car inferiors) start))
-		((null? (cdr inferiors))
-		 (values false false))
-		(else
-		 (loop (cdr inferiors)
-		       (fix:+ start
-			      (line-inferior-length (car inferiors))))))))))
 
 (define (predict-y window start y index)
   ;; Assuming that the character at index START appears at coordinate
@@ -500,16 +465,3 @@
 		       (fix:= (cdr xy) y)))
 		index
 		(fix:+ index 1)))))))
-
-(define (compute-start-index inferior start)
-  (let ((y-start (inferior-y-start inferior)))
-    (if (fix:= 0 y-start)
-	start
-	(let ((window (inferior-window inferior))
-	      (y (fix:- 0 y-start)))
-	  (let ((index (string-base:coordinates->index window 0 y)))
-	    (if (let ((xy (string-base:index->coordinates window index)))
-		  (and (fix:= (car xy) 0)
-		       (fix:= (cdr xy) y)))
-		(fix:+ start index)
-		(fix:+ (fix:+ start index) 1)))))))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.7 1991/03/22 00:32:30 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modlin.scm,v 1.8 1991/04/01 10:07:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -104,22 +104,26 @@ Normally false in most modes, since there is no process to display."
 
 (define-variable mode-line-procedure
   "Procedure used to generate the mode-line.
-Must accept one argument, a window.
-The value must be a string which has the same length as the window's width.
+Must accept four arguments: WINDOW STRING START END.
+Must generate a modeline string for WINDOW in the given substring.
 If #F, the normal method is used."
   false)
 
-(define (modeline-string window)
+(define (modeline-string! window line start end)
   (let ((procedure
 	 (variable-local-value (window-buffer window)
 			       (ref-variable-object mode-line-procedure))))
     (if procedure
-	(procedure window)
-	(format-modeline-string
-	 window
-	 (variable-local-value (window-buffer window)
-			       (ref-variable-object mode-line-format))
-	 (window-x-size window)))))
+	(procedure window line start end)
+	(let ((last
+	       (display-mode-element
+		(variable-local-value (window-buffer window)
+				      (ref-variable-object mode-line-format))
+		window line start end end)))
+	  (if (fix:< last end)
+	      (do ((x last (fix:+ x 1)))
+		  ((fix:= x end))
+		(string-set! line x #\space)))))))
 
 (define (format-modeline-string window format size)
   (let ((line (string-allocate size)))
@@ -309,21 +313,17 @@ If #F, the normal method is used."
 		     line column min-end max-end))
 
 (define (display-substring string start end line column min-end max-end)
-  (let ((representation (substring-image string start end column false)))
-    (let ((size (string-length representation)))
-      (let ((end (+ column size)))
-	(if (> end max-end)
-	    (begin
-	      (substring-move-right! representation 0 (- max-end column)
-				     line column)
-	      max-end)
-	    (begin
-	      (substring-move-right! representation 0 size line column)
-	      (if (< end min-end)
-		  (begin
-		    (substring-fill! line end min-end #\space)
-		    min-end)
-		  end)))))))
+  (let ((results substring-image-results))
+    (substring-image! string start end
+		      line column max-end
+		      false 0 results)
+    (if (fix:< (vector-ref results 1) min-end)
+	(begin
+	  (do ((x (vector-ref results 1) (fix:+ x 1)))
+	      ((fix:= x min-end))
+	    (string-set! line x #\space))
+	  min-end)
+	(vector-ref results 1))))
 
 (define (display-pad line column min-end)
   (if (< column min-end)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.290 1991/03/22 00:31:01 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwin.scm,v 1.291 1991/04/01 10:06:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -83,24 +83,43 @@
    ;; clipping will prevent it from being updated.
    blank-inferior
 
-   ;; This is normally #F.  However, when the normal display of the
-   ;; buffer is overridden by a one-line message, as is commonly done
-   ;; for the typein window, this variable contains the inferior
-   ;; window (of class STRING-BASE) that displays the message.
-   override-inferior
+   ;; The topmost and bottommost OUTLINE structures for this window,
+   ;; respectively.  If only one line is shown, these are EQ?.
+   start-outline
+   end-outline
 
-   ;; A list of the inferior windows (of class STRING-BASE) that are
-   ;; currently displaying the portion of the buffer that is visible
-   ;; in this window.
-   line-inferiors
+   ;; A previously allocated OUTLINE structure that is available for
+   ;; reallocation.  Any other free OUTLINE structures are chained to
+   ;; this one through its NEXT field.
+   free-outline
 
-   ;; This permanent mark records where the first line inferior
-   ;; starts.
+   ;; A permanent right-inserting mark at the beginning of the text
+   ;; line modelled by START-OUTLINE.
    current-start-mark
 
-   ;; This permanent mark records where the last line inferior ends.
+   ;; A permanent left-inserting mark at the end of the text line
+   ;; modelled by END-OUTLINE.
    current-end-mark
+
+   ;; The Y position, relative to the window, of the top edge of
+   ;; START-OUTLINE.  A non-positive number.
+   current-start-y
+
+   ;; The Y position, relative to the window, of the bottom edge of
+   ;; END-OUTLINE.  A positive number.
+   current-end-y
+
+   ;; A previously allocated O3 structure that is available for
+   ;; reallocation.  Any other free O3 structures are chained to this
+   ;; one through its OUTLINE field.
+   free-o3
 
+   ;; This is normally #F.  However, when the normal display of the
+   ;; buffer is overridden by a one-line message, as is commonly done
+   ;; for the typein window, this variable contains the message
+   ;; string.
+   override-string
+
    ;; This permanent mark is the smallest that is visible in the
    ;; window.  If the window's start is not known, this is #F.
    start-mark
@@ -217,20 +236,27 @@
 (define-integrable (%set-window-blank-inferior! window inferior)
   (with-instance-variables buffer-window window (inferior)
     (set! blank-inferior inferior)))
-
-(define-integrable (%window-override-inferior window)
-  (with-instance-variables buffer-window window () override-inferior))
-
-(define-integrable (%set-window-override-inferior! window inferior)
-  (with-instance-variables buffer-window window (inferior)
-    (set! override-inferior inferior)))
 
-(define-integrable (%window-line-inferiors window)
-  (with-instance-variables buffer-window window () line-inferiors))
+(define-integrable (%window-start-outline window)
+  (with-instance-variables buffer-window window () start-outline))
 
-(define-integrable (%set-window-line-inferiors! window inferiors)
-  (with-instance-variables buffer-window window (inferiors)
-    (set! line-inferiors inferiors)))
+(define-integrable (%set-window-start-outline! window outline)
+  (with-instance-variables buffer-window window (outline)
+    (set! start-outline outline)))
+
+(define-integrable (%window-end-outline window)
+  (with-instance-variables buffer-window window () end-outline))
+
+(define-integrable (%set-window-end-outline! window outline)
+  (with-instance-variables buffer-window window (outline)
+    (set! end-outline outline)))
+
+(define-integrable (%window-free-outline window)
+  (with-instance-variables buffer-window window () free-outline))
+
+(define-integrable (%set-window-free-outline! window outline)
+  (with-instance-variables buffer-window window (outline)
+    (set! free-outline outline)))
 
 (define-integrable (%window-current-start-mark window)
   (with-instance-variables buffer-window window () current-start-mark))
@@ -251,6 +277,34 @@
 (define-integrable (%set-window-current-end-mark! window mark)
   (with-instance-variables buffer-window window (mark)
     (set! current-end-mark mark)))
+
+(define-integrable (%window-current-start-y window)
+  (with-instance-variables buffer-window window () current-start-y))
+
+(define-integrable (%set-window-current-start-y! window y)
+  (with-instance-variables buffer-window window (y)
+    (set! current-start-y y)))
+
+(define-integrable (%window-current-end-y window)
+  (with-instance-variables buffer-window window () current-end-y))
+
+(define-integrable (%set-window-current-end-y! window y)
+  (with-instance-variables buffer-window window (y)
+    (set! current-end-y y)))
+
+(define-integrable (%window-free-o3 window)
+  (with-instance-variables buffer-window window () free-o3))
+
+(define-integrable (%set-window-free-o3! window o3)
+  (with-instance-variables buffer-window window (o3)
+    (set! free-o3 o3)))
+
+(define-integrable (%window-override-string window)
+  (with-instance-variables buffer-window window () override-string))
+
+(define-integrable (%set-window-override-string! window string)
+  (with-instance-variables buffer-window window (string)
+    (set! override-string string)))
 
 (define-integrable (%window-start-mark window)
   (with-instance-variables buffer-window window () start-mark))
@@ -403,6 +457,98 @@
   (with-instance-variables buffer-window window (procedure)
     (set! debug-trace procedure)))
 
+;;;; Outlines
+
+(define-structure (outline (constructor %make-outline))
+  ;; The number of characters in the text line.  This is exclusive of
+  ;; the newlines at the line's beginning and end, if any.
+  index-length
+
+  ;; The number of screen lines that are occupied by this text line.
+  y-size
+
+  ;; A pointer to the previous outline structure, the one representing
+  ;; the text line that appears directly above this line.
+  previous
+
+  ;; A pointer to the next outline structure, the one representing the
+  ;; text line that appears directly below this line.
+  next)
+
+(define (make-outline window index-length y-size previous next)
+  (let ((outline
+	 (let ((outline (%window-free-outline window)))
+	   (if (%window-free-outline window)
+	       (begin
+		 (let ((free (outline-next outline)))
+		   (if free (set-outline-previous! free false))
+		   (%set-window-free-outline! window free))
+		 (set-outline-index-length! outline index-length)
+		 (set-outline-y-size! outline y-size)
+		 (set-outline-previous! outline previous)
+		 (set-outline-next! outline next)
+		 outline)
+	       (%make-outline index-length y-size previous next)))))
+    (if previous (set-outline-next! previous outline))
+    (if next (set-outline-previous! next outline))
+    outline))
+
+(define (deallocate-outlines! window start-outline end-outline)
+  (let ((free-outline (%window-free-outline window)))
+    (if (outline-next end-outline)
+	(set-outline-previous! (outline-next end-outline) false))
+    (set-outline-next! end-outline free-outline)
+    (if free-outline
+	(set-outline-previous! free-outline end-outline)))
+  (if (outline-previous start-outline)
+      (set-outline-next! (outline-previous start-outline) false))
+  (set-outline-previous! start-outline false)
+  (%set-window-free-outline! window start-outline))
+
+(define-integrable (outline-last outline)
+  (do ((outline outline (outline-next outline)))
+      ((not (outline-next outline)) outline)))
+
+(define-integrable (outline-end-y outline start-y)
+  (do ((outline outline (outline-next outline))
+       (y start-y (fix:+ y (outline-y-size outline))))
+      ((not outline) y)))
+
+(define-integrable (outline-start-y outline end-y)
+  (do ((outline outline (outline-previous outline))
+       (y end-y (fix:- y (outline-y-size outline))))
+      ((not outline) y)))
+
+(define-structure (o3
+		   (constructor %make-o3)
+		   (print-procedure
+		    (unparser/standard-method 'O3
+		      (lambda (state o3)
+			(unparse-string state "index: ")
+			(unparse-object state (o3-index o3))
+			(unparse-string state " y: ")
+			(unparse-object state (o3-y o3))
+			(unparse-string state " ")
+			(unparse-object state (o3-outline o3))))))
+  outline
+  index
+  y)
+
+(define (make-o3 window outline index y)
+  (let ((o3 (%window-free-o3 window)))
+    (if o3
+	(begin
+	  (%set-window-free-o3! window (o3-outline o3))
+	  (set-o3-outline! o3 outline)
+	  (set-o3-index! o3 index)
+	  (set-o3-y! o3 y)
+	  o3)
+	(%make-o3 outline index y))))
+
+(define (deallocate-o3! window o3)
+  (set-o3-outline! o3 (%window-free-o3 window))
+  (%set-window-free-o3! window o3))
+
 ;;;; Narrowing
 
 (define-integrable (%window-group-start-mark window)
@@ -505,6 +651,7 @@
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'set-size! x y))
   (buffer-window/redraw! window)
+  (%release-window-outlines! window)
   (set-window-size! window x y)
   (%set-window-point-moved?! window 'SINCE-START-SET))
 
@@ -519,6 +666,7 @@
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window 'set-y-size! y))
   (buffer-window/redraw! window)
+  (%release-window-outlines! window)
   (set-window-y-size! window y)
   (%set-window-point-moved?! window 'SINCE-START-SET))
 
@@ -567,15 +715,10 @@
 
 (define (update-buffer-window! window screen x-start y-start xl xu yl yu
 			       display-style)
-  (recompute-image! window)
-  (and (if (%window-override-inferior window)
-	   (update-inferior! (%window-override-inferior window)
-			     screen x-start y-start xl xu yl yu display-style
-			     string-base:update-display!)
-	   (update-inferiors! (%window-line-inferiors window)
-			      screen x-start y-start xl xu yl yu
-			      display-style string-base:update-display!))
-       (update-inferior! (%window-blank-inferior window)
+  (if (%window-override-string window)
+      (update-override-string! window screen x-start y-start xl xu yl yu)
+      (update-outlines! window))
+  (and (update-inferior! (%window-blank-inferior window)
 			 screen x-start y-start xl xu yl yu display-style
 			 blank-window:update-display!)
        (update-inferior! (%window-cursor-inferior window)
@@ -607,10 +750,17 @@
   (set-window-inferiors! window '())
   (%set-window-cursor-inferior! window (make-inferior window cursor-window))
   (%set-window-blank-inferior! window (make-inferior window blank-window))
-  (%set-window-override-inferior! window false)
+  (%release-window-outlines! window)
+  (%set-window-free-o3! window false)
+  (%set-window-override-string! window false)
   (%set-window-changes-daemon! window (make-changes-daemon window))
   (%set-window-clip-daemon! window (make-clip-daemon window))
   (%set-window-debug-trace! window false))
+
+(define (%release-window-outlines! window)
+  (%set-window-start-outline! window false)
+  (%set-window-end-outline! window false)
+  (%set-window-free-outline! window false))
 
 (define (%clear-window-buffer-state! window)
   (%set-window-buffer! window false)
@@ -621,19 +771,18 @@
   (%clear-window-incremental-redisplay-state! window))
 
 (define (%clear-window-incremental-redisplay-state! window)
-  (%set-window-line-inferiors! window '())
-  (set-window-inferiors! window
-			 (if (%window-override-inferior window)
-			     (list (%window-override-inferior window)
-				   (%window-cursor-inferior window)
-				   (%window-blank-inferior window))
-			     (list (%window-cursor-inferior window)
-				   (%window-blank-inferior window))))
+  (if (%window-start-outline window)
+      (begin
+	(deallocate-outlines! window
+			      (%window-start-outline window)
+			      (%window-end-outline window))
+	(%set-window-start-outline! window false)
+	(%set-window-end-outline! window false)))
   (if (%window-current-start-mark window)
       (begin
 	(mark-temporary! (%window-current-start-mark window))
-	(mark-temporary! (%window-current-end-mark window))
 	(%set-window-current-start-mark! window false)
+	(mark-temporary! (%window-current-end-mark window))
 	(%set-window-current-end-mark! window false)))
   (%set-window-saved-screen! window false)
   (%clear-window-outstanding-changes! window))
@@ -642,14 +791,14 @@
   (if (%window-start-changes-mark window)
       (begin
 	(mark-temporary! (%window-start-changes-mark window))
-	(mark-temporary! (%window-end-changes-mark window))
 	(%set-window-start-changes-mark! window false)
+	(mark-temporary! (%window-end-changes-mark window))
 	(%set-window-end-changes-mark! window false)))
   (if (%window-start-clip-mark window)
       (begin
 	(mark-temporary! (%window-start-clip-mark window))
-	(mark-temporary! (%window-end-clip-mark window))
 	(%set-window-start-clip-mark! window false)
+	(mark-temporary! (%window-end-clip-mark window))
 	(%set-window-end-clip-mark! window false))))
 
 (define (%recache-window-buffer-local-variables! window)
@@ -827,8 +976,8 @@
 
 (define-integrable (clear-start-mark! window)
   (mark-temporary! (%window-start-line-mark window))
-  (mark-temporary! (%window-start-mark window))
   (%set-window-start-line-mark! window false)
+  (mark-temporary! (%window-start-mark window))
   (%set-window-start-mark! window false)
   (%set-window-start-line-y! window 0))
 
@@ -854,9 +1003,9 @@
 			   (not (%window-current-start-mark window))
 			   (fix:< point (%window-current-start-index window))
 			   (fix:> point (%window-current-end-index window))
-			   (fix:< (inferior-y-start
-				   (car (%window-line-inferiors window)))
-				  0))
+			   (fix:< (%window-current-start-y window) 0)
+			   (fix:> (%window-current-end-y window)
+				  (window-y-size window)))
 		       (let ((start-y (%window-start-line-y window))
 			     (y-size (window-y-size window))
 			     (scroll-step (ref-variable scroll-step)))
@@ -909,34 +1058,10 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
     (and (real? cursor-centering-point)
 	 (<= 0 cursor-centering-point 100))))
 
-;;;; Line Inferiors
-
-(define (make-line-inferior window string image)
-  (let ((window* (make-object string-base))
-	(flags (cons false (window-redisplay-flags window))))
-    (let ((inferior (%make-inferior window* false false flags)))
-      (set-window-inferiors! window (cons inferior (window-inferiors window)))
-      (%set-window-superior! window* window)
-      (set-window-inferiors! window* '())
-      (%set-window-redisplay-flags! window* flags)
-      (string-base:initialize! window*
-			       string
-			       image
-			       (window-x-size window)
-			       (%window-truncate-lines? window)
-			       (%window-tab-width window))
-      (%set-inferior-x-start! inferior 0)
-      inferior)))
-
-(define-integrable (line-inferior-length inferior)
-  (fix:+ (string-base:string-length (inferior-window inferior)) 1))
+;;;; Override Message
 
 (define (buffer-window/override-message window)
-  (let ((inferior (%window-override-inferior window)))
-    (and inferior
-	 (let ((window (inferior-window inferior)))
-	   (string-head (string-base:string window)
-			(string-base:string-length window))))))
+  (%window-override-string window))
 
 (define (buffer-window/set-override-message! window message)
   (if (%window-debug-trace window)
@@ -944,89 +1069,94 @@ This number is a percentage, where 0 is the window's top and 100 the bottom."
 				    message))
   (without-interrupts
    (lambda ()
-     (let ((inferior
-	    (make-line-inferior window
-				message
-				(string-image message 0 false))))
-       (%set-window-override-inferior! window inferior)
-       (set-inferior-start! inferior 0 0)
-       (set-inferior-position!
-	(%window-cursor-inferior window)
-	(string-base:index->coordinates (inferior-window inferior)
-					(string-length message))))
-     (inferiors-changed! window))))
+     (%set-window-override-string! window message)
+     (window-needs-redisplay! window))))
 
 (define (buffer-window/clear-override-message! window)
-  (if (%window-override-inferior window)
+  (if (%window-override-string window)
       (begin
 	(if (%window-debug-trace window)
 	    ((%window-debug-trace window) 'window window
 					  'clear-override-message!))
 	(without-interrupts
 	 (lambda ()
-	   (%set-window-override-inferior! window false)
+	   (%set-window-override-string! window false)
+	   (update-blank-inferior! window true)
 	   (update-cursor! window)
-	   (inferiors-changed! window)
-	   (for-each-inferior window inferior-needs-redisplay!))))))
+	   (window-needs-redisplay! window))))))
+
+(define (update-override-string! window screen x-start y-start xl xu yl yu)
+  ;; This should probably update like any other string, paying
+  ;; attention to TRUNCATE-LINES? and going to multiple lines if
+  ;; necessary.  For now we'll force it to be truncated to a single
+  ;; line, which is fine as long as the minibuffer is only one line.
+  (if (and (fix:= yl 0) (not (fix:= yu 0)))
+      (let ((string (%window-override-string window))
+	    (xl (fix:+ x-start xl))
+	    (xu (fix:+ x-start xu))
+	    (results substring-image-results))
+	(let ((end (string-length string))
+	      (line
+	       (screen-get-output-line screen (fix:+ y-start yl) xl xu
+				       false)))
+	  (substring-image! string 0 end
+			    line xl (fix:- xu 1)
+			    false 0 results)
+	  (if (fix:= (vector-ref results 0) end)
+	      (do ((x (vector-ref results 1) (fix:+ x 1)))
+		  ((fix:= x xu))
+		(string-set! line x #\space))
+	      (string-set! line (fix:- xu 1) #\$))
+	  (set-inferior-start! (%window-cursor-inferior window)
+			       (vector-ref results 1)
+			       0))))
+  (%update-blank-inferior! window 1 true))
 
 ;;;; Update Finalization
 
-(define (set-line-inferiors! window inferiors)
-  (%set-window-line-inferiors! window inferiors)
-  (inferiors-changed! window)
-  (%clear-window-outstanding-changes! window)
-  (update-cursor! window)
-  (%window-modeline-event! window 'SET-LINE-INFERIORS))
-
-(define-integrable (set-current-end-index! window end)
+(define (set-outlines! window start end)
+  (%set-window-start-outline! window (o3-outline start))
+  (%set-window-end-outline! window (o3-outline end))
   (if (%window-current-start-mark window)
       (begin
-	(set-mark-position! (%window-current-start-mark window)
-			    (mark-position (%window-start-line-mark window)))
-	(set-mark-index-integrable! (%window-current-end-mark window) end))
+	(set-mark-index-integrable! (%window-current-start-mark window)
+				    (o3-index start))
+	(set-mark-index-integrable! (%window-current-end-mark window)
+				    (o3-index end)))
       (begin
 	(%set-window-current-start-mark!
 	 window
-	 (mark-permanent-copy (%window-start-line-mark window)))
+	 (%make-permanent-mark (%window-group window) (o3-index start) false))
 	(%set-window-current-end-mark!
 	 window
-	 (%make-permanent-mark (%window-group window) end true)))))
+	 (%make-permanent-mark (%window-group window) (o3-index end) true))))
+  (%set-window-current-start-y! window (o3-y start))
+  (%set-window-current-end-y! window (o3-y end))
+  (deallocate-o3! window start)
+  (deallocate-o3! window end)
+  (%clear-window-outstanding-changes! window)
+  (update-blank-inferior! window true)
+  (update-cursor! window)
+  (%window-modeline-event! window 'SET-OUTLINES))
 
-(define (inferiors-changed! window)
-  (let ((update-blank-inferior
-	 (lambda (last-inferior)
-	   (let ((y-end (%inferior-y-end last-inferior))
-		 (inferior (%window-blank-inferior window)))
-	     (if (fix:< y-end (window-y-size window))
-		 (begin
-		   (%set-window-x-size! (inferior-window inferior)
-					(window-x-size window))
-		   (%set-window-y-size! (inferior-window inferior)
-					(fix:- (window-y-size window) y-end))
-		   (%set-inferior-x-start! inferior 0)
-		   (%set-inferior-y-start! inferior y-end)
-		   (setup-redisplay-flags!
-		    (inferior-redisplay-flags inferior)))
-		 (begin
-		   (%set-inferior-x-start! inferior false)
-		   (%set-inferior-y-start! inferior false)))))))
-    (cond ((%window-override-inferior window)
-	   (set-window-inferiors! window
-				  (list (%window-override-inferior window)
-					(%window-cursor-inferior window)
-					(%window-blank-inferior window)))
-	   (update-blank-inferior (%window-override-inferior window)))
-	  ((not (null? (%window-line-inferiors window)))
-	   (set-window-inferiors! window
-				  (cons* (%window-cursor-inferior window)
-					 (%window-blank-inferior window)
-					 (%window-line-inferiors window)))
-	   (update-blank-inferior
-	    (car (last-pair (%window-line-inferiors window)))))
-	  (else
-	   (set-window-inferiors! window
-				  (list (%window-cursor-inferior window)
-					(%window-blank-inferior window)))))))
+(define (update-blank-inferior! window signal?)
+  (%update-blank-inferior! window (%window-current-end-y window) signal?))
+
+(define (%update-blank-inferior! window end-y signal?)
+  (let ((inferior (%window-blank-inferior window)))
+    (if (fix:< end-y (window-y-size window))
+	(begin
+	  (%set-window-x-size! (inferior-window inferior)
+			       (window-x-size window))
+	  (%set-window-y-size! (inferior-window inferior)
+			       (fix:- (window-y-size window) end-y))
+	  (%set-inferior-x-start! inferior 0)
+	  (%set-inferior-y-start! inferior end-y)
+	  (if signal?
+	      (setup-redisplay-flags! (inferior-redisplay-flags inferior))))
+	(begin
+	  (%set-inferior-x-start! inferior false)
+	  (%set-inferior-y-start! inferior false)))))
 
 (define (update-cursor! window)
   (let ((xy (buffer-window/point-coordinates window)))

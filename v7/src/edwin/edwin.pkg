@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.26 1991/03/22 00:31:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.27 1991/04/01 10:07:04 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -221,6 +221,7 @@ MIT in each case. |#
 	  screen-discard!
 	  screen-enter!
 	  screen-exit!
+	  screen-get-output-line
 	  screen-in-update?
 	  screen-modeline-event!
 	  screen-move-cursor
@@ -389,7 +390,7 @@ MIT in each case. |#
 	  edwin-variable$mode-line-procedure
 	  edwin-variable$mode-line-process
 	  format-modeline-string
-	  modeline-string))
+	  modeline-string!))
 
 (define-package (edwin command-reader)
   (files "comred")

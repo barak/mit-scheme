@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.16 1991/03/22 00:31:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwiu.scm,v 1.17 1991/04/01 10:06:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -57,7 +57,7 @@
     (if (%window-debug-trace window)
 	((%window-debug-trace window) 'window window 'change-daemon
 				      group start end))
-    ;; Record changes that intersect the current line inferiors.
+    ;; Record changes that intersect the current outlines.
     (if (and (not (%window-force-redraw? window))
 	     (fix:<= (%window-current-start-index window) end)
 	     (fix:<= start (%window-current-end-index window)))
@@ -162,7 +162,7 @@
 
 ;;;; Update
 
-(define (recompute-image! window)
+(define (update-outlines! window)
   (%guarantee-start-mark! window)
   (if (%window-force-redraw? window)
       (begin
@@ -189,201 +189,212 @@
 			(%window-line-end-index window end-changes))))
 		 (if (fix:<= start-changes start)
 		     (if (fix:< end-changes end)
-			 (preserve-contiguous-region!
-			  window
-			  (cdr
-			   (changed-inferiors-tail
-			    (%window-line-inferiors window)
-			    end
-			    end-changes))
-			  (fix:+ end-changes 1))
+			 (preserve-bottom! window end-changes end)
 			 (preserve-nothing! window))
 		     (if (fix:< end-changes end)
 			 (preserve-top-and-bottom! window
 						   start start-changes
 						   end-changes end)
-			 (let ((inferiors (%window-line-inferiors window)))
-			   (set-cdr! (unchanged-inferiors-tail inferiors
-							       start
-							       start-changes)
-				     '())
-			   (preserve-contiguous-region! window
-							inferiors
-							start))))))
+			 (preserve-top! window start start-changes)))))
 	      (else
-	       (preserve-all! window start))))))
-
+	       (preserve-all! window start end))))))
+
 (define-integrable (preserve-nothing! window)
-  (set-line-inferiors!
-   window
-   (generate-line-inferiors window
-			    (%window-start-line-index window)
-			    (%window-start-line-y window))))
+  (regenerate-outlines window
+		       (%window-start-line-index window)
+		       (%window-start-line-y window)))
 
-(define (preserve-contiguous-region! window inferiors start)
+(define (preserve-top! window start start-changes)
+  (let ((start-outline (%window-start-outline window))
+	(start-y (%window-current-start-y window)))
+    (let ((last-unchanged
+	   (last-unchanged-outline start-outline
+				   start
+				   start-changes)))
+      (deallocate-outlines! window
+			    (outline-next last-unchanged)
+			    (%window-end-outline window))
+      (preserve-contiguous-region! window
+				   (make-o3 window start-outline start start-y)
+				   (make-o3 window
+					    last-unchanged
+					    (fix:- start-changes 1)
+					    (outline-end-y start-outline
+							   start-y))))))
+
+(define (preserve-bottom! window end-changes end)
+  (let ((end-outline (%window-end-outline window))
+	(end-y (%window-current-end-y window)))
+    (let ((first-unchanged
+	   (first-unchanged-outline end-outline end end-changes)))
+      (if (not (eq? first-unchanged (%window-start-outline window)))
+	  (deallocate-outlines! window
+				(%window-start-outline window)
+				(outline-previous first-unchanged)))
+      (preserve-contiguous-region! window
+				   (make-o3 window
+					    first-unchanged
+					    (fix:+ end-changes 1)
+					    (outline-start-y end-outline
+							     end-y))
+				   (make-o3 window end-outline end end-y)))))
+
+(define (preserve-contiguous-region! window start end)
   (let ((wlstart (%window-start-line-index window))
 	(wlsy (%window-start-line-y window)))
-    (set-line-inferiors!
-     window
-     (with-values
-	 (lambda () (maybe-scroll window inferiors start wlstart wlsy))
-       (lambda (inferiors start)
-	 (if (null? inferiors)
-	     (generate-line-inferiors window wlstart wlsy)
-	     (fill-edges! window inferiors start)))))))
+    (if (maybe-scroll window start end wlstart wlsy)
+	(fill-edges window start end)
+	(regenerate-outlines window wlstart wlsy))))
 
-(define-integrable (fill-edges! window inferiors start)
-  (fill-top window (fill-bottom! window inferiors start) start))
-
-(define (preserve-all! window start)
-  (let ((wlstart (%window-start-line-index window))
-	(wlsy (%window-start-line-y window))
-	(inferiors (%window-line-inferiors window)))
-    (let ((regenerate
-	   (lambda ()
-	     (set-line-inferiors!
-	      window
-	      (generate-line-inferiors window wlstart wlsy))))
-	  (scroll-down
-	   (lambda (y-start)
-	     (set-line-inferiors!
-	      window
-	      (let ((inferiors (scroll-lines-down! window inferiors y-start)))
-		(if (null? inferiors)
-		    (generate-line-inferiors window wlstart wlsy)
-		    (begin
-		      (let ((end
-			     (let loop ((inferiors inferiors) (start start))
-			       (if (null? (cdr inferiors))
-				   (%window-line-end-index window start)
-				   (loop (cdr inferiors)
-					 (fix:+ start
-						(line-inferior-length
-						 (car inferiors))))))))
-			;; SET-CURRENT-END-INDEX! is integrable
-			(set-current-end-index! window end))
-		      (fill-top window inferiors start)))))))
-	  (scroll-up
-	   (lambda (y-start)
-	     (set-line-inferiors!
-	      window
-	      (with-values
-		  (lambda () (scroll-lines-up! window inferiors start y-start))
-		(lambda (inferiors start)
-		  (if (null? inferiors)
-		      (generate-line-inferiors window wlstart wlsy)
-		      (fill-bottom! window inferiors start))))))))
-      (cond ((fix:= wlstart start)
-	     (let ((y-start (inferior-y-start (car inferiors))))
-	       (cond ((fix:= wlsy y-start)
-		      (%clear-window-outstanding-changes! window)
-		      (if (%window-point-moved? window)
-			  (begin
-			    (%set-window-point-moved?! window false)
-			    (update-cursor! window))))
-		     ((fix:< wlsy y-start)
-		      (scroll-up wlsy))
-		     (else
-		      (scroll-down wlsy)))))
-	    ((fix:< wlstart start)
-	     (let ((y
-		    (predict-y-limited window wlstart wlsy start
-				       (inferior-y-start (car inferiors))
-				       (window-y-size window))))
-	       (if (not y)
-		   (regenerate)
-		   (scroll-down y))))
-	    (else
-	     (let ((y
-		    (predict-y-limited
-		     window wlstart wlsy start
-		     (fix:- 1
-			    (fix:- (inferior-y-end (car (last-pair inferiors)))
-				   (inferior-y-start (car inferiors))))
-		     1)))
-	       (if (not y)
-		   (regenerate)
-		   (scroll-up y))))))))
-
 (define (preserve-top-and-bottom! window start start-changes end-changes end)
   (let ((wlstart (%window-start-line-index window))
 	(wlsy (%window-start-line-y window))
-	(top-inferiors (%window-line-inferiors window)))
-    (let* ((top-tail
-	    (unchanged-inferiors-tail top-inferiors start start-changes))
-	   (middle-tail
-	    (changed-inferiors-tail (cdr top-tail) end end-changes))
-	   (bottom-inferiors (cdr middle-tail)))
-      (set-cdr! top-tail '())
-      (set-cdr! middle-tail '())
-      (with-values
-	  (lambda ()
-	    (maybe-scroll window top-inferiors start wlstart wlsy))
-	(lambda (top-inferiors top-start)
-	  (with-values
-	      (lambda ()
-		(maybe-scroll window bottom-inferiors (fix:+ end-changes 1)
-			      wlstart wlsy))
-	    (lambda (bottom-inferiors bottom-start)
-	      (set-line-inferiors!
-	       window
-	       (if (null? top-inferiors)
-		   (if (null? bottom-inferiors)
-		       (generate-line-inferiors window wlstart wlsy)
-		       (fill-edges! window bottom-inferiors bottom-start))
-		   (if (null? bottom-inferiors)
-		       (fill-edges! window top-inferiors top-start)
-		       (fill-top window
-				 (fill-middle! window
-					       top-inferiors
-					       top-start
-					       (fill-bottom! window
-							     bottom-inferiors
-							     bottom-start)
-					       bottom-start)
-				 top-start)))))))))))
-
-(define (maybe-scroll window inferiors start wlstart wlsy)
-  (let ((y
-	 (predict-y-limited
-	  window
-	  wlstart
-	  wlsy
-	  start
-	  (fix:- 1
-		 (fix:- (inferior-y-end (car (last-pair inferiors)))
-			(inferior-y-start (car inferiors))))
-	  (window-y-size window))))
-    (if (not y)
-	(values '() start)
-	(scroll-lines! window inferiors start y))))
-
-(define (changed-inferiors-tail inferiors end end-changes)
-  (let find-end
-      ((inferiors inferiors)
-       (find-end-changes
-	(lambda (end)
-	  end
-	  (error "can't find END-CHANGES"))))
-    (if (null? inferiors)
-	(find-end-changes end)
-	(find-end (cdr inferiors)
-		  (lambda (end)
-		    (if (fix:= end end-changes)
-			inferiors
-			(find-end-changes
-			 (fix:- end
-				(line-inferior-length (car inferiors))))))))))
-
-(define (unchanged-inferiors-tail inferiors start start-changes)
-  (let loop ((inferiors inferiors) (start start))
-    (let ((start-next (fix:+ start (line-inferior-length (car inferiors)))))
-      (cond ((fix:>= start-next start-changes)
-	     inferiors)
-	    ((null? (cdr inferiors))
-	     (error "can't find START-CHANGES"))
+	(top-head (%window-start-outline window))
+	(bot-tail (%window-end-outline window))
+	(top-start-y (%window-current-start-y window))
+	(bot-end-y (%window-current-end-y window)))
+    (let ((top-tail (last-unchanged-outline top-head start start-changes))
+	  (bot-head (first-unchanged-outline bot-tail end end-changes)))
+      (deallocate-outlines! window
+			    (outline-next top-tail)
+			    (outline-previous bot-head))
+      (let ((top-start (make-o3 window top-head start top-start-y))
+	    (top-end
+	     (make-o3 window
+		      top-tail
+		      (fix:- start-changes 1)
+		      (outline-end-y top-head top-start-y)))
+	    (bot-start
+	     (make-o3 window
+		      bot-head
+		      (fix:+ end-changes 1)
+		      (outline-start-y bot-tail bot-end-y)))
+	    (bot-end (make-o3 window bot-tail end bot-end-y)))
+	(if (maybe-scroll window top-start top-end wlstart wlsy)
+	    (if (maybe-scroll window bot-start bot-end wlstart wlsy)
+		(begin
+		  (fill-middle window top-end bot-start)
+		  (deallocate-o3! window top-end)
+		  (deallocate-o3! window bot-start)
+		  (fill-edges window top-start bot-end))
+		(fill-edges window top-start top-end))
+	    (if (maybe-scroll window bot-start bot-end wlstart wlsy)
+		(fill-edges window bot-start bot-end)
+		(regenerate-outlines window wlstart wlsy)))))))
+
+(define (preserve-all! window start-index end-index)
+  (let ((wlstart (%window-start-line-index window))
+	(wlsy (%window-start-line-y window))
+	(start-y (%window-current-start-y window))
+	(end-y (%window-current-end-y window)))
+    (let ((scroll-down
+	   (lambda (y)
+	     (let ((start
+		    (make-o3 window
+			     (%window-start-outline window)
+			     start-index
+			     start-y))
+		   (end
+		    (make-o3 window
+			     (%window-end-outline window)
+			     end-index
+			     end-y)))
+	       (if (scroll-lines-down window start end y)
+		   (begin
+		     (fill-top window start)
+		     (set-outlines! window start end))
+		   (regenerate-outlines window wlstart wlsy)))))
+	  (scroll-up
+	   (lambda (y)
+	     (let ((start
+		    (make-o3 window
+			     (%window-start-outline window)
+			     start-index
+			     start-y))
+		   (end
+		    (make-o3 window
+			     (%window-end-outline window)
+			     end-index
+			     end-y)))
+	       (if (scroll-lines-up window start end y)
+		   (begin
+		     (fill-bottom window end)
+		     (set-outlines! window start end))
+		   (regenerate-outlines window wlstart wlsy))))))
+      (cond ((fix:= wlstart start-index)
+	     (cond ((fix:= wlsy start-y)
+		    (%clear-window-outstanding-changes! window)
+		    (if (%window-point-moved? window)
+			(begin
+			  (%set-window-point-moved?! window false)
+			  (update-cursor! window))))
+		   ((fix:< wlsy start-y)
+		    (scroll-up wlsy))
+		   (else
+		    (scroll-down wlsy))))
+	    ((fix:< wlstart start-index)
+	     (let ((y
+		    (predict-y-limited window wlstart wlsy start-index start-y
+				       (window-y-size window))))
+	       (if (not y)
+		   (regenerate-outlines window wlstart wlsy)
+		   (scroll-down y))))
 	    (else
-	     (loop (cdr inferiors) start-next))))))
+	     (let ((y
+		    (predict-y-limited window wlstart wlsy start-index
+				       (fix:- 1 (fix:- end-y start-y))
+				       1)))
+	       (if (not y)
+		   (regenerate-outlines window wlstart wlsy)
+		   (scroll-up y))))))))
+
+(define (first-unchanged-outline end-outline end end-changes)
+  (let loop ((outline end-outline) (end end))
+    (let ((end-next (fix:- end (fix:+ (outline-index-length outline) 1))))
+      (if (fix:> end-next end-changes)
+	  (begin
+	    (if (not (outline-previous outline))
+		(error "can't find END-CHANGES"))
+	    (loop (outline-previous outline) end-next))
+	  (begin
+	    (if (not (fix:= end-next end-changes))
+		(error "overshot END-CHANGES" end-next end-changes))
+	    outline)))))
+
+(define (last-unchanged-outline start-outline start start-changes)
+  (let loop ((outline start-outline) (start start))
+    (let ((start-next (fix:+ start (fix:+ (outline-index-length outline) 1))))
+      (if (fix:< start-next start-changes)
+	  (begin
+	    (if (not (outline-next outline))
+		(error "can't find START-CHANGES"))
+	    (loop (outline-next outline) start-next))
+	  (begin
+	    (if (not (fix:= start-next start-changes))
+		(error "overshot START-CHANGES" start-next start-changes))
+	    outline)))))
+
+(define (regenerate-outlines window wlstart wlsy)
+  (let ((start (make-o3 window false wlstart wlsy))
+	(end (make-o3 window false false false)))
+    (generate-outlines window start end)
+    (set-outlines! window start end)))
+
+(define-integrable (fill-edges window start end)
+  (fill-top window start)
+  (fill-bottom window end)
+  (set-outlines! window start end))
+
+(define (maybe-scroll window start end wlstart wlsy)
+  (let ((y
+	 (predict-y-limited window wlstart wlsy
+			    (o3-index start)
+			    (fix:- 1 (fix:- (o3-y end) (o3-y start)))
+			    (window-y-size window))))
+    (cond ((not y) false)
+	  ((fix:= (o3-y start) y) true)
+	  ((fix:< (o3-y start) y) (scroll-lines-down window start end y))
+	  (else (scroll-lines-up window start end y)))))
 
 ;;;; Direct Output
 
@@ -411,7 +422,7 @@
    (lambda ()
      (%set-window-point-index! window (fix:+ (%window-point-index window) 1))
      (let ((x-start
-	    (fix:1+ (inferior-x-start (%window-cursor-inferior window))))
+	    (fix:+ (inferior-x-start (%window-cursor-inferior window)) 1))
 	   (y-start (inferior-y-start (%window-cursor-inferior window))))
        (screen-direct-output-move-cursor
 	(%window-saved-screen window)
@@ -427,7 +438,7 @@
    (lambda ()
      (%set-window-point-index! window (fix:- (%window-point-index window) 1))
      (let ((x-start
-	    (fix:-1+ (inferior-x-start (%window-cursor-inferior window))))
+	    (fix:- (inferior-x-start (%window-cursor-inferior window)) 1))
 	   (y-start (inferior-y-start (%window-cursor-inferior window))))
        (screen-direct-output-move-cursor
 	(%window-saved-screen window)
@@ -466,10 +477,9 @@
 	(fix:+ (%window-saved-y-start window) y-start)
 	char
 	false)
-       (string-base:direct-output-insert-char!
-	(direct-output-line-window window y-start)
-	x-start
-	char)
+       (let ((outline (direct-output-outline window y-start)))
+	 (set-outline-index-length! outline
+				    (fix:+ (outline-index-length outline) 1)))
        (%set-inferior-x-start! (%window-cursor-inferior window)
 			       (fix:+ x-start 1))))))
 
@@ -492,19 +502,13 @@
 	(fix:+ (%window-saved-y-start window) y-start)
 	string start end
 	false)
-       (string-base:direct-output-insert-substring!
-	(direct-output-line-window window y-start)
-	x-start
-	string start end)
+       (let ((outline (direct-output-outline window y-start)))
+	 (set-outline-index-length! outline
+				    (fix:+ (outline-index-length outline)
+					   length)))
        (%set-inferior-x-start! (%window-cursor-inferior window)
 			       (fix:+ x-start length))))))
 
-(define (direct-output-line-window window y)
-  (let loop ((inferiors (%window-line-inferiors window)))
-    (if (fix:< y (%inferior-y-end (car inferiors)))
-	(inferior-window (car inferiors))
-	(loop (cdr inferiors)))))
-
 (define (buffer-window/direct-output-insert-newline! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window
@@ -514,29 +518,24 @@
      (%group-insert-char! (%window-group window)
 			  (%window-point-index window)
 			  #\newline)
-     (let ((y-start
-	    (fix:+ (inferior-y-start (%window-cursor-inferior window)) 1)))
-       (let ((inferior (make-inferior window string-base)))
-	 (%set-inferior-x-start! inferior 0)
-	 (%set-inferior-y-start! inferior y-start)
-	 (%set-window-x-size! (inferior-window inferior)
-			      (window-x-size window))
-	 (set-cdr! (last-pair (%window-line-inferiors window)) (list inferior))
-	 (string-base:direct-output-insert-newline!
-	  (inferior-window inferior)))
-       (let ((inferior (%window-blank-inferior window))
-	     (y-end (fix:+ y-start 1)))
-	 (if (fix:< y-end (window-y-size window))
-	     (begin
-	       (%set-inferior-y-size! inferior
-				      (fix:- (window-y-size window) y-end))
-	       (%set-inferior-y-start! inferior y-end))
-	     (begin
-	       (%set-inferior-x-start! inferior false)
-	       (%set-inferior-y-start! inferior false))))
-       (%set-inferior-x-start! (%window-cursor-inferior window) 0)
-       (%set-inferior-y-start! (%window-cursor-inferior window) y-start)
+     (let ((end-y (%window-current-end-y window)))
        (screen-direct-output-move-cursor (%window-saved-screen window)
 					 (%window-saved-x-start window)
 					 (fix:+ (%window-saved-y-start window)
-						y-start))))))
+						end-y))
+       (%set-window-end-outline!
+	window
+	(make-outline window 0 1 (%window-end-outline window) false))
+       (%set-window-current-end-y! window (fix:+ end-y 1))
+       (update-blank-inferior! window false)
+       (%set-inferior-x-start! (%window-cursor-inferior window) 0)
+       (%set-inferior-y-start! (%window-cursor-inferior window) end-y)))))
+
+(define (direct-output-outline window y)
+  (let loop
+      ((outline (%window-start-outline window))
+       (start-y (%window-current-start-y window)))
+    (let ((end-y (fix:+ start-y (outline-y-size outline))))
+      (if (fix:< y end-y)
+	  outline
+	  (loop (outline-next outline) end-y)))))

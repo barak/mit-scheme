@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.56 1991/03/22 00:33:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/utlwin.scm,v 1.57 1991/04/01 10:08:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -46,119 +46,8 @@
 
 (declare (usual-integrations))
 
-;;;; String Window
-;;;  This "mixin" defines a common base from which 2D text string
-;;;  windows can be built.  Mostly, it provides standard procedures
-;;;  from which methods can be built.
+;;;; Column<->Coordinate Utilities
 
-(define-class string-base vanilla-window
-  (string string-len string-max-length
-   image image-length image-max-length
-   truncate-lines? tab-width representation))
-
-(define-integrable (string-base:string window)
-  (with-instance-variables string-base window () string))
-
-(define-integrable (string-base:string-length window)
-  (with-instance-variables string-base window () string-len))
-
-(define-integrable (string-base:image window)
-  (with-instance-variables string-base window () image))
-
-(define-integrable (string-base:image-length window)
-  (with-instance-variables string-base window () image-length))
-
-(define-integrable (string-base:representation window)
-  (with-instance-variables string-base window () representation))
-
-(define (string-base:update-display! window screen x-start y-start
-				     xl xu yl yu display-style)
-  display-style				;ignore
-  (declare (integrate-operator clip))
-  (let ((representation (string-base:representation window)))
-    (cond ((false? representation)
-	   (screen-clear-rectangle screen
-				   x-start (fix:+ x-start xu)
-				   y-start (fix:+ y-start yu)
-				   false))
-	  ((string? representation)
-	   (screen-output-substring screen x-start y-start
-				    representation
-				    0 (string-length representation) false))
-	  (else
-	   (clip (screen-x-size screen) (fix:+ x-start xl) xl xu
-	     (lambda (x il iu)
-	       (clip (screen-y-size screen) (fix:+ y-start yl) yl yu
-		 (lambda (y jl ju)
-		   (let loop ((y y) (j jl))
-		     (if (fix:< j ju)
-			 (begin
-			   (screen-output-substring screen x y
-						    (vector-ref representation
-								j)
-						    il iu false)
-			   (loop (fix:1+ y) (fix:1+ j))))))))))))
-  true)
-
-(define (clip axu x bil biu receiver)
-  (let ((ail (fix:- bil x)))
-    (if (fix:< ail biu)
-	(let ((aiu (fix:+ ail axu)))
-	  (cond ((fix:<= x 0)
-		 (receiver 0 ail (if (fix:< aiu biu) aiu biu)))
-		((fix:< x axu)
-		 (receiver x bil (if (fix:< aiu biu) aiu biu))))))))
-
-(define-method string-base :update-display!
-  string-base:update-display!)
-
-(define (string-base:initialize! window *string *image
-				 *x-size *truncate-lines? *tab-width)
-  (let ((*string-length (string-length *string))
-	(*image-length (string-length *image)))
-    (with-instance-variables string-base window
-	(*string *image *image-length *truncate-lines? *tab-width *x-size)
-      (set! string *string)
-      (set! string-len *string-length)
-      (set! string-max-length *string-length)
-      (set! image *image)
-      (set! image-length *image-length)
-      (set! image-max-length *image-length)
-      (set! truncate-lines? *truncate-lines?)
-      (set! tab-width *tab-width)
-      (set! x-size *x-size)
-      (set! y-size (column->y-size *image-length *x-size *truncate-lines?))
-      (string-base:refresh! window))))
-
-(define (string-base:index->coordinates window index)
-  (with-instance-variables string-base window (index)
-    (column->coordinates image-length
-			 x-size
-			 truncate-lines?
-			 (substring-columns string 0 index 0 tab-width))))
-
-(define (string-base:index->x window index)
-  (with-instance-variables string-base window (index)
-    (column->x image-length
-	       x-size
-	       truncate-lines?
-	       (substring-columns string 0 index 0 tab-width))))
-
-(define (string-base:index->y window index)
-  (with-instance-variables string-base window (index)
-    (column->y image-length
-	       x-size
-	       truncate-lines?
-	       (substring-columns string 0 index 0 tab-width))))
-
-(define (string-base:coordinates->index window x y)
-  (with-instance-variables string-base window (x y)
-    (substring-column->index string 0 string-len 0 tab-width
-			     (let ((column (coordinates->column x y x-size)))
-			       (if (fix:< column image-length)
-				   column
-				   image-length)))))
-
 (define (column->x-size column-size y-size truncate-lines?)
   ;; Assume Y-SIZE > 0.
   (cond (truncate-lines?
@@ -214,112 +103,6 @@
 
 (define-integrable (coordinates->column x y x-size)
   (fix:+ x (fix:* y (fix:- x-size 1))))
-
-(define (string-base:direct-output-insert-char! window x char)
-  (with-instance-variables string-base window (x char)
-    (if (fix:= string-len string-max-length)
-	(string-base:grow-image! window 1))
-    (string-set! string string-len char)
-    (set! string-len (fix:+ string-len 1))
-    (string-set! image image-length char)
-    (set! image-length (fix:+ image-length 1))
-    (cond ((false? representation)
-	   (let ((s (string-allocate x-size)))
-	     (string-fill! s #\space)
-	     (string-set! s x char)
-	     (set! representation s)))
-	  ((string? representation)
-	   (string-set! representation x char))
-	  (else
-	   (string-set! (vector-ref representation (fix:-1+ y-size))
-			x
-			char)))))
-
-(define (string-base:direct-output-insert-substring! window x string start end)
-  (with-instance-variables string-base window (x string start end)
-    (let ((len (fix:- end start)))
-      (let ((*string-len (fix:+ string-len len)))
-	(if (fix:< string-max-length *string-len)
-	    (string-base:grow-image! window len))
-	(substring-move-right! string start end image string-len)
-	(set! string-len *string-len))
-      (substring-move-right! string start end image image-length)
-      (set! image-length (fix:+ image-length len)))
-    (cond ((false? representation)
-	   (let ((s (string-allocate x-size)))
-	     (substring-fill! s 0 x #\space)
-	     (substring-move-left! string start end s x)
-	     (substring-fill! s (fix:+ x (fix:- end start)) x-size #\space)
-	     (set! representation s)))
-	  ((string? representation)
-	   (substring-move-left! string start end representation x))
-	  (else
-	   (substring-move-left! string start end
-				 (vector-ref representation (fix:-1+ y-size))
-				 x)))))
-
-(define (string-base:grow-image! window delta)
-  (let ((delta (fix:+ delta 16)))
-    (with-instance-variables string-base window (delta)
-      (let ((new-max-length (fix:+ string-max-length delta)))
-	(set! string
-	      (let ((*string (make-string new-max-length)))
-		(substring-move-right! string 0 string-len *string 0)
-		*string))
-	(set! string-max-length new-max-length))
-      (let ((new-max-length (fix:+ image-max-length delta)))
-	(set! image
-	      (let ((*image (make-string new-max-length)))
-		(substring-move-right! image 0 image-length *image 0)
-		*image))
-	(set! image-max-length new-max-length)))))
-
-(define (string-base:direct-output-insert-newline! window)
-  (with-instance-variables string-base window ()
-    (set! string "")
-    (set! string-len 0)
-    (set! string-max-length 0)
-    (set! image "")
-    (set! image-length 0)
-    (set! image-max-length 0)
-    (set! y-size 1)
-    (set! representation false)))
-
-(define (string-base:refresh! window)
-  (with-instance-variables string-base window ()
-    (cond ((fix:= image-length 0)
-	   (set! representation false))
-	  ((fix:< image-length x-size)
-	   (let ((s (string-allocate x-size)))
-	     (substring-move-left! image 0 image-length s 0)
-	     (substring-fill! s image-length x-size #\space)
-	     (set! representation s)))
-	  (truncate-lines?
-	   (let ((s (string-allocate x-size))
-		 (x-max (fix:- x-size 1)))
-	     (substring-move-left! image 0 x-max s 0)
-	     (string-set! s x-max #\$)
-	     (set! representation s)))
-	  (else
-	   (let ((rep (make-vector y-size '()))
-		 (x-max (fix:- x-size 1)))
-	     (let loop ((start 0) (y 0))
-	       (let ((s (string-allocate x-size))
-		     (end (fix:+ start x-max)))
-		 (vector-set! rep y s)
-		 (if (fix:> image-length end)
-		     (begin
-		       (substring-move-left! image start end s 0)
-		       (string-set! s x-max #\\)
-		       (loop end (fix:+ 1 y)))
-		     (begin
-		       (substring-move-left! image start image-length s 0)
-		       (substring-fill! s
-					(fix:- image-length start)
-					x-size
-					#\space)))))
-	     (set! representation rep))))
-    (setup-redisplay-flags! redisplay-flags)))
 
 ;;;; Blank Window
 

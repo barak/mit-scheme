@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.35 1990/11/02 03:24:36 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modwin.scm,v 1.36 1991/04/01 10:07:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -55,17 +55,18 @@
 (define (modeline-window:update-display! window screen x-start y-start
 					 xl xu yl yu display-style)
   display-style				;ignore
-  (if (< yl yu)
+  (if (and (fix:= yl 0) (fix:< yl yu))
       (let ((superior (window-superior window)))
-	(screen-output-substring
-	 screen x-start y-start
-	 (string-pad-right (modeline-string superior)
-			   (window-x-size window)
-			   #\space)
-	 xl xu
-	 (variable-local-value
-	  (window-buffer superior)
-	  (ref-variable-object mode-line-inverse-video)))))
+	(modeline-string!
+	 superior
+	 (screen-get-output-line
+	  screen
+	  y-start
+	  (fix:+ x-start xl)
+	  (fix:+ x-start xu)
+	  (variable-local-value (window-buffer superior)
+				(ref-variable-object mode-line-inverse-video)))
+	 xl xu)))
   true)
 
 (define-method modeline-window :update-display!
