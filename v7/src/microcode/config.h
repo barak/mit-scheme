@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.42 1989/03/27 23:14:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.43 1989/05/24 05:35:21 jinx Exp $
  *
  * This file contains the configuration information and the information
  * given on the command line on Unix.
@@ -211,6 +211,7 @@ typedef unsigned long Pointer;
 #define FASL_PYR		12
 #define FASL_ALLIANT		13
 #define FASL_SUN4		14
+#define FASL_MIPS		15
 
 /* These (pdp10 and nu) haven't worked in a while.
  * Should be upgraded or flushed some day. 
@@ -517,6 +518,24 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define MAX_FLONUM_EXPONENT	1023
 #define HAS_FLOOR
 #define HAS_FREXP
+#endif
+
+#ifdef mips
+/* Heap is not in Low Memory. */
+#define MACHINE_TYPE		"MIPS (DECStation 3100)"
+#define UNSIGNED_SHIFT
+#define VAX_BYTE_ORDER
+#define CHAR_SIZE            	8
+#define USHORT_SIZE          	16
+#define ULONG_SIZE           	32
+/* Flonum (double) size is 64 bits. */
+#define FLOATING_ALIGNMENT   	0x7
+#define FLONUM_MANTISSA_BITS 	53
+#define FLONUM_EXPT_SIZE     	10
+#define MAX_FLONUM_EXPONENT  	1023
+/* Floating point representation uses hidden bit. */
+#define FASL_INTERNAL_FORMAT	FASL_MIPS
+#define BELL 			'\007'
 #endif
 
 /* Make sure that some definition applies. 
