@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conpkg.scm,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: conpkg.scm,v 1.7 2000/01/18 20:43:28 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,14 +33,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ;; #F, () or the system-global-environment changes.
     `((DECLARE (USUAL-INTEGRATIONS SYSTEM-GLOBAL-ENVIRONMENT))
       ,@(append-map*
-	 `((LET ((ENVIRONMENT-LINK-NAME
-		  (LET-SYNTAX
-		      ((UCODE-PRIMITIVE
-			(MACRO (NAME) (MAKE-PRIMITIVE-PROCEDURE NAME))))
-		    (UCODE-PRIMITIVE ENVIRONMENT-LINK-NAME))))
-	     ,@(append-map*
-		(append-map construct-links (pmodel/extra-packages pmodel))
-		construct-links packages)))
+	 (let ((links
+		(append-map*
+		 (append-map construct-links (pmodel/extra-packages pmodel))
+		 construct-links packages)))
+	   (if (pair? links)
+	       `((LET ((ENVIRONMENT-LINK-NAME
+			(LET-SYNTAX
+			    ((UCODE-PRIMITIVE
+			      (MACRO (NAME) (MAKE-PRIMITIVE-PROCEDURE NAME))))
+			  (UCODE-PRIMITIVE ENVIRONMENT-LINK-NAME))))
+		   ,@links))
+	       '()))
 	 construct-definitions
 	 (sort packages package-structure<?)))))
 
