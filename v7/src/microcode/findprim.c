@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.29 1987/11/17 08:04:01 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.30 1987/11/23 05:11:39 cph Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -122,10 +122,14 @@ void dump();
 static boolean Built_in_p;
 static long Built_in_table_size;
 
-static char *The_Token;
+static char *token_array[4];
 static char Default_Token[] = "Define_Primitive";
+static char default_token_alternate[] = "DEFINE_PRIMITIVE";
 static char Built_in_Token[] = "Built_In_Primitive";
 static char External_Token[] = "Define_Primitive";
+
+typedef pseudo_void (*TOKEN_PROCESSOR) ();
+static TOKEN_PROCESSOR token_processors[4];
 
 static char *The_Kind;
 static char Default_Kind[] = "Primitive";
@@ -140,8 +144,6 @@ static char External_Variable[] = "MAX_EXTERNAL_PRIMITIVE";
 static FILE *input, *output;
 static char *name;
 static char *file_name;
-
-static pseudo_void (*create_entry)();
 
 main(argc, argv)
      int argc;
@@ -280,21 +282,22 @@ void process_argument(fn)
   }
 }
 
-#define DONE 0
-#define FOUND 1
-
 /* Search for tokens and when found, create primitive entries. */
 
 void
 process()
 {
-  int scan();
+  TOKEN_PROCESSOR scan();
+  TOKEN_PROCESSOR processor;
 
-  while ((scan() != DONE))
-  {
-    dprintf("Process: place found.%s\n", "");
-    (*create_entry)();
-  }
+  while (TRUE)
+    {
+      processor = (scan ());
+      if (processor == NULL)
+	break;
+      dprintf("Process: place found.%s\n", "");
+      (*processor)();
+    }
   return;
 }
 
@@ -304,11 +307,11 @@ process()
  *      currently the token must always begin a line.
 */
 
-int
-scan()
+TOKEN_PROCESSOR
+scan ()
 {
   register int c;
-  register char *temp;
+  char compare_buffer[1024];
 
   c = '\n';
   while(c != EOF)
@@ -334,17 +337,43 @@ scan()
 	else if (c != '\n') break;
 
       case '\n':
-	temp = &The_Token[0];
-	while ((c = getc(input)) == *temp++) {}
-	if (temp[-1] == '\0') return FOUND;
-	ungetc(c, input);
-	break;
+	{
+	  {
+	    register char *scan_buffer;
+
+	    scan_buffer = (& (compare_buffer [0]));
+	    while (TRUE)
+	      {
+		c = (getc (input));
+		if (c == EOF)
+		  return (NULL);
+		else if ((isalnum (c)) || (c == '_'))
+		  (*scan_buffer++) = c;
+		else
+		  {
+		    ungetc (c, input);
+		    (*scan_buffer++) = '\0';
+		    break;
+		  }
+	      }
+	  }
+	  {
+	    register char **scan_tokens;
+
+	    for (scan_tokens = (& (token_array [0]));
+		 ((*scan_tokens) != NULL);
+		 scan_tokens += 1)
+	      if ((strcmp ((& (compare_buffer [0])), (*scan_tokens))) == 0)
+		return (token_processors [(scan_tokens - token_array)]);
+	  }
+	  break;
+	}
 
       default: {}
     }
     c = getc(input);
   }
-  return DONE;
+  return (NULL);
 }
 
 boolean
@@ -510,14 +539,38 @@ create_normal_entry()
   return;
 }
 
+pseudo_void
+create_alternate_entry()
+{
+  if (buffer_index >= BUFFER_SIZE)
+  {
+    fprintf(stderr, "Error: %s cannot handle so many primitives.\n", name);
+    fprintf(stderr, "Recompile %s with BUFFER_SIZE larger than %d.\n",
+	    name, BUFFER_SIZE);
+    error_exit(FALSE);
+  }
+  scan_to_token_start();
+  copy_symbol((Data_Buffer[buffer_index]).Scheme_Name, &S_Size);
+  scan_to_token_start();
+  copy_token((Data_Buffer[buffer_index]).C_Name, &C_Size);
+  scan_to_token_start();
+  copy_token((Data_Buffer[buffer_index]).Arity, &A_Size);
+  copy_string(file_name, (Data_Buffer[buffer_index]).File_Name, &F_Size);
+  Result_Buffer[buffer_index] = &Data_Buffer[buffer_index];
+  buffer_index++;
+  return;
+}
+
 void
 initialize_external()
 {
   Built_in_p = FALSE;
-  The_Token = &External_Token[0];
+  (token_array [0]) = &External_Token[0];
+  (token_array [1]) = NULL;
+  (token_processors [0]) = create_normal_entry;
+  (token_processors [1]) = NULL;
   The_Kind = &External_Kind[0];
   The_Variable = &External_Variable[0];
-  create_entry = create_normal_entry;
   return;
 }
 
@@ -525,10 +578,14 @@ void
 initialize_default()
 {
   Built_in_p = FALSE;
-  The_Token = &Default_Token[0];
+  (token_array [0]) = &Default_Token[0];
+  (token_array [1]) = (& (default_token_alternate [0]));
+  (token_array [2]) = NULL;
+  (token_processors [0]) = create_normal_entry;
+  (token_processors [1]) = create_alternate_entry;
+  (token_processors [2]) = NULL;
   The_Kind = &Default_Kind[0];
   The_Variable = &Default_Variable[0];
-  create_entry = create_normal_entry;
   return;
 }
 
@@ -612,10 +669,12 @@ initialize_builtin(arg)
     fprintf(stderr, "Recompile with a larger value of BUFFER_SIZE.\n");
     error_exit(FALSE);
   }
-  The_Token = &Built_in_Token[0];
+  (token_array [0]) = &Built_in_Token[0];
+  (token_array [1]) = NULL;
+  (token_processors [0]) = create_builtin_entry;
+  (token_processors [1]) = NULL;
   The_Kind = &Built_in_Kind[0];
   The_Variable = &Built_in_Variable[0];
-  create_entry = create_builtin_entry;
   for (index = Built_in_table_size; --index >= 0; )
   {
     Result_Buffer[index] = &Inexistent_Entry;

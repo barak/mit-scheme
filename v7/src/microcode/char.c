@@ -30,13 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.23 1987/11/17 08:07:53 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.24 1987/11/23 05:16:52 cph Rel $ */
 
 /* Character primitives. */
 
 #include "scheme.h"
 #include "primitive.h"
-#include "character.h"
+#include "char.h"
 #include <ctype.h>
 
 long
@@ -69,50 +69,45 @@ arg_ascii_integer (n)
   return (ascii);
 }
 
-Built_In_Primitive (Prim_Make_Char, 2, "MAKE-CHAR", 0x14)
-Define_Primitive (Prim_Make_Char, 2, "MAKE-CHAR")
+DEFINE_PRIMITIVE ("MAKE-CHAR", Prim_Make_Char, 2)
 {
   long bucky_bits, code;
-  Primitive_2_Args ();
+  PRIMITIVE_HEADER (2);
 
   code = (arg_index_integer (1, MAX_CODE));
   bucky_bits = (arg_index_integer (2, MAX_BITS));
-  return (make_char (bucky_bits, code));
+  PRIMITIVE_RETURN (make_char (bucky_bits, code));
 }
 
-Built_In_Primitive (Prim_Char_Bits, 1, "CHAR-BITS", 0x15)
-Define_Primitive (Prim_Char_Bits, 1, "CHAR-BITS")
+DEFINE_PRIMITIVE ("CHAR-BITS", Prim_Char_Bits, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  return (MAKE_UNSIGNED_FIXNUM (char_bits (Arg1)));
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_bits (ARG_REF (1))));
 }
 
-Built_In_Primitive (Prim_Char_Code, 1, "CHAR-CODE", 0x17)
-Define_Primitive (Prim_Char_Code, 1, "CHAR-CODE")
+DEFINE_PRIMITIVE ("CHAR-CODE", Prim_Char_Code, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  return (MAKE_UNSIGNED_FIXNUM (char_code (Arg1)));
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (char_code (ARG_REF (1))));
 }
 
-Built_In_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER", 0x1B)
-Define_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER")
+DEFINE_PRIMITIVE ("CHAR->INTEGER", Prim_Char_To_Integer, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  return (MAKE_UNSIGNED_FIXNUM (Arg1 & MASK_EXTNDD_CHAR));
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM ((ARG_REF (1)) & MASK_EXTNDD_CHAR));
 }
 
-Built_In_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR", 0x34)
-Define_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR")
+DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_Integer_To_Char, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  return
+  PRIMITIVE_RETURN
     (Make_Non_Pointer (TC_CHARACTER,
 		       (arg_index_integer (1, MAX_EXTNDD_CHAR))));
 }
@@ -133,49 +128,49 @@ char_upcase (c)
   return ((islower (c)) ? ((c - 'a') + 'A') : c);
 }
 
-Built_In_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE", 0x35)
-Define_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE")
+DEFINE_PRIMITIVE ("CHAR-DOWNCASE", Prim_Char_Downcase, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  return (make_char ((char_bits (Arg1)), (char_downcase (char_code (Arg1)))));
+  PRIMITIVE_RETURN
+    (make_char ((char_bits (ARG_REF (1))),
+		(char_downcase (char_code (ARG_REF (1))))));
 }
 
-Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE", 0x36)
-Define_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE")
+DEFINE_PRIMITIVE ("CHAR-UPCASE", Prim_Char_Upcase, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  return (make_char ((char_bits (Arg1)), (char_upcase (char_code (Arg1)))));
+  PRIMITIVE_RETURN
+    (make_char ((char_bits (ARG_REF (1))),
+		(char_upcase (char_code (ARG_REF (1))))));
 }
-
-Built_In_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR", 0x37)
-Define_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR")
+
+DEFINE_PRIMITIVE ("ASCII->CHAR", Prim_Ascii_To_Char, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  return (c_char_to_scheme_char (arg_ascii_integer (1)));
+  PRIMITIVE_RETURN (c_char_to_scheme_char (arg_ascii_integer (1)));
 }
 
-Built_In_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII", 0x39)
-Define_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII")
+DEFINE_PRIMITIVE ("CHAR->ASCII", Prim_Char_To_Ascii, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  return (MAKE_UNSIGNED_FIXNUM (arg_ascii_char (1)));
+  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM (arg_ascii_char (1)));
 }
 
-Built_In_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?", 0x38)
-Define_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?")
+DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_Char_Ascii_P, 1)
 {
   long ascii;
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, CHARACTER_P);
-  ascii = (scheme_char_to_c_char (Arg1));
-  return ((ascii == NOT_ASCII) ? NIL : (MAKE_UNSIGNED_FIXNUM (ascii)));
+  ascii = (scheme_char_to_c_char (ARG_REF (1)));
+  PRIMITIVE_RETURN
+    ((ascii == NOT_ASCII) ? NIL : (MAKE_UNSIGNED_FIXNUM (ascii)));
 }
 
 forward Boolean ascii_control_p();

@@ -30,15 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.43 1987/11/17 08:12:53 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.44 1987/11/23 05:17:30 cph Rel $ */
 
-   Utilities for manipulating symbols. 
- */
+/* Utilities for manipulating symbols. */
 
 #include "scheme.h"
 #include "primitive.h"
 #include "trap.h"
-#include "stringprim.h"
+#include "string.h"
 
 /* Hashing strings and character lists. */
 
@@ -75,7 +74,7 @@ Hash (string)
 }
 
 Boolean
-string_equal(String1, String2)
+string_equal (String1, String2)
      Pointer String1, String2;
 {
   fast char *S1, *S2;
@@ -154,7 +153,7 @@ Intern (Un_Interned)
 }
 
 Pointer 
-string_to_symbol(String)
+string_to_symbol (String)
      Pointer String;
 {
   Pointer New_Symbol, Interned_Symbol, *Orig_Free;
@@ -187,7 +186,7 @@ string_to_symbol(String)
  */
 
 void 
-Find_Symbol(scheme_string)
+Find_Symbol (scheme_string)
      Pointer scheme_string;
 {
   Pointer the_obarray, symbol, *bucket;
@@ -218,15 +217,14 @@ Find_Symbol(scheme_string)
 
 /* (STRING->SYMBOL STRING)
    Similar to INTERN-CHARACTER-LIST, except this one takes a string
-   instead of a list of ascii values as argument.
- */
-Built_In_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL", 0x7)
-Define_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL")
-{
-  Primitive_1_Arg();
+   instead of a list of ascii values as argument.  */
 
-  Arg_1_Type(TC_CHARACTER_STRING);
-  PRIMITIVE_RETURN( string_to_symbol(Arg1));
+DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_String_To_Symbol, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_RETURN (string_to_symbol (ARG_REF (1)));
 }
 
 /* (INTERN-CHARACTER-LIST LIST)
@@ -235,80 +233,72 @@ Define_Primitive(Prim_String_To_Symbol, 1, "STRING->SYMBOL")
    that this is a fairly low-level primitive, and no checking is
    done on the characters except that they are in the range 0 to
    255.  Thus non-printing, lower-case, and special characters can
-   be put into symbols this way.
-*/
+   be put into symbols this way.  */
 
-Built_In_Primitive(Prim_Intern_Character_List, 1,
-		   "INTERN-CHARACTER-LIST", 0xAB)
-Define_Primitive(Prim_Intern_Character_List, 1,
-		   "INTERN-CHARACTER-LIST")
+DEFINE_PRIMITIVE ("INTERN-CHARACTER-LIST", Prim_Intern_Character_List, 1)
 {
   extern Pointer list_to_string();
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN( string_to_symbol(list_to_string(Arg1)));
+  PRIMITIVE_RETURN (string_to_symbol (list_to_string (ARG_REF (1))));
 }
 
 /* (STRING-HASH STRING)
    Return a hash value for a string.  This uses the hashing
    algorithm used for interning symbols.  It is intended for use by
-   the reader in creating interned symbols.
-*/
-Built_In_Primitive(Prim_String_Hash, 1, "STRING-HASH", 0x83)
-Define_Primitive(Prim_String_Hash, 1, "STRING-HASH")
-{
-  Primitive_1_Arg();
+   the reader in creating interned symbols.  */
 
-  Arg_1_Type(TC_CHARACTER_STRING);
-  PRIMITIVE_RETURN( Hash(Arg1));
+DEFINE_PRIMITIVE ("STRING-HASH", Prim_String_Hash, 1)
+{
+  PRIMITIVE_HEADER (1);
+
+  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_RETURN (Hash (ARG_REF (1)));
 }
 
-Built_In_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD", 0x8A)
-Define_Primitive (Prim_string_hash_mod, 2, "STRING-HASH-MOD")
+DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2)
 {
-  Primitive_2_Args ();
-  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_HEADER (2);
 
-  PRIMITIVE_RETURN (MAKE_UNSIGNED_FIXNUM
-		    ((scheme_string_hash (Arg1)) %
-		     (arg_nonnegative_integer (2))));
+  CHECK_ARG (1, STRING_P);
+  PRIMITIVE_RETURN
+    (MAKE_UNSIGNED_FIXNUM
+     ((scheme_string_hash (ARG_REF (1))) %
+      (arg_nonnegative_integer (2))));
 }
 
 /* (CHARACTER-LIST-HASH LIST)
    Takes a list of ASCII codes for characters and returns a hash
    code for them.  This uses the hashing function used to intern
    symbols in Fasload, and is really intended only for that
-   purpose.
-*/
-Built_In_Primitive(Prim_Character_List_Hash, 1,
-		   "CHARACTER-LIST-HASH", 0x65)
-Define_Primitive(Prim_Character_List_Hash, 1,
-		   "CHARACTER-LIST-HASH")
-{ 
+   purpose.  */
+
+DEFINE_PRIMITIVE ("CHARACTER-LIST-HASH", Prim_Character_List_Hash, 1)
+{
+  fast Pointer char_list;
   long Length;
   Pointer This_Char;
   char String[MAX_HASH_CHARS];
-  Primitive_1_Arg();
+  PRIMITIVE_HEADER (1);
 
-  Touch_In_Primitive(Arg1, Arg1);
-  for (Length = 0; Type_Code(Arg1) == TC_LIST; Length++)
-  {
-    if (Length < MAX_HASH_CHARS)
+  char_list = (ARG_REF (1));
+  Touch_In_Primitive (char_list, char_list);
+  for (Length = 0; (PAIR_P (char_list)); Length++)
     {
-      Touch_In_Primitive(Vector_Ref(Arg1, CONS_CAR), This_Char);
-      if (Type_Code(This_Char) != TC_CHARACTER) 
-      {
-        signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
-      }
-      Range_Check(String[Length], This_Char,
-                   '\0', ((char) MAX_CHAR),
-		  ERR_ARG_1_WRONG_TYPE);
-      Touch_In_Primitive(Vector_Ref(Arg1, CONS_CDR), Arg1);
+      if (Length < MAX_HASH_CHARS)
+	{
+	  Touch_In_Primitive
+	    ((Vector_Ref (char_list, CONS_CAR)), This_Char);
+	  if (! (CHARACTER_P (This_Char)))
+	    error_wrong_type_arg (1);
+	  Range_Check((String [Length]), This_Char,
+		      '\0', ((char) MAX_CHAR),
+		      ERR_ARG_1_WRONG_TYPE);
+	  Touch_In_Primitive
+	    ((Vector_Ref (char_list, CONS_CDR)), char_list);
+	}
     }
-  }
-  if (Arg1 != NIL)
-  {
-    signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
-  }
-  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM(Do_Hash(String, Length)));
+  if (char_list != NIL)
+    error_wrong_type_arg (1);
+  PRIMITIVE_RETURN (MAKE_SIGNED_FIXNUM (Do_Hash (String, Length)));
 }

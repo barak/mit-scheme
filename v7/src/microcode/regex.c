@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.4 1987/08/20 21:16:44 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.5 1987/11/23 05:17:44 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,10 +35,8 @@ MIT in each case. */
 /* Regular expression matching and search.
    Translated from GNU Emacs. */
 
-/* This code is not yet tested. -- CPH */
-
 #include "scheme.h"
-#include "character.h"
+#include "char.h"
 #include "syntax.h"
 #include "regex.h"
 

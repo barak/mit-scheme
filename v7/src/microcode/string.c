@@ -30,14 +30,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.28 1987/11/17 08:17:44 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.29 1987/11/23 05:08:56 cph Rel $ */
 
 /* String primitives. */
 
 #include "scheme.h"
 #include "primitive.h"
-#include "character.h"
-#include "stringprim.h"
+#include "char.h"
+#include "string.h"
 
 Pointer
 allocate_string (nbytes)
@@ -73,55 +73,52 @@ memory_to_string (nbytes, data)
 /* Currently the strings used in symbols have type codes in the length
    field.  They should be changed to have just longwords there. */
 
-Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE", 0x13E)
-Define_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE")
+DEFINE_PRIMITIVE ("STRING-ALLOCATE", Prim_String_Allocate, 1)
 {
   PRIMITIVE_HEADER (1);
 
   PRIMITIVE_RETURN (allocate_string (arg_nonnegative_integer (1)));
 }
 
-Built_In_Primitive (Prim_String_P, 1, "STRING?", 0x138)
-Define_Primitive (Prim_String_P, 1, "STRING?")
+DEFINE_PRIMITIVE ("STRING?", Prim_String_P, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN ((STRING_P (Arg1)) ? TRUTH : NIL);
+  PRIMITIVE_RETURN ((STRING_P (ARG_REF (1))) ? TRUTH : NIL);
 }
 
-Built_In_Primitive (Prim_String_Length, 1, "STRING-LENGTH", 0x139)
-Define_Primitive (Prim_String_Length, 1, "STRING-LENGTH")
+DEFINE_PRIMITIVE ("STRING-LENGTH", Prim_String_Length, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (Make_Unsigned_Fixnum (string_length (Arg1)));
+  PRIMITIVE_RETURN (Make_Unsigned_Fixnum (string_length (ARG_REF (1))));
 }
 
-Built_In_Primitive (Prim_String_Maximum_Length, 1,
-		    "STRING-MAXIMUM-LENGTH", 0x13F)
-Define_Primitive (Prim_String_Maximum_Length, 1,
-		    "STRING-MAXIMUM-LENGTH")
+DEFINE_PRIMITIVE ("STRING-MAXIMUM-LENGTH", Prim_String_Maximum_Length, 1)
 {
-  Primitive_1_Arg ();
+  PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
-  PRIMITIVE_RETURN (Make_Unsigned_Fixnum ((maximum_string_length (Arg1)) - 1));
+  PRIMITIVE_RETURN
+    (Make_Unsigned_Fixnum ((maximum_string_length (ARG_REF (1))) - 1));
 }
 
-Built_In_Primitive (Prim_Set_String_Length, 2, "SET-STRING-LENGTH!", 0x140)
-Define_Primitive (Prim_Set_String_Length, 2, "SET-STRING-LENGTH!")
+DEFINE_PRIMITIVE ("SET-STRING-LENGTH!", Prim_Set_String_Length, 2)
 {
-  long length, result;
-  Primitive_2_Args ();
+  fast Pointer string;
+  fast long length;
+  fast long result;
+  PRIMITIVE_HEADER (2);
 
   CHECK_ARG (1, STRING_P);
+  string = (ARG_REF (1));
   length = (arg_nonnegative_integer (2));
-  if (length > (maximum_string_length (Arg1)))
+  if (length > (maximum_string_length (string)))
     error_bad_range_arg (2);
 
-  result = (string_length (Arg1));
-  set_string_length (Arg1, length);
+  result = (string_length (string));
+  set_string_length (string, length);
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (result));
 }
 
@@ -136,136 +133,122 @@ substring_length_min (start1, end1, start2, end2)
   return ((length1 < length2) ? length1 : length2);
 }
 
-#define string_ref_body(process_result)				\
-{								\
-  long index;							\
-  long result;							\
-  Primitive_2_Args ();						\
-								\
-  CHECK_ARG (1, STRING_P);					\
-  index = (arg_index_integer (2, (string_length (Arg1))));	\
-								\
-  PRIMITIVE_RETURN (process_result (string_ref (Arg1, index)));		\
-}
+#define STRING_REF_BODY(process_result)					\
+  fast Pointer string;							\
+  fast long index;							\
+  PRIMITIVE_HEADER (2);							\
+									\
+  CHECK_ARG (1, STRING_P);						\
+  string = (ARG_REF (1));						\
+  index = (arg_index_integer (2, (string_length (string))));		\
+									\
+  PRIMITIVE_RETURN (process_result (string_ref (string, index)))
 
-Built_In_Primitive (Prim_String_Ref, 2, "STRING-REF", 0x13A)
-Define_Primitive (Prim_String_Ref, 2, "STRING-REF")
-  string_ref_body (c_char_to_scheme_char)
+DEFINE_PRIMITIVE ("STRING-REF", Prim_String_Ref, 2)
+{ STRING_REF_BODY (c_char_to_scheme_char); }
 
-Built_In_Primitive (Prim_Vec_8b_Ref, 2, "VECTOR-8B-REF", 0xA5)
-Define_Primitive (Prim_Vec_8b_Ref, 2, "VECTOR-8B-REF")
-  string_ref_body (Make_Unsigned_Fixnum)
+DEFINE_PRIMITIVE ("VECTOR-8B-REF", Prim_Vec_8b_Ref, 2)
+{ STRING_REF_BODY (Make_Unsigned_Fixnum); }
 
-#define string_set_body(get_ascii, process_result)		\
-{								\
-  long index, ascii;						\
-  char *char_pointer;						\
-  Pointer result;						\
-  Primitive_3_Args ();						\
-								\
-  CHECK_ARG (1, STRING_P);					\
-  index = (arg_index_integer (2, (string_length (Arg1))));	\
-  ascii = (get_ascii (3));					\
-								\
-  char_pointer = (string_pointer (Arg1, index));		\
-  result = (char_to_long (*char_pointer));			\
-  *char_pointer = ascii;					\
-  PRIMITIVE_RETURN (process_result (result));				\
-}
+#define STRING_SET_BODY(get_ascii, process_result)			\
+  fast Pointer string;							\
+  fast long index;							\
+  long ascii;								\
+  char *char_pointer;							\
+  Pointer result;							\
+  PRIMITIVE_HEADER (3);							\
+									\
+  CHECK_ARG (1, STRING_P);						\
+  string = (ARG_REF (1));						\
+  index = (arg_index_integer (2, (string_length (string))));		\
+  ascii = (get_ascii (3));						\
+									\
+  char_pointer = (string_pointer (string, index));			\
+  result = (char_to_long (*char_pointer));				\
+  (*char_pointer) = ascii;						\
+  PRIMITIVE_RETURN (process_result (result))
 
-Built_In_Primitive (Prim_String_Set, 3, "STRING-SET!", 0x13B)
-Define_Primitive (Prim_String_Set, 3, "STRING-SET!")
-  string_set_body (arg_ascii_char, c_char_to_scheme_char)
+DEFINE_PRIMITIVE ("STRING-SET!", Prim_String_Set, 3)
+{ STRING_SET_BODY (arg_ascii_char, c_char_to_scheme_char); }
 
-Built_In_Primitive (Prim_Vec_8b_Set, 3, "VECTOR-8B-SET!", 0xA6)
-Define_Primitive (Prim_Vec_8b_Set, 3, "VECTOR-8B-SET!")
-  string_set_body (arg_ascii_integer, MAKE_UNSIGNED_FIXNUM)
+DEFINE_PRIMITIVE ("VECTOR-8B-SET!", Prim_Vec_8b_Set, 3)
+{ STRING_SET_BODY (arg_ascii_integer, MAKE_UNSIGNED_FIXNUM); }
 
-#define substring_move_prefix()					\
-  long start1, end1, start2, end2, length;			\
-  fast char *scan1, *scan2;					\
-  Primitive_5_Args ();						\
-								\
-  CHECK_ARG (1, STRING_P);					\
-  start1 = (arg_nonnegative_integer (2));			\
-  end1 = (arg_nonnegative_integer (3));				\
-  CHECK_ARG (4, STRING_P);					\
-  start2 = (arg_nonnegative_integer (5));			\
-								\
-  if (end1 > (string_length (Arg1)))				\
-    error_bad_range_arg (2);					\
-  if (start1 > end1)						\
-    error_bad_range_arg (1);					\
-  length = (end1 - start1);					\
-								\
-  end2 = (start2 + length);					\
-  if (end2 > (string_length (Arg4)))				\
-    error_bad_range_arg (3);
+#define SUBSTRING_MOVE_PREFIX()						\
+  long start1, end1, start2, end2, length;				\
+  fast char *scan1, *scan2;						\
+  PRIMITIVE_HEADER (5);							\
+									\
+  CHECK_ARG (1, STRING_P);						\
+  start1 = (arg_nonnegative_integer (2));				\
+  end1 = (arg_nonnegative_integer (3));					\
+  CHECK_ARG (4, STRING_P);						\
+  start2 = (arg_nonnegative_integer (5));				\
+									\
+  if (end1 > (string_length (ARG_REF (1))))				\
+    error_bad_range_arg (2);						\
+  if (start1 > end1)							\
+    error_bad_range_arg (1);						\
+  length = (end1 - start1);						\
+									\
+  end2 = (start2 + length);						\
+  if (end2 > (string_length (ARG_REF (4))))				\
+    error_bad_range_arg (3)
 
-Built_In_Primitive (Prim_Substring_Move_Right, 5,
-		    "SUBSTRING-MOVE-RIGHT!", 0x13C)
-Define_Primitive (Prim_Substring_Move_Right, 5,
-		    "SUBSTRING-MOVE-RIGHT!")
+DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_Substring_Move_Right, 5)
 {
-  substring_move_prefix()
+  SUBSTRING_MOVE_PREFIX ();
 
-  scan1 = (string_pointer (Arg1, end1));
-  scan2 = (string_pointer (Arg4, end2));
-  while (length-- > 0)
-    *--scan2 = *--scan1;
+  scan1 = (string_pointer ((ARG_REF (1)), end1));
+  scan2 = (string_pointer ((ARG_REF (4)), end2));
+  while ((length--) > 0)
+    (*--scan2) = (*--scan1);
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive (Prim_Substring_Move_Left, 5,
-		    "SUBSTRING-MOVE-LEFT!", 0x13D)
-Define_Primitive (Prim_Substring_Move_Left, 5,
-		    "SUBSTRING-MOVE-LEFT!")
+DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_Substring_Move_Left, 5)
 {
-  substring_move_prefix()
+  SUBSTRING_MOVE_PREFIX ();
 
-  scan1 = (string_pointer (Arg1, start1));
-  scan2 = (string_pointer (Arg4, start2));
-  while (length-- > 0)
-    *scan2++ = *scan1++;
+  scan1 = (string_pointer ((ARG_REF (1)), start1));
+  scan2 = (string_pointer ((ARG_REF (4)), start2));
+  while ((length--) > 0)
+    (*scan2++) = (*scan1++);
   PRIMITIVE_RETURN (NIL);
 }
 
-#define vector_8b_substring_prefix()				\
-  long start, end, ascii;					\
-  long length;							\
-  char *scan;							\
-  Primitive_4_Args ();						\
-								\
-  CHECK_ARG (1, STRING_P);					\
-  start = (arg_nonnegative_integer (2));			\
-  end = (arg_nonnegative_integer (3));				\
-  ascii = (arg_ascii_integer (4));				\
-								\
-  if (end > (string_length (Arg1)))				\
-    error_bad_range_arg (3);					\
-  if (start > end)						\
-    error_bad_range_arg (2);
+#define VECTOR_8B_SUBSTRING_PREFIX()					\
+  long start, end, ascii;						\
+  fast long length;							\
+  fast char *scan;							\
+  PRIMITIVE_HEADER (4);							\
+									\
+  CHECK_ARG (1, STRING_P);						\
+  start = (arg_nonnegative_integer (2));				\
+  end = (arg_nonnegative_integer (3));					\
+  ascii = (arg_ascii_integer (4));					\
+									\
+  if (end > (string_length (ARG_REF (1))))				\
+    error_bad_range_arg (3);						\
+  if (start > end)							\
+    error_bad_range_arg (2)
 
-Built_In_Primitive (Prim_Vec_8b_Fill, 4, "VECTOR-8B-FILL!", 0x141)
-Define_Primitive (Prim_Vec_8b_Fill, 4, "VECTOR-8B-FILL!")
+DEFINE_PRIMITIVE ("VECTOR-8B-FILL!", Prim_Vec_8b_Fill, 4)
 {
-  vector_8b_substring_prefix ();
+  VECTOR_8B_SUBSTRING_PREFIX ();
 
   length = (end - start);
-  scan = (string_pointer (Arg1, start));
-  while (length-- > 0)
-    *scan++ = ascii;
+  scan = (string_pointer ((ARG_REF (1)), start));
+  while ((length--) > 0)
+    (*scan++) = ascii;
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive (Prim_Vec_8b_Find_Next_Char, 4,
-		    "VECTOR-8B-FIND-NEXT-CHAR", 0x142)
-Define_Primitive (Prim_Vec_8b_Find_Next_Char, 4,
-		    "VECTOR-8B-FIND-NEXT-CHAR")
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR", Prim_Vec_8b_Find_Next_Char, 4)
 {
-  vector_8b_substring_prefix ();
+  VECTOR_8B_SUBSTRING_PREFIX ();
 
-  scan = (string_pointer (Arg1, start));
+  scan = (string_pointer ((ARG_REF (1)), start));
   while (start < end)
     {
       if ((char_to_long (*scan++)) == ascii)
@@ -275,29 +258,23 @@ Define_Primitive (Prim_Vec_8b_Find_Next_Char, 4,
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive (Prim_Vec_8b_Find_Prev_Char, 4,
-		    "VECTOR-8B-FIND-PREVIOUS-CHAR", 0x143)
-Define_Primitive (Prim_Vec_8b_Find_Prev_Char, 4,
-		    "VECTOR-8B-FIND-PREVIOUS-CHAR")
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR", Prim_Vec_8b_Find_Prev_Char, 4)
 {
-  vector_8b_substring_prefix ();
+  VECTOR_8B_SUBSTRING_PREFIX ();
 
-  scan = (string_pointer (Arg1, end));
-  while (end-- > start)
+  scan = (string_pointer ((ARG_REF (1)), end));
+  while ((end--) > start)
     if ((char_to_long (*--scan)) == ascii)
       PRIMITIVE_RETURN (Make_Unsigned_Fixnum (end));
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive(Prim_Vec_8b_Find_Next_Char_Ci, 4,
-		   "VECTOR-8B-FIND-NEXT-CHAR-CI", 0x144)
-Define_Primitive(Prim_Vec_8b_Find_Next_Char_Ci, 4,
-		   "VECTOR-8B-FIND-NEXT-CHAR-CI")
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-NEXT-CHAR-CI", Prim_Vec_8b_Find_Next_Char_Ci, 4)
 {
   char char1;
-  vector_8b_substring_prefix ();
+  VECTOR_8B_SUBSTRING_PREFIX ();
 
-  scan = (string_pointer (Arg1, start));
+  scan = (string_pointer ((ARG_REF (1)), start));
   char1 = (char_upcase (ascii));
   while (start < end)
     {
@@ -308,17 +285,14 @@ Define_Primitive(Prim_Vec_8b_Find_Next_Char_Ci, 4,
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
-		   "VECTOR-8B-FIND-PREVIOUS-CHAR-CI", 0x145)
-Define_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
-		   "VECTOR-8B-FIND-PREVIOUS-CHAR-CI")
+DEFINE_PRIMITIVE ("VECTOR-8B-FIND-PREVIOUS-CHAR-CI", Prim_Vec_8b_Find_Prev_Char_Ci, 4)
 {
   char char1;
-  vector_8b_substring_prefix ();
+  VECTOR_8B_SUBSTRING_PREFIX ();
 
-  scan = (string_pointer (Arg1, end));
+  scan = (string_pointer ((ARG_REF (1)), end));
   char1 = (char_upcase (ascii));
-  while (end-- > start)
+  while ((end--) > start)
     {
       if ((char_upcase (*--scan)) == char1)
 	PRIMITIVE_RETURN (Make_Unsigned_Fixnum (end));
@@ -326,32 +300,29 @@ Define_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
   PRIMITIVE_RETURN (NIL);
 }
 
-#define substr_find_char_in_set_prefix()			\
-  long start, end, length;					\
-  char *char_set, *scan;					\
-  Primitive_4_Args ();						\
-								\
-  CHECK_ARG (1, STRING_P);					\
-  start = (arg_nonnegative_integer (2));			\
-  end = (arg_nonnegative_integer (3));				\
-  CHECK_ARG (4, STRING_P);					\
-								\
-  if (end > (string_length (Arg1)))				\
-    error_bad_range_arg (3);					\
-  if (start > end)						\
-    error_bad_range_arg (2);					\
-  if ((string_length (Arg4)) != MAX_ASCII)			\
-    error_bad_range_arg (4);
+#define SUBSTR_FIND_CHAR_IN_SET_PREFIX()				\
+  long start, end, length;						\
+  char *char_set, *scan;						\
+  PRIMITIVE_HEADER (4);							\
+									\
+  CHECK_ARG (1, STRING_P);						\
+  start = (arg_nonnegative_integer (2));				\
+  end = (arg_nonnegative_integer (3));					\
+  CHECK_ARG (4, STRING_P);						\
+									\
+  if (end > (string_length (ARG_REF (1))))				\
+    error_bad_range_arg (3);						\
+  if (start > end)							\
+    error_bad_range_arg (2);						\
+  if ((string_length (ARG_REF (4))) != MAX_ASCII)			\
+    error_bad_range_arg (4)
 
-Built_In_Primitive(Prim_Find_Next_Char_In_Set, 4,
-		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET", 0x146)
-Define_Primitive(Prim_Find_Next_Char_In_Set, 4,
-		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET")
+DEFINE_PRIMITIVE ("SUBSTRING-FIND-NEXT-CHAR-IN-SET", Prim_Find_Next_Char_In_Set, 4)
 {
-  substr_find_char_in_set_prefix ();
+  SUBSTR_FIND_CHAR_IN_SET_PREFIX ();
 
-  char_set = (Scheme_String_To_C_String (Arg4));
-  scan = (string_pointer (Arg1, start));
+  char_set = (Scheme_String_To_C_String (ARG_REF (4)));
+  scan = (string_pointer ((ARG_REF (1)), start));
   while (start < end)
     {
       if (char_set[(char_to_long (*scan++))] != '\0')
@@ -361,25 +332,22 @@ Define_Primitive(Prim_Find_Next_Char_In_Set, 4,
   PRIMITIVE_RETURN (NIL);
 }
 
-Built_In_Primitive(Prim_Find_Prev_Char_In_Set, 4,
-		   "SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", 0x147)
-Define_Primitive(Prim_Find_Prev_Char_In_Set, 4,
-		   "SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET")
+DEFINE_PRIMITIVE ("SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", Prim_Find_Prev_Char_In_Set, 4)
 {
-  substr_find_char_in_set_prefix ();
+  SUBSTR_FIND_CHAR_IN_SET_PREFIX ();
 
-  char_set = Scheme_String_To_C_String(Arg4);
-  scan = (string_pointer (Arg1, end));
+  char_set = Scheme_String_To_C_String(ARG_REF (4));
+  scan = (string_pointer ((ARG_REF (1)), end));
   while (end-- > start)
     if (char_set[(char_to_long (*--scan))] != '\0')
       PRIMITIVE_RETURN (Make_Unsigned_Fixnum (end));
   PRIMITIVE_RETURN (NIL);
 }
 
-#define substring_compare_prefix(index1, index2)		\
+#define SUBSTRING_COMPARE_PREFIX(index1, index2)		\
   long start1, end1, start2, end2;				\
-  char *scan1, *scan2;						\
-  Primitive_6_Args ();						\
+  fast char *scan1, *scan2;					\
+  PRIMITIVE_HEADER (6);						\
 								\
   CHECK_ARG (1, STRING_P);					\
   start1 = (arg_nonnegative_integer (2));			\
@@ -388,54 +356,51 @@ Define_Primitive(Prim_Find_Prev_Char_In_Set, 4,
   start2 = (arg_nonnegative_integer (5));			\
   end2 = (arg_nonnegative_integer (6));				\
 								\
-  if (end1 > (string_length (Arg1)))				\
+  if (end1 > (string_length (ARG_REF (1))))			\
     error_bad_range_arg (3);					\
   if (start1 > end1)						\
     error_bad_range_arg (2);					\
 								\
-  if (end2 > (string_length (Arg4)))				\
+  if (end2 > (string_length (ARG_REF (4))))			\
     error_bad_range_arg (6);					\
   if (start2 > end2)						\
     error_bad_range_arg (5);					\
 								\
-  scan1 = (string_pointer (Arg1, index1));			\
-  scan2 = (string_pointer (Arg4, index2));
+  scan1 = (string_pointer ((ARG_REF (1)), index1));		\
+  scan2 = (string_pointer ((ARG_REF (4)), index2))
 
-#define substring_equal_prefix()				\
+#define SUBSTRING_EQUAL_PREFIX()				\
   long length;							\
-  substring_compare_prefix (start1, start2);			\
+  SUBSTRING_COMPARE_PREFIX (start1, start2);			\
 								\
   length = (end1 - start1);					\
   if (length != (end2 - start2))				\
     PRIMITIVE_RETURN (NIL);
 
-Built_In_Primitive(Prim_Substring_Equal, 6, "SUBSTRING=?", 0x148)
-Define_Primitive(Prim_Substring_Equal, 6, "SUBSTRING=?")
+DEFINE_PRIMITIVE ("SUBSTRING=?", Prim_Substring_Equal, 6)
 {
-  substring_equal_prefix ();
+  SUBSTRING_EQUAL_PREFIX ();
 
-  while (length-- > 0)
+  while ((length--) > 0)
     if ((*scan1++) != (*scan2++))
       PRIMITIVE_RETURN (NIL);
   PRIMITIVE_RETURN (TRUTH);
 }
 
-Built_In_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?", 0x149)
-Define_Primitive(Prim_Substring_Ci_Equal, 6, "SUBSTRING-CI=?")
+DEFINE_PRIMITIVE ("SUBSTRING-CI=?", Prim_Substring_Ci_Equal, 6)
 {
-  substring_equal_prefix ();
+  SUBSTRING_EQUAL_PREFIX ();
 
-  while (length-- > 0)
+  while ((length--) > 0)
     if ((char_upcase (*scan1++)) != (char_upcase (*scan2++)))
       PRIMITIVE_RETURN (NIL);
   PRIMITIVE_RETURN (TRUTH);
 }
 
-Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?", 0x14A)
-Define_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
+DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_Substring_Less, 6)
 {
   long length, length1, length2;
-  substring_compare_prefix (start1, start2);
+  SUBSTRING_COMPARE_PREFIX (start1, start2);
 
   length1 = (end1 - start1);
   length2 = (end2 - start2);
@@ -443,12 +408,11 @@ Define_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
 
   while ((length--) > 0)
     if ((*scan1++) != (*scan2++))
-      PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((scan1[-1]) < (scan2[-1])));
+      PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((scan1 [-1]) < (scan2 [-1])));
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (length1 < length2));
 }
 
 #define SUBSTRING_MODIFIER(char_map)					\
-{									\
   Pointer string;							\
   long start, end;							\
   fast long length;							\
@@ -472,30 +436,24 @@ Define_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?")
       temp = (*scan);							\
       (*scan++) = (char_map (temp));					\
     }									\
-  PRIMITIVE_RETURN (NIL);						\
-}
+  PRIMITIVE_RETURN (NIL)
 
-Built_In_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!", 0x14B)
-Define_Primitive(Prim_Substring_Upcase, 3, "SUBSTRING-UPCASE!")
-  SUBSTRING_MODIFIER (char_upcase)
+DEFINE_PRIMITIVE ("SUBSTRING-UPCASE!", Prim_Substring_Upcase, 3)
+{ SUBSTRING_MODIFIER (char_upcase); }
 
-Built_In_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!", 0x14C)
-Define_Primitive(Prim_Substring_Downcase, 3, "SUBSTRING-DOWNCASE!")
-  SUBSTRING_MODIFIER (char_downcase)
+DEFINE_PRIMITIVE ("SUBSTRING-DOWNCASE!", Prim_Substring_Downcase, 3)
+{ SUBSTRING_MODIFIER (char_downcase); }
 
-#define substring_match_prefix(index1, index2)			\
+#define SUBSTRING_MATCH_PREFIX(index1, index2)			\
   long length, unmatched;					\
-  substring_compare_prefix (index1, index2);			\
+  SUBSTRING_COMPARE_PREFIX (index1, index2);			\
 								\
   length = (substring_length_min (start1, end1, start2, end2));	\
   unmatched = length;
 
-Built_In_Primitive (Prim_Match_Forward, 6,
-		    "SUBSTRING-MATCH-FORWARD", 0x14D)
-Define_Primitive (Prim_Match_Forward, 6,
-		    "SUBSTRING-MATCH-FORWARD")
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD", Prim_Match_Forward, 6)
 {
-  substring_match_prefix (start1, start2);
+  SUBSTRING_MATCH_PREFIX (start1, start2);
 
   while (unmatched-- > 0)
     if ((*scan1++) != (*scan2++))
@@ -503,12 +461,9 @@ Define_Primitive (Prim_Match_Forward, 6,
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive (Prim_Match_Forward_Ci, 6,
-		   "SUBSTRING-MATCH-FORWARD-CI", 0x14F)
-Define_Primitive (Prim_Match_Forward_Ci, 6,
-		   "SUBSTRING-MATCH-FORWARD-CI")
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-FORWARD-CI", Prim_Match_Forward_Ci, 6)
 {
-  substring_match_prefix (start1, start2);
+  SUBSTRING_MATCH_PREFIX (start1, start2);
 
   while (unmatched-- > 0)
     if ((char_upcase (*scan1++)) != (char_upcase (*scan2++)))
@@ -516,12 +471,9 @@ Define_Primitive (Prim_Match_Forward_Ci, 6,
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive (Prim_Match_Backward, 6,
-		   "SUBSTRING-MATCH-BACKWARD", 0x14E)
-Define_Primitive (Prim_Match_Backward, 6,
-		   "SUBSTRING-MATCH-BACKWARD")
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD", Prim_Match_Backward, 6)
 {
-  substring_match_prefix (end1, end2);
+  SUBSTRING_MATCH_PREFIX (end1, end2);
 
   while (unmatched-- > 0)
     if ((*--scan1) != (*--scan2))
@@ -529,12 +481,9 @@ Define_Primitive (Prim_Match_Backward, 6,
   PRIMITIVE_RETURN (Make_Unsigned_Fixnum (length));
 }
 
-Built_In_Primitive(Prim_Match_Backward_Ci, 6,
-		   "SUBSTRING-MATCH-BACKWARD-CI", 0x150)
-Define_Primitive(Prim_Match_Backward_Ci, 6,
-		   "SUBSTRING-MATCH-BACKWARD-CI")
+DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD-CI", Prim_Match_Backward_Ci, 6)
 {
-  substring_match_prefix (end1, end2);
+  SUBSTRING_MATCH_PREFIX (end1, end2);
 
   while (unmatched-- > 0)
     if ((char_upcase (*--scan1)) != (char_upcase (*--scan2)))

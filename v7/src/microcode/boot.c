@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.41 1987/11/18 19:31:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.42 1987/11/23 05:16:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -80,7 +80,8 @@ for details.  They are created by defining a macro Command_Line_Args.
 #include "scheme.h"
 #include "primitive.h"
 #include "version.h"
-#include "character.h"
+#include "char.h"
+#include "string.h"
 #ifndef islower
 #include <ctype.h>
 #endif
@@ -610,123 +611,91 @@ Microcode_Termination(code)
 #define ID_OS_NAME		8		/* OS name (string) */
 #define ID_OS_VARIANT		9		/* OS variant (string) */
 
-Built_In_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY", 0xE5)
-Define_Primitive (Prim_Microcode_Identify, 0, "MICROCODE-IDENTIFY")
+DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_Microcode_Identify, 0)
 {
-  Pointer *Result;
-  long i;
-  Primitive_0_Args ();
+  extern Pointer make_vector ();
+  fast Pointer Result;
+  PRIMITIVE_HEADER (0);
 
-  Primitive_GC_If_Needed (IDENTITY_LENGTH + VECTOR_DATA);
-  Result = Free;
-  *Free++ = (Make_Non_Pointer (TC_MANIFEST_VECTOR, IDENTITY_LENGTH));
-  for (i = 0; (i < IDENTITY_LENGTH); i += 1)
-  {
-    *Free++ = NIL;
-  }
-  Result[(ID_RELEASE + VECTOR_DATA)]
-    = (C_String_To_Scheme_String (RELEASE));
-  Result[(ID_MICRO_VERSION + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (VERSION));
-  Result[(ID_MICRO_MOD + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (SUBVERSION));
-  Result[(ID_PRINTER_WIDTH + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (NColumns ()));
-  Result[(ID_PRINTER_LENGTH + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (NLines ()));
-  Result[(ID_NEW_LINE_CHARACTER + VECTOR_DATA)]
-    = (c_char_to_scheme_char ('\n'));
-  Result[(ID_FLONUM_PRECISION + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (FLONUM_MANTISSA_BITS));
-  Result[(ID_FLONUM_EXPONENT + VECTOR_DATA)]
-    = (Make_Unsigned_Fixnum (FLONUM_EXPT_SIZE));
-  Result[(ID_OS_NAME + VECTOR_DATA)]
-    = (C_String_To_Scheme_String (OS_Name));
-  Result[(ID_OS_VARIANT + VECTOR_DATA)]
-    = (C_String_To_Scheme_String (OS_Variant));
-  PRIMITIVE_RETURN(Make_Pointer (TC_VECTOR, Result));
+  Result = (make_vector (IDENTITY_LENGTH, NIL));
+  User_Vector_Set
+    (Result, ID_RELEASE, (C_String_To_Scheme_String (RELEASE)));
+  User_Vector_Set
+    (Result, ID_MICRO_VERSION, (MAKE_UNSIGNED_FIXNUM (VERSION)));
+  User_Vector_Set
+    (Result, ID_MICRO_MOD, (MAKE_UNSIGNED_FIXNUM (SUBVERSION)));
+  User_Vector_Set
+    (Result, ID_PRINTER_WIDTH, (MAKE_UNSIGNED_FIXNUM (NColumns ())));
+  User_Vector_Set
+    (Result, ID_PRINTER_LENGTH, (MAKE_UNSIGNED_FIXNUM (NLines ())));
+  User_Vector_Set
+    (Result, ID_NEW_LINE_CHARACTER, (c_char_to_scheme_char ('\n')));
+  User_Vector_Set
+    (Result, ID_FLONUM_PRECISION,
+     (MAKE_UNSIGNED_FIXNUM (FLONUM_MANTISSA_BITS)));
+  User_Vector_Set
+    (Result, ID_FLONUM_EXPONENT, (MAKE_UNSIGNED_FIXNUM (FLONUM_EXPT_SIZE)));
+  User_Vector_Set
+    (Result, ID_OS_NAME, (C_String_To_Scheme_String (OS_Name)));
+  User_Vector_Set
+    (Result, ID_OS_VARIANT, (C_String_To_Scheme_String (OS_Variant)));
+  PRIMITIVE_RETURN (Result);
 }
 
-Built_In_Primitive(Prim_Microcode_Tables_Filename,
-		   0, "MICROCODE-TABLES-FILENAME", 0x180)
-Define_Primitive(Prim_Microcode_Tables_Filename,
-		   0, "MICROCODE-TABLES-FILENAME")
+DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_Microcode_Tables_Filename, 0)
 {
   fast char *From, *To;
   char *Prefix, *Suffix;
   fast long Count;
   long position;
+  extern Pointer allocate_string ();
   Pointer Result;
-  Primitive_0_Args();
+  PRIMITIVE_HEADER (0);
 
-  if ((((position = Parse_Option("-utabmd", Saved_argc, Saved_argv, true))
+  if ((((position = (Parse_Option ("-utabmd", Saved_argc, Saved_argv, true)))
 	!= NOT_THERE) &&
        (position != (Saved_argc - 1))) ||
-      (((position = Parse_Option("-utab", Saved_argc, Saved_argv, true))
+      (((position = (Parse_Option ("-utab", Saved_argc, Saved_argv, true)))
 	!= NOT_THERE) &&
        (position != (Saved_argc - 1))))
-  {
-    Prefix = "";
-    Suffix = Saved_argv[position + 1];
-  }
+    {
+      Prefix = "";
+      Suffix = (Saved_argv [(position + 1)]);
+    }
   else
-  {
-    Prefix = SCHEME_SOURCES_PATH;
-    Suffix = UCODE_TABLES_FILENAME;
-  }
-
+    {
+      Prefix = SCHEME_SOURCES_PATH;
+      Suffix = UCODE_TABLES_FILENAME;
+    }
+
   /* Find the length of the combined string, and allocate. */
 
   Count = 0;
-  for (From = Prefix; *From++ != '\0'; )
-  {
+  for (From = Prefix; ((*From++) != '\0'); )
     Count += 1;
-  }
-  for (From = Suffix; *From++ != '\0'; )
-  {
+  for (From = Suffix; ((*From++) != '\0'); )
     Count += 1;
-  }
-  Primitive_GC_If_Needed(STRING_CHARS +
-			 ((Count + sizeof(Pointer)) /
-			  sizeof(Pointer)));
 
   /* Append both substrings. */
 
-  Result = Make_Pointer(TC_CHARACTER_STRING, Free);
-  To = (char *) &(Free[STRING_CHARS]);
-  for (From = &(Prefix[0]); *From != '\0'; )
-  {
-    *To++ = *From++;
-  }
-  for (From = &(Suffix[0]); *From != '\0'; )
-  {
-    *To++ = *From++;
-  }
-  *To = '\0';
-  Free += STRING_CHARS + ((Count + sizeof(Pointer)) / sizeof(Pointer));
-  Vector_Set(Result, STRING_LENGTH, ((Pointer) Count));
-  Vector_Set(Result, STRING_HEADER,
-    Make_Non_Pointer(TC_MANIFEST_NM_VECTOR,
-		     ((Free - Get_Pointer(Result)) - 1)));
-  PRIMITIVE_RETURN(Result);
+  Result = (allocate_string (Count));
+  To = (string_pointer (Result, 0));
+  for (From = (& (Prefix [0])); ((*From) != '\0'); )
+    (*To++) = (*From++);
+  for (From = (& (Suffix [0])); ((*From) != '\0'); )
+    (*To++) = (*From++);
+  PRIMITIVE_RETURN (Result);
 }
 
-Built_In_Primitive(Prim_Get_Command_Line, 0, "GET-COMMAND-LINE", 0x25)
-Define_Primitive(Prim_Get_Command_Line, 0, "GET-COMMAND-LINE")
+DEFINE_PRIMITIVE ("GET-COMMAND-LINE", Prim_Get_Command_Line, 0)
 {
   fast int i;
-  Pointer result;
-  Primitive_0_Args();
+  fast Pointer result;
+  extern Pointer allocate_marked_vector ();
+  PRIMITIVE_HEADER (0);
 
-  Primitive_GC_If_Needed(1 + Saved_argc);
-
-  result = Make_Pointer(TC_VECTOR, Free);
-  *Free = Make_Non_Pointer(TC_MANIFEST_VECTOR, Saved_argc);
-  Free += (1 + Saved_argc);
-
-  for (i = 0; i < Saved_argc; i++)
-  {
-    User_Vector_Set(result, i, C_String_To_Scheme_String(Saved_argv[i]));
-  }
-  PRIMITIVE_RETURN(result);
+  result = (allocate_marked_vector (TC_VECTOR, Saved_argc, true));
+  for (i = 0; (i < Saved_argc); i += 1)
+    User_Vector_Set (result, i, (C_String_To_Scheme_String (Saved_argv [i])));
+  PRIMITIVE_RETURN (result);
 }

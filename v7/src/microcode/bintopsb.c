@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.30 1987/11/20 08:21:12 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bintopsb.c,v 9.31 1987/11/23 05:11:12 cph Exp $
  *
  * This File contains the code to translate internal format binary
  * files to portable format.
@@ -42,7 +42,7 @@ MIT in each case. */
 #define Internal_File Input_File
 #define Portable_File Output_File
 
-#include "translate.h"
+#include "psbmap.h"
 #include "trap.h"
 
 long

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.29 1987/11/20 08:20:36 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.30 1987/11/23 05:11:58 cph Exp $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -42,7 +42,7 @@ MIT in each case. */
 #define Portable_File Input_File
 #define Internal_File Output_File
 
-#include "translate.h"
+#include "psbmap.h"
 
 static long
   Dumped_Object_Addr,
