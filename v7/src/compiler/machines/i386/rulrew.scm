@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.8 1992/02/18 21:57:31 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulrew.scm,v 1.9 1992/02/18 22:57:48 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rulrew.scm,v 1.4 1991/10/25 06:50:06 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -260,10 +260,15 @@ MIT in each case. |#
   (QUALIFIER (rtl:constant-flonum-test operand-1 flo:zero?))
   (list 'FLONUM-PRED-2-ARGS predicate operand-1 operand-2))
 
+#|
+;; These don't work as written.  They are not simplified and are
+;; therefore passed whole to the back end, and there is no way to
+;; construct the graph at this level.
+
 ;; acos (x) = atan ((sqrt (1 - x^2)) / x)
 
 (define-rule add-pre-cse-rewriting-rule!
-  (FLONUM-1-ARG FLONUM-ACOS (register (? operand)))
+  (FLONUM-1-ARG FLONUM-ACOS (? operand) #f)
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
    (rtl:make-flonum-1-arg
@@ -280,7 +285,7 @@ MIT in each case. |#
 ;; asin (x) = atan (x / (sqrt (1 - x^2)))
 
 (define-rule add-pre-cse-rewriting-rule!
-  (FLONUM-1-ARG FLONUM-ASIN (register (? operand)))
+  (FLONUM-1-ARG FLONUM-ASIN (? operand) #f)
   (rtl:make-flonum-2-args
    'FLONUM-ATAN2
    operand
@@ -293,6 +298,8 @@ MIT in each case. |#
      false)
     false)
    false))
+
+|#
 
 (define (rtl:constant-flonum-test expression predicate)
   (and (rtl:object->float? expression)
