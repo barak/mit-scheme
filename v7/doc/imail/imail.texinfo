@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.19 2000/12/21 05:49:01 cph Exp $
+@comment $Id: imail.texinfo,v 1.20 2000/12/29 03:56:18 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.3 for IMAIL Version 1.7
-@subtitle 20 December 2000
+@subtitle Edition 1.4 for IMAIL Version 1.8
+@subtitle 28 December 2000
 @author by Chris Hanson
 
 @page
@@ -910,16 +910,19 @@ partly because these messages can be arbitrarily complex in their
 internal structure.  @acronym{IMAIL} provides several variables that
 give you some control over the formatting prcess.
 
-@vindex imail-use-original-mime-boundaries
+@vindex imail-mime-boundary-style
 Many @acronym{MIME} messages have multiple parts; for example, a message
 with an attachment normally contains at least two parts: the message
-text and the attachment.  By default, @acronym{IMAIL} displays these
-parts separated by long lines of hyphen characters.  However,
-@acronym{MIME} specifies particular kinds of separators, called
-@dfn{boundaries}, that have certain useful syntactic properties.
-@acronym{IMAIL} allows you to use the original @acronym{MIME} boundaries
-rather than the hyphen lines, by setting the variable
-@code{imail-use-original-mime-boundaries} to @code{#t}.
+text and the attachment.  @acronym{IMAIL} separates the different parts
+of a @acronym{MIME} message with specially-formatted lines.  There are
+several styles of separator lines available, selected by changing the
+value of the variable @code{imail-mime-boundary-style}.  The default
+value of @code{simple} means to use long lines of hyphen characters as
+the separator lines.  A value of @code{sgml} means use long lines of
+hyphens that are wrapped with @samp{<!--} and @samp{-->}, which makes
+them valid @acronym{SGML} comments.  A value of @code{original} means to
+use the original @acronym{MIME} @dfn{boundaries}, which have certain
+useful syntactic properties but are not as visually distinctive.
 
 @vindex imail-mime-show-alternatives
 @acronym{MIME} also specifies a particular kind of multipart message, of
@@ -931,6 +934,21 @@ parts (which is almost always plain text) and suppresses the
 alternatives.  However, if you set the variable
 @code{imail-mime-show-alternatives} to @code{#t}, @acronym{IMAIL} will
 show these alternative forms as attachments.
+
+@vindex imail-mime-collapse-digest
+Another kind of multipart @acronym{MIME} message is the digest message,
+which has type @samp{multipart/@-digest}.  Digest messages are normally
+used by high-volume mailing lists to reduce the number of messages sent
+to the end user; instead the user receives one message containing all of
+the messages from that group in a particular time period, usually a day.
+@acronym{IMAIL} can present @acronym{MIME} digest messages in one of two
+formats.  The default format is to show all of the component messages of
+the digest as attachments.  This is particularly useful for large
+digests that you will only read a few messages from, since you can scan
+the digest contents for interesting messages without downloading all of
+the messages in the digest.  In the alternative format, selected by
+setting @code{imail-mime-collapse-digest} to @code{#f}, the component
+messages of a digest are all shown inline.
 
 As a general rule, any @acronym{MIME} entity that contains non-textual
 information is displayed as an attachment.  Attachments are normally
