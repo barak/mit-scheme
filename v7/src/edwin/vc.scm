@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.31 1999/02/01 03:46:35 cph Exp $
+;;; $Id: vc.scm,v 1.32 2000/03/10 20:52:25 cph Exp $
 ;;;
-;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -295,7 +295,7 @@ lock steals will raise an error.
 			    value
 			    (value))))
 		 (not (vc-workfile-modified? master))
-		 (= 0 (vc-backend-diff master #f #f)))
+		 (= 0 (vc-backend-diff master #f #f #t)))
 	     (do-it))
 	    ((cleanup-pop-up-buffers
 	      (lambda ()
@@ -422,7 +422,7 @@ files in or below it."
 	(rev2 (vc-normalize-version rev2)))
     (let ((rev1 (if (or rev1 rev2) rev1 (vc-workfile-version master))))
       (if (and (or rev1 rev2 (not (vc-workfile-modified? master)))
-	       (= 0 (vc-backend-diff master rev1 rev2)))
+	       (= 0 (vc-backend-diff master rev1 rev2 #f)))
 	  (begin
 	    (message "No changes to "
 		     (vc-workfile-string master)
@@ -926,8 +926,8 @@ the value of vc-log-mode-hook."
 (define (vc-backend-logentry-check master log-buffer)
   (vc-call 'LOGENTRY-CHECK master log-buffer))
 
-(define (vc-backend-diff master rev1 rev2)
-  (vc-call 'DIFF master rev1 rev2))
+(define (vc-backend-diff master rev1 rev2 simple?)
+  (vc-call 'DIFF master rev1 rev2 simple?))
 
 (define (vc-backend-print-log master)
   (vc-call 'PRINT-LOG master))
@@ -1114,12 +1114,15 @@ the value of vc-log-mode-hook."
     unspecific))
 
 (define-vc-type-operation 'DIFF vc-type:rcs
-  (lambda (master rev1 rev2)
+  (lambda (master rev1 rev2 simple?)
     (vc-run-command master 1 "rcsdiff"
 		    "-q"
 		    (and rev1 (string-append "-r" rev1))
 		    (and rev2 (string-append "-r" rev2))
-		    (ref-variable diff-switches (vc-workfile-buffer master))
+		    (if simple?
+			'()
+			(ref-variable diff-switches
+				      (vc-workfile-buffer master)))
 		    (vc-workfile-pathname master))))
 
 (define-vc-type-operation 'PRINT-LOG vc-type:rcs
@@ -1296,7 +1299,7 @@ the value of vc-log-mode-hook."
 	 (file-modification-time-indirect (vc-workfile-pathname master))))
     (cond ((not mod-time) #f)
 	  ((eqv? (vc-master-checkout-time master) mod-time) #f)
-	  ((= 0 (vc-backend-diff master #f #f))
+	  ((= 0 (vc-backend-diff master #f #f #t))
 	   (set-vc-master-checkout-time! master mod-time)
 	   #f)
 	  (else
