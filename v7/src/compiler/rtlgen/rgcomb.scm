@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.26 1987/06/13 03:00:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.27 1987/06/23 03:31:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -258,11 +258,9 @@ MIT in each case. |#
 (define (make-call/unknown combination operator operands prefix
 			   continuation)
   (let ((callee (subproblem-value (combination-operator combination))))
-    ((cond ((or (not (reference? callee))
-		(reference-to-known-location? callee))
-	    make-call/apply)
-	   ;; **** Need to add code for uuo links here.
-	   (else make-call/lookup))
+    ((if (reference? callee)
+	 make-call/reference
+	 make-call/apply)
      combination operator operands prefix continuation)))
 
 ;;; For now, use apply.  Later we can optimize for the cases where
@@ -280,16 +278,31 @@ MIT in each case. |#
        continuation
        (constant-value (combination-known-operator combination))))))
 
-(define (make-call/lookup combination operator operands prefix
-			  continuation)
+(define (make-call/reference combination operator operands prefix continuation)
   (make-call false combination operator operands
-    (lambda (frame-size)
+    (lambda (number-pushed)
       (let ((operator (subproblem-value (combination-operator combination)))
-	    (frame-size* (1+ frame-size)))
-	(let ((name (variable-name (reference-variable operator))))
-	  ;; This predicate assumes that (reference-block operator)
-	  ;; returns an IC block.
-	  (if (ic-block/use-lookup? (reference-block operator))
+	    (frame-size (1+ number-pushed)))
+	(let ((make-application
+	       (lambda (operator)
+		 (scfg*scfg->scfg!
+		  (rtl:make-push operator)
+		  (rtl:make-invocation:apply
+		   frame-size
+		   (prefix combination frame-size)
+		   continuation)))))
+	  (find-variable (reference-block operator)
+			 (reference-variable operator)
+	    (lambda (locative)
+	      (make-application (rtl:make-fetch locative)))
+	    (lambda (environment name)
+	      (rtl:make-invocation:lookup
+	       frame-size
+	       (prefix combination number-pushed)
+	       continuation
+	       environment
+	       (intern-scode-variable! (reference-block operator) name)))
+	    (lambda (name)
 	      (let* ((temp (make-temporary))
 		     (cell (rtl:make-fetch temp))
 		     (contents (rtl:make-fetch cell)))
@@ -297,17 +310,11 @@ MIT in each case. |#
 					       (rtl:make-variable-cache name)))
 		      (n2 (rtl:make-type-test (rtl:make-object->type contents)
 					      (ucode-type reference-trap)))
-		      (n3
-		       (scfg*scfg->scfg!
-			(rtl:make-push contents)
-			(rtl:make-invocation:apply
-			 frame-size*
-			 (prefix combination frame-size*)
-			 continuation)))
+		      (n3 (make-application contents))
 		      (n4
 		       (rtl:make-invocation:cache-reference
-			frame-size*
-			(prefix combination frame-size)
+			frame-size
+			(prefix combination number-pushed)
 			continuation
 			cell)))
 		  (scfg-next-connect! n1 n2)
@@ -315,14 +322,7 @@ MIT in each case. |#
 		  (pcfg-alternative-connect! n2 n3)
 		  (make-scfg (cfg-entry-node n1)
 			     (hooks-union (scfg-next-hooks n3)
-					  (scfg-next-hooks n4)))))
-	      (let ((block (reference-block operator)))
-		(rtl:make-invocation:lookup
-		 frame-size*
-		 (prefix combination frame-size)
-		 continuation
-		 (nearest-ic-block-expression block)
-		 (intern-scode-variable! block name)))))))))
+					  (scfg-next-hooks n4))))))))))))
 
 (define (make-call/child combination operator operands make-receiver)
   (scfg*scfg->scfg!
