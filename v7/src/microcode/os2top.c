@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.9 1995/01/06 22:15:45 cph Exp $
+$Id: os2top.c,v 1.10 1995/01/16 20:56:12 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -69,6 +69,7 @@ OS_under_emacs_p (void)
 void
 OS_initialize (void)
 {
+  (void) DosError (FERR_DISABLEEXCEPTION | FERR_DISABLEHARDERR);
   initialize_locks ();
   /* Create a PM message queue.  This allows us to use message boxes
      to report fatal errors.  */
