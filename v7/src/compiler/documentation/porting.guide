@@ -1,6 +1,6 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.19 1991/03/29 01:27:27 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.20 1991/08/14 01:16:19 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -120,7 +120,7 @@ its pass structure.
 
 	0.1.  Liar's package structure
 
- [*Artur: What is a package and what are the basic commands for moving
+ [*Arthur: What is a package and what are the basic commands for moving
 between packages?  Give a brief introduction to the structure of .pkg
 files (forward pointer).  At least tell where to find this
 information.]
@@ -297,20 +297,28 @@ document.
 - Liar assumes that the target machine has an address space that is
 flat enough that all Scheme objects can be addressed uniformly.  In
 other words, segmented address spaces with segments necessarily
-smaller than the Scheme runtime heap will make Liar very hard or
-inefficient to port.
+smaller than the Scheme runtime heap (ie. Intel 286) will make Liar
+very hard or inefficient to port.
 
- [*Markf: Insert short description of the assumptions in what follows:]
-- Liar assumes that code and data can coexist in the same address
-space.  In other words, a true Harvard architecture, with separate
-code and data spaces, would be hard to support without relatively
-major changes.  This assumption conflicts with some current hardware
-that has programmer-visible split data and instruction caches, but
-most of these problems can be resolved if the user is given enough
-control over flushing of the hardware caches.  At some point in the
-future we may provide a C back end for Liar that solves some of these
-problems.  Whatever technique the C back end may use can probably be
-emulated by architectures with such a strong division.
+- Liar assumes that instructions and data can coexist in the same
+address space, and that new code objects that contain machine
+instructions can be allocated and written on the fly from the memory
+pool (the heap) used to allocate all other Scheme objects.  This
+assumption in Liar conflicts with some current hardware that has
+programmer-visible separate (split) data and instruction caches --
+that is, there are two different caches, one used by the processor for
+instruction references and the other for data references, and storing
+data into memory only updates the data cache, but not the instruction
+cache, and perhaps not even memory.  Most of the problems this causes
+can be resolved if the user is given enough control over the hardware
+caches, ie. some way to flush or synchronize them.  Furthermore, a
+true Harvard architecture, with separate code and data memories, would
+be hard to accommodate without relatively major changes.  At some
+point in the future we may write a C back end for Liar that handles
+this case, since C code space and data space are typically kept
+separate by the operating system.  Whatever technique the C back end
+may use can probably be emulated by architectures with such a strong
+division, although it is likely to be expensive.
 
 - Liar assumes that the target machine is a general-register machine.
 I.E. operations are based on processor registers, and there is a
@@ -329,7 +337,7 @@ This decision especially affects the performance on load-store
 architectures, common these days.  This may change in the future due
 to the fact that most modern machines have large register sets and
 memory-based operations are noticeably slower than register-based
-operations even when the memory locations have mappings in the cache.
+operations even when the memory locations have been cached.
 
 - Liar assumes that pushing and popping elements from a stack is
 cheap.  Currently Liar does not attempt to bump the stack pointer once
@@ -342,10 +350,14 @@ not-too-far future.
 integer arithmetic operations.  Generic arithmetic primitives have the
 frequent fixnum (small integer) case open-coded, and the overflow and
 non-fixnum cases coded out of line, but this depends on the ability of
-the code to detect overflow conditions cheaply.  This is not true of
-some modern machines, notably MIPS processors.  If your processor does
-not detect such conditions, you may have to use code similar to that
-used in the MIPS port.
+the code to detect and branch on overflow conditions cheaply.  This is
+not true of some modern machines, notably MIPS processors.  If your
+processor does not make branching on such conditions reasonably cheap,
+you may have to use code similar to that used in the MIPS port.  The
+MIPS processor has trapping and non-trapping arithmetic instructions.
+The arithmetic instructions trap on overflow, but the trap recovery
+code is typically so expensive that the code computes the overflow
+conditions explicitly.
 
 - Liar assumes that extracting, inserting, and comparing bit-fields is
 relatively cheap.  The current object representation for Liar
@@ -450,10 +462,11 @@ simplifier that causes the simplifier to leave more complex
 expressions untouched, or to be simplified in different ways,
 depending on the availability of memory operands or richer addressing
 modes.  Since these rules vary from port to port, the final RTL
-differs for the different ports.
- [*Markf: Note also that the simplification is constrained by the
-kinds of RTL expressions that the LAP rules for a particular port will
-accept.]
+differs for the different ports.  The simplification
+process is also controlled by the availability of various rules in the
+port, and ports for richer instruction sets may simplify less since
+they have hardware instructions and addressing modes that encode
+efficiently more complicated RTL patterns.
 
 - The open coding of Scheme primitives is port-dependent.  On some
 machines, for example, there is no instruction to multiply integers,
@@ -691,6 +704,7 @@ doing this the correct way.
 You should be able to edit the version from another port in the
 appropriate way.  Mostly you will need to rename the port (i.e. mips ->
 sparc), and add/delete instruction and rules files as needed.
+
 ==> decls.scm should probably be split into two sections:  The
 machine-independent dependency management code, and the actual
 declaration of the dependencies for each port.  This would allow us to
@@ -1642,9 +1656,12 @@ is not a procedure, but a return address, a compiled expression, or a
 pointer to an internal label.
 
 The CONS-CLOSURE rules will dynamically create some new instructions
-in the runtime heap, and these instructions must be visible to
-the processor's instruction cache.  On machines where the programmer
-is given no control over the caches, this may be impossible.
+in the runtime heap, and these instructions must be visible to the
+processor's instruction cache.  If the instruction and data caches are
+not automatically kept consistent by the hardware (especially for
+newly addressed memory), the caches must be explicitly synchronized by
+the Scheme system.  On machines where the programmer is given no
+control over the caches, this will be very hard to do.
 
 On machines where the control is minimal or flushing is expensive
 (i.e., there is a single instruction or operating-system call to flush
@@ -1700,6 +1717,7 @@ time of the call, and the section of the stack that contains enclosing
 environment frames for the called procedure.  Two addresses are
 specified and the one that is closest to the current stack pointer
 should be used, that is the numerically lower of the two addresses.
+
 ==> This rule need not need not exist in the RTL.  It could be
 expanded into comparisons and uses of INVOCATION-PREFIX:MOVE-FRAME-UP
 with computed values.
@@ -1853,13 +1871,13 @@ these open-codings must also detect when the result will not fit in a
 fixnum in order to invoke the out-of-line utility that will handle
 them correctly.  
 
-Most hardware provide facilities for detecting overflow on integer
-operations.  Fixnums cannot use these facilities directly, because of
-the tag bits at the high-end of the word.  To be able to use these
-facilities (and get the sign bit in the right place), Scheme fixnums
-are converted to an internal format before they are operated on, and
-converted back to Scheme object format before storing them in memory
-or returning them as values.
+Most hardware provide facilities for detecting and branching if an
+integer operation overflows.  Fixnums cannot use these facilities
+directly, because of the tag bits at the high-end of the word.  To be
+able to use these facilities (and get the sign bit in the right
+place), Scheme fixnums are converted to an internal format before they
+are operated on, and converted back to Scheme object format before
+storing them in memory or returning them as values.
 
 In this internal format, the value has been shifted left so that the
 fixnum sign-bit coincides with the integer sign bit, and a number of
@@ -1950,7 +1968,8 @@ An example of a more complicated call to the runtime library is
 		      (interpreter-call-argument? value)))
       (let* ((set-extension
 	      (interpreter-call-argument->machine-register! extension r2))
-	     (set-value (interpreter-call-argument->machine-register! value r3))
+	     (set-value 
+	      (interpreter-call-argument->machine-register! value r3))
 	     (clear-map (clear-map!)))
 	(LAP ,@set-extension
 	     ,@set-value
@@ -2077,7 +2096,7 @@ condition can be passed implicitly between these adjacent
 instructions.  This decomposition only matches hardware with condition
 codes.
 
-Hardware with compare-and-branch instructions can be handled by
+Hardware with compare-and-branch instructions can be accommodated by
 explicitly computing conditions into a hardware register reserved for
 this purpose, and the code generated by the predicate rule can then
 branch according to the contents of this register.  On these machines,
@@ -2106,8 +2125,16 @@ operations conditionally skips if there is no overflow.  The
 linearization choice, and an unconditional skip and an unconditional
 branch for the alternative linearization.
 
-==> Overflow tests should be done differently in the compiler to avoid
-this problem.
+A more efficient solution, currently employed in the MIPS port
+(version 4.87 or later) depends on the fact that the RTL instruction
+immediately preceding an RTL OVERFLOW-TEST encodes the arithmetic
+operation whose overflow condition is being tested.  Given this
+assumption, the rule for OVERFLOW-TEST need not generate any code, and
+the rule for the arithmetic operation can generate both the prefix
+code and invoke SET-CURRENT-BRANCHES! as appropriate.  This is
+possible because the RTL encoding of arithmetic operations includes a
+boolean flag that specifies whether the overflow condition is desired
+or not.
 
 		6. Building and testing the compiler.
 
@@ -2139,6 +2166,7 @@ agree on the number of tag bits if it needs it at all.  If your
 version of m4 does not support command-line definitions, you can use
 the s/ultrix.m4 script to overcome this problem.  Look at the m/vax.h
 and s/ultrix.h files for m4-related definitions.
+
 ==> We should just switch the default to 6 bits and be done with it.
 
 - Modify ymakefile to include the processor dependent section that
@@ -2334,6 +2362,7 @@ where the value of ci_version should be the value of
 COMPILER_INTERFACE_VERSION in microcode/cmpint.c, and the value of
 ci_processor should be the value of COMPILER_PROCESSOR_TYPE defined in
 microcode/cmpint-port.h.
+
 ==> This is redundant.  If ci_processor or ci_version are supplied,
 Bintopsb should assume upgrade_cc.  Furthermore, it should not be
 necessary to supply ci_version when it is not changing.
