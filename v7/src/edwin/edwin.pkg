@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.38 1991/05/15 21:21:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.39 1991/05/17 04:51:20 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -461,6 +461,7 @@ MIT in each case. |#
 	  prompt-for-string
 	  prompt-for-string-table-name
 	  prompt-for-string-table-value
+	  prompt-for-string/prompt
 	  prompt-for-typein
 	  prompt-for-variable
 	  prompt-for-yes-or-no?
