@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.33 1987/06/16 23:43:14 cph Rel $
+
 Copyright (c) 1987 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
@@ -30,8 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.32 1987/06/15 19:26:16 jinx Exp $
- *
+/*
  * This file contains the code for primitives dealing with pure
  * and constant space.  Garbage collection to disk version.
  *
@@ -39,7 +40,6 @@ MIT in each case. */
  * undoing the changes, it crashes.
  * It should be changed to do the job in two passes like the
  * "normal" version.
- *
  */
 
 #include "scheme.h"
@@ -230,9 +230,15 @@ purify(object, flag)
 
   free_buffer = initialize_free_buffer();
   block_start = Free_Constant;
+  Free_Constant += 2;
   *free_buffer++ = NIL;		/* Pure block header. */
   *free_buffer++ = object;
-  Free_Constant += 2;
+  /* This is paranoia, but... */
+  if (free_buffer >= free_buffer_top)
+  {
+    free_buffer =
+      dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
+  }
   if (flag == TRUTH)
   {
     Result = purifyloop(initialize_scan_buffer(),
@@ -249,9 +255,15 @@ purify(object, flag)
   {
     pure_length = 3;
   }
+  Free_Constant += 2;
   *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *free_buffer++ = Make_Non_Pointer(CONSTANT_PART, pure_length);
-  Free_Constant += 2;
+  /* This is paranoia, but... */
+  if (free_buffer >= free_buffer_top)
+  {
+    free_buffer =
+      dump_and_reset_free_buffer((free_buffer - free_buffer_top), NULL);
+  }
   if (flag == TRUTH)
   {
     Result = purifyloop(initialize_scan_buffer(),
@@ -271,12 +283,32 @@ purify(object, flag)
   length = (Free_Constant - block_start);
   *free_buffer++ = Make_Non_Pointer(TC_MANIFEST_SPECIAL_NM_VECTOR, 1);
   *free_buffer++ = Make_Non_Pointer(END_OF_BLOCK, (length - 1));
+
+  /* This is not paranoia!
+     The last two words may overflow the free buffer. 
+   */
+  if (free_buffer >= free_buffer_top)
+  {
+    long delta;
+
+    delta = (free_buffer - free_buffer_top);
+    free_buffer =
+      dump_and_reset_free_buffer(delta, NULL);
+    Result = dump_and_reload_scan_buffer(0, NULL);
+    if ((Result + delta) != free_buffer)
+    {
+      fprintf(stderr, "\nPurify: Scan and Free do not meet at the end.\n");
+      Microcode_Termination(TERM_EXIT);
+    }
+  }
+  end_transport(NULL);
+
   if (!Test_Pure_Space_Top(Free_Constant))
   {
     fprintf(stderr, "\nPurify: Object too large.\n");
     Microcode_Termination(TERM_NO_SPACE);
   }
-  end_transport(NULL);
+
   load_buffer(0, block_start,
 	      (length * sizeof(Pointer)),
 	      "into constant space");
@@ -284,6 +316,7 @@ purify(object, flag)
 				    pure_length);
   *block_start = Make_Non_Pointer(PURE_PART, (length - 1));
   GC();
+  Set_Pure_Top();
   return TRUTH;
 }
 
