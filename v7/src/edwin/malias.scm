@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: malias.scm,v 1.8 2003/02/14 18:28:12 cph Exp $
+$Id: malias.scm,v 1.9 2003/08/07 01:43:45 cph Exp $
 
-Copyright 1991-1999 Massachusetts Institute of Technology
+Copyright 1991,1997,1999,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,11 +30,11 @@ USA.
 (define-command define-mail-alias
   "Define NAME as a mail-alias that translates to DEFINITION."
   (lambda ()
-    (let ((alias (prompt-for-string "Define mail alias" false)))
+    (let ((alias (prompt-for-string "Define mail alias" #f)))
       (list alias
 	    (prompt-for-string
 	     (string-append "Define " alias " as mail alias for")
-	     false))))
+	     #f))))
   (lambda (alias definition)
     (let ((definition (parse-mailrc-line definition 0)))
       (guarantee-mail-aliases)
@@ -58,34 +58,31 @@ USA.
 	       (append-map! (lambda (definition)
 			      (loop definition disabled))
 			    (cdr entry))))
-	    ((null? disabled)
-	     false)
-	    (else
-	     (list alias))))))
+	    ((null? disabled) #f)
+	    (else (list alias))))))
 
 (define (find-mail-alias alias mail-aliases)
   (let loop ((mail-aliases mail-aliases))
-    (and (not (null? mail-aliases))
+    (and (pair? mail-aliases)
 	 (if (string-ci=? alias (caar mail-aliases))
 	     (car mail-aliases)
 	     (loop (cdr mail-aliases))))))
-
+
 (define (expand-mail-aliases start end)
   (guarantee-mail-aliases)
   (let loop ((start start))
-    (let ((hs
-	   (re-search-forward "^\\(to\\|cc\\|bcc\\):[ \t]*" start end true)))
+    (let ((hs (re-search-forward "^\\(to\\|cc\\|bcc\\):[ \t]*" start end #t)))
       (if hs
 	  (let ((he
 		 (mark-left-inserting-copy
 		  (skip-chars-backward
 		   " \t\n"
-		   (if (re-search-forward "^[^ \t]" hs end false)
+		   (if (re-search-forward "^[^ \t]" hs end #f)
 		       (re-match-start 0)
 		       end)
 		   hs))))
 	    (let loop ((hs hs))
-	      (cond ((re-search-forward "[ \t]*[\n,][ \t]*" hs he false)
+	      (cond ((re-search-forward "[ \t]*[\n,][ \t]*" hs he #f)
 		     (let ((e (mark-left-inserting-copy (re-match-end 0))))
 		       (expand-region hs (re-match-start 0))
 		       (mark-temporary! e)
@@ -102,22 +99,29 @@ USA.
 	  (delete-string point end)
 	  (let loop ((strings strings))
 	    (insert-string (car strings) point)
-	    (if (not (null? (cdr strings)))
+	    (if (pair? (cdr strings))
 		(begin
 		  (insert-string ", " point)
 		  (loop (cdr strings)))))
 	  (mark-temporary! point)))))
 
-(define mail-aliases true)
+(define mail-aliases)
+(define mail-aliases-time #f)
 
 (define (guarantee-mail-aliases)
-  (if (eq? mail-aliases true)
-      (begin
-	(set! mail-aliases '())
-	(if (file-exists? "~/.mailrc")
-	    (for-each (lambda (entry)
-			(define-mail-alias (car entry) (cdr entry)))
-		      (parse-mailrc-file "~/.mailrc"))))))
+  (let ((filename "~/.mailrc"))
+    (let ((t (file-modification-time filename)))
+      (if (not (and t
+		    mail-aliases-time
+		    (= t mail-aliases-time)))
+	  (begin
+	    (set! mail-aliases '())
+	    (if t
+		(begin
+		  (set! mail-aliases-time t)
+		  (for-each (lambda (entry)
+			      (define-mail-alias (car entry) (cdr entry)))
+			    (parse-mailrc-file filename)))))))))
 
 (define (parse-mailrc-file filename)
   (call-with-input-file filename
