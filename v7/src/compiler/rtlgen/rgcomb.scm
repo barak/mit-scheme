@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.24 1987/06/12 21:51:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.25 1987/06/13 00:14:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -369,7 +369,7 @@ MIT in each case. |#
 
 (define (make-call push-operator? combination operator operands generator)
   (let ((callee (combination-known-operator combination))
-	(n-operands (length operands))
+	(n-operands (count-operands operands))
 	(finish
 	 (lambda (frame-size)
 	   (scfg-append!
@@ -408,6 +408,16 @@ MIT in each case. |#
 			  (loop (-1+ n))))))
 	     (finish n-parameters)))
 	(finish n-operands))))
+
+(define (count-operands operands)
+  (cond ((null? operands)
+	 0)
+	((transmit-values (car operands)
+	   (lambda (cfg prefix expression)
+	     expression))
+	 (1+ (count-operands (cdr operands))))
+	(else
+	 (count-operands (cdr operands)))))
 
 ;;;; Prefixes
 
