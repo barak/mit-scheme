@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-syntax.scm,v 1.5 2000/04/25 03:38:51 cph Exp $
+;;; $Id: imap-syntax.scm,v 1.6 2000/04/28 16:14:42 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -588,6 +588,7 @@
   (imap:write-literal-substring-header string 0 (string-length string) port))
 
 (define (imap:write-literal-substring-header string start end port)
+  string
   (write-char #\{ port)
   (write (fix:- end start) port)
   (write-char #\} port)
