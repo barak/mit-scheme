@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.83 1993/11/08 06:14:41 gjr Exp $
+$Id: config.h,v 9.84 1994/06/28 19:46:25 cph Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,10 +38,12 @@ MIT in each case. */
 #ifndef SCM_CONFIG_H
 #define SCM_CONFIG_H
 
-/* Default pathnames. */
+/* Default switches. */
+
+#include "oscond.h"
 
 #ifndef butterfly
-#ifndef unix
+#ifndef _UNIX
 /* On unix, these are part of the make file. */
 
 /* Runtime debugging flags, with appropriate defaults: */
@@ -67,8 +69,8 @@ MIT in each case. */
    option is incompatible with the stepper and compiler. */
 
 /* #define USE_STACKLETS */
-#endif
-#endif
+#endif /* not _UNIX */
+#endif /* not butterfly */
 
 /* Some configuration consistency testing */
 

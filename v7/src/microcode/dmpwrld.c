@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: dmpwrld.c,v 9.37 1993/06/24 07:07:57 gjr Exp $
+$Id: dmpwrld.c,v 9.38 1994/06/28 19:45:09 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,7 +39,7 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 
-#ifndef unix
+#ifndef _UNIX
 #include "Error: dumpworld.c does not work on non-unix machines."
 #endif
 
