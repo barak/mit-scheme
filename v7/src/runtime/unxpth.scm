@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.2 1988/10/17 12:10:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxpth.scm,v 14.3 1989/03/14 02:17:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -64,10 +64,46 @@ MIT in each case. |#
     (and truename
 	 ((ucode-primitive file-attributes) (pathname->string truename)))))
 
+(define-structure (file-attributes
+		   (type vector)
+		   (constructor false)
+		   (conc-name file-attributes/))
+  (type false read-only true)
+  (n-links false read-only true)
+  (uid false read-only true)
+  (gid false read-only true)
+  (access-time false read-only true)
+  (modification-time false read-only true)
+  (change-time false read-only true)
+  (length false read-only true)
+  (mode-string false read-only true)
+  (inode-number false read-only true))
+
 (define (file-modification-time filename)
   (let ((attributes (file-attributes filename)))
     (and attributes
 	 (vector-ref attributes 5))))
+
+(define (file-modes filename)
+  (let ((truename (pathname->input-truename (->pathname filename))))
+    (and truename
+	 ((ucode-primitive file-modes) (pathname->string truename)))))
+
+(define-integrable (set-file-modes! filename modes)
+  ((ucode-primitive set-file-modes!) (canonicalize-input-filename filename)
+				     modes))
+
+(define (unix/file-access filename amode)
+  (let ((truename (pathname->input-truename (->pathname filename))))
+    (and truename
+	 ((ucode-primitive file-access) (pathname->string truename) amode))))
+
+(define (file-writable? filename)
+  (let ((pathname (pathname->absolute-pathname (->pathname filename))))
+    ((ucode-primitive file-access)
+     (pathname->string (or (pathname->input-truename pathname)
+			   (pathname-directory-path pathname)))
+     2)))
 
 (define (get-environment-variable name)
   (or ((ucode-primitive get-environment-variable) name)
@@ -79,6 +115,12 @@ MIT in each case. |#
 
 (define unix/current-user-name
   (ucode-primitive current-user-name))
+
+(define unix/current-uid
+  (ucode-primitive current-uid))
+
+(define unix/current-gid
+  (ucode-primitive current-gid))
 
 (define unix/current-file-time
   (ucode-primitive current-user-name))
