@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.23 1993/11/08 06:18:02 gjr Exp $
+$Id: uxtrap.h,v 1.24 1993/11/22 19:01:41 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -603,6 +603,8 @@ extern unsigned int etext;
 #else /* not __linux */
 #if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
 extern long etext;
+#else
+extern int etext;
 #endif /* _HPUX ... */
 #endif /* __linux */
 #endif /* _AIX */
