@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.61 1993/08/05 08:36:45 cph Exp $
+;;;	$Id: intmod.scm,v 1.62 1993/08/12 07:40:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -746,6 +746,7 @@ If this is an error, the debugger examines the error condition."
 
 (define (operation/read port parser-table)
   parser-table
+  (standard-prompt-spacing port)
   (read-expression port (number->string (nearest-cmdl/level))))
 
 (define read-expression
@@ -759,7 +760,6 @@ If this is an error, the debugger examines the error condition."
 	  (let ((expression (dequeue! (port/expression-queue port) empty)))
 	    (if (eq? expression empty)
 		(begin
-		  (standard-prompt-spacing port)
 		  (wait-for-input port level mode ready?)
 		  (loop))
 		expression)))))))
@@ -844,25 +844,42 @@ If this is an error, the debugger examines the error condition."
 	      (thunk)
 	      (remove-select-buffer-hook buffer hook))))
 	(add-select-buffer-hook buffer hook))))
-
+
 (define (operation/prompt-for-command-expression port prompt)
-  (read-expression port (parse-command-prompt prompt)))
+  (read-expression port (parse-command-prompt port prompt)))
 
 (define (operation/prompt-for-command-char port prompt)
-  (standard-prompt-spacing port)
-  (read-command-char port (parse-command-prompt prompt)))
+  (read-command-char port (parse-command-prompt port prompt)))
 
 (define (read-command-char port level)
   (set-port/command-char! port false)
   (wait-for-input port level (ref-mode-object inferior-cmdl) port/command-char)
   (port/command-char port))
 
-(define (parse-command-prompt prompt)
-  (and (re-match-string-forward (re-compile-pattern "\\([0-9]+\\) " false)
-				false false prompt)
-       (substring prompt
-		  (re-match-start-index 1)
-		  (re-match-end-index 1))))
+(define (parse-command-prompt port prompt)
+  (standard-prompt-spacing port)
+  (let ((index
+	 (re-match-string-forward (re-compile-pattern "\\([0-9]+\\) " false)
+				  false false prompt)))
+    (let ((level
+	   (and index
+		(substring prompt
+			   (re-match-start-index 1)
+			   (re-match-end-index 1))))
+	  (tail (if index (string-tail prompt index) prompt)))
+      (if (not (and suppress-standard-prompts?
+		    (or (string=? tail user-initial-prompt)
+			(member tail standard-prompts))))
+	  (begin
+	    (write-string prompt port)
+	    (if (let ((n (string-length prompt)))
+		  (and (> n 0)
+		       (not (char=? #\space (string-ref prompt (- n 1))))))
+		(write-char #\space port))))
+      level)))
+
+(define suppress-standard-prompts? #t)
+(define standard-prompts '("]=>" "error>" "break>" "bkpt"))
 
 ;;; Miscellaneous
 
