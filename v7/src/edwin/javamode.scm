@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.4 1999/10/07 15:11:47 cph Exp $
+;;; $Id: javamode.scm,v 1.5 1999/10/07 15:18:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-1999 Massachusetts Institute of Technology
 ;;;
@@ -37,7 +37,7 @@ This is just like C mode, except that
   (1) comments begin with // and end at the end of line, and
   (2) c-continued-brace-offset defaults to -2 instead of 0."
   (lambda (buffer)
-    (local-set-variable! syntax-table java-mode:syntax-table buffer)
+    (local-set-variable! syntax-table java-syntax-table buffer)
     (local-set-variable! syntax-ignore-comments-backwards #f buffer)
     (local-set-variable! comment-locator-hook java-comment-locate buffer)
     (local-set-variable! comment-indent-hook java-comment-indentation buffer)
@@ -55,7 +55,7 @@ This is just like C mode, except that
   "An event distributor that is invoked when entering Java mode."
   (make-event-distributor))
 
-(define java-mode:syntax-table
+(define java-syntax-table
   (let ((syntax-table (make-syntax-table c-syntax-table)))
     (modify-syntax-entry! syntax-table #\/ ". 1456")
     (modify-syntax-entry! syntax-table #\newline ">")
