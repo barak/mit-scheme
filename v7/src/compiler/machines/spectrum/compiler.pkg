@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.48 1997/06/12 04:36:08 cph Exp $
+$Id: compiler.pkg,v 1.49 1999/01/02 02:51:52 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -659,7 +659,6 @@ MIT in each case. |#
   (export (compiler top-level)
 	  assemble))
 
-#|
 (define-package (compiler disassembler)
   (files "machines/spectrum/dassm1"
 	 "machines/spectrum/dassm2"
@@ -676,4 +675,3 @@ MIT in each case. |#
 	  dbg-label/external?
 	  dbg-label/name
 	  dbg-labels/find-offset))
-|#
