@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.99 1991/05/14 02:27:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.100 1991/05/15 17:42:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -455,7 +455,7 @@ Otherwise, a message is written both before and after long file writes."
       (cond ((not message?)
 	     (do-it))
 	    ((or (ref-variable enable-emacs-write-file-message)
-		 (< (- end start) 50000))
+		 (<= (- end start) 50000))
 	     (do-it)
 	     (message "Wrote " filename))
 	    (else

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.154 1991/05/15 01:11:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.155 1991/05/15 17:42:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -330,7 +330,8 @@ If `trim-versions-without-asking' is false, system will query user
 	     (prompt-for-pathname
 	      (string-append "Write buffer " (buffer-name buffer) " to file")
 	      false false)))
-	(if (> (buffer-length buffer) 50000)
+	(if (and (ref-variable enable-emacs-write-file-message)
+		 (> (buffer-length buffer) 50000))
 	    (message "Saving file "
 		     (pathname->string (buffer-pathname buffer))
 		     "..."))
