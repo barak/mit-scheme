@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.3 1995/01/19 04:52:40 adams Exp $
+$Id: expand.scm,v 1.4 1995/02/27 23:05:55 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,14 +43,14 @@ MIT in each case. |#
 (define-macro (define-expander keyword bindings . body)
   (let ((proc-name (symbol-append 'EXPAND/ keyword)))
     (call-with-values
-     (lambda ()
-       (%matchup bindings '(handler) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,names ,@body)))
-	    (named-lambda (,proc-name form)
-	      (expand/remember ,code
-			       form))))))))
+	(lambda ()
+	  (%matchup bindings '(HANDLER) '(CDR FORM)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,names ,@body)))
+	     (NAMED-LAMBDA (,proc-name FORM)
+	       (EXPAND/REMEMBER ,code
+				FORM))))))))
 
 ;;;; Core forms: simply expand components
 
@@ -123,11 +123,11 @@ MIT in each case. |#
 (define (expand/aux/sort auxes body)
   (if (not (BEGIN/? body))
       body
-      (let loop ((actions (simplify-actions (cdr body)))
-		 (last false)
-		 (decls '())
-		 (early '())
-		 (late '()))
+      (let loop ((actions  (simplify-actions (cdr body)))
+		 (last     false)
+		 (decls    '())
+		 (early    '())
+		 (late     '()))
 
 	(define (done)
 	  (beginnify
@@ -157,10 +157,10 @@ MIT in each case. |#
 			      (loop (cdr actions) action
 				    decls early* late*))))
 		       (set! auxes (delq (set!/name action) auxes))
-		       (if (or (not (pair? value))
-			       (not (memq (car value) '(QUOTE LAMBDA))))
-			   (next early (cons action late))
-			   (next (cons action early) late)))))
+		       (if (or (QUOTE/? value)
+			       (LAMBDA/? value))
+			   (next (cons action early) late)
+			   (next early (cons action late))))))
 		((DECLARE)
 		 (loop (cdr actions)
 		       last (cons action decls)
@@ -175,8 +175,8 @@ MIT in each case. |#
 
 (define-expander OR (pred alt)
   ;; Trivial optimization here.
-  (let ((new-pred (expand/expr pred))
-	(new-alt (expand/expr alt)))
+  (let ((new-pred  (expand/expr pred))
+	(new-alt   (expand/expr alt)))
 
     (define (default)
       (let ((new-name (expand/new-name 'OR)))
@@ -189,20 +189,16 @@ MIT in each case. |#
     (case (car new-pred)
       ((QUOTE)
        (case (boolean/discriminate (cadr new-pred))
-	 ((TRUE)
-	  new-pred)
-	 ((FALSE)
-	  new-alt)
-	 (else				; UNKNOWN
-	  (default))))
+	 ((TRUE)    new-pred)
+	 ((FALSE)   new-alt)
+	 (else	    (default))))
       ((LOOKUP)
        `(IF ,new-pred ,new-pred ,new-alt))
       ((CALL)
        (let ((rator (cadr new-pred)))
-	 (if (and (pair? rator)
-		  (eq? 'QUOTE (car rator))
-		  (operator/satisfies? (cadr rator) '(PROPER-PREDICATE)))
-	     `(IF ,new-pred (QUOTE #t) ,new-alt)
+	 (if (and (QUOTE/? rator)
+		  (operator/satisfies? (quote/text rator) '(PROPER-PREDICATE)))
+	     `(IF ,new-pred (QUOTE #T) ,new-alt)
 	     (default))))
       (else
        (default)))))
@@ -217,39 +213,23 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((QUOTE)
-     (expand/quote expr))
-    ((LOOKUP)
-     (expand/lookup expr))
-    ((LAMBDA)
-     (expand/lambda expr))
-    ((LET)
-     (expand/let expr))
-    ((DECLARE)
-     (expand/declare expr))
-    ((CALL)
-     (expand/call expr))
-    ((BEGIN)
-     (expand/begin expr))
-    ((IF)
-     (expand/if expr))
-    ((SET!)
-     (expand/set! expr))
-    ((UNASSIGNED?)
-     (expand/unassigned? expr))
-    ((OR)
-     (expand/or expr))
-    ((DELAY)
-     (expand/delay expr))
-    ((LETREC)
-     (not-yet-legal expr))
-    ((ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
-    (else
-     (illegal expr))))
+    ((QUOTE)        (expand/quote expr))
+    ((LOOKUP)       (expand/lookup expr))
+    ((LAMBDA)       (expand/lambda expr))
+    ((LET)          (expand/let expr))
+    ((DECLARE)      (expand/declare expr))
+    ((CALL)         (expand/call expr))
+    ((BEGIN)        (expand/begin expr))
+    ((IF)           (expand/if expr))
+    ((SET!)         (expand/set! expr))
+    ((UNASSIGNED?)  (expand/unassigned? expr))
+    ((OR)           (expand/or expr))
+    ((DELAY)        (expand/delay expr))
+    ((LETREC)       (not-yet-legal expr))
+    (else           (illegal expr))))
 
 (define (expand/expr* exprs)
-  (lmap expand/expr exprs))
+  (map expand/expr exprs))
 
 (define (expand/remember new old)
   (code-rewrite/remember new old))
@@ -261,11 +241,11 @@ MIT in each case. |#
   (new-variable prefix))
 
 (define (expand/let* letify bindings body)
-  (let ((bindings* (lmap (lambda (binding)
-			   (list (car binding)
-				 (expand/expr (cadr binding))))
+  (let ((bindings*  (map (lambda (binding)
+			    (list (car binding)
+				  (expand/expr (cadr binding))))
 			 bindings)))
-    (let ((body* (expand/expr body)))
+    (let ((body*  (expand/expr body)))
       (if (null? bindings*)
 	  body*
 	  (letify bindings* body*)))))
@@ -319,14 +299,9 @@ MIT in each case. |#
     (if (null? actions)
 	(beginnify (reverse (collect defns actions*)))
 	(let ((action (car actions)))
-	  (cond ((not (and (pair? action)
-			   (eq? (car action) 'CALL)
-			   (let ((rator (cadr action)))
-			     (and (pair? rator)
-				  (eq? 'QUOTE (car rator))
-				  (eq? %*define (cadr rator))
-				  (expand/code-compress/trivial?
-				   (list-ref action 5))))))
+	  (cond ((not (and (CALL/%*define? action)
+			   (expand/code-compress/trivial?
+			    (call/%*define/value action))))
 		 (loop (cdr actions)
 		       '()
 		       (cons action
@@ -343,15 +318,14 @@ MIT in each case. |#
 		       actions*)))))))
 
 (define (expand/code-compress/trivial? expr)
-  (and (pair? expr)
-       (or (eq? (car expr) 'QUOTE)
-	   (and (eq? (car expr) 'LAMBDA)
-		#| (let ((params (cadr expr)))
-		     (if (or (null? params)
-			     (null? cdr params)
-			     (not (null? (cddr params))))
-			 (internal-error
-			  "EXPAND/CODE-COMPRESS/TRIVIAL? param error"
-			  params)
-			 (ignored-variable? (second params))))
-		   |# ))))
+  (or (QUOTE/? expr)
+      (and (LAMBDA/? expr)
+	   #| (let ((params (cadr expr)))
+		(if (or (null? params)
+			(null? cdr params)
+			(not (null? (cddr params))))
+		    (internal-error
+		     "EXPAND/CODE-COMPRESS/TRIVIAL? param error"
+		     params)
+		    (ignored-variable? (second params))))
+           |# )))
