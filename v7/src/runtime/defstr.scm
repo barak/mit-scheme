@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.54 2003/03/14 20:11:37 cph Exp $
+$Id: defstr.scm,v 14.55 2003/04/25 00:58:21 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -755,7 +755,9 @@ differences:
 	  (case (structure/physical-type structure)
 	    ((RECORD)
 	     `((DEFINE ,predicate-name
-		 (LET ((TAG (RECORD-TYPE-DISPATCH-TAG ,tag-expression)))
+		 (LET ((TAG
+			(,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
+			 ,tag-expression)))
 		   (NAMED-LAMBDA (,predicate-name OBJECT)
 		     (AND (,(absolute '%RECORD? context) OBJECT)
 			  (,(absolute 'EQ? context)
