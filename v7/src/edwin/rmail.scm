@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.28 1993/08/13 23:20:16 cph Exp $
+;;;	$Id: rmail.scm,v 1.29 1993/08/20 19:02:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;
@@ -188,6 +188,7 @@ w	Edit the current message.  C-c C-c to return to Rmail."
     (buffer-put! buffer 'REVERT-BUFFER-METHOD rmail-revert-buffer)
     (memoize-buffer buffer)
     (set-buffer-read-only! buffer)
+    (disable-group-undo! (buffer-group buffer))
     (event-distributor/invoke! (ref-variable rmail-mode-hook buffer) buffer)))
 
 (define-major-mode rmail-edit text "RMAIL Edit"
@@ -195,7 +196,9 @@ w	Edit the current message.  C-c C-c to return to Rmail."
 The editing commands are the same as in Text mode,
 together with two commands to return to regular RMAIL:
   * \\[rmail-abort-edit] cancels the changes you have made and returns to RMAIL
-  * \\[rmail-cease-edit] makes them permanent.")
+  * \\[rmail-cease-edit] makes them permanent."
+  (lambda (buffer)
+    (enable-group-undo! (buffer-group buffer))))
 
 (define (guarantee-variables-initialized)
   (if (null? (ref-variable rmail-primary-inbox-list))
@@ -1202,6 +1205,7 @@ original message into it."
 				    (loser chars))))
 			     (else
 			      (loop (cons char chars)))))))
+
 		  ((char=? #\( char)
 		   ;; comment
 		   (let loop ((level 1) (chars (list char)))
@@ -1402,7 +1406,7 @@ buffer visiting that file."
       (set-buffer-writable! buffer)
       (message
        (substitute-command-keys
-	"Editing: Type \\[rmail-cease-edit] to return to Rmail, \\[rmail-abort-edit] to abort"
+	"Editing: Type \\[rmail-cease-edit] to return to Rmail, \\[rmail-abort-edit] to abort."
 	buffer)))))
 
 (define-command rmail-cease-edit
