@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.8 1995/01/06 22:14:29 cph Exp $
+$Id: os2top.c,v 1.9 1995/01/06 22:15:45 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -1552,7 +1552,7 @@ OS_error_code_to_message (unsigned int syserr)
     {
       unsigned int length = (strlen (last_message));
       if ((length > 0) && ((last_message [length - 1]) == '.'))
-	(last_message [length - 1]) = '\0';
+	(((char *) last_message) [length - 1]) = '\0';
     }
   return (last_message);
 }
