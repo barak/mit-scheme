@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.6 1992/05/28 19:08:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbd.c,v 1.7 1992/06/04 12:40:40 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -256,10 +256,10 @@ install_kbd_hook_p (char * var_name)
   extern int strcmp_ci (char *, char *);
   char * envvar = (DOS_getenv (var_name));
 
-  if ((envvar != NULL) && ((strcmp_ci (envvar, "false")) == 0))
-    return (dos_false);
-  else
+  if ((envvar != NULL) && ((strcmp_ci (envvar, "true")) == 0))
     return (dos_true);
+  else
+    return (dos_false);
 }
 
 /*
