@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.6 1995/06/23 07:40:25 cph Exp $
+$Id: os2.c,v 1.7 1995/10/30 07:53:24 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -370,6 +370,7 @@ OS2_logic_error_1 (const char * description,
   if (OS2_essential_thread_p (tid))
     {
       outf_fatal (format, "Fatal", tid, file, line, description, "");
+      outf_fatal ("\n\n");
       termination_init_error ();
     }
   else
