@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.55 1992/05/14 20:25:59 cph Exp $
+;;;	$Id: fill.scm,v 1.56 1992/11/13 22:15:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -405,8 +405,7 @@ With argument, turn auto-fill mode on iff argument is positive."
 	      (ref-command indent-new-comment-line))))))
 
 (define (auto-fill-break? point)
-  (and (> (mark-column point) (ref-variable fill-column))
-       (line-end? (horizontal-space-end point))))
+  (> (mark-column point) (ref-variable fill-column)))
 
 (define-variable-per-buffer left-margin
   "Column for the default indent-line-function to indent to.
