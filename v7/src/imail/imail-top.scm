@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.289 2004/03/24 21:16:55 cph Exp $
+$Id: imail-top.scm,v 1.290 2004/10/29 16:32:24 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
@@ -1207,7 +1207,9 @@ With negative argument, forward the message with all headers;
 	 (if (ref-variable imail-forward-using-mime mail-buffer)
 	     (add-buffer-mime-attachment!
 	      mail-buffer
-	      'MESSAGE 'RFC822 '() '(INLINE)
+	      (make-mime-type 'MESSAGE 'RFC822)
+	      '()
+	      '(INLINE)
 	      (map header-field->mail-header
 		   (let ((headers (message-header-fields message)))
 		     (if raw?
