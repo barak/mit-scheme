@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.14 1988/10/21 06:47:35 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.15 1988/11/04 10:26:02 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -176,8 +176,6 @@ MIT in each case. |#
   (expression-simplify-for-statement name
     (lambda (name)
       (%make-interpreter-call:cache-unassigned? name))))
-
-(define rtl:make-address->fixnum rtl:make-object->fixnum)
 
 ;;;; Expression Simplification
 
