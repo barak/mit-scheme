@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.31 1987/12/04 22:18:44 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.32 1987/12/23 03:44:55 cph Rel $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -188,7 +188,10 @@ do									\
     error_wrong_type_arg (argument);					\
 } while (0)
 
-#define ARG_REF(argument) (Stack_Ref (argument - 1))
+#define ARG_LOC(argument) (STACK_LOC (argument - 1))
+#define ARG_REF(argument) (STACK_REF (argument - 1))
+
+#define LEXPR_N_ARGUMENTS() (Regs [REGBLOCK_LEXPR_ACTUALS])
 
 extern long arg_nonnegative_integer ();
 extern long arg_index_integer ();
@@ -251,3 +254,23 @@ do { if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg (3); } while (0)
    : ((char *) (error_wrong_type_arg (arg))))
 
 #define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != NIL)
+
+#define CELL_ARG(arg)							\
+  ((CELL_P (ARG_REF (arg)))						\
+   ? (ARG_REF (arg))							\
+   : ((Pointer) (error_wrong_type_arg (arg))))
+
+#define PAIR_ARG(arg)							\
+  ((PAIR_P (ARG_REF (arg)))						\
+   ? (ARG_REF (arg))							\
+   : ((Pointer) (error_wrong_type_arg (arg))))
+
+#define WEAK_PAIR_ARG(arg)						\
+  ((WEAK_PAIR_P (ARG_REF (arg)))					\
+   ? (ARG_REF (arg))							\
+   : ((Pointer) (error_wrong_type_arg (arg))))
+
+#define VECTOR_ARG(arg)							\
+  ((VECTOR_P (ARG_REF (arg)))						\
+   ? (ARG_REF (arg))							\
+   : ((Pointer) (error_wrong_type_arg (arg))))
