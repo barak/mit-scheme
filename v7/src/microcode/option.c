@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.26 1992/06/10 21:40:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.27 1992/07/16 20:45:20 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -365,7 +365,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_SMALL_CONSTANT
-#define DEFAULT_SMALL_CONSTANT 400
+#define DEFAULT_SMALL_CONSTANT 450
 #endif
 
 #ifndef SMALL_CONSTANT_VARIABLE
