@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpaux.txt,v 1.1 1991/01/16 21:39:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpaux.txt,v 1.2 1991/09/09 14:39:08 jinx Exp $
 
 In the following, whenever Scheme is used, unless otherwise specified,
 we refer to the MIT Scheme dialect and its CScheme implementation.
@@ -167,7 +167,7 @@ so that compiled code can invoke them by adding the fixed offset.
   On return from the call to scheme_to_interface, a C structure
   described above is expected, and the first component is invoked
   (jumped into) leaving the structure or the second component in a
-  pre-establishe place so that interface_to_C and interface_to_scheme
+  pre-established place so that interface_to_C and interface_to_scheme
   can find it.
 
 * scheme_to_interface_ble/jsr:
@@ -199,7 +199,7 @@ so that compiled code can invoke them by adding the fixed offset.
   with a subroutine-call instruction.  All utilities expecting
   trampoline data expect as their first argument the address of the
   first location containing the data.  Thus, again, the return address
-  left behind by the subroutine-call instruction must be passed on the
+  left behind by the subroutine-call instruction must be passed in the
   first argument register.
 
 scheme_to_interface_ble/jsr and trampoline_to_interface are virtually
