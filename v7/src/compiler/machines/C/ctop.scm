@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.8 1993/11/13 19:35:10 gjr Exp $
+$Id: ctop.scm,v 1.9 1993/11/16 22:37:46 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. |#
 (define compiler:invoke-c-compiler? true)
 (define compiler:c-compiler-name "cc")
 (define compiler:c-compiler-switches 'UNKNOWN)
-(define compiler:c-linker-name "ld")
+(define compiler:c-linker-name 'UNKNOWN)
 (define compiler:c-linker-switches 'UNKNOWN)
 (define compiler:c-linker-output-extension 'UNKNOWN)
 
@@ -52,8 +52,7 @@ MIT in each case. |#
     (call-with-output-file pathname
       (lambda (port)
 	(write-string (cdr pair) port)))
-    (if compiler:invoke-c-compiler?
-	(c-compile pathname))))
+    (if compiler:invoke-c-compiler? (c-compile pathname))))
 
 (define (compiled-scode->procedure compiled-scode environment)
   ;; This could compile to a file, c-compile it, and then load it.
@@ -68,12 +67,6 @@ MIT in each case. |#
 (define (optimize-linear-lap lap-program)
   lap-program)
 
-(define (recursive-compilation-results)
-  (sort *recursive-compilation-results*
-	(lambda (x y)
-	  (< (vector-ref x 0)
-	     (vector-ref y 0)))))
-
 (define (c-compile pathname)
   ;; Some c compilers do not leave the output file in the same place.
   (with-working-directory-pathname
@@ -82,38 +75,33 @@ MIT in each case. |#
       (fluid-let ((*call/cc-c-compiler* compiler:c-compiler-name)
 		  (*call/cc-warn?* false))
 	(let ((source (enough-namestring pathname))
-	      (object (enough-namestring (pathname-new-type pathname "o"))))
+	      (object (enough-namestring (pathname-new-type pathname "o")))
+	      (call/cc*
+	       (lambda (l)
+		 (let ((result (apply call/cc l)))
+		   #|
+		   ;; Some C compilers always fail
+		   (if (not (zero? result))
+		       (error "compiler: C compiler/linker failed"))
+		   |#
+		   result))))
 	  (newline)
 	  (display ";Compiling ")
 	  (display source)
-	  (let ((result
-		 (apply call/cc
-			(append (c-compiler-switches) (list source)))))
-	    #|
-	    (if (not (zero? result))
-		(error "c-compile: C compiler failed" source))
-	    |#
-	    result)
-	  (set! *call/cc-c-compiler* compiler:c-linker-name)
+	  (call/cc* (append (c-compiler-switches) (list source)))
+	  (set! *call/cc-c-compiler* (c-linker-name))
 	  (newline)
 	  (display ";Linking ")
 	  (display object)
-	  (let ((result
-		 (apply call/cc
-			(append (list "-o")
-				(list
-				 (enough-namestring
-				  (pathname-new-type pathname
-						     (c-output-extension))))
-				(c-linker-switches)
-				(list object)))))
-	    #|
-	    (if (not (zero? result))
-		(error "c-compile: C linker failed" object))
-	    |#
-	    result)
+	  (call/cc* (append (list "-o")
+			    (list
+			     (enough-namestring
+			      (pathname-new-type pathname
+						 (c-output-extension))))
+			    (c-linker-switches)
+			    (list object)))
 	  (delete-file object))))))
-
+
 (define (c-output-extension)
   (cond ((not (eq? compiler:c-linker-output-extension 'UNKNOWN))
 	 compiler:c-linker-output-extension)
@@ -125,7 +113,7 @@ MIT in each case. |#
 	(else
 	 (error "c-output-extension: Unknown OS"
 		microcode-id/operating-system-variant))))
-
+
 (define c-compiler-switch-table
   `(("SunOS"
      "so"
@@ -173,6 +161,15 @@ MIT in each case. |#
 			  (directory-pathname-as-file dir)))))))
 		 (set! compiler:c-compiler-switches result)
 		 result))))))
+
+(define (c-linker-name)
+  (if (not (eq? compiler:c-linker-name 'UNKNOWN))
+      compiler:c-linker-name
+      (let ((new (if (string=? "AIX" microcode-id/operating-system-variant)
+		     "cc"
+		     "ld")))
+	(set! compiler:c-linker-name new)
+	new)))
 
 (define (c-linker-switches)
   (cond ((not (eq? compiler:c-linker-switches 'UNKNOWN))
@@ -190,6 +187,12 @@ MIT in each case. |#
 	(else
 	 (error 'c-linker-switches "Unknown OS"
 		microcode-id/operating-system-variant))))
+
+(define (recursive-compilation-results)
+  (sort *recursive-compilation-results*
+	(lambda (x y)
+	  (< (vector-ref x 0)
+	     (vector-ref y 0)))))
 
 ;; Global variables for assembler and linker
 
