@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.52 1990/01/22 22:22:14 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.53 1990/04/01 20:10:29 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -551,9 +551,8 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define HAS_FREXP
 #define HAS_MODF
 #endif
-
+
 #ifdef mips
-/* Heap is not in Low Memory. */
 #define MACHINE_TYPE		"MIPS (DECStation 3100)"
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
@@ -568,7 +567,34 @@ longjmp(Exit_Point, NORMAL_EXIT)
 /* Floating point representation uses hidden bit. */
 #define FASL_INTERNAL_FORMAT	FASL_MIPS
 #define BELL 			'\007'
+
+/* Heap resides in data space which begins at 0x10000000. This is
+   kludged by the definitions below, and is still considered
+   HEAP_IN_LOW_MEMORY.
+*/
+
+#define HEAP_IN_LOW_MEMORY
+#define MIPS_DATA_BIT	0x10000000
+
+#define DATUM_TO_ADDRESS(datum)						\
+((SCHEME_OBJECT *) (((unsigned long) (datum)) | MIPS_DATA_BIT))
+
+#define ADDRESS_TO_DATUM(address)					\
+((SCHEME_OBJECT) (((unsigned long) (address)) & (~(MIPS_DATA_BIT))))
+
+/* MIPS compiled binaries are large! */
+
+#ifdef HAS_COMPILER_SUPPORT
+#ifndef CONSTANT_SIZE
+#define CONSTANT_SIZE		600	/* Default Kcells for constant */
 #endif
+#endif
+
+#ifndef COMPILER_CONSTANT_SIZE
+#define COMPILER_CONSTANT_SIZE	1300
+#endif
+
+#endif /* mips */
 
 /* Make sure that some definition applies.
    If this error occurs, and the parameters of the
