@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.1 1991/10/29 22:34:20 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdrn.h,v 1.2 1991/11/04 16:53:08 jinx Exp $
 
 Copyright (c) 1991 Massachusetts Institute of Technology
 
@@ -39,22 +39,34 @@ MIT in each case. */
 #define _BCHDRN_H_INCLUDED
 
 #include "ansidecl.h"
-#ifdef _HPUX
-#  define HAVE_PREALLOC
-#  include <unistd.h>
-#endif
-#ifdef _SUNOS4
-#  include <unistd.h>
-#endif
-#ifdef _ULTRIX
-#  include <unistd.h>
-#endif
+#include "oscond.h"
 #include <errno.h>
+#include <signal.h>
+
+#if defined(_POSIX) || defined(_SUNOS4)
+#  include <unistd.h>
+#else
+  extern int EXFUN (read, (int, PTR, unsigned int));
+  extern int EXFUN (write, (int, PTR, unsigned int));
+#endif
+
+#if defined(HAVE_POSIX_SIGNALS) && defined(HAVE_BSD_SIGNALS)
+#  define RE_INSTALL_HANDLER(signum,handler)	do { } while (0)
+#else
+#  define RE_INSTALL_HANDLER(signum,handler)	signal (signum, handler)
+#endif
 
 /* #define AVOID_SYSV_SHARED_MEMORY */
+
+#ifndef AVOID_SYSV_SHARED_MEMORY
+#  if defined(_SYSV) || defined(_SUNOS4) || defined(_ULTRIX)
+#    define HAVE_SYSV_SHARED_MEMORY
+#  endif
+#endif
 
-#if defined(_HPUX) && !defined(AVOID_SYSV_SHARED_MEMORY)
-#  define HAVE_SYSV_SHARED_MEMORY
+#if defined(_HPUX)
+
+#  define HAVE_PREALLOC
 
 #  include <magic.h>
 #  if defined(SHL_MAGIC)
@@ -73,17 +85,9 @@ MIT in each case. */
 
 #endif /* _HPUX */
 
-#if defined(_SUNOS4) && !defined(AVOID_SYSV_SHARED_MEMORY)
-#  define HAVE_SYSV_SHARED_MEMORY
-#endif /* _SUNOS4 */
-
-#if defined(_ULTRIX) && !defined(AVOID_SYSV_SHARED_MEMORY)
-#  define HAVE_SYSV_SHARED_MEMORY
-#endif /* _ULTRIX */
-
 #ifdef HAVE_SYSV_SHARED_MEMORY
 
-#define DRONE_VERSION_NUMBER		((1 << 16) | 1)
+#define DRONE_VERSION_NUMBER		((1 << 8) | 2)
 
 #include <sys/time.h>
 #include <sys/ipc.h>
