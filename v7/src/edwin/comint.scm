@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.17 1992/11/17 06:05:39 cph Exp $
+$Id: comint.scm,v 1.18 1992/11/17 17:36:00 cph Exp $
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
@@ -125,14 +125,14 @@ Entry to this mode runs the hooks on comint-mode-hook."
       '(": %s"))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-input-ring)
-      (make-ring (ref-variable comint-input-ring-size)))
+      (make-ring (ref-variable comint-input-ring-size buffer)))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-last-input-end)
       (mark-right-inserting-copy (buffer-end buffer)))
     (define-variable-local-value! buffer
 	(ref-variable-object comint-last-input-match)
       false)
-    (event-distributor/invoke! (ref-variable comint-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable comint-mode-hook buffer) buffer)))
 
 (define-variable comint-mode-hook
   "An event distributor that is invoked when entering Comint mode."

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufmnu.scm,v 1.123 1992/11/16 22:40:51 cph Exp $
+;;;	$Id: bufmnu.scm,v 1.124 1992/11/17 17:37:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -136,7 +136,8 @@ Delete -- back up a line and remove marks."
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object truncate-lines)
       true)
-    (event-distributor/invoke! (ref-variable buffer-menu-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable buffer-menu-mode-hook buffer)
+			       buffer)))
 
 (define-variable buffer-menu-mode-hook
   "An event distributor that is invoked when entering Buffer-menu mode."

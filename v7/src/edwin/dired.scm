@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.131 1992/11/16 22:40:56 cph Exp $
+;;;	$Id: dired.scm,v 1.132 1992/11/17 17:36:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -76,7 +76,7 @@ Also:
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object case-fold-search)
       false)
-    (event-distributor/invoke! (ref-variable dired-mode-hook) buffer)))
+    (event-distributor/invoke! (ref-variable dired-mode-hook buffer) buffer)))
 
 (define-variable dired-mode-hook
   "An event distributor that is invoked when entering Dired mode."
@@ -640,4 +640,3 @@ krypted and unkrypt it.  Otherwise, krypt it."
 	    (write-string the-encrypted-string)))
 	(delete-file pathname)
 	(dired-redisplay new-name)))))
-	 
