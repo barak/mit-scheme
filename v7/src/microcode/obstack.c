@@ -25,7 +25,8 @@ Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 /* Determine default alignment.  */
 struct fooalign {char x; double d;};
-#define DEFAULT_ALIGNMENT ((char *)&((struct fooalign *) 0)->d - (char *)0)
+#define DEFAULT_ALIGNMENT	\
+  ((long) ((char *)&((struct fooalign *) 0)->d - (char *)0))
 /* If malloc were really smart, it would round addresses to DEFAULT_ALIGNMENT.
    But in fact it might be less smart and round addresses to as much as
    DEFAULT_ROUNDING.  So we prepare for it to do that.  */
@@ -54,7 +55,7 @@ void
 _obstack_begin (h, size, alignment, chunkfun, freefun)
      struct obstack *h;
      int size;
-     int alignment;
+     long alignment;
      POINTER EXFUN ((*chunkfun), (long));
      void EXFUN ((*freefun), (PTR));
 {
