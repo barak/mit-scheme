@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.4 1990/06/22 01:04:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 14.5 1990/10/02 22:43:13 cph Rel $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -75,7 +75,8 @@ MIT in each case. |#
   (clear-interrupts! 1)
   (tty-next-interrupt-char 0)
   set-fixed-objects-vector!
-  (setup-timer-interrupt 2))
+  (process-timer-clear 0)
+  (real-timer-clear 0))
 
 (define-integrable stack-overflow-slot 0)
 (define-integrable gc-slot 2)
@@ -96,7 +97,8 @@ MIT in each case. |#
 
 (define timer-interrupt)
 (define (default/timer-interrupt)
-  (setup-timer-interrupt '() '())
+  (process-timer-clear)
+  (real-timer-clear)
   (error "Unhandled Timer interrupt received"))
 
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
