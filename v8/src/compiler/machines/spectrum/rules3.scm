@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.7 1995/02/28 01:40:38 adams Exp $
+$Id: rules3.scm,v 1.8 1995/03/13 07:01:27 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1336,13 +1336,32 @@ MIT in each case. |#
 ;;;; New RTL
 
 (define-rule statement
-  (INVOCATION:REGISTER 0 #F (REGISTER (? reg))
+  (INVOCATION:REGISTER (? frame-size)
+		       (? continuation)
+		       (REGISTER (? dest))
 		       #F (MACHINE-CONSTANT (? nregs)))
+  frame-size				; ignored
   nregs					; ignored
   (profile-info/add 'INVOCATION:REGISTER)
-  (let ((addr (standard-source! reg)))
-    (LAP ,@(clear-map!)
-	 (BV (N) 0 ,addr))))
+  (if continuation
+      (need-register! 19))
+  (let ((load-continuation
+	 (if continuation
+	     (load-pc-relative-address continuation 19 'CODE)
+	     '())))
+    (let ((addr (standard-source! dest)))
+      (LAP ,@(clear-map!)
+	   ,@load-continuation
+	   (BV (N) 0 ,addr)))))
+
+;;(define-rule statement
+;;  (INVOCATION:REGISTER 0 #F (REGISTER (? reg))
+;;		       #F (MACHINE-CONSTANT (? nregs)))
+;;  nregs					; ignored
+;;  (profile-info/add 'INVOCATION:REGISTER)
+;;  (let ((addr (standard-source! reg)))
+;;    (LAP ,@(clear-map!)
+;;	 (BV (N) 0 ,addr))))
 
 (define-rule statement
   (INVOCATION:PROCEDURE 0 (? continuation) (? destination)
