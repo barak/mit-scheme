@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: wf_user.scm,v 1.4 1994/11/02 20:45:19 adams Exp $
+$Id: wf_user.scm,v 1.5 1996/02/28 16:32:12 adams Exp $
 
-Copyright (c) 1993 Massachusetts Institute of Technology
+Copyright (c) 1993-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,8 @@ MIT in each case. |#
 (define  begin-paint)
 (define  bit-blt)
 (define  check-menu-item)
+(define  close-clipboard)
+(define  copy-memory)
 (define  create-brush-indirect)
 (define  create-compatible-bitmap)
 (define  create-compatible-dc)
@@ -62,6 +64,7 @@ MIT in each case. |#
 (define  ellipse)
 (define  enable-menu-item)
 (define  end-paint)
+(define  get-clipboard-data)
 (define  get-dc)
 (define  get-device-caps)
 (define  get-focus)
@@ -79,6 +82,10 @@ MIT in each case. |#
 (define  get-system-menu)
 (define  get-system-metrics)
 (define  get-window-text-length)
+(define  global-alloc)
+(define  global-lock)
+(define  global-size)
+(define  global-unlock)
 (define  hilite-menu-item)
 (define  insert-menu)
 (define  invalidate-rect)
@@ -90,6 +97,7 @@ MIT in each case. |#
 (define  load-menu-indirect)
 (define  move-to-ex)
 (define  modify-menu)
+(define  open-clipboard)
 (define  polygon)
 (define  polyline)
 (define  realize-palette)
@@ -102,6 +110,7 @@ MIT in each case. |#
 (define  set-active-window)
 (define  set-bk-color)
 (define  set-bk-mode)
+(define  set-clipboard-data)
 (define  set-cursor)
 (define  set-focus)
 (define  set-menu)
@@ -462,5 +471,44 @@ MIT in each case. |#
   (set!  update-window
     (windows-procedure (update-window (hwnd hwnd))
       bool user32.dll "UpdateWindow"))
+
+
+  (set! open-clipboard
+    (windows-procedure (open-clipboard (hwnd hwnd))
+      bool user32.dll "OpenClipboard"))
+
+  (set! close-clipboard
+    (windows-procedure (close-clipboard) bool user32.dll "CloseClipboard"))
+
+  (set! set-clipboard-data
+    (windows-procedure (set-clipboard-data (format uint) (hdata handle))
+      handle user32.dll "SetClipboardData"))
+
+  (set! get-clipboard-data
+    (windows-procedure (get-clipboard-data (format uint))
+      handle user32.dll "GetClipboardData"))
+
+
+  (set! global-alloc
+    (windows-procedure (global-alloc (fuFlags uint) (cbBytes dword))
+      handle kernel32.dll "GlobalAlloc"))
+
+  (set! global-lock
+    (windows-procedure (global-lock (hglbMem handle))
+      uint kernel32.dll "GlobalLock"))
+
+  (set! global-unlock
+    (windows-procedure (global-unlock (hglbMem handle))
+      bool kernel32.dll "GlobalUnlock"))
+
+  (set! global-size
+    (windows-procedure (global-size (hglbMem handle))
+      dword kernel32.dll "GlobalSize"))
+
+  (set! copy-memory
+    (windows-procedure (copy-memory (destination unchecked) (source unchecked)
+				    (length dword))
+      bool kernel32.dll "RtlMoveMemory"))
+
 
   unspecific)
