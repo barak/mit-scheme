@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: hlpcom.scm,v 1.105 1992/11/13 22:16:17 cph Exp $
+;;;	$Id: hlpcom.scm,v 1.106 1993/08/10 06:35:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -167,7 +167,7 @@ Prints the full documentation for the given command."
 Prints the brief documentation for that command."
   "kDescribe key briefly"
   (lambda (key)
-    (let ((command (comtab-entry (current-comtabs) key)))
+    (let ((command (local-comtab-entry (current-comtabs) key (current-point))))
       (if (eq? command (ref-command-object undefined))
 	  (help-describe-unbound-key key)
 	  (message (xkey->name key)
@@ -179,7 +179,7 @@ Prints the brief documentation for that command."
 Prints the full documentation for that command."
   "kDescribe key"
   (lambda (key)
-    (let ((command (comtab-entry (current-comtabs) key)))
+    (let ((command (local-comtab-entry (current-comtabs) key (current-point))))
       (if (eq? command (ref-command-object undefined))
 	  (help-describe-unbound-key key)
 	  (help-describe-command command)))))

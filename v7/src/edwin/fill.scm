@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fill.scm,v 1.58 1993/02/22 19:32:01 cph Exp $
+;;;	$Id: fill.scm,v 1.59 1993/08/10 06:35:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -378,7 +378,7 @@ With argument, turn auto-fill mode on iff argument is positive."
   ;; invoked, and performs the auto-fill action only when the context
   ;; is the expected one.
   (let ((command
-	 (comtab-entry
+	 (local-comtab-entry
 	  (let ((comtabs (current-comtabs)))
 	    (let ((tail
 		   (memq (minor-mode-comtab (ref-mode-object auto-fill))
@@ -386,7 +386,8 @@ With argument, turn auto-fill mode on iff argument is positive."
 	      (if (or (null? tail) (null? (cdr tail)))
 		  comtabs
 		  (cdr tail))))
-	  (current-command-key))))
+	  (current-command-key)
+	  (current-point))))
     (if (or (eq? command overriding)
 	    (eq? command overridden)
 	    (eq? command (ref-command-object undefined)))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edtfrm.scm,v 1.86 1993/08/09 19:22:40 jawilson Exp $
+;;;	$Id: edtfrm.scm,v 1.87 1993/08/10 06:35:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -191,23 +191,16 @@
 	  ;; Make sure the event is inside the text portion of the
 	  ;; buffer, not in the modeline or other decoration.
 	  (cond ((and (< -1 relative-x (buffer-frame-x-size frame))
-		      (< -1 relative-y (buffer-frame-y-size frame)))
-		 (let* ((point (window-coordinates->mark frame relative-x relative-y))
-			(txtprp-comtab (and point
-					    (get-property-at
-					     'command-table
-					     (mark-index point)
-					     (mark-group point)))))
-		   (let ((command
-			  (or (and txtprp-comtab (comtab-entry (cadr txtprp-comtab)
-							       button))
-			      (comtab-entry (buffer-comtabs (window-buffer frame))
-					    button))))
-		     (cond (command
-			    (with-current-button-event
-				(make-button-event frame relative-x relative-y)
-			      (lambda () (execute-command command))))
-			   ((button/down? button)
-			    (editor-beep))))))
+		      (< -1 relative-y (buffer-frame-y-size frame))
+		      (local-comtab-entry
+		       (buffer-comtabs (window-buffer frame))
+		       button
+		       (window-coordinates->mark frame
+						 relative-x
+						 relative-y)))
+		 => (lambda (command)
+		      (with-current-button-event
+			  (make-button-event frame relative-x relative-y)
+			(lambda () (execute-command command)))))
 		((button/down? button)
 		 (editor-beep)))))))

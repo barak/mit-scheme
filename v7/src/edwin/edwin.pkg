@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.123 1993/08/02 23:54:24 cph Exp $
+$Id: edwin.pkg,v 1.124 1993/08/10 06:35:49 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -193,6 +193,7 @@ MIT in each case. |#
 	  comtab?
 	  define-key
 	  define-prefix-key
+	  local-comtab-entry
 	  make-comtab
 	  prefix-key-list?))
 
@@ -211,6 +212,7 @@ MIT in each case. |#
 	  undo-more
 	  undo-record-deletion!
 	  undo-record-insertion!
+	  undo-record-property-changes!
 	  undo-start
 	  with-group-undo-disabled))
 
@@ -1116,6 +1118,33 @@ MIT in each case. |#
 	  edwin-variable$rmail-primary-inbox-list
 	  edwin-variable$rmail-reply-with-re
 	  rmail-spool-directory))
+
+(define-package (edwin text-properties)
+  (files "txtprp")
+  (parent (edwin))
+  (export (edwin)
+	  add-text-properties
+	  get-property
+	  get-property-at
+	  group-extract-properties
+	  group-reinsert-properties!
+	  local-comtabs
+	  next-property-change
+	  next-specific-property-change
+	  prev-specific-property-change
+	  previous-property-change
+	  remove-text-properties
+	  set-text-properties
+	  text-not-deleteable?
+	  text-not-insertable?
+	  text-properties-at
+	  update-intervals-for-deletion!
+	  update-intervals-for-insertion!)
+  (export (edwin window)
+	  find-interval
+	  interval-end
+	  interval-property
+	  next-interval))
 #|
 (define-package (edwin bochser)
   (files "bochser"

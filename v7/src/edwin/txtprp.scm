@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: txtprp.scm,v 1.1 1993/08/09 19:12:51 jawilson Exp $
+;;;	$Id: txtprp.scm,v 1.2 1993/08/10 06:35:54 cph Exp $
 ;;;
 ;;;	Copyright (c) 1993 Massachusetts Institute of Technology
 ;;;
@@ -125,6 +125,12 @@
       (get-property prop (interval-properties (find-interval group index)))
       #f))
 
+(define (local-comtabs mark)
+  (let ((property
+	 (get-property-at 'COMMAND-TABLE (mark-index mark) (mark-group mark))))
+    (and property
+	 (cadr property))))
+
 ;;; The next four procedures are all about the same
 ;;; and none have been tested.
 
@@ -238,7 +244,7 @@
 	       (and next
 		    (fix:> end (interval-start next))
 		    (loop next)))))))
-
+
 ;; export
 #|
 (define (update-intervals-for-deletion! group start end)
@@ -252,11 +258,13 @@
 		  (if (and (fix:= start start*)
 			   (fix:= end end*))
 		      (delete-interval interval group)
-		      (add-amount-up-tree interval (fix:- 0 (fix:- end start))))
+		      (add-amount-up-tree interval
+					  (fix:- 0 (fix:- end start))))
 		  (begin
 		    (if (fix:= start start*)
 			(delete-interval interval group)
-			(add-amount-up-tree interval (fix:- 0 (fix:- end* start))))
+			(add-amount-up-tree interval
+					    (fix:- 0 (fix:- end* start))))
 		    (loop end*)))))))))
 |#
 (define (update-intervals-for-deletion! group start end)
@@ -779,8 +787,9 @@
       (connect-left! c y2)
       
       (set-interval-total-length! a (fix:+ (fix:+ lx ly1) la))
-      (set-interval-total-length! b (fix:+ (fix:+ (fix:+ lx ly1) (fix:+ ly2 lz))
-					   (fix:+ (fix:+ la lc) lb)))
+      (set-interval-total-length! b
+				  (fix:+ (fix:+ (fix:+ lx ly1) (fix:+ ly2 lz))
+					 (fix:+ (fix:+ la lc) lb)))
       (set-interval-total-length! c (fix:+ (fix:+ ly2 lz) lc))
       (set-interval-size! a (fix:+ (fix:+ nx ny1) 1))
       (set-interval-size! c (fix:+ (fix:+ ny2 nz) 1))
@@ -849,8 +858,9 @@
       (connect-right! c y2)
 
       (set-interval-total-length! a (fix:+ (fix:+ lx ly1) la))
-      (set-interval-total-length! b (fix:+ (fix:+ (fix:+ lx ly1) (fix:+ ly2 lz))
-					   (fix:+ (fix:+ la lb) lc)))
+      (set-interval-total-length! b
+				  (fix:+ (fix:+ (fix:+ lx ly1) (fix:+ ly2 lz))
+					 (fix:+ (fix:+ la lb) lc)))
       (set-interval-total-length! c (fix:+ (fix:+ ly2 lz) lc))
 
       (set-interval-size! a (fix:+ (fix:+ ny1 nx) 1))
@@ -883,8 +893,3 @@
 	       (set-interval-size! t (fix:+ (interval-size t)
 					    size-inc-amount))
 	       (balance (interval-parent t) group size-inc-amount))))))
-
-;; Edwin Variables:
-;; scheme-environment: '(edwin text-props)
-;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
-;; End:

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comtab.scm,v 1.62 1992/01/14 18:34:34 cph Exp $
+;;;	$Id: comtab.scm,v 1.63 1993/08/10 06:35:40 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -254,10 +254,21 @@
 		   (error "Illegal comtab datum:" datum))))))))
 
 (define (comtab-entry comtabs key)
+  (or (%comtab-entry comtabs key)
+      (and (not (button? key))
+	   (ref-command-object undefined))))
+
+(define (local-comtab-entry comtabs key mark)
+  (or (and mark
+	   (let ((local-comtabs (local-comtabs mark)))
+	     (and local-comtabs
+		  (%comtab-entry local-comtabs key))))
+      (comtab-entry comtabs key)))
+
+(define (%comtab-entry comtabs key)
   (let ((object (lookup-key comtabs key)))
     (cond ((not object)
-	   (and (not (button? key))
-		(ref-command-object undefined)))
+	   #f)
 	  ((command? object)
 	   object)
 	  ((command&comtab? object)
