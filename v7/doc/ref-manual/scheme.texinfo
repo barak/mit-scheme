@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.38 1993/11/16 21:59:15 nick Exp $
+@comment $Id: scheme.texinfo,v 1.39 1993/11/22 22:45:08 nick Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -14866,7 +14866,7 @@ the documentation for its type.
 
 Some graphics device types support images, which are rectangular pieces
 of picture that may be drawn into a graphics device.  Images are often
-called something else in the host graphics system, such as bitmaps and
+called something else in the host graphics system, such as bitmaps or
 pixmaps.  The operations supported vary between devices, so look under
 the different device types to see what operations are available.  All
 devices that support images support the following operations.
