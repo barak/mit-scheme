@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.18 1988/11/08 12:36:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.19 1989/01/18 13:49:56 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -123,8 +123,10 @@ MIT in each case. |#
       ((0) (LAP))
       ((1 2) (LAP (ADDQ L (& ,(* 4 n)) ,target)))
       ((-1 -2) (LAP (SUBQ L (& ,(* -4 n)) ,target)))
-      ((< register 8) (LAP (ADD L (& ,(* 4 n)) ,target)))
-      (else (LAP (LEA (@AO ,(- register 8) ,(* 4 n)) ,target))))))
+      (else
+       (if (< register 8)
+	   (LAP (ADD L (& ,(* 4 n)) ,target))
+	   (LAP (LEA (@AO ,(- register 8) ,(* 4 n)) ,target)))))))
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
