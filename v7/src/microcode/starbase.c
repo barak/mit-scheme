@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.3 1989/09/20 23:11:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/starbase.c,v 1.4 1990/01/18 19:18:02 cph Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -80,8 +80,10 @@ DEFINE_PRIMITIVE ("STARBASE-OPEN-DEVICE", Prim_starbase_open_device, 2, 2,
   "(STARBASE-OPEN-DEVICE DEVICE-NAME DRIVER-NAME)")
 {
   PRIMITIVE_HEADER (2);
+  gerr_print_control (NO_ERROR_PRINTING);
   {
     int descriptor = (gopen ((STRING_ARG (1)), OUTDEV, (STRING_ARG (2)), 0));
+    gerr_print_control (PRINT_ERRORS);
     if (descriptor == (-1))
       PRIMITIVE_RETURN (SHARP_F);
     set_vdc_extent (descriptor, (-1.0), (-1.0), (1.0), (1.0));
@@ -372,7 +374,7 @@ suitable for printing on an HP laserjet printer.\n\
 If INVERT? is not #F, invert black and white in the output.")
 {
   PRIMITIVE_HEADER (3);
-  print_graphics ((SB_DEVICE_ARG (2)), (STRING_ARG (2)), (BOOLEAN_ARG (3)));
+  print_graphics ((SB_DEVICE_ARG (1)), (STRING_ARG (2)), (BOOLEAN_ARG (3)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
