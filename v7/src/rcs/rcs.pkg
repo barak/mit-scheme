@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcs.pkg,v 1.5 1995/01/06 20:52:39 cph Exp $
+$Id: rcs.pkg,v 1.6 1995/11/12 05:43:22 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -56,5 +56,5 @@ MIT in each case. |#
 (define-package (rcs log-merge)
   (files "logmer")
   (parent (rcs))
-  (export (rcs)
+  (export ()
 	  rcs-directory-log))
