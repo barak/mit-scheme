@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.70 2001/08/09 03:04:46 cph Exp $
+$Id: make.scm,v 14.71 2001/08/15 02:55:59 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -49,37 +49,27 @@ USA.
 				       (vector-ref values i)))))))))
 
 ;; This definition is replaced later in the boot sequence.
-
 (define apply (ucode-primitive apply 2))
 
-;; This must go before the uses of the-environment later,
-;; and after apply above.
-
+;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
+;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (apply
-   ((ucode-primitive scode-eval 2)
-    #|
-    (make-slambda (vector-ref names 0)
-		  (subvector->list names 1 (vector-length names)))
-    |#
-    ((ucode-primitive system-pair-cons 3)	; &typed-pair-cons
-     (ucode-type lambda)			; slambda-type
-     ((ucode-primitive object-set-type 2)	; (make-the-environment)
-      (ucode-type the-environment)
-      0)
-     names)
-    parent)
-   values))
+  (apply ((ucode-primitive scode-eval 2)
+	  ((ucode-primitive system-pair-cons 3)
+	   (ucode-type lambda)
+	   ((ucode-primitive object-set-type 2)
+	    (ucode-type the-environment)
+	    0)
+	   names)
+	  parent)
+	 values))
 
-(define system-global-environment (the-environment))
-
-(define *dashed-hairy-migration-support:false-value*
-  #F)
-
-(define *dashed-hairy-migration-support:system-global-environment*
-  system-global-environment)
+(define system-global-environment
+  (the-environment))
 
 (let ((environment-for-package (let () (the-environment))))
+
+(define this-environment (the-environment))
 
 (define-primitives
   (+ integer-add)
@@ -297,28 +287,36 @@ USA.
 ;; Lotta hair here to load the package code before its package is built.
 (eval (file->object "packag" #t #f) environment-for-package)
 ((access initialize-package! environment-for-package))
-(let loop ((names
-	    '(*ALLOW-PACKAGE-REDEFINITION?*
-	      ENVIRONMENT->PACKAGE
-	      FIND-PACKAGE
-	      NAME->PACKAGE
-	      PACKAGE/ADD-CHILD!
-	      PACKAGE/CHILD
-	      PACKAGE/CHILDREN
-	      PACKAGE/ENVIRONMENT
-	      PACKAGE/NAME
-	      PACKAGE/PARENT
-	      PACKAGE/REFERENCE
-	      PACKAGE/SYSTEM-LOADER
-	      PACKAGE?
-	      SYSTEM-GLOBAL-PACKAGE)))
-  (if (pair? names)
-      (begin
-	(link-variables system-global-environment (car names)
-			environment-for-package (car names))
-	(loop (cdr names)))))
+(let ((export
+       (lambda (name)
+	 (link-variables system-global-environment name
+			 environment-for-package name))))
+  (export '*ALLOW-PACKAGE-REDEFINITION?*)
+  (export 'CONSTRUCT-PACKAGES-FROM-FILE)
+  (export 'ENVIRONMENT->PACKAGE)
+  (export 'FIND-PACKAGE)
+  (export 'LOAD-PACKAGES-FROM-FILE)
+  (export 'NAME->PACKAGE)
+  (export 'PACKAGE/ADD-CHILD!)
+  (export 'PACKAGE/CHILD)
+  (export 'PACKAGE/CHILDREN)
+  (export 'PACKAGE/ENVIRONMENT)
+  (export 'PACKAGE/NAME)
+  (export 'PACKAGE/PARENT)
+  (export 'PACKAGE/REFERENCE)
+  (export 'PACKAGE/SYSTEM-LOADER)
+  (export 'PACKAGE?)
+  (export 'SYSTEM-GLOBAL-PACKAGE))
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
-(eval (fasload "runtime.bco" #f) system-global-environment)
+
+(let ((import
+       (lambda (name)
+	 (link-variables this-environment name
+			 environment-for-package name))))
+  (import 'CONSTRUCT-PACKAGES-FROM-FILE)
+  (import 'LOAD-PACKAGES-FROM-FILE))
+(define packages-file (fasload "runtime.pkd" #f))
+(construct-packages-from-file packages-file)
 
 ;;; Global databases.  Load, then initialize.
 (let ((files1
@@ -368,26 +366,24 @@ USA.
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
 
-;; Load everything else.
-;; Note: The following code needs MAP* and MEMBER-PROCEDURE
-;; from runtime/list. Fortunately that file has already been loaded.
-
-  ((eval (fasload "runtime.bld" #f) system-global-environment)
-   (let ((to-avoid
-	  (cons "packag"
-		(map* (if (file-exists? "runtime.bad")
-			  (fasload "runtime.bad" #f)
-			  '())
-		      car
-		      (append files1 files2))))
-	 (string-member? (member-procedure string=?)))
-     (lambda (filename environment)
-       (if (not (string-member? filename to-avoid))
-	   (eval (file->object filename #t #f) environment))
-       unspecific))
-   `((SORT-TYPE . MERGE-SORT)
-     (OS-TYPE . ,os-name)
-     (OPTIONS . NO-LOAD))))
+  ;; Load everything else.
+  (load-packages-from-file packages-file
+			   `((SORT-TYPE . MERGE-SORT)
+			     (OS-TYPE . ,os-name)
+			     (OPTIONS . NO-LOAD))
+    (let ((file-member?
+	   (lambda (filename files)
+	     (let loop ((files files))
+	       (and (pair? files)
+		    (or (string=? (car (car files)) filename)
+			(loop (cdr files))))))))
+      (lambda (filename environment)
+	(if (not (or (string=? filename "packag")
+		     (file-member? filename files1)
+		     (file-member? filename files2)))
+	    (eval (file->object filename #t #f)
+		  environment))
+	unspecific))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
 (package-initialization-sequence
@@ -403,6 +399,7 @@ USA.
    ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS! #t)
    ;; Basic data structures
    (RUNTIME NUMBER)
+   ((RUNTIME NUMBER) INITIALIZE-DRAGON4! #t)
    (RUNTIME CHARACTER)
    (RUNTIME CHARACTER-SET)
    (RUNTIME GENSYM)

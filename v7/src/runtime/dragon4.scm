@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.14 1999/01/02 06:11:34 cph Exp $
+$Id: dragon4.scm,v 1.15 2001/08/15 02:55:49 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -269,15 +269,18 @@ not much different to numbers within a few orders of magnitude of 1.
       (scale (int:* 2 r) (int:* 2 s) (int:* 2 m-))
       (scale r s m-)))
 
+(define expt-radix)
 
-(define expt-radix
-  (let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
-    (lambda (base exponent)
-      (if (and (= base 10)
-	       (>= exponent 0)
-	       (< exponent (vector-length v)))
-	  (vector-ref v exponent)
-	  (rat:expt base exponent)))))
+(define (initialize-dragon4!)
+  (set! expt-radix
+	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
+	  (lambda (base exponent)
+	    (if (and (= base 10)
+		     (>= exponent 0)
+		     (< exponent (vector-length v)))
+		(vector-ref v exponent)
+		(rat:expt base exponent)))))
+  unspecific)
 
 #|  Test code.  Re-run after changing anything.
 

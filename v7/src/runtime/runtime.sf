@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.14 2001/06/15 20:38:43 cph Exp $
+$Id: runtime.sf,v 14.15 2001/08/15 02:56:26 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -33,7 +33,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; is loaded.
 (load-option 'CREF)
 (cref/generate-constructors "runtime")
-(sf-conditionally "runtime.con")
-(sf-conditionally "runtime.ldr")
-(if (file-exists? "runtime.avd")
-    (fasdump (read-file "runtime.avd") "runtime.bad"))

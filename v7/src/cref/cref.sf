@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.12 2001/05/29 21:25:33 cph Exp $
+$Id: cref.sf,v 1.13 2001/08/15 02:59:46 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -24,15 +24,11 @@ USA.
 (sf-conditionally "object")
 (sf-directory ".")
 
-(if (not (file-exists? "cref.bco"))
-    (sf "triv.con" "cref.bco"))
-(if (not (file-exists? "cref.bld"))
-    (sf "triv.ldr" "cref.bld"))
+(if (not (file-exists? "cref.pkd"))
+    (fasdump (load "triv.pkg") "cref.pkd"))
 
-(if (file-exists? "../runtime/runtime.glo")
+(if (file-exists? "../runtime/runtime.pkd")
     (begin
       (if (not (name->package '(CROSS-REFERENCE)))
 	  (load "make"))
-      (cref/generate-constructors "cref")
-      (sf-conditionally "cref.con")
-      (sf-conditionally "cref.ldr")))
+      (cref/generate-constructors "cref")))

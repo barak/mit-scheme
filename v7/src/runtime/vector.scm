@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.15 2000/03/27 19:56:07 cph Exp $
+$Id: vector.scm,v 14.16 2001/08/15 02:56:30 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -141,6 +141,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (begin
 	    (procedure (vector-ref vector index))
 	    (loop (fix:+ index 1)))))))
+
+(define (vector-of-type? vector predicate)
+  (and (vector? vector)
+       (let ((n (vector-length vector)))
+	 (let loop ((i 0))
+	   (or (fix:= i n)
+	       (and (predicate (vector-ref vector i))
+		    (loop (fix:+ i 1))))))))
 
 (define (subvector-find-next-element vector start end item)
   (guarantee-subvector vector start end 'SUBVECTOR-FIND-NEXT-ELEMENT)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.28 1999/01/02 06:11:34 cph Exp $
+$Id: packag.scm,v 14.29 2001/08/15 02:56:08 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Simple Package Namespace
@@ -57,6 +58,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable (set-package/environment! package environment)
   (%record-set! package 4 environment))
 
+(define (package-name? object)
+  (list-of-type? object symbol?))
+
+(define (package/reference package name)
+  (lexical-reference (package/environment package) name))
+
 (define (finalize-package-record-type!)
   (let ((rtd
 	 (make-record-type "package" '(PARENT CHILDREN %NAME ENVIRONMENT))))
@@ -73,7 +80,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (package/child package name)
   (let loop ((children (package/children package)))
-    (and (not (null? children))
+    (and (pair? children)
 	 (if (eq? name (package/%name (car children)))
 	     (car children)
 	     (loop (cdr children))))))
@@ -86,11 +93,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (name->package name)
   (let loop ((path name) (package system-global-package))
-    (if (null? path)
-	package
+    (if (pair? path)
 	(let ((child (package/child package (car path))))
 	  (and child
-	       (loop (cdr path) child))))))
+	       (loop (cdr path) child)))
+	package)))
 
 (define (environment->package environment)
   (and (interpreter-environment? environment)
@@ -108,12 +115,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (find-package name)
   (let loop ((path name) (package system-global-package))
-    (if (null? path)
-	package
+    (if (pair? path)
 	(loop (cdr path)
 	      (or (package/child package (car path))
-		  (error "Unable to find package"
-			 (list-difference name (cdr path))))))))
+		  (error "Unable to find package:"
+			 (list-difference name (cdr path)))))
+	package)))
 
 (define (list-difference list tail)
   (let loop ((list list))
@@ -143,46 +150,56 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (finish child)))))
 
 (define system-global-package)
-(define *allow-package-redefinition?*)
+(define *allow-package-redefinition?* #f)
+
+(define (initialize-package!)
+  (set! system-global-package (make-package #f #f system-global-environment))
+  (local-assignment system-global-environment
+		    package-name-tag
+		    system-global-package))
 
 (define system-loader/enable-query?
-  false)
+  #f)
 
-(define (package/system-loader filename options load-interpreted?)
-  (let ((pathname (->pathname filename)))
+(define (package/system-loader filename #!optional options load-interpreted?)
+  (let* ((options (if (default-object? options) '() options))
+	 (pathname
+	  (let ((rewrite (lookup-option 'REWRITE-PACKAGE-FILE-NAME options))
+		(pathname (pathname-new-type filename "pkd")))
+	    (if rewrite
+		(rewrite pathname)
+		pathname))))
     (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
-	(fluid-let ((load/default-types
-		     (if (if (eq? load-interpreted? 'QUERY)
-			     (and system-loader/enable-query?
-				  (prompt-for-confirmation "Load interpreted"))
-			     load-interpreted?)
-			 (list (assoc "bin" load/default-types)
-			       (assoc "scm" load/default-types))
-			 load/default-types)))
-	  (let ((syntax-table (nearest-repl/syntax-table)))
-	    (load (let ((rewrite (assq 'MAKE-CONSTRUCTOR-NAME options))
-			(pathname (pathname-new-type pathname "bco")))
-		    (if rewrite
-			((cdr rewrite) pathname)
-			pathname))
-		  system-global-environment
-		  syntax-table false)
-	    ((load (let ((rewrite (assq 'MAKE-LOADER-NAME options))
-			 (pathname (pathname-new-type pathname "bld")))
-		     (if rewrite
-			 ((cdr rewrite) pathname)
-			 pathname))
-		   system-global-environment
-		   syntax-table false)
-	     (lambda (component environment)
-	       (cond ((filename->compiled-object filename component)
-		      => (lambda (value)
-			   (purify (load/purification-root value))
-			   (scode-eval value environment)))
-		     (else
-		      (load component environment syntax-table true))))
-	     options))))))
+	(let ((file (fasload pathname)))
+	  (if (not (package-file? file))
+	      (error "Malformed package-description file:" pathname))
+	  (construct-packages-from-file file)
+	  (fluid-let
+	      ((load/default-types
+		(if (if (or (default-object? load-interpreted?)
+			    (eq? load-interpreted? 'QUERY))
+			(and system-loader/enable-query?
+			     (prompt-for-confirmation "Load interpreted"))
+			load-interpreted?)
+		    (list (assoc "bin" load/default-types)
+			  (assoc "scm" load/default-types))
+		    load/default-types)))
+	    (let ((alternate-loader
+		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		  (load-component
+		   (let ((syntax-table (nearest-repl/syntax-table)))
+		     (lambda (component environment)
+		       (let ((value
+			      (filename->compiled-object filename component)))
+			 (if value
+			     (begin
+			       (purify (load/purification-root value))
+			       (scode-eval value environment))
+			     (load component environment syntax-table #t)))))))
+	      (if alternate-loader
+		  (alternate-loader load-component options)
+		  (load-packages-from-file file options load-component))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
@@ -195,9 +212,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (let* ((p (->pathname component))
 			(d (pathname-directory p)))
 		   (string-append
-		    (if (or (not d) (null? d))
-			system
-			(car (last-pair d)))
+		    (if (pair? d)
+			(car (last-pair d))
+			system)
 		    "_"
 		    (string-replace (pathname-name p) ; kludge
 				    #\-
@@ -211,14 +228,241 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (write-string ";Initialized " port)
 		 (write name port)
 		 value))))))
+
+(define-structure (package-file (type vector)
+				(conc-name package-file/))
+  (tag #f read-only #t)
+  (version #f read-only #t)
+  (sorted-descriptions #f read-only #t)
+  (descriptions #f read-only #t))
 
-(define-integrable (package/reference package name)
-  (lexical-reference (package/environment package) name))
+(define-structure (package-description (type vector)
+				       (conc-name package-description/))
+  (name #f read-only #t)
+  (parent-name #f read-only #t)
+  (file-cases #f read-only #t)
+  (initialization #f read-only #t)
+  (finalization #f read-only #t)
+  (internal-names #f read-only #t)
+  (internal-bindings #f read-only #t)
+  (external-bindings #f read-only #t))
 
-(define (initialize-package!)
-  (set! system-global-package (make-package #f #f system-global-environment))
-  (local-assignment system-global-environment
-		    package-name-tag
-		    system-global-package)
-  (set! *allow-package-redefinition?* #f)
-  unspecific)
+(define (package-file? object)
+  (and (vector? object)
+       (fix:= (vector-length object) 4)
+       (eq? (package-file/tag object) 'PACKAGE-DESCRIPTIONS)
+       (and (index-fixnum? (package-file/version object))
+	    (fix:= (package-file/version object) 2))
+       (let ((descriptions (package-file/sorted-descriptions object)))
+	 (and (vector? descriptions)
+	      (let ((n (vector-length descriptions)))
+		(let loop ((i 0))
+		  (or (fix:= i n)
+		      (and (package-description? (vector-ref descriptions i))
+			   (loop (fix:+ i 1))))))))
+       ;; This is the same as sorted-descriptions, in a different order.
+       ;; Don't bother to check it.
+       (vector? (package-file/descriptions object))))
+
+(define (package-description? object)
+  (and (vector? object)
+       (fix:= (vector-length object) 8)
+       (package-name? (package-description/name object))
+       (or (package-name? (package-description/parent-name object))
+	   (eq? (package-description/parent-name object) 'NONE))
+       (list-of-type? (package-description/file-cases object)
+	 (lambda (case)
+	   (and (pair? case)
+		(or (and (not (car case))
+			 (list-of-type? (cdr case) string?))
+		    (and (symbol? (car case))
+			 (list-of-type? (cdr case)
+			   (lambda (clause)
+			     (and (pair? clause)
+				  (or (list-of-type? (car clause) symbol?)
+				      (eq? (car clause) 'ELSE))
+				  (list-of-type? (cdr clause) string?)))))))))
+       (vector-of-type? (package-description/internal-names object) symbol?)
+       (vector-of-type? (package-description/internal-bindings object)
+	 (lambda (binding)
+	   (and (vector? binding)
+		(let ((n (vector-length binding)))
+		  (and (fix:>= n 2)
+		       (symbol? (vector-ref binding 0))
+		       (let loop ((i 1))
+			 (or (fix:= i n)
+			     (and (let ((p.n (vector-ref binding i)))
+				    (and (pair? p.n)
+					 (package-name? (car p.n))
+					 (symbol? (cdr p.n))))
+				  (loop (fix:+ i 1))))))))))
+       (vector-of-type? (package-description/external-bindings object)
+	 (lambda (binding)
+	   (and (vector? binding)
+		(or (fix:= (vector-length binding) 2)
+		    (fix:= (vector-length binding) 3))
+		(symbol? (vector-ref binding 0))
+		(package-name? (vector-ref binding 1))
+		(or (fix:= (vector-length binding) 2)
+		    (symbol? (vector-ref binding 2))))))))
+
+(define (construct-packages-from-file file)
+  (let ((descriptions (package-file/sorted-descriptions file))
+	(skip-package?
+	 (lambda (name)
+	   (or (null? name)
+	       (and (pair? name)
+		    (eq? (car name) 'PACKAGE)
+		    (null? (cdr name)))))))
+    (let ((n (vector-length descriptions)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(let ((description (vector-ref descriptions i)))
+	  (let ((name (package-description/name description)))
+	    (if (not (skip-package? name))
+		(construct-normal-package-from-description description)))))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(let ((description (vector-ref descriptions i)))
+	  (let ((name (package-description/name description)))
+	    (if (not (skip-package? name))
+		(create-links-from-description description))))))))
+
+(define (construct-normal-package-from-description description)
+  (let ((name (package-description/name description))
+	(environment
+	 (extend-package-environment
+	  (let ((parent (package-description/parent-name description)))
+	    (if (eq? parent 'NONE)
+		null-environment
+		(package/environment (find-package parent))))
+	  (cons (package-description/internal-names description)
+		(lambda (name) name))
+	  (cons (package-description/internal-bindings description)
+		(lambda (binding) (vector-ref binding 0)))
+	  (cons (package-description/external-bindings description)
+		(lambda (binding) (vector-ref binding 0))))))
+    (let loop ((path name) (package system-global-package))
+      (if (pair? (cdr path))
+	  (loop (cdr path)
+		(or (package/child package (car path))
+		    (error "Unable to find package:"
+			   (list-difference name (cdr path)))))
+	  (package/add-child! package (car path) environment)))))
+
+(define (create-links-from-description description)
+  (let ((environment
+	 (find-package-environment (package-description/name description))))
+    (let ((bindings (package-description/internal-bindings description)))
+      (let ((n (vector-length bindings)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (let ((binding (vector-ref bindings i)))
+	    (let ((name (vector-ref binding 0))
+		  (n (vector-length binding)))
+	      (do ((i 1 (fix:+ i 1)))
+		  ((fix:= i n))
+		(let ((link (vector-ref binding i)))
+		  (link-variables (find-package-environment (car link))
+				  (cdr link)
+				  environment
+				  name))))))))
+    (let ((bindings (package-description/external-bindings description)))
+      (let ((n (vector-length bindings)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (let ((binding (vector-ref bindings i)))
+	    (link-variables environment
+			    (vector-ref binding 0)
+			    (find-package-environment (vector-ref binding 1))
+			    (if (fix:= (vector-length binding) 3)
+				(vector-ref binding 2)
+				(vector-ref binding 0)))))))))
+
+(define (extend-package-environment environment . name-sources)
+  (let ((n
+	 (let loop ((name-sources name-sources) (n 1))
+	   (if (pair? name-sources)
+	       (loop (cdr name-sources)
+		     (fix:+ n (vector-length (car (car name-sources)))))
+	       n))))
+    (let ((vn ((ucode-primitive vector-cons) n #f))
+	  (vv
+	   ((ucode-primitive vector-cons)
+	    n
+	    ((ucode-primitive primitive-object-set-type)
+	     (ucode-type reference-trap)
+	     0))))
+      (let loop ((name-sources name-sources) (i 1))
+	(if (pair? name-sources)
+	    (let ((v (car (car name-sources)))
+		  (p (cdr (car name-sources))))
+	      (let ((n (vector-length v)))
+		(let do-source ((j 0) (i i))
+		  (if (fix:< j n)
+		      (begin
+			(vector-set! vn i (p (vector-ref v j)))
+			(do-source (fix:+ j 1) (fix:+ i 1)))
+		      (loop (cdr name-sources) i)))))))
+      (vector-set! vn 0 'DUMMY-PROCEDURE)
+      (vector-set! vv 0
+		   (system-pair-cons (ucode-type procedure)
+				     (system-pair-cons (ucode-type lambda)
+						       #f
+						       vn)
+				     environment))
+      (object-new-type (ucode-type environment) vv))))
+
+(define null-environment
+  (object-new-type (object-type #f)
+		   (fix:xor (object-datum #F) 1)))
+
+(define (find-package-environment name)
+  (package/environment (find-package name)))
+
+(define-primitives
+  link-variables)
+
+(define (load-packages-from-file file options file-loader)
+  (let ((descriptions (package-file/descriptions file)))
+    (let ((n (vector-length descriptions)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i n))
+	(let ((description (vector-ref descriptions i)))
+	  (load-package-from-description
+	   (find-package (package-description/name description))
+	   description
+	   options
+	   file-loader))))))
+
+(define (load-package-from-description package description options file-loader)
+  (let ((environment (package/environment package)))
+    (let ((load-files
+	   (lambda (filenames)
+	     (do ((filenames filenames (cdr filenames)))
+		 ((not (pair? filenames)))
+	       (file-loader (car filenames) environment)))))
+      (do ((cases (package-description/file-cases description) (cdr cases)))
+	  ((not (pair? cases)))
+	(let ((case (car cases)))
+	  (let ((key (car case)))
+	    (if key
+		(let ((option (lookup-option key options)))
+		  (if (not option)
+		      (error "Missing key:" key))
+		  (do ((clauses (cdr case) (cdr clauses)))
+		      ((not (pair? clauses)))
+		    (let ((clause (car clauses)))
+		      (if (let loop ((options (car clause)))
+			    (and (pair? options)
+				 (or (eq? (car options) option)
+				     (loop (cdr options)))))
+			  (load-files (cdr clause))))))
+		(load-files (cdr case)))))))))
+
+(define (lookup-option key options)
+  (let loop ((options options))
+    (and (pair? options)
+	 (if (eq? (car (car options)) key)
+	     (cdr (car options))
+	     (loop (cdr options))))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.24 2000/05/02 20:39:37 cph Exp $
+$Id: list.scm,v 14.25 2001/08/15 02:55:55 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -151,6 +151,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (and (not (eq? l1 l2))
 		    (if (pair? l1)
 			(and (pair? (car l1))
+			     (loop (cdr l1) (cdr l2)))
+			(null? l1)))))
+	(null? l1))))
+
+(define (list-of-type? object predicate)
+  (let loop ((l1 object) (l2 object))
+    (if (pair? l1)
+	(and (predicate (car l1))
+	     (let ((l1 (cdr l1)))
+	       (and (not (eq? l1 l2))
+		    (if (pair? l1)
+			(and (predicate (car l1))
 			     (loop (cdr l1) (cdr l2)))
 			(null? l1)))))
 	(null? l1))))

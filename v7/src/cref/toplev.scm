@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.13 2000/01/18 20:39:42 cph Exp $
+$Id: toplev.scm,v 1.14 2001/08/15 02:59:58 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Package Model: Top Level
@@ -33,7 +34,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (cref/generate-trivial-constructor filename)
   (let ((pathname (merge-pathnames filename)))
-    (write-constructor pathname (read-package-model pathname) #f)))
+    (write-external-descriptions pathname (read-package-model pathname) #f)))
 
 (define cref/generate-cref
   (generate/common
@@ -50,49 +51,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda (pathname pmodel changes?)
      (write-cref-unusual pathname pmodel changes?)
      (write-globals pathname pmodel changes?)
-     (write-constructor pathname pmodel changes?)
-     (write-loader pathname pmodel changes?))))
+     (write-external-descriptions pathname pmodel changes?))))
 
 (define cref/generate-all
   (generate/common
    (lambda (pathname pmodel changes?)
      (write-cref pathname pmodel changes?)
      (write-globals pathname pmodel changes?)
-     (write-constructor pathname pmodel changes?)
-     (write-loader pathname pmodel changes?))))
-
-(define (write-constructor pathname pmodel changes?)
-  (if (or changes? (not (file-processed? pathname "pkg" "con")))
-      (let ((constructor (construct-constructor pmodel)))
-	(with-output-to-file (pathname-new-type pathname "con")
-	  (lambda ()
-	    (fluid-let ((*unparser-list-breadth-limit* #F)
-			(*unparser-list-depth-limit*   #F))
-	      (write-string ";;; -*-Scheme-*-")
-	      (newline)
-	      (write-string ";;; program to make package structure")
-	      (newline)
-	      (write '(DECLARE (USUAL-INTEGRATIONS)))
-	      (for-each (lambda (expression)
-			  (pp expression (current-output-port) true))
-		constructor)))))))
+     (write-external-descriptions pathname pmodel changes?))))
 
-(define (write-loader pathname pmodel changes?)
-  changes?
-  (if (not (file-processed? pathname "pkg" "ldr"))
-      (let ((loader (construct-loader pmodel)))
-	(with-output-to-file (pathname-new-type pathname "ldr")
-	  (lambda ()
-	    (fluid-let ((*unparser-list-breadth-limit* #F)
-			(*unparser-list-depth-limit*   #F))
-	      (write-string ";;; -*-Scheme-*-")
-	      (newline)
-	      (write-string ";;; program to load package contents")
-	      (newline)
-	      (write '(DECLARE (USUAL-INTEGRATIONS)))
-	      (for-each (lambda (expression)
-			  (pp expression (current-output-port) true))
-		loader)))))))
+(define (write-external-descriptions pathname pmodel changes?)
+  (if (or changes? (not (file-processed? pathname "pkg" "pkd")))
+      (fasdump (construct-external-descriptions pmodel)
+	       (pathname-new-type pathname "pkd"))))
 
 (define (write-cref pathname pmodel changes?)
   (if (or changes? (not (file-processed? pathname "pkg" "crf")))

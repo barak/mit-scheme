@@ -1,0 +1,68 @@
+#| -*-Scheme-*-
+
+$Id: triv.pkg,v 1.1 2001/08/15 03:00:01 cph Exp $
+
+Copyright (c) 2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
+
+;;;; CREF Packaging: hand-compiled package for bootstrapping
+
+(let ((v
+       (let ((package
+	      (lambda (package-name parent-name files exported-names)
+		(vector package-name
+			parent-name
+			(list (cons #f files))
+			#f
+			#f
+			'#()
+			(list->vector
+			 (map (lambda (name)
+				(vector name (cons parent-name name)))
+			      exported-names))
+			'#()))))
+	 (vector (package '(cross-reference)
+			  '()
+			  '("mset" "object" "toplev")
+			  '(cref/generate-all
+			    cref/generate-constructors
+			    cref/generate-cref
+			    cref/generate-cref-unusual
+			    cref/generate-trivial-constructor))
+		 (package '(cross-reference analyze-file)
+			  '(cross-reference)
+			  '("anfile")
+			  '(analyze-file))
+		 (package '(cross-reference constructor)
+			  '(cross-reference)
+			  '("conpkg")
+			  '(construct-external-descriptions))
+
+		 (package '(cross-reference formatter)
+			  '(cross-reference)
+			  '("forpkg")
+			  '(format-packages
+			    format-packages-unusual))
+
+		 (package '(cross-reference reader)
+			  '(cross-reference)
+			  '("redpkg")
+			  '(read-file-analyses!
+			    read-package-model
+			    resolve-references!))))))
+  (vector 'PACKAGE-DESCRIPTIONS 2 v v))
