@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.28 1992/07/20 20:12:16 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.29 1992/08/18 19:33:19 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -600,7 +600,8 @@ DEFUN (x_polygon_vector_arg, (xw, argno),
 	  double dy =
 	    ((XW_Y_SLOPE (xw))
 	     * ((real_number_to_double (coord)) - (XW_Y_BOTTOM (xw))));
-	  (scan_result -> y) = (((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (dy)));
+	  (scan_result -> y) =
+	    (border + ((XW_Y_SIZE (xw)) - 1) + (ROUND_FLOAT (dy)));
 	}
 	scan_result += 1;
       }
