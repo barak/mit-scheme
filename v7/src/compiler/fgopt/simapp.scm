@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 1.3 1987/07/28 22:50:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/simapp.scm,v 4.1 1987/12/04 19:06:39 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,114 +38,145 @@ MIT in each case. |#
 
 (package (simulate-application)
 
-;;;; Simulate Application
+(define-export (simulate-application lvalues applications)
+  (for-each initialize-lvalue-cache! lvalues)
+  (for-each (lambda (application)
+	      (set-application-operators! application '()))
+	    applications)
+  (transitive-closure false process-application applications)
+  (for-each reset-lvalue-cache! lvalues))
 
-(define-export (simulate-application vnodes combinations)
-  (for-each (lambda (vnode)
-	      (set-vnode-procedures-cache! vnode
-					   (vnode-initial-procedures vnode)))
-	    vnodes)
-  (for-each (lambda (combination)
-	      (set-combination-procedures! combination '()))
-	    combinations)
-  (transitive-closure process-combination combinations)
-  (for-each (lambda (vnode)
-	      (set-vnode-procedures-cache! vnode 'NOT-CACHED))
-	    vnodes))
+(define (process-application application)
+  (set-application-operators!
+   application
+   (let ((operator (application-operator application)))
+     ((method-table-lookup process-application-methods
+			   (tagged-vector/index operator))
+      (application-operators application)
+      operator
+      (operator-applicator application)))))
+
+(define process-application-methods
+  (make-method-table rvalue-types
+		     (lambda (old operator apply-operator)
+		       (warn "Unapplicable operator" operator)
+		       operator)))
+
+(let ((processor
+       (lambda (old operator apply-operator)
+	 (if (not (null? old))
+	     (error "Encountered constant-operator application twice"
+		    operator))
+	 (apply-operator operator)
+	 operator)))
+  (define-method-table-entry 'PROCEDURE process-application-methods processor)
+  (define-method-table-entry 'CONSTANT process-application-methods processor))
+
+(define-method-table-entry 'REFERENCE process-application-methods
+  (lambda (old operator apply-operator)
+    (let ((new (lvalue-values-cache (reference-lvalue operator))))
+      (let loop ((operators new))
+	;; We can use `eq?' here because we assume that
+	;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
+	;; This is also noted at the definition of `eq-set-union'.
+	(if (eq? operators old)
+	    new
+	    (begin (apply-operator (car operators))
+		   (loop (cdr operators))))))))
 
-(define (process-combination combination)
-  (set-combination-procedures!
-   combination
-   (let ((operator (subproblem-value (combination-operator combination)))
-	 (old (combination-procedures combination))
-	 (apply-procedure
-	  (procedure-applicator (combination-operands combination)
-				(combination-value combination))))
-     (define (process-vnode vnode)
-       (let ((new (vnode-procedures-cache vnode)))
-	 (define (loop procedures)
-	   ;; We can use `eq?' here because we assume that
-	   ;; (eq? (list-tail (eq-set-union x y) n) y) for some n.
-	   ;; This is also noted at the definition of `eq-set-union'.
-	   (if (eq? procedures old)
-	       new
-	       (begin (apply-procedure (car procedures))
-		      (loop (cdr procedures)))))
-	 (loop new)))
-     (cond ((vnode? operator)
-	    (process-vnode operator))
-	   ((reference? operator)
-	    (process-vnode (reference-variable operator)))
-	   ((not (null? old))
-	    (error "Encountered constant-operator combination twice"
-		   combination))
-	   (else
-	    (if (procedure? operator)
-		(apply-procedure operator))
-	    true)))))
+(define (operator-applicator application)
+  (let ((operands (application-operands application)))
+    (let ((number-supplied (length operands)))
+      (lambda (operator)
+	(cond ((rvalue/procedure? operator)
+	       (set-procedure-applications!
+		operator
+		(cons application (procedure-applications operator)))
+	       (if (not (procedure-arity-correct? operator number-supplied))
+		   (warn "Wrong number of arguments" operator operands))
+	       ;; We should have some kind of LIST rvalue type to handle
+	       ;; the case of rest parameters, but for now we just
+	       ;; define them to be passed-in.  This is handled
+	       ;; specially in that part of the analysis.
+	       (let loop
+		   ((parameters
+		     (append (procedure-required operator)
+			     (procedure-optional operator)))
+		    (operands operands))
+		 (if (not (null? parameters))
+		     (if (null? operands)
+			 (for-each lvalue-unassigned! parameters)
+			 (begin
+			   (lvalue-connect! (car parameters) (car operands))
+			   (loop (cdr parameters) (cdr operands)))))))
+	      ((rvalue/constant? operator)
+	       (let ((value (constant-value operator)))
+		 (if (primitive-procedure? value)
+		     (if (not (primitive-arity-correct? value
+							(-1+ number-supplied)))
+			 (warn
+			  "Primitive called with wrong number of arguments"
+			  value
+			  number-supplied))
+		     (warn "Inapplicable operator" value))))
+	      (else
+	       (warn "Inapplicable operator" operator)))))))
 
-(define (procedure-applicator operands combination-value)
-  (let ((number-supplied (length operands)))
-    (lambda (procedure)
-      (let ((number-required (length (procedure-required procedure)))
-	    (number-optional (length (procedure-optional procedure)))
-	    (rest (procedure-rest procedure)))
-	(cond ((< number-supplied number-required)
-	       (warn "Too few arguments" procedure operands))
-	      (rest
-	       (if (<= number-supplied (+ number-required number-optional))
-		   ((vnode-connect!:constant (make-constant '())) rest)
-		   ;; Can make this a LIST rvalue when that is implemented.
-		   (vnode-unknowable! rest)))
-	      ((> number-supplied (+ number-required number-optional))
-	       (warn "Too many arguments" procedure operands))))
-      (let loop ((parameters
-		  (append (procedure-required procedure)
-			  (procedure-optional procedure)))
-		 (operands operands))
-	(if (not (null? parameters))
-	    (if (null? operands)
-		(for-each vnode-unknowable! parameters)
-		(begin (vnode-connect! (car parameters) (car operands))
-		       (loop (cdr parameters) (cdr operands))))))
-      ((vnode-connect!:vnode (procedure-value procedure)) combination-value))))
+(define (initialize-lvalue-cache! lvalue)
+  (set-lvalue-values-cache! lvalue (lvalue-values lvalue)))
+
+(define (lvalue-values lvalue)
+  ;; This is slow but works even with cycles in the DFG.
+  (let ((lvalues '()))
+    (let loop ((lvalue lvalue))
+      (if (not (memq lvalue lvalues))
+	  (begin (set! lvalues (cons lvalue lvalues))
+		 (for-each loop (lvalue-backward-links lvalue)))))
+    (eq-set-union* (lvalue-initial-values (car lvalues))
+		   (map lvalue-initial-values (cdr lvalues)))))
 
-(define-integrable (vnode-connect! vnode operand)
-  ((&vnode-connect! (subproblem-value operand)) vnode))
+(define (lvalue-unassigned! lvalue)
+  (lvalue-connect! lvalue (make-constant (scode/make-unassigned-object))))
 
-(define ((vnode-connect!:procedure procedure) vnode)
-  (let ((procedures (vnode-initial-procedures vnode)))
-    (if (not (memq procedure procedures))
-	(set-vnode-initial-procedures! vnode (cons procedure procedures))))
-  (let loop ((vnode vnode))
-    (let ((procedures (vnode-procedures-cache vnode)))
-      (if (not (memq procedure procedures))
-	  (begin (enqueue-nodes! (vnode-combinations vnode))
-		 (set-vnode-procedures-cache! vnode
-					      (cons procedure procedures))
-		 (for-each loop (vnode-forward-links vnode)))))))
+(define-integrable (lvalue-connect! lvalue rvalue)
+  (if (rvalue/reference? rvalue)
+      (lvalue-connect!:lvalue lvalue (reference-lvalue rvalue))
+      (lvalue-connect!:rvalue lvalue rvalue)))
 
-(define (vnode-connect!:vnode from)
-  (define (self to)
-    (if (not (memq from (vnode-backward-links to)))
-	(begin (enqueue-nodes! (vnode-combinations to))
-	       (set-vnode-backward-links! to
-					  (cons from
-						(vnode-backward-links to)))
-	       (set-vnode-forward-links! from
-					 (cons to (vnode-forward-links from)))
-	       (set-vnode-procedures-cache!
-		to
-		(eq-set-union (vnode-procedures-cache from)
-			      (vnode-procedures-cache to)))
-	       (for-each (lambda (backward)
-			   ((vnode-connect!:vnode backward) to))
-			 (vnode-backward-links from))
-	       (for-each self (vnode-forward-links to)))))
-  self)
+(define (lvalue-connect!:rvalue lvalue rvalue)
+  (if (not (memq rvalue (lvalue-initial-values lvalue)))
+      (begin
+	(set-lvalue-initial-values! lvalue
+				    (cons rvalue
+					  (lvalue-initial-values lvalue)))
+	(if (not (memq rvalue (lvalue-values-cache lvalue)))
+	    (begin
+	      (update-lvalue-cache! lvalue rvalue)
+	      (for-each (lambda (lvalue)
+			  (if (not (memq rvalue (lvalue-values-cache lvalue)))
+			      (update-lvalue-cache! lvalue rvalue)))
+			(lvalue-forward-links lvalue)))))))
 
-(define &vnode-connect!
-  (standard-rvalue-operation vnode-connect!:constant vnode-connect!:procedure
-			     vnode-connect!:vnode))
+(define (update-lvalue-cache! lvalue rvalue)
+  (enqueue-nodes! (lvalue-applications lvalue))
+  (set-lvalue-values-cache! lvalue
+			    (cons rvalue
+				  (lvalue-values-cache lvalue))))
+
+(define (lvalue-connect!:lvalue to from)
+  (if (not (memq from (lvalue-backward-links to)))
+      (begin
+	(enqueue-nodes! (lvalue-applications to))
+	(set-lvalue-backward-links! to (cons from (lvalue-backward-links to)))
+	(set-lvalue-forward-links! from (cons to (lvalue-forward-links from)))
+	(set-lvalue-values-cache! to
+				  (eq-set-union (lvalue-values-cache from)
+						(lvalue-values-cache to)))
+	(for-each (lambda (from)
+		    (lvalue-connect!:lvalue to from))
+		  (lvalue-backward-links from))
+	(for-each (lambda (to)
+		    (lvalue-connect!:lvalue to from))
+		  (lvalue-forward-links to)))))
 
 )

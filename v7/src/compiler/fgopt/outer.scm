@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 1.2 1987/10/05 20:44:28 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/outer.scm,v 4.1 1987/12/04 19:06:50 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -32,122 +32,144 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Dataflow Analysis: Outer Analysis
+;;;; Dataflow analysis: track values into or out of the graph
 
 (declare (usual-integrations))
 
 (package (outer-analysis)
 
-;;;; Outer analysis
-
-;;; When this pass is completed, any combination which is known to
-;;; call only known procedures contains all of the procedural
-;;; arguments in its COMBINATION-PROCEDURES slot.  This is taken
-;;; advantage of by the closure analysis.
-
-(define more-unknowable-vnodes?)
-
-(define-export (outer-analysis blocks vnodes combinations procedures
-			       quotations)
-  (fluid-let ((more-unknowable-vnodes? false))
-    (define (loop)
-      (if more-unknowable-vnodes?
-	  (begin (set! more-unknowable-vnodes? false)
-		 (for-each check-combination combinations)
-		 (loop))))
-    (for-each analyze-block blocks)
-    ;; Don't bother to analyze ACCESSes now.
-    (for-each (lambda (vnode)
-		(if (access? vnode) (make-vnode-unknowable! vnode)))
-	      vnodes)
-    (for-each (lambda (quotation)
-		(let ((value (quotation-value quotation)))
-		  (if (vnode? value)
-		      (for-each make-procedure-externally-visible!
-				(vnode-procedures value)))))
-	      quotations)
-    (for-each prepare-combination combinations)
-    (loop)))
-
-(define (analyze-block block)
-  (if (ic-block? block)
-      (begin (if (block-outer? block)
-		 (for-each make-vnode-externally-assignable!
-			   (block-free-variables block)))
-	     (for-each make-vnode-externally-accessible!
-		       (block-bound-variables block)))))
+(define-export (outer-analysis root-expression procedures applications)
+  (transitive-closure
+   (lambda ()
+     ;; Sort of a kludge, we assume that the root expression is
+     ;; evaluated in an IC block.  Maybe this isn't so.
+     (block-passed-out! (expression-block root-expression))
+     (lvalue-passed-in! (expression-continuation root-expression))
+     (for-each (lambda (procedure)
+		 ;; This is a kludge to handle the lack of a model for
+		 ;; what really happens with rest parameters.
+		 (if (procedure-rest procedure)
+		     (lvalue-passed-in! (procedure-rest procedure))))
+	       procedures)
+     (for-each prepare-application applications))
+   check-application
+   applications))
 
-(define (prepare-combination combination)
-  (set-combination-procedures!
-   combination
-   (mapcan (lambda (operand)
-	     (list-copy (subproblem-procedures operand)))
-	   (combination-operands combination)))
-  (if (not (null? (subproblem-values (combination-operator combination))))
-      (begin (combination-operator-unknowable! combination)
-	     (make-vnode-unknowable! (combination-value combination)))))
+(define (prepare-application application)
+  (let ((values
+	 (let ((operands (application-operands application)))
+	   (if (null? operands)
+	       '()
+	       (eq-set-union* (rvalue-values (car operands))
+			      (map rvalue-values (cdr operands)))))))
+    (set-application-operand-values! application values)
+    (set-application-arguments! application values))
+  ;; Need more sophisticated test here so that particular primitive
+  ;; operators only pass out specific operands.  A good test case is
+  ;; `lexical-unassigned?' with a known block for its first argument
+  ;; and a known symbol for its second.  Unfortunately, doing this
+  ;; optimally introduces feedback in this analysis.
+  (if (there-exists? (rvalue-values (application-operator application))
+		     (lambda (value) (not (rvalue/procedure? value))))
+      (application-arguments-passed-out! application)))
 
-(define any-primitives?
-  (there-exists? primitive-procedure-constant?))
+(define (check-application application)
+  (if (rvalue-passed-in? (application-operator application))
+      (application-arguments-passed-out! application))
+#|
+  ;; This looks like it isn't necessary, but I seem to recall that it
+  ;; was needed to fix some bug.  If so, then there is a serious
+  ;; problem, since we could "throw" into some operand other than
+  ;; the continuation. -- CPH.
+  (if (and (application/combination? application)
+	   (there-exists? (combination/operands application)
+			  rvalue-passed-in?))
+      (for-each (lambda (value)
+		  (if (uni-continuation? value)
+		      (lvalue-passed-in! (uni-continuation/parameter value))))
+		(rvalue-values (combination/continuation application))))
+|#
+  )
 
-(define (check-combination combination)
-  (if (subproblem-unknowable? (combination-operator combination))
-      (begin (combination-operator-unknowable! combination)
-	     (make-vnode-unknowable! (combination-value combination))))
-  (if (any-unknowable-subproblems? (combination-operands combination))
-      (make-vnode-unknowable! (combination-value combination))))
-
-(define any-unknowable-subproblems?
-  (there-exists? subproblem-unknowable?))
-
-(define (combination-operator-unknowable! combination)
-  (let ((procedures (combination-procedures combination)))
-    (set-combination-procedures! combination '())
-    (for-each make-procedure-externally-visible! procedures)))
+(define (application-arguments-passed-out! application)
+  (let ((arguments (application-arguments application)))
+    (set-application-arguments! application '())
+    (for-each rvalue-passed-out! arguments)))
 
-(define (make-vnode-externally-assignable! vnode)
-  (make-vnode-unknowable! vnode)
-  (make-vnode-externally-visible! vnode))
+(define (rvalue-passed-out! rvalue)
+  ((method-table-lookup passed-out-methods (tagged-vector/index rvalue))
+   rvalue))
 
-(define (make-vnode-externally-accessible! vnode)
-  (cond ((not (memq 'CONSTANT (variable-declarations vnode)))
-	 (make-vnode-externally-assignable! vnode))
-	((not (vnode-externally-visible? vnode))
-	 (make-vnode-externally-visible! vnode))))
+(define-integrable (%rvalue-passed-out! rvalue)
+  (set-rvalue-%passed-out?! rvalue true))
 
-(define (make-vnode-externally-visible! vnode)
-  (if (not (vnode-externally-visible? vnode))
-      (begin (vnode-externally-visible! vnode)
-	     (for-each make-procedure-externally-visible!
-		       (vnode-procedures vnode)))))
+(define passed-out-methods
+  (make-method-table rvalue-types %rvalue-passed-out!))
 
-(define (make-procedure-externally-visible! procedure)
-  (if (not (procedure-externally-visible? procedure))
-      (begin (procedure-externally-visible! procedure)
-	     (closure-procedure! procedure)
-	     (for-each make-vnode-unknowable! (procedure-required procedure))
-	     (for-each make-vnode-unknowable! (procedure-optional procedure))
-	     (if (procedure-rest procedure)
-		 ;; This is not really unknowable -- it is a list
-		 ;; whose length and elements are unknowable.
-		 (make-vnode-unknowable! (procedure-rest procedure)))
-	     (for-each make-procedure-externally-visible!
-		       (rvalue-procedures (procedure-value procedure))))))
+(define-method-table-entry 'REFERENCE passed-out-methods
+  (lambda (reference)
+    (lvalue-passed-out! (reference-lvalue reference))))
 
-(define (make-vnode-unknowable! vnode)
-  (if (not (vnode-unknowable? vnode))
-      (begin (set! more-unknowable-vnodes? true)
-	     (vnode-unknowable! vnode)
-	     (make-vnode-forward-links-unknowable! vnode))))
+(define-method-table-entry 'PROCEDURE passed-out-methods
+  (lambda (procedure)
+    (if (not (rvalue-%passed-out? procedure))
+	(begin
+	  (%rvalue-passed-out! procedure)
+	  ;; The rest parameter was marked in the initialization.
+	  (for-each lvalue-passed-in! (procedure-required procedure))
+	  (for-each lvalue-passed-in! (procedure-optional procedure))))))
 
-(define (make-vnode-forward-links-unknowable! vnode)
-  ;; No recursion is needed here because the graph is transitively
-  ;; closed, and thus the forward links of a node's forward links are
-  ;; a subset of the node's forward links.
-  (for-each (lambda (vnode)
-	      (if (not (vnode-unknowable? vnode))
-		  (begin (set! more-unknowable-vnodes? true)
-			 (vnode-unknowable! vnode))))
-	    (vnode-forward-links vnode)))
+(define (block-passed-out! block)
+  (if (not (rvalue-%passed-out? block))
+      (begin
+	(%rvalue-passed-out! block)
+	(for-each (let ((procedure (block-procedure block)))
+		    (if (and (rvalue/procedure? procedure)
+			     (not (procedure-continuation? procedure)))
+			(let ((continuation
+			       (procedure-continuation-lvalue procedure)))
+			  (lambda (lvalue)
+			    (if (not (eq? lvalue continuation))
+				(lvalue-externally-visible! lvalue))))
+			lvalue-externally-visible!))
+		  (block-bound-variables block))
+	(let ((parent (block-parent block)))
+	  (if parent
+	      (block-passed-out! parent)
+	      (for-each lvalue-externally-visible!
+			(block-free-variables block)))))))
+
+(define-method-table-entry 'BLOCK passed-out-methods
+  block-passed-out!)
+
+(define (lvalue-externally-visible! lvalue)
+  (lvalue-passed-in! lvalue)
+  (lvalue-passed-out! lvalue))
+
+(define (lvalue-passed-in! lvalue)
+  (if (lvalue-passed-in? lvalue)
+      (set-lvalue-passed-in?! lvalue 'SOURCE)
+      (begin
+	(%lvalue-passed-in! lvalue 'SOURCE)
+	(for-each (lambda (lvalue)
+		    (if (not (lvalue-passed-in? lvalue))
+			(%lvalue-passed-in! lvalue 'INHERITED)))
+		  (lvalue-forward-links lvalue)))))
+
+(define (%lvalue-passed-in! lvalue value)
+  (set-lvalue-passed-in?! lvalue value)
+  (for-each (lambda (application)
+	      (if (not (null? (application-arguments application)))
+		  (enqueue-node! application)))
+	    (lvalue-applications lvalue)))
+
+(define (lvalue-passed-out! lvalue)
+  (if (not (lvalue-passed-out? lvalue))
+      (begin (%lvalue-passed-out! lvalue)
+	     (for-each %lvalue-passed-out! (lvalue-backward-links lvalue))
+	     (for-each rvalue-passed-out! (lvalue-values lvalue)))))
+
+(define-integrable (%lvalue-passed-out! lvalue)
+  (set-lvalue-passed-out?! lvalue true))
 
 )
