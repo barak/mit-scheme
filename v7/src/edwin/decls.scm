@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.66 2000/01/10 03:27:00 cph Exp $
+$Id: decls.scm,v 1.67 2000/01/10 04:00:22 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -47,6 +47,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				   true))))))))
 	      (if (not (null? reasons))
 		  (begin
+		    (fresh-line)
 		    (write-string "Processing ")
 		    (write source)
 		    (write-string " because of:")
