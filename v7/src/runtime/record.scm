@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.1 1989/02/28 18:34:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.2 1989/02/28 18:36:10 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -77,8 +77,7 @@ MIT in each case. |#
 
     (define (describe record)
       (guarantee record)
-      (map (lambda (name index)
-	     (list name (vector-ref record (field-index name))))
+      (map (lambda (name) (list name (vector-ref record (field-index name))))
 	   field-names))
 
     (define (field-index name)
