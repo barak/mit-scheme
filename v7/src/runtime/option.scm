@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.8 1990/11/15 23:27:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.9 1990/11/19 19:30:24 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -33,13 +33,14 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Option Loader
-;;; package: (runtime option-loader)
+;;; package: (runtime options)
 
 (declare (usual-integrations))
-
+
 (define (load-option name)
   (let ((entry (assq name options))
-	(pathname (pathname-as-directory (string->pathname "options"))))
+	(directory
+	 (system-library-directory-pathname (string->pathname "options"))))
     (if (not entry)
 	(error "Unknown option name" name))
     (for-each
@@ -47,9 +48,8 @@ MIT in each case. |#
        (let ((environment
 	      (package/environment (find-package (car descriptor)))))
 	 (for-each (lambda (filename)
-		     (load (system-library-pathname
-			    (merge-pathnames (string->pathname filename)
-					     pathname))
+		     (load (merge-pathnames (string->pathname filename)
+					    directory)
 			   environment
 			   syntax-table/system-internal
 			   true))
