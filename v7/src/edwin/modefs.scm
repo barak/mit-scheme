@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: modefs.scm,v 1.163 2003/02/14 18:28:12 cph Exp $
+$Id: modefs.scm,v 1.164 2003/02/25 20:53:22 cph Exp $
 
-Copyright 1985, 1989-2000 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -363,8 +365,6 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\h-space 'hyper-space)
 (define-key 'fundamental (make-special-key 'malesymbol 4) 'super-man)
 (define-key 'fundamental (make-special-key 'menu 4) 'super-menu)
-(define-key 'fundamental #\t-$ 'top-dollar)
-(define-key 'fundamental #\t-^ 'top-hat)
 
 ;;; Mouse buttons:
 

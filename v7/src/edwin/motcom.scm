@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: motcom.scm,v 1.50 2003/02/14 18:28:12 cph Exp $
+$Id: motcom.scm,v 1.51 2003/02/25 20:53:12 cph Exp $
 
-Copyright 1985, 1989-1999 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1993,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -163,12 +163,6 @@ Continuation lines are skipped."
   (lambda ()
     (message "Sorry, but superluminal travel is not available now.")))
 
-(define-command top-hat
-  "Deliver tophat joke."
-  ()
-  (lambda ()
-    (message "No party in progress.")))
-
 (define-command super-man
   "Deliver super man joke."
   ()
@@ -180,9 +174,3 @@ Continuation lines are skipped."
   ()
   (lambda ()
     (message "Big Mac, Medium Fries, Small Coke")))
-
-(define-command top-dollar
-  "Deliver top dollar joke."
-  ()
-  (lambda ()
-    (message "Real Estate in Monaco.")))
