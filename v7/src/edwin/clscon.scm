@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: clscon.scm,v 1.12 2003/03/11 05:01:21 cph Exp $
+$Id: clscon.scm,v 1.13 2003/03/13 20:20:07 cph Exp $
 
 Copyright 1989,1990,1991,1993,2002,2003 Massachusetts Institute of Technology
 
@@ -49,14 +49,16 @@ USA.
 				 (cons '()
 				       (and superclass
 					    (class-methods superclass))))))
-	       (named-structure/set-tag-description!
-		class
-		(make-define-structure-type 'VECTOR
-					    name
-					    (map car transforms)
-					    (map cdr transforms)
-					    #f
-					    (unparser/standard-method name)))
+	       (named-structure/set-tag-description! class
+		 (make-define-structure-type 'VECTOR
+					     name
+					     (map car transforms)
+					     (map cdr transforms)
+					     (make-list (length transforms)
+							(lambda () #f))
+					     (standard-unparser-method name #f)
+					     class
+					     object-size))
 	       class))))
       (if (not entry)
 	  (let ((class (make-class)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.27 2003/03/11 05:00:48 cph Exp $
+$Id: random.scm,v 14.28 2003/03/13 20:18:59 cph Exp $
 
 Copyright 1988,1989,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1998,1999,2000,2001,2003 Massachusetts Institute of Technology
@@ -225,5 +225,7 @@ USA.
 				'RANDOM-STATE
 				'(INDEX BORROW VECTOR)
 				'(1 2 3)
-				#f
-				(standard-unparser-method 'RANDOM-STATE #f))))
+				(make-list 3 (lambda () #f))
+				(standard-unparser-method 'RANDOM-STATE #f)
+				random-state-tag
+				4)))
