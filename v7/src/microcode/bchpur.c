@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.53 1991/05/05 00:45:30 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.54 1991/09/07 01:06:53 jinx Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -398,12 +398,21 @@ DEFUN (purify, (object, flag),
        SCHEME_OBJECT object AND
        SCHEME_OBJECT flag)
 {
-  long length, pure_length;
-  SCHEME_OBJECT value, *Result, *free_buffer, *block_start;
+  long length, pure_length, delta;
+  SCHEME_OBJECT value, *result, *free_buffer, *old_free, *block_start;
 
   Weak_Chain = EMPTY_LIST;
   free_buffer = (initialize_free_buffer ());
-  block_start = Free_Constant;
+  old_free = Free_Constant;
+  block_start = ((SCHEME_OBJECT *) (ALIGN_DOWN_TO_GC_BUFFER (old_free)));
+  delta = (old_free - block_start);
+  if (delta != 0)
+  {
+    fast SCHEME_OBJECT *ptr, *ptrend;
+
+    for (ptr = block_start, ptrend = old_free; ptr != ptrend; )
+      *free_buffer++ = *ptr++;
+  }
 
   Free_Constant += 2;
   *free_buffer++ = SHARP_F;	/* Pure block header. */
@@ -416,17 +425,17 @@ DEFUN (purify, (object, flag),
 
   if (flag == SHARP_T)
   {
-    Result = (purifyloop ((initialize_scan_buffer()),
+    result = (purifyloop (((initialize_scan_buffer()) + delta),
 			  &free_buffer, &Free_Constant,
 			  PURE_COPY));
-    if (Result != free_buffer)
+    if (result != free_buffer)
     {
       gc_death (TERM_BROKEN_HEART,
 		"purify: pure copy ended too early",
-		Result, free_buffer);
+		result, free_buffer);
       /*NOTREACHED*/
     }
-    pure_length = ((Free_Constant - block_start) + 1);
+    pure_length = ((Free_Constant - old_free) + 1);
   }
   else
   {
@@ -443,29 +452,31 @@ DEFUN (purify, (object, flag),
 
   if (flag == SHARP_T)
   {
-    Result = (purifyloop ((initialize_scan_buffer ()),
+    result = (purifyloop (((initialize_scan_buffer ()) + delta),
 			  &free_buffer, &Free_Constant,
 			  CONSTANT_COPY));
   }
   else
-    Result =
-      (GCLoop ((initialize_scan_buffer()), &free_buffer, &Free_Constant));
-  if (Result != free_buffer)
+    result =
+      (GCLoop (((initialize_scan_buffer()) + delta),
+	       &free_buffer,
+	       &Free_Constant));
+
+  if (result != free_buffer)
   {
     gc_death (TERM_BROKEN_HEART, "purify: constant copy ended too early",
-	      Result, free_buffer);
+	      result, free_buffer);
     /*NOTREACHED*/
   }
 
   Free_Constant += 2;
-  length = (Free_Constant - block_start);
+  length = (Free_Constant - old_free);
   *free_buffer++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, 1));
   *free_buffer++ = (MAKE_OBJECT (END_OF_BLOCK, (length - 1)));
   if (free_buffer >= free_buffer_top)
   {
-    free_buffer = purify_header_overflow (free_buffer);
+    free_buffer = (purify_header_overflow (free_buffer));
   }
-
   end_transport (NULL);
 
   if (!(TEST_CONSTANT_TOP (Free_Constant)))
@@ -474,11 +485,13 @@ DEFUN (purify, (object, flag),
     /*NOTREACHED*/
   }
 
-  load_buffer (0, block_start,
-	       (length * sizeof(SCHEME_OBJECT)),
+  load_buffer (0,
+	       block_start,
+	       ((GC_BUFFER_BLOCK (Free_Constant - block_start))
+		* (sizeof (SCHEME_OBJECT))),
 	       "into constant space");
-  *block_start++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
-  *block_start = (MAKE_OBJECT (PURE_PART, (length - 1)));
+  *old_free++ = (MAKE_OBJECT (TC_MANIFEST_SPECIAL_NM_VECTOR, pure_length));
+  *old_free = (MAKE_OBJECT (PURE_PART, (length - 1)));
   SET_CONSTANT_TOP ();
   GC (Weak_Chain);
   return (SHARP_T);

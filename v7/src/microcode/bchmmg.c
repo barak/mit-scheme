@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.61 1991/03/24 01:10:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.62 1991/09/07 01:06:38 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -62,11 +62,29 @@ MIT in each case. */
 #include "prims.h"
 #include "bchgcc.h"
 #include "option.h"
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* Exports */
 extern void EXFUN (Clear_Memory, (int, int, int));
 extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (Reset_Memory, (void));
+
+char *
+DEFUN (error_name, (code),
+       int code)
+{
+  extern int sys_nerr;
+  extern char *sys_errlist[];
+  static char buf[512];
+
+  if ((code >= 0) && (code <= sys_nerr))
+    sprintf (&buf[0], "%d, %s", code, sys_errlist[code]);
+  else
+    sprintf (&buf[0], "%d, unknown error", code);
+  return (&buf[0]);
+}
 
 /* 	Memory Allocation, sequential processor,
 	garbage collection to disk version:
@@ -113,6 +131,7 @@ int gc_file;
 static long current_disk_position;
 static CONST char * gc_file_name;
 static char gc_default_file_name[FILE_NAME_LENGTH] = GC_DEFAULT_FILE_NAME;
+static Boolean can_dump_directly_p;
 
 void
 DEFUN (open_gc_file, (size), int size)
@@ -123,34 +142,69 @@ DEFUN (open_gc_file, (size), int size)
   (void) (mktemp (gc_default_file_name));
   flags = GC_FILE_FLAGS;
   gc_file_name = option_gc_file;
-  if (gc_file_name == 0)
+  if (gc_file_name != ((char *) NULL))
+  {
+    struct stat file_info;
+    if ((stat (gc_file_name, &file_info)) != -1)
     {
+      /* If it is S_IFCHR, it should determine the IO block
+	 size and make sure that it will work.
+	 I don't know how to do that.
+	 ustat(2) will do that for a mounted file system,
+	 but obviously, if a raw device file is used,
+	 there better not be a file system on the file.
+       */
+
+      if ((file_info.st_mode & S_IFMT) == S_IFCHR)
+	can_dump_directly_p = false;
+      else if (((file_info.st_mode & S_IFMT) != S_IFREG)
+	       && ((file_info.st_mode & S_IFMT) != S_IFBLK))
+      {
+	fprintf (stderr,
+		 "\
+%s: GC file \"%s\" cannot be used as a GC file (type = 0x%08x).\n",
+		 scheme_program_name, gc_file_name,
+		 ((int) (file_info.st_mode & S_IFMT)));
+	gc_file_name = ((char *) NULL);
+	fprintf (stderr,
+		 "\tUsing \"%s\" instead.\n",
+		 gc_default_file_name);
+      }
+      else
+	can_dump_directly_p = true;
+    }
+  }
+
+  while (true)
+  {
+    if (gc_file_name == ((char *) NULL))
+    {
+      can_dump_directly_p = true;
       gc_file_name = gc_default_file_name;
       flags |= O_EXCL;
     }
-  while (1)
-  {
     gc_file = (open (gc_file_name, flags, GC_FILE_MASK));
     if (gc_file != -1)
     {
       break;
     }
-    if (gc_file_name != gc_default_file_name)
+    else if (gc_file_name != gc_default_file_name)
     {
       fprintf (stderr,
-	       "%s: GC file \"%s\" cannot be opened; ",
-	       scheme_program_name, gc_file_name);
-      gc_file_name = gc_default_file_name;
+	       "%s: GC file \"%s\" cannot be opened (errno = %s).\n",
+	       scheme_program_name, gc_file_name, (error_name (errno)));
       fprintf (stderr,
-	       "Using \"%s\" instead.\n",
-	       gc_file_name);
-      flags |= O_EXCL;
-      continue;
+	       "\tUsing \"%s\" instead.\n",
+	       gc_default_file_name);
+      gc_file_name = ((char *) NULL);
     }
-    fprintf (stderr,
-	     "%s: GC file \"%s\" cannot be opened; Aborting.\n",
-	     scheme_program_name, gc_file_name);
-    exit (1);
+    else
+    {
+      fprintf (stderr,
+	       "%s: GC file \"%s\" cannot be opened (errno = %s); Aborting.\n",
+	       scheme_program_name, gc_file_name, (error_name (errno)));
+      exit (1);
+    }
   }
 #ifdef _HPUX
   if (gc_file_name == gc_default_file_name)
@@ -212,9 +266,7 @@ DEFUN (Setup_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
        int Our_Constant_Size)
 {
   SCHEME_OBJECT test_value;
-  int Real_Stack_Size;
-
-  Real_Stack_Size = (Stack_Allocation_Size (Our_Stack_Size));
+  int Real_Stack_Size, fudge_space;
 
   /* Consistency check 1 */
   if (Our_Heap_Size == 0)
@@ -223,33 +275,36 @@ DEFUN (Setup_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
     exit (1);
   }
 
+  Real_Stack_Size = (Stack_Allocation_Size (Our_Stack_Size));
+
+  /* Allocate in blocks of GC_DISK_BUFFER_SIZE. */
+
+  fudge_space = (GC_BUFFER_BLOCK (HEAP_BUFFER_SPACE + 1 + GC_FUDGE_SIZE));
+  Our_Heap_Size = (GC_BUFFER_BLOCK (Our_Heap_Size));
+  Our_Constant_Size = (GC_BUFFER_BLOCK (Our_Constant_Size));
+  Real_Stack_Size = (GC_BUFFER_BLOCK (Real_Stack_Size));
+
   /* Allocate.
      The two GC buffers are not included in the valid Scheme memory.
   */
-  ALLOCATE_HEAP_SPACE (Real_Stack_Size + Our_Heap_Size +
-		       Our_Constant_Size + (2 * GC_BUFFER_SPACE) +
-		       (HEAP_BUFFER_SPACE + 1));
+
+  ALLOCATE_HEAP_SPACE (Real_Stack_Size + Our_Heap_Size
+		       + Our_Constant_Size + (2 * GC_BUFFER_SPACE)
+		       + fudge_space);
 
   /* Consistency check 2 */
   if (Heap == NULL)
   {
-    fprintf(stderr, "Not enough memory for this configuration.\n");
-    exit(1);
+    fprintf (stderr, "Not enough memory for this configuration.\n");
+    exit (1);
   }
-
+
   Heap += HEAP_BUFFER_SPACE;
-  INITIAL_ALIGN_FLOAT (Heap);
-
+  Heap = ((SCHEME_OBJECT *) (ALIGN_UP_TO_GC_BUFFER (Heap)));
   Constant_Space = (Heap + Our_Heap_Size);
-  ALIGN_FLOAT (Constant_Space);
-
-  /* Trim the system buffer space. */
-
-  Highest_Allocated_Address = (Constant_Space +
-			       (Our_Constant_Size + Real_Stack_Size));
-
-  gc_disk_buffer_1 = Highest_Allocated_Address + 1;
+  gc_disk_buffer_1 = (Constant_Space + Our_Constant_Size + Real_Stack_Size);
   gc_disk_buffer_2 = (gc_disk_buffer_1 + GC_BUFFER_SPACE);
+  Highest_Allocated_Address = (gc_disk_buffer_1 - 1);
 
   /* Consistency check 3 */
   test_value =
@@ -264,6 +319,16 @@ DEFUN (Setup_Memory, (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size),
 	     "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
     exit (1);
   }
+  /* This does not use INITIAL_ALIGN_HEAP because it would
+     make Heap point to the previous GC_BUFFER frame.
+     INITIAL_ALIGN_HEAP should have its phase changed so that it would
+     be a NOP below, and constant space should use it too.
+   */     
+
+  ALIGN_FLOAT (Heap);
+  ALIGN_FLOAT (Constant_Space);
+  Our_Heap_Size = (Constant_Space - Heap);
+  Our_Constant_Size = ((Highest_Allocated_Address - Constant_Space) - Real_Stack_Size);
 
   Heap_Bottom = Heap;
   Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size);
@@ -279,6 +344,81 @@ DEFUN_VOID (Reset_Memory)
   return;
 }
 
+long
+DEFUN (gc_file_operation, (operation, ptr, arg, success, name, errmsg),
+       long EXFUN ((*operation), (int, long, long)) AND
+       long ptr AND
+       long arg AND
+       Boolean *success AND
+       CONST char * name AND
+       CONST char *errmsg)
+{
+  extern char EXFUN (userio_choose_option,
+		     (const char *, const char *, const char **));
+  static CONST char * retry_choices [] =
+    {
+      "K = kill scheme",
+      "Q = quit scheme",
+      "R = retry the operation",
+      "S = sleep for 1 minute and retry the operation",
+      "X = exit scheme",
+      0
+      };
+  long result;
+
+  while ((result = ((*operation) (gc_file, ptr, arg)))
+	 == -1)
+  {
+    if (success != ((Boolean *) NULL))
+    {
+      *success = false;
+      return (result);
+    }
+    fprintf (stderr, errmsg, name, (error_name (errno)));
+    switch (userio_choose_option
+	      ("Choose one of the following actions:",
+	       "Action -> ",
+	       retry_choices))
+    {
+      case '\0':
+        /* IO problems, assume everything scrod. */
+        fprintf (stderr, "Problems reading keyboard input -- exitting.\n");
+	/* fall through */
+
+      case 'K':
+      case 'Q':
+      case 'X':
+	Microcode_Termination (TERM_EXIT);
+	/*NOTREACHED*/
+
+      case 'S':
+	sleep (60);
+	/* fall through */
+
+      case 'R':
+      default:
+	break;
+    }
+  }
+  return (result);
+}
+
+#define DEFINE_LONG_VERSION(long_name, name, rettype, type1, type2)	\
+long									\
+DEFUN (long_name, (fd, param1, param2),					\
+       int fd AND							\
+       long param1 AND							\
+       long param2)							\
+{									\
+  extern rettype EXFUN (name, (int, type1, type2));			\
+									\
+  return ((long) (name (fd, ((type1) param1), ((type2) param2))));	\
+}
+
+DEFINE_LONG_VERSION(long_lseek, lseek, long, long, int)
+DEFINE_LONG_VERSION(long_read, read, int, char *, int)
+DEFINE_LONG_VERSION(long_write, write, int, char *, int)
+
 void
 DEFUN (dump_buffer, (from, position, nbuffers, name, success),
        SCHEME_OBJECT *from AND
@@ -287,37 +427,37 @@ DEFUN (dump_buffer, (from, position, nbuffers, name, success),
        char *name AND
        Boolean *success)
 {
-  long bytes_written;
+  long total_bytes_to_write, bytes_to_write, bytes_written;
+  char *membuf;
 
-  if ((current_disk_position != *position) &&
-      ((lseek (gc_file, *position, 0)) == -1))
-  {
-    if (success == NULL)
-    {
-      fprintf (stderr,
-	       "\nCould not position GC file to write the %s buffer.\n",
-	       name);
-      Microcode_Termination (TERM_EXIT);
-      /*NOTREACHED*/
-    }
-    *success = false;
+  if ((current_disk_position != *position)
+      && ((gc_file_operation (long_lseek, *position, 0,
+			      success, name, "\
+\nCould not position GC file to write the %s buffer (errno = %s).\n"))
+	  == -1))
     return;
-  }
-  if ((bytes_written =
-       (write (gc_file, from, (nbuffers * GC_BUFFER_BYTES))))
-      == -1)
+
+  total_bytes_to_write = (nbuffers * GC_BUFFER_BYTES);
+  bytes_to_write = total_bytes_to_write;
+  membuf = ((char *) from);
+
+  while ((bytes_to_write > 0)
+	 && ((bytes_written
+	      = (gc_file_operation (long_write, ((long) membuf), bytes_to_write,
+				    success, name, "\
+\nCould not write out the %s buffer (errno = %s).\n")))
+	     != bytes_to_write))
   {
-    if (success == NULL)
-    {
-      fprintf (stderr, "\nCould not write out the %s buffer.\n", name);
-      Microcode_Termination (TERM_EXIT);
-      /*NOTREACHED*/
-    }
-    *success = false;
-    return;
+    if (bytes_written == -1)
+      return;
+
+    /* Short write, continue. */
+
+    membuf += bytes_written;
+    bytes_to_write -= bytes_written;
   }
 
-  *position += bytes_written;
+  *position += total_bytes_to_write;
   current_disk_position = *position;
   return;
 }
@@ -329,25 +469,42 @@ DEFUN (load_buffer, (position, to, nbytes, name),
        long nbytes AND
        char *name)
 {
-  long bytes_read;
+  long bytes_to_read, bytes_read;
+  char *membuf;
 
   if (current_disk_position != position)
   {
-    if ((lseek (gc_file, position, 0)) == -1)
-    {
-      fprintf (stderr, "\nCould not position GC file to read %s.\n", name);
-      Microcode_Termination (TERM_EXIT);
-      /*NOTREACHED*/
-    }
+    (void) (gc_file_operation (long_lseek, position, 0,
+			       ((Boolean *) NULL), name, "\
+Could not position GC file to read %s (errno = %s).\n"));
     current_disk_position = position;
   }
-  if ((bytes_read = (read (gc_file, to, nbytes))) != nbytes)
+
+  bytes_to_read = nbytes;
+  membuf = ((char *) to);
+
+  while ((bytes_to_read > 0)
+	 && ((bytes_read
+	      = (gc_file_operation (long_read, ((long) membuf), bytes_to_read,
+				    ((Boolean *) NULL), name, "\
+\nCould not read into %s (errno = %s).\n")))
+	     != bytes_to_read))
   {
-    fprintf (stderr, "\nCould not read into %s.\n", name);
-    Microcode_Termination (TERM_EXIT);
-    /*NOTREACHED*/
+    if (bytes_read <= 0)
+    {
+      fprintf (stderr,
+	       "\nInconsistency: data to be read into %s has disappeared!\n",
+	       name);
+      Microcode_Termination (TERM_EXIT);
+    }
+
+    /* Short read, continue. */
+
+    membuf += bytes_read;
+    bytes_to_read -= bytes_read;
   }
-  current_disk_position += bytes_read;
+
+  current_disk_position += nbytes;
   return;
 }
 
@@ -424,7 +581,8 @@ DEFUN (extend_scan_buffer, (to_where, current_free),
   new_scan_position = (scan_position + GC_BUFFER_BYTES);
 
   /* Is there overlap?, ie. is the next bufferfull the one cached
-     in the free pointer window? */
+     in the free pointer window?
+   */
 
   if (new_scan_position == free_position)
   {
@@ -479,10 +637,13 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char *to_relocate)
     {
       *dest++ = *source++;
     }
-    load_buffer ((scan_position + GC_BUFFER_OVERLAP_BYTES),
-		 dest,
-		 GC_BUFFER_REMAINDER_BYTES,
-		 "the scan buffer");
+    if (GC_BUFFER_REMAINDER_BYTES != 0)
+    {
+      load_buffer ((scan_position + GC_BUFFER_OVERLAP_BYTES),
+		   dest,
+		   GC_BUFFER_REMAINDER_BYTES,
+		   "the scan buffer");
+    }
     *scan_buffer_top =
       (MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
   }
@@ -491,34 +652,43 @@ DEFUN (end_scan_buffer_extension, (to_relocate), char *to_relocate)
     fast char *source, *dest, *limit;
 
     source = ((char *) scan_buffer_top);
-    dest = ((scan_position == free_position) ?
-	    ((char *) free_buffer_bottom) :
-	    ((char *) scan_buffer_bottom));
-    limit = &source[extension_overlap_length];
-    result = &dest[to_relocate - source];
+    limit = (source + extension_overlap_length);
 
-    while (source < limit)
-    {
-      *dest++ = *source++;
-    }
     if (scan_position == free_position)
     {
       /* There was overlap, and there still is. */
 
+      dest = ((char *) free_buffer_bottom);
       scan_buffer_bottom = free_buffer_bottom;
       scan_buffer_top = free_buffer_top;
+    
     }
     else
     {
       /* There was overlap, but there no longer is. */
 
-      load_buffer ((scan_position + extension_overlap_length),
+      dest = ((char *) scan_buffer_bottom);
+
+      /* The following reads the old overlapped data, but will be aligned.
+	 The garbage read will be overwritten with the goodies below.
+       */
+
+      load_buffer (scan_position,
 		   ((SCHEME_OBJECT *) dest),
-		   (GC_BUFFER_BYTES - extension_overlap_length),
+		   GC_BUFFER_BYTES,
 		   "the scan buffer");
+    }
+
+    result = (dest + (to_relocate - source));
+    
+    while (source < limit)
+    {
+      *dest++ = *source++;
+    }
+
+    if (scan_position != free_position)
       *scan_buffer_top =
 	(MAKE_POINTER_OBJECT (TC_BROKEN_HEART, scan_buffer_top));
-    }
   }
   extension_overlap_p = false;
   return (result);
@@ -577,11 +747,33 @@ DEFUN (dump_and_reset_free_buffer, (overflow, success),
 
 void
 DEFUN (dump_free_directly, (from, nbuffers, success),
-       SCHEME_OBJECT *from AND
-       long nbuffers AND
+       fast SCHEME_OBJECT *from AND
+       fast long nbuffers AND
        Boolean *success)
 {
-  dump_buffer (from, &free_position, nbuffers, "free", success);
+  if (can_dump_directly_p || (ALIGNED_TO_GC_BUFFER_P (from)))
+  {
+    dump_buffer (from, &free_position, nbuffers, "free", success);
+  }
+  else
+  {
+    /* We are writing to a raw (character) device special file,
+       and writes must be aligned.
+       We don't know the real alignment size, we'll use the GC buffer size.
+       This assumes that the free buffer has no valid data, so it can be
+       used as scratch.
+     */
+
+    while ((--nbuffers) >= 0)
+    {
+      fast SCHEME_OBJECT *to, *bufend;
+
+      for (to = free_buffer_bottom, bufend = free_buffer_top; to != bufend; )
+	*to++ = *from++;
+
+      dump_buffer (free_buffer_bottom, &free_position, 1, "free", success);
+    }
+  }
   return;
 }
 
@@ -755,10 +947,21 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
 {
   SCHEME_OBJECT
     *Root, *Result, *end_of_constant_area,
-    The_Precious_Objects, *Root2, *free_buffer;
+    The_Precious_Objects, *Root2, *free_buffer, *block_start;
 
   free_buffer = (initialize_free_buffer ());
   Free = Heap_Bottom;
+  block_start = ((SCHEME_OBJECT *) (ALIGN_DOWN_TO_GC_BUFFER (Free)));
+  if (block_start != Free)
+  {
+    /* This assumes that the space between block_start and
+       Heap_Bottom is not used at all.  Otherwise it won't be
+       correctly preserved.
+     */
+
+    free_buffer += (Free - block_start);
+  }
+
   SET_MEMTOP (Heap_Top - GC_Reserve);
   Weak_Chain = initial_weak_chain;
 
@@ -799,7 +1002,9 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
     /*NOTREACHED*/
   }
 
-  Result = GCLoop(initialize_scan_buffer(), &free_buffer, &Free);
+  Result = (GCLoop (((initialize_scan_buffer ())
+		     + (Heap_Bottom - block_start)),
+		    &free_buffer, &Free));
   if (free_buffer != Result)
   {
     fprintf (stderr, "\nGC-1: Heap Scan ended too early.\n");
@@ -828,8 +1033,9 @@ DEFUN (GC, (initial_weak_chain), SCHEME_OBJECT initial_weak_chain)
 
   /* Load new space into memory. */
 
-  load_buffer (0, Heap_Bottom,
-	       ((Free - Heap_Bottom) * sizeof(SCHEME_OBJECT)),
+  load_buffer (0, block_start,
+	       ((GC_BUFFER_BLOCK (Free - block_start))
+		* sizeof(SCHEME_OBJECT)),
 	       "new space");
 
   /* Make the microcode registers point to the copies in new-space. */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.37 1990/06/20 17:38:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.38 1991/09/07 01:06:20 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -40,35 +40,69 @@ MIT in each case. */
 #include <fcntl.h>
 #endif
 
+/* This should be fixed.
+   We need to change the definition of INITIAL_ALIGN_HEAP, and some
+   uses.
+ */
+
 /* All of these are in objects (SCHEME_OBJECT), not bytes. */
 
-#define GC_EXTRA_BUFFER_SIZE		512
-#define GC_DISK_BUFFER_SIZE		1024
+#define GC_DISK_BUFFER_SIZE		16384			/* Used to be 1024 */
+#define GC_EXTRA_BUFFER_SIZE		GC_DISK_BUFFER_SIZE	/* Complete next bufferfull */
 #define GC_BUFFER_SPACE			(GC_DISK_BUFFER_SIZE + GC_EXTRA_BUFFER_SIZE)
 #define GC_BUFFER_BYTES			(GC_DISK_BUFFER_SIZE * sizeof(SCHEME_OBJECT))
 #define GC_BUFFER_OVERLAP_BYTES		(GC_EXTRA_BUFFER_SIZE * sizeof(SCHEME_OBJECT))
 #define GC_BUFFER_REMAINDER_BYTES	(GC_BUFFER_BYTES - GC_BUFFER_OVERLAP_BYTES)
+#define GC_FUDGE_SIZE			GC_EXTRA_BUFFER_SIZE
+
+#define GC_BUFFER_BLOCK(size)						\
+  (GC_DISK_BUFFER_SIZE							\
+   * (((size) + (GC_DISK_BUFFER_SIZE - 1)) / GC_DISK_BUFFER_SIZE))
+
+/* These assume that GC_BUFFER_BYTES is a power of 2! */
+
+#define ALIGN_DOWN_TO_GC_BUFFER(addr)					\
+  (((unsigned long) (addr)) & (~(GC_BUFFER_BYTES - 1)))
+
+#define ALIGN_UP_TO_GC_BUFFER(addr)					\
+  (ALIGN_DOWN_TO_GC_BUFFER (((unsigned long) (addr)) + (GC_BUFFER_BYTES - 1)))
+
+#define ALIGNED_TO_GC_BUFFER_P(addr)					\
+  (((unsigned long) (addr)) == (ALIGN_DOWN_TO_GC_BUFFER (addr)))
 
 #define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
 #define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
 #define GC_DEFAULT_FILE_NAME	"/tmp/GCXXXXXX"
 
-extern SCHEME_OBJECT *scan_buffer_top, *scan_buffer_bottom;
-extern SCHEME_OBJECT *free_buffer_top, *free_buffer_bottom;
-extern SCHEME_OBJECT *dump_and_reload_scan_buffer();
-extern SCHEME_OBJECT *dump_and_reset_free_buffer();
-extern void    dump_free_directly(), load_buffer();
+extern char
+  gc_death_message_buffer[];
 
-extern void    extend_scan_buffer();
-extern char    *end_scan_buffer_extension();
+extern int
+  gc_file;
 
-extern SCHEME_OBJECT *GCLoop();
-extern SCHEME_OBJECT *initialize_free_buffer(), *initialize_scan_buffer();
-extern void    end_transport(), GC();
-extern int     gc_file;
+extern SCHEME_OBJECT
+  *scan_buffer_top,
+  *scan_buffer_bottom,
+  *free_buffer_top,
+  *free_buffer_bottom;
 
-extern void gc_death();
-extern char gc_death_message_buffer[];
+extern SCHEME_OBJECT
+  * EXFUN (GCLoop, (SCHEME_OBJECT *, SCHEME_OBJECT **, SCHEME_OBJECT **)),
+  * EXFUN (dump_and_reload_scan_buffer, (long, Boolean *)),
+  * EXFUN (dump_and_reset_free_buffer, (long, Boolean *)),
+  * EXFUN (initialize_free_buffer, (void)),
+  * EXFUN (initialize_scan_buffer, (void));
+
+extern void
+  EXFUN (GC, (SCHEME_OBJECT)),
+  EXFUN (end_transport, (Boolean *)),
+  EXFUN (dump_free_directly, (SCHEME_OBJECT *, long, Boolean *)),
+  EXFUN (load_buffer, (long, SCHEME_OBJECT *, long, char *)),
+  EXFUN (extend_scan_buffer, (char *, SCHEME_OBJECT *)),
+  EXFUN (gc_death, (long, char *, SCHEME_OBJECT *, SCHEME_OBJECT *));
+
+extern char
+  * EXFUN (end_scan_buffer_extension, (char *));
 
 /* Some utility macros */
 
@@ -121,30 +155,26 @@ extern char gc_death_message_buffer[];
 #define copy_vector(success)						\
 {									\
   SCHEME_OBJECT *Saved_Scan = Scan;					\
-  unsigned long real_length = 1 + OBJECT_DATUM (*Old);			\
+  unsigned long real_length = (1 + (OBJECT_DATUM (*Old)));		\
 									\
   To_Address += real_length;						\
-  Scan = To + real_length;						\
+  Scan = (To + real_length);						\
   if (Scan >= free_buffer_top)						\
   {									\
     unsigned long overflow;						\
 									\
-    overflow = Scan - free_buffer_top;					\
+    overflow = (Scan - free_buffer_top);				\
     while (To != free_buffer_top)					\
       *To++ = *Old++;							\
-    To = dump_and_reset_free_buffer(0, success);			\
+    To = (dump_and_reset_free_buffer (0, success));			\
     real_length = (overflow / GC_DISK_BUFFER_SIZE);			\
     if (real_length > 0)						\
-    {									\
-      dump_free_directly(Old, real_length, success);			\
-    }									\
+      dump_free_directly (Old, real_length, success);			\
     Old += (real_length * GC_DISK_BUFFER_SIZE);				\
     Scan = To + (overflow % GC_DISK_BUFFER_SIZE);			\
   }									\
   while (To != Scan)							\
-  {									\
     *To++ = *Old++;							\
-  }									\
   Scan = Saved_Scan;							\
 }
 
