@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.52 2000/06/08 21:11:11 cph Exp $
+;;; $Id: sendmail.scm,v 1.53 2000/06/09 04:11:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -358,26 +358,6 @@ is inserted."
 		      ", MIT Scheme Release "
 		      (get-subsystem-version-string "release")
 		      "]")))
-
-(define (random-mime-boundary-string length)
-  (if (not (exact-nonnegative-integer? length))
-      (error:wrong-type-argument length "exact nonnegative integer"
-				 'RANDOM-MIME-BOUNDARY-STRING))
-  (if (not (<= 2 length 70))
-      (error:bad-range-argument length 'RANDOM-MIME-BOUNDARY-STRING))
-  (let ((s
-	 (with-string-output-port
-	   (lambda (port)
-	     (write-char #\= port)
-	     (write-char #\_ port)
-	     (let ((context (encode-base64:initialize port #f))
-		   (n-bytes (min 51 (* (integer-ceiling (- length 2) 4) 3))))
-	       (encode-base64:update context
-				     (random-byte-vector n-bytes) 0 n-bytes)
-	       (encode-base64:finalize context))))))
-    (if (fix:> (string-length s) length)
-	(set-string-maximum-length! s length))
-    s))
 
 (define-variable mail-setup-hook
   "An event distributor invoked immediately after a mail buffer is initialized.
@@ -395,17 +375,20 @@ Here are commands that move to a header field (and create it if there isn't):
 \\[mail-yank-original]  mail-yank-original (insert current message, in Rmail).
 \\[mail-fill-yanked-message]  mail-fill-yanked-message (fill what was yanked)."
   (lambda (buffer)
-    (define-variable-local-value! buffer (ref-variable-object paragraph-start)
-      (string-append "^"
-		     (re-quote-string (ref-variable mail-header-separator))
-		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		     (ref-variable paragraph-start buffer)))
-    (define-variable-local-value! buffer
-	(ref-variable-object paragraph-separate)
-      (string-append "^"
-		     (re-quote-string (ref-variable mail-header-separator))
-		     "$\\|^[ \t]*[-_][-_][-_]+$\\|"
-		     (ref-variable paragraph-separate buffer)))
+    (local-set-variable!
+     paragraph-start
+     (string-append "^"
+		    (re-quote-string (ref-variable mail-header-separator))
+		    "$\\|^[ \t]*[-_][-_][-_]+$\\|"
+		    (ref-variable paragraph-start buffer))
+     buffer)
+    (local-set-variable!
+     paragraph-separate
+     (string-append "^"
+		    (re-quote-string (ref-variable mail-header-separator))
+		    "$\\|^[ \t]*[-_][-_][-_]+$\\|"
+		    (ref-variable paragraph-separate buffer))
+     buffer)
     (event-distributor/invoke! (ref-variable mail-mode-hook buffer) buffer)))
 
 (define-variable mail-mode-hook
@@ -535,6 +518,9 @@ Here are commands that move to a header field (and create it if there isn't):
 	  (region-start region))
 	(mail-insert-field header-end field))))
 
+(define (mail-insert-field-value header-end field value)
+  (insert-string value (mail-insert-field header-end field)))
+
 (define (mail-insert-field-value! header-start header-end field value)
   (insert-string value (mail-new-field! header-start header-end field)))
 
@@ -663,34 +649,46 @@ the user from the mailer."
        (lambda () (kill-buffer temp-buffer))))))
 
 (define (prepare-mail-buffer-for-sending mail-buffer process-header)
-  ;;(guarantee-mime-compliance mail-buffer)
   (let ((temp-buffer (temporary-buffer " sendmail temp")))
     (let ((start (mark-right-inserting-copy (buffer-start temp-buffer)))
 	  (end (mark-left-inserting-copy (buffer-end temp-buffer))))
-      (insert-region (buffer-start mail-buffer)
-		     (buffer-end mail-buffer)
-		     start)
-      (guarantee-newline end)
-      (mail-match-header-separator start end)
-      (let ((header-end (mark-left-inserting-copy (delete-match))))
-	;; Delete any blank lines in the header.
-	(do ((start start (replace-match "\n")))
-	    ((not (re-search-forward "\n\n+" start header-end #f))))
-	(expand-mail-aliases start header-end)
+      (let ((header-end (copy-message mail-buffer end)))
 	(if (re-search-forward "^FCC:" start header-end #t)
 	    (mail-do-fcc temp-buffer header-end))
-	;; If there is a From and no Sender, put in a Sender.
-	(if (and (re-search-forward "^From:" start header-end #t)
-		 (not (re-search-forward "^Sender:" start header-end #t)))
-	    (begin
-	      (insert-string "Sender: " header-end)
-	      (insert-string (current-user-name) header-end)
-	      (insert-string "\n" header-end)))
 	(process-header start header-end)
 	(mark-temporary! header-end))
       (mark-temporary! end)
       (mark-temporary! start))
     temp-buffer))
+
+(define (copy-message buffer output-mark)
+  (let ((start (buffer-start buffer))
+	(end (buffer-end buffer)))
+    (mail-match-header-separator start end)
+    (let ((header-end (re-match-start 0))
+	  (body-start (line-start (re-match-end 0) 1 'LIMIT)))
+      (if (buffer-mime-processing-enabled? buffer)
+	  (copy-mime-message start header-end body-start end output-mark)
+	  (let ((h-end (copy-message-header start header-end output-mark)))
+	    (insert-region body-start end output-mark)
+	    (guarantee-newline output-mark)
+	    h-end)))))
+
+(define (copy-message-header start end output-mark)
+  (let ((h-start (mark-right-inserting-copy output-mark)))
+    (insert-region start end output-mark)
+    (guarantee-newlines 2 output-mark)
+    (let ((h-end (mark-left-inserting-copy (mark-1+ output-mark))))
+	;; Delete any blank lines in the header.
+	(do ((h-start h-start (replace-match "\n")))
+	    ((not (re-search-forward "\n\n+" h-start h-end #f))))
+	(expand-mail-aliases h-start h-end)
+	;; If there is a From and no Sender, put in a Sender.
+	(if (and (mail-field-start h-start h-end "From")
+		 (not (mail-field-start h-start h-end "Sender")))
+	    (mail-insert-field-value h-end "Sender" (mail-from-string start)))
+	(mark-temporary! h-start)
+	h-end)))
 
 (define (send-mail-buffer mail-buffer lookup-buffer)
   (let ((error-buffer
@@ -784,47 +782,66 @@ the user from the mailer."
 	    (mark-temporary! m)
 	    pathnames)))))
 
-;;;; MIME Compliance
+;;;; MIME
 
-(define (guarantee-mime-compliance buffer)
-  (let ((start (buffer-start buffer))
-	(end (buffer-end buffer)))
-    (let ((header-end
-	   (mark-left-inserting-copy (mail-match-header-separator start end))))
-      (mail-insert-field-value! start header-end "MIME-Version" "1.0")
-      (mail-insert-field-value! start header-end
-				"Content-Type"
-				"text/plain; charset=us-ascii")
-      (if (any-non-us-ascii-chars? start header-end)
-	  (begin
-	    (pop-up-occur-buffer start header-end regexp:non-us-ascii #f)
-	    (editor-error
-	     "Message to be sent contains illegal characters in header.")))
-      (let ((body-start (line-start header-end 1 'LIMIT)))
-	(if (any-non-us-ascii-chars? body-start end)
-	    (begin
-	      (let ((body (extract-and-delete-string body-start end)))
-		(call-with-output-mark body-start
-		  (lambda (port)
-		    (let ((context
-			   (encode-quoted-printable:initialize port #t)))
-		      (encode-quoted-printable:update
-		       context body 0 (string-length body))
-		      (encode-quoted-printable:finalize context)))))
-	      (mail-insert-field-value! start header-end
-					"Content-Transfer-Encoding"
-					"quoted-printable")
-	      (message "Message converted to quoted-printable encoding."))
-	    (mail-insert-field-value! start header-end
-				      "Content-Transfer-Encoding"
-				      "7bit")))
-      (mark-temporary! header-end))))
+(define (copy-mime-message start header-end body-start end output-mark)
+  (guarantee-mime-compliant-headers start header-end)
+  (let ((h-start (mark-right-inserting-copy output-mark)))
+    (let ((h-end (copy-message-header start header-end output-mark))
+	  (attachments (buffer-mime-attachments (mark-buffer start))))
+      (delete-mime-headers! h-start h-end)
+      (mark-temporary! h-start)
+      (mail-insert-field-value h-end "MIME-Version" "1.0")
+      (if (pair? attachments)
+	  (copy-mime-message-body-with-attachments body-start end attachments
+						   h-end output-mark)
+	  (copy-mime-message-body body-start end h-end output-mark))
+      h-end)))
+
+(define (guarantee-mime-compliant-headers header-start header-end)
+  (if (any-non-us-ascii-chars? header-start header-end)
+      (begin
+	(pop-up-occur-buffer header-start header-end regexp:non-us-ascii #f)
+	(editor-error "Message contains illegal characters in header.")))
+  (if (any-lines-too-long? header-start header-end 998)
+      (editor-error "Message contains over-long line in header.")))
+
+(define (copy-mime-message-body start end h-end output-mark)
+  (mail-insert-field-value h-end "Content-Type" "text/plain; charset=us-ascii")
+  (let ((b-start (mark-right-inserting-copy output-mark)))
+    (if (or (any-non-us-ascii-chars? start end)
+	    (any-lines-too-long? start end 76))
+	(begin
+	  (call-with-output-mark output-mark
+	    (lambda (port)
+	      (let ((context (encode-quoted-printable:initialize port #t)))
+		(let ((body (extract-string start end)))
+		  (encode-quoted-printable:update context
+						  body 0 (string-length body)))
+		(encode-quoted-printable:finalize context))))
+	  (mail-insert-field-value h-end
+				   "Content-Transfer-Encoding"
+				   "quoted-printable"))
+	(begin
+	  (insert-region start end b-start)
+	  (mail-insert-field-value h-end
+				   "Content-Transfer-Encoding"
+				   "7bit")))))
 
 (define (any-non-us-ascii-chars? start end)
   (group-find-next-char-in-set (mark-group start)
 			       (mark-index start)
 			       (mark-index end)
 			       char-set:non-us-ascii))
+
+(define (any-lines-too-long? start end n)
+  (let loop ((ls (line-start start 0)))
+    (let ((le (line-end ls 0)))
+      (or (> (- (mark-index le) (mark-index ls)) n)
+	  (let ((ls (line-start le 1 #f)))
+	    (and ls
+		 (mark< ls end)
+		 (loop ls)))))))
 
 (define char-set:us-ascii
   (char-set-union char-set:graphic (char-set #\tab #\page #\linefeed)))
@@ -834,6 +851,170 @@ the user from the mailer."
 
 (define regexp:non-us-ascii
   (char-set->regexp char-set:non-us-ascii))
+
+(define (delete-mime-headers! h-start h-end)
+  (let loop ((f-start h-start))
+    (if (mark< f-start h-end)
+	(let ((colon (search-forward ":" f-start (line-end f-start 0))))
+	  (if (not colon)
+	      (error "Not a header-field line:" f-start))
+	  (let ((name (string-trim (extract-string f-start (mark-1+ colon))))
+		(f-start*
+		 (if (re-search-forward "^[^ \t]" colon h-end #f)
+		     (re-match-start 0)
+		     h-end)))
+	    (if (or (string=? "mime-version" name)
+		    (string-prefix? "content-" name))
+		(begin
+		  (delete-string f-start f-start*)
+		  (loop f-start))
+		(loop f-start*)))))))
+
+(define (copy-mime-message-body-with-attachments start end attachments
+						 h-end output-mark)
+  (let ((boundary (random-mime-boundary-string 32)))
+    (mail-insert-field-value
+     h-end
+     "Content-Type"
+     (string-append "multipart/mixed; boundary=\"" boundary "\""))
+    (mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit")
+    (insert-string "This is a multi-part message in MIME format." output-mark)
+    (insert-mime-boundary boundary #f output-mark)
+    (insert-newline output-mark)
+    (let ((h-end (mark-left-inserting-copy (mark-1+ output-mark))))
+      (copy-mime-message-body start end h-end output-mark)
+      (mark-temporary! h-end))
+    (for-each (lambda (attachment)
+		(insert-mime-boundary boundary #f output-mark)
+		(insert-mime-attachment attachment output-mark))
+	      attachments)
+    (insert-mime-boundary boundary #t output-mark)))
+
+(define (insert-mime-attachment attachment m)
+  (let ((type (vector-ref attachment 0))
+	(subtype (vector-ref attachment 1))
+	(parameters (vector-ref attachment 2))
+	(disposition (vector-ref attachment 3)))
+    (mail-insert-field-value
+     m
+     "Content-Type"
+     (string-append (symbol->string type)
+		    "/"
+		    (symbol->string subtype)
+		    (mime-parameters->string parameters)))
+    (mail-insert-field-value
+     m
+     "Content-Encoding"
+     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
+	 "7bit"
+	 "base64"))
+    (if disposition
+	(mail-insert-field-value m
+				 "Content-Disposition"
+				 (mime-disposition->string disposition)))
+    (insert-newline m)
+    (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
+	(begin
+	  (insert-headers (vector-ref attachment 4) m)
+	  (insert-newline m)
+	  (insert-string (vector-ref attachment 5) m))
+	(call-with-output-mark m
+	  (lambda (output-port)
+	    (let ((context
+		   (encode-base64:initialize output-port
+					     (vector-ref attachment 4))))
+	      (call-with-input-file (vector-ref attachment 5)
+		(lambda (input-port)
+		  (let ((buffer (make-string 4096)))
+		    (let loop ()
+		      (let ((n-read (read-string! buffer input-port)))
+			(if (> n-read 0)
+			    (begin
+			      (encode-base64:update context buffer 0 n-read)
+			      (loop))))))))
+	      (encode-base64:finalize context)))))))
+
+(define (enable-buffer-mime-processing! buffer)
+  (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
+
+(define (disable-buffer-mime-processing! buffer)
+  (buffer-put! buffer 'MAIL-DISABLE-MIME-PROCESSING #t))
+
+(define (buffer-mime-processing-enabled? buffer)
+  (not (buffer-get buffer 'MAIL-DISABLE-MIME-PROCESSING #f)))
+
+(define (add-buffer-mime-attachment! buffer
+				     type subtype parameters disposition
+				     . rest)
+  (set-buffer-mime-attachments!
+   buffer
+   (cons (list->vector
+	  (cons* type subtype parameters disposition rest))
+	 (buffer-mime-attachments buffer))))
+
+(define (buffer-mime-attachments buffer)
+  (buffer-get buffer 'MAIL-MIME-ATTACHMENTS '()))
+
+(define (set-buffer-mime-attachments! buffer attachments)
+  (buffer-put! buffer 'MAIL-MIME-ATTACHMENTS attachments)
+  (local-set-variable! mode-line-process
+		       (let ((n (length attachments)))
+			 (and (> n 0)
+			     (string-append
+			      " ("
+			      (number->string n)
+			      " attachment"
+			      (if (> n 1) "s" "")
+			      ")")))
+		       buffer)
+  (buffer-modeline-event! buffer 'PROCESS-STATUS))
+
+(define (mime-parameters->string parameters)
+  (decorated-string-append
+   "; " "" ""
+   (map (lambda (parameter)
+	  (string-append (symbol->string (car parameter))
+			 "=\""
+			 (cadr parameter)
+			 "\""))
+	parameters)))
+
+(define (mime-disposition->string disposition)
+  (string-append (symbol->string (car disposition))
+		 (mime-parameters->string (cdr disposition))))
+
+(define (insert-headers headers mark)
+  (for-each (lambda (nv)
+	      (mail-insert-field-value mark (car nv) (cadr nv)))
+	    headers))
+
+(define (insert-mime-boundary boundary final? m)
+  (insert-newline m)
+  (insert-string "--" m)
+  (insert-string boundary m)
+  (if final? (insert-string "--" m))
+  (insert-newline m))
+
+(define (random-mime-boundary-string length)
+  (if (not (exact-nonnegative-integer? length))
+      (error:wrong-type-argument length "exact nonnegative integer"
+				 'RANDOM-MIME-BOUNDARY-STRING))
+  (let* ((prefix "=_")
+	 (plen (string-length prefix)))
+    (if (not (<= 1 length (- 70 plen)))
+	(error:bad-range-argument length 'RANDOM-MIME-BOUNDARY-STRING))
+    (let ((s
+	   (with-string-output-port
+	     (lambda (port)
+	       (write-string prefix port)
+	       (let ((context (encode-base64:initialize port #f)))
+		 (let ((n (* (integer-ceiling (- length 2) 4) 3)))
+		   (encode-base64:update context (random-byte-vector n) 0 n))
+		 (encode-base64:finalize context)))))
+	  (n (+ plen length)))
+      (if (fix:> (string-length s) n)
+	  (set-string-maximum-length! s n))
+      s)))
 
 ;;;; Direct SMTP
 

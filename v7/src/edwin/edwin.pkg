@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.258 2000/06/08 20:44:35 cph Exp $
+$Id: edwin.pkg,v 1.259 2000/06/09 04:11:55 cph Exp $
 
 Copyright (c) 1989-2000 Massachusetts Institute of Technology
 
@@ -1452,6 +1452,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (files "sendmail")
   (parent (edwin))
   (export (edwin)
+	  add-buffer-mime-attachment!
+	  buffer-mime-attachments
+	  buffer-mime-processing-enabled?
+	  disable-buffer-mime-processing!
 	  edwin-command$mail
 	  edwin-command$mail-bcc
 	  edwin-command$mail-cc
@@ -1485,6 +1489,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  edwin-variable$smtp-require-valid-recipients
 	  edwin-variable$smtp-trace
 	  edwin-variable$user-mail-address
+	  enable-buffer-mime-processing!
 	  mail-field-end
 	  mail-field-end!
 	  mail-field-region
@@ -1501,7 +1506,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
 	  random-mime-boundary-string
-	  send-mail-buffer))
+	  send-mail-buffer
+	  set-buffer-mime-attachments!))
 
 (define-package (edwin mail-alias)
   (files "malias")
