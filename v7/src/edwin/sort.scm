@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sort.scm,v 1.1 1992/11/01 07:11:48 arthur Exp $
+;;;	$Id: sort.scm,v 1.2 1992/11/20 18:23:27 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -70,12 +70,13 @@
 			   start2
 			   (key-end start2)))))))))
     (insert-reordered-region start end sorted-list unsorted-list)
-    (kill-string start delete-end)))
+    (kill-string start delete-end)
+    (mark-temporary! delete-end)))
 
 (define (identify-records region forward-record record-end)
   (let ((limit (region-end region)))
     (let next-record ((start (region-start region)))
-      (if start
+      (if (and start (mark< start limit))
 	  (let ((end (record-end start)))
 	    (if (and end (mark< end limit))
 		(cons (cons start end)
@@ -88,19 +89,21 @@
     (let next-element ((previous start)
 		       (sorted-list sorted-list)
 		       (unsorted-list unsorted-list))
-      (if (not (null? sorted-list))
+      (if (null? sorted-list)
+	  (if (mark< previous end)
+	      (insert-string (extract-string previous end) insert-mark))
 	  (begin
-	    (insert-string
-	     (extract-string previous
-			     (caar unsorted-list))
-	     insert-mark)
+	    (if (mark< previous (caar unsorted-list))
+		(insert-string (extract-string previous (caar unsorted-list))
+			       insert-mark))
 	    (insert-string
 	     (extract-string (caar sorted-list)
 			     (cdar sorted-list))
 	     insert-mark)
 	    (next-element (cdar unsorted-list)
 			  (cdr sorted-list)
-			  (cdr unsorted-list)))))))
+			  (cdr unsorted-list)))))
+    (mark-temporary! delete-end)))
 
 (define (sort-textual-comparison start1 end1 start2 end2)
   (string<? (extract-string start1 end1)
@@ -114,7 +117,7 @@
       (if (or (not value1) (not value2))
 	  (string<? string1 string2)
 	  (< value1 value2)))))
-
+
 (define-command sort-lines
   "Sort lines in region in ascending order by comparing the text of
 the lines.  Argument means sort in descending order."
@@ -160,7 +163,7 @@ the pages.  Argument means sort in descending order."
 		   identity-procedure
 		   (lambda (mark) (line-end mark 0))
 		   sort-textual-comparison))))
-
+
 (define ((sort-fields compare) field region)
   (if (zero? field) (editor-error "Field number must be non-zero."))
   (let ((end (line-end (region-end region) 0)))
