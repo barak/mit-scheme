@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.6 1988/03/22 17:37:01 jrm Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 3.7 1988/04/12 15:01:28 jinx Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ MIT in each case. |#
 (define global-constant-objects
   '(TRUE FALSE SYSTEM-GLOBAL-ENVIRONMENT
     
-    SCODE-EVAL FORCE WITH-THREADED-CONTINUATION
+    SCODE-EVAL FORCE
     SET-INTERRUPT-ENABLES! WITH-INTERRUPT-MASK WITH-INTERRUPTS-REDUCED
     GET-FIXED-OBJECTS-VECTOR WITH-HISTORY-DISABLED
     PRIMITIVE-PROCEDURE-ARITY NOT FALSE?

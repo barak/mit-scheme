@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.44 1987/10/09 17:13:14 jinx Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/boot.scm,v 13.45 1988/04/12 14:59:27 jinx Rel $
 ;;;
-;;;	Copyright (c) 1987 Massachusetts Institute of Technology
+;;;	Copyright (c) 1988 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -39,10 +39,14 @@
 
 ;;;; Boot Utilities
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-primitive-procedures
+	  compiled-code-address->block
+	  compiled-code-address->offset
+	  primitive-object-set-type))
 
 ;;; The utilities in this file are the first thing loaded into the
-;;; world after the type tables.  They can't depend on anything else
+;;; world after the type tables.  They shouldn't depend on anything else
 ;;; except those tables.
 
 ;;;; Primitive Operators
@@ -54,17 +58,14 @@
 			   `(DEFINE ,name ,(make-primitive-procedure name)))
 			 names)))))
   (define-global-primitives
-   SCODE-EVAL FORCE WITH-THREADED-CONTINUATION
+   SCODE-EVAL FORCE
    SET-INTERRUPT-ENABLES! WITH-INTERRUPTS-REDUCED
    WITH-INTERRUPT-MASK
    GET-FIXED-OBJECTS-VECTOR WITH-HISTORY-DISABLED
    PRIMITIVE-PROCEDURE-ARITY NOT FALSE?
-   ;; UNSNAP-LINKS!
-
    ;; Environment
    LEXICAL-REFERENCE LEXICAL-ASSIGNMENT LOCAL-ASSIGNMENT
    LEXICAL-UNASSIGNED? LEXICAL-UNBOUND? LEXICAL-UNREFERENCEABLE?
-
    ;; Pointers
    EQ?
    PRIMITIVE-SET-TYPE MAKE-NON-POINTER-OBJECT
@@ -101,13 +102,14 @@
 (define false #F)
 (define true #T)
 
-(define (null-procedure . args) '())
-(define (false-procedure . args) #F)
-(define (true-procedure . args) #T)
+(define (null-procedure . args) args '()) ; args ignored
+(define (false-procedure . args) args #F) ; args ignored
+(define (true-procedure . args) args #T) ; args ignored
 
 (define (without-interrupts thunk)
   (with-interrupts-reduced interrupt-mask-gc-ok
     (lambda (old-mask)
+      old-mask ;; ignored
       (thunk))))
 
 (define apply
@@ -139,3 +141,24 @@
 (define (boolean? object)
   (or (eq? object #F)
       (eq? object #T)))
+
+;;; This won't work until vector is loaded, but it has no better place to go.
+
+(let-syntax ((ucode-type (macro (name) (microcode-type name))))
+
+(define (copy-program exp)
+  (if (not (primitive-type? (ucode-type COMPILED-ENTRY) exp))
+      (error "copy-program: Can only copy compiled programs" exp))
+  (let ((v (vector-copy
+	    (primitive-set-type
+	     (ucode-type VECTOR)
+	     (compiled-code-address->block exp)))))
+    (with-interrupt-mask
+     interrupt-mask-none
+     (lambda (old)
+       old ;; ignored
+       (primitive-object-set-type
+	(ucode-type COMPILED-ENTRY)
+	(+ (compiled-code-address->offset exp) (primitive-datum v)))))))
+
+) ;; End of let-syntax
