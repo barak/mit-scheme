@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.21 1987/01/22 14:33:46 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.22 1987/04/16 12:21:36 jinx Rel $
  *
  * Random system primitives.  Most are implemented in terms of
  * utilities in os.c
@@ -42,8 +42,9 @@ MIT in each case. */
 /* Interrupt primitives */
 
 Built_In_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
-		 "CHECK-AND-CLEAN-UP-INPUT-CHANNEL")
-{ extern Boolean OS_Clean_Interrupt_Channel();
+		 "CHECK-AND-CLEAN-UP-INPUT-CHANNEL", 0x107)
+{
+  extern Boolean OS_Clean_Interrupt_Channel();
   Primitive_2_Args();
 
   return (OS_Clean_Interrupt_Channel(Get_Integer(Arg1),
@@ -52,14 +53,16 @@ Built_In_Primitive(Prim_Chk_And_Cln_Input_Channel, 2,
 }
 
 Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
-		   "GET-NEXT-INTERRUPT-CHARACTER")
-{ int result;
+		   "GET-NEXT-INTERRUPT-CHARACTER", 0x106)
+{
+  int result;
   extern int OS_Get_Next_Interrupt_Character();
   Primitive_0_Args();
 
   result = OS_Get_Next_Interrupt_Character();
   if (result == -1)
-  { Primitive_Error(ERR_EXTERNAL_RETURN);
+  {
+    Primitive_Error(ERR_EXTERNAL_RETURN);
     /*NOTREACHED*/
   }
   IntCode &= ~INT_Character;
@@ -68,16 +71,25 @@ Built_In_Primitive(Prim_Get_Next_Interrupt_Char, 0,
 
 /* Time primitives */
 
-Built_In_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK")
-{ Primitive_0_Args();
-  return FIXNUM_0 + System_Clock();
+Built_In_Primitive(Prim_System_Clock, 0, "SYSTEM-CLOCK", 0x109)
+{
+  Primitive_0_Args();
+
+  return Make_Unsigned_Fixnum(System_Clock());
 }
 
-Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2, "SETUP-TIMER-INTERRUPT")
-{ Primitive_2_Args();
-  if ((Arg1 == NIL) && (Arg2==NIL)) Clear_Int_Timer();
+Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2,
+		   "SETUP-TIMER-INTERRUPT", 0x153)
+{
+  extern void Clear_Int_Timer(), Set_Int_Timer();
+  Primitive_2_Args();
+
+  if ((Arg1 == NIL) && (Arg2==NIL))
+    Clear_Int_Timer();
   else
-  { long Days, Centi_Seconds;
+  {
+    long Days, Centi_Seconds;
+
     Arg_1_Type(TC_FIXNUM);
     Arg_2_Type(TC_FIXNUM);
     Sign_Extend(Arg1, Days);
@@ -90,52 +102,72 @@ Built_In_Primitive(Prim_Setup_Timer_Interrupt, 2, "SETUP-TIMER-INTERRUPT")
 
 /* Date and current time primitives */
 
-#define Date_Primitive(Prim_Name, OS_Name, S_Name)	\
-Built_In_Primitive(Prim_Name, 0, S_Name)		\
-{ int result;						\
-  extern int OS_Name();					\
-							\
-  result = OS_Name();					\
-  if (result == -1) return NIL;				\
-  return Make_Unsigned_Fixnum(result);			\
+#define Date_Primitive(OS_Name)						\
+{									\
+  int result;								\
+  extern int OS_Name();							\
+  Primitive_0_Args();							\
+									\
+  result = OS_Name();							\
+  if (result == -1)							\
+    return NIL;								\
+  return Make_Unsigned_Fixnum(result);					\
 }
 
-Date_Primitive(Prim_Current_Year, OS_Current_Year, "YEAR");
-Date_Primitive(Prim_Current_Month, OS_Current_Month, "MONTH");
-Date_Primitive(Prim_Current_Day, OS_Current_Day, "DAY");
-Date_Primitive(Prim_Current_Hour, OS_Current_Hour, "HOUR");
-Date_Primitive(Prim_Current_Minute, OS_Current_Minute, "MINUTE");
-Date_Primitive(Prim_Current_Second, OS_Current_Second, "SECOND");
-
-/* Truly random primitives */
+Built_In_Primitive(Prim_Current_Year, 0, "CURRENT-YEAR", 0x126)
+Date_Primitive(OS_Current_Year)
 
-/* (NON-RESTARTABLE-EXIT)
-      [Primitive number 0x16]
-      Halt SCHEME, with no intention of restarting.
+Built_In_Primitive(Prim_Current_Month, 0, "CURRENT-MONTH", 0x127)
+Date_Primitive(OS_Current_Month)
+
+Built_In_Primitive(Prim_Current_Day, 0, "CURRENT-DAY", 0x128)
+Date_Primitive(OS_Current_Day)
+
+Built_In_Primitive(Prim_Current_Hour, 0, "CURRENT-HOUR", 0x129)
+Date_Primitive(OS_Current_Hour)
+
+Built_In_Primitive(Prim_Current_Minute, 0, "CURRENT-MINUTE", 0x12A)
+Date_Primitive(OS_Current_Minute)
+
+Built_In_Primitive(Prim_Current_Second, 0, "CURRENT-SECOND", 0x12B)
+Date_Primitive(OS_Current_Second)
+
+/* Pretty random primitives */
+
+/* (EXIT)
+   Halt SCHEME, with no intention of restarting.
 */
 
-Built_In_Primitive(Prim_Non_Restartable_Exit, 0, "NON-RESTARTABLE-EXIT")
-{ Primitive_0_Args();
+Built_In_Primitive(Prim_Non_Restartable_Exit, 0, "EXIT", 0x16)
+{
+  Primitive_0_Args();
+
   Microcode_Termination(TERM_HALT);
 }
 
-Built_In_Primitive(Prim_Restartable_Exit, 0, "RESTARTABLE-EXIT")
-{ extern Boolean Restartable_Exit();
+/* (HALT)
+   Halt Scheme in such a way that it can be restarted.
+   Not all operating systems support this.
+*/
+Built_In_Primitive(Prim_Restartable_Exit, 0, "HALT", 0x1A)
+{
+  extern Boolean Restartable_Exit();
   Primitive_0_Args();
 
   Restartable_Exit();
-  return (Restartable_Exit() ? TRUTH : NIL);
+  return ((Restartable_Exit() ? TRUTH : NIL));
 }
 
-/* (SET_RUN_LIGHT OBJECT)
-      [Primitive number 0xC0]
-      On the HP9836, allows the character displayed in the lower
-      right-hand part of the screen to be changed. In CScheme, rings
-      the bell.  Used only by GC to indicate that it has started and
-      ended.
+/* (SET-RUN-LIGHT! OBJECT)
+   On the HP Pascal workstation system, it allows the character
+   displayed in the lower right-hand part of the screen to be changed.
+   In CScheme, rings the bell.
+   Used by various things to indicate the state of the system.
 */
-Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!")
-{ Primitive_1_Arg();
+
+Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!", 0xC0)
+{
+  Primitive_1_Arg();
 #ifdef RUN_LIGHT_IS_BEEP
   extern void OS_tty_beep();
 
@@ -147,8 +179,9 @@ Built_In_Primitive(Prim_Set_Run_Light, 1, "SET-RUN-LIGHT!")
 #endif
 }
 
-Built_In_Primitive( Prim_under_emacs_p, 0, "UNDER-EMACS?")
-{ extern Boolean OS_Under_Emacs();
+Built_In_Primitive( Prim_under_emacs_p, 0, "UNDER-EMACS?", 0x1A1)
+{
+  extern Boolean OS_Under_Emacs();
   Primitive_0_Args();
 
   return (OS_Under_Emacs() ? TRUTH : NIL);
