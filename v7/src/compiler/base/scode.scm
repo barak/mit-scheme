@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.13 2001/12/23 17:20:57 cph Exp $
+$Id: scode.scm,v 4.14 2002/02/08 03:07:07 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,48 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (declare (usual-integrations))
 
-(let-syntax ((define-scode-operators
-	      (non-hygienic-macro-transformer
-	       (lambda names
-		 `(BEGIN ,@(map (lambda (name)
-				  `(DEFINE ,(symbol-append 'SCODE/ name)
-				     (ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)))
-				names))))))
-  (define-scode-operators
-    make-access access? access-components
-    access-environment access-name
-    make-assignment assignment? assignment-components
-    assignment-name assignment-value
-    make-combination combination? combination-components
-    combination-operator combination-operands
-    make-comment comment? comment-components
-    comment-expression comment-text
-    make-conditional conditional? conditional-components
-    conditional-predicate conditional-consequent conditional-alternative
-    make-declaration declaration? declaration-components
-    declaration-expression declaration-text
-    make-definition definition? definition-components
-    definition-name definition-value
-    make-delay delay? delay-components
-    delay-expression
-    make-disjunction disjunction? disjunction-components
-    disjunction-predicate disjunction-alternative
-    make-lambda lambda? lambda-components
-    make-open-block open-block? open-block-components
-    primitive-procedure? procedure?
-    make-quotation quotation? quotation-expression
-    make-sequence sequence? sequence-actions sequence-components
-    symbol?
-    make-the-environment the-environment?
-    make-unassigned? unassigned?? unassigned?-name
-    make-variable variable? variable-components variable-name
-    ))
+(define (scode/make-constant value) value)
+(define (scode/constant-value constant) constant)
 
-(define-integrable (scode/make-constant value) value)
-(define-integrable (scode/constant-value constant) constant)
-(define scode/constant? (access scode-constant? system-global-environment))
-
-(define-integrable (scode/quotation-components quot recvr)
+(define (scode/quotation-components quot recvr)
   (recvr (scode/quotation-expression quot)))
 
 (define comment-tag:directive
@@ -100,27 +62,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Absolute variables and combinations
 
-(define-integrable (scode/make-absolute-reference variable-name)
-  (scode/make-access '() variable-name))
+(define (scode/make-absolute-reference variable-name)
+  (scode/make-access system-global-environment variable-name))
 
 (define (scode/absolute-reference? object)
   (and (scode/access? object)
-       (null? (scode/access-environment object))))
+       (eq? (scode/access-environment object) system-global-environment)))
 
-(define-integrable (scode/absolute-reference-name reference)
+(define (scode/absolute-reference-name reference)
   (scode/access-name reference))
 
-(define-integrable (scode/make-absolute-combination name operands)
+(define (scode/make-absolute-combination name operands)
   (scode/make-combination (scode/make-absolute-reference name) operands))
 
 (define (scode/absolute-combination? object)
   (and (scode/combination? object)
        (scode/absolute-reference? (scode/combination-operator object))))
 
-(define-integrable (scode/absolute-combination-name combination)
+(define (scode/absolute-combination-name combination)
   (scode/absolute-reference-name (scode/combination-operator combination)))
 
-(define-integrable (scode/absolute-combination-operands combination)
+(define (scode/absolute-combination-operands combination)
   (scode/combination-operands combination))
 
 (define (scode/absolute-combination-components combination receiver)

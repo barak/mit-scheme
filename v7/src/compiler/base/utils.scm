@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.23 2001/12/23 17:20:57 cph Exp $
+$Id: utils.scm,v 4.24 2002/02/08 03:07:11 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -137,11 +137,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Type Codes
 
 (let-syntax ((define-type-code
-	      (non-hygienic-macro-transformer
-	       (lambda (var-name #!optional type-name)
-		 (if (default-object? type-name) (set! type-name var-name))
-		 `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: var-name)
-		    ',(microcode-type type-name))))))
+	       (sc-macro-transformer
+		(lambda (form environment)
+		  environment
+		  `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
+		     ',(microcode-type (cadr form)))))))
   (define-type-code lambda)
   (define-type-code extended-lambda)
   (define-type-code procedure)

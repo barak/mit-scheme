@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.10 2001/12/24 04:15:36 cph Exp $
+$Id: comcmp.scm,v 1.11 2002/02/08 03:07:42 cph Exp $
 
-Copyright (c) 1989-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,9 +25,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (declare (usual-integrations))
 
 (define-syntax ucode-type
-  (non-hygienic-macro-transformer
-   (lambda (name)
-     (microcode-type name))))
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (apply microcode-type (cdr form)))))
 
 (define comcmp:ignore-debugging-info? #t)
 (define comcmp:show-differing-blocks? #f)

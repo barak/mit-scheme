@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.20 2001/12/23 17:20:57 cph Exp $
+$Id: canon.scm,v 1.21 2002/02/08 03:08:00 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -503,13 +503,15 @@ ARBITRARY:	The expression may be executed more than once.  It
 
 ;;;; Hairier expressions
 
-(let-syntax ((is-operator?
-	      (non-hygienic-macro-transformer
-	       (lambda (value name)
-		 `(or (eq? ,value (ucode-primitive ,name))
-		      (and (scode/absolute-reference? ,value)
-			   (eq? (scode/absolute-reference-name ,value)
-				',name)))))))
+(let-syntax
+    ((is-operator?
+      (sc-macro-transformer
+       (lambda (form environment)
+	 (let ((value (close-syntax (cadr form) environment))
+	       (name (caddr form)))
+	   `(OR (EQ? ,value (UCODE-PRIMITIVE ,name))
+		(AND (SCODE/ABSOLUTE-REFERENCE? ,value)
+		     (EQ? (SCODE/ABSOLUTE-REFERENCE-NAME ,value) ',name))))))))
 
   (define (canonicalize/combination expr bound context)
     (scode/combination-components
@@ -517,11 +519,11 @@ ARBITRARY:	The expression may be executed more than once.  It
      (lambda (operator operands)
        (cond ((lambda? operator)
 	      (canonicalize/let operator operands bound context))
-	     ((and (is-operator? operator LEXICAL-UNASSIGNED?)
+	     ((and (is-operator? operator lexical-unassigned?)
 		   (scode/the-environment? (car operands))
 		   (symbol? (cadr operands)))
 	      (canonicalize/unassigned? (cadr operands) expr bound context))
-	     ((and (is-operator? operator ERROR-PROCEDURE)
+	     ((and (is-operator? operator error-procedure)
 		   (scode/the-environment? (caddr operands)))
 	      (canonicalize/error operator operands bound context))
 	     (else
@@ -799,33 +801,45 @@ ARBITRARY:	The expression may be executed more than once.  It
 
     (let-syntax
 	((dispatch-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (type handler)
-	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type (cadr form))
+			   ,(close-syntax (caddr form) environment)))))
 
 	 (dispatch-entries
-	  (non-hygienic-macro-transformer
-	   (lambda (types handler)
-	     `(BEGIN ,@(map (lambda (type)
-			      `(DISPATCH-ENTRY ,type ,handler))
-			    types)))))
+	  (c-macro-transformer
+	   (lambda (form environment)
+	     (let ((handler (close-syntax (caddr form) environment)))
+	       `(BEGIN
+		  ,@(map (lambda (type)
+			   `(DISPATCH-ENTRY ,type ,handler))
+			 (cadr form)))))))
 	 (standard-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (name)
-	     `(DISPATCH-ENTRY ,name ,(symbol-append 'CANONICALIZE/ name)))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((name (cadr form)))
+	       `(DISPATCH-ENTRY ,name
+				,(close-syntax (symbol-append 'CANONICALIZE/
+							      name)
+					       environment))))))
 
 	 (nary-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (nary name)
-	     `(DISPATCH-ENTRY ,name
-			      (,(symbol-append 'CANONICALIZE/ nary)
-			       ,(symbol-append 'SCODE/ name '-COMPONENTS)
-			       ,(symbol-append 'SCODE/MAKE- name))))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((nary (cadr form))
+		   (name (caddr form)))
+	       `(DISPATCH-ENTRY ,name
+				,(close-syntax
+				  `(,(symbol-append 'CANONICALIZE/ nary)
+				    ,(symbol-append 'SCODE/ name '-COMPONENTS)
+				    ,(symbol-append 'SCODE/MAKE- name))
+				  environment))))))
 
 	 (binary-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (name)
-	     `(NARY-ENTRY binary ,name)))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     environment
+	     `(NARY-ENTRY BINARY ,(cadr form))))))
 
       ;; quotations are treated as constants.
       (binary-entry access)

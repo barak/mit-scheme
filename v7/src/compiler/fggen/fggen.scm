@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.35 2001/12/23 17:20:57 cph Exp $
+$Id: fggen.scm,v 4.36 2002/02/08 03:08:11 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -952,22 +952,28 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (else
 		  (generate/constant block continuation
 				     context expression))))))
-
     (let-syntax
 	((dispatch-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (type handler)
-	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type type) ,handler))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     `(VECTOR-SET! DISPATCH-VECTOR
+			   ,(microcode-type (cadr form))
+			   ,(close-syntax (caddr form) environment)))))
 	 (dispatch-entries
-	  (non-hygienic-macro-transformer
-	   (lambda (types handler)
-	     `(BEGIN ,@(map (lambda (type)
-			      `(DISPATCH-ENTRY ,type ,handler))
-			    types)))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((handler (close-syntax (caddr form) environment)))
+	       `(BEGIN
+		  ,@(map (lambda (type)
+			   `(DISPATCH-ENTRY ,type ,handler))
+			 (cadr form)))))))
 	 (standard-entry
-	  (non-hygienic-macro-transformer
-	   (lambda (name)
-	     `(DISPATCH-ENTRY ,name ,(symbol-append 'GENERATE/ name))))))
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((name (cadr form)))
+	       `(DISPATCH-ENTRY ,name
+				,(close-syntax (symbol-append 'GENERATE/ name)
+					       environment)))))))
       (standard-entry access)
       (standard-entry assignment)
       (standard-entry conditional)

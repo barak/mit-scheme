@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cfg1.scm,v 4.5 1999/01/02 06:06:43 cph Exp $
+$Id: cfg1.scm,v 4.6 2002/02/08 03:07:00 cph Exp $
 
-Copyright (c) 1987, 1989, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (set-vector-tag-description!
  cfg-node-tag
  (lambda (node)
-   (descriptor-list node generation alist previous-edges)))
+   (descriptor-list node node generation alist previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE false))
 (define snode? (tagged-vector/subclass-predicate snode-tag))
@@ -46,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  snode-tag
  (lambda (snode)
    (append! ((vector-tag-description (vector-tag-parent snode-tag)) snode)
-	    (descriptor-list snode next-edge))))
+	    (descriptor-list snode snode next-edge))))
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE false))
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
@@ -60,7 +60,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  pnode-tag
  (lambda (pnode)
    (append! ((vector-tag-description (vector-tag-parent pnode-tag)) pnode)
-	    (descriptor-list pnode consequent-edge alternative-edge))))
+	    (descriptor-list pnode pnode consequent-edge alternative-edge))))
 
 (define (add-node-previous-edge! node edge)
   (set-node-previous-edges! node (cons edge (node-previous-edges node))))

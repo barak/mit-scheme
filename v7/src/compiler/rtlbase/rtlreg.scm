@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlreg.scm,v 4.8 2001/12/23 17:20:58 cph Exp $
+$Id: rtlreg.scm,v 4.9 2002/02/08 03:08:47 cph Exp $
 
-Copyright (c) 1987, 1988, 1990, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -67,15 +67,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((define-register-references
-      (non-hygienic-macro-transformer
-       (lambda (slot)
-	 (let ((name (symbol-append 'REGISTER- slot)))
-	   (let ((vector `(,(symbol-append 'RGRAPH- name) *CURRENT-RGRAPH*)))
-	     `(BEGIN (DEFINE-INTEGRABLE (,name REGISTER)
-		       (VECTOR-REF ,vector REGISTER))
-		     (DEFINE-INTEGRABLE
-		       (,(symbol-append 'SET- name '!) REGISTER VALUE)
-		       (VECTOR-SET! ,vector REGISTER VALUE)))))))))
+       (sc-macro-transformer
+	(lambda (form environment)
+	  (let ((slot (cadr form)))
+	    (let ((name (symbol-append 'REGISTER- slot)))
+	      (let ((vector
+		     `(,(close-syntax (symbol-append 'RGRAPH- name)
+				      environment)
+		       *CURRENT-RGRAPH*)))
+		`(BEGIN
+		   (DEFINE-INTEGRABLE (,name REGISTER)
+		     (VECTOR-REF ,vector REGISTER))
+		   (DEFINE-INTEGRABLE
+		     (,(symbol-append 'SET- name '!) REGISTER VALUE)
+		     (VECTOR-SET! ,vector REGISTER VALUE))))))))))
   (define-register-references bblock)
   (define-register-references n-refs)
   (define-register-references n-deaths)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlcfg.scm,v 4.9 1999/01/02 06:06:43 cph Exp $
+$Id: rtlcfg.scm,v 4.10 2002/02/08 03:08:36 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1989, 1999, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (let ((bblock-describe
        (lambda (bblock)
 	 (descriptor-list bblock
+			  bblock
 			  instructions
 			  live-at-entry
 			  live-at-exit
@@ -68,6 +69,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (append! ((vector-tag-description snode-tag) sblock)
 	      (bblock-describe sblock)
 	      (descriptor-list sblock
+			       sblock
 			       continuation))))
   (set-vector-tag-description!
    pblock-tag
@@ -75,6 +77,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      (append! ((vector-tag-description pnode-tag) pblock)
 	      (bblock-describe pblock)
 	      (descriptor-list pblock
+			       pblock
 			       consequent-lap-generator
 			       alternative-lap-generator)))))
 
