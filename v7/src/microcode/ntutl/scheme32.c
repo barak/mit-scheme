@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.13 1997/01/02 07:07:19 cph Exp $
+$Id: scheme32.c,v 1.14 1997/04/02 07:44:09 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -38,9 +38,14 @@ MIT in each case. */
 
 #include "ntscmlib.h"
 #include <stdlib.h>
-#include <mmsystem.h>
+#include <process.h>
 
 static void __cdecl win32_flush_async_timer (void *);
+static unsigned int WINAPI timer_thread_proc (void *);
+
+#ifndef WIN32_TIMER_INTERVAL
+#define WIN32_TIMER_INTERVAL 50
+#endif
 
 static BOOL __cdecl
 win32_under_win32s_p (void)
@@ -105,34 +110,83 @@ win32_unlock_memory_area (void * area, unsigned long size)
   (void) VirtualUnlock (area, size);
 }
 
-/*   Asynchronous timer interrupt based on multimedia system
- *
- *   WARNING: the docs say that timer_tick and all that it references must
- *   be in a DLL witha a FIXED attribute.
- *   Also, it appears to need _stdcall, but mmsystem.h refutes this
- */
+/* Asynchronous timer interrupt based on auxiliary thread.  */
 
 struct win32_timer_closure_s
 {
-  UINT timer_id;
-  unsigned long * base;
-  long memtop_off;
-  long int_code_off;
-  long int_mask_off;
-  unsigned long bit_mask;
-  long ctr_off;
-  unsigned long catatonia_message;
-  unsigned long interrupt_message;
-  HWND window;
+  unsigned long interval;	/* timer interval in milliseconds */
+  unsigned long * base;		/* register-block base address */
+  long memtop_off;		/* offset to memtop register */
+  long int_code_off;		/* offset to int_code register */
+  long int_mask_off;		/* offset to int_mask register */
+  unsigned long bit_mask;	/* interrupt bits to signal */
+  long ctr_off;			/* offset to catatonia-counter register */
+  unsigned long catatonia_message; /* message to send for catatonia */
+  unsigned long interrupt_message; /* message to send for interrupt */
+  HWND window;			/* window to send the messages to */
+  void (*grab_int_regs) (void);	/* grab interrupt registers */
+  void (*release_int_regs) (void); /* release interrupt registers */
 };
 
-#ifdef CL386
-#define __STDCALL _stdcall
-#endif
+/* Setting this to non-zero requests the timer thread to exit.  */
+static int exit_timer_thread;
 
-#ifdef __WATCOMC__
-#define __STDCALL __stdcall
-#endif
+static UINT __cdecl
+win32_install_async_timer (void ** state_ptr,
+			   unsigned long * base,
+			   long memtop_off,
+			   long int_code_off,
+			   long int_mask_off,
+			   unsigned long bit_mask,
+			   long ctr_off,
+			   unsigned long catatonia_message,
+			   unsigned long interrupt_message,
+			   HWND window,
+			   void (*grab_int_regs) (void),
+			   void (*release_int_regs) (void))
+{
+  struct win32_timer_closure_s * scm_timer;
+  unsigned int id;
+
+  scm_timer
+    = ((struct win32_timer_closure_s *)
+       (malloc (sizeof (struct win32_timer_closure_s))));
+  if (scm_timer == 0)
+    return (WIN32_ASYNC_TIMER_NOMEM);
+  (scm_timer -> interval) = WIN32_TIMER_INTERVAL;
+  (scm_timer -> base) = base;
+  (scm_timer -> memtop_off) = memtop_off;
+  (scm_timer -> int_code_off) = int_code_off;
+  (scm_timer -> int_mask_off) = int_mask_off;
+  (scm_timer -> bit_mask) = bit_mask;
+  (scm_timer -> ctr_off) = ctr_off;
+  (scm_timer -> catatonia_message) = catatonia_message;
+  (scm_timer -> interrupt_message) = interrupt_message;
+  (scm_timer -> window) = window;
+  (scm_timer -> grab_int_regs) = grab_int_regs;
+  (scm_timer -> release_int_regs) = release_int_regs;
+  exit_timer_thread = 0;
+  if (_beginthreadex (0, 0, timer_thread_proc, scm_timer, 0, (&id)))
+    {
+      (*state_ptr) = scm_timer;
+      return (WIN32_ASYNC_TIMER_OK);
+    }
+  else
+    {
+      win32_flush_async_timer (scm_timer);
+      return (WIN32_ASYNC_TIMER_EXHAUSTED);
+    }
+}
+
+static void __cdecl
+win32_flush_async_timer (void * state)
+{
+  if (state != 0)
+    {
+      exit_timer_thread = 1;
+      (void) free (state);
+    }
+}
 
 #define INTERRUPT_CODE(scm_timer)					\
   ((scm_timer -> base) [scm_timer -> int_code_off])
@@ -152,124 +206,44 @@ struct win32_timer_closure_s
 #define CATATONIA_FLAG(scm_timer)					\
   ((scm_timer -> base) [(scm_timer -> ctr_off) + 2])
 
-static void __STDCALL
-win32_nt_timer_tick (UINT wID, UINT wMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
+static unsigned int WINAPI
+timer_thread_proc (void * envptr)
 {
-  struct win32_timer_closure_s * scm_timer
-    = ((struct win32_timer_closure_s *) dwUser);
-  (INTERRUPT_CODE (scm_timer)) |= (scm_timer -> bit_mask);
-  if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer))) != 0L)
+  struct win32_timer_closure_s * scm_timer = envptr;
+  while (!exit_timer_thread)
     {
-      (MEMTOP (scm_timer)) = ((unsigned long) -1L);
-      /* Post an interrupt message to the window.  This forces it to
-	 wake up and exit MsgWaitForMultipleObjects if needed.  */
-      PostMessage ((scm_timer -> window),
-		   (scm_timer -> interrupt_message),
-		   ((WPARAM) 0),
-		   ((LPARAM) 0));
-    }
-  (CATATONIA_COUNTER (scm_timer)) += 1L;
-  if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
-      && ((CATATONIA_LIMIT (scm_timer)) != 0L))
-    {
-      if ((CATATONIA_FLAG (scm_timer)) == 0L)
+      Sleep (scm_timer -> interval);
+      (* (scm_timer -> grab_int_regs)) ();
+      (INTERRUPT_CODE (scm_timer)) |= (scm_timer -> bit_mask);
+      if (((INTERRUPT_CODE (scm_timer)) & (INTERRUPT_MASK (scm_timer))) != 0L)
 	{
-	  (CATATONIA_FLAG (scm_timer)) = 1L;
+	  (MEMTOP (scm_timer)) = ((unsigned long) -1L);
+	  /* Post an interrupt message to the window.  This forces it to
+	     wake up and exit MsgWaitForMultipleObjects if needed.  */
+	  (* (scm_timer -> release_int_regs)) ();
 	  PostMessage ((scm_timer -> window),
-		       (scm_timer -> catatonia_message),
+		       (scm_timer -> interrupt_message),
 		       ((WPARAM) 0),
 		       ((LPARAM) 0));
 	}
-      (CATATONIA_COUNTER (scm_timer)) = 0L;
+      else
+	(* (scm_timer -> release_int_regs)) ();
+      (CATATONIA_COUNTER (scm_timer)) += 1L;
+      if (((CATATONIA_COUNTER (scm_timer)) > (CATATONIA_LIMIT (scm_timer)))
+	  && ((CATATONIA_LIMIT (scm_timer)) != 0L))
+	{
+	  if ((CATATONIA_FLAG (scm_timer)) == 0L)
+	    {
+	      (CATATONIA_FLAG (scm_timer)) = 1L;
+	      PostMessage ((scm_timer -> window),
+			   (scm_timer -> catatonia_message),
+			   ((WPARAM) 0),
+			   ((LPARAM) 0));
+	    }
+	  (CATATONIA_COUNTER (scm_timer)) = 0L;
+	}
     }
-}
-
-static UINT __cdecl
-win32_install_async_timer (void ** state_ptr,
-			   unsigned long * base,
-			   long memtop_off,
-			   long int_code_off,
-			   long int_mask_off,
-			   unsigned long bit_mask,
-			   long ctr_off,
-			   unsigned long catatonia_message,
-			   unsigned long interrupt_message,
-			   HWND window)
-{
-  TIMECAPS tc;
-  UINT wTimerRes;
-  UINT msInterval = 50;
-  UINT msTargetResolution = 50;
-  struct win32_timer_closure_s * scm_timer;
-
-  if ((timeGetDevCaps (&tc, sizeof (TIMECAPS))) != TIMERR_NOERROR)
-    return (WIN32_ASYNC_TIMER_NONE);
-  wTimerRes = (min ((max (tc.wPeriodMin, msTargetResolution)),
-		    tc.wPeriodMax));
-  if ((timeBeginPeriod (wTimerRes)) == TIMERR_NOCANDO)
-    return (WIN32_ASYNC_TIMER_RESOLUTION);
-
-  scm_timer = ((struct win32_timer_closure_s *)
-	       (malloc (sizeof (struct win32_timer_closure_s))));
-
-  if (scm_timer == ((struct win32_timer_closure_s *) NULL))
-    return (WIN32_ASYNC_TIMER_NOMEM);
-
-  scm_timer->timer_id = 0;
-  scm_timer->base = base;
-  scm_timer->memtop_off = memtop_off;
-  scm_timer->int_code_off = int_code_off;
-  scm_timer->int_mask_off = int_mask_off;
-  scm_timer->bit_mask = bit_mask;
-  scm_timer->ctr_off = ctr_off;
-  scm_timer->catatonia_message = catatonia_message;
-  scm_timer->interrupt_message = interrupt_message;
-  scm_timer->window = window;
-
-  if ((! (VirtualLock (((void *) scm_timer),
-		       (sizeof (struct win32_timer_closure_s)))))
-      || (! (VirtualLock (((void *) win32_nt_timer_tick),
-			  (((char *) win32_flush_async_timer)
-			   - ((char *) win32_nt_timer_tick))))))
-  {
-    win32_flush_async_timer ((void *) scm_timer);
-    return (WIN32_ASYNC_TIMER_NOLOCK);
-  }
-
-  scm_timer->timer_id
-    = (timeSetEvent (msInterval,
-		     wTimerRes,
-		     ((LPTIMECALLBACK) win32_nt_timer_tick),
-		     ((DWORD) scm_timer),
-		     TIME_PERIODIC));
-
-  if (scm_timer->timer_id == 0)
-  {
-    win32_flush_async_timer ((void *) scm_timer);
-    return (WIN32_ASYNC_TIMER_EXHAUSTED);
-  }
-
-  * state_ptr = ((void *) scm_timer);
-  return (WIN32_ASYNC_TIMER_OK);
-}
-
-static void __cdecl
-win32_flush_async_timer (void * state)
-{
-  struct win32_timer_closure_s * scm_timer
-    = ((struct win32_timer_closure_s *) state);
-  
-  if (scm_timer == ((struct win32_timer_closure_s *) NULL))
-    return;
-  if (scm_timer->timer_id != 0)
-    (void) timeKillEvent (scm_timer->timer_id);
-  
-  (void) VirtualUnlock (((void *) win32_nt_timer_tick),
-			(((char *) win32_flush_async_timer)
-			 - ((char *) win32_nt_timer_tick)));
-  (void) VirtualUnlock (scm_timer, (sizeof (struct win32_timer_closure_s)));
-  (void) free ((char *) scm_timer);
-  return;
+  return (0);
 }
 
 /* These are NOPs in this version. */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.19 1997/01/01 22:57:32 cph Exp $
+$Id: nttop.c,v 1.20 1997/04/02 07:43:51 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -64,6 +64,7 @@ extern CONST char * OS_Variant;
 
 static const char * w32_error_message (DWORD);
 static int syserr_to_unix_error_code (enum syserr_names);
+static void initialize_locks (void);
 static DWORD syserr_to_win32_error_code (enum syserr_names);
 static enum syserr_names win32_error_code_to_syserr (DWORD);
 
@@ -120,6 +121,7 @@ DEFUN_VOID (OS_initialize)
 {
   interactive = 1;
 
+  initialize_locks ();
   NT_gui_init ();
   NT_initialize_channels ();
   NT_initialize_tty ();
@@ -385,6 +387,26 @@ OS_syserr_names (unsigned int * length, unsigned char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = ((unsigned char **) syserr_names_table);
+}
+
+static CRITICAL_SECTION interrupt_registers_lock;
+
+static void
+initialize_locks (void)
+{
+  InitializeCriticalSection (&interrupt_registers_lock);
+}
+
+void
+OS_grab_interrupt_registers (void)
+{
+  EnterCriticalSection (&interrupt_registers_lock);
+}
+
+void
+OS_release_interrupt_registers (void)
+{
+  LeaveCriticalSection (&interrupt_registers_lock);
 }
 
 /* Machine-generated procedure, do not edit: */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.19 1997/01/01 22:57:30 cph Exp $
+$Id: ntsig.c,v 1.20 1997/04/02 07:43:44 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -438,7 +438,9 @@ DEFUN_VOID (install_timer)
 	   catatonia_offset,
 	   WM_CATATONIC,
 	   WM_SCHEME_INTERRUPT,
-	   master_tty_window))
+	   master_tty_window,
+	   OS_grab_interrupt_registers,
+	   OS_release_interrupt_registers))
   {
     case WIN32_ASYNC_TIMER_OK:
       return (NULL);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.7 1997/01/01 22:57:29 cph Exp $
+$Id: ntscmlib.h,v 1.8 1997/04/02 07:44:04 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -71,16 +71,20 @@ typedef struct {
 				   unsigned long);	/* size */
 
   UINT
-    (__cdecl *install_async_timer) (void **,		/* timer state */
-				    unsigned long *,	/* regs */
-				    long,		/* memtop_off */
-				    long,		/* int_code_off */
-				    long,		/* int_mask_off */
-				    unsigned long,	/* mask */
-				    long, 		/* ctr_off */
-				    unsigned long,	/* catatonia_message */
-				    unsigned long,	/* interrupt_message */
-				    HWND);		/* window */
+    (__cdecl *install_async_timer)
+      (void **,			/* timer state */
+       unsigned long *,		/* regs */
+       long,			/* memtop_off */
+       long,			/* int_code_off */
+       long,			/* int_mask_off */
+       unsigned long,		/* mask */
+       long,			/* ctr_off */
+       unsigned long,		/* catatonia_message */
+       unsigned long,		/* interrupt_message */
+       HWND,			/* window */
+       void (*) (void),		/* procedure to grab int regs */
+       void (*) (void)		/* procedure to release int regs */
+       );
 
   void
     (__cdecl *flush_async_timer) (void *);

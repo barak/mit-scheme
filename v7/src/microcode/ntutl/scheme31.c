@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.8 1997/01/01 22:58:17 cph Exp $
+$Id: scheme31.c,v 1.9 1997/04/02 07:43:33 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -193,7 +193,9 @@ win32_install_async_timer (void ** state_ptr,
 			   long ctr_off,
 			   unsigned long ctr_message,
 			   unsigned long interrupt_message,
-			   HWND window)
+			   HWND window,
+			   void (*grab_int_regs) (void),
+			   void (*release_int_regs) (void))
 {
   struct ntw32lib_itimer_s param;
   LPVOID translation[2];

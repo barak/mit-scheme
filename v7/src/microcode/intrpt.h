@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.18 1994/11/14 05:04:05 cph Exp $
+$Id: intrpt.h,v 1.19 1997/04/02 07:43:58 cph Exp $
 
-Copyright (c) 1987-94 Massachusetts Institute of Technology
+Copyright (c) 1987-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -135,7 +135,7 @@ MIT in each case. */
   RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
-#if defined(_OS2)
+#if defined(_OS2) || defined(WINNT)
 
 #define GRAB_INTERRUPT_REGISTERS() OS_grab_interrupt_registers ()
 #define RELEASE_INTERRUPT_REGISTERS() OS_release_interrupt_registers ()
@@ -143,9 +143,9 @@ MIT in each case. */
 extern void OS_grab_interrupt_registers (void);
 extern void OS_release_interrupt_registers (void);
 
-#else /* not _OS2 */
+#else /* not (_OS2 or WINNT) */
 
 #define GRAB_INTERRUPT_REGISTERS()
 #define RELEASE_INTERRUPT_REGISTERS()
 
-#endif /* _OS2 */
+#endif /* not (_OS2 or WINNT) */
