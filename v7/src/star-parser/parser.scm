@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.26 2001/11/14 18:15:31 cph Exp $
+;;; $Id: parser.scm,v 1.27 2001/11/14 20:19:13 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -282,12 +282,9 @@
       (procedure ks v kf)))))
 
 (define-parser (with-pointer identifier expression)
-  pointer
-  ;; Ignore the POINTER context.  This is a kludge that prevents the
-  ;; binding of IDENTIFIER from being discarded by the optimizer.
   `((LAMBDA (,identifier)
-      ,(compile-parser-expression expression identifier ks kf))
-    ,(fetch-pointer)))
+      ,(compile-parser-expression expression (or pointer identifier) ks kf))
+    ,(or pointer (fetch-pointer))))
 
 (define-parser (discard-matched)
   pointer

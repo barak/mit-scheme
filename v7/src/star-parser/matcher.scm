@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.23 2001/11/14 18:15:16 cph Exp $
+;;; $Id: matcher.scm,v 1.24 2001/11/14 20:18:35 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -277,12 +277,9 @@
      ,(delay-call ks kf)))
 
 (define-matcher (with-pointer identifier expression)
-  pointer
-  ;; Ignore the POINTER context.  This is a kludge that prevents the
-  ;; binding of IDENTIFIER from being discarded by the optimizer.
   `((LAMBDA (,identifier)
-      ,(compile-matcher-expression expression identifier ks kf))
-    ,(fetch-pointer)))
+      ,(compile-matcher-expression expression (or pointer identifier) ks kf))
+    ,(or pointer (fetch-pointer))))
 
 (define-matcher (seq . expressions)
   (if (pair? expressions)

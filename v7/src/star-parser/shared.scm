@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.18 2001/11/14 18:27:17 cph Exp $
+;;; $Id: shared.scm,v 1.19 2001/11/14 20:16:45 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -252,7 +252,7 @@
   (make-delayed-lambda make-ks-identifier
 		       (list make-value-identifier make-kf-identifier)
 		       generator))
-
+
 (define (make-kf-identifier)
   (generate-identifier 'KF))
 
@@ -268,6 +268,7 @@
 (define (generate-identifier prefix)
   (string->uninterned-symbol
    (string-append
+    internal-identifier-prefix
     (symbol-name prefix)
     (number->string
      (let ((entry (assq prefix *id-counters*)))
@@ -277,7 +278,16 @@
 	     n)
 	   (begin
 	     (set! *id-counters* (cons (cons prefix 2) *id-counters*))
-	     1)))))))
+	     1))))
+    internal-identifier-suffix)))
+
+(define (internal-identifier? identifier)
+  (let ((string (symbol-name identifier)))
+    (and (string-prefix? internal-identifier-prefix string)
+	 (string-suffix? internal-identifier-suffix string))))
+
+(define internal-identifier-prefix "#[")
+(define internal-identifier-suffix "]")
  
 (define *id-counters*)
 
@@ -410,6 +420,7 @@
 	      (operand (car operands))
 	      (count (car counts)))
 	  (cond ((and (= 0 count)
+		      (internal-identifier? identifier)
 		      (operand-discardable? operand))
 		 (loop (cdr identifiers)
 		       (cdr operands)
@@ -606,8 +617,7 @@
 
 (define (operand-discardable? operand)
   ;; Returns true iff OPERAND can be removed from the program,
-  ;; provided that its value is unused.  Basically this tests for the
-  ;; potential presence of side effects in OPERAND.
+  ;; provided that its value is unused.
   (not (expression-may-have-side-effects? operand)))
 
 (define (expression-may-have-side-effects? expression)
@@ -661,10 +671,7 @@
 	((eq? (car expression) 'LAMBDA)
 	 (let ((parameters (cadr expression)))
 	   `(LAMBDA ,parameters
-	      ,(optimize-pointer-usage (caddr expression)
-				       (if (memq pointer parameters)
-					   #f
-					   pointer)))))
+	      ,(optimize-pointer-usage (caddr expression) #f))))
 	((eq? (car expression) 'LET)
 	 (let ((name (cadr expression))
 	       (bindings
@@ -689,11 +696,24 @@
 			expression)
 	 (let ((operator (car expression))
 	       (operand (cadr expression)))
-	   (let ((parameter (car (cadr operator))))
-	     (let ((body (optimize-pointer-usage (caddr operator) parameter)))
-	       (if (> (car (count-references (list parameter) body)) 0)
-		   `((LAMBDA (,parameter) ,body) ,operand)
-		   body)))))
+	   (let ((identifier (car (cadr operator))))
+	     (let ((body (optimize-pointer-usage (caddr operator) identifier)))
+	       (if (and (internal-identifier? identifier)
+			(= (car (count-references (list identifier) body)) 0))
+		   body
+		   `((LAMBDA (,identifier) ,body) ,operand))))))
+	((syntax-match? '(('LAMBDA (* IDENTIFIER) EXPRESSION)
+			  . (* EXPRESSION))
+			expression)
+	 (let ((operator (car expression))
+	       (operands (cdr expression)))
+	   (let ((parameters (cadr operator)))
+	     `((LAMBDA ,parameters
+		 ,(optimize-pointer-usage (caddr operator)
+					  (if (memq pointer parameters)
+					      #f
+					      pointer)))
+	       ,@operands))))
 	((syntax-match?
 	  '('BEGIN
 	     ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
