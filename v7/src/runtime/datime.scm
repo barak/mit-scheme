@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.29 2000/05/23 21:48:53 cph Exp $
+$Id: datime.scm,v 14.30 2000/05/23 21:51:26 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -429,7 +429,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((n (string->number string)))
     (if (not (exact-nonnegative-integer? n))
 	(error:bad-range-argument string 'STRING->YEAR))
-    (cond ((< n 38) (+ 2000 n))
+    (cond ((< n 70) (+ 2000 n))
 	  ((< n 100) (+ 1900 n))
 	  (else n))))
 
