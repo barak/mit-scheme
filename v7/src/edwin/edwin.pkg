@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.147 1994/04/22 05:05:41 cph Exp $
+$Id: edwin.pkg,v 1.148 1994/08/04 04:37:00 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -713,12 +713,14 @@ MIT in each case. |#
 	  edwin-command$dired-summary
 	  edwin-command$dired-uncompress
 	  edwin-command$dired-unmark
+	  edwin-command$dired-unmark-all-files
 	  edwin-command$list-directory
 	  edwin-mode$dired
 	  edwin-variable$dired-backup-overwrite
 	  edwin-variable$dired-copy-preserve-time
 	  edwin-variable$dired-kept-versions
 	  edwin-variable$dired-mode-hook
+	  edwin-variable$dired-trivial-filenames
 	  for-each-dired-mark
 	  insert-dired-entry!
 	  make-dired-buffer))
