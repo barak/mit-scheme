@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm1.scm,v 1.5 1995/07/27 14:21:18 adams Exp $
+$Id: dassm1.scm,v 1.6 1996/07/19 02:49:36 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -443,7 +443,8 @@ MIT in each case. |#
     remainder
     interpreter-call
     profile-count
-    profile-count/2))
+    profile-count/2
+    set-interrupt-enables!))
 
 (define display-instruction
   (let ((prev-instruction '())
