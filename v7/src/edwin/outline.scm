@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.2 1992/04/17 20:54:59 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.3 1992/04/17 21:09:16 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -191,7 +191,7 @@ match, the deeper our level in the outline."
 			    (re-match-start 0)
 			    (next-topic (re-match-end 0))))))
 	       (group-end mark)))
-	  (current-region)))))
+	  (make-region (group-start mark) (group-end mark))))))
 
 (define-command narrow-to-topic
   "Narrow to show the current outline level only."
