@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.86 1998/11/18 03:40:46 cph Exp $
+;;;	$Id: unix.scm,v 1.87 1998/11/18 03:57:47 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -305,7 +305,7 @@ Includes the new backup.  Must be > 0."
 	type)))
 
 (define (os/completion-ignore-filename? filename)
-  (and (not (file-directory? filename))
+  (and (not (file-test-no-errors file-directory? filename))
        (there-exists? (ref-variable completion-ignored-extensions)
          (lambda (extension)
 	   (string-suffix? extension filename)))))
