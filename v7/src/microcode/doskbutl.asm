@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbutl.asm,v 1.2 1992/05/13 16:49:53 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/doskbutl.asm,v 1.3 1992/07/28 14:30:04 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -38,7 +38,7 @@
 ;;;
 
 .386
-.model small
+.model tiny
 	.code
 
 ;;	Stack on entry to _DOSX_scheme_system_isr
