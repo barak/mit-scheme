@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.62 2000/05/18 15:35:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.63 2000/05/18 17:14:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -428,7 +428,7 @@ With prefix argument N moves backward N messages with these flags."
 		       selector
 		       (loop (message-index selector))))
 		 ((not selector)
-		  (last-message selector))
+		  (last-message folder))
 		 ((and (exact-integer? selector)
 		       (<= 0 selector)
 		       (< selector (folder-length folder)))
