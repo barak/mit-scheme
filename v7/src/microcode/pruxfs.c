@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.48 1991/11/04 18:49:26 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.49 1992/06/05 19:41:33 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -304,7 +304,11 @@ DEFUN (file_touch, (filename), CONST char * filename)
 		protect_fd (fd);
 		break;
 	      }
-	    else if ((errno == ENOENT) || (errno == ESTALE))
+	    else if ((errno == ENOENT)
+#ifdef ESTALE
+		     || (errno == ESTALE)
+#endif
+		     )
 	      continue;
 	  }
 	if (count >= FILE_TOUCH_OPEN_TRIES)
@@ -376,8 +380,8 @@ The file must exist and you must be the owner (or superuser).")
     times.actime = arg_integer (2);
     times.modtime = arg_integer (3);
     STD_VOID_SYSTEM_CALL(syscall_utime, (UX_utime ((STRING_ARG (1)), &times)));
-    PRIMITIVE_RETURN (SHARP_F);
   }
+  PRIMITIVE_RETURN (SHARP_F);
 }
 
 DEFINE_PRIMITIVE ("FILE-EQ?", Prim_file_eq_p, 2, 2,
