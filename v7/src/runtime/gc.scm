@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.13 1993/09/20 19:21:47 gjr Exp $
+$Id: gc.scm,v 14.14 1993/09/20 19:30:50 gjr Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -86,27 +86,24 @@ MIT in each case. |#
 		  (real-default))
 		 ((not (car result))
 		  (set! pure-space-queue (cdr pure-space-queue))
-		  (queued-purification-failure))
-		 ((eq? (car result) true)
-		  (set! pure-space-queue '()))
+		  (queued-purification-failure)
+		  (cdr result))
 		 (else
-		  ;; Wrong phase -- wait until next time.
-		  (real-default)))
-	   (cdr result)))
+		  (set! pure-space-queue '())
+		  (cdr result)))))
 	((not (null? constant-space-queue))
 	 (let ((result
 		(purify-internal constant-space-queue false safety-margin)))
 	   (cond ((not (pair? result))
+		  ;; Wrong phase -- wait until next time.
 		  (real-default))
 		 ((not (car result))
 		  (set! constant-space-queue (cdr constant-space-queue))
-		  (queued-purification-failure))
-		 ((eq? (car result) true)
-		  (set! constant-space-queue '()))
+		  (queued-purification-failure)
+		  (cdr result))
 		 (else
-		  ;; Wrong phase -- wait until next time.
-		  (real-default)))
-	   (cdr result)))
+		  (set! constant-space-queue '())
+		  (cdr result)))))
 	(else
 	 (real-default))))
 
