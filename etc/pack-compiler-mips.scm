@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler-mips.scm,v 1.4 1994/05/04 23:19:09 cph Exp $
+$Id: pack-compiler-mips.scm,v 1.5 1994/09/29 03:32:55 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -67,8 +67,8 @@ MIT in each case. |#
 		   ("compiler"
 		    "make.com"
 		    "base/make.com"
-		    "comp.bcon"
-		    "comp.bldr"
+		    "compiler.bcon"
+		    "compiler.bldr"
 		    "base/switch.com"
 		    "base/object.com"
 		    "base/enumer.com"
