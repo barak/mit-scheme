@@ -1,8 +1,8 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntasutl.asm,v 1.1 1993/02/10 22:39:46 adams Exp $
+;;;	$Id: ntasutl.asm,v 1.2 1993/06/24 01:57:03 gjr Exp $
 ;;;
-;;;	Copyright (c) 1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
