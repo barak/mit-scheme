@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.35 1989/04/18 16:29:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.36 1989/04/21 19:25:50 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -782,6 +782,7 @@ MIT in each case. |#
 	  last-pair
 	  length
 	  list
+	  list->weak-list
 	  list-copy
 	  list-deletor
 	  list-deletor!
@@ -822,6 +823,7 @@ MIT in each case. |#
 	  weak-car
 	  weak-cdr
 	  weak-cons
+	  weak-list->list
 	  weak-memq
 	  weak-pair/car?
 	  weak-pair?
