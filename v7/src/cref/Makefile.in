@@ -1,6 +1,6 @@
-# $Id: Makefile.in,v 1.17 2001/09/25 18:24:54 cph Exp $
+# $Id: Makefile.in,v 1.1 2001/09/25 18:24:08 cph Exp $
 #
-# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+# Copyright (c) 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
+
+# Standard Makefile for Scheme subsystem directories.
+# This makefile supports some utilities for Scheme subsystems.
+# Tools to rebuild these subsystems are written in Scheme and do not
+# use `make'.
 
 # **** BEGIN BOILERPLATE ****
 
@@ -56,36 +61,22 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-SUBDIRS = 6001 compiler cref edwin imail microcode \
-	  rcs runtime runtime-check sf sos win32
-
 AUXDIR = @AUXDIR@
-EDETC = $(AUXDIR)/edwin/etc
-
+CREF_DIR = $(AUXDIR)/cref
 
 all:
-	( cd microcode && $(MAKE) all )
-	scheme -compiler -heap 4000 < $(srcdir)/etc/compile.scm
-	$(srcdir)/etc/build-bands.sh
+	echo "No ALL action"
 
 mostlyclean clean distclean maintainer-clean:
-	$(srcdir)/Clean.sh $@ $(SUBDIRS)
+	./Clean.sh $@
 
 tags TAGS:
-	$(srcdir)/Tags.sh $(SUBDIRS)
+	./Tags.sh
 
 install:
-	@for SUBDIR in microcode runtime cref sos edwin imail; do \
-	    echo "Making $@ in $${SUBDIR}";\
-	    ( cd $${SUBDIR}; $(MAKE) $@ ) || exit 1;\
-	done
-
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_DATA) $(srcdir)/lib/optiondb.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) $(srcdir)/lib/*.com $(DESTDIR)$(AUXDIR)/.
-
-	$(mkinstalldirs) $(DESTDIR)$(EDETC)
-	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
-	$(INSTALL_DATA) $(srcdir)/etc/mime.types $(DESTDIR)$(EDETC)/.
+	$(mkinstalldirs) $(DESTDIR)$(CREF_DIR)
+	$(INSTALL_DATA) *.com $(DESTDIR)$(CREF_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(CREF_DIR)/.
+	$(INSTALL_DATA) cref.pkd $(DESTDIR)$(CREF_DIR)/.
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
