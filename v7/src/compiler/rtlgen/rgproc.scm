@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 1.5 1987/06/23 03:31:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgproc.scm,v 4.1 1987/12/04 20:31:27 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,38 +38,38 @@ MIT in each case. |#
 
 (package (generate/procedure-header)
 
-(define-export (generate/procedure-header procedure body)
+(define-export (generate/procedure-header procedure body inline?)
   (scfg*scfg->scfg!
    (if (procedure/ic? procedure)
-       (setup-ic-frame procedure)
        (scfg*scfg->scfg!
-	((if (or (procedure-rest procedure)
-		 (and (procedure/closure? procedure)
-		      (not (null? (procedure-optional procedure)))))
-	     rtl:make-setup-lexpr
-	     rtl:make-procedure-heap-check)
-	 procedure)
+	(if inline?
+	    (make-null-cfg)
+	    (rtl:make-procedure-heap-check (procedure-label procedure)))
+	(setup-ic-frame procedure))
+       (scfg*scfg->scfg!
+	(cond ((or (procedure-rest procedure)
+		   (and (procedure/closure? procedure)
+			(not (null? (procedure-optional procedure)))))
+	       (rtl:make-setup-lexpr (procedure-label procedure)))
+	      (inline?
+	       (make-null-cfg))
+	      (else
+	       (rtl:make-procedure-heap-check (procedure-label procedure))))
 	(setup-stack-frame procedure)))
    body))
 
 (define (setup-ic-frame procedure)
-  (scfg-append!
-   (rtl:make-procedure-heap-check procedure)
-   (rtl:make-assignment register:frame-pointer
-			(rtl:make-fetch register:stack-pointer))
-   (scfg*->scfg!
-    (map (let ((block (procedure-block procedure)))
-	   (lambda (name value)
-	     (transmit-values (generate/rvalue value)
-	       (lambda (prefix expression)
-		 (scfg*scfg->scfg!
-		  prefix
-		  (rtl:make-interpreter-call:set!
-		   (rtl:make-fetch register:environment)
-		   (intern-scode-variable! block (variable-name name))
-		   expression))))))
-	 (procedure-names procedure)
-	 (procedure-values procedure)))))
+  (scfg*->scfg!
+   (map (let ((block (procedure-block procedure)))
+	  (lambda (name value)
+	    (generate/rvalue value 0 scfg*scfg->scfg!
+	      (lambda (expression)
+		(rtl:make-interpreter-call:set!
+		 (rtl:make-fetch register:environment)
+		 (intern-scode-variable! block (variable-name name))
+		 expression)))))
+	(procedure-names procedure)
+	(procedure-values procedure))))
 
 (define (setup-stack-frame procedure)
   (let ((block (procedure-block procedure)))
@@ -79,7 +79,7 @@ MIT in each case. |#
     (define (cellify-variable variable)
       (if (variable-in-cell? variable)
 	  (let ((locative
-		 (stack-locative-offset (rtl:make-fetch register:frame-pointer)
+		 (stack-locative-offset (rtl:make-fetch register:stack-pointer)
 					(variable-offset block variable))))
 	    (rtl:make-assignment
 	     locative
@@ -88,24 +88,22 @@ MIT in each case. |#
 
     (let ((names (procedure-names procedure))
 	  (values (procedure-values procedure)))
-      (scfg-append! (setup-bindings names values '())
-		    (setup-auxiliary (procedure-auxiliary procedure) '())
-		    (rtl:make-assignment
-		     register:frame-pointer
-		     (rtl:make-fetch register:stack-pointer))
-		    (cellify-variables (procedure-required procedure))
-		    (cellify-variables (procedure-optional procedure))
-		    (let ((rest (procedure-rest procedure)))
-		      (if rest
-			  (cellify-variable rest)
-			  (make-null-cfg)))
-		    (scfg*->scfg!
-		     (map (lambda (name value)
-			    (if (and (procedure? value)
-				     (procedure/closure? value))
-				(letrec-close block name value)
-				(make-null-cfg)))
-			  names values))))))
+      (scfg-append!
+       (setup-bindings names values '())
+       (cellify-variables (procedure-required-arguments procedure))
+       (cellify-variables (procedure-optional procedure))
+       (let ((rest (procedure-rest procedure)))
+	 (if rest
+	     (cellify-variable rest)
+	     (make-null-cfg)))
+       (scfg*->scfg!
+	(map (lambda (name value)
+	       (if (and (procedure? value)
+			(procedure/closure? value)
+			(procedure-closing-block value))
+		   (letrec-close block name value)
+		   (make-null-cfg)))
+	     names values))))))
 
 (define (setup-bindings names values pushes)
   (if (null? names)
@@ -116,10 +114,16 @@ MIT in each case. |#
 						 (letrec-value (car values)))
 			    pushes))))
 
+(define (make-auxiliary-push variable value)
+  (rtl:make-push (if (variable-in-cell? variable)
+		     (rtl:make-cell-cons value)
+		     value)))
+
 (define (letrec-value value)
   (cond ((constant? value)
 	 (rtl:make-constant (constant-value value)))
 	((procedure? value)
+	 (enqueue-procedure! value)
 	 (case (procedure/type value)
 	   ((CLOSURE)
 	    (make-closure-cons value (rtl:make-constant '())))
@@ -133,12 +137,12 @@ MIT in each case. |#
 	 (error "Unknown letrec binding value" value))))
 
 (define (letrec-close block variable value)
-  (transmit-values (make-closure-environment value)
+  (transmit-values (make-closure-environment value 0)
     (lambda (prefix environment)
       (scfg*scfg->scfg! prefix
 			(rtl:make-assignment
 			 (closure-procedure-environment-locative
-			  (find-variable block variable
+			  (find-variable block variable 0
 			    (lambda (locative) locative)
 			    (lambda (nearest-ic-locative name)
 			      (error "Missing closure variable" variable))
@@ -146,18 +150,8 @@ MIT in each case. |#
 			      (error "Missing closure variable" variable))))
 			 environment)))))
 
-(define (setup-auxiliary variables pushes)
-  (if (null? variables)
-      (scfg*->scfg! pushes)
-      (setup-auxiliary (cdr variables)
-		       (cons (make-auxiliary-push (car variables)
-						  (rtl:make-unassigned))
-			     pushes))))
-
-(define (make-auxiliary-push variable value)
-  (rtl:make-push (if (variable-in-cell? variable)
-		     (rtl:make-cell-cons value)
-		     value)))
+(define-integrable (closure-procedure-environment-locative locative)
+  (rtl:locative-offset (rtl:make-fetch locative) 1))
 
 ;;; end GENERATE/PROCEDURE-HEADER
 )

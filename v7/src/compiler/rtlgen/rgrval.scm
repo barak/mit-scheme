@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.13 1987/07/26 22:06:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.1 1987/12/04 20:31:40 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.13 1987/07/26 22:06:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.1 1987/12/04 20:31:40 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -36,56 +36,91 @@ promotional, or sales literature without prior written consent from
 
 ;;;; RTL Generation: RValues
 ;;; package: (compiler rtl-generator generate/rvalue)
-(define (generate/rvalue rvalue)
-  ((vector-method rvalue generate/rvalue) rvalue))
+(package (generate/rvalue make-closure-environment)
 
-(define (define-rvalue-generator tag generator)
-  (define-vector-method tag generate/rvalue generator))
+(define-export (generate/rvalue operand offset scfg*cfg->cfg! generator)
+  (transmit-values (generate/rvalue* operand offset)
+
+(define (generate/rvalue operand scfg*cfg->cfg! generator)
   (with-values (lambda () (generate/rvalue* operand))
+(define (generate/rvalue* operand offset)
+  ((method-table-lookup rvalue-methods (tagged-vector/index operand))
+   operand
+   offset))
+
+(define (generate/rvalue* operand)
+  ((method-table-lookup rvalue-methods (tagged-vector/index operand)) operand))
+
 (define rvalue-methods
   (return-2 (make-null-cfg) expression))
 
+(define-integrable (expression-value/simple expression)
+  (let ((register (rtl:make-pseudo-register)))
+    (return-2 (scfg*scfg->scfg! prefix (rtl:make-assignment register result))
+	      (rtl:make-fetch register))))
+     (values (scfg*scfg->scfg! prefix assignment) reference))
 (define-integrable (expression-value/transform expression-value transform)
   (transmit-values expression-value
     (lambda (prefix expression)
       (return-2 prefix (transform expression)))))
 
-(define (expression-value/temporary prefix result)
-  (let ((temporary (make-temporary)))
-    (return-2 (scfg*scfg->scfg! prefix (rtl:make-assignment temporary result))
-	      (rtl:make-fetch temporary))))
+   result
+  (lambda (constant offset)
+    (generate/constant constant)))
 (define-method-table-entry 'CONSTANT rvalue-methods
 (define (generate/constant constant)
   (expression-value/simple (rtl:make-constant (constant-value constant))))
 
-(define-rvalue-generator constant-tag
-  generate/constant)
-
-(define-rvalue-generator block-tag
-  (lambda (block)
+  (lambda (constant)
+  (lambda (block offset)
 (define-method-table-entry 'BLOCK rvalue-methods
 
-(define-rvalue-generator reference-tag
+    block ;; ignored
+  (lambda (reference offset)
+    (let ((block (reference-block reference))
+(define-method-table-entry 'REFERENCE rvalue-methods
   (lambda (reference)
-    (if (vnode-known-constant? (reference-variable reference))
-	(generate/constant (vnode-known-value (reference-variable reference)))
-	(find-variable (reference-block reference)
-		       (reference-variable reference)
-	  (lambda (locative)
-	    (expression-value/simple (rtl:make-fetch locative)))
-	  (lambda (environment name)
-	    (expression-value/temporary
-	     (rtl:make-interpreter-call:lookup
-	      environment
-	      (intern-scode-variable! (reference-block reference) name)
-	      (reference-safe? reference))
-	     (rtl:interpreter-call-result:lookup)))
-	  (lambda (name)
-	    (generate/cached-reference name (reference-safe? reference)))))))
-
+      (let ((standard-case
+	     (lambda ()
+	       (if (value-variable? lvalue)
+		   (expression-value/simple
+		    (rtl:make-fetch
+		     (let ((continuation (block-procedure block)))
+		       (if (continuation/always-known-operator? continuation)
+			   (continuation/register continuation)
+			   register:value))))
+		   (find-variable block lvalue offset
+		     (lambda (locative)
+		       (expression-value/simple (rtl:make-fetch locative)))
+		     (lambda (environment name)
+		       (expression-value/temporary
+			(rtl:make-interpreter-call:lookup
+			 environment
+			 (intern-scode-variable! block name)
+			 safe?)
+			(rtl:interpreter-call-result:lookup)))
+		     (lambda (name)
+		       (generate/cached-reference name safe?)))))))
+	(let ((value (lvalue-known-value lvalue)))
+	  (cond ((not value)
+		 (standard-case))
+		((not (rvalue/procedure? value))
+		 (generate/rvalue* value offset))
+		((and (procedure/closure? value)
+		      (block-ancestor-or-self? block (procedure-block value)))
+		 (expression-value/simple
+		  (rtl:make-fetch
+		   (stack-locative-offset
+		    (block-ancestor-or-self->locative block
+						      (procedure-block value)
+						      offset)
+		    (procedure-closure-offset value)))))
+		(else
+		 (standard-case))))))))
+
 (define (generate/cached-reference name safe?)
-  (let ((temp (make-temporary))
-	(result (make-temporary)))
+  (let ((temp (rtl:make-pseudo-register))
+	(result (rtl:make-pseudo-register)))
     (return-2
      (let ((cell (rtl:make-fetch temp)))
        (let ((reference (rtl:make-fetch cell)))
@@ -120,27 +155,12 @@ promotional, or sales literature without prior written consent from
 					 (scfg-next-hooks n5))))))))
 		   (make-scfg (cfg-entry-node n2)
 			      (hooks-union (scfg-next-hooks n3)
-(define-rvalue-generator temporary-tag
-  (lambda (temporary)
-    (if (vnode-known-constant? temporary)
-	(generate/constant (vnode-known-value temporary))
-	(expression-value/simple (rtl:make-fetch temporary)))))
-
-(define-rvalue-generator access-tag
-  (lambda (*access)
-    (transmit-values (generate/rvalue (access-environment *access))
-      (lambda (prefix expression)
-	(expression-value/temporary
-	 (scfg*scfg->scfg!
-	  prefix
-	  (rtl:make-interpreter-call:access expression (access-name *access)))
-	 (rtl:interpreter-call-result:access))))))
-
-(define-rvalue-generator procedure-tag
-  (lambda (procedure)
+					   (scfg-next-hooks n5)))))))))
+  (lambda (procedure offset)
+
 (define-method-table-entry 'PROCEDURE rvalue-methods
     (case (procedure/type procedure)
-       (expression-value/transform (make-closure-environment procedure)
+       (expression-value/transform (make-closure-environment procedure offset)
 	 (lambda (environment)
 	   (make-closure-cons procedure environment))))
 	 (else
@@ -149,33 +169,9 @@ promotional, or sales literature without prior written consent from
        (error "Reference to open procedure" procedure))
        (if (not (procedure-virtual-closure? procedure))
 	   (error "Reference to open procedure" procedure))
-
-(define (make-ic-cons procedure)
-  ;; IC procedures have their entry points linked into their headers
-  ;; at load time by the linker.
-  (let ((header
-	 (scode/make-lambda (variable-name (procedure-name procedure))
-			    (map variable-name (procedure-required procedure))
-			    (map variable-name (procedure-optional procedure))
-			    (let ((rest (procedure-rest procedure)))
-			      (and rest (variable-name rest)))
-			    (map variable-name
-				 (append (procedure-auxiliary procedure)
-					 (procedure-names procedure)))
-			    '()
-			    false)))
-    (set! *ic-procedure-headers*
-	  (cons (cons header (procedure-external-label procedure))
-		*ic-procedure-headers*))
-    (rtl:make-typed-cons:pair
-     (rtl:make-constant (scode/procedure-type-code header))
-     (rtl:make-constant header)
-     ;; Is this right if the procedure is being closed
-     ;; inside another IC procedure?
-     (rtl:make-fetch register:environment))))
 	    ;; inside another IC procedure?
-(define (make-closure-environment procedure)
-  (let ((block (block-parent (procedure-block procedure))))
+(define (make-closure-environment procedure offset)
+  (let ((block (procedure-closing-block procedure)))
 (define (make-non-trivial-closure-cons procedure block**)
 	   (expression-value/simple (rtl:make-constant false)))
 	  ((ic-block? block)
@@ -184,19 +180,20 @@ promotional, or sales literature without prior written consent from
 		(let ((closure-block (procedure-closure-block procedure)))
 		  (if (ic-block? closure-block)
 		      (rtl:make-fetch register:environment)
-		      (closure-ic-locative closure-block block)))
+		      (closure-ic-locative closure-block block offset)))
 		(rtl:make-constant false))))
 	  ((closure-block? block)
 	   (let ((closure-block (procedure-closure-block procedure)))
 	     (define (loop variables)
 	       (cond ((null? variables) '())
-		     ((integrated-vnode? (car variables))
+		     ((lvalue-integrated? (car variables))
 		      (loop (cdr variables)))
 		     (else
 		      (cons (rtl:make-push
 			     (rtl:make-fetch
 			      (find-closure-variable closure-block
-						     (car variables))))
+						     (car variables)
+						     offset)))
 			    (loop (cdr variables))))))
 
 	     (let ((pushes
@@ -205,7 +202,8 @@ promotional, or sales literature without prior written consent from
 		      (if (and parent (ic-block/use-lookup? parent))
 			  (cons (rtl:make-push
 				 (closure-ic-locative closure-block
-						      parent))
+						      parent
+						      offset))
 				pushes)
 			  pushes))))
 	       (expression-value/temporary
@@ -217,10 +215,37 @@ promotional, or sales literature without prior written consent from
 	  (else
 	   (error "Unknown block type" block)))))
 
+;;; end GENERATE/RVALUE
+)
+
+(define (make-ic-cons procedure)
+  ;; IC procedures have their entry points linked into their headers
+  ;; at load time by the linker.
+  (let ((header
+	 (scode/make-lambda (variable-name (procedure-name procedure))
+			    (map variable-name
+				 (procedure-required-arguments procedure))
+			    (map variable-name (procedure-optional procedure))
+			    (let ((rest (procedure-rest procedure)))
+			      (and rest (variable-name rest)))
+			    (map variable-name (procedure-names procedure))
+			    '()
+			    false)))
+    (set! *ic-procedure-headers*
+	  (cons (cons header (procedure-label procedure))
+		*ic-procedure-headers*))
+    (rtl:make-typed-cons:pair
+     (rtl:make-constant (scode/procedure-type-code header))
+     (rtl:make-constant header)
+     ;; Is this right if the procedure is being closed
+     ;; inside another IC procedure?
+     (rtl:make-fetch register:environment))))
+
 (define (make-closure-cons procedure environment)
-  (rtl:make-typed-cons:pair (rtl:make-constant type-code:compiled-procedure)
-			    (rtl:make-entry:procedure procedure)
-			    environment))			       (find-closure-variable context variable)))))
+  (rtl:make-typed-cons:pair
+   (rtl:make-constant type-code:compiled-procedure)
+   (rtl:make-entry:procedure (procedure-label procedure))
+   environment))			       (find-closure-variable context variable)))))
 			  code)))))
 	     (error "Unknown block type" block))))))
 	     (error "Unknown block type" block))))))

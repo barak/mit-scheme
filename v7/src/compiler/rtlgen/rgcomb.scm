@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.34 1987/09/03 05:10:05 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.1 1987/12/04 20:30:36 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,444 +36,256 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-generator combination-tag
-  (lambda (combination subproblem?)
-    (if (combination-constant? combination)
-	(combination/constant combination subproblem?)
-	(let ((callee (combination-known-operator combination)))
-	  (let ((operator
-		 (generate/subproblem-cfg (combination-operator combination)))
-		(operands
-		 (if (and callee
-			  (procedure? callee)
-			  (not (procedure-externally-visible? callee)))
-		     (generate-operands (procedure-original-required callee)
-					(procedure-original-optional callee)
-					(procedure-original-rest callee)
-					(combination-operands combination))
-		     (map generate/operand
-			  (combination-operands combination)))))
-	    (or (and callee
-		     (normal-primitive-constant? callee)
-		     (let ((open-coder
-			    (assq (constant-value callee)
-				  (cdr primitive-open-coders))))
-		       (and open-coder
-			    ((cdr open-coder) combination
-					      subproblem?
-					      operator
-					      operands))))
-		(combination/normal combination
-				    subproblem?
-				    operator
-				    operands)))))))
+(package (generate/combination)
 
-(define combination/constant
-  (normal-statement-generator
-   (lambda (combination subproblem?)
-     (let ((value (combination-value combination)))
-       (cond ((temporary? value)
-	      (transmit-values (generate/rvalue (vnode-known-value value))
-		(lambda (prefix expression)
-		  (scfg*scfg->scfg!
-		   prefix
-		   (generate/assignment (combination-block combination)
-					value
-					expression
-					subproblem?)))))
-	     ((value-ignore? value)
-	      (make-null-cfg))
-	     (else
-	      (error "Unknown combination value" value)))))))
-
-(define (generate-operands required optional rest operands)
-  (define (required-loop required operands)
-    (if (null? required)
-	(optional-loop optional operands)
-	(cons ((if (integrated-vnode? (car required))
-		   generate/operand-no-value
-		   generate/operand)
-	       (car operands))
-	      (required-loop (cdr required) (cdr operands)))))
+(define (generate/combination combination offset)
+  (if (combination/inline? combination)
+      (combination/inline combination offset)
+      (combination/normal combination offset)))
 
-  (define (optional-loop optional operands)
-    (cond ((null? operands) '())
-	  ((null? optional)
-	   (if (not rest)
-	       '()
-	       (map (if (integrated-vnode? rest)
-			generate/operand-no-value
-			generate/operand)
-		    operands)))
-	  (else
-	   (cons ((if (integrated-vnode? (car optional))
-		      generate/operand-no-value
-		      generate/operand)
-		  (car operands))
-		 (optional-loop (cdr optional) (cdr operands))))))
-
-  (required-loop required operands))
-
-(define (generate/operand-no-value operand)
-  (return-3 (generate/subproblem-cfg operand) (make-null-cfg) false))
-
-(define (combination/normal combination subproblem? operator operands)
-  ;; For the time being, all close-coded combinations will return
-  ;; their values in the value register.
-  (generate/normal-statement combination subproblem?
-    (lambda (combination subproblem?)
-      (let ((value (combination-value combination)))
-	(cond ((temporary? value)
-	       (if (not subproblem?)
-		   (error "Reduction targeted to temporary!" combination))
-	       (scfg*scfg->scfg!
-		(combination/subproblem combination operator operands)
-		(rtl:make-assignment value (rtl:make-fetch register:value))))
-	      ((or (value-register? value)
-		   (value-ignore? value))
-	       ((if subproblem? combination/subproblem combination/reduction)
-		combination
-		operator
-		operands))
+(define (combination/normal combination offset)
+  (let ((block (combination/block combination))
+	(operator (combination/operator combination))
+	(frame-size (combination/frame-size combination))
+	(continuation (combination/continuation combination)))
+    (let ((callee (rvalue-known-value operator)))
+      (let ((finish
+	     (lambda (invocation callee-external?)
+	       (if (return-operator/subproblem? continuation)
+		   (invocation operator
+			       offset
+			       frame-size
+			       (continuation/label continuation)
+			       invocation-prefix/null)
+		   (invocation operator
+			       offset
+			       frame-size
+			       false
+			       (generate/invocation-prefix
+				block
+				offset
+				callee
+				continuation
+				callee-external?))))))
+	(cond ((not callee)
+	       (finish (if (reference? operator)
+			   invocation/reference
+			   invocation/apply)
+		       true))
+	      ((rvalue/constant? callee)
+	       (finish
+		(if (normal-primitive-procedure? (constant-value callee))
+		    invocation/primitive
+		    invocation/apply)
+		true))
+	      ((rvalue/procedure? callee)
+	       (case (procedure/type callee)
+		 ((OPEN-EXTERNAL) (finish invocation/jump true))
+		 ((OPEN-INTERNAL) (finish invocation/jump false))
+		 ((CLOSURE) (finish invocation/jump true))
+		 ((IC) (finish invocation/ic true))
+		 (else (error "Unknown procedure type" callee))))
 	      (else
-	       (error "Unknown combination value" value)))))))
-
-(define (define-primitive-handler data-base)
-  (lambda (primitive handler)
-    (let ((kernel
-	   (lambda (primitive)
-	     (let ((entry (assq primitive (cdr data-base))))
-	       (if entry
-		   (set-cdr! entry handler)
-		   (set-cdr! data-base
-			     (cons (cons primitive handler)
-				   (cdr data-base))))))))
-      (if (pair? primitive)
-	  (for-each kernel primitive)
-	  (kernel primitive)))
-    primitive))
-
-(define primitive-open-coders
-  (list 'PRIMITIVE-OPEN-CODERS))
-
-(define define-open-coder
-  (define-primitive-handler primitive-open-coders))
+	       (finish invocation/apply true)))))))
 
-(define (combination/subproblem combination operator operands)
-  (let ((block (combination-block combination)))
-    (define (finish call-prefix continuation-prefix)
-      (let ((continuation (make-continuation block *current-rgraph*)))
-	(let ((continuation-cfg
-	       (scfg*scfg->scfg!
-		(rtl:make-continuation-heap-check continuation)
-		continuation-prefix)))
-	  (set-continuation-rtl-edge!
-	   continuation
-	   (node->edge (cfg-entry-node continuation-cfg)))
-	  (make-scfg
-	   (cfg-entry-node
-	    (scfg*scfg->scfg!
-	     (call-prefix continuation)
-	     ((let ((callee (combination-known-operator combination)))
-		(cond ((normal-primitive-constant? callee)
-		       make-call/primitive)
-		      ((or (not callee) (not (procedure? callee)))
-		       make-call/unknown)
-		      (else
-		       (case (procedure/type callee)
-			 ((OPEN-INTERNAL) make-call/stack-with-link)
-			 ((OPEN-EXTERNAL) make-call/stack-with-link)
-			 ((CLOSURE) make-call/closure)
-			 ((IC) make-call/ic)
-			 (else (error "Unknown callee type" callee))))))
-	      combination operator operands invocation-prefix/null
-	      continuation)))
-	   (scfg-next-hooks continuation-cfg)))))
+;;;; Invocations
 
-    (cond ((ic-block? block)
-	   ;; **** Actually, should only do this if the environment
-	   ;; will be needed by the continuation.
-	   (finish (lambda (continuation)
-		     (scfg*scfg->scfg!
-		      (rtl:make-push (rtl:make-fetch register:environment))
-		      (rtl:make-push-return continuation)))
-		   (rtl:make-pop register:environment)))
-	  ((and (stack-block? block)
-		(let ((callee (combination-known-operator combination)))
-		  (and callee
-		       (procedure? callee)
-		       (procedure/open-internal? callee))))
-	   (finish rtl:make-message-receiver:subproblem (make-null-cfg)))
-	  (else
-	   (finish rtl:make-push-return (make-null-cfg))))))
-
-(define (combination/reduction combination operator operands)
-  (let ((block (combination-block combination))
-	(callee (combination-known-operator combination)))
-    (let ((caller (block-procedure block))
-	  (generator
-	   (cond ((normal-primitive-constant? callee)
-		  make-call/primitive)
-		 ((or (not callee)
-		      (not (procedure? callee)))
-		  make-call/unknown)
-		 (else
-		  (case (procedure/type callee)
-		    ((IC) make-call/ic)
-		    ((CLOSURE) make-call/closure)
-		    ((OPEN-EXTERNAL) make-call/stack-with-link)
-		    ((OPEN-INTERNAL) false)
-		    (else (error "Unknown callee type" callee)))))))
-      (cond ((or (not caller) (procedure/ic? caller))
-	     (if generator
-		 (generator combination operator operands
-			    invocation-prefix/null false)
-		 (error "Calling internal procedure from IC procedure")))
-	    ((procedure/external? caller)
-	     (if generator
-		 (generator combination operator operands
-			    invocation-prefix/move-frame-up false)
-		 (make-call/child combination operator operands
-				  rtl:make-message-receiver:closure)))
-	    (else
-	     (if generator
-		 (generator combination operator operands
-			    invocation-prefix/internal->closure false)
-		 (let ((block* (procedure-block callee)))
-		   (cond ((block-child? block block*)
-			  (make-call/child combination operator operands
-					   rtl:make-message-receiver:stack))
-			 ((block-sibling? block block*)
-			  (make-call/stack combination operator operands
-					   invocation-prefix/internal->sibling
-					   false))
-			 (else
-			  (make-call/stack-with-link
-			   combination operator operands
-			   invocation-prefix/internal->ancestor
-			   false))))))))))
-
-;;;; Calls
-
-(define (make-call/apply combination operator operands prefix continuation)
-  (make-call true combination operator operands
-    (lambda (frame-size)
-      (rtl:make-invocation:apply frame-size
-				 (prefix combination frame-size)
-				 continuation))))
-
-(define (make-call/unknown combination operator operands prefix
-			   continuation)
-  (let ((callee (subproblem-value (combination-operator combination))))
-    ((if (reference? callee)
-	 make-call/reference
-	 make-call/apply)
-     combination operator operands prefix continuation)))
-
-;;; For now, use apply.  Later we can optimize for the cases where
-;;; the callee's closing frame is easily available, such as calling a
-;;; sibling, self-recursion, or an ancestor.
-
-(define make-call/ic make-call/apply)
-
-(define (make-call/primitive combination operator operands prefix continuation)
-  (make-call false combination operator operands
-   (let* ((prim (constant-value (combination-known-operator combination)))
-	  (special-handler (assq prim (cdr special-primitive-handlers))))
-     (if special-handler
-	 ((cdr special-handler) combination prefix continuation)
-	 (lambda (number-pushed)
-	   (rtl:make-invocation:primitive
-	    (1+ number-pushed)
-	    (prefix combination number-pushed)
+(define (invocation/jump operator offset frame-size continuation prefix)
+  (let ((callee (rvalue-known-value operator)))
+    (scfg*scfg->scfg!
+     (prefix frame-size)
+     (if (procedure-inline-code? callee)
+	 (generate/procedure-entry/inline callee)
+	 (begin
+	   (enqueue-procedure! callee)
+	   ((if (procedure-rest callee)
+		rtl:make-invocation:lexpr
+		rtl:make-invocation:jump)
+	    frame-size
 	    continuation
-	    prim))))))
+	    (procedure-label callee)))))))
 
-(define special-primitive-handlers
-  (list 'SPECIAL-PRIMITIVE-HANDLERS))
+(define (invocation/apply operator offset frame-size continuation prefix)
+  (invocation/apply* frame-size continuation prefix))
 
-(define define-special-primitive-handler
-  (define-primitive-handler special-primitive-handlers))
-
-(define (make-call/reference combination operator operands prefix continuation)
-  (make-call false combination operator operands
-    (lambda (number-pushed)
-      (let ((operator (subproblem-value (combination-operator combination)))
-	    (frame-size (1+ number-pushed)))
-	(let ((variable (reference-variable operator))
-	      (make-application
-	       (lambda (operator)
-		 (scfg*scfg->scfg!
-		  (rtl:make-push operator)
-		  (rtl:make-invocation:apply
-		   frame-size
-		   (prefix combination frame-size)
-		   continuation)))))
-	  (find-variable (reference-block operator) variable
-	    (lambda (locative)
-	      (make-application (rtl:make-fetch locative)))
-	    (lambda (environment name)
-	      (rtl:make-invocation:lookup
-	       frame-size
-	       (prefix combination number-pushed)
-	       continuation
-	       environment
-	       (intern-scode-variable! (reference-block operator) name)))
-	    (lambda (name)
-	      (if (memq 'UUO-LINK (variable-declarations variable))
-		  (rtl:make-invocation:uuo-link
-		   frame-size
-		   (prefix combination number-pushed)
-		   continuation
-		   name)
-		  (let* ((temp (make-temporary))
-			 (cell (rtl:make-fetch temp))
-			 (contents (rtl:make-fetch cell)))
-		    (let ((n1
-			   (rtl:make-assignment
-			    temp
-			    (rtl:make-variable-cache name)))
-			  (n2
-			   (rtl:make-type-test (rtl:make-object->type contents)
-					       (ucode-type reference-trap)))
-			  (n3 (make-application contents))
-			  (n4
-			   (rtl:make-invocation:cache-reference
-			    frame-size
-			    (prefix combination number-pushed)
-			    continuation
-			    cell)))
-		      (scfg-next-connect! n1 n2)
-		      (pcfg-consequent-connect! n2 n4)
-		      (pcfg-alternative-connect! n2 n3)
-		      (make-scfg (cfg-entry-node n1)
-				 (hooks-union (scfg-next-hooks n3)
-					      (scfg-next-hooks n4)))))))))))))
-
-(define (make-call/child combination operator operands make-receiver)
+(define (invocation/apply* frame-size continuation prefix)
+  (scfg*scfg->scfg! (prefix frame-size)
+		    (rtl:make-invocation:apply frame-size continuation)))
+
+(define invocation/ic
+  ;; For now, use apply.  Later we can optimize for the cases where
+  ;; the callee's closing frame is easily available, such as calling a
+  ;; sibling, self-recursion, or an ancestor.
+  invocation/apply)
+
+(define (invocation/primitive operator offset frame-size continuation prefix)
   (scfg*scfg->scfg!
-   (make-receiver (block-frame-size (combination-block combination)))
-   (make-call/stack-with-link combination operator operands
-			      invocation-prefix/null false)))
+   (prefix frame-size)
+   (let ((primitive
+	  (let ((primitive (constant-value (rvalue-known-value operator))))
+	    (if (eq? primitive compiled-error-procedure)
+		primitive
+		(primitive-procedure-name primitive)))))
+     ((if (memq primitive special-primitive-handlers)
+	  rtl:make-invocation:special-primitive
+	  rtl:make-invocation:primitive)
+      (1+ frame-size)
+      continuation
+      primitive))))
+
+(package (invocation/reference)
 
-(package (make-call/closure make-call/stack make-call/stack-with-link)
+(define-export (invocation/reference operator offset frame-size continuation
+				     prefix)
+  (let ((block (reference-block operator))
+	(variable (reference-lvalue operator)))
+    (find-variable block variable offset
+      (lambda (locative)
+	(scfg*scfg->scfg!
+	 (rtl:make-push (rtl:make-fetch locative))
+	 (invocation/apply* (1+ frame-size) continuation prefix)))
+      (lambda (environment name)
+	(invocation/lookup frame-size
+			   continuation
+			   (prefix frame-size)
+			   environment
+			   (intern-scode-variable! block name)))
+      (lambda (name)
+	(if (memq 'UUO-LINK (variable-declarations variable))
+	    (invocation/uuo-link frame-size
+				 continuation
+				 (prefix frame-size)
+				 name)
+	    (invocation/cache-reference frame-size
+					continuation
+					prefix
+					name))))))
 
-(define-export (make-call/closure combination operator operands prefix
-				  continuation)
-  (make-call true combination operator operands
-    (internal-call combination prefix continuation 0)))
+(define (invocation/lookup frame-size
+			   continuation
+			   prefix
+			   environment
+			   variable)
+  (let ((make-invocation
+	 (lambda (environment)
+	   (expression-simplify-for-statement environment
+	     (lambda (environment)
+	       (rtl:make-invocation:lookup (1+ frame-size)
+					   continuation
+					   environment
+					   variable))))))
+    (if (cfg-null? prefix)
+	(make-invocation environment)
+	(scfg-append! (rtl:make-assignment register:environment environment)
+		      prefix
+		      (make-invocation register:environment)))))
+
+(define (invocation/uuo-link frame-size continuation prefix name)
+  (scfg*scfg->scfg! prefix
+		    (rtl:make-invocation:uuo-link (1+ frame-size)
+						  continuation
+						  name)))
 
-(define-export (make-call/stack combination operator operands prefix
-				continuation)
-  (stack-call combination operator operands prefix continuation 0))
+(define (invocation/cache-reference frame-size continuation prefix name)
+  (let* ((temp (rtl:make-pseudo-register))
+	 (cell (rtl:make-fetch temp))
+	 (contents (rtl:make-fetch cell)))
+    (let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
+	  (n2
+	   (rtl:make-type-test (rtl:make-object->type contents)
+			       (ucode-type reference-trap)))
+	  (n3
+	   (scfg*scfg->scfg!
+	    (rtl:make-push contents)
+	    (invocation/apply* (1+ frame-size) continuation prefix)))
+	  (n4
+	   (scfg*scfg->scfg!
+	    (prefix frame-size)
+	    (expression-simplify-for-statement cell
+	      (lambda (cell)
+		(rtl:make-invocation:cache-reference (1+ frame-size)
+						     continuation
+						     cell))))))
+      (scfg-next-connect! n1 n2)
+      (pcfg-consequent-connect! n2 n4)
+      (pcfg-alternative-connect! n2 n3)
+      (make-scfg (cfg-entry-node n1)
+		 (hooks-union (scfg-next-hooks n3)
+			      (scfg-next-hooks n4))))))
 
-(define-export (make-call/stack-with-link combination operator operands prefix
-					  continuation)
-  (scfg*scfg->scfg!
-   (rtl:make-push
-    (rtl:make-address
-     (block-ancestor-or-self->locative
-      (combination-block combination)
-      (block-parent
-       (procedure-block (combination-known-operator combination))))))
-   (stack-call combination operator operands prefix continuation 1)))
-
-(define (stack-call combination operator operands prefix continuation extra)
-  (make-call false combination operator operands
-    (internal-call combination prefix continuation extra)))
-
-(define (internal-call combination prefix continuation extra)
-  (lambda (number-pushed)
-    (let ((operator (combination-known-operator combination)))
-      ((if (procedure-rest operator)
-	   rtl:make-invocation:lexpr
-	   rtl:make-invocation:jump)
-       number-pushed
-       (prefix combination (+ number-pushed extra))
-       continuation
-       operator))))
-
+;;; end INVOCATION/REFERENCE
 )
-
-(define (make-call push-operator? combination operator operands generator)
-  (let ((callee (combination-known-operator combination))
-	(n-operands (count-operands operands))
-	(finish
-	 (lambda (frame-size)
-	   (scfg-append!
-	    (scfg*->scfg!
-	     (map (lambda (operand)
-		    (transmit-values operand
-		      (lambda (cfg prefix expression)
-			(if expression
-			    (scfg-append! cfg
-					  prefix
-					  (rtl:make-push expression))
-			    cfg))))
-		  (reverse operands)))
-	    operator
-	    (if push-operator?
-		(transmit-values
-		    (generate/rvalue
-		     (subproblem-value (combination-operator combination)))
-		  (lambda (prefix expression)
-		    (scfg-append! prefix
-				  (rtl:make-push expression)
-				  (generator (1+ frame-size)))))
-		(generator frame-size))))))
-    (if (and callee
-	     (procedure? callee)
-	     (not (procedure-rest callee))
-	     (stack-block? (procedure-block callee)))
-	(let ((n-parameters (+ (length (procedure-required callee))
-			       (length (procedure-optional callee)))))
-	    (scfg*scfg->scfg!
-	     (scfg*->scfg!
-	      (let loop ((n (- n-parameters n-operands)))
-		(if (zero? n)
-		    '()
-		    (cons (rtl:make-push (rtl:make-unassigned))
-			  (loop (-1+ n))))))
-	     (finish n-parameters)))
-	(finish n-operands))))
-
-(define (count-operands operands)
-  (cond ((null? operands)
-	 0)
-	((transmit-values (car operands)
-	   (lambda (cfg prefix expression)
-	     expression))
-	 (1+ (count-operands (cdr operands))))
-	(else
-	 (count-operands (cdr operands)))))
 
 ;;;; Prefixes
 
-(define (invocation-prefix/null combination frame-size)
-  '(NULL))
+(package (generate/invocation-prefix invocation-prefix/null)
 
-(define (invocation-prefix/move-frame-up combination frame-size)
-  `(MOVE-FRAME-UP ,frame-size
-		  ,(block-frame-size (combination-block combination))))
-
-(define (invocation-prefix/internal->closure combination frame-size)
-  ;; The message sender will shift the new stack frame down to the
-  ;; correct position when it is done, then reset the stack pointer.
-  `(APPLY-CLOSURE ,frame-size
-		  ,(block-frame-size (combination-block combination))))
-
-(define (invocation-prefix/internal->ancestor combination frame-size)
-  (let ((block (combination-block combination)))
-    `(APPLY-STACK ,frame-size
-		  ,(block-frame-size block)
-		  ,(-1+
-		    (block-ancestor-distance
+(define-export (generate/invocation-prefix block
+					   offset
+					   callee
+					   continuation
+					   callee-external?)
+  (let ((caller (block-procedure block)))
+    (cond ((or (not (rvalue/procedure? caller))
+	       (procedure/ic? caller))
+	   invocation-prefix/null)
+	  ((procedure/external? caller)
+	   (if callee-external?
+	       (invocation-prefix/move-frame-up block offset block)
+	       invocation-prefix/null))
+	  (callee-external?
+	   (invocation-prefix/erase-to block
+				       offset
+				       continuation
+				       (stack-block/external-ancestor block)))
+	  (else
+	   (let ((block* (procedure-block callee)))
+	     (cond ((block-child? block block*)
+		    invocation-prefix/null)
+		   ((block-sibling? block block*)
+		    (invocation-prefix/move-frame-up block offset block))
+		   (else
+		    (invocation-prefix/erase-to
 		     block
-		     (block-parent
-		      (procedure-block
-		       (combination-known-operator combination))))))))
+		     offset
+		     continuation
+		     (block-farthest-uncommon-ancestor block block*)))))))))
 
-(define (invocation-prefix/internal->sibling combination frame-size)
-   `(MOVE-FRAME-UP ,frame-size
-		   ;; -1+ means reuse the existing static link.
-		   ,(-1+ (block-frame-size (combination-block combination)))))
+(define (invocation-prefix/erase-to block offset continuation callee-limit)
+  (let ((popping-limit (reduction-continuation/popping-limit continuation)))
+    (if popping-limit
+	(invocation-prefix/move-frame-up block
+					 offset
+					 (if (block-ancestor? callee-limit
+							      popping-limit)
+					     callee-limit
+					     popping-limit))
+	(invocation-prefix/dynamic-link
+	 (popping-limit/locative block offset callee-limit 0)))))
+
+;;; The invocation prefix is always one of the following:
+
+(define-export (invocation-prefix/null frame-size)
+  (make-null-cfg))
+
+(define (invocation-prefix/move-frame-up block offset block*)
+  (invocation-prefix/move-frame-up*
+   (popping-limit/locative block offset block* 0)))
+
+(define (invocation-prefix/move-frame-up* locative)
+  (lambda (frame-size)
+    (expression-simplify-for-statement locative
+      (lambda (locative)
+	(rtl:make-invocation-prefix:move-frame-up frame-size locative)))))
+
+(define (invocation-prefix/dynamic-link locative)
+  (lambda (frame-size)
+    (expression-simplify-for-statement locative
+      (lambda (locative)
+	(rtl:make-invocation-prefix:dynamic-link frame-size locative)))))
+
+;;; end GENERATE/INVOCATION-PREFIX
+)
+
+;;; end GENERATE/COMBINATION
+)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 1.51 1987/10/05 20:35:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.1 1987/12/04 20:35:52 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,11 +35,7 @@ MIT in each case. |#
 ;;;; Machine Model for 68020
 
 (declare (usual-integrations))
-(define (rtl:message-receiver-size:closure) 1)
-(define (rtl:message-receiver-size:stack) 1)
-(define (rtl:message-receiver-size:subproblem) 2)
-
-(define-integrable (stack->memory-offset offset)
+(define-integrable (stack->memory-offset offset)
   offset)
 
 (define ic-block-first-parameter-offset
@@ -50,6 +46,7 @@ MIT in each case. |#
   ;; For simplicity, we try to estimate the actual number of cycles
   ;; that a typical code sequence would produce.
   (case (rtl:expression-type expression)
+    ((ASSIGNMENT-CACHE VARIABLE-CACHE) 16) ;move.l d(pc),reg
     ((CONS-POINTER)
      ;; Best case = 12 cycles, worst =  44
      ;; move.l reg,d(reg) = 16
@@ -82,14 +79,12 @@ MIT in each case. |#
     ((PRE-INCREMENT) 14)		;move.l -(reg),reg
     ((REGISTER) 4)			;move.l reg,reg
     ((UNASSIGNED) 12)			;move.l #data,reg
-    ((VARIABLE-CACHE) 16)		;move.l d(pc),reg
-    ((ASSIGNMENT-CACHE) 16)		;move.l d(pc),reg
     (else (error "Unknown expression type" expression))))
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
-    ((FRAME-POINTER) (interpreter-frame-pointer))
     ((STACK-POINTER) (interpreter-stack-pointer))
+    ((DYNAMIC-LINK) (interpreter-dynamic-link))
     ((INTERPRETER-CALL-RESULT:ACCESS) (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
      (interpreter-register:cache-reference))
@@ -132,7 +127,7 @@ MIT in each case. |#
 (define-integrable a7 15)
 (define number-of-machine-registers 16)
 
-(define-integrable regnum:frame-pointer a4)
+(define-integrable regnum:dynamic-link a4)
 (define-integrable regnum:free-pointer a5)
 (define-integrable regnum:regs-pointer a6)
 (define-integrable regnum:stack-pointer a7)
@@ -141,12 +136,12 @@ MIT in each case. |#
   registers)
 
 (define available-machine-registers
-  (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3 a4))
+  (list d0 d1 d2 d3 d4 d5 d6 a0 a1 a2 a3))
 
-(define-integrable (register-contains-address? register)
-  (memv register '(12 13 14 15)))
+(define initial-address-registers
+  (list a4 a5 a6 a7))
 
-(define (pseudo-register=? x y)
+(define-integrable (pseudo-register=? x y)
   (= (register-renumber x) (register-renumber y)))
 
 (define register-type
@@ -191,12 +186,6 @@ MIT in each case. |#
 (define-integrable (interpreter-register:unbound?)
   (rtl:make-machine-register d0))
 
-(define-integrable (interpreter-frame-pointer)
-  (rtl:make-machine-register regnum:frame-pointer))
-
-(define-integrable (interpreter-frame-pointer? register)
-  (= (rtl:register-number register) regnum:frame-pointer))
-
 (define-integrable (interpreter-free-pointer)
   (rtl:make-machine-register regnum:free-pointer))
 
@@ -214,9 +203,18 @@ MIT in each case. |#
 
 (define-integrable (interpreter-stack-pointer? register)
   (= (rtl:register-number register) regnum:stack-pointer))
+
+(define-integrable (interpreter-dynamic-link)
+  (rtl:make-machine-register regnum:dynamic-link))
+
+(define-integrable (interpreter-dynamic-link? register)
+  (= (rtl:register-number register) regnum:dynamic-link))
 
 ;;;; Exports from machines/lapgen
 
 (define lap:make-label-statement)
 (define lap:make-unconditional-branch)
 (define lap:make-entry-point)
+
+(define special-primitive-handlers
+  '())

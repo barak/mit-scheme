@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.20 1987/08/31 21:19:10 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 4.1 1987/12/04 20:32:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,143 +36,187 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (generate-rtl quotation procedures)
-  (generate/rgraph
-   (quotation-rgraph quotation)
-   (lambda ()
-     (scfg*scfg->scfg!
-      (rtl:make-assignment register:frame-pointer
-			   (rtl:make-fetch register:stack-pointer))
-      (generate/node (let ((entry (quotation-fg-entry quotation)))
-		       (if (not compiler:preserve-data-structures?)
-			   (unset-quotation-fg-entry! quotation))
-		       entry)
-		     false))))
-  (for-each (lambda (procedure)
-	      (generate/rgraph
-	       (procedure-rgraph procedure)
-	       (lambda ()
-		 (generate/procedure-header
-		  procedure
-		  (generate/node
-		   (let ((entry (procedure-fg-entry procedure)))
-		     (if (not compiler:preserve-data-structures?)
-			 (unset-procedure-fg-entry! procedure))
-		     entry)
-		   false)))))
-	    procedures))
-
-(define (generate/rgraph rgraph generator)
-  (fluid-let ((*current-rgraph* rgraph)
-	      (*next-pseudo-number* number-of-machine-registers)
-	      (*temporary->register-map* '())
-	      (*memoizations* '()))
-    (set-rgraph-edge!
-     rgraph
-     (node->edge
-      (cfg-entry-node
-       (cleanup-noop-nodes
-	(lambda ()
-	  (with-new-node-marks generator))))))
-    (set-rgraph-n-registers! rgraph *next-pseudo-number*))
-   (with-new-node-marks
-    (lambda ()
-      (for-each (lambda (edge)
-		  (bblock-compress! (edge-right-node edge)))
-		(rgraph-initial-edges rgraph))))
-  (set-rgraph-bblocks!
-   rgraph
-   (with-new-node-marks
-    (lambda ()
-      (define (loop bblock)
-	(node-mark! bblock)
-	(cons bblock
-	      (if (sblock? bblock)
-		  (next (snode-next bblock))
-		  (append! (next (pnode-consequent bblock))
-			   (next (pnode-alternative bblock))))))
-
-      (define (next bblock)
-	(if (and bblock (not (node-marked? bblock)))
-	    (loop bblock)
-	    '()))
-
-      (mapcan (lambda (edge)
-		(loop (edge-right-node edge)))
-	      (rgraph-initial-edges rgraph))))))
-
+(define *generation-queue*)
+(define *queued-procedures*)
+(define *queued-continuations*)
 (define *memoizations*)
 
-(define (generate/node node subproblem?)
-  ;; This won't work when there are loops in the FG.
-  (cond ((or (null? (node-previous-edges node))
-	     (null? (cdr (node-previous-edges node))))
-	 (node-mark! node)
-	 ((vector-method node generate/node) node subproblem?))
-	((not (node-marked? node))
-	 (node-mark! node)
-	 (let ((result ((vector-method node generate/node) node subproblem?)))
-	   (set! *memoizations*
-		 (cons (cons* node subproblem? result)
-		       *memoizations*))
-	   result))
-	(else
-	 (let ((memoization
-		(cdr (or (assq node *memoizations*)
-			 (error "Marked node lacking memoization" node)))))
-	   (if (not (boolean=? (car memoization) subproblem?))
-	       (error "Node regenerated with different arguments" node))
-	   (cdr memoization)))))
+(define (generate/top-level expression)
+  (with-machine-register-map
+   (lambda ()
+     (fluid-let ((*generation-queue* (make-queue))
+		 (*queued-procedures* '())
+		 (*queued-continuations* '())
+		 (*memoizations* '()))
+       (set! *rtl-expression* (generate/expression expression))
+       (queue-map! *generation-queue* (lambda (thunk) (thunk)))
+       (set! *rtl-graphs*
+	     (list-transform-positive (reverse! *rtl-graphs*)
+	       (lambda (rgraph)
+		 (not (null? (rgraph-entry-edges rgraph))))))
+       (for-each rgraph/compress! *rtl-graphs*)
+       (set! *rtl-procedures* (reverse! *rtl-procedures*))
+       (set! *rtl-continuations* (reverse! *rtl-continuations*))))))
 
-(define (define-generator tag generator)
-  (define-vector-method tag generate/node generator))
+(define (enqueue-procedure! procedure)
+  (if (not (memq procedure *queued-procedures*))
+      (begin
+	(enqueue! *generation-queue*
+		  (lambda ()
+		    (set! *rtl-procedures*
+			  (cons (generate/procedure procedure)
+				*rtl-procedures*))))
+	(set! *queued-procedures* (cons procedure *queued-procedures*)))))
 
-(define (define-statement-generator tag generator)
-  (define-generator tag (normal-statement-generator generator)))
-
-(define (normal-statement-generator generator)
-  (lambda (node subproblem?)
-    (generate/normal-statement node subproblem? generator)))
-
-(define (generate/normal-statement node subproblem? generator)
-  (let ((next (snode-next node)))
-    (if next
-	(scfg*scfg->scfg! (generator node true)
-			  (generate/node next subproblem?))
-	(generator node subproblem?))))
-
-(define (define-predicate-generator tag generator)
-  (define-generator tag (normal-predicate-generator generator)))
-
-(define (normal-predicate-generator generator)
-  (lambda (node subproblem?)
-    (pcfg*scfg->scfg!
-     (generator node)
-     (let ((consequent (pnode-consequent node)))
-       (and consequent
-	    (generate/node consequent subproblem?)))
-     (let ((alternative (pnode-alternative node)))
-       (and alternative
-	    (generate/node alternative subproblem?))))))
+(define (enqueue-continuation! continuation)
+  (if (not (memq continuation *queued-continuations*))
+      (begin
+	(enqueue! *generation-queue*
+		  (lambda ()
+		    (set! *rtl-continuations*
+			  (cons (generate/continuation continuation)
+				*rtl-continuations*))))
+	(set! *queued-continuations*
+	      (cons continuation *queued-continuations*)))))
 
-(define (generate/subproblem-cfg subproblem)
-  (if (cfg-null? (subproblem-cfg subproblem))
-      (make-null-cfg)
-      (generate/node (cfg-entry-node (subproblem-cfg subproblem)) true)))
+(define (generate/expression expression)
+  (transmit-values
+      (generate/rgraph
+       (lambda ()
+	 (generate/node (expression-entry-node expression) 0)))
+    (lambda (rgraph entry-edge)
+      (make-rtl-expr rgraph (expression-label expression) entry-edge))))
 
-(define (generate/operand subproblem)
-  (transmit-values (generate/rvalue (subproblem-value subproblem))
-    (lambda (prefix expression)
-      (return-3 (generate/subproblem-cfg subproblem)
-		prefix
-		expression))))
+(define (generate/procedure procedure)
+  (transmit-values
+      (generate/rgraph
+       (lambda ()
+	 (generate/procedure-header
+	  procedure
+	  (generate/node (procedure-entry-node procedure) 0)
+	  false)))
+    (lambda (rgraph entry-edge)
+      (make-rtl-procedure
+       rgraph
+       (procedure-label procedure)
+       entry-edge
+       (length (procedure-original-required procedure))
+       (length (procedure-original-optional procedure))
+       (and (procedure-original-rest procedure) true)
+       (and (procedure/closure? procedure) true)))))
 
-(define (generate/subproblem subproblem)
-  (transmit-values (generate/operand subproblem)
-    (lambda (cfg prefix expression)
-      (return-2 (scfg*scfg->scfg! cfg prefix) expression))))
+(define (generate/procedure-entry/inline procedure)
+  (generate/procedure-header procedure
+			     (generate/node (procedure-entry-node procedure) 0)
+			     true))
+
+(define (generate/continuation continuation)
+  (let ((label (continuation/label continuation))
+	(node (continuation/entry-node continuation))
+	(offset (continuation/offset continuation)))
+    (transmit-values
+	(generate/rgraph
+	 (lambda ()
+	   (scfg-append!
+	    (rtl:make-continuation-heap-check label)
+	    (generate/continuation-entry/ic-block continuation)
+	    (enumeration-case continuation-type
+		(continuation/type continuation)
+	      ((PUSH)
+	       (scfg*scfg->scfg!
+		(rtl:make-push (rtl:make-fetch register:value))
+		(generate/node node (1+ offset))))
+	      ((REGISTER)
+	       (scfg*scfg->scfg!
+		(rtl:make-assignment (continuation/register continuation)
+				     (rtl:make-fetch register:value))
+		(generate/node node offset)))
+	      (else
+	       (generate/node node offset))))))
+      (lambda (rgraph entry-edge)
+	(make-rtl-continuation rgraph label entry-edge)))))
 
-(define (generate/subproblem-push subproblem)
-  (transmit-values (generate/subproblem subproblem)
-    (lambda (cfg expression)
-      (scfg*scfg->scfg! cfg (rtl:make-push expression)))))
+(define (generate/continuation-entry/ic-block continuation)
+  (if (ic-block? (continuation/closing-block continuation))
+      (rtl:make-pop register:environment)
+      (make-null-cfg)))
+
+(define (generate/node/memoize node offset)
+  (let ((entry (assq node *memoizations*)))
+    (cond ((not entry)
+	   (let ((entry (cons node false)))
+	     (set! *memoizations* (cons entry *memoizations*))
+	     (let ((result (generate/node node offset)))
+	       (set-cdr! entry (cons offset result))
+	       result)))
+	  ((not (cdr entry))
+	   (error "GENERATE/NODE/MEMOIZE: loop" node))
+	  ((not (= offset (cadr entry)))
+	   (error "GENERATE/NODE/MEMOIZE: mismatched offsets" node))
+	  (else (cddr entry)))))
+
+(define (generate/node node offset)
+  (cfg-node-case (tagged-vector/tag node)
+    ((APPLICATION)
+     (if (snode-next node)
+	 (error "Application node has next" node))
+     (case (application-type node)
+       ((COMBINATION) (generate/combination node offset))
+       ((RETURN) (generate/return node offset))
+       (else (error "Unknown application type" node))))
+    ((VIRTUAL-RETURN)
+     (transmit-values (generate/virtual-return node offset)
+       (lambda (scfg offset)
+	 (scfg*scfg->scfg! scfg
+			   (generate/node (snode-next node) offset)))))
+    ((POP)
+     (scfg*scfg->scfg! (generate/pop node offset)
+		       (generate/node (snode-next node) offset)))
+    ((ASSIGNMENT)
+     (scfg*scfg->scfg! (generate/assignment node offset)
+		       (generate/node (snode-next node) offset)))
+    ((DEFINITION)
+     (scfg*scfg->scfg! (generate/definition node offset)
+		       (generate/node (snode-next node) offset)))
+    ((TRUE-TEST)
+     (generate/true-test node offset))))
+
+(define (generate/rgraph generator)
+  (let ((rgraph (make-rgraph number-of-machine-registers)))
+    (set! *rtl-graphs* (cons rgraph *rtl-graphs*))
+    (let ((entry-node
+	   (cfg-entry-node
+	    (fluid-let ((*current-rgraph* rgraph))
+	      (with-new-node-marks generator)))))
+      (add-rgraph-entry-node! rgraph entry-node)
+      (return-2 rgraph (node->edge entry-node)))))
+
+(define (rgraph/compress! rgraph)
+  (with-new-node-marks
+   (lambda ()
+     (for-each (lambda (edge)
+		 (bblock-compress! (edge-right-node edge)))
+	       (rgraph-initial-edges rgraph))))
+  (set-rgraph-bblocks! rgraph (collect-rgraph-bblocks rgraph)))
+
+(define collect-rgraph-bblocks
+  (let ()
+    (define (loop bblock)
+      (node-mark! bblock)
+      (cons bblock
+	    (if (sblock? bblock)
+		(next (snode-next bblock))
+		(append! (next (pnode-consequent bblock))
+			 (next (pnode-alternative bblock))))))
+
+    (define (next bblock)
+      (if (and bblock (not (node-marked? bblock)))
+	  (loop bblock)
+	  '()))
+
+    (lambda (rgraph)
+     (with-new-node-marks
+      (lambda ()
+	(mapcan (lambda (edge)
+		  (loop (edge-right-node edge)))
+		(rgraph-initial-edges rgraph)))))))
