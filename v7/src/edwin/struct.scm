@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.66 1989/04/23 23:30:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.67 1989/04/28 03:51:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -334,24 +334,26 @@
   (>= (mark-position mark) (mark-position (group-end mark))))
 
 (define (mark-right-inserting mark)
-  (let ((group (mark-group mark)))
-    (%%make-permanent-mark group
-			   (let ((position (mark-position mark)))
-			     (if (and (mark-left-inserting? mark)
-				      (= position (group-gap-end group)))
-				 (group-gap-start group)
-				 position))
-			   false)))
+  (if (mark-left-inserting? mark)
+      (let ((group (mark-group mark)))
+	(%%make-permanent-mark group
+			       (let ((position (mark-position mark)))
+				 (if (= position (group-gap-end group))
+				     (group-gap-start group)
+				     position))
+			       false))
+      (mark-permanent! mark)))
 
 (define (mark-left-inserting mark)
-  (let ((group (mark-group mark)))
-    (%%make-permanent-mark group
-			   (let ((position (mark-position mark)))
-			     (if (and (not (mark-left-inserting? mark))
-				      (= position (group-gap-start group)))
-				 (group-gap-end group)
-				 position))
-			   true)))
+  (if (mark-left-inserting? mark)
+      (mark-permanent! mark)
+      (let ((group (mark-group mark)))
+	(%%make-permanent-mark group
+			       (let ((position (mark-position mark)))
+				 (if (= position (group-gap-start group))
+				     (group-gap-end group)
+				     position))
+			       true))))
 
 (define-integrable (%make-permanent-mark group index left-inserting?)
   (%%make-permanent-mark group
