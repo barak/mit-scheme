@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.54 1996/10/24 16:29:46 cph Exp $
+;;;	$Id: xterm.scm,v 1.55 1998/01/29 06:05:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
@@ -57,6 +57,7 @@
   (x-display-descriptor 1)
   (x-display-flush 1)
   (x-display-get-default 3)
+  (x-display-get-size 2)
   (x-display-process-events 2)
   (x-display-sync 2)
   (x-get-atom-name 2)
@@ -210,6 +211,10 @@
     (if sign
 	(string-head geometry sign)
 	geometry)))
+
+(define (x-root-window-size)
+  (x-display-get-size (or (get-x-display) (error "Unable to open display."))
+		      0))
 
 ;;; According to the Xlib manual, we're not allowed to draw anything
 ;;; on the window until the first Expose event arrives.  The manual

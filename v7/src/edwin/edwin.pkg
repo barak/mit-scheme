@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.218 1998/01/03 05:03:18 cph Exp $
+$Id: edwin.pkg,v 1.219 1998/01/29 06:05:35 cph Exp $
 
 Copyright (c) 1989-98 Massachusetts Institute of Technology
 
@@ -1016,6 +1016,7 @@ MIT in each case. |#
     (export (edwin)
 	    os/interprogram-cut
 	    os/interprogram-paste
+	    x-root-window-size
 	    x-screen-auto-raise
 	    x-screen-ignore-focus-button?
 	    x-selection-timeout
