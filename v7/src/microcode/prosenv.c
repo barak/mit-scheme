@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.1 1990/06/20 19:38:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosenv.c,v 1.2 1990/06/21 23:06:44 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -50,13 +50,13 @@ The vector's elements are:\n\
   {
     SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 8, 1));
     FAST_VECTOR_SET (result, 0, (ARG_REF (1)));
-    FAST_VECTOR_SET (result, 1, (ts . second));
-    FAST_VECTOR_SET (result, 2, (ts . minute));
-    FAST_VECTOR_SET (result, 3, (ts . hour));
-    FAST_VECTOR_SET (result, 4, (ts . day));
-    FAST_VECTOR_SET (result, 5, (ts . month));
-    FAST_VECTOR_SET (result, 6, (ts . year));
-    FAST_VECTOR_SET (result, 6, (ts . day_of_week));
+    FAST_VECTOR_SET (result, 1, (long_to_integer (ts . second)));
+    FAST_VECTOR_SET (result, 2, (long_to_integer (ts . minute)));
+    FAST_VECTOR_SET (result, 3, (long_to_integer (ts . hour)));
+    FAST_VECTOR_SET (result, 4, (long_to_integer (ts . day)));
+    FAST_VECTOR_SET (result, 5, (long_to_integer (ts . month)));
+    FAST_VECTOR_SET (result, 6, (long_to_integer (ts . year)));
+    FAST_VECTOR_SET (result, 6, (long_to_integer (ts . day_of_week)));
     PRIMITIVE_RETURN (result);
   }
 }
