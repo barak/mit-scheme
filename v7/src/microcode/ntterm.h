@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ntterm.h,v 1.2 1993/06/24 01:52:11 gjr Exp $
+$Id: ntterm.h,v 1.3 1993/06/24 02:09:50 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,9 +32,9 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-#ifndef SCM_UXTERM_H
-#define SCM_UXTERM_H
+#ifndef SCM_NTTERM_H
+#define SCM_NTTERM_H
 
 #include "osterm.h"
 
-#endif /* SCM_UXTERM_H */
+#endif /* SCM_NTTERM_H */
