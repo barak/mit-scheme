@@ -1,5 +1,5 @@
 #!/bin/csh -f
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/dos.m4,v 1.1 1992/03/05 20:30:55 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/s/Attic/dos.m4,v 1.2 1992/03/06 00:28:03 jinx Exp $
 # Postprocessing to get valid dos assembly language from cmpaux-i386.m4
 
 set tmpfil = "m4.tmp"
@@ -20,5 +20,5 @@ end
 if ($seen_input == 0) then
   sed -e '/^#/D' >> "$tmpfil"
 endif
-m4 < "$tmpfil" | sed -e 's/#/;/g' -e 's/^$//'
+m4 < "$tmpfil" | sed -e 's/#/;/g' -e 's/^$//' | sed -n -e '/^..*/p'
 rm -f "$tmpfil"
