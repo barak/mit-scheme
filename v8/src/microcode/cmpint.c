@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.38 1991/08/13 06:45:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.39 1992/01/14 19:24:18 jinx Exp $
 
-Copyright (c) 1989-1991 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -2830,6 +2830,7 @@ DEFUN (compiler_initialize,
    All entries error out or kill the microcode.
  */
 
+#include "ansidecl.h"	/* Macros to support ANSI declarations */
 #include "config.h"	/* Machine configurations */
 #include "object.h"	/* Making pointers */
 #include "sdata.h"	/* Needed by const.h */
