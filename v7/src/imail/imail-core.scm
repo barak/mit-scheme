@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.130 2001/05/24 01:01:11 cph Exp $
+;;; $Id: imail-core.scm,v 1.131 2001/05/24 01:13:39 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -261,23 +261,23 @@
 ;; Create a new folder named URL.  Signal an error if the folder
 ;; already exists or can't be created.
 
-(define (create-folder url)
-  (let ((folder (%create-folder url)))
-    (container-modified! url 'CREATE-FOLDER)
+(define (create-resource url)
+  (let ((folder (%create-resource url)))
+    (container-modified! url 'CREATE-RESOURCE)
     folder))
 
-(define-generic %create-folder (url))
+(define-generic %create-resource (url))
 
 ;; -------------------------------------------------------------------
 ;; Delete the folder named URL.  Signal an error if the folder doesn't
 ;; exist or if it can't be deleted.
 
-(define (delete-folder url)
-  (%delete-folder url)
+(define (delete-resource url)
+  (%delete-resource url)
   (unmemoize-resource url)
-  (container-modified! url 'DELETE-FOLDER))
+  (container-modified! url 'DELETE-RESOURCE))
 
-(define-generic %delete-folder (url))
+(define-generic %delete-resource (url))
 
 ;; -------------------------------------------------------------------
 ;; Rename the folder named URL to NEW-URL.  Signal an error if the
@@ -286,13 +286,13 @@
 ;; NOT do format conversion, or move a folder from one place to
 ;; another.  It only allows changing the name of an existing folder.
 
-(define (rename-folder url new-url)
-  (%rename-folder url new-url)
+(define (rename-resource url new-url)
+  (%rename-resource url new-url)
   (unmemoize-resource url)
-  (container-modified! url 'DELETE-FOLDER)
-  (container-modified! new-url 'CREATE-FOLDER))
+  (container-modified! url 'DELETE-RESOURCE)
+  (container-modified! new-url 'CREATE-RESOURCE))
 
-(define-generic %rename-folder (url new-url))
+(define-generic %rename-resource (url new-url))
 
 ;; -------------------------------------------------------------------
 ;; Insert a copy of MESSAGE in FOLDER at the end of the existing
@@ -300,7 +300,7 @@
 
 (define (append-message message url)
   (if (%append-message message url)
-      (container-modified! url 'CREATE-FOLDER)))
+      (container-modified! url 'CREATE-RESOURCE)))
 
 (define-generic %append-message (message url))
 

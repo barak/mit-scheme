@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.247 2001/05/24 00:26:32 cph Exp $
+;;; $Id: imail-top.scm,v 1.248 2001/05/24 01:14:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1324,7 +1324,7 @@ An error if signalled if the folder already exists."
 			     'HISTORY 'IMAIL-CREATE-FOLDER)))
   (lambda (url-string)
     (let ((url (imail-parse-partial-url url-string)))
-      (create-folder url)
+      (create-resource url)
       (message "Created folder " (url->string url)))))
 
 (define-command imail-delete-folder
@@ -1338,7 +1338,7 @@ An error if signalled if the folder already exists."
       (if (prompt-for-yes-or-no?
 	   (string-append "Delete folder " (url->string url)))
 	  (begin
-	    (delete-folder url)
+	    (delete-resource url)
 	    (message "Deleted folder " (url->string url)))
 	  (message "Folder not deleted")))))
 
@@ -1358,7 +1358,7 @@ The folder's type may not be changed."
   (lambda (from to)
     (let ((from (imail-parse-partial-url from))
 	  (to (imail-parse-partial-url to)))
-      (rename-folder from to)
+      (rename-resource from to)
       (message "Folder renamed to " (url->string to)))))
 
 (define-command imail-copy-folder

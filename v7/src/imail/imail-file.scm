@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.70 2001/05/23 23:23:23 cph Exp $
+;;; $Id: imail-file.scm,v 1.71 2001/05/24 01:13:44 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -235,17 +235,17 @@
       (and (eq? type 'DIRECTORY)
 	   make-directory-url))))
 
-(define-method %delete-folder ((url <file-url>))
+(define-method %create-resource ((url <directory-url>))
+  (make-directory (pathname-url-pathname url)))
+
+(define-method %delete-resource ((url <file-url>))
   (delete-file (pathname-url-pathname url)))
 
-;;; The next method only works when operating on two URLs of the same
-;;; class, and is restricted to cases where RENAME-FILE works.
+(define-method %delete-resource ((url <directory-url>))
+  (delete-directory (pathname-url-pathname url)))
 
-(define-computed-method %rename-folder ((uc1 <file-url>) (uc2 <file-url>))
-  (and (eq? uc1 uc2)
-       (lambda (url new-url)
-	 (rename-file (pathname-url-pathname url)
-		      (pathname-url-pathname new-url)))))
+(define-method %rename-resource ((url <pathname-url>) (new-url <pathname-url>))
+  (rename-file (pathname-url-pathname url) (pathname-url-pathname new-url)))
 
 (define-method with-open-connection ((url <file-url>) thunk)
   url

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.158 2001/05/23 23:23:31 cph Exp $
+;;; $Id: imail-imap.scm,v 1.159 2001/05/24 01:13:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1226,17 +1226,17 @@
 
 ;;;; Server operations
 
-(define-method %create-folder ((url <imap-url>))
+(define-method %create-resource ((url <imap-url>))
   (with-open-imap-connection url
     (lambda (connection)
       (imap:command:create connection (imap-url-server-mailbox url)))))
 
-(define-method %delete-folder ((url <imap-url>))
+(define-method %delete-resource ((url <imap-url>))
   (with-open-imap-connection url
     (lambda (connection)
       (imap:command:delete connection (imap-url-server-mailbox url)))))
 
-(define-method %rename-folder ((url <imap-url>) (new-url <imap-url>))
+(define-method %rename-resource ((url <imap-url>) (new-url <imap-url>))
   (if (compatible-imap-urls? url new-url)
       (with-open-imap-connection url
 	(lambda (connection)
