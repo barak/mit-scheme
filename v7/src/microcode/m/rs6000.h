@@ -1,7 +1,7 @@
 /* -*-C-*-
    Machine file for IBM RS6000 systems.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/rs6000.h,v 1.1 1993/11/08 06:10:50 gjr Exp $
+$Id: rs6000.h,v 1.2 1993/11/08 06:11:36 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
