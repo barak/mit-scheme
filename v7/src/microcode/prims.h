@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.41 1993/06/24 07:09:20 gjr Exp $
+$Id: prims.h,v 9.42 1993/07/23 19:43:45 nick Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -130,3 +130,8 @@ extern long EXFUN (arg_ascii_integer, (int));
   ((VECTOR_P (ARG_REF (arg)))						\
    ? (ARG_REF (arg))							\
    : ((error_wrong_type_arg (arg)), ((SCHEME_OBJECT) 0)))
+
+#define FLOATING_VECTOR_ARG(arg)					\
+  ((FLONUM_P (ARG_REF (arg)))						\
+   ? ((double *) (VECTOR_LOC (ARG_REF(arg), 0)))			\
+   : ((error_wrong_type_arg (arg)), ((double *) 0)))
