@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.3 2002/02/12 00:30:29 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.4 2002/02/12 21:17:47 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -479,15 +479,14 @@
 ;;; modified.
 
 (define (environment/lookup environment name)
-  (and (environment-bound? environment name)
-       (let ((item (environment-lookup-macro environment name)))
-	 (cond ((or (item? item) (not item))
-		item)
-	       ;; **** Kludge to support bootstrapping.
-	       ((procedure? item)
-		(non-hygienic-macro-transformer->expander item environment))
-	       (else
-		(error:wrong-type-datum item "syntactic keyword"))))))
+  (let ((item (environment-lookup-macro environment name)))
+    (cond ((or (item? item) (not item))
+	   item)
+	  ;; **** Kludge to support bootstrapping.
+	  ((procedure? item)
+	   (non-hygienic-macro-transformer->expander item environment))
+	  (else
+	   (error:wrong-type-datum item "syntactic keyword")))))
 
 (define (environment/define environment name item)
   (environment-define-macro environment name item))

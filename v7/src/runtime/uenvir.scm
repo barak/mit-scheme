@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.54 2002/02/12 15:13:47 cph Exp $
+$Id: uenvir.scm,v 14.55 2002/02/12 21:17:30 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -156,9 +156,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (else value))))
 
 (define (environment-lookup-macro environment name)
-  (let ((value (environment-safe-lookup environment name)))
-    (and (macro-reference-trap? value)
-	 (macro-reference-trap-transformer value))))
+  (and (eq? 'MACRO (environment-reference-type environment name))
+       (let ((value (environment-safe-lookup environment name)))
+	 (and (macro-reference-trap? value)
+	      (macro-reference-trap-transformer value)))))
 
 (define (environment-safe-lookup environment name)
   (cond ((interpreter-environment? environment)
