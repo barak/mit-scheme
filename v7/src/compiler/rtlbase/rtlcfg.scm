@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.4 1987/08/08 22:03:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcfg.scm,v 1.5 1987/08/08 23:21:07 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -96,24 +96,29 @@ MIT in each case. |#
 (package (bblock-compress!)
 
 (define-export (bblock-compress! bblock)
-  (if (sblock? bblock)
-      (let ((next (snode-next bblock)))
-	(if next
-	    (begin
-	      (if (node-previous=1? next)
+  (if (not (node-marked? bblock))
+      (begin
+	(node-mark! bblock)
+	(if (sblock? bblock)
+	    (let ((next (snode-next bblock)))
+	      (if next
 		  (begin
-		    (set-rinst-next! (rinst-last (bblock-instructions bblock))
-				     (bblock-instructions next))
-		    (set-bblock-instructions! next
-					      (bblock-instructions bblock))
-		    (snode-delete! bblock)))
-	      (bblock-compress! next))))
-      (let ((consequent (pnode-consequent bblock))
-	    (alternative (pnode-alternative bblock)))
-	(if consequent
-	    (bblock-compress! consequent))
-	(if alternative
-	    (bblock-compress! alternative)))))
+		    (if (node-previous=1? next)
+			(begin
+			  (set-rinst-next!
+			   (rinst-last (bblock-instructions bblock))
+			   (bblock-instructions next))
+			  (set-bblock-instructions!
+			   next
+			   (bblock-instructions bblock))
+			  (snode-delete! bblock)))
+		    (bblock-compress! next))))
+	    (begin (let ((consequent (pnode-consequent bblock)))
+		     (if consequent
+			 (bblock-compress! consequent)))
+		   (let ((alternative (pnode-alternative bblock)))
+		     (if alternative
+			 (bblock-compress! alternative))))))))
 
 (define (rinst-last rinst)
   (if (rinst-next rinst)
