@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.4 1988/02/19 20:58:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.5 1988/08/22 20:40:12 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,57 +36,58 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Continuation Analysis
+#|
 
-;;; Determine when static or dynamic links are to be used.  
+The continuation analysis is responsible for determining when static
+or dynamic links are to be used.
 
-;;;   Static links:
+Static links
+------------
 
-;;; We compute the `block-stack-link' which is the set of blocks which
-;;; might be immediately adjacent (away from the top of the stack) to
-;;; the given block on the stack.  If it is possible to find the
-;;; parent in a consistent way with any one of these adjacent blocks,
-;;; we do not need a static link.  Otherwise, we set
-;;; `block-stack-link' to the empty list and use a static link.
-;;; Static links are currently avoided in only two cases:
+We compute the `block-stack-link' which is the set of blocks which
+might be immediately adjacent (away from the top of the stack) to the
+given block on the stack.  If it is possible to find the parent in a
+consistent way with any one of these adjacent blocks, we do not need a
+static link.  Otherwise, we set `block-stack-link' to #F and use a
+static link.  Static links are currently avoided in only two cases:
 
-;;; - The procedure is always invoked with a continuation which
-;;; does not have the procedure's parent as an ancestor.
-;;; The only way for this to be the case and for the procedure's block
-;;; to be a stack block is if the procedure's parent has (eventually)
-;;; tail recursed into the procedure, and thus the block adjacent
-;;; on the stack is the parent's frame.  Note that this includes the
-;;; case where the continuation is always externally supplied (passed
-;;; in).
+- The procedure is always invoked with a continuation which does not
+have the procedure's parent as an ancestor.  The only way for this to
+be the case and for the procedure's block to be a stack block is if
+the procedure's parent has (eventually) tail recursed into the
+procedure, and thus the block adjacent on the stack is the parent's
+frame.  Note that this includes the case where the continuation is
+always externally supplied (passed in).
 
-;;; - The procedure is always invoked with a particular continuation
-;;; which has the procedure's parent as an ancestor.  The parent frame
-;;; can then be found from the continuation's frame.  The adjacent
-;;; block is the continuation's block.
+- The procedure is always invoked with a particular continuation which
+has the procedure's parent as an ancestor.  The parent frame can then
+be found from the continuation's frame.  The adjacent block is the
+continuation's block.
 
-;;; Remarks:
+Remarks:
 
-;;; This analysis can be improved in the following way: Multiple
-;;; continuations as in the second case above are fine as long as the
-;;; parent can be obtained from all of them by the same access path.
+This analysis can be improved in the following way: Multiple
+continuations as in the second case above are fine as long as the
+parent can be obtained from all of them by the same access path.
 
-;;; If the procedure is invoked with a particular continuation which
-;;; does not have the procedure's parent as an ancestor, we are in the
-;;; presence of the first case above, namely, the parent block is
-;;; adjacent on the stack.
+If the procedure is invoked with a particular continuation which does
+not have the procedure's parent as an ancestor, we are in the presence
+of the first case above, namely, the parent block is adjacent on the
+stack.
 
-;;;   Dynamic links:
+Dynamic links
+-------------
 
-;;; We compute the popping limit of a procedure's continuation
-;;; variable, which is the farthest ancestor of the procedure's block
-;;; that is to be popped when invoking the continuation.  If we cannot
-;;; compute the limit statically (value is #F), we must use a dynamic
-;;; link.
+We compute the popping limit of a procedure's continuation variable,
+which is the farthest ancestor of the procedure's block that is to be
+popped when invoking the continuation.  If we cannot compute the limit
+statically (value is #F), we must use a dynamic link.
 
-;;; This code takes advantage of the fact that the continuation
-;;; variable is not referenced in blocks other than the procedure's
-;;; block.  This may change if call-with-current-continuation is
-;;; handled specially.
+This code takes advantage of the fact that the continuation variable
+is not referenced in blocks other than the procedure's block.  This
+may change if call-with-current-continuation is handled specially.
+
+|#
 
 (package (continuation-analysis)
 
