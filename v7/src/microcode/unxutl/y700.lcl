@@ -1,6 +1,6 @@
 /* -*- C -*-
    Switzerland local additions to the makefile
-   $Id: y700.lcl,v 1.6 1993/06/24 06:42:27 gjr Exp $
+   $Id: y700.lcl,v 1.7 1993/06/25 21:18:52 gjr Exp $
  */
 
 COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
@@ -42,10 +42,10 @@ everything: world ppband
 
 install.world: install scmsig scm6003 
 	-mv -f $(BINDIR)/scm6003 $(BINDIR)/scm6003.busy
-	rm -f $(BINDIR)/scm6003.busy
+	-rm -f $(BINDIR)/scm6003.busy
 	$(INSTALL) scm6003 $(BINDIR)/scm6003
 	-mv -f $(BINDIR)/scmsig $(BINDIR)/scmsig.busy
-	rm -f $(BINDIR)/scmsig.busy
+	-rm -f $(BINDIR)/scmsig.busy
 	$(INSTALL) scmsig $(BINDIR)/scmsig
 
 scm6003 : $(COMMON_OBJECTS) $(6003_OBJECTS)
@@ -74,30 +74,31 @@ sgraph_a.o : scheme.tch prims.h sgraph.h array.h
 fft.o : scheme.tch prims.h zones.h array.h image.h
 array.o image.o : scheme.tch prims.h array.h
 
-d_Sgraph_ar.o : scheme.tch prims.h Sgraph.h array.h
+d_sgraph_a.o: scheme.tch prims.h sgraph.h array.h d_sgraph_a.c
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
 
-d_fft.o : scheme.tch prims.h zones.h array.h image.h
+d_fft.o: scheme.tch prims.h zones.h array.h image.h d_fft.c
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
 
-d_array.o d_image.o : scheme.tch prims.h array.h
+d_array.o d_image.o: scheme.tch prims.h array.h d_array.c d_image.c
 	$(CC) $(CFLAGS)  -DREAL_IS_DEFINED_DOUBLE=1 -c $*.c
 
 
-d_sgraph_ar.c : sgraph_ar.c
-	ln -f -s sgraph_ar.c d_sgraph_ar.c
+d_sgraph_a.c: sgraph_a.c
+	ln -f -s sgraph_a.c d_sgraph_a.c
 
-d_fft.c : fft.c
+d_fft.c: fft.c
 	ln -f -s fft.c d_fft.c
 
-d_array.c : array.c
+d_array.c: array.c
 	ln -f -s array.c d_array.c
 
-d_image.c : image.c
+d_image.c: image.c
 	ln -f -s image.c d_image.c
 
 clean.world: 
 	rm -f scmsig scm6003 kitscheme scmLYN
 	rm -f usrSIG.o usr6003.o usrkit.o usrLYN.o
 	rm -f usrSIG.c usr6003.c usrkit.c usrLYN.c
+	rm -f d_sgraph_a.c d_fft.c d_array.c d_image.c
 
