@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.38 1997/07/03 07:23:07 cph Exp $
+;;;	$Id: snr.scm,v 1.39 1997/08/23 06:30:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -3949,6 +3949,7 @@ With prefix arg, replaces the file with the list information."
     (set-news-group:ranges-deleted! group (canonicalize-ranges ranges-deleted))
     (set-news-group:ranges-marked! group (canonicalize-ranges ranges-marked))
     (set-news-group:ranges-browsed! group (canonicalize-ranges ranges-browsed))
+    (news-group:clip-ranges! group)
     group))
 
 (define (news-group:get-threads group argument buffer)
