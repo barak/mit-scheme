@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.6 1988/10/20 18:24:59 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.7 1988/12/13 17:45:25 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -146,7 +146,8 @@ MIT in each case. |#
 
 (define-rule predicate
   (OVERFLOW-TEST)
-  (set-standard-branches! 'VS))
+  (set-standard-branches! 'VS)
+  (LAP))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
