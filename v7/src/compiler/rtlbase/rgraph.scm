@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 1.1 1987/08/07 17:06:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 1.2 1987/08/11 06:11:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,7 +36,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define-vector-slots rgraph 0
+(define-structure (rgraph (type vector)
+			  (copier false)
+			  (constructor false))
   edge
   n-registers
   continuations
@@ -47,13 +49,13 @@ MIT in each case. |#
   register-live-length
   register-crosses-call?
   )
+(define (rgraph-allocate)
+  (make-vector 9 false))
+
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
 (define *rgraphs*)
 (define *current-rgraph*)
-
-(define (rgraph-allocate)
-  (make-vector 10 false))
 
 (define (rgraph-entry-edges rgraph)
   (cons (rgraph-edge rgraph)
