@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.80 1990/10/16 21:03:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.81 1990/10/17 03:30:37 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -987,8 +987,10 @@ MIT in each case. |#
 	  fasload-latest
 	  load-noisily
 	  load-noisily?
+	  load/loading?
 	  load/default-types
 	  load/default-find-pathname-with-type
+	  load/push-hook!
 	  load/suppress-loading-message?
 	  read-file)
   (initialization (initialize-package!)))
