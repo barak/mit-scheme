@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.6 1989/09/29 22:18:36 cph Rel $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.7 1991/06/24 20:23:02 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -17,7 +17,8 @@ all:
 	echo "No ALL action"
 
 tags:
-	etags $(SOURCES:foo=*.scm)
+	etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm \
+	machines/*/*.scm rtlbase/*.scm rtlgen/*.scm rtlopt/*.scm
 
 index:
 	rm -f INDEX
