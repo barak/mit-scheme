@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.27 1989/02/09 04:16:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.28 1989/02/24 09:28:33 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -1488,7 +1488,9 @@ MIT in each case. |#
 	  x-graphics-raise-window
 	  x-graphics-start-retain
 	  x-graphics-stop-retain
-	  x-graphics-unmap-window)
+	  x-graphics-unmap-window
+	  x11-graphics-initialize
+	  x11-graphics-close)
   (initialization (initialize-package!)))
 
 (define-package (runtime state-space)
