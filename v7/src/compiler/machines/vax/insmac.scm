@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.6 1987/08/21 14:47:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insmac.scm,v 1.7 1987/08/22 22:10:08 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,19 +38,20 @@ MIT in each case. |#
 
 ;;;; Effective addressing
 
-(syntax-table-define assembler-syntax-table 'MAKE-EA-DATABASE
+(syntax-table-define assembler-syntax-table 'DEFINE-EA-DATABASE
   (macro rules
-    (compile-database
-     rules
-     (lambda (pattern actions)
-       (let ((keyword (car pattern))
-	     (categories (car actions))
-	     (value (cdr actions)))
-	 (declare (integrate keyword categories value))
-	 `(MAKE-EFFECTIVE-ADDRESS
-	   ',keyword
-	   ',categories
-	   ,(process-fields value)))))))
+    `(DEFINE EA-DATABASE
+       ,(compile-database
+	 rules
+	 (lambda (pattern actions)
+	   (let ((keyword (car pattern))
+		 (categories (car actions))
+		 (value (cdr actions)))
+	     (declare (integrate keyword categories value))
+	     `(MAKE-EFFECTIVE-ADDRESS
+	       ',keyword
+	       ',categories
+	       ,(process-fields value))))))))
 
 (syntax-table-define assembler-syntax-table 'DEFINE-EA-TRANSFORMER
   (macro (name category type)
@@ -75,8 +76,13 @@ MIT in each case. |#
   (macro (name value)
     `(define ,name ,value)))
 
-(define (parse-instruction opcode tail ignore)
-  (process-fields (cons opcode tail)))
+(define ea-value-operator 'EA-VALUE)
+
+(define (parse-instruction opcode tail early?)
+  (if early?
+      (fluid-let ((ea-value-operator 'EA-VALUE-EARLY))
+	(process-fields (cons opcode tail)))
+      (process-fields (cons opcode tail))))
 
 (define (process-fields fields)
   (if (and (null? (cdr fields))
@@ -116,7 +122,8 @@ MIT in each case. |#
 			  (lambda (code size)
 			    (receiver code (+ size tail-size)))))
 	   ((OPERAND)
-	    (receiver `(APPEND-SYNTAX! (EA-VALUE ,(caddar fields)) ,tail)
+	    (receiver `(APPEND-SYNTAX! (,ea-value-operator ,(caddar fields))
+				       ,tail)
 		      tail-size))
 	   ((DISPLACEMENT)
 	    (let ((desc (cadar fields)))
