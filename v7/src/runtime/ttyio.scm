@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.7 1999/02/16 05:39:29 cph Exp $
+$Id: ttyio.scm,v 1.8 1999/02/16 05:43:24 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -183,7 +183,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (operation/fresh-line port)
   (if (not (output-buffer/line-start? (port/output-buffer port)))
-      (operation/write-char port #\newline)))
+      (begin
+	(operation/write-char port #\newline)
+	(if transcript-port
+	    (operation/write-char transcript-port #\newline)))))
 
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port))
