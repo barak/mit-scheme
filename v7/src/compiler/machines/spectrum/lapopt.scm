@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.9 1993/02/15 05:08:51 gjr Exp $
+$Id: lapopt.scm,v 1.10 1993/02/18 06:43:01 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -127,12 +127,16 @@ MIT in each case. |#
 		   (list-ref instr 3)))
 	  ((memq opcode '(BE))
 	   <>)
+	  ((memq opcode '(BLE))
+	   <>)
 	  ((memq opcode '(COMB ...))
 	   <>)
-	  |#
+	  ((memq opcode '(PCR-HOOK))
+	   <>)
 	  ((memq opcode '(LABEL EQUATE ENTRY-POINT
 				EXTERNAL-LABEL BLOCK-OFFSET))
 	   (values 'DIRECTIVE false false false))
+	  |#
 	  (else
 	   (values 'UNKNOWN false false false)))))
 
@@ -184,17 +188,6 @@ MIT in each case. |#
        (not (memq (car instr)
 		  '(B BL BV BLR BLE BE)))))
 
-(define return-pattern			; reversed
-  (cons
-   `(LDO () (OFFSET (? frame) 0 ,regnum:stack-pointer) ,regnum:stack-pointer)
-   `((BV (N) 0 (? ret))
-     (DEP () ,regnum:quad-bitmask
-	  ,(-1+ scheme-type-width)
-	  ,scheme-type-width
-	  (? ret))
-     (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) (? ret))
-     . (? more-insts))))
-
 (define (find-or-label instrs)
   (and (not (null? instrs))
        (if (memq (caar instrs) '(COMMENT SCHEME-OBJECT EQUATE))
@@ -213,119 +206,170 @@ MIT in each case. |#
       (cons (car whole)
 	    (list-difference (cdr whole) suffix))))
 
-(define (optimize-linear-lap instructions)
-  (define (fix-complex-return ret frame junk instr avoid)
-    (let ((ret (list-search-positive
-		   (list ret regnum:first-arg regnum:second-arg
-			 regnum:third-arg regnum:fourth-arg)
-		 (lambda (reg)
-		   (not (memq reg avoid))))))
-      `(,@(reverse junk)
-	(LDW () (OFFSET ,frame 0 ,regnum:stack-pointer) ,ret)
-	,instr
-	(DEP () ,regnum:quad-bitmask
-	     ,(-1+ scheme-type-width)
-	     ,scheme-type-width
-	     ,ret)
-	(BV () 0 ,ret)
-	(LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
-	     ,regnum:stack-pointer))))
-
-  (define (fix-simple-return ret frame junk)
+(define (fix-complex-return ret frame junk instr avoid)
+  (let ((ret (list-search-positive
+		 (list ret regnum:first-arg regnum:second-arg
+		       regnum:third-arg regnum:fourth-arg)
+	       (lambda (reg)
+		 (not (memq reg avoid))))))
     `(,@(reverse junk)
       (LDW () (OFFSET ,frame 0 ,regnum:stack-pointer) ,ret)
-      (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
-	   ,regnum:stack-pointer)
+      ,instr
       (DEP () ,regnum:quad-bitmask
 	   ,(-1+ scheme-type-width)
 	   ,scheme-type-width
 	   ,ret)
-      (BV (N) 0 ,ret)))
+      (BV () 0 ,ret)
+      (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
+	   ,regnum:stack-pointer))))
 
-  (define (fix-a-return dict1 junk dict2 rest)
-    (let* ((next (find-or-label rest))
-	   (next* (and next (find-non-label next)))
-	   (frame (cdr (assq 'frame dict2)))
-	   (ret (cdr (assq 'ret dict1))))
-      (cond ((or (not next)
-		 (pc-sensitive? (car next))
-		 (memq (caar next)
-		       '(ENTRY-POINT EXTERNAL-LABEL BLOCK-OFFSET))
-		 (and (eq? (caar next) 'LABEL)
-		      (or (not next*)
-			  (not (skips? (car next*))))))
-	     (values (fix-simple-return ret frame junk)
-		     rest))
-	    ((or (eq? (caar next) 'LABEL)
-		 (skips? (car next)))
-	     (values '() false))
-	    (else
-	     (with-values
-		 (lambda () (classify-instruction (car next)))
-	       (lambda (type target src1 src2)
-		 (if (or (not (memq type '(MEMORY ALU)))
-			 (eq? target regnum:stack-pointer))
-		     (values (fix-simple-return ret frame junk)
-			     rest)
-		     (values
-		      (fix-complex-return ret frame
-					  (append junk
-						  (list-difference rest next))
-					  (car next)
-					  (list target src1 src2))
-		      (cdr next)))))))))
-
-  (define (fix-sequences instrs tail)
-    (cond ((null? instrs)
-	   tail)
-	  ((and (eq? 'BV (caar instrs))
-		(match (cdr return-pattern) instrs))
-	   => (lambda (dict1)
-		(let* ((tail* (cdddr instrs))
-		       (next (find-or-label tail*))
-		       (fail
-			(lambda ()
-			  (fix-sequences tail*
-					 (append (reverse (list-head instrs 3))
-						 tail))))
-		       (dict2
-			(and next
-			     (match (car return-pattern) (car next)))))
-			     
-		  (if (not dict2)
-		      (fail)
-		      (with-values
-			  (lambda ()
-			    (fix-a-return dict1
-					  (list-difference tail* next)
-					  dict2
-					  (cdr next)))
-			(lambda (frobbed untouched)
-			  (if (null? frobbed)
-			      (fail)
-			      (fix-sequences untouched
-					     (append frobbed tail)))))))))
-	  ((and (eq? 'B (caar instrs))
-		(equal? '(N) (cadar instrs)))
-	   (let* ((next (find-or-label (cdr instrs)))
-		  (next* (and next (find-non-label (cdr next)))))
-	     (if (and next
-		      (let ((instr (car next)))
-			(and (memq (instruction-type instr) '(ALU MEMORY))
-			     (not (skips? instr))
-			     (not (pc-sensitive? instr))
-			     (or (not next*)
-				 (not (skips? (car next*)))))))
-		 (fix-sequences (cdr next)
-				`(,@(reverse
-				     (list-difference (cdr instrs) next))
-				  (B () ,@(cddar instrs))
-				  ,(car next)
-				  ,@tail))
-		 (fix-sequences (cdr instrs)
-				(cons (car instrs) tail)))))	  
+(define (fix-simple-return ret frame junk)
+  `(,@(reverse junk)
+    (LDW () (OFFSET ,frame 0 ,regnum:stack-pointer) ,ret)
+    (LDO () (OFFSET ,(+ frame 4) 0 ,regnum:stack-pointer)
+	 ,regnum:stack-pointer)
+    (DEP () ,regnum:quad-bitmask
+	 ,(-1+ scheme-type-width)
+	 ,scheme-type-width
+	 ,ret)
+    (BV (N) 0 ,ret)))
+
+(define (fix-a-return dict1 junk dict2 rest)
+  (let* ((next (find-or-label rest))
+	 (next* (and next (find-non-label next)))
+	 (frame (cdr (assq 'frame dict2)))
+	 (ret (cdr (assq 'ret dict1))))
+    (cond ((or (not next)
+	       (pc-sensitive? (car next))
+	       (memq (caar next)
+		     '(ENTRY-POINT EXTERNAL-LABEL BLOCK-OFFSET PCR-HOOK))
+	       (and (eq? (caar next) 'LABEL)
+		    (or (not next*)
+			(not (skips? (car next*))))))
+	   (values (fix-simple-return ret frame junk)
+		   rest))
+	  ((or (eq? (caar next) 'LABEL)
+	       (skips? (car next)))
+	   (values '() false))
 	  (else
-	   (fix-sequences (cdr instrs)
-			  (cons (car instrs) tail)))))
+	   (with-values
+	       (lambda () (classify-instruction (car next)))
+	     (lambda (type target src1 src2)
+	       (if (or (not (memq type '(MEMORY ALU)))
+		       (eq? target regnum:stack-pointer))
+		   (values (fix-simple-return ret frame junk)
+			   rest)
+		   (values
+		    (fix-complex-return ret frame
+					(append junk
+						(list-difference rest next))
+					(car next)
+					(list target src1 src2))
+		    (cdr next)))))))))
+
+(define (fix-sequences instrs tail)
+  (define-integrable (fail)
+    (fix-sequences (cdr instrs)
+		   (cons (car instrs) tail)))
 
+  (if (null? instrs)
+      tail
+      (let* ((instr (car instrs))
+	     (opcode (car instr)))
+	(case opcode
+	  ((BV)
+	   (let ((dict1 (match (cdr return-pattern) instrs)))
+	     (if (not dict1)
+		 (fail)
+		 (let* ((tail* (cdddr instrs))
+			(next (find-or-label tail*))
+			(fail*
+			 (lambda ()
+			   (fix-sequences
+			    tail*
+			    (append (reverse (list-head instrs 3))
+				    tail))))
+			(dict2
+			 (and next
+			      (match (car return-pattern) (car next)))))
+			     
+		   (if (not dict2)
+		       (fail*)
+		       (with-values
+			   (lambda ()
+			     (fix-a-return dict1
+					   (list-difference tail* next)
+					   dict2
+					   (cdr next)))
+			 (lambda (frobbed untouched)
+			   (if (null? frobbed)
+			       (fail*)
+			       (fix-sequences untouched
+					      (append frobbed tail))))))))))
+	  ((B BE BLE)
+	   (let ((completer (cadr instr)))
+	     (if (or (not (pair? completer))
+		     (not (eq? 'N (car completer)))
+		     (not (null? (cdr completer))))
+		 (fail)
+		 (with-values (lambda () (find-movable-instr (cdr instrs)))
+		   (lambda (movable junk rest)
+		     (if (not movable)
+			 (fail)
+			 (fix-sequences
+			  rest
+			  `(,@(reverse junk)
+			    (,opcode () ,@(cddr instr))
+			    ,movable
+			    ,@tail))))))))
+
+	  ((NOP)
+	   (let ((dict (match hook-pattern instrs)))
+	     (if (not dict)
+		 (fail)
+		 (with-values (lambda () (find-movable-instr (cddr instrs)))
+		   (lambda (movable junk rest)
+		     (if (not movable)
+			 (fail)
+			 (fix-sequences
+			  rest
+			  `(,@(reverse junk)
+			    ,(cadr instrs)
+			    ,movable
+			    ,@tail))))))))
+	  (else
+	   (fail))))))
+
+(define (find-movable-instr instrs)
+  (let* ((next (find-or-label instrs))
+	 (instr (and next (car next)))
+	 (next* (and next (find-non-label (cdr next)))))
+    (if (and instr
+	     (memq (instruction-type instr) '(ALU MEMORY))
+	     (not (skips? instr))
+	     (not (pc-sensitive? instr))
+	     (or (not next*)
+		 (not (skips? (car next*)))))
+	(values instr
+		(list-difference instrs next)
+		(cdr next))
+	(values false false false))))
+
+(define return-pattern			; reversed
+  (cons
+   `(LDO () (OFFSET (? frame) 0 ,regnum:stack-pointer) ,regnum:stack-pointer)
+   `((BV (N) 0 (? ret))
+     (DEP () ,regnum:quad-bitmask
+	  ,(-1+ scheme-type-width)
+	  ,scheme-type-width
+	  (? ret))
+     (LDWM () (OFFSET 4 0 ,regnum:stack-pointer) (? ret))
+     . (? more-insts))))
+
+(define hook-pattern
+  `((NOP ())
+    (BLE () (OFFSET (? hook) 4 ,regnum:scheme-to-interface-ble))
+    . (? more-insts)))
+
+(define (optimize-linear-lap instructions)
   (fix-sequences (reverse! instructions) '()))
