@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.11 1991/07/02 18:16:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.12 1991/07/05 23:31:35 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -117,12 +117,17 @@ DEFUN (restore_signal_mask, (environment), PTR environment)
   UX_sigprocmask (SIG_SETMASK, ((sigset_t *) environment), 0);
 }
 
+static void
+DEFUN (save_signal_mask, (environment), PTR environment)
+{
+  UX_sigprocmask (SIG_SETMASK, 0, ((sigset_t *) environment));
+}
+
 void
 DEFUN_VOID (preserve_signal_mask)
 {
-  sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
-  UX_sigprocmask (SIG_SETMASK, 0, outside);
-  dstack_protect (restore_signal_mask, outside);
+  dstack_alloc_and_protect
+    ((sizeof (sigset_t)), save_signal_mask, restore_signal_mask);
 }
 
 static sigset_t blocked_signals;
