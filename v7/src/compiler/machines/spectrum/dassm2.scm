@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm2.scm,v 4.16 1990/01/25 16:32:26 jinx Exp $
-$MC68020-Header: dassm2.scm,v 4.16 89/12/11 06:16:42 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm2.scm,v 4.17 1990/07/22 18:51:48 jinx Rel $
+$MC68020-Header: dassm2.scm,v 4.17 90/05/03 15:17:04 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -34,6 +34,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Spectrum Disassembler: Top Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
@@ -99,8 +100,8 @@ MIT in each case. |#
     (set! *ir (get-longword))
     (let ((start-offset *current-offset))
       (if (external-label-marker? symbol-table offset state)
-	  (receiver *current-offset
-		    (make-external-label *ir)
+	  (receiver start-offset
+		    (make-external-label *ir start-offset)
 		    'INSTRUCTION)
 	  (let ((instruction (disassemble-word *ir)))
 	    (if (not *valid?)
@@ -190,21 +191,23 @@ MIT in each case. |#
       (and *block
 	   (not (eq? state 'INSTRUCTION))
 	   (let loop ((offset (+ offset 4)))
-	     (let ((contents (read-bits (- offset 2) 16)))
-	       (if (bit-string-clear! contents 0)
-		   (let ((offset
-			  (- offset (* 2 (bit-string->unsigned-integer contents)))))
+	     (let* ((contents (read-bits (- offset 2) 16))
+		    (odd? (bit-string-clear! contents 0))
+		    (delta (* 2 (bit-string->unsigned-integer contents))))
+	       (if odd?
+		   (let ((offset (- offset delta)))
 		     (and (positive? offset)
 			  (loop offset)))
-		   (= offset (* 2 (bit-string->unsigned-integer contents)))))))))
+		   (= offset delta)))))))
 
 (define (make-word bit-string)
-  `(UWORD ,(bit-string->unsigned-integer bit-string)))
+  `(UWORD () ,(bit-string->unsigned-integer bit-string)))
 
-(define (make-external-label bit-string)
-  `(EXTERNAL-LABEL ,(extract bit-string 16 32)
-		   (@PCO ,(* 4 (extract bit-string 1 16)))))
-
+(define (make-external-label bit-string offset)
+  `(EXTERNAL-LABEL ()
+		   ,(extract bit-string 16 32)
+		   ,(offset->pc-relative (* 4 (extract bit-string 1 16))
+					 offset)))
 #|
 ;;; 68k version
 
