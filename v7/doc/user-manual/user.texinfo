@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.39 1996/02/22 22:47:23 adams Exp $
+@comment $Id: user.texinfo,v 1.40 1996/03/10 21:34:17 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -15,7 +15,7 @@
 @ifinfo
 This file documents the use of MIT Scheme.
 
-Copyright @copyright{} 1991-95 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -54,9 +54,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.27 beta
+@subtitle Edition 1.40 beta
 @subtitle for Scheme Release 7.4
-@subtitle May 30, 1995
+@subtitle March 10, 1996
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -64,7 +64,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1991-95 Massachusetts Institute of Technology
+Copyright @copyright{} 1991-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
