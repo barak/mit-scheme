@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.22 1995/10/03 21:14:24 cph Exp $
+;;;	$Id: os2.scm,v 1.23 1995/10/12 22:47:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -714,15 +714,17 @@ filename suffix \".gz\"."
 			   directory))))
     (let ((buffer (temporary-buffer "*popclient*")))
       (let ((status.reason
-	     (run-synchronous-process #f (buffer-end buffer) #f #f
-				      "popclient"
-				      (if (ref-variable rmail-pop-delete)
-					  "-3"
-					  "-3 -k")
-				      "-u" user-name
-				      "-p" password
-				      "-o" target
-				      server)))
+	     (let ((args
+		    (list "-u" user-name
+			  "-p" (os2-pop-client-password password)
+			  "-o" target
+			  server)))
+	       (apply run-synchronous-process #f (buffer-end buffer) #f #f
+		      "popclient"
+		      "-3"
+		      (if (ref-variable rmail-pop-delete)
+			  args
+			  (cons "-k" args))))))
 	(if (and (eq? 'EXITED (car status.reason))
 		 (memv (cdr status.reason) '(0 1)))
 	    (kill-buffer buffer)
@@ -730,6 +732,16 @@ filename suffix \".gz\"."
 	      (pop-up-buffer buffer)
 	      (editor-error "Error getting mail from POP server.")))))
     target))
+
+(define (os2-pop-client-password password)
+  (cond ((string? password)
+	 password)
+	((and (pair? password) (eq? 'FILE (car password)))
+	 (call-with-input-file (cadr password)
+	   (lambda (port)
+	     (read-string (char-set #\newline) port))))
+	(else
+	 (error "Illegal password:" password))))
 
 (define-variable rmail-pop-delete
   "If true, messages are deleted from the POP server after being retrieved.
