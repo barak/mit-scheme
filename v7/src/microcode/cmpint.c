@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.51 1992/09/26 03:12:30 cph Exp $
+$Id: cmpint.c,v 1.52 1992/10/27 01:25:22 jinx Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -658,12 +658,15 @@ DEFUN (comutil_apply,
        SCHEME_OBJECT procedure
        AND long nactuals AND long ignore_3 AND long ignore_4)
 {
+  SCHEME_OBJECT orig_proc = procedure;
+
+loop:
   switch (OBJECT_TYPE (procedure))
   {
     case TC_COMPILED_ENTRY:
     callee_is_compiled:
     {
-      instruction *entry_point;
+      instruction * entry_point;
 
       entry_point = ((instruction *) (OBJECT_ADDRESS (procedure)));
       RETURN_UNLESS_EXCEPTION
@@ -673,7 +676,26 @@ DEFUN (comutil_apply,
 
     case TC_ENTITY:
     {
-      SCHEME_OBJECT operator;
+      SCHEME_OBJECT data, operator;
+
+      data = (MEMORY_REF (procedure, ENTITY_DATA));
+      if ((VECTOR_P (data))
+	  && (nactuals < (VECTOR_LENGTH (data)))
+	  && ((VECTOR_REF (data, nactuals)) != SHARP_F)
+	  && ((VECTOR_REF (data, 0))
+	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+      {
+	/* No loops allowed! */
+	SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
+
+	if ((procedure == orig_proc) && (nproc != procedure))
+	{
+	  procedure = nproc;
+	  goto loop;
+	}
+	else
+	  procedure = orig_proc;
+      }
 
       operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
       if (!(COMPILED_CODE_ADDRESS_P (operator)))
@@ -2420,16 +2442,16 @@ loop:
 	  && ((VECTOR_REF (data, 0))
 	      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
       {
-	if (procedure == orig_proc)
+	/* No loops allowed! */
+	SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
+
+	if ((procedure == orig_proc) && (nproc != procedure))
 	{
-	  procedure = (VECTOR_REF (data, nactuals));
+	  procedure = nproc;
 	  goto loop;
 	}
 	else
-	{
-	  /* No loops allowed! */
 	  procedure = orig_proc;
-	}
       }
       kind = TRAMPOLINE_K_ENTITY;
       break;
