@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: widen.scm,v 1.8 1995/08/18 18:09:35 adams Exp $
+$Id: widen.scm,v 1.9 1995/08/19 15:33:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -475,7 +475,7 @@ MIT in each case. |#
 	    (if (negative? m)
 		result
 		(loop (- m 1)
-		      `((CALL ',vector-ref '#F ,expr ',m) . ,result)))))))
+		      `((CALL ',%vector-ref '#F ,expr ',m) . ,result)))))))
 
 (define (no-CONT-allowed cont)
   (if (not (equal? CONT ''#F))
