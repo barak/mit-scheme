@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for DEC Vax computers
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/vax.h,v 1.2 1989/07/26 03:47:51 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/vax.h,v 1.3 1991/02/15 00:48:28 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,4 +33,23 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+/* This causes problems when generating xmakefile. */
+
+#ifdef vax
+#undef vax
+#endif
+
 #define PROC_TYPE PROC_TYPE_VAX
+
+/* The M4_SWITCH_MACHINE must contain -P "define(GCC,1)", if using GCC,
+   -P "define(VMS,1)" if preparing the files for VMS Vax C,
+    and nothing special if using PCC.
+ */
+
+#ifndef ALTERNATE_CC
+#define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)"
+#else
+#define M4_SWITCH_MACHINE -P "define(TYPE_CODE_LENGTH,6)" -P "define(GCC,1)"
+#endif
+
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
