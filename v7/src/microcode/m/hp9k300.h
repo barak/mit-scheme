@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Id: hp9k300.h,v 1.10 1992/11/18 15:33:39 gjr Exp $
+$Id: hp9k300.h,v 1.11 1993/04/27 10:27:06 cph Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,13 +69,18 @@ MIT in each case. */
 /* The full optimizer breaks some of the files in those versions.  */
 /* #define C_OPTIMIZE_SWITCH +O1 */
 
-#define C_SWITCH_MACHINE -Wp,-H512000
-/* For hp-ux prior to 8.0, add the following switches to the previous line:
-   -Wc,-Nt30000,-Ns3000  */
+/* C_SWITCH_MACHINE can take on several values:
+   1. "-Aa -D_HPUX_SOURCE" is for use on HP-UX 9.0 and later; it
+      specifies ANSI C with HP-UX extensions.
+   2. "-Wp,-H512000" can be used on HP-UX 8.0 and later; it specifies
+      traditional C.
+   3. "-Wp,-H512000 -Wc,-Nt30000,-Ns3000" is for use in pre-8.0
+      releases.  */
+#define C_SWITCH_MACHINE -Aa -D_HPUX_SOURCE -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68020_TYPE
 
 #else
 
-#define C_SWITCH_MACHINE
+#define C_SWITCH_MACHINE -DCOMPILER_PROCESSOR_TYPE=COMPILER_MC68020_TYPE
 
 #endif
 
