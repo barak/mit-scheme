@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.18 2003/01/26 06:35:41 cph Exp $
+$Id: xml-parser.scm,v 1.19 2003/02/07 20:02:14 cph Exp $
 
-Copyright 2001,2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -102,6 +102,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (read-xml port #!optional pi-handlers)
   (parse-xml-document (input-port->parser-buffer port)
+		      (if (default-object? pi-handlers) '() pi-handlers)))
+
+(define (string->xml string #!optional pi-handlers)
+  (parse-xml-document (string->parser-buffer string)
+		      (if (default-object? pi-handlers) '() pi-handlers)))
+
+(define (substring->xml string start end #!optional pi-handlers)
+  (parse-xml-document (substring->parser-buffer string start end)
 		      (if (default-object? pi-handlers) '() pi-handlers)))
 
 (define (parse-xml-document buffer #!optional pi-handlers) ;[1,22]

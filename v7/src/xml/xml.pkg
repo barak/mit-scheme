@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.14 2003/01/30 17:30:25 cph Exp $
+$Id: xml.pkg,v 1.15 2003/02/07 20:01:48 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -154,11 +154,14 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  char-set:xml-whitespace
 	  parse-xml-document
 	  read-xml
-	  read-xml-file))
+	  read-xml-file
+	  string->xml
+	  substring->xml))
 
 (define-package (runtime xml output)
   (files "xml-output")
   (parent (runtime xml))
   (export ()
 	  write-xml
-	  write-xml-file))
+	  write-xml-file
+	  xml->string))

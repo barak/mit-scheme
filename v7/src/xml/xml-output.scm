@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.11 2003/01/26 06:35:34 cph Exp $
+$Id: xml-output.scm,v 1.12 2003/02/07 20:01:59 cph Exp $
 
-Copyright 2001,2002 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -30,6 +30,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (call-with-output-file pathname
     (lambda (port)
       (write-xml xml port))))
+
+(define (xml->string xml)
+  (with-string-output-port
+   (lambda (port)
+     (write-xml xml port))))
 
 (define-generic write-xml (object port))
 
