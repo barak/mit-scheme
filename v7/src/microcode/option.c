@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.43 1996/10/02 18:58:26 cph Exp $
+$Id: option.c,v 1.44 1997/10/22 05:21:25 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -956,6 +956,7 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
     }
     termination_init_error ();
     /*NOTREACHED*/
+    return (0);
   }
 }
 
