@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.23 1987/04/25 20:26:27 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.24 1987/05/14 13:51:07 cph Exp $
  *
  * This file contains procedures for handling vectors and conversion
  * back and forth to lists.
@@ -38,39 +38,6 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "primitive.h"
-
-#define vector_p(object)					\
-  ((Type_Code (object)) == TC_VECTOR)
-
-#define guarantee_vector_arg_1()				\
-if (! (vector_p (Arg1))) error_wrong_type_arg_1 ()
-
-#define guarantee_vector_arg_2()				\
-if (! (vector_p (Arg2))) error_wrong_type_arg_2 ()
-
-#define guarantee_vector_arg_3()				\
-if (! (vector_p (Arg3))) error_wrong_type_arg_3 ()
-
-#define guarantee_vector_arg_4()				\
-if (! (vector_p (Arg4))) error_wrong_type_arg_4 ()
-
-#define guarantee_vector_arg_5()				\
-if (! (vector_p (Arg5))) error_wrong_type_arg_5 ()
-
-#define guarantee_vector_arg_6()				\
-if (! (vector_p (Arg6))) error_wrong_type_arg_6 ()
-
-#define guarantee_vector_arg_7()				\
-if (! (vector_p (Arg7))) error_wrong_type_arg_7 ()
-
-#define guarantee_vector_arg_8()				\
-if (! (vector_p (Arg8))) error_wrong_type_arg_8 ()
-
-#define guarantee_vector_arg_9()				\
-if (! (vector_p (Arg9))) error_wrong_type_arg_9 ()
-
-#define guarantee_vector_arg_10()				\
-if (! (vector_p (Arg10))) error_wrong_type_arg_10 ()
 
                        /*********************/
                        /* VECTORS <-> LISTS */
@@ -319,21 +286,21 @@ Built_In_Primitive(Prim_Sys_Vec_Size, 1, "SYSTEM-VECTOR-SIZE", 0xAE)
   Pointer *scan1, *scan2;					\
   Primitive_5_Args ();						\
 								\
-  guarantee_vector_arg_1 ();					\
-  start1 = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end1 = (guarantee_nonnegative_int_arg_3 (Arg3));		\
-  guarantee_vector_arg_4 ();					\
-  start2 = (guarantee_nonnegative_int_arg_5 (Arg5));		\
+  CHECK_ARG (1, VECTOR_P);					\
+  start1 = (arg_nonnegative_integer (2));			\
+  end1 = (arg_nonnegative_integer (3));				\
+  CHECK_ARG (4, VECTOR_P);					\
+  start2 = (arg_nonnegative_integer (5));			\
 								\
   if (end1 > (Vector_Length (Arg1)))				\
-    error_bad_range_arg_3 ();					\
+    error_bad_range_arg (3);					\
   if (start1 > end1)						\
-    error_bad_range_arg_2 ();					\
+    error_bad_range_arg (2);					\
   length = (end1 - start1);					\
 								\
   end2 = (start2 + length);					\
   if (end2 > (Vector_Length (Arg4)))				\
-    error_bad_range_arg_5 ();					\
+    error_bad_range_arg (5);					\
 								\
   if (Is_Pure (Get_Pointer (Arg2)))				\
     Primitive_Error (ERR_WRITE_INTO_PURE_SPACE);
@@ -367,14 +334,14 @@ Built_In_Primitive (Prim_vector_fill, 4, "SUBVECTOR-FILL!", 0x9F)
   long start, end, length;
   Primitive_4_Args ();
 
-  guarantee_vector_arg_1 ();
-  start = (guarantee_nonnegative_int_arg_2 (Arg2));
-  end = (guarantee_nonnegative_int_arg_3 (Arg3));
+  CHECK_ARG (1, VECTOR_P);
+  start = (arg_nonnegative_integer (2));
+  end = (arg_nonnegative_integer (3));
 
   if (end > (Vector_Length (Arg1)))
-    error_bad_range_arg_3 ();
+    error_bad_range_arg (3);
   if (start > end)
-    error_bad_range_arg_2 ();
+    error_bad_range_arg (2);
   length = (end - start);
 
   Side_Effect_Impurify (Arg1, Arg4);

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.21 1987/04/16 02:18:50 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/char.c,v 9.22 1987/05/14 13:47:45 cph Rel $ */
 
 /* Character primitives. */
 
@@ -39,122 +39,43 @@ MIT in each case. */
 #include "character.h"
 #include <ctype.h>
 
-#define define_ascii_char_guarantee(procedure_name, wta, bra)	\
-long								\
-procedure_name (argument)					\
-     Pointer argument;						\
-{								\
-  fast long ascii;						\
-								\
-  if (! (character_p (argument)))				\
-    wta ();							\
-  ascii = (scheme_char_to_c_char (argument));			\
-  if (ascii == NOT_ASCII)					\
-    bra ();							\
-  return (ascii);						\
+long
+arg_ascii_char (n)
+     int n;
+{
+  fast long ascii;
+
+  CHECK_ARG (n, CHARACTER_P);
+  ascii = (scheme_char_to_c_char (ARG_REF (n)));
+  if (ascii == NOT_ASCII)
+    error_bad_range_arg (n);
+  return (ascii);
 }
 
-define_ascii_char_guarantee (guarantee_ascii_char_arg_1,
-			     error_wrong_type_arg_1,
-			     error_bad_range_arg_1)
+long
+arg_ascii_integer (n)
+     int n;
+{
+  fast Pointer arg;
+  fast long ascii;
 
-define_ascii_char_guarantee (guarantee_ascii_char_arg_2,
-			     error_wrong_type_arg_2,
-			     error_bad_range_arg_2)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_3,
-			     error_wrong_type_arg_3,
-			     error_bad_range_arg_3)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_4,
-			     error_wrong_type_arg_4,
-			     error_bad_range_arg_4)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_5,
-			     error_wrong_type_arg_5,
-			     error_bad_range_arg_5)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_6,
-			     error_wrong_type_arg_6,
-			     error_bad_range_arg_6)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_7,
-			     error_wrong_type_arg_7,
-			     error_bad_range_arg_7)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_8,
-			     error_wrong_type_arg_8,
-			     error_bad_range_arg_8)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_9,
-			     error_wrong_type_arg_9,
-			     error_bad_range_arg_9)
-
-define_ascii_char_guarantee (guarantee_ascii_char_arg_10,
-			     error_wrong_type_arg_10,
-			     error_bad_range_arg_10)
-
-#define define_ascii_integer_guarantee(procedure_name, wta, bra) \
-long								\
-procedure_name (argument)					\
-     Pointer argument;						\
-{								\
-  fast long ascii;						\
-								\
-  if (! (fixnum_p (argument))) wta ();				\
-  if (fixnum_negative_p (argument)) bra ();			\
-  ascii = (pointer_datum (argument));				\
-  if (ascii >= MAX_ASCII) bra ();				\
-  return (ascii);						\
+  CHECK_ARG (n, FIXNUM_P);
+  arg = (ARG_REF (n));
+  if (FIXNUM_NEGATIVE_P (arg))
+    error_bad_range_arg (n);
+  FIXNUM_VALUE (arg, ascii);
+  if (ascii >= MAX_ASCII)
+    error_bad_range_arg (n);
+  return (ascii);
 }
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_1,
-				error_wrong_type_arg_1,
-				error_bad_range_arg_1)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_2,
-				error_wrong_type_arg_2,
-				error_bad_range_arg_2)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_3,
-				error_wrong_type_arg_3,
-				error_bad_range_arg_3)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_4,
-				error_wrong_type_arg_4,
-				error_bad_range_arg_4)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_5,
-				error_wrong_type_arg_5,
-				error_bad_range_arg_5)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_6,
-				error_wrong_type_arg_6,
-				error_bad_range_arg_6)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_7,
-				error_wrong_type_arg_7,
-				error_bad_range_arg_7)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_8,
-				error_wrong_type_arg_8,
-				error_bad_range_arg_8)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_9,
-				error_wrong_type_arg_9,
-				error_bad_range_arg_9)
-
-define_ascii_integer_guarantee (guarantee_ascii_integer_arg_10,
-				error_wrong_type_arg_10,
-				error_bad_range_arg_10)
 
 Built_In_Primitive (Prim_Make_Char, 2, "MAKE-CHAR", 0x14)
 {
   long bucky_bits, code;
   Primitive_2_Args ();
 
-  code = (guarantee_index_arg_1 (Arg1, MAX_CODE));
-  bucky_bits = (guarantee_index_arg_2 (Arg2, MAX_BITS));
+  code = (arg_index_integer (1, MAX_CODE));
+  bucky_bits = (arg_index_integer (2, MAX_BITS));
   return (make_char (bucky_bits, code));
 }
 
@@ -162,24 +83,24 @@ Built_In_Primitive (Prim_Char_Bits, 1, "CHAR-BITS", 0x15)
 {
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
-  return (Make_Unsigned_Fixnum (char_bits (Arg1)));
+  CHECK_ARG (1, CHARACTER_P);
+  return (MAKE_UNSIGNED_FIXNUM (char_bits (Arg1)));
 }
 
 Built_In_Primitive (Prim_Char_Code, 1, "CHAR-CODE", 0x17)
 {
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
-  return (Make_Unsigned_Fixnum (char_code (Arg1)));
+  CHECK_ARG (1, CHARACTER_P);
+  return (MAKE_UNSIGNED_FIXNUM (char_code (Arg1)));
 }
 
 Built_In_Primitive (Prim_Char_To_Integer, 1, "CHAR->INTEGER", 0x1B)
 {
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
-  return (Make_Unsigned_Fixnum (Arg1 & MASK_EXTNDD_CHAR));
+  CHECK_ARG (1, CHARACTER_P);
+  return (MAKE_UNSIGNED_FIXNUM (Arg1 & MASK_EXTNDD_CHAR));
 }
 
 Built_In_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR", 0x34)
@@ -188,7 +109,7 @@ Built_In_Primitive (Prim_Integer_To_Char, 1, "INTEGER->CHAR", 0x34)
 
   return
     (Make_Non_Pointer (TC_CHARACTER,
-		       (guarantee_index_arg_1 (Arg1, MAX_EXTNDD_CHAR))));
+		       (arg_index_integer (1, MAX_EXTNDD_CHAR))));
 }
 
 long
@@ -211,7 +132,7 @@ Built_In_Primitive (Prim_Char_Downcase, 1, "CHAR-DOWNCASE", 0x35)
 {
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
+  CHECK_ARG (1, CHARACTER_P);
   return (make_char ((char_bits (Arg1)), (char_downcase (char_code (Arg1)))));
 }
 
@@ -219,7 +140,7 @@ Built_In_Primitive (Prim_Char_Upcase, 1, "CHAR-UPCASE", 0x36)
 {
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
+  CHECK_ARG (1, CHARACTER_P);
   return (make_char ((char_bits (Arg1)), (char_upcase (char_code (Arg1)))));
 }
 
@@ -227,14 +148,14 @@ Built_In_Primitive (Prim_Ascii_To_Char, 1, "ASCII->CHAR", 0x37)
 {
   Primitive_1_Arg ();
 
-  return (c_char_to_scheme_char (guarantee_ascii_integer_arg_1 (Arg1)));
+  return (c_char_to_scheme_char (arg_ascii_integer (1)));
 }
 
 Built_In_Primitive (Prim_Char_To_Ascii, 1, "CHAR->ASCII", 0x39)
 {
   Primitive_1_Arg ();
 
-  return (Make_Unsigned_Fixnum (guarantee_ascii_char_arg_1 (Arg1)));
+  return (MAKE_UNSIGNED_FIXNUM (arg_ascii_char (1)));
 }
 
 Built_In_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?", 0x38)
@@ -242,9 +163,9 @@ Built_In_Primitive (Prim_Char_Ascii_P, 1, "CHAR-ASCII?", 0x38)
   long ascii;
   Primitive_1_Arg ();
 
-  guarantee_char_arg_1 ();
+  CHECK_ARG (1, CHARACTER_P);
   ascii = (scheme_char_to_c_char (Arg1));
-  return ((ascii == NOT_ASCII) ? NIL : (Make_Unsigned_Fixnum (ascii)));
+  return ((ascii == NOT_ASCII) ? NIL : (MAKE_UNSIGNED_FIXNUM (ascii)));
 }
 
 forward Boolean ascii_control_p();

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.23 1987/04/29 13:50:24 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prims.h,v 9.24 1987/05/14 13:49:36 cph Exp $ */
 
 /* This file contains some macros for defining primitives,
    for argument type or value checking, and for accessing
@@ -141,83 +141,57 @@ if (GC_Check (Amount)) Primitive_GC(Amount)
   if ((To_Where < (Low)) || (To_Where > (High)))		\
     Primitive_Error (Error);					\
 }
+
+#define CHECK_ARG(argument, type_p)					\
+do									\
+{									\
+  if (! (type_p (ARG_REF (argument))))					\
+    error_wrong_type_arg (argument);					\
+} while (0)
+
+#define ARG_REF(argument) (Stack_Ref (argument - 1))
+
+extern long arg_nonnegative_integer ();
+extern long arg_index_integer ();
 
+/* Instances of the following should be flushed. */
+
 #define Arg_1_Type(TC)  					\
-if ((pointer_type (Arg1)) != (TC)) error_wrong_type_arg_1 ()
+do { if ((pointer_type (Arg1)) != (TC)) error_wrong_type_arg (1); } while (0)
 
 #define Arg_2_Type(TC)  					\
-if ((pointer_type (Arg2)) != (TC)) error_wrong_type_arg_2 ()
+do { if ((pointer_type (Arg2)) != (TC)) error_wrong_type_arg (2); } while (0)
 
 #define Arg_3_Type(TC)						\
-if ((pointer_type (Arg3)) != (TC)) error_wrong_type_arg_3 ()
+do { if ((pointer_type (Arg3)) != (TC)) error_wrong_type_arg (3); } while (0)
 
 #define Arg_4_Type(TC)  					\
-if ((pointer_type (Arg4)) != (TC)) error_wrong_type_arg_4 ()
+do { if ((pointer_type (Arg4)) != (TC)) error_wrong_type_arg (4); } while (0)
 
 #define Arg_5_Type(TC)  					\
-if ((pointer_type (Arg5)) != (TC)) error_wrong_type_arg_5 ()
+do { if ((pointer_type (Arg5)) != (TC)) error_wrong_type_arg (5); } while (0)
 
 #define Arg_6_Type(TC)						\
-if ((pointer_type (Arg6)) != (TC)) error_wrong_type_arg_6 ()
+do { if ((pointer_type (Arg6)) != (TC)) error_wrong_type_arg (6); } while (0)
 
 #define Arg_7_Type(TC)						\
-if ((pointer_type (Arg7)) != (TC)) error_wrong_type_arg_7 ()
+do { if ((pointer_type (Arg7)) != (TC)) error_wrong_type_arg (7); } while (0)
 
 #define Arg_8_Type(TC)						\
-if ((pointer_type (Arg8)) != (TC)) error_wrong_type_arg_8 ()
+do { if ((pointer_type (Arg8)) != (TC)) error_wrong_type_arg (8); } while (0)
 
 #define Arg_9_Type(TC)						\
-if ((pointer_type (Arg9)) != (TC)) error_wrong_type_arg_9 ()
+do { if ((pointer_type (Arg9)) != (TC)) error_wrong_type_arg (9); } while (0)
 
 #define Arg_10_Type(TC)						\
-if ((pointer_type (Arg10)) != (TC)) error_wrong_type_arg_10 ()
+do { if ((pointer_type (Arg10)) != (TC)) error_wrong_type_arg (10); } while (0)
 
 
 #define Arg_1_GC_Type(GCTC)                                     \
-if ((GC_Type (Arg1)) != GCTC) error_wrong_type_arg_1 ()
+do { if ((GC_Type (Arg1)) != GCTC) error_wrong_type_arg (1); } while (0)
 
 #define Arg_2_GC_Type(GCTC)                                     \
-if ((GC_Type (Arg2)) != GCTC) error_wrong_type_arg_2 ()
+do { if ((GC_Type (Arg2)) != GCTC) error_wrong_type_arg (2); } while (0)
 
 #define Arg_3_GC_Type(GCTC)                                     \
-if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg_3 ()
-
-#define guarantee_fixnum_arg_1()				\
-if (! (fixnum_p (Arg1))) error_wrong_type_arg_1 ()
-
-#define guarantee_fixnum_arg_2()				\
-if (! (fixnum_p (Arg2))) error_wrong_type_arg_2 ()
-
-#define guarantee_fixnum_arg_3()				\
-if (! (fixnum_p (Arg3))) error_wrong_type_arg_3 ()
-
-#define guarantee_fixnum_arg_4()				\
-if (! (fixnum_p (Arg4))) error_wrong_type_arg_4 ()
-
-#define guarantee_fixnum_arg_5()				\
-if (! (fixnum_p (Arg5))) error_wrong_type_arg_5 ()
-
-#define guarantee_fixnum_arg_6()				\
-if (! (fixnum_p (Arg6))) error_wrong_type_arg_6 ()
-
-extern long guarantee_nonnegative_int_arg_1();
-extern long guarantee_nonnegative_int_arg_2();
-extern long guarantee_nonnegative_int_arg_3();
-extern long guarantee_nonnegative_int_arg_4();
-extern long guarantee_nonnegative_int_arg_5();
-extern long guarantee_nonnegative_int_arg_6();
-extern long guarantee_nonnegative_int_arg_7();
-extern long guarantee_nonnegative_int_arg_8();
-extern long guarantee_nonnegative_int_arg_9();
-extern long guarantee_nonnegative_int_arg_10();
-
-extern long guarantee_index_arg_1();
-extern long guarantee_index_arg_2();
-extern long guarantee_index_arg_3();
-extern long guarantee_index_arg_4();
-extern long guarantee_index_arg_5();
-extern long guarantee_index_arg_6();
-extern long guarantee_index_arg_7();
-extern long guarantee_index_arg_8();
-extern long guarantee_index_arg_9();
-extern long guarantee_index_arg_10();
+do { if ((GC_Type (Arg3)) != GCTC) error_wrong_type_arg (3); } while (0)

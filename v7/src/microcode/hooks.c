@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.23 1987/04/16 02:23:49 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/hooks.c,v 9.24 1987/05/14 13:48:56 cph Rel $
  *
  * This file contains various hooks and handles which connect the
  * primitives with the main interpreter.
@@ -504,7 +504,7 @@ Built_In_Primitive(Prim_Set_Current_History, 1, "SET-CURRENT-HISTORY!", 0x2F)
    */
 
   if ((safe_pointer_type (Arg1)) != TC_HUNK3)
-    error_wrong_type_arg_1 ();
+    error_wrong_type_arg (1);
 
   Val = *History;
 #ifdef COMPILE_HISTORY

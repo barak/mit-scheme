@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.1 1987/04/25 20:24:49 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.h,v 1.2 1987/05/14 13:47:34 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -34,23 +34,6 @@ MIT in each case. */
 
 /* Bit string macros. */
 
-#define bit_string_p(P) ((pointer_type (P)) == TC_BIT_STRING)
-
-#define guarantee_bit_string_arg_1()				\
-if (! (bit_string_p (Arg1))) error_wrong_type_arg_1 ()
-
-#define guarantee_bit_string_arg_2()				\
-if (! (bit_string_p (Arg2))) error_wrong_type_arg_2 ()
-
-#define guarantee_bit_string_arg_3()				\
-if (! (bit_string_p (Arg3))) error_wrong_type_arg_3 ()
-
-#define guarantee_bit_string_arg_4()				\
-if (! (bit_string_p (Arg4))) error_wrong_type_arg_4 ()
-
-#define guarantee_bit_string_arg_5()				\
-if (! (bit_string_p (Arg5))) error_wrong_type_arg_5 ()
-
 #define bit_string_length(bit_string)				\
 (Fast_Vector_Ref (bit_string, NM_ENTRY_COUNT))
 

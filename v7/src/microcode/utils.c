@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.27 1987/04/29 20:12:20 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utils.c,v 9.28 1987/05/14 13:50:45 cph Exp $ */
 
 /* This file contains utilities for interrupts, errors, etc. */
 
@@ -253,26 +253,9 @@ Back_Out_Of_Primitive ()
 extern void
   signal_error_from_primitive(),
   signal_interrupt_from_primitive(),
-  error_wrong_type_arg_1(),
-  error_wrong_type_arg_2(),
-  error_wrong_type_arg_3(),
-  error_wrong_type_arg_4(),
-  error_wrong_type_arg_5(),
-  error_wrong_type_arg_6(),
-  error_wrong_type_arg_7(),
-  error_wrong_type_arg_8(),
-  error_wrong_type_arg_9(),
-  error_wrong_type_arg_10(),
-  error_bad_range_arg_1(),
-  error_bad_range_arg_2(),
-  error_bad_range_arg_3(),
-  error_bad_range_arg_4(),
-  error_bad_range_arg_5(),
-  error_bad_range_arg_6(),
-  error_bad_range_arg_7(),
-  error_bad_range_arg_8(),
-  error_bad_range_arg_9(),
-  error_bad_range_arg_10(),
+  special_interrupt_from_primitive(),
+  error_wrong_type_arg(),
+  error_bad_range_arg(),
   error_external_return();
 
 void
@@ -304,125 +287,51 @@ special_interrupt_from_primitive(local_mask)
   longjmp(*Back_To_Eval, PRIM_INTERRUPT);
   /*NOTREACHED*/
 }
-
-void
-error_wrong_type_arg_1 ()
-{
-  signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_2 ()
-{
-  signal_error_from_primitive (ERR_ARG_2_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_3 ()
-{
-  signal_error_from_primitive (ERR_ARG_3_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_4 ()
-{
-  signal_error_from_primitive (ERR_ARG_4_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_5 ()
-{
-  signal_error_from_primitive (ERR_ARG_5_WRONG_TYPE);
-}
 
 void
-error_wrong_type_arg_6 ()
+error_wrong_type_arg (n)
+     int n;
 {
-  signal_error_from_primitive (ERR_ARG_6_WRONG_TYPE);
+  fast long error_code;
+
+  switch (n)
+    {
+    case 1: error_code = ERR_ARG_1_WRONG_TYPE;
+    case 2: error_code = ERR_ARG_2_WRONG_TYPE;
+    case 3: error_code = ERR_ARG_3_WRONG_TYPE;
+    case 4: error_code = ERR_ARG_4_WRONG_TYPE;
+    case 5: error_code = ERR_ARG_5_WRONG_TYPE;
+    case 6: error_code = ERR_ARG_6_WRONG_TYPE;
+    case 7: error_code = ERR_ARG_7_WRONG_TYPE;
+    case 8: error_code = ERR_ARG_8_WRONG_TYPE;
+    case 9: error_code = ERR_ARG_9_WRONG_TYPE;
+    case 10: error_code = ERR_ARG_10_WRONG_TYPE;
+    default: error_code = ERR_EXTERNAL_RETURN;
+    }
+  signal_error_from_primitive (error_code);
 }
 
 void
-error_wrong_type_arg_7 ()
+error_bad_range_arg (n)
+     int n;
 {
-  signal_error_from_primitive (ERR_ARG_7_WRONG_TYPE);
-}
+  fast long error_code;
 
-void
-error_wrong_type_arg_8 ()
-{
-  signal_error_from_primitive (ERR_ARG_8_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_9 ()
-{
-  signal_error_from_primitive (ERR_ARG_9_WRONG_TYPE);
-}
-
-void
-error_wrong_type_arg_10 ()
-{
-  signal_error_from_primitive (ERR_ARG_10_WRONG_TYPE);
-}
-
-void
-error_bad_range_arg_1 ()
-{
-  signal_error_from_primitive (ERR_ARG_1_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_2 ()
-{
-  signal_error_from_primitive (ERR_ARG_2_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_3 ()
-{
-  signal_error_from_primitive (ERR_ARG_3_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_4 ()
-{
-  signal_error_from_primitive (ERR_ARG_4_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_5 ()
-{
-  signal_error_from_primitive (ERR_ARG_5_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_6 ()
-{
-  signal_error_from_primitive (ERR_ARG_6_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_7 ()
-{
-  signal_error_from_primitive (ERR_ARG_7_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_8 ()
-{
-  signal_error_from_primitive (ERR_ARG_8_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_9 ()
-{
-  signal_error_from_primitive (ERR_ARG_9_BAD_RANGE);
-}
-
-void
-error_bad_range_arg_10 ()
-{
-  signal_error_from_primitive (ERR_ARG_10_BAD_RANGE);
+  switch (n)
+    {
+    case 1: error_code = ERR_ARG_1_BAD_RANGE;
+    case 2: error_code = ERR_ARG_2_BAD_RANGE;
+    case 3: error_code = ERR_ARG_3_BAD_RANGE;
+    case 4: error_code = ERR_ARG_4_BAD_RANGE;
+    case 5: error_code = ERR_ARG_5_BAD_RANGE;
+    case 6: error_code = ERR_ARG_6_BAD_RANGE;
+    case 7: error_code = ERR_ARG_7_BAD_RANGE;
+    case 8: error_code = ERR_ARG_8_BAD_RANGE;
+    case 9: error_code = ERR_ARG_9_BAD_RANGE;
+    case 10: error_code = ERR_ARG_10_BAD_RANGE;
+    default: error_code = ERR_EXTERNAL_RETURN;
+    }
+  signal_error_from_primitive (error_code);
 }
 
 void
@@ -431,114 +340,36 @@ error_external_return ()
   signal_error_from_primitive (ERR_EXTERNAL_RETURN);
 }
 
-#define define_integer_guarantee(procedure_name, wta, bra)	\
-long								\
-procedure_name (argument)					\
-     Pointer argument;						\
-{								\
-  if (! (fixnum_p (argument)))					\
-    wta ();							\
-  if (fixnum_negative_p (argument))				\
-    bra ();							\
-  return (pointer_datum (argument));				\
+long
+arg_nonnegative_integer (n)
+     int n;
+{
+  fast Pointer argument;
+
+  CHECK_ARG (n, FIXNUM_P);
+  argument = (ARG_REF (n));
+  if (FIXNUM_NEGATIVE_P (argument))
+    error_bad_range_arg (n);
+  return (UNSIGNED_FIXNUM_VALUE (argument));
 }
 
-define_integer_guarantee (guarantee_nonnegative_int_arg_1,
-			  error_wrong_type_arg_1,
-			  error_bad_range_arg_1)
+long
+arg_index_integer (n, upper_limit)
+     int n;
+     long upper_limit;
+{
+  fast Pointer argument;
+  fast long result;
 
-define_integer_guarantee (guarantee_nonnegative_int_arg_2,
-			  error_wrong_type_arg_2,
-			  error_bad_range_arg_2)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_3,
-			  error_wrong_type_arg_3,
-			  error_bad_range_arg_3)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_4,
-			  error_wrong_type_arg_4,
-			  error_bad_range_arg_4)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_5,
-			  error_wrong_type_arg_5,
-			  error_bad_range_arg_5)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_6,
-			  error_wrong_type_arg_6,
-			  error_bad_range_arg_6)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_7,
-			  error_wrong_type_arg_7,
-			  error_bad_range_arg_7)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_8,
-			  error_wrong_type_arg_8,
-			  error_bad_range_arg_8)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_9,
-			  error_wrong_type_arg_9,
-			  error_bad_range_arg_9)
-
-define_integer_guarantee (guarantee_nonnegative_int_arg_10,
-			  error_wrong_type_arg_10,
-			  error_bad_range_arg_10)
-
-#define define_index_guarantee(procedure_name, wta, bra)	\
-long								\
-procedure_name (argument, upper_limit)				\
-     Pointer argument, upper_limit;				\
-{								\
-  fast long index;						\
-								\
-  if (! (fixnum_p (argument)))					\
-    wta ();							\
-  if (fixnum_negative_p (argument))				\
-    bra ();							\
-  index = (pointer_datum (argument));				\
-  if (index >= upper_limit)					\
-    bra ();							\
-  return (index);						\
+  CHECK_ARG (n, FIXNUM_P);
+  argument = (ARG_REF (n));
+  if (FIXNUM_NEGATIVE_P (argument))
+    error_bad_range_arg (n);
+  result = (UNSIGNED_FIXNUM_VALUE (argument));
+  if (result >= upper_limit)
+    error_bad_range_arg (n);
+  return (result);
 }
-
-define_index_guarantee (guarantee_index_arg_1,
-			error_wrong_type_arg_1,
-			error_bad_range_arg_1)
-
-define_index_guarantee (guarantee_index_arg_2,
-			error_wrong_type_arg_2,
-			error_bad_range_arg_2)
-
-define_index_guarantee (guarantee_index_arg_3,
-			error_wrong_type_arg_3,
-			error_bad_range_arg_3)
-
-define_index_guarantee (guarantee_index_arg_4,
-			error_wrong_type_arg_4,
-			error_bad_range_arg_4)
-
-define_index_guarantee (guarantee_index_arg_5,
-			error_wrong_type_arg_5,
-			error_bad_range_arg_5)
-
-define_index_guarantee (guarantee_index_arg_6,
-			error_wrong_type_arg_6,
-			error_bad_range_arg_6)
-
-define_index_guarantee (guarantee_index_arg_7,
-			error_wrong_type_arg_7,
-			error_bad_range_arg_7)
-
-define_index_guarantee (guarantee_index_arg_8,
-			error_wrong_type_arg_8,
-			error_bad_range_arg_8)
-
-define_index_guarantee (guarantee_index_arg_9,
-			error_wrong_type_arg_9,
-			error_bad_range_arg_9)
-
-define_index_guarantee (guarantee_index_arg_10,
-			error_wrong_type_arg_10,
-			error_bad_range_arg_10)
 
 void
 Do_Micro_Error (Err, From_Pop_Return)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.23 1987/05/09 18:27:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.24 1987/05/14 13:48:41 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -43,28 +43,20 @@ MIT in each case. */
 #define FIXNUM_PRIMITIVE_1(parameter_1)					\
   fast long parameter_1;						\
   Primitive_1_Arg ();							\
-  FIXNUM_ARG_1 ();							\
+  CHECK_ARG (1, FIXNUM_P);						\
   Sign_Extend (Arg1, parameter_1)
 
 #define FIXNUM_PRIMITIVE_2(parameter_1, parameter_2)			\
   fast long parameter_1, parameter_2;					\
   Primitive_2_Args ();							\
-  FIXNUM_ARG_1 (parameter_1);						\
-  FIXNUM_ARG_2 (parameter_2);						\
+  CHECK_ARG (1, FIXNUM_P);						\
+  CHECK_ARG (2, FIXNUM_P);						\
   Sign_Extend (Arg1, parameter_1);					\
   Sign_Extend (Arg2, parameter_2)
 
-#define FIXNUM_ARG_1(parameter)						\
-  if (! (fixnum_p (Arg1)))						\
-    error_wrong_type_arg_1 ()
-
-#define FIXNUM_ARG_2(parameter)						\
-  if (! (fixnum_p (Arg2)))						\
-    error_wrong_type_arg_2 ()
-
 #define FIXNUM_RESULT(fixnum)						\
   if (! (Fixnum_Fits (fixnum)))						\
-    error_bad_range_arg_1 ();						\
+    error_bad_range_arg (1);						\
   return (Make_Signed_Fixnum (fixnum));
 
 #define BOOLEAN_RESULT(x)						\
@@ -150,11 +142,11 @@ Built_In_Primitive (Prim_Multiply_Fixnum, 2, "MULTIPLY-FIXNUM", 0x3D)
   fast long result;
   Primitive_2_Args ();
 
-  FIXNUM_ARG_1 ();
-  FIXNUM_ARG_2 ();
+  CHECK_ARG (1, FIXNUM_P);
+  CHECK_ARG (2, FIXNUM_P);
   result = (Mul (Arg1, Arg2));
   if (result == NIL)
-    error_bad_range_arg_1 ();
+    error_bad_range_arg (1);
   return (result);
 }
 
@@ -165,11 +157,11 @@ Built_In_Primitive (Prim_Divide_Fixnum, 2, "DIVIDE-FIXNUM", 0x3E)
   FIXNUM_PRIMITIVE_2 (numerator, denominator);
 
   if (denominator == 0)
-    error_bad_range_arg_2 ();
+    error_bad_range_arg (2);
   Primitive_GC_If_Needed (2);
   quotient = (numerator / denominator);
   if (! (Fixnum_Fits (quotient)))
-    error_bad_range_arg_1 ();
+    error_bad_range_arg (1);
   Free[CONS_CAR] = (Make_Signed_Fixnum (quotient));
   Free[CONS_CDR] = (Make_Signed_Fixnum (numerator % denominator));
   Free += 2;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.22 1987/04/16 02:27:09 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.23 1987/05/14 13:49:24 cph Rel $ */
 
 /* This file contains definitions pertaining to the C view of 
    Scheme pointers: widths of fields, extraction macros, pre-computed
@@ -83,22 +83,25 @@ MIT in each case. */
 #endif
 
 #ifndef UNSIGNED_SHIFT		/* Safe version */
-#define pointer_type(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
+#define OBJECT_TYPE(P)		(((P) >> ADDRESS_LENGTH) & MAX_TYPE_CODE)
 #define safe_pointer_type(P)	(((P) >> ADDRESS_LENGTH) & SAFE_TYPE_MASK)
 #else				/* Faster for logical shifts */
-#define pointer_type(P)		((P) >> ADDRESS_LENGTH)
+#define OBJECT_TYPE(P)		((P) >> ADDRESS_LENGTH)
 #define safe_pointer_type(P)	((pointer_type (P)) & SAFE_TYPE_MASK)
 #endif
 
-#define pointer_datum(P)	((P) & ADDRESS_MASK)
+#define OBJECT_DATUM(P)		((P) & ADDRESS_MASK)
 
 /* compatibility definitions */
-#define Type_Code(P)		(pointer_type (P))
+#define Type_Code(P)		(OBJECT_TYPE (P))
 #define Safe_Type_Code(P) 	(safe_pointer_type (P))
-#define Datum(P)		(pointer_datum (P))
+#define Datum(P)		(OBJECT_DATUM (P))
+
+#define pointer_type(P)		(OBJECT_TYPE (P))
+#define pointer_datum(P)	(OBJECT_DATUM (P))
 
 #define Make_Object(TC, D)					\
-((((unsigned) (TC)) << ADDRESS_LENGTH) | (pointer_datum (D)))
+((((unsigned) (TC)) << ADDRESS_LENGTH) | (OBJECT_DATUM (D)))
 
 #ifndef Heap_In_Low_Memory	/* Safe version */
 
@@ -114,7 +117,7 @@ extern Pointer *Memory_Base;
    Heap = Memory_Base,								\
    ((Memory_Base + (space)) - 1))
 
-#define Get_Pointer(P) ((Pointer *) (Memory_Base + (pointer_datum (P))))
+#define Get_Pointer(P) ((Pointer *) (Memory_Base + (OBJECT_DATUM (P))))
 #define C_To_Scheme(P) ((Pointer) ((P) - Memory_Base))
 
 #else				/* Storing absolute addresses */
@@ -133,7 +136,7 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
 #else /* Not Spectrum, fast case */
 
-#define Get_Pointer(P)		((Pointer *) (pointer_datum (P)))
+#define Get_Pointer(P)		((Pointer *) (OBJECT_DATUM (P)))
 #define C_To_Scheme(P)          ((Pointer) (P))
 
 #endif /* spectrum */
@@ -150,9 +153,9 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define Store_Type_Code(P, TC)	P = (Make_Object ((TC), (P)))
 
 #define Store_Address(P, A)					\
-  P = (((P) & TYPE_CODE_MASK) | (pointer_datum ((Pointer) (A))))
+  P = (((P) & TYPE_CODE_MASK) | (OBJECT_DATUM ((Pointer) (A))))
 
-#define Address(P) (pointer_datum (P))
+#define Address(P) (OBJECT_DATUM (P))
 
 /* These are used only where the object is known to be immutable.
    On a parallel processor they don't require atomic references */
@@ -171,14 +174,55 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 #define User_Vector_Ref(P, N)		Vector_Ref(P, (N)+1)
 #define User_Vector_Set(P, N, S)  	Vector_Set(P, (N)+1, S)
 
+#define FIXNUM_P(object) ((OBJECT_TYPE (object)) == TC_FIXNUM)
+#define BIGNUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM)
+#define FLONUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)
+#define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
+#define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
+#define STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
+#define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
+#define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
+#define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
+#define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
+
+#define SYMBOL_P(object)						\
+  (((OBJECT_TYPE (object)) == TC_INTERNED_SYMBOL) ||			\
+   ((OBJECT_TYPE (object)) == TC_UNINTERNED_SYMBOL))
+
+#define INTEGER_P(object)						\
+  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
+   ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM))
+
+#define REAL_P(object)							\
+  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
+   ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM) ||				\
+   ((OBJECT_TYPE (object)) == TC_BIG_FLONUM))
+
+#define NUMBER_P(object)						\
+  (((OBJECT_TYPE (object)) == TC_FIXNUM) ||				\
+   ((OBJECT_TYPE (object)) == TC_BIG_FIXNUM) ||				\
+   ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)				\
+   ((OBJECT_TYPE (object)) == TC_COMPLEX))
+
+#define MAKE_FIXNUM(N) (Make_Non_Pointer (TC_FIXNUM, (N)))
+#define FIXNUM_NEGATIVE_P(fixnum) (((fixnum) & FIXNUM_SIGN_BIT) != 0)
+#define MAKE_UNSIGNED_FIXNUM(N)	(FIXNUM_ZERO + (N))
+#define UNSIGNED_FIXNUM_VALUE(fixnum) (OBJECT_DATUM (fixnum))
+
+#define FIXNUM_VALUE(fixnum, target)					\
+do									\
+{									\
+  (target) = (UNSIGNED_FIXNUM_VALUE (fixnum));				\
+  if (FIXNUM_NEGATIVE_P (target))					\
+    (target) |= (-1 << ADDRESS_LENGTH);					\
+} while (0)
+
 #define Make_Broken_Heart(N)	(BROKEN_HEART_ZERO + (N))
 #define Make_Unsigned_Fixnum(N)	(FIXNUM_ZERO + (N))
 #define Make_Signed_Fixnum(N)	Make_Non_Pointer( TC_FIXNUM, (N))
-#define fixnum_p(P)    ((pointer_type (P)) == TC_FIXNUM)
 #define Get_Float(P)   (* ((double *) (Nth_Vector_Loc ((P), 1))))
-#define Get_Integer(P) (pointer_datum (P))
-
-#define fixnum_negative_p(P) (((P) & FIXNUM_SIGN_BIT) != 0)
+#define Get_Integer(P) (OBJECT_DATUM (P))
 
 #define Sign_Extend(P, S)					\
 {								\

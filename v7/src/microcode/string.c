@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.23 1987/04/16 02:30:34 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.24 1987/05/14 13:49:47 cph Exp $ */
 
 /* String primitives. */
 
@@ -48,7 +48,7 @@ Built_In_Primitive (Prim_String_Allocate, 1, "STRING-ALLOCATE", 0x13E)
   Pointer result;
   Primitive_1_Arg ();
 
-  length = (guarantee_nonnegative_int_arg_1 (Arg1));
+  length = (arg_nonnegative_integer (1));
   /* Add 1 to length to account for '\0' at end of string.
      Add 2 to count to account for string header words. */
   count =
@@ -69,14 +69,14 @@ Built_In_Primitive (Prim_String_P, 1, "STRING?", 0x138)
 {
   Primitive_1_Arg ();
 
-  return ((string_p (Arg1)) ? TRUTH : NIL);
+  return ((STRING_P (Arg1)) ? TRUTH : NIL);
 }
 
 Built_In_Primitive (Prim_String_Length, 1, "STRING-LENGTH", 0x139)
 {
   Primitive_1_Arg ();
 
-  guarantee_string_arg_1 ();
+  CHECK_ARG (1, STRING_P);
   return (Make_Unsigned_Fixnum (string_length (Arg1)));
 }
 
@@ -85,7 +85,7 @@ Built_In_Primitive (Prim_String_Maximum_Length, 1,
 {
   Primitive_1_Arg ();
 
-  guarantee_string_arg_1 ();
+  CHECK_ARG (1, STRING_P);
   return (Make_Unsigned_Fixnum ((maximum_string_length (Arg1)) - 1));
 }
 
@@ -94,10 +94,10 @@ Built_In_Primitive (Prim_Set_String_Length, 2, "SET-STRING-LENGTH!", 0x140)
   long length, result;
   Primitive_2_Args ();
 
-  guarantee_string_arg_1 ();
-  length = (guarantee_nonnegative_int_arg_2 (Arg2));
+  CHECK_ARG (1, STRING_P);
+  length = (arg_nonnegative_integer (2));
   if (length > (maximum_string_length (Arg1)))
-    error_bad_range_arg_2 ();
+    error_bad_range_arg (2);
 
   result = (string_length (Arg1));
   set_string_length (Arg1, length);
@@ -121,8 +121,8 @@ substring_length_min (start1, end1, start2, end2)
   long result;							\
   Primitive_2_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  index = (guarantee_index_arg_2 (Arg2, (string_length (Arg1)))); \
+  CHECK_ARG (1, STRING_P);					\
+  index = (arg_index_integer (2, (string_length (Arg1))));	\
 								\
   return (process_result (string_ref (Arg1, index)));		\
 }
@@ -140,9 +140,9 @@ Built_In_Primitive (Prim_Vec_8b_Ref, 2, "VECTOR-8B-REF", 0xA5)
   Pointer result;						\
   Primitive_3_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  index = (guarantee_index_arg_2 (Arg2, (string_length (Arg1)))); \
-  ascii = (get_ascii (Arg3));					\
+  CHECK_ARG (1, STRING_P);					\
+  index = (arg_index_integer (2, (string_length (Arg1))));	\
+  ascii = (get_ascii (3));					\
 								\
   char_pointer = (string_pointer (Arg1, index));		\
   result = (char_to_long (*char_pointer));			\
@@ -151,31 +151,31 @@ Built_In_Primitive (Prim_Vec_8b_Ref, 2, "VECTOR-8B-REF", 0xA5)
 }
 
 Built_In_Primitive (Prim_String_Set, 3, "STRING-SET!", 0x13B)
-  string_set_body (guarantee_ascii_char_arg_3, c_char_to_scheme_char)
+  string_set_body (arg_ascii_char, c_char_to_scheme_char)
 
 Built_In_Primitive (Prim_Vec_8b_Set, 3, "VECTOR-8B-SET!", 0xA6)
-  string_set_body (guarantee_ascii_integer_arg_3, Make_Unsigned_Fixnum)
+  string_set_body (arg_ascii_integer, MAKE_UNSIGNED_FIXNUM)
 
 #define substring_move_prefix()					\
   long start1, end1, start2, end2, length;			\
   fast char *scan1, *scan2;					\
   Primitive_5_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  start1 = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end1 = (guarantee_nonnegative_int_arg_3 (Arg3));		\
-  guarantee_string_arg_4 ();					\
-  start2 = (guarantee_nonnegative_int_arg_5 (Arg5));		\
+  CHECK_ARG (1, STRING_P);					\
+  start1 = (arg_nonnegative_integer (2));			\
+  end1 = (arg_nonnegative_integer (3));				\
+  CHECK_ARG (4, STRING_P);					\
+  start2 = (arg_nonnegative_integer (5));			\
 								\
   if (end1 > (string_length (Arg1)))				\
-    error_bad_range_arg_2 ();					\
+    error_bad_range_arg (2);					\
   if (start1 > end1)						\
-    error_bad_range_arg_1 ();					\
+    error_bad_range_arg (1);					\
   length = (end1 - start1);					\
 								\
   end2 = (start2 + length);					\
   if (end2 > (string_length (Arg4)))				\
-    error_bad_range_arg_3 ();
+    error_bad_range_arg (3);
 
 Built_In_Primitive (Prim_Substring_Move_Right, 5,
 		    "SUBSTRING-MOVE-RIGHT!", 0x13C)
@@ -207,15 +207,15 @@ Built_In_Primitive (Prim_Substring_Move_Left, 5,
   char *scan;							\
   Primitive_4_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
-  ascii = (guarantee_ascii_integer_arg_4 (Arg4));		\
+  CHECK_ARG (1, STRING_P);					\
+  start = (arg_nonnegative_integer (2));			\
+  end = (arg_nonnegative_integer (3));				\
+  ascii = (arg_ascii_integer (4));				\
 								\
   if (end > (string_length (Arg1)))				\
-    error_bad_range_arg_3 ();					\
+    error_bad_range_arg (3);					\
   if (start > end)						\
-    error_bad_range_arg_2 ();
+    error_bad_range_arg (2);
 
 Built_In_Primitive (Prim_Vec_8b_Fill, 4, "VECTOR-8B-FILL!", 0x141)
 {
@@ -293,17 +293,17 @@ Built_In_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
   char *char_set, *scan;					\
   Primitive_4_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
-  guarantee_string_arg_4 ();					\
+  CHECK_ARG (1, STRING_P);					\
+  start = (arg_nonnegative_integer (2));			\
+  end = (arg_nonnegative_integer (3));				\
+  CHECK_ARG (4, STRING_P);					\
 								\
   if (end > (string_length (Arg1)))				\
-    error_bad_range_arg_3 ();					\
+    error_bad_range_arg (3);					\
   if (start > end)						\
-    error_bad_range_arg_2 ();					\
+    error_bad_range_arg (2);					\
   if ((string_length (Arg4)) != MAX_ASCII)			\
-    error_bad_range_arg_4 ();
+    error_bad_range_arg (4);
 
 Built_In_Primitive(Prim_Find_Next_Char_In_Set, 4,
 		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET", 0x146)
@@ -339,22 +339,22 @@ Built_In_Primitive(Prim_Find_Prev_Char_In_Set, 4,
   char *scan1, *scan2;						\
   Primitive_6_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  start1 = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end1 = (guarantee_nonnegative_int_arg_3 (Arg3));		\
-  guarantee_string_arg_4 ();					\
-  start2 = (guarantee_nonnegative_int_arg_5 (Arg5));		\
-  end2 = (guarantee_nonnegative_int_arg_6 (Arg6));		\
+  CHECK_ARG (1, STRING_P);					\
+  start1 = (arg_nonnegative_integer (2));			\
+  end1 = (arg_nonnegative_integer (3));				\
+  CHECK_ARG (4, STRING_P);					\
+  start2 = (arg_nonnegative_integer (5));			\
+  end2 = (arg_nonnegative_integer (6));				\
 								\
   if (end1 > (string_length (Arg1)))				\
-    error_bad_range_arg_3 ();					\
+    error_bad_range_arg (3);					\
   if (start1 > end1)						\
-    error_bad_range_arg_2 ();					\
+    error_bad_range_arg (2);					\
 								\
   if (end2 > (string_length (Arg4)))				\
-    error_bad_range_arg_6 ();					\
+    error_bad_range_arg (6);					\
   if (start2 > end2)						\
-    error_bad_range_arg_5 ();					\
+    error_bad_range_arg (5);					\
 								\
   scan1 = (string_pointer (Arg1, index1));			\
   scan2 = (string_pointer (Arg4, index2));
@@ -409,14 +409,14 @@ Built_In_Primitive (Prim_Substring_Less, 6, "SUBSTRING<?", 0x14A)
   fast char *scan, temp;					\
   Primitive_3_Args ();						\
 								\
-  guarantee_string_arg_1 ();					\
-  start = (guarantee_nonnegative_int_arg_2 (Arg2));		\
-  end = (guarantee_nonnegative_int_arg_3 (Arg3));		\
+  CHECK_ARG (1, STRING_P);					\
+  start = (arg_nonnegative_integer (2));			\
+  end = (arg_nonnegative_integer (3));				\
 								\
   if (end > (string_length (Arg1)))				\
-    error_bad_range_arg_3 ();					\
+    error_bad_range_arg (3);					\
   if (start > end)						\
-    error_bad_range_arg_2 ();					\
+    error_bad_range_arg (2);					\
 								\
   length = (end - start);					\
   scan = (string_pointer (Arg1, start));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.1 1987/05/11 17:47:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/syntax.c,v 1.2 1987/05/14 13:50:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -96,17 +96,17 @@ Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
   char *scan;
   Primitive_1_Arg ();
 
-  guarantee_string_arg_1 ();
+  CHECK_ARG (1, STRING_P);
   length = (string_length (Arg1));
-  if (length > 6) error_bad_range_arg_1 ();
+  if (length > 6) error_bad_range_arg (1);
   scan = (string_pointer (Arg1, 0));
 
   if (length-- > 0)
     {
       c = (char_to_long (*scan++));
-      if (c >= 0200) error_bad_range_arg_1 ();
+      if (c >= 0200) error_bad_range_arg (1);
       result = (char_to_long (syntax_spec_code[c]));
-      if (result == ILLEGAL) error_bad_range_arg_1 ();
+      if (result == ILLEGAL) error_bad_range_arg (1);
     }
   else
     result = ((long) syntaxcode_whitespace);
@@ -124,7 +124,7 @@ Built_In_Primitive (Prim_String_To_Syntax_Entry, 1, "STRING->SYNTAX-ENTRY",
       case '2': result |= (1 << 17); break;
       case '3': result |= (1 << 18); break;
       case '4': result |= (1 << 19); break;
-      default: error_bad_range_arg_1 ();
+      default: error_bad_range_arg (1);
       }
 
   return (Make_Unsigned_Fixnum (result));
@@ -134,13 +134,12 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 {
   Primitive_2_Args ();
 
-  if (! (SYNTAX_TABLE_P (Arg1)))
-    error_wrong_type_arg_1 ();
+  CHECK_ARG (1, SYNTAX_TABLE_P);
   return
     (c_char_to_scheme_char
      ((char)
       (SYNTAX_ENTRY_CODE
-       (SYNTAX_TABLE_REF (Arg1, (guarantee_ascii_char_arg_2 (Arg2)))))));
+       (SYNTAX_TABLE_REF (Arg1, (arg_ascii_char (2)))))));
 }
 
 /* Parser Initialization */
@@ -152,14 +151,12 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
   long gap_length;							\
   primitive_initialization ();						\
 									\
-  if (! (SYNTAX_TABLE_P (Arg1)))					\
-    error_wrong_type_arg_1 ();						\
-  if (! (GROUP_P (Arg2)))						\
-    error_wrong_type_arg_2 ();						\
+  CHECK_ARG (1, SYNTAX_TABLE_P);					\
+  CHECK_ARG (2, GROUP_P);						\
 									\
   first_char = (string_pointer ((GROUP_TEXT (Arg2)), 0));		\
-  start = (first_char + (guarantee_nonnegative_int_arg_3 (Arg3)));	\
-  end = (first_char + (guarantee_nonnegative_int_arg_4 (Arg4)));	\
+  start = (first_char + (arg_nonnegative_integer (3)));			\
+  end = (first_char + (arg_nonnegative_integer (4)));			\
   gap_start = (first_char + (GROUP_GAP_START (Arg2)));			\
   gap_length = (GROUP_GAP_LENGTH (Arg2));				\
   gap_end = (first_char + (GROUP_GAP_END (Arg2)))
@@ -188,8 +185,8 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
   Boolean sexp_flag, ignore_comments, math_exit;			\
   char c;								\
   initialization (Primitive_7_Args);					\
-  guarantee_fixnum_arg_5 ();						\
-  Sign_Extend (Arg5, depth);						\
+  CHECK_ARG (5, FIXNUM_P);						\
+  FIXNUM_VALUE (Arg5, depth);						\
   min_depth = ((depth >= 0) ? 0 : depth);				\
   sexp_flag = (Arg6 != NIL);						\
   ignore_comments = (Arg7 != NIL);					\
@@ -200,14 +197,14 @@ Built_In_Primitive (Prim_Char_To_Syntax_Code, 2, "CHAR->SYNTAX-CODE", 0x17E)
 #define PEEK_RIGHT(scan) (SYNTAX_TABLE_REF (Arg1, (*scan)))
 #define PEEK_LEFT(scan) (SYNTAX_TABLE_REF (Arg1, (scan[-1])))
 
-#define INCREMENT_SCAN(scan)						\
+#define MOVE_RIGHT(scan)						\
 do									\
 {									\
   if (++scan == gap_start)						\
     scan = gap_end;							\
 } while (0)
 
-#define DECREMENT_SCAN(scan)						\
+#define MOVE_LEFT(scan)							\
 do									\
 {									\
   if (--scan == gap_end)						\
@@ -288,7 +285,7 @@ do									\
   char *scan;								\
 									\
   scan = (scan_init);							\
-  DECREMENT_SCAN (scan);						\
+  MOVE_LEFT (scan);							\
   RIGHT_QUOTED_P_INTERNAL (scan, quoted);				\
 } while (0)
 
@@ -316,7 +313,7 @@ Built_In_Primitive (Prim_Scan_Backward_Prefix_Chars, 4,
       LEFT_QUOTED_P (start, quoted);
       WIN_IF (quoted ||
 	      ((SYNTAX_ENTRY_CODE (PEEK_LEFT (start))) != syntaxcode_quote));
-      DECREMENT_SCAN (start);
+      MOVE_LEFT (start);
     }
 }
 
@@ -331,7 +328,7 @@ Built_In_Primitive
     {
       LOSE_IF_RIGHT_END (start);
       WIN_IF ((SYNTAX_ENTRY_CODE (PEEK_RIGHT (start))) == syntaxcode_word);
-      INCREMENT_SCAN (start);
+      MOVE_RIGHT (start);
     }
 }
 
@@ -350,7 +347,7 @@ Built_In_Primitive (Prim_Scan_Word_Forward, 4, "SCAN-WORD-FORWARD", 0x177)
     {
       WIN_IF_RIGHT_END (start);
       WIN_IF ((SYNTAX_ENTRY_CODE (PEEK_RIGHT (start))) != syntaxcode_word);
-      INCREMENT_SCAN (start);
+      MOVE_RIGHT (start);
     }
 }
 
@@ -369,7 +366,7 @@ Built_In_Primitive (Prim_Scan_Word_Backward, 4, "SCAN-WORD-BACKWARD", 0x178)
     {
       WIN_IF_LEFT_END (start);
       WIN_IF ((SYNTAX_ENTRY_CODE (PEEK_LEFT (start))) != syntaxcode_word);
-      DECREMENT_SCAN (start);
+      MOVE_LEFT (start);
     }
 }
 
@@ -389,7 +386,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	  (SYNTAX_ENTRY_COMSTART_FIRST (entry)) &&
 	  (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_RIGHT (start))))
 	{
-	  INCREMENT_SCAN (start);
+	  MOVE_RIGHT (start);
 	  LOSE_IF_RIGHT_END (start);
 	  while (true)
 	    {
@@ -398,7 +395,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	      if ((SYNTAX_ENTRY_COMEND_FIRST (entry)) &&
 		  (SYNTAX_ENTRY_COMEND_SECOND (PEEK_RIGHT (start))))
 		{
-		  INCREMENT_SCAN (start);
+		  MOVE_RIGHT (start);
 		  break;
 		}
 	    }
@@ -410,7 +407,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	case syntaxcode_escape:
 	case syntaxcode_charquote:
 	  LOSE_IF_RIGHT_END (start);
-	  INCREMENT_SCAN (start);
+	  MOVE_RIGHT (start);
 
 	case syntaxcode_word:
 	case syntaxcode_symbol:
@@ -423,12 +420,12 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 		{
 		case syntaxcode_escape:
 		case syntaxcode_charquote:
-		  INCREMENT_SCAN (start);
+		  MOVE_RIGHT (start);
 		  LOSE_IF_RIGHT_END (start);
 
 		case syntaxcode_word:
 		case syntaxcode_symbol:
-		  INCREMENT_SCAN (start);
+		  MOVE_RIGHT (start);
 		  break;
 
 		default:
@@ -445,7 +442,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	      if ((SYNTAX_ENTRY_CODE (PEEK_RIGHT (start))) ==
 		  syntaxcode_endcomment)
 		break;
-	      INCREMENT_SCAN (start);
+	      MOVE_RIGHT (start);
 	    }
 	  break;
 
@@ -453,7 +450,7 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	  if (! sexp_flag)
 	    break;
 	  if ((! (RIGHT_END_P (start))) && (c == *start))
-	    INCREMENT_SCAN (start);
+	    MOVE_RIGHT (start);
 	  if (math_exit)
 	    {
 	      WIN_IF (--depth == 0);
@@ -486,10 +483,10 @@ Built_In_Primitive (Prim_Scan_List_Forward, 7, "SCAN-LIST-FORWARD", 0x179)
 	      if (SYNTAX_ENTRY_QUOTE (entry))
 		{
 		  LOSE_IF_RIGHT_END (start);
-		  INCREMENT_SCAN (start);
+		  MOVE_RIGHT (start);
 		}
 	    }
-	  INCREMENT_SCAN (start);
+	  MOVE_RIGHT (start);
 	  WIN_IF ((depth == 0) || sexp_flag);
 	  break;
 
@@ -509,7 +506,7 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
       LEFT_QUOTED_P (start, quoted);
       if (quoted)
 	{
-	  DECREMENT_SCAN (start);
+	  MOVE_LEFT (start);
 	  /* existence of this character is guaranteed by LEFT_QUOTED_P. */
 	  READ_LEFT (start, entry);
 	  goto word_entry;
@@ -523,7 +520,7 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 	  LEFT_QUOTED_P (start, quoted);
 	  if (! quoted)
 	    {
-	      DECREMENT_SCAN (start);
+	      MOVE_LEFT (start);
 	      LOSE_IF_LEFT_END (start);
 	      while (true)
 		{
@@ -532,7 +529,7 @@ Built_In_Primitive (Prim_Scan_List_Backward, 7, "SCAN-LIST-BACKWARD", 0x17A)
 		  if ((SYNTAX_ENTRY_COMSTART_SECOND (entry)) &&
 		      (SYNTAX_ENTRY_COMSTART_SECOND (PEEK_LEFT (start))))
 		    {
-		      DECREMENT_SCAN (start);
+		      MOVE_LEFT (start);
 		      break;
 		    }
 		}
@@ -552,21 +549,21 @@ word_entry:
 	      WIN_IF_LEFT_END (start);
 	      LEFT_QUOTED_P (start, quoted);
 	      if (quoted)
-		DECREMENT_SCAN (start);
+		MOVE_LEFT (start);
 	      else
 		{
 		  entry = (PEEK_LEFT (start));
 		  WIN_IF (((SYNTAX_ENTRY_CODE (entry)) != syntaxcode_word) &&
 			  ((SYNTAX_ENTRY_CODE (entry)) != syntaxcode_symbol));
 		}
-	      DECREMENT_SCAN (start);
+	      MOVE_LEFT (start);
 	    }
 
 	case syntaxcode_math:
 	  if (! sexp_flag)
 	    break;
 	  if ((! (LEFT_END_P (start))) && (c == start[-1]))
-	    DECREMENT_SCAN (start);
+	    MOVE_LEFT (start);
 	  if (math_exit)
 	    {
 	      WIN_IF (--depth == 0);
@@ -596,9 +593,9 @@ word_entry:
 	      LEFT_QUOTED_P (start, quoted);
 	      if ((! quoted) && (c == start[-1]))
 		break;
-	      DECREMENT_SCAN (start);
+	      MOVE_LEFT (start);
 	    }
-	  DECREMENT_SCAN (start);
+	  MOVE_LEFT (start);
 	  WIN_IF ((depth == 0) && sexp_flag);
 	  break;
 
@@ -611,7 +608,7 @@ word_entry:
 	      if ((SYNTAX_ENTRY_CODE (PEEK_LEFT (start))) ==
 		  syntaxcode_comment)
 		break;
-	      DECREMENT_SCAN (start);
+	      MOVE_LEFT (start);
 	    }
 	  break;
 
@@ -654,8 +651,8 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
   Pointer result;
   STANDARD_INITIALIZATION_FORWARD (Primitive_7_Args);
 
-  guarantee_fixnum_arg_5 ();
-  Sign_Extend (Arg5, target_depth);
+  CHECK_ARG (5, FIXNUM_P);
+  FIXNUM_VALUE (Arg5, target_depth);
   stop_before = (Arg6 != NIL);
 
   level = level_start;
@@ -677,20 +674,20 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
       Pointer temp;
 
       temp = (User_Vector_Ref (Arg7, 0));
-      if (fixnum_p (temp))
+      if (FIXNUM_P (temp))
 	{
 	  Sign_Extend (temp, depth);
 	}
       else
-	error_bad_range_arg_7 ();
+	error_bad_range_arg (7);
 
       temp = (User_Vector_Ref (Arg7, 1));
       if (temp == NIL)
 	in_string = -1;
-      else if ((fixnum_p (temp)) && ((pointer_datum (temp)) < MAX_ASCII))
+      else if ((FIXNUM_P (temp)) && ((pointer_datum (temp)) < MAX_ASCII))
 	in_string = (pointer_datum (temp));
       else
-	error_bad_range_arg_7 ();
+	error_bad_range_arg (7);
 
       temp = (User_Vector_Ref (Arg7, 2));
       if (temp == NIL)
@@ -700,16 +697,16 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
       else if (temp == (Make_Unsigned_Fixnum (2)))
 	in_comment = 2;
       else
-	error_bad_range_arg_7 ();
+	error_bad_range_arg (7);
 
       quoted = ((User_Vector_Ref (Arg7, 3)) != NIL);
 
       if ((in_comment != 0) && ((in_string != -1) || (quoted != false)))
-	error_bad_range_arg_7 ();
+	error_bad_range_arg (7);
 
     }
   else
-    error_wrong_type_arg_7 ();
+    error_bad_range_arg (7);
 
   /* Make sure there is enough room for the result before we start. */
 
@@ -741,7 +738,7 @@ Built_In_Primitive (Prim_Scan_Sexps_Forward, 7, "SCAN-SEXPS-FORWARD", 0x17B)
 	  (SYNTAX_ENTRY_COMSTART_FIRST (entry)) &&
 	  (SYNTAX_ENTRY_COMSTART_FIRST (PEEK_RIGHT (start))))
 	{
-	  INCREMENT_SCAN (start);
+	  MOVE_RIGHT (start);
 	  in_comment = 2;
 start_in_comment2:
 	  while (true)
@@ -755,7 +752,7 @@ start_in_comment2:
 		  DONE_IF_RIGHT_END (start);
 		  if (SYNTAX_ENTRY_COMEND_SECOND (PEEK_RIGHT (start)))
 		    {
-		      INCREMENT_SCAN (start);
+		      MOVE_RIGHT (start);
 		      break;
 		    }
 		}
@@ -775,7 +772,7 @@ start_quoted:
 		quoted = true;
 		DONE_IF (true);
 	      }
-	    INCREMENT_SCAN (start);
+	    MOVE_RIGHT (start);
 	    goto start_atom;
 
 	  case syntaxcode_word:
@@ -788,7 +785,7 @@ start_atom:
 		  {
 		  case syntaxcode_escape:
 		  case syntaxcode_charquote:
-		    INCREMENT_SCAN (start);
+		    MOVE_RIGHT (start);
 		    if (RIGHT_END_P (start))
 		      {
 			quoted = true;
@@ -797,7 +794,7 @@ start_atom:
 
 		  case syntaxcode_word:
 		  case syntaxcode_symbol:
-		    INCREMENT_SCAN (start);
+		    MOVE_RIGHT (start);
 		    break;
 
 		  default:
@@ -826,7 +823,7 @@ start_in_comment:
 	    depth += 1;
 	    level += 1;
 	    if (level == level_end)
-	      error_bad_range_arg_5 (); /* random error */
+	      error_bad_range_arg (5); /* random error */
 	    level->last = NULL;
 	    level->previous = NULL;
 	    DONE_IF ((--target_depth) == 0);
@@ -862,7 +859,7 @@ start_quoted_in_string:
 	      }
 	    in_string = -1;
 	    level->previous = level->last;
-	    INCREMENT_SCAN (start);
+	    MOVE_RIGHT (start);
 	    break;
 	  }
     }
