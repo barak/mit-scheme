@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.26 2002/02/09 05:43:15 cph Exp $
+$Id: macros.scm,v 4.27 2002/02/12 00:25:26 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -312,16 +312,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 (let ((type (cadr form))
 	       (pattern (caddr form))
 	       (body (cdddr form)))
-	   (parse-rule pattern body
-	     (lambda (pattern variables qualifier actions)
+	   (call-with-values (lambda () (parse-rule pattern body))
+	     (lambda (pattern variables qualifiers actions)
 	       `(,(case type
 		    ((STATEMENT) 'ADD-STATEMENT-RULE!)
 		    ((PREDICATE) 'ADD-STATEMENT-RULE!)
 		    ((REWRITING) 'ADD-REWRITING-RULE!)
 		    (else (close-syntax type environment)))
 		 ',pattern
-		 ,(rule-result-expression variables qualifier
-					  `(BEGIN ,@actions))))))
+		 ,(rule-result-expression variables
+					  qualifiers
+					  `(BEGIN ,@actions)
+					  environment)))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax lap

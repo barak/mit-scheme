@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: assmd.scm,v 1.5 2001/12/23 17:20:57 cph Exp $
+$Id: assmd.scm,v 1.6 2002/02/12 00:26:30 cph Exp $
 
-Copyright (c) 1992, 1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1992, 1999, 2001, 2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,8 +26,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (let-syntax
     ((ucode-type
-      (non-hygienic-macro-transformer
-       (lambda (name) `',(microcode-type name)))))
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (apply microcode-type (cdr form))))))
 
 (define-integrable maximum-padding-length
   ;; Instructions can be any number of bytes long.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pmpars.scm,v 1.4 1999/01/02 06:06:43 cph Exp $
+$Id: pmpars.scm,v 1.5 2002/02/12 00:25:30 cph Exp $
 
 Copyright (c) 1988, 1999 Massachusetts Institute of Technology
 
@@ -38,36 +38,34 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; arguments, will return either false, indicating that the
 ;;; qualifications failed, or the result of the body.
 
-(define (parse-rule pattern body receiver)
-  (extract-variables
-   pattern
-   (lambda (pattern variables)
-     (extract-qualifier
-      body
-      (lambda (qualifiers actions)
-	(let ((names (pattern-variables pattern)))
-	  (receiver pattern
+(define (parse-rule pattern body)
+  (call-with-values (lambda () (extract-variables pattern))
+    (lambda (pattern variables)
+      (call-with-values (lambda () (extract-qualifiers body))
+	(lambda (qualifiers actions)
+	  (let ((names (pattern-variables pattern)))
+	    (values pattern
 		    (reorder-variables variables names)
 		    qualifiers
 		    actions)))))))
 
-(define (extract-variables pattern receiver)
+(define (extract-variables pattern)
   (if (pair? pattern)
       (if (memq (car pattern) '(? ?@))
-	  (receiver (make-pattern-variable (cadr pattern))
-		    (list (cons (cadr pattern)
-				(if (null? (cddr pattern))
-				    '()
-				    (list (cons (car pattern)
-						(cddr pattern)))))))
-	  (extract-variables (car pattern)
+	  (values (make-pattern-variable (cadr pattern))
+		  (list (cons (cadr pattern)
+			      (if (null? (cddr pattern))
+				  '()
+				  (list (cons (car pattern)
+					      (cddr pattern)))))))
+	  (call-with-values (lambda () (extract-variables (car pattern)))
 	    (lambda (car-pattern car-variables)
-	      (extract-variables (cdr pattern)
+	      (call-with-values (lambda () (extract-variables (cdr pattern)))
 		(lambda (cdr-pattern cdr-variables)
-		  (receiver (cons car-pattern cdr-pattern)
-			    (merge-variables-lists car-variables
-						   cdr-variables)))))))
-      (receiver pattern '())))
+		  (values (cons car-pattern cdr-pattern)
+			  (merge-variables-lists car-variables
+						 cdr-variables)))))))
+      (values pattern '())))
 
 (define (merge-variables-lists x y)
   (cond ((null? x) y)
@@ -81,62 +79,64 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	       (cons (car x)
 		     (merge-variables-lists (cdr x)
 					    y)))))))
-
-(define (extract-qualifier body receiver)
+
+(define (extract-qualifiers body)
   (if (and (pair? (car body))
 	   (eq? (caar body) 'QUALIFIER))
-      (receiver (cdar body) (cdr body))
-      (receiver '() body)))
+      (values (cdar body) (cdr body))
+      (values '() body)))
 
 (define (reorder-variables variables names)
   (map (lambda (name) (assq name variables))
        names))
+
+(define (rule-result-expression variables qualifiers body environment)
+  (reverse-syntactic-environments environment
+    (lambda (environment)
+      (call-with-values
+	  (lambda () (process-transformations variables environment))
+	(lambda (outer-vars inner-vars xforms xqualifiers)
+	  (let ((r-lambda (close-syntax 'LAMBDA environment))
+		(r-let (close-syntax 'LET environment))
+		(r-and (close-syntax 'AND environment)))
+	    `(,r-lambda ,outer-vars
+			(,r-let ,(map list inner-vars xforms)
+				(,r-and ,@xqualifiers
+					,@qualifiers
+					(,r-lambda () ,body))))))))))
 
-(define (rule-result-expression variables qualifiers body)
-  (let ((body `(lambda () ,body)))
-    (process-transformations variables
-      (lambda (outer-vars inner-vars xforms xqualifiers)
-	(if (null? inner-vars)
-	    `(lambda ,outer-vars
-	       ,(if (null? qualifiers)
-		    body
-		    `(and ,@qualifiers ,body)))
-	    `(lambda ,outer-vars
-	       (let ,(map list inner-vars xforms)
-		 (and ,@xqualifiers
-		      ,@qualifiers
-		      ,body))))))))
-
-(define (process-transformations variables receiver)
-  (if (null? variables)
-      (receiver '() '() '() '())
-      (process-transformations (cdr variables)
-	(lambda (outer inner xform qual)
-	  (let ((name (caar variables))
-		(variable (cdar variables)))
-	    (cond ((null? variable)
-		   (receiver (cons name outer)
-			     inner
-			     xform
-			     qual))
-		  ((not (null? (cdr variable)))
-		   (error "process-trasformations: Multiple qualifiers"
-			  (car variables)))
-		  (else
-		   (let ((var (car variable)))
-		     (define (handle-xform rename)
-		       (if (eq? (car var) '?)
-			   (receiver (cons rename outer)
-				     (cons name inner)
-				     (cons `(,(cadr var) ,rename)
-					   xform)
-				     (cons name qual))
-			   (receiver (cons rename outer)
-				     (cons name inner)
-				     (cons `(MAP ,(cadr var) ,rename)
-					   xform)
-				     (cons `(APPLY BOOLEAN/AND ,name) qual))))
-		     (handle-xform
-		      (if (null? (cddr var))
-			  name
-			  (caddr var)))))))))))
+(define (process-transformations variables environment)
+  (let ((r-map (close-syntax 'MAP environment))
+	(r-apply (close-syntax 'APPLY environment))
+	(r-boolean/and (close-syntax 'BOOLEAN/AND environment)))
+    (let loop ((variables variables))
+      (if (pair? variables)
+	  (call-with-values (lambda () (loop (cdr variables)))
+	    (lambda (outer-vars inner-vars xforms qualifiers)
+	      (let ((name (caar variables))
+		    (variable (cdar variables)))
+		(if (pair? variable)
+		    (let ((var (car variable)))
+		      (if (not (null? (cdr variable)))
+			  (error "Multiple variable qualifiers:"
+				 (car variables)))
+		      (let ((xform (cadr var))
+			    (outer-var
+			     (if (pair? (cddr var))
+				 (caddr var)
+				 name)))
+			(if (eq? (car var) '?)
+			    (values (cons outer-var outer-vars)
+				    (cons name inner-vars)
+				    (cons `(,xform ,outer-var) xforms)
+				    (cons name qualifiers))
+			    (values (cons outer-var outer-vars)
+				    (cons name inner-vars)
+				    (cons `(,r-map ,xform ,outer-var) xforms)
+				    (cons `(,r-apply ,r-boolean/and ,name)
+					  qualifiers)))))
+		    (values (cons name outer-vars)
+			    inner-vars
+			    xforms
+			    qualifiers)))))
+	  (values '() '() '() '())))))

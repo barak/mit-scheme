@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asmmac.scm,v 1.13 2002/02/08 03:54:10 cph Exp $
+$Id: asmmac.scm,v 1.14 2002/02/12 00:25:08 cph Exp $
 
 Copyright (c) 1988, 1990, 1999, 2001, 2002 Massachusetts Institute of Technology
 
@@ -27,11 +27,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-syntax define-instruction
   (sc-macro-transformer
    (lambda (form environment)
-     environment
      (if (syntax-match? '(SYMBOL * (DATUM + DATUM)) (cdr form))
 	 `(ADD-INSTRUCTION!
 	   ',(cadr form)
-	   ,(compile-database (cddr form)
+	   ,(compile-database (cddr form) environment
 	      (lambda (pattern actions)
 		pattern
 		(if (not (pair? actions))
@@ -39,16 +38,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(parse-instruction (car actions) (cdr actions) #f))))
 	 (ill-formed-syntax form)))))
 
-(define (compile-database cases procedure)
+(define (compile-database cases environment procedure)
   `(LIST
     ,@(map (lambda (rule)
-	     (parse-rule (car rule) (cdr rule)
-	       (lambda (pattern variables qualifier actions)
+	     (call-with-values (lambda () (parse-rule (car rule) (cdr rule)))
+	       (lambda (pattern variables qualifiers actions)
 		 `(CONS ',pattern
 			,(rule-result-expression variables
-						 qualifier
-						 (procedure pattern
-							    actions))))))
+						 qualifiers
+						 (procedure pattern actions)
+						 environment)))))
 	   cases)))
 
 (define optimize-group-syntax
