@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.3 2000/01/13 22:20:48 cph Exp $
+;;; $Id: imail-umail.scm,v 1.4 2000/01/14 06:41:34 cph Exp $
 ;;;
 ;;; Copyright (c) 1999 Massachusetts Institute of Technology
 ;;;
@@ -64,38 +64,65 @@
       (read-umail-folder (make-umail-url pathname) port import?))))
 
 (define (read-umail-folder url port import?)
-  (make-umail-folder url (read-umail-messages port import?)))
+  (make-umail-folder
+   url
+   (let ((from-line (read-line port)))
+     (if (eof-object? from-line)
+	 '()
+	 (begin
+	   (if (not (umail-delimiter? from-line))
+	       (error "Malformed unix mail file:" port))
+	   (let loop ((from-line from-line) (messages '()))
+	     (call-with-values
+		 (lambda () (read-umail-message from-line port import?))
+	       (lambda (message from-line)
+		 (let ((messages (cons message messages)))
+		   (if from-line
+		       (loop from-line messages)
+		       (reverse! messages)))))))))))
 
-(define (read-umail-messages port import?)
-  (map (lambda (lines)
-	 (parse-umail-message lines import?))
-       (burst-list (read-lines port)
-		   (lambda (line)
-		     (re-string-match unix-mail-delimiter line)))))
+(define (read-umail-message from-line port import?)
+  (let ((finish))
+    (let read-headers ((header-lines '()))
+      (let ((line (read-line port)))
+	(cond ((eof-object? line)
+	       (values (make-umail-message from-line
+					   (reverse! header-lines)
+					   '())
+		       #f))
+	      ((string-null? line)
+	       (let read-body ((body-lines '()))
+		 (let ((line (read-line port)))
+		   (cond ((eof-object? line)
+			  (values (make-umail-message from-line
+						      (reverse! header-lines)
+						      (reverse! body-lines))
+				  #f))
+			 ((umail-delimiter? line)
+			  (values (make-umail-message from-line
+						      (reverse! header-lines)
+						      (reverse! body-lines))
+				  line))
+			 (else
+			  (read-body (cons line body-lines)))))))
+	      (else
+	       (read-headers (cons line header-lines))))))))
 
-(define (parse-umail-message lines import?)
+(define (make-umail-message from-line header-lines body-lines)
   (let ((message
-	 (let loop ((ls (cdr lines)) (header-lines '()))
-	   (if (pair? ls)
-	       (if (string-null? (car ls))
-		   (make-standard-message
-		    (maybe-strip-imail-headers
-		     import?
-		     (lines->header-fields (reverse! header-lines)))
-		    (lines->string
-		     (map (lambda (line)
-			    (if (string-prefix-ci? ">From " line)
-				(string-tail line 1)
-				line))
-			  (cdr ls))))
-		   (loop (cdr ls) (cons (car ls) header-lines)))
-	       (make-standard-message
-		(maybe-strip-imail-headers
-		 import?
-		 (lines->header-fields (reverse! header-lines)))
-		(make-string 0))))))
-    (set-message-property message "umail-from-line" (car lines))
+	 (make-standard-message
+	  (maybe-strip-imail-headers import?
+				     (lines->header-fields header-lines))
+	  (lines->string (map (lambda (line)
+				(if (string-prefix-ci? ">From " line)
+				    (string-tail line 1)
+				    line))
+			      body-lines)))))
+    (set-message-property message "umail-from-line" from-line)
     message))
+
+(define (umail-delimiter? line)
+  (re-string-match unix-mail-delimiter line))
 
 ;;;; Write unix mail file
 
