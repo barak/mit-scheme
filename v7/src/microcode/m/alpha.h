@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for DEC Alpha computers.
 
-$Id: alpha.h,v 1.3 1992/11/18 15:31:25 gjr Exp $
+$Id: alpha.h,v 1.4 1993/02/15 03:46:52 gjr Exp $
 
-Copyright (c) 1992 Digital Equipment Corporation
+Copyright (c) 1992-1993 Digital Equipment Corporation
 
 */
 
@@ -11,10 +11,6 @@ Copyright (c) 1992 Digital Equipment Corporation
 #define PROC_TYPE PROC_TYPE_ALPHA
 #endif /* PROC_TYPE */
 
-/* The following crock seems to be needed, since ULTRIX on the vax has
-   libg but ULTRIX on the pmax doesn't! 
- */
-
 #define LIB_DEBUG
 
-#define C_SWITCH_MACHINE -Dalpha
+#define C_SWITCH_MACHINE -Olimit 1800
