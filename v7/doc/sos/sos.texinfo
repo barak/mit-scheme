@@ -6,15 +6,15 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 2.2 1997/06/25 07:23:10 cph Exp $
+@c $Id: sos.texinfo,v 2.3 1998/02/21 20:24:53 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.2
-@set UPDATED 25 June 1997
-@set UPDATE-MONTH June 1997
+@set EDITION 2.3
+@set UPDATED 21 February 1998
+@set UPDATE-MONTH February 1998
 
 @ifinfo
-Copyright @copyright{} 1993-97 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
 
 This is Edition @value{EDITION}, last updated @value{UPDATED}, of
 @cite{@value{TITLE}}.
@@ -63,7 +63,7 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1993-97 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and Computer
@@ -465,10 +465,11 @@ first.  For example, the default predicate name for the class
 @item (constructor @var{[name]} @var{slot-names} @var{[n-init-args]})
 Specifies that a constructor procedure should be defined for this class.
 @var{Name} must be a symbol, which is the name that will be bound to the
-predicate procedure; if omitted, a default name is formed by prepending
-@code{make-} to the name of the class.  If the class name is surrounded
-by angle brackets, they are stripped off first.  For example, the
-default constructor name for the class @code{<foo>} is @code{make-foo}.
+constructor procedure; if omitted, a default name is formed by
+prepending @code{make-} to the name of the class.  If the class name is
+surrounded by angle brackets, they are stripped off first.  For example,
+the default constructor name for the class @code{<foo>} is
+@code{make-foo}.
 
 @var{Slot-names} and @var{n-init-args} correspond to the arguments of
 the respective names accepted by @code{instance-constructor}, and can
