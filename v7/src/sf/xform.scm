@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.5 1993/08/03 03:09:54 gjr Exp $
+$Id: xform.scm,v 4.6 1993/09/01 00:10:31 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -227,6 +227,7 @@ MIT in each case. |#
   (combination-components expression*
     (lambda (operator operands)
       (combination/make expression
+			block
 			(transform/expression block environment operator)
 			(transform/expressions block environment operands)))))
 

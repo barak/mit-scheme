@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.10 1993/08/03 03:09:49 gjr Exp $
+$Id: subst.scm,v 4.11 1993/09/01 00:10:26 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -206,8 +206,8 @@ MIT in each case. |#
 			    ;; not found variable
 			    true)))))))))
 
-(define (integrate/reference-operator expression operations
-				      environment operator operands)
+(define (integrate/reference-operator expression operations environment
+				      block operator operands)
   (let ((variable (reference/variable operator)))
     (letrec ((mark-integrated!
 	      (lambda ()
@@ -215,13 +215,13 @@ MIT in each case. |#
 	     (integration-failure
 	      (lambda ()
 		(variable/reference! variable)
-		(combination/optimizing-make expression operator operands)))
+		(combination/optimizing-make expression block
+					     operator operands)))
 	     (integration-success
 	      (lambda (operator)
 		(mark-integrated!)
-		(integrate/combination expression
-				       operations environment
-				       operator operands)))
+		(integrate/combination expression operations environment
+				       block operator operands)))
 	     (try-safe-integration
 	      (lambda ()
 		(integrate/name-if-safe expression operator
@@ -432,47 +432,72 @@ you ask for.
   (lambda (operations environment combination)
     (integrate/combination
      combination operations environment
+     (combination/block combination)
      (combination/operator combination)
      (integrate/expressions operations
 			    environment
 			    (combination/operands combination)))))
 
 (define (integrate/combination expression operations environment
-			       operator operands)
+			       block operator operands)
   (cond ((reference? operator)
 	 (integrate/reference-operator expression operations environment
-				       operator operands))
+				       block operator operands))
 	((and (access? operator)
 	      (system-global-environment? (access/environment operator)))
 	 (integrate/access-operator expression operations environment
-				    operator operands))
+				    block operator operands))
 	((and (constant? operator)
-	      (eq? (constant/value operator) (ucode-primitive apply))
-	      (integrate/hack-apply? operands))
-	 => (lambda (operands*)
-	      (integrate/combination expression
-				     operations environment
-				     (car operands*) (cdr operands*))))
+	      (primitive-procedure? (constant/value operator)))
+	 (let ((operands*
+		(and (eq? (constant/value operator) (ucode-primitive apply))
+		     (integrate/hack-apply? operands))))
+	   (if operands*
+	       (integrate/combination expression operations environment
+				      block (car operands*) (cdr operands*))
+	       (integrate/primitive-operator expression operations environment
+					     block operator operands))))
 	(else
 	 (combination/optimizing-make
 	  expression
+	  block
 	  (if (procedure? operator)
 	      (integrate/procedure-operator operations environment
-					    operator operands)
+					    block operator operands)
 	      (let ((operator
 		     (integrate/expression operations environment operator)))
 		(if (procedure? operator)
 		    (integrate/procedure-operator operations environment
-						  operator operands)
+						  block operator operands)
 		    operator)))
 	  operands))))
 
 (define (integrate/procedure-operator operations environment
-				      procedure operands)
+				      block procedure operands)
   (integrate/procedure operations
-		       (simulate-application environment procedure operands)
+		       (simulate-application environment block
+					     procedure operands)
 		       procedure))
 
+(define (integrate/primitive-operator expression operations environment
+				      block operator operands)
+  (let ((integration-failure
+	 (lambda ()
+	   (combination/optimizing-make expression block operator operands))))
+    (operations/lookup operations (constant/value operator)
+      (lambda (operation info)
+	(case operation
+	  ((#F) (integration-failure))
+	  ((EXPAND)
+	   (info expression
+		 operands
+		 (lambda (expression)
+		   (integrate/expression operations environment expression))
+		 integration-failure
+		 block))
+	  (else (error "Unknown operation" operation))))
+      integration-failure)))
+
 (define-method/integrate 'DECLARATION
   (lambda (operations environment declaration)
     (let ((declarations (declaration/declarations declaration))
@@ -483,7 +508,7 @@ you ask for.
        (integrate/expression (declarations/bind operations declarations)
 			     environment
 			     expression)))))
-
+
 ;;;; Easy Cases
 
 (define-method/integrate 'CONSTANT
@@ -639,24 +664,22 @@ you ask for.
       operations environment		;ignore
       expression)))
 
-(define (integrate/access-operator expression operations
-				   environment operator operands)
+(define (integrate/access-operator expression operations environment
+				   block operator operands)
   (let ((name (access/name operator))
 	(dont-integrate
 	 (lambda ()
 	   (combination/make (and expression (object/scode expression))
-			     operator operands))))
+			     block operator operands))))
     (cond ((and (eq? name 'APPLY)
 		(integrate/hack-apply? operands))
 	   => (lambda (operands*)
-		(integrate/combination expression
-				       operations environment
-				       (car operands*) (cdr operands*))))
+		(integrate/combination expression operations environment
+				       block (car operands*) (cdr operands*))))
 	  ((assq name usual-integrations/constant-alist)
 	   => (lambda (entry)
-		(integrate/combination expression
-				       operations environment
-				       (cdr entry) operands)))
+		(integrate/combination expression operations environment
+				       block (cdr entry) operands)))
 	  ((assq name usual-integrations/expansion-alist)
 	   => (lambda (entry)
 		((cdr entry) expression operands
@@ -766,7 +789,7 @@ you ask for.
 	      (append (except-last-pair operands)
 		      tail)))))
 
-(define (simulate-application environment procedure operands)
+(define (simulate-application environment block procedure operands)
   (define (procedure->pretty procedure)
     (if (procedure/scode procedure)
 	(unsyntax (procedure/scode procedure))
@@ -820,7 +843,9 @@ you ask for.
 	    (let walk ((operands operands))
 	      (if (null? operands)
 		  const-null
-		  (combination/make false const-cons
+		  (combination/make false
+				    block
+				    const-cons
 				    (list (car operands)
 					  (walk (cdr operands))))))))))
 
@@ -938,7 +963,7 @@ forms are simply removed.
 ;;; Actually, we really don't want to hack with these for various
 ;;; reasons
 
-(define (combination/optimizing-make expression operator operands)
+(define (combination/optimizing-make expression block operator operands)
   (cond (
 	 ;; fold constants
 	 (and (foldable-operator? operator)
@@ -978,6 +1003,7 @@ forms are simply removed.
 		       (reassign expression (procedure/body operator))
 		       (combination/make
 			(and expression (object/scode expression))
+			block
 			(procedure/make
 			 (procedure/scode operator)
 			 (procedure/block operator)
@@ -994,7 +1020,7 @@ forms are simply removed.
 		   (append unreferenced-operands (list form))))))))
 	(else
 	 (combination/make (and expression (object/scode expression))
-			   operator operands))))
+			   block operator operands))))
 
 (define (delete-unreferenced-parameters parameters rest body operands receiver)
   (let ((free-in-body (free/expression body)))
@@ -1402,6 +1428,7 @@ forms are simply removed.
 			   block
 			   (combination/optimizing-make
 			    (and expression (object/scode expression))
+			    block
 			    (procedure/make
 			     false
 			     block

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: copy.scm,v 4.3 1993/08/03 03:09:45 gjr Exp $
+$Id: copy.scm,v 4.4 1993/09/01 00:10:20 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -195,6 +195,7 @@ MIT in each case. |#
   (lambda (block environment expression)
     (combination/make
      (combination/scode expression)
+     block
      (copy/expression block environment (combination/operator expression))
      (copy/expressions block environment (combination/operands expression)))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: reduct.scm,v 4.7 1993/08/03 22:40:00 jacob Exp $
+$Id: reduct.scm,v 4.8 1993/09/01 00:10:25 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -239,11 +239,11 @@ Examples:
 	  (else
 	   (loop (cdr l) done)))))
 
-(define (combine-1 unop x)
-  (combination/make false unop (list x)))
+(define (combine-1 block unop x)
+  (combination/make false block unop (list x)))
 
-(define (combine-2 binop x y)
-  (combination/make false binop (list x y)))
+(define (combine-2 block binop x y)
+  (combination/make false block binop (list x y)))
 
 ;;;; Building blocks
 
@@ -266,7 +266,7 @@ Examples:
      (declare (integrate mapper))
      (lambda (block value combiner)
        combiner				; ignored
-       (combine-1 (mapper block) value)))))
+       (combine-1 block (mapper block) value)))))
 
 (define (->wrapper mapper)
   (handle-variable mapper
@@ -274,6 +274,7 @@ Examples:
      (declare (integrate mapper))
      (lambda (block not-reduced reduced)
        (combination/make false
+			 block
 			 (mapper block)
 			 (append not-reduced
 				 (list reduced)))))))
@@ -312,7 +313,7 @@ Examples:
 		   (lambda (expr)
 		     (declare (integrate expr))
 		     (lambda (block x y)
-		       (combine-2 (expr block) x y)))))))
+		       (combine-2 block (expr block) x y)))))))
 
       (lambda (expr operands if-expanded if-not-expanded block)
 	(define (group l)
@@ -510,30 +511,30 @@ Examples:
 
 (define (replacement/make replacement decl-block)
   (call-with-values
-   (lambda ()
-     (parse-replacement (car replacement)
-			(cdr replacement)
-			decl-block))
-   (lambda (table default)
-     (lambda (expr operands if-expanded if-not-expanded block)
-       (let* ((len (length operands))
-	      (candidate (or (and (< len (vector-length table))
-				  (vector-ref table len))
-			     default)))
-	 (if (or (not (pair? candidate))
-		 (and (car candidate)
-		      (block/limited-lookup block
-					    (car candidate)
-					    decl-block)))
-	     (if-not-expanded)
-	     (if-expanded
-	      (combination/make
-	       (and expr (object/scode expr))
-	       (let ((frob (cdr candidate)))
-		 (if (variable? frob)
-		     (lookup (variable/name frob) block)
-		     frob))
-	       operands))))))))
+      (lambda ()
+	(parse-replacement (car replacement)
+			   (cdr replacement)
+			   decl-block))
+    (lambda (table default)
+      (lambda (expr operands if-expanded if-not-expanded block)
+	(let* ((len (length operands))
+	       (candidate (or (and (< len (vector-length table))
+				   (vector-ref table len))
+			      default)))
+	  (if (or (not (pair? candidate))
+		  (and (car candidate)
+		       (block/limited-lookup block
+					     (car candidate)
+					     decl-block)))
+	      (if-not-expanded)
+	      (if-expanded
+	       (combination/make (and expr (object/scode expr))
+				 block
+				 (let ((frob (cdr candidate)))
+				   (if (variable? frob)
+				       (lookup (variable/name frob) block)
+				       frob))
+				 operands))))))))
 
 (define (parse-replacement name ocases block)
   (define (collect len cases default)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.6 1993/08/03 03:09:47 gjr Exp $
+$Id: object.scm,v 4.7 1993/09/01 00:10:22 cph Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ MIT in each case. |#
   (define-simple-type variable (block name flags) #F)
   (define-simple-type access (environment name))
   (define-simple-type assignment (block variable value))
-  (define-simple-type combination (operator operands))
+  (define-simple-type combination (block operator operands))
   (define-simple-type conditional (predicate consequent alternative))
   (define-simple-type constant (value))
   (define-simple-type declaration (declarations expression))

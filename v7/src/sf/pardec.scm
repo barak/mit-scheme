@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.8 1993/08/03 22:40:23 jacob Exp $
+$Id: pardec.scm,v 4.9 1993/09/01 00:10:24 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -257,7 +257,9 @@ MIT in each case. |#
 		      (change-type/expression value)
 		      (list
 		       (make-declaration operation
-					 (block/lookup-name block name true)
+					 (if (symbol? name)
+					     (block/lookup-name block name true)
+					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))
 					 true))))))
@@ -294,7 +296,9 @@ MIT in each case. |#
 			 (finish (integration-info/expression value)))
 			((dumpable-expander? value)
 			 (vector operation
-				 (variable/name variable)
+				 (if (variable? variable)
+				     (variable/name variable)
+				     variable)
 				 (dumpable-expander->dumped-expander value)))
 			(else
 			 (error "Unrecognized extern value:" value))))))))))
@@ -339,18 +343,6 @@ MIT in each case. |#
 			     false))
 	 reduction-rules)))
 
-(define-declaration 'REPLACE-OPERATOR
-  (lambda (block replacements)
-    (check-declaration-syntax 'REPLACE-OPERATOR replacements)
-    (map (lambda (replacement)
-	   (make-declaration 'EXPAND
-			     (block/lookup-name block (car replacement) true)
-			     (make-dumpable-expander
-			      (replacement/make replacement block)
-			      `(REPLACE-OPERATOR ,replacement))
-			     false))
-	 replacements)))
-
 (define (check-declaration-syntax kind declarations)
   (if (not (and (list? declarations)
 		(for-all? declarations
@@ -360,6 +352,41 @@ MIT in each case. |#
 			 (list? (cdr declaration)))))))
       (error "Bad declaration:" kind declarations)))
 
+(define-declaration 'REPLACE-OPERATOR
+  (lambda (block replacements)
+    (if (not (and (list? replacements)
+		  (for-all? replacements
+		    (lambda (replacement)
+		      (and (pair? replacement)
+			   (or (symbol? (car replacement))
+			       (and (pair? (car replacement))
+				    (eq? 'PRIMITIVE (caar replacement))
+				    (pair? (cdar replacement))
+				    (symbol? (cadar replacement))
+				    (or (null? (cddar replacement))
+					(and (pair? (cddar replacement))
+					     (null? (cdddar replacement))))))
+			   (list? (cdr replacement)))))))
+	(error "Bad declaration:" 'REPLACE-OPERATOR replacements))
+    (map (lambda (replacement)
+	   (make-declaration
+	    'EXPAND
+	    (let ((name (car replacement)))
+	      (cond ((symbol? name)
+		     (block/lookup-name block name true))
+		    ((and (pair? name)
+			  (eq? (car name) 'PRIMITIVE))
+		     (make-primitive-procedure (cadr name)
+					       (and (not (null? (cddr name)))
+						    (caddr name))))
+		    (else
+		     (error "Illegal name in replacement:" name))))
+	    (make-dumpable-expander
+	     (replacement/make replacement block)
+	     `(REPLACE-OPERATOR ,replacement))
+	    false))
+	 replacements)))
+
 (define (make-dumpable-expander expander declaration)
   (make-entity (lambda (self expr operands if-expanded if-not-expanded block)
 		 self			; ignored
