@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.29 1995/09/05 19:08:20 adams Exp $
+$Id: utils.scm,v 1.30 1995/09/08 00:56:01 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -631,6 +631,11 @@ Example use of FORM/COPY-TRANSFORMING:
 (define (form/number? form)
   (and (QUOTE/? form)
        (number? (quote/text form))
+       (quote/text form)))
+
+(define (form/exact-integer? form)
+  (and (QUOTE/? form)
+       (exact-integer? (quote/text form))
        (quote/text form)))
 
 (define (binding-context-type keyword context bindings)
