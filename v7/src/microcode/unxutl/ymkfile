@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.61 1993/01/23 00:07:44 nick Exp $
+$Id: ymkfile,v 1.62 1993/02/15 03:40:39 gjr Exp $
 
-Copyright (c) 1989-1992 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -667,7 +667,7 @@ artutl.o : scheme.touch
 bignum.o : scheme.touch bignumint.h limits.h
 bigprm.o flonum.o intprm.o : scheme.touch prims.h zones.h
 generic.o : scheme.touch prims.h
-fixnum.o : scheme.touch prims.h
+fixnum.o : scheme.touch prims.h mul.c
 
 storage.o : scheme.touch gctype.c
 
