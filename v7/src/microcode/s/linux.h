@@ -1,9 +1,9 @@
 /* -*-C-*-
    System file for Linux
 
-$Id: linux.h,v 1.6 1995/10/06 06:45:24 cph Exp $
+$Id: linux.h,v 1.7 1996/03/04 20:38:54 cph Exp $
 
-Copyright (c) 1995 Massachusetts Institute of Technology
+Copyright (c) 1995-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,8 +35,6 @@ MIT in each case. */
 
 #define LIBX11_MACHINE -L/usr/X11/lib
 
-#define LIBS_TERMCAP -ltermcap
-
 #define LIB_DEBUG
 
 #define ALTERNATE_M4 s/ultrix.m4
@@ -55,20 +53,12 @@ MIT in each case. */
    patch, because one of these days a.out won't be supported, but
    hopefully by then we'll know how to fix this correctly.  */
 
-#if 0
 #ifdef __ELF__
-#define C_SWITCH_SYSTEM -D_LINUX_ELF
 #define M4_SWITCH_SYSTEM -P "define(LINUX_ELF,1)"
+#define LD_SWITCH_SYSTEM -T s/linuxelf.lds
+#define LIBS_TERMCAP -lncurses
 #else
-#define C_SWITCH_SYSTEM
 #define M4_SWITCH_SYSTEM
-#endif
-#endif
-
-#ifdef __ELF__
-#define C_SWITCH_SYSTEM -b i486-linuxaout
-#define LD_SWITCH_SYSTEM -b i486-linuxaout
-#else
-#define C_SWITCH_SYSTEM
 #define LD_SWITCH_SYSTEM
+#define LIBS_TERMCAP -ltermcap
 #endif
