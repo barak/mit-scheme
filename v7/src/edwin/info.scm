@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.100 1991/04/23 06:39:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.101 1991/04/24 00:37:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -657,7 +657,7 @@ The name may be an abbreviation of the reference name."
 	  (begin
 	    (if (not (eq? (buffer-major-mode buffer) (ref-mode-object info)))
 		(set-buffer-major-mode! buffer (ref-mode-object info)))
-	    (group-un-clip! (buffer-group buffer))))
+	    (buffer-widen! buffer)))
       (set-buffer-read-only! buffer)
       (if (string=? nodename "*")
 	  (begin
