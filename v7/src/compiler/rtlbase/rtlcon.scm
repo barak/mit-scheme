@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.11 1988/08/29 23:02:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.12 1988/08/31 05:45:58 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -203,38 +203,52 @@ MIT in each case. |#
 
 (define (locative-dereference-1 locative scfg-append! locative-fetch
 				if-register if-memory)
-  (cond ((symbol? locative)
-	 (let ((register (rtl:machine-register? locative)))
-	   (if register
-	       (if-register register)
-	       (if-memory (interpreter-regs-pointer)
-			  (rtl:interpreter-register->offset locative)
-			  'OBJECT))))
-	((pair? locative)
-	 (case (car locative)
-	   ((REGISTER)
-	    (if-register locative))
-	   ((FETCH)
-	    (locative-fetch (cadr locative) 0 'OBJECT scfg-append! if-memory))
-	   ((OFFSET)
-	    (let ((fetch (rtl:locative-offset-base locative)))
-	      (if (and (pair? fetch) (eq? (car fetch) 'FETCH))
-		  (locative-fetch (cadr fetch)
-				  (rtl:locative-offset-offset locative)
-				  (rtl:locative-offset-granularity locative)
-				  scfg-append!
-				  if-memory)
-		  (error "LOCATIVE-DEREFERENCE: Bad OFFSET" locative))))
-	   ((CONSTANT)
-	    (assign-to-temporary locative scfg-append!
- 	      (lambda (register)
-		(assign-to-address-temporary register scfg-append!
-		  (lambda (register)
-		    (if-memory register 0 'OBJECT))))))
-	   (else
-	    (error "LOCATIVE-DEREFERENCE: Unknown keyword" (car locative)))))
-	(else
-	 (error "LOCATIVE-DEREFERENCE: Illegal locative" locative))))
+  (let ((dereference-fetch
+	 (lambda (locative offset granularity)
+	   (locative-fetch (cadr locative) offset granularity scfg-append!
+			   if-memory)))
+	(dereference-constant
+	 (lambda (locative offset granularity)
+	   (assign-to-temporary locative scfg-append!
+	     (lambda (register)
+	       (assign-to-address-temporary register scfg-append!
+		 (lambda (register)
+		   (if-memory register offset granularity)))))))
+	(locative-error
+	 (lambda (message)
+	   (error (string-append "LOCATIVE-DEREFERENCE: " message) locative))))
+    (cond ((symbol? locative)
+	   (let ((register (rtl:machine-register? locative)))
+	     (if register
+		 (if-register register)
+		 (if-memory (interpreter-regs-pointer)
+			    (rtl:interpreter-register->offset locative)
+			    'OBJECT))))
+	  ((pair? locative)
+	   (case (car locative)
+	     ((REGISTER)
+	      (if-register locative))
+	     ((FETCH)
+	      (dereference-fetch locative 0 'OBJECT))
+	     ((OFFSET)
+	      (let ((base (rtl:locative-offset-base locative))
+		    (offset (rtl:locative-offset-offset locative))
+		    (granularity (rtl:locative-offset-granularity locative)))
+		(if (not (pair? base))
+		    (locative-error "offset base not pair"))
+		(case (car base)
+		  ((FETCH)
+		   (dereference-fetch base offset granularity))
+		  ((CONSTANT)
+		   (dereference-constant base offset granularity))
+		  (else
+		   (locative-error "illegal offset base")))))
+	     ((CONSTANT)
+	      (dereference-constant locative 0 'OBJECT))
+	     (else
+	      (locative-error "Unknown keyword"))))
+	  (else
+	   (locative-error "Illegal locative")))))
 
 (define (locative-fetch locative offset granularity scfg-append! receiver)
   (let ((receiver
@@ -272,13 +286,13 @@ MIT in each case. |#
 
 (define (generate-offset-address expression offset granularity scfg-append!
 				 receiver)
-  (if (eq? granularity 'OBJECT)
-      (guarantee-address expression scfg-append!
-        (lambda (address)
-	  (guarantee-register address scfg-append!
-    	    (lambda (register)
-	      (receiver (rtl:make-offset-address register offset))))))
-      (error "Byte Offset Address not implemented" expression offset)))
+  (if (not (eq? granularity 'OBJECT))
+      (error "Byte Offset Address not implemented" expression offset))
+  (guarantee-address expression scfg-append!
+    (lambda (address)
+      (guarantee-register address scfg-append!
+	(lambda (register)
+	  (receiver (rtl:make-offset-address register offset)))))))
 
 (define-export (expression-simplify-for-statement expression receiver)
   (expression-simplify expression scfg*scfg->scfg! receiver))
@@ -476,7 +490,7 @@ MIT in each case. |#
 	(expression-simplify* datum scfg-append!
 	  (lambda (datum)
 	    (receiver (rtl:make-cons-pointer type datum))))))))
-
+
 (define-expression-method 'FIXNUM-2-ARGS
   (lambda (receiver scfg-append! operator operand1 operand2)
     (expression-simplify* operand1 scfg-append!
