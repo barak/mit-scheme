@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.30 1992/09/30 02:33:54 jinx Exp $
+$Id: option.c,v 1.31 1993/02/11 02:24:35 adams Exp $
 
 Copyright (c) 1990-92 Massachusetts Institute of Technology
 
@@ -45,15 +45,22 @@ MIT in each case. */
 extern char * getenv ();
 extern void free ();
 #define xfree(p) free ((PTR) (p))
-extern int strlen ();
 extern int atoi ();
+
+#ifdef WINNT
+#include <io.h>
+#include <string.h>
+#else
 extern int access ();
+extern int strlen ();
+#endif
+
 extern struct obstack scratch_obstack;
 extern CONST char * scheme_program_name;
 extern void EXFUN (termination_init_error, (void));
 
 #ifndef SUB_DIRECTORY_DELIMITER
-#  ifdef DOS386
+#  if defined(DOS386) || defined(WINNT)
 #    define SUB_DIRECTORY_DELIMITER '\\'
 #  else
 #    define SUB_DIRECTORY_DELIMITER '/'
@@ -61,14 +68,14 @@ extern void EXFUN (termination_init_error, (void));
 #endif
 
 #ifndef PATH_DELIMITER
-#  ifdef DOS386
+#  if defined(DOS386) || defined(WINNT)
 #    define PATH_DELIMITER ';'
 #  else
 #    define PATH_DELIMITER ':'
 #  endif
 #endif
 
-#ifdef DOS386
+#if defined(DOS386) || defined(WINNT)
 #  define FILE_ABSOLUTE(filename)			\
      ((((filename) [0]) == SUB_DIRECTORY_DELIMITER)	\
       || (((filename) [1]) == ':'))
@@ -240,7 +247,7 @@ The following options are only meaningful to bchscheme:
   Specifies the program to use as the gc drones for overlapped I/O.
 
 -gc-end-position N
-  Specifies a position into the gc file past which bchscheme should not use. 
+  Specifies a position into the gc file past which bchscheme should not use.
 
 -gc-file FILENAME
   Specifies that FILENAME should be used garbage collection.  Overrides
@@ -271,7 +278,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_LIBRARY_PATH
-#ifdef DOS386
+#if defined(DOS386) || defined(WINNT)
 #define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
 #else
 #define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
@@ -412,7 +419,7 @@ The following options are only meaningful to bchscheme:
 /* These are only meaningful for bchscheme */
 
 #ifndef DEFAULT_GC_DIRECTORY
-#ifdef DOS386
+#if defined(DOS386) || defined(WINNT)
 #define DEFAULT_GC_DIRECTORY		"\\tmp"
 #else
 #define DEFAULT_GC_DIRECTORY		"/tmp"
