@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intprm.c,v 1.3 1989/10/26 07:49:52 cph Rel $
+$Id: intprm.c,v 1.4 1992/08/29 13:20:43 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -158,7 +158,16 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
     fast SCHEME_OBJECT integer = (ARG_REF (1));
     fast long control = (arg_index_integer (2, 4));
     if (FIXNUM_P (integer))
-      PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
+    {
+      long X = (FIXNUM_TO_LONG (integer));
+      double Y = ((double) X);
+
+      if (((long) Y) == X)
+	PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
+      if ((control & 2) != 0)
+	error_bad_range_arg (1);
+      PRIMITIVE_RETURN (SHARP_F);
+    }
     if (bignum_fits_in_word_p
 	(integer,
 	 (((control & 1) != 0) ? DBL_MANT_DIG : DBL_MAX_EXP),
