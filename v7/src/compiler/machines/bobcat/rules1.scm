@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.10 1988/05/17 16:57:01 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules1.scm,v 4.11 1988/05/19 15:26:57 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -146,6 +146,14 @@ MIT in each case. |#
     (LAP (AND L ,mask-reference ,target))))
 
 (define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (OFFSET (REGISTER (? address)) (? offset))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((source (indirect-reference! address offset)))
+    (delete-dead-registers!)
+    (let ((target-ref (register-reference (allocate-alias-register! target 'DATA))))
+      (LAP (MOV L ,source ,target-ref)))))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
   (QUALIFIER (pseudo-register? target))
   (let ((target (move-to-alias-register! source 'DATA target)))
@@ -229,13 +237,44 @@ MIT in each case. |#
 	   ,(remove-type-from-fixnum target-ref)))))
 
 (define-rule statement
+  (ASSIGN (REGISTER (? target)) (FIXNUM->OBJECT (REGISTER (? source))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((target-ref (move-to-alias-register! source 'DATA target)))
+    (LAP ,(put-type-in-ea (ucode-type fixnum) target-ref))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	    (FIXNUM-2-ARGS (? operator) (? operand1) (? operand2))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((temp-reg (allocate-temporary-register! 'DATA)))
+    (let ((operation
+	   (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
+		,@(put-type-in-ea (ucode fixnum) temp-reg))))
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target temp-reg false)
+      operation)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM->OBJECT
+	   (FIXNUM-1-ARG (? operator) (? operand))))
+  (QUALIFIER (pseudo-register? target))
+  (let ((temp-reg (allocate-temporary-register! 'DATA)))
+    (let ((operation
+	   (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
+		,@(put-type-in-ea (ucode fixnum) temp-reg))))
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target temp-reg false)
+      operation)))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS (? operator) (? operand1) (? operand2)))
   (QUALIFIER (pseudo-register? target))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (let ((operation
-	   (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
-		,@(put-type-in-ea (ucode-type fixnum) (register-reference temp-reg)))))
+	   (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg))))
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
@@ -246,8 +285,7 @@ MIT in each case. |#
   (QUALIFIER (pseudo-register? target))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (let ((operation
-	   (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
-		,@(put-type-in-ea (ucode-type fixnum) (register-reference temp-reg)))))
+	   (LAP ,@(fixnum-do-1-arg! operator operand temp-reg))))
       (delete-dead-registers!)
       (add-pseudo-register-alias! target temp-reg false)
       operation)))
@@ -388,12 +426,18 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
+	  (FIXNUM->OBJECT (REGISTER (? r))))
+  (let ((target (indirect-reference! a n)))
+    (LAP (MOV L ,(coerce->any r) ,target)
+	 ,@(put-type-in-ea (ucode-type fixnum) target))))
+
+(define-rule statement
+  (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (FIXNUM-2-ARGS (? operator) (? operand1) (? operand2)))
   (let ((temp-reg (allocate-temporary-register! 'DATA))
 	(target-ref (indirect-reference! a n)))
     (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
-	 (MOV L ,(register-reference temp-reg) ,target-ref)
-	 ,@(put-type-in-ea (ucode-type fixnum) target-ref))))
+	 (MOV L ,(register-reference temp-reg) ,target-ref))))
 
 
 (define-rule statement
@@ -402,8 +446,7 @@ MIT in each case. |#
   (let ((temp-reg (allocate-temporary-register! 'DATA))
 	(target-ref (indirect-reference! a n)))
     (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
-	 (MOV L ,(register-reference temp-reg) ,target-ref)
-	 ,@(put-type-in-ea (ucode-type fixnum) target-ref))))
+	 (MOV L ,(register-reference temp-reg) ,target-ref))))
 
 ;;;; Consing
 
@@ -430,19 +473,23 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
+	  (FIXNUM->OBJECT (REGISTER (? r))))
+  (LAP (MOV L ,(coerce->any r) (@A+ 5))
+       ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 5)))))
+
+(define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
 	  (FIXNUM-2-ARGS (? operator) (? operand1) (? operand2)))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
-	 (MOV L ,(register-reference temp-reg) (@A+ 5))
-	 ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 5))))))
+	 (MOV L ,(register-reference temp-reg) (@A+ 5)))))
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 13) 1)
 	  (FIXNUM-1-ARG (? operator) (? operand)))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
-	 (MOV L ,(register-reference temp-reg) (@A+ 5))
-	 ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 5))))))
+	 (MOV L ,(register-reference temp-reg) (@A+ 5)))))
 
 ;; This pops the top of stack into the heap
 
@@ -486,17 +533,21 @@ MIT in each case. |#
        (MOV B (& ,(ucode-type compiled-entry)) (@A 7))))
 
 (define-rule statement
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
+	  (FIXNUM->OBJECT (REGISTER (? r))))
+  (LAP (MOV L ,(coerce->any r) (@-A 7))
+       ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 7)))))
+
+(define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) 
 	  (FIXNUM-2-ARGS (? operator) (? operand1) (? operand2)))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (LAP ,@(fixnum-do-2-args! operator operand1 operand2 temp-reg)
-	 (MOV L ,(register-reference temp-reg) (@-A 7))
-	 ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 7))))))
+	 (MOV L ,(register-reference temp-reg) (@-A 7)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) 
 	  (FIXNUM-1-ARG (? operator) (? operand)))
   (let ((temp-reg (allocate-temporary-register! 'DATA)))
     (LAP ,@(fixnum-do-1-arg! operator operand temp-reg)
-	 (MOV L ,(register-reference temp-reg) (@-A 7))
-	 ,@(put-type-in-ea (ucode-type fixnum) (INST-EA (@A 7))))))
+	 (MOV L ,(register-reference temp-reg) (@-A 7)))))
