@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ossig.h,v 1.1 1990/06/20 19:36:40 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ossig.h,v 1.2 1992/05/05 06:57:20 jinx Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,22 +39,16 @@ MIT in each case. */
 
 enum interrupt_handler
 {
-  interrupt_handler_default,
   interrupt_handler_ignore,
+  interrupt_handler_default,
+  interrupt_handler_unknown,
   interrupt_handler_terminate,
   interrupt_handler_stop,
-  interrupt_handler_control_g,
   interrupt_handler_interactive,
-  interrupt_handler_unknown
+  interrupt_handler_control_b,
+  interrupt_handler_control_g,
+  interrupt_handler_control_u,
+  interrupt_handler_control_x
 };
-
-extern enum interrupt_handler EXFUN (OS_signal_quit_handler, (void));
-extern enum interrupt_handler EXFUN (OS_signal_int_handler, (void));
-extern enum interrupt_handler EXFUN (OS_signal_tstp_handler, (void));
-extern void EXFUN
-  (OS_signal_set_interrupt_handlers,
-   (enum interrupt_handler quit_handler,
-    enum interrupt_handler int_handler,
-    enum interrupt_handler tstp_handler));
 
 #endif /* SCM_OSSIG_H */
