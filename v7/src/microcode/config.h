@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.70 1992/03/26 03:35:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.71 1992/05/05 02:24:38 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -374,22 +374,29 @@ typedef unsigned long SCHEME_OBJECT;
 #define b32
 
 #ifdef sequent
-#define MACHINE_TYPE		"sequent386"
-#else /* not sequent */
-#ifdef sun
-#define MACHINE_TYPE		"sun386i"
-#else /* not sun */
-#define MACHINE_TYPE		"i386"
-#endif /* not sun */
-#endif /* not sequent */
+#  define MACHINE_TYPE		"sequent386"
+#endif
 
-/* These are really OS-dependent.  They are correct for the sequent
-   and for SYSV3, but we don't know about other 386 systems. */
+#ifdef sun
+#  define MACHINE_TYPE		"sun386i"
+#endif
+
+#ifndef MACHINE_TYPE
+#  define MACHINE_TYPE		"i386/i486"
+#endif
+
+/* These are really OS-dependent.
+   They are correct for the sequent, SYSV3, DOS (Zortech),
+   but we don't know about other 386 systems. 
+ */
+
 #define HEAP_IN_LOW_MEMORY
-#ifndef _MACH_UNIX
+
 /* Bug in Mach 3.0 for 386s floating point library. */
+#ifndef _MACH_UNIX
 #  define HAS_FLOOR
 #  define HAS_FREXP
+#  define HAS_MODF
 #endif
 
 #endif /* i386 */
@@ -461,29 +468,6 @@ typedef unsigned long SCHEME_OBJECT;
 /* #define HAS_FREXP */
 #define HAS_MODF
 #endif /* alpha */
-
-
-/* 386/486 under DOS and Zortech C */
-#ifdef DOS386
-#define MACHINE_TYPE            "80386/486"
-#define BELL                    '\007'
-#define UNSIGNED_SHIFT
-#define VAX_BYTE_ORDER
-#define CHAR_BIT                8
-#define USHORT_SIZE             16
-#define ULONG_SIZE              32
-#define DBFLT_SIZE              64
-#define FLONUM_MANTISSA_BITS    53
-#define FLONUM_EXPT_SIZE        10
-#define MAX_FLONUM_EXPONENT     1023
-#define FASL_INTERNAL_FORMAT    FASL_I386
-#define b32
-#define HEAP_IN_LOW_MEMORY
-#define HAS_FLOOR
-#define HAS_FREXP
-#define HAS_MODF
-#endif
-
 
 /* These (pdp10, nu) haven't worked in a while.
    Should be upgraded or flushed some day.  */
