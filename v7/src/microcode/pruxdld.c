@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.10 1997/05/05 07:24:13 cph Exp $
+$Id: pruxdld.c,v 1.11 1997/05/05 07:25:55 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -35,6 +35,9 @@ MIT in each case. */
 /* This file contains the interface to a unix dynamic loader.
    It has been tried under HP-UX, SunOS (4.1.?), and Alpha OSF 1.
  */
+
+/* This #if covers the entire file. */
+#ifndef DISABLE_DLD_SUPPORT
 
 #include "scheme.h"
 #include "prims.h"
@@ -248,3 +251,5 @@ Construct the corresponding Scheme string.")
   address = ((long) (arg_integer (1)));
   PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) address));
 }
+
+#endif /* not DISABLE_DLD_SUPPORT */
