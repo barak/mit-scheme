@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.11 1991/12/19 20:49:59 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.12 1991/12/19 21:58:55 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -510,7 +510,7 @@ MIT in each case. |#
 
 ;;;; Fonts
 
-(define-structure (x-font-structure (conc-name font-structure/)
+(define-structure (x-font-structure (conc-name x-font-structure/)
 				    (type vector))
   (name false read-only true)
   (direction false read-only true)
@@ -523,7 +523,7 @@ MIT in each case. |#
   (max-ascent false read-only true)
   (max-descent false read-only true))
 
-(define-structure (x-character-bounds (conc-name character-bounds/)
+(define-structure (x-character-bounds (conc-name x-character-bounds/)
 				      (type vector))
   (lbearing false read-only true)
   (rbearing false read-only true)
