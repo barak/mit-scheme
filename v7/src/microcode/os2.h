@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.4 1995/10/30 07:54:29 cph Exp $
+$Id: os2.h,v 1.5 1996/05/10 18:48:03 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -62,8 +62,6 @@ MIT in each case. */
 #include "os2ctty.h"
 #include "os2cthrd.h"
 #include "os2pm.h"
-
-#define OS2_MAX_FILE_HANDLES() 20
 
 #define FILE_ANY							\
   (FILE_NORMAL | FILE_HIDDEN | FILE_SYSTEM | FILE_DIRECTORY | FILE_ARCHIVED)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.6 1996/05/09 20:21:39 cph Exp $
+$Id: os2io.c,v 1.7 1996/05/10 18:47:58 cph Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -46,10 +46,29 @@ struct channel * OS2_channel_table;
 Tchannel * OS2_channel_pointer_table;
 const int OS_have_select_p = 1;
 
+#ifndef OS2_DEFAULT_MAX_FH
+#define OS2_DEFAULT_MAX_FH 256
+#endif
+
+/* Set this to a larger size than OS2_DEFAULT_MAX_FH, because the
+   maximum number of file handles can be increased dynamically by
+   calling a primitive.  */
+#ifndef OS2_DEFAULT_CHANNEL_TABLE_SIZE
+#define OS2_DEFAULT_CHANNEL_TABLE_SIZE 1024
+#endif
+
 void
 OS2_initialize_channels (void)
 {
-  OS_channel_table_size = (OS2_MAX_FILE_HANDLES ());
+  {
+    LONG req_max_fh = 0;
+    ULONG current_max_fh;
+    STD_API_CALL (dos_set_rel_max_fh, ((&req_max_fh), (&current_max_fh)));
+    req_max_fh = (OS2_DEFAULT_MAX_FH - current_max_fh);
+    if (req_max_fh > 0)
+      STD_API_CALL (dos_set_rel_max_fh, ((&req_max_fh), (&current_max_fh)));
+  }
+  OS_channel_table_size = OS2_DEFAULT_CHANNEL_TABLE_SIZE;
   OS2_channel_table =
     (OS_malloc (OS_channel_table_size * (sizeof (struct channel))));
   OS2_channel_pointer_table =

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pros2fs.c,v 1.15 1995/11/06 21:52:24 cph Exp $
+$Id: pros2fs.c,v 1.16 1996/05/10 18:47:52 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -413,4 +413,15 @@ DEFINE_PRIMITIVE ("OS2-COPY-FILE", Prim_OS2_copy_file, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   OS_file_copy ((STRING_ARG (1)), (STRING_ARG (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2-SET-REL-MAX-FH", Prim_OS2_set_rel_max_fh, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    LONG req_max_fh = (arg_integer (1));
+    ULONG current_max_fh;
+    STD_API_CALL (dos_set_rel_max_fh, ((&req_max_fh), (&current_max_fh)));
+    PRIMITIVE_RETURN (ulong_to_integer (current_max_fh));
+  }
 }

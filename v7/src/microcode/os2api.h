@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.8 1996/05/09 20:20:58 cph Exp $
+$Id: os2api.h,v 1.9 1996/05/10 18:47:42 cph Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -94,8 +94,10 @@ enum syscall_names
   syscall_dos_set_fh_state,
   syscall_dos_set_file_ptr,
   syscall_dos_set_file_size,
+  syscall_dos_set_max_fh,
   syscall_dos_set_mem,
   syscall_dos_set_path_info,
+  syscall_dos_set_rel_max_fh,
   syscall_dos_start_timer,
   syscall_dos_stop_timer,
   syscall_dos_wait_child,
@@ -873,8 +875,10 @@ enum syserr_names
 #define dos_set_fh_state	DosSetFHState
 #define dos_set_file_ptr	DosSetFilePtr
 #define dos_set_file_size	DosSetFileSize
+#define dos_set_max_fh		DosSetMaxFH
 #define dos_set_mem		DosSetMem
 #define dos_set_path_info	DosSetPathInfo
+#define dos_set_rel_max_fh	DosSetRelMaxFH
 #define dos_start_timer		DosStartTimer
 #define dos_stop_timer		DosStopTimer
 #define dos_wait_child		DosWaitChild
@@ -944,8 +948,10 @@ static char * syscall_names_table [] =
   "dos-set-fh-state",
   "dos-set-file-ptr",
   "dos-set-file-size",
+  "dos-set-max-fh",
   "dos-set-mem",
   "dos-set-path-info",
+  "dos-set-rel-max-fh",
   "dos-start-timer",
   "dos-stop-timer",
   "dos-wait-child",
