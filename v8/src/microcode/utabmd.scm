@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utabmd.scm,v 9.64 1992/11/10 03:05:43 cph Exp $
+;;; $Id: utabmd.scm,v 9.65 1993/01/12 19:50:08 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
 ;;;
@@ -633,6 +633,7 @@
 	       WRITE
 	       STAT
 	       LSTAT
+	       MKTIME
 	       ))
 
 ;;; [] System-call errors
@@ -698,4 +699,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.64 1992/11/10 03:05:43 cph Exp $"
+"$Id: utabmd.scm,v 9.65 1993/01/12 19:50:08 gjr Exp $"

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: msdos.h,v 1.3 1992/10/07 06:23:36 jinx Exp $
+$Id: msdos.h,v 1.4 1993/01/12 19:47:44 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,7 +94,6 @@ enum syscall_names
   syscall_listen,
   syscall_localtime,
   syscall_lseek,
-  syscall_lstat,    
   syscall_malloc,
   syscall_mkdir,
   syscall_open,
@@ -126,9 +125,12 @@ enum syscall_names
   syscall_unlink,
   syscall_utime,
   syscall_vfork,
-  syscall_write
+  syscall_write,
+  syscall_stat,
+  syscall_lstat,
+  syscall_mktime
 };
-
+
 enum syserr_names
 {
   syserr_unknown,
@@ -172,7 +174,6 @@ enum syserr_names
 };
 
 extern void EXFUN (error_system_call, (int code, enum syscall_names name));
-
 
 #include <limits.h>
 #include <time.h>
@@ -399,6 +400,7 @@ extern char * EXFUN (getlogin, (void));
 #define DOS_lseek lseek
 #define DOS_malloc malloc
 #define DOS_mknod mknod
+#define DOS_mktime mktime
 #define DOS_pause pause
 #define DOS_pipe pipe
 #define DOS_read read

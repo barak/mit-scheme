@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.38 1992/08/29 13:41:39 jinx Exp $
+$Id: ux.h,v 1.39 1993/01/12 19:47:49 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -125,7 +125,8 @@ enum syscall_names
   syscall_vfork,
   syscall_write,
   syscall_stat,
-  syscall_lstat
+  syscall_lstat,
+  syscall_mktime
 };
 
 enum syserr_names
@@ -738,6 +739,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_lseek lseek
 #define UX_malloc malloc
 #define UX_mknod mknod
+#define UX_mktime mktime
 #define UX_pause pause
 #define UX_pipe pipe
 #define UX_read read
