@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.3 1988/06/14 08:31:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.4 1988/07/16 20:54:39 hal Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -65,7 +65,7 @@ MIT in each case. |#
   (lambda (state application)
     ((case (application-type application)
        ((COMBINATION)
-	(standard-unparser "COMBINATION"))
+	(standard-unparser "COMBINATION" false))
        ((RETURN)
 	(standard-unparser "RETURN"
 	  (lambda (state return)
