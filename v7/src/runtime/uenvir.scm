@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.43 2001/11/02 17:09:51 cph Exp $
+$Id: uenvir.scm,v 14.44 2001/12/18 20:49:33 cph Exp $
 
 Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
@@ -311,14 +311,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     environment))
 
 (define (extend-ic-environment environment)
-  (if (not (or (system-global-environment? environment)
-	       (ic-environment? environment)))
+  (if (not (interpreter-environment? environment))
       (illegal-environment environment 'EXTEND-IC-ENVIRONMENT))
-  (let ((environment (eval '(let () (the-environment)) environment)))
-    (set-environment-syntax-table!
-     environment
-     (make-syntax-table (environment-syntax-table environment)))
-    environment))
+  (eval '(LET () (THE-ENVIRONMENT)) environment))
 
 (define (ic-environment/lambda environment)
   (procedure-lambda (ic-environment/procedure environment)))
