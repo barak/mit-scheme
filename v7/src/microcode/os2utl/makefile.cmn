@@ -1,8 +1,8 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile.cmn,v 1.6 1995/11/04 00:58:50 cph Exp $
+###	$Id: makefile.cmn,v 1.7 1996/05/09 20:22:56 cph Exp $
 ###
-###	Copyright (c) 1994-95 Massachusetts Institute of Technology
+###	Copyright (c) 1994-96 Massachusetts Institute of Technology
 ###
 ###	This material was developed by the Scheme project at the
 ###	Massachusetts Institute of Technology, Department of
@@ -48,7 +48,7 @@ USER_LIBS =
 
 SCHEME_SOURCES = $(USER_PRIM_SOURCES) missing.c
 SCHEME_OBJECTS = $(USER_PRIM_OBJECTS) missing.$(OBJ)
-SCHEME_LIB = $(USER_LIBS)
+SCHEME_LIB = $(USER_LIBS) so32dll.lib tcp32dll.lib gdbm.lib
 
 CORE_SOURCES = \
 $(MACHINE_SOURCES) \
@@ -179,11 +179,13 @@ bchpur.$(OBJ) \
 bchutl.$(OBJ)
 
 OS_PRIM_SOURCES = \
+prgdbm.c \
 prosenv.c \
 prosfile.c \
 prosfs.c \
 prosio.c \
 prosproc.c \
+pruxsock.c \
 prosterm.c \
 prostty.c \
 pros2fs.c \
@@ -192,11 +194,13 @@ pros2pm.c
 # prospty.c
 
 OS_PRIM_OBJECTS = \
+prgdbm.$(OBJ) \
 prosenv.$(OBJ) \
 prosfile.$(OBJ) \
 prosfs.$(OBJ) \
 prosio.$(OBJ) \
 prosproc.$(OBJ) \
+pruxsock.$(OBJ) \
 prosterm.$(OBJ) \
 prostty.$(OBJ) \
 pros2fs.$(OBJ) \
@@ -218,6 +222,7 @@ os2pipe.c \
 os2pm.c \
 os2pmcon.c \
 os2proc.c \
+os2sock.c \
 os2term.c \
 os2thrd.c \
 os2top.c \
@@ -238,6 +243,7 @@ os2pipe.$(OBJ) \
 os2pm.$(OBJ) \
 os2pmcon.$(OBJ) \
 os2proc.$(OBJ) \
+os2sock.$(OBJ) \
 os2term.$(OBJ) \
 os2thrd.$(OBJ) \
 os2top.$(OBJ) \
@@ -371,6 +377,7 @@ prosfs.$(OBJ) : osfs.h
 prosio.$(OBJ) : osio.h
 prosproc.$(OBJ) : osproc.h
 #prospty.$(OBJ) : osterm.h osio.h ospty.h
+prossock.$(OBJ) : uxsock.h osio.h
 prosterm.$(OBJ) : osterm.h osio.h
 prostty.$(OBJ) : ostty.h osctty.h osfile.h osio.h
 prmcon.$(OBJ) : scheme.tch prims.h prmcon.h
@@ -386,6 +393,7 @@ os2fs.$(OBJ) : osfs.h
 os2pm.$(OBJ) : os2pm-id.h os2pm-mi.h os2pm-dc.h os2pm-rp.h
 os2pmcon.$(OBJ) : os2pmcon.h version.h
 os2proc.$(OBJ) : osproc.h
+os2sock.$(OBJ) : uxsock.h
 os2top.$(OBJ) : scheme.tch ostop.h option.h
 os2tty.$(OBJ) : ostty.h
 os2xcpt.$(OBJ) : scheme.tch $(GC_HEAD_FILES)
