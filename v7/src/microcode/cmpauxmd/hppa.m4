@@ -1,0 +1,181 @@
+changecom(`;');;; -*-Midas-*-
+;;;
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.1 1989/11/23 19:52:04 jinx Exp $
+;;;
+;;;	Copyright (c) 1989 Massachusetts Institute of Technology
+;;;
+;;;	This material was developed by the Scheme project at the
+;;;	Massachusetts Institute of Technology, Department of
+;;;	Electrical Engineering and Computer Science.  Permission to
+;;;	copy this software, to redistribute it, and to use it for any
+;;;	purpose is granted, subject to the following restrictions and
+;;;	understandings.
+;;;
+;;;	1. Any copy made of this software must include this copyright
+;;;	notice in full.
+;;;
+;;;	2. Users of this software agree to make their best efforts (a)
+;;;	to return to the MIT Scheme project any improvements or
+;;;	extensions that they make, so that these may be included in
+;;;	future releases; and (b) to inform MIT of noteworthy uses of
+;;;	this software.
+;;;
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
+;;;	research.
+;;;
+;;;	4. MIT has made no warrantee or representation that the
+;;;	operation of this software will be error-free, and MIT is
+;;;	under no obligation to provide any services, by way of
+;;;	maintenance, update, or otherwise.
+;;;
+;;;	5. In conjunction with products arising from the use of this
+;;;	material, there shall be no use of the name of the
+;;;	Massachusetts Institute of Technology nor of any adaptation
+;;;	thereof in any advertising, promotional, or sales literature
+;;;	without prior written consent from MIT in each case.
+;;;
+
+;;;; HP Precision Architecture assembly language part of the compiled
+;;;; code interface. See cmpint.c, cmpint-hppa.h, and cmpgc.h for more
+;;;; documentation.
+;;;;
+;;;; NOTE:
+;;;;	Assumptions:
+;;;;
+;;;;	1) All registers (except double floating point registers) and
+;;;;	stack locations hold a C long object.
+;;;;
+;;;;	2) The C compiler divides registers into three groups:
+;;;;	- Linkage registers, used for procedure calls and global
+;;;;	references.  On HPPA: gr0 (always 0), gr2 (return address),
+;;;;	gr27 (global data pointer), and gr30 (stack pointer).
+;;;;	- super temporaries, not preserved accross procedure calls and
+;;;;	always usable. On HPPA: gr1, gr15-gr26, gr28-29, gr31.
+;;;;	gr26-23 are argument registers, gr28-29 are return registers.
+;;;;	- preserved registers saved by the callee if they are written.
+;;;;	On HPPA: gr3-gr14
+;;;;
+;;;;	3) Arguments, if passed on a stack, are popped by the caller
+;;;;	or by the procedure return instruction (as on the VAX).  Thus
+;;;;	most "leaf" procedures need not worry about them. On HPPA: All
+;;;;	arguments have slots in the stack, allocated and popped by the
+;;;;	caller, but the first four words are actually passed in gr26,
+;;;;	gr25, gr24, gr23, unless they are floating point arguments, in
+;;;;	which case they are passed in floating point registers.
+;;;;
+;;;;	4) There is a hardware or software maintained stack for
+;;;;	control.  The procedure calling sequence may leave return
+;;;;	addresses in registers, but they must be saved somewhere for
+;;;;	nested calls and recursive procedures.  On HPPA: Passed in a
+;;;;	register, but a slot on the stack exists, allocated by the
+;;;;	caller.  The return link is in gr2 and immediate saved in
+;;;;	-20(0,30) if the procedure makes further calls.  The stack
+;;;;	pointer is in gr30.
+;;;;
+;;;;	5) C procedures return long values in a super temporary
+;;;;    register.  Two word structures are returned in super temporary
+;;;;    registers as well.  On HPPA: gr28 is used for long returns,
+;;;;	gr28/gr29 are used for two word structure returns.
+;;;;
+;;;;	6) Floating point registers are not preserved by this
+;;;;	interface.  The interface is only called from the Scheme
+;;;;	interpreter, which does not use floating point data.  Thus
+;;;;	although the calling convention would require us to preserve
+;;;;	them, they contain garbage.
+;;;;
+;;;; Compiled Scheme code uses the following register convention.
+;;;; Note that scheme_to_interface and the register block are preserved
+;;;; by C calls, but the others are not, since they change dynamically.
+;;;;	- gr22 contains the Scheme stack pointer.
+;;;;	- gr21 contains the Scheme free pointer.
+;;;;	- gr20 contains a cached version of MemTop.
+;;;;	- gr19 contains the dynamic link when needed.
+;;;;	- gr4 contains a pointer to the Scheme interpreter's
+;;;;	"register" block.  This block contains the compiler's copy of
+;;;;	MemTop, the interpreter's registers (val, env, exp, etc),
+;;;;	temporary locations for compiled code.
+;;;;	- gr3 contains the address of scheme_to_interface.
+;;;;
+;;;;	All other registers are available to the compiler.  A
+;;;;	caller-saves convention is used, so the registers need not be
+;;;;	preserved by subprocedures.
+
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(ADDRESS_LENGTH, eval(32 - TC_LENGTH))
+
+	.SPACE	$TEXT$
+	.SUBSPA	$CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
+C_to_interface
+	.PROC
+	.CALLINFO CALLER,FRAME=24,SAVE_RP
+	.ENTRY
+	STW	2,-20(0,30)		; Save return address
+	STWM	3,104(30)		; Save first reg, allocate frame
+	STW	4,-100(30)		; Save the other regs
+	STW	5,-96(30)
+	STW	6,-92(30)
+	STW	7,-88(30)
+	STW	8,-84(30)
+	STW	9,-80(30)
+	STW	10,-76(30)
+	STW	11,-72(30)
+	STW	12,-68(30)
+	STW	13,-64(30)
+	STW	14,-60(30)
+	ADDIL	L'Registers-$global$,27
+	LDO	R'Registers-$global$(1),4 ; Setup Regs
+
+interface_to_scheme
+	LDW	8(0,4),28		; Copy val
+	LDW	0(0,4),20		; Setup memtop
+	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	LDW	R'Ext_Stack_Pointer-$global$(1),22 ; Setup stack pointer
+	ADDIL	L'Free-$global$,27
+	LDW	R'Free-$global$(1),21	; Setup free
+	ZDEP	28,0,ADDRESS_LENGTH,19	; Setup dlink
+	.CALL	RTNVAL=GR		; out=28
+	BLE	0(5,26)			; Invoke entry point
+	COPY	31,3			; Setup scheme_to_interface
+
+scheme_to_interface
+	ADDIL	L'utility_table-$global$,27
+	LDO	R'utility_table-$global$(1),29
+	LDWX,S	28(0,29),29		; Find handler
+	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
+	ADDIL	L'Free-$global$,27
+	STW	21,R'Free-$global$(1)	; Update free
+	.CALL	ARGW0=GR,ARGW1=GR,ARGW2=GR,ARGW3=GR,RTNVAL=GR
+	BLE	0(0,29)			; Call handler
+	COPY	31,2			; Setup return address
+	BV	0(28)			; Call receiver
+	COPY	29,26			; Setup entry point
+
+interface_to_C
+	COPY	29,28			; Setup C value
+        LDW     -124(0,30),2		; Restore return address
+        LDW     -60(0,30),14		; Restore saved registers
+        LDW     -64(0,30),13
+        LDW     -68(0,30),12
+        LDW     -72(0,30),11
+        LDW     -76(0,30),10
+        LDW     -80(0,30),9
+        LDW     -84(0,30),8
+        LDW     -88(0,30),7
+        LDW     -92(0,30),6
+        LDW     -96(0,30),5
+        LDW     -100(0,30),4
+        BV      0(2)			; Return
+        .EXIT
+        LDWM    -104(0,30),3		; Restore last reg, pop frame
+        .PROCEND			;in=26;out=28;
+
+        .SPACE  $TEXT$
+        .SUBSPA $CODE$
+        .EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
+        .EXPORT interface_to_scheme,PRIV_LEV=3
+        .EXPORT interface_to_C,PRIV_LEV=3
+        .EXPORT scheme_to_interface,PRIV_LEV=3
+        .END
