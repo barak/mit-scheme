@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: info.scm,v 1.134 2000/03/23 03:19:13 cph Exp $
+;;; $Id: info.scm,v 1.135 2000/08/07 02:36:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -759,7 +759,7 @@ The name may be an abbreviation of the reference name."
       (for-each (lambda (submenu)
 		  (find-dir-node/insert-menu-items buffer submenu))
 		submenus))
-    (car pathnames)))
+    "dir"))
 
 (define (find-dir-node-files buffer)
   (let loop ((directories (buffer-directory-list buffer)) (pathnames '()))
