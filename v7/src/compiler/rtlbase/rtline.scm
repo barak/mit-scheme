@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.7 1988/11/02 21:48:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtline.scm,v 4.8 1988/11/06 14:49:45 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -155,24 +155,32 @@ MIT in each case. |#
 	(linearize-bblock bblock)))
 
   (define (linearize-pblock pblock predicate cn an)
-    pblock
-    (if (node-marked? cn)
-	(if (node-marked? an)
-	    `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
-	      ,(rtl:make-jump-statement (bblock-label an)))
-	    `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
-	      ,@(linearize-bblock an)))
-	(if (node-marked? an)
-	    `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
-					 (bblock-label an))
-	      ,@(linearize-bblock cn))
-	    (let ((clabel (bblock-label! cn))
-		   (alternative (linearize-bblock an)))
-	      `(,(rtl:make-jumpc-statement predicate clabel)
-		,@alternative
-		,@(if (node-marked? cn)
-		      '()
-		      (linearize-bblock cn)))))))
+    (let ((heed-preference
+	   (lambda (finish)
+	     (if (eq? 'CONSEQUENT (pnode/preferred-branch pblock))
+		 (finish (rtl:negate-predicate predicate) an cn)
+		 (finish predicate cn an)))))
+      (if (node-marked? cn)
+	  (if (node-marked? an)
+	      (heed-preference
+	       (lambda (predicate cn an)
+		 `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
+		   ,(rtl:make-jump-statement (bblock-label an)))))
+	      `(,(rtl:make-jumpc-statement predicate (bblock-label cn))
+		,@(linearize-bblock an)))
+	  (if (node-marked? an)
+	      `(,(rtl:make-jumpc-statement (rtl:negate-predicate predicate)
+					   (bblock-label an))
+		,@(linearize-bblock cn))
+	      (heed-preference
+	       (lambda (predicate cn an)
+		 (let ((clabel (bblock-label! cn))
+		       (alternative (linearize-bblock an)))
+		   `(,(rtl:make-jumpc-statement predicate clabel)
+		     ,@alternative
+		     ,@(if (node-marked? cn)
+			   '()
+			   (linearize-bblock cn))))))))))
 
   (linearize-bblock bblock))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.6 1988/11/02 21:49:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/linear.scm,v 4.7 1988/11/06 14:50:00 cph Rel $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -68,23 +68,33 @@ MIT in each case. |#
 	(linearize-bblock bblock)))
 
   (define (linearize-pblock pblock cn an)
-    (if (node-marked? cn)
-	(if (node-marked? an)
-	    (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label cn))
-		 ,(lap:make-unconditional-branch (bblock-label an)))
-	    (LAP ,@((pblock-consequent-lap-generator pblock) (bblock-label cn))
-		 ,@(linearize-bblock an)))
-	(if (node-marked? an)
-	    (LAP ,@((pblock-alternative-lap-generator pblock)
-		    (bblock-label an))
-		 ,@(linearize-bblock cn))
-	    (let ((clabel (bblock-label! cn))
-		  (alternative (linearize-bblock an)))
-	      (LAP ,@((pblock-consequent-lap-generator pblock) clabel)
-		   ,@alternative
-		   ,@(if (node-marked? cn)
-			 (LAP)
-			 (linearize-bblock cn)))))))
+    (let ((heed-preference
+	   (lambda (finish)
+	     (if (eq? 'CONSEQUENT (pnode/preferred-branch pblock))
+		 (finish (pblock-alternative-lap-generator pblock) an cn)
+		 (finish (pblock-consequent-lap-generator pblock) cn an)))))
+      (if (node-marked? cn)
+	  (if (node-marked? an)
+	      (heed-preference
+	       (lambda (generator cn an)
+		 (LAP ,@(generator (bblock-label cn))
+		      ,(lap:make-unconditional-branch (bblock-label an)))))
+	      (LAP ,@((pblock-consequent-lap-generator pblock)
+		      (bblock-label cn))
+		   ,@(linearize-bblock an)))
+	  (if (node-marked? an)
+	      (LAP ,@((pblock-alternative-lap-generator pblock)
+		      (bblock-label an))
+		   ,@(linearize-bblock cn))
+	      (heed-preference
+	       (lambda (generator cn an)
+		 (let ((clabel (bblock-label! cn))
+		       (alternative (linearize-bblock an)))
+		   (LAP ,@(generator clabel)
+			,@alternative
+			,@(if (node-marked? cn)
+			      (LAP)
+			      (linearize-bblock cn))))))))))
 
   (linearize-bblock bblock))
 
