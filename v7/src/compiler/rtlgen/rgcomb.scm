@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.23 1987/06/02 21:19:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.24 1987/06/12 21:51:10 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -47,9 +47,9 @@ MIT in each case. |#
 		 (if (and callee
 			  (procedure? callee)
 			  (not (procedure-externally-visible? callee)))
-		     (generate-operands (procedure-required callee)
-					(procedure-optional callee)
-					(procedure-rest callee)
+		     (generate-operands (procedure-original-required callee)
+					(procedure-original-optional callee)
+					(procedure-original-rest callee)
 					(combination-operands combination))
 		     (map generate/operand
 			  (combination-operands combination)))))
