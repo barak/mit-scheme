@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.33 1991/02/16 07:54:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fixnum.c,v 9.34 1992/01/15 02:20:49 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -41,8 +41,7 @@ MIT in each case. */
 #include "prims.h"
 
 static long
-arg_fixnum (n)
-     int n;
+DEFUN (arg_fixnum, (n), int n)
 {
   fast SCHEME_OBJECT argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
@@ -51,8 +50,7 @@ arg_fixnum (n)
 }
 
 static long
-arg_unsigned_fixnum (n)
-     int n;
+DEFUN (arg_unsigned_fixnum, (n), int n)
 {
   fast SCHEME_OBJECT argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))

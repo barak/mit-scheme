@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.36 1991/10/17 09:09:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.37 1992/01/15 02:22:53 jinx Exp $
 
-Copyright (c) 1987-91 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -41,8 +41,7 @@ MIT in each case. */
 extern int errno;
 
 double
-arg_flonum (arg_number)
-     int arg_number;
+DEFUN (arg_flonum, (arg_number), int arg_number)
 {
   SCHEME_OBJECT argument = (ARG_REF (arg_number));
   if (! (FLONUM_P (argument)))
@@ -56,8 +55,7 @@ arg_flonum (arg_number)
 #define FLONUM_SIZE ((BYTES_TO_WORDS (sizeof (double))) + 1)
 
 SCHEME_OBJECT
-double_to_flonum (value)
-     double value;
+DEFUN (double_to_flonum, (value), double value)
 {
   ALIGN_FLOAT (Free);
   Primitive_GC_If_Needed (FLONUM_SIZE);
@@ -187,7 +185,7 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN", Prim_flonum_atan, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
 {
-  extern double atan2 ();
+  extern double EXFUN (atan2, (double, double));
   PRIMITIVE_HEADER (2);
   {
     fast double y = (arg_flonum (1));
@@ -203,7 +201,7 @@ DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
 {
-  extern double pow ();
+  extern double EXFUN (pow, (double, double));
   PRIMITIVE_HEADER (2);
   FLONUM_RESULT (pow ((arg_flonum (1)), (arg_flonum (2))));
 }

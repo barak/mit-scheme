@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.5 1990/09/08 01:38:18 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/artutl.c,v 1.6 1992/01/15 02:17:15 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -40,15 +40,13 @@ MIT in each case. */
 /* Conversions between Scheme types and C types. */
 
 long
-fixnum_to_long (fixnum)
-     SCHEME_OBJECT fixnum;
+DEFUN (fixnum_to_long, (fixnum), SCHEME_OBJECT fixnum)
 {
   return (FIXNUM_TO_LONG (fixnum));
 }
 
 SCHEME_OBJECT
-double_to_fixnum (value)
-     double value;
+DEFUN (double_to_fixnum, (value), double value)
 {
 #ifdef HAVE_DOUBLE_TO_LONG_BUG
   fast long temp = ((long) value);
@@ -59,22 +57,21 @@ double_to_fixnum (value)
 }
 
 Boolean
-integer_to_long_p (n)
-     fast SCHEME_OBJECT n;
+DEFUN (integer_to_long_p, (n), fast SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) || (BIGNUM_TO_LONG_P (n)));
 }
 
 long
-integer_to_long (n)
-     fast SCHEME_OBJECT n;
+DEFUN (integer_to_long,
+       (n),
+       fast SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) ? (FIXNUM_TO_LONG (n)) : (bignum_to_long (n)));
 }
 
 SCHEME_OBJECT
-long_to_integer (number)
-     long number;
+DEFUN (long_to_integer, (number), long number)
 {
   return
     ((LONG_TO_FIXNUM_P (number))
@@ -83,22 +80,19 @@ long_to_integer (number)
 }
 
 Boolean
-integer_to_double_p (n)
-     fast SCHEME_OBJECT n;
+DEFUN (integer_to_double_p, (n), fast SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) || (BIGNUM_TO_DOUBLE_P (n)));
 }
 
 double
-integer_to_double (n)
-     fast SCHEME_OBJECT n;
+DEFUN (integer_to_double, (n), fast SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) ? (FIXNUM_TO_DOUBLE (n)) : (bignum_to_double (n)));
 }
 
 SCHEME_OBJECT
-double_to_integer (x)
-     fast double x;
+DEFUN (double_to_integer, (x), fast double x)
 {
   return
     ((DOUBLE_TO_FIXNUM_P (x))
@@ -107,8 +101,7 @@ double_to_integer (x)
 }
 
 double
-double_truncate (x)
-     fast double x;
+DEFUN (double_truncate, (x), fast double x)
 {
   double iptr;
   (void) modf (x, (&iptr));
@@ -118,8 +111,7 @@ double_truncate (x)
 /* Conversions between Scheme types and Scheme types. */
 
 SCHEME_OBJECT
-bignum_to_fixnum (bignum)
-     fast SCHEME_OBJECT bignum;
+DEFUN (bignum_to_fixnum, (bignum), fast SCHEME_OBJECT bignum)
 {
   return
     ((BIGNUM_TO_FIXNUM_P (bignum))
@@ -128,8 +120,7 @@ bignum_to_fixnum (bignum)
 }
 
 SCHEME_OBJECT
-bignum_to_integer (bignum)
-     fast SCHEME_OBJECT bignum;
+DEFUN (bignum_to_integer, (bignum), fast SCHEME_OBJECT bignum)
 {
   return
     ((BIGNUM_TO_FIXNUM_P (bignum))
@@ -138,8 +129,7 @@ bignum_to_integer (bignum)
 }
 
 SCHEME_OBJECT
-bignum_to_flonum (bignum)
-     fast SCHEME_OBJECT bignum;
+DEFUN (bignum_to_flonum, (bignum), fast SCHEME_OBJECT bignum)
 {
   return
     ((BIGNUM_TO_FLONUM_P (bignum))
@@ -148,8 +138,7 @@ bignum_to_flonum (bignum)
 }
 
 Boolean
-flonum_integer_p (x)
-     SCHEME_OBJECT x;
+DEFUN (flonum_integer_p, (x), SCHEME_OBJECT x)
 {
   extern double modf ();
   double iptr;
@@ -157,24 +146,23 @@ flonum_integer_p (x)
 }
 
 SCHEME_OBJECT
-flonum_floor (x)
-     SCHEME_OBJECT x;
+DEFUN (flonum_floor, (x), SCHEME_OBJECT x)
 {
   extern double floor ();
   return (double_to_flonum (floor (FLONUM_TO_DOUBLE (x))));
 }
 
 SCHEME_OBJECT
-flonum_ceiling (x)
-     SCHEME_OBJECT x;
+DEFUN (flonum_ceiling, (x), SCHEME_OBJECT x)
 {
   extern double ceil ();
   return (double_to_flonum (ceil (FLONUM_TO_DOUBLE (x))));
 }
 
 SCHEME_OBJECT
-flonum_round (x)
-     SCHEME_OBJECT x;
+DEFUN (flonum_round,
+       (x),
+       SCHEME_OBJECT x)
 {
   fast double dx = (FLONUM_TO_DOUBLE (x));
   return
@@ -182,8 +170,7 @@ flonum_round (x)
 }
 
 SCHEME_OBJECT
-flonum_normalize (x)
-     SCHEME_OBJECT x;
+DEFUN (flonum_normalize, (x), SCHEME_OBJECT x)
 {
   extern double frexp ();
   int exponent;
@@ -193,9 +180,7 @@ flonum_normalize (x)
 }
 
 SCHEME_OBJECT
-flonum_denormalize (x, e)
-     SCHEME_OBJECT x;
-     SCHEME_OBJECT e;
+DEFUN (flonum_denormalize, (x, e), SCHEME_OBJECT x AND SCHEME_OBJECT e)
 {
   extern double ldexp ();
   return (double_to_flonum (ldexp ((FLONUM_TO_DOUBLE (x)),
@@ -205,30 +190,25 @@ flonum_denormalize (x, e)
 /* Generic Integer Operations */
 
 Boolean
-integer_zero_p (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_zero_p, (n), SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) ? (FIXNUM_ZERO_P (n)) : (BIGNUM_ZERO_P (n)));
 }
 
 Boolean
-integer_negative_p (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_negative_p, (n), SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) ? (FIXNUM_NEGATIVE_P (n)) : (BIGNUM_NEGATIVE_P (n)));
 }
 
 Boolean
-integer_positive_p (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_positive_p, (n), SCHEME_OBJECT n)
 {
   return ((FIXNUM_P (n)) ? (FIXNUM_POSITIVE_P (n)) : (BIGNUM_POSITIVE_P (n)));
 }
 
 Boolean
-integer_equal_p (n, m)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT m;
+DEFUN (integer_equal_p, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
   return
     ((FIXNUM_P (n))
@@ -239,9 +219,7 @@ integer_equal_p (n, m)
 }
 
 Boolean
-integer_less_p (n, m)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT m;
+DEFUN (integer_less_p, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
   return
     ((FIXNUM_P (n))
@@ -252,8 +230,7 @@ integer_less_p (n, m)
 }
 
 SCHEME_OBJECT
-integer_negate (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_negate, (n), SCHEME_OBJECT n)
 {
   return
     ((FIXNUM_P (n))
@@ -262,9 +239,7 @@ integer_negate (n)
 }
 
 SCHEME_OBJECT
-integer_add (n, m)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT m;
+DEFUN (integer_add, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
   return
     ((FIXNUM_P (n))
@@ -276,8 +251,7 @@ integer_add (n, m)
 }
 
 SCHEME_OBJECT
-integer_add_1 (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_add_1, (n), SCHEME_OBJECT n)
 {
   return
     ((FIXNUM_P (n))
@@ -286,9 +260,7 @@ integer_add_1 (n)
 }
 
 SCHEME_OBJECT
-integer_subtract (n, m)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT m;
+DEFUN (integer_subtract, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
   return
     ((FIXNUM_P (n))
@@ -300,8 +272,7 @@ integer_subtract (n, m)
 }
 
 SCHEME_OBJECT
-integer_subtract_1 (n)
-     SCHEME_OBJECT n;
+DEFUN (integer_subtract_1, (n), SCHEME_OBJECT n)
 {
   return
     ((FIXNUM_P (n))
@@ -310,9 +281,7 @@ integer_subtract_1 (n)
 }
 
 SCHEME_OBJECT
-integer_multiply (n, m)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT m;
+DEFUN (integer_multiply, (n, m), SCHEME_OBJECT n AND SCHEME_OBJECT m)
 {
   extern SCHEME_OBJECT Mul ();
   fast SCHEME_OBJECT result;
@@ -331,11 +300,9 @@ integer_multiply (n, m)
 }
 
 Boolean
-integer_divide (n, d, q, r)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT d;
-     SCHEME_OBJECT * q;
-     SCHEME_OBJECT * r;
+DEFUN (integer_divide, (n, d, q, r),
+       SCHEME_OBJECT n AND SCHEME_OBJECT d
+       AND SCHEME_OBJECT * q AND SCHEME_OBJECT * r)
 {
   if (FIXNUM_P (n))
     {
@@ -396,9 +363,7 @@ integer_divide (n, d, q, r)
 }
 
 SCHEME_OBJECT
-integer_quotient (n, d)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT d;
+DEFUN (integer_quotient, (n, d), SCHEME_OBJECT n AND SCHEME_OBJECT d)
 {
   if (FIXNUM_P (n))
     {
@@ -435,9 +400,7 @@ integer_quotient (n, d)
 }
 
 SCHEME_OBJECT
-integer_remainder (n, d)
-     SCHEME_OBJECT n;
-     SCHEME_OBJECT d;
+DEFUN (integer_remainder, (n, d), SCHEME_OBJECT n AND SCHEME_OBJECT d)
 {
   if (FIXNUM_P (n))
     {
