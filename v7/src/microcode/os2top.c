@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.4 1994/12/19 22:31:44 cph Exp $
+$Id: os2top.c,v 1.5 1995/01/05 23:38:01 cph Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -45,12 +45,14 @@ extern void OS2_initialize_exception_handling (void);
 extern void OS2_initialize_keyboard_interrupts (void);
 extern void OS2_initialize_message_queues (void);
 extern void OS2_initialize_pm_thread (void);
+extern void OS2_initialize_processes (void);
 extern void OS2_initialize_scheme_thread (void);
 extern void OS2_initialize_tty (void);
 extern void OS2_initialize_window_primitives (void);
 
 extern const char * OS_Name;
 extern const char * OS_Variant;
+extern HMTX OS2_create_queue_lock;
 
 static const char * OS2_version_string (void);
 static void initialize_locks (void);
@@ -87,6 +89,7 @@ OS_initialize (void)
   OS2_initialize_directory_reader ();
   OS2_initialize_tty ();
   OS2_initialize_window_primitives ();
+  OS2_initialize_processes ();
   OS_Name = "OS/2";
   {
     const char * version = (OS2_version_string ());
@@ -203,6 +206,7 @@ static void
 initialize_locks (void)
 {
   interrupt_registers_lock = (OS2_create_mutex_semaphore (0, 0));
+  OS2_create_queue_lock = (OS2_create_mutex_semaphore (0, 0));
 }
 
 void
@@ -1517,18 +1521,22 @@ static char * syscall_names_table [] =
   "dos-create-thread",
   "dos-delete",
   "dos-delete-dir",
+  "dos-dup-handle",
+  "dos-exec-pgm",
   "dos-exit",
   "dos-find-close",
   "dos-find-first",
   "dos-find-next",
   "dos-get-info-blocks",
   "dos-get-message",
+  "dos-kill-process",
   "dos-kill-thread",
   "dos-move",
   "dos-open",
   "dos-post-event-sem",
   "dos-query-current-dir",
   "dos-query-current-disk",
+  "dos-query-fh-state",
   "dos-query-file-info",
   "dos-query-fs-attach",
   "dos-query-fs-info",
@@ -1542,13 +1550,16 @@ static char * syscall_names_table [] =
   "dos-request-mutex-sem",
   "dos-reset-event-sem",
   "dos-scan-env",
+  "dos-send-signal-exception",
   "dos-set-current-dir",
   "dos-set-default-disk",
+  "dos-set-fh-state",
   "dos-set-file-ptr",
   "dos-set-file-size",
   "dos-set-path-info",
   "dos-start-timer",
   "dos-stop-timer",
+  "dos-wait-child",
   "dos-wait-event-sem",
   "dos-write",
   "dos-write-queue",

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.6 1994/12/19 22:27:33 cph Exp $
+$Id: syscall.h,v 1.7 1995/01/05 23:37:26 cph Exp $
 
-Copyright (c) 1993-94 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,18 +58,22 @@ enum syscall_names
   syscall_DosCreateThread,
   syscall_DosDelete,
   syscall_DosDeleteDir,
+  syscall_DosDupHandle,
+  syscall_DosExecPgm,
   syscall_DosExit,
   syscall_DosFindClose,
   syscall_DosFindFirst,
   syscall_DosFindNext,
   syscall_DosGetInfoBlocks,
   syscall_DosGetMessage,
+  syscall_DosKillProcess,
   syscall_DosKillThread,
   syscall_DosMove,
   syscall_DosOpen,
   syscall_DosPostEventSem,
   syscall_DosQueryCurrentDir,
   syscall_DosQueryCurrentDisk,
+  syscall_DosQueryFHState,
   syscall_DosQueryFileInfo,
   syscall_DosQueryFSAttach,
   syscall_DosQueryFSInfo,
@@ -83,13 +87,16 @@ enum syscall_names
   syscall_DosRequestMutexSem,
   syscall_DosResetEventSem,
   syscall_DosScanEnv,
+  syscall_DosSendSignalException,
   syscall_DosSetCurrentDir,
   syscall_DosSetDefaultDisk,
+  syscall_DosSetFHState,
   syscall_DosSetFilePtr,
   syscall_DosSetFileSize,
   syscall_DosSetPathInfo,
   syscall_DosStartTimer,
   syscall_DosStopTimer,
+  syscall_DosWaitChild,
   syscall_DosWaitEventSem,
   syscall_DosWrite,
   syscall_DosWriteQueue,
