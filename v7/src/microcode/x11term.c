@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.3 1989/04/25 02:24:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.4 1989/04/25 03:52:54 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -972,6 +972,7 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   int buffer_index;
   char * buffer;
   fast int nbytes;
+  int nevents;
   fast char * scan_buffer;
   fast char * scan_copy;
   fast char * end_copy;
@@ -992,9 +993,10 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   buffer_index = 0;
   buffer = (xterm_malloc (buffer_length));
   scan_buffer = buffer;
+  nevents = (XEventsQueued (display, QueuedAfterReading));
   while (1)
     {
-      if ((XPending (display)) == 0)
+      if (nevents == 0)
 	{
 	  if ((buffer != scan_buffer) ||
 	      ((xt -> event_flags) != 0) ||
@@ -1002,12 +1004,17 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
 	    break;
 	  if (interval > 0)
 	    {
-	      if ((OS_real_time_clock ()) >= time_limit)
-		break;
-	      continue;
+	      if ((OS_real_time_clock ()) < time_limit)
+		{
+		  nevents = (XEventsQueued (display, QueuedAfterReading));
+		  continue;
+		}
+	      break;
 	    }
+	  nevents = 1;
 	}
       XNextEvent (display, (& event));
+      nevents -= 1;
       if ((event . type) != KeyPress)
 	{
 	  xterm_process_event (& event);
