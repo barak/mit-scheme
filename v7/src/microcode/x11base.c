@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.53 1994/09/14 23:01:49 adams Exp $
+$Id: x11base.c,v 1.54 1994/09/16 21:20:13 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -1968,7 +1968,6 @@ DEFUN (convert_font_struct, (font_name, font),
   return  result;
 }
 
-
 DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
  "(display font)\n\
   FONT is either a font name or a font ID.")
@@ -1998,7 +1997,6 @@ DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
   }
 }
 
-
 DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
 		  0)
 {
@@ -2006,5 +2004,5 @@ DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
   PRIMITIVE_HEADER (1);
   Primitive_GC_If_Needed (FONT_STRUCTURE_MAX_CONVERTED_SIZE);
   font = XW_FONT (x_window_arg (1));
-  PRIMITIVE_RETURN (convert_font_struct (ulong_to_integer (font), font));
+  PRIMITIVE_RETURN (convert_font_struct (ulong_to_integer (font->fid), font));
 }
