@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.47 1990/11/21 07:03:30 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/bintopsb.c,v 9.48 1991/03/24 01:22:54 jinx Exp $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -1786,6 +1786,8 @@ DEFUN (main, (argc, argv),
     /*NOTREACHED*/
   }
 
+  upgrade_compiled_p =
+    (upgrade_compiled_p || ci_version_sup_p || ci_processor_sup_p);
   allow_compiled_p = (allow_compiled_p || upgrade_compiled_p);
   allow_nmv_p = (allow_nmv_p || allow_compiled_p || vax_invert_p);
   if (null_nmv_p && allow_nmv_p)
