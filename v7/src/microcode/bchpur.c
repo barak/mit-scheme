@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.46 1989/10/28 15:38:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.47 1989/11/26 17:38:22 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -183,7 +183,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  /* Operator linkage */
 
 	  fast long count;
-	  fast machine_word *word_ptr, *next_ptr;
+	  fast char *word_ptr, *next_ptr;
 	  long overflow;
 
 	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
@@ -196,11 +196,11 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	       word_ptr = next_ptr,
 	       next_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr)))
 	  {
-	    if (next_ptr > ((machine_word *) scan_buffer_top))
+	    if (next_ptr > ((char *) scan_buffer_top))
 	    {
 	      extend_scan_buffer (((char *) next_ptr), To);
 	      relocate_linked_operator (false);
-	      next_ptr = ((machine_word *)
+	      next_ptr = ((char *)
 			  (end_scan_buffer_extension ((char *) next_ptr)));
 	      overflow -= GC_DISK_BUFFER_SIZE;
 	    }
@@ -226,23 +226,22 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
       }
       {
 	fast long count;
-	fast machine_word *word_ptr;
-	machine_word *end_ptr;
+	fast char *word_ptr;
+	char *end_ptr;
 
 	Scan += 1;
 	/* Is there enough space to read the count? */
-	if ((((machine_word *) Scan) + 2) >
-	    ((machine_word *) scan_buffer_top))
+	if ((((char *) Scan) + 2) > ((char *) scan_buffer_top))
 	{
 	  long dw;
-	  machine_word *header_end;
+	  char *header_end;
 
-	  header_end = (((machine_word *) Scan) + 2);
+	  header_end = (((char *) Scan) + 2);
 	  extend_scan_buffer (((char *) header_end), To);
 	  count = (MANIFEST_CLOSURE_COUNT (Scan));
 	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
 	  dw = (word_ptr - header_end);
-	  header_end = ((machine_word *)
+	  header_end = ((char *)
 			(end_scan_buffer_extension ((char *) header_end)));
 	  word_ptr = (header_end + dw);
 	  Scan = ((SCHEME_OBJECT *) (header_end - 2));
@@ -252,15 +251,14 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	  count = (MANIFEST_CLOSURE_COUNT (Scan));
 	  word_ptr = (FIRST_MANIFEST_CLOSURE_ENTRY (Scan));
 	}
-	end_ptr = ((machine_word *) (MANIFEST_CLOSURE_END (Scan, count)));
+	end_ptr = ((char *) (MANIFEST_CLOSURE_END (Scan, count)));
 
 	for ( ; ((--count) >= 0);
 	     (word_ptr = (NEXT_MANIFEST_CLOSURE_ENTRY (word_ptr))))
 	{
-	  if ((CLOSURE_ENTRY_END(word_ptr)) >
-	      ((machine_word *) scan_buffer_top))
+	  if ((CLOSURE_ENTRY_END(word_ptr)) > ((char *) scan_buffer_top))
 	  {
-	    machine_word *entry_end;
+	    char *entry_end;
 	    long de, dw;
 
 	    entry_end = (CLOSURE_ENTRY_END(word_ptr));
@@ -268,7 +266,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	    dw = (entry_end - word_ptr);
 	    extend_scan_buffer(((char *) entry_end), To);
 	    relocate_manifest_closure (false);
-	    entry_end = ((machine_word *)
+	    entry_end = ((char *)
 			 (end_scan_buffer_extension((char *) entry_end)));
 	    word_ptr = (entry_end - dw);
 	    end_ptr = (entry_end + de);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.45 1989/11/11 19:13:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasload.c,v 9.46 1989/11/26 17:38:44 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -328,20 +328,20 @@ Relocate_Block(Scan, Stop_At)
 	else
 	{
 	  fast long count;
-	  fast machine_word *word_ptr;
+	  fast char *word_ptr;
 	  SCHEME_OBJECT *end_scan;
 
-	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
-	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
-	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
 
 	  while(--count >= 0)
 	  {
 	    Scan = ((SCHEME_OBJECT *) (word_ptr));
-	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS(address, Scan);
+	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	    address = ((long) (Relocate(address)));
-	    STORE_OPERATOR_LINKAGE_ADDRESS(address, Scan);
+	    STORE_OPERATOR_LINKAGE_ADDRESS (address, Scan);
 	  }
 	  Scan = &end_scan[1];
 	  break;
@@ -351,7 +351,7 @@ Relocate_Block(Scan, Stop_At)
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast machine_word *word_ptr;
+	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
 
 	Scan += 1;

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.41 1989/10/28 15:38:48 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/purify.c,v 9.42 1989/11/26 17:38:52 jinx Exp $
  *
  * This file contains the code that copies objects into pure
  * and constant space.
@@ -148,18 +148,18 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
 	else
 	{
 	  fast long count;
-	  fast machine_word *word_ptr;
+	  fast char *word_ptr;
 	  SCHEME_OBJECT *end_scan;
 
-	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
-	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
-	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
 
 	  while(--count >= 0)
 	  {
 	    Scan = ((SCHEME_OBJECT *) word_ptr);
-	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
+	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	    Purify_Pointer(Setup_Internal(false,
 					  Transport_Compiled(),
 					  Compiled_BH(false,
@@ -175,7 +175,7 @@ PurifyLoop(Scan, To_Pointer, GC_Mode)
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast machine_word *word_ptr;
+	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
 
 	if (GC_Mode == PURE_COPY)

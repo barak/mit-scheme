@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.44 1989/10/28 15:38:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/fasdump.c,v 9.45 1989/11/26 17:38:39 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -158,7 +158,7 @@ DumpLoop(Scan, Dump_Mode)
       case TC_MANIFEST_CLOSURE:
       {
 	fast long count;
-	fast machine_word *word_ptr;
+	fast char *word_ptr;
 	SCHEME_OBJECT *area_end;
 
 	compiled_code_present_p = true;
@@ -205,21 +205,21 @@ DumpLoop(Scan, Dump_Mode)
 	else
 	{
 	  fast long count;
-	  fast machine_word *word_ptr;
+	  fast char *word_ptr;
 	  SCHEME_OBJECT *end_scan;
 
-	  count = READ_OPERATOR_LINKAGE_COUNT(Temp);
-	  word_ptr = FIRST_OPERATOR_LINKAGE_ENTRY(Scan);
-	  end_scan = END_OPERATOR_LINKAGE_AREA(Scan, count);
+	  count = (READ_OPERATOR_LINKAGE_COUNT (Temp));
+	  word_ptr = (FIRST_OPERATOR_LINKAGE_ENTRY (Scan));
+	  end_scan = (END_OPERATOR_LINKAGE_AREA (Scan, count));
 
 	  while(--count >= 0)
 	  {
 	    Scan = ((SCHEME_OBJECT *) (word_ptr));
-	    word_ptr = NEXT_LINKAGE_OPERATOR_ENTRY(word_ptr);
-	    EXTRACT_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
-	    Dump_Compiled_Entry(after_operator);
+	    word_ptr = (NEXT_LINKAGE_OPERATOR_ENTRY (word_ptr));
+	    EXTRACT_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
+	    Dump_Compiled_Entry (after_operator);
 	  after_operator:
-	    STORE_OPERATOR_LINKAGE_ADDRESS(Temp, Scan);
+	    STORE_OPERATOR_LINKAGE_ADDRESS (Temp, Scan);
 	  }
 	  Scan = end_scan;
 	  break;
