@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.146 1989/04/28 22:54:38 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/window.scm,v 1.147 1989/06/19 22:36:54 markf Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -426,3 +426,30 @@
 (define-integrable (set-inferior-redisplay-flags! inferior flags)
   (vector-set! (cdr inferior) 2 flags)
   unspecific)
+
+(define (inferior-containing-coordinates window x y #!optional stop-search?)
+  (let ((stop-search? (if (default-object? stop-search?)
+			  window-inferiors
+			  stop-search?)))
+    (let search ((window window)
+		 (x x)
+		 (y y))
+      (if (stop-search? window)
+	  (values window x y)
+	  (let loop ((inferiors (window-inferiors window)))
+	    (and
+	     (not (null? inferiors))
+	     (let ((inferior (car inferiors)))
+	       (let ((x-start (inferior-x-start inferior))
+		     (y-start (inferior-y-start inferior))
+		     (inf-window (inferior-window inferior)))
+		 (cond ((or (null? x-start) (null? y-start)) false)
+		       ((and (>= x x-start)
+			     (<= x (inferior-x-end inferior))
+			     (>= y y-start)
+			     (<= y (inferior-y-end inferior)))
+			(search inf-window
+				(- x x-start)
+				(- y y-start)))
+		       (else
+			(loop (cdr inferiors))))))))))))
