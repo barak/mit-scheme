@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: comtab.scm,v 1.70 2001/01/06 03:00:04 cph Exp $
+;;; $Id: comtab.scm,v 1.71 2001/01/06 05:45:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -359,20 +359,32 @@
 		      (eq? command (car datum)))
 		     (else
 		      false))))))
-      (let loop ((comtabs comtabs))
-	(if (null? comtabs)
-	    '()
-	    (%comtab-bindings (car comtabs)
-			      (loop (cdr comtabs))
-			      command
-			      valid-key?))))))
+      (sort (let loop ((comtabs comtabs))
+	      (if (null? comtabs)
+		  '()
+		  (%comtab-bindings (car comtabs)
+				    (loop (cdr comtabs))
+				    command
+				    valid-key?)))
+	(let ((v
+	       (lambda (k)
+		 (cond ((char? k) 0)
+		       ((list-of-type? k char?) 1)
+		       ((special-key? k) 2)
+		       ((button? k) 3)
+		       (else 4)))))
+	  (lambda (k1 k2)
+	    (< (v k1) (v k2))))))))
 
 (define (%comtab-bindings comtab keys command valid-key?)
   (let comtab-loop ((comtab comtab) (keys keys) (prefix '()))
     (let alist-loop ((entries (comtab-alist* comtab)))
       (if (null? entries)
 	  keys
-	  (let ((key (append prefix (list (caar entries)))))
+	  (let ((key
+		 (if (pair? prefix)
+		     (append prefix (list (caar entries)))
+		     (caar entries))))
 	    (let datum-loop
 		((datum (cdar entries))
 		 (keys (alist-loop (cdr entries))))
@@ -384,7 +396,11 @@
 			 (cons key keys)
 			 keys))
 		    ((comtab? datum)
-		     (let ((keys (comtab-loop datum keys key)))
+		     (let ((keys
+			    (comtab-loop datum keys
+					 (if (pair? prefix)
+					     key
+					     (list key)))))
 		       (if (and (eq? command (ref-command-object prefix-key))
 				(valid-key? key))
 			   (cons key keys)
