@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.82 2000/06/15 13:48:57 cph Exp $
+$Id: todo.txt,v 1.83 2000/06/15 15:40:03 cph Exp $
 
 Bug fixes
 ---------
-
-* Improve performance of quoted-printable decoder by searching for
-  encoded characters rather than scanning characters one at a time.
 
 * Must be able to handle malformed headers in incoming mail.
   Generating a low-level error in this situation is unacceptable.
