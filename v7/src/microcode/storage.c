@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.30 1987/05/21 18:07:05 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.31 1987/05/28 16:07:58 cph Exp $
 
 This file defines the storage for global variables for
 the Scheme Interpreter. */
@@ -62,6 +62,8 @@ Pointer
   Fluid_Bindings = NIL,	/* Fluid bindings AList */
   return_to_interpreter, /* Return address/code left by interpreter
 			    when calling compiled code */
+  uuo_link_trap,	/* Entry address for uuo links needing
+			   special attention */
  *last_return_code,	/* Address of the most recent return code in the stack.
 			   This is only meaningful while in compiled code.
 			   *** This must be changed when stacklets are used. ***
@@ -231,10 +233,15 @@ char *Return_Names[] = {
 /* 0x4E */		"COMPILER_UNBOUND_P_RESTART",
 /* 0x4F */		"COMPILER_DEFINITION_RESTART",
 /* 0x50 */		"COMPILER_LEXPR_GC_RESTART",
-/* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART"
+/* 0x51 */		"COMPILER_SAFE_REFERENCE_RESTART",
+/* 0x52 */		"COMPILER_CACHE_VARIABLE_RESTART",
+/* 0x53 */		"COMPILER_REFERENCE_TRAP_RESTART",
+/* 0x54 */		"COMPILER_ASSIGNMENT_TRAP_RESTART",
+/* 0x55 */		"COMPILER_UUO_LINK_RESTART",
+/* 0x56 */		"COMPILER_UUO_LINK_TRAP_RESTART"
 };
 
-#if (MAX_RETURN_CODE != 0x51)
+#if (MAX_RETURN_CODE != 0x56)
 /* Cause an error */
 #include "Returns.h and storage.c are inconsistent -- Names Table"
 #endif

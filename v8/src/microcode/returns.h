@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.23 1987/05/21 18:08:32 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.24 1987/05/28 16:07:35 cph Exp $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -113,7 +113,12 @@ MIT in each case. */
 #define RC_COMP_DEFINITION_RESTART	0x4F
 #define RC_COMP_LEXPR_INTERRUPT_RESTART 0x50
 #define RC_COMP_SAFE_REFERENCE_RESTART  0x51
+#define RC_COMP_CACHE_VARIABLE_RESTART  0x52
+#define RC_COMP_REFERENCE_TRAP_RESTART  0x53
+#define RC_COMP_ASSIGNMENT_TRAP_RESTART 0x54
+#define RC_COMP_UUO_LINK_RESTART        0x55
+#define RC_COMP_UUO_LINK_TRAP_RESTART   0x56
 
-#define MAX_RETURN_CODE			0x51
+#define MAX_RETURN_CODE			0x56
 
 /* When adding return codes, don't forget to update storage.c too. */
