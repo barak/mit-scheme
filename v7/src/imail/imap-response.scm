@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.9 2000/04/28 16:48:30 cph Exp $
+;;; $Id: imap-response.scm,v 1.10 2000/04/28 18:43:46 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -23,7 +23,7 @@
 (declare (usual-integrations))
 
 (define (imap:read-server-response port)
-  (let ((tag (read-string char-set:space port)))
+  (let ((tag (read-string-internal char-set:space port)))
     (if (eof-object? tag)
 	tag
 	(begin
@@ -258,7 +258,14 @@
     (discard-known-char #\return port)
     (discard-known-char #\linefeed port)
     (let ((s (make-string n)))
-      (read-string! s port)
+      (let loop ((start 0))
+	(let ((m (read-substring! s start n port)))
+	  (if (fix:= m 0)
+	      (error "Premature EOF:" port))
+	  (if (fix:< m (fix:- n start))
+	      (loop (fix:+ start m)))))
+      (if trace-imap-server-responses?
+	  (write-string s (notification-output-port)))
       s)))
 
 (define (read-list port #!optional read-item)
@@ -298,7 +305,7 @@
 
 (define (read-bracketed-string port)
   (discard-known-char #\[ port)
-  (let ((s (read-string char-set:close-bracket port)))
+  (let ((s (read-string-internal char-set:close-bracket port)))
     (discard-known-char #\] port)
     s))
 
@@ -322,7 +329,7 @@
 (define (string-reader constituents)
   (let ((delimiters (char-set-invert constituents)))
     (lambda (port)
-      (read-string delimiters port))))
+      (read-string-internal delimiters port))))
 
 (define (non-null-string-reader constituents)
   (let ((reader (string-reader constituents)))
@@ -426,8 +433,14 @@
 (define (read-char-internal port)
   (let ((char (read-char port)))
     (if trace-imap-server-responses?
-	(write-char char))
+	(write-char char (notification-output-port)))
     char))
+
+(define (read-string-internal delimiters port)
+  (let ((s (read-string delimiters port)))
+    (if trace-imap-server-responses?
+	(write-string s (notification-output-port)))
+    s))
 
 (define trace-imap-server-responses? #f)
 

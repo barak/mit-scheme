@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.24 2000/04/27 02:16:43 cph Exp $
+;;; $Id: imail-top.scm,v 1.25 2000/04/28 18:43:32 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -94,7 +94,7 @@ May be called with an IMAIL folder URL as argument;
 	   (or (imail-folder->buffer folder #f)
 	       (let ((buffer (new-buffer (imail-url->buffer-name url))))
 		 (associate-imail-folder-with-buffer folder buffer)
-		 (select-message folder (first-unseen-message folder))
+		 (select-message folder (first-unseen-message folder) #t)
 		 buffer))))))
     (if (not url-string)
 	((ref-command imail-get-new-mail) #f))))
@@ -123,7 +123,13 @@ May be called with an IMAIL folder URL as argument;
 		       notice-folder-modifications))
 
 (define (imail-folder->buffer folder error?)
-  (or (folder-get folder 'BUFFER #f)
+  (or (let ((buffer (folder-get folder 'BUFFER #f)))
+	(and buffer
+	     (if (buffer-alive? buffer)
+		 buffer
+		 (begin
+		   (folder-remove! folder 'BUFFER)
+		   #f))))
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
 (define (notice-folder-modifications folder)
@@ -506,36 +512,23 @@ With prefix argument N moves backward N messages with these flags."
 	       " 0/0")))))
 
 (define (maybe-reformat-headers message buffer)
-  (let ((displayed
-	 (get-message-property message
-			       "displayed-header-fields"
-			       'NONE)))
-    (if (eq? 'NONE displayed)
-	(let ((trimmed
-	       (let ((headers
-		      (let ((headers (message-header-fields message))
-			    (regexp
-			     (ref-variable imail-ignored-headers buffer)))
-			(if regexp
-			    (list-search-negative headers
-			      (lambda (header)
-				(re-string-match regexp
-						 (header-field-name header))))
-			    headers)))
-		     (filter (ref-variable rmail-message-filter buffer)))
-		 (if filter
-		     (map (lambda (n.v)
-			    (make-header-field (car n.v) (cdr n.v)))
-			  (filter (map (lambda (header)
-					 (cons (header-field-name header)
-					       (header-field-value header)))
-				       headers)))
-		     headers))))
-	  (set-message-property message
-				"displayed-header-fields"
-				trimmed)
-	  trimmed)
-	displayed)))
+  (let ((headers
+	 (let ((headers (message-header-fields message))
+	       (regexp (ref-variable imail-ignored-headers buffer)))
+	   (if regexp
+	       (list-transform-negative headers
+		 (lambda (header)
+		   (re-string-match regexp (header-field-name header) #t)))
+	       headers)))
+	(filter (ref-variable imail-message-filter buffer)))
+    (if filter
+	(map (lambda (n.v)
+	       (make-header-field (car n.v) (cdr n.v)))
+	     (filter (map (lambda (header)
+			    (cons (header-field-name header)
+				  (header-field-value header)))
+			  headers)))
+	headers)))
 
 ;;;; Message deletion
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.32 2000/04/28 16:14:32 cph Exp $
+;;; $Id: imail-core.scm,v 1.33 2000/04/28 18:43:53 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -437,7 +437,8 @@
 
 ;;;; Message Navigation
 
-(define (first-unseen-message folder)
+(define-generic first-unseen-message (folder))
+(define-method first-unseen-message ((folder <folder>))
   (let ((message (first-message folder)))
     (and message
 	 (let loop ((message message))
