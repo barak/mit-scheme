@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.238 1994/12/02 16:42:11 adams Exp $
+$Id: runtime.pkg,v 14.239 1994/12/19 21:03:43 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -1315,6 +1315,7 @@ MIT in each case. |#
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
 	  microcode-id/modification
+	  microcode-id/operating-system
 	  microcode-id/operating-system-name
 	  microcode-id/operating-system-variant
 	  microcode-id/release-string

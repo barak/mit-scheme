@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.28 1994/11/28 05:44:35 cph Exp $
+$Id: pathnm.scm,v 14.29 1994/12/19 21:03:26 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -634,9 +634,7 @@ these rules:
 		      fail fail fail))))
 
 (define (reset-package!)
-  (let ((host-type
-	 (host-name->type
-	  (intern (microcode-identification-item 'OS-NAME-STRING))))
+  (let ((host-type (host-name->type microcode-id/operating-system))
 	(n-types (+ (apply max (map car known-host-types)) 1)))
     (let ((types (make-vector n-types #f)))
       (for-each (lambda (type) (vector-set! types (car type) (cdr type)))

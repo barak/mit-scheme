@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.22 1994/11/20 05:12:28 cph Exp $
+$Id: dosprm.scm,v 1.23 1994/12/19 21:00:54 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -313,7 +313,7 @@ MIT in each case. |#
 
 (define (cache-console-channel-descriptor!)
   (set! console-channel-descriptor
-	(if (string-ci=? microcode-id/operating-system-name "dos")
+	(if (eq? 'DOS microcode-id/operating-system)
 	    -1
 	    ((ucode-primitive get-handle 1) 1)))
   unspecific)

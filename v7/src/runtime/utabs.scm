@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/utabs.scm,v 14.11 1992/05/27 22:44:52 jinx Exp $
+$Id: utabs.scm,v 14.12 1994/12/19 21:04:13 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,8 @@ MIT in each case. |#
 		(old-vector (vector-copy identification-vector)))
 	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
 	      (if (not (null? fields))
-		  (let ((slot (microcode-identification-vector-slot (car fields))))
+		  (let ((slot
+			 (microcode-identification-vector-slot (car fields))))
 		    (vector-set! old-vector slot false)
 		    (vector-set! new-vector slot false)
 		    (loop (cdr fields)))))
@@ -91,8 +92,9 @@ MIT in each case. |#
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
   (set! microcode-id/floating-epsilon
 	(microcode-identification-item 'FLONUM-EPSILON))
-  (set! microcode-id/operating-system-name
-	(microcode-identification-item 'OS-NAME-STRING))
+  (let ((name (microcode-identification-item 'OS-NAME-STRING)))
+    (set! microcode-id/operating-system (intern name))
+    (set! microcode-id/operating-system-name name))
   (set! microcode-id/operating-system-variant
 	(microcode-identification-item 'OS-VARIANT-STRING))
   (set! microcode-id/stack-type
@@ -115,6 +117,7 @@ MIT in each case. |#
 (define microcode-id/tty-y-size)
 (define microcode-id/floating-mantissa-bits)
 (define microcode-id/floating-epsilon)
+(define microcode-id/operating-system)
 (define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
 (define microcode-id/stack-type)
