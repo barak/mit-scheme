@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.137 2000/07/05 00:32:45 cph Exp $
+;;; $Id: imail-imap.scm,v 1.138 2000/07/05 03:29:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -217,13 +217,11 @@
       (if-not-unique mailbox
 		     (lambda () (imap-mailbox-completions mailbox url)))
       (let ((responses (imap-mailbox-completions mailbox url)))
-	(cond ((not (pair? responses))
-	       (if-not-found))
+	(cond ((not (pair? responses)) (if-not-found))
 	      ((pair? (cdr responses))
 	       (if-not-unique (string-greatest-common-prefix responses)
 			      (lambda () responses)))
-	      (else
-	       (if-unique (car responses)))))))
+	      (else (if-unique (car responses)))))))
 
 (define (imap-mailbox-completions prefix url)
   (with-open-imap-connection url
@@ -244,9 +242,12 @@
 			mailbox)))
 	       (let ((tail
 		      (if (and delimiter
-			       (not (memq '\NOINFERIORS flags))
-			       (pair?
-				(get-list (string-append mailbox delimiter))))
+			       (or (memq '\NOSELECT flags)
+				   (and (not (memq '\NOINFERIORS flags))
+					(pair?
+					 (get-list
+					  (string-append mailbox
+							 delimiter))))))
 			  (list (string-append mailbox* "/"))
 			  '())))
 		 (if (memq '\NOSELECT flags)
@@ -1160,8 +1161,9 @@
 	 (lambda (connection thunk)
 	   (if (imap:catch-no-response
 		(lambda (response)
-		  (imap:response-code:trycreate?
-		   (imap:response:response-text-code response)))
+		  (let ((code (imap:response:response-text-code response)))
+		    (and code
+			 (imap:response-code:trycreate? code))))
 		(lambda ()
 		  (thunk)
 		  #f))
