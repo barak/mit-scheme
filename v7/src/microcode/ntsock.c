@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.11 2001/07/19 00:44:37 cph Exp $
+$Id: ntsock.c,v 1.12 2002/04/23 13:47:30 cph Exp $
 
-Copyright (c) 1997-2001 Massachusetts Institute of Technology
+Copyright (c) 1997-2002 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -189,6 +189,7 @@ Tchannel
 OS_create_tcp_server_socket (void)
 {
   SOCKET s;
+  transaction_begin ();
   SOCKET_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
   RETURN_SOCKET (s, NT_channel_class_tcp_server_socket);
 }
