@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: editor.scm,v 1.234 1993/11/18 15:11:36 gjr Exp $
+;;;	$Id: editor.scm,v 1.235 1994/03/08 20:24:33 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -230,8 +230,9 @@ with the contents of the startup message."
 	   (set! edwin-editor false)
 	   (set! edwin-continuation)
 	   (set! init-file-loaded? false)
-	   (set! *previous-popped-up-buffer* (object-hash false))
-	   (set! *previous-popped-up-window* (object-hash false))
+	   (weak-set-car! *previous-popped-up-window* #f)
+	   (weak-set-car! *previous-popped-up-buffer* #f)
+	   (weak-set-car! *minibuffer-scroll-window* #f)
 	   unspecific)))))
 
 (define (reset-editor-windows)

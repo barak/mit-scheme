@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.48 1993/08/10 05:42:07 cph Exp $
+;;;	$Id: buffrm.scm,v 1.49 1994/03/08 20:24:23 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -415,7 +415,7 @@ Automatically becomes local when set in any fashion."
        (let ((window (editor-frame-cursor-window frame)))
 	 (and (not (eq? window selected-window))
 	      (converted-window window)))
-       (let ((window (object-unhash *minibuffer-scroll-window*)))
+       (let ((window (weak-car *minibuffer-scroll-window*)))
 	 (and window
 	      (converted-window window)))))))
 
@@ -494,7 +494,5 @@ Automatically becomes local when set in any fashion."
 		   (window-configuration/minibuffer-scroll-window
 		    configuration)))
 	      (if window
-		  (begin
-		    (set! *minibuffer-scroll-window*
-			  (hash (convert-window window)))
-		    unspecific))))))))
+		  (weak-set-car! *minibuffer-scroll-window*
+				 (convert-window window)))))))))
