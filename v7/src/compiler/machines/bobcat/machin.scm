@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.6 1988/05/03 00:35:08 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.7 1988/05/03 01:09:33 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -38,10 +38,13 @@ MIT in each case. |#
 ;;; Size of words.  Some of the stuff in "assmd.scm" might want to
 ;;; come here.
 
+(define-integrable scheme-object-width 32)
 (define-integrable scheme-datum-width 24)
 (define-integrable scheme-type-width 8)
+(define maximum-unsigned-fixnum
+  (expt 2 scheme-datum-width))
 (define maximum-positive-fixnum
-  (-1+ (expt 2 (-1+ scheme-datum-width))))
+  (-1+ (quotient maximum-unsigned-fixnum 2)))
 
 (define-integrable (stack->memory-offset offset)
   offset)
