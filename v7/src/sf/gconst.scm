@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.6 1989/11/15 02:44:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/gconst.scm,v 4.7 1990/06/25 18:53:41 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -94,12 +94,17 @@ MIT in each case. |#
     FIX:<
     FIX:=
     FIX:>
+    FIX:AND
+    FIX:ANDC
     FIX:DIVIDE
     FIX:GCD
     FIX:NEGATIVE?
+    FIX:NOT
+    FIX:OR
     FIX:POSITIVE?
     FIX:QUOTIENT
     FIX:REMAINDER
+    FIX:XOR
     FIX:ZERO?
     FLO:*
     FLO:+
