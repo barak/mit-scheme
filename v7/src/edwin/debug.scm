@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.59 2001/12/20 16:13:18 cph Exp $
+;;; $Id: debug.scm,v 1.60 2002/01/07 04:12:37 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -1625,7 +1625,8 @@ once it has been renamed, it will not be deleted automatically.")
 	   (debugger-newline port)
 	   (for-each (lambda (name)
 		       (myprint-binding name
-					(safe-lookup environment name)
+					(environment-safe-lookup environment
+								 name)
 					port))
 	     names))))
     (cond ((null? names)
@@ -1651,11 +1652,6 @@ once it has been renamed, it will not be deleted automatically.")
   (write-string
    "---------------------------------------------------------------------"
    port))
-
-(define (safe-lookup environment name)
-  (if (environment-assigned? environment name)
-      (environment-lookup environment name)
-      (make-unassigned-reference-trap)))
 
 ;;;This does some stuff who's end product is to pp the bindings
 (define (myprint-binding name value port)
@@ -1666,22 +1662,25 @@ once it has been renamed, it will not be deleted automatically.")
 	     (lambda ()
 	       (write-dbg-name name (current-output-port))))))
       (write-string name1 port)
-      (if (unassigned-reference-trap? value)
-	  (write-string " is unassigned" port)
-	  (let ((separator " = "))
-	    (write-string separator port)
-	    (let ((indentation 
-		   (+ (string-length name1)
-		      (string-length separator))))
-	      (write-string (string-tail
-			     (with-output-to-string
-			       (lambda ()
-				 (pretty-print value
-					       (current-output-port)
-					       #t
-					       indentation)))
-			     indentation)
-			    port)))))
+      (cond ((unassigned-reference-trap? value)
+	     (write-string " is unassigned" port))
+	    ((macro-reference-trap? value)
+	     (write-string " is a syntactic keyword" port))
+	    (else
+	     (let ((separator " = "))
+	       (write-string separator port)
+	       (let ((indentation 
+		      (+ (string-length name1)
+			 (string-length separator))))
+		 (write-string (string-tail
+				(with-output-to-string
+				  (lambda ()
+				    (pretty-print value
+						  (current-output-port)
+						  #t
+						  indentation)))
+				indentation)
+			       port))))))
     (debugger-newline port)))
 
 (define bline-type:environment
@@ -1764,7 +1763,7 @@ once it has been renamed, it will not be deleted automatically.")
 			   (if (environment-bound? env name)
 			       (print-binding-with-ind
 				name
-				(safe-lookup env name)
+				(environment-safe-lookup env name)
 				"  "
 				port)
 			       (loop (environment-parent env)))))
@@ -1824,7 +1823,7 @@ once it has been renamed, it will not be deleted automatically.")
 	     (for-each (lambda (name)
 			 (print-binding-with-ind
 			  name
-			  (safe-lookup environment name)
+			  (environment-safe-lookup environment name)
 			  ind
 			  port))
 		       names))))
