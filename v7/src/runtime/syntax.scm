@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.45 1987/05/19 13:38:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 13.46 1987/05/21 16:40:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -559,7 +559,7 @@
 
     (define (syntax-fluid-bindings bindings receiver)
       (if (null? bindings)
-	  (receiver '() '() (list false) (list false))
+	  (receiver '() '() '() '())
 	  (syntax-fluid-bindings (cdr bindings)
 	    (lambda (names values transfers-in transfers-out)
 	      (let ((binding (car bindings)))
@@ -568,11 +568,11 @@
 			   (let ((reference (syntax-expression (car binding))))
 			     (let ((assignment (invert-expression reference)))
 			       (lambda (target source)
-				 (make-sequence*
-				  (make-assignment target reference)
-				  (assignment (make-variable source))
-				  (make-assignment source
-						   unassigned-object))))))
+				 (make-assignment
+				  target
+				  (assignment
+				   (make-assignment source
+						    unassigned-object)))))))
 			  (value (expand-binding-value (cdr binding)))
 			  (inside-name
 			   (string->uninterned-symbol "INSIDE-PLACEHOLDER"))

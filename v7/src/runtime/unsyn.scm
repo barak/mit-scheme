@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.43 1987/05/19 13:38:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unsyn.scm,v 13.44 1987/05/21 16:41:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -331,8 +331,7 @@
   (combination-components body
     (lambda (operator operands)
       `(FLUID-LET ,(unsyntax-let-bindings
-		    (extract-transfer-variables
-		     (sequence-actions (lambda-body (car operands))))
+		    (map extract-transfer-var (lambda-body (car operands)))
 		    (let every-other ((values values))
 		      (if (null? values)
 			  '()
@@ -341,11 +340,21 @@
 	     (lambda (name required optional rest body)
 	       (unsyntax-sequence body)))))))
 
-(define (extract-transfer-variables actions)
-  (if (assignment? (car actions))
-      (cons (unsyntax-object (assignment-value (car actions)))
-	    (extract-transfer-variables (cdddr actions)))
-      '()))
+(define (extract-transfer-var assignment)
+  (assignment-components assignment
+    (lambda (name value)
+      (cond ((assignment? value)
+	     (assignment-components value (lambda (name value) name)))
+	    ((combination? value)
+	     (combination-components value
+	       (lambda (operator operands)
+		 (cond ((eq? operator lexical-assignment)
+			`(ACCESS ,(cadr operands)
+				 ,@(unexpand-access (car operands))))
+		       (else
+			(error "FLUID-LET: Unknown SCODE form" assignment))))))
+	    (else
+	     (error "FLUID-LET: Unknown SCODE form" assignment))))))
 
 (define ((unsyntax-deep-or-common-FLUID-LET name prim)
 	 ignored-required ignored-operands body)
