@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.69 2004/10/28 19:38:50 cph Exp $
+$Id: unxprm.scm,v 1.70 2004/10/28 22:58:01 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -256,13 +256,9 @@ USA.
 	   (char=? (string-ref line 0) #\#))
       #f
       (let ((parts (burst-string line char-set:whitespace #t)))
-	(if (pair? parts)
-	    (if (mime-type-string? (car parts))
-		parts
-		(begin
-		  (warn "Invalid mime.types line:" line)
-		  #f))
-	    #f))))
+	(and (pair? parts)
+	     (mime-type-string? (car parts))
+	     parts))))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
