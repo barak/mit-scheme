@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.18 2003/09/30 04:22:59 cph Exp $
+$Id: stream.scm,v 14.19 2004/06/12 02:15:48 cph Exp $
 
 Copyright 1986,1987,1988,1989,1992,1995 Massachusetts Institute of Technology
-Copyright 1998,2003 Massachusetts Institute of Technology
+Copyright 1998,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -265,22 +265,29 @@ USA.
   (cons-stream
    2
    (letrec
-       ((primes
-	 (cons-stream
-	  (cons 3 9)
-	  (let filter ((integer 5))
-	    (let loop ((primes primes))
-	      (let ((prime (car primes)))
-		(cond ((< integer (cdr prime))
-		       (cons-stream (cons integer (square integer))
-				    (filter (+ integer 2))))
-		      ((= 0 (remainder integer (car prime)))
-		       (filter (+ integer 2)))
-		      (else
-		       (loop (force (cdr primes)))))))))))
-     (let loop ((primes primes))
-       (cons-stream (car (car primes))
-		    (loop (force (cdr primes))))))))
+       ((primes (cons-stream 3 (fixnum-filter 5)))
+	(fixnum-filter
+	 (let ((limit (fix:- (largest-fixnum) 2)))
+	   (lambda (n)
+	     (if (fix:<= n limit)
+		 (let loop ((ps primes))
+		   (cond ((fix:< n (fix:* (car ps) (car ps)))
+			  (cons-stream n (fixnum-filter (fix:+ n 2))))
+			 ((fix:= 0 (fix:remainder n (car ps)))
+			  (fixnum-filter (fix:+ n 2)))
+			 (else
+			  (loop (force (cdr ps))))))
+		 (generic-filter n)))))
+	(generic-filter
+	 (lambda (n)
+	   (let loop ((ps primes))
+	     (cond ((< n (square (car ps)))
+		    (cons-stream n (generic-filter (+ n 2))))
+		   ((= 0 (remainder n (car ps)))
+		    (generic-filter (+ n 2)))
+		   (else
+		    (loop (force (cdr ps)))))))))
+     primes)))
 
 (define (initialize-package!)
   (let ((reset-primes!
