@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.55 1991/08/27 20:13:45 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.56 1991/08/28 14:56:55 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -88,6 +88,7 @@ MIT in each case. |#
 	 "scrcom"			; screen commands
 	 "sercom"			; search commands
 	 "shell"			; shell subprocess commands
+	 "telnet"			; telnet subprocess commands
 	 "texcom"			; text commands
 	 "wincom"			; window commands
 

@@ -191,6 +191,8 @@
 	       edwin-syntax-table)
     ("tags"    (edwin tags)
 	       edwin-syntax-table)
+    ("telnet"   (edwin)
+	       edwin-syntax-table)
     ("termcap" (edwin console-screen)
 	       syntax-table/system-internal)
     ("texcom"  (edwin)
