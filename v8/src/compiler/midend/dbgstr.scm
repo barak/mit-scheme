@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgstr.scm,v 1.5 1994/11/28 03:55:12 adams Exp $
+$Id: dbgstr.scm,v 1.6 1994/11/30 22:19:00 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -41,9 +41,9 @@ MIT in each case. |#
    (constructor new-dbg-expression/make2 (expr block))
    (print-procedure
     (standard-unparser-method 'NEW-DBG-EXPRESSION
-      (lambda (e port)
+      (lambda (expr port)
 	(write-char #\Space port)
-	(display (new-dbg-expression/expr e) port)))))
+	(display (new-dbg-expression/expr expr) port)))))
   (expr false read-only true)
   (block false read-only false))
 
@@ -80,7 +80,9 @@ MIT in each case. |#
 	(write-char #\Space port)
 	(write (new-dbg-variable/name var) port)
 	(write-string " -> " port)
-	(write (new-dbg-variable/original-name var) port)))))
+	(fluid-let ((*unparser-list-breadth-limit* 5)
+		    (*unparser-list-depth-limit*   2))
+	  (write (new-dbg-variable/original-name var) port))))))
   (name original-name read-only false)
   (original-name name read-only true)
   (block false read-only false)
