@@ -1,7 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.9 1992/07/29 23:10:56 cph Exp $
-$MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/compiler.pkg,v 1.10 1992/08/05 23:38:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -88,6 +87,7 @@ MIT in each case. |#
 	  compiler:generate-lap-files?
 	  compiler:generate-range-checks?
 	  compiler:generate-rtl-files?
+	  compiler:generate-stack-checks?
 	  compiler:generate-type-checks?
 	  compiler:implicit-self-static?
 	  compiler:intersperse-rtl-in-lap?
