@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.27 1995/05/30 13:53:35 cph Exp $
+@comment $Id: user.texinfo,v 1.28 1995/08/21 13:14:14 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -3448,7 +3448,7 @@ the @file{.bif} files.  They will be regenerated as needed.
 @defvr {variable+} *uncompressed-file-lifetime*
 The minimum length of time that a temporary uncompressed version of
 a @file{.bci} file will stay on disk after it is last used.
-The time is in microseconds; the default is @samp{300000} (five
+The time is in milliseconds; the default is @samp{300000} (five
 minutes).
 @end defvr
 
