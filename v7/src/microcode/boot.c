@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.59 1989/10/26 07:49:17 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/boot.c,v 9.60 1989/11/30 03:03:40 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -307,27 +307,27 @@ main (argc, argv)
     printf("Executable Scheme Image\n");
     if (!supplied_p)
     {
-      printf("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
-      OS_initialize(true);
-      Enter_Interpreter();
+      printf ("Scheme Microcode Version %d.%d\n", VERSION, SUBVERSION);
+      OS_initialize (true);
+      Enter_Interpreter ();
     }
     else
     {
-      Clear_Memory(blocks(Heap_Size), blocks(Stack_Size),
-		   blocks(Constant_Size));
+      Clear_Memory ((blocks (Heap_Size)), (blocks (Stack_Size)),
+		    (blocks (Constant_Size)));
       /* We are reloading from scratch anyway. */
       Was_Scheme_Dumped = false;
-      Start_Scheme((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
-		   file_name);
+      Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
+		    file_name);
     }
   }
 
   Command_Line_Hook();
-  Setup_Memory(blocks(Heap_Size), blocks(Stack_Size),
+  Setup_Memory ((blocks(Heap_Size)), (blocks(Stack_Size)),
 	       blocks(Constant_Size));
-  compiler_initialize((long) cold_load_p);
-  Start_Scheme((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
-	       file_name);
+  compiler_initialize ((long) cold_load_p);
+  Start_Scheme ((cold_load_p ? BOOT_FASLOAD : BOOT_LOAD_BAND),
+		file_name);
 }
 
 #define Default_Init_Fixed_Objects(Fixed_Objects)			\
@@ -452,8 +452,6 @@ Start_Scheme(Start_Prim, File_Name)
     }
     Current_State_Point = SHARP_F;
     Fluid_Bindings = EMPTY_LIST;
-    GC_Reserve = 4500;
-    GC_Space_Needed = 0;
     Photo_Open = false;
     Init_Fixed_Objects ();
   }

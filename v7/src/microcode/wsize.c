@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.28 1989/09/20 23:05:21 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/wsize.c,v 9.29 1989/11/30 03:03:31 jinx Exp $ */
 
 #include <stdio.h>
 #include <math.h>
@@ -149,7 +149,7 @@ main()
     count = free(temp);
     if (((unsigned long) temp) <
 	(1 << ((char_size * sizeof(long)) - TYPE_CODE_LENGTH)))
-      printf("#define Heap_In_Low_Memory     1\n");
+      printf("#define HEAP_IN_LOW_MEMORY     1\n");
     else
       printf("/%c Heap is not in Low Memory. %c/\n", '*', '*');
   }

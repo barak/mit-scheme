@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.29 1989/09/20 23:07:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dump.c,v 9.30 1989/11/30 03:03:51 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -55,9 +55,9 @@ prepare_dump_header(Buffer, Dumped_Object,
 
 #ifdef DEBUG
 
-#ifndef Heap_In_Low_Memory
+#ifndef HEAP_IN_LOW_MEMORY
   fprintf(stderr, "\nmemory_base = 0x%x\n", memory_base);
-#endif /* Heap_In_Low_Memory */
+#endif /* HEAP_IN_LOW_MEMORY */
 
   fprintf(stderr, "\nHeap_Relocation=0x%x, dumped as 0x%x\n",
 	  Heap_Relocation,

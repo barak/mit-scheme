@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.33 1989/09/24 15:13:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/object.h,v 9.34 1989/11/30 03:04:01 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -58,11 +58,8 @@ MIT in each case. */
 #define BIGGEST_FIXNUM		((long) 0x007FFFFF)
 #define HALF_DATUM_LENGTH	12
 #define HALF_DATUM_MASK		0x00000FFF
-
-#ifndef OBJECT_MASKS_DEFINED
 #define DATUM_MASK		0x00FFFFFF
 #define TYPE_CODE_MASK		0xFF000000
-#endif /* not OBJECT_MASKS_DEFINED */
 
 #endif /* (TYPE_CODE_LENGTH == 8) */
 #if (TYPE_CODE_LENGTH == 6)
@@ -76,11 +73,8 @@ MIT in each case. */
 #define BIGGEST_FIXNUM		((long) 0x01FFFFFF)
 #define HALF_DATUM_LENGTH	13
 #define HALF_DATUM_MASK		0x00001FFF
-
-#ifndef OBJECT_MASKS_DEFINED
 #define DATUM_MASK		0x03FFFFFF
 #define TYPE_CODE_MASK		0XFC000000
-#endif /* not OBJECT_MASKS_DEFINED */
 
 #endif /* (TYPE_CODE_LENGTH == 6) */
 #endif /* b32 */
@@ -96,11 +90,8 @@ MIT in each case. */
 #define BIGGEST_FIXNUM		((1 << FIXNUM_LENGTH) - 1)
 #define HALF_DATUM_LENGTH	(DATUM_LENGTH / 2)
 #define HALF_DATUM_MASK		((1 << HALF_DATUM_LENGTH) - 1)
-
-#ifndef OBJECT_MASKS_DEFINED
 #define DATUM_MASK		((1 << DATUM_LENGTH) - 1)
 #define TYPE_CODE_MASK		(~ DATUM_MASK)
-#endif /* not OBJECT_MASKS_DEFINED */
 
 #endif /* DATUM_LENGTH */
 
@@ -136,8 +127,10 @@ MIT in each case. */
 
 #define OBJECT_NEW_ADDRESS(object, address)				\
   (OBJECT_NEW_DATUM ((object), (ADDRESS_TO_DATUM (address))))
+
+/* Machine dependencies */
 
-#ifdef Heap_In_Low_Memory	/* Storing absolute addresses */
+#ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
 
 typedef long relocation_type;	/* Used to relocate pointers on fasload */
 
@@ -148,13 +141,20 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
     ((SCHEME_OBJECT *) (malloc ((sizeof (SCHEME_OBJECT)) * (space)))),	\
    ((Heap + (space)) - 1))
 
+#ifndef DATUM_TO_ADDRESS
 #define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
+#endif
 
-#else /* not Heap_In_Low_Memory (portable version) */
+#ifndef ADDRESS_TO_DATUM
+#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
+#endif
+
+#else /* not HEAP_IN_LOW_MEMORY (portable version) */
 
 /* Used to relocate pointers on fasload */
+
 typedef SCHEME_OBJECT * relocation_type;
+
 extern SCHEME_OBJECT * memory_base;
 
 /* The "-1" in the value returned is a guarantee that there is one
@@ -165,10 +165,15 @@ extern SCHEME_OBJECT * memory_base;
    Heap = memory_base,							\
    ((memory_base + (space)) - 1))
 
+#ifndef DATUM_TO_ADDRESS
 #define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
+#endif
 
-#endif /* Heap_In_Low_Memory */
+#ifndef ADDRESS_TO_DATUM
+#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
+#endif
+
+#endif /* HEAP_IN_LOW_MEMORY */
 
 /* Lots of type predicates */
 

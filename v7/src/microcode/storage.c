@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.44 1989/09/20 23:11:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.45 1989/11/30 03:04:10 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -95,7 +95,7 @@ jmp_buf *Back_To_Eval; /* Buffer for set/longjmp */
 long Heap_Size, Constant_Size, Stack_Size;
 SCHEME_OBJECT *Highest_Allocated_Address;
 
-#ifndef Heap_In_Low_Memory
+#ifndef HEAP_IN_LOW_MEMORY
 
 SCHEME_OBJECT * memory_base;
 

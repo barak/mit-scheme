@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.50 1989/10/26 07:49:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/config.h,v 9.51 1989/11/30 03:03:46 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -162,7 +162,7 @@ typedef unsigned long SCHEME_OBJECT;
    constants directly rather than in terms of other constants.
    Similar things can be done for other word sizes.
 
-   Heap_In_Low_Memory should be defined if malloc returns the lowest
+   HEAP_IN_LOW_MEMORY should be defined if malloc returns the lowest
    available memory and thus all addresses will fit in the datum portion
    of a Scheme object.  The datum portion of a Scheme object is 8 bits
    less than the length of a C long.
@@ -226,7 +226,7 @@ typedef unsigned long SCHEME_OBJECT;
 
 #ifdef pdp10
 #define MACHINE_TYPE		"pdp10"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define CHAR_BIT 36		/ * Ugh! Supposedly fixed in newer Cs * /
 #define BELL 			'\007'
 #define FASL_INTERNAL_FORMAT    FASL_PDP10
@@ -234,7 +234,7 @@ typedef unsigned long SCHEME_OBJECT;
 
 #ifdef nu
 #define MACHINE_TYPE		"nu"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
@@ -258,7 +258,7 @@ typedef unsigned long SCHEME_OBJECT;
 /* Amazingly unix and vms agree on all these */
 
 #define MACHINE_TYPE		"vax"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
 #define CHAR_BIT 		8
@@ -323,7 +323,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef hp9000s200	/* and s300, pretty indistinguishable */
 #define MACHINE_TYPE		"hp9000s200"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
@@ -347,7 +347,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #ifdef hp9000s500
 #define MACHINE_TYPE		"hp9000s500"
 /* An unfortunate fact of life on this machine:
-   the C heap is in high memory thus Heap_In_Low_Memory is not
+   the C heap is in high memory thus HEAP_IN_LOW_MEMORY is not
    defined and the whole thing runs slowly.  *Sigh*
 */
 #define UNSIGNED_SHIFT
@@ -371,7 +371,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #endif
 
 #ifdef sun
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
@@ -407,7 +407,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef butterfly
 #define MACHINE_TYPE		"butterfly"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
 #define ULONG_SIZE		32
@@ -425,7 +425,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #ifdef cyber180
 #define MACHINE_TYPE		"cyber180"
 /* Word size is 64 bits. */
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define CHAR_BIT		8
 #define USHORT_SIZE		???
 #define ULONG_SIZE		???
@@ -442,7 +442,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef celerity
 #define MACHINE_TYPE		"celerity"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
@@ -470,31 +470,29 @@ longjmp(Exit_Point, NORMAL_EXIT)
 #define HAS_FREXP
 #define HAS_MODF
 
-#ifndef AVOID_SPECTRUM_TC_KLUDGE
+/* Heap resides in data space, pointed at by space register 5.
+   Short pointers must have their high two bits set to 01 so that
+   it is interpreted as space register 5, 2nd quadrant.
 
-/* Heap resides in "Quad 1", and hence memory addresses have a 1
-   in the second MSBit. This is kludged by the definitions below, and is
-   still considered Heap_In_Low_Memory. */
-#define Heap_In_Low_Memory
+   This is kludged by the definitions below, and is still considered
+   HEAP_IN_LOW_MEMORY.
+  */
 
-/* It must be at least one more than the minimum necessary,
-   and it may not work if it is not even. */
-#define TYPE_CODE_LENGTH 8
+#define HEAP_IN_LOW_MEMORY
 
-/* Datum includes the quad tag, type doesn't. */
-#define TYPE_CODE_MASK	0x3F000000
-#define DATUM_MASK	0x40FFFFFF
-#define OBJECT_MASKS_DEFINED
+#define HPPA_QUAD_BIT	0x40000000
 
-/* Clear the quad tag if there */
-#define OBJECT_TYPE(object) (((object) >> DATUM_LENGTH) & 0x3F)
+#define DATUM_TO_ADDRESS(datum)						\
+((SCHEME_OBJECT *) (((unsigned long) (datum)) | HPPA_QUAD_BIT))
 
-#endif /* AVOID_SPECTRUM_TC_KLUDGE */
+#define ADDRESS_TO_DATUM(address)					\
+((SCHEME_OBJECT) (((unsigned long) (address)) & (~(HPPA_QUAD_BIT))))
+
 #endif /* spectrum */
 
 #ifdef umax
 #define MACHINE_TYPE		"umax"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define VAX_BYTE_ORDER
 #define CHAR_BIT		8
@@ -513,7 +511,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef pyr
 #define MACHINE_TYPE		"pyramid"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16
@@ -527,7 +525,7 @@ longjmp(Exit_Point, NORMAL_EXIT)
 
 #ifdef alliant
 #define MACHINE_TYPE		"alliant"
-#define Heap_In_Low_Memory
+#define HEAP_IN_LOW_MEMORY
 #define UNSIGNED_SHIFT
 #define CHAR_BIT		8
 #define USHORT_SIZE		16

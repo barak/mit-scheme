@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.41 1989/10/28 15:38:44 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/memmag.c,v 9.42 1989/11/30 03:03:56 jinx Exp $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -85,6 +85,8 @@ void
 Clear_Memory (Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
      int Our_Heap_Size, Our_Stack_Size, Our_Constant_Size;
 {
+  GC_Reserve = 4500;
+  GC_Space_Needed = 0;
   Heap_Top = (Heap_Bottom + Our_Heap_Size);
   Local_Heap_Base = Heap_Bottom;
   Unused_Heap_Top = (Heap_Bottom + (2 * Our_Heap_Size));
@@ -144,7 +146,7 @@ Setup_Memory(Our_Heap_Size, Our_Stack_Size, Our_Constant_Size)
     fprintf(stderr,
 	    "Largest address does not fit in datum field of object.\n");
     fprintf(stderr,
-	    "Allocate less space or re-compile without Heap_In_Low_Memory.\n");
+	    "Allocate less space or re-configure without HEAP_IN_LOW_MEMORY.\n");
     exit(1);
   }
 

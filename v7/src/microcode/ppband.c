@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.35 1989/09/20 23:04:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.36 1989/11/30 03:03:25 jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 
@@ -82,7 +82,7 @@ Close_Dump_File()
 #define INHIBIT_COMPILED_VERSION_CHECK
 #include "load.c"
 
-#ifdef Heap_In_Low_Memory
+#ifdef HEAP_IN_LOW_MEMORY
 #ifdef spectrum
 #define File_To_Pointer(P)						\
   ((((long) (P)) & DATUM_MASK) / sizeof(SCHEME_OBJECT))

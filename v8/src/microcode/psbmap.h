@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.31 1989/10/20 04:44:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.32 1989/11/30 03:04:07 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -132,7 +132,7 @@ static Boolean nmv_p = false;
 
 /* Global data */
 
-#ifndef Heap_In_Low_Memory
+#ifndef HEAP_IN_LOW_MEMORY
 SCHEME_OBJECT * memory_base;
 #endif
 
