@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.5 1988/10/21 00:15:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/savres.scm,v 14.6 1988/10/21 00:17:34 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -66,24 +66,23 @@ MIT in each case. |#
       (save-image filename
 		  (lambda ()
 		    (set! time-world-saved time)
-		    (if (false? identify)
-			false
-			unspecific))
+		    (if (string? identify)
+			unspecific
+			false))
 		  (lambda ()
 		    (set! time-world-saved time)
 		    (event-distributor/invoke! event:after-restore)
-		    (cond ((false? identify)
-			   true)
-			  ((string? identify)
-			   (set! world-identification identify)
-			   (clear console-output-port)
-			   (abort->top-level
-			    (lambda (cmdl)
-			      (identify-world cmdl)
-			      (event-distributor/invoke! event:after-restart))))
-			  (else
-			   (event-distributor/invoke! event:after-restart)
-			   unspecific)))))))
+		    (if (string? identify)
+			(begin
+			  (set! world-identification identify)
+			  (clear console-output-port)
+			  (abort->top-level
+			   (lambda (cmdl)
+			     (identify-world cmdl)
+			     (event-distributor/invoke! event:after-restart))))
+			(begin
+			  (event-distributor/invoke! event:after-restart)
+			  true)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
   ((without-interrupts
