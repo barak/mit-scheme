@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.115 1991/10/02 08:59:37 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.116 1991/11/04 20:44:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -449,10 +449,9 @@ On nonblank line, delete all blank lines that follow it."
 				     (mark1+ end))))))))))
 
 (define-command delete-indentation
-  "Kill newline and indentation at front of line.
-Leaves one space in place of them.  With argument,
-moves down one line first (killing newline after current line)."
-  "P"
+  "Join this line to previous and fix up whitespace at join.
+With argument, join this line to following line."
+  "*P"
   (lambda (argument)
     (let ((point
 	   (mark-left-inserting-copy
@@ -465,26 +464,20 @@ moves down one line first (killing newline after current line)."
 		 (match-forward fill-prefix point (line-end point 0) false)))
 	    (if m
 		(delete-string point m))))
-      (delete-horizontal-space point)
-      (if (or (line-start? point)
-	      (line-end? point)
-	      (not (or (char-set-member?
-			(ref-variable delete-indentation-right-protected)
-			(mark-left-char point))
-		       (char-set-member?
-			(ref-variable delete-indentation-left-protected)
-			(mark-right-char point)))))
-	  (insert-char #\space point))
       (mark-temporary! point)
-      (set-current-point! point))))
+      (set-current-point! point))
+    ((ref-command fixup-whitespace))))
 
-(define-variable delete-indentation-right-protected
-  "\\[delete-indentation] won't insert a space to the right of these."
-  (char-set #\( #\,))
-
-(define-variable delete-indentation-left-protected
-  "\\[delete-indentation] won't insert a space to the left of these."
-  (char-set #\)))
+(define-command fixup-whitespace
+  "Fix up white space between objects around point.
+Leave one space or none, according to the context."
+  "*"
+  (lambda ()
+    (delete-horizontal-space)
+    (let ((point (current-point)))
+      (if (not (or (re-match-forward "^\\|\\s)" point)
+		   (re-match-forward "$\\|\\s(\\|\\s'" (mark-1+ point))))
+	  (insert-char #\space point)))))
 
 ;;;; Tabification
 

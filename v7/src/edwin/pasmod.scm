@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.43 1990/10/03 04:55:48 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/pasmod.scm,v 1.44 1991/11/04 20:48:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -64,8 +64,6 @@
   (local-set-variable! comment-end " *)")
   (local-set-variable! paragraph-start "^$")
   (local-set-variable! paragraph-separate (ref-variable "Paragraph Start"))
-  (local-set-variable! delete-indentation-right-protected (char-set #\( #\[))
-  (local-set-variable! delete-indentation-left-protected (char-set #\) #\]))
   (event-distributor/invoke! (ref-variable pascal-mode-hook)))
 
 (define pascal-mode:syntax-table (make-syntax-table))
