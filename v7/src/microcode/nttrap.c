@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.12 1997/01/02 05:21:40 cph Exp $
+$Id: nttrap.c,v 1.13 1997/05/06 04:51:12 cph Exp $
 
 Copyright (c) 1992-97 Massachusetts Institute of Technology
 
@@ -1277,7 +1277,7 @@ DEFUN_VOID (winnt_stack_reset)
 
 #define EXCEPTION_CODE_GUARDED_PAGE_ACCESS	0x80000001L
 
-static int
+static LONG
 DEFUN (WinntException, (code, info),
        DWORD code AND LPEXCEPTION_POINTERS info)
 {
@@ -1323,27 +1323,44 @@ DEFUN (WinntException, (code, info),
   }
 }
 
+#ifdef __WATCOMC__
+#define USE_SET_UNHANDLED_EXCEPTION_FILTER
+#endif
+
+#ifdef USE_SET_UNHANDLED_EXCEPTION_FILTER
+static LONG WINAPI
+scheme_unhandled_exception_filter (LPEXCEPTION_POINTERS info)
+{
+  return (WinntException (((info -> ExceptionRecord) -> ExceptionCode), info));
+}
+#endif /* USE_SET_UNHANDLED_EXCEPTION_FILTER */
+
 extern void EXFUN (WinntEnterHook, (void (*) (void)));
 
 void
 DEFUN (WinntEnterHook, (enter_interpreter),
        void EXFUN ((* enter_interpreter), (void)))
 {
+#ifdef USE_SET_UNHANDLED_EXCEPTION_FILTER
+  (void) SetUnhandledExceptionFilter (scheme_unhandled_exception_filter);
+  /* Doesn't seem to work as it should: */
+  (void) SetErrorMode (SEM_NOGPFAULTERRORBOX);
+  (* enter_interpreter) ();
+  outf_fatal ("Exception!\n");
+  termination_trap ();
+#else /* not USE_SET_UNHANDLED_EXCEPTION_FILTER */
   do
   {
-#ifdef CL386
-    try
-#endif
+    __try
     {
       (* enter_interpreter) ();
     }
-#ifdef CL386
-    except (WinntException ((GetExceptionCode ()),
-			    (GetExceptionInformation ())))
+    __except (WinntException ((GetExceptionCode ()),
+			      (GetExceptionInformation ())))
     {
       outf_fatal ("Exception!\n");
       termination_trap ();
     }
-#endif
   } while (1);
+#endif /* not USE_SET_UNHANDLED_EXCEPTION_FILTER */
 }
