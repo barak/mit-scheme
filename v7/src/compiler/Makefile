@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.4 1988/10/29 05:14:08 jinx Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.5 1988/11/09 16:35:48 cph Rel $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -9,6 +9,7 @@
 
 SOURCES = back/foo base/foo bobcat/foo fggen/foo fgopt/foo\
 	rtlbase/foo rtlgen/foo rtlopt/foo
+SUBDIRS = $(SOURCES:foo=)
 
 SHELL = /bin/sh
 
@@ -26,124 +27,100 @@ listing:
 	prlist comp.pkg $(SOURCES:foo=*.scm)
 
 locked:
-	rlog -L -R RCS/*,v $(SOURCES:foo=RCS/*,v)
+	for subdir in ./ $(SUBDIRS); \
+	do \
+	rlog -L -R $${subdir}RCS/*,v ; \
+	done
 
 stage1:
-	cd back ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd base ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd bobcat ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd fggen ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd fgopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd rtlbase ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd rtlgen ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
-	cd rtlopt ; mkdir STAGE1 ; mv *.com *.binf STAGE1/.
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mkdir STAGE1 ; mv *.com *.binf STAGE1/. ) \
+	done
 
 unstage1:
-	cd back ; mv STAGE1/* . ; rmdir STAGE1
-	cd base ; mv STAGE1/* . ; rmdir STAGE1
-	cd bobcat ; mv STAGE1/* . ; rmdir STAGE1
-	cd fggen ; mv STAGE1/* . ; rmdir STAGE1
-	cd fgopt ; mv STAGE1/* . ; rmdir STAGE1
-	cd rtlbase ; mv STAGE1/* . ; rmdir STAGE1
-	cd rtlgen ; mv STAGE1/* . ; rmdir STAGE1
-	cd rtlopt ; mv STAGE1/* . ; rmdir STAGE1
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mv STAGE1/* . ; rmdir STAGE1 ) \
+	done
+
+rmstage1:
+	rm -rf $(SOURCES:foo=STAGE1)
 
 cpstage1:
-	cd back ; cp STAGE1/* . 
-	cd base ; cp STAGE1/* . 
-	cd bobcat ; cp STAGE1/* . 
-	cd fggen ; cp STAGE1/* . 
-	cd fgopt ; cp STAGE1/* . 
-	cd rtlbase ; cp STAGE1/* . 
-	cd rtlgen ; cp STAGE1/* . 
-	cd rtlopt ; cp STAGE1/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	cpx STAGE1/* . ) \
+	done
 
 lnstage1:
-	cd back ; ln STAGE1/* . 
-	cd base ; ln STAGE1/* . 
-	cd bobcat ; ln STAGE1/* . 
-	cd fggen ; ln STAGE1/* . 
-	cd fgopt ; ln STAGE1/* . 
-	cd rtlbase ; ln STAGE1/* . 
-	cd rtlgen ; ln STAGE1/* . 
-	cd rtlopt ; ln STAGE1/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	ln STAGE1/* . ) \
+	done
 
 stage2:
-	cd back ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd base ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd bobcat ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd fggen ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd fgopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd rtlbase ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd rtlgen ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
-	cd rtlopt ; mkdir STAGE2 ; mv *.com *.binf STAGE2/.
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mkdir STAGE2 ; mv *.com *.binf STAGE2/. ) \
+	done
 
 unstage2:
-	cd back ; mv STAGE2/* . ; rmdir STAGE2
-	cd base ; mv STAGE2/* . ; rmdir STAGE2
-	cd bobcat ; mv STAGE2/* . ; rmdir STAGE2
-	cd fggen ; mv STAGE2/* . ; rmdir STAGE2
-	cd fgopt ; mv STAGE2/* . ; rmdir STAGE2
-	cd rtlbase ; mv STAGE2/* . ; rmdir STAGE2
-	cd rtlgen ; mv STAGE2/* . ; rmdir STAGE2
-	cd rtlopt ; mv STAGE2/* . ; rmdir STAGE2
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mv STAGE2/* . ; rmdir STAGE2 ) \
+	done
+
+rmstage2:
+	rm -rf $(SOURCES:foo=STAGE2)
 
 cpstage2:
-	cd back ; cp STAGE2/* . 
-	cd base ; cp STAGE2/* . 
-	cd bobcat ; cp STAGE2/* . 
-	cd fggen ; cp STAGE2/* . 
-	cd fgopt ; cp STAGE2/* . 
-	cd rtlbase ; cp STAGE2/* . 
-	cd rtlgen ; cp STAGE2/* . 
-	cd rtlopt ; cp STAGE2/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	cpx STAGE2/* . ) \
+	done
 
 lnstage2:
-	cd back ; ln STAGE2/* . 
-	cd base ; ln STAGE2/* . 
-	cd bobcat ; ln STAGE2/* . 
-	cd fggen ; ln STAGE2/* . 
-	cd fgopt ; ln STAGE2/* . 
-	cd rtlbase ; ln STAGE2/* . 
-	cd rtlgen ; ln STAGE2/* . 
-	cd rtlopt ; ln STAGE2/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	ln STAGE2/* . ) \
+	done
 
 stage3:
-	cd back ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd base ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd bobcat ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd fggen ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd fgopt ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd rtlbase ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd rtlgen ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
-	cd rtlopt ; mkdir STAGE3 ; mv *.com *.binf STAGE3/.
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mkdir STAGE3 ; mv *.com *.binf STAGE3/. ) \
+	done
 
 unstage3:
-	cd back ; mv STAGE3/* . ; rmdir STAGE3
-	cd base ; mv STAGE3/* . ; rmdir STAGE3
-	cd bobcat ; mv STAGE3/* . ; rmdir STAGE3
-	cd fggen ; mv STAGE3/* . ; rmdir STAGE3
-	cd fgopt ; mv STAGE3/* . ; rmdir STAGE3
-	cd rtlbase ; mv STAGE3/* . ; rmdir STAGE3
-	cd rtlgen ; mv STAGE3/* . ; rmdir STAGE3
-	cd rtlopt ; mv STAGE3/* . ; rmdir STAGE3
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	mv STAGE3/* . ; rmdir STAGE3 ) \
+	done
+
+rmstage3:
+	rm -rf $(SOURCES:foo=STAGE3)
 
 cpstage3:
-	cd back ; cp STAGE3/* . 
-	cd base ; cp STAGE3/* . 
-	cd bobcat ; cp STAGE3/* . 
-	cd fggen ; cp STAGE3/* . 
-	cd fgopt ; cp STAGE3/* . 
-	cd rtlbase ; cp STAGE3/* . 
-	cd rtlgen ; cp STAGE3/* . 
-	cd rtlopt ; cp STAGE3/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	cpx STAGE3/* . ) \
+	done
 
 lnstage3:
-	cd back ; ln STAGE3/* . 
-	cd base ; ln STAGE3/* . 
-	cd bobcat ; ln STAGE3/* . 
-	cd fggen ; ln STAGE3/* . 
-	cd fgopt ; ln STAGE3/* . 
-	cd rtlbase ; ln STAGE3/* . 
-	cd rtlgen ; ln STAGE3/* . 
-	cd rtlopt ; ln STAGE3/* . 
+	for subdir in $(SUBDIRS); \
+	do \
+	( cd $$subdir ; echo "making $$subdir" ; \
+	ln STAGE3/* . ) \
+	done
