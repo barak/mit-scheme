@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: things.scm,v 1.85 1999/01/02 06:11:34 cph Exp $
+;;; $Id: things.scm,v 1.86 2000/02/25 19:40:00 cph Exp $
 ;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -201,6 +201,15 @@
   (let ((point (if (default-object? point) (current-point) point)))
     (delete-string (horizontal-space-start point)
 		   (horizontal-space-end point))))
+
+(define (indent-to target-column #!optional minimum point)
+  (let ((minimum (if (default-object? minimum) 0 minimum))
+	(point (if (default-object? point) (current-point) point)))
+    (insert-horizontal-space (let ((n (- target-column (mark-column point))))
+			       (if (< n minimum)
+				   (+ target-column (- minimum (max 0 n)))
+				   target-column))
+			     point)))
 
 (define (region-blank? region)
   (not (skip-chars-forward " \t"
