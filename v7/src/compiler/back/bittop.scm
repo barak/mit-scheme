@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bittop.scm,v 1.17 1993/12/08 23:48:58 gjr Exp $
+$Id: bittop.scm,v 1.18 1993/12/09 01:17:55 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -102,7 +102,7 @@ MIT in each case. |#
 	    (cond (any-modified?
 		   (continue false count))
 		  ((or (zero? number-of-vars)
-		       (not *padding-present*?))
+		       (not *padding-present?*))
 		   count)
 		  (else
 		   (continue (not widening?) count)))))))
