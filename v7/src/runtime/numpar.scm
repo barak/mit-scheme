@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.10 1997/04/24 06:35:04 cph Exp $
+$Id: numpar.scm,v 14.11 1997/04/28 05:32:15 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -47,11 +47,39 @@ MIT in each case. |#
 		(if (default-object? radix) #f radix)
 		'SUBSTRING->NUMBER))
 
-(define (parse-number string start end radix name)
-  (if (not (or (eq? #f radix)
-	       (eq? 2 radix) (eq? 8 radix) (eq? 10 radix) (eq? 16 radix)))
+(define (parse-number string start end default-radix name)
+  (if (not (or (eq? #f default-radix) (eq? 2 default-radix)
+	       (eq? 8 default-radix) (eq? 10 default-radix)
+	       (eq? 16 default-radix)))
       (error:bad-range-argument radix name))
-  (parse-top-level string start end #f radix))
+  (let loop ((start start) (exactness #f) (radix #f))
+    (and (fix:< start end)
+	 (if (char=? #\# (string-ref string start))
+	     (let ((start (fix:+ start 1)))
+	       (and (fix:< start end)
+		    (let ((char (string-ref string start))
+			  (start (fix:+ start 1)))
+		      (let ((do-radix
+			     (lambda (r)
+			       (and (not radix) (loop start exactness r))))
+			    (do-exactness
+			     (lambda (e)
+			       (and (not exactness) (loop start e radix)))))
+			(cond ((or (char=? #\b char) (char=? #\B char))
+			       (do-radix 2))
+			      ((or (char=? #\o char) (char=? #\O char))
+			       (do-radix 8))
+			      ((or (char=? #\d char) (char=? #\D char))
+			       (do-radix 10))
+			      ((or (char=? #\x char) (char=? #\X char))
+			       (do-radix 16))
+			      ((or (char=? #\e char) (char=? #\E char))
+			       (do-exactness 'EXACT))
+			      ((or (char=? #\i char) (char=? #\I char))
+			       (do-exactness 'INEXACT))
+			      (else #f))))))
+	     (parse-top-level string start end exactness
+			      (or radix default-radix))))))
 
 (define (parse-top-level string start end exactness radix)
   (and (fix:< start end)
@@ -65,33 +93,6 @@ MIT in each case. |#
 		(and (or (not radix) (fix:= 10 radix))
 		     (parse-decimal-1 string start end
 				      (or exactness 'IMPLICIT-INEXACT) #f)))
-	       ((char=? #\# char)
-		(and (fix:< start end)
-		     (let ((char (string-ref string start))
-			   (start (fix:+ start 1)))
-		       (let ((do-radix
-			      (lambda (r)
-				(and (not radix)
-				     (parse-top-level string start end
-						      exactness r))))
-			     (do-exactness
-			      (lambda (e)
-				(and (not exactness)
-				     (parse-top-level string start end
-						      e radix)))))
-			 (cond ((or (char=? #\b char) (char=? #\B char))
-				(do-radix 2))
-			       ((or (char=? #\o char) (char=? #\O char))
-				(do-radix 8))
-			       ((or (char=? #\d char) (char=? #\D char))
-				(do-radix 10))
-			       ((or (char=? #\x char) (char=? #\X char))
-				(do-radix 16))
-			       ((or (char=? #\e char) (char=? #\E char))
-				(do-exactness 'EXACT))
-			       ((or (char=? #\i char) (char=? #\I char))
-				(do-exactness 'INEXACT))
-			       (else #f))))))
 	       ((char->digit char (or radix 10))
 		=> (lambda (digit)
 		     (parse-integer string start end digit
@@ -113,7 +114,7 @@ MIT in each case. |#
 				      (or exactness 'IMPLICIT-INEXACT) sign)))
 	       ((i? char)
 		(and (fix:= start end)
-		     (make-rectangular 0 (if (char=? #\+ sign) 1 -1))))
+		     (if (eq? #\- sign) -i +i)))
 	       (else #f)))))
 
 (define (parse-integer string start end integer exactness radix sign)
@@ -239,7 +240,7 @@ MIT in each case. |#
 		      (continue start eint esign)))))))
 
   (define (continue start eint esign)
-    (let ((exponent (+ exponent (if (char=? #\+ esign) eint (- eint)))))
+    (let ((exponent (+ exponent (if (eq? #\- esign) (- eint) eint))))
       (if (fix:= start end)
 	  (finish-real integer exponent exactness sign)
 	  (parse-decimal-5 string start end
@@ -247,10 +248,10 @@ MIT in each case. |#
 			   
   
   (and (fix:< start end)
-       (let ((esign (string-ref string start))
-	     (start (fix:+ start 1)))
-	 (and (sign? esign)
-	      (get-digits start esign)))))
+       (let ((esign (string-ref string start)))
+	 (if (sign? esign)
+	     (get-digits (fix:+ start 1) esign)
+	     (get-digits start #f)))))
 
 (define (parse-decimal-5 string start end integer exponent exactness sign)
   (parse-complex string start end
