@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.45 1994/10/13 23:24:17 adams Exp $
+@comment $Id: scheme.texinfo,v 1.46 1994/10/17 16:08:36 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -17081,10 +17081,13 @@ produced automagically.  Most of the @code{#define}-symbols contain an
 underscore so there are not many name clashes.  There is one very
 notable name clash, however: @code{ERROR} is @code{#define}d to 0, which
 shadows the scheme procedure @code{error} in the root package
-environment.  To signal an error, use @code{access}:
+environment.  To signal an error, use @code{access} to get @code{error}
+from the system global environment:
 
 @example
-((access error ()) "Whine moan" ...)
+(declare (usual-integrations))
+...
+((access error system-global-environment) "Complain" ...)
 @end example
 
 
