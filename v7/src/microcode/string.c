@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.38 1999/01/02 06:11:34 cph Exp $
+$Id: string.c,v 9.39 2001/01/04 22:07:43 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "scheme.h"
 #include "prims.h"
+
+#ifndef STDC_HEADERS
+#  ifdef HAVE_MALLOC_H
+#    include <malloc.h>
+#  else
+     extern PTR EXFUN (malloc, (size_t));
+     extern PTR EXFUN (realloc, (PTR, size_t));
+#  endif
+#endif
 
 SCHEME_OBJECT
 DEFUN (allocate_string, (nbytes), fast long nbytes)
@@ -160,28 +169,26 @@ DEFINE_PRIMITIVE ("VECTOR-8B-SET!", Prim_vec_8b_set, 3, 3, 0)
      STRING_SET_BODY (arg_ascii_integer)
 
 #define SUBSTRING_MOVE_PREFIX()						\
-  long start1, end1, start2, end2, length;				\
-  fast unsigned char *scan1, *scan2, *limit;				\
+  unsigned char *ptr1, *ptr2;						\
+  unsigned long len1, len2;						\
+  unsigned long start1, end1, start2, end2, length;			\
+  unsigned char *scan1, *scan2, *limit;					\
   PRIMITIVE_HEADER (5);							\
-  CHECK_ARG (1, STRING_P);						\
-  start1 = (arg_nonnegative_integer (2));				\
-  end1 = (arg_nonnegative_integer (3));					\
-  CHECK_ARG (4, STRING_P);						\
-  start2 = (arg_nonnegative_integer (5));				\
+  ptr1 = (arg_extended_string (1, (&len1)));				\
+  end1 = (arg_ulong_index_integer (3, (len1 + 1)));			\
+  start1 = (arg_ulong_index_integer (2, (end1 + 1)));			\
+  ptr2 = (arg_extended_string (4, (&len2)));				\
+  start2 = (arg_ulong_index_integer (5, (len2 + 1)));			\
   length = (end1 - start1);						\
   end2 = (start2 + length);						\
-  if (end1 > (STRING_LENGTH (ARG_REF (1))))				\
-    error_bad_range_arg (2);						\
-  if (start1 > end1)							\
-    error_bad_range_arg (1);						\
-  if (end2 > (STRING_LENGTH (ARG_REF (4))))				\
-    error_bad_range_arg (3)
+  if (end2 > len2)							\
+    error_bad_range_arg (5)
 
 DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_substring_move_right, 5, 5, 0)
 {
   SUBSTRING_MOVE_PREFIX ();
-  scan1 = (STRING_LOC ((ARG_REF (1)), end1));
-  scan2 = (STRING_LOC ((ARG_REF (4)), end2));
+  scan1 = (ptr1 + end1);
+  scan2 = (ptr2 + end2);
   limit = (scan1 - length);
   while (scan1 > limit)
     (*--scan2) = (*--scan1);
@@ -191,8 +198,8 @@ DEFINE_PRIMITIVE ("SUBSTRING-MOVE-RIGHT!", Prim_substring_move_right, 5, 5, 0)
 DEFINE_PRIMITIVE ("SUBSTRING-MOVE-LEFT!", Prim_substring_move_left, 5, 5, 0)
 {
   SUBSTRING_MOVE_PREFIX ();
-  scan1 = (STRING_LOC ((ARG_REF (1)), start1));
-  scan2 = (STRING_LOC ((ARG_REF (4)), start2));
+  scan1 = (ptr1 + start1);
+  scan2 = (ptr2 + start2);
   limit = (scan1 + length);
   while (scan1 < limit)
     (*scan2++) = (*scan1++);
@@ -477,4 +484,301 @@ DEFINE_PRIMITIVE ("SUBSTRING-MATCH-BACKWARD-CI", Prim_match_backward_ci, 6, 6, 0
     if ((char_upcase (*--scan1)) != (char_upcase (*--scan2)))
       PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (scan1_start - (scan1 + 1)));
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (length));
+}
+
+/* External strings */
+
+/* An external string is just a chunk of memory allocated using malloc
+   outside of Scheme's address space.  It is represented to Scheme as
+   an integer -- the address of the memory.  Each external string is
+   registered in a hash table when it is allocated so that we can
+   validate the incoming integers.  */
+
+typedef struct ht_record_s ht_record_t;
+struct ht_record_s
+{
+  ht_record_t * next;
+  unsigned long n_bytes;
+};
+
+#define HT_RECORD_PTR(record) ((PTR) ((record) + 1))
+#define HT_RECORD_KEY(record) ((unsigned long) ((record) + 1))
+#define HT_RECORD_NEXT(record) ((record) -> next)
+#define HT_RECORD_N_BYTES(record) ((record) -> n_bytes)
+
+typedef struct
+{
+  unsigned long n_records;
+  unsigned long n_buckets;
+  ht_record_t ** buckets;
+} hash_table_t;
+
+#define HT_N_RECORDS(table) ((table) -> n_records)
+#define HT_N_BUCKETS(table) ((table) -> n_buckets)
+#define HT_BUCKET_INDEX(table, key) ((key) % (HT_N_BUCKETS (table)))
+#define HT_BUCKETS(table) ((table) -> buckets)
+#define HT_BUCKET_REF(table, index) ((HT_BUCKETS (table)) [(index)])
+#define HT_SHRINK_POINT(table) ((((HT_N_BUCKETS (table)) + 1) / 2) - 1)
+
+static hash_table_t * EXFUN (make_hash_table, (void));
+static void EXFUN (ht_resize, (hash_table_t *, unsigned long));
+static void EXFUN (zero_ht_buckets, (hash_table_t *));
+static ht_record_t * EXFUN (ht_records_list, (hash_table_t *));
+static ht_record_t * EXFUN (ht_lookup, (hash_table_t *, unsigned long));
+static unsigned long EXFUN (ht_insert, (hash_table_t *, ht_record_t *));
+static ht_record_t * EXFUN (ht_delete, (hash_table_t *, unsigned long));
+
+static hash_table_t * external_strings = 0;
+
+DEFINE_PRIMITIVE ("allocate-external-string", Prim_alloc_external_string, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    unsigned long n_bytes = (arg_ulong_integer (1));
+    ht_record_t * result = (malloc (n_bytes + 1 + (sizeof (ht_record_t))));
+    if (result == 0)
+      error_bad_range_arg (1);
+    if (external_strings == 0)
+      external_strings = (make_hash_table ());
+    (HT_RECORD_N_BYTES (result)) = n_bytes;
+    /* Guarantee zero termination in case used as C string.  */
+    (((char *) (HT_RECORD_PTR (result))) [n_bytes]) = '\0';
+    PRIMITIVE_RETURN (ulong_to_integer (ht_insert (external_strings, result)));
+  }
+}
+
+DEFINE_PRIMITIVE ("external-string?", Prim_external_string_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    SCHEME_OBJECT x = (ARG_REF (1));
+    if ((INTEGER_P (x)) && (integer_to_ulong_p (x)))
+      {
+	ht_record_t * record;
+	if (external_strings == 0)
+	  external_strings = (make_hash_table ());
+	record = (ht_lookup (external_strings, (integer_to_ulong (x))));
+	PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (record != 0));
+      }
+    else
+      PRIMITIVE_RETURN (SHARP_F);
+  }
+}
+
+DEFINE_PRIMITIVE ("deallocate-external-string", Prim_dealloc_external_string, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    unsigned long n = (arg_ulong_integer (1));
+    ht_record_t * record;
+    if (external_strings == 0)
+      external_strings = (make_hash_table ());
+    record = (ht_delete (external_strings, n));
+    if (record == 0)
+      error_wrong_type_arg (1);
+    free (record);
+    PRIMITIVE_RETURN (UNSPECIFIC);
+  }
+}
+
+DEFINE_PRIMITIVE ("extended-string-length", Prim_extended_string_length, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  {
+    unsigned long len;
+    arg_extended_string (1, (&len));
+    PRIMITIVE_RETURN (ulong_to_integer (len));
+  }
+}
+
+PTR
+DEFUN (arg_extended_string, (n), unsigned int n AND unsigned long * lp)
+{
+  SCHEME_OBJECT object = (ARG_REF (n));
+  if (STRING_P (object))
+    {
+      if (lp != 0)
+	(*lp) = (STRING_LENGTH (object));
+      return (STRING_LOC (object, 0));
+    }
+  else if ((INTEGER_P (object)) && (integer_to_ulong_p (object)))
+    {
+      ht_record_t * record;
+      if (external_strings == 0)
+	external_strings = (make_hash_table ());
+      record = (ht_lookup (external_strings, (integer_to_ulong (object))));
+      if (record == 0)
+	error_wrong_type_arg (n);
+      if (lp != 0)
+	(*lp) = (HT_RECORD_N_BYTES (record));
+      return (HT_RECORD_PTR (record));
+    }
+  else
+    {
+      error_wrong_type_arg (n);
+      return (0);
+    }
+}
+
+#define HT_MIN_EXPT 4
+#define HT_MAX_EXPT 24
+
+#define EXPT_TO_N(e) ((1 << (e)) - 1)
+
+static hash_table_t *
+DEFUN_VOID (make_hash_table)
+{
+  unsigned long n = (EXPT_TO_N (HT_MIN_EXPT));
+  hash_table_t * table = (malloc (sizeof (hash_table_t)));
+  if (table == 0)
+    abort ();
+  (HT_N_RECORDS (table)) = 0;
+  (HT_N_BUCKETS (table)) = n;
+  (HT_BUCKETS (table)) = (malloc (n * (sizeof (ht_record_t *))));
+  if ((HT_BUCKETS (table)) == 0)
+    abort ();
+  zero_ht_buckets (table);
+  return (table);
+}
+
+static void
+DEFUN (ht_resize, (table, new_n_buckets),
+       hash_table_t * table AND
+       unsigned long new_n_buckets)
+{
+  ht_record_t ** new_buckets
+    = (malloc (new_n_buckets * (sizeof (ht_record_t *))));
+  if (new_buckets != 0)
+    {
+      ht_record_t * records = (ht_records_list (table));
+      (HT_BUCKETS (table)) = new_buckets;
+      (HT_N_BUCKETS (table)) = new_n_buckets;
+      (HT_N_RECORDS (table)) = 0;
+      zero_ht_buckets (table);
+      while (records != 0)
+	{
+	  ht_record_t * next = (HT_RECORD_NEXT (records));
+	  ht_insert (table, records);
+	  records = next;
+	}
+    }
+}
+
+static void
+DEFUN (zero_ht_buckets, (table), hash_table_t * table)
+{
+  ht_record_t ** scan = (HT_BUCKETS (table));
+  ht_record_t ** end = (scan + (HT_N_BUCKETS (table)));
+  while (scan < end)
+    (*scan++) = 0;
+}
+
+static ht_record_t *
+DEFUN (ht_records_list, (table), hash_table_t * table)
+{
+  ht_record_t ** scan_buckets = (HT_BUCKETS (table));
+  ht_record_t ** end_buckets = (scan_buckets + (HT_N_BUCKETS (table)));
+  ht_record_t * result = 0;
+  while (scan_buckets < end_buckets)
+    {
+      ht_record_t * scan = (*scan_buckets);
+      while (scan != 0)
+	{
+	  ht_record_t * next = (HT_RECORD_NEXT (scan));
+	  (HT_RECORD_NEXT (scan)) = result;
+	  result = scan;
+	  scan = next;
+	}
+      (*scan_buckets++) = 0;
+    }
+  return (result);
+}
+
+static ht_record_t *
+DEFUN (ht_lookup, (table, key),
+       hash_table_t * table AND
+       unsigned long key)
+{
+  unsigned long index = (HT_BUCKET_INDEX (table, key));
+  ht_record_t * record = (HT_BUCKET_REF (table, index));
+  while (record != 0)
+    {
+      if ((HT_RECORD_KEY (record)) == key)
+	return (record);
+      record = (HT_RECORD_NEXT (record));
+    }
+  return (0);
+}
+
+static unsigned long
+DEFUN (ht_insert, (table, record),
+       hash_table_t * table AND
+       ht_record_t * record)
+{
+  unsigned long index = (HT_BUCKET_INDEX (table, (HT_RECORD_KEY (record))));
+  ht_record_t * scan = (HT_BUCKET_REF (table, index));
+  (HT_RECORD_NEXT (record)) = 0;
+  if (scan == 0)
+    (HT_BUCKET_REF (table, index)) = record;
+  else
+    {
+      while ((HT_RECORD_NEXT (scan)) != 0)
+	scan = (HT_RECORD_NEXT (scan));
+      (HT_RECORD_NEXT (scan)) = record;
+    }
+  (HT_N_RECORDS (table)) += 1;
+  if ((HT_N_RECORDS (table)) >= (HT_N_BUCKETS (table)))
+    {
+      unsigned int e = HT_MIN_EXPT;
+      while (e <= HT_MAX_EXPT)
+	{
+	  unsigned long n = (EXPT_TO_N (e));
+	  if (n > (HT_N_BUCKETS (table)))
+	    {
+	      ht_resize (table, n);
+	      break;
+	    }
+	  e += 1;
+	}
+    }
+  return (HT_RECORD_KEY (record));
+}
+
+static ht_record_t *
+DEFUN (ht_delete, (table, key),
+       hash_table_t * table AND
+       unsigned long key)
+{
+  unsigned long index = (HT_BUCKET_INDEX (table, key));
+  ht_record_t * scan = (HT_BUCKET_REF (table, index));
+  ht_record_t * prev = 0;
+  while (1)
+    {
+      if (scan == 0)
+	return (0);
+      if ((HT_RECORD_KEY (scan)) == key)
+	break;
+      prev = scan;
+      scan = (HT_RECORD_NEXT (scan));
+    }
+  if (prev == 0)
+    (HT_BUCKET_REF (table, index)) = (HT_RECORD_NEXT (scan));
+  else
+    (HT_RECORD_NEXT (prev)) = (HT_RECORD_NEXT (scan));
+  (HT_N_RECORDS (table)) -= 1;
+  if ((HT_N_RECORDS (table)) < (HT_SHRINK_POINT (table)))
+    {
+      unsigned int e = HT_MAX_EXPT;
+      while (e >= HT_MIN_EXPT)
+	{
+	  unsigned long n = (EXPT_TO_N (e));
+	  if (n < (HT_N_BUCKETS (table)))
+	    {
+	      ht_resize (table, n);
+	      break;
+	    }
+	  e += 1;
+	}
+    }
+  return (scan);
 }

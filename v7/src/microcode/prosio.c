@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.17 1999/01/02 06:11:34 cph Exp $
+$Id: prosio.c,v 1.18 2001/01/04 22:07:42 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -152,15 +152,14 @@ Attempt to fill that substring unless end-of-file is reached.\n\
 Return the number of characters actually read from CHANNEL.")
 {
   PRIMITIVE_HEADER (4);
-  CHECK_ARG (2, STRING_P);
   {
-    SCHEME_OBJECT buffer = (ARG_REF (2));
-    long length = (STRING_LENGTH (buffer));
-    long end = (arg_index_integer (4, (length + 1)));
-    long start = (arg_index_integer (3, (end + 1)));
+    unsigned long length;
+    char * buffer = (arg_extended_string (2, (&length)));
+    unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
+    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     long nread =
       (OS_channel_read ((arg_channel (1)),
-			(STRING_LOC (buffer, start)),
+			(buffer + start),
 			(end - start)));
     PRIMITIVE_RETURN ((nread < 0) ? SHARP_F : (long_to_integer (nread)));
   }
@@ -171,15 +170,14 @@ DEFINE_PRIMITIVE ("CHANNEL-WRITE", Prim_channel_write, 4, 4,
 Third and fourth args START and END specify the substring to use.")
 {
   PRIMITIVE_HEADER (4);
-  CHECK_ARG (2, STRING_P);
   {
-    SCHEME_OBJECT buffer = (ARG_REF (2));
-    long length = (STRING_LENGTH (buffer));
-    long end = (arg_index_integer (4, (length + 1)));
-    long start = (arg_index_integer (3, (end + 1)));
+    unsigned long length;
+    CONST char * buffer = (arg_extended_string (2, (&length)));
+    unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
+    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     long nwritten =
       (OS_channel_write ((arg_channel (1)),
-			 (STRING_LOC (buffer, start)),
+			 (buffer + start),
 			 (end - start)));
     PRIMITIVE_RETURN ((nwritten < 0) ? SHARP_F : (long_to_integer (nwritten)));
   }

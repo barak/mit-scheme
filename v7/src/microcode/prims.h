@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.46 1999/01/02 06:11:34 cph Exp $
+$Id: prims.h,v 9.47 2001/01/04 22:07:41 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -100,6 +100,8 @@ extern long EXFUN (arg_ascii_integer, (int));
   ((STRING_P (ARG_REF (arg)))						\
    ? ((char *) (STRING_LOC ((ARG_REF (arg)), 0)))			\
    : ((error_wrong_type_arg (arg)), ((char *) 0)))
+
+extern PTR EXFUN (arg_extended_string, (unsigned int, unsigned long *));
 
 #define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != SHARP_F)
 
