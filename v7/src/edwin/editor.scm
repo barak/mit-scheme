@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.256 2003/01/10 20:09:36 cph Exp $
+$Id: editor.scm,v 1.257 2003/01/10 20:24:21 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -483,9 +483,6 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 
 (define (exit-scheme)
   (within-continuation editor-abort %exit))
-
-(define (unwind-protect setup body cleanup)
-  (dynamic-wind (or setup (lambda () unspecific)) body cleanup))
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)

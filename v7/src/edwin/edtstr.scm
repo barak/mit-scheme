@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.27 2003/01/10 18:51:17 cph Exp $
+$Id: edtstr.scm,v 1.28 2003/01/10 20:24:27 cph Exp $
 
 Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
 
@@ -102,7 +102,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (with-current-button-event button-event thunk)
   (let ((old-button-event))
-    (unwind-protect
+    (dynamic-wind
      (lambda ()
        (set! old-button-event (editor-button-event current-editor))
        (set-editor-button-event! current-editor button-event)

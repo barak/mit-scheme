@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dosshell.scm,v 1.6 2002/11/20 19:45:59 cph Exp $
+$Id: dosshell.scm,v 1.7 2003/01/10 20:24:15 cph Exp $
 
-Copyright (c) 1992-1999, 2001 Massachusetts Institute of Technology
+Copyright 1993,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -167,8 +167,9 @@ With argument, don't skip the prompt -- go straight to column 0."
 		(insert-region (line-start start 0) end
 			       (buffer-end buffer))))
 	  (buffer-freshline buffer)
-	  (unwind-protect
-	   #f
+	  (dynamic-wind
+	   (lambda ()
+	     unspecific)
 	   (lambda ()
 	     (pseudo-execute command
 			     (buffer-default-directory buffer)

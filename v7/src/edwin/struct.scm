@@ -1,25 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: struct.scm,v 1.96 2002/11/20 19:46:03 cph Exp $
-;;;
-;;; Copyright (c) 1985, 1989-2001 Massachusetts Institute of Technology
-;;;
-;;; This file is part of MIT Scheme.
-;;;
-;;; MIT Scheme is free software; you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published
-;;; by the Free Software Foundation; either version 2 of the License,
-;;; or (at your option) any later version.
-;;;
-;;; MIT Scheme is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with MIT Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: struct.scm,v 1.97 2003/01/10 20:25:05 cph Exp $
+
+Copyright 1985,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1999,2000,2001,2003 Massachusetts Institute of Technology
+
+This file is part of MIT Scheme.
+
+MIT Scheme is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+MIT Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT Scheme; if not, write to the Free Software Foundation,
+Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+|#
 
 ;;;; Text Data Structures
 
@@ -220,17 +222,17 @@
 	(old-text-end)
 	(new-text-start (make-permanent-mark group start #f))
 	(new-text-end (make-permanent-mark group end #t)))
-    (unwind-protect (lambda ()
-		      (set! old-text-start (group-start-mark group))
-		      (set! old-text-end (group-end-mark group))
-		      (set-group-start-mark! group new-text-start)
-		      (set-group-end-mark! group new-text-end))
-		    thunk
-		    (lambda ()
-		      (set! new-text-start (group-start-mark group))
-		      (set! new-text-end (group-end-mark group))
-		      (set-group-start-mark! group old-text-start)
-		      (set-group-end-mark! group old-text-end)))))
+    (dynamic-wind (lambda ()
+		    (set! old-text-start (group-start-mark group))
+		    (set! old-text-end (group-end-mark group))
+		    (set-group-start-mark! group new-text-start)
+		    (set-group-end-mark! group new-text-end))
+		  thunk
+		  (lambda ()
+		    (set! new-text-start (group-start-mark group))
+		    (set! new-text-end (group-end-mark group))
+		    (set-group-start-mark! group old-text-start)
+		    (set-group-end-mark! group old-text-end)))))
 
 (define (group-text-clip group start end)
   (let ((start (make-permanent-mark group start #f))

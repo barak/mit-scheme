@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: doscom.scm,v 1.4 2002/11/20 19:45:59 cph Exp $
+$Id: doscom.scm,v 1.5 2003/01/10 20:24:09 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright 1993,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -59,7 +59,7 @@ Prefix arg means replace the region with it."
 		(mark (current-mark)))
 	    (let ((swap? (mark< point mark))
 		  (temp))
-	      (unwind-protect
+	      (dynamic-wind
 	       (lambda ()
 		 (set! temp (temporary-buffer " *shell-output*"))
 		 unspecific)
