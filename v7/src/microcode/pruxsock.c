@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.18 2000/12/05 21:23:48 cph Exp $
+$Id: pruxsock.c,v 1.19 2001/06/02 01:05:16 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* Primitives for socket control. */
@@ -49,6 +50,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "uxsock.h"
 #define SOCKET_CODE(code) code
+
+static PTR
+DEFUN (arg_host, (arg), unsigned int arg)
+{
+  CHECK_ARG (arg, STRING_P);
+  if ((STRING_LENGTH (ARG_REF (arg))) != (OS_host_address_length ()))
+    error_bad_range_arg (arg);
+  return (STRING_LOC ((ARG_REF (arg)), 0));
+}
+
+static Tchannel
+DEFUN (arg_server_socket, (arg), unsigned int arg)
+{
+  Tchannel server_socket = (arg_nonnegative_integer (arg));
+  if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
+    error_bad_range_arg (arg);
+  return (server_socket);
+}
 
 #else /* not HAVE_SOCKETS */
 
@@ -173,18 +192,27 @@ DEFINE_PRIMITIVE ("GET-HOST-BY-ADDRESS", Prim_get_host_by_address, 1, 1, 0)
     });
 }
 
-#ifdef HAVE_SOCKETS
-
-static char *
-DEFUN (arg_host, (arg), unsigned int arg)
+DEFINE_PRIMITIVE ("HOST-ADDRESS-ANY", Prim_host_address_any, 0, 0, 0)
 {
-  CHECK_ARG (arg, STRING_P);
-  if ((STRING_LENGTH (ARG_REF (arg))) != (OS_host_address_length ()))
-    error_bad_range_arg (arg);
-  return ((char *) (STRING_LOC ((ARG_REF (arg)), 0)));
+  PRIMITIVE_HEADER (0);
+  SOCKET_CODE
+    ({
+      SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
+      OS_host_address_any (STRING_LOC (result, 0));
+      PRIMITIVE_RETURN (result);
+    });
 }
 
-#endif /* HAVE_SOCKETS */ 
+DEFINE_PRIMITIVE ("HOST-ADDRESS-LOOPBACK", Prim_host_address_loopback, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  SOCKET_CODE
+    ({
+      SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
+      OS_host_address_loopback (STRING_LOC (result, 0));
+      PRIMITIVE_RETURN (result);
+    });
+}
 
 DEFINE_PRIMITIVE ("NEW-OPEN-TCP-STREAM-SOCKET", Prim_new_open_tcp_stream_socket, 3, 3,
   "Given HOST-ADDRESS and PORT-NUMBER, open a TCP stream socket.\n\
@@ -227,26 +255,48 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
   CHECK_ARG (2, WEAK_PAIR_P);
   SOCKET_CODE
     ({
-      SET_PAIR_CDR
-	((ARG_REF (2)),
-	 (long_to_integer
-	  (OS_open_server_socket ((arg_nonnegative_integer (1)), 1))));
+      Tchannel channel = (OS_create_tcp_server_socket ());
+      PTR address = (OS_malloc (OS_host_address_length ()));
+      OS_host_address_any (address);
+      OS_bind_tcp_server_socket
+	(channel, address, (arg_nonnegative_integer (1)));
+      OS_free (address);
+      OS_listen_tcp_server_socket (channel);
+      SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (channel)));
       PRIMITIVE_RETURN (SHARP_T);
     });
 }
 
-#ifdef HAVE_SOCKETS
-
-static Tchannel
-DEFUN (arg_server_socket, (arg), unsigned int arg)
+DEFINE_PRIMITIVE ("CREATE_TCP_SERVER_SOCKET", Prim_create_tcp_server_socket, 0, 0, 0)
 {
-  Tchannel server_socket = (arg_nonnegative_integer (arg));
-  if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
-    error_bad_range_arg (arg);
-  return (server_socket);
+  PRIMITIVE_HEADER (0);
+  SOCKET_CODE
+    ({
+      PRIMITIVE_RETURN (long_to_integer (OS_create_tcp_server_socket ()));
+    });
 }
 
-#endif /* HAVE_SOCKETS */
+DEFINE_PRIMITIVE ("BIND-TCP-SERVER-SOCKET", Prim_bind_tcp_server_socket, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  SOCKET_CODE
+    ({
+      OS_bind_tcp_server_socket ((arg_server_socket (1)),
+				 (arg_host (2)),
+				 (arg_nonnegative_integer (3)));
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    });
+}
+
+DEFINE_PRIMITIVE ("LISTEN-TCP-SERVER-SOCKET", Prim_listen_tcp_server_socket, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+    ({
+      OS_listen_tcp_server_socket (arg_server_socket (1));
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    });
+}
 
 DEFINE_PRIMITIVE ("NEW-TCP-SERVER-CONNECTION-ACCEPT", Prim_new_tcp_server_connection_accept, 3, 3,
   "Poll SERVER-SOCKET for a connection.\n\
@@ -261,73 +311,12 @@ It is filled with the peer's address if given.")
   SOCKET_CODE
     ({
       Tchannel server_socket = (arg_server_socket (1));
-      char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
+      PTR peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
       Tchannel connection =
 	(OS_server_connection_accept (server_socket, peer_host, 0));
       if (connection == NO_CHANNEL)
 	PRIMITIVE_RETURN (SHARP_F);
       SET_PAIR_CDR ((ARG_REF (3)), (long_to_integer (connection)));
       PRIMITIVE_RETURN (SHARP_T);
-    });
-}
-
-/* Obsolete Primitives, for compatibility with old runtime systems. */
-
-DEFINE_PRIMITIVE ("OPEN-TCP-STREAM-SOCKET", Prim_open_tcp_stream_socket, 2, 2,
-  "Given HOST-ADDRESS and PORT-NUMBER, open and return a TCP stream socket.")
-{
-  PRIMITIVE_HEADER (2);
-  SOCKET_CODE
-    ({
-      PRIMITIVE_RETURN
-	(long_to_integer
-	 (OS_open_tcp_stream_socket ((arg_host (1)),
-				     (arg_nonnegative_integer (2)))));
-    });
-}
-
-DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
-  "Open the unix stream socket FILENAME.")
-{
-  PRIMITIVE_HEADER (1);
-#ifdef HAVE_UNIX_SOCKETS
-  PRIMITIVE_RETURN
-    (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1))));
-#else
-  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-#endif
-}
-
-DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
-  "Given PORT-NUMBER, open and return a TCP server socket.")
-{
-  PRIMITIVE_HEADER (1);
-  SOCKET_CODE
-    ({
-      PRIMITIVE_RETURN
-	(long_to_integer
-	 (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
-    });
-}
-
-DEFINE_PRIMITIVE ("TCP-SERVER-CONNECTION-ACCEPT", Prim_tcp_server_connection_accept, 2, 2,
-  "Poll SERVER-SOCKET for a connection.\n\
-If a connection is available, it is opened and returned.\n\
-Otherwise, if SERVER-SOCKET is non-blocking, returns #F.\n\
-Second argument PEER-ADDRESS, if not #F, must be a host address string.\n\
-It is filled with the peer's address if given.")
-{
-  PRIMITIVE_HEADER (2);
-  SOCKET_CODE
-    ({
-      Tchannel server_socket = (arg_server_socket (1));
-      char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
-      Tchannel connection =
-	(OS_server_connection_accept (server_socket, peer_host, 0));
-      PRIMITIVE_RETURN
-	((connection == NO_CHANNEL)
-	 ? SHARP_F
-	 : (long_to_integer (connection)));
     });
 }

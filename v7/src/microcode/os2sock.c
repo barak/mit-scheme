@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2sock.c,v 1.15 2000/12/05 21:23:46 cph Exp $
+$Id: os2sock.c,v 1.16 2001/06/02 01:05:12 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 */
 
 /* This conditional encompasses the entire file.  */
@@ -85,7 +86,7 @@ socket_close_on_abort (int s)
 }
 
 Tchannel
-OS_open_tcp_stream_socket (char * host, int port)
+OS_open_tcp_stream_socket (void * host, unsigned int port)
 {
   int s;
   struct sockaddr_in address;
@@ -194,40 +195,54 @@ OS_get_host_by_address (const char * host_addr)
     return (result);
   }
 }
+
+void
+OS_host_address_any (void * addr)
+{
+  (((struct in_addr *) addr) -> s_addr) = INADDR_ANY;
+}
+
+void
+OS_host_address_loopback (void * addr)
+{
+  (((struct in_addr *) addr) -> s_addr) = INADDR_LOOPBACK;
+}
 
+Tchannel
+OS_create_tcp_server_socket (void)
+{
+  int s;
+  VALUE_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
+  return (initialize_stream_socket (s, channel_type_tcp_server_socket));
+}
+
+void
+OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
+{
+  memset ((&address), 0, (sizeof (address)));
+  (address . sin_family) = AF_INET;
+  memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
+  (address . sin_port) = port;
+  VOID_SOCKET_CALL
+    (bind, (((int) (CHANNEL_HANDLE (channel))),
+	    ((struct sockaddr *) (&address)),
+	    (sizeof (struct sockaddr_in))));
+}
+
 #ifndef SOCKET_LISTEN_BACKLOG
 #define SOCKET_LISTEN_BACKLOG 5
 #endif
 
-Tchannel
-OS_open_server_socket (unsigned int port, int arg_number)
+void
+OS_listen_tcp_server_socket (Tchannel channel)
 {
-  int s;
-  struct sockaddr_in address;
-  {
-    unsigned int nb_port = (sizeof (((struct sockaddr_in *) 0) -> sin_port));
-    if (((sizeof (unsigned int)) > nb_port)
-	&& (port >= (1 << (CHAR_BIT * nb_port))))
-      error_bad_range_arg (arg_number);
-  }
-  transaction_begin ();
-  VALUE_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
-  socket_close_on_abort (s);
-  memset ((&address), 0, (sizeof (address)));
-  (address . sin_family) = AF_INET;
-  (address . sin_addr . s_addr) = INADDR_ANY;
-  (address . sin_port) = port;
   VOID_SOCKET_CALL
-    (bind, (s,
-	    ((struct sockaddr *) (& address)),
-	    (sizeof (struct sockaddr_in))));
-  VOID_SOCKET_CALL (listen, (s, SOCKET_LISTEN_BACKLOG));
-  return (initialize_stream_socket (s, channel_type_tcp_server_socket));
+    (listen, (((int) (CHANNEL_HANDLE (channel))), SOCKET_LISTEN_BACKLOG));
 }
 
 Tchannel
 OS_server_connection_accept (Tchannel channel,
-			     char * peer_host, int * peer_port)
+			     void * peer_host, unsigned int * peer_port)
 {
   static struct sockaddr_in address;
   int s;

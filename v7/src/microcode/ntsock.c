@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.8 1999/08/15 15:25:45 cph Exp $
+$Id: ntsock.c,v 1.9 2001/06/02 01:05:09 cph Exp $
 
 Copyright (c) 1997-1999 Massachusetts Institute of Technology
 
@@ -172,34 +172,37 @@ OS_get_host_by_address (const char * host_addr)
   }
 }
 
+Tchannel
+OS_create_tcp_server_socket (void)
+{
+  SOCKET s;
+  SOCKET_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
+  RETURN_SOCKET (s, NT_channel_class_tcp_server_socket);
+}
+
+void
+OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
+{
+  struct sockaddr_in address;
+  memset ((&address), 0, (sizeof (address)));
+  (address . sin_family) = AF_INET;
+  memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
+  (address . sin_port) = port;
+  VOID_SOCKET_CALL
+    (bind, ((CHANNEL_SOCKET (channel)),
+	    ((struct sockaddr *) (&address)),
+	    (sizeof (struct sockaddr_in))));
+}
+
 #ifndef SOCKET_LISTEN_BACKLOG
 #define SOCKET_LISTEN_BACKLOG 5
 #endif
 
-Tchannel
-OS_open_server_socket (unsigned int port, int arg_number)
+void
+OS_listen_tcp_server_socket (Tchannel channel)
 {
-  SOCKET s;
-  struct sockaddr_in address;
-  {
-    unsigned int nb_port = (sizeof (((struct sockaddr_in *) 0) -> sin_port));
-    if (((sizeof (unsigned int)) > nb_port)
-	&& (port >= (1U << (CHAR_BIT * nb_port))))
-      error_bad_range_arg (arg_number);
-  }
-  transaction_begin ();
-  SOCKET_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
-  socket_close_on_abort (s);
-  memset ((&address), 0, (sizeof (address)));
-  (address . sin_family) = AF_INET;
-  (address . sin_addr . s_addr) = INADDR_ANY;
-  (address . sin_port) = port;
   VOID_SOCKET_CALL
-    (bind, (s,
-	    ((struct sockaddr *) (& address)),
-	    (sizeof (struct sockaddr_in))));
-  VOID_SOCKET_CALL (listen, (s, SOCKET_LISTEN_BACKLOG));
-  RETURN_SOCKET (s, NT_channel_class_tcp_server_socket);
+    (listen, ((CHANNEL_SOCKET (channel)), SOCKET_LISTEN_BACKLOG));
 }
 
 Tchannel
