@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostop.h,v 1.1 1990/06/20 19:36:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/ostop.h,v 1.2 1990/07/28 18:56:49 jinx Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 
 extern int EXFUN (OS_under_emacs_p, (void));
 extern void EXFUN (OS_initialize, (void));
+extern void EXFUN (OS_reset, (void));
 extern void EXFUN (OS_quit, (int code, int abnormal_p));
 extern void EXFUN (OS_restartable_exit, (void));
 extern void EXFUN (OS_save_external_state, (void));
