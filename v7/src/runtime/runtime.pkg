@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.245 1995/02/14 00:37:35 cph Exp $
+$Id: runtime.pkg,v 14.246 1995/02/21 23:15:33 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2167,7 +2167,7 @@ MIT in each case. |#
   (files "graphics")
   (parent ())
   (export ()
-	  enumerate-graphics-device-types
+	  enumerate-graphics-types
 	  graphics-bind-drawing-mode
 	  graphics-bind-line-style
 	  graphics-clear
@@ -2192,7 +2192,12 @@ MIT in each case. |#
 	  graphics-set-coordinate-limits
 	  graphics-set-drawing-mode
 	  graphics-set-line-style
+	  graphics-type
 	  graphics-type-available?
+	  graphics-type-name
+	  graphics-type-properties
+	  image-type
+	  image/create
 	  image/descriptor
 	  image/destroy
 	  image/draw
@@ -2204,14 +2209,10 @@ MIT in each case. |#
 	  make-graphics-device
 	  make-graphics-device-type)
   (export (runtime x-graphics)
-	  register-graphics-device-type
-	  make-image-type
-	  image/create)
-  (export (runtime starbase-graphics)
-	  register-graphics-device-type)
+	  make-image-type)
   (export (runtime os2-graphics)
 	  graphics-device/buffer?
-	  register-graphics-device-type))
+	  make-image-type))
 
 (define-package (runtime x-graphics)
   (file-case os-type
@@ -2326,7 +2327,7 @@ MIT in each case. |#
 
 (define-package (runtime os2-graphics)
   (file-case os-type
-    ((os/2) "os2graph")
+    ((os/2) "os2graph" "os2ctype")
     (else))
   (parent ())
   (export ()
@@ -2509,6 +2510,7 @@ MIT in each case. |#
 	  linetype_shortdash
 	  linetype_solid
 	  number-of-event-types
+	  os2pm-synchronize
 	  os2ps-bitblt
 	  os2ps-clear
 	  os2ps-create-bitmap
@@ -2516,6 +2518,7 @@ MIT in each case. |#
 	  os2ps-destroy-bitmap
 	  os2ps-destroy-memory-ps
 	  os2ps-draw-point
+	  os2ps-get-bitmap
 	  os2ps-get-bitmap-bits
 	  os2ps-get-bitmap-parameters
 	  os2ps-line
@@ -2582,6 +2585,7 @@ MIT in each case. |#
 	  rop_srcinvert
 	  rop_srcpaint
 	  rop_zero
+	  set-event-wid!
 	  virtual-key-supremum
 	  visibility-event/shown?
 	  vk_alt
