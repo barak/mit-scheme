@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.1 1987/12/30 07:04:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.2 1987/12/31 05:50:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -99,27 +99,51 @@ MIT in each case. |#
 	  (lambda (offset instruction instruction-stream)
 	    (procedure offset instruction)
 	    (loop (instruction-stream)))))))
+
+(define disassembler/write-constants-block)
+(let ()
 
-(define (disassembler/write-constants-block block symbol-table)
-  (fluid-let ((*unparser-radix* 16))
-    (let ((end (compiled-code-block/constants-end block)))
-      (let loop ((index (compiled-code-block/constants-start block)))
-	(if (< index end)
+(set! disassembler/write-constants-block
+  (named-lambda (disassembler/write-constants-block block symbol-table)
+    (fluid-let ((*unparser-radix* 16))
+      (let ((end (system-vector-size block)))
+	(let loop ((index (compiled-code-block/constants-start block)))
+	  (if (< index end)
+	      (begin
+		(disassembler/write-instruction
+		 symbol-table
+		 (compiled-code-block/index->offset index)
+		 (lambda ()
+		   (write-constant block
+				   symbol-table
+				   (system-vector-ref block index))))
+		(loop (1+ index)))))))))
+
+(define (write-constant block symbol-table constant)
+  (write-string (cdr (write-to-string constant 60)))
+  (if (lambda? constant)
+      (let ((expression (lambda-body constant)))
+	(if (and (compiled-code-address? expression)
+		 (eq? (compiled-code-address->block expression) block))
 	    (begin
-	      (disassembler/write-instruction
-	       symbol-table
-	       (compiled-code-block/index->offset index)
-	       (lambda () (write (system-vector-ref block index))))
-	      (loop (1+ index))))))))
+	      (write-string "  (")
+	      (let ((offset (compiled-code-address->offset expression)))
+		(let ((label (disassembler/lookup-symbol symbol-table offset)))
+		  (if label
+		      (write-string (string-downcase label))
+		      (write offset))))
+	      (write-string ")"))))))
+
+)
 
 (define (disassembler/write-instruction symbol-table offset write-instruction)
   (if symbol-table
-      (let ((label (disassembler/lookup-symbol symbol-table offset)))
-	(if label
-	    (begin (write-char #\Tab)
-		   (write-string (string-downcase label))
-		   (write-char #\:)
-		   (newline)))))
+      (sorted-vector/for-each symbol-table offset
+	(lambda (label)
+	  (write-char #\Tab)
+	  (write-string (string-downcase (label-info-name label)))
+	  (write-char #\:)
+	  (newline))))
   (if disassembler/write-offsets?
       (begin (write-string
 	      ((access unparse-number-heuristically number-unparser-package)
