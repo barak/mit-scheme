@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.35 1995/10/28 01:14:16 cph Exp $
+$Id: dosprm.scm,v 1.36 1995/11/10 23:48:18 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -257,8 +257,9 @@ MIT in each case. |#
 		    user-name)))))
       (merge-pathnames "\\")))
 
-(define file-time->string
-  (ucode-primitive file-time->string 1))
+(define (file-time->string time)
+  (or ((ucode-primitive file-time->string 1) time)
+      "Thu Jan  1 00:00:00 1970"))
 
 (define (decode-file-time time) (decode-universal-time time))
 (define (encode-file-time dt) (encode-universal-time dt))

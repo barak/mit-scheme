@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.2 1995/10/28 03:00:09 cph Exp $
+$Id: ntprm.scm,v 1.3 1995/11/10 23:47:59 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -274,8 +274,9 @@ MIT in each case. |#
 	 (pathname-as-directory
 	  (merge-pathnames (or homepath home) homedrive)))))
 
-(define file-time->string
-  (ucode-primitive file-time->string 1))
+(define (file-time->string time)
+  (or ((ucode-primitive file-time->string 1) time)
+      "Thu Jan  1 00:00:00 1970"))
 
 (define (decode-file-time time) (decode-universal-time time))
 (define (encode-file-time dt) (encode-universal-time dt))
