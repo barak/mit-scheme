@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.h,v 1.4 1992/01/15 17:17:27 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comlin.h,v 1.5 1992/04/18 00:27:35 jinx Exp $
  *
  * This file contains definitions for the scheme command parser.
  *
@@ -42,9 +42,13 @@ MIT in each case. */
 #include "ansidecl.h"
 
 #ifndef boolean
-#define boolean	int
-#define true	1
-#define false	0
+#  define boolean	int
+#endif
+#ifndef true
+#  define true		1
+#endif
+#ifndef false
+#  define false		0
 #endif
 
 typedef char *string;
