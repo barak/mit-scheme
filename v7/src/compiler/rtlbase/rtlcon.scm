@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.2 1987/05/07 00:10:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 1.3 1987/05/15 19:50:14 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -120,23 +120,47 @@ MIT in each case. |#
 
 (define rtl:make-interpreter-call:unbound?
   (interpreter-lookup-maker %make-interpreter-call:unbound?))
+
+;;;; Invocations
 
-;;; Invocations
+(define (rtl:make-invocation:apply frame-size prefix contination)
+  (%make-invocation:apply frame-size
+			  prefix
+			  (and continuation
+			       (continuation-label continuation))))
 
-(define *jump-invocations*)
+(define (rtl:make-invocation:jump frame-size prefix continuation procedure)
+  (%make-invocation:jump frame-size
+			 prefix
+			 (and continuation
+			      (continuation-label continuation))
+			 (procedure-label procedure)))
 
-(define (rtl:make-invocation:jump number-pushed prefix continuation procedure)
-  (let ((scfg
-	 (%make-invocation:jump number-pushed prefix continuation procedure)))
-    (set! *jump-invocations* (cons (cfg-entry-node scfg) *jump-invocations*))
-    scfg))
+(define (rtl:make-invocation:lexpr frame-size prefix continuation procedure)
+  (%make-invocation:lexpr frame-size
+			  prefix
+			  (and continuation
+			       (continuation-label continuation))
+			  (procedure-label procedure)))
 
-(define (rtl:make-invocation:lookup number-pushed prefix continuation
+(define (rtl:make-invocation:lookup frame-size prefix continuation
 				    environment name)
   (expression-simplify-for-statement environment
     (lambda (environment)
-      (%make-invocation:lookup number-pushed prefix continuation
-			       environment name))))
+      (%make-invocation:lookup frame-size
+			       prefix
+			       (and continuation
+				    (continuation-label continuation))
+			       environment
+			       name))))
+
+(define (rtl:make-invocation:primitive frame-size prefix continuation
+				       procedure)
+  (%make-invocation:primitive frame-size
+			      prefix
+			      (and continuation
+				   (continuation-label continuation))
+			      procedure))
 
 ;;;; Expression Simplification
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.31 1987/05/14 10:56:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.32 1987/05/15 19:51:47 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -379,16 +379,17 @@ MIT in each case. |#
   (guarantee-frame-pointer-offset!)
   *frame-pointer-offset*)
 
-(define (record-continuation-frame-pointer-offset! continuation)
-  (guarantee-frame-pointer-offset!)
-  (if (continuation-frame-pointer-offset continuation)
-      (if (not (= (continuation-frame-pointer-offset continuation)
-		  *frame-pointer-offset*))
-	  (error "Continuation frame-pointer offset mismatch" continuation
-		 *frame-pointer-offset*))
-      (set-continuation-frame-pointer-offset! continuation
-					      *frame-pointer-offset*))
-  (enqueue! *continuation-queue* continuation))
+(define (record-continuation-frame-pointer-offset! label)
+  (let ((continuation (label->continuation label)))
+    (guarantee-frame-pointer-offset!)
+    (if (continuation-frame-pointer-offset continuation)
+	(if (not (= (continuation-frame-pointer-offset continuation)
+		    *frame-pointer-offset*))
+	    (error "Continuation frame-pointer offset mismatch" continuation
+		   *frame-pointer-offset*))
+	(set-continuation-frame-pointer-offset! continuation
+						*frame-pointer-offset*))
+    (enqueue! *continuation-queue* continuation)))
 
 (define (record-rnode-frame-pointer-offset! rnode offset)
   (if (rnode-frame-pointer-offset rnode)

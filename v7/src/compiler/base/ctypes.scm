@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.46 1987/05/09 01:07:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.47 1987/05/15 19:49:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -101,6 +101,9 @@ MIT in each case. |#
 		     (generate-label 'CONTINUATION)
 		     false)))
     (set! *continuations* (cons continuation *continuations*))
+    (symbol-hash-table/insert! *label->object*
+			       (continuation-label continuation)
+			       continuation)
     continuation))
 
 (define-integrable (continuation-rtl-entry continuation)
@@ -111,4 +114,7 @@ MIT in each case. |#
 
 (define-unparser continuation-tag
   (lambda (continuation)
+    (write (continuation-label continuation))))
+
+(define-integrable (label->continuation label)
   (symbol-hash-table/lookup *label->object* label))

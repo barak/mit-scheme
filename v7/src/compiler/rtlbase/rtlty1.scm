@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.3 1987/05/07 00:11:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlty1.scm,v 1.4 1987/05/15 19:50:24 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -46,8 +46,8 @@ MIT in each case. |#
 
 (define-rtl-expression cons-pointer rtl: type datum)
 (define-rtl-expression constant rtl: value)
-(define-rtl-expression entry:continuation rtl: continuation)
-(define-rtl-expression entry:procedure rtl: procedure)
+(define-rtl-expression entry:continuation % continuation)
+(define-rtl-expression entry:procedure % procedure)
 (define-rtl-expression offset-address rtl: register number)
 (define-rtl-expression unassigned rtl:)
 
@@ -57,10 +57,10 @@ MIT in each case. |#
 (define-rtl-predicate unassigned-test % expression)
 
 (define-rtl-statement assign % address expression)
-(define-rtl-statement continuation-heap-check rtl: continuation)
-(define-rtl-statement procedure-heap-check rtl: procedure)
+(define-rtl-statement continuation-heap-check % continuation)
+(define-rtl-statement procedure-heap-check % procedure)
 (define-rtl-statement return rtl:)
-(define-rtl-statement setup-lexpr rtl: procedure)
+(define-rtl-statement setup-lexpr % procedure)
 
 (define-rtl-statement interpreter-call:access % environment name)
 (define-rtl-statement interpreter-call:define % environment name value)
@@ -70,19 +70,18 @@ MIT in each case. |#
 (define-rtl-statement interpreter-call:unassigned? % environment name)
 (define-rtl-statement interpreter-call:unbound? % environment name)
 
-(define-rtl-statement invocation:apply rtl: pushed prefix continuation)
+(define-rtl-statement invocation:apply % pushed prefix continuation)
 (define-rtl-statement invocation:jump % pushed prefix continuation procedure)
-(define-rtl-statement invocation:lexpr rtl: pushed prefix continuation
-  procedure)
+(define-rtl-statement invocation:lexpr % pushed prefix continuation procedure)
 (define-rtl-statement invocation:lookup % pushed prefix continuation
   environment name)
-(define-rtl-statement invocation:primitive rtl: pushed prefix continuation
+(define-rtl-statement invocation:primitive % pushed prefix continuation
   procedure)
 
 (define-rtl-statement message-sender:value rtl: size)
 (define-rtl-statement message-receiver:closure rtl: size)
 (define-rtl-statement message-receiver:stack rtl: size)
-(define-rtl-statement message-receiver:subproblem rtl: continuation)
+(define-rtl-statement message-receiver:subproblem % continuation)
 
 (define-integrable rtl:expression-type first)
 (define-integrable rtl:address-register second)
@@ -91,6 +90,24 @@ MIT in each case. |#
 (define-integrable rtl:invocation-prefix third)
 (define-integrable rtl:invocation-continuation fourth)
 (define-integrable rtl:test-expression second)
+
+(define-integrable (rtl:make-entry:continuation continuation)
+  (%make-entry:continuation (continuation-label continuation)))
+
+(define-integrable (rtl:make-entry:procedure procedure)
+  (%make-entry:procedure (procedure-label procedure)))
+
+(define-integrable (rtl:make-continuation-heap-check continuation)
+  (%make-continuation-heap-check (continuation-label continuation)))
+
+(define-integrable (rtl:make-procedure-heap-check procedure)
+  (%make-procedure-heap-check (procedure-label procedure)))
+
+(define-integrable (rtl:make-setup-lexpr procedure)
+  (%make-setup-lexpr (procedure-label procedure)))
+
+(define-integrable (rtl:make-message-receiver:subproblem continuation)
+  (%make-message-receiver:subproblem (continuation-label continuation)))
 
 ;;;; Locatives
 

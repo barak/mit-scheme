@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.161 1987/05/13 11:00:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.162 1987/05/15 19:51:17 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -370,10 +370,11 @@ MIT in each case. |#
   `((MOVE L ,(indirect-reference! r n) (@A+ 5))))
 
 (define-rule statement
-  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? procedure)))
+  (ASSIGN (POST-INCREMENT (REGISTER 13) 1) (ENTRY:PROCEDURE (? label)))
   (let ((temporary
 	 (register-reference (allocate-temporary-register! 'ADDRESS))))
-    `((LEA (@PCR ,(procedure-external-label procedure)) ,temporary)
+    `((LEA (@PCR ,(procedure-external-label (label->procedure label)))
+	   ,temporary)
       (MOVE L ,temporary (@A+ 5))
       (MOVE B (& ,type-code:return-address) (@AO 5 -4)))))
 
@@ -418,11 +419,10 @@ MIT in each case. |#
      (MOVE B (& ,type-code:stack-environment) (@A 7)))))
 
 (define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1)
-	  (ENTRY:CONTINUATION (? continuation)))
-  (record-continuation-frame-pointer-offset! continuation)
+  (ASSIGN (PRE-INCREMENT (REGISTER 15) -1) (ENTRY:CONTINUATION (? label)))
+  (record-continuation-frame-pointer-offset! label)
   (record-push!
-   `((PEA (@PCR ,(continuation-label continuation)))
+   `((PEA (@PCR ,label))
      (MOVE B (& ,type-code:return-address) (@A 7)))))
 
 ;;;; Predicates
@@ -573,36 +573,34 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:JUMP (? n)
 		   (APPLY-CLOSURE (? frame-size) (? receiver-offset))
-		   (? continuation) (? procedure))
+		   (? continuation) (? label))
   (disable-frame-pointer-offset!
    `(,@(clear-map!)
-     ,@(apply-closure-sequence frame-size receiver-offset
-			       (procedure-label procedure)))))
+     ,@(apply-closure-sequence frame-size receiver-offset label))))
 
 (define-rule statement
   (INVOCATION:JUMP (? n)
 		   (APPLY-STACK (? frame-size) (? receiver-offset)
 				(? n-levels))
-		   (? continuation) (? procedure))
+		   (? continuation) (? label))
   (disable-frame-pointer-offset!
    `(,@(clear-map!)
-     ,@(apply-stack-sequence frame-size receiver-offset n-levels
-			     (procedure-label procedure)))))
+     ,@(apply-stack-sequence frame-size receiver-offset n-levels label))))
 
 (define-rule statement
-  (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? procedure))
+  (INVOCATION:JUMP (? number-pushed) (? prefix) (? continuation) (? label))
   (QUALIFIER (not (memq (car prefix) '(APPLY-CLOSURE APPLY-STACK))))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix)
-     (BRA L (@PCR ,(procedure-label procedure))))))
+     (BRA L (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? prefix) (? continuation)
-		    (? procedure))
+		    (? label))
   (disable-frame-pointer-offset!
    `(,@(generate-invocation-prefix prefix)
      ,(load-dnw number-pushed 0)
-     (BRA L (@PCR ,(procedure-label procedure))))))
+     (BRA L (@PCR ,label)))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? number-pushed) (? prefix) (? continuation)
@@ -788,10 +786,10 @@ MIT in each case. |#
 ;;; appropriately.
 
 (define-rule statement
-  (PROCEDURE-HEAP-CHECK (? procedure))
+  (PROCEDURE-HEAP-CHECK (? label))
   (disable-frame-pointer-offset!
    (let ((gc-label (generate-label)))
-     `(,@(procedure-header procedure gc-label)
+     `(,@(procedure-header (label->procedure label) gc-label)
        (CMP L ,reg:compiled-memtop (A 5))
        (B GE S (@PCR ,gc-label))))))
 
@@ -802,23 +800,23 @@ MIT in each case. |#
 ;;; or by examining the calling sequence.
 
 (define-rule statement
-  (SETUP-LEXPR (? procedure))
+  (SETUP-LEXPR (? label))
   (disable-frame-pointer-offset!
-   `(,@(procedure-header procedure false)
-     (MOVE W
-	   (& ,(+ (length (procedure-required procedure))
-		  (length (procedure-optional procedure))
-		  (if (procedure/closure? procedure) 1 0)))
-	   (D 1))
-     (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
-     (JSR , entry:compiler-setup-lexpr))))
+   (let ((procedure (label->procedure label)))
+     `(,@(procedure-header label false)
+       (MOVE W
+	     (& ,(+ (length (procedure-required procedure))
+		    (length (procedure-optional procedure))
+		    (if (procedure/closure? procedure) 1 0)))
+	     (D 1))
+       (MOVEQ (& ,(if (procedure-rest procedure) 1 0)) (D 2))
+       (JSR , entry:compiler-setup-lexpr)))))
 
 (define-rule statement
-  (CONTINUATION-HEAP-CHECK (? continuation))
+  (CONTINUATION-HEAP-CHECK (? internal-label))
   (enable-frame-pointer-offset!
-   (continuation-frame-pointer-offset continuation))
-  (let ((gc-label (generate-label))
-	(internal-label (continuation-label continuation)))
+   (continuation-frame-pointer-offset (label->continuation internal-label)))
+  (let ((gc-label (generate-label)))
     `((LABEL ,gc-label)
       (JSR ,entry:compiler-interrupt-continuation)
       ,@(make-external-label internal-label)
@@ -874,10 +872,10 @@ MIT in each case. |#
    `((MOVE L (& ,(+ #x00100000 (* frame-size 4))) (@-A 7)))))
 
 (define-rule statement
-  (MESSAGE-RECEIVER:SUBPROBLEM (? continuation))
-  (record-continuation-frame-pointer-offset! continuation)
+  (MESSAGE-RECEIVER:SUBPROBLEM (? label))
+  (record-continuation-frame-pointer-offset! label)
   (increment-frame-pointer-offset! 2
-    `((PEA (@PCR ,(continuation-label continuation)))
+    `((PEA (@PCR ,label))
       (MOVE B (& ,type-code:return-address) (@A 7))
       (MOVE L (& #x00200000) (@-A 7)))))
 

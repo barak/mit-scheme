@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.86 1987/05/07 00:12:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/utils.scm,v 1.87 1987/05/15 19:50:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -103,6 +103,27 @@ MIT in each case. |#
     (let ((value (thunk)))
       (write-line (- (runtime) start))
       value)))
+
+(define (symbol-hash-table/make n-buckets)
+  (make-vector n-buckets '()))
+
+(define (symbol-hash-table/insert! table symbol item)
+  (let ((hash (string-hash-mod (symbol->string symbol) (vector-length table))))
+    (let ((bucket (vector-ref table hash)))
+      (let ((entry (assq symbol bucket)))
+	(if entry
+	    (set-cdr! entry item)
+	    (vector-set! table hash (cons (cons symbol item) bucket)))))))
+
+(define (symbol-hash-table/lookup table symbol)
+  (cdr (or (assq symbol
+		 (vector-ref table
+			     (string-hash-mod (symbol->string symbol)
+					      (vector-length table))))
+	   (error "Missing item" symbol))))
+
+(define-integrable string-hash-mod
+  (ucode-primitive string-hash-mod))
 
 ;;;; SCode Interface
 
