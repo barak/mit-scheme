@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.45 1989/08/08 10:06:07 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.46 1991/04/13 04:00:31 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -51,13 +51,17 @@
 Point stays the same."
   ()
   (lambda ()
-    (fill-region (paragraph-text-region (current-point)))))
+    (fill-region (paragraph-text-region (current-point))
+		 (ref-variable fill-prefix)
+		 (ref-variable fill-column))))
 
 (define-command fill-region
   "Fill text from point to mark."
   "r"
   (lambda (region)
-    (fill-region region)))
+    (fill-region region
+		 (ref-variable fill-prefix)
+		 (ref-variable fill-column))))
 
 (define-variable-per-buffer fill-column
   "*Column beyond which automatic line-wrapping should happen.
@@ -85,74 +89,62 @@ Otherwise the current position of the cursor is used."
     (if (line-start? (current-point))
 	(begin
 	  (local-set-variable! fill-prefix false)
-	  (temporary-message "Fill prefix cancelled"))
+	  (message "Fill prefix cancelled"))
 	(let ((string (extract-string (line-start (current-point) 0))))
 	  (local-set-variable! fill-prefix string)
-	  (temporary-message "Fill prefix now \""
-			     (ref-variable fill-prefix)
-			     "\"")))))
+	  (message "Fill prefix now \"" (ref-variable fill-prefix) "\"")))))
 
-(define fill-region
-  (let ()
-    (define (fill-region-loop start)
-      (if (not (group-end? start))
-	  (begin
-	    (if (ref-variable fill-prefix)
-		(insert-string (ref-variable fill-prefix) start))
-	    (let ((target (move-to-column start (ref-variable fill-column))))
-	      (if (not (group-end? target))
-		  (let ((end
-			 (cond ((char-search-backward #\Space
-						      (mark1+ target)
-						      start)
-				(re-match-end 0))
-			       ((char-search-forward #\Space target)
-				(re-match-start 0))
-			       (else false))))
+(define (fill-region region fill-prefix fill-column)
+  (let ((start (region-start region))
+	(end (region-end region)))
+    (let ((start (mark-right-inserting (skip-chars-forward "\n" start end)))
+	  (end (mark-left-inserting (skip-chars-backward "\n" end start))))
+      (with-narrowed-region! (make-region start end)
+	(lambda ()
+	  (let ((point (mark-left-inserting-copy start)))
+	    (let loop ()
+	      (let ((ending (forward-sentence point 1 false)))
+		(if (and ending (not (group-end? ending)))
+		    (begin
+		      (move-mark-to! point ending)
+		      (if (char=? #\newline (mark-right-char point))
+			  (insert-char #\space point))
+		      (loop)))))
+	    (move-mark-to! point start)
+	    (let loop ()
+	      (if fill-prefix
+		  (let ((end (match-forward fill-prefix point)))
 		    (if end
-			(let ((start (mark-left-inserting end)))
-			  (delete-horizontal-space start)
-			  (insert-newline start)
-			  (fill-region-loop start)))))))))
-
-    (define (canonicalize-sentence-endings mark)
-      (let ((ending (forward-sentence mark 1 false)))
-	(if (and ending (not (group-end? ending)))
-	    (if (char=? #\newline (mark-right-char ending))
-		(let ((mark (mark-left-inserting ending)))
-		  (insert-char #\Space mark)
-		  (canonicalize-sentence-endings mark))
-		(canonicalize-sentence-endings ending)))))
-
-    (define (canonicalize-spacing mark)
-      (if (char-search-forward #\newline mark)
-	  (let ((mark (mark-left-inserting (re-match-start 0))))
-	    (replace-next-char mark #\Space)
-	    (remove-fill-prefix mark)
-	    (canonicalize-spacing mark))))
-
-    (define (remove-fill-prefix mark)
-      (if (ref-variable fill-prefix)
-	  (let ((end (match-forward (ref-variable fill-prefix) mark)))
-	    (if end (delete-string mark end)))))
-
-    (define (replace-next-char mark char)
-      (delete-string mark (mark1+ mark))
-      (insert-char char mark))
-
-    (named-lambda (fill-region region)
-      (let ((start (region-start region))
-	    (end (region-end region)))
-	(let ((start
-	       (mark-right-inserting (skip-chars-forward "\n" start end)))
-	      (end (mark-left-inserting (skip-chars-backward "\n" end start))))
-	  (with-narrowed-region! (make-region start end)
-				 (lambda ()
-				   (canonicalize-sentence-endings start)
-				   (remove-fill-prefix start)
-				   (canonicalize-spacing start)
-				   (delete-horizontal-space end)
-				   (fill-region-loop start))))))))
+			(delete-string point end))))
+	      (if (char-search-forward #\newline point)
+		  (begin
+		    (move-mark-to! point (re-match-start 0))
+		    (delete-string point (mark1+ point))
+		    (insert-char #\space point)
+		    (loop))))
+	    (delete-horizontal-space end)
+	    (move-mark-to! point start)
+	    (let loop ()
+	      (if (not (group-end? point))
+		  (begin
+		    (if fill-prefix
+			(insert-string fill-prefix point))
+		    (let ((target (move-to-column point fill-column)))
+		      (if (not (group-end? target))
+			  (let ((end
+				 (cond ((char-search-backward #\space
+							      (mark1+ target)
+							      point)
+					(re-match-end 0))
+				       ((char-search-forward #\space target)
+					(re-match-start 0))
+				       (else false))))
+			    (if end
+				(begin
+				  (move-mark-to! point end)
+				  (delete-horizontal-space point)
+				  (insert-newline point)
+				  (loop)))))))))))))))
 
 (define-command auto-fill-mode
   "Toggle auto-fill mode.
