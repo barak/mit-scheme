@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.pkg,v 1.3 1991/06/17 21:20:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/compiler.pkg,v 1.4 1991/07/25 02:39:58 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/comp.pkg,v 1.32 1991/05/06 23:09:24 jinx Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
@@ -586,7 +586,7 @@ MIT in each case. |#
 	 "back/asmmac"			;Macros for hairy syntax
 	 "machines/mips/insmac"	;Macros for hairy syntax
 	 "machines/mips/inerly"	;Early binding version
-	 "machines/mips/instr1"	;Mips instruction set
+	 "machines/mips/instr1"	;MIPS instruction set
 	 "machines/mips/instr2a"; branch tensioning: branches
 	 "machines/mips/instr2b"; branch tensioning: load/store
 	 "machines/mips/instr3" ; floating point
@@ -627,6 +627,12 @@ MIT in each case. |#
 	  bblock-linearize-lap)
   (export (compiler top-level)
 	  linearize-lap))
+
+(define-package (compiler lap-optimizer)
+  (files "machines/mips/lapopt")
+  (parent (compiler))
+  (export (compiler top-level)
+	  optimize-linear-lap))
 
 (define-package (compiler assembler)
   (files "machines/mips/assmd"	;Machine dependent

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.34 1991/05/06 22:45:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.35 1991/07/25 02:33:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -1008,12 +1008,13 @@ MIT in each case. |#
   (compiler-phase "LAP Linearization"
     (lambda ()
       (set! *lap*
-	    (LAP ,@(if *procedure-result?*
-		       (LAP (ENTRY-POINT ,*entry-label*))
-		       (lap:make-entry-point *entry-label* *block-label*))
-		 ,@(linearize-lap *rtl-root*
-				  *rtl-procedures*
-				  *rtl-continuations*)))
+	    (optimize-linear-lap
+	     (LAP ,@(if *procedure-result?*
+			(LAP (ENTRY-POINT ,*entry-label*))
+			(lap:make-entry-point *entry-label* *block-label*))
+		  ,@(linearize-lap *rtl-root*
+				   *rtl-procedures*
+				   *rtl-continuations*))))
       (with-values
 	  (lambda ()
 	    (info-generation-phase-2 *rtl-expression*

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.27 1990/07/22 18:53:17 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/decls.scm,v 4.28 1991/07/25 02:35:19 cph Exp $
 $MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -342,7 +342,8 @@ MIT in each case. |#
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
 	     (filename/append "machines/spectrum"
-			      "dassm1" "insmac" "machin" "rgspcm" "rulrew")
+			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
+			      "rulrew")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
 	     (filename/append "fgopt"

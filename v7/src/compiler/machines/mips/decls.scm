@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/decls.scm,v 1.2 1990/07/22 20:18:06 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/decls.scm,v 1.3 1991/07/25 02:40:21 cph Exp $
 $MC68020-Header: decls.scm,v 4.27 90/05/03 15:17:08 GMT jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -343,7 +343,7 @@ MIT in each case. |#
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
 	     (filename/append "machines/mips"
-			      "dassm1" "insmac" "machin" "rgspcm"
+			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
 			      "rulrew")
 	     (filename/append "fggen"
 			      "declar" "fggen" "canon")
@@ -412,9 +412,7 @@ MIT in each case. |#
 	  (append (filename/append "back" "lapgn3" "regmap")
 		  (filename/append "machines/mips" "lapgen")))
 	 (assembler-base
-	  (append (filename/append "back" "symtab")
-		  (filename/append "machines/mips"
-				   "instr1" "instr2a" "instr2b" "instr3")))
+	  (filename/append "back" "symtab"))
 	 (lapgen-body
 	  (append
 	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
@@ -471,8 +469,6 @@ MIT in each case. |#
 
     (define-integration-dependencies "machines/mips" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
-    (define-integration-dependencies "machines/mips" "instr1" "machines/mips"
-      "instr2a" "instr2b" "instr3")
 
     (define-integration-dependencies "rtlbase" "regset" "base")
     (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
