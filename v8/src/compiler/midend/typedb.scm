@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.9 1996/07/23 14:49:42 adams Exp $
+$Id: typedb.scm,v 1.10 1996/07/23 15:17:13 adams Exp $
 
 Copyright (c) 1996 Massachusetts Institute of Technology
 
@@ -321,25 +321,22 @@ MIT in each case. |#
 
 (let ()
   (define ((unchecked-function domain* range) . ops)
-    (for-each
-	(lambda (op)
-	  (define-operator-type op
-	    (primitive-procedure-type 
-	     (make-list (primitive-procedure-arity op) domain*) range
-	     'function 'unchecked)))
-      ops))
+    (define (process-element op)
+      (define-operator-type op
+	(primitive-procedure-type 
+	 (make-list (primitive-procedure-arity op) domain*) range
+	 'function 'unchecked)))
+    (for-each process-element ops))
 
   (define ((checked-function domain* range) . ops)
     (let ((arity #F))
-      (pp domain*)
-      (for-each
-	  (lambda (op)
-	    (if (exact-integer? op)
-		(set! arity op)
-		(define-operator-type op
-		  (primitive-procedure-type (make-list arity domain*) range
-					    'function))))
-	ops)))
+      (define (process-element op)
+	(if (exact-integer? op)
+	    (set! arity op)
+	    (define-operator-type op
+	      (primitive-procedure-type (make-list arity domain*) range
+					'function)))
+	(for-each process-element ops))))
 
   ((unchecked-function type:flonum type:flonum)
    flo:+ flo:- flo:* flo:/ flo:negate flo:abs flo:sqrt
