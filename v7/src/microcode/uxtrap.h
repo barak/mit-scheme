@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.5 1990/08/14 18:22:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.6 1990/08/16 05:09:31 jinx Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -216,23 +216,23 @@ struct full_sigcontext
 #define FULL_SIGCONTEXT_NREGS		32
 #define PROCESSOR_NREGS			32
 
-#define DECLARE_UX_SIGNAL_CODES
-static struct ux_sig_code_desc ux_signal_codes[14] =
-{
-  { SIGFPE, (~ 0L), FPE_INTOVF_TRAP, "integer overflow trap" },
-  { SIGFPE, (~ 0L), FPE_INTDIV_TRAP, "integer divide by 0 trap" },
-  { SIGFPE, (~ 0L), FPE_FLTOVF_TRAP, "floating-point overflow trap"},
-  { SIGFPE, (~ 0L), FPE_FLTDIV_TRAP, "floating-point divide by 0 trap"},
-  { SIGFPE, (~ 0L), FPE_FLTUND_TRAP, "floating-point underflow trap"},
-  { SIGFPE, (~ 0L), FPE_DECOVF_TRAP, "decimal overflow trap"},
-  { SIGFPE, (~ 0L), FPE_SUBRNG_TRAP, "subscript-range trap"},
-  { SIGFPE, (~ 0L), FPE_FLTOVF_FAULT, "floating-point overflow fault"},
-  { SIGFPE, (~ 0L), FPE_FLTDIV_FAULT, "floating-point divide by 0 fault"},
-  { SIGFPE, (~ 0L), FPE_FLTUND_FAULT, "floating-point underflow fault"},
-  { SIGILL, (~ 0L), ILL_PRIVIN_FAULT, "reserved instruction trap" },
-  { SIGILL, (~ 0L), ILL_RESOP_FAULT, "reserved operand trap" },
-  { SIGILL, (~ 0L), ILL_RESAD_FAULT, "reserved addressing trap" },
-  { 0, 0, 0, ((char *) NULL) }
+#define DECLARE_UX_SIGNAL_CODES                                           \
+static struct ux_sig_code_desc ux_signal_codes[14] =                      \
+{                                                                         \
+  { SIGFPE, (~ 0L), FPE_INTOVF_TRAP, "integer overflow trap" },           \
+  { SIGFPE, (~ 0L), FPE_INTDIV_TRAP, "integer divide by 0 trap" },        \
+  { SIGFPE, (~ 0L), FPE_FLTOVF_TRAP, "floating-point overflow trap"},     \
+  { SIGFPE, (~ 0L), FPE_FLTDIV_TRAP, "floating-point divide by 0 trap"},  \
+  { SIGFPE, (~ 0L), FPE_FLTUND_TRAP, "floating-point underflow trap"},    \
+  { SIGFPE, (~ 0L), FPE_DECOVF_TRAP, "decimal overflow trap"},            \
+  { SIGFPE, (~ 0L), FPE_SUBRNG_TRAP, "subscript-range trap"},             \
+  { SIGFPE, (~ 0L), FPE_FLTOVF_FAULT, "floating-point overflow fault"},   \
+  { SIGFPE, (~ 0L), FPE_FLTDIV_FAULT, "floating-point divide by 0 fault"},\
+  { SIGFPE, (~ 0L), FPE_FLTUND_FAULT, "floating-point underflow fault"},  \
+  { SIGILL, (~ 0L), ILL_PRIVIN_FAULT, "reserved instruction trap" },      \
+  { SIGILL, (~ 0L), ILL_RESOP_FAULT, "reserved operand trap" },           \
+  { SIGILL, (~ 0L), ILL_RESAD_FAULT, "reserved addressing trap" },        \
+  { 0, 0, 0, ((char *) NULL) }                                            \
 }
 
 #endif /* mips */
