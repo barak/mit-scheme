@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.23 1992/06/05 20:05:32 jinx Exp $
+$Id: uxsig.c,v 1.24 1993/02/06 05:43:53 gjr Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1112,6 +1112,13 @@ DEFUN_VOID (examine_memory)
   fflush (stdout);
 }
 
+void
+DEFUN (eta_fclose, (stream), PTR stream)
+{
+  (void) (fclose ((FILE *) stream));
+  return;
+}
+
 static void
 DEFUN_VOID (interactive_back_trace)
 {
@@ -1139,7 +1146,7 @@ DEFUN_VOID (interactive_back_trace)
 	return;
       }
       transaction_record_action (tat_always,
-				 ((void EXFUN ((*), (PTR))) fclose),
+				 eta_fclose,
 				 ((PTR) to_dump));
       fprintf (stdout, "Writing the stack trace to file \"%s\" -- ",
 	       &input_string[0]);
