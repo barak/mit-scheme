@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.15 1991/07/23 08:16:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.16 1991/07/24 19:42:14 arthur Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -39,6 +39,8 @@ MIT in each case. */
 #include "x11.h"
 
 #define RESOURCE_NAME "scheme-graphics"
+#define DEFAULT_RESOURCE_CLASS "SchemeGraphics"
+#define DEFAULT_RESOURCE_NAME "schemeGraphics"
 #define DEFAULT_GEOMETRY "512x384+0+0"
 
 struct gw_extra
@@ -348,6 +350,14 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	XSelectInput (display, window, StructureNotifyMask);
 	if ((ARG_REF (3)) == SHARP_F)
 	  {
+	    XClassHint *class_hint = XAllocClassHint ();
+
+	    if (class_hint == NULL)
+	      error_external_return ();
+	    class_hint->res_class = DEFAULT_RESOURCE_CLASS;
+	    class_hint->res_name = DEFAULT_RESOURCE_NAME;
+	    XSetClassHint (display, window, class_hint);
+	    XFree ((caddr_t) class_hint);
 	    XMapWindow (display, window);
 	    XFlush (display);
 	  }
@@ -355,6 +365,33 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
       }
     }
   }
+}
+
+DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLASS-HINT",
+		  Prim_x_graphics_set_class_hint, 4, 4,
+  "(X-GRAPHICS-SET-CLASS-HINT DISPLAY WINDOW RESOURCE_CLASS RESOURCE_NAME)\n\
+Set the XA_WM_CLASS property of WINDOW on DISPLAY to RESOURCE_CLASS\n\
+and RESOURCE_NAME.")
+{
+  PRIMITIVE_HEADER (4);
+  {
+    struct xdisplay * xd = (x_display_arg (1));
+    Display * display = (XD_DISPLAY (xd));
+    struct xwindow * xw = (x_window_arg (2));
+    Window window = (XW_WINDOW (xw));
+    XClassHint *class_hint;
+
+    CHECK_ARG (3, STRING_P);
+    CHECK_ARG (4, STRING_P);
+    class_hint = XAllocClassHint ();
+    if (class_hint == NULL)
+      error_external_return ();
+    class_hint->res_class = STRING_ARG (3);
+    class_hint->res_name = STRING_ARG (4);
+    XSetClassHint (display, window, class_hint);
+    XFree ((caddr_t) class_hint);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5,
