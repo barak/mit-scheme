@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.44 1989/04/15 00:51:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/macros.scm,v 1.45 1989/04/17 22:29:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -56,48 +56,46 @@
       (make-symbol x y))
 
     (define (make-symbol . args)
-      (string->symbol (apply string-append args)))
+      (intern (apply string-append args)))
 
-    (let ((structure-string (string-upcase name))
-	  (slot-strings (map symbol->string slots)))
-      (let ((prefix (string-append structure-string "-")))
-	(let ((structure-name (string->symbol structure-string))
-	      (tag-name (make-symbol "%" prefix "TAG"))
-	      (constructor-name (make-symbol "%MAKE-" structure-string))
-	      (predicate-name (make-symbol structure-string "?"))
-	      (slot-names
-	       (map (make-symbols (string-append prefix "INDEX:"))
-		    slot-strings))
-	      (selector-names (map (make-symbols prefix) slot-strings)))
-	  (define (slot-loop slot-names n)
-	    (if (null? slot-names)
-		'()
-		(cons `(DEFINE ,(car slot-names) ,n)
-		      (slot-loop (cdr slot-names) (1+ n)))))
+    (let ((structure-name (intern name))
+	  (slot-strings (map symbol->string slots))
+	  (prefix (string-append name "-")))
+      (let ((tag-name (make-symbol "%" prefix "tag"))
+	    (constructor-name (make-symbol "%make-" name))
+	    (predicate-name (make-symbol name "?"))
+	    (slot-names
+	     (map (make-symbols (string-append prefix "index:")) slot-strings))
+	    (selector-names (map (make-symbols prefix) slot-strings)))
+	(define (slot-loop slot-names n)
+	  (if (null? slot-names)
+	      '()
+	      (cons `(DEFINE ,(car slot-names) ,n)
+		    (slot-loop (cdr slot-names) (1+ n)))))
 
-	  (define (selector-loop selector-names n)
-	    (if (null? selector-names)
-		'()
-		(cons `(DEFINE-INTEGRABLE
-			 (,(car selector-names) ,structure-name)
-			 (VECTOR-REF ,structure-name ,n))
-		      (selector-loop (cdr selector-names) (1+ n)))))
+	(define (selector-loop selector-names n)
+	  (if (null? selector-names)
+	      '()
+	      (cons `(DEFINE-INTEGRABLE
+		       (,(car selector-names) ,structure-name)
+		       (VECTOR-REF ,structure-name ,n))
+		    (selector-loop (cdr selector-names) (1+ n)))))
 
-	  `(BEGIN (DEFINE ,tag-name ,name)
-		  (DEFINE (,constructor-name)
-		    (LET ((,structure-name
-			   (MAKE-VECTOR ,(1+ (length slots)) '())))
-		      (VECTOR-SET! ,structure-name 0 ,tag-name)
-		      ,structure-name))
-		  (DEFINE (,predicate-name OBJECT)
-		    (AND (VECTOR? OBJECT)
-			 (NOT (ZERO? (VECTOR-LENGTH OBJECT)))
-			 (EQ? ,tag-name (VECTOR-REF OBJECT 0))))
-		  (UNPARSER/SET-TAGGED-VECTOR-METHOD!
-		   ,tag-name
-		   (UNPARSER/STANDARD-METHOD ',structure-name))
-		  ,@(slot-loop slot-names 1)
-		  ,@(selector-loop selector-names 1)))))))
+	`(BEGIN (DEFINE ,tag-name ,name)
+		(DEFINE (,constructor-name)
+		  (LET ((,structure-name
+			 (MAKE-VECTOR ,(1+ (length slots)) '())))
+		    (VECTOR-SET! ,structure-name 0 ,tag-name)
+		    ,structure-name))
+		(DEFINE (,predicate-name OBJECT)
+		  (AND (VECTOR? OBJECT)
+		       (NOT (ZERO? (VECTOR-LENGTH OBJECT)))
+		       (EQ? ,tag-name (VECTOR-REF OBJECT 0))))
+		(UNPARSER/SET-TAGGED-VECTOR-METHOD!
+		 ,tag-name
+		 (UNPARSER/STANDARD-METHOD ',structure-name))
+		,@(slot-loop slot-names 1)
+		,@(selector-loop selector-names 1))))))
 
 (syntax-table-define edwin-syntax-table 'DEFINE-COMMAND
   (lambda (name description interactive procedure)
