@@ -1,5 +1,7 @@
 #!/bin/sh
 
+COPY="cpx -h"
+
 prefix=`/scheme/v7/dist/release-prefix`
 tldir=${prefix}/doc
 rm -rf ${prefix}
@@ -15,21 +17,21 @@ do
   do
     case ${type} in
     info)
-      cpx /scheme/documentation/${man}/*.info* ${tldir}
+      ${COPY} /scheme/documentation/${man}/*.info* ${tldir}
       ;;
     html)
-      cpx /scheme/documentation/${man}/html/*.html ${tldir}
+      ${COPY} /scheme/documentation/${man}/html/*.html ${tldir}
       ;;
     *)
-      cpx /scheme/documentation/${man}/*.${type} ${tldir}
+      ${COPY} /scheme/documentation/${man}/*.${type} ${tldir}
       ;;
     esac
   done
 done
 
-cpx /scheme/documentation/ref-manual/COPYING ${tldir}
-cpx /scheme/v7/linux/lib/edwin/info/dir ${tldir}
-cpx /scheme/v7/dist/index.html ${tldir}
+${COPY} /scheme/documentation/ref-manual/COPYING ${tldir}
+${COPY} /scheme/v7/linux/lib/edwin/info/dir ${tldir}
+${COPY} /scheme/v7/dist/index.html ${tldir}
 
 chmod 444 ${tldir}/*
 
