@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wabbit.sf,v 1.1 1994/03/28 07:06:40 ziggy Exp $
+$Id: wabbit.sf,v 1.2 1995/08/04 01:33:11 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -35,9 +35,8 @@ MIT in each case. |#
 (fluid-let ((sf/default-syntax-table syntax-table/system-internal))
   (sf-directory "."))
 
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+(load-option 'CREF)
 
 (cref/generate-constructors "wabbit")
-(sf "wabbit.con" "wabbit.bcon")
-(sf "wabbit.ldr" "wabbit.bldr")
+(sf "wabbit.con" "wabbit.bco")
+(sf "wabbit.ldr" "wabbit.bld")
