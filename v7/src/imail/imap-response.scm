@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.40 2000/07/03 03:36:50 cph Exp $
+;;; $Id: imap-response.scm,v 1.41 2000/07/03 03:37:27 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -307,12 +307,12 @@
       (read-literal-to-port input output))))
 
 (define (read-literal-to-port input output)
-  (discard-known-char #\{ port)
-  (let ((n (read-number port))
+  (discard-known-char #\{ input)
+  (let ((n (read-number input))
 	(progress-hook *read-literal-progress-hook*))
-    (discard-known-char #\} port)
-    (discard-known-char #\return port)
-    (discard-known-char #\linefeed port)
+    (discard-known-char #\} input)
+    (discard-known-char #\return input)
+    (discard-known-char #\linefeed input)
     (let loop ((i 0))
       (if (fix:< i n)
 	  (let ((i (fix:+ i 1))
