@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.69 2000/11/26 04:28:32 cph Exp $
+;;; $Id: sendmail.scm,v 1.70 2000/11/29 05:51:17 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -642,7 +642,7 @@ the user from the mailer."
       (if (if (buffer-pathname buffer)
 	      (prompt-for-confirmation? "Send buffer contents as mail message")
 	      (or (buffer-modified? buffer)
-		  (prompt-for-confirmation? "Message already send; resend")))
+		  (prompt-for-confirmation? "Message already sent; resend")))
 	  (begin
 	    ((ref-variable send-mail-procedure))
 	    (buffer-not-modified! buffer)
