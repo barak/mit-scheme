@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.86 2000/05/22 20:22:46 cph Exp $
+;;; $Id: imail-top.scm,v 1.87 2000/05/22 20:51:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -105,8 +105,6 @@ May be called with an IMAIL folder URL as argument;
   (lambda ()
     (list (and (command-argument)
 	       (prompt-for-imail-url-string "Run IMAIL on folder"
-					    (imail-default-url)
-					    'DEFAULT-TYPE 'INSERTED-DEFAULT
 					    'HISTORY 'IMAIL))))
   (lambda (url-string)
     (let ((folder
@@ -128,10 +126,10 @@ May be called with an IMAIL folder URL as argument;
 			 #t)
 	 buffer)))))
 
-(define (prompt-for-imail-url-string prompt default . options)
+(define (prompt-for-imail-url-string prompt . options)
   (apply prompt-for-completed-string
 	 prompt
-	 (and default (url-container-string default))
+	 #f ;(url-container-string (imail-default-url))
 	 (lambda (string if-unique if-not-unique if-not-found)
 	   (url-complete-string string imail-get-default-url
 				if-unique if-not-unique if-not-found))
@@ -142,6 +140,7 @@ May be called with an IMAIL folder URL as argument;
 	    (ignore-errors
 	     (lambda ()
 	       (parse-url-string string imail-get-default-url)))))
+	 'DEFAULT-TYPE 'INSERTED-DEFAULT
 	 options))
 
 (define (imail-default-url)
@@ -218,7 +217,7 @@ May be called with an IMAIL folder URL as argument;
       (if obscured
 	  (call-with-unobscured-pass-phrase obscured receiver)
 	  (call-with-pass-phrase
-	   (string-append "Pass phrase for " (url->string url))
+	   (string-append "Pass phrase for " key)
 	   (lambda (pass-phrase)
 	     (hash-table/put! imail-memoized-pass-phrases key
 			      (obscure-pass-phrase pass-phrase))
@@ -898,8 +897,7 @@ With prefix argument N, removes FLAG from next N messages,
   "Create a new folder with the specified name.
 An error if signalled if the folder already exists."
   (lambda ()
-    (list (prompt-for-imail-url-string "Create folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+    (list (prompt-for-imail-url-string "Create folder"
 				       'HISTORY 'IMAIL-CREATE-FOLDER)))
   (lambda (url-string)
     (create-folder (imail-parse-partial-url url-string))))
@@ -907,8 +905,7 @@ An error if signalled if the folder already exists."
 (define-command imail-delete-folder
   "Delete a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Delete folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+    (list (prompt-for-imail-url-string "Delete folder"
 				       'HISTORY 'IMAIL-DELETE-FOLDER)))
   (lambda (url-string)
     (delete-folder (imail-parse-partial-url url-string))))
@@ -916,8 +913,7 @@ An error if signalled if the folder already exists."
 (define-command imail-input
   "Append messages to this folder from a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Input from folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+    (list (prompt-for-imail-url-string "Input from folder"
 				       'HISTORY 'IMAIL-INPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)
@@ -935,8 +931,7 @@ An error if signalled if the folder already exists."
 (define-command imail-output
   "Append this message to a specified folder."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+    (list (prompt-for-imail-url-string "Output to folder"
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)
 	  (command-argument)))
@@ -955,8 +950,7 @@ The messages are NOT deleted even if imail-delete-after-output is true.
 This command is meant to be used to move the contents of a folder
  either to or from an IMAP server."
   (lambda ()
-    (list (prompt-for-imail-url-string "Output to folder" (imail-default-url)
-				       'DEFAULT-TYPE 'INSERTED-DEFAULT
+    (list (prompt-for-imail-url-string "Output to folder"
 				       'HISTORY 'IMAIL-OUTPUT
 				       'HISTORY-INDEX 0)))
   (lambda (url-string)

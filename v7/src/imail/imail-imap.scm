@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.76 2000/05/22 20:28:03 cph Exp $
+;;; $Id: imail-imap.scm,v 1.77 2000/05/22 20:50:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -53,8 +53,11 @@
 		 (if (= port 143)
 		     ""
 		     (string-append ":" (number->string port)))
-		 "/"
-		 (url:encode-string (canonicalize-imap-mailbox mailbox))))
+		 (if mailbox
+		     (string-append
+		      "/"
+		      (url:encode-string (canonicalize-imap-mailbox mailbox)))
+		     "")))
 
 (define (canonicalize-imap-mailbox mailbox)
   (cond ((string-ci=? mailbox "inbox") "inbox")
@@ -92,10 +95,11 @@
        (= (imap-url-port url1) (imap-url-port url2))))
 
 (define-method url-pass-phrase-key ((url <imap-url>))
-  (make-imap-url-string (imap-url-user-id url)
-			(imap-url-host url)
-			(imap-url-port url)
-			""))
+  (make-url-string "imap"
+		   (make-imap-url-string (imap-url-user-id url)
+					 (imap-url-host url)
+					 (imap-url-port url)
+					 #f)))
 
 (define-method parse-url-body (string default-url)
   (call-with-values (lambda () (parse-imap-url-body string default-url))

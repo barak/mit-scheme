@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.86 2000/05/22 20:22:32 cph Exp $
+;;; $Id: imail-core.scm,v 1.87 2000/05/22 20:51:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -81,10 +81,10 @@
 ;; Return #T if URL represents an existing folder.
 (define-generic url-exists? (url))
 
-;; Return a string that can be used as a key to memoize a pass phrase
-;; for URL.  E.g. for IMAP this could be the URL string without the
-;; mailbox information, which would allow all URLs referring to the
-;; same user account on the same server to share a pass phrase.
+;; Return a string that uniquely identifies the server and account for
+;; URL.  E.g. for IMAP this could be the URL string without the
+;; mailbox information.  This string will be included in the
+;; pass-phrase prompt, and also used as a key for memoization.
 (define-generic url-pass-phrase-key (url))
 
 ;; Convert STRING to a URL.  GET-DEFAULT-URL is a procedure of one
