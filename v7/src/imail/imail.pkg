@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.42 2000/06/01 18:44:41 cph Exp $
+;;; $Id: imail.pkg,v 1.43 2000/06/01 20:07:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -125,17 +125,6 @@
 	  rfc822:strip-comments
 	  rfc822:strip-quoted-names
 	  rfc822:tokens->string))
-
-(define-package (edwin imail mime-codec)
-  (files "mime-codec")
-  (parent (edwin imail))
-  (export (edwin imail)
-	  decode-base64-binary-string
-	  decode-base64-binary-substring
-	  decode-base64-text-string
-	  decode-base64-text-substring
-	  decode-quoted-printable-string
-	  decode-quoted-printable-substring))
 
 (define-package (edwin imail imap-syntax)
   (files "imap-syntax")
@@ -286,3 +275,14 @@
 	  edwin-variable$imail-summary-subject-width)
   |#
   )
+
+(define-package (edwin imail mime-codec)
+  (files "mime-codec")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  decode-base64-binary-string
+	  decode-base64-binary-substring
+	  decode-base64-text-string
+	  decode-base64-text-substring
+	  decode-quoted-printable-string
+	  decode-quoted-printable-substring))
