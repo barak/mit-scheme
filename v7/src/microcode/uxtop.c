@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.19 1996/04/23 20:50:20 cph Exp $
+$Id: uxtop.c,v 1.20 1997/05/01 01:24:54 cph Exp $
 
-Copyright (c) 1990-96 Massachusetts Institute of Technology
+Copyright (c) 1990-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -297,11 +297,18 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
     }
 }
 
+#ifdef _HPUX
+#define NEED_ERRLIST_DEFINITIONS
+#endif
+
+#ifdef NEED_ERRLIST_DEFINITIONS
+extern char * sys_errlist [];
+extern int sys_nerr;
+#endif
+
 CONST char *
 DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
 {
-  extern char * sys_errlist [];
-  extern int sys_nerr;
   int code = (syserr_to_error_code ((enum syserr_names) syserr));
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }
