@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.193 2001/05/07 18:44:35 cph Exp $
+;;; $Id: prompt.scm,v 1.194 2001/05/08 21:08:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -506,7 +506,7 @@ The following commands are special to this mode:
 	    (lambda (k)
 	      ;; Run the final value verification, just to catch any
 	      ;; errors that it might generate.
-	      (verify-final-value (typein-string) k)
+	      (verify-final-value k)
 	      (exit-typein-edit))))
 	  ((memq (default-type) '(NULL-DEFAULT INSERTED-DEFAULT))
 	   (exit-typein-edit))
@@ -576,7 +576,7 @@ a repetition of this command will exit."
 	  (set-typein-string! (default-string) #f)))
     (call-with-current-continuation
      (lambda (k)
-       (if (verify-final-value (typein-string) k)
+       (if (verify-final-value k)
 	   (exit-typein-edit)
 	   (case (complete-input-string (options/complete-string *options*)
 					#f)
@@ -592,17 +592,16 @@ a repetition of this command will exit."
 	      (update-typein!)
 	      (editor-failure))))))))
 
-(define (verify-final-value string error-continuation)
+(define (verify-final-value error-continuation)
   (let ((verifier (options/verify-final-value *options*)))
     (if verifier
 	(bind-condition-handler (list condition-type:error)
 	    (lambda (condition)
 	      condition
-	      (editor-beep)
+	      (editor-failure)
 	      (temporary-typein-message " [Error]")
 	      (error-continuation unspecific))
-	  (lambda ()
-	    (verifier string)))
+	  (lambda () (verifier (typein-string))))
 	#t)))
 
 ;;;; Completion Primitives
@@ -612,63 +611,58 @@ a repetition of this command will exit."
    (lambda (k)
      (let ((original (typein-string))
 	   (effected? #f))
-       (bind-condition-handler (list condition-type:error)
-	   (lambda (condition)
-	     condition
-	     (if (not effected?)
-		 (begin
-		   (editor-beep)
-		   (temporary-typein-message " [Error]")
-		   (k 'NO-MATCH))))
-	 (lambda ()
-	   (with-messages-suppressed
-	    (lambda ()
-	      (complete-string original
-		(lambda (string)
-		  (let ((verified?
-			 (if (options/require-match? *options*)
-			     ((options/verify-final-value *options*) string)
-			     #t)))
-		    (set! effected? #t)
-		    (if (not (string=? string original))
-			(set-typein-string! string update?))
-		    (if verified?
-			(if (if (case-insensitive-completion?)
-				(string-ci=? string original)
-				(string=? string original))
-			    'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
-			    'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION)
-			(begin
-			  (editor-beep)
-			  (temporary-typein-message " [No match]")
-			  'NO-MATCH))))
-		(lambda (string list-completions)
-		  (let ((verified?
-			 ((options/verify-final-value *options*) string)))
-		    (set! effected? #t)
-		    (if (not (string=? string original))
-			(set-typein-string! string update?))
-		    (if verified?
-			(if (if (case-insensitive-completion?)
-				(string-ci=? string original)
-				(string=? string original))
-			    'WAS-ALREADY-EXACT-COMPLETION
-			    'COMPLETED-TO-EXACT-COMPLETION)
-			(if (if (case-insensitive-completion?)
-				(string-ci=? string original)
-				(string=? string original))
-			    (begin
-			      (if (ref-variable completion-auto-help)
-				  (minibuffer-completion-help list-completions)
-				  (temporary-typein-message
-				   " [Next char not unique]"))
-			      'NO-COMPLETION-HAPPENED)
-			    'SOME-COMPLETION-HAPPENED))))
-		(lambda ()
+       (let ((finish
+	      (lambda (string not-completed completed list-completions)
+		(let ((verified?
+		       ((options/verify-final-value *options*) string)))
 		  (set! effected? #t)
-		  (editor-beep)
-		  (temporary-typein-message " [No match]")
-		  'NO-MATCH))))))))))
+		  (if (not (string=? string original))
+		      (set-typein-string! string update?))
+		  (if verified?
+		      (if (if (case-insensitive-completion?)
+			      (string-ci=? string original)
+			      (string=? string original))
+			  not-completed
+			  completed)
+		      (if (if (case-insensitive-completion?)
+			      (string-ci=? string original)
+			      (string=? string original))
+			  (begin
+			    (if list-completions
+				(if (ref-variable completion-auto-help)
+				    (minibuffer-completion-help
+				     list-completions)
+				    (temporary-typein-message
+				     " [Next char not unique]")))
+			    'NO-COMPLETION-HAPPENED)
+			  'SOME-COMPLETION-HAPPENED))))))
+	 (bind-condition-handler (list condition-type:error)
+	     (lambda (condition)
+	       condition
+	       (if (not effected?)
+		   (begin
+		     (editor-failure)
+		     (temporary-typein-message " [Error]")
+		     (k 'NO-MATCH))))
+	   (lambda ()
+	     (with-messages-suppressed
+	      (lambda ()
+		(complete-string original
+		  (lambda (string)
+		    (finish string
+			    'WAS-ALREADY-EXACT-AND-UNIQUE-COMPLETION
+			    'COMPLETED-TO-EXACT-AND-UNIQUE-COMPLETION
+			    #f))
+		  (lambda (string list-completions)
+		    (finish string
+			    'WAS-ALREADY-EXACT-COMPLETION
+			    'COMPLETED-TO-EXACT-COMPLETION
+			    list-completions))
+		  (lambda ()
+		    (set! effected? #t)
+		    (editor-beep)
+		    (temporary-typein-message " [No match]")
+		    'NO-MATCH)))))))))))
 
 (define (completion-procedure/complete-word string
 					    if-unique
