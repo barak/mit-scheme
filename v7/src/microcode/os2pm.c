@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.3 1995/01/05 23:59:44 cph Exp $
+$Id: os2pm.c,v 1.4 1995/01/16 20:57:52 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -511,7 +511,28 @@ static const char window_class [] = "mit-scheme.window";
     OS2_send_message ((WINDOW_EVENT_QID (window)), (message));		\
 }
 
-#define window_error(name) OS2_logic_error (#name)
+#define window_error(name) window_error_1 (#name, 1)
+#define window_warning(name) window_error_1 (#name, 0)
+
+static void
+window_error_1 (const char * name, int fatalp)
+{
+  char buffer [1024];
+  ERRORID code = (WinGetLastError (pm_hab));
+  sprintf (buffer, "%s error %d occurred in the %s procedure.  \
+This indicates a bug in the Scheme implementation.  \
+Please report this information to a Scheme wizard.",
+	   (fatalp ? "Fatal" : "Non-fatal"), code, name);
+  if (fatalp)
+    OS2_logic_error (buffer);
+  else
+    (void) WinMessageBox (HWND_DESKTOP,
+			  NULLHANDLE,
+			  buffer,
+			  "Scheme Error",
+			  0,
+			  (MB_OK | MB_WARNING));
+}
 
 void
 OS2_initialize_pm_thread (void)
@@ -674,7 +695,7 @@ OS2_write_pm_tqueue (tqueue_t * tqueue, msg_t * message)
 		   UWM_ENCAPSULATION,
 		   (MPFROMP (message)),
 		   MPVOID))
-    window_error (WinPostMsg);
+    window_warning (WinPostMsg);
 }
 
 static unsigned int wid_table_length;
@@ -1221,7 +1242,7 @@ handle_window_activate_request (msg_t * message)
   window_t * window = (SM_ACTIVATE_WINDOW (message));
   OS2_destroy_message (message);
   if (!WinSetActiveWindow (HWND_DESKTOP, (WINDOW_FRAME (window))))
-    window_error (WinSetActiveWindow);
+    window_warning (WinSetActiveWindow);
   simple_reply (sender);
 }
 
@@ -1625,7 +1646,7 @@ static void
 close_window (window_t * window)
 {
   if (!WinDestroyWindow (WINDOW_FRAME (window)))
-    window_error (WinDestroyWindow);
+    window_warning (WinDestroyWindow);
   deallocate_wid (WINDOW_WID (window));
   OS_free (window);
 }
@@ -1634,7 +1655,7 @@ static void
 show_window (window_t * window, int showp)
 {
   if (!WinShowWindow ((WINDOW_FRAME (window)), showp))
-    window_error (WinShowWindow);
+    window_warning (WinShowWindow);
 }
 
 static void
@@ -1668,7 +1689,7 @@ move_cursor (window_t * window, short x, short y)
   if (window_focusp (window))
     if (!WinCreateCursor ((WINDOW_CLIENT (window)),
 			  x, y, 0, 0, CURSOR_SETPOS, 0))
-      window_error (WinCreateCursor);
+      window_warning (WinCreateCursor);
 }
 
 static void
@@ -1688,7 +1709,7 @@ show_cursor (window_t * window, int showp)
     showp = 1;
   if ((window_focusp (window)) && (showp != (WINDOW_CURSOR_SHOWNP (window))))
     if (!WinShowCursor ((WINDOW_CLIENT (window)), showp))
-      window_error (WinShowCursor);
+      window_warning (WinShowCursor);
   (WINDOW_CURSOR_SHOWNP (window)) = showp;
 }
 
@@ -1704,10 +1725,10 @@ recreate_cursor (window_t * window)
 			    (WINDOW_CURSOR_HEIGHT (window)),
 			    (WINDOW_CURSOR_STYLE (window)),
 			    0))
-	window_error (WinCreateCursor);
+	window_warning (WinCreateCursor);
       if (WINDOW_CURSOR_SHOWNP (window))
 	if (!WinShowCursor ((WINDOW_CLIENT (window)), TRUE))
-	  window_error (WinShowCursor);
+	  window_warning (WinShowCursor);
     }
 }
 
@@ -1716,7 +1737,7 @@ activate_cursor (window_t * window)
 {
   if ((WINDOW_CURSOR_SHOWNP (window)) && (window_focusp (window)))
     if (!WinShowCursor ((WINDOW_CLIENT (window)), TRUE))
-      window_error (WinShowCursor);
+      window_warning (WinShowCursor);
 }
 
 static void
@@ -1724,7 +1745,7 @@ deactivate_cursor (window_t * window)
 {
   if ((WINDOW_CURSOR_SHOWNP (window)) && (window_focusp (window)))
     if (!WinShowCursor ((WINDOW_CLIENT (window)), FALSE))
-      window_error (WinShowCursor);
+      window_warning (WinShowCursor);
 }
 
 static void
@@ -1734,7 +1755,7 @@ clear_rectangle (window_t * window, PRECTL rectl)
   if (!WinFillRect ((WINDOW_HPS (window)),
 		    rectl,
 		    (WINDOW_BACKGROUND_COLOR (window))))
-    window_error (WinFillRect);
+    window_warning (WinFillRect);
   activate_cursor (window);
 }
 
@@ -1746,7 +1767,7 @@ scroll_rectangle (window_t * window, short x_delta, short y_delta,
   if ((WinScrollWindow ((WINDOW_CLIENT (window)), x_delta, y_delta, rectl,
 			0, NULLHANDLE, 0, 0))
       == RGN_ERROR)
-    window_error (WinScrollWindow);
+    window_warning (WinScrollWindow);
   activate_cursor (window);
 }
 
@@ -1754,7 +1775,7 @@ static void
 invalidate_rectangle (window_t * window, PRECTL rectl)
 {
   if (!WinInvalidateRect ((WINDOW_CLIENT (window)), rectl, FALSE))
-    window_error (WinInvalidateRect);
+    window_warning (WinInvalidateRect);
 }
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
@@ -1899,7 +1920,7 @@ set_window_pos (window_t * window, short x, short y)
 {
   if (!WinSetWindowPos ((WINDOW_FRAME (window)), NULLHANDLE, x, y,
 			0, 0, SWP_MOVE))
-    window_error (WinSetWindowPos);
+    window_warning (WinSetWindowPos);
 }
 
 static void
@@ -1938,7 +1959,7 @@ set_window_size (window_t * window,
 			((rcl . xRight) - (rcl . xLeft)),
 			((rcl . yTop) - (rcl . yBottom)),
 			SWP_SIZE))
-    window_error (WinSetWindowPos);
+    window_warning (WinSetWindowPos);
   activate_cursor (window);
 }
 
@@ -1986,20 +2007,20 @@ set_window_state (window_t * window, window_state_t state)
       break;
     }
   if (!WinSetWindowPos ((WINDOW_FRAME (window)), behind, 0, 0, 0, 0, op))
-    window_error (WinSetWindowPos);
+    window_warning (WinSetWindowPos);
 }
 
 static void
 set_window_colors (window_t * window, COLOR foreground, COLOR background)
 {
   if (!GpiSetColor ((WINDOW_HPS (window)), foreground))
-    window_error (GpiSetColor);
+    window_warning (GpiSetColor);
   if (!GpiSetMix ((WINDOW_HPS (window)), FM_OVERPAINT))
-    window_error (GpiSetMix);
+    window_warning (GpiSetMix);
   if (!GpiSetBackColor ((WINDOW_HPS (window)), background))
-    window_error (GpiSetBackColor);
+    window_warning (GpiSetBackColor);
   if (!GpiSetBackMix ((WINDOW_HPS (window)), BM_OVERPAINT))
-    window_error (GpiSetBackMix);
+    window_warning (GpiSetBackMix);
   (WINDOW_FOREGROUND_COLOR (window)) = foreground;
   (WINDOW_BACKGROUND_COLOR (window)) = background;
 }
@@ -2011,7 +2032,7 @@ move_gcursor (window_t * window, short x, short y)
   (ptl . x) = x;
   (ptl . y) = y;
   if (!GpiMove ((WINDOW_HPS (window)), (& ptl)))
-    window_error (GpiMove);
+    window_warning (GpiMove);
 }
 
 static void
@@ -2021,14 +2042,14 @@ draw_line (window_t * window, short x, short y)
   (ptl . x) = x;
   (ptl . y) = y;
   if ((GpiLine ((WINDOW_HPS (window)), (& ptl))) == GPI_ERROR)
-    window_error (GpiLine);
+    window_warning (GpiLine);
 }
 
 static void
 poly_line (window_t * window, unsigned long npoints, PPOINTL points)
 {
   if ((GpiPolyLine ((WINDOW_HPS (window)), npoints, points)) == GPI_ERROR)
-    window_error (GpiPolyLine);
+    window_warning (GpiPolyLine);
 }
 
 static void
@@ -2036,14 +2057,14 @@ poly_line_disjoint (window_t * window, unsigned long npoints, PPOINTL points)
 {
   if ((GpiPolyLineDisjoint ((WINDOW_HPS (window)), npoints, points))
       == GPI_ERROR)
-    window_error (GpiPolyLineDisjoint);
+    window_warning (GpiPolyLineDisjoint);
 }
 
 static void
 set_line_type (window_t * window, LONG type)
 {
   if (!GpiSetLineType ((WINDOW_HPS (window)), type))
-    window_error (GpiSetLineType);
+    window_warning (GpiSetLineType);
 }
 
 static void
@@ -2060,7 +2081,7 @@ static void
 set_window_title (window_t * window, PSZ title)
 {
   if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
-    window_error (WinSetWindowText);
+    window_warning (WinSetWindowText);
 }
 
 static MRESULT EXPENTRY
@@ -2139,12 +2160,12 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	if ((WINDOW_HPS (window)) == 0)
 	  window_error (GpiCreatePS);
 	if (!GpiSetBackMix ((WINDOW_HPS (window)), BM_OVERPAINT))
-	  window_error (GpiSetBackMix);
+	  window_warning (GpiSetBackMix);
 	/* Put color table in RGB mode so we can specify colors
 	   directly in RGB values rather than as indices.  */
 	if (!GpiCreateLogColorTable ((WINDOW_HPS (window)), LCOL_PURECOLOR,
 				     LCOLF_RGB, 0, 0, 0))
-	  window_error (GpiCreateLogColorTable);
+	  window_warning (GpiCreateLogColorTable);
 	(WINDOW_FOREGROUND_COLOR (window))
 	  = (GpiQueryColor (WINDOW_HPS (window)));
 	(WINDOW_BACKGROUND_COLOR (window))
@@ -2184,7 +2205,7 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	else
 	  {
 	    if (!WinDestroyCursor (WINDOW_CLIENT (window)))
-	      window_error (WinDestroyCursor);
+	      window_warning (WinDestroyCursor);
 	  }
 	SEND_EVENT (window,
 		    (make_focus_event ((WINDOW_WID (window)),
@@ -2248,7 +2269,7 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
       }
     case WM_DESTROY:
       if (!GpiDestroyPS (WINDOW_HPS (hwnd_to_window (hwnd))))
-	window_error (GpiDestroyPS);
+	window_warning (GpiDestroyPS);
       return (MRVOID);
     case WM_SIZE:
       {
