@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.60 2000/05/18 03:59:29 cph Exp $
+;;; $Id: imail-top.scm,v 1.61 2000/05/18 05:18:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -440,7 +440,9 @@ With prefix argument N moves backward N messages with these flags."
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
 	(begin
-	  (buffer-reset! buffer)
+	  (set-buffer-writeable! buffer)
+	  (buffer-widen! buffer)
+	  (region-delete! (buffer-region buffer))
 	  (associate-imail-with-buffer buffer folder message)
 	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	    (if message
@@ -482,7 +484,9 @@ With prefix argument N moves backward N messages with these flags."
      (add-kill-buffer-hook buffer delete-associated-buffers))))
 
 (define (delete-associated-buffers folder-buffer)
-  (for-each kill-buffer
+  (for-each (lambda (buffer)
+	      (if (buffer-alive? buffer)
+		  (kill-buffer buffer)))
 	    (buffer-get folder-buffer 'IMAIL-ASSOCIATED-BUFFERS '())))
 
 (define (associate-buffer-with-imail-buffer folder-buffer buffer)
@@ -506,7 +510,8 @@ With prefix argument N moves backward N messages with these flags."
 			  (delq! buffer
 				 (buffer-get folder-buffer
 					     'IMAIL-ASSOCIATED-BUFFERS
-					     '())))))))))
+					     '()))))))
+     (remove-kill-buffer-hook buffer dissociate-buffer-from-imail-buffer))))
 
 (define (chase-imail-buffer buffer)
   (or (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)
