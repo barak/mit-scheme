@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debian-changelog.scm,v 1.3 2001/02/06 04:30:29 cph Exp $
+;;; $Id: debian-changelog.scm,v 1.4 2001/02/13 18:44:58 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,7 @@ Runs `debian-changelog-mode-hook' if it exists.
 
 Key bindings:
 
-\\{debian-changelog-mode-map}"
+\\{debian-changelog}"
   (lambda (buffer)
     (local-set-variable! left-margin 2 buffer)
     (local-set-variable! fill-prefix "  " buffer)
@@ -52,10 +52,6 @@ Key bindings:
 
     (event-distributor/invoke! (ref-variable debian-changelog-mode-hook buffer)
 			       buffer)))
-
-(define-variable debian-changelog-mode-hook
-  "An event distributor that is invoked when entering Debian changelog mode."
-  (make-event-distributor))
 
 (define-key 'debian-changelog '(#\C-c #\C-a) 'debian-changelog-add-entry)
 (define-key 'debian-changelog '(#\C-c #\C-f)

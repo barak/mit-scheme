@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.44 2001/02/05 21:48:37 cph Exp $
+;;; $Id: loadef.scm,v 1.45 2001/02/13 18:45:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -386,6 +386,10 @@ This defaults to the value `mail-full-name'."
 This defaults to the value of `user-mail-address'."
   #f
   string-or-false?)
+
+(define-variable debian-changelog-mode-hook
+  "An event distributor that is invoked when entering Debian changelog mode."
+  (make-event-distributor))
 
 ;;;; DOS-specific commands
 
