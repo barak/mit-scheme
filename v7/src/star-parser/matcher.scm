@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: matcher.scm,v 1.6 2001/06/30 03:23:34 cph Exp $
+;;; $Id: matcher.scm,v 1.7 2001/06/30 06:05:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,14 +36,6 @@
 (syntax-table/define system-global-syntax-table '*MATCHER
   (lambda (expression)
     (optimize-expression (generate-matcher-code expression))))
-
-(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
-  (lambda (bvl expression)
-    (if (not (named-lambda-bvl? bvl))
-	(error "Malformed bound-variable list:" bvl))
-    `(DEFINE-*MATCHER-MACRO* ',(car bvl)
-       (LAMBDA ,(cdr bvl)
-	 ,expression))))
 
 (define (generate-matcher-code expression)
   (let ((external-bindings (list 'BINDINGS))
@@ -86,6 +78,29 @@
 		  ,(if-fail pointers)))))
 	(else
 	 (error "Malformed matcher:" expression))))
+
+(syntax-table/define system-global-syntax-table 'DEFINE-*MATCHER-MACRO
+  (lambda (bvl expression)
+    (cond ((symbol? bvl)
+	   `(DEFINE-*MATCHER-MACRO* ',bvl
+	      (LAMBDA ()
+		,expression)))
+	  ((named-lambda-bvl? bvl)
+	   `(DEFINE-*MATCHER-MACRO* ',(car bvl)
+	      (LAMBDA ,(cdr bvl)
+		,expression)))
+	  (else
+	   (error "Malformed bound-variable list:" bvl)))))
+
+(define (define-*matcher-macro* name procedure)
+  (hash-table/put! *matcher-macros name procedure)
+  name)
+
+(define (*matcher-expander name)
+  (hash-table/get *matcher-macros name #f))
+
+(define *matcher-macros
+  (make-eq-hash-table))
 
 ;;;; Canonicalization
 
@@ -148,23 +163,18 @@
 	      (handle-complex-expression (check-1-arg expression)
 					 internal-bindings))
 	     (else
-	      (let ((expander
-		     (hash-table/get *matcher-macros (car expression) #f)))
+	      (let ((expander (*matcher-expander (car expression))))
 		(if expander
 		    (do-expression (apply expander (cdr expression)))
 		    (error "Unknown matcher expression:" expression))))))
 	  ((symbol? expression)
-	   expression)
+	   (let ((expander (*matcher-expander expression)))
+	     (if expander
+		 (do-expression (expander))
+		 expression)))
 	  (else
 	   (error "Unknown matcher expression:" expression))))
   (do-expression expression))
-
-(define (define-*matcher-macro* name procedure)
-  (hash-table/put! *matcher-macros name procedure)
-  name)
-
-(define *matcher-macros
-  (make-eq-hash-table))
 
 ;;;; Matchers
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.scm,v 1.10 2001/06/30 03:23:41 cph Exp $
+;;; $Id: parser.scm,v 1.11 2001/06/30 06:05:09 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -36,14 +36,6 @@
 (syntax-table/define system-global-syntax-table '*PARSER
   (lambda (expression)
     (optimize-expression (generate-parser-code expression))))
-
-(syntax-table/define system-global-syntax-table 'DEFINE-*PARSER-MACRO
-  (lambda (bvl expression)
-    (if (not (named-lambda-bvl? bvl))
-	(error "Malformed bound-variable list:" bvl))
-    `(DEFINE-*PARSER-MACRO* ',(car bvl)
-       (LAMBDA ,(cdr bvl)
-	 ,expression))))
 
 (define (generate-parser-code expression)
   (with-canonical-parser-expression expression
@@ -82,6 +74,29 @@
 		      ,(if-fail pointers)))))))
 	(else
 	 (error "Malformed matcher:" expression))))
+
+(syntax-table/define system-global-syntax-table 'DEFINE-*PARSER-MACRO
+  (lambda (bvl expression)
+    (cond ((symbol? bvl)
+	   `(DEFINE-*PARSER-MACRO* ',bvl
+	      (LAMBDA ()
+		,expression)))
+	  ((named-lambda-bvl? bvl)
+	   `(DEFINE-*PARSER-MACRO* ',(car bvl)
+	      (LAMBDA ,(cdr bvl)
+		,expression)))
+	  (else
+	   (error "Malformed bound-variable list:" bvl)))))
+
+(define (define-*parser-macro* name procedure)
+  (hash-table/put! *parser-macros name procedure)
+  name)
+
+(define (*parser-expander name)
+  (hash-table/get *parser-macros name #f))
+
+(define *parser-macros
+  (make-eq-hash-table))
 
 ;;;; Canonicalization
 
@@ -127,13 +142,15 @@
 		(handle-complex-expression (check-1-arg expression)
 					   internal-bindings))
 	       (else
-		(let ((expander
-		       (hash-table/get *parser-macros (car expression) #f)))
+		(let ((expander (*parser-expander (car expression))))
 		  (if expander
 		      (do-expression (apply expander (cdr expression)))
 		      (error "Unknown parser expression:" expression))))))
 	    ((symbol? expression)
-	     expression)
+	     (let ((expander (*parser-expander expression)))
+	       (if expander
+		   (do-expression (expander))
+		   expression)))
 	    (else
 	     (error "Unknown parser expression:" expression))))
     (let ((expression (do-expression expression)))
@@ -144,13 +161,6 @@
 	    (maybe-make-let (map (lambda (b) (list (cdr b) (car b)))
 				 (cdr internal-bindings))
 	      (receiver expression))))))))
-
-(define (define-*parser-macro* name procedure)
-  (hash-table/put! *parser-macros name procedure)
-  name)
-
-(define *parser-macros
-  (make-eq-hash-table))
 
 ;;;; Parsers
 
