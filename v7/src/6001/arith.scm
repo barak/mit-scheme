@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.3 1992/09/26 15:40:02 cph Exp $
+$Id: arith.scm,v 1.4 1993/08/12 06:56:37 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -127,10 +127,15 @@ MIT in each case. |#
 	(else (int:* x y))))
 
 (define (real:/ x y)
-  (let ((y (if (flonum? y) y (int:->flonum y))))
-    (cond ((flonum? x) (flo:/ x y))
-	  ((int:zero? x) x)
-	  (else (flo:/ (int:->flonum x) y)))))
+  (cond ((flonum? x) (flo:/ x (if (flonum? y) y (int:->flonum y))))
+	((flonum? y) (if (int:zero? x) x (flo:/ (int:->flonum x) y)))
+	((int:= (int:remainder x y) 0) (int:quotient x y))
+	(else (flo:/ (int:->flonum x) (int:->flonum y)))))
+
+(define (real:invert x)
+  (cond ((flonum? x) (flo:/ 1. x))
+	((int:= 1 x) x)
+	(else (flo:/ 1. (int:->flonum x)))))
 
 (define (real:= x y)
   (if (flonum? x)
@@ -307,7 +312,9 @@ MIT in each case. |#
 		    (else 1.))))
 	(if (flonum? y)
 	    (general-case (int:->flonum x) y)
-	    (int:expt x y)))))
+	    (if (int:negative? y)
+		(real:invert (int:expt x (int:negate y)))
+		(int:expt x y))))))
 
 (define number? rational?)
 (define complex? rational?)
@@ -381,7 +388,7 @@ MIT in each case. |#
 
 (define (/ z1 . zs)
   (cond ((null? zs)
-	 (flo:/ 1. (if (flonum? z1) z1 (int:->flonum z1))))
+	 (real:invert z1))
 	((null? (cdr zs))
 	 (real:/ z1 (car zs)))
 	(else
