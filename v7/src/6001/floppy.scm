@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.5 1992/09/14 21:21:32 cph Exp $
+$Id: floppy.scm,v 1.6 1992/09/14 21:43:09 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -81,18 +81,20 @@ Don't type RET after the letter.
 
 Here are the login options:
 
-F	First login.  Select this option if this is the first time you
-	are logging in this term.  You will be guided through the
-	process of initializing your floppies.
+L	Normal login (with previously initialized floppy).  Make sure
+	that an initialized floppy is in the drive before selecting
+	this option.  The files on your floppy will be copied into
+	the computer so you can work on them. 
 
-L	Normal login.  Make sure that an initialized floppy is in the
-	drive before selecting this option.  The files on your floppy
-	will be copied into the computer so you can work on them.
+F	Login with new floppy disk(s).  Select this option if this is
+	the first time that you are logging in with these floppy
+	disks.  You will be guided through the process of
+	initializing your floppies.   
 
-N	Login without floppy.  Select this option if you do not have
-	any floppies or if you do not wish to use a floppy.  WARNING:
-	IF YOU SELECT THIS OPTION YOU WILL NOT BE ABLE TO SAVE YOUR
-	WORK!
+N	Practice login (without floppy).   Select this option if you
+	do not have any floppies or if you do not wish to use a
+	floppy.  WARNING:  IF YOU SELECT THIS OPTION YOU WILL NOT BE
+	ABLE TO SAVE YOUR WORK!
 
 Q	Quit.  Select this option if you do not want to log in.")
   (let loop ()
@@ -282,7 +284,7 @@ Floppy successfully initialized.")
 ----------------------------------------------------------------------
 Initializing floppy.
 
-Please wait, this will take about five minutes.
+Please wait, this will take about five to ten minutes.
 ")
     (call-with-current-continuation
      (lambda (k)
