@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.64 1997/07/15 03:00:04 adams Exp $
+$Id: opncod.scm,v 4.65 1997/10/14 14:20:05 adams Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -808,6 +808,14 @@ MIT in each case. |#
    '(0)
    internal-close-coding-for-type-or-range-checks))
 
+(define-open-coder/value 'MAKE-CELL
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     combination
+     (finish (rtl:make-cell-cons (car expressions))))
+   '(0)
+   false))
+
 (let ((open-code/pair-cons
        (lambda (type)
 	 (lambda (combination expressions finish)
