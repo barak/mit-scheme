@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.2 1992/02/09 15:01:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/instrf.scm,v 1.3 1992/02/13 05:57:19 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -137,7 +137,7 @@ MIT in each case. |#
 (define-instruction FFREE
   (((ST (? i)))
    (BYTE (8 #xdd)
-	 (8 (+ #x c0 i)))))
+	 (8 (+ #xc0 i)))))
 
 (let-syntax
     ((define-flonum-integer-comparison

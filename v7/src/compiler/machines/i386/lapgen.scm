@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.8 1992/02/13 05:48:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/lapgen.scm,v 1.9 1992/02/13 05:52:58 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/lapgen.scm,v 4.42 1991/05/28 19:14:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -268,7 +268,7 @@ MIT in each case. |#
 
 (define-integrable (cache-label! label temporary)
   (set! *register-map*
-	(set-machine-register-label *register-map* alias label))
+	(set-machine-register-label *register-map* temporary label))
   unspecific)
 
 (define (compare/register*register reg1 reg2)
@@ -321,8 +321,8 @@ MIT in each case. |#
   (load-alias-register! register 'GENERAL))
 
 (define (offset->indirect-reference! rtl-expr)
-  (indirect-reference! (rtl:register-number (rtl:offset-base offset))
-		       (rtl:offset-number offset)))
+  (indirect-reference! (rtl:register-number (rtl:offset-base rtl-expr))
+		       (rtl:offset-number rtl-expr)))
 
 (define (object->type target)
   (LAP (SHR W ,target (& ,scheme-datum-width))))
