@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.129 1992/11/16 16:39:12 bal Exp $
+;;;	$Id: dired.scm,v 1.130 1992/11/16 21:09:32 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -580,13 +580,12 @@ Actions controlled by variables list-directory-brief-switches
 
 ;;;; Krypt File
 
-(load-option 'krypt)
-
 (define-command dired-krypt-file
   "Krypt/unkrypt a file.  If the file ends in KY, assume it is already 
 krypted and unkrypt it.  Otherwise, krypt it."
   '()
   (lambda ()
+    (load-option 'krypt)
     (let ((pathname (dired-current-pathname)))
       (if (and (pathname-type pathname)
 	       (string=? (pathname-type pathname) "KY"))
