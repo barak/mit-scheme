@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.19 1997/10/22 05:15:41 cph Exp $
+$Id: process.scm,v 1.20 1997/10/24 06:47:56 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -127,6 +127,27 @@ MIT in each case. |#
   (let ((port (subprocess-i/o-port process)))
     (and (output-port? port)
 	 port)))
+
+(define (%close-subprocess-i/o process)
+  ;; Assumes that interrupts are locked.
+  (cond ((subprocess-%i/o-port process)
+	 => (lambda (port)
+	      (set-subprocess-%i/o-port! process false)
+	      (set-subprocess-input-channel! process false)
+	      (set-subprocess-output-channel! process false)
+	      (close-port port))))
+  (cond ((subprocess-input-channel process)
+	 => (lambda (input-channel)
+	      (set-subprocess-input-channel! process false)
+	      (channel-close input-channel))))
+  (cond ((subprocess-output-channel process)
+	 => (lambda (output-channel)
+	      (set-subprocess-output-channel! process false)
+	      (channel-close output-channel))))
+  (cond ((subprocess-pty-master process)
+	 => (lambda (pty-master)
+	      (set-subprocess-pty-master! process false)
+	      (channel-close pty-master)))))
 
 (define (make-subprocess filename arguments environment
 			 ctty stdin stdout stderr
@@ -188,24 +209,7 @@ MIT in each case. |#
 	   ((ucode-primitive process-delete 1) (subprocess-index process))
 	   (set! subprocesses (delq! process subprocesses))
 	   (set-subprocess-index! process false)
-	   (cond ((subprocess-%i/o-port process)
-		  => (lambda (port)
-		       (set-subprocess-%i/o-port! process false)
-		       (set-subprocess-input-channel! process false)
-		       (set-subprocess-output-channel! process false)
-		       (close-port port))))
-	   (cond ((subprocess-input-channel process)
-		  => (lambda (input-channel)
-		       (set-subprocess-input-channel! process false)
-		       (channel-close input-channel))))
-	   (cond ((subprocess-output-channel process)
-		  => (lambda (output-channel)
-		       (set-subprocess-output-channel! process false)
-		       (channel-close output-channel))))
-	   (cond ((subprocess-pty-master process)
-		  => (lambda (pty-master)
-		       (set-subprocess-pty-master! process false)
-		       (channel-close pty-master)))))))))
+	   (%close-subprocess-i/o process))))))
 
 (define (subprocess-status process)
   (convert-subprocess-status (%subprocess-status process)))
@@ -286,7 +290,8 @@ MIT in each case. |#
   ((ucode-primitive process-signal 2) (subprocess-index process) signal))
 
 (define (subprocess-kill process)
-  ((ucode-primitive process-kill 1) (subprocess-index process)))
+  ((ucode-primitive process-kill 1) (subprocess-index process))
+  (maybe-close-subprocess-i/o process))
 
 (define (subprocess-interrupt process)
   ((ucode-primitive process-interrupt 1) (subprocess-index process)))
@@ -295,7 +300,12 @@ MIT in each case. |#
   ((ucode-primitive process-quit 1) (subprocess-index process)))
 
 (define (subprocess-hangup process)
-  ((ucode-primitive process-hangup 1) (subprocess-index process)))
+  ((ucode-primitive process-hangup 1) (subprocess-index process))
+  (maybe-close-subprocess-i/o process))
+
+(define (maybe-close-subprocess-i/o process)
+  (if (eq? 'NT microcode-id/operating-system)
+      (without-interrupts (lambda () (%close-subprocess-i/o process)))))
 
 (define (subprocess-stop process)
   ((ucode-primitive process-stop 1) (subprocess-index process)))
