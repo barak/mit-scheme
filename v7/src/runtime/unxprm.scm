@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.63 2002/11/20 19:46:24 cph Exp $
+$Id: unxprm.scm,v 1.64 2003/01/22 02:05:47 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -185,8 +187,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  (set-environment-variable! variable *variable-deleted*)))
 
   (set! reset-environment-variables!
-	(lambda () (set! environment-variables '())))
-) ; End LET
+	(lambda () (set! environment-variables '()))))
+
+(define (initialize-system-primitives!)
+  (add-event-receiver! event:after-restart reset-environment-variables!))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
@@ -329,102 +333,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 				(append-map (lambda (string) (list "/" string))
 					    specifier)))
 		   (user-homedir-pathname)))
-
-;;; Queues after-restart daemon to clean up environment space
-
-(define (initialize-system-primitives!)
-  (add-event-receiver! event:after-restart reset-environment-variables!)
-  (discard-select-registry-result-vectors!)
-  (add-event-receiver! event:after-restart
-		       discard-select-registry-result-vectors!))
-
-(define (make-select-registry . descriptors)
-  (let ((registry (make-string ((ucode-primitive select-registry-size 0)))))
-    ((ucode-primitive select-registry-clear-all 1) registry)
-    (do ((descriptors descriptors (cdr descriptors)))
-	((not (pair? descriptors)))
-      ((ucode-primitive select-registry-set 2) registry (car descriptors)))
-    registry))
-
-(define (add-to-select-registry! registry descriptor)
-  ((ucode-primitive select-registry-set 2) registry descriptor))
-
-(define (remove-from-select-registry! registry descriptor)
-  ((ucode-primitive select-registry-clear 2) registry descriptor))
-
-(define (select-descriptor descriptor block?)
-  (let ((result ((ucode-primitive select-descriptor 2) descriptor block?)))
-    (case result
-      ((0)
-       #f)
-      ((1)
-       'INPUT-AVAILABLE)
-      ((-1)
-       (subprocess-global-status-tick)
-       'PROCESS-STATUS-CHANGE)
-      ((-2)
-       'INTERRUPT)
-      (else
-       (error "Illegal result from CHANNEL-SELECT:" result)))))
-
-(define (select-registry-test registry block?)
-  (let ((result-vector (allocate-select-registry-result-vector)))
-    (let ((result
-	   ((ucode-primitive select-registry-test 3) registry block?
-						     result-vector)))
-      (if (fix:> result 0)
-	  (let loop ((index (fix:- result 1)) (descriptors '()))
-	    (let ((descriptors
-		   (cons (vector-ref result-vector index) descriptors)))
-	      (if (fix:= 0 index)
-		  (begin
-		    (deallocate-select-registry-result-vector result-vector)
-		    descriptors)
-		  (loop (fix:- index 1) descriptors))))
-	  (begin
-	    (deallocate-select-registry-result-vector result-vector)
-	    (cond ((fix:= 0 result)
-		   #f)
-		  ((fix:= -1 result)
-		   (subprocess-global-status-tick)
-		   'PROCESS-STATUS-CHANGE)
-		  ((fix:= -2 result)
-		   'INTERRUPT)
-		  (else
-		   (error "Illegal result from SELECT-REGISTRY-TEST:"
-			  result))))))))
-
-(define select-registry-result-vectors)
-
-(define (discard-select-registry-result-vectors!)
-  (set! select-registry-result-vectors '())
-  unspecific)
-
-(define (allocate-select-registry-result-vector)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((v
-	   (let loop ((rv select-registry-result-vectors))
-	     (if (pair? rv)
-		 (let ((v (car rv)))
-		   (if v
-		       (begin
-			 (set-car! rv #f)
-			 v)
-		       (loop (cdr rv))))
-		 (make-vector ((ucode-primitive select-registry-lub 0)) #f)))))
-      (set-interrupt-enables! interrupt-mask)
-      v)))
-
-(define (deallocate-select-registry-result-vector v)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let loop ((rv select-registry-result-vectors))
-      (if (pair? rv)
-	  (if (car rv)
-	      (loop (cdr rv))
-	      (set-car! rv v))
-	  (set! select-registry-result-vectors
-		(cons v select-registry-result-vectors))))
-    (set-interrupt-enables! interrupt-mask)))
 
 ;;;; Subprocess/Shell Support
 

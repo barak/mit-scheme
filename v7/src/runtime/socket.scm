@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.19 2002/11/20 19:46:23 cph Exp $
+$Id: socket.scm,v 1.20 2003/01/22 02:05:34 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -92,9 +93,10 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	   (lambda ()
 	     (let ((do-test
 		    (lambda (k)
-		      (let ((result (test-for-input-on-channel server-socket)))
+		      (let ((result
+			     (test-for-io-on-channel server-socket 'READ)))
 			(case result
-			  ((INPUT-AVAILABLE)
+			  ((READ)
 			   (open-channel
 			    (lambda (p)
 			      (with-thread-timer-stopped

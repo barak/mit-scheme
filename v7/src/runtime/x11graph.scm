@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.53 2002/11/20 19:46:24 cph Exp $
+$Id: x11graph.scm,v 1.54 2003/01/22 02:06:00 cph Exp $
 
-Copyright (c) 1989-2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -265,10 +267,12 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (make-event-previewer display)
   (let ((registration))
     (set! registration
-	  (permanently-register-input-thread-event
+	  (permanently-register-io-thread-event
 	   (x-display-descriptor (x-display/xd display))
+	   'READ
 	   (current-thread)
-	   (lambda ()
+	   (lambda (mode)
+	     mode
 	     (call-with-current-continuation
 	      (lambda (continuation)
 		(bind-condition-handler
@@ -280,7 +284,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		      ;; on its display argument, that means the
 		      ;; display has been closed.
 		      condition
-		      (deregister-input-thread-event registration)
+		      (deregister-io-thread-event registration)
 		      (continuation unspecific))
 		  (lambda ()
 		    (let ((event
@@ -303,10 +307,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (%read-and-process-event display)
   (let ((event
-	 (and (eq? 'INPUT-AVAILABLE
-		   (test-for-input-on-descriptor
+	 (and (eq? 'READ
+		   (test-for-io-on-descriptor
 		    (x-display-descriptor (x-display/xd display))
-		    #t))
+		    #t
+		    'READ))
 	      (x-display-process-events (x-display/xd display) 1))))
     (if event
 	(process-event display event))))

@@ -317,9 +317,13 @@ end of debugging stuff
 	  (if (and code (not (scxl-destroyed? (weak-car wcdr))))
 	      (begin
 		;; Reinstall interrupt handler, then run user code
-		(register-input-thread-event
+		(register-io-thread-event
 		 (XConnectionNumber (weak-car wcdr))
-		 uitk-thread (weak-cdr wcdr))
+		 'READ
+		 uitk-thread
+		 (lambda (mode)
+		   mode
+		   ((weak-cdr wcdr))))
 		(code))))))
     (define (call-if-still-there weak)
       ;; WEAK is a weak-list:
@@ -346,15 +350,20 @@ end of debugging stuff
 	    (weak (weak-cons child-work-code (weak-cons display #F))))
 	(without-interrupts
 	 (lambda ()
-	   (register-input-thread-event
-	    file uitk-thread (call-if-still-there weak))))))))
+	   (register-io-thread-event
+	    file
+	    'READ
+	    uitk-thread
+	    (lambda (mode)
+	      mode
+	      (call-if-still-there weak)))))))))
 
 (define (destroy-registration registration)
-  (deregister-input-thread-event registration)
+  (deregister-io-thread-event registration)
   'OK)
 
 (define (shut-down-event-server display-number)
-  (deregister-input-descriptor-events (%XConnectionNumber display-number)))
+  (deregister-io-descriptor-events (%XConnectionNumber display-number) 'READ))
 
 
 ;;;Delayed events

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.422 2003/01/09 19:36:50 cph Exp $
+$Id: runtime.pkg,v 14.423 2003/01/22 02:05:28 cph Exp $
 
 Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright (c) 1993,1994,1995,1996,1997 Massachusetts Institute of Technology
@@ -568,7 +568,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define-package (runtime os-primitives)
   (parent (runtime))
   (export ()
-	  add-to-select-registry!
 	  copy-file
 	  current-home-directory
 	  current-user-name
@@ -598,7 +597,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  file-time->universal-time
 	  get-environment-variable
 	  init-file-specifier->pathname
-	  make-select-registry
 	  os/default-end-of-line-translation
 	  os/exec-path
 	  os/executable-pathname-types
@@ -608,9 +606,6 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  os/make-subprocess
 	  os/parse-path-string
 	  os/shell-file-name
-	  remove-from-select-registry!
-	  select-descriptor
-	  select-registry-test
 	  set-file-modes!
 	  set-file-times!
 	  temporary-directory-pathname
@@ -2530,8 +2525,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  terminal-raw-input
 	  terminal-raw-output
 	  terminal-set-state
-	  test-for-input-on-channel
-	  test-for-input-on-descriptor
+	  test-for-io-on-channel
+	  test-for-io-on-descriptor
 	  tty-input-channel
 	  tty-output-channel
 	  with-channel-blocking)
@@ -2604,7 +2599,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (export (runtime x-graphics)
 	  have-select?)
   (export (runtime thread)
-	  have-select?)
+	  add-to-select-registry!
+	  have-select?
+	  make-select-registry
+	  remove-from-select-registry!
+	  test-select-registry)
   (export (runtime directory)
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
@@ -3957,8 +3956,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  create-thread-continuation
 	  current-thread
 	  deregister-all-events
-	  deregister-input-descriptor-events
-	  deregister-input-thread-event
+	  deregister-io-descriptor-events
+	  deregister-io-thread-event
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
@@ -3966,8 +3965,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  lock-thread-mutex
 	  make-thread-mutex
 	  other-running-threads?
-	  permanently-register-input-thread-event
-	  register-input-thread-event
+	  permanently-register-io-thread-event
+	  register-io-thread-event
 	  register-timer-event
 	  restart-thread
 	  set-thread-timer-interval!
@@ -3996,7 +3995,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
   (export (runtime primitive-io)
-	  block-on-input-descriptor)
+	  block-on-io-descriptor)
   (export (runtime continuation)
 	  get-thread-event-block
 	  set-thread-event-block!)

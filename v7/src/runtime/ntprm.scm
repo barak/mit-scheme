@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.38 2002/11/20 19:46:21 cph Exp $
+$Id: ntprm.scm,v 1.39 2003/01/22 02:05:08 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -449,55 +450,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		       (set! port #f)
 		       unspecific))))))))))
 
-(define-structure (nt-select-registry (conc-name nt-select-registry/))
-  descriptors)
-
-(define (make-select-registry . descriptors)
-  (make-nt-select-registry descriptors))
-
-(define (add-to-select-registry! registry descriptor)
-  (if (not (memv descriptor (nt-select-registry/descriptors registry)))
-      (set-nt-select-registry/descriptors!
-       registry
-       (cons descriptor (nt-select-registry/descriptors registry)))))
-
-(define (remove-from-select-registry! registry descriptor)
-  (set-nt-select-registry/descriptors!
-   registry
-   (delv! descriptor (nt-select-registry/descriptors registry))))
-
-(define (select-registry-test registry block?)
-  (let ((descriptors (list->vector (nt-select-registry/descriptors registry))))
-    (let ((result
-	   ((ucode-primitive nt:waitformultipleobjects 3)
-	    descriptors #f block?)))
-      (cond ((and (fix:<= 0 result) (fix:< result (vector-length descriptors)))
-	     (list (vector-ref descriptors result)))
-	    ((fix:= result -1) #f)
-	    ((fix:= result -2) 'INTERRUPT)
-	    ((fix:= result -3) 'PROCESS-STATUS-CHANGE)
-	    (else (error "Illegal result from select-internal:" result))))))
-
-(define (select-descriptor descriptor block?)
-  (let ((result
-	 ((ucode-primitive nt:waitformultipleobjects 3)
-	  (vector descriptor) #f block?)))
-    (case result
-      ((0) 'INPUT-AVAILABLE)
-      ((-1) #f)
-      ((-2) 'INTERRUPT)
-      ((-3) 'PROCESS-STATUS-CHANGE)
-      (else (error "Illegal result from select-internal:" result)))))
-
-(define console-channel-descriptor)
-
-(define (cache-console-channel-descriptor!)
-  (set! console-channel-descriptor
-	(channel-descriptor-for-select (tty-input-channel)))
-  unspecific)
-
 ;;;; Subprocess/Shell Support
 
+(define console-channel-descriptor)
 (define nt/hide-subprocess-windows?)
 (define nt/subprocess-argument-quote-char)
 (define nt/subprocess-argument-escape-char)
@@ -506,7 +461,9 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (let ((reset!
 	 (lambda ()
 	   (reset-environment-variables!)
-	   (cache-console-channel-descriptor!))))
+	   (set! console-channel-descriptor
+		 (channel-descriptor-for-select (tty-input-channel)))
+	   unspecific)))
     (reset!)
     (add-event-receiver! event:after-restart reset!))
   (set! nt/hide-subprocess-windows? #t)

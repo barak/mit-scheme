@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.36 2002/11/20 19:46:23 cph Exp $
+$Id: thread.scm,v 1.37 2003/01/22 02:05:41 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1998,1999,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -97,8 +98,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (set! thread-timer-running? #f)
   (set! timer-records #f)
   (set! timer-interval 100)
-  (initialize-input-blocking)
-  (add-event-receiver! event:after-restore initialize-input-blocking)
+  (initialize-io-blocking)
+  (add-event-receiver! event:after-restore initialize-io-blocking)
   (detach-thread (make-thread #f))
   (add-event-receiver! event:before-exit stop-thread-timer))
 
@@ -121,7 +122,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (map-over-population thread-population (lambda (thread) thread)))
 
 (define (thread-execution-state thread)
-  (guarantee-thread thread thread-execution-state)
+  (guarantee-thread thread 'THREAD-EXECUTION-STATE)
   (thread/execution-state thread))
 
 (define (create-thread root-continuation thunk)
@@ -183,7 +184,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   (thread/next (current-thread)))
 
 (define (thread-continuation thread)
-  (guarantee-thread thread thread-continuation)
+  (guarantee-thread thread 'THREAD-CONTINUATION)
   (without-interrupts
    (lambda ()
      (and (eq? 'WAITING (thread/execution-state thread))
@@ -215,7 +216,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (begin
 	(set! last-running-thread #f)
 	(%maybe-toggle-thread-timer)
-	(wait-for-input))))
+	(wait-for-io))))
 
 (define (run-thread thread)
   (let ((continuation (thread/continuation thread)))
@@ -239,7 +240,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (lambda (thread)
       (let ((block-events? (thread/block-events? thread)))
 	(set-thread/block-events?! thread #f)
-	(maybe-signal-input-thread-events)
+	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
 	  (set-thread/block-events?! thread block-events?)
 	  (if (not any-events?)
@@ -260,7 +261,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
-  (guarantee-thread thread restart-thread)
+  (guarantee-thread thread 'RESTART-THREAD)
   (let ((discard-events?
 	 (if (eq? discard-events? 'ASK)
 	     (prompt-for-confirmation
@@ -283,7 +284,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (thread-timer-interrupt-handler)
   (set-interrupt-enables! interrupt-mask/gc-ok)
   (deliver-timer-events)
-  (maybe-signal-input-thread-events)
+  (maybe-signal-io-thread-events)
   (let ((thread first-running-thread))
     (cond ((not thread)
 	   (%maybe-toggle-thread-timer))
@@ -324,7 +325,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (set-thread/block-events?! thread #t)
     (ring/discard-all (thread/pending-events thread))
     (translate-to-state-point (thread/root-state-point thread))
-    (%deregister-input-thread-events thread #t)
+    (%deregister-io-thread-events thread #t)
     (%discard-thread-timer-records thread)
     (%disassociate-joined-threads thread)
     (%disassociate-thread-mutexes thread)
@@ -333,7 +334,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (thread-not-running thread 'DEAD)))
 
 (define (join-thread thread event-constructor)
-  (guarantee-thread thread join-thread)
+  (guarantee-thread thread 'JOIN-THREAD)
   (let ((self (current-thread)))
     (if (eq? thread self)
 	(signal-thread-deadlock self "join thread" join-thread thread)
@@ -356,7 +357,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		     (event-constructor thread value))))))))))
 
 (define (detach-thread thread)
-  (guarantee-thread thread detach-thread)
+  (guarantee-thread thread 'DETACH-THREAD)
   (without-interrupts
    (lambda ()
      (if (eq? (thread/exit-value thread) detached-thread-marker)
@@ -369,7 +370,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 (define (release-joined-threads thread value)
   (set-thread/exit-value! thread value)
   (do ((joined (thread/joined-threads thread) (cdr joined)))
-      ((null? joined))
+      ((not (pair? joined)))
     (let ((joined (caar joined))
 	  (event ((cdar joined) thread value)))
       (set-thread/joined-to! joined (delq! thread (thread/joined-to joined)))
@@ -378,19 +379,20 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (%disassociate-joined-threads thread)
   (do ((threads (thread/joined-to thread) (cdr threads)))
-      ((null? threads))
+      ((not (pair? threads)))
     (set-thread/joined-threads!
      (car threads)
      (del-assq! thread (thread/joined-threads (car threads)))))
   (set-thread/joined-to! thread '()))
 
-;;;; Input Thread Events
+;;;; I/O Thread Events
 
-(define input-registry)
-(define input-registrations)
+(define io-registry)
+(define io-registrations)
 
 (define-structure (dentry (conc-name dentry/))
   (descriptor #f read-only #t)
+  (mode #f read-only #t)
   first-tentry
   last-tentry
   prev
@@ -405,16 +407,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
   prev
   next)
 
-(define (initialize-input-blocking)
-  (set! input-registry (and have-select? (make-select-registry)))
-  (set! input-registrations #f)
+(define (initialize-io-blocking)
+  (set! io-registry (and have-select? (make-select-registry)))
+  (set! io-registrations #f)
   unspecific)
 
-(define-integrable (maybe-signal-input-thread-events)
-  (if input-registrations
-      (signal-select-result (select-registry-test input-registry #f))))
+(define (maybe-signal-io-thread-events)
+  (if io-registrations
+      (signal-select-result (test-select-registry io-registry #f))))
 
-(define (wait-for-input)
+(define (wait-for-io)
   (let ((catch-errors
 	 (lambda (thunk)
 	   (let ((thread (console-thread)))
@@ -430,7 +432,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			  condition
 			  (within-continuation k thunk))
 		      thunk))))))))
-    (if (not input-registrations)
+    (if (not io-registrations)
 	(begin
 	  ;; Busy-waiting here is a bad idea -- should implement a
 	  ;; primitive to block the Scheme process while waiting for a
@@ -443,22 +445,22 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	       (catch-errors
 		(lambda ()
 		  (set-interrupt-enables! interrupt-mask/all)
-		  (select-registry-test input-registry #t)))))
+		  (test-select-registry io-registry #t)))))
 	  (set-interrupt-enables! interrupt-mask/gc-ok)
 	  (signal-select-result result)
 	  (let ((thread first-running-thread))
 	    (if thread
 		(if (thread/continuation thread)
 		    (run-thread thread))
-		(wait-for-input)))))))
+		(wait-for-io)))))))
 
 (define (signal-select-result result)
   (cond ((pair? result)
-	 (signal-input-thread-events result))
+	 (signal-io-thread-events (car result) (cdr result)))
 	((eq? 'PROCESS-STATUS-CHANGE result)
-	 (signal-input-thread-events '(PROCESS-STATUS-CHANGE)))))
+	 (signal-io-thread-events '#(1 PROCESS-STATUS-CHANGE) '#(0)))))
 
-(define (block-on-input-descriptor descriptor)
+(define (block-on-io-descriptor descriptor mode)
   (without-interrupts
    (lambda ()
      (let ((result 'INTERRUPT)
@@ -468,18 +470,21 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(lambda ()
 	  (let ((thread (current-thread)))
 	    (set! registration-1
-		  (%register-input-thread-event
+		  (%register-io-thread-event
 		   descriptor
+		   mode
 		   thread
-		   (lambda ()
-		     (set! result 'INPUT-AVAILABLE)
+		   (lambda (mode)
+		     (set! result mode)
 		     unspecific)
 		   #f #t))
 	    (set! registration-2
-		  (%register-input-thread-event
+		  (%register-io-thread-event
 		   'PROCESS-STATUS-CHANGE
+		   'READ
 		   thread
-		   (lambda ()
+		   (lambda (mode)
+		     mode
 		     (set! result 'PROCESS-STATUS-CHANGE)
 		     unspecific)
 		   #f #t)))
@@ -488,95 +493,98 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  (%suspend-current-thread)
 	  result)
 	(lambda ()
-	  (%deregister-input-thread-event registration-1)
-	  (%deregister-input-thread-event registration-2)))))))
+	  (%deregister-io-thread-event registration-2)
+	  (%deregister-io-thread-event registration-1)))))))
 
-(define (permanently-register-input-thread-event descriptor thread event)
-  (guarantee-thread thread permanently-register-input-thread-event)
+(define (permanently-register-io-thread-event descriptor mode thread event)
+  (guarantee-thread thread 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
-     (%register-input-thread-event descriptor thread event #t #f))))
+     (%register-io-thread-event descriptor mode thread event #t #f))))
 
-(define (register-input-thread-event descriptor thread event)
-  (guarantee-thread thread register-input-thread-event)
+(define (register-io-thread-event descriptor mode thread event)
+  (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
-     (%register-input-thread-event descriptor thread event #f #f))))
+     (%register-io-thread-event descriptor mode thread event #f #f))))
 
-(define (deregister-input-thread-event tentry)
+(define (deregister-io-thread-event tentry)
   (if (not (tentry? tentry))
-      (error:wrong-type-argument tentry "input thread event registration"
-				 'DEREGISTER-INPUT-THREAD-EVENT))
+      (error:wrong-type-argument tentry "I/O thread event registration"
+				 'DEREGISTER-IO-THREAD-EVENT))
   (without-interrupts
    (lambda ()
-     (%deregister-input-thread-event tentry)
+     (%deregister-io-thread-event tentry)
      (%maybe-toggle-thread-timer))))
 
-(define (deregister-input-descriptor-events descriptor)
+(define (deregister-io-descriptor-events descriptor mode)
   (without-interrupts
    (lambda ()
-     (let loop ((dentry input-registrations))
-       (if dentry
-	   (if (eqv? descriptor (dentry/descriptor dentry))
-	       (begin
-		 (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-		     (remove-from-select-registry! input-registry descriptor))
-		 (let ((prev (dentry/prev dentry))
-		       (next (dentry/next dentry)))
-		   (if prev
-		       (set-dentry/next! prev next)
-		       (set! input-registrations next))
-		   (if next
-		       (set-dentry/prev! next prev))))
-	       (loop (dentry/next dentry))))))))
+     (let loop ((dentry io-registrations))
+       (cond ((not dentry)
+	      unspecific)
+	     ((and (eqv? descriptor (dentry/descriptor dentry))
+		   (eq? mode (dentry/mode dentry)))
+	      (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
+		  (remove-from-select-registry! io-registry descriptor mode))
+	      (let ((prev (dentry/prev dentry))
+		    (next (dentry/next dentry)))
+		(if prev
+		    (set-dentry/next! prev next)
+		    (set! io-registrations next))
+		(if next
+		    (set-dentry/prev! next prev))))
+	     (else
+	      (loop (dentry/next dentry))))))))
 
-(define (%register-input-thread-event descriptor thread event
-				      permanent? front?)
-  (let ((tentry (make-tentry thread event permanent?))
-	(dentry
-	 (let loop ((dentry input-registrations))
-	   (and dentry
-		(if (eqv? descriptor (dentry/descriptor dentry))
-		    dentry
-		    (loop (dentry/next dentry)))))))
-    (if (not dentry)
-	(let ((dentry (make-dentry descriptor #f #f #f #f)))
-	  (set-tentry/dentry! tentry dentry)
-	  (set-tentry/prev! tentry #f)
-	  (set-tentry/next! tentry #f)
-	  (set-dentry/first-tentry! dentry tentry)
-	  (set-dentry/last-tentry! dentry tentry)
-	  (if input-registrations
-	      (set-dentry/prev! input-registrations dentry))
-	  (set-dentry/next! dentry input-registrations)
-	  (set! input-registrations dentry)
-	  (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-	      (add-to-select-registry! input-registry descriptor)))
-	(begin
-	  (set-tentry/dentry! tentry dentry)
-	  (if front?
-	      (let ((next (dentry/first-tentry dentry)))
-		(set-tentry/prev! tentry #f)
-		(set-tentry/next! tentry next)
-		(set-dentry/first-tentry! dentry tentry)
-		(set-tentry/prev! next tentry))
-	      (let ((prev (dentry/last-tentry dentry)))
-		(set-tentry/prev! tentry prev)
-		(set-tentry/next! tentry #f)
-		(set-dentry/last-tentry! dentry tentry)
-		(set-tentry/next! prev tentry)))))
+(define (%register-io-thread-event descriptor mode thread event permanent?
+				   front?)
+  (let ((tentry (make-tentry thread event permanent?)))
+    (let loop ((dentry io-registrations))
+      (cond ((not dentry)
+	     (let ((dentry
+		    (make-dentry descriptor
+				 mode
+				 tentry
+				 tentry
+				 #f
+				 io-registrations)))
+	       (set-tentry/dentry! tentry dentry)
+	       (set-tentry/prev! tentry #f)
+	       (set-tentry/next! tentry #f)
+	       (if io-registrations
+		   (set-dentry/prev! io-registrations dentry))
+	       (set! io-registrations dentry)
+	       (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
+		   (add-to-select-registry! io-registry descriptor mode))))
+	    ((and (eqv? descriptor (dentry/descriptor dentry))
+		  (eq? mode (dentry/mode dentry)))
+	     (set-tentry/dentry! tentry dentry)
+	     (if front?
+		 (let ((next (dentry/first-tentry dentry)))
+		   (set-tentry/prev! tentry #f)
+		   (set-tentry/next! tentry next)
+		   (set-dentry/first-tentry! dentry tentry)
+		   (set-tentry/prev! next tentry))
+		 (let ((prev (dentry/last-tentry dentry)))
+		   (set-tentry/prev! tentry prev)
+		   (set-tentry/next! tentry #f)
+		   (set-dentry/last-tentry! dentry tentry)
+		   (set-tentry/next! prev tentry))))
+	    (else
+	     (loop (dentry/next dentry)))))
     (%maybe-toggle-thread-timer)
     tentry))
 
-(define (%deregister-input-thread-event tentry)
+(define (%deregister-io-thread-event tentry)
   (if (tentry/dentry tentry)
       (delete-tentry! tentry)))
 
-(define (%deregister-input-thread-events thread permanent?)
-  (let loop ((dentry input-registrations) (tentries '()))
+(define (%deregister-io-thread-events thread permanent?)
+  (let loop ((dentry io-registrations) (tentries '()))
     (if (not dentry)
 	(do ((tentries tentries (cdr tentries)))
-	    ((null? tentries))
+	    ((not (pair? tentries)))
 	  (delete-tentry! (car tentries)))
 	(loop (dentry/next dentry)
 	      (let loop
@@ -590,30 +598,44 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 			      (cons tentry tentries)
 			      tentries))))))))
 
-(define (signal-input-thread-events descriptors)
-  (let loop ((dentry input-registrations) (events '()))
-    (cond ((not dentry)
-	   (do ((events events (cdr events)))
-	       ((null? events))
-	     (%signal-thread-event (caar events) (cdar events)))
-	   (%maybe-toggle-thread-timer))
-	  ((let ((descriptor (dentry/descriptor dentry)))
-	     (let loop ((descriptors descriptors))
-	       (and (not (null? descriptors))
-		    (or (eqv? descriptor (car descriptors))
-			(loop (cdr descriptors))))))
-	   (let ((next (dentry/next dentry))
-		 (tentry (dentry/first-tentry dentry)))
-	     (let ((events
-		    (cons (cons (tentry/thread tentry)
-				(tentry/event tentry))
-			  events)))
-	       (if (tentry/permanent? tentry)
-		   (move-tentry-to-back! tentry)
-		   (delete-tentry! tentry))
-	       (loop next events))))
-	  (else
-	   (loop (dentry/next dentry) events)))))
+(define (signal-io-thread-events vr vw)
+  (let ((search
+	 (lambda (descriptor v)
+	   (let ((n (vector-ref v 0)))
+	     (let loop ((i 1))
+	       (and (fix:<= i n)
+		    (or (eqv? descriptor (vector-ref v i))
+			(loop (fix:+ i 1)))))))))
+    (let loop ((dentry io-registrations) (events '()))
+      (if dentry
+	  (let ((mode
+		 (let ((descriptor (dentry/descriptor dentry))
+		       (mode (dentry/mode dentry)))
+		   (case mode
+		     ((READ) (and (search descriptor vr) 'READ))
+		     ((WRITE) (and (search descriptor vw) 'WRITE))
+		     ((READ/WRITE)
+		      (if (search descriptor vr)
+			  (if (search descriptor vw) 'READ/WRITE 'READ)
+			  (if (search descriptor vw) 'WRITE #f)))
+		     (else #f)))))
+	    (if mode
+		(let ((next (dentry/next dentry))
+		      (tentry (dentry/first-tentry dentry)))
+		  (let ((events
+			 (cons (cons (tentry/thread tentry)
+				     (let ((e (tentry/event tentry)))
+				       (and e
+					    (lambda () (e mode)))))
+			       events)))
+		    (if (tentry/permanent? tentry)
+			(move-tentry-to-back! tentry)
+			(delete-tentry! tentry))
+		    (loop next events)))
+		(loop (dentry/next dentry) events)))
+	  (do ((events events (cdr events)))
+	      ((not (pair? events)))
+	    (%signal-thread-event (caar events) (cdar events)))))))
 
 (define (move-tentry-to-back! tentry)
   (let ((next (tentry/next tentry)))
@@ -645,15 +667,16 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(begin
 	  (let ((descriptor (dentry/descriptor dentry)))
 	    (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-		(remove-from-select-registry! input-registry descriptor)))
+		(remove-from-select-registry! io-registry
+					      descriptor
+					      (dentry/mode dentry))))
 	  (let ((prev (dentry/prev dentry))
 		(next (dentry/next dentry)))
 	    (if prev
 		(set-dentry/next! prev next)
-		(set! input-registrations next))
+		(set! io-registrations next))
 	    (if next
-		(set-dentry/prev! next prev))))))
-  unspecific)
+		(set-dentry/prev! next prev)))))))
 
 ;;;; Events
 
@@ -716,7 +739,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
      unspecific)))
 
 (define (signal-thread-event thread event)
-  (guarantee-thread thread signal-thread-event)
+  (guarantee-thread thread 'SIGNAL-THREAD-EVENT)
   (let ((self first-running-thread))
     (if (eq? thread self)
 	(let ((block-events? (block-thread-events)))
@@ -761,12 +784,12 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	   (let ((block-events? (thread/block-events? thread)))
 	     (set-thread/block-events?! thread #f)
 	     (deliver-timer-events)
-	     (maybe-signal-input-thread-events)
+	     (maybe-signal-io-thread-events)
 	     (handle-thread-events thread)
 	     (set-thread/block-events?! thread block-events?))
 	   (begin
 	     (deliver-timer-events)
-	     (maybe-signal-input-thread-events)))))))
+	     (maybe-signal-io-thread-events)))))))
 
 ;;;; Timer Events
 
@@ -842,7 +865,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     (let ((block-events? (thread/block-events? thread)))
       (set-thread/block-events?! thread #t)
       (ring/discard-all (thread/pending-events thread))
-      (%deregister-input-thread-events thread #f)
+      (%deregister-io-thread-events thread #f)
       (%discard-thread-timer-records thread)
       (set-thread/block-events?! thread block-events?))
     (set-interrupt-enables! interrupt-mask/all)))
@@ -883,7 +906,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (%maybe-toggle-thread-timer)
   (cond ((and timer-interval
-	      (or input-registrations
+	      (or io-registrations
 		  (let ((current-thread first-running-thread))
 		    (and current-thread
 			 (thread/next current-thread)))))
@@ -937,11 +960,11 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (error:wrong-type-argument mutex "thread-mutex" procedure)))
 
 (define (thread-mutex-owner mutex)
-  (guarantee-thread-mutex mutex thread-mutex-owner)
+  (guarantee-thread-mutex mutex 'THREAD-MUTEX-OWNER)
   (thread-mutex/owner mutex))
 
 (define (lock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex lock-thread-mutex)
+  (guarantee-thread-mutex mutex 'LOCK-THREAD-MUTEX)
   (without-interrupts
    (lambda ()
      (let ((thread (current-thread))
@@ -961,7 +984,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (set-thread-mutex/owner! mutex thread)))
 
 (define (unlock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex unlock-thread-mutex)
+  (guarantee-thread-mutex mutex 'UNLOCK-THREAD-MUTEX)
   (without-interrupts
    (lambda ()
      (let ((owner (thread-mutex/owner mutex)))
@@ -981,7 +1004,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
     thread))
 
 (define (try-lock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex try-lock-thread-mutex)
+  (guarantee-thread-mutex mutex 'TRY-LOCK-THREAD-MUTEX)
   (without-interrupts
    (lambda ()
      (and (not (thread-mutex/owner mutex))
@@ -991,7 +1014,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	    #t)))))
 
 (define (with-thread-mutex-locked mutex thunk)
-  (guarantee-thread-mutex mutex lock-thread-mutex)
+  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCKED)
   (let ((thread (current-thread))
 	(grabbed-lock?))
     (dynamic-wind
@@ -1011,7 +1034,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 (define (%disassociate-thread-mutexes thread)
   (do ((mutexes (thread/mutexes thread) (cdr mutexes)))
-      ((null? mutexes))
+      ((not (pair? mutexes)))
     (let ((mutex (car mutexes)))
       (if (eq? (thread-mutex/owner mutex) thread)
 	  (%%unlock-thread-mutex mutex)

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.20 2002/11/20 19:46:21 cph Exp $
+$Id: os2graph.scm,v 1.21 2003/01/22 02:05:15 cph Exp $
 
-Copyright (c) 1995-2002 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -119,7 +120,7 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	(set! graphics-window-icon)
 	(remove-all-from-gc-finalizer! window-finalizer)
 	(remove-all-from-gc-finalizer! image-finalizer)
-	(deregister-input-thread-event event-previewer-registration)
+	(deregister-io-thread-event event-previewer-registration)
 	(set! event-previewer-registration #f)
 	(set! user-event-mask user-event-mask:default)
 	(flush-queue! user-event-queue)
@@ -207,10 +208,13 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
       (begin
 	(set! event-descriptor (os2win-open-event-qid))
 	(set! event-previewer-registration
-	      (permanently-register-input-thread-event
+	      (permanently-register-io-thread-event
 	       event-descriptor
+	       'READ
 	       (current-thread)
-	       read-and-process-event))
+	       (lambda (mode)
+		 mode
+		 (read-and-process-event))))
 	(set! graphics-window-icon
 	      (os2win-load-pointer HWND_DESKTOP NULLHANDLE IDI_GRAPHICS))))
   (open-window descriptor->device
@@ -850,8 +854,8 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
      (let loop ()
        (if (queue-empty? user-event-queue)
 	   (begin
-	     (if (eq? 'INPUT-AVAILABLE
-		      (test-for-input-on-descriptor event-descriptor #t))
+	     (if (eq? 'READ
+		      (test-for-io-on-descriptor event-descriptor #t 'READ))
 		 (read-and-process-event))
 	     (loop))
 	   (dequeue! user-event-queue))))))
