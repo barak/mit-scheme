@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.47 2000/05/17 13:41:08 cph Exp $
+;;; $Id: imail-top.scm,v 1.48 2000/05/17 15:46:57 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -300,33 +300,36 @@ DEL	Scroll to previous screen of this message.
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
-  (let ((folder (selected-folder #f buffer))
+  (let ((folder (selected-folder #t buffer))
 	(message (selected-message #f buffer)))
-    (let ((index (and message (message-index message))))
-      (if (let ((status (folder-sync-status folder)))
-	    (case status
-	      ((UNSYNCHRONIZED)
-	       #t)
-	      ((SYNCHRONIZED PERSISTENT-MODIFIED)
-	       (or dont-confirm?
-		   (prompt-for-yes-or-no? "Revert buffer from folder")))
-	      ((FOLDER-MODIFIED)
-	       (prompt-for-yes-or-no? "Discard your changes to folder"))
-	      ((BOTH-MODIFIED)
-	       (prompt-for-yes-or-no?
-		"Persistent copy of folder changed; discard your changes"))
-	      ((PERSISTENT-DELETED)
-	       (editor-error "Persistent copy of folder deleted."))
-	      (else
-	       (error "Unknown folder-sync status:" status))))
-	  (begin
-	    (discard-folder-cache folder)
-	    (select-message
-	     folder
-	     (cond ((eq? folder (message-folder message)) message)
-		   ((and (<= 0 index) (< index (folder-length folder))) index)
-		   (else (first-unseen-message folder)))
-	     #t))))))
+    (if (let ((status (folder-sync-status folder)))
+	  (case status
+	    ((UNSYNCHRONIZED)
+	     #t)
+	    ((SYNCHRONIZED PERSISTENT-MODIFIED)
+	     (or dont-confirm?
+		 (prompt-for-yes-or-no? "Revert buffer from folder")))
+	    ((FOLDER-MODIFIED)
+	     (prompt-for-yes-or-no? "Discard your changes to folder"))
+	    ((BOTH-MODIFIED)
+	     (prompt-for-yes-or-no?
+	      "Persistent copy of folder changed; discard your changes"))
+	    ((PERSISTENT-DELETED)
+	     (editor-error "Persistent copy of folder deleted."))
+	    (else
+	     (error "Unknown folder-sync status:" status))))
+	(begin
+	  (discard-folder-cache folder)
+	  (select-message
+	   folder
+	   (cond ((not message) (first-unseen-message folder))
+		 ((message-attached? message folder) message)
+		 ((let ((index (message-index message)))
+		    (and index
+			 (< index (folder-length folder))
+			 index)))
+		 (else (first-unseen-message folder)))
+	   #t)))))
 
 (define (imail-kill-buffer buffer)
   (let ((folder (selected-folder #f buffer)))
@@ -428,7 +431,7 @@ With prefix argument N moves backward N messages with these flags."
 			   'DEFAULT-TYPE 'INSERTED-DEFAULT
 			   'HISTORY 'IMAIL-NEXT-FLAGGED-MESSAGE
 			   'HISTORY-INDEX 0)))
-
+
 (define (move-relative delta predicate noun)
   (if (not (= 0 delta))
       (call-with-values
@@ -449,19 +452,24 @@ With prefix argument N moves backward N messages with these flags."
 		     (select-message (selected-folder) next))
 		    (else
 		     (loop (- delta 1) next next)))))))))
-
+
 (define (select-message folder selector #!optional force? full-headers?)
   (let ((buffer (imail-folder->buffer folder #t))
 	(message
-	 (cond ((or (not selector) (message? selector))
-		selector)
-	       ((and (exact-integer? selector)
-		     (<= 0 selector)
-		     (< selector (folder-length folder)))
-		(get-message folder selector))
-	       (else
-		(error:wrong-type-argument selector "message selector"
-					   'SELECT-MESSAGE))))
+	 (let loop ((selector selector))
+	   (cond ((message? selector)
+		  (and (message-attached? selector folder)
+		       selector
+		       (loop (message-index selector))))
+		 ((not selector)
+		  selector)
+		 ((and (exact-integer? selector)
+		       (<= 0 selector)
+		       (< selector (folder-length folder)))
+		  (get-message folder selector))
+		 (else
+		  (error:wrong-type-argument selector "message selector"
+					     'SELECT-MESSAGE)))))
 	(full-headers? (if (default-object? full-headers?) #f full-headers?)))
     (if (or (if (default-object? force?) #f force?)
 	    (not (eq? message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN))))
@@ -491,19 +499,29 @@ With prefix argument N moves backward N messages with these flags."
     (imail-update-mode-line! buffer)))
 
 (define (selected-message #!optional error? buffer)
-  (let ((buffer
-	 (if (or (default-object? buffer) (not buffer))
-	     (selected-buffer)
-	     buffer))
-	(error? (if (default-object? error?) #t error?)))
-    (let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
-      (if (eq? message 'UNKNOWN)
-	  (error "IMAIL-MESSAGE property not bound:" buffer))
-      (or (and message
-	       (message-folder message)
-	       message)
-	  (and error?
-	       (error "No selected IMAIL message."))))))
+  (or (let ((buffer
+	     (if (or (default-object? buffer) (not buffer))
+		 (selected-buffer)
+		 buffer)))
+	(let ((message (buffer-get buffer 'IMAIL-MESSAGE 'UNKNOWN)))
+	  (if (eq? message 'UNKNOWN)
+	      (error "IMAIL-MESSAGE property not bound:" buffer))
+	  (and message
+	       (let ((folder (selected-folder #f buffer)))
+		 (if (message-attached? message folder)
+		     message
+		     (let ((message
+			    (let ((index
+				   (and folder
+					(message-detached? message)
+					(message-index message))))
+			      (and index
+				   (< index (folder-length folder))
+				   (get-message folder index)))))
+		       (buffer-put! buffer 'IMAIL-MESSAGE message)
+		       message))))))
+      (and (if (default-object? error?) #t error?)
+	   (error "No selected IMAIL message."))))
 
 (define (imail-update-mode-line! buffer)
   (local-set-variable! mode-line-process

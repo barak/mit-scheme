@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.62 2000/05/17 15:03:49 cph Exp $
+;;; $Id: imail-core.scm,v 1.63 2000/05/17 15:46:45 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -185,7 +185,7 @@
   (write-instance-helper 'FOLDER folder port 
     (lambda ()
       (write-char #\space port)
-      (write (url->string (folder-url folder)) port))))
+      (write (url-presentation-name (folder-url folder)) port))))
 
 (define (guarantee-folder folder procedure)
   (if (not (folder? folder))
@@ -317,30 +317,20 @@
 		      initial-value 0)
   (folder define standard
 	  initial-value #f)
-  (index define standard))
+  (index define standard
+	 initial-value #f))
 
 (define-method write-instance ((message <message>) port)
   (write-instance-helper 'MESSAGE message port 
     (lambda ()
-      (if (message-folder message)
-	  (begin
-	    (write-char #\space port)
-	    (write (message-folder message) port))))))
+      (write-char #\space port)
+      (write (message-folder message) port)
+      (write-char #\space port)
+      (write (message-index message) port))))
 
 (define (guarantee-message message procedure)
   (if (not (message? message))
       (error:wrong-type-argument message "IMAIL message" procedure)))
-
-(define (attach-message! message folder index)
-  (guarantee-folder folder 'ATTACH-MESSAGE!)
-  (set-message-folder! message folder)
-  (set-message-index! message index)
-  (message-modified! message))
-
-(define (detach-message! message)
-  (set-message-folder! message #f)
-  (set-message-index! message #f)
-  (message-modified! message))
 
 (define (message-modified! message)
   (without-interrupts
@@ -352,8 +342,26 @@
        (if folder
 	   (folder-modified! folder))))))
 
-(define-generic message-internal-time (message))
+(define (message-attached? message #!optional folder)
+  (let ((folder (if (default-object? folder) #f folder)))
+    (if folder
+	(eq? folder (message-folder message))
+	(message-folder message))))
 
+(define (message-detached? message)
+  (not (message-folder message)))
+
+(define (attach-message! message folder index)
+  (guarantee-folder folder 'ATTACH-MESSAGE!)
+  (set-message-folder! message folder)
+  (set-message-index! message index)
+  (message-modified! message))
+
+(define (detach-message! message)
+  (set-message-folder! message #f)
+  (message-modified! message))
+
+(define-generic message-internal-time (message))
 (define-method message-internal-time ((message <message>))
   (let loop ((headers (get-all-header-fields message "received")) (winner #f))
     (if (pair? headers)
