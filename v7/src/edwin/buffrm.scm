@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.44 1992/09/08 18:39:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.45 1992/09/08 22:32:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -424,8 +424,8 @@ Automatically becomes local when set in any fashion."
 	      (window-configuration/screen-y-size configuration)))
       (begin
 	(delete-other-windows (screen-window0 screen))
-	(let ((x-size (window-configuration/screen-x-size configuration))
-	      (y-size (window-configuration/screen-y-size configuration))
+	(let ((x-size (window-configuration/root-x-size configuration))
+	      (y-size (window-configuration/root-y-size configuration))
 	      (frame (screen-root-window screen)))
 	  (if (not (and (= x-size (window-x-size frame))
 			(= y-size (window-y-size frame))))
