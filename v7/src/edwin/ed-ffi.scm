@@ -48,7 +48,7 @@
     ("comred"  (edwin command-reader)
 	       edwin-syntax-table)
     ("comtab"  (edwin comtab)
-	       syntax-table/system-internal)
+	       edwin-syntax-table)
     ("comwin"  (edwin window combination)
 	       class-syntax-table)
     ("curren"  (edwin)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.19 1991/04/24 07:27:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.20 1991/05/06 00:57:47 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -83,7 +83,6 @@ MIT in each case. |#
 	      "class"
 	      "clscon"
 	      "clsmac"
-	      "comtab"
 	      "display"
 	      "macros"
 	      "make"
@@ -114,6 +113,7 @@ MIT in each case. |#
 	      "cinden"
 	      "comint"
 	      "comman"
+	      "comtab"
 	      "comred"
 	      "debug"
 	      "debuge"
