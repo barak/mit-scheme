@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.46 2000/03/27 20:58:42 cph Exp $
+;;; $Id: vc.scm,v 1.47 2000/03/27 21:02:24 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -223,7 +223,8 @@ Otherwise, the mod time of the file is the checkout time."
 	    => (lambda (master)
 		 (vc-mode-line master buffer)
 		 (if (not (ref-variable vc-make-backup-files buffer))
-		     (local-set-variable! make-backup-files #f buffer))))
+		     (local-set-variable! make-backup-files #f buffer))
+		 buffer))
 	   ((let ((pathname (buffer-pathname buffer)))
 	      (and (file-symbolic-link? pathname)
 		   (file-vc-master (file-chase-links pathname) #f)))
