@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.27 1990/03/12 21:38:18 cph Exp $
-$MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/lapgen.scm,v 4.28 1990/04/02 15:28:32 jinx Exp $
+$MC68020-Header: lapgen.scm,v 4.31 90/04/01 22:26:01 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -171,7 +171,8 @@ MIT in each case. |#
   (+ (* type type-scale-factor) datum))
 
 (define-integrable type-scale-factor
-  (expt 2 scheme-datum-width))
+  ;; (expt 2 scheme-datum-width) ***
+  64)
 
 (define-integrable (deposit-type type target)
   (deposit-immediate type (-1+ scheme-type-width) scheme-type-width target))
@@ -183,10 +184,14 @@ MIT in each case. |#
       (LAP)
       (LAP (COPY () ,r ,t))))
 
+(define-integrable ldil-scale
+  ;; (expt 2 11) ***
+  2048)
+
 (define (load-immediate i t)
   (if (fits-in-14-bits-signed? i)
       (LAP (LDI () ,i ,t))
-      (let ((split (integer-divide i (expt 2 11))))
+      (let ((split (integer-divide i ldil-scale)))
 	(LAP (LDIL () ,(integer-divide-quotient split) ,t)
 	     ,@(let ((r%i (integer-divide-remainder split)))
 		 (if (zero? r%i)
@@ -205,35 +210,35 @@ MIT in each case. |#
 	((fits-in-14-bits-signed? d)
 	 (LAP (LDO () (OFFSET ,d 0 ,b) ,t)))
 	(else
-	 (let ((split (integer-divide d (expt 2 11))))
+	 (let ((split (integer-divide d ldil-scale)))
 	   (LAP (ADDIL () ,(integer-divide-quotient split) ,b)
 		(LDO () (OFFSET ,(integer-divide-remainder split) 0 1) ,t))))))
 
 (define (load-word d b t)
   (if (fits-in-14-bits-signed? d)
       (LAP (LDW () (OFFSET ,d 0 ,b) ,t))
-      (let ((split (integer-divide d (expt 2 11))))
+      (let ((split (integer-divide d ldil-scale)))
 	(LAP (ADDIL () ,(integer-divide-quotient split) ,b)
 	     (LDW () (OFFSET ,(integer-divide-remainder split) 0 1) ,t)))))
 
 (define (load-byte d b t)
   (if (fits-in-14-bits-signed? d)
       (LAP (LDB () (OFFSET ,d 0 ,b) ,t))
-      (let ((split (integer-divide d (expt 2 11))))
+      (let ((split (integer-divide d ldil-scale)))
 	(LAP (ADDIL () ,(integer-divide-quotient split) ,b)
 	     (LDB () (OFFSET ,(integer-divide-remainder split) 0 1) ,t)))))
 
 (define (store-word b d t)
   (if (fits-in-14-bits-signed? d)
       (LAP (STW () ,b (OFFSET ,d 0 ,t)))
-      (let ((split (integer-divide d (expt 2 11))))
+      (let ((split (integer-divide d ldil-scale)))
 	(LAP (ADDIL () ,(integer-divide-quotient split) ,t)
 	     (STW () ,b (OFFSET ,(integer-divide-remainder split) 0 1))))))
 
 (define (store-byte b d t)
   (if (fits-in-14-bits-signed? d)
       (LAP (STB () ,b (OFFSET ,d 0 ,t)))
-      (let ((split (integer-divide d (expt 2 11))))
+      (let ((split (integer-divide d ldil-scale)))
 	(LAP (ADDIL () ,(integer-divide-quotient split) ,t)
 	     (STB () ,b (OFFSET ,(integer-divide-remainder split) 0 1))))))
 
@@ -493,7 +498,7 @@ MIT in each case. |#
   (INST (LABEL ,label)))
 
 (define (lap:make-unconditional-branch label)
-  (INST (B (N) (@PCR ,label))))
+  (LAP (B (N) (@PCR ,label))))
 
 (define (lap:make-entry-point label block-start-label)
   block-start-label
