@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.9 1992/09/24 20:21:04 cph Exp $
+$Id: floppy.scm,v 1.10 1992/09/30 18:36:27 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -408,7 +408,7 @@ then answer \"yes\" to the prompt below.")
   (set! floppy-contents-loaded? true)
   (append-string "\n\nFloppy contents loaded.")
   (wait-for-user))
-
+
 (define-command checkpoint-floppy
   "Update a floppy disk to contain the same files as the working directory."
   ()
@@ -437,14 +437,29 @@ then answer \"yes\" to the prompt below.")
 		  pairs)
 	(if (null? files-to-delete)
 	    (append-string "\nThere are no files to delete.")
-	    (for-each (lambda (record)
-			(append-string
-			 (string-append "\nDeleting file \""
-					(file-record/name record)
-					"\"..."))
-			(delete-floppy-file record)
-			(append-string "done"))
-		      files-to-delete))
+	    (begin
+	      (append-string "
+The following files appear on your floppy, but not in the working directory:
+")
+	      (for-each (lambda (record)
+			  (append-string
+			   (string-append "\n\t" (file-record/name record))))
+			files-to-delete)
+	      (append-string "
+
+Answer \"yes\" to delete these files from your floppy,
+otherwise answer \"no\" to leave these files on your floppy.
+")
+	      (if (prompt-for-yes-or-no? "Delete these files")
+		  (for-each (lambda (record)
+			      (append-string
+			       (string-append "\nDeleting file \""
+					      (file-record/name record)
+					      "\"..."))
+			      (delete-floppy-file record)
+			      (append-string "done"))
+			    files-to-delete)
+		  (append-string "\nOK, not deleting files."))))
 	(if (null? files-to-copy)
 	    (append-string "\nThere are no files to copy.")
 	    (for-each (lambda (record)
