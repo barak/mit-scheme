@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.4 1995/04/29 22:26:36 adams Exp $
+$Id: coerce.scm,v 1.5 1995/05/19 03:41:26 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -159,6 +159,7 @@ wins by about 10%.
 		 (name*  (variable/rename name))
 		 (form   (coerce/env/form coercion-env))
 		 (body   (form/preserve form)))
+	    (dbg-info/remember name `(CALL 'uncoerce '#F (LOOKUP ,name*)))
 	    (form/rewrite! form
 	      (bind name* (coerce/make-coercion name arity) body))
 	    (let loop ((refs refs) (replaced 0) (kept 0))

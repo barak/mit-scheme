@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lamlift.scm,v 1.6 1995/04/29 01:02:49 adams Exp $
+$Id: lamlift.scm,v 1.7 1995/05/19 03:41:13 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -48,13 +48,13 @@ MIT in each case. |#
 (define-macro (define-lambda-lifter keyword bindings . body)
   (let ((proc-name (symbol-append 'LAMLIFT/ keyword)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
-     (lambda (names code)
-       `(define ,proc-name
-	  (let ((handler (lambda ,(cons (car bindings) names) ,@body)))
-	    (named-lambda (,proc-name env form)
-	      (lamlift/remember ,code
-				form))))))))
+	(lambda () (%matchup (cdr bindings) '(handler env) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name ENV FORM)
+	       (LAMLIFT/REMEMBER ,code
+				 FORM))))))))
 
 (define-lambda-lifter LOOKUP (env name)
   (call-with-values
@@ -66,11 +66,11 @@ MIT in each case. |#
 
 (define-lambda-lifter LAMBDA (env lambda-list body)
   (call-with-values
-   (lambda ()
-     (lamlift/lambda* 'DYNAMIC env lambda-list body))
-   (lambda (expr* env*)
-     env*						; ignored
-     expr*)))
+      (lambda ()
+	(lamlift/lambda* 'DYNAMIC env lambda-list body))
+    (lambda (expr* env*)
+      env*				; ignored
+      expr*)))
 
 (define (lamlift/lambda* context env lambda-list body)
   ;; (values expr* env*)
@@ -163,8 +163,6 @@ MIT in each case. |#
     ((BEGIN)    (lamlift/begin env expr))
     ((IF)       (lamlift/if env expr))
     ((LETREC)   (lamlift/letrec env expr))
-    ((SET! UNASSIGNED? OR DELAY ACCESS DEFINE IN-PACKAGE THE-ENVIRONMENT)
-     (no-longer-legal expr))
     (else
      (illegal expr))))
 
@@ -189,18 +187,19 @@ MIT in each case. |#
 (define (lamlift/new-name prefix)
   (new-variable prefix))
 
-(define-structure (lamlift/env
-		   (conc-name lamlift/env/)
-		   (constructor lamlift/env/%make (context parent depth))
-		   (print-procedure
-		    (standard-unparser-method 'LAMLIFT/ENV
-		      (lambda (env port)
-			(write-char #\space port)
-			(write (lamlift/env/context env) port)
-			(write-char #\space port)
-			(write (car (or (lamlift/env/form env) '(ROOT))) port)
-			(write-char #\space port)
-			(write (lamlift/env/depth env) port)))))
+(define-structure
+    (lamlift/env
+     (conc-name lamlift/env/)
+     (constructor lamlift/env/%make (context parent depth))
+     (print-procedure
+      (standard-unparser-method 'LAMLIFT/ENV
+	(lambda (env port)
+	  (write-char #\space port)
+	  (write (lamlift/env/context env) port)
+	  (write-char #\space port)
+	  (write (car (or (lamlift/env/form env) '(ROOT))) port)
+	  (write-char #\space port)
+	  (write (lamlift/env/depth env) port)))))
 
   (context  false  read-only true)	; STATIC or DYNAMIC
   (parent   false  read-only true)	; #F or another environment
@@ -234,15 +233,16 @@ MIT in each case. |#
   (drift-frame #F read-only false)
   )
 
-(define-structure (lamlift/binding
-		   (conc-name lamlift/binding/)
-		   (constructor lamlift/binding/make (name env))
-		   (print-procedure
-		    (standard-unparser-method 'LAMLIFT/BINDING
-		      (lambda (v port)
-			(write-char #\space port)
-			(write-string (symbol-name (lamlift/binding/name v))
-				      port)))))
+(define-structure
+    (lamlift/binding
+     (conc-name lamlift/binding/)
+     (constructor lamlift/binding/make (name env))
+     (print-procedure
+      (standard-unparser-method 'LAMLIFT/BINDING
+	(lambda (v port)
+	  (write-char #\space port)
+	  (write-string (symbol-name (lamlift/binding/name v))
+			port)))))
 
   (name #F read-only true)
   (env  #F read-only true)		; a LAMLIFT/ENV
@@ -275,14 +275,14 @@ MIT in each case. |#
 			  binding)))
 	    (else
 	     (call-with-values
-	      (lambda () (walk-spine (lamlift/env/parent env)))
-	      (lambda (ref binding)
-		(let* ((free (fetch env))
-		       (place (assq binding free)))
-		  (if (not place)
-		      (store! env (cons (list binding ref) free))
-		      (set-cdr! place (cons ref (cdr place))))
-		  (values ref binding))))))))
+		 (lambda () (walk-spine (lamlift/env/parent env)))
+	       (lambda (ref binding)
+		 (let* ((free (fetch env))
+			(place (assq binding free)))
+		   (if (not place)
+		       (store! env (cons (list binding ref) free))
+		       (set-cdr! place (cons ref (cdr place))))
+		   (values ref binding))))))))
 
   (case kind
     ((ORDINARY)
@@ -700,13 +700,19 @@ MIT in each case. |#
 			 referenced-continuation-variable?)))
 		  (if (or (null? cont-vars)
 			  (not (null? (cdr cont-vars))))
-		      (internal-error "Creating LAMBDA with non-unique continuation"
-				      env))
+		      (internal-error
+		       "Creating LAMBDA with non-unique continuation"
+		       env))
 		  (append cont-vars other-vars))))))
       ;; If this LAMBDA expression has a name, find all call sites and
       ;; rewrite to pass additional arguments
       (cond ((lamlift/env/binding env)
 	     => (lambda (binding)
+		  (dbg-info/remember
+		   (lamlift/binding/name binding)
+		   (if (null? extra-formals)
+		       `(LOOKUP ,lifted-name)
+		       `(CALL 'un-lambda-lift '#F (LOOKUP ,lifted-name))))
 		  (let ((reorder
 			 (lamlift/reorderer lambda-list** lifted-lambda-list)))
 		    (for-each
