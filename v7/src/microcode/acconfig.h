@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: acconfig.h,v 11.7 2003/05/17 02:21:04 cph Exp $
+$Id: acconfig.h,v 11.8 2003/06/06 19:14:16 cph Exp $
 
 Copyright 2002,2001,2003 Massachusetts Institute of Technology
 
@@ -104,6 +104,9 @@ USA.
 
 /* Define if termcap library is present.  */
 #undef HAVE_LIBTERMCAP
+
+/* Define if PostgreSQL library is present.  */
+#undef HAVE_LIBPQ
 
 @BOTTOM@
 

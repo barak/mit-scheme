@@ -19,7 +19,7 @@ dnl along with MIT/GNU Scheme; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 11.23 2003/05/17 20:55:37 cph Exp $])
+AC_REVISION([$Id: configure.in,v 11.24 2003/06/06 19:14:19 cph Exp $])
 AC_INIT(boot.c)
 AC_CONFIG_HEADER(config.h)
 
@@ -35,7 +35,9 @@ AC_ARG_WITH(openssl,
 AC_ARG_WITH(mhash,
 [  --with-mhash            Use the mhash library if available [yes]])
 AC_ARG_WITH(mcrypt,
-[  --with-mcrypt           Use the mcrypt library available [yes]])
+[  --with-mcrypt           Use the mcrypt library if available [yes]])
+AC_ARG_WITH(libpq,
+[  --with-libpq            Use the PostgreSQL libpq library if available [yes]])
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
@@ -106,6 +108,9 @@ AC_CHECK_LIB(curses, tparm,
 AC_CHECK_LIB(termcap, tparam,
     [scheme_cv_lib_termcap=yes],
     [scheme_cv_lib_termcap=no])
+AC_CHECK_LIB(pq, PQconnectdb,
+    [scheme_cv_lib_pq=yes],
+    [scheme_cv_lib_pq=no])
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
@@ -118,6 +123,7 @@ AC_CHECK_HEADERS(sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h)
 AC_CHECK_HEADERS(stdbool.h termio.h termios.h unistd.h utime.h)
 AC_CHECK_HEADERS(openssl/blowfish.h openssl/md5.h blowfish.h md5.h)
 AC_CHECK_HEADERS(mhash.h mcrypt.h gdbm.h curses.h term.h dlfcn.h sys/mman.h)
+AC_CHECK_HEADERS(postgresql/libpq-fe.h)
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -418,6 +424,7 @@ dnl Handle options to enable/disable use of some libraries.
 test "${with_openssl:-yes}" = "no" && scheme_cv_lib_crypto="no"
 test "${with_mhash:-yes}" = "no" && scheme_cv_lib_mhash="no"
 test "${with_mcrypt:-yes}" = "no" && scheme_cv_lib_mcrypt="no"
+test "${with_libpq:-yes}" = "no" && scheme_cv_lib_pq="no"
 
 dnl Next, we decide which libraries to use.  We mostly want support
 dnl for Blowfish and MD5, each of which can come from multiple libraries.
@@ -555,6 +562,15 @@ else
 	else
 	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
 	fi
+    fi
+fi
+
+dnl PostgreSQL support.
+if test "${scheme_cv_lib_pq}" = "yes"; then
+    AC_DEFINE(HAVE_LIBPQ)
+    if test "${ac_cv_header_postgresql_libpq_fe_h}" = "yes"; then
+	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lpq"
+	OPTIONAL_BASES="${OPTIONAL_BASES} prpgsql"
     fi
 fi
 
