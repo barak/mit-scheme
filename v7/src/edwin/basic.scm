@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.107 1991/03/16 00:01:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.108 1991/04/24 00:36:19 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -92,9 +92,8 @@ With an argument, inserts several newlines."
 (define-command narrow-to-region
   "Restrict editing in current buffer to text between point and mark.
 Use \\[widen] to undo the effects of this command."
-  ()
-  (lambda ()
-    (region-clip! (current-region))))
+  "r"
+  region-clip!)
 
 (define-command widen
   "Remove restrictions from current buffer.
@@ -125,7 +124,7 @@ The key is bound in fundamental mode."
 This command followed by an = is equivalent to a Control-=."
   ()
   (lambda ()
-    (read-extension-char "C-" char-controlify)))
+    (read-extension-char char-controlify)))
 
 (define-command meta-prefix
   "Sets Meta-bit of following character. 
@@ -134,20 +133,20 @@ If the Metizer character is Altmode, it turns ^A
 into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
   ()
   (lambda ()
-    (read-extension-char "M-"
-			 (if (let ((char (current-command-char)))
-			       (and (char? char)
-				    (char=? #\Altmode char)))
-			     char-metafy
-			     (lambda (char)
-			       (char-metafy (char-base char)))))))
+    (read-extension-char
+     (if (let ((char (current-command-char)))
+	   (and (char? char)
+		(char=? #\altmode char)))
+	 char-metafy
+	 (lambda (char)
+	   (char-metafy (char-base char)))))))
 
 (define-command control-meta-prefix
   "Sets Control- and Meta-bits of following character.
 Turns a following A (or C-A) into a Control-Meta-A."
   ()
   (lambda ()
-    (read-extension-char "C-M-" char-control-metafy)))
+    (read-extension-char char-control-metafy)))
 
 (define execute-extended-chars?
   true)
@@ -157,32 +156,32 @@ Turns a following A (or C-A) into a Control-Meta-A."
 	(name->command 'meta-prefix)
 	(name->command 'control-meta-prefix)))
 
-(define (read-extension-char prefix-string modifier)
+(define (read-extension-char modifier)
   (if execute-extended-chars?
-      (set-command-prompt-prefix! prefix-string))
+      (set-command-prompt-prefix!))
   (let ((char (modifier (with-editor-interrupts-disabled keyboard-read-char))))
     (if execute-extended-chars?
 	(dispatch-on-char (current-comtabs) char)
 	char)))
-
-(define (set-command-prompt-prefix! prefix-string)
-  (set-command-prompt!
-   (string-append-separated (command-argument-prompt)
-			    prefix-string)))
 
 (define-command prefix-char
   "This is a prefix for more commands.
 It reads another character (a subcommand) and dispatches on it."
   ()
   (lambda ()
+    (set-command-prompt-prefix!)
     (let ((prefix-char (current-command-char)))
-      (set-command-prompt-prefix!
-       (string-append (xchar->name prefix-char) " "))
       (dispatch-on-char
        (current-comtabs)
        ((if (pair? prefix-char) append cons)
 	prefix-char
 	(list (with-editor-interrupts-disabled keyboard-read-char)))))))
+
+(define (set-command-prompt-prefix!)
+  (set-command-prompt!
+   (string-append-separated
+    (command-argument-prompt)
+    (string-append (xchar->name (current-command-char)) " -"))))
 
 (define-command execute-extended-command
   "Read an extended command from the terminal with completion.
@@ -191,7 +190,7 @@ function is called.  Completion is done as the function name is typed
 For more information type the HELP key while entering the name."
   ()
   (lambda ()
-    (dispatch-on-command (prompt-for-command "Extended Command") true)))
+    (dispatch-on-command (prompt-for-command "M-x") true)))
 
 ;;;; Errors
 
@@ -222,9 +221,6 @@ procedure when it fails to find a command."
 
 (define-integrable (editor-beep)
   (screen-beep (selected-screen)))
-
-(define (not-implemented)
-  (editor-error "Not yet implemented"))
 
 ;;;; Level Control
 
@@ -305,9 +301,11 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 
 ;;;; Comment Commands
 
-(define-variable comment-column
-  "Column to indent right-margin comments to."
-  32)
+(define-variable-per-buffer comment-column
+  "Column to indent right-margin comments to.
+Setting this variable automatically makes it local to the current buffer."
+  32
+  exact-nonnegative-integer?)
 
 (define-variable comment-locator-hook
   "Procedure to find a comment, or false if no comment syntax defined.
@@ -323,18 +321,20 @@ and should return the column to indent the comment to."
   false)
 
 (define-variable comment-start
-  "String to insert to start a new comment."
-  "")
+  "String to insert to start a new comment, or #f if no comment syntax defined."
+  ""
+  string-or-false?)
 
 (define-variable comment-end
   "String to insert to end a new comment.
-This should be a null string if comments are terminated by Newline."
-  "")
+Should be an empty string if comments are terminated by end-of-line."
+  ""
+  string?)
 
 (define-command set-comment-column
   "Set the comment column based on point.
 With no arg, set the comment column to the current column.
-With just minus as an arg, kill any comment on this line.
+With just minus as arg, kill any comment on this line.
 Otherwise, set the comment column to the argument."
   "P"
   (lambda (argument)
@@ -342,7 +342,7 @@ Otherwise, set the comment column to the argument."
 	   ((ref-command kill-comment)))
 	  (else
 	   (set-variable! comment-column (or argument (current-column)))
-	   (message "Comment column set to " (ref-variable comment-column))))))
+	   (message "comment-column set to " (ref-variable comment-column))))))
 
 (define-command indent-for-comment
   "Indent this line's comment to comment column, or insert an empty comment."
@@ -365,9 +365,10 @@ Otherwise, set the comment column to the argument."
 		      (insert-comment-end))))))))))
 
 (define-variable comment-multi-line
-  "If true, means \\[indent-new-comment-line] should continue same comment
+  "True means \\[indent-new-comment-line] should continue same comment
 on new line, with no new terminator or starter."
-  false)
+  false
+  boolean?)
 
 (define-command indent-new-comment-line
   "Break line at point and indent, continuing comment if presently within one."
