@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.5 2003/07/21 00:54:46 cph Exp $
+$Id: prpgsql.c,v 1.6 2003/11/06 04:17:39 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -172,7 +172,7 @@ DEFINE_PRIMITIVE ("PQ-FIELD-NAME", Prim_pq_fname, 2, 2, 0)
     (char_pointer_to_string (PQfname ((ARG_RESULT (1)),
 				      (arg_integer (2)))));
 }
-
+
 DEFINE_PRIMITIVE ("PQ-GET-VALUE", Prim_pq_get_value, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
@@ -196,3 +196,45 @@ DEFINE_PRIMITIVE ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0)
   RESULT_TO_STRING (PQcmdTuples)
+
+#ifdef COMPILE_AS_MODULE
+
+char *
+DEFUN_VOID (dload_initialize_file)
+{
+  declare_primitive ("PQ-CONNECT-DB", Prim_pq_connect_db, 2, 2, 0);
+  declare_primitive ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0);
+  declare_primitive ("PQ-CONNECT-POLL", Prim_pq_connect_poll, 1, 1, 0);
+  declare_primitive ("PQ-STATUS", Prim_pq_status, 1, 1, 0);
+  declare_primitive ("PQ-FINISH", Prim_pq_finish, 1, 1, 0);
+  declare_primitive ("PQ-RESET", Prim_pq_reset, 1, 1, 0);
+  declare_primitive ("PQ-RESET-START", Prim_pq_reset_start, 1, 1, 0);
+  declare_primitive ("PQ-RESET-POLL", Prim_pq_reset_poll, 1, 1, 0);
+  declare_primitive ("PQ-DB", Prim_pq_db, 1, 1, 0);
+  declare_primitive ("PQ-USER", Prim_pq_user, 1, 1, 0);
+  declare_primitive ("PQ-PASS", Prim_pq_pass, 1, 1, 0);
+  declare_primitive ("PQ-HOST", Prim_pq_host, 1, 1, 0);
+  declare_primitive ("PQ-PORT", Prim_pq_port, 1, 1, 0);
+  declare_primitive ("PQ-TTY", Prim_pq_tty, 1, 1, 0);
+  declare_primitive ("PQ-OPTIONS", Prim_pq_options, 1, 1, 0);
+  declare_primitive ("PQ-ERROR-MESSAGE", Prim_pq_error_message, 1, 1, 0);
+  declare_primitive ("PQ-EXEC", Prim_pq_exec, 3, 3, 0);
+  declare_primitive
+    ("PQ-MAKE-EMPTY-PG-RESULT", Prim_pq_make_empty_pg_result, 3, 3, 0);
+  declare_primitive ("PQ-RESULT-STATUS", Prim_pq_result_status, 1, 1, 0);
+  declare_primitive ("PQ-RES-STATUS", Prim_pq_res_status, 1, 1, 0);
+  declare_primitive
+    ("PQ-RESULT-ERROR-MESSAGE", Prim_pq_result_error_message, 1, 1, 0);
+  declare_primitive ("PQ-CLEAR", Prim_pq_clear, 1, 1, 0);
+  declare_primitive ("PQ-ESCAPE-STRING", Prim_pq_escape_string, 2, 2, 0);
+  declare_primitive ("PQ-N-TUPLES", Prim_pq_n_tuples, 1, 1, 0);
+  declare_primitive ("PQ-N-FIELDS", Prim_pq_n_fields, 1, 1, 0);
+  declare_primitive ("PQ-FIELD-NAME", Prim_pq_fname, 2, 2, 0);
+  declare_primitive ("PQ-GET-VALUE", Prim_pq_get_value, 3, 3, 0);
+  declare_primitive ("PQ-GET-IS-NULL?", Prim_pq_get_is_null, 3, 3, 0);
+  declare_primitive ("PQ-CMD-STATUS", Prim_pq_cmd_status, 1, 1, 0);
+  declare_primitive ("PQ-CMD-TUPLES", Prim_pq_cmd_tuples, 1, 1, 0);
+  return ("#prpgsql");
+}
+
+#endif /* COMPILE_AS_MODULE */
