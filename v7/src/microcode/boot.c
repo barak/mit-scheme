@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.88 1994/10/04 21:07:50 cph Exp $
+$Id: boot.c,v 9.89 1994/10/04 22:01:13 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -82,7 +82,7 @@ DEFUN (obstack_chunk_alloc, (size), unsigned int size)
 #define obstack_chunk_free free
 
 #ifndef INIT_FIXED_OBJECTS
-#define INIT_FIXED_OBJECTS() Fixed_Objects = (make_fixed_objects_vector ())
+#define INIT_FIXED_OBJECTS initialize_fixed_objects_vector
 #endif
 
 /* Declare the outermost critical section. */
@@ -222,8 +222,8 @@ DEFUN_VOID (fixed_objects_syserr_names)
   return (names_to_vector (length, names));
 }
 
-SCHEME_OBJECT
-DEFUN_VOID (make_fixed_objects_vector)
+void
+DEFUN_VOID (initialize_fixed_objects_vector)
 {
   extern SCHEME_OBJECT EXFUN (initialize_history, (void));
   extern SCHEME_OBJECT EXFUN (initialize_interrupt_handler_vector, (void));
@@ -233,6 +233,7 @@ DEFUN_VOID (make_fixed_objects_vector)
      with 4 extra slots for expansion and debugging. */
   fast SCHEME_OBJECT fixed_objects_vector =
     (make_vector ((NFixed_Objects + 4), SHARP_F, false));
+  Fixed_Objects = fixed_objects_vector;
   FAST_VECTOR_SET (fixed_objects_vector, Me_Myself, fixed_objects_vector);
   FAST_VECTOR_SET
     (fixed_objects_vector, Non_Object, (MAKE_OBJECT (TC_TRUE, 2)));
