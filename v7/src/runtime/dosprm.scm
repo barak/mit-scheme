@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.32 1995/10/24 05:39:49 cph Exp $
+$Id: dosprm.scm,v 1.33 1995/10/25 02:16:34 cph Exp $
 
 Copyright (c) 1992-95 Massachusetts Institute of Technology
 
@@ -267,6 +267,14 @@ MIT in each case. |#
 		    (pathname-as-directory (merge-pathnames directory))
 		    user-name)))))
       (merge-pathnames "\\")))
+
+(define (dos/fs-drive-type pathname)
+  pathname
+  (cons "FAT" ""))
+
+(define (dos/fs-long-filenames? pathname)
+  pathname
+  #f)
 
 (define file-time->string
   (ucode-primitive file-time->string 1))

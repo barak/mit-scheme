@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.21 1995/10/24 05:40:10 cph Exp $
+$Id: os2prm.scm,v 1.22 1995/10/25 02:16:48 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -192,7 +192,7 @@ MIT in each case. |#
   (let ((root
 	 (let ((directory (temporary-directory-pathname)))
 	   (merge-pathnames
-	    (if (os2/fs-long-filenames? directory)
+	    (if (dos/fs-long-filenames? directory)
 		(string-append
 		 "sch"
 		 (string-pad-left (number->string (os2/current-pid)) 6 #\0))
@@ -251,7 +251,7 @@ MIT in each case. |#
 		    user-name)))))
       (merge-pathnames "\\")))
 
-(define (os2/fs-drive-type pathname)
+(define (dos/fs-drive-type pathname)
   (let ((type
 	 ((ucode-primitive drive-type 1)
 	  (pathname-device (merge-pathnames pathname)))))
@@ -260,11 +260,11 @@ MIT in each case. |#
 	  (cons (string-head type colon) (string-tail type (fix:+ colon 1)))
 	  (cons type "")))))
 
-(define (os2/fs-long-filenames? pathname)
-  (not (string-ci=? "fat" (car (os2/fs-drive-type pathname)))))
+(define (dos/fs-long-filenames? pathname)
+  (not (string-ci=? "fat" (car (dos/fs-drive-type pathname)))))
 
 (define (os/file-end-of-line-translation pathname)
-  (let ((type (os2/fs-drive-type pathname)))
+  (let ((type (dos/fs-drive-type pathname)))
     ;; "ext2" is the Linux ext2 file-system driver.  "NFS" is the IBM
     ;; TCP/IP NFS driver, which we further qualify by examining the
     ;; mount info -- if the directory starts with a "/", we assume
