@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.5 1993/10/30 12:58:11 gjr Exp $
+$Id: rules1.scm,v 1.6 1993/11/17 05:22:39 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -150,14 +150,26 @@ MIT in each case. |#
    (lambda (base index target)
      (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
 
+;; This rule is not written in the obvious way (commented out) because
+;; it is used by the code generator to bump closures.  Sometimes the
+;; target is the value register (type scheme object) and the obvious
+;; code would imply an implicit cast from pointer to integer, which
+;; some compilers (e.g. -std1 on alpha) do not like.
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
 			       (MACHINE-CONSTANT (? offset))))
+  #|
   (standard-unary-conversion
    source 'CHAR* target 'CHAR*
    (lambda (source target)
-     (LAP ,target " = &" ,source "[" ,offset "];\n\t"))))
+     (LAP ,target " = &" ,source "[" ,offset "];\n\t")))
+  |#
+  (standard-unary-conversion
+   source 'LONG target 'ULONG
+   (lambda (source target)
+     (LAP ,target " = ((unsigned long) (" ,base " + " ,offset "));\n\t"))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
