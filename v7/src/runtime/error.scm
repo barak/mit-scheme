@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.63 2003/10/10 17:35:01 cph Exp $
+$Id: error.scm,v 14.64 2003/10/10 17:35:42 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -1160,7 +1160,9 @@ USA.
 ;;;; Utilities
 
 (define (ignore-errors thunk #!optional map-error)
-  (let ((handler
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:error)
 	 (cond ((or (default-object? map-error)
 		    (not map-error))
 		k)
@@ -1171,11 +1173,8 @@ USA.
 	       (else
 		(error:wrong-type-argument map-error
 					   "map-error procedure"
-					   'IGNORE-ERRORS)))))
-    (call-with-current-continuation
-     (lambda (k)
-       (bind-condition-handler (list condition-type:error) handler
-	 thunk)))))
+					   'IGNORE-ERRORS)))
+       thunk))))
 
 (define (format-error-message message irritants port)
   (fluid-let ((*unparser-list-depth-limit* 2)
