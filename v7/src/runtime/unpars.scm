@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.32 1993/10/21 13:57:33 cph Exp $
+$Id: unpars.scm,v 14.33 1993/10/21 15:04:31 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -145,14 +145,14 @@ MIT in each case. |#
 
 (define (guarantee-unparser-state state procedure)
   (if (not (unparser-state? state))
-      (error:wrong-type-argument table state "unparser state" procedure))
+      (error:wrong-type-argument state "unparser state" procedure))
   state)
 
 (define (with-current-unparser-state state procedure)
   (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
   (fluid-let
       ((*default-list-depth* (unparser-state/list-depth state))
-       (*current-unparser-table* (unparser-state/list-unparser-table state)))
+       (*current-unparser-table* (unparser-state/unparser-table state)))
     (procedure (unparser-state/port state))))
 
 ;;;; Top Level
