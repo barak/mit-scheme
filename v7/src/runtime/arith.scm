@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.8 1989/11/09 22:07:04 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.9 1989/11/15 02:46:41 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -608,13 +608,14 @@ MIT in each case. |#
 		     (let scale-up ((n n) (e 0))
 		       (let ((n*2 (int:* n 2)))
 			 (if (int:< n*2 d)
-			     (let loop ((n n*2) (n*r (int:* n 4)) (r 4) (m 1))
+			     (let loop
+				 ((n n*2) (n*r (int:* n*2 2)) (r 4) (m 1))
 			       (if (int:< n*r d)
 				   (loop n*r
 					 (int:* n*r r)
 					 (int:* r r)
-					 (int:+ m m))
-				   (scale-up n (- e m))))
+					 (int:* 2 m))
+				   (scale-up n (int:- e m))))
 			     (finish n d e))))
 		     (let scale-down ((d d) (e 0))
 		       (let ((d (int:* d 2)))
@@ -624,22 +625,22 @@ MIT in each case. |#
 					 (loop d*r
 					       (int:* d*r r)
 					       (int:* r r)
-					       (int:+ m m)))
+					       (int:* 2 m)))
 					((int:< n d*r)
 					 (scale-down d (int:+ e m)))
 					(else
 					 (finish
 					  n
 					  (int:* d*r 2)
-					  (int:1+ (int:+ e (int:+ m m))))))))
+					  (int:1+ (int:+ e (int:* 2 m))))))))
 			       ((int:< n d)
 				(finish n d (int:1+ e)))
 			       (else
 				(finish n (int:* d 2) (int:+ e 2)))))))))))))
     (let ((n (ratnum-numerator q))
 	  (d (ratnum-denominator q)))
-      (cond ((positive? n) (q>0 n d))
-	    ((negative? n) (flo:negate (q>0 (int:negate n) d)))
+      (cond ((int:positive? n) (q>0 n d))
+	    ((int:negative? n) (flo:negate (q>0 (int:negate n) d)))
 	    (else flo:0)))))
 
 (define (flo:significand-digits radix)
@@ -913,8 +914,8 @@ MIT in each case. |#
   (define-transcendental-unary real:atan real:exact0= 0 flo:atan))
 
 (define (real:atan2 y x)
-  (if (and (real:exact1= y)
-	   (real:exact0= x))
+  (if (and (real:exact0= y)
+	   (real:exact? x))
       0
       (flo:atan2 (real:->flonum y) (real:->flonum x))))
 
@@ -1025,9 +1026,12 @@ MIT in each case. |#
 
 (define (complex:exact? z)
   (if (recnum? z)
-      (and (real:exact? (rec:real-part z))
-	   (real:exact? (rec:imag-part z)))
+      ((copy rec:exact?) z)
       ((copy real:exact?) z)))
+
+(define (rec:exact? z)
+  (and (real:exact? (rec:real-part z))
+       (real:exact? (rec:imag-part z))))
 
 (define (complex:real-arg name x)
   (if (recnum? x) (rec:real-arg name x) x))
@@ -1403,7 +1407,7 @@ MIT in each case. |#
 	       (complex:- (complex:log (complex:1+ iz))
 			  (complex:log (complex:- 1 iz))))
 	     +2i))
-
+
 (define (complex:sqrt z)
   (cond ((recnum? z)
 	 (complex:make-polar (real:sqrt (complex:magnitude z))
@@ -1414,18 +1418,45 @@ MIT in each case. |#
 	 ((copy real:sqrt) z))))
 
 (define (complex:expt z1 z2)
-  (if (or (recnum? z1)
-	  (recnum? z2)
-	  (and (real:negative? z1)
-	       (not (real:integer? z2))))
-      (complex:exp (complex:* (complex:log z1) z2))
-      (real:expt z1 z2)))
-
+  (let ((general-case
+	 (lambda ()
+	   (complex:exp (complex:* (complex:log z1) z2)))))
+    (cond ((and (recnum? z1)
+		(rec:exact? z1))
+	   (if (int:integer? z2)
+	       (let ((exact-method
+		      (lambda (z2)
+			(if (int:= 1 z2)
+			    z1
+			    (let loop ((z1 z1) (z2 z2) (answer 1))
+			      (let ((qr (int:divide z2 2)))
+				(let ((z1 (complex:* z1 z1))
+				      (z2 (integer-divide-quotient qr))
+				      (answer
+				       (if (int:zero?
+					    (integer-divide-remainder qr))
+					   answer
+					   (complex:* answer z1))))
+				  (if (int:= 1 z2)
+				      (complex:* answer z1)
+				      (loop z1 z2 answer)))))))))
+		 (cond ((int:positive? z2) (exact-method z2))
+		       ((int:negative? z2)
+			(complex:/ 1 (exact-method (int:negate z2))))
+		       (else 1)))
+	       (general-case)))
+	  ((or (recnum? z2)
+	       (and (real:negative? z1)
+		    (not (real:integer? z2))))
+	   (general-case))
+	  (else
+	   (real:expt z1 z2)))))
+
 (define (complex:make-rectangular real imag)
   (if (real:exact0= imag)
       real
       (make-recnum real imag)))
-
+
 (define (complex:make-polar magnitude angle)
   (complex:make-rectangular (real:* magnitude (real:cos angle))
 			    (real:* magnitude (real:sin angle))))
@@ -1456,7 +1487,8 @@ MIT in each case. |#
       (if (and (real:zero? (rec:real-part z))
 	       (real:zero? (rec:imag-part z)))
 	  (real:0 (complex:exact? z))
-	  (real:atan2 (rec:real-part z) (rec:imag-part z)))      (real:0 (real:exact? z))))
+	  (real:atan2 (rec:imag-part z) (rec:real-part z)))
+      (real:0 (real:exact? z))))
 
 (define (complex:exact->inexact z)
   (if (recnum? z)
