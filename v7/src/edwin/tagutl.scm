@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.48 1993/01/25 18:03:55 jawilson Exp $
+;;;	$Id: tagutl.scm,v 1.49 1993/02/10 16:20:46 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -57,7 +57,8 @@ See documentation for visit-tags-table and visit-additional-tags-table."
   "Tell tags commands to use only the tag table file FILE.
 FILE should be the name of a file created with the `etags' program.
 A directory name is ok too; it means file TAGS in that directory.
-To use more than one tag table file at a time, see visit-additional-tags-table."
+To use more than one tag table file at a time,
+see \\[visit-additional-tags-table]."
   "FVisit tags table (default TAGS)"
   (lambda (filename)
     (let ((pathname (->pathname filename)))
@@ -175,7 +176,7 @@ See documentation of variable tags-table-pathnames."
 
 (define previous-find-tag-string
   false)
-
+
 (define (find-tag-default)
   (let ((end
 	 (let ((point (current-point)))
@@ -194,7 +195,7 @@ See documentation of variable tags-table-pathnames."
 	 (extract-string (forward-prefix-chars (backward-sexp end 1 'LIMIT)
 					       end)
 			 end))))
-
+
 (define (find-tag string buffer start find-file)
   (let ((end (group-end start)))
     (let ((tag
@@ -210,8 +211,8 @@ See documentation of variable tags-table-pathnames."
 				(if (group-start? start) "" "more ")
 				"entries containing "
 				string)
-		(find-tag string next-buffer (buffer-start next-buffer) find-file)
-		))
+		(find-tag string next-buffer (buffer-start next-buffer)
+			  find-file)))
 	  (let ((pathname
 		 (merge-pathnames
 		  (tag->pathname tag)
@@ -257,16 +258,8 @@ See documentation of variable tags-table-pathnames."
 
 ;;;; Tags Search
 
-(define (smart-buffer-kill)
-  (if (and (not buffer-visited-already?)
-	   (not (buffer-modified? tags-loop-current-buffer))
-	   (ref-variable new-tags-behavior?)
-	   )
-      ;; unvisit the current buffer
-      (kill-buffer tags-loop-current-buffer)))
-
 (define-command tags-search
-  "Forevery tag table in the current list, search through all files
+  "For every tag table in the current list, search through all files
 specified in it for match for REGEXP.  Stops when a match is found.
 To continue searching for next match, use command
 \\[tags-loop-continue].
@@ -293,7 +286,7 @@ See documentation of variable tags-table-pathnames."
 (define-command tags-query-replace
   "Query-replace-regexp FROM with TO through all files listed in all of
 the tag tables.  Third arg DELIMITED (prefix arg) means replace only
-word-delimited matches.  If you exit (C-G or ESC), you can resume the
+word-delimited matches.  If you exit (C-g or ESC), you can resume the
 query-replace with the command \\[tags-loop-continue].
 
 See documentation of variable tags-file-pathnames."
@@ -316,43 +309,50 @@ See documentation of variable tags-file-pathnames."
 	  (get-all-pathnames (initial-tags-table-buffers)))
     (tags-loop-start)))
 
+(define-command tags-loop-continue
+  "Continue last \\[find-tag], \\[tags-search] or \\[tags-query-replace]
+command."
+  ()
+  (lambda ()
+    (if (not tags-loop-continuation)
+	(editor-error "No tags loop in progress"))
+    (tags-loop-continuation)))
+
 (define tags-loop-continuation false)
 (define tags-loop-pathnames)
-
-(define-variable new-tags-behavior? 
-  "This variable controls the behavior of tags-search and
-tags-query-replace.  The new behavior cause any new buffers to be
-killed if they are not modified."
-  true)
-
 (define buffer-visited-already? false)
 (define tags-loop-current-buffer false)
 
 (define (tags-loop-start)
   (let ((pathnames tags-loop-pathnames))
     (if (null? pathnames)
-	(editor-error "All files processed.")
-	(begin
-	  (set! buffer-visited-already?
-		(pathname->buffer (car pathnames)))
-	  (set! tags-loop-pathnames (cdr pathnames))
-	  (find-file (car pathnames))
-	  (message "Scanning file "
-		   (->namestring (buffer-truename (current-buffer)))
-		   "...")
-	  (set-current-point! (buffer-start (current-buffer)))
-	  (set! tags-loop-current-buffer (current-buffer))
-	  (tags-loop-continuation)))))
+	(editor-error "All files processed."))
+    (set! tags-loop-pathnames (cdr pathnames))
+    (set! buffer-visited-already?
+	  (if (pathname->buffer (car pathnames)) true false))
+    (find-file (car pathnames))
+    (message "Scanning file "
+	     (->namestring (buffer-truename (current-buffer)))
+	     "...")
+    (set-current-point! (buffer-start (current-buffer)))
+    (set! tags-loop-current-buffer (current-buffer))
+    (tags-loop-continuation)))
 
-(define-command tags-loop-continue
-  "Continue last \\[find-tag], \\[tags-search] or \\[tags-query-replace]
-command."
-  ()
-  (lambda ()
-    (if tags-loop-continuation
-	(tags-loop-continuation)
-	(editor-error "No tags loop in progress"))))
+(define (smart-buffer-kill)
+  (if (and (not buffer-visited-already?)
+	   (not (buffer-modified? tags-loop-current-buffer))
+	   (ref-variable new-tags-behavior?))
+      (kill-buffer tags-loop-current-buffer)))
+
+(define-variable new-tags-behavior?
+  "This variable controls the behavior of tags-search and
+tags-query-replace.  The new behavior cause any new buffers to be
+killed if they are not modified."
+  true
+  boolean?)
 
+;;;; Tags Tables
+
 (define (tag->pathname tag)
   (define (loop mark)
     (let ((file-mark (skip-chars-backward "^,\n" (line-end mark 1))))
@@ -386,8 +386,7 @@ command."
   (if (not (ref-variable tags-table-pathnames))
       (dispatch-on-command (ref-command-object visit-tags-table)))
   (pathnames->tags-table-buffers (ref-variable tags-table-pathnames)))
-  
-
+
 (define (tags-table-pathnames buffers)
   (append-map 
    (lambda (buffer)
@@ -415,13 +414,15 @@ command."
 		     (let ((mark
 			    (mark+ (line-start file-mark 1) word)))
 		       (if (group-end? mark)
-			   (finish (reverse (cons name pathnames)) (reverse included-tables))
+			   (finish (reverse (cons name pathnames))
+				   (reverse included-tables))
 			   (loop mark
 				 (cons name pathnames)
 				 included-tables)))
 		     ;; if it is not a number than it must be an include
 		     (if (group-end? (line-end file-mark 1))
-			 (finish (reverse pathnames) (reverse (cons name included-tables)))
+			 (finish (reverse pathnames)
+				 (reverse (cons name included-tables)))
 			 (loop (line-start mark 2)
 			       pathnames
 			       (cons name included-tables))))))))))
@@ -437,10 +438,5 @@ command."
     (if (null? includes)
 	pathnames
 	(append pathnames
-		(get-all-pathnames (pathnames->tags-table-buffers includes))))))
-
-
-;; Edwin Variables:
-;; scheme-environment: '(edwin)
-;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
-;; End:
+		(get-all-pathnames
+		 (pathnames->tags-table-buffers includes))))))
