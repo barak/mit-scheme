@@ -1,10 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.26 2000/05/19 16:33:10 cph Exp $
+$Id: todo.txt,v 1.27 2000/05/19 17:29:03 cph Exp $
 
 Bug fixes
 ---------
-
-* Eliminate the "edited" flag.
 
 * Summary buffers don't navigate correctly unless they are showing all
   of the messages.  Partial summaries manipulate index numbers that
@@ -52,17 +50,16 @@ New features
 
 * Add configurable confirmation for performing EXPUNGE.
 
-* Change summary buffer to show more flags, specifically all the
-  standard flags.  Use each flag's first letter, except: lump
-  "forwarded" and "resent" together as R, and invert "seen" to U.
-  Use the following order: DUARF.
-
 * M-x imail-output should create the folder if necessary.  This means
   that %APPEND-MESSAGE method must check for [TRYCREATE] and do the
   create if it is present.
 
 * Add command to rename folders.  Add command to append all of the
   messages from one folder to another.
+
+* Add command to copy a folder from one URL to another.  This
+  basically creates the target, opens the source, and copies all of
+  the messages.
 
 * Implement URL completion.
 
