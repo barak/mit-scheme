@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.4 2002/02/12 21:17:47 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.5 2002/02/19 21:27:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -307,16 +307,22 @@
   (record-accessor syntactic-closure-rtd 'FORM))
 
 (define (strip-syntactic-closures object)
-  (cond ((syntactic-closure? object)
-	 (strip-syntactic-closures (syntactic-closure/form object)))
-	((pair? object)
-	 (cons (strip-syntactic-closures (car object))
-	       (strip-syntactic-closures (cdr object))))
-	(else object)))
+  (if (let loop ((object object))
+	(if (pair? object)
+	    (or (loop (car object))
+		(loop (cdr object)))
+	    (syntactic-closure? object)))
+      (let loop ((object object))
+	(if (pair? object)
+	    (cons (loop (car object))
+		  (loop (cdr object)))
+	    (if (syntactic-closure? object)
+		(loop (syntactic-closure/form object))
+		object)))))
 
 (define (close-syntax form environment)
   (make-syntactic-closure environment '() form))
-
+
 (define (identifier? object)
   (or (symbol? object)
       (synthetic-identifier? object)))
