@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Id: sdata.h,v 9.32 1993/06/24 07:09:46 gjr Exp $
+/* $Id: sdata.h,v 9.33 1995/07/27 00:22:16 adams Exp $
  *
  * Description of the user data objects.  This should parallel the
  * file SDATA.SCM in the runtime system.
@@ -212,10 +212,15 @@ MIT in each case. */
 /* An environment chain always ends in a pointer with type code
    of GLOBAL_ENV.  This will contain an address part which
    either indicates that the lookup should continue on to the
-   true global environment, or terminate at this frame. */
+   true global environment, or terminate at this frame.
 
-#define GO_TO_GLOBAL	0
-#define END_OF_CHAIN	1
+   We arrange for the global environment to be the same as #F, and the
+   end chain to be different by toggling the lowest bit:
+ */
+
+#define GLOBAL_ENV     (OBJECT_TYPE(SHARP_F))
+#define GO_TO_GLOBAL   (OBJECT_DATUM(SHARP_F))
+#define END_OF_CHAIN   ((GO_TO_GLOBAL) ^ 1)
 
 /* Environment extension objects:
 
