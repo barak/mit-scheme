@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.164 2001/05/25 18:16:53 cph Exp $
+;;; $Id: imail-imap.scm,v 1.165 2001/05/27 05:05:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -36,8 +36,11 @@
   (mailbox define accessor))
 
 (define-url-protocol "imap" <imap-url>)
-(define-class <imap-folder-url> (<imap-url> <folder-url>))
 (define-class <imap-container-url> (<imap-url> <container-url>))
+
+(define-class <imap-folder-url> (<imap-url> <folder-url>)
+  (is-container? define standard
+		 initial-value 'UNKNOWN))
 
 (define make-imap-url
   (let ((fields '(USER-ID HOST PORT MAILBOX)))
@@ -105,11 +108,19 @@
 	 (not (memq '\NOSELECT (imap:response:list-flags response))))))
 
 (define-method url-is-container? ((url <imap-folder-url>))
-  (let ((response (imap-url-info url)))
-    (and response
-	 (not (memq '\NOINFERIORS (imap:response:list-flags response)))
-	 (imap-url-new-mailbox url
-			       (string-append (imap-url-mailbox url) "/")))))
+  (let ((container (imap-folder-url-is-container? url)))
+    (if (eq? container 'UNKNOWN)
+	(let ((response (imap-url-info url)))
+	  (and response
+	       (let ((container
+		      (and (not (memq '\NOINFERIORS
+				      (imap:response:list-flags response)))
+			   (imap-url-new-mailbox
+			    url
+			    (string-append (imap-url-mailbox url) "/")))))
+		 (set-imap-folder-url-is-container?! url container)
+		 container)))
+	container)))
 
 (define (imap-url-info url)
   (let ((responses
@@ -227,8 +238,18 @@
 		      prefix)))))))
 
 (define-method container-url-contents ((url <imap-container-url>))
-  (map (lambda (mailbox) (imap-url-new-mailbox url mailbox))
-       (imap-mailbox-completions (imap-url-mailbox url) url)))
+  (%imap-mailbox-completions (imap-url-mailbox url) url
+    (lambda (mailbox selectable? inferiors? tail)
+      (let ((container
+	     (and inferiors?
+		  (imap-url-new-mailbox url (string-append mailbox "/")))))
+	(cond (selectable?
+	       (let ((url (imap-url-new-mailbox url mailbox)))
+		 (if (eq? (imap-folder-url-is-container? url) 'UNKNOWN)
+		     (set-imap-folder-url-is-container?! url container))
+		 (cons url tail)))
+	      (container (cons container tail))
+	      (else tail))))))
 
 ;;;; Completion
 
@@ -278,32 +299,44 @@
 	       (if-not-unique (string-greatest-common-prefix responses)
 			      (lambda () responses)))
 	      (else (if-unique (car responses)))))))
-
+
 (define (imap-mailbox-completions prefix url)
+  (%imap-mailbox-completions prefix url
+    (lambda (mailbox selectable? inferiors? tail)
+      (cond (selectable? (cons mailbox tail))
+	    (inferiors? (cons (string-append mailbox "/") tail))
+	    (else tail)))))
+
+(define (%imap-mailbox-completions prefix url accumulator)
   (with-open-imap-connection url
     (lambda (connection)
-      (append-map! (lambda (response)
-		     (let ((flags (imap:response:list-flags response))
-			   (delimiter (imap:response:list-delimiter response))
-			   (mailbox
-			    (imap:decode-mailbox-name
-			     (imap:response:list-mailbox response))))
-		       (if delimiter
-			   (let ((mailbox
-				  (string-replace mailbox
-						  (string-ref delimiter 0)
-						  #\/)))
-			     (if (memq '\NOSELECT flags)
-				 (if (memq '\NOINFERIORS flags)
-				     '()
-				     (list (string-append mailbox "/")))
-				 (list mailbox)))
-			   (list mailbox))))
-		   (imap:command:list
-		    connection
-		    ""
-		    (string-append (imap-mailbox/url->server url prefix)
-				   "%"))))))
+      (let loop
+	  ((responses
+	    (imap:command:list
+	     connection
+	     ""
+	     (string-append (imap-mailbox/url->server url prefix) "%")))
+	   (results '()))
+	(if (pair? responses)
+	    (loop (cdr responses)
+		  (let ((flags (imap:response:list-flags (car responses)))
+			(delimiter
+			 (imap:response:list-delimiter (car responses)))
+			(mailbox
+			 (imap:decode-mailbox-name
+			  (imap:response:list-mailbox (car responses)))))
+		    (if delimiter
+			(accumulator (string-replace mailbox
+						     (string-ref delimiter 0)
+						     #\/)
+				     (not (memq '\NOSELECT flags))
+				     (not (memq '\NOINFERIORS flags))
+				     results)
+			(accumulator mailbox
+				     (not (memq '\NOSELECT flags))
+				     #f
+				     results))))
+	    (reverse! results))))))
 
 ;;;; URL->server delimiter conversion
 
