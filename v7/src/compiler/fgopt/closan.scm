@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.11 1989/12/02 21:19:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.12 1990/03/21 02:11:13 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -259,7 +259,9 @@ MIT in each case. |#
 		 (let loop ((block* block*))
 		   (if block*
 		       (let ((procedure (block-procedure block*)))
-			 (if (eq? true (procedure-closure-context procedure))
+			 (if (and (rvalue/procedure? procedure)
+				  (eq? (procedure-closure-context procedure)
+				       true))
 			     (close-non-descendent-callees! procedure block)
 			     (loop (block-parent block*)))))))))
 	  (if (not entry)

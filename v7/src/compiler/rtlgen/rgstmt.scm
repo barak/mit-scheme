@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.12 1990/02/02 18:40:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgstmt.scm,v 4.13 1990/03/21 02:12:01 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -161,8 +161,10 @@ MIT in each case. |#
 		   ((let ((variable (virtual-return/target-lvalue return)))
 		      (and variable
 			   (variable-in-cell? variable)
-			   (procedure-inline-code?
-			    (block-procedure (variable-block variable)))))
+			   (let ((procedure
+				  (block-procedure (variable-block variable))))
+			     (and (rvalue/procedure? procedure)
+				  (procedure-inline-code? procedure)))))
 		    (generate/rvalue operand scfg*scfg->scfg!
 		      (lambda (expression)
 			(rtl:make-push (rtl:make-cell-cons expression)))))

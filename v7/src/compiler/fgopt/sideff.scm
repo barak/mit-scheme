@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.5 1989/03/14 19:38:55 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/sideff.scm,v 1.6 1990/03/21 02:11:37 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -319,7 +319,9 @@ MIT in each case. |#
   (define (simplify-combination! value)
     (combination/constant! app
 			   (r/lvalue->rvalue (combination/context app) value))
-    (enqueue-node! (block-procedure (application-block app))))
+    (let ((procedure (block-procedure (application-block app))))
+      (if (rvalue/procedure? procedure)
+	  (enqueue-node! procedure))))
 
   (define (check value op-vals)
     (if (and value
