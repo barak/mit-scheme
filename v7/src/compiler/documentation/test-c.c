@@ -1,11 +1,12 @@
 /* -*- C -*- */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/test-c.c,v 1.2 1992/02/14 17:03:33 jinx Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/test-c.c,v 1.3 1992/02/14 18:57:27 jinx Exp $ */
 
 #include <stdio.h>
 
 extern long external_long;
 extern long * external_pointer;
+extern long (* (procedure_table []))();
 
 struct two_word_struct
 {
@@ -26,16 +27,43 @@ reveal_structure_convention (x, y)
 }
 
 long
-reveal_register_partition
-    (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9,
-     y0, y1, y2, y3, y4, y5, y6, y7, y8, y9,
-     z0, z1, z2, z3, z4, z5, z6, z7, z8, z9,
-     q0, q1)
+dummy_proc_1 (x, y)
+     long x;
+     long y;
+{
+  return (x + y);
+}
+
 long
-  x0, x1, x2, x3, x4, x5, x6, x7, x8, x9,
-  y0, y1, y2, y3, y4, y5, y6, y7, y8, y9,
-  z0, z1, z2, z3, z4, z5, z6, z7, z8, z9,
-  q0, q1;
+dummy_proc_2 (x, y)
+     long x;
+     long y;
+{
+  return (x - y);
+}
+
+long (* (procedure_table [])) () =
+{
+  dummy_proc_1,
+  dummy_proc_2,
+  dummy_proc_1,
+  dummy_proc_2,
+  dummy_proc_1,
+  dummy_proc_2
+};
+
+long
+reveal_register_partition (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9,
+			   y0, y1, y2, y3, y4, y5, y6, y7, y8, y9,
+			   z0, z1, z2, z3, z4, z5, z6, z7, z8, z9,
+			   q0, q1)
+     long x0; long x1; long x2; long x3; long x4;
+     long x5; long x6; long x7; long x8; long x9;
+     long y0; long y1; long y2; long y3; long y4;
+     long y5; long y6; long y7; long y8; long y9;
+     long z0; long z1; long z2; long z3; long z4;
+     long z5; long z6; long z7; long z8; long z9;
+     long q0; long q1;
 {
   return (  (x0 * y0) + (x1 * y1) + (x2 * y2) + (x3 * y3) + (x4 * y4)
 	  + (x5 * y5) + (x6 * y6) + (x7 * y7) + (x8 * y8) + (x9 * y9)
@@ -45,7 +73,7 @@ long
 	  + (z5 * x5) + (z6 * x6) + (z7 * x7) + (z8 * x8) + (z9 * x9)
 	  + (q0 * x0) + (q1 * x1));
 }
-
+
 long external_long, * external_pointer;
 
 main (argc, argv)
@@ -81,5 +109,7 @@ main (argc, argv)
   external_pointer = &external_long;
   printf ("*external_pointer = %ld; external_pointer = 0x%lx\n",
 	  *external_pointer, external_pointer);
+  printf ("value = %ld\n",
+	  ((* (procedure_table[((int) (values[1]))])) (values[2], values[3])));
   exit (0);
 }
