@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.5 1990/11/15 08:43:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.6 1990/11/20 22:17:34 cph Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -935,20 +935,20 @@ static void
 DEFUN_VOID (print_interactive_help)
 {
   fputs ("\n\n", stdout);
-  fputs ("B: Enter a breakpoint loop.\n", stdout);
+  fputs ("^B: Enter a breakpoint loop.\n", stdout);
+  fputs ("^C: Goto to top level read-eval-print (REP) loop.\n", stdout);
+  fputs ("^L: Clear the screen.\n", stdout);
+  fputs ("^U: Up to previous (lower numbered) REP loop.\n", stdout);
+  fputs ("^X: Abort to current REP loop.\n", stdout);
   fputs ("D: Debugging: change interpreter flags.\n", stdout);
   fputs ("E: Examine memory location.\n", stdout);
-  fputs ("G: Goto to top level read-eval-print (REP) loop.\n", stdout);
   fputs ("H: Print simple information on interrupts.\n", stdout);
   fputs ("I: Ignore interrupt request.\n", stdout);
   fputs ("Q: Quit instantly, killing Scheme.\n", stdout);
   fputs ("R: Hard reset, possibly killing Scheme in the process.\n", stdout);
   fputs ("T: Stack trace.\n", stdout);
-  fputs ("U: Up to previous (lower numbered) REP loop.\n", stdout);
-  fputs ("X: Abort to current REP loop.\n", stdout);
   if (UX_SC_JOB_CONTROL ())
     fputs ("Z: Quit instantly, suspending Scheme.\n", stdout);
-  fputs ("^L: Clear the screen.\n", stdout);
   fputs ("\n", stdout);
 }
 
