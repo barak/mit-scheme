@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.20 1995/01/06 18:37:30 cph Exp $
+$Id: packag.scm,v 14.21 1995/06/02 04:30:07 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -68,6 +68,9 @@ MIT in each case. |#
 (define-integrable (package/environment package)
   (%record-ref package 4))
 
+(define-integrable (set-package/environment! package environment)
+  (%record-set! package 4 environment))
+
 (define (finalize-package-record-type!)
   (let ((rtd
 	 (make-record-type "package" '(PARENT CHILDREN %NAME ENVIRONMENT))))
@@ -132,14 +135,23 @@ MIT in each case. |#
 	'()
 	(cons (car list) (loop (cdr list))))))
 
-(define (package/add-child! package name environment)
-  (if (package/child package name)
-      (error "Package already has child of given name" package name))
-  (let ((child (make-package package name environment)))
-    (set-package/children! package (cons child (package/children package)))
-    (if (not (interpreter-environment->package environment))
-	(local-assignment environment package-name-tag child))
-    child))
+(define (package/add-child! package name environment #!optional force?)
+  (let ((child (package/child package name))
+	(finish
+	 (lambda (child)
+	   (if (not (interpreter-environment->package environment))
+	       (local-assignment environment package-name-tag child))
+	   child)))
+    (if child
+	(if (and (not (default-object? force?)) force?)
+	    (begin
+	      (set-package/environment! child environment)
+	      (finish child))
+	    (error "Package already has child of given name:" package name))
+	(let ((child (make-package package name environment)))
+	  (set-package/children! package
+				 (cons child (package/children package)))
+	  (finish child)))))
 
 (define system-global-package)
 
