@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.17 1994/10/04 20:07:32 cph Exp $
+$Id: intrpt.h,v 1.18 1994/11/14 05:04:05 cph Exp $
 
-Copyright (c) 1987-1994 Massachusetts Institute of Technology
+Copyright (c) 1987-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -112,12 +112,17 @@ MIT in each case. */
   RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
-#define CLEAR_INTERRUPT(code)						\
+#define CLEAR_INTERRUPT_NOLOCK(code)					\
 {									\
-  GRAB_INTERRUPT_REGISTERS ();						\
   (Registers[REGBLOCK_INT_CODE]) =					\
     ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) &~ (code)));		\
   COMPILER_SETUP_INTERRUPT ();						\
+}
+
+#define CLEAR_INTERRUPT(code)						\
+{									\
+  GRAB_INTERRUPT_REGISTERS ();						\
+  CLEAR_INTERRUPT_NOLOCK (code);					\
   RELEASE_INTERRUPT_REGISTERS ();					\
 }
 
