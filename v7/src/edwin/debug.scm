@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.52 2000/10/26 04:19:05 cph Exp $
+;;; $Id: debug.scm,v 1.53 2000/10/30 15:43:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
@@ -194,9 +194,9 @@
 
 (define-command browser-select-line
   "Select the current browser line."
-  ()
-  (lambda ()
-    (let ((bline (mark->bline (current-point))))
+  "d"
+  (lambda (point)
+    (let ((bline (mark->bline point)))
       (if (not bline)
 	  (editor-error "Nothing to select on this line."))
       (select-bline bline))))
@@ -390,9 +390,9 @@
 			 (get-buffer-browser buffer
 					     'ASSOCIATED-WITH-BROWSER))))))
 	  (if browser
-	      (begin
-		(select-buffer (browser/buffer browser))
-		((ref-command browser-select-line))))))
+	      (let ((buffer (browser/buffer browser)))
+		(select-buffer buffer)
+		((ref-command browser-select-line) (buffer-point buffer))))))
       (clear-current-message!)
       (maybe-restart-buffer-thread buffer))))
 
@@ -967,26 +967,22 @@ The buffer below describes the current subproblem or reduction.
 (define (select-continuation-browser-buffer object #!optional thread)
   (set! value? #f)
   (let ((buffers (find-debugger-buffers)))
-    (if (and (not (null? buffers))
+    (if (and (pair? buffers)
 	     (null? (cdr buffers))
-	     (if (eq? 'ASK (ref-variable debugger-one-at-a-time?))
+	     (if (eq? 'ASK (ref-variable debugger-one-at-a-time? #f))
 		 (prompt-for-confirmation?
 		  "Another debugger buffer exists.  Delete it")
-		 (ref-variable debugger-one-at-a-time?)))
+		 (ref-variable debugger-one-at-a-time? #f)))
 	(kill-buffer (car buffers))))
-  (cleanup-pop-up-buffers
-   (lambda ()
-     (let ((buffer (continuation-browser-buffer object)))
-       (let ((thread (and (not (default-object? thread)) thread)))
-	 (if thread
-	     (buffer-put! buffer 'THREAD thread)))
-       (let ((screen (make-debug-screen buffer)))
-	 (if screen
-	     (let ((window (screen-window0 screen)))
-	       (select-buffer buffer window)
-	       (select-window window))
-	     (select-buffer buffer))))
-     ((ref-command browser-select-line)))))
+  (let ((buffer (continuation-browser-buffer object)))
+    (let ((thread (and (not (default-object? thread)) thread)))
+      (if thread
+	  (buffer-put! buffer 'THREAD thread)))
+    (let ((screen (make-debug-screen buffer)))
+      (if screen
+	  (select-screen screen)
+	  (select-buffer buffer)))
+    ((ref-command browser-select-line) (buffer-point buffer))))
 
 (define-command browse-continuation
   "Invoke the continuation-browser on CONTINUATION."
@@ -995,13 +991,11 @@ The buffer below describes the current subproblem or reduction.
 
 (define (make-debug-screen buffer)
   (and (multiple-screens?)
-       (let ((new-screen?
-	      (ref-variable debugger-start-new-screen? buffer)))
+       (let ((new-screen? (ref-variable debugger-start-new-screen? buffer)))
 	 (if (eq? new-screen? 'ASK)
 	     (prompt-for-confirmation? "Start debugger in new screen")
 	     new-screen?))
-       (let ((screen
-	      (apply make-screen buffer (make-debug-screen-args))))
+       (let ((screen (apply make-screen buffer (make-debug-screen-args))))
 	 (set-browser/new-screen! (buffer-browser buffer) screen)
 	 screen)))
 
@@ -1012,15 +1006,15 @@ The buffer below describes the current subproblem or reduction.
 	    (list default-screen-geometry))
 	   ((eq? default-screen-geometry 'ASK)
 	    (let ((geometry
-		   (prompt-for-string "Please enter a geometry"
-				      default-screen-geometry)))
-	      (if (geometry? geometry)
-		  (begin
-		    (set! default-screen-geometry geometry)
-		    geometry)
-		  (begin
-		    (message "Invalid geometry!  Using default.")
-		    default-screen-geometry))))
+		   (let loop ((default default-screen-geometry))
+		     (let ((geometry
+			    (prompt-for-string "Please enter a geometry"
+					       default-screen-geometry)))
+		       (if (geometry? geometry)
+			   geometry
+			   (loop geometry))))))
+	      (set! default-screen-geometry geometry)
+	      geometry))
 	   (else '())))
     (else '())))
 
