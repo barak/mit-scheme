@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: snr.scm,v 1.59 2000/10/26 04:19:09 cph Exp $
+;;; $Id: snr.scm,v 1.60 2001/03/16 21:54:31 cph Exp $
 ;;;
-;;; Copyright (c) 1995-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1995-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Scheme News Reader
 
@@ -2934,56 +2935,53 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 
 (define (news-post-it)
   (let ((article-buffer (selected-buffer)))
-    (let ((temp-buffer
-	   (prepare-mail-buffer-for-sending
-	    article-buffer
-	    (news-post-process-headers article-buffer))))
-      (let* ((start (buffer-start temp-buffer))
-	     (end (mail-header-end start)))
-	(if (or (mail-field-start start end "To")
-		(mail-field-start start end "CC")
-		(mail-field-start start end "BCC"))
-	    (let ((errors (send-mail-buffer temp-buffer article-buffer)))
-	      (if errors
-		  (begin
-		    (kill-buffer temp-buffer)
-		    (editor-error errors)))))
-	(let ((m (mail-field-start start end "X-Mailer")))
+    (prepare-mail-buffer-for-sending article-buffer
+      (lambda (h-start h-end b-start b-end)
+	(news-post-process-headers h-start h-end article-buffer)
+	(let ((m (mail-field-start h-start h-end "X-Mailer")))
 	  (if m
 	      (let ((ls (line-start m 0)))
 		(delete-string ls (mark-1+ (char-search-forward #\: ls m)))
-		(insert-string "X-Newsreader" ls)))))
-      (let ((errors (post-news-buffer temp-buffer article-buffer)))
-	(kill-buffer temp-buffer)
-	(if errors (editor-error errors))))))
+		(insert-string "X-Newsreader" ls))))
+	(finish-preparing-mail-buffer h-start h-end b-start b-end
+				      article-buffer
+	  (lambda (send-mail message-pathname)
+	    (if (or (mail-field-start h-start h-end "To")
+		    (mail-field-start h-start h-end "CC")
+		    (mail-field-start h-start h-end "BCC"))
+		(send-mail))
+	    (post-news-buffer message-pathname article-buffer)))))))
 
-(define (post-news-buffer article-buffer lookup-buffer)
+(define (post-news-buffer message-pathname lookup-buffer)
   (let ((do-it
 	 (lambda (connection)
 	   (let ((msg "Posting..."))
 	     (message msg)
 	     (let ((error
-		    (nntp-connection:post-article
-		     connection
-		     (make-buffer-input-port (buffer-start article-buffer)
-					     (buffer-end article-buffer)))))
+		    (call-with-input-file message-pathname
+		      (lambda (port)
+			(nntp-connection:post-article connection port)))))
 	       (if error
 		   (string-append msg "failed: " error)
 		   (begin
 		     (message msg "done")
-		     #f)))))))
+		     #f))))))
+	(finish
+	 (lambda (result)
+	   (if result
+	       (editor-error result)))))
     (let ((server
 	   (or (buffer-get lookup-buffer 'NEWS-SERVER #f)
 	       (get-news-server-name #f))))
       (let ((server-buffer (find-news-server-buffer server)))
 	(if server-buffer
-	    (do-it (news-server-buffer:connection server-buffer))
+	    (finish (do-it (news-server-buffer:connection server-buffer)))
 	    (let ((connection (make-nntp-connection-1 server lookup-buffer)))
 	      (let ((result (do-it connection)))
 		(nntp-connection:close connection)
-		result)))))))
+		(finish result))))))))
 
-(define ((news-post-process-headers buffer) start end)
+(define (news-post-process-headers start end lookup-context)
   (let ((start (mark-left-inserting-copy start)))
     (if (not (mail-field-end start end "From"))
 	(insert-string (mail-from-string #f)
@@ -3005,7 +3003,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
     (if (not (mail-field-end start end "Message-id"))
 	(insert-string
 	 (news-post-default-message-id (mail-field-region start end "Subject")
-				       buffer)
+				       lookup-context)
 	 (mail-insert-field end "Message-id")))
     (if (not (mail-field-end start end "Path"))
 	(insert-string (news-post-default-path)
@@ -3030,7 +3028,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define (news-post-default-path)
   (string-append (get-news-server-name #f) "!" (current-user-name)))
 
-(define (news-post-default-message-id subject-region buffer)
+(define (news-post-default-message-id subject-region lookup-context)
   ;; From "News Article Format and Transmission, 2 June 1994, section
   ;; 6.5: The followup agent MUST not delete any message ID whose
   ;; local part ends with "_-_" (underscore (ASCII 95), hyphen (ASCII
@@ -3043,7 +3041,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		 (if (compare-subjects
 		      (canonicalize-subject
 		       (let ((reply-buffer
-			      (ref-variable mail-reply-buffer buffer)))
+			      (ref-variable mail-reply-buffer lookup-context)))
 			 (if reply-buffer
 			     (news-header:subject
 			      (news-article-buffer:header reply-buffer))

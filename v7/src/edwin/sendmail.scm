@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.73 2001/02/05 18:16:07 cph Exp $
+;;; $Id: sendmail.scm,v 1.74 2001/03/16 21:54:27 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Mail Sending
 
@@ -343,27 +344,27 @@ is inserted."
 		      (mail-from-string buffer)))
 	    (add "FCC" (ref-variable mail-archive-file-name buffer)))))
 
-(define (mail-from-string buffer)
-  (let ((address (user-mail-address buffer))
-	(full-name (mail-full-name buffer)))
+(define (mail-from-string lookup-context)
+  (let ((address (user-mail-address lookup-context))
+	(full-name (mail-full-name lookup-context)))
     (if (string-null? full-name)
 	address
-	(case (ref-variable mail-from-style buffer)
+	(case (ref-variable mail-from-style lookup-context)
 	  ((PARENS)
 	   (string-append address " (" full-name ")"))
 	  ((ANGLES)
 	   (string-append (rfc822:quote-string full-name) " <" address ">"))
 	  (else address)))))
 
-(define (user-mail-address buffer)
-  (or (ref-variable user-mail-address buffer)
+(define (user-mail-address lookup-context)
+  (or (ref-variable user-mail-address lookup-context)
       (string-append (current-user-name)
 		     "@"
-		     (or (ref-variable mail-host-address buffer)
+		     (or (ref-variable mail-host-address lookup-context)
 			 (os/hostname)))))
 
-(define (mail-full-name buffer)
-  (or (ref-variable mail-full-name buffer)
+(define (mail-full-name lookup-context)
+  (or (ref-variable mail-full-name lookup-context)
       ""))
 
 (define-variable mail-setup-hook
@@ -421,6 +422,12 @@ Here are commands that move to a header field (and create it if there isn't):
 (define-key 'mail '(#\C-c #\C-c) 'mail-send-and-exit)
 (define-key 'mail '(#\C-c #\C-s) 'mail-send)
 
+(define-command mail-signature
+  "Sign letter with contents of ~/.signature file."
+  ()
+  (lambda ()
+    (insert-file (buffer-end (selected-buffer)) "~/.signature")))
+
 (define ((field-mover field))
   (set-current-point! (mail-position-on-field (selected-buffer) field)))
 
@@ -448,27 +455,28 @@ Here are commands that move to a header field (and create it if there isn't):
   (cc-field-mover "BCC"))
 
 (define (mail-position-on-field buffer field)
-  (let ((start (buffer-start buffer)))
-    (mail-field-end! start
-		     (mail-match-header-separator start (buffer-end buffer))
-		     field)))
+  (mail-field-end! (buffer-start buffer)
+		   (mail-match-header-separator buffer)
+		   field))
 
 (define (mail-position-on-cc-field buffer field)
-  (let ((start (buffer-start buffer)))
-    (let ((end (mail-match-header-separator start (buffer-end buffer))))
-      (or (mail-field-end start end field)
-	  (mail-insert-field (or (mail-field-end start end "CC")
-				 (mail-field-end start end "To")
-				 (mail-insert-field end "To"))
-			     field)))))
+  (let ((start (buffer-start buffer))
+	(end (mail-match-header-separator buffer)))
+    (or (mail-field-end start end field)
+	(mail-insert-field (or (mail-field-end start end "CC")
+			       (mail-field-end start end "To")
+			       (mail-insert-field end "To"))
+			   field))))
 
-(define (mail-match-header-separator start end)
+(define (mail-match-header-separator buffer)
   (if (not (re-search-forward
 	    (string-append
 	     "^"
-	     (re-quote-string (ref-variable mail-header-separator start))
+	     (re-quote-string (ref-variable mail-header-separator buffer))
 	     "$")
-	    start end #f))
+	    (buffer-start buffer)
+	    (buffer-end buffer)
+	    #f))
       (editor-error "Can't find mail-header-separator."))
   (re-match-start 0))
 
@@ -539,12 +547,6 @@ Here are commands that move to a header field (and create it if there isn't):
 (define (mail-insert-field-value! header-start header-end field value)
   (insert-string value (mail-new-field! header-start header-end field)))
 
-(define-command mail-signature
-  "Sign letter with contents of ~/.signature file."
-  ()
-  (lambda ()
-    (insert-file (buffer-end (selected-buffer)) "~/.signature")))
-
 (define-command mail-yank-original
   "Insert the message being replied to, if any (in rmail).
 Puts point after the text and mark before.
@@ -614,7 +616,7 @@ Numeric argument means justify as well."
   "P"
   (lambda (justify?)
     (let ((buffer (selected-buffer)))
-      (mail-match-header-separator (buffer-start buffer) (buffer-end buffer))
+      (mail-match-header-separator buffer)
       (fill-individual-paragraphs (re-match-end 0)
 				  (buffer-end buffer)
 				  (ref-variable fill-column)
@@ -655,69 +657,49 @@ the user from the mailer."
 
 (define (sendmail-send-it)
   (let ((mail-buffer (selected-buffer)))
-    (let ((temp-buffer
-	   (prepare-mail-buffer-for-sending mail-buffer
-	     (lambda (start end)
-	       ;; Don't send out a blank subject line.
-	       (if (re-search-forward "^Subject:[ \t]*\n" start end #t)
-		   (delete-match))))))
-      (dynamic-wind
-       (lambda () unspecific)
-       (lambda ()
-	 (if (ref-variable mail-relay-host mail-buffer)
-	     (smtp-mail-buffer temp-buffer mail-buffer)
-	     (let ((errors (send-mail-buffer temp-buffer mail-buffer)))
-	       (if errors
-		   (editor-error errors)))))
-       (lambda () (kill-buffer temp-buffer))))))
+    (prepare-mail-buffer-for-sending mail-buffer
+      (lambda (h-start h-end b-start b-end)
+	(finish-preparing-mail-buffer h-start h-end b-start b-end mail-buffer
+	  (lambda (send-mail message-pathname)
+	    message-pathname
+	    (send-mail)))))))
 
-(define (prepare-mail-buffer-for-sending mail-buffer process-header)
-  (let ((temp-buffer (temporary-buffer " sendmail temp")))
-    (let ((start (mark-right-inserting-copy (buffer-start temp-buffer)))
-	  (end (mark-left-inserting-copy (buffer-end temp-buffer))))
-      (let ((header-end (copy-message mail-buffer end)))
-	(if (re-search-forward "^FCC:" start header-end #t)
-	    (mail-do-fcc temp-buffer header-end))
-	(let ((add-field
-	       (lambda (name value)
-		 (if (and value (not (mail-field-start start header-end name)))
-		     (mail-insert-field-value header-end name value)))))
-	  (add-field "Organization" (mail-organization-string mail-buffer))
-	  (add-field "User-Agent" (mailer-version-string mail-buffer)))
-	(process-header start header-end)
-	(mark-temporary! header-end))
-      (mark-temporary! end)
-      (mark-temporary! start))
-    temp-buffer))
-
-(define (copy-message buffer output-mark)
-  (let ((start (buffer-start buffer))
-	(end (buffer-end buffer)))
-    (mail-match-header-separator start end)
-    (let ((header-end (re-match-start 0))
-	  (body-start (line-start (re-match-end 0) 1 'LIMIT)))
-      (if (buffer-mime-processing-enabled? buffer)
-	  (copy-mime-message start header-end body-start end output-mark)
-	  (let ((h-end (copy-message-header start header-end output-mark)))
-	    (insert-region body-start end output-mark)
-	    (guarantee-newline output-mark)
-	    h-end)))))
-
-(define (copy-message-header start end output-mark)
-  (let ((h-start (mark-right-inserting-copy output-mark)))
-    (insert-region start end output-mark)
-    (guarantee-newlines 2 output-mark)
-    (let ((h-end (mark-left-inserting-copy (mark-1+ output-mark))))
-	;; Delete any blank lines in the header.
-	(do ((h-start h-start (replace-match "\n")))
-	    ((not (re-search-forward "\n\n+" h-start h-end #f))))
-	(expand-mail-aliases h-start h-end)
-	;; If there is a From and no Sender, put in a Sender.
-	(if (and (mail-field-start h-start h-end "From")
-		 (not (mail-field-start h-start h-end "Sender")))
-	    (mail-insert-field-value h-end "Sender" (mail-from-string start)))
-	(mark-temporary! h-start)
-	h-end)))
+(define (prepare-mail-buffer-for-sending mail-buffer receiver)
+  (guarantee-newline (buffer-end mail-buffer))
+  (call-with-temporary-buffer " sendmail header"
+    (lambda (h-buffer)
+      (let ((m (mail-match-header-separator mail-buffer)))
+	(let ((b-start
+	       (mark-right-inserting-copy
+		(line-start (re-match-end 0) 1 'LIMIT)))
+	      (b-end (mark-left-inserting-copy (buffer-end mail-buffer)))
+	      (h-start (mark-right-inserting-copy (buffer-start h-buffer)))
+	      (h-end (mark-left-inserting-copy (buffer-start h-buffer))))
+	  (delete-string h-start h-end)
+	  (insert-region (buffer-start mail-buffer) m h-end)
+	  (guarantee-newline h-end)
+	  ;; Delete any blank lines in the header.
+	  (do ((h-start h-start (replace-match "\n")))
+	      ((not (re-search-forward "\n\n+" h-start h-end #f))))
+	  ;; Delete a blank subject line.
+	  (if (re-search-forward "^Subject:[ \t]*\n" h-start h-end #t)
+	      (delete-match))
+	  (expand-mail-aliases h-start h-end)
+	  (let ((add-field
+		 (lambda (name value)
+		   (if (and value (not (mail-field-start h-start h-end name)))
+		       (mail-insert-field-value h-end name value)))))
+	    ;; If there is a From and no Sender, put in a Sender.
+	    (if (mail-field-start h-start h-end "From")
+		(add-field "Sender" (mail-from-string mail-buffer)))
+	    (add-field "Organization" (mail-organization-string mail-buffer))
+	    (add-field "User-Agent" (mailer-version-string mail-buffer)))
+	  (let ((v (receiver h-start h-end b-start b-end)))
+	    (mark-temporary! h-start)
+	    (mark-temporary! h-end)
+	    (mark-temporary! b-start)
+	    (mark-temporary! b-end)
+	    v))))))
 
 (define (mail-organization-string buffer)
   (let ((organization (ref-variable mail-organization buffer)))
@@ -740,146 +722,394 @@ the user from the mailer."
 
 (define global-mailer-version-string #f)
 
-(define (send-mail-buffer mail-buffer lookup-buffer)
-  (let ((error-buffer
-	 (and (ref-variable mail-interactive lookup-buffer)
-	      (temporary-buffer " sendmail errors")))
-	(msg "Sending..."))
-    (message msg)
-    (let ((program (ref-variable sendmail-program lookup-buffer)))
-      (if error-buffer
-	  (begin
-	    (run-synchronous-process (buffer-region mail-buffer)
-				     (buffer-end error-buffer)
-				     #f #f program "-oi" "-t"
-				     ;; Always specify who from,
-				     ;; since some systems have
-				     ;; broken sendmails.
-				     "-f" (current-user-name))
-	    (let ((end (buffer-end error-buffer)))
-	      (do ((start (buffer-start error-buffer) (replace-match "; ")))
-		  ((not (re-search-forward "\n+ *" start end #f))))))
-	  ;; If we aren't going to look at the errors, run the
-	  ;; program in the background so control returns to the
-	  ;; user as soon as possible.
-	  (let ((process
-		 (start-pipe-subprocess
-		  (os/find-program program #f (ref-variable exec-path))
-		  (vector (file-namestring program) "-oi" "-t"
-			  (string-append "-f" (current-user-name))
-			  ;; These mean "report errors by mail" and
-			  ;; "deliver in background".
-			  "-oem" "-odb")
-		  #f)))
-	    (channel-write-string-block (subprocess-output-channel process)
-					(buffer-string mail-buffer))
-	    (subprocess-delete process))))
-    (let ((errors
-	   (and error-buffer
-		(let ((errors (buffer-string error-buffer)))
-		  (kill-buffer error-buffer)
-		  (and (not (string-null? errors))
-		       (string-append  "Sending...failed to " errors))))))
-      (if (not errors)
-	  (message msg "done"))
-      errors)))
-
-(define (mail-do-fcc mail-buffer header-end)
-  (let ((pathnames (digest-fcc-headers (buffer-start mail-buffer) header-end))
-	(temp-buffer (temporary-buffer " rmail output")))
-    (let ((start (buffer-start temp-buffer))
-	  (end (buffer-end temp-buffer)))
-      (insert-newline end)
-      (insert-string "From " end)
-      (insert-string (current-user-name) end)
-      (insert-string " " end)
-      (insert-string (universal-time->string (get-universal-time)) end)
-      (insert-newline end)
-      (insert-region (buffer-start mail-buffer)
-		     (buffer-end mail-buffer)
-		     end)
-      (insert-newline end)
-      ;; ``Quote'' "^From " as ">From "
-      ;;  (note that this isn't really quoting, as there is no requirement
-      ;;   that "^[>]+From " be quoted in the same transparent way.)
-      (let ((m (mark-right-inserting-copy (mark+ start 2))))
-	(do ()
-	    ((not (re-search-forward "^From " m end #f)))
-	  (move-mark-to! m (re-match-end 0))
-	  (insert-string ">" (re-match-start 0)))
-	(mark-temporary! m))
-      (for-each (lambda (pathname)
-		  (let ((buffer (pathname->buffer pathname)))
-		    (if buffer
-			(insert-region start end (buffer-end buffer))
-			(append-to-file (make-region start end)
-					pathname
-					#t
-					#t))))
-		pathnames)
-      (kill-buffer temp-buffer))))
+(define (finish-preparing-mail-buffer h-start h-end b-start b-end
+				      lookup-context receiver)
+  (if (buffer-mime-processing-enabled? (mark-buffer b-start))
+      (begin
+	(guarantee-mime-compliant-headers h-start h-end)
+	(delete-mime-headers! h-start h-end)))
+  (let ((fcc-pathnames
+	 (if (mail-field-start h-start h-end "FCC")
+	     (compute-fcc-pathnames h-start h-end)
+	     '())))
+    (call-with-temporary-file-pathname
+     (lambda (message-pathname)
+       (receiver
+	(if (ref-variable mail-relay-host lookup-context)
+	    (let ((recipients (compute-message-recipients h-start h-end)))
+	      (write-message-file h-start h-end b-start b-end message-pathname)
+	      (write-fcc-messages fcc-pathnames message-pathname)
+	      (lambda ()
+		(send-mail-using-smtp message-pathname
+				      recipients
+				      lookup-context)))
+	    (begin
+	      (write-message-file h-start h-end b-start b-end message-pathname)
+	      (write-fcc-messages fcc-pathnames message-pathname)
+	      (lambda ()
+		(send-mail-using-sendmail message-pathname lookup-context))))
+	message-pathname)))))
 
-(define (digest-fcc-headers start header-end)
-  (let ((m (mark-right-inserting-copy start)))
+(define (write-message-file h-start h-end b-start b-end message-pathname)
+  (call-with-output-file message-pathname
+    (lambda (port)
+      (write-region-to-port h-start h-end port)
+      (if (buffer-mime-processing-enabled? (mark-buffer b-start))
+	  (write-mime-message-body b-start b-end port)
+	  (begin
+	    (newline port)
+	    (write-region-to-port b-start b-end port)
+	    (fresh-line port))))))
+
+(define (write-region-to-port start end port)
+  (group-write-to-port (mark-group start)
+		       (mark-index start)
+		       (mark-index end)
+		       port))
+
+(define (compute-fcc-pathnames h-start h-end)
+  (let ((m (mark-right-inserting-copy h-start)))
     (let loop ((pathnames '()))
-      (if (re-search-forward "^FCC:[ \t]*\\([^ \t\n]+\\)" m header-end #t)
+      (if (re-search-forward "^FCC:[ \t]*\\([^ \t\n]+\\)" m h-end #t)
 	  (let ((filename
 		 (extract-string (re-match-start 1) (re-match-end 1))))
 	    (move-mark-to! m (line-start (re-match-start 0) 0))
 	    (delete-string m (line-start m 1))
-	    (loop (cons (->pathname filename) pathnames)))
+	    (loop
+	     (cons (merge-pathnames filename (user-homedir-pathname))
+		   pathnames)))
 	  (begin
 	    (mark-temporary! m)
 	    pathnames)))))
+
+(define (write-fcc-messages pathnames message-pathname)
+  (for-each
+   (let ((append-message
+	  (let ((header-line
+		 (string-append
+		  "From "
+		  (current-user-name)
+		  " "
+		  (universal-time->string (get-universal-time)))))
+	    (lambda (port)
+	      (newline port)
+	      (write-string header-line port)
+	      (newline port)
+	      (call-with-input-file message-pathname
+		(lambda (input)
+		  (let loop ()
+		    (let ((line (read-line input)))
+		      (if (not (eof-object? line))
+			  (begin
+			    ;; ``Quote'' "^From " as ">From "
+			    ;; (note that this isn't really quoting,
+			    ;; as there is no requirement that
+			    ;; "^[>]+From " be quoted in the same
+			    ;; transparent way.)
+			    (if (string-prefix-ci? "from " line)
+				(write-char #\> port))
+			    (write-string line port)
+			    (newline port)
+			    (loop)))))))
+	      (newline port)))))
+     (lambda (pathname)
+       (let ((buffer (pathname->buffer pathname)))
+	 (if buffer
+	     (call-with-output-mark (buffer-end buffer) append-message)
+	     (call-with-append-file pathname append-message)))))
+   pathnames))
+
+(define (compute-message-recipients h-start h-end)
+  (call-with-values
+      (lambda ()
+	(if (mail-field-start h-start h-end "resent-to")
+	    (values "^\\(resent-to:\\|resent-cc:\\|resent-bcc:\\)[ \t]*"
+		    "resent-bcc:")
+	    (values "^\\(to:\\|cc:\\|bcc:\\)[ \t]*" "bcc:")))
+    (lambda (regexp prefix)
+      (let loop ((start h-start) (addresses '()))
+	(let ((f-start (re-search-forward regexp start h-end #t)))
+	  (if f-start
+	      (let* ((f-end (%mail-field-end f-start h-end))
+		     (addresses
+		      (append (rfc822:string->addresses
+			       (extract-string f-start f-end))
+			      addresses))
+		     (ls (line-start f-start 0)))
+		(if (match-forward prefix ls h-end #t)
+		    (begin
+		      (delete-string ls (mark1+ f-end 'LIMIT))
+		      (loop ls addresses))
+		    (loop f-end addresses)))
+	      addresses))))))
+
+;;;; Sendmail transmission
+
+(define (send-mail-using-sendmail message-pathname lookup-context)
+  (message "Sending...")
+  (let ((program (ref-variable sendmail-program lookup-context)))
+    (if (ref-variable mail-interactive lookup-context)
+	(call-with-temporary-buffer " sendmail errors"
+	  (lambda (error-buffer)
+	    (let ((error-port (mark->output-port (buffer-end error-buffer))))
+	      (run-synchronous-process-1 error-port
+		(lambda ()
+		  (run-shell-command
+		   (string-append program
+				  " -oi -t"
+				  ;; Always specify who from, since
+				  ;; some systems have broken
+				  ;; sendmails.
+				  " -f" (current-user-name)
+				  " < " (->namestring message-pathname))
+		   'OUTPUT error-port)))
+	      (close-port error-port))
+	    (let ((end (buffer-end error-buffer)))
+	      (do ((start (buffer-start error-buffer) (replace-match "; ")))
+		  ((not (re-search-forward "\n+ *" start end #f)))))
+	    (let ((errors (buffer-string error-buffer)))
+	      (if (not (string-null? errors))
+		  (editor-error "Sending...failed to " errors)))))
+	;; If we aren't going to look at the errors, run the program
+	;; in the background so control returns to the user as soon as
+	;; possible.
+	(run-shell-command
+	 (string-append program
+			" -oi -t"
+			;; Always specify who from, since some systems
+			;; have broken sendmails.
+			" -f" (current-user-name)
+			;; These mean "report errors by mail" and
+			;; "deliver in background".
+			" -oem -odb"
+			" < " (->namestring message-pathname))
+	 'OUTPUT #f)))
+  (message "Sending...done"))
+
+;;;; Direct SMTP transmission
+
+(define (send-mail-using-smtp message-pathname recipients lookup-context)
+  (message "Sending...")
+  (let ((from
+	 (rfc822:canonicalize-address-string
+	  (mail-from-string lookup-context)))
+	(trace-buffer
+	 (and (ref-variable smtp-trace lookup-context)
+	      (temporary-buffer "*SMTP-trace*")))
+	(require-valid?
+	 (ref-variable smtp-require-valid-recipients lookup-context))
+	(valid-response?
+	 (lambda (response) (= 250 (smtp-response-number response)))))
+    (if (null? recipients)
+	(editor-error "No recipients specified for mail."))
+    (let ((responses
+	   (call-with-smtp-socket (ref-variable mail-relay-host lookup-context)
+				  trace-buffer
+	     (lambda (port banner)
+	       banner
+	       (smtp-command/helo port)
+	       (smtp-command/mail port from)
+	       (let ((responses
+		      (map (lambda (recipient)
+			     (smtp-command/rcpt port recipient))
+			   recipients)))
+		 (if (if require-valid?
+			 (for-all? responses valid-response?)
+			 (there-exists? responses valid-response?))
+		     (smtp-command/data port message-pathname)
+		     (smtp-command/rset port))
+		 (smtp-command/quit port)
+		 responses)))))
+      (cond ((not (for-all? responses valid-response?))
+	     (pop-up-temporary-buffer "*SMTP-invalid*"
+				      '(READ-ONLY FLUSH-ON-SPACE)
+	       (lambda (buffer window)
+		 window
+		 (let ((m (mark-left-inserting-copy (buffer-start buffer))))
+		   (for-each (lambda (recipient response)
+			       (if (not (valid-response? response))
+				   (begin
+				     (insert-string recipient m)
+				     (insert-char #\tab m)
+				     (insert-string response m)
+				     (insert-newline m))))
+			     recipients responses)
+		   (mark-temporary! m)))))
+	    (trace-buffer
+	     (set-buffer-point! trace-buffer (buffer-start trace-buffer))
+	     (buffer-not-modified! trace-buffer)
+	     (pop-up-buffer trace-buffer #f)))
+      (message "Sending..."
+	       (if (if require-valid?
+		       (for-all? responses valid-response?)
+		       (there-exists? responses valid-response?))
+		   "done"
+		   "aborted")))))
+
+(define (call-with-smtp-socket host-name trace-buffer receiver)
+  (let ((port #f))
+    (dynamic-wind
+     (lambda ()
+       (set! port
+	     (make-smtp-port (open-tcp-stream-socket host-name "smtp")
+			     trace-buffer))
+       unspecific)
+     (lambda ()
+       (receiver port (smtp-read-response port 220)))
+     (lambda ()
+       (if port
+	   (begin
+	     (close-port (smtp-port-port port))
+	     (set! port #f)
+	     unspecific))))))
+
+(define-structure smtp-port
+  (port #f read-only #t)
+  (trace-buffer #f read-only #t))
+
+(define (smtp-read-line port)
+  (let ((line (read-line (smtp-port-port port))))
+    (smtp-trace-write-string line port)
+    (smtp-trace-newline port)
+    line))
+
+(define (smtp-write-line port . strings)
+  (for-each (lambda (string)
+	      (smtp-trace-write-string string port)
+	      (write-string string (smtp-port-port port)))
+	    strings)
+  (smtp-trace-newline port)
+  (newline (smtp-port-port port)))
+
+(define (smtp-drain-output port)
+  (flush-output (smtp-port-port port)))
+
+(define (smtp-trace-write-string string port)
+  (let ((trace-buffer (smtp-port-trace-buffer port)))
+    (if trace-buffer
+	(insert-string string (buffer-end trace-buffer)))))
+
+(define (smtp-trace-newline port)
+  (let ((trace-buffer (smtp-port-trace-buffer port)))
+    (if trace-buffer
+	(insert-newline (buffer-end trace-buffer)))))
+
+(define (smtp-command/helo port)
+  (smtp-write-line port "HELO " (os/hostname))
+  (smtp-read-response port 250))
+
+(define (smtp-command/mail port from)
+  (smtp-write-line port "MAIL FROM:<" from ">")
+  (smtp-read-response port 250))
+
+(define (smtp-command/rcpt port recipient)
+  (smtp-write-line port "RCPT TO:<" recipient ">")
+  (smtp-read-response port 250 550))
+
+(define (smtp-command/data port message-pathname)
+  (smtp-write-line port "DATA")
+  (smtp-read-response port 354)
+  (call-with-input-file message-pathname
+    (lambda (input)
+      (let loop ()
+	(let ((line (read-line input)))
+	  (if (not (eof-object? line))
+	      (begin
+		(if (and (fix:> 0 (string-length line))
+			 (char=? #\. (string-ref line 0)))
+		    (smtp-write-line port "." line)
+		    (smtp-write-line port line))
+		(loop)))))))
+  (smtp-write-line port ".")
+  (smtp-read-response port 250))
+
+(define (smtp-command/rset port)
+  (smtp-write-line port "RSET")
+  (smtp-read-response port 250))
+
+(define (smtp-command/quit port)
+  (smtp-write-line port "QUIT")
+  (smtp-read-response port 221))
+
+(define (smtp-read-response port . numbers)
+  (smtp-drain-output port)
+  (let ((response (smtp-read-line port)))
+    (let ((n (smtp-response-number response)))
+      (if (not (there-exists? numbers (lambda (n*) (= n n*))))
+	  (editor-error response))
+      (if (smtp-response-continued? response)
+	  (let loop ((responses (list response)))
+	    (let ((response (smtp-read-line port)))
+	      (if (not (= n (smtp-response-number response)))
+		  (error "Mismatched codes in multiline response:" n response))
+	      (let ((responses (cons response responses)))
+		(if (smtp-response-continued? response)
+		    (loop responses)
+		    (convert-smtp-multiline-response (reverse! responses))))))
+	  response))))
+
+(define (smtp-response-number line)
+  (or (and (fix:>= (string-length line) 3)
+	   (substring->nonnegative-integer line 0 3))
+      (error "Malformed SMTP response:" line)))
+
+(define (smtp-response-continued? line)
+  (and (fix:>= (string-length line) 4)
+       (char=? #\- (string-ref line 3))))
+
+(define (convert-smtp-multiline-response responses)
+  (apply string-append
+	 (cons* (string-head (car responses) 3)
+		" "
+		(let ((lines
+		       (map (lambda (response) (string-tail response 4))
+			    responses)))
+		  (cons (car lines)
+			(append-map (lambda (line) (list "\n" line))
+				    lines))))))
 
 ;;;; MIME
 
-(define (copy-mime-message start header-end body-start end output-mark)
-  (guarantee-mime-compliant-headers start header-end)
-  (let ((h-start (mark-right-inserting-copy output-mark)))
-    (let ((h-end (copy-message-header start header-end output-mark))
-	  (attachments (buffer-mime-attachments (mark-buffer start))))
-      (delete-mime-headers! h-start h-end)
-      (mark-temporary! h-start)
-      (mail-insert-field-value h-end "MIME-Version" "1.0")
-      (if (pair? attachments)
-	  (copy-mime-message-body-with-attachments body-start end attachments
-						   h-end output-mark)
-	  (copy-mime-message-body body-start end #f h-end output-mark))
-      h-end)))
+(define (write-mime-message-body b-start b-end port)
+  (write-message-header-field "MIME-Version" "1.0" port)
+  (let ((attachments (buffer-mime-attachments (mark-buffer b-start))))
+    (if (null? attachments)
+	(write-mime-message-body-1 b-start b-end #f port)
+	(write-mime-message-body-with-attachments b-start b-end attachments
+						  port))))
 
-(define (guarantee-mime-compliant-headers header-start header-end)
-  (if (any-non-us-ascii-chars? header-start header-end)
+(define (write-message-header-field name value port)
+  (write-string name port)
+  (write-string ": " port)
+  (write-string value port)
+  (newline port))
+
+(define (write-mime-message-body-1 b-start b-end subpart? port)
+  (if (not (and subpart? (ref-variable mail-abbreviate-mime b-start)))
+      (write-message-header-field "Content-Type"
+				  "text/plain; charset=us-ascii"
+				  port))
+  (if (or (any-non-us-ascii-chars? b-start b-end)
+	  (any-lines-too-long? b-start b-end 76))
       (begin
-	(pop-up-occur-buffer header-start header-end regexp:non-us-ascii #f)
-	(editor-error "Message contains illegal characters in header.")))
-  (if (any-lines-too-long? header-start header-end 998)
-      (editor-error "Message contains over-long line in header.")))
-
-(define (copy-mime-message-body start end subpart? h-end output-mark)
-  (if (not (and subpart? (ref-variable mail-abbreviate-mime start)))
-      (mail-insert-field-value h-end
-			       "Content-Type" "text/plain; charset=us-ascii"))
-  (let ((b-start (mark-right-inserting-copy output-mark)))
-    (if (or (any-non-us-ascii-chars? start end)
-	    (any-lines-too-long? start end 76))
-	(begin
-	  (call-with-output-mark output-mark
-	    (lambda (port)
-	      (let ((context (encode-quoted-printable:initialize port #t)))
-		(let ((body (extract-string start end)))
-		  (encode-quoted-printable:update context
-						  body 0 (string-length body)))
-		(encode-quoted-printable:finalize context))))
-	  (mail-insert-field-value h-end
-				   "Content-Transfer-Encoding"
-				   "quoted-printable"))
-	(begin
-	  (insert-region start end b-start)
-	  (if (not (and subpart? (ref-variable mail-abbreviate-mime start)))
-	      (mail-insert-field-value h-end
-				       "Content-Transfer-Encoding"
-				       "7bit"))))))
+	(write-message-header-field "Content-Transfer-Encoding"
+				    "quoted-printable"
+				    port)
+	(newline port)
+	(let ((context (encode-quoted-printable:initialize port #t)))
+	  (%group-write (mark-group b-start)
+			(mark-index b-start)
+			(mark-index b-end)
+	    (lambda (string start end)
+	      (encode-quoted-printable:update context string start end)))
+	  (encode-quoted-printable:finalize context)))
+      (begin
+	(if (not (and subpart? (ref-variable mail-abbreviate-mime b-start)))
+	    (write-message-header-field "Content-Transfer-Encoding"
+					"7bit"
+					port))
+	(newline port)
+	(write-region-to-port b-start b-end port))))
 
 (define (any-non-us-ascii-chars? start end)
   (group-find-next-char-in-set (mark-group start)
@@ -905,84 +1135,92 @@ the user from the mailer."
 (define regexp:non-us-ascii
   (char-set->regexp char-set:non-us-ascii))
 
-(define (copy-mime-message-body-with-attachments start end attachments
-						 h-end output-mark)
+(define (write-mime-message-body-with-attachments b-start b-end attachments
+						  port)
   (let ((boundary (random-mime-boundary-string 32)))
-    (mail-insert-field-value
-     h-end
-     "Content-Type"
-     (string-append "multipart/mixed; boundary=\"" boundary "\""))
-    (mail-insert-field-value h-end "Content-Transfer-Encoding" "7bit")
-    (insert-string "This is a multi-part message in MIME format." output-mark)
-    (insert-mime-boundary boundary #f output-mark)
-    (insert-newline output-mark)
-    (let ((h-end (mark-left-inserting-copy (mark-1+ output-mark))))
-      (copy-mime-message-body start end #t h-end output-mark)
-      (mark-temporary! h-end))
+    (write-message-header-field "Content-Type"
+				(string-append "multipart/mixed; boundary=\""
+					       boundary
+					       "\"")
+				port)
+    (write-message-header-field "Content-Transfer-Encoding" "7bit" port)
+    (newline port)
+    (write-string "This is a multi-part message in MIME format." port)
+    (write-mime-boundary boundary #f port)
+    (write-mime-message-body-1 b-start b-end #t port)
     (for-each (lambda (attachment)
-		(insert-mime-boundary boundary #f output-mark)
-		(insert-mime-attachment attachment output-mark))
+		(write-mime-boundary boundary #f port)
+		(write-mime-attachment attachment b-start port))
 	      attachments)
-    (insert-mime-boundary boundary #t output-mark)))
+    (write-mime-boundary boundary #t port)))
 
-(define (insert-mime-attachment attachment m)
+(define (write-mime-boundary boundary final? port)
+  (newline port)
+  (write-string "--" port)
+  (write-string boundary port)
+  (if final? (write-string "--" port))
+  (newline port))
+
+(define (write-mime-attachment attachment lookup-context port)
   (let ((type (mime-attachment-type attachment))
 	(subtype (mime-attachment-subtype attachment)))
-    (mail-insert-field-value
-     m
+    (write-message-header-field
      "Content-Type"
      (string-append (symbol->string type)
 		    "/"
 		    (symbol->string subtype)
 		    (mime-parameters->string
-		     (mime-attachment-parameters attachment))))
+		     (mime-attachment-parameters attachment)))
+     port)
     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
-	(if (not (ref-variable mail-abbreviate-mime m))
-	    (mail-insert-field-value m "Content-Transfer-Encoding" "7bit"))
-	(mail-insert-field-value m "Content-Transfer-Encoding"
-				 (if (eq? type 'TEXT)
-				     "quoted-printable"
-				     "base64")))
+	(if (not (ref-variable mail-abbreviate-mime lookup-context))
+	    (write-message-header-field "Content-Transfer-Encoding"
+					"7bit"
+					port))
+	(write-message-header-field "Content-Transfer-Encoding"
+				    (if (eq? type 'TEXT)
+					"quoted-printable"
+					"base64")
+				    port))
     (let ((disposition (mime-attachment-disposition attachment)))
       (if disposition
-	  (mail-insert-field-value m
-				   "Content-Disposition"
-				   (mime-disposition->string disposition))))
-    (insert-newline m)
+	  (write-message-header-field "Content-Disposition"
+				      (mime-disposition->string disposition)
+				      port)))
+    (newline port)
     (if (and (eq? type 'MESSAGE) (eq? subtype 'RFC822))
 	(begin
-	  (insert-headers (mime-attachment-message-headers attachment) m)
-	  (insert-newline m)
-	  (call-with-output-mark m
-	    (mime-attachment-message-body-generator attachment)))
-	(call-with-output-mark m
-	  (lambda (output-port)
-	    (call-with-values
-		(lambda ()
-		  (if (eq? type 'TEXT)
-		      (values encode-quoted-printable:initialize
-			      encode-quoted-printable:update
-			      encode-quoted-printable:finalize
-			      #t)
-		      (values encode-base64:initialize
-			      encode-base64:update
-			      encode-base64:finalize
-			      #f)))
-	      (lambda (initialize update finalize text?)
-		(let ((context (initialize output-port text?)))
-		  ((if (eq? type 'TEXT)
-		       call-with-input-file
-		       call-with-binary-input-file)
-		   (mime-attachment-pathname attachment)
-		   (lambda (input-port)
-		     (let ((buffer (make-string 4096)))
-		       (let loop ()
-			 (let ((n-read (read-string! buffer input-port)))
-			   (if (> n-read 0)
-			       (begin
-				 (update context buffer 0 n-read)
-				 (loop))))))))
-		  (finalize context)))))))))
+	  (for-each (lambda (nv)
+		      (write-message-header-field (car nv) (cadr nv) port))
+		    (mime-attachment-message-headers attachment))
+	  (newline port)
+	  ((mime-attachment-message-body-generator attachment) port))
+	(call-with-values
+	    (lambda ()
+	      (if (eq? type 'TEXT)
+		  (values encode-quoted-printable:initialize
+			  encode-quoted-printable:update
+			  encode-quoted-printable:finalize
+			  #t)
+		  (values encode-base64:initialize
+			  encode-base64:update
+			  encode-base64:finalize
+			  #f)))
+	  (lambda (initialize update finalize text?)
+	    (let ((context (initialize port text?)))
+	      ((if (eq? type 'TEXT)
+		   call-with-input-file
+		   call-with-binary-input-file)
+	       (mime-attachment-pathname attachment)
+	       (lambda (input-port)
+		 (let ((buffer (make-string 4096)))
+		   (let loop ()
+		     (let ((n-read (read-string! buffer input-port)))
+		       (if (> n-read 0)
+			   (begin
+			     (update context buffer 0 n-read)
+			     (loop))))))))
+	      (finalize context)))))))
 
 (define (enable-buffer-mime-processing! buffer)
   (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
@@ -1060,6 +1298,14 @@ the user from the mailer."
   (string-append (symbol->string (car disposition))
 		 (mime-parameters->string (cdr disposition))))
 
+(define (guarantee-mime-compliant-headers h-start h-end)
+  (if (any-non-us-ascii-chars? h-start h-end)
+      (begin
+	(pop-up-occur-buffer h-start h-end regexp:non-us-ascii #f)
+	(editor-error "Message contains illegal characters in header.")))
+  (if (any-lines-too-long? h-start h-end 998)
+      (editor-error "Message contains over-long line in header.")))
+
 (define (delete-mime-headers! h-start h-end)
   (let loop ((f-start h-start))
     (if (mark< f-start h-end)
@@ -1077,18 +1323,6 @@ the user from the mailer."
 		  (delete-string f-start f-start*)
 		  (loop f-start))
 		(loop f-start*)))))))
-
-(define (insert-headers headers mark)
-  (for-each (lambda (nv)
-	      (mail-insert-field-value mark (car nv) (cadr nv)))
-	    headers))
-
-(define (insert-mime-boundary boundary final? m)
-  (insert-newline m)
-  (insert-string "--" m)
-  (insert-string boundary m)
-  (if final? (insert-string "--" m))
-  (insert-newline m))
 
 (define (random-mime-boundary-string length)
   (if (not (exact-nonnegative-integer? length))
@@ -1211,9 +1445,11 @@ Commands available in this mode:
   (make-event-distributor))
 
 (define-key 'mime-attachments #\a 'add-mime-file-attachment)
+(define-key 'mime-attachments #\d 'kill-mime-attachment)
 (define-key 'mime-attachments #\k 'kill-mime-attachment)
 (define-key 'mime-attachments #\? 'describe-mode)
 (define-key 'mime-attachments #\q 'mime-attachments-quit)
+(define-key 'mime-attachments '(#\c-c #\c-c) 'mime-attachments-quit)
 
 (define (mime-attachments-revert-buffer buffer
 					dont-use-auto-save? dont-confirm?)
@@ -1232,13 +1468,17 @@ Commands available in this mode:
 	buffer)))
 
 (define-command add-mime-file-attachment
-  "Add a file as a MIME attachment to the current mail message."
-  "FFile to attach"
-  (lambda (pathname)
+  "Add a file as a MIME attachment to the current mail message.
+With prefix argument, allows you to specify the MIME type of the file.
+Otherwise, the MIME type is determined from the file's suffix;
+ if the suffix is unknown, you may choose a generic text or binary type."
+  "FFile to attach\nP"
+  (lambda (pathname argument)
     (let ((mail-buffer (selected-mail-buffer)))
       (let ((attachment
 	     (call-with-values
-		 (lambda () (pathname->mime-type pathname mail-buffer))
+		 (lambda ()
+		   (pathname->mime-type pathname mail-buffer argument))
 	       (lambda (type subtype parameters)
 		 (add-buffer-mime-attachment!
 		  mail-buffer type subtype
@@ -1282,7 +1522,7 @@ Commands available in this mode:
 	(select-buffer mail-buffer))
       (kill-buffer-interactive buffer))))
 
-(define (pathname->mime-type pathname buffer)
+(define (pathname->mime-type pathname buffer prompt?)
   (let ((type (pathname-type pathname))
 	(finish
 	 (lambda (type subtype)
@@ -1291,26 +1531,38 @@ Commands available in this mode:
 		   (if (eq? type 'TEXT)
 		       '((CHARSET "iso-8859-1"))
 		       '())))))
-    (let ((entry
-	   (list-search-positive (ref-variable file-type-to-mime-type buffer)
-	     (lambda (entry)
-	       (if type
-		   (string-ci=? (car entry) type)
-		   (not (car entry)))))))
-      (if entry
-	  (finish (cadr entry) (caddr entry))
-	  (let ((ts (search-mime-types-file pathname)))
-	    (if ts
-		(finish (car ts) (cadr ts))
-		(let ((type
-		       (prompt-for-alist-value "MIME type"
-					       mime-top-level-types
-					       #f
-					       #t)))
-		  (finish type
-			  (string->symbol
-			   (prompt-for-string "MIME subtype" #f))))))))))
-
+    (let ((do-mime
+	   (lambda ()
+	     (let ((type
+		    (prompt-for-alist-value "MIME type"
+					    mime-top-level-types
+					    #f
+					    #t)))
+	       (finish type
+		       (string->symbol
+			(prompt-for-string "MIME subtype" #f)))))))
+      (if prompt?
+	  (do-mime)
+	  (let ((entry
+		 (list-search-positive
+		     (ref-variable file-type-to-mime-type buffer)
+		   (lambda (entry)
+		     (if type
+			 (string-ci=? (car entry) type)
+			 (not (car entry)))))))
+	    (cond (entry
+		   (finish (cadr entry) (caddr entry)))
+		  ((search-mime-types-file pathname)
+		   => (lambda (ts) (finish (car ts) (cadr ts))))
+		  (else
+		   (let loop ()
+		     (case (prompt-for-char
+			    "File type (T=text, B=binary, M=MIME)")
+		       ((#\t #\T) (finish 'TEXT 'PLAIN))
+		       ((#\b #\B) (finish 'APPLICATION 'OCTET-STREAM))
+		       ((#\m #\M) (do-mime))
+		       (else (editor-beep) (loop)))))))))))
+
 (define (search-mime-types-file pathname)
   (let ((filename (file-namestring pathname)))
     (call-with-input-file (system-library-pathname "edwin/etc/mime.types")
@@ -1357,219 +1609,3 @@ This is a list, each element of which is a list of three items:
 (define mime-top-level-types
   (map (lambda (s) (cons (symbol->string s) s))
        '(TEXT IMAGE AUDIO VIDEO APPLICATION)))
-
-;;;; Direct SMTP
-
-(define (smtp-mail-buffer mail-buffer lookup-buffer)
-  (let ((msg "Sending..."))
-    (message msg)
-    (let ((from
-	   (rfc822:canonicalize-address-string
-	    (mail-from-string lookup-buffer)))
-	  (rcpts (mail-deduce-address-list mail-buffer))
-	  (trace-buffer
-	   (and (ref-variable smtp-trace lookup-buffer)
-		(temporary-buffer "*SMTP-trace*")))
-	  (require-valid?
-	   (ref-variable smtp-require-valid-recipients lookup-buffer))
-	  (valid-response?
-	   (lambda (response) (= 250 (smtp-response-number response)))))
-      (if (null? rcpts)
-	  (editor-error "No recipients specified for mail."))
-      (mail-delete-bcc-lines mail-buffer)
-      (let ((responses
-	     (call-with-smtp-socket (ref-variable mail-relay-host
-						  lookup-buffer)
-				    trace-buffer
-	       (lambda (port banner)
-		 banner
-		 (smtp-command/helo port)
-		 (smtp-command/mail port from)
-		 (let ((responses
-			(map (lambda (rcpt)
-			       (smtp-command/rcpt port rcpt))
-			     rcpts)))
-		   (if (if require-valid?
-			   (for-all? responses valid-response?)
-			   (there-exists? responses valid-response?))
-		       (smtp-command/data port mail-buffer)
-		       (smtp-command/rset port))
-		   (smtp-command/quit port)
-		   responses)))))
-	(cond ((not (for-all? responses valid-response?))
-	       (pop-up-temporary-buffer "*SMTP-invalid*"
-					'(READ-ONLY FLUSH-ON-SPACE)
-		 (lambda (buffer window)
-		   window
-		   (let ((m (mark-left-inserting-copy (buffer-start buffer))))
-		     (for-each (lambda (rcpt response)
-				 (if (not (valid-response? response))
-				     (begin
-				       (insert-string rcpt m)
-				       (insert-char #\tab m)
-				       (insert-string response m)
-				       (insert-newline m))))
-			       rcpts responses)
-		     (mark-temporary! m)))))
-	      (trace-buffer
-	       (set-buffer-point! trace-buffer (buffer-start trace-buffer))
-	       (buffer-not-modified! trace-buffer)
-	       (pop-up-buffer trace-buffer #f)))
-	(message msg
-		 (if (if require-valid?
-			 (for-all? responses valid-response?)
-			 (there-exists? responses valid-response?))
-		     "done"
-		     "aborted"))))))
-
-(define (mail-deduce-address-list mail-buffer)
-  (let* ((header-start (buffer-start mail-buffer))
-	 (header-end (mail-header-end header-start))
-	 (regexp
-	  (if (mail-field-start header-start header-end "resent-to")
-	      "^\\(resent-to:\\|resent-cc:\\|resent-bcc:\\)[ \t]*"
-	      "^\\(to:\\|cc:\\|bcc:\\)[ \t]*")))
-    (let loop ((start header-start) (addresses '()))
-      (let ((field-start (re-search-forward regexp start header-end #t)))
-	(if field-start
-	    (let ((field-end (%mail-field-end field-start header-end)))
-	      (loop field-end
-		    (cons (rfc822:string->addresses
-			   (extract-string field-start field-end))
-			  addresses)))
-	    (apply append (reverse! addresses)))))))
-
-(define (mail-delete-bcc-lines mail-buffer)
-  (let* ((header-start (buffer-start mail-buffer))
-	 (header-end
-	  (mark-left-inserting-copy (mail-header-end header-start))))
-    (let loop ((start header-start))
-      (let ((fs (mail-field-start start header-end "bcc")))
-	(if fs
-	    (let ((ls (line-start fs 0)))
-	      (delete-string ls
-			     (let ((fe (%mail-field-end fs header-end)))
-			       (if (mark< fe header-end) (mark1+ fe) fe)))
-	      (loop ls)))))
-    (mark-temporary! header-end)))
-
-(define (call-with-smtp-socket host-name trace-buffer receiver)
-  (let ((port #f))
-    (dynamic-wind
-     (lambda ()
-       (set! port
-	     (make-smtp-port (open-tcp-stream-socket host-name "smtp")
-			     trace-buffer))
-       unspecific)
-     (lambda ()
-       (receiver port (smtp-read-response port 220)))
-     (lambda ()
-       (if port
-	   (begin
-	     (close-port (smtp-port-port port))
-	     (set! port #f)
-	     unspecific))))))
-
-(define-structure smtp-port
-  (port #f read-only #t)
-  (trace-buffer #f read-only #t))
-
-(define (smtp-read-line port)
-  (let ((line (read-line (smtp-port-port port))))
-    (smtp-trace-write-string line port)
-    (smtp-trace-newline port)
-    line))
-
-(define (smtp-write-line port . strings)
-  (for-each (lambda (string)
-	      (smtp-trace-write-string string port)
-	      (write-string string (smtp-port-port port)))
-	    strings)
-  (smtp-trace-newline port)
-  (newline (smtp-port-port port)))
-
-(define (smtp-drain-output port)
-  (flush-output (smtp-port-port port)))
-
-(define (smtp-trace-write-string string port)
-  (let ((trace-buffer (smtp-port-trace-buffer port)))
-    (if trace-buffer
-	(insert-string string (buffer-end trace-buffer)))))
-
-(define (smtp-trace-newline port)
-  (let ((trace-buffer (smtp-port-trace-buffer port)))
-    (if trace-buffer
-	(insert-newline (buffer-end trace-buffer)))))
-
-(define (smtp-command/helo port)
-  (smtp-write-line port "HELO " (os/hostname))
-  (smtp-read-response port 250))
-
-(define (smtp-command/mail port from)
-  (smtp-write-line port "MAIL FROM:<" from ">")
-  (smtp-read-response port 250))
-
-(define (smtp-command/rcpt port rcpt)
-  (smtp-write-line port "RCPT TO:<" rcpt ">")
-  (smtp-read-response port 250 550))
-
-(define (smtp-command/data port mail-buffer)
-  (smtp-write-line port "DATA")
-  (smtp-read-response port 354)
-  (let loop ((start (buffer-start mail-buffer)))
-    (if (not (group-end? start))
-	(let ((le (line-end start 0)))
-	  (let ((line (extract-string start le)))
-	    (if (and (fix:> 0 (string-length line))
-		     (char=? #\. (string-ref line 0)))
-		(smtp-write-line port "." line)
-		(smtp-write-line port line)))
-	  (if (not (group-end? le))
-	      (loop (mark1+ le))))))
-  (smtp-write-line port ".")
-  (smtp-read-response port 250))
-
-(define (smtp-command/rset port)
-  (smtp-write-line port "RSET")
-  (smtp-read-response port 250))
-
-(define (smtp-command/quit port)
-  (smtp-write-line port "QUIT")
-  (smtp-read-response port 221))
-
-(define (smtp-read-response port . numbers)
-  (smtp-drain-output port)
-  (let ((response (smtp-read-line port)))
-    (let ((n (smtp-response-number response)))
-      (if (not (there-exists? numbers (lambda (n*) (= n n*))))
-	  (editor-error response))
-      (if (smtp-response-continued? response)
-	  (let loop ((responses (list response)))
-	    (let ((response (smtp-read-line port)))
-	      (if (not (= n (smtp-response-number response)))
-		  (error "Mismatched codes in multiline response:" n response))
-	      (let ((responses (cons response responses)))
-		(if (smtp-response-continued? response)
-		    (loop responses)
-		    (convert-smtp-multiline-response (reverse! responses))))))
-	  response))))
-
-(define (smtp-response-number line)
-  (or (and (fix:>= (string-length line) 3)
-	   (substring->nonnegative-integer line 0 3))
-      (error "Malformed SMTP response:" line)))
-
-(define (smtp-response-continued? line)
-  (and (fix:>= (string-length line) 4)
-       (char=? #\- (string-ref line 3))))
-
-(define (convert-smtp-multiline-response responses)
-  (apply string-append
-	 (cons* (string-head (car responses) 3)
-		" "
-		(let ((lines
-		       (map (lambda (response) (string-tail response 4))
-			    responses)))
-		  (cons (car lines)
-			(append-map (lambda (line) (list "\n" line))
-				    lines))))))

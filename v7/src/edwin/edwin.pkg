@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.270 2001/03/15 21:06:30 cph Exp $
+$Id: edwin.pkg,v 1.271 2001/03/16 21:54:24 cph Exp $
 
 Copyright (c) 1989-2001 Massachusetts Institute of Technology
 
@@ -1493,6 +1493,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  edwin-variable$smtp-trace
 	  edwin-variable$user-mail-address
 	  enable-buffer-mime-processing!
+	  finish-preparing-mail-buffer
 	  global-mailer-version-string
 	  mail-field-end
 	  mail-field-end!
@@ -1514,7 +1515,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
 	  random-mime-boundary-string
-	  send-mail-buffer
 	  set-buffer-mime-attachments!
 	  user-mail-address))
 
