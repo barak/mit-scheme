@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.43 2004/01/15 21:00:08 cph Exp $
+$Id: parse.scm,v 14.44 2004/01/16 06:33:47 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
@@ -105,8 +105,6 @@ USA.
 (define char-set/atom-delimiters)
 (define char-set/symbol-quotes)
 (define char-set/number-leaders)
-(define char-set/atom-constituents)
-(define char-set/char-constituents)
 
 (define (initialize-package!)
   (let* ((constituents
@@ -119,10 +117,6 @@ USA.
 			  (char-set #\U+00AB #\U+00BB)))
 	 (symbol-quotes
 	  (string->char-set "\\|"))
-	 (atom-constituents
-	  (char-set-difference constituents
-			       (char-set-union atom-delimiters
-					       symbol-quotes)))
 	 (number-leaders
 	  (char-set-union char-set:numeric
 			  (string->char-set "+-.")))
@@ -132,9 +126,6 @@ USA.
 					       number-leaders)))
 	 (special-number-leaders
 	  (string->char-set "bBoOdDxXiIeEsSlL"))
-	 (char-constituents
-	  (char-set-union char-set:alphanumeric
-			  (string->char-set "+-")))
 	 (store-char (lambda (v c h) (vector-set! v (char->integer c) h)))
 	 (store-char-set
 	  (lambda (v c h)
@@ -171,9 +162,7 @@ USA.
     (set! char-set/constituents constituents)
     (set! char-set/atom-delimiters atom-delimiters)
     (set! char-set/symbol-quotes symbol-quotes)
-    (set! char-set/atom-constituents atom-constituents)
-    (set! char-set/number-leaders number-leaders)
-    (set! char-set/char-constituents char-constituents))
+    (set! char-set/number-leaders number-leaders))
   (set-current-parser-table! system-global-parser-table)
   (initialize-condition-types!))
 
@@ -207,35 +196,39 @@ USA.
 	 (if *parser-canonicalize-symbols?*
 	     char-downcase
 	     identity-procedure)))
-    (for-each (lambda (char) (write-char char port*)) prefix)
+    (for-each (lambda (char) (write-char (canon char) port*)) prefix)
     (let read-unquoted ((quoted? #f))
       (let ((char (peek-char port)))
 	(if (or (eof-object? char)
-		(char-set-member? char-set/atom-delimiters char))
+		(atom-delimiter? char))
 	    (values (get-output-string port*) quoted?)
 	    (begin
+	      (guarantee-constituent char)
 	      (discard-char port)
-	      (cond ((char-set-member? char-set/atom-constituents char)
-		     (write-char (canon char) port*)
-		     (read-unquoted quoted?))
+	      (cond ((char=? char #\|)
+		     (let read-quoted ()
+		       (let ((char (read-char/no-eof port)))
+			 (if (char=? char #\|)
+			     (read-unquoted #t)
+			     (begin
+			       (write-char (if (char=? char #\\)
+					       (read-char/no-eof port)
+					       char)
+					   port*)
+			       (read-quoted))))))
 		    ((char=? char #\\)
 		     (write-char (read-char/no-eof port) port*)
 		     (read-unquoted #t))
-		    ((char=? char #\|)
-		     (let read-quoted ()
-		       (let ((char (read-char/no-eof port)))
-			 (cond ((char-set-member? char-set/constituents char)
-				(write-char char port*)
-				(read-quoted))
-			       ((char=? char #\|)
-				(read-unquoted #t))
-			       ((char=? char #\\)
-				(write-char (read-char/no-eof port) port*)
-				(read-quoted))
-			       (else
-				(error:illegal-char char))))))
 		    (else
-		     (error:illegal-char char)))))))))
+		     (write-char (canon char) port*)
+		     (read-unquoted quoted?)))))))))
+
+(define-integrable (atom-delimiter? char)
+  (char-set-member? char-set/atom-delimiters char))
+
+(define (guarantee-constituent char)
+  (if (not (char-set-member? char-set/constituents char))
+      (error:illegal-char char)))
 
 (define (parse-atom/no-quoting port prefix)
   (receive (string quoted?) (parse-atom port prefix)
@@ -342,7 +335,11 @@ USA.
 
 (define (handler:unquote port table char)
   char
-  (list 'UNQUOTE (dispatch/no-eof port table)))
+  (if (eqv? (peek-char port) #\@)
+      (begin
+	(discard-char port)
+	(list 'UNQUOTE-SPLICING (dispatch/no-eof port table)))
+      (list 'UNQUOTE (dispatch/no-eof port table))))
 
 (define (handler:string port table char)
   table char
@@ -394,27 +391,26 @@ USA.
 
 (define (handler:char port table char)
   table char
-  (let ((char (read-char/no-eof port)))
-    (if (or (char=? char #\\)
-	    (not (char-alphabetic? char)))
-	char
-	(name->char
-	 (call-with-output-string
-	   (lambda (port*)
-	     (write-char char port*)
-	     (let loop ()
-	       (let ((char (peek-char port)))
-		 (cond ((eof-object? char)
-			unspecific)
-		       ((char-set-member? char-set/char-constituents char)
-			(discard-char port)
-			(write-char char port*)
-			(loop))
-		       ((char=? char #\\)
-			(discard-char port)
-			(write-char (read-char/no-eof port) port*))
-		       (else
-			unspecific))))))))))
+  (name->char (read-simple-atom port)))
+
+(define (read-simple-atom port)
+  (call-with-output-string
+    (lambda (port*)
+      (let ((char (read-char/no-eof port)))
+	(guarantee-constituent char)
+	(write-char char port*)
+	(let loop ()
+	  (let ((char (peek-char port)))
+	    (if (not (or (eof-object? char)
+			 (atom-delimiter? char)))
+		(begin
+		  (guarantee-constituent char)
+		  (discard-char port)
+		  (write-char (if (char=? char #\\)
+				  (read-char/no-eof port)
+				  char)
+			      port*)
+		  (loop)))))))))
 
 (define (handler:named-constant port table char)
   table char
@@ -508,6 +504,12 @@ USA.
     (or (input-port/peek-char port)
 	(loop))))
 
+(define (peek-char/no-eof port)
+  (let ((char (peek-char port)))
+    (if (eof-object? char)
+	(error:premature-eof port))
+    char))
+
 (define-syntax define-parse-error
   (sc-macro-transformer
    (lambda (form environment)
@@ -519,8 +521,7 @@ USA.
 	   (let ((ct (symbol-append 'CONDITION-TYPE: name)))
 	     `(BEGIN
 		(SET! ,ct
-		      (MAKE-CONDITION-TYPE 'ILLEGAL-BIT-STRING
-			  CONDITION-TYPE:PARSE-ERROR
+		      (MAKE-CONDITION-TYPE ',name CONDITION-TYPE:PARSE-ERROR
 			  ',field-names
 			(LAMBDA (CONDITION PORT)
 			  (,reporter
@@ -535,7 +536,6 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define condition-type:parse-error)
-
 (define condition-type:illegal-bit-string)
 (define condition-type:illegal-boolean)
 (define condition-type:illegal-char)
@@ -549,7 +549,6 @@ USA.
 (define condition-type:premature-eof)
 (define condition-type:re-shared-object)
 (define condition-type:non-shared-object)
-
 (define error:illegal-bit-string)
 (define error:illegal-boolean)
 (define error:illegal-char)
