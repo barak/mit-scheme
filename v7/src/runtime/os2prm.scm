@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2prm.scm,v 1.29 1996/05/03 07:40:33 cph Exp $
+$Id: os2prm.scm,v 1.30 1997/10/22 05:16:01 cph Exp $
 
-Copyright (c) 1994-96 Massachusetts Institute of Technology
+Copyright (c) 1994-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -416,3 +416,9 @@ MIT in each case. |#
 
 (define os2/select-result-values
   '#(INPUT-AVAILABLE #F INTERRUPT PROCESS-STATUS-CHANGE))
+
+(define (os/make-subprocess filename arguments environment working-directory
+			    ctty stdin stdout stderr)
+  ((ucode-primitive make-subprocess 7) filename arguments
+				       (cons environment working-directory)
+				       ctty stdin stdout stderr))

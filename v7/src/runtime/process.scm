@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.18 1995/09/13 21:25:13 cph Exp $
+$Id: process.scm,v 1.19 1997/10/22 05:15:41 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -141,7 +141,8 @@ MIT in each case. |#
 		   (else
 		    (error:wrong-type-argument stdio "process I/O channel"
 					       'MAKE-SUBPROCESS))))
-	   (let ((ctty
+	   (let ((working-directory #f)
+		 (ctty
 		  (cond ((eq? ctty 'BACKGROUND) -1)
 			((eq? ctty 'FOREGROUND) -2)
 			((or (not ctty) (string? ctty)) ctty)
@@ -153,12 +154,16 @@ MIT in each case. |#
 		 (stdin (convert-stdio-arg stdin))
 		 (stdout (convert-stdio-arg stdout))
 		 (stderr (convert-stdio-arg stderr)))
+	     (if (pair? environment)
+		 (begin
+		   (set! working-directory (cdr environment))
+		   (set! environment (car environment))))
 	     (without-interrupts
 	      (lambda ()
 		(let ((index
-		       ((ucode-primitive make-subprocess 7)
-			filename arguments environment
-			ctty stdin stdout stderr)))
+		       (os/make-subprocess filename arguments environment
+					   working-directory ctty
+					   stdin stdout stderr)))
 		  (let ((process
 			 (%make-subprocess filename arguments index pty-master
 					   input-channel output-channel)))

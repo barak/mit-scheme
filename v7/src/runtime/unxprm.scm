@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.46 1996/10/07 18:13:40 cph Exp $
+$Id: unxprm.scm,v 1.47 1997/10/22 05:15:55 cph Exp $
 
-Copyright (c) 1988-96 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -463,3 +463,9 @@ MIT in each case. |#
 	    (else
 	     (set-car! rv v))))
     (set-interrupt-enables! interrupt-mask)))
+
+(define (os/make-subprocess filename arguments environment working-directory
+			    ctty stdin stdout stderr)
+  ((ucode-primitive make-subprocess 7) filename arguments
+				       (cons environment working-directory)
+				       ctty stdin stdout stderr))
