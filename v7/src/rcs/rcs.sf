@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.5 1991/10/10 01:29:21 cph Exp $
+$Id: rcs.sf,v 1.6 1995/01/06 18:37:56 cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,5 +40,5 @@ MIT in each case. |#
     (with-working-directory-pathname "../cref" (lambda () (load "make"))))
 
 (cref/generate-constructors "rcs")
-(sf "rcs.con" "rcs.bcon")
-(sf "rcs.ldr" "rcs.bldr")
+(sf "rcs.con")
+(sf "rcs.ldr")

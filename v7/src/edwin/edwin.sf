@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: edwin.sf,v 1.11 1992/09/23 22:44:24 jinx Exp $
+;;;	$Id: edwin.sf,v 1.12 1995/01/06 18:38:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1991-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -42,18 +42,17 @@
 ;;; of that license should have been included along with this file.
 ;;;
 
-(if (not (name->package '(CROSS-REFERENCE)))
-    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
+(load-option 'CREF)
 
 (if (not (name->package '(EDWIN)))
     (begin
-      (if (not (file-exists? "edwin.bcon"))
+      (if (not (file-exists? "edwin.bco"))
 	  (begin
 	    ((access cref/generate-trivial-constructor
 		     (->environment '(CROSS-REFERENCE)))
 	     "edwin")
-	    (sf "edwin.con" "edwin.bcon")))
-      (load "edwin.bcon")))
+	    (sf "edwin.con")))
+      (load "edwin.bco")))
 
 (if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
 			      'CLASS-DESCRIPTORS)
@@ -99,9 +98,9 @@
       (write-globals pathname pmodel)
       (write-constructor pathname pmodel)))
    "edwin"))
-(sf "edwin.con" "edwin.bcon")
-(if (not (file-processed? "edwin" "ldr" "bldr"))
-    (sf "edwin.ldr" "edwin.bldr"))
+(sf "edwin.con")
+(if (not (file-processed? "edwin" "ldr" "bld"))
+    (sf "edwin.ldr"))
 (if (and (file-exists? "edwin.avd")
 	 (not (file-processed? "edwin" "avd" "bad")))
     (fasdump (read-file "edwin.avd") "edwin.bad"))

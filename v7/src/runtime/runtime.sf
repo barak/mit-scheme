@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.10 1994/12/06 17:39:15 adams Exp $
+$Id: runtime.sf,v 14.11 1995/01/06 18:37:20 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,12 +39,8 @@ MIT in each case. |#
 ;; that when cross-syntaxing the cref `native' to the running system
 ;; is loaded.
 (load-option 'CREF)
-;;Was:
-;;(if (not (name->package '(CROSS-REFERENCE)))
-;;    (with-working-directory-pathname "../cref" (lambda () (load "make"))))
-
 (cref/generate-constructors "runtime")
-(sf "runtime.con" "runtime.bcon")
-(sf "runtime.ldr" "runtime.bldr")
+(sf "runtime.con")
+(sf "runtime.ldr")
 (if (file-exists? "runtime.avd")
     (fasdump (read-file "runtime.avd") "runtime.bad"))

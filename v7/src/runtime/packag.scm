@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.19 1994/03/13 05:09:42 jawilson Exp $
+$Id: packag.scm,v 14.20 1995/01/06 18:37:30 cph Exp $
 
-Copyright (c) 1988-1994 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -159,10 +159,10 @@ MIT in each case. |#
 			       (assoc "scm" load/default-types))
 			 load/default-types)))
 	  (let ((syntax-table (nearest-repl/syntax-table)))
-	    (load (pathname-new-type pathname "bcon")
+	    (load (pathname-new-type pathname "bco")
 		  system-global-environment
 		  syntax-table false)
-	    ((load (pathname-new-type pathname "bldr")
+	    ((load (pathname-new-type pathname "bld")
 		   system-global-environment
 		   syntax-table false)
 	     (lambda (component environment)

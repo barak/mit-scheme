@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cref.sf,v 1.6 1993/10/11 23:31:40 cph Exp $
+$Id: cref.sf,v 1.7 1995/01/06 18:38:47 cph Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,15 +36,15 @@ MIT in each case. |#
 (sf-conditionally "object")
 (sf-directory ".")
 
-(if (not (file-exists? "cref.bcon"))
-    (sf "triv.con" "cref.bcon"))
-(if (not (file-exists? "cref.bldr"))
-    (sf "triv.ldr" "cref.bldr"))
+(if (not (file-exists? "cref.bco"))
+    (sf "triv.con" "cref.bco"))
+(if (not (file-exists? "cref.bld"))
+    (sf "triv.ldr" "cref.bld"))
 
-(if (file-exists? "../runtime/runtim.glob")
+(if (file-exists? "../runtime/runtim.glo")
     (begin
       (if (not (name->package '(CROSS-REFERENCE)))
 	  (load "make"))
       (cref/generate-constructors "cref")
-      (sf "cref.con" "cref.bcon")
-      (sf "cref.ldr" "cref.bldr")))
+      (sf "cref.con")
+      (sf "cref.ldr")))
