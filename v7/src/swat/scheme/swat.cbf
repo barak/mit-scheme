@@ -6,7 +6,7 @@
 ;;      (compile-bin-file filename)))
 ;;
 ;;
-;;(fluid-let ((sf/default-syntax-table syntax-table/system-internal)
+;;(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME)))
 ;;	    (sf/default-declarations (cons '(usual-integrations)
 ;;					   sf/default-declarations)))
 ;;  (cf-conditionally "scc-macros")

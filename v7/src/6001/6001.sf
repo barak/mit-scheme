@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: 6001.sf,v 1.11 2001/08/15 03:08:50 cph Exp $
+$Id: 6001.sf,v 1.12 2001/12/19 21:47:48 cph Exp $
 
 Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
 
@@ -20,13 +20,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 |#
 
-(fluid-let ((sf/default-syntax-table syntax-table/system-internal))
-  (for-each sf-conditionally
-	    '("arith" "make" "nodefs" "picture" "pic-reco" "pic-imag"
-		      "pic-read" "pic-ops")))
+(sf-conditionally "make")
+(sf-conditionally "nodefs")
+(sf-conditionally "pic-reco")
+(sf-conditionally "pic-imag")
+(sf-conditionally "pic-read")
+(sf-conditionally "pic-ops")
 
-(fluid-let ((sf/default-syntax-table
-	     (access edwin-syntax-table (->environment '(edwin)))))
+(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
+  (sf-conditionally "arith")
+  (sf-conditionally "picture"))
+
+(fluid-let ((sf/default-syntax-table (->environment '(EDWIN))))
   (sf-conditionally "edextra")
   (sf-conditionally "floppy"))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.sf,v 14.16 2001/09/25 05:12:08 cph Exp $
+$Id: runtime.sf,v 14.17 2001/12/19 21:49:15 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 02111-1307, USA.
 |#
 
-(fluid-let ((sf/default-syntax-table syntax-table/system-internal))
+(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
   (sf-conditionally "char")
   (sf-conditionally "chrset")
   (sf-conditionally "gentag")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.sf,v 1.5 2001/08/17 05:31:43 cph Exp $
+$Id: win32.sf,v 1.6 2001/12/19 21:52:41 cph Exp $
 
 Copyright (c) 1993-1999, 2001 Massachusetts Institute of Technology
 
@@ -20,12 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 |#
 
-
-(fluid-let ((sf/default-syntax-table syntax-table/system-internal))
+(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
   (for-each
     (lambda (names)
-	      (sf/add-file-declarations! (car names)
-					 `((integrate-external . ,(cdr names)))))
+      (sf/add-file-declarations! (car names)
+				 `((integrate-external . ,(cdr names)))))
     '(("module"     "winuser" "wingdi" "wt_user")
       ("graphics"   "winuser" "wingdi" "wt_user")
       ("win_ffi"    "winuser" "wingdi" "wt_user")
@@ -33,9 +32,7 @@ USA.
       ("dib"        "win_ffi")))
 
   (sf-conditionally "ffimacro")
-  (if (or (not (file-exists? "ffimacro.com"))
-	  (> (file-modification-time "ffimacro.bin")
-	     (file-modification-time "ffimacro.com")))
+  (if (file-modification-time<? "ffimacro.bin" "ffimacro.com")
       (cbf "ffimacro"))
   (load "ffimacro")
 
