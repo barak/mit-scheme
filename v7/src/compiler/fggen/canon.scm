@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fggen/canon.scm,v 1.9 1991/05/06 22:36:48 jinx Exp $
+$Id: canon.scm,v 1.10 1992/12/30 16:35:14 gjr Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -310,14 +310,29 @@ ARBITRARY:	The expression may be executed more than once.  It
 	(if (memq context '(ONCE-ONLY ARBITRARY))
 	    (error "canonicalize/definition: unscanned definition"
 		   expression))
-	(make-canout (scode/make-combination
-		      (ucode-primitive local-assignment)
-		      (list (scode/make-variable environment-variable)
-			    name
-			    (canout-expr value)))
-		     (canout-safe? value)
-		     true
-		     false)))))
+	(single-definition name value)))))
+
+(define (single-definition name value)
+  (make-canout (scode/make-combination
+		(ucode-primitive local-assignment)
+		(list (scode/make-variable environment-variable)
+		      name
+		      (canout-expr value)))
+	       (canout-safe? value)
+	       true
+	       false))
+
+(define (multi-definition names values)
+  (make-canout (scode/make-combination
+		(scode/make-absolute-reference 'DEFINE-MULTIPLE)
+		(list (scode/make-variable environment-variable)
+		      (list->vector names)
+		      (scode/make-combination
+		       (ucode-primitive vector)
+		       (map canout-expr values))))
+	       (for-all? values canout-safe?)
+	       true
+	       false))
 
 (define (canonicalize/the-environment expr bound context)
   expr bound context ;; ignored
@@ -337,14 +352,16 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (scode/make-directive
 	  (if (null? *top-level-declarations*)
 	      (canout-expr canout)
-	      (make-open-block '() *top-level-declarations* (canout-expr canout)))
+	      (make-open-block '()
+			       *top-level-declarations*
+			       (canout-expr canout)))
 	  '(COMPILE-PROCEDURE)
 	  expr)
 	 true
 	 (canout-needs? canout)
 	 (canout-splice? canout))
 	canout)))
-
+
 (define (canonicalize/sequence expr bound context)
   (cond ((not (scode/open-block? expr))
 	 (scode/sequence-components expr
@@ -367,10 +384,80 @@ ARBITRARY:	The expression may be executed more than once.  It
 	  (lambda (names decls body)
 	    (fluid-let ((*top-level-declarations*
 			 (append decls *top-level-declarations*)))
-	      (canonicalize/expression
-	       (unscan-defines names decls body)
-	       bound
-	       context)))))))
+	      (let ((body (unscan-defines names decls body)))
+		((if (and (eq? context 'TOP-LEVEL)
+			  compiler:compress-top-level?
+			  (> (length names) 1))
+		     canonicalize/compressing
+		     canonicalize/expression)
+		 body
+		 bound
+		 context))))))))
+
+;; Collect continguous simple definitions into multi-definitions
+;; in an attempt to make the top-level code smaller.
+
+(define (canonicalize/compressing expr bound context)
+  (define (give-up)
+    (canonicalize/expression expr bound context))
+
+  (if (or (not (scode/sequence? expr))
+	  (scode/open-block? expr))
+      (give-up)
+      (scode/sequence-components
+       expr
+       (lambda (actions)
+	 (define (add-group group groups)
+	   (cond ((null? group)
+		  groups)
+		 ((null? (cdr group))
+		  (let ((element (car group)))
+		    (cons (single-definition (car element)
+					     (cadr element))
+			  groups)))
+		 (else
+		  (let ((group (reverse group)))
+		    (cons (multi-definition (map car group)
+					    (map cadr group))
+			  groups)))))
+
+	 (define (collect actions groups group)
+	   (if (null? actions)
+	       (canonicalize/combine-unary scode/make-sequence
+					   (combine-list
+					    (reverse
+					     (add-group group groups))))
+	       (let ((next (car actions)))
+		 (if (not (scode/definition? next))
+		     (let ((out (canonicalize/expression next
+							 bound context)))
+		       (if (not (canout-safe? out))
+			   (give-up)
+			   (collect (cdr actions)
+				    (cons out
+					  (add-group group groups))
+				    '())))
+		     (scode/definition-components
+		      next
+		      (lambda (name value)
+			(let ((value*
+			       (canonicalize/expression value bound context)))
+			  (cond ((not (canout-safe? value*))
+				 (give-up))
+				((or (scode/lambda? value)
+				     ;; This means that there are no free vars.
+				     (canout-splice? value*))
+				 (collect (cdr actions)
+					  groups
+					  (cons (list name value*)
+						group)))
+				(else
+				 (collect (cdr actions)
+					  (cons (single-definition name value*)
+						(add-group group groups))
+					  '()))))))))))
+
+	 (collect actions '() '())))))
 
 ;;;; Hairier expressions
 
