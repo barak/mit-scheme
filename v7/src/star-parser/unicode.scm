@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unicode.scm,v 1.2 2001/07/12 03:08:33 cph Exp $
+;;; $Id: unicode.scm,v 1.3 2001/07/12 03:53:02 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -152,7 +152,8 @@
   (let ((low (make-alphabet-low)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i #x100))
-      (alphabet-low-set! low (char-set-member? char-set (integer->char i))))
+      (if (char-set-member? char-set (integer->char i))
+	  (alphabet-low-set! low i)))
     (make-alphabet low '#() '#())))
 
 (define (alphabet->char-set alphabet)
@@ -348,8 +349,8 @@
 
 (define (code-point->utf8-string n)
 
-  (define-integrable (initial-char n offset)
-    (fix:or (fix:and (fix:lsh #xFF (fix:+ n 1)) #xFF)
+  (define-integrable (initial-char n-bits offset)
+    (fix:or (fix:and (fix:lsh #xFF (fix:+ n-bits 1)) #xFF)
 	    (fix:lsh n (fix:- 0 offset))))
 
   (define-integrable (subsequent-char offset)
@@ -366,37 +367,37 @@
 	((< n #x00000800)
 	 (let ((s (make-string 2)))
 	   (vector-8b-set! s 0 (initial-char 5 6))
-	   (vector-8b-set! s 1 (subsequent-char 6))
+	   (vector-8b-set! s 1 (subsequent-char 0))
 	   s))
 	((< n #x00010000)
 	 (let ((s (make-string 3)))
 	   (vector-8b-set! s 0 (initial-char 4 12))
-	   (vector-8b-set! s 1 (subsequent-char 12))
-	   (vector-8b-set! s 2 (subsequent-char 6))
+	   (vector-8b-set! s 1 (subsequent-char 6))
+	   (vector-8b-set! s 2 (subsequent-char 0))
 	   s))
 	((< n #x00200000)
 	 (let ((s (make-string 4)))
 	   (vector-8b-set! s 0 (initial-char 3 18))
-	   (vector-8b-set! s 1 (subsequent-char 18))
-	   (vector-8b-set! s 2 (subsequent-char 12))
-	   (vector-8b-set! s 3 (subsequent-char 6))
+	   (vector-8b-set! s 1 (subsequent-char 12))
+	   (vector-8b-set! s 2 (subsequent-char 6))
+	   (vector-8b-set! s 3 (subsequent-char 0))
 	   s))
 	((< n #x04000000)
 	 (let ((s (make-string 5)))
 	   (vector-8b-set! s 0 (initial-char 2 24))
-	   (vector-8b-set! s 1 (subsequent-char 24))
-	   (vector-8b-set! s 2 (subsequent-char 18))
-	   (vector-8b-set! s 3 (subsequent-char 12))
-	   (vector-8b-set! s 4 (subsequent-char 6))
+	   (vector-8b-set! s 1 (subsequent-char 18))
+	   (vector-8b-set! s 2 (subsequent-char 12))
+	   (vector-8b-set! s 3 (subsequent-char 6))
+	   (vector-8b-set! s 4 (subsequent-char 0))
 	   s))
 	(else
 	 (let ((s (make-string 6)))
 	   (vector-8b-set! s 0 (initial-char 1 30))
-	   (vector-8b-set! s 1 (subsequent-char 30))
-	   (vector-8b-set! s 2 (subsequent-char 24))
-	   (vector-8b-set! s 3 (subsequent-char 18))
-	   (vector-8b-set! s 4 (subsequent-char 12))
-	   (vector-8b-set! s 5 (subsequent-char 6))
+	   (vector-8b-set! s 1 (subsequent-char 24))
+	   (vector-8b-set! s 2 (subsequent-char 18))
+	   (vector-8b-set! s 3 (subsequent-char 12))
+	   (vector-8b-set! s 4 (subsequent-char 6))
+	   (vector-8b-set! s 5 (subsequent-char 0))
 	   s))))
 
 (define (utf8-string->code-point string)
