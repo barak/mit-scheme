@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.101 2000/06/29 17:51:01 cph Exp $
+$Id: todo.txt,v 1.102 2000/06/29 22:02:34 cph Exp $
 
 Bug fixes
 ---------
-
-* Must be able to handle malformed headers in incoming mail.
-  Generating a low-level error in this situation is unacceptable.
 
 * RMAIL file reader must recognize when the tail of the file contains
   umail messages.
@@ -71,20 +68,6 @@ Design changes
   fluid-binding the decoder as a handler for the MIME response reader.
   Use this same mechanism to read MIME attachments directly into
   files.
-
-* Header parser should strip leading and trailing whitespace in the
-  header value.  It can also strip whitespace at the ends of lines.
-  Strictly speaking, this isn't correct, but I don't know of any
-  situation in which it would cause problems.
-
-  More generally, the internal representation of a header field should
-  permit arbitrary value strings.  The conversion to RFC 822 form
-  should be done during I/O rather than being a required feature of
-  the representation.  This is safe to do for many headers, which are
-  defined to have arbitrary whitespace.
-
-  Parsing errors must be detected during input; erroneous headers can
-  probably be discarded, depending on the error.
 
 * Move pathname-completion code into the runtime system.
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.201 2000/06/29 17:54:49 cph Exp $
+;;; $Id: imail-top.scm,v 1.202 2000/06/29 22:01:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -1218,10 +1218,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 
 (define (header-field->mail-header header)
   (list (header-field-name header)
-	(let ((v (header-field-value header)))
-	  (if (string-prefix? " " v)
-	      (string-tail v 1)
-	      v))))
+	(header-field-value->string (header-field-value header))))
 
 (define (with-buffer-point-preserved buffer thunk)
   (let ((point (mark-right-inserting-copy (buffer-point buffer))))
@@ -1993,20 +1990,16 @@ Negative argument means search in reverse."
 	       (write-message-body message port)))))))
 
 (define (insert-header-fields headers raw? mark)
-  (for-each (lambda (header)
-	      (insert-string (header-field-name header) mark)
-	      (insert-char #\: mark)
-	      (insert-string (header-field-value header) mark)
-	      (insert-newline mark))
-	    (let ((headers (->header-fields headers)))
-	      (if raw?
-		  headers
-		  (maybe-reformat-headers
-		   headers
-		   (or (and (message? headers)
-			    (imail-message->buffer headers #f))
-		       mark)))))
-  (insert-newline mark))
+  (encode-header-fields (let ((headers (->header-fields headers)))
+			  (if raw?
+			      headers
+			      (maybe-reformat-headers
+			       headers
+			       (or (and (message? headers)
+					(imail-message->buffer headers #f))
+				   mark))))
+			(lambda (string start end)
+			  (insert-substring string start end mark))))
 
 (define (maybe-reformat-headers headers buffer)
   (let ((headers

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.110 2000/06/24 01:37:54 cph Exp $
+;;; $Id: imail-core.scm,v 1.111 2000/06/29 22:01:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -660,30 +660,15 @@
   (let ((constructor (record-constructor header-field-rtd)))
     (lambda (name value)
       (guarantee-header-field-name name 'MAKE-HEADER-FIELD)
-      (guarantee-header-field-value value 'MAKE-HEADER-FIELD)
       (constructor name value))))
 
 (define (guarantee-header-field-name object procedure)
   (if (not (header-field-name? object))
       (error:wrong-type-argument object "header-field name" procedure)))
 
-(define (guarantee-header-field-value object procedure)
-  (if (not (header-field-value? object))
-      (error:wrong-type-argument object "header-field value" procedure)))
-
 (define (header-field-name? object)
   (and (string? object)
        (rfc822:header-field-name? object 0 (string-length object))))
-
-(define (header-field-value? object)
-  (and (string? object)
-       (let ((end (string-length object)))
-	 (let loop ((index 0))
-	   (let ((nl (substring-find-next-char object index end #\newline)))
-	     (or (not nl)
-		 (and (fix:< (fix:+ nl 1) end)
-		      (char-lwsp? (string-ref object (fix:+ nl 1)))
-		      (loop (fix:+ nl 2)))))))))
 
 (define (copy-header-field header)
   (record-copy header))
@@ -693,11 +678,62 @@
 	((message? object) (message-header-fields object))
 	((string? object) (string->header-fields object))
 	(else (error:wrong-type-argument object "header fields" #f))))
+
+(define (encode-header-fields headers receiver)
+  (for-each (lambda (header) (encode-header-field header receiver)) headers)
+  (receiver "\n" 0 1))
+
+(define (encode-header-field header receiver)
+  (let ((name (header-field-name header)))
+    (receiver name 0 (string-length name)))
+  (receiver ": " 0 2)
+  (encode-header-field-value (header-field-value header) receiver)
+  (receiver "\n" 0 1))
+
+(define (encode-header-field-value value receiver)
+  (let ((end (string-length value)))
+    (let loop ((start 0))
+      (let ((index (substring-find-next-char value start end #\newline)))
+	(if index
+	    (let ((index (fix:+ index 1)))
+	      (receiver value start index)
+	      (receiver "\t" 0 1)
+	      (loop index))
+	    (receiver value start end))))))
 
 (define (header-field-length header)
-  (+ (string-length (header-field-name header))
-     (string-length (header-field-value header))
-     2))
+  (let ((value (header-field-value header)))
+    (+ (string-length (header-field-name header))
+       (string-length value)
+       (string-n-newlines value)
+       3)))
+
+(define (write-header-fields headers port)
+  (encode-header-fields headers
+    (lambda (string start end)
+      (write-substring string start end port))))
+
+(define (write-header-field header port)
+  (encode-header-field header
+    (lambda (string start end)
+      (write-substring string start end port))))
+
+(define (header-fields->string headers)
+  (with-string-output-port
+    (lambda (port)
+      (write-header-fields headers port))))
+
+(define (header-field->string header)
+  (with-string-output-port
+    (lambda (port)
+      (write-header-field header port))))
+
+(define (header-field-value->string value)
+  (with-string-output-port
+    (lambda (port)
+      (encode-header-field-value value
+	(lambda (string start end)
+	  (write-substring string start end port))))))
 
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))
@@ -727,66 +763,54 @@
 (define (get-first-header-field-value headers name error?)
   (let ((header (get-first-header-field headers name error?)))
     (and header
-	 (string-trim (header-field-value header)))))
+	 (header-field-value header))))
 
 (define (get-last-header-field-value headers name error?)
   (let ((header (get-last-header-field headers name error?)))
     (and header
-	 (string-trim (header-field-value header)))))
+	 (header-field-value header))))
 
 (define (get-all-header-field-values headers name)
-  (map (lambda (header)
-	 (string-trim (header-field-value header)))
-       (get-all-header-fields headers name)))
+  (map header-field-value (get-all-header-fields headers name)))
 
-(define (header-field->lines header)
-  (let ((lines (string->lines (header-field-value header))))
-    (cons (string-append (header-field-name header) ":" (car lines))
-	  (cdr lines))))
-
-(define (lines->header-field lines)
-  (let ((colon
-	 (and (pair? lines)
-	      (string-find-next-char (car lines) #\:))))
-    (if (not colon)
-	(error "Malformed header-field lines:" lines))
-    (make-header-field (string-head (car lines) colon)
-		       (apply string-append
-			      (string-tail (car lines) (fix:+ colon 1))
-			      (map (lambda (line)
-				     (string-append "\n" line))
-				   (cdr lines))))))
-
-(define (header-fields->lines headers)
-  (append-map! header-field->lines headers))
+(define (string->header-fields string)
+  (lines->header-fields (string->lines string)))
 
 (define (lines->header-fields lines)
-  (let loop ((lines lines) (headers '()))
-    (if (and (pair? lines)
-	     (not (string-null? (car lines))))
-	(let collect-group ((lines (cdr lines)) (group (list (car lines))))
-	  (if (or (not (pair? lines))
-		  (string-null? (car lines))
-		  (header-field-initial-line? (car lines)))
-	      (loop lines
-		    (cons (lines->header-field (reverse! group)) headers))
-	      (collect-group (cdr lines) (cons (car lines) group))))
-	(reverse! headers))))
+  (let find-initial ((lines lines) (headers '()))
+    (cond ((or (not (pair? lines))
+	       (string-null? (car lines)))
+	   (reverse! headers))
+	  ((header-field-initial-line? (car lines))
+	   (let collect-group ((lines (cdr lines)) (group (list (car lines))))
+	     (if (or (not (pair? lines))
+		     (string-null? (car lines))
+		     (header-field-initial-line? (car lines)))
+		 (find-initial
+		  lines
+		  (cons
+		   (let ((lines (reverse! group)))
+		     (let ((colon
+			    (and (pair? lines)
+				 (string-find-next-char (car lines) #\:))))
+		       (if (not colon)
+			   (error "Malformed header-field lines:" lines))
+		       (make-header-field
+			(string-head (car lines) colon)
+			(decorated-string-append
+			 "" "\n" ""
+			 (map string-trim
+			      (cons (string-tail (car lines) (fix:+ colon 1))
+				    (cdr lines)))))))
+		   headers))
+		 (collect-group (cdr lines) (cons (car lines) group)))))
+	  (else
+	   (find-initial (cdr lines) headers)))))
 
 (define (header-field-initial-line? line)
   (let ((colon (string-find-next-char line #\:)))
     (and colon
 	 (rfc822:header-field-name? line 0 colon))))
-
-(define (header-field-continuation-line? line)
-  (and (not (string-null? line))
-       (char-lwsp? (string-ref line 0))))
-
-(define (string->header-fields string)
-  (lines->header-fields (string->lines string)))
-
-(define (header-fields->string headers)
-  (lines->string (header-fields->lines headers)))
 
 ;;;; MIME structure
 

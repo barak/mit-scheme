@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.28 2000/06/19 02:01:54 cph Exp $
+;;; $Id: imail-util.scm,v 1.29 2000/06/29 22:01:52 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -174,22 +174,6 @@
   (decorated-string-append "" ""
 			   (if (default-object? line-ending) "\n" line-ending)
 			   lines))
-
-(define (write-header-fields headers port)
-  (for-each (lambda (header)
-	      (write-header-field header port))
-	    headers))
-
-(define (write-header-field header port)
-  (%write-header-field (header-field-name header)
-		       (header-field-value header)
-		       port))
-
-(define (%write-header-field name value port)
-  (write-string name port)
-  (write-char #\: port)
-  (write-string value port)
-  (newline port))
 
 (define (read-lines port)
   (source->list (lambda () (read-line port))))
@@ -272,6 +256,16 @@
 	    (if (< index* index)
 		(loop (cdr strings) string* index*)
 		(loop (cdr strings) string index)))))))
+
+(define (string-n-newlines string)
+  (substring-n-newlines string 0 (string-length string)))
+
+(define (substring-n-newlines string start end)
+  (let loop ((start start) (n 0))
+    (let ((index (substring-find-next-char string start end #\newline)))
+      (if index
+	  (loop (fix:+ index 1) (fix:+ n 1))
+	  n))))
 
 ;;;; Broken-pipe handler
 

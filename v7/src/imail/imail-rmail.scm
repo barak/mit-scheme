@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.44 2000/06/23 19:29:05 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.45 2000/06/29 22:01:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -70,15 +70,14 @@
   (make-rmail-folder-header-fields (folder-flags folder)))
 
 (define (make-rmail-folder-header-fields flags)
-  (list (make-header-field "Version" " 5")
+  (list (make-header-field "Version" "5")
 	(make-header-field "Labels"
 			   (decorated-string-append
 			    "" "," ""
 			    (flags->rmail-labels flags)))
-	(make-header-field "Note" "   This is the header of an rmail file.")
-	(make-header-field "Note" "   If you are seeing it in rmail,")
-	(make-header-field "Note"
-			   "    it means the file has no messages in it.")))
+	(make-header-field "Note" "This is the header of an rmail file.")
+	(make-header-field "Note" "If you are seeing it in rmail,")
+	(make-header-field "Note" "it means the file has no messages in it.")))
 
 ;;;; Message
 
@@ -242,9 +241,7 @@
 	       (time (message-internal-time message)))
 	   (if time
 	       (cons (make-header-field "X-IMAIL-INTERNAL-TIME"
-					(string-append
-					 " "
-					 (universal-time->string time)))
+					(universal-time->string time))
 		     headers)
 	       headers)))
 	(displayed-headers (rmail-message-displayed-header-fields message)))
