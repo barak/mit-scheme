@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.45 2000/12/05 21:23:49 cph Exp $
+$Id: uxio.c,v 1.46 2001/04/03 17:51:52 cph Exp $
 
-Copyright (c) 1990-2000 Massachusetts Institute of Technology
+Copyright (c) 1990-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA.
 */
 
 #include "ux.h"
@@ -446,15 +447,18 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 	    (*output_nfds) = nfds;
 	  if (output_fds != 0)
 	    {
-	      unsigned int i;
-	      for (i = 0; (i < n_pfds); i += 1)
-		if ((((pfds [i]) . fd) != (-1))
-		    && ((((pfds [i]) . revents) & POLLIN) != 0))
-		  {
-		    (*output_fds++) = ((pfds [i]) . fd);
-		    if ((--nfds) == 0)
-		      break;
-		  }
+	      struct pollfd * scan = pfds;
+	      struct pollfd * end = (scan + n_pfds);
+	      while (scan < end)
+		{
+		  if (((scan -> fd) != (-1)) && ((scan -> revents) != 0))
+		    {
+		      (*output_fds++) = (scan -> fd);
+		      if ((--nfds) == 0)
+			break;
+		    }
+		  scan += 1;
+		}
 	    }
 	  return (select_input_argument);
 	}

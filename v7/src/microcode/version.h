@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: version.h,v 11.179 2001/03/08 06:28:34 cph Exp $
+$Id: version.h,v 11.180 2001/04/03 17:52:21 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA.
 */
 
 /* This file contains version information for the microcode. */
@@ -24,7 +25,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 /* Scheme system release version */
 
 #ifndef SCHEME_RELEASE
-#define SCHEME_RELEASE		"7.5.15"
+#define SCHEME_RELEASE		"7.5.17"
 #endif
 
 /* Microcode release version */
@@ -33,5 +34,5 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #define SCHEME_VERSION		14
 #endif
 #ifndef SCHEME_SUBVERSION
-#define SCHEME_SUBVERSION	3
+#define SCHEME_SUBVERSION	4
 #endif
