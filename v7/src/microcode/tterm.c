@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.3 1993/06/24 07:10:02 gjr Exp $
+$Id: tterm.c,v 1.4 1993/10/14 21:50:25 gjr Exp $
 
-Copyright (c) 1990-1991 Massachusetts Institute of Technology
+Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
