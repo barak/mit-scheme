@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.26 1995/04/29 01:03:15 adams Exp $
+$Id: rtlgen.scm,v 1.27 1995/04/29 13:57:56 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -3158,7 +3158,7 @@ MIT in each case. |#
 
 (define-integrable (rtlgen/integer-constant? syllable)
   (and (rtlgen/constant? syllable)
-       (number? (rtlgen/constant-value syllable))
+       (exact-integer? (rtlgen/constant-value syllable))
        (rtlgen/constant-value syllable)))
 
 (define-open-coder/pred %small-fixnum? 2
@@ -3621,8 +3621,8 @@ MIT in each case. |#
 		    (rtlgen/assign!*
 		     (list
 		      `(ASSIGN ,address (OBJECT->ADDRESS ,rand))
-		      `(ASSIGN ,field (OFFSET ,address (MACHINE-CONSTANT 0)))
-		      `(ASSIGN ,datum (OBJECT->DATUM ,field))
+		      `(ASSIGN ,field   (OFFSET ,address (MACHINE-CONSTANT 0)))
+		      `(ASSIGN ,datum   (OBJECT->DATUM ,field))
 		      `(ASSIGN ,constant (CONSTANT ,(- 0 shift)))
 		      `(ASSIGN ,datum2 (FIXNUM-2-ARGS FIXNUM-LSH ,datum ,constant #F))))
 		    (rtlgen/value-assignment
@@ -3651,8 +3651,8 @@ MIT in each case. |#
 		 `(FIXNUM-2-ARGS ,operation-name
 				 ,rand1 ,rand2 #F))))))))
   #| DIVIDE-FIXNUM GCD-FIXNUM |#
-  (define-fixnum-primitive/2 'PLUS-FIXNUM  'PLUS-FIXNUM)
-  (define-fixnum-primitive/2 'MINUS-FIXNUM 'MINUS-FIXNUM)
+  (define-fixnum-primitive/2 'PLUS-FIXNUM   'PLUS-FIXNUM)
+  (define-fixnum-primitive/2 'MINUS-FIXNUM  'MINUS-FIXNUM)
   (define-fixnum-primitive/2 'MULTIPLY-FIXNUM  'MULTIPLY-FIXNUM)
   (define-fixnum-primitive/2 'FIXNUM-QUOTIENT  'FIXNUM-QUOTIENT)
   (define-fixnum-primitive/2 'FIXNUM-REMAINDER 'FIXNUM-REMAINDER)
@@ -3710,9 +3710,9 @@ MIT in each case. |#
   (define-flonum-primitive/1 'FLONUM-NORMALIZE 'FLONUM-NORMALIZE)
   (define-flonum-primitive/1 'FLONUM-ROUND 'FLONUM-ROUND)
   (define-flonum-primitive/1 'FLONUM-ROUND->EXACT 'FLONUM-ROUND->EXACT)
-  (define-flonum-primitive/1 'FLONUM-SIN 'FLONUM-SIN)
+  (define-flonum-primitive/1 'FLONUM-SIN  'FLONUM-SIN)
   (define-flonum-primitive/1 'FLONUM-SQRT 'FLONUM-SQRT)
-  (define-flonum-primitive/1 'FLONUM-TAN 'FLONUM-TAN)
+  (define-flonum-primitive/1 'FLONUM-TAN  'FLONUM-TAN)
   (define-flonum-primitive/1 'FLONUM-TRUNCATE 'FLONUM-TRUNCATE) 
   (define-flonum-primitive/1 'FLONUM-TRUNCATE->EXACT 'FLONUM-TRUNCATE->EXACT)
 
