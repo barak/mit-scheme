@@ -40,7 +40,6 @@ syntax.c
 sysprim.c
 term.c
 transact.c
-dostterm.c
 utils.c
 vector.c
 wind.c
@@ -54,6 +53,8 @@ prostty.c
 prdosenv.c
 prdosfs.c
 dosconio.c
+dosint10.c
+dostterm.c
 bchdmp.c
 bchgcl.c
 bchmmg.c
