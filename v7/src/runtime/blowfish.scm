@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.17 1999/08/14 03:41:01 cph Exp $
+$Id: blowfish.scm,v 1.18 1999/12/21 19:05:18 cph Exp $
 
 Copyright (c) 1997, 1999 Massachusetts Institute of Technology
 
@@ -152,7 +152,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (make-string 8 #\NUL))
 	  ((string=? blowfish-file-header-v2 line)
 	   (let ((init-vector (make-string 8)))
-	     (if (not (= 8 (read-string! init-vector 0 8 port)))
+	     (if (not (= 8 (read-substring! init-vector 0 8 port)))
 		 (error "Short read while getting init-vector:" port))
 	     init-vector))
 	  (else
@@ -176,7 +176,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-string! buffer 0 4096 port)))
+			  (let ((n (read-substring! buffer 0 4096 port)))
 			    (if (fix:= 0 n)
 				(md5-final context)
 				(begin

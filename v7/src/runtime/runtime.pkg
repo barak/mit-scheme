@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.333 1999/12/16 22:06:35 cph Exp $
+$Id: runtime.pkg,v 14.334 1999/12/21 19:05:20 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -1198,7 +1198,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  read-char-no-hang
 	  read-line
 	  read-string
-	  read-string!)
+	  read-string!
+	  read-substring!)
   (export (runtime primitive-io)
 	  eof-object))
 
