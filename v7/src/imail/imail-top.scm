@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.14 2000/02/07 23:31:30 cph Exp $
+;;; $Id: imail-top.scm,v 1.15 2000/04/06 03:27:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -796,7 +796,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
     (selected-message)
     (let ((buffer (selected-buffer)))
       (set-buffer-major-mode! buffer (ref-mode-object imail-edit))
-      (set-buffer-writable! buffer)
+      (set-buffer-writeable! buffer)
       (message
        (substitute-command-keys
 	"Editing: Type \\[imail-cease-edit] to return to Imail, \\[imail-abort-edit] to abort."
@@ -821,7 +821,7 @@ together with two commands to return to regular IMAIL:
     (call-with-values
 	(lambda ()
 	  (let ((buffer (selected-buffer)))
-	    (set-buffer-writable! buffer)
+	    (set-buffer-writeable! buffer)
 	    (buffer-widen! buffer)
 	    (guarantee-newline (buffer-end buffer))
 	    (let ((body-start
