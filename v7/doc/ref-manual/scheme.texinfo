@@ -4915,6 +4915,10 @@ Returns a newly allocated string of length @var{k}.  If you specify
 @var{char}, all elements of the string are initialized to @var{char},
 otherwise the contents of the string are unspecified.  @var{Char} must
 satisfy the predicate @code{char-ascii?}.
+
+@example
+(make-string 10 #\x)              @result{}  "xxxxxxxxxx"
+@end example
 @end deffn
 
 @deffn {procedure+} string char @dots{}
@@ -4941,6 +4945,13 @@ this procedure.
 elements of @var{char-list}.  This is equivalent to @code{(apply string
 @var{char-list})}.  The inverse of this operation is
 @code{string->list}.
+
+@example
+@group
+(list->string '(#\a #\b))               @result{}  "ab"
+(string->list "Hello")                  @result{}  (#\H #\e #\l #\l #\o)
+@end group
+@end example
 @end deffn
 
 @deffn {procedure} string-copy string
@@ -4975,10 +4986,24 @@ following:
 @cindex type predicate, for string
 Returns @code{#t} if @var{object} is a string; otherwise returns
 @code{#f}.
+
+@example
+@group
+(string? "Hi")                  @result{}  #t
+(string? 'Hi)                   @result{}  #f
+@end group
+@end example
 @end deffn
 
 @deffn procedure string-length string
 Returns the length of @var{string} as an exact non-negative integer.
+
+@example
+@group
+(string-length "")              @result{}  0
+(string-length "The length")    @result{}  10
+@end group
+@end example
 @end deffn
 
 @deffn procedure string-null? string
@@ -4986,17 +5011,40 @@ Returns the length of @var{string} as an exact non-negative integer.
 @cindex null string, predicate for
 Returns @code{#t} if @var{string} has zero length; otherwise returns
 @code{#f}.
+
+@example
+@group
+(string-null? "")               @result{}  #t
+(string-null? "Hi")             @result{}  #f
+@end group
+@end example
 @end deffn
 
 @deffn procedure string-ref string k
 Returns character @var{k} of @var{string}.  @var{K} must be a valid index
 of @var{string}.
+
+@example
+@group
+(string-ref "Hello" 1)          @result{}  #\e
+(string-ref "Hello" 5)          @error{} 5 not in correct range
+@end group
+@end example
 @end deffn
 
 @deffn {procedure} string-set! string k char
 Stores @var{char} in element @var{k} of @var{string} and returns an
 unspecified value.  @var{K} must be a valid index of @var{string}, and
 @var{char} must satisfy the predicate @code{char-ascii?}.
+
+@example
+@group
+(define str "Dog")              @result{}  @r{unspecified}
+(string-set! str 0 #\L)         @result{}  @r{unspecified}
+str                             @result{}  "Log"
+(string-set! str 3 #\t)         @error{} 3 not in correct range
+@end group
+@end example
 @end deffn
 
 @need 1000
@@ -5015,6 +5063,15 @@ and contain the same characters in the same (relative) positions;
 otherwise returns @code{#f}.  @code{string-ci=?} and
 @code{substring-ci=?} don't distinguish uppercase and lowercase letters,
 but @code{string=?} and @code{substring=?} do.
+
+@example
+@group
+(string=? "PIE" "PIE")                  @result{}  #t
+(string=? "PIE" "pie")                  @result{}  #f
+(string-ci=? "PIE" "pie")               @result{}  #t
+(substring=? "Alamo" 1 3 "cola" 2 4)    @result{}  #t @r{; compares "la"}
+@end group
+@end example
 @end deffn
 
 @deffn procedure string<? string1 string2
@@ -5033,6 +5090,15 @@ The arguments are compared using a lexicographic (or dictionary) order.
 If two strings differ in length but are the same up to the length of the
 shorter string, the shorter string is considered to be less than the
 longer string.
+
+@example
+@group
+(string<? "cat" "dog")          @result{}  #t
+(string<? "cat" "DOG")          @result{}  #f
+(string-ci<? "cat" "DOG")       @result{}  #t
+(string>? "catkin" "cat")       @result{}  #t @r{; shorter is lesser}
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-compare string1 string2 if-eq if-lt if-gt
@@ -5046,6 +5112,16 @@ thunk that is applied.
 
 @code{string-compare} distinguishes uppercase and lowercase letters;
 @code{string-compare-ci} does not.
+
+@example
+@group
+(define (cheer) (display "Hooray!"))
+(define (boo)   (display "Boo-hiss!"))
+(string-compare "a" "b"  cheer  (lambda() 'ignore)  boo)
+        @print{}  Hooray!
+        @result{}  @r{unspecified}
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-hash string
@@ -5087,6 +5163,13 @@ are uppercase letters.  If the first character is not an uppercase
 letter or if any of the remaining characters are uppercase letters, they
 return @code{#f}.  If the string (substring) contains less than two
 letters, they return @code{#f}.
+
+@example
+@group
+(map string-capitalized? '(""    "A"    "art"  "Art"  "ART"))
+                       @result{} (#f    #t     #f     #t     #f)   
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-upper-case? string
@@ -5097,6 +5180,13 @@ These procedures return @code{#t} if all the letters in the string
 (substring) are of the correct case, otherwise they return @code{#f}.
 The string (substring) must contain at least one letter or the
 procedures return @code{#f}.
+
+@example
+@group
+(map string-upper-case?  '(""    "A"    "art"  "Art"  "ART"))
+                       @result{} (#f    #t     #f     #f     #f)   
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-capitalize string
@@ -5118,6 +5208,14 @@ which all uppercase letters are changed to lowercase.
 @code{string-downcase}: it alters @var{string} and returns an
 unspecified value.  @code{substring-downcase!} destructively changes the
 case of the specified part of @var{string}.
+
+@example
+@group
+(define str "ABCDEFG")          @result{}  @r{unspecified}
+(substring-downcase! str 3 5)   @result{}  @r{unspecified}
+str                             @result{}  "ABCdeFG"
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-upcase string
@@ -5141,12 +5239,32 @@ specified part of @var{string}.
 Returns a newly allocated string made from the concatenation of the given
 strings.  With no arguments, @code{string-append} returns the empty
 string (@code{""}).
+
+@example
+@group
+(string-append)                         @result{}  ""
+(string-append "*" "ace" "*")           @result{}  "*ace*"
+(string-append "" "" "")                @result{}  ""
+(eq? str (string-append str))           @result{}  #f @r{; newly allocated}
+@end group
+@end example
 @end deffn
 
 @deffn procedure substring string start end
 Returns a newly allocated string formed from the characters of
 @var{string} beginning with index @var{start} (inclusive) and ending
 with @var{end} (exclusive).
+
+@example
+@group
+(substring "" 0 0)              @result{} ""
+(substring "arduous" 2 5)       @result{} "duo"
+(substring "arduous" 2 8)       @error{} 8 not in correct range
+
+(define (string-copy s)
+  (substring s 0 (string-length s)))
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-head string end
@@ -5167,6 +5285,8 @@ could have been defined by:
 @example
 (define (string-tail string start)
   (substring string start (string-length string)))
+
+(string-tail "uncommon" 2)      @result{}  "common"
 @end example
 @end deffn
 
@@ -5182,6 +5302,16 @@ length of @var{string}, these procedures are equivalent to
 truncates from the beginning of the string (lowest indices), while
 @code{string-pad-right} does so at the end of the string (highest
 indices).
+
+@example
+@group
+(string-pad-left "hello" 4)             @result{}  "hell"
+(string-pad-left "hello" 8)             @result{}  "   hello"
+(string-pad-left "hello" 8 #\*)         @result{}  "***hello"
+(string-pad-right "hello" 4)            @result{}  "hell"
+(string-pad-right "hello" 8)            @result{}  "hello   "
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-trim string [char-set]
@@ -5194,12 +5324,42 @@ are not in @var{char-set} from: (@code{string-trim}) both ends of
 @var{string}; (@code{string-trim-left}) the beginning of @var{string};
 or (@code{string-trim-right}) the end of @var{string}.  @var{Char-set}
 defaults to @code{char-set:not-whitespace}.
+
+@example
+@group
+(string-trim "  in the end  ")          @result{}  "in the end"
+(string-trim "              ")          @result{}  ""
+(string-trim "100th" char-set:numeric)  @result{}  "100"
+(string-trim-left "-.-+-=-" (char-set #\+))
+                                        @result{}  "+-=-"
+(string-trim "but (+ x y) is" (char-set #\( #\)))
+                                        @result{}  "(+ x y)"
+@end group
+@end example
 @end deffn
 
 @node Searching Strings, Matching Strings, Cutting and Pasting Strings, Strings
 @section Searching Strings
 @cindex searching, of string
 @cindex character, searching string for
+@cindex substring, searching string for
+
+@deffn {procedure+} substring? pattern string
+Searches @var{string} to see if it contains the substring @var{pattern}.
+Returns the index of the first substring of @var{string} that is equal
+to @var{pattern}; or @code{#f} if @var{string} does not contain @var{pattern}.
+
+@example
+@group
+(substring? "rat" "pirate")             @result{}  2
+(substring? "rat" "outrage")            @result{}  #f
+(substring? "" any-string)              @result{}  0
+(if (substring "moon" text)
+    (process-lunar text)
+    'no-moon)
+@end group
+@end example
+@end deffn
 
 @deffn {procedure+} string-find-next-char string char
 @deffnx {procedure+} substring-find-next-char string start end char
@@ -5210,13 +5370,34 @@ Returns the index of the first occurrence of @var{char} in the string
 string.  For the substring procedures, the index returned is relative to
 the entire string, not just the substring.  The @code{-ci} procedures
 don't distinguish uppercase and lowercase letters.
+
+@example
+@group
+(string-find-next-char "Adam" #\A)              @result{}  0 
+(substring-find-next-char "Adam" 1 4 #\A)       @result{}  #f
+(substring-find-next-char-ci "Adam" 1 4 #\A)    @result{}  2 
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-find-next-char-in-set string char-set
 @deffnx {procedure+} substring-find-next-char-in-set string start end char-set
-Returns the index of the first character in the string (substring) that
-is also in @var{char-set}.  For the substring procedure, the index
-returned is relative to the entire string, not just the substring.
+Returns the index of the first character in the string (or substring)
+that is also in @var{char-set}, or returns @code{#f} if none of the
+characters in @var{char-set} occur in @var{string}.
+For the substring procedure, only the substring is searched, but the
+index returned is relative to the entire string, not just the substring.
+
+@example
+@group
+(string-find-next-char-in-set my-string char-set:alphabetic)
+                @result{}  @r{start position of the first word in} my-string
+@r{; Can be used as a predicate:}
+(if (string-find-next-char-in-set my-string (char-set #\( #\) ))
+    'contains-parentheses
+    'no-parentheses)
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-find-previous-char string char
@@ -5249,6 +5430,13 @@ Compares the two strings (substrings), starting from the beginning, and
 returns the number of characters that are the same.  If the two strings
 (substrings) start differently, returns 0.  The @code{-ci} procedures
 don't distinguish uppercase and lowercase letters.
+
+@example
+@group
+(string-match-forward "mirror" "micro") @result{}  2  @r{; matches "mi"}
+(string-match-forward "a" "b")          @result{}  0  @r{; no match}
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-match-backward string1 string2
@@ -5260,6 +5448,13 @@ matching toward the front, returning the number of characters that are
 the same.  If the two strings (substrings) end differently, returns 0.
 The @code{-ci} procedures don't distinguish uppercase and lowercase
 letters.
+
+@example
+@group
+(string-match-backward-ci "BULBOUS" "fractious")
+                                        @result{}  3  @r{; matches "ous"}
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} string-prefix? string1 string2
@@ -5273,6 +5468,7 @@ procedures don't distinguish uppercase and lowercase letters.
 
 @example
 (string-prefix? "abc" "abcdef")         @result{}  #t
+(string-prefix? "" any-string)          @result{}  #t
 @end example
 @end deffn
 
@@ -5286,7 +5482,8 @@ the suffix of the second; otherwise returns @code{#f}.  The @code{-ci}
 procedures don't distinguish uppercase and lowercase letters.
 
 @example
-(string-suffix? "def" "abcdef")         @result{}  #t
+(string-suffix? "ous" "bulbous")        @result{}  #t
+(string-suffix? "" any-string)          @result{}  #t
 @end example
 @end deffn
 
@@ -5306,6 +5503,17 @@ in the original string (substring).  @code{string-replace} and
 @code{substring-replace} return a newly allocated string containing the
 result.  @code{string-replace!} and @code{substring-replace!}
 destructively modify @var{string} and return an unspecified value.
+
+@example
+@group
+(define str "a few words")              @result{}  @r{unspecified}
+(string-replace str #\space #\-)        @result{}  "a-few-words"
+(substring-replace str 2 9 #\space #\-) @result{}  "a few-words"
+str                                     @result{}  "a few words"
+(string-replace! str #\space #\-)       @result{}  @r{unspecified}
+str                                     @result{}  "a-few-words"
+@end group
+@end example
 @end deffn
 
 @deffn {procedure} string-fill! string char
@@ -5316,6 +5524,14 @@ unspecified value.
 @deffn {procedure+} substring-fill! string start end char
 Stores @var{char} in elements @var{start} (inclusive) to @var{end}
 (exclusive) of @var{string} and returns an unspecified value.
+
+@example
+@group
+(define s (make-string 10 #\space))     @result{}  @r{unspecified}
+(substring-fill! s 2 8 #\*)             @result{}  @r{unspecified}
+s                                       @result{}  "  ******  "
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} substring-move-left! string1 start1 end1 string2 start2
@@ -5339,6 +5555,19 @@ indices to smaller).  Thus if @var{string1} and @var{string2} are the
 same, this procedure moves the characters toward the right inside the
 string.
 @end table
+
+The following example shows how these functions can be used to build up
+a string (it would have been easier to use @code{string-append}):
+@example
+@group
+(define answer (make-string 9 #\*))             @result{}  @r{unspecified}
+answer                                          @result{}  "*********"
+(substring-move-left! "start" 0 5 answer 0)     @result{}  @r{unspecified}
+answer                                          @result{}  "start****"
+(substring-move-left! "-end" 0 4 answer 5)      @result{}  @r{unspecified}
+answer                                          @result{}  "start-end"
+@end group
+@end example
 @end deffn
 
 @node Variable-Length Strings, Byte Vectors, Modification of Strings, Strings
@@ -5394,6 +5623,12 @@ operations are made available for use.
 @deffn {procedure+} vector-8b-ref string k
 Returns character @var{k} of @var{string} as an @sc{ascii} code.
 @var{K} must be a valid index of @var{string}.
+
+@example
+@group
+(vector-8b-ref "abcde" 2)               @result{}  99 @r{; ascii for `c'}
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} vector-8b-set! string k ascii
@@ -10346,7 +10581,7 @@ procedure returns the pathname that corresponds to the string.
 @end deffn
 
 
-@deffn {procedure+} parse-namestring thing #!optional host defaults
+@deffn {procedure+} parse-namestring thing [host [defaults]]
 @cindex construction, of pathname
 This turns @var{thing} into a pathname.
 @var{Thing} must be a pathname or a string.
@@ -10696,7 +10931,7 @@ Returns @code{#t} if @var{pathname} contains any wildcard components;
 otherwise returns @code{#f}.
 @end deffn
 
-@deffn {procedure+} merge-pathnames pathname #!optional defaults default-version
+@deffn {procedure+} merge-pathnames pathname [defaults [default-version]]
 @cindex merging, of pathnames
 @cindex defaulting, of pathname
 Returns a pathname whose components are obtained by combining those of
@@ -10778,7 +11013,7 @@ simultaneously.  It could have been defined by:
 @deffn {procedure+} file-namestring pathname
 @deffnx {procedure+} directory-namestring pathname
 @deffnx {procedure+} host-namestring pathname
-@deffnx {procedure+} enough-namestring pathname #!optional defaults
+@deffnx {procedure+} enough-namestring pathname [defaults]
 @cindex conversion, pathname to string
 These functions return a string corresponding to a subset of the
 @var{pathname} information.
@@ -10806,7 +11041,7 @@ the file named by @var{pathname} when considered relative to the
 
 @deffn {procedure+} file-pathname pathname
 @deffnx {procedure+} directory-pathname pathname
-@deffnx {procedure+} enough-pathname pathname #!optional defaults
+@deffnx {procedure+} enough-pathname pathname [defaults]
 @cindex selection, components of pathname
 These functions return a pathname corresponding to a subset of the
 @var{pathname} information.
@@ -10906,7 +11141,7 @@ system libraries.
 Locates the pathname of a MIT Scheme system library directory.
 @end deffn
 
-@deffn {procedure+} user-homedir-pathname #!optional host
+@deffn {procedure+} user-homedir-pathname [host]
 @cindex home directory, as pathname
 Returns a pathname for the user's ``home directory'' on @var{host}.
 The @var{host} arguments defaults to @code{local-host}.
