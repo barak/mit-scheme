@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.5 1992/04/21 22:26:05 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.6 1993/02/09 03:35:32 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -58,16 +58,17 @@ match, the deeper our level in the outline."
       (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
-	 (and level
-	      (let next-topic ((start start))
-		(and start
-		     (re-search-forward outline-pattern (line-end start 0) end)
-		     (let ((found-level
-			    (- (re-match-end-index 0)
-			       (re-match-start-index 0))))
-		       (if (>= found-level level)
-			   (next-topic (re-match-end 0))
-			   (re-match-start 0)))))))))
+	 (let next-topic ((start start))
+	   (and start
+		(re-search-forward outline-pattern (line-end start 0) end)
+		(if level
+		    (let ((found-level
+			   (- (re-match-end-index 0)
+			      (re-match-start-index 0))))
+		      (if (>= found-level level)
+			  (next-topic (re-match-end 0))
+			  (re-match-start 0)))
+		    (re-match-start 0)))))))
 
 (define (%backward-up-topic end start outline-pattern)
   (if (not (mark<= start end))
@@ -90,18 +91,19 @@ match, the deeper our level in the outline."
       (error "Marks incorrectly related:" start end))
   (and (mark< start end)
        (let ((level (topic-level outline-pattern start)))
-	 (and level
-	      (let next-topic ((start start))
-		(and start
-		     (re-search-forward outline-pattern (line-end start 0) end)
-		     (let ((found-level
-			    (- (re-match-end-index 0)
-			       (re-match-start-index 0))))
-		       (cond ((= found-level level)
-			      (re-match-start 0))
-			     ((< found-level level)
-			      false)
-			     (else (next-topic (re-match-end 0)))))))))))
+	 (let next-topic ((start start))
+	   (and start
+		(re-search-forward outline-pattern (line-end start 0) end)
+		(if level
+		    (let ((found-level
+			   (- (re-match-end-index 0)
+			      (re-match-start-index 0))))
+		      (cond ((= found-level level)
+			     (re-match-start 0))
+			    ((< found-level level)
+			     false)
+			    (else (next-topic (re-match-end 0)))))
+		    (re-match-start 0)))))))
 
 (define (%backward-topic end start outline-pattern)
   (if (not (mark<= start end))
