@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.108 2000/06/20 19:48:42 cph Exp $
+;;; $Id: imail-core.scm,v 1.109 2000/06/23 17:58:28 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -282,6 +282,11 @@
   (apply folder-event folder type parameters))
 
 (define (folder-event folder type . parameters)
+  (if (and imap-trace-port (imap-folder? folder))
+      (begin
+	(write-line (cons* 'FOLDER-EVENT folder type parameters)
+		    imap-trace-port)
+	(flush-output imap-trace-port)))
   (event-distributor/invoke! (folder-modification-event folder)
 			     folder
 			     type
