@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dired.scm,v 1.134 1992/11/20 15:35:18 bal Exp $
+;;;	$Id: dired.scm,v 1.135 1992/11/25 00:22:36 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1992 Massachusetts Institute of Technology
 ;;;
@@ -115,7 +115,6 @@ Also:
 (define-key 'dired #\q 'dired-quit)
 (define-key 'dired #\K 'dired-krypt-file)
 (define-key 'dired #\c-\] 'dired-abort)
-
 (let-syntax ((define-function-key
                (macro (mode key command)
                  (let ((token (if (pair? key) (car key) key)))
@@ -124,9 +123,6 @@ Also:
                         (define-key ,mode ,key ,command))))))
   (define-function-key 'dired down 'dired-next-line)
   (define-function-key 'dired up 'dired-previous-line))
-
-(define dired-flag-delete-char #\D)
-(define dired-flag-copy-char #\C)
 
 (define-command dired
   "\"Edit\" directory DIRNAME--delete, rename, print, etc. some files in it.
@@ -246,6 +242,9 @@ Type `h' after entering dired for more info."
   "p"
   (lambda (argument)
     (dired-mark dired-flag-delete-char argument)))
+
+(define dired-flag-delete-char #\D)
+(define dired-flag-copy-char #\C)
 
 (define-command dired-unflag
   "Cancel the kill or copy requested for the current file."
@@ -584,7 +583,7 @@ Actions controlled by variables list-directory-brief-switches
 ;;;; Krypt File
 
 (define-command dired-krypt-file
-  "Krypt/unkrypt a file.  If the file ends in KY, assume it is already 
+  "Krypt/unkrypt a file.  If the file ends in KY, assume it is already
 krypted and unkrypt it.  Otherwise, krypt it."
   '()
   (lambda ()
@@ -600,15 +599,16 @@ krypted and unkrypt it.  Otherwise, krypt it."
 	 (with-input-from-file pathname
 	   (lambda ()
 	     (read-string (char-set)))))
-	(password 
+	(password
 	 (prompt-for-password "Password: ")))
     (let ((the-string
 	   (decrypt the-encrypted-file password
-		    (lambda () 
+		    (lambda ()
 		      (editor-beep)
 		      (message "krypt: Password error!")
 		      'FAIL)
-		    (lambda (x) 
+		    (lambda (x)
+		      x
 		      (editor-beep)
 		      (message "krypt: Checksum error!")
 		      'FAIL))))
@@ -625,12 +625,12 @@ krypted and unkrypt it.  Otherwise, krypt it."
 	 (with-input-from-file pathname
 	   (lambda ()
 	     (read-string (char-set)))))
-	(password 
+	(password
 	 (prompt-for-confirmed-password)))
     (let ((the-encrypted-string
 	   (encrypt the-file-string password)))
-      (let ((new-name 
-	     (pathname-new-type 
+      (let ((new-name
+	     (pathname-new-type
 	      pathname
 	      (let ((old-type (pathname-type pathname)))
 		(if (not old-type)
