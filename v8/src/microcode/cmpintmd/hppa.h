@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.23 1991/08/13 06:45:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpintmd/hppa.h,v 1.24 1991/08/13 18:23:23 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -698,12 +698,6 @@ do {									\
 
 #ifdef IN_CMPINT_C
 
-#define ASM_RESET_HOOK()						\
-do {									\
-  hppa_reset_hook (((sizeof (utility_table)) / (sizeof (void *))),	\
-		   &utility_table[0]);					\
-} while (0)
-
 long
 DEFUN (assemble_17,
        (inst),
@@ -722,38 +716,24 @@ DEFUN (assemble_17,
 
 #include <magic.h>
 
-/* This loads the cache information structure for use by flush_i_cache,
-   sets the floating point flags correctly, and accommodates the c
-   function pointer closure format problems for utilities for HP-UX >= 8.0 .
- */
-
-#define HPPA_TABLE_LENGTH	100
-
-extern void *hppa_utility_table[];
-void *hppa_utility_table[HPPA_TABLE_LENGTH];
-
-void
-DEFUN (hppa_reset_hook,
-       (table_length, utility_table),
+void **
+DEFUN (transform_procedure_table,
+       (table_length, old_table),
        long table_length AND
-       void **utility_table)
+       void **old_table)
 {
+  void **new_table;
   long counter;
-  extern void interface_initialize ();
-  void **hppa_table;
 
-  flush_i_cache_initialize ();
-  interface_initialize ();
-
-  if (table_length > HPPA_TABLE_LENGTH)
+  new_table = ((void **) (malloc (table_length * (sizeof (void *)))));
+  if (new_table == ((void **) NULL))
   {
     fprintf (stderr,
-	     "hppa_reset_hook: HPPA_TABLE_LENGTH (%d) < %d\n",
-	     HPPA_TABLE_LENGTH, table_length);
+	     "transform_procedure_table: malloc (%d) failed.\n",
+	     (table_length * (sizeof (void *))));
     exit (1);
   }
 
-  hppa_table = &hppa_utility_table[0];
   for (counter = 0; counter < table_length; counter++)
   {
     /* Test for HP-UX >= 8.0 */
@@ -762,17 +742,51 @@ DEFUN (hppa_reset_hook,
     char *C_closure, *blp;
     long offset;
 
-    C_closure = ((char *) utility_table[counter]);
+    C_closure = ((char *) (old_table[counter]));
     blp = (* ((char **) (C_closure - 2)));
     blp = ((char *) (((unsigned long) blp) & ~3));
     offset = (assemble_17 (* ((union ble_inst *) blp)));
-    hppa_table[counter] = ((void *) ((blp + 8) + offset));
+    new_table[counter] = ((void *) ((blp + 8) + offset));
     
 #else
-    hppa_table[counter] = ((void *) utility_table[counter]);
+    new_table[counter] = ((void *) old_table[counter]);
 #endif
   }
+  return (new_table);
 }
+
+
+/* This loads the cache information structure for use by flush_i_cache,
+   sets the floating point flags correctly, and accommodates the c
+   function pointer closure format problems for utilities for HP-UX >= 8.0 .
+ */
+
+extern void **hppa_utility_table;
+void **hppa_utility_table;
+
+void
+DEFUN (hppa_reset_hook,
+       (table_length, utility_table),
+       long table_length AND
+       void **utility_table)
+{
+  extern void interface_initialize ();
+
+  flush_i_cache_initialize ();
+  interface_initialize ();
+  /* This can be done with the primitive table as well if we add
+     assembly-language primitive invocation code.
+   */
+  hppa_utility_table =
+    (transform_procedure_table (table_length, utility_table));
+  return;
+}
+
+#define ASM_RESET_HOOK()						\
+do {									\
+  hppa_reset_hook (((sizeof (utility_table)) / (sizeof (void *))),	\
+		   &utility_table[0]);					\
+} while (0)
 
 #endif /* IN_CMPINT_C */
 

@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.17 1991/08/13 06:46:08 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.18 1991/08/13 18:23:38 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -181,9 +181,9 @@ trampoline_to_interface
 scheme_to_interface
 	STW	2,8(0,4)		; Move val to interpreter reg
 	ADDIL	L'hppa_utility_table-$global$,27
-	LDO	R'hppa_utility_table-$global$(1),29
-	LDWX,S	28(0,29),29		; Find handler
+	LDW	R'hppa_utility_table-$global$(1),29
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
+	LDWX,S	28(0,29),29		; Find handler
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
 	ADDIL	L'Free-$global$,27
 	STW	21,R'Free-$global$(1)	; Update free
