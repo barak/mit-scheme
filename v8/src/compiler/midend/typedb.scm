@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.4 1995/11/03 21:11:31 adams Exp $
+$Id: typedb.scm,v 1.5 1995/11/04 16:36:29 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -157,10 +157,23 @@ MIT in each case. |#
 			    'function))
 
 (define-operator-type (make-primitive-procedure 'ASCII->CHAR)
-  (primitive-procedure-type (list type:unsigned-byte type:character)
+  (primitive-procedure-type (list type:unsigned-byte) type:character
 			    'function))
 
 
+
+;; If we had more refined integer types, we could do better with
+;; OBJECT-TYPE.
+(define-operator-type (make-primitive-procedure 'OBJECT-TYPE)
+  (primitive-procedure-type (list type:any) type:unsigned-byte
+			    'function))
+
+(define-operator-type (make-primitive-procedure 'OBJECT-DATUM)
+  (primitive-procedure-type (list type:any) type:fixnum>=0
+			    'function))
+
+
+
 (let ()
 
   (define (define-indexed thing-ref thing-set!
