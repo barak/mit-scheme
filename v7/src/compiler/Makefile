@@ -1,5 +1,5 @@
 #
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.1 1988/08/30 08:35:12 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/Attic/Makefile,v 1.2 1988/08/31 06:09:11 cph Exp $
 #
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
@@ -24,6 +24,9 @@ index:
 
 listing:
 	prlist comp.pkg $(SOURCES:foo=*.scm)
+
+locked:
+	rlog -L -R RCS/*,v $(SOURCES:foo=RCS/*,v)
 
 stage1:
 	cd back ; mkdir STAGE1 ; mv *.com *.binf STAGE1
@@ -64,13 +67,3 @@ unstage2:
 	cd rtlbase ; mv STAGE2/* . ; rmdir STAGE2
 	cd rtlgen ; mv STAGE2/* . ; rmdir STAGE2
 	cd rtlopt ; mv STAGE2/* . ; rmdir STAGE2
-
-locked:
-	cd back ; rlog -L -R RCS/*,v
-	cd base ; rlog -L -R RCS/*,v
-	cd bobcat ; rlog -L -R RCS/*,v
-	cd fggen ; rlog -L -R RCS/*,v
-	cd fgopt ; rlog -L -R RCS/*,v
-	cd rtlbase ; rlog -L -R RCS/*,v
-	cd rtlgen ; rlog -L -R RCS/*,v
-	cd rtlopt ; rlog -L -R RCS/*,v
