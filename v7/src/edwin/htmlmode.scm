@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: htmlmode.scm,v 1.6 2002/11/20 19:46:00 cph Exp $
+;;; $Id: htmlmode.scm,v 1.7 2002/12/09 19:30:26 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999, 2000, 2001, 2002 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT Scheme.
 ;;;
@@ -68,10 +68,10 @@
 
 (define html-syntax-table
   (let ((syntax-table (make-char-syntax-table text-mode:syntax-table)))
-    (set-char-syntax! syntax-table #\< "(>1")
-    (set-char-syntax! syntax-table #\! ". 2")
-    (set-char-syntax! syntax-table #\- "_ 3")
-    (set-char-syntax! syntax-table #\> ")<4")
+    (set-char-syntax! syntax-table #\< "(>")
+    (set-char-syntax! syntax-table #\! ". ")
+    (set-char-syntax! syntax-table #\- "_ 1234")
+    (set-char-syntax! syntax-table #\> ")<")
     (set-char-syntax! syntax-table #\" "\"\"")
     syntax-table))
 
