@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.38 2000/05/16 01:46:37 cph Exp $
+;;; $Id: imail-imap.scm,v 1.39 2000/05/16 02:16:42 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -24,9 +24,7 @@
 
 ;;;; URL
 
-(define-class (<imap-url>
-	       (constructor %make-imap-url (user-id host port mailbox)))
-    (<url>)
+(define-class <imap-url> (<url>)
   ;; User name to connect as.
   (user-id define accessor)
   ;; Name or IP address of host to connect to.
@@ -51,6 +49,16 @@
 			     (string->number port)))
 		      (parser-token pv 'MAILBOX)))))
 
+(define %make-imap-url
+  (let ((constructor
+	 (instance-constructor <imap-url> '(USER-ID HOST PORT MAILBOX))))
+    (lambda (user-id host port mailbox)
+      (let ((default (imail-default-imap-url)))
+	(constructor (or user-id (imap-url-user-id default))
+		     (or host (imap-url-host default))
+		     (or port (imap-url-port default))
+		     (or mailbox (imap-url-mailbox default)))))))
+
 (define imap:parse:imail-url
   (let ((//server
 	 (sequence-parser (noise-parser (string-matcher "//"))
@@ -64,26 +72,24 @@
      imap:parse:enc-mailbox)))
 
 (define-method url-body ((url <imap-url>))
-  (string-append
-   (let ((user-id (imap-url-user-id url))
-	 (host (imap-url-host url))
-	 (port (imap-url-port url)))
-     (if (or user-id host port)
-	 (string-append
-	  "//"
-	  (if user-id
-	      (string-append (url:encode-string user-id) "@")
-	      "")
-	  host
-	  (if port
-	      (string-append ":" (number->string port))
-	      "")
-	  "/")
-	 ""))
-   (url:encode-string (imap-url-mailbox url))))
+  (string-append "//"
+		 (url:encode-string (imap-url-user-id url))
+		 "@"
+		 (imap-url-host url)
+		 ":"
+		 (number->string (imap-url-port url))
+		 "/"
+		 (url:encode-string (imap-url-mailbox url))))
 
 (define-method url-presentation-name ((url <imap-url>))
   (imap-url-mailbox url))
+
+(define (compatible-imap-urls? url1 url2)
+  ;; Can URL1 and URL2 both be accessed from the same IMAP session?
+  ;; E.g. can the IMAP COPY command work between them?
+  (and (string=? (imap-url-user-id url1) (imap-url-user-id url2))
+       (string-ci=? (imap-url-host url1) (imap-url-host url2))
+       (= (imap-url-port url1) (imap-url-port url2))))
 
 ;;;; Server connection
 

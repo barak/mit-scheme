@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.44 2000/05/12 18:33:44 cph Exp $
+;;; $Id: imail-top.scm,v 1.45 2000/05/16 02:16:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -168,27 +168,11 @@ May be called with an IMAIL folder URL as argument;
 	(imail-default-imap-url))))
 
 (define (imail-parse-partial-url string)
-  (let ((url
-	 (->url
-	  (let ((colon (string-find-next-char string #\:)))
-	    (if colon
-		string
-		(string-append "imap:" string))))))
-    (if (and (imap-url? url)
-	     (not (and (imap-url-user-id url)
-		       (imap-url-host url)
-		       (imap-url-port url)
-		       (imap-url-mailbox url))))
-	(let ((url* (imail-default-imap-url)))
-	  (make-imap-url (or (imap-url-user-id url)
-			     (imap-url-user-id url*))
-			 (or (imap-url-host url)
-			     (imap-url-host url*))
-			 (or (imap-url-port url)
-			     (imap-url-port url*))
-			 (or (imap-url-mailbox url)
-			     (imap-url-mailbox url*))))
-	url)))
+  (->url
+   (let ((colon (string-find-next-char string #\:)))
+     (if colon
+	 string
+	 (string-append "imap:" string)))))
 
 (define (imail-default-imap-url)
   (call-with-values
@@ -199,7 +183,7 @@ May be called with an IMAIL folder URL as argument;
 		(values (string-head server colon)
 			(or (string->number (string-tail server (+ colon 1)))
 			    (error "Invalid port specification:" server)))
-		(values server #f)))))
+		(values server 143)))))
     (lambda (host port)
       (make-imap-url (or (ref-variable imail-default-user-id)
 			 (current-user-name))
