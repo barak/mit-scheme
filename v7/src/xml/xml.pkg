@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.30 2003/09/25 16:51:12 cph Exp $
+$Id: xml.pkg,v 1.31 2003/09/26 00:35:45 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -195,6 +195,7 @@ USA.
 	  (xml-external-id-uri xml-external-id-iri)
 	  xml-external-id?
 	  xml-intern
+	  xml-iri
 	  xml-name-hash
 	  xml-name-local
 	  xml-name-local=?
@@ -222,7 +223,8 @@ USA.
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation
 	  xml-unparsed-!entity?
-	  xml-whitespace-string?)
+	  xml-whitespace-string?
+	  xmlns-iri)
   (export (runtime xml parser)
 	  %make-xml-name))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.43 2003/09/25 16:51:18 cph Exp $
+$Id: xml-parser.scm,v 1.44 2003/09/26 00:35:49 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -537,9 +537,6 @@ USA.
 				(string-tail->symbol s (fix:+ c 1))
 				simple))
 	    simple)))))
-
-(define xml-iri "http://www.w3.org/XML/1998/namespace")
-(define xmlns-iri "http://www.w3.org/2000/xmlns/")
 
 ;;;; Processing instructions
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.32 2003/09/25 16:51:20 cph Exp $
+$Id: xml-struct.scm,v 1.33 2003/09/26 00:35:52 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -100,24 +100,36 @@ USA.
 		     iri)))
 
 (define (make-xml-name simple iri)
-  (let ((lose
+  (let ((bad-name
 	 (lambda ()
-	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME))))
+	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME)))
+	(bad-iri
+	 (lambda ()
+	   (error:wrong-type-argument iri "IRI" 'MAKE-XML-NAME))))
     (receive (string symbol)
 	(cond ((symbol? simple) (values (symbol-name simple) simple))
 	      ((string? simple) (values simple (string->symbol simple)))
-	      (else (lose)))
+	      (else (bad-name)))
       (let ((type (string-is-xml-nmtoken? string)))
 	(cond ((and type (default-xml-namespace-iri? iri))
 	       symbol)
 	      ((eq? type 'NAME)
-	       (%make-xml-name symbol
-			       (make-xml-namespace-iri iri)
-			       (let ((c (string-find-next-char string #\:)))
-				 (if c
-				     (string-tail->symbol string (fix:+ c 1))
-				     symbol))))
-	      (else (lose)))))))
+	       (let ((iri (make-xml-namespace-iri iri)))
+		 (%make-xml-name
+		  symbol
+		  iri
+		  (let ((c (string-find-next-char string #\:)))
+		    (if c
+			(let ((prefix (string-head->symbol string c))
+			      (local (string-tail->symbol string (fix:+ c 1))))
+			  (if (or (and (eq? prefix 'xml)
+				       (not (eq? iri xml-iri)))
+				  (and (eq? prefix 'xmlns)
+				       (not (eq? iri xmlns-iri))))
+			      (bad-iri))
+			  local)
+			symbol)))))
+	      (else (bad-name)))))))
 
 (define (%make-xml-name simple iri local)
   (let ((uname
@@ -135,6 +147,12 @@ USA.
 
 (define universal-names
   (make-eq-hash-table))
+
+(define xml-iri
+  (make-xml-namespace-iri "http://www.w3.org/XML/1998/namespace"))
+
+(define xmlns-iri
+  (make-xml-namespace-iri "http://www.w3.org/2000/xmlns/"))
 
 (define (xml-name-simple name)
   (cond ((xml-nmtoken? name) name)
