@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignmint.h,v 1.1 1989/09/20 23:19:45 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignmint.h,v 1.2 1992/06/10 21:43:58 jinx Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -98,8 +98,8 @@ extern void abort ();
 
 #define BIGNUM_DIGIT_LENGTH (((sizeof (bignum_digit_type)) * CHAR_BIT) - 2)
 #define BIGNUM_HALF_DIGIT_LENGTH (BIGNUM_DIGIT_LENGTH / 2)
-#define BIGNUM_RADIX		 (1 << BIGNUM_DIGIT_LENGTH)
-#define BIGNUM_RADIX_ROOT	 (1 << BIGNUM_HALF_DIGIT_LENGTH)
+#define BIGNUM_RADIX		 (1UL << BIGNUM_DIGIT_LENGTH)
+#define BIGNUM_RADIX_ROOT	 (1UL << BIGNUM_HALF_DIGIT_LENGTH)
 #define BIGNUM_DIGIT_MASK	 (BIGNUM_RADIX - 1)
 #define BIGNUM_HALF_DIGIT_MASK	 (BIGNUM_RADIX_ROOT - 1)
 
