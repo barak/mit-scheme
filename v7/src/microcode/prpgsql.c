@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.1 2003/06/06 19:14:02 cph Exp $
+$Id: prpgsql.c,v 1.2 2003/06/06 20:34:02 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -57,11 +57,22 @@ USA.
 #define RESULT_TO_UNSPECIFIC(fn) ONE_ARG (ARG_RESULT, fn, ANY_TO_UNSPECIFIC)
 #define RESULT_TO_STRING(fn) ONE_ARG (ARG_RESULT, fn, char_pointer_to_string)
 
-DEFINE_PRIMITIVE ("PQ-CONNECT-DB", Prim_pq_connect_db, 1, 1, 0)
-  STRING_TO_UINT (PQconnectdb)
+DEFINE_PRIMITIVE ("PQ-CONNECT-DB", Prim_pq_connect_db, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+  SET_PAIR_CDR ((ARG_REF (2)), (ANY_TO_UINT (PQconnectdb (STRING_ARG (1)))));
+  PRIMITIVE_RETURN (unspecific);
+}
 
-DEFINE_PRIMITIVE ("PQ-CONNECT-START", Prim_pq_connect_start, 1, 1, 0)
-  STRING_TO_UINT (PQconnectStart)
+DEFINE_PRIMITIVE ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+  SET_PAIR_CDR ((ARG_REF (2)),
+		(ANY_TO_UINT (PQconnectStart (STRING_ARG (1)))));
+  PRIMITIVE_RETURN (unspecific);
+}
 
 DEFINE_PRIMITIVE ("PQ-CONNECT-POLL", Prim_pq_connect_poll, 1, 1, 0)
   CONN_TO_UINT (PQconnectPoll)
