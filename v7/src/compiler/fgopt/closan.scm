@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.7 1989/03/14 19:45:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/closan.scm,v 4.8 1989/05/10 03:01:40 cph Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -286,7 +286,7 @@ to #F whenever a closure is identified.
     (for-each
      (lambda (procedure*)
        (if (not (procedure-closure-context procedure*))
-	   (let ((parent (procedure-closing-block procedure*))
+	   (let ((parent (procedure-current-parent procedure*))
 		 (original-parent (procedure-target-block procedure*)))
 	     ;; No need to do anything if PROCEDURE* hasn't drifted
 	     ;; relative to PROCEDURE.
@@ -308,13 +308,27 @@ to #F whenever a closure is identified.
 		       (undrift-procedure! procedure* binding-block)))))))
      (procedure-free-callers procedure))))
 
+;;; Don't update the block-parent (i.e. closing-block) of a procedure
+;;; anywhere in this pass, because the order in which the side effects
+;;; happen can permit blocks to be lost if this is done.  If we were
+;;; to do this update, the block-parent and the closing-limit would be
+;;; the same, so instead use the closing-limit.  This introduces an
+;;; inconsistency which is fixed in the compiler's next pass,
+;;; setup-block-types!, in which any procedure whose closing-limit and
+;;; block-parent differ is closed (this is the definition of a
+;;; closure).
+
+(define-integrable (procedure-current-parent procedure)
+  (procedure-closing-limit procedure))
+
 (define (undrift-procedure! procedure new-parent)
   (let ((block (procedure-block procedure))
-	(parent (procedure-closing-block procedure))
+	(parent (procedure-current-parent procedure))
 	(original-parent (procedure-target-block procedure)))
     ;; (assert! (eq? parent (procedure-closing-limit procedure)))
     (set-block-children! parent (delq! block (block-children parent)))
-    (set-block-parent! block new-parent)
+    ;; Don't set this!  See note above.
+    ;; (set-block-parent! block new-parent)
     (set-block-children! new-parent (cons block (block-children new-parent)))
     (set-procedure-closing-limit! procedure new-parent)
     (enqueue-nodes! (cons procedure (procedure-applications procedure)))
