@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.28 1988/08/15 20:57:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxfs.c,v 9.29 1988/10/06 16:33:23 jinx Exp $
 
 Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
@@ -47,10 +47,9 @@ MIT in each case. */
 #include <time.h>
 #endif
 
-/* Looks up in the user's shell environment the value of the 
-   variable specified as a string. */
-
-DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1, 0)
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 1,
+  "Looks up in the user's shell environment the value of the\n\
+variable specified as a string.")
 {
   char *variable_value;
   extern char *getenv ();
@@ -64,7 +63,8 @@ DEFINE_PRIMITIVE ("GET-ENVIRONMENT-VARIABLE", Prim_get_environment_variable, 1, 
      : (C_String_To_Scheme_String (variable_value)));
 }
 
-DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 0)
+DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 
+  "Returns a string specifying the user running Scheme.")
 {
   char *user_name;
   char *getlogin ();
@@ -85,7 +85,8 @@ DEFINE_PRIMITIVE ("CURRENT-USER-NAME", Prim_get_user_name, 0, 0, 0)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (user_name));
 }
 
-DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1, 0)
+DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
+  "Given a string argument, USER, it returns the pathname of USER's home directory.")
 {
   struct passwd *entry;
   struct passwd *getpwnam ();
@@ -99,14 +100,16 @@ DEFINE_PRIMITIVE ("GET-USER-HOME-DIRECTORY", Prim_get_user_home_directory, 1, 1,
      : (C_String_To_Scheme_String (entry -> pw_dir)));
 }
 
-DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0, 0)
+DEFINE_PRIMITIVE ("CURRENT-FILE-TIME", Prim_current_file_time, 0, 0,
+  "Returns as an integer the current file system time stamp.")
 {
   PRIMITIVE_HEADER (0);
 
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (time ((long *) 0)));
 }
 
-DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1, 0)
+DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
+  "Converts a file system time stamp into a date/time string.")
 {
   long clock;
   long temp;
@@ -123,7 +126,8 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1, 0)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (time_string));
 }
 
-DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1, 0)
+DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1,
+  "Returns the user name given a Unix user id number.")
 {
   struct passwd *getpwuid ();
   void endpwent ();
@@ -138,7 +142,8 @@ DEFINE_PRIMITIVE ("UID->STRING", Prim_uid_to_string, 1, 1, 0)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> pw_name));
 }
 
-DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1, 0)
+DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1,
+  "Returns the group name given a Unix group id number.")
 {
   struct group *getgrgid ();
   void endgrent ();
@@ -153,7 +158,8 @@ DEFINE_PRIMITIVE ("GID->STRING", Prim_gid_to_string, 1, 1, 0)
   PRIMITIVE_RETURN (C_String_To_Scheme_String (entry -> gr_name));
 }
 
-DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("FILE-DIRECTORY?", Prim_file_directory_p, 1, 1,
+  "Returns #T if the argument pathname is a directory.")
 {
   struct stat stat_result;
   PRIMITIVE_HEADER (1);
@@ -207,7 +213,8 @@ file_symlink_p (filename)
 
 #endif /* S_IFLNK */
 
-DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1, 0)
+DEFINE_PRIMITIVE ("FILE-SYMLINK?", Prim_file_symlink_p, 1, 1,
+  "Returns #T if the argument pathname is a symbolic link.")
 {
   PRIMITIVE_HEADER (1);
 
@@ -240,7 +247,8 @@ static void filemodestring ();
 static void rwx ();
 static void setst ();
 
-DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 0)
+DEFINE_PRIMITIVE ("FILE-ATTRIBUTES", Prim_file_attributes, 1, 1, 
+  "Retuns a vector containing relevant information about the argument pathname.")
 {
   struct stat stat_result;
   extern Pointer allocate_marked_vector ();
@@ -384,3 +392,15 @@ setst (bits, chars)
       chars[9] = 't';
 #endif
 }
+
+DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
+  "Given a string COMMAND, it invokes a shell to execute COMMAND.")
+{
+  extern int system();
+  char *command;
+  PRIMITIVE_HEADER(1);
+
+  command = STRING_ARG(1);
+  PRIMITIVE_RETURN (MAKE_FIXNUM(system(command)));
+}
+
