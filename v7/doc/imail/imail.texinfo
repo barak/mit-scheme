@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.12 2000/07/21 20:51:37 cph Exp $
+@comment $Id: imail.texinfo,v 1.13 2000/07/26 02:29:14 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 0.5 for IMAIL Version 1.4
-@subtitle 21 July 2000
+@subtitle Edition 0.6 for IMAIL Version 1.4
+@subtitle 25 July 2000
 @author by Chris Hanson
 
 @page
@@ -208,8 +208,8 @@ such as images.  The @dfn{Multipurpose Internet Mail Extensions}
 (@acronym{MIME}, @uref{http://www.ietf.org/rfc/rfc2045.txt, ,
 @acronym{RFC} 2045}) provide a way to encode other kinds of text and
 data so that they can be carried in an email message.  Most modern email
-software supports the @acronym{MIME} standard, with some notable
-exceptions, including particularly Emacs Rmail.
+software supports the @acronym{MIME} standard; one notable exception is
+Emacs Rmail.
 
 @node Folders, URLs, Messages, Concepts
 @section Folders
@@ -546,12 +546,12 @@ Move to the previous message with the same subject
 @end table
 
 @kindex n
-@kindex p
-@kindex M-n
-@kindex M-p
 @findex imail-next-undeleted-message
+@kindex p
 @findex imail-previous-undeleted-message
+@kindex M-n
 @findex imail-next-message
+@kindex M-p
 @findex imail-previous-message
 @kbd{n} and @kbd{p} are the usual way of moving among messages in
 @acronym{IMAIL}.  They move through the messages sequentially, but skip
@@ -585,8 +585,8 @@ It is also possible to search for a message based on flags.
 @xref{Flags}.
 
 @kindex C-c C-n
-@kindex C-c C-p
 @findex imail-next-same-subject
+@kindex C-c C-p
 @findex imail-previous-same-subject
 To find the next message with the same subject as the current message,
 use @kbd{C-c C-n} (@code{imail-next-same-subject}).  This is useful for
@@ -595,10 +595,10 @@ following the thread of an email conversation.  @kbd{C-c C-p}
 same subject.
 
 @kindex j
-@kindex >
-@kindex <
 @findex imail-show-message
+@kindex >
 @findex imail-last-message
+@kindex <
 @findex imail-first-message
 To move to a message specified by absolute message number, use @kbd{j}
 (@code{imail-show-message}) with the message number as argument.  With
@@ -636,8 +636,8 @@ Expunge the @acronym{IMAIL} folder (@code{imail-expunge}).
 @end table
 
 @kindex d
-@kindex C-d
 @findex imail-delete-forward
+@kindex C-d
 @findex imail-delete-backward
 There are two @acronym{IMAIL} commands for deleting messages.  Both
 delete the current message and select another message.  @kbd{d}
@@ -807,6 +807,7 @@ all buffers to contain the string @samp{[New Mail]}.  This can be
 disabled by setting the variable @code{imail-global-mail-notification}
 to @code{#f}.
 
+@kindex C-u g
 @findex imail-input-from-folder
 To copy messages from another folder into the current folder, give the
 @kbd{g} key a numeric argument, as in @kbd{C-u g}.  This runs the
@@ -870,13 +871,33 @@ message-copying commands automatically create folders as needed.
 @node MIME Support, Flags, Multiple Folders, Commands
 @section MIME Support
 
+@cindex Multipurpose Internet Mail Extensions
+@cindex MIME
+@cindex RFC 2045
+@cindex MIME entity
+@cindex entity, MIME
+@cindex in-line
+@cindex MIME attachment
+@cindex attachment, MIME
+The @dfn{Multipurpose Internet Mail Extensions} (@acronym{MIME}) define
+a standard means for structuring mail messages.  @acronym{MIME} permits
+a message to have multiple parts, each of which is called an
+@dfn{entity}.  It also provides a way to associate type information with
+each entity.  For example, an ordinary text message has type
+@samp{text/plain}, an @acronyn{HTML} has type @samp{text/html}, and a
+@acronyn{JPEG} image has type @samp{image/jpeg}.  Additionally,
+@acronym{MIME} entities may be annotated to indicate whether they should
+be shown @dfn{in-line}, or whether they are @dfn{attachments} that
+should be shown only upon further user action.
+
 @acronym{IMAIL} provides simple support for @acronym{MIME} messages.
 @acronym{MIME} attachments are shown in the @acronym{IMAIL} buffer by
-special abbreviations, and may be written to a file.  Complex
-@acronym{MIME} structures are recognized and displayed in a clean format
-that suppresses unnecessary clutter.  And @acronym{MIME} encodings such
-as @dfn{quoted-printable} and @dfn{base64} are automatically decoded
-prior to displaying the message.
+special abbreviations.  You can write an attachment to a file.
+Multipart @acronym{MIME} structures are recognized and displayed in a
+clean format that suppresses unnecessary clutter.  And @acronym{MIME}
+encodings such as @dfn{quoted-printable} and @dfn{base64} are
+automatically decoded prior to displaying the message or saving the
+attachment.
 
 End-user formatting of @acronym{MIME} messages is a complex process,
 partly because these messages can be arbitrarily complex in their
@@ -884,10 +905,10 @@ internal structure.  @acronym{IMAIL} provides several variables that
 give you some control over the formatting prcess.
 
 @vindex imail-use-original-mime-boundaries
-Many @acronym{MIME} messages have multiple subparts; for example, a
-message with an attachment normally contains at least two subparts: the
-message text and the attachment.  By default, @acronym{IMAIL} displays
-these parts separated by long lines of hyphen characters.  However,
+Many @acronym{MIME} messages have multiple parts; for example, a message
+with an attachment normally contains at least two parts: the message
+text and the attachment.  By default, @acronym{IMAIL} displays these
+parts separated by long lines of hyphen characters.  However,
 @acronym{MIME} specifies particular kinds of separators, called
 @dfn{boundaries}, that have certain useful syntactic properties.
 @acronym{IMAIL} allows you to use the original @acronym{MIME} boundaries
@@ -895,8 +916,8 @@ rather than the hyphen lines, by setting the variable
 @code{imail-use-original-mime-boundaries} to @code{#t}.
 
 @vindex imail-mime-show-alternatives
-@acronym{MIME} also specifies a particular kind of multipart message,
-called multipart/alternative, in which the parts are different
+@acronym{MIME} also specifies a particular kind of multipart message, of
+type @samp{multipart/alternative}, in which the parts are different
 representations of the same message.  A typical example of this is a
 mailer that sends both plain text and @acronym{HTML} versions of the
 message text.  Normally @acronym{IMAIL} shows only the simplest of these
@@ -905,7 +926,7 @@ alternatives.  However, if you set the variable
 @code{imail-mime-show-alternatives} to @code{#t}, @acronym{IMAIL} will
 show these alternative forms as attachments.
 
-As a general rule, any @acronym{MIME} subpart that contains non-textual
+As a general rule, any @acronym{MIME} entity that contains non-textual
 information is displayed as an attachment.  Attachments are normally
 shown as specially-formatted abbreviations; here is an example:
 
@@ -924,15 +945,15 @@ bytes.  (The length is computed on the encoded form of the attachment,
 and is generally slightly larger than the decoded length.)
 
 @acronym{IMAIL} uses somewhat more complicated rules for deciding when a
-@acronym{MIME} subpart is displayed in this abbreviated format, and when
-it is expanded in line.  In general, all non-text subparts are
-abbreviated.  Additionally, if a text subpart is given a
+@acronym{MIME} entity is displayed in this abbreviated format, and when
+it is expanded in line.  In general, all non-text entities are
+abbreviated.  Additionally, if a text entity is given a
 @dfn{disposition} of @code{attachment}, it is abbreviated.  Finally, if
-the character set of the subpart is unknown, if the encoding type is
+the character set of the entity is unknown, if the encoding type is
 unknown, or if the subtype is unknown, it is abbreviated.
 
 @vindex imail-known-mime-charsets
-Two variables control the abbreviation of text subparts.
+Two variables control the abbreviation of text entities.
 @code{imail-known-mime-charsets} is a list of regular expressions that
 specify the known character sets; by default it specifies
 @acronym{US-ASCII}, the @acronym{ISO} 8859 character sets, and some
@@ -959,11 +980,12 @@ Toggle a @acronym{MIME} entity between its formatted and raw forms
 (@code{imail-toggle-mime-entity}).
 @end table
 
+@kindex C-o
 @findex imail-save-attachment
 The primary @acronym{MIME} command is @kbd{C-o}
 (@code{imail-save-attachment}), which saves a single attachment to a
 file.  If point is on an attachment, that is the attachment to be saved,
-otherwise @acronym{IMAIL} prompts for the attachment to be saved.  If a
+otherwise @acronym{IMAIL} prompts for the attachment by name.  If a
 prefix argument is specified, prompting is performed even if point is on
 an attachment.  Once the attachment is determined, @acronym{IMAIL}
 prompts for the name of a file to save the attachment to.  The filename
@@ -976,6 +998,24 @@ attachments have previously been saved.
 If you want to save attachments to a specific directory, change the
 variable @code{imail-mime-attachment-directory} to contain the name of
 that directory.
+
+@kindex w
+@findex imail-save-mime-entity
+The command @kbd{w} (@code{imail-save-mime-entity}) is similar to
+@code{imail-save-attachment} except that it will save any @acronym{MIME}
+entity, not just an attachment.  For example, this allows you to save
+the message text.  This command saves the entity that point is on; if
+point is not on any entity, an error is signalled.
+
+@kindex C-t
+@findex imail-toggle-mime-entity
+The command @kbd{C-t} (@code{imail-toggle-mime-entity}) is similar to
+@code{imail-save-mime-entity}, except that instead of saving the entity
+to a file, it toggles whether the entity is shown in-line or in
+abbreviated form.  A common situation when this is useful is when the
+text of a message is in some unknown character set.  In this case,
+@acronym{IMAIL} shows the text in abbreviated form; use @kbd{C-t} to
+expand it in place.
 
 @node Flags, Sending Replies, MIME Support, Commands
 @section Flags
@@ -1005,8 +1045,8 @@ Make a summary of all messages containing any of the flags @var{flags}
 @end table
 
 @kindex a
-@kindex k
 @findex imail-add-flag
+@kindex k
 @findex imail-kill-flag
 The @kbd{a} (@code{imail-add-flag}) and @kbd{k} (@code{imail-kill-flag})
 commands allow you to assign or remove any flag on the current message.
@@ -1015,8 +1055,8 @@ Once you have given messages flags to classify them as you wish, there
 are two ways to use the flags: in moving and in summaries.
 
 @kindex C-M-n
-@kindex C-M-p
 @findex imail-next-flagged-message
+@kindex C-M-p
 @findex imail-previous-flagged-message
 The command @kbd{C-M-n @var{flags} @key{RET}}
 (@code{imail-next-flagged-message}) moves to the next message that has
@@ -1188,6 +1228,7 @@ Alternatively, you can set the variable @code{imail-forward-all-headers}
 to @code{#t}, which will cause @emph{all} forwarded messages to retain
 all of their header fields.
 
+@kindex C-u f
 @findex imail-resend
 @dfn{Resending} is an alternative similar to forwarding; the difference
 is that resending sends a message that is ``from'' the original sender,
