@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxio.c,v 1.5 1997/10/22 05:25:09 cph Exp $
+$Id: pruxio.c,v 1.6 1997/10/22 05:40:31 cph Exp $
 
 Copyright (c) 1993-97 Massachusetts Institute of Technology
 
@@ -39,6 +39,7 @@ MIT in each case. */
 #include "osio.h"
 #include "ux.h"
 #include "uxselect.h"
+#include "uxproc.h"
 
 #ifndef __hp9000s700
 /* Blows up HP 9000/700 compiler (HP-UX 8.05)!  */
@@ -286,5 +287,5 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
   while (scan < end)
     (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
   (*scan_result) = 0;
-  return (result);
+  return ((CONST char **) result);
 }

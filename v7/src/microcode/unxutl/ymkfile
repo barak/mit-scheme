@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.91 1997/05/01 01:17:49 cph Exp $
+$Id: ymkfile,v 1.92 1997/10/22 05:40:36 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -814,7 +814,7 @@ uxtrap.o : scheme.tch uxtrap.h uxutil.h option.h $(GC_HEAD_FILES)
 uxtty.o : ostty.h osenv.h osio.h uxio.h osterm.h uxterm.h
 uxutil.o : uxutil.h
 pruxfs.o : osfs.h
-pruxio.o : osio.h uxselect.h
+pruxio.o : osio.h uxselect.h uxproc.h
 pruxsock.o : osio.h uxsock.h
 
 $(OS_PRIM_OBJECTS) : scheme.tch prims.h posixtyp.h os.h
