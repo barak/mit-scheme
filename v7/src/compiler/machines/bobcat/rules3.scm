@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.36 1992/09/30 21:06:02 cph Exp $
+$Id: rules3.scm,v 4.37 1993/01/13 00:18:40 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -153,23 +153,26 @@ MIT in each case. |#
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation
   (LAP ,@(clear-map!)
-       ,@(if (eq? primitive compiled-error-procedure)
-	     (LAP ,@(load-dnl frame-size 1)
-		  (JMP ,entry:compiler-error))
-	     (let ((arity (primitive-procedure-arity primitive)))
-	       (cond ((not (negative? arity))
-		      (LAP (MOV L (@PCR ,(constant->label primitive)) (D 1))
-			   (JMP ,entry:compiler-primitive-apply)))
-		     ((= arity -1)
-		      (LAP (MOV L (& ,(-1+ frame-size))
-				,reg:lexpr-primitive-arity)
-			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
-			   (JMP ,entry:compiler-primitive-lexpr-apply)))
-		     (else
-		      ;; Unknown primitive arity.  Go through apply.
-		      (LAP ,@(load-dnl frame-size 2)
-			   (MOV L (@PCR ,(constant->label primitive)) (D 1))
-			   ,@(invoke-interface code:compiler-apply))))))))
+       ,@(cond ((eq? primitive compiled-error-procedure)
+		(LAP ,@(load-dnl frame-size 1)
+		     (JMP ,entry:compiler-error)))
+	       ((eq? primitive (ucode-primitive set-interrupt-enables! 1))
+		(LAP (JMP ,entry:set-interrupt-enables)))
+	       (else
+		(let ((arity (primitive-procedure-arity primitive)))
+		  (cond ((not (negative? arity))
+			 (LAP (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			      (JMP ,entry:compiler-primitive-apply)))
+			((= arity -1)
+			 (LAP (MOV L (& ,(-1+ frame-size))
+				   ,reg:lexpr-primitive-arity)
+			      (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			      (JMP ,entry:compiler-primitive-lexpr-apply)))
+			(else
+			 ;; Unknown primitive arity.  Go through apply.
+			 (LAP ,@(load-dnl frame-size 2)
+			      (MOV L (@PCR ,(constant->label primitive)) (D 1))
+			      ,@(invoke-interface code:compiler-apply)))))))))
 
 (let-syntax
     ((define-special-primitive-invocation

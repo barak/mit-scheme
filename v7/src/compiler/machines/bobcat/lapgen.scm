@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.46 1992/09/25 01:18:08 cph Exp $
+$Id: lapgen.scm,v 4.47 1993/01/13 00:18:46 cph Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1144,17 +1144,17 @@ MIT in each case. |#
     stack-and-interrupt-check-18 ; This doesn't have a code: counterpart.
     stack-and-interrupt-check-22 ; This doesn't have a code: counterpart.
     stack-and-interrupt-check-24 ; This doesn't have a code: counterpart.
+    set-interrupt-enables	; This doesn't have a code: counterpart.
     ))
 
 (define-integrable (invoke-interface code)
   (LAP (MOVEQ (& ,code) (D 0))
        (JMP ,entry:compiler-scheme-to-interface)))
 
-#|
 ;; If the entry point scheme-to-interface-jsr were not available,
 ;; this code should replace the definition below.
 ;; The others can be handled similarly.
-
+#|
 (define-integrable (invoke-interface-jsr code)
   (LAP (MOVEQ (& ,code) (D 0))
        (LEA (@PCO 12) (A 0))
