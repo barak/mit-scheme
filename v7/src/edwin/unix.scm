@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.78 1997/06/06 05:05:59 cph Exp $
+;;;	$Id: unix.scm,v 1.79 1997/06/09 08:12:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-97 Massachusetts Institute of Technology
 ;;;
@@ -276,7 +276,7 @@ Includes the new backup.  Must be > 0."
 	      result))))))
 
 (define unix/encoding-pathname-types
-  '("Z" "gz" "KY" "ky"))
+  '("Z" "gz" "KY" "ky" "bf"))
 
 (define unix/backup-suffixes
   (cons "~"
@@ -487,33 +487,46 @@ of the filename suffixes \".gz\" or \".Z\"."
 (define-variable enable-encrypted-files
   "If true, encrypted files are automatically decrypted when read,
 and recrypted when written.  An encrypted file is identified by the
-filename suffix \".ky\"."
+filename suffixes \".bf\" and \".ky\"."
   #t
   boolean?)
 
 (define (read/write-encrypted-file? group pathname)
   (and (ref-variable enable-encrypted-files group)
-       (member (pathname-type pathname) unix/encrypted-file-suffixes)))
+       (let ((type (pathname-type pathname)))
+	 (and (member type unix/encrypted-file-suffixes)
+	      (if (equal? "bf" type)
+		  (blowfish-available?)
+		  #t)))))
 
 (define unix/encrypted-file-suffixes
-  '("KY" "ky"))
+  '("bf" "ky" "KY"))
 
 (define (read-encrypted-file pathname mark)
-  (let ((password (prompt-for-password "Password: ")))
+  (let ((password (prompt-for-password "Password: "))
+	(type (pathname-type pathname)))
     (message "Decrypting file " (->namestring pathname) "...")
-    (insert-string (let ((the-encrypted-file
-			  (call-with-binary-input-file pathname
-			    (lambda (port)
-			      (read-string (char-set) port)))))
-		     (decrypt the-encrypted-file password
-			      (lambda () 
-				(kill-buffer (mark-buffer mark))
-				(editor-error "krypt: Password error!"))
-			      (lambda (x) 
-				(editor-beep)
-				(message "krypt: Checksum error!")
-				x)))
-		   mark)
+    (cond ((equal? "bf" type)
+	   (call-with-binary-input-file pathname
+	     (lambda (input)
+	       (read-blowfish-file-header input)
+	       (call-with-output-mark mark
+		 (lambda (output)
+		   (blowfish-encrypt-port input output password #f))))))
+	  ((or (equal? "ky" type) (equal? "KY" type))
+	   (insert-string (let ((the-encrypted-file
+				 (call-with-binary-input-file pathname
+				   (lambda (port)
+				     (read-string (char-set) port)))))
+			    (decrypt the-encrypted-file password
+				     (lambda () 
+				       (kill-buffer (mark-buffer mark))
+				       (editor-error "krypt: Password error!"))
+				     (lambda (x) 
+				       (editor-beep)
+				       (message "krypt: Checksum error!")
+				       x)))
+			  mark)))
     ;; Disable auto-save here since we don't want to
     ;; auto-save the unencrypted contents of the 
     ;; encrypted file.
@@ -523,14 +536,25 @@ filename suffix \".ky\"."
     (append-message "done")))
 
 (define (write-encrypted-file region pathname)
-  (let ((password (prompt-for-confirmed-password)))
+  (let ((password (prompt-for-confirmed-password))
+	(type (pathname-type pathname)))
     (message "Encrypting file " (->namestring pathname) "...")
-    (let ((the-encrypted-file
-	   (encrypt (extract-string (region-start region) (region-end region))
-		    password)))
-      (call-with-binary-output-file pathname
-	(lambda (port)
-	  (write-string the-encrypted-file port))))
+    (cond ((equal? "bf" type)
+	   (let ((input
+		  (make-buffer-input-port (region-start region)
+					  (region-end region))))
+	     (call-with-binary-output-file pathname
+	       (lambda (output)
+		 (write-blowfish-file-header output)
+		 (blowfish-encrypt-port input output password #t)))))
+	  ((or (equal? "ky" type) (equal? "KY" type))
+	   (let ((the-encrypted-file
+		  (encrypt (extract-string (region-start region)
+					   (region-end region))
+			   password)))
+	     (call-with-binary-output-file pathname
+	       (lambda (port)
+		 (write-string the-encrypted-file port))))))
     (append-message "done")))
 
 ;;;; Dired customization
