@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr2.scm,v 1.2 1990/04/09 21:21:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/instr2.scm,v 1.3 1990/08/05 05:41:27 jinx Rel $
 
 Copyright (c) 1987, 1989, 1990 Massachusetts Institute of Technology
 
@@ -629,3 +629,54 @@ branch-extend-nullify in instr1.
   ((() (? format-word) (@PCO (? offset)))
    (LONG (16 format-word UNSIGNED)
 	 (16 offset UNSIGNED))))
+
+(define-instruction PCR-HOOK
+  ((() (? target)
+       (OFFSET (? offset) (? space sr3) (? base))
+       (@PCR (? label)))
+   (VARIABLE-WIDTH
+    (disp `(- ,label (+ *PC* 8)))
+    ((#x-2000 #x1FFF)
+     (LONG
+      ;; (BLE () (OFFSET ,offset ,space ,base))
+      (6 #x39)
+      (5 base)
+      (5 offset ASSEMBLE17:X)
+      (3 space)
+      (11 offset ASSEMBLE17:Y)
+      (1 0)
+      (1 offset ASSEMBLE17:Z)
+      ;; (LDO () (OFFSET ,disp 0 31) ,target)
+      (6 #x0D)
+      (5 31)
+      (5 target)
+      (2 #b00)
+      (14 disp RIGHT-SIGNED)))
+    ((() ())
+     (LONG
+      ;; (LDIL () L$disp-8 target)
+      (6 #x08)
+      (5 1)
+      (21 (quotient (- disp 8) #x800) ASSEMBLE21:X)
+      ;; (LDO () (OFFSET R$disp-4 0 1) target)
+      (6 #x0D)
+      (5 1)
+      (5 1)
+      (2 #b00)
+      (14 (remainder (- disp 8) #x800) RIGHT-SIGNED)
+      ;; (BLE () (OFFSET ,offset ,space ,base))
+      (6 #x39)
+      (5 base)
+      (5 offset ASSEMBLE17:X)
+      (3 space)
+      (11 offset ASSEMBLE17:Y)
+      (1 0)
+      (1 offset ASSEMBLE17:Z)
+      ;; (ADD () 31 1 target)
+      (6 #x02)
+      (5 31)
+      (5 1)
+      (3 0)
+      (1 0)
+      (7 #x30)
+      (5 target))))))
