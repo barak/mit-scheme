@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.47 1993/01/20 21:03:10 jawilson Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tagutl.scm,v 1.48 1993/01/25 18:03:55 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -53,12 +53,6 @@
 See documentation for visit-tags-table and visit-additional-tags-table."
   false)
 
-(define (expand-pathname pathname)
-  (if (or (not (pathname-name pathname))
-	  (file-directory? pathname))
-      (pathname-new-name (pathname-as-directory pathname) "TAGS")
-      pathname))
-
 (define-command visit-tags-table
   "Tell tags commands to use only the tag table file FILE.
 FILE should be the name of a file created with the `etags' program.
@@ -77,6 +71,12 @@ To use more than one tag table file at a time, see visit-additional-tags-table."
       (set-variable! tags-table-pathnames
 		     (append (ref-variable tags-table-pathnames)
 			     (list (expand-pathname pathname)))))))
+
+(define (expand-pathname pathname)
+  (if (or (not (pathname-name pathname))
+	  (file-directory? pathname))
+      (pathname-new-name (pathname-as-directory pathname) "TAGS")
+      pathname))
 
 (define-command find-tag
   "Find tag (in current list of tag tables) whose name contains TAGNAME.
@@ -110,16 +110,17 @@ See documentation of variable tags-table-pathnames."
 
 ;;;; Find Tag
 
-(define (tags-table-buffers)
-  (if (not (ref-variable tags-table-pathnames))
-      (dispatch-on-command (ref-command-object visit-tags-table)))
-  (let ((pathnames (ref-variable tags-table-pathnames)))
-    (values (verify-tags-table (find-file-noselect pathname false)
-			       (car pathnames))
-	    (cdr pathnames))))
-
 (define find-tag-pathnames-list
   false)
+
+(define (handle-includes! included-pathnames)
+  (if included-pathnames
+      (set! find-tag-pathnames-list
+	    (append (list (car find-tag-pathnames-list))
+		    (if included-pathnames
+			included-pathnames
+			'())			
+		    (cdr find-tag-pathnames-list)))))
 
 (define (first-tags-table-buffer)
   (if (not (ref-variable tags-table-pathnames))
@@ -129,11 +130,7 @@ See documentation of variable tags-table-pathnames."
 	 (buffer (verify-tags-table (find-file-noselect pathname false)
 				    pathname))
 	 (included-pathnames (get-included-pathnames buffer)))
-    (if included-pathnames
-	(set! find-tag-pathnames-list
-	      (append (list (car find-tag-pathnames-list))
-		      included-pathnames
-		      (cdr find-tag-pathnames-list))))
+    (handle-includes! included-pathnames)
     buffer))
 
 (define (current-tags-table-buffer)
@@ -150,11 +147,7 @@ See documentation of variable tags-table-pathnames."
 	(let* ((buffer (verify-tags-table (find-file-noselect pathname false)
 					 pathname))
 	       (included-pathnames (get-included-pathnames buffer)))
-	  (if included-pathnames
-	      (set! find-tag-pathnames-list
-		    (append (list (car find-tag-pathnames-list))
-			    included-pathnames
-			    (cdr find-tag-pathnames-list))))
+	  (handle-includes! included-pathnames)
 	  buffer))
       #f))
 
@@ -264,6 +257,14 @@ See documentation of variable tags-table-pathnames."
 
 ;;;; Tags Search
 
+(define (smart-buffer-kill)
+  (if (and (not buffer-visited-already?)
+	   (not (buffer-modified? tags-loop-current-buffer))
+	   (ref-variable new-tags-behavior?)
+	   )
+      ;; unvisit the current buffer
+      (kill-buffer tags-loop-current-buffer)))
+
 (define-command tags-search
   "Forevery tag table in the current list, search through all files
 specified in it for match for REGEXP.  Stops when a match is found.
@@ -282,8 +283,11 @@ See documentation of variable tags-table-pathnames."
 		  (begin
 		    (set-current-point! mark)
 		    (clear-message))
-		  (tags-loop-start)))))
-    (set! tags-loop-pathnames (tags-table-pathnames))
+		  (begin
+		    (smart-buffer-kill)
+		    (tags-loop-start))))))
+    (set! tags-loop-pathnames
+	  (get-all-pathnames (initial-tags-table-buffers)))
     (tags-loop-start)))
 
 (define-command tags-query-replace
@@ -305,24 +309,39 @@ See documentation of variable tags-file-pathnames."
     (set! tags-loop-continuation
 	  (lambda ()
 	    (if (not (replace-string source target delimited true true))
-		(tags-loop-start))))
-    (set! tags-loop-pathnames (tags-table-pathnames))
+		(begin
+		  (smart-buffer-kill)
+		  (tags-loop-start)))))
+    (set! tags-loop-pathnames
+	  (get-all-pathnames (initial-tags-table-buffers)))
     (tags-loop-start)))
 
 (define tags-loop-continuation false)
 (define tags-loop-pathnames)
+
+(define-variable new-tags-behavior? 
+  "This variable controls the behavior of tags-search and
+tags-query-replace.  The new behavior cause any new buffers to be
+killed if they are not modified."
+  true)
+
+(define buffer-visited-already? false)
+(define tags-loop-current-buffer false)
 
 (define (tags-loop-start)
   (let ((pathnames tags-loop-pathnames))
     (if (null? pathnames)
 	(editor-error "All files processed.")
 	(begin
+	  (set! buffer-visited-already?
+		(pathname->buffer (car pathnames)))
 	  (set! tags-loop-pathnames (cdr pathnames))
 	  (find-file (car pathnames))
 	  (message "Scanning file "
 		   (->namestring (buffer-truename (current-buffer)))
 		   "...")
 	  (set-current-point! (buffer-start (current-buffer)))
+	  (set! tags-loop-current-buffer (current-buffer))
 	  (tags-loop-continuation)))))
 
 (define-command tags-loop-continue
@@ -356,43 +375,70 @@ command."
 		    " not a valid tag table"))
   buffer)
 
-(define (tags-table-pathnames)
+(define (pathnames->tags-table-buffers pathnames)
+  (map (lambda (pathname)
+	 (verify-tags-table (find-file-noselect pathname false)
+			    pathname))
+       pathnames))       
+
+(define (initial-tags-table-buffers)
   ;; first make sure there is at least one tags table
   (if (not (ref-variable tags-table-pathnames))
       (dispatch-on-command (ref-command-object visit-tags-table)))
-  (let ((buffers  
-	 (map (lambda (pathname)
-			(verify-tags-table (find-file-noselect pathname false)
-					   pathname))
-		      (ref-variable tags-table-pathnames))))
-    (append-map 
-     (lambda (buffer)
-       (or (buffer-get buffer tags-table-pathnames)
-	   ;; this code may not work correctly with ,include$ from Emacs 19.0
-	   (let ((pathnames
-		  (let ((directory
-			 (directory-pathname (buffer-truename buffer))))
-		    (let loop ((mark (buffer-start buffer)))
-		      (let ((file-mark
-			     (skip-chars-backward "^,\n" (line-end mark 1))))
-			(let ((mark
-			       (mark+ (line-start file-mark 1)
-				      (with-input-from-mark file-mark read))))
-			  (cons (merge-pathnames
-				 (extract-string (line-start file-mark 0)
-						 (mark-1+ file-mark))
-				 directory)
-				(if (group-end? mark)
-				    '()
-				    (loop mark)))))))))
-	     (buffer-put! buffer tags-table-pathnames pathnames)
-	     pathnames)))
-     buffers)))
+  (pathnames->tags-table-buffers (ref-variable tags-table-pathnames)))
+  
+
+(define (tags-table-pathnames buffers)
+  (append-map 
+   (lambda (buffer)
+     (or (buffer-get buffer 'TAGS-TABLE-PATHNAMES)
+	 (let ((directory
+		(directory-pathname (buffer-truename buffer)))
+	       (finish (lambda (pathnames included-pathnames)
+			 (buffer-put! buffer 'TAGS-TABLE-PATHNAMES pathnames)
+			 (buffer-put! buffer
+				      'TAGS-TABLE-INCLUDED-PATHNAMES
+				      included-pathnames)
+			 pathnames)))
+	   (let loop ((mark (buffer-start buffer))
+		      (pathnames '())
+		      (included-tables '()))
+	     (let ((file-mark
+		    (skip-chars-backward "^,\n" (line-end mark 1))))
+	       (let ((word (with-input-from-mark file-mark read))
+		     (name
+		      (merge-pathnames
+		       (extract-string (line-start file-mark 0)
+				       (mark-1+ file-mark))
+		       directory)))
+		 (if (number? word)
+		     (let ((mark
+			    (mark+ (line-start file-mark 1) word)))
+		       (if (group-end? mark)
+			   (finish (reverse (cons name pathnames)) (reverse included-tables))
+			   (loop mark
+				 (cons name pathnames)
+				 included-tables)))
+		     ;; if it is not a number than it must be an include
+		     (if (group-end? (line-end file-mark 1))
+			 (finish (reverse pathnames) (reverse (cons name included-tables)))
+			 (loop (line-start mark 2)
+			       pathnames
+			       (cons name included-tables))))))))))
+   buffers))
 
 (define (get-included-pathnames buffer)
-  ;; Return false until we know the format of includes from Emacs 19.0
-  false)
-  
+  (tags-table-pathnames (list buffer))
+  (buffer-get buffer 'TAGS-TABLE-INCLUDED-PATHNAMES))
+
+(define (get-all-pathnames buffers)
+  (let ((pathnames (tags-table-pathnames buffers))
+	(includes (append-map get-included-pathnames buffers)))
+    (if (null? includes)
+	pathnames
+	(append pathnames
+		(get-all-pathnames (pathnames->tags-table-buffers includes))))))
+
 
 ;; Edwin Variables:
 ;; scheme-environment: '(edwin)
