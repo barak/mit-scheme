@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.10 1991/08/26 15:10:30 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmailsum.scm,v 1.11 1991/08/26 20:20:41 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -89,17 +89,58 @@
 ;;;      rmail-message-recipients?
 ;;;      (mail-comma-list-regexp recipients) primary-only)))
 ;;; 
-;;; ***HERE***
-;;; (define (rmail-message-recipients? msg recipients primary-only)
-;;;   (let ((the-current-point (current-point)))
-;;;     (set
-;;;   (goto-char (rmail-msgbeg msg))
-;;;     (search-forward "\n*** EOOH ***\n")
-;;;     (narrow-to-region (point) (progn (search-forward "\n\n") (point)))
-;;;     (or (string-match recipients (or (mail-fetch-field "To") ""))
-;;; 	(string-match recipients (or (mail-fetch-field "From") ""))
-;;; 	(if (not primary-only)
-;;; 	    (string-match recipients (or (mail-fetch-field "Cc") ""))))))
+
+(define-command rmail-summary-by-recipients
+  "Display a summary of all messages with the given RECIPIENTS.
+Normally checks the To, From and Cc fields of headers;
+but if PRIMARY-ONLY is non-nil (prefix arg given),
+only look in the To and From fields.
+RECIPIENTS is a string of names separated by commas."
+  "sRecipients to summarize by: \nP"
+  (lambda (recipients primary-only)
+    (rmail-new-summary
+     (string-append "recipients " recipients)
+     rmail-message-recipients?
+     (mail-comma-list-regexp recipients)
+     primary-only)))
+
+(define (mail-comma-list-regexp the-string)
+  (let loop ((the-string (string-trim the-string))
+	     (the-new-list '()))
+    (let ((pos (string-find-next-char the-string #\,)))
+      (if pos
+	  (loop (string-tail the-string (1+ pos))
+		(cons (string-trim (string-head the-string pos))
+		      the-new-list))
+	  (re-compile-pattern
+	   (apply string-append
+		  (reverse 
+		   (cons (string-trim the-string)
+			 (map (lambda (x) (string-append x "\\|"))
+			      the-new-list))))
+	   true)))))
+
+(define (rmail-message-recipients? memo recip-regexp primary-only)
+  (without-clipping
+   rmail-buffer
+   (lambda ()
+     (let* ((start (msg-memo/start memo))
+	    (end (msg-memo/end memo))
+	    (inner-start (search-forward "\n*** EOOH ***\n" start end))
+	    (inner-end (header-end inner-start end)))
+       (let ((the-to-field (fetch-first-field "to" inner-start inner-end))
+	     (the-from-field (fetch-first-field "from" inner-start inner-end))
+	     (the-cc-fields  (fetch-all-fields "cc" inner-start inner-end)))
+	 (or (if the-to-field
+		 (re-search-string-forward recip-regexp true false the-to-field)
+		 false)
+	     (if the-from-field
+		 (re-search-string-forward recip-regexp true false the-from-field)
+		 false)
+	     (if (and (not primary-only) the-cc-fields)
+		 (re-search-string-forward recip-regexp true false the-cc-fields)
+		 false))
+	 )))))
 
 (define rmail-new-summary 
   (lambda (description function . args)
@@ -133,15 +174,15 @@
       (set-buffer-read-only! (current-buffer))
       (set-current-point! (buffer-start (current-buffer)))
       (set-current-major-mode! (ref-mode-object rmail-summary))
-;      ((ref-command make-local-variable) 'minor-mode-alist)
-;      (set-variable! minor-mode-alist (list ": " description))
-      (set-current-point! 
-       (line-start
-	(re-search-forward 
-	 (string-append "^[ ]*" (number->string the-current-message-number))
-	 (buffer-start (current-buffer))
-	 (buffer-end (current-buffer)))
-	0))
+      (set-variable! mode-line-process (list ": " description))
+      (let ((the-current-msg-line
+	     (re-search-forward 
+	      (string-append "^[ ]*" (number->string the-current-message-number))
+	      (buffer-start (current-buffer))
+	      (buffer-end (current-buffer)))))
+	(if the-current-msg-line
+	    (set-current-point! 
+	     (line-start the-current-msg-line 0))))
       (rmail-summary-goto-message-current-line)
       (message "Computing summary lines...done"))))
 
