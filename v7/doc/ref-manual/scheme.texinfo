@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.35 1993/11/03 23:02:03 adams Exp $
+@comment $Id: scheme.texinfo,v 1.36 1993/11/03 23:29:31 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -10130,8 +10130,10 @@ associations as @var{alist}.  This procedure is equivalent to:
 @node Basic Operations on Weight-Balanced Trees, Advanced Operations on Weight-Balanced Trees, Construction of Weight-Balanced Trees, Weight-Balanced Trees
 @subsection Basic Operations on Weight-Balanced Trees
 
-This section describes the usual tree operations for insertion, deletion
-and lookup.
+This section describes the basic tree operations on weight balanced
+trees.  These operations are the usual tree operations for insertion,
+deletion and lookup, some predicates and a procedure for determining the
+number of associations in a tree.
 
 @deffn {procedure+} wt-tree? object
 Returns @code{#t} if @var{object} is a weight-balanced tree, otherwise
@@ -10291,8 +10293,9 @@ defined on the same domain.
 This procedure is equivalent to
 
 @example
-(and (wt-tree/subset? @var{wt-tree-1} @var{wt-tree-2})
-     (wt-tree/subset? @var{wt-tree-2} @var{wt-tree-1}))
+(lambda (wt-tree-1 wt-tree-2)
+  (and (wt-tree/subset? wt-tree-1 wt-tree-2
+       (wt-tree/subset? wt-tree-2 wt-tree-1)))
 @end example
 
 In the worst-case the time required by this operation is proportional to
@@ -10309,16 +10312,20 @@ takes time bounded by a constant, @code{wt-tree/fold} takes time
 proportional to the size of @var{wt-tree}.
 
 A sorted association list can be derived simply:
+
 @example
-(fold (lambda (key datum list)
-        (cons (cons key datum) list))
-      '()
-      @var{wt-tree}))
+(wt-tree/fold  (lambda (key datum list)
+                 (cons (cons key datum) list))
+               '()
+               @var{wt-tree}))
 @end example
 
 The data in the associations can be summed like this:
+
 @example
-(fold  (lambda (key datum sum) (+ sum datum))  0  @var{wt-tree})
+(wt-tree/fold  (lambda (key datum sum) (+ sum datum))
+               0
+               @var{wt-tree})
 @end example
 @end deffn
 
@@ -10334,9 +10341,9 @@ Provided @var{action} takes time bounded by a constant,
 The example prints the tree:
 
 @example
-(for-each (lambda (key value)
-            (display (list key value)))
-          @var{wt-tree}))
+(wt-tree/for-each (lambda (key value)
+                    (display (list key value)))
+                  @var{wt-tree}))
 @end example
 @end deffn
 
