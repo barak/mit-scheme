@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.24 2001/07/18 04:18:55 cph Exp $
+@comment $Id: imail.texinfo,v 1.25 2001/11/26 19:14:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -32,8 +32,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.5 for IMAIL Version 1.11
-@subtitle 18 July 2001
+@subtitle Edition 1.6 for IMAIL Version 1.16
+@subtitle 26 November 2001
 @author by Chris Hanson
 
 @page
@@ -547,6 +547,7 @@ specified.
 * Sending Replies::             
 * Message Display::             
 * Summaries::                   
+* Sorting Messages::            
 * Other Commands::              
 @end menu
 
@@ -825,6 +826,10 @@ current folder (@code{imail-input-from-folder}).
 Copy the current message into the folder named @var{URL}
 (@code{imail-output}).
 
+@item M-o @var{filename} @key{RET}
+Append the current message, in human-readable form, to the file named
+@var{filename} (@code{imail-file-message}).
+
 @item C @var{URL1} @key{RET} @var{URL2} @key{RET}
 Copy the folder named @var{URL1} to @var{URL2}
 (@code{imail-copy-folder}).
@@ -894,6 +899,16 @@ first; in any case, the copied message is appended to the end of the
 folder.  The current message is flagged as @samp{filed}.  If the
 variable @code{imail-delete-after-output} is true, the message is also
 marked as deleted.
+
+@kindex M-o
+@findex imail-file-message
+The @kbd{M-o} (@code{imail-file-message}) command appends the current
+message to a file that you specify.  The message is written to the
+file in the same format in which it appears in the @acronym{IMAIL}
+buffer, preceded by a separator line if there is other text in the
+file.  This simplifies the task of collecting messages into a plain
+text file for future reference.  Note that attachments appear in the
+output only as markers; their contents are not included in the file.
 
 @kindex C
 @findex imail-copy-folder
@@ -1698,7 +1713,7 @@ at all.  The command @kbd{C-c C-t C-m} toggles the entire message between
 a formatted view and a raw view.  This should be used with care, as a
 message with a large attachment might not fit in memory in its raw form.
 
-@node Summaries, Other Commands, Message Display, Commands
+@node Summaries, Sorting Messages, Message Display, Commands
 @section Summaries
 
 A @dfn{summary} is a buffer containing one line per message to give you
@@ -1871,7 +1886,55 @@ by point using the @key{e} command (@code{imail-summary-select-message}).
 When you are finished using the summary, type @kbd{C-x k @key{RET}} to
 delete the summary buffer's window.
 
-@node Other Commands,  , Summaries, Commands
+@node Sorting Messages, Other Commands, Summaries, Commands
+@section Sorting Messages
+
+@acronym{IMAIL} provides several commands that change the order of
+messages within a folder.  These commands are closely modelled on
+those of Rmail.  Note that these commands don't modify the folder
+itself; they only modify the way that the folder behaves.  This means
+that if a folder buffer is deleted, the sort order associated with
+that buffer is deleted too.
+
+@table @kbd
+@item M-x imail-sort-by-arrival
+@findex imail-sort-by-arrival
+Sort messages of current @acronym{IMAIL} folder by arrival time.  This
+is the default; this sort undoes any other sorting on the folder.
+
+@item M-x imail-sort-by-date
+@findex imail-sort-by-date
+Sort messages of current @acronym{IMAIL} folder by date.
+
+@item M-x imail-sort-by-subject
+@findex imail-sort-by-subject
+Sort messages of current @acronym{IMAIL} folder by subject.
+
+@item M-x imail-sort-by-author
+@findex imail-sort-by-author
+Sort messages of current @acronym{IMAIL} folder by author's name.
+
+@item M-x imail-sort-by-recipient
+@findex imail-sort-by-recipient
+Sort messages of current @acronym{IMAIL} folder by recipient's names.
+
+@item M-x imail-sort-by-correspondent
+@findex imail-sort-by-correspondent
+Sort messages of current @acronym{IMAIL} folder by the name of the
+other correspondent.
+
+The @acronym{IMAIL} sort commands perform a @emph{stable sort}: if
+there is no reason to prefer either one of two messages, their order
+remains unchanged.  You can use this to sort by more than one
+criterion.  For example, if you use @code{imail-sort-by-date} and then
+@code{imail-sort-by-author}, messages from the same author appear in
+order by date.
+
+With a numeric argument, all these commands reverse the order of
+comparison.  This means they sort messages from newest to oldest, from
+biggest to smallest, or in reverse alphabetical order.
+
+@node Other Commands,  , Sorting Messages, Commands
 @section Other Commands
 
 This section documents a handful of commands and variables that don't
