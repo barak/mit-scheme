@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.53 1989/10/26 06:46:55 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/runtime.pkg,v 14.54 1989/10/27 04:43:21 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -968,7 +968,9 @@ MIT in each case. |#
 	  ceiling->exact
 	  complex?
 	  conjugate
-	  cos	  even?
+	  cos
+	  denominator
+	  even?
 	  exact->inexact
 	  exact-integer?
 	  exact-nonnegative-integer?
