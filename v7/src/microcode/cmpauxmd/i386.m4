@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.39 1995/10/06 06:27:44 cph Exp $
+###	$Id: i386.m4,v 1.40 1995/10/14 18:38:57 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -106,6 +106,53 @@
 ###	the compiler.  A caller-saves convention is used, so the
 ###	registers need not be preserved by subprocedures.
 
+### The following m4 macros can be defined to change how this file is
+### expanded.
+###
+### DASM
+###	If defined, expand to Intel assembly-language syntax, used by
+###	Microsoft assembler (MASM) and Watcom assembler (WASM).
+###	Otherwise, expand to AT&T syntax, used by GAS.
+###
+### DOS
+###	If defined, expand to run under DOS; implies DASM.
+### WINNT
+###	If defined, expand to run under Windows NT or Win32s.  These
+###	two are distinguished by whether DOS is defined.
+### OS2
+###	If defined, expand to run under OS/2.  This macro does nothing
+###	more than define SUPPRESS_LEADING_UNDERSCORE and
+###	CALLER_ALLOCS_STRUCT_RETURN, which are the conventions used to
+###	call OS/2 API procedures; note that EMX/GCC doesn't define
+###	these symbols because it thinks it's running under unix.
+###
+### If none of { DOS, WINNT, OS2 } is defined, expansion is for unix.
+###
+### SUPPRESS_LEADING_UNDERSCORE
+###	If defined, external symbol names are generated as written;
+###	otherwise, they have an underscore prepended to them.
+### CALLER_ALLOCS_STRUCT_RETURN
+###	Controls the conventions used to return 8-byte structs from C
+###	procedures.  If defined, the caller allocates space on the
+###	stack and passes a pointer to that space on the top of the
+###	stack.  Otherwise, the callee returns the struct in EAX/EDX.
+### WCC386R
+###	Should be defined when using Watcom assembler and generating
+###	code to use the Watcom register-based argument conventions.
+### HACK_SEGMENT_REGS
+###	If defined, two code/data segments are maintained, one for C
+###	code and one for Scheme code, and the segment registers are
+###	switched between the two automatically.  Currently works only
+###	for Win32s.
+### LINUX_ELF
+###	If defined, expand to run under Linux ELF.  This is the
+###	remains of a failed experiment; do NOT define this symbol.
+### TYPE_CODE_LENGTH
+###	Normally defined to be 6.  Don't change this unless you know
+###	what you're doing.
+### DISABLE_387
+###	If defined, do not generate 387 floating-point instructions.
+
 ####	Utility macros and definitions
 
 ifdef(`DOS',
@@ -115,6 +162,16 @@ ifdef(`DOS',
 ifdef(`DOS',
       `define(IFNDOS,`')',
       `define(IFNDOS,`$1')')
+
+IFDOS(`define(DASM,1)')
+
+ifdef(`DASM',
+      `define(IFDASM,`$1')',
+      `define(IFDASM,`')')
+
+ifdef(`DASM',
+      `define(IFNDASM,`')',
+      `define(IFNDASM,`$1')')
 
 ifdef(`WINNT',
       `define(IF_WINNT,`$1')',
@@ -136,15 +193,7 @@ ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
 
-	IFNDOS(`.file	"cmpaux-i386.s"')
-
-ifdef(`DOS',
-      `define(use_external_data,`	extrn _$1':dword)',
-      `define(use_external_data,`')')
-
-ifdef(`DOS',
-      `define(use_external_code,`	extrn _$1:near')',
-      `define(use_external_code,`')')
+IFNDASM(`	.file	"cmpaux-i386.s"')
 
 IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
 IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
@@ -153,119 +202,128 @@ ifdef(`SUPPRESS_LEADING_UNDERSCORE',
       `define(external_data_reference,`$1')',
       `define(external_data_reference,`_$1')')
 
-define(EDR,`external_data_reference($1)')
-
 ifdef(`SUPPRESS_LEADING_UNDERSCORE',
       `define(external_code_reference,`$1')',
       `define(external_code_reference,`_$1')')
 
-ifdef(`DOS',
-      `define(define_code,`	public _$1')',
-      `define(define_code,`	.globl external_code_reference($1)')')
+ifdef(`WCC386R',
+      `define(EVR,`_$1')',
+      `define(EVR,`external_data_reference($1)')')
 
-ifdef(`DOS',
-      `define(define_data,`	public _$1')',
-      `define(define_data,`	.globl external_data_reference($1)')')
+ifdef(`WCC386R',
+      `define(hook_reference,`external_code_reference(asm_$1_)')',
+      `define(hook_reference,`external_code_reference(asm_$1)')')
 
-define(define_c_label,
-`define_code($1)
-external_code_reference($1):')
+ifdef(`DASM',
+      `define(use_external_data,`	extrn EVR($1)':dword)',
+      `define(use_external_data,`')')
 
-ifdef(`DOS',
-      `define(define_debugging_label,`	public $1
-$1:')',
-      `define(define_debugging_label,`	.globl $1
-$1:')')
+ifdef(`DASM',
+       `define(use_external_code,`	extrn external_code_reference($1)':near)',
+       `define(use_external_code,`')')
 
-ifdef(`DOS',
+ifdef(`DASM',
+      `define(export_label,`	public $1')',
+      `define(export_label,`	.globl $1')')
+
+define(define_data,`export_label(EVR($1))')
+
+define(define_code_label,`
+export_label($1)
+$1:')
+
+define(define_c_label,`define_code_label(external_code_reference($1))')
+define(define_debugging_label,`define_code_label($1)')
+define(define_hook_label,`define_code_label(hook_reference($1))')
+
+ifdef(`DASM',
       `define(DECLARE_DATA_SEGMENT,`	.data')',
       `define(DECLARE_DATA_SEGMENT,`	.data')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(DECLARE_CODE_SEGMENT,`	.code')',
       `define(DECLARE_CODE_SEGMENT,`	.text')')
 
 ifdef(`DOS',
       `define(declare_alignment,`')',
-      `define(declare_alignment,`	.align $1')')
+`ifdef(`DASM',
+      `define(declare_alignment,`	align $1')',
+      `define(declare_alignment,`	.align $1')')')
 
-ifdef(`DOS',
-      `define(allocate_word,`_$1 dw 0')',
-      `define(allocate_word,`	.comm EDR($1),2')')
+ifdef(`DASM',
+      `define(allocate_word,`EVR($1) dw 0')',
+      `define(allocate_word,`	.comm EVR($1),2')')
 
-ifdef(`DOS',
-      `define(allocate_longword,`_$1 dd 0')',
-      `define(allocate_longword,`	.comm EDR($1),4')')
+ifdef(`DASM',
+      `define(allocate_longword,`EVR($1) dd 0')',
+      `define(allocate_longword,`	.comm EVR($1),4')')
 
-ifdef(`DOS',
-      `define(allocate_space,`_$1 db $2 dup (0)')',
-      `define(allocate_space,`EDR($1):
+ifdef(`DASM',
+      `define(allocate_space,`EVR($1) db $2 dup (0)')',
+      `define(allocate_space,`EVR($1):
 	.space $2')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(HEX, `0$1H')',
       `define(HEX, `0x$1')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(OP,`$1$3')',
       `define(OP,`$1$2')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(TW,`$2,$1')',
       `define(TW,`$1,$2')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(ABS, `dword ptr $1')',
       `define(ABS, `$1')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(IMM, `$1')',
       `define(IMM, `$$1')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(REG,`$1')',
       `define(REG,`%$1')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(ST,`st($1)')',
       `define(ST,`%st ($1)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(IND,`dword ptr [$1]')',
       `define(IND,`($1)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(BOF,`byte ptr $1[$2]')',
       `define(BOF,`$1($2)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(WOF,`word ptr $1[$2]')',
       `define(WOF,`$1($2)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(LOF,`dword ptr $1[$2]')',
       `define(LOF,`$1($2)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(DOF,`qword ptr $1[$2]')',
       `define(DOF,`$1($2)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(IDX,`dword ptr [$1] [$2]')',
       `define(IDX,`($1,$2)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(SDX,`dword ptr $1[$2*$3]')',
       `define(SDX,`$1(,$2,$3)')')
 
-ifdef(`DOS',
+ifdef(`DASM',
       `define(IJMP,`$1')',
       `define(IJMP,`*$1')')
 
-IFDOS(`define(TYPE_CODE_LENGTH,6)')
-IFOS2(`define(TYPE_CODE_LENGTH,6)')
-
-define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
+define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 6))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
 define(DATUM_SHIFT, eval((2 ** DATUM_LENGTH)))
 define(ADDRESS_MASK, eval((DATUM_SHIFT - 1)))
@@ -368,7 +426,7 @@ allocate_word(C_Stack_Segment_Selector)
 IF_WINNT(`define(LRET,`db	0cbh')')
 IF_LINUX_ELF(`define(LRET,`lret')')
 
-IF_WINNT(`define(SEGMENT_DELTA,`EDR(winnt_address_delta)')')
+IF_WINNT(`define(SEGMENT_DELTA,`EVR(winnt_address_delta)')')
 IF_LINUX_ELF(`define(SEGMENT_DELTA,`IMM(0x08000000)')')
 
 ',`IFDOS(`
@@ -381,8 +439,8 @@ allocate_word(Scheme_Stack_Segment_Selector)
 
 ')')
 
-IFOS2(`define(USE_STRUCS,1)')
-IF_LINUX_ELF(`define(USE_STRUCS,1)')
+IFOS2(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
+IF_LINUX_ELF(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -394,35 +452,35 @@ define_c_label(i386_interface_initialize)
 							# Initialize selectors
 ifdef(`HACK_SEGMENT_REGS',`
 	OP(lea,l)	TW(ABS(cross_segment_transfer_point),REG(eax))
-	OP(mov,l)	TW(REG(eax),EDR(Scheme_Transfer_Address))
-	OP(mov,w)	TW(REG(es),EDR(C_Extra_Segment_Selector)) # This assumes it is constant
+	OP(mov,l)	TW(REG(eax),EVR(Scheme_Transfer_Address))
+	OP(mov,w)	TW(REG(es),EVR(C_Extra_Segment_Selector)) # This assumes it is constant
 
-	OP(mov,w)	TW(REG(cs),EDR(C_Code_Segment_Selector))
-	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(ax))
+	OP(mov,w)	TW(REG(cs),EVR(C_Code_Segment_Selector))
+	OP(mov,w)	TW(EVR(Scheme_Code_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
 	jne		skip_code_assignment
-	OP(mov,w)	TW(REG(cs),EDR(Scheme_Code_Segment_Selector))
+	OP(mov,w)	TW(REG(cs),EVR(Scheme_Code_Segment_Selector))
 skip_code_assignment:
 
-	OP(mov,w)	TW(REG(ds),EDR(C_Data_Segment_Selector))
-	OP(mov,w)	TW(EDR(Scheme_Data_Segment_Selector),REG(ax))
+	OP(mov,w)	TW(REG(ds),EVR(C_Data_Segment_Selector))
+	OP(mov,w)	TW(EVR(Scheme_Data_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
 	jne		skip_data_assignment
-	OP(mov,w)	TW(REG(ds),EDR(Scheme_Data_Segment_Selector))
+	OP(mov,w)	TW(REG(ds),EVR(Scheme_Data_Segment_Selector))
 skip_data_assignment:
 
-	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
-	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
+	OP(mov,w)	TW(REG(ss),EVR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
 	jne		skip_stack_assignment
-	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
+	OP(mov,w)	TW(REG(ds),EVR(Scheme_Stack_Segment_Selector))
 skip_stack_assignment:
 ',`IFDOS(`
-	OP(mov,w)	TW(REG(ss),EDR(C_Stack_Segment_Selector))
-	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ax))
+	OP(mov,w)	TW(REG(ss),EVR(C_Stack_Segment_Selector))
+	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ax))
 	OP(cmp,w)	TW(IMM(0),REG(ax))
 	jne		skip_stack_assignment
-	OP(mov,w)	TW(REG(ds),EDR(Scheme_Stack_Segment_Selector))
+	OP(mov,w)	TW(REG(ds),EVR(Scheme_Stack_Segment_Selector))
 skip_stack_assignment:
 ')
 ')
@@ -431,7 +489,7 @@ skip_stack_assignment:
 # Unfortunately, the `movl cr0,ecx' instruction is privileged.
 # Use the deprecated `smsw cx' instruction instead.
 
-IF387(`	
+IF387(`
 #	OP(mov,l)	TW(REG(cr0),REG(ecx))		# Test for 387 presence
 	smsw		REG(cx)
 	OP(mov,l)	TW(IMM(HEX(12)),REG(edx))
@@ -454,7 +512,7 @@ IF387(`
 
 i386_initialize_no_fp:
 ')
-	OP(mov,l)	TW(REG(eax),EDR(i387_presence))
+	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
 	leave
 	ret
 
@@ -466,31 +524,31 @@ define_c_label(C_to_interface)
 	OP(push,l)	REG(ebx)
 	OP(mov,l)	TW(LOF(8,REG(ebp)),REG(edx))	# Entry point
 							# Preserve frame ptr
-	OP(mov,l)	TW(REG(ebp),EDR(C_Frame_Pointer))
+	OP(mov,l)	TW(REG(ebp),EVR(C_Frame_Pointer))
 							# Preserve stack ptr
-	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
+	OP(mov,l)	TW(REG(esp),EVR(C_Stack_Pointer))
 							# Register block = %esi
 							# Scheme offset in NT
 
 ifdef(`WINNT',
-`	OP(mov,l)	TW(ABS(EDR(RegistersPtr)),regs)',
-`	OP(lea,l)	TW(ABS(EDR(Registers)),regs)')
+`	OP(mov,l)	TW(ABS(EVR(RegistersPtr)),regs)',
+`	OP(lea,l)	TW(ABS(EVR(Registers)),regs)')
 ifdef(`HACK_SEGMENT_REGS',
 `	OP(sub,l)	TW(SEGMENT_DELTA,regs)')
 	jmp	external_code_reference(interface_to_scheme)
 
-define_c_label(asm_trampoline_to_interface)
+define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
 	OP(pop,l)	REG(ecx)			# trampoline storage
 	jmp	scheme_to_interface
 
-define_c_label(asm_scheme_to_interface_call)
+define_hook_label(scheme_to_interface_call)
 define_debugging_label(scheme_to_interface_call)
 	OP(pop,l)	REG(ecx)			# arg1 = ret. add
 	OP(add,l)	TW(IMM(4),REG(ecx))		# Skip format info
 #	jmp	scheme_to_interface
 
-define_c_label(asm_scheme_to_interface)
+define_hook_label(scheme_to_interface)
 define_debugging_label(scheme_to_interface)
 ifdef(`HACK_SEGMENT_REGS',
 `	OP(push,l)	LOF(36,regs)			# 4th utility arg
@@ -499,48 +557,48 @@ ifdef(`HACK_SEGMENT_REGS',
 	OP(mov,w)	TW(REG(es),REG(ax))		# C ds
 	OP(mov,w)	TW(REG(ax),REG(ds))
 
-	OP(mov,w)	TW(EDR(C_Extra_Segment_Selector),REG(ax)) # C es
+	OP(mov,w)	TW(EVR(C_Extra_Segment_Selector),REG(ax)) # C es
 	OP(mov,w)	TW(REG(ax),REG(es))
 
 # Map Free to C data space
 	OP(add,l)	TW(SEGMENT_DELTA,rfree)
-	OP(mov,l)	TW(rfree,EDR(Free))
+	OP(mov,l)	TW(rfree,EVR(Free))
 
 # Map SP to C data space
 	OP(mov,l)	TW(REG(esp),REG(eax))
 	OP(add,l)	TW(SEGMENT_DELTA,REG(eax))
-	OP(mov,l)	TW(REG(eax),EDR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(REG(eax),EVR(Ext_Stack_Pointer))
 
 # Switch stack segment
-	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))
-	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
-	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
+	OP(mov,w)	TW(EVR(C_Stack_Segment_Selector),REG(ss))
+	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
 	OP(xor,l)	TW(REG(eax),REG(eax))
-	OP(mov,w)	TW(EDR(C_Code_Segment_Selector),REG(ax))
+	OP(mov,w)	TW(EVR(C_Code_Segment_Selector),REG(ax))
 	OP(push,l)	REG(eax)
-	OP(push,l)	EDR(Scheme_Transfer_Address)
+	OP(push,l)	EVR(Scheme_Transfer_Address)
 	LRET
 
 cross_segment_transfer_point:
-ifdef(`USE_STRUCS',`
+ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
 ')
-	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(eax))
+	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(eax))
 	OP(push,l)	LOF(4,REG(eax))			# 4th utility arg
-	OP(add,l)	TW(IMM(8),EDR(Ext_Stack_Pointer))
+	OP(add,l)	TW(IMM(8),EVR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))	# utility index
 ',
 
-`	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
-	OP(mov,l)	TW(rfree,EDR(Free))
+`	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(rfree,EVR(Free))
 
-IFDOS(`	OP(mov,w)	TW(EDR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segments
+IFDOS(`	OP(mov,w)	TW(EVR(C_Stack_Segment_Selector),REG(ss))')	# Swap stack segments
 
-	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
-	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
+	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
-ifdef(`USE_STRUCS',`
+ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
 ')
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
@@ -549,7 +607,7 @@ ifdef(`USE_STRUCS',`
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
 
-ifdef(`USE_STRUCS',`
+ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
 	OP(add,l)	TW(IMM(16),REG(ecx))
 	OP(push,l)	REG(ecx)
@@ -557,11 +615,11 @@ ifdef(`USE_STRUCS',`
 
 	OP(xor,l)	TW(REG(ecx),REG(ecx))
 	OP(mov,b)	TW(REG(al),REG(cl))
-	OP(mov,l)	TW(SDX(EDR(utility_table),REG(ecx),4),REG(eax))
+	OP(mov,l)	TW(SDX(EVR(utility_table),REG(ecx),4),REG(eax))
 	call		IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-ifdef(`USE_STRUCS',`
+ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
 ')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
@@ -573,7 +631,7 @@ IFDOS(`
 ')
 ')
 
-ifdef(`USE_STRUCS',`
+ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(pop,l)	REG(eax)	# Pop struct return into registers
 	OP(pop,l)	REG(edx)
 ')
@@ -581,7 +639,7 @@ ifdef(`USE_STRUCS',`
 
 define_c_label(interface_to_scheme)
 IF387(`
-	OP(cmp,l)	TW(IMM(0),EDR(i387_presence))
+	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
 	je	interface_to_scheme_proceed
 	ffree	ST(0)					# Free floating "regs"
 	ffree	ST(1)
@@ -594,22 +652,22 @@ IF387(`
 interface_to_scheme_proceed:
 ')
 ifdef(`HACK_SEGMENT_REGS',
-`	OP(mov,l)	TW(EDR(Free),rfree)
+`	OP(mov,l)	TW(EVR(Free),rfree)
 	OP(sub,l)	TW(SEGMENT_DELTA,rfree)
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)
 
-	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(eax)) # Switch stacks
+	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(eax)) # Switch stacks
 	OP(sub,l)	TW(SEGMENT_DELTA,REG(eax))
-	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))
+	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ss))
 	OP(mov,l)	TW(REG(eax),REG(esp))
 
 	OP(sub,l)	TW(SEGMENT_DELTA,REG(edx))	# Entry point to new space
 	OP(xor,l)	TW(REG(ecx),REG(ecx))		# Setup cross-segment jump
-	OP(mov,w)	TW(EDR(Scheme_Code_Segment_Selector),REG(cx))
+	OP(mov,w)	TW(EVR(Scheme_Code_Segment_Selector),REG(cx))
 
 	OP(mov,w)	TW(REG(ds),REG(ax))		# Store C ds in es,
 	OP(mov,w)	TW(REG(ax),REG(es))		#  unused by Scheme.
-	OP(mov,w)	TW(EDR(Scheme_Data_Segment_Selector),REG(ax)) # Switch data segments
+	OP(mov,w)	TW(EVR(Scheme_Data_Segment_Selector),REG(ax)) # Switch data segments
 	OP(mov,w)	TW(REG(ax),REG(ds))
 
 	OP(push,l)	REG(ecx)
@@ -621,13 +679,13 @@ ifdef(`HACK_SEGMENT_REGS',
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
 	LRET						# Perform cross-segment jump
 ',
-`	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
+`	OP(mov,l)	TW(EVR(Free),rfree)		# Free pointer = %edi
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
-IFDOS(`	OP(mov,w)	TW(EDR(Scheme_Stack_Segment_Selector),REG(ss))') # Swap stack segments
+IFDOS(`	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ss))') # Swap stack segments
 
-	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
@@ -644,7 +702,7 @@ _callWinntExceptionTransferHook:
 
 define_c_label(interface_to_C)
 IF387(`
-	OP(cmp,l)	TW(IMM(0),EDR(i387_presence))
+	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
 	je	interface_to_C_proceed
 	ffree	ST(0)					# Free floating "regs"
 	ffree	ST(1)
@@ -669,21 +727,21 @@ interface_to_C_proceed:')
 ###	code generated by the compiler can be somewhat smaller.
 
 define(define_jump_indirection,
-`define_c_label(asm_$1)
+`define_hook_label($1)
 	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
-	
+
 define(define_call_indirection,
-`define_c_label(asm_$1)
+`define_hook_label($1)
 	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface_call')
-	
+
 define_call_indirection(interrupt_procedure,1a)
 define_call_indirection(interrupt_continuation,1b)
 define_jump_indirection(interrupt_closure,18)
 define_jump_indirection(interrupt_continuation_2,3b)
 
-define_c_label(asm_interrupt_dlink)
+define_hook_label(interrupt_dlink)
 	OP(mov,l)	TW(LOF(REGBLOCK_DLINK(),regs),REG(edx))
 	OP(mov,b)	TW(IMM(HEX(19)),REG(al))
 	jmp	scheme_to_interface_call
@@ -698,13 +756,13 @@ define_c_label(asm_interrupt_dlink)
 ###
 
 declare_alignment(2)
-define_c_label(asm_short_primitive_apply)
+define_hook_label(short_primitive_apply)
 	OP(pop,l)	REG(edx)			# offset pointer
 	OP(mov,l)	TW(IND(REG(edx)),REG(ecx))	# offset
 							# Primitive object
 	OP(mov,l)	TW(IDX(REG(edx),REG(ecx)),REG(ecx))
 							# Merge
-	jmp	external_code_reference(asm_primitive_apply)
+	jmp	hook_reference(primitive_apply)
 
 declare_alignment(2)
 define_jump_indirection(primitive_apply,12)
@@ -722,13 +780,13 @@ define_call_indirection(primitive_error,36)
 # define_jump_indirection(sc_apply,14)
 # 
 # define(define_apply_fixed_size,
-# `define_c_label(asm_sc_apply_size_$1)
+# `define_hook_label(sc_apply_size_$1)
 # 	OP(mov,l)	TW(IMM($1),REG(edx))
 # 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 # 	jmp	scheme_to_interface')
 
 declare_alignment(2)
-define_c_label(asm_sc_apply)
+define_hook_label(sc_apply)
 	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
 	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
@@ -746,7 +804,7 @@ define_debugging_label(asm_sc_apply_generic)
 
 define(define_apply_fixed_size,
 `declare_alignment(2)
-define_c_label(asm_sc_apply_size_$1)
+define_hook_label(sc_apply_size_$1)
 	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
 	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
@@ -810,7 +868,7 @@ asm_generic_return_sharp_f:
 
 define(define_unary_operation,
 `declare_alignment(2)
-define_c_label(asm_generic_$1)
+define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
 	OP(mov,l)	TW(REG(edx),REG(eax))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
@@ -836,7 +894,7 @@ asm_generic_$1_fail:
 
 define(define_unary_predicate,
 `declare_alignment(2)
-define_c_label(asm_generic_$1)
+define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
 	OP(mov,l)	TW(REG(edx),REG(eax))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
@@ -867,7 +925,7 @@ asm_generic_$1_fail:
 
 define(define_binary_operation,
 `declare_alignment(2)
-define_c_label(asm_generic_$1)
+define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
 	OP(pop,l)	REG(ebx)
 	OP(mov,l)	TW(REG(edx),REG(eax))
@@ -925,7 +983,7 @@ asm_generic_$1_fix_flo:
 	jmp	asm_generic_flonum_result')
 
 IF387(`declare_alignment(2)
-define_c_label(asm_generic_divide)
+define_hook_label(generic_divide)
 	OP(pop,l)	REG(edx)
 	OP(pop,l)	REG(ebx)
 	OP(mov,l)	TW(REG(edx),REG(eax))
@@ -986,7 +1044,7 @@ asm_generic_divide_fail:
 
 define(define_binary_predicate,
 `declare_alignment(2)
-define_c_label(asm_generic_$1)
+define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
 	OP(pop,l)	REG(ebx)
 	OP(mov,l)	TW(REG(edx),REG(eax))
@@ -1107,7 +1165,7 @@ define_jump_indirection(nofp_quotient,37)
 define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
 
-IFDOS(`end')
+IFDASM(`end')
 
 ### Edwin Variables:
 ### comment-column: 56
