@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.46 1991/02/15 00:42:07 jinx Exp $
-$MC68020-Header: make.scm,v 4.77 90/11/19 22:51:08 GMT cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.78 1991/02/15 01:14:34 jinx Exp $
+$MC68020-Header: make.scm,v 4.78 1991/02/15 00:19:58 cph Exp $
 
 Copyright (c) 1987, 1989, 1991 Massachusetts Institute of Technology
 
@@ -43,4 +43,4 @@ MIT in each case. |#
 	  '((COMPILER MACROS)
 	    (COMPILER DECLARATIONS)
 	    (COMPILER DISASSEMBLER MACROS)))
-(add-system! (make-system "Liar (DEC VAX)" 4 77 '()))
+(add-system! (make-system "Liar (DEC VAX)" 4 78 '()))
