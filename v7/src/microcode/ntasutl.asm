@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: ntasutl.asm,v 1.2 1993/06/24 01:57:03 gjr Exp $
+;;;	$Id: ntasutl.asm,v 1.3 1993/08/21 02:41:47 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ;;;
@@ -47,58 +47,14 @@ _getCS:
 	mov	ax,cs			; copy code segment descriptor
 	ret
 
-;; getDS added by SRA
-;_getDS:
-;	xor	eax,eax			; clear eax
-;	mov	ax,ds			; copy code segment descriptor
-;	ret
+	public	_getDS
+_getDS:
+	xor	eax,eax			; clear eax
+	mov	ax,ds			; copy code segment descriptor
+	ret
 
 	public	_getSS
 _getSS:
 	xor	eax,eax			; clear eax
 	mov	ax,ss			; copy code segment descriptor
 	ret
-
-;;	Frame on entry to farcpy
-
-;;24	size
-;;20	src_sel
-;;16	src_off
-;;12	dst_sel
-;;8	dst_off
-;;4	ret add
-;;0	previous ebp
-
-	public	_farcpy
-_farcpy:
-	push	ebp
-	mov	ebp,esp
-	push	ebx
-	push	ds
-	push	es
-
-	mov	eax,12[ebp]
-	mov	ds,ax			; dst sel
-	mov	eax,20[ebp]
-	mov	es,ax			; src sel
-	mov	edx,8[ebp]		; dst off
-	mov	ecx,16[ebp]		; src off
-	mov	eax,24[ebp]		; count
-	jmp	enter_loop
-
-farcpy_loop:
-	mov	bl,es:[ecx]
-	mov	ds:[edx],bl
-	inc	ecx
-	inc	edx
-
-enter_loop:
-	dec	eax
-	jge	farcpy_loop
-
-	pop	es
-	pop	ds
-	pop	ebx
-	pop	ebp
-	ret
-end
