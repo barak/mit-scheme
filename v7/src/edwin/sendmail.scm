@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.63 2000/06/22 20:18:31 cph Exp $
+;;; $Id: sendmail.scm,v 1.64 2000/06/30 19:07:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
 ;;;
@@ -1210,10 +1210,7 @@ Commands available in this mode:
 		  mail-buffer type subtype
 		  `(,@parameters
 		    (NAME ,(pathname-name pathname)))
-		  `(,(if (eq? type 'TEXT)
-			 'INLINE
-			 'ATTACHMENT)
-		    (FILENAME ,(file-namestring pathname)))
+		  `(ATTACHMENT (FILENAME ,(file-namestring pathname)))
 		  pathname)))))
 	(let ((buffer (get-mime-attachments-buffer mail-buffer #f)))
 	  (if buffer
