@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.225 1994/03/24 18:28:18 gjr Exp $
+$Id: runtime.pkg,v 14.226 1994/03/24 18:30:44 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -2502,8 +2502,6 @@ MIT in each case. |#
 	  unsyntax
 	  unsyntax-lambda-list
 	  unsyntax-with-substitutions)
-  (export (runtime parser)
-	  lambda-auxiliary-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime working-directory)
