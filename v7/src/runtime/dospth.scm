@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.15 1992/09/26 16:03:18 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/dospth.scm,v 1.16 1992/10/08 18:20:25 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,6 +37,8 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
+(define hook/dos/end-of-line-string)
+
 (define sub-directory-delimiters
   ;; Allow forward slashes as well as backward slashes so that
   ;; - improperly-written scripts (e.g. compiler/comp.sf) will work
@@ -66,6 +68,7 @@ MIT in each case. |#
 		  dos/canonicalize))
 
 (define (initialize-package!)
+  (set! hook/dos/end-of-line-string default/dos/end-of-line-string)
   (add-pathname-host-type! 'DOS make-dos-host-type))
 
 ;;;; Pathname Parser
@@ -256,6 +259,13 @@ MIT in each case. |#
 ;;;; Pathname Constructors
 
 (define (dos/make-pathname host device directory name type version)
+  (define (check-directory-components components)
+    (for-all? components
+      (lambda (element)
+	(if (string? element)
+	    (not (string-null? element))
+	    (eq? element 'UP)))))
+    
   (%make-pathname
    host
    (cond ((string? device) device)
@@ -266,12 +276,17 @@ MIT in each case. |#
 	  directory)
 	 ((and (list? directory)
 	       (not (null? directory))
-	       (memq (car directory) '(RELATIVE ABSOLUTE))
-	       (for-all? (cdr directory)
-		 (lambda (element)
-		   (if (string? element)
-		       (not (string-null? element))
-		       (eq? element 'UP)))))
+	       (case (car directory)
+		 ((RELATIVE)
+		  (check-directory-components (cdr directory)))
+		 ((ABSOLUTE)
+		  ;; This should handle share network drives (\\machine\...)
+		  (let ((rest (cdr directory)))
+		    (or (null? rest)
+			(and (string? (car rest))
+			     (check-directory-components (cdr rest))))))
+		 (else
+		  false)))
 	  (simplify-directory directory))
 	 (else
 	  (error:wrong-type-argument directory "pathname directory"
@@ -286,7 +301,8 @@ MIT in each case. |#
        (error:wrong-type-argument type "pathname type" 'MAKE-PATHNAME))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))
        'UNSPECIFIC
-       (error:wrong-type-argument version "pathname version" 'MAKE-PATHNAME))))
+       (error:wrong-type-argument version "pathname version"
+				  'MAKE-PATHNAME))))
 
 (define (dos/pathname-as-directory pathname)
   (let ((name (%pathname-name pathname))
@@ -382,5 +398,8 @@ MIT in each case. |#
       pathname))
 
 (define (dos/end-of-line-string pathname)
+  (hook/dos/end-of-line-string pathname))
+
+(define (default/dos/end-of-line-string pathname)
   pathname				; ignored
   "\r\n")
