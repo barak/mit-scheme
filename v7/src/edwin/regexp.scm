@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.48 1989/04/28 22:52:26 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.49 1991/03/15 23:27:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -50,20 +50,26 @@
 (define registers (make-vector 20))
 
 (define (re-match-start i)
+  (let ((group (unhash match-group)))
+    (if (not group)
+	(error "No match registers" i))
+    (make-mark group (re-match-start-index i))))
+
+(define (re-match-start-index i)
   (if (or (negative? i) (> i 9))
-      (error "RE-MATCH-START: No such register" i)
-      (let ((group (unhash match-group)))
-	(if (not group)
-	    (error "RE-MATCH-START: No match registers" i)
-	    (make-mark group (vector-ref registers i))))))
+      (error "No such register" i))
+  (vector-ref registers i))
 
 (define (re-match-end i)
+  (let ((group (unhash match-group)))
+    (if (not group)
+	(error "No match registers" i))
+    (make-mark group (re-match-end-index i))))
+
+(define (re-match-end-index i)
   (if (or (negative? i) (> i 9))
-      (error "RE-MATCH-END: No such register" i)
-      (let ((group (unhash match-group)))
-	(if (not group)
-	    (error "RE-MATCH-END: No match registers" i)
-	    (make-mark group (vector-ref registers (+ i 10)))))))
+      (error "No such register" i))
+  (vector-ref registers (+ i 10)))
 
 (define (%re-finish group index)
   (if index
@@ -272,3 +278,49 @@
 	  (if index
 	      (make-mark (mark-group start) index)
 	      (limit-mark-motion limit? end)))))))
+
+;;;; String Operations
+
+(define (re-match-string-forward pattern string)
+  (re-match-substring-forward pattern string 0 (string-length string)))
+
+(define (re-match-substring-forward pattern string start end)
+  ((ucode-primitive re-match-substring)
+   (re-compile-pattern pattern false)
+   (re-translation-table false)
+   (syntax-table/entries (ref-variable syntax-table))
+   registers
+   string start end))
+
+(define (re-match-string-forward-ci pattern string)
+  (re-match-substring-forward-ci pattern string 0 (string-length string)))
+
+(define (re-match-substring-forward-ci pattern string start end)
+  ((ucode-primitive re-match-substring)
+   (re-compile-pattern pattern true)
+   (re-translation-table false)
+   (syntax-table/entries (ref-variable syntax-table))
+   registers
+   string start end))
+
+(define (re-search-string-forward pattern string)
+  (re-search-substring-forward pattern string 0 (string-length string)))
+
+(define (re-search-substring-forward pattern string start end)
+  ((ucode-primitive re-search-substring-forward)
+   (re-compile-pattern pattern false)
+   (re-translation-table false)
+   (syntax-table/entries (ref-variable syntax-table))
+   registers
+   string start end))
+
+(define (re-search-string-forward-ci pattern string)
+  (re-search-substring-forward-ci pattern string 0 (string-length string)))
+
+(define (re-search-substring-forward-ci pattern string start end)
+  ((ucode-primitive re-search-substring-forward)
+   (re-compile-pattern pattern true)
+   (re-translation-table false)
+   (syntax-table/entries (ref-variable syntax-table))
+   registers
+   string start end))
