@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.8 2003/02/28 04:40:12 cph Exp $
+$Id: parser-buffer.scm,v 1.9 2003/10/11 03:48:16 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -90,10 +90,13 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
+  (call-on-parser-buffer-tail buffer p substring))
+
+(define (call-on-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
-  ;; GET-PARSER-BUFFER-POINTER.  Return the string of characters
+  ;; GET-PARSER-BUFFER-POINTER.  Call PROCEDURE on the substring
   ;; between P and the current buffer pointer.
-  (substring (parser-buffer-string buffer)
+  (procedure (parser-buffer-string buffer)
 	     (pointer->index p buffer)
 	     (parser-buffer-index buffer)))
 
