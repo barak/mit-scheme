@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.28 1997/03/04 06:43:40 cph Exp $
+;;;	$Id: snr.scm,v 1.29 1997/03/30 06:26:45 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -992,9 +992,9 @@ This shows News groups that have been created since the last time that
 	      (not (news-server-buffer:listed-group? buffer group)))))))))
 
 (define (ang-buffer:update-group buffer group)
-  (ang-buffer:replace-group-line buffer
-				 group
-				 (ang-buffer:group-mark buffer group #t)))
+  (let ((mark (ang-buffer:group-mark buffer group #f)))
+    (if mark
+	(ang-buffer:replace-group-line buffer group mark))))
 
 (define (ang-buffer:insert-group-line buffer name)
   (let ((group (name->news-group buffer name)))
