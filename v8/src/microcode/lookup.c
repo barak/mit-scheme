@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.46 1991/05/05 00:42:53 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.47 1992/01/15 03:25:38 jinx Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,13 +83,17 @@ SCHEME_OBJECT fake_variable_object[3];
    cell if the variable was not found in this frame.
  */
 
-extern SCHEME_OBJECT *scan_frame();
+extern SCHEME_OBJECT *
+  EXFUN (scan_frame,
+	 (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *, long, Boolean));
 
 SCHEME_OBJECT *
-scan_frame(frame, sym, hunk, depth, unbound_valid_p)
-     SCHEME_OBJECT frame, sym, *hunk;
-     long depth;
-     Boolean unbound_valid_p;
+DEFUN (scan_frame, (frame, sym, hunk, depth, unbound_valid_p),
+       SCHEME_OBJECT frame
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT * hunk
+       AND long depth
+       AND Boolean unbound_valid_p)
 {
   Lock_Handle compile_serializer;
   fast SCHEME_OBJECT *scan, temp;
@@ -179,8 +183,10 @@ scan_frame(frame, sym, hunk, depth, unbound_valid_p)
  */
 
 SCHEME_OBJECT *
-deep_lookup(env, sym, hunk)
-     SCHEME_OBJECT env, sym, *hunk;
+DEFUN (deep_lookup, (env, sym, hunk),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT * hunk)
 {
   Lock_Handle compile_serializer;
   fast SCHEME_OBJECT frame;
@@ -194,7 +200,7 @@ deep_lookup(env, sym, hunk)
   {
     fast SCHEME_OBJECT *cell;
 
-    cell = scan_frame(frame, sym, hunk, depth, false);
+    cell = (scan_frame (frame, sym, hunk, depth, false));
     if (cell != ((SCHEME_OBJECT *) NULL))
     {
       return (cell);
@@ -220,11 +226,13 @@ deep_lookup(env, sym, hunk)
    It takes care of invoking deep_lookup when necessary.
  */
 
-extern SCHEME_OBJECT *lookup_cell();
+extern SCHEME_OBJECT *
+  EXFUN (lookup_cell, (SCHEME_OBJECT *, SCHEME_OBJECT));
 
 SCHEME_OBJECT *
-lookup_cell(hunk, env)
-     SCHEME_OBJECT *hunk, env;
+DEFUN (lookup_cell, (hunk, env),
+       SCHEME_OBJECT * hunk
+       AND SCHEME_OBJECT env)
 {
   SCHEME_OBJECT *cell, value;
   long trap_kind;
@@ -267,9 +275,9 @@ lookup_cell(hunk, env)
  */
 
 long
-deep_lookup_end(cell, hunk)
-	SCHEME_OBJECT *cell;
-	SCHEME_OBJECT *hunk;
+DEFUN (deep_lookup_end, (cell, hunk),
+       SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT * hunk)
 {
   long trap_kind, return_value;
   Boolean repeat_p;
@@ -369,8 +377,10 @@ deep_lookup_end(cell, hunk)
  */
 
 long
-lookup_end(cell, env, hunk)
-	SCHEME_OBJECT *cell, env, *hunk;
+DEFUN (lookup_end, (cell, env, hunk),
+       SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT env
+       AND SCHEME_OBJECT * hunk)
 {
   long trap_kind;
 
@@ -490,10 +500,11 @@ lookup_end_restart:
 }
 
 long
-deep_assignment_end(cell, hunk, value, force)
-	fast SCHEME_OBJECT *cell;
-	SCHEME_OBJECT *hunk, value;
-	Boolean force;
+DEFUN (deep_assignment_end, (cell, hunk, value, force),
+       fast SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT * hunk
+       AND SCHEME_OBJECT value
+       AND Boolean force)
 {
   Lock_Handle set_serializer;
   long trap_kind, return_value;
@@ -710,9 +721,11 @@ compiler_cache_assignment:
  */
 
 long
-assignment_end(cell, env, hunk, value)
-	fast SCHEME_OBJECT *cell;
-	SCHEME_OBJECT env, *hunk, value;
+DEFUN (assignment_end, (cell, env, hunk, value),
+       fast SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT env
+       AND SCHEME_OBJECT * hunk
+       AND SCHEME_OBJECT value)
 {
   Lock_Handle set_serializer;
   SCHEME_OBJECT bogus_unassigned;
@@ -801,8 +814,7 @@ assignment_end_after_lock:
  */
 
 SCHEME_OBJECT *
-lookup_fluid(trap)
-     fast SCHEME_OBJECT trap;
+DEFUN (lookup_fluid, (trap), fast SCHEME_OBJECT trap)
 {
   fast SCHEME_OBJECT fluids, *this_pair;
 
@@ -853,9 +865,10 @@ lookup_fluid(trap)
   (deep_assignment_end (cell, fake_variable_object, value, true))
 
 long
-definition (cell, value, shadowed_p)
-     SCHEME_OBJECT *cell, value;
-     Boolean shadowed_p;
+DEFUN (definition, (cell, value, shadowed_p),
+       SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT value
+       AND Boolean shadowed_p)
 {
   if (shadowed_p)
     return (redefinition (cell, value));
@@ -883,9 +896,9 @@ definition (cell, value, shadowed_p)
 }
 
 long
-dangerize (cell, sym)
-     fast SCHEME_OBJECT *cell;
-     SCHEME_OBJECT sym;
+DEFUN (dangerize, (cell, sym),
+       fast SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT sym)
 {
   Lock_Handle set_serializer;
   fast long temp;
@@ -966,9 +979,13 @@ dangerize (cell, sym)
  */
 
 long
-extend_frame (env, sym, value, original_frame, recache_p)
-     SCHEME_OBJECT env, sym, value, original_frame;
-     Boolean recache_p;
+DEFUN (extend_frame,
+       (env, sym, value, original_frame, recache_p),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT value
+       AND SCHEME_OBJECT original_frame
+       AND Boolean recache_p)
 {
   Lock_Handle extension_serializer;
   SCHEME_OBJECT extension, the_procedure;
@@ -1242,8 +1259,9 @@ redo_aux_lookup:
  */
 
 long
-Lex_Ref(env, var)
-	SCHEME_OBJECT env, var;
+DEFUN (Lex_Ref, (env, var),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT var)
 {
   fast SCHEME_OBJECT *cell;
   SCHEME_OBJECT *hunk;
@@ -1254,16 +1272,19 @@ Lex_Ref(env, var)
 }
 
 long
-Symbol_Lex_Ref(env, sym)
-	SCHEME_OBJECT env, sym;
+DEFUN (Symbol_Lex_Ref, (env, sym),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym)
 {
   return (deep_lookup_end(deep_lookup(env, sym, fake_variable_object),
 			  fake_variable_object));
 }
 
 long
-Lex_Set(env, var, value)
-	SCHEME_OBJECT env, var, value;
+DEFUN (Lex_Set, (env, var, value),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT var
+       AND SCHEME_OBJECT value)
 {
   fast SCHEME_OBJECT *cell;
   SCHEME_OBJECT *hunk;
@@ -1274,8 +1295,10 @@ Lex_Set(env, var, value)
 }
 
 long
-Symbol_Lex_Set(env, sym, value)
-	SCHEME_OBJECT env, sym, value;
+DEFUN (Symbol_Lex_Set, (env, sym, value),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT value)
 {
   return (deep_assignment_end(deep_lookup(env, sym, fake_variable_object),
 			      fake_variable_object,
@@ -1284,8 +1307,10 @@ Symbol_Lex_Set(env, sym, value)
 }
 
 long
-Local_Set (env, sym, value)
-     SCHEME_OBJECT env, sym, value;
+DEFUN (Local_Set, (env, sym, value),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT value)
 {
   long result;
 
@@ -1301,8 +1326,7 @@ Local_Set (env, sym, value)
 }
 
 long
-safe_reference_transform (reference_result)
-     long reference_result;
+DEFUN (safe_reference_transform, (reference_result), long reference_result)
 {
   if (reference_result == ERR_UNASSIGNED_VARIABLE)
   {
@@ -1316,22 +1340,23 @@ safe_reference_transform (reference_result)
 }
 
 long
-safe_lex_ref (env, var)
-	SCHEME_OBJECT env, var;
+DEFUN (safe_lex_ref, (env, var),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT var)
 {
   return (safe_reference_transform (Lex_Ref (env, var)));
 }
 
 long
-safe_symbol_lex_ref (env, sym)
-     SCHEME_OBJECT env, sym;
+DEFUN (safe_symbol_lex_ref, (env, sym),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym)
 {
   return (safe_reference_transform (Symbol_Lex_Ref (env, sym)));
 }
 
 long
-unassigned_p_transform (reference_result)
-     long reference_result;
+DEFUN (unassigned_p_transform, (reference_result), long reference_result)
 {
   switch (reference_result)
   {
@@ -1350,23 +1375,25 @@ unassigned_p_transform (reference_result)
 }
 
 extern long
-  Symbol_Lex_unassigned_p(),
-  Symbol_Lex_unbound_p();
+  EXFUN (Symbol_Lex_unassigned_p, (SCHEME_OBJECT, SCHEME_OBJECT)),
+  EXFUN (Symbol_Lex_unbound_p, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 long
-Symbol_Lex_unassigned_p( frame, symbol)
-     SCHEME_OBJECT frame, symbol;
+DEFUN (Symbol_Lex_unassigned_p, (frame, symbol),
+       SCHEME_OBJECT frame
+       AND SCHEME_OBJECT symbol)
 {
   return (unassigned_p_transform (Symbol_Lex_Ref (frame, symbol)));
 }
 
 long
-Symbol_Lex_unbound_p( frame, symbol)
-     SCHEME_OBJECT frame, symbol;
+DEFUN (Symbol_Lex_unbound_p, (frame, symbol),
+       SCHEME_OBJECT frame
+       AND SCHEME_OBJECT symbol)
 {
   long result;
 
-  result = Symbol_Lex_Ref( frame, symbol);
+  result = (Symbol_Lex_Ref (frame, symbol));
   switch (result)
   {
     case ERR_UNASSIGNED_VARIABLE:
@@ -1395,10 +1422,10 @@ Symbol_Lex_unbound_p( frame, symbol)
 */
 
 SCHEME_OBJECT *
-force_definition(env, symbol, message)
-    fast SCHEME_OBJECT env;
-    SCHEME_OBJECT symbol;
-    long *message;
+DEFUN (force_definition, (env, symbol, message),
+       fast SCHEME_OBJECT env
+       AND SCHEME_OBJECT symbol
+       AND long * message)
 {
   fast SCHEME_OBJECT previous;
 
@@ -1530,13 +1557,17 @@ force_definition(env, symbol, message)
 #endif /* PARALLEL_PROCESSOR */
 
 extern SCHEME_OBJECT compiler_cache_variable[];
-extern long compiler_cache ();
+extern long
+  EXFUN (compiler_cache,
+	 (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT,
+	  SCHEME_OBJECT, long, long, Boolean));
 
 SCHEME_OBJECT compiler_cache_variable[3];
 
 Boolean
-local_reference_p (env, hunk)
-     SCHEME_OBJECT *hunk;
+DEFUN (local_reference_p, (env, hunk)
+     SCHEME_OBJECT env;
+     SCHEME_OBJECT * hunk;
 {
   SCHEME_OBJECT spec;
 
@@ -1559,13 +1590,20 @@ local_reference_p (env, hunk)
 }
 
 long
-compiler_cache (cell, env, name, block, offset, kind, first_time)
-     fast SCHEME_OBJECT *cell;
-     SCHEME_OBJECT env, name, block;
-     long offset, kind;
-     Boolean first_time;
+DEFUN (compiler_cache,
+       (cell, env, name, block, offset, kind, first_time),
+       fast SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT env
+       AND SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset
+       AND long kind
+       AND Boolean first_time)
 {
-  long cache_reference_end ();
+  long EXFUN (cache_reference_end,
+	      (long, SCHEME_OBJECT, SCHEME_OBJECT,
+	       SCHEME_OBJECT, long, SCHEME_OBJECT));
+
   Lock_Handle set_serializer;
   fast SCHEME_OBJECT trap, references, extension;
   SCHEME_OBJECT trap_value, store_trap_tag, store_extension;
@@ -1800,16 +1838,20 @@ compiler_cache_retry:
 }
 
 long
-cache_reference_end (kind, extension, store_extension,
-		     block, offset, value)
-     long kind, offset;
-     SCHEME_OBJECT extension, store_extension, block, value;
+DEFUN (cache_reference_end,
+       (kind, extension, store_extension, block, offset, value),
+       long kind
+       AND SCHEME_OBJECT extension
+       AND SCHEME_OBJECT store_extension
+       AND SCHEME_OBJECT block
+       AND long offset
+       AND SCHEME_OBJECT value)
 {
   extern void
-    store_variable_cache();
+    EXFUN (store_variable_cache, (SCHEME_OBJECT, SCHEME_OBJECT, long));
   extern long
-    make_uuo_link(),
-    make_fake_uuo_link();
+    EXFUN (make_fake_uuo_link, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+    EXFUN (make_uuo_link, (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long));
 
   switch(kind)
   {
@@ -1846,10 +1888,14 @@ cache_reference_end (kind, extension, store_extension,
  */
 
 long
-compiler_cache_reference (env, name, block, offset, kind, first_time)
-     SCHEME_OBJECT env, name, block;
-     long offset, kind;
-     Boolean first_time;
+DEFUN (compiler_cache_reference,
+       (env, name, block, offset, kind, first_time),
+       SCHEME_OBJECT env
+       AND SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset
+       AND long kind
+       AND Boolean first_time)
 {
   SCHEME_OBJECT *cell;
 
@@ -1873,8 +1919,9 @@ compiler_cache_reference (env, name, block, offset, kind, first_time)
  */
 
 void
-fix_references (slot, extension)
-     fast SCHEME_OBJECT *slot, extension;
+DEFUN (fix_references, (slot, extension),
+       fast SCHEME_OBJECT * slot
+       AND fast SCHEME_OBJECT extension)
 {
   fast SCHEME_OBJECT pair, block;
 
@@ -1888,7 +1935,8 @@ fix_references (slot, extension)
     }
     else
     {
-      extern void store_variable_cache();
+      extern void
+	EXFUN (store_variable_cache, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
       store_variable_cache (extension,
 			    block,
@@ -1905,9 +1953,10 @@ fix_references (slot, extension)
  */
 
 long
-add_reference (slot, block, offset)
-     fast SCHEME_OBJECT *slot;
-     SCHEME_OBJECT block, offset;
+DEFUN (add_reference, (slot, block, offset),
+       fast SCHEME_OBJECT * slot
+       AND SCHEME_OBJECT block
+       AND SCHEME_OBJECT offset)
 {
   fast SCHEME_OBJECT pair;
 
@@ -1940,7 +1989,8 @@ add_reference (slot, block, offset)
   return (PRIM_DONE);
 }
 
-extern SCHEME_OBJECT compiled_block_environment();
+extern SCHEME_OBJECT
+  EXFUN (compiled_block_environment, (SCHEME_OBJECT));
 
 static long
   trap_map_table[] = {
@@ -1960,10 +2010,10 @@ static long
  */
 
 long
-compiler_uncache_slot (slot, sym, kind)
-     fast SCHEME_OBJECT *slot;
-     SCHEME_OBJECT sym;
-     long kind;
+DEFUN (compiler_uncache_slot, (slot, sym, kind),
+       fast SCHEME_OBJECT * slot
+       AND SCHEME_OBJECT sym
+       AND long kind)
 {
   fast SCHEME_OBJECT temp, pair;
   SCHEME_OBJECT block, offset, new_extension;
@@ -1999,7 +2049,8 @@ compiler_uncache_slot (slot, sym, kind)
 
 	if (kind == TRAP_REFERENCES_OPERATOR)
 	{
-	  extern long make_fake_uuo_link ();
+	  extern long
+	    EXFUN (make_fake_uuo_link, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 	  long result;
 
 	  result = (make_fake_uuo_link (new_extension,
@@ -2010,7 +2061,8 @@ compiler_uncache_slot (slot, sym, kind)
 	}
 	else
 	{
-	  extern void store_variable_cache ();
+	  extern void
+	    EXFUN (store_variable_cache, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
 	  store_variable_cache (new_extension, block, (OBJECT_DATUM (offset)));
 	}
@@ -2029,8 +2081,9 @@ compiler_uncache_slot (slot, sym, kind)
  */
 
 long
-compiler_uncache (value_cell, sym)
-     SCHEME_OBJECT *value_cell, sym;
+DEFUN (compiler_uncache, (value_cell, sym),
+       SCHEME_OBJECT * value_cell
+       AND SCHEME_OBJECT sym)
 {
   Lock_Handle set_serializer;
   SCHEME_OBJECT val, extension, references;
@@ -2180,8 +2233,9 @@ static long
     };
 
 Boolean
-environment_ancestor_or_self_p (ancestor, descendant)
-     fast SCHEME_OBJECT ancestor, descendant;
+DEFUN (environment_ancestor_or_self_p, (ancestor, descendant),
+       fast SCHEME_OBJECT ancestor
+       AND fast SCHEME_OBJECT descendant)
 {
   while ((OBJECT_TYPE (descendant)) != GLOBAL_ENV)
   {
@@ -2206,10 +2260,13 @@ environment_ancestor_or_self_p (ancestor, descendant)
  */
 
 long
-compiler_recache_split (slot, sym, definition_env, memoize_cell, link_p)
-     fast SCHEME_OBJECT *slot;
-     SCHEME_OBJECT sym, definition_env, **memoize_cell;
-     Boolean link_p;
+DEFUN (compiler_recache_split,
+       (slot, sym, definition_env, memoize_cell, link_p),
+       fast SCHEME_OBJECT * slot
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT definition_env
+       AND SCHEME_OBJECT ** memoize_cell
+       AND Boolean link_p)
 {
   fast long count;
   SCHEME_OBJECT weak_pair, block, reference_env, invalid_head;
@@ -2263,10 +2320,14 @@ compiler_recache_split (slot, sym, definition_env, memoize_cell, link_p)
  */
 
 long
-compiler_recache_slot (extension, sym, kind, slot, cell, value)
-     SCHEME_OBJECT extension, sym, value;
-     fast SCHEME_OBJECT *slot, *cell;
-     long kind;
+DEFUN (compiler_recache_slot,
+       (extension, sym, kind, slot, cell, value),
+       SCHEME_OBJECT extension
+       AND SCHEME_OBJECT sym
+       AND long kind
+       AND fast SCHEME_OBJECT * slot
+       AND fast SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT value)
 {
   fast SCHEME_OBJECT pair, weak_pair;
   SCHEME_OBJECT clone, tail;
@@ -2303,10 +2364,15 @@ compiler_recache_slot (extension, sym, kind, slot, cell, value)
 }
 
 long
-compiler_recache (old_value_cell, new_value_cell, env, sym, value,
-		  shadowed_p, link_p)
-     SCHEME_OBJECT *old_value_cell, *new_value_cell, env, sym, value;
-     Boolean shadowed_p, link_p;
+DEFUN (compiler_recache,
+       (old_value_cell, new_value_cell, env, sym, value, shadowed_p, link_p),
+       SCHEME_OBJECT * old_value_cell
+       AND SCHEME_OBJECT * new_value_cell
+       AND SCHEME_OBJECT env
+       AND SCHEME_OBJECT sym
+       AND SCHEME_OBJECT value
+       AND Boolean shadowed_p
+       AND Boolean link_p)
 {
   Lock_Handle set_serializer_1, set_serializer_2;
   SCHEME_OBJECT
@@ -2511,10 +2577,13 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
  */
 
 long
-recache_uuo_links (extension, old_value)
-     SCHEME_OBJECT extension, old_value;
+DEFUN (recache_uuo_links, (extension, old_value),
+       SCHEME_OBJECT extension
+       AND SCHEME_OBJECT old_value)
 {
-  long update_uuo_links ();
+  long EXFUN (update_uuo_links,
+	      (SCHEME_OBJECT, SCHEME_OBJECT,
+	       long ((*)(SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long))))
 
   SCHEME_OBJECT value;
   long return_value;
@@ -2532,7 +2601,8 @@ recache_uuo_links (extension, old_value)
     }
     else
     {
-      long make_recache_uuo_link ();
+      long EXFUN (make_recache_uuo_link,
+		  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long));
 
       return_value =
 	update_uuo_links (value, extension, make_recache_uuo_link);
@@ -2540,7 +2610,9 @@ recache_uuo_links (extension, old_value)
   }
   else
   {
-    extern long make_uuo_link ();
+    extern long
+      EXFUN (make_uuo_link,
+	     (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long));
 
     return_value =
       update_uuo_links (value, extension, make_uuo_link);
@@ -2567,19 +2639,25 @@ recache_uuo_links (extension, old_value)
 /* This kludge is due to the lack of closures. */
 
 long
-make_recache_uuo_link (value, extension, block, offset)
-     SCHEME_OBJECT value, extension, block;
-     long offset;
+DEFUN (make_recache_uuo_link, (value, extension, block, offset),
+       SCHEME_OBJECT value
+       AND SCHEME_OBJECT extension
+       AND SCHEME_OBJECT block
+       AND long offset)
 {
-  extern long make_fake_uuo_link ();
+  extern long
+    EXFUN (make_fake_uuo_link, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
   return (make_fake_uuo_link (extension, block, offset));
 }
 
 long
-update_uuo_links (value, extension, handler)
-     SCHEME_OBJECT value, extension;
-     long (*handler)();
+DEFUN (update_uuo_links,
+       (value, extension, handler),
+       SCHEME_OBJECT value
+       AND SCHEME_OBJECT extension
+       AND long EXFUN ((*handler),
+		       (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, long)))
 {
   SCHEME_OBJECT references, pair, block;
   fast SCHEME_OBJECT *slot;
@@ -2634,10 +2712,10 @@ update_uuo_links (value, extension, handler)
  */
 
 long
-compiler_reference_trap (extension, kind, handler)
-     SCHEME_OBJECT extension;
-     long kind;
-     long (*handler) ();
+DEFUN (compiler_reference_trap, (extension, kind, handler),
+       SCHEME_OBJECT extension
+       AND long kind
+       AND long EXFUN ((*handler),(SCHEME_OBJECT *, SCHEME_OBJECT *)))
 {
   long offset, temp;
   SCHEME_OBJECT block;
@@ -2682,7 +2760,8 @@ try_again:
 	 value.
        */
 
-      extern SCHEME_OBJECT extract_uuo_link ();
+      extern SCHEME_OBJECT
+	EXFUN (extract_uuo_link, (SCHEME_OBJECT, long));
 
       Val = (extract_uuo_link (block, offset));
       return (PRIM_DONE);
@@ -2692,9 +2771,10 @@ try_again:
     case TRAP_REFERENCES_LOOKUP:
     default:
     {
-      extern SCHEME_OBJECT extract_variable_cache ();
+      extern SCHEME_OBJECT
+	EXFUN (extract_variable_cache, (SCHEME_OBJECT, long));
 
-      extension = extract_variable_cache(block, offset);
+      extension = (extract_variable_cache (block, offset));
       /* This is paranoid on a single processor, but it does not hurt.
 	 On a multiprocessor, we need to do it because some other processor
 	 may have redefined this variable in the meantime.
@@ -2707,15 +2787,16 @@ try_again:
 /* Procedures invoked from the compiled code interface. */
 
 extern long
-  compiler_cache_lookup (),
-  compiler_cache_assignment (),
-  compiler_cache_operator (),
-  compiler_cache_global_operator ();
+  EXFUN (compiler_cache_lookup, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_assignment, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long)),
+  EXFUN (compiler_cache_global_operator, (SCHEME_OBJECT, SCHEME_OBJECT, long));
 
 long
-compiler_cache_lookup (name, block, offset)
-     SCHEME_OBJECT name, block;
-     long offset;
+DEFUN (compiler_cache_lookup, (name, block, offset),
+       SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset)
 {
   return (compiler_cache_reference ((compiled_block_environment (block)),
 				    name, block, offset,
@@ -2723,9 +2804,10 @@ compiler_cache_lookup (name, block, offset)
 }
 
 long
-compiler_cache_assignment (name, block, offset)
-     SCHEME_OBJECT name, block;
-     long offset;
+DEFUN (compiler_cache_assignment, (name, block, offset),
+       SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset)
 {
   return (compiler_cache_reference ((compiled_block_environment (block)),
 				    name, block, offset,
@@ -2733,9 +2815,10 @@ compiler_cache_assignment (name, block, offset)
 }
 
 long
-compiler_cache_operator (name, block, offset)
-     SCHEME_OBJECT name, block;
-     long offset;
+DEFUN (compiler_cache_operator, (name, block, offset),
+       SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset)
 {
   return (compiler_cache_reference ((compiled_block_environment (block)),
 				    name, block, offset,
@@ -2743,21 +2826,26 @@ compiler_cache_operator (name, block, offset)
 }
 
 long
-compiler_cache_global_operator (name, block, offset)
-     SCHEME_OBJECT name, block;
-     long offset;
+DEFUN (compiler_cache_global_operator, (name, block, offset),
+       SCHEME_OBJECT name
+       AND SCHEME_OBJECT block
+       AND long offset)
 {
   return (compiler_cache_reference ((MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL)),
 				    name, block, offset,
 				    TRAP_REFERENCES_OPERATOR, true));
 }
 
-extern long complr_operator_reference_trap ();
-extern SCHEME_OBJECT compiler_var_error ();
+extern long
+  EXFUN (complr_operator_reference_trap, (SCHEME_OBJECT *, SCHEME_OBJECT));
+
+extern SCHEME_OBJECT
+  EXFUN (compiler_var_error, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 long
-complr_operator_reference_trap (frame_slot, extension)
-     SCHEME_OBJECT *frame_slot, extension;
+DEFUN (complr_operator_reference_trap, (frame_slot, extension),
+       SCHEME_OBJECT * frame_slot
+       AND SCHEME_OBJECT extension)
 {
   long temp;
 
@@ -2773,8 +2861,9 @@ complr_operator_reference_trap (frame_slot, extension)
 }
 
 SCHEME_OBJECT
-compiler_var_error (extension, environment)
-     SCHEME_OBJECT extension, environment;
+DEFUN (compiler_var_error, (extension, environment),
+       SCHEME_OBJECT extension
+       AND SCHEME_OBJECT environment)
 {
   return (MEMORY_REF (extension, TRAP_EXTENSION_NAME));
 }
@@ -2786,8 +2875,9 @@ compiler_var_error (extension, environment)
 static SCHEME_OBJECT saved_compiler_assignment_value;
 
 long
-compiler_assignment_end (cell, hunk)
-     SCHEME_OBJECT *cell, *hunk;
+DEFUN (compiler_assignment_end, (cell, hunk),
+       SCHEME_OBJECT * cell
+       AND SCHEME_OBJECT * hunk)
 {
   return (deep_assignment_end (cell, hunk,
 			       saved_compiler_assignment_value, false));
@@ -2796,14 +2886,13 @@ compiler_assignment_end (cell, hunk)
 /* More compiled code interface procedures */
 
 extern long
-  compiler_lookup_trap (),
-  compiler_safe_lookup_trap (),
-  compiler_unassigned_p_trap (),
-  compiler_assignment_trap ();
+  EXFUN (compiler_lookup_trap, (SCHEME_OBJECT)),
+  EXFUN (compiler_safe_lookup_trap, (SCHEME_OBJECT)),
+  EXFUN (compiler_unassigned_p_trap, (SCHEME_OBJECT)),
+  EXFUN (compiler_assignment_trap, (SCHEME_OBJECT, SCHEME_OBJECT));
 
 long
-compiler_lookup_trap (extension)
-     SCHEME_OBJECT extension;
+DEFUN (compiler_lookup_trap, (extension), SCHEME_OBJECT extension)
 {
   return (compiler_reference_trap (extension,
 				   TRAP_REFERENCES_LOOKUP,
@@ -2811,22 +2900,21 @@ compiler_lookup_trap (extension)
 }
 
 long
-compiler_safe_lookup_trap (extension)
-     SCHEME_OBJECT extension;
+DEFUN (compiler_safe_lookup_trap, (extension), SCHEME_OBJECT extension)
 {
   return (safe_reference_transform (compiler_lookup_trap (extension)));
 }
 
 long
-compiler_unassigned_p_trap (extension)
-     SCHEME_OBJECT extension;
+DEFUN (compiler_unassigned_p_trap, (extension), SCHEME_OBJECT extension)
 {
   return (unassigned_p_transform (compiler_lookup_trap (extension)));
 }
 
 long
-compiler_assignment_trap (extension, value)
-     SCHEME_OBJECT extension, value;
+DEFUN (compiler_assignment_trap, (extension, value),
+       SCHEME_OBJECT extension
+       AND SCHEME_OBJECT value)
 {
   saved_compiler_assignment_value = value;
   return (compiler_reference_trap (extension,
