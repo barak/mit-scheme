@@ -20,8 +20,11 @@ generate_log_gopts ()
     cvs2cl --global-opts "${2}" --revisions --usermap "${UM}" --stdout > "${N}"
     if cmp "${N}" "${O}"; then
 	rm -f "${N}"
-    else
+    elif [ -s "${N}" ]; then
 	mv -f "${N}" "${O}"
+    else
+	echo "Discarding zero-length log."
+	rm -f "${N}"
     fi
 }
 
