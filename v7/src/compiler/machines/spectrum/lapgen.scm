@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.41 1993/02/13 05:37:15 gjr Exp $
+$Id: lapgen.scm,v 4.42 1993/02/18 06:02:44 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -585,12 +585,21 @@ MIT in each case. |#
     shortcircuit-apply-8
     stack-and-interrupt-check))
 
-;; Why is this NOP here?  We could use BLE,N, and adjust
-;; the return address within the hook.
+;; There is a NOP here because otherwise the return address would have 
+;; to be adjusted by the hook code.  This gives more flexibility to the
+;; compiler since it may be able to eliminate the NOP by moving an
+;; instruction preceding the BLE to the delay slot.
 
 (define (invoke-hook hook)
   (LAP (BLE () (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))
        (NOP ())))
+
+;; This is used when not returning.  It uses BLE instead of BE as a debugging
+;; aid.  The hook gets a return address pointing to the caller, even
+;; though the code will not return.
+
+(define (invoke-hook/no-return hook)
+  (LAP (BLE (N) (OFFSET ,hook 4 ,regnum:scheme-to-interface-ble))))
 
 (define (require-registers! . regs)
   (let ((code (apply clear-registers! regs)))
