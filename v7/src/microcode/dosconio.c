@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.5 1992/09/07 04:28:17 jinx Exp $
+$Id: dosconio.c,v 1.6 1992/09/11 21:57:29 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -42,12 +42,6 @@ MIT in each case. */
 #include "dossys.h"
 #include "intrpt.h"
 
-/* This is really not set up to include Scheme level headers, so we
-   fake them here. */
-extern long
-  IntCode,		/* Interrupts requesting */
-  IntEnb;		/* Interrupts enabled */
-
 #ifdef __STDC__
 #define fileno(fp)	((fp)->_file)
 #endif

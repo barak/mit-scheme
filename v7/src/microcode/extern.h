@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.46 1992/08/29 12:59:13 jinx Exp $
+$Id: extern.h,v 9.47 1992/09/11 21:59:11 cph Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -118,8 +118,6 @@ extern SCHEME_OBJECT return_to_interpreter;
 extern Declare_Fixed_Objects ();
 
 extern long
-  IntCode,		/* Interrupts requesting */
-  IntEnb,		/* Interrupts enabled */
   temp_long,		/* temporary for sign extension */
   GC_Reserve,		/* Scheme pointer overflow space in heap */
   GC_Space_Needed; 	/* Amount of space needed when GC triggered */

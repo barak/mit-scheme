@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.66 1992/02/08 14:54:07 cph Exp $
+$Id: interp.c,v 9.67 1992/09/11 21:58:33 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -403,9 +403,9 @@ DEFUN (abort_to_interpreter, (argument), int argument)
   interpreter_throw_argument = argument;
   {
     long old_mask = IntEnb;
-    IntEnb = 0;
+    set_IntEnb = 0;
     dstack_set_position (interpreter_catch_dstack_position);
-    IntEnb = old_mask;
+    set_IntEnb = old_mask;
   }
   obstack_free ((&scratch_obstack), 0);
   obstack_init (&scratch_obstack);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/const.h,v 9.40 1992/07/29 19:54:52 cph Exp $
+$Id: const.h,v 9.41 1992/09/11 21:58:14 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -166,7 +166,7 @@ MIT in each case. */
    All other entries are used only by the compiled code interface. */
 
 #define REGBLOCK_MEMTOP			0
-#define REGBLOCK_STACKGUARD		1
+#define REGBLOCK_INT_MASK		1
 #define REGBLOCK_VAL			2
 #define REGBLOCK_ENV			3
 #define REGBLOCK_COMPILER_TEMP		4	/* For use by compiler */
@@ -177,7 +177,8 @@ MIT in each case. */
 #define REGBLOCK_CLOSURE_FREE		9	/* For use by compiler */
 #define REGBLOCK_CLOSURE_SPACE		10	/* For use by compiler */
 #define REGBLOCK_STACK_GUARD		11
-#define REGBLOCK_MINIMUM_LENGTH		12
+#define REGBLOCK_INT_CODE		12
+#define REGBLOCK_MINIMUM_LENGTH		13
 
 /* Codes specifying how to start scheme at boot time. */
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/storage.c,v 9.50 1992/07/29 19:54:55 cph Exp $
+$Id: storage.c,v 9.51 1992/09/11 21:58:44 cph Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -66,10 +66,6 @@ SCHEME_OBJECT
 			   *** This must be changed when stacklets are used. */
 
 long
-#ifndef DOS386
-  IntCode,		/* Interrupts requesting */
-  IntEnb,		/* Interrupts enabled */
-#endif /* DOS386 */
   temp_long,		/* temporary for sign extension */
   GC_Reserve,		/* Scheme pointer overflow space in heap */
   GC_Space_Needed;	/* Amount of space needed when GC triggered */

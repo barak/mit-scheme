@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intrpt.h,v 1.8 1990/06/20 17:41:26 cph Rel $
+$Id: intrpt.h,v 1.9 1992/09/11 21:59:03 cph Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,6 +34,14 @@ MIT in each case. */
 
 /* Interrupt manipulation utilities. */
 
+/* The interrupt control registers. */
+
+#define IntCode ((long) (Regs[REGBLOCK_INT_CODE])) /* interrupts requesting */
+#define IntEnb ((long) (Regs[REGBLOCK_INT_MASK])) /* interrupts enabled */
+
+#define set_IntCode(code) (Regs[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) (code))
+#define set_IntEnb(mask) (Regs[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask))
+
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
 #define INT_Stack_Overflow	1	/* Local interrupt */
@@ -78,32 +86,32 @@ MIT in each case. */
 
 #define SET_INTERRUPT_MASK(mask)					\
 {									\
-  IntEnb = (mask);							\
-  COMPILER_SETUP_INTERRUPT();						\
+  set_IntEnb (mask);							\
+  COMPILER_SETUP_INTERRUPT ();						\
 }
 
 #define FETCH_INTERRUPT_CODE()		(IntCode)
 
 #define CLEAR_INTERRUPT(code)						\
 {									\
-  IntCode &= ~(code);							\
-  COMPILER_SETUP_INTERRUPT();						\
+  set_IntCode (IntCode &~ (code));					\
+  COMPILER_SETUP_INTERRUPT ();						\
 }
 
 #define REQUEST_INTERRUPT(code)						\
 {									\
-  IntCode |= (code);							\
-  COMPILER_SETUP_INTERRUPT();						\
+  set_IntCode (IntCode | (code));					\
+  COMPILER_SETUP_INTERRUPT ();						\
 }
 
 #define INITIALIZE_INTERRUPTS()						\
 {									\
-  IntEnb = 0;								\
-  IntCode = 0;								\
-  SET_INTERRUPT_MASK(INT_Mask);						\
-  CLEAR_INTERRUPT(INT_Mask);						\
+  set_IntEnb (0);							\
+  set_IntCode (0);							\
+  SET_INTERRUPT_MASK (INT_Mask);					\
+  CLEAR_INTERRUPT (INT_Mask);						\
 }
 
 /* Compatibility */
 
-#define COMPILER_SET_MEMTOP()	COMPILER_SETUP_INTERRUPT()
+#define COMPILER_SET_MEMTOP COMPILER_SETUP_INTERRUPT
