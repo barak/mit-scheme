@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.2 1989/07/24 21:08:15 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.3 1989/07/26 03:52:34 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 #define PROC_TYPE_68020 2
 #define PROC_TYPE_HPPA 3	/* HP Precision Architecture */
 #define PROC_TYPE_VAX 4
+#define PROC_TYPE_MIPS 5
 
 #include "s.h"
 #include "m.h"
