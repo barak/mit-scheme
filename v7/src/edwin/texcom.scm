@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.34 1991/11/21 10:38:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/texcom.scm,v 1.35 1992/02/04 03:37:17 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -194,40 +194,40 @@ treated as a regular expression.  Also, every paragraph boundary
 terminates sentences as well."
   "p"
   (lambda (argument)
-    (move-thing forward-sentence argument 'FAILURE)))
+    (move-thing forward-sentence argument 'ERROR)))
 
 (define-command backward-sentence
   "Move backward to start of sentence.  With arg, do it arg times.
 See \\[forward-sentence] for more information."
   "p"
   (lambda (argument)
-    (move-thing backward-sentence argument 'FAILURE)))
+    (move-thing backward-sentence argument 'ERROR)))
 
 (define-command kill-sentence
   "Kill from point to end of sentence.
 With arg, repeat, or backward if negative arg."
   "p"
   (lambda (argument)
-    (kill-thing forward-sentence argument 'FAILURE)))
+    (kill-thing forward-sentence argument 'ERROR)))
 
 (define-command backward-kill-sentence
   "Kill back from point to start of sentence.
 With arg, repeat, or forward if negative arg."
   "p"
   (lambda (argument)
-    (kill-thing backward-sentence argument 'FAILURE)))
-
+    (kill-thing backward-sentence argument 'ERROR)))
+
 ;;;; Paragraphs
 
 (define-command forward-paragraph
   "Move forward to end of paragraph.  With arg, do it arg times.
-A line which  paragraph-start  matches either separates paragraphs
-\(if  paragraph-separate  matches it also) or is the first line of a paragraph.
+A line which `paragraph-start' matches either separates paragraphs
+\(if `paragraph-separate' matches it also) or is the first line of a paragraph.
 A paragraph end is the beginning of a line which is not part of the paragraph
 to which the end of the previous line belongs, or the end of the buffer."
   "p"
   (lambda (argument)
-    (move-thing forward-paragraph argument 'FAILURE)))
+    (move-thing forward-paragraph argument 'ERROR)))
 
 (define-command backward-paragraph
   "Move backward to start of paragraph.  With arg, do it arg times.
@@ -238,7 +238,7 @@ the paragraph starts at that blank line.
 See forward-paragraph for more information."
   "p"
   (lambda (argument)
-    (move-thing backward-paragraph argument 'FAILURE)))
+    (move-thing backward-paragraph argument 'ERROR)))
 
 (define-command mark-paragraph
   "Put point at beginning of this paragraph, mark at end."

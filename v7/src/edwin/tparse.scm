@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tparse.scm,v 1.66 1991/04/23 06:47:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tparse.scm,v 1.67 1992/02/04 03:35:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -97,101 +97,6 @@
 
 ;;;; Paragraphs
 
-(define (%forward-paragraph mark end
-			    fill-prefix paragraph-start paragraph-separate)
-  (if (not (mark<= mark end))
-      (error "Marks incorrectly related:" mark end))
-  (and (mark< mark end)
-       (let ((paragraph-separate
-	      (if fill-prefix
-		  (string-append paragraph-separate "\\|^"
-				 (re-quote-string fill-prefix) "[ \t]*$")
-		  paragraph-separate)))
-
-	 (define (skip-separators m)
-	   (cond ((mark= m end)
-		  false)
-		 ((re-match-forward paragraph-separate m end false)
-		  (let ((m (line-end m 0)))
-		    (and (mark< m end)
-			 (skip-separators (mark1+ m)))))
-		 (else
-		  (let ((m (line-end m 0)))
-		    (cond ((mark>= m end) end)
-			  (fill-prefix (skip-body-prefix m))
-			  (else (skip-body-no-prefix m)))))))
-
-	 (define (skip-body-prefix m)
-	   (if (mark< m end)
-	       (let ((m (mark1+ m)))
-		 (if (or (re-match-forward paragraph-separate m end false)
-			 (not (match-forward fill-prefix m end false)))
-		     m
-		     (skip-body-prefix (line-end m 0))))
-	       end))
-
-	 (define (skip-body-no-prefix m)
-	   (if (re-search-forward paragraph-start m end false)
-	       (re-match-start 0)
-	       end))
-
-	 (skip-separators (line-start mark 0)))))
-
-(define (%backward-paragraph mark start
-			     fill-prefix paragraph-start paragraph-separate)
-  (if (not (mark<= start mark))
-      (error "Marks incorrectly related:" start mark))
-  (and (mark< start mark)
-       (let ((end (group-end mark))
-	     (paragraph-separate
-	      (if fill-prefix
-		  (string-append paragraph-separate "\\|"
-				 (re-quote-string fill-prefix) "[ \t]*$")
-		  paragraph-separate)))
-
-	 (define (skip-separators m)
-	   (cond ((mark> start m)
-		  false)
-		 ((re-match-forward paragraph-separate m end false)
-		  (and (mark< start m)
-		       (skip-separators (line-start (mark-1+ m) 0))))
-		 ((mark= start m)
-		  start)
-		 (fill-prefix
-		  (skip-body-prefix m))
-		 (else
-		  (skip-body-no-prefix m))))
-
-	 (define (skip-body-prefix m)
-	   (if (or (re-match-forward paragraph-separate m end false)
-		   (not (match-forward fill-prefix m end false)))
-	       (adjust-final-position m)
-	       (let ((m (line-start (mark-1+ m) 0)))
-		 (if (mark< start m)
-		     (skip-body-prefix m)
-		     start))))
-
-	 (define (skip-body-no-prefix m)
-	   (let ((m
-		  (re-search-backward paragraph-start (line-end m 0) start 
-				      false)))
-	     (if (not m)
-		 start
-		 (adjust-final-position m))))
-
-	 (define (adjust-final-position m)
-	   (let ((m
-		  (if (re-match-forward paragraph-separate m end false)
-		      (mark1+ (line-end m 0))
-		      m)))
-	     (or (and (mark< start m)
-		      (let ((m (mark-1+ m)))
-			(and (line-start? m)
-			     m)))
-		 m)))
-
-	 (skip-separators (line-start (mark-1+ mark) 0)))))
-
 (define-variable paragraph-start
   "Regexp for beginning of a line that starts OR separates paragraphs."
   "^[ \t\n\f]"
@@ -209,41 +114,54 @@ This is desirable in modes where blank lines are the paragraph delimiters."
   false
   boolean?)
 
-(define (forward-one-paragraph mark #!optional end fill-prefix)
-  (%forward-paragraph
-   mark
-   (if (default-object? end)
-       (group-end mark)
-       (begin
-	 (if (not (mark<= mark end))
-	     (error "Marks incorrectly related:" mark end))
-	 end))
-   (if (default-object? fill-prefix)
-       (and (not (mark-local-ref
-		  mark
-		  (ref-variable-object paragraph-ignore-fill-prefix)))
-	    (mark-local-ref mark (ref-variable-object fill-prefix)))
-       fill-prefix)
-   (mark-local-ref mark (ref-variable-object paragraph-start))
-   (mark-local-ref mark (ref-variable-object paragraph-separate))))
+(define-integrable (mark/paragraph-start mark)
+  (mark-local-ref mark (ref-variable-object paragraph-start)))
 
-(define (backward-one-paragraph mark #!optional start fill-prefix)
-  (%backward-paragraph
-   mark
-   (if (default-object? start)
-       (group-start mark)
-       (begin
-	 (if (not (mark<= start mark))
-	     (error "Marks incorrectly related:" start mark))
-	 start))
-   (if (default-object? fill-prefix)
-       (and (not (mark-local-ref
-		  mark
-		  (ref-variable-object paragraph-ignore-fill-prefix)))
-	    (mark-local-ref mark (ref-variable-object fill-prefix)))
-       fill-prefix)
-   (mark-local-ref mark (ref-variable-object paragraph-start))
-   (mark-local-ref mark (ref-variable-object paragraph-separate))))
+(define-integrable (mark/paragraph-separate mark)
+  (mark-local-ref mark (ref-variable-object paragraph-separate)))
+
+(define (mark/paragraph-fill-prefix mark)
+  (if (mark-local-ref mark (ref-variable-object paragraph-ignore-fill-prefix))
+      false
+      (mark-local-ref mark (ref-variable-object fill-prefix))))
+
+(define (forward-one-paragraph mark #!optional limit fill-prefix
+			       finish-on-separator?)
+  (%forward-paragraph mark
+		      (if (default-object? limit)
+			  (group-end mark)
+			  (begin
+			    (if (not (mark<= mark limit))
+				(error "Marks incorrectly related:"
+				       mark limit))
+			    limit))
+		      (if (default-object? fill-prefix)
+			  (mark/paragraph-fill-prefix mark)
+			  fill-prefix)
+		      (mark/paragraph-start mark)
+		      (mark/paragraph-separate mark)
+		      (if (default-object? finish-on-separator?)
+			  true
+			  finish-on-separator?)))
+
+(define (backward-one-paragraph mark #!optional limit fill-prefix
+				finish-on-separator?)
+  (%backward-paragraph mark
+		       (if (default-object? limit)
+			   (group-start mark)
+			   (begin
+			     (if (not (mark<= limit mark))
+				 (error "Marks incorrectly related:"
+					limit mark))
+			     limit))
+		       (if (default-object? fill-prefix)
+			   (mark/paragraph-fill-prefix mark)
+			   fill-prefix)
+		       (mark/paragraph-start mark)
+		       (mark/paragraph-separate mark)
+		       (if (default-object? finish-on-separator?)
+			   true
+			   finish-on-separator?)))
 
 (define forward-paragraph)
 (define backward-paragraph)
@@ -254,41 +172,154 @@ This is desirable in modes where blank lines are the paragraph delimiters."
     unspecific))
 
 (define (paragraph-text-region mark)
-  (let ((end (or (paragraph-text-end mark) (group-end mark))))
-    (make-region (or (paragraph-text-start end) (group-start mark)) end)))
+  (let ((end (paragraph-text-end mark)))
+    (and end
+	 (let ((start (paragraph-text-start end)))
+	   (and start
+		(make-region start end))))))
 
 (define (paragraph-text-start mark)
-  (let ((start (backward-one-paragraph mark)))
-    (and start
-	 (let ((fill-prefix
-		(mark-local-ref mark (ref-variable-object fill-prefix))))
-	   (if fill-prefix
-	       (if (match-forward fill-prefix start)
-		   start
-		   (line-start start 1))
-	       (let ((start
-		      (if (re-match-forward
-			   (mark-local-ref
-			    mark
-			    (ref-variable-object paragraph-separate))
-			   start)
-			  (line-start start 1)
-			  start)))
-		 (or (skip-chars-forward " \t\n" start mark false)
-		     (if (group-start? start)
-			 start
-			 (paragraph-text-start start)))))))))
+  (%backward-paragraph mark
+		       (group-start mark)
+		       (mark/paragraph-fill-prefix mark)
+		       (mark/paragraph-start mark)
+		       (mark/paragraph-separate mark)
+		       false))
 
 (define (paragraph-text-end mark)
-  (let ((end (forward-one-paragraph mark)))
-    (and end
-	 (let ((mark* (if (line-start? end) (mark-1+ end) end)))
-	   (if (mark>= mark* mark)
-	       mark*
-	       (let ((mark* (mark1+ mark*)))
-		 (if (group-end? mark*)
-		     mark*
-		     (paragraph-text-end mark*))))))))
+  (%forward-paragraph mark
+		      (group-end mark)
+		      (mark/paragraph-fill-prefix mark)
+		      (mark/paragraph-start mark)
+		      (mark/paragraph-separate mark)
+		      false))
+
+(define (%forward-paragraph mark limit fill-prefix para-start para-separate
+			    finish-on-separator?)
+  (if (not (mark<= mark limit))
+      (error "Marks incorrectly related:" mark limit))
+  (and (mark< mark limit)
+       (let ((end (group-end mark))
+	     (next-ls
+	      (lambda (ls)
+		(let ((le (line-end ls 0)))
+		  (if (mark< le limit)
+		      (mark1+ le)
+		      limit)))))
+	 (let ((separator?
+		(if fill-prefix
+		    (lambda (ls)
+		      (let ((fp (match-forward fill-prefix ls end false)))
+			(if fp
+			    (re-match-forward "[ \t]*$" fp end false)
+			    true)))
+		    (lambda (ls)
+		      (re-match-forward para-separate ls end false)))))
+	   (letrec
+	       ((skip-separators
+		 (lambda (ls)
+		   (cond ((mark= ls limit)
+			  false)
+			 ((separator? ls)
+			  (skip-separators (next-ls ls)))
+			 (else
+			  (skip-body ls)))))
+		(skip-body
+		 (if fill-prefix
+		     (lambda (ls)
+		       (let ((ls (next-ls ls)))
+			 (if (or (mark= ls limit)
+				 (separator? ls))
+			     (finish ls)
+			     (skip-body ls))))
+		     (lambda (ls)
+		       (let ((le (line-end ls 0)))
+			 (if (and (mark< le limit)
+				  (re-search-forward para-start le limit
+						     false))
+			     (finish (re-match-start 0))
+			     limit)))))
+		(finish
+		 (lambda (ls)
+		   (if (or finish-on-separator? (not (line-start? ls)))
+		       ls
+		       (let ((le (mark-1+ ls)))
+			 (if (mark< mark le)
+			     le
+			     (skip-separators ls)))))))
+	     (if (or (line-end? mark) (separator? (line-start mark 0)))
+		 (skip-separators (next-ls mark))
+		 (skip-body mark)))))))
+
+(define (%backward-paragraph mark limit fill-prefix para-start para-separate
+			     finish-on-separator?)
+  (if (not (mark<= limit mark))
+      (error "Marks incorrectly related:" limit mark))
+  (and (mark< limit mark)
+       (let ((prev-ls
+	      (lambda (ls)
+		(let ((ls (line-start ls -1 'LIMIT)))
+		  (if (mark< ls limit)
+		      limit
+		      ls))))
+	     (end (group-end mark)))
+	 (let ((separator?
+		(if fill-prefix
+		    (lambda (ls)
+		      (let ((fp (match-forward fill-prefix ls end false)))
+			(if fp
+			    (re-match-forward "[ \t]*$" fp end false)
+			    true)))
+		    (lambda (ls)
+		      (re-match-forward para-separate ls end false)))))
+	   (letrec ((skip-separators
+		     (lambda (ls)
+		       (and (mark< limit ls)
+			    (let ((ls (prev-ls ls)))
+			      (cond ((separator? ls)
+				     (skip-separators ls))
+				    ((mark= ls limit)
+				     ls)
+				    (else
+				     (skip-body ls)))))))
+		    (skip-body
+		     (if fill-prefix
+			 (lambda (ls)
+			   (let ((ls* (prev-ls ls)))
+			     (if (separator? ls*)
+				 (if finish-on-separator?
+				     ls*
+				     ls)
+				 (skip-body ls*))))
+			 (lambda (ls)
+			   (let ((ps
+				  (re-search-backward para-start
+						      (line-end ls 0)
+						      limit
+						      false)))
+			     (cond ((not ps)
+				    limit)
+				   (finish-on-separator?
+				    (if (separator? ps)
+					ps
+					(let ((ls (prev-ls ps)))
+					  (if (separator? ls)
+					      ls
+					      ps))))
+				   (else
+				    (if (separator? ps)
+					(line-start ps 1)
+					ps))))))))
+	     (if (line-start? mark)
+		 (skip-separators mark)
+		 (let ((ls (line-start mark 0)))
+		   (and (mark<= limit ls)
+			(cond ((separator? ls)
+			       (skip-separators ls))
+			      ((mark= limit ls)
+			       ls)
+			      (else
+			       (skip-body ls)))))))))))
 
 ;;;; Sentences
 
@@ -298,29 +329,40 @@ All paragraph boundaries also end sentences, regardless."
   "[.?!][]\"')}]*\\($\\|\t\\|  \\)[ \t\n]*"
   string?)
 
+(define-integrable (mark/sentence-end mark)
+  (mark-local-ref mark (ref-variable-object sentence-end)))
+
 (define (forward-one-sentence mark)
-  (let ((end (paragraph-text-end mark)))
-    (and end
-	 (let ((mark
-		(re-search-forward
-		 (mark-local-ref mark (ref-variable-object sentence-end))
-		 mark
-		 end)))
-	   (if mark
-	       (skip-chars-backward " \t\n" mark (re-match-start 0) false)
-	       end)))))
+  (let ((para-end
+	 (let loop ((mark mark))
+	   (let ((end (paragraph-text-end mark)))
+	     (and end
+		  (let ((end* (horizontal-space-start end)))
+		    (if (mark< mark end*)
+			end*
+			(loop end))))))))
+    (let ((mark
+	   (re-search-forward (mark/sentence-end mark)
+			      mark
+			      (or para-end (group-end mark)))))
+      (if mark
+	  (skip-chars-backward " \t\n" mark (re-match-start 0) false)
+	  para-end))))
 
 (define (backward-one-sentence mark)
-  (let ((start (paragraph-text-start mark)))
-    (and start
-	 (if (re-search-backward
-	      (string-append
-	       (mark-local-ref mark (ref-variable-object sentence-end))
-	       "[^ \t\n]")
-	      mark
-	      start)
-	     (mark-1+ (re-match-end 0))
-	     start))))
+  (let ((para-start
+	 (let loop ((mark mark))
+	   (let ((start (paragraph-text-start mark)))
+	     (and start
+		  (let ((start* (horizontal-space-end start)))
+		    (if (mark< start* mark)
+			start*
+			(loop start))))))))
+    (if (re-search-backward (string-append (mark/sentence-end mark) "[^ \t\n]")
+			    mark
+			    (or para-start (group-start mark)))
+	(mark-1+ (re-match-end 0))
+	para-start)))
 
 (define forward-sentence)
 (define backward-sentence)

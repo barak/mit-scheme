@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.52 1992/01/01 02:18:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fill.scm,v 1.53 1992/02/04 03:42:15 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -89,8 +89,10 @@ and reinserts the fill prefix in each resulting line."
 Prefix arg means justify as well."
   "d\nP"
   (lambda (point justify?)
-    ((ref-command fill-region-as-paragraph) (paragraph-text-region point)
-					    justify?)))
+    (let ((region (paragraph-text-region point)))
+      (if (not region)
+	  (editor-error))
+      ((ref-command fill-region-as-paragraph) region justify?))))
 
 (define-command fill-region-as-paragraph
   "Fill region as one paragraph: break lines to fit fill-column.
