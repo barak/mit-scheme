@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.1 1989/04/05 04:26:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unxprm.scm,v 1.2 1989/04/23 23:31:56 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ MIT in each case. |#
   (ucode-primitive current-gid))
 
 (define unix/current-file-time
-  (ucode-primitive current-user-name))
+  (ucode-primitive current-file-time))
 
 (define unix/file-time->string
   (ucode-primitive file-time->string))
