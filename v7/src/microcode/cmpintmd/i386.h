@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.17 1992/05/04 18:31:13 jinx Exp $
+$Id: i386.h,v 1.18 1992/09/18 02:03:13 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -510,7 +510,7 @@ long i386_pc_displacement_relocation = 0;
 void
 DEFUN_VOID (i386_reset_hook)
 {
-  extern int interface_initialize ();
+  extern int EXFUN (i386_interface_initialize, (void));
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
   int fp_support_present = (i386_interface_initialize ());
