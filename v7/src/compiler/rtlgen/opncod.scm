@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.39 1990/07/15 22:59:25 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.40 1991/05/06 23:16:43 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1136,8 +1136,8 @@ MIT in each case. |#
     ((integer-add &+) 'plus-fixnum)
     ((integer-subtract &-) 'minus-fixnum)
     ((integer-multiply &*) 'multiply-fixnum)
-    ((integer-quotient) 'fixnum-quotient)
-    ((integer-remainder) 'fixnum-remainder)
+    ((integer-quotient quotient) 'fixnum-quotient)
+    ((integer-remainder remainder) 'fixnum-remainder)
     ((integer-add-1 1+) 'one-plus-fixnum)
     ((integer-subtract-1 -1+) 'minus-one-plus-fixnum)
     ((integer-negate) 'fixnum-negate)
@@ -1151,7 +1151,9 @@ MIT in each case. |#
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  '(&+ &- &* #| &/ |# integer-add integer-subtract integer-multiply))
+	  '(&+ &- &* #| &/ |# quotient remainder
+	       integer-add integer-subtract integer-multiply
+	       integer-quotient integer-remainder))
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rgspcm.scm,v 4.1 1987/12/30 07:05:38 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rgspcm.scm,v 4.2 1991/05/06 23:17:03 jinx Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -70,3 +70,5 @@ MIT in each case. |#
 (define-special-primitive/standard 'zero?)
 (define-special-primitive/standard 'positive?)
 (define-special-primitive/standard 'negative?)
+(define-special-primitive/standard 'quotient)
+(define-special-primitive/standard 'remainder)
