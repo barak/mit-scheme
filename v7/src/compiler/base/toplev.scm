@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.9 1988/08/22 20:25:43 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.10 1988/10/20 18:34:36 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -385,38 +385,37 @@ MIT in each case. |#
        (SET! ,name)))
 
 (define (phase/fg-generation)
-  (compiler-superphase
-   "Generating the Flow Graph"
-   (lambda ()
-     (phase/canonicalize-scode)
-     (phase/translate-scode))))
+  (compiler-superphase "Flow Graph Generation"
+    (lambda ()
+      (phase/canonicalize-scode)
+      (phase/translate-scode))))
 
 (define (phase/canonicalize-scode)
-  (compiler-subphase "Canonicalizing Scode"
-   (lambda ()
-     (set! *scode* (canonicalize/top-level (last-reference *input-scode*))))))
+  (compiler-subphase "Scode Canonicalization"
+    (lambda ()
+      (set! *scode* (canonicalize/top-level (last-reference *input-scode*))))))
 
 (define (phase/translate-scode)
-  (compiler-subphase "Translating Scode into Flow Graph"
-   (lambda ()
-     (set! *current-label-number* 0)
-     (set! *constants* '())
-     (set! *blocks* '())
-     (set! *expressions* '())
-     (set! *procedures* '())
-     (set! *lvalues* '())
-     (set! *applications* '())
-     (set! *parallels* '())
-     (set! *assignments* '())
-     (set! *root-expression* (construct-graph (last-reference *scode*)))
-     (set! *root-block* (expression-block *root-expression*))
-     (if (or (null? *expressions*)
-	     (not (null? (cdr *expressions*))))
-	 (error "Multiple expressions"))
-     (set! *expressions*))))
+  (compiler-subphase "Translation of Scode into Flow Graph"
+    (lambda ()
+      (set! *current-label-number* 0)
+      (set! *constants* '())
+      (set! *blocks* '())
+      (set! *expressions* '())
+      (set! *procedures* '())
+      (set! *lvalues* '())
+      (set! *applications* '())
+      (set! *parallels* '())
+      (set! *assignments* '())
+      (set! *root-expression* (construct-graph (last-reference *scode*)))
+      (set! *root-block* (expression-block *root-expression*))
+      (if (or (null? *expressions*)
+	      (not (null? (cdr *expressions*))))
+	  (error "Multiple expressions"))
+      (set! *expressions*))))
 
 (define (phase/fg-optimization)
-  (compiler-superphase "Optimizing the Flow Graph"
+  (compiler-superphase "Flow Graph Optimization"
     (lambda ()
       (phase/simulate-application)
       (phase/outer-analysis)
@@ -433,7 +432,7 @@ MIT in each case. |#
       (phase/fg-optimization-cleanup))))
 
 (define (phase/simulate-application)
-  (compiler-subphase "Simulating Applications"
+  (compiler-subphase "Application Simulation"
     (lambda ()
       (simulate-application *lvalues* *applications*))))
 
@@ -443,7 +442,7 @@ MIT in each case. |#
       (outer-analysis *root-expression* *procedures* *applications*))))
 
 (define (phase/fold-constants)
-  (compiler-subphase "Constant Folding"
+  (compiler-subphase "Fold Constants"
     (lambda ()
       (fold-constants *lvalues* *applications*))))
 
@@ -458,12 +457,12 @@ MIT in each case. |#
       (operator-analysis *procedures* *applications*))))
 
 (define (phase/identify-closure-limits)
-  (compiler-subphase "Identifying Closure Limits"
+  (compiler-subphase "Closure Limit Identification"
     (lambda ()
       (identify-closure-limits! *procedures* *applications* *assignments*))))
 
 (define (phase/setup-block-types)
-  (compiler-subphase "Setting Up Block Types"
+  (compiler-subphase "Block Type Determination"
     (lambda ()
       (setup-block-types! *root-block*))))
 
@@ -478,7 +477,7 @@ MIT in each case. |#
       (simplicity-analysis *parallels*))))
 
 (define (phase/subproblem-ordering)
-  (compiler-subphase "Ordering Subproblems"
+  (compiler-subphase "Subproblem Ordering"
     (lambda ()
       (subproblem-ordering *parallels*))))
 
@@ -488,17 +487,17 @@ MIT in each case. |#
       (connectivity-analysis *root-expression* *procedures*))))
 
 (define (phase/design-environment-frames)
-  (compiler-subphase "Designing Environment Frames"
+  (compiler-subphase "Environment Frame Design"
     (lambda ()
       (design-environment-frames! *blocks*))))
 
 (define (phase/compute-node-offsets)
-  (compiler-subphase "Computing Node Offsets"
+  (compiler-subphase "Stack Frame Offset Determination"
     (lambda ()
       (compute-node-offsets *root-expression*))))
 
 (define (phase/fg-optimization-cleanup)
-  (compiler-subphase "Cleaning Up After Flow Graph Optimization"
+  (compiler-subphase "Flow Graph Optimization Cleanup"
     (lambda ()
       (if (not compiler:preserve-data-structures?)
 	  (begin (set! *constants*)
@@ -511,16 +510,14 @@ MIT in each case. |#
 		 (set! *root-block*))))))
 
 (define (phase/rtl-generation)
-  (compiler-phase "Generating RTL"
+  (compiler-phase "RTL Generation"
     (lambda ()
       (set! *rtl-procedures* '())
       (set! *rtl-continuations* '())
       (set! *rtl-graphs* '())
       (set! *ic-procedure-headers* '())
       (initialize-machine-register-map!)
-      (cleanup-noop-nodes
-       (lambda ()
-	 (generate/top-level (last-reference *root-expression*))))
+      (generate/top-level (last-reference *root-expression*))
       (set! label->object
 	    (make/label->object *rtl-expression*
 				*rtl-procedures*
@@ -545,42 +542,60 @@ MIT in each case. |#
 	(write-string " mean")))))
 
 (define (phase/rtl-optimization)
-  (compiler-superphase "Optimizing RTL"
+  (compiler-superphase "RTL Optimization"
     (lambda ()
       (if compiler:cse?
 	  (phase/common-subexpression-elimination))
-      (cleanup-noop-nodes
-       (lambda ()
-	 (phase/rtl-expansion)))
       (phase/lifetime-analysis)
       (if compiler:code-compression?
 	  (phase/code-compression))
+      (phase/linearization-analysis)
       (phase/register-allocation)
       (phase/rtl-optimization-cleanup))))
 
 (define (phase/common-subexpression-elimination)
-  (compiler-subphase "Eliminating Common Subexpressions"
+  (compiler-subphase "Common Subexpression Elimination"
     (lambda ()
       (common-subexpression-elimination *rtl-graphs*))))
-(define (phase/rtl-expansion)
-  (compiler-subphase "Expanding RTL"
-    (lambda ()
-      (rtl-expansion *rtl-graphs*))))
-
-(define (phase/lifetime-analysis)
+(define (phase/lifetime-analysis)
   (compiler-subphase "Lifetime Analysis"
     (lambda ()
       (lifetime-analysis *rtl-graphs*))))
 
 (define (phase/code-compression)
-  (compiler-subphase "Code Compression"
+  (compiler-subphase "Instruction Combination"
     (lambda ()
       (code-compression *rtl-graphs*))))
+
+(define (phase/linearization-analysis)
+  (compiler-subphase "Linearization Analysis"
+    (lambda ()
+      (setup-bblock-continuations! *rtl-graphs*))))
+
+(define (phase/register-allocation)
+  (compiler-subphase "Register Allocation"
+    (lambda ()
+      (register-allocation *rtl-graphs*))))
+
+(define (phase/rtl-optimization-cleanup)
+  (if (not compiler:preserve-data-structures?)
+      (for-each (lambda (rgraph)
+		  (set-rgraph-bblocks! rgraph false)
+		  ;; **** this slot is reused. ****
+		  ;;(set-rgraph-register-bblock! rgraph false)
+		  (set-rgraph-register-crosses-call?! rgraph false)
+		  (set-rgraph-register-n-deaths! rgraph false)
+		  (set-rgraph-register-live-length! rgraph false)
+		  (set-rgraph-register-n-refs! rgraph false))
+		*rtl-graphs*)))
 
 (define (phase/rtl-file-output pathname)
   (compiler-phase "RTL File Output"
     (lambda ()
-      (let ((rtl (linearize-rtl *rtl-graphs*)))
+      (let ((rtl
+	     (linearize-rtl *rtl-expression*
+			    *rtl-procedures*
+			    *rtl-continuations*)))
 	(if (eq? pathname true)
 	    ;; recursive compilation
 	    (set! *recursive-compilation-rtl-blocks*
@@ -593,24 +608,8 @@ MIT in each case. |#
 				*recursive-compilation-rtl-blocks*)))
 		     pathname))))))
 
-(define (phase/register-allocation)
-  (compiler-subphase "Allocating Registers"
-    (lambda ()
-      (register-allocation *rtl-graphs*))))
-
-(define (phase/rtl-optimization-cleanup)
-  (if (not compiler:preserve-data-structures?)
-      (for-each (lambda (rgraph)
-		  ;; **** this slot is reused. ****
-		  ;;(set-rgraph-register-bblock! rgraph false)
-		  (set-rgraph-register-crosses-call?! rgraph false)
-		  (set-rgraph-register-n-deaths! rgraph false)
-		  (set-rgraph-register-live-length! rgraph false)
-		  (set-rgraph-register-n-refs! rgraph false))
-		*rtl-graphs*)))
-
 (define (phase/bit-generation)
-  (compiler-phase "Generating BITs"
+  (compiler-phase "LAP Generation"
     (lambda ()
       (set! compiler:external-labels '())
       (generate-bits
@@ -619,23 +618,26 @@ MIT in each case. |#
 	 (set! compiler:block-label block-label)
 	 (node-insert-snode! (rtl-expr/entry-node *rtl-expression*)
 			     (make-sblock prefix))))
-      (set! compiler:entry-label (rtl-expr/label *rtl-expression*))
-      (if (not compiler:preserve-data-structures?)
-	  (begin (set! label->object)
-		 (set! *rtl-expression*)
-		 (set! *rtl-procedures*)
-		 (set! *rtl-continuations*))))))
+      (set! compiler:entry-label (rtl-expr/label *rtl-expression*)))))
 
 (define (phase/bit-linearization)
-  (compiler-phase "Linearizing BITs"
+  (compiler-phase "LAP Linearization"
     (lambda ()
       (set! compiler:bits
 	    (append-instruction-sequences!
 	     (lap:make-entry-point compiler:entry-label compiler:block-label)
-	     (linearize-bits (last-reference *rtl-graphs*)))))))
+	     (linearize-bits *rtl-expression*
+			     *rtl-procedures*
+			     *rtl-continuations*)))
+      (if (not compiler:preserve-data-structures?)
+	  (begin (set! label->object)
+		 (set! *rtl-expression*)
+		 (set! *rtl-procedures*)
+		 (set! *rtl-continuations*)
+		 (set! *rtl-graphs*))))))
 
 (define (phase/assemble)
-  (compiler-phase "Assembling"
+  (compiler-phase "Assembly"
     (lambda ()
       (if compiler:preserve-data-structures?
 	  (assemble compiler:block-label compiler:bits phase/assemble-finish)
@@ -656,7 +658,7 @@ MIT in each case. |#
       (display " iterations.")))
 
 (define (phase/info-generation-2 pathname)
-  (compiler-phase "Generating Debugging Information (pass 2)"
+  (compiler-phase "Debugging Information Generation"
    (lambda ()
      (let ((info
 	    (generation-phase2 compiler:label-bindings
@@ -682,7 +684,7 @@ MIT in each case. |#
 	      (pathname->string pathname))))))))
 
 (define (phase/link)
-  (compiler-phase "Linking"
+  (compiler-phase "Linkification"
     (lambda ()
       ;; This has sections locked against GC to prevent relocation
       ;; while computing addresses.
