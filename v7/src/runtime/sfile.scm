@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.26 2001/05/10 03:14:07 cph Exp $
+$Id: sfile.scm,v 14.27 2001/06/02 15:30:43 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -116,6 +116,14 @@ USA.
 
 (define (delete-file filename)
   ((ucode-primitive file-remove) (->namestring (merge-pathnames filename))))
+
+(define (hard-link-file from to)
+  ((ucode-primitive file-link-hard 2) (->namestring (merge-pathnames from))
+				      (->namestring (merge-pathnames to))))
+
+(define (soft-link-file from to)
+  ((ucode-primitive file-link-soft 2) (->namestring (merge-pathnames from))
+				      (->namestring (merge-pathnames to))))
 
 (define (delete-file-no-errors filename)
   (call-with-current-continuation
