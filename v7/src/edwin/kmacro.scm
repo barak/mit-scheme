@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.37 1992/02/17 22:09:31 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.38 1992/04/16 22:30:00 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -199,25 +199,22 @@ With argument, also record the keys it is bound to."
 				  false
 				  false))
 	    (buffer (temporary-buffer "*Write-Keyboard-Macro-temp*")))
-	(with-output-to-mark (buffer-point buffer)
-	  (lambda ()
-	    (write-string "(IN-PACKAGE EDWIN-PACKAGE")
-	    (newline) (write-string "  (KEYBOARD-MACRO-DEFINE ") (write name)
-	    (newline) (write-string "    '")
-	    (write (string-table-get named-keyboard-macros name))
-	    (write-string ")")
-	    (if argument
-		(for-each (lambda (key)
-			    (newline)
-			    (write-string "  (DEFINE-KEY \"Fundamental\" '")
-			    (write key)
-			    (write-string " ")
-			    (write name)
-			    (write-string ")"))
-			  (comtab-key-bindings
-			   (mode-comtabs (ref-mode-object fundamental))
-			   (name->command name))))
-	    (newline) (write-string ")")))
+	(call-with-output-mark (buffer-point buffer)
+	  (lambda (port)
+	    (pretty-print
+	     `(IN-PACKAGE EDWIN-PACKAGE
+		(KEYBOARD-MACRO-DEFINE
+		 ',name
+		 ',(string-table-get named-keyboard-macros name))
+		,@(if argument
+		      (map (lambda (key)
+			     `(DEFINE-KEY 'FUNDAMENTAL ',key ',name))
+			   (comtab-key-bindings
+			    (mode-comtabs (ref-mode-object fundamental))
+			    (name->command name)))
+		      '()))
+	     port
+	     true)))
 	(set-buffer-pathname! buffer pathname)
 	(write-buffer buffer)
 	(kill-buffer buffer)))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.87 1992/04/09 18:12:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.88 1992/04/16 22:29:00 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -567,6 +567,7 @@ MIT in each case. |#
   (files "bufout")
   (parent (edwin))
   (export (edwin)
+	  call-with-output-mark
 	  mark->output-port
 	  with-output-to-mark))
 

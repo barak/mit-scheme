@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.7 1991/11/26 08:02:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufout.scm,v 1.8 1992/04/16 22:28:44 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,8 +48,15 @@
 (declare (usual-integrations))
 
 (define (with-output-to-mark mark thunk)
-  (with-output-to-port (mark->output-port mark)
-    thunk))
+  (call-with-output-mark mark
+    (lambda (port)
+      (with-output-to-port port thunk))))
+
+(define (call-with-output-mark mark procedure)
+  (let ((port (mark->output-port mark)))
+    (let ((value (procedure port)))
+      (operation/close port)
+      value)))
 
 (define (mark->output-port mark #!optional buffer)
   (output-port/copy mark-output-port-template

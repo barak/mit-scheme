@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.92 1992/03/13 09:47:34 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.93 1992/04/16 22:30:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -224,12 +224,17 @@ Uses the visited file name, the -*- line, and the local variables spec."
     (buffer-not-modified! buffer)
     (pop-up-buffer buffer false)))
 
-(define (with-output-to-temporary-buffer name thunk)
+(define (call-with-output-to-temporary-buffer name procedure)
   (let ((buffer (temporary-buffer name)))
-    (with-output-to-mark (buffer-point buffer) thunk)
+    (call-with-output-mark (buffer-point buffer) procedure)
     (set-buffer-point! buffer (buffer-start buffer))
     (buffer-not-modified! buffer)
     (pop-up-buffer buffer false)))
+
+(define (with-output-to-temporary-buffer name thunk)
+  (call-with-output-to-temporary-buffer name
+    (lambda (port)
+      (with-output-to-port port thunk))))
 
 (define (call-with-temporary-buffer name procedure)
   (let ((buffer))

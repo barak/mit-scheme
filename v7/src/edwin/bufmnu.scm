@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.118 1992/01/24 23:48:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.119 1992/04/16 22:29:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -87,9 +87,9 @@ Type q immediately to make the buffer menu go away."
   (fill-buffer-menu! buffer (buffer-get buffer 'REVERT-BUFFER-FILES-ONLY?)))
 
 (define (fill-buffer-menu! buffer files-only?)
-  (with-output-to-mark (buffer-point buffer)
-    (lambda ()
-      (write-string list-buffers-header)
+  (call-with-output-mark (buffer-point buffer)
+    (lambda (port)
+      (write-string list-buffers-header port)
       (let ((current (current-buffer)))
 	(for-each (lambda (buffer)
 		    (if (not (or (minibuffer? buffer)
@@ -106,8 +106,9 @@ Type q immediately to make the buffer menu go away."
 			    (group-length (buffer-group buffer)))
 			   (mode-display-name (buffer-major-mode buffer))
 			   (let ((truename (buffer-truename buffer)))
-			     (if truename (->namestring truename) ""))))
-			 (newline))))
+			     (if truename (->namestring truename) "")))
+			  port)
+			 (newline port))))
 		  (buffer-list)))))
   (set-buffer-point! buffer (line-start (buffer-start buffer) 2))
   (set-buffer-read-only! buffer))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.109 1991/11/06 19:56:45 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/info.scm,v 1.110 1992/04/16 22:29:16 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -253,9 +253,11 @@ s	Search through this Info file for specified regexp,
   ()
   (lambda ()
     (let ((buffer (temporary-buffer "*Help*")))
-      (with-output-to-mark (buffer-point buffer)
-	(lambda ()
-	  (write-description (mode-description (current-major-mode)))))
+      (call-with-output-mark (buffer-point buffer)
+	(lambda (port)
+	  (write-string
+	   (substitute-command-keys (mode-description (current-major-mode)))
+	   port)))
       (set-buffer-point! buffer (buffer-start buffer))
       (buffer-not-modified! buffer)
       (with-selected-buffer buffer
@@ -792,16 +794,16 @@ The name may be an abbreviation of the reference name."
 					(string-length tag-table-end-string))))
 	      ;; Then write new table.
 	      (let ((entries (collect-tag-entries (buffer-start buffer))))
-		(with-output-to-mark (buffer-end buffer)
-		  (lambda ()
-		    (write-string tag-table-start-string)
+		(call-with-output-mark (buffer-end buffer)
+		  (lambda (port)
+		    (write-string tag-table-start-string port)
 		    (for-each (lambda (entry)
-				(write-string (cdr entry))
-				(write-char #\Rubout)
-				(write (mark-index (car entry)))
-				(newline))
+				(write-string (cdr entry) port)
+				(write-char #\Rubout port)
+				(write (mark-index (car entry)) port)
+				(newline port))
 			      entries)
-		    (write-string tag-table-end-string))))))
+		    (write-string tag-table-end-string port))))))
 	  ;; Finally, reset the tag table marks.
 	  (find-tag-table buffer))))))
 
