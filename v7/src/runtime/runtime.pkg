@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.235 1994/10/11 20:54:26 cph Exp $
+$Id: runtime.pkg,v 14.236 1994/11/14 00:12:23 cph Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -1633,11 +1633,8 @@ MIT in each case. |#
 	  channel-read-block
 	  channel-table
 	  channel-type
-	  channel-type=block-device?
-	  channel-type=character-device?
 	  channel-type=directory?
 	  channel-type=file?
-	  channel-type=pty-master?
 	  channel-type=terminal?
 	  channel-type=unknown?
 	  channel-write
