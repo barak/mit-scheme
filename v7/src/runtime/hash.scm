@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.2 1989/09/20 15:04:15 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 14.3 1991/08/16 15:40:17 jinx Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,17 +32,16 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Object Hashing, populations, and 2D tables
+;;;; Object Hashing
 ;;; package: (runtime hash)
 
 (declare (usual-integrations))
 
 ;;;; Object hashing
 
-;;; The hashing code, and the population code below, depend on weak
-;;; conses supported by the microcode.  In particular, both pieces of
-;;; code depend on the fact that the car of a weak cons becomes #F if
-;;; the object is garbage collected.
+;;; The hashing code depends on weak conses supported by the
+;;; microcode.  In particular, it depends on the fact that the car of
+;;; a weak cons becomes #F if the object is garbage collected.
 
 ;;; Important: This code must be rewritten for a parallel processor,
 ;;; since two processors may be updating the data structures
@@ -86,91 +85,157 @@ MIT in each case. |#
 ;;; object-unhash's back.  Then object-unhash does not need to be
 ;;; locked against garbage collection.
 
-(define (initialize-package!)
-  (set! next-hash-number 1)
-  (set! hash-table-size default/hash-table-size)
-  (set! unhash-table (make-vector hash-table-size '()))
-  (set! hash-table (make-vector (1+ hash-table-size) '()))
-  ;; Could use `primitive-object-set!' to clobber the manifest type
-  ;; code instead of allocating another word here.
-  (vector-set! hash-table
-	       0
-	       ((ucode-primitive primitive-object-set-type)
-		(ucode-type manifest-special-nm-vector)
-		(make-non-pointer-object hash-table-size)))
-  (let loop ((n 0))
-    (if (< n hash-table-size)
-	(begin
-	  (vector-set! unhash-table n (cons true '()))
-	  (loop (1+ n)))))
-  (add-event-receiver! event:after-restore (lambda () (gc-flip)))
-  (add-gc-daemon! rehash-gc-daemon))
-
 (define default/hash-table-size 313)
-(define next-hash-number)
-(define hash-table-size)
-(define unhash-table)
-(define hash-table)
+(define default-hash-table)
+(define all-hash-tables)
 
-(define (hash x)
+(define (initialize-package!)
+  (set! all-hash-tables (weak-cons 0 '()))
+  (set! default-hash-table (hash-table/make))
+  (add-event-receiver! event:after-restore (lambda () (gc-flip)))
+  (add-gc-daemon! rehash-all-gc-daemon))
+
+(define-structure (hash-table
+		   (conc-name hash-table/)
+		   (constructor %hash-table/make))
+  (size)
+  (next-number)
+  (hash-table)
+  (unhash-table))
+
+(define (hash-table/make #!optional size)
+  (let* ((size (if (default-object? size)
+		   default/hash-table-size
+		   size))
+	 (table
+	  (%hash-table/make
+	   size
+	   1
+	   (let ((table (make-vector (1+ size) '())))
+	     (vector-set! table
+			  0
+			  ((ucode-primitive primitive-object-set-type)
+			   (ucode-type manifest-special-nm-vector)
+			   (make-non-pointer-object size)))
+	     ((ucode-primitive primitive-object-set-type)
+	      (ucode-type non-marked-vector)
+	      table))
+	   (let ((table (make-vector size '())))
+	     (let loop ((n 0))
+	       (if (fix:< n size)
+		   (begin
+		     (vector-set! table n (cons true '()))
+		     (loop (fix:+ n 1)))))
+	     table))))
+    (weak-set-cdr! all-hash-tables
+		   (weak-cons table (weak-cdr all-hash-tables)))
+    table))
+
+(define (hash x #!optional table)
   (if (eq? x false)
       0
-      (object-hash x)))
+      (object-hash x
+		   (if (default-object? table)
+		       default-hash-table
+		       table)
+		   true)))
 
-(define (unhash n)
+(define (unhash n #!optional table)
   (if (zero? n)
       false
-      (or (object-unhash n)
-	  (error "unhash: Not a valid hash number" n))))
+      (let ((table (if (default-object? table)
+		       default-hash-table
+		       table)))
+	(or (object-unhash n table)
+	    (error "unhash: Not a valid hash number" n table)))))
 
-(define (valid-hash-number? n)
+(define (valid-hash-number? n #!optional table)
   (or (zero? n)
-      (object-unhash n)))
+      (object-unhash n (if (default-object? table)
+			   default-hash-table
+			   table))))
+
+(define (object-hashed? n #!optional table)
+  (or (eq? x false)
+      (object-hash x
+		   (if (default-object? table)
+		       default-hash-table
+		       table)
+		   false)))  
 
 ;;; This is not dangerous because assq is a primitive and does not
-;;; cause consing.  The rest of the consing (including that by the
-;;; interpreter) is a small bounded amount.
+;;; cons.  The rest of the consing (including that by the interpreter)
+;;; is a small bounded amount.
+;;;
+;;; NOTE: assq is no longer a primitive.  This works fine if assq is
+;;; compiled, but can lose if it is interpreted.
 
-(define (object-hash object)
-  (with-absolutely-no-interrupts
-   (lambda ()
-     (let* ((hash-index (1+ (modulo (object-datum object) hash-table-size)))
-	    (bucket (vector-ref hash-table hash-index))
-	    (association (assq object bucket)))
-       (if association
-	   (cdr association)
-	   (let ((pair (cons object next-hash-number))
-		 (result next-hash-number)
-		 (unhash-bucket
-		  (vector-ref unhash-table
-			      (modulo next-hash-number hash-table-size))))
-	     (set! next-hash-number (1+ next-hash-number))
-	     (vector-set! hash-table hash-index (cons pair bucket))
-	     (set-cdr! unhash-bucket
-		       (cons (object-new-type (ucode-type weak-cons) pair)
-			     (cdr unhash-bucket)))
-	     result))))))
+(define (object-hash object #!optional table insert?)
+  (let ((table (cond ((default-object? table)
+		      default-hash-table)
+		     ((hash-table? table)
+		      table)
+		     (else
+		      (error "object-hash: Not a hash table" table))))
+	(insert? (or (default-object? insert?)
+		     insert?)))
+    (with-absolutely-no-interrupts
+      (lambda ()
+	(let* ((hash-index (fix:+ 1
+				  (modulo (object-datum object)
+					  (hash-table/size table))))
+	       (the-hash-table
+		((ucode-primitive primitive-object-set-type)
+		 (ucode-type vector)
+		 (hash-table/hash-table table)))
+	       (bucket (vector-ref the-hash-table hash-index))
+	       (association (assq object bucket)))
+	  (cond (association
+		 (cdr association))
+		((not insert?)
+		 false)
+		(else
+		 (let ((result (hash-table/next-number table)))
+		   (let ((pair (cons object result))
+			 (unhash-bucket
+			  (vector-ref (hash-table/unhash-table table)
+				      (modulo result
+					      (hash-table/size table)))))
+		     (set-hash-table/next-number! table (1+ result))
+		     (vector-set! the-hash-table
+				  hash-index
+				  (cons pair bucket))
+		     (set-cdr! unhash-bucket
+			       (cons (object-new-type (ucode-type weak-cons) pair)
+				     (cdr unhash-bucket)))
+		     result)))))))))
 
 ;;; This is safe because it locks the garbage collector out only for a
 ;;; little time, enough to tag the bucket being searched, so that the
 ;;; daemon will not splice that bucket.
 
-(define (object-unhash number)
-  (let ((index (modulo number hash-table-size)))
+(define (object-unhash number #!optional table)
+  (let* ((table (cond ((default-object? table)
+		       default-hash-table)
+		      ((hash-table? table)
+		       table)
+		      (else
+		       (error "object-hash: Not a hash table" table))))
+	 (index (modulo number (hash-table/size table))))
     (with-absolutely-no-interrupts
-     (lambda ()
-       (let ((bucket (vector-ref unhash-table index)))
-	 (set-car! bucket false)
-	 (let ((result
-		(without-interrupts
-		 (lambda ()
-		   (let loop ((l (cdr bucket)))
-		     (cond ((null? l) false)
-			   ((= number (system-pair-cdr (car l)))
-			    (system-pair-car (car l)))
-			   (else (loop (cdr l)))))))))
-	   (set-car! bucket true)
-	   result))))))
+      (lambda ()
+	(let ((bucket (vector-ref (hash-table/unhash-table table) index)))
+	  (set-car! bucket false)
+	  (let ((result
+		 (without-interrupts
+		   (lambda ()
+		     (let loop ((l (cdr bucket)))
+		       (cond ((null? l) false)
+			     ((= number (system-pair-cdr (car l)))
+			      (system-pair-car (car l)))
+			     (else (loop (cdr l)))))))))
+	    (set-car! bucket true)
+	    result))))))
 
 ;;;; Rehash daemon
 
@@ -184,50 +249,67 @@ MIT in each case. |#
 ;;; is SNM rather than NM to make the buckets be relocated at band
 ;;; load/restore time.
 
-;;; **** There is also a problem with intermediate bignums being
-;;; consed by `rehash' while computing `index'.  This must be fixed
-;;; before the Scheme code below can be used. ****
-
 ;;; Until this code is compiled, and therefore safe, it is replaced by
 ;;; a primitive.  See the installation code below.
 #|
-(define (rehash-gc-daemon)
-  (let cleanup ((n hash-table-size))
-    (if (not (zero? n))
-	(begin
-	  (vector-set! hash-table n '())
-	  (cleanup (-1+ n)))))
-  (let outer ((n (-1+ hash-table-size)))
-    (if (not (negative? n))
-	(let ((bucket (vector-ref unhash-table n)))
-	  (if (car bucket)
-	      (let inner1 ((l1 bucket) (l2 (cdr bucket)))
-		(cond ((null? l2)
-		       (outer (-1+ n)))
-		      ((eq? (system-pair-car (car l2)) false)
-		       (set-cdr! l1 (cdr l2))
-		       (inner1 l1 (cdr l1)))
-		      (else
-		       (rehash (car l2))
-		       (inner1 l2 (cdr l2)))))
-	      (let inner2 ((l (cdr bucket)))
-		(cond ((null? l)
-		       (outer (-1+ n)))
-		      ((eq? (system-pair-car (car l)) false)
-		       (inner2 (cdr l)))
-		      (else
-		       (rehash (car l))
-		       (inner2 (cdr l))))))))))
+(define (hash-table/rehash table)
+  (let ((hash-table-size (hash-table/size table))
+	(hash-table ((ucode-primitive primitive-object-set-type)
+		     (ucode-type vector)
+		     (hash-table/hash-table table)))
+	(unhash-table (hash-table/unhash-table table)))
 
-(define (rehash weak-pair)
-  (let ((index
-	 (1+ (modulo (object-datum (system-pair-car weak-pair))
-		     hash-table-size))))
-    (vector-set! hash-table
-		 index
-		 (cons (object-new-type (ucode-type pair) weak-pair)
-		       (vector-ref hash-table index)))
-    unspecific))
+    (define (rehash weak-pair)
+      (let ((index
+	     (fix:+ 1 (modulo (object-datum (system-pair-car weak-pair))
+			      hash-table-size))))
+	(vector-set! hash-table
+		     index
+		     (cons (object-new-type (ucode-type pair) weak-pair)
+			   (vector-ref hash-table index)))
+	unspecific))
+
+    (let cleanup ((n hash-table-size))
+      (if (not (fix:= n 0))
+	  (begin
+	    (vector-set! hash-table n '())
+	    (cleanup (fix:- n 1)))))
+
+    (let outer ((n (fix:- hash-table-size 1)))
+      (if (not (fix:< n 0))
+	  (let ((bucket (vector-ref unhash-table n)))
+	    (if (car bucket)
+		(let inner1 ((l1 bucket) (l2 (cdr bucket)))
+		  (cond ((null? l2)
+			 (outer (fix:- n 1)))
+			((eq? (system-pair-car (car l2)) false)
+			 (set-cdr! l1 (cdr l2))
+			 (inner1 l1 (cdr l1)))
+			(else
+			 (rehash (car l2))
+			 (inner1 l2 (cdr l2)))))
+		(let inner2 ((l (cdr bucket)))
+		  (cond ((null? l)
+			 (outer (fix:- n 1)))
+			((eq? (system-pair-car (car l)) false)
+			 (inner2 (cdr l)))
+			(else
+			 (rehash (car l))
+			 (inner2 (cdr l)))))))))))
 |#
-(define (rehash-gc-daemon)
-  ((ucode-primitive rehash) unhash-table hash-table))
+
+(define-integrable (hash-table/rehash table)
+  ((ucode-primitive rehash) (hash-table/unhash-table table)
+			    (hash-table/hash-table table)))
+
+(define (rehash-all-gc-daemon)
+  (let loop ((l all-hash-tables)
+	     (n (weak-cdr all-hash-tables)))
+    (cond ((null? n)
+	   (weak-set-cdr! l n))
+	  ((not (weak-pair/car? n))
+	   (loop l (weak-cdr n)))
+	  (else
+	   (weak-set-cdr! l n)
+	   (hash-table/rehash (weak-car n))
+	   (loop n (weak-cdr n))))))
