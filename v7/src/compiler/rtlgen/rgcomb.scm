@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.2 1987/12/30 07:10:01 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.3 1988/01/02 17:24:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -167,9 +167,10 @@ MIT in each case. |#
 					   variable))))))
     (if (cfg-null? prefix)
 	(make-invocation environment)
-	(scfg-append! (rtl:make-assignment register:environment environment)
-		      prefix
-		      (make-invocation register:environment)))))
+	(scfg-append!
+	 (rtl:make-assignment register:environment environment)
+	 prefix
+	 (make-invocation (rtl:make-fetch register:environment))))))
 
 (define (invocation/uuo-link frame-size continuation prefix name)
   (scfg*scfg->scfg! prefix
