@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.26 1993/11/09 04:31:41 cph Exp $
+$Id: unxprm.scm,v 1.27 1993/11/29 21:09:30 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -74,15 +74,17 @@ MIT in each case. |#
 		2))))))
 
 (define (temporary-file-pathname)
-  (let ((root
-	 (merge-pathnames
-	  (string-append "sch"
-			 (string-pad-left (number->string (unix/current-pid))
-					  6
-					  #\0))
-	  (temporary-directory-pathname))))
+  (let ((root-string
+	 (string-append "sch"
+			(string-pad-left (number->string (unix/current-pid))
+					 6
+					 #\0)
+			"_"))
+	(directory (temporary-directory-pathname)))
     (let loop ((ext 0))
-      (let ((pathname (pathname-new-type root (number->string ext))))
+      (let ((pathname
+	     (merge-pathnames (string-append root-string (number->string ext))
+			      directory)))
 	(if (allocate-temporary-file pathname)
 	    pathname
 	    (begin
