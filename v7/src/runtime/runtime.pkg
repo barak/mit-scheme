@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.293 1998/02/22 08:47:36 cph Exp $
+$Id: runtime.pkg,v 14.294 1998/03/04 21:15:10 cph Exp $
 
 Copyright (c) 1988-98 Massachusetts Institute of Technology
 
@@ -2983,9 +2983,13 @@ MIT in each case. |#
 	  prime-numbers-stream
 	  stream
 	  stream->list
+	  stream-accumulate
+	  stream-append
 	  stream-car
 	  stream-cdr
+	  stream-filter
 	  stream-first
+	  stream-for-each
 	  stream-head
 	  stream-length
 	  stream-map
@@ -2994,6 +2998,7 @@ MIT in each case. |#
 	  stream-ref
 	  stream-rest
 	  stream-tail
+	  stream-write
 	  tail
 	  the-empty-stream)
   (initialization (initialize-package!)))
