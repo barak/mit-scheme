@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.3 1999/01/02 06:19:10 cph Exp $
+$Id: sysmac.scm,v 14.4 2001/12/18 21:55:54 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright (c) 1988, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,52 +16,53 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; System Internal Syntax
 ;;; package: (runtime system-macros)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
-  (set! syntax-table/system-internal (make-system-internal-syntax-table)))
+  (set! syntax-table/system-internal (->environment '(RUNTIME)))
+  (set-environment-syntax-table! syntax-table/system-internal
+				 (make-syntax-table (->environment '())))
+  (for-each (lambda (entry)
+	      (syntax-table/define syntax-table/system-internal
+				   (car entry)
+				   (cadr entry)))
+	    `((DEFINE-PRIMITIVES ,transform/define-primitives)
+	      (UCODE-PRIMITIVE ,transform/ucode-primitive)
+	      (UCODE-RETURN-ADDRESS ,transform/ucode-return-address)
+	      (UCODE-TYPE ,transform/ucode-type))))
 
 (define syntax-table/system-internal)
 
-(define (make-system-internal-syntax-table)
-  (let ((table (make-syntax-table system-global-syntax-table)))
-    (for-each (lambda (entry)
-		(syntax-table-define table (car entry) (cadr entry)))
-	      `((DEFINE-PRIMITIVES ,transform/define-primitives)
-		(UCODE-PRIMITIVE ,transform/ucode-primitive)
-		(UCODE-RETURN-ADDRESS ,transform/ucode-return-address)
-		(UCODE-TYPE ,transform/ucode-type)))
-    table))
-
 (define transform/define-primitives
-  (macro names
-    `(BEGIN ,@(map (lambda (name)
-		     (cond ((not (pair? name))
-			    (primitive-definition name (list name)))
-			   ((not (symbol? (cadr name)))
-			    (primitive-definition (car name) name))
-			   (else
-			    (primitive-definition (car name) (cdr name)))))
-		   names))))
-
-(define (primitive-definition variable-name primitive-args)
-  `(DEFINE-INTEGRABLE ,variable-name
-     ,(apply make-primitive-procedure primitive-args)))
+  (let ((primitive-definition
+	 (lambda (variable-name primitive-args)
+	   `(DEFINE-INTEGRABLE ,variable-name
+	      ,(apply make-primitive-procedure primitive-args)))))
+    (lambda names
+      `(BEGIN ,@(map (lambda (name)
+		       (cond ((not (pair? name))
+			      (primitive-definition name (list name)))
+			     ((not (symbol? (cadr name)))
+			      (primitive-definition (car name) name))
+			     (else
+			      (primitive-definition (car name) (cdr name)))))
+		     names)))))
 
 (define transform/ucode-type
-  (macro arguments
+  (lambda arguments
     (apply microcode-type arguments)))
 
 (define transform/ucode-primitive
-  (macro arguments
+  (lambda arguments
     (apply make-primitive-procedure arguments)))
 
 (define transform/ucode-return-address
-  (macro arguments
+  (lambda arguments
     (make-return-address (apply microcode-return arguments))))
