@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.214 1997/11/04 11:04:52 cph Exp $
+$Id: edwin.pkg,v 1.215 1997/11/20 05:27:37 cph Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -904,6 +904,7 @@ MIT in each case. |#
   (parent (edwin))
   (export (edwin)
 	  accept-process-output
+	  add-process-filter
 	  buffer-default-directory
 	  buffer-processes			; always present
 	  continue-process
@@ -943,15 +944,18 @@ MIT in each case. |#
 	  process-status-changes?		; always present
 	  process-status-message
 	  quit-process
+	  remove-process-filter
+	  run-synchronous-process
 	  set-process-buffer!
 	  set-process-filter!
 	  set-process-kill-without-query!
 	  set-process-sentinel!
 	  shell-command
+	  standard-process-filter
 	  start-process
 	  stop-process
 	  subprocesses-available?		; always present
-	  run-synchronous-process))
+	  ))
 
 (os-type-case
  ((dos)

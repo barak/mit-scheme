@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: process.scm,v 1.52 1997/11/19 23:40:59 cph Exp $
+;;;	$Id: process.scm,v 1.53 1997/11/20 05:27:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -399,7 +399,7 @@ Initialized from the SHELL environment variable."
 	   (message-with-reason "exited abnormally" "with code")))
       ((SIGNAL) (message-with-reason "terminated by signal" false))
       (else (error "illegal process status" status)))))
-
+
 (define (output-substring process string length)
   (cond ((process-filter process)
 	 =>
@@ -413,6 +413,57 @@ Initialized from the SHELL environment variable."
 	     (set-mark-index! mark (+ index length)))
 	   true))
 	(else false)))
+
+(define (add-process-filter process filter)
+  (let ((filter* (process-filter process)))
+    (if (filter-dispatcher? filter*)
+	(add-filter-to-dispatcher filter* filter)
+	(set-process-filter! process
+			     (make-filter-dispatcher (if filter*
+							 (list filter* filter)
+							 (list filter)))))))
+
+(define (remove-process-filter process filter)
+  (set-process-filter!
+   process
+   (let ((filter* (process-filter process)))
+     (cond ((eq? filter filter*) #f)
+	   ((filter-dispatcher? filter*)
+	    (remove-filter-from-dispatcher filter* filter))
+	   (else filter*)))))
+
+(define (make-filter-dispatcher filters)
+  (make-entity filter-dispatcher-procedure filters))
+
+(define (filter-dispatcher? object)
+  (and (entity? object)
+       (eq? filter-dispatcher-procedure (entity-procedure object))))
+
+(define (filter-dispatcher-procedure dispatcher process string start end)
+  (let loop ((filters (entity-extra dispatcher)))
+    (and (not (null? filters))
+	 (or ((car filters) process string start end)
+	     (loop (cdr filters))))))
+
+(define (add-filter-to-dispatcher dispatcher filter)
+  (let ((filters (entity-extra dispatcher)))
+    (if (pair? filters)
+	(set-cdr! (last-pair filters) (list filter))
+	(set-entity-extra! dispatcher (list filter)))))
+
+(define (remove-filter-from-dispatcher dispatcher filter)
+  (let ((filters (delq! filter (entity-extra dispatcher))))
+    (set-entity-extra! dispatcher filters)
+    (and (not (null? filters))
+	 dispatcher)))
+
+(define (standard-process-filter filter)
+  (lambda (process string start end)
+    (let ((mark (process-mark process)))
+      (and mark
+	   (begin
+	     (filter mark string start end)
+	     #t)))))
 
 ;;;; Signals
 
