@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.14 1997/07/20 06:38:55 cph Exp $
+$Id: numpar.scm,v 14.15 1997/10/07 04:19:46 adams Exp $
 
 Copyright (c) 1989-97 Massachusetts Institute of Technology
 
@@ -137,9 +137,8 @@ MIT in each case. |#
 	  (let ((char (string-ref string start))
 		(start+1 (fix:+ start 1)))
 	    (cond ((char=? #\/ char)
-		   (and (fix:< start+1 end)
-			(parse-denominator-1 string start+1 end
-					     integer exactness radix sign)))
+		   (parse-denominator-1 string start+1 end
+					integer exactness radix sign))
 		  ((char=? #\. char)
 		   (and (fix:= radix 10)
 			(if sharp?
@@ -185,11 +184,12 @@ MIT in each case. |#
 	 (lambda (denominator exactness sign)
 	   (finish-rational numerator denominator exactness sign))))
     (parse-digits string start end 0 exactness radix
-      (lambda (start integer exactness sharp?)
+      (lambda (start* integer exactness sharp?)
 	sharp?
-	(parse-complex string start end
-		       (finish integer exactness sign)
-		       exactness radix sign)))))
+	(and (> start* start) ; >0 denominator digits 
+	     (parse-complex string start end
+			    (finish integer exactness sign)
+			    exactness radix sign))))))
 
 (define (parse-decimal-1 string start end exactness sign)
   ;; State: radix is 10, leading dot seen.
