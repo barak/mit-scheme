@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: sendmail.scm,v 1.75 2001/03/21 19:25:40 cph Exp $
+;;; $Id: sendmail.scm,v 1.76 2001/04/11 00:47:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
@@ -1317,8 +1317,8 @@ the user from the mailer."
 		 (if (re-search-forward "^[^ \t]" colon h-end #f)
 		     (re-match-start 0)
 		     h-end)))
-	    (if (or (string=? "mime-version" name)
-		    (string-prefix? "content-" name))
+	    (if (or (string-ci=? "mime-version" name)
+		    (string-prefix-ci? "content-" name))
 		(begin
 		  (delete-string f-start f-start*)
 		  (loop f-start))
