@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.18 2003/07/30 19:44:05 cph Exp $
+$Id: xml-struct.scm,v 1.19 2003/08/01 03:25:51 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -112,6 +112,16 @@ USA.
 	((combo-name? name) (universal-name-uri (combo-name-universal name)))
 	(else (error:not-xml-name name 'XML-NAME-URI))))
 
+(define (xml-name-local name)
+  (cond ((xml-nmtoken? name)
+	 (let ((s (symbol-name name)))
+	   (let ((c (string-find-next-char s #\:)))
+	     (if c
+		 (string->symbol (string-tail s (fix:+ c 1)))
+		 name))))
+	((combo-name? name) (universal-name-local (combo-name-universal name)))
+	(else (error:not-xml-name name 'XML-NAME-STRING))))
+
 (define (xml-name=? n1 n2)
   (let ((lose (lambda (n) (error:not-xml-name n 'XML-NAME=?))))
     (cond ((xml-nmtoken? n1)
@@ -126,6 +136,12 @@ USA.
 		       (combo-name-universal n2)))
 		 (else (lose n2))))
 	  (else (lose n1)))))
+
+(define (xml-name-hash name modulus)
+  (eq-hash-mod (xml-name-local name) modulus))
+
+(define make-xml-name-hash-table
+  (strong-hash-table/constructor xml-name-hash xml-name=? #t))
 
 (define (xml-nmtoken? object)
   (and (symbol? object)

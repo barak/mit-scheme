@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.22 2003/07/30 19:43:52 cph Exp $
+$Id: xml.pkg,v 1.23 2003/08/01 03:26:09 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -63,6 +63,7 @@ USA.
 	  make-xml-element
 	  make-xml-entity-ref
 	  make-xml-external-id
+	  make-xml-name-hash-table
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
@@ -148,6 +149,8 @@ USA.
 	  xml-external-id-uri
 	  xml-external-id?
 	  xml-intern
+	  xml-name-hash
+	  xml-name-local
 	  xml-name-string
 	  xml-name-uri
 	  xml-name=?
