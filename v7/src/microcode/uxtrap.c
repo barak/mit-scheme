@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.26 1995/07/27 00:35:24 adams Exp $
+$Id: uxtrap.c,v 1.27 1997/07/16 02:51:07 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -746,7 +746,13 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	      return
 		(((area == first_valid) ||
 		  (((OBJECT_TYPE (*block)) != TC_MANIFEST_VECTOR)
-		   && ((OBJECT_TYPE (*block)) != TC_POSITIVE_FIXNUM))
+		   && ((OBJECT_TYPE (*block)) !=
+#ifdef TC_POSITIVE_FIXNUM
+		       TC_POSITIVE_FIXNUM
+#else
+		       TC_FIXNUM
+#endif
+		       ))
 		   ||
 		  ((OBJECT_DATUM (*block)) < (count + 1)) ||
 		  (! (PLAUSIBLE_CC_BLOCK_P (block))))
