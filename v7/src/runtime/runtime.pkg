@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.153 1992/05/26 23:08:05 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.154 1992/06/03 18:24:37 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -2117,6 +2117,7 @@ MIT in each case. |#
 	  x-graphics/coordinate-limits
 	  x-graphics/copy-area
 	  x-graphics/device-coordinate-limits
+	  x-graphics/disable-keyboard-focus
 	  x-graphics/display
 	  x-graphics/drag-cursor
 	  x-graphics/draw-line

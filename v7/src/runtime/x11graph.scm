@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.21 1992/05/13 21:28:13 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.22 1992/06/03 18:24:28 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -602,6 +602,13 @@ MIT in each case. |#
 
 (define (x-graphics/set-input-hint device input?)
   (x-window-set-input-hint (x-graphics-device/xw device) input?))
+
+(define (x-graphics/disable-keyboard-focus device)
+  ;; Tell the window to participate in the TAKE-FOCUS protocol.  Since
+  ;; there is no handler for this event, focus will never be given to
+  ;; the window.
+  (x-window-set-event-mask (x-graphics-device/xw device)
+			   (fix:or #x2000 event-mask)))
 
 (define (x-graphics/query-pointer device)
   (let* ((window (x-graphics-device/xw device))
