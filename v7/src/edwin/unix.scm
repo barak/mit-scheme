@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.102 1999/12/06 21:08:37 cph Exp $
+;;; $Id: unix.scm,v 1.103 1999/12/22 02:41:18 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -666,4 +666,5 @@ option, instead taking -P <filename>."
 (define (os/info-default-directory-list)
   (list "/usr/local/lib/info"
 	"/usr/local/info"
+	"/usr/share/info"
 	"/usr/info"))
