@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.2 1988/06/13 11:42:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/contin.scm,v 14.3 1989/02/10 23:37:59 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -57,24 +57,43 @@ MIT in each case. |#
 			       (get-fluid-bindings))))
        (continuation (receiver continuation))))))
 
-(define (within-continuation continuation thunk)
-  (guarantee-continuation continuation)
-  (let ((dynamic-state (current-dynamic-state))
-	(fluid-bindings (get-fluid-bindings)))
-    (translate-to-state-point (continuation/dynamic-state continuation))
-    (set-fluid-bindings! (continuation/fluid-bindings continuation))
-    (let ((value
-	   ((ucode-primitive within-control-point 2)
-	    (continuation/control-point continuation)
-	    thunk)))
-      (translate-to-state-point dynamic-state)
-      (set-fluid-bindings! fluid-bindings)
-      value)))
+(define (%within-continuation continuation thunk)
+  ((ucode-primitive within-control-point 2)
+   (continuation/control-point continuation)
+   (let ((dynamic-state (continuation/dynamic-state continuation))
+	 (fluid-bindings (continuation/fluid-bindings continuation)))
+     (lambda ()
+       (set-fluid-bindings! fluid-bindings)
+       (translate-to-state-point dynamic-state)
+       (thunk)))))
 
 (define (invocation-method/reentrant continuation value)
-  (translate-to-state-point (continuation/dynamic-state continuation))
-  (set-fluid-bindings! (continuation/fluid-bindings continuation))
-  ((continuation/control-point continuation) value))
+  ((ucode-primitive within-control-point 2)
+   (continuation/control-point continuation)
+   (let ((dynamic-state (continuation/dynamic-state continuation))
+	 (fluid-bindings (continuation/fluid-bindings continuation)))
+     (lambda ()
+       (set-fluid-bindings! fluid-bindings)
+       (translate-to-state-point dynamic-state)
+       value))))
+
+;; These two are correctly locked for multiprocessing, but not for
+;; multiprocessors.
+
+(define (within-continuation continuation thunk)
+  (guarantee-continuation continuation)
+  (if (without-interrupts
+       (lambda ()
+	 (let ((method (continuation/invocation-method continuation)))
+	   (or (eq? method invocation-method/reentrant)
+	       (and (eq? method invocation-method/unused)
+		    (begin
+		      (set-continuation/invocation-method!
+		       continuation
+		       invocation-method/used)
+		      true))))))
+      (%within-continuation continuation thunk)
+      (error "Reentering used continuation" continuation)))
 
 (define (invocation-method/unused continuation value)
   (if (eq? (without-interrupts
