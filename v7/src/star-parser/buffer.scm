@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: buffer.scm,v 1.7 2001/07/05 18:51:23 cph Exp $
+;;; $Id: buffer.scm,v 1.8 2001/07/11 00:41:50 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -131,6 +131,13 @@
   (and (guarantee-buffer-chars buffer 1)
        (string-ref (parser-buffer-string buffer)
 		   (parser-buffer-index buffer))))
+
+(define (parser-buffer-ref buffer index)
+  (if (not (index-fixnum? index))
+      (error:wrong-type-argument index "index" '???))
+  (and (guarantee-buffer-chars buffer (fix:+ index 1))
+       (string-ref (parser-buffer-string buffer)
+		   (fix:+ (parser-buffer-index buffer) index))))
 
 (let-syntax
     ((char-matcher

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.5 2001/07/02 18:20:47 cph Exp $
+;;; $Id: parser.pkg,v 1.6 2001/07/11 00:41:55 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -54,6 +54,7 @@
 	  parser-buffer-pointer-line
 	  parser-buffer-pointer?
 	  parser-buffer-position-string
+	  parser-buffer-ref
 	  parser-buffer?
 	  peek-parser-buffer-char
 	  read-parser-buffer-char
