@@ -1,9 +1,9 @@
 -*- Text -*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.10 1991/09/09 21:04:33 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/cmpint.txt,v 1.11 1992/02/12 15:52:19 jinx Exp $
 
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
 
 
 		Documentation of the C interface to
@@ -584,8 +584,9 @@ entry and after_entry in a normal entry.
 => CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes
 between entry and after_entry in a closure entry.
 
-=> ENTRY_PREFIX_LENGTH is the number of bytes between
-gc_or_int and entry in a normal entry.
+=> ENTRY_PREFIX_LENGTH is the number of bytes between gc_or_int and
+entry in a normal entry, not counting those taken up by the format
+word and the gc word.
 
 	Important considerations:
 
@@ -813,7 +814,8 @@ done by STORE_EXECUTE_CACHE_ADDRESS.  These two macros are separated
 to avoid extra work at garbage collection time on architectures where
 some or all of the code need not change.  In the example above, this
 macro would store the jump opcode.
-
+
+
 	Trampolines:
 
 Trampolines are the linker-generated procedures that interface the
@@ -832,11 +834,11 @@ variable that is unbound, or the number of arguments being passed).
 The code typically invokes an out-of-line handler passing it the
 address of the storage section, and an index into a table of C or
 assembly language procedures that handle the actual transfer.
-
+
 A typical trampoline looks like
 
 	----------------------------------------
-	| MANIFEST-VECTOR  |                 6 | (4 + words of storage)
+block	| MANIFEST-VECTOR  |                 6 | (4 + words of storage)
 	----------------------------------------
 	| NM-HEADER        |                 3 | (fixed)
 	----------------------------------------
@@ -856,20 +858,33 @@ portion of a trampoline.  It is similar to COMPILED_CLOSURE_ENTRY_SIZE
 but in longwords, and will typically represent less storage since an
 absolute address is not needed (or desirable).  It must include the
 format word and the GC offset for the entry.  In the example above it
-would be 3.
+would be 3.  Note that it must be an integer number of longwords, so the
+code should be padded if necessary.
 
-=> TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
-of a trampoline's block (the manifest vector header in the picture
-above), and the first instruction, which must be longword aligned.
-This will typically be 3 since there are two scheme header words, and
-the gc and format word typically take one longword together.
+=> TRAMPOLINE_ENTRY_POINT returns the address of the entry point of a
+trampoline when given the address of a trampoline's block, i.e. the
+address of the word that will contain the manifest vector header.  In
+the picture above, when given the address of the byte labeled `block',
+it will return the address of the byte labeled `entry'.
 
 => TRAMPOLINE_STORAGE returns the address of the first storage word in
 a trampoline when given the addres of the first instruction (the entry
-point of the trampoline).  This macro should be correct, but may need
-to change in unusual circumstances.  In the picture above it would
-return the address of the word labeled `retadd' when given the
-address of the word labeled `entry'.
+point of the trampoline).  In the picture above it would return the
+address of the word labeled `retadd' when given the address of the
+word labeled `entry'.
+
+Most versions of cmpint-md.h define the last two macros in the same
+way, in terms of TRAMPOLINE_BLOCK_TO_ENTRY, which is used only for
+this purpose.  The definitions that use TRAMPOLINE_BLOCK_TO_ENTRY
+assume that the first instruction of a trampoline is aligned on a
+longword boundary.  If this is the case, you can define
+TRAMPOLINE_BLOCK_TO_ENTRY appropriately and use the definitions of
+TRAMPOLINE_ENTRY_POINT and TRAMPOLINE_STORAGE from another machine.
+TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
+of a trampoline's block (the manifest vector header in the picture
+above), to the first instruction, which must be longword aligned.
+This will typically be 3 since there are two scheme header words, and
+the gc and format word typically take one longword together.
 
 => STORE_TRAMPOLINE_ENTRY stores the "compiled" code into an "empty"
 trampoline.  It is given the address of the entry point, and the index
