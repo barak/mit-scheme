@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.7 1988/08/30 02:13:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.8 1988/12/12 21:30:30 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,9 +37,7 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (code-compression)
-
-(define-export (code-compression rgraphs)
+(define (code-compression rgraphs)
   (for-each (lambda (rgraph)
 	      (fluid-let ((*current-rgraph* rgraph))
 		(for-each walk-bblock (rgraph-bblocks rgraph))))
@@ -76,80 +74,59 @@ MIT in each case. |#
 	     (pseudo-register? register)
 	     (eq? (register-bblock register) bblock)
 	     (= 2 (register-n-refs register)))
-	(find-reference-instruction live
-				    rinst
-				    register
-				    (rtl:assign-expression rtl)))))
-
-(define (fold-instructions! live rinst next register expression)
-  ;; Attempt to fold `expression' into the place of `register' in the
-  ;; RTL instruction `next'.  If the resulting instruction is
-  ;; reasonable (i.e. if the LAP generator informs us that it has a
-  ;; pattern for generating that instruction), the folding is
-  ;; performed.
-  (let ((rtl (rinst-rtl next)))
-    (if (rtl:refers-to-register? rtl register)
-	(let ((rtl (rtl:subst-register rtl register expression)))
-	  (if (lap-generator/match-rtl-instruction rtl)
-	      (begin
-		(set-rinst-rtl! rinst false)
-		(set-rinst-rtl! next rtl)
-		(let ((dead (rinst-dead-registers rinst)))
-		  (for-each increment-register-live-length! dead)
-		  (set-rinst-dead-registers!
-		   next
-		   (eqv-set-union dead
-				  (delv! register
-					 (rinst-dead-registers next)))))
-		(for-each-regset-member live decrement-register-live-length!)
-		(reset-register-n-refs! register)
-		(reset-register-n-deaths! register)
-		(reset-register-live-length! register)
-		(set-register-bblock! register false)))))))
+	(let ((expression (rtl:assign-expression rtl)))
+	  (if (not (rtl:expression-contains? expression
+					     rtl:volatile-expression?))
+	      (let ((next
+		     (find-reference-instruction (rinst-next rinst)
+						 register
+						 expression)))
+		(if next
+		    (fold-instructions! live
+					rinst
+					next
+					register
+					expression))))))))
 
-(define (find-reference-instruction live rinst register expression)
+(define (find-reference-instruction next register expression)
   ;; Find the instruction which contains the single reference to
   ;; `register', and determine if it is possible to fold `expression'
   ;; into that instruction in `register's place.
-  (let ((next (rinst-next rinst)))
-    (let ((search-stopping-at
-	   (lambda (predicate)
-	     (let loop ((next next))
-	       (if (not (predicate (rinst-rtl next)))
-		   (let ((next (rinst-next next)))
-		     (if (rinst-dead-register? next register)
-			 (fold-instructions! live rinst next register
-					     expression)
-			 (loop next))))))))
-      (cond ((rinst-dead-register? next register)
-	     (fold-instructions! live rinst next register expression))
-	    ((interpreter-value-register? expression)
-	     (search-stopping-at
-	      (lambda (rtl)
-		(and (rtl:assign? rtl)
-		     (interpreter-value-register? (rtl:assign-address rtl))))))
-	    ((rtl:stack-reference? expression)
-	     (search-stopping-at expression-clobbers-stack-pointer?))
-	    ((rtl:constant-expression? expression)
-	     (let loop ((next (rinst-next next)))
-	       (if (rinst-dead-register? next register)
-		   (fold-instructions! live rinst next register expression)
-		   (loop (rinst-next next)))))))))
-
-(define (rtl:stack-reference? expression)
-  (and (rtl:offset? expression)
-       (interpreter-stack-pointer? (rtl:offset-register expression))))
+  (let ((search-stopping-at
+	 (lambda (predicate)
+	   (define (phi-1 next)
+	     (and (not (predicate (rinst-rtl next)))
+		  (phi-2 (rinst-next next))))
+	   (define (phi-2 next)
+	     (if (rinst-dead-register? next register)
+		 next
+		 (phi-1 next)))
+	   (phi-1 next))))
+    (cond ((rinst-dead-register? next register) next)
+	  ((interpreter-value-register? expression)
+	   (search-stopping-at
+	    (lambda (rtl)
+	      (and (rtl:assign? rtl)
+		   (interpreter-value-register? (rtl:assign-address rtl))))))
+	  ((rtl:stack-reference-expression? expression)
+	   (search-stopping-at
+	    (lambda (rtl)
+	      (or (and (rtl:assign? rtl)
+		       (equal? (rtl:assign-address rtl) expression))
+		  (expression-clobbers-stack-pointer? rtl)))))
+	  ((rtl:constant-expression? expression)
+	   (let loop ((next (rinst-next next)))
+	     (if (rinst-dead-register? next register)
+		 next
+		 (loop (rinst-next next)))))
+	  (else false))))
 
 (define (expression-clobbers-stack-pointer? rtl)
   (or (and (rtl:assign? rtl)
 	   (rtl:register? (rtl:assign-address rtl))
 	   (interpreter-stack-pointer? (rtl:assign-address rtl)))
-      ;; This should also test for all invocations, and
-      ;; pop-return as well, but those never have a next
-      ;; instruction.
-      (memq (rtl:expression-type rtl)
-	    '(INVOCATION-PREFIX:MOVE-FRAME-UP
-	      INVOCATION-PREFIX:DYNAMIC-LINK))
+      (rtl:invocation? rtl)
+      (rtl:invocation-prefix? rtl)
       (let loop ((expression rtl))
 	(rtl:any-subexpression? expression
 	  (lambda (expression)
@@ -161,5 +138,3 @@ MIT in each case. |#
 		    (rtl:post-increment-register expression)))
 		  (else
 		   (loop expression))))))))
-
-)
