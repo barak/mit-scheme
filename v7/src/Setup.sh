@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.5 2000/12/08 18:04:12 cph Exp $
+# $Id: Setup.sh,v 1.6 2000/12/08 18:24:09 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -38,7 +38,8 @@ maybe_link lib/utabmd.bin ../microcode/utabmd.bin
 # lib/edwin
 maybe_mkdir lib/edwin
 maybe_mkdir lib/edwin/etc
-maybe_mkdir lib/edwin/info
+maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
+maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
 
 SUBDIRS=""

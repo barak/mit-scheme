@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.3 2000/12/08 18:15:46 cph Exp $
+# $Id: Clean.sh,v 1.4 2000/12/08 18:20:24 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -29,16 +29,23 @@ fi
 COMMAND=$1
 shift
 
+FULL=no
+DIST=no
+MAINTAINER=no
 case "${COMMAND}" in
 mostlyclean)
     ;;
-clean | distclean)
-    echo "rm -f lib/*.com"
-    rm -f lib/*.com
+clean)
+    FULL=yes
+    ;;
+distclean)
+    FULL=yes
+    DIST=yes
     ;;
 maintainer-clean)
-    echo "rm -rf lib"
-    rm -rf lib
+    FULL=yes
+    DIST=yes
+    MAINTAINER=yes
     ;;
 *)
     echo "$0: Unknown command ${COMMAND}"
@@ -46,12 +53,20 @@ maintainer-clean)
     ;;
 esac
 
-case "${COMMAND}" in
-distclean | maintainer-clean)
+if [ ${FULL} = yes ]; then
+    echo "rm -f lib/*.com"
+    rm -f lib/*.com
+fi
+
+if [ ${DIST} = yes ]; then
     echo "rm -f Makefile config.cache config.log config.status"
     rm -f Makefile config.cache config.log config.status
-    ;;
-esac
+fi
+
+if [ ${MAINTAINER} = yes ]; then
+    echo "rm -rf configure lib"
+    rm -rf configure lib
+fi
 
 for SUBDIR; do
     if test -x ${SUBDIR}/Clean.sh; then
