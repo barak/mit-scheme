@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.5 1993/10/08 11:03:16 cph Exp $
+$Id: hashtb.scm,v 1.6 1993/10/08 23:06:41 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -106,6 +106,8 @@ MIT in each case. |#
 			      default-rehash-threshold
 			      default-rehash-size)))
 	(clear-table! table)
+	(if (address-hash? key-hash)
+	    (set! address-hash-tables (weak-cons table address-hash-tables)))
 	table))))
 
 (define-integrable (guarantee-hash-table object procedure)
@@ -491,11 +493,11 @@ MIT in each case. |#
 			     (- size (+ rehash-size rehash-size))
 			     (/ size (* rehash-size rehash-size))))))))
 
-;;;; EQ?-Hash Tables
+;;;; Address-Hash Tables
 
-;;; EQ?-hash tables compute their hash number from the address of the
-;;; key.  Because the address is changed by the garbage collector, it
-;;; is necessary to rehash the table after a garbage collection.
+;;; Address-hash tables compute their hash number from the address of
+;;; the key.  Because the address is changed by the garbage collector,
+;;; it is necessary to rehash the table after a garbage collection.
 
 ;;; Rehashing the table during the garbage collection is undesirable
 ;;; for these reasons:
@@ -539,33 +541,63 @@ MIT in each case. |#
 ;;; rehashes the table again if necessary.
 
 (define (compute-key-hash table key)
-  (if (eq? eq-hash (table-key-hash table))
-      (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
-	(let loop ()
-	  (if (table-needs-rehash? table)
-	      (begin
-		(rehash-eq-hash-table! table)
-		(if (< (table-count table) (table-shrink-size table))
-		    (begin
-		      (set-interrupt-enables! interrupt-mask/gc-ok)
-		      (shrink-table! table)
-		      (set-interrupt-enables! interrupt-mask/none)
-		      (loop))
-		    (set-table-needs-rehash?! table #f)))))
-	(let ((hash (eq-hash key (vector-length (table-buckets table)))))
-	  (set-interrupt-enables! interrupt-mask)
-	  hash))
-      ((table-key-hash table) key (vector-length (table-buckets table)))))
+  (let ((key-hash (table-key-hash table)))
+    (if (address-hash? key-hash)
+	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/none)))
+	  (let loop ()
+	    (if (table-needs-rehash? table)
+		(begin
+		  (rehash-address-hash-table! table)
+		  (if (< (table-count table) (table-shrink-size table))
+		      (begin
+			(set-interrupt-enables! interrupt-mask/gc-ok)
+			(shrink-table! table)
+			(set-interrupt-enables! interrupt-mask/none)
+			(loop))
+		      (set-table-needs-rehash?! table #f)))))
+	  (let ((hash (key-hash key (vector-length (table-buckets table)))))
+	    (set-interrupt-enables! interrupt-mask)
+	    hash))
+	(key-hash key (vector-length (table-buckets table))))))
 
-(define (make-eq-hash-table #!optional initial-size)
-  (let ((table
-	 (%make-eq-hash-table (and (not (default-object? initial-size))
-				   initial-size))))
-    (set! eq-hash-tables (weak-cons table eq-hash-tables))
-    table))
+(define-integrable (address-hash? key-hash)
+  (or (eq? eq-hash key-hash)
+      (eq? eqv-hash key-hash)))
 
-(define (rehash-eq-hash-table! table)
-  (let ((buckets (table-buckets table)))
+(define (eq-hash key modulus)
+  (fix:remainder (let ((n
+			((ucode-primitive primitive-object-set-type)
+			 (ucode-type fixnum)
+			 key)))
+		   (if (fix:< n 0)
+		       (fix:not n)
+		       n))
+		 modulus))
+
+(define (eqv-hash key modulus)
+  (cond ((object-type? (ucode-type big-fixnum) key)
+	 (modulo key modulus))
+	((object-type? (ucode-type ratnum) key)
+	 (modulo (+ (numerator key) (denominator key)) modulus))
+	((object-type? (ucode-type big-flonum) key)
+	 (modulo (+ (inexact->exact (numerator key))
+		    (inexact->exact (denominator key)))
+		 modulus))
+	((object-type? (ucode-type recnum) key)
+	 (modulo (let ((r (real-part key))
+		       (i (imag-part key)))
+		   (+ (inexact->exact (numerator r))
+		      (inexact->exact (denominator r))
+		      (inexact->exact (numerator i))
+		      (inexact->exact (denominator i))))
+		 modulus))
+	(else
+	 (eq-hash key modulus))))
+
+(define (rehash-address-hash-table! table)
+  (let ((buckets (table-buckets table))
+	(key-hash (table-key-hash table))
+	(entry-key (table-entry-key table)))
     (let ((n-buckets (vector-length buckets)))
       (let loop
 	  ((entries
@@ -584,26 +616,15 @@ MIT in each case. |#
 	      entries)))
 	(if (not (null? entries))
 	    (let ((rest (cdr entries)))
-	      (if (system-pair-car (car entries))
-		  (let ((hash
-			 (eq-hash (system-pair-car (car entries)) n-buckets)))
+	      (if (entry-key (car entries))
+		  (let ((hash (key-hash (entry-key (car entries)) n-buckets)))
 		    (set-cdr! entries (vector-ref buckets hash))
 		    (vector-set! buckets hash entries))
 		  (set-table-count! table (fix:- (table-count table) 1)))
 	      (loop rest)))))))
 
-(define-integrable (eq-hash key modulus)
-  (fix:remainder (let ((n
-			((ucode-primitive primitive-object-set-type)
-			 (ucode-type fixnum)
-			 key)))
-		   (if (fix:< n 0)
-		       (fix:not n)
-		       n))
-		 modulus))
-
-(define (mark-eq-hash-tables!)
-  (let loop ((previous #f) (tables eq-hash-tables))
+(define (mark-address-hash-tables!)
+  (let loop ((previous #f) (tables address-hash-tables))
     (cond ((null? tables)
 	   unspecific)
 	  ((system-pair-car tables)
@@ -612,23 +633,20 @@ MIT in each case. |#
 	  (else
 	   (if previous
 	       (set-cdr! previous (system-pair-cdr tables))
-	       (set! eq-hash-tables (system-pair-cdr tables)))
+	       (set! address-hash-tables (system-pair-cdr tables)))
 	   (loop previous (system-pair-cdr tables))))))
 
 ;;;; Initialization
 
-;; Define old names for compatibility:
-(define hash-table/entry-value hash-table/entry-datum)
-(define hash-table/set-entry-value! hash-table/set-entry-datum!)
-(define make-object-hash-table make-eq-hash-table)
-(define make-symbol-hash-table make-eq-hash-table)
-
-(define %make-eq-hash-table)
-(define eq-hash-tables)
+(define make-eq-hash-table)
+(define make-eqv-hash-table)
+(define address-hash-tables)
 (define make-string-hash-table)
 
 (define (initialize-package!)
-  (set! %make-eq-hash-table
+  (set! address-hash-tables '())
+  (add-primitive-gc-daemon! mark-address-hash-tables!)
+  (set! make-eq-hash-table
 	(hash-table/constructor eq-hash
 				eq?
 				weak-cons
@@ -636,8 +654,14 @@ MIT in each case. |#
 				weak-car
 				weak-cdr
 				weak-set-cdr!))
-  (set! eq-hash-tables '())
-  (add-primitive-gc-daemon! mark-eq-hash-tables!)
+  (set! make-eqv-hash-table
+	(hash-table/constructor eqv-hash
+				eqv?
+				weak-cons
+				weak-pair/car?
+				weak-car
+				weak-cdr
+				weak-set-cdr!))
   (set! make-string-hash-table
 	(hash-table/constructor string-hash-mod
 				string=?
@@ -647,3 +671,9 @@ MIT in each case. |#
 				cdr
 				set-cdr!))
   unspecific)
+
+;; Define old names for compatibility:
+(define hash-table/entry-value hash-table/entry-datum)
+(define hash-table/set-entry-value! hash-table/set-entry-datum!)
+(define make-object-hash-table make-eqv-hash-table)
+(define make-symbol-hash-table make-eq-hash-table)
