@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.43 1987/03/17 18:50:41 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.44 1987/06/15 18:09:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -240,8 +240,15 @@
   (set! end-index (file-fill-input-buffer file-channel buffer))
   (zero? end-index))
 
+(declare (integrate buffer-ready?))
+
+(define (buffer-ready?)
+  (and (not (zero? end-index))
+       (not (refill-buffer!))))
+
 (define (:char-ready? delay)
-  (not (zero? end-index)))
+  (or (< start-index end-index)
+      (buffer-ready?)))
 
 (define (:close)
   (set! end-index 0)
@@ -251,8 +258,7 @@
 (define (:peek-char)
   (if (< start-index end-index)
       (string-ref buffer start-index)
-      (and (not (zero? end-index))
-	   (not (refill-buffer!))
+      (and (buffer-ready?)
 	   (string-ref buffer 0))))
 
 (define (:discard-char)
@@ -261,8 +267,7 @@
 (define (:read-char)
   (if (< start-index end-index)
       (string-ref buffer (set! start-index (1+ start-index)))
-      (and (not (zero? end-index))
-	   (not (refill-buffer!))
+      (and (buffer-ready?)
 	   (begin (set! start-index 1)
 		  (string-ref buffer 0)))))
 
@@ -286,8 +291,7 @@
 					   result head-length)
 		    result)))))))
   (and (or (< start-index end-index)
-	   (and (not (zero? end-index))
-		(not (refill-buffer!))))
+	   (buffer-ready?))
        (loop)))
 
 (define (:discard-chars delimiters)
@@ -298,8 +302,7 @@
       (cond (index (set! start-index index))
 	    ((not (refill-buffer!)) (loop)))))
   (if (or (< start-index end-index)
-	  (and (not (zero? end-index))
-	       (not (refill-buffer!))))
+	  (buffer-ready?))
       (loop)))
 
 (define (:rest->string)
