@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.4 1988/03/31 21:35:23 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.5 1988/04/22 16:39:45 markf Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -366,6 +366,66 @@ MIT in each case. |#
       (filter/nonnegative-integer (cadr operands)
 	(lambda (index)
 	  (return-2 (open-code/memory-assignment (1+ index)) '(0 2)))))))
+
+(let ((define-fixnum-2-args
+	(lambda (fixnum-operator)
+	  (define-open-coder/value fixnum-operator
+	    (lambda (operands)
+	      (return-2
+	       (lambda (expressions finish)
+		 (finish (rtl:make-fixnum-2-args
+			  fixnum-operator
+			  (rtl:make-object->fixnum (car expressions))
+			  (rtl:make-object->fixnum (cadr expressions)))))
+	       '(0 1)))))))
+  (for-each
+   define-fixnum-2-args
+    '(PLUS-FIXNUM MINUS-FIXNUM MULTIPLY-FIXNUM
+      ;; DIVIDE-FIXNUM GCD-FIXNUM
+     )))
+
+(let ((define-fixnum-1-arg
+	(lambda (fixnum-operator)
+	  (define-open-coder/value fixnum-operator
+	    (lambda (operand)
+	      (return-2
+	       (lambda (expressions finish)
+		 (finish (rtl:make-fixnum-1-arg
+			  fixnum-operator
+			  (rtl:make-object->fixnum (car expressions)))))
+	       '(0)))))))
+  (for-each
+   define-fixnum-1-arg
+    '(ONE-PLUS-FIXNUM MINUS-ONE-PLUS-FIXNUM)))
+
+(let ((define-fixnum-pred-2-args
+	(lambda (fixnum-pred)
+	  (define-open-coder/predicate fixnum-pred
+	    (lambda (operands)
+	      (return-2
+	       (lambda (expressions finish)
+		 (finish (rtl:make-fixnum-pred-2-args
+			  fixnum-pred
+			  (rtl:make-object->fixnum (car expressions))
+			  (rtl:make-object->fixnum (cadr expressions)))))
+	       '(0 1)))))))
+  (for-each
+   define-fixnum-pred-2-args
+   '(EQUAL-FIXNUM? LESS-THAN-FIXNUM? GREATER-THAN-FIXNUM?)))
+
+(let ((define-fixnum-pred-1-arg
+	(lambda (fixnum-pred)
+	  (define-open-coder/predicate fixnum-pred
+	    (lambda (operand)
+	      (return-2
+	       (lambda (expressions finish)
+		 (finish (rtl:make-fixnum-pred-1-arg
+			  fixnum-pred
+			  (rtl:make-object->fixnum (car expressions)))))
+	       '(0)))))))
+  (for-each
+   define-fixnum-pred-1-arg
+   '(ZERO-FIXNUM? POSITIVE-FIXNUM? NEGATIVE-FIXNUM?)))
 
 ;;; end COMBINATION/INLINE
 )
