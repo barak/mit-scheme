@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.2 1994/03/08 20:59:07 cph Exp $
+;;;	$Id: vc.scm,v 1.3 1994/03/08 21:24:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -488,6 +488,16 @@ Headers are inserted at the start of the buffer."
     (vc-backend-print-log (buffer-vc-master (current-buffer)))
     (pop-up-vc-command-buffer #f)))
 
+(define-command vc-list-locked-files
+  "List the current directory's locked files in a window.
+Normally lists only those files locked by the user;
+prefix arg says to list all locked files regardless."
+  "P"
+  (lambda (all-lockers?)
+    (vc-backend-list-locked-files (buffer-vc-master (current-buffer))
+				  all-lockers?)
+    (pop-up-vc-command-buffer #f)))
+
 (define-command vc-revert-buffer
   "Revert the current buffer's file back to the latest checked-in version.
 This asks for confirmation if the buffer contents are not identical
@@ -669,6 +679,9 @@ the value of vc-log-mode-hook."
 
 (define (vc-backend-print-log master)
   (vc-call 'PRINT-LOG master))
+      
+(define (vc-backend-list-locked-files master all-lockers?)
+  (vc-call 'LIST-LOCKED-FILES master all-lockers?))
 
 (define (vc-backend-default-version master)
   (vc-call 'DEFAULT-VERSION master))
@@ -823,7 +836,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.2 1994/03/08 20:59:07 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.3 1994/03/08 21:24:44 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -914,15 +927,11 @@ the value of vc-log-mode-hook."
 	    ;; but the working file.
 	    (begin
 	      (delete-file-no-errors workfile)
-	      (vc-run-command master 0 "/bin/sh" "-c"
-			      (reduce string-append-separated
-				      ""
-				      (vc-command-arguments
-				       (list "co"
-					     (rcs-rev-switch "-p" revision)
-					     (vc-workfile-pathname master)
-					     ">"
-					     workfile))))
+	      (vc-run-shell-command master 0 "co"
+				    (rcs-rev-switch "-p" revision)
+				    (vc-workfile-pathname master)
+				    ">"
+				    workfile)
 	      (set-file-modes! workfile (if lock? #o644 #o444)))
 	    (vc-run-command master 0 "co"
 			    (rcs-rev-switch (if lock? "-l" "-r") revision)
@@ -946,7 +955,7 @@ the value of vc-log-mode-hook."
 			(rcs-rev-switch "-r" revision)
 			(string-append "-m" comment)
 			(vc-workfile-pathname master))))))
-
+
 (define-vc-type-operation 'STEAL vc-type:rcs
   (lambda (master revision)
     (with-vc-command-message master "Stealing lock on"
@@ -956,7 +965,7 @@ the value of vc-log-mode-hook."
 			(rcs-rev-switch "-u" revision)
 			(rcs-rev-switch "-l" revision)
 			(vc-workfile-pathname master))))))
-
+
 (define-vc-type-operation 'LOGENTRY-CHECK vc-type:rcs
   (lambda (master log-buffer)
     master log-buffer
@@ -974,6 +983,16 @@ the value of vc-log-mode-hook."
 (define-vc-type-operation 'PRINT-LOG vc-type:rcs
   (lambda (master)
     (vc-run-command master 0 "rlog" (vc-workfile-pathname master))))
+
+(define-vc-type-operation 'LIST-LOCKED-FILES vc-type:rcs
+  (lambda (master all-lockers?)
+    (vc-run-shell-command master 0 "rlog"
+			  "-L -R"
+			  (and (not all-lockers?)
+			       (string-append "-l" (unix/current-user-name)))
+			  (merge-pathnames
+			   "*,v"
+			   (directory-pathname (vc-master-pathname master))))))
 
 (define-vc-type-operation 'DEFAULT-VERSION vc-type:rcs
   (lambda (master)
@@ -1058,6 +1077,12 @@ the value of vc-log-mode-hook."
 		      ((list? argument) (vc-command-arguments argument))
 		      (else (error "Ill-formed command argument:" argument))))
 	      arguments))
+
+(define (vc-run-shell-command master status-limit command . arguments)
+  (vc-run-command master 0 "/bin/sh" "-c"
+		  (reduce string-append-separated
+			  ""
+			  (vc-command-arguments (cons command arguments)))))
 
 (define (pop-up-vc-command-buffer select?)
   (let ((command-buffer (get-vc-command-buffer)))
