@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typerew.scm,v 1.6 1995/09/11 14:26:45 adams Exp $
+$Id: typerew.scm,v 1.7 1995/11/01 16:27:21 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -1241,17 +1241,21 @@ MIT in each case. |#
   type:number           type:number           type:number           #F)
 
 (let ((type:inexact+0    (type:or type:inexact-number type:exact-zero)))
-  (define-typerew-binary-variants-type-method (make-primitive-procedure '&*)
-    effect:none
-    type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0  fix:*
-    type:flonum           type:flonum           type:flonum           flo:*
-    type:exact-integer    type:exact-integer    type:exact-integer    #F
-    type:exact-number     type:exact-number     type:exact-number     #F
-    ;; Note that (* <inexact> 0) = 0
-    type:inexact-number   type:inexact-number   type:inexact-number   %*
-    type:inexact-number   type:number           type:inexact+0        %*
-    type:number           type:inexact-number   type:inexact+0        %*
-    type:number           type:number           type:number           #F))
+  (define (generic-multiply op outl)
+    (define-typerew-binary-variants-type-method op
+      effect:none
+      type:unsigned-byte    type:unsigned-byte    type:small-fixnum>=0  fix:*
+      type:flonum           type:flonum           type:flonum           flo:*
+      type:exact-integer    type:exact-integer    type:exact-integer    #F
+      type:exact-number     type:exact-number     type:exact-number     #F
+      ;; Note that (* <inexact> 0) = 0
+      type:inexact-number   type:inexact-number   type:inexact-number   outl
+      type:inexact-number   type:number           type:inexact+0        outl
+      type:number           type:inexact-number   type:inexact+0        outl
+      type:number           type:number           type:number           #F))
+
+  (method (make-primitive-procedure '&*) %*)
+  (method %* #F))
 
 (define-typerew-binary-variants-type-method (make-primitive-procedure '&/)
   effect:none
