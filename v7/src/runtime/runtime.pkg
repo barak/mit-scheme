@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.145 1992/04/11 23:48:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.146 1992/04/13 18:24:27 hal Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -2071,6 +2071,8 @@ MIT in each case. |#
 	  x-colormap/store-color
 	  x-colormap/store-colors
 	  x-colormap?
+	  x-display/name
+	  x-display/properties
 	  x-font-structure/all-chars-exist?
 	  x-font-structure/character-bounds
 	  x-font-structure/default-char
@@ -2090,6 +2092,7 @@ MIT in each case. |#
 	  x-graphics/coordinate-limits
 	  x-graphics/copy-area
 	  x-graphics/device-coordinate-limits
+	  x-graphics/display
 	  x-graphics/drag-cursor
 	  x-graphics/draw-line
 	  x-graphics/draw-point

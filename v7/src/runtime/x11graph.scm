@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.18 1992/04/01 19:14:09 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.19 1992/04/13 18:24:21 hal Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -258,7 +258,8 @@ MIT in each case. |#
 			(unparse-object state (x-display/name display))))))
   (name false read-only true)
   xd
-  (window-list (make-protection-list) read-only true))
+  (window-list (make-protection-list) read-only true)
+  (properties (make-1d-table) read-only true))
 
 (define (x-graphics/open-display name)
   (let ((name
@@ -386,6 +387,9 @@ MIT in each case. |#
 
 (define-integrable (x-graphics-device/xw device)
   (x-window/xw (graphics-device/descriptor device)))
+
+(define (x-graphics/display device)
+  (x-window/display (graphics-device/descriptor device)))
 
 (define-integrable (x-graphics-device/xd device)
   (x-display/xd (x-window/display (graphics-device/descriptor device))))
