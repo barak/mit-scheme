@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.4 1994/10/26 18:36:24 adams Exp $
+$Id: win32.pkg,v 1.5 1994/10/26 18:42:53 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. |#
 
 ;;;; WIN32 Packaging
 
-(global-definitions "../runtime/runtim")
+(global-definitions "../runtime/runtime")
 
 ;(define-package (win32)
 ;  (parent ())
