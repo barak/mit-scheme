@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.15 1992/03/30 21:11:54 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/i386.h,v 1.16 1992/04/14 18:40:13 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -411,10 +411,10 @@ long i386_pc_displacement_relocation = 0;
 void
 DEFUN_VOID (i386_reset_hook)
 {
-  extern unsigned short interface_initialize ();
+  extern int interface_initialize ();
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * esi_value = ((unsigned char *) (&Registers[0]));
-  unsigned short code_segment = (interface_initialize ());
+  int fp_support_present = (i386_interface_initialize ());
 
   /* These must match machines/i386/lapgen.scm */
 
@@ -428,12 +428,12 @@ DEFUN_VOID (i386_reset_hook)
     Microcode_Termination (TERM_EXIT);
   }
   SETUP_REGISTER (asm_trampoline_to_interface);		/* 2 */
-
+
   SETUP_REGISTER (asm_interrupt_procedure);		/* 3 */
   SETUP_REGISTER (asm_interrupt_continuation);		/* 4 */
   SETUP_REGISTER (asm_interrupt_closure);		/* 5 */
   SETUP_REGISTER (asm_interrupt_dlink);			/* 6 */
-
+
   SETUP_REGISTER (asm_primitive_apply);			/* 7 */
   SETUP_REGISTER (asm_primitive_lexpr_apply);		/* 8 */
   SETUP_REGISTER (asm_assignment_trap);			/* 9 */
@@ -453,21 +453,42 @@ DEFUN_VOID (i386_reset_hook)
 
   offset    = -128;
 
-  SETUP_REGISTER (asm_generic_add);			/* -32 */
-  SETUP_REGISTER (asm_generic_subtract);		/* -31 */
-  SETUP_REGISTER (asm_generic_multiply);		/* -30 */
-  SETUP_REGISTER (asm_generic_divide);			/* -29 */
-  SETUP_REGISTER (asm_generic_equal);			/* -28 */
-  SETUP_REGISTER (asm_generic_less);			/* -27 */
-  SETUP_REGISTER (asm_generic_greater);			/* -26 */
-  SETUP_REGISTER (asm_generic_increment);		/* -25 */
-  SETUP_REGISTER (asm_generic_decrement);		/* -24 */
-  SETUP_REGISTER (asm_generic_zero);			/* -23 */
-  SETUP_REGISTER (asm_generic_positive);		/* -22 */
-  SETUP_REGISTER (asm_generic_negative);		/* -21 */
-  SETUP_REGISTER (asm_generic_quotient);		/* -20 */
-  SETUP_REGISTER (asm_generic_remainder);		/* -19 */
-  SETUP_REGISTER (asm_generic_modulo);			/* -18 */
+  if (fp_support_present != 0)
+  {
+    SETUP_REGISTER (asm_generic_add);			/* -32 */
+    SETUP_REGISTER (asm_generic_subtract);		/* -31 */
+    SETUP_REGISTER (asm_generic_multiply);		/* -30 */
+    SETUP_REGISTER (asm_generic_divide);		/* -29 */
+    SETUP_REGISTER (asm_generic_equal);			/* -28 */
+    SETUP_REGISTER (asm_generic_less);			/* -27 */
+    SETUP_REGISTER (asm_generic_greater);		/* -26 */
+    SETUP_REGISTER (asm_generic_increment);		/* -25 */
+    SETUP_REGISTER (asm_generic_decrement);		/* -24 */
+    SETUP_REGISTER (asm_generic_zero);			/* -23 */
+    SETUP_REGISTER (asm_generic_positive);		/* -22 */
+    SETUP_REGISTER (asm_generic_negative);		/* -21 */
+    SETUP_REGISTER (asm_generic_quotient);		/* -20 */
+    SETUP_REGISTER (asm_generic_remainder);		/* -19 */
+    SETUP_REGISTER (asm_generic_modulo);		/* -18 */
+  }
+  else
+  {
+    SETUP_REGISTER (asm_nofp_add);			/* -32 */
+    SETUP_REGISTER (asm_nofp_subtract);			/* -31 */
+    SETUP_REGISTER (asm_nofp_multiply);			/* -30 */
+    SETUP_REGISTER (asm_nofp_divide);			/* -29 */
+    SETUP_REGISTER (asm_nofp_equal);			/* -28 */
+    SETUP_REGISTER (asm_nofp_less);			/* -27 */
+    SETUP_REGISTER (asm_nofp_greater);			/* -26 */
+    SETUP_REGISTER (asm_nofp_increment);		/* -25 */
+    SETUP_REGISTER (asm_nofp_decrement);		/* -24 */
+    SETUP_REGISTER (asm_nofp_zero);			/* -23 */
+    SETUP_REGISTER (asm_nofp_positive);			/* -22 */
+    SETUP_REGISTER (asm_nofp_negative);			/* -21 */
+    SETUP_REGISTER (asm_nofp_quotient);			/* -20 */
+    SETUP_REGISTER (asm_nofp_remainder);		/* -19 */
+    SETUP_REGISTER (asm_nofp_modulo);			/* -18 */
+  }
 
   SETUP_REGISTER (asm_sc_apply);			/* -17 */
   SETUP_REGISTER (asm_sc_apply_size_1);			/* -16 */
