@@ -1,7 +1,7 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.27 1990/08/05 05:42:43 jinx Exp $
-$MC68020-Header: rules3.scm,v 4.24 90/05/03 15:17:33 GMT jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.28 1990/08/22 02:03:18 jinx Rel $
+$MC68020-Header: rules3.scm,v 4.26 90/08/21 02:23:26 GMT jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -326,35 +326,49 @@ MIT in each case. |#
 (define internal-entry-code-word
   (make-code-word #xff #xfe))
 
+(define internal-continuation-code-word
+  (make-code-word #xff #xfc))
+
 (define (continuation-code-word label)
-  (let ((offset
-	 (if label
-	     (rtl-continuation/next-continuation-offset (label->object label))
-	     0)))
-    (cond ((not offset)
-	   (make-code-word #xff #xfc))
-	  ((< offset #x2000)
-	   ;; This uses up through (#xff #xdf).
-	   (let ((qr (integer-divide offset #x80)))
-	     (make-code-word (+ #x80 (integer-divide-remainder qr))
-			     (+ #x80 (integer-divide-quotient qr)))))
-	  (else
-	   (error "Unable to encode continuation offset" offset)))))
+  (frame-size->code-word
+   (if label
+       (rtl-continuation/next-continuation-offset (label->object label))
+       0)
+   internal-continuation-code-word))
+
+(define (internal-procedure-code-word rtl-proc)
+  ;; represented as return addresses so the debugger will
+  ;; not barf when it sees them (on the stack if interrupted).
+  (frame-size->code-word
+   (rtl-procedure/next-continuation-offset rtl-proc)
+   internal-entry-code-word))
+
+(define (frame-size->code-word offset default)
+  (cond ((not offset)
+	 default)
+	((< offset #x2000)
+	 ;; This uses up through (#xff #xdf).
+	 (let ((qr (integer-divide offset #x80)))
+	   (make-code-word (+ #x80 (integer-divide-remainder qr))
+			   (+ #x80 (integer-divide-quotient qr)))))
+	(else
+	 (error "Unable to encode continuation offset" offset))))
 
 ;;;; Procedure headers
 
 ;;; The following calls MUST appear as the first thing at the entry
 ;;; point of a procedure.  They assume that the register map is clear
 ;;; and that no register contains anything of value.
-
-;;; **** The only reason that this is true is that no register is live
+;;;
+;;; The only reason that this is true is that no register is live
 ;;; across calls.  If that were not true, then we would have to save
 ;;; any such registers on the stack so that they would be GC'ed
 ;;; appropriately.
 ;;;
-;;; **** This is not strictly true: the dynamic link register may
-;;; contain a valid dynamic link, but the gc handler determines that
-;;; and saves it as appropriate.
+;;; The only exception is the dynamic link register, handled
+;;; specially.  Procedures that require a dynamic link use a different
+;;; interrupt handler that saves and restores the dynamic link
+;;; register.
 
 (define (simple-procedure-header code-word label code)
   (let ((gc-label (generate-label)))    
@@ -405,7 +419,7 @@ MIT in each case. |#
 		(lambda (code-word label)
 		  (simple-procedure-header code-word label
 					   code:compiler-interrupt-procedure)))
-	    internal-entry-code-word
+	    (internal-procedure-code-word rtl-proc)
 	    internal-label))))
 
 (define-rule statement
@@ -428,12 +442,14 @@ MIT in each case. |#
   (if (zero? nentries)
       (error "Closure header for closure with no entries!"
 	     internal-label))
-  (let ((procedure (label->object internal-label)))
+  (let ((rtl-proc (label->object internal-label)))
     (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label procedure)))
+	  (external-label (rtl-procedure/external-label rtl-proc)))
       (LAP (LABEL ,gc-label)
 	   ,@(invoke-interface code:compiler-interrupt-closure)
-	   ,@(make-external-label internal-entry-code-word external-label)
+	   ,@(make-external-label
+	      (internal-procedure-code-word rtl-proc)
+	      external-label)
 	   ;; This code must match the code and count in microcode/cmpint2.h
 	   (DEP () 0 31 2 ,regnum:ble-return)
 	   ,@(address->entry regnum:ble-return)
