@@ -7,8 +7,9 @@
 @settitle MIT Scheme User's Manual
 @c %**end of header
 @setchapternewpage odd
-@synindex vr fn
-
+@syncodeindex vr cp
+@syncodeindex fn cp
+@syncodeindex ky cp
 
 @ifinfo
 This file documents the use of MIT Scheme.
@@ -4866,15 +4867,7 @@ calling convention.
 
 @c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 
-@node Variable Index, Key Index, Win32 Package Reference, Top
-@unnumbered Variable, Declaration, and Option Index
-@printindex fn
-
-@node Key Index, Concept Index, Variable Index, Top
-@unnumbered Key Index
-@printindex ky
-
-@node Concept Index,  , Key Index, Top
+@node Concept Index,  , Win32 Package Reference, Top
 @unnumbered Concept Index
 @printindex cp
 
