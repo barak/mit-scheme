@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.18 1995/09/05 19:01:45 adams Exp $
+$Id: midend.scm,v 1.19 1995/09/05 21:45:17 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -246,9 +246,9 @@ Example:
 	     simplify/top-level/4	; as above
 	     cleanup/top-level/5	; as above
 
-	     widen/top-level
-	     simplify/top-level/5	; as above
-	     cleanup/top-level/6	; as above
+	     ;;widen/top-level
+	     ;;simplify/top-level/5	; as above
+	     ;;cleanup/top-level/6	; as above
 
 	     cpsconv/top-level/1	; cps conversion, sequencing of
 					;  parallel expressions
