@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.46 1993/09/11 21:28:33 gjr Exp $
+$Id: hppa.h,v 1.47 1993/11/11 06:01:54 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -329,29 +329,31 @@ DEFUN (push_d_cache_region, (start_address, block_size),
 static void
 DEFUN_VOID (flush_i_cache_initialize)
 {
+  extern char * EXFUN (getenv, (const char *));
   CONST char * models_filename =
     (search_path_for_file (0, MODELS_FILENAME, 1, 1));
   char * model;
+
+  model = (getenv ("MITSCHEME_HPPA_MODEL"));
+
 #ifdef _HPUX
-  struct utsname sysinfo;
-  if ((uname (&sysinfo)) < 0)
+  if (model == ((char *) NULL))
+  {
+    struct utsname sysinfo;
+    if ((uname (&sysinfo)) < 0)
     {
-      outf_fatal ("\nflush_i_cache_initialize: uname failed.\n");
+      outf_fatal ("\nflush_i_cache: uname failed.\n");
       goto loser;
     }
-  model = &sysinfo.machine[0];
-#else /* not _HPUX */
-  /* Presumably BSD */
-  extern char * EXFUN (getenv, (char *));
-  
-  model = (getenv ("HPPAmodel"));
+    model = &sysinfo.machine[0];
+  }
+#endif /* _HPUX */
   if (model == ((char *) NULL))
   {
     outf_fatal
-      ("\nflush_i_cache_initialize: HPPAmodel not set in environment.\n");
+      ("\nflush_i_cache: MITSCHEME_HPPA_MODEL not set in environment.\n");
     goto loser;
   }
-#endif /* _HPUX */
   {
     int fd = (open (models_filename, O_RDONLY));
     if (fd < 0)
