@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.10 1995/06/22 15:20:40 adams Exp $
+$Id: compat.scm,v 1.11 1995/08/06 19:55:45 adams Exp $
 
-Copyright (c) 1994 Massachusetts Institute of Technology
+Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,12 +33,13 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Compatibility package
-;;   Decides which parameters are passed on the stack. Primitives get all
-;;   their parameters on the stack in an interpreter-like stack-frame.
-;;   Procedures get some arguments in registers and the rest on the
-;;   stack, with earlier arguments deeper to facilitate lexprs.
-;;   The number of parameters passed in registers is determined by the
-;;   back-end (*rtlgen/arguments-registers*)
+;;
+;;  Decides which parameters are passed on the stack. Primitives get all
+;;  their parameters on the stack in an interpreter-like stack-frame.
+;;  Procedures get some arguments in registers and the rest on the
+;;  stack, with earlier arguments deeper to facilitate lexprs.  The
+;;  number of parameters passed in registers is determined by the
+;;  back-end (*rtlgen/argument-registers*)
 
 
 ;;; package: (compiler midend)
@@ -104,9 +105,11 @@ MIT in each case. |#
   (let ((place (assq name env)))
     (if (not place)
 	`(LOOKUP ,name)
-	;; Important to copy value so that different debugging info
-	;; can be attached to each copy, since each variable reference
-	;; might have had different debugging info.
+	;; Important to copy value so that different debugging info can be
+        ;; attached to each copy, since each variable reference might
+        ;; have had different debugging info. Note: It is unlikely
+        ;; that a variable will have debuggig info this late phase
+        ;; sequence [SRA].
 	(form/copy (cadr place)))))
 
 (define-compatibility-rewrite LAMBDA (env lambda-list body)
@@ -209,17 +212,14 @@ MIT in each case. |#
 
 (define (compat/rewrite-lambda formals body formals-on-stack)
   (define (compat/new-env frame-variable old-frame-vector new-frame-vector)
-    ;; The new environment maps names to %stack-closure-refs and %vector-index
+    ;; The new environment maps names to %stack-closure-refs and layout
     ;; vectors to new, extended vectors
     (let ((alist  (map (lambda (name)
 			 (list name
 			       `(CALL (QUOTE ,%stack-closure-ref)
 				      (QUOTE #F)
 				      (LOOKUP ,frame-variable)
-				      (CALL (QUOTE ,%vector-index)
-					    (QUOTE #F)
-					    (QUOTE ,new-frame-vector)
-					    (QUOTE ,name))
+				      (QUOTE ,new-frame-vector)
 				      (QUOTE ,name))))
 		       formals-on-stack)))
       (if old-frame-vector
@@ -382,25 +382,44 @@ MIT in each case. |#
   (define-rewrite/compat %invoke-continuation    compat/standard-call-handler))
 
 
-(define-rewrite/compat %vector-index
+;;(define-rewrite/compat %vector-index
+;;  (lambda (env rator cont rands)
+;;    rator cont
+;;    ;; rands = ('<vector> '<name>)
+;;    ;; Copy, possibly replacing vector
+;;    `(CALL (QUOTE ,%vector-index)
+;;	   (QUOTE #F)
+;;	   ,(compat/expr env
+;;			 (let ((vector-arg  (first rands)))
+;;			   (if (QUOTE/? vector-arg)
+;;			       (cond ((assq (quote/text vector-arg) env)
+;;				      => (lambda (old.new)
+;;					   `(QUOTE ,(second old.new))))
+;;				     (else vector-arg))
+;;			       (internal-error
+;;				"Illegal (unquoted) %vector-index arguments"
+;;				rands))))
+;;	   ,(compat/expr env (second rands)))))
+		       
+(define-rewrite/compat %stack-closure-ref
   (lambda (env rator cont rands)
     rator cont
-    ;; rands = ('<vector> '<name>)
+    ;; rands = (<frame> '<vector> '<name>)
     ;; Copy, possibly replacing vector
-    `(CALL (QUOTE ,%vector-index)
+    `(CALL (QUOTE ,%stack-closure-ref)
 	   (QUOTE #F)
+	   ,(compat/expr env (first rands))
 	   ,(compat/expr env
-			 (let ((vector-arg  (first rands)))
+			 (let ((vector-arg  (second rands)))
 			   (if (QUOTE/? vector-arg)
 			       (cond ((assq (quote/text vector-arg) env)
 				      => (lambda (old.new)
 					   `(QUOTE ,(second old.new))))
 				     (else vector-arg))
 			       (internal-error
-				"Illegal (unquoted) %vector-index arguments"
+				"Illegal (unquoted) %stack-closure-ref vector"
 				rands))))
-	   ,(compat/expr env (second rands)))))
-		       
+	   ,(compat/expr env (third rands)))))
 
 (define-rewrite/compat %make-heap-closure
   ;; The lambda expression in a heap closure is special the closure
@@ -727,7 +746,7 @@ MIT in each case. |#
 			   (call ',%stack-closure-ref
 				 '#F
 				 (lookup frame)
-				 (call ',%vector-index '#F ',fv1 'save2)
+				 ',fv1
 				 'save2)
 			   (lookup val2)
 			   '1000)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.6 1995/04/01 16:50:43 adams Exp $
+$Id: decls.scm,v 1.7 1995/08/06 19:59:31 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -352,7 +352,7 @@ MIT in each case. |#
 			      "coerce"
 			      "dataflow" "dbgstr" "dbgred" "debug" "earlyrew"
 			      "envconv" "expand" "fakeprim" "graph"
-			      "indexify" "inlate" "lamlift" "laterew"
+			      "inlate" "lamlift" "laterew"
 			      "load" "midend" "rtlgen" "simplify"
 			      "split" "stackopt" "staticfy" "synutl"
 			      "triveval" "utils" "widen"
@@ -501,7 +501,7 @@ MIT in each case. |#
 	;;	      "closconv" "compat" "copier" "cpsconv"
 	;;	      "dataflow" "dbgstr" "debug" "earlyrew"
 	;;              "envconv" "expand"   "graph"
-	;;	      "indexify" "inlate" "lamlift" "laterew"
+        ;;	      "inlate" "lamlift" "laterew"
 	;;	      "load" "midend" "rtlgen" "simplify"
 	;;	      "split" "stackopt" "staticfy" "synutl"
 	;;	      "triveval" "widen")

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.18 1995/07/24 14:32:57 adams Exp $
+$Id: fakeprim.scm,v 1.19 1995/08/06 20:00:24 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -638,16 +638,17 @@ MIT in each case. |#
   (make-operator/simple* "#[multicell-set!]" '(UNSPECIFIC-RESULT)))
 (cookie-call %multicell-set! '#F cell value 'LAYOUT 'NAME)
 
-(define %vector-index
-  ;; (CALL ',%vector-index '#F 'VECTOR 'NAME)
-  ;; Note:
-  ;;   VECTOR is a vector of symbols, including NAME
-  ;;   Returns the index of NAME within the vector.
-  ;;   Introduced by closconv.scm and removed (constant folded) by
-  ;;     indexify.scm.  Used for referencing variables in closures and
-  ;;     stack frames.
-  (make-operator/simple "#[vector-index]"))
-(cookie-call %vector-index '#F 'VECTOR 'NAME)
+;; OBSOLETE
+;;(define %vector-index
+;;  ;; (CALL ',%vector-index '#F 'VECTOR 'NAME)
+;;  ;; Note:
+;;  ;;   VECTOR is a vector of symbols, including NAME
+;;  ;;   Returns the index of NAME within the vector.
+;;  ;;   Introduced by closconv.scm and removed (constant folded) by
+;;  ;;     indexify.scm.  Used for referencing variables in closures and
+;;  ;;     stack frames.
+;;  (make-operator/simple "#[vector-index]"))
+;;(cookie-call %vector-index '#F 'VECTOR 'NAME)
 
 ;; %heap-closure-ref, %stack-closure-ref, and %static-binding-ref are not
 ;; properly simple, but they can be considered such because %heap-closure-set!,

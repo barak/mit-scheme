@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackopt.scm,v 1.12 1995/08/04 19:45:23 adams Exp $
+$Id: stackopt.scm,v 1.13 1995/08/06 19:56:32 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -232,7 +232,7 @@ End of Big Note A |#
 	  `(CALL ',%stack-closure-ref
 		 '#F
 		 (LOOKUP ,var)
-		 (CALL ',%vector-index '#F ',frame-vector ',name)
+		 ',frame-vector
 		 ',name))
 	(cond ((and (not state) (eq? var *stackopt/lexical-stack-frame-name*))
 	       (good *stackopt/lexical-stack-frame-vector*))

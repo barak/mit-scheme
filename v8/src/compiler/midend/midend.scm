@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.13 1995/06/26 14:09:49 adams Exp $
+$Id: midend.scm,v 1.14 1995/08/06 19:58:53 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -263,7 +263,7 @@ Example:
 	     stackopt/top-level		; reformat stack closures to use
 					;  common formats (prefixes)
 	     ;; stackopt/optional-debugging-paranoia
-	     indexify/top-level		; rewrite %vector-index
+	     ;;indexify/top-level	; OBSOLETE rewrite %vector-index
 	     dbg-reduce/top-level	; final environment mappings
 	     ))
 

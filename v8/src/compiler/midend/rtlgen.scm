@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.32 1995/07/27 14:28:21 adams Exp $
+$Id: rtlgen.scm,v 1.33 1995/08/06 19:58:11 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -159,16 +159,11 @@ MIT in each case. |#
 	(object (rtlgen/descriptor/object desc)))
     (sample/1 '(rtlgen/procedures-by-kind histogram) kind)
     (case kind
-      ((CONTINUATION) 
-       (rtlgen/continuation label object))
-      ((PROCEDURE)
-       (rtlgen/procedure label object))
-      ((CLOSURE)
-       (rtlgen/closure label object))
-      ((TRIVIAL-CLOSURE)
-       (rtlgen/trivial-closure label object))
-      (else
-       (internal-error "Unknown object kind" desc)))))
+      ((CONTINUATION)    (rtlgen/continuation label object))
+      ((PROCEDURE)       (rtlgen/procedure label object))
+      ((CLOSURE)         (rtlgen/closure label object))
+      ((TRIVIAL-CLOSURE) (rtlgen/trivial-closure label object))
+      (else              (internal-error "Unknown object kind" desc)))))
 
 (define (rtlgen/enqueue! desc)
   (queue/enqueue! *rtlgen/object-queue* desc))
@@ -470,7 +465,7 @@ MIT in each case. |#
   (define (tail-call? form)
     (let ((cont (call/continuation form)))
       (or (LOOKUP/? cont)
-	  (form/match rtlgen/stack-overwrite-pattern cont))))
+	  (CALL/%stack-closure-ref? cont))))
 
   (let ((unconditional? true)
 	(tail-call  false)
@@ -555,29 +550,28 @@ MIT in each case. |#
 			 (arg-position 0))
 	      (cond ((or (null? rands) (>= arg-position max-index))
 		     (default env names))
-		    ((form/match rtlgen/stack-overwrite-pattern (car rands))
-		     => (lambda (result)
-			  (let ((name (cadr (assq rtlgen/?var-name result)))
-				(offset
-				 (- first-offset
-				    (cadr (assq rtlgen/?offset result)))))
-			    (if (or (memq name names)
-				    (memq arg-position register-arg-positions-used))
-				(target (cdr rands) env names (+ arg-position 1))
-				(let* ((home (rtlgen/argument-home arg-position))
-				       (reg (rtlgen/new-reg)))
-				  (rtlgen/emit!
-				   (list
-				    (rtlgen/read-stack-loc home offset)
-				    `(ASSIGN ,reg ,home)))
-				  (target (cdr rands)
-					  `(,(rtlgen/binding/make
-					      name
-					      reg
-					      (rtlgen/stack-offset offset))
-					    . ,env)
-					  (cons name names)
-					  (+ arg-position 1)))))))
+		    ((CALL/%stack-closure-ref? (car rands))
+		     (let ((name (quote/text (CALL/%stack-closure-ref/name (car rands))))
+			   (offset
+			    (- first-offset
+			       (CALL/%stack-closure-ref/index (car rands)))))
+		       (if (or (memq name names)
+			       (memq arg-position register-arg-positions-used))
+			   (target (cdr rands) env names (+ arg-position 1))
+			   (let* ((home (rtlgen/argument-home arg-position))
+				  (reg (rtlgen/new-reg)))
+			     (rtlgen/emit!
+			      (list
+			       (rtlgen/read-stack-loc home offset)
+			       `(ASSIGN ,reg ,home)))
+			     (target (cdr rands)
+				     `(,(rtlgen/binding/make
+					 name
+					 reg
+					 (rtlgen/stack-offset offset))
+				       . ,env)
+				     (cons name names)
+				     (+ arg-position 1))))))
 		    (else
 		     (target (cdr rands) env names (+ arg-position 1))))))))))
 
@@ -1623,16 +1617,11 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((LET)
-     (rtlgen/let/stmt state expr))
-    ((CALL)
-     (rtlgen/call/stmt state expr))
-    ((IF)
-     (rtlgen/if/stmt state expr))
-    ((BEGIN)
-     (rtlgen/begin/stmt state expr))
-    ((LETREC)
-     (rtlgen/letrec/stmt state expr))
+    ((LET)     (rtlgen/let/stmt state expr))
+    ((CALL)    (rtlgen/call/stmt state expr))
+    ((IF)      (rtlgen/if/stmt state expr))
+    ((BEGIN)   (rtlgen/begin/stmt state expr))
+    ((LETREC)  (rtlgen/letrec/stmt state expr))
     ((QUOTE LOOKUP LAMBDA DECLARE)
      (internal-error "Illegal statement" expr))
     (else
@@ -2341,12 +2330,7 @@ MIT in each case. |#
     ;; This assumes that (a) it is the continuation variable and (b) it is at
     ;; the base of the frame.
     (let ((offset
-	   (let ((offset (call/%stack-closure-ref/offset cont)))
-	     (if (and (QUOTE/? offset)
-		      (number? (quote/text offset)))
-		 (quote/text offset)
-		 (internal-error "Unexpected offset to %stack-closure-ref"
-				 offset)))))
+	   (CALL/%stack-closure-ref/index cont)))
       (rtlgen/bop-stack-pointer! offset)
       false))
    ((CALL/%make-stack-closure? cont)
@@ -2390,10 +2374,9 @@ MIT in each case. |#
 	     (elt-regs elt-regs (cdr elt-regs))
 	     (elts elts (cdr elts)))
 	    ((null? elts))
-	  (let ((result (form/match rtlgen/stack-overwrite-pattern (car elts))))
-	    (cond ((and result
-			(= (cadr (assq rtlgen/?offset result))
-			   frame-offset)))
+	    (cond ((and (CALL/%stack-closure-ref? (car elts))
+			(CALL/%stack-closure-ref/index=? (car elts)
+							 frame-offset)))
 		  ((and (zero? frame-offset)
 			(not (is-continuation-lookup? (car elts)))
 			(not (returning-with-stack-arguments?)))
@@ -2406,7 +2389,7 @@ MIT in each case. |#
 		   (let* ((loc (or (car elt-regs)
 				   (elt->reg (car elts)))))
 		     (rtlgen/emit!/1
-		      (rtlgen/write-stack-loc loc stack-offset)))))))))
+		      (rtlgen/write-stack-loc loc stack-offset))))))))
 
     (cond ((not (or (is-continuation-stack-ref? (first elts))
 		    (is-continuation-lookup? (first elts))
@@ -2645,20 +2628,14 @@ MIT in each case. |#
   (if (not (pair? expr))
       (illegal expr))
   (case (car expr)
-    ((LOOKUP)
-     (rtlgen/lookup/expr state expr))
-    ((QUOTE)
-     (rtlgen/quote/expr state expr))
-    ((CALL)
-     (rtlgen/call/expr state expr))
-    ((IF)
-     (rtlgen/if/expr state expr))
-    ((LET)
-     (rtlgen/let/expr state expr))
+    ((LOOKUP) (rtlgen/lookup/expr state expr))
+    ((QUOTE)  (rtlgen/quote/expr state expr))
+    ((CALL)   (rtlgen/call/expr state expr))
+    ((IF)     (rtlgen/if/expr state expr))
+    ((LET)    (rtlgen/let/expr state expr))
     ((LAMBDA BEGIN LETREC DECLARE)
      (internal-error "Illegal expression" expr))
-    (else
-     (illegal expr))))
+    (else     (illegal expr))))
 
 (define (rtlgen/expr* state exprs)
   ;; returns list of result-locations
@@ -3206,6 +3183,11 @@ MIT in each case. |#
        (exact-integer? (rtlgen/constant-value syllable))
        (rtlgen/constant-value syllable)))
 
+(define-integrable (rtlgen/vector-constant? syllable)
+  (and (rtlgen/constant? syllable)
+       (vector? (rtlgen/constant-value syllable))
+       (rtlgen/constant-value syllable)))
+
 (define-open-coder/pred %small-fixnum? 2
   (lambda (state rands open-coder)
     open-coder				; ignored
@@ -3576,22 +3558,23 @@ MIT in each case. |#
 	(closure-tag  (machine-tag 'COMPILED-ENTRY)))
     (lambda (state rands open-coder)
       open-coder			; ignored
-      (let ((index (second rands)))
-	(cond ((not (rtlgen/integer-constant? index))
-	       (internal-error "%heap-closure-ref with non-constant offset"
-			       rands))
-	      ((rtlgen/tagged-closures?)
-	       (rtlgen/fixed-selection state
-				       closure-tag
-				       (first rands)
-				       (+ offset
-					  (rtlgen/constant-value index))))
-	      (else
-	       (rtlgen/value-assignment
-		state
-		`(OFFSET ,(rtlgen/->register (first rands))
-			 (MACHINE-CONSTANT
-			  ,(+ offset (rtlgen/constant-value index)))))))))))
+      (let ((vector (rtlgen/vector-constant? (second rands)))
+	    (name   (third rands)))
+	(if (and vector
+		 (rtlgen/constant? (third rands)))
+	    (let ((index (vector-index vector (rtlgen/constant-value name))))
+	      (if (rtlgen/tagged-closures?)
+		  (rtlgen/fixed-selection state
+					  closure-tag
+					  (first rands)
+					  (+ offset index))
+		  (rtlgen/value-assignment
+		   state
+		   `(OFFSET ,(rtlgen/->register (first rands))
+			    (MACHINE-CONSTANT
+			     ,(+ offset index))))))
+	    (internal-error "%heap-closure-ref: non-constant specifier"
+			    rands))))))
 
 ;; NOTE: These do not use rtlgen/assign! because the length field
 ;; may not be an object, and the preservation code assumes that
@@ -4009,23 +3992,24 @@ MIT in each case. |#
   (define-indexed-mutator 'PRIMITIVE-OBJECT-SET! false 0 3))
 
 (define-open-coder/stmt %heap-closure-set! 4
-  (let ((offset (rtlgen/closure-first-offset)))
+  (let ((offset (rtlgen/closure-first-offset))
+	(closure-tag  (machine-tag 'COMPILED-ENTRY)))
     (lambda (state rands open-coder)
-      state open-coder			; ignored
-      (let ((index (second rands)))
-	(cond ((not (rtlgen/constant? index))
-	       (internal-error "%heap-closure-set! with non-constant offset"
-			       rands))
-	      ((rtlgen/tagged-closures?)
-	       (rtlgen/fixed-mutation
-		(list (first rands) (third rands))
-		(+ offset (rtlgen/constant-value index))))
-	      (else
-	       (rtlgen/emit!/1
-		`(ASSIGN (OFFSET ,(rtlgen/->register (car rands))
-				 (MACHINE-CONSTANT
-				  ,(+ offset (rtlgen/constant-value index))))
-			 ,(rtlgen/->register (caddr rands))))))))))
+      open-coder			; ignored
+      (let ((vector (rtlgen/vector-constant? (second rands)))
+	    (name   (fourth rands)))
+	(if (and vector (rtlgen/constant? name))
+	    (let ((index (vector-index vector (rtlgen/constant-value name))))
+	      (if (rtlgen/tagged-closures?)
+		  (rtlgen/fixed-mutation
+		   (list (first rands) (third rands))
+		   (+ offset index))
+		  (rtlgen/emit!/1
+		   `(ASSIGN (OFFSET ,(rtlgen/->register (car rands))
+				    (MACHINE-CONSTANT ,(+ offset index)))
+			    ,(rtlgen/->register (third rands))))))
+	    (internal-error "%heap-closure-set!: non-constant specifier"
+			    rands))))))
 
 (let* ((off (rtlgen/words->chars 2))
        (define-string-mutation
@@ -4393,6 +4377,27 @@ MIT in each case. |#
 
 (define *rtlgen/valid-remaining-declarations*
   '())
+
+(define (call/%stack-closure-ref/unparse expr receiver)
+  (let ((vector  (CALL/%stack-closure-ref/offset expr))
+	(name    (CALL/%stack-closure-ref/name expr)))
+    (if (and (QUOTE/? vector)
+	     (QUOTE/? name))
+	(let ((v  (quote/text vector))
+	      (n  (quote/text name)))
+	  (if (and (vector? v) (symbol? n))
+	      (receiver v n))))))
+
+(define (CALL/%stack-closure-ref/index expr)
+  (call/%stack-closure-ref/unparse expr vector-index))
+
+(define (CALL/%stack-closure-ref/index=? expr value)
+  (call/%stack-closure-ref/unparse
+   expr
+   (lambda (v n)
+     (and (vector? v)
+	  (< -1 value (vector-length v))
+	  (eq? (vector-ref v value) n)))))
 
 #|
 ;; New RTL:
