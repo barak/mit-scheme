@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.17 1989/08/28 18:33:52 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/instr2.scm,v 1.18 1991/03/24 23:54:42 jinx Exp $
 
-Copyright (c) 1987, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -269,7 +269,7 @@ MIT in each case. |#
    (WORD (8 #b00001100)
 	 (2 s)
 	 (6 ea DESTINATION-EA))
-   (immediate-unsigned-words data ssym))
+   (immediate-words data ssym))
 
   (((? s bwl) (@A+ (? ry)) (@A+ (? rx)))	;CMPM
    (WORD (4 #b1011)
@@ -286,7 +286,7 @@ MIT in each case. |#
    (WORD (8 #b00001100)
 	 (2 s)
 	 (6 ea DESTINATION-EA))
-   (immediate-unsigned-words data ssym)))
+   (immediate-words data ssym)))
 
 (define-instruction TST
   (((? s bwl) (? dea ea-d&a))
