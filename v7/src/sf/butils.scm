@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.6 1992/08/22 15:03:25 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.7 1992/08/24 17:39:23 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -75,8 +75,8 @@ MIT in each case. |#
 (define compile-directory
   (directory-processor "bin"
 		       (lambda ()
-			 (if (access compiler:cross-compiling?
-				     (->environment '(compiler)))
+			 (if (environment-lookup (->environment '(compiler))
+						 'compiler:cross-compiling?)
 			     "moc"
 			     "com"))
 		       (lambda (pathname output-directory)
