@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.26 1993/04/27 08:38:14 cph Exp $
+$Id: uxio.c,v 1.27 1993/04/27 09:36:36 cph Exp $
 
 Copyright (c) 1990-93 Massachusetts Institute of Technology
 
@@ -537,16 +537,25 @@ enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
   SELECT_TYPE readable;
+  unsigned int fds [FD_SETSIZE];
+  unsigned int nfds;
+
   readable = input_descriptors;
   FD_SET (fd, (&readable));
   {
     enum select_input s =
-      (UX_select_registry_test ((&readable), (&readable), blockp));
-    return
-      (((s == select_input_argument) && (! (FD_ISSET (fd, (&readable)))))
-       ? select_input_other
-       : s);
+      (UX_select_registry_test ((&readable), blockp, (&fds), (&nfds)));
+    if (s != select_input_argument)
+      return (s);
   }
+  {
+    unsigned int * scan = (&fds);
+    unsigned int * end = (scan + nfds);
+    while (scan < end)
+      if ((*scan++) == fd)
+	return (select_input_argument);
+  }
+  return (select_input_other);
 }
 
 long
