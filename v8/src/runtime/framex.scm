@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: framex.scm,v 14.17 1994/11/20 17:10:23 gjr Exp $
+$Id: framex.scm,v 14.18 1994/11/20 22:05:55 gjr Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -224,12 +224,14 @@ MIT in each case. |#
       (hardware-trap-frame/describe frame long?))))
 
 (define (method/compiled-code frame)
-  (let ((environment (stack-frame/environment frame undefined-environment)))
+  (let ((get-environment
+	 (lambda ()
+	   (stack-frame/environment frame undefined-environment))))
     (let ((object
 	   (compiled-entry/dbg-object (stack-frame/return-address frame)))
 	  (lose
 	   (lambda ()
-	     (values compiled-code environment undefined-expression))))
+	     (values compiled-code (get-environment) undefined-expression))))
       (cond ((not object)
 	     (lose))
 	    ((dbg-continuation? object)
@@ -238,13 +240,15 @@ MIT in each case. |#
 			(not (zero? (vector-length source-code))))
 		   (let* ((expression (vector-ref source-code 1))
 			  (win2
-			   (lambda (subexp)
-			     (values expression
-				     environment
-				     (validate-subexpression frame subexp))))
+			   (lambda (environment subexp)
+			     (values expression environment subexp)))
 			  (win
 			   (lambda (select-subexp)
-			     (win2 (select-subexp expression)))))
+			     (win2
+			      (get-environment)
+			      (validate-subexpression
+			       frame
+			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
 		       ((SEQUENCE-2-SECOND)
 			(win &pair-car))
@@ -259,7 +263,7 @@ MIT in each case. |#
 		       ((COMBINATION-OPERAND)
 			(values
 			 expression
-			 environment
+			 (get-environment)
 			 (validate-subexpression
 			  frame
 			  (if (zero? (vector-ref source-code 2))
@@ -267,17 +271,21 @@ MIT in each case. |#
 			      (list-ref (combination-operands expression)
 					(-1+ (vector-ref source-code 2)))))))
 		       ((COMBINATION-ELEMENT)
-			(win2 (vector-ref source-code 2)))
+			(win2 undefined-environment
+			      (vector-ref source-code 2)))
 		       ((SEQUENCE-ELEMENT)
-			(win2 (vector-ref source-code 2)))
+			(win2 undefined-environment
+			      (vector-ref source-code 2)))
 		       ((CONDITIONAL-PREDICATE)
-			(win2 (vector-ref source-code 2)))
+			(win2 undefined-environment
+			      (vector-ref source-code 2)))
 		       (else
 			(lose))))
 		   (lose))))
 	    ((dbg-procedure? object)
 	     (values (lambda-body (dbg-procedure/source-code object))
-		     environment
+		     (and (dbg-procedure/block object)
+			  (get-environment))
 		     undefined-expression))
 	    #|
 	    ((dbg-expression? object)
