@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.26 1993/01/12 21:42:01 cph Exp $
+$Id: x11graph.scm,v 1.27 1993/03/16 05:12:32 gjr Exp $
 
-Copyright (c) 1989-93 Massachusetts Institute of Technology
+Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -143,6 +143,13 @@ MIT in each case. |#
 (define (make-protection-list)
   (list 'PROTECTION-LIST))
 
+;; This is used after a disk-restore, to remove invalid information.
+
+(define (drop-all-protected-objects list)
+  (with-absolutely-no-interrupts
+    (lambda ()
+      (set-cdr! list '()))))
+
 (define (add-to-protection-list! list scheme-object microcode-object)
   (with-absolutely-no-interrupts
    (lambda ()
@@ -242,6 +249,7 @@ MIT in each case. |#
 	   (withdraw-window ,x-graphics/withdraw-window))))
   (set! display-list (make-protection-list))
   (add-gc-daemon! close-lost-displays-daemon)
+  (add-event-receiver! event:after-restore drop-all-displays)
   (initialize-image-datatype)
   (initialize-colormap-datatype))
 
@@ -313,6 +321,9 @@ MIT in each case. |#
     (clean-lost-protected-objects
      (x-display/window-list (weak-car (car associations)))
      x-close-window)))
+
+(define (drop-all-displays)
+  (drop-all-protected-objects display-list))
 
 (define (make-event-previewer display)
   (lambda ()
