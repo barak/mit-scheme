@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.11 1995/06/21 23:52:52 adams Exp $
+$Id: assconv.scm,v 1.12 1995/06/22 00:57:02 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -44,10 +44,11 @@ MIT in each case. |#
 ;;  LET frames, belong to the same extent.  Extents are represented by
 ;;  unique values (small integers).  Later we partition bindings
 ;;  according to equivalence classes of the sets of extents in which
-;;  they occur.  The idea behind this is that mutable variables that
-;;  travel around together will be placed in the same multi-cell but
-;;  variables that are live in different extents are allocated to
-;;  different cells, allowing better GC behaviour.
+;;  references or assignments to them occur.  The idea behind this is
+;;  that mutable variables that travel around together will be placed
+;;  in the same multi-cell but variables that are live in different
+;;  extents are allocated to different cells, allowing better GC
+;;  behaviour.
 
 ;; Legal values: BY-EXTENT (as decribed above), INDIVIDUAL-CELLS (each
 ;; mutable binding is allocated a separate cell), ONE-MULTICELL (all
