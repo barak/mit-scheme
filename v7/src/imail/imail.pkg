@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.20 2000/04/27 02:35:11 cph Exp $
+;;; $Id: imail.pkg,v 1.21 2000/04/28 05:30:25 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -169,6 +169,7 @@
 	  imap:response:response-text-code
 	  imap:response:response-text-string
 	  imap:response:search?
+	  imap:response:status-response?
 	  imap:response:status?
 	  imap:response:tag))
 
