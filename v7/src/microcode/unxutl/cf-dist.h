@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.6 1989/09/19 17:53:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/cf-dist.h,v 1.7 1989/09/21 02:36:27 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -39,7 +39,15 @@ MIT in each case. */
 #define PROC_TYPE_VAX 4
 #define PROC_TYPE_MIPS 5
 #define PROC_TYPE_NS32K 6
-#define PROC_TYPE_HCX 7	/* Harris HCX */
+#define PROC_TYPE_HCX 7		/* Harris HCX */
+
+/* Define this macro to use a non-standard compiler.
+   It must be defined before including the m/ and s/ files because
+   they may be conditionalized on it. */
+/* #define ALTERNATE_CC gcc */
+
+/* Define this macro to use a non-standard assembler. */
+/* #define ALTERNATE_AS gashp */
 
 #include "s.h"
 #include "m.h"
@@ -50,6 +58,11 @@ MIT in each case. */
 
 /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
 #define HAVE_X_WINDOWS
+
+/* Define HAVE_STARBASE_GRAPHICS if you want Starbase graphics support.
+   This is specific to HP-UX. */
+/* #define HAVE_STARBASE_GRAPHICS */
+/* #define STARBASE_DEVICE_DRIVERS -ldd300h -ldd98700 -ldd98710 -ldd98556 */
 
 /* Some useful compilation options:
    -DCOMPILE_HISTORY		turns on history recording mechanism
