@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.49 2000/05/17 17:00:54 cph Exp $
+;;; $Id: imail-top.scm,v 1.50 2000/05/17 17:04:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -133,6 +133,7 @@ May be called with an IMAIL folder URL as argument;
   (without-interrupts
    (lambda ()
      (buffer-put! buffer 'IMAIL-FOLDER folder)
+     (buffer-put! buffer 'IMAIL-MESSAGE message)
      (folder-put! folder 'BUFFER buffer)
      (add-event-receiver! (folder-modification-event folder)
        (lambda (folder)
