@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.26 1992/05/13 22:45:18 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.27 1992/07/01 20:18:40 arthur Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ struct gw_extra
 #define ROUND_FLOAT(flonum)						\
   ((int) (((flonum) >= 0.0) ? ((flonum) + 0.5) : ((flonum) - 0.5)))
 
-static unsigned int
+static int
 DEFUN (arg_x_coordinate, (arg, xw),
        unsigned int arg AND
        struct xwindow * xw)
@@ -78,7 +78,7 @@ DEFUN (arg_x_coordinate, (arg, xw),
   return (ROUND_FLOAT (device_x));
 }
 
-static unsigned int
+static int
 DEFUN (arg_y_coordinate, (arg, xw),
        unsigned int arg AND
        struct xwindow * xw)
@@ -108,10 +108,10 @@ DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 static void
 DEFUN (set_clip_rectangle, (xw, x_left, y_bottom, x_right, y_top),
        struct xwindow * xw AND
-       unsigned int x_left AND
-       unsigned int y_bottom AND
-       unsigned int x_right AND
-       unsigned int y_top)
+       int x_left AND
+       int y_bottom AND
+       int x_right AND
+       int y_top)
 {
   XRectangle rectangles [1];
   Display * display = (XW_DISPLAY (xw));
