@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.7 1992/01/09 23:10:12 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/cinden.scm,v 1.8 1992/01/10 21:16:53 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -249,11 +249,7 @@ This is in addition to c-continued-statement-offset."
 
 (define (skip-comments&labels start end)
   (let ((gend (group-end start)))
-    ;; There was an bug here where COLON-LINE-END was initialized
-    ;; to 0. I have initialized it to what seems to be the obvious
-    ;; thing. It seems to work, but I really have no idea whether
-    ;; it is correct. -markf
-    (let loop ((mark start) (colon-line-end (line-end start 0)))
+    (let loop ((mark start) (colon-line-end false))
       (let ((mark (whitespace-end mark gend)))
 	(cond ((mark>= mark end)
 	       false)
@@ -264,7 +260,7 @@ This is in addition to c-continued-statement-offset."
 	      ((re-match-forward "case[ \t\n].*:\\|[a-zA-Z0-9_$]*[ \t\n]*:"
 				 mark gend false)
 	       (loop (re-match-end 0) (line-end mark 0)))
-	      ((mark> colon-line-end mark)
+	      ((and colon-line-end (mark> colon-line-end mark))
 	       (- (mark-indentation mark)
 		  (ref-variable c-label-offset mark)))
 	      (else
