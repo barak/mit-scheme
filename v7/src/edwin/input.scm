@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: input.scm,v 1.97 1993/08/19 00:18:39 cph Exp $
+;;;	$Id: input.scm,v 1.98 1993/08/20 00:14:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -178,13 +178,13 @@ B 3BAB8C
 (define (keyboard-peek)
   (if *executing-keyboard-macro?*
       (keyboard-macro-peek-key)
-      (keyboard-read-1 (editor-peek current-editor))))
+      (keyboard-read-1 (editor-peek current-editor) #t)))
 
 (define (keyboard-read)
   (set! keyboard-keys-read (+ keyboard-keys-read 1))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
-      (let ((key (keyboard-read-1 (editor-read current-editor))))
+      (let ((key (keyboard-read-1 (editor-read current-editor) #f)))
 	(cond ((key? key)
 	       (set! auto-save-keystroke-count
 		     (fix:+ auto-save-keystroke-count 1))
@@ -205,9 +205,9 @@ B 3BAB8C
 	    (loop))))))
 
 (define (keyboard-peek-no-hang)
-  (handle-simple-events (editor-peek-no-hang current-editor)))
+  (handle-simple-events (editor-peek-no-hang current-editor) #t))
 
-(define (handle-simple-events thunk)
+(define (handle-simple-events thunk discard?)
   (let loop ()
     (let ((input (thunk)))
       (if (and (input-event? input)
@@ -220,53 +220,54 @@ B 3BAB8C
 				(car (input-event/operands input))))))))
 	  (begin
 	    (apply-input-event input)
-	    (let ((discard (editor-read current-editor)))
-	      (if (not (eq? discard thunk))
-		  (discard)))
+	    (if discard? ((editor-read current-editor)))
 	    (loop))
 	  input))))
 
 (define read-key-timeout/fast 500)
 (define read-key-timeout/slow 2000)
 
-(define (keyboard-read-1 reader)
+(define (keyboard-read-1 reader discard?)
   (remap-alias-key
-   (let ((peek-no-hang (editor-peek-no-hang current-editor)))
-     (if (not (peek-no-hang))
-	 (begin
-	   (if (let ((interval (ref-variable auto-save-interval))
-		     (count auto-save-keystroke-count))
-		 (and (fix:> count 20)
-		      (> interval 0)
-		      (> count interval)))
-	       (begin
-		 (do-auto-save)
-		 (set! auto-save-keystroke-count 0)))
-	   (update-screens! false)))
-     (let ((wait
-	    (lambda (timeout)
-	      (let ((t (+ (real-time-clock) timeout)))
-		(let loop ()
-		  (cond ((peek-no-hang) false)
-			((>= (real-time-clock) t) true)
-			(else (loop))))))))
-       ;; Perform the appropriate juggling of the minibuffer message.
-       (cond ((within-typein-edit?)
-	      (if message-string
+   (handle-simple-events
+    (lambda ()
+      (let ((peek-no-hang (editor-peek-no-hang current-editor)))
+	(if (not (peek-no-hang))
+	    (begin
+	      (if (let ((interval (ref-variable auto-save-interval))
+			(count auto-save-keystroke-count))
+		    (and (fix:> count 20)
+			 (> interval 0)
+			 (> count interval)))
 		  (begin
-		    (wait read-key-timeout/slow)
-		    (set! message-string false)
-		    (set! message-should-be-erased? false)
-		    (clear-current-message!))))
-	     ((and (or message-should-be-erased?
-		       (and command-prompt-string
-			    (not command-prompt-displayed?)))
-		   (wait read-key-timeout/fast))
-	      (set! message-string false)
-	      (set! message-should-be-erased? false)
-	      (if command-prompt-string
-		  (begin
-		    (set! command-prompt-displayed? true)
-		    (set-current-message! command-prompt-string))
-		  (clear-current-message!)))))
-     (handle-simple-events reader))))
+		    (do-auto-save)
+		    (set! auto-save-keystroke-count 0)))
+	      (update-screens! false)))
+	(let ((wait
+	       (lambda (timeout)
+		 (let ((t (+ (real-time-clock) timeout)))
+		   (let loop ()
+		     (cond ((peek-no-hang) false)
+			   ((>= (real-time-clock) t) true)
+			   (else (loop))))))))
+	  ;; Perform the appropriate juggling of the minibuffer message.
+	  (cond ((within-typein-edit?)
+		 (if message-string
+		     (begin
+		       (wait read-key-timeout/slow)
+		       (set! message-string false)
+		       (set! message-should-be-erased? false)
+		       (clear-current-message!))))
+		((and (or message-should-be-erased?
+			  (and command-prompt-string
+			       (not command-prompt-displayed?)))
+		      (wait read-key-timeout/fast))
+		 (set! message-string false)
+		 (set! message-should-be-erased? false)
+		 (if command-prompt-string
+		     (begin
+		       (set! command-prompt-displayed? true)
+		       (set-current-message! command-prompt-string))
+		     (clear-current-message!)))))
+	(reader)))
+    discard?)))
