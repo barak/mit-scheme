@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.11 1988/11/03 07:52:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.12 1988/11/03 08:20:03 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -249,16 +249,15 @@ MIT in each case. |#
 	 source-nodes)))
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
-		  (let ((pathname
-			 (pathname-new-type (source-node/pathname node)
-					    "ext")))
-		    (if (file-exists? pathname)
-			(delete-file pathname)))))
+		  (pathname-delete!
+		   (pathname-new-type (source-node/pathname node) "ext"))))
 	    source-nodes/by-rank)
+  (write-string "\n\nBegin pass 1:")
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
 		  (source-node/syntax! node)))
 	    source-nodes/by-rank)
+  (write-string "\n\nBegin pass 2:")
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
 		  (if (source-node/circular? node)
@@ -266,27 +265,32 @@ MIT in each case. |#
 		      (source-node/touch! node))))
 	    source-nodes/by-rank))
 
-(define (sc filename)
-  (maybe-setup-source-nodes!)
-  (source-node/syntax! (filename->source-node filename)))
-
 (define (source-node/touch! node)
   (with-values
       (lambda ()
 	(sf/pathname-defaulting (source-node/pathname node) "" false))
     (lambda (input-pathname bin-pathname spec-pathname)
       (pathname-touch! bin-pathname)
-      (let ((ext-pathname (pathname-new-type bin-pathname "ext")))
-	(if (file-exists? ext-pathname)
-	    (pathname-touch! ext-pathname)))
-      (if (file-exists? spec-pathname)
-	  (pathname-touch! spec-pathname)))))
+      (pathname-touch! (pathname-new-type bin-pathname "ext"))
+      (if spec-pathname (pathname-touch! spec-pathname)))))
 
 (define (pathname-touch! pathname)
-  (newline)
-  (write-string "Touch file: ")
-  (write (pathname->string pathname))
-  (file-touch pathname))
+  (if (file-exists? pathname)
+      (begin
+	(write-string "\nTouch file: ")
+	(write (pathname->string pathname))
+	(file-touch pathname))))
+
+(define (pathname-delete! pathname)
+  (if (file-exists? pathname)
+      (begin
+	(write-string "\nDelete file: ")
+	(write (pathname->string pathname))
+	(delete-file pathname))))
+
+(define (sc filename)
+  (maybe-setup-source-nodes!)
+  (source-node/syntax! (filename->source-node filename)))
 
 (define (source-node/syntax! node)
   (with-values
