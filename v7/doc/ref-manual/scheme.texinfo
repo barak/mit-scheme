@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.46 1994/10/17 16:08:36 adams Exp $
+@comment $Id: scheme.texinfo,v 1.47 1994/10/20 19:00:18 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -7507,6 +7507,28 @@ unspecified value.  @var{K} must be a valid index of
 These procedures access the first several elements of @var{vector} in
 the obvious way.  It is an error if the implicit index of one of these
 procedurs is not a valid index of @var{vector}.
+@end deffn
+
+@deffn {procedure+} vector-binary-search vector key<? unwrap-key key
+@cindex searching, of vector
+Searches @var{vector} for an item with a key matching @var{KEY},
+returning the object if one is found or @code{#F} if not found.  The
+search operation takes time proportional to the logarithm of the length
+@var{VECTOR}.
+The key of an object in @var{vector} is obtained by applying
+@var{unwrap-key} to the object.
+The objects in @var{vector} must be ordered according to the relation
+@var{key<?} on the object's keys.
+
+@example
+@group
+(define (translate number)
+  (vector-binary-search '#((1 . i) (2 . ii) (3 . iii) (6 . vi))
+                        <  car  number))
+(translate 2)  @result{}  (2 . ii)
+(translate 4)  @result{}  #F
+@end group
+@end example
 @end deffn
 
 @node Cutting Vectors, Modifying Vectors, Selecting Vector Components, Vectors
