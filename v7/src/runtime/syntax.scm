@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.9 1989/10/14 15:48:39 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/Attic/syntax.scm,v 14.10 1990/04/10 15:53:35 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -187,7 +187,7 @@ MIT in each case. |#
 
 (define (syntax-sequence original-expressions)
   (if (null? original-expressions)
-      (syntax-error "No subforms in sequence")
+      (syntax-error "no subforms in sequence")
       (make-scode-sequence
        (let process ((expressions original-expressions))
 	 (cond ((pair? expressions)
@@ -198,19 +198,23 @@ MIT in each case. |#
 	       ((null? expressions)
 		'())
 	       (else
-		(syntax-error "Bad sequence" original-expressions)))))))
+		(syntax-error "bad sequence" original-expressions)))))))
 
 (define (syntax-bindings bindings receiver)
-  (cond ((null? bindings)
-	 (receiver '() '()))
-	((and (pair? (car bindings))
-	      (symbol? (caar bindings)))
-	 (syntax-bindings (cdr bindings)
-	   (lambda (names values)
-	     (receiver (cons (caar bindings) names)
-		       (cons (expand-binding-value (cdar bindings)) values)))))
-	(else
-	 (syntax-error "Badly-formed binding" (car bindings)))))
+  (if (not (list? bindings))
+      (syntax-error "bindings must be a list" bindings)
+      (let loop ((bindings bindings) (receiver receiver))
+	(cond ((null? bindings)
+	       (receiver '() '()))
+	      ((and (pair? (car bindings))
+		    (symbol? (caar bindings)))
+	       (loop (cdr bindings)
+		 (lambda (names values)
+		   (receiver (cons (caar bindings) names)
+			     (cons (expand-binding-value (cdar bindings))
+				   values)))))
+	      (else
+	       (syntax-error "badly formed binding" (car bindings)))))))
 
 ;;;; Expanders
 
@@ -220,12 +224,12 @@ MIT in each case. |#
 		(syntax-expression (cadr chain))
 		(expand-access (cdr chain) make-access))
 	    (car chain))
-      (syntax-error "Non-symbolic variable" (car chain))))
+      (syntax-error "non-symbolic variable" (car chain))))
 
 (define (expand-binding-value rest)
   (cond ((null? rest) (make-unassigned-reference-trap))
 	((null? (cdr rest)) (syntax-expression (car rest)))
-	(else (syntax-error "Too many forms in value" rest))))
+	(else (syntax-error "too many forms in value" rest))))
 
 (define (expand-disjunction forms)
   (if (null? forms)
@@ -292,7 +296,7 @@ MIT in each case. |#
 			      (make-named-lambda (car pattern) (cdr pattern)
 						 body)))))
 	(else
-	 (syntax-error "Bad pattern" pattern))))
+	 (syntax-error "bad pattern" pattern))))
 
 (define (syntax/begin . actions)
   (syntax-sequence actions))
@@ -314,7 +318,7 @@ MIT in each case. |#
 			  ((null? (cdr rest))
 			   (syntax-expression (car rest)))
 			  (else
-			   (syntax-error "Too many forms" (cdr rest))))))
+			   (syntax-error "too many forms" (cdr rest))))))
 
 (define (syntax/or . expressions)
   (expand-disjunction expressions))
@@ -322,7 +326,7 @@ MIT in each case. |#
 (define (syntax/cond . clauses)
   (define (loop clause rest)
     (cond ((not (pair? clause))
-	   (syntax-error "Bad COND clause" clause))
+	   (syntax-error "bad COND clause" clause))
 	  ((eq? (car clause) 'ELSE)
 	   (if (not (null? rest))
 	       (syntax-error "ELSE not last clause" rest))
@@ -333,7 +337,7 @@ MIT in each case. |#
 		(eq? (cadr clause) '=>))
 	   (if (not (and (pair? (cddr clause))
 			 (null? (cdddr clause))))
-	       (syntax-error "Misformed => clause" clause))
+	       (syntax-error "misformed => clause" clause))
 	   (let ((predicate (string->uninterned-symbol "PREDICATE")))
 	     (make-closed-block lambda-tag:let
 				(list predicate)
@@ -366,7 +370,7 @@ MIT in each case. |#
     (lambda (pattern body)
       (if (pair? pattern)
 	  (make-named-lambda (car pattern) (cdr pattern) body)
-	  (syntax-error "Illegal named-lambda list" pattern)))))
+	  (syntax-error "illegal named-lambda list" pattern)))))
 
 (define (syntax/let name-or-pattern pattern-or-first . rest)
   (if (symbol? name-or-pattern)
@@ -401,13 +405,13 @@ MIT in each case. |#
 (define (syntax/using-syntax table . body)
   (let ((table* (syntax-eval (syntax-expression table))))
     (if (not (syntax-table? table*))
-	(syntax-error "Not a syntax table" table))
+	(syntax-error "not a syntax table" table))
     (fluid-let ((*syntax-table* table*))
       (syntax-sequence body))))
 
 (define (syntax/define-syntax name value)
   (if (not (symbol? name))
-      (syntax-error "Illegal name" name))
+      (syntax-error "illegal name" name))
   (syntax-table-define *syntax-table* name
     (syntax-eval (syntax-expression value)))
   name)
@@ -494,7 +498,7 @@ MIT in each case. |#
 				  transfers-in)
 			    (cons (transfer inside-name outside-name)
 				  transfers-out)))
-		(syntax-error "Binding not a pair" binding)))))))
+		(syntax-error "binding not a pair" binding)))))))
 
 (define (syntax-fluid-bindings/deep add-fluid-binding! bindings)
   (map (lambda (binding)
@@ -515,8 +519,8 @@ MIT in each case. |#
 	      ((access? name)
 	       (access-components name finish))
 	      (else
-	       (syntax-error "Binding name illegal" (car binding)))))
-      (syntax-error "Binding not a pair" binding)))
+	       (syntax-error "binding name illegal" (car binding)))))
+      (syntax-error "binding not a pair" binding)))
 
 ;;;; Extended Assignment Syntax
 
@@ -526,7 +530,7 @@ MIT in each case. |#
 	((access? target)
 	 (access-components target invert-access))
 	(else
-	 (syntax-error "Bad target" target))))
+	 (syntax-error "bad target" target))))
 
 (define ((invert-variable name) value)
   (make-assignment name value))
@@ -590,7 +594,7 @@ MIT in each case. |#
 
 (define (make-named-lambda name pattern body)
   (if (not (symbol? name))
-      (syntax-error "Name of lambda expression must be a symbol" name))
+      (syntax-error "name of lambda expression must be a symbol" name))
   (parse-lambda-list pattern
     (lambda (required optional rest)
       (internal-make-lambda name required optional rest body))))
@@ -653,7 +657,7 @@ MIT in each case. |#
 		rest))
 
     (define (bad-lambda-list pattern)
-      (syntax-error "Illegally-formed lambda-list" pattern))
+      (syntax-error "illegally-formed lambda-list" pattern))
 
     (parse-parameters required lambda-list)))
 
