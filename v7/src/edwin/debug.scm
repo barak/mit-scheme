@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.61 2002/01/07 04:30:28 cph Exp $
+;;; $Id: debug.scm,v 1.62 2002/01/07 04:35:10 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
 ;;;
@@ -1827,14 +1827,21 @@ once it has been renamed, it will not be deleted automatically.")
 			  ind
 			  port))
 		       names))))
-      (cond ((zero? n-bindings)
+      (cond ((environment->package environment)
+	     (write-string (string-append ind "    has ") port)
+	     (write n-bindings port)
+	     (write-string
+	      " bindings"
+	      port)
+	     (debugger-newline port))
+	    ((zero? n-bindings)
 	     #|(write-string (string-append ind "    has no bindings") port)
 	     (debugger-newline port)|#)
 	    ((> n-bindings (ref-variable environment-package-limit))
 	     (write-string (string-append ind "    has ") port)
 	     (write n-bindings port)
 	     (write-string
-	      " bindings (see editor variable environment-package-limit) "
+	      " bindings (see editor variable environment-package-limit)"
 	      port)
 	     (debugger-newline port))
 	    (else
