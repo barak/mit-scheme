@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.26 2000/05/28 15:16:51 cph Exp $
+;;; $Id: imap-response.scm,v 1.27 2000/05/28 15:25:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -299,19 +299,18 @@
 		(loop start*)))))
       (if imap-transcript-port
 	  (write-string s imap-transcript-port))
-      (translate-network-line-endings-to-scheme! s)
+      (let ((n* (translate-line-endings!:network->scheme string 0 n)))
+	(if (fix:< n* n)
+	    (set-string-maximum-length! s n*)))
       s)))
 
-(define (translate-network-line-endings-to-scheme! string)
-  (let ((n (string-length string)))
-    (let ((i (substring-search-forward "\r\n" string 0 n)))
+(define (translate-line-endings!:network->scheme string start end)
+  (let loop ((start start) (end end))
+    (let ((i (substring-search-forward "\r\n" string start end)))
       (if i
-	  (let loop ((i i) (n n))
-	    (let* ((n (substring-move! string (fix:+ i 1) n string i))
-		   (i (substring-search-forward "\r\n" string (fix:+ i 1) n)))
-	      (if i
-		  (loop i n)
-		  (set-string-maximum-length! string n))))))))
+	  (loop (fix:+ i 1)
+		(substring-move! string (fix:+ i 1) end string i))
+	  end))))
 
 (define (read-list port #!optional read-item)
   (read-closed-list #\( #\)
