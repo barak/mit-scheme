@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: editor.scm,v 1.250 2001/05/31 19:41:53 cph Exp $
+;;; $Id: editor.scm,v 1.251 2001/05/31 19:56:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -537,6 +537,33 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		 (weak-set-cdr! (car threads) #f))
 	       (loop (cdr threads) threads)))))))
 
+(define (start-standard-polling-thread interval output-processor)
+  (let ((holder (list #f)))
+    (set-car! holder
+	      (register-inferior-thread!
+	       (let ((thread
+		      (create-thread editor-thread-root-continuation
+			(lambda ()
+			  (do () (#f)
+			    (let ((registration (car holder)))
+			      (cond ((eq? registration 'KILL-THREAD)
+				     (exit-current-thread unspecific))
+				    (registration
+				     (inferior-thread-output! registration))))
+			    (sleep-current-thread interval))))))
+		 (detach-thread thread)
+		 thread)
+	       output-processor))
+    holder))
+
+(define (stop-standard-polling-thread holder)
+  (without-interrupts
+   (lambda ()
+     (let ((registration (car holder)))
+       (if (and registration (not (eq? registration 'KILL-THREAD)))
+	   (deregister-inferior-thread! registration)))
+     (set-car! holder 'KILL-THREAD))))
+
 (define (inferior-thread-output! flags)
   (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))
 

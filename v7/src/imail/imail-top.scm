@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.257 2001/05/29 19:32:39 cph Exp $
+;;; $Id: imail-top.scm,v 1.258 2001/05/31 19:57:40 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -2096,30 +2096,18 @@ Negative argument means search in reverse."
 
 (define (start-probe-folder-thread buffer)
   (stop-probe-folder-thread buffer)
-  (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
-	(interval (ref-variable imail-update-interval #f)))
-    (if (and folder interval
-	     (not (get-property folder 'PROBE-REGISTRATION #f)))
-	(let ((holder (list #f)))
-	  (set-car! holder
-		    (register-inferior-thread!
-		     (let ((thread
-			    (create-thread
-			     editor-thread-root-continuation
-			     (probe-folder-thread holder
-						  (* 1000 interval)))))
-		       (detach-thread thread)
-		       thread)
-		     (probe-folder-output-processor
-		      (weak-cons folder unspecific))))
-	  (store-property! folder 'PROBE-REGISTRATION holder)))))
-
-(define ((probe-folder-thread holder interval))
-  (do () (#f)
-    (let ((registration (car holder)))
-      (cond ((eq? registration 'KILL-THREAD) (exit-current-thread unspecific))
-	    (registration (inferior-thread-output! registration))))
-    (sleep-current-thread interval)))
+  (without-interrupts
+   (lambda ()
+     (let ((folder (buffer-get buffer 'IMAIL-FOLDER #f))
+	   (interval (ref-variable imail-update-interval #f)))
+       (if (and folder interval
+		(not (get-property folder 'PROBE-REGISTRATION #f)))
+	   (store-property! folder
+			    'PROBE-REGISTRATION
+			    (start-standard-output-polling-thread
+			     (* 1000 interval)
+			     (probe-folder-output-processor
+			      (weak-cons folder unspecific)))))))))
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
@@ -2137,12 +2125,7 @@ Negative argument means search in reverse."
 	   (begin
 	     (let ((holder (get-property folder 'PROBE-REGISTRATION #f)))
 	       (if holder
-		   (begin
-		     (let ((registration (car holder)))
-		       (if (and registration
-				(not (eq? registration 'KILL-THREAD)))
-			   (deregister-inferior-thread! registration)))
-		     (set-car! holder 'KILL-THREAD))))
+		   (stop-standard-output-polling-thread holder)))
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 ;;;; Message insertion procedures

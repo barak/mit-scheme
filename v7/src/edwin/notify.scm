@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: notify.scm,v 1.19 2001/01/06 02:36:20 cph Exp $
+;;; $Id: notify.scm,v 1.20 2001/05/31 19:57:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-2001 Massachusetts Institute of Technology
 ;;;
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Mode-line notifications (e.g. presence of mail, load average)
 
@@ -149,7 +150,6 @@ Ignored if notify-show-mail is false."
 (define notifier-mail-string "")
 (define override-notifier-mail-string #f)
 (define mail-notify-hook-installed? #f)
-(define current-notifier-thread #f)
 (define notifier-thread-registration #f)
 
 (define-command run-notifier
@@ -173,19 +173,10 @@ which can show various things including time, load average, and mail status."
 	  unspecific))
     ((ref-command kill-notifier))
     (set-variable! global-mode-string `("" ,notifier:get-string))
-    (let ((thread
-	   (create-thread
-	    editor-thread-root-continuation
-	    (lambda ()
-	      (do () (#f)
-		(if notifier-thread-registration
-		    (inferior-thread-output! notifier-thread-registration))
-		(sleep-current-thread
-		 (* 1000 (ref-variable notify-interval))))))))
-      (detach-thread thread)
-      (set! current-notifier-thread thread)
-      (set! notifier-thread-registration
-	    (register-inferior-thread! thread notifier)))
+    (set! notifier-thread-registration
+	  (start-standard-polling-thread (* (ref-variable notify-interval #f)
+					    1000)
+					 notifier))
     unspecific))
 
 (define (notifier)
@@ -210,17 +201,10 @@ which can show various things including time, load average, and mail status."
   (lambda ()
     (without-interrupts
      (lambda ()
-       (if current-notifier-thread
-	   (begin
-	     (if (not (thread-dead? current-notifier-thread))
-		 (signal-thread-event current-notifier-thread
-		   (lambda ()
-		     (exit-current-thread unspecific))))
-	     (set! current-notifier-thread #f)))
        (if notifier-thread-registration
 	   (begin
-	     (deregister-inferior-thread! notifier-thread-registration)
-	     (set! notifier-thread-registration #f)))
-       unspecific))
+	     (stop-standard-polling-thread notifier-thread-registration)
+	     (set! notifier-thread-registration #f)
+	     unspecific))))
     (update-notifier-strings! "" "")
     (set-variable! global-mode-string override-notifier-mail-string #f)))
