@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dbgutl.scm,v 14.24 2003/07/31 02:32:02 cph Exp $
+$Id: dbgutl.scm,v 14.25 2005/04/01 04:46:30 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,2001 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,7 +69,8 @@ USA.
 
 (define (debug/read-eval-print-1 environment port)
   (let ((value
-	 (debug/eval (prompt-for-expression "Evaluate expression" port)
+	 (debug/eval (prompt-for-expression "Evaluate expression"
+					    port environment)
 		     environment)))
     (if (undefined-value? value)
 	(debugger-message port "No value")

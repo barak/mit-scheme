@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: emacs.scm,v 14.39 2004/10/01 04:39:32 cph Exp $
+$Id: emacs.scm,v 14.40 2005/04/01 04:46:43 cph Exp $
 
 Copyright 1986,1987,1991,1993,1994,1999 Massachusetts Institute of Technology
-Copyright 2001,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,10 +31,10 @@ USA.
 
 ;;;; Prompting
 
-(define (emacs/prompt-for-command-expression port prompt level)
+(define (emacs/prompt-for-command-expression port environment prompt level)
   (transmit-modeline-string port prompt level)
   (transmit-signal port #\R)
-  (read port))
+  (read port environment))
 
 (define (emacs/prompt-for-command-char port prompt level)
   (transmit-modeline-string port prompt level)
@@ -60,9 +60,9 @@ USA.
   '(("debug> " "[Debug]")
     ("where> " "[Where]")))
 
-(define (emacs/prompt-for-expression port prompt)
+(define (emacs/prompt-for-expression port environment prompt)
   (transmit-signal-with-argument port #\i prompt)
-  (read port))
+  (read port environment))
 
 (define (emacs/prompt-for-confirmation port prompt)
   (transmit-signal-with-argument
@@ -107,8 +107,7 @@ USA.
 	 "(set-window-start (selected-window) xscheme-temp-1 nil)"))
       (thunk)))
 
-(define emacs-presentation-top-justify?
-  #f)
+(define emacs-presentation-top-justify? #f)
 
 ;;;; Interrupt Support
 
@@ -121,10 +120,10 @@ USA.
 
 (define (emacs/^G-interrupt)
   (transmit-signal the-console-port #\g))
-
+
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number)
+(define (emacs/write-result port expression object hash-number environment)
   expression
   (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
@@ -139,7 +138,11 @@ USA.
 	  (number->string hash-number)
 	  ": %s\" xscheme-prompt))"))
 	(else
-	 (transmit-signal-with-argument port #\v (write-to-string object)))))
+	 (transmit-signal-with-argument
+	  port #\v
+	  (call-with-output-string
+	    (lambda (port)
+	      (write object port environment)))))))
 
 (define (emacs/error-decision repl condition)
   condition
@@ -151,8 +154,7 @@ USA.
 	  (if paranoid-error-decision?
 	      (cmdl-interrupt/abort-previous))))))
 
-(define paranoid-error-decision?
-  #f)
+(define paranoid-error-decision? #f)
 
 (define (emacs/set-default-directory port pathname)
   (transmit-signal-with-argument port #\w (->namestring pathname)))

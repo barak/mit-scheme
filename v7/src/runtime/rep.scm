@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.63 2005/03/29 05:04:00 cph Exp $
+$Id: rep.scm,v 14.64 2005/04/01 04:46:57 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1998,1999,2001 Massachusetts Institute of Technology
@@ -422,7 +422,7 @@ USA.
 	       (if (default-object? condition) #f condition)
 	       (if (default-object? operations) '() operations)
 	       (if (default-object? prompt) 'INHERIT prompt))))
-
+
 (define (repl-driver repl)
   (let ((condition (repl/condition repl)))
     (if (and condition (condition/error? condition))
@@ -431,39 +431,49 @@ USA.
 		    (operation repl condition)))
 	      (hook/error-decision
 	       (hook/error-decision repl condition)))))
-  (port/set-default-environment (cmdl/port repl) (repl/environment repl))
-  (let ((queue (repl/input-queue repl)))
-    (do () (#f)
-      (if (queue-empty? queue)
-	  (let ((s-expression (repl-read repl)))
-	    (repl-write repl s-expression (repl-eval repl s-expression)))
-	  ((dequeue! queue) repl)))))
+  (let ((environment (repl/environment repl)))
+    (port/set-default-environment (cmdl/port repl) environment)
+    (let ((queue (repl/input-queue repl)))
+      (do () (#f)
+	(if (queue-empty? queue)
+	    (%repl-eval/write (hook/repl-read environment repl)
+			      environment
+			      repl)
+	    ((dequeue! queue) repl))))))
 
 (define (run-in-nearest-repl procedure)
   (guarantee-procedure-of-arity procedure 1 'run-in-nearest-repl)
   (enqueue! (repl/input-queue (nearest-repl)) procedure))
-
-(define (repl-read repl)
-  (guarantee-repl repl 'repl-read)
-  (hook/repl-read repl))
+
+(define (repl-read #!optional environment repl)
+  (receive (environment repl) (optional-er environment repl 'REPL-READ)
+    (hook/repl-read environment repl)))
 
 (define hook/repl-read)
-(define (default/repl-read repl)
+(define (default/repl-read environment repl)
   (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
-				 (cmdl/port repl)))
+				 (cmdl/port repl)
+				 environment))
 
-(define (repl-eval repl s-expression)
-  (guarantee-repl repl 'repl-eval)
+(define (repl-eval s-expression #!optional environment repl)
+  (receive (environment repl) (optional-er environment repl 'REPL-EVAL)
+    (%repl-eval s-expression environment repl)))
+
+(define (%repl-eval s-expression environment repl)
   (repl-history/record! (repl/reader-history repl) s-expression)
-  (let ((value (hook/repl-eval repl s-expression (repl/environment repl))))
+  (let ((value (hook/repl-eval s-expression environment repl)))
     (repl-history/record! (repl/printer-history repl) value)
     value))
 
 (define hook/repl-eval)
-(define (default/repl-eval repl s-expression environment)
-  (repl-scode-eval repl (syntax s-expression environment) environment))
+(define (default/repl-eval s-expression environment repl)
+  (%repl-scode-eval (syntax s-expression environment) environment repl))
 
-(define (repl-scode-eval repl scode environment)
+(define (repl-scode-eval scode #!optional environment repl)
+  (receive (environment repl) (optional-er environment repl 'REPL-SCODE-EVAL)
+    (%repl-scode-eval scode environment repl)))
+
+(define (%repl-scode-eval scode environment repl)
   (with-repl-eval-boundary repl
     (lambda ()
       (extended-scode-eval scode environment))))
@@ -474,12 +484,12 @@ USA.
    with-repl-eval-boundary
    repl))
 
-(define (repl-write repl s-expression value)
-  (guarantee-repl repl 'repl-write)
-  (hook/repl-write repl s-expression value))
+(define (repl-write value s-expression #!optional environment repl)
+  (receive (environment repl) (optional-er environment repl 'REPL-WRITE)
+    (hook/repl-write value s-expression environment repl)))
 
 (define hook/repl-write)
-(define (default/repl-write repl s-expression object)
+(define (default/repl-write object s-expression environment repl)
   (port/write-result (cmdl/port repl)
 		     s-expression
 		     object
@@ -487,7 +497,32 @@ USA.
 			  (object-pointer? object)
 			  (not (interned-symbol? object))
 			  (not (number? object))
-			  (object-hash object))))
+			  (object-hash object))
+		     environment))
+
+(define (repl-eval/write s-expression #!optional environment repl)
+  (receive (environment repl) (optional-er environment repl 'REPL-EVAL/WRITE)
+    (%repl-eval/write s-expression environment repl)))
+
+(define (%repl-eval/write s-expression environment repl)
+  (hook/repl-write (%repl-eval s-expression environment repl)
+		   s-expression
+		   environment
+		   repl))
+
+(define (optional-er environment repl caller)
+  (let ((repl
+	 (if (default-object? repl)
+	     (nearest-repl)
+	     (begin
+	       (guarantee-repl repl caller)
+	       repl))))
+    (values (if (default-object? environment)
+		(repl/environment repl)
+		(begin
+		  (guarantee-environment environment caller)
+		  environment))
+	    repl)))
 
 (define (repl/start repl #!optional message)
   (cmdl/start repl
@@ -766,10 +801,8 @@ USA.
 	     (package/environment package))))))
 
 (define (re #!optional index)
-  (let ((repl (nearest-repl)))
-    (repl-eval repl
-	       (repl-history/read (repl/reader-history repl)
-				  (if (default-object? index) 1 index)))))
+  (repl-eval (repl-history/read (repl/reader-history (nearest-repl))
+				(if (default-object? index) 1 index))))
 
 (define (in #!optional index)
   (repl-history/read (repl/reader-history (nearest-repl))

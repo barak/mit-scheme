@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 14.45 2003/02/14 18:28:32 cph Exp $
+$Id: debug.scm,v 14.46 2005/04/01 04:46:36 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1999,2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -752,7 +753,8 @@ USA.
 		    (if invalid-expression?
 			""
 			" ($ to retry)"))
-		   port)))
+		   port
+		   environment)))
 	     (if (and (not invalid-expression?)
 		      (eq? expression '$))
 		 (debug/scode-eval (dstate/expression dstate)

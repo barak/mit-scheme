@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.70 2005/03/30 03:50:09 cph Exp $
+$Id: load.scm,v 14.71 2005/04/01 04:46:49 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -223,9 +223,7 @@ USA.
 	  (if load-noisily?
 	      (write-stream (value-stream)
 			    (lambda (exp&value)
-			      (hook/repl-write (nearest-repl)
-					       (car exp&value)
-					       (cdr exp&value))))
+			      (repl-write (cdr exp&value) (car exp&value))))
 	      (loading-message load/suppress-loading-message? pathname
 		(lambda ()
 		  (write-stream (value-stream)
@@ -357,14 +355,9 @@ USA.
 
 (define (eval-stream stream environment)
   (stream-map stream
-	      (let ((repl (nearest-repl)))
-		(let* ((environment
-			(if (default-object? environment)
-			    (repl/environment repl)
-			    environment)))
-		  (lambda (s-expression)
-		    (cons s-expression
-			  (hook/repl-eval #f s-expression environment)))))))
+	      (lambda (s-expression)
+		(cons s-expression
+		      (repl-eval s-expression environment)))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
@@ -554,14 +547,16 @@ USA.
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
-	 repl
-	 (load arg)))))
+	 (load arg (repl/environment repl))))))
   (argument-command-line-parser "eval" #t
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
-	 (let ((sexp (with-input-from-string arg read)))
-	   (repl-write repl sexp (repl-eval repl sexp))))))))
+	 (let ((environment (repl/environment repl)))
+	   (repl-eval/write (read (open-input-string arg)
+				  environment)
+			    environment
+			    repl)))))))
 
 ;;;; Loader for packed binaries
 
