@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.16 2001/12/20 03:04:02 cph Exp $
+$Id: compiler.sf,v 1.17 2001/12/20 05:04:28 cph Exp $
 
 Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
@@ -36,7 +36,8 @@ USA.
 (if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
     (let ((sf-and-load
 	   (lambda (files package)
-	     (sf-conditionally files)
+	     (fluid-let ((sf/default-syntax-table (->environment package)))
+	       (sf-conditionally files))
 	     (for-each (lambda (file)
 			 (load (string-append file ".bin") package))
 		       files))))
@@ -54,8 +55,7 @@ USA.
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (fluid-let ((sf/default-syntax-table (->environment '(COMPILER))))
-	(sf-and-load '("machines/i386/machin") '(COMPILER)))
+      (sf-and-load '("machines/i386/machin") '(COMPILER))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")
 		     (integrate-external "machin")
