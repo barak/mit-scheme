@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.49 1994/09/29 03:55:05 cph Exp $
+$Id: load.scm,v 14.50 1994/10/30 05:42:20 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-94 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -362,7 +362,7 @@ MIT in each case. |#
 ;;;; Command Line Parser
 
 (define (process-command-line)
-  (set! generate-suspend-file? true)
+  (set! generate-suspend-file? #f)
   (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
 
 (define hook/process-command-line)
@@ -463,6 +463,12 @@ MIT in each case. |#
 		      *command-line-parsers*))
 	  unspecific))))
 
+(define (simple-option-parser keyword thunk)
+  (set-command-line-parser! keyword
+			    (lambda (command-line)
+			      (thunk)
+			      (values (cdr command-line) #f))))
+
 (define (for-each-non-keyword command-line processor)
   (define (end command-line accum)
     (if (null? accum)
@@ -484,18 +490,14 @@ MIT in each case. |#
 		    (cons next accum)))))))
 
 (define (initialize-command-line-parsers)
-  (set-command-line-parser!
-   "-no-init-file"
-   (lambda (command-line)
-     (set! *load-init-file?* false)
-     (values (cdr command-line) #f)))
+  (simple-option-parser "-no-init-file"
+			(lambda () (set! *load-init-file?* #f)))
 
-  (set! generate-suspend-file? true)
-  (set-command-line-parser!
-   "-no-suspend-file"
-   (lambda (command-line)
-     (set! generate-suspend-file? false)
-     (values (cdr command-line) #f)))
+  (set! generate-suspend-file? #f)
+  (simple-option-parser "-suspend-file"
+			(lambda () (set! generate-suspend-file? #t)))
+  (simple-option-parser "-no-suspend-file"
+			(lambda () (set! generate-suspend-file? #f)))
 
   (set-command-line-parser!
    "-load"
