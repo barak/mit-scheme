@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.83 2001/02/26 19:15:22 cph Exp $
+@comment $Id: user.texinfo,v 1.84 2001/03/01 18:39:02 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -34,9 +34,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme User's Manual}
-@subtitle Edition 1.83
-@subtitle for Scheme Release 7.5.13
-@subtitle 26 February 2001
+@subtitle Edition 1.84
+@subtitle for Scheme Release 7.5.14
+@subtitle 1 March 2001
 @author by Stephen Adams
 @author Chris Hanson
 @author and the MIT Scheme Team
@@ -169,7 +169,7 @@ To install the software in @file{/usr/local}, do the following
 cd /usr/local
 rm -f bin/scheme bin/bchscheme
 rm -rf lib/mit-scheme
-gzip -cd scheme-7.5.13-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.14-ix86-gnu-linux.tar.gz | tar xvf -
 @end group
 @end example
 
@@ -187,7 +187,7 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd scheme-7.5.13-ix86-gnu-linux.tar.gz | tar xvf -
+gzip -cd scheme-7.5.14-ix86-gnu-linux.tar.gz | tar xvf -
 @end example
 
 @item
@@ -527,10 +527,10 @@ itself, clear the screen, and print something like this:
 
 @example
 @group
-Scheme saved on Monday February 12, 2001 at 11:50:04 PM
-  Release 7.5.13
-  Microcode 14.1
-  Runtime 14.185
+Scheme saved on Wednesday February 28, 2001 at 11:53:16 PM
+  Release 7.5.14
+  Microcode 14.2
+  Runtime 14.186
 @end group
 @end example
 
@@ -4695,7 +4695,7 @@ code.
 
 Note that MIT Scheme still conforms to the @cite{Revised^4 Report on the
 Algorithmic Language Scheme}, but not to the @cite{Revised^5 Report on
-the Algorithmic Language Scheme}.
+The Algorithmic Language Scheme}.
 
 @menu
 * Recent Changes::              
@@ -4711,6 +4711,15 @@ the Algorithmic Language Scheme}.
 These are the changes since release 7.5.0:
 
 @itemize @bullet
+@item
+Release 7.5.14 has changed the way that the crypto libraries are
+handled.  We now support OpenSSL and mcrypt in addition to mhash and the
+older, more custom libraries we were using.  Additional bug fixes:
+transcript files now record output as they are supposed to; Edwin Info
+mode doesn't complain if Scheme's private Info directory is missing;
+termcap support has been reworked to eliminate compilation errors on Red
+Hat 7.0.
+
 @item
 Release 7.5.13 finishes the source-tree reorganization; this software is
 now packaged for Debian.  A fatal bug in the bchscheme garbage collector
