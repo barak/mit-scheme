@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.12 1995/05/06 18:25:35 adams Exp $
+$Id: cpsconv.scm,v 1.13 1995/07/21 14:34:48 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -194,7 +194,8 @@ MIT in each case. |#
 		(cpsconv/expr
 		 (cpsconv/value-continuation
 		  next-name
-		  (cpsconv/dbg-continuation/make 'RATOR-OR-RAND form next))
+		  (cpsconv/dbg-continuation/make 'COMBINATION-ELEMENT
+						 form next))
 		 next))))))
 
   (walk-hard (cpsconv/sort/hard
@@ -247,8 +248,8 @@ MIT in each case. |#
       (let ((dbg-info (code-rewrite/original-form/previous form)))
 	(if (and dbg-info
 		 (new-dbg-expression? dbg-info))
-	    (dbg-info/remember (new-dbg-expression/expr dbg-info)
-			       `(LOOKUP ,early-name))))))
+	    (dbg-info/remember (new-dbg-expression/source-code dbg-info)
+			       early-name)))))
 
 (define (cpsconv/sort/hard operands)
   (case *order-of-argument-evaluation*
@@ -316,7 +317,8 @@ MIT in each case. |#
 		    ,(cpsconv/expr
 		      (cpsconv/begin-continuation
 		       next-name
-		       (cpsconv/dbg-continuation/make 'BEGIN form next))
+		       (cpsconv/dbg-continuation/make 'SEQUENCE-ELEMENT
+						      form next))
 		      next))))))))
 
 (define-cps-converter IF (cont pred conseq alt)
@@ -331,7 +333,7 @@ MIT in each case. |#
 	 ,(cpsconv/expr
 	   (cpsconv/predicate-continuation
 	    cons-name alt-name
-	    (cpsconv/dbg-continuation/make 'PREDICATE form pred))
+	    (cpsconv/dbg-continuation/make 'CONDITIONAL-PREDICATE form pred))
 	   pred))))
   (define (really-simple)
     (cpsconv/return form cont (cpsconv/simple/copy form)))
@@ -464,30 +466,30 @@ MIT in each case. |#
     ((NAMED)
      `(LOOKUP ,(cpsconv/cont/field1 cont)))
     ((VALUE)
-     (let* ((value    (cpsconv/new-name 'VALUE))
-	    (dbg-cont (cpsconv/cont/dbg-cont cont))
+     (let* ((value-name  (cpsconv/new-name 'VALUE))
+	    (dbg-cont    (cpsconv/cont/dbg-cont cont))
 	    (scode
 	     (and (new-dbg-continuation/inner dbg-cont)
-		  (new-dbg-expression/expr
+		  (new-dbg-expression/source-code
 		   (new-dbg-continuation/inner dbg-cont)))))
-       (if scode (dbg-info/remember scode `(LOOKUP ,value)))
+       (if scode (dbg-info/remember scode value-name))
        (cpsconv/remember*
-	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
+	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value-name)
 	   (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
 		 (QUOTE #F)
-		 (LOOKUP ,value)))
+		 (LOOKUP ,value-name)))
 	dbg-cont)))
     ((PREDICATE)
-     (let* ((value    (cpsconv/new-name 'VALUE))
-	    (dbg-cont (cpsconv/cont/dbg-cont cont))
+     (let* ((value-name  (cpsconv/new-name 'VALUE))
+	    (dbg-cont    (cpsconv/cont/dbg-cont cont))
 	    (scode
 	     (and (new-dbg-continuation/inner dbg-cont)
-		  (new-dbg-expression/expr
+		  (new-dbg-expression/source-code
 		   (new-dbg-continuation/inner dbg-cont)))))
-       (if scode (dbg-info/remember scode `(LOOKUP ,value)))
+       (if scode (dbg-info/remember scode value-name))
        (cpsconv/remember*
-	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value)
-	   (IF (LOOKUP ,value)
+	`(LAMBDA (,(cpsconv/new-ignored-continuation) ,value-name)
+	   (IF (LOOKUP ,value-name)
 	       (CALL (LOOKUP ,(cpsconv/cont/field1 cont))
 		     (QUOTE #F))
 	       (CALL (LOOKUP ,(cpsconv/cont/field2 cont))
