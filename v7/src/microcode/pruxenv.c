@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.9 1992/07/08 18:19:46 ziggy Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.10 1992/07/08 22:58:22 cph Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -173,11 +173,10 @@ DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
 #ifdef HAVE_SOCKETS
     this_host_entry = (gethostbyname (this_host_name));
     PRIMITIVE_RETURN
-      (char_pointer_to_string
-       ((unsigned char *)
-	((this_host_entry == 0)
-	 ? this_host_name
-	 : (this_host_entry -> h_name))));
+      ((this_host_entry == 0)
+       ? SHARP_F
+       : (char_pointer_to_string
+	  ((unsigned char *) (this_host_entry -> h_name))));
 #else
     PRIMITIVE_RETURN
       (char_pointer_to_string ((unsigned char *) this_host_name));
