@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/butils.scm,v 4.7 1992/08/24 17:39:23 cph Exp $
+$Id: butils.scm,v 4.8 1993/11/09 04:17:02 gjr Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -67,20 +67,24 @@ MIT in each case. |#
 		      (directory-read input-directory)))))))
 
 (define sf-directory
-  (directory-processor "scm"
-		       (lambda () "bin")
-		       (lambda (pathname output-directory)
-			 (sf pathname output-directory))))
+  (directory-processor
+   "scm"
+   (lambda () "bin")
+   (lambda (pathname output-directory)
+     (sf pathname output-directory))))
 
 (define compile-directory
-  (directory-processor "bin"
-		       (lambda ()
-			 (if (environment-lookup (->environment '(compiler))
-						 'compiler:cross-compiling?)
-			     "moc"
-			     "com"))
-		       (lambda (pathname output-directory)
-			 (compile-bin-file pathname output-directory))))
+  (directory-processor
+   "bin"
+   (lambda ()
+     (if (environment-lookup (->environment '(compiler))
+			     'compiler:cross-compiling?)
+	 "moc"
+	 (environment-lookup (->environment '(compiler top-level))
+						 
+			     'compiled-output-extension)))
+   (lambda (pathname output-directory)
+     (compile-bin-file pathname output-directory))))
 
 (define sf-directory?)
 (define compile-directory?)
