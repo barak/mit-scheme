@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.14 1999/02/16 19:43:17 cph Exp $
+$Id: port.scm,v 1.15 1999/02/16 20:41:49 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -328,8 +328,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (append operations
 		  (if type
 		      (list-transform-negative (port-type/operations type)
-			(lambda (entry)
-			  (assq (car entry) operations)))
+			(let ((ignored
+			       (append (if (assq 'READ-CHAR operations)
+					   input-operation-names
+					   '())
+				       (if (assq 'WRITE-CHAR operations)
+					   output-operation-names
+					   '()))))
+			  (lambda (entry)
+			    (or (assq (car entry) operations)
+				(memq (car entry) ignored)))))
 		      '()))
 	  procedure-name)))
     (install-operations! type input?
