@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.90 2000/03/17 17:57:27 cph Exp $
+@comment $Id: scheme.texinfo,v 1.91 2000/04/12 00:40:52 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -81,9 +81,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.90
+@subtitle Edition 1.91
 @subtitle for Scheme Release 7.5
-@subtitle 17 March 2000
+@subtitle 11 April 2000
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -5514,14 +5514,14 @@ Returns a character set consisting of the characters that are in
 @var{char-set1} but aren't in @var{char-set2}.
 @end deffn
 
-@deffn {procedure+} char-set-intersection char-set1 char-set2
-Returns a character set consisting of the characters that are in both
-@var{char-set1} and @var{char-set2}.
+@deffn {procedure+} char-set-intersection char-set @dots{}
+Returns a character set consisting of the characters that are in all of
+the @var{char-set}s.
 @end deffn
 
-@deffn {procedure+} char-set-union char-set1 char-set2
-Returns a character set consisting of the characters that are in one or
-both of @var{char-set1} and @var{char-set2}.
+@deffn {procedure+} char-set-union char-set @dots{}
+Returns a character set consisting of the characters that are in at
+least one o the @var{char-set}s.
 @end deffn
 
 @deffn {procedure+} char-set-invert char-set
