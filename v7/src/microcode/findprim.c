@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.30 1987/11/23 05:11:39 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.31 1987/12/03 19:30:52 jinx Exp $
  *
  * Preprocessor to find and declare defined primitives.
  *
@@ -712,6 +712,7 @@ mergesort(low, high, array, temp_array)
      register int high;
      register descriptor **array, **temp_array;
 {
+  void print_entry(), initialize_index_size();
   register int index, low1, low2;
   int high1, high2;
 
