@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.25 1988/08/15 20:47:15 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/flonum.c,v 9.26 1989/05/10 21:57:37 arthur Rel $
  *
  * This file contains support for floating point arithmetic.  Most
  * of these primitives have been superceded by generic arithmetic.
@@ -40,6 +40,9 @@ MIT in each case. */
 #include "prims.h"
 #include "flonum.h"
 #include "zones.h"
+
+#define BOOLEAN_RESULT(x)						\
+  return ((x) ? SHARP_T : NIL)
 
                 /************************************/
                 /* BINARY FLOATING POINT OPERATIONS */
@@ -108,8 +111,7 @@ DEFINE_PRIMITIVE ("EQUAL-FLONUM?", Prim_equal_flonum, 2, 2, 0)
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return
-    Make_Unsigned_Fixnum(((Get_Float(Arg1)) == (Get_Float(Arg2))) ? 1 : 0);
+  BOOLEAN_RESULT ((Get_Float(Arg1)) == (Get_Float(Arg2)));
 }
 
 DEFINE_PRIMITIVE ("GREATER-THAN-FLONUM?", Prim_greater_flonum, 2, 2, 0)
@@ -119,8 +121,7 @@ DEFINE_PRIMITIVE ("GREATER-THAN-FLONUM?", Prim_greater_flonum, 2, 2, 0)
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return
-    Make_Unsigned_Fixnum(((Get_Float(Arg1)) > (Get_Float(Arg2))) ? 1 : 0);
+  BOOLEAN_RESULT ((Get_Float(Arg1)) > (Get_Float(Arg2)));
 }
 
 DEFINE_PRIMITIVE ("LESS-THAN-FLONUM?", Prim_less_flonum, 2, 2, 0)
@@ -130,8 +131,7 @@ DEFINE_PRIMITIVE ("LESS-THAN-FLONUM?", Prim_less_flonum, 2, 2, 0)
   Arg_1_Type(TC_BIG_FLONUM);
   Arg_2_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return
-    Make_Unsigned_Fixnum(((Get_Float(Arg1)) < (Get_Float(Arg2))) ? 1 : 0);
+  BOOLEAN_RESULT ((Get_Float(Arg1)) < (Get_Float(Arg2)));
 }
 
 	        /***********************************/
@@ -214,7 +214,7 @@ DEFINE_PRIMITIVE ("ZERO-FLONUM?", Prim_zero_flonum, 1, 1, 0)
 
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return Make_Unsigned_Fixnum((Get_Float(Arg1) == 0.0) ? 1 : 0);
+  BOOLEAN_RESULT (Get_Float(Arg1) == 0.0);
 }
 
 DEFINE_PRIMITIVE ("POSITIVE-FLONUM?", Prim_positive_flonum, 1, 1, 0)
@@ -223,7 +223,7 @@ DEFINE_PRIMITIVE ("POSITIVE-FLONUM?", Prim_positive_flonum, 1, 1, 0)
 
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return Make_Unsigned_Fixnum((Get_Float(Arg1) > 0.0) ? 1 : 0);
+  BOOLEAN_RESULT (Get_Float(Arg1) > 0.0);
 }
 
 DEFINE_PRIMITIVE ("NEGATIVE-FLONUM?", Prim_negative_flonum, 1, 1, 0)
@@ -232,7 +232,7 @@ DEFINE_PRIMITIVE ("NEGATIVE-FLONUM?", Prim_negative_flonum, 1, 1, 0)
 
   Arg_1_Type(TC_BIG_FLONUM);
   Set_Time_Zone(Zone_Math);
-  return Make_Unsigned_Fixnum((Get_Float(Arg1) < 0.0) ? 1 : 0);
+  BOOLEAN_RESULT (Get_Float(Arg1) < 0.0);
 }
 
 /* (COERCE-INTEGER-TO-FLONUM FIXNUM-OR-BIGNUM)
