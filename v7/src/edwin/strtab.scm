@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.42 1989/08/11 11:12:19 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.43 1991/05/10 04:50:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,19 +48,25 @@
 
 (define-structure (string-table (constructor %make-string-table))
   vector
-  size)
+  size
+  ci?)
 
-(define (make-string-table #!optional initial-size)
+(define (make-string-table #!optional initial-size ci?)
   (%make-string-table (make-vector (if (default-object? initial-size)
 				       16
 				       initial-size))
-		      0))
+		      0
+		      (or (default-object? ci?) ci?)))
 
-(define (alist->string-table alist)
-  (let ((v
-	 (list->vector
-	  (sort alist (lambda (x y) (string-ci<? (car x) (car y)))))))
-    (%make-string-table v (vector-length v))))
+(define (alist->string-table alist #!optional ci?)
+  (let ((ci? (or (default-object? ci?) ci?)))
+    (let ((v
+	   (list->vector
+	    (sort alist
+		  (if ci?
+		      (lambda (x y) (string-ci<? (car x) (car y)))
+		      (lambda (x y) (string<? (car x) (car y))))))))
+      (%make-string-table v (vector-length v) ci?))))
 
 (define-integrable make-string-table-entry cons)
 (define-integrable string-table-entry-string car)
@@ -75,10 +81,12 @@
 	  (if-not-found low)
 	  (let ((index (quotient (+ high low) 2)))
 	    (let ((entry (vector-ref vector index)))
-	      (string-compare-ci string1 (string-table-entry-string entry)
-		(lambda () (if-found index entry))
-		(lambda () (loop low (-1+ index)))
-		(lambda () (loop (1+ index) high)))))))))
+	      ((if (string-table-ci? table) string-compare-ci string-compare)
+	       string1
+	       (string-table-entry-string entry)
+	       (lambda () (if-found index entry))
+	       (lambda () (loop low (-1+ index)))
+	       (lambda () (loop (1+ index) high)))))))))
 
 (define (string-table-get table string #!optional if-not-found)
   (string-table-search table string
@@ -150,29 +158,20 @@
 		  (loop (1+ index))))))
     (lambda () '())))
 
-(define (string-table-apropos table string)
-  (let ((end (string-table-size table)))
-    (let loop ((index 0))
-      (if (= index end)
-	  '()
-	  (let ((entry (vector-ref (string-table-vector table) index)))
-	    (if (substring-ci? string (string-table-entry-string entry))
-		(cons (string-table-entry-value entry) (loop (1+ index)))
-		(loop (1+ index))))))))
-
-(define (substring-ci? string1 string2)
-  (or (string-null? string1)
-      (let ((char (string-ref string1 0))
-	    (end1 (string-length string1))
-	    (end2 (string-length string2)))
-	(let loop ((start2 0))
-	  (let ((index (substring-find-next-char-ci string2 start2 end2 char)))
-	    (and index
-		 (if (= (-1+ end1)
-			(substring-match-forward-ci string1 1 end1
-						    string2 (1+ index) end2))
-		     index
-		     (loop (1+ index)))))))))
+(define (string-table-apropos table regexp)
+  (let ((end (string-table-size table))
+	(case-fold-search (string-table-ci? table)))
+    (let ((pattern (re-compile-pattern regexp case-fold-search)))
+      (let loop ((index 0))
+	(if (= index end)
+	    '()
+	    (let ((entry (vector-ref (string-table-vector table) index)))
+	      (if (re-search-string-forward pattern
+					    case-fold-search
+					    false
+					    (string-table-entry-string entry))
+		  (cons (string-table-entry-value entry) (loop (1+ index)))
+		  (loop (1+ index)))))))))
 
 (define (%string-table-complete table string
 				if-unique if-not-unique if-not-found)
@@ -181,14 +180,17 @@
 	(entry-string
 	 (lambda (index)
 	   (string-table-entry-string
-	    (vector-ref (string-table-vector table) index)))))
+	    (vector-ref (string-table-vector table) index))))
+	(match-forward
+	 (if (string-table-ci? table)
+	     string-match-forward-ci
+	     string-match-forward)))
     (let ((perform-search
 	   (lambda (index)
 	     (let ((close-match (entry-string index)))
 	       (let ((match-entry
 		      (lambda (index)
-			(string-match-forward-ci close-match
-						 (entry-string index)))))
+			(match-forward close-match (entry-string index)))))
 		 (define (scan-up gcs receiver)
 		   (let loop ((gcs gcs) (index (1+ index)))
 		     (if (= index table-size)
@@ -206,7 +208,11 @@
 			     (if (< match size)
 				 (receiver gcs index)
 				 (loop (min gcs match) new-index)))))))
-		 (if (string-prefix-ci? string close-match)
+		 (if ((if (string-table-ci? table)
+			  string-prefix-ci?
+			  string-prefix?)
+		      string
+		      close-match)
 		     (scan-up (string-length close-match)
 		       (lambda (gcs upper)
 			 (scan-down gcs
