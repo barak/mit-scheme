@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.36 1994/04/05 21:22:20 cph Exp $
+;;;	$Id: hppa.m4,v 1.37 1996/08/12 23:14:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -537,7 +537,7 @@ multiply_fixnum
 	STW	26,0(0,21)
 	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 	STW	25,4(0,21)
-	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26	; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH,1,26		; FIXNUM_LIMIT
 	FLDWS	0(0,21),4
 	FLDWS	4(0,21),5
 	STW	26,8(0,21)			; FIXNUM_LIMIT
@@ -578,7 +578,7 @@ fixnum_quotient
 	STW	26,0(0,21)
 	EXTRS	25,FIXNUM_POS,FIXNUM_LENGTH,25	; arg2
 	STW	25,4(0,21)
-	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,26	; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH,1,26		; FIXNUM_LIMIT
 	FLDWS	0(0,21),4
 	FLDWS	4(0,21),5
         FCNVXF,SGL,DBL  4,4			; arg1

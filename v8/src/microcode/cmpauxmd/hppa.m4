@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.40 1996/07/19 02:22:05 adams Exp $
+;;;	$Id: hppa.m4,v 1.41 1996/08/12 23:13:25 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-1996 Massachusetts Institute of Technology
 ;;;
@@ -912,7 +912,7 @@ multiply_fixnum
 ;;
 	STW	26,0(0,rs_free)			; copy in jump table
 	STW	25,4(0,rs_free)
-	ZDEPI	1,TC_LENGTH-1,DATUM_LENGTH+1,26	; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH-1,1,26		; FIXNUM_LIMIT
 	FLDWS	0(0,rs_free),4
 	FLDWS	4(0,rs_free),5
 	STW	26,8(0,rs_free)			; FIXNUM_LIMIT
@@ -952,7 +952,7 @@ fixnum_quotient
 	STW	25,4(0,rs_free)			; arg2
 	COMB,=	0,25,fixnum_quotient_ovflw
 	STW	26,0(0,rs_free)
-	ZDEPI	1,TC_LENGTH,FIXNUM_BIT,25	; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH-1,1,26		; FIXNUM_LIMIT
 	FLDWS	0(0,rs_free),4
 	FLDWS	4(0,rs_free),5
         FCNVXF,SGL,DBL  4,4			; arg1
@@ -1236,7 +1236,7 @@ generic_times_fix_fix					; FIX * FIX
 	;;  This is similar to the multiply_fixnum code
 	STW	gen_arg1,0(0,rs_free)
 	STW	gen_arg2,4(0,rs_free)
-	ZDEPI	1,TC_LENGTH-1,DATUM_LENGTH+1,gt3	; FIXNUM_LIMIT
+	ZDEPI	1,TC_LENGTH-1,1,gt3			; FIXNUM_LIMIT
 	FLDWS	0(0,rs_free),ft1
 	FLDWS	4(0,rs_free),ft2
 	STW	gt3,8(0,rs_free)			; FIXNUM_LIMIT
