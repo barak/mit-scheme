@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.22 1993/06/09 20:34:39 jawilson Exp $
+$Id: comutl.c,v 1.23 1993/07/29 07:02:50 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -140,6 +140,20 @@ DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 
   PRIMITIVE_RETURN (compiled_closure_to_entry (closure));
 }
 
+DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1,
+  "Given an integer, return the name of the corresponding compiled code utility.")
+{
+  extern char * EXFUN (utility_index_to_name, (int));
+  char * result;
+  PRIMITIVE_HEADER (1);
+
+  result = (utility_index_to_name (arg_integer (1)));
+  if (result == ((char *) NULL))
+    PRIMITIVE_RETURN (SHARP_F);
+  else
+    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+}
+
 /* This is only meaningful for the C back end. */
 
 DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK", Prim_initialize_C_compiled_block, 1, 1,

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppa.h,v 1.42 1993/06/30 03:35:47 gjr Exp $
+$Id: hppa.h,v 1.43 1993/07/29 07:02:09 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -446,12 +446,6 @@ DEFUN_VOID (flush_i_cache_initialize)
 
  */
 
-/* A NOP on machines where instructions are longword-aligned. */
-
-#define ADJUST_CLOSURE_AT_CALL(entry_point, location) do		\
-{									\
-} while (0)
-
 /* Compiled closures */
 
 /* Manifest closure entry block size.
@@ -738,6 +732,22 @@ DEFUN (assemble_17, (inst), union ble_inst inst)
   return off.value;
 }
 
+static unsigned long
+DEFUN (C_closure_entry_point, (closure), unsigned long C_closure)
+{
+  if ((C_closure & 0x3) == 0x2)
+  {
+    long offset;
+    char * blp = (* ((char **) (C_closure - 2)));
+
+    blp = ((char *) (((unsigned long) blp) & ~3));
+    offset = (assemble_17 (* ((union ble_inst *) blp)));
+    return ((unsigned long) ((blp + 8) + offset));
+  }
+  else
+    return (C_closure);
+}
+
 PTR *
 DEFUN (transform_procedure_table, (table_length, old_table),
        long table_length AND PTR * old_table)
@@ -754,21 +764,13 @@ DEFUN (transform_procedure_table, (table_length, old_table),
   }
 
   for (counter = 0; counter < table_length; counter++)
-  {
-    char * C_closure = ((char *) (old_table [counter]));
-    if ((((unsigned long) C_closure) & 0x3) == 0x2)
-    {
-      long offset;
-      char * blp = (* ((char **) (C_closure - 2)));
-      blp = ((char *) (((unsigned long) blp) & ~3));
-      offset = (assemble_17 (* ((union ble_inst *) blp)));
-      new_table[counter] = ((PTR) ((blp + 8) + offset));
-    }
-    else
-      new_table[counter] = ((PTR) (old_table [counter]));
-  }
+    new_table[counter] =
+      ((PTR) (C_closure_entry_point ((unsigned long) (old_table [counter]))));
   return (new_table);
 }
+
+#define UTIL_TABLE_PC_REF(index)					\
+  (C_closure_entry_point (UTIL_TABLE_PC_REF_REAL (index)))
 
 #ifdef _BSD4_3
 #  include <sys/mman.h>
@@ -817,8 +819,7 @@ DEFUN (hppa_reset_hook, (utility_length, utility_table,
        long utility_length AND PTR * utility_table
        AND long primitive_length AND PTR * primitive_table)
 {
-  extern void
-    EXFUN (interface_initialize, (void));
+  extern void EXFUN (interface_initialize, (void));
 
   flush_i_cache_initialize ();
   interface_initialize ();

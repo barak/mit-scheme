@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ymkfile,v 1.70 1993/06/24 22:26:22 gjr Exp $
+$Id: ymkfile,v 1.71 1993/07/29 07:01:26 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -187,8 +187,8 @@ GC_HEAD_FILES = gccode.h cmpgc.h
 #if (PROC_TYPE == PROC_TYPE_VAX)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+MACHINE_SOURCES = cmpauxmd.m4 cmpint.c
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
 cmpauxmd.o : cmpauxmd.s
@@ -200,8 +200,8 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 #define PROC_TYPE_KNOWN
 #undef hppa
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+MACHINE_SOURCES = cmpauxmd.m4 cmpint.c
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h hppacach.h
 XTRA_TARGETS = hppacach
 
@@ -214,8 +214,8 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 #define PROC_TYPE_KNOWN
 #undef mips
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+MACHINE_SOURCES = cmpauxmd.m4 cmpint.c
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
 cmpauxmd.o : cmpauxmd.s
@@ -227,8 +227,8 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 #define PROC_TYPE_KNOWN
 #undef i386
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+MACHINE_SOURCES = cmpauxmd.m4 cmpint.c
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
 cmpauxmd.o : cmpauxmd.s
@@ -239,8 +239,8 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 #if (PROC_TYPE == PROC_TYPE_ALPHA)
 #define PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
-MACHINE_SOURCES = cmpint.c cmpauxmd.m4
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o
+MACHINE_SOURCES = cmpauxmd.m4 cmpint.c
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 
 cmpauxmd.o : cmpauxmd.s
@@ -256,8 +256,8 @@ cmpauxmd.s : cmpauxmd.m4 xmkfile
 COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
 
 MACHINE_SWITCHES = -DNATIVE_CODE_IS_C
-MACHINE_SOURCES = cmpint.c cmpauxmd.c compinit.c $(COMPILED_SOURCES)
-MACHINE_OBJECTS = cmpint.o cmpauxmd.o compinit.o $(COMPILED_OBJECTS)
+MACHINE_SOURCES = cmpauxmd.c cmpint.c compinit.c $(COMPILED_SOURCES)
+MACHINE_OBJECTS = cmpauxmd.o cmpint.o compinit.o $(COMPILED_OBJECTS)
 GC_HEAD_FILES = gccode.h cmpgc.h cmpintmd.h
 LIARC_HEAD_FILES = \
 ansidecl.h \

@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.28 1993/07/27 17:47:34 gjr Exp $
+;;;	$Id: hppa.m4,v 1.29 1993/07/29 07:02:17 gjr Exp $
 ;;;
 ;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -732,6 +732,7 @@ generic_$1_fail					; ?? * ??, out of line
 	B	scheme_to_interface
 	LDI	HEX($2),28			; operation code")
 
+flonum_result
 unary_flonum_result
 	ADDI,TR	4,22,6				; ret. add. location
 
@@ -1110,33 +1111,90 @@ ep_interface_to_C
 
 interface_initialize
 	.PROC
-	.CALLINFO CALLER,FRAME=0
+	.CALLINFO CALLER,FRAME=4,SAVE_RP
 	.ENTRY
-	LDO	4(30),30			; Allocate stack slot
-	FSTWS	0,0(30)
-	LDW	0(30),22
+	STW	2,-20(0,30)			; Preserve return address
+	LDO	64(30),30			; Allocate stack frame
+	STW	3,-64(30)			; Preserve gr3
+	FSTWS	0,-4(30)
+	LDW	-4(30),22
 	LDI	30,21				; enable V, Z, O, U traps
 	OR	21,22,22
-	STW	22,0(30)
-	FLDWS	0(30),0
+	STW	22,-4(30)
+	FLDWS	-4(30),0
 						; Prepare entry points
-	BL	known_pc,28			; get pc
+	BL	known_pc,3			; get pc
 	NOP
 known_pc
 
-define(store_entry_point,"ADDIL	L'ep_$1-known_pc,28
+define(store_entry_point,"ADDIL	L'ep_$1-known_pc,3
 	LDO	R'ep_$1-known_pc(1),29
 	ADDIL	L'$1-$global$,27
 	STW	29,R'$1-$global$(1)")
 
 	store_entry_point(interface_to_scheme)
 	store_entry_point(interface_to_C)
-	store_entry_point(scheme_hooks_low)
-	store_entry_point(scheme_hooks_high)
+
+define(builtin,"ADDIL L'$1-known_pc,3
+	.CALL	ARGW0=GR
+	BL	declare_builtin,2
+	LDO	R'$1-known_pc(1),26")	
+
+	builtin(scheme_to_interface_ble)
+	builtin(ep_scheme_hooks_low)
+	builtin(store_closure_entry)
+	builtin(store_closure_code)
+	builtin(multiply_fixnum)
+	builtin(fixnum_quotient)
+	builtin(fixnum_remainder)
+	builtin(fixnum_lsh)
+	builtin(flonum_result)
+	builtin(generic_boolean_result)
+	builtin(generic_decrement)
+	builtin(generic_divide)
+	builtin(generic_equal)
+	builtin(generic_greater)
+	builtin(generic_increment)
+	builtin(generic_less)
+	builtin(generic_subtract)
+	builtin(generic_times)
+	builtin(generic_negative)
+	builtin(generic_plus)
+	builtin(generic_positive)
+	builtin(generic_zero)
+	builtin(shortcircuit_apply)
+	builtin(shortcircuit_apply_1)
+	builtin(shortcircuit_apply_2)
+	builtin(shortcircuit_apply_3)
+	builtin(shortcircuit_apply_4)
+	builtin(shortcircuit_apply_5)
+	builtin(shortcircuit_apply_6)
+	builtin(shortcircuit_apply_7)
+	builtin(shortcircuit_apply_8)
+	builtin(stack_and_interrupt_check)
+	builtin(invoke_primitive)
+	builtin(vector_cons)
+	builtin(string_allocate)
+	builtin(floating_vector_cons)
+	builtin(flonum_sin)
+	builtin(flonum_cos)
+	builtin(flonum_tan)
+	builtin(flonum_asin)
+	builtin(flonum_acos)
+	builtin(flonum_atan)
+	builtin(flonum_exp)
+	builtin(flonum_log)
+	builtin(flonum_truncate)
+	builtin(flonum_ceiling)
+	builtin(flonum_floor)
+	builtin(flonum_atan2)
+	builtin(ep_scheme_hooks_high)
 						; Return
+	LDW	-84(30),2			; Restore return address
+	LDW	-64(30),3			; Restore gr3
 	BV	0(2)
 	.EXIT
-	LDO	-4(30),30			; De-allocate stack slot
+	LDO	-64(30),30			; De-allocate stack frame
 	.PROCEND
 
 ;;;; Routine to flush some locations from the processor cache.
@@ -1372,6 +1430,7 @@ interface_limit
 	.SPACE	$TEXT$
 	.SUBSPA $CODE$
         .IMPORT $$remI,MILLICODE
+	.IMPORT declare_builtin,CODE
 	.IMPORT	sin,CODE
 	.IMPORT	cos,CODE
 	.IMPORT	tan,CODE
@@ -1394,7 +1453,5 @@ interface_limit
 	.EXPORT cache_flush_all,PRIV_LEV=3
 	.EXPORT ep_interface_to_C,PRIV_LEV=3
 	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
-	.EXPORT ep_scheme_hooks_low,PRIV_LEV=3
-	.EXPORT ep_scheme_hooks_high,PRIV_LEV=3
 	.EXPORT	flonum_atan2,PRIV_LEV=3
 	.END

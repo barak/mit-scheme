@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.19 1993/03/16 21:36:16 gjr Exp $
+$Id: uxtrap.h,v 1.20 1993/07/29 07:02:52 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -95,13 +95,6 @@ MIT in each case. */
  */
 
 #define PC_VALUE_MASK			((~0) << 2)
-
-/* Pseudo-compiled code in assembly language. */
-
-extern void * scheme_hooks_low, * scheme_hooks_high;
-#define PC_HOOK_P(pc)							\
-  ((((void *) (pc)) >= scheme_hooks_low)				\
-   && (((void *) (pc)) < scheme_hooks_high))
 
 /* pcoq is the offset (32 bit in 64 bit virtual address space)
    in the space included in the corresponding sc_pcsq.
@@ -525,10 +518,6 @@ struct full_sigcontext
 
 #ifndef INITIALIZE_UX_SIGNAL_CODES
 #define INITIALIZE_UX_SIGNAL_CODES()
-#endif
-
-#ifndef PC_HOOK_P
-#define PC_HOOK_P(pc) 0
 #endif
 
 enum trap_state

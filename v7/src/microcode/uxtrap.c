@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.21 1993/03/16 21:36:10 gjr Exp $
+$Id: uxtrap.c,v 1.22 1993/07/29 07:02:51 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -481,21 +481,24 @@ static SCHEME_OBJECT * EXFUN
 #if !(defined (_HPUX) && (_HPUX_VERSION >= 80) && defined (hp9000s300))
 extern long etext;
 #endif
-#define get_etext() (&etext)
+#  define get_etext() (&etext)
 #endif
-
+
 static void
 DEFUN (continue_from_trap, (signo, info, scp),
        int signo AND
        SIGINFO_T info AND
        struct FULL_SIGCONTEXT * scp)
 {
-  int pc_in_hook;
+  int pc_in_builtin;
+  int builtin_index;
   int pc_in_C;
   int pc_in_heap;
   int pc_in_constant_space;
   int pc_in_scheme;
   int pc_in_hyper_space;
+  int pc_in_utility;
+  int utility_index;
   int scheme_sp_valid;
   long C_sp = (FULL_SIGCONTEXT_SP (scp));
   long scheme_sp = (FULL_SIGCONTEXT_SCHSP (scp));
@@ -503,24 +506,13 @@ DEFUN (continue_from_trap, (signo, info, scp),
   SCHEME_OBJECT * new_stack_pointer;
   SCHEME_OBJECT * xtra_info;
   struct trap_recovery_info trinfo;
-
-#if FALSE
-  fprintf (stderr, "\ncontinue_from_trap:");
-  fprintf (stderr, "\tpc = 0x%08lx\n", the_pc);
-  fprintf (stderr, "\tCsp = 0x%08lx\n", C_sp);
-  fprintf (stderr, "\tssp = 0x%08lx\n", scheme_sp);
-  fprintf (stderr, "\tesp = 0x%08lx\n", Ext_Stack_Pointer);
-#ifdef hp9000s800
-  {
-    fprintf (stderr, "\tscheme_hooks_low = 0x%08lx\n", scheme_hooks_low);
-    fprintf (stderr, "\tscheme_hooks_high = 0x%08lx\n", scheme_hooks_high);
-  }
-#endif
-#endif
+  extern int EXFUN (pc_to_utility_index, (unsigned long));
+  extern int EXFUN (pc_to_builtin_index, (unsigned long));
 
   if ((the_pc & PC_ALIGNMENT_MASK) != 0)
   {
-    pc_in_hook = 0;
+    pc_in_builtin = 0;
+    pc_in_utility = 0;
     pc_in_C = 0;
     pc_in_heap = 0;
     pc_in_constant_space = 0;
@@ -529,14 +521,17 @@ DEFUN (continue_from_trap, (signo, info, scp),
   }
   else
   {
-    pc_in_hook = (PC_HOOK_P (the_pc));
-    pc_in_C = ((the_pc <= ((long) (get_etext ()))) && (!pc_in_hook));
+    builtin_index = (pc_to_builtin_index (the_pc));
+    pc_in_builtin = (builtin_index != -1);
+    utility_index = (pc_to_utility_index (the_pc));
+    pc_in_utility = (utility_index != -1);    
+    pc_in_C = ((the_pc <= ((long) (get_etext ()))) && (!pc_in_builtin));
     pc_in_heap =
       ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
     pc_in_constant_space =
       ((the_pc < ((long) Constant_Top)) &&
        (the_pc >= ((long) Constant_Space)));
-    pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_hook);
+    pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_builtin);
     pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
   }
 
@@ -553,7 +548,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	&& (Stack_Pointer > Absolute_Stack_Base))
      ? Stack_Pointer
      : ((SCHEME_OBJECT *) 0));
-
+
   if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
   {
     /* In hyper space. */
@@ -564,9 +559,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
     if ((Free < MemTop) ||
 	(Free >= Heap_Top) ||
 	((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-    {
       Free = MemTop;
-    }
   }
   else if (pc_in_scheme)
   {
@@ -574,17 +567,11 @@ DEFUN (continue_from_trap, (signo, info, scp),
     SCHEME_OBJECT * block_addr;
     SCHEME_OBJECT * maybe_free;
     block_addr =
-      (pc_in_hook
+      (pc_in_builtin
        ? ((SCHEME_OBJECT *) NULL)
        : (find_block_address (((PTR) the_pc),
 			      (pc_in_heap ? Heap_Bottom : Constant_Space))));
-    if (block_addr == ((SCHEME_OBJECT *) NULL))
-    {
-      (trinfo . state) = STATE_PROBABLY_COMPILED;
-      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
-      (trinfo . pc_info_2) = SHARP_F;
-    }
-    else
+    if (block_addr != ((SCHEME_OBJECT *) NULL))
     {
       (trinfo . state) = STATE_COMPILED_CODE;
       (trinfo . pc_info_1) =
@@ -592,8 +579,20 @@ DEFUN (continue_from_trap, (signo, info, scp),
       (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
     }
-    if ((block_addr == ((SCHEME_OBJECT *) NULL))
-	&& (! pc_in_hook))
+    else if (pc_in_builtin)
+    {
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (builtin_index));
+      (trinfo . pc_info_2) = SHARP_T;
+    }
+    else 
+    {
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
+      (trinfo . pc_info_2) = SHARP_F;
+    }
+
+    if ((block_addr == ((SCHEME_OBJECT *) NULL)) && (! pc_in_builtin))
     {
       if ((Free < MemTop) ||
 	  (Free >= Heap_Top) ||
@@ -606,25 +605,28 @@ DEFUN (continue_from_trap, (signo, info, scp),
       maybe_free = ((SCHEME_OBJECT *) (FULL_SIGCONTEXT_RFREE (scp)));
       if (((((unsigned long) maybe_free) & SCHEME_ALIGNMENT_MASK) == 0)
 	  && (maybe_free >= Heap_Bottom) && (maybe_free < Heap_Top))
-      {
 	Free = (maybe_free + FREE_PARANOIA_MARGIN);
-      }
       else
 #endif
-      {
 	if ((Free < MemTop) || (Free >= Heap_Top)
 	    || ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
 	  Free = MemTop;
-      }
     }
   }
-  else
+
+  else /* pc_in_C */
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
     SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
 
-    if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
+    if (pc_in_utility)
+    {
+      (trinfo . state) = STATE_PROBABLY_COMPILED;
+      (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (utility_index));
+      (trinfo . pc_info_2) = UNSPECIFIC;
+    }
+    else if ((OBJECT_TYPE (primitive)) != TC_PRIMITIVE)
     {
       (trinfo . state) = STATE_UNKNOWN;
       (trinfo . pc_info_1) = SHARP_F;
@@ -644,13 +646,9 @@ DEFUN (continue_from_trap, (signo, info, scp),
 	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)
 	|| ((Free < Heap_Bottom) || (Free >= Heap_Top))
 	|| ((Free < MemTop) && ((Free + FREE_PARANOIA_MARGIN) >= MemTop)))
-    {
       Free = MemTop;
-    }
     else if ((Free + FREE_PARANOIA_MARGIN) < MemTop)
-    {
       Free +=  FREE_PARANOIA_MARGIN;
-    }
   }
   xtra_info = Free;
   Free += (1 + 2 + PROCESSOR_NREGS);
@@ -664,20 +662,14 @@ DEFUN (continue_from_trap, (signo, info, scp),
     int counter = FULL_SIGCONTEXT_NREGS;
     long * regs = ((long *) (FULL_SIGCONTEXT_FIRST_REG (scp)));
     while ((counter--) > 0)
-    {
       (*xtra_info++) = ((SCHEME_OBJECT) (*regs++));
-    }
   }
   /* We assume that regs,sp,pc is the order in the processor.
      Scheme can always fix this. */
   if ((PROCESSOR_NREGS - FULL_SIGCONTEXT_NREGS) > 0)
-  {
     (*xtra_info++) = ((SCHEME_OBJECT) C_sp);
-  }
   if ((PROCESSOR_NREGS - FULL_SIGCONTEXT_NREGS) > 1)
-  {
     (*xtra_info++) = ((SCHEME_OBJECT) the_pc);
-  }
   setup_trap_frame (signo, info, scp, (&trinfo), new_stack_pointer);
 }
 

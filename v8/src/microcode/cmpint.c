@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.58 1993/07/27 21:00:48 gjr Exp $
+$Id: cmpint.c,v 1.59 1993/07/29 07:02:47 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -2759,6 +2759,262 @@ utility_table_entry utility_table[] =
   UTE(comutil_apply_in_interpreter)		/* 0x3a */
   };
 
+/* Support for trap handling. */
+
+static void
+DEFUN_VOID (end_of_utils)
+{
+  return;
+}
+
+struct util_descriptor_s
+{
+  PTR pc;
+  char * name;
+};
+
+#ifdef __STDC__
+#  define UTLD(name)  { ((PTR) name), #name }
+#else
+/* Hope that this works. */
+#  define UTLD(name)  { ((PTR) name), "name" }
+#endif
+
+static
+struct util_descriptor_s utility_descriptor_table[] =
+{
+  UTLD(C_to_interface),
+  UTLD(open_gap),
+  UTLD(setup_lexpr_invocation),
+  UTLD(setup_compiled_invocation),
+  UTLD(enter_compiled_expression),
+  UTLD(apply_compiled_procedure),
+  UTLD(return_to_compiled_code),
+  UTLD(apply_compiled_from_primitive),
+  UTLD(comutil_return_to_interpreter),
+  UTLD(comutil_apply_in_interpreter),
+  UTLD(comutil_primitive_apply),
+  UTLD(comutil_primitive_lexpr_apply),
+  UTLD(comutil_apply),
+  UTLD(comutil_error),
+  UTLD(comutil_lexpr_apply),
+  UTLD(abort_link_cc_block),
+  UTLD(link_cc_block),
+  UTLD(comutil_link),
+  UTLD(comp_link_caches_restart),
+  UTLD(comutil_operator_apply_trap),
+  UTLD(comutil_operator_arity_trap),
+  UTLD(comutil_operator_entity_trap),
+  UTLD(comutil_operator_interpreted_trap),
+  UTLD(comutil_operator_lexpr_trap),
+  UTLD(comutil_operator_primitive_trap),
+  UTLD(comutil_operator_lookup_trap),
+  UTLD(comp_op_lookup_trap_restart),
+  UTLD(comutil_operator_1_0_trap),
+  UTLD(comutil_operator_2_1_trap),
+  UTLD(comutil_operator_2_0_trap),
+  UTLD(comutil_operator_3_2_trap),
+  UTLD(comutil_operator_3_1_trap),
+  UTLD(comutil_operator_3_0_trap),
+  UTLD(comutil_operator_4_3_trap),
+  UTLD(comutil_operator_4_2_trap),
+  UTLD(comutil_operator_4_1_trap),
+  UTLD(comutil_operator_4_0_trap),
+  UTLD(compiler_interrupt_common),
+  UTLD(comutil_interrupt_closure),
+  UTLD(comutil_interrupt_dlink),
+  UTLD(comutil_interrupt_procedure),
+  UTLD(comutil_interrupt_continuation),
+  UTLD(comutil_interrupt_ic_procedure),
+  UTLD(comp_interrupt_restart),
+
+  UTLD(comutil_assignment_trap),
+  UTLD(comp_assignment_trap_restart),
+  UTLD(comutil_cache_lookup_apply),
+  UTLD(comp_cache_lookup_apply_restart),
+  UTLD(comutil_lookup_trap),
+  UTLD(comp_lookup_trap_restart),
+  UTLD(comutil_safe_lookup_trap),
+  UTLD(comp_safe_lookup_trap_restart),
+  UTLD(comutil_unassigned_p_trap),
+  UTLD(comp_unassigned_p_trap_restart),
+  UTLD(comutil_decrement),
+  UTLD(comutil_divide),
+  UTLD(comutil_equal),
+  UTLD(comutil_greater),
+  UTLD(comutil_increment),
+  UTLD(comutil_less),
+  UTLD(comutil_minus),
+  UTLD(comutil_modulo),
+  UTLD(comutil_multiply),
+  UTLD(comutil_negative),
+  UTLD(comutil_plus),
+  UTLD(comutil_positive),
+  UTLD(comutil_quotient),
+  UTLD(comutil_remainder),
+  UTLD(comutil_zero),
+  UTLD(comutil_access),
+  UTLD(comp_access_restart),
+  UTLD(comutil_reference),
+  UTLD(comp_reference_restart),
+  UTLD(comutil_safe_reference),
+  UTLD(comp_safe_reference_restart),
+  UTLD(comutil_unassigned_p),
+  UTLD(comp_unassigned_p_restart),
+  UTLD(comutil_unbound_p),
+  UTLD(comp_unbound_p_restart),
+  UTLD(comutil_assignment),
+  UTLD(comp_assignment_restart),
+  UTLD(comutil_definition),
+  UTLD(comp_definition_restart),
+  UTLD(comutil_lookup_apply),
+  UTLD(comp_lookup_apply_restart),
+  UTLD(comutil_primitive_error),
+  UTLD(comp_error_restart),
+  UTLD(compiled_block_debugging_info),
+  UTLD(compiled_block_environment),
+  UTLD(compiled_entry_to_block_address),
+  UTLD(compiled_entry_to_block),
+  UTLD(compiled_entry_to_block_offset),
+  UTLD(block_address_closure_p),
+  UTLD(compiled_block_closure_p),
+  UTLD(compiled_entry_closure_p),
+  UTLD(compiled_closure_to_entry),
+  UTLD(compiled_entry_type),
+  UTLD(store_variable_cache),
+  UTLD(extract_variable_cache),
+  UTLD(extract_uuo_link),
+  UTLD(store_uuo_link),
+  UTLD(fill_trampoline),
+  UTLD(make_trampoline),
+  UTLD(make_redirection_trampoline),
+  UTLD(make_apply_trampoline),
+  UTLD(make_uuo_link),
+  UTLD(make_fake_uuo_link),
+  UTLD(coerce_to_compiled),
+  UTLD(end_of_utils)
+};
+
+extern char * EXFUN (utility_index_to_name, (int));
+extern int EXFUN (pc_to_utility_index, (unsigned long));
+
+#define UTIL_TABLE_PC_REF_REAL(index)					\
+  ((unsigned long) (utility_descriptor_table[index].pc))
+
+#ifndef UTIL_TABLE_PC_REF
+#  define UTIL_TABLE_PC_REF(index)	(UTIL_TABLE_PC_REF_REAL (index))
+#endif
+
+static int last_util_table_index =
+  (((sizeof (utility_descriptor_table)) / (sizeof (struct util_descriptor_s))) - 1);
+
+char *
+DEFUN (utility_index_to_name, (index), int index)
+{
+  if ((index < 0) || (index >= last_util_table_index))
+    return ((char *) NULL);
+  else
+    return (utility_descriptor_table[index].name);
+}
+
+int
+DEFUN (pc_to_utility_index, (pc), unsigned long pc)
+{
+  /* Binary search */
+
+  extern int EXFUN (pc_to_builtin_index, (unsigned long));
+
+  if ((pc < (UTIL_TABLE_PC_REF (0)))
+      || (pc >= (UTIL_TABLE_PC_REF (last_util_table_index))))
+    return (-1);
+  else if (pc < (UTIL_TABLE_PC_REF (1)))
+    return ((pc_to_builtin_index (pc)) ? -1 : 0);
+  else
+  {
+    int low, high, middle;
+
+    low = 0;
+    high = last_util_table_index;
+    while ((low + 1) < high)
+    {
+      middle = ((low + high) / 2);
+      if (pc < (UTIL_TABLE_PC_REF (middle)))
+	high = middle;
+      else if (pc > (UTIL_TABLE_PC_REF (middle)))
+	low = middle;
+      else
+	return (middle);
+    }
+    return ((pc == (UTIL_TABLE_PC_REF (high))) ? high : low);
+  }
+}
+
+extern void EXFUN (declare_builtin, (unsigned long));
+extern int EXFUN (pc_to_builtin_index, (unsigned long));
+extern unsigned long * builtins;
+
+static int n_builtins = 0;
+static int s_builtins = 0;
+unsigned long * builtins = ((unsigned long *) NULL);
+
+void
+DEFUN (declare_builtin, (builtin), unsigned long builtin)
+{
+  if (n_builtins == s_builtins)
+  {
+    if (s_builtins == 0)
+    {
+      s_builtins = 30;
+      builtins = ((unsigned long *)
+		  (malloc (s_builtins * (sizeof (unsigned long)))));
+    }
+    else
+    {
+      s_builtins += s_builtins;
+      builtins = ((unsigned long *)
+		  (realloc (builtins,
+			    (s_builtins * (sizeof (unsigned long))))));
+    }
+    if (builtins == ((unsigned long *) NULL))
+    {
+      outf_fatal ("declare_builtin: malloc/realloc failed (size = %d).\n",
+		  (s_builtins * (sizeof (unsigned long))));
+      termination_init_error ();
+    }
+  }
+  builtins[n_builtins++] = builtin;
+  return;
+}
+
+int
+DEFUN (pc_to_builtin_index, (pc), unsigned long pc)
+{
+  /* Binary search */
+
+  if ((builtins == ((unsigned long *) NULL))
+      || (pc < (builtins[0]))
+      || (pc >= (builtins[n_builtins - 1])))
+    return (-1);
+  else
+  {
+    int low, high, middle;
+
+    low = 0;
+    high = (n_builtins - 1);
+    while ((low + 1) < high)
+    {
+      middle = ((low + high) / 2);
+      if (pc < (builtins[middle]))
+	high = middle;
+      else if (pc > (builtins[middle]))
+	low = middle;
+      else
+	return (middle);
+    }
+    return ((pc == (builtins[high])) ? high : low);
+  }
+}
+
 /* Initialization */
 
 #define COMPILER_INTERFACE_VERSION		3
@@ -3196,6 +3452,34 @@ DEFUN (coerce_to_compiled,
   return (PRIM_DONE);
 }
 
+extern char * EXFUN (utility_index_to_name, (int));
+extern void EXFUN (declare_builtin, (unsigned long));
+extern int EXFUN (pc_to_utility_index, (unsigned long));
+extern int EXFUN (pc_to_builtin_index, (unsigned long));
+
+char *
+DEFUN (utility_index_to_name, (index), int index)
+{
+  return ((char *) NULL);
+}
+
+void
+DEFUN (declare_builtin, (builtin), unsigned long builtin)
+{
+  return;
+}
+
+int
+DEFUN (pc_to_utility_index, (pc), unsigned long pc)
+{
+  return (-1);
+}
+
+int
+DEFUN (pc_to_builtin_index, (pc), unsigned long pc)
+{
+  return (-1);
+}
 #endif	/* HAS_COMPILER_SUPPORT */
 
 #ifdef WINNT
