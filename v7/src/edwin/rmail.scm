@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.25 1992/11/18 21:30:47 cph Exp $
+;;;	$Id: rmail.scm,v 1.26 1992/11/20 19:00:43 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -1414,7 +1414,9 @@ buffer visiting that file."
       (set-buffer-major-mode! buffer (ref-mode-object rmail))
       (with-buffer-open buffer
 	(lambda ()
-	  (memoize-buffer buffer)
+	  ;; Memoization is not needed here, and in fact
+	  ;; screws things up royally --- bal
+	  ;; (memoize-buffer buffer)
 	  (let ((memo (buffer-msg-memo buffer)))
 	    (if (msg-memo? memo)
 		(let ((first (msg-memo/first memo))
