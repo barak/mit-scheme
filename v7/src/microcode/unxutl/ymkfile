@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.53 1992/02/10 13:03:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.54 1992/02/20 16:33:15 jinx Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -222,6 +222,19 @@ cmpaux-mips.o : cmpaux-mips.s
 cmpaux-mips.s : cmpaux-mips.m4 xmakefile
 
 #endif /* PROC_TYPE_MIPS */
+
+#if (PROC_TYPE == PROC_TYPE_I386)
+#define PROC_TYPE_KNOWN
+#undef i386
+MACHINE_SWITCHES = -DHAS_COMPILER_SUPPORT
+MACHINE_SOURCES = cmpint.c cmpaux-i386.s
+MACHINE_OBJECTS = cmpint.o cmpaux-i386.o
+GC_HEAD_FILES = gccode.h cmpgc.h cmpint-i386.h
+
+cmpaux-i386.o : cmpaux-i386.s
+cmpaux-i386.s : cmpaux-i386.m4 xmakefile
+
+#endif /* PROC_TYPE_I386 */
 
 #ifndef PROC_TYPE_KNOWN
 MACHINE_SWITCHES =
