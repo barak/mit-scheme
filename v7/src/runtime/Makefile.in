@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.2 2000/12/25 05:35:15 cph Exp $
+# $Id: Makefile.in,v 1.3 2000/12/25 05:43:32 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -78,14 +78,16 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/runtime
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
 
+	-rm -rf $(DESTDIR)$(RODIR)
 	$(mkinstalldirs) $(DESTDIR)$(RODIR)
-	@for FN in $(RUNOPTS); do \
-	    echo "$(INSTALL_DATA) $${FN}.com $(DESTDIR)$(RODIR)/.";\
-	    $(INSTALL_DATA) $${FN}.com $(DESTDIR)$(RODIR)/.;\
+	@for F in $(RUNOPTS); do \
+	    echo "$(INSTALL_DATA) $${F}.com $(DESTDIR)$(RODIR)/.";\
+	    $(INSTALL_DATA) $${F}.com $(DESTDIR)$(RODIR)/.;\
 	done
-	@for FN in $(RUNOPTS); do \
-	    echo "( cd $(DESTDIR)$(RODIR); rm -f $${FN}.bci; $(LN_S) ../SRC/runtime/$${FN}.bci . )";\
-	    ( cd $(DESTDIR)$(RODIR); rm -f $${FN}.bci; $(LN_S) ../SRC/runtime/$${FN}.bci . );\
+	@for F in $(RUNOPTS); do \
+	    REL="../SRC/runtime/$${F}.bci";\
+	    echo "( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . )";\
+	    ( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . );\
 	done
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install

@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.2 2000/12/25 05:35:49 cph Exp $
+# $Id: Makefile.in,v 1.3 2000/12/25 05:43:43 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -78,16 +78,18 @@ tags TAGS:
 install:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
 	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
-	$(mkinstalldirs) $(DESTDIR)$(EODIR)
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
 
-	@for FN in $(EDOPTS); do \
-	    echo "$(INSTALL_DATA) $${FN}.com $(DESTDIR)$(EODIR)/.";\
-	    $(INSTALL_DATA) $${FN}.com $(DESTDIR)$(EODIR)/.;\
+	-rm -rf $(DESTDIR)$(EODIR)
+	$(mkinstalldirs) $(DESTDIR)$(EODIR)
+	@for F in $(EDOPTS); do \
+	    echo "$(INSTALL_DATA) $${F}.com $(DESTDIR)$(EODIR)/.";\
+	    $(INSTALL_DATA) $${F}.com $(DESTDIR)$(EODIR)/.;\
 	done
-	@for FN in $(EDOPTS); do \
-	    echo "( cd $(DESTDIR)$(EODIR); rm -f $${FN}.bci; $(LN_S) ../../SRC/edwin/$${FN}.bci . )";\
-	    ( cd $(DESTDIR)$(EODIR); rm -f $${FN}.bci; $(LN_S) ../../SRC/edwin/$${FN}.bci . );\
+	@for F in $(EDOPTS); do \
+	    REL="../../SRC/edwin/$${F}.bci";\
+	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . )";\
+	    ( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . );\
 	done
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
