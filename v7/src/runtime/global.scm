@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.6 1988/08/05 20:57:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.7 1988/08/15 21:58:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,7 +43,8 @@ MIT in each case. |#
   scode-eval force error-procedure
   set-interrupt-enables! enable-interrupts! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
-  primitive-procedure-arity
+  (primitive-procedure-arity 1)
+  (primitive-procedure-documentation 1)
 
   ;; Environment
   lexical-reference lexical-assignment local-assignment
