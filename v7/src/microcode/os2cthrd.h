@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2cthrd.h,v 1.4 1995/04/28 07:04:57 cph Exp $
+$Id: os2cthrd.h,v 1.5 1996/05/09 20:21:30 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -72,6 +72,13 @@ typedef struct
   enum readahead_ack_action action;
 } sm_readahead_ack_t;
 #define SM_READAHEAD_ACK_ACTION(m) (((sm_readahead_ack_t *) (m)) -> action)
+
+typedef msg_t * (* channel_reader_t) (LHANDLE, qid_t, msg_t *, int *);
+
+extern void OS2_start_channel_thread
+  (Tchannel, channel_reader_t, channel_op_t);
+extern void OS2_channel_thread_read_op
+  (Tchannel, choparg_t, choparg_t, choparg_t);
 
 extern channel_context_t * OS2_make_channel_context (void);
 extern long OS2_channel_thread_read (Tchannel, char *, size_t);

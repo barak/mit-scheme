@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.5 1995/11/03 01:23:41 cph Exp $
+$Id: os2io.c,v 1.6 1996/05/09 20:21:39 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,28 +83,14 @@ OS2_channel_operation (Tchannel channel, chop_t operation,
 Tchannel
 OS2_make_channel (LHANDLE handle, unsigned int mode)
 {
-  Tchannel channel = 0;
+  Tchannel channel;
   enum channel_type type;
   transaction_begin ();
   OS2_handle_close_on_abort (handle);
-  while (1)
-    {
-      if (channel == OS_channel_table_size)
-	OS2_error_out_of_channels ();
-      if (! (CHANNEL_OPEN (channel)))
-	break;
-      channel += 1;
-    }
   type = (handle_channel_type (handle));
   handle_noinherit (handle);
-  (CHANNEL_HANDLE (channel)) = handle;
-  (CHANNEL_TYPE (channel)) = type;
-  (CHANNEL_OPEN (channel)) = 1;
-  (CHANNEL_INTERNAL (channel)) = 0;
-  (CHANNEL_NONBLOCKING (channel)) = 0;
-  (CHANNEL_INPUTP (channel)) = ((mode & CHANNEL_READ) != 0);
-  (CHANNEL_OUTPUTP (channel)) = ((mode & CHANNEL_WRITE) != 0);
-  (CHANNEL_OPERATOR (channel)) = 0;
+  channel = (OS2_allocate_channel ());
+  OS2_initialize_channel (channel, handle, mode, type);
   switch (type)
     {
     case channel_type_console:
@@ -116,6 +102,20 @@ OS2_make_channel (LHANDLE handle, unsigned int mode)
     }
   transaction_commit ();
   return (channel);
+}
+
+Tchannel
+OS2_allocate_channel (void)
+{
+  Tchannel channel = 0;
+  while (1)
+    {
+      if (channel == OS_channel_table_size)
+	OS2_error_out_of_channels ();
+      if (! (CHANNEL_OPEN (channel)))
+	return (channel);
+      channel += 1;
+    }
 }
 
 static enum channel_type
@@ -173,6 +173,35 @@ handle_noinherit (LHANDLE handle)
   state &= 0xFF88;
   STD_API_CALL
     (dos_set_fh_state, (handle, (state | OPEN_FLAGS_NOINHERIT)));
+}
+
+static void
+channel_discard_on_abort_1 (void * cp)
+{
+  (CHANNEL_OPEN (* ((Tchannel *) cp))) = 0;
+}
+
+static void
+channel_discard_on_abort (Tchannel c)
+{
+  Tchannel * cp = (dstack_alloc (sizeof (Tchannel)));
+  (*cp) = c;
+  transaction_record_action (tat_abort, channel_discard_on_abort_1, cp);
+}
+
+void
+OS2_initialize_channel (Tchannel channel, LHANDLE handle, unsigned int mode,
+			enum channel_type type)
+{
+  (CHANNEL_HANDLE (channel)) = handle;
+  (CHANNEL_TYPE (channel)) = type;
+  (CHANNEL_OPEN (channel)) = 1;
+  (CHANNEL_INTERNAL (channel)) = 0;
+  (CHANNEL_NONBLOCKING (channel)) = 0;
+  (CHANNEL_INPUTP (channel)) = ((mode & CHANNEL_READ) != 0);
+  (CHANNEL_OUTPUTP (channel)) = ((mode & CHANNEL_WRITE) != 0);
+  (CHANNEL_OPERATOR (channel)) = 0;
+  channel_discard_on_abort (channel);
 }
 
 void

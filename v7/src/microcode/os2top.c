@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.16 1995/10/15 00:39:03 cph Exp $
+$Id: os2top.c,v 1.17 1996/05/09 20:22:20 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,9 @@ MIT in each case. */
 #include "os2.h"
 #include "ostop.h"
 #include "option.h"
+#ifndef DISABLE_SOCKET_SUPPORT
+#include <nerrno.h>
+#endif
 
 extern void OS2_initialize_channels (void);
 extern void OS2_initialize_channel_thread_messages (void);
@@ -1070,6 +1073,53 @@ OS_error_code_to_syserr (int code)
     case ERROR_CPSIO_INV_COMMAND:	return (syserr_cpsio_inv_command);
     case ERROR_CPSIO_NO_FONT_SWIT:	return (syserr_cpsio_no_font_swit);
     case ERROR_ENTRY_IS_CALLGATE:	return (syserr_entry_is_callgate);
+
+#ifndef DISABLE_SOCKET_SUPPORT
+    case SOCEPERM:		return (syserr_socket_perm);
+    case SOCESRCH:		return (syserr_socket_srch);
+    case SOCEINTR:		return (syserr_socket_intr);
+    case SOCENXIO:		return (syserr_socket_nxio);
+    case SOCEBADF:		return (syserr_socket_badf);
+    case SOCEACCES:		return (syserr_socket_acces);
+    case SOCEFAULT:		return (syserr_socket_fault);
+    case SOCEINVAL:		return (syserr_socket_inval);
+    case SOCEMFILE:		return (syserr_socket_mfile);
+    case SOCEPIPE:		return (syserr_socket_pipe);
+    case SOCEOS2ERR:		return (syserr_socket_os2err);
+    case SOCEWOULDBLOCK:	return (syserr_socket_wouldblock);
+    case SOCEINPROGRESS:	return (syserr_socket_inprogress);
+    case SOCEALREADY:		return (syserr_socket_already);
+    case SOCENOTSOCK:		return (syserr_socket_notsock);
+    case SOCEDESTADDRREQ:	return (syserr_socket_destaddrreq);
+    case SOCEMSGSIZE:		return (syserr_socket_msgsize);
+    case SOCEPROTOTYPE:		return (syserr_socket_prototype);
+    case SOCENOPROTOOPT:	return (syserr_socket_noprotoopt);
+    case SOCEPROTONOSUPPORT:	return (syserr_socket_protonosupport);
+    case SOCESOCKTNOSUPPORT:	return (syserr_socket_socktnosupport);
+    case SOCEOPNOTSUPP:		return (syserr_socket_opnotsupp);
+    case SOCEPFNOSUPPORT:	return (syserr_socket_pfnosupport);
+    case SOCEAFNOSUPPORT:	return (syserr_socket_afnosupport);
+    case SOCEADDRINUSE:		return (syserr_socket_addrinuse);
+    case SOCEADDRNOTAVAIL:	return (syserr_socket_addrnotavail);
+    case SOCENETDOWN:		return (syserr_socket_netdown);
+    case SOCENETUNREACH:	return (syserr_socket_netunreach);
+    case SOCENETRESET:		return (syserr_socket_netreset);
+    case SOCECONNABORTED:	return (syserr_socket_connaborted);
+    case SOCECONNRESET:		return (syserr_socket_connreset);
+    case SOCENOBUFS:		return (syserr_socket_nobufs);
+    case SOCEISCONN:		return (syserr_socket_isconn);
+    case SOCENOTCONN:		return (syserr_socket_notconn);
+    case SOCESHUTDOWN:		return (syserr_socket_shutdown);
+    case SOCETOOMANYREFS:	return (syserr_socket_toomanyrefs);
+    case SOCETIMEDOUT:		return (syserr_socket_timedout);
+    case SOCECONNREFUSED:	return (syserr_socket_connrefused);
+    case SOCELOOP:		return (syserr_socket_loop);
+    case SOCENAMETOOLONG:	return (syserr_socket_nametoolong);
+    case SOCEHOSTDOWN:		return (syserr_socket_hostdown);
+    case SOCEHOSTUNREACH:	return (syserr_socket_hostunreach);
+    case SOCENOTEMPTY:		return (syserr_socket_notempty);
+#endif /* not DISABLE_SOCKET_SUPPORT */
+
     default:	return (syserr_unknown);
     }
 }
@@ -1695,6 +1745,53 @@ syserr_to_error_code (enum syserr_names syserr)
     case syserr_cpsio_inv_command:	return (ERROR_CPSIO_INV_COMMAND);
     case syserr_cpsio_no_font_swit:	return (ERROR_CPSIO_NO_FONT_SWIT);
     case syserr_entry_is_callgate:	return (ERROR_ENTRY_IS_CALLGATE);
+
+#ifndef DISABLE_SOCKET_SUPPORT
+    case syserr_socket_perm:		return (SOCEPERM);
+    case syserr_socket_srch:		return (SOCESRCH);
+    case syserr_socket_intr:		return (SOCEINTR);
+    case syserr_socket_nxio:		return (SOCENXIO);
+    case syserr_socket_badf:		return (SOCEBADF);
+    case syserr_socket_acces:		return (SOCEACCES);
+    case syserr_socket_fault:		return (SOCEFAULT);
+    case syserr_socket_inval:		return (SOCEINVAL);
+    case syserr_socket_mfile:		return (SOCEMFILE);
+    case syserr_socket_pipe:		return (SOCEPIPE);
+    case syserr_socket_os2err:		return (SOCEOS2ERR);
+    case syserr_socket_wouldblock:	return (SOCEWOULDBLOCK);
+    case syserr_socket_inprogress:	return (SOCEINPROGRESS);
+    case syserr_socket_already:		return (SOCEALREADY);
+    case syserr_socket_notsock:		return (SOCENOTSOCK);
+    case syserr_socket_destaddrreq:	return (SOCEDESTADDRREQ);
+    case syserr_socket_msgsize:		return (SOCEMSGSIZE);
+    case syserr_socket_prototype:	return (SOCEPROTOTYPE);
+    case syserr_socket_noprotoopt:	return (SOCENOPROTOOPT);
+    case syserr_socket_protonosupport:	return (SOCEPROTONOSUPPORT);
+    case syserr_socket_socktnosupport:	return (SOCESOCKTNOSUPPORT);
+    case syserr_socket_opnotsupp:	return (SOCEOPNOTSUPP);
+    case syserr_socket_pfnosupport:	return (SOCEPFNOSUPPORT);
+    case syserr_socket_afnosupport:	return (SOCEAFNOSUPPORT);
+    case syserr_socket_addrinuse:	return (SOCEADDRINUSE);
+    case syserr_socket_addrnotavail:	return (SOCEADDRNOTAVAIL);
+    case syserr_socket_netdown:		return (SOCENETDOWN);
+    case syserr_socket_netunreach:	return (SOCENETUNREACH);
+    case syserr_socket_netreset:	return (SOCENETRESET);
+    case syserr_socket_connaborted:	return (SOCECONNABORTED);
+    case syserr_socket_connreset:	return (SOCECONNRESET);
+    case syserr_socket_nobufs:		return (SOCENOBUFS);
+    case syserr_socket_isconn:		return (SOCEISCONN);
+    case syserr_socket_notconn:		return (SOCENOTCONN);
+    case syserr_socket_shutdown:	return (SOCESHUTDOWN);
+    case syserr_socket_toomanyrefs:	return (SOCETOOMANYREFS);
+    case syserr_socket_timedout:	return (SOCETIMEDOUT);
+    case syserr_socket_connrefused:	return (SOCECONNREFUSED);
+    case syserr_socket_loop:		return (SOCELOOP);
+    case syserr_socket_nametoolong:	return (SOCENAMETOOLONG);
+    case syserr_socket_hostdown:	return (SOCEHOSTDOWN);
+    case syserr_socket_hostunreach:	return (SOCEHOSTUNREACH);
+    case syserr_socket_notempty:	return (SOCENOTEMPTY);
+#endif /* not DISABLE_SOCKET_SUPPORT */
+
     default:	return (NO_ERROR);
     }
 }
@@ -2371,6 +2468,52 @@ static char * syserr_names_table [] =
   "CPSIO-INV-COMMAND",
   "CPSIO-NO-FONT-SWIT",
   "ENTRY-IS-CALLGATE",
+
+  /* Socket errors: */
+  "SOCEPERM",
+  "SOCESRCH",
+  "SOCEINTR",
+  "SOCENXIO",
+  "SOCEBADF",
+  "SOCEACCES",
+  "SOCEFAULT",
+  "SOCEINVAL",
+  "SOCEMFILE",
+  "SOCEPIPE",
+  "SOCEOS2ERR",
+  "SOCEWOULDBLOCK",
+  "SOCEINPROGRESS",
+  "SOCEALREADY",
+  "SOCENOTSOCK",
+  "SOCEDESTADDRREQ",
+  "SOCEMSGSIZE",
+  "SOCEPROTOTYPE",
+  "SOCENOPROTOOPT",
+  "SOCEPROTONOSUPPORT",
+  "SOCESOCKTNOSUPPORT",
+  "SOCEOPNOTSUPP",
+  "SOCEPFNOSUPPORT",
+  "SOCEAFNOSUPPORT",
+  "SOCEADDRINUSE",
+  "SOCEADDRNOTAVAIL",
+  "SOCENETDOWN",
+  "SOCENETUNREACH",
+  "SOCENETRESET",
+  "SOCECONNABORTED",
+  "SOCECONNRESET",
+  "SOCENOBUFS",
+  "SOCEISCONN",
+  "SOCENOTCONN",
+  "SOCESHUTDOWN",
+  "SOCETOOMANYREFS",
+  "SOCETIMEDOUT",
+  "SOCECONNREFUSED",
+  "SOCELOOP",
+  "SOCENAMETOOLONG",
+  "SOCEHOSTDOWN",
+  "SOCEHOSTUNREACH",
+  "SOCENOTEMPTY",
+
   "UNKNOWN"
 };
 

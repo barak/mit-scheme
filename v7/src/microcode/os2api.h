@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2api.h,v 1.7 1995/10/27 23:55:12 cph Exp $
+$Id: os2api.h,v 1.8 1996/05/09 20:20:58 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -109,7 +109,17 @@ enum syscall_names
   syscall_mktime,
   syscall_realloc,
   syscall_time,
-  syscall_vio_wrt_tty
+  syscall_vio_wrt_tty,
+
+  /* Socket calls: */
+  syscall_accept,
+  syscall_bind,
+  syscall_connect,
+  syscall_listen,
+  syscall_recv,
+  syscall_send,
+  syscall_socket,
+  syscall_soclose
 };
 
 /* Machine-generated table, do not edit: */
@@ -720,6 +730,52 @@ enum syserr_names
   syserr_cpsio_inv_command,
   syserr_cpsio_no_font_swit,
   syserr_entry_is_callgate,
+
+  /* Socket errors: */
+  syserr_socket_perm,
+  syserr_socket_srch,
+  syserr_socket_intr,
+  syserr_socket_nxio,
+  syserr_socket_badf,
+  syserr_socket_acces,
+  syserr_socket_fault,
+  syserr_socket_inval,
+  syserr_socket_mfile,
+  syserr_socket_pipe,
+  syserr_socket_os2err,
+  syserr_socket_wouldblock,
+  syserr_socket_inprogress,
+  syserr_socket_already,
+  syserr_socket_notsock,
+  syserr_socket_destaddrreq,
+  syserr_socket_msgsize,
+  syserr_socket_prototype,
+  syserr_socket_noprotoopt,
+  syserr_socket_protonosupport,
+  syserr_socket_socktnosupport,
+  syserr_socket_opnotsupp,
+  syserr_socket_pfnosupport,
+  syserr_socket_afnosupport,
+  syserr_socket_addrinuse,
+  syserr_socket_addrnotavail,
+  syserr_socket_netdown,
+  syserr_socket_netunreach,
+  syserr_socket_netreset,
+  syserr_socket_connaborted,
+  syserr_socket_connreset,
+  syserr_socket_nobufs,
+  syserr_socket_isconn,
+  syserr_socket_notconn,
+  syserr_socket_shutdown,
+  syserr_socket_toomanyrefs,
+  syserr_socket_timedout,
+  syserr_socket_connrefused,
+  syserr_socket_loop,
+  syserr_socket_nametoolong,
+  syserr_socket_hostdown,
+  syserr_socket_hostunreach,
+  syserr_socket_notempty,
+
   syserr_unknown
 };
 
@@ -903,7 +959,17 @@ static char * syscall_names_table [] =
   "mktime",
   "realloc",
   "time",
-  "vio-wrt-tty"
+  "vio-wrt-tty",
+
+  /* Socket calls: */
+  "accept",
+  "bind",
+  "connect",
+  "listen",
+  "recv",
+  "send",
+  "socket",
+  "soclose"
 };
 
 #endif /* SCM_OS2TOP_C */

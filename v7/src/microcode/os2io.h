@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2io.h,v 1.2 1995/04/28 07:04:59 cph Exp $
+$Id: os2io.h,v 1.3 1996/05/09 20:21:48 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -90,6 +90,9 @@ struct channel
 extern struct channel * OS2_channel_table;
 extern Tchannel * OS2_channel_pointer_table;
 extern Tchannel OS2_make_channel (LHANDLE, unsigned int);
+extern void OS2_initialize_channel
+  (Tchannel, LHANDLE, unsigned int, enum channel_type);
+extern Tchannel OS2_allocate_channel (void);
 extern void OS2_channel_close_all_noerror (void);
 extern void OS_channel_close_on_abort (Tchannel);
 extern void OS2_handle_close_on_abort (LHANDLE);

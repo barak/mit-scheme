@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.7 1993/06/24 07:09:34 gjr Exp $
+$Id: pruxsock.c,v 1.8 1996/05/09 20:22:30 cph Exp $
 
-Copyright (c) 1990-1992 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,26 +36,34 @@ MIT in each case. */
 
 #include "scheme.h"
 #include "prims.h"
+
+#ifdef _UNIX
+/* This obtains the HAVE_SOCKETS definition.  */
 #include "ux.h"
+#endif
+
+#ifdef __OS2__
+/* Under OS/2, socket support is the default but can be disabled.  */
+#ifndef DISABLE_SOCKET_SUPPORT
+#define HAVE_SOCKETS 1
+#define HAVE_UNIX_SOCKETS 1
+#endif
+#endif
 
 #ifdef HAVE_SOCKETS
 
-#include "uxsock.h"
-#include "osio.h"
+#include "ossock.h"
+#define SOCKET_CODE(code) code
 
-#define SOCKET_CODE(code) do					\
-{								\
-  code								\
-} while (0)
+#else /* not HAVE_SOCKETS */
 
-#else /* HAVE_SOCKETS */
+#define SOCKET_CODE(code)						\
+{									\
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);		\
+  PRIMITIVE_RETURN (UNSPECIFIC);					\
+}
 
-#define SOCKET_CODE(code) do					\
-{								\
-  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);	\
-} while (0)
-
-#endif /* HAVE_SOCKETS */
+#endif /* not HAVE_SOCKETS */
 
 DEFINE_PRIMITIVE ("GET-SERVICE-BY-NAME", Prim_get_service_by_name, 2, 2,
   "Given SERVICE-NAME and PROTOCOL-NAME, return a port number.\n\
@@ -63,12 +71,11 @@ The result is a nonnegative integer, or #F if no such service exists.")
 {
   PRIMITIVE_HEADER (2);
   SOCKET_CODE
-(
-  {
-    int result = (OS_get_service_by_name ((STRING_ARG (1)), (STRING_ARG (2))));
-    return ((result < 0) ? SHARP_F : (long_to_integer (result)));
-  }
-);
+    ({
+      int result
+	= (OS_get_service_by_name ((STRING_ARG (1)), (STRING_ARG (2))));
+      PRIMITIVE_RETURN ((result < 0) ? SHARP_F : (long_to_integer (result)));
+     });
 }
 
 DEFINE_PRIMITIVE ("HOST-ADDRESS-LENGTH", Prim_host_address_length, 0, 0,
@@ -76,11 +83,9 @@ DEFINE_PRIMITIVE ("HOST-ADDRESS-LENGTH", Prim_host_address_length, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   SOCKET_CODE
-(
-  {
-    PRIMITIVE_RETURN (long_to_integer (OS_host_address_length ()));
-  }
-);
+    ({
+      PRIMITIVE_RETURN (long_to_integer (OS_host_address_length ()));
+    });
 }
 
 DEFINE_PRIMITIVE ("GET-HOST-BY-NAME", Prim_get_host_by_name, 1, 1,
@@ -89,28 +94,26 @@ The result is a vector of strings, or #F if no such host exists.")
 {
   PRIMITIVE_HEADER (1);
   SOCKET_CODE
-(
-  {
-    char ** addresses = (OS_get_host_by_name (STRING_ARG (1)));
-    if (addresses == 0)
-      PRIMITIVE_RETURN (SHARP_F);
-    {
-      char ** end = addresses;
-      while ((*end++) != 0) ;
-      end -= 1;
+    ({
+      char ** addresses = (OS_get_host_by_name (STRING_ARG (1)));
+      if (addresses == 0)
+	PRIMITIVE_RETURN (SHARP_F);
       {
-	SCHEME_OBJECT result =
-	  (allocate_marked_vector (TC_VECTOR, (end - addresses), 1));
-	SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
-	unsigned int length = (OS_host_address_length ());
-	while (addresses < end)
-	  (*scan_result++) =
-	    (memory_to_string (length, ((unsigned char *) (*addresses++))));
-	PRIMITIVE_RETURN (result);
+	char ** end = addresses;
+	while ((*end++) != 0) ;
+	end -= 1;
+	{
+	  SCHEME_OBJECT result =
+	    (allocate_marked_vector (TC_VECTOR, (end - addresses), 1));
+	  SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
+	  unsigned int length = (OS_host_address_length ());
+	  while (addresses < end)
+	    (*scan_result++) =
+	      (memory_to_string (length, ((unsigned char *) (*addresses++))));
+	  PRIMITIVE_RETURN (result);
+	}
       }
-    }
-  }
-);
+    });
 }
 
 #ifdef HAVE_SOCKETS
@@ -131,12 +134,12 @@ DEFINE_PRIMITIVE ("OPEN-TCP-STREAM-SOCKET", Prim_open_tcp_stream_socket, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   SOCKET_CODE
-({
-  PRIMITIVE_RETURN
-    (long_to_integer
-     (OS_open_tcp_stream_socket ((arg_host (1)),
-				 (arg_nonnegative_integer (2)))));
-});
+    ({
+      PRIMITIVE_RETURN
+	(long_to_integer
+	 (OS_open_tcp_stream_socket ((arg_host (1)),
+				     (arg_nonnegative_integer (2)))));
+    });
 }
 
 DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
@@ -148,7 +151,7 @@ DEFINE_PRIMITIVE ("OPEN-UNIX-STREAM-SOCKET", Prim_open_unix_stream_socket, 1, 1,
     (long_to_integer (OS_open_unix_stream_socket (STRING_ARG (1))));
 #else
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
-#endif /* HAVE_UNIX_SOCKETS */
+#endif
 }
 
 DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
@@ -156,13 +159,15 @@ DEFINE_PRIMITIVE ("OPEN-TCP-SERVER-SOCKET", Prim_open_tcp_server_socket, 1, 1,
 {
   PRIMITIVE_HEADER (1);
   SOCKET_CODE
-({
-  PRIMITIVE_RETURN
-    (long_to_integer (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
-});
+    ({
+      PRIMITIVE_RETURN
+	(long_to_integer
+	 (OS_open_server_socket ((arg_nonnegative_integer (1)), 1)));
+    });
 }
 
 #ifdef HAVE_SOCKETS
+
 static Tchannel
 DEFUN (arg_server_socket, (arg), unsigned int arg)
 {
@@ -171,6 +176,7 @@ DEFUN (arg_server_socket, (arg), unsigned int arg)
     error_bad_range_arg (arg);
   return (server_socket);
 }
+
 #endif /* HAVE_SOCKETS */
 
 DEFINE_PRIMITIVE ("TCP-SERVER-CONNECTION-ACCEPT", Prim_tcp_server_connection_accept, 2, 2,
@@ -182,14 +188,14 @@ It is filled with the peer's address if given.")
 {
   PRIMITIVE_HEADER (2);
   SOCKET_CODE
-(
-  {
-    Tchannel server_socket = (arg_server_socket (1));
-    char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
-    Tchannel connection =
-      (OS_server_connection_accept (server_socket, peer_host, 0));
-    PRIMITIVE_RETURN
-      ((connection == NO_CHANNEL) ? SHARP_F : (long_to_integer (connection)));
-  }
-);
+    ({
+      Tchannel server_socket = (arg_server_socket (1));
+      char * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
+      Tchannel connection =
+	(OS_server_connection_accept (server_socket, peer_host, 0));
+      PRIMITIVE_RETURN
+	((connection == NO_CHANNEL)
+	 ? SHARP_F
+	 : (long_to_integer (connection)));
+    });
 }

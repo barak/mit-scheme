@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.6 1995/04/28 07:05:00 cph Exp $
+$Id: os2pipe.c,v 1.7 1996/05/09 20:21:56 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,9 +34,9 @@ MIT in each case. */
 
 #include "os2.h"
 
+static msg_t * input_pipe_reader (LHANDLE, qid_t, msg_t *, int *);
 static void input_pipe_operator
   (Tchannel, chop_t, choparg_t, choparg_t, choparg_t);
-static void input_pipe_thread (void *);
 
 void
 OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
@@ -54,31 +54,38 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
   transaction_commit ();
 }
 
-typedef struct
-{
-  LHANDLE handle;
-  qid_t qid;
-} thread_arg_t;
-
 void
 OS2_initialize_pipe_channel (Tchannel channel)
 {
   if (CHANNEL_INPUTP (channel))
-    {
-      channel_context_t * context = (OS2_make_channel_context ());
-      thread_arg_t * arg = (OS_malloc (sizeof (thread_arg_t)));
-      (CHANNEL_OPERATOR_CONTEXT (channel)) = context;
-      OS2_open_qid ((CHANNEL_CONTEXT_READER_QID (context)), OS2_scheme_tqueue);
-      OS2_open_qid
-	((CHANNEL_CONTEXT_WRITER_QID (context)), (OS2_make_std_tqueue ()));
-      (arg -> handle) = (CHANNEL_HANDLE (channel));
-      (arg -> qid) = (CHANNEL_CONTEXT_WRITER_QID (context));
-      (CHANNEL_CONTEXT_TID (context))
-	= (OS2_beginthread (input_pipe_thread, arg, 0));
-      (CHANNEL_OPERATOR (channel)) = input_pipe_operator;
-    }
+    OS2_start_channel_thread (channel,
+			      input_pipe_reader,
+			      input_pipe_operator);
 }
-
+
+static msg_t *
+input_pipe_reader (LHANDLE handle, qid_t qid, msg_t * message, int * eofp)
+{
+  ULONG nread;
+  APIRET rc
+    = (dos_read (handle,
+		 (SM_READAHEAD_DATA (message)),
+		 (sizeof (SM_READAHEAD_DATA (message))),
+		 (& nread)));
+  if (rc == NO_ERROR)
+    {
+      (SM_READAHEAD_SIZE (message)) = nread;
+      (*eofp) = (nread == 0);
+      return (message);
+    }
+  OS2_destroy_message (message);
+  if (rc == ERROR_INVALID_HANDLE)
+    /* Handle was closed on us -- no need to do anything else.  */
+    return (0);
+  (*eofp) = (rc == ERROR_BROKEN_PIPE);
+  return (OS2_make_syscall_error (rc, syscall_dos_read));
+}
+
 static void
 input_pipe_operator (Tchannel channel, chop_t operation,
 		     choparg_t arg1, choparg_t arg2, choparg_t arg3)
@@ -86,60 +93,14 @@ input_pipe_operator (Tchannel channel, chop_t operation,
   switch (operation)
     {
     case chop_read:
-      (* ((long *) arg3))
-	= (OS2_channel_thread_read
-	   (channel, ((char *) arg1), ((size_t) arg2)));
+      OS2_channel_thread_read_op (channel, arg1, arg2, arg3);
       break;
     case chop_close:
       OS2_channel_thread_close (channel);
+      STD_API_CALL (dos_close, (CHANNEL_HANDLE (channel)));
       break;
     default:
       OS2_logic_error ("Unknown operation for input pipe.");
       break;
     }
-}
-
-static void
-input_pipe_thread (void * arg)
-{
-  LHANDLE handle = (((thread_arg_t *) arg) -> handle);
-  qid_t qid = (((thread_arg_t *) arg) -> qid);
-  EXCEPTIONREGISTRATIONRECORD registration;
-  OS_free (arg);
-  (void) OS2_thread_initialize ((&registration), qid);
-  /* Wait for first read request before doing anything.  */
-  while ((OS2_wait_for_readahead_ack (qid)) == raa_read)
-    {
-      msg_t * message = (OS2_make_readahead ());
-      ULONG nread;
-      APIRET rc
-	= (dos_read (handle,
-		     (SM_READAHEAD_DATA (message)),
-		     (sizeof (SM_READAHEAD_DATA (message))),
-		     (& nread)));
-      int eofp;
-      if (rc == NO_ERROR)
-	{
-	  (SM_READAHEAD_SIZE (message)) = nread;
-	  eofp = (nread == 0);
-	}
-      else
-	{
-	  OS2_destroy_message (message);
-	  if (rc == ERROR_INVALID_HANDLE)
-	    /* Handle was closed on us -- no need to do anything else.  */
-	    break;
-	  message = (OS2_make_syscall_error (rc, syscall_dos_read));
-	  eofp = (rc == ERROR_BROKEN_PIPE);
-	}
-      OS2_send_message (qid, message);
-      if (eofp)
-	break;
-    }
-  {
-    tqueue_t * tqueue = (OS2_qid_tqueue (qid));
-    OS2_close_qid (qid);
-    OS2_close_std_tqueue (tqueue);
-  }
-  OS2_endthread ();
 }

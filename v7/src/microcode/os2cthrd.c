@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2cthrd.c,v 1.7 1995/10/15 00:34:47 cph Exp $
+$Id: os2cthrd.c,v 1.8 1996/05/09 20:21:20 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,10 +36,75 @@ MIT in each case. */
 
 #include "os2.h"
 
+static void run_channel_thread (void *);
 static void start_readahead_thread (channel_context_t *);
 static void send_readahead_ack (qid_t, enum readahead_ack_action);
 static msg_list_t * new_list (void);
 static msg_t * new_message (void);
+
+typedef struct
+{
+  LHANDLE handle;
+  qid_t qid;
+  channel_reader_t reader;
+} thread_arg_t;
+
+void
+OS2_start_channel_thread (Tchannel channel,
+			  channel_reader_t reader,
+			  channel_op_t operator)
+{
+  channel_context_t * context = (OS2_make_channel_context ());
+  thread_arg_t * arg = (OS_malloc (sizeof (thread_arg_t)));
+  (CHANNEL_OPERATOR_CONTEXT (channel)) = context;
+  OS2_open_qid ((CHANNEL_CONTEXT_READER_QID (context)), OS2_scheme_tqueue);
+  OS2_open_qid
+    ((CHANNEL_CONTEXT_WRITER_QID (context)), (OS2_make_std_tqueue ()));
+  (arg -> handle) = (CHANNEL_HANDLE (channel));
+  (arg -> qid) = (CHANNEL_CONTEXT_WRITER_QID (context));
+  (arg -> reader) = reader;
+  (CHANNEL_CONTEXT_TID (context))
+    = (OS2_beginthread (run_channel_thread, arg, 0));
+  (CHANNEL_OPERATOR (channel)) = operator;
+}
+
+static void
+run_channel_thread (void * arg)
+{
+  LHANDLE handle = (((thread_arg_t *) arg) -> handle);
+  qid_t qid = (((thread_arg_t *) arg) -> qid);
+  channel_reader_t reader = (((thread_arg_t *) arg) -> reader);
+  EXCEPTIONREGISTRATIONRECORD registration;
+  OS_free (arg);
+  (void) OS2_thread_initialize ((&registration), qid);
+  /* Wait for first read request before doing anything.  */
+  while ((OS2_wait_for_readahead_ack (qid)) == raa_read)
+    {
+      int eofp;
+      msg_t * message
+	= ((*reader) (handle, qid, (OS2_make_readahead ()), (&eofp)));
+      if (message == 0)
+	break;
+      OS2_send_message (qid, message);
+      if (eofp)
+	break;
+    }
+  {
+    tqueue_t * tqueue = (OS2_qid_tqueue (qid));
+    OS2_close_qid (qid);
+    OS2_close_std_tqueue (tqueue);
+  }
+  OS2_endthread ();
+}
+
+void
+OS2_channel_thread_read_op (Tchannel channel,
+			    choparg_t arg1, choparg_t arg2, choparg_t arg3)
+{
+  (* ((long *) arg3))
+    = (OS2_channel_thread_read
+       (channel, ((char *) arg1), ((size_t) arg2)));
+}
 
 void
 OS2_initialize_channel_thread_messages (void)
@@ -68,13 +133,12 @@ OS2_channel_thread_close (Tchannel channel)
   send_readahead_ack ((CHANNEL_CONTEXT_READER_QID (context)), raa_close);
   OS2_close_qid (CHANNEL_CONTEXT_READER_QID (context));
   OS_free (context);
-  /* Finally, close the channel handle.  If the channel thread is
-     blocked in dos_read, this will break it out and get it to kill
-     itself.  There's no race, because the channel thread won't try to
-     close the handle, and if it breaks out of dos_read before we do
-     the close, it will see the readahead ACK we just sent and that
-     will kill it.  */
-  STD_API_CALL (dos_close, (CHANNEL_HANDLE (channel)));
+  /* Finally, the caller must close the channel handle.  If the
+     channel thread is blocked in dos_read, this will break it out and
+     get it to kill itself.  There's no race, because the channel
+     thread won't try to close the handle, and if it breaks out of
+     dos_read before we do the close, it will see the readahead ACK we
+     just sent and that will kill it.  */
 }
 
 qid_t
