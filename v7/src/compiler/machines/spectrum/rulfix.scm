@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 4.46 1993/08/12 05:33:14 gjr Exp $
+$Id: rulfix.scm,v 4.47 1997/03/30 23:27:07 cph Exp $
 
-Copyright (c) 1989-1993 Massachusetts Institute of Technology
+Copyright (c) 1989-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -650,10 +650,7 @@ MIT in each case. |#
 		       (delta (* (-1+ factor) fixnum-1))
 		       (fits? (fits-in-11-bits-signed? delta))
 		       (temp (and (not fits?) (standard-temporary!))))
-	 
-		  (LAP ,@(if fits?
-			     (LAP)
-			     (load-immediate delta temp))
+		  (LAP ,@(if fits? (LAP) (load-immediate delta temp))
 		       (ADD (>=) 0 ,src ,tgt)
 		       ,@(if fits?
 			     (LAP (ADDI () ,delta ,tgt ,tgt))
@@ -754,6 +751,8 @@ MIT in each case. |#
     ((ZERO-FIXNUM? EQUAL-FIXNUM?) '=)
     ((NEGATIVE-FIXNUM? LESS-THAN-FIXNUM?) '<)
     ((POSITIVE-FIXNUM? GREATER-THAN-FIXNUM?) '>)
+    ((UNSIGNED-LESS-THAN-FIXNUM?) '<<)
+    ((UNSIGNED-GREATER-THAN-FIXNUM?) '>>)
     (else
      (error "fixnum-pred->cc: unknown predicate" predicate))))
 

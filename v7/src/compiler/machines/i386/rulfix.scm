@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.27 1993/07/17 04:59:41 gjr Exp $
+$Id: rulfix.scm,v 1.28 1997/03/30 23:26:56 cph Exp $
 
-Copyright (c) 1992-1993 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -653,6 +653,8 @@ MIT in each case. |#
     ((EQUAL-FIXNUM?) 'EQUAL-FIXNUM?)
     ((LESS-THAN-FIXNUM?) 'GREATER-THAN-FIXNUM?)
     ((GREATER-THAN-FIXNUM?) 'LESS-THAN-FIXNUM?)
+    ((UNSIGNED-LESS-THAN-FIXNUM?) 'UNSIGNED-GREATER-THAN-FIXNUM?)
+    ((UNSIGNED-GREATER-THAN-FIXNUM?) 'UNSIGNED-LESS-THAN-FIXNUM?)
     (else
      (error "commute-fixnum-predicate: Unknown predicate"
 	    predicate))))
@@ -671,6 +673,16 @@ MIT in each case. |#
 			      (LAP (JG (@PCR ,label))))
 			    (lambda (label)
 			      (LAP (JLE (@PCR ,label))))))
+    ((UNSIGNED-LESS-THAN-FIXNUM?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JB (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JAE (@PCR ,label))))))
+    ((UNSIGNED-GREATER-THAN-FIXNUM?)
+     (set-current-branches! (lambda (label)
+			      (LAP (JA (@PCR ,label))))
+			    (lambda (label)
+			      (LAP (JBE (@PCR ,label))))))
     ((NEGATIVE-FIXNUM?)
      (set-current-branches! (lambda (label)
 			      (LAP (JS (@PCR ,label))))

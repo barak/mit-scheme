@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.62 1993/11/10 21:31:13 jmiller Exp $
+$Id: opncod.scm,v 4.63 1997/03/30 23:26:29 cph Exp $
 
-Copyright (c) 1988-1993 Massachusetts Institute of Technology
+Copyright (c) 1988-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -326,9 +326,7 @@ MIT in each case. |#
 		       (scfg-append!
 			(generate-primitive primitive-name
 					    (length expressions)
-					    expressions
-					    setup
-					    label)
+					    expressions setup label)
 			cleanup
 			(if error-finish
 			    (error-finish (rtl:make-fetch register:value))
@@ -347,9 +345,7 @@ MIT in each case. |#
 			      (scfg*scfg->scfg!
 			       (generate-primitive primitive-name
 						   (length expressions)
-						   expressions
-						   setup
-						   label)
+						   expressions setup label)
 			       cleanup)))
 			 (make-scfg (cfg-entry-node scfg) '()))
 		       |#
@@ -794,7 +790,7 @@ MIT in each case. |#
 	 (lambda (locative)
 	   (finish
 	    (rtl:make-fixnum-pred-2-args
-	     'LESS-THAN-FIXNUM?
+	     'UNSIGNED-LESS-THAN-FIXNUM?
 	     (rtl:make-address->fixnum (rtl:make-address locative))
 	     (rtl:make-address->fixnum
 	      (rtl:make-fetch register:memory-top))))))
