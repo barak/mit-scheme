@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.6 1987/12/10 21:52:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 1.7 1987/12/11 16:13:21 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -533,23 +533,29 @@ functionality is not implemented.
      (write (hash structure-instance)))))
 
 (define (make-structure-type structure tag)
-  (let ((scheme-type (structure/scheme-type structure)))
-    (let ((type
-	   (make-sub-type
-	    (structure/name structure)
-	    (microcode-type-object scheme-type)
-	    (case scheme-type
-	      ((VECTOR)
-	       (lambda (vector)
-		 (and (not (zero? (vector-length vector)))
-		      (eq? (vector-ref vector 0) tag))))
-	      ((LIST)
-	       (lambda (pair)
-		 (eq? (car pair) tag)))
-	      (else
-	       (error "Unknown scheme type" structure))))))
-      (2d-put! (or tag type) tag->structure structure)
-      type)))
+  (let ((type
+	 (case (structure/scheme-type structure)
+	   ((VECTOR)
+	    (make-sub-type
+	     (structure/name structure)
+	     (microcode-type-object 'VECTOR)
+	     (lambda (vector)
+	       (and (not (zero? (vector-length vector)))
+		    (eq? (vector-ref vector 0) tag)))))
+	   ((LIST)
+	    (make-sub-type
+	     (structure/name structure)
+	     (microcode-type-object 'PAIR)
+	     (lambda (pair)
+	       (eq? (car pair) tag))))
+	   (else
+	    (error "Unknown scheme type" structure)))))
+    ;; Note side effects needed here, because of predicates
+    ;; that are closed in this environment.
+    (if (not tag) (set! tag type))
+    (2d-put! tag tag->structure structure)
+    (set! structure false)
+    type))
 
 (define (structure-instance->description structure)
   (2d-get (cond ((and (vector? structure)
