@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.2 1987/12/30 07:13:28 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.3 1988/06/03 14:58:15 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -92,10 +92,12 @@ MIT in each case. |#
   (let ((element (make-element expression))
 	(cost (rtl:expression-cost expression)))
     (set-element-cost! element cost)
-    (let ((next (hash-table-ref hash)))
-      (set-element-next-hash! element next)
-      (if next (set-element-previous-hash! next element)))
-    (hash-table-set! hash element)
+    (if hash
+	(begin
+	  (let ((next (hash-table-ref hash)))
+	    (set-element-next-hash! element next)
+	    (if next (set-element-previous-hash! next element)))
+	  (hash-table-set! hash element)))
     (cond ((not class)
 	   (set-element-first-value! element element))
 	  ((< cost (element-cost class))
