@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.28 1992/11/17 17:48:45 cph Exp $
+;;;	$Id: rmailsum.scm,v 1.29 1992/11/18 21:53:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.28 1992/11/17 17:48:45 cph Exp $"
+  "$Id: rmailsum.scm,v 1.29 1992/11/18 21:53:22 cph Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -168,22 +168,19 @@ RECIPIENTS is a string of names separated by commas."
 	  (number-of-messages
 	   (msg-memo/number (msg-memo/last (current-msg-memo)))))
       (message "Computing summary lines...")
-      (if (not (ref-variable rmail-summary-buffer))
-	  (local-set-variable!
-	   rmail-summary-buffer
-	   (temporary-buffer
-	    (string-append (buffer-name (current-buffer)) "-summary"))))
-      (set-buffer-major-mode! (ref-variable rmail-summary-buffer)
-			      (ref-mode-object rmail-summary))
-      (let ((the-rmail-summary-buffer (ref-variable rmail-summary-buffer)))
-	(select-buffer-other-window (ref-variable rmail-summary-buffer))
-	(select-buffer-other-window the-rmail-buffer)
-	(define-variable-local-value!
-	  the-rmail-summary-buffer (ref-variable-object rmail-buffer)
-	  the-rmail-buffer)
-	(define-variable-local-value!
-	  the-rmail-summary-buffer (ref-variable-object rmail-summary-vector)
-	  (make-vector number-of-messages #F)))
+      (let ((the-rmail-summary-buffer
+	     (or (ref-variable rmail-summary-buffer)
+		 (temporary-buffer
+		  (string-append (buffer-name (current-buffer)) "-summary")))))
+	(set-buffer-major-mode! the-rmail-summary-buffer
+				(ref-mode-object rmail-summary))
+	(associate-rmail-summary-buffer! the-rmail-buffer
+					 the-rmail-summary-buffer)
+	(define-variable-local-value! the-rmail-summary-buffer
+	    (ref-variable-object rmail-summary-vector)
+	  (make-vector number-of-messages false))
+	(select-buffer-other-window the-rmail-summary-buffer)
+	(select-buffer-other-window the-rmail-buffer))
       (let ((summary-msgs ())
 	    (the-current-message-number (msg-memo/number (current-msg-memo))))
 	(let loop ((the-memo (msg-memo/first (current-msg-memo))))
@@ -220,6 +217,24 @@ RECIPIENTS is a string of names separated by commas."
 	       (line-start the-current-msg-line 0))))
 	(rmail-summary-goto-message-current-line)
 	(message "Computing summary lines...done")))))
+
+(define (associate-rmail-summary-buffer! rmail-buffer rmail-summary-buffer)
+  (define-variable-local-value! rmail-summary-buffer
+      (ref-variable-object rmail-buffer)
+    rmail-buffer)
+  (define-variable-local-value! rmail-buffer
+      (ref-variable-object rmail-summary-buffer)
+    rmail-summary-buffer)
+  (add-kill-buffer-hook rmail-summary-buffer rmail-summary-buffer-kill-hook))
+
+(define (rmail-summary-buffer-kill-hook rmail-summary-buffer)
+  (let ((rmail-buffer (ref-variable rmail-buffer rmail-summary-buffer)))
+    (if (and rmail-buffer
+	     (eq? (ref-variable rmail-summary-buffer rmail-buffer)
+		  rmail-summary-buffer))
+	(define-variable-local-value! rmail-buffer
+	    (ref-variable-object rmail-summary-buffer)
+	  false))))
 
 (define (rmail-make-summary-line memo)
   (let ((new-summary-line-count 0))
