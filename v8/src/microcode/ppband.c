@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.47 1993/10/14 21:42:03 gjr Exp $
+$Id: ppband.c,v 9.48 1995/07/27 00:12:36 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -100,6 +100,7 @@ DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 
 #define INHIBIT_COMPILED_VERSION_CHECK
 #define INHIBIT_CHECKSUMS
+#define outf_error printf
 #include "load.c"
 
 #ifdef HEAP_IN_LOW_MEMORY
@@ -299,7 +300,7 @@ DEFUN (Display, (Location, Type, The_Datum),
       }
       NON_POINTER ("NULL");
 
-    case TC_TRUE:
+    case TC_CONSTANT:
       if (The_Datum == 0)
       {
 	printf ("#T\n");
@@ -335,7 +336,8 @@ DEFUN (Display, (Location, Type, The_Datum),
       scheme_string (Points_To, true);
       return;
 
-    case TC_FIXNUM:
+    case TC_POSITIVE_FIXNUM:
+    case TC_NEGATIVE_FIXNUM:
       PRINT_OBJECT ("FIXNUM", The_Datum);
       Points_To = (FIXNUM_TO_LONG ((MAKE_OBJECT (Type, The_Datum))));
       printf (" = %ld\n", Points_To);
