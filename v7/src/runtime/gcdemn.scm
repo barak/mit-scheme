@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcdemn.scm,v 14.4 1991/12/10 23:24:16 cph Exp $
+$Id: gcdemn.scm,v 14.5 1993/06/25 21:09:08 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,8 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! gc-daemons '())
-  (set! secondary-gc-daemons '())
+  (set! gc-daemons (make-queue))
+  (set! secondary-gc-daemons (make-queue))
   (let ((fixed-objects (get-fixed-objects-vector)))
     (vector-set! fixed-objects #x0B trigger-gc-daemons)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
@@ -47,23 +47,22 @@ MIT in each case. |#
 (define gc-daemons)
 (define secondary-gc-daemons)
 
+(define (invoke-thunk thunk)
+  (thunk))
+
 (define (trigger-gc-daemons)
-  (do ((daemons gc-daemons (cdr daemons)))
-      ((null? daemons))
-    ((car daemons))))
+  (for-each invoke-thunk
+	    (queue->list/unsafe gc-daemons)))
 
 (define (trigger-secondary-gc-daemons!)
-  (do ((daemons secondary-gc-daemons (cdr daemons)))
-      ((null? daemons))
-    ((car daemons))))
+  (for-each invoke-thunk
+	    (queue->list/unsafe secondary-gc-daemons)))
 
 (define (add-gc-daemon! daemon)
-  (set! gc-daemons (cons daemon gc-daemons))
-  unspecific)
+  (enqueue! gc-daemons daemon))
 
 (define (add-secondary-gc-daemon! daemon)
-  (set! secondary-gc-daemons (cons daemon secondary-gc-daemons))
-  unspecific)
+  (enqueue! secondary-gc-daemons daemon))
 
 (define (gc-clean #!optional threshold)
   (let ((threshold
