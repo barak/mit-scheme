@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.57 2000/05/15 19:11:42 cph Exp $
+;;; $Id: imail-core.scm,v 1.58 2000/05/15 19:17:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -119,31 +119,22 @@
 (define-generic %delete-folder (url))
 
 ;; -------------------------------------------------------------------
-;; Move the folder named URL to NEW-URL.  Signal an error if the
+;; Rename the folder named URL to NEW-URL.  Signal an error if the
 ;; folder doesn't exist, if NEW-URL already refers to a folder, or if
-;; the move can't be performed for some reason.  This operation can
-;; also be used to convert between protocols, e.g. to move a folder
-;; from a server to a file.
+;; the rename can't be performed for some reason.  This operation does
+;; NOT do format conversion, or move a folder from one place to
+;; another.  It only allows changing the name of an existing folder.
 
-(define (move-folder url new-url)
+(define (rename-folder url new-url)
   (let ((url (->url url))
 	(new-url (->url new-url)))
-    (%move-folder url new-url)
     (let ((folder (get-memoized-folder url)))
       (if folder
 	  (close-folder folder)))
-    (unmemoize-folder url)))
+    (unmemoize-folder url)
+    (%rename-folder url new-url)))
 
-(define-generic %move-folder (url new-url))
-
-(define-method %move-folder ((url <url>) (new-url <url>))
-  (%new-folder new-url)
-  (let ((folder (open-folder url)))
-    (let ((n (folder-length folder)))
-      (do ((i 0 (+ i 1)))
-	  ((= i n))
-	(%append-message (get-message folder i) new-url))))
-  (%delete-folder url))
+(define-generic %rename-folder (url new-url))
 
 ;; -------------------------------------------------------------------
 ;; Insert a copy of MESSAGE in FOLDER at the end of the existing
