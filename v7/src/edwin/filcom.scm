@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.210 2000/03/27 20:43:22 cph Exp $
+;;; $Id: filcom.scm,v 1.211 2000/04/10 04:03:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -698,7 +698,7 @@ Prefix arg means treat the plaintext file as binary data."
 (define (%blowfish-encrypt-file pathname input)
   (call-with-binary-output-file pathname
     (lambda (output)
-      (call-with-sensitive-string (call-with-confirmed-pass-phrase md5)
+      (call-with-sensitive-string (call-with-confirmed-pass-phrase md5-string)
 	(lambda (key-string)
 	  (blowfish-encrypt-port input output key-string
 				 (write-blowfish-file-header output)
@@ -707,11 +707,12 @@ Prefix arg means treat the plaintext file as binary data."
 (define (%blowfish-decrypt-file pathname output)
   (call-with-binary-input-file pathname
     (lambda (input)
-      (call-with-sensitive-string (call-with-pass-phrase "Pass phrase" md5)
-	(lambda (key-string)
-	  (blowfish-encrypt-port input output key-string
-				 (read-blowfish-file-header input)
-				 #f))))))
+      (call-with-sensitive-string
+       (call-with-pass-phrase "Pass phrase" md5-string)
+       (lambda (key-string)
+	 (blowfish-encrypt-port input output key-string
+				(read-blowfish-file-header input)
+				#f))))))
 
 (define (call-with-sensitive-string string receiver)
   (dynamic-wind (lambda ()
