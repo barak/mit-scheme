@@ -24,7 +24,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.4 1987/12/07 09:38:00 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/scheme.el,v 1.5 1988/04/12 17:03:26 cph Exp $
 
 (provide 'scheme)
 
@@ -92,6 +92,8 @@
   (setq paragraph-start (concat "^$\\|" page-delimiter))
   (make-local-variable 'paragraph-separate)
   (setq paragraph-separate paragraph-start)
+  (make-local-variable 'paragraph-ignore-fill-prefix)
+  (setq paragraph-ignore-fill-prefix t)
   (make-local-variable 'indent-line-function)
   (setq indent-line-function 'scheme-indent-line)
   (make-local-variable 'comment-start)
