@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.32 1999/03/01 05:31:24 cph Exp $
+$Id: thread.scm,v 1.33 1999/03/26 01:44:10 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -691,7 +691,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    (lambda ()
      (let ((thread first-running-thread))
        (if thread
-	   (set-thread/block-events?! thread block?))))))
+	   (set-thread/block-events?! thread block?)))
+     unspecific)))
 
 (define (signal-thread-event thread event)
   (guarantee-thread thread signal-thread-event)
