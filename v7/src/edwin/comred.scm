@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comred.scm,v 1.111 1994/09/08 20:34:04 adams Exp $
+;;;	$Id: comred.scm,v 1.112 1994/12/19 19:38:09 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -156,6 +156,7 @@
       (with-editor-interrupts-disabled keyboard-read)))
 
 (define (reset-command-state!)
+  (unblock-thread-events)
   (set! *last-command* *command*)
   (set! *command* false)
   (set! *command-argument* *next-argument*)
