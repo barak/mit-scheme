@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: htmlmode.scm,v 1.10 2003/08/19 01:05:46 cph Exp $
+$Id: htmlmode.scm,v 1.11 2003/09/23 16:25:39 cph Exp $
 
 Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -53,7 +53,16 @@ USA.
     (event-distributor/invoke! (ref-variable html-mode-hook buffer) buffer)))
 
 (define html-paragraph-separator
-  "[ \t]*$\\|[ \t]*</?\\([A-Za-z]\\([-.A-Za-z0-9= \t\n]\\|\"[^\"]*\"\\|'[^']*'\\)*\\)?>$")
+  (let ((lwsp (rexp* (char-set #\space #\tab #\U+A0))))
+    (rexp->regexp
+     (rexp-sequence
+      (rexp-optional lwsp
+		     "<"
+		     (rexp* (char-set-difference char-set:graphic
+						 (string->char-set ">")))
+		     ">")
+      lwsp
+      (rexp-line-end)))))
 
 (define-command html-mode
   "Enter HTML mode."
