@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.33 1994/11/02 19:36:59 adams Exp $
+;;;	$Id: debug.scm,v 1.34 1995/11/13 23:47:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-94 Massachusetts Institute of Technology
 ;;;
@@ -1002,29 +1002,31 @@ The buffer below describes the current subproblem or reduction.
 (define (make-debug-screen-args)
   (case (display-type/name (current-display-type))
     ((X)
-     (list (or new-screen-geometry
-	       (let ((geometry
-		      (prompt-for-string "Please enter a geometry"
-					 default-screen-geometry)))
-		 (if (geometry? geometry)
-		     (begin
-		       (set! new-screen-geometry geometry)
-		       geometry)
-		     (begin
-		       (message "Invalid geometry!  Using default.")
-		       default-screen-geometry))))))
+     (cond ((string? default-screen-geometry)
+	    (list default-screen-geometry))
+	   ((eq? default-screen-geometry 'ASK)
+	    (let ((geometry
+		   (prompt-for-string "Please enter a geometry"
+				      default-screen-geometry)))
+	      (if (geometry? geometry)
+		  (begin
+		    (set! default-screen-geometry geometry)
+		    geometry)
+		  (begin
+		    (message "Invalid geometry!  Using default.")
+		    default-screen-geometry))))
+	   (else '())))
     (else '())))
 
 (define (geometry? geometry)
   (let ((geometry-pattern
 	 "[0-9]+x[0-9]+\\(-[0-9]+\\|+[0-9]+\\|\\)\\(-[0-9]+\\|+[0-9]+\\|\\)"))
-    (re-match-string-forward  (re-compile-pattern geometry-pattern false)
-			      false
-			      false
-			      geometry)))
+    (re-match-string-forward (re-compile-pattern geometry-pattern #f)
+			     #f
+			     #f
+			     geometry)))
 
-(define default-screen-geometry "80x75-0+0")
-(define new-screen-geometry default-screen-geometry)
+(define default-screen-geometry #f)
 
 (define (continuation-browser-buffer object)
   (let ((browser
