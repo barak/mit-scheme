@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.20 1996/03/08 17:19:00 adams Exp $
+$Id: midend.scm,v 1.21 1996/03/08 22:11:34 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -430,7 +430,7 @@ Example:
   (apply warn complaint *current-phase* reasons))
 
 (define (user-warning complaint . reasons)
-  (apply warn complaint *current-phase* reasons))
+  (apply warn complaint reasons))
 
 (define (illegal form)
   (if (and (pair? form)
@@ -455,7 +455,41 @@ Example:
 
 (define (unimplemented name)
   (internal-error "Unimplemented procedure" name))
-
+
+(define (form->source-irritant form)
+  ;; Turn FORM into something to put in an error message or warning that
+  ;; can help the user figure out where the error is.  Currently
+  ;; pretty-prints the DBG expression for FORM if it can be found, and
+  ;; prefixes each line with ";  ".
+  (define (string-split string separator)
+    (let ((end (string-length string)))
+      (let loop ((i 0))
+	(cond ((substring-find-next-char string i end separator)
+	       => (lambda (i*)
+		    (cons (substring string i i*) (loop (+ i* 1)))))
+	      ((= i end) '())
+	      (else (list (substring string i end)))))))
+  (define (format-scode scode)
+    (fluid-let ((*unparser-list-depth-limit* 3))
+      (let ((text  (with-output-to-string (lambda () (pp scode)))))
+	(let ((fragments (string-split text #\newline)))
+	  (define (prefix s) (if (string-null? s) s (string-append "\n;  " s)))
+	  (error-irritant/noise
+	   (apply string-append (map prefix fragments)))))))
+  (define (get-source dbg-object)
+    (cond ((new-dbg-expression? dbg-object)
+	   (format-scode (new-dbg-expression/source-code dbg-object)))
+	  ((new-dbg-procedure? dbg-object)
+	   (format-scode (new-dbg-procedure/source-code dbg-object)))
+	  ((new-dbg-continuation/inner dbg-object)
+	   => get-source)
+	  ((new-dbg-continuation/outer dbg-object)
+	   => get-source)
+	  (else (unhelpful))))
+  (define (unhelpful) (error-irritant/noise ""))
+  (cond ((code-rewrite/original-form form) => get-source)
+	((code-rewrite/original-form/previous form) => get-source)
+	(else (unhelpful))))
 
 (define (compiler:debug #!optional what)
   "
