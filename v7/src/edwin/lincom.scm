@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.113 1991/05/14 21:20:52 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lincom.scm,v 1.114 1991/09/17 19:03:27 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -335,8 +335,11 @@ With argument COLUMN, indent each line to that column."
   "Indent all lines starting in the region sideways by ARG columns."
   "r\nP"
   (lambda (region argument)
-    (if argument
-	(indent-rigidly (region-start region) (region-end region) argument))))
+    (let ((argument (command-argument-numeric-value argument)))
+      (if argument
+	  (indent-rigidly (region-start region)
+			  (region-end region)
+			  argument)))))
 
 (define (indent-rigidly start end n-columns)
   (for-each-line-in-region start end
