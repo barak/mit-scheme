@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2fs.c,v 1.7 1995/11/06 21:51:37 cph Exp $
+$Id: os2fs.c,v 1.8 1996/02/24 13:25:16 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -348,8 +348,6 @@ OS_directory_open (const char * search_pattern)
     unsigned int len = (strlen (pattern));
     if ((len > 0) && ((pattern [len - 1]) == '\\'))
       strcat (pattern, "*");
-    else if (OS_file_directory_p (pattern))
-      strcat (pattern, "\\*");
   }
   (s -> handle) = HDIR_CREATE;
   (s -> count) = 1;
