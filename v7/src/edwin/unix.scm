@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.12 1991/04/01 06:15:49 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.13 1991/04/12 23:21:24 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -254,33 +254,26 @@ Includes the new backup.  Must be > 0"
 	filename)))
 
 (define (os/directory-list directory)
-  (dynamic-wind
-   (lambda () unspecific)
-   (lambda ()
-     (let loop
-	 ((name ((ucode-primitive open-directory 1) directory))
-	  (result '()))
-       (if name
-	   (loop ((ucode-primitive directory-read 0)) (cons name result))
-	   result)))
-   (ucode-primitive directory-close 0)))
+  (ucode-primitive directory-close 0)
+  ((ucode-primitive directory-open-noread 1) directory)
+  (let loop ((result '()))
+    (let ((name ((ucode-primitive directory-read 0))))
+      (if name
+	  (loop (cons name result))
+	  (begin
+	    (ucode-primitive directory-close 0)
+	    result)))))
 
 (define (os/directory-list-completions directory prefix)
-  (if (string-null? prefix)
-      (os/directory-list directory)
-      (dynamic-wind
-       (lambda () unspecific)
-       (lambda ()
-	 (let loop
-	     ((name ((ucode-primitive open-directory 1) directory))
-	      (result '()))
-	   (if name
-	       (loop ((ucode-primitive directory-read 0))
-		     (if (string-prefix? prefix name)
-			 (cons name result)
-			 result))
-	       result)))
-       (ucode-primitive directory-close 0))))
+  (ucode-primitive directory-close 0)
+  ((ucode-primitive directory-open-noread 1) directory)
+  (let loop ((result '()))
+    (let ((name ((ucode-primitive directory-read-matching 1) prefix)))
+      (if name
+	  (loop (cons name result))
+	  (begin
+	    (ucode-primitive directory-close 0)
+	    result)))))
 
 (define-integrable os/file-directory?
   (ucode-primitive file-directory?))
@@ -328,3 +321,6 @@ Includes the new backup.  Must be > 0"
 				  (pathname-directory-path pathname))))
 	    (and (file-exists? pathname)
 		 pathname))))))
+
+(define-integrable (file-readable? filename)
+  (unix/file-access filename 4))
