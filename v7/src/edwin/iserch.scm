@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.3 1989/04/20 08:12:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/iserch.scm,v 1.4 1989/04/23 23:23:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -106,16 +106,15 @@
 	     (isearch-append-string
 	      state
 	      (extract-rest-of-line (search-state-end-point state))))
+	    ((char=? char #\return)
+	     (isearch-append-char state #\newline))
 	    ((or (not (zero? (char-bits char)))
 		 (and (ref-variable search-exit-option)
 		      (< (char-code char) #x20)))
 	     (isearch-exit state)
 	     char)
 	    (else
-	     (isearch-append-char state
-				  (if (char=? char #\return)
-				      #\newline
-				      char)))))))
+	     (isearch-append-char state char))))))
 
 (define (isearch-append-char state char)
   (isearch-append-string state (string char)))
