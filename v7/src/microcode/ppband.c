@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.22 1987/02/10 22:45:31 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/ppband.c,v 9.23 1987/02/11 18:09:32 jinx Exp $
  *
  * Dumps Scheme FASL in user-readable form .
  */
@@ -75,20 +75,41 @@ static long Relocate_Temp;
 #define Relocate(P)	(Relocate_Into(Relocate_Temp, P), Relocate_Temp)
 #endif
 
-Pointer *Data;
-#define via(File_Address)	Relocate(Address(Data[File_Address]))
+static Pointer *Data, *end_of_memory;
 
+Boolean
 scheme_string(From, Quoted)
 long From;
 Boolean Quoted;
 { fast long i, Count;
   fast char *Chars;
-  Count = Get_Integer(Data[From+STRING_LENGTH]);
   Chars = (char *) &Data[From+STRING_CHARS];
-  putchar(Quoted ? '\"' : '\'');
-  for (i=0; i < Count; i++) printf("%c", *Chars++);
-  if (Quoted) putchar('\"');
-  putchar('\n');
+  if (Chars < ((char *) end_of_memory))
+  { Count = Get_Integer(Data[From+STRING_LENGTH]);
+    if (&Chars[Count] < ((char *) end_of_memory))
+    { putchar(Quoted ? '\"' : '\'');
+      for (i=0; i < Count; i++) printf("%c", *Chars++);
+      if (Quoted) putchar('\"');
+      putchar('\n');
+      return true;
+    }
+  }
+  if (Quoted)
+    printf("String not in memory; datum = %x\n", From);
+  return false;
+}
+
+#define via(File_Address)	Relocate(Address(Data[File_Address]))
+
+void
+scheme_symbol(From)
+long From;
+{ Pointer *symbol;
+  symbol = &Data[From+SYMBOL_NAME];
+  if ((symbol >= end_of_memory) ||
+      scheme_string(via(From+SYMBOL_NAME), false))
+    printf("symbol not in memory; datum = %x\n", From);
+  return;
 }
 
 Display(Location, Type, The_Datum)
@@ -124,11 +145,11 @@ long Location, Type, The_Datum;
     case TC_MANIFEST_NM_VECTOR: printf("[MANIFEST-NM-VECTOR ");
                                 Points_To = The_Datum;
                                 break;
-    case TC_INTERNED_SYMBOL: scheme_string(via(Points_To+SYMBOL_NAME), false);
+    case TC_INTERNED_SYMBOL: scheme_symbol(Points_To);
                              return;
     case TC_UNINTERNED_SYMBOL: 
       printf("uninterned ");
-      scheme_string(via(Points_To+SYMBOL_NAME), false);
+      scheme_symbol(Points_To);
       return;
     case TC_CHARACTER_STRING: scheme_string(Points_To, true);
                               return;
@@ -213,6 +234,7 @@ char **argv;
 	   Heap_Base, Const_Base, Heap_Count);
   }    
   Data = (Pointer *) malloc(sizeof(Pointer) * (Heap_Count + Const_Count));
+  end_of_memory = &Data[Heap_Count + Const_Count];
   Load_Data(Heap_Count + Const_Count, Data);
   printf("Heap contents\n\n");
   for (Next=Data, i=0; i < Heap_Count;  Next++, i++)
