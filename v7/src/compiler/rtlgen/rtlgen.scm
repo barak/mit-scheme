@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.16 1987/07/29 02:16:52 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.17 1987/08/04 06:57:30 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -36,37 +36,41 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (generate-rtl quotations procedures)
+(define (generate-rtl quotation procedures)
   (with-new-node-marks
    (lambda ()
-     (for-each generate/quotation quotations)
-     (for-each generate/procedure procedures))))
+     (generate/rgraph
+      (quotation-rgraph quotation)
+      (lambda ()
+	(scfg*scfg->scfg!
+	 (rtl:make-assignment register:frame-pointer
+			      (rtl:make-fetch register:stack-pointer))
+	 (generate/node (let ((entry (quotation-fg-entry quotation)))
+			  (if (not compiler:preserve-data-structures?)
+			      (unset-quotation-fg-entry! quotation))
+			  entry)
+			false))))
+     (for-each (lambda (procedure)
+		 (generate/rgraph
+		  (procedure-rgraph procedure)
+		  (lambda ()
+		    (generate/procedure-header
+		     procedure
+		     (generate/node
+		      (let ((entry (procedure-fg-entry procedure)))
+			(if (not compiler:preserve-data-structures?)
+			    (unset-procedure-fg-entry! procedure))
+			entry)
+		      false)))))
+	       procedures))))
 
-(define (generate/quotation quotation)
-  (set-quotation-rtl-entry!
-   quotation
-   (cfg-entry-node
-    (scfg*scfg->scfg!
-     (rtl:make-assignment register:frame-pointer
-			  (rtl:make-fetch register:stack-pointer))
-     (generate/node (let ((entry (quotation-fg-entry quotation)))
-		      (if (not compiler:preserve-data-structures?)
-			  (unset-quotation-fg-entry! quotation))
-		      entry)
-		    false)))))
-
-(define (generate/procedure procedure)
-  (set-procedure-rtl-entry!
-   procedure
-   (cfg-entry-node
-    (generate/procedure-header
-     procedure
-     (generate/node (let ((entry (procedure-fg-entry procedure)))
-		      (if (not compiler:preserve-data-structures?)
-			  (unset-procedure-fg-entry! procedure))
-		      entry)
-		    false)))))
-
+(define (generate/rgraph rgraph generator)
+  (fluid-let ((*current-rgraph* rgraph)
+	      (*temporary->register-map* '())
+	      (*next-pseudo-number* number-of-machine-registers))
+    (set-rgraph-edge! rgraph (node->edge (cfg-entry-node (generator))))
+    (set-rgraph-n-registers! rgraph *next-pseudo-number*)))
+
 (define (generate/node node subproblem?)
   ;; This won't work when there are loops in the RTL.
   (cond ((not (node-marked? node))
@@ -82,7 +86,7 @@ MIT in each case. |#
 
 (define (define-generator tag generator)
   (define-vector-method tag generate/node generator))
-
+
 (define (generate/subproblem-cfg subproblem)
   (if (cfg-null? (subproblem-cfg subproblem))
       (make-null-cfg)
@@ -104,7 +108,7 @@ MIT in each case. |#
   (transmit-values (generate/subproblem subproblem)
     (lambda (cfg expression)
       (scfg*scfg->scfg! cfg (rtl:make-push expression)))))
-
+
 (define (define-statement-generator tag generator)
   (define-generator tag
     (lambda (node subproblem?)
@@ -129,7 +133,7 @@ MIT in each case. |#
 	  (generate/node (pnode-consequent node) subproblem?))
      (and (pnode-alternative node)
 	  (generate/node (pnode-alternative node) subproblem?)))))
-
+
 (define-integrable (node-rtl-result node)
   (node-property-get node tag/node-rtl-result))
 

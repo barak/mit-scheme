@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.10 1987/03/19 00:46:34 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/ralloc.scm,v 1.11 1987/08/04 06:56:02 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,12 +37,27 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (register-allocation bblocks)
+(package (register-allocation)
+
+(define (register-allocation rgraphs)
+  (for-each walk-rgraph rgraphs))
+
+(define (walk-rgraph rgraph)
+  (let ((n-registers (rgraph-n-registers rgraph)))
+    (set-rgraph-register-renumber!
+     rgraph
+     (make-vector n-registers false))
+    (fluid-let ((*current-rgraph* rgraph))
+      (walk-bblocks n-registers
+		    (let ((bblocks (rgraph-bblocks rgraph)))
+		      (set-rgraph-bblocks! rgraph false))))))
+
+(define (walk-bblocks n-registers bblocks)
   ;; First, renumber all the registers remaining to be allocated.
   (let ((next-renumber 0)
-	(register->renumber (make-vector *n-registers* false)))
+	(register->renumber (make-vector n-registers false)))
     (define (renumbered-registers n)
-      (if (< n *n-registers*)
+      (if (< n n-registers)
 	  (if (vector-ref register->renumber n)
 	      (cons n (renumbered-registers (1+ n)))
 	      (renumbered-registers (1+ n)))
@@ -104,12 +119,14 @@ MIT in each case. |#
 					   (make-regset next-renumber))
 			      allocation)))
 		      (let ((allocation (loop 0)))
-			(vector-set! *register-renumber* register allocation)
+			(set-register-renumber! register allocation)
 			(regset-adjoin! (vector-ref allocated allocation)
 					renumber))))
 		  (sort (renumbered-registers number-of-machine-registers)
 			allocate<?))
 	next-allocation))))
+
+)
 
 (define (allocate<? x y)
   (< (/ (register-n-refs x) (register-live-length x))

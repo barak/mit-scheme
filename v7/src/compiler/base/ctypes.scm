@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.49 1987/07/09 23:18:43 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.50 1987/08/04 06:54:06 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -97,27 +97,25 @@ MIT in each case. |#
 (define-integrable (combination-compiled-for-value? combination)
   (eq? 'VALUE (combination-compilation-type combination)))
 
-(define-snode continuation rtl-edge label frame-pointer-offset block)
+(define-snode continuation rtl-edge label frame-pointer-offset block rgraph)
 (define *continuations*)
 
-(define-integrable (make-continuation block)
+(define-integrable (make-continuation block rgraph)
   (let ((continuation
 	 (make-snode continuation-tag
 		     false
 		     (generate-label 'CONTINUATION)
 		     false
-		     block)))
+		     block
+		     rgraph)))
     (set! *continuations* (cons continuation *continuations*))
+    (set-rgraph-continuations!
+     rgraph
+     (cons continuation (rgraph-continuations rgraph)))
     (symbol-hash-table/insert! *label->object*
 			       (continuation-label continuation)
 			       continuation)
     continuation))
-
-(define-integrable (continuation-rtl-entry continuation)
-  (edge-right-node (continuation-rtl-edge continuation)))
-
-(define-integrable (set-continuation-rtl-entry! continuation node)
-  (set-continuation-rtl-edge! continuation (node->edge node)))
 
 (define-unparser continuation-tag
   (lambda (continuation)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.56 1987/04/17 10:52:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rlife.scm,v 1.57 1987/08/04 06:57:18 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -39,7 +39,27 @@ MIT in each case. |#
 
 ;;;; Lifetime Analysis
 
-(define (lifetime-analysis bblocks)
+(package (lifetime-analysis)
+
+(define-export (lifetime-analysis rgraphs)
+  (for-each walk-rgraph rgraphs))
+
+(define (walk-rgraph rgraph)
+  (let ((n-registers (rgraph-n-registers rgraph))
+	(bblocks (rgraph-bblocks rgraph)))
+    (set-rgraph-register-bblock! rgraph (make-vector n-registers false))
+    (set-rgraph-register-next-use! rgraph (make-vector n-registers false))
+    (set-rgraph-register-n-refs! rgraph (make-vector n-registers 0))
+    (set-rgraph-register-n-deaths! rgraph (make-vector n-registers 0))
+    (set-rgraph-register-live-length! rgraph (make-vector n-registers 0))
+    (set-rgraph-register-crosses-call?! rgraph (make-bit-string n-registers false))
+    (for-each (lambda (bblock)
+		(bblock-initialize-regsets! bblock n-registers))
+	      bblocks)
+    (fluid-let ((*current-rgraph* rgraph))
+      (walk-bblock bblocks))))
+
+(define (walk-bblock bblocks)
   (let ((changed? false))
     (define (loop first-pass?)
       (for-each (lambda (bblock)
@@ -68,6 +88,8 @@ MIT in each case. |#
 		    bblocks)))
     (loop true)))
 
+)
+
 (define (propagate-block bblock)
   (propagation-loop bblock
     (lambda (old dead live rtl rnode)
@@ -86,11 +108,11 @@ MIT in each case. |#
 	  (begin (update-live-registers! old dead live rtl rnode)
 		 (for-each-regset-member old
 		   increment-register-live-length!))))))
-
+
 (define (propagation-loop bblock procedure)
   (let ((old (bblock-live-at-entry bblock))
-	(dead (regset-allocate *n-registers*))
-	(live (regset-allocate *n-registers*)))
+	(dead (regset-allocate (rgraph-n-registers *current-rgraph*)))
+	(live (regset-allocate (rgraph-n-registers *current-rgraph*))))
     (bblock-walk-backward bblock
       (lambda (rnode previous)
 	(regset-clear! dead)

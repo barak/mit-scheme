@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.1 1987/04/17 10:53:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcompr.scm,v 1.2 1987/08/04 06:56:48 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,26 +37,35 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (dead-code-elimination bblocks)
-  (for-each (lambda (bblock)
-	      (if (not (eq? (bblock-entry bblock) (bblock-exit bblock)))
-		  (let ((live (regset-copy (bblock-live-at-entry bblock)))
-			(births (make-regset *n-registers*)))
-		    (bblock-walk-forward bblock
-		      (lambda (rnode next)
-			(if next
-			    (begin (optimize-rtl live rnode next)
-				   (regset-clear! births)
-				   (mark-set-registers! live
-							births
-							(rnode-rtl rnode)
-							false)
-				   (for-each (lambda (register)
-					       (regset-delete! live register))
-					     (rnode-dead-registers rnode))
-				   (regset-union! live births))))))))
-	    bblocks))
+(package (dead-code-elimination)
 
+(define-export (dead-code-elimination rgraphs)
+  (for-each walk-rgraph rgraphs))
+
+(define (walk-rgraph rgraph)
+  (fluid-let ((*current-rgraph* rgraph))
+    (for-each walk-bblock (rgraph-bblocks rgraph))))
+
+(define (walk-bblock bblock)
+  (if (not (eq? (bblock-entry bblock) (bblock-exit bblock)))
+      (let ((live (regset-copy (bblock-live-at-entry bblock)))
+	    (births (make-regset (rgraph-n-registers *current-rgraph*))))
+	(bblock-walk-forward bblock
+	  (lambda (rnode next)
+	    (if next
+		(begin (optimize-rtl live rnode next)
+		       (regset-clear! births)
+		       (mark-set-registers! live
+					    births
+					    (rnode-rtl rnode)
+					    false)
+		       (for-each (lambda (register)
+				   (regset-delete! live register))
+				 (rnode-dead-registers rnode))
+		       (regset-union! live births))))))))
+
+)
+
 (define (optimize-rtl live rnode next)
   (let ((rtl (rnode-rtl rnode)))
     (if (rtl:assign? rtl)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.59 1987/07/08 21:52:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 1.60 1987/08/04 06:54:40 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -230,9 +230,8 @@ MIT in each case. |#
 (syntax-table-define compiler-syntax-table 'DEFINE-REGISTER-REFERENCES
   (macro (slot)
     (let ((name (symbol-append 'REGISTER- slot)))
-      (let ((vector (symbol-append '* name '*)))
-	`(BEGIN (DEFINE ,vector)
-		(DEFINE-INTEGRABLE (,name REGISTER)
+      (let ((vector `(,(symbol-append 'RGRAPH- name) *CURRENT-RGRAPH*)))
+	`(BEGIN (DEFINE-INTEGRABLE (,name REGISTER)
 		  (VECTOR-REF ,vector REGISTER))
 		(DEFINE-INTEGRABLE
 		  (,(symbol-append 'SET- name '!) REGISTER VALUE)

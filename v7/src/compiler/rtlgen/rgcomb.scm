@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.31 1987/07/22 21:01:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.32 1987/08/04 06:56:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -158,13 +158,14 @@ MIT in each case. |#
 (define (combination/subproblem combination operator operands)
   (let ((block (combination-block combination)))
     (define (finish call-prefix continuation-prefix)
-      (let ((continuation (make-continuation block)))
+      (let ((continuation (make-continuation block *current-rgraph*)))
 	(let ((continuation-cfg
 	       (scfg*scfg->scfg!
 		(rtl:make-continuation-heap-check continuation)
 		continuation-prefix)))
-	  (set-continuation-rtl-entry! continuation
-				       (cfg-entry-node continuation-cfg))
+	  (set-continuation-rtl-edge!
+	   continuation
+	   (node->edge (cfg-entry-node continuation-cfg)))
 	  (make-scfg
 	   (cfg-entry-node
 	    (scfg*scfg->scfg!

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.111 1987/07/03 18:58:24 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcse1.scm,v 1.112 1987/08/04 06:56:11 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,17 +37,34 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(define (common-subexpression-elimination blocks n-registers)
+(define *initial-queue*)
+(define *branch-queue*)
+
+(define (common-subexpression-elimination rgraphs)
   (with-new-node-marks
    (lambda ()
-     (fluid-let ((*next-quantity-number* 0))
-       (state:initialize n-registers
-	 (lambda ()
-	   (for-each (lambda (block)
-		       (state:reset!)
-		       (walk-rnode block))
-		     blocks)))))))
+     (for-each cse-rgraph rgraphs))))
 
+(define (cse-rgraph rgraph)
+  (fluid-let ((*current-rgraph* rgraph)
+	      (*next-quantity-number* 0)
+	      (*initial-queue* (make-queue))
+	      (*branch-queue* '()))
+    (for-each (lambda (edge)
+		(enqueue! *initial-queue* (edge-right-node edge)))
+	      (rgraph-initial-edges rgraph))
+    (state:initialize rgraph continue-walk)))
+
+(define (continue-walk)
+  (cond ((not (null? *branch-queue*))
+	 (let ((entry (car *branch-queue*)))
+	   (set! *branch-queue* (cdr *branch-queue*))
+	   (state:set! *current-rgraph* (car entry))
+	   (walk-rnode (cdr entry))))
+	((not (queue-empty? *initial-queue*))
+	 (state:reset! *current-rgraph*)
+	 (walk-rnode (dequeue! *initial-queue*)))))
+
 (define (walk-rnode rnode)
   (node-mark! rnode)
   ((vector-method rnode walk-rnode) rnode))
@@ -57,7 +74,8 @@ MIT in each case. |#
     (cse-statement (rnode-rtl rnode))
     (let ((next (snode-next rnode)))
       (if (walk-next? next)
-	  (walk-next next)))))
+	  (walk-next next)
+	  (continue-walk)))))
 
 (define-vector-method rtl-pnode-tag walk-rnode
   (lambda (rnode)
@@ -66,28 +84,26 @@ MIT in each case. |#
 	  (alternative (pnode-alternative rnode)))
       (if (walk-next? consequent)
 	  (if (walk-next? alternative)
-	      (cond ((node-previous>1? consequent)
-		     (walk-next alternative)
-		     (state:reset!)
-		     (walk-rnode consequent))
-		    ((node-previous>1? alternative)
-		     (walk-rnode consequent)
-		     (state:reset!)
-		     (walk-rnode alternative))
-		    (else
-		     (let ((state (state:get)))
-		       (walk-rnode consequent)
-		       (state:set! state))
-		     (walk-rnode alternative)))
+	      (if (node-previous>1? consequent)
+		  (begin (enqueue! *initial-queue* consequent)
+			 (walk-next alternative))
+		  (begin (if (node-previous>1? alternative)
+			     (enqueue! *initial-queue* alternative)
+			     (set! *branch-queue*
+				   (cons (cons (state:get *current-rgraph*)
+					       alternative)
+					 *branch-queue*)))
+			 (walk-rnode consequent)))
 	      (walk-next consequent))
 	  (if (walk-next? alternative)
-	      (walk-next alternative))))))
+	      (walk-next alternative)
+	      (continue-walk))))))
 
 (define (walk-next? rnode)
   (and rnode (not (node-marked? rnode))))
 
 (define (walk-next rnode)
-  (if (node-previous>1? rnode) (state:reset!))
+  (if (node-previous>1? rnode) (state:reset! *current-rgraph*))
   (walk-rnode rnode))
 
 (define (cse-statement statement)

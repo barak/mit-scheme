@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.39 1987/07/08 22:00:41 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.40 1987/08/04 06:58:01 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -37,48 +37,38 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define *block-start-label*)
-(define *code-object-label*)
-(define *code-object-entry*)
+(define *entry-rnode*)
 (define *current-rnode*)
 (define *dead-registers*)
 (define *continuation-queue*)
 
-(define (generate-bits quotations procedures continuations receiver)
+(define (generate-bits rgraphs receiver)
   (with-new-node-marks
    (lambda ()
      (fluid-let ((*next-constant* 0)
 		 (*interned-constants* '())
 		 (*interned-variables* '())
 		 (*interned-uuo-links* '())
-		 (*block-start-label* (generate-label))
-		 (*code-object-label*)
-		 (*code-object-entry*)
-		 (*continuation-queue* (make-queue)))
-       (for-each (lambda (quotation)
-		   (cgen-entry quotation quotation-rtl-entry))
-		 quotations)
-       (for-each (lambda (procedure)
-		   (cgen-entry procedure procedure-rtl-entry))
-		 procedures)
-       (queue-map! *continuation-queue*
-	 (lambda (continuation)
-	   (cgen-entry continuation continuation-rtl-entry)))
-       (for-each (lambda (continuation)
-		   (if (not (continuation-frame-pointer-offset continuation))
-		       (error "GENERATE-LAP: Continuation not processed"
-			      continuation)))
-		 *continuations*)
+		 (*block-start-label* (generate-label)))
+       (for-each cgen-rgraph rgraphs)
        (receiver *block-start-label*
 		 (generate/quotation-header *block-start-label*
 					    *interned-constants*
 					    *interned-variables*
 					    *interned-uuo-links*))))))
 
-(define (cgen-entry object extract-entry)
-  (set! *code-object-label* (code-object-label-initialize object))
-  (let ((rnode (extract-entry object)))
-    (set! *code-object-entry* rnode)
-    (cgen-rnode rnode)))
+(define (cgen-rgraph rgraph)
+  (fluid-let ((*current-rgraph* rgraph)
+	      (*continuation-queue* (make-queue)))
+    (cgen-entry (rgraph-edge rgraph))
+    (queue-map! *continuation-queue*
+      (lambda (continuation)
+	(cgen-entry (continuation-rtl-edge continuation))))))
+
+(define (cgen-entry edge)
+  (let ((rnode (edge-right-node edge)))
+    (fluid-let ((*entry-rnode* rnode))
+      (cgen-rnode rnode))))
 
 (define (cgen-rnode rnode)
   (let ((offset (cgen-rnode-1 rnode)))
@@ -107,12 +97,12 @@ MIT in each case. |#
   ;; LOOP is for easy restart while debugging.
   (let loop ()
     (let ((match-result
-	   (pattern-lookup
-	    (cdr (or (if (eq? (car (rnode-rtl rnode)) 'ASSIGN)
-			 (assq (caadr (rnode-rtl rnode)) *assign-rules*)
-			 (assq (car (rnode-rtl rnode)) *cgen-rules*))
-		     (error "CGEN-RNODE: Unknown keyword" rnode)))
-	    (rnode-rtl rnode))))
+	   (let ((rule
+		  (if (eq? (car (rnode-rtl rnode)) 'ASSIGN)
+		      (assq (caadr (rnode-rtl rnode)) *assign-rules*)
+		      (assq (car (rnode-rtl rnode)) *cgen-rules*))))
+	     (and rule
+		  (pattern-lookup (cdr rule) (rnode-rtl rnode))))))
       (if match-result
 	  (fluid-let ((*current-rnode* rnode)
 		      (*dead-registers* (rnode-dead-registers rnode))
@@ -131,7 +121,7 @@ MIT in each case. |#
 		 (loop))))))
 
 (define (rnode-input-register-map rnode)
-  (if (or (eq? rnode *code-object-entry*)
+  (if (or (eq? rnode *entry-rnode*)
 	  (not (node-previous=1? rnode)))
       (empty-register-map)
       (let ((previous (node-previous-first rnode)))

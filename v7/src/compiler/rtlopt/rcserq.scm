@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.2 1987/04/24 14:15:53 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 1.3 1987/08/04 06:56:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -64,6 +64,24 @@ MIT in each case. |#
       (let ((quantity (new-quantity register)))
 	(set-register-quantity! register quantity)
 	quantity)))
+
+(define-integrable rgraph-register-quantity rgraph-register-bblock)
+(define-integrable rgraph-register-next-equivalent rgraph-register-next-use)
+(define-integrable rgraph-register-previous-equivalent rgraph-register-n-refs)
+(define-integrable rgraph-register-expression rgraph-register-n-deaths)
+(define-integrable rgraph-register-tick rgraph-register-live-length)
+(define-integrable rgraph-register-in-table rgraph-register-crosses-call?)
+
+(define-integrable set-rgraph-register-quantity! set-rgraph-register-bblock!)
+(define-integrable set-rgraph-register-next-equivalent!
+  set-rgraph-register-next-use!)
+(define-integrable set-rgraph-register-previous-equivalent!
+  set-rgraph-register-n-refs!)
+(define-integrable set-rgraph-register-expression!
+  set-rgraph-register-n-deaths!)
+(define-integrable set-rgraph-register-tick! set-rgraph-register-live-length!)
+(define-integrable set-rgraph-register-in-table!
+  set-rgraph-register-crosses-call?!)
 
 (define-register-references quantity)
 (define-register-references next-equivalent)

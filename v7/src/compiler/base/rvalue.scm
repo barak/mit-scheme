@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.3 1987/07/10 01:09:34 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/rvalue.scm,v 1.4 1987/08/04 06:54:16 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
     (write-string "REFERENCE ")
     (write (variable-name (reference-variable reference)))))
 
-(define-rvalue procedure block value fg-edge rtl-edge externally-visible?
+(define-rvalue procedure block value fg-edge rgraph externally-visible?
   closure-block label external-label name required optional rest
   names values auxiliary original-parameters)
 (define *procedures*)
@@ -95,11 +95,11 @@ MIT in each case. |#
 			names values auxiliary)
   (let ((procedure
 	 (make-rvalue procedure-tag block (subproblem-value subproblem)
-		      (cfg-entry-edge (subproblem-cfg subproblem)) false false
-		      false (generate-label (variable-name name))
+		      (cfg-entry-edge (subproblem-cfg subproblem))
+		      (rgraph-allocate) false false
+		      (generate-label (variable-name name))
 		      (generate-label) name required optional rest
-		      names values auxiliary
-		      (vector required optional rest))))
+		      names values auxiliary (vector required optional rest))))
     (set-block-procedure! block procedure)
     (vnode-connect! name procedure)
     (set! *procedures* (cons procedure *procedures*))
@@ -113,12 +113,6 @@ MIT in each case. |#
 
 (define-integrable (unset-procedure-fg-entry! procedure)
   (set-procedure-fg-edge! procedure false))
-
-(define-integrable (procedure-rtl-entry procedure)
-  (edge-right-node (procedure-rtl-edge procedure)))
-
-(define-integrable (set-procedure-rtl-entry! procedure node)
-  (set-procedure-rtl-edge! procedure (node->edge node)))
 
 (define-integrable (procedure-original-required procedure)
   (vector-ref (procedure-original-parameters procedure) 0))
@@ -137,14 +131,15 @@ MIT in each case. |#
 (define-integrable (label->procedure label)
   (symbol-hash-table/lookup *label->object* label))
 
-(define-rvalue quotation block value fg-edge rtl-edge label)
+(define-rvalue quotation block value fg-edge rgraph label)
 (define *quotations*)
 
 (define (make-quotation block subproblem)
   (let ((quotation
 	 (make-rvalue quotation-tag block (subproblem-value subproblem)
 		      (cfg-entry-edge (subproblem-cfg subproblem))
-		      false (generate-label 'QUOTATION))))
+		      (rgraph-allocate)
+		      (generate-label 'QUOTATION))))
     (set! *quotations* (cons quotation *quotations*))
     quotation))
 
@@ -154,8 +149,38 @@ MIT in each case. |#
 (define-integrable (unset-quotation-fg-entry! quotation)
   (set-quotation-fg-edge! quotation false))
 
-(define-integrable (quotation-rtl-entry quotation)
-  (edge-right-node (quotation-rtl-edge quotation)))
+(define-vector-slots rgraph 0
+  edge
+  n-registers
+  continuations
+  bblocks
+  register-bblock
+  register-next-use
+  register-n-refs
+  register-n-deaths
+  register-live-length
+  register-crosses-call?
+  )
 
-(define-integrable (set-quotation-rtl-entry! quotation node)
-  (set-quotation-rtl-edge! quotation (node->edge node)))
+(define-integrable rgraph-register-renumber rgraph-register-bblock)
+(define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)
+
+(define *rgraphs*)
+(define *current-rgraph*)
+
+(define (rgraph-allocate)
+  (make-vector 10 false))
+
+(define (rgraph-entry-edges rgraph)
+  (cons (rgraph-edge rgraph)
+	(map continuation-rtl-edge (rgraph-continuations rgraph))))
+
+(define (rgraph-initial-edges rgraph)
+  (cons (rgraph-edge rgraph)
+	(let loop ((continuations (rgraph-continuations rgraph)))
+	  (if (null? continuations)
+	      '()
+	      (let ((edge (continuation-rtl-edge (car continuations))))
+		(if (node-previous=0? (edge-right-node edge))
+		    (cons edge (loop (cdr continuations)))
+		    (loop (cdr continuations))))))))
