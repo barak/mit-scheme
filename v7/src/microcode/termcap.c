@@ -154,6 +154,50 @@ xrealloc (ptr, size)
   return tem;
 }
 #endif /* not emacs */
+
+#ifdef MIT_SCHEME
+# include "oscond.h"
+# ifdef _UNIX
+#  include "ux.h"
+# endif
+#endif
+
+short ospeed;
+
+#ifdef NO_BAUD_CONVERSION
+
+/* This is a kludge. */
+
+static
+short convert_ospeed (os)
+     unsigned short os;
+{
+  if (os >= 300)
+    return (0 - ((short) (os / 100)));
+  else
+    return ((short) (os));
+}
+
+#define OSPEED()	convert_ospeed ((unsigned short) ospeed)
+
+#else
+
+/* Actual baud rate if positive;
+   - baud rate / 100 if negative.  */
+
+static short speeds[] =
+  {
+#ifdef VMS
+    0, 50, 75, 110, 134, 150, -3, -6, -12, -18,
+    -20, -24, -36, -48, -72, -96, -192
+#else /* not VMS */
+    0, 50, 75, 110, 135, 150, -2, -3, -6, -12,
+    -18, -24, -48, -96, -192, -384
+#endif /* not VMS */
+  };
+
+#define OSPEED()	speeds[ospeed]
+#endif
 
 /* Looking up capabilities in the entry already found */
 
@@ -294,22 +338,7 @@ tgetst1 (ptr, area)
 
 /* Outputting a string with padding */
 
-short ospeed;
 char PC;
-
-/* Actual baud rate if positive;
-   - baud rate / 100 if negative.  */
-
-static short speeds[] =
-  {
-#ifdef VMS
-    0, 50, 75, 110, 134, 150, -3, -6, -12, -18,
-    -20, -24, -36, -48, -72, -96, -192
-#else /* not VMS */
-    0, 50, 75, 110, 135, 150, -2, -3, -6, -12,
-    -18, -24, -48, -96, -192, -384
-#endif /* not VMS */
-  };
 
 tputs (string, nlines, outfun)
      register char *string;
@@ -339,10 +368,10 @@ tputs (string, nlines, outfun)
     (*outfun) (*string++);
 
   /* padcount is now in units of tenths of msec.  */
-  padcount *= speeds[ospeed];
+  padcount *= (OSPEED ());
   padcount += 500;
   padcount /= 1000;
-  if (speeds[ospeed] < 0)
+  if ((OSPEED ()) < 0)
     padcount = -padcount;
   else
     {
