@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 1.3 1994/12/15 02:34:42 adams Exp $
+$Id: switch.scm,v 1.4 1995/01/17 22:59:43 adams Exp $
 
 Copyright (c) 1988-1994  Massachusetts Institute of Technology
 
@@ -70,6 +70,9 @@ MIT in each case. |#
 (define compiler:cross-compiling? false)
 (define compiler:compress-top-level? false)
 (define compiler:avoid-scode? true)
+
+;; True if being used by a guru
+(define compiler:guru? false)
 
 ;; If true, the compiler is allowed to assume that fixnum operations
 ;; are only applied to inputs for which the operation is closed, i.e.
