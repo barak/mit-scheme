@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.3 1991/08/12 22:10:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/dassm2.scm,v 1.4 1992/08/11 04:55:00 jinx Exp $
 $MC68020-Header: dassm2.scm,v 4.16 89/12/11 06:16:42 GMT cph Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -34,51 +34,56 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; MIPS Disassembler: Top Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
-(set! compiled-code-block/bytes-per-object 4)
-(set! compiled-code-block/objects-per-procedure-cache 2)
-(set! compiled-code-block/objects-per-variable-cache 1)
+(define (disassembler/read-variable-cache block index)
+  (let-syntax ((ucode-type
+		(macro (name) (microcode-type name)))
+	       (ucode-primitive
+		(macro (name arity)
+		  (make-primitive-procedure name arity))))
+    ((ucode-primitive primitive-object-set-type 2)
+     (ucode-type quad)
+     (system-vector-ref block index))))
 
-(set! disassembler/read-variable-cache
-      (lambda (block index)
-	(let-syntax ((ucode-type
-		      (macro (name) (microcode-type name)))
-		     (ucode-primitive
-		      (macro (name arity)
-			(make-primitive-procedure name arity))))
-	  ((ucode-primitive primitive-object-set-type 2)
-	   (ucode-type quad)
-	   (system-vector-ref block index)))))
+(define (disassembler/read-procedure-cache block index)
+  (fluid-let ((*block block))
+    (let* ((offset (compiled-code-block/index->offset index)))
+      (let ((JAL (read-bits offset 32))
+	    (ADDI (read-bits (+ offset 4) 32)))
+	(let ((opcode
+	       (bit-string->unsigned-integer (bit-substring JAL 26 32))))
+	  (case opcode
+	    ((#x3)			; JAL
+	     ;; This should learn how to decode trampolines.
+	     (vector 'COMPILED
+		     (read-procedure offset)
+		     (bit-string->unsigned-integer
+		      (bit-substring ADDI 0 16))))
+	    (else
+	     (error "disassembler/read-procedure-cache: Unknown opcode"
+		    opcode block index))))))))
 
-(set! disassembler/read-procedure-cache
-      (lambda (block index)
-	(fluid-let ((*block block))
-	  (let* ((offset (compiled-code-block/index->offset index)))
-	    offset
-	    ;; For now
-	    (error "disassembler/read-procedure-cache: Not written")))))
-
-(set! disassembler/instructions
-  (lambda (block start-offset end-offset symbol-table)
-    (let loop ((offset start-offset) (state (disassembler/initial-state)))
-      (if (and end-offset (< offset end-offset))
-	  (disassemble-one-instruction block offset symbol-table state
-	    (lambda (offset* instruction state)
-	      (make-instruction offset
-				instruction
-				(lambda () (loop offset* state)))))
-	  '()))))
+(define (disassembler/instructions block start-offset end-offset symbol-table)
+  (let loop ((offset start-offset) (state (disassembler/initial-state)))
+    (if (and end-offset (< offset end-offset))
+	(disassemble-one-instruction
+	 block offset symbol-table state
+	 (lambda (offset* instruction state)
+	   (make-instruction offset
+			     instruction
+			     (lambda () (loop offset* state)))))
+	'())))
 
-(set! disassembler/instructions/null?
-  null?)
+(define (disassembler/instructions/null? obj)
+  (null? obj))
 
-(set! disassembler/instructions/read
-  (lambda (instruction-stream receiver)
-    (receiver (instruction-offset instruction-stream)
-	      (instruction-instruction instruction-stream)
-	      (instruction-next instruction-stream))))
+(define (disassembler/instructions/read instruction-stream receiver)
+  (receiver (instruction-offset instruction-stream)
+	    (instruction-instruction instruction-stream)
+	    (instruction-next instruction-stream)))
 
 (define-structure (instruction (type vector))
   (offset false read-only true)
@@ -159,12 +164,11 @@ MIT in each case. |#
   instruction state
   'INSTRUCTION)
 
-(set! disassembler/lookup-symbol
-  (lambda (symbol-table offset)
-    (and symbol-table
-	 (let ((label (dbg-labels/find-offset symbol-table offset)))
-	   (and label 
-		(dbg-label/name label))))))
+(define (disassembler/lookup-symbol symbol-table offset)
+  (and symbol-table
+       (let ((label (dbg-labels/find-offset symbol-table offset)))
+	 (and label 
+	      (dbg-label/name label)))))
 
 (define (external-label-marker? symbol-table offset state)
   (if symbol-table
@@ -198,9 +202,6 @@ MIT in each case. |#
 	(do-it (extract bit-string 16 32)
 	       (extract bit-string 0 16)))))
 
-#|
-;;; 68k version
-
 (define (read-procedure offset)
   (with-absolutely-no-interrupts
    (lambda ()
@@ -212,11 +213,8 @@ MIT in each case. |#
        ((ucode-primitive primitive-object-set-type 2)
 	(ucode-type compiled-entry)
 	((ucode-primitive make-non-pointer-object 1)
-	 (read-unsigned-integer offset 32)))))))
-|#
-
-(define (read-procedure offset)
-  (error "read-procedure: Called" offset))
+	 (bit-string->unsigned-integer
+	  (bit-substring (read-bits offset 32) 0 26))))))))
 
 (define (read-unsigned-integer offset size)
   (bit-string->unsigned-integer (read-bits offset size)))
@@ -234,3 +232,11 @@ MIT in each case. |#
 (define (invalid-instruction)
   (set! *valid? false)
   false)
+
+(define compiled-code-block/procedure-cache-offset 0)
+(define compiled-code-block/objects-per-procedure-cache 2)
+(define compiled-code-block/objects-per-variable-cache 1)
+
+;; global variable used by runtime/udata.scm -- Moby yuck!
+
+(set! compiled-code-block/bytes-per-object 4)
