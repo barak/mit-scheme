@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.1 1992/08/29 13:51:28 jinx Exp $
+$Id: make.scm,v 1.2 1993/11/12 14:43:00 jmiller Exp $
 
 Copyright (c) 1992 Digital Equipment Corporation (D.E.C.)
 
@@ -38,4 +38,7 @@ case.
 
 (declare (usual-integrations))
 
-((load "base/make") "Alpha")
+(let ((value ((load "base/make") "Alpha")))
+;  (set! (access compiler:compress-top-level? (->environment '(compiler)))
+;        true)
+  value)
