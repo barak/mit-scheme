@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.2 1988/07/15 08:44:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/option.scm,v 14.3 1988/07/15 09:16:06 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -53,7 +53,9 @@ MIT in each case. |#
 	 (for-each (lambda (filename)
 		     (load (merge-pathnames (string->pathname filename)
 					    pathname)
-			   environment))
+			   environment
+			   syntax-table/system-internal
+			   true))
 		   (cddr descriptor))
 	 (eval (cadr descriptor) environment)))
      (cdr entry))
