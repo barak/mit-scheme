@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.4 1989/04/25 03:52:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.5 1989/07/01 11:34:16 cph Rel $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -37,123 +37,13 @@ MIT in each case. */
 #include "scheme.h"
 #include "prims.h"
 #include "string.h"
-
-#define UNSPECIFIC (Make_Non_Pointer (TC_TRUE, 1))
-
-#include <X11/Xlib.h>
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-#include <X11/Xutil.h>
+#include "x11.h"
 
 #define RESOURCE_NAME "edwin"
 #define DEFAULT_GEOMETRY "80x40+0+0"
 
-static char *
-xterm_malloc (size)
-     int size;
+struct xterm_extra
 {
-  char * result;
-  extern char * malloc ();
-
-  result = (malloc (size));
-  if (result == ((char *) 0))
-    error_external_return ();
-  return (result);
-}
-
-static char *
-xterm_realloc (ptr, size)
-     char * ptr;
-     int size;
-{
-  char * result;
-  extern char * realloc ();
-
-  result = (realloc (ptr, size));
-  if (result == ((char *) 0))
-    error_external_return ();
-  return (result);
-}
-
-struct allocation_table
-{
-  char ** items;
-  int length;
-};
-
-static int
-allocate_table_index (table, item)
-     struct allocation_table * table;
-     char * item;
-{
-  char ** items = (table -> items);
-  int length = (table -> length);
-  int i;
-
-  if (length == 0)
-    {
-      int new_length = 4;
-      char ** new_items =
-	((char **) (xterm_malloc ((sizeof (char *)) * new_length)));
-      (new_items [0]) = item;
-      for (i = 1; (i < new_length); i += 1)
-	(new_items [i]) = ((char *) 0);
-      (table -> items) = new_items;
-      (table -> length) = new_length;
-      return (0);
-    }
-  for (i = 0; (i < length); i += 1)
-    if ((items [i]) == ((char *) 0))
-      {
-	(items [i]) = item;
-	return (i);
-      }
-  {
-    int new_length = (length * 2);
-    char ** new_items =
-      ((char **) (xterm_realloc (items, ((sizeof (char *)) * new_length))));
-    (new_items [length]) = item;
-    for (i = (length + 1); (i < new_length); i += 1)
-      (new_items [i]) = ((char *) 0);
-    (table -> items) = new_items;
-    (table -> length) = new_length;
-  }
-  return (length);
-}
-
-#define DEF_ALLOCATION_ARG(name, result_type, result)			\
-static result_type							\
-name (arg, table)							\
-     int arg;								\
-     struct allocation_table * table;					\
-{									\
-  fast Pointer object = (ARG_REF (arg));				\
-									\
-  if (! (FIXNUM_P (object)))						\
-    error_wrong_type_arg (arg);						\
-  if (! (FIXNUM_NEGATIVE_P (object)))					\
-    {									\
-      fast int length = (table -> length);				\
-      fast char ** items = (table -> items);				\
-      fast int index = (UNSIGNED_FIXNUM_VALUE (object));		\
-      if ((index < length) && ((items [index]) != ((char *) 0)))	\
-	return (result);						\
-    }									\
-  error_bad_range_arg (arg);						\
-  /* NOTREACHED */							\
-}
-
-DEF_ALLOCATION_ARG (allocation_item_arg, char *, (items [index]))
-DEF_ALLOCATION_ARG (allocation_index_arg, int, index)
-
-static struct allocation_table display_table;
-static struct allocation_table xterm_table;
-
-struct xterm
-{
-  Display * display;
-  Window window;
-
   /* Dimensions of the window, in characters.  Valid character
      coordinates are nonnegative integers strictly less than these
      limits. */
@@ -164,8 +54,10 @@ struct xterm
   int cursor_x;
   int cursor_y;
 
-  /* Width of the internal border, in pixels. */
-  int internal_border_width;
+  /* Info for a mouse button event */
+  unsigned int button;
+  int pointer_x;		/* in character coordinates */
+  int pointer_y;		/* in character coordinates */
 
   /* Character map of the window's contents.  See `XTERM_CHAR_LOC' for
      the address arithmetic. */
@@ -174,171 +66,116 @@ struct xterm
   /* Bit map of the window's highlighting. */
   char * highlight_map;
 
-  /* The primary font, and its dimensions in pixels. */
-  XFontStruct * font;
-
-  /* The graphics contexts used to draw characters and the cursor. */
-  GC normal_gc;
-  GC reverse_gc;
-  GC cursor_gc;
-
-  /* Commonly used pixel values. */
-  unsigned long background_pixel;
-  unsigned long foreground_pixel;
-  unsigned long cursor_pixel;
-  unsigned long border_pixel;
-  unsigned long mouse_pixel;
-
-  int event_flags;
-
-  /* Nonzero iff this window is visible (mapped and unobscured). */
-  char visible_p;
-
   /* Nonzero iff the cursor is drawn on the window. */
   char cursor_visible_p;
 };
-
-#define DISPLAY_ARG(arg)						\
-  ((Display *) (allocation_item_arg (arg, (& display_table))))
 
-#define XTERM_ARG(arg)							\
-  ((struct xterm *) (allocation_item_arg (arg, (& xterm_table))))
+#define XW_EXTRA(xw) ((struct xterm_extra *) ((xw) -> extra))
 
-#define XTERM_CHAR_INDEX(xt, x, y) ((y * (xt -> x_size)) + x)
-#define XTERM_CHAR_LOC(xt, index) ((xt -> character_map) + index)
-#define XTERM_CHAR(xt, index) (* (XTERM_CHAR_LOC (xt, index)))
-#define XTERM_HL_LOC(xt, index) ((xt -> highlight_map) + index)
-#define XTERM_HL(xt, index) (* (XTERM_HL_LOC (xt, index)))
+#define XW_X_CSIZE(xw) ((XW_EXTRA (xw)) -> x_size)
+#define XW_Y_CSIZE(xw) ((XW_EXTRA (xw)) -> y_size)
+#define XW_CURSOR_X(xw) ((XW_EXTRA (xw)) -> cursor_x)
+#define XW_CURSOR_Y(xw) ((XW_EXTRA (xw)) -> cursor_y)
+#define XW_BUTTON(xw) ((XW_EXTRA (xw)) -> button)
+#define XW_POINTER_X(xw) ((XW_EXTRA (xw)) -> pointer_x)
+#define XW_POINTER_Y(xw) ((XW_EXTRA (xw)) -> pointer_y)
+#define XW_CHARACTER_MAP(xw) ((XW_EXTRA (xw)) -> character_map)
+#define XW_HIGHLIGHT_MAP(xw) ((XW_EXTRA (xw)) -> highlight_map)
+#define XW_CURSOR_VISIBLE_P(xw) ((XW_EXTRA (xw)) -> cursor_visible_p)
 
-#define XTERM_X_PIXEL(xt, x)						\
-  ((x * (FONT_WIDTH (xt -> font))) + (xt -> internal_border_width))
+#define XTERM_CHAR_INDEX(xw, x, y) (((y) * (XW_X_CSIZE (xw))) + (x))
+#define XTERM_CHAR_LOC(xw, index) ((XW_CHARACTER_MAP (xw)) + (index))
+#define XTERM_CHAR(xw, index) (* (XTERM_CHAR_LOC (xw, index)))
+#define XTERM_HL_LOC(xw, index) ((XW_HIGHLIGHT_MAP (xw)) + (index))
+#define XTERM_HL(xw, index) (* (XTERM_HL_LOC (xw, index)))
 
-#define XTERM_Y_PIXEL(xt, y)						\
-  ((y * (FONT_HEIGHT (xt -> font))) + (xt -> internal_border_width))
+#define XTERM_X_PIXEL(xw, x)						\
+  (((x) * (FONT_WIDTH (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
 
-#define XTERM_HL_GC(xt, hl) (hl ? (xt -> reverse_gc) : (xt -> normal_gc))
+#define XTERM_Y_PIXEL(xw, y)						\
+  (((y) * (FONT_HEIGHT (XW_FONT (xw)))) + (XW_INTERNAL_BORDER_WIDTH (xw)))
+
+#define XTERM_X_CHARACTER(xw, x)					\
+  (((x) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_WIDTH (XW_FONT (xw))))
+
+#define XTERM_Y_CHARACTER(xw, y)					\
+  (((y) - (XW_INTERNAL_BORDER_WIDTH (xw))) / (FONT_HEIGHT (XW_FONT (xw))))
+
+#define XTERM_HL_GC(xw, hl) (hl ? (XW_REVERSE_GC (xw)) : (XW_NORMAL_GC (xw)))
 
 #define HL_ARG(arg) arg_index_integer (arg, 2)
-
-#define FONT_WIDTH(f)	((f -> max_bounds) . width)
-#define FONT_HEIGHT(f)	((f -> ascent) + (f -> descent))
-#define FONT_BASE(f)    (f -> ascent)
-
-#define EVENT_FLAG_RESIZED	0x01
 
-#define XTERM_DRAW_CHARS(xt, x, y, s, n, gc)				\
+#define XTERM_DRAW_CHARS(xw, x, y, s, n, gc)				\
   XDrawImageString							\
-    ((xt -> display),							\
-     (xt -> window),							\
+    ((XW_DISPLAY (xw)),							\
+     (XW_WINDOW (xw)),							\
      gc,								\
-     (XTERM_X_PIXEL (xt, x)),						\
-     ((XTERM_Y_PIXEL (xt, y)) + (FONT_BASE (xt -> font))),		\
+     (XTERM_X_PIXEL (xw, x)),						\
+     ((XTERM_Y_PIXEL (xw, y)) + (FONT_BASE (XW_FONT (xw)))),		\
      s,									\
      n)
 
-#define WITH_CURSOR_PRESERVED(xt, expression, body)			\
+#define WITH_CURSOR_PRESERVED(xw, expression, body)			\
 {									\
-  if ((expression) && (xt -> cursor_visible_p))				\
+  if ((expression) && (XW_CURSOR_VISIBLE_P (xw)))			\
     {									\
-      (xt -> cursor_visible_p) = 0;					\
+      (XW_CURSOR_VISIBLE_P (xw)) = 0;					\
       body;								\
-      xterm_draw_cursor (xt);						\
+      xterm_draw_cursor (xw);						\
     }									\
   else									\
     body;								\
 }
 
 static void
-xterm_erase_cursor (xt)
-     struct xterm * xt;
+xterm_erase_cursor (xw)
+     struct xwindow * xw;
 {
   fast int x, y, index;
 
-  if (! (xt -> visible_p))
+  if (! (XW_VISIBLE_P (xw)))
     return;
 
-  x = (xt -> cursor_x);
-  y = (xt -> cursor_y);
-  index = (XTERM_CHAR_INDEX (xt, x, y));
+  x = (XW_CURSOR_X (xw));
+  y = (XW_CURSOR_Y (xw));
+  index = (XTERM_CHAR_INDEX (xw, x, y));
   XTERM_DRAW_CHARS
-    (xt, x, y, (XTERM_CHAR_LOC (xt, index)), 1,
-     (XTERM_HL_GC (xt, (XTERM_HL (xt, index)))));
-  (xt -> cursor_visible_p) = 0;
+    (xw, x, y, (XTERM_CHAR_LOC (xw, index)), 1,
+     (XTERM_HL_GC (xw, (XTERM_HL (xw, index)))));
+  (XW_CURSOR_VISIBLE_P (xw)) = 0;
   return;
 }
 
 static void
-xterm_draw_cursor (xt)
-     struct xterm * xt;
+xterm_draw_cursor (xw)
+     struct xwindow * xw;
 {
   fast int x, y;
 
-  if (! (xt -> visible_p))
+  if (! (XW_VISIBLE_P (xw)))
     return;
 
   /* Need option here to draw cursor as outline box when this xterm is
      not the one that input is going to. */
-  x = (xt -> cursor_x);
-  y = (xt -> cursor_y);
-  XTERM_DRAW_CHARS (xt, x, y,
-		    (XTERM_CHAR_LOC (xt, (XTERM_CHAR_INDEX (xt, x, y)))),
+  x = (XW_CURSOR_X (xw));
+  y = (XW_CURSOR_Y (xw));
+  XTERM_DRAW_CHARS (xw, x, y,
+		    (XTERM_CHAR_LOC (xw, (XTERM_CHAR_INDEX (xw, x, y)))),
 		    1,
-		    (xt -> cursor_gc));
-  (xt -> cursor_visible_p) = 1;
+		    (XW_CURSOR_GC (xw)));
+  (XW_CURSOR_VISIBLE_P (xw)) = 1;
   return;
 }
 
-static struct xterm *
-xterm_window_to_xt (window)
-     Window window;
-{
-  int length = (xterm_table . length);
-  struct xterm ** items = ((struct xterm **) (xterm_table . items));
-  int i;
-  struct xterm * xt;
-
-  for (i = 0; (i < length); i += 1)
-    {
-      xt = (items [i]);
-      if ((xt -> window) == window)
-	return (xt);
-    }
-  return ((struct xterm *) 0);
-}
-
-static int
-x_io_error_handler (display)
-     Display * display;
-{
-  fprintf (stderr, "\nX IO Error\n");
-  error_external_return ();
-}
-
-static int
-x_error_handler (display, error_event)
-     Display * display;
-     XErrorEvent * error_event;
-{
-  char buffer [2048];
-
-  XGetErrorText (display, (error_event -> error_code),
-		 (& buffer), (sizeof (buffer)));
-  fprintf (stderr, "\nX Error: %s\n", buffer);
-  fprintf (stderr, "         Request code: %d\n",
-	   (error_event -> request_code));
-  fprintf (stderr, "         Error serial: %x\n", (error_event -> serial));
-  error_external_return ();
-}
-
 static void
-xterm_wm_set_size_hint (xt, flags, x, y)
-     struct xterm * xt;
+xterm_wm_set_size_hint (xw, flags, x, y)
+     struct xwindow * xw;
      long flags;
      int x, y;
 {
-  Window window = (xt -> window);
-  int extra = (2 * (xt -> internal_border_width));
-  XFontStruct * font = (xt -> font);
+  Window window = (XW_WINDOW (xw));
+  int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  XFontStruct * font = (XW_FONT (xw));
   int fwidth = (FONT_WIDTH (font));
   int fheight = (FONT_HEIGHT (font));
   XSizeHints size_hints;
@@ -346,107 +183,36 @@ xterm_wm_set_size_hint (xt, flags, x, y)
   (size_hints . flags) = (PResizeInc | PMinSize | flags);
   (size_hints . x) = x;
   (size_hints . y) = y;
-  (size_hints . width) = (((xt -> x_size) * fwidth) + extra);
-  (size_hints . height) = (((xt -> y_size) * fheight) + extra);
+  (size_hints . width) = (((XW_X_CSIZE (xw)) * fwidth) + extra);
+  (size_hints . height) = (((XW_Y_CSIZE (xw)) * fheight) + extra);
   (size_hints . width_inc) = fwidth;
   (size_hints . height_inc) = fheight;
   (size_hints . min_width) = extra;
   (size_hints . min_height) = extra;
-  XSetNormalHints ((xt -> display), window, (& size_hints));
+  XSetNormalHints ((XW_DISPLAY (xw)), window, (& size_hints));
   return;
-}
-
-static unsigned long
-xterm_decode_color (display, color_map, color_name, default_color)
-     Display * display;
-     Colormap color_map;
-     char * color_name;
-     unsigned long default_color;
-{
-  XColor cdef;
-
-  if ((strcmp (color_name, "black")) == 0)
-    return (BlackPixel (display, (DefaultScreen (display))));
-  if ((strcmp (color_name, "white")) == 0)
-    return (WhitePixel (display, (DefaultScreen (display))));
-  if (DisplayCells (display, (DefaultScreen (display))) <= 2)
-    return (default_color);
-  if ((XParseColor (display, color_map, color_name, (& cdef))) &&
-      (XAllocColor (display, color_map, (& cdef))))
-    return (cdef . pixel);
-  return (default_color);
-}
-
-static unsigned long
-xterm_default_color (display, color_map, property_name, default_color)
-     Display * display;
-     Colormap color_map;
-     char * property_name;
-     unsigned long default_color;
-{
-  char * color_name;
-
-  color_name = (XGetDefault (display, RESOURCE_NAME, property_name));
-  if (color_name == ((char *) 0))
-    return (default_color);
-  return (xterm_decode_color (display, color_map, color_name, default_color));
-}
-
-static Display *
-xterm_close_window (index)
-     int index;
-{
-  struct xterm * xt;
-  Display * display;
-  Window window;
-
-  xt = ((struct xterm *) ((xterm_table . items) [index]));
-  ((struct xterm *) ((xterm_table . items) [index])) = ((struct xterm *) 0);
-  display = (xt -> display);
-  free (xt -> character_map);
-  free (xt -> highlight_map);
-  XFreeFont (display, (xt -> font));
-  XDestroyWindow (display, (xt -> window));
-  free (xt);
-  return (display);
 }
 
 static void
-xterm_close_display (index)
-     int index;
+xterm_deallocate (xw)
+     struct xwindow * xw;
 {
-  Display * display;
-
-  display = ((Display *) ((display_table . items) [index]));
-  ((Display *) ((display_table . items) [index])) = ((Display *) 0);
-  {
-    struct xterm ** items = ((struct xterm **) (xterm_table . items));
-    int length = (xterm_table . length);
-    int i;
-
-    for (i = 0; (i < length); i += 1)
-      {
-	struct xterm * xt = (items [i]);
-	if ((xt != ((struct xterm *) 0)) &&
-	    ((xt -> display) == display))
-	  (void) xterm_close_window (i);
-      }
-  }
-  XCloseDisplay (display);
+  free (XW_CHARACTER_MAP (xw));
+  free (XW_HIGHLIGHT_MAP (xw));
   return;
 }
 
 static void
-xterm_dump_rectangle (xt, x, y, width, height)
-     struct xterm * xt;
+xterm_dump_rectangle (xw, x, y, width, height)
+     struct xwindow * xw;
      int x, y, width, height;
 {
-  XFontStruct * font = (xt -> font);
+  XFontStruct * font = (XW_FONT (xw));
   int fwidth = (FONT_WIDTH (font));
   int fheight = (FONT_HEIGHT (font));
-  int border = (xt -> internal_border_width);
-  char * character_map = (xt -> character_map);
-  char * highlight_map = (xt -> highlight_map);
+  int border = (XW_INTERNAL_BORDER_WIDTH (xw));
+  char * character_map = (XW_CHARACTER_MAP (xw));
+  char * highlight_map = (XW_HIGHLIGHT_MAP (xw));
   int x_start = ((x - border) / fwidth);
   int y_start = ((y - border) / fheight);
   int x_end = ((((x + width) - border) + (fwidth - 1)) / fwidth);
@@ -454,13 +220,13 @@ xterm_dump_rectangle (xt, x, y, width, height)
   int x_width = (x_end - x_start);
   int xi, yi;
 
-  if (x_end > (xt -> x_size)) x_end = (xt -> x_size);
-  if (y_end > (xt -> y_size)) y_end = (xt -> y_size);
+  if (x_end > (XW_X_CSIZE (xw))) x_end = (XW_X_CSIZE (xw));
+  if (y_end > (XW_Y_CSIZE (xw))) y_end = (XW_Y_CSIZE (xw));
   if (x_start < x_end)
     {
       for (yi = y_start; (yi < y_end); yi += 1)
 	{
-	  int index = (XTERM_CHAR_INDEX (xt, 0, yi));
+	  int index = (XTERM_CHAR_INDEX (xw, 0, yi));
 	  char * line_char = (& (character_map [index]));
 	  char * line_hl = (& (highlight_map [index]));
 	  int xi = x_start;
@@ -470,72 +236,20 @@ xterm_dump_rectangle (xt, x, y, width, height)
 	      int i = (xi + 1);
 	      while ((i < x_end) && ((line_hl [i]) == hl))
 		i += 1;
-	      XTERM_DRAW_CHARS (xt, xi, yi,
+	      XTERM_DRAW_CHARS (xw, xi, yi,
 				(& (line_char [xi])), (i - xi),
-				(XTERM_HL_GC (xt, hl)));
+				(XTERM_HL_GC (xw, hl)));
 	      if (i == x_end)
 		break;
 	      xi = i;
 	    }
 	}
-      if ((xt -> cursor_visible_p) &&
-	  ((x_start <= (xt -> cursor_x)) && ((xt -> cursor_x) < x_end)) &&
-	  ((y_start <= (xt -> cursor_y)) && ((xt -> cursor_y) < y_end)))
-	xterm_draw_cursor (xt);
+      if ((XW_CURSOR_VISIBLE_P (xw)) &&
+	  ((x_start <= (XW_CURSOR_X (xw))) && ((XW_CURSOR_X (xw)) < x_end)) &&
+	  ((y_start <= (XW_CURSOR_Y (xw))) && ((XW_CURSOR_Y (xw)) < y_end)))
+	xterm_draw_cursor (xw);
     }
   return;
-}
-
-static int xterm_debug = 0;
-
-DEFINE_PRIMITIVE ("XTERM-DEBUG", Prim_xterm_debug, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-
-  xterm_debug = ((ARG_REF (1)) != SHARP_F);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("XTERM-OPEN-DISPLAY", Prim_xterm_open_display, 1, 1, 0)
-{
-  Display * display;
-  int index;
-  PRIMITIVE_HEADER (1);
-
-  display =
-    (XOpenDisplay (((ARG_REF (1)) == SHARP_F) ? NULL : (STRING_ARG (1))));
-  if (display == NULL)
-    PRIMITIVE_RETURN (SHARP_F);
-
-  XSetErrorHandler (x_error_handler);
-  XSetIOErrorHandler (x_io_error_handler);
-  PRIMITIVE_RETURN
-    (MAKE_UNSIGNED_FIXNUM
-     (allocate_table_index ((& display_table), ((char *) display))));
-}
-
-DEFINE_PRIMITIVE ("XTERM-CLOSE-DISPLAY", Prim_xterm_close_display, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-
-  xterm_close_display (allocation_index_arg (1, (& display_table)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("XTERM-CLOSE-ALL-DISPLAYS", Prim_xterm_close_all_displays, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  
-  {
-    Display ** items = ((Display **) (display_table . items));
-    int length = (display_table . length);
-    int i;
-
-    for (i = 0; (i < length); i += 1)
-      if ((items [i]) != ((Display *) 0))
-	xterm_close_display (i);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #define MAKE_MAP(map, size, fill)					\
@@ -543,25 +257,11 @@ DEFINE_PRIMITIVE ("XTERM-CLOSE-ALL-DISPLAYS", Prim_xterm_close_all_displays, 0, 
   char * MAKE_MAP_scan;							\
   char * MAKE_MAP_end;							\
 									\
-  map = (xterm_malloc (size));						\
+  map = (x_malloc (size));						\
   MAKE_MAP_scan = (& (map [0]));					\
   MAKE_MAP_end = (MAKE_MAP_scan + size);				\
   while (MAKE_MAP_scan < MAKE_MAP_end)					\
     (*MAKE_MAP_scan++) = fill;						\
-}
-
-#define MAKE_GC(gc, fore, back)						\
-{									\
-  XGCValues gcv;							\
-									\
-  (gcv . font) = fid;							\
-  (gcv . foreground) = (fore);						\
-  (gcv . background) = (back);						\
-  (gc) =								\
-    (XCreateGC (display,						\
-		window,							\
-		(GCFont | GCForeground | GCBackground),			\
-		(& gcv)));						\
 }
 
 DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
@@ -569,91 +269,55 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
 {
   Display * display;
   int screen_number;
+  struct drawing_attributes attributes;
   XFontStruct * font;
-  Font fid;
   int fwidth;
   int fheight;
   int border_width;
   int x_pos;
   int y_pos;
+  int x_csize;
+  int y_csize;
   int x_size;
   int y_size;
   char * name;
   int internal_border_width;
   int extra;
-  unsigned long foreground_pixel;
-  unsigned long background_pixel;
-  unsigned long border_pixel;
-  unsigned long cursor_pixel;
-  unsigned long mouse_pixel;
   Window window;
   long flags;
   char * character_map;
   char * highlight_map;
-  GC normal_gc;
-  GC reverse_gc;
-  GC cursor_gc;
-  struct xterm * xt;
+  struct xwindow * xw;
   PRIMITIVE_HEADER (3);
 
   display = (DISPLAY_ARG (1));
   screen_number = (DefaultScreen (display));
-  {
-    char * font_name;
-
-    font_name = (XGetDefault (display, RESOURCE_NAME, "BodyFont"));
-    if (font_name == ((char *) 0))
-      font_name = "9x15";
-    font = (XLoadQueryFont (display, font_name));
-    if (font == ((XFontStruct *) 0))
-      error_external_return ();
-  }
-  fid = (font -> fid);
+  name = "edwin";
+  x_default_attributes (display, RESOURCE_NAME, (& attributes));
+  font = (attributes . font);
+  border_width = (attributes . border_width);
+  internal_border_width = (attributes . internal_border_width);
   fwidth = (FONT_WIDTH (font));
   fheight = (FONT_HEIGHT (font));
+  extra = (2 * internal_border_width);
   x_pos = (-1);
   y_pos = (-1);
-  x_size = 80;
-  y_size = 24;
-  name = "edwin";
-  {
-    char * s;
-
-    s = (XGetDefault (display, RESOURCE_NAME, "BorderWidth"));
-    border_width = ((s == ((char *) 0)) ? 2 : (atoi (s)));
-    s = (XGetDefault (display, RESOURCE_NAME, "InternalBorderWidth"));
-    internal_border_width = ((s == ((char *) 0)) ? 4 : (atoi (s)));
-  }
-  extra = (2 * internal_border_width);
-  {
-    unsigned long white_pixel = (WhitePixel (display, screen_number));
-    unsigned long black_pixel = (BlackPixel (display, screen_number));
-    Colormap color_map = (DefaultColormap (display, screen_number));
-
-    background_pixel =
-      (xterm_default_color (display, color_map, "Background", white_pixel));
-    foreground_pixel =
-      (xterm_default_color (display, color_map, "Foreground", black_pixel));
-    border_pixel =
-      (xterm_default_color (display, color_map, "Border", black_pixel));
-    cursor_pixel =
-      (xterm_default_color (display, color_map, "Cursor", black_pixel));
-    mouse_pixel =
-      (xterm_default_color (display, color_map, "Mouse", black_pixel));
-  }
+  x_csize = 80;
+  y_csize = 24;
   {
     char * geometry;
     int result;
 
     geometry =
       (((ARG_REF (2)) == SHARP_F)
-       ? (XGetDefault (display, RESOURCE_NAME, "Geometry"))
+       ? (x_get_default
+	  (display, RESOURCE_NAME, "geometry", "Geometry", ((char *) 0)))
        : (STRING_ARG (2)));
     result = 
       (XGeometry (display, screen_number, geometry,
 		  DEFAULT_GEOMETRY, border_width,
 		  fwidth, fheight, extra, extra,
-		  (& x_pos), (& y_pos), (& x_size), (& y_size)));
+		  (& x_pos), (& y_pos), (& x_csize), (& y_csize)));
     flags = 0;
     flags |=
       (((result & XValue) && (result & YValue)) ? USPosition : PPosition);
@@ -661,43 +325,33 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
       (((result & WidthValue) && (result & HeightValue)) ? USSize : PSize);
   }
   {
-    int map_size = (x_size * y_size);
+    int map_size = (x_csize * y_csize);
     MAKE_MAP (character_map, map_size, ' ');
     MAKE_MAP (highlight_map, map_size, 0);
   }
+  x_size = (x_csize * fwidth);
+  y_size = (y_csize * fheight);
   window =
     (XCreateSimpleWindow
      (display, (RootWindow (display, screen_number)),
-      x_pos, y_pos, ((x_size * fwidth) + extra), ((y_size * fheight) + extra),
-      border_width, border_pixel, background_pixel));
+      x_pos, y_pos, (x_size + extra), (y_size + extra),
+      border_width,
+      (attributes . border_pixel),
+      (attributes . background_pixel)));
   if (window == ((Window) 0))
     error_external_return ();
-  MAKE_GC (normal_gc, foreground_pixel, background_pixel);
-  MAKE_GC (reverse_gc, background_pixel, foreground_pixel);
-  MAKE_GC (cursor_gc, background_pixel, cursor_pixel);
 
-  xt = ((struct xterm *) (xterm_malloc (sizeof (struct xterm))));
-  (xt -> display) = display;
-  (xt -> window) = window;
-  (xt -> x_size) = x_size;
-  (xt -> y_size) = y_size;
-  (xt -> cursor_x) = 0;
-  (xt -> cursor_y) = 0;
-  (xt -> internal_border_width) = internal_border_width;
-  (xt -> character_map) = character_map;
-  (xt -> highlight_map) = highlight_map;
-  (xt -> font) = font;
-  (xt -> normal_gc) = normal_gc;
-  (xt -> reverse_gc) = reverse_gc;
-  (xt -> cursor_gc) = cursor_gc;
-  (xt -> background_pixel) = background_pixel;
-  (xt -> foreground_pixel) = foreground_pixel;
-  (xt -> border_pixel) = border_pixel;
-  (xt -> cursor_pixel) = cursor_pixel;
-  (xt -> mouse_pixel) = mouse_pixel;
-  (xt -> visible_p) = 0;
-  (xt -> cursor_visible_p) = 0;
-  (xt -> event_flags) = 0;
+  xw =
+    (x_make_window
+     (display, window, x_size, y_size, (& attributes),
+      (sizeof (struct xterm_extra)), xterm_deallocate));
+  (XW_X_CSIZE (xw)) = x_csize;
+  (XW_Y_CSIZE (xw)) = y_csize;
+  (XW_CURSOR_X (xw)) = 0;
+  (XW_CURSOR_Y (xw)) = 0;
+  (XW_CHARACTER_MAP (xw)) = character_map;
+  (XW_HIGHLIGHT_MAP (xw)) = highlight_map;
+  (XW_CURSOR_VISIBLE_P (xw)) = 0;
 
   XSelectInput
     (display, window,
@@ -706,118 +360,95 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
       StructureNotifyMask | FocusChangeMask |
       PointerMotionHintMask | ButtonMotionMask |
       LeaveWindowMask | EnterWindowMask));
-  xterm_wm_set_size_hint (xt, flags, x_pos, y_pos);
+  xterm_wm_set_size_hint (xw, flags, x_pos, y_pos);
   XStoreName (display, window, name);
   XSetIconName (display, window, name);
 
   if ((ARG_REF (3)) == SHARP_F)
     {
-      (xt -> visible_p) = 1;
+      (XW_VISIBLE_P (xw)) = 1;
       XMapWindow (display, window);
       XFlush (display);
     }
 
-  PRIMITIVE_RETURN
-    (MAKE_UNSIGNED_FIXNUM
-     (allocate_table_index ((& xterm_table), ((char *) xt))));
+  PRIMITIVE_RETURN (x_window_to_object (xw));
 }
 
-DEFINE_PRIMITIVE ("XTERM-CLOSE-WINDOW", Prim_xterm_close_window, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-
-  XFlush (xterm_close_window (allocation_index_arg (1, (& xterm_table))));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("XTERM-MAP", Prim_xterm_map, 1, 1, 0)
-{
-  struct xterm * xt;
-  Display * display;
-  PRIMITIVE_HEADER (1);
-
-  xt = (XTERM_ARG (1));
-  display = (xt -> display);
-  (xt -> visible_p) = 1;
-  XMapWindow (display, (xt -> window));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("XTERM-UNMAP", Prim_xterm_unmap, 1, 1, 0)
-{
-  struct xterm * xt;
-  Display * display;
-  PRIMITIVE_HEADER (1);
-
-  xt = (XTERM_ARG (1));
-  display = (xt -> display);
-  (xt -> visible_p) = 0;
-  XUnmapWindow (display, (xt -> window));
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("XTERM-X-SIZE", Prim_xterm_x_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer ((XTERM_ARG (1)) -> x_size));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_X_CSIZE (WINDOW_ARG (1))));
 }
 
 DEFINE_PRIMITIVE ("XTERM-Y-SIZE", Prim_xterm_y_size, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer ((XTERM_ARG (1)) -> y_size));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_Y_CSIZE (WINDOW_ARG (1))));
 }
 
-DEFINE_PRIMITIVE ("XTERM-READ-EVENT-FLAGS!", Prim_xterm_read_event_flags, 1, 1, 0)
+DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
 {
-  struct xterm * xt;
-  int old;
+  struct xwindow * xw;
+  int extra;
+  XFontStruct * font;
+  PRIMITIVE_HEADER (3);
+
+  xw = (WINDOW_ARG (1));
+  extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+  font = (XW_FONT (xw));
+  XResizeWindow
+    ((XW_DISPLAY (xw)),
+     (XW_WINDOW (xw)),
+     (((arg_nonnegative_integer (2)) * (FONT_WIDTH (font))) + extra),
+     (((arg_nonnegative_integer (3)) * (FONT_HEIGHT (font))) + extra));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("XTERM-BUTTON", Prim_xterm_button, 1, 1, 0)
+{
   PRIMITIVE_HEADER (1);
 
-  xt = (XTERM_ARG (1));
-  old = (xt -> event_flags);
-  (xt -> event_flags) = 0;
-  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (old));
+  PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (XW_BUTTON (WINDOW_ARG (1))));
+}
+
+DEFINE_PRIMITIVE ("XTERM-POINTER-X", Prim_xterm_pointer_x, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN
+    (C_Integer_To_Scheme_Integer (XW_POINTER_X (WINDOW_ARG (1))));
+}
+
+DEFINE_PRIMITIVE ("XTERM-POINTER-Y", Prim_xterm_pointer_y, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+
+  PRIMITIVE_RETURN
+    (C_Integer_To_Scheme_Integer (XW_POINTER_Y (WINDOW_ARG (1))));
 }
 
-DEFINE_PRIMITIVE ("XTERM-BEEP", Prim_xterm_beep, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-
-  XBell (((XTERM_ARG (1)) -> display), 100); /* 100% */
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-DEFINE_PRIMITIVE ("XTERM-FLUSH", Prim_xterm_flush, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-
-  XFlush ((XTERM_ARG (1)) -> display);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("XTERM-WRITE-CURSOR!", Prim_xterm_write_cursor, 3, 3, 0)
 {
-  fast struct xterm * xt;
+  fast struct xwindow * xw;
   fast int x, y;
   PRIMITIVE_HEADER (3);
 
-  xt = (XTERM_ARG (1));
-  x = (arg_index_integer (2, (xt -> x_size)));
-  y = (arg_index_integer (3, (xt -> y_size)));
-  if (xt -> cursor_visible_p)
-    xterm_erase_cursor (xt);
-  (xt -> cursor_x) = x;
-  (xt -> cursor_y) = y;
-  xterm_draw_cursor (xt);
+  xw = (WINDOW_ARG (1));
+  x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
+  y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
+  if (XW_CURSOR_VISIBLE_P (xw))
+    xterm_erase_cursor (xw);
+  (XW_CURSOR_X (xw)) = x;
+  (XW_CURSOR_Y (xw)) = y;
+  xterm_draw_cursor (xw);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0)
 {
-  struct xterm * xt;
+  struct xwindow * xw;
   int x, y;
   int c;
   int hl;
@@ -825,26 +456,26 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0)
   char * map_ptr;
   PRIMITIVE_HEADER (5);
 
-  xt = (XTERM_ARG (1));
-  x = (arg_index_integer (2, (xt -> x_size)));
-  y = (arg_index_integer (3, (xt -> y_size)));
+  xw = (WINDOW_ARG (1));
+  x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
+  y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
   c = (arg_ascii_char (4));
   hl = (HL_ARG (5));
-  index = (XTERM_CHAR_INDEX (xt, x, y));
-  map_ptr = (XTERM_CHAR_LOC (xt, index));
+  index = (XTERM_CHAR_INDEX (xw, x, y));
+  map_ptr = (XTERM_CHAR_LOC (xw, index));
   (*map_ptr) = c;
-  (XTERM_HL (xt, index)) = hl;
+  (XTERM_HL (xw, index)) = hl;
   WITH_CURSOR_PRESERVED
-    (xt, ((x == (xt -> cursor_x)) && (y == (xt -> cursor_y))),
+    (xw, ((x == (XW_CURSOR_X (xw))) && (y == (XW_CURSOR_Y (xw)))),
      {
-       XTERM_DRAW_CHARS (xt, x, y, map_ptr, 1, (XTERM_HL_GC (xt, (xt, hl))));
+       XTERM_DRAW_CHARS (xw, x, y, map_ptr, 1, (XTERM_HL_GC (xw, (xw, hl))));
      });
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0)
 {
-  struct xterm * xt;
+  struct xwindow * xw;
   int x, y;
   Pointer string;
   int start, end;
@@ -858,49 +489,49 @@ DEFINE_PRIMITIVE ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0)
   char * hl_scan;
   PRIMITIVE_HEADER (7);
 
-  xt = (XTERM_ARG (1));
-  x = (arg_index_integer (2, (xt -> x_size)));
-  y = (arg_index_integer (3, (xt -> y_size)));
+  xw = (WINDOW_ARG (1));
+  x = (arg_index_integer (2, (XW_X_CSIZE (xw))));
+  y = (arg_index_integer (3, (XW_Y_CSIZE (xw))));
   CHECK_ARG (4, STRING_P);
   string = (ARG_REF (4));
   end = (arg_index_integer (6, ((string_length (string)) + 1)));
   start = (arg_index_integer (5, (end + 1)));
   hl = (HL_ARG (7));
   length = (end - start);
-  if ((x + length) > (xt -> x_size))
+  if ((x + length) > (XW_X_CSIZE (xw)))
     error_bad_range_arg (2);
   string_scan = (string_pointer (string, start));
   string_end = (string_pointer (string, end));
-  index = (XTERM_CHAR_INDEX (xt, x, y));
-  char_start = (XTERM_CHAR_LOC (xt, index));
+  index = (XTERM_CHAR_INDEX (xw, x, y));
+  char_start = (XTERM_CHAR_LOC (xw, index));
   char_scan = char_start;
-  hl_scan = (XTERM_HL_LOC (xt, index));
+  hl_scan = (XTERM_HL_LOC (xw, index));
   while (string_scan < string_end)
     {
       (*char_scan++) = (*string_scan++);
       (*hl_scan++) = hl;
     }
   WITH_CURSOR_PRESERVED
-    (xt,
-     ((y == (xt -> cursor_y)) &&
-      ((x <= (xt -> cursor_x)) && ((xt -> cursor_x) < (x + length)))),
+    (xw,
+     ((y == (XW_CURSOR_Y (xw))) &&
+      ((x <= (XW_CURSOR_X (xw))) && ((XW_CURSOR_X (xw)) < (x + length)))),
      {
-       XTERM_DRAW_CHARS (xt, x, y, char_start, length, (XTERM_HL_GC (xt, hl)));
+       XTERM_DRAW_CHARS (xw, x, y, char_start, length, (XTERM_HL_GC (xw, hl)));
      });
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
 {
-  struct xterm * xt;
+  struct xwindow * xw;
   int start_x, start_y, end_x, end_y;
   int hl;
   int x_length;
   PRIMITIVE_HEADER (6);
 
-  xt = (XTERM_ARG (1));
-  end_x = (arg_index_integer (3, ((xt -> x_size) + 1)));
-  end_y = (arg_index_integer (5, ((xt -> y_size) + 1)));
+  xw = (WINDOW_ARG (1));
+  end_x = (arg_index_integer (3, ((XW_X_CSIZE (xw)) + 1)));
+  end_y = (arg_index_integer (5, ((XW_Y_CSIZE (xw)) + 1)));
   start_x = (arg_index_integer (2, (end_x + 1)));
   start_y = (arg_index_integer (4, (end_y + 1)));
   hl = (HL_ARG (6));
@@ -916,10 +547,10 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
 
     for (y = start_y; (y < end_y) ; (y += 1))
       {
-	index = (XTERM_CHAR_INDEX (xt, start_x, y));
-	char_scan = (XTERM_CHAR_LOC (xt, index));
+	index = (XTERM_CHAR_INDEX (xw, start_x, y));
+	char_scan = (XTERM_CHAR_LOC (xw, index));
 	char_end = (char_scan + x_length);
-	hl_scan = (XTERM_HL_LOC (xt, index));
+	hl_scan = (XTERM_HL_LOC (xw, index));
 	while (char_scan < char_end)
 	  {
 	    (*char_scan++) = ' ';
@@ -928,29 +559,29 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
       }
   }
   WITH_CURSOR_PRESERVED
-    (xt,
-     (((start_x <= (xt -> cursor_x)) && ((xt -> cursor_x) < end_x)) &&
-      ((start_y <= (xt -> cursor_y)) && ((xt -> cursor_y) < end_y))),
+    (xw,
+     (((start_x <= (XW_CURSOR_X (xw))) && ((XW_CURSOR_X (xw)) < end_x)) &&
+      ((start_y <= (XW_CURSOR_Y (xw))) && ((XW_CURSOR_Y (xw)) < end_y))),
      {
        if (hl == 0)
-	 XClearArea ((xt -> display), (xt -> window),
-		     (XTERM_X_PIXEL (xt, start_x)),
-		     (XTERM_Y_PIXEL (xt, start_y)),
-		     ((end_x - start_x) * (FONT_WIDTH (xt -> font))),
-		     ((end_y - start_y) * (FONT_HEIGHT (xt -> font))),
+	 XClearArea ((XW_DISPLAY (xw)), (XW_WINDOW (xw)),
+		     (XTERM_X_PIXEL (xw, start_x)),
+		     (XTERM_Y_PIXEL (xw, start_y)),
+		     ((end_x - start_x) * (FONT_WIDTH (XW_FONT (xw)))),
+		     ((end_y - start_y) * (FONT_HEIGHT (XW_FONT (xw)))),
 		     False);
        else
 	 {
 	   fast int y;
 	   GC hl_gc;
 
-	   hl_gc = (XTERM_HL_GC (xt, hl));
+	   hl_gc = (XTERM_HL_GC (xw, hl));
 	   for (y = start_y; (y < end_y) ; (y += 1))
 	     XTERM_DRAW_CHARS
-	       (xt,
+	       (xw,
 		start_x,
 		y,
-		(XTERM_CHAR_LOC (xt, (XTERM_CHAR_INDEX (xt, start_x, y)))),
+		(XTERM_CHAR_LOC (xw, (XTERM_CHAR_INDEX (xw, start_x, y)))),
 		x_length,
 		hl_gc);
 	 }
@@ -963,8 +594,9 @@ static void xterm_process_event ();
 
 DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
 {
-  struct xterm * xt;
+  struct xwindow * xw;
   Display * display;
+  Window window;
   int interval;
   long time_limit;
   char copy_buffer [80];
@@ -972,7 +604,6 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   int buffer_index;
   char * buffer;
   fast int nbytes;
-  int nevents;
   fast char * scan_buffer;
   fast char * scan_copy;
   fast char * end_copy;
@@ -982,39 +613,32 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   extern long OS_real_time_clock ();
   PRIMITIVE_HEADER (2);
 
-  /* change this to allocate and return an appropriately sized string */
-  xt = (XTERM_ARG (1));
-  display = (xt -> display);
+  xw = (WINDOW_ARG (1));
+  display = (XW_DISPLAY (xw));
+  window = (XW_WINDOW (xw));
   interval =
     (((ARG_REF (2)) == SHARP_F) ? (-1) : (arg_nonnegative_integer (2)));
   if (interval >= 0)
     time_limit = ((OS_real_time_clock ()) + interval);
   buffer_length = 4;
   buffer_index = 0;
-  buffer = (xterm_malloc (buffer_length));
+  buffer = (x_malloc (buffer_length));
   scan_buffer = buffer;
-  nevents = (XEventsQueued (display, QueuedAfterReading));
   while (1)
     {
-      if (nevents == 0)
+      if (! (xw_dequeue_event (xw, (& event))))
 	{
 	  if ((buffer != scan_buffer) ||
-	      ((xt -> event_flags) != 0) ||
+	      ((XW_EVENT_FLAGS (xw)) != 0) ||
 	      (interval == 0))
 	    break;
-	  if (interval > 0)
-	    {
-	      if ((OS_real_time_clock ()) < time_limit)
-		{
-		  nevents = (XEventsQueued (display, QueuedAfterReading));
-		  continue;
-		}
-	      break;
-	    }
-	  nevents = 1;
+	  else if (interval < 0)
+	    xw_wait_for_window_event (xw, (& event));
+	  else if ((OS_real_time_clock ()) >= time_limit)
+	    break;
+	  else
+	    continue;
 	}
-      XNextEvent (display, (& event));
-      nevents -= 1;
       if ((event . type) != KeyPress)
 	{
 	  xterm_process_event (& event);
@@ -1037,7 +661,7 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
       if (nbytes > (buffer_length - buffer_index))
 	{
 	  buffer_length *= 2;
-	  buffer = (xterm_realloc (buffer, buffer_length));
+	  buffer = (x_realloc (buffer, buffer_length));
 	  scan_buffer = (buffer + buffer_index);
 	}
       scan_copy = (& (copy_buffer [0]));
@@ -1058,55 +682,75 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   PRIMITIVE_RETURN (C_Integer_To_Scheme_Integer (interval));
 }
 
+static int
+check_button (button)
+     int button;
+{
+  switch (button)
+    {
+    case Button1: return (0);
+    case Button2: return (1);
+    case Button3: return (2);
+    case Button4: return (3);
+    case Button5: return (4);
+    default: return (-1);
+    }
+}
+
 static void
 xterm_process_event (event)
      XEvent * event;
 {
-  struct xterm * ext;
+  struct xwindow * exw;
 
-  ext = (xterm_window_to_xt ((event -> xany) . window));
+  exw = (x_window_to_xw ((event -> xany) . window));
   switch (event -> type)
     {
     case ConfigureNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: ConfigureNotify\n");
-      if (ext != ((struct xterm *) 0))
+      if (x_debug) fprintf (stderr, "\nX event: ConfigureNotify\n");
+      if (exw != ((struct xwindow *) 0))
 	{
-	  XFontStruct * font = (ext -> font);
-	  int extra = (2 * (ext -> internal_border_width));
-	  int x_size =
-	    ((((event -> xconfigure) . width) - extra) / (FONT_WIDTH (font)));
-	  int y_size =
-	    ((((event -> xconfigure) . height) - extra) / (FONT_HEIGHT (font)));
-	  if ((x_size != (ext -> x_size)) || (y_size != (ext -> y_size)))
+	  int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (exw)));
+	  int x_size = (((event -> xconfigure) . width) - extra);
+	  int y_size = (((event -> xconfigure) . height) - extra);
+
+	  if ((x_size != (XW_X_SIZE (exw))) || (y_size != (XW_Y_SIZE (exw))))
 	    {
-	      int map_size = (x_size * y_size);
-	      (ext -> x_size) = x_size;
-	      (ext -> y_size) = y_size;
-	      (ext -> event_flags) |= EVENT_FLAG_RESIZED;
-	      free (ext -> character_map);
-	      free (ext -> highlight_map);
-	      MAKE_MAP ((ext -> character_map), map_size, ' ');
-	      MAKE_MAP ((ext -> highlight_map), map_size, 0);
-	      xterm_wm_set_size_hint (ext, 0, 0, 0);
+	      XFontStruct * font = (XW_FONT (exw));
+	      int x_csize = (x_size / (FONT_WIDTH (font)));
+	      int y_csize = (y_size / (FONT_HEIGHT (font)));
+	      int map_size = (x_csize * y_csize);
+
+	      (XW_X_SIZE (exw)) = x_size;
+	      (XW_Y_SIZE (exw)) = y_size;
+	      (XW_X_CSIZE (exw)) = x_csize;
+	      (XW_Y_CSIZE (exw)) = y_csize;
+	      (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
+	      free (XW_CHARACTER_MAP (exw));
+	      free (XW_HIGHLIGHT_MAP (exw));
+	      MAKE_MAP ((XW_CHARACTER_MAP (exw)), map_size, ' ');
+	      MAKE_MAP ((XW_HIGHLIGHT_MAP (exw)), map_size, 0);
+	      xterm_wm_set_size_hint (exw, 0, 0, 0);
+	      XClearWindow ((XW_DISPLAY (exw)), (XW_WINDOW (exw)));
 	    }
 	}
       break;
 
     case MapNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: MapNotify\n");
-      (ext -> visible_p) = 1;
+      if (x_debug) fprintf (stderr, "\nX event: MapNotify\n");
+      (XW_VISIBLE_P (exw)) = 1;
       break;
 
     case UnmapNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: UnmapNotify\n");
-      if (ext != ((struct xterm *) 0))
-	(ext -> visible_p) = 0;
+      if (x_debug) fprintf (stderr, "\nX event: UnmapNotify\n");
+      if (exw != ((struct xwindow *) 0))
+	(XW_VISIBLE_P (exw)) = 0;
       break;
 
     case Expose:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: Expose\n");
-      if (ext != ((struct xterm *) 0))
-	xterm_dump_rectangle (ext,
+      if (x_debug) fprintf (stderr, "\nX event: Expose\n");
+      if (exw != ((struct xwindow *) 0))
+	xterm_dump_rectangle (exw,
 			      ((event -> xexpose) . x),
 			      ((event -> xexpose) . y),
 			      ((event -> xexpose) . width),
@@ -1114,49 +758,73 @@ xterm_process_event (event)
       break;
 
     case GraphicsExpose:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: GraphicsExpose\n");
-      if (ext != ((struct xterm *) 0))
-	xterm_dump_rectangle (ext,
+      if (x_debug) fprintf (stderr, "\nX event: GraphicsExpose\n");
+      if (exw != ((struct xwindow *) 0))
+	xterm_dump_rectangle (exw,
 			      ((event -> xgraphicsexpose) . x),
 			      ((event -> xgraphicsexpose) . y),
 			      ((event -> xgraphicsexpose) . width),
 			      ((event -> xgraphicsexpose) . height));
       break;
 
-    case NoExpose:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: NoExpose\n");
-      break;
-
-    case EnterNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: EnterNotify\n");
-      break;
-
-    case LeaveNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: LeaveNotify\n");
-      break;
-
-    case FocusIn:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: FocusIn\n");
-      break;
-
-    case FocusOut:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: FocusOut\n");
-      break;
-
-    case MotionNotify:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: MotionNotify\n");
-      break;
-
     case ButtonPress:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: ButtonPress\n");
+      {
+	int button = (check_button ((event -> xbutton) . button));
+	int pointer_x = (XTERM_X_CHARACTER (exw, ((event -> xbutton) . x)));
+	int pointer_y = (XTERM_Y_CHARACTER (exw, ((event -> xbutton) . y)));
+	if (button == (-1)) break;
+	(XW_BUTTON (exw)) = button;
+	(XW_POINTER_X (exw)) = pointer_x;
+	(XW_POINTER_Y (exw)) = pointer_y;
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_BUTTON_DOWN;
+	if (x_debug)
+	  fprintf (stderr, "\nX event: ButtonPress: Button=%d, X=%d, Y=%d\n",
+		   button, pointer_x, pointer_y);
+      }
       break;
 
     case ButtonRelease:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: ButtonRelease\n");
+      {
+	int button = (check_button ((event -> xbutton) . button));
+	int pointer_x = (XTERM_X_CHARACTER (exw, ((event -> xbutton) . x)));
+	int pointer_y = (XTERM_Y_CHARACTER (exw, ((event -> xbutton) . y)));
+	if (button == (-1)) break;
+	(XW_BUTTON (exw)) = button;
+	(XW_POINTER_X (exw)) = pointer_x;
+	(XW_POINTER_Y (exw)) = pointer_y;
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_BUTTON_UP;
+	if (x_debug)
+	  fprintf (stderr, "\nX event: ButtonRelease: Button=%d, X=%d, Y=%d\n",
+		   button, pointer_x, pointer_y);
+      }
+      break;
+
+    case NoExpose:
+      if (x_debug) fprintf (stderr, "\nX event: NoExpose\n");
+      break;
+
+    case EnterNotify:
+      if (x_debug) fprintf (stderr, "\nX event: EnterNotify\n");
+      break;
+
+    case LeaveNotify:
+      if (x_debug) fprintf (stderr, "\nX event: LeaveNotify\n");
+      break;
+
+    case FocusIn:
+      if (x_debug) fprintf (stderr, "\nX event: FocusIn\n");
+      break;
+
+    case FocusOut:
+      if (x_debug) fprintf (stderr, "\nX event: FocusOut\n");
+      break;
+
+    case MotionNotify:
+      if (x_debug) fprintf (stderr, "\nX event: MotionNotify\n");
       break;
 
     default:
-      if (xterm_debug) fprintf (stderr, "\nXTerm event: %d", (event -> type));
+      if (x_debug) fprintf (stderr, "\nX event: %d", (event -> type));
       break;
     }
   return;
