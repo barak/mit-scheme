@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.76 1993/10/27 23:29:11 cph Exp $
+;;;	$Id: intmod.scm,v 1.77 1993/11/02 22:19:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -299,27 +299,30 @@ REPL uses current evaluation environment."
 				 " buffer")
 			(editor-beep)))
 		  #t))
-	      (let loop ()
-		(fresh-line port)
-		(write-string
-		 ";Type D to debug error, Q to quit back to REP loop: "
-		 port)
-		(let ((char (read-command-char port (cmdl/level repl))))
-		  (write-char char port)
-		  (cond ((char-ci=? char #\d)
-			 (fresh-line port)
-			 (write-string ";Starting debugger..." port)
-			 (enqueue-output-operation! port
-			   (lambda (mark transcript?)
-			     mark
-			     (if (not transcript?)
-				 (start-continuation-browser port
-							     condition))
-			     #t)))
-			((not (char-ci=? char #\q))
-			 (beep port)
-			 (loop)))))
-	      (cmdl-interrupt/abort-top-level))))))
+	      (dynamic-wind
+	       (lambda () unspecific)
+	       (lambda ()
+		 (let loop ()
+		   (fresh-line port)
+		   (write-string
+		    ";Type D to debug error, Q to quit back to REP loop: "
+		    port)
+		   (let ((char (read-command-char port (cmdl/level repl))))
+		     (write-char char port)
+		     (cond ((char-ci=? char #\d)
+			    (fresh-line port)
+			    (write-string ";Starting debugger..." port)
+			    (enqueue-output-operation! port
+			      (lambda (mark transcript?)
+				mark
+				(if (not transcript?)
+				    (start-continuation-browser port
+								condition))
+				#t)))
+			   ((not (char-ci=? char #\q))
+			    (beep port)
+			    (loop))))))
+	       cmdl-interrupt/abort-top-level))))))
 
 ;;;; Modes
 
