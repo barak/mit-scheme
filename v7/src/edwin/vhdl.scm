@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vhdl.scm,v 1.1 1997/03/07 23:31:22 cph Exp $
+;;;	$Id: vhdl.scm,v 1.2 1997/03/08 00:16:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1997 Massachusetts Institute of Technology
 ;;;
@@ -381,8 +381,3 @@
    'INDENT-CONTINUED-COMMENT
    (lambda (mark)
      (mark-column (or (vhdl-comment-match-start mark) mark)))))
-
-;;; Edwin Variables:
-;;; scheme-environment: '(edwin)
-;;; scheme-syntax-table: edwin-syntax-table
-;;; End:

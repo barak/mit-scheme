@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: comatch.scm,v 1.1 1997/03/07 23:31:09 cph Exp $
+;;;	$Id: comatch.scm,v 1.2 1997/03/08 00:16:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1997 Massachusetts Institute of Technology
 ;;;
@@ -159,8 +159,3 @@
        (lambda (start end)
 	 (and (comatch-apply c1 start end)
 	      (comatch-apply c2 start end)))))))
-
-;;; Edwin Variables:
-;;; scheme-environment: '(edwin)
-;;; scheme-syntax-table: edwin-syntax-table
-;;; End:
