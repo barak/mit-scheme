@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.29 1993/01/09 09:46:49 cph Exp $
+;;;	$Id: utils.scm,v 1.30 1993/01/20 10:06:09 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -115,7 +115,7 @@
 		       (fix:lsh (fix:- (system-vector-length string) 1)
 				(fix:- 0 (chars-to-words-shift))))))
       (error:bad-range-argument n-chars 'SET-STRING-MAXIMUM-LENGTH!))
-  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+  (let ((mask (set-interrupt-enables! interrupt-mask/none)))
     ((ucode-primitive primitive-object-set! 3)
      string
      0
