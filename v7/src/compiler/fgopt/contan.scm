@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.2 1987/12/30 06:44:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/contan.scm,v 4.3 1988/01/04 13:13:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -74,9 +74,14 @@ MIT in each case. |#
 
 (define (analyze-continuation block lvalue)
   (if (stack-parent? block)
-      (let ((external (stack-block/external-ancestor block))
+      (let ((parent (block-parent block))
+	    (external (stack-block/external-ancestor block))
 	    (blocks (map continuation/block (lvalue-values lvalue))))
-	(let ((closing-blocks (map->eq-set block-parent blocks)))
+	(let ((closing-blocks (map->eq-set block-parent blocks))
+	      (closed-under-parent?
+	       (lambda (join-block)
+		 (or (eq? join-block block)
+		     (eq? join-block parent)))))
 	  (let ((join-blocks
 		 (continuation-join-blocks block
 					   lvalue
@@ -86,17 +91,25 @@ MIT in each case. |#
 	     block
 	     (if (null? (lvalue-initial-values lvalue))
 		 ;; In this case, the procedure is always invoked
-		 ;; as a reduction.
-		 (block-parent block)
-		 (and (null? (cdr blocks))
-		      (always-subproblem? block join-blocks)
-		      (not (null? closing-blocks))
-		      (null? (cdr closing-blocks))
+		 ;; as a reduction.  Use a static link unless one of
+		 ;; the places we reduce from is invoked with a
+		 ;; subproblem that is closed under the parent.
+		 (and (not (there-exists? join-blocks closed-under-parent?))
+		      parent)
+		 #|(assert
+		  (implies (not (null? (lvalue-initial-values lvalue)))
+			   (and (not (null? blocks))
+				(not (null? closing-blocks))
+				(not (null? join-blocks))))
+		  (implies (null? (cdr join-blocks))
+			   (and (null? (cdr blocks))
+				(null? (cdr closing-blocks)))))|#
+		 (and (null? (cdr join-blocks))
+		      (closed-under-parent? (car join-blocks))
 		      ;; The procedure is always invoked as a
-		      ;; subproblem, all of the continuations are
-		      ;; closed in the same block, and all are the
-		      ;; same size.  We can consistently find the
-		      ;; parent block from the continuation.
+		      ;; subproblem, and there is only a single
+		      ;; continuation.  We could do better, but it's
+		      ;; not simple -- see the notes.
 		      (car blocks))))
 	    (let ((popping-limits
 		   (map->eq-set
@@ -111,12 +124,6 @@ MIT in each case. |#
 		   (car popping-limits))))))
       block))
 
-(define (always-subproblem? block join-blocks)
-  (and (not (null? join-blocks))
-       (null? (cdr join-blocks))
-       (or (eq? (car join-blocks) block)
-	   (eq? (car join-blocks) (block-parent block)))))
-
 (define (continuation-join-blocks block lvalue external closing-blocks)
   (let ((ancestry (memq external (block-ancestry block '()))))
     (let ((join-blocks
