@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cpsconv.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: cpsconv.scm,v 1.2 1994/11/22 03:48:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -38,10 +38,12 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (cpsconv/top-level program)
-  (let ((name (new-continuation-variable)))
-    `(LET ((,name (CALL (QUOTE ,%fetch-continuation) (QUOTE #F))))
-       ,(cpsconv/expr (cpsconv/named-continuation name)
-		      program))))
+  (let* ((name (new-continuation-variable))
+	 (program*
+	  `(LET ((,name (CALL (QUOTE ,%fetch-continuation) (QUOTE #F))))
+	     ,(cpsconv/expr (cpsconv/named-continuation name)
+			    program))))
+    (cpsconv/remember program* program)))
 
 (define-macro (define-cps-converter keyword bindings . body)
   (let ((proc-name (symbol-append 'CPSCONV/ keyword)))
@@ -84,7 +86,7 @@ MIT in each case. |#
   `(LETREC ,(lmap (lambda (binding)
 		    (let ((value (cadr binding)))
 		      (list (car binding)
-			    (cpsconv/lambda* (cadr value) (caddr value)))))
+			    (cpsconv/lambda** value))))
 		  bindings)
      ,(cpsconv/expr cont body)))
 
@@ -92,6 +94,11 @@ MIT in each case. |#
   `(LAMBDA ,lambda-list
      ,(cpsconv/expr (cpsconv/named-continuation (car lambda-list))
 		    body)))
+
+(define (cpsconv/lambda** lam-expr)
+  (cpsconv/remember (cpsconv/lambda* (lambda/formals lam-expr)
+				     (lambda/body lam-expr))
+		    lam-expr))
 
 #|
 (define-cps-converter CALL (cont rator orig-cont #!rest rands)

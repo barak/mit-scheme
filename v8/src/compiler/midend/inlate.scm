@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: inlate.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: inlate.scm,v 1.2 1994/11/22 03:49:09 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -100,8 +100,10 @@ MIT in each case. |#
 			 (list `(DECLARE ,@decls)
 			       body)))))))
 	(inlate/remember new
-			 (new-dbg-procedure/make form lambda-list))))))
-
+			 (new-dbg-procedure/make
+			  form
+			  (cons name lambda-list)))))))
+#|
 (define (inlate/lambda* name req opt rest aux decls sbody)
   name					; ignored
   `(LAMBDA ,(append (cons (new-continuation-variable) req)
@@ -120,6 +122,7 @@ MIT in each case. |#
 	    (beginnify
 	     (list `(DECLARE ,@decls)
 		   body))))))
+|#
 
 (define-inlator IN-PACKAGE (environment expression)
   `(IN-PACKAGE ,(inlate/scode environment)

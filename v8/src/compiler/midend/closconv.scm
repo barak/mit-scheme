@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: closconv.scm,v 1.1 1994/11/19 02:04:29 adams Exp $
+$Id: closconv.scm,v 1.2 1994/11/22 03:48:40 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -386,6 +386,18 @@ MIT in each case. |#
     (set-closconv/env/form! env* expr*)
     (values expr* env*)))
 
+(define (closconv/lambda** context env lam-expr)
+  ;; (values expr* env*)
+  (call-with-values
+   (lambda ()
+     (closconv/lambda* context
+		       env
+		       (lambda/formals lam-expr)
+		       (lambda/body lam-expr)))
+   (lambda (expr* env*)
+     (values (closconv/remember expr* lam-expr)
+	     env*))))
+
 (define (closconv/bindings env* env bindings)
   ;; ENV* is the environment to which the bindings are being added
   ;; ENV is the environment in which the form part of the binding is
@@ -401,10 +413,9 @@ MIT in each case. |#
 		 (closconv/expr env value)
 		 (call-with-values
 		  (lambda ()
-		    (closconv/lambda* 'DYNAMIC ; bindings are dynamic
-				      env
-				      (cadr value) ; lambda list
-				      (caddr value))) ; body
+		    (closconv/lambda** 'DYNAMIC ; bindings are dynamic
+				       env
+				       value))
 		  (lambda (value* env**)
 		    (let ((binding
 			   (or (closconv/binding/find (closconv/env/bound env*)
