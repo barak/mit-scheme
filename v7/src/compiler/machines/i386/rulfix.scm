@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.3 1992/01/25 20:39:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.4 1992/01/26 16:36:38 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -85,6 +85,8 @@ It matters for immediate operands, displacements in addressing modes, and displa
 	  (FIXNUM-2-ARGS (? operator)
 			 (REGISTER (? source))
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
+  (if (eq? operator 'FIXNUM-LSH)
+      (require-register! ecx))		; CL used as shift count
 
 (define-rule statement
   (fixnum-2-args/register*constant operator target source constant))
@@ -102,10 +104,9 @@ It matters for immediate operands, displacements in addressing modes, and displa
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 			 (OBJECT->FIXNUM (REGISTER (? source)))
+			 (OBJECT->FIXNUM (CONSTANT 4))
 			 (? overflow?)))
-  (if (fixnum-2-args/commutative? operator)
-      (fixnum-2-args/register*constant operator target source constant)
-      (fixnum-2-args/constant*register operator target constant source)))
+  overflow?				; ignored
   (convert-index->fixnum/register target source))
 
 ;;;; Fixnum Predicates
@@ -273,12 +274,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
 			      source1
 			      source2))
 
-(define fixnum-methods/2-args-tnatsnoc
-  (list 'FIXNUM-METHODS/2-ARGS-TNATSNOC))
-
-(define-integrable (fixnum-2-args/operate-tnatsnoc operator)
-  (lookup-fixnum-method operator fixnum-methods/2-args-tnatsnoc))
-
 (define (two-arg-register-operation
 	 operate commutative?
 	 target-type source-reference alternate-source-reference
@@ -290,7 +285,7 @@ It matters for immediate operands, displacements in addressing modes, and displa
 		      (LAP (MOV W ,target ,source1)))
 		,@(operate target source2)))))
     (reuse-machine-target! target-type target
-			      source-register-reference
+      (lambda (target)
 	(reuse-pseudo-register-alias source1 target-type
 	  (lambda (alias)
 	    (let ((source2 (if (= source1 source2)
@@ -347,12 +342,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
       (LAP)
       (LAP (ADD W ,target (& ,(* constant fixnum-1))))))
 
-(define (fixnum-2-args/constant*register operator target constant source)
-  (fixnum-1-arg
-   target source
-   (lambda (target)
-     ((fixnum-2-args/operate-tnatsnoc operator) target constant))))
-
 (define-fixnum-method 'ONE-PLUS-FIXNUM fixnum-methods/1-arg
   (lambda (target)
     (add-fixnum-constant target 1)))
@@ -362,7 +351,7 @@ It matters for immediate operands, displacements in addressing modes, and displa
     (add-fixnum-constant target -1)))
 
 (define-fixnum-method 'FIXNUM-NOT fixnum-methods/1-arg
-(define (word->fixnum/ea target)
+  (lambda (target)
     (LAP (NOT W ,target)
 	 ,@(word->fixnum target))))
 
@@ -382,101 +371,75 @@ It matters for immediate operands, displacements in addressing modes, and displa
 (define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args
   (lambda (target source2)
     (if (equal? target source2)
-    ((binary/commutative
+	(load-fixnum-constant 0 target)
       (macro (name instr)
 	  (LAP ,@(if (equal? temp source2)
 		     (LAP)
-	     (LAP (,instr W ,',target ,',source2))))))
+	     (LAP (,instr W ,',target ,',source2)))))))
 
-     ;; **** Here ****
-
-     (binary/noncommutative
-      (macro (name instr)
-	`(define-fixnum-method ',name fixnum-methods/2-args
-	   (lambda (target source1 source2)
-	     (cond ((ea/same? source1 source2)
-		    (load-fixnum-constant 0 target))
-		   ((eq? target source1)
-		    (LAP (,instr L ,',source2 ,',target)))
-		   (else
-		    (LAP (,instr L ,',source2 ,',source1 ,',target)))))))))
-
-  (binary/commutative PLUS-FIXNUM ADD)
-  (binary/commutative FIXNUM-OR OR)
-  (binary/commutative FIXNUM-XOR XOR)
-
-  (binary/noncommutative MINUS-FIXNUM SUB)
-  (binary/noncommutative FIXNUM-ANDC BIC))
+  (binary-operation PLUS-FIXNUM ADD)
+  (binary-operation MINUS-FIXNUM SUB)
+  (binary-operation FIXNUM-AND AND)
+  (binary-operation FIXNUM-OR OR)
+  (binary-operation FIXNUM-XOR XOR))
 	  ((even? scheme-type-width)
-(define-fixnum-method 'FIXNUM-AND fixnum-methods/2-args
-  (lambda (target source1 source2)
-    (if (ea/same? source1 source2)
-	(ea/copy source1 target)
-	(let ((temp (standard-temporary-reference)))
-	  (commute target source1 source2
-		   (lambda (source*)
-		     (LAP (MCOM L ,source* ,temp)
-			  (BIC L ,temp ,target)))
-		   (lambda ()
-		     (LAP (MCOM L ,source1 ,temp)
-			  (BIC L ,temp ,source2 ,target))))))))
+	   (LAP (SAR W ,target (& ,(quotient scheme-type-width 2)))
+		(IMUL W ,target ,target)))
+    (let ((temp (temporary-register-reference)))
+      (LAP ,@(if (equal? temp source2)
+		 (LAP)
+		 (LAP (MOV W ,temp ,source2)))
+	   (NOT W ,temp)
+	   (AND W ,target ,temp)))))
     ;; SOURCE2 is guaranteed not to be ECX because of the
     ;; require-register! used in the rule.
-  (let ((shift (- 0 scheme-type-width)))
-    (lambda (target source1 source2)
-      (if (not (effective-address/register? target))
-	  (let ((temp (standard-temporary-reference)))
-	    (commute target source1 source2
-		     (lambda (source*)
-		       (LAP (ASH L ,(make-immediate shift) ,source* ,temp)
-			    (MUL L ,temp ,target)))
-		     (lambda ()
-		       (LAP (ASH L ,(make-immediate shift) ,source1 ,temp)
-			    (MUL L ,temp ,source2 ,target)))))
-	  (commute
-	   target source1 source2
-	   (lambda (source*)
-	     (cond ((not (ea/same? target source*))
-		    (LAP (ASH L ,(make-immediate shift) ,target ,target)
-			 (MUL L ,source* ,target)))
-		   ((even? scheme-type-width)
-		    (let ((shift (quotient shift 2)))
-		      (LAP (ASH L ,(make-immediate shift) ,target ,target)
-			   (MUL L ,target ,target))))
-		   (else
-		    (let ((temp (standard-temporary-reference)))
-		      (LAP (ASH L ,(make-immediate shift) ,target ,temp)
-			   (MUL L ,temp ,target))))))
-	   (lambda ()
-	     (LAP (ASH L ,(make-immediate shift) ,source1 ,target)
-		  (MUL L ,source2 ,target))))))))
+    ;; TARGET can be ECX only if the rule has machine register
+    ;; ECX as the target, unlikely, but it must be handled!
+    (let ((with-target
+	    (lambda (target)
+	      (let ((jlabel (generate-label 'SHIFT-JOIN))
+		    (slabel (generate-label 'SHIFT-NEGATIVE)))
+		(LAP (MOV W (R ,ecx) ,source2)
+		     (SAR W (R ,ecx) (& ,scheme-type-width))
+		     (JS (@PCR ,slabel))
+		     (SHL W ,target (R ,ecx))
+		     (JMP (@PCR ,jlabel))
+		     (LABEL ,slabel)
+		     (NEG W (R ,ecx))
+(define (require-register! machine-reg)
+  (flush-register! machine-reg)
+  (need-register! machine-reg))
 
-(define (code-fixnum-shift target source1 source2)
-  #|
-  ;; This does arithmetic shifting, rather than logical!
-  (let* ((rtarget (target-or-register target))
-	 (temp (if (eq? rtarget target)
-		   (standard-temporary-reference)
-		   rtarget)))
-    (LAP (ASH L ,(make-immediate (- 0 scheme-type-width))
-	      ,source2 ,temp)
-	 (ASH L ,temp ,source1 ,rtarget)
-	 ,@(word->fixnum/ea rtarget target)))
-  |#
-  ;; This is a kludge that depends on the fact that there are
-  ;; always scheme-type-width 0 bits at the bottom.
-  (let* ((rtarget (target-or-register target))
-	 (temp (standard-temporary-reference)))
-    (LAP (ASH L ,(make-immediate (- 0 scheme-type-width))
-	      ,source2 ,temp)
-	 (ROTL (S 31) ,source1 ,rtarget) ; guarantee sign bit of 0.
-	 (ASH L ,temp ,rtarget ,rtarget)
-	 (ROTL (S 1) ,rtarget ,rtarget) ; undo effect of previous ROTL.
-	 ,@(word->fixnum/ea rtarget target))))
+(define-integrable (flush-register! machine-reg)
+  (prefix-instructions! (clear-registers! machine-reg)))
 
 		     (SHR W ,target (R ,ecx))
-  code-fixnum-shift)
+		     ,@(word->fixnum target)
+    ;; source2 is guaranteed not to be ECX because of the
+    ;; require-register!  used in the rule.
+    (define (with-target target)
+      (let ((jlabel (generate-label 'SHIFT-JOIN))
+	    (slabel (generate-label 'SHIFT-NEGATIVE)))
+	(LAP (MOV W (R ,ecx) ,source2)
+	     (SAR W (R ,ecx) (& ,scheme-type-width))
+	     (JS (@PCR ,slabel))
+	     (SAL W ,target (R ,ecx))
+	     (JMP (@PCR ,jlabel))
+	     (LABEL ,slabel)
+	     (NEG W (R ,ecx))
+	     (SAR W ,target (R ,ecx))
+	     ,@(word->fixnum target)
+	     (LABEL ,jlabel))))
+
+    (if (not (equal? target (INST-EA (R ,ecx))))
+	(with-target target)
+	(let ((temp (temporary-register-reference)))
+	  (LAP (MOV W ,temp ,target)
+	       ,@(with-target temp)
+	       (MOV W ,target ,temp))))))    
 	      (LAP (MOV W (R ,eax) ,target)
+;; **** Here ****
+(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2)
   (lambda (target source1 source2)
     (if (ea/same? source1 source2)
@@ -497,12 +460,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
   (lambda (target source n)
     (add-fixnum-constant source (- 0 n) target)))
 	  (else
-(define-fixnum-method 'MINUS-FIXNUM fixnum-methods/2-args-tnatsnoc
-  (lambda (target n source)
-    (if (zero? n)
-	(LAP (MNEG L ,source ,target))
-	(LAP (SUB L ,source ,(make-immediate (* n fixnum-1)) ,target)))))
-
 (let-syntax
     ((binary-fixnum/constant
       (macro (name instr null ->constant identity?)
@@ -538,12 +495,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
 	   (LAP (BIC L ,(make-immediate (* n fixnum-1)) ,target)))
 ;; clear the overflow flag! ****
 	   (LAP (BIC L ,(make-immediate (* n fixnum-1)) ,source ,target))))))
-
-(define-fixnum-method 'FIXNUM-ANDC fixnum-methods/2-args-tnatsnoc
-  (lambda (target n source)
-    (if (zero? n)
-	(load-fixnum-constant 0 target)
-	(LAP (BIC L ,source ,(make-immediate (* n fixnum-1)) ,target)))))
 
   (lambda (target n)
   (lambda (target source n)
@@ -565,12 +516,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
 		  (ASH L ,(make-immediate (1+ n)) ,rtarget ,rtarget)
 		  ,@(word->fixnum/ea rtarget target)))))))
 		 (LAP (SAL W ,target (& ,expt-of-2))
-(define-fixnum-method 'FIXNUM-LSH fixnum-methods/2-args-tnatsnoc
-  (lambda (target n source)
-    (if (zero? n)
-	(load-fixnum-constant 0 target)
-	(code-fixnum-shift target (make-immediate (* n fixnum-1)) source))))
-
 		      (NEG W ,target))
   (lambda (target source n)
 (define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-constant
@@ -619,13 +564,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
 		      (JZ (@PCR ,label))
 		      (OR W ,target ,sign)
 		      (LABEL ,label)))))
-
-(define-fixnum-method 'FIXNUM-QUOTIENT fixnum-methods/2-args-tnatsnoc
-  (lambda (target n source)
-    (if (zero? n)
-	(load-fixnum-constant 0 target)
-	(code-fixnum-quotient target (make-immediate (* n fixnum-1))
-			      source))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
 
@@ -650,13 +588,6 @@ It matters for immediate operands, displacements in addressing modes, and displa
 (define (guarantee-unsigned-fixnum n)
   (if (not (unsigned-fixnum? n)) (error "Not a unsigned fixnum" n))
   n)
-
-(define-fixnum-method 'FIXNUM-REMAINDER fixnum-methods/2-args-tnatsnoc
-  (lambda (target n source)
-    (if (zero? n)
-	(load-fixnum-constant 0 target)
-	(code-fixnum-remainder target (make-immediate (* n fixnum-1))
-			       source))))
 
 (define (fixnum-predicate->cc predicate)
   (case predicate
