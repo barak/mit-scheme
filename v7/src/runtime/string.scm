@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.3 1992/02/12 21:48:41 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/string.scm,v 14.4 1992/02/13 20:00:15 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -431,8 +431,8 @@ MIT in each case. |#
 	      (substring-move-right! string 0 n result 0)
 	      (begin
 		(substring-move-right! string 0 length result 0)
-		(substring-fill! result length n
-				 (if (default-object? char) #\space char))))
+		(let ((char (if (default-object? char) #\space char)))
+		  (substring-fill! result length n char))))
 	  result))))
 
 (define (string-pad-left string n #!optional char)
@@ -444,7 +444,7 @@ MIT in each case. |#
 	  (if (negative? i)
 	      (substring-move-right! string 0 n result 0)
 	      (begin
-		(substring-fill! result 0 i
-				 (if (default-object? char) #\space char))
+		(let ((char (if (default-object? char) #\space char)))
+		  (substring-fill! result 0 i char))
 		(substring-move-right! string 0 length result i)))
 	  result))))
