@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.168 1987/05/26 14:47:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.169 1987/05/29 17:45:38 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -175,8 +175,12 @@ MIT in each case. |#
 	   register
 	   (or (register-alias register false)
 	       ;; This means that someone has written an address out
-	       ;; to memory, something that should never happen.
-	       (error "Needed to load indirect register!" register)))
+	       ;; to memory, something that should happen only when the
+	       ;; register block spills something.
+	       (begin (warn "Needed to load indirect register!" register)
+		      ;; Should specify preference for ADDRESS but will
+		      ;; accept DATA if no ADDRESS registers available.
+		      (allocate-alias-register! register 'ADDRESS))))
        offset)))
 
 (define (coerce->any register)
@@ -232,15 +236,16 @@ MIT in each case. |#
   (define-entries apply error wrong-number-of-arguments interrupt-procedure
     interrupt-continuation lookup-apply lookup access unassigned? unbound?
     set! define primitive-apply enclose setup-lexpr return-to-interpreter
-    safe-lookup))
+    safe-lookup cache-variable reference-trap assignment-trap
+    uuo-link uuo-link-trap))
 
 (define reg:temp '(@AO 6 #x0010))
 (define reg:enclose-result '(@AO 6 #x0014))
 (define reg:compiled-memtop '(@A 6))
 
-(define popper:apply-closure '(@AO 6 #x0168))
-(define popper:apply-stack '(@AO 6 #x01A8))
-(define popper:value '(@AO 6 #x01E8))
+(define popper:apply-closure '(@AO 6 #x01A4))
+(define popper:apply-stack '(@AO 6 #x01E4))
+(define popper:value '(@AO 6 #x0228))
 
 ;;;; Transfers to Registers
 
@@ -792,6 +797,33 @@ MIT in each case. |#
 	  ,(load-constant name '(A 1))
 	  (JSR ,entry)
 	  ,@(make-external-label (generate-label)))))))
+
+;;; This is invoked by the top level of the LAP generator.
+
+(define (generate/quotation-header block-label constants references uuo-links)
+  (if (or (not (null? references))
+	  (not (null? uuo-links)))
+      (let ((environment-label (allocate-constant-label)))
+	`(,@(map declare-constant references)
+	  ,@(map declare-constant uuo-links)
+	  ,@(map declare-constant constants)
+	  (SCHEME-OBJECT ,environment-label ,false)
+	  (MOVE L (@AO 6 12) (@PCR ,environment-label))
+	  (LEA (@PCR ,block-label) (A 0))
+	  ,@(mapcan (lambda (reference)
+		      `((LEA (@PCR ,(cdr reference)) (A 1))
+			(JSR ,entry:cache-variable)
+			,@(make-external-label (generate-label))))
+		    references)
+	  ,@(mapcan (lambda (uuo-link)
+		      `((LEA (@PCR ,(cdr uuo-link)) (A 1))
+			(JSR ,entry:uuo-link)
+			,@(make-external-label (generate-label))))
+		    uuo-links)))
+      (map declare-constant constants)))
+
+(define (declare-constant entry)
+  `(SCHEME-OBJECT ,(cdr entry) ,(car entry)))
 
 ;;;; Procedure/Continuation Entries
 
