@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.18 1995/03/13 23:36:44 adams Exp $
+$Id: rtlgen.scm,v 1.19 1995/03/15 01:08:51 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -3109,9 +3109,10 @@ MIT in each case. |#
     open-coder
     (let* ((arity  (rtlgen/->register (first rands)))
 	   (obj    (rtlgen/->register (second rands)))
-	   (obj*   (rtlgen/new-reg))
+	   (obj*   (if (rtlgen/tagged-entry-points?) (rtlgen/new-reg) obj))
 	   (arity* (rtlgen/new-reg)))
-      (rtlgen/assign! obj* `(OBJECT->ADDRESS ,obj))
+      (if (rtlgen/tagged-entry-points?)
+	  (rtlgen/assign! obj* `(OBJECT->ADDRESS ,obj)))
       (rtlgen/assign! arity* `(BYTE-OFFSET ,obj* (MACHINE-CONSTANT -3)))
       (rtlgen/branch/likely state `(EQ-TEST ,arity* ,arity)))))
 
