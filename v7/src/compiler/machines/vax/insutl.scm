@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.2 1987/08/14 05:03:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/insutl.scm,v 1.3 1987/08/18 18:29:18 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ MIT in each case. |#
 (define (effective-address? object)
   (and (vector? object)
        (not (zero? (vector-length object)))
-       (eq? (vector-ref object 0) ea-tag))
+       (eq? (vector-ref object 0) ea-tag)))
 
 (define-integrable (ea-keyword ea)
   (vector-ref ea 1))
