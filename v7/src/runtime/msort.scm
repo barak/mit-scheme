@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: msort.scm,v 14.3 1996/12/01 17:23:03 adams Exp $
+$Id: msort.scm,v 14.4 1996/12/04 16:21:42 adams Exp $
 
 Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
@@ -59,10 +59,14 @@ MIT in each case. |#
 	   (cons (car one)
 		 (merge (cdr one) two)))))
 
-  (cond ((or (pair? obj) (null? obj))
-	 (loop obj))
+  (cond ((pair? obj)
+	 (if (null? (cdr obj))
+	     (list (car obj))		; must return newly allocated list
+	     (loop obj)))
 	((vector? obj)
 	 (sort! (vector-copy obj) pred))
+	((null? obj)
+	 '())
 	(else
 	 (error:wrong-type-argument obj "list or vector" 'SORT))))
 
