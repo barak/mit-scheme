@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.39 1993/11/08 20:40:10 cph Exp $
+$Id: interp.h,v 9.40 1994/10/05 16:49:00 adams Exp $
 
-Copyright (c) 1987-1993 Massachusetts Institute of Technology
+Copyright (c) 1987-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,6 +69,16 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
   Ext_Stack_Pointer = Reg_Stack_Pointer;				\
 }
 
+/* Importing History is required for C_call_scheme for work correctly because
+   the recursive call to Interpret() can rotate the history:
+*/
+#define IMPORT_REGS_AFTER_PRIMITIVE()                                   \
+{                                                                       \
+    Reg_History = Ext_History;                                          \
+}
+
+#define EXPORT_REGS_BEFORE_PRIMITIVE Export_Registers
+
 #else
 
 #define Regs		Registers
@@ -78,13 +88,13 @@ extern int EXFUN (abort_to_interpreter_argument, (void));
 #define Import_Registers()
 #define Export_Registers()
 
+#define IMPORT_REGS_AFTER_PRIMITIVE()
+#define EXPORT_REGS_BEFORE_PRIMITIVE()
+
 #endif
 
 #define Import_Val()
 #define Import_Registers_Except_Val()		Import_Registers()
-
-#define IMPORT_REGS_AFTER_PRIMITIVE()
-#define EXPORT_REGS_BEFORE_PRIMITIVE Export_Registers
 
 #define Env		Regs[REGBLOCK_ENV]
 #define Val		Regs[REGBLOCK_VAL]
