@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.43 1991/10/14 23:51:19 thanos Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.c,v 9.44 1991/12/20 22:48:36 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,13 +86,29 @@ flonum_to_real (argument, arg_number)
 
 SCHEME_OBJECT
 allocate_array (length)
-     fast long length;
+     long length;
 {
+#if (REAL_IS_DEFINED_DOUBLE == 0)
+
   fast SCHEME_OBJECT result =
     (allocate_non_marked_vector
      (TC_NON_MARKED_VECTOR, ((length * REAL_SIZE) + 1), true));
   FAST_MEMORY_SET (result, 1, length);
   return (result);
+
+#else /* (REAL_IS_DEFINED_DOUBLE != 0) */
+  
+  long n_words = (length * DOUBLE_SIZE);
+  ALIGN_FLOAT (Free);
+  Primitive_GC_If_Needed (n_words + 1);
+  {
+    SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (Free)));
+    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, n_words));
+    Free += n_words;
+    return (result);
+  }
+
+#endif /* (REAL_IS_DEFINED_DOUBLE != 0) */
 }
 
 DEFINE_PRIMITIVE ("VECTOR->ARRAY", Prim_vector_to_array, 1, 1, 0)

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.31 1990/01/15 18:09:34 pas Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/image.c,v 9.32 1991/12/20 22:49:23 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -215,6 +215,10 @@ DEFINE_PRIMITIVE ("IMAGE-READ-CTSCAN", Prim_read_image_ctscan, 1, 1, 0)
 	  (Array [array_index + m]) = ((REAL) (read_2bint (fp)));
       }
     /* CTSCAN images are upside down */
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
     Primitive_GC_If_Needed (512 * REAL_SIZE);
     Image_Mirror_Upside_Down (Array, nrows, ncols, ((REAL *) Free));
     if ((fclose (fp)) != 0)
@@ -598,6 +602,10 @@ DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CLW!", Prim_image_rotate_90clw, 1, 1, 0)
     Array = (ARRAY_CONTENTS (Parray));
   }
   Length = (nrows * ncols);
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed (Length * REAL_SIZE);
   {
     REAL * Temp_Array = ((REAL *) Free);
@@ -625,6 +633,10 @@ DEFINE_PRIMITIVE ("IMAGE-ROTATE-90CCLW!", Prim_image_rotate_90cclw, 1, 1, 0)
     Array = (ARRAY_CONTENTS (Parray));
   }
   Length = (nrows * ncols);
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed (Length * REAL_SIZE);
   {
     REAL * Temp_Array = ((REAL *) Free);

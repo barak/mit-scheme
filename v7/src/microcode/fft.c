@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.29 1990/01/02 18:35:22 pas Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/fft.c,v 9.30 1991/12/20 22:49:07 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1435,6 +1435,10 @@ C_Array_2D_FFT_In_Scheme_Heap(flag, nrows, ncols, Real_Array, Imag_Array)
       if ( (i % 2) == 1) error_bad_range_arg (1);
       i=i/2; }
 
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
     Primitive_GC_If_Needed(Length*REAL_SIZE + ((max(nrows,ncols))*3*REAL_SIZE));
     Work_Here = (REAL *) Free;
     g1 = Work_Here;
@@ -1478,6 +1482,10 @@ Square_Image_2D_FFT_In_Scheme_Heap(flag, nrows, Real_Array, Imag_Array)
   for (nrows_power=0, i=nrows; i>1; nrows_power++) { /* FIND/CHECK POWERS OF ROWS */
     if ( (i % 2) == 1) error_bad_range_arg (2);
     i=i/2; }
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed(nrows*3*REAL_SIZE);
   Work_Here = (REAL *) Free;
   g1 = Work_Here;
@@ -1538,6 +1546,10 @@ Cube_Space_3D_FFT_In_Scheme_Heap(flag, ndeps, Real_Array, Imag_Array)
   for (ndeps_power=0, l=ndeps; l>1; ndeps_power++) {                 /* FIND/CHECK POWER OF NDEPS */
     if ( (l % 2) == 1) error_bad_range_arg (2);
     l=l/2; }
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed(ndeps*3*REAL_SIZE);
   Work_Here = (REAL *) Free;
   g1 = Work_Here;
@@ -1596,6 +1608,10 @@ DEFINE_PRIMITIVE ("ARRAY-FFT!", Prim_array_fft, 3, 3, 0)
   f2 = ARRAY_CONTENTS(ARG_REF(3));
   if (f1==f2)  error_wrong_type_arg(2);
 
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed(length*3*REAL_SIZE);
   Work_Here = (REAL *) Free;
   g1 = Work_Here;
@@ -1640,6 +1656,10 @@ DEFINE_PRIMITIVE ("ARRAY-CZT!", Prim_array_czt, 6,6, 0)
   L  = 1<<log2_L;		/* length of intermediate computation arrays */
   maxMN =  (((M)<(N)) ? (N) : (M)); /* length of czt tables =  maximum(M,N) */
 
+#if (REAL_IS_DEFINED_DOUBLE != 0)
+    ALIGN_FLOAT (Free);
+    Free += 1;
+#endif
   Primitive_GC_If_Needed( ((7*L) + (2*maxMN)) * REAL_SIZE);
   g1  = (REAL *) Free;
   g2  = g1  + L;

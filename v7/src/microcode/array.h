@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.31 1989/09/20 23:05:33 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/array.h,v 9.32 1991/12/20 22:48:56 cph Exp $
 
-Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1987-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,11 +46,24 @@ MIT in each case. */
 #define FLOAT_SIZE (BYTES_TO_WORDS (sizeof (float)))
 #define DOUBLE_SIZE (BYTES_TO_WORDS (sizeof (double)))
 
+#if (REAL_IS_DEFINED_DOUBLE == 0)
+
 /* Scheme_Arrays are implemented as NON_MARKED_VECTOR. */
 
 #define ARRAY_P NON_MARKED_VECTOR_P
 #define ARRAY_LENGTH(array) ((long) (FAST_MEMORY_REF ((array), 1)))
 #define ARRAY_CONTENTS(array) ((REAL *) (MEMORY_LOC (array, 2)))
+
+#else /* (REAL_IS_DEFINED_DOUBLE != 0) */
+
+/* Scheme_Arrays are implemented as flonum vectors.
+   This is required to get alignment to work right on RISC machines. */
+
+#define ARRAY_P FLONUM_P
+#define ARRAY_LENGTH(array) ((VECTOR_LENGTH (array)) / DOUBLE_SIZE)
+#define ARRAY_CONTENTS(array) ((REAL *) (MEMORY_LOC (array, 1)))
+
+#endif /* (REAL_IS_DEFINED_DOUBLE != 0) */
 
 extern SCHEME_OBJECT allocate_array ();
 
