@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.7 1991/11/06 23:21:43 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/rebuild-7.4,v 1.8 1992/01/29 23:42:50 arthur Exp $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 
@@ -118,7 +118,7 @@ endif
 
 echo \(write-line\ \'\(finished\ recompilation\)\) >>$script
 
-# This begin is inside the BEGIN
+# This exit is inside the BEGIN
 echo \(\%exit 0\)\) >>$script
 #   but this one is not
 echo \(\%exit 1\) >> $script
