@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.59 1996/04/24 04:17:40 cph Exp $
+$Id: make.scm,v 14.60 1996/07/23 03:44:03 adams Exp $
 
 Copyright (c) 1988-96 Massachusetts Institute of Technology
 
@@ -510,11 +510,16 @@ MIT in each case. |#
 (let ((roots
        (list->vector
 	;; Make all debugging file names relative to runtime in scheme root
-        ;; directory.
+        ;; directory. Note that we have to keep runtime and
+        ;; runtime-check separate because the debugging info is
+        ;; different.
 	((access with-directory-rewriting-rule
 		 (->environment '(RUNTIME COMPILER-INFO)))
 	 (working-directory-pathname)
-	 (pathname-as-directory "runtime")
+	 (if (string=? (car (last-pair (pathname-directory (pwd))))
+		       "runtime-check")
+	     (pathname-as-directory "runtime-check")
+	     (pathname-as-directory "runtime"))
 	 (lambda ()
 	   (let ((fasload/update-debugging-info!
 		  (access fasload/update-debugging-info!
