@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.10 1988/08/22 20:33:53 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlcon.scm,v 4.11 1988/08/29 23:02:07 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -43,25 +43,15 @@ MIT in each case. |#
     (lambda (expression)
       (locative-dereference-for-statement locative
 	(lambda (address)
-	  (if (rtl:pseudo-register-expression? address)
-	      (cond ((rtl:address-valued-expression? expression)
-		     ;; We don't know for sure that this register is assigned
-		     ;; only once.  However, if it is assigned multiple
-		     ;; times, then all of those assignments should be
-		     ;; address valued expressions.  This constraint is not
-		     ;; enforced.
-		     (add-rgraph-address-register!
-		      *current-rgraph*
-		      (rtl:register-number address)))
-		    ((rtl:fixnum-valued-expression? expression)
-		     ;; We don't know for sure that this register is assigned
-		     ;; only once.  However, if it is assigned multiple
-		     ;; times, then all of those assignments should be
-		     ;; fixnum valued expressions.  This constraint is not
-		     ;; enforced.
-		     (add-rgraph-fixnum-register!
-		      *current-rgraph*
-		      (rtl:register-number address)))))
+	  (if (and (rtl:pseudo-register-expression? address)
+		   (rtl:non-object-valued-expression? expression))
+	      ;; We don't know for sure that this register is assigned
+	      ;; only once.  However, if it is assigned multiple
+	      ;; times, then all of those assignments should be
+	      ;; non-object valued expressions.  This constraint is
+	      ;; not enforced.
+	      (add-rgraph-non-object-register! *current-rgraph*
+					       (rtl:register-number address)))
 	  (%make-assign address expression))))))
 
 (define (rtl:make-eq-test expression-1 expression-2)
@@ -86,24 +76,18 @@ MIT in each case. |#
     (lambda (expression)
       (%make-unassigned-test expression))))
 
+(define (rtl:make-fixnum-pred-1-arg predicate operand)
+  (expression-simplify-for-predicate operand
+    (lambda (operand)
+      (%make-fixnum-pred-1-arg predicate operand))))
 
 (define (rtl:make-fixnum-pred-2-args predicate operand1 operand2)
-    (expression-simplify-for-predicate operand1
-      (lambda (s-operand1)
-	(expression-simplify-for-predicate operand2
-	  (lambda (s-operand2)
-	    (%make-fixnum-pred-2-args
-	     predicate
-	     s-operand1
-	     s-operand2))))))
-
-(define (rtl:make-fixnum-pred-1-arg predicate operand)
-    (expression-simplify-for-predicate operand
-      (lambda (s-operand)
-	(%make-fixnum-pred-1-arg
-	 predicate
-	 s-operand))))
-
+  (expression-simplify-for-predicate operand1
+    (lambda (operand1)
+      (expression-simplify-for-predicate operand2
+	(lambda (operand2)
+	  (%make-fixnum-pred-2-args predicate operand1 operand2))))))
+
 (define (rtl:make-pop locative)
   (locative-dereference-for-statement locative
     (lambda (locative)
@@ -117,7 +101,7 @@ MIT in each case. |#
 (define-integrable (rtl:make-address->environment address)
   (rtl:make-cons-pointer (rtl:make-constant (ucode-type stack-environment))
 			 address))
-
+
 (define-integrable (rtl:make-push-return continuation)
   (rtl:make-push (rtl:make-entry:continuation continuation)))
 
@@ -275,7 +259,7 @@ MIT in each case. |#
 		granularity))))
 
 (define (guarantee-address expression scfg-append! receiver)
-  (if (rtl:address-valued-expression? expression)
+  (if (rtl:non-object-valued-expression? expression)
       (receiver expression)
       (guarantee-register expression scfg-append!
 	(lambda (register)
@@ -320,18 +304,15 @@ MIT in each case. |#
 
 (define (assign-to-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
-    (if (rtl:address-valued-expression? expression)
-	(add-rgraph-address-register! *current-rgraph*
-				      (rtl:register-number pseudo)))
-    (if (rtl:fixnum-valued-expression? expression)
-	(add-rgraph-fixnum-register! *current-rgraph*
-				      (rtl:register-number pseudo)))
+    (if (rtl:non-object-valued-expression? expression)
+	(add-rgraph-non-object-register! *current-rgraph*
+					 (rtl:register-number pseudo)))
     (scfg-append! (%make-assign pseudo expression) (receiver pseudo))))
 
 (define (assign-to-address-temporary expression scfg-append! receiver)
   (let ((pseudo (rtl:make-pseudo-register)))
-    (add-rgraph-address-register! *current-rgraph*
-				  (rtl:register-number pseudo))
+    (add-rgraph-non-object-register! *current-rgraph*
+				     (rtl:register-number pseudo))
     (scfg-append! (%make-assign pseudo (rtl:make-object->address expression))
 		  (receiver pseudo))))
 
@@ -384,7 +365,7 @@ MIT in each case. |#
      (lambda (expression offset granularity)
        (if (zero? offset)
 	   (receiver
-	    (if (rtl:address-valued-expression? expression)
+	    (if (rtl:non-object-valued-expression? expression)
 		(rtl:make-address->environment expression)
 		expression))
 	   (generate-offset-address expression offset granularity scfg-append!
@@ -467,12 +448,10 @@ MIT in each case. |#
 (define-expression-method 'OBJECT->DATUM
   (lambda (receiver scfg-append! expression)
     (expression-simplify* expression scfg-append!
-      (lambda (s-expression)
-	(assign-to-temporary
-	  (rtl:make-object->datum s-expression)
-	  scfg-append!
-	  (lambda (temporary)
-	    (receiver temporary)))))))
+      (lambda (expression)
+	(assign-to-temporary (rtl:make-object->datum expression)
+			     scfg-append!
+			     receiver)))))
 
 (define-expression-method 'OBJECT->ADDRESS
   (object-selector rtl:make-object->address))
@@ -482,19 +461,13 @@ MIT in each case. |#
 
 (define-expression-method 'OBJECT->FIXNUM
   (lambda (receiver scfg-append! expression)
-    (cond ((or (rtl:fixnum-valued-expression? expression)
-	       (rtl:constant? expression))
-	   (expression-simplify* expression scfg-append!
-	     (lambda (s-constant)
-	       (receiver s-constant))))
-	  (else
-	   (expression-simplify* expression scfg-append!
-	     (lambda (s-expression)
-	       (assign-to-temporary
-		(rtl:make-object->fixnum s-expression)
-		scfg-append!
-		(lambda (temporary)
-		  (receiver temporary)))))))))
+    (expression-simplify* expression scfg-append!
+      (lambda (expression)
+	(if (rtl:non-object-valued-expression? expression)
+	    (receiver expression)
+	    (assign-to-temporary (rtl:make-object->fixnum expression)
+				 scfg-append!
+				 receiver))))))
 
 (define-expression-method 'CONS-POINTER
   (lambda (receiver scfg-append! type datum)

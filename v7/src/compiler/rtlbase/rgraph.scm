@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.2 1988/04/25 21:34:43 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rgraph.scm,v 4.3 1988/08/29 23:00:52 cph Exp $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,8 +40,7 @@ MIT in each case. |#
 			  (copier false)
 			  (constructor make-rgraph (n-registers)))
   n-registers
-  (address-registers (reverse initial-address-registers))
-  (fixnum-registers)
+  (non-object-registers (reverse initial-non-object-registers))
   entry-edges
   bblocks
   register-bblock
@@ -50,20 +49,15 @@ MIT in each case. |#
   register-live-length
   register-crosses-call?
   )
-(define (add-rgraph-address-register! rgraph register)
-  (set-rgraph-address-registers! rgraph
-				 (cons register
-				       (rgraph-address-registers rgraph))))
+(define (add-rgraph-non-object-register! rgraph register)
+  (set-rgraph-non-object-registers!
+   rgraph
+   (cons register (rgraph-non-object-registers rgraph))))
 
 (define (add-rgraph-entry-node! rgraph node)
   (set-rgraph-entry-edges! rgraph
 			   (cons (node->edge node)
 				 (rgraph-entry-edges rgraph))))
-
-(define (add-rgraph-fixnum-register! rgraph register)
-  (set-rgraph-fixnum-registers! rgraph
-				 (cons register
-				       (rgraph-fixnum-registers rgraph))))
 
 (define-integrable rgraph-register-renumber rgraph-register-bblock)
 (define-integrable set-rgraph-register-renumber! set-rgraph-register-bblock!)

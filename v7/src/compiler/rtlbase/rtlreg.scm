@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.3 1988/04/25 21:45:08 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlbase/rtlreg.scm,v 4.4 1988/08/29 23:03:03 cph Rel $
 
-Copyright (c) 1987 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -120,8 +120,5 @@ MIT in each case. |#
 (define-integrable (register-crosses-call! register)
   (bit-string-set! (rgraph-register-crosses-call? *current-rgraph*) register))
 
-(define-integrable (register-contains-address? register)
-  (memq register (rgraph-address-registers *current-rgraph*)))
-
-(define-integrable (register-contains-fixnum? register)
-  (memq register (rgraph-fixnum-registers *current-rgraph*)))
+(define-integrable (register-contains-non-object? register)
+  (memq register (rgraph-non-object-registers *current-rgraph*)))
