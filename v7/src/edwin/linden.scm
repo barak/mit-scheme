@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: linden.scm,v 1.123 1995/03/30 21:51:13 cph Exp $
+;;;	$Id: linden.scm,v 1.124 1996/04/23 22:36:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -312,17 +312,13 @@
 
 (define (indent-expression-line start stack state)
   (maybe-change-indentation (compute-indentation start stack) start)
-  (if (eqv? 1
-	    (parse-state-in-comment?
-	     (parse-partial-sexp start (line-end start 0) #f #f state)))
-      ;; PARSE-PARTIAL-SEXP should be changed so that it can report
-      ;; the index at which the comment starts.  Since it has a more
-      ;; precise model of the syntax, it can return a more accurate
-      ;; answer.
-      (let ((comment (lisp-comment-locate start)))
-	(if comment
-	    (maybe-change-column (lisp-comment-indentation (car comment) stack)
-				 (car comment))))))
+  (let ((state (parse-partial-sexp start (line-end start 0) #f #f state)))
+    (if (parse-state-in-comment? state)
+	(let ((comment-start (parse-state-comment-start state)))
+	  (if (match-forward ";" comment-start)
+	      (maybe-change-column (lisp-comment-indentation comment-start
+							     stack)
+				   comment-start))))))
 
 (define (compute-indentation start stack)
   (cond ((null? stack)

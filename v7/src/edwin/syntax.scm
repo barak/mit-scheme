@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: syntax.scm,v 1.76 1992/11/13 22:43:33 cph Exp $
+;;;	$Id: syntax.scm,v 1.77 1996/04/23 22:36:02 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,7 +48,7 @@
 
 (define-structure (syntax-table (constructor %make-syntax-table)
 				(conc-name syntax-table/))
-  (entries false read-only true))
+  (entries false read-only #t))
 
 (define (modify-syntax-entry! syntax-table char string)
   (if (not (syntax-table? syntax-table))
@@ -105,20 +105,34 @@
 				       char))
 
 (define (syntax-entry->string entry)
-  (let ((code (fix:and #xff entry)))
+  (let ((code (fix:and #xf entry)))
     (if (> code 12)
 	"invalid"
 	(string-append
 	 (vector-ref '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">")
 		     code)
-	 (let ((match (fix:and #xff (fix:lsh -8 entry))))
+	 (let ((match (fix:and #xff (fix:lsh entry -4))))
 	   (if (zero? match)
 	       " "
 	       (emacs-key-name (ascii->char match) false)))
-	 (if (fix:= 0 (fix:and #x10000 entry)) "" "1")
-	 (if (fix:= 0 (fix:and #x20000 entry)) "" "2")
-	 (if (fix:= 0 (fix:and #x40000 entry)) "" "3")
-	 (if (fix:= 0 (fix:and #x80000 entry)) "" "4")
+	 (let ((cbits (fix:and #xFF (fix:lsh entry -12))))
+	   (string-append
+	    (if (fix:= 0 (fix:and #x40 cbits)) "" "1")
+	    (if (fix:= 0 (fix:and #x10 cbits)) "" "2")
+	    (if (fix:= 0 (fix:and #x04 cbits)) "" "3")
+	    (if (fix:= 0 (fix:and #x01 cbits)) "" "4")
+	    (if (or (fix:= 0 (fix:and #x80 cbits))
+		    (and (fix:= code 11)
+			 (fix:= #x80 (fix:and #xC0 cbits))))
+		""
+		"5")
+	    (if (fix:= 0 (fix:and #x20 cbits)) "" "6")
+	    (if (or (fix:= 0 (fix:and #x08 cbits))
+		    (and (fix:= code 12)
+			 (fix:= #x08 (fix:and #x0C cbits))))
+		""
+		"7")
+	    (if (fix:= 0 (fix:and #x02 cbits)) "" "8")))
 	 (if (fix:= 0 (fix:and #x100000 entry)) "" "p")))))
 
 (define (substring-find-next-char-of-syntax string start end
@@ -181,7 +195,7 @@ which is selected so you can see it."
 		   (loop end))))))))))
 
 (define (describe-syntax-entry entry)
-  (let ((code (fix:and #xff entry)))
+  (let ((code (fix:and #x0f entry)))
     (if (> code 12)
 	(write-string "invalid")
 	(begin
@@ -191,25 +205,36 @@ which is selected so you can see it."
 	   (vector-ref '#("whitespace" "punctuation" "word" "symbol" "open"
 				       "close" "quote" "string" "math"
 				       "escape" "charquote" "comment"
-				       "endcomment" "invalid")
+				       "endcomment")
 		       code))
-	  (let ((match (fix:and #xff (fix:lsh -8 entry))))
+	  (let ((match (fix:and #xff (fix:lsh entry -4))))
 	    (if (not (zero? match))
 		(begin
 		  (write-string ", matches ")
 		  (write-string (emacs-key-name (ascii->char match) false)))))
-	  (if (not (fix:= 0 (fix:and #x10000 entry)))
-	      (write-string
-	       ",\n\t  is the first character of a comment-start sequence"))
-	  (if (not (fix:= 0 (fix:and #x20000 entry)))
-	      (write-string
-	       ",\n\t  is the second character of a comment-start sequence"))
-	  (if (not (fix:= 0 (fix:and #x40000 entry)))
-	      (write-string
-	       ",\n\t  is the first character of a comment-end sequence"))
-	  (if (not (fix:= 0 (fix:and #x80000 entry)))
-	      (write-string
-	       ",\n\t  is the second character of a comment-end sequence"))
+	  (let ((cbits (fix:and #xFF (fix:lsh entry -12)))
+		(decode-comment-bit
+		 (lambda (code pos se style)
+		   (if (not (fix:= 0 (fix:and code entry)))
+		       (begin
+			 (write-string ",\n\t  is the ")
+			 (write-string pos)
+			 (write-string " character of comment-")
+			 (write-string se)
+			 (write-string " sequence ")
+			 (write-string style))))))
+	    (decode-comment-bit #x40000 "first" "start" "B")
+	    (decode-comment-bit #x10000 "second" "start" "B")
+	    (decode-comment-bit #x04000 "first" "end" "B")
+	    (decode-comment-bit #x01000 "second" "end" "B")
+	    (if (not (and (fix:= code 11)
+			  (fix:= #x80000 (fix:and #xC0000 entry))))
+		(decode-comment-bit #x80000 "first" "start" "A"))
+	    (decode-comment-bit #x20000 "second" "start" "A")
+	    (if (not (and (fix:= code 12)
+			  (fix:= #x08000 (fix:and #x0C000 entry))))
+		(decode-comment-bit #x08000 "first" "end" "A"))
+	    (decode-comment-bit #x02000 "second" "end" "A"))
 	  (if (not (fix:= 0 (fix:and #x100000 entry)))
 	      (write-string ",\n\t  is a prefix character")))))
   (newline))
@@ -336,16 +361,29 @@ a comment ending."
   (mark-right-char-quoted? (mark-1+ mark)))
 
 (define-structure (parse-state (type vector))
-  (depth false read-only true)
-  (in-string? false read-only true)	;#F or ASCII delimiter.
-  (in-comment? false read-only true)	;#F or 1 or 2.
-  (quoted? false read-only true)
-  (last-sexp false)
-  (containing-sexp false)
-  (location false))
+  (depth #f read-only #t)
+  (in-string? #f read-only #t)		;#F or ASCII delimiter.
+  ;; COMMENT-STATE takes the following values:
+  ;; #f = not in comment
+  ;; 1 = in comment (style A)
+  ;; 2 = after first char of two-char comment start (style A)
+  ;; 3 = after first char of two-char comment end (style A)
+  ;; 5 = in comment (style B)
+  ;; 6 = after first char of two-char comment start (style B)
+  ;; 7 = after first char of two-char comment end (style B)
+  ;; COMMENT-START is valid when COMMENT-STATE is not #f.
+  (comment-state #f read-only #t)
+  (quoted? #f read-only #t)
+  (last-sexp #f)
+  (containing-sexp #f)
+  (location #f)
+  (comment-start #f))
+
+(define (parse-state-in-comment? state)
+  (memv (parse-state-comment-state state) '(1 3 5 7)))
 
 (define (forward-to-sexp-start mark end)
-  (parse-state-location (parse-partial-sexp mark end 0 true)))
+  (parse-state-location (parse-partial-sexp mark end 0 #t)))
 
 (define (parse-partial-sexp start end
 			    #!optional target-depth stop-before? old-state)
@@ -355,8 +393,8 @@ a comment ending."
 	 (if (or (default-object? target-depth) (not target-depth))
 	     -1000000
 	     target-depth))
-	(stop-before? (if (default-object? stop-before?) false stop-before?))
-	(old-state (if (default-object? old-state) false old-state))
+	(stop-before? (if (default-object? stop-before?) #f stop-before?))
+	(old-state (if (default-object? old-state) #f old-state))
 	(group (mark-group start)))
     (let ((state
 	   ((ucode-primitive scan-sexps-forward)
@@ -377,6 +415,10 @@ a comment ending."
       (set-parse-state-location! state
 				 (make-mark group
 					    (parse-state-location state)))
+      (if (parse-state-comment-start state)
+	  (set-parse-state-comment-start!
+	   state
+	   (make-mark group (parse-state-comment-start state))))
       state)))
 
 (define forward-one-sexp)
@@ -399,7 +441,7 @@ a comment ending."
 	    (mark-index end)
 	    depth
 	    sexp?
-	    true)))
+	    #t)))
       (and index (make-mark group index)))))
 
 (define (%backward-list start end depth sexp?)
@@ -419,37 +461,37 @@ a comment ending."
 
 (set! forward-one-sexp
 (named-lambda (forward-one-sexp start #!optional end)
-  (%forward-list start (default-end/forward start end) 0 true)))
+  (%forward-list start (default-end/forward start end) 0 #t)))
 
 (set! backward-one-sexp
 (named-lambda (backward-one-sexp start #!optional end)
   (let ((end (default-end/backward start end)))
-    (let ((mark (%backward-list start end 0 true)))
+    (let ((mark (%backward-list start end 0 #t)))
       (and mark (backward-prefix-chars mark end))))))
 
 (set! forward-one-list
 (named-lambda (forward-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) 0 false)))
+  (%forward-list start (default-end/forward start end) 0 #f)))
 
 (set! backward-one-list
 (named-lambda (backward-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) 0 false)))
+  (%backward-list start (default-end/backward start end) 0 #f)))
 
 (set! forward-up-one-list
 (named-lambda (forward-up-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) 1 false)))
+  (%forward-list start (default-end/forward start end) 1 #f)))
 
 (set! backward-up-one-list
 (named-lambda (backward-up-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) 1 false)))
+  (%backward-list start (default-end/backward start end) 1 #f)))
 
 (set! forward-down-one-list
 (named-lambda (forward-down-one-list start #!optional end)
-  (%forward-list start (default-end/forward start end) -1 false)))
+  (%forward-list start (default-end/forward start end) -1 #f)))
 
 (set! backward-down-one-list
 (named-lambda (backward-down-one-list start #!optional end)
-  (%backward-list start (default-end/backward start end) -1 false)))
+  (%backward-list start (default-end/backward start end) -1 #f)))
 
 )
 
