@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.76 2000/05/19 21:24:12 cph Exp $
+;;; $Id: imail-top.scm,v 1.77 2000/05/19 21:25:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -360,7 +360,7 @@ With prefix argument N, moves forward N messages,
 or backward if N is negative."
   "p"
   (lambda (delta)
-    (move-relative delta #f "message" #f)))
+    (move-relative-any delta #f)))
 
 (define-command imail-previous-message
   "Show previous message whether deleted or not.
@@ -431,6 +431,9 @@ With prefix argument N moves backward N messages with these flags."
 		     'DEFAULT-TYPE 'INSERTED-DEFAULT
 		     'HISTORY 'IMAIL-PROMPT-FOR-FLAGS
 		     'HISTORY-INDEX 0))
+
+(define (move-relative-any delta operation)
+  (move-relative delta #f "message" operation))
 
 (define (move-relative-undeleted delta operation)
   (move-relative delta message-undeleted? "undeleted message" operation))
@@ -758,7 +761,7 @@ Deleted messages stay in the file until the \\[imail-expunge] command is given."
 With prefix argument N, undeletes forward N messages,
  or backward if N is negative."
   "p"
-  (lambda (delta) (move-relative delta #f "message" undelete-message)))
+  (lambda (delta) (move-relative-any delta undelete-message)))
 
 (define-command imail-undelete-backward
   "Undelete this message and move to previous one.
@@ -794,8 +797,8 @@ With prefix argument N, removes FLAG to next N messages,
     (list (command-argument-numeric-value (command-argument))
 	  (imail-read-flag "Add flag" #f)))
   (lambda (delta flag)
-    (move-relative delta #f "message"
-		   (lambda (message) (set-message-flag message flag)))))
+    (move-relative-any delta
+		       (lambda (message) (set-message-flag message flag)))))
 
 (define-command imail-kill-flag
   "Remove FLAG from flags associated with current IMAIL message.
@@ -806,8 +809,8 @@ With prefix argument N, removes FLAG from next N messages,
     (list (command-argument-numeric-value (command-argument))
 	  (imail-read-flag "Remove flag" #t)))
   (lambda (delta flag)
-    (move-relative delta #f "message"
-		   (lambda (message) (clear-message-flag message flag)))))
+    (move-relative-any delta
+		       (lambda (message) (clear-message-flag message flag)))))
 
 (define (imail-read-flag prompt require-match?)
   (prompt-for-string-table-name
