@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.6 1990/01/18 22:42:42 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/crstop.scm,v 1.7 1991/02/06 02:59:38 jinx Exp $
 $MC68020-Header: toplev.scm,v 4.16 89/04/26 05:09:52 GMT cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ MIT in each case. |#
   (let ((input-default
 	 (make-pathname false false false false "bin" 'NEWEST))
 	(output-default
-	 (make-pathname false false false false "bits.x" false)))
+	 (make-pathname false false false false "moc" false)))
     (compiler-pathnames
      input-string
      (if (not (default-object? output-string))
@@ -70,7 +70,7 @@ MIT in each case. |#
 	     (lambda (lap-output-port)
 	       (cross-compile-scode (compiler-fasload input-pathname)
 				    (pathname-new-type output-pathname
-						       "binf.x")
+						       "fnib")
 				    rtl-output-port
 				    lap-output-port)))))))))
 
@@ -78,7 +78,7 @@ MIT in each case. |#
   (compiler-pathnames
    input-string
    (and (not (default-object? output-string)) output-string)
-   (make-pathname false false false false "bits.x" 'NEWEST)
+   (make-pathname false false false false "moc" 'NEWEST)
    (lambda (input-pathname output-pathname)
      output-pathname			; ignored
      (cross-compile-scode-end (compiler-fasload input-pathname)))))
