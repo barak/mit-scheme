@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: illdef.scm,v 1.2 1995/04/14 08:21:32 cph Exp $
+$Id: illdef.scm,v 1.3 1995/04/14 08:34:25 cph Exp $
 
 Copyright (c) 1991-95 Massachusetts Institute of Technology
 
@@ -68,6 +68,7 @@ MIT in each case. |#
   (walk/expression expression 'ILLEGAL))
 
 (define (walk/lambda expression context)
+  context
   (let loop
       ((expressions
 	(sequence-actions
