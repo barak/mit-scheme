@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for AIX
 
-$Id: aix.h,v 1.1 1993/11/08 06:11:11 gjr Exp $
+$Id: aix.h,v 1.2 1993/11/19 22:21:31 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -37,3 +37,7 @@ MIT in each case. */
 
 #define LIBS_SYSTEM -lbsd -ltermcap
 
+/* These definitions configure the microcode to support dynamic loading. */
+#define SOURCES_SYSTEM pruxdld.c
+#define OBJECTS_SYSTEM pruxdld.o
+#define LD_SWITCH_SYSTEM -bE:scheme.exp

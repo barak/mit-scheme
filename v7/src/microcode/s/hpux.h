@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for HP-UX
 
-$Id: hpux.h,v 1.10 1993/03/22 16:04:07 cph Exp $
+$Id: hpux.h,v 1.11 1993/11/19 22:21:32 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -48,6 +48,10 @@ MIT in each case. */
 /* For releases of hp-UX prior to 9.0 change the following lines to
    read X11R4 instead of X11R5.  */
 #define C_SWITCH_SYSTEM -D_HPUX -I/usr/include/X11R5
-#define LD_SWITCH_SYSTEM -L /usr/lib/X11R5
+#define LD_SWITCH_SYSTEM -L /usr/lib/X11R5 -Wl,-E
 
-#define LIB_DYNAMIC_LOAD /usr/lib/libdld.sl
+/* These definitions, and the -Wl,-E in LD_SWITCH_SYSTEM, configure
+   the microcode to support dynamic loading. */
+#define SOURCES_SYSTEM pruxdld.c
+#define OBJECTS_SYSTEM pruxdld.o
+#define LIBS_SYSTEM -ldld
