@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.15 1991/01/11 22:08:09 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/defstr.scm,v 14.16 1991/03/25 22:03:47 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -621,15 +621,8 @@ must be defined when the defstruct is evaluated.
 	(map cdr alist))))
 
 (define (constructor-definition/boa structure name lambda-list)
-  `(DEFINE (,name . ,lambda-list)
-     (,(let ((scheme-type (structure/scheme-type structure)))
-	 (if (eq? scheme-type 'RECORD)
-	     ((absolute 'RECORD-CONSTRUCTOR)
-	      (structure/type structure))
-	     ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
-	     (absolute scheme-type)))
-      ,@(constructor-prefix-slots structure)
-      ,@(parse-lambda-list lambda-list
+  (let ((handle-defaults
+	 (parse-lambda-list lambda-list
 	  (lambda (required optional rest)
 	    (let ((name->slot
 		   (lambda (name)
@@ -648,7 +641,19 @@ must be defined when the defstruct is evaluated.
 				   ,(slot/name slot)))
 			     (else
 			      (slot/default slot))))
-		     (structure/slots structure)))))))))
+		     (structure/slots structure)))))))
+	 (prefix-slots (constructor-prefix-slots structure))
+	 (scheme-type (structure/scheme-type structure)))
+    (if (eq? scheme-type 'RECORD)
+	`(DEFINE (,name . ,lambda-list)
+	   (,((access RECORD-CONSTRUCTOR '())
+	      (structure/type structure))
+	    ,@handle-defaults))
+	`(DEFINE (,name . ,lambda-list)
+	   ;; *** Kludge -- SCHEME-TYPE happens to be same as constructor.
+	   (,(absolute scheme-type)
+	    ,@prefix-slots
+	    ,@handle-defaults)))))
 
 (define (constructor-prefix-slots structure)
   (let ((offsets (make-list (structure/offset structure) false)))
