@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.8 1989/05/24 05:10:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm2.scm,v 4.9 1989/06/07 02:17:36 jinx Rel $
 $MC68020-Header: dassm2.scm,v 4.12 88/12/30 07:05:13 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -76,14 +76,16 @@ MIT in each case. |#
 			      (variable-cache-name
 			       (system-vector-ref new-block 3))
 			      arity))
-		     ((#x10c)		; interpreted
+		     ((#x10c		; interpreted
+		       #x160		; fixed arity primitive
+		       #x166)		; lexpr primitive
 		      (vector 'INTERPRETED
 			      (system-vector-ref new-block 3)
 			      arity))
 		     ((#x112		; arity
 		       #x11e		; entity
 		       #x124 #x12a #x130 #x136 #x13c ; specialized arity
-		       #x142 #x148 #x14e #x154 #x15e)
+		       #x142 #x148 #x14e #x154 #x15a)
 		      (vector 'COMPILED
 			      (system-vector-ref new-block 3)
 			      arity))
