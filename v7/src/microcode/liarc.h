@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.8 1993/11/01 15:30:34 gjr Exp $
+$Id: liarc.h,v 1.9 1993/11/08 21:43:42 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -38,6 +38,7 @@ MIT in each case. */
 #include <stdio.h>
 #include "ansidecl.h"
 #include "config.h"
+#include "dstack.h"
 #include "default.h"
 #include "object.h"
 #include "sdata.h"
