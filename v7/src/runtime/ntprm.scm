@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.40 2003/02/14 18:28:33 cph Exp $
+$Id: ntprm.scm,v 1.41 2003/09/14 00:20:42 cph Exp $
 
 Copyright 1995,1996,1998,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003 Massachusetts Institute of Technology
@@ -665,7 +665,8 @@ USA.
 	    (if index
 		(if (= index start)
 		    (loop (+ index 1))
-		    (cons (substring string start index)
+		    (cons (string-trim (substring string start index)
+				       (char-set #\"))
 			  (loop (+ index 1))))
 		(list (substring string start end))))
 	  '()))))
