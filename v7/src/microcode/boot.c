@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.76 1993/02/23 02:38:48 gjr Exp $
+$Id: boot.c,v 9.77 1993/02/23 20:19:14 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -389,7 +389,6 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   Enter_Interpreter ();
 }
 
-extern void EXFUN (Interpret, (Boolean));
 extern SCHEME_OBJECT EXFUN (Re_Enter_Interpreter, (void));
 
 static void
