@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.72 2001/05/24 17:46:45 cph Exp $
+;;; $Id: imail-file.scm,v 1.73 2001/05/25 02:45:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,7 @@
 (define-method container-url-for-prompt ((url <pathname-url>))
   (make-directory-url (pathname-container (pathname-url-pathname url))))
 
-(define-method url-child-name ((url <pathname-url>))
+(define-method url-content-name ((url <pathname-url>))
   (let ((pathname (pathname-url-pathname url)))
     (enough-namestring pathname (pathname-container pathname))))
 
@@ -196,7 +196,7 @@
 (define-method url-exists? ((url <directory-url>))
   (file-directory? (pathname-url-pathname url)))
 
-(define-method make-child-url ((url <directory-url>) name)
+(define-method make-content-url ((url <directory-url>) name)
   (let ((pathname (merge-pathnames name (pathname-url-pathname url))))
     ((standard-pathname-url-constructor pathname) pathname)))
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.162 2001/05/24 19:12:41 cph Exp $
+;;; $Id: imail-imap.scm,v 1.163 2001/05/25 02:45:41 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -170,15 +170,15 @@
 			    (get-personal-namespace url)
 			    "")))
 
-(define-method url-child-name ((url <imap-url>))
+(define-method url-content-name ((url <imap-url>))
   (let* ((mailbox (imap-url-mailbox url))
 	 (index (imap-mailbox-container-slash mailbox)))
     (if index
 	(string-tail mailbox (fix:+ index 1))
 	mailbox)))
 
-(define-method make-child-url ((url <imap-container-url>) child-name)
-  (imap-url-new-mailbox url (string-append (imap-url-mailbox url) child-name)))
+(define-method make-content-url ((url <imap-container-url>) name)
+  (imap-url-new-mailbox url (string-append (imap-url-mailbox url) name)))
 
 (define (imap-url-container-mailbox url)
   (let* ((mailbox (imap-url-mailbox url))

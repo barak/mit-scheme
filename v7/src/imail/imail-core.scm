@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.136 2001/05/24 17:51:14 cph Exp $
+;;; $Id: imail-core.scm,v 1.137 2001/05/25 02:45:29 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -145,26 +145,26 @@
 ;; server is Cyrus, this will return "imap://localhost/inbox/".
 (define-generic container-url-for-prompt (url))
 
-;; Return the child name of a URL.  The child name of a URL is the
+;; Return the content name of a URL.  The content name of a URL is the
 ;; suffix of the URL that uniquely identifies the resource with
 ;; respect to its container.
 ;;
 ;; Here are some examples:
 ;;
-;; URL					child name
-;; ---------------------------		----------
+;; URL					content name
+;; ---------------------------		------------
 ;; imap://localhost/inbox/foo		foo
 ;; imap://localhost/inbox/foo/		foo/
 ;; file:/usr/home/cph/foo.mail		foo.mail
-(define-generic url-child-name (url))
+(define-generic url-content-name (url))
 
-;; Return a URL that refers to the child CHILD-NAME of the container
+;; Return a URL that refers to the content NAME of the container
 ;; referred to by CONTAINER-URL.
-(define-generic make-child-url (container-url child-name))
+(define-generic make-content-url (container-url name))
 
-;; Return the base name of FOLDER-URL.  This is the child name of
+;; Return the base name of FOLDER-URL.  This is the content name of
 ;; FOLDER-URL, but presented in a type-independent way.  For example,
-;; if the child name of a file URL is "foo.mail", the base name is
+;; if the content name of a file URL is "foo.mail", the base name is
 ;; just "foo".
 (define-generic url-base-name (folder-url))
 
@@ -215,10 +215,10 @@
   (make-string-hash-table))
 
 (define (url-presentation-name url)
-  (let ((child-name (url-child-name url)))
-    (if (string-suffix? "/" child-name)
-	(string-head child-name (fix:- (string-length child-name) 1))
-	child-name)))
+  (let ((name (url-content-name url)))
+    (if (string-suffix? "/" name)
+	(string-head name (fix:- (string-length name) 1))
+	name)))
 
 ;; Do completion on URL-STRING, which is a partially-specified URL.
 ;; Tail-recursively calls one of the three procedure arguments, as
@@ -370,8 +370,8 @@
 (define-method container-url-for-prompt ((resource <resource>))
   (container-url-for-prompt (resource-locator resource)))
 
-(define-method url-child-name ((resource <resource>))
-  (url-child-name (resource-locator resource)))
+(define-method url-content-name ((resource <resource>))
+  (url-content-name (resource-locator resource)))
 
 (define-method url-base-name ((resource <resource>))
   (url-base-name (resource-locator resource)))
@@ -385,8 +385,8 @@
 (define-method %append-message (message (folder <folder>))
   (%append-message message (resource-locator folder)))
 
-(define-method make-child-url ((container <container>) child-name)
-  (make-child-url (resource-locator container) child-name))
+(define-method make-content-url ((container <container>) name)
+  (make-content-url (resource-locator container) name))
 
 (define-method container-url-contents ((container <container>))
   (container-url-contents (resource-locator container)))

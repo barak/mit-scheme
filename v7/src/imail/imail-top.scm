@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.250 2001/05/24 17:46:51 cph Exp $
+;;; $Id: imail-top.scm,v 1.251 2001/05/25 02:45:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -1375,7 +1375,7 @@ If it doesn't exist, it is created first."
       (list from
 	    (prompt-for-folder
 	     "Copy messages to folder"
-	     (make-child-url
+	     (make-content-url
 	      (or (let ((history
 			 (prompt-history-strings 'IMAIL-COPY-FOLDER-TARGET)))
 		    (and (pair? history)
