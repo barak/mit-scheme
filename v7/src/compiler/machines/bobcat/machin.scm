@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.4 1988/04/22 16:28:23 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.5 1988/05/02 23:53:41 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -35,7 +35,15 @@ MIT in each case. |#
 ;;;; Machine Model for 68020
 
 (declare (usual-integrations))
-(define-integrable (stack->memory-offset offset)
+;;; Size of words.  Some of the stuff in "assmd.scm" might want to
+;;; come here.
+
+(define-integrable scheme-datum-size 24)
+(define-integrable scheme-type-size 8)
+(define maximum-positive-fixnum
+  (-1+ (expt 2 (-1+ scheme-datum-size))))
+
+(define-integrable (stack->memory-offset offset)
   offset)
 
 (define ic-block-first-parameter-offset
