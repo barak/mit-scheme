@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.18 1991/08/23 23:25:44 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.19 1991/08/26 20:29:21 markf Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -464,7 +464,9 @@ MIT in each case. |#
 	      (or (null? types)
 		  (intersect-generalizations? types)))
 	    (fluid-let ((dynamic-handler-frames (cdr frames)))
-	      ((cdar frames) condition))))
+	      (without-stepping
+	       (lambda ()
+		 ((cdar frames) condition))))))
       (do ((frames static-handler-frames (cdr frames)))
 	  ((null? frames))
 	(if (let ((types (caar frames)))
@@ -472,7 +474,9 @@ MIT in each case. |#
 		  (intersect-generalizations? types)))
 	    (fluid-let ((static-handler-frames (cdr frames))
 			(dynamic-handler-frames '()))
-	      ((cdar frames) condition)))))))
+	      (without-stepping
+	       (lambda ()
+		 ((cdar frames) condition)))))))))
 
 ;;;; Standard Condition Signallers
 
