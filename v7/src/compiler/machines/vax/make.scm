@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.44 1989/05/21 17:58:19 jinx Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/make.scm,v 4.45 1989/08/02 01:36:55 cph Rel $
 $MC68020-Header: make.scm,v 4.44 89/05/21 14:52:30 GMT jinx Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -41,5 +41,6 @@ MIT in each case. |#
 (for-each (lambda (name)
 	    ((package/reference (find-package name) 'INITIALIZE-PACKAGE!)))
 	  '((COMPILER MACROS)
-	    (COMPILER DECLARATIONS)))
-(add-system! (make-system "Liar (DEC VAX)" 4 44 '()))
+	    (COMPILER DECLARATIONS)
+	    (COMPILER DISASSEMBLER MACROS)))
+(add-system! (make-system "Liar (DEC VAX)" 4 45 '()))
