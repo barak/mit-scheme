@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.2 1988/06/13 11:45:33 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.3 1988/06/16 06:30:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -102,12 +102,6 @@ MIT in each case. |#
 (define-integrable (system-hunk3-cons type cxr0 cxr1 cxr2)
   (object-new-type type (hunk3-cons cxr0 cxr1 cxr2)))
 
-(define-integrable (symbol-hash symbol)
-  (string-hash (symbol->string symbol)))
-
-(define (symbol-append . symbols)
-  (string->symbol (apply string-append (map symbol->string symbols))))
-
 (define (bind-cell-contents! cell new-value thunk)
   (let ((old-value))
     (dynamic-wind (lambda ()
@@ -183,29 +177,6 @@ MIT in each case. |#
 (define (quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
   *the-non-printing-object*)
-
-(define (define-structure/keyword-parser argument-list default-alist)
-  (if (null? argument-list)
-      (map cdr default-alist)
-      (let ((alist
-	     (map (lambda (entry) (cons (car entry) (cdr entry)))
-		  default-alist)))
-	(let loop ((arguments argument-list))
-	  (if (not (null? arguments))
-	      (begin
-		(if (null? (cdr arguments))
-		    (error "Keyword list does not have even length"
-			   argument-list))
-		(set-cdr! (or (assq (car arguments) alist)
-			      (error "Unknown keyword" (car arguments)))
-			  (cadr arguments))
-		(loop (cddr arguments)))))
-	(map cdr alist))))
-
-(define (syntaxer/cond-=>-helper form1-result thunk2 thunk3)
-  (if form1-result
-      ((thunk2) form1-result)
-      (thunk3)))
 
 (define syntaxer/default-environment
   (let () (the-environment)))
