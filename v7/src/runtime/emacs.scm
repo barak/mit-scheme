@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.44 1987/07/02 20:05:19 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/emacs.scm,v 13.45 1987/09/18 03:25:31 gjs Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -135,6 +135,32 @@
 "Error! Type ctl-E to enter error loop, anything else to return to top level.")
 	(if (not (char-ci=? (emacs-read-char-immediate) #\C-E))
 	    (abort-to-previous-driver "Quit!")))))
+
+(define emacs-check-and-clean-up-input-channel
+  (lambda (delete-mode interrupt-character)
+    (if (= delete-mode (access until-most-recent-interrupt-character interrupt-system))
+	(begin
+	  (flush-until-emacs-flush-character)
+	  (transmit-signal #\g)
+	  true)
+	)))
+
+(define flush-until-emacs-flush-character
+  (let ((flush-char1 (integer->char 192))) ;corresponds to null (ascii 0)
+    (declare (integrate-primitive-procedures tty-read-char-immediate
+					     char->integer
+					     &=))
+    (define &= (make-primitive-procedure '&=))
+    (define tty-read-char-immediate
+      (make-primitive-procedure 'tty-read-char-immediate))
+    (named-lambda (flush-until-emacs-flush-character)
+      (if (under-emacs?)
+	  (let loop ()
+	    (if (&= (char->integer (tty-read-char-immediate))
+		    192)		;corresponds to null (ascii 0)
+		'()
+		(loop)))))))
+
 
 (define normal-start-gc (access gc-start-hook gc-statistics-package))
 (define normal-finish-gc (access gc-finish-hook gc-statistics-package))
@@ -146,6 +172,8 @@
 (define normal-read-char-immediate
   (access tty-read-char-immediate console-input-port))
 (define normal-error-hook (access *error-decision-hook* error-system))
+(define normal-check-and-clean-up-input-channel
+  (access check-and-clean-up-input-channel interrupt-system))
 
 (define (install-emacs-hooks!)
   (set! (access gc-start-hook gc-statistics-package) emacs-start-gc)
@@ -157,7 +185,9 @@
   (set! (access read-finish-hook console-input-port) emacs-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	emacs-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) emacs-error-hook))
+  (set! (access *error-decision-hook* error-system) emacs-error-hook)
+  (set! (access check-and-clean-up-input-channel interrupt-system)
+	emacs-check-and-clean-up-input-channel))
 
 (define (install-normal-hooks!)
   (set! (access gc-start-hook gc-statistics-package) normal-start-gc)
@@ -169,7 +199,9 @@
   (set! (access read-finish-hook console-input-port) normal-read-finish)
   (set! (access tty-read-char-immediate console-input-port)
 	normal-read-char-immediate)
-  (set! (access *error-decision-hook* error-system) normal-error-hook))
+  (set! (access *error-decision-hook* error-system) normal-error-hook)
+  (set! (access check-and-clean-up-input-channel interrupt-system)
+	normal-check-and-clean-up-input-channel))
 
 (define under-emacs?
   (make-primitive-procedure 'UNDER-EMACS?))
