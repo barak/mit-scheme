@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.7 1995/01/12 17:24:26 ssmith Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/machines/i386/lapopt.scm,v 1.8 1995/01/12 17:29:24 ssmith Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -85,17 +85,17 @@ MIT in each case. |#
 		  (loop (cdr data))))))
       (if (pair? a)
 	  (if (number? (car a))
-		    (cons (car a)
-			  (make-reg-list (cdr a)))
-		    (let ((data (find-var (car a))))
-		      (if data
-			  (if (eq? (car data) 'R)
-			      (cons (cadr data)
-				    (make-reg-list (cdr a)))
+	      (cons (car a)
+		    (make-reg-list (cdr a)))
+	      (let ((data (find-var (car a))))
+		(if data
+		    (if (eq? (car data) 'R)
+			(cons (cadr data)
 			      (make-reg-list (cdr a)))
-			  (begin
-			    (pp (car a))
-			    ()))))
+			(make-reg-list (cdr a)))
+		    (begin
+		      (pp (car a))
+		      ()))))
 	  a))
     
     ;; Checks to see if the the pattern matches given data
@@ -145,7 +145,7 @@ MIT in each case. |#
 	       (time 0)
 	       (pipe-1-filled? #f)
 	       (pipe-1-data ())
-	       (last-mod-regs ())
+	       (last-mod-regs ()))
       (define (flush-pipe-1)
 	(if pipe-1-filled?
 	    (begin
