@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.2 1990/11/14 14:58:18 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sicp/studen.scm,v 1.3 1990/11/15 23:33:36 cph Exp $
 
 Copyright (c) 1987, 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -455,9 +455,7 @@ MIT in each case. |#
   (set! student-band-pathname
 	(merge-pathnames
 	 (make-pathname #f #f #f "sicp" "bin" #f)
-	 (->pathname
-	  (or ((make-primitive-procedure 'reload-band-name))
-	      ((make-primitive-procedure 'microcode-tables-filename))))))
+	 (system-library-directory-pathname false)))
   (add-event-receiver!
    event:after-restart
    (lambda ()
