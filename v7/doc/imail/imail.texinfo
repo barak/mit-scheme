@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.3 2000/07/11 01:43:43 cph Exp $
+@comment $Id: imail.texinfo,v 1.4 2000/07/11 02:29:40 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -162,12 +162,13 @@ the mail in the @samp{inbox} folder on your @sc{imap} server, type
 
 To use @sc{imail} effectively, it is helpful to know the terminology and
 understand the concepts underlying @sc{imail}'s design.  Here we will
-introduce you to messages, folders, and @sc{url}s.
+introduce you to messages, folders, @sc{url}s, and server connections.
 
 @menu
 * Messages::                    
 * Folders::                     
 * URLs::                        
+* Server Connections::          
 @end menu
 
 @node Messages, Folders, Concepts, Concepts
@@ -233,7 +234,7 @@ different @dfn{types} of folder are treated exactly the same by
 @sc{imail}.  Finally, because @sc{imail} is extensible, other types of
 folders may be supported in the future.
 
-@node URLs,  , Folders, Concepts
+@node URLs, Server Connections, Folders, Concepts
 @section URLs
 
 @cindex Uniform Resource Locator
@@ -412,8 +413,177 @@ individual messages; no editing commands, flags vs. labels.
 @end itemize
 @end ifset
 
+@node Server Connections,  , URLs, Concepts
+@section Server Connections
+
+@cindex connection state
+Unlike a file folder, in which the folder's contents are always
+available, access to an @sc{imap} folder requires an active network
+connection to the @sc{imap} server.  This adds an additional layer of
+complexity to the mail-reading process, which is reflected in the
+@dfn{connection state} of an @sc{imap} folder.
+
+@cindex online state
+@cindex offline state
+@cindex online mode
+@cindex offline mode
+@cindex disconnected mode
+An @sc{imap} folder can be in one of two states: @dfn{online}, meaning
+that there is an established network connection between @sc{imail} and
+the @sc{imap} server, and @dfn{offline} when there is not.  @sc{imail}
+is, at present, a very simple @sc{imap} mail reader: it must be online
+to read and manipulate mail messages.  Mail readers that have this
+property are said to operate in @dfn{online mode}.@footnote{@sc{imap}
+also supports two other modes of operation, called @dfn{offline mode}
+and @dfn{disconnected mode}; at present @sc{imail} does not support
+these alternate modes.} Do not confuse the online @emph{state} with
+online @emph{mode}.  When we refer to online or offline in this
+document, it always means the corresponding state.
+
+When an @sc{imap} folder is selected in an @sc{imail} buffer, the
+modeline for that buffer shows either @samp{online} or @samp{offline} to
+indicate the folder's connection state.  Normally, an @sc{imap} folder
+goes online when it is first selected, and stays online indefinitely
+until it is explicitly disconnected.@footnote{Although @sc{imap} servers
+are allowed to disconnect mail readers that are inactive for long
+periods of time, @sc{imail} silently keeps the connection open by
+periodically transmitting commands to the server.} Commands that break
+the connection are explicitly pointed out in their descriptions below;
+most other commands will force an @sc{imap} folder into the online state
+if it is offline.
+
 @node Commands, Variables, Concepts, Top
 @chapter Commands
+
+@sc{imail} provides a rich set of commands for manipulating messages.
+Like Rmail, most of these commands are bound to letter keys.
+
+The most important command is @kbd{M-x imail}, which is used to start
+@sc{imail}.  With no arguments, @kbd{M-x imail} reads the primary
+folder, selects the first unseen message in the folder, then selects the
+folder's buffer.  If the primary folder is an @sc{imap} folder, @kbd{M-x
+imail} will connect to the server and check for new mail.  If @kbd{M-x
+imail} is given a prefix argument, it will prompt for the @sc{url} of a
+folder rather than reading the primary folder.
+
+The buffer that shows a message in an @sc{imail} folder is put in
+@code{IMAIL} mode, which is a special mode in which most letter commands
+are defined to have special meanings.  Where possible, the letters
+chosen for these commands are the same as those for the corresponding
+Rmail commands.  The command keys specified in this chapter are for
+@code{IMAIL} mode, unless otherwise specified.
+
+@menu
+* Navigation::                  
+* Deleting Messages::           
+* Multiple Folders::            
+* Copying Messages::            
+* MIME Support::                
+* Flags::                       
+* Sending Replies::             
+* Summaries::                   
+* Other Commands::              
+* Differences between IMAIL and Rmail::  
+@end menu
+
+@node Navigation, Deleting Messages, Commands, Commands
+@section Navigation
+
+@example
+imail-first-message
+imail-first-unseen-message
+imail-last-message
+imail-next-message
+imail-next-same-subject
+imail-next-undeleted-message
+imail-previous-message
+imail-previous-same-subject
+imail-previous-undeleted-message
+imail-select-message
+@end example
+
+@node Deleting Messages, Multiple Folders, Navigation, Commands
+@section Deleting Messages
+
+@example
+imail-delete-backward
+imail-delete-forward
+imail-delete-message
+imail-expunge
+imail-undelete-backward
+imail-undelete-forward
+imail-undelete-previous-message
+@end example
+
+@node Multiple Folders, Copying Messages, Deleting Messages, Commands
+@section Multiple Folders
+
+@example
+imail-create-folder
+imail-delete-folder
+imail-input
+imail-rename-folder
+@end example
+
+@node Copying Messages, MIME Support, Multiple Folders, Commands
+@section Copying Messages
+
+@example
+imail-copy-folder
+imail-input-from-folder
+imail-output
+@end example
+
+@node MIME Support, Flags, Copying Messages, Commands
+@section MIME Support
+
+@example
+imail-mouse-save-mime-entity
+imail-save-attachment
+imail-save-mime-entity
+imail-toggle-mime-entity
+@end example
+
+@node Flags, Sending Replies, MIME Support, Commands
+@section Flags
+
+@example
+imail-add-flag
+imail-kill-flag
+imail-next-flagged-message
+imail-previous-flagged-message
+@end example
+
+@node Sending Replies, Summaries, Flags, Commands
+@section Sending Replies
+
+@example
+imail-continue
+imail-forward
+imail-mail
+imail-reply
+imail-resend
+@end example
+
+@node Summaries, Other Commands, Sending Replies, Commands
+@section Summaries
+
+@node Other Commands, Differences between IMAIL and Rmail, Summaries, Commands
+@section Other Commands
+
+@example
+imail-bury
+imail-disconnect
+imail-get-new-mail
+imail-quit
+imail-save-folder
+imail-search
+imail-toggle-header
+imail-toggle-message
+@end example
+
+@node Differences between IMAIL and Rmail,  , Other Commands, Commands
+@section Differences between IMAIL and Rmail
 
 @node Variables, Index, Commands, Top
 @chapter Variables
