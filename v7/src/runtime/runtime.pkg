@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.370 2001/06/15 21:20:53 cph Exp $
+$Id: runtime.pkg,v 14.371 2001/08/03 20:29:54 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -2020,15 +2020,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "urtrap")
   (parent ())
   (export ()
+	  cached-reference-trap-value
+	  cached-reference-trap?
 	  make-unassigned-reference-trap
 	  make-unbound-reference-trap
 	  map-reference-trap
+	  map-reference-trap-value
 	  reference-trap-kind
 	  reference-trap-kind-name
 	  reference-trap?
 	  unassigned-reference-trap?
 	  unbound-reference-trap?
-	  unmap-reference-trap))
+	  unmap-reference-trap
+	  unmapped-unassigned-reference-trap?
+	  unmapped-unbound-reference-trap?))
 
 (define-package (runtime rep)
   (files "rep")
@@ -3130,6 +3135,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  user-initial-syntax-table)
   (export (runtime defstruct)
 	  parse-lambda-list)
+  (export (runtime environment)
+	  syntax-table-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime illegal-definitions)

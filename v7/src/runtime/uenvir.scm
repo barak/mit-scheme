@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.40 1999/10/23 03:08:00 cph Exp $
+$Id: uenvir.scm,v 14.41 2001/08/03 20:29:57 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Microcode Environments
@@ -44,7 +45,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-parent environment)
   (cond ((system-global-environment? environment)
-	 (error "Global environment has no parent" environment))
+	 (error:bad-range-argument environment 'ENVIRONMENT-PARENT))
 	((ic-environment? environment)
 	 (ic-environment/parent environment))
 	((stack-ccenv? environment)
@@ -56,7 +57,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (environment-bound-names environment)
   (cond ((system-global-environment? environment)
-	 (system-global-environment/bound-names environment))
+	 (system-global-environment/bound-names))
 	((ic-environment? environment)
 	 (ic-environment/bound-names environment))
 	((stack-ccenv? environment)
@@ -67,13 +68,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (illegal-environment environment 'ENVIRONMENT-BOUND-NAMES))))
 
 (define (environment-bindings environment)
-  (map (lambda (name)
-	 (cons name
-	       (let ((value (environment-lookup environment name)))
-		 (if (unassigned-reference-trap? value)
-		     '()
-		     (list value)))))
-       (environment-bound-names environment)))
+  (cond ((system-global-environment? environment)
+	 (system-global-environment/bindings))
+	((ic-environment? environment)
+	 (ic-environment/bindings environment))
+	(else
+	 (map (lambda (name)
+		(cons name
+		      (let ((value (environment-lookup environment name)))
+			(if (unassigned-reference-trap? value)
+			    '()
+			    (list value)))))
+	      (environment-bound-names environment)))))
 
 (define (environment-arguments environment)
   (cond ((ic-environment? environment)
@@ -146,19 +152,68 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (illegal-environment object procedure)
   (error:wrong-type-argument object "environment" procedure))
 
+;;;; Global environment
+
+(define-integrable (system-global-environment? object)
+  (eq? system-global-environment object))
+
+(define (system-global-environment/bound-names)
+  (walk-global map-entry/bound-names))
+
+(define (system-global-environment/bindings)
+  (walk-global map-entry/bindings))
+
+(define (map-entry/bound-names name value)
+  value
+  name)
+
+(define (map-entry/bindings name value)
+  (cons name
+	(if (unassigned-reference-trap? value)
+	    '()
+	    (list value))))
+
+(define (walk-global map-entry)
+  (let ((obarray (fixed-objects-item 'OBARRAY)))
+    (let ((n-buckets (vector-length obarray)))
+      (let per-bucket ((index 0) (result '()))
+	(if (fix:< index n-buckets)
+	    (let per-symbol
+		((bucket (vector-ref obarray index))
+		 (result result))
+	      (if (pair? bucket)
+		  (per-symbol (cdr bucket)
+			      (let ((name (car bucket)))
+				(if (special-unbound-name? name)
+				    result
+				    (let ((value
+					   (map-reference-trap-value
+					    (lambda ()
+					      (system-pair-cdr name)))))
+				      (if (unbound-reference-trap? value)
+					  result
+					  (cons (map-entry name value)
+						result))))))
+		  (per-bucket (fix:+ index 1) result)))
+	    result)))))
+
+(define (special-unbound-name? name)
+  (or (eq? name package-name-tag)
+      (eq? name syntax-table-tag)))
+
 ;;;; Interpreter Environments
 
 (define (interpreter-environment? object)
   (or (system-global-environment? object)
       (ic-environment? object)))
 
+(define-integrable (ic-environment? object)
+  (object-type? (ucode-type environment) object))
+
 (define (guarantee-interpreter-environment object)
   (if (not (interpreter-environment? object))
       (error:wrong-type-datum object "interpreter environment"))
   object)
-
-(define-integrable (system-global-environment? object)
-  (eq? system-global-environment object))
 
 (define (interpreter-environment/bound? environment name)
   (not (lexical-unbound? environment name)))
@@ -172,107 +227,88 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (lexical-assignment environment name value)
   unspecific)
 
-(define (system-global-environment/bound-names environment)
-  (list-transform-negative (obarray->list (fixed-objects-item 'OBARRAY))
-    (lambda (symbol)
-      (unbound-name? environment symbol))))
-
-(define-integrable (ic-environment? object)
-  (object-type? (ucode-type environment) object))
-
-(define (ic-environment/has-parent? environment)
-  (not (eq? (ic-environment/parent environment) null-environment)))
-
-(define (ic-environment/parent environment)
-  (select-parent (ic-environment->external environment)))
-
-(define (ic-environment/lambda environment)
-  (select-lambda (ic-environment->external environment)))
-
-(define (ic-environment/procedure environment)
-  (select-procedure (ic-environment->external environment)))
-
 (define (ic-environment/bound-names environment)
-  (list-transform-negative
-      (let ((external (ic-environment->external environment))
-	    (parameters (lambda-bound (ic-environment/lambda environment)))
-	    (extension-names
-	     (lambda (environment tail)
-	       (let ((extension (select-extension environment)))
-		 (if (environment-extension? extension)
-		     (map* tail car (environment-extension-aux-list extension))
-		     tail)))))
-	(extension-names environment
-			 (if (eq? environment external)
-			     parameters
-			     (extension-names external parameters))))
-    (lambda (name)
-      (unbound-name? environment name))))
+  (map-ic-environment-bindings map-entry/bound-names environment))
 
-(define (unbound-name? environment name)
-  (if (eq? name package-name-tag)
-      #t
-      (lexical-unbound? environment name)))
+(define (ic-environment/bindings environment)
+  (map-ic-environment-bindings map-entry/bindings environment))
+
+(define (map-ic-environment-bindings map-entry environment)
+  (let ((external (ic-external-frame environment))
+	(do-frame
+	 (lambda (frame)
+	   (let ((procedure (ic-frame-procedure frame)))
+	     (if (vector? procedure)
+		 (append! (walk-ic-frame-extension procedure map-entry)
+			  (walk-ic-procedure-args frame
+						  (vector-ref procedure 1)
+						  map-entry))
+		 (walk-ic-procedure-args frame procedure map-entry))))))
+    (if (eq? external environment)
+	(do-frame environment)
+	(append! (do-frame environment) (do-frame external)))))
+
+(define (walk-ic-procedure-args frame procedure map-entry)
+  (let ((name-vector (system-pair-cdr (procedure-lambda procedure))))
+    (let loop ((index (vector-length name-vector)) (result '()))
+      (if (fix:> index 1)
+	  (let ((index (fix:- index 1)))
+	    (loop index
+		  (let ((name (vector-ref name-vector index)))
+		    (if (special-unbound-name? name)
+			result
+			(let ((value (ic-frame-arg frame index)))
+			  (if (unbound-reference-trap? value)
+			      result
+			      (cons (map-entry name value) result)))))))
+	  result))))
+
+(define (walk-ic-frame-extension extension map-entry)
+  (let ((limit (fix:+ 3 (object-datum (vector-ref extension 2)))))
+    (let loop ((index 3) (result '()))
+      (if (fix:< index limit)
+	  (loop (fix:+ index 1)
+		(let ((p (vector-ref extension index)))
+		  (let ((name (car p)))
+		    (if (special-unbound-name? name)
+			result
+			(cons (map-entry name
+					 (map-reference-trap-value
+					  (lambda () (cdr p))))
+			      result)))))
+	  result))))
 
 (define (ic-environment/arguments environment)
-  (lambda-components* (ic-environment/lambda environment)
-    (lambda (name required optional rest body)
-      name body
-      (let ((lookup
-	     (lambda (name)
-	       (interpreter-environment/lookup environment name))))
-	(map* (map* (if rest (lookup rest) '())
-		    lookup
-		    optional)
-	      lookup
-	      required)))))
+  (let ((environment (ic-external-frame environment)))
+    (walk-ic-procedure-args environment
+			    (ic-frame-procedure* environment)
+			    (lambda (name value) name value))))
 
-(define (ic-environment/set-parent! environment parent)
-  (let ((extension (select-extension (ic-environment->external environment))))
-    (if (environment-extension? extension)
-	(begin
-	  (set-environment-extension-parent! extension parent)
-	  (system-pair-set-cdr! (environment-extension-procedure extension)
-				parent))
-	(system-pair-set-cdr! extension parent))))
+(define (ic-environment/has-parent? environment)
+  (interpreter-environment? (ic-frame-parent environment)))
 
-(define (ic-environment/remove-parent! environment)
-  (ic-environment/set-parent! environment null-environment))
+(define (ic-environment/parent environment)
+  (let ((parent (ic-frame-parent environment)))
+    (if (not (interpreter-environment? parent))
+	(error:bad-range-argument environment 'ENVIRONMENT-PARENT))
+    parent))
 
-;;  This corresponds to the #defines in sdata.h
-
-(define null-environment
-  (object-new-type (object-type #F)
-		   (fix:xor (object-datum #F) 1)))
-
-;;(define null-environment
-;;  (object-new-type (ucode-type null) 1))
+(define (ic-frame-parent environment)
+  (procedure-environment (ic-environment/procedure environment)))
 
 (define (make-null-interpreter-environment)
-  (let ((environment (let () (the-environment))))
-    (ic-environment/remove-parent! environment)
+  (let ((environment (let () (the-environment)))
+	(null-environment
+	 (object-new-type (object-type #F)
+			  (fix:xor (object-datum #F) 1))))
+    (let ((procedure
+	   (ic-frame-procedure (ic-external-frame environment))))
+      (if (vector? procedure)
+	  (begin
+	    (vector-set! procedure 0 null-environment)
+	    (system-pair-set-cdr! (vector-ref procedure 1) null-environment))
+	  (system-pair-set-cdr! procedure null-environment)))
     environment))
-
-(define (ic-environment->external environment)
-  (let ((procedure (select-procedure environment)))
-    (if (internal-lambda? (procedure-lambda procedure))
-	(procedure-environment procedure)
-	environment)))
-
-(define-integrable (select-extension environment)
-  (system-vector-ref environment 0))
-
-(define (select-procedure environment)
-  (let ((object (select-extension environment)))
-    (if (environment-extension? object)
-	(environment-extension-procedure object)
-	object)))
-
-(define (select-parent environment)
-  (procedure-environment (select-procedure environment)))
-
-(define (select-lambda environment)
-  (procedure-lambda (select-procedure environment)))
 
 (define (extend-ic-environment environment)
   (if (not (or (system-global-environment? environment)
@@ -283,6 +319,35 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      environment
      (make-syntax-table (environment-syntax-table environment)))
     environment))
+
+(define (ic-environment/lambda environment)
+  (procedure-lambda (ic-environment/procedure environment)))
+
+(define (ic-environment/procedure environment)
+  (let ((procedure (ic-frame-procedure* environment)))
+    (if (internal-lambda? (procedure-lambda procedure))
+	(ic-frame-procedure* (procedure-environment procedure))
+	procedure)))
+
+(define (ic-external-frame environment)
+  (let ((procedure (ic-frame-procedure* environment)))
+    (if (internal-lambda? (procedure-lambda procedure))
+	(procedure-environment procedure)
+	environment)))
+
+(define (ic-frame-procedure* environment)
+  (let ((procedure (ic-frame-procedure environment)))
+    (if (vector? procedure)
+	(vector-ref procedure 1)
+	procedure)))
+
+(define-integrable (ic-frame-procedure environment)
+  (system-vector-ref environment 0))
+
+(define-integrable (ic-frame-arg environment index)
+  (map-reference-trap-value
+   (lambda ()
+     (system-vector-ref environment index))))
 
 ;;;; Compiled Code Environments
 

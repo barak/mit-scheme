@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.5 1999/01/02 06:19:10 cph Exp $
+$Id: urtrap.scm,v 14.6 2001/08/03 20:29:59 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Reference Traps
@@ -33,8 +34,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (lambda (trap port)
 			(write-char #\space port)
 			(write (reference-trap-kind trap) port)))))
-  (kind false read-only true)
-  (extra false read-only true))
+  (kind #f read-only #t)
+  (extra #f read-only #t))
 
 (define-primitives
   primitive-object-type?
@@ -45,7 +46,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (primitive-object-type? (ucode-type reference-trap) (getter))
       (let ((index (object-datum (getter))))
 	(if (<= index trap-max-immediate)
-	    (make-reference-trap index false)
+	    (make-reference-trap index #f)
 	    (make-reference-trap (primitive-object-ref (getter) 0)
 				 (primitive-object-ref (getter) 1))))
       (getter)))
@@ -60,46 +61,54 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (reference-trap-extra trap))))
       trap))
 
-(define (reference-trap-kind-name kind)
-  (or (and (< kind (vector-length trap-kind-names))
-	   (vector-ref trap-kind-names kind))
-      'UNKNOWN))
+;;; The following must agree with the microcode.
+(define-integrable trap-max-immediate 9)
 
+(define (reference-trap-kind-name kind)
+  (case kind
+    ((0) 'UNASSIGNED)
+    ((2) 'UNBOUND)
+    ((6) 'EXPENSIVE)
+    ((14) 'COMPILER-CACHED)
+    (else #f)))
+
 (define (make-unassigned-reference-trap)
-  (make-reference-trap 0 false))
+  (make-reference-trap 0 #f))
 
 (define (unassigned-reference-trap? object)
   (and (reference-trap? object)
-       (memq (reference-trap-kind-name (reference-trap-kind object))
-	     '(UNASSIGNED UNASSIGNED-DANGEROUS))))
+       (fix:= 0 (reference-trap-kind object))))
+
+(define (unmapped-unassigned-reference-trap? getter)
+  (and (primitive-object-type? (ucode-type reference-trap) (getter))
+       (fix:= 0 (object-datum (getter)))))
 
 (define (make-unbound-reference-trap)
-  (make-reference-trap 2 false))
+  (make-reference-trap 2 #f))
 
 (define (unbound-reference-trap? object)
   (and (reference-trap? object)
-       (memq (reference-trap-kind-name (reference-trap-kind object))
-	     '(UNBOUND UNBOUND-DANGEROUS))))
-      
-;;; The following must agree with the microcode.
+       (fix:= 2 (reference-trap-kind object))))
 
-(define-integrable trap-max-immediate 9)
+(define (unmapped-unbound-reference-trap? getter)
+  (and (primitive-object-type? (ucode-type reference-trap) (getter))
+       (fix:= 2 (object-datum (getter)))))
 
-(define-integrable trap-kind-names
-  '#(UNASSIGNED				;0
-     UNASSIGNED-DANGEROUS		;1
-     UNBOUND				;2
-     UNBOUND-DANGEROUS			;3
-     ILLEGAL				;4
-     ILLEGAL-DANGEROUS			;5
-     #F					;6
-     #F					;7
-     #F					;8
-     #F					;9
-     NOP				;10
-     DANGEROUS				;11
-     FLUID				;12
-     FLUID-DANGEROUS			;13
-     COMPILER-CACHED			;14
-     COMPILER-CACHED-DANGEROUS		;15
-     ))
+(define (cached-reference-trap? object)
+  (and (reference-trap? object)
+       (fix:= 14 (reference-trap-kind object))))
+
+(define (cached-reference-trap-value trap)
+  (if (not (cached-reference-trap? trap))
+      (error:wrong-type-argument trap "cached reference trap"
+				 'CACHED-REFERENCE-TRAP-VALUE))
+  (map-reference-trap
+   (let ((cache (reference-trap-extra trap)))
+     (lambda ()
+       (primitive-object-ref cache 0)))))
+
+(define (map-reference-trap-value getter)
+  (let ((value (map-reference-trap getter)))
+    (if (cached-reference-trap? value)
+	(cached-reference-trap-value value)
+	value)))
