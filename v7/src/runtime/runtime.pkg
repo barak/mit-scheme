@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.90 1991/02/19 22:45:36 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.91 1991/03/01 01:06:31 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -53,8 +53,9 @@ MIT in each case. |#
     (else))
   (file-case os-type
     ((unix) "unxpth" "unxprm")
-    ((vms) "vmspth")
-    (else "unkpth")))
+    ;;((vms) "vmspth")
+    ;;(else "unkpth")
+    (else)))
 
 (define-package (package)
   ;; The information appearing here must be duplicated in the cold load
@@ -443,7 +444,8 @@ MIT in each case. |#
 (define-package (runtime directory)
   (file-case os-type
     ((unix) "unxdir")
-    (else "unkdir"))
+    ;;(else "unkdir")
+    (else))
   (parent ())
   (export ()
 	  directory-read)
@@ -737,6 +739,9 @@ MIT in each case. |#
 (define-package (runtime generic-input)
   (files "genin")
   (parent ())
+  (export ()
+	  make-generic-input-port
+	  set-input-port/associated-port!)
   (export (runtime console-input)
 	  operation/buffer-size
 	  operation/buffered-chars
@@ -758,17 +763,14 @@ MIT in each case. |#
 	  operation/read-chars
 	  operation/read-string
 	  operation/set-buffer-size)
-  (export (runtime socket)
-	  make-generic-input-port
-	  set-input-port/associated-port!)
-  (export (runtime subprocess)
-	  make-generic-input-port
-	  set-input-port/associated-port!)
   (initialization (initialize-package!)))
 
 (define-package (runtime generic-output)
   (files "genout")
   (parent ())
+  (export ()
+	  make-generic-output-port
+	  set-output-port/associated-port!)
   (export (runtime console-output)
 	  operation/buffer-size
 	  operation/buffered-chars
@@ -783,12 +785,6 @@ MIT in each case. |#
 	  operation/set-buffer-size
 	  operation/write-char
 	  operation/write-string)
-  (export (runtime socket)
-	  make-generic-output-port
-	  set-output-port/associated-port!)
-  (export (runtime subprocess)
-	  make-generic-output-port
-	  set-output-port/associated-port!)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -1070,6 +1066,7 @@ MIT in each case. |#
 	  weak-car
 	  weak-cdr
 	  weak-cons
+	  weak-delq!
 	  weak-list->list
 	  weak-memq
 	  weak-pair/car?
@@ -1415,8 +1412,9 @@ MIT in each case. |#
 (define-package (runtime pathname-parser)
   (file-case os-type
     ((unix) "unxpar")
-    ((vms) "vmspar")
-    (else "unkpar"))
+    ;;((vms) "vmspar")
+    ;;(else "unkpar")
+    (else))
   (parent (runtime pathname))
   (export ()
 	  pathname-as-directory)
@@ -1426,8 +1424,9 @@ MIT in each case. |#
 (define-package (runtime pathname-unparser)
   (file-case os-type
     ((unix) "unxunp")
-    ((vms) "vmsunp")
-    (else "unkunp"))
+    ;;((vms) "vmsunp")
+    ;;(else "unkunp")
+    (else))
   (parent (runtime pathname))
   (export (runtime pathname)
 	  pathname-unparse
@@ -1459,21 +1458,64 @@ MIT in each case. |#
   (files "io")
   (parent ())
   (export ()
-	  close-all-open-files
-	  copy-file)
-  (export (runtime socket)
+	  channel-blocking
+	  channel-blocking?
 	  channel-close
-	  channel-descriptor
-	  make-channel
-	  with-channel-blocking)
-  (export (runtime subprocess)
-	  make-channel
+	  channel-nonblocking
+	  channel-read
+	  channel-read-block
+	  channel-table
+	  channel-type
+	  channel-type=block-device?
+	  channel-type=character-device?
+	  channel-type=directory?
+	  channel-type=file?
+	  channel-type=pty-master?
+	  channel-type=terminal?
+	  channel-type=unknown?
+	  channel-write
+	  channel-write-block
+	  channel-write-char-block
+	  channel-write-string-block
+	  channel?
+	  close-all-open-files
+	  copy-file
+	  file-length
+	  file-open-append-channel
+	  file-open-input-channel
+	  file-open-io-channel
+	  file-open-output-channel
+	  file-position
+	  file-set-position
+	  make-pipe
+	  open-pty-master
 	  pty-master-continue
 	  pty-master-interrupt
 	  pty-master-kill
 	  pty-master-quit
 	  pty-master-send-signal
-	  pty-master-stop)
+	  pty-master-stop
+	  terminal-cooked-input
+	  terminal-cooked-input?
+	  terminal-cooked-output
+	  terminal-cooked-output?
+	  terminal-drain-output
+	  terminal-flush-input
+	  terminal-flush-output
+	  terminal-get-state
+	  terminal-input-baud-rate
+	  terminal-output-baud-rate
+	  terminal-raw-input
+	  terminal-raw-output
+	  terminal-set-state
+	  tty-input-channel
+	  tty-output-channel
+	  with-channel-blocking)
+  (export (runtime socket)
+	  channel-descriptor
+	  make-channel)
+  (export (runtime subprocess)
+	  channel-descriptor)
   (export (runtime generic-input)
 	  bind-port-for-errors
 	  input-buffer/buffered-chars
@@ -1503,18 +1545,13 @@ MIT in each case. |#
 	  output-buffer/write-string-block)
   (export (runtime file-input)
 	  bind-port-for-errors
-	  file-length
-	  file-open-input-channel
 	  input-buffer/chars-remaining
 	  input-buffer/read-substring
 	  make-input-buffer)
   (export (runtime file-output)
-	  file-open-append-channel
-	  file-open-output-channel
 	  make-output-buffer)
   (export (runtime console-input)
 	  bind-port-for-errors
-	  channel-type=file?
 	  input-buffer/buffer-contents
 	  input-buffer/buffered-chars
 	  input-buffer/channel
@@ -1525,8 +1562,7 @@ MIT in each case. |#
 	  input-buffer/set-buffer-contents
 	  input-buffer/set-size
 	  input-buffer/size
-	  make-input-buffer
-	  tty-input-channel)
+	  make-input-buffer)
   (export (runtime console-output)
 	  bind-port-for-errors
 	  make-output-buffer
@@ -1535,15 +1571,7 @@ MIT in each case. |#
 	  output-buffer/drain-block
 	  output-buffer/set-size
 	  output-buffer/size
-	  output-buffer/write-string-block
-	  tty-output-channel)
-  (export (runtime rep)
-	  channel-type=terminal?
-	  terminal-cooked-input
-	  terminal-cooked-output
-	  terminal-get-state
-	  terminal-raw-input
-	  terminal-set-state)
+	  output-buffer/write-string-block)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -1898,21 +1926,32 @@ MIT in each case. |#
   (parent ())
   (export ()
 	  make-subprocess
-	  os-job-control?
+	  run-subprocess-in-foreground
 	  scheme-subprocess-environment
-	  subprocess-continue
-	  subprocess-ctty-type
+	  start-batch-subprocess
+	  start-pipe-subprocess
+	  start-pty-subprocess
+	  start-subprocess-in-background
+	  subprocess-continue-background
+	  subprocess-continue-foreground
 	  subprocess-delete
 	  subprocess-id
+	  subprocess-input-channel
 	  subprocess-input-port
 	  subprocess-interrupt
+	  subprocess-job-control-available?
+	  subprocess-job-control-status
 	  subprocess-kill
 	  subprocess-list
+	  subprocess-output-channel
 	  subprocess-output-port
+	  subprocess-pty-master
 	  subprocess-quit
 	  subprocess-signal
 	  subprocess-status
-	  subprocess-stop)
+	  subprocess-stop
+	  subprocess-wait
+	  subprocess?)
   (initialization (initialize-package!)))
 
 (define-package (runtime graphics)
@@ -2172,8 +2211,9 @@ MIT in each case. |#
 (define-package (runtime working-directory)
   (file-case os-type
     ((unix) "unxcwd")
-    ((vms) "vmscwd")
-    (else "unkcwd"))
+    ;;((vms) "vmscwd")
+    ;;(else "unkcwd")
+    (else))
   (files "wrkdir")
   (parent ())
   (export ()

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.12 1990/02/14 01:56:12 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/list.scm,v 14.13 1991/03/01 01:06:17 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -225,6 +225,28 @@ MIT in each case. |#
 	   (if (eq? object (system-pair-car weak-list))
 	       weak-list
 	       (loop (system-pair-cdr weak-list)))))))
+
+(define (weak-delq! item items)
+  (letrec ((trim-initial-segment
+	    (lambda (items)
+	      (if (weak-pair? items)
+		  (if (or (eq? item (system-pair-car items))
+			  (eq? false (system-pair-car items)))
+		      (trim-initial-segment (system-pair-cdr items))
+		      (begin
+			(locate-initial-segment items (system-pair-cdr items))
+			items))
+		  items)))
+	   (locate-initial-segment
+	    (lambda (last this)
+	      (if (weak-pair? this)
+		  (if (or (eq? item (system-pair-car this))
+			  (eq? false (system-pair-car this)))
+		      (set-cdr! last
+				(trim-initial-segment (system-pair-cdr this)))
+		      (locate-initial-segment this (system-pair-cdr this)))
+		  this))))
+    (trim-initial-segment items)))
 
 (define (weak-list->list weak-list)
   (if (weak-pair? weak-list)

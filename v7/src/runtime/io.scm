@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.17 1991/02/15 18:06:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.18 1991/03/01 01:06:03 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -282,6 +282,13 @@ MIT in each case. |#
 (define (file-set-position channel position)
   ((ucode-primitive file-set-position 2) (channel-descriptor channel)
 					 position))
+
+(define (make-pipe)
+  (without-interrupts
+   (lambda ()
+     (let ((pipe ((ucode-primitive make-pipe 0))))
+       (values (make-channel (car pipe))
+	       (make-channel (cdr pipe)))))))
 
 ;;;; Terminal Primitives
 
@@ -520,6 +527,7 @@ MIT in each case. |#
   (channel false read-only true)
   string
   start-index
+  ;; END-INDEX is zero iff CHANNEL is closed.
   end-index)
 
 (define (make-input-buffer channel buffer-size)
@@ -539,12 +547,12 @@ MIT in each case. |#
 (define (input-buffer/set-size buffer buffer-size)
   ;; Returns the actual buffer size, which may be different from the arg.
   ;; Discards any buffered characters.
-  (let ((buffer-size (if (fix:> buffer-size 1) buffer-size 1)))
-    (set-input-buffer/string! buffer (make-string buffer-size))
-    (let ((index (if (fix:= (input-buffer/end-index buffer) 0) 0 buffer-size)))
-      (set-input-buffer/start-index! buffer index)
-      (set-input-buffer/end-index! buffer index))
-    buffer-size))
+  (if (not (fix:= (input-buffer/end-index buffer) 0))
+      (let ((buffer-size (if (fix:> buffer-size 1) buffer-size 1)))
+	(set-input-buffer/string! buffer (make-string buffer-size))
+	(set-input-buffer/start-index! buffer buffer-size)
+	(set-input-buffer/end-index! buffer buffer-size)
+	buffer-size)))
 
 (define (input-buffer/flush buffer)
   (set-input-buffer/start-index! buffer (input-buffer/end-index buffer)))
@@ -594,7 +602,9 @@ MIT in each case. |#
     (if end-index
 	(begin
 	  (set-input-buffer/start-index! buffer 0)
-	  (set-input-buffer/end-index! buffer end-index)))
+	  (set-input-buffer/end-index! buffer end-index)
+	  (if (fix:= end-index 0)
+	      (channel-close (input-buffer/channel buffer)))))
     end-index))
 
 (define-integrable (input-buffer/fill* buffer)
@@ -717,11 +727,11 @@ MIT in each case. |#
 		  (input-buffer/end-index buffer))))
 
 (define (input-buffer/set-buffer-contents buffer contents)
-  (let ((string (input-buffer/string buffer)))
-    (let ((current-size (string-length string))
-	  (contents-size (string-length contents)))
-      (if (fix:> contents-size current-size)
-	  (input-buffer/set-size buffer contents-size))
-      (substring-move-left! contents 0 contents-size string 0)
-      (set-input-buffer/start-index! buffer 0)
-      (set-input-buffer/end-index! buffer contents-size))))
+  (let ((contents-size (string-length contents)))
+    (if (fix:> contents-size 0)
+	(let ((string (input-buffer/string buffer)))
+	  (if (fix:> contents-size (string-length string))
+	      (input-buffer/set-size buffer contents-size))
+	  (substring-move-left! contents 0 contents-size string 0)
+	  (set-input-buffer/start-index! buffer 0)
+	  (set-input-buffer/end-index! buffer contents-size)))))
