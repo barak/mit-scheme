@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.7 1990/09/28 01:56:48 arthur Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 14.8 1990/10/03 01:29:12 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -67,30 +67,29 @@ MIT in each case. |#
   port)
 
 (define (input-port/copy port state)
-  (let ((port (guarantee-input-port port)))
-    (let ((result (%input-port/copy port)))
-      (set-input-port/state! result state)
-      result)))
+  (guarantee-input-port port)
+  (let ((result (%input-port/copy port)))
+    (set-input-port/state! result state)
+    result))
 
 (define (input-port/custom-operation port name)
-  (let ((port (guarantee-input-port port)))
-    (let ((entry (assq name (input-port/custom-operations port))))
-      (and entry
-	   (cdr entry)))))
+  (guarantee-input-port port)
+  (let ((entry (assq name (input-port/custom-operations port))))
+    (and entry
+	 (cdr entry))))
 
 (define (input-port/operation port name)
   ;; Try the custom operations first since the user is less likely to
   ;; use this procedure to access the standard operations.
-  (let ((port (guarantee-input-port port)))
-    (or (input-port/custom-operation port name)
-	(case name
-	  ((CHAR-READY?) (input-port/operation/char-ready? port))
-	  ((PEEK-CHAR) (input-port/operation/peek-char port))
-	  ((READ-CHAR) (input-port/operation/read-char port))
-	  ((DISCARD-CHAR) (input-port/operation/discard-char port))
-	  ((READ-STRING) (input-port/operation/read-string port))
-	  ((DISCARD-CHARS) (input-port/operation/discard-chars port))
-	  (else false)))))
+  (or (input-port/custom-operation port name)
+      (case name
+	((CHAR-READY?) (input-port/operation/char-ready? port))
+	((PEEK-CHAR) (input-port/operation/peek-char port))
+	((READ-CHAR) (input-port/operation/read-char port))
+	((DISCARD-CHAR) (input-port/operation/discard-char port))
+	((READ-STRING) (input-port/operation/read-string port))
+	((DISCARD-CHARS) (input-port/operation/discard-chars port))
+	(else false))))
 
 (define (make-input-port operations state)
   (let ((operations
@@ -149,42 +148,34 @@ MIT in each case. |#
 		 (loop))))))
 
 (define (input-port/char-ready? port interval)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/char-ready? port) port interval)))
+  ((input-port/operation/char-ready? port) port interval))
 
 (define (input-port/peek-char port)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/peek-char port) port)))
+  ((input-port/operation/peek-char port) port))
 
 (define (input-port/read-char port)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/read-char port) port)))
+  ((input-port/operation/read-char port) port))
 
 (define (input-port/discard-char port)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/discard-char port) port)))
+  ((input-port/operation/discard-char port) port))
 
 (define (input-port/read-string port delimiters)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/read-string port) port delimiters)))
+  ((input-port/operation/read-string port) port delimiters))
 
 (define (input-port/discard-chars port delimiters)
-  (let ((port (guarantee-input-port port)))
-    ((input-port/operation/discard-chars port) port delimiters)))
+  ((input-port/operation/discard-chars port) port delimiters))
 
 (define (input-port/normal-mode port thunk)
-  (let ((port (guarantee-input-port port)))
-    (let ((operation (input-port/custom-operation port 'NORMAL-MODE)))
-      (if operation
-	  (operation port thunk)
-	  (thunk)))))
+  (let ((operation (input-port/custom-operation port 'NORMAL-MODE)))
+    (if operation
+	(operation port thunk)
+	(thunk))))
 
 (define (input-port/immediate-mode port thunk)
-  (let ((port (guarantee-input-port port)))
-    (let ((operation (input-port/custom-operation port 'IMMEDIATE-MODE)))
-      (if operation
-	  (operation port thunk)
-	  (thunk)))))
+  (let ((operation (input-port/custom-operation port 'IMMEDIATE-MODE)))
+    (if operation
+	(operation port thunk)
+	(thunk))))
 
 (define eof-object
   "EOF Object")
@@ -302,7 +293,6 @@ MIT in each case. |#
       object)))
 
 (define (close-input-port port)
-  (let ((port (guarantee-input-port port)))
-    (let ((operation (input-port/custom-operation port 'CLOSE)))
-      (if operation
-	  (operation port)))))
+  (let ((operation (input-port/custom-operation port 'CLOSE)))
+    (if operation
+	(operation port))))
