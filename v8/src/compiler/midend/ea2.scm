@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ea2.scm,v 1.1 1995/03/01 14:02:52 adams Exp $
+$Id: ea2.scm,v 1.2 1995/03/07 05:57:24 adams Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -741,7 +741,8 @@ MIT in each case. |#
 	   vector-length  flo:vector-length  length)
 
   ;;((unary-result earlyrew/type/*small-non-negative-fixnum) string-length)
-  ((unary-result earlyrew/type/*string-length) string-length)
+  (do-each (unary-result earlyrew/type/*string-length)
+	   string-length bit-string-length)
 
   ((unary-result earlyrew/type/*small-fixnum) object-type)
   )
