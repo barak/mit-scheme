@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.127 2000/06/29 17:51:06 cph Exp $
+;;; $Id: imail-imap.scm,v 1.128 2000/06/29 18:00:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -70,21 +70,19 @@
 		     "")))
 
 (define (canonicalize-imap-mailbox url mailbox)
-  (if (string-ci=? "inbox" mailbox)
-      "inbox"
-      (if (and (string-prefix-ci? "inbox" mailbox)
-	       (not (string-prefix? "inbox" mailbox)))
-	  (with-open-imap-connection url
-	    (lambda (connection)
-	      (let ((delimiter (imap-connection-delimiter connection)))
-		(if (and delimiter
+  (cond ((string-ci=? "inbox" mailbox) "inbox")
+	((and (string-prefix-ci? "inbox" mailbox)
+	      (not (string-prefix? "inbox" mailbox))
+	      (with-open-imap-connection url
+		(lambda (connection)
+		  (let ((delimiter (imap-connection-delimiter connection)))
+		    (and delimiter
 			 (char=? (string-ref mailbox 5)
-				 (string-ref delimiter 0)))
-		    (let ((mailbox (string-copy mailbox)))
-		      (substring-downcase! mailbox 0 5)
-		      mailbox)
-		    mailbox))))
-	  mailbox)))
+				 (string-ref delimiter 0)))))))
+	 (let ((mailbox (string-copy mailbox)))
+	   (substring-downcase! mailbox 0 5)
+	   mailbox))
+	(else mailbox)))
 
 (define-method url-body ((url <imap-url>))
   (make-imap-url-string url (imap-url-mailbox url)))
@@ -112,7 +110,7 @@
        #t)))))
 
 (define-method url-pass-phrase-key ((url <imap-url>))
-  (make-url-string "imap" (make-imap-url-string url #f)))
+  (make-url-string (url-protocol url) (make-imap-url-string url #f)))
 
 (define-method url-body-container-string ((url <imap-url>))
   (make-imap-url-string
@@ -122,16 +120,17 @@
        (imap-mailbox-container-string connection (imap-url-mailbox url))))))
 
 (define-method url-base-name ((url <imap-url>))
-  (with-open-imap-connection url
-    (lambda (connection)
-      (let ((mailbox (imap-url-mailbox url)))
-	(let ((index
-	       (let ((delimiter (imap-connection-delimiter connection)))
-		 (and delimiter
-		      (string-search-backward delimiter mailbox)))))
-	  (if index
-	      (string-tail mailbox index)
-	      mailbox))))))
+  (let ((mailbox (imap-url-mailbox url)))
+    (let ((index
+	   (let ((delimiter
+		  (with-open-imap-connection url
+		    (lambda (connection)
+		      (imap-connection-delimiter connection)))))
+	     (and delimiter
+		  (string-search-backward delimiter mailbox)))))
+      (if index
+	  (string-tail mailbox index)
+	  mailbox))))
 
 (define-method make-peer-url ((url <imap-url>) base-name)
   (make-imap-url (imap-url-user-id url)
@@ -172,7 +171,7 @@
 	      prefix))
 	"")))
 
-(define-method parse-url-body (string default-url)
+(define-method parse-url-body (string (default-url <imap-url>))
   (call-with-values (lambda () (parse-imap-url-body string default-url))
     (lambda (user-id host port mailbox)
       (if user-id
