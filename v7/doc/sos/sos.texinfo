@@ -6,115 +6,87 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 2.4 1998/03/19 20:28:57 cph Exp $
+@c $Id: sos.texinfo,v 2.5 1999/08/09 16:49:32 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.4
-@set UPDATED 19 March 1998
-@set UPDATE-MONTH March 1998
+@set EDITION 2.5
+@set UPDATED 9 August 1999
 
 @ifinfo
-Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-1999 Massachusetts Institute of Technology
 
 This is Edition @value{EDITION}, last updated @value{UPDATED}, of
 @cite{@value{TITLE}}.
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and
-Computer Science.  Permission to copy this document, to redistribute it,
-and to use it for any purpose is granted, subject to the following
-restrictions and understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+@ignore
+Permission is granted to process this file through TeX and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they make, so
-that these may be included in future releases; and (b) to inform MIT of
-noteworthy uses of this document.
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of this
-document will be error-free, and MIT is under no obligation to provide any
-services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material, there
-shall be no use of the name of the Massachusetts Institute of Technology
-nor of any adaptation thereof in any advertising, promotional, or sales
-literature without prior written consent from MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end ifinfo
 
 @titlepage
 @title @value{TITLE}
 @subtitle Edition @value{EDITION}
-@subtitle @value{UPDATE-MONTH}
+@subtitle @value{UPDATED}
 @author by Chris Hanson
 
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1993-98 Massachusetts Institute of Technology
+Copyright @copyright{} 1993-1999 Massachusetts Institute of Technology
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and
-Computer Science.  Permission to copy this document, to redistribute it,
-and to use it for any purpose is granted, subject to the following
-restrictions and understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they make, so
-that these may be included in future releases; and (b) to inform MIT of
-noteworthy uses of this document.
-
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of this
-document will be error-free, and MIT is under no obligation to provide any
-services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material, there
-shall be no use of the name of the Massachusetts Institute of Technology
-nor of any adaptation thereof in any advertising, promotional, or sales
-literature without prior written consent from MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end titlepage
 
-@ifinfo
-@node Top, Object System, (dir), (dir)
+@node Top, Introduction, (dir), (dir)
 
+@ifinfo
 This is Edition @value{EDITION}, last updated @value{UPDATED}, of
 @cite{The SOS Reference Manual}.
+@end ifinfo
 
 @menu
-* Object System::               
+* Introduction::                
+* Classes::                     
+* Instances::                   
+* Slots::                       
+* Generic Procedures::          
+* Methods::                     
+* Printing::                    
 * Variable Index::              
 * Concept Index::               
 @end menu
-@end ifinfo
 
-@node Object System, Variable Index, Top, Top
-@chapter An Object System
+@node Introduction, Classes, Top, Top
+@unnumbered Introduction
 
 @sc{sos} is a Scheme @dfn{object system} derived from Tiny @sc{clos}
 @footnote{Tiny @sc{clos} was written by Gregor Kiczales of Xerox
@@ -169,8 +141,8 @@ The argument must be a @dfn{slot descriptor} (@code{slot-descriptor?}).
 * Printing::                    
 @end menu
 
-@node Classes, Instances, Object System, Object System
-@section Classes
+@node Classes, Instances, Introduction, Top
+@chapter Classes
 
 @cindex class
 @cindex instance
@@ -253,7 +225,7 @@ slots.
 @end menu
 
 @node Class Datatype, Predefined Classes, Classes, Classes
-@subsection Class Datatype
+@section Class Datatype
 
 The procedures in this section may be used to construct and inspect
 classes.
@@ -580,7 +552,7 @@ last element.  The returned value must not be modified.
 @end deffn
 
 @node Predefined Classes, Record Classes, Class Datatype, Classes
-@subsection Predefined Classes
+@section Predefined Classes
 
 @cindex predefined classes
 @sc{sos} provides a rich set of predefined classes that can be used to
@@ -673,7 +645,7 @@ is a direct subclass of preceding class and of the class without the
 @end defvr
 
 @node Record Classes, Specializers, Predefined Classes, Classes
-@subsection Record Classes
+@section Record Classes
 
 @cindex record class
 @sc{sos} allows generic procedures to discriminate on record types.
@@ -707,7 +679,7 @@ predicate @code{record?}).  Returns the class associated with
 @end deffn
 
 @node Specializers,  , Record Classes, Classes
-@subsection Specializers
+@section Specializers
 
 @cindex specializer
 A @dfn{specializer} is a generalization of a class.  A specializer is
@@ -772,8 +744,8 @@ Two specializers lists are equivalent if each of their corresponding
 elements is equivalent.
 @end deffn
 
-@node Instances, Slots, Classes, Object System
-@section Instances
+@node Instances, Slots, Classes, Top
+@chapter Instances
 
 @cindex instance
 An @dfn{instance} is a compound data structure much like a record,
@@ -894,8 +866,8 @@ procedure accepts one argument and returns @code{#t} if the argument is
 an instance of @var{specializer} and @code{#f} otherwise.
 @end deffn
 
-@node Slots, Generic Procedures, Instances, Object System
-@section Slots
+@node Slots, Generic Procedures, Instances, Top
+@chapter Slots
 
 @cindex slot
 An instance has zero or more named slots; the name of a slot is a
@@ -923,7 +895,7 @@ methods (usually generated by @code{make-class}).
 @end menu
 
 @node Slot Descriptors, Slot Access Methods, Slots, Slots
-@subsection Slot Descriptors
+@section Slot Descriptors
 
 @cindex slot descriptor
 Slots are represented by @dfn{slot descriptors}, which are data
@@ -992,7 +964,7 @@ no initializer.
 @end deffn
 
 @node Slot Access Methods, Slot Access Constructors, Slot Descriptors, Slots
-@subsection Slot Access Methods
+@section Slot Access Methods
 
 @cindex accessor, for slot
 @cindex slot accessor
@@ -1075,7 +1047,7 @@ returns @code{#f}.
 @end deffn
 
 @node Slot Access Constructors, Slot Access Procedures, Slot Access Methods, Slots
-@subsection Slot Access Constructors
+@section Slot Access Constructors
 
 For convenience, and for consistency with the record-accessor procedures
 @code{record-accessor} and @code{record-modifier}, each of the above
@@ -1122,7 +1094,7 @@ slot @var{name} in that instance is initialized, otherwise it returns
 @end deffn
 
 @node Slot Access Procedures,  , Slot Access Constructors, Slots
-@subsection Slot Access Procedures
+@section Slot Access Procedures
 
 Finally, there is another set of three procedures, which access the
 contents of a slot directly, given an instance and a slot name.  These
@@ -1161,8 +1133,8 @@ Returns @code{#t} if the slot @var{name} in @var{instance} is
 initialized, otherwise returns @code{#f}.
 @end deffn
 
-@node Generic Procedures, Methods, Slots, Object System
-@section Generic Procedures
+@node Generic Procedures, Methods, Slots, Top
+@chapter Generic Procedures
 
 @cindex generic procedure
 Like an ordinary Scheme procedure, a generic procedure takes arguments,
@@ -1189,7 +1161,7 @@ predicate @code{procedure?}.
 @end menu
 
 @node Generic Procedure Datatype, Method Storage, Generic Procedures, Generic Procedures
-@subsection Generic Procedure Datatype
+@section Generic Procedure Datatype
 
 The following definitions are used to construct and inspect generic
 procedures.
@@ -1265,7 +1237,7 @@ Returns the name of @var{generic-procedure}, as specified in the call to
 @end deffn
 
 @node Method Storage, Effective Method Procedure, Generic Procedure Datatype, Generic Procedures
-@subsection Method Storage
+@section Method Storage
 
 Methods are stored in generic procedures.  When a generic procedure is
 called, it selects a subset of its stored methods (using
@@ -1297,7 +1269,7 @@ returned list must not be modified.
 @end deffn
 
 @node Effective Method Procedure,  , Method Storage, Generic Procedures
-@subsection Effective Method Procedure
+@section Effective Method Procedure
 
 @cindex effective method procedure
 @cindex emp
@@ -1331,8 +1303,8 @@ that it returns the result as a method whose specializers are
 @end lisp
 @end deffn
 
-@node Methods, Printing, Generic Procedures, Object System
-@section Methods
+@node Methods, Printing, Generic Procedures, Top
+@chapter Methods
 
 @cindex method
 A method contains a method procedure and a sequence of @dfn{parameter
@@ -1350,7 +1322,7 @@ procedure is called.
 @end menu
 
 @node Method Datatype, Method Syntax, Methods, Methods
-@subsection Method Datatype
+@section Method Datatype
 
 The following procedures are used to construct and inspect methods.
 
@@ -1398,7 +1370,7 @@ a subclass of the corresponding specializer of @var{method}, and
 @end deffn
 
 @node Method Syntax, Chained Methods, Method Datatype, Methods
-@subsection Method Syntax
+@section Method Syntax
 
 The following syntactic forms greatly simplify the definition of
 methods, and of adding them to generic procedures.
@@ -1487,7 +1459,7 @@ are completely equivalent:
 @end deffn
 
 @node Chained Methods, Computed Methods, Method Syntax, Methods
-@subsection Chained Methods
+@section Chained Methods
 
 @cindex chained method
 Sometimes it is useful to have a method that adds functionality to
@@ -1517,7 +1489,7 @@ Returns @code{#t} if @var{object} is a chained method, otherwise returns
 @end deffn
 
 @node Computed Methods,  , Chained Methods, Methods
-@subsection Computed Methods
+@section Computed Methods
 
 @cindex computed method
 A @dfn{computed method} is a powerful mechanism that provides the
@@ -1593,8 +1565,8 @@ returns @code{#f}.
 Returns the key for @var{computed-emp}.
 @end deffn
 
-@node Printing,  , Methods, Object System
-@section Printing
+@node Printing, Variable Index, Methods, Top
+@chapter Printing
 
 @cindex printing instances
 The following procedures can be used to define a custom printed
@@ -1621,7 +1593,7 @@ where @var{hash-number} is the result of calling @code{hash} on
 @var{instance}, and @dots{} is the output generated by @var{thunk}.
 @end deffn
 
-@node Variable Index, Concept Index, Object System, Top
+@node Variable Index, Concept Index, Printing, Top
 @unnumbered Variable Index
 @printindex fn
 
