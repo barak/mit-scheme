@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.67 2003/01/22 02:05:02 cph Exp $
+$Id: io.scm,v 14.68 2003/01/22 18:43:05 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -244,13 +244,12 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 		   (lambda (k)
 		     (let ((result (test-for-io-on-channel channel 'READ)))
 		       (case result
-			 ((READ)
-			  (do-read))
+			 ((READ ERROR) (do-read))
+			 ((HANGUP) 0)
 			 ((PROCESS-STATUS-CHANGE)
 			  (handle-subprocess-status-change)
 			  (if (channel-closed? channel) 0 (k)))
-			 (else
-			  (k)))))))
+			 (else (k)))))))
 	      (if (channel-blocking? channel)
 		  (let loop () (do-test loop))
 		  (do-test (lambda () #f))))))
@@ -1238,16 +1237,20 @@ Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 	  descriptor
 	  block?
 	  (encode-select-registry-mode mode))))
-    (case result
-      ((0) #f)
-      ((1) 'READ)
-      ((2) 'WRITE)
-      ((3) 'READ/WRITE)
-      ((-1) 'INTERRUPT)
-      ((-2)
-       (subprocess-global-status-tick)
-       'PROCESS-STATUS-CHANGE)
-      (else (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result)))))
+    (if (>= result 0)
+	(cond ((fix:= 8 (fix:and 8 result)) 'HANGUP)
+	      ((fix:= 4 (fix:and 4 result)) 'ERROR)
+	      (else
+	       (if (fix:= 1 (fix:and 1 result))
+		   (if (fix:= 2 (fix:and 2 result)) 'READ/WRITE 'READ)
+		   (if (fix:= 2 (fix:and 2 result)) 'WRITE #f))))
+	(case result
+	  ((-1) 'INTERRUPT)
+	  ((-2)
+	   (subprocess-global-status-tick)
+	   'PROCESS-STATUS-CHANGE)
+	  (else
+	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result))))))
 
 (define (encode-select-registry-mode mode)
   (case mode
