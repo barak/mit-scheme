@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rbtree.scm,v 1.6 1999/01/02 06:11:34 cph Exp $
+$Id: rbtree.scm,v 1.7 2000/02/14 19:59:44 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -236,7 +236,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		(case-4 w)
 		(let ((n+ (get-link+ w d)))
 		  (if (or (not n+)
-			  (eq? 'BLACK (node-color (get-link+ w d))))
+			  (eq? 'BLACK (node-color n+)))
 		      ;; case 2
 		      (begin
 			(set-node-color! w 'RED)
