@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.9 1991/05/06 02:25:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/record.scm,v 1.10 1991/07/15 23:34:07 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -39,24 +39,41 @@ MIT in each case. |#
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
+
+(define (initialize-package!)
+  (set! record-type-marker
+	(string->symbol "#[(runtime record)record-type-marker]"))
+  (unparser/set-tagged-vector-method!
+   record-type-marker
+   (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
+     (lambda (state record-type)
+       (unparse-object state (record-type-name record-type)))))
+  (named-structure/set-tag-description! record-type-marker
+    (lambda (record-type)
+      (if (not (record-type? record-type))
+	  (error:wrong-type-argument record-type "record type" false))
+      `((TYPE-NAME ,(record-type-name record-type))
+	(FIELD-NAMES ,(record-type-field-names record-type))))))
 
+(define record-type-marker)
+
 (define (make-record-type type-name field-names)
   (let ((record-type
-	 (vector record-type-marker type-name (list-copy field-names))))
+	 (vector record-type-marker
+		 type-name
+		 (list-copy field-names)
+		 (string-append "record of type "
+				(if (string? type-name)
+				    type-name
+				    (write-to-string type-name))))))
     (unparser/set-tagged-vector-method! record-type
 					(unparser/standard-method type-name))
     (named-structure/set-tag-description! record-type
       (letrec ((description
-		(let ((predicate (record-predicate record-type))
-		      (record-name
-		       (string-append "record of type "
-				      (if (string? type-name)
-					  type-name
-					  (write-to-string type-name)))))
+		(let ((predicate (record-predicate record-type)))
 		  (lambda (record)
 		    (if (not (predicate record))
-			(error:wrong-type-argument record record-name
-						   description))
+			(record-type-error record record-type description))
 		    (map (lambda (field-name)
 			   (list field-name
 				 (vector-ref
@@ -70,7 +87,7 @@ MIT in each case. |#
 
 (define (record-type? object)
   (and (vector? object)
-       (= (vector-length object) 3)
+       (= (vector-length object) 4)
        (eq? (vector-ref object 0) record-type-marker)))
 
 (define (record-type-name record-type)
@@ -95,28 +112,14 @@ MIT in each case. |#
 	index
 	(loop (cdr field-names) (+ index 1)))))
 
+(define-integrable (record-type-error record record-type procedure)
+  (error:wrong-type-argument record (vector-ref record-type 3) procedure))
+
 (define (set-record-type-unparser-method! record-type method)
   (if (not (record-type? record-type))
       (error:wrong-type-argument record-type "record type"
 				 'SET-RECORD-TYPE-UNPARSER-METHOD!))
   (unparser/set-tagged-vector-method! record-type method))
-
-(define record-type-marker)
-
-(define (initialize-package!)
-  (set! record-type-marker
-	(string->symbol "#[(runtime record)record-type-marker]"))
-  (unparser/set-tagged-vector-method!
-   record-type-marker
-   (unparser/standard-method 'RECORD-TYPE-DESCRIPTOR
-     (lambda (state record-type)
-       (unparse-object state (record-type-name record-type)))))
-  (named-structure/set-tag-description! record-type-marker
-    (lambda (record-type)
-      (if (not (record-type? record-type))
-	  (error:wrong-type-argument record-type "record type" false))
-      `((TYPE-NAME ,(record-type-name record-type))
-	(FIELD-NAMES ,(record-type-field-names record-type))))))
 
 (define (record-constructor record-type #!optional field-names)
   (if (not (record-type? record-type))
@@ -175,7 +178,7 @@ MIT in each case. |#
       (if (not (and (vector? record)
 		    (= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
-	  (error:wrong-type-argument record "record" procedure-name))
+	  (record-type-error record record-type procedure-name))
       (vector-ref record index))))
 
 (define (record-updater record-type field-name)
@@ -189,5 +192,5 @@ MIT in each case. |#
       (if (not (and (vector? record)
 		    (= (vector-length record) record-length)
 		    (eq? (vector-ref record 0) record-type)))
-	  (error:wrong-type-argument record "record" procedure-name))
+	  (record-type-error record record-type procedure-name))
       (vector-set! record index field-value))))
