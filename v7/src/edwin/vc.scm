@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.83 2003/02/14 18:28:13 cph Exp $
+$Id: vc.scm,v 1.84 2003/03/14 01:30:46 cph Exp $
 
-Copyright 1994-2002 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -989,16 +990,13 @@ Normally shows only locked files; prefix arg says to show all files."
 		    (cond ((not master)
 			   #f)
 			  ((cvs-master? master)
-			   (and (vc-workfile-modified? master)
-				(if (vc-cvs-stay-local? master)
-				    "modified"
-				    (case (cvs-status master)
-				      ((LOCALLY-MODIFIED) "modified")
-				      ((LOCALLY-ADDED) "added")
-				      ((NEEDS-CHECKOUT) "patch")
-				      ((NEEDS-MERGE) "merge")
-				      ((UNRESOLVED-CONFLICT) "conflict")
-				      (else #f)))))
+			   (case (cvs-status master)
+			     ((LOCALLY-MODIFIED) "modified")
+			     ((LOCALLY-ADDED) "added")
+			     ((NEEDS-CHECKOUT) "patch")
+			     ((NEEDS-MERGE) "merge")
+			     ((UNRESOLVED-CONFLICT) "conflict")
+			     (else #f)))
 			  (else
 			   (vc-backend-locking-user master #f))))))
 	     (if (or status all-files?)
@@ -1659,12 +1657,16 @@ the value of vc-log-mode-hook."
 			(loop)))))))))
 
 (define (cvs-status master)
-  (get-cvs-status master
-    (lambda (m)
-      (if (re-search-forward "^File: [^ \t]+[ \t]+Status: \\(.*\\)" m)
-	  (convert-cvs-status
-	   (extract-string (re-match-start 1) (re-match-end 1)))
-	  'UNKNOWN))))
+  (if (vc-cvs-stay-local? master)
+      (if (vc-workfile-modified? master)
+	  'LOCALLY-MODIFIED
+	  'UP-TO-DATE)
+      (get-cvs-status master
+	(lambda (m)
+	  (if (re-search-forward "^File: [^ \t]+[ \t]+Status: \\(.*\\)" m)
+	      (convert-cvs-status
+	       (extract-string (re-match-start 1) (re-match-end 1)))
+	      'UNKNOWN)))))
 
 (define (cvs-default-revision master)
   (get-cvs-status master
