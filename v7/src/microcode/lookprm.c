@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.6 1992/01/15 04:28:24 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/lookprm.c,v 1.7 1992/01/20 13:22:43 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -213,8 +213,9 @@ DEFINE_PRIMITIVE ("LEXICAL-UNREFERENCEABLE?", Prim_unreferenceable_test, 2, 2, 0
 }
 
 SCHEME_OBJECT
-extract_or_create_cache(frame, sym)
-     SCHEME_OBJECT frame, sym;
+DEFUN (extract_or_create_cache, (frame, sym),
+       SCHEME_OBJECT frame
+       AND SCHEME_OBJECT sym)
 {
   extern SCHEME_OBJECT compiler_cache_variable[];
   extern long EXFUN (compiler_cache,
