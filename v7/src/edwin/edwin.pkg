@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.15 1990/08/31 20:18:01 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.16 1990/09/07 18:39:51 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -39,7 +39,6 @@ MIT in each case. |#
 (define-package (edwin)
   (files "utils"
 	 "nvector"
-	 "entity"
 	 "ring"
 	 "strtab"
 	 "strpad"

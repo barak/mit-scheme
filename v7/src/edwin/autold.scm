@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.47 1989/08/14 09:14:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autold.scm,v 1.48 1990/09/07 18:39:34 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -49,23 +49,25 @@
 ;;;; Definitions
 
 (define (make-autoloading-procedure library-name get-procedure)
-  (define entity
-    (make-entity (lambda arguments
-		   ((ref-command load-library) library-name 'NO-WARN)
-		   (let ((procedure (get-procedure)))
-		     (set-entity-procedure! entity procedure)
-		     (apply procedure (cdr arguments))))
-		 (cons autoloading-procedure-tag library-name)))
-  entity)
+  (letrec ((apply-hook
+	    (make-apply-hook
+	     (lambda arguments
+	       ((ref-command load-library) library-name 'NO-WARN)
+	       (let ((procedure (get-procedure)))
+		 (set-apply-hook-procedure! apply-hook procedure)
+		 (apply procedure arguments)))
+	     (cons autoloading-procedure-tag library-name))))
+    apply-hook))
 
 (define autoloading-procedure-tag "autoloading-procedure-tag")
 
 (define (autoloading-procedure? object)
-  (and (entity? object)
-       (eq? autoloading-procedure-tag (car (entity-extra object)))))
+  (and (apply-hook? object)
+       (eq? autoloading-procedure-tag (car (apply-hook-extra object)))))
 
 (define-integrable (autoloading-procedure/library-name procedure)
-  (cdr (entity-extra procedure)))
+  (cdr (apply-hook-extra procedure)))
+
 (define (define-autoload-procedure name package library-name)
   (let ((environment (->environment package)))
     (local-assignment environment

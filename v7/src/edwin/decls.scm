@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.11 1990/08/31 20:11:55 markf Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.12 1990/09/07 18:39:41 cph Exp $
 
 Copyright (c) 1989 Massachusetts Institute of Technology
 
@@ -87,7 +87,6 @@ MIT in each case. |#
 	      "comtab"
 	      "cterm"
 	      "display"
-	      "entity"
 	      "image"
 	      "macros"
 	      "make"
