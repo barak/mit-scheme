@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.36 1992/05/10 13:36:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/global.scm,v 14.37 1992/05/26 19:34:04 mhwu Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -235,20 +235,31 @@ MIT in each case. |#
       ((ucode-primitive primitive-impurify) object))
   object)
 
-(define (fasdump object filename)
-  (let ((filename (->namestring (merge-pathnames filename)))
-	(port (nearest-cmdl/port)))
-    (let loop ()
-      (fresh-line port)
-      (write-string ";Dumping " port)
-      (write (enough-namestring filename) port)
-      (if ((ucode-primitive primitive-fasdump) object filename false)
-	  (write-string " -- done" port)
-	  (begin
-	    (with-simple-restart 'RETRY "Try again."
-	      (lambda ()
-		(error "FASDUMP: Object is too large to be dumped:" object)))
-	    (loop))))))
+(define (fasdump object filename #!optional suppress-messages?)
+  (let* ((filename (->namestring (merge-pathnames filename)))
+	 (do-it
+	  (lambda (start-message end-message)
+	    (start-message)
+	    (let loop ()
+	      (if ((ucode-primitive primitive-fasdump) object filename false)
+		  (end-message)
+		  (begin
+		    (with-simple-restart 'RETRY "Try again."
+		      (lambda ()
+			(error "FASDUMP: Object is too large to be dumped:"
+			       object)))
+		    (loop))))))
+	 (no-print (lambda () unspecific)))
+    (if (or (default-object? suppress-messages?)
+	    (not suppress-messages?))
+	(let ((port (nearest-cmdl/port)))
+	  (do-it (lambda ()
+		   (fresh-line port)
+		   (write-string ";Dumping " port)
+		   (write (enough-namestring filename) port))
+		 (lambda ()
+		   (write-string " -- done" port))))
+	(do-it no-print no-print))))
 
 (define (undefined-value? object)
   ;; Note: the unparser takes advantage of the fact that objects

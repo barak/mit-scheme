@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.28 1992/05/26 18:43:40 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.29 1992/05/26 19:36:08 mhwu Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -408,15 +408,15 @@ MIT in each case. |#
     (cond ((dbg-info? binf)
 	   (let ((labels (dbg-info/labels/desc binf)))
 	     (set-dbg-info/labels/desc! binf bsmname)
-	     (fasdump binf bifpath)
-	     (fasdump labels bsmpath)))
+	     (fasdump binf bifpath true)
+	     (fasdump labels bsmpath true)))
 	  ((vector? binf)
 	   (let ((bsm (make-vector (vector-length binf))))
 	     (let loop ((pos 0))
 	       (if (fix:= pos (vector-length bsm))
 		   (begin
-		     (fasdump bsm bsmpath)
-		     (fasdump binf bifpath))
+		     (fasdump bsm bsmpath true)
+		     (fasdump binf bifpath true))
 		   (let ((dbg-info (vector-ref binf pos)))
 		     (let ((labels (dbg-info/labels/desc dbg-info)))
 		       (vector-set! bsm pos labels)
