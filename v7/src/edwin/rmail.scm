@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.29 1993/08/20 19:02:30 cph Exp $
+;;;	$Id: rmail.scm,v 1.30 1993/09/30 19:22:30 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-1993 Massachusetts Institute of Technology
 ;;;

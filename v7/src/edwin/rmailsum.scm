@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmailsum.scm,v 1.31 1993/08/24 17:25:59 bal Exp $
+;;;	$Id: rmailsum.scm,v 1.32 1993/09/30 19:21:47 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-93 Massachusetts Institute of Technology
 ;;;
@@ -48,7 +48,7 @@
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.31 1993/08/24 17:25:59 bal Exp $"
+  "$Id: rmailsum.scm,v 1.32 1993/09/30 19:21:47 bal Exp $"
   string?)
 
 (define-variable-per-buffer rmail-buffer
@@ -66,6 +66,10 @@ FALSE means buffer is not a summary buffer."
   "Vector of header lines."
   false
   (lambda (x) (or (not x) (vector? x))))
+
+(define-variable rmail-summary-mode-hook
+  "An event distributor that is invoked when entering RMAIL Summary mode."
+  (make-event-distributor))
 
 ;;; (define-variable rmail-last-multi-labels
 ;;;   ""

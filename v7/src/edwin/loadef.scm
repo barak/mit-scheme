@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: loadef.scm,v 1.24 1993/08/22 20:47:32 gjr Exp $
+;;;	$Id: loadef.scm,v 1.25 1993/09/30 19:22:54 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
 ;;;
@@ -68,28 +68,6 @@
 (define-variable telnet-mode-hook
   "An event distributor that is invoked when entering Telnet mode."
   (make-event-distributor))
-
-(define-library 'RMAIL-SUMMARY-MODE
-  '("rmailsum" (EDWIN RMAIL)))
-
-(define-autoload-major-mode 'rmail-summary 'fundamental "RMAIL-Summary"
-  'RMAIL-SUMMARY-MODE "Summary mode for RMAIL.")
-
-(define-autoload-command 'rmail-summary 'RMAIL-SUMMARY-MODE
-  "Enter RMAIL Summary mode.")
-
-(define-autoload-command 'rmail-summary-by-recipients 'RMAIL-SUMMARY-MODE
-  "Enter RMAIL Summary mode for specified recipients.")
-
-(define-variable rmail-summary-mode-hook
-  "An event distributor that is invoked when entering RMAIL Summary mode."
-  (make-event-distributor))
-
-(define-variable-per-buffer rmail-summary-buffer
-  "Corresponding RMAIL-summary buffer for an RMAIL buffer.
-FALSE means buffer has no summary buffer."
-  false
-  (lambda (x) (or (not x) (buffer? x))))
 
 (define-library 'MIDAS-MODE
   '("midas" (EDWIN)))
