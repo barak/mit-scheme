@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.47 1992/10/24 16:00:50 jinx Exp $
+$Id: toplev.scm,v 4.48 1993/11/09 04:14:01 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,7 +95,8 @@ MIT in each case. |#
 	    (let ((input-pathname (merge-pathnames input-string default)))
 	      (let ((output-pathname
 		     (let ((output-pathname
-			    (pathname-new-type input-pathname "com")))
+			    (pathname-new-type input-pathname
+					       compiled-output-extension)))
 		       (if output-string
 			   (merge-pathnames output-string output-pathname)
 			   output-pathname))))
@@ -106,7 +107,8 @@ MIT in each case. |#
 		      (write (enough-namestring input-pathname))
 		      (write-string " => ")
 		      (write (enough-namestring output-pathname))))
-		(compiler-file-output (transform input-pathname output-pathname)
+		(compiler-file-output
+		 (transform input-pathname output-pathname)
 				      output-pathname)))))
 	 (kernel
 	  (if compiler:batch-mode?

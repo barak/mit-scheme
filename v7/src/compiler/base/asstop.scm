@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.6 1993/08/26 05:49:41 gjr Exp $
+$Id: asstop.scm,v 1.7 1993/11/09 04:13:55 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -38,6 +38,8 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; Exports to the compiler
+
+(define compiled-output-extension "com")
 
 (define (compiler-file-output object pathname)
   (fasdump object pathname))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.2 1993/10/30 12:58:09 gjr Exp $
+$Id: ctop.scm,v 1.3 1993/11/09 04:14:48 gjr Exp $
 
-Copyright (c) 1992 Massachusetts Institute of Technology
+Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -39,15 +39,13 @@ MIT in each case. |#
 
 ;;;; Exports to the compiler
 
-(define c-code-tag (string->symbol "#[C-code]"))
+(define compiled-output-extension "c")
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
-    (call-with-output-file (pathname-new-type pathname "c")
+    (call-with-output-file pathname
       (lambda (port)
-	(write-string (cdr pair) port)))
-    (fasdump (cons c-code-tag (car pair))
-	     pathname)))
+	(write-string (cdr pair) port)))))
 
 (define (compiled-scode->procedure compiled-scode environment)
   environment				; ignored
