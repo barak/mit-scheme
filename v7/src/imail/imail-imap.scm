@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.58 2000/05/19 04:15:35 cph Exp $
+;;; $Id: imail-imap.scm,v 1.59 2000/05/19 05:02:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -702,7 +702,7 @@
 
 (define-method search-folder ((folder <imap-folder>) criteria)
   (guarantee-imap-folder-open folder)
-  (map (lambda (index) (get-message folder index))
+  (map (lambda (index) (- index 1))
        (imap:response:search-indices
 	(let ((connection (imap-folder-connection folder)))
 	  (cond ((string? criteria)
