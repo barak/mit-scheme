@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.1 2001/07/06 20:50:45 cph Exp $
+;;; $Id: xml.pkg,v 1.2 2001/07/10 05:30:24 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -35,10 +35,7 @@
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
-	  make-xml-!ignore
-	  make-xml-!include
 	  make-xml-!notation
-	  make-xml-comment
 	  make-xml-declaration
 	  make-xml-document
 	  make-xml-dtd
@@ -48,6 +45,7 @@
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-reference
 	  make-xml-processing-instructions
+	  make-xml-uninterpreted
 	  make-xml-unparsed-!entity
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
@@ -55,13 +53,10 @@
 	  set-xml-!element-name!
 	  set-xml-!entity-name!
 	  set-xml-!entity-value!
-	  set-xml-!ignore-contents!
-	  set-xml-!include-contents!
 	  set-xml-!notation-id!
 	  set-xml-!notation-name!
-	  set-xml-comment-text!
 	  set-xml-declaration-encoding!
-	  set-xml-declaration-standalone?!
+	  set-xml-declaration-standalone!
 	  set-xml-declaration-version!
 	  set-xml-document-declaration!
 	  set-xml-document-dtd!
@@ -82,6 +77,7 @@
 	  set-xml-parameter-!entity-value!
 	  set-xml-processing-instructions-name!
 	  set-xml-processing-instructions-text!
+	  set-xml-uninterpreted-text!
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
@@ -94,17 +90,11 @@
 	  xml-!entity-name
 	  xml-!entity-value
 	  xml-!entity?
-	  xml-!ignore-contents
-	  xml-!ignore?
-	  xml-!include-contents
-	  xml-!include?
 	  xml-!notation-id
 	  xml-!notation-name
 	  xml-!notation?
-	  xml-comment-text
-	  xml-comment?
 	  xml-declaration-encoding
-	  xml-declaration-standalone?
+	  xml-declaration-standalone
 	  xml-declaration-version
 	  xml-declaration?
 	  xml-document-declaration
@@ -135,6 +125,8 @@
 	  xml-processing-instructions-name
 	  xml-processing-instructions-text
 	  xml-processing-instructions?
+	  xml-uninterpreted-text
+	  xml-uninterpreted?
 	  xml-unparsed-!entity-id
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation

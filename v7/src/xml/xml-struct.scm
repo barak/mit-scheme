@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml-struct.scm,v 1.2 2001/07/06 20:50:49 cph Exp $
+;;; $Id: xml-struct.scm,v 1.3 2001/07/10 05:30:31 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -34,7 +34,7 @@
 (define-structure xml-declaration
   version
   encoding
-  standalone?)
+  standalone)
 
 (define-structure (xml-element
 		   (print-procedure
@@ -56,7 +56,7 @@
   name
   text)
 
-(define-structure xml-comment
+(define-structure xml-uninterpreted
   text)
 
 (define-structure (xml-entity-reference
@@ -124,12 +124,6 @@
 			(write (xml-!attlist-name element) port)))))
   name
   definitions)
-
-(define-structure xml-!include
-  contents)
-
-(define-structure xml-!ignore
-  contents)
 
 (define-structure (xml-!entity
 		   (print-procedure

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser-macro.scm,v 1.1 2001/07/06 20:50:43 cph Exp $
+;;; $Id: parser-macro.scm,v 1.2 2001/07/10 05:30:19 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -23,11 +23,11 @@
 
 (declare (usual-integrations))
 
-(define-*parser-macro S			;[3]
-  `(NOISE (+ (ALPHABET CHAR-SET:XML-WHITESPACE))))
+(define-*matcher-macro S `(+ (ALPHABET CHAR-SET:XML-WHITESPACE)))
+(define-*parser-macro S `(NOISE S))
 
-(define-*parser-macro S?
-  `(NOISE (* (ALPHABET CHAR-SET:XML-WHITESPACE))))
+(define-*matcher-macro S? `(* (ALPHABET CHAR-SET:XML-WHITESPACE)))
+(define-*parser-macro S? `(NOISE S?))
 
 (define-*parser-macro (bracket description open close . body)
   (let ((v (generate-uninterned-symbol)))
