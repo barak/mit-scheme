@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.23 1999/02/01 03:29:24 cph Exp $
+$Id: process.scm,v 1.24 1999/02/01 05:13:24 cph Exp $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
@@ -167,7 +167,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (stderr (convert-stdio-arg stderr)))
 	     (if (pair? environment)
 		 (begin
-		   (set! working-directory (cdr environment))
+		   (set! working-directory
+			 (and (cdr environment)
+			      (->namestring (cdr environment))))
 		   (set! environment (car environment))))
 	     (without-interrupts
 	      (lambda ()
