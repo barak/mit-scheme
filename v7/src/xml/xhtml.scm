@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml.scm,v 1.12 2004/07/24 04:29:45 cph Exp $
+$Id: xhtml.scm,v 1.13 2004/08/12 06:31:43 cph Exp $
 
 Copyright 2002,2003,2004 Massachusetts Institute of Technology
 
@@ -75,14 +75,11 @@ USA.
        (html-external-id? (xml-dtd-external object))
        (null? (xml-dtd-internal object))))
 
-(define html-root-name
-  (make-xml-name 'html html-iri))
-
 (define html-1.0-dtd
-  (make-xml-dtd html-root-name html-1.0-external-id '()))
+  (make-xml-dtd 'html html-1.0-external-id '()))
 
 (define html-1.1-dtd
-  (make-xml-dtd html-root-name html-1.1-external-id '()))
+  (make-xml-dtd 'html html-1.1-external-id '()))
 
 (define (html-1.0-document attrs . items)
   (%make-document html-1.0-dtd attrs items))
