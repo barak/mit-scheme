@@ -10,12 +10,13 @@ SHIELD1_ICON ICON shield1.ico
 LAMBDA_ICON ICON lambda.ico
 LAMBDA2_ICON ICON lambda2.ico
 EDWIN_ICON ICON edwin.ico
-LAIR1_ICON ICON liar1.ico
-LAIR2_ICON ICON liar2.ico
-LAIR3_ICON ICON liar3.ico
+LIAR1_ICON ICON liar1.ico
+LIAR2_ICON ICON liar2.ico
+LIAR3_ICON ICON liar3.ico
 GRAPHICS_ICON ICON graphics.ico
 CONSES_ICON ICON conses.ico
 ENVIRONMENT_ICON ICON envir1.ico
+COFFEE_ICON ICON coffee.ico
 MINCER_ICON ICON mincer.ico
 BCH_ICO ICON bch.ico
 
@@ -38,7 +39,7 @@ BEGIN
 	VALUE "FileDescription", "MIT Scheme Microcode"
 	VALUE "FileVersion", MAKEFILEVERSIONSTRING(VERSION,SUBVERSION)
 	VALUE "InternalName", "SCHEME"
-	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993"
+	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-1994"
 	VALUE "OriginalFilename", "SCHEME.EXE"
 	VALUE "ProductName", "MIT Scheme"
 	VALUE "ProductVersion", RELEASE
