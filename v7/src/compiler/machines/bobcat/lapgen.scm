@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.174 1987/06/01 21:06:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 1.175 1987/06/02 11:35:46 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -639,15 +639,14 @@ MIT in each case. |#
      (BRA L (@PCR ,label)))))
 
 (define-rule statement
-  (INVOCATION:CACHE-REFERENCE (? number-pushed) (? prefix) (? continuation)
+  (INVOCATION:CACHE-REFERENCE (? frame-size) (? prefix) (? continuation)
 			      (? extension))
   (disable-frame-pointer-offset!
-   (let ((set-extension (expression->machine-register! extension a0)))
+   (let ((set-extension (expression->machine-register! extension a3)))
      (delete-dead-registers!)
-     `(,@(set-extension)
+     `(,@set-extension
        ,@(generate-invocation-prefix prefix)
-       (MOVE W (& ,(1+ number-pushed)) (D 0))
-       (MOVE L (@PCR ,(free-reference-label name)) (A 0))
+       (MOVE W (& ,frame-size) (D 0))
        (LEA (@PCR ,*block-start-label*) (A 1))
        (JMP ,entry:compiler-cache-reference-apply)))))
 
