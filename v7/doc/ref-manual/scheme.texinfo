@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.30 1993/10/19 23:46:58 cph Exp $
+@comment $Id: scheme.texinfo,v 1.31 1993/10/23 03:01:17 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -106,9 +106,9 @@ literature without prior written consent from MIT in each case.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.29 alpha
+@subtitle Edition 1.31 alpha
 @subtitle for Scheme Release 7.2
-@subtitle 19 October 1993
+@subtitle 22 October 1993
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -457,6 +457,7 @@ N00014-86-K-0180.
 @node Overview, Special Forms, Acknowledgements, Top
 @chapter Overview
 
+@cindex runtime system
 This manual is a detailed description of the MIT Scheme runtime system.
 It is intended to be a reference document for programmers.  It does not
 describe how to run Scheme or how to interact with it --- that is the
@@ -587,10 +588,10 @@ of this document.
 
 @cindex signal an error (defn)
 @cindex must be, notational convention
-@findex signal-condition
+@findex error
 When this manual uses the phrase ``an error will be signalled,'' it
-means that Scheme will call @code{signal-condition}, which normally halts
-execution of the program and prints an error message.
+means that Scheme will call @code{error}, which normally halts execution
+of the program and prints an error message.
 
 When this manual uses the phrase ``it is an error,'' it means that the
 specified action is not valid in Scheme, but the system may or may not
@@ -1950,6 +1951,7 @@ if continuations are used to jump in and out of body repeatedly.
 Here is a complicated example that shows the interaction between dynamic
 binding and continuations:
 
+@page
 @example
 @group
 (define (complicated-fluid-binding)
@@ -2744,12 +2746,8 @@ instead of @code{(@var{variable} @var{init})}.
 @node Structure Definitions,  , Iteration, Special Forms
 @section Structure Definitions
 
-@comment **** begin CLTL ****
-@comment Altough this documentation isn't plagiarized from Common Lisp,
-@comment the macro certainly is!
-
 This section provides examples and describes the options and syntax of
-@code{define-structure}, an MIT Scheme macro which is essentially
+@code{define-structure}, an MIT Scheme macro that is essentially
 identical to @code{defstruct} in Common Lisp.  The differences between
 them are summarized at the end of this section.  For more information,
 see Chapter 19 of Steele's Common Lisp book.
@@ -2774,11 +2772,11 @@ with argument list (see below).
 A call to @code{define-structure} defines a structure descriptor and a
 set of procedures to manipulate instances of the structure.  These
 instances are represented as records by default (@pxref{Records}) but
-may alternately be lists or vectors.  The accessors and updaters are
+may alternately be lists or vectors.  The accessors and modifiers are
 marked with compiler declarations so that calls to them are
-automatically transformed into record, list, or vector references as
-appropriate.  Often, no options are required, so a simple call to
-@code{define-structure} looks like:
+automatically transformed into appropriate references.  Often, no
+options are required, so a simple call to @code{define-structure} looks
+like:
 
 @example
 (define-structure foo a b c)
@@ -2786,8 +2784,48 @@ appropriate.  Often, no options are required, so a simple call to
 
 This defines a record type @code{foo}, a constructor @code{make-foo}, a
 predicate @code{foo?}, accessors @code{foo-a}, @code{foo-b}, and
-@code{foo-c}, and updaters @code{set-foo-a!}, @code{set-foo-b!}, and
+@code{foo-c}, and modifiers @code{set-foo-a!}, @code{set-foo-b!}, and
 @code{set-foo-c!}.
+
+In general, if no options are specified, @code{define-structure} defines
+the following (using the simple call above as an example):
+
+@table @asis
+@item constructor
+The name of the constructor is @code{"make-"} followed by the name of
+the structure, e.g.@: @code{make-foo}.  The number of arguments accepted
+by the constructor is the same as the number of slots; the arguments are
+the initial values for the slots, and the order of the arguments matches
+the order of the slot definitions.
+
+@item type descriptor
+The name of the type descriptor is the same as the name of the
+structure, e.g.@: @code{foo}.  The type descriptor satisfies the
+predicate @code{record-type?}.
+
+@item predicate
+The name of the predicate is the name of the structure followed by
+@code{"?"}, e.g.@: @code{foo?}.  The predicate is a procedure of one
+argument, which returns @code{#t} if its argument is a record of the
+type defined by this structure definition.
+
+@item accessors
+For each slot, an accessor is defined.  The name of the accessor is
+formed by appending the name of the structure, a hyphen, and the name of
+the slot, e.g.@: @code{foo-a}.  The accessor is a procedure of one
+argument, which must be a record of the type defined by this structure
+definition.  The accessor extracts the contents of the corresponding
+slot in that record and returns it.
+
+@item modifiers
+For each slot, a modifier is defined.  The name of the modifier is
+formed by appending @code{"set-"}, the name of the accessor, and
+@code{"!"}, e.g.@: @code{set-foo-a!}.  The modifier is a procedure of
+two arguments, the first of which must be a record of the type defined
+by this structure definition, and the second of which may be any object.
+The modifier modifies the contents of the corresponding slot in that
+record to be that object, and returns an unspecified value.
+@end table
 
 When options are not supplied, @code{(@var{name})} may be abbreviated to
 @var{name}.  This convention holds equally for @var{structure-options}
@@ -2806,16 +2844,16 @@ as are
 (define-structure (foo (keyword-constructor)) a b c)
 @end example
 
-When specified as option values, @code{false}, @code{nil}, @code{true},
-and @code{t} are treated as if the appropriate boolean constant had been
-specified instead.
+When specified as option values, @code{false} and @code{nil} are
+equivalent to @code{#f}, and @code{true} and @code{t} are equivalent to
+@code{#t}.
 @end deffn
 
 Possible @var{slot-options} are:
 
 @deffn {slot option} read-only value
 When given a @var{value} other than @code{#f}, this specifies that no
-updater should be created for the slot.
+modifier should be created for the slot.
 @end deffn
 
 @deffn {slot option} type type-descriptor
@@ -2824,28 +2862,135 @@ This is accepted but not presently used.
 
 Possible @var{structure-options} are:
 
-@deffn {structure option} keyword-constructor [name]
-@cindex keyword constructor (defn)
-This specifies that the constructor should parse its arguments as as a
-list of keywords and values rather than by position (the default).  The
-keywords recognized by the constructor are exactly the names of the
-slots.  If @var{name} is supplied, it is taken as the name of the
-constructor.  Also, @code{keyword-constructor} may be specified multiple
-times to name multiple (identical) keyword constructors.
+@deffn {structure option} predicate [name]
+This option controls the generation of a predicate procedure for the
+structure.  If @var{name} is not given, the predicate is generated with
+the default name (see above).  If @var{name} is @code{#f}, the predicate
+is not generated at all.  Otherwise, @var{name} must be a symbol, and
+the predicate is generated with that symbol as its name.
+@end deffn
+
+@deffn {structure option} copier [name]
+This option controls the generation of a procedure to copy instances of
+the structure.  This is a procedure of one argument, a structure
+instance, that makes a newly allocated copy of the structure and returns
+it.  If @var{name} is not given, the copier is generated, and the name
+of the copier is @code{"copy-"} followed by the structure name (e.g.@:
+@code{copy-foo}).  If @var{name} is @code{#f}, the copier is not
+generated.  Otherwise, @var{name} must be a symbol, and the copier is
+generated with that symbol as its name.
+@end deffn
+
+@deffn {structure option} print-procedure expression
+Evaluating @var{expression} must yield a procedure of two arguments,
+which is used to print instances of the structure.  The procedure is an
+@dfn{unparser method} (@pxref{Custom Output}), which is usually
+constructed by a call to the procedure @code{standard-unparser-method}.
+@end deffn
+
+@deffn {structure option} constructor [name [argument-list]]
+@cindex BOA constructor (defn)
+This option controls the generation of constructor procedures.  These
+constructor procedures are called ``@sc{boa} constructors'', for ``By
+Order of Arguments'', because the arguments to the constructor specify
+the initial contents the structure's slots by the order in which they
+are given.  This is as opposed to ``keyword constructors'', which
+specify the initial contents using keywords, and in which the order of
+arguments is irrelevant.
+
+If the @var{name} is not given, a constructor is generated with the
+default name and arguments (see above).  If @var{name} is @code{#f}, no
+constructor is generated; @var{argument-list} may not be specified in
+this case.  Otherwise, @var{name} must be a symbol, and a constructor is
+generated with that symbol as its name.  If @var{name} is a symbol,
+@var{argument-list} is optionally allowed; if it is omitted, the
+constructor accepts one argument for each slot in the structure
+definition, in the same order in which the slots appear in the
+definition.  Otherwise, @var{argument-list} must be a lambda list
+(@pxref{Lambda Expressions}), and each of the parameters of the lambda
+list must be the name of a slot in the structure.  The arguments
+accepted by the constructor are defined by this lambda list.  Any slot
+that is not specified by the lambda list is initialized to the
+@var{default-init} as specified above; likewise for any slot specified
+as an optional parameter when the corresponding argument is not
+supplied.
+
+If the @code{constructor} option is specified, the default constructor
+is not generated.  Additionally, the @code{constructor} option may be
+specified multiple times to generate multiple constructors with
+different names and argument lists.
 
 @example
-(define-structure (foo (keyword-constructor make-bar)) a b)
-(foo-a (make-bar 'b 20 'a 19))         @result{} 19
+@group
+(define-structure (foo (constructor make-foo (#!optional a b)))
+  (a 6 read-only #t)
+  (b 9))
+@end group
 @end example
 @end deffn
 
+@deffn {structure option} keyword-constructor [name]
+@cindex keyword constructor (defn)
+This option controls the generation of keyword constructor procedures.
+A @dfn{keyword constructor} is a procedure that accepts arguments that
+are alternating slot names and values.  If @var{name} is omitted, a
+keyword constructor is generated, and the name of the constructor is
+@code{"make-"} followed by the name of the structure (e.g.@:
+@code{make-foo}).  Otherwise, @var{name} must be a symbol, and a keyword
+constructor is generated with this symbol as its name.
+
+If the @code{keyword-constructor} option is specified, the default
+constructor is not generated.  Additionally, the
+@code{keyword-constructor} option may be specified multiple times to
+generate multiple keyword constructors; this is usually not done since
+such constructors would all be equivalent.
+
+@example
+@group
+(define-structure (foo (keyword-constructor make-bar)) a b)
+(foo-a (make-bar 'b 20 'a 19))         @result{} 19
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} conc-name [name]
+By default, the prefix for naming accessors and modifiers is the name of
+the structure followed by a hyphen.  The @code{conc-name} option can be
+used to specify an alternative.  If @var{name} is not given, the prefix
+is the name of the structure followed by a hyphen (the default).  If
+@var{name} is @code{#f}, the slot names are used directly, without
+prefix.  Otherwise, @var{name} must a symbol, and that symbol is used as
+the prefix.
+
+@example
+@code{(define-structure (foo (conc-name moby/)) a b)}
+@end example
+
+@noindent
+defines accessors @code{moby/a} and @code{moby/b}, and modifiers
+@code{set-moby/a!} and @code{set-moby/b!}.
+
+@example
+@code{(define-structure (foo (conc-name #f)) a b)}
+@end example
+
+@noindent
+defines accessors @code{a} and @code{b}, and modifiers @code{set-a!} and
+@code{set-b!}.
+@end deffn
+
 @deffn {structure option} type representation-type
-This specifies the representation type for instances of the structure,
-which are records by default.  Possible values are the symbols
-@code{vector} and @code{list}.  If this option is given, and the
-@code{named} option is not specified, the representation does not
-include a tag, and neither a predicate nor a type descriptor is
-generated.
+By default, structures are implemented as records.  The @code{type}
+option overrides this default, allowing the programmer to specify that
+the structure be implemented using another data type.  The option value
+@var{representation-type} specifies the alternate data type; it is
+allowed to be one of the symbols @code{vector} or @code{list}, and the
+data type used is the one corresponding to the symbol.
+
+If this option is given, and the @code{named} option is not specified,
+the representation will not be tagged, and neither a predicate nor a
+type descriptor will be generated; also, the @code{print-procedure}
+option may not be given.
 
 @example
 (define-structure (foo (type list)) a b) 
@@ -2853,87 +2998,46 @@ generated.
 @end example
 @end deffn
 
-@deffn {structure option} conc-name [name]
-By default, the prefix for naming accessors and updaters is the name
-of the structure followed by a hyphen.  The @code{conc-name} option can
-be used to specify an alternative.  If @var{name} is @code{#f}, the slot
-names are used directly, without prefix.  If @var{name} is a symbol,
-that symbol is the prefix.  If @var{name} is not given, the prefix is
-the name of the structure followed by a hyphen.
-
-@example
-@code{(define-structure (foo (conc-name moby/)) a b)}
-@end example
-
-@noindent
-defines the variables @code{foo}, @code{make-foo}, @code{moby/a},
-@code{moby/b}, @code{set-moby/a!}, @code{set-moby/b!}, and @code{foo?}.
-
-@example
-@code{(define-structure (foo (conc-name #f)) a b)}
-@end example
-
-@noindent
-defines @code{foo}, @code{make-foo}, @code{a}, @code{b}, @code{set-a!},
-@code{set-b!}, and @code{foo?}.
-@end deffn
-
-@deffn {structure option} constructor [name [argument-list]]
-@cindex BOA constructor (defn)
-This can be specified multiple times to build constructors with
-different argument lists, called @dfn{BOA constructors} (By Order of
-Arguments).  @var{Name} is the variable to which the constructor
-procedure will be bound.  If @var{name} is @code{#f}, no constructor is
-generated.  If @var{name} is unspecified, the constructor is named as
-usual.  If @var{name} is a symbol, @var{argument-list} may be specified;
-it is a Scheme lambda list which may include optional and rest
-parameters in the usual way.  The names of the parameters must be names
-of defined slots.
-
-@example
-(define-structure (foo (constructor make-foo (#!optional a b)))
-  (a 6 read-only true) (b 9))
-@end example
-@end deffn
-
-@deffn {structure option} predicate [name]
-@var{Name} specifies a new name for the predicate.  If it is @code{#f},
-the predicate is not generated.  If @var{name} is not specified, the
-predicate is named as usual.
-@end deffn
-
-@deffn {structure option} copier [name]
-This specifies that a procedure should be generated to copy instances of
-the structure.  If @var{name} is unspecified, the copier is named by
-prefixing the structure name with @code{copy-}.  If @var{name} is
-@code{#f}, the copier is not generated.
-@end deffn
-
-@deffn {structure option} print-procedure expression
-Evaluating @var{expression} must yield a procedure of two arguments, an
-unparser state and a structure instance, which is used to print
-instances of the structure.  It is typically generated using
-@code{unparser/standard-method}.
-@end deffn
-
 @deffn {structure option} named [expression]
 This is valid only in conjunction with the @code{type} option and
-specifies that a tag be included in each instance.  @var{Expression} is
-usually a variable whose value is the tag, which is by default the type
-descriptor itself.  @var{Expression} is evaluated whenever the tag is
-needed and must be valid when @code{define-structure} is evaluated.  If
-@var{expression} returns different values from different evaluations,
-strange behavior results.  For convenience, since tags may have large
-printed representations, specifying this parameter causes instances to
-print like records even though they are not.
+specifies that the structure instances be tagged to make them
+identifiable as instances of this structure type.  In the usual case,
+where @var{expression} is not given, the @code{named} option causes a
+type descriptor and predicate to be generated for the structure (recall
+that the @code{type} option without @code{named} suppresses their
+generation), and also defines a default unparser method for the
+structure instances (which can be overridden by the
+@code{print-procedure} option).  The type descriptor is a unique object,
+@emph{not} a record type, that describes the structure instances.  If
+the representation type is @code{vector}, the type descriptor is stored
+in the zero-th slot of the vector, and if the representation type is
+@code{list}, it is stored as the first element of the list.
+
+If @var{expression} is specified, it is an expression that is evaluated
+to yield a tag object.  The @var{expression} is evaluated once when the
+structure definition is evaluated (to specify the unparser method), and
+again whenever a predicate or constructor is called.  Because of this,
+@var{expression} is normally a variable reference or a constant.
+
+If @var{expression} is specified, no type descriptor is generated, only
+a predicate.
+
+The value yielded by @var{expression} may be any object at all.  That
+object is stored in the structure in the same place that the type
+descriptor is normally stored, as described above.
 @end deffn
 
 @deffn {structure option} initial-offset offset
 This is valid only in conjunction with the @code{type} option.
-@var{Offset} must be an exact non-negative integer and specifies a
+@var{Offset} must be an exact non-negative integer and specifies the
 number of slots to leave open at the beginning of the structure before
 the specified slots are allocated.  Specifying an @var{offset} of zero
 is equivalent to omitting the @code{initial-offset} option.
+
+If the @code{named} option is specified, the structure tag appears in
+the first slot, followed the ``offset'' slots, and then the regular
+slots.  Otherwise, the ``offset'' slots come first, then the regular
+slots.
 @end deffn
 
 The essential differences between MIT Scheme's @code{define-structure}
@@ -2955,7 +3059,7 @@ functionality is not implemented.
 By default, no @code{copier} procedure is generated.
 
 @item
-The side effect procedure corresponding to the accessor @code{foo} is
+The side-effect procedure corresponding to the accessor @code{foo} is
 given the name @code{set-foo!}.
 
 @item
@@ -2975,7 +3079,7 @@ structure instance) rather than three as in Common Lisp.
 By default, named structures are tagged with a unique object of some
 kind.  In Common Lisp, the structures are tagged with symbols.  This
 depends on the Common Lisp package system to help generate unique tags;
-Scheme has no such way to generate unique symbols.
+MIT Scheme has no such way to generate unique symbols.
 
 @item
 The @code{named} option may optionally take an argument, which is
@@ -2991,8 +3095,6 @@ The @code{type} option is restricted to the values @code{vector} and
 @item
 The @code{include} option is not implemented.
 @end itemize
-
-@comment **** end CLTL ****
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
 @chapter Equivalence Predicates
@@ -8114,16 +8216,20 @@ must be a member of the list of field names in the call to
 @var{record-type}.
 @end deffn
 
-@deffn {procedure+} record-updater record-type field-name
+@deffn {procedure+} record-modifier record-type field-name
 Returns a procedure for writing the value of a particular field of a
 member of the type represented by @var{record-type}.  The returned
 procedure accepts exactly two arguments: first, a record of the
 appropriate type, and second, an arbitrary Scheme value; it modifies the
 field named by the symbol @var{field-name} in that record to contain the
-given value.  The returned value of the updater procedure is
+given value.  The returned value of the modifier procedure is
 unspecified.  The symbol @var{field-name} must be a member of the list
 of field names in the call to @code{make-record-type} that created the
 type represented by @var{record-type}.
+
+@findex record-updater
+For compatibility with old code, @code{record-updater} is a synonym for
+this procedure.
 @end deffn
 
 @deffn {procedure+} record? object
@@ -8202,18 +8308,22 @@ recomputation.
 
 (let ((p (delay (+ 1 2))))
   (list (force p) (force p)))           @result{}  (3 3)
+@end group
 
-(define a-stream
-  (letrec ((next
-            (lambda (n)
-              (cons n (delay (next (+ n 1)))))))
-    (next 0)))
-
+@group
 (define head car)
 
 (define tail
   (lambda (stream)
     (force (cdr stream))))
+@end group
+
+@group
+(define a-stream
+  (letrec ((next
+            (lambda (n)
+              (cons n (delay (next (+ n 1)))))))
+    (next 0)))
 
 (head (tail (tail a-stream)))           @result{}  2
 @end group
@@ -8252,7 +8362,9 @@ the value of a promise is computed at most once.
      (* x 3))))
 
 (define x 5)
+@end group
 
+@group
 count                                   @result{}  0
 p                                       @result{}  #[promise 54]
 (force p)                               @result{}  15
@@ -8913,9 +9025,9 @@ customizable growth parameters, and customizable hash functions.
 
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
-is linearly proportional to the number of associations in the table; in
-the current implementation, with the default resizing parameters, the
-constant of proportionality is approximately five words per association.
+is linearly proportional to the number of associations in the table; the
+constant of proportionality is described below (@pxref{Resizing of Hash
+Tables}).
 
 @cindex run-time-loadable option
 @cindex option, run-time-loadable
@@ -9039,13 +9151,13 @@ been defined:
 @findex string=?
 @example
 (define make-eq-hash-table
-  (weak-hash-table/constructor eq-hash-mod eq?))
+  (weak-hash-table/constructor eq-hash-mod eq? #t))
 
 (define make-equal-hash-table
-  (strong-hash-table/constructor equal-hash-mod equal?))
+  (strong-hash-table/constructor equal-hash-mod equal? #t))
 
 (define make-string-hash-table
-  (strong-hash-table/constructor string-hash-mod string=?))
+  (strong-hash-table/constructor string-hash-mod string=? #f))
 @end example
 
 The following procedure is sometimes useful in conjunction with weak
@@ -9185,6 +9297,45 @@ average performance of a hash-table lookup is bounded by a constant, the
 worst-case performance is not.  For a table containing a given number of
 associations, increasing the physical size of the table decreases the
 probability that worse-than-average performance will occur.
+
+The physical size of a hash table is statistically related to the number
+of associations.  However, it is possible to place bounds on the
+physical size, and from this to estimate the amount of space used by the
+table:
+
+@example
+(define (hash-table-space-bounds count rehash-size rehash-threshold)
+  (let ((tf (/ 1 rehash-threshold)))
+    (values (if (exact-integer? rehash-size)
+                (- (* count (+ 4 tf))
+                   (* tf (+ rehash-size rehash-size)))
+                (* count (+ 4 (/ tf (* rehash-size rehash-size)))))
+            (* count (+ 4 tf)))))
+@end example
+
+@noindent
+What this formula shows is that, for a ``normal'' rehash size (that is,
+not an exact integer), the amount of space used by the hash table is
+proportional to the number of associations in the table.  The constant
+of proportionality varies statistically, with the low bound being
+
+@example
+(+ 4 (/ (/ 1 rehash-threshold) (* rehash-size rehash-size)))
+@end example
+
+@noindent
+and the high bound being
+
+@example
+(+ 4 (/ 1 rehash-threshold))
+@end example
+
+@noindent
+which, for the default values of these parameters, are @code{4.25} and
+@code{5}, respectively.  Reducing the rehash size will tighten these
+bounds, but increases the amount of time spent resizing, so you can see
+that the rehash size gives some control over the time-space tradeoff of
+the table.
 
 The programmer can control the size of a hash table by means of three
 parameters:
@@ -9400,12 +9551,24 @@ For example, here is how the constructors for ordinary hash tables could
 be defined:
 
 @example
-(define (strong-hash-table/constructor key-hash key=?)
-  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!))
+@group
+(define (strong-hash-table/constructor key-hash key=?
+                                       #!optional rehash-after-gc?)
+  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!
+                          (if (default-object? rehash-after-gc?)
+                              #f
+                              rehash-after-gc?)))
+@end group
 
-(define (weak-hash-table/constructor key-hash key=?)
+@group
+(define (weak-hash-table/constructor key-hash key=?
+                                     #!optional rehash-after-gc?)
   (hash-table/constructor key-hash key=? weak-cons weak-pair/car?
-                          weak-car weak-cdr weak-set-cdr!))
+                          weak-car weak-cdr weak-set-cdr!
+                          (if (default-object? rehash-after-gc?)
+                              #f
+                              rehash-after-gc?)))
+@end group
 @end example
 @end deffn
 
@@ -9974,7 +10137,9 @@ need for a procedure with the power of
                     (exit x)))
               '(54 0 37 -3 245 19))
     #t))                                @result{}  -3
+@end group
 
+@group
 (define list-length
   (lambda (obj)
     (call-with-current-continuation
@@ -10317,11 +10482,11 @@ is the new environment.
 The operations in this section return environments that are constructed
 by the interpreter.  These operations should only be used at the top
 level of a file; they are not supported in any other place.  In
-particular, they force the current environment to represented in a form
-suitable for use by the interpreter.  This prevents the compiler from
-performing many useful optimizations on such environments, and forces
-the use of the interpreter for variable references in them.  However,
-because all top-level environments (such as
+particular, they force the current environment to be represented in a
+form suitable for use by the interpreter.  This prevents the compiler
+from performing many useful optimizations on such environments, and
+forces the use of the interpreter for variable references in them.
+However, because all top-level environments (such as
 @code{user-initial-environment}) are already interpreter environments,
 it does no harm to use such operations on them.
 
@@ -10413,10 +10578,7 @@ a port that you specify.  The current output port is initially
 @code{console-i/o-port}, but Scheme provides procedures that let you
 change the current output port to be a file or string.
 
-All standard ports read or write only @sc{ascii} characters.  However,
-it is possible to create ports that will read and write arbitrary
-characters.  The limitation to @sc{ascii} characters is imposed entirely
-by the port, not by the @sc{i/o} operations.
+All ports read or write only @sc{ascii} characters.
 
 Every port is either an input port, an output port, or both.  The
 following predicates distinguish all of the possible cases.
@@ -10454,46 +10616,79 @@ port or output port, respectively.  Otherwise they return @var{object}.
 @findex condition-type:wrong-type-argument
 @end deffn
 
+@cindex standard ports
+The next five procedures return the runtime system's @dfn{standard
+ports}.  All of the standard ports are dynamically bound by the @sc{rep}
+loop; this means that when a new @sc{rep} loop is started, for example
+by an error, each of these ports is dynamically bound to the @sc{i/o}
+port of the @sc{rep} loop.  When the @sc{rep} loop exits, the ports
+revert to their original values.
+
 @deffn procedure current-input-port
 @findex console-input-port
-Returns the current input port.  Initially, @code{current-input-port}
-returns the value of @code{console-i/o-port}.
+Returns the current input port.  This is the default port used by many
+input procedures.  Initially, @code{current-input-port} returns the
+value of @code{console-i/o-port}.
 @end deffn
 
 @deffn procedure current-output-port
 @findex console-output-port
-Returns the current output port.  Initially, @code{current-output-port}
+Returns the current output port.  This is the default port used by many
+output procedures.  Initially, @code{current-output-port} returns the
+value of @code{console-i/o-port}.
+@end deffn
+
+@deffn {procedure+} notification-output-port
+Returns an output port suitable for generating ``notifications'', that
+is, messages to the user that supply interesting information about the
+execution of a program.  For example, the @code{load} procedure writes
+messages to this port informing the user that a file is being loaded.
+Initially, @code{notification-output-port} returns the value of
+@code{console-i/o-port}.
+@end deffn
+
+@deffn {procedure+} trace-output-port
+Returns an output port suitable for generating ``tracing'' information
+about a program's execution.  The output generated by the @code{trace}
+procedure is sent to this port.  Initially, @code{trace-output-port}
 returns the value of @code{console-i/o-port}.
 @end deffn
 
-@deffn {procedure+} with-input-from-port input-port thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-input-from-port} binds the current input port to
-@var{input-port}, calls @var{thunk} with no arguments, restores the
-current input port to its original value, and returns the result that
-was returned by @var{thunk}.  This temporary binding is performed the
-same way as fluid binding of a variable, including the behavior in the
-presence of continuations (@pxref{Fluid Binding}).
+@deffn {procedure+} interaction-i/o-port
+Returns an @sc{i/o} port suitable for querying or prompting the user.
+The standard prompting procedures use this port by default
+(@pxref{Prompting}).  Initially, @code{interaction-i/o-port} returns the
+value of @code{console-i/o-port}.
 @end deffn
 
-@deffn {procedure+} with-output-to-port output-port thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-output-to-port} binds the current output port to
-@var{output-port}, calls @var{thunk} with no arguments, restores the
-current output port to its original value, and returns the result that
-was returned by @var{thunk}.  This temporary binding is performed the
-same way as fluid binding of a variable, including the behavior in the
-presence of continuations (@pxref{Fluid Binding}).
+@deffn {procedure+} with-input-from-port input-port thunk
+@deffnx {procedure+} with-output-to-port output-port thunk
+@deffnx {procedure+} with-notification-output-port output-port thunk
+@deffnx {procedure+} with-trace-output-port output-port thunk
+@deffnx {procedure+} with-interaction-i/o-port i/o-port thunk
+@var{Thunk} must be a procedure of no arguments.  Each of these
+procedures binds one of the standard ports to its first argument, calls
+@var{thunk} with no arguments, restores the port to its original value,
+and returns the result that was returned by @var{thunk}.  This temporary
+binding is performed the same way as fluid binding of a variable,
+including the behavior in the presence of continuations (@pxref{Fluid
+Binding}).
+
+@code{with-input-from-port} binds the current input port,
+@code{with-output-to-port} binds the current output port,
+@code{with-notification-output-port} binds the ``notification'' output
+port, @code{with-trace-output-port} binds the ``trace'' output port, and
+@code{with-interaction-i/o-port} binds the ``interaction'' @sc{i/o} port.
 @end deffn
 
 @deffn {procedure+} set-current-input-port! input-port
-This procedure makes @var{input-port} the current input port and returns
-an unspecified value.
-@end deffn
-
-@deffn {procedure+} set-current-output-port! output-port
-This procedure makes @var{output-port} the current output port and
-returns an unspecified value.
+@deffnx {procedure+} set-current-output-port! output-port
+@deffnx {procedure+} set-notification-output-port! output-port
+@deffnx {procedure+} set-trace-output-port! output-port
+@deffnx {procedure+} set-interaction-i/o-port! i/o-port
+Each of these procedures alters one of the standard ports and returns an
+unspecified value.  The port that is modified corresponds to the name of
+the procedure.
 @end deffn
 
 @defvr {variable+} console-i/o-port
@@ -10501,11 +10696,14 @@ returns an unspecified value.
 @cindex console, port
 @cindex input port, console
 @cindex output port, console
-@code{console-i/o-port} is an i/o port that communicates with the
+@code{console-i/o-port} is an @sc{i/o} port that communicates with the
 ``console''.  Under unix, the console is the controlling terminal of the
-Scheme process.  Under DOS, the console is the a combination of the
+Scheme process.  Under @sc{ms-dos}, the console is a combination of the
 keyboard and the display.  Under Windows, the console is the window that
 is created when Scheme starts up.
+
+This variable is rarely used; instead programs should use one of the
+standard ports defined above.  This variable should not be modified.
 
 @findex console-input-port
 @findex console-output-port
@@ -10549,13 +10747,13 @@ pathname that is then opened.
 @cindex newline translation
 Any file can be opened in two modes, @dfn{normal} and @dfn{binary}.
 Some operating systems, e.g.@: unix, do not distinguish these modes.
-DOS is an example of an operating system that does distinguish these
-modes: in normal mode, DOS file ports perform @code{newline
+@sc{ms-dos} is an example of an operating system that does distinguish
+these modes: in normal mode, @sc{ms-dos} file ports perform @dfn{newline
 translation}, mapping between the carriage-return/linefeed sequence that
 terminates text lines in files, and the @code{#\newline} that terminates
-lines in Scheme.  In binary mode, DOS ports do not perform newline
-translation.  Unless otherwise mentioned, the procedures in this section
-open files in normal mode.
+lines in Scheme.  In binary mode, @sc{ms-dos} ports do not perform
+newline translation.  Unless otherwise mentioned, the procedures in this
+section open files in normal mode.
 
 @deffn procedure open-input-file filename
 @cindex construction, of file input port
@@ -10968,17 +11166,12 @@ the character) to @var{output-port}, performs discretionary output
 flushing, and returns an unspecified value.
 @end deffn
 
-@deffn procedure display object [output-port]
-@cindex external representation, generating
-@cindex generating, external representation
-Writes a representation of @var{object} to @var{output-port}.  Strings
-that appear in the written representation are not enclosed in
-doublequotes, and no characters are escaped within those strings.
-Character objects appear in the representation as if written by
-@code{write-char} instead of by @code{write}.  @code{display} performs
-discretionary output flushing and returns an unspecified
-value.@footnote{@code{write} is intended for producing machine-readable
-output and @code{display} is for producing human-readable output.}
+@deffn {procedure+} write-string string [output-port]
+@cindex string, output to port
+Writes @var{string} to @var{output-port}, performs discretionary output
+flushing, and returns an unspecified value.  This is equivalent to
+writing the contents of string, one character at a time using
+@code{write-char}, except that it is usually much faster.
 @end deffn
 
 @deffn procedure write object [output-port]
@@ -10993,6 +11186,19 @@ escaped by backslashes.  @code{write} performs discretionary output
 flushing and returns an unspecified value.
 @end deffn
 
+@deffn procedure display object [output-port]
+@cindex external representation, generating
+@cindex generating, external representation
+Writes a representation of @var{object} to @var{output-port}.  Strings
+appear in the written representation as if written by
+@code{write-string} instead of by @code{write}.  Character objects
+appear in the representation as if written by @code{write-char} instead
+of by @code{write}.  @code{display} performs discretionary output
+flushing and returns an unspecified value.@footnote{@code{write} is
+intended for producing machine-readable output and @code{display} is for
+producing human-readable output.}
+@end deffn
+
 @deffn procedure newline [output-port]
 @cindex newline character, output to port
 Writes an end-of-line to @var{output-port}, performs discretionary
@@ -11002,7 +11208,7 @@ output flushing, and returns an unspecified value.  Equivalent to
 
 @deffn {procedure+} fresh-line [output-port]
 Some output ports are able to tell whether or not they are at the
-beginning of a line of output (unfortunately the runtime system does not
+beginning of a line of output (currently the runtime system does not
 implement any such ports).  If @var{output-port} is such a port, this
 procedure writes an end-of-line to the port only if the port is not
 already at the beginning of a line.  If @var{output-port} is not such a
@@ -11016,18 +11222,6 @@ Like @code{write}, except that it writes an end-of-line to
 @var{output-port} before writing @var{object}'s representation.  This
 procedure performs discretionary output flushing and returns an
 unspecified value.
-@end deffn
-
-@deffn {procedure+} write-string string [output-port]
-@cindex string, output to port
-Writes @var{string} to @var{output-port}, performs discretionary output
-flushing, and returns an unspecified value.  This is equivalent to
-writing the contents of string, one character at a time using
-@code{write-char}, except that it is usually much faster.
-
-@code{(write-string @var{string})} is the same as @code{(display
-@var{string})} except that it is faster.  Use @code{write-string} when you
-know the argument is a string, and @code{display} when you don't.
 @end deffn
 
 @deffn {procedure+} beep [output-port]
@@ -11063,6 +11257,82 @@ revealing manner on @var{output-port}.  If object is a procedure,
 appropriate indentation; by default this argument is false.  @code{pp}
 performs discretionary output flushing and returns an unspecified value.
 @end deffn
+
+The following variables may be dynamically bound to change the behavior
+of the @code{write} and @code{display} procedures.
+
+@defvr {variable+} *unparser-radix*
+This variable specifies the default radix used to print numbers.  Its
+value must be one of the exact integers @code{2}, @code{8}, @code{10},
+or @code{16}; the default is @code{10}.  If @code{*unparser-radix*} is
+not @code{10}, numbers are prefixed to indicate their radix.
+@end defvr
+
+@defvr {variable+} *unparser-list-breadth-limit*
+This variable specifies a limit on the length of the printed
+representation of a list or vector; for example, if the limit is
+@code{4}, only the first four elements of any list are printed, followed
+by ellipses to indicate any additional elements.  The value of this
+variable must be an exact non-negative integer, or @code{#f} meaning no
+limit; the default is @code{#f}.
+
+@example
+(fluid-let ((*unparser-list-breadth-limit* 4))
+  (write-to-string '(a b c d)))
+                                @result{} "(a b c d)"
+(fluid-let ((*unparser-list-breadth-limit* 4))
+  (write-to-string '(a b c d e)))
+                                @result{} "(a b c d ...)"
+@end example
+@end defvr
+
+@defvr {variable+} *unparser-list-depth-limit*
+This variable specifies a limit on the nesting of lists and vectors in
+the printed representation.  If lists (or vectors) are more deeply
+nested than the limit, the part of the representation that exceeds the
+limit is replaced by ellipses.  The value of this variable must be an
+exact non-negative integer, or @code{#f} meaning no limit; the default
+is @code{#f}.
+
+@example
+(fluid-let ((*unparser-list-depth-limit* 4))
+  (write-to-string '((((a))) b c d)))
+                                @result{} "((((a))) b c d)"
+(fluid-let ((*unparser-list-depth-limit* 4))
+  (write-to-string '(((((a)))) b c d)))
+                                @result{} "((((...))) b c d)"
+@end example
+@end defvr
+
+@defvr {variable+} *unparser-string-length-limit*
+This variable specifies a limit on the length of the printed
+representation of strings.  If a string's length exceeds this limit, the
+part of the printed representation for the characters exceeding the
+limit is replaced by ellipses.  The value of this variable must be an
+exact non-negative integer, or @code{#f} meaning no limit; the default
+is @code{#f}.
+
+@example
+(fluid-let ((*unparser-string-length-limit* 4))
+  (write-to-string "abcd"))
+                                @result{} "\"abcd\""
+(fluid-let ((*unparser-string-length-limit* 4))
+  (write-to-string "abcde"))
+                                @result{} "\"abcd...\""
+@end example
+@end defvr
+
+@defvr {variable+} *unparse-with-maximum-readability?*
+This variable, which takes a boolean value, tells the printer to use a
+special printed representation for objects that normally print in a form
+that cannot be recognized by @code{read}.  These objects are printed
+using the representation @code{#@@@var{n}}, where @var{n} is the result
+of calling @code{hash} on the object to be printed.  The reader
+recognizes this syntax, calling @code{unhash} on @var{n} to get back the
+original object.  Note that this printed representation can only be
+recognized by the Scheme program in which it was generated, because
+these hash numbers are different for each invocation of Scheme.
+@end defvr
 
 @node Format, Custom Output, Output Procedures, Input/Output
 @section Format
@@ -11234,32 +11504,31 @@ representation.
 @cindex unparser method (defn)
 @cindex method, unparser (defn)
 An @dfn{unparser method} is a procedure that is invoked with two
-arguments: first, an unparser state, and second, an object.  An unparser
-method generates a written representation for the object, writing it to
-the output port specified by the unparser state.  The value yielded by
-an unparser method is ignored.  Note that an unparser state is not an
+arguments: an unparser state and an object.  An unparser method
+generates a written representation for the object, writing it to the
+output port specified by the unparser state.  The value yielded by an
+unparser method is ignored.  Note that an unparser state is not an
 output port, rather it is an object that contains an output port as one
 of its components.  Application programs generally do not construct or
 examine unparser state objects, but just pass them along.
 
 There are two ways to create an unparser method (which is then
 registered by one of the above procedures).  The first, and easiest, is
-to use @code{unparser/standard-method}.  The second is to define your
-own method using the procedures @code{unparse-char},
-@code{unparse-string}, and @code{unparse-object}.  We encourage the use
-of the first method, as it results in a more uniform appearance for
-objects.  Many predefined datatypes, for example procedures and
-environments, already have this appearance.
+to use @code{standard-unparser-method}.  The second is to define your
+own method using the procedure @code{with-current-unparser-state}.  We
+encourage the use of the first method, as it results in a more uniform
+appearance for objects.  Many predefined datatypes, for example
+procedures and environments, already have this appearance.
 
-@deffn {procedure+} unparser/standard-method name [procedure]
+@deffn {procedure+} standard-unparser-method name procedure
 Returns a standard unparser method.  @var{Name} may be any object, and
 is used as the name of the type with which the unparser method is
-associated; @var{name} is usually a symbol.  @var{Procedure}, if
-supplied, must be @code{#f} or a procedure of two arguments.
+associated; @var{name} is usually a symbol.  @var{Procedure} must be
+@code{#f} or a procedure of two arguments.
 
 @cindex #[ as external representation
-If @var{procedure} is not supplied, or is @code{#f}, the returned method
-generates an external representation of this form:
+If @var{procedure} is @code{#f}, the returned method generates an
+external representation of this form:
 
 @example
 #[@var{name} @var{hash}]
@@ -11299,40 +11568,31 @@ in three stages:
 @enumerate
 @item
 The first part of the format (up to @var{output}) is written to the
-output port specified by the unparser state.  This includes the space
-between @var{hash} and @var{output}.
+output port specified by the unparser state.  This is @code{"#["},
+@var{name}, @code{" "}, and @var{hash}.
 
 @item
-@var{Procedure} is invoked on two arguments: the unparser state and the
-object.
+@var{Procedure} is invoked on two arguments: the object and an output
+port.
 
 @item
 The closing bracket is written to the output port.
 @end enumerate
 @end deffn
 
-The following three procedures are useful when writing unparser methods.
+The following procedure is useful for writing more general kinds of
+unparser methods.
 
-@deffn {procedure+} unparse-char unparser-state char
-@findex write-char
-Writes @var{char} to the output-port component of @var{unparser-state},
-and returns an unspecified value.  Similar to @code{write-char}.
-@end deffn
+@deffn {procedure+} with-current-unparser-state unparser-state procedure
+This procedure calls @code{procedure} with one argument, the output port
+from @var{unparser-state}.  Additionally, it arranges for the remaining
+components of @var{unparser-state} to be given to the printer when they
+are needed.  The @var{procedure} generates some output by writing to the
+output port using the usual output operations, and the value yielded by
+@var{procedure} is returned from @code{with-current-unparser-state}.
 
-@deffn {procedure+} unparse-string unparser-state string
-@findex write-string
-Writes @var{string} to the output-port component of
-@var{unparser-state}, and returns an unspecified value.  Similar to
-@code{write-string}.
-@end deffn
-
-@deffn {procedure+} unparse-object unparser-state object
-@findex display
-@findex write
-Writes @var{object} to the output-port component of
-@var{unparser-state}, and returns an unspecified value.  @var{Object} is
-generated either as if by @code{display} or as if by @code{write},
-depending on other components of @var{unparser-state}.
+The port passed to @var{procedure} should only be used within the
+dynamic extent of @var{procedure}.
 @end deffn
 
 @node Prompting, Port Primitives, Custom Output, Input/Output
@@ -11349,11 +11609,11 @@ The interfaces for Edwin and for GNU Emacs have already been customized
 in this fashion; because Edwin and Emacs are very similar editors, their
 customizations provide very similar behavior.
 
-@findex nearest-cmdl/port
+@findex interaction-i/o-port
 Each of these procedure accepts an optional argument called @var{port},
 which must be an @sc{i/o} port if given.  If not given, this port
-defaults to the value of @code{(nearest-cmdl/port)}, the @sc{i/o} port
-of the @sc{rep} loop; this is usually the console @sc{i/o} port.
+defaults to the value of @code{(interaction-i/o-port)}; this is usually
+the console @sc{i/o} port.
 
 The required argument @var{prompt} must be a string.
 
@@ -11363,7 +11623,7 @@ This is the procedure called by the @sc{rep} loop to read the user's
 expressions.
 
 The prompt string is formed by appending a space to @var{prompt}, unless
-@var{prompt} already ends in a space.
+@var{prompt} already ends in a space or is an empty string.
 
 The default behavior of this procedure is to print two newlines, the
 current @sc{rep} loop ``level number'', a space, and the prompt string;
@@ -11390,7 +11650,7 @@ This is the procedure called by @code{debug} and @code{where} to read
 the user's commands.
 
 The prompt string is formed by appending a space to @var{prompt}, unless
-@var{prompt} already ends in a space.
+@var{prompt} already ends in a space or is an empty string.
 
 The default behavior of this procedure is to print two newlines, the
 current @sc{rep} loop ``level number'', a space, and the prompt string;
@@ -11705,10 +11965,12 @@ Terminal ports are initially in cooked mode; this can be changed at any
 time with the procedures defined in this section.
 
 These procedures represent cooked mode by the symbol @code{cooked}, and
-raw mode by the symbol @code{raw}.  An argument called @var{mode} must
-be one of these symbols.  A @var{port} argument to any of these
-procedures may be any port, even if that port does not support terminal
-mode; in that case, the port is not modified in any way.
+raw mode by the symbol @code{raw}.  Additionally, the value @code{#f}
+represents ``no mode''; it is the terminal mode of a port that is not a
+terminal.  An argument called @var{mode} must be one of these three
+values.  A @var{port} argument to any of these procedures may be any
+port, even if that port does not support terminal mode; in that case,
+the port is not modified in any way.
 
 @deffn {procedure+} port/input-terminal-mode port
 Returns the input terminal mode of @var{port}.
@@ -11933,7 +12195,7 @@ This procedure invokes the custom operation whose name is the symbol
 @code{x-size}, if it exists.  If the @code{x-size} operation is both
 defined and returns a value other than @code{#f}, that value is returned
 as the result of this procedure.  Otherwise, @code{output-port/x-size}
-returns a default value (currently 79).
+returns a default value (currently @code{79}).
 
 @code{output-port/x-size} is useful for programs that tailor their
 output to the width of the display (a fairly common practice).  If the
@@ -11947,9 +12209,6 @@ This procedure invokes the custom operation whose name is the symbol
 @code{y-size}, if it exists.  If the @code{y-size} operation is defined,
 the value it returns is returned as the result of this procedure;
 otherwise, @code{#f} is returned.
-
-@code{output-port/y-size} is useful for programs that tailor their
-output to the height of the display.
 @end deffn
 
 @node File-System Interface, Error System, Input/Output, Top
@@ -12081,17 +12340,18 @@ If @var{thing} is a pathname, it is returned.  If @var{thing} is a
 string, this procedure returns the pathname that corresponds to the
 string, parsed according to the syntax of the file system specified by
 @var{host}.
+
 This function @emph{does not} do defaulting of pathname components.
-The defaults are used to determine what syntax should be used for
-parsing the string.
-In general this is only really useful if your implementation of
-MIT Scheme supports more than one file system, otherwise you would use
-@code{->pathname}.
-If @var{host} is given it must be a valid host component of a pathname,
-or @code{#f}, in which case the host component of the pathname
-@var{defaults} is used.
-The @var{defaults} argument defaults to the value of
-@code{*default-pathname-defaults*}.
+
+The optional arguments are used to determine what syntax should be used
+for parsing the string.  In general this is only really useful if your
+implementation of MIT Scheme supports more than one file system,
+otherwise you would use @code{->pathname}.  If given, @var{host} must be
+a host object or @code{#f}, and @var{defaults} must be a pathname.
+@var{Host} specifies the syntax used to parse the string.  If @var{host}
+is not given or @code{#f}, the host component from @var{defaults} is
+used instead; if @var{defaults} is not given, the host component from
+@code{*default-pathname-defaults*} is used.
 @end deffn
 
 @deffn {procedure+} ->namestring pathname
@@ -12207,10 +12467,10 @@ missing components.
 
 Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
-a value makes no sense.  For example, UNIX and MS-DOS file systems
+a value makes no sense.  For example, unix and @sc{ms-dos} file systems
 usually do not support version numbers, so the version component for a
-UNIX or MS-DOS host might be @code{unspecific}.  Similarly, the file
-type is usually regarded in a UNIX file system as the part of a name
+unix or @sc{ms-dos} host might be @code{unspecific}.  Similarly, the file
+type is usually regarded in a unix file system as the part of a name
 after the period, but some file names contain no periods and therefore
 have no file types).@footnote{This description is adapted from
 @cite{Common Lisp, The Language}, second edition, section 23.1.1.}
@@ -12473,14 +12733,14 @@ nothing, or just a directory, the name, type and version will come over
 from @var{defaults} together.
 @end deffn
 
-@deffn {variable+} *default-pathname-defaults*
+@defvr {variable+} *default-pathname-defaults*
 @cindex defaulting, of pathname
 This is the default pathname-defaults pathname; if any pathname
 primitive that needs a set of defaults is not given one, it uses this
 one.  @code{set-working-directory-pathname!} sets this variable to a new
 value, computed by merging the new working directory with the variable's
 old value.
-@end deffn
+@end defvr
 
 @deffn {procedure+} pathname-default pathname device directory name type version
 This procedure defaults all of the components of @var{pathname}
@@ -12589,6 +12849,13 @@ of directory components.  This is the inverse operation to
 @subsection Miscellaneous Pathname Functions
 @cindex directory, reading
 
+This section gives some standard operations on host objects, and some
+procedures that return some useful pathnames.
+
+@defvr {variable+} local-host
+This variable has as its value the host object that describes the local
+host's file system.
+@end defvr
 
 @deffn {procedure+} host? object
 @cindex type predicate, for pathname host
@@ -12602,16 +12869,11 @@ Returns @code{#t} if @var{host1} and @var{host2} denote the same
 pathname host; otherwise returns @code{#f}.
 @end deffn
 
-@deffn {procedure+} init-file-pathname #!optional host
+@deffn {procedure+} init-file-pathname [host]
 @cindex home directory, as pathname
 Returns a pathname for the user's initialization file on @var{host}.
 The @var{host} argument defaults to @code{local-host}.
 If the initialization file does not exist this function returns @code{#f}.
-@end deffn
-
-@deffn {variable+} local-host
-This variable has as its value the host object that describes the local
-host's file system.
 @end deffn
 
 @deffn {procedure+} system-library-pathname pathname
@@ -12624,15 +12886,23 @@ error of type @code{condition-type:file-operation-error} is signalled if
 @example
 @group
 (system-library-pathname "compiler.com")
-     @result{}  #[pathname "/usr/local/lib/mit-scheme/compiler.com"]
+     @result{} #[pathname 45 "/usr/local/lib/mit-scheme/compiler.com"]
 @end group
 @end example
 @end deffn
 
 @deffn {procedure+} system-library-directory-pathname pathname
 @cindex library, system pathname
-Locates the pathname of a MIT Scheme system library directory, for
-example, "options".
+Locates the pathname of a MIT Scheme system library directory.  An error
+of type @code{condition-type:file-operation-error} is signalled if
+@var{pathname} cannot be located on the library search path.
+
+@example
+@group
+(system-library-directory-pathname "options")
+     @result{} #[pathname 44 "/usr/local/lib/mit-scheme/options/"]
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} user-homedir-pathname [host]
@@ -12642,8 +12912,9 @@ Returns a pathname for the user's ``home directory'' on @var{host}.  The
 ``home directory'' is itself somewhat implementation-dependent, but it
 should be the place where the user keeps personal files, such as
 initialization files and mail.  For example, on unix this is the user's
-unix home directory, whereas on MS-DOS the home directory is determined
-from the HOME, USER and USERDIR environment variables.
+unix home directory, whereas on @sc{ms-dos} the home directory is
+determined from the @code{HOME}, @code{USER} and @code{USERDIR}
+environment variables.
 @end deffn
 
 
@@ -12723,10 +12994,10 @@ directory, before changing the working directory.
 This procedure temporarily rebinds the current working directory to
 @var{filename}, invokes @var{thunk} (a procedure of no arguments), then
 restores the previous working directory and returns the value yielded by
-@var{thunk}.  @var{Filename} is canonicalized in exactly as does
-@code{set-working-directory-pathname!}.  The binding is performed in
-exactly the same way as fluid binding of a variable
-(@pxref{Fluid Binding}).
+@var{thunk}.  @var{Filename} is canonicalized exactly as
+@code{set-working-directory-pathname!} does.  The binding is performed
+in exactly the same way as fluid binding of a variable (@pxref{Fluid
+Binding}).
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, File-System Interface
