@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: dos.scm,v 1.18 1994/10/26 20:12:23 adams Exp $
+;;;	$Id: dos.scm,v 1.19 1994/12/19 19:41:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-1994 Massachusetts Institute of Technology
 ;;;
@@ -501,3 +501,6 @@ Includes the new backup.  Must be > 0."
        ((ucode-primitive set-working-directory-pathname! 1) outside)
        (set-working-directory-pathname! outside)
        (start-thread-timer)))))
+
+(define (os/set-file-modes-writable! pathname)
+  (set-file-modes! pathname #o777))

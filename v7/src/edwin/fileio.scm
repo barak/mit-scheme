@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.121 1994/11/20 05:06:21 cph Exp $
+;;;	$Id: fileio.scm,v 1.122 1994/12/19 19:42:13 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -483,7 +483,7 @@ Otherwise, a message is written both before and after long file writes."
 				(->namestring pathname)))
 			   (lambda ()
 			     (let ((m (file-modes pathname)))
-			       (set-file-modes! pathname #o777)
+			       (os/set-file-modes-writable! pathname)
 			       (set! modes m)))))
 		     (write-buffer buffer)))
 	      (if modes

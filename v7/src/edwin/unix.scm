@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.42 1994/03/16 23:26:54 cph Exp $
+;;;	$Id: unix.scm,v 1.43 1994/12/19 19:42:26 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-94 Massachusetts Institute of Technology
 ;;;
@@ -633,3 +633,6 @@ CANNOT contain the 'F' option."
 (define (os/quit dir)
   dir					; ignored
   (%quit))
+
+(define (os/set-file-modes-writable! pathname)
+  (set-file-modes! pathname #o777))
