@@ -37,7 +37,7 @@
 
 ;;;; RTL Generation: Combinations
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.2 1986/12/20 23:48:42 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.3 1986/12/21 19:34:42 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -64,7 +64,9 @@
 	      (if (not (eq? 'VALUE type*))
 		  (error "COMBINATION:NORMAL: bad temporary type" type*))
 	      (set-temporary-type! value 'VALUE)))))
-  ((if (snode-next combination) combination:subproblem combination:reduction)
+  ((if (generate:next-is-null? (snode-next combination))
+       combination:reduction
+       combination:subproblem)
    combination offset))
 
 (define (combination:constant combination offset)
@@ -116,14 +118,14 @@
 (define (open-code:type-test combination offset type operand)
   (let ((next (snode-next combination))
 	(operand (list-ref (combination-operands combination) operand)))
-    (scfg*pcfg->pcfg!
-     (generate:cfg (subproblem-cfg operand) offset)
-     (pcfg*scfg->pcfg!
-      (rvalue->pexpression (subproblem-value operand) offset
-	(lambda (expression)
-	  (rtl:make-type-test (rtl:make-object->type expression) type)))
-      (generate:next (pnode-consequent next) offset)
-      (generate:next (pnode-alternative next) offset)))))
+    (generate:subproblem operand offset
+      (lambda (offset)
+	(pcfg*node->node!
+	 (rvalue->pexpression (subproblem-value operand) offset
+	   (lambda (expression)
+	     (rtl:make-type-test (rtl:make-object->type expression) type)))
+	 (generate:next (pnode-consequent next) offset)
+	 (generate:next (pnode-alternative next) offset))))))
 
 (define-open-coder car
   (lambda (combination offset)
@@ -158,15 +160,17 @@
 
 (define (open-code-expression-1 combination offset receiver)
   (let ((operand (car (combination-operands combination))))
-    (scfg*scfg->scfg!
-     (generate:cfg (subproblem-cfg operand) offset)
-     (rvalue->sexpression (subproblem-value operand)
-       (lambda (expression)
-	 (generate-assignment (combination-block combination)
-			      (combination-value combination)
-			      (receiver expression)
-			      (snode-next combination)
-			      offset))))))
+    (generate:subproblem operand offset
+      (lambda (offset)
+	(generate-assignment (combination-block combination)
+			     (combination-value combination)
+			     (subproblem-value operand)
+			     (snode-next combination)
+			     offset
+			     (lambda (rvalue offset receiver*)
+			       (rvalue->sexpression rvalue offset
+				 (lambda (expression)
+				   (receiver* (receiver expression))))))))))
 
 (define (operand->index combination n receiver)
   (let ((operand (list-ref (combination-operands combination) n)))
@@ -185,13 +189,15 @@
   (let ((block (combination-block combination))
 	(finish
 	 (lambda (offset delta call-prefix continuation-prefix)
-	   (let ((continuation
-		  (make-continuation
-		   (scfg*scfg->scfg! continuation-prefix
-				     (generate:next (snode-next combination)
-						    offset))
-		   delta)))
-	     (scfg*scfg->scfg! (call-prefix continuation)
+	   (let ((continuation (make-continuation delta)))
+	     (set-continuation-rtl-entry!
+	      continuation
+	      (scfg*node->node!
+	       (scfg*scfg->scfg!
+		(rtl:make-continuation-heap-check continuation)
+		continuation-prefix)
+	       (generate:next (snode-next combination) offset)))
+	     (scfg*node->node! (call-prefix continuation)
 			       (combination:subproblem-body combination
 							    (+ offset delta)
 							    continuation))))))
@@ -408,7 +414,7 @@
 
 (define (make-call:stack-with-link combination offset invocation-prefix
 				   continuation)
-  (scfg*scfg->scfg!
+  (scfg*node->node!
    (rtl:make-push
     (rtl:make-address
      (block-ancestor-or-self->locative
@@ -418,7 +424,7 @@
    (make-call:stack combination (1+ offset) invocation-prefix continuation)))
 
 (define (make-call:child combination offset make-receiver receiver-size)
-  (scfg*scfg->scfg!
+  (scfg*node->node!
    (make-receiver (block-frame-size (combination-block combination)))
    (make-call:stack-with-link combination (+ offset (receiver-size))
 			      invocation-prefix:null false)))
@@ -455,23 +461,26 @@
 
 ;;;; Call Sequence Kernels
 
-(define (make-call-maker operator-cfg wrap-n)
+(package (make-call:dont-push-operator make-call:push-operator)
+
+(define (make-call-maker generate:operator wrap-n)
   (lambda (combination offset make-invocation)
     (let ((operator (combination-known-operator combination))
 	  (operands (combination-operands combination)))
       (let ((n-operands (length operands))
 	    (finish
 	     (lambda (n offset)
-	       (scfg*->scfg!
-		(let operand-loop
-		    ((operands (reverse operands))
-		     (offset offset))
-		  (if (null? operands)
-		      (list
-		       (operator-cfg (combination-operator combination) offset)
-		       (make-invocation (wrap-n n)))
-		      (cons (subproblem->push (car operands) offset)
-			    (operand-loop (cdr operands) (1+ offset)))))))))
+	       (let operand-loop
+		   ((operands (reverse operands))
+		    (offset offset))
+		 (if (null? operands)
+		     (generate:operator (combination-operator combination)
+					offset
+		       (lambda (offset)
+			 (cfg-entry-node (make-invocation (wrap-n n)))))
+		     (subproblem->push (car operands) offset
+		       (lambda (offset)
+			 (operand-loop (cdr operands) offset))))))))
 	(if (and operator
 		 (procedure? operator)
 		 (not (procedure-rest operator))
@@ -490,16 +499,21 @@
       (cons (rtl:make-push (rtl:make-unassigned))
 	    (push-n-unassigned (-1+ n)))))
 
-(define (subproblem->push subproblem offset)
-  (scfg*scfg->scfg! (generate:cfg (subproblem-cfg subproblem) offset)
-		    (rvalue->sexpression (subproblem-value subproblem) offset
-					 rtl:make-push)))
+(define (subproblem->push subproblem offset receiver)
+  (generate:subproblem subproblem offset
+    (lambda (offset)
+      (scfg*node->node!
+       (rvalue->sexpression (subproblem-value subproblem) offset
+			    rtl:make-push)
+       (receiver (1+ offset))))))
 
-(define make-call:dont-push-operator
-  (make-call-maker subproblem-cfg identity-procedure))
+(define-export make-call:dont-push-operator
+  (make-call-maker generate:subproblem identity-procedure))
 
-(define make-call:push-operator
+(define-export make-call:push-operator
   (make-call-maker subproblem->push 1+))
+
+)
 
 ;;; end USING-SYNTAX
 )

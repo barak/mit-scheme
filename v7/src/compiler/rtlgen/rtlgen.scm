@@ -37,26 +37,39 @@
 
 ;;;; RTL Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.2 1986/12/21 14:52:34 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rtlgen.scm,v 1.3 1986/12/21 19:34:56 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
 
 (define *nodes*)
+(define *generate-next*)
 
 (define (generate-rtl quotations procedures)
   (with-new-node-marks
    (lambda ()
-     (fluid-let ((*nodes* '()))
+     (fluid-let ((*nodes* '())
+		 (*generate-next* generate:null))
        (for-each generate:quotation quotations)
        (for-each generate:procedure procedures)
        (for-each generate:remove-memo *nodes*)))))
 
-(define (generate:cfg cfg offset)
-  (generate:node (cfg-entry-node cfg) offset))
+(define (generate:null offset)
+  false)
+
+(define-integrable (generate:next-is-null? next)
+  (and (not next)
+       (eq? *generate-next* generate:null)))
+
+(define (generate:subproblem subproblem offset generate-next)
+  (let ((cfg (subproblem-cfg subproblem)))
+    (if (cfg-null? cfg)
+	(generate-next offset)
+	(fluid-let ((*generate-next* generate-next))
+	  (generate:node (cfg-entry-node cfg) offset)))))
 
 (define (generate:next node offset)
-  (cond ((not node) (make-null-cfg))
+  (cond ((not node) (*generate-next* offset))
 	((node-marked? node)
 	 (let ((memo (node-property-get node generate:node)))
 	   (if (not (= (car memo) offset))
@@ -78,36 +91,38 @@
   (define-vector-method tag generate:node generator))
 
 (define (generate:quotation quotation)
-  (set-quotation-rtl! quotation
-		      (generate:cfg (quotation-fg-entry quotation) 0)))
+  (set-quotation-rtl-entry! quotation
+			    (generate:node (quotation-fg-entry quotation) 0)))
 
 (define (generate:procedure procedure)
-  (set-procedure-rtl!
+  (set-procedure-rtl-entry!
    procedure
-   ((cond ((ic-procedure? procedure) identity-procedure)
-	  ((closure-procedure? procedure) generate:closure-procedure)
-	  ((stack-procedure? procedure) generate:stack-procedure)
-	  (else (error "Unknown procedure type" procedure)))
-    procedure
-    (generate:cfg (procedure-fg-entry procedure) 0))))
+   (scfg*node->node!
+    ((cond ((ic-procedure? procedure) generate:ic-procedure)
+	   ((closure-procedure? procedure) generate:closure-procedure)
+	   ((stack-procedure? procedure) generate:stack-procedure)
+	   (else (error "Unknown procedure type" procedure)))
+     procedure)
+    (generate:node (procedure-fg-entry procedure) 0))))
 
-(define (generate:closure-procedure procedure cfg)
-  (scfg-append! (if (or (not (null? (procedure-optional procedure)))
-			(procedure-rest procedure))
-		    ((if (closure-procedure-needs-operator? procedure)
-			 rtl:make-setup-closure-lexpr
-			 rtl:make-setup-stack-lexpr)
-		     procedure)
-		    (rtl:make-procedure-heap-check procedure))
-		(setup-stack-frame procedure)
-		cfg))
+(define (generate:ic-procedure procedure)
+  (make-null-cfg))
 
-(define (generate:stack-procedure procedure cfg)
-  (scfg-append! (if (procedure-rest procedure)
-		    (rtl:make-setup-stack-lexpr procedure)
-		    (rtl:make-procedure-heap-check procedure))
-		(setup-stack-frame procedure)
-		cfg))
+(define (generate:closure-procedure procedure)
+  (scfg*scfg->scfg! (if (or (not (null? (procedure-optional procedure)))
+			    (procedure-rest procedure))
+			((if (closure-procedure-needs-operator? procedure)
+			     rtl:make-setup-closure-lexpr
+			     rtl:make-setup-stack-lexpr)
+			 procedure)
+			(rtl:make-procedure-heap-check procedure))
+		    (setup-stack-frame procedure)))
+
+(define (generate:stack-procedure procedure)
+  (scfg*scfg->scfg! (if (procedure-rest procedure)
+			(rtl:make-setup-stack-lexpr procedure)
+			(rtl:make-procedure-heap-check procedure))
+		    (setup-stack-frame procedure)))
 
 (define (setup-stack-frame procedure)
   (define (loop variables pushes)
@@ -145,18 +160,17 @@
 
 (define-generator definition-tag
   (lambda (definition offset)
-    (scfg-append! (rvalue->sexpression (definition-rvalue definition) offset
-		    (lambda (expression)
-		      (find-variable (definition-block definition)
-				     (definition-lvalue definition)
-				     offset
-			(lambda (locative)
-			  (error "Definition of compiled variable"))
-			(lambda (environment name)
-			  (rtl:make-interpreter-call:define environment
-							    name
-							    expression)))))
-		  (generate:next (snode-next definition) offset))))
+    (scfg*node->node!
+     (rvalue->sexpression (definition-rvalue definition) offset
+       (lambda (expression)
+	 (find-variable (definition-block definition)
+			(definition-lvalue definition)
+			offset
+	   (lambda (locative)
+	     (error "Definition of compiled variable"))
+	   (lambda (environment name)
+	     (rtl:make-interpreter-call:define environment name expression)))))
+     (generate:next (snode-next definition) offset))))
 
 (define-generator assignment-tag
   (lambda (assignment offset)
@@ -164,76 +178,81 @@
 			 (assignment-lvalue assignment)
 			 (assignment-rvalue assignment)
 			 (snode-next assignment)
-			 offset)))
+			 offset
+			 rvalue->sexpression)))
 
-(define (generate-assignment block lvalue rvalue next offset)
-  ((vector-method lvalue generate-assignment) block lvalue rvalue next offset))
+(define (generate-assignment block lvalue rvalue next offset
+			     rvalue->sexpression)
+  ((vector-method lvalue generate-assignment)
+   block lvalue rvalue next offset rvalue->sexpression))
 
 (define (define-assignment tag generator)
   (define-vector-method tag generate-assignment generator))
 
 (define-assignment variable-tag
-  (lambda (block variable rvalue next offset)
-    (scfg-append! (if (integrated-vnode? variable)
-		      (make-null-cfg)
-		      (rvalue->sexpression rvalue offset
-			(lambda (expression)
-			  (find-variable block variable offset
-			    (lambda (locative)
-			      (rtl:make-assignment locative expression))
-			    (lambda (environment name)
-			      (rtl:make-interpreter-call:set!
-			       environment
-			       (intern-scode-variable! block name)
-			       expression))))))
-		  (generate:next next offset))))
+  (lambda (block variable rvalue next offset rvalue->sexpression)
+    (scfg*node->node! (if (integrated-vnode? variable)
+			  (make-null-cfg)
+			  (rvalue->sexpression rvalue offset
+			    (lambda (expression)
+			      (find-variable block variable offset
+				(lambda (locative)
+				  (rtl:make-assignment locative expression))
+				(lambda (environment name)
+				  (rtl:make-interpreter-call:set!
+				   environment
+				   (intern-scode-variable! block name)
+				   expression))))))
+		      (generate:next next offset))))
 
-(define (assignment:value-register block value-register rvalue next offset)
-  (if next (error "Return node has next"))
-  (scfg-append! (if (or (value-register? rvalue)
-			(value-temporary? rvalue))
-		    (make-null-cfg)
-		    (rvalue->sexpression rvalue offset
-		      (lambda (expression)
-			(rtl:make-assignment register:value expression))))
-		(if (stack-procedure-block? block)
-		    (rtl:make-message-sender:value
-		     (+ offset (block-frame-size block)))
-		    (scfg-append!
-		     (if (closure-procedure-block? block)
-			 (rtl:make-pop-frame (block-frame-size block))
-			 (make-null-cfg))
-		     (rtl:make-return)))))
+(define (assignment:value-register block value-register rvalue next offset
+				   rvalue->sexpression)
+  (if (not (generate:next-is-null? next)) (error "Return node has next"))
+  (scfg*node->node!
+   (scfg*scfg->scfg! (if (or (value-register? rvalue)
+			     (value-temporary? rvalue))
+			 (make-null-cfg)
+			 (rvalue->sexpression rvalue offset
+			   (lambda (expression)
+			     (rtl:make-assignment register:value expression))))
+		     (if (stack-procedure-block? block)
+			 (rtl:make-message-sender:value
+			  (+ offset (block-frame-size block)))
+			 (scfg-append!
+			  (if (closure-procedure-block? block)
+			      (rtl:make-pop-frame (block-frame-size block))
+			      (make-null-cfg))
+			  (rtl:make-return))))
+   (generate:next next offset)))
 
 (define-assignment value-register-tag
   assignment:value-register)
 
 (define-assignment value-push-tag
-  (lambda (block value-push rvalue next offset)
-    (rvalue->sexpression rvalue offset
-      (lambda (expression)
-	(scfg-append! (rtl:make-push expression)
-		      (generate:next next (1+ offset)))))))
+  (lambda (block value-push rvalue next offset rvalue->sexpression)
+    (scfg*node->node! (rvalue->sexpression rvalue offset rtl:make-push)
+		      (generate:next next (1+ offset)))))
 
 (define-assignment value-ignore-tag
-  (lambda (block value-ignore rvalue next offset)
-    (if next (error "Return node has next"))
-    (make-null-cfg)))
+  (lambda (block value-ignore rvalue next offset rvalue->sexpression)
+    (if (not (generate:next-is-null? next)) (error "Return node has next"))
+    false))
 
 (define-assignment temporary-tag
-  (lambda (block temporary rvalue next offset)
+  (lambda (block temporary rvalue next offset rvalue->sexpression)
     (let ((type (temporary-type temporary)))
       (case type
 	((#F)
-	 (scfg-append!
+	 (scfg*node->node!
 	  (if (integrated-vnode? temporary)
 	      (make-null-cfg)
 	      (rvalue->sexpression rvalue offset
-	       (lambda (expression)
-		 (rtl:make-assignment temporary expression))))
+		(lambda (expression)
+		  (rtl:make-assignment temporary expression))))
 	  (generate:next next offset)))
 	((VALUE)
-	 (assignment:value-register block temporary rvalue next offset))
+	 (assignment:value-register block temporary rvalue next offset
+				    rvalue->sexpression))
 	(else
 	 (error "Unknown temporary type" type))))))
 
@@ -241,7 +260,7 @@
 
 (define-generator true-test-tag
   (lambda (test offset)
-    (pcfg*scfg->pcfg!
+    (pcfg*node->node!
      (let ((rvalue (true-test-rvalue test)))
        (if (rvalue-known-constant? rvalue)
 	   (constant->pcfg (rvalue-constant-value rvalue))
@@ -251,7 +270,7 @@
 
 (define-generator unassigned-test-tag
   (lambda (test offset)
-    (pcfg*scfg->pcfg!
+    (pcfg*node->node!
      (find-variable (unassigned-test-block test)
 		    (unassigned-test-variable test)
 		    offset
@@ -266,7 +285,7 @@
 
 (define-generator unbound-test-tag
   (lambda (test offset)
-    (pcfg*scfg->pcfg!
+    (pcfg*node->node!
      (let ((variable (unbound-test-variable test)))
        (if (ic-block? (variable-block variable))
 	   (scfg*pcfg->pcfg!

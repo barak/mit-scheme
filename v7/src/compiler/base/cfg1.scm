@@ -37,7 +37,7 @@
 
 ;;;; Control Flow Graph Abstraction
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.145 1986/12/21 14:51:38 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg1.scm,v 1.146 1986/12/21 19:33:44 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -59,9 +59,6 @@
 (define (make-snode tag . extra)
   (list->vector (cons* tag false false '() '() false extra)))
 
-(define-integrable (snode-next snode)
-  (edge-right-node (snode-next-edge snode)))
-
 (define-vector-method snode-tag ':DESCRIBE
   (lambda (snode)
     (append! ((vector-tag-parent-method snode-tag ':DESCRIBE) snode)
@@ -74,16 +71,22 @@
 (define (make-pnode tag . extra)
   (list->vector (cons* tag false false '() '() false false extra)))
 
-(define-integrable (pnode-consequent pnode)
-  (edge-right-node (pnode-consequent-edge pnode)))
-
-(define-integrable (pnode-alternative pnode)
-  (edge-right-node (pnode-alternative-edge pnode)))
-
 (define-vector-method pnode-tag ':DESCRIBE
   (lambda (pnode)
     (append! ((vector-tag-parent-method pnode-tag ':DESCRIBE) pnode)
 	     (descriptor-list pnode consequent-edge alternative-edge))))
+
+(define (edge-next-node edge)
+  (and edge (edge-right-node edge)))
+
+(define-integrable (snode-next snode)
+  (edge-next-node (snode-next-edge snode)))
+
+(define-integrable (pnode-consequent pnode)
+  (edge-next-node (pnode-consequent-edge pnode)))
+
+(define-integrable (pnode-alternative pnode)
+  (edge-next-node (pnode-alternative-edge pnode)))
 
 ;;;; Edge Datatype
 
@@ -168,6 +171,14 @@
     (edges-disconnect-right! previous-edges)
     (edges-connect-right! previous-edges snode)
     (create-edge! snode set-snode-next-edge! node)))
+
+(define (node->edge node)
+  (let ((edge (make-edge false false false)))
+    (edge-connect-right! edge node)
+    edge))
+
+(define-integrable (cfg-entry-edge cfg)
+  (node->edge (cfg-entry-node cfg)))
 
 ;;;; Previous Connections
 
@@ -377,13 +388,24 @@
 
 (define (hook-connect! hook node)
   (create-edge! (hook-node hook) (hook-connect hook) node))
+
+(define (scfg*node->node! scfg next-node)
+  (if (cfg-null? scfg)
+      next-node
+      (begin (if next-node
+		 (hooks-connect! (scfg-next-hooks scfg) next-node))
+	     (cfg-entry-node scfg))))
+
+(define (pcfg*node->node! pcfg consequent-node alternative-node)
+  (if (cfg-null? pcfg)
+      (error "PCFG*NODE->NODE!: Can't have null predicate"))
+  (if consequent-node
+      (hooks-connect! (pcfg-consequent-hooks pcfg) consequent-node))
+  (if alternative-node
+      (hooks-connect! (pcfg-alternative-hooks pcfg) alternative-node))
+  (cfg-entry-node pcfg))
 
 ;;;; CFG Construction
-
-(define (cfg-entry-edge cfg)
-  (let ((edge (make-edge false false false)))
-    (edge-connect-right! edge (cfg-entry-node cfg))
-    edge))
 
 (define-integrable (scfg-next-connect! scfg cfg)
   (hooks-connect! (scfg-next-hooks scfg) (cfg-entry-node cfg)))
@@ -397,8 +419,9 @@
 (define (scfg*scfg->scfg! scfg scfg*)
   (cond ((not scfg) scfg*)
 	((not scfg*) scfg)
-	(else (scfg-next-connect! scfg scfg*)
-	      (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
+	(else
+	 (scfg-next-connect! scfg scfg*)
+	 (make-scfg (cfg-entry-node scfg) (scfg-next-hooks scfg*)))))
 
 (package (scfg-append! scfg*->scfg!)
 

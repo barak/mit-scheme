@@ -37,7 +37,7 @@
 
 ;;;; Compiler CFG Datatypes
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.38 1986/12/21 14:51:50 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 1.39 1986/12/21 19:33:58 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -87,15 +87,18 @@
 (define-snode continuation rtl-edge delta label)
 (define *continuations*)
 
-(define-integrable (make-continuation rtl delta)
+(define-integrable (make-continuation delta)
   (let ((continuation
-	 (make-snode continuation-tag (cfg-entry-edge rtl) delta
+	 (make-snode continuation-tag false delta
 		     (generate-label 'CONTINUATION))))
     (set! *continuations* (cons continuation *continuations*))
     continuation))
 
 (define-integrable (continuation-rtl-entry continuation)
   (edge-right-node (continuation-rtl-edge continuation)))
+
+(define-integrable (set-continuation-rtl-entry! continuation node)
+  (set-continuation-rtl-edge! continuation (node->edge node)))
 
 (define-unparser continuation-tag
   (lambda (continuation)

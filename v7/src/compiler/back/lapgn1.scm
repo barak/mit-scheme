@@ -37,7 +37,7 @@
 
 ;;;; LAP Code Generation
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.22 1986/12/21 14:52:04 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn1.scm,v 1.23 1986/12/21 19:34:12 cph Exp $
 
 (declare (usual-integrations))
 (using-syntax (access compiler-syntax-table compiler-package)
@@ -57,17 +57,17 @@
 		 (*code-object-label*)
 		 (*code-object-entry*))
        (for-each (lambda (quotation)
-		   (cgen-cfg quotation quotation-rtl-entry))
+		   (cgen-entry quotation quotation-rtl-entry))
 		 quotations)
        (for-each (lambda (procedure)
-		   (cgen-cfg procedure procedure-rtl-entry))
+		   (cgen-entry procedure procedure-rtl-entry))
 		 procedures)
        (for-each (lambda (continuation)
-		   (cgen-cfg continuation continuation-rtl-entry))
+		   (cgen-entry continuation continuation-rtl-entry))
 		 continuations)
        (receiver *interned-constants* *block-start-label*)))))
 
-(define (cgen-cfg object extract-entry)
+(define (cgen-entry object extract-entry)
   (set! *code-object-label* (code-object-label-initialize object))
   (let ((rnode (extract-entry object)))
     (set! *code-object-entry* rnode)
@@ -84,7 +84,7 @@
 
 (define (cgen-rnode rnode)
   (define (cgen-right-node edge)
-    (let ((next (edge-right-node edge)))
+    (let ((next (edge-next-node edge)))
       (if (and next (not (node-marked? next)))
 	  (begin (if (node-previous>1? next)
 		     (let ((snode (statement->snode '(NOOP))))
