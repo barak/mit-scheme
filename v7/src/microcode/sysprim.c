@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.43 1998/10/23 05:34:16 cph Exp $
+$Id: sysprim.c,v 9.44 1998/10/23 05:35:17 cph Exp $
 
 Copyright (c) 1987-98 Massachusetts Institute of Technology
 
@@ -171,5 +171,6 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 
 DEFINE_PRIMITIVE ("SCHEME-PROGRAM-NAME", Prim_scheme_program_name, 0, 0, 0)
 {
+  PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (char_pointer_to_string (scheme_program_name));
 }
