@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.25 2003/09/25 16:51:15 cph Exp $
+$Id: xml-output.scm,v 1.26 2003/09/26 03:56:51 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -249,10 +249,10 @@ USA.
 		    (emit-string "(" ctx)
 		    (if (pair? (cdr type))
 			(begin
-			  (write-xml-name (cadr type) ctx)
-			  (for-each (lambda (name)
+			  (write-xml-nmtoken (cadr type) ctx)
+			  (for-each (lambda (nmtoken)
 				      (emit-string "|" ctx)
-				      (write-xml-name name ctx))
+				      (write-xml-nmtoken nmtoken ctx))
 				    (cddr type))))
 		    (emit-string ")" ctx))
 		   (else
@@ -416,6 +416,9 @@ USA.
 
 (define (xml-name-columns name)
   (utf8-string-length (xml-name-string name)))
+
+(define (write-xml-nmtoken nmtoken ctx)
+  (emit-string (xml-nmtoken-string nmtoken) ctx))
 
 (define (write-entity-value value col ctx)
   (if (xml-external-id? value)

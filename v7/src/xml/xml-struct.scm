@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.34 2003/09/26 01:00:14 cph Exp $
+$Id: xml-struct.scm,v 1.35 2003/09/26 03:56:58 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -26,259 +26,6 @@ USA.
 ;;;; XML data structures
 
 (declare (usual-integrations))
-
-(define-record-type <combo-name>
-    (make-combo-name qname expanded)
-    combo-name?
-  (qname combo-name-qname)
-  (expanded combo-name-expanded))
-
-(set-record-type-unparser-method! <combo-name>
-  (standard-unparser-method 'XML-NAME
-    (lambda (name port)
-      (write-char #\space port)
-      (write (combo-name-qname name) port))))
-
-(define-record-type <expanded-name>
-    (make-expanded-name iri local combos)
-    expanded-name?
-  (iri expanded-name-iri)
-  (local expanded-name-local)
-  (combos expanded-name-combos))
-
-(define (xml-name? object)
-  (or (and (interned-symbol? object)
-	   (string-is-xml-name? (symbol-name object)))
-      (combo-name? object)))
-
-(define (guarantee-xml-name object caller)
-  (if (not (xml-name? object))
-      (error:not-xml-name object caller)))
-
-(define (error:not-xml-name object caller)
-  (error:wrong-type-argument object "an XML name" caller))
-
-(define (make-xml-namespace-iri iri)
-  (if (string? iri)
-      (begin
-	(if (not (namespace-iri-string? iri))
-	    (error:not-xml-namespace-iri iri 'MAKE-XML-NAMESPACE-IRI))
-	(string->symbol iri))
-      (begin
-	(guarantee-xml-namespace-iri iri 'MAKE-XML-NAMESPACE-IRI)
-	iri)))
-
-(define (xml-namespace-iri? object)
-  (and (interned-symbol? object)
-       (namespace-iri-string? (symbol-name object))))
-
-(define (namespace-iri-string? object)
-  ;; See RFC 1630 for correct syntax.
-  (utf8-string-valid? object))
-
-(define (null-xml-namespace-iri? object)
-  (eq? object '||))
-
-(define (null-xml-namespace-iri)
-  '||)
-
-(define (guarantee-xml-namespace-iri object caller)
-  (if (not (xml-namespace-iri? object))
-      (error:not-xml-namespace-iri object caller)))
-
-(define (error:not-xml-namespace-iri object caller)
-  (error:wrong-type-argument object "an XML namespace IRI" caller))
-
-(define (xml-namespace-iri->string iri)
-  (guarantee-xml-namespace-iri iri 'XML-NAMESPACE-IRI->STRING)
-  (symbol->string iri))
-
-(define (xml-intern qname #!optional iri)
-  (make-xml-name qname
-		 (if (default-object? iri)
-		     (null-xml-namespace-iri)
-		     iri)))
-
-(define (make-xml-name qname iri)
-  (let ((bad-name
-	 (lambda ()
-	   (error:wrong-type-argument qname "an XML name" 'MAKE-XML-NAME)))
-	(bad-iri
-	 (lambda ()
-	   (error:wrong-type-argument iri "IRI" 'MAKE-XML-NAME))))
-    (receive (string symbol)
-	(cond ((symbol? qname) (values (symbol-name qname) qname))
-	      ((string? qname) (values qname (string->symbol qname)))
-	      (else (bad-name)))
-      (let ((type (string-is-xml-nmtoken? string)))
-	(cond ((and type (null-xml-namespace-iri? iri))
-	       symbol)
-	      ((eq? type 'NAME)
-	       (let ((iri (make-xml-namespace-iri iri)))
-		 (%make-xml-name
-		  symbol
-		  iri
-		  (let ((c (string-find-next-char string #\:)))
-		    (if c
-			(let ((prefix (string-head->symbol string c))
-			      (local (string-tail->symbol string (fix:+ c 1))))
-			  (if (or (and (eq? prefix 'xml)
-				       (not (eq? iri xml-iri)))
-				  (and (eq? prefix 'xmlns)
-				       (not (eq? iri xmlns-iri))))
-			      (bad-iri))
-			  local)
-			symbol)))))
-	      (else (bad-name)))))))
-
-(define (%make-xml-name qname iri local)
-  (let ((uname
-	 (hash-table/intern! (hash-table/intern! expanded-names
-						 iri
-						 make-eq-hash-table)
-			     local
-			     (lambda ()
-			       (make-expanded-name iri
-						   local
-						   (make-eq-hash-table))))))
-    (hash-table/intern! (expanded-name-combos uname)
-			qname
-			(lambda () (make-combo-name qname uname)))))
-
-(define expanded-names
-  (make-eq-hash-table))
-
-(define xml-iri
-  (make-xml-namespace-iri "http://www.w3.org/XML/1998/namespace"))
-
-(define xmlns-iri
-  (make-xml-namespace-iri "http://www.w3.org/2000/xmlns/"))
-
-(define (xml-name-qname name)
-  (cond ((xml-nmtoken? name) name)
-	((combo-name? name) (combo-name-qname name))
-	(else (error:not-xml-name name 'XML-NAME-QNAME))))
-
-(define (xml-name-qname=? name qname)
-  (eq? (xml-name-qname name) qname))
-
-(define (xml-name-string name)
-  (symbol-name (xml-name-qname name)))
-
-(define (xml-name-iri name)
-  (cond ((xml-nmtoken? name) (null-xml-namespace-iri))
-	((combo-name? name) (expanded-name-iri (combo-name-expanded name)))
-	(else (error:not-xml-name name 'XML-NAME-IRI))))
-
-(define (xml-name-iri=? name iri)
-  (eq? (xml-name-iri name) iri))
-
-(define (xml-name-prefix name)
-  (let ((s
-	 (symbol-name
-	  (cond ((xml-nmtoken? name) name)
-		((combo-name? name) (combo-name-qname name))
-		(else (error:not-xml-name name 'XML-NAME-PREFIX))))))
-    (let ((c (string-find-next-char s #\:)))
-      (if c
-	  (string-head->symbol s c)
-	  (null-xml-name-prefix)))))
-
-(define (null-xml-name-prefix? object)
-  (eq? object '||))
-
-(define (null-xml-name-prefix)
-  '||)
-
-(define (xml-name-prefix=? name prefix)
-  (eq? (xml-name-prefix name) prefix))
-
-(define (xml-name-local name)
-  (cond ((xml-nmtoken? name)
-	 (let ((s (symbol-name name)))
-	   (let ((c (string-find-next-char s #\:)))
-	     (if c
-		 (string-tail->symbol s (fix:+ c 1))
-		 name))))
-	((combo-name? name) (expanded-name-local (combo-name-expanded name)))
-	(else (error:not-xml-name name 'XML-NAME-LOCAL))))
-
-(define (xml-name-local=? name local)
-  (eq? (xml-name-local name) local))
-
-(define (xml-name=? n1 n2)
-  (let ((lose (lambda (n) (error:not-xml-name n 'XML-NAME=?))))
-    (cond ((xml-nmtoken? n1)
-	   (cond ((xml-nmtoken? n2) (eq? n1 n2))
-		 ((combo-name? n2) (eq? n1 (combo-name-qname n2)))
-		 (else (lose n2))))
-	  ((combo-name? n1)
-	   (cond ((xml-nmtoken? n2)
-		  (eq? (combo-name-qname n1) n2))
-		 ((combo-name? n2)
-		  (eq? (combo-name-expanded n1)
-		       (combo-name-expanded n2)))
-		 (else (lose n2))))
-	  (else (lose n1)))))
-
-(define (xml-name-hash name modulus)
-  (eq-hash-mod (xml-name-local name) modulus))
-
-(define make-xml-name-hash-table
-  (strong-hash-table/constructor xml-name-hash xml-name=? #t))
-
-(define (xml-nmtoken? object)
-  (and (symbol? object)
-       (string-is-xml-nmtoken? (symbol-name object))))
-
-(define (string-is-xml-name? string)
-  (eq? (string-is-xml-nmtoken? string) 'NAME))
-
-(define (string-is-xml-nmtoken? string)
-  (let ((buffer (string->parser-buffer string)))
-    (let ((check-char
-	   (lambda ()
-	     (match-utf8-char-in-alphabet buffer alphabet:name-subsequent))))
-      (letrec
-	  ((no-colon
-	    (lambda ()
-	      (cond ((match-parser-buffer-char buffer #\:)
-		     (colon))
-		    ((peek-parser-buffer-char buffer)
-		     (and (check-char)
-			  (no-colon)))
-		    (else 'NAME))))
-	   (colon
-	    (lambda ()
-	      (cond ((match-parser-buffer-char buffer #\:)
-		     (nmtoken?))
-		    ((peek-parser-buffer-char buffer)
-		     (and (check-char)
-			  (colon)))
-		    (else 'NAME))))
-	   (nmtoken?
-	    (lambda ()
-	      (if (peek-parser-buffer-char buffer)
-		  (and (check-char)
-		       (nmtoken?))
-		  'NMTOKEN))))
-	(if (match-utf8-char-in-alphabet buffer alphabet:name-initial)
-	    (no-colon)
-	    (and (check-char)
-		 (nmtoken?)))))))
-
-(define (xml-whitespace-string? object)
-  (string-composed-of? object char-set:xml-whitespace))
-
-(define (string-composed-of? string char-set)
-  (and (string? string)
-       (substring-composed-of? string 0 (string-length string) char-set)))
-
-(define (substring-composed-of? string start end char-set)
-  (let loop ((index start))
-    (or (fix:= index end)
-	(and (char-set-member? char-set (string-ref string index))
-	     (loop (fix:+ index 1))))))
 
 (define-syntax define-xml-type
   (sc-macro-transformer
@@ -360,6 +107,9 @@ USA.
 	  (xml-whitespace-string? object)
 	  (xml-processing-instructions? object)))))
 
+(define (xml-whitespace-string? object)
+  (string-composed-of? object char-set:xml-whitespace))
+
 (define-xml-type declaration
   (version xml-version?)
   (encoding xml-encoding?)
@@ -431,7 +181,7 @@ USA.
 (define-xml-type processing-instructions
   (name
    (lambda (object)
-     (and (xml-name? object)
+     (and (xml-qname? object)
 	  (not (string-ci=? "xml" (symbol-name object))))))
   (text xml-char-data? canonicalize-char-data))
 
@@ -520,14 +270,14 @@ USA.
 		  (string->char-set " \r\n-'()+,./:=?;!*#@$_%")))
 
 (define-xml-type !element
-  (name xml-name?)
+  (name xml-qname?)
   (content-type
    (lambda (object)
      (or (eq? object '|EMPTY|)
 	 (eq? object '|ANY|)
 	 (and (pair? object)
 	      (eq? '|#PCDATA| (car object))
-	      (list-of-type? (cdr object) xml-name?))
+	      (list-of-type? (cdr object) xml-qname?))
 	 (letrec
 	     ((children?
 	       (lambda (object)
@@ -539,7 +289,7 @@ USA.
 			  (list-of-type? (cdr object) cp?))))))
 	      (cp?
 	       (lambda (object)
-		 (or (maybe-wrapped object xml-name?)
+		 (or (maybe-wrapped object xml-qname?)
 		     (children? object))))
 	      (maybe-wrapped
 	       (lambda (object pred)
@@ -554,13 +304,13 @@ USA.
 	   (children? object))))))
 
 (define-xml-type !attlist
-  (name xml-name?)
+  (name xml-qname?)
   (definitions
     (lambda (object)
       (list-of-type? object
 	(lambda (item)
 	  (and (pair? item)
-	       (xml-name? (car item))
+	       (xml-qname? (car item))
 	       (pair? (cdr item))
 	       (!attlist-type? (cadr item))
 	       (pair? (cddr item))
@@ -587,7 +337,7 @@ USA.
       (eq? object '|NMTOKEN|)
       (and (pair? object)
 	   (eq? '|NOTATION| (car object))
-	   (list-of-type? (cdr object) xml-name?))
+	   (list-of-type? (cdr object) xml-qname?))
       (and (pair? object)
 	   (eq? 'enumerated (car object))
 	   (list-of-type? (cdr object) xml-nmtoken?))))
@@ -603,16 +353,16 @@ USA.
 	   (xml-attribute-value? (cdr object)))))
 
 (define-xml-type !entity
-  (name xml-name?)
+  (name xml-qname?)
   (value entity-value? canonicalize-entity-value))
 
 (define-xml-type unparsed-!entity
-  (name xml-name?)
+  (name xml-qname?)
   (id xml-external-id?)
-  (notation xml-name?))
+  (notation xml-qname?))
 
 (define-xml-type parameter-!entity
-  (name xml-name?)
+  (name xml-qname?)
   (value entity-value? canonicalize-entity-value))
 
 (define (entity-value? object)
@@ -625,14 +375,14 @@ USA.
       (xml-external-id? object)))
 
 (define-xml-type !notation
-  (name xml-name?)
+  (name xml-qname?)
   (id xml-external-id?))
 
 (define-xml-type entity-ref
-  (name xml-name?))
+  (name xml-qname?))
 
 (define-xml-type parameter-entity-ref
-  (name xml-name?))
+  (name xml-qname?))
 
 (define-syntax define-xml-printer
   (sc-macro-transformer
@@ -707,7 +457,7 @@ USA.
 	 (make-xml-namespace-iri (guarantee-xml-attribute-value attr)))))
 
 (define (xml-element-namespace-prefix elt iri)
-  (let ((iri (xml-namespace-iri->string iri)))
+  (let ((iri (xml-namespace-iri-string iri)))
     (let ((attr
 	   (find-matching-item (xml-element-attributes elt)
 	     (lambda (attr)

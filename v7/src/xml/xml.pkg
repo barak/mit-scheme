@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.32 2003/09/26 01:00:07 cph Exp $
+$Id: xml.pkg,v 1.33 2003/09/26 03:56:45 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -31,6 +31,55 @@ USA.
 
 (define-package (runtime xml)
   (parent (runtime)))
+
+(define-package (runtime xml names)
+  (files "xml-names")
+  (parent (runtime xml))
+  (export ()
+	  <xml-namespace-iri>
+	  error:not-xml-name
+	  error:not-xml-namespace-iri
+	  error:not-xml-nmtoken
+	  error:not-xml-qname
+	  guarantee-xml-name
+	  guarantee-xml-namespace-iri
+	  guarantee-xml-nmtoken
+	  guarantee-xml-qname
+	  make-xml-name
+	  make-xml-name-hash-table
+	  make-xml-namespace-iri
+	  make-xml-nmtoken
+	  make-xml-qname
+	  null-xml-name-prefix
+	  null-xml-name-prefix?
+	  null-xml-namespace-iri
+	  null-xml-namespace-iri?
+	  xml-iri
+	  xml-name-hash
+	  xml-name-iri
+	  xml-name-iri=?
+	  xml-name-local
+	  xml-name-local=?
+	  xml-name-prefix
+	  xml-name-prefix=?
+	  xml-name-qname
+	  xml-name-qname=?
+	  xml-name-string
+	  xml-name=?
+	  xml-name?
+	  xml-namespace-iri-string
+	  xml-namespace-iri?
+	  xml-nmtoken-string
+	  xml-nmtoken?
+	  xml-qname-local
+	  xml-qname-prefix
+	  xml-qname-string
+	  xml-qname?
+	  xmlns-iri)
+  (export (runtime xml)
+	  %make-xml-name
+	  string-composed-of?
+	  substring-composed-of?))
 
 (define-package (runtime xml structure)
   (files "xml-struct")
@@ -63,8 +112,6 @@ USA.
 	  error:not-xml-element
 	  error:not-xml-entity-ref
 	  error:not-xml-external-id
-	  error:not-xml-name
-	  error:not-xml-namespace-iri
 	  error:not-xml-parameter-!entity
 	  error:not-xml-parameter-entity-ref
 	  error:not-xml-processing-instructions
@@ -81,8 +128,6 @@ USA.
 	  guarantee-xml-element
 	  guarantee-xml-entity-ref
 	  guarantee-xml-external-id
-	  guarantee-xml-name
-	  guarantee-xml-namespace-iri
 	  guarantee-xml-parameter-!entity
 	  guarantee-xml-parameter-entity-ref
 	  guarantee-xml-processing-instructions
@@ -98,17 +143,10 @@ USA.
 	  make-xml-element
 	  make-xml-entity-ref
 	  make-xml-external-id
-	  make-xml-name
-	  make-xml-name-hash-table
-	  make-xml-namespace-iri
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
 	  make-xml-unparsed-!entity
-	  null-xml-name-prefix
-	  null-xml-name-prefix?
-	  null-xml-namespace-iri
-	  null-xml-namespace-iri?
 	  set-xml-!attlist-definitions!
 	  set-xml-!attlist-name!
 	  set-xml-!element-content-type!
@@ -136,7 +174,6 @@ USA.
 	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
 	  set-xml-external-id-iri!
-	  (set-xml-external-id-uri! set-xml-external-id-iri!)
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
 	  set-xml-parameter-entity-ref-name!
@@ -192,25 +229,7 @@ USA.
 	  xml-entity-ref?
 	  xml-external-id-id
 	  xml-external-id-iri
-	  (xml-external-id-uri xml-external-id-iri)
 	  xml-external-id?
-	  xml-intern
-	  xml-iri
-	  xml-name-hash
-	  xml-name-local
-	  xml-name-local=?
-	  xml-name-prefix
-	  xml-name-prefix=?
-	  xml-name-qname
-	  xml-name-qname=?
-	  xml-name-string
-	  xml-name-iri
-	  xml-name-iri=?
-	  xml-name=?
-	  xml-name?
-	  xml-namespace-iri->string
-	  xml-namespace-iri?
-	  xml-nmtoken?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
@@ -223,10 +242,7 @@ USA.
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation
 	  xml-unparsed-!entity?
-	  xml-whitespace-string?
-	  xmlns-iri)
-  (export (runtime xml parser)
-	  %make-xml-name))
+	  xml-whitespace-string?))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.11 2003/02/14 18:28:38 cph Exp $
+$Id: compile.scm,v 1.12 2003/09/26 03:56:38 cph Exp $
 
-Copyright 2001 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +38,8 @@ USA.
       (lambda ()
 	(load "parser-macro")
 	(for-each compile-file
-		  '("xml-struct"
+		  '("xml-names"
+		    "xml-struct"
 		    "xml-chars"
 		    "xml-output"
 		    "xml-parser"))))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.45 2003/09/26 01:00:11 cph Exp $
+$Id: xml-parser.scm,v 1.46 2003/09/26 03:56:54 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -436,7 +436,7 @@ USA.
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
-    (*parser (require-success m (map xml-intern (match match-name))))))
+    (*parser (require-success m (map make-xml-qname (match match-name))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
 (define parse-pi-name (simple-name-parser "processing-instructions"))
@@ -452,7 +452,7 @@ USA.
 (define parse-required-name-token	;[7]
   (*parser
    (require-success "Malformed XML name token"
-     (map xml-intern (match match-name-token)))))
+     (map make-xml-nmtoken (match match-name-token)))))
 
 (define (match-name-token buffer)
   (and (match-utf8-char-in-alphabet buffer alphabet:name-subsequent)
@@ -504,40 +504,36 @@ USA.
 	      *prefix-bindings*)))
   unspecific)
 
-(define (intern-element-name n) (intern-name n #t))
-(define (intern-attribute-name n) (intern-name n #f))
+(define (intern-element-name n) (intern-name n #f))
+(define (intern-attribute-name n) (intern-name n #t))
 
-(define (intern-name n element-name?)
-  (let ((s (car n))
+(define (intern-name n attribute-name?)
+  (let ((qname (string->symbol (car n)))
 	(p (cdr n)))
-    (let ((qname (string->symbol s))
-	  (c (string-find-next-char s #\:)))
-      (let ((iri
-	     (if (and (not *in-dtd?*)
-		      (or element-name? c))
-		 (let ((prefix
-			(if c
-			    (string-head->symbol s c)
-			    (null-xml-name-prefix))))
-		   (case prefix
-		     ((xmlns) xmlns-iri)
-		     ((xml) xml-iri)
-		     (else
-		      (let ((entry (assq prefix *prefix-bindings*)))
-			(if entry
-			    (cdr entry)
-			    (begin
-			      (if (not (null-xml-name-prefix? prefix))
-				  (perror p "Unknown XML prefix" prefix))
-			      (null-xml-namespace-iri)))))))
-		 (null-xml-namespace-iri? iri))))
-	(if (null-xml-namespace-iri? iri)
-	    qname
-	    (%make-xml-name qname
-			    iri
-			    (if c
-				(string-tail->symbol s (fix:+ c 1))
-				qname)))))))
+    (if *in-dtd?*
+	qname
+	(let ((iri (lookup-namespace-prefix qname p attribute-name?)))
+	  (if (null-xml-namespace-iri? iri)
+	      qname
+	      (%make-xml-name qname iri))))))
+
+(define (lookup-namespace-prefix qname p attribute-name?)
+  (let ((prefix (xml-qname-prefix qname)))
+    (cond ((eq? prefix 'xmlns)
+	   xmlns-iri)
+	  ((eq? prefix 'xml)
+	   xml-iri)
+	  ((and attribute-name?
+		(null-xml-name-prefix? prefix))
+	   (null-xml-namespace-iri))
+	  (else
+	   (let ((entry (assq prefix *prefix-bindings*)))
+	     (if entry
+		 (cdr entry)
+		 (begin
+		   (if (not (null-xml-name-prefix? prefix))
+		       (perror p "Undeclared XML prefix" prefix))
+		   (null-xml-namespace-iri))))))))
 
 ;;;; Processing instructions
 
@@ -695,7 +691,7 @@ USA.
 	  parse-attribute-value))))
 
 (define parse-declaration-attributes
-  (attribute-list-parser (*parser (map xml-intern (match match-name)))))
+  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))))
 
 (define parse-attribute-list
   (attribute-list-parser parse-uninterned-name))
@@ -1069,8 +1065,8 @@ USA.
 	 parse-required-element-name
 	 S
 	 ;;[46]
-	 (alt (map xml-intern (match "EMPTY"))
-	      (map xml-intern (match "ANY"))
+	 (alt (map make-xml-qname (match "EMPTY"))
+	      (map make-xml-qname (match "ANY"))
 	      ;;[51]
 	      (encapsulate vector->list
 		(with-pointer p
@@ -1124,14 +1120,14 @@ USA.
 
 (define parse-!attlist-type		;[54,57]
   (*parser
-   (alt (map xml-intern
+   (alt (map make-xml-qname
 	     ;;[55,56]
 	     (match (alt "CDATA" "IDREFS" "IDREF" "ID"
 			 "ENTITY" "ENTITIES" "NMTOKENS" "NMTOKEN")))
 	;;[58]
 	(encapsulate vector->list
 	  (bracket "notation type"
-	      (seq (map xml-intern (match "NOTATION"))
+	      (seq (map make-xml-qname (match "NOTATION"))
 		   S
 		   "(")
 	      ")"
