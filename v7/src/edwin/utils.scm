@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: utils.scm,v 1.45 1999/01/02 06:11:34 cph Exp $
+;;; $Id: utils.scm,v 1.46 1999/11/05 05:36:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -297,6 +297,14 @@
 	(begin (procedure i)
 	       (loop (1+ i)))))
   (loop 0))
+
+(define (split-list elements predicate)
+  (let loop ((elements elements) (satisfied '()) (unsatisfied '()))
+    (if (pair? elements)
+	(if (predicate (car elements))
+	    (loop (cdr elements) (cons (car elements) satisfied) unsatisfied)
+	    (loop (cdr elements) satisfied (cons (car elements) unsatisfied)))
+	(values satisfied unsatisfied))))
 
 (define make-strong-eq-hash-table
   (strong-hash-table/constructor eq-hash-mod eq? #t))
