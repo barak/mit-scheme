@@ -17,7 +17,7 @@ dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 dnl 02111-1307, USA.
 
-AC_REVISION([$Id: configure.in,v 1.4 2001/09/25 18:25:46 cph Exp $])
+AC_REVISION([$Id: configure.in,v 1.5 2001/10/04 17:11:49 cph Exp $])
 AC_INIT(microcode/boot.c)
 
 AC_PROG_INSTALL
@@ -32,4 +32,4 @@ AUXDIR=${libdir}/mit-scheme
 AC_SUBST(AUXDIR)
 
 AC_CONFIG_SUBDIRS(microcode compiler)
-AC_OUTPUT(Makefile runtime/Makefile cref/Makefile sos/Makefile edwin/Makefile imail/Makefile)
+AC_OUTPUT(Makefile runtime/Makefile cref/Makefile edwin/Makefile imail/Makefile sos/Makefile star-parser/Makefile xml/Makefile)

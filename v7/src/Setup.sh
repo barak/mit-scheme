@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.6 2000/12/08 18:24:09 cph Exp $
+# $Id: Setup.sh,v 1.7 2001/10/04 17:06:52 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -45,7 +45,7 @@ maybe_link lib/edwin/autoload ../../edwin
 SUBDIRS=""
 
 for SUBDIR in 6001 compiler cref edwin imail microcode rcs \
-	runtime runtime-check sf sos win32; do
+	runtime runtime-check sf sos star-parser win32 xml; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     ( cd ${SUBDIR} && ./Setup.sh ) || exit 1
