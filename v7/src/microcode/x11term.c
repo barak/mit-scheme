@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.22 1993/07/19 21:06:48 cph Exp $
+$Id: x11term.c,v 1.23 1993/08/16 08:12:32 cph Exp $
 
 Copyright (c) 1989-93 Massachusetts Institute of Technology
 
@@ -412,6 +412,7 @@ DEFUN (xterm_reconfigure, (xw, width, height),
       (XW_Y_CSIZE (xw)) = y_csize;
       (XW_CHARACTER_MAP (xw))= new_char_map;
       (XW_HIGHLIGHT_MAP (xw))= new_hl_map;
+      XClearWindow ((XW_DISPLAY (xw)), (XW_WINDOW (xw)));
       xterm_dump_contents (xw, 0, 0, x_csize, y_csize);
       xterm_update_normal_hints (xw);
       XFlush (XW_DISPLAY (xw));
