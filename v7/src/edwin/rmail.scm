@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.19 1992/08/03 21:44:14 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.20 1992/11/05 16:41:22 bal Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -1414,7 +1414,22 @@ buffer visiting that file."
 		      (let loop ((memo first))
 			(if memo
 			    (if (mark< point (msg-memo/end memo))
-				(select-message buffer memo)
+				(begin
+				  ; Need to force a recalc of the summary line
+				  ; after message edit 
+				  (if (ref-variable rmail-summary-buffer)
+				      (if (ref-variable rmail-summary-vector
+							(ref-variable rmail-summary-buffer))
+					  (vector-set! 
+					   (ref-variable rmail-summary-vector
+							 (ref-variable rmail-summary-buffer))
+					   (-1+ (msg-memo/number memo)) #f)))
+				  (let ((point (line-start (msg-memo/start memo) 2)))
+				    (if (string-prefix?
+					 "Summary-line: "
+					 (extract-string point (line-end point 0)))
+					(delete-string point (line-start point 1))))
+				  (select-message buffer memo))
 				(loop (msg-memo/next memo))))))))))))))
 
 (define-command rmail-abort-edit
