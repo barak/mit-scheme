@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.10 1988/12/30 07:05:04 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.11 1989/06/07 02:13:54 jinx Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -82,7 +82,7 @@ MIT in each case. |#
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (let ((info (compiled-code-block/dbg-info block)))
+    (let ((info (compiled-code-block/dbg-info block true)))
       (fluid-let ((disassembler/write-offsets? true)
 		  (disassembler/write-addresses? true)
 		  (disassembler/base-address (object-datum block)))

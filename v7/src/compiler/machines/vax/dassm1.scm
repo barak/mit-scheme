@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.3 1989/05/24 05:09:32 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dassm1.scm,v 4.4 1989/06/07 02:14:22 jinx Rel $
 $MC68020-Header: dassm1.scm,v 4.10 88/12/30 07:05:04 GMT cph Exp $
 
 Copyright (c) 1987, 1989 Massachusetts Institute of Technology
@@ -83,7 +83,7 @@ MIT in each case. |#
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (let ((info (compiled-code-block/dbg-info block)))
+    (let ((info (compiled-code-block/dbg-info block true)))
       (fluid-let ((disassembler/write-offsets? true)
 		  (disassembler/write-addresses? true)
 		  (disassembler/base-address (object-datum block)))
