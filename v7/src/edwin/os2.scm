@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.8 1995/04/09 23:06:25 cph Exp $
+;;;	$Id: os2.scm,v 1.9 1995/04/09 23:28:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -337,6 +337,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/sendmail-program)
   "sendmail.exe")
+
+(define (os/rmail-pop-procedure)
+  #f)
 
 ;;;; Dired customization
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: rmail.scm,v 1.36 1995/04/09 23:09:19 cph Exp $
+;;;	$Id: rmail.scm,v 1.37 1995/04/09 23:28:06 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -119,6 +119,11 @@ Called with the start and end marks of the header as arguments."
 (define-variable rmail-new-mail-hook
   "An event distributor that is invoked when RMAIL incorporates new mail."
   (make-event-distributor))
+
+(define-variable rmail-pop-procedure
+  "A procedure that will get mail from a POP server.
+A value of #F means there is no mechanism to get POP mail."
+  (os/rmail-pop-procedure))
 
 (define-major-mode rmail read-only "RMAIL"
   "Rmail Mode is used by \\[rmail] for editing Rmail files.
@@ -379,7 +384,7 @@ Interactively, a prefix argument causes us to read a file name
 and use that file as the inbox."
   (lambda ()
     (list (and (command-argument)
-	       (prompt-for-existing-file "Get new mail from file" false))))
+	       (prompt-for-string "Get new mail from file" #f))))
   (lambda (filename)
     (let ((buffer (current-buffer)))
       (rmail-find-file-revert buffer)
@@ -449,8 +454,9 @@ and use that file as the inbox."
 	(mark-temporary! start)
 	new-messages))))
 
-(define (insert-inbox-text buffer mark filename rename?)
-  (let ((insert
+(define (insert-inbox-text buffer mark inbox-name rename?)
+  (let ((directory (buffer-default-directory buffer))
+	(insert
 	 (lambda (pathname)
 	   (and (file-exists? pathname)
 		(let ((mark (mark-left-inserting-copy mark)))
@@ -462,37 +468,37 @@ and use that file as the inbox."
 		      (insert-newline mark))
 		  (mark-temporary! mark)
 		  pathname)))))
-    (let ((source (->pathname filename)))
-      (cond ((not rename?)
-	     (insert source))
-	    ((string=? rmail-spool-directory (directory-namestring source))
-	     (rename-inbox-using-movemail source
-					  insert
-					  (buffer-default-directory buffer)))
-	    (else
-	     (rename-inbox-using-rename source insert))))))
+    (cond ((string-prefix? "pop:" inbox-name)
+	   (get-mail-from-pop-inbox (or (ref-variable rmail-pop-procedure mark)
+					(error "POP mail not supported."))
+				    (string-tail inbox-name 3)
+				    insert
+				    directory))
+	  ((not rename?)
+	   (insert inbox-name))
+	  ((string=? rmail-spool-directory (directory-namestring inbox-name))
+	   (rename-inbox-using-movemail inbox-name insert directory))
+	  (else
+	   (rename-inbox-using-rename inbox-name insert)))))
 
-(define (rename-inbox-using-rename source insert)
-  (let ((target (string-append (->namestring source) "+")))
-    (let ((msg
-	   (string-append "Getting mail from "
-			  (->namestring source)
-			  "...")))
+(define (rename-inbox-using-rename inbox-name insert)
+  (let ((target (string-append inbox-name "+")))
+    (let ((msg (string-append "Getting mail from " inbox-name "...")))
       (message msg)
-      (if (and (file-exists? source) (not (file-exists? target)))
-	  (rename-file source target))
+      (if (and (file-exists? inbox-name) (not (file-exists? target)))
+	  (rename-file inbox-name target))
       (let ((value (insert target)))
 	(message msg "done")
 	value))))
 
-(define (rename-inbox-using-movemail source insert directory)
+(define (rename-inbox-using-movemail inbox-name insert directory)
   (let ((source
 	 ;; On some systems, /usr/spool/mail/foo is a directory and
 	 ;; the actual inbox is /usr/spool/mail/foo/foo.
-	 (if (file-directory? source)
-	     (merge-pathnames (pathname-name source)
-			      (pathname-as-directory source))
-	     source))
+	 (if (file-directory? inbox-name)
+	     (merge-pathnames (pathname-name inbox-name)
+			      (pathname-as-directory inbox-name))
+	     inbox-name))
 	(target (merge-pathnames ".newmail" directory)))
     (let ((msg
 	   (string-append "Getting mail from " (->namestring source) "...")))
@@ -521,6 +527,18 @@ and use that file as the inbox."
       (let ((value (insert target)))
 	(message msg "done")
 	value))))
+
+(define (get-mail-from-pop-inbox procedure server insert directory)
+  (let ((target (merge-pathnames (string-append ".pop-" server) directory))
+	(msg (string-append "Getting mail from POP server " server "..."))
+	(password
+	 (prompt-for-password
+	  (string-append "Password for POP server " server))))
+    (message msg)
+    (procedure server target password)
+    (let ((value (insert target)))
+      (message msg "done")
+      value)))
 
 ;;;; Moving around
 

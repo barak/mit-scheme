@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.46 1995/04/09 23:06:46 cph Exp $
+;;;	$Id: unix.scm,v 1.47 1995/04/09 23:27:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -687,3 +687,6 @@ Value is a list of strings."
   (if (file-exists? "/usr/lib/sendmail")
       "/usr/lib/sendmail"
       "fakemail"))
+
+(define (os/rmail-pop-procedure)
+  #f)
