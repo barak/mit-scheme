@@ -1,0 +1,197 @@
+================================================================
+	compiler/back:
+================================================================
+This directory contains the machine-independent portion of the back
+end.  It contains bit-string utilities, symbol table utilities, label
+management procedures, the hardware register allocator, and the
+top-level assembler calls.
+
+* asmmac.scm
+;;;; Assembler Syntax Macros
+
+* asutl.scm
+;;;; Assembler Utilities
+;;; package: (compiler)
+
+* bittop.scm
+;;;; Assembler Top Level
+;;; package: (compiler assembler)
+
+* bitutl.scm
+;;;; Assembler utilities
+;;; package: (compiler assembler)
+
+* insseq.scm
+;;;; Lap instruction sequences
+
+* lapgn1.scm
+;;;; LAP Generator: top level
+;;; package: (compiler lap-syntaxer)
+
+* lapgn2.scm
+;;;; LAP Generator: High-Level Register Assignment
+
+* lapgn3.scm
+;;;; LAP Generator
+;;; package: (compiler lap-syntaxer)
+
+* linear.scm
+;;;; LAP linearizer
+;;; package: (compiler lap-syntaxer linearizer)
+
+* mermap.scm
+;;;; LAP Generator: Merge Register Maps
+
+* regmap.scm
+;;;; Register Allocator
+;;; package: (compiler lap-syntaxer)
+
+* syerly.scm
+;;;; Syntax time instruction expansion
+
+* symtab.scm
+;;;; Symbol Tables
+;;; package: (compiler assembler)
+
+* syntax.scm
+;;;; LAP Syntaxer
+
+================================================================
+	compiler/rtlbase:
+================================================================
+	
+This directory contains utilities used by the RTL generator and
+optimizer.
+
+* regset.scm
+;;;; RTL Register Sets
+
+* rgraph.scm
+;;;; Program Graph Abstraction
+
+* rtlcfg.scm
+;;;; RTL CFG Nodes
+
+* rtlcon.scm
+;;;; Register Transfer Language: Complex Constructors
+;;; package: (compiler)
+
+* rtlexp.scm
+;;;; Register Transfer Language: Expression Operations
+;;; package: (compiler)
+
+* rtline.scm
+;;;; RTL linearizer
+
+* rtlobj.scm
+;;;; Register Transfer Language: Object Datatypes
+
+* rtlreg.scm
+;;;; RTL Registers
+
+* rtlty1.scm
+* rtlty2.scm
+;;;; Register Transfer Language Type Definitions
+;;; package: (compiler)
+
+* valclass.scm
+;;;; RTL Value Classes (? a hierarchy, right?)
+
+================================================================
+	compiler/rtlgen:
+================================================================
+
+This directory contains the code that translates the flow-graph into
+register transfer language (RTL).
+
+* fndblk.scm
+;;;; RTL Generation: Environment Locatives
+;;; package: (compiler rtl-generator find-block)
+
+fndvar.scm
+;;;; RTL Generation: Variable Locatives
+;;; package: (compiler rtl-generator)
+
+opncod.scm
+;;;; RTL Generation: Inline Combinations
+;;; package: (compiler rtl-generator combination/inline)
+
+rgcomb.scm
+;;;; RTL Generation: Combinations
+;;; package: (compiler rtl-generator generate/combination)
+
+rgproc.scm
+;;;; RTL Generation: Procedure Headers
+;;; package: (compiler rtl-generator generate/procedure-header)
+
+rgretn.scm
+;;;; RTL Generation: Return Statements
+
+rgrval.scm
+;;;; RTL Generation: RValues
+;;; package: (compiler rtl-generator generate/rvalue)
+
+rgstmt.scm
+;;;; RTL Generation: Statements
+;;; package: (compiler rtl-generator)
+
+rtlgen.scm
+;;;; RTL Generation
+;;; package: (compiler rtl-generator)
+
+================================================================
+	compiler/rtlopt:
+================================================================
+
+This directory contains the RTL-level optimizer.  It contains code to
+perform lifetime analysis, redundant subexpression elimination,
+elimination of dead code, etc.
+
+* ralloc.scm
+;;;; Register Allocation
+
+* rcompr.scm
+;;;; RTL Compression
+
+* rcse1.scm
+;;;; RTL Common Subexpression Elimination: Codewalker
+;;; package: (compiler rtl-cse)
+
+* rcse2.scm
+;;;; RTL Common Subexpression Elimination
+
+* rcseep.scm
+;;;; RTL Common Subexpression Elimination: Expression Predicates
+
+* rcseht.scm
+;;;; RTL Common Subexpression Elimination: Hash Table Abstraction
+;;; package: (compiler rtl-cse)
+
+* rcserq.scm
+;;;; RTL Common Subexpression Elimination: Register/Quantity
+Abstractions
+
+* rcsesr.scm
+;;;; RTL Common Subexpression Elimination: Stack References
+
+* rdebug.scm
+;;;; RTL Optimizer Debugging Output
+
+* rdflow.scm
+;;;; RTL Dataflow Analysis
+;;; package: (compiler rtl-optimizer rtl-dataflow-analysis)
+
+* rerite.scm
+;;;; RTL Rewriting
+;;; package: (compiler rtl-optimizer rtl-rewriting)
+
+* rinvex.scm
+;;;; RTL Invertible Expression Elimination
+;;; package: (compiler rtl-optimizer invertible-expression-elimination)
+
+* rlife.scm
+;;;; RTL Register Lifetime Analysis
+;;;  Based on the GNU C Compiler
+
+* rtlcsm.scm
+;;;; RTL Common Suffix Merging
