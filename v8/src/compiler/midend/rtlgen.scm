@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.45 1996/04/26 17:41:57 adams Exp $
+$Id: rtlgen.scm,v 1.46 1996/04/26 18:14:04 cph Exp $
 
 Copyright (c) 1994-96 Massachusetts Institute of Technology
 
@@ -4022,9 +4022,9 @@ MIT in each case. |#
 (define-open-coder/stmt %profile-data 1
   (lambda (state rands open-coder)
     state open-coder			; ignored
-    (let ((data  (first rands)))
-      (not (rtlgen/constant? data)
-	   (internal-error "Profile data must be constant" data))
+    (let ((data (first rands)))
+      (if (not (rtlgen/constant? data))
+	  (internal-error "Profile data must be constant" data))
       (rtlgen/emit!/1
        `(PROFILE-DATA (CONSTANT ,(rtlgen/constant-value data)))))))
 
