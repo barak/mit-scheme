@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.11 1990/01/31 02:03:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.12 1990/04/10 15:53:06 cph Exp $
 
-Copyright (c) 1988, 1989 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -213,9 +213,10 @@ MIT in each case. |#
 				  (if (eq? environment default-object)
 				      (repl/environment repl)
 				      environment)
-				  (if (eq? syntax-table default-object)
-				      (repl/syntax-table repl)
-				      syntax-table))))))
+				  (make-syntax-table
+				   (if (eq? syntax-table default-object)
+				       (repl/syntax-table repl)
+				       syntax-table)))))))
 
 (define (write-stream stream write)
   (if (stream-pair? stream)
