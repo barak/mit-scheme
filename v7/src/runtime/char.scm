@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 13.42 1987/07/27 21:56:05 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/char.scm,v 13.43 1988/04/27 18:24:54 mhwu Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -54,7 +54,7 @@
    char-ascii? ascii->char char-upcase char-downcase))
 
 (define char-code-limit #x80)
-(define char-bits-limit #x20)
+(define char-bits-limit #o20)
 (define char-integer-limit (* char-code-limit char-bits-limit))
 
 (define (chars->ascii chars)
@@ -125,13 +125,40 @@
     ("Backnext" . #x1F)
     ("Space" . #x20)
     ("Rubout" . #x7F)
+    ;; ASCII codes
+    ("NUL" . #x00)
+    ("SOH" . #x01)
+    ("STX" . #x02)
+    ("ETX" . #x03)
+    ("EOT" . #x04)
+    ("ENQ" . #x05)
+    ("ACK" . #x06)
+    ("BEL" . #x07)
+    ;; Skip
+    ("SO" . #x0E)
+    ("SI" . #x0F)
+    ("DLE" . #x10)
+    ("DC1" . #x11)
+    ("DC2" . #x12)
+    ("DC3" . #x13)
+    ("DC4" . #x14)
+    ("NAK" . #x15)
+    ("SYN" . #x16)
+    ("ETB" . #x17)
+    ("CAN" . #x18)
+    ("EM" . #x19)
+    ;; Skip
+    ("FS" . #x1C)
+    ("GS" . #x1D)
+    ("RS" . #x1E)
+    ("US" . #x1F)
     ))
 
 (define named-bits
-  `(("C" . #o01)
-    ("Control" . #o01)
-    ("M" . #o02)
-    ("Meta" . #o02)
+  `(("M" . #o01)
+    ("Meta" . #o01)
+    ("C" . #o02)
+    ("Control" . #o02)
     ("S" . #o04)
     ("Super" . #o04)
     ("H" . #o10)
