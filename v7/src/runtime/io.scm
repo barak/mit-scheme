@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.7 1990/06/21 22:11:38 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 14.8 1990/08/16 20:09:57 cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -44,8 +44,7 @@ MIT in each case. |#
   (set! open-channels-list (list 'OPEN-CHANNELS-LIST))
   (set! traversing? false)
   (add-gc-daemon! close-lost-open-files-daemon)
-  (add-event-receiver! event:after-restore primitive-io/reset!)
-  (add-event-receiver! event:before-exit close-all-open-files))
+  (add-event-receiver! event:after-restore primitive-io/reset!))
 
 (define-structure (channel (constructor %make-channel))
   ;; This structure serves two purposes.  First, because a descriptor
@@ -117,7 +116,7 @@ MIT in each case. |#
 		      (loop l2 (cdr l2)))))))))))
 
 (define (close-all-open-files)
-  ;; This is invoked before disk-restoring.  It "cleans" the microcode.  (close-all-open-files-internal (ucode-primitive channel-close 1)))
+  (close-all-open-files-internal (ucode-primitive channel-close 1)))
 
 (define (primitive-io/reset!)
   ;; This is invoked after disk-restoring.  It "cleans" the new runtime system.
