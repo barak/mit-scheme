@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.10 1989/08/12 08:32:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/unix.scm,v 1.11 1989/11/10 16:18:42 markf Rel $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,8 @@
 (declare (usual-integrations))
 
 (define (os/trim-pathname-string string)
-  (let ((end (string-length string)))    (let loop ((index end))
+  (let ((end (-1+ (string-length string))))
+    (let loop ((index end))
       (let ((slash (substring-find-previous-char string 0 index #\/)))
 	(cond ((or (not slash) (= slash end))
 	       string)
