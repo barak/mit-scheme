@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.5 1994/03/08 21:43:47 cph Exp $
+;;;	$Id: vc.scm,v 1.6 1994/03/08 21:44:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -840,7 +840,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.5 1994/03/08 21:43:47 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.6 1994/03/08 21:44:50 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -1198,15 +1198,16 @@ the value of vc-log-mode-hook."
       (if (null? point-contexts)
 	  (if point (set-buffer-point! buffer point))
 	  (for-each (lambda (entry)
-		      (if (and (window-live? (car entry))
-			       (eq? buffer (window-buffer (car entry))))
-			  (begin
-			    (let ((m (vc-find-context buffer (cadr entry))))
-			      (if m
-				  (set-window-point! (car entry) m)))
-			    (let ((m (vc-find-context buffer (caddr entry))))
-			      (if m
-				  (set-window-start-mark! (car entry) m))))))
+		      (let ((window (car entry)))
+			(if (and (window-live? window)
+				 (eq? buffer (window-buffer window)))
+			    (begin
+			      (let ((m (vc-find-context buffer (cadr entry))))
+				(if m
+				    (set-window-point! window m)))
+			      (let ((m (vc-find-context buffer (caddr entry))))
+				(if m
+				    (set-window-start-mark! window m #t)))))))
 		    point-contexts)))
     (let ((mark (vc-find-context buffer mark-context)))
       (if mark
