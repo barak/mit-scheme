@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.163 1991/11/06 21:56:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/filcom.scm,v 1.164 1991/11/06 22:34:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -56,7 +56,7 @@
   (select-buffer-other-screen (find-file-noselect filename true)))
 
 (define (find-file-noselect filename warn?)
-  (let ((pathname (merge-pathnames filename)))
+  (let ((pathname (pathname-simplify (merge-pathnames filename))))
     (if (file-directory? pathname)
 	(if (ref-variable find-file-run-dired)
 	    (make-dired-buffer (pathname-as-directory pathname))
