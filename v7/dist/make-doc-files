@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-doc-files,v 1.14 2001/01/08 20:52:15 cph Exp $
+# $Id: make-doc-files,v 1.15 2001/03/03 05:25:41 cph Exp $
 #
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 #
@@ -46,27 +46,17 @@ make_zipfile ()
     chmod a-w ${ZIPFILE}
 }
 
-mkdir ${TLDIR}/doc-html
-(cd ${DOCDIR}; make install-html htmldir=${TLDIR}/doc-html)
-make_tarfile html
-make_zipfile html
-rm -rf doc-html
-mv ${TLDIR}/doc-html .
-
-for TYPE in info pdf ps; do
+for TYPE in html info pdf ps; do
     mkdir ${TLDIR}/doc-${TYPE}
     (cd ${DOCDIR}; make install-${TYPE} ${TYPE}dir=${TLDIR}/doc-${TYPE})
     make_tarfile ${TYPE}
-    rm -rf ${TLDIR}/doc-${TYPE}
+    make_zipfile ${TYPE}
+    case "${TYPE}" in
+    html | pdf)
+	rm -rf doc-${TYPE}
+	mv ${TLDIR}/doc-${TYPE} .
+	;;
+    esac
 done
-
-(
-    cd ${TLDIR}
-    cvs -d /scheme/cvsroot export -r ${TAG} -d doc v7/doc
-    cd doc
-    autoconf
-)
-${INSTALL_DATA} ${DOCDIR}/ChangeLog ${TLDIR}/doc/.
-make_tarfile texinfo
 
 rm -rf ${TLDIR}
