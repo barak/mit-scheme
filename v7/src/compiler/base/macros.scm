@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/macros.scm,v 4.11 1992/07/05 13:31:40 jinx Exp $
+$Id: macros.scm,v 4.12 1992/10/19 19:11:17 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -58,6 +58,7 @@ MIT in each case. |#
 	      (ENUMERATION-CASE ,transform/enumeration-case)
 	      (INST-EA ,transform/inst-ea)
 	      (LAP ,transform/lap)
+	      (LAST-REFERENCE ,transform/last-reference)
 	      (MAKE-LVALUE ,transform/make-lvalue)
 	      (MAKE-PNODE ,transform/make-pnode)
 	      (MAKE-RVALUE ,transform/make-rvalue)
@@ -77,6 +78,15 @@ MIT in each case. |#
 
 (define early-syntax-table
   (make-syntax-table compiler-syntax-table))
+
+(define transform/last-reference
+  (macro (name)
+    (let ((x (generate-uninterned-symbol)))
+      `(IF COMPILER:PRESERVE-DATA-STRUCTURES?
+	   ,name
+	   (LET ((,x ,name))
+	     (SET! ,name)
+	     ,x)))))
 
 (define (transform/package names . body)
   (make-syntax-closure
