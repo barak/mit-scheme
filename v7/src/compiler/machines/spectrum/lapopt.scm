@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.6 1993/02/14 22:33:18 gjr Exp $
+$Id: lapopt.scm,v 1.7 1993/02/15 04:01:11 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -276,9 +276,10 @@ MIT in each case. |#
 		(let* ((tail* (cdddr instrs))
 		       (next (find-or-label tail*))
 		       (fail
-			(fix-sequences tail*
-				       (append (reverse (list-head instrs 3))
-					       tail)))
+			(lambda ()
+			  (fix-sequences tail*
+					 (append (reverse (list-head instrs 3))
+						 tail))))
 		       (dict2
 			(and next
 			     (match (car return-pattern) (car next)))))
