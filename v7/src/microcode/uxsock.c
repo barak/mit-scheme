@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.16 1997/11/01 07:26:30 cph Exp $
+$Id: uxsock.c,v 1.17 1998/08/31 04:00:13 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -95,6 +95,13 @@ DEFUN (OS_get_service_by_name, (service_name, protocol_name),
 {
   struct servent * entry = (UX_getservbyname (service_name, protocol_name));
   return ((entry == 0) ? (-1) : (entry -> s_port));
+}
+
+unsigned long
+DEFUN (OS_get_service_by_number, (port_number),
+       CONST unsigned long port_number)
+{
+  return ((unsigned long) (htons ((unsigned short) port_number)));
 }
 
 unsigned int

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.3 1998/04/14 05:13:37 cph Exp $
+$Id: ntsock.c,v 1.4 1998/08/31 04:00:08 cph Exp $
 
 Copyright (c) 1997-98 Massachusetts Institute of Technology
 
@@ -114,6 +114,12 @@ OS_get_service_by_name (const char * service_name, const char * protocol_name)
 {
   struct servent * entry = (getservbyname (service_name, protocol_name));
   return ((entry == 0) ? (-1) : (entry -> s_port));
+}
+
+unsigned long
+OS_get_service_by_number (const unsigned long port_number)
+{
+  return ((unsigned long) (htons ((unsigned short) port_number)));
 }
 
 unsigned int

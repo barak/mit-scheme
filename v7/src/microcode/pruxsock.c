@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.14 1997/11/01 07:27:36 cph Exp $
+$Id: pruxsock.c,v 1.15 1998/08/31 04:00:22 cph Exp $
 
-Copyright (c) 1990-97 Massachusetts Institute of Technology
+Copyright (c) 1990-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,6 +83,17 @@ The result is a nonnegative integer, or #F if no such service exists.")
       int result
 	= (OS_get_service_by_name ((STRING_ARG (1)), (STRING_ARG (2))));
       PRIMITIVE_RETURN ((result < 0) ? SHARP_F : (long_to_integer (result)));
+     });
+}
+
+DEFINE_PRIMITIVE ("GET-SERVICE-BY-NUMBER", Prim_get_service_by_number, 1, 1,
+  "Given PORT-NUMBER, return it in the network encoding.")
+{
+  PRIMITIVE_HEADER (1);
+  SOCKET_CODE
+    ({
+      PRIMITIVE_RETURN
+	(ulong_to_integer (OS_get_service_by_number (arg_ulong_integer (1))));
      });
 }
 
