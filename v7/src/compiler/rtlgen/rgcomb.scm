@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.12 1987/04/21 16:57:05 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 1.13 1987/04/27 16:28:49 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -482,11 +482,12 @@ MIT in each case. |#
   (let ((block (combination-block combination)))
     `(APPLY-STACK ,number-pushed
 		  ,(+ number-pushed (block-frame-size block))
-		  ,(block-ancestor-distance
-		    block
-		    (block-parent
-		     (procedure-block
-		      (combination-known-operator combination)))))))
+		  ,(-1+
+		    (block-ancestor-distance
+		     block
+		     (block-parent
+		      (procedure-block
+		       (combination-known-operator combination))))))))
 
 (define (invocation-prefix:internal->sibling combination number-pushed)
    `(MOVE-FRAME-UP ,number-pushed
