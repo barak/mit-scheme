@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.21 1987/01/22 14:16:18 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.22 1987/04/06 12:49:05 jinx Exp $
 
    Head file for bignums.  This is shared by bignum.c and generic.c. 
 */
@@ -128,8 +128,8 @@ typedef long bigdouble;
 
 /* Length of the BIGNUM that contains the largest FIXNUM */
 
-#define FIXNUM_LENGTH_AS_BIGNUM       (((FIXNUM_LENGTH+1)+(SHIFT-1))/SHIFT)
-#define C_INTEGER_LENGTH_AS_BIGNUM    ((POINTER_LENGTH+(SHIFT-1))/SHIFT)
+#define FIXNUM_LENGTH_AS_BIGNUM       ((FIXNUM_LENGTH + (SHIFT - 1)) / SHIFT)
+#define C_INTEGER_LENGTH_AS_BIGNUM    ((POINTER_LENGTH + (SHIFT - 1)) / SHIFT)
 
 /* Cases returned by the comparison function big_compare() */
 

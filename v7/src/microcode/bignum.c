@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.21 1987/01/22 14:16:05 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.22 1987/04/06 12:48:16 jinx Exp $
 
    This file contains the procedures for handling BIGNUM Arithmetic. 
 */
@@ -82,10 +82,7 @@ fast bigdigit *ARG1, *ARG2;
   return EQUAL;
 }
 
-/* Primitives for Coercion */
-
-/* (FIX_TO_BIG FIXNUM)
-      [Primitive number 0x67]
+/* (FIX->BIG FIXNUM)
       Returns its argument if FIXNUM isn't a fixnum.  Otherwise 
       it returns the corresponding bignum.
 */
@@ -126,9 +123,8 @@ Pointer Arg1;
   Debug_Test(Free-Length);
   return Make_Pointer(TC_BIG_FIXNUM, Free-Length);
 }
-
-/* (BIG_TO_FIX BIGNUM)
-   [Primitive number 0x68]
+
+/* (BIG->FIX BIGNUM)
    When given a bignum, returns the equivalent fixnum if there is
    one. If BIGNUM is out of range, or isn't a bignum, returns
    BIGNUM. */
@@ -140,7 +136,7 @@ Built_In_Primitive (Prim_Big_To_Fix, 1, "BIG->FIX")
   Arg_1_Type (TC_BIG_FIXNUM);
   return (Big_To_Fix (Arg1));
 }
-
+
 Pointer
 Big_To_Fix (bignum_object)
      Pointer bignum_object;
@@ -160,22 +156,40 @@ Big_To_Fix (bignum_object)
 
   scan = Bignum_Top (bptr);
   result = *scan--;
-#if ((FIXNUM_LENGTH_AS_BIGNUM * SHIFT) > ULONG_SIZE)
-  /* Mask the MS digit to prevent overflow during left shift. */
-  if (Length = FIXNUM_LENGTH_AS_BIGNUM)
-    result &=
-      ((1 << ((FIXNUM_LENGTH + 1) - ((FIXNUM_LENGTH + 1) % SHIFT))) - 1);
-#endif
+
+  if (result < 0)
+    return (bignum_object);
+
+  if (Length == FIXNUM_LENGTH_AS_BIGNUM)
+  {
+    long saved_result, length_in_bits;
+
+    saved_result = result;
+
+    for (i = 0; result != 0; i+= 1)
+      result = result >> 1;
+
+    length_in_bits = i + ((Length == 0) ? 0 : ((Length - 1)  * SHIFT));
+
+    if (length_in_bits > FIXNUM_LENGTH)
+      return (bignum_object);
+
+    result = (saved_result &
+	      ((1 << ((FIXNUM_LENGTH + 1) -
+		       ((FIXNUM_LENGTH + 1) % SHIFT))) - 1));
+
+  }
+
   for (i = (Length - 1); (i > 0); i -= 1)
     result = (Mul_Radix (result) + *scan--);
+
   if (result < 0)
     return (bignum_object);
   if (NEG_BIGNUM (bptr))
     result = (- result);
-  return
-    (Fixnum_Fits (result)
-     ? Make_Signed_Fixnum (result)
-     : bignum_object);
+  return (Fixnum_Fits (result)
+	  ? Make_Signed_Fixnum (result)
+	  : bignum_object);
 }
 
 Boolean Fits_Into_Flonum(Bignum)
@@ -466,7 +480,6 @@ bigdigit sign;
 }
 
 /* (DIVIDE-BIGNUM ONE-BIGNUM ANOTHER_BIGNUM)
- * [Primitive number 0x4F]
  * returns a cons of the bignum quotient and remainder of both arguments.
  */
 
@@ -728,9 +741,7 @@ bigdigit *ARG1, *ARG2, *Quotient;
    }
 }
 
-
-/* (LISTIFY_BIGNUM BIGNUM RADIX)
-      [Primitive number 0x50]
+/* (LISTIFY-BIGNUM BIGNUM RADIX)
       Returns a list of numbers, in the range 0 through RADIX-1, which
       represent the BIGNUM in that radix.
 */
