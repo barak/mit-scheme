@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/lspcom.scm,v 1.156 1991/11/21 10:37:20 cph Exp $
+;;;	$Id: lspcom.scm,v 1.157 1997/03/03 23:03:47 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -192,10 +192,13 @@ If this would place point off screen, nothing happens."
     (reposition-window-top (current-definition-start))))
 
 (define (current-definition-start)
-  (let ((point (current-point)))
-    (if (definition-start? point)
-	point
-	(backward-definition-start point 1 'ERROR))))
+  (this-definition-start (current-point)))
+
+(define (this-definition-start mark)
+  (let ((start (line-start mark 0)))
+    (if (definition-start? start)
+	start
+	(backward-one-definition-start start))))
 
 ;;;; Miscellaneous Commands
 
