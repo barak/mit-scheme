@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.33 1990/03/24 13:22:42 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rulfix.scm,v 4.34 1990/04/02 15:30:02 jinx Exp $
 $MC68020-Header: rules1.scm,v 4.32 90/01/18 22:43:54 GMT cph Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
@@ -128,7 +128,8 @@ MIT in each case. |#
   (load-immediate (* constant fixnum-1) target))
 
 (define-integrable fixnum-1
-  (expt 2 scheme-type-width))
+  ;; (expt 2 scheme-type-width) ***
+  64)
 
 ;;;; Arithmetic Operations
 
