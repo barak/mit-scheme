@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.4 1989/09/20 23:13:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11graph.c,v 1.5 1990/07/16 21:03:07 markf Exp $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -155,6 +155,8 @@ reset_virtual_device_coordinates (xw)
   return;
 }
 
+static XComposeStatus compose_status;
+
 static void
 process_event (xw, event)
      struct xwindow * xw;
@@ -182,31 +184,104 @@ process_event (xw, event)
     case MapNotify:
       if (x_debug) fprintf (stderr, "\nX event: MapNotify\n");
       (XW_VISIBLE_P (xw)) = 1;
+      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_MAP;
       break;
 
     case UnmapNotify:
       if (x_debug) fprintf (stderr, "\nX event: UnmapNotify\n");
       (XW_VISIBLE_P (xw)) = 0;
+      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_UNMAP;
       break;
 
-    case CirculateNotify:
-      if (x_debug) fprintf (stderr, "\nX event: CirculateNotify\n");
+    case ButtonPress:
+      {
+	int button = (check_button ((event -> xbutton) . button));
+	int pointer_x = ((event -> xbutton) . x);
+	int pointer_y = ((event -> xbutton) . y);
+	if (button == (-1)) break;
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_BUTTON_DOWN;
+	if (x_debug)
+	  fprintf (stderr, "\nX event: ButtonPress: Button=%d, X=%d, Y=%d\n",
+		   button, pointer_x, pointer_y);
+      }
       break;
 
-    case CreateNotify:
-      if (x_debug) fprintf (stderr, "\nX event: CreateNotify\n");
+    case ButtonRelease:
+      {
+	int button = (check_button ((event -> xbutton) . button));
+	int pointer_x = ((event -> xbutton) . x);
+	int pointer_y = ((event -> xbutton) . y);
+	if (button == (-1)) break;
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_BUTTON_UP;
+	if (x_debug)
+	  fprintf (stderr, "\nX event: ButtonRelease: Button=%d, X=%d, Y=%d\n",
+		   button, pointer_x, pointer_y);
+      }
       break;
 
-    case DestroyNotify:
-      if (x_debug) fprintf (stderr, "\nX event: DestroyNotify\n");
+    case KeyPress:
+      {
+	int nbytes;
+	char copy_buffer[10];
+	KeySym keysym;
+
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_KEY_PRESS;
+	nbytes =
+	  (XLookupString ((& (event -> xkey)),
+			  (& (copy_buffer [0])),
+			  (sizeof (copy_buffer)),
+			  (& keysym),
+			  (& compose_status)));
+	if (x_debug)
+	  {
+	    fprintf (stderr, "\nX event: KeyPress, key=%s\n", copy_buffer);
+	  }
+      }
       break;
 
-    case GravityNotify:
-      if (x_debug) fprintf (stderr, "\nX event: GravityNotify\n");
+    case Expose:
+      if (x_debug) fprintf (stderr, "\nX event: Expose\n");
+      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_EXPOSE;
       break;
 
-    case ReparentNotify:
-      if (x_debug) fprintf (stderr, "\nX event: ReparentNotify\n");
+    case GraphicsExpose:
+      if (x_debug) fprintf (stderr, "\nX event: GraphicsExpose\n");
+      (XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_GRAPHICS_EXPOSE;
+      break;
+
+    case EnterNotify:
+      if (x_debug) fprintf (stderr, "\nX event: EnterNotify\n");
+      if (xw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_ENTER;
+      }
+      break;
+
+    case LeaveNotify:
+      if (x_debug) fprintf (stderr, "\nX event: LeaveNotify\n");
+      if (xw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_LEAVE;
+      }
+      break;
+
+    case FocusIn:
+      if (x_debug) fprintf (stderr, "\nX event: FocusIn\n");
+      if (xw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_FOCUS_IN;
+      }
+      break;
+
+    case FocusOut:
+      if (x_debug) fprintf (stderr, "\nX event: FocusOut\n");
+      if (xw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_FOCUS_OUT;
+      }
+      break;
+
+    case MotionNotify:
+      if (x_debug) fprintf (stderr, "\nX event: MotionNotify\n");
+      if (xw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (xw)) |= EVENT_FLAG_MOTION;
+      }
       break;
 
     default:
@@ -220,10 +295,7 @@ static void
 process_events (xw)
      struct xwindow * xw;
 {
-  XEvent event;
-  while (xw_dequeue_event (xw, (& event)))
-    process_event (xw, (& event));
-  return;
+  (void) x_process_events();
 }
 
 DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5,
@@ -400,7 +472,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
       y_size,
       (& attributes),
       (sizeof (struct gw_extra)),
-      ((void (*) ()) 0)));
+      ((void (*) ()) 0),
+      process_event));
   (XW_X_LEFT (xw)) = ((float) (-1));
   (XW_X_RIGHT (xw)) = ((float) 1);
   (XW_Y_BOTTOM (xw)) = ((float) (-1));
@@ -408,7 +481,12 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
   reset_virtual_device_coordinates (xw);
   (XW_X_CURSOR (xw)) = 0;
   (XW_Y_CURSOR (xw)) = 0;
-  XSelectInput (display, window, StructureNotifyMask);
+  XSelectInput (display, window,
+		KeyPressMask | ExposureMask |
+		ButtonPressMask | ButtonReleaseMask |
+		StructureNotifyMask | FocusChangeMask |
+		PointerMotionHintMask | ButtonMotionMask |
+		LeaveWindowMask | EnterWindowMask);
   wm_set_size_hint (xw, flags, x_pos, y_pos);
   XStoreName (display, window, name);
   XSetIconName (display, window, name);

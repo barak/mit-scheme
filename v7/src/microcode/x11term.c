@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.8 1990/06/20 17:42:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11term.c,v 1.9 1990/07/16 21:01:11 markf Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -204,6 +204,8 @@ xterm_dump_rectangle (xw, x, y, width, height)
     (*MAKE_MAP_scan++) = fill;						\
 }
 
+static void xterm_process_event ();
+
 DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
   "(xterm-open-window display geometry suppress-map?)")
 {
@@ -284,7 +286,8 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
   xw =
     (x_make_window
      (display, window, x_size, y_size, (& attributes),
-      (sizeof (struct xterm_extra)), xterm_deallocate));
+      (sizeof (struct xterm_extra)), xterm_deallocate,
+      xterm_process_event));
   (XW_X_CSIZE (xw)) = x_csize;
   (XW_Y_CSIZE (xw)) = y_csize;
   (XW_CURSOR_X (xw)) = 0;
@@ -292,6 +295,9 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3,
   (XW_CHARACTER_MAP (xw)) = character_map;
   (XW_HIGHLIGHT_MAP (xw)) = highlight_map;
   (XW_CURSOR_VISIBLE_P (xw)) = 0;
+  (XW_CHAR_BUFFER_INDEX (xw)) = 0;
+  (XW_CHAR_BUFFER_LENGTH (xw)) = 4;
+  (XW_CHAR_BUFFER (xw)) = (x_malloc (4));
 
   XSelectInput
     (display, window,
@@ -521,89 +527,44 @@ DEFINE_PRIMITIVE ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-static void xterm_process_event ();
 
 DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
 {
   struct xwindow * xw;
-  Display * display;
-  Window window;
   int interval;
+  int found_index;
   long time_limit;
-  char copy_buffer [80];
-  int buffer_length;
-  int buffer_index;
-  char * buffer;
-  fast int nbytes;
-  fast char * scan_buffer;
-  fast char * scan_copy;
-  fast char * end_copy;
   XEvent event;
-  KeySym keysym;
-  int * status;
   extern long OS_real_time_clock ();
   PRIMITIVE_HEADER (2);
 
   xw = (WINDOW_ARG (1));
-  display = (XW_DISPLAY (xw));
-  window = (XW_WINDOW (xw));
   interval =
     (((ARG_REF (2)) == SHARP_F) ? (-1) : (arg_nonnegative_integer (2)));
   if (interval >= 0)
     time_limit = ((OS_real_time_clock ()) + interval);
-  buffer_length = 4;
-  buffer_index = 0;
-  buffer = (x_malloc (buffer_length));
-  scan_buffer = buffer;
-  while (1)
-    {
-      if (! (xw_dequeue_event (xw, (& event))))
-	{
-	  if ((buffer != scan_buffer) ||
-	      ((XW_EVENT_FLAGS (xw)) != 0) ||
-	      (interval == 0))
-	    break;
-	  else if (interval < 0)
-	    xw_wait_for_window_event (xw, (& event));
-	  else if ((OS_real_time_clock ()) >= time_limit)
-	    break;
-	  else
-	    continue;
-	}
-      if ((event . type) != KeyPress)
-	{
-	  xterm_process_event (& event);
-	  continue;
-	}
-      status = 0;
-      nbytes =
-	(XLookupString (((XKeyEvent *) (&event)),
-			(& (copy_buffer [0])),
-			(sizeof (copy_buffer)),
-			(&keysym),
-			((XComposeStatus *) status)));
-      if ((IsFunctionKey (keysym)) ||
-	  (IsCursorKey (keysym)) ||
-	  (IsKeypadKey (keysym)) ||
-	  (IsMiscFunctionKey (keysym)))
-	continue;
-      if (((event . xkey . state) & Mod1Mask) != 0)
-	(copy_buffer [0]) |= 0x80;
-      if (nbytes > (buffer_length - buffer_index))
-	{
-	  buffer_length *= 2;
-	  buffer = (x_realloc (buffer, buffer_length));
-	  scan_buffer = (buffer + buffer_index);
-	}
-      scan_copy = (& (copy_buffer [0]));
-      end_copy = (scan_copy + nbytes);
-      while (scan_copy < end_copy)
-	(*scan_buffer++) = (*scan_copy++);
-      buffer_index = (scan_buffer - buffer);
+
+  x_process_events();
+  while (1) {
+    if ((XW_CHAR_BUFFER_INDEX (xw) != 0) ||
+	(interval == 0)){
+      break;
+    } else if (interval < 0) {
+      x_wait_for_event ();
+      break;
+    } else if ((OS_real_time_clock ()) >= time_limit) {
+      break;
+    } else {
+      x_process_events();
     }
+  }
+
   /* If we got characters, return them */
-  if (buffer != scan_buffer)
-    PRIMITIVE_RETURN (memory_to_string (buffer_index, buffer));
+  if ((found_index = XW_CHAR_BUFFER_INDEX (xw)) != 0) {
+    XW_CHAR_BUFFER_INDEX (xw) = 0;
+    PRIMITIVE_RETURN (memory_to_string (found_index,
+					XW_CHAR_BUFFER (xw)));
+  }
   /* If we're in a read with timeout, and we stopped before the
      timeout was finished, return the amount remaining. */
   if (interval > 0)
@@ -613,21 +574,6 @@ DEFINE_PRIMITIVE ("XTERM-READ-CHARS", Prim_xterm_read_chars, 2, 2, 0)
   PRIMITIVE_RETURN (long_to_integer (interval));
 }
 
-static int
-check_button (button)
-     int button;
-{
-  switch (button)
-    {
-    case Button1: return (0);
-    case Button2: return (1);
-    case Button3: return (2);
-    case Button4: return (3);
-    case Button5: return (4);
-    default: return (-1);
-    }
-}
-
 #define min(x,y)	(((x)<(y)) ? (x) : (y))
   
 /* This procedure courtesy of Mike Clarkson (mike@ists.ists.ca) */
@@ -686,15 +632,66 @@ xterm_dump_contents (xw, x_start, x_end, y_start, y_end)
   return;
 }
 
+static XComposeStatus compose_status;
+
 static void
-xterm_process_event (event)
+xterm_process_event (exw, event)
+     struct xwindow *exw;
      XEvent * event;
 {
-  struct xwindow * exw;
-
-  exw = (x_window_to_xw ((event -> xany) . window));
   switch (event -> type)
     {
+    case KeyPress:
+      {
+	char copy_buffer [80] ;
+	int buffer_length;
+	int buffer_index;
+	char * buffer;
+	fast int nbytes;
+	fast char * scan_buffer;
+	fast char * scan_copy;
+	fast char * end_copy;
+	KeySym keysym;
+
+	buffer_length = XW_CHAR_BUFFER_LENGTH (exw);
+	buffer_index = XW_CHAR_BUFFER_INDEX (exw);
+	buffer = XW_CHAR_BUFFER (exw);
+
+
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_KEY_PRESS;
+	nbytes =
+	  (XLookupString ((& (event -> xkey)),
+			  (& (copy_buffer [0])),
+			  (sizeof (copy_buffer)),
+			  (& keysym),
+			  (& compose_status)));
+	if (x_debug)
+	  {
+	    fprintf (stderr, "\nX event: KeyPress, key=%s\n", copy_buffer);
+	  }
+	if ((IsFunctionKey (keysym)) ||
+	    (IsCursorKey (keysym)) ||
+	    (IsKeypadKey (keysym)) ||
+	    (IsMiscFunctionKey (keysym)))
+	  break;
+	if (((event -> xkey . state) & Mod1Mask) != 0)
+	  (copy_buffer [0]) |= 0x80;
+	if (nbytes > (buffer_length - buffer_index))
+	  {
+	    buffer_length *= 2;
+	    buffer = (x_realloc (buffer, buffer_length));
+	    XW_CHAR_BUFFER (exw) = buffer;
+	    XW_CHAR_BUFFER_LENGTH (exw) = buffer_length;
+	  }
+	scan_buffer = (buffer + buffer_index);
+	scan_copy = (& (copy_buffer [0]));
+	end_copy = (scan_copy + nbytes);
+	while (scan_copy < end_copy)
+	  (*scan_buffer++) = (*scan_copy++);
+	XW_CHAR_BUFFER_INDEX (exw) = (scan_buffer - buffer);
+	break;
+      }
+      
     case ConfigureNotify:
       if (x_debug)
       {
@@ -712,7 +709,6 @@ xterm_process_event (event)
 	  int x_csize = (x_size / (FONT_WIDTH (font)));
 	  int y_csize = (y_size / (FONT_HEIGHT (font)));
 	  int map_size = (x_csize * y_csize);
-#ifdef true
 	  char * new_char_map;
 	  char * new_hl_map;
 	  int new_y;
@@ -746,6 +742,7 @@ xterm_process_event (event)
 	  (XW_X_CSIZE (exw)) = x_csize;
 	  (XW_Y_CSIZE (exw)) = y_csize;
 	  (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
+	  (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_CONFIGURE;
 	  free (XW_CHARACTER_MAP (exw));
 	  free (XW_HIGHLIGHT_MAP (exw));
 	  (XW_CHARACTER_MAP (exw))= new_char_map;
@@ -753,54 +750,46 @@ xterm_process_event (event)
 
 	  (void) xterm_dump_contents (exw, 0, 0, x_csize, y_csize);
 	  xterm_wm_set_size_hint (exw, 0, 0, 0);
-#else
-	  /* This code to be removed after the above is checked. */
-
-	  (XW_X_SIZE (exw)) = x_size;
-	  (XW_Y_SIZE (exw)) = y_size;
-	  (XW_X_CSIZE (exw)) = x_csize;
-	  (XW_Y_CSIZE (exw)) = y_csize;
-	  (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_RESIZED;
-	  free (XW_CHARACTER_MAP (exw));
-	  free (XW_HIGHLIGHT_MAP (exw));
-	  MAKE_MAP ((XW_CHARACTER_MAP (exw)), map_size, ' ');
-	  MAKE_MAP ((XW_HIGHLIGHT_MAP (exw)), map_size, 0);
-	  xterm_wm_set_size_hint (exw, 0, 0, 0);
-	  XClearWindow ((XW_DISPLAY (exw)), (XW_WINDOW (exw)));
-#endif
 	}
       }
       break;
 
     case MapNotify:
       if (x_debug) fprintf (stderr, "\nX event: MapNotify\n");
+      (XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_MAP;
       (XW_VISIBLE_P (exw)) = 1;
       break;
 
     case UnmapNotify:
       if (x_debug) fprintf (stderr, "\nX event: UnmapNotify\n");
-      if (exw != ((struct xwindow *) 0))
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_UNMAP;
 	(XW_VISIBLE_P (exw)) = 0;
+      }
       break;
 
     case Expose:
       if (x_debug) fprintf (stderr, "\nX event: Expose\n");
-      if (exw != ((struct xwindow *) 0))
+      if (exw != ((struct xwindow *) 0)) {
 	xterm_dump_rectangle (exw,
 			      ((event -> xexpose) . x),
 			      ((event -> xexpose) . y),
 			      ((event -> xexpose) . width),
 			      ((event -> xexpose) . height));
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_EXPOSE;
+      }
       break;
 
     case GraphicsExpose:
       if (x_debug) fprintf (stderr, "\nX event: GraphicsExpose\n");
-      if (exw != ((struct xwindow *) 0))
+      if (exw != ((struct xwindow *) 0)) {
 	xterm_dump_rectangle (exw,
 			      ((event -> xgraphicsexpose) . x),
 			      ((event -> xgraphicsexpose) . y),
 			      ((event -> xgraphicsexpose) . width),
 			      ((event -> xgraphicsexpose) . height));
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_GRAPHICS_EXPOSE;
+      }
       break;
 
     case ButtonPress:
@@ -837,26 +826,44 @@ xterm_process_event (event)
 
     case NoExpose:
       if (x_debug) fprintf (stderr, "\nX event: NoExpose\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_NO_EXPOSE;
+      }
       break;
 
     case EnterNotify:
       if (x_debug) fprintf (stderr, "\nX event: EnterNotify\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_ENTER;
+      }
       break;
 
     case LeaveNotify:
       if (x_debug) fprintf (stderr, "\nX event: LeaveNotify\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_LEAVE;
+      }
       break;
 
     case FocusIn:
       if (x_debug) fprintf (stderr, "\nX event: FocusIn\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_FOCUS_IN;
+      }
       break;
 
     case FocusOut:
       if (x_debug) fprintf (stderr, "\nX event: FocusOut\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_FOCUS_OUT;
+      }
       break;
 
     case MotionNotify:
       if (x_debug) fprintf (stderr, "\nX event: MotionNotify\n");
+      if (exw != ((struct xwindow *) 0)) {
+	(XW_EVENT_FLAGS (exw)) |= EVENT_FLAG_MOTION;
+      }
       break;
 
     default:
