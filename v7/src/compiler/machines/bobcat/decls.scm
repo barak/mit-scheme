@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.13 1988/11/03 08:21:25 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 4.14 1988/11/03 08:47:20 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -206,8 +206,7 @@ MIT in each case. |#
 	      (and binary (< source binary) binary))))
      (set-source-node/modification-time! node modification-time)
      (if (not modification-time)
-	 (begin (newline)
-		(write-string "Source file newer than binary: ")
+	 (begin (write-string "\nSource file newer than binary: ")
 		(write (source-node/filename node))))))
    source-nodes)
   (if compiler:enable-integration-declarations?
@@ -225,8 +224,7 @@ MIT in each case. |#
 				       (> time* time)))))
 			    (if newer?
 				(begin
-				  (newline)
-				  (write-string "Binary file ")
+				  (write-string "\nBinary file ")
 				  (write (source-node/filename node))
 				  (write-string " newer than dependency ")
 				  (write (source-node/filename node*))))
@@ -239,8 +237,7 @@ MIT in each case. |#
 	       (for-each (lambda (node*)
 			   (if (source-node/modification-time node*)
 			       (begin
-				 (newline)
-				 (write-string "Binary file ")
+				 (write-string "\nBinary file ")
 				 (write (source-node/filename node*))
 				 (write-string " depends on ")
 				 (write (source-node/filename node))))
@@ -257,13 +254,18 @@ MIT in each case. |#
 	      (if (not (source-node/modification-time node))
 		  (source-node/syntax! node)))
 	    source-nodes/by-rank)
-  (write-string "\n\nBegin pass 2:")
-  (for-each (lambda (node)
-	      (if (not (source-node/modification-time node))
-		  (if (source-node/circular? node)
-		      (source-node/syntax! node)
-		      (source-node/touch! node))))
-	    source-nodes/by-rank))
+  (if (there-exists? source-nodes/by-rank
+	(lambda (node)
+	  (and (not (source-node/modification-time node))
+	       (source-node/circular? node))))
+      (begin
+	(write-string "\n\nBegin pass 2:")
+	(for-each (lambda (node)
+		    (if (not (source-node/modification-time node))
+			(if (source-node/circular? node)
+			    (source-node/syntax! node)
+			    (source-node/touch! node))))
+		  source-nodes/by-rank))))
 
 (define (source-node/touch! node)
   (with-values
