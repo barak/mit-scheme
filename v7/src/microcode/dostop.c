@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dostop.c,v 1.10 1994/11/28 03:50:47 cph Exp $
+$Id: dostop.c,v 1.11 1994/12/02 20:39:36 cph Exp $
 
 Copyright (c) 1992-94 Massachusetts Institute of Technology
 
@@ -89,21 +89,24 @@ DEFUN_VOID (OS_initialize)
   DOS_initialize_conio();
   DOS_initialize_real_mode ();
   OS_Name = SYSTEM_NAME;
-  OS_Variant = SYSTEM_VARIANT;
-
-  { version_t version_number;
-
+  {
+    version_t version_number;
     dos_get_version(&version_number);
-    fprintf (stdout, "MIT Scheme running under %s %d.%d 386/486\n",
-		     OS_Variant,
-		     (int) version_number.major, (int) version_number.minor);
-    /* To make our compiler vendors happy. */		   
-    fprintf(stdout,
-	    "Copyright (c) 1992-1993 Massachusetts Institute of Technology\n");
+    OS_Variant = (malloc ((strlen (SYSTEM_VARIANT)) + 19));
+    sprintf (((char *) OS_Variant), "%s %d.%d 386/486",
+	     SYSTEM_VARIANT,
+	     (int) version_number.major,
+	     (int) version_number.minor);
   }
+}
 
+void
+DEFUN_VOID (OS_announcement)
+{
+  /* To make our compiler vendors happy. */		   
+  fprintf(stdout,
+	  "Copyright (c) 1992-1994 Massachusetts Institute of Technology\n");
   fputs ("", stdout);
-  fflush (stdout);
 }
 
 void

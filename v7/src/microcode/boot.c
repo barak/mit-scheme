@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.91 1994/11/28 03:49:45 cph Exp $
+$Id: boot.c,v 9.92 1994/12/02 20:38:40 cph Exp $
 
 Copyright (c) 1988-94 Massachusetts Institute of Technology
 
@@ -51,6 +51,7 @@ extern void EXFUN (Clear_Memory, (int, int, int));
 extern void EXFUN (Setup_Memory, (int, int, int));
 extern void EXFUN (compiler_initialize, (long fasl_p));
 extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
+extern void EXFUN (OS_announcement, (void));
 
 static void EXFUN (Start_Scheme, (int, CONST char *));
 static void EXFUN (Enter_Interpreter, (void));
@@ -383,12 +384,14 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   /* fast long i; */
   /* Parallel processor test */
   Boolean I_Am_Master = (Start_Prim != BOOT_GET_WORK);
+  OS_initialize ();
   if (I_Am_Master)
     {
       outf_console ("Scheme Microcode Version %d.%d\n",  VERSION, SUBVERSION);
+      outf_console ("MIT Scheme running under %s\n", OS_Variant);
+      OS_announcement ();
       outf_flush_console ();
     }
-  OS_initialize ();
   if (I_Am_Master)
   {
     Current_State_Point = SHARP_F;

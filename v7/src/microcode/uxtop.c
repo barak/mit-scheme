@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.15 1994/11/28 03:51:01 cph Exp $
+$Id: uxtop.c,v 1.16 1994/12/02 20:38:54 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -106,17 +106,19 @@ DEFUN_VOID (OS_initialize)
   UX_initialize_directory_reader ();
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
-  fprintf (stdout, "MIT Scheme running under %s\n", OS_Variant);
-  if ((!option_emacs_subprocess) && (OS_ctty_interrupt_control ()))
-    {
-      fputs ("", stdout);
-      fprintf (stdout, "Type %s followed by `H' to obtain information about interrupts.\n",
-	       (char_description ((OS_ctty_quit_char ()), 1)));
-    }
-  fflush (stdout);
 #ifdef _SUNOS
   vadvise (VA_ANOM);		/* Anomolous paging, don't try to guess. */
 #endif
+}
+
+void
+DEFUN_VOID (OS_announcement)
+{
+  if ((!option_emacs_subprocess) && (OS_ctty_interrupt_control ()))
+    fprintf
+      (stdout,
+       "Type %s followed by `H' to obtain information about interrupts.\n",
+       (char_description ((OS_ctty_quit_char ()), 1)));
 }
 
 void

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.13 1994/11/28 03:50:32 cph Exp $
+$Id: nttop.c,v 1.14 1994/12/02 20:39:16 cph Exp $
 
 Copyright (c) 1993-94 Massachusetts Institute of Technology
 
@@ -81,28 +81,27 @@ DEFUN_VOID (OS_initialize)
   NT_initialize_directory_reader ();
 
   OS_Name = SYSTEM_NAME;
-  OS_Variant = SYSTEM_VARIANT;
-
   {
     version_t version_number;
+    const char * variant;
 
     nt_get_version (&version_number);
-    OS_Variant = ((version_number.platform == 0)
-		  ? "Windows-NT"
-		  : "MS Windows");
-
-    outf_console ("MIT Scheme running under %s %d.%d 386/486\n",
-		  OS_Variant,
-		  ((int) version_number.major),
-		  ((int) version_number.minor));
-    /* To make our compiler vendors happy. */
-    outf_console
-      ("Copyright (c) 1993 Massachusetts Institute of Technology\n");
+    variant = ((version_number.platform == 0) ? "Windows-NT" : "MS Windows");
+    OS_Variant = (malloc ((strlen (variant)) + 19));
+    sprintf (OS_Variant, "MIT Scheme running under %s %d.%d 386/486\n",
+	     variant,
+	     ((int) version_number.major),
+	     ((int) version_number.minor));
   }
+}
 
+void
+DEFUN_VOID (OS_announcement)
+{
+  /* To make our compiler vendors happy. */
+  outf_console
+    ("Copyright (c) 1993-1994 Massachusetts Institute of Technology\n");
   outf_console ("\n");
-  outf_flush_console ();
-  return;
 }
 
 void
