@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/strtab.scm,v 1.43 1991/05/10 04:50:30 cph Exp $
+;;;	$Id: strtab.scm,v 1.44 1993/08/10 07:05:47 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -87,7 +87,7 @@
 	       (lambda () (if-found index entry))
 	       (lambda () (loop low (-1+ index)))
 	       (lambda () (loop (1+ index) high)))))))))
-
+
 (define (string-table-get table string #!optional if-not-found)
   (string-table-search table string
     (lambda (index entry)
