@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.4 1988/06/14 08:48:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules2.scm,v 4.5 1988/08/29 22:49:54 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,26 +36,84 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-;;;; Predicates
+(define (predicate/memory-operand? expression)
+  (or (rtl:offset? expression)
+      (and (rtl:post-increment? expression)
+	   (interpreter-stack-pointer?
+	    (rtl:post-increment-register expression)))))
 
+(define (predicate/memory-operand-reference expression)
+  (case (rtl:expression-type expression)
+    ((OFFSET) (offset->indirect-reference! expression))
+    ((POST-INCREMENT) (INST-EA (@A+ 7)))
+    (else (error "Illegal memory operand" expression))))
+
+(define (compare/register*register register-1 register-2 cc)
+  (let ((finish
+	 (lambda (reference-1 reference-2 cc)
+	   (set-standard-branches! cc)
+	   (LAP (CMP L ,reference-2 ,reference-1)))))
+    (let ((finish-1
+	   (lambda (alias)
+	     (finish (register-reference alias)
+		     (standard-register-reference register-2 'DATA)
+		     cc)))
+	  (finish-2
+	   (lambda (alias)
+	     (finish (register-reference alias)
+		     (standard-register-reference register-1 'DATA)
+		     (invert-cc-noncommutative cc)))))
+      (let ((try-type
+	     (lambda (type continue)
+	       (let ((alias (register-alias register-1 type)))
+		 (if alias
+		     (finish-1 alias)
+		     (let ((alias (register-alias register-2 type)))
+		       (if alias
+			   (finish-2 alias)
+			   (continue))))))))
+	(try-type 'DATA
+	  (lambda ()
+	    (try-type 'ADDRESS
+	      (lambda ()
+		(if (dead-register? register-1)
+		    (finish-2 (load-alias-register! register-2 'DATA))
+		    (finish-1 (load-alias-register! register-1 'DATA)))))))))))
+
+(define (compare/register*memory register memory cc)
+  (let ((reference (standard-register-reference register 'DATA)))
+    (if (effective-address/register? reference)
+	(begin
+	  (set-standard-branches! cc)
+	  (LAP (CMP L ,memory ,reference)))
+	(compare/memory*memory reference memory cc))))
+
+(define (compare/memory*memory memory-1 memory-2 cc)
+  (set-standard-branches! cc)
+  (let ((temp (reference-temporary-register! 'DATA)))
+    (LAP (MOV L ,memory-1 ,temp)
+	 (CMP L ,memory-2 ,temp))))
+
 (define-rule predicate
   (TRUE-TEST (REGISTER (? register)))
   (set-standard-branches! 'NE)
-  (LAP ,(test-non-pointer (ucode-type false) 0 (coerce->any register))))
+  (LAP ,(test-non-pointer (ucode-type false)
+			  0
+			  (standard-register-reference register false))))
 
 (define-rule predicate
-  (TRUE-TEST (OFFSET (REGISTER (? register)) (? offset)))
+  (TRUE-TEST (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! 'NE)
-  (LAP ,(test-non-pointer (ucode-type false) 0
-			  (indirect-reference! register offset))))
+  (LAP ,(test-non-pointer (ucode-type false)
+			  0
+			  (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? register)) (? type))
   (QUALIFIER (pseudo-register? register))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-byte
-	 type
-	 (register-reference (load-alias-register! register 'DATA)))))
+  (LAP ,(test-byte type (reference-alias-register! register 'DATA))))
 
 (define-rule predicate
   (TYPE-TEST (OBJECT->TYPE (REGISTER (? register))) (? type))
@@ -66,284 +124,200 @@ MIT in each case. |#
 	 ,(test-byte type reference))))
 
 (define-rule predicate
-  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? register)) (? offset)))
-	     (? type))
+  (TYPE-TEST (OBJECT->TYPE (? memory)) (? type))
+  (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-byte type (indirect-reference! register offset))))
+  (LAP ,(test-byte type (predicate/memory-operand-reference memory))))
 
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-non-pointer (ucode-type unassigned) 0
-			  (coerce->any register))))
+  (LAP ,(test-non-pointer (ucode-type unassigned)
+			  0
+			  (standard-register-reference register 'DATA))))
 
 (define-rule predicate
-  (UNASSIGNED-TEST (OFFSET (REGISTER (? register)) (? offset)))
+  (UNASSIGNED-TEST (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
   (set-standard-branches! 'EQ)
-  (LAP ,(test-non-pointer (ucode-type unassigned) 0
-			  (indirect-reference! register offset))))
+  (LAP ,(test-non-pointer (ucode-type unassigned)
+			  0
+			  (predicate/memory-operand-reference memory))))
+
+(define-rule predicate
+  (OVERFLOW-TEST)
+  (set-standard-branches! 'VS))
 
+(define-rule predicate
+  (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
+  (QUALIFIER (and (pseudo-register? register-1)
+		  (pseudo-register? register-2)))
+  (compare/register*register register-1 register-2 'EQ))
+
+(define-rule predicate
+  (EQ-TEST (REGISTER (? register)) (? memory))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory register
+			   (predicate/memory-operand-reference memory)
+			   'EQ))
+
+(define-rule predicate
+  (EQ-TEST (? memory) (REGISTER (? register)))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory register
+			   (predicate/memory-operand-reference memory)
+			   'EQ))
+
+(define-rule predicate
+  (EQ-TEST (? memory-1) (? memory-2))
+  (QUALIFIER (and (predicate/memory-operand? memory-1)
+		  (predicate/memory-operand? memory-2)))
+  (compare/memory*memory (predicate/memory-operand-reference memory-1)
+			 (predicate/memory-operand-reference memory-2)
+			 'EQ))
+
 (define (eq-test/constant*register constant register)
-  (set-standard-branches! 'EQ)
   (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (object-type constant)
-			      (object-datum constant)
-			      (coerce->any register)))
-      (LAP (CMP L (@PCR ,(constant->label constant))
-		,(coerce->machine-register register)))))
+      (begin
+	(set-standard-branches! 'EQ)
+	(LAP ,(test-non-pointer (object-type constant)
+				(object-datum constant)
+				(standard-register-reference register 'DATA))))
+      (compare/register*memory register
+			       (INST-EA (@PCR ,(constant->label constant)))
+			       'EQ)))
 
-(define (eq-test/constant*memory constant memory-reference)
-  (set-standard-branches! 'EQ)
+(define (eq-test/constant*memory constant memory)
   (if (non-pointer-object? constant)
-      (LAP ,(test-non-pointer (object-type constant)
-			      (object-datum constant)
-			      memory-reference))
-      (let ((temp (reference-temporary-register! false)))
-	(LAP (MOV L ,memory-reference ,temp)
-	     (CMP L (@PCR ,(constant->label constant))
-		  ,temp)))))
-
-(define (eq-test/register*register register-1 register-2)
-  (set-standard-branches! 'EQ)
-  (let ((finish
-	 (lambda (register-1 register-2)
-	   (LAP (CMP L ,(coerce->any register-2)
-		     ,(coerce->machine-register register-1))))))
-    (if (or (and (not (register-has-alias? register-1 'DATA))
-		 (register-has-alias? register-2 'DATA))
-	    (and (not (register-has-alias? register-1 'ADDRESS))
-		 (register-has-alias? register-2 'ADDRESS)))
-	(finish register-2 register-1)
-	(finish register-1 register-2))))
-
-(define (eq-test/register*memory register memory-reference)
-  (set-standard-branches! 'EQ)
-  (LAP (CMP L ,memory-reference
-	    ,(coerce->machine-register register))))
-
-(define (eq-test/memory*memory register-1 offset-1 register-2 offset-2)
-  (set-standard-branches! 'EQ)
-  (let ((temp (reference-temporary-register! false)))
-    (let ((finish
-	   (lambda (register-1 offset-1 register-2 offset-2)
-	     (LAP (MOV L ,(indirect-reference! register-1 offset-1)
-		       ,temp)
-		  (CMP L ,(indirect-reference! register-2 offset-2)
-		       ,temp)))))
-      (if (or (and (not (register-has-alias? register-1 'ADDRESS))
-		   (register-has-alias? register-2 'ADDRESS))
-	      (and (not (register-has-alias? register-1 'DATA))
-		   (register-has-alias? register-2 'DATA)))
-	  (finish register-2 offset-2 register-1 offset-1)
-	  (finish register-1 offset-1 register-2 offset-2)))))
-
-(define-rule predicate
-  (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
-  (eq-test/constant*register constant register))
+      (begin
+	(set-standard-branches! 'EQ)
+	(LAP ,(test-non-pointer (object-type constant)
+				(object-datum constant)
+				memory)))
+      (compare/memory*memory memory
+			     (INST-EA (@PCR ,(constant->label constant)))
+			     'EQ)))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
   (eq-test/constant*register constant register))
 
 (define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register)) (? offset)) (CONSTANT (? constant)))
-  (eq-test/constant*memory constant (indirect-reference! register offset)))
+  (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
+  (QUALIFIER (pseudo-register? register))
+  (eq-test/constant*register constant register))
 
 (define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (OFFSET (REGISTER (? register)) (? offset)))
-  (eq-test/constant*memory constant (indirect-reference! register offset)))
+  (EQ-TEST (CONSTANT (? constant)) (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (eq-test/constant*memory constant
+			   (predicate/memory-operand-reference memory)))
 
 (define-rule predicate
-  (EQ-TEST (CONSTANT (? constant)) (POST-INCREMENT (REGISTER 15) 1))
-  (eq-test/constant*memory constant (INST-EA (@A+ 7))))
-
-(define-rule predicate
-  (EQ-TEST (POST-INCREMENT (REGISTER 15) 1) (CONSTANT (? constant)))
-  (eq-test/constant*memory constant (INST-EA (@A+ 7))))
-
-(define-rule predicate
-  (EQ-TEST (REGISTER (? register-1)) (REGISTER (? register-2)))
-  (eq-test/register*register register-1 register-2))
-
-(define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
-	   (REGISTER (? register-2)))
-  (eq-test/register*memory register-2
-			   (indirect-reference! register-1 offset-1)))
-
-(define-rule predicate
-  (EQ-TEST (REGISTER (? register-1))
-	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/register*memory register-1
-			   (indirect-reference! register-2 offset-2)))
-
-(define-rule predicate
-  (EQ-TEST (POST-INCREMENT (REGISTER 15) 1) (REGISTER (? register)))
-  (eq-test/register*memory register (INST-EA (@A+ 7))))
-
-(define-rule predicate
-  (EQ-TEST (REGISTER (? register)) (POST-INCREMENT (REGISTER 15) 1))
-  (eq-test/register*memory register (INST-EA (@A+ 7))))
-
-(define-rule predicate
-  (EQ-TEST (OFFSET (REGISTER (? register-1)) (? offset-1))
-	   (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (eq-test/memory*memory register-1 offset-1 register-2 offset-2))
-
+  (EQ-TEST (? memory) (CONSTANT (? constant)))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (eq-test/constant*memory constant
+			   (predicate/memory-operand-reference memory)))
 
-;;; fixnum predicates
-
-(define (fixnum-pred/register*register register-1 register-2 cc)
-  (let ((finish
-	 (lambda (register-1 register-2 maybe-invert)
-	   (set-standard-branches! (maybe-invert cc))
-	   (LAP (CMP L ,(coerce->any register-1)
-		     ,(coerce->machine-register register-2))))))
-    (if (or (and (not (register-has-alias? register-1 'DATA))
-		 (register-has-alias? register-2 'DATA))
-	    (and (not (register-has-alias? register-1 'ADDRESS))
-		 (register-has-alias? register-2 'ADDRESS)))
-	(finish register-2 register-1 invert-cc)
-	(finish register-1 register-2 (lambda (x) x)))))
-
-(define (fixnum-pred/constant*register constant register cc)
-  (set-standard-branches! cc)
-  (if (non-pointer-object? constant)
-      (LAP (CMPI L (& ,(object-datum constant)) ,(coerce->any register)))
-      (LAP (CMP L (@PCR ,(constant->label constant))
-		,(coerce->machine-register register)))))
-
-(define (fixnum-pred/constant*memory constant memory-reference cc)
-  (set-standard-branches! cc)
-  (if (non-pointer-object? constant)
-      (LAP (CMPI L (& ,(object-datum constant)) ,memory-reference))
-      (let ((temp (reference-temporary-register! false)))
-	(LAP (MOV L ,memory-reference ,temp)
-	     (CMP L (@PCR ,(constant->label constant))
-		  ,temp)))))
-
-(define (fixnum-pred/register*memory register memory-reference cc)
-  (set-standard-branches! cc)
-  (LAP (CMP L ,memory-reference
-	    ,(coerce->machine-register register))))
-
-(define (fixnum-pred/memory*memory register-1 offset-1 register-2 offset-2 cc)
-  (let ((temp (reference-temporary-register! false)))
-    (let ((finish
-	   (lambda (register-1 offset-1 register-2 offset-2 maybe-invert)
-	     (set-standard-branches! (maybe-invert cc))
-	     (LAP (MOV L ,(indirect-reference! register-1 offset-1)
-		       ,temp)
-		  (CMP L ,(indirect-reference! register-2 offset-2)
-		       ,temp)))))
-      (if (or (and (not (register-has-alias? register-1 'ADDRESS))
-		   (register-has-alias? register-2 'ADDRESS))
-	      (and (not (register-has-alias? register-1 'DATA))
-		   (register-has-alias? register-2 'DATA)))
-	  (finish register-2 offset-2 register-1 offset-1 invert-cc)
-	  (finish register-1 offset-1 register-2 offset-2 (lambda (x) x))))))
-
-
+;;;; Fixnum Predicates
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? register-1)) (REGISTER (? register-2)))
-  (fixnum-pred/register*register register-2 register-1
-				 (fixnum-pred->cc predicate)))
+  (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
+  (set-standard-branches! (fixnum-predicate->cc predicate))
+  (test-fixnum (standard-register-reference register 'DATA)))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? register)) (CONSTANT (? constant)))
-  (fixnum-pred/constant*register constant register
-				 (fixnum-pred->cc predicate)))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (CONSTANT (? constant)) (REGISTER (? register)))
-  (fixnum-pred/constant*register constant register
-				 (invert-cc (fixnum-pred->cc predicate))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? register)) (? offset))
-		      (CONSTANT (? constant)))
-  (fixnum-pred/constant*memory constant (indirect-reference! register offset)
-			       (fixnum-pred->cc predicate)))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (CONSTANT (? constant))
-		      (OFFSET (REGISTER (? register)) (? offset)))
-  (fixnum-pred/constant*memory constant (indirect-reference! register offset)
-			       (invert-cc (fixnum-pred->cc predicate))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (CONSTANT (? constant))
-		      (POST-INCREMENT (REGISTER 15) 1))
-  (fixnum-pred/constant*memory constant (INST-EA (@A+ 7))
-			       (invert-cc (fixnum-pred->cc predicate))))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (POST-INCREMENT (REGISTER 15) 1) (CONSTANT (? constant)))
-  (fixnum-pred/constant*memory constant (INST-EA (@A+ 7))
-			       (fixnum-pred->cc predicate)))
-
-(define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? register-1)) (? offset-1))
-		      (REGISTER (? register-2)))
-  (fixnum-pred/register*memory register-2
-			       (indirect-reference! register-1 offset-1)
-			       (invert-cc (fixnum-pred->cc predicate))))
+  (FIXNUM-PRED-1-ARG (? predicate) (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (set-standard-branches! (fixnum-predicate->cc predicate))
+  (test-fixnum (predicate/memory-operand-reference memory)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? register-1))
-		      (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (fixnum-pred/register*memory register-1
-			   (indirect-reference! register-2 offset-2)
-			   (fixnum-pred->cc predicate)))
+		      (REGISTER (? register-2)))
+  (QUALIFIER (and (pseudo-register? register-1)
+		  (pseudo-register? register-2)))
+  (compare/register*register register-1
+			     register-2
+			     (fixnum-predicate->cc predicate)))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (POST-INCREMENT (REGISTER 15) 1) (REGISTER (? register)))
-  (fixnum-pred/register*memory register (INST-EA (@A+ 7))
-			       (invert-cc (fixnum-pred->cc predicate))))
+  (FIXNUM-PRED-2-ARGS (? predicate) (REGISTER (? register)) (? memory))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory register
+			   (predicate/memory-operand-reference memory)
+			   (fixnum-predicate->cc predicate)))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? register)) (POST-INCREMENT (REGISTER 15) 1))
-  (fixnum-pred/register*memory register (INST-EA (@A+ 7))
-			       (fixnum-pred->cc predicate)))
+  (FIXNUM-PRED-2-ARGS (? predicate) (? memory) (REGISTER (? register)))
+  (QUALIFIER (and (predicate/memory-operand? memory)
+		  (pseudo-register? register)))
+  (compare/register*memory
+   register
+   (predicate/memory-operand-reference memory)
+   (invert-cc-noncommutative (fixnum-predicate->cc predicate))))
 
 (define-rule predicate
-  (FIXNUM-PRED-2-ARGS (? predicate)
-		      (OFFSET (REGISTER (? register-1)) (? offset-1))
-		      (OFFSET (REGISTER (? register-2)) (? offset-2)))
-  (fixnum-pred/memory*memory register-1 offset-1 register-2 offset-2
-			     (fixnum-pred->cc predicate)))
-
+  (FIXNUM-PRED-2-ARGS (? predicate) (? memory-1) (? memory-2))
+  (QUALIFIER (and (predicate/memory-operand? memory-1)
+		  (predicate/memory-operand? memory-2)))
+  (compare/memory*memory (predicate/memory-operand-reference memory-1)
+			 (predicate/memory-operand-reference memory-2)
+			 (fixnum-predicate->cc predicate)))
 
-(define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
-  (set-standard-branches! (fixnum-pred->cc predicate))
-  (test-fixnum (coerce->any register)))
+(define (fixnum-predicate/register*constant register constant cc)
+  (set-standard-branches! cc)
+  (guarantee-signed-fixnum constant)
+  (let ((reference (standard-register-reference register 'DATA)))
+    (if (effective-address/register? reference)
+	(LAP (CMP L (& ,constant) ,reference))
+	(LAP (CMPI L (& ,constant) ,reference)))))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (CONSTANT (? constant)))
-  (set-standard-branches! (fixnum-pred->cc predicate))
-    (if (non-pointer-object? constant)
-      (test-fixnum (INST-EA (& ,(object-datum constant))))
-      (test-fixnum (INST-EA (@PCR ,(constant->label constant))))))
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? register))
+		      (OBJECT->FIXNUM (CONSTANT (? constant))))
+  (QUALIFIER (pseudo-register? register))
+  (fixnum-predicate/register*constant register
+				      constant
+				      (fixnum-predicate->cc predicate)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (POST-INCREMENT (REGISTER 15) 1))
-  (set-standard-branches! (fixnum-pred->cc predicate))
-  (test-fixnum (INST-EA (@A+ 7))))
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FIXNUM (CONSTANT (? constant)))
+		      (REGISTER (? register)))
+  (QUALIFIER (pseudo-register? register))
+  (fixnum-predicate/register*constant
+   register
+   constant
+   (invert-cc-noncommutative (fixnum-predicate->cc predicate))))
+
+(define (fixnum-predicate/memory*constant memory constant cc)
+  (set-standard-branches! cc)
+  (guarantee-signed-fixnum constant)
+  (LAP (CMPI L (& ,constant) ,memory)))
 
 (define-rule predicate
-  (FIXNUM-PRED-1-ARG (? predicate) (OFFSET (REGISTER (? register)) (? offset)))
-  (set-standard-branches! (fixnum-pred->cc predicate))
-  (test-fixnum (indirect-reference! offset register)))
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (? memory)
+		      (OBJECT->FIXNUM (CONSTANT (? constant))))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (fixnum-predicate/memory*constant (predicate/memory-operand-reference memory)
+				    constant
+				    (fixnum-predicate->cc predicate)))
+
+(define-rule predicate
+  (FIXNUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FIXNUM (CONSTANT (? constant)))
+		      (? memory))
+  (QUALIFIER (predicate/memory-operand? memory))
+  (fixnum-predicate/memory*constant
+   (predicate/memory-operand-reference memory)
+   constant
+   (invert-cc-noncommutative (fixnum-predicate->cc predicate))))
