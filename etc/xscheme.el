@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.15 1987/12/10 04:01:50 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.16 1988/04/06 21:31:31 cph Exp $
 
 (require 'scheme)
 
@@ -807,24 +807,23 @@ the remaining input.")
   nil)
 
 (defun xscheme-message (string)
-  (xscheme-write-message-1 nil string))
+  (if (not (zerop (length string)))
+      (xscheme-write-message-1 string (format ";%s" string))))
 
 (defun xscheme-write-value (string)
-  (xscheme-write-message-1 "Value" string))
+  (if (zerop (length string))
+      (xscheme-write-message-1 "(no value)" ";No value")
+      (xscheme-write-message-1 string (format ";Value: %s" string))))
 
-(defun xscheme-write-message-1 (prefix string)
-  (if (not (zerop (length string)))
-      (progn (let* ((process (get-process "scheme"))
-		    (window (get-buffer-window (process-buffer process))))
-	       (if (or (not window)
-		       (not (pos-visible-in-window-p (process-mark process)
-						     window)))
-		   (message "%s" string)))
-	     (xscheme-guarantee-newlines 1)
-	     (xscheme-process-filter-output-1
-	      (if prefix
-		  (format ";%s: %s" prefix string)
-		  (format ";%s" string))))))
+(defun xscheme-write-message-1 (message-string output-string)
+  (let* ((process (get-process "scheme"))
+	 (window (get-buffer-window (process-buffer process))))
+    (if (or (not window)
+	    (not (pos-visible-in-window-p (process-mark process)
+					  window)))
+	(message "%s" message-string)))
+  (xscheme-guarantee-newlines 1)
+  (xscheme-process-filter-output-1 output-string))
 
 (defun xscheme-set-prompt-variable (string)
   (setq xscheme-prompt string))
