@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.20 1989/09/20 16:39:48 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.21 1989/09/24 03:39:40 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -379,17 +379,16 @@ MIT in each case. |#
   (set! *remote-links* '())
   (set! *process-time* 0)
   (set! *real-time* 0)
-  (set! *info-output-filename* false)
-  (set! *rtl-output-pathname* false)
 
   (set! *ic-procedure-headers*)
   (set! *current-label-number*)
   (set! *external-labels*)
-  (set! *bits*)
   (set! *block-label*)
   (set! *dbg-expression*)
   (set! *dbg-procedures*)
-  (set! *dbg-continuations*)  (set! *next-constant*)
+  (set! *dbg-continuations*)
+  (set! *bits*)
+  (set! *next-constant*)
   (set! *interned-constants*)
   (set! *interned-variables*)
   (set! *interned-assignments*)
