@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwin.scm,v 1.306 1999/01/02 06:11:34 cph Exp $
+;;; $Id: bufwin.scm,v 1.307 1999/05/08 19:22:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -626,12 +626,6 @@
 
 (define-integrable (%window-modeline-event! window type)
   (window-modeline-event! (window-superior window) type))
-
-(define-integrable (fix:max x y)
-  (if (fix:> x y) x y))
-
-(define-integrable (fix:min x y)
-  (if (fix:< x y) x y))
 
 ;;;; Standard Methods
 

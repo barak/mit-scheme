@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: screen.scm,v 1.116 1999/01/02 06:11:34 cph Exp $
+;;; $Id: screen.scm,v 1.117 1999/05/08 19:22:54 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -864,9 +864,6 @@
 				 screen x y nline x x* face)
 				(find-mismatch x**))))))))))))
 
-(define-integrable (fix:min x y) (if (fix:< x y) x y))
-(define-integrable (fix:max x y) (if (fix:> x y) x y))
-
 (define-integrable (substring-non-space-start string start end)
   (do ((index start (fix:+ index 1)))
       ((or (fix:= end index)
