@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prgcop.scm,v 1.2 1990/09/09 03:13:56 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/prgcop.scm,v 1.3 1991/09/20 03:58:39 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -35,9 +35,10 @@ MIT in each case. |#
 ;;;; Program copier
 ;;; package: (runtime program-copier)
 
-(declare (usual-integrations)
-	 (integrate-primitive-procedures
-	  (object-new-type primitive-object-new-type 2)))
+(declare (usual-integrations))
+
+(define-primitives
+  (object-new-type primitive-object-new-type 2))
 
 (define (initialize-package!)
   (set! copier/scode-walker
