@@ -30,14 +30,13 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.8 1989/11/27 01:02:31 jinx Exp $
-   $MC68020-Header: cmp68kgc.h,v 9.30 89/03/27 23:14:31 GMT jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.9 1989/11/27 20:21:00 jinx Exp $
 
 Utilities to relocate compiled code in garbage collection-like processes. 
 
-This file is conditionally included by gccode.h.
+This file is included by gccode.h.
 
-See cmpint.txt, cmpint2.h, cmpint.c, and cmpaux.m4 for more details.
+See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 */
 
 #ifndef CMPGC_H_INCLUDED
@@ -279,9 +278,9 @@ MAKE_POINTER_OBJECT((OBJECT_TYPE(object)),				\
 ((*((format_word *)							\
     (((char *) block) + CC_BLOCK_FIRST_GC_OFFSET))) ==			\
    ((BYTE_OFFSET_TO_OFFSET_WORD(CC_BLOCK_FIRST_ENTRY_OFFSET))))
-
-#else /* not HAS_COMPILER_SUPPORT */
 
+#else /* not HAS_COMPILER_SUPPORT */
+
 /* Is there anything else that can be done here? */
 
 #define GC_NO_COMPILER_STMT()						\

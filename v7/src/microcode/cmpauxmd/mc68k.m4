@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.5 1989/11/23 19:51:10 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.6 1989/11/27 20:19:40 jinx Exp $
 ###
 ###	Copyright (c) 1989 Massachusetts Institute of Technology
 ###
@@ -38,8 +38,8 @@
 ###
 
 #### 68K assembly language (HP/Motorola Syntax) part of the compiled
-#### code interface. See cmpint.c, cmpint-mc68k.h,  and cmpgc.h for
-#### more documentation.
+#### code interface.  See cmpint.txt, cmpint.c, cmpint-mc68k.h, and
+#### cmpgc.h for more documentation.
 ####
 #### NOTE:
 ####	Assumptions:

@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.3 1989/11/27 16:14:00 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/hppa.m4,v 1.4 1989/11/27 20:21:20 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -38,8 +38,8 @@ changecom(`;');;; -*-Midas-*-
 ;;;
 
 ;;;; HP Precision Architecture assembly language part of the compiled
-;;;; code interface. See cmpint.c, cmpint-hppa.h, and cmpgc.h for more
-;;;; documentation.
+;;;; code interface. See cmpint.txt, cmpint.c, cmpint-hppa.h, and
+;;;; cmpgc.h for more documentation.
 ;;;;
 ;;;; NOTE:
 ;;;;	Assumptions:
