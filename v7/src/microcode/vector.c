@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.29 1987/12/17 04:12:31 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/vector.c,v 9.30 1987/12/23 03:47:41 cph Rel $ */
 
 /* This file contains procedures for handling vectors and conversion
    back and forth to lists. */
@@ -122,6 +122,23 @@ DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_Vector_Cons, 2)
 
   PRIMITIVE_RETURN
     (make_vector ((arg_nonnegative_integer (1)), (ARG_REF (2))));
+}
+
+DEFINE_PRIMITIVE ("VECTOR", Prim_vector, LEXPR)
+{
+  Pointer result;
+  fast Pointer *argument_scan;
+  fast Pointer *argument_limit;
+  fast Pointer *result_scan;
+  PRIMITIVE_HEADER (LEXPR);
+
+  result = (allocate_marked_vector (TC_VECTOR, (LEXPR_N_ARGUMENTS ()), true));
+  argument_scan = (ARG_LOC (1));
+  argument_limit = (ARG_LOC ((LEXPR_N_ARGUMENTS ()) + 1));
+  result_scan = (VECTOR_LOC (result, 0));
+  while (argument_scan != argument_limit)
+    (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_Sys_Vector, 1)
