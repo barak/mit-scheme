@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.36 1995/11/09 15:16:48 adams Exp $
+$Id: uxio.c,v 1.37 1996/07/01 23:28:17 cph Exp $
 
 Copyright (c) 1990-94 Massachusetts Institute of Technology
 
@@ -39,21 +39,33 @@ MIT in each case. */
 size_t OS_channel_table_size;
 struct channel * channel_table;
 
+#ifdef HAVE_POLL
+
+#include <poll.h>
+
+#else /* not HAVE_POLL */
+#ifdef HAVE_SELECT
+
 #ifdef FD_SET
+
 #define SELECT_TYPE fd_set
-#else
+
+#else /* not FD_SET */
+
 #define SELECT_TYPE int
 #define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
 #define FD_SET(n, p) ((*(p)) |= (1 << (n)))
 #define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
 #define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
 #define FD_ZERO(p) ((*(p)) = 0)
-#endif
+
+#endif /* not FD_SET */
 
 static SELECT_TYPE input_descriptors;
-#ifdef HAVE_SELECT
 static struct timeval zero_timeout;
-#endif
+
+#endif /* HAVE_SELECT */
+#endif /* not HAVE_POLL */
 
 static void
 DEFUN_VOID (UX_channel_close_all)
@@ -84,10 +96,12 @@ DEFUN_VOID (UX_initialize_channels)
       MARK_CHANNEL_CLOSED (channel);
   }
   add_reload_cleanup (UX_channel_close_all);
-  FD_ZERO (&input_descriptors);
+#ifndef HAVE_POLL
 #ifdef HAVE_SELECT
+  FD_ZERO (&input_descriptors);
   (zero_timeout . tv_sec) = 0;
   (zero_timeout . tv_usec) = 0;
+#endif
 #endif
 }
 
@@ -366,6 +380,10 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 #define SELECT_DECLARED
 #endif
 
+#ifdef HAVE_POLL
+CONST int OS_have_select_p = 1;
+extern int EXFUN (UX_process_any_status_change, (void));
+#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
 CONST int OS_have_select_p = 1;
 extern int EXFUN (UX_process_any_status_change, (void));
@@ -377,41 +395,93 @@ extern int EXFUN (UX_select,
 #else /* not HAVE_SELECT */
 CONST int OS_have_select_p = 0;
 #endif /* not HAVE_SELECT */
+#endif /* not HAVE_POLL */
 
 unsigned int
 DEFUN_VOID (UX_select_registry_size)
 {
+#ifdef HAVE_POLL
+  return ((sizeof (struct pollfd)) * OS_channel_table_size);
+#else
   return (sizeof (SELECT_TYPE));
+#endif
 }
 
 unsigned int
 DEFUN_VOID (UX_select_registry_lub)
 {
+#ifdef HAVE_POLL
+  return (OS_channel_table_size);
+#else
   return (FD_SETSIZE);
+#endif
 }
 
 void
 DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
 {
+#ifdef HAVE_POLL
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    {
+      ((pfds [i]) . fd) = (-1);
+      ((pfds [i]) . events) = 0;
+    }
+#else
   FD_ZERO ((SELECT_TYPE *) fds);
+#endif
 }
 
 void
 DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
 {
+#ifdef HAVE_POLL
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if ((((pfds [i]) . fd) == (-1)) || (((pfds [i]) . fd) == fd))
+      {
+	((pfds [i]) . fd) = fd;
+	((pfds [i]) . events) = POLLIN;
+	break;
+      }
+#else
   FD_SET (fd, ((SELECT_TYPE *) fds));
+#endif
 }
 
 void
 DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
 {
+#ifdef HAVE_POLL
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if (((pfds [i]) . fd) == fd)
+      {
+	((pfds [i]) . fd) = (-1);
+	((pfds [i]) . events) = 0;
+	break;
+      }
+#else
   FD_CLR (fd, ((SELECT_TYPE *) fds));
+#endif
 }
 
 int
 DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
 {
+#ifdef HAVE_POLL
+  struct pollfd * pfds = fds;
+  unsigned int i;
+  for (i = 0; (i < OS_channel_table_size); i += 1)
+    if (((pfds [i]) . fd) == fd)
+      return (1);
+  return (0);
+#else
   return (FD_ISSET (fd, ((SELECT_TYPE *) fds)));
+#endif
 }
 
 enum select_input
@@ -421,6 +491,42 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
        unsigned int * output_fds AND
        unsigned int * output_nfds)
 {
+#ifdef HAVE_POLL
+  struct pollfd * pfds = input_fds;
+  while (1)
+    {
+      int nfds = (poll (pfds, OS_channel_table_size, (blockp ? INFTIM : 0)));
+      if (nfds > 0)
+	{
+	  if (output_nfds != 0)
+	    (*output_nfds) = nfds;
+	  if (output_fds != 0)
+	    {
+	      unsigned int i;
+	      for (i = 0; (i < OS_channel_table_size); i += 1)
+		if ((((pfds [i]) . fd) != (-1))
+		    && ((((pfds [i]) . revents) & POLLIN) != 0))
+		  {
+		    (*output_fds++) = ((pfds [i]) . fd);
+		    if ((--nfds) == 0)
+		      break;
+		  }
+	    }
+	  return (select_input_argument);
+	}
+      else if (nfds == 0)
+	{
+	  if (!blockp)
+	    return (select_input_none);
+	}
+      else if (! ((errno == EINTR) || (errno == EAGAIN)))
+	error_system_call (errno, syscall_select);
+      else if (UX_process_any_status_change ())
+	return (select_input_process_status);
+      if (pending_interrupts_p ())
+	return (select_input_interrupt);
+    }
+#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
   while (1)
     {
@@ -469,10 +575,11 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
     }
-#else
+#else /* not HAVE_SELECT */
   error_system_call (ENOSYS, syscall_select);
   return (select_input_argument);
-#endif
+#endif /* not HAVE_SELECT */
+#endif /* not HAVE_POLL */
 }
 
 enum select_input
@@ -480,21 +587,49 @@ DEFUN (UX_select_descriptor, (fd, blockp),
        unsigned int fd AND
        int blockp)
 {
+#ifdef HAVE_POLL
+  struct pollfd pfds [1];
+  int nfds;
+
+  ((pfds [0]) . fd) = fd;
+  ((pfds [0]) . events) = POLLIN;
+  while (1)
+    {
+      nfds = (poll (pfds, 1, (blockp ? INFTIM : 0)));
+      if (nfds > 0)
+	return (select_input_argument);
+      else if (nfds == 0)
+	{
+	  if (!blockp)
+	    return (select_input_none);
+	}
+      else if (errno != EINTR)
+	error_system_call (errno, syscall_select);
+      else if (UX_process_any_status_change ())
+	return (select_input_process_status);
+      if (pending_interrupts_p ())
+	return (select_input_interrupt);
+    }  
+#else /* not HAVE_POLL */
 #ifdef HAVE_SELECT
   SELECT_TYPE readable;
 
   FD_ZERO (&readable);
   FD_SET (fd, (&readable));
   return (UX_select_registry_test ((&readable), blockp, 0, 0));
-#else
+#else /* not HAVE_SELECT */
   error_system_call (ENOSYS, syscall_select);
   return (select_input_argument);
-#endif
+#endif /* not HAVE_SELECT */
+#endif /* not HAVE_POLL */
 }
 
 enum select_input
 DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 {
+#ifdef HAVE_POLL
+  return (UX_select_descriptor (fd, blockp));
+#else /* not HAVE_POLL */
   SELECT_TYPE readable;
   unsigned int fds [FD_SETSIZE];
   unsigned int nfds;
@@ -515,4 +650,5 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 	return (select_input_argument);
   }
   return (select_input_other);
+#endif /* not HAVE_POLL */
 }
