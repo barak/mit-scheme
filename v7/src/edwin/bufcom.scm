@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufcom.scm,v 1.99 1992/11/12 18:00:09 cph Exp $
+;;;	$Id: bufcom.scm,v 1.100 1994/05/13 20:50:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -58,19 +58,19 @@ If the variable select-buffer-create is true,
 specifying a non-existent buffer will cause it to be created."
   (prompt-for-select-buffer "Switch to buffer")
   (lambda (buffer)
-    (select-buffer (find-buffer buffer))))
+    (select-buffer (find-buffer buffer #t))))
 
 (define-command switch-to-buffer-other-window
   "Select buffer in another window."
   (prompt-for-select-buffer "Switch to buffer in other window")
   (lambda (buffer)
-    (select-buffer-other-window (find-buffer buffer))))
+    (select-buffer-other-window (find-buffer buffer #t))))
 
 (define-command switch-to-buffer-other-screen
   "Select buffer in another screen."
   (prompt-for-select-buffer "Switch to buffer in other screen")
   (lambda (buffer)
-    (select-buffer-other-screen (find-buffer buffer))))
+    (select-buffer-other-screen (find-buffer buffer #t))))
 
 (define-command create-buffer
   "Create a new buffer with a given name, and select it."
@@ -91,7 +91,7 @@ specifying a non-existent buffer will cause it to be created."
     (let ((point (mark-right-inserting (current-point))))
       (region-insert-string!
        point
-       (region->string (buffer-region (find-buffer buffer))))
+       (region->string (buffer-region (find-buffer buffer #t))))
       (push-current-mark! (current-point))
       (set-current-point! point))))
 
@@ -130,7 +130,7 @@ Reads the new name in the echo area."
   "One arg, a string or a buffer.  Get rid of the specified buffer."
   "bKill buffer"
   (lambda (buffer)
-    (kill-buffer-interactive (find-buffer buffer))))
+    (kill-buffer-interactive (find-buffer buffer #t))))
 
 (define (kill-buffer-interactive buffer)
   (if (not (other-buffer buffer)) (editor-error "Only one buffer"))
@@ -291,7 +291,7 @@ This variable has no effect if select-buffer-create is false."
   list?)
 
 (define (prompt-for-existing-buffer prompt default-buffer)
-  (find-buffer (prompt-for-buffer-name prompt default-buffer true)))
+  (find-buffer (prompt-for-buffer-name prompt default-buffer true) #t))
 
 (define (prompt-for-buffer-name prompt default-buffer require-match?)
   (prompt-for-string-table-name prompt
