@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: vector.c,v 9.37 1996/10/02 18:59:08 cph Exp $
+$Id: vector.c,v 9.38 1997/10/15 00:52:15 adams Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -138,6 +138,22 @@ DEFINE_PRIMITIVE ("%RECORD", Prim_record, 0, LEXPR, 0)
       PRIMITIVE_RETURN (result);
     }
   }
+}
+
+DEFINE_PRIMITIVE ("VECTOR?", Prim_vector_p, 1, 1, 0)
+{
+  fast SCHEME_OBJECT object;
+  PRIMITIVE_HEADER (1);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (VECTOR_P (object)));
+}
+
+DEFINE_PRIMITIVE ("%RECORD?", Prim_record_p, 1, 1, 0)
+{
+  fast SCHEME_OBJECT object;
+  PRIMITIVE_HEADER (1);
+  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (RECORD_P (object)));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-VECTOR?", Prim_sys_vector, 1, 1, 0)
