@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.10 1990/10/03 04:56:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.11 1990/10/06 00:16:37 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -80,7 +80,6 @@
 		   (conc-name xterm-screen-state/))
   (xterm false read-only true)
   (display false read-only true)
-  (highlight 0)
   (redisplay-flag true))
 
 (define screen-list)
@@ -104,6 +103,7 @@
 			xterm-screen/flush!
 			xterm-screen/inverse-video!
 			xterm-screen/modeline-event!
+			xterm-screen/normal-video!
 			xterm-screen/start-update!
 			xterm-screen/subscreen-clear!
 			xterm-screen/wipe!
@@ -123,10 +123,7 @@
   (xterm-screen-state/display (screen-state screen)))
 
 (define-integrable (screen-highlight screen)
-  (xterm-screen-state/highlight (screen-state screen)))
-
-(define-integrable (set-screen-highlight! screen highlight)
-  (set-xterm-screen-state/highlight! (screen-state screen) highlight))
+  (if (screen-highlight? screen) 1 0))
 
 (define-integrable (screen-redisplay-flag screen)
   (xterm-screen-state/redisplay-flag (screen-state screen)))
@@ -152,17 +149,36 @@
 	(set-screen-redisplay-flag! screen false)))
   (xterm-screen/flush! screen))
 
+(define (xterm-screen/discard! screen)
+  (set! screen-list (delq! screen screen-list))
+  (x-close-window (screen-xterm screen)))
+
+(define (xterm-screen/modeline-event! screen window type)
+  window type				; ignored
+  (set-screen-redisplay-flag! screen true))
+
+(define (xterm-screen/enter! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/exit! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/inverse-video! screen)
+  screen				; ignored
+  unspecific)
+
+(define (xterm-screen/normal-video! screen)
+  screen				; ignored
+  unspecific)
+
 (define (xterm-screen/beep screen)
   (x-window-beep (screen-xterm screen))
   (xterm-screen/flush! screen))
 
 (define-integrable (xterm-screen/flush! screen)
   (x-display-flush (screen-display screen)))
-
-(define (xterm-screen/inverse-video! screen highlight?)
-  (let ((result (not (zero? (screen-highlight screen)))))
-    (set-screen-highlight! screen (if highlight? 1 0))
-    result))
 
 (define (xterm-screen/write-char! screen x y char)
   (xterm-write-char! (screen-xterm screen) x y char (screen-highlight screen)))
@@ -206,48 +222,29 @@
 
 (define (xterm-screen/wipe! screen)
   (x-window-clear (screen-xterm screen)))
-
-(define (xterm-screen/discard! screen)
-  (set! screen-list (delq! screen screen-list))
-  (x-close-window (screen-xterm screen)))
-
-(define (xterm-screen/enter! screen)
-  screen				; ignored
-  unspecific)
-
-(define (xterm-screen/exit! screen)
-  screen				; ignored
-  unspecific)
-
-(define (xterm-screen/modeline-event! screen window type)
-  window type				; ignored
-  (set-screen-redisplay-flag! screen true))
 
 ;;;; Input Port
 
 (define (make-xterm-input-port screen)
   (input-port/copy xterm-input-port-template
-		   (make-xterm-input-port-state screen)))
+		   (make-xterm-input-port-state (screen-display screen))))
 
 (define-structure (xterm-input-port-state
-		   (constructor make-xterm-input-port-state (screen))
+		   (constructor make-xterm-input-port-state (display))
 		   (conc-name xterm-input-port-state/))
-  (screen false read-only true)
+  (display false read-only true)
   (buffer "")
-  (index 0))
+  (index 0)
+  ;; If we receive a non-keypress event while in a display update, we
+  ;; stash it here and abort the update.
+  (pending-event false))
 
 (define (operation/char-ready? port interval)
   (let ((state (input-port/state port)))
     (if (< (xterm-input-port-state/index state)
 	   (string-length (xterm-input-port-state/buffer state)))
 	true
-	(let ((buffer
-	       (xterm-screen/read-chars (xterm-input-port-state/screen state)
-					(+ (real-time-clock) interval))))
-	  (and buffer
-	       (begin
-		 (check-for-interrupts! state buffer 0)
-		 true))))))
+	(xterm-read-chars! state (+ (real-time-clock) interval)))))
 
 (define (operation/peek-char port)
   (let ((state (input-port/state port)))
@@ -255,7 +252,9 @@
 	  (index (xterm-input-port-state/index state)))
       (if (< index (string-length buffer))
 	  (string-ref buffer index)
-	  (refill-buffer! state 0)))))
+	  (let ((buffer (xterm-read-chars! state false)))
+	    (and buffer
+		 (string-ref buffer 0)))))))
 
 (define (operation/discard-char port)
   (let ((state (input-port/state port)))
@@ -271,12 +270,16 @@
 	  (begin
 	    (set-xterm-input-port-state/index! state (1+ index))
 	    (string-ref buffer index))
-	  (refill-buffer! state 1)))))
+	  (let ((buffer (xterm-read-chars! state false)))
+	    (and buffer
+		 (begin
+		   (set-xterm-input-port-state/index! state 1)
+		   (string-ref buffer 0))))))))
 
 (define (operation/print-self state port)
-  (unparse-string state "from screen ")
+  (unparse-string state "from display ")
   (unparse-object state
-		  (xterm-input-port-state/screen (input-port/state port))))
+		  (xterm-input-port-state/display (input-port/state port))))
 
 (define xterm-input-port-template
   (make-input-port `((CHAR-READY? ,operation/char-ready?)
@@ -286,27 +289,51 @@
 		     (READ-CHAR ,operation/read-char))
 		   false))
 
-(define (refill-buffer! state index)
-  (let ((screen (xterm-input-port-state/screen state)))
-    (let ((buffer (xterm-screen/read-chars screen false)))
-      (and buffer
-	   (begin
-	     (check-for-interrupts! state buffer index)
-	     (string-ref buffer 0))))))
+;;;; Event Handling
 
-(define-integrable (xterm-screen/read-chars screen time-limit)
-  (process-events! (screen-display screen) time-limit))
-
-(define (check-for-interrupts! state buffer index)
-  (set-xterm-input-port-state/buffer! state buffer)
-  (let ((^g-index
-	 (and signal-interrupts?
-	      (string-find-previous-char buffer #\BEL))))
-    (if ^g-index
-	(begin
-	  (set-xterm-input-port-state/index! state (1+ ^g-index))
-	  (signal-interrupt!))
-	(set-xterm-input-port-state/index! state index))))
+(define (xterm-read-chars! state time-limit)
+  (let ((display (xterm-input-port-state/display state)))
+    (letrec
+	((loop
+	  (lambda ()
+	    (let ((event (x-display-process-events display time-limit)))
+	      (cond ((not event)
+		     false)
+		    ((= (vector-ref event 0) event-type:key-press)
+		     (let ((buffer (vector-ref event 2)))
+		       (set-xterm-input-port-state/buffer! state buffer)
+		       (set-xterm-input-port-state/index! state 0)
+		       (if signal-interrupts?
+			   (let ((^g-index
+				  (string-find-previous-char buffer #\BEL)))
+			     (if ^g-index
+				 (begin
+				   (set-xterm-input-port-state/index!
+				    state (1+ ^g-index))
+				   (signal-interrupt!)))))
+		       buffer))
+		    (else
+		     (process-special-event event))))))
+	 (process-special-event
+	  (lambda (event)
+	    (let ((handler (vector-ref event-handlers (vector-ref event 0)))
+		  (screen (xterm->screen (vector-ref event 1))))
+	      (if (and handler screen)
+		  (begin
+		    (let ((continuation (screen-in-update? screen)))
+		      (if continuation
+			  (begin
+			    (set-xterm-input-port-state/pending-event! state
+								       event)
+			    (continuation false))))
+		    (handler screen event))))
+	    (loop))))
+      (let ((event (xterm-input-port-state/pending-event state)))
+	(if event
+	    (begin
+	      (set-xterm-input-port-state/pending-event! state false)
+	      (process-special-event event))
+	    (loop))))))
 
 (define signal-interrupts?)
 (define pending-interrupt?)
@@ -360,29 +387,12 @@
 ;; key-press.
 (define-integrable event-mask #x057)
 
-(define (process-events! display time-limit)
-  (let loop ()
-    (let ((event (x-display-process-events display time-limit)))
-      (and event
-	   (if (= (vector-ref event 0) event-type:key-press)
-	       (vector-ref event 2)
-	       (begin
-		 (let ((handler
-			(vector-ref event-handlers (vector-ref event 0)))
-		       (screen (xterm->screen (vector-ref event 1))))
-		   (if (and handler screen)
-		       (handler screen event)))
-		 (loop)))))))
-
 (define event-handlers
   (make-vector number-of-event-types false))
 
 (define-integrable (define-event-handler event-type handler)
   (vector-set! event-handlers event-type handler))
 
-;; These events can cause problems if they are handled during an
-;; update.  Unfortunately, there's no mechanism to check for other
-;; events while ignoring these.
 (define-event-handler event-type:configure
   (lambda (screen event)
     (let ((x-size (vector-ref event 2))
@@ -398,7 +408,7 @@
 (define-event-handler event-type:button-down
   (lambda (screen event)
     (send (screen-root-window screen) ':button-event!
-	  (button-downify (vector-ref event 4))
+	  (make-down-button (vector-ref event 4))
 	  (vector-ref event 2)
 	  (vector-ref event 3))
     (update-screen! screen false)))
@@ -406,7 +416,7 @@
 (define-event-handler event-type:button-up
   (lambda (screen event)
     (send (screen-root-window screen) ':button-event!
-	  (button-upify (vector-ref event 4))
+	  (make-up-button (vector-ref event 4))
 	  (vector-ref event 2)
 	  (vector-ref event 3))
     (update-screen! screen false)))
@@ -415,19 +425,10 @@
   (lambda (screen event)
     event
     (if (not (selected-screen? screen))
-	(select-screen screen))))
+	(command-reader/reset-and-execute
+	 (lambda ()
+	   (select-screen screen))))))
 
-(define button1-down)
-(define button2-down)
-(define button3-down)
-(define button4-down)
-(define button5-down)
-(define button1-up)
-(define button2-up)
-(define button3-up)
-(define button4-up)
-(define button5-up)
-
 (define x-display-type)
 (define x-display-data)
 
@@ -437,12 +438,10 @@
 	(set! x-display-data display)
 	display)))
 
-(define x-display-type-name 'X)
-
 (define (initialize-package!)
   (set! screen-list '())
   (set! x-display-type
-	(make-display-type x-display-type-name
+	(make-display-type 'X
 			   get-x-display
 			   make-xterm-screen
 			   make-xterm-input-port
@@ -450,15 +449,4 @@
 			   with-x-interrupts-enabled
 			   with-x-interrupts-disabled))
   (set! x-display-data false)
-  (initialize-buttons! 5)
-  (set! button1-down (button-downify 0))
-  (set! button2-down (button-downify 1))
-  (set! button3-down (button-downify 2))
-  (set! button4-down (button-downify 3))
-  (set! button5-down (button-downify 4))
-  (set! button1-up (button-upify 0))
-  (set! button2-up (button-upify 1))
-  (set! button3-up (button-upify 2))
-  (set! button4-up (button-upify 3))
-  (set! button5-up (button-upify 4))
   unspecific)

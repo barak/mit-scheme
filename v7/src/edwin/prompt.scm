@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.138 1990/10/03 04:55:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.139 1990/10/06 00:16:12 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -84,8 +84,7 @@
 		 (let ((window (typein-window)))
 		   (select-window window)
 		   (select-buffer
-		    (bufferset-find-or-create-buffer
-		     (current-typein-bufferset)
+		    (find-or-create-buffer
 		     (make-typein-buffer-name typein-edit-depth)))
 		   (buffer-reset! (current-buffer))
 		   (reset-command-prompt!)
@@ -95,8 +94,7 @@
 		 (let ((window (typein-window)))
 		   (select-window window)
 		   (let ((buffer (car typein-saved-buffers)))
-		     (bufferset-guarantee-buffer! (current-typein-bufferset)
-						  buffer)
+		     (bufferset-guarantee-buffer! (current-bufferset) buffer)
 		     (select-buffer buffer))
 		   (reset-command-prompt!)
 		   (window-clear-override-message! window))
@@ -176,21 +174,6 @@ recursive minibuffers."
     (region-delete! (buffer-region (current-buffer)))
     (insert-string (map-name/internal->external string))
     (if (not dont-update?) (update-typein!))))
-
-;;; The following are used by MESSAGE and friends.
-
-(define (set-message! message)
-  (let ((window (typein-window)))
-    (window-set-override-message! window message)
-    (if (not *executing-keyboard-macro?*)
-	(window-direct-update! window true))))
-
-(define (clear-message!)
-  (let ((window (typein-window)))
-    (window-clear-override-message! window)
-    (if (not *executing-keyboard-macro?*)
-	(window-direct-update! window true))
-    (window-direct-update! window true)))
 
 (define (update-typein!)
     (if (not *executing-keyboard-macro?*)

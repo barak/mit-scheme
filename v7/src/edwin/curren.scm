@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.88 1990/10/03 04:54:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.89 1990/10/06 00:15:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -48,32 +48,33 @@
 
 ;;;; Screens
 
-(define (select-buffer-in-new-screen buffer)
+(define (make-screen buffer)
   (without-interrupts
    (lambda ()
      (let ((screen (make-editor-screen)))
-       (initialize-screen-root-window! screen buffer)
+       (initialize-screen-root-window! screen (current-bufferset) buffer)
        (editor-add-screen! current-editor screen)
-       (select-screen screen)
-       (event-distributor/invoke! (ref-variable select-buffer-hook)
-				  buffer
-				  (screen-selected-window screen))))))
-
-(define (select-screen screen)
-  (command-reader/reset-and-execute
-   (lambda ()
-     (without-interrupts
-      (lambda ()
-	(let ((buffer (window-buffer (screen-selected-window screen))))
-	  (change-local-bindings!
-	   (window-buffer (screen-selected-window (selected-screen)))
-	   buffer
-	   (lambda () (set-editor-selected-screen! current-editor screen)))
-	  (bufferset-select-buffer! (current-bufferset) buffer)))))))
+       (update-screen! screen false)
+       screen))))
 
 (define (delete-screen! screen)
   (editor-delete-screen! current-editor screen)
   (screen-discard! screen))
+
+(define (select-screen screen)
+  (without-interrupts
+   (lambda ()
+     (let ((message (current-message)))
+       (set-current-message! "")
+       (change-selected-buffer
+	(window-buffer (screen-selected-window screen))
+	true
+	(lambda ()
+	  (set-editor-selected-screen! current-editor screen)))
+       (set-current-message! message)))))
+
+(define (select-buffer-in-new-screen buffer)
+  (select-screen (make-screen buffer)))
 
 (define (update-screens! display-style)
   (let loop ((screens (screen-list)))
@@ -88,10 +89,10 @@
 (define-integrable (selected-screen? screen)
   (eq? screen (selected-screen)))
 
-(define-integrable (current-typein-bufferset)
-  (screen-typein-bufferset (selected-screen)))
+(define-integrable (screen0)
+  (car (screen-list)))
 
-(define (screen-next screen)
+(define (screen1+ screen)
   (let ((screens (screen-list)))
     (let ((s (memq screen screens)))
       (if (not s)
@@ -100,7 +101,7 @@
 	  (car screens)
 	  (cadr s)))))
 
-(define (screen-previous screen)
+(define (screen-1+ screen)
   (let ((screens (screen-list)))
     (if (eq? screen (car screens))
 	(car (last-pair screens))
@@ -110,6 +111,20 @@
 	  (if (eq? screen (car screens))
 	      (car previous)
 	      (loop screens (cdr screens)))))))
+
+(define (screen+ screen n)
+  (cond ((positive? n)
+	 (let loop ((n n) (screen screen))
+	   (if (= n 1)
+	       (screen1+ screen)
+	       (loop (-1+ n) (screen1+ screen)))))
+	((negative? n)
+	 (let loop ((n n) (screen screen))
+	   (if (= n -1)
+	       (screen-1+ screen)
+	       (loop (1+ n) (screen-1+ screen)))))
+	(else
+	 screen)))
 
 ;;;; Windows
 
@@ -125,22 +140,15 @@
 (define-integrable (window0)
   (screen-window0 (selected-screen)))
 
-(define-integrable (typein-window)
-  (screen-typein-window (selected-screen)))
-
-(define-integrable (typein-window? window)
-  (eq? window (screen-typein-window (window-screen window))))
-
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (let ((screen (window-screen window))
-	   (buffer (window-buffer window)))
-       (change-local-bindings!
-	(window-buffer (screen-selected-window screen))
-	buffer
-	(lambda () (screen-select-window! screen window)))
-       (bufferset-select-buffer! (current-bufferset) buffer)))))
+     (let ((screen (window-screen window)))
+       (if (selected-screen? screen)
+	   (change-selected-buffer (window-buffer window) true
+	     (lambda ()
+	       (screen-select-window! screen window)))
+	   (screen-select-window! screen window))))))
 
 (define-integrable (select-cursor window)
   (screen-select-cursor! (window-screen window) window))
@@ -182,13 +190,36 @@
 	  (else
 	   window))))
 
+(define-integrable (typein-window)
+  (screen-typein-window (selected-screen)))
+
+(define-integrable (typein-window? window)
+  (eq? window (screen-typein-window (window-screen window))))
+
+(define-integrable (current-message)
+  (window-override-message (typein-window)))
+
+(define (set-current-message! message)
+  (let ((window (typein-window)))
+    (if message
+	(window-set-override-message! window message)
+	(window-clear-override-message! window))
+    (if (not *executing-keyboard-macro?*)
+	(window-direct-update! window true))))
+
+(define (clear-current-message!)
+  (let ((window (typein-window)))
+    (window-clear-override-message! window)
+    (if (not *executing-keyboard-macro?*)
+	(window-direct-update! window true))))
+
 ;;;; Buffers
 
 (define-integrable (buffer-list)
-  (list-copy (bufferset-buffer-list (current-bufferset))))
+  (bufferset-buffer-list (current-bufferset)))
 
 (define-integrable (buffer-alive? buffer)
-  (memq buffer (bufferset-buffer-list (current-bufferset))))
+  (memq buffer (buffer-list)))
 
 (define-integrable (buffer-names)
   (bufferset-names (current-bufferset)))
@@ -242,12 +273,6 @@
 	  (loop (cdr windows) new-buffer))))
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
-(define-variable select-buffer-hook
-  "An event distributor that is invoked when a buffer is selected.
-The new buffer and the window in which it is selected are passed as arguments.
-The buffer is guaranteed to be selected at that time."
-  (make-event-distributor))
-
 (define-integrable (select-buffer buffer)
   (set-window-buffer! (current-window) buffer true))
 
@@ -261,18 +286,23 @@ The buffer is guaranteed to be selected at that time."
   (without-interrupts
    (lambda ()
      (if (current-window? window)
-	 (begin
-	   (change-local-bindings!
-	    (window-buffer window)
-	    buffer
-	    (lambda () (%set-window-buffer! window buffer)))
-	   (if record?
-	       (bufferset-select-buffer! (current-bufferset) buffer))
-	   (if (not (minibuffer? buffer))
-	       (event-distributor/invoke! (ref-variable select-buffer-hook)
-					  buffer
-					  window)))
+	 (change-selected-buffer buffer record?
+	   (lambda ()
+	     (%set-window-buffer! window buffer)))
 	 (%set-window-buffer! window buffer)))))
+
+(define-variable select-buffer-hook
+  "An event distributor that is invoked when a buffer is selected.
+The new buffer and the window in which it is selected are passed as arguments.
+The buffer is guaranteed to be selected at that time."
+  (make-event-distributor))
+
+(define (change-selected-buffer buffer record? selection-thunk)
+  (change-local-bindings! (current-buffer) buffer selection-thunk)
+  (if record?
+      (bufferset-select-buffer! (current-bufferset) buffer))
+  (if (not (minibuffer? buffer))
+      (event-distributor/invoke! (ref-variable select-buffer-hook) buffer)))
 
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))

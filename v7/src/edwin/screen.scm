@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.82 1990/10/03 04:56:04 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.83 1990/10/06 00:16:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -57,6 +57,7 @@
 				 operation/flush!
 				 operation/inverse-video!
 				 operation/modeline-event!
+				 operation/normal-video!
 				 operation/start-update!
 				 operation/subscreen-clear!
 				 operation/wipe!
@@ -75,6 +76,7 @@
   (operation/flush! false read-only true)
   (operation/inverse-video! false read-only true)
   (operation/modeline-event! false read-only true)
+  (operation/normal-video! false read-only true)
   (operation/start-update! false read-only true)
   (operation/subscreen-clear! false read-only true)
   (operation/wipe! false read-only true)
@@ -88,18 +90,15 @@
   (in-update? false)
   (x-size false)
   (y-size false)
-  (typein-bufferset (make-bufferset 
-		     (make-buffer (make-typein-buffer-name 0)
-				  (ref-mode-object fundamental)))
-		    read-only true))
+  (highlight? false))
 
-(define (initialize-screen-root-window! screen buffer)
+(define (initialize-screen-root-window! screen bufferset buffer)
   (set-screen-root-window!
    screen
-   (make-editor-frame screen
-		      buffer
-		      (bufferset-find-buffer (screen-typein-bufferset screen)
-					     (make-typein-buffer-name 0)))))
+   (make-editor-frame
+    screen
+    buffer
+    (bufferset-find-or-create-buffer bufferset (make-typein-buffer-name 0)))))
 
 (define (using-screen screen thunk)
   (dynamic-wind (lambda ()
@@ -109,40 +108,50 @@
 		  ((screen-operation/exit! screen) screen))))   
 
 (define (with-screen-in-update! screen thunk)
-  (let ((old-flag)
-	(new-flag true)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (let ((old-flag)
+	   (new-flag true)
+	   (transition
+	    (lambda (old new)
+	      (if old
+		  (if (not new)
+		      (begin
+			((screen-operation/finish-update! screen) screen)
+			(set-screen-in-update?! screen false)))
+		  (if new
+		      (begin
+			((screen-operation/start-update! screen) screen)
+			(set-screen-in-update?! screen continuation)))))))
+       (dynamic-wind (lambda ()
+		       (set! old-flag (screen-in-update? screen))
+		       (transition old-flag new-flag))
+		     thunk
+		     (lambda ()
+		       (set! new-flag (screen-in-update? screen))
+		       (transition new-flag old-flag)))))))
+
+(define (with-screen-inverse-video! screen thunk)
+  (let ((old-highlight?)
+	(new-highlight? true)
 	(transition
 	 (lambda (old new)
 	   (if old
 	       (if (not new)
-		   ((screen-operation/finish-update! screen) screen))
+		   (begin
+		     ((screen-operation/normal-video! screen) screen)
+		     (set-screen-highlight?! screen false)))
 	       (if new
-		   ((screen-operation/start-update! screen) screen))))))
+		   (begin
+		     ((screen-operation/inverse-video! screen) screen)
+		     (set-screen-highlight?! screen true)))))))
     (dynamic-wind (lambda ()
-		    (set! old-flag (screen-in-update? screen))
-		    (set-screen-in-update?! screen new-flag)
-		    (transition old-flag new-flag))
+		    (set! old-highlight? (screen-highlight? screen))
+		    (transition old-highlight? new-highlight?))
 		  thunk
 		  (lambda ()
-		    (set! new-flag (screen-in-update? screen))
-		    (set-screen-in-update?! screen old-flag)
-		    (transition new-flag old-flag)))))
-
-(define (with-screen-inverse-video! screen thunk)
-  (let ((old-highlight?)
-	(new-highlight? true))
-    (dynamic-wind (lambda ()
-		    (set! old-highlight?
-			  (screen-inverse-video! screen new-highlight?))
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (set! new-highlight?
-			  (screen-inverse-video! screen old-highlight?))
-		    unspecific))))
-
-(define (screen-inverse-video! screen highlight?)
-  ((screen-operation/inverse-video! screen) screen highlight?))
+		    (set! new-highlight? (screen-highlight? screen))
+		    (transition new-highlight? old-highlight?)))))
 
 (define (screen-beep screen)
   ((screen-operation/beep screen) screen))

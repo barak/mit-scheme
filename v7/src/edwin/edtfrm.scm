@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.81 1990/10/03 04:54:53 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtfrm.scm,v 1.82 1990/10/06 00:15:44 cph Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -171,8 +171,6 @@
     (=> (window-cursor cursor-window) :disable!)
     (set! cursor-window window*)
     (=> (window-cursor cursor-window) :enable!)))
-
-;;;; Button Events
 
 (define-method editor-frame (:button-event! editor-frame button x y)
   (with-values
@@ -187,44 +185,11 @@
 		 (let ((command
 			(comtab-entry (buffer-comtabs (window-buffer frame))
 				      button)))
-		   (if command
-		       (with-current-button-event
-			(make-button-event frame relative-x relative-y)
-			(lambda () (execute-command command)))
-		       (editor-beep))))
-		((down-button? button)
+		   (cond (command
+			  (with-current-button-event
+			   (make-button-event frame relative-x relative-y)
+			   (lambda () (execute-command command))))
+			 ((button/down? button)
+			  (editor-beep)))))
+		((button/down? button)
 		 (editor-beep)))))))
-
-(define-integrable (button-upify button-number)
-  (vector-ref up-buttons button-number))
-
-(define-integrable (button-downify button-number)
-  (vector-ref down-buttons button-number))
-
-(define (button? object)
-  (or (up-button? object)
-      (down-button? object)))
-
-(define-integrable (up-button? object)
-  (vector-find-next-element up-buttons object))
-
-(define-integrable (down-button? object)
-  (vector-find-next-element down-buttons object))
-
-(define up-buttons '#())
-(define down-buttons '#())
-
-(define (initialize-buttons! number-of-buttons)
-  (set! up-buttons
-	(make-initialized-vector number-of-buttons make-up-button))
-  (set! down-buttons
-	(make-initialized-vector number-of-buttons make-down-button))
-  unspecific)
-
-(define (make-down-button button-number)
-  (string->symbol
-   (string-append "#[button-down-" (number->string button-number) "]")))
-
-(define (make-up-button button-number)
-  (string->symbol
-   (string-append "#[button-up-" (number->string button-number) "]")))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.84 1990/10/03 04:55:17 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.85 1990/10/06 00:16:04 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -131,7 +131,7 @@ B 3BAB8C
       (begin
 	(set! command-prompt-string string)
 	(if command-prompt-displayed?
-	    (set-message! string)))))
+	    (set-current-message! string)))))
 
 (define (append-command-prompt! string)
   (if (not (string-null? string))
@@ -150,7 +150,7 @@ B 3BAB8C
 	(set! command-prompt-displayed? false)))
   (set! message-string string)
   (set! message-should-be-erased? temporary?)
-  (set-message! string))
+  (set-current-message! string))
 
 (define (message-args->string args)
   (apply string-append
@@ -162,7 +162,7 @@ B 3BAB8C
       (error "Attempt to append to nonexistent message"))
   (let ((string (string-append message-string (message-args->string args))))
     (set! message-string string)
-    (set-message! string)))
+    (set-current-message! string)))
 
 (define (clear-message)
   (if message-string
@@ -170,31 +170,21 @@ B 3BAB8C
 	(set! message-string false)
 	(set! message-should-be-erased? false)
 	(if (not command-prompt-displayed?)
-	    (clear-message!)))))
+	    (clear-current-message!)))))
 
-(define editor-input-port)
-
-(define (with-editor-input-port new-port thunk)
-  (fluid-let ((editor-input-port new-port))
-    (thunk)))
-
-(define-integrable (set-editor-input-port! new-port)
-  (set! editor-input-port new-port)
-  unspecific)
-
 (define-integrable (keyboard-active? interval)
-  (char-ready? editor-input-port interval))
+  (char-ready? (editor-input-port current-editor) interval))
 
 (define (keyboard-peek-char)
   (if *executing-keyboard-macro?*
       (keyboard-macro-peek-char)
-      (keyboard-read-char-1 peek-char)))
+      (keyboard-read-char-1 input-port/peek-char)))
 
 (define (keyboard-read-char)
   (set! keyboard-chars-read (1+ keyboard-chars-read))
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-char)
-      (let ((char (keyboard-read-char-1 read-char)))
+      (let ((char (keyboard-read-char-1 input-port/read-char)))
 	(set! *auto-save-keystroke-count* (1+ *auto-save-keystroke-count*))
 	(ring-push! (current-char-history) char)
 	(if *defining-keyboard-macro?* (keyboard-macro-write-char char))
@@ -223,7 +213,7 @@ B 3BAB8C
 	       (keyboard-active? read-char-timeout/slow)
 	       (set! message-string false)
 	       (set! message-should-be-erased? false)
-	       (clear-message!))))
+	       (clear-current-message!))))
 	((and (or message-should-be-erased?
 		  (and command-prompt-string
 		       (not command-prompt-displayed?)))
@@ -233,6 +223,6 @@ B 3BAB8C
 	 (if command-prompt-string
 	     (begin
 	       (set! command-prompt-displayed? true)
-	       (set-message! command-prompt-string))
-	     (clear-message!))))
-  (remap-alias-char (read-char editor-input-port)))
+	       (set-current-message! command-prompt-string))
+	     (clear-current-message!))))
+  (remap-alias-char (read-char (editor-input-port current-editor))))

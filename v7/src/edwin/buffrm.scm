@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.35 1990/10/03 04:54:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffrm.scm,v 1.36 1990/10/06 00:15:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -47,7 +47,11 @@
 (declare (usual-integrations))
 
 (define-class buffer-frame combination-leaf-window
-  (text-inferior border-inferior modeline-inferior last-select-time))
+  (text-inferior
+   border-inferior
+   modeline-inferior
+   last-select-time
+   override-message))
 
 (define-integrable (buffer-frame? object)
   (object-of-class? buffer-frame object))
@@ -71,6 +75,7 @@
   (set! text-inferior (make-inferior frame buffer-window))
   (set! border-inferior (make-inferior frame vertical-border-window))
   (set! last-select-time 0)
+  (set! override-message false)
   unspecific)
 
 ;;; **** Kludge: The text-inferior will generate modeline events, so
@@ -188,11 +193,19 @@
 	(=> (inferior-window modeline-inferior) :event! type)))
   (screen-modeline-event! (window-screen frame) frame type))
 
-(define-integrable (window-set-override-message! window message)
+(define (window-set-override-message! window message)
+  (with-instance-variables buffer-frame window (message)
+    (set! override-message message))
   (set-override-message! (frame-text-inferior window) message))
 
-(define-integrable (window-clear-override-message! window)
-  (clear-override-message! (frame-text-inferior window)))
+(define (window-clear-override-message! window)
+  (clear-override-message! (frame-text-inferior window))
+  (with-instance-variables buffer-frame window ()
+    (set! override-message false)))
+
+(define (window-override-message window)
+  (with-instance-variables buffer-frame window ()
+    override-message))
 
 (define-integrable (window-home-cursor! window)
   (home-cursor! (frame-text-inferior window)))

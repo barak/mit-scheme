@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.195 1990/10/03 04:54:47 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/editor.scm,v 1.196 1990/10/06 00:15:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -176,10 +176,7 @@ with the contents of the startup message."
   (fluid-let ((current-editor editor)
 	      (recursive-edit-continuation false)
 	      (recursive-edit-level 0))
-    (using-screen (selected-screen)
-      (lambda ()
-	(with-editor-input-port (current-editor-input-port)
-	  thunk)))))
+    (using-screen (selected-screen) thunk)))
 
 (define (within-editor?)
   (not (unassigned? current-editor)))

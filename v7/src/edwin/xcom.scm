@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.5 1990/10/03 04:56:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xcom.scm,v 1.6 1990/10/06 00:16:28 cph Rel $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -363,12 +363,15 @@ Display cursor at that position for a second."
   ()
   (lambda () unspecific))
 
-;;; Prevent beeps on button-up.  If the button isn't bound to
-;;; anything, it will beep on button-down.
-(define-key 'fundamental button1-up 'x-mouse-ignore)
-(define-key 'fundamental button2-up 'x-mouse-ignore)
-(define-key 'fundamental button3-up 'x-mouse-ignore)
-(define-key 'fundamental button4-up 'x-mouse-ignore)
-(define-key 'fundamental button5-up 'x-mouse-ignore)
+(define x-button1-down (make-down-button 0))
+(define x-button2-down (make-down-button 1))
+(define x-button3-down (make-down-button 2))
+(define x-button4-down (make-down-button 3))
+(define x-button5-down (make-down-button 4))
+(define x-button1-up (make-up-button 0))
+(define x-button2-up (make-up-button 1))
+(define x-button3-up (make-up-button 2))
+(define x-button4-up (make-up-button 3))
+(define x-button5-up (make-up-button 4))
 
-(define-key 'fundamental button1-down 'x-mouse-set-point)
+(define-key 'fundamental x-button1-down 'x-mouse-set-point)

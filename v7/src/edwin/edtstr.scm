@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.9 1990/10/03 04:54:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.10 1990/10/06 00:15:49 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ;;;
@@ -58,18 +58,21 @@
 
 (define (make-editor name screen)
   (let ((initial-buffer (make-buffer initial-buffer-name initial-buffer-mode)))
-    (initialize-screen-root-window! screen initial-buffer)
-    (%make-editor name
-		  (list screen)
-		  screen
-		  (make-bufferset initial-buffer)
-		  (make-ring 10)
-		  (make-ring 100)
-		  (make-editor-input-port screen)
-		  false)))
+    (let ((bufferset (make-bufferset initial-buffer)))
+      (initialize-screen-root-window! screen bufferset initial-buffer)
+      (%make-editor name
+		    (list screen)
+		    screen
+		    bufferset
+		    (make-ring 10)
+		    (make-ring 100)
+		    (make-editor-input-port screen)
+		    false))))
 
 (define (editor-add-screen! editor screen)
-  (set-editor-screens! editor (cons screen (editor-screens editor))))
+  (set-editor-screens! editor
+		       (append! (editor-screens editor)
+				(list screen))))
 
 (define (editor-delete-screen! editor screen)
   (let ((screens (delq! screen (editor-screens editor))))
@@ -78,7 +81,7 @@
     (set-editor-screens! editor screens)
     (if (eq? screen (editor-selected-screen editor))
 	(set-editor-selected-screen! editor (car screens)))))
-
+
 (define (screen-list)
   (editor-screens (if (within-editor?) current-editor edwin-editor)))
 
@@ -93,10 +96,7 @@
 
 (define-integrable (current-char-history)
   (editor-char-history current-editor))
-
-(define-integrable (current-editor-input-port)
-  (editor-input-port current-editor))
-
+
 (define-structure (button-event (conc-name button-event/))
   (window false read-only true)
   (x false read-only true)
@@ -125,3 +125,53 @@
        (set-editor-button-event! current-editor old-button-event)
        (set! old-button-event false)
        unspecific))))
+
+(define button-record-type
+  (make-record-type 'BUTTON '(NUMBER DOWN?)))
+
+(define make-down-button)
+(define make-up-button)
+(let ((%make-button
+       (let ((constructor
+	      (record-constructor button-record-type '(NUMBER DOWN?))))
+	 (lambda (buttons number down?)
+	   (or (vector-ref buttons number)
+	       (let ((button (constructor number down?)))
+		 (vector-set! buttons number button)
+		 button)))))
+      (down-buttons '#())
+      (up-buttons '#()))
+  (set! make-down-button
+	(lambda (number)
+	  (if (>= number (vector-length down-buttons))
+	      (set! down-buttons (vector-grow down-buttons (1+ number))))
+	  (%make-button down-buttons number true)))
+  (set! make-up-button
+	(lambda (number)
+	  (if (>= number (vector-length up-buttons))
+	      (set! up-buttons (vector-grow up-buttons (1+ number))))
+	  (%make-button up-buttons number false))))
+
+(define button?
+  (record-predicate button-record-type))
+
+(define button/number
+  (record-accessor button-record-type 'NUMBER))
+
+(define button/down?
+  (record-accessor button-record-type 'DOWN?))
+
+(define (down-button? object)
+  (and (button? object)
+       (button/down? object)))
+
+(define (up-button? object)
+  (and (button? object)
+       (not (button/down? object))))
+
+(set-record-type-unparser-method! button-record-type
+  (unparser/standard-method (record-type-name button-record-type)
+    (lambda (state button)
+      (unparse-string state (if (button/down? button) "down" "up"))
+      (unparse-char state #\space)
+      (unparse-object state (button/number button)))))
