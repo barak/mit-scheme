@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.14 1995/05/20 03:08:13 cph Exp $
+$Id: os2pmcon.c,v 1.15 1995/05/20 10:15:14 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -166,14 +166,10 @@ OS2_console_font_change_hook (font_metrics_t * metrics)
   grab_console_lock ();
   OS_free (console_metrics);
   console_metrics = copy;
-  console_resize (console_pel_width, console_pel_height);
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
   OS2_window_shape_cursor
     (console_wid, CHAR_WIDTH, CHAR_HEIGHT, (CURSOR_SOLID | CURSOR_FLASH));
-  OS2_window_move_cursor (console_wid, (cx2x (point_x)), (cy2y (point_y, 1)));
-  OS2_window_invalidate (console_wid,
-			 0, console_pel_width,
-			 0, console_pel_height);
+  console_resize (console_pel_width, console_pel_height);
   release_console_lock ();
 }
 
@@ -313,37 +309,38 @@ console_resize (unsigned short new_pel_width, unsigned short new_pel_height)
   unsigned short new_height = (new_pel_height / CHAR_HEIGHT);
   char * new_chars = (OS_malloc (new_width * new_height));
   FASTFILL (new_chars, (new_width * new_height), ' ');
-  if ((point_x < new_width) && (point_y < new_height))
+  if (console_chars != 0)
     {
-      if (console_chars != 0)
+      unsigned short xlim
+	= ((new_width < console_width) ? new_width : console_width);
+      unsigned short y
+	= (((point_y + 1) > new_height) ? ((point_y + 1) - new_height) : 0);
+      unsigned short ylim
+	= (y + ((new_height < console_height) ? new_height : console_height));
+      char * from = (CHAR_LOC (0, y));
+      char * to = new_chars;
+      while (y < ylim)
 	{
-	  unsigned short xlim
-	    = ((new_width < console_width) ? new_width : console_width);
-	  unsigned short ylim
-	    = ((new_height < console_height) ? new_height : console_height);
-	  char * from = console_chars;
-	  char * to = new_chars;
-	  unsigned short y = 0;
-	  while (y < ylim)
-	    {
-	      FASTCOPY (from, to, xlim);
-	      from += console_width;
-	      to += new_width;
-	      y += 1;
-	    }
-	  OS_free (console_chars);
+	  FASTCOPY (from, to, xlim);
+	  from += console_width;
+	  to += new_width;
+	  y += 1;
 	}
-    }
-  else
-    {
-      point_x = 0;
-      point_y = 0;
+      OS_free (console_chars);
     }
   console_pel_width = new_pel_width;
   console_pel_height = new_pel_height;
   console_width = new_width;
   console_height = new_height;
   console_chars = new_chars;
+  if (point_x >= new_width)
+    point_x = (new_width - 1);
+  if ((point_y + 1) >= new_height)
+    point_y -= ((point_y + 1) - new_height);
+  OS2_window_move_cursor (console_wid, (cx2x (point_x)), (cy2y (point_y, 1)));
+  OS2_window_invalidate (console_wid,
+			 0, console_pel_width,
+			 0, console_pel_height);
 }
 
 static void
