@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.8 1991/03/16 00:01:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.9 1991/05/10 04:51:41 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -52,7 +52,7 @@
 
 (define (make-bufferset initial-buffer)
   (let ((bufferset (%make-bufferset))
-	(names (make-string-table)))
+	(names (make-string-table 16 false)))
     (string-table-put! names (buffer-name initial-buffer) initial-buffer)
     (vector-set! bufferset bufferset-index:buffer-list (list initial-buffer))
     (vector-set! bufferset bufferset-index:names names)
