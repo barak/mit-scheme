@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.31 1995/07/11 19:25:15 adams Exp $
+$Id: rtlgen.scm,v 1.32 1995/07/27 14:28:21 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -54,18 +54,18 @@ MIT in each case. |#
 	      (*rtlgen/procedures* '())
 	      (*rtlgen/continuations* '()))
     (call-with-values
-     (lambda ()
-       (if *procedure-result?*
-	   (rtlgen/top-level-procedure program)
-	   (rtlgen/expression program)))
-     (lambda (root label)
-       (queue/drain! *rtlgen/object-queue* rtlgen/dispatch)
-       (set! *entry-label* label)
-       (append! root
-		(fold-right append!
-			    (fold-right append! '()
-					(reverse! *rtlgen/continuations*))
-			    (reverse! *rtlgen/procedures*)))))))
+	(lambda ()
+	  (if *procedure-result?*
+	      (rtlgen/top-level-procedure program)
+	      (rtlgen/expression program)))
+      (lambda (root label)
+	(queue/drain! *rtlgen/object-queue* rtlgen/dispatch)
+	(set! *entry-label* label)
+	(append! root
+		 (fold-right append!
+			     (fold-right append! '()
+					 (reverse! *rtlgen/continuations*))
+			     (reverse! *rtlgen/procedures*)))))))
 
 (define (rtlgen/debugging-info form)
   (code-rewrite/original-form/previous form))
@@ -534,52 +534,52 @@ MIT in each case. |#
 
   ;; Try to target register assignments from stack locations
   (call-with-values
-   (lambda () (rtlgen/find-preferred-call body))
-   (lambda (call rator unconditional?)
-     unconditional?			; ignored
-     (if (or (not call) (QUOTE/? rator))
-	 ;; THIS IS OVERKILL.  We need to analyze the "known operators" and do
-         ;; something to target well for things like %internal-apply.
-         ;; Or ditch this and have Daniel write a good register
-         ;; allocator.
-	 (default env '())
-	 (let ((max-index    (rtlgen/number-of-argument-registers))
-	       (first-offset (first-stack-offset)))
-	   ;; Directly target the arguments registers for a likely
-	   ;; call and move any stack references into the argument
-	   ;; registers for that particular call.  All other stack
-	   ;; references will be targeted to default locations.
-	   (let target ((rands (call/operands call))
-			(env   env)
-			(names '())
-			(arg-position 0))
-	     (cond ((or (null? rands) (>= arg-position max-index))
-		    (default env names))
-		   ((form/match rtlgen/stack-overwrite-pattern (car rands))
-		    => (lambda (result)
-			 (let ((name (cadr (assq rtlgen/?var-name result)))
-			       (offset
-				(- first-offset
-				   (cadr (assq rtlgen/?offset result)))))
-			   (if (or (memq name names)
-				   (memq arg-position register-arg-positions-used))
-			       (target (cdr rands) env names (+ arg-position 1))
-			       (let* ((home (rtlgen/argument-home arg-position))
-				      (reg (rtlgen/new-reg)))
-				 (rtlgen/emit!
-				  (list
-				   (rtlgen/read-stack-loc home offset)
-				   `(ASSIGN ,reg ,home)))
-				 (target (cdr rands)
-					 `(,(rtlgen/binding/make
-					     name
-					     reg
-					     (rtlgen/stack-offset offset))
-					   . ,env)
-					 (cons name names)
-					 (+ arg-position 1)))))))
-		   (else
-		    (target (cdr rands) env names (+ arg-position 1))))))))))
+      (lambda () (rtlgen/find-preferred-call body))
+    (lambda (call rator unconditional?)
+      unconditional?			; ignored
+      (if (or (not call) (QUOTE/? rator))
+	  ;; THIS IS OVERKILL.  We need to analyze the "known operators" and do
+	  ;; something to target well for things like %internal-apply.
+	  ;; Or ditch this and have Daniel write a good register
+	  ;; allocator.
+	  (default env '())
+	  (let ((max-index    (rtlgen/number-of-argument-registers))
+		(first-offset (first-stack-offset)))
+	    ;; Directly target the arguments registers for a likely
+	    ;; call and move any stack references into the argument
+	    ;; registers for that particular call.  All other stack
+	    ;; references will be targeted to default locations.
+	    (let target ((rands (call/operands call))
+			 (env   env)
+			 (names '())
+			 (arg-position 0))
+	      (cond ((or (null? rands) (>= arg-position max-index))
+		     (default env names))
+		    ((form/match rtlgen/stack-overwrite-pattern (car rands))
+		     => (lambda (result)
+			  (let ((name (cadr (assq rtlgen/?var-name result)))
+				(offset
+				 (- first-offset
+				    (cadr (assq rtlgen/?offset result)))))
+			    (if (or (memq name names)
+				    (memq arg-position register-arg-positions-used))
+				(target (cdr rands) env names (+ arg-position 1))
+				(let* ((home (rtlgen/argument-home arg-position))
+				       (reg (rtlgen/new-reg)))
+				  (rtlgen/emit!
+				   (list
+				    (rtlgen/read-stack-loc home offset)
+				    `(ASSIGN ,reg ,home)))
+				  (target (cdr rands)
+					  `(,(rtlgen/binding/make
+					      name
+					      reg
+					      (rtlgen/stack-offset offset))
+					    . ,env)
+					  (cons name names)
+					  (+ arg-position 1)))))))
+		    (else
+		     (target (cdr rands) env names (+ arg-position 1))))))))))
 
 (define *rtlgen/next-rtl-pseudo-register*)
 (define *rtlgen/pseudo-register-values*)
@@ -655,10 +655,12 @@ MIT in each case. |#
       (cons `(,(car desc) ,calls? ,heap-check? ,stack-check? ,@(cdr desc))
 	    body)))
 
-(define-integrable (rtlgen/emit! insts)
+(define #|-integrable|# (rtlgen/emit! insts)
+  ;;(pp `(emit ,@insts))
   (queue/enqueue!* *rtlgen/statements* insts))
 
-(define-integrable (rtlgen/emit!/1 inst)
+(define #|-integrable|# (rtlgen/emit!/1 inst)
+  ;;(pp `(emit ,inst))
   (queue/enqueue! *rtlgen/statements* inst))
 
 
@@ -690,6 +692,22 @@ MIT in each case. |#
       result)))
 
 (define (rtlgen/emit-alternatives! gen1 gen2 need-merge?)
+  ;; The resetting fof *rtlgen/pseudo-register-values* below has been
+  ;; commented out because it does not quite do the right thing.  It
+  ;; is possible for the generated RTL to have a CFG with some node
+  ;; internal to the predicate which dominates the consequent or
+  ;; alternate node.  CSE will find and use the value defined at that
+  ;; dominator, so we have to keep all of the preservation information.
+  ;;
+  ;; Example: the node for pair? dominates the node for vector?
+  ;;
+  ;;    (define (foo x y)
+  ;;      (if (and y
+  ;;    	  (or (pair? (car x))
+  ;;    	      (null? (car x))))
+  ;;          (if (vector? (car x))
+  ;;    	  (f global (car x)))))
+
   (let ((merge-label (and need-merge? (rtlgen/new-name 'MERGE))))
     (let ((orig-depth  *rtlgen/stack-depth*)
 	  (orig-heap   *rtlgen/words-allocated*)
@@ -700,7 +718,7 @@ MIT in each case. |#
       (let ((heap-after-one *rtlgen/words-allocated*))
 	(set! *rtlgen/stack-depth* orig-depth)
 	(set! *rtlgen/words-allocated* orig-heap)
-	(set! *rtlgen/pseudo-register-values* orig-values)
+	;;(set! *rtlgen/pseudo-register-values* orig-values)
 	(gen2)
 	(if merge-label
 	    (rtlgen/emit!/1 `(LABEL ,merge-label)))
@@ -708,7 +726,7 @@ MIT in each case. |#
 	  (set! *rtlgen/stack-depth* orig-depth)
 	  (if (> heap-after-one heap-after-two)
 	      (set! *rtlgen/words-allocated* heap-after-one))
-	  (set! *rtlgen/pseudo-register-values* orig-values)
+	  ;;(set! *rtlgen/pseudo-register-values* orig-values)
 	  unspecific)))))
 
 (define-integrable (rtlgen/register? frob)
@@ -1134,21 +1152,21 @@ MIT in each case. |#
 	       (internal-error "Unknown preservation kind" how)))))))
 
   (call-with-values
-   (lambda ()
-     (list-split (rtlgen/preservation-state state
-					    *rtlgen/pseudo-register-values*)
-		 (lambda (info)
-		   (eq? (vector-ref info 3) 'PUSH))))
-   (lambda (pushed-info other-info)
-     (call-with-values
       (lambda ()
-	(list-split other-info
+	(list-split (rtlgen/preservation-state state
+					       *rtlgen/pseudo-register-values*)
 		    (lambda (info)
-		      (eq? (vector-ref info 3) 'RECOMPUTE))))
-      (lambda (recomputed maybe-preserved)
-	(preserve (append pushed-info
-			  (reverse recomputed)
-			  maybe-preserved)))))))
+		      (eq? (vector-ref info 3) 'PUSH))))
+    (lambda (pushed-info other-info)
+      (call-with-values
+	  (lambda ()
+	    (list-split other-info
+			(lambda (info)
+			  (eq? (vector-ref info 3) 'RECOMPUTE))))
+	(lambda (recomputed maybe-preserved)
+	  (preserve (append pushed-info
+			    (reverse recomputed)
+			    maybe-preserved)))))))
 
 (define (rtlgen/preservation-state state orig-reg-defns)
   ;; Returns a list to 4-vectors:
@@ -1313,7 +1331,7 @@ MIT in each case. |#
 		 (compute))
 		((CONSTANT)
 		 (maybe-preserve))
-		((FIXNUM-2-ARGS FIXNUM-1-ARG FLONUM-2-ARGS FLONUM-2-ARG)
+		((FIXNUM-2-ARGS FIXNUM-1-ARG FLONUM-2-ARGS FLONUM-1-ARG)
 		 ;;(internal-warning
 		 ;; "rtlgen/preservation-state: arithmetic" value)
 		 (preserve))
@@ -1327,12 +1345,12 @@ MIT in each case. |#
 (define-macro (define-rtl-generator/stmt keyword bindings . body)
   (let ((proc-name (symbol-append 'RTLGEN/ keyword '/STMT)))
     (call-with-values
-     (lambda () (%matchup (cdr bindings) '(handler state) '(cdr form)))
-     (lambda (names code)
-       `(DEFINE ,proc-name
-	  (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
-	    (NAMED-LAMBDA (,proc-name STATE FORM)
-	      ,code)))))))
+	(lambda () (%matchup (cdr bindings) '(handler state) '(cdr form)))
+      (lambda (names code)
+	`(DEFINE ,proc-name
+	   (LET ((HANDLER (LAMBDA ,(cons (car bindings) names) ,@body)))
+	     (NAMED-LAMBDA (,proc-name STATE FORM)
+	       ,code)))))))
 
 (define-rtl-generator/stmt LET (state bindings body)
   (define (default)
@@ -2964,21 +2982,21 @@ MIT in each case. |#
   (rtlgen/stack-allocation/protect	; /compatible ?
    (lambda ()
      (call-with-values
-      (lambda () (rtlgen/preserve-state state))
-      (lambda (gen-prefix gen-suffix)
-	(let ((cont-label (rtlgen/new-name 'CONT)))
-	  (gen-prefix)
-	  (code-gen-1 cont-label)
-	  (rtlgen/emit!/1
-	   `(RETURN-ADDRESS ,cont-label
-			    #f
-			    (MACHINE-CONSTANT ,(if (not *rtlgen/frame-size*)
-						   0
-						   (- *rtlgen/frame-size* 1)))
-			    (MACHINE-CONSTANT 1)))
-	  (let ((result (code-gen-2 state)))
-	    (gen-suffix)
-	    result)))))))
+	 (lambda () (rtlgen/preserve-state state))
+       (lambda (gen-prefix gen-suffix)
+	 (let ((cont-label (rtlgen/new-name 'CONT)))
+	   (gen-prefix)
+	   (code-gen-1 cont-label)
+	   (rtlgen/emit!/1
+	    `(RETURN-ADDRESS ,cont-label
+			     #f
+			     (MACHINE-CONSTANT ,(if (not *rtlgen/frame-size*)
+						    0
+						    (- *rtlgen/frame-size* 1)))
+			     (MACHINE-CONSTANT 1)))
+	   (let ((result (code-gen-2 state)))
+	     (gen-suffix)
+	     result)))))))
 
 (define (rtlgen/out-of-line->pred handler)
   (rtlgen/value->pred (rtlgen/out-of-line->value handler)))
