@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.2 1990/07/28 18:57:07 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtop.c,v 1.3 1990/08/10 02:01:25 cph Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -201,9 +201,10 @@ DEFUN (error_system_call, (code, name), int code AND CONST char * name)
   extern char * sys_errlist [];
   extern int sys_nerr;
   if ((code >= 0) && (code <= sys_nerr))
-    fprintf (stderr, "\nerror in system call: %s: %s\n", (sys_errlist [code]));
+    fprintf (stderr, "\nerror in system call: %s: %s\n",
+	     name, (sys_errlist [code]));
   else
-    fprintf (stderr, "\nunknown error %d in system call: %s\n", code);
+    fprintf (stderr, "\nunknown error %d in system call: %s\n", code, name);
   fflush (stderr);
   error_external_return ();
 }
