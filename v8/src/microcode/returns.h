@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.33 1988/08/15 20:54:20 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/returns.h,v 9.34 1988/10/26 20:01:08 cph Exp $
  *
  * Return codes.  These are placed in Return when an
  * interpreter operation needs to operate in several
@@ -160,9 +160,9 @@ MIT in each case. */
 /* 0x1A */		"PCOMB3_DO_1",					\
 /* 0x1B */		"PCOMB3_APPLY",					\
 /* 0x1C */		"SNAP_NEED_THUNK",				\
-/* 0x1D */		"",						\
+/* 0x1D */		"REENTER_COMPILED_CODE",			\
 /* 0x1E */		"",						\
-/* 0x1F */		"",						\
+/* 0x1F */		"COMP_REFERENCE_RESTART",			\
 /* 0x20 */		"NORMAL_GC_DONE",				\
 /* 0x21 */		"COMPLETE_GC_DONE",				\
 /* 0x22 */		"PURIFY_GC_1",					\
@@ -172,8 +172,8 @@ MIT in each case. */
 /* 0x26 */		"",						\
 /* 0x27 */		"",						\
 									\
-/* 0x28 */		"",						\
-/* 0x29 */		"",						\
+/* 0x28 */		"COMP_ASSIGNMENT_RESTART",			\
+/* 0x29 */		"POP_FROM_COMPILED_CODE",			\
 /* 0x2A */		"RETURN_TRAP_POINT",				\
 /* 0x2B */		"RESTORE_STEPPER",				\
 /* 0x2C */		"RESTORE_TO_STATE_POINT",			\
@@ -198,7 +198,7 @@ MIT in each case. */
 /* 0x3F */		"",						\
 /* 0x40 */		"POP_RETURN_ERROR",				\
 /* 0x41 */		"EVAL_ERROR",					\
-/* 0x42 */		"REPEAT_PRIMITIVE",				\
+/* 0x42 */		"",						\
 /* 0x43 */		"COMPILER_INTERRUPT_RESTART",			\
 /* 0x44 */		"",						\
 /* 0x45 */		"RESTORE_INT_MASK",				\
@@ -223,5 +223,5 @@ MIT in each case. */
 /* 0x58 */		"COMPILER_SAFE_REFERENCE_TRAP_RESTART",		\
 /* 0x59 */		"COMPILER_UNASSIGNED_P_TRAP_RESTART",		\
 /* 0x5A */		"",						\
-/* 0x5A */		"COMPILER_LINK_CACHES_RESTART"			\
+/* 0x5B */		"COMPILER_LINK_CACHES_RESTART"			\
 }
