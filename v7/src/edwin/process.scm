@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.16 1992/01/24 23:13:51 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.17 1992/01/27 11:04:42 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -549,8 +549,7 @@ after the listing is made.)"
 		  (if (> n 0)
 		      (begin
 			(insert-substring buffer 0 n output-mark)
-			(if (= n 512)
-			    (loop))))))))
+			(loop)))))))
 	(subprocess-wait process))))
 
 (define (call-with-output-copier process output-mark receiver)
@@ -560,11 +559,10 @@ after the listing is made.)"
 	     (lambda ()
 	       (let loop ()
 		 (let ((n (channel-read channel buffer 0 512)))
-		   (if (and n (positive? n))
+		   (if (and n (> n 0))
 		       (begin
 			 (insert-substring buffer 0 n output-mark)
-			 (if (= n 512)
-			     (loop))))))))))
+			 (loop)))))))))
       (channel-nonblocking channel)
       (let ((status (receiver copy-output)))
 	(channel-blocking channel)
