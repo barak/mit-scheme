@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vc.scm,v 1.6 1994/03/08 21:44:50 cph Exp $
+;;;	$Id: vc.scm,v 1.7 1994/03/08 21:54:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -840,7 +840,7 @@ the value of vc-log-mode-hook."
 ;;;; RCS Commands
 
 (define vc-type:rcs
-  (make-vc-type 'RCS "$Id: vc.scm,v 1.6 1994/03/08 21:44:50 cph Exp $"))
+  (make-vc-type 'RCS "$Id: vc.scm,v 1.7 1994/03/08 21:54:38 cph Exp $"))
 
 (define-vc-master-template vc-type:rcs
   (lambda (pathname)
@@ -1194,24 +1194,26 @@ the value of vc-log-mode-hook."
 	(point-context (vc-mark-context (buffer-point buffer)))
 	(mark-context (vc-mark-context (buffer-mark buffer))))
     (revert-buffer buffer #t dont-confirm?)
-    (let ((point (vc-find-context buffer point-context)))
-      (if (null? point-contexts)
-	  (if point (set-buffer-point! buffer point))
-	  (for-each (lambda (entry)
-		      (let ((window (car entry)))
-			(if (and (window-live? window)
-				 (eq? buffer (window-buffer window)))
-			    (begin
-			      (let ((m (vc-find-context buffer (cadr entry))))
-				(if m
-				    (set-window-point! window m)))
-			      (let ((m (vc-find-context buffer (caddr entry))))
-				(if m
-				    (set-window-start-mark! window m #t)))))))
-		    point-contexts)))
-    (let ((mark (vc-find-context buffer mark-context)))
-      (if mark
-	  (set-buffer-mark! buffer mark)))))
+    (update-screens! #f)
+    (if (null? point-contexts)
+	(let ((m (vc-find-context buffer point-context)))
+	  (if m
+	      (set-buffer-point! buffer m)))
+	(for-each (lambda (entry)
+		    (let ((window (car entry)))
+		      (if (and (window-live? window)
+			       (eq? buffer (window-buffer window)))
+			  (begin
+			    (let ((m (vc-find-context buffer (caddr entry))))
+			      (if m
+				  (set-window-start-mark! window m #t)))
+			    (let ((m (vc-find-context buffer (cadr entry))))
+			      (if m
+				  (set-window-point! window m)))))))
+		  point-contexts))
+    (let ((m (vc-find-context buffer mark-context)))
+      (if m
+	  (set-buffer-mark! buffer m)))))
 
 (define (vc-mark-context mark)
   (let ((group (mark-group mark))
