@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.3 1987/08/26 01:07:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/cfg3.scm,v 1.4 1987/08/31 21:50:31 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -200,10 +200,10 @@ MIT in each case. |#
 	       (pcfg-consequent-hooks pcfg)
 	       (pcfg-alternative-hooks pcfg)))
 
-(define scfg*pcfg->pcfg!
+(define-export scfg*pcfg->pcfg!
   (scfg*pcfg->cfg! make-pcfg))
 
-(define scfg*pcfg->scfg!
+(define-export scfg*pcfg->scfg!
   (scfg*pcfg->cfg! make-scfg*))
 
 )
@@ -224,10 +224,10 @@ MIT in each case. |#
 	 (hooks-connect! hooks (cfg-entry-node scfg))
 	 (scfg-next-hooks scfg))))
 
-(define pcfg*scfg->pcfg!
+(define-export pcfg*scfg->pcfg!
   (pcfg*scfg->cfg! make-pcfg))
 
-(define pcfg*scfg->scfg!
+(define-export pcfg*scfg->scfg!
   (pcfg*scfg->cfg! make-scfg*))
 
 )
@@ -237,7 +237,7 @@ MIT in each case. |#
 (define ((pcfg*pcfg->cfg! constructor) pcfg consequent alternative)
   (if (not pcfg)
       (error "PCFG*PCFG->CFG!: Can't have null predicate"))
-  (connect! (pcfg-consequent-hooks! pcfg) consequent consequent-select
+  (connect! (pcfg-consequent-hooks pcfg) consequent consequent-select
     (lambda (cchooks cahooks)
       (connect! (pcfg-alternative-hooks pcfg) alternative alternative-select
 	(lambda (achooks aahooks)
@@ -259,10 +259,10 @@ MIT in each case. |#
 (define (alternative-select receiver hooks)
   (receiver '() hooks))
 
-(define pcfg*pcfg->pcfg!
+(define-export pcfg*pcfg->pcfg!
   (pcfg*pcfg->cfg! make-pcfg))
 
-(define pcfg*pcfg->scfg!
+(define-export pcfg*pcfg->scfg!
   (pcfg*pcfg->cfg! make-scfg*))
 
 )
