@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.5 1987/08/20 19:32:40 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/instr3.scm,v 1.6 1987/08/21 14:31:39 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -163,39 +163,39 @@ MIT in each case. |#
 
 (define-instruction PUSHA
   ((B (? src ea-a-b))
-   (BYTE (8 #x9E))
+   (BYTE (8 #x9F))
    (OPERAND B src))
 
   ((W (? src ea-a-w))
-   (BYTE (8 #x3E))
+   (BYTE (8 #x3F))
    (OPERAND W src))
 
   ((L (? src ea-a-l))
-   (BYTE (8 #xDE))
+   (BYTE (8 #xDF))
    (OPERAND L src))
 
   ((F (? src ea-a-f))
-   (BYTE (8 #xDE))
+   (BYTE (8 #xDF))
    (OPERAND F src))
 
   ((Q (? src ea-a-q))
-   (BYTE (8 #x7E))
+   (BYTE (8 #x7F))
    (OPERAND Q src))
 
   ((D (? src ea-a-d))
-   (BYTE (8 #x7E))
+   (BYTE (8 #x7F))
    (OPERAND D src))
 
   ((G (? src ea-a-g))
-   (BYTE (8 #x7E))
+   (BYTE (8 #x7F))
    (OPERAND G src))
 
   ((H (? src ea-a-h))
-   (BYTE (16 #x7EFD))
+   (BYTE (16 #x7FFD))
    (OPERAND H src))
 
   ((O (? src ea-a-o))
-   (BYTE (16 #x7EFD))
+   (BYTE (16 #x7FFD))
    (OPERAND O src)))
 
 ;;; Array indeces and queues
