@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.376 2001/09/25 05:30:24 cph Exp $
+$Id: runtime.pkg,v 14.377 2001/10/05 15:43:46 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -3676,6 +3676,36 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  re-disassemble-pattern
 	  re-quote-string
 	  re-translation-table))
+
+(define-package (runtime rexp)
+  (file-case options
+    ((load) "rexp")
+    (else))
+  (parent ())
+  (export ()
+	  rexp*
+	  rexp+
+	  rexp->regexp
+	  rexp-alternatives
+	  rexp-any-char
+	  rexp-case-fold
+	  rexp-compile
+	  rexp-group
+	  rexp-line-end
+	  rexp-line-start
+	  rexp-not-syntax-char
+	  rexp-not-word-char
+	  rexp-not-word-edge
+	  rexp-optional
+	  rexp-sequence
+	  rexp-string-end
+	  rexp-string-start
+	  rexp-syntax-char
+	  rexp-word-char
+	  rexp-word-edge
+	  rexp-word-end
+	  rexp-word-start
+	  rexp?))
 
 (define-package (runtime char-syntax)
   (file-case options

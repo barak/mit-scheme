@@ -1,8 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.24 2000/06/22 03:53:02 cph Exp $
+$Id: ed-ffi.scm,v 1.25 2001/10/05 15:43:40 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Edwin buffer packaging info
@@ -222,6 +223,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("regexp"	(runtime regular-expression)
 		syntax-table/system-internal)
     ("rep"	(runtime rep)
+		syntax-table/system-internal)
+    ("rexp"	(runtime rexp)
 		syntax-table/system-internal)
     ("rgxcmp"	(runtime regular-expression-compiler)
 		syntax-table/system-internal)
