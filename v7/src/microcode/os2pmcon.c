@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.3 1995/01/06 00:01:28 cph Exp $
+$Id: os2pmcon.c,v 1.4 1995/02/14 00:41:31 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -74,6 +74,7 @@ static tqueue_t * console_tqueue;
 static qid_t console_event_qid;
 static qid_t console_pm_qid;
 static wid_t console_wid;
+static psid_t console_psid;
 
 #define CHAR_WIDTH (FONT_METRICS_WIDTH (metrics))
 #define CHAR_HEIGHT (FONT_METRICS_HEIGHT (metrics))
@@ -112,7 +113,8 @@ OS2_initialize_pm_console (void)
     console_wid = (OS2_window_open (console_pm_qid, remote, 0, "Scheme"));
   }
   OS2_window_permanent (console_wid);
-  metrics = OS2_window_set_font (console_wid, 1, "4.System VIO");
+  console_psid = (OS2_window_client_ps (console_wid));
+  metrics = (OS2_ps_set_font (console_psid, 1, "4.System VIO"));
   if (metrics == 0)
     OS2_logic_error ("Unable to find 4 point System VIO font.");
   OS2_window_set_grid (console_wid, CHAR_WIDTH, CHAR_HEIGHT);
@@ -304,14 +306,15 @@ console_paint (unsigned short xl, unsigned short xh,
   unsigned short cxh = (x2cx (xh, 0));
   unsigned short cyl = (y2cy (yh, 0));
   unsigned short cyh = (y2cy (yl, 1));
-  OS2_window_clear (console_wid, xl, xh, yl, yh);
+  OS2_ps_clear (console_psid, xl, xh, yl, yh);
   if ((cxl < cxh) && (cyl < cyh))
     {
       unsigned short size = (cxh - cxl);
       unsigned short x = (cx2x (cxl));
       while (cyl < cyh)
 	{
-	  OS2_window_write (console_wid, x, ((cy2y (cyl, 1)) + CHAR_DESCENDER),
+	  OS2_ps_draw_text (console_psid,
+			    x, ((cy2y (cyl, 1)) + CHAR_DESCENDER),
 			    (CHAR_LOC (cxl, cyl)), size);
 	  cyl += 1;
 	}
@@ -322,15 +325,15 @@ static void
 console_clear (unsigned short xl, unsigned short xh,
 	       unsigned short yl, unsigned short yh)
 {
-  OS2_window_clear (console_wid,
-		    (cx2x (xl)), (cx2x (xh)),
-		    (cy2y (yh, 0)), (cy2y (yl, 0)));
+  OS2_ps_clear (console_psid,
+		(cx2x (xl)), (cx2x (xh)),
+		(cy2y (yh, 0)), (cy2y (yl, 0)));
 }
 
 static void
 console_clear_all (void)
 {
-  OS2_window_clear (console_wid, 0, console_pel_width, 0, console_pel_height);
+  OS2_ps_clear (console_psid, 0, console_pel_width, 0, console_pel_height);
 }
 
 int
@@ -438,7 +441,7 @@ OS2_pm_console_write (const char * data, size_t size)
 	    if (size > (console_width - point_x))
 	      size = (console_width - point_x);
 	    FASTCOPY (data, (CHAR_LOC (point_x, point_y)), size);
-	    OS2_window_write (console_wid,
+	    OS2_ps_draw_text (console_psid,
 			      (cx2x (point_x)),
 			      ((cy2y (point_y, 1)) + CHAR_DESCENDER),
 			      data,
@@ -517,7 +520,7 @@ do_linefeed (void)
 			 0, console_pel_width,
 			 0, (point_y * CHAR_HEIGHT),
 			 0, CHAR_HEIGHT);
-      OS2_window_clear (console_wid, 0, console_pel_width, 0, CHAR_HEIGHT);
+      OS2_ps_clear (console_psid, 0, console_pel_width, 0, CHAR_HEIGHT);
 #endif /* not CONSOLE_WRAP */
     }
 }
