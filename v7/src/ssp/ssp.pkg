@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ssp.pkg,v 1.2 2004/10/27 20:04:10 cph Exp $
+$Id: ssp.pkg,v 1.3 2004/10/28 19:54:57 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -35,7 +35,6 @@ USA.
   (files "xhtml-expander")
   (parent (runtime ssp))
   (export ()
-	  expand-xhtml-directory
 	  expand-xhtml-file
 	  read/expand-xml-file)
   (export (runtime ssp)
@@ -110,6 +109,7 @@ USA.
   (files "xdoc")
   (parent (runtime ssp))
   (export (runtime ssp)
+	  boolean-attribute
 	  int0-attribute
 	  with-xdoc-expansion-context
 	  xd:answer
@@ -250,11 +250,14 @@ USA.
 	  db-change-user-password
 	  db-clear-late-flag
 	  db-clear-submitter
+	  db-delete-global-value!
 	  db-delete-persistent-value!
 	  db-generate-password
+	  db-get-global-value
 	  db-get-persistent-value
 	  db-get-ps-structure
 	  db-get-saved-output
+	  db-intern-global-value!
 	  db-intern-persistent-value!
 	  db-known-user?
 	  db-known-users
@@ -268,6 +271,7 @@ USA.
 	  db-run-cmd
 	  db-run-query
 	  db-saved-submitters
+	  db-set-global-value!
 	  db-set-persistent-value!
 	  db-set-user-administrator
 	  db-set-user-enabled

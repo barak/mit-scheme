@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: db.scm,v 1.3 2004/02/04 05:02:12 cph Exp $
+$Id: db.scm,v 1.4 2004/10/28 19:54:54 cph Exp $
 
 Copyright 2003,2004 Massachusetts Institute of Technology
 
@@ -27,25 +27,29 @@ USA.
 
 (declare (usual-integrations))
 
+(define default-db-name "six002x_spring04")
 (define pgsql-conn #f)
 (define *database-connection* #f)
 (define *user-name*)
 (define *ps-number*)
+(define *page-pathname*)
 (define *page-key*)
 
-(define (with-database-connection db-name ps-number pathname thunk)
+(define (with-database-connection ps-number pathname thunk)
   (if (not (and pgsql-conn (pgsql-conn-open? pgsql-conn)))
-      (set! pgsql-conn (open-pgsql-conn (string-append "dbname=" db-name))))
+      (set! pgsql-conn (open-pgsql-conn (get-db-open-args pathname))))
   (let ((page-key (enough-namestring pathname (server-root-dir))))
     (if *database-connection*
 	(begin
 	  (set! *database-connection* pgsql-conn)
 	  (fluid-let ((*ps-number* ps-number)
+		      (*page-pathname* pathname)
 		      (*page-key* page-key))
 	    (thunk)))
 	(fluid-let ((*database-connection* pgsql-conn)
 		    (*user-name* (http-request-user-name))
 		    (*ps-number* ps-number)
+		    (*page-pathname* pathname)
 		    (*page-key* page-key))
 	  (database-transaction thunk)))))
 
@@ -53,11 +57,25 @@ USA.
   (let ((conn *database-connection*))
     (if (pgsql-conn-open? conn)
 	conn
-	(let ((conn (open-pgsql-conn "dbname=six002x")))
+	(let ((conn (open-pgsql-conn (get-db-open-args *page-pathname*))))
 	  (set! pgsql-conn conn)
 	  (set! *database-connection* conn)
 	  conn))))
 
+(define (get-db-open-args pathname)
+  (string-append "dbname=" (get-db-name pathname)))
+
+(define (get-db-name pathname)
+  (let loop ((directory (directory-pathname pathname)))
+    (let ((pathname (merge-pathnames ".xdoc-db" directory)))
+      (if (file-exists? pathname)
+	  (call-with-input-file pathname read-line)
+	  (let ((path (pathname-directory directory)))
+	    (if (pair? (cdr path))
+		(loop
+		 (pathname-new-directory directory (except-last-pair path)))
+		default-db-name))))))
+
 (define (database-transaction thunk)
   (let ((commit? #f))
     (dynamic-wind (lambda ()
@@ -78,8 +96,12 @@ USA.
 	unspecific)))
 
 (define (db-run-query . strings)
-  (exec-pgsql-query (database-connection)
-		    (string-append (apply string-append strings) ";")))
+  (let ((query (string-append (apply string-append strings) ";")))
+    (if debug-queries?
+	(write-line `(DB-RUN-QUERY ,query)))
+    (exec-pgsql-query (database-connection) query)))
+
+(define debug-queries? #f)
 
 (define (db-run-cmd . strings)
   (let ((result (apply db-run-query strings)))
@@ -135,24 +157,29 @@ USA.
 	(let ((part (xdoc-db-id root))
 	      (n-outputs 0))
 	  (let loop ((elt root))
-	    (for-each (lambda (item)
-			(if (xml-element? item)
-			    (begin
-			      (if (xdoc-output? item)
-				  (begin
-				    (set! n-outputs (+ n-outputs 1))
-				    (register-output ps-number
-						     (xdoc-db-id item)
-						     part)))
-			      (loop item))))
-		      (xml-element-contents elt)))
+	    (for-each
+	     (lambda (item)
+	       (if (xml-element? item)
+		   (begin
+		     (if (xdoc-output? item)
+			 (begin
+			   (set! n-outputs (+ n-outputs 1))
+			   (register-output
+			    ps-number
+			    (xdoc-db-id item)
+			    part
+			    (eq? (or (boolean-attribute 'graded item #f) 'true)
+				 'true))))
+		     (loop item))))
+	     (xml-element-contents elt)))
 	  n-outputs)))))
 
-(define (register-output ps-number name part)
+(define (register-output ps-number name part graded?)
   (db-run-cmd "INSERT INTO registered_outputs VALUES"
 	      " (" (db-quote ps-number)
 	      ", " (db-quote name)
 	      ", " (db-quote part)
+	      ", " (if graded? "TRUE" "FALSE")
 	      ")"))
 
 (define (db-registered-problem-sets)
@@ -200,6 +227,7 @@ USA.
   (let ((result
 	 (db-run-query "SELECT ps_number, ps_part, name"
 		       " FROM registered_outputs"
+		       " WHERE graded_p"
 		       " ORDER BY ps_number, ps_part, name")))
     (let ((n (pgsql-n-tuples result)))
       (do ((i 0 (+ i 1))
@@ -264,12 +292,21 @@ USA.
 		 ", " (db-quote id)
 		 ", " (db-quote value)
 		 ", " (db-quote submitter)
+		 ", " (db-quote (and submitter "NOW"))
 		 ")"))
     ((not-submitted)
      (db-run-cmd "UPDATE saved_inputs SET"
 		 " value = " (db-quote value)
 		 ", submitter = " (db-quote submitter)
-		 " WHERE " (saved-inputs-condition id)))))
+		 ", submission_time = " (db-quote (and submitter "NOW"))
+		 " WHERE " (saved-inputs-condition id))))
+  (db-run-cmd "INSERT INTO input_history VALUES"
+	      " (" (db-quote *user-name*)
+	      ", " (db-quote *ps-number*)
+	      ", " (db-quote id)
+	      ", " (db-quote "NOW")
+	      ", " (db-quote value)
+	      ")"))
 
 (define (input-submission-status id for-update?)
   (let ((result
@@ -317,12 +354,14 @@ USA.
 		 ", " (db-quote correctness)
 		 ", " (db-quote submitter)
 		 ", " (if late? "TRUE" "FALSE")
+		 ", " (db-quote (and submitter "NOW"))
 		 ")"))
     ((not-submitted)
      (db-run-cmd "UPDATE saved_outputs SET"
 		 " correctness = " (db-quote correctness)
 		 ", submitter = " (db-quote submitter)
 		 ", late_p = " (if late? "TRUE" "FALSE")
+		 ", submission_time = " (db-quote (and submitter "NOW"))
 		 " WHERE " (saved-outputs-condition id)))))
 
 (define (output-submission-status id for-update?)
@@ -369,8 +408,36 @@ USA.
 ;;;; Persistent values
 
 (define (db-get-persistent-value name default)
+  (get-persistent-value name *page-key* default))
+
+(define (db-set-persistent-value! name object)
+  (set-persistent-value! name *page-key* object))
+
+(define (db-intern-persistent-value! name get-object)
+  (intern-persistent-value! name *page-key* get-object))
+
+(define (db-delete-persistent-value! name)
+  (delete-persistent-value! name *page-key*))
+
+(define (db-get-global-value name default)
+  (get-persistent-value name global-page-key default))
+
+(define (db-set-global-value! name object)
+  (set-persistent-value! name global-page-key object))
+
+(define (db-intern-global-value! name get-object)
+  (intern-persistent-value! name global-page-key get-object))
+
+(define (db-delete-global-value! name)
+  (delete-persistent-value! name global-page-key))
+
+(define global-page-key
+  "*global-page-key*")
+
+(define (get-persistent-value name page-key default)
   (let ((result
-	 (db-run-query (persistent-value-query name '(var_value) #f))))
+	 (db-run-query
+	  (persistent-value-query name page-key '(var_value) #f))))
     (let ((string
 	   (and (> (pgsql-n-tuples result) 0)
 		(pgsql-get-value result 0 0))))
@@ -379,10 +446,11 @@ USA.
 	  (read (open-input-string string))
 	  default))))
 
-(define (db-set-persistent-value! name object)
+(define (set-persistent-value! name page-key object)
   (let ((value (write-to-string object))
 	(result
-	 (db-run-query (persistent-value-query name '(var_value) #t))))
+	 (db-run-query
+	  (persistent-value-query name page-key '(var_value) #t))))
     (if (> (pgsql-n-tuples result) 0)
 	(let ((same-value? (string=? (pgsql-get-value result 0 0) value)))
 	  (pgsql-clear result)
@@ -391,19 +459,20 @@ USA.
 			  " var_value = "
 			  (db-quote value)
 			  " WHERE "
-			  (persistent-value-condition name))))
+			  (persistent-value-condition name page-key))))
 	(begin
 	  (pgsql-clear result)
 	  (db-run-cmd "INSERT INTO persistent_values VALUES"
 		      " (" (db-quote *user-name*)
-		      ", " (db-quote *page-key*)
+		      ", " (db-quote page-key)
 		      ", " (db-quote name)
 		      ", " (db-quote value)
 		      ")")))))
 
-(define (db-intern-persistent-value! name get-object)
+(define (intern-persistent-value! name page-key get-object)
   (let ((result
-	 (db-run-query (persistent-value-query name '(var_value) #t))))
+	 (db-run-query
+	  (persistent-value-query name page-key '(var_value) #t))))
     (if (> (pgsql-n-tuples result) 0)
 	(let ((value (pgsql-get-value result 0 0)))
 	  (pgsql-clear result)
@@ -413,25 +482,25 @@ USA.
 	  (let ((object (get-object)))
 	    (db-run-cmd "INSERT INTO persistent_values VALUES"
 			" (" (db-quote *user-name*)
-			", " (db-quote *page-key*)
+			", " (db-quote page-key)
 			", " (db-quote name)
 			", " (db-quote (write-to-string object))
 			")")
 	    object)))))
 
-(define (db-delete-persistent-value! name)
+(define (delete-persistent-value! name page-key)
   (db-run-cmd "DELETE FROM persistent_values WHERE "
-	      (persistent-value-condition name)))
+	      (persistent-value-condition name page-key)))
 
-(define (persistent-value-query name fields for-update?)
+(define (persistent-value-query name page-key fields for-update?)
   (string-append "SELECT " (field-list->db-string fields)
 		 " FROM persistent_values"
-		 " WHERE " (persistent-value-condition name)
+		 " WHERE " (persistent-value-condition name page-key)
 		 (if for-update? " FOR UPDATE" "")))
 
-(define (persistent-value-condition name)
+(define (persistent-value-condition name page-key)
   (string-append "user_name = " (db-quote *user-name*)
-		 " AND file_name = " (db-quote *page-key*)
+		 " AND file_name = " (db-quote page-key)
 		 " AND var_name = " (db-quote name)))
 
 ;;;; Clear submitted/late
@@ -453,11 +522,13 @@ USA.
       (let loop ((i 0) (names '()))
 	(if (< i n)
 	    (loop (+ i 1)
-		  (cons (string-append
-			 (pgsql-get-value result i 0)
-			 "/"
-			 (pgsql-get-value result i 1))
-			names))
+		  (let ((submitter (pgsql-get-value result i 1)))
+		    (if submitter
+			(cons (string-append (pgsql-get-value result i 0)
+					     "/"
+					     submitter)
+			      names)
+			names)))
 	    (begin
 	      (pgsql-clear result)
 	      (reverse! names)))))))
