@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.7 1993/01/02 07:33:36 cph Exp $
+$Id: pardec.scm,v 4.8 1993/08/03 22:40:23 jacob Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -361,9 +361,9 @@ MIT in each case. |#
       (error "Bad declaration:" kind declarations)))
 
 (define (make-dumpable-expander expander declaration)
-  (make-entity (lambda (self operands if-expanded if-not-expanded block)
+  (make-entity (lambda (self expr operands if-expanded if-not-expanded block)
 		 self			; ignored
-		 (expander operands if-expanded if-not-expanded block))
+		 (expander expr operands if-expanded if-not-expanded block))
 	       (cons '*DUMPABLE-EXPANDER* declaration)))
 
 (define (dumpable-expander? object)
