@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.49 1987/06/05 18:02:50 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/system.scm,v 13.50 1987/06/05 20:41:54 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -203,10 +203,11 @@
 	  '()
 	  (split-list files 20
 	    (lambda (head tail)
-	      (newline)
-	      (write-string "Purify")
-	      (purify (list->vector head) true)
-	      (append! head (loop tail))))))
+	      (let ((expressions (map fasload head)))
+		(newline)
+		(write-string "Purify")
+		(purify (list->vector expressions) true)
+		(append! expressions (loop tail)))))))
     (let ((files (format-files-list (access :files-lists system) compiled?)))
       (set! (access :files system)
 	    (map (lambda (file) (pathname->string (car file))) files))
