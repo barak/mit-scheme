@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.17 1995/03/13 23:25:49 adams Exp $
+$Id: rtlgen.scm,v 1.18 1995/03/13 23:36:44 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -3104,7 +3104,7 @@ MIT in each case. |#
 	       (rtlgen/branch/likely state `(EQ-TEST ,obj* ,tag**))))))))
 
 
-(define-open-coder/pred %compiled-entry-maximum-arity?
+(define-open-coder/pred %compiled-entry-maximum-arity? 2
   (lambda (state rands open-coder)
     open-coder
     (let* ((arity  (rtlgen/->register (first rands)))
