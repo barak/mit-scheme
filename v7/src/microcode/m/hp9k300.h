@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.5 1989/08/28 18:30:12 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.6 1990/02/06 16:22:17 jinx Rel $
 
-Copyright (c) 1989 Massachusetts Institute of Technology
+Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,15 +33,29 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+/* In the following, it is assumed that the standard C compiler is the
+   HP C compiler, and the "alternate" compiler is the GNU C compiler (GCC).
+ */
+
 /* Change this to PROC_TYPE_68000 if your machine is a series 200 or a
-   model 310. */
+   model 310. 
+ */
 #define PROC_TYPE PROC_TYPE_68020
 
-#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
+/* The M4_SWITCH_MACHINE must contain -DHP if using HP C, -DGCC, if using
+   GCC, and nothing special if using PCC.
+ */
 
 #if (PROC_TYPE == PROC_TYPE_68020)
-#define M4_SWITCH_MACHINE -DMC68881 -DTYPE_CODE_LENGTH=6
+
+#ifndef ALTERNATE_CC
+#define M4_SWITCH_MACHINE -DMC68881 -DTYPE_CODE_LENGTH=6 -DHP
+#else
+#define M4_SWITCH_MACHINE -DMC68881 -DTYPE_CODE_LENGTH=6 -DGCC
+#endif
+
 #define AS_SWITCH_MACHINE +x -V 3
+
 #else
 #define M4_SWITCH_MACHINE
 #define AS_SWITCH_MACHINE +X
@@ -50,9 +64,14 @@ MIT in each case. */
 #ifndef ALTERNATE_CC
 
 /* For hp-ux version 6.2 and earlier, comment out this definition. */
+/* The full optimizer breaks some of the files under 6.5. */
 #define C_OPTIMIZE_SWITCH +O1
 
-#define C_SWITCH_MACHINE -Wp,-H60000 -Wc,-Nt30000
+#define C_SWITCH_MACHINE -Wp,-H60000 -Wc,-Nt30000 -DTYPE_CODE_LENGTH=6
+
+#else
+
+#define C_SWITCH_MACHINE -DTYPE_CODE_LENGTH=6
 
 #endif
 
