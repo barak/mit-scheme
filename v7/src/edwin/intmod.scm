@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.57 1993/07/30 21:11:15 cph Exp $
+;;;	$Id: intmod.scm,v 1.58 1993/08/01 05:30:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -755,21 +755,27 @@ If this is an error, the debugger examines the error condition."
       (let ((value unique))
 	(signal-thread-event editor-thread
 	  (lambda ()
-	    ;; This is unlikely to work.  We've got to get a better
-	    ;; mechanism to handle this kind of stuff.
-	    (override-next-command!
-	     (lambda ()
-	       (set! value
-		     (cleanup-pop-up-buffers
-		      (lambda ()
-			(let ((buffer (port/buffer port)))
-			  (if (not (buffer-visible? buffer))
-			      (pop-up-buffer buffer false)))
-			(procedure prompt))))
-	       (signal-thread-event (port/thread port) false)))))
+	    ;; This would be even better if it could notify the use
+	    ;; that the inferior REPL wanted some attention.
+	    (when-buffer-selected (port/buffer port)
+	      (lambda ()
+		(override-next-command!
+		 (lambda ()
+		   (set! value (procedure prompt))
+		   (signal-thread-event (port/thread port) false)))))))
 	(do () ((not (eq? value unique)))
 	  (suspend-current-thread))
 	value))))
+
+(define (when-buffer-selected buffer thunk)
+  (if (current-buffer? buffer)
+      (thunk)
+      (letrec
+	  ((hook
+	    (lambda (buffer)
+	      (thunk)
+	      (remove-select-buffer-hook buffer hook))))
+	(add-select-buffer-hook buffer hook))))
 
 (define (operation/prompt-for-command-expression port prompt)
   (read-expression port (parse-command-prompt prompt)))
