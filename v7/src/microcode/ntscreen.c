@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.11 1993/08/27 05:56:17 gjr Exp $
+$Id: ntscreen.c,v 1.12 1993/08/29 00:23:02 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -501,7 +501,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       case WM_ERASEBKGND:
          EraseScreen (hWnd);
-         break ;
+         return (1L);
 
       case WM_SIZE:
         if (wParam!=SIZE_MINIMIZED)
@@ -956,106 +956,26 @@ ResetScreen (SCREEN screen)
    return (TRUE);
 }
 
-//---------------------------------------------------------------------------
-//  BOOL PaintScreen (HWND hWnd )
-//
-//  Description:
-//     Paints the rectangle determined by the paint struct of
-//     the DC.
-//
-//  Parameters:
-//     HWND hWnd
-//        handle to TTY window (as always)
-//
-//---------------------------------------------------------------------------
-
-static BOOL 
-PaintScreen (HWND hWnd)
+static BOOL
+Do_PaintScreen (BOOL erased, HWND hWnd, SCREEN screen, HDC hDC, PAINTSTRUCT * ps)
 {
-  SCREEN	screen = (GETSCREEN (hWnd));
-  HDC		hDC ;
-  PAINTSTRUCT	ps ;
   RECT		rect ;
 
-  if (NULL == screen)
-    return (FALSE);
-
-  hDC = (BeginPaint (hWnd, &ps));
-
-  if (IsIconic (hWnd))
-  {
-//      // draw a minature version of the window
-//      int  ICONSIZE = 36;
-//      int  row, col;
-//      HPEN hOldPen, hPen, hPen2;
-//
-//      hPen = CreatePen (PS_SOLID, 0,
-//	                /* average of two RGB colours */
-//	                ((GetSysColor (COLOR_ACTIVEBORDER)&0xfefefeL) >> 1) +
-//			((GetSysColor (COLOR_WINDOWFRAME)&0xfefefeL)  >> 1));
-//      hOldPen = SelectObject (hDC, hPen);
-//      MoveToEx (hDC, 0, 0, NULL);
-//      LineTo (hDC,0,ICONSIZE-1); LineTo (hDC,ICONSIZE-1,ICONSIZE-1);
-//      LineTo (hDC,ICONSIZE-1,0); LineTo (hDC,0,0);
-//      //Rectangle (hDC, 0, 0, ICONSIZE, ICONSIZE);
-//      hPen2 = CreatePen (PS_SOLID, 0, GetSysColor (COLOR_ACTIVECAPTION));
-//      SelectObject (hDC, hPen2);
-//      DeleteObject (hPen);
-//      MoveToEx (hDC, 1, 1, NULL);  LineTo (hDC, ICONSIZE-1, 1);
-//      MoveToEx (hDC, 1, 2, NULL);  LineTo (hDC, ICONSIZE-1, 2);
-//      MoveToEx (hDC, 1, 3, NULL);  LineTo (hDC, ICONSIZE-1, 3);
-//
-//      hPen = CreatePen (PS_SOLID, 0, screen->rgbFGColour);
-//      SelectObject (hDC, hPen);
-//      DeleteObject (hPen2);
-//      SetBkColor (hDC, GetSysColor (COLOR_WINDOW));
-//      rect = ps.rcPaint ;
-//      for (row = 0; row < (ICONSIZE-6)/2; row++) {
-//	if (row >= screen->height) break;
-
-//	for (col = 0; col < ICONSIZE-4; col++) {
-//	  int  run_length = 0;
-//	  char *s = & screen->chars[row*WIDTH(screen) + col];
-//	  while (col+run_length < ICONSIZE-4 && s[run_length] != ' ')
-//	    run_length++;
-//	  if (run_length>0) {
-//	     int x = col+2;
-//	     int y = row*2+5;
-//	     MoveToEx (hDC, x, y, NULL);
-//	     LineTo (hDC, x+run_length, y);
-//	  }
-//	}
-//      }
-//      SelectObject (hDC, hOldPen);
-//      DeleteObject (hPen);
-  }
-  else
+  if (! (IsIconic (hWnd)))
   {
     int		nRow, nCol, nEndRow, nEndCol, nCount;
     int		nHorzPos, nVertPos, bias;
     HFONT	hOldFont;
 
     hOldFont = (SelectObject (hDC, screen->hFont));
-    rect = ps.rcPaint;
+    rect = ps->rcPaint;
 
-//   nRow =
-//      min (MAXROWS - 1,
-//           max (0, (rect.top + screen->yOffset) / screen->yChar));
-//   nEndRow =
-//      min (MAXROWS - 1,
-//           ((rect.bottom + screen->yOffset - 1) / screen->yChar));
     nRow =
       min (screen->height - 1,
 	   max (0, (rect.top + screen->yOffset) / screen->yChar));
     nEndRow =
       min (screen->height - 1,
 	   ((rect.bottom + screen->yOffset - 1) / screen->yChar));
-//   nCol =
-//      min (MAXCOLS - 1,
-//           max (0, (rect.left + screen->xOffset) / screen->xChar));
-//   nEndCol =
-//      min (MAXCOLS - 1,
-//           ((rect.right + screen->xOffset - 1) / screen->xChar));
     nCol =
       min (screen->width - 1,
 	   max (0, (rect.left + screen->xOffset) / screen->xChar));
@@ -1066,25 +986,28 @@ PaintScreen (HWND hWnd)
     SetBkMode (hDC, OPAQUE);
     SetTextColor (hDC, screen->rgbFGColour);
     SetBkColor (hDC, screen->rgbBGColour);
-    if ((nEndRow * screen->yChar) < (rect.bottom + screen->yOffset - 1))
+    if (! erased)
     {
-      RECT rbottom;
+      if ((nEndRow * screen->yChar) < (rect.bottom + screen->yOffset - 1))
+      {
+	RECT rbottom;
       
-      rbottom.left = rect.left;
-      rbottom.right = rect.right;
-      rbottom.bottom = rect.bottom;
-      rbottom.top = ((nEndRow * screen->yChar) - screen->yOffset);
-      FillRect (hDC, &rbottom, black_brush);
-    }
-    if ((nEndCol * screen->xChar) < (rect.right + screen->xOffset - 1))
-    {
-      RECT rright;
+	rbottom.left = rect.left;
+	rbottom.right = rect.right;
+	rbottom.bottom = rect.bottom;
+	rbottom.top = ((nEndRow * screen->yChar) - screen->yOffset);
+	FillRect (hDC, &rbottom, black_brush);
+      }
+      if ((nEndCol * screen->xChar) < (rect.right + screen->xOffset - 1))
+      {
+	RECT rright;
       
-      rright.top = rect.top;
-      rright.bottom = rect.bottom;
-      rright.right = rect.right;
-      rright.left = ((nEndCol * screen->xChar) - screen->xOffset);
-      FillRect (hDC, &rright, black_brush);
+	rright.top = rect.top;
+	rright.bottom = rect.bottom;
+	rright.right = rect.right;
+	rright.left = ((nEndCol * screen->xChar) - screen->xOffset);
+	FillRect (hDC, &rright, black_brush);
+      }
     }
 
     for (bias = ((nRow * MAXCOLS) + nCol),
@@ -1130,11 +1053,39 @@ PaintScreen (HWND hWnd)
     }
     SelectObject (hDC, hOldFont);
   }
+  return (TRUE);
+}
+
+//---------------------------------------------------------------------------
+//  BOOL PaintScreen (HWND hWnd )
+//
+//  Description:
+//     Paints the rectangle determined by the paint struct of
+//     the DC.
+//
+//  Parameters:
+//     HWND hWnd
+//        handle to TTY window (as always)
+//
+//---------------------------------------------------------------------------
+
+static BOOL 
+PaintScreen (HWND hWnd)
+{
+  SCREEN	screen = (GETSCREEN (hWnd));
+  HDC		hDC ;
+  PAINTSTRUCT	ps ;
+
+  if (NULL == screen)
+    return (FALSE);
+
+  hDC = (BeginPaint (hWnd, &ps));
+  Do_PaintScreen (FALSE, hWnd, screen, hDC, &ps);
   EndPaint (hWnd, &ps);
   MoveScreenCursor (screen);
   return (TRUE);
 }
-
+
 //---------------------------------------------------------------------------
 //  BOOL EraseScreen (HWND hWnd )
 //
@@ -1148,13 +1099,12 @@ PaintScreen (HWND hWnd)
 //
 //---------------------------------------------------------------------------
 
-static BOOL 
+static BOOL
 EraseScreen (HWND hWnd)
 {
   SCREEN	screen = (GETSCREEN (hWnd));
   HDC		hDC ;
   PAINTSTRUCT	ps ;
-  RECT		rect ;
 
   if (NULL == screen)
     return (FALSE);
@@ -1163,9 +1113,10 @@ EraseScreen (HWND hWnd)
   SetBkColor (hDC, screen->rgbBGColour);
   if (! (IsIconic (hWnd)))
   {
-    rect = ps.rcPaint;
+    RECT rect = ps.rcPaint;
     FillRect (hDC, &rect, black_brush);
   }
+  Do_PaintScreen (TRUE, hWnd, screen, hDC, &ps);
   EndPaint (hWnd, &ps);
   return (TRUE);
 }
@@ -1835,6 +1786,7 @@ Finish_ScreenWriteChar (SCREEN screen, struct screen_write_char_s * rectp)
     if (! (screen->mode_flags & SCREEN_MODE_NEWLINE))
       Screen_LF (screen);
   }
+  rectp->row = -1;
   return;
 }
 
@@ -2185,6 +2137,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
     {
       char dispatch;
 
+      Finish_ScreenWriteChar (screen, &state);
       if ((i + 2) >= nLength)
       {
 	WriteScreenBlock_suspend (screen, lpBlock, i, nLength);
