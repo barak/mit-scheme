@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: evlcom.scm,v 1.49 1993/10/28 20:50:55 cph Exp $
+;;;	$Id: evlcom.scm,v 1.50 1994/09/16 20:19:23 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -124,7 +124,7 @@ and the output, if non-null, is shown in a pop-up buffer."
   "If true, evaluation commands evaluate expressions in an inferior REPL.
 Also, the inferior REPL's run light appears in all Scheme mode buffers.
 Otherwise, expressions are evaluated directly by the commands."
-  #f
+  #t
   boolean?)
 
 (define-variable transcript-buffer-name
