@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.93 1991/10/25 00:02:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/curren.scm,v 1.94 1992/02/04 04:02:06 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -95,11 +95,11 @@
      (let ((message (current-message)))
        (clear-current-message!)
        (screen-exit! (selected-screen))
-       (change-selected-buffer
-	(window-buffer (screen-selected-window screen))
-	true
-	(lambda ()
-	  (set-editor-selected-screen! current-editor screen)))
+       (let ((window (screen-selected-window screen)))
+	 (undo-leave-window! window)
+	 (change-selected-buffer (window-buffer window) true
+	   (lambda ()
+	     (set-editor-selected-screen! current-editor screen))))
        (set-current-message! message)
        (screen-enter! screen)))))
 
@@ -177,6 +177,7 @@
 (define (select-window window)
   (without-interrupts
    (lambda ()
+     (undo-leave-window! window)
      (let ((screen (window-screen window)))
        (if (selected-screen? screen)
 	   (change-selected-buffer (window-buffer window) true
@@ -311,6 +312,7 @@
 	      (hangup-process process true)
 	      (set-process-buffer! process false))
 	    (buffer-processes buffer))
+  (kill-buffer-inferior-repl buffer)
   (bufferset-kill-buffer! (current-bufferset) buffer))
 
 (define (select-buffer buffer)
@@ -325,6 +327,7 @@
 (define (set-window-buffer! window buffer record?)
   (without-interrupts
    (lambda ()
+     (undo-leave-window! window)
      (if (current-window? window)
 	 (change-selected-buffer buffer record?
 	   (lambda ()
@@ -346,21 +349,19 @@ The buffer is guaranteed to be selected at that time."
 
 (define (with-selected-buffer buffer thunk)
   (let ((old-buffer))
-    (dynamic-wind (lambda ()
-		    (let ((window (current-window)))
-		      (set! old-buffer (window-buffer window))
-		      (if (buffer-alive? buffer)
-			  (set-window-buffer! window buffer true)))
-		    (set! buffer)
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (let ((window (current-window)))
-		      (set! buffer (window-buffer window))
+    (unwind-protect (lambda ()
+		      (let ((window (current-window)))
+			(set! old-buffer (window-buffer window))
+			(if (buffer-alive? buffer)
+			    (set-window-buffer! window buffer true)))
+		      (set! buffer)
+		      unspecific)
+		    thunk
+		    (lambda ()
 		      (if (buffer-alive? old-buffer)
-			  (set-window-buffer! window old-buffer true)))
-		    (set! old-buffer)
-		    unspecific))))
+			  (set-window-buffer! (current-window)
+					      old-buffer
+					      true))))))
 
 (define (current-process)
   (let ((process (get-buffer-process (current-buffer))))
@@ -386,19 +387,15 @@ The buffer is guaranteed to be selected at that time."
 
 (define (with-current-point point thunk)
   (let ((old-point))
-    (dynamic-wind (lambda ()
-		    (let ((window (current-window)))
-		      (set! old-point (window-point window))
-		      (set-window-point! window point))
-		    (set! point)
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (let ((window (current-window)))
-		      (set! point (window-point window))
-		      (set-window-point! window old-point))
-		    (set! old-point)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (let ((window (current-window)))
+			(set! old-point (window-point window))
+			(set-window-point! window point))
+		      (set! point)
+		      unspecific)
+		    thunk
+		    (lambda ()
+		      (set-window-point! (current-window) old-point)))))
 
 (define (current-column)
   (mark-column (current-point)))

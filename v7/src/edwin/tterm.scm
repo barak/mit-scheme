@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.9 1991/11/26 08:03:32 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/tterm.scm,v 1.10 1992/02/04 04:04:21 cph Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -142,56 +142,99 @@ MIT in each case. |#
 	   (tf-teleray description)
 	   (tf-underscore description))))
 
-(define-integrable input-buffer-size 16)
-
-(define (get-console-input-operations screen)
-  screen				;ignored
+(define (get-console-input-operations)
   (let ((channel (input-port/channel console-input-port))
 	(string (make-string input-buffer-size))
 	(start input-buffer-size)
-	(end input-buffer-size))
+	(end input-buffer-size)
+	(pending-event false))
     (let ((fill-buffer
-	   (lambda (block?)
-	     (let ((eof (lambda () "Reached EOF in keyboard input.")))
-	       (if (fix:= end 0) (eof))
-	       (if block?
+	   (lambda (type)
+	     (let loop ()
+	       (if (eq? type 'BLOCKING)
 		   (channel-blocking channel)
 		   (channel-nonblocking channel))
 	       (let ((n
-		      (channel-select-then-read channel
-						string 0 input-buffer-size)))
-		 (if (or (not n) (eq? true n))
-		     n
-		     (begin
-		       (if (fix:= n 0) (eof))
-		       (set! start 0)
-		       (set! end n)
-		       (if transcript-port
-			   (write-string (substring string 0 n)
-					 transcript-port))
-		       'CHAR)))))))
+		      (channel-select-then-read
+		       channel string 0 input-buffer-size))
+		     (maybe-process-changes
+		      (lambda (event)
+			(if (eq? type 'NO-PROCESSING)
+			    (begin
+			      (set! pending-event event)
+			      true)
+			    (begin
+			      (process-change-event event)
+			      (loop))))))
+		 (cond ((not n)
+			(if (eq? type 'BLOCKING)
+			    (error "#F returned from blocking read"))
+			false)
+		       ((fix:> n 0)
+			(set! start 0)
+			(set! end n)
+			(if transcript-port
+			    (output-port/write-substring
+			     transcript-port string 0 n))
+			true)
+		       ((or (fix:= n event:process-output)
+			    (fix:= n event:process-status))
+			(maybe-process-changes n))
+		       ((fix:= n event:interrupt)
+			(if inferior-thread-changes?
+			    (maybe-process-changes n)
+			    (loop)))
+		       ((fix:= n 0)
+			(error "Reached EOF in keyboard input."))
+		       (else
+			(error "Illegal return value:" n)))))))
+	  (process-pending-event
+	   (lambda ()
+	     (let ((event pending-event))
+	       (set! pending-event false)
+	       (process-change-event event)))))
       (values
        (lambda ()			;halt-update?
-	 (if (fix:< start end)
-	     true
-	     (fill-buffer false)))
+	 (or pending-event
+	     (fix:< start end)
+	     (fill-buffer 'NO-PROCESSING)))
        (lambda ()			;char-ready?
-	 (if (fix:< start end)
-	     true
-	     (eq? 'CHAR (fill-buffer false))))
+	 (if pending-event (process-pending-event))
+	 (or (fix:< start end)
+	     (fill-buffer 'NONBLOCKING)))
        (lambda ()			;peek-char
-	 (and (or (fix:< start end) (eq? 'CHAR (fill-buffer true)))
-	      (string-ref string start)))
+	 (if pending-event (process-pending-event))
+	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
+	 (string-ref string start))
        (lambda ()			;read-char
-	 (and (or (fix:< start end) (eq? 'CHAR (fill-buffer true)))
-	      (let ((char (string-ref string start)))
-		(set! start (fix:+ start 1))
-		char)))))))
+	 (if pending-event (process-pending-event))
+	 (if (not (fix:< start end)) (fill-buffer 'BLOCKING))
+	 (let ((char (string-ref string start)))
+	   (set! start (fix:+ start 1))
+	   char))))))
 
+(define-integrable input-buffer-size 16)
+(define-integrable event:process-output -2)
+(define-integrable event:process-status -3)
+(define-integrable event:interrupt -4)
+
+(define (process-change-event event)
+  (if (cond ((fix:= event event:process-output)
+	     (accept-process-output))
+	    ((fix:= event event:process-status)
+	     (handle-process-status-changes))
+	    ((fix:= event event:interrupt)
+	     (accept-thread-output))
+	    (else
+	     (error "Illegal change event:" event)))
+      (update-screens! false)))
+
 (define (signal-interrupt!)
-  ;; (editor-beep)			; kbd beeps by itself
-  (temporary-message "Quit")
-  (^G-signal))
+  (signal-thread-event editor-thread
+    (lambda ()
+      ;; (editor-beep)			; kbd beeps by itself
+      (temporary-message "Quit")
+      (^G-signal))))
 
 (define (with-console-interrupts-enabled thunk)
   (with-console-interrupt-state 2 thunk))
@@ -200,15 +243,13 @@ MIT in each case. |#
   (with-console-interrupt-state 0 thunk))
 
 (define (with-console-interrupt-state state thunk)
-  (let ((outside)
-	(inside state))
-    (dynamic-wind (lambda ()
-		    (set! outside (tty-get-interrupt-enables))
-		    (tty-set-interrupt-enables inside))
-		  thunk
-		  (lambda ()
-		    (set! inside (tty-get-interrupt-enables))
-		    (tty-set-interrupt-enables outside)))))
+  (let ((outside))
+    (unwind-protect (lambda ()
+		      (set! outside (tty-get-interrupt-enables))
+		      (tty-set-interrupt-enables state))
+		    thunk
+		    (lambda ()
+		      (tty-set-interrupt-enables outside)))))
 
 (define console-display-type)
 (define console-description)
@@ -219,7 +260,9 @@ MIT in each case. |#
 			   false
 			   console-available?
 			   make-console-screen
-			   get-console-input-operations
+			   (lambda (screen)
+			     screen
+			     (get-console-input-operations))
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
@@ -243,21 +286,15 @@ MIT in each case. |#
        `((INTERRUPT/ABORT-TOP-LEVEL ,signal-interrupt!))))))
 
 (define (bind-console-state state receiver)
-  (let ((outside-state)
-	(inside-state state))
-    (dynamic-wind (lambda ()
-		    (set! outside-state (console-state))
-		    (if inside-state
-			(set-console-state! inside-state))
-		    (set! inside-state false)
-		    unspecific)
-		  (lambda ()
-		    (receiver (lambda () outside-state)))
-		  (lambda ()
-		    (set! inside-state (console-state))
-		    (set-console-state! outside-state)
-		    (set! outside-state false)
-		    unspecific))))
+  (let ((outside-state))
+    (unwind-protect (lambda ()
+		      (set! outside-state (console-state))
+		      (if state
+			  (set-console-state! state)))
+		    (lambda ()
+		      (receiver (lambda () outside-state)))
+		    (lambda ()
+		      (set-console-state! outside-state)))))
 
 (define (console-state)
   (vector (channel-state (input-port/channel console-input-port))

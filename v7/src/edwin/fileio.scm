@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.105 1992/01/13 19:17:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/fileio.scm,v 1.106 1992/02/04 04:03:02 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -289,7 +289,7 @@ after you find a file.  If you explicitly request such a scan with
 				     set-buffer-major-mode!
 				     enable-buffer-minor-mode!)
 				 buffer mode)))
-			  (call-with-current-continuation
+			  (call-with-protected-continuation
 			   (lambda (continuation)
 			     (bind-condition-handler
 				 (list condition-type:error)
@@ -420,8 +420,8 @@ Otherwise, a message is written both before and after long file writes."
 				  (rename-file pathname old)
 				  (set! modes (file-modes old))
 				  true))))
-			 (dynamic-wind
-			  (lambda () unspecific)
+			 (unwind-protect
+			  false
 			  (lambda ()
 			    (clear-visited-file-modification-time! buffer)
 			    (write-buffer buffer)

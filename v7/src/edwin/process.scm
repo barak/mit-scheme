@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.17 1992/01/27 11:04:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.18 1992/02/04 04:03:32 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -245,15 +245,17 @@ False means don't delete them until \\[list-processes] is run."
   (let ((channel (process-input-channel process))
 	(buffer (make-string 512)))
     (and (channel-open? channel)
-	 (let ((n (channel-read channel buffer 0 512)))
-	   (and n
-		(if (positive? n)
-		    (output-substring process buffer n)
-		    (begin
-		      (channel-close channel)
-		      false)))))))
+	 (let loop ((output? false))
+	   (let ((n (channel-read channel buffer 0 512)))
+	     (cond ((not n)
+		    output?)
+		   ((> n 0)
+		    (loop (or (output-substring process buffer n) output?)))
+		   (else
+		    (channel-close channel)
+		    output?)))))))
 
-(define (notify-process-status-changes)
+(define (handle-process-status-changes)
   (without-interrupts
    (lambda ()
      (let ((tick (subprocess-global-status-tick)))
@@ -512,7 +514,7 @@ after the listing is made.)"
 
 (define (synchronous-process-wait process input-region output-mark)
   (if input-region
-      (call-with-current-continuation
+      (call-with-protected-continuation
        (lambda (continuation)
 	 (bind-condition-handler (list condition-type:system-call-error)
 	     (lambda (condition)
@@ -576,7 +578,7 @@ after the listing is made.)"
 	(channel (subprocess-output-channel process))
 	(buffer (make-string 512)))
     (channel-nonblocking channel)
-    (call-with-current-continuation
+    (call-with-protected-continuation
      (lambda (continuation)
        (bind-condition-handler (list condition-type:system-call-error)
 	   (lambda (condition)
@@ -639,10 +641,11 @@ Prefix arg means replace the region with it."
 		(mark (current-mark)))
 	    (let ((swap? (mark< point mark))
 		  (temp))
-	      (dynamic-wind
-	       (lambda () unspecific)
+	      (unwind-protect
 	       (lambda ()
 		 (set! temp (temporary-buffer " *shell-output*"))
+		 unspecific)
+	       (lambda ()
 		 (shell-command (make-region point mark)
 				(buffer-start temp)
 				directory

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.90 1991/11/14 22:49:16 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comred.scm,v 1.91 1992/02/04 04:01:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -60,22 +60,24 @@
 (define command-history-limit 30)
 (define command-reader-reset-thunk)
 (define command-reader-reset-continuation)
+(define command-reader-override-queue)
 
 (define (initialize-command-reader!)
   (set! keyboard-keys-read 0)
   (set! command-history (make-circular-list command-history-limit false))
   (set! command-reader-reset-thunk false)
+  (set! command-reader-override-queue (make-queue))
   unspecific)
 
 (define (top-level-command-reader initialization)
   (let loop ((initialization initialization))
     (with-keyboard-macro-disabled
      (lambda ()
-       (call-with-current-continuation
+       (call-with-protected-continuation
 	(lambda (continuation)
 	  (fluid-let ((command-reader-reset-continuation continuation))
-	    (dynamic-wind
-	     (lambda () unspecific)
+	    (unwind-protect
+	     false
 	     (lambda ()
 	       (intercept-^G-interrupts (lambda () unspecific)
 		 (lambda ()
@@ -91,6 +93,9 @@
 (define (command-reader/reset-and-execute thunk)
   (set! command-reader-reset-thunk thunk)
   (command-reader-reset-continuation false))
+
+(define (override-next-command! override)
+  (enqueue! command-reader-override-queue override))
 
 (define (command-reader #!optional initialization)
   (define (command-reader-loop)
@@ -100,7 +105,7 @@
     (command-reader-loop))
 
   (define (with-command-variables start-next-command)
-    (call-with-current-continuation
+    (call-with-protected-continuation
      (lambda (continuation)
        (fluid-let ((*command-continuation* continuation)
 		   (*command-key* false)
@@ -113,20 +118,22 @@
 
   (define (start-next-command)
     (reset-command-state!)
-    (let ((key (with-editor-interrupts-disabled keyboard-read)))
-      (set! *command-key* key)
-      (clear-message)
-      (set-command-prompt!
-       (if (not (command-argument))
-	   (key-name key)
-	   (string-append-separated (command-argument-prompt)
-				    (key-name key))))
-      (let ((window (current-window)))
-	(%dispatch-on-command window
-			      (comtab-entry (buffer-comtabs
-					     (window-buffer window))
-					    key)
-			      false)))
+    (if (queue-empty? command-reader-override-queue)
+	(let ((key (with-editor-interrupts-disabled keyboard-read)))
+	  (set! *command-key* key)
+	  (clear-message)
+	  (set-command-prompt!
+	   (if (not (command-argument))
+	       (key-name key)
+	       (string-append-separated (command-argument-prompt)
+					(key-name key))))
+	  (let ((window (current-window)))
+	    (%dispatch-on-command window
+				  (comtab-entry (buffer-comtabs
+						 (window-buffer window))
+						key)
+				  false)))
+	((dequeue! command-reader-override-queue)))
     (start-next-command))
 
   (fluid-let ((*last-command* false)
@@ -238,7 +245,7 @@
   (%dispatch-on-command (current-window)
 			command
 			(if (default-object? record?) false record?)))
-
+
 (define (%dispatch-on-command window command record?)
   (set! *command* command)
   (guarantee-command-loaded command)
@@ -260,35 +267,37 @@
 		      (and (eq? command (ref-command-object auto-fill-space))
 			   (not (auto-fill-break? point)))
 		      (command-argument-self-insert? command)))
-	     (if (or (= *non-undo-count* 0)
-		     (>= *non-undo-count* 20))
-		 (begin
-		   (set! *non-undo-count* 0)
-		   (undo-boundary! point)))
-	     (set! *non-undo-count* (+ *non-undo-count* 1))
 	     (let ((key *command-key*))
 	       (if (let ((buffer (window-buffer window)))
 		     (and (buffer-auto-save-modified? buffer)
 			  (null? (cdr (buffer-windows buffer)))
 			  (line-end? point)
 			  (char-graphic? key)
-			  (< point-x (- (window-x-size window) 1))))
-		   (window-direct-output-insert-char! window key)
-		   (region-insert-char! point key))))
+			  (fix:< point-x (fix:- (window-x-size window) 1))))
+		   (begin
+		     (if (fix:< *non-undo-count* 20)
+			 (set! *non-undo-count* (fix:+ *non-undo-count* 1))
+			 (begin
+			   (set! *non-undo-count* 1)
+			   (undo-boundary! point)))
+		     (window-direct-output-insert-char! window key))
+		   (begin
+		     (set! *non-undo-count* 0)
+		     (undo-boundary! point)
+		     (region-insert-char! point key)))))
 	    ((eq? command (ref-command-object forward-char))
 	     (if (and (not (group-end? point))
 		      (char-graphic? (mark-right-char point))
-		      (< point-x (- (window-x-size window) 2))
-		      (null? (group-move-point-daemons
-			      (mark-group point))))
+		      (fix:< point-x (fix:- (window-x-size window) 2))
+		      (null? (group-move-point-daemons (mark-group point))))
 		 (window-direct-output-forward-char! window)
 		 (normal)))
 	    ((eq? command (ref-command-object backward-char))
 	     (if (and (not (group-start? point))
 		      (char-graphic? (mark-left-char point))
-		      (< 0 point-x (- (window-x-size window) 1))
-		      (null? (group-move-point-daemons
-			      (mark-group point))))
+		      (fix:< 0 point-x)
+		      (fix:< point-x (fix:- (window-x-size window) 1))
+		      (null? (group-move-point-daemons (mark-group point))))
 		 (window-direct-output-backward-char! window)
 		 (normal)))
 	    (else

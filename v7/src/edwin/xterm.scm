@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.24 1991/11/26 08:03:42 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/xterm.scm,v 1.25 1992/02/04 04:04:50 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,9 +48,6 @@
 (declare (usual-integrations))
 
 (define-primitives
-  (clear-interrupts! 1)
-  (real-timer-clear 0)
-  (real-timer-set 2)
   (x-open-display 1)
   (x-close-all-displays 0)
   (x-close-display 1)
@@ -85,6 +82,26 @@
   (xterm-write-substring! 7)
   (xterm-x-size 1)
   (xterm-y-size 1))
+
+;; These constants must match "microcode/x11base.c"
+(define-integrable event:process-output -2)
+(define-integrable event:process-status -3)
+(define-integrable event:interrupt -4)
+(define-integrable event-type:button-down 0)
+(define-integrable event-type:button-up 1)
+(define-integrable event-type:configure 2)
+(define-integrable event-type:enter 3)
+(define-integrable event-type:focus-in 4)
+(define-integrable event-type:focus-out 5)
+(define-integrable event-type:key-press 6)
+(define-integrable event-type:leave 7)
+(define-integrable event-type:motion 8)
+(define-integrable event-type:expose 9)
+(define-integrable number-of-event-types 10)
+
+;; This mask contains button-down, button-up, configure, focus-in,
+;; key-press, and expose.
+(define-integrable event-mask #x257)
 
 (define-structure (xterm-screen-state
 		   (constructor make-xterm-screen-state (xterm display))
@@ -157,7 +174,7 @@
 	     (loop (cdr screens))))))
 
 (define (xterm-screen/wrap-update! screen thunk)
-  (dynamic-wind
+  (unwind-protect
    (lambda ()
      (xterm-enable-cursor (screen-xterm screen) false))
    thunk
@@ -233,201 +250,190 @@
 
 ;;;; Event Handling
 
-(define-integrable control-bucky-bit 2)
-
 (define (get-xterm-input-operations)
   (let ((display x-display-data)
 	(queue x-display-events)
-	(bucky-bits 0)
-	(keysym false)
-	(special-key? false)
+	(pending-key false)
 	(string false)
 	(start 0)
 	(end 0)
 	(pending-event false))
-    (let ((process-key-press-event
+    (let ((get-next-event
+	   (lambda (time-limit)
+	     (if pending-event
+		 (let ((event pending-event))
+		   (set! pending-event false)
+		   event)
+		 (read-event queue display time-limit))))
+	  (process-key-press-event
 	   (lambda (event)
 	     (set! string (vector-ref event 2))
-	     (set! bucky-bits (vector-ref event 3))
-	     (set! keysym (vector-ref event 4))
-	     (set! start 0)
 	     (set! end (string-length string))
-	     (set! special-key? (zero? end))
-	     (if (and signal-interrupts?
-		      (not special-key?))
-		 (let ((i (string-find-previous-char string #\BEL)))
-		   (if i
-		       (begin
-			 (set! start (fix:+ i 1))
-			 (signal-interrupt!))))))))
-      (let ((get-next-event
+	     (set! start end)
+	     (cond ((fix:= end 0)
+		    (set! pending-key
+			  (x-make-special-key (vector-ref event 4)
+					      (vector-ref event 3)))
+		    true)
+		   ((fix:= end 1)
+		    (let ((char
+			   (if (or (fix:= (vector-ref event 3) 0)
+				   (fix:= (vector-ref event 3) 2))
+			       (string-ref string 0)
+			       (make-char (char-code (string-ref string 0))
+					  (fix:andc (vector-ref event 3) 2)))))
+		      (if (and signal-interrupts? (char=? char #\BEL))
+			  (begin
+			    (set! pending-key false)
+			    (signal-interrupt!)
+			    false)
+			  (begin
+			    (set! pending-key char)
+			    true))))
+		   (else
+		    (set! start 0)
+		    (set! pending-key false)
+		    (if signal-interrupts?
+			(let ((i (string-find-previous-char string #\BEL)))
+			  (if i
+			      (begin
+				(set! start (fix:+ i 1))
+				(signal-interrupt!)
+				(fix:< start end))
+			      true))
+			true))))))
+      (let ((read-until-key
 	     (lambda (time-limit)
-	       (if pending-event
-		   (let ((event pending-event))
-		     (set! pending-event false)
-		     event)
-		   (read-event queue display time-limit)))))
-	(let ((guarantee-input
-	       (lambda ()
-		 (let loop ()
-		   (let ((event (get-next-event false)))
-		     (cond ((not event)
-			    (error "#F returned from blocking read"))
-			   ((eq? true event)
-			    false)
-			   ((fix:= event-type:key-press
-				   (vector-ref event 0))
-			    (process-key-press-event event)
-			    (if (or special-key? (fix:< start end))
-				true
-				(loop)))
+	       (let loop ()
+		 (let ((event (get-next-event time-limit)))
+		   (cond ((not event)
+			  (if (not time-limit)
+			      (error "#F returned from blocking read"))
+			  false)
+			 ((not (vector? event))
+			  (process-change-event event)
+			  (loop))
+			 ((fix:= event-type:key-press (vector-ref event 0))
+			  (or (process-key-press-event event) (loop)))
+			 (else
+			  (process-special-event event)
+			  (loop))))))))
+	(values
+	 (lambda ()			;halt-update?
+	   (or pending-key
+	       (fix:< start end)
+	       pending-event
+	       (let ((event (get-next-event 0)))
+		 (if event (set! pending-event event))
+		 event)))
+	 (lambda ()			;char-ready?
+	   (or pending-key
+	       (fix:< start end)
+	       (read-until-key 0)))
+	 (letrec ((peek-char
+		   (lambda ()
+		     (or pending-key
+			 (if (fix:< start end)
+			     (string-ref string start)
+			     (begin
+			       (read-until-key false)
+			       (peek-char)))))))
+	   peek-char)
+	 (letrec ((read-char
+		   (lambda ()
+		     (cond (pending-key
+			    => (lambda (key)
+				 (set! pending-key false)
+				 key))
+			   ((fix:< start end)
+			    (let ((char (string-ref string start)))
+			      (set! start (fix:+ start 1))
+			      char))
 			   (else
-			    (process-special-event event)
-			    (loop)))))))
-	      (apply-bucky-bits
-	       (lambda (character)
-		 (if (and (zero? start)
-			  (= end 1))
-		     (make-char (char-code character)
-				(fix:andc bucky-bits
-					  control-bucky-bit))
-		     character))))
-	  (values
-	   (lambda ()			;halt-update?
-	     (if (or special-key? (fix:< start end) pending-event)
-		 true
-		 (let ((event (get-next-event 0)))
-		   (and event
-			(begin
-			  (set! pending-event event)
-			  true)))))
-	   (lambda ()			;char-ready?
-	     (if (or special-key? (fix:< start end))
-		 true
-		 (let loop ()
-		   (let ((event (get-next-event 0)))
-		     (cond ((or (not event) (eq? true event))
-			    false)
-			   ((fix:= event-type:key-press (vector-ref event 0))
-			    (process-key-press-event event)
-			    (if (or special-key? (fix:< start end))
-				true
-				(loop)))
-			   (else
-			    (process-special-event event)
-			    (loop)))))))
-	   (lambda ()			;peek-char
-	     (and (or special-key? (fix:< start end) (guarantee-input))
-		  (if special-key?
-		      (x-make-special-key keysym bucky-bits)
-		      (apply-bucky-bits (string-ref string start)))))
-	   (lambda ()			;read-char
-	     (and (or special-key? (fix:< start end) (guarantee-input))
-		  (if special-key?
-		      (begin (set! special-key? false)
-			     (x-make-special-key keysym bucky-bits))
-		      (let ((char
-			     (apply-bucky-bits
-			      (string-ref string start))))
-			(set! start (fix:+ start 1))
-			char))))))))))
+			    (read-until-key false)
+			    (read-char))))))
+	   read-char))))))
 
 (define (read-event queue display time-limit)
-  ;; If no time-limit, we're reading from the keyboard.  In that case,
-  ;; make sure that asynchronous input is reenabled afterwards.
-  (let ((reenable? (if time-limit allow-asynchronous-input? true)))
-    (set! allow-asynchronous-input? false)
+  (unwind-protect
+   (lambda ()
+     (lock-thread-mutex event-stream-mutex))
+   (lambda ()
+     (let loop ()
+       (let ((event
+	      (if (queue-empty? queue)
+		  (if (and (not time-limit)
+			   (other-running-threads?))
+		      ;; Don't block process if any other threads
+		      ;; want to run.  Mutex will stop previewer.
+		      (or (x-display-process-events display 0)
+			  (begin
+			    (yield-current-thread)
+			    event:interrupt))
+		      (x-display-process-events display time-limit))
+		  (dequeue!/unsafe queue))))
+	 (cond ((eq? event event:interrupt)
+		(if inferior-thread-changes? event (loop)))
+	       ((and (vector? event)
+		     (fix:= (vector-ref event 0) event-type:expose))
+		(process-expose-event event)
+		(loop))
+	       (else event)))))
+   (lambda ()
+     (unlock-thread-mutex event-stream-mutex))))
+
+(define (preview-event-stream)
+  (detach-thread (current-thread))
+  (do () (false)
+    (lock-thread-mutex event-stream-mutex)
     (let loop ()
-      (let ((event
-	     (if (queue-empty? queue)
-		 (x-display-process-events display time-limit)
-		 (dequeue!/unsafe queue))))
-	(if (and (vector? event)
-		 (fix:= event-type:expose (vector-ref event 0)))
-	    (begin
-	      (process-expose-event event)
-	      (loop))
-	    (begin
-	      (set! allow-asynchronous-input? reenable?)
-	      event))))))
+      (let ((event (x-display-process-events x-display-data 0)))
+	(cond ((not (vector? event))
+	       (if (and event
+			(or (not (eq? event:interrupt event))
+			    inferior-thread-changes?)
+			(not (queued?/unsafe x-display-events event)))
+		   (enqueue!/unsafe x-display-events event)))
+	      ((and signal-interrupts?
+		    (fix:= event-type:key-press (vector-ref event 0))
+		    (string-find-next-char (vector-ref event 2) #\BEL))
+	       (clean-event-queue x-display-events)
+	       (signal-thread-event editor-thread signal-interrupt!))
+	      (else
+	       (enqueue!/unsafe x-display-events event)
+	       (loop)))))
+    (unlock-thread-mutex event-stream-mutex)
+    (sleep-current-thread previewer-interval)))
 
-(define (timer-interrupt-handler)
-  (if (and allow-asynchronous-input?
-	   (buffer-events x-display-events x-display-data signal-interrupts?))
-      (begin
-	;; Don't allow further asynchronous input until the command
-	;; loop has restarted (actually, until next attempt to read
-	;; from the keyboard).
-	(set! allow-asynchronous-input? false)
-	(signal-interrupt!))))
-
-(define allow-asynchronous-input?)
-
-(define (buffer-events queue display allow-interrupts?)
-  (let loop ()
-    (let ((event (x-display-process-events display 0)))
-      (cond ((not event)
-	     false)
-	    ((eq? true event)
-	     (accept-process-output)
-	     (notify-process-status-changes)
-	     (loop))
-	    ((and allow-interrupts?
-		  (fix:= event-type:key-press (vector-ref event 0))
-		  (string-find-next-char (vector-ref event 2) #\BEL))
-	     ;; Flush keyboard and mouse events from the input
-	     ;; queue.  Other events are harmless and must be
-	     ;; processed regardless.
-	     (do ((events
-		   (let loop ()
-		     (if (queue-empty? queue)
-			 '()
-			 (let ((event (dequeue!/unsafe queue)))
-			   (if (let ((type (vector-ref event 0)))
-				 (or (fix:= type event-type:button-down)
-				     (fix:= type event-type:button-up)
-				     (fix:= type event-type:key-press)
-				     (fix:= type event-type:motion)))
-			       (loop)
-			       (cons event (loop))))))
-		   (cdr events)))
-		 ((null? events))
-	       (enqueue!/unsafe queue (car events)))
-	     true)
-	    (else
-	     (enqueue!/unsafe queue event)
-	     (loop))))))
+(define (clean-event-queue queue)
+  ;; Flush keyboard and mouse events from the input queue.  Other
+  ;; events are harmless and must be processed regardless.
+  (do ((events (let loop ()
+		 (if (queue-empty? queue)
+		     '()
+		     (let ((event (dequeue!/unsafe queue)))
+		       (if (and (vector? event)
+				(let ((type (vector-ref event 0)))
+				  (or (fix:= type event-type:button-down)
+				      (fix:= type event-type:button-up)
+				      (fix:= type event-type:key-press)
+				      (fix:= type event-type:motion))))
+			   (loop)
+			   (cons event (loop))))))
+	       (cdr events)))
+      ((null? events))
+    (enqueue!/unsafe queue (car events))))
 
-;;; The values of these flags must be equal to the corresponding event
-;;; types in "microcode/x11base.c"
-
-(define-integrable event-type:button-down 0)
-(define-integrable event-type:button-up 1)
-(define-integrable event-type:configure 2)
-(define-integrable event-type:enter 3)
-(define-integrable event-type:focus-in 4)
-(define-integrable event-type:focus-out 5)
-(define-integrable event-type:key-press 6)
-(define-integrable event-type:leave 7)
-(define-integrable event-type:motion 8)
-(define-integrable event-type:expose 9)
-(define-integrable number-of-event-types 10)
-
-;; This mask contains button-down, button-up, configure, focus-in,
-;; key-press, and expose.
-(define-integrable event-mask #x257)
-
-(define event-handlers
-  (make-vector number-of-event-types false))
-
-(define-integrable (define-event-handler event-type handler)
-  (vector-set! event-handlers event-type handler))
-
-(define (process-special-event event)
-  (let ((handler (vector-ref event-handlers (vector-ref event 0)))
-	(screen (xterm->screen (vector-ref event 1))))
-    (if (and handler screen)
-	(handler screen event))))
+(define (process-change-event event)
+  (if (cond ((fix:= event event:process-output)
+	     (accept-process-output))
+	    ((fix:= event event:process-status)
+	     (handle-process-status-changes))
+	    ((fix:= event event:interrupt)
+	     (accept-thread-output))
+	    (else
+	     (error "Illegal change event:" event)))
+      (update-screens! false)))
 
 (define (process-expose-event event)
   (xterm-dump-rectangle (vector-ref event 1)
@@ -435,6 +441,18 @@
 			(vector-ref event 3)
 			(vector-ref event 4)
 			(vector-ref event 5)))
+
+(define (process-special-event event)
+  (let ((handler (vector-ref event-handlers (vector-ref event 0)))
+	(screen (xterm->screen (vector-ref event 1))))
+    (if (and handler screen)
+	(handler screen event))))
+
+(define event-handlers
+  (make-vector number-of-event-types false))
+
+(define-integrable (define-event-handler event-type handler)
+  (vector-set! event-handlers event-type handler))
 
 (define-event-handler event-type:configure
   (lambda (screen event)
@@ -477,52 +495,37 @@
 	   (select-screen screen))))))
 
 (define signal-interrupts?)
-(define timer-interval 1000)
+(define event-stream-mutex)
+(define previewer-interval 1000)
+
+(define (with-editor-interrupts-from-x receiver)
+  (fluid-let ((signal-interrupts? true)
+	      (event-stream-mutex (make-thread-mutex)))
+    (queue-initial-thread preview-event-stream)
+    (receiver (lambda (thunk) (thunk)) '())))
+
+(define (with-x-interrupts-enabled thunk)
+  (with-signal-interrupts true thunk))
+
+(define (with-x-interrupts-disabled thunk)
+  (with-signal-interrupts false thunk))
+
+(define (with-signal-interrupts enabled? thunk)
+  (let ((old))
+    (unwind-protect (lambda ()
+		      (set! old signal-interrupts?)
+		      (set! signal-interrupts? enabled?)
+		      unspecific)
+		    thunk
+		    (lambda ()
+		      (set! signal-interrupts? old)
+		      unspecific))))
 
 (define (signal-interrupt!)
   (editor-beep)
   (temporary-message "Quit")
   (^G-signal))
 
-(define (with-editor-interrupts-from-x receiver)
-  (fluid-let ((signal-interrupts? true)
-	      (timer-interrupt timer-interrupt-handler))
-    (dynamic-wind start-timer-interrupt
-		  (lambda ()
-		    (receiver
-		     (lambda (thunk)
-		       (dynamic-wind stop-timer-interrupt
-				     thunk
-				     start-timer-interrupt))
-		     '()))
-		  stop-timer-interrupt)))
-
-(define (set-x-timer-interval! interval)
-  (if (not (or (false? interval)
-	       (and (exact-integer? interval)
-		    (positive? interval))))
-      (error:wrong-type-argument interval false 'SET-X-TIMER-INTERVAL!))
-  (set! timer-interval interval)
-  (start-timer-interrupt))
-
-(define (x-timer-interval)
-  timer-interval)
-
-(define (start-timer-interrupt)
-  (if timer-interval
-      (real-timer-set timer-interval timer-interval)
-      (stop-timer-interrupt)))
-
-(define (stop-timer-interrupt)
-  (real-timer-clear)
-  (clear-interrupts! interrupt-bit/timer))
-
-(define (with-x-interrupts-enabled thunk)
-  (fluid-let ((signal-interrupts? true)) (thunk)))
-
-(define (with-x-interrupts-disabled thunk)
-  (fluid-let ((signal-interrupts? false)) (thunk)))
-
 (define x-display-type)
 (define x-display-data)
 (define x-display-events)
@@ -535,7 +538,6 @@
       (let ((display (x-open-display x-display-name)))
 	(set! x-display-data display)
 	(set! x-display-events (make-queue))
-	(set! allow-asynchronous-input? true)
 	display)))
 
 (define (initialize-package!)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.18 1991/11/26 08:02:59 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edtstr.scm,v 1.19 1992/02/04 04:02:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -120,7 +120,7 @@
 
 (define (with-current-button-event button-event thunk)
   (let ((old-button-event))
-    (dynamic-wind
+    (unwind-protect
      (lambda ()
        (set! old-button-event (editor-button-event current-editor))
        (set-editor-button-event! current-editor button-event)
@@ -128,10 +128,7 @@
        unspecific)
      thunk
      (lambda ()
-       (set! button-event (editor-button-event current-editor))
-       (set-editor-button-event! current-editor old-button-event)
-       (set! old-button-event false)
-       unspecific))))
+       (set-editor-button-event! current-editor old-button-event)))))
 
 (define button-record-type
   (make-record-type 'BUTTON '(NUMBER DOWN?)))

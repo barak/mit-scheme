@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.16 1992/01/09 17:55:24 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/artdebug.scm,v 1.17 1992/02/04 04:02:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -191,7 +191,7 @@ or #F meaning no limit."
 
 (define (debug-scheme-error condition error-type-name)
   (if in-debugger?
-      (exit-editor-and-signal-error condition)
+      (quit-editor-and-signal-error condition)
       (begin
 	(editor-beep)
 	(if (and (if in-debugger-evaluation?

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.35 1991/11/22 06:58:36 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/kmacro.scm,v 1.36 1992/02/04 04:03:23 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,29 +56,11 @@
 (define named-keyboard-macros (make-string-table))
 
 (define (with-keyboard-macro-disabled thunk)
-  (define old-executing)
-  (define old-defining)
-  (define new-executing false)
-  (define new-defining false)
-  (dynamic-wind (lambda ()
-		  (set! old-executing
-			(set! *executing-keyboard-macro?*
-			      (set! new-executing)))
-		  (set! old-defining
-			(set! *defining-keyboard-macro?*
-			      (set! new-defining)))
-		  (if (not (eq? old-defining *defining-keyboard-macro?*))
-		      (keyboard-macro-event)))
-		thunk
-		(lambda ()
-		  (set! new-executing
-			(set! *executing-keyboard-macro?*
-			      (set! old-executing)))
-		  (set! new-defining
-			(set! *defining-keyboard-macro?*
-			      (set! old-defining)))
-		  (if (not (eq? new-defining *defining-keyboard-macro?*))
-		      (keyboard-macro-event)))))
+  (fluid-let ((*executing-keyboard-macro?* false)
+	      (*defining-keyboard-macro?* false))
+    (unwind-protect keyboard-macro-event
+		    thunk
+		    keyboard-macro-event)))
 
 (define (keyboard-macro-disable)
   (set! *defining-keyboard-macro?* false)
@@ -87,7 +69,7 @@
 
 (define (keyboard-macro-event)
   (window-modeline-event! (current-window) 'KEYBOARD-MACRO-EVENT))
-
+
 (define (keyboard-macro-read-key)
   (let ((key (keyboard-macro-peek-key)))
     (set! *keyboard-macro-position* (cdr *keyboard-macro-position*))
@@ -110,7 +92,7 @@
 	      (*keyboard-macro-continuation*))
     (define (loop n)
       (set! *keyboard-macro-position* *macro)
-      (if (call-with-current-continuation
+      (if (call-with-protected-continuation
 	   (lambda (c)
 	     (set! *keyboard-macro-continuation* c)
 	     (command-reader)))

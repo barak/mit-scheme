@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.79 1991/11/04 21:55:39 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.80 1992/02/04 04:04:15 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -241,17 +241,17 @@
 	(old-text-end)
 	(new-text-start (make-permanent-mark group start false))
 	(new-text-end (make-permanent-mark group end true)))
-    (dynamic-wind (lambda ()
-		    (set! old-text-start (group-start-mark group))
-		    (set! old-text-end (group-end-mark group))
-		    (vector-set! group group-index:start-mark new-text-start)
-		    (vector-set! group group-index:end-mark new-text-end))
-		  thunk
-		  (lambda ()
-		    (set! new-text-start (group-start-mark group))
-		    (set! new-text-end (group-end-mark group))
-		    (vector-set! group group-index:start-mark old-text-start)
-		    (vector-set! group group-index:end-mark old-text-end)))))
+    (unwind-protect (lambda ()
+		      (set! old-text-start (group-start-mark group))
+		      (set! old-text-end (group-end-mark group))
+		      (vector-set! group group-index:start-mark new-text-start)
+		      (vector-set! group group-index:end-mark new-text-end))
+		    thunk
+		    (lambda ()
+		      (set! new-text-start (group-start-mark group))
+		      (set! new-text-end (group-end-mark group))
+		      (vector-set! group group-index:start-mark old-text-start)
+		      (vector-set! group group-index:end-mark old-text-end)))))
 
 (define (group-text-clip group start end)
   (let ((start (make-permanent-mark group start false))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.94 1991/07/09 22:52:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/screen.scm,v 1.95 1992/02/04 04:04:04 cph Exp $
 ;;;
-;;;	Copyright (c) 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -609,17 +609,17 @@
   (without-interrupts
    (lambda ()
      (let ((old-flag))
-       (dynamic-wind (lambda ()
-		       (set! old-flag (screen-in-update? screen))
-		       (set-screen-in-update?! screen true))
-		     (lambda ()
-		       ((screen-operation/wrap-update! screen)
-			screen
-			(lambda ()
-			  (and (thunk)
-			       (screen-update screen display-style)))))
-		     (lambda ()
-		       (set-screen-in-update?! screen old-flag)))))))
+       (unwind-protect (lambda ()
+			 (set! old-flag (screen-in-update? screen))
+			 (set-screen-in-update?! screen true))
+		       (lambda ()
+			 ((screen-operation/wrap-update! screen)
+			  screen
+			  (lambda ()
+			    (and (thunk)
+				 (screen-update screen display-style)))))
+		       (lambda ()
+			 (set-screen-in-update?! screen old-flag)))))))
 
 (define (screen-update screen force?)
   ;; Update the actual terminal screen based on the data in `new-matrix'.

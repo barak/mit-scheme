@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.33 1992/01/09 17:55:35 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/evlcom.scm,v 1.34 1992/02/04 04:02:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -356,7 +356,7 @@ kludge the mode line."
 				  (transcript-buffer))))))))
 		 value))))))
     (if (ref-variable enable-run-light?)
-	(dynamic-wind
+	(unwind-protect
 	 (lambda ()
 	   (set-variable! run-light "eval")
 	   (for-each (lambda (window)

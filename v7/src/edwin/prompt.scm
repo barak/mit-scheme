@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.151 1992/01/19 04:47:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/prompt.scm,v 1.152 1992/02/04 04:03:38 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -69,7 +69,7 @@
 
 (define (within-typein-edit thunk)
   (let ((value
-	 (call-with-current-continuation
+	 (call-with-protected-continuation
 	  (lambda (continuation)
 	    (fluid-let ((typein-edit-continuation continuation)
 			(typein-edit-depth (1+ typein-edit-depth))
@@ -79,7 +79,8 @@
 			(typein-saved-windows
 			 (cons (current-window)
 			       typein-saved-windows)))
-	      (dynamic-wind
+	      (unwind-protect
+	       false
 	       (lambda ()
 		 (let ((window (typein-window)))
 		   (select-window window)
@@ -88,8 +89,8 @@
 		     (make-typein-buffer-name typein-edit-depth)))
 		   (buffer-reset! (current-buffer))
 		   (reset-command-prompt!)
-		   (window-clear-override-message! window)))
-	       thunk
+		   (window-clear-override-message! window))
+		 (thunk))
 	       (lambda ()
 		 (let ((window (typein-window)))
 		   (select-window window)
@@ -607,21 +608,18 @@ a repetition of this command will exit."
 
 (define (temporary-typein-message string)
   (let ((point) (start) (end))
-    (dynamic-wind (lambda ()
-		    (set! point (current-point))
-		    (set! end (buffer-end (current-buffer)))
-		    (set! start (mark-right-inserting end))
-		    (insert-string string start)
-		    (set-current-point! start))
-		  (lambda ()
-		    (sit-for 2000))
-		  (lambda ()
-		    (delete-string start end)
-		    (set-current-point! point)
-		    (set! point)
-		    (set! start)
-		    (set! end)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (set! point (current-point))
+		      (set! end (buffer-end (current-buffer)))
+		      (set! start (mark-right-inserting end))
+		      unspecific)
+		    (lambda ()
+		      (insert-string string start)
+		      (set-current-point! start)
+		      (sit-for 2000))
+		    (lambda ()
+		      (delete-string start end)
+		      (set-current-point! point)))))
 
 ;;;; Character Prompts
 
@@ -655,7 +653,7 @@ a repetition of this command will exit."
 			    (fluid-let ((execute-extended-keys? false))
 			      (dispatch-on-command command)))
 			   chars))))))))))))
-
+
 ;;;; Confirmation Prompts
 
 (define (prompt-for-confirmation? prompt)

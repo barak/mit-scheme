@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.117 1992/01/06 21:50:40 markf Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/basic.scm,v 1.118 1992/02/04 04:01:10 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -275,22 +275,14 @@ With argument, saves visited file first."
     (if (prompt-for-yes-or-no? "Suspend Scheme")
 	(begin
 	  (if argument (save-buffer (current-buffer) false))
-	  (set! edwin-finalization
-		(lambda ()
-		  (set! edwin-finalization false)
-		  (quit)
-		  (edit)))
-	  (abort-edwin)))))
+	  (quit)))))
 
 (define-command suspend-edwin
   "Stop Edwin and return to Scheme."
   ()
   (lambda ()
     (if (prompt-for-yes-or-no? "Suspend Edwin")
-	(abort-edwin))))
-
-(define (abort-edwin)
-  (editor-abort *the-non-printing-object*))
+	(quit-editor))))
 
 (define-command save-buffers-kill-scheme
   "Offer to save each buffer, then kill Scheme.
@@ -299,12 +291,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
   (lambda (no-confirmation?)
     (save-some-buffers no-confirmation? true)
     (if (prompt-for-yes-or-no? "Kill Scheme")
-	(begin
-	  (set! edwin-finalization
-		(lambda ()
-		  (set! edwin-finalization false)
-		  (%exit)))
-	  (abort-edwin)))))
+	(%exit))))
 
 (define-command save-buffers-kill-edwin
   "Offer to save each buffer, then kill Edwin, returning to Scheme.
@@ -327,12 +314,7 @@ With prefix arg, silently save all file-visiting buffers, then kill."
 		      (begin
 			(for-each delete-process (process-list))
 			true))))
-	(begin
-	  (set! edwin-finalization
-		(lambda ()
-		  (set! edwin-finalization false)
-		  (reset-editor)))
-	  (abort-edwin)))))
+	(exit-editor))))
 
 ;;;; Comment Commands
 

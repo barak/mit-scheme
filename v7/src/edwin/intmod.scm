@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.40 1991/11/26 08:03:18 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/intmod.scm,v 1.41 1992/02/04 04:03:13 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -57,83 +57,87 @@ but prefix argument means prompt for different environment."
     (select-buffer
      (or (find-buffer initial-buffer-name)
 	 (let ((environment (evaluation-environment argument)))
-	   (start-inferior-repl! (create-buffer initial-buffer-name)
-				 environment
-				 (evaluation-syntax-table environment)
-				 false))))))
+	   (let ((buffer (create-buffer initial-buffer-name)))
+	     (start-inferior-repl! buffer
+				   environment
+				   (evaluation-syntax-table environment)
+				   false)
+	     buffer))))))
 
 (define (start-inferior-repl! buffer environment syntax-table message)
   (set-buffer-major-mode! buffer (ref-mode-object inferior-repl))
-  (let ((port (make-interface-port buffer)))
-    (attach-buffer-interface-port! buffer port)
-    (set-port/inferior-continuation! port command-reader-reset-continuation)
-    (add-buffer-initialization!
-     buffer
-     (lambda ()
-       (set-buffer-default-directory! buffer (working-directory-pathname))
-       (within-inferior port
-	 (lambda ()
-	   (fluid-let ((*^G-interrupt-handler* cmdl-interrupt/abort-nearest))
-	     (with-input-from-port port
-	       (lambda ()
-		 (with-output-to-port port
-		   (lambda ()
-		     (repl/start (make-repl false
-					    port
-					    environment
-					    syntax-table
-					    false
-					    '()
-					    user-initial-prompt)
-				 message))))))))))
-    buffer))
-
-(define (within-inferior port thunk)
-  (without-interrupts
+  (set-buffer-default-directory! buffer (working-directory-pathname))
+  (add-buffer-initialization!
+   buffer
    (lambda ()
-     (set-run-light! port true)
-     (update-screens! false)
-     (call-with-current-continuation
-      (lambda (continuation)
-	(set-port/editor-continuation! port continuation)
-	(let ((continuation (port/inferior-continuation port)))
-	  (set-port/inferior-continuation! port false)
-	  (within-continuation continuation thunk)))))))
-
-(define (within-editor port thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (without-interrupts
+     (create-thread
       (lambda ()
-	(set-port/inferior-continuation! port continuation)
-	(let ((continuation (port/editor-continuation port)))
-	  (set-port/editor-continuation! port false)
-	  (within-continuation continuation
-	    (lambda ()
-	      (set-run-light! port false)
-	      (thunk)))))))))
+	(let ((thread (current-thread)))
+	  (detach-thread thread)
+	  (let ((port (make-interface-port buffer thread)))
+	    (register-interface-port! port)
+	    (attach-buffer-interface-port! buffer port)
+	    (with-input-from-port port
+	      (lambda ()
+		(with-output-to-port port
+		  (lambda ()
+		    (repl/start (make-repl false
+					   port
+					   environment
+					   syntax-table
+					   false
+					   '()
+					   user-initial-prompt)
+				message))))))))))))
+
+(define (initialize-inferior-repls!)
+  (set! interface-ports '())
+  unspecific)
+
+(define (register-interface-port! port)
+  (set! interface-ports
+	(system-pair-cons (ucode-type weak-cons) port interface-ports))
+  unspecific)
+
+(define (accept-inferior-repl-output/unsafe)
+  (let loop ((ports interface-ports) (prev false) (output? false))
+    (if (null? ports)
+	output?
+	(let ((port (system-pair-car ports))
+	      (next (system-pair-cdr ports)))
+	  (cond ((not port)
+		 (if prev
+		     (system-pair-set-cdr! prev next)
+		     (set! interface-ports next))
+		 (loop next prev output?))
+		((or (not (null? (port/output-strings port)))
+		     (not (queue-empty? (port/output-queue port))))
+		 (process-output-queue port)
+		 (loop next ports true))
+		(else
+		 (loop next ports output?)))))))
+
+(define interface-ports)
 
-(define (invoke-inferior port result)
-  (within-inferior port (lambda () result)))
-
-(define (within-editor-temporarily port thunk)
-  (within-editor port
+(define (wait-for-input port level mode)
+  (enqueue-output-operation! port
+    (lambda (mark)
+      (if (not (group-start? mark))
+	  (guarantee-newlines 2 mark))
+      (undo-boundary! mark)))
+  (signal-thread-event editor-thread
     (lambda ()
-      (invoke-inferior port (thunk)))))
-
-(define (return-to-editor port level mode)
-  (within-editor port
-    (lambda ()
-      (process-output-queue port)
       (maybe-switch-modes! port mode)
-      (add-buffer-initialization! (port/buffer port)
-	(lambda ()
-	  (local-set-variable! mode-line-process
-			       (list (string-append ": " (or level "???") " ")
-				     'RUN-LIGHT))))
-      (let ((mark (port/mark port)))
-	(if (not (group-start? mark))
-	    (guarantee-newlines 2 mark))))))
+      (let ((buffer (port/buffer port)))
+	(define-variable-local-value! buffer
+	  (ref-variable-object mode-line-process)
+	  (list (string-append ": " (or level "???") " ") 'RUN-LIGHT))
+	(set-run-light! buffer false))))
+  (suspend-current-thread))
+
+(define (end-input-wait port)
+  (set-run-light! (port/buffer port) true)
+  (signal-thread-event (port/thread port) false))
 
 (define (maybe-switch-modes! port mode)
   (let ((buffer (port/buffer port)))
@@ -155,19 +159,27 @@ but prefix argument means prompt for different environment."
 
 (define (attach-buffer-interface-port! buffer port)
   (buffer-put! buffer 'INTERFACE-PORT port)
-  (add-buffer-initialization! buffer
-    (lambda ()
-      (local-set-variable! comint-input-ring (port/input-ring port))
-      (set-run-light! port false))))
+  (define-variable-local-value! buffer
+    (ref-variable-object comint-input-ring)
+    (port/input-ring port))
+  (set-run-light! buffer false))
+
+(define (set-run-light! buffer run?)
+  (define-variable-local-value! buffer (ref-variable-object run-light)
+    (if run? "run" "listen"))
+  (buffer-modeline-event! buffer 'RUN-LIGHT))
 
 (define-integrable (buffer-interface-port buffer)
   (buffer-get buffer 'INTERFACE-PORT))
 
-(define (set-run-light! port run?)
-  (let ((buffer (port/buffer port)))
-    (define-variable-local-value! buffer (ref-variable-object run-light)
-      (if run? "run" "listen"))
-    (buffer-modeline-event! buffer 'RUN-LIGHT)))
+(define (kill-buffer-inferior-repl buffer)
+  (let ((port (buffer-interface-port buffer)))
+    (if port
+	(begin
+	  (signal-thread-event (port/thread port)
+	    (lambda ()
+	      (exit-current-thread unspecific)))
+	  (buffer-remove! buffer 'INTERFACE-PORT)))))
 
 ;;;; Modes
 
@@ -242,7 +254,8 @@ Additionally, these commands abort the debugger:
 
 (define (interrupt-command interrupt)
   (lambda ()
-    (within-inferior (buffer-interface-port (current-buffer)) interrupt)))
+    (signal-thread-event (port/thread (buffer-interface-port (current-buffer)))
+      interrupt)))
 
 (define-command inferior-repl-breakpoint
   "Force the inferior REPL into a breakpoint."
@@ -294,36 +307,41 @@ If this is an error, the debugger examines the error condition."
 		(or (let ((cmdl (port/inferior-cmdl port)))
 		      (and (repl? cmdl)
 			   (repl/condition cmdl)))
-		    (port/inferior-continuation port)))))
+		    (thread-continuation (port/thread port))))))
 	  (buffer-put! browser 'INVOKE-CONTINUATION
 	    (lambda (continuation arguments)
 	      (if (not (buffer-alive? buffer))
 		  (editor-error
 		   "Can't continue; REPL buffer no longer exists!"))
-	      (select-buffer buffer)
-	      (within-continuation *command-continuation*
+	      (signal-thread-event (port/thread port)
 		(lambda ()
-		  (within-inferior port
-		    (lambda ()
-		      (apply continuation arguments)))
-		  'ABORT))))
+		  ;; This call to UNBLOCK-THREAD-EVENTS is a kludge.
+		  ;; The continuation should be able to decide whether
+		  ;; or not to unblock, but that isn't so right now.
+		  ;; As a default, having them unblocked is better
+		  ;; than having them blocked.
+		  (unblock-thread-events)
+		  (apply continuation arguments)))))
 	  (select-buffer browser))))))
 
 (define (port/inferior-cmdl port)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (within-continuation (port/inferior-continuation port)
-       (lambda ()
-	 (continuation (nearest-cmdl)))))))
+  (let ((thread (current-thread))
+	(cmdl false))
+    (signal-thread-event (port/thread port)
+      (lambda ()
+	(set! cmdl (nearest-cmdl))
+	(signal-thread-event thread false)))
+    (do () (cmdl)
+      (suspend-current-thread))
+    cmdl))
 
 (define-command inferior-debugger-self-insert
   "Send this character to the inferior debugger process."
   ()
   (lambda ()
-    (invoke-inferior (buffer-interface-port (current-buffer))
-		     (last-command-key))))
-
-;;;; Evaluation
+    (let ((port (buffer-interface-port (current-buffer))))
+      (set-port/command-char! port (last-command-key))
+      (end-input-wait port))))
 
 (define (inferior-repl-eval-from-mark mark)
   (inferior-repl-eval-region mark (forward-sexp mark 1 'ERROR)))
@@ -345,39 +363,71 @@ If this is an error, the debugger examines the error condition."
 		      (begin
 			(enqueue! queue sexp)
 			(loop))))))))
-	(let ((empty (cons '() '())))
-	  (let ((expression (dequeue! queue empty)))
-	    (if (not (eq? expression empty))
-		(invoke-inferior port expression))))))))
+	(if (not (queue-empty? queue))
+	    (end-input-wait port))))))
+
+;;;; Queue
+
+(define-integrable (make-queue)
+  (cons '() '()))
+
+(define-integrable (queue-empty? queue)
+  (null? (car queue)))
+
+(declare (integrate-operator enqueue!/unsafe dequeue!/unsafe))
+
+(define (enqueue!/unsafe queue object)
+  (let ((next (cons object '())))
+    (if (null? (cdr queue))
+	(set-car! queue next)
+	(set-cdr! (cdr queue) next))
+    (set-cdr! queue next)))
+
+(define (dequeue!/unsafe queue empty)
+  (let ((this (car queue)))
+    (if (null? this)
+	empty
+	(begin
+	  (set-car! queue (cdr this))
+	  (if (null? (cdr this))
+	      (set-cdr! queue '()))
+	  (car this)))))
+
+(define (enqueue! queue object)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (enqueue!/unsafe queue object)
+    (set-interrupt-enables! interrupt-mask)))
 
 (define (dequeue! queue empty)
-  (without-interrupts
-   (lambda ()
-     (if (queue-empty? queue)
-	 empty
-	 (dequeue!/unsafe queue)))))
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((value (dequeue!/unsafe queue empty)))
+      (set-interrupt-enables! interrupt-mask)
+      value)))
 
 ;;;; Interface Port
 
-(define (make-interface-port buffer)
+(define (make-interface-port buffer thread)
   (port/copy interface-port-template
 	     (make-interface-port-state
+	      thread
 	      (mark-left-inserting-copy (buffer-end buffer))
 	      (make-ring (ref-variable comint-input-ring-size))
 	      (make-queue)
-	      (make-queue)
-	      '()
 	      false
-	      false)))
+	      (make-queue)
+	      '())))
 
 (define-structure (interface-port-state (conc-name interface-port-state/))
+  (thread false read-only true)
   (mark false read-only true)
   (input-ring false read-only true)
   (expression-queue false read-only true)
+  command-char
   (output-queue false read-only true)
-  output-strings
-  editor-continuation
-  inferior-continuation)
+  output-strings)
+
+(define-integrable (port/thread port)
+  (interface-port-state/thread (port/state port)))
 
 (define-integrable (port/mark port)
   (interface-port-state/mark (port/state port)))
@@ -391,6 +441,12 @@ If this is an error, the debugger examines the error condition."
 (define-integrable (port/expression-queue port)
   (interface-port-state/expression-queue (port/state port)))
 
+(define-integrable (port/command-char port)
+  (interface-port-state/command-char (port/state port)))
+
+(define-integrable (set-port/command-char! port command-char)
+  (set-interface-port-state/command-char! (port/state port) command-char))
+
 (define-integrable (port/output-queue port)
   (interface-port-state/output-queue (port/state port)))
 
@@ -399,61 +455,17 @@ If this is an error, the debugger examines the error condition."
 
 (define-integrable (set-port/output-strings! port strings)
   (set-interface-port-state/output-strings! (port/state port) strings))
-
-(define-integrable (port/editor-continuation port)
-  (interface-port-state/editor-continuation (port/state port)))
-
-(define-integrable (set-port/editor-continuation! port continuation)
-  (set-interface-port-state/editor-continuation! (port/state port)
-						 continuation))
-
-(define-integrable (port/inferior-continuation port)
-  (interface-port-state/inferior-continuation (port/state port)))
-
-(define-integrable (set-port/inferior-continuation! port continuation)
-  (set-interface-port-state/inferior-continuation! (port/state port)
-						   continuation))
 
 ;;; Output operations
 
 (define (operation/write-char port char)
-  (set-port/output-strings! port
-			    (cons (string char)
-				  (port/output-strings port))))
+  (enqueue-output-string! port (string char)))
 
 (define (operation/write-substring port string start end)
-  (set-port/output-strings! port
-			    (cons (substring string start end)
-				  (port/output-strings port))))
-
-(define (process-output-queue port)
-  (synchronize-output port)
-  (let ((queue (port/output-queue port))
-	(mark (port/mark port)))
-    (let loop ()
-      (let ((operation (dequeue! queue false)))
-	(if operation
-	    (begin
-	      (operation mark)
-	      (loop)))))))
+  (enqueue-output-string! port (substring string start end)))
 
 (define (operation/fresh-line port)
   (enqueue-output-operation! port guarantee-newline))
-
-(define (enqueue-output-operation! port operator)
-  (synchronize-output port)
-  (enqueue! (port/output-queue port) operator))
-
-(define (synchronize-output port)
-  (without-interrupts
-   (lambda ()
-     (let ((strings (port/output-strings port)))
-       (set-port/output-strings! port '())
-       (if (not (null? strings))
-	   (enqueue! (port/output-queue port)
-		     (let ((string (apply string-append (reverse! strings))))
-		       (lambda (mark)
-			 (region-insert-string! mark string)))))))))
 
 (define (operation/x-size port)
   (let ((buffer (port/buffer port)))
@@ -461,6 +473,45 @@ If this is an error, the debugger examines the error condition."
 	 (let ((windows (buffer-windows buffer)))
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
+
+(define (enqueue-output-string! port string)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (set-port/output-strings! port (cons string (port/output-strings port)))
+    (set! inferior-thread-changes? true)
+    (set-interrupt-enables! interrupt-mask)))
+
+(define (enqueue-output-operation! port operator)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((strings (port/output-strings port)))
+      (if (not (null? strings))
+	  (begin
+	    (set-port/output-strings! port '())
+	    (enqueue!/unsafe
+	     (port/output-queue port)
+	     (let ((string (apply string-append (reverse! strings))))
+	       (lambda (mark)
+		 (region-insert-string! mark string)))))))
+    (enqueue!/unsafe (port/output-queue port) operator)
+    (set! inferior-thread-changes? true)
+    (set-interrupt-enables! interrupt-mask)))
+
+(define (process-output-queue port)
+  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
+	(mark (port/mark port)))
+    (let loop ()
+      (let ((operation (dequeue!/unsafe (port/output-queue port) false)))
+	(if operation
+	    (begin
+	      (operation mark)
+	      (loop)))))
+    (let ((strings (port/output-strings port)))
+      (if (not (null? strings))
+	  (begin
+	    (set-port/output-strings! port '())
+	    (do ((strings (reverse! strings) (cdr strings)))
+		((null? strings))
+	      (region-insert-string! mark (car strings))))))
+    (set-interrupt-enables! interrupt-mask)))
 
 ;;; Input operations
 
@@ -474,12 +525,16 @@ If this is an error, the debugger examines the error condition."
   parser-table
   (read-expression port (number->string (nearest-cmdl/level))))
 
-(define (read-expression port level)
+(define read-expression
   (let ((empty (cons '() '())))
-    (let ((expression (dequeue! (port/expression-queue port) empty)))
-      (if (eq? expression empty)
-	  (return-to-editor port level (ref-mode-object inferior-repl))
-	  expression))))
+    (lambda (port level)
+      (let loop ()
+	(let ((expression (dequeue! (port/expression-queue port) empty)))
+	  (if (eq? expression empty)
+	      (begin
+		(wait-for-input port level (ref-mode-object inferior-repl))
+		(loop))
+	      expression))))))
 
 ;;; Debugger
 
@@ -500,24 +555,44 @@ If this is an error, the debugger examines the error condition."
 ;;; Prompting
 
 (define (operation/prompt-for-expression port prompt)
-  (within-editor-temporarily port
-    (lambda ()
-      (process-output-queue port)
-      (prompt-for-expression prompt))))
+  (unsolicited-prompt port prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
-  (within-editor-temporarily port
-    (lambda ()
-      (process-output-queue port)
-      (prompt-for-confirmation prompt))))
+  (unsolicited-prompt port prompt-for-confirmation prompt))
+
+(define unsolicited-prompt
+  (let ((unique (list false)))
+    (lambda (port procedure prompt)
+      (let ((value unique))
+	(signal-thread-event editor-thread
+	  (lambda ()
+	    ;; This is unlikely to work.  We've got to get a better
+	    ;; mechanism to handle this kind of stuff.
+	    (override-next-command!
+	     (lambda ()
+	       (set! value
+		     (cleanup-pop-up-buffers
+		      (lambda ()
+			(let ((buffer (port/buffer port)))
+			  (if (not (buffer-visible? buffer))
+			      (pop-up-buffer buffer false)))
+			(procedure prompt))))
+	       (signal-thread-event (port/thread port) false)))))
+	(do () ((not (eq? value unique)))
+	  (suspend-current-thread))
+	value))))
 
 (define (operation/prompt-for-command-expression port prompt)
   (read-expression port (parse-command-prompt prompt)))
 
 (define (operation/prompt-for-command-char port prompt)
-  (return-to-editor port
-		    (parse-command-prompt prompt)
-		    (ref-mode-object inferior-debugger)))
+  (set-port/command-char! port false)
+  (let ((level (parse-command-prompt prompt))
+	(mode (ref-mode-object inferior-debugger)))
+    (let loop ()
+      (wait-for-input port level mode)
+      (or (port/command-char port)
+	  (loop)))))
 
 (define (parse-command-prompt prompt)
   (and (re-match-string-forward (re-compile-pattern "\\([0-9]+\\) " false)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.60 1991/10/25 00:03:06 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regexp.scm,v 1.61 1992/02/04 04:03:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -80,7 +80,7 @@
 (define (preserving-match-data thunk)
   (let ((group unspecific)
 	(marks unspecific))
-    (dynamic-wind
+    (unwind-protect
      (lambda ()
        (set! group (object-unhash match-group))
        (set! marks
@@ -110,8 +110,6 @@
 			    (mark-temporary! mark)
 			    index))))
 		 marks))
-       (set! group unspecific)
-       (set! marks unspecific)
        unspecific))))
 
 (define-integrable (syntax-table-argument syntax-table)

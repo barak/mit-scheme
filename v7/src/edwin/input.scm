@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.90 1991/08/06 15:38:30 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/input.scm,v 1.91 1992/02/04 04:03:08 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -185,7 +185,7 @@ B 3BAB8C
   (if *executing-keyboard-macro?*
       (keyboard-macro-read-key)
       (let ((key (keyboard-read-1 (editor-read-char current-editor))))
-	(set! auto-save-keystroke-count (1+ auto-save-keystroke-count))
+	(set! auto-save-keystroke-count (fix:+ auto-save-keystroke-count 1))
 	(ring-push! (current-char-history) key)
 	(if *defining-keyboard-macro?* (keyboard-macro-write-key key))
 	key)))
@@ -204,14 +204,12 @@ B 3BAB8C
    (let ((char-ready? (editor-char-ready? current-editor)))
      (if (not (char-ready?))
 	 (begin
-	   (accept-process-output)
-	   (notify-process-status-changes)
 	   (update-screens! false)
 	   (if (let ((interval (ref-variable auto-save-interval))
 		     (count auto-save-keystroke-count))
-		 (and (positive? interval)
-		      (> count interval)
-		      (> count 20)))
+		 (and (fix:> count 20)
+		      (> interval 0)
+		      (> count interval)))
 	       (begin
 		 (do-auto-save)
 		 (set! auto-save-keystroke-count 0)))))
@@ -241,10 +239,4 @@ B 3BAB8C
 		    (set! command-prompt-displayed? true)
 		    (set-current-message! command-prompt-string))
 		  (clear-current-message!)))))
-     (let loop ()
-       (or (read-key)
-	   (begin
-	     (accept-process-output)
-	     (notify-process-status-changes)
-	     (update-screens! false)
-	     (loop)))))))
+     (read-key))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.48 1991/05/02 01:14:45 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/undo.scm,v 1.49 1992/02/04 04:04:28 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -58,6 +58,22 @@
   next-record				; position in vector
   chars					; string of characters
   next-char				; position in string
+  last-undo-record
+  last-undone-record
+  last-undone-char
+
+  ;; This counts the total number of records that have been undone,
+  ;; so that it can be compared to the total number of records, to
+  ;; determine if we have run out of records.
+  number-records-undone
+
+  ;; This says how many chars of undo are left.  It is initialized by
+  ;; the Undo command to the length of the chars string, and used,
+  ;; like NUMBER-RECORDS-UNDONE, to determine if we have run out of
+  ;; undo data.  This, however, is kept up to date by NEW-UNDO
+  ;; because there is no NOT-UNDOABLE boundary in the chars array to
+  ;; tell us where the chars end.
+  number-chars-left
   )
 
 (define-structure (undo-record
@@ -73,9 +89,6 @@
 	(vector-set! records index new-record)
 	new-record)))
 
-(define last-undo-group false)
-(define last-undo-record false)
-
 (define (enable-group-undo! group)
   (without-interrupts
    (lambda ()
@@ -87,26 +100,32 @@
 			records)
 		      0
 		      (string-allocate initial-undo-chars)
+		      0
+		      false
+		      false
+		      false
+		      0
 		      0)))))
 
 (define (disable-group-undo! group)
   (set-group-undo-data! group false))
 
 (define (with-group-undo-disabled group thunk)
-  (dynamic-wind (lambda () (disable-group-undo! group))
-		thunk
-		(if (group-undo-data group)
-		    (lambda () (enable-group-undo! group))
-		    (lambda () unspecific))))
+  (unwind-protect (lambda () (disable-group-undo! group))
+		  thunk
+		  (if (group-undo-data group)
+		      (lambda () (enable-group-undo! group))
+		      (lambda () unspecific))))
 
 (define (new-undo! undo-data type group start length)
+  group
   (let ((records (undo-data-records undo-data))
 	(index (undo-data-next-record undo-data)))
     (let ((undo-record (undo-records-ref records index)))
       (set-undo-record-type! undo-record type)
       (set-undo-record-start! undo-record start)
       (set-undo-record-length! undo-record length)
-      (set! last-undo-record undo-record))
+      (set-undo-data-last-undo-record! undo-data undo-record))
     (let ((next (+ index 1)))
       (cond ((< next (vector-length records))
 	     (mark-not-undoable! (undo-records-ref records next))
@@ -126,9 +145,8 @@
 	       (vector-set! new-records (- maximum-undo-records 1) max-record)
 	       (set-undo-data-records! undo-data new-records)
 	       (set-undo-data-next-record! undo-data next))))))
-  (set! last-undo-group group)
   (if (not (eq? 'BOUNDARY type))
-      (set! last-undone-record -1)))
+      (set-undo-data-last-undone-record! undo-data -1)))
 
 (define-integrable (mark-not-undoable! record)
   (set-undo-record-type! record 'NOT-UNDOABLE))
@@ -142,25 +160,33 @@
 	(cond ((> room needed)
 	       (substring-move-right! string start end chars i)
 	       (set-undo-data-next-char! undo-data (+ i needed))
-	       (set! number-chars-left (- number-chars-left needed)))
+	       (set-undo-data-number-chars-left!
+		undo-data
+		(- (undo-data-number-chars-left undo-data) needed)))
 	      ((= room needed)
 	       (substring-move-right! string start end chars i)
 	       (set-undo-data-next-char! undo-data 0)
-	       (set! number-chars-left (- number-chars-left needed)))
+	       (set-undo-data-number-chars-left!
+		undo-data
+		(- (undo-data-number-chars-left undo-data) needed)))
 	      ((< (string-length chars) maximum-undo-chars)
 	       (let ((new-chars (string-allocate maximum-undo-chars)))
 		 (substring-move-right! chars 0 i new-chars 0)
 		 (set-undo-data-chars! undo-data new-chars))
-	       (set! number-chars-left
+	       (set-undo-data-number-chars-left!
+		undo-data
 		     (+ (- maximum-undo-chars (string-length chars))
-			number-chars-left))
+			(undo-data-number-chars-left undo-data)))
 	       (loop start))
 	      (else
 	       (let ((new-start (+ start room)))
 		 (substring-move-right! string start new-start chars i)
 		 (set-undo-data-next-char! undo-data 0)
-		 (set! number-chars-left (- number-chars-left room))
-		 (loop new-start))))))))
+		 (set-undo-data-number-chars-left!
+		  undo-data
+		  (- (undo-data-number-chars-left undo-data) room))
+		 (loop new-start)))))))
+  unspecific)
 
 ;;;; External Recording Hooks
 
@@ -172,15 +198,8 @@
   (let ((undo-data (group-undo-data group)))
     (if undo-data
 	(begin
-	  (if (not (eq? group last-undo-group))
-	      (begin
-		(undo-mark-previous! undo-data
-				     'BOUNDARY
-				     group
-				     (mark-index (group-point group)))
-		(set! last-undo-record false)))
 	  (undo-mark-modified! group start undo-data)
-	  (let ((last last-undo-record)
+	  (let ((last (undo-data-last-undo-record undo-data))
 		(length (- end start)))
 	    (if (and last
 		     (eq? 'DELETE (undo-record-type last))
@@ -195,15 +214,8 @@
   (let ((undo-data (group-undo-data group)))
     (if undo-data
 	(begin
-	  (if (not (eq? group last-undo-group))
-	      (begin
-		(undo-mark-previous! undo-data
-				     'BOUNDARY
-				     group
-				     (mark-index (group-point group)))
-		(set! last-undo-record false)))
 	  (undo-mark-modified! group start undo-data)
-	  (let ((last last-undo-record)
+	  (let ((last (undo-data-last-undo-record undo-data))
 		(length (- end start)))
 	    (if (and last
 		     (eq? 'INSERT (undo-record-type last))
@@ -238,6 +250,19 @@
 				  'BOUNDARY
 				  group
 				  (mark-index point))))))))
+
+(define (undo-leave-window! window)
+  ;; Assumes that interrupts are disabled.
+  (let ((point (window-point window)))
+    (let ((group (mark-group point)))
+      (let ((undo-data (group-undo-data group)))
+	(if undo-data
+	    (begin
+	      (undo-mark-previous! undo-data
+				   'BOUNDARY
+				   group
+				   (mark-index point))
+	      (set-undo-data-last-undone-record! undo-data -1)))))))
 
 (define (undo-done! point)
   (without-interrupts
@@ -275,24 +300,6 @@
 
 ;;;; Undo Command
 
-;;; These keep track of the state of the Undo command, so that
-;;; subsequent invocations know where to start from.
-(define last-undone-record)
-(define last-undone-char)
-
-;;; This counts the total number of records that have been undone, so
-;;; that it can be compared to the total number of records, to
-;;; determine if we have run out of records.
-(define number-records-undone)
-
-;;; This says how many chars of undo are left.  It is initialized by
-;;; the Undo command to the length of the chars string, and used, like
-;;; NUMBER-RECORDS-UNDONE, to determine if we have run out of undo
-;;; data.  This, however, is kept up to date by NEW-UNDO because there
-;;; is no NOT-UNDOABLE boundary in the chars array to tell us where
-;;; the chars end.
-(define number-chars-left 0)
-
 ;;; Some error messages:
 
 (define cant-undo-more
@@ -323,15 +330,19 @@ A numeric argument serves as a repeat count."
 	       (lambda ()
 		 (command-message-receive undo-command-tag
 		   (lambda ()
-		     (if (= -1 last-undone-record)
+		     (if (= -1 (undo-data-last-undone-record undo-data))
 			 (editor-error cant-undo-more)))
 		   (lambda ()
-		     (set! number-records-undone 0)
-		     (set! number-chars-left
-			   (string-length (undo-data-chars undo-data)))
-		     (set! last-undone-record
-			   (undo-data-next-record undo-data))
-		     (set! last-undone-char (undo-data-next-char undo-data))
+		     (set-undo-data-number-records-undone! undo-data 0)
+		     (set-undo-data-number-chars-left!
+		      undo-data
+		      (string-length (undo-data-chars undo-data)))
+		     (set-undo-data-last-undone-record!
+		      undo-data
+		      (undo-data-next-record undo-data))
+		     (set-undo-data-last-undone-char!
+		      undo-data
+		      (undo-data-next-char undo-data))
 		     ;; This accounts for the boundary that is inserted
 		     ;; just before this command is called.
 		     (set! argument (+ argument 1))
@@ -347,13 +358,16 @@ A numeric argument serves as a repeat count."
 
 (define (count-records-to-undo undo-data argument)
   (let ((records (undo-data-records undo-data)))
-    (let find-nth-boundary ((argument argument) (i last-undone-record) (n 0))
+    (let find-nth-boundary
+	((argument argument)
+	 (i (undo-data-last-undone-record undo-data))
+	 (n 0))
       (let find-boundary ((i i) (n n) (any-records? false))
 	(let ((i (- (if (= i 0) (vector-length records) i) 1))
-	      (n (+ n 1)))
-	  (set! number-records-undone (+ number-records-undone 1))
-	  (if (> number-records-undone (vector-length records))
-	      (editor-error no-more-undo))
+	      (n (+ n 1))
+	      (n-undone (+ (undo-data-number-records-undone undo-data) 1)))
+	  (set-undo-data-number-records-undone! undo-data n-undone)
+	  (if (> n-undone (vector-length records)) (editor-error no-more-undo))
 	  (case (undo-record-type (vector-ref records i))
 	    ((BOUNDARY)
 	     (if (= argument 1)
@@ -365,12 +379,13 @@ A numeric argument serves as a repeat count."
 	     ;; Treat this as if it were a BOUNDARY record.
 	     n)
 	    ((INSERT)
-	     (set! number-chars-left
-		   (- number-chars-left
-		      (undo-record-length (vector-ref records i))))
-	     (if (< number-chars-left 0)
-		 (editor-error no-more-undo))
-	     (find-boundary i n true))
+	     (let ((n-left
+		    (- (undo-data-number-chars-left undo-data)
+		       (undo-record-length (vector-ref records i)))))
+	       (set-undo-data-number-chars-left! undo-data n-left)
+	       (if (< n-left 0)
+		   (editor-error no-more-undo))
+	       (find-boundary i n true)))
 	    (else
 	     (find-boundary i n true))))))))
 
@@ -381,9 +396,8 @@ A numeric argument serves as a repeat count."
     (do ((n n (- n 1)))
 	((= n 0))
       (let ((ir
-	     (- (if (= last-undone-record 0)
-		    (vector-length records)
-		    last-undone-record)
+	     (- (let ((record (undo-data-last-undone-record undo-data)))
+		  (if (= record 0) (vector-length records) record))
 		1)))
 	(let ((record (vector-ref records ir)))
 	  (let ((start (undo-record-start record)))
@@ -399,18 +413,19 @@ A numeric argument serves as a repeat count."
 	       (set-current-point! (make-mark group start)))
 	      ((INSERT)
 	       (set-current-point! (make-mark group start))
-	       (let ((ic (- last-undone-char (undo-record-length record))))
+	       (let* ((last-undone-char (undo-data-last-undone-char undo-data))
+		      (ic (- last-undone-char (undo-record-length record))))
 		 (if (>= ic 0)
 		     (begin
 		       (group-insert-substring! group start
 						chars ic last-undone-char)
-		       (set! last-undone-char ic))
+		       (set-undo-data-last-undone-char! undo-data ic))
 		     (let ((l (string-length chars)))
 		       (let ((ic* (+ l ic)))
 			 (group-insert-substring! group start chars ic* l)
 			 (group-insert-substring! group (- start ic)
 						  chars 0 last-undone-char)
-			 (set! last-undone-char ic*))))))
+			 (set-undo-data-last-undone-char! undo-data ic*))))))
 	      ((UNMODIFY)
 	       (if (eqv? (undo-record-length record)
 			 (buffer-modification-time buffer))
@@ -419,4 +434,4 @@ A numeric argument serves as a repeat count."
 	       unspecific)
 	      (else
 	       (error "Losing undo record type" (undo-record-type record))))))
-	(set! last-undone-record ir)))))
+	(set-undo-data-last-undone-record! undo-data ir)))))

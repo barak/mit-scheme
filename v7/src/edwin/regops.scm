@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.84 1991/08/16 20:29:22 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/regops.scm,v 1.85 1992/02/04 04:03:52 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -149,28 +149,23 @@
 (define (with-region-clipped! new-region thunk)
   (let ((group (region-group new-region))
 	(old-region))
-    (dynamic-wind (lambda ()
-		    (set! old-region (group-region group))
-		    (region-clip! new-region)
-		    (set! new-region)
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (set! new-region (group-region group))
-		    (region-clip! old-region)
-		    (set! old-region)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (set! old-region (group-region group))
+		      (region-clip! new-region)
+		      (set! new-region)
+		      unspecific)
+		    thunk
+		    (lambda ()
+		      (region-clip! old-region)))))
 
 (define (without-group-clipped! group thunk)
   (let ((old-region))
-    (dynamic-wind (lambda ()
-		    (set! old-region (group-region group))
-		    (group-widen! group))
-		  thunk
-		  (lambda ()
-		    (region-clip! old-region)
-		    (set! old-region)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (set! old-region (group-region group))
+		      (group-widen! group))
+		    thunk
+		    (lambda ()
+		      (region-clip! old-region)))))
 
 (define (group-clipped? group)
   (not (and (zero? (group-start-index group))

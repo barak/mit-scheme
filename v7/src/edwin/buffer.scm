@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.150 1992/01/09 17:45:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.151 1992/02/04 04:01:29 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -342,12 +342,12 @@ The buffer is guaranteed to be deselected at that time."
 (define (with-read-only-defeated mark thunk)
   (let ((group (mark-group mark))
 	(read-only?))
-    (dynamic-wind (lambda ()
-		    (set! read-only? (group-read-only? group))
-		    (if read-only? (set-group-writeable! group)))
-		  thunk
-		  (lambda ()
-		    (if read-only? (set-group-read-only! group))))))
+    (unwind-protect (lambda ()
+		      (set! read-only? (group-read-only? group))
+		      (set-group-writeable! group))
+		    thunk
+		    (lambda ()
+		      (if read-only? (set-group-read-only! group))))))
 
 ;;;; Local Bindings
 
@@ -451,7 +451,7 @@ The buffer is guaranteed to be deselected at that time."
 	   (vector-set! buffer
 			buffer-index:local-bindings-installed?
 			installed?))))
-    (dynamic-wind
+    (unwind-protect
      (lambda ()
        (let ((buffer (current-buffer)))
 	 (wind-bindings buffer true)

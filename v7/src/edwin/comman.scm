@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.67 1991/04/23 06:37:57 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.68 1992/02/04 04:01:39 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -187,14 +187,11 @@
 
 (define (with-variable-value! variable new-value thunk)
   (let ((old-value))
-    (dynamic-wind (lambda ()
-		    (set! old-value (variable-value variable))
-		    (set-variable-value! variable new-value)
-		    (set! new-value)
-		    unspecific)
-		  thunk
-		  (lambda ()
-		    (set! new-value (variable-value variable))
-		    (set-variable-value! variable old-value)
-		    (set! old-value)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (set! old-value (variable-value variable))
+		      (set-variable-value! variable new-value)
+		      (set! new-value)
+		      unspecific)
+		    thunk
+		    (lambda ()
+		      (set-variable-value! variable old-value)))))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.108 1991/10/11 03:33:27 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.109 1992/02/04 04:04:41 cph Exp $
 ;;;
-;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -416,9 +416,9 @@ Also kills any pop up window it may have created."
   (fluid-let ((*previous-popped-up-window* (object-hash false))
 	      (*previous-popped-up-buffer* (object-hash false))
 	      (*minibuffer-scroll-window* (object-hash false)))
-    (dynamic-wind (lambda () unspecific)
-		  thunk
-		  (lambda () (kill-pop-up-buffer false)))))
+    (unwind-protect false
+		    thunk
+		    (lambda () (kill-pop-up-buffer false)))))
 
 (define (kill-pop-up-buffer error-if-none?)
   (let ((window (object-unhash *previous-popped-up-window*)))

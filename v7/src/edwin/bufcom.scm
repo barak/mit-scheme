@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.90 1992/01/13 19:14:33 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufcom.scm,v 1.91 1992/02/04 04:01:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -229,15 +229,14 @@ Uses the visited file name, the -*- line, and the local variables spec."
 
 (define (call-with-temporary-buffer name procedure)
   (let ((buffer))
-    (dynamic-wind (lambda ()
-		    unspecific)
-		  (lambda ()
-		    (set! buffer (temporary-buffer name))
-		    (procedure buffer))
-		  (lambda ()
-		    (kill-buffer buffer)
-		    (set! buffer)
-		    unspecific))))
+    (unwind-protect (lambda ()
+		      (set! buffer (temporary-buffer name)))
+		    (lambda ()
+		      (procedure buffer))
+		    (lambda ()
+		      (kill-buffer buffer)
+		      (set! buffer)
+		      unspecific))))
 
 (define (temporary-buffer name)
   (let ((buffer (find-or-create-buffer name)))

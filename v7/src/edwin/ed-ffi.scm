@@ -207,6 +207,8 @@
 	       edwin-syntax-table)
     ("things"  (edwin)
 	       edwin-syntax-table)
+    ("thread"  (edwin thread)
+	       syntax-table/system-internal)
     ("tparse"  (edwin)
 	       edwin-syntax-table)
     ("tterm"   (edwin console-screen)

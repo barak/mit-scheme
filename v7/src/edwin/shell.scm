@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.8 1991/11/04 20:52:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/shell.scm,v 1.9 1992/02/04 04:04:10 cph Exp $
 
-Copyright (c) 1991 Massachusetts Institute of Technology
+Copyright (c) 1991-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -241,7 +241,7 @@ Otherwise, one argument `-i' is passed to the shell."
        (string->number string)))
 
 (define (shell-process-cd filename)
-  (call-with-current-continuation
+  (call-with-protected-continuation
    (lambda (continuation)
      (bind-condition-handler (list condition-type:editor-error)
 	 (lambda (condition)

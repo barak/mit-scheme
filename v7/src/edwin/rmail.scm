@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.13 1992/01/23 22:02:05 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/rmail.scm,v 1.14 1992/02/04 04:03:57 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -1877,21 +1877,21 @@ Leaves original message, deleted, before the undigestified messages."
 	(outside-end)
 	(inside-start (mark-permanent! (group-absolute-start group)))
 	(inside-end (mark-permanent! (group-absolute-end group))))
-    (dynamic-wind (lambda ()
-		    (set! outside-ro (group-read-only? group))
-		    (set! outside-start (group-start-mark group))
-		    (set! outside-end (group-end-mark group))
-		    (vector-set! group group-index:read-only? inside-ro)
-		    (vector-set! group group-index:start-mark inside-start)
-		    (vector-set! group group-index:end-mark inside-end))
-		  thunk
-		  (lambda ()
-		    (set! inside-ro (group-read-only? group))
-		    (set! inside-start (group-start-mark group))
-		    (set! inside-end (group-end-mark group))
-		    (vector-set! group group-index:read-only? outside-ro)
-		    (vector-set! group group-index:start-mark outside-start)
-		    (vector-set! group group-index:end-mark outside-end)))))
+    (unwind-protect (lambda ()
+		      (set! outside-ro (group-read-only? group))
+		      (set! outside-start (group-start-mark group))
+		      (set! outside-end (group-end-mark group))
+		      (vector-set! group group-index:read-only? inside-ro)
+		      (vector-set! group group-index:start-mark inside-start)
+		      (vector-set! group group-index:end-mark inside-end))
+		    thunk
+		    (lambda ()
+		      (set! inside-ro (group-read-only? group))
+		      (set! inside-start (group-start-mark group))
+		      (set! inside-end (group-end-mark group))
+		      (vector-set! group group-index:read-only? outside-ro)
+		      (vector-set! group group-index:start-mark outside-start)
+		      (vector-set! group group-index:end-mark outside-end)))))
 
 ;;;; Constants
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.73 1992/01/24 23:02:58 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.74 1992/02/04 04:02:51 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -193,6 +193,7 @@ MIT in each case. |#
 	  enable-group-undo!
 	  undo-boundary!
 	  undo-done!
+	  undo-leave-window!
 	  undo-record-deletion!
 	  undo-record-insertion!
 	  with-group-undo-disabled))
@@ -263,9 +264,7 @@ MIT in each case. |#
   (files "xterm")
   (parent (edwin))
   (export (edwin)
-	  set-x-timer-interval!
-	  x-display-type
-	  x-timer-interval)
+	  x-display-type)
   (export (edwin x-commands)
 	  screen-xterm)
   (initialization (initialize-package!)))
@@ -466,6 +465,7 @@ MIT in each case. |#
 	  keyboard-keys-read
 	  last-command
 	  last-command-key
+	  override-next-command!
 	  read-and-dispatch-on-key
 	  set-command-argument!
 	  set-command-message!
@@ -821,11 +821,11 @@ MIT in each case. |#
 	  find-program
 	  get-buffer-process
 	  get-process-by-name
+	  handle-process-status-changes
 	  hangup-process
 	  initialize-processes!
 	  interrupt-process
 	  kill-process
-	  notify-process-status-changes
 	  process-arguments
 	  process-arguments->string
 	  process-buffer
@@ -965,6 +965,7 @@ MIT in each case. |#
   (files "intmod")
   (parent (edwin))
   (export (edwin)
+	  accept-inferior-repl-output/unsafe
 	  edwin-command$inferior-debugger-self-insert
 	  edwin-command$inferior-repl-abort-nearest
 	  edwin-command$inferior-repl-abort-previous
@@ -976,6 +977,8 @@ MIT in each case. |#
 	  edwin-command$repl
 	  edwin-mode$inferior-debugger
 	  edwin-mode$inferior-repl
+	  initialize-inferior-repls!
+	  kill-buffer-inferior-repl
 	  start-inferior-repl!))
 
 (define-package (edwin bochser)
@@ -1016,3 +1019,36 @@ MIT in each case. |#
   (import (runtime debugger-utilities)
 	  show-environment-bindings)
   (initialization (initialize-bochser-mode!)))
+
+(define-package (edwin thread)
+  (files "thread")
+  (parent (edwin))
+  (export (edwin)
+	  allow-preempt-current-thread
+	  block-thread-events
+	  condition-type:thread-deadlock
+	  condition-type:thread-detached
+	  condition-type:thread-error
+	  create-initial-thread
+	  create-thread
+	  current-thread
+	  detach-thread
+	  disallow-preempt-current-thread
+	  exit-current-thread
+	  join-thread
+	  lock-thread-mutex
+	  make-thread-mutex
+	  other-running-threads?
+	  set-thread-root-continuation!
+	  signal-thread-event
+	  sleep-current-thread
+	  suspend-current-thread
+	  thread-continuation
+	  thread-dead?
+	  thread-mutex?
+	  thread?
+	  try-lock-thread-mutex
+	  unblock-thread-events
+	  unlock-thread-mutex
+	  within-thread-environment
+	  yield-current-thread))
