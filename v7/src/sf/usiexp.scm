@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.16 1993/08/30 22:16:55 jacob Exp $
+$Id: usiexp.scm,v 4.17 1993/08/31 20:53:51 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -463,7 +463,8 @@ MIT in each case. |#
 (define flo:flonum?-expansion (type-test-expansion (ucode-type big-flonum)))
 (define fix:fixnum?-expansion (type-test-expansion (ucode-type fixnum)))
 
-(define (exact-integer?-expansion expr operands if-expanded if-not-expanded block)
+(define (exact-integer?-expansion expr operands if-expanded if-not-expanded
+				  block)
   block
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -474,7 +475,8 @@ MIT in each case. |#
 	(make-type-test false (ucode-type big-fixnum) (car operands))))
       (if-not-expanded)))
 
-(define (exact-rational?-expansion expr operands if-expanded if-not-expanded block)
+(define (exact-rational?-expansion expr operands if-expanded if-not-expanded
+				   block)
   block
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -499,7 +501,7 @@ MIT in each case. |#
 	(make-type-test false (ucode-type big-flonum) (car operands))
 	(make-type-test false (ucode-type recnum) (car operands))))
       (if-not-expanded)))
-
+
 (define (make-disjunction expr . clauses)
   (let loop ((clauses clauses))
     (if (null? (cdr clauses))
@@ -512,7 +514,8 @@ MIT in each case. |#
 		    (ucode-primitive object-type?)
 		    (list (constant/make false type) operand)))
 
-(define (string->symbol-expansion expr operands if-expanded if-not-expanded block)
+(define (string->symbol-expansion expr operands if-expanded if-not-expanded
+				  block)
   block
   (if (and (pair? operands)
 	   (string? (car operands))
