@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.282 2002/02/22 16:07:34 cph Exp $
+;;; $Id: imail-top.scm,v 1.283 2002/03/25 16:35:51 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
@@ -877,21 +877,26 @@ This command writes the message to the output file in human-readable format,
 			   'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (pathname argument)
-    (let ((write-separator? (file-exists? pathname)))
-      (call-with-temporary-buffer " *imail-file-message*"
-	(lambda (buffer)
-	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-	    (move-relative-undeleted argument
-	      (lambda (message)
-		(if write-separator?
-		    (begin
-		      (insert-newline mark)
-		      (insert-chars #\= 79 mark)
-		      (insert-newlines 2 mark))
-		    (set! write-separator? #t))
-		(insert-message message #f 0 mark)))
-	    (mark-temporary! mark))
-	  (append-to-file (buffer-region buffer) pathname #t 'DEFAULT))))))
+    (let ((exists? (file-exists? pathname)))
+      (if (and exists? (file-folder-type pathname))
+	  ((ref-command imail-output)
+	   (url->string (make-pathname-url pathname))
+	   argument)
+	  (call-with-temporary-buffer " *imail-file-message*"
+	    (lambda (buffer)
+	      (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+		(move-relative-undeleted argument
+		  (lambda (message)
+		    (if exists?
+			(begin
+			  (insert-newline mark)
+			  (insert-chars #\= 79 mark)
+			  (insert-newlines 2 mark))
+			(set! exists? #t))
+		    (insert-message message #f 0 mark)))
+		(mark-temporary! mark))
+	      (append-to-file (buffer-region buffer) pathname #t
+			      'DEFAULT)))))))
 
 ;;;; Attachments
 
@@ -1766,7 +1771,7 @@ Negative argument means search in reverse."
 			    port
 			    (ref-variable imail-default-imap-mailbox
 					  #f)))))
-	((string-ci=? protocol "file") (make-file-url "~/RMAIL"))
+	((string-ci=? protocol "file") (make-pathname-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
 
 (define (imail-default-container)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.69 2001/09/28 00:41:25 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.70 2002/03/25 16:35:49 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -26,8 +26,8 @@
 (define-class <rmail-folder-type> (<file-folder-type>))
 
 (define-file-folder-type <rmail-folder-type> "Rmail"
-  (lambda (url)
-    (check-file-prefix (pathname-url-pathname url) "BABYL OPTIONS:")))
+  (lambda (pathname)
+    (check-file-prefix pathname "BABYL OPTIONS:")))
 
 ;;;; Server
 

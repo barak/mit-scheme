@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.50 2001/09/28 00:41:48 cph Exp $
+;;; $Id: imail-umail.scm,v 1.51 2002/03/25 16:35:54 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -26,8 +26,8 @@
 (define-class <umail-folder-type> (<file-folder-type>))
 
 (define-file-folder-type <umail-folder-type> "unix mail"
-  (lambda (url)
-    (check-file-prefix (pathname-url-pathname url) "From ")))
+  (lambda (pathname)
+    (check-file-prefix pathname "From ")))
 
 ;;;; Server operations
 

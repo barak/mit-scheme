@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.80 2001/09/28 00:41:21 cph Exp $
+;;; $Id: imail-file.scm,v 1.81 2002/03/25 16:35:46 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -46,12 +46,15 @@
 	(hash-table/datum-list file-folder-types))))
 
 (define (url-file-folder-type url)
+  (or (file-folder-type (pathname-url-pathname url))
+      (error "Unknown folder type:" url)))
+
+(define (file-folder-type pathname)
   (let loop ((types (hash-table/datum-list file-folder-types)))
-    (if (not (pair? types))
-	(error "Unknown folder type:" url))
-    (if ((file-folder-type-predicate (car types)) url)
-	(car types)
-	(loop (cdr types)))))
+    (and (pair? types)
+	 (if ((file-folder-type-predicate (car types)) pathname)
+	     (car types)
+	     (loop (cdr types))))))
 
 ;;;; URL
 
@@ -146,7 +149,7 @@
 
 (define-method folder-url-is-selectable? ((url <file-url>))
   (and (url-exists? url)
-       (url-file-folder-type url)
+       (file-folder-type (pathname-url-pathname url))
        #t))
 
 (define-method url-corresponding-container ((url <file-url>))
