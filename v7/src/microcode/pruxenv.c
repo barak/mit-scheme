@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.8 1992/06/10 21:39:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.9 1992/07/08 18:19:46 ziggy Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -158,21 +158,26 @@ DEFINE_PRIMITIVE ("FULL-HOSTNAME", Prim_full_hostname, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   {
-    char this_host_name[HOSTNAMESIZE];
+    char this_host_name [HOSTNAMESIZE];
 #ifdef HAVE_SOCKETS
     struct hostent * EXFUN (gethostbyname, (CONST char *));
-    struct hostent *this_host_entry;
+    struct hostent * this_host_entry;
 
-    STD_VOID_SYSTEM_CALL (syscall_gethostname,
-			  UX_gethostname (this_host_name, HOSTNAMESIZE));
+    STD_VOID_SYSTEM_CALL
+      (syscall_gethostname,
+       (UX_gethostname (this_host_name, HOSTNAMESIZE)));
 #else
     strcpy (this_host_name, "unknown-host.unknown.unknown");
 #endif
 
 #ifdef HAVE_SOCKETS
-    this_host_entry = gethostbyname (this_host_name);
+    this_host_entry = (gethostbyname (this_host_name));
     PRIMITIVE_RETURN
-      (char_pointer_to_string ((unsigned char *) (this_host_entry->h_name)));
+      (char_pointer_to_string
+       ((unsigned char *)
+	((this_host_entry == 0)
+	 ? this_host_name
+	 : (this_host_entry -> h_name))));
 #else
     PRIMITIVE_RETURN
       (char_pointer_to_string ((unsigned char *) this_host_name));
