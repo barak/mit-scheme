@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.58 1992/09/24 01:35:18 cph Exp $
+$Id: primutl.c,v 9.59 1992/09/24 01:35:49 cph Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -198,8 +198,6 @@ DEFUN (primitive_code_to_documentation, (number), long number)
 }
 
 /* Externally visible utilities */
-
-extern SCHEME_OBJECT EXFUN (make_primitive, (unsigned char *));
 
 extern SCHEME_OBJECT EXFUN
   (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
