@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.20 1990/09/11 20:45:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/uenvir.scm,v 14.21 1991/05/04 20:00:11 cph Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -288,15 +288,15 @@ MIT in each case. |#
 	     (let ((parent (dbg-block/parent block)))
 	       (case (dbg-block/type parent)
 		 ((STACK)
-		  (make-stack-ccenv
-		   parent
-		   frame
-		   (+ (dbg-continuation/offset object)
-		      (vector-length (dbg-block/layout-vector block)))))
+		  (make-stack-ccenv parent
+				    frame
+				    (+ (dbg-continuation/offset object)
+				       (dbg-block/length block))))
 		 ((IC)
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
-			(guarantee-ic-environment (stack-frame/ref frame index))
+			(guarantee-ic-environment
+			 (stack-frame/ref frame index))
 			default)))
 		 (else
 		  (error "Illegal continuation parent block" parent))))))
@@ -354,7 +354,7 @@ MIT in each case. |#
 		  (frame (stack-ccenv/frame environment))
 		  (index
 		   (+ (stack-ccenv/start-index environment)
-		      (vector-length (dbg-block/layout-vector block)))))
+		      (dbg-block/length block))))
 	       (let ((stack-link (dbg-block/stack-link block)))
 		 (cond ((not stack-link)
 			(with-values
@@ -381,7 +381,8 @@ MIT in each case. |#
 				    (dbg-continuation/offset
 				     (dbg-block/procedure stack-link)))
 				   (else
-				    (error "illegal stack-link type" stack-link)))
+				    (error "illegal stack-link type"
+					   stack-link)))
 				 index)))))))
 	    ((CLOSURE)
 	     (make-closure-ccenv (dbg-block/original-parent block)
@@ -461,41 +462,58 @@ MIT in each case. |#
 
 (define (stack-ccenv/static-link environment)
   (let ((static-link
-	 (stack-frame/ref
-	  (stack-ccenv/frame environment)
-	  (+ (stack-ccenv/start-index environment)
-	     (let ((index
-		    (dbg-block/static-link-index
-		     (stack-ccenv/block environment))))
-	       (if (not index)
-		   (error "unable to find static link" environment))
-	       index)))))
+	 (find-stack-element environment
+			     dbg-block/static-link-index
+			     "static link")))
     (if (not (or (stack-address? static-link)
 		 (interpreter-environment? static-link)))
-	(error "illegal static link in frame" static-link environment))
+	(error "Illegal static link in frame" static-link environment))
     static-link))
 
 (define (stack-ccenv/normal-closure environment)
   (let ((block (stack-ccenv/block environment)))
     (let ((closure
-	   (stack-frame/ref
-	    (stack-ccenv/frame environment)
-	    (+ (stack-ccenv/start-index environment)
-	       (let ((index (dbg-block/normal-closure-index block)))
-		 (if (not index)
-		     (error "unable to find closure" environment))
-		 index)))))
+	   (find-stack-element environment
+			       dbg-block/normal-closure-index
+			       "closure")))
       (if (not (compiled-closure? closure))
-	  (error "frame missing closure" closure environment))
+	  (error "Frame missing closure" closure environment))
 #|
       ;; Temporarily disable this consistency check until the compiler
       ;; is modified to provide the correct information for
       ;; multi-closed procedures.
       (if (not (eq? (compiled-entry/dbg-object closure)
 		    (dbg-block/procedure block)))
-	  (error "wrong closure in frame" closure environment))
+	  (error "Wrong closure in frame" closure environment))
 |#
       closure)))
+
+(define (find-stack-element environment procedure name)
+  (let ((frame (stack-ccenv/frame environment)))
+    (stack-frame/ref
+     frame
+     (let ((index
+	    (find-stack-index (stack-ccenv/block environment)
+			      (stack-ccenv/start-index environment)
+			      (stack-frame/length frame)
+			      procedure)))
+       (if (not index)
+	   (error (string-append "Unable to find " name) environment))
+       index))))
+
+(define (find-stack-index block start end procedure)
+  (let loop ((block block) (start start))
+    (let ((index (procedure block)))
+      (if index
+	  (+ start index)
+	  (let ((start (+ start (dbg-block/length block)))
+		(link (dbg-block/stack-link block)))
+	    (and link
+		 (< start end)
+		 (loop link start)))))))
+
+(define-integrable (dbg-block/length block)
+  (vector-length (dbg-block/layout-vector block)))
 
 (define-structure (closure-ccenv
 		   (named
