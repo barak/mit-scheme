@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.7 1995/02/21 23:20:02 cph Exp $
+$Id: os2graph.scm,v 1.8 1995/02/24 00:35:30 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -80,12 +80,13 @@ MIT in each case. |#
 	   (set-drawing-mode ,os2-graphics/set-drawing-mode)
 	   (set-font ,os2-graphics/set-font)
 	   (set-foreground-color ,os2-graphics/set-foreground-color)
-	   (set-image-colormap ,os2-graphics/set-image-colormap)
 	   (set-line-style ,os2-graphics/set-line-style)
+	   (set-window-name ,os2-graphics/set-window-title)
 	   (set-window-position ,os2-graphics/set-window-position)
 	   (set-window-size ,os2-graphics/set-window-size)
 	   (set-window-title ,os2-graphics/set-window-title)
 	   (window-position ,os2-graphics/window-position)
+	   (window-frame-size ,os2-graphics/window-frame-size)
 	   (window-size ,os2-graphics/window-size))))
   (1d-table/put!
    (graphics-type-properties os2-graphics-device-type)
@@ -166,12 +167,11 @@ MIT in each case. |#
   font-metrics
   (foreground-color #xFFFFFF)
   (background-color #x000000)
-  (image-colormap #f)
   device)
 
 (define (make-window wid width height)
   (let ((window (%make-window wid width height)))
-    (set-window/backing-image! window (create-image window width height))
+    (set-window/backing-image! window (create-image width height))
     (add-to-protection-list! window-list window wid)
     window))
 
@@ -831,14 +831,7 @@ MIT in each case. |#
   ps
   (width #f read-only #t)
   (height #f read-only #t)
-  (colormap #f read-only #t))
-
-(define (os2-graphics/set-image-colormap device colormap)
-  ;; Random kludge.  The 6.001 picture code assumes that the colormap
-  ;; information is stored in the window, but in OS/2 it should be
-  ;; associated with the image.  So this kludge stores the colormap in
-  ;; the window, where it is retrieved when an image is created.
-  (set-window/image-colormap! (graphics-device/descriptor device) colormap))
+  colormap)
 
 (define (os2-graphics/capture-image device x-left y-bottom x-right y-top)
   (let ((window (graphics-device/descriptor device)))
@@ -856,14 +849,23 @@ MIT in each case. |#
 	  image)))))
 
 (define (os2-image/create device width height)
-  (create-image (graphics-device/descriptor device) width height))
+  device
+  (create-image width height))
 
-(define (create-image window width height)
+(define (create-image width height)
   (let ((ps (os2ps-create-memory-ps)))
     (os2ps-set-bitmap ps (os2ps-create-bitmap ps width height))
-    (let ((image (make-image ps width height (window/image-colormap window))))
+    (let ((image (make-image ps width height #f)))
       (add-to-protection-list! image-list image ps)
       image)))
+
+(define (os2-image/set-colormap image colormap)
+  ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR doesn't accept a colormap
+  ;; argument to define how the bytes in the vector map into colors.
+  ;; But OS/2 needs this information in order to transform those bytes
+  ;; into a bitmap.  So this operation allows a colormap to be stored
+  ;; in the image and retrieved later.
+  (set-image/colormap! (image/descriptor image) colormap))
 
 (define (os2-image/destroy image)
   (destroy-image (image/descriptor image)))
@@ -916,7 +918,7 @@ MIT in each case. |#
 (define (os2-image/draw device x y image)
   (let ((window (graphics-device/descriptor device))
 	(image (image/descriptor image)))
-    (draw-image window
+    (draw-image device
 		(window/x->device window x)
 		(window/y->device window y)
 		image
@@ -929,7 +931,7 @@ MIT in each case. |#
 				 image-x image-y image-width image-height)
   (let ((window (graphics-device/descriptor device))
 	(image (image/descriptor image)))
-    (draw-image window
+    (draw-image device
 		(window/x->device window x)
 		(window/y->device window y)
 		image
@@ -941,14 +943,18 @@ MIT in each case. |#
 		image-width
 		image-height)))
 
-(define (draw-image window window-x window-y
+(define (draw-image device x-left y-top
 		    image image-x image-y image-width image-height)
-  (os2ps-bitblt (window/backing-store window)
-		(image/ps image)
-		(vector window-x (+ window-x image-width) image-x)
-		(vector window-y (+ window-y image-height) image-y)
-		ROP_SRCCOPY
-		BBO_OR))
+  (let ((y-top (+ y-top 1)))
+    (let ((x-right (+ x-left image-width))
+	  (y-bottom (- y-top image-height)))
+      (os2ps-bitblt (os2-graphics-device/psid device)
+		    (image/ps image)
+		    (vector x-left x-right image-x)
+		    (vector y-bottom y-top image-y)
+		    ROP_SRCCOPY
+		    BBO_OR)
+      (invalidate-rectangle device x-left x-right y-bottom y-top))))
 
 ;;;; Bitmap I/O
 
@@ -1086,7 +1092,7 @@ MIT in each case. |#
 (define make-bytes:bitmap-info-2)
 (define (make:make-bytes:bitmap-info-2)
   (let ((type (lookup-c-type "BITMAPINFO2")))
-    (call-with-values (lambda () (select-c-type type 0 "argbColor"))
+    (call-with-values (lambda () (select-c-type type 0 '("argbColor")))
       (lambda (rgb-type size-base)
 	(let ((size-increment (c-array-type/element-spacing rgb-type))
 	      (set-struct-size! (c-number-writer type 0 "cbFix"))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.246 1995/02/21 23:15:33 cph Exp $
+$Id: runtime.pkg,v 14.247 1995/02/24 00:35:44 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2331,7 +2331,8 @@ MIT in each case. |#
     (else))
   (parent ())
   (export ()
-	  os2-graphics-device-type)
+	  os2-graphics-device-type
+	  os2-image/set-colormap)
   (initialization (initialize-package!)))
 
 (define-package (runtime os2-window-primitives)
