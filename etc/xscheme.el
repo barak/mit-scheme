@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986-94 Free Software Foundation, Inc.
+;; Copyright (C) 1986-2000 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -20,7 +20,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Id: xscheme.el,v 1.37 1995/06/29 04:21:06 cph Exp $
+;;; $Id: xscheme.el,v 1.38 2000/01/05 06:25:53 cph Exp $
 
 (require 'scheme)
 
@@ -587,9 +587,12 @@ comes the newest one."
 The region is sent terminated by a newline."
   (interactive "r")
   (if (xscheme-process-buffer-current-p)
-      (progn (goto-char end)
-	     (set-marker (process-mark (get-process xscheme-process-name))
-			 end)))
+      (progn
+	(goto-char end)
+	(if (not (bolp))
+	    (insert-before-markers ?\n))
+	(set-marker (process-mark (get-process xscheme-process-name))
+		    (point))))
   (xscheme-send-string (buffer-substring start end)))
 
 (defun xscheme-send-definition ()
