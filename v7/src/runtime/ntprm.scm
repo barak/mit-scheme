@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.31 1999/04/07 04:09:03 cph Exp $
+$Id: ntprm.scm,v 1.32 1999/04/24 04:40:14 cph Exp $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 
@@ -340,7 +340,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((trydir
 	 (lambda (directory)
 	   (and directory
-		(file-directory? directory)))))
+		(file-directory? directory)
+		directory))))
     (let ((sysroot
 	   (or (trydir (get-environment-variable "SystemRoot"))
 	       (trydir (get-environment-variable "windir"))
