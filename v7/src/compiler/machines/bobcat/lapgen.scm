@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.39 1991/01/30 22:48:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/lapgen.scm,v 4.40 1991/03/24 23:53:14 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -176,19 +176,24 @@ MIT in each case. |#
       (INST (TST W (D ,d)))
       (INST (CMPI W (& ,n) (D ,d)))))
 
+(define (ea+=constant ea c)
+  (cond ((zero? c)
+	 (LAP))
+	((<= 1 c 8)
+	 (LAP (ADDQ L (& ,c) ,ea)))
+	((>= -1 c -8)
+	 (LAP (SUBQ L (& (- 0 ,c)) ,ea)))
+	((eq? (lap:ea-keyword ea) 'A)
+	 (LAP (LEA (@AO ,(lap:ea-operand-1 ea) ,c) ,ea)))
+	((<= -128 c 127)
+	 (let ((temp (reference-temporary-register! 'DATA)))
+	   (LAP (MOVEQ (& ,c) ,temp)
+		(ADD L ,temp ,ea))))
+	(else
+	 (LAP (ADD L (& ,c) ,ea)))))
+
 (define (increment-machine-register register n)
-  (let ((target (register-reference register)))
-    (cond ((zero? n) (LAP))
-	  ((<= 1 n 8) (LAP (ADDQ L (& ,n) ,target)))
-	  ((>= -1 n -8) (LAP (SUBQ L (& ,n) ,target)))
-	  ((not (< register 8))
-	   (LAP (LEA (@AO ,(- register 8) ,n) ,target)))
-	  ((<= -128 n 127)
-	   (let ((temp (reference-temporary-register! 'DATA)))
-	     (LAP (MOVEQ (& ,n) ,temp)
-		  (ADD L ,temp ,target))))
-	  (else
-	   (LAP (ADD L (& ,n) ,target))))))
+  (ea+=constant (register-reference register) n))
 
 (define (load-constant constant target)
   (if (non-pointer-object? constant)
@@ -257,7 +262,7 @@ MIT in each case. |#
 	   (zero? datum)
 	   (effective-address/data&alterable? effective-address))
       (INST (TST L ,effective-address))
-      (INST (CMPI L
+      (INST (CMPI UL
 		  (& ,(make-non-pointer-literal type datum))
 		  ,effective-address))))
 
@@ -1070,8 +1075,9 @@ MIT in each case. |#
 
 (define-integrable reg:compiled-memtop (INST-EA (@A 6)))
 (define-integrable reg:environment (INST-EA (@AO 6 #x000C)))
-(define-integrable reg:temp (INST-EA (@AO 6 #x0010)))
 (define-integrable reg:lexpr-primitive-arity (INST-EA (@AO 6 #x001C)))
+(define-integrable reg:closure-free (INST-EA (@AO 6 #x0024)))
+(define-integrable reg:closure-space (INST-EA (@AO 6 #X0028)))
 
 (let-syntax ((define-codes
 	       (macro (start . names)
@@ -1142,6 +1148,9 @@ MIT in each case. |#
     zero?
     positive?
     negative?
+    primitive-error
+    allocate-closure		; This doesn't have a code: counterpart.
+    closure-hook		; This doesn't have a code: counterpart.
     ))
 
 (define-integrable (invoke-interface code)

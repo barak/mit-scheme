@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.23 1991/02/05 03:50:50 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/machin.scm,v 4.24 1991/03/24 23:53:28 jinx Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -32,7 +32,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
-;;;; Machine Model for 68020
+;;;; Machine Model for the Motorola MC68K family
 ;;; package: (compiler)
 
 (declare (usual-integrations))
@@ -84,45 +84,135 @@ MIT in each case. |#
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
+
+;;;; Closure format
 
-;; This must return a word based offset.
-;; On the 68k, to save space, entries can be at 2 mod 4 addresses,
-;; which makes this impossible if the closure object used for
-;; referencing points to arbitrary entries.  Instead, all closure
-;; entry points bump to the canonical entry point, which is always
-;; longword aligned.
-;; On other machines (word aligned), it may be easier to bump back
-;; to each entry point, and the entry number `entry' would be part
-;; of the computation.
+;; There are two versions of the closure format.
+;; The MC68040 format can be used by all processors in the family,
+;; irrelevant of cache operation, but is slower.
+;; The MC68020 format can be used by all processors except the MC68040
+;; unless its data cache is operating in write-through mode (instead
+;; of store-in or copyback).
+;; MC68020-format closure entry points are not long-word aligned, thus
+;; they are canonicalized to the first entry point at call time.
+;; MC68040-format closure entry points are long-word aligned, and
+;; there is no canonicalization.
 
-(define (closure-first-offset nentries entry)
+;; When using the MC68020 format, to save space, entries can be at 2
+;; mod 4 addresses, thus if we used the entry points for environments,
+;; the requirement that all environment pointers be long-word aligned
+;; would be violated.  Instead, all closure entry points are bumped to
+;; the canonical entry point, which is always long-word aligned.
+
+#|
+   An MC68020-format closure entry:
+   	DC.W	<format word>, <GC offset word>
+	JSR	#target
+
+   Entries are not padded to long-word length.  The JSR-absolute
+   instruction is 6 bytes long, so the total size per entry is
+   10 bytes.
+|#
+
+(define (MC68020/closure-first-offset nentries entry)
   entry					; ignored
   (if (zero? nentries)
       1
       (quotient (+ (+ 3 1) (* 5 (- nentries 1))) 2)))
 
-;; This is from the start of the complete closure object,
-;; viewed as a vector, and including the header word.
-
-(define (closure-object-first-offset nentries)
+(define (MC68020/closure-object-first-offset nentries)
   (case nentries
     ((0) 1)
     ((1) 4)
     (else
      (quotient (+ 5 (* 5 nentries)) 2))))
 
-;; Bump from one entry point to another.
-
-(define (closure-entry-distance nentries entry entry*)
+(define (MC68020/closure-entry-distance nentries entry entry*)
   nentries				; ignored
   (* 10 (- entry* entry)))
 
-;; Bump to the canonical entry point.
+;; When using the MC68020 format, bump to the canonical entry point.
 
-(define (closure-environment-adjustment nentries entry)
-  (declare (integrate-operator closure-entry-distance))
-  (closure-entry-distance nentries entry 0))
+(define (MC68020/closure-environment-adjustment nentries entry)
+  (declare (integrate-operator MC68020/closure-entry-distance))
+  (MC68020/closure-entry-distance nentries entry 0))
+
+(define-integrable MC68040/closure-entry-size
+  #|
+     Long-words in a single closure entry:
+       DC.W	<format word>, <GC offset word>
+       JSR	closure_hook(a6)
+       DC.L	target
+  |#
+   3)
 
+(define (MC68040/closure-first-offset nentries entry)
+  entry					; ignored
+  (if (zero? nentries)
+      1
+      (- (* MC68040/closure-entry-size (- nentries entry)) 1)))
+
+(define (MC68040/closure-object-first-offset nentries)
+  (case nentries
+    ((0)
+     ;; Vector header only
+     1)
+    ((1)
+     ;; Manifest closure header followed by single entry point.
+     (1+ MC68040/closure-entry-size))
+    (else
+     ;; Manifest closure header, number of entries, then entries.
+     (+ 1 1 (* MC68040/closure-entry-size nentries)))))
+
+(define (MC68040/closure-entry-distance nentries entry entry*)
+  nentries				; ignored
+  (* (* MC68040/closure-entry-size 4) (- entry* entry)))
+
+;; With the 68040 layout, this is the entry point itself, no bumping.
+
+(define (MC68040/closure-environment-adjustment nentries entry)
+  nentries entry			; ignored
+  0)
+
+;;;; Closure choices
+
+(define-integrable MC68K/closure-format 'MC68020) ; or MC68040
+
+(let-syntax ((define/format-dependent
+	       (macro (name)
+		 `(define ,name
+		    (case MC68K/closure-format
+		      ((MC68020)
+		       ,(intern
+			 (string-append "MC68020/" (symbol->string name))))
+		      ((MC68040)
+		       ,(intern
+			 (string-append "MC68040/" (symbol->string name))))
+		      (else
+		       (error "Unknown closure format" closure-format)))))))
+
+;; Given: the number of entry points in a closure, and a particular
+;; entry point number, compute the distance from that entry point to
+;; the first variable slot in the closure object (in long words).
+
+(define/format-dependent closure-first-offset)
+
+;; Like the above, but from the start of the complete closure object,
+;; viewed as a vector, and including the header word.
+
+(define/format-dependent closure-object-first-offset)
+
+;; Bump distance in bytes from one entry point to another.
+;; Used for invocation purposes.
+
+(define/format-dependent closure-entry-distance)
+
+;; Bump distance in bytes from one entry point to the entry point used
+;; for variable-reference purposes.
+
+(define/format-dependent closure-environment-adjustment)
+)
+
 (define-integrable d0 0)
 (define-integrable d1 1)
 (define-integrable d2 2)
