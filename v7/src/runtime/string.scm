@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.20 1999/05/07 21:26:13 cph Exp $
+$Id: string.scm,v 14.21 1999/05/07 21:41:13 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -683,19 +683,20 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (%dumb-substring-search-backward text tstart tend pattern pstart pend)
   (if (fix:= pstart pend)
       0
-      (let* ((trailer (string-ref pattern (fix:- pend 1)))
+      (let* ((pend-1 (fix:- pend 1))
+	     (trailer (string-ref pattern pend-1))
 	     (plen (fix:- pend pstart))
-	     (tstart (fix:+ tstart plen)))
+	     (tstart+plen (fix:+ tstart plen)))
 	(let loop ((tend tend))
 	  (let ((tend
 		 (let find-trailer ((tend tend))
-		   (and (fix:< tstart tend)
+		   (and (fix:<= tstart+plen tend)
 			(if (char=? trailer (string-ref text (fix:- tend 1)))
 			    tend
 			    (find-trailer (fix:- tend 1)))))))
 	    (and tend
 		 (if (substring=? text (fix:- tend plen) (fix:- tend 1)
-				  pattern pstart (fix:- pend 1))
+				  pattern pstart pend-1)
 		     tend
 		     (loop (fix:- tend 1)))))))))
 
