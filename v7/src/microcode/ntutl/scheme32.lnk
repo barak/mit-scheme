@@ -1,0 +1,4 @@
+system nt_dll initinstance terminstance
+name scheme32
+export=scheme32.lbc
+file scheme32.obj
