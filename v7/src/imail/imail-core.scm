@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.90 2000/05/23 18:52:02 cph Exp $
+;;; $Id: imail-core.scm,v 1.91 2000/05/23 20:19:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -358,7 +358,8 @@
 (define-generic folder-sync-status (folder))
 
 ;; -------------------------------------------------------------------
-;; Save any cached changes made to FOLDER.
+;; Save any cached changes made to FOLDER.  Returns a boolean
+;; indicating whether anything was saved.
 
 (define-generic save-folder (folder))
 

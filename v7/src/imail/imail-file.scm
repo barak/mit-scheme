@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.39 2000/05/23 18:36:37 cph Exp $
+;;; $Id: imail-file.scm,v 1.40 2000/05/23 20:19:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -213,6 +213,19 @@
 		    'BOTH-MODIFIED))
 	    'PERSISTENT-DELETED)
 	'UNSYNCHRONIZED)))
+
+(define-method save-folder ((folder <file-folder>))
+  (and (let ((status (folder-sync-status folder)))
+	 (or (memq status '(FOLDER-MODIFIED PERSISTENT-DELETED))
+	     (and (eq? status 'BOTH-MODIFIED)
+		  (imail-ui:prompt-for-yes-or-no?
+		   "Disk file has changed since last read.  Save anyway"))))
+       (begin
+	 ;; **** Do backup of file here.
+	 (synchronize-file-folder-write folder write-file-folder)
+	 #t)))
+
+(define-generic write-file-folder (folder pathname))
 
 (define (synchronize-file-folder-write folder writer)
   (let ((pathname (file-folder-pathname folder)))

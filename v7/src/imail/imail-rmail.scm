@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.36 2000/05/22 14:50:02 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.37 2000/05/23 20:19:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -65,9 +65,6 @@
 
 (define-method rmail-folder-header-fields ((folder <folder>))
   (compute-rmail-folder-header-fields folder))
-
-(define-method save-folder ((folder <rmail-folder>))
-  (synchronize-file-folder-write folder write-rmail-file))
 
 (define (compute-rmail-folder-header-fields folder)
   (make-rmail-folder-header-fields (folder-flags folder)))
@@ -188,8 +185,7 @@
 
 ;;;; Write RMAIL file
 
-(define (write-rmail-file folder pathname)
-  ;; **** Do backup of file here.
+(define-method write-file-folder ((folder <rmail-folder>) pathname)
   (call-with-binary-output-file pathname
     (lambda (port)
       (write-rmail-file-header (rmail-folder-header-fields folder) port)

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.101 2000/05/23 19:27:27 cph Exp $
+;;; $Id: imail-top.scm,v 1.102 2000/05/23 20:19:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -248,6 +248,9 @@ regardless of the folder type."
 	       ")")))
 
 (define *imail-message-wrapper-prefix* #f)
+
+(define imail-ui:prompt-for-yes-or-no?
+  prompt-for-yes-or-no?)
 
 (define (imail-call-with-pass-phrase url receiver)
   (let ((key (url-pass-phrase-key url)))
@@ -415,7 +418,7 @@ variable's documentation (using \\[describe-variable]) for details:
 (define-key 'imail #\o		'imail-output)
 (define-key 'imail #\i		'imail-input)
 (define-key 'imail #\+		'imail-create-folder)
-;(define-key 'imail #\-		'imail-delete-folder)
+(define-key 'imail #\-		'imail-delete-folder)
 (define-key 'imail #\q		'imail-quit)
 (define-key 'imail #\?		'describe-mode)
 
@@ -1312,9 +1315,7 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "Quit out of IMAIL."
   ()
   (lambda ()
-    (let ((folder (selected-folder)))
-      (save-folder folder)
-      (close-folder folder))
+    (close-folder (selected-folder))
     ((ref-command bury-buffer))))
 
 (define-command imail-get-new-mail
@@ -1353,7 +1354,10 @@ Currently useful only for IMAP folders."
   "Save the currently selected IMAIL folder."
   ()
   (lambda ()
-    (save-folder (selected-folder))))
+    (message
+     (if (save-folder (selected-folder))
+	 "Folder saved"
+	 "(No changes need to be saved)"))))
 
 (define-command imail-toggle-header
   "Show full message headers if pruned headers currently shown, or vice versa."

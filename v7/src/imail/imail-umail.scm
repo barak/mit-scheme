@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.29 2000/05/22 03:01:28 cph Exp $
+;;; $Id: imail-umail.scm,v 1.30 2000/05/23 20:19:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -58,9 +58,6 @@
 ;;;; Folder
 
 (define-class (<umail-folder> (constructor (url))) (<file-folder>))
-
-(define-method save-folder ((folder <umail-folder>))
-  (synchronize-file-folder-write folder write-umail-file))
 
 ;;;; Message
 
@@ -162,8 +159,7 @@
 
 ;;;; Write unix mail file
 
-(define (write-umail-file folder pathname)
-  ;; **** Do backup of file here.
+(define-method write-file-folder ((folder <umail-folder>) pathname)
   (call-with-binary-output-file pathname
     (lambda (port)
       (for-each (lambda (message) (write-umail-message message port))

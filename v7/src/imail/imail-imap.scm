@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.86 2000/05/23 18:36:03 cph Exp $
+;;; $Id: imail-imap.scm,v 1.87 2000/05/23 20:19:04 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -892,7 +892,7 @@
 (define-method save-folder ((folder <imap-folder>))
   ;; Changes are always written through.
   folder
-  unspecific)
+  #f)
 
 (define-method discard-folder-cache ((folder <imap-folder>))
   (close-folder folder)
