@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.32 2000/05/22 02:17:58 cph Exp $
+$Id: todo.txt,v 1.33 2000/05/22 04:01:58 cph Exp $
 
 Bug fixes
 ---------
@@ -7,7 +7,7 @@ Bug fixes
 * Password should be cached s.t. it can be shared between connections
   with compatible URLs.  Right now it is per-connection.
 
-* Implement operations for IMAP: FOLDER-VALID?.
+* Implement operations for IMAP: URL-EXISTS?.
 
 * Recovery from server disconnection should be more transparent.
   Should attempt to reconnect and signal error only if that fails.
