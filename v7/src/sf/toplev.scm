@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.1 1987/03/13 04:14:20 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/sf/toplev.scm,v 3.2 1987/03/19 17:23:08 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -216,8 +216,12 @@ Currently only the 68000 implementation needs this."
 		   (write-string " -- done")))))))
 
 (define (read-externs-file pathname)
-  (fasload (merge-pathnames (->pathname pathname)
-			    sf/default-externs-pathname)))
+  (let ((pathname
+	 (merge-pathnames (->pathname pathname) sf/default-externs-pathname)))
+    (if (file-exists? pathname)
+	(fasload pathname)
+	(begin (warn "Nonexistent externs file" (pathname->string pathname))
+	       '()))))
 
 (define (write-externs-file pathname externs)
   (cond ((not (null? externs))
