@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.28 2003/02/14 18:28:33 cph Exp $
+$Id: process.scm,v 1.29 2003/03/10 20:53:34 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1995,1997,1998 Massachusetts Institute of Technology
+Copyright 1999,2000,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,7 +54,7 @@ USA.
 (define-structure (subprocess
 		   (constructor %make-subprocess
 				(filename arguments index pty-master
-					  input-channel output-channel))
+					  input-channel output-channel id))
 		   (conc-name subprocess-))
   (filename #f read-only #t)
   (arguments #f read-only #t)
@@ -61,7 +62,7 @@ USA.
   pty-master
   input-channel
   output-channel
-  (id ((ucode-primitive process-id 1) index) read-only #t)
+  (id #f read-only #t)
   (%i/o-port #f)
   (%status #f)
   (exit-reason #f)
@@ -183,8 +184,10 @@ USA.
 					   working-directory ctty
 					   stdin stdout stderr)))
 		  (let ((process
-			 (%make-subprocess filename arguments index pty-master
-					   input-channel output-channel)))
+			 (%make-subprocess
+			  filename arguments index pty-master
+			  input-channel output-channel
+			  ((ucode-primitive process-id 1) index))))
 		    (set-subprocess-%status!
 		     process
 		     ((ucode-primitive process-status 1) index))

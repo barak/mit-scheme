@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.61 2003/02/14 18:28:32 cph Exp $
+$Id: error.scm,v 14.62 2003/03/10 20:53:34 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
@@ -144,7 +144,8 @@ USA.
 
 (define-structure (condition
 		   (conc-name %condition/)
-		   (constructor %make-condition (type continuation restarts))
+		   (constructor %%make-condition
+				(type continuation restarts field-values))
 		   (print-procedure
 		    (standard-unparser-method 'CONDITION
 		      (lambda (condition port)
@@ -155,9 +156,12 @@ USA.
   (type #f read-only #t)
   (continuation #f read-only #t)
   (restarts #f read-only #t)
-  (field-values (make-vector (%condition-type/number-of-fields type) #f)
-		read-only #t)
+  (field-values #f read-only #t)
   (properties (make-1d-table) read-only #t))
+
+(define (%make-condition type continuation restarts)
+  (%%make-condition type continuation restarts
+		    (make-vector (%condition-type/number-of-fields type) #f)))
 
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)

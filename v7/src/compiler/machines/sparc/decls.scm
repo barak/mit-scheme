@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.8 2003/02/14 18:28:06 cph Exp $
+$Id: decls.scm,v 1.9 2003/03/10 20:51:49 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1993,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -79,19 +79,22 @@ USA.
 
 (define-structure (source-node
 		   (conc-name source-node/)
-		   (constructor make/source-node (filename)))
-  (filename false read-only true)
-  (pathname (string->pathname filename) read-only true)
+		   (constructor %make/source-node (filename pathname)))
+  (filename #f read-only #t)
+  (pathname #f read-only #t)
   (forward-links '())
   (backward-links '())
   (forward-closure '())
   (backward-closure '())
   (dependencies '())
   (dependents '())
-  (rank false)
-  (syntax-table false)
+  (rank #f)
+  (syntax-table #f)
   (declarations '())
-  (modification-time false))
+  (modification-time #f))
+
+(define (make/source-node filename)
+  (%make/source-node filename (->pathname filename)))
 
 (define (filename->source-node filename)
   (let ((node (hash-table/get source-hash filename #f)))
@@ -212,7 +215,7 @@ USA.
 				  (write-string " newer than dependency ")
 				  (write (source-node/filename node*))))
 			    newer?))))
-		 (set-source-node/modification-time! node false))))
+		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
 	(for-each
 	 (lambda (node)
@@ -224,7 +227,7 @@ USA.
 				 (write (source-node/filename node*))
 				 (write-string " depends on ")
 				 (write (source-node/filename node))))
-			   (set-source-node/modification-time! node* false))
+			   (set-source-node/modification-time! node* #f))
 			 (source-node/forward-closure node))))
 	 source-nodes)))
   (for-each (lambda (node)
@@ -253,7 +256,7 @@ USA.
 (define (source-node/touch! node)
   (with-values
       (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" false))
+	(sf/pathname-defaulting (source-node/pathname node) "" #f))
     (lambda (input-pathname bin-pathname spec-pathname)
       input-pathname
       (pathname-touch! bin-pathname)
@@ -281,7 +284,7 @@ USA.
 (define (source-node/syntax! node)
   (with-values
       (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" false))
+	(sf/pathname-defaulting (source-node/pathname node) "" #f))
     (lambda (input-pathname bin-pathname spec-pathname)
       (sf/internal
        input-pathname bin-pathname spec-pathname
@@ -549,12 +552,12 @@ USA.
   `(INTEGRATE-EXTERNAL
     ,@(map (let ((default
 		  (make-pathname
-		   false
-		   false
+		   #f
+		   #f
 		   (make-list (length (pathname-directory pathname)) 'UP)
-		   false
-		   false
-		   false)))
+		   #f
+		   #f
+		   #f)))
 	     (lambda (pathname)
 	       (merge-pathnames pathname default)))
 	   integration-dependencies)))

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.42 2003/02/14 18:28:14 cph Exp $
+$Id: imail-util.scm,v 1.43 2003/03/10 20:53:51 cph Exp $
 
-Copyright 1999-2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -431,18 +431,19 @@ USA.
 (define (open-xstring-input-port xstring position)
   (if (not (<= 0 position (external-string-length xstring)))
       (error:bad-range-argument position 'OPEN-XSTRING-INPUT-PORT))
-  (let ((state (make-xstring-input-state xstring position)))
+  (let ((state (make-xstring-input-state xstring position position position)))
     (read-xstring-buffer state)
     (make-port xstring-input-type state)))
 
 (define-structure (xstring-input-state
-		   (constructor make-xstring-input-state (xstring position))
+		   (constructor make-xstring-input-state
+				(xstring position buffer-start buffer-end))
 		   (conc-name xstring-input-state/))
   xstring
   position
   (buffer (make-string 65536) read-only #t)
-  (buffer-start position)
-  (buffer-end position))
+  buffer-start
+  buffer-end)
 
 (define (xstring-port/xstring port)
   (xstring-input-state/xstring (port/state port)))

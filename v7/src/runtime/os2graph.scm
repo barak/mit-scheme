@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.22 2003/02/14 18:28:33 cph Exp $
+$Id: os2graph.scm,v 1.23 2003/03/10 20:53:34 cph Exp $
 
 Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
@@ -133,7 +133,8 @@ USA.
 
 (define-structure (window
 		   (conc-name window/)
-		   (constructor %make-window (wid pel-width pel-height)))
+		   (constructor %make-window
+				(wid pel-width pel-height x-slope y-slope)))
   wid
   pel-width
   pel-height
@@ -145,8 +146,8 @@ USA.
   (y-bottom -1)
   (x-right 1)
   (y-top 1)
-  (x-slope (exact->inexact (/ (- pel-width 1) 2)))
-  (y-slope (exact->inexact (/ (- pel-height 1) 2)))
+  x-slope
+  y-slope
   font-specifier
   font-metrics
   (foreground-color #xFFFFFF)
@@ -154,7 +155,10 @@ USA.
   device)
 
 (define (make-window wid width height)
-  (let ((window (%make-window wid width height)))
+  (let ((window
+	 (%make-window wid width height
+		       (exact->inexact (/ (- width 1) 2))
+		       (exact->inexact (/ (- height 1) 2)))))
     (set-window/backing-image! window (create-image width height))
     (add-to-gc-finalizer! window-finalizer window wid)
     window))

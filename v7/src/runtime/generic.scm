@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.5 2003/02/14 18:28:32 cph Exp $
+$Id: generic.scm,v 1.6 2003/03/10 20:53:34 cph Exp $
 
-Copyright 1995-1999 Massachusetts Institute of Technology
+Copyright 1996,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -55,7 +55,11 @@ USA.
 				    (car arity)
 				    arity)
 				generator
-				name)))
+				name
+				(new-cache
+				 (if (pair? arity)
+				     (car arity)
+				     arity)))))
       (let ((generic (compute-apply-generic record)))
 	(set-generic-record/procedure! record generic)
 	(eqht/put! generic-procedure-records generic record)
@@ -64,12 +68,12 @@ USA.
 (define-structure (generic-record
 		   (conc-name generic-record/)
 		   (constructor make-generic-record
-				(tag arity generator name)))
+				(tag arity generator name cache)))
   (tag #f read-only #t)
   (arity #f read-only #t)
   (generator #f)
   (name #f read-only #t)
-  (cache (new-cache (if (pair? arity) (car arity) arity)))
+  cache
   procedure)
 
 (define (generic-record/min-arity record)

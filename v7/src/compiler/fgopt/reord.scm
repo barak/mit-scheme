@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: reord.scm,v 1.4 2003/02/14 18:28:01 cph Exp $
+$Id: reord.scm,v 1.5 2003/03/10 20:51:48 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright 1988,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,12 +66,7 @@ number of assignments of any ordering.
 
 ;;;; Graph Abstraction
 
-(define-structure (node
-		   (constructor make-node
-				(target
-				 value
-				 original-dependencies
-				 original-dependents)))
+(define-structure (node (constructor %make-node))
   ;; An assignment representing a target variable (or static link) and
   ;; an expression which will be assigned to the target.
   (target false read-only true)
@@ -86,8 +81,16 @@ number of assignments of any ordering.
   original-dependents
 
   ;; Copies of the above; modified during the reordering algorithm.
-  (dependencies (list-copy original-dependencies))
-  (dependents (list-copy original-dependents)))
+  dependencies
+  dependents)
+
+(define (make-node target value original-dependencies original-dependents)
+  (%make-node target
+	      value
+	      original-dependencies
+	      original-dependents
+	      (list-copy original-dependencies)
+	      (list-copy original-dependents)))
 
 (define (make-node-set targets values dependency-sets)
   (map (lambda (target value dependencies)

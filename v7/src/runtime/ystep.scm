@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ystep.scm,v 1.5 2003/02/14 18:28:34 cph Exp $
+$Id: ystep.scm,v 1.6 2003/03/10 20:53:34 cph Exp $
 
-Copyright (c) 1994, 1999 Massachusetts Institute of Technology
+Copyright 1994,1997,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -288,15 +288,16 @@ USA.
 
 ;;;; Stepper nodes
 
-(define-structure (ynode (constructor make-ynode-1 (parent type exp)))
+(define-structure (ynode
+		   (constructor make-ynode-1
+				(parent type exp redisplay-flags)))
   ;; Could easily store environment as well.
   parent
   type
   (exp #f read-only #t)
   (children '())
   (result #f)
-  (redisplay-flags (cons #t (if parent (ynode-redisplay-flags parent) '()))
-		   read-only #t))
+  (redisplay-flags #f read-only #t))
 
 (define ynode-exp:top-level (list 'STEPPER-TOP-LEVEL))
 (define ynode-exp:proceed   (list 'STEPPER-PROCEED))
@@ -322,7 +323,10 @@ USA.
   (eq? (ynode-result node) ynode-result:reduced))
 
 (define (make-ynode parent type exp)
-  (let ((node (make-ynode-1 parent type exp)))
+  (let ((node
+	 (make-ynode-1 parent type exp
+		       (cons #t
+			     (if parent (ynode-redisplay-flags parent) '())))))
     (set-ynode-result! node ynode-result:waiting)
     (if parent
 	(set-ynode-children! parent (cons node (ynode-children parent))))
@@ -331,22 +335,19 @@ USA.
 
 (define (ynode-previous node)
   (let loop ((sibs (ynode-children (ynode-parent node))))
-    (cond ((null? sibs)
-	   #f)
-	  ((eq? (car sibs) node)
-	   (and (not (null? (cdr sibs)))
-		(cadr sibs)))
-	  (else
-	   (loop (cdr sibs))))))
+    (and (pair? sibs)
+	 (if (eq? (car sibs) node)
+	     (and (pair? (cdr sibs))
+		  (cadr sibs))
+	     (loop (cdr sibs))))))
 
 (define (ynode-next node)
   (let loop ((sibs (ynode-children (ynode-parent node))))
-    (cond ((or (null? sibs) (null? (cdr sibs)))
-	   #f)
-	  ((eq? (cadr sibs) node)
-	   (car sibs))
-	  (else
-	   (loop (cdr sibs))))))
+    (and (pair? sibs)
+	 (pair? (cdr sibs))
+	 (if (eq? (cadr sibs) node)
+	     (car sibs)
+	     (loop (cdr sibs))))))
 
 (define (ynode-value-node node)
   (if (ynode-reduced? node)
