@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.1 1994/11/19 02:02:36 adams Exp $
+$Id: toplev.scm,v 1.2 1994/11/23 03:18:44 adams Exp $
 
 Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
@@ -60,6 +60,8 @@ MIT in each case. |#
   (lambda (input . rest)
     (apply compile-bin-file input rest)))
 
+(define *input-filename-for-temporary-info-info*)
+
 (define (make-compile-bin-file compile-scode/internal)
   (lambda (input-string #!optional output-string)
     (let ((input-default
@@ -80,24 +82,26 @@ MIT in each case. |#
 	   (and (not (default-object? output-string)) output-string))
        (make-pathname false false false false "bin" 'NEWEST)
        (lambda (input-pathname output-pathname)
-	 (maybe-open-file
-	  compiler:generate-kmp-files?
-	  (pathname-new-type output-pathname "kmp")
-	  (lambda (kmp-output-port)
-	    (maybe-open-file
-	     compiler:generate-rtl-files?
-	     (pathname-new-type output-pathname "rtl")
-	     (lambda (rtl-output-port)
-	       (maybe-open-file
-		compiler:generate-lap-files?
-		(pathname-new-type output-pathname "lap")
-		(lambda (lap-output-port)
-		  (compile-scode/internal
-		   (compiler-fasload input-pathname)
-		   (pathname-new-type output-pathname inf-file-type)
-		   kmp-output-port
-		   rtl-output-port
-		   lap-output-port)))))))))
+	 (fluid-let ((*input-filename-for-temporary-info-info*
+		      (->namestring (->truename input-pathname))))
+	   (maybe-open-file
+	    compiler:generate-kmp-files?
+	    (pathname-new-type output-pathname "kmp")
+	    (lambda (kmp-output-port)
+	      (maybe-open-file
+	       compiler:generate-rtl-files?
+	       (pathname-new-type output-pathname "rtl")
+	       (lambda (rtl-output-port)
+		 (maybe-open-file
+		  compiler:generate-lap-files?
+		  (pathname-new-type output-pathname "lap")
+		  (lambda (lap-output-port)
+		    (compile-scode/internal
+		     (compiler-fasload input-pathname)
+		     (pathname-new-type output-pathname inf-file-type)
+		     kmp-output-port
+		     rtl-output-port
+		     lap-output-port))))))))))
       unspecific)))
 
 (define (maybe-open-file open? pathname receiver)
@@ -255,7 +259,6 @@ MIT in each case. |#
 	      (*lap-output-port* lap-output-port)
 	      (*kmp-output-port* kmp-output-port)
 	      (compiler:generate-lap-files? true)
-	      (*use-debugging-info?* false)
 	      (*argument-registers* (rtlgen/argument-registers))
 	      (available-machine-registers
 	       ;; Order is important!
