@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.1 1992/04/17 20:27:03 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/outline.scm,v 1.2 1992/04/17 20:54:59 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -171,6 +171,34 @@ match, the deeper our level in the outline."
    (set! backward-up-topic b)
    unspecific))
 
+(define (topic-region mark)
+  (let ((end (group-end mark))
+	(pattern (ref-variable outline-pattern)))
+    (let ((level (topic-level pattern mark)))
+      (if level
+	  (make-region
+	   (if (re-search-backward
+		pattern (line-end mark 0) (group-start mark))
+	       (re-match-start 0)
+	       (error "Inconsistency detected."))
+	   (or (let next-topic ((start (line-end mark 0)))
+		 (and start
+		      (re-search-forward pattern (line-end start 0) end)
+		      (let ((found-level
+			     (- (re-match-end-index 0)
+				(re-match-start-index 0))))
+			(if (<= found-level level)
+			    (re-match-start 0)
+			    (next-topic (re-match-end 0))))))
+	       (group-end mark)))
+	  (current-region)))))
+
+(define-command narrow-to-topic
+  "Narrow to show the current outline level only."
+  "d"
+  (lambda (mark)
+    (region-clip! (topic-region mark))))
+
 (define-command forward-topic
   "Move forward to the next outline topic.  With arg, repeat, and go
 backward if negative.  Outline topics match the regexp OUTLINE-PATTERN."
@@ -218,5 +246,6 @@ With argument, turn outline mode on iff argument is positive."
 (define-minor-mode outline "Outline" "Minor mode for moving over outlines.")
 (define-key 'outline '(#\C-z #\f) 'forward-topic)
 (define-key 'outline '(#\C-z #\b) 'backward-topic)
+(define-key 'outline '(#\C-z #\n) 'narrow-to-topic)
 (define-key 'outline '(#\M-C-z #\f) 'forward-up-topic)
 (define-key 'outline '(#\M-C-z #\b) 'backward-up-topic)
