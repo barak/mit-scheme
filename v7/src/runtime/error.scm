@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.14 1991/05/10 00:03:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 14.15 1991/07/15 23:56:28 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -330,14 +330,23 @@ MIT in each case. |#
   (guarantee-restart restart 'INVOKE-RESTART)
   (apply (%restart/effector restart) arguments))
 
+(define hook/before-restart)
+
+(define (default/before-restart)
+  '())
+
 (define (invoke-restart-interactively restart)
   (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
   (let ((effector (%restart/effector restart))
 	(interactive
 	 (1d-table/get (%restart/properties restart) 'INTERACTIVE false)))
     (if (not interactive)
-	(effector)
-	(with-values interactive effector))))
+	(begin (hook/before-restart)
+	       (effector))
+	(with-values interactive
+	  (lambda vals
+	    (hook/before-restart)
+	    (apply effector vals))))))
 
 (define (bound-restarts)
   (let loop ((restarts *bound-restarts*))
@@ -583,6 +592,7 @@ MIT in each case. |#
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! hook/before-restart default/before-restart)
   (set! condition-type:serious-condition
 	(make-condition-type 'SERIOUS-CONDITION false '() false))
   (set! condition-type:warning
