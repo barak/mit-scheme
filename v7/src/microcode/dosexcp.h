@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.h,v 1.2 1992/07/28 14:34:56 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -101,6 +101,23 @@ extern int
   DPMI_restore_exception_handler (unsigned exception,
 				  unsigned short cs_selector,
 				  unsigned code_offset);
-				  
+
+
+extern int
+  X32_get_exception_vector (unsigned exception,
+			    unsigned short * cs_selector,
+			    unsigned * code_offset);
+
+extern int
+  X32_set_exception_handler (unsigned exception,
+			     void (*funcptr) (unsigned,
+					      unsigned,
+					      struct sigcontext *),
+			     void * stack);
+
+extern int
+  X32_restore_exception_handler (unsigned exception,
+				 unsigned short cs_selector,
+				 unsigned code_offset);
 
 #endif /* _DOSEXCP_H_ */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosexcp.c,v 1.2 1992/07/28 14:34:05 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -42,10 +42,13 @@ MIT in each case. */
 #include "dosexcp.h"
 
 /* It would be nice to be able to use something akin to Zortech's int_intercept
-   to get control of trap handlers, but Zortech does not provide that ability.
-   In fact, it shadows the exception numbers with DOS interrupts (for compatibility),
-   but does not map the traps to an accessible region.
-   In the meantime, exceptions are only caught under DPMI.
+   to get control of trap handlers, but Zortech's DOSX does not
+   provide that ability.  In fact, it shadows the exception numbers
+   with DOS interrupts (for compatibility), but does not map the traps
+   to an accessible region.
+
+   In the meantime, exceptions are only caught under DPMI if running DOSX,
+   or everywhere if running X32.
 */
 
 #if 0
@@ -178,34 +181,17 @@ DPMI_set_exception_vector (unsigned exception,
 			   unsigned code_offset)
 {
   union REGS regs;
-  struct SREGS sregs;
   
   if (exception > 0x1f)
   {
     errno = EINVAL;
     return (DOS_FAILURE);
   }
-  segread (& sregs);
   regs.e.eax = 0x203;
   regs.e.ebx = exception;
   regs.e.ecx = cs_selector;
   regs.e.edx = code_offset;
-#ifdef _DOSEXCP_DEBUG
-  if (exception == DOS_EXCP_General_protection)
-  {
-    printf ("About to do int86x for excp %d.\n", DOS_EXCP_General_protection);
-    printf ("sregs.ds = 0x%04x; sregs.es = 0x%04x; sregs.fs = 0x%04x\n",
-            sregs.ds, sregs.es, sregs.fs);
-    printf ("sregs.gs = 0x%04x; sregs.ss = 0x%04x; sregs.cs = 0x%04x\n",
-            sregs.gs, sregs.ss, sregs.cs);
-    printf ("regs.e.eax = 0x%08x; regs.e.ebx = 0x%08x; regs.e.ecx = 0x%08x\n",
-            regs.e.eax, regs.e.ebx, regs.e.ecx);
-    printf ("regs.e.edx = 0x%08x\n", regs.e.edx);
-    fflush (stdout);
-    sleep (1);
-  }
-#endif
-  int86x (0x31, &regs, &regs, &sregs);
+  int86 (0x31, &regs, &regs);
   if ((regs.e.flags & 1) != 0)
   {
     errno = EINVAL;
@@ -260,13 +246,6 @@ make_DPMI_exception_trampoline (unsigned exception,
       errno = EACCES;
       return ((void *) NULL);
     }
-#ifdef _DOSEXCP_DEBUG
-    printf ("Previous CS = 0x%04x; Previous EIP = 0x%08x\n",
-	    previous_cs, previous_eip);
-    printf ("Current CS = 0x%04x; Current SS = 0x%04x; Current DS = 0x%04x\n",
-	    (getCS ()), (getSS ()), (getDS ()));
-    fflush (stdout);
-#endif
     PUSH_INSN (previous_cs);
     PUSH_INSN (previous_eip);
     JMP_INSN (DPMI_GP_exception_method);
@@ -327,5 +306,165 @@ DPMI_restore_exception_handler (unsigned exception,
 	  != DOS_SUCCESS))
     return (DOS_FAILURE);
   free ((void *) current_eip);
+  return (DOS_SUCCESS);
+}
+
+int
+X32_get_exception_vector (unsigned exception,
+			  unsigned short * cs_selector,
+			  unsigned * code_offset)
+{
+  struct SREGS sregs;
+  union REGS regs;
+
+  if (exception > 15)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+  segread (&sregs);
+  regs.e.eax = 0x2532;
+  regs.h.cl = exception;
+  int86x (0x21, &regs, &regs, &sregs);
+  if ((regs.e.flags & 1) != 0)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+  * cs_selector = sregs.es;
+  * code_offset = regs.e.ebx;
+  return (DOS_SUCCESS);
+}
+
+static int
+X32_set_exception_vector (unsigned exception,
+			  unsigned short cs_selector,
+			  unsigned code_offset)
+{
+  union REGS regs;
+  struct SREGS sregs;
+  
+  if (exception > 15)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+  segread (& sregs);
+  regs.e.eax = 0x2533;
+  regs.h.cl = exception;
+  sregs.ds = cs_selector;
+  regs.e.edx = code_offset;
+
+  int86x (0x21, &regs, &regs, &sregs);
+  if ((regs.e.flags & 1) != 0)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+  return (DOS_SUCCESS);
+}
+
+struct X32_excp_handler
+{
+  unsigned esp;
+  unsigned ss;
+  unsigned eip;
+  unsigned cs;
+  unsigned ds;
+};
+
+extern struct X32_excp_handler X32_excp_handlers[];
+
+int
+X32_set_exception_handler (unsigned exception,
+			   void ((*funcptr)
+				 (unsigned,
+				  unsigned,
+				  struct sigcontext *)),
+			   void * stack)
+{
+  unsigned short cs, ds;
+  struct X32_excp_handler * handler, old_handler;
+  extern void X32_exception_method (void);
+
+  if (exception > 15)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+
+  cs = (getCS ());
+  ds = (getDS ());
+
+  handler = &X32_excp_handlers[exception];
+
+  old_handler.esp = handler->esp;
+  old_handler.ss = handler->ss;
+  old_handler.eip = handler->eip;
+  old_handler.cs = handler->cs;
+  old_handler.ds = handler->ds;
+
+  handler->esp = ((unsigned) stack);
+  handler->ss  = ds;
+  handler->eip = ((unsigned) funcptr);
+  handler->cs  = 0;	/* 0 means handler expects near call */
+  handler->ds = ds;
+  
+  if ((X32_set_exception_vector (exception,
+				 cs,
+				 ((unsigned) X32_exception_method)))
+      != DOS_SUCCESS)
+  {
+    handler->esp = old_handler.esp;
+    handler->ss = old_handler.ss;
+    handler->eip = old_handler.eip;
+    handler->cs = old_handler.cs;
+    handler->ds = old_handler.ds;
+
+    return (DOS_FAILURE);
+  }
+  return (DOS_SUCCESS);
+}
+
+/* This assumes that it is undoing the effects of X32_set_exception_handler */
+
+int
+X32_restore_exception_handler (unsigned exception,
+			       unsigned short cs_selector,
+			       unsigned code_offset)
+{
+  struct X32_excp_handler * handler, old_handler;
+
+  if (exception > 15)
+  {
+    errno = EINVAL;
+    return (DOS_FAILURE);
+  }
+
+  handler = &X32_excp_handlers[exception];
+
+  old_handler.esp = handler->esp;
+  old_handler.ss = handler->ss;
+  old_handler.eip = handler->eip;
+  old_handler.cs = handler->cs;
+  old_handler.ds = handler->ds;
+
+  handler->esp = 0;
+  handler->ss  = 0;
+  handler->eip = 0;
+  handler->cs  = 0;
+  handler->ds = 0;
+  
+  if ((X32_set_exception_vector (exception, cs_selector, code_offset))
+      != DOS_SUCCESS)
+  {
+    handler->esp = old_handler.esp;
+    handler->ss = old_handler.ss;
+    handler->eip = old_handler.eip;
+    handler->cs = old_handler.cs;
+    handler->ds = old_handler.ds;
+
+    return (DOS_FAILURE);
+  }
   return (DOS_SUCCESS);
 }
