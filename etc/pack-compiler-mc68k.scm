@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pack-compiler-mc68k.scm,v 1.1 1993/11/22 01:39:48 cph Exp $
+$Id: pack-compiler-mc68k.scm,v 1.2 1993/11/23 20:59:58 cph Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -34,6 +34,10 @@ MIT in each case. |#
 
 ;;;; File to generate a single loadable file for sf and Liar
 
+(if (not (environment-bound? system-global-environment 'PACK-BINARIES))
+    (load (merge-pathnames "pack" (directory-pathname (current-load-pathname)))
+	  '(RUNTIME LOAD)))
+
 (define (pack-compiler output)
   (pack-binaries output
 		 '(("sf"
