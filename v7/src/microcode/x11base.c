@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.41 1992/08/18 03:25:27 cph Exp $
+$Id: x11base.c,v 1.42 1992/11/30 19:58:43 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -297,11 +297,23 @@ DEFUN (arg_color, (arg, display),
        Display * display)
 {
   unsigned long result;
-  if (! (x_decode_color
-	 (display,
-	  (DefaultColormap (display, (DefaultScreen (display)))),
-	  (STRING_ARG (arg)),
-	  (&result))))
+  SCHEME_OBJECT object = (ARG_REF (arg));
+  if (INTEGER_P (object))
+    {
+      if (! (integer_to_long_p (object)))
+	error_bad_range_arg (arg);
+      {
+	long pixel = (integer_to_long (object));
+	if (pixel < 0)
+	  error_bad_range_arg (arg);
+	result = pixel;
+      }
+    }
+  else if (! (x_decode_color
+	      (display,
+	       (DefaultColormap (display, (DefaultScreen (display)))),
+	       (STRING_ARG (arg)),
+	       (&result))))
     error_bad_range_arg (arg);
   return (result);
 }
