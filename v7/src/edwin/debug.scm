@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: debug.scm,v 1.44 1999/01/02 06:11:34 cph Exp $
+;;; $Id: debug.scm,v 1.45 1999/02/03 06:10:02 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -1674,25 +1674,26 @@ once it has been renamed, it will not be deleted automatically.")
 (define (myprint-binding name value environment port)
   (let ((x-size (output-port/x-size port)))
     (debugger-newline port)
-    (write-string
-     (let ((name1
-	    (output-to-string
-	     (quotient x-size 2)
+    (let ((name1
+	   (output-to-string (quotient x-size 2)
 	     (lambda ()
 	       (write-dbg-name name (current-output-port))))))
-       (if (unassigned-reference-trap? value)
-	   (string-append name1 " is unassigned")
-	   (let* ((s (string-append name1 " = "))
-		  (length (string-length s))
-		  (pret
-		   (with-output-to-string
-		     (lambda ()
-		       (eval `(pp ,name (current-output-port) #t ,length)
-			     environment)))))
-	     (string-append
-	      s
-	      (string-tail pret (+ length 1))))))
-     port)
+      (write-string name1 port)
+      (if (unassigned-reference-trap? value)
+	  (write-string " is unassigned" port)
+	  (let ((separator " = "))
+	    (write-string separator port)
+	    (let ((indentation 
+		   (+ (string-length name1)
+		      (string-length separator))))
+	      (write-string (string-tail (with-output-to-string
+					   (lambda ()
+					     (pp value
+						 (current-output-port)
+						 #t
+						 indentation)))
+					 indentation)
+			    port)))))
     (debugger-newline port)))
 
 (define bline-type:environment
@@ -1737,23 +1738,25 @@ once it has been renamed, it will not be deleted automatically.")
 (define (show-frames-and-bindings environment port)
 
   (define (envs environment)
-    (if (environment-has-parent? environment)
-	(cons environment  (envs (environment-parent environment)))
-	'()))
+    (cons environment
+	  (if (environment-has-parent? environment)
+	      (envs (environment-parent environment))
+	      '())))
 
   (define (show-frames envs indents)
     (for-each (lambda (env indent)
 		(debugger-newline port)
 		(if (eq? env environment)
-		    (begin
-		      (if (< 4 (string-length indent))
-			  (write-string (string-tail indent 4) port))
-		      (write-string "==> " port))
+		    (let* ((pointer "==> ")
+			   (pl (string-length pointer)))
+		      (if (> (string-length indent) pl)
+			  (write-string (string-tail indent pl) port))
+		      (write-string pointer port))
 		    (write-string indent port))
 		(show-environment-name env port)
 		(debugger-newline port)
 		(show-environment-bindings-with-ind env indent port))
-      envs indents))
+	      envs indents))
 
   (let ((env-list (envs environment)))
     (cond ((ref-variable debugger-show-inner-frame-topmost?)
@@ -1854,23 +1857,29 @@ once it has been renamed, it will not be deleted automatically.")
 	     (finish names))))))
 
 (define (print-binding-with-ind name value ind port)
-  (let ((x-size (- (output-port/x-size port) (string-length ind) 4)))
-    (write-string (string-append ind "    ")
-		  port)
-    (write-string
-     (let ((name
-	    (output-to-string (quotient x-size 2)
-	      (lambda ()
-		(write-dbg-name name (current-output-port))))))
-       (if (unassigned-reference-trap? value)
-	   (string-append name " is unassigned")
-	   (let ((s (string-append name " = ")))
-	     (string-append
-	      s
-	      (output-to-string (max (- x-size (string-length s)) 0)
-		(lambda ()
-		  (write value)))))))
-     port)
+  (let* ((extra "    ")
+	 (x-size
+	  (- (output-port/x-size port)
+	     (+ (string-length ind)
+		(string-length extra)))))
+    (write-string ind port)
+    (write-string extra port)
+    (let ((name
+	   (output-to-string (quotient x-size 2)
+	     (lambda ()
+	       (write-dbg-name name (current-output-port))))))
+      (write-string name port)
+      (if (unassigned-reference-trap? value)
+	  (write-string " is unassigned" port)
+	  (let ((separator " = "))
+	    (write-string separator port)
+	    (write-string
+	     (output-to-string (max 0
+				    (- (- x-size 1)
+				       (+ (string-length name)
+					  (string-length separator))))
+			       (lambda () (write value)))
+	     port))))
     (debugger-newline port)))
 
 ;;;; Interface Port
