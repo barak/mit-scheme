@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.113 1991/08/07 19:09:03 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/dired.scm,v 1.114 1991/08/12 03:14:36 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -504,7 +504,7 @@ CANNOT contain the 'F' option."
 		      rest)
 		rest))
 	  '())))
-  (loop (line-start (buffer-start (current-buffer)) 1)))
+  (loop (line-start (buffer-start (current-buffer)) 0)))
 
 (define (dired-kill-file! filename)
   (let ((deleted?
