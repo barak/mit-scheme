@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: texcom.scm,v 1.43 2000/02/29 02:56:12 cph Exp $
+;;; $Id: texcom.scm,v 1.44 2000/02/29 03:59:11 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -43,9 +43,8 @@
 (modify-syntax-entry! text-mode:syntax-table #\' "w   ")
 
 (define-variable text-mode-abbrev-table
-  "Mode-specific abbrev table for Text mode."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Text mode.")
+(define-abbrev-table 'text-mode-abbrev-table '())
 
 (define-variable text-mode-hook
   "An event distributor that is invoked when entering Text mode."

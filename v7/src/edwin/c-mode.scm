@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: c-mode.scm,v 1.57 2000/02/29 02:41:14 cph Exp $
+;;; $Id: c-mode.scm,v 1.58 2000/02/29 03:59:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -91,10 +91,9 @@ Settings for K&R and BSD indentation styles are
   ()
   (lambda () (set-current-major-mode! (ref-mode-object c))))
 
-(define-variable C-mode-abbrev-table
-  "Mode-specific abbrev table for C code."
-  (make-abbrev-table)
-  abbrev-table?)
+(define-variable c-mode-abbrev-table
+  "Mode-specific abbrev table for C code.")
+(define-abbrev-table 'c-mode-abbrev-table '())
 
 (define-variable c-mode-hook
   "An event distributor that is invoked when entering C mode."

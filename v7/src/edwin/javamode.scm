@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: javamode.scm,v 1.9 2000/02/29 02:41:07 cph Exp $
+;;; $Id: javamode.scm,v 1.10 2000/02/29 03:59:31 cph Exp $
 ;;;
 ;;; Copyright (c) 1998-2000 Massachusetts Institute of Technology
 ;;;
@@ -57,9 +57,8 @@ This is just like C mode, except that
   (lambda () (set-current-major-mode! (ref-mode-object java))))
 
 (define-variable java-mode-abbrev-table
-  "Mode-specific abbrev table for Java code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Java code.")
+(define-abbrev-table 'java-mode-abbrev-table '())
 
 (define-variable java-mode-hook
   "An event distributor that is invoked when entering Java mode."
@@ -117,9 +116,8 @@ This is just like C mode, except that
   (lambda () (set-current-major-mode! (ref-mode-object php))))
 
 (define-variable php-mode-abbrev-table
-  "Mode-specific abbrev table for PHP code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for PHP code.")
+(define-abbrev-table 'php-mode-abbrev-table '())
 
 (define-variable php-mode-hook
   "An event distributor that is invoked when entering PHP mode."

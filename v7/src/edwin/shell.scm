@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: shell.scm,v 1.23 2000/02/29 02:41:36 cph Exp $
+$Id: shell.scm,v 1.24 2000/02/29 03:59:17 cph Exp $
 
 Copyright (c) 1991-2000 Massachusetts Institute of Technology
 
@@ -73,9 +73,8 @@ to match their respective commands."
     (event-distributor/invoke! (ref-variable shell-mode-hook buffer) buffer)))
 
 (define-variable shell-mode-abbrev-table
-  "Mode-specific abbrev table for Shell mode."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Shell mode.")
+(define-abbrev-table 'shell-mode-abbrev-table '())
 
 (define-variable shell-mode-hook
   "An event distributor that is invoked when entering Shell mode."

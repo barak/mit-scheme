@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: loadef.scm,v 1.41 2000/02/29 02:47:15 cph Exp $
+;;; $Id: loadef.scm,v 1.42 2000/02/29 03:59:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -55,9 +55,8 @@
   "Enter Midas mode.")
 
 (define-variable midas-mode-abbrev-table
-  "Mode-specific abbrev table for assembly code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for assembly code.")
+(define-abbrev-table 'midas-mode-abbrev-table '())
 
 (define-variable midas-mode-hook
   "An event distributor that is invoked when entering Midas mode."
@@ -73,9 +72,8 @@
   "Enter Pascal mode.")
 
 (define-variable pascal-mode-abbrev-table
-  "Mode-specific abbrev table for Pascal code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Pascal code.")
+(define-abbrev-table 'pascal-mode-abbrev-table '())
 
 (define-variable pascal-mode-hook
   "An event distributor that is invoked when entering Pascal mode."
@@ -112,9 +110,8 @@ commands to save keystrokes.")
   "Make the current mode be Texinfo mode.")
 
 (define-variable texinfo-mode-abbrev-table
-  "Mode-specific abbrev table for Texinfo."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Texinfo.")
+(define-abbrev-table 'texinfo-mode-abbrev-table '())
 
 (define-variable texinfo-mode-hook
   "An event distributor that is invoked when entering Texinfo mode."
@@ -242,9 +239,8 @@ is open the that server, its buffer is selected.")
   "Enter Verilog mode.")
 
 (define-variable verilog-mode-abbrev-table
-  "Mode-specific abbrev table for Verilog code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Verilog code.")
+(define-abbrev-table 'verilog-mode-abbrev-table '())
 
 (define-variable verilog-mode-hook
   "An event distributor that is invoked when entering Verilog mode."
@@ -270,9 +266,8 @@ is open the that server, its buffer is selected.")
   "Enter VHDL mode.")
 
 (define-variable vhdl-mode-abbrev-table
-  "Mode-specific abbrev table for VHDL code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for VHDL code.")
+(define-abbrev-table 'vhdl-mode-abbrev-table '())
 
 (define-variable vhdl-mode-hook
   "An event distributor that is invoked when entering VHDL mode."

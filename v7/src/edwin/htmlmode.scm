@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: htmlmode.scm,v 1.2 2000/02/29 02:41:11 cph Exp $
+;;; $Id: htmlmode.scm,v 1.3 2000/02/29 03:59:35 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -56,9 +56,8 @@
   (lambda () (set-current-major-mode! (ref-mode-object html))))
 
 (define-variable html-mode-abbrev-table
-  "Mode-specific abbrev table for HTML."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for HTML.")
+(define-abbrev-table 'html-mode-abbrev-table '())
 
 (define-variable html-mode-hook
   "An event distributor that is invoked when entering HTML mode."

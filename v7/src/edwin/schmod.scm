@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: schmod.scm,v 1.45 2000/02/29 02:41:02 cph Exp $
+;;; $Id: schmod.scm,v 1.46 2000/02/29 03:59:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -71,9 +71,8 @@ The following commands evaluate Scheme expressions:
     (event-distributor/invoke! (ref-variable scheme-mode-hook buffer) buffer)))
 
 (define-variable scheme-mode-abbrev-table
-  "Mode-specific abbrev table for Scheme code."
-  (make-abbrev-table)
-  abbrev-table?)
+  "Mode-specific abbrev table for Scheme code.")
+(define-abbrev-table 'scheme-mode-abbrev-table '())
 
 (define-variable scheme-mode-hook
   "An event distributor that is invoked when entering Scheme mode."
