@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: conect.scm,v 4.5 1999/01/02 06:06:43 cph Exp $
+$Id: conect.scm,v 4.6 2001/10/16 16:38:37 cph Exp $
 
-Copyright (c) 1987, 1988, 1999 Massachusetts Institute of Technology
+Copyright (c) 1987, 1988, 1999, 2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; FG Connectivity Analysis
@@ -26,19 +27,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (connectivity-analysis expression procedures)
   (walk-node (expression-entry-node expression) (make-subgraph-color))
   (for-each (lambda (procedure)
-	      (if (not (procedure-direct-linked? procedure))
-		  (walk-node (procedure-entry-node procedure)
-			     (make-subgraph-color))))
+	      (walk-node (procedure-entry-node procedure)
+			 (make-subgraph-color)))
 	    procedures))
-
-(define (procedure-direct-linked? procedure)
-  (if (procedure-continuation? procedure)
-      (and (continuation/ever-known-operator? procedure)
-	   (there-exists? (continuation/combinations procedure)
-	     (lambda (combination)
-	       (and (combination/inline? combination)
-		    (combination/continuation-push combination)))))
-      (procedure-inline-code? procedure)))
 
 (define (walk-node node color)
   (let ((color* (node/subgraph-color node)))
