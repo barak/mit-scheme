@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.39 1995/08/23 14:21:58 adams Exp $
+$Id: uenvir.scm,v 14.40 1996/12/01 17:21:54 adams Exp $
 
-Copyright (c) 1988-1995 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -420,7 +420,8 @@ MIT in each case. |#
 
 (define (compiled-procedure/environment entry)
   (if (not (compiled-procedure? entry))
-      (error "Not a compiled procedure" entry 'COMPILED-PROCEDURE/ENVIRONMENT))
+      (error:wrong-type-argument entry "compiled procedure"
+				 'COMPILED-PROCEDURE/ENVIRONMENT))
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))

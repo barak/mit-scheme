@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.9 1996/04/24 04:23:19 cph Exp $
+$Id: uproc.scm,v 1.10 1996/12/01 17:19:29 adams Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -76,7 +76,7 @@ MIT in each case. |#
     (cond ((%primitive-procedure? procedure*) (if-primitive procedure*))
 	  ((%compound-procedure? procedure*) (if-compound procedure*))
 	  ((%compiled-procedure? procedure*) (if-compiled procedure*))
-	  (else (error "not a procedure" procedure)))))
+	  (else (error:wrong-type-argument procedure "procedure" #F)))))
 
 (define (skip-entities object)
   (if (%entity? object)
@@ -125,7 +125,8 @@ MIT in each case. |#
 	       (loop (apply-hook-procedure p) e)
 	       (loop (entity-procedure p) (1+ e))))
 	  (else
-	   (error "not a procedure" procedure)))))
+	   (error:wrong-type-argument procedure "procedure"
+				      'PROCEDURE-ARITY)))))
 
 (define (procedure-arity-valid? procedure n-arguments)
   (let ((arity (procedure-arity procedure)))
@@ -171,7 +172,7 @@ MIT in each case. |#
 (define (%primitive-procedure-arg procedure)
   (let ((procedure* (skip-entities procedure)))
     (if (not (%primitive-procedure? procedure*))
-	(error "not a primitive procedure" procedure))
+	(error:wrong-type-datum  procedure "primitive procedure"))
     procedure*))
 
 (define-integrable (%compound-procedure? object)
@@ -215,7 +216,8 @@ MIT in each case. |#
 	       (loop (apply-hook-procedure p))
 	       (1+ (loop (entity-procedure p)))))
 	  (else
-	   (error "not a compiled procedure" procedure)))))
+	   (error:wrong-type-argument procedure "compiled procedure"
+				      'COMPILED-PROCEDURE-FRAME-SIZE)))))
 
 (define (%compiled-closure? object)
   (and (%compiled-procedure? object)
@@ -233,7 +235,8 @@ MIT in each case. |#
   (%compiled-closure->entry
    (let ((closure* (skip-entities closure)))
      (if (not (%compiled-closure? closure*))
-	 (error "not a compiled closure" closure))
+	 (error:wrong-type-argument closure "compiled closure"
+				    'COMPILED-CLOSURE->ENTRY))
      closure*)))
 
 ;; In the following two procedures, offset can be #f to support

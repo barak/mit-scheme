@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/qsort.scm,v 14.1 1988/06/13 11:50:22 cph Rel $
+$Id: qsort.scm,v 14.2 1996/12/01 17:20:23 adams Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -83,6 +83,6 @@ MIT in each case. |#
       (vector-set! vector j ith-element)))
 
   (if (not (vector? vector))
-      (error "SORT! works on vectors only" vector))
+      (error:wrong-type-argument vector "vector" 'SORT!))
   (outer-loop 0 (-1+ (vector-length vector)))
   vector)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.51 1995/08/08 15:32:15 adams Exp $
+$Id: global.scm,v 14.52 1996/12/01 17:22:31 adams Exp $
 
-Copyright (c) 1988-95 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -152,7 +152,7 @@ MIT in each case. |#
 
 (define (pa procedure)
   (cond ((not (procedure? procedure))
-	 (error "Must be a procedure" procedure))
+	 (error:wrong-type-argument procedure "procedure" 'PA))
 	((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))

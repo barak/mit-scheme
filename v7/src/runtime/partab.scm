@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/partab.scm,v 14.3 1988/07/13 18:41:33 cph Rel $
+$Id: partab.scm,v 14.4 1996/12/01 17:21:22 adams Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -44,9 +44,9 @@ MIT in each case. |#
   (parse-object-special false read-only true)
   (collect-list-special false read-only true))
 
-(define (guarantee-parser-table table)
+(define-integrable (guarantee-parser-table table procedure)
   (if (not (parser-table? table))
-      (error "Not a valid parser table" table))
+      (error:wrong-type-argument table "parser table" procedure))
   table)
 
 (define (make-parser-table parse-object
@@ -68,11 +68,11 @@ MIT in each case. |#
   *current-parser-table*)
 
 (define (set-current-parser-table! table)
-  (guarantee-parser-table table)
+  (guarantee-parser-table table 'SET-CURRENT-PARSER-TABLE!)
   (set! *current-parser-table* table))
 
 (define (with-current-parser-table table thunk)
-  (guarantee-parser-table table)
+  (guarantee-parser-table table 'WITH-CURRENT-PARSER-TABLE)
   (fluid-let ((*current-parser-table* table))
     (thunk)))
 

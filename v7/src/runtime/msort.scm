@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/msort.scm,v 14.2 1996/11/26 17:32:06 adams Exp $
+$Id: msort.scm,v 14.3 1996/12/01 17:23:03 adams Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988-1996 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -64,7 +64,7 @@ MIT in each case. |#
 	((vector? obj)
 	 (sort! (vector-copy obj) pred))
 	(else
-	 (error "sort: argument should be a list or vector" obj))))
+	 (error:wrong-type-argument obj "list or vector" 'SORT))))
 
 ;; This merge sort is stable for partial orders (for predicates like
 ;; <=, rather than like <).
@@ -97,7 +97,7 @@ MIT in each case. |#
 		       (loop (1+ p) p1 (1+ p2)))))))))
 
   (if (not (vector? v))
-      (error "sort!: argument not a vector" v))
+      (error:wrong-type-argument v "vector" 'SORT!))
 
   (sort-internal! v
 		  (vector-copy v)
