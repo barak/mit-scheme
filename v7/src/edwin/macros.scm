@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: macros.scm,v 1.61 1993/10/14 22:43:23 cph Exp $
+;;;	$Id: macros.scm,v 1.62 1995/04/19 02:00:27 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -163,15 +163,17 @@
 	  `(VARIABLE-LOCAL-VALUE ,buffer ,name)))))
 
 (syntax-table-define edwin-syntax-table 'SET-VARIABLE!
-  (lambda (name #!optional value)
-    `(SET-VARIABLE-VALUE!
-      ,(variable-name->scheme-name (canonicalize-name name))
-      ,(if (default-object? value) '#F value))))
+  (lambda (name #!optional value buffer)
+    (let ((name (variable-name->scheme-name (canonicalize-name name)))
+	  (value (if (default-object? value) '#F value)))
+      (if (default-object? buffer)
+	  `(SET-VARIABLE-VALUE! ,name ,value)
+	  `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value)))))
 
 (syntax-table-define edwin-syntax-table 'LOCAL-SET-VARIABLE!
-  (lambda (name #!optional value)
+  (lambda (name #!optional value buffer)
     `(DEFINE-VARIABLE-LOCAL-VALUE!
-      (CURRENT-BUFFER)
+      ,(if (default-object? buffer) '(CURRENT-BUFFER) buffer)
       ,(variable-name->scheme-name (canonicalize-name name))
       ,(if (default-object? value) '#F value))))
 
