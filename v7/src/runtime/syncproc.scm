@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.3 1999/01/31 20:43:21 cph Exp $
+$Id: syncproc.scm,v 1.4 1999/01/31 20:46:25 cph Exp $
 
 Copyright (c) 1999 Massachusetts Institute of Technology
 
@@ -23,9 +23,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;; package: (runtime synchronous-subprocess)
 
 (declare (usual-integrations))
-
-(load-option 'SUBPROCESS)
 
+(load-option 'SUBPROCESS)
+
 (define-structure (subprocess-context
 		   (keyword-constructor make-subprocess-context)
 		   (conc-name subprocess-context/))
@@ -55,14 +55,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (shell-file-name (os/shell-file-name) read-only #t))
 
 (define (run-shell-command command . options)
-  (apply run-synchronous-subprocess
-	 (subprocess-context/shell-file-name context)
-	 (os/form-shell-command command)
-	 options))
-
+  (let ((context (apply make-subprocess-context options)))
+    (run-synchronous-subprocess-1 (subprocess-context/shell-file-name context)
+				  (os/form-shell-command command)
+				  context)))
+
 (define (run-synchronous-subprocess program arguments . options)
-  (let* ((context (apply make-subprocess-context options))
-	 (directory (subprocess-context/working-directory context))
+  (run-synchronous-process-1 program arguments
+			     (apply make-subprocess-context options)))
+
+(define (run-synchronous-subprocess-1 program arguments context)
+  (let* ((directory (subprocess-context/working-directory context))
 	 (process #f))
     (bind-condition-handler '()
 	(lambda (condition)
