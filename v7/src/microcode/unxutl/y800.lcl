@@ -1,0 +1,13 @@
+/* -*- C -*-
+   Switzerland local additions to the makefile
+   $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/y800.lcl,v 1.1 1991/11/04 17:20:12 jinx Exp $
+ */
+
+COMMON_OBJECTS = $(CORE_OBJECTS) $(STD_GC_OBJECTS) $(UNIX_OBJECTS) $(OS_PRIM_OBJECTS)
+
+world: all
+
+everything: world Ppband
+
+install.world: install
+
