@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.4 1999/01/02 06:19:10 cph Exp $
+$Id: symbol.scm,v 1.5 2001/06/15 20:38:49 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (c) 1992-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Symbols
@@ -46,17 +47,22 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     2)))
 
 (define (string->symbol string)
-  ;; This prevents the symbol from being affected if the string
-  ;; is mutated.  The string is copied only if the symbol is
-  ;; created.
+  ;; Calling STRING-COPY prevents the symbol from being affected if
+  ;; the string is mutated.  The string is copied only if the symbol
+  ;; is created.
   (or ((ucode-primitive find-symbol) string)
       ((ucode-primitive string->symbol) (string-copy string))))
 
-(define-integrable (intern string)
-  ((ucode-primitive string->symbol) (string-downcase string)))
+(define (intern string)
+  (if (string-lower-case? string)
+      (string->symbol string)
+      ((ucode-primitive string->symbol) (string-downcase string))))
 
-(define-integrable (intern-soft string)
-  ((ucode-primitive find-symbol) (string-downcase string)))
+(define (intern-soft string)
+  ((ucode-primitive find-symbol)
+   (if (string-lower-case? string)
+       string
+       (string-downcase string))))
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.47 2001/03/21 19:15:26 cph Exp $
+$Id: unpars.scm,v 14.48 2001/06/15 20:38:51 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -340,53 +340,50 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (*unparse-char character)))
 
 (define (unparse/string string)
-  (cond ((char-set? string)
-	 (*unparse-with-brackets 'CHARACTER-SET string false))
-	((not *slashify?*)
-	 (*unparse-string string))
-	(else
-	 (let ((end (string-length string)))
-	   (let ((end*
-		  (if *unparser-string-length-limit*
-		      (min *unparser-string-length-limit* end)
-		      end)))
-	     (*unparse-char #\")
-	     (if (substring-find-next-char-in-set string 0 end*
-						  string-delimiters)
-		 (let loop ((start 0))
-		   (let ((index
-			  (substring-find-next-char-in-set string start end*
-							   string-delimiters)))
-		     (if index
-			 (begin
-			   (*unparse-substring string start index)
-			   (*unparse-char #\\)
-			   (let ((char (string-ref string index)))
-			     (cond ((char=? char char:newline)
-				    (*unparse-char #\n))
-				   ((char=? char #\Tab)
-				    (*unparse-char #\t))
-				   ((char=? char #\VT)
-				    (*unparse-char #\v))
-				   ((char=? char #\BS)
-				    (*unparse-char #\b))
-				   ((char=? char #\Return)
-				    (*unparse-char #\r))
-				   ((char=? char #\Page)
-				    (*unparse-char #\f))
-				   ((char=? char #\BEL)
-				    (*unparse-char #\a))
-				   ((or (char=? char #\\)
-					(char=? char #\"))
-				    (*unparse-char char))
-				   (else
-				    (*unparse-string (char->octal char)))))
-			   (loop (+ index 1)))
-			 (*unparse-substring string start end*))))
-		 (*unparse-substring string 0 end*))
-	     (if (< end* end)
-		 (*unparse-string "..."))
-	     (*unparse-char #\"))))))
+  (if *slashify?*
+      (let ((end (string-length string)))
+	(let ((end*
+	       (if *unparser-string-length-limit*
+		   (min *unparser-string-length-limit* end)
+		   end)))
+	  (*unparse-char #\")
+	  (if (substring-find-next-char-in-set string 0 end*
+					       string-delimiters)
+	      (let loop ((start 0))
+		(let ((index
+		       (substring-find-next-char-in-set string start end*
+							string-delimiters)))
+		  (if index
+		      (begin
+			(*unparse-substring string start index)
+			(*unparse-char #\\)
+			(let ((char (string-ref string index)))
+			  (cond ((char=? char char:newline)
+				 (*unparse-char #\n))
+				((char=? char #\Tab)
+				 (*unparse-char #\t))
+				((char=? char #\VT)
+				 (*unparse-char #\v))
+				((char=? char #\BS)
+				 (*unparse-char #\b))
+				((char=? char #\Return)
+				 (*unparse-char #\r))
+				((char=? char #\Page)
+				 (*unparse-char #\f))
+				((char=? char #\BEL)
+				 (*unparse-char #\a))
+				((or (char=? char #\\)
+				     (char=? char #\"))
+				 (*unparse-char char))
+				(else
+				 (*unparse-string (char->octal char)))))
+			(loop (+ index 1)))
+		      (*unparse-substring string start end*))))
+	      (*unparse-substring string 0 end*))
+	  (if (< end* end)
+	      (*unparse-string "..."))
+	  (*unparse-char #\")))
+      (*unparse-string string)))
 
 (define (char->octal char)
   (let ((qr1 (integer-divide (char->ascii char) 8)))

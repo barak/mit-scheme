@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.42 2001/03/21 05:41:41 cph Exp $
+$Id: string.scm,v 14.43 2001/06/15 20:38:46 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -34,7 +34,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; (prefixed with `%') that assumes all arguments have been checked.
 ;; This avoids repeated argument checks.
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "chrset"))
 
 ;;;; Primitives
 
@@ -44,8 +45,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   string-maximum-length set-string-maximum-length!
   substring=? substring-ci=? substring<?
   substring-move-right! substring-move-left!
-  substring-find-next-char-in-set
-  substring-find-previous-char-in-set
   substring-match-forward substring-match-backward
   substring-match-forward-ci substring-match-backward-ci
   substring-upcase! substring-downcase! string-hash string-hash-mod
@@ -157,12 +156,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (string-find-next-char-in-set string char-set)
   (guarantee-string string 'STRING-FIND-NEXT-CHAR-IN-SET)
-  (substring-find-next-char-in-set string 0 (string-length string) char-set))
+  (guarantee-char-set char-set 'STRING-FIND-NEXT-CHAR-IN-SET)
+  ((ucode-primitive substring-find-next-char-in-set)
+   string 0 (string-length string)
+   (char-set-table char-set)))
 
 (define (string-find-previous-char-in-set string char-set)
   (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (substring-find-previous-char-in-set string 0 (string-length string)
-				       char-set))
+  (guarantee-char-set char-set 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
+  ((ucode-primitive substring-find-previous-char-in-set)
+   string 0 (string-length string)
+   (char-set-table char-set)))
+
+(define (substring-find-next-char-in-set string start end char-set)
+  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
+  (guarantee-char-set char-set 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
+  ((ucode-primitive substring-find-next-char-in-set)
+   string start end
+   (char-set-table char-set)))
+
+(define (substring-find-previous-char-in-set string start end char-set)
+  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
+  (guarantee-char-set char-set 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
+  ((ucode-primitive substring-find-previous-char-in-set)
+   string start end
+   (char-set-table char-set)))
 
 (define (string-match-forward string1 string2)
   (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD)
@@ -1097,3 +1115,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (error:bad-range-argument end procedure))
   (if (not (fix:<= start end))
       (error:bad-range-argument start procedure)))
+
+(define-integrable (guarantee-char-set object procedure)
+  (if (not (char-set? object))
+      (error:wrong-type-argument object "character set" procedure)))
