@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.21 2000/05/20 19:36:28 cph Exp $
+;;; $Id: imail-util.scm,v 1.22 2000/05/20 20:08:37 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -241,6 +241,32 @@
 (define (burst-comma-list-string string)
   (list-transform-negative (map string-trim (burst-string string #\, #f))
     string-null?))
+
+(define (string-greatest-common-prefix strings)
+  (let loop
+      ((strings (cdr strings))
+       (string (car strings))
+       (index (string-length (car strings))))
+    (if (null? strings)
+	(substring string 0 index)
+	(let ((string* (car strings)))
+	  (let ((index* (string-match-forward string string*)))
+	    (if (< index* index)
+		(loop (cdr strings) string* index*)
+		(loop (cdr strings) string index)))))))
+
+(define (string-greatest-common-prefix-ci strings)
+  (let loop
+      ((strings (cdr strings))
+       (string (car strings))
+       (index (string-length (car strings))))
+    (if (null? strings)
+	(substring string 0 index)
+	(let ((string* (car strings)))
+	  (let ((index* (string-match-forward-ci string string*)))
+	    (if (< index* index)
+		(loop (cdr strings) string* index*)
+		(loop (cdr strings) string index)))))))
 
 ;;;; Broken-pipe handler
 
