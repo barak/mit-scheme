@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.2 1994/11/20 00:46:55 jmiller Exp $
+$Id: utils.scm,v 1.3 1994/11/22 03:50:00 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 (declare (usual-integrations))
-
+
 ;;; Compile-time handling of booleans
 
 (define (boolean/discriminate object)
@@ -724,39 +724,52 @@ MIT in each case. |#
 	   (loop (cdr ll) (cdr ops) (cons (car ops) ops*))))))
 
 (define (lambda-list/parse lambda-list)
-  ;; (values required optional rest)
-  ;; No #!AUX allowed here
+  ;; (values required optional rest aux)
   (let parse ((ll lambda-list))
     (cond ((null? ll)
-	   (values '() '() false))
+	   (values '() '() false '()))
 	  ((eq? (car ll) '#!OPTIONAL)
 	   (call-with-values
 	    (lambda () (parse (cdr ll)))
-	    (lambda (opt opt* rest)
+	    (lambda (opt opt* rest aux)
 	      (if (not (null? opt*))
 		  (internal-error "Multiple #!OPTIONAL specifiers"
 				  lambda-list))
-	      (values '() opt rest))))
+	      (values '() opt rest aux))))
 	  ((eq? (car ll) '#!REST)
-	   (if (or (null? (cdr ll))
-		   (not (null? (cddr ll))))
-	       (internal-error "Parameters follow #!REST" lambda-list))
-	   (values '() '() (cdr ll)))
+	   (call-with-values
+	    (lambda () (parse (cdr ll)))
+	    (lambda (req opt rest aux)
+	      (if (or (null? req)
+		      (not (null? (cdr req)))
+		      (not (null? opt))
+		      rest)
+		  (internal-error "Unexpected stuff after #!REST" lambda-list))
+	      (values '() '() (car req) aux))))
+	  ((eq? (car ll) '#!AUX)
+	   (call-with-values
+	    (lambda () (parse (cdr ll)))
+	    (lambda (req opt rest aux)
+	      (if (or (null? req)
+		      (not (null? opt))
+		      rest
+		      (not (null? aux)))
+		  (internal-error "Unexpected stuff after #!AUX" lambda-list))
+	      (values '() '() false req))))
 	  (else
 	   (call-with-values
 	    (lambda () (parse (cdr ll)))
-	    (lambda (req opt rest)
-	      (values (cons (car ll) req)
-		      opt
-		      rest)))))))
+	    (lambda (req opt rest aux)
+	      (values (cons (car ll) req) opt rest aux)))))))
 
 (define (lambda-list/arity-info lambda-list)
   ;; This includes the return address, since the
   ;; current convention includes that.
   (call-with-values
    (lambda () (lambda-list/parse lambda-list))
-   (lambda (required optional rest)
+   (lambda (required optional rest aux)
      ;; min includes the continuation, since after CPS!
+     aux				; ignored
      (let* ((min (length required))
 	    (max (+ min (length optional))))
        (list min
@@ -977,7 +990,7 @@ MIT in each case. |#
       ((< i 0) acc)))
 
 (define code/rewrite-table/make
-  (strong-hash-table/constructor eq-hash-mod eq?))
+  (strong-hash-table/constructor eq-hash-mod eq? true))
 
 (define code-rewrite/remember
   (let ((not-found (list '*NOT-FOUND*)))
