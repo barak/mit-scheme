@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debug.scm,v 1.1 1992/06/05 21:39:12 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/debug.scm,v 1.2 1992/06/08 16:50:57 aragorn Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -959,8 +959,11 @@ it has been renamed it will not be automatically deleted."
 			   port)
 	     (newline port)
 	     (write (stack-frame/return-address frame) port))))
-    (newline port)
-    (show-environment-name (subproblem/environment subproblem) port)))
+    (let ((environment (subproblem/environment subproblem)))
+      (if (not (debugging-info/undefined-environment? environment))
+	  (begin
+	    (newline port)
+	    (show-environment-name environment port))))))
 
 (define subexpression-marker
   (string->symbol "###"))
