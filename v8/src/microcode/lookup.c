@@ -1,6 +1,8 @@
 /* -*-C-*-
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.46 1991/05/05 00:42:53 jinx Exp $
+
+Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -30,12 +32,10 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/lookup.c,v 9.45 1990/11/27 19:13:10 cph Rel $
- *
- * This file contains symbol lookup and modification routines.  See
- * Hal Abelson for a paper describing and justifying the algorithm.
- *
- * The implementation is vastly different, but the concepts are the same.
+/*
+ * This file contains symbol lookup and modification routines.
+ * See a paper by Jim Miller and Bill Rozas in Lisp and Symbolic Computation
+ * (4th issue 1990) for a justification of the algorithms.
  */
 
 #include "scheme.h"
@@ -46,7 +46,8 @@ MIT in each case. */
 /* NOTE:
    Although this code has been parallelized, it has not been
    exhaustively tried on a parallel processor.  There are probably
-   various race conditions that have to be thought about carefully.
+   various race conditions/potential deadlocks that have to be thought
+   about carefully.
  */
 
 /* Useful constants. */
@@ -135,10 +136,10 @@ scan_frame(frame, sym, hunk, depth, unbound_valid_p)
 
   /* Search for a formal parameter. */
 
-  temp = FAST_MEMORY_REF (FAST_MEMORY_REF (temp, PROCEDURE_LAMBDA_EXPR),
-			 LAMBDA_FORMALS);
-  for (count = VECTOR_LENGTH (temp) - 1,
-       scan = MEMORY_LOC (temp, VECTOR_DATA + 1);
+  temp = (FAST_MEMORY_REF ((FAST_MEMORY_REF (temp, PROCEDURE_LAMBDA_EXPR)),
+			   LAMBDA_FORMALS));
+  for (count = ((VECTOR_LENGTH (temp)) - 1),
+       scan = (MEMORY_LOC (temp, VECTOR_DATA + 1));
        count > 0;
        count -= 1,
        scan += 1)
@@ -602,11 +603,13 @@ compiler_cache_assignment:
 
 	  /* Unlock and lock at the new value cell. */
 
-	  references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
-	  cell = MEMORY_LOC (extension, TRAP_EXTENSION_CELL);
-	  update_lock(set_serializer, cell);
+	  references = (FAST_MEMORY_REF (extension,
+					 TRAP_EXTENSION_REFERENCES));
+	  cell = (MEMORY_LOC (extension, TRAP_EXTENSION_CELL));
+	  update_lock (set_serializer, cell);
 
-	  if (FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR) != SHARP_F)
+	  if ((FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR))
+	      != SHARP_F)
 	  {
 	    if (saved_extension != SHARP_F)
 	    {
@@ -643,7 +646,7 @@ compiler_cache_assignment:
 
   if (saved_extension != SHARP_F)
   {
-    long recache_uuo_links();
+    long recache_uuo_links ();
 
     if (fluid_lock_p)
     {
@@ -651,8 +654,8 @@ compiler_cache_assignment:
 	 the call to recache_uuo_links.
        */
 
-      update_lock(set_serializer,
-		  MEMORY_LOC (saved_extension, TRAP_EXTENSION_CELL));
+      update_lock (set_serializer,
+		   (MEMORY_LOC (saved_extension, TRAP_EXTENSION_CELL)));
     }
 
     /* NOTE:
@@ -663,8 +666,8 @@ compiler_cache_assignment:
        in the same order.
      */
 
-    return_value = recache_uuo_links(saved_extension, saved_value);
-    remove_lock(set_serializer);
+    return_value = (recache_uuo_links (saved_extension, saved_value));
+    remove_lock (set_serializer);
 
     if (return_value != PRIM_DONE)
     {
@@ -673,7 +676,7 @@ compiler_cache_assignment:
   }
   else
   {
-    remove_lock(set_serializer);
+    remove_lock (set_serializer);
   }
 
   /* This must be done after the assignment lock has been removed,
@@ -686,10 +689,10 @@ compiler_cache_assignment:
 
     Lock_Handle compile_serializer;
 
-    setup_lock(compile_serializer, hunk);
+    setup_lock (compile_serializer, hunk);
     hunk[VARIABLE_COMPILED_TYPE] = UNCOMPILED_VARIABLE;
     hunk[VARIABLE_OFFSET] = SHARP_F;
-    remove_lock(compile_serializer);
+    remove_lock (compile_serializer);
   }
 
   return (return_value);
@@ -847,7 +850,7 @@ lookup_fluid(trap)
  */
 
 #define redefinition(cell, value) \
-  deep_assignment_end(cell, fake_variable_object, value, true)
+  (deep_assignment_end (cell, fake_variable_object, value, true))
 
 long
 definition (cell, value, shadowed_p)
@@ -855,16 +858,16 @@ definition (cell, value, shadowed_p)
      Boolean shadowed_p;
 {
   if (shadowed_p)
-    return (redefinition(cell, value));
+    return (redefinition (cell, value));
   else
   {
     Lock_Handle set_serializer;
 
-    setup_lock(set_serializer, cell);
+    setup_lock (set_serializer, cell);
     if (*cell == DANGEROUS_UNBOUND_OBJECT)
     {
       *cell = value;
-      remove_lock(set_serializer);
+      remove_lock (set_serializer);
       return (PRIM_DONE);
     }
     else
@@ -873,8 +876,8 @@ definition (cell, value, shadowed_p)
 	 even if there was no need, but this is the only way to
 	 guarantee consistent values.
        */
-      remove_lock(set_serializer);
-      return (redefinition(cell, value));
+      remove_lock (set_serializer);
+      return (redefinition (cell, value));
     }
   }
 }
@@ -1116,17 +1119,17 @@ redo_aux_lookup:
 
 	  temp =
 	    (compiler_uncache
-	     (deep_lookup((FAST_MEMORY_REF (extension,
-					    ENV_EXTENSION_PARENT_FRAME)),
-			  sym,
-			  fake_variable_object),
+	     (deep_lookup ((FAST_MEMORY_REF (extension,
+					     ENV_EXTENSION_PARENT_FRAME)),
+			   sym,
+			   fake_variable_object),
 	      sym));
 
 	  if ((temp != PRIM_DONE) || (env != original_frame))
 	  {
 	    return (temp);
 	  }
-	  return shadowing_recache (scan, env, sym, value, true);
+	  return (shadowing_recache (scan, env, sym, value, true));
 	}
 
 	if (env == original_frame)
@@ -1148,8 +1151,8 @@ redo_aux_lookup:
     fast long temp;
 
     temp =
-      extend_frame ((FAST_MEMORY_REF (extension, ENV_EXTENSION_PARENT_FRAME)),
-		    sym, SHARP_F, original_frame, recache_p);
+      (extend_frame ((FAST_MEMORY_REF (extension, ENV_EXTENSION_PARENT_FRAME)),
+		     sym, SHARP_F, original_frame, recache_p));
 
     if (temp != PRIM_DONE)
     {
@@ -1281,8 +1284,8 @@ Symbol_Lex_Set(env, sym, value)
 }
 
 long
-Local_Set(env, sym, value)
-	SCHEME_OBJECT env, sym, value;
+Local_Set (env, sym, value)
+     SCHEME_OBJECT env, sym, value;
 {
   long result;
 
@@ -1292,7 +1295,7 @@ Local_Set(env, sym, value)
 	    "\n;; Local_Set: defining %s.",
 	    (STRING_LOC ((MEMORY_REF (sym, SYMBOL_NAME)), 0)));
   }
-  result = extend_frame(env, sym, value, env, true);
+  result = (extend_frame (env, sym, value, env, true));
   Val = sym;
   return (result);
 }
@@ -1515,10 +1518,10 @@ force_definition(env, symbol, message)
   SCHEME_OBJECT *new_cell;						\
 									\
   compiler_cache_variable[VARIABLE_SYMBOL] = name;			\
-  new_cell = lookup_cell(compiler_cache_variable, env);			\
+  new_cell = (lookup_cell (compiler_cache_variable, env));		\
   if (cell != new_cell)							\
   {									\
-    remove_lock(set_serializer);					\
+    remove_lock (set_serializer);					\
     cell = new_cell;							\
     goto compiler_cache_retry;						\
   }									\
@@ -1527,18 +1530,42 @@ force_definition(env, symbol, message)
 #endif /* PARALLEL_PROCESSOR */
 
 extern SCHEME_OBJECT compiler_cache_variable[];
-extern long compiler_cache();
+extern long compiler_cache ();
 
 SCHEME_OBJECT compiler_cache_variable[3];
+
+Boolean
+local_reference_p (env, hunk)
+     SCHEME_OBJECT *hunk;
+{
+  SCHEME_OBJECT spec;
+
+  spec = (MEMORY_FETCH (hunk [VARIABLE_COMPILED_TYPE]));
+  switch (OBJECT_TYPE (spec))
+  {
+    case GLOBAL_REF:
+      return (env == (MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL)));
+
+    case LOCAL_REF:
+      return (true);
+
+    case FORMAL_REF:
+    case AUX_REF:
+      return ((OBJECT_DATUM (spec)) == 0);      
+
+    default:
+      return (false);
+  }
+}
 
 long
-compiler_cache(cell, env, name, block, offset, kind, first_time)
+compiler_cache (cell, env, name, block, offset, kind, first_time)
      fast SCHEME_OBJECT *cell;
      SCHEME_OBJECT env, name, block;
      long offset, kind;
      Boolean first_time;
 {
-  long cache_reference_end();
+  long cache_reference_end ();
   Lock_Handle set_serializer;
   fast SCHEME_OBJECT trap, references, extension;
   SCHEME_OBJECT trap_value, store_trap_tag, store_extension;
@@ -1550,19 +1577,19 @@ compiler_cache(cell, env, name, block, offset, kind, first_time)
 
 compiler_cache_retry:
 
-  setup_lock(set_serializer, cell);
-  compiler_cache_consistency_check();
-  compiler_cache_prolog();
+  setup_lock (set_serializer, cell);
+  compiler_cache_consistency_check ();
+  compiler_cache_prolog ();
 
   trap = *cell;
   trap_value = trap;
 
-  if (REFERENCE_TRAP_P(trap))
+  if (REFERENCE_TRAP_P (trap))
   {
     long old_trap_kind;
 
-    get_trap_kind(old_trap_kind, trap);
-    switch(old_trap_kind)
+    get_trap_kind (old_trap_kind, trap);
+    switch (old_trap_kind)
     {
       case TRAP_UNASSIGNED:
       case TRAP_UNBOUND:
@@ -1570,7 +1597,7 @@ compiler_cache_retry:
 	break;
 
       case TRAP_DANGEROUS:
-        trap_value = FAST_MEMORY_REF (trap, TRAP_EXTRA);
+        trap_value = (FAST_MEMORY_REF (trap, TRAP_EXTRA));
 	trap_kind = TRAP_COMPILER_CACHED_DANGEROUS;
 	break;
 
@@ -1585,22 +1612,22 @@ compiler_cache_retry:
 	break;
 
       case TRAP_FLUID_DANGEROUS:
-	store_trap_tag = LONG_TO_UNSIGNED_FIXNUM(TRAP_FLUID);
+	store_trap_tag = (LONG_TO_UNSIGNED_FIXNUM (TRAP_FLUID));
 	trap_kind = TRAP_COMPILER_CACHED_DANGEROUS;
 	break;
 
       case TRAP_COMPILER_CACHED:
       case TRAP_COMPILER_CACHED_DANGEROUS:
-	extension = FAST_MEMORY_REF (trap, TRAP_EXTRA);
-	update_lock(set_serializer,
-		    MEMORY_LOC (extension, TRAP_EXTENSION_CELL));
-	trap_value = FAST_MEMORY_REF (extension, TRAP_EXTENSION_CELL);
+	extension = (FAST_MEMORY_REF (trap, TRAP_EXTRA));
+	update_lock (set_serializer,
+		     (MEMORY_LOC (extension, TRAP_EXTENSION_CELL)));
+	trap_value = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CELL));
 	trap_kind = -1;
 	break;
 
       default:
-	compiler_cache_epilog();
-	remove_lock(set_serializer);
+	compiler_cache_epilog ();
+	remove_lock (set_serializer);
 	return (ERR_ILLEGAL_REFERENCE_TRAP);
     }
   }
@@ -1622,11 +1649,11 @@ compiler_cache_retry:
 
 #define MAXIMUM_CACHE_SIZE 40
 
-  if (GC_allocate_test(MAXIMUM_CACHE_SIZE))
+  if (GC_allocate_test (MAXIMUM_CACHE_SIZE))
   {
-    compiler_cache_epilog();
-    remove_lock(set_serializer);
-    Request_GC(MAXIMUM_CACHE_SIZE);
+    compiler_cache_epilog ();
+    remove_lock (set_serializer);
+    Request_GC (MAXIMUM_CACHE_SIZE);
     return (PRIM_INTERRUPT);
   }
 
@@ -1645,24 +1672,24 @@ compiler_cache_retry:
 
 #if false
     /* This is included in the check above. */
-    if (GC_allocate_test(9))
+    if (GC_allocate_test (9))
     {
-      compiler_cache_epilog();
-      remove_lock(set_serializer);
-      Request_GC(9);
+      compiler_cache_epilog ();
+      remove_lock (set_serializer);
+      Request_GC (9);
       return (PRIM_INTERRUPT);
     }
 #endif
 
-    new_trap = MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free);
-    *Free++ = LONG_TO_UNSIGNED_FIXNUM(trap_kind);
-    extension = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, (Free + 1));
+    new_trap = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free));
+    *Free++ = (LONG_TO_UNSIGNED_FIXNUM (trap_kind));
+    extension = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, (Free + 1)));
     *Free++ = extension;
 
     *Free++ = trap_value;
     *Free++ = name;
     *Free++ = SHARP_F;
-    references = MAKE_POINTER_OBJECT (TRAP_REFERENCES_TYPE, (Free + 1));
+    references = (MAKE_POINTER_OBJECT (TRAP_REFERENCES_TYPE, (Free + 1)));
     *Free++ = references;
 
     *Free++ = EMPTY_LIST;
@@ -1675,8 +1702,8 @@ compiler_cache_retry:
       /* Do_Store_No_Lock ? */
       FAST_MEMORY_SET (trap, TRAP_TAG, store_trap_tag);
     }
-    update_lock(set_serializer,
-		MEMORY_LOC (extension, TRAP_EXTENSION_CELL));
+    update_lock (set_serializer,
+		 (MEMORY_LOC (extension, TRAP_EXTENSION_CELL)));
   }
 
   if (block == SHARP_F)
@@ -1684,8 +1711,8 @@ compiler_cache_retry:
     /* It is not really from compiled code.
        The environment linking stuff wants a cc cache instead.
      */
-    compiler_cache_epilog();
-    remove_lock(set_serializer);
+    compiler_cache_epilog ();
+    remove_lock (set_serializer);
     return (PRIM_DONE);
   }
 
@@ -1694,10 +1721,10 @@ compiler_cache_retry:
    */
 
   {
-    void fix_references();
-    long add_reference();
+    void fix_references ();
+    long add_reference ();
 
-    references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
+    references = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES));
 
     if (((kind == TRAP_REFERENCES_ASSIGNMENT) &&
 	 ((FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR))
@@ -1706,62 +1733,75 @@ compiler_cache_retry:
 	 ((FAST_MEMORY_REF (references, TRAP_REFERENCES_ASSIGNMENT))
 	  != EMPTY_LIST)))
     {
-      store_extension = FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE);
+      store_extension = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE));
       if (store_extension == SHARP_F)
       {
 #if false
 	/* This is included in the check above. */
 
-	if (GC_allocate_test(4))
+	if (GC_allocate_test (4))
 	{
-	  compiler_cache_epilog();
-	  remove_lock(set_serializer);
-	  Request_GC(4);
+	  compiler_cache_epilog ();
+	  remove_lock (set_serializer);
+	  Request_GC (4);
 	  return (PRIM_INTERRUPT);
 	}
 #endif
-	store_extension = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free);
+	store_extension = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free));
 	*Free++ = EXPENSIVE_ASSIGNMENT_OBJECT;
-	*Free++ = FAST_MEMORY_REF (extension, TRAP_EXTENSION_NAME);
+	*Free++ = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_NAME));
 	*Free++ = extension;
 	*Free++ = references;
 	FAST_MEMORY_SET (extension, TRAP_EXTENSION_CLONE, store_extension);
 
 	if (kind == TRAP_REFERENCES_OPERATOR)
 	{
-	  fix_references(MEMORY_LOC (references,
-					TRAP_REFERENCES_ASSIGNMENT),
-			 store_extension);
+	  fix_references ((MEMORY_LOC (references,
+				       TRAP_REFERENCES_ASSIGNMENT)),
+			  store_extension);
 	}
       }
     }
 
-    return_value = add_reference(MEMORY_LOC (references, kind),
-				 block,
-				 LONG_TO_UNSIGNED_FIXNUM(offset));
+    /* *UNDEFINE*: If undefine is ever implemented, we should re-think
+       references by fiat since such references have constraints
+       about where they can be linked to.
+       For example, if C -> B -> A (-> means descends from)
+       and there is a reference by fiat from C to B, and we undefine
+       in B, it can go to A, but never to C (or anything between C and B).
+       Curently the only references by fiat are those of the form
+       ((access foo ()) ...)
+     */
+
+    return_value =
+      (add_reference ((MEMORY_LOC (references, kind)),
+		      block,
+		      ((local_reference_p (env, compiler_cache_variable))
+		       ? (MAKE_OBJECT (TC_CHARACTER, offset))
+		       : (MAKE_OBJECT (TC_FIXNUM, offset)))));
     if (return_value != PRIM_DONE)
     {
-      compiler_cache_epilog();
-      remove_lock(set_serializer);
+      compiler_cache_epilog ();
+      remove_lock (set_serializer);
       return (return_value);
     }
   }
 
   /* Install an extension or a uuo link in the cc block. */
 
-  return_value = cache_reference_end(kind, extension, store_extension,
-				     block, offset, trap_value);
+  return_value = (cache_reference_end (kind, extension, store_extension,
+				       block, offset, trap_value));
 
   /* Unlock and return */
 
-  compiler_cache_epilog();
-  remove_lock(set_serializer);
+  compiler_cache_epilog ();
+  remove_lock (set_serializer);
   return (return_value);
 }
 
 long
-cache_reference_end(kind, extension, store_extension,
-		    block, offset, value)
+cache_reference_end (kind, extension, store_extension,
+		     block, offset, value)
      long kind, offset;
      SCHEME_OBJECT extension, store_extension, block, value;
 {
@@ -1777,24 +1817,24 @@ cache_reference_end(kind, extension, store_extension,
     case TRAP_REFERENCES_ASSIGNMENT:
       if (store_extension != SHARP_F)
       {
-	store_variable_cache(store_extension, block, offset);
+	store_variable_cache (store_extension, block, offset);
 	return (PRIM_DONE);
       }
       /* Fall through */
 
     case TRAP_REFERENCES_LOOKUP:
-      store_variable_cache(extension, block, offset);
+      store_variable_cache (extension, block, offset);
       return (PRIM_DONE);
 
     case TRAP_REFERENCES_OPERATOR:
     {
-      if (REFERENCE_TRAP_P(value))
+      if (REFERENCE_TRAP_P (value))
       {
-	return (make_fake_uuo_link(extension, block, offset));
+	return (make_fake_uuo_link (extension, block, offset));
       }
       else
       {
-	return (make_uuo_link(value, extension, block, offset));
+	return (make_uuo_link (value, extension, block, offset));
       }
     }
   }
@@ -1806,25 +1846,25 @@ cache_reference_end(kind, extension, store_extension,
  */
 
 long
-compiler_cache_reference(env, name, block, offset, kind, first_time)
+compiler_cache_reference (env, name, block, offset, kind, first_time)
      SCHEME_OBJECT env, name, block;
      long offset, kind;
      Boolean first_time;
 {
   SCHEME_OBJECT *cell;
 
-  cell = deep_lookup(env, name, compiler_cache_variable);
+  cell = (deep_lookup (env, name, compiler_cache_variable));
   if (cell == unbound_trap_object)
   {
     long message;
 
-    cell = force_definition(env, name, &message);
+    cell = (force_definition (env, name, &message));
     if (message != PRIM_DONE)
     {
       return (message);
     }
   }
-  return (compiler_cache(cell, env, name, block, offset, kind, first_time));
+  return (compiler_cache (cell, env, name, block, offset, kind, first_time));
 }
 
 /* This procedure updates all the references in the cached reference
@@ -1833,27 +1873,27 @@ compiler_cache_reference(env, name, block, offset, kind, first_time)
  */
 
 void
-fix_references(slot, extension)
+fix_references (slot, extension)
      fast SCHEME_OBJECT *slot, extension;
 {
   fast SCHEME_OBJECT pair, block;
 
   while (*slot != EMPTY_LIST)
   {
-    pair = FAST_PAIR_CAR (*slot);
-    block = FAST_PAIR_CAR (pair);
+    pair = (FAST_PAIR_CAR (*slot));
+    block = (FAST_PAIR_CAR (pair));
     if (block == SHARP_F)
     {
-      *slot = FAST_PAIR_CDR (*slot);
+      *slot = (FAST_PAIR_CDR (*slot));
     }
     else
     {
       extern void store_variable_cache();
 
-      store_variable_cache(extension,
-			   block,
-			   OBJECT_DATUM (FAST_PAIR_CDR (pair)));
-      slot = PAIR_CDR_LOC (*slot);
+      store_variable_cache (extension,
+			    block,
+			    (OBJECT_DATUM (FAST_PAIR_CDR (pair))));
+      slot = (PAIR_CDR_LOC (*slot));
     }
   }
   return;
@@ -1865,7 +1905,7 @@ fix_references(slot, extension)
  */
 
 long
-add_reference(slot, block, offset)
+add_reference (slot, block, offset)
      fast SCHEME_OBJECT *slot;
      SCHEME_OBJECT block, offset;
 {
@@ -1873,24 +1913,24 @@ add_reference(slot, block, offset)
 
   while (*slot != EMPTY_LIST)
   {
-    pair = FAST_PAIR_CAR (*slot);
-    if (FAST_PAIR_CAR (pair) == SHARP_F)
+    pair = (FAST_PAIR_CAR (*slot));
+    if ((FAST_PAIR_CAR (pair)) == SHARP_F)
     {
       FAST_SET_PAIR_CAR (pair, block);
       FAST_SET_PAIR_CDR (pair, offset);
       return (PRIM_DONE);
     }
-    slot = PAIR_CDR_LOC (*slot);
+    slot = (PAIR_CDR_LOC (*slot));
   }
 
-  if (GC_allocate_test(4))
+  if (GC_allocate_test (4))
   {
-    Request_GC(4);
+    Request_GC (4);
     return (PRIM_INTERRUPT);
   }
 
-  *slot = MAKE_POINTER_OBJECT (TC_LIST, Free);
-  *Free = MAKE_POINTER_OBJECT (TC_WEAK_CONS, (Free + 2));
+  *slot = (MAKE_POINTER_OBJECT (TC_LIST, Free));
+  *Free = (MAKE_POINTER_OBJECT (TC_WEAK_CONS, (Free + 2)));
   Free += 1;
   *Free++ = EMPTY_LIST;
 
@@ -1920,7 +1960,7 @@ static long
  */
 
 long
-compiler_uncache_slot(slot, sym, kind)
+compiler_uncache_slot (slot, sym, kind)
      fast SCHEME_OBJECT *slot;
      SCHEME_OBJECT sym;
      long kind;
@@ -1930,41 +1970,53 @@ compiler_uncache_slot(slot, sym, kind)
 
   for (temp = *slot; temp != EMPTY_LIST; temp = *slot)
   {
-    pair = FAST_PAIR_CAR (temp);
-    block = FAST_PAIR_CAR (pair);
+    pair = (FAST_PAIR_CAR (temp));
+    block = (FAST_PAIR_CAR (pair));
     if (block != SHARP_F)
     {
-      offset = FAST_PAIR_CDR (pair);
-      if (GC_allocate_test(4))
+      offset = (FAST_PAIR_CDR (pair));
+      if (CHARACTER_P (offset))
       {
-	Request_GC(4);
-	return (PRIM_INTERRUPT);
-      }
-      new_extension = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free);
-      *Free++ = REQUEST_RECACHE_OBJECT;
-      *Free++ = sym;
-      *Free++ = block;
-      *Free++ = offset;
-
-      if (kind == TRAP_REFERENCES_OPERATOR)
-      {
-	extern long make_fake_uuo_link();
-	long result;
+	/* This reference really belongs here! -- do not uncache.
+	   Skip to next.
+	 */
 
-	result = make_fake_uuo_link(new_extension,
-				    block,
-				    OBJECT_DATUM (offset));
-	if (result != PRIM_DONE)
-	  return (result);
+	slot = (PAIR_CDR_LOC (temp));
+	continue;
       }
       else
       {
-	extern void store_variable_cache();
+	if (GC_allocate_test (4))
+	{
+	  Request_GC (4);
+	  return (PRIM_INTERRUPT);
+	}
+	new_extension = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, Free));
+	*Free++ = REQUEST_RECACHE_OBJECT;
+	*Free++ = sym;
+	*Free++ = block;
+	*Free++ = offset;
 
-	store_variable_cache(new_extension, block, OBJECT_DATUM (offset));
+	if (kind == TRAP_REFERENCES_OPERATOR)
+	{
+	  extern long make_fake_uuo_link ();
+	  long result;
+
+	  result = (make_fake_uuo_link (new_extension,
+					block,
+					(OBJECT_DATUM (offset))));
+	  if (result != PRIM_DONE)
+	    return (result);
+	}
+	else
+	{
+	  extern void store_variable_cache ();
+
+	  store_variable_cache (new_extension, block, (OBJECT_DATUM (offset)));
+	}
       }
     }
-    *slot = FAST_PAIR_CDR (temp);
+    *slot = (FAST_PAIR_CDR (temp));
   }
   return (PRIM_DONE);
 }
@@ -1977,59 +2029,81 @@ compiler_uncache_slot(slot, sym, kind)
  */
 
 long
-compiler_uncache(value_cell, sym)
+compiler_uncache (value_cell, sym)
      SCHEME_OBJECT *value_cell, sym;
 {
   Lock_Handle set_serializer;
   SCHEME_OBJECT val, extension, references;
   long trap_kind, temp, i, index;
 
-  setup_lock(set_serializer, value_cell);
+  setup_lock (set_serializer, value_cell);
 
   val = *value_cell;
 
-  if (!(REFERENCE_TRAP_P(val)))
+  if (!(REFERENCE_TRAP_P (val)))
   {
-    remove_lock(set_serializer);
+    remove_lock (set_serializer);
     return (PRIM_DONE);
   }
 
-  get_trap_kind(trap_kind, val);
+  get_trap_kind (trap_kind, val);
   if ((trap_kind != TRAP_COMPILER_CACHED) &&
       (trap_kind != TRAP_COMPILER_CACHED_DANGEROUS))
   {
-    remove_lock(set_serializer);
+    remove_lock (set_serializer);
     return (PRIM_DONE);
   }
 
-  compiler_uncache_prolog();
+  compiler_uncache_prolog ();
 
-  extension = FAST_MEMORY_REF (val, TRAP_EXTRA);
-  references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
-  update_lock(set_serializer, MEMORY_LOC (extension, TRAP_EXTENSION_CELL));
+  extension = (FAST_MEMORY_REF (val, TRAP_EXTRA));
+  references = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES));
+  update_lock (set_serializer, (MEMORY_LOC (extension, TRAP_EXTENSION_CELL)));
 
   /* Uncache all of the lists. */
 
   for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
   {
     index = trap_map_table[i];
-    temp = compiler_uncache_slot(MEMORY_LOC (references, index),
-				 sym, index);
+    temp = (compiler_uncache_slot ((MEMORY_LOC (references, index)),
+				   sym, index));
     if (temp != PRIM_DONE)
     {
-      remove_lock(set_serializer);
-      compiler_uncache_epilog();
+      remove_lock (set_serializer);
+      compiler_uncache_epilog ();
       return (temp);
     }
   }
 
-  /* We should actually remove the trap here, but, for now... */
+  /* Note that we can only remove the trap if no references remain,
+     ie. if there were no hard-wired references to this frame.
+     We can test that by checking whether all the slots were set
+     to EMPTY_LIST in the preceding loop.
+     The current code, however, never removes the trap.
+   */
 
-  /* Remove the clone extension if there is one. */
+  /* Remove the clone extension if there is one and it is no longer needed. */
 
-  FAST_MEMORY_SET (extension, TRAP_EXTENSION_CLONE, SHARP_F);
-  compiler_uncache_epilog();
-  remove_lock(set_serializer);
+  if ((FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE)) != SHARP_F)
+  {
+    if ((FAST_MEMORY_REF (references, TRAP_REFERENCES_ASSIGNMENT))
+	== EMPTY_LIST)
+    {
+      FAST_MEMORY_SET (extension, TRAP_EXTENSION_CLONE, SHARP_F);
+    }
+    else if ((FAST_MEMORY_REF (references, TRAP_REFERENCES_OPERATOR))
+	     == EMPTY_LIST)
+    {
+      /* All operators have disappeared, we can remove the clone,
+	 but we must update the cells.
+       */
+      fix_references ((MEMORY_LOC (references, TRAP_REFERENCES_ASSIGNMENT)),
+		      extension);
+      FAST_MEMORY_SET (extension, TRAP_EXTENSION_CLONE, SHARP_F);
+    }
+  }
+  compiler_uncache_epilog ();
+  remove_lock (set_serializer);
   return (PRIM_DONE);
 }
 
@@ -2106,16 +2180,16 @@ static long
     };
 
 Boolean
-environment_ancestor_or_self_p(ancestor, descendant)
+environment_ancestor_or_self_p (ancestor, descendant)
      fast SCHEME_OBJECT ancestor, descendant;
 {
-  while (OBJECT_TYPE (descendant) != GLOBAL_ENV)
+  while ((OBJECT_TYPE (descendant)) != GLOBAL_ENV)
   {
     if (descendant == ancestor)
       return (true);
-    descendant = FAST_MEMORY_REF (MEMORY_REF (descendant,
-					      ENVIRONMENT_FUNCTION),
-				  PROCEDURE_ENVIRONMENT);
+    descendant = (FAST_MEMORY_REF ((MEMORY_REF (descendant,
+						ENVIRONMENT_FUNCTION)),
+				   PROCEDURE_ENVIRONMENT));
   }
   return (descendant == ancestor);
 }
@@ -2132,9 +2206,10 @@ environment_ancestor_or_self_p(ancestor, descendant)
  */
 
 long
-compiler_recache_split (slot, sym, definition_env, memoize_cell)
+compiler_recache_split (slot, sym, definition_env, memoize_cell, link_p)
      fast SCHEME_OBJECT *slot;
      SCHEME_OBJECT sym, definition_env, **memoize_cell;
+     Boolean link_p;
 {
   fast long count;
   SCHEME_OBJECT weak_pair, block, reference_env, invalid_head;
@@ -2145,24 +2220,32 @@ compiler_recache_split (slot, sym, definition_env, memoize_cell)
 
   while (*slot != EMPTY_LIST)
   {
-    weak_pair = FAST_PAIR_CAR (*slot);
-    block = FAST_PAIR_CAR (weak_pair);
+    weak_pair = (FAST_PAIR_CAR (*slot));
+    block = (FAST_PAIR_CAR (weak_pair));
     if (block == SHARP_F)
     {
-      *slot = FAST_PAIR_CDR (*slot);
+      *slot = (FAST_PAIR_CDR (*slot));
       continue;
     }
-    reference_env = compiled_block_environment(block);
-    if (!environment_ancestor_or_self_p(definition_env, reference_env))
+    if (!link_p && (CHARACTER_P (FAST_PAIR_CDR (weak_pair))))
     {
-      slot = PAIR_CDR_LOC (*slot);
+      /* The reference really belongs here -- it is not affected by fiat. */
+      slot = (PAIR_CDR_LOC (*slot));
     }
     else
     {
-      count += 1;
-      *last_invalid = *slot;
-      last_invalid = PAIR_CDR_LOC (*slot);
-      *slot = *last_invalid;
+      reference_env = (compiled_block_environment (block));
+      if (!environment_ancestor_or_self_p (definition_env, reference_env))
+      {
+	slot = (PAIR_CDR_LOC (*slot));
+      }
+      else
+      {
+	count += 1;
+	*last_invalid = *slot;
+	last_invalid = (PAIR_CDR_LOC (*slot));
+	*slot = *last_invalid;
+      }
     }
   }
   *last_invalid = EMPTY_LIST;
@@ -2192,16 +2275,16 @@ compiler_recache_slot (extension, sym, kind, slot, cell, value)
   /* This is #F if there isn't one.
      This makes cache_reference_end do the right thing.
    */
-  clone = FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE);
+  clone = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE));
   tail = *slot;
 
   for (pair = *cell; pair != NULL; pair = *cell)
   {
-    weak_pair = FAST_PAIR_CAR (pair);
-    result = cache_reference_end(kind, extension, clone,
-				 FAST_PAIR_CAR (weak_pair),
-				 OBJECT_DATUM (FAST_PAIR_CDR (weak_pair)),
-				 value);
+    weak_pair = (FAST_PAIR_CAR (pair));
+    result = (cache_reference_end (kind, extension, clone,
+				   (FAST_PAIR_CAR (weak_pair)),
+				   (OBJECT_DATUM (FAST_PAIR_CDR (weak_pair))),
+				   value));
     if (result != PRIM_DONE)
     {
       /* We are severely screwed.
@@ -2212,7 +2295,7 @@ compiler_recache_slot (extension, sym, kind, slot, cell, value)
     }
 
     *slot = pair;
-    slot = PAIR_CDR_LOC (pair);
+    slot = (PAIR_CDR_LOC (pair));
     *cell = *slot;
   }
   *slot = tail;
@@ -2285,7 +2368,7 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
   {
     index = trap_map_table[i];
     temp = compiler_recache_split ((MEMORY_LOC (references, index)),
-				   sym, env, &trap_info_table[i]);
+				   sym, env, &trap_info_table[i], link_p);
 
     if (temp != 0)
     {
@@ -2329,7 +2412,7 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
 
   if (link_p)
   {
-    new_extension = MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, new_value_cell);
+    new_extension = (MAKE_POINTER_OBJECT (TRAP_EXTENSION_TYPE, new_value_cell));
     references = new_value_cell[TRAP_EXTENSION_REFERENCES];
   }
   else
@@ -2354,9 +2437,9 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
     *Free++ = references;
 
     new_trap = (MAKE_POINTER_OBJECT (TC_REFERENCE_TRAP, Free));
-    *Free++ = (LONG_TO_UNSIGNED_FIXNUM((shadowed_p ?
-					TRAP_COMPILER_CACHED_DANGEROUS :
-					TRAP_COMPILER_CACHED)));
+    *Free++ = (LONG_TO_UNSIGNED_FIXNUM ((shadowed_p ?
+					 TRAP_COMPILER_CACHED_DANGEROUS :
+					 TRAP_COMPILER_CACHED)));
     *Free++ = new_extension;
   }
 
@@ -2381,10 +2464,10 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
   for (i = TRAP_MAP_TABLE_SIZE; --i >= 0; )
   {
     index = trap_map_table[i];
-    temp = compiler_recache_slot (new_extension, sym, index,
-				  (MEMORY_LOC (references, index)),
-				  trap_info_table[i],
-				  value);
+    temp = (compiler_recache_slot (new_extension, sym, index,
+				   (MEMORY_LOC (references, index)),
+				   trap_info_table[i],
+				   value));
     if (temp != PRIM_DONE)
     {
       extern char *Abort_Names[];
@@ -2428,18 +2511,18 @@ compiler_recache (old_value_cell, new_value_cell, env, sym, value,
  */
 
 long
-recache_uuo_links(extension, old_value)
+recache_uuo_links (extension, old_value)
      SCHEME_OBJECT extension, old_value;
 {
-  long update_uuo_links();
+  long update_uuo_links ();
 
   SCHEME_OBJECT value;
   long return_value;
 
-  value = FAST_MEMORY_REF (extension, TRAP_EXTENSION_CELL);
-  if (REFERENCE_TRAP_P(value))
+  value = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CELL));
+  if (REFERENCE_TRAP_P (value))
   {
-    if (REFERENCE_TRAP_P(old_value))
+    if (REFERENCE_TRAP_P (old_value))
     {
       /* No need to do anything.
 	 The uuo links are in the correct state.
@@ -2449,18 +2532,18 @@ recache_uuo_links(extension, old_value)
     }
     else
     {
-      long make_recache_uuo_link();
+      long make_recache_uuo_link ();
 
       return_value =
-	update_uuo_links(value, extension, make_recache_uuo_link);
+	update_uuo_links (value, extension, make_recache_uuo_link);
     }
   }
   else
   {
-    extern long make_uuo_link();
+    extern long make_uuo_link ();
 
     return_value =
-      update_uuo_links(value, extension, make_uuo_link);
+      update_uuo_links (value, extension, make_uuo_link);
   }
 
   if (return_value != PRIM_DONE)
@@ -2484,17 +2567,17 @@ recache_uuo_links(extension, old_value)
 /* This kludge is due to the lack of closures. */
 
 long
-make_recache_uuo_link(value, extension, block, offset)
+make_recache_uuo_link (value, extension, block, offset)
      SCHEME_OBJECT value, extension, block;
      long offset;
 {
-  extern long make_fake_uuo_link();
+  extern long make_fake_uuo_link ();
 
-  return (make_fake_uuo_link(extension, block, offset));
+  return (make_fake_uuo_link (extension, block, offset));
 }
 
 long
-update_uuo_links(value, extension, handler)
+update_uuo_links (value, extension, handler)
      SCHEME_OBJECT value, extension;
      long (*handler)();
 {
@@ -2503,28 +2586,28 @@ update_uuo_links(value, extension, handler)
   long return_value;
 
   update_uuo_prolog();
-  references = FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES);
-  slot = MEMORY_LOC (references, TRAP_REFERENCES_OPERATOR);
+  references = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_REFERENCES));
+  slot = (MEMORY_LOC (references, TRAP_REFERENCES_OPERATOR));
 
   while (*slot != EMPTY_LIST)
   {
-    pair = FAST_PAIR_CAR (*slot);
-    block = FAST_PAIR_CAR (pair);
+    pair = (FAST_PAIR_CAR (*slot));
+    block = (FAST_PAIR_CAR (pair));
     if (block == SHARP_F)
     {
-      *slot = FAST_PAIR_CDR (*slot);
+      *slot = (FAST_PAIR_CDR (*slot));
     }
     else
     {
       return_value =
 	(*handler)(value, extension, block,
-		   OBJECT_DATUM (FAST_PAIR_CDR (pair)));
+		   (OBJECT_DATUM (FAST_PAIR_CDR (pair))));
       if (return_value != PRIM_DONE)
       {
-	update_uuo_epilog();
+	update_uuo_epilog ();
 	return (return_value);
       }
-      slot = PAIR_CDR_LOC (*slot);
+      slot = (PAIR_CDR_LOC (*slot));
     }
   }
 
@@ -2537,10 +2620,10 @@ update_uuo_links(value, extension, handler)
       (FAST_MEMORY_REF (extension, TRAP_EXTENSION_CLONE) != SHARP_F))
   {
     FAST_MEMORY_SET (extension, TRAP_EXTENSION_CLONE, SHARP_F);
-    fix_references(MEMORY_LOC (references, TRAP_REFERENCES_ASSIGNMENT),
-		   extension);
+    fix_references ((MEMORY_LOC (references, TRAP_REFERENCES_ASSIGNMENT)),
+		    extension);
   }
-  update_uuo_epilog();
+  update_uuo_epilog ();
   return (PRIM_DONE);
 }
 
@@ -2551,37 +2634,38 @@ update_uuo_links(value, extension, handler)
  */
 
 long
-compiler_reference_trap(extension, kind, handler)
+compiler_reference_trap (extension, kind, handler)
      SCHEME_OBJECT extension;
      long kind;
-     long (*handler)();
+     long (*handler) ();
 {
   long offset, temp;
   SCHEME_OBJECT block;
 
 try_again:
 
-  if (MEMORY_REF (extension, TRAP_EXTENSION_CELL) != REQUEST_RECACHE_OBJECT)
+  if ((MEMORY_REF (extension, TRAP_EXTENSION_CELL)) != REQUEST_RECACHE_OBJECT)
   {
-    return ((*handler)(MEMORY_LOC (extension, TRAP_EXTENSION_CELL),
-		       fake_variable_object));
+    return ((*handler) (MEMORY_LOC (extension, TRAP_EXTENSION_CELL),
+			fake_variable_object));
   }
 
-  block = FAST_MEMORY_REF (extension, TRAP_EXTENSION_BLOCK);
-  offset = OBJECT_DATUM (FAST_MEMORY_REF (extension, TRAP_EXTENSION_OFFSET));
+  block = (FAST_MEMORY_REF (extension, TRAP_EXTENSION_BLOCK));
+  offset = (OBJECT_DATUM (FAST_MEMORY_REF (extension, TRAP_EXTENSION_OFFSET)));
 
-  compiler_trap_prolog();
+  compiler_trap_prolog ();
   temp =
-    compiler_cache_reference(compiled_block_environment(block),
-			     FAST_MEMORY_REF (extension, TRAP_EXTENSION_NAME),
-			     block, offset, kind, false);
-  compiler_trap_epilog();
+    (compiler_cache_reference ((compiled_block_environment (block)),
+			       (FAST_MEMORY_REF (extension,
+						 TRAP_EXTENSION_NAME)),
+			       block, offset, kind, false));
+  compiler_trap_epilog ();
   if (temp != PRIM_DONE)
   {
     return (temp);
   }
 
-  switch(kind)
+  switch (kind)
   {
     case TRAP_REFERENCES_OPERATOR:
     {
@@ -2598,9 +2682,9 @@ try_again:
 	 value.
        */
 
-      extern SCHEME_OBJECT extract_uuo_link();
+      extern SCHEME_OBJECT extract_uuo_link ();
 
-      Val = extract_uuo_link(block, offset);
+      Val = (extract_uuo_link (block, offset));
       return (PRIM_DONE);
     }
 
@@ -2608,7 +2692,7 @@ try_again:
     case TRAP_REFERENCES_LOOKUP:
     default:
     {
-      extern SCHEME_OBJECT extract_variable_cache();
+      extern SCHEME_OBJECT extract_variable_cache ();
 
       extension = extract_variable_cache(block, offset);
       /* This is paranoid on a single processor, but it does not hurt.
@@ -2623,52 +2707,63 @@ try_again:
 /* Procedures invoked from the compiled code interface. */
 
 extern long
-  compiler_cache_lookup(),
-  compiler_cache_assignment(),
-  compiler_cache_operator();
+  compiler_cache_lookup (),
+  compiler_cache_assignment (),
+  compiler_cache_operator (),
+  compiler_cache_global_operator ();
 
 long
-compiler_cache_lookup(name, block, offset)
+compiler_cache_lookup (name, block, offset)
      SCHEME_OBJECT name, block;
      long offset;
 {
-  return (compiler_cache_reference(compiled_block_environment(block),
-				   name, block, offset,
-				   TRAP_REFERENCES_LOOKUP, true));
+  return (compiler_cache_reference ((compiled_block_environment (block)),
+				    name, block, offset,
+				    TRAP_REFERENCES_LOOKUP, true));
 }
 
 long
-compiler_cache_assignment(name, block, offset)
+compiler_cache_assignment (name, block, offset)
      SCHEME_OBJECT name, block;
      long offset;
 {
-  return (compiler_cache_reference(compiled_block_environment(block),
-				   name, block, offset,
-				   TRAP_REFERENCES_ASSIGNMENT, true));
+  return (compiler_cache_reference ((compiled_block_environment (block)),
+				    name, block, offset,
+				    TRAP_REFERENCES_ASSIGNMENT, true));
 }
 
 long
-compiler_cache_operator(name, block, offset)
+compiler_cache_operator (name, block, offset)
      SCHEME_OBJECT name, block;
      long offset;
 {
-  return (compiler_cache_reference(compiled_block_environment(block),
-				   name, block, offset,
-				   TRAP_REFERENCES_OPERATOR, true));
+  return (compiler_cache_reference ((compiled_block_environment (block)),
+				    name, block, offset,
+				    TRAP_REFERENCES_OPERATOR, true));
+}
+
+long
+compiler_cache_global_operator (name, block, offset)
+     SCHEME_OBJECT name, block;
+     long offset;
+{
+  return (compiler_cache_reference ((MAKE_OBJECT (GLOBAL_ENV, GO_TO_GLOBAL)),
+				    name, block, offset,
+				    TRAP_REFERENCES_OPERATOR, true));
 }
 
-extern long complr_operator_reference_trap();
-extern SCHEME_OBJECT compiler_var_error();
+extern long complr_operator_reference_trap ();
+extern SCHEME_OBJECT compiler_var_error ();
 
 long
-complr_operator_reference_trap(frame_slot, extension)
+complr_operator_reference_trap (frame_slot, extension)
      SCHEME_OBJECT *frame_slot, extension;
 {
   long temp;
 
-  temp = compiler_reference_trap(extension,
-				 TRAP_REFERENCES_OPERATOR,
-				 deep_lookup_end);
+  temp = (compiler_reference_trap (extension,
+				   TRAP_REFERENCES_OPERATOR,
+				   deep_lookup_end));
   if (temp != PRIM_DONE)
   {
     return temp;
@@ -2678,7 +2773,7 @@ complr_operator_reference_trap(frame_slot, extension)
 }
 
 SCHEME_OBJECT
-compiler_var_error(extension, environment)
+compiler_var_error (extension, environment)
      SCHEME_OBJECT extension, environment;
 {
   return (MEMORY_REF (extension, TRAP_EXTENSION_NAME));
@@ -2691,28 +2786,28 @@ compiler_var_error(extension, environment)
 static SCHEME_OBJECT saved_compiler_assignment_value;
 
 long
-compiler_assignment_end(cell, hunk)
+compiler_assignment_end (cell, hunk)
      SCHEME_OBJECT *cell, *hunk;
 {
-  return (deep_assignment_end(cell, hunk,
-			      saved_compiler_assignment_value, false));
+  return (deep_assignment_end (cell, hunk,
+			       saved_compiler_assignment_value, false));
 }
 
 /* More compiled code interface procedures */
 
 extern long
-  compiler_lookup_trap(),
-  compiler_safe_lookup_trap(),
-  compiler_unassigned_p_trap(),
-  compiler_assignment_trap();
+  compiler_lookup_trap (),
+  compiler_safe_lookup_trap (),
+  compiler_unassigned_p_trap (),
+  compiler_assignment_trap ();
 
 long
-compiler_lookup_trap(extension)
+compiler_lookup_trap (extension)
      SCHEME_OBJECT extension;
 {
-  return (compiler_reference_trap(extension,
-				  TRAP_REFERENCES_LOOKUP,
-				  deep_lookup_end));
+  return (compiler_reference_trap (extension,
+				   TRAP_REFERENCES_LOOKUP,
+				   deep_lookup_end));
 }
 
 long
@@ -2730,11 +2825,11 @@ compiler_unassigned_p_trap (extension)
 }
 
 long
-compiler_assignment_trap(extension, value)
+compiler_assignment_trap (extension, value)
      SCHEME_OBJECT extension, value;
 {
   saved_compiler_assignment_value = value;
-  return (compiler_reference_trap(extension,
-				  TRAP_REFERENCES_ASSIGNMENT,
-				  compiler_assignment_end));
+  return (compiler_reference_trap (extension,
+				   TRAP_REFERENCES_ASSIGNMENT,
+				   compiler_assignment_end));
 }
