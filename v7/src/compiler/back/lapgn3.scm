@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.8 1992/04/07 03:50:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/lapgn3.scm,v 4.9 1992/04/07 15:54:39 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -58,11 +58,18 @@ MIT in each case. |#
   (allocate-named-label "CONSTANT-"))
 
 (define (warning-assoc obj pairs)
+  (define (local-eqv? obj1 obj2)
+    (or (eqv? obj1 obj2)
+	(and (string? obj1)
+	     (string? obj2)
+	     (zero? (string-length obj1))
+	     (zero? (string-length obj2)))))
+
   (let ((pair (assoc obj pairs)))
     (if (and compiler:coalescing-constant-warnings?
 	     (pair? pair)
-	     (not (eqv? obj (car pair))))
-	(warn "Coalescing constant objects" obj (car pair)))
+	     (not (local-eqv? obj (car pair))))
+	(warn "Coalescing two copies of constant object" obj))
     pair))
 
 (define-integrable (object->label find read write allocate-label)
