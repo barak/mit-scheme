@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: outline.scm,v 1.8 1999/01/02 06:11:34 cph Exp $
+;;; $Id: outline.scm,v 1.9 2000/02/29 01:41:17 cph Exp $
 ;;;
-;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1992-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -268,14 +268,12 @@ OUTLINE-PATTERN."
 With argument, turn outline mode on iff argument is positive."
   "P"
   (lambda (argument)
-    (let ((argument (command-argument-value argument))
-	  (mode (ref-mode-object outline)))
-      (cond ((and (or (not argument) (positive? argument))
-		  (not (current-minor-mode? mode)))
-	     (enable-current-minor-mode! mode))
-	    ((and (or (not argument) (not (positive? argument)))
-		  (current-minor-mode? mode))
-	     (disable-current-minor-mode! mode))))))
+    (let ((mode (ref-mode-object outline)))
+      (if (if argument
+	      (> (command-argument-numeric-value argument) 0)
+	      (not (current-minor-mode? mode)))
+	  (enable-current-minor-mode! mode)
+	  (disable-current-minor-mode! mode)))))
 
 (define-minor-mode outline "Outline" "Minor mode for moving over outlines.")
 (define-key 'outline '(#\C-c #\C-f) 'forward-topic)
