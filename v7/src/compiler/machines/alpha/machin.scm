@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.6 1993/06/29 22:23:57 gjr Exp $
+$Id: machin.scm,v 1.7 1993/11/12 14:42:19 jmiller Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -54,7 +54,7 @@ case.
 
 (define-integrable float-width 64)
 (define-integrable float-alignment 64)
-
+;; Number of address units (bytes) in a floating point value
 (define-integrable address-units-per-float
   (quotient float-width addressing-granularity))
 
@@ -67,6 +67,7 @@ case.
 
 (define-integrable address-units-per-object
   (quotient scheme-object-width addressing-granularity))
+
 (define-integrable address-units-per-gc&format-word
   (quotient 32 addressing-granularity))
 
@@ -357,7 +358,9 @@ case.
 (define (interpreter-environment-register? expression)
   (and (rtl:offset? expression)
        (interpreter-regs-pointer? (rtl:offset-base expression))
-       (= 3 (rtl:offset-number expression))))
+       (let ((offset (rtl:offset-offset expression)))
+	 (and (rtl:machine-constant? offset)
+	      (= 3 (rtl:machine-constant-value offset))))))
 
 (define-integrable (interpreter-register:access)
   (rtl:make-machine-register regnum:C-return-value))
@@ -441,11 +444,9 @@ case.
 	       6)))
 	((MACHINE-CONSTANT)
 	 (if-integer (rtl:machine-constant-value expression)))
-	((ENTRY:PROCEDURE
-	  ENTRY:CONTINUATION
-	  ASSIGNMENT-CACHE
-	  VARIABLE-CACHE
-	  OFFSET-ADDRESS)
+	((ENTRY:PROCEDURE ENTRY:CONTINUATION
+	  ASSIGNMENT-CACHE VARIABLE-CACHE
+	  OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
 	 6)
 	((CONS-NON-POINTER)
 	 (and (rtl:machine-constant? (rtl:cons-non-pointer-type expression))
@@ -464,8 +465,8 @@ case.
   '(DIVIDE-FIXNUM GCD-FIXNUM
     ; FIXNUM-QUOTIENT FIXNUM-REMAINDER
     INTEGER-QUOTIENT INTEGER-REMAINDER &/
-    FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS
-    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-TRUNCATE FLONUM-ROUND
-    FLONUM-REMAINDER FLONUM-SQRT
+    FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN FLONUM-ACOS FLONUM-ATAN2
+    FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-REMAINDER FLONUM-SQRT
+    FLONUM-TRUNCATE FLONUM-ROUND FLONUM-CEILING FLONUM-FLOOR
     VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS
     FLOATING-VECTOR-REF FLOATING-VECTOR-SET!))
