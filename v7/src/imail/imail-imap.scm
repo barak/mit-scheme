@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.123 2000/06/19 20:45:21 cph Exp $
+;;; $Id: imail-imap.scm,v 1.124 2000/06/23 18:46:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -597,7 +597,7 @@
 	 (if new-length
 	     (set-imap-folder-messages! folder
 					(vector-head v new-length))))
-       (folder-modified! folder 'EXPUNGE (- index 1))))))
+       (folder-modified! folder 'EXPUNGE index)))))
 
 (define (initial-messages)
   (make-vector 64 #f))
