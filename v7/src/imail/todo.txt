@@ -1,11 +1,17 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.34 2000/05/22 13:52:41 cph Exp $
+$Id: todo.txt,v 1.35 2000/05/22 15:25:43 cph Exp $
 
 Bug fixes
 ---------
 
 * Password should be cached s.t. it can be shared between connections
   with compatible URLs.  Right now it is per-connection.
+
+* Login messages interfere with modeline when doing completion on IMAP
+  URLs.
+
+* M-x imail-copy-message reopens the IMAP connection for each message
+  that it sends.
 
 * Implement operations for IMAP: URL-EXISTS?.
 
