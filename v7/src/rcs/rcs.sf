@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.3 1991/10/01 20:50:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/rcs.sf,v 1.4 1991/10/10 01:27:41 cph Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -34,6 +34,10 @@ MIT in each case. |#
 
 (fluid-let ((sf/default-syntax-table system-global-syntax-table))
   (sf-directory "."))
+
+;; Guarantee that the package modeller is loaded.
+(if (not (name->package '(CROSS-REFERENCE)))
+    (with-working-directory-pathname "SCM/cref" (lambda () (load "make"))))
 
 (cref/generate-constructors "rcs")
 (sf "rcs.con" "rcs.bcon")
