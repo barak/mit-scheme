@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.39 1989/05/03 01:04:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/findprim.c,v 9.40 1989/05/31 01:45:29 jinx Rel $
 
 Copyright (c) 1987, 1988, 1989 Massachusetts Institute of Technology
 
@@ -166,6 +166,8 @@ char default_variable [] = "MAX_PRIMITIVE";
 char built_in_variable [] = "MAX_PRIMITIVE";
 char external_variable [] = "MAX_EXTERNAL_PRIMITIVE";
 
+#define LEXPR_ARITY_STRING	"-1"
+
 FILE * input;
 FILE * output;
 char * name;
@@ -199,7 +201,7 @@ char dummy_error_string [] =
   "Microcode_Termination (TERM_BAD_PRIMITIVE)";
 
 struct descriptor inexistent_entry =
-  {"Prim_inexistent", "0", "INEXISTENT-PRIMITIVE", "", "Findprim.c"};
+  {"Prim_inexistent", LEXPR_ARITY_STRING, "INEXISTENT-PRIMITIVE", "", "Findprim.c"};
 
 char inexistent_error_string [] =
   "signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE)";
@@ -765,7 +767,7 @@ copy_token (target, size, token_type)
       TOKEN_BUFFER_WRITE ('\0');
       if ((strcmp (token_buffer, "LEXPR")) == 0)
 	{
-	  TOKEN_BUFFER_OVERWRITE ("-1");
+	  TOKEN_BUFFER_OVERWRITE (LEXPR_ARITY_STRING);
 	}
       else if ((token_type == tokentype_string) &&
 	       ((strcmp (token_buffer, "0")) == 0))
