@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: doskbutl.asm,v 1.4 1992/09/03 07:30:20 jinx Exp $
+;;;	$Id: doskbutl.asm,v 1.5 1992/09/06 16:24:10 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -43,14 +43,15 @@
 
 ;;	Stack on entry to _DOSX_scheme_system_isr
 ;;
-;;32	IRETD EFLAGS
-;;28	IRETD CS
-;;24	IRETD EIP
-;;20	CS for next handler in chain
-;;16	EIP for next handler in chain
-;;12    address of modifier mask
-;;8	offset for unshifted table
-;;4	offset for shifted table
+;;36	IRETD EFLAGS
+;;32	IRETD CS
+;;28	IRETD EIP
+;;24	CS for next handler in chain
+;;20	EIP for next handler in chain
+;;16	offset of caps table
+;;12	offset of shifted table
+;;8	offset of unshifted table
+;;4	offset of modifier mask
 ;;0	DS for scan_code to ascii tables
 
 	extrn	scheme_system_isr:near
@@ -65,7 +66,7 @@ _DPMI_PM_scheme_system_isr:
 
 ;; Chain to next handler (flags unmodified)
 	popfd
-	lea	esp,16[esp]
+	lea	esp,20[esp]
 ;	ret	far
 	db	0cbh
 
@@ -74,19 +75,20 @@ _DPMI_PM_scheme_system_isr:
 DOSX_scheme_system_dismiss:
 	push	eax
 	mov	eax,4[esp]		;updated flags
-	mov	40[esp],eax		;flags to restore
+	mov	44[esp],eax		;flags to restore
 	pop	eax
 	popfd
-	lea	esp,24[esp]
+	lea	esp,28[esp]
 	iretd		
 
 ;;	Stack on entry to _DPMI_scheme_system_isr
 ;;
-;;20	CS for next (real mode) handler in chain
-;;16	IP for next (real mode) handler in chain
-;;12    address of modifier mask
+;;24	CS for next (real mode) handler in chain
+;;20	IP for next (real mode) handler in chain
+;;16	offset for caps table
+;;12	offset for shifted table
 ;;8	offset for unshifted table
-;;4	offset for shifted table
+;;4	offset of modifier mask
 ;;0	DS for scan_code to ascii tables
 
 	public _DPMI_RM_scheme_system_isr
@@ -100,11 +102,11 @@ _DPMI_RM_scheme_system_isr:
 
 ;; Chain to next real mode handler (flags unmodified)
 	lea	esp,4[esp]		; drop flags
-	mov	eax,16[esp]		; real mode IP (padded to dword)
+	mov	eax,20[esp]		; real mode IP (padded to dword)
 	mov	es:42[edi],ax
-	mov	eax,20[esp]		; real mode CS (padded to dword)
+	mov	eax,24[esp]		; real mode CS (padded to dword)
 	mov	es:44[edi],ax
-	lea	esp,24[esp]		; pop args
+	lea	esp,28[esp]		; pop args
 	iret				; tell DPMI we're done
 
 ;; Dismiss/finish interrupt in real mode (update flags, simulate RM iret)
@@ -117,7 +119,7 @@ DPMI_scheme_system_dismiss:
 	mov	ax,ds:2[esi]		; real mode IRET cs
 	mov	es:44[edi],ax
 	add	word ptr es:46[edi],6	; bump real mode sp
-	lea	esp,24[esp]		; pop args
+	lea	esp,28[esp]		; pop args
 	iret				; tell DPMI we're done	
 
 ;; These macros taken from x32's mac32.asm
@@ -139,9 +141,11 @@ _RM_keyboard_pattern_start:
 
 modifier_mask:
 	db 2 dup (0)
+unshifted_table_offset:
+	db 2 dup (0)
 shifted_table_offset:
 	db 2 dup (0)
-unshifted_table_offset:
+caps_table_offset:
 	db 2 dup (0)
 
 chain:
@@ -163,21 +167,33 @@ kbd_isr:
 	pop	bx			; Get scan code
 	push	bx
 	and	bx,3fh			; Drop fncn
-	cmp	al,8h			; Only meta bit set?
-	je	do_unshifted
-	cmp	al,0			; No modifier bits set?
-	je	do_unshifted
+
+	test	al,7h			; Ctrl or shift set?
+	jne	do_shifted
+	test	al,40h			; CAPS set?
+	jne	do_caps
+
+do_unshifted:
+	push	si
+	mov	si,word ptr cs:unshifted_table_offset
+	mov	bl,byte ptr cs:[bx+si]
+	pop	si
+	jmp	merge
+
 do_shifted:
 	push	si
 	mov	si,word ptr cs:shifted_table_offset
 	mov	bl,byte ptr cs:[bx+si]
 	pop	si
 	jmp	merge
-do_unshifted:
+
+do_caps:
 	push	si
-	mov	si,word ptr cs:unshifted_table_offset
+	mov	si,word ptr cs:caps_table_offset
 	mov	bl,byte ptr cs:[bx+si]
 	pop	si
+;	jmp	merge
+
 merge:
 	cmp	bl,0			; No translation?
 	je	abort_translation

@@ -1,5 +1,5 @@
 /* -*-C-*-
-$Id: doskbd.c,v 1.8 1992/09/03 07:30:46 jinx Exp $
+$Id: doskbd.c,v 1.9 1992/09/06 16:24:03 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -31,6 +31,14 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <bios.h>
+#include <dos.h>
+#include <int.h>
+#include "msdos.h"
+
 /* These flags determine how the code will behave. */
 
 #define DOSX_USE_INT_INTERCEPT
@@ -39,14 +47,6 @@ MIT in each case. */
 /* #define DOSX_RM_HANDLER_REAL */
 #define DPMI_RM_HANDLER_REAL
 #define DPMI_PM_HANDLER_UNTOUCHED
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <bios.h>
-#include <dos.h>
-#include <int.h>
-#include "msdos.h"
 
 #ifdef getDS
 #undef getDS
@@ -72,7 +72,7 @@ MIT in each case. */
 
 extern unsigned char scan_code_tables_start[];
 extern unsigned char scan_code_tables_end[];
-
+
 /* Tables mapping scan codes to ASCII characters.
    Entries with NULL (\0) should not be mapped by the
    Scheme keyboard ISR.  Let the default handler map them.
@@ -81,68 +81,7 @@ extern unsigned char scan_code_tables_end[];
 unsigned char
 scan_code_tables_start[] = "foo";
 
-static unsigned char
-shifted_scan_code_to_ascii[] =
-{ 
-	'\0',		/* 0 */
-	'\033',		/* 1 */
-	'!',		/* 2 */
-	'@',		/* 3 */
-	'#',		/* 4 */
-	'$',		/* 5 */
-	'%',		/* 6 */
-	'^',		/* 7 */
-	'&',		/* 8 */
-	'*',		/* 9 */
-	'(',		/* 10 */
-	')',		/* 11 */
-	'_',		/* 12 */
-	'+',		/* 13 */
-	'\177',		/* 14 */
-	'\t',		/* 15 */
-	'Q',		/* 16 */
-	'W',		/* 17 */
-	'E',		/* 18 */
-	'R',		/* 19 */
-	'T',		/* 20 */
-	'Y',		/* 21 */
-	'U',		/* 22 */
-	'I',		/* 23 */
-	'O',		/* 24 */
-	'P',		/* 25 */
-	'{',		/* 26 */
-	'}',		/* 27 */
-	'\r',		/* 28 */
-	'\0',		/* 29 */
-	'A',		/* 30 */
-	'S',		/* 31 */
-	'D',		/* 32 */
-	'F',		/* 33 */
-	'G',		/* 34 */
-	'H',		/* 35 */
-	'J',		/* 36 */
-	'K',		/* 37 */
-	'L',		/* 38 */
-	':',		/* 39 */
-	'\"',		/* 40 */
-	'~',		/* 41 */
-	'\0',		/* 42 */
-	'|',		/* 43 */
-	'Z',		/* 44 */
-	'X',		/* 45 */
-	'C',		/* 46 */
-	'V',		/* 47 */
-	'B',		/* 48 */
-	'N',		/* 49 */
-	'M',		/* 50 */
-	'<',		/* 51 */
-	'>',		/* 52 */
-	'?',		/* 53 */
-	'\0',		/* 54 */
-	'\0',		/* 55 */
-	'\0',		/* 56 */
-	' '		/* 57 */
-  };
+static unsigned char modifier_mask = 0x4f;
 
 static unsigned char
 unshifted_scan_code_to_ascii[] =
@@ -206,8 +145,132 @@ unshifted_scan_code_to_ascii[] =
 	'\0',		/* 56 */
 	' '		/* 57 */
   };
-
-static unsigned char modifier_mask = 0x4f;
+
+static unsigned char
+shifted_scan_code_to_ascii[] =
+{
+	'\0',		/* 0 */
+	'\033',		/* 1 */
+	'!',		/* 2 */
+	'@',		/* 3 */
+	'#',		/* 4 */
+	'$',		/* 5 */
+	'%',		/* 6 */
+	'^',		/* 7 */
+	'&',		/* 8 */
+	'*',		/* 9 */
+	'(',		/* 10 */
+	')',		/* 11 */
+	'_',		/* 12 */
+	'+',		/* 13 */
+	'\177',		/* 14 */
+	'\t',		/* 15 */
+	'Q',		/* 16 */
+	'W',		/* 17 */
+	'E',		/* 18 */
+	'R',		/* 19 */
+	'T',		/* 20 */
+	'Y',		/* 21 */
+	'U',		/* 22 */
+	'I',		/* 23 */
+	'O',		/* 24 */
+	'P',		/* 25 */
+	'{',		/* 26 */
+	'}',		/* 27 */
+	'\r',		/* 28 */
+	'\0',		/* 29 */
+	'A',		/* 30 */
+	'S',		/* 31 */
+	'D',		/* 32 */
+	'F',		/* 33 */
+	'G',		/* 34 */
+	'H',		/* 35 */
+	'J',		/* 36 */
+	'K',		/* 37 */
+	'L',		/* 38 */
+	':',		/* 39 */
+	'\"',		/* 40 */
+	'~',		/* 41 */
+	'\0',		/* 42 */
+	'|',		/* 43 */
+	'Z',		/* 44 */
+	'X',		/* 45 */
+	'C',		/* 46 */
+	'V',		/* 47 */
+	'B',		/* 48 */
+	'N',		/* 49 */
+	'M',		/* 50 */
+	'<',		/* 51 */
+	'>',		/* 52 */
+	'?',		/* 53 */
+	'\0',		/* 54 */
+	'\0',		/* 55 */
+	'\0',		/* 56 */
+	' '		/* 57 */
+  };
+
+static unsigned char
+caps_scan_code_to_ascii[] =
+{
+	'\0',		/* 0 */
+	'\033',		/* 1 */
+	'1',		/* 2 */
+	'2',		/* 3 */
+	'3',		/* 4 */
+	'4',		/* 5 */
+	'5',		/* 6 */
+	'6',		/* 7 */
+	'7',		/* 8 */
+	'8',		/* 9 */
+	'9',		/* 10 */
+	'0',		/* 11 */
+	'-',		/* 12 */
+	'=',		/* 13 */
+	'\177',		/* 14 */
+	'\t',		/* 15 */
+	'Q',		/* 16 */
+	'W',		/* 17 */
+	'E',		/* 18 */
+	'R',		/* 19 */
+	'T',		/* 20 */
+	'Y',		/* 21 */
+	'U',		/* 22 */
+	'I',		/* 23 */
+	'O',		/* 24 */
+	'P',		/* 25 */
+	'[',		/* 26 */
+	']',		/* 27 */
+	'\r',		/* 28 */
+	'\0',		/* 29 */
+	'A',		/* 30 */
+	'S',		/* 31 */
+	'D',		/* 32 */
+	'F',		/* 33 */
+	'G',		/* 34 */
+	'H',		/* 35 */
+	'J',		/* 36 */
+	'K',		/* 37 */
+	'L',		/* 38 */
+	';',		/* 39 */
+	'\'',		/* 40 */
+	'`',		/* 41 */
+	'\0',		/* 42 */
+	'\\',		/* 43 */
+	'Z',		/* 44 */
+	'X',		/* 45 */
+	'C',		/* 46 */
+	'V',		/* 47 */
+	'B',		/* 48 */
+	'N',		/* 49 */
+	'M',		/* 50 */
+	',',		/* 51 */
+	'.',		/* 52 */
+	'/',		/* 53 */
+	'\0',		/* 54 */
+	'\0',		/* 55 */
+	'\0',		/* 56 */
+	' '		/* 57 */
+  };
 
 unsigned char
 scan_code_tables_end[] = "bar";
@@ -300,26 +363,33 @@ install_kbd_hook_p (char * var_name)
 
 #define DOS_HOOK_TRANSLATE_KEYSTROKE	0x4f
 #define DOS_KBD_FUNC_RECORD_KEYSTROKE	0x5
-
+
 int
-bios_keyboard_handler (struct INT_DATA *pd)
+bios_keyboard_handler (struct INT_DATA * pd)
 {
-  unsigned char scan_code, chord, ascii;
+  unsigned char scan_code, chord, ascii, * table;
   union REGS regs;
 
   if (pd->regs.h.ah != DOS_HOOK_TRANSLATE_KEYSTROKE)
     return (INTERRUPT_CHAIN_NEXT);
 
   scan_code = (pd->regs.h.al);
+
+  /* All the tables are assumed to be the same length. */
+
   if (scan_code >= (sizeof (shifted_scan_code_to_ascii)))
     return (INTERRUPT_CHAIN_NEXT);
 
   chord = ((bioskey (_KEYBRD_SHIFTSTATUS)) & modifier_mask);
 
-  if ((chord == 0) || (chord == PC_KBD_ALT_MASK))
-    ascii = ((int) unshifted_scan_code_to_ascii[scan_code]);
+  if ((chord & (PC_KBD_CTRL_MASK | PC_KBD_SHIFT_MASK)) != 0)
+    table = &shifted_scan_code_to_ascii[0];
+  else if ((chord & PC_KBD_CAPSL_MASK) != 0)
+    table = &caps_scan_code_to_ascii[0];
   else
-    ascii = ((int) shifted_scan_code_to_ascii[scan_code]);
+    table = &unshifted_scan_code_to_ascii[0];
+
+  ascii = table[scan_code];
 
   if (ascii == 0)
     return (INTERRUPT_CHAIN_NEXT);
@@ -670,18 +740,19 @@ make_PM_trampoline (void (* hook) (void))
   void * trampoline;
   INSN_DECLS ();
 
-  trampoline = (malloc (TRAMP_SIZE (6)));
+  trampoline = (malloc (TRAMP_SIZE (7)));
   if (trampoline != ((void *) NULL))
   {
     INIT_INSNS (trampoline);
     PUSH_INSN (old_PM_vector_cs);
     PUSH_INSN (old_PM_vector_eip);
-    PUSH_INSN (& modifier_mask);
-    PUSH_INSN (unshifted_scan_code_to_ascii);
+    PUSH_INSH (caps_scan_code_to_ascii);
     PUSH_INSN (shifted_scan_code_to_ascii);
+    PUSH_INSN (unshifted_scan_code_to_ascii);
+    PUSH_INSN (& modifier_mask);
     PUSH_INSN (getDS ());
     JMP_INSN (hook);
-    HLT_INSNS (6);
+    HLT_INSNS (7);
   }
   return (trampoline);
 }
@@ -694,18 +765,19 @@ make_RM_trampoline (void (* hook) (void))
   void * trampoline;
   INSN_DECLS ();
 
-  trampoline = (malloc (TRAMP_SIZE (6)));
+  trampoline = (malloc (TRAMP_SIZE (7)));
   if (trampoline != ((void *) NULL))
   {
     INIT_INSNS (trampoline);
     PUSH_INSN (old_RM_vector.x.seg);
     PUSH_INSN (old_RM_vector.x.off);
-    PUSH_INSN (& modifier_mask);
-    PUSH_INSN (unshifted_scan_code_to_ascii);
+    PUSH_INSH (caps_scan_code_to_ascii);
     PUSH_INSN (shifted_scan_code_to_ascii);
+    PUSH_INSN (unshifted_scan_code_to_ascii);
+    PUSH_INSN (& modifier_mask);
     PUSH_INSN (getDS ());
     JMP_INSN (hook);
-    HLT_INSNS (6);
+    HLT_INSNS (7);
   }
   return (trampoline);
 }
@@ -787,14 +859,14 @@ DPMI_restore_kbd_hook (void)
 
 #if defined(DPMI_RM_HANDLER_REAL) || defined(DOSX_RM_HANDLER_REAL)
 
-static unsigned shifted_table_offset = 0;
-static unsigned unshifted_table_offset = 0;
+static unsigned tables_offset = 0;
 
 #define PATTERN_MODIFIER_OFFSET		0
-#define PATTERN_SHIFTED_PTR_OFFSET	2
-#define PATTERN_UNSHIFTED_PTR_OFFSET	4
-#define PATTERN_CHAIN_OFFSET		8
-#define PATTERN_START_OFFSET		12
+#define PATTERN_UNSHIFTED_PTR_OFFSET	2
+#define PATTERN_SHIFTED_PTR_OFFSET	4
+#define PATTERN_CAPS_PTR_OFFSET		6
+#define PATTERN_CHAIN_OFFSET		10
+#define PATTERN_START_OFFSET		14
 
 #define RM_ISR_MASK_OFFSET		PATTERN_MODIFIER_OFFSET
 									
@@ -816,8 +888,9 @@ make_RM_handler (unsigned * size, unsigned * offset, unsigned * delta)
 
   pattern_size = (((unsigned long) RM_keyboard_pattern_end) - start_offset);
   total_size = (pattern_size
+		+ (sizeof (unshifted_scan_code_to_ascii))
 		+ (sizeof (shifted_scan_code_to_ascii))
-		+ (sizeof (unshifted_scan_code_to_ascii)));
+		+ (sizeof (caps_scan_code_to_ascii)));
 
   copy = ((unsigned char *) (malloc (total_size)));
   if (copy == ((unsigned char *) NULL))
@@ -839,18 +912,27 @@ make_RM_handler (unsigned * size, unsigned * offset, unsigned * delta)
   }
 
   memcpy ((copy + pattern_size),
-	  shifted_scan_code_to_ascii,
-	  (sizeof (shifted_scan_code_to_ascii)));
-
-  memcpy ((copy + (pattern_size + (sizeof (shifted_scan_code_to_ascii)))),
 	  unshifted_scan_code_to_ascii,
 	  (sizeof (unshifted_scan_code_to_ascii)));
 
+  memcpy ((copy + (pattern_size + (sizeof (unshifted_scan_code_to_ascii)))),
+	  shifted_scan_code_to_ascii,
+	  (sizeof (shifted_scan_code_to_ascii)));
+
+  memcpy ((copy + (pattern_size + ((sizeof (unshifted_scan_code_to_ascii))
+				   + (sizeof (shifted_scan_code_to_ascii))))),
+	  caps_scan_code_to_ascii,
+	  (sizeof (caps_scan_code_to_ascii)));
+
   copy[PATTERN_MODIFIER_OFFSET] = modifier_mask;
-  wordptr = ((unsigned short *) (copy + PATTERN_SHIFTED_PTR_OFFSET));
-  * wordptr = (pattern_size + start_offset);
   wordptr = ((unsigned short *) (copy + PATTERN_UNSHIFTED_PTR_OFFSET));
-  * wordptr = ((pattern_size + (sizeof (shifted_scan_code_to_ascii)))
+  * wordptr = (pattern_size + start_offset);
+  wordptr = ((unsigned short *) (copy + PATTERN_SHIFTED_PTR_OFFSET));
+  * wordptr = ((pattern_size + (sizeof (unshifted_scan_code_to_ascii)))
+	       + start_offset);
+  wordptr = ((unsigned short *) (copy + PATTERN_CAPS_PTR_OFFSET));
+  * wordptr = ((pattern_size + ((sizeof (unshifted_scan_code_to_ascii))
+				+ (sizeof (shifted_scan_code_to_ascii))))
 	       + start_offset);
   wordptr = ((unsigned short *) (copy + PATTERN_CHAIN_OFFSET));
   * wordptr++ = old_RM_vector.x.off;
@@ -859,8 +941,7 @@ make_RM_handler (unsigned * size, unsigned * offset, unsigned * delta)
   * delta = start_offset;
   * size = total_size;
   * offset = PATTERN_START_OFFSET;
-  shifted_table_offset = pattern_size;
-  unshifted_table_offset = (pattern_size + (sizeof (shifted_scan_code_to_ascii)));
+  tables_offset = pattern_size;
   return ((void *) copy);
 }
 
@@ -1034,16 +1115,28 @@ DPMI_set_modifier_mask (unsigned char new_mask)
 }
 
 static void
-DPMI_set_kbd_translation (unsigned shift_p,
+DPMI_set_kbd_translation (unsigned table,
 			  unsigned scan_code,
 			  unsigned char new)
 {
 #ifdef DPMI_RM_HANDLER_REAL
 
+  int offset = tables_offset;
+
+  switch (table)
+  {
+    case 2:
+      offset += (sizeof (shifted_scan_code_to_ascii));
+
+    case 1:
+      offset += (sizeof (unshifted_scan_code_to_ascii));
+
+    default:
+      break;
+  }
+
   if (DPMI_RM_selector != 0)
-    farcpy ((scan_code + ((shift_p != 0)
-			  ? shifted_table_offset
-			  : unshifted_table_offset)),
+    farcpy ((scan_code + tables_offset),
 	    DPMI_RM_selector,
 	    ((unsigned) (& new)),
 	    (getDS ()),
@@ -1274,18 +1367,29 @@ DOSX_set_modifier_mask (unsigned char new_mask)
 }
 
 static void
-DOSX_set_kbd_translation (unsigned shift_p,
+DOSX_set_kbd_translation (unsigned table,
 			  unsigned scan_code,
 			  unsigned char new)
 {
 #ifdef DOSX_RM_HANDLER_REAL
 
+  int offset = tables_offset;
+
+  switch (table)
+  {
+    case 2:
+      offset += (sizeof (shifted_scan_code_to_ascii));
+
+    case 1:
+      offset += (sizeof (unshifted_scan_code_to_ascii));
+
+    default:
+      break;
+  }
+
   if (DOSX_RM_segment != 0)
     (* ((unsigned char *)
-	((((unsigned long) DOSX_RM_segment) << 4)
-	 + (scan_code + ((shift_p != 0)
-			 ? shifted_table_offset
-			 : unshifted_table_offset)))))
+	((((unsigned long) DOSX_RM_segment) << 4) + (scan_code + offset))))
       = new;
 
 #endif /* DOSX_RM_HANDLER_REAL */
@@ -1315,6 +1419,7 @@ X32_install_kbd_hook (void)
   X32_kbd_interrupt_pointers[0] = ((PTR) &modifier_mask);
   X32_kbd_interrupt_pointers[1] = ((PTR) &unshifted_scan_code_to_ascii[0]);
   X32_kbd_interrupt_pointers[2] = ((PTR) &shifted_scan_code_to_ascii[0]);
+  X32_kbd_interrupt_pointers[3] = ((PTR) &caps_scan_code_to_ascii[0]);
 
   if ((X32_int_intercept (DOS_INTVECT_SYSTEM_SERVICES,
 			  X32_keyboard_interrupt,
@@ -1341,7 +1446,7 @@ X32_set_modifier_mask (unsigned char new_mask)
 }
 
 static void
-X32_set_kbd_translation (unsigned shift_p,
+X32_set_kbd_translation (unsigned table,
 			 unsigned scan_code,
 			 unsigned char new)
 {
@@ -1437,7 +1542,7 @@ extern int EXFUN (dos_set_kbd_translation,
 		  (unsigned, unsigned, unsigned char));
 
 int
-dos_set_kbd_translation (unsigned shift_p,
+dos_set_kbd_translation (unsigned which_table,
 			 unsigned scan_code,
 			 unsigned char new)
 {
@@ -1447,16 +1552,28 @@ dos_set_kbd_translation (unsigned shift_p,
   if (scan_code >= (sizeof (shifted_scan_code_to_ascii)))
     return (-1);
 
-  if (shift_p != 0)
-    table = &shifted_scan_code_to_ascii[0];
-  else
-    table = &unshifted_scan_code_to_ascii[0];
+  switch (which_table)
+  {
+    case 0:
+    default:
+      table = &unshifted_scan_code_to_ascii[0];
+      break;
+
+    case 1:
+      table = &shifted_scan_code_to_ascii[0];
+      break;
+
+    case 2:
+      table = &caps_scan_code_to_ascii[0];
+      break;
+  }
 
   old = table[scan_code];
   table[scan_code] = new;
 
   if (installed_keyboard_method != ((struct keyboard_method_s *) NULL))
-    (* (installed_keyboard_method->set_kbd_translation)) (shift_p, scan_code, new);
+    (* (installed_keyboard_method->set_kbd_translation))
+      (which_table, scan_code, new);
 
   return ((int) old);
 }

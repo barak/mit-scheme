@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosscan.h,v 1.3 1992/09/05 10:58:38 jinx Exp $
+$Id: dosscan.h,v 1.4 1992/09/06 16:24:26 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -37,65 +37,65 @@ MIT in each case. */
 #ifndef SCM_DOSSCAN_INCLUDE
 #define SCM_DOSSCAN_INCLUDE
 
-#define Metafy(c)	((unsigned char) (((unsigned char) (c))+128))
+#define METAFY(c)	((unsigned char) (((unsigned char) (c)) + 128))
 /* This had better get uppercase characters */ 
-#define Controlify(c)	((unsigned char) (((unsigned char) (c))-64))
+#define CONTROLIFY(c)	((unsigned char) (((unsigned char) (c)) - 64))
 
 #define NO_CONVERSION	((unsigned char *) ((void *) 0))
 
 unsigned char CTRL_AT[] = { '\0' };
-unsigned char HARD_ATTN[] = "This is hard attention";
-unsigned char SOFT_ATTN[] = "This is soft attention";
-unsigned char META_a[] = {Metafy('a'), '\0'};
-unsigned char META_b[] = {Metafy('b'), '\0'};
-unsigned char META_c[] = {Metafy('c'), '\0'};
-unsigned char META_d[] = {Metafy('d'), '\0'};
-unsigned char META_e[] = {Metafy('e'), '\0'};
-unsigned char META_f[] = {Metafy('f'), '\0'};
-unsigned char META_g[] = {Metafy('g'), '\0'};
-unsigned char META_h[] = {Metafy('h'), '\0'};
-unsigned char META_i[] = {Metafy('i'), '\0'};
-unsigned char META_j[] = {Metafy('j'), '\0'};
-unsigned char META_k[] = {Metafy('k'), '\0'};
-unsigned char META_l[] = {Metafy('l'), '\0'};
-unsigned char META_m[] = {Metafy('m'), '\0'};
-unsigned char META_n[] = {Metafy('n'), '\0'};
-unsigned char META_o[] = {Metafy('o'), '\0'};
-unsigned char META_p[] = {Metafy('p'), '\0'};
-unsigned char META_q[] = {Metafy('q'), '\0'};
-unsigned char META_r[] = {Metafy('r'), '\0'};
-unsigned char META_s[] = {Metafy('s'), '\0'};
-unsigned char META_t[] = {Metafy('t'), '\0'};
-unsigned char META_u[] = {Metafy('u'), '\0'};
-unsigned char META_v[] = {Metafy('v'), '\0'};
-unsigned char META_w[] = {Metafy('w'), '\0'};
-unsigned char META_x[] = {Metafy('x'), '\0'};
-unsigned char META_y[] = {Metafy('y'), '\0'};
-unsigned char META_z[] = {Metafy('z'), '\0'};
-unsigned char META_1[] = {Metafy('1'), '\0'};
-unsigned char META_2[] = {Metafy('2'), '\0'};
-unsigned char META_3[] = {Metafy('3'), '\0'};
-unsigned char META_4[] = {Metafy('4'), '\0'};
-unsigned char META_5[] = {Metafy('5'), '\0'};
-unsigned char META_6[] = {Metafy('6'), '\0'};
-unsigned char META_7[] = {Metafy('7'), '\0'};
-unsigned char META_8[] = {Metafy('8'), '\0'};
-unsigned char META_9[] = {Metafy('9'), '\0'};
-unsigned char META_0[] = {Metafy('0'), '\0'};
-unsigned char META_DASH[] = {Metafy('-'), '\0'};
-unsigned char META_EQUAL[] = {Metafy('='), '\0'};
-unsigned char META_RET[] = {Metafy('\r'), '\0'};
-unsigned char META_TAB[] = {Metafy('\t'), '\0'};
-unsigned char META_LBROK[] = {Metafy('['), '\0'};
-unsigned char META_RBROK[] = {Metafy(']'), '\0'};
-unsigned char META_BACK[] = {Metafy('\\'), '\0'};
-unsigned char META_SEMI[] = {Metafy(';'), '\0'};
-unsigned char META_RQUOTE[] = {Metafy('\''), '\0'};
-unsigned char META_COMMA[] = {Metafy(','), '\0'};
-unsigned char META_DOT[] = {Metafy('.'), '\0'};
-unsigned char META_SLASH[] = {Metafy('/'), '\0'};
-unsigned char META_LQUOTE[] = {Metafy('`'), '\0'};
-unsigned char META_PLUS[] = {Metafy('+'), '\0'};
+unsigned char HARD_ATTN[] = "HA";
+unsigned char SOFT_ATTN[] = "SA";
+unsigned char META_a[] = {METAFY('a'), '\0'};
+unsigned char META_b[] = {METAFY('b'), '\0'};
+unsigned char META_c[] = {METAFY('c'), '\0'};
+unsigned char META_d[] = {METAFY('d'), '\0'};
+unsigned char META_e[] = {METAFY('e'), '\0'};
+unsigned char META_f[] = {METAFY('f'), '\0'};
+unsigned char META_g[] = {METAFY('g'), '\0'};
+unsigned char META_h[] = {METAFY('h'), '\0'};
+unsigned char META_i[] = {METAFY('i'), '\0'};
+unsigned char META_j[] = {METAFY('j'), '\0'};
+unsigned char META_k[] = {METAFY('k'), '\0'};
+unsigned char META_l[] = {METAFY('l'), '\0'};
+unsigned char META_m[] = {METAFY('m'), '\0'};
+unsigned char META_n[] = {METAFY('n'), '\0'};
+unsigned char META_o[] = {METAFY('o'), '\0'};
+unsigned char META_p[] = {METAFY('p'), '\0'};
+unsigned char META_q[] = {METAFY('q'), '\0'};
+unsigned char META_r[] = {METAFY('r'), '\0'};
+unsigned char META_s[] = {METAFY('s'), '\0'};
+unsigned char META_t[] = {METAFY('t'), '\0'};
+unsigned char META_u[] = {METAFY('u'), '\0'};
+unsigned char META_v[] = {METAFY('v'), '\0'};
+unsigned char META_w[] = {METAFY('w'), '\0'};
+unsigned char META_x[] = {METAFY('x'), '\0'};
+unsigned char META_y[] = {METAFY('y'), '\0'};
+unsigned char META_z[] = {METAFY('z'), '\0'};
+unsigned char META_1[] = {METAFY('1'), '\0'};
+unsigned char META_2[] = {METAFY('2'), '\0'};
+unsigned char META_3[] = {METAFY('3'), '\0'};
+unsigned char META_4[] = {METAFY('4'), '\0'};
+unsigned char META_5[] = {METAFY('5'), '\0'};
+unsigned char META_6[] = {METAFY('6'), '\0'};
+unsigned char META_7[] = {METAFY('7'), '\0'};
+unsigned char META_8[] = {METAFY('8'), '\0'};
+unsigned char META_9[] = {METAFY('9'), '\0'};
+unsigned char META_0[] = {METAFY('0'), '\0'};
+unsigned char META_DASH[] = {METAFY('-'), '\0'};
+unsigned char META_EQUAL[] = {METAFY('='), '\0'};
+unsigned char META_RET[] = {METAFY('\r'), '\0'};
+unsigned char META_TAB[] = {METAFY('\t'), '\0'};
+unsigned char META_LBROK[] = {METAFY('['), '\0'};
+unsigned char META_RBROK[] = {METAFY(']'), '\0'};
+unsigned char META_BACK[] = {METAFY('\\'), '\0'};
+unsigned char META_SEMI[] = {METAFY(';'), '\0'};
+unsigned char META_RQUOTE[] = {METAFY('\''), '\0'};
+unsigned char META_COMMA[] = {METAFY(','), '\0'};
+unsigned char META_DOT[] = {METAFY('.'), '\0'};
+unsigned char META_SLASH[] = {METAFY('/'), '\0'};
+unsigned char META_LQUOTE[] = {METAFY('`'), '\0'};
+unsigned char META_PLUS[] = {METAFY('+'), '\0'};
 
 #define DEFAULT_SCANCODE_CONVERSIONS				\
 {								\

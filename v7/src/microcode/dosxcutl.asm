@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: dosxcutl.asm,v 1.3 1992/09/03 07:30:06 jinx Exp $
+;;;	$Id: dosxcutl.asm,v 1.4 1992/09/06 16:23:57 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -400,9 +400,10 @@ _X32_kbd_interrupt_previous		dd 0
 					dd 0
 
 	public _X32_kbd_interrupt_pointers
-_X32_kbd_interrupt_pointers		dd 0
-					dd 0
-					dd 0
+_X32_kbd_interrupt_pointers		dd 0 ; mask
+					dd 0 ; unshifted table
+					dd 0 ; shifted table
+					dd 0 ; caps table
 
 	public _IntCode			; These are usually declared in C,
 _IntCode dd 0				; but they need to be locked since
@@ -592,40 +593,42 @@ x32_timer_return:
 
 	public	_X32_keyboard_interrupt
 _X32_keyboard_interrupt:
-	push	dword ptr cs:_X32_kbd_interrupt_pointers[0]
-	push	dword ptr cs:_X32_kbd_interrupt_pointers[4]
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[12]
 	push	dword ptr cs:_X32_kbd_interrupt_pointers[8]
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[4]
+	push	dword ptr cs:_X32_kbd_interrupt_pointers[0]
 	push	dword ptr cs:_X32_ds_val[0]
 	pushfd
 	call	scheme_system_isr
 	jnc	x32_keyboard_interrupt_dismiss
 
 	popfd				; original flags
-	lea	esp,16[esp]
+	lea	esp,20[esp]		; pop args
 	jmp	fword ptr cs:_X32_kbd_interrupt_previous
 
 x32_keyboard_interrupt_dismiss:
 	push	ebx			; preserve ebx
 	push	ecx			; preserve ecx
 	mov	ebx,8[esp]		; updated flags
-	mov	36[esp],ebx		; store eflags to location 1
-	mov	ecx,40[esp]		; pointer to interrupt structure
+	mov	40[esp],ebx		; store eflags to location 1
+	mov	ecx,44[esp]		; pointer to interrupt structure
 	mov	ss:[ecx],eax		; store new eax
 	mov	ss:24[ecx],ebx		; store eflags to location 2
 	pop	ecx
 	pop	ebx
 	popfd				; updated flags
-	lea	esp,16[esp]		; pop args
+	lea	esp,20[esp]		; pop args
 	iretd
 
 ;;	Stack on entry to scheme_system_isr
 ;;
-;;24    address of modifier mask
-;;20	offset for unshifted table
-;;16	offset for shifted table
+;;28	offset of caps table
+;;24	offset of shifted table
+;;20	offset of unshifted table
+;;16    offset of modifier mask
 ;;12	DS for scan_code to ascii tables
 ;;8	Flags to restore/modify
-;;4	EIP for low-level hook (DPMI or DOSX)
+;;4	EIP for low-level hook (DPMI/X32/DOSX)
 ;;0	Old ebp [pushed on entry]
 ;;
 ;;	Arguments:
@@ -665,17 +668,30 @@ scheme_system_isr:
         push    edx
         pop     es
 	
-        mov     edx,24[ebp]     ; Modifier mask address
+        mov     edx,16[ebp]     ; Modifier mask address
         and     al,es:[edx]     ; Ignore modifiers
         push    eax             ; Save result
         
         mov     ecx,-4[ebp]     ; Scan code + function number
         and     ecx,3fh         ; Only scan code
-        mov     edx,20[ebp]     ; Unshifted table offset
         and     eax,47h         ; Shift, ctrl, and CAPS-LOCK mask
-        cmp     al,0
-        je      index_into_table
-        mov     edx,16[ebp]      ; Shifted table offset
+
+	test	al,7h
+	jne	use_shifted
+	test	al,40h
+	jne	use_caps
+
+use_unshifted:
+        mov     edx,20[ebp]     ; Unshifted table offset
+	jmp	index_into_table
+
+use_shifted:
+	mov	edx,24[ebp]	; Shifted table offset
+	jmp	index_into_table
+
+use_caps:
+	mov	edx,28[ebp]	; Caps-locked table offset
+;	jmp	index_into_table
 
 index_into_table:
         mov     al,es:[edx] [ecx]  ; Get ASCII value

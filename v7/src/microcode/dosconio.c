@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosconio.c,v 1.3 1992/09/03 07:40:47 jinx Exp $
+$Id: dosconio.c,v 1.4 1992/09/06 16:24:18 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -83,42 +83,16 @@ typedef struct typeahead_buffer_struct
 static conio_buffer_t line_buffer, key_buffer;
 static typeahead_buffer_t typeahead_buffer;
 
-static int max_scancode_conversion_length = 0;
+static int max_scancode_conversion_length = 1;
 static unsigned char * keyboard_scancode_table[] = DEFAULT_SCANCODE_CONVERSIONS;
 
-/* This is a kludge to save 200 bytes or so of memory; sigh! */
-#ifndef ULONG_BIT
-#define ULONG_BIT		(sizeof(unsigned long)*CHAR_BIT)
-#endif
-#define MALLOCED_TABLE_SIZE	\
-  ((KEYBOARD_SCANCODE_TABLE_SIZE+(ULONG_BIT-1))/ULONG_BIT)
+#define IMAX(a, b) (((a) > (b)) ? (a) : (b))
 
-static unsigned long scancode_malloced_table[MALLOCED_TABLE_SIZE] = {0,};
-
-#define Scancode_To_Malloced_Table_Word(s)	((s)/ULONG_BIT)
-#define Scancode_To_Malloced_Table_Word_Bit(s)	((s)%ULONG_BIT)
-
-#define Scancode_Malloced_p(s)						\
-  (scancode_malloced_table[Scancode_To_Malloced_Table_Word(s)] &	\
-   (1 << Scancode_To_Malloced_Table_Word_Bit(s)))
-
-#define Scancode_Malloced(s)						\
-  (scancode_malloced_table[Scancode_To_Malloced_Table_Word(s)] |=	\
-   (1 << Scancode_To_Malloced_Table_Word_Bit(s)))
-
-#define Scancode_Malloced_Not(s)					\
-  (scancode_malloced_table[Scancode_To_Malloced_Table_Word(s)] &=	\
-   (~(1 << Scancode_To_Malloced_Table_Word_Bit(s))))
-
-/* End of Kludge */
-
-#define Max(a, b) (((a) > (b)) ? (a) : (b))
-
-#define Typeahead_Buffer_Remaining()	\
+#define TYPEAHEAD_BUFFER_REMAINING()	\
   (TYPEAHEAD_BUFFER_SIZE - typeahead_buffer.length)
 
-#define Typeahead_Buffer_Available_p()	\
-  (Typeahead_Buffer_Remaining() >= max_scancode_conversion_length)
+#define TYPEAHEAD_BUFFER_AVAILABLE_P()	\
+  ((TYPEAHEAD_BUFFER_REMAINING ()) >= max_scancode_conversion_length)
 
 static void
 DEFUN (map_keyboard_scancode, (scancode), unsigned char scancode)
@@ -144,7 +118,7 @@ DEFUN (map_keyboard_scancode, (scancode), unsigned char scancode)
 
     len = ((conversion == CTRL_AT) ? 1 : (strlen (conversion)));
     
-    if (len <= (Typeahead_Buffer_Remaining ()))
+    if (len <= (TYPEAHEAD_BUFFER_REMAINING ()))
     {
       /* Copy conversion string into typeahead buffer, worrying about
 	 interrupt characters along the way.
@@ -158,12 +132,12 @@ DEFUN (map_keyboard_scancode, (scancode), unsigned char scancode)
   }
   return;
 }
-
+
 static void
 DEFUN_VOID (recompute_max_scancode_conversion_length)
 {
   int i, length;
-  max_scancode_conversion_length = 0;
+  max_scancode_conversion_length = 1;
 
   for (i = 0; i < KEYBOARD_SCANCODE_TABLE_SIZE; i++)
   { 
@@ -174,106 +148,19 @@ DEFUN_VOID (recompute_max_scancode_conversion_length)
       length = 1;
     else
       length = (strlen (conversion));
-    max_scancode_conversion_length 
-      = Max (length, max_scancode_conversion_length);
+    max_scancode_conversion_length = (IMAX (length,
+					    max_scancode_conversion_length));
   }
   return;
 }
 
-static void
-DEFUN_VOID (initialize_scancode_table)
-{
-  recompute_max_scancode_conversion_length ();
-}
-
-DEFINE_PRIMITIVE ("KEYBOARD-GET-CONVERSION", Prim_keyboard_get_conversion,
-		  1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  {
-    long scancode = arg_integer(1);
-
-    if ((scancode < 0) || (scancode >= KEYBOARD_SCANCODE_TABLE_SIZE))
-      error_bad_range_arg(1);
-    else
-    {
-      unsigned char * conversion = keyboard_scancode_table[scancode];
-      if (conversion == NO_CONVERSION)
-	PRIMITIVE_RETURN (SHARP_F);
-      else if (conversion == CTRL_AT)
-	PRIMITIVE_RETURN (memory_to_string (1, "\0"));
-      else
-	PRIMITIVE_RETURN (char_pointer_to_string (conversion));
-    }
-  }
-}
-
-DEFINE_PRIMITIVE ("KEYBOARD-SET-CONVERSION!", Prim_keyboard_set_conversion,
-		  2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    int scancode = (arg_integer (1));
-    SCHEME_OBJECT scheme_conversion = (ARG_REF (2));
-
-    if ((scancode < 0) || (scancode >= KEYBOARD_SCANCODE_TABLE_SIZE))
-      error_bad_range_arg(1);
-    else
-    { 
-      int len;
-      if ((scheme_conversion != SHARP_F)
-	  && (!STRING_P (scheme_conversion)))
-	error_wrong_type_arg (2);
-      if ((scheme_conversion == SHARP_F)
-	  || ((len = (STRING_LENGTH (scheme_conversion)))
-	      == 0))
-      {
-	if (Scancode_Malloced_p (scancode))
-	  DOS_free (keyboard_scancode_table[scancode]);
-	keyboard_scancode_table[scancode] = NO_CONVERSION;
-	Scancode_Malloced_Not (scancode);
-      }
-      else if ((len == 1)
-	       && ((STRING_REF (scheme_conversion, 0)) == '\0'))
-      {
-	if (Scancode_Malloced_p (scancode))
-	  DOS_free (keyboard_scancode_table[scancode]);
-	keyboard_scancode_table[scancode] = CTRL_AT;
-	Scancode_Malloced_Not (scancode);
-      }
-      else
-      {
-	int i;
-	unsigned char * old_conversion
-	  = keyboard_scancode_table[scancode];
-	unsigned char * conversion, * scheme;
-
-	conversion = (DOS_malloc (len + 1));
-	if (conversion == 0)
-	  error_system_call (ENOMEM, syscall_malloc);
-	if (Scancode_Malloced_p (scancode))
-	  DOS_free (old_conversion);
-	keyboard_scancode_table[scancode] = conversion;
-	Scancode_Malloced (scancode);
-	for (i = 0, scheme = (STRING_LOC (scheme_conversion, 0));
-	     i <= len;
-	     i ++)
-	  *conversion++ = *scheme++;
-	*conversion = '\0';
-      }
-      recompute_max_scancode_conversion_length ();
-      PRIMITIVE_RETURN (UNSPECIFIC);
-    }
-  }
-}
-
 static void
 DEFUN_VOID (consume_typeahead)
 {
   extern int signal_keyboard_character_interrupt (int);
   unsigned char character;
 
-  while ((Typeahead_Buffer_Available_p ()) &&
+  while ((TYPEAHEAD_BUFFER_AVAILABLE_P ()) &&
 	 (dos_poll_keyboard_character (&character)))
   { 
     if (character == '\0') /* Extended scancode */
@@ -313,18 +200,6 @@ DEFUN_VOID (get_typeahead_character)
     return (result);
   }
 }
-
-DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
-		  "High-priority timer interrupt handler.")
-{
-  extern void EXFUN (dos_process_timer_interrupt, (void));
-  PRIMITIVE_HEADER (2);
-
-  consume_typeahead ();
-  dos_process_timer_interrupt ();
-  CLEAR_INTERRUPT (INT_Global_GC);
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
 
 static void
 DEFUN (key_buffer_insert_self, (c), unsigned char c)
@@ -356,7 +231,7 @@ DEFUN_VOID (key_buffer_erase_character)
 }
 
 static void
-DEFUN_VOID(key_buffer_to_line_buffer)
+DEFUN_VOID (key_buffer_to_line_buffer)
 {
   register size_t i = 0;
   register size_t j = 0;
@@ -383,6 +258,7 @@ void
 DEFUN_VOID (DOS_initialize_conio)
 {
   void initialize_keyboard_interrupt_table (void);
+  void initialize_scancode_table (void);
 
   flush_conio_buffers ();
   initialize_keyboard_interrupt_table ();
@@ -401,7 +277,18 @@ DEFUN (DOS_initialize_fov, (fov), SCHEME_OBJECT fov)
   prim = (make_primitive ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT"));
   iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
   VECTOR_SET (iv, Global_GC_Level, prim);
+  return;
+}
 
+static void
+DEFUN (non_buffered_key_command, (c), unsigned char c)
+{
+  if (line_buffer.length == CONIO_BUFFER_SIZE) return;
+ 
+  if ((!DOS_keyboard_intercepted_p)
+      && (c == BACKSPACE))
+    c = DELETE;
+  line_buffer.buffer[line_buffer.length++] = c;
   return;
 }
 
@@ -441,22 +328,9 @@ DEFUN (buffered_key_command, (c), unsigned char c)
   return;
 }
 
-static void
-DEFUN (non_buffered_key_command, (c), unsigned char c)
-{
-  if (line_buffer.length == CONIO_BUFFER_SIZE) return;
- 
-  if ((!DOS_keyboard_intercepted_p)
-      && (c == BACKSPACE))
-    c = DELETE;
-
-  line_buffer.buffer[line_buffer.length++] = c;
-  return;
-}
-
 long
-DEFUN(console_read, (buffer, nbytes, buffered_p, blocking_p),
-      char * buffer AND unsigned nbytes AND int buffered_p AND int blocking_p)
+DEFUN (console_read, (buffer, nbytes, buffered_p, blocking_p),
+       char * buffer AND unsigned nbytes AND int buffered_p AND int blocking_p)
 { 
   System_Error_Reset();
   do
@@ -492,4 +366,135 @@ DEFUN (console_write_string, (string), void * string)
 {
   text_write ((fileno(stdout)), string, strlen((char *) string));
   return;
+}
+
+DEFINE_PRIMITIVE ("DOS-HIGH-PRIORITY-TIMER-INTERRUPT", Prim_dos_high_priority_timer, 2, 2,
+		  "DOS High-priority timer interrupt handler.")
+{
+  extern void EXFUN (dos_process_timer_interrupt, (void));
+  PRIMITIVE_HEADER (2);
+
+  consume_typeahead ();
+  dos_process_timer_interrupt ();
+  CLEAR_INTERRUPT (INT_Global_GC);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("KEYBOARD-GET-CONVERSION", Prim_keyboard_get_conversion, 1, 1,
+		  "Translate a keyboard scan code into a string.")
+{
+  PRIMITIVE_HEADER (1);
+  {
+    long scancode = arg_integer(1);
+
+    if ((scancode < 0) || (scancode >= KEYBOARD_SCANCODE_TABLE_SIZE))
+      error_bad_range_arg(1);
+    else
+    {
+      unsigned char * conversion = keyboard_scancode_table[scancode];
+      if (conversion == NO_CONVERSION)
+	PRIMITIVE_RETURN (SHARP_F);
+      else if (conversion == CTRL_AT)
+	PRIMITIVE_RETURN (memory_to_string (1, "\0"));
+      else
+	PRIMITIVE_RETURN (char_pointer_to_string (conversion));
+    }
+  }
+}
+
+#ifndef ULONG_BIT
+# define ULONG_BIT		((sizeof (unsigned long)) * CHAR_BIT)
+#endif
+
+#define MALLOCED_TABLE_SIZE	\
+  ((KEYBOARD_SCANCODE_TABLE_SIZE + (ULONG_BIT - 1)) / ULONG_BIT)
+
+static unsigned long scancode_malloced_table[MALLOCED_TABLE_SIZE] = {0,};
+
+#define SCANCODE_TO_MALLOCED_TABLE_WORD(s)	((s) / ULONG_BIT)
+#define SCANCODE_TO_MALLOCED_TABLE_BIT(s)	((s) % ULONG_BIT)
+
+#define SCANCODE_MALLOCED_P(s)						\
+  ((scancode_malloced_table[SCANCODE_TO_MALLOCED_TABLE_WORD (s)] &	\
+    (1 << SCANCODE_TO_MALLOCED_TABLE_BIT (s)))				\
+   != 0)
+
+#define SCANCODE_MALLOCED(s)						\
+  (scancode_malloced_table[SCANCODE_TO_MALLOCED_TABLE_WORD (s)] |=	\
+   (1 << SCANCODE_TO_MALLOCED_TABLE_BIT (s)))
+
+#define SCANCODE_MALLOCED_NOT(s)					\
+  (scancode_malloced_table[SCANCODE_TO_MALLOCED_TABLE_WORD (s)] &=	\
+   (~(1 << SCANCODE_TO_MALLOCED_TABLE_BIT (s))))
+
+static void
+DEFUN_VOID (initialize_scancode_table)
+{
+  int i;
+
+  for (i = 0; i < MALLOCED_TABLE_SIZE; i++)
+    scancode_malloced_table[i] = ((unsigned long) 0);
+  recompute_max_scancode_conversion_length ();
+  return;
+}
+
+DEFINE_PRIMITIVE ("KEYBOARD-SET-CONVERSION!", Prim_keyboard_set_conversion, 2, 2,
+		  "Set the translation for a keyboard scan code.")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    int scancode = (arg_integer (1));
+    SCHEME_OBJECT scheme_conversion = (ARG_REF (2));
+
+    if ((scancode < 0) || (scancode >= KEYBOARD_SCANCODE_TABLE_SIZE))
+      error_bad_range_arg(1);
+    else
+    { 
+      int len;
+      unsigned char * old_conversion = keyboard_scancode_table[scancode];
+      int old_malloced_p = (SCANCODE_MALLOCED_P (scancode));
+
+      if ((scheme_conversion != SHARP_F) && (!STRING_P (scheme_conversion)))
+	error_wrong_type_arg (2);
+
+      len = ((scheme_conversion == SHARP_F)
+	     ? 0
+	     : (STRING_LENGTH (scheme_conversion)));
+      if (len == 0)
+      {
+	keyboard_scancode_table[scancode] = NO_CONVERSION;
+	SCANCODE_MALLOCED_NOT (scancode);
+	if (old_malloced_p)
+	  DOS_free (old_conversion);
+      }
+      else if ((len == 1)
+	       && ((STRING_REF (scheme_conversion, 0)) == '\0'))
+      {
+	keyboard_scancode_table[scancode] = CTRL_AT;
+	SCANCODE_MALLOCED_NOT (scancode);
+	if (old_malloced_p)
+	  DOS_free (old_conversion);
+      }
+      else
+      {
+	int i;
+	unsigned char * conversion, * ptr, * scheme;
+
+	conversion = (DOS_malloc (len + 1));
+	if (conversion == 0)
+	  error_system_call (ENOMEM, syscall_malloc);
+	ptr = conversion;
+	scheme = (STRING_LOC (scheme_conversion, 0));
+	for (i = 0; i <= len; i ++)
+	  *ptr++ = *scheme++;
+	*ptr = '\0';
+	keyboard_scancode_table[scancode] = conversion;
+	SCANCODE_MALLOCED (scancode);
+	if (old_malloced_p)
+	  DOS_free (old_conversion);
+      }
+      recompute_max_scancode_conversion_length ();
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    }
+  }
 }
