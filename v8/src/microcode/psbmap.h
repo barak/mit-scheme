@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/psbmap.h,v 9.37 1992/04/18 00:30:02 jinx Exp $
+$Id: psbmap.h,v 9.38 1993/02/11 02:35:32 adams Exp $
 
 Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
@@ -45,12 +45,19 @@ MIT in each case. */
 #define fast register
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "ansidecl.h"
 #include "config.h"
 #include "types.h"
 #include "object.h"
 #include "bignum.h"
+
+#ifdef WINNT
+#include "bignumin.h" /* SRA: rename bignumint.h  bignumin.h*/
+#else
 #include "bignumint.h"
+#endif
+
 #include "bitstr.h"
 #include "sdata.h"
 #include "const.h"
