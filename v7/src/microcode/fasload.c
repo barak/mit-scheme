@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.72 1993/10/14 19:17:45 gjr Exp $
+$Id: fasload.c,v 9.73 1993/10/31 16:51:06 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -89,6 +89,7 @@ static void
 DEFUN (read_channel_continue, (header, mode, repeat_p),
        SCHEME_OBJECT * header AND int mode AND Boolean repeat_p)
 {
+  extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
   long value, heap_length;
 
   value = (initialize_variables_from_fasl_header (header));
@@ -118,28 +119,21 @@ DEFUN (read_channel_continue, (header, mode, repeat_p),
   if (Or2 (Reloc_Debug, File_Load_Debug))
     print_fasl_information();
 
-  if (! (TEST_CONSTANT_TOP (Free_Constant + Const_Count)))
+  if (((mode == MODE_BAND)
+       && (! (update_allocator_parameters (Free_Constant + Const_Count))))
+      || ((mode != MODE_BAND)
+	  && (! (TEST_CONSTANT_TOP (Free_Constant + Const_Count)))))
   {
-    extern Boolean EXFUN (update_allocator_parameters, (SCHEME_OBJECT *));
-
-    switch (mode)
-    {
-      case MODE_CHANNEL:
-        break;
-
-      case MODE_BAND:
-        if (update_allocator_parameters (Free_Constant + Const_Count))
-	{
-	  SET_CONSTANT_TOP ();
-	  ALIGN_FLOAT (Free);
-	  break;
-	}
-
-      default:
-        OS_channel_close_noerror (load_channel);
-        signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
-        /*NOTREACHED*/
-    }
+    if (mode != MODE_CHANNEL)
+      OS_channel_close_noerror (load_channel);
+    signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
+    /*NOTREACHED*/
+  }
+  if (mode == MODE_BAND)
+  {
+    SET_CONSTANT_TOP ();
+    ALIGN_FLOAT (Free);
+    SET_MEMTOP (Heap_Top);    
   }
 
   heap_length = (Heap_Count + Primitive_Table_Size + Primitive_Table_Length);
