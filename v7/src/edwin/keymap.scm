@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.8 1989/08/14 09:22:41 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/keymap.scm,v 1.9 1991/05/06 22:27:45 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -56,14 +56,14 @@ The list is put in a buffer, which is displayed."
        (let ((alists (comtabs->alists (current-comtabs))))
 	 (if (not (null? alists))
 	     (let ((n
-		    (+ (apply max
-			      (map (lambda (elements)
-				     (apply max
-					    (map (lambda (element)
-						   (string-length
-						    (car element)))
-						 elements)))
-				   alists))
+		    (+ (reduce max 0
+			       (map (lambda (elements)
+				      (reduce max 0
+					      (map (lambda (element)
+						     (string-length
+						      (car element)))
+						   elements)))
+				    alists))
 		       2)))
 	       (let ((write-element
 		      (lambda (element)
