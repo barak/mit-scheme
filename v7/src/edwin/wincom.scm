@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.102 1991/05/10 22:18:28 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.103 1991/05/18 03:13:48 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -78,7 +78,7 @@ Has no effect unless multiple-screen support is available."
   "Pop-up windows would prefer to split the largest window if this large.
 If there is only one window, it is split regardless of this value."
   500)
-
+
 (define-command redraw-display
   "Redraws the entire display from scratch."
   ()
@@ -173,7 +173,10 @@ Just minus as an argument moves down full screen."
   "Scroll text of next window up ARG lines, or near full screen if no arg."
   "P"
   (lambda (argument)
-    (let ((window (other-window-interactive 1)))
+    (let ((window
+	   (or (and (typein-window? (current-window))
+		    (object-unhash *minibuffer-scroll-window*))
+	       (other-window-interactive 1))))
       (scroll-window window
 		     (standard-scroll-window-argument window argument 1)))))
 
@@ -184,7 +187,10 @@ The default is one screenful up.  Just minus as an argument
 means scroll one screenful down."
   "P"
   (lambda (argument)
-    (let ((window (other-window-interactive 1)))
+    (let ((window
+	   (or (and (typein-window? (current-window))
+		    (object-unhash *minibuffer-scroll-window*))
+	       (other-window-interactive 1))))
       (scroll-window window
 		     (multi-scroll-window-argument window argument 1)))))
 
@@ -382,7 +388,8 @@ Also kills any pop up window it may have created."
 
 (define (cleanup-pop-up-buffers thunk)
   (fluid-let ((*previous-popped-up-window* (object-hash false))
-	      (*previous-popped-up-buffer* (object-hash false)))
+	      (*previous-popped-up-buffer* (object-hash false))
+	      (*minibuffer-scroll-window* (object-hash false)))
     (dynamic-wind (lambda () unspecific)
 		  thunk
 		  (lambda () (kill-pop-up-buffer false)))))
@@ -404,6 +411,7 @@ Also kills any pop up window it may have created."
 
 (define *previous-popped-up-buffer* (object-hash false))
 (define *previous-popped-up-window* (object-hash false))
+(define *minibuffer-scroll-window* (object-hash false))
 
 (define (pop-up-buffer buffer #!optional select?)
   ;; If some new window is created by this procedure, it is returned
@@ -420,6 +428,7 @@ Also kills any pop up window it may have created."
       (maybe-record-window window))
 
     (define (maybe-record-window window)
+      (set! *minibuffer-scroll-window* (object-hash window))
       (if select? (select-window window))
       (and (eq? window (object-unhash *previous-popped-up-window*))
 	   window))
