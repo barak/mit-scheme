@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.62 1995/06/29 23:47:45 cph Exp $
+$Id: ux.h,v 1.63 1996/04/23 20:42:41 cph Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -197,6 +197,7 @@ extern int EXFUN (kill, (pid_t, int));
 #define HAVE_GETCWD
 #define HAVE_TERMIO
 #define HAVE_TIMES
+#define HAVE_TIMEZONE
 
 #define AMBIGUOUS_NONBLOCK
 #define ERRNO_NONBLOCK EAGAIN
@@ -281,6 +282,8 @@ extern int EXFUN (kill, (pid_t, int));
 #define SYSTEM_VARIANT "Linux"
 #include <sys/time.h>
 #define HAVE_FTRUNCATE
+#define HAVE_STATFS
+#define HAVE_TIMEZONE
 #endif
 
 #ifdef _ULTRIX
@@ -706,6 +709,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_dup dup
 #define UX_free free
 #define UX_fstat fstat
+#define UX_fstatfs fstatfs
 #define UX_getegid getegid
 #define UX_getenv getenv
 #define UX_geteuid geteuid
@@ -731,6 +735,7 @@ extern char * EXFUN (getlogin, (void));
 #define UX_signal signal
 #define UX_sleep sleep
 #define UX_stat stat
+#define UX_statfs statfs
 #define UX_system system
 #define UX_time time
 #define UX_unlink unlink

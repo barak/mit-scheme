@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.12 1995/04/23 03:16:24 cph Exp $
+$Id: ntenv.c,v 1.13 1996/04/23 20:40:11 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -59,6 +59,9 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
   (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+  /* I'm assuming that `timezone' is implemented by the C library;
+     this might need conditionalization.  -- cph */
+  (buffer -> time_zone) = timezone;
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);
@@ -80,6 +83,11 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   (ts -> tm_sec) = (buffer -> second);
   (ts -> tm_isdst) = (buffer -> daylight_savings_time);
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (NT_mktime (ts)));
+  /* mktime assumes its argument is local time, and converts it to
+     UTC; if the specified time zone is different, adjust the result.  */
+  if (((buffer -> time_zone) != INT_MAX)
+      && ((buffer -> time_zone) != timezone))
+    t = ((t - timezone) + (buffer -> time_zone));
   return (t);
 }
 

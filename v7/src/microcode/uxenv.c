@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.14 1995/04/23 03:16:42 cph Exp $
+$Id: uxenv.c,v 1.15 1996/04/23 20:44:15 cph Exp $
 
-Copyright (c) 1990-95 Massachusetts Institute of Technology
+Copyright (c) 1990-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -56,6 +56,11 @@ DEFUN (OS_decode_time, (t, buffer), time_t t AND struct time_structure * buffer)
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
   (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+#ifdef HAVE_TIMEZONE
+  (buffer -> time_zone) = timezone;
+#else
+  (buffer -> time_zone) = INT_MAX;
+#endif
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);
@@ -80,6 +85,13 @@ DEFUN (OS_encode_time ,(buffer), struct time_structure * buffer)
   STD_UINT_SYSTEM_CALL (syscall_mktime, t, (UX_mktime (ts)));
 #else
   error_system_call (ENOSYS, syscall_mktime);
+#endif
+#ifdef HAVE_TIMEZONE
+  /* mktime assumes its argument is local time, and converts it to
+     UTC; if the specified time zone is different, adjust the result.  */
+  if (((buffer -> time_zone) != INT_MAX)
+      && ((buffer -> time_zone) != timezone))
+    t = ((t - timezone) + (buffer -> time_zone));
 #endif
   return (t);
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.9 1995/10/15 00:37:52 cph Exp $
+$Id: os2env.c,v 1.10 1996/04/23 20:40:03 cph Exp $
 
-Copyright (c) 1994-95 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -93,6 +93,11 @@ OS_decode_time (time_t t, struct time_structure * buffer)
   (buffer -> minute) = (ts -> tm_min);
   (buffer -> second) = (ts -> tm_sec);
   (buffer -> daylight_savings_time) = (ts -> tm_isdst);
+#ifdef NC_TIMEZONE
+  (buffer -> time_zone) = NC_TIMEZONE;
+#else
+  (buffer -> time_zone) = INT_MAX;
+#endif
   {
     /* In localtime() encoding, 0 is Sunday; in ours, it's Monday. */
     int wday = (ts -> tm_wday);
@@ -115,6 +120,13 @@ OS_encode_time (struct time_structure * buffer)
     time_t t = (mktime (&ts));
     if (t < 0)
       OS2_error_system_call (errno, syscall_mktime);
+#ifdef NC_TIMEZONE
+    /* mktime assumes its argument is local time, and converts it to
+       UTC; if the specified time zone is different, adjust the result.  */
+    if (((buffer -> time_zone) != INT_MAX)
+	&& ((buffer -> time_zone) != NC_TIMEZONE))
+      t = ((t - NC_TIMEZONE) + (buffer -> time_zone));
+#endif
     return (t);
   }
 }
@@ -124,6 +136,8 @@ OS2_timezone (void)
 {
 #ifdef NC_TIMEZONE
   return (NC_TIMEZONE);
+#else
+  return (0);
 #endif
 }
 
@@ -132,6 +146,8 @@ OS2_daylight_savings_p (void)
 {
 #ifdef NC_DAYLIGHT
   return (NC_DAYLIGHT);
+#else
+  return (-1);
 #endif
 }
 

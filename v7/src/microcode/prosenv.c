@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.12 1995/04/23 03:03:31 cph Exp $
+$Id: prosenv.c,v 1.13 1996/04/23 20:39:56 cph Exp $
 
-Copyright (c) 1987-95 Massachusetts Institute of Technology
+Copyright (c) 1987-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,7 @@ MIT in each case. */
 #include "prims.h"
 #include "osenv.h"
 #include "ostop.h"
+#include "limits.h"
 
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
@@ -48,7 +49,7 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
 DEFINE_PRIMITIVE ("DECODE-TIME", Prim_decode_time, 2, 2,
   "Fill a vector with the second argument decoded.\n\
 The vector's elements are:\n\
-  #(TAG second minute hour day month year day-of-week dst)")
+  #(TAG second minute hour day month year day-of-week dst zone)")
 {
   SCHEME_OBJECT vec;
   unsigned int len;
@@ -69,6 +70,12 @@ The vector's elements are:\n\
   FAST_VECTOR_SET (vec, 7, (long_to_integer (ts . day_of_week)));
   if (len > 8)
     FAST_VECTOR_SET (vec, 8, (long_to_integer (ts . daylight_savings_time)));
+  if (len > 9)
+    FAST_VECTOR_SET
+      (vec, 9,
+       (((ts . time_zone) == INT_MAX)
+	? SHARP_F
+	: (long_to_integer (ts . time_zone))));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -95,6 +102,12 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
     = ((len > 8)
        ? (integer_to_long (FAST_VECTOR_REF (vec, 8)))
        : (-1));
+  (ts . time_zone)
+    = (((len > 9)
+	&& (INTEGER_P (FAST_VECTOR_REF (vec, 9)))
+	&& (integer_to_long_p (FAST_VECTOR_REF (vec, 9))))
+       ? (integer_to_long (FAST_VECTOR_REF (vec, 9)))
+       : INT_MAX);
   PRIMITIVE_RETURN (long_to_integer ((long) (OS_encode_time (&ts))));
 }
 
