@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.6 1993/10/30 12:58:12 gjr Exp $
+$Id: rules3.scm,v 1.7 1993/10/31 04:08:27 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. |#
 (define (pop-return)
   (use-pop-return!)
   (LAP ,@(clear-map!)
-       "POP_RETURN();\n\t"))
+       "goto pop_return;\n\t"))
 
 (define-rule statement
   (POP-RETURN)
@@ -86,11 +86,12 @@ MIT in each case. |#
   ;; Destination address is at TOS; pop it into second-arg
   (let ()
     (use-invoke-interface! 2)
-    (LAP ,@(clear-map!)
-	 "{n\t SCHEME_OBJECT procedure = *Rsp++;\n\t  "
-	 "SCHEME_OBJECT * procedure_address = (OBJECT_ADDRESS (procedure));\n\t"
-	 "  INVOKE_INTERFACE_2 (" ,code:compiler-lexpr-apply
-	 ", procedure_address, " ,number-pushed ");\n\t}\n\t")))
+    (LAP
+     ,@(clear-map!)
+     "{n\t SCHEME_OBJECT procedure = *Rsp++;\n\t  "
+     "SCHEME_OBJECT * procedure_address = (OBJECT_ADDRESS (procedure));\n\t"
+     "  INVOKE_INTERFACE_2 (" ,code:compiler-lexpr-apply
+     ", procedure_address, " ,number-pushed ");\n\t}\n\t")))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
@@ -98,7 +99,9 @@ MIT in each case. |#
   (begin
     (use-jump-execute-chache!)
     (LAP ,@(clear-map!)
-	 "JUMP_EXECUTE_CHACHE (" ,(free-uuo-link-label name frame-size) ");\n\t")))
+	 "JUMP ((SCHEME_OBJECT *) (current_block["
+	 ,(free-uuo-link-label name frame-size)
+	 "]));\n\t")))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
@@ -106,7 +109,9 @@ MIT in each case. |#
   (begin
     (use-jump-execute-chache!)
     (LAP ,@(clear-map!)
-	 "JUMP_EXECUTE_CHACHE (" ,(global-uuo-link-label name frame-size) ");\n\t")))
+	 "JUMP ((SCHEME_OBJECT *) (current_block["
+	 ,(global-uuo-link-label name frame-size)
+	 "]));\n\t")))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size)
