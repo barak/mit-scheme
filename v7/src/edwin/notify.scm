@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.2 1992/02/17 22:10:28 bal Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/notify.scm,v 1.3 1992/02/18 03:25:07 bal Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -115,14 +115,11 @@
 
 (define (start-notifier notifier)
   (if current-notifier-thread
-      (signal-thread-event
-       current-notifier-thread
-       (lambda () (exit-current-thread false))))
-  (call-with-current-continuation
-   (lambda (continuation)
-     (let ((thread (create-thread continuation notifier)))
-       (set! current-notifier-thread thread)
-       thread))))
+      (signal-thread-event current-notifier-thread
+			   (lambda () (exit-current-thread false))))
+  (let ((thread (create-thread editor-thread-root-continuation notifier)))
+    (set! current-notifier-thread thread)
+    thread))
 
 (define (mail-notify)
   (install-mail-notify-hook! false)
