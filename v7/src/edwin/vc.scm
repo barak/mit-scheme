@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.47 2000/03/27 21:02:24 cph Exp $
+;;; $Id: vc.scm,v 1.48 2000/03/27 23:04:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -213,76 +213,81 @@ Otherwise, the mod time of the file is the checkout time."
 
 ;;;; Editor Hooks
 
-(set-variable!
- find-file-hooks
- (append!
-  (ref-variable find-file-hooks)
-  (list
-   (lambda (buffer)
-     (cond ((buffer-vc-master buffer #f)
-	    => (lambda (master)
-		 (vc-mode-line master buffer)
-		 (if (not (ref-variable vc-make-backup-files buffer))
-		     (local-set-variable! make-backup-files #f buffer))
-		 buffer))
-	   ((let ((pathname (buffer-pathname buffer)))
-	      (and (file-symbolic-link? pathname)
-		   (file-vc-master (file-chase-links pathname) #f)))
-	    => (lambda (master)
-		 (let ((workfile (vc-master-workfile master))
-		       (type (vc-type-display-name (vc-master-type master))))
-		   (let ((follow
-			  (lambda ()
-			    (let ((buffer*
-				   (or (pathname->buffer workfile)
-				       (find-file-noselect workfile #f))))
-			      (message "Followed link to " workfile)
-			      (kill-buffer buffer)
-			      buffer*))))
-		     (case (ref-variable vc-follow-symlinks buffer)
-		       ((#F)
-			(message "Warning: symbolic link to "
-				 type
-				 "-controlled source file"))
-		       ((ASK)
-			(if (or (pathname->buffer workfile)
-				(prompt-for-yes-or-no?
-				 (string-append
-				  "Symbolic link to "
-				  type
-				  "-controlled source file; follow link")))
-			    (follow)
-			    (begin
-			      (message
-			       "Warning: editing through the link bypasses version control.")
-			      buffer)))
-		       (else (follow)))))))
-	   (else buffer))))))
+(set-variable! find-file-hooks
+	       (append! (ref-variable find-file-hooks)
+			(list (lambda (buffer) (vc-hook:find-file buffer)))))
 
 (set-variable!
  find-file-not-found-hooks
  (append! (ref-variable find-file-not-found-hooks)
-	  (list
-	   (lambda (buffer)
-	     (let ((master (buffer-vc-master buffer #f)))
-	       (and master
-		    (call-with-current-continuation
-		     (lambda (k)
-		       (bind-condition-handler (list condition-type:error)
-			   (lambda (condition) condition (k #f))
-			 (lambda ()
-			   (vc-checkout master #f)
-			   #t))))))))))
+	  (list (lambda (buffer) (vc-hook:find-file-not-found buffer)))))
 
 (add-event-receiver! event:after-buffer-save
-  (lambda (buffer)
-    (let ((master (buffer-vc-master buffer #f)))
-      (if master
-	  (vc-mode-line master buffer)))))
+		     (lambda (buffer) (vc-hook:after-buffer-save buffer)))
 
 (add-event-receiver! event:set-buffer-pathname
-  (lambda (buffer)
-    (buffer-remove! buffer 'VC-MASTER)))
+		     (lambda (buffer) (vc-hook:set-buffer-pathname buffer)))
+
+(define (vc-hook:find-file buffer)
+  (cond ((buffer-vc-master buffer #f)
+	 => (lambda (master)
+	      (vc-mode-line master buffer)
+	      (if (not (ref-variable vc-make-backup-files buffer))
+		  (local-set-variable! make-backup-files #f buffer))
+	      buffer))
+	((let ((pathname (buffer-pathname buffer)))
+	   (and (file-symbolic-link? pathname)
+		(file-vc-master (file-chase-links pathname) #f)))
+	 => (lambda (master)
+	      (let ((workfile (vc-master-workfile master))
+		    (type (vc-type-display-name (vc-master-type master))))
+		(let ((follow
+		       (lambda ()
+			 (kill-buffer buffer)
+			 (let ((buffer*
+				(or (pathname->buffer workfile)
+				    (find-file-noselect workfile #f))))
+			   (message "Followed link to "
+				    (->namestring workfile))
+			   buffer*))))
+		  (case (ref-variable vc-follow-symlinks buffer)
+		    ((#F)
+		     (message "Warning: symbolic link to "
+			      type
+			      "-controlled source file"))
+		    ((ASK)
+		     (if (or (pathname->buffer workfile)
+			     (prompt-for-yes-or-no?
+			      (string-append
+			       "Symbolic link to "
+			       type
+			       "-controlled source file; follow link")))
+			 (follow)
+			 (begin
+			   (message
+			    "Warning: editing through the link bypasses version control.")
+			   buffer)))
+		    (else (follow)))))))
+	(else buffer)))
+
+(define (vc-hook:find-file-not-found buffer)
+  (let ((master (buffer-vc-master buffer #f)))
+    (and master
+	 (call-with-current-continuation
+	  (lambda (k)
+	    (bind-condition-handler (list condition-type:error)
+		(lambda (condition) condition (k #f))
+	      (lambda ()
+		(vc-checkout master #f)
+		#t)))))))
+
+(define (vc-hook:after-buffer-save buffer)
+  (let ((master (buffer-vc-master buffer #f)))
+    (if master
+	(vc-mode-line master buffer))))
+
+(define (vc-hook:set-buffer-pathname buffer)
+  (buffer-remove! buffer 'VC-MASTER))
 
 ;;;; Mode line
 
