@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 4.38 1993/07/01 07:48:28 gjr Exp $
+$Id: rulflo.scm,v 4.39 1993/12/08 17:50:21 gjr Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -71,9 +71,64 @@ MIT in each case. |#
     (LAP ,@(object->address source)
 	 (FLDDS () (OFFSET 4 0 ,source) ,(flonum-target! target)))))
 
+;; This is endianness dependent!
+
+(define (flonum-value->data-decl value)
+  (let ((high (make-bit-string 32 false))
+	(low (make-bit-string 32 false)))
+    (read-bits! value 32 high)
+    (read-bits! value 64 low)
+    (LAP ,@(lap:comment `(FLOAT ,value))
+	 (UWORD () ,(bit-string->unsigned-integer high))
+	 (UWORD () ,(bit-string->unsigned-integer low)))))
+
+(define (flonum->label value)
+  (let* ((block
+	  (or (find-extra-code-block 'FLOATING-CONSTANTS)
+	      (let ((block (declare-extra-code-block! 'FLOATING-CONSTANTS
+						      'ANYWHERE
+						      '())))
+		(add-extra-code!
+		 block
+		 (LAP (PADDING ,(- 0 *initial-dword-offset*) 8)))
+		block)))
+	 (pairs (extra-code-block/xtra block))
+	 (place (assoc value pairs)))
+    (if place
+	(cdr place)
+	(let ((label (generate-label)))
+	  (set-extra-code-block/xtra!
+	   block
+	   (cons (cons value label) pairs))
+	  (add-extra-code! block
+			   (LAP (LABEL ,label)
+				,@(flonum-value->data-decl value)))
+	  label))))	 
+				     
+#|
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT 0.)))
   (LAP (FCPY (DBL) 0 ,(flonum-target! target))))
+|#
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
+  (cond ((not (flo:flonum? fp-value))
+	 (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
+	(compiler:cross-compiling?
+	 (let ((temp (standard-temporary!)))
+	   (LAP ,@(load-constant fp-value temp)
+		,@(object->address temp)
+		(FLDDS () (OFFSET 4 0 ,temp) ,(flonum-target! target)))))
+	((flo:= fp-value 0.0)
+	 (LAP (FCPY (DBL) 0 ,(flonum-target! target))))
+	(else
+	 (let* ((temp (standard-temporary!))
+		(target (flonum-target! target)))
+	   (LAP ,@(load-pc-relative-address (flonum->label fp-value)
+					    temp
+					    'CONSTANT)
+		(FLDDS () (OFFSET 0 0 ,temp) ,target))))))  
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

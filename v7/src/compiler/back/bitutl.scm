@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bitutl.scm,v 1.6 1992/07/05 13:32:27 jinx Exp $
+$Id: bitutl.scm,v 1.7 1993/12/08 17:43:16 gjr Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -40,20 +40,21 @@ MIT in each case. |#
 ;;;; Extra symbol table operations
 
 (define (clear-symbol-table!)
-  (set! *the-symbol-table* (make-symbol-table)))
+  (set! *the-symbol-table* (make-symbol-table))
+  unspecific)
 
 (define (initialize-symbol-table!)
   (symbol-table-define! *the-symbol-table* *start-label* 0))
 
 (define (finish-symbol-table!)
-  (define (process-objects obj pcmin pcmax)
-    (if (null? obj)
+  (define (process-objects objs pcmin pcmax)
+    (if (null? objs)
 	'DONE
-	(begin
+	(let ((object (car objs)))
 	  (symbol-table-define! *the-symbol-table*
-				(caar obj)
+				(cadr object) ; label
 				(make-machine-interval pcmin pcmax))
-	  (process-objects (cdr obj)
+	  (process-objects (cdr objs)
 			   (+ pcmin scheme-object-width)
 			   (+ pcmax scheme-object-width)))))
 
@@ -65,10 +66,9 @@ MIT in each case. |#
 
   ;; Handle equates
   (for-each (lambda (equate)
-	      (symbol-table-define!
-	       *the-symbol-table*
-	       (car equate)
-	       (evaluate (cadr equate) false)))
+	      (symbol-table-define! *the-symbol-table*
+				    (car equate)
+				    (evaluate (cadr equate) false)))
 	    (queue->list *equates*)))
 
 ;;;; Expression evaluation and intervals
@@ -82,23 +82,30 @@ MIT in each case. |#
 	  ((number? exp) exp)
 	  ((not (symbol? exp))
 	   (error "evaluate: bad expression" exp))
-	  ((eq? exp '*PC*) pc-value)
+	  ((eq? exp '*PC*)
+	   (if (not pc-value)
+	       (error "evaluate: *PC* found with no PC defined"))
+	   pc-value)
 	  (else
 	   (symbol-table-value *the-symbol-table* exp))))
   (inner expression))
 
-(declare (integrate-operator ->machine-pc make-machine-interval
-			     make-interval interval?
-			     interval-low interval-high))
-
-(define (->machine-pc pc)
-  (declare (integrate pc))
+(define-integrable (->machine-pc pc)
   (paranoid-quotient pc addressing-granularity))
+
+(define-integrable (->bitstring-pc pc)
+  (* pc addressing-granularity))
+
+(define (paddify pc-val remdr divsr)
+  (let ((aremdr (remainder pc-val divsr)))
+    (+ pc-val
+       (if (<= aremdr remdr)
+	   (- remdr aremdr)
+	   (+ remdr (- divsr aremdr))))))
 
 ;; Machine intervals are always in addressing units.
 
-(define (make-machine-interval low high)
-  (declare (integrate low high))
+(define-integrable (make-machine-interval low high)
   (make-interval (->machine-pc low)
 		 (->machine-pc high)))
 
@@ -107,21 +114,17 @@ MIT in each case. |#
       value
       (make-interval value value)))
 
-(define (make-interval low high)
-  (declare (integrate low high))
+(define-integrable (make-interval low high)
   (vector 'INTERVAL low high))
 
-(define (interval? obj)
-  (declare (integrate obj))
+(define-integrable (interval? obj)
   (and (vector? obj)
        (eq? (vector-ref obj 0) 'INTERVAL)))
 
-(define (interval-low obj)
-  (declare (integrate obj))
+(define-integrable (interval-low obj)
   (vector-ref obj 1))
 
-(define (interval-high obj)
-  (declare (integrate obj))
+(define-integrable (interval-high obj)
   (vector-ref obj 2))
 
 (define (paranoid-quotient dividend divisor)
@@ -130,11 +133,8 @@ MIT in each case. |#
 	(integer-divide-quotient result)
 	(error "paranoid-quotient: not a multiple" dividend divisor))))
 
-(define (pad pcvalue)
-  (let ((r (remainder pcvalue scheme-object-width)))
-    (if (zero? r)
-	pcvalue
-	(+ pcvalue (- scheme-object-width r)))))
+(define (final-pad pcvalue)
+  (paddify pcvalue 0 scheme-object-width))
 
 ;;;; Operators
 
@@ -151,43 +151,76 @@ MIT in each case. |#
 
 ;; Either argument can be an interval
 
-(define ((symmetric scalar) op1 op2)
-  (if (interval? op1)
-      (if (interval? op2)
-	  (make-interval (scalar (interval-low op1) (interval-low op2))
-			 (scalar (interval-high op1) (interval-high op2)))
-	  (make-interval (scalar (interval-low op1) op2)
-			 (scalar (interval-high op1) op2)))
-      (if (interval? op2)
-	  (make-interval (scalar op1 (interval-low op2))
-			 (scalar op1 (interval-high op2)))
-	  (scalar op1 op2))))
+(define-operator! '+
+  (lambda (op1 op2)
+    (cond ((not (interval? op2))
+	   (if (not (interval? op1))
+	       (+ op1 op2)
+	       (make-interval (+ (interval-low op1) op2)
+			      (+ (interval-high op1) op2))))
+	  ((not (interval? op1))
+	   (make-interval (+ op1 (interval-low op2))
+			  (+ op1 (interval-high op2))))
+	  (else
+	   (make-interval (+ (interval-low op1) (interval-low op2))
+			  (+ (interval-high op1) (interval-high op2)))))))
 
-;; Only the first argument can be an interval
-
-(define ((asymmetric op) op1 op2)
-  (if (interval? op1)
-      (make-interval (op (interval-low op1) op2)
-		     (op (interval-high op1) op2))
-      (op op1 op2)))
-
-(define-operator! '+ (symmetric +))
-(define-operator! '- (symmetric -))
-
-(define-operator! '/ (asymmetric paranoid-quotient))
-(define-operator! 'remainder (asymmetric remainder))
-
-;; Only one argument can be an interval.
+(define-operator! '-
+  (lambda (op1 op2)
+    (cond ((not (interval? op2))
+	   (if (not (interval? op1))
+	       (- op1 op2)
+	       (make-interval (- (interval-low op1) op2)
+			      (- (interval-high op1) op2))))
+	  ((not (interval? op1))
+	   (make-interval (- op1 (interval-high op2))
+			  (- op1 (interval-low op2))))
+	  (else
+	   (make-interval (- (interval-low op1) (interval-high op2))
+			  (- (interval-high op1) (interval-low op2)))))))
+
+;; Only one argument can be an interval, both assumed non-negative.
 
 (define-operator! '*
   (lambda (op1 op2)
-    (cond ((interval? op1)
-	   (make-interval (* (interval-low op1) op2)
-			  (* (interval-high op1) op2)))
-	  ((interval? op2)
+    (cond ((not (interval? op2))
+	   (if (not (interval? op1))
+	       (* op1 op2)
+	       (make-interval (* (interval-low op1) op2)
+			      (* (interval-high op1) op2))))
+	  ((not (interval? op1))
 	   (make-interval (* op1 (interval-low op2))
 			  (* op1 (interval-high op2))))
-	  (else (* op1 op2)))))
+	  (else
+	   (error "evaluate: Both arguments are intervals" '* op1 op2)))))
+
+;; Only the first argument can be an interval
+
+(define ((asymmetric name op) op1 op2)
+  (cond ((interval? op2)
+	 (error "evaluate: Second operand is an interval" name op1 op2))
+	((not (interval? op1))
+	 (op op1 op2))
+	(else
+	 (make-interval (op (interval-low op1) op2)
+			(op (interval-high op1) op2)))))
+
+(define-operator! '/ (asymmetric '/ paranoid-quotient))
+(define-operator! 'QUOTIENT (asymmetric 'QUOTIENT quotient))
+
+(define-operator! 'REMAINDER
+  (lambda (op1 op2)
+    (cond ((interval? op2)
+	   (error "evaluate: Second operand is an interval"
+		  'REMAINDER op1 op2))
+	  ((not (interval? op1))
+	   (remainder op1 op2))
+	  (else
+	   (let ((rlow (remainder (interval-low op1) op2))
+		 (rhigh (remainder (interval-high op1) op2)))
+	     (if (> rlow rhigh)
+		 (make-interval rhigh rlow)
+		 (make-interval rlow rhigh)))))))
 
 ;;;; Variable width expression utilities
 

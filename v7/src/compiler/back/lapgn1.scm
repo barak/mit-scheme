@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 4.15 1993/08/26 05:47:34 gjr Exp $
+$Id: lapgn1.scm,v 4.16 1993/12/08 17:43:55 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -320,3 +320,8 @@ MIT in each case. |#
 	  (create-edge! current-bblock set-snode-next-edge! bblock)
 	  (set-bblock-continuations! current-bblock (list bblock))
 	  (set-sblock-continuation! current-bblock bblock)))))
+
+(define (lap:comment comment)
+  (if compiler:generate-lap-files?
+      (LAP (COMMENT (LAP ,comment)))
+      (LAP)))

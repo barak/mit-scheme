@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/bittop.scm,v 1.15 1992/06/12 01:43:44 jinx Exp $
+$Id: bittop.scm,v 1.16 1993/12/08 17:42:47 gjr Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -36,29 +36,20 @@ MIT in each case. |#
 ;;; package: (compiler assembler)
 
 (declare (usual-integrations))
-
+
 (define *equates*)
 (define *objects*)
 (define *entry-points*)
-(define *linkage-info*)
 (define *the-symbol-table*)
 (define *start-label*)
 (define *end-label*)
 
-;;; Vector header and NMV header for code section
-
-(define compiler-output-block-number-of-header-words 2)
-
-(define starting-pc
-  (* compiler-output-block-number-of-header-words scheme-object-width))
-
 ;;;; Assembler top level procedure
 
 (define (assemble start-label instructions)
   (fluid-let ((*equates* (make-queue))
 	      (*objects* (make-queue))
 	      (*entry-points* (make-queue))
-	      (*linkage-info* (make-queue))
 	      (*the-symbol-table* (make-symbol-table))
 	      (*start-label* start-label)
 	      (*end-label* (generate-uninterned-symbol 'END-LABEL-)))
@@ -90,8 +81,7 @@ MIT in each case. |#
 	  (values count
 		  block
 		  (queue->list *entry-points*)
-		  (symbol-table->assq-list *the-symbol-table*)
-		  (queue->list *linkage-info*)))))))
+		  (symbol-table->assq-list *the-symbol-table*)))))))
 
 (define (relax! directives vars)
   (define (loop vars count)
@@ -109,6 +99,13 @@ MIT in each case. |#
 		count)))))
   (loop vars 0))
 
+;;; Vector header and NMV header for code section
+
+(define compiler-output-block-number-of-header-words 2)
+
+(define starting-pc
+  (* compiler-output-block-number-of-header-words scheme-object-width))
+
 ;;;; Output block generation
 
 (define (final-phase directives)
@@ -129,8 +126,10 @@ MIT in each case. |#
      (instruction-initial-position code-block))
     code-block))
 
+#|
+
 (define (assemble-objects code-block)
-  (let ((objects (queue->list *objects*)))
+  (let ((objects (map assemble-an-object (queue->list *objects*))))
     (if compiler:cross-compiling?
 	(vector 'DEBUGGING-INFO-SLOT code-block objects scheme-object-width)
 	(let* ((bl (quotient (bit-string-length code-block)
@@ -152,25 +151,65 @@ MIT in each case. |#
 	  (object-new-type (ucode-type compiled-code-block)
 			   output-block)))))
 
+|#
+
+(define (assemble-objects code-block)
+  (let ((objects (map assemble-an-object (queue->list *objects*))))
+    (if compiler:cross-compiling?
+	(vector 'DEBUGGING-INFO-SLOT code-block objects scheme-object-width)
+	(let* ((bl (quotient (bit-string-length code-block)
+			     scheme-object-width))
+	       (non-pointer-length
+		((ucode-primitive make-non-pointer-object) bl))
+	       (objects-length (length objects))
+	       (total-length (fix:+ 1 (fix:+ objects-length bl)))
+	       (flo-length
+		(let ((flo-size (fix:quotient float-width scheme-datum-width)))
+		  (fix:quotient (fix:+ total-length (fix:- flo-size 1))
+				flo-size)))
+	       (output-block
+		(object-new-type (ucode-type compiled-code-block)
+				 (flo:vector-cons flo-length))))
+	  (with-absolutely-no-interrupts
+	    (lambda ()
+	      (let ((ob (object-new-type (ucode-type vector) output-block)))
+		(subvector-fill! ob
+				 (fix:+ bl 1)
+				 (vector-length ob)
+				 #f)
+		(vector-set! ob 0
+			     ((ucode-primitive primitive-object-set-type)
+			      (ucode-type manifest-nm-vector)
+			      non-pointer-length)))))
+	  (write-bits! output-block
+		       ;; After header just inserted.
+		       (* scheme-object-width 2)
+		       code-block)
+	  ((ucode-primitive primitive-object-set! 3)
+	   output-block 0
+	   (object-new-type (ucode-type null) total-length))
+	  (insert-objects! output-block objects (fix:+ bl 1))
+	  output-block))))
+
+(define (assemble-an-object object)
+  (case (car object)
+    ((SCHEME-OBJECT)
+     ;; (SCHEME-OBJECT <deflabel> <object>)
+     (cdr object))
+    ((SCHEME-EVALUATION)
+     ;; (SCHEME-EVALUATION <deflabel> <offlabel>)
+     (list (cadr object) (evaluate (caddr object) false)))
+    (else
+     (error "assemble-an-object: Unknown kind"
+	    object))))
+
 (define (insert-objects! v objects where)
   (cond ((not (null? objects))
-	 (vector-set! v where (cadar objects))
-	 (insert-objects! v (cdr objects) (1+ where)))
-	((not (= where (vector-length v)))
+	 (system-vector-set! v where (cadar objects))
+	 (insert-objects! v (cdr objects) (fix:+ where 1)))
+	((not (fix:= where (system-vector-length v)))
 	 (error "insert-objects!: object phase error" where))
 	(else unspecific)))
-
-(define (pad! block pc position)
-  (let ((l (bit-string-length padding-string)))
-    (let loop ((to-pad (- (pad pc) pc))
-	       (position position))
-      (if (not (zero? to-pad))
-	  (if (< to-pad l)
-	      (error "pad!: Bad padding length" to-pad)
-	      (instruction-insert! padding-string block position
-	       (lambda (new-position)
-		 (declare (integrate new-position))
-		 (loop (- to-pad l) new-position))))))))
 
 (define (assemble-directives! block directives initial-position)
 
@@ -211,14 +250,29 @@ MIT in each case. |#
 	     (error "assemble-directives!: phase error"
 		    `(PC ,starting-pc ,pc)
 		    `(BIT-POSITION ,initial-position ,position)))
+	    ((not (= (symbol-table-value *the-symbol-table* *end-label*)
+		     (->machine-pc (final-pad pc))))
+	     (error "assemble-directives!: phase error"
+		    `(LABEL ,*end-label*)
+		    `(ACTUAL-PC ,(->machine-pc (final-pad pc)))
+		    `(RESOLVED-PC ,(symbol-table-value
+				    *the-symbol-table*
+				    *end-label*))))
 	    (else
-	     (pad! block pc position))))
+	     (final-pad! block pc position))))
 
     (if (null? directives)
 	(end-assembly)
 	(let ((this (car directives)))
 	  (case (vector-ref this 0)
 	    ((LABEL)
+	     (let* ((label (vector-ref this 1))
+		    (pcdef (symbol-table-value *the-symbol-table* label)))
+	       (if (not (= pcdef (->machine-pc pc)))
+		   (error "assemble-directives!: phase error"
+			  `(LABEL ,label)
+			  `(ACTUAL-PC ,pc)
+			  `(RESOLVED-PC ,pcdef))))
 	     (loop (cdr directives) dir-stack pc pc-stack position
 		   last-blabel blabel))
 	    ((TICK)
@@ -253,6 +307,20 @@ MIT in each case. |#
 		   (block-offset (evaluate `(- ,label ,last-blabel) '())
 				 label last-blabel)
 		   (block-offset offset label blabel))))
+	    ((PADDING)
+	     (let ((remdr (vector-ref this 1))
+		   (divsr (vector-ref this 2))
+		   (padding-string (vector-ref this 3)))
+	       (let* ((pc* (->bitstring-pc (paddify (->machine-pc pc)
+						    remdr divsr)))
+		      (pc-diff (- pc* pc))
+		      (padding-length (bit-string-length padding-string)))
+		 (if (not (zero? (remainder pc-diff padding-length)))
+		     (error "assemble-directives!: Bad padding"
+			    pc this)
+		     (actual-bits (replicate padding-string
+					     (quotient pc-diff padding-length))
+				  pc-diff)))))
 	    (else
 	     (error "assemble-directives!: Unknown directive" this))))))
 
@@ -303,15 +371,16 @@ MIT in each case. |#
 	(loop (cdr to-convert)
 	      pcmin pcmax pc-stack
 	      group vars))
-
+
       (if (null? to-convert)
-	  (let ((emin (pad pcmin))
+	  (let ((emin (final-pad pcmin))
 		(emax (+ pcmax maximum-padding-length)))
 	    (symbol-table-define! *the-symbol-table*
 				  *end-label*
 				  (make-machine-interval emin emax))
 	    (collect-group!)
 	    (values (queue->list directives) vars))
+
 	  (let ((this (car to-convert)))
 	    (cond ((bit-string? this)
 		   (process-fixed-width (vector 'CONSTANT this)
@@ -356,15 +425,20 @@ MIT in each case. |#
 		     ((EQUATE)
 		      (add-to-queue! *equates* (cdr this))
 		      (process-trivial-directive))
-		     ((SCHEME-OBJECT)
-		      (add-to-queue! *objects* (cdr this))
+		     ((SCHEME-OBJECT SCHEME-EVALUATION)
+		      (add-to-queue! *objects* this)
 		      (process-trivial-directive))
 		     ((ENTRY-POINT)
 		      (add-to-queue! *entry-points* (cadr this))
 		      (process-trivial-directive))
-		     ((LINKAGE-INFORMATION)
-		      (add-to-queue! *linkage-info* (cdr this))
-		      (process-trivial-directive))
+		     ((PADDING)
+		      (let ((directive (->padding-directive this)))
+			(new-directive! directive)
+			(after-padding
+			 directive pcmin pcmax
+			 (lambda (pcmin pcmax)
+			   (loop (cdr to-convert) pcmin pcmax
+				 pc-stack '() vars)))))
 		     (else
 		      (error "initial-phase: Unknown directive" this))))))))
     (loop input starting-pc starting-pc '() '() '())))
@@ -372,7 +446,7 @@ MIT in each case. |#
 (define (phase-1 directives)
   (define (loop rem pcmin pcmax pc-stack vars)
     (if (null? rem)
-	(let ((emin (pad pcmin))
+	(let ((emin (final-pad pcmin))
 	      (emax (+ pcmax maximum-padding-length)))
 	  (symbol-table-define! *the-symbol-table*
 				*end-label*
@@ -410,6 +484,11 @@ MIT in each case. |#
 		       (cons (make-machine-interval pcmin pcmax) pc-stack)
 		       (cdr pc-stack))
 		   vars))
+	    ((PADDING)
+	     (after-padding
+	      this pcmin pcmax
+	      (lambda (pcmin pcmax)
+		(loop (cdr rem) pcmin pcmax pc-stack vars))))
 	    (else
 	     (error "phase-1: Unknown directive" this))))))
   (loop directives starting-pc starting-pc '() '()))
@@ -472,3 +551,37 @@ MIT in each case. |#
       (car l)
       (instruction-append (car l)
 			  (list->bit-string (cdr l)))))
+
+(define (replicate bstring n-times)
+  (let* ((blength (bit-string-length bstring))
+	 (result (make-bit-string (* n-times blength) false)))
+    (do ((offset 0 (+ offset blength))
+	 (ctr 0 (1+ ctr)))
+	((>= ctr n-times))
+      (bit-substring-move-right! bstring 0 blength result offset))
+    result))
+
+(define (final-pad! block pc position)
+  (instruction-insert!
+   (replicate padding-string
+	      (quotient (- (final-pad pc) pc)
+			(bit-string-length padding-string)))
+   block
+   position
+   (lambda (new-position)
+     new-position			; ignored
+     unspecific)))
+
+(define (->padding-directive this)
+  (let ((remdr (cadr this))
+	(divsr (caddr this))
+	(bstring (if (null? (cdddr this))
+		     padding-string
+		     (cadddr this))))
+    (vector 'PADDING (modulo remdr divsr) divsr bstring)))
+
+(define-integrable (after-padding directive pcmin pcmax recvr)
+  (let ((remdr (vector-ref directive 1))
+	(divsr (vector-ref directive 2)))
+    (recvr (->bitstring-pc (paddify (->machine-pc pcmin) remdr divsr))
+	   (->bitstring-pc (paddify (->machine-pc pcmax) remdr divsr)))))

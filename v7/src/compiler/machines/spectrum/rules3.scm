@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.40 1993/07/01 03:23:35 gjr Exp $
+$Id: rules3.scm,v 4.41 1993/12/08 17:49:54 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -483,6 +483,11 @@ MIT in each case. |#
 (define internal-continuation-code-word
   (make-code-word #xff #xfc))
 
+;; #xff #xfb taken up by return-to-interpreter and reflect-to-interface
+
+(define internal-closure-code-word
+  (make-code-word #xff #xfa))
+
 (define (continuation-code-word label)
   (frame-size->code-word
    (if label
@@ -619,20 +624,29 @@ MIT in each case. |#
   (if (zero? nentries)
       (error "Closure header for closure with no entries!"
 	     internal-label))
-  (let ((rtl-proc (label->object internal-label)))
-    (let ((gc-label (generate-label))
-	  (external-label (rtl-procedure/external-label rtl-proc)))
-      (LAP (LABEL ,gc-label)
-	   ,@(invoke-interface code:compiler-interrupt-closure)
-	   ,@(make-external-label
-	      (internal-procedure-code-word rtl-proc)
-	      external-label)
-	   ;; This code must match the code and count in microcode/cmpint2.h
-	   (DEP () 0 31 2 ,regnum:ble-return)
-	   ,@(address->entry regnum:ble-return)
-	   (STWM () ,regnum:ble-return (OFFSET -4 0 ,regnum:stack-pointer))
-	   (LABEL ,internal-label)
-	   ,@(interrupt-check internal-label gc-label)))))
+
+  ;; Closures used to use (internal-procedure-code-word rtl-proc)
+  ;; instead of internal-closure-code-word.
+  ;; This confused the bkpt utilties and was unnecessary because
+  ;; these entry points cannot properly be used as return addresses.
+
+  (let* ((rtl-proc (label->object internal-label))
+	 (external-label (rtl-procedure/external-label rtl-proc)))
+    (let ((suffix
+	   (lambda (gc-label)
+	     (LAP ,@(make-external-label internal-closure-code-word
+					 external-label)
+		  ,@(address->entry g25)
+		  (STWM () ,g25 (OFFSET -4 0 ,regnum:stack-pointer))
+		  (LABEL ,internal-label)
+		  ,@(interrupt-check internal-label gc-label)))))
+      (share-instruction-sequence!
+       'CLOSURE-GC-STUB
+       suffix
+       (lambda (gc-label)
+	 (LAP (LABEL ,gc-label)
+	      ,@(invoke-interface code:compiler-interrupt-closure)
+	      ,@(suffix gc-label)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -662,6 +676,9 @@ MIT in each case. |#
     (else
      (cons-multiclosure target nentries size (vector->list entries)))))
 
+#|
+;;; Old style closure consing -- Out of line.
+
 (define (%cons-closure target total-size size core)
   (let* ((flush-reg (require-registers! regnum:first-arg
 					#| regnum:addil-result |#
@@ -712,21 +729,7 @@ MIT in each case. |#
 	 ,@(load-offset 4 regnum:free-pointer target)
 	 ,@(generate-entries 12 entries)))))
 
-;; Magic for compiled entries.
-
-(define compiled-entry-type-im5
-  (let* ((qr (integer-divide (ucode-type compiled-entry) 2))
-	 (immed (integer-divide-quotient qr)))
-    (if (or (not (= scheme-type-width 6))
-	    (not (zero? (integer-divide-remainder qr)))
-	    (not (<= 0 immed #x1F)))
-	(error "HPPA RTL rules3: closure header rule assumptions violated!"))
-    (if (<= immed #x0F)
-	immed
-	(- immed #x20))))
-
-(define-integrable (address->entry register)
-  (LAP (DEPI () ,compiled-entry-type-im5 4 5 ,register)))
+;; Utilities for old-style closure consing.
 
 (define (load-entry-format code-word gc-offset dest)
   (load-immediate (+ (* code-word #x10000)
@@ -761,6 +764,289 @@ MIT in each case. |#
 			   4
 			   ,regnum:scheme-to-interface-ble)
 		   (@PCR ,entry-label)))))
+|#
+
+;; Magic for compiled entries.
+
+(define compiled-entry-type-im5
+  (let* ((qr (integer-divide (ucode-type compiled-entry) 2))
+	 (immed (integer-divide-quotient qr)))
+    (if (or (not (= scheme-type-width 6))
+	    (not (zero? (integer-divide-remainder qr)))
+	    (not (<= 0 immed #x1F)))
+	(error "HPPA RTL rules3: closure header rule assumptions violated!"))
+    (if (<= immed #x0F)
+	immed
+	(- immed #x20))))
+
+(define-integrable (address->entry register)
+  (LAP (DEPI () ,compiled-entry-type-im5 4 5 ,register)))
+
+;;; New style closure consing using compiler-prepared and
+;;; linker-maintained patterns
+
+;; Compiled code blocks are aligned like floating-point numbers and vectors.
+;; That is, the address of their header word is congruent 4 mod 8
+
+(define *initial-dword-offset* 4)
+(define *closure-padding-bitstring* (make-bit-string 32 false))
+
+;; This agrees with hppa_extract_absolute_address in microcode/cmpintmd/hppa.h
+
+(define *ldil/ble-split*
+  ;; (expt 2 13) ***
+  8192)
+
+(define *ldil-factor*
+  ;; (/ *ldil/ble-split* ldil-scale)
+  4)
+
+(define (declare-closure-pattern! pattern)
+  (add-extra-code!
+   (or (find-extra-code-block 'CLOSURE-PATTERNS)
+       (let ((section-label (generate-label))
+	     (ev-label (generate-label)))
+	 (let ((block (declare-extra-code-block!
+		       'CLOSURE-PATTERNS
+		       'LAST
+		       `(((/ (- ,ev-label ,section-label) 4)
+			  . ,ev-label)))))
+	   (add-extra-code! block
+			    (LAP (LABEL ,section-label)))
+	   block)))
+   (LAP (PADDING ,(- 4 *initial-dword-offset*) 8 ,*closure-padding-bitstring*)
+	,@pattern)))
+
+(define (generate-closure-entry offset pattern label min max)
+  (let ((entry-label (rtl-procedure/external-label (label->object label))))
+    (LAP (USHORT ()
+		 ,(make-procedure-code-word min max)
+		 ,(quotient offset 2))
+	 ;; This contains an offset -- the linker turns it to an abs. addr.
+	 (LDIL () (* (QUOTIENT (- (+ ,pattern ,offset) ,entry-label)
+			       ,*ldil/ble-split*)
+		     ,*ldil-factor*)
+	       26)
+	 (BLE () (OFFSET (REMAINDER (- (+ ,pattern ,offset) ,entry-label)
+				    ,*ldil/ble-split*)
+			 5 26))
+	 (ADDI () -15 31 25))))
+
+(define (cons-closure target entry-label min max size)
+  (let ((offset 8)
+	(total-size (+ size closure-entry-size))
+	(pattern (generate-label)))
+
+    (declare-closure-pattern!
+     (LAP ,@(lap:comment `(CLOSURE-PATTERN ,entry-label))
+	  (LABEL ,pattern)
+	  (UWORD () ,(make-non-pointer-literal (ucode-type manifest-closure)
+					       total-size))
+	  ,@(generate-closure-entry offset pattern entry-label min max)))
+    #|
+    ;; This version uses ordinary integer instructions
+
+    (let* ((offset* (* 4 (1+ closure-entry-size)))
+	   (target (standard-target! target))
+	   (temp1 (standard-temporary!))
+	   (temp2 (standard-temporary!))
+	   (temp3 (standard-temporary!)))
+
+      (LAP ,@(load-pc-relative-address pattern target 'CODE)
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,temp1)
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,temp2)
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,temp3)
+	   (STWS (MA C) ,temp1 (OFFSET 4 0 ,regnum:free-pointer))
+	   (STWS (MA C) ,temp2 (OFFSET 4 0 ,regnum:free-pointer))
+	   (STWS (MA C) ,temp3 (OFFSET 4 0 ,regnum:free-pointer))
+
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,temp1)
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,temp2)
+	   (STWS (MA C) ,temp1 (OFFSET 4 0 ,regnum:free-pointer))
+	   (STWS (MA C) ,temp2 (OFFSET 4 0 ,regnum:free-pointer))
+	   (LDO () (OFFSET ,(- offset offset*) 0 ,regnum:free-pointer) ,target)
+	   (FDC () (INDEX 0 0 ,target))
+	   (FDC () (INDEX 0 0 ,regnum:free-pointer))
+	   (SYNC ())
+	   (FIC () (INDEX 0 5 ,target))
+	   (SYNC ())
+	   (LDO () (OFFSET ,(* 4 size) 0 ,regnum:free-pointer)
+		,regnum:free-pointer)))
+    |#
+
+    #|
+    ;; This version is faster by using floating-point (doubleword) moves
+
+    (let* ((offset* (* 4 (1+ closure-entry-size)))
+	   (target (standard-target! target))
+	   (dwtemp1 (flonum-temporary!))
+	   (dwtemp2 (flonum-temporary!))
+	   (swtemp (standard-temporary!)))
+
+      (LAP ,@(load-pc-relative-address pattern target 'CODE)
+	   (DEPI () #b100 31 3 ,regnum:free-pointer)		; quad align
+	   (LDWS (MA) (OFFSET 4 0 ,target) ,swtemp)
+    	   (FLDDS (MA) (OFFSET 8 0 ,target) ,dwtemp1)
+	   (STWS (MA) ,swtemp (OFFSET 4 0 ,regnum:free-pointer))
+	   (FLDDS (MA) (OFFSET 8 0 ,target) ,dwtemp2)
+	   (FSTDS (MA) ,dwtemp1 (OFFSET 8 0 ,regnum:free-pointer))
+	   (LDO () (OFFSET ,(- offset (- offset* 8)) 0 ,regnum:free-pointer)
+		,target)
+	   (FSTDS (MA) ,dwtemp2 (OFFSET 8 0 ,regnum:free-pointer))
+	   (FDC () (INDEX 0 0 ,target))
+	   (FDC () (INDEX 0 0 ,regnum:free-pointer))
+	   (SYNC ())
+	   (FIC () (INDEX 0 5 ,target))
+	   (SYNC ())
+	   (LDO () (OFFSET ,(* 4 size) 0 ,regnum:free-pointer)
+		,regnum:free-pointer)))
+    |#
+
+    ;; This version does the copy out of line, using fp instructions.
+
+    (let* ((hook-label (generate-label))
+	   (flush-reg (require-registers! g29 g28 g26 g25 fp11 fp10
+					  #| regnum:addil-result |#
+					  regnum:ble-return)))
+      (delete-register! target)
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target g25)
+      (LAP ,@flush-reg
+	   ,@(invoke-hook hook:compiler-copy-closure-pattern)
+	   (LABEL ,hook-label)
+	   (UWORD () (- (- ,pattern ,hook-label) ,*privilege-level*))
+	   (LDO () (OFFSET ,(* 4 size) 0 ,regnum:free-pointer)
+		,regnum:free-pointer)))))
+
+(define (cons-multiclosure target nentries size entries)
+  ;; nentries > 1
+  (let ((offset 12)
+	(total-size (+ (+ 1 (* closure-entry-size nentries)) size))
+	(pattern (generate-label)))
+
+    (declare-closure-pattern!
+     (LAP ,@(lap:comment `(CLOSURE-PATTERN ,(caar entries)))
+	  (LABEL ,pattern)
+	  (UWORD () ,(make-non-pointer-literal (ucode-type manifest-closure)
+					       total-size))
+	  (USHORT () ,nentries 0)
+	  ,@(let make-entries ((entries entries)
+			       (offset offset))
+	      (if (null? entries)
+		  (LAP)
+		  (let ((entry (car entries)))
+		    (LAP ,@(generate-closure-entry offset
+						   pattern
+						   (car entry)
+						   (cadr entry)
+						   (caddr entry))
+			 ,@(make-entries (cdr entries)
+					 (+ offset
+					    (* 4 closure-entry-size)))))))))
+    #|
+    ;; This version uses ordinary integer instructions
+
+    (let ((target (standard-target! target)))
+      (let ((temp1 (standard-temporary!))
+	    (temp2 (standard-temporary!))
+	    (ctr (standard-temporary!))
+	    (srcptr (standard-temporary!))
+	    (index (standard-temporary!))
+	    (loop-label (generate-label)))
+
+	(LAP ,@(load-pc-relative-address pattern srcptr 'CODE)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp1)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp2)
+	     (STWS (MA C) ,temp1 (OFFSET 4 0 ,regnum:free-pointer))
+	     (STWS (MA C) ,temp2 (OFFSET 4 0 ,regnum:free-pointer))
+	     (LDO () (OFFSET 4 0 ,regnum:free-pointer) ,target)
+	     (LDI () -16 ,index)
+	     (LDI () ,nentries ,ctr)
+	     ;; The loop copies 16 bytes, and the architecture specifies
+	     ;; that a cache line must be a multiple of this value.
+	     ;; Therefore we only need to flush once per loop,
+	     ;; and once more (D only) to take care of phase.
+	     (LABEL ,loop-label)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp1)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp2)
+	     (STWS (MA C) ,temp1 (OFFSET 4 0 ,regnum:free-pointer))
+	     (STWS (MA C) ,temp2 (OFFSET 4 0 ,regnum:free-pointer))
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp1)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp2)
+	     (STWS (MA C) ,temp1 (OFFSET 4 0 ,regnum:free-pointer))
+	     (STWS (MA C) ,temp2 (OFFSET 4 0 ,regnum:free-pointer))
+	     (FDC () (INDEX ,index 0 ,regnum:free-pointer))
+	     (SYNC ())
+	     (ADDIB (>) -1 ,ctr ,ctr (@PCR ,loop-label))
+	     (FIC () (INDEX ,index 5 ,regnum:free-pointer))
+	     (FDC () (INDEX 0 0 ,regnum:free-pointer))
+	     (SYNC ())
+	     (FIC () (INDEX 0 5 ,regnum:free-pointer))
+	     (SYNC ())
+	     (LDO () (OFFSET ,(* 4 size) 0 ,regnum:free-pointer)
+		  ,regnum:free-pointer))))
+    |#
+
+    #|
+    ;; This version is faster by using floating-point (doubleword) moves
+
+    (let ((target (standard-target! target)))
+      (let ((dwtemp1 (flonum-temporary!))
+	    (dwtemp2 (flonum-temporary!))
+	    (temp (standard-temporary!))
+	    (ctr (standard-temporary!))
+	    (srcptr (standard-temporary!))
+	    (index (standard-temporary!))
+	    (loop-label (generate-label)))
+
+	(LAP ,@(load-pc-relative-address pattern srcptr 'CODE)
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp)
+	     (DEPI () #b100 31 3 ,regnum:free-pointer)		; quad align
+	     (STWS (MA C) ,temp (OFFSET 4 0 ,regnum:free-pointer))
+	     (LDO () (OFFSET 8 0 ,regnum:free-pointer) ,target)
+	     (LDI () -16 ,index)
+	     (LDI () ,nentries ,ctr)
+
+	     ;; The loop copies 16 bytes, and the architecture specifies
+	     ;; that a cache line must be a multiple of this value.
+	     ;; Therefore we only need to flush (D) once per loop,
+	     ;; and once more to take care of phase.
+	     ;; We only need to flush the I cache once because it is
+	     ;; newly allocated memory.
+
+	     (LABEL ,loop-label)
+	     (FLDDS (MA) (OFFSET 8 0 ,srcptr) ,dwtemp1)
+	     (FLDDS (MA) (OFFSET 8 0 ,srcptr) ,dwtemp2)
+	     (FSTDS (MA) ,dwtemp1 (OFFSET 8 0 ,regnum:free-pointer))
+	     (FSTDS (MA) ,dwtemp2 (OFFSET 8 0 ,regnum:free-pointer))
+	     (ADDIB (>) -1 ,ctr (@PCR ,loop-label))
+	     (FDC () (INDEX ,index 0 ,regnum:free-pointer))
+		
+	     (LDWS (MA) (OFFSET 4 0 ,srcptr) ,temp)
+	     (LDI () ,(* -4 (1+ size)) ,index)
+	     (STWM () ,temp (OFFSET ,(* 4 (1+ size)) 0 ,regnum:free-pointer))
+	     (FDC () (INDEX ,index 0 ,regnum:free-pointer))
+	     (SYNC ())
+	     (FIC () (INDEX 0 5 ,target))
+	     (SYNC ()))))
+    |#
+    
+    ;; This version does the copy out of line, using fp instructions.
+
+    (let* ((hook-label (generate-label))
+	   (flush-reg (require-registers! g29 g28 g26 g25 fp11 fp10
+					  #| regnum:addil-result |#
+					  regnum:ble-return)))
+      (delete-register! target)
+      (delete-dead-registers!)
+      (add-pseudo-register-alias! target g25)
+      (LAP ,@flush-reg
+	   (LDI () ,nentries 1)
+	   ,@(invoke-hook hook:compiler-copy-multiclosure-pattern)
+	   (LABEL ,hook-label)
+	   (UWORD () (- (- ,pattern ,hook-label) ,*privilege-level*))
+	   (LDO () (OFFSET ,(* 4 size) 0 ,regnum:free-pointer)
+		,regnum:free-pointer)))))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
@@ -890,18 +1176,18 @@ MIT in each case. |#
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
   (let ((constant-info
-	 ;; Note: generate/remote-links depends on all the references (& uuos)
-	 ;; being first!
+	 ;; Note: generate/remote-links depends on all the linkage sections
+	 ;; (references & uuos) being first!
 	 (declare-constants 0 (transmogrifly uuo-links)
 	   (declare-constants 1 references
 	     (declare-constants 2 assignments
 	       (declare-constants 3 (transmogrifly global-links)
-		 (declare-constants false
-		     (map (lambda (pair)
-			    (cons false (cdr pair)))
-			  static-vars)
-		   (declare-constants false constants
-		     (cons false (LAP))))))))))
+		 (declare-closure-patterns
+		  (declare-constants false (map (lambda (pair)
+						  (cons false (cdr pair)))
+						static-vars)
+		    (declare-constants false constants
+		      (cons false (LAP)))))))))))
     (let ((free-ref-label (car constant-info))
 	  (constants-code (cdr constant-info))
 	  (debugging-information-label (allocate-constant-label))
@@ -910,7 +1196,8 @@ MIT in each case. |#
 	   (+ (if (null? uuo-links) 0 1)
 	      (if (null? references) 0 1)
 	      (if (null? assignments) 0 1)
-	      (if (null? global-links) 0 1))))
+	      (if (null? global-links) 0 1)
+	      (if (not (find-extra-code-block 'CLOSURE-PATTERNS)) 0 1))))
       (values
        (LAP ,@constants-code
 	    ;; Place holder for the debugging info filename
@@ -921,25 +1208,44 @@ MIT in each case. |#
        environment-label
        free-ref-label
        n-sections))))
+
+(define (declare-constants/tagged tag header constants info)
+  (define-integrable (wrap tag label value)
+    (LAP (,tag ,label ,value)))
 
-(define (declare-constants tag constants info)
   (define (inner constants)
     (if (null? constants)
 	(cdr info)
 	(let ((entry (car constants)))
-	  (LAP (SCHEME-OBJECT ,(cdr entry) ,(car entry))
+	  (LAP ,@(wrap tag (cdr entry) (car entry))
 	       ,@(inner (cdr constants))))))
-  (if (and tag (not (null? constants)))
+
+  (if (and header (not (null? constants)))
       (let ((label (allocate-constant-label)))
 	(cons label
-	      (inner
-	       `((,(let ((datum (length constants)))
-		     (if (> datum #xffff)
-			 (error "datum too large" datum))
-		     (+ (* tag #x10000) datum))
-		  . ,label)
-		 ,@constants))))
+	      (LAP (SCHEME-OBJECT
+		    ,label
+		    ,(let ((datum (length constants)))
+		       (if (> datum #xffff)
+			   (error "datum too large" datum))
+		       (+ (* header #x10000) datum)))
+		   ,@(inner constants))))
       (cons (car info) (inner constants))))
+
+(define (declare-constants header constants info)
+  (declare-constants/tagged 'SCHEME-OBJECT header constants info))
+
+(define (declare-closure-patterns info)
+  (let ((block (find-extra-code-block 'CLOSURE-PATTERNS)))
+    (if (not block)
+	info
+	(declare-constants/tagged 'SCHEME-EVALUATION
+				  4
+				  (extra-code-block/xtra block)
+				  info))))
+
+(define (declare-evaluations header evals info)
+  (declare-constants/tagged 'SCHEME-EVALUATION header evals info))
 
 (define (transmogrifly uuos)
   (define (inner name assoc)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syntax.scm,v 1.25 1990/01/18 22:42:14 cph Rel $
+$Id: syntax.scm,v 1.26 1993/12/08 17:44:53 gjr Exp $
 
-Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; LAP Syntaxer
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -66,7 +67,9 @@ MIT in each case. |#
 
 (define (lap:syntax-instruction instruction)
   (if (memq (car instruction)
-	    '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
+	    '(EQUATE SCHEME-OBJECT SCHEME-EVALUATION
+		     ENTRY-POINT LABEL BLOCK-OFFSET
+		     PADDING))
       (list instruction)
       (let ((match-result (instruction-lookup instruction)))
 	(if (not match-result)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.45 1993/10/28 04:59:46 gjr Exp $
+$Id: lapgen.scm,v 4.46 1993/12/08 17:48:53 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -695,8 +695,12 @@ MIT in each case. |#
     flonum-truncate
     flonum-ceiling
     flonum-floor
-    flonum-atan2))
-
+    flonum-atan2
+    compiled-code-bkpt
+    compiled-closure-bkpt
+    copy-closure-pattern
+    copy-multiclosure-pattern))
+
 ;; There is a NOP here because otherwise the return address would have 
 ;; to be adjusted by the hook code.  This gives more flexibility to the
 ;; compiler since it may be able to eliminate the NOP by moving an

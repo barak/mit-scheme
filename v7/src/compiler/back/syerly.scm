@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/back/syerly.scm,v 1.8 1991/10/30 20:48:53 cph Exp $
+$Id: syerly.scm,v 1.9 1993/12/08 17:44:21 gjr Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -33,6 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; Syntax time instruction expansion
+;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
 
@@ -52,7 +53,8 @@ MIT in each case. |#
 	 (cond ((eq? (car instruction) 'UNQUOTE)
 		(if-not-expanded))
 	       ((memq (car instruction)
-		      '(EQUATE SCHEME-OBJECT ENTRY-POINT LABEL BLOCK-OFFSET))
+		      '(EQUATE SCHEME-OBJECT SCHEME-EVALUATION
+			       ENTRY-POINT LABEL BLOCK-OFFSET))
 		(if-expanded
 		 (scode/make-combination
 		  (scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)

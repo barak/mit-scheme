@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.13 1993/07/01 03:14:14 gjr Exp $
+$Id: lapopt.scm,v 1.14 1993/12/08 17:49:18 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -40,15 +40,13 @@ MIT in each case. |#
 ;;;; An instruction classifier and decomposer
 
 (define-integrable (float-reg reg)
-  reg					; ignore
   (+ 32 reg))
 
 (define (classify-instruction instr)
-  ;; returns: type target source-1 source-2 offset
+  ;; (values type target source-1 source-2 offset)
   ;; This needs the following:
   ;; - Loads with base modification (LDWM)
   ;; - Third source (indexed loads)
-  ;; - Floats
   (let ((opcode (car instr)))
     (cond ((memq opcode '(ANDCM AND OR XOR UXOR SUB DS SUBT
 				SUBB ADD SH1ADD SH2ADD SH3ADD ADDC
@@ -93,7 +91,7 @@ MIT in each case. |#
 		     (list-ref instr 2)
 		     (cadddr offset)
 		     (cadr offset))))
-	  ((memq opcode '(STWM))
+	  ((memq opcode '(STWM STWS))
 	   ;; source1 (offset n m target/source)
 	   (let* ((offset (list-ref instr 3))
 		  (base (cadddr offset)))
@@ -196,7 +194,8 @@ MIT in each case. |#
 	  ((memq opcode '(PCR-HOOK))
 	   <>)
 	  ((memq opcode '(LABEL EQUATE ENTRY-POINT
-				EXTERNAL-LABEL BLOCK-OFFSET))
+				EXTERNAL-LABEL BLOCK-OFFSET
+				SCHEME-OBJECT SCHEME-EVALUATION PADDING))
 	   (values 'DIRECTIVE false false false false))
 	  |#
 	  (else
@@ -204,7 +203,8 @@ MIT in each case. |#
 
 (define (offset-fits? offset opcode)
   (and (number? offset)
-       (memq opcode '(ldw ldb ldo ldh stw stb sth stwm ldwm))
+       (memq opcode '(LDW LDB LDO LDH STW STB STH STWM LDWM
+			  STWS LDWS FLDWS FLDDS FSTWS FSTDS))
        (<= -8192 offset 8191)))
 
 ;;;; Utilities
@@ -247,19 +247,24 @@ MIT in each case. |#
   ;; (COMBT (<) ...)
   (and (pair? (cadr instr))
        (not (memq (car instr)
-		  '(B BL BV BLR BLE BE)))
+		  '(B BL BV BLR BLE BE
+		      LDWS LDHS LDBS LDCWS
+		      STWS STHS STBS STBYS
+		      FLDWS FLDDS FSTWS FSTDS)))
        ;; or SGL, or QUAD, but not used now.
        (not (memq 'DBL (cadr instr)))))
 
 (define (find-or-label instrs)
   (and (not (null? instrs))
-       (if (memq (caar instrs) '(COMMENT SCHEME-OBJECT EQUATE))
+       (if (memq (caar instrs)
+		 '(COMMENT SCHEME-OBJECT SCHEME-EVALUATION EQUATE))
 	   (find-or-label (cdr instrs))
 	   instrs)))
 
 (define (find-non-label instrs)
   (and (not (null? instrs))
-       (if (memq (caar instrs) '(LABEL COMMENT SCHEME-OBJECT EQUATE))
+       (if (memq (caar instrs)
+		 '(LABEL COMMENT SCHEME-OBJECT SCHEME-EVALUATION EQUATE))
 	   (find-non-label (cdr instrs))
 	   instrs)))
 

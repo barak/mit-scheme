@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.9 1993/11/29 18:38:12 gjr Exp $
+$Id: asstop.scm,v 1.10 1993/12/08 17:45:42 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -98,12 +98,12 @@ MIT in each case. |#
 	      (*external-labels*)
 	      (*end-of-block-code*)
 	      (*next-constant*)
-	      (*interned-constants*)
-	      (*interned-variables*)
 	      (*interned-assignments*)
-	      (*interned-uuo-links*)
+	      (*interned-constants*)
 	      (*interned-global-links*)
 	      (*interned-static-variables*)
+	      (*interned-uuo-links*)
+	      (*interned-variables*)
 	      (*label-bindings*)
 	      (*code-vector*)
 	      (*entry-points*)
@@ -117,12 +117,12 @@ MIT in each case. |#
   (set! *external-labels*)
   (set! *end-of-block-code*)
   (set! *next-constant*)
-  (set! *interned-constants*)
-  (set! *interned-variables*)
   (set! *interned-assignments*)
-  (set! *interned-uuo-links*)
+  (set! *interned-constants*)
   (set! *interned-global-links*)
   (set! *interned-static-variables*)
+  (set! *interned-uuo-links*)
+  (set! *interned-variables*)
   (set! *label-bindings*)
   (set! *code-vector*)
   (set! *entry-points*)
@@ -133,14 +133,14 @@ MIT in each case. |#
   (set! *block-associations* '())
   (set! *block-label* (generate-label))
   (set! *external-labels* '())
-  (set! *end-of-block-code* (LAP))
+  (set! *end-of-block-code* '())
   (set! *next-constant* 0)
-  (set! *interned-constants* '())
-  (set! *interned-variables* '())
   (set! *interned-assignments* '())
-  (set! *interned-uuo-links* '())
+  (set! *interned-constants* '())
   (set! *interned-global-links* '())
   (set! *interned-static-variables* '())
+  (set! *interned-uuo-links* '())
+  (set! *interned-variables* '())
   unspecific)
 
 ;;;; Assembler and linker
@@ -150,8 +150,7 @@ MIT in each case. |#
    "Assembly"
    (lambda ()
      (with-values (lambda () (assemble *block-label* (last-reference *lap*)))
-       (lambda (count code-vector labels bindings linkage-info)
-	 linkage-info			;ignored
+       (lambda (count code-vector labels bindings)
 	 (set! *code-vector* code-vector)
 	 (set! *entry-points* labels)
 	 (set! *label-bindings* bindings)
@@ -359,12 +358,12 @@ MIT in each case. |#
      (set! *entry-label* label)
      (set! *current-label-number* 0)
      (set! *next-constant* 0)
-     (set! *interned-constants* '())
-     (set! *interned-variables* '())
      (set! *interned-assignments* '())
-     (set! *interned-uuo-links* '())
+     (set! *interned-constants* '())
      (set! *interned-global-links* '())
      (set! *interned-static-variables* '())
+     (set! *interned-uuo-links* '())
+     (set! *interned-variables* '())
      (set! *block-label* (generate-label))
      (set! *external-labels* '())
      (set! *ic-procedure-headers* '())

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: instr2.scm,v 1.5 1993/02/14 00:53:30 gjr Exp $
+$Id: instr2.scm,v 1.6 1993/12/08 17:48:22 gjr Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -199,20 +199,30 @@ MIT in each case. |#
 			  (1 (vector-ref compl 2))
 			  (5 reg))))))
 
-	     (indexed-cache
-	      (macro (keyword opcode extn bit)
+	     (indexed-d-cache
+	      (macro (keyword extn)
 		`(define-instruction ,keyword
-		   (((? compl complx) (INDEX (? index-reg) (? space) (? base)))
-		    (LONG (6 ,opcode)
+		   (((? compl m-val) (INDEX (? index-reg) (? space) (? base)))
+		    (LONG (6 #x01)
 			  (5 base)
 			  (5 index-reg)
 			  (2 space)
-			  (1 (vector-ref compl 0))
-			  (1 ,bit)
-			  (2 (vector-ref compl 1))
-			  (4 ,extn)
-			  (1 (vector-ref compl 2))
-			  (5 #b00000)))))))
+			  (8 ,extn)
+			  (1 compl)
+			  (5 #x0))))))
+
+	     (indexed-i-cache
+	      (macro (keyword extn)
+		`(define-instruction ,keyword
+		   (((? compl m-val)
+		     (INDEX (? index-reg) (? space sr3) (? base)))
+		    (LONG (6 #x01)
+			  (5 base)
+			  (5 index-reg)
+			  (3 space)
+			  (7 ,extn)
+			  (1 compl)
+			  (5 #x0)))))))
   
   (indexed-load  LDWX  #x03 #x2)
   (indexed-load  LDHX  #x03 #x1)
@@ -224,11 +234,11 @@ MIT in each case. |#
   (indexed-store FSTWX #x09 #x8)
   (indexed-store FSTDX #x0b #x8)
 
-  (indexed-cache PDC   #x01 #xd 1)
-  (indexed-cache FDC   #x01 #xa 1)
-  (indexed-cache FIC   #x01 #xa 0)
-  (indexed-cache FDCE  #x01 #xb 1)
-  (indexed-cache FICE  #x01 #xb 0))
+  (indexed-d-cache PDC  #x4e)
+  (indexed-d-cache FDC  #x4a)
+  (indexed-i-cache FIC  #x0a)
+  (indexed-d-cache FDCE #x4b)
+  (indexed-i-cache FICE #x0b))
 
 (let-syntax ((scalr-short-load
 	      (macro (keyword extn)
@@ -713,6 +723,11 @@ Note: Only those currently used by the code generator are implemented.
   (defmovb&bb MOVIB	#x33 (immed-5 right-signed) ((? reg-2))	reg-2))
 
 ;;;; Assembler pseudo-ops
+
+(define-instruction USHORT
+  ((() (? high) (? low))
+   (LONG (16 high UNSIGNED)
+	 (16 low UNSIGNED))))
 
 (define-instruction WORD
   ((() (? expression))
