@@ -1,8 +1,8 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Id: hppa.m4,v 1.24 1992/11/03 17:13:02 jinx Exp $
+;;;	$Id: hppa.m4,v 1.25 1993/03/16 22:09:38 gjr Exp $
 ;;;
-;;;	Copyright (c) 1989-1992 Massachusetts Institute of Technology
+;;;	Copyright (c) 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -227,6 +227,9 @@ interface_proceed")
 	NOP
 	NOP")
 
+;; This label is used by the trap handler
+
+ep_scheme_hooks_low
 hook_jump_table					; scheme_to_interface + 100
 store_closure_code_hook
 	B	store_closure_code+4
@@ -641,8 +644,7 @@ define(define_generic_binary,
 	FLDDS	4(0,6),4			; arg1 -> fr4
 	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
 	FLDDS	4(0,8),5			; arg2 -> fr5
-	LDO	8(22),22			; pop args from stack
-	B	generic_flonum_result		; cons flonum and return
+	B	binary_flonum_result		; cons flonum and return
 	$3,DBL	4,5,4				; operate
 
 generic_$1_one_unk				; ~FLO * ??
@@ -656,7 +658,7 @@ generic_$1_one_unk				; ~FLO * ??
 	FLDWS	0(0,21),4			; single int arg1 -> fr4
 	FLDDS	4(0,8),5			; arg2 -> fr5
         FCNVXF,SGL,DBL  4,4			; convert to double float
-	B	generic_flonum_result		; cons flonum and return
+	B	binary_flonum_result		; cons flonum and return
 	$3,DBL	4,5,4				; operate
 
 generic_$1_two_unk				; FLO * ~FLO
@@ -669,25 +671,30 @@ generic_$1_two_unk				; FLO * ~FLO
 	FLDWS	0(0,21),5			; single int arg2 -> fr5
 	FLDDS	4(0,6),4			; arg1 -> fr4
         FCNVXF,SGL,DBL  5,5			; convert to double float
-	B	generic_flonum_result		; cons flonum and return
+	B	binary_flonum_result		; cons flonum and return
 	$3,DBL	4,5,4				; operate
 
 generic_$1_fail					; ?? * ??, out of line
 	B	scheme_to_interface
 	LDI	HEX($2),28			; operation code")
 
-generic_flonum_result				; expects data in fr4.
+unary_flonum_result
+	ADDI,TR	4,22,6				; ret. add. location
+
+binary_flonum_result				; expects data in fr4.
+	LDO	8(22),6				; ret. add. location
 	DEPI	4,31,3,21			; align free
 	COPY	21,2				; result (untagged)
-	LDWM	4(0,22),8			; return address
+	LDW	0(0,6),8			; return address
 	LDIL	L'FLONUM_VECTOR_HEADER,7
 	;	LDO	R'FLONUM_VECTOR_HEADER(7),7 ; Assembler bug!
 	ADDI	R'FLONUM_VECTOR_HEADER,7,7
 	STWM	7,4(0,21)			; vector header
 	DEPI	TC_FLONUM,TC_START,TC_LENGTH,2 ; tag flonum
 	DEP	5,TC_START,TC_LENGTH,8		; data segment quadrant bits
-	BLE	0(5,8)				; return!
 	FSTDS,MA	4,8(0,21)		; store floating data
+	BLE	0(5,8)				; return!
+	LDO	4(6),22				; pop frame 
 
 define(define_generic_binary_predicate,
 "generic_$1
@@ -752,11 +759,10 @@ define(define_generic_unary,
 	LDI	1,7				; constant 1
 	STW	7,0(0,21)			; into memory
 	DEP	5,TC_START,TC_LENGTH,6		; data segment quadrant bits
-	LDO	4(22),22			; pop arg from stack
 	FLDWS	0(0,21),5			; 1 -> fr5
 	FLDDS	4(0,6),4			; arg -> fr4
 	FCNVXF,SGL,DBL	5,5			; convert to double float
-	B	generic_flonum_result		; cons flonum and return
+	B	unary_flonum_result		; cons flonum and return
 	$3,DBL	4,5,4				; operate
 
 generic_$1_fail
@@ -871,6 +877,10 @@ stack_and_interrupt_check_signal_interrupt
 	ADD	26,31,31
 	BE	0(5,31)				; return
 	NOP
+
+;; This labelis used by the trap handler
+
+ep_scheme_hooks_high
 
 ;;;; Assembly language entry point used by utilities in cmpint.c
 ;;;  to return to the interpreter.
@@ -918,15 +928,18 @@ interface_initialize
 	FLDWS	0(30),0
 						; Prepare entry points
 	BL	known_pc,28			; get pc
-	ADDIL	L'ep_interface_to_scheme-known_pc,28
+	NOP
 known_pc
-	LDO	R'ep_interface_to_scheme-known_pc(1),29
-	ADDIL	L'interface_to_scheme-$global$,27
-	STW	29,R'interface_to_scheme-$global$(0,1)
-	ADDIL	L'ep_interface_to_C-known_pc,28
-	LDO	R'ep_interface_to_C-known_pc(1),29
-	ADDIL	L'interface_to_C-$global$,27
-	STW	29,R'interface_to_C-$global$(0,1)
+
+define(store_entry_point,"ADDIL	L'ep_$1-known_pc,28
+	LDO	R'ep_$1-known_pc(1),29
+	ADDIL	L'$1-$global$,27
+	STW	29,R'$1-$global$(0,1)")
+
+	store_entry_point(interface_to_scheme)
+	store_entry_point(interface_to_C)
+	store_entry_point(scheme_hooks_low)
+	store_entry_point(scheme_hooks_high)
 						; Return
 	BV	0(2)
 	.EXIT
@@ -1146,6 +1159,8 @@ L$exit1
 	.SUBSPA $SHORTBSS$
 interface_to_scheme .COMM 4
 interface_to_C .COMM 4
+scheme_hooks_low .COMM 4
+scheme_hooks_high .COMM 4
 	.SUBSPA $DATA$,QUAD=1,ALIGN=8,ACCESS=31
 $THISMODULE$
 ifelse(ASM_DEBUG,1,"interface_counter
@@ -1172,4 +1187,6 @@ interface_limit
 	.EXPORT cache_flush_all,PRIV_LEV=3
 	.EXPORT ep_interface_to_C,PRIV_LEV=3
 	.EXPORT ep_interface_to_scheme,PRIV_LEV=3
+	.EXPORT ep_scheme_hooks_low,PRIV_LEV=3
+	.EXPORT ep_scheme_hooks_high,PRIV_LEV=3
 	.END
