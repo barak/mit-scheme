@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.61 2001/12/18 21:30:57 cph Exp $
+$Id: toplev.scm,v 4.62 2001/12/21 18:31:11 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -67,7 +67,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		(doit)))))))
 
   (set! compile-file
-	(named-lambda (compile-file file #!optional dependencies syntax-table)
+	(named-lambda (compile-file file #!optional dependencies environment)
 	  (process-file (scm-pathname file)
 			(bin-pathname file)
 			(map ext-pathname
@@ -76,10 +76,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				 dependencies))
 	    (lambda (input-file output-file dependencies)
 	      (fluid-let ((sf/default-syntax-table
-			   (if (default-object? syntax-table)
+			   (if (default-object? environment)
 			       #f
-			       (guarantee-syntax-table syntax-table
-						       'COMPILE-FILE)))
+			       (begin
+				 (if (not (environment? environment))
+				     (error:wrong-type-argument environment
+								"environment"
+								'COMPILE-FILE))
+				 environment)))
 			  (sf/default-declarations
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
