@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: floppy.scm,v 1.22 1998/01/23 00:04:52 cph Exp $
+$Id: floppy.scm,v 1.23 1998/02/01 05:13:23 cph Exp $
 
 Copyright (c) 1992-98 Massachusetts Institute of Technology
 
@@ -261,23 +261,6 @@ Answer \"no\" if you want to return to the editor without logging out.")
 	       (handle-floppy-errors (lambda () (within-continuation k loop))
 				     default-floppy-abort-handler
 				     thunk))))))))))
-
-(define (with-saved-configuration thunk)
-  (let ((screen (selected-screen)))
-    (let ((configuration (screen-window-configuration screen)))
-      (fluid-let ((restore-saved-continuation? true))
-	(dynamic-wind
-	 (lambda () unspecific)
-	 thunk
-	 (lambda ()
-	   (if restore-saved-continuation?
-	       (set-screen-window-configuration! screen configuration))))))))
-
-(define (dont-restore-saved-configuration)
-  (set! restore-saved-continuation? false)
-  unspecific)
-
-(define restore-saved-continuation?)
 
 (define (append-string string)
   (insert-string string (buffer-end (current-buffer))))
