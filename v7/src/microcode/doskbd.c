@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: doskbd.c,v 1.11 1992/10/17 23:07:22 jinx Exp $
+$Id: doskbd.c,v 1.12 1992/11/23 04:14:32 gjr Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -1409,6 +1409,8 @@ under_DOSX_p (void)
    Here is alternative lower-level code.
  */
 
+static char * X32_env_var = "MITSCHEME_X32_EXT_KBD";
+
 extern dos_boolean EXFUN (under_X32_p, (void));
 
 static int
@@ -1418,6 +1420,9 @@ X32_install_kbd_hook (void)
   extern void EXFUN (X32_keyboard_interrupt, (void));
   extern PTR X32_kbd_interrupt_pointers[];
   extern int X32_kbd_interrupt_previous;
+
+  if (!(install_kbd_hook_p (X32_env_var)))
+    return (DOS_FAILURE);
 
   X32_kbd_interrupt_pointers[0] = ((PTR) &modifier_mask);
   X32_kbd_interrupt_pointers[1] = ((PTR) &unshifted_scan_code_to_ascii[0]);
@@ -1437,7 +1442,8 @@ X32_restore_kbd_hook (void)
 {
   extern int EXFUN (X32_interrupt_restore, (unsigned));
 
-  if ((X32_interrupt_restore (DOS_INTVECT_SYSTEM_SERVICES)) != 0)
+  if ((!(install_kbd_hook_p (X32_env_var)))
+      || (X32_interrupt_restore (DOS_INTVECT_SYSTEM_SERVICES)) != 0)
     return (DOS_FAILURE);
   return (DOS_SUCCESS);
 }
