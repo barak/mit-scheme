@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.5 1988/03/14 20:53:19 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/fndblk.scm,v 4.6 1988/03/31 21:39:16 mhwu Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -86,7 +86,7 @@ MIT in each case. |#
 		 (offset-locative locative (variable-offset block variable)))))
 	    if-ic))
 	  ((procedure/trivial-closure? rvalue)
-	   (if-compiler (make-trivial-closure-cons rvalue)))
+	   (error "FIND-VARIABLE-INTERNAL: Trivial closure value encountered"))
 	  (else
 	   (if-compiler
 	    (stack-locative-offset
