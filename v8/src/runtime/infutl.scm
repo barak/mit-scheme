@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.54 1993/11/29 20:49:59 cph Exp $
+$Id: infutl.scm,v 1.55 1994/01/29 00:51:58 gjr Exp $
 
-Copyright (c) 1988-93 Massachusetts Institute of Technology
+Copyright (c) 1988-1994 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -169,7 +169,7 @@ MIT in each case. |#
 		       expression
 		       (find-procedure))))
 	       (lambda ()
-		 false)))))))
+		 (find-procedure))))))))
 
 (define (compiled-entry/block entry)
   (cond ((compiled-code-block? entry)

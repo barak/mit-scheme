@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.30 1992/12/03 03:20:32 cph Exp $
+$Id: uenvir.scm,v 14.31 1994/01/29 00:51:52 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -324,6 +324,9 @@ MIT in each case. |#
 	   default))))
 
 (define (compiled-procedure/environment entry)
+  (if (not (compiled-procedure? entry))
+      (error "Not a compiled procedure" entry
+	     'COMPILED-PROCEDURE/ENVIRONMENT))
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))
