@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.3 1990/07/30 16:54:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.4 1990/08/09 19:39:26 jinx Exp $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -95,12 +95,21 @@ static struct ux_sig_code_desc ux_signal_codes[] =			\
 #endif
 
 #define ss_gr0				ss_flags	/* not really true */
-#define ss_rfree			ss_gr25		/* or some such */
+#define ss_rfree			ss_gr21		/* or some such */
+#define ss_schsp			ss_gr22
+
 #define HAVE_FULL_SIGCONTEXT
 #define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_sl.sl_ss.ss_rfree)
+#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_sl.sl_ss.ss_schsp)
 #define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
 #define FULL_SIGCONTEXT_NREGS		32
 #define PROCESSOR_NREGS			32
+
+/* The bottom 2 bits of the PC are protection bits.
+   They should be masked away before looking at the PC.
+ */
+
+#define PC_VALUE_MASK			((~0) << 2)
 
 #define DECLARE_UX_SIGNAL_CODES						\
 static struct ux_sig_code_desc ux_signal_codes[] =			\
@@ -227,6 +236,19 @@ struct full_sigcontext
 #ifndef PROCESSOR_NREGS
 #define PROCESSOR_NREGS 0
 #endif
+
+#ifndef FULL_SIGCONTEXT_SCHSP
+#define FULL_SIGCONTEXT_SCHSP FULL_SIGCONTEXT_SP
+#endif
+
+#ifndef DECLARE_UX_SIGNAL_CODES
+
+#define DECLARE_UX_SIGNAL_CODES						\
+static struct ux_sig_code_desc ux_signal_codes[] =			\
+{									\
+  { 0, 0, 0, ((char *) NULL) }						\
+}
+#endif
 
 enum trap_state
 {
@@ -244,15 +266,5 @@ extern void EXFUN
    (CONST char * message, int signo, int code, struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
 extern void EXFUN (soft_reset, (void));
-
-#ifndef DECLARE_UX_SIGNAL_CODES
-
-#define DECLARE_UX_SIGNAL_CODES						\
-static struct ux_sig_code_desc ux_signal_codes[] =			\
-{									\
-  { 0, 0, 0, ((char *) NULL) }						\
-}
-
-#endif
 
 #endif /* SCM_UXTRAP_H */
