@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.42 1991/06/12 20:47:39 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.43 1991/06/13 18:59:29 cph Exp $
 
 Copyright (c) 1988-1991 Massachusetts Institute of Technology
 
@@ -632,7 +632,7 @@ MIT in each case. |#
 	    internal-close-coding-for-type-checks)))))
   (user-ref 'CELL-CONTENTS rtl:make-fetch (ucode-type cell) 0)
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
-  (user-ref 'SYSTEM-VECTOR-SIZE rtl:length-fetch false 0)
+  (user-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch false 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
