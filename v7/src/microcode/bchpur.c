@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.28 1987/06/02 00:16:53 jinx Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchpur.c,v 9.29 1987/06/02 08:43:02 jinx Exp $
  *
  * This file contains the code for primitives dealing with pure
  * and constant space.  Garbage collection to disk version.
@@ -166,6 +166,7 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	}
 	/* Fall through. */
 
+      case TC_WEAK_CONS:
       case_Fasdump_Pair:
       purify_pair:
 	relocate_normal_pointer(copy_pair(), 2);
@@ -203,9 +204,6 @@ purifyloop(Scan, To_ptr, To_Address_ptr, purify_mode)
 	*Scan = Future_Value(Temp);
 	Scan -= 1;
 	continue;
-
-      case TC_WEAK_CONS:
-	relocate_normal_pointer(copy_weak_pair(), 2);
 
       default:
 	fprintf(stderr,
