@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.36 2003/09/30 17:17:05 cph Exp $
+$Id: datime.scm,v 14.37 2003/10/01 18:07:38 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1993 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1999,2000,2003 Massachusetts Institute of Technology
@@ -391,6 +391,200 @@ USA.
   (decoded-time->file-time
    (ctime-string->decoded-time string (if (default-object? zone) #f zone))))
 
+;;;; ISO 8601 date/time strings
+
+;;; This implements a subset of the ISO 8601 specification.  It
+;;; accepts only complete date+time representations.  It does not
+;;; support either truncation or expansion.  On output, it uses a
+;;; single format.
+
+(define (iso8601-string->decoded-time string)
+  (let ((v (parse-8601-date/time (string->parser-buffer string))))
+    (if (not v)
+	(error:bad-range-argument string 'ISO8601-STRING->DECODED-TIME))
+    (vector-ref v 0)))
+
+(define (decoded-time->iso8601-string dt)
+  (let ((d2 (lambda (n) (string-pad-left (number->string n) 2 #\0))))
+    (string-append (number->string (decoded-time/year dt))
+		   "-"
+		   (d2 (decoded-time/month dt))
+		   "-"
+		   (d2 (decoded-time/day dt))
+		   "T"
+		   (d2 (decoded-time/hour dt))
+		   ":"
+		   (d2 (decoded-time/minute dt))
+		   ":"
+		   (d2 (decoded-time/second dt))
+		   (let ((zone (decoded-time/zone dt)))
+		     (if zone
+			 (time-zone->string
+			  (if (decoded-time/daylight-savings-time? dt)
+			      (- zone 1)
+			      zone))
+			 "")))))
+
+(define (universal-time->local-iso8601-string time)
+  (decoded-time->iso8601-string (universal-time->local-decoded-time time)))
+
+(define (universal-time->global-iso8601-string time)
+  (decoded-time->iso8601-string (universal-time->global-decoded-time time)))
+
+(define (iso8601-string->universal-time string #!optional zone)
+  (decoded-time->universal-time
+   (iso8601-string->decoded-time string (if (default-object? zone) #f zone))))
+
+(define (file-time->local-iso8601-string time)
+  (decoded-time->iso8601-string (file-time->local-decoded-time time)))
+
+(define (file-time->global-iso8601-string time)
+  (decoded-time->iso8601-string (file-time->global-decoded-time time)))
+
+(define (iso8601-string->file-time string #!optional zone)
+  (decoded-time->file-time
+   (iso8601-string->decoded-time string (if (default-object? zone) #f zone))))
+
+(define parse-8601-date/time
+  (*parser
+   (encapsulate
+       (lambda (v)
+	 (let ((date (vector-ref v 0))
+	       (time (vector-ref v 1))
+	       (zone (vector-ref v 2)))
+	   (make-decoded-time (vector-ref time 2)
+			      (vector-ref time 1)
+			      (vector-ref time 0)
+			      (vector-ref date 2)
+			      (vector-ref date 1)
+			      (vector-ref date 0)
+			      (and zone
+				   (+ (* (- (vector-ref zone 0))
+					 (vector-ref zone 1))
+				      (/ (vector-ref zone 2) 60))))))
+     (complete
+      (seq parse-8601-date
+	   "T" parse-8601-time
+	   (alt parse-8601-zone (values #f)))))))
+
+(define parse-8601-date
+  (*parser
+   (alt (encapsulate (lambda (v) v)
+	  (seq parse-8601-year
+	       (alt (seq "-" parse-8601-month "-" parse-8601-day)
+		    (seq parse-8601-month parse-8601-day))))
+	(transform week-date->month-date
+	  (seq parse-8601-year
+	       (alt (seq "-W" parse-8601-week "-" parse-8601-week-day)
+		    (seq "W" parse-8601-week parse-8601-week-day))))
+	(transform ordinal-date->month-date
+	  (seq parse-8601-year
+	       (alt (seq "-" parse-8601-ordinal-day)
+		    parse-8601-ordinal-day))))))
+
+(define (week-date->month-date v)
+  (let ((year (vector-ref v 0))
+	(week (vector-ref v 1))
+	(day (vector-ref v 2)))
+    (let ((dt
+	   (let ((dt (make-decoded-time 0 0 0 1 1 year 0)))
+	     (universal-time->global-decoded-time
+	      (+ (decoded-time->universal-time dt)
+		 (* (+ (* 7 (- week 1))
+		       (- day (+ (decoded-time/day-of-week dt) 1)))
+		    86400))))))
+      (and (fix:= (decoded-time/year dt) year)
+	   (vector (vector (decoded-time/year dt)
+			   (decoded-time/month dt)
+			   (decoded-time/day dt)))))))
+
+(define (ordinal-date->month-date v)
+  (let ((year (vector-ref v 0))
+	(day (vector-ref v 1)))
+    (let ((dt
+	   (let ((dt (make-decoded-time 0 0 0 1 1 year 0)))
+	     (universal-time->global-decoded-time
+	      (+ (decoded-time->universal-time dt)
+		 (* (- day 1)
+		    86400))))))
+      (and (fix:= (decoded-time/year dt) year)
+	   (vector (vector (decoded-time/year dt)
+			   (decoded-time/month dt)
+			   (decoded-time/day dt)))))))
+
+(define parse-8601-time
+  (*parser
+   (transform (lambda (v)
+		(if (fix:= (vector-ref v 0) 24)
+		    (and (fix:= (vector-ref v 1) 0)
+			 (fix:= (vector-ref v 2) 0)
+			 (vector (vector 0 0 0)))
+		    (vector v)))
+     (seq parse-8601-hour
+	  (alt (seq ":" parse-8601-minute ":" parse-8601-second)
+	       (seq parse-8601-minute parse-8601-second))))))
+
+(define parse-8601-zone
+  (*parser
+   (encapsulate (lambda (v) v)
+     (alt (transform (lambda (v) v (vector 1 0 0))
+		     (match "Z"))
+	  (seq parse-8601-sign
+	       parse-8601-zone-hour
+	       (alt (seq (? ":") parse-8601-minute)
+		    (values 0)))))))
+
+(define (8601-number-parser n-digits low high)
+  (let ((parse-digits
+	 (case n-digits
+	   ((1)
+	    (*parser
+	     (map string->number
+		  (match (char-set char-set:numeric)))))
+	   ((2)
+	    (*parser
+	     (map string->number
+		  (match (seq (char-set char-set:numeric)
+			      (char-set char-set:numeric))))))
+	   ((3)
+	    (*parser
+	     (map string->number
+		  (match (seq (char-set char-set:numeric)
+			      (char-set char-set:numeric)
+			      (char-set char-set:numeric))))))
+	   ((4)
+	    (*parser
+	     (map string->number
+		  (match (seq (char-set char-set:numeric)
+			      (char-set char-set:numeric)
+			      (char-set char-set:numeric)
+			      (char-set char-set:numeric))))))
+	   (else
+	    (error:bad-range-argument n-digits '8601-NUMBER-PARSER)))))
+    (lambda (b)
+      (let ((v (parse-digits b)))
+	(and v
+	     (<= low (vector-ref v 0) high)
+	     v)))))
+
+(define parse-8601-year (8601-number-parser 4 1582 9999))
+(define parse-8601-month (8601-number-parser 2 1 12))
+(define parse-8601-week (8601-number-parser 2 1 53))
+(define parse-8601-day (8601-number-parser 2 1 31))
+(define parse-8601-week-day (8601-number-parser 1 1 7))
+(define parse-8601-ordinal-day (8601-number-parser 3 1 366))
+(define parse-8601-hour (8601-number-parser 2 0 24))
+(define parse-8601-zone-hour (8601-number-parser 2 0 12))
+(define parse-8601-minute (8601-number-parser 2 0 59))
+(define parse-8601-second (8601-number-parser 2 0 59))
+
+(define parse-8601-sign
+  (*parser
+   (alt (map (lambda (v) v 1) (match "+"))
+	(map (lambda (v) v -1) (match "-")))))
+
+;;;; Utilities
+
 (define (month/max-days month)
   (guarantee-month month 'MONTH/MAX-DAYS)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))

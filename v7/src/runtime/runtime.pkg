@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.462 2003/09/30 17:17:22 cph Exp $
+$Id: runtime.pkg,v 14.463 2003/10/01 18:07:41 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1158,6 +1158,7 @@ USA.
 	  day-of-week/short-string
 	  decode-universal-time
 	  decoded-time->ctime-string
+	  decoded-time->iso8601-string
 	  decoded-time->string
 	  decoded-time->universal-time
 	  decoded-time/date-string
@@ -1175,13 +1176,18 @@ USA.
 	  encode-universal-time
 	  epoch
 	  file-time->global-ctime-string
+	  file-time->global-iso8601-string
 	  file-time->global-time-string
 	  file-time->local-ctime-string
+	  file-time->local-iso8601-string
 	  file-time->local-time-string
 	  file-time->string
 	  get-decoded-time
 	  get-universal-time
 	  global-decoded-time
+	  iso8601-string->decoded-time
+	  iso8601-string->file-time
+	  iso8601-string->universal-time
 	  local-decoded-time
 	  make-decoded-time
 	  month/long-string
@@ -1197,9 +1203,11 @@ USA.
 	  time-zone?
 	  universal-time->global-ctime-string
 	  universal-time->global-decoded-time
+	  universal-time->global-iso8601-string
 	  universal-time->global-time-string
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
+	  universal-time->local-iso8601-string
 	  universal-time->local-time-string
 	  universal-time->string))
 
