@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.228 2000/12/28 05:44:46 cph Exp $
+;;; $Id: imail-top.scm,v 1.229 2001/01/06 02:37:02 cph Exp $
 ;;;
-;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -445,7 +445,7 @@ Instead, these commands are available:
 	(begin
 	  (close-folder folder)
 	  (unmemoize-folder (folder-url folder)))))
-  (set-variable! global-mode-string #f buffer))
+  (notifier:set-mail-string! #f))
 
 (define-key 'imail #\a		'imail-add-flag)
 (define-key 'imail #\b		'imail-bury)
@@ -1950,12 +1950,10 @@ Negative argument means search in reverse."
 				   #t))))
 	  (if (and (ref-variable imail-global-mail-notification buffer)
 		   (eq? (folder-url folder) (imail-default-url "imap")))
-	      (begin
-		(set-variable! global-mode-string
-			       (and (> (count-unseen-messages folder) 0)
-				    "[New Mail]")
-			       buffer)
-		(global-window-modeline-event!)))
+	      (notifier:set-mail-string!
+	       (if (> (count-unseen-messages folder) 0)
+		   "[New Mail]"
+		   "")))
 	  (buffer-modeline-event! buffer 'PROCESS-STATUS)))))
 
 (define (count-unseen-messages folder)
