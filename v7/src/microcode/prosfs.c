@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.8 1992/05/04 21:14:49 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosfs.c,v 1.9 1992/07/06 23:42:04 jinx Exp $
 
-Copyright (c) 1987-92 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -238,6 +238,14 @@ DEFINE_PRIMITIVE ("DIRECTORY-MAKE", Prim_directory_make, 1, 1,
 {
   PRIMITIVE_HEADER (1);
   OS_directory_make (STRING_ARG (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("DIRECTORY-DELETE", Prim_directory_make, 1, 1,
+  "Create a new directory, called NAME.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_directory_delete (STRING_ARG (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfs.c,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/dosfs.c,v 1.2 1992/07/06 23:42:01 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -138,6 +138,12 @@ void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_mkdir, (DOS_mkdir (name)));
+}
+
+void
+DEFUN (OS_directory_delete, (name), CONST char * name)
+{
+  STD_VOID_SYSTEM_CALL (syscall_rmdir, (DOS_rmdir (name)));
 }
 
 /* This is such that directory open does not return the first file */

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.7 1992/02/09 03:41:48 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxfs.c,v 1.8 1992/07/06 23:42:07 jinx Exp $
 
-Copyright (c) 1990-92 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -178,6 +178,12 @@ void
 DEFUN (OS_directory_make, (name), CONST char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_mkdir, (UX_mkdir (name, MODE_DIR)));
+}
+
+void
+DEFUN (OS_directory_delete, (name), CONST char * name)
+{
+  STD_VOID_SYSTEM_CALL (syscall_rmdir, (UX_rmdir (name)));
 }
 
 int OS_directory_index;

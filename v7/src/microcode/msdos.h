@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/msdos.h,v 1.1 1992/05/05 06:55:13 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/msdos.h,v 1.2 1992/07/06 23:42:02 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -105,6 +105,7 @@ enum syscall_names
   syscall_readlink,
   syscall_realloc,
   syscall_rename,
+  syscall_rmdir,
   syscall_select,
   syscall_setitimer,
   syscall_setpgid,

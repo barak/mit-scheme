@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.61 1992/02/08 14:54:14 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.62 1992/07/06 23:42:05 jinx Exp $
 ;;;
-;;;	Copyright (c) 1987-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1987-1992 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -48,6 +48,9 @@
 ;;; [] Types
 ;;; [] Returns
 ;;; [] Errors
+;;; [] Terminations
+;;; [] System-call names
+;;; [] System-call errors
 ;;; [] Identification
 
 ;;; [] Fixed
@@ -610,6 +613,7 @@
 	       READLINK
 	       REALLOC
 	       RENAME
+	       RMDIR
 	       SELECT
 	       SETITIMER
 	       SETPGID
@@ -698,4 +702,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.61 1992/02/08 14:54:14 cph Exp $"
+"$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/utabmd.scm,v 9.62 1992/07/06 23:42:05 jinx Exp $"
