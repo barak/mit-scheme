@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.13 1995/04/28 07:05:06 cph Exp $
+$Id: os2top.c,v 1.14 1995/05/20 03:19:09 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -333,10 +333,15 @@ OS2_create_msg_queue (void)
   /* Create a PM message queue.  This allows us to use message boxes
      to report fatal errors.  */
   HAB hab = (WinInitialize (0));
+  HMQ hmq;
   if (hab == NULLHANDLE)
     OS2_logic_error ("Unable to initialize anchor block.");
-  if ((WinCreateMsgQueue (hab, 0)) == NULLHANDLE)
+  hmq = (WinCreateMsgQueue (hab, 0));
+  if (hmq == NULLHANDLE)
     OS2_logic_error ("Unable to create PM message queue.");
+  /* This tells the system that this message queue should not receive
+     WM_QUIT messages.  */
+  WinCancelShutdown (hmq, TRUE);
 }
 
 void
