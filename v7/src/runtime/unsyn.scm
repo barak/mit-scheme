@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.17 1994/08/18 19:50:04 adams Exp $
+$Id: unsyn.scm,v 14.18 1995/08/29 14:06:45 adams Exp $
 
-Copyright (c) 1988-94 Massachusetts Institute of Technology
+Copyright (c) 1988-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -65,6 +65,9 @@ MIT in each case. |#
 (define unsyntaxer:show-comments?
   false)
 
+(define unsyntaxer:elide-global-accesses?
+  false)
+
 (define substitutions '())
 
 (define (unsyntax-with-substitutions scode alist)
@@ -83,8 +86,23 @@ MIT in each case. |#
   (and (not (null? substitutions))
        (assq object substitutions)))
 
+(define bound (list #F '()))
+
+(define (with-bindings required optional rest action argument)
+  (if (and unsyntaxer:elide-global-accesses?
+	   unsyntaxer:macroize?)
+      (let* ((bound bound)
+	     (old   (cdr bound)))
+	(set-cdr! bound
+		  (append (if rest (list rest) '()) required optional old))
+	(let ((value (action argument)))
+	  (set-cdr! bound old)
+	  value))
+      (action argument)))
+	   
 (define (unsyntax scode)
-  (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode)))
+  (fluid-let ((bound (list #F '())))
+    (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode))))
 
 (define (unsyntax-object object)
   (maybe-substitute
@@ -129,7 +147,14 @@ MIT in each case. |#
   (variable-name object))
 
 (define (unsyntax-ACCESS-object object)
-  `(ACCESS ,@(unexpand-access object)))
+  (or (and unsyntaxer:elide-global-accesses?
+	   unsyntaxer:macroize?
+	   (access-components object
+	     (lambda (environment name)
+	       (and (eq? environment system-global-environment)
+		    (not (memq name (cdr bound)))
+		    name))))
+      `(ACCESS ,@(unexpand-access object))))
 
 (define (unexpand-access object)
   (let loop ((object object) (separate? true))
@@ -157,7 +182,8 @@ MIT in each case. |#
 	(lambda (lambda-name required optional rest body)
 	  (if (eq? lambda-name name)
 	      `(DEFINE (,name . ,(lambda-list required optional rest '()))
-		 ,@(unsyntax-sequence body))
+		 ,@(with-bindings required optional rest
+				  unsyntax-sequence body))
 	      `(DEFINE ,name ,@(unexpand-binding-value value)))))
       `(DEFINE ,name ,@(unexpand-binding-value value))))
 
@@ -314,7 +340,8 @@ MIT in each case. |#
 	(lambda (name required optional rest body)
 	  (collect-lambda name
 			  (lambda-list required optional rest '())
-			  (unsyntax-sequence body))))
+			  (with-bindings required optional rest
+					 unsyntax-sequence body))))
       (lambda-components expression
 	(lambda (name required optional rest auxiliary declarations body)
 	  (collect-lambda name
@@ -353,8 +380,19 @@ MIT in each case. |#
 (define (lambda-components** expression receiver)
   (lambda-components expression
     (lambda (name required optional rest auxiliary declarations body)
-      (receiver name required optional rest
-		(unscan-defines auxiliary declarations body)))))
+      (define (bind-auxilliaries aux body*)
+	(with-bindings aux '() #F
+			   (lambda (body*)
+			     (receiver name required optional rest body*))
+			   body*))
+      (if (and (null? auxiliary)
+	       (null? declarations))
+	  (scan-defines body
+			(lambda (internal-defines declarations* body*)
+			  declarations* body*
+			  (bind-auxilliaries internal-defines body)))
+	  (bind-auxilliaries auxiliary
+			     (unscan-defines auxiliary declarations body))))))
 
 ;;;; Combinations
 
@@ -384,7 +422,8 @@ MIT in each case. |#
 			(cond ((or (eq? name lambda-tag:unnamed)
 				   (eq? name lambda-tag:let))
 			       `(LET ,(unsyntax-let-bindings required operands)
-				  ,@(unsyntax-sequence body)))
+				  ,@(with-bindings required '() #F
+						   unsyntax-sequence body)))
 			      ((eq? name lambda-tag:fluid-let)
 			       (unsyntax/fluid-let required
 						   operands
@@ -394,10 +433,14 @@ MIT in each case. |#
 				    (the-environment?
 				     (car
 				      (last-pair (sequence-actions body)))))
-			       `(MAKE-ENVIRONMENT
-				  ,@(unsyntax-objects
-				     (except-last-pair
-				      (sequence-actions body)))))
+			       (with-bindings
+				required '() #F
+				(lambda (body)
+				  `(MAKE-ENVIRONMENT
+				     ,@(unsyntax-objects
+					(except-last-pair
+					 (sequence-actions body)))))
+				body))
 			      (else (ordinary-combination)))
 			(ordinary-combination)))))
 	       (else
@@ -477,7 +520,8 @@ MIT in each case. |#
      ,@(lambda-components** (cadr operands)
 	 (lambda (name required optional rest body)
 	   name required optional rest
-	   (unsyntax-sequence body)))))
+	   (with-bindings required optional rest
+			  unsyntax-sequence body)))))
 
 (define (extract-transfer-var assignment)
   (assignment-components assignment
