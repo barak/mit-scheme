@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.64 1997/02/13 02:24:02 cph Exp $
+@comment $Id: scheme.texinfo,v 1.65 1999/02/26 05:49:15 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme
 @settitle MIT Scheme Reference
@@ -69,48 +69,35 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-97 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-1999 Massachusetts Institute of Technology
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+@ignore
+Permission is granted to process this file through TeX and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they make, so
-that these may be included in future releases; and (b) to inform MIT of
-noteworthy uses of this document.
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of this
-document will be error-free, and MIT is under no obligation to provide any
-services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material, there
-shall be no use of the name of the Massachusetts Institute of Technology
-nor of any adaptation thereof in any advertising, promotional, or sales
-literature without prior written consent from MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end ifinfo
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.64
+@subtitle Edition 1.65
 @subtitle for Scheme Release 7.5
-@subtitle 12 February 1997
+@subtitle 26 February 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -118,42 +105,21 @@ literature without prior written consent from MIT in each case.
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-97 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-1999 Massachusetts Institute of Technology
 
-This material was developed by the Scheme project at the Massachusetts
-Institute of Technology, Department of Electrical Engineering and Computer
-Science.  Permission to copy this document, to redistribute it, and to use
-it for any purpose is granted, subject to the following restrictions and
-understandings.
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
 
-@enumerate
-@item
-Any copy made of this document must include this copyright notice in
-full.
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
 
-@item
-Users of this document agree to make their best efforts (a) to return to
-the MIT Scheme project any improvements or extensions that they
-make, so that these may be included in future releases; and (b) to
-inform MIT of noteworthy uses of this document.
-
-@item
-All materials developed as a consequence of the use of this document shall
-duly acknowledge such use, in accordance with the usual standards of
-acknowledging credit in academic research.
-
-@item
-MIT has made no warrantee or representation that the contents of
-this document will be error-free, and MIT is under no obligation to
-provide any services, by way of maintenance, update, or otherwise.
-
-@item
-In conjunction with products arising from the use of this material,
-there shall be no use of the name of the Massachusetts Institute of
-Technology nor of any adaptation thereof in any advertising,
-promotional, or sales literature without prior written consent from
-MIT in each case.
-@end enumerate
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Massachusetts Institute of Technology.
 @end titlepage
 
 @node Top, Acknowledgements, (dir), (dir)
@@ -234,7 +200,7 @@ Special Forms
 
 * Lambda Expressions::          
 * Lexical Binding::             
-* Dynamic Binding::               
+* Dynamic Binding::             
 * Definitions::                 
 * Assignments::                 
 * Quoting::                     
@@ -377,11 +343,12 @@ Input/Output
 
 Port Primitives
 
+* Port Types::                  
 * Constructors and Accessors for Ports::  
-* Blocking Mode::               
-* Terminal Mode::               
 * Input Port Operations::       
 * Output Port Operations::      
+* Blocking Mode::               
+* Terminal Mode::               
 
 File-System Interface
 
@@ -430,10 +397,15 @@ Graphics
 * Clipping of Graphics Output::  
 * Custom Graphics Operations::  
 * Images::                      
+* X Graphics::                  Graphics on the X Window System
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
-* OS/2 Graphics::               
-* X Graphics::                  
-* Starbase Graphics::           
+* OS/2 Graphics::               Graphics on IBM OS/2
+
+X Graphics
+
+* X Graphics Type::             
+* Utilities for X Graphics::    
+* Custom Operations on X Graphics Devices::  
 
 Win32 Graphics
 
@@ -447,12 +419,6 @@ OS/2 Graphics
 * Window Operations for OS/2 Graphics::  
 * Event Operations for OS/2 Graphics::  
 * Miscellaneous Operations for OS/2 Graphics::  
-
-X Graphics
-
-* X Graphics Type::             
-* Utilities for X Graphics::    
-* Custom Operations on X Graphics Devices::  
 
 Win32 Package Reference
 
@@ -492,9 +458,7 @@ This report describes research done at the Artificial Intelligence
 Laboratory and the Laboratory for Computer Science, both of the
 Massachusetts Institute of Technology.  Support for this research is
 provided in part by the Advanced Research Projects Agency of the
-Department of Defense under Office of Naval Research contract
-N00014-92-J-4097 and by the National Science Foundation under grant
-number MIP-9001651.
+Department of Defense and by the National Science Foundation.
 
 @node Overview, Special Forms, Acknowledgements, Top
 @chapter Overview
@@ -517,7 +481,7 @@ output.
 Throughout this manual, we will make frequent references to
 @dfn{standard Scheme}, which is the language defined by the document
 @cite{Revised^4 Report on the Algorithmic Language Scheme}, by William
-Clinger, Jonathan Rees, et al.@:, or by @sc{ieee} Std. 1178-1990,
+Clinger, Jonathan Rees, et al.@:, or by @sc{ieee} Std.@: 1178-1990,
 @cite{IEEE Standard for the Scheme Programming Language} (in fact,
 several parts of this document are copied from the @cite{Revised
 Report}).  MIT Scheme is an extension of standard Scheme.
@@ -610,7 +574,7 @@ decomposition of what it reads.
 * Expressions::                 
 @end menu
 
-@node Notational Conventions, Scheme Concepts,  , Overview
+@node Notational Conventions, Scheme Concepts, Overview, Overview
 @section Notational Conventions
 @cindex notational conventions
 @cindex conventions, notational
@@ -624,7 +588,7 @@ of this document.
 * Entry Format::                
 @end menu
 
-@node Errors, Examples,  , Notational Conventions
+@node Errors, Examples, Notational Conventions, Notational Conventions
 @subsection Errors
 @cindex errors, notational conventions
 
@@ -876,7 +840,7 @@ character and an output port.
 * Storage Model::               
 @end menu
 
-@node Variable Bindings, Environment Concepts,  , Scheme Concepts
+@node Variable Bindings, Environment Concepts, Scheme Concepts, Scheme Concepts
 @subsection Variable Bindings
 @cindex variable binding
 @cindex binding, of variable
@@ -1057,11 +1021,10 @@ word @dfn{false} to refer to any Scheme value that counts as false.  In
 conditional tests, all values count as true except for @code{#f}, which
 counts as false (@pxref{Conditionals}).
 
-Implementation note: In MIT Scheme, @code{#f} and the empty list
-are the same object, and the printed representation of @code{#f} is
-always @samp{()}.  As this contradicts the Scheme standard, MIT
-Scheme will soon be changed to make @code{#f} and the empty list
-different objects.
+Implementation note: In MIT Scheme, @code{#f} and the empty list are the
+same object, and the printed representation of @code{#f} is always
+@samp{()}.  As this contradicts the Scheme standard, MIT Scheme will be
+changed to make @code{#f} and the empty list different objects.
 
 @node External Representations, Disjointness of Types, True and False, Scheme Concepts
 @subsection External Representations
@@ -1191,7 +1154,7 @@ This section describes Scheme's lexical conventions.
 * Additional Notations::        
 @end menu
 
-@node Whitespace, Delimiters,  , Lexical Conventions
+@node Whitespace, Delimiters, Lexical Conventions, Lexical Conventions
 @subsection Whitespace
 
 @cindex whitespace, in programs (defn)
@@ -1474,7 +1437,7 @@ expression may be a @emph{literal}, a @emph{variable reference}, a
 * Procedure Call Syntax::       
 @end menu
 
-@node Literal Expressions, Variable References,  , Expressions
+@node Literal Expressions, Variable References, Expressions, Expressions
 @subsection Literal Expressions
 
 @cindex literal expression (defn)
@@ -1541,16 +1504,15 @@ syntactic keywords that are defined when MIT Scheme is initialized:
 access                  define-syntax           macro
 and                     delay                   make-environment
 begin                   do                      named-lambda
-bkpt                    fluid-let               or
-case                    if                      quasiquote
-cond                    in-package              quote
-cons-stream             lambda                  scode-quote
-declare                 let                     sequence
-default-object?         let*                    set!
-define                  let-syntax              the-environment
-define-integrable       letrec                  unassigned?
-define-macro            local-declare           using-syntax
-define-structure
+case                    fluid-let               or
+cond                    if                      quasiquote
+cons-stream             in-package              quote
+declare                 lambda                  scode-quote
+default-object?         let                     sequence
+define                  let*                    set!
+define-integrable       let-syntax              the-environment
+define-macro            letrec                  unassigned?
+define-structure        local-declare           using-syntax
 @end group
 @end example
 
@@ -1620,7 +1582,7 @@ This chapter describes the basic Scheme special forms.
 @menu
 * Lambda Expressions::          
 * Lexical Binding::             
-* Dynamic Binding::               
+* Dynamic Binding::             
 * Definitions::                 
 * Assignments::                 
 * Quoting::                     
@@ -1630,7 +1592,7 @@ This chapter describes the basic Scheme special forms.
 * Structure Definitions::       
 @end menu
 
-@node Lambda Expressions, Lexical Binding,  , Special Forms
+@node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
 @section Lambda Expressions
 
 @deffn {special form} lambda formals expression expression @dots{}
@@ -2016,11 +1978,11 @@ reentered by invoking a continuation, the old value is saved, and the
 variable is set to the new value.  In addition, side effects to the
 variable that occur both inside and outside of body are preserved, even
 if continuations are used to jump in and out of body repeatedly.
+@end deffn
 
 Here is a complicated example that shows the interaction between dynamic
 binding and continuations:
 
-@page
 @example
 @group
 (define (complicated-dynamic-binding)
@@ -2073,7 +2035,6 @@ written, indicating that the side effect that previously occurred within
 the body has been preserved.  Finally, we exit body normally, and write
 @samp{4}, demonstrating that the side effect that occurred outside of
 the body was also preserved.
-@end deffn
 
 @node Definitions, Assignments, Dynamic Binding, Special Forms
 @section Definitions
@@ -2130,7 +2091,7 @@ fact, these two expressions are equivalent:
 * Internal Definitions::        
 @end menu
 
-@node Top-Level Definitions, Internal Definitions,  , Definitions
+@node Top-Level Definitions, Internal Definitions, Definitions, Definitions
 @subsection Top-Level Definitions
 @cindex top-level definition
 @cindex definition, top-level
@@ -2343,19 +2304,19 @@ expression sequence.
 
 @example
 @group
-`(list ,(+ 1 2) 4)                           @result{}  (list 3 4)
+`(list ,(+ 1 2) 4)                       @result{}  (list 3 4)
 
-(let ((name 'a)) `(list ,name ',name))       @result{}  (list a 'a)
+(let ((name 'a)) `(list ,name ',name))   @result{}  (list a 'a)
 
-`(a ,(+ 1 2) ,@@(map abs '(4 -5 6)) b)        @result{}  (a 3 4 5 6 b)
+`(a ,(+ 1 2) ,@@(map abs '(4 -5 6)) b)    @result{}  (a 3 4 5 6 b)
 
 `((foo ,(- 10 3)) ,@@(cdr '(c)) . ,(car '(cons)))
-                                             @result{}  ((foo 7) . cons)
+                                         @result{}  ((foo 7) . cons)
 
 `#(10 5 ,(sqrt 4) ,@@(map sqrt '(16 9)) 8)
-                                             @result{}  #(10 5 2 4 3 8)
+                                         @result{}  #(10 5 2 4 3 8)
 
-`,(+ 2 3)                                    @result{}  5
+`,(+ 2 3)                                @result{}  5
 @end group
 @end example
 
@@ -2642,6 +2603,9 @@ Any remaining @var{expression}s are not evaluated.  If all
 @node Sequencing, Iteration, Conditionals, Special Forms
 @section Sequencing
 @cindex sequencing expressions
+
+The @code{begin} special form is used to evaluate expressions in a
+particular order.
 
 @deffn {special form} begin expression expression @dots{}
 The @var{expression}s are evaluated sequentially from left to right, and
@@ -3008,7 +2972,8 @@ different names and argument lists.
 
 @example
 @group
-(define-structure (foo (constructor make-foo (#!optional a b)))
+(define-structure (foo
+                   (constructor make-foo (#!optional a b)))
   (a 6 read-only #t)
   (b 9))
 @end group
@@ -3035,6 +3000,26 @@ such constructors would all be equivalent.
 @group
 (define-structure (foo (keyword-constructor make-bar)) a b)
 (foo-a (make-bar 'b 20 'a 19))         @result{} 19
+@end group
+@end example
+@end deffn
+
+@deffn {structure option} type-descriptor name
+This option cannot be used with the @code{type} or @code{named} options.
+
+By default, structures are implemented as records.  The name of the
+structure is defined to hold the type descriptor of the record defined
+by the structure.  The @code{type-descriptor} option specifies a
+different name to hold the type descriptor.
+
+@example
+@group
+(define-structure foo a b)
+foo             @result{} #[record-type 18]
+
+(define-structure (bar (type-descriptor bar-rtd)) a b)
+bar             @error{} Unbound variable: bar
+bar-rtd         @result{} #[record-type 19]
 @end group
 @end example
 @end deffn
@@ -3066,6 +3051,8 @@ defines accessors @code{a} and @code{b}, and modifiers @code{set-a!} and
 @end deffn
 
 @deffn {structure option} type representation-type
+This option cannot be used with the @code{type-descriptor} option.
+
 By default, structures are implemented as records.  The @code{type}
 option overrides this default, allowing the programmer to specify that
 the structure be implemented using another data type.  The option value
@@ -3089,15 +3076,17 @@ option may not be given.
 @deffn {structure option} named [expression]
 This is valid only in conjunction with the @code{type} option and
 specifies that the structure instances be tagged to make them
-identifiable as instances of this structure type.  In the usual case,
-where @var{expression} is not given, the @code{named} option causes a
-type descriptor and predicate to be defined for the structure (recall
-that the @code{type} option without @code{named} suppresses their
-definition), and also defines a default unparser method for the
-structure instances (which can be overridden by the
+identifiable as instances of this structure type.  This option cannot be
+used with the @code{type-descriptor} option.
+
+In the usual case, where @var{expression} is not given, the @code{named}
+option causes a type descriptor and predicate to be defined for the
+structure (recall that the @code{type} option without @code{named}
+suppresses their definition), and also defines a default unparser method
+for the structure instances (which can be overridden by the
 @code{print-procedure} option).  If the default unparser method is not
 wanted then the @code{print-procedure} option should be specified as
-@code{#F}.  This cases the structure to be printed in its native
+@code{#F}.  This causes the structure to be printed in its native
 representation, as a list or vector, which includes the type descriptor.
 The type descriptor is a unique object, @emph{not} a record type, that
 describes the structure instances and is additionally stored in the
@@ -3146,7 +3135,8 @@ regular slots.
 
 @example
 @group
-(define-structure (foo (type vector) (initial-offset 3)) a b c)
+(define-structure (foo (type vector) (initial-offset 3))
+  a b c)
 (make-foo 1 2 3)                @result{} #(() () () 1 2 3)
 @end group
 @end example
@@ -3425,6 +3415,7 @@ to merge representations of equivalent objects by using the same pointer
 or bit pattern to represent both.
 @end deffn
 
+@page
 @deffn procedure eq? obj1 obj2
 @code{eq?} is similar to @code{eqv?} except that in some cases it is
 capable of discerning distinctions finer than those detectable by
@@ -3470,6 +3461,7 @@ in applications using procedures to implement objects with state since
 it obeys the same constraints as @code{eqv?}.
 @end deffn
 
+@page
 @deffn procedure equal? obj1 obj2
 @cindex circular structure
 @code{equal?} recursively compares the contents of pairs, vectors, and
@@ -3530,7 +3522,7 @@ as fixed point and floating point are referred to by names such as
 * Random Numbers::              
 @end menu
 
-@node Numerical types, Exactness,  , Numbers
+@node Numerical types, Exactness, Numbers, Numbers
 @section Numerical types
 @cindex numerical types
 
@@ -4442,9 +4434,9 @@ be rounded @var{precision} digits to the right of the decimal point; if
 @var{precision})} digits to the left of the decimal point.
 
 @item format-type
-One of the following symbols: @code{normal}, @code{scientific}, or
+One of the symbols: @code{normal}, @code{scientific}, or
 @code{engineering}.  This specifies the format in which the number will
-be printed.  @code{scientific} specifies that the number will be printed
+be printed.@*  @code{scientific} specifies that the number will be printed
 using scientific notation: @code{@var{x}.@var{xxx}e@var{yyy}}.  In other
 words, the number is printed as a mantissa between zero inclusive and
 ten exclusive, and an exponent.  @code{engineering} is like
@@ -4471,12 +4463,12 @@ The default value for @code{flonum-unparser-cutoff} is @code{normal}.
 If it is bound to a value different from those described here,
 @code{number->string} issues a warning and acts as though the value had
 been @code{normal}.
+@end defvr
 
 @noindent
-Some examples:
+Some examples of @code{flonum-unparser-cutoff}:
 
 @example
-@group
 (number->string (* 4 (atan 1 1)))
                                     @result{} "3.141592653589793"
 (fluid-let ((flonum-unparser-cutoff '(relative 5)))
@@ -4512,9 +4504,7 @@ Some examples:
 (fluid-let ((flonum-unparser-cutoff '(absolute -5)))
   (number->string (* 4e10 (atan 1 1))))
                                     @result{} "31415900000."
-@end group
 @end example
-@end defvr
 
 @deffn procedure string->number string [radix]
 Returns a number of the maximally precise representation expressed by
@@ -4553,7 +4543,7 @@ malformed objects that confuse the garbage collector.
 * Flonum Operations::           
 @end menu
 
-@node Fixnum Operations, Flonum Operations,  , Fixnum and Flonum Operations
+@node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations
 @subsection Fixnum Operations
 
 @cindex fixnum (defn)
@@ -4903,7 +4893,7 @@ non-@sc{ascii} operating system.}
 * Character Sets::              
 @end menu
 
-@node External Representation of Characters, Comparison of Characters,  , Characters
+@node External Representation of Characters, Comparison of Characters, Characters, Characters
 @section External Representation of Characters
 @cindex external representation, for character
 
@@ -5005,10 +4995,9 @@ tab                     HT
 @noindent
 @cindex newline character (defn)
 @findex #\newline
-In addition, @code{#\newline} is either @code{#\linefeed} or
-@code{#\return}, depending on the operating system that Scheme is
-running under.  All of the standard @sc{ascii} names for non-printing
-characters are supported:
+In addition, @code{#\newline} is the same as @code{#\linefeed} (but this
+may change in the future, so you should not depend on it).  All of the
+standard @sc{ascii} names for non-printing characters are supported:
 
 @example
 @group
@@ -5634,7 +5623,7 @@ between uppercase and lowercase.  The versions that ignore case include
 * Byte Vectors::                
 @end menu
 
-@node Construction of Strings, Selecting String Components,  , Strings
+@node Construction of Strings, Selecting String Components, Strings, Strings
 @section Construction of Strings
 @cindex construction, of string
 
@@ -5661,10 +5650,6 @@ The arguments must all satisfy @code{char-ascii?}.
 (string)                                    @result{}  ""
 @end group
 @end example
-
-@findex char->string
-For compatibility with old code, @code{char->string} is a synonym for
-this procedure.
 @end deffn
 
 @deffn procedure list->string char-list
@@ -5678,8 +5663,8 @@ elements of @var{char-list}.  This is equivalent to @code{(apply string
 
 @example
 @group
-(list->string '(#\a #\b))               @result{}  "ab"
-(string->list "Hello")                  @result{}  (#\H #\e #\l #\l #\o)
+(list->string '(#\a #\b))           @result{}  "ab"
+(string->list "Hello")              @result{}  (#\H #\e #\l #\l #\o)
 @end group
 @end example
 @end deffn
@@ -5700,7 +5685,8 @@ following:
     (dynamic-wind 
      (lambda ()
        (set! length (string-length string))
-       (set-string-length! string (string-maximum-length string)))
+       (set-string-length! string
+                           (string-maximum-length string)))
      (lambda ()
        (string-copy string))
      (lambda ()
@@ -5842,7 +5828,7 @@ applied, else if @var{string1} is greater than @var{string2},
 @var{if-gt} is applied.  The value of the procedure is the value of the
 thunk that is applied.
 
-@code{string-compare} distinguishes uppercase and lowercase letters;
+@code{string-compare} distinguishes uppercase and lowercase letters;@*
 @code{string-compare-ci} does not.
 
 @example
@@ -6132,7 +6118,8 @@ index returned is relative to the entire string, not just the substring.
 (string-find-next-char-in-set my-string char-set:alphabetic)
                 @result{}  @r{start position of the first word in} my-string
 @r{; Can be used as a predicate:}
-(if (string-find-next-char-in-set my-string (char-set #\( #\) ))
+(if (string-find-next-char-in-set my-string
+                                  (char-set #\( #\) ))
     'contains-parentheses
     'no-parentheses)
 @end group
@@ -6303,12 +6290,12 @@ The following example shows how these procedures can be used to build up
 a string (it would have been easier to use @code{string-append}):
 @example
 @group
-(define answer (make-string 9 #\*))             @result{}  @r{unspecified}
-answer                                          @result{}  "*********"
-(substring-move-left! "start" 0 5 answer 0)     @result{}  @r{unspecified}
-answer                                          @result{}  "start****"
-(substring-move-left! "-end" 0 4 answer 5)      @result{}  @r{unspecified}
-answer                                          @result{}  "start-end"
+(define answer (make-string 9 #\*))         @result{}  @r{unspecified}
+answer                                      @result{}  "*********"
+(substring-move-left! "start" 0 5 answer 0) @result{}  @r{unspecified}
+answer                                      @result{}  "start****"
+(substring-move-left! "-end" 0 4 answer 5)  @result{}  @r{unspecified}
+answer                                      @result{}  "start-end"
 @end group
 @end example
 @end deffn
@@ -6553,7 +6540,7 @@ the use of the @code{read} procedure to parse Scheme programs.
 * Miscellaneous List Operations::  
 @end menu
 
-@node Pairs, Construction of Lists,  , Lists
+@node Pairs, Construction of Lists, Lists, Lists
 @section Pairs
 
 This section describes the simple operations that are available for
@@ -6807,9 +6794,9 @@ pairs comprising @var{list}.  This could have been defined by
 @cindex vector, converting to list
 @findex list->vector
 @code{vector->list} returns a newly allocated list of the elements of
-@var{vector}.  @code{subvector->list} returns a newly allocated list of the
-elements of the given subvector.  The inverse of @code{vector->list} is
-@code{list->vector}.
+@var{vector}.@* @code{subvector->list} returns a newly allocated list of
+the elements of the given subvector.  The inverse of @code{vector->list}
+is @code{list->vector}.
 
 @example
 (vector->list '#(dah dah didah))        @result{}  (dah dah didah)
@@ -7104,8 +7091,10 @@ Here are some examples that demonstrate how
 
 @example
 @group
-(define delv (delete-member-procedure list-deletor eqv?))
-(define delete! (delete-member-procedure list-deletor! equal?))
+(define delv
+  (delete-member-procedure list-deletor eqv?))
+(define delete!
+  (delete-member-procedure list-deletor! equal?))
 @end group
 @end example
 @end deffn
@@ -7414,8 +7403,8 @@ Returns a newly allocated list consisting of the top-level elements of
 
 @example
 @group
-(reverse '(a b c))                      @result{}  (c b a)
-(reverse '(a (b c) d (e (f))))          @result{}  ((e (f)) d (b c) a)
+(reverse '(a b c))                  @result{}  (c b a)
+(reverse '(a (b c) d (e (f))))      @result{}  ((e (f)) d (b c) a)
 @end group
 @end example
 @end deffn
@@ -7557,7 +7546,7 @@ The @dfn{valid indexes} of a subvector are the exact integers between
 * Modifying Vectors::           
 @end menu
 
-@node Construction of Vectors, Selecting Vector Components,  , Vectors
+@node Construction of Vectors, Selecting Vector Components, Vectors, Vectors
 @section Construction of Vectors
 @cindex construction, of vector
 
@@ -7626,9 +7615,10 @@ elements of @var{vector} is unspecified.
 
 @example
 @group
-(vector-map '#((a b) (d e) (g h)) cadr)           @result{}  #(b e h)
-(vector-map '#(1 2 3 4) (lambda (n) (expt n n)))  @result{}  #(1 4 27 256)
-(vector-map '#(5 7 9) +)                          @result{}  #(5 7 9)
+(vector-map '#((a b) (d e) (g h)) cadr)     @result{}  #(b e h)
+(vector-map '#(1 2 3 4) (lambda (n) (expt n n)))
+                                            @result{}  #(1 4 27 256)
+(vector-map '#(5 7 9) +)                    @result{}  #(5 7 9)
 @end group
 @end example
 @end deffn
@@ -7697,8 +7687,11 @@ implements a total ordering on the keys of the elements.
 @example
 @group
 (define (translate number)
-  (vector-binary-search '#((1 . i) (2 . ii) (3 . iii) (6 . vi))
-                        <  car  number))
+  (vector-binary-search '#((1 . i)
+                           (2 . ii)
+                           (3 . iii)
+                           (6 . vi))
+                        < car number))
 (translate 2)  @result{}  (2 . ii)
 (translate 4)  @result{}  #F
 @end group
@@ -7851,7 +7844,7 @@ All of the bit-string procedures are MIT Scheme extensions.
 * Integer Conversions of Bit Strings::  
 @end menu
 
-@node Construction of Bit Strings, Selecting Bit String Components,  , Bit Strings
+@node Construction of Bit Strings, Selecting Bit String Components, Bit Strings, Bit Strings
 @section Construction of Bit Strings
 @cindex construction, of bit string
 
@@ -7922,7 +7915,8 @@ find all the set bits and display their indexes:
 (define (scan-bitstring bs)
   (let ((end (bit-string-length bs)))
     (let loop ((start 0))
-      (let ((next (bit-substring-find-next-set-bit bs start end)))
+      (let ((next
+             (bit-substring-find-next-set-bit bs start end)))
         (if next
             (begin
               (write-line next)
@@ -8095,7 +8089,7 @@ integer accordingly.
 * Weak Pairs::                  
 @end menu
 
-@node Booleans, Symbols,  , Miscellaneous Datatypes
+@node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
 @section Booleans
 
 @findex #t
@@ -8589,10 +8583,6 @@ given value.  The returned value of the modifier procedure is
 unspecified.  The symbol @var{field-name} must be a member of the list
 of field names in the call to @code{make-record-type} that created the
 type represented by @var{record-type}.
-
-@findex record-updater
-For compatibility with old code, @code{record-updater} is a synonym for
-this procedure.
 @end deffn
 
 @deffn {procedure+} record? object
@@ -8929,17 +8919,6 @@ invoking @var{procedure} with the corresponding elements of the
 @var{stream}s as its arguments.
 @end deffn
 
-@findex the-empty-stream
-@findex head
-@findex tail
-@findex empty-stream?
-The following are supported for compatibility with old code.  Please do
-not use these for new code.  The variable @code{the-empty-stream} is
-bound to the end-of-stream marker; use @code{(stream)} in new code.
-@code{head} is a synonym for @code{stream-car}.  @code{tail} is a
-synonym for @code{stream-cdr}.  @code{empty-stream?} is a synonym for
-@code{stream-null?}.
-
 @node Weak Pairs,  , Streams, Miscellaneous Datatypes
 @section Weak Pairs
 
@@ -9058,7 +9037,7 @@ tables aren't as flexible.
 be any type of object and that it does not prevent the keys from being
 reclaimed by the garbage collector.  However, two linear-time lookups
 must be performed, one for each key, whereas for traditional property
-lists only one is lookup required for both keys.
+lists only one lookup is required for both keys.
 
 @item
 @dfn{Hash tables} are a powerful mechanism with constant-time access to
@@ -9100,7 +9079,7 @@ intersection and difference; and indexing of elements by position.
 * Weight-Balanced Trees::       
 @end menu
 
-@node Association Lists, 1D Tables,  , Associations
+@node Association Lists, 1D Tables, Associations, Associations
 @section Association Lists
 
 @comment **** begin CLTL ****
@@ -9375,7 +9354,7 @@ entries for @var{x-key} exist.
 @group
 (2d-put! 'foo 'bar 5)
 (2d-put! 'foo 'baz 6)
-(2d-get-alist-x 'foo)                   @result{}  ((baz . 6) (bar . 5))
+(2d-get-alist-x 'foo)           @result{}  ((baz . 6) (bar . 5))
 @end group
 @end example
 @end deffn
@@ -9390,7 +9369,7 @@ entries for @var{y-key} exist.
 @group
 (2d-put! 'bar 'foo 5)
 (2d-put! 'baz 'foo 6)
-(2d-get-alist-y 'foo)                   @result{}  ((baz . 6) (bar . 5))
+(2d-get-alist-y 'foo)           @result{}  ((baz . 6) (bar . 5))
 @end group
 @end example
 @end deffn
@@ -9430,7 +9409,7 @@ once before calling any of the procedures defined here.
 * Low-Level Hash Table Operations::  
 @end menu
 
-@node Construction of Hash Tables, Basic Hash Table Operations,  , Hash Tables
+@node Construction of Hash Tables, Basic Hash Table Operations, Hash Tables, Hash Tables
 @subsection Construction of Hash Tables
 
 @cindex construction, of hash table
@@ -9456,10 +9435,6 @@ said to hold its keys @dfn{strongly}; otherwise it holds its keys
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
 weakly.  These are the fastest of the standard hash tables.
-
-@findex make-symbol-hash-table
-For compatibility with old code, @code{make-symbol-hash-table} is a
-synonym for this procedure.
 @end deffn
 
 @deffn {procedure+} make-eqv-hash-table [initial-size]
@@ -9469,10 +9444,6 @@ keys, and compares those keys with @code{eqv?}.  The keys are held
 weakly, except that booleans, characters, and numbers are held strongly.
 These hash tables are a little slower than those made by
 @code{make-eq-hash-table}.
-
-@findex make-object-hash-table
-For compatibility with old code, @code{make-object-hash-table} is a
-synonym for this procedure.
 @end deffn
 
 @deffn {procedure+} make-equal-hash-table [initial-size]
@@ -9612,8 +9583,8 @@ in the table.
 
 @deffn {procedure+} hash-table/key-list hash-table
 Returns a newly allocated list of the keys in @var{hash-table}.  The
-average and worst-case times required by this operation are
-proportional to the number of associations in the table.
+average and worst-case times required by this operation are linear in
+the number of associations in the table.
 @end deffn
 
 @deffn {procedure+} hash-table/datum-list hash-table
@@ -9621,8 +9592,8 @@ Returns a newly allocated list of the datums in @var{hash-table}.  Each
 element of the list corresponds to one of the associations in
 @var{hash-table}; if the table contains multiple associations with the
 same datum, so will this list.  The average and worst-case times
-required by this operation are proportional to the number of
-associations in the table.
+required by this operation are linear in the number of associations in
+the table.
 @end deffn
 
 @deffn {procedure+} hash-table/for-each hash-table procedure
@@ -9765,7 +9736,7 @@ not change size, performance might be improved by using a large rehash
 size during the growth phase and a small one during the static phase.
 The default rehash size of a newly constructed hash table is @code{2.0}.
 
-@strong{Note well:} The use of an exact positive integer for a rehash
+@strong{Warning}: The use of an exact positive integer for a rehash
 size is almost always undesirable; this option is provided solely for
 compatibility with the Common Lisp hash-table mechanism.  The reason for
 this has to do with the time penalty for resizing the hash table.  The
@@ -9884,9 +9855,8 @@ structure that represents an association in a hash table is called an
 
 @deffn {procedure+} hash-table/constructor key-hash key=? make-entry entry-valid? entry-key entry-datum set-entry-datum! [rehash-after-gc?]
 Creates and returns a hash-table constructor procedure
-(@pxref{Construction of Hash Tables}).  The arguments to
-@code{hash-table/constructor} define the characteristics of the hash
-table as follows:
+(@pxref{Construction of Hash Tables}).  The arguments define the
+characteristics of the hash table as follows:
 
 @table @var
 @item key-hash
@@ -9933,7 +9903,9 @@ procedures that have this property.)  Otherwise, it is assumed that
 @var{key-hash} always returns the same value for the same arguments.
 The default value of this argument is @code{#f}.
 @end table
+@end deffn
 
+@noindent
 For example, here is how the constructors for ordinary hash tables could
 be defined:
 
@@ -9941,7 +9913,8 @@ be defined:
 @group
 (define (strong-hash-table/constructor key-hash key=?
                                        #!optional rehash-after-gc?)
-  (hash-table/constructor key-hash key=? cons #t car cdr set-cdr!
+  (hash-table/constructor key-hash key=?
+                          cons #t car cdr set-cdr!
                           (if (default-object? rehash-after-gc?)
                               #f
                               rehash-after-gc?)))
@@ -9957,7 +9930,6 @@ be defined:
                               rehash-after-gc?)))
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} hash-table/key-hash hash-table
 @deffnx {procedure+} hash-table/key=? hash-table
@@ -9966,10 +9938,8 @@ be defined:
 @deffnx {procedure+} hash-table/entry-key hash-table
 @deffnx {procedure+} hash-table/entry-datum hash-table
 @deffnx {procedure+} hash-table/set-entry-datum! hash-table
-Each of these procedures corresponds to an argument of
-@code{hash-table/constructor}.  When called, each procedure returns the
-value of the corresponding argument that was used to construct
-@var{hash-table}.
+Each procedure returns the value of the corresponding argument that was
+used to construct @var{hash-table}.
 @end deffn
 
 The following procedures return the contents of a hash table as a
@@ -10001,7 +9971,7 @@ generating a unique hash number for an arbitrary object.  This hash
 number, unlike an object's address, is unchanged by garbage collection.
 The object-hashing facility is useful in conjunction with hash tables,
 but it may be used for other things as well.  In particular, it is used
-in the generation of the written representation for some objects
+in the generation of the written representation for many objects
 (@pxref{Custom Output}).
 
 All of these procedures accept an optional argument called @var{table};
@@ -10065,7 +10035,7 @@ object-hashing mechanism.
 @deffn {procedure+} object-hash object [table [insert?]]
 @findex eq?
 @code{object-hash} is like @code{hash}, except that it accepts an
-additional optional argument, @var{insert?}.  If @var{insert?} is
+additional optional argument, @var{insert?}.  If @var{insert?}@: is
 supplied and is @code{#f}, @code{object-hash} will return an integer for
 @var{object} only if there is already an association in the table;
 otherwise, it will return @code{#f}.  If @var{insert?} is not supplied,
@@ -10287,6 +10257,53 @@ associations as @var{alist}.  This procedure is equivalent to:
 @end example
 @end deffn
 
+The following operations provide access to the smallest and largest
+members in a red/black tree.  They are useful for implementing priority
+queues.
+
+@deffn {procedure+} rb-tree/min rb-tree default
+Returns the smallest key in @var{rb-tree}, or @var{default} if the tree
+is empty.
+@end deffn
+
+@deffn {procedure+} rb-tree/min-datum rb-tree default
+Returns the datum associated with the smallest key in @var{rb-tree}, or
+@var{default} if the tree is empty.
+@end deffn
+
+@deffn {procedure+} rb-tree/min-pair rb-tree
+Finds the smallest key in @var{rb-tree} and returns a pair containing
+that key and its associated datum.  If the tree is empty, returns
+@code{#f}.
+@end deffn
+
+@deffn {procedure+} rb-tree/max rb-tree default
+Returns the largest key in @var{rb-tree}, or @var{default} if the tree
+is empty.
+@end deffn
+
+@deffn {procedure+} rb-tree/max-datum rb-tree default
+Returns the datum associated with the largest key in @var{rb-tree}, or
+@var{default} if the tree is empty.
+@end deffn
+
+@deffn {procedure+} rb-tree/max-pair rb-tree
+Finds the largest key in @var{rb-tree} and returns a pair containing
+that key and its associated datum.  If the tree is empty, returns
+@code{#f}.
+@end deffn
+
+@deffn {procedure+} rb-tree/delete-min! rb-tree default
+@deffnx {procedure+} rb-tree/delete-min-datum! rb-tree default
+@deffnx {procedure+} rb-tree/delete-min-pair! rb-tree
+@deffnx {procedure+} rb-tree/delete-max! rb-tree default
+@deffnx {procedure+} rb-tree/delete-max-datum! rb-tree default
+@deffnx {procedure+} rb-tree/delete-max-pair! rb-tree
+These operations are exactly like the accessors above, in that they
+return information associated with the smallest or largest key, except
+that they simultaneously delete that key.
+@end deffn
+
 @node Weight-Balanced Trees,  , Red-Black Trees, Associations
 @section Weight-Balanced Trees
 
@@ -10384,7 +10401,7 @@ once before calling any of the procedures defined here.
 * Indexing Operations on Weight-Balanced Trees::  
 @end menu
 
-@node Construction of Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees,  , Weight-Balanced Trees
+@node Construction of Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees, Weight-Balanced Trees
 @subsection Construction of Weight-Balanced Trees
 
 Binary trees require there to be a total order on the keys used to
@@ -10747,7 +10764,8 @@ might have been defined like this:
 @example
 @group
 (define (wt-tree/union tree1 tree2)
-  (wt-tree/union-merge tree1 tree2 (lambda (key val1 val2) val2)))
+  (wt-tree/union-merge tree1 tree2
+                       (lambda (key val1 val2) val2)))
 @end group
 @end example
 @end deffn
@@ -10772,10 +10790,10 @@ sorted sequence under the tree's ordering relation on the keys.
 @code{wt-tree/index} returns the @var{index}th key,
 @code{wt-tree/index-datum} returns the datum associated with the
 @var{index}th key and @code{wt-tree/index-pair} returns a new pair
-@code{(@var{key} . @var{datum})} which is the @code{cons} of the @var{index}th
-key and its datum.  The average and worst-case times required by this
-operation are proportional to the logarithm of the number of
-associations in the tree.
+@code{(@var{key} . @var{datum})} which is the @code{cons} of the
+@var{index}th key and its datum.  The average and worst-case times
+required by this operation are proportional to the logarithm of the
+number of associations in the tree.
 
 These operations signal a condition of type
 @code{condition-type:bad-range-argument} if @var{index}@code{<0} or if
@@ -10787,8 +10805,12 @@ follows:
 
 @example
 @group
-median:   (wt-tree/index @var{wt-tree} (quotient (wt-tree/size @var{wt-tree}) 2))
-maximum:  (wt-tree/index @var{wt-tree} (- (wt-tree/size @var{wt-tree}) 1))
+median:   (wt-tree/index @var{wt-tree}
+                         (quotient (wt-tree/size @var{wt-tree})
+                                   2))
+maximum:  (wt-tree/index @var{wt-tree}
+                         (- (wt-tree/size @var{wt-tree})
+                            1))
 @end group
 @end example
 @end deffn
@@ -10814,13 +10836,16 @@ The average and worst-case times required by this operation are
 proportional to the logarithm of the number of associations in the tree.
 
 These operations signal an error if the tree is empty.
-They could be written
+They could have been written
 
 @example
 @group
-(define (wt-tree/min tree)        (wt-tree/index tree 0))
-(define (wt-tree/min-datum tree)  (wt-tree/index-datum tree 0))
-(define (wt-tree/min-pair tree)   (wt-tree/index-pair tree 0))
+(define (wt-tree/min tree)
+  (wt-tree/index tree 0))
+(define (wt-tree/min-datum tree)
+  (wt-tree/index-datum tree 0))
+(define (wt-tree/min-pair tree)
+  (wt-tree/index-pair tree 0))
 @end group
 @end example
 @end deffn
@@ -10912,7 +10937,7 @@ reasons, and may eventually change.
 * Application Hooks::           
 @end menu
 
-@node Procedure Operations, Primitive Procedures,  , Procedures
+@node Procedure Operations, Primitive Procedures, Procedures, Procedures
 @section Procedure Operations
 
 @deffn procedure apply procedure object object @dots{}
@@ -11140,13 +11165,11 @@ Returns @code{#t} if @var{object} is a continuation; otherwise returns
 @deffn {procedure+} within-continuation continuation thunk
 @cindex continuation, alternate invocation
 @cindex escape procedure, alternate invocation
-@var{Continuation} must be a continuation produced by
-@code{call-with-current-continuation}.
-@var{Thunk} must be a procedure of no arguments.
-Conceptually, @code{within-continuation} invokes @var{continuation} on
-the result of invoking @var{thunk}, but @var{thunk} is executed in the
-dynamic context of @var{continuation}.  In other words, the ``current''
-continuation is abandoned before @var{thunk} is invoked.
+@var{Thunk} must be a procedure of no arguments.  Conceptually,@*
+@code{within-continuation} invokes @var{continuation} on the result of
+invoking @var{thunk}, but @var{thunk} is executed in the dynamic context
+of @var{continuation}.  In other words, the ``current'' continuation is
+abandoned before @var{thunk} is invoked.
 @end deffn
 
 @deffn {procedure+} dynamic-wind before-thunk action-thunk after-thunk
@@ -11174,9 +11197,7 @@ protected code would appear in the @var{action-thunk}, and unlocking
 would occur in the @var{after-thunk}.
 @end deffn
 
-The following two procedures support multiple values.  A future revision
-of the Scheme standard will support a facility similar to, but almost
-certainly different from, this one.
+The following two procedures support multiple values.
 
 @deffn {procedure+} call-with-values thunk procedure
 @cindex multiple values, from procedure
@@ -11294,7 +11315,7 @@ an unspecified value.
 * Interpreter Environments::    
 @end menu
 
-@node Environment Operations, Environment Variables,  , Environments
+@node Environment Operations, Environment Variables, Environments, Environments
 @section Environment Operations
 
 Environments are first-class objects in MIT Scheme.  An environment
@@ -11443,6 +11464,11 @@ However, because all top-level environments (such as
 @code{user-initial-environment}) are already interpreter environments,
 it does no harm to use such operations on them.
 
+@strong{Warning}: A future release of MIT Scheme will support hygenic
+macros, which are incompatible with non-top-level instances of
+@code{make-environment} and @code{the-environment}.  At that time, other
+uses of these constructs will be disallowed.
+
 @deffn {special form+} make-environment expression @dots{}
 @cindex construction, of environment
 Produces a new environment that is a child of the environment in which
@@ -11499,7 +11525,7 @@ custom ports and high-performance @sc{i/o}.
 * Port Primitives::             
 @end menu
 
-@node Ports, File Ports,  , Input/Output
+@node Ports, File Ports, Input/Output, Input/Output
 @section Ports
 
 @cindex port (defn)
@@ -11563,12 +11589,13 @@ also satisfies @code{port?}, @code{input-port?}, and
 @code{output-port?}.
 @end deffn
 
-@deffn {procedure+} guarantee-input-port object
+@deffn {procedure+} guarantee-port object
+@deffnx {procedure+} guarantee-input-port object
 @deffnx {procedure+} guarantee-output-port object
 @deffnx {procedure+} guarantee-i/o-port object
 These procedures check the type of @var{object}, signalling an error of
-type @code{condition-type:wrong-type-argument} if it is not an input
-port, output port, or @sc{i/o} port, respectively.  Otherwise they
+type@* @code{condition-type:wrong-type-argument} if it is not a port,
+input port, output port, or @sc{i/o} port, respectively.  Otherwise they
 return @var{object}.
 @findex condition-type:wrong-type-argument
 @end deffn
@@ -11655,26 +11682,29 @@ corresponds to the name of the procedure.
 @cindex output port, console
 @code{console-i/o-port} is an @sc{i/o} port that communicates with the
 ``console''.  Under unix, the console is the controlling terminal of the
-Scheme process.  Under Windows and OS/2, the console is the window that
-is created when Scheme starts up.
+Scheme process.  Under Windows and OS/2, the console is the window
+that is created when Scheme starts up.
 
 This variable is rarely used; instead programs should use one of the
 standard ports defined above.  This variable should not be modified.
-
-@findex console-input-port
-@findex console-output-port
-For compatibility with old code, @code{console-input-port} and
-@code{console-output-port} are synonyms for this variable.
 @end defvr
 
 @deffn {procedure+} close-port port
-@deffnx procedure close-input-port port
-@deffnx procedure close-output-port port
 @cindex closing, of port
 Closes @var{port} and returns an unspecified value.  If @var{port} is a
-file port, the file is closed.  @code{close-input-port} and
-@code{close-output-port} are synonyms for @code{close-port} that are
-defined for compatibility with standard Scheme.
+file port, the file is closed.
+@end deffn
+
+@deffn procedure close-input-port port
+Closes @var{port} and returns an unspecified value.  @var{Port} must be
+an input port or an @sc{i/o} port; if it is an @sc{i/o} port, then only
+the input side of the port is closed.
+@end deffn
+
+@deffn procedure close-output-port port
+Closes @var{port} and returns an unspecified value.  @var{Port} must be
+an output port or an @sc{i/o} port; if it is an @sc{i/o} port, then only
+the output side of the port is closed.
 @end deffn
 
 @node File Ports, String Ports, Ports, Input/Output
@@ -11704,13 +11734,12 @@ pathname that is then opened.
 Any file can be opened in one of two modes, @dfn{normal} or
 @dfn{binary}.  Normal mode is for accessing text files, and binary mode
 is for accessing other files.  Unix does not distinguish these modes,
-but @sc{dos}, Windows, and OS/2 do: in normal mode, their
-file ports perform @dfn{newline translation}, mapping between the
-carriage-return/linefeed sequence that terminates text lines in files,
-and the @code{#\newline} that terminates lines in Scheme.  In binary
-mode, @sc{ms-dos} ports do not perform newline translation.  Unless
-otherwise mentioned, the procedures in this section open files in normal
-mode.
+but Windows and OS/2 do: in normal mode, their file ports perform
+@dfn{newline translation}, mapping between the carriage-return/linefeed
+sequence that terminates text lines in files, and the @code{#\newline}
+that terminates lines in Scheme.  In binary mode, such ports do not
+perform newline translation.  Unless otherwise mentioned, the procedures
+in this section open files in normal mode.
 
 @deffn procedure open-input-file filename
 @cindex construction, of file input port
@@ -11863,8 +11892,8 @@ Note: this procedure is equivalent to:
 @deffn {procedure+} with-string-output-port procedure
 @var{Procedure} is called with one argument, an output port.  The value
 yielded by @var{procedure} is ignored.  When @var{procedure} returns,
-@code{with-string-output-port} returns the accumulated output to the
-port as a newly allocated string.
+@code{with-string-output-port} returns the port's accumulated output as
+a newly allocated string.
 @end deffn
 
 @deffn {procedure+} with-output-to-string thunk
@@ -11979,7 +12008,7 @@ characters are available, an end-of-file object is returned.
 
 In MIT Scheme, if @var{input-port} is an interactive input port and no
 characters are immediately available, @code{read-char} will hang waiting
-for input.
+for input, even if the port is in non-blocking mode.
 @end deffn
 
 @deffn procedure peek-char [input-port]
@@ -11997,7 +12026,7 @@ interactive port will hang waiting for input whenever a call to
 
 In MIT Scheme, if @var{input-port} is an interactive input port and no
 characters are immediately available, @code{peek-char} will hang waiting
-for input.
+for input, even if the port is in non-blocking mode.
 @end deffn
 
 @deffn procedure char-ready? [input-port]
@@ -12058,9 +12087,12 @@ character that is a member of @var{char-set} (@pxref{Character Sets}) or
 encounters end of file.  The port is updated to point to the terminating
 character, or to end of file if no terminating character was found.
 @code{read-string} returns the characters, up to but excluding the
-terminating character, as a newly allocated string.  However, if end of
-file was encountered before any characters were read, @code{read-string}
-returns an end-of-file object.
+terminating character, as a newly allocated string.
+
+This procedure ignores the blocking mode of the port, blocking
+unconditionally until it sees either a delimiter or eof of file.  If end
+of file is encountered before any characters are read, an end-of-file
+object is returned.
 
 @findex read-char
 On many input ports, this operation is significantly faster than the
@@ -12079,9 +12111,63 @@ following equivalent code using @code{peek-char} and @code{read-char}:
                '()
                (begin
                  (read-char input-port)
-                 (cons char (loop (peek-char input-port))))))))))
+                 (cons char
+                       (loop (peek-char input-port))))))))))
 @end group
 @end example
+@end deffn
+
+@deffn {procedure+} read-line [input-port]
+@code{read-line} reads a single line of text from @var{input-port}, and
+returns that line as a newly allocated string.  The @code{#\newline}
+terminating the line, if any, is discarded and does not appear in the
+returned string.
+
+This procedure ignores the blocking mode of the port, blocking
+unconditionally until it has read an entire line.  If end of file is
+encountered before any characters are read, an end-of-file object is
+returned.
+@end deffn
+
+@deffn {procedure+} read-string! string [start [end [input-port]]]
+@code{read-string!} fills the specified region of @var{string} with
+characters read from @var{input-port} until the region is full or else
+there are no more characters available from the port.  The region is
+specified by @var{start} and @var{end}, which default to @code{0} and
+@var{string}'s length, respectively.
+
+The returned value is the number of characters written to @var{string}.
+However, there are several interesting cases to consider:
+
+@itemize @bullet
+@item
+If @code{read-string!} is called when @var{input-port} is at
+``end-of-file'', then the returned value is @code{0}.  Note that
+``end-of-file'' can mean a file port that is at the file's end, a string
+port that is at the string's end, or any other port that will never
+produce more characters.
+
+@item
+If @var{input-port} is an interactive port (e.g.@: a terminal), and one
+or more characters are immediately available, the region is filled using
+the available characters.  The procedure then returns immediately, even
+if the number of characters is less than the size of the region.  The
+returned value is the number of characters actually written.
+
+@item
+If @var{input-port} is an interactive port and no characters are
+immediately available, the result of the operation depends on the
+blocking mode of the port.  If the port is in non-blocking mode,
+@code{read-string!} immediately returns the value @code{#f}.  Otherwise,
+the operation blocks until a character is available.  As soon as at
+least one character is available, the region is filled with the
+available characters, and the number of characters written is
+immediately returned (even if the number available is insufficient to
+fill the region).
+@end itemize
+
+The importance of @code{read-string!} is that it is both flexible and
+extremely fast.
 @end deffn
 
 @node Output Procedures, Format, Input Procedures, Input/Output
@@ -12099,26 +12185,20 @@ general, output procedures do not flush the buffer of an output port
 unless the buffer is full.
 
 @cindex discretionary flushing, of buffered output
-@findex discretionary-output-flush
+@findex discretionary-flush-output
 However, the standard output procedures described in this section
 perform what is called @dfn{discretionary} flushing of the buffer.
 Discretionary output flushing works as follows.  After a procedure
 performs its output (writing characters to the output buffer), it checks
 to see if the port implements an operation called
-@code{discretionary-output-flush}.  If so, then that operation is
+@code{discretionary-flush-output}.  If so, then that operation is
 invoked to flush the buffer.  At present, only the console port defines
-@code{discretionary-output-flush}; this is used to guarantee that output
+@code{discretionary-flush-output}; this is used to guarantee that output
 to the console appears immediately after it is written, without
 requiring calls to @code{flush-output}.
 
 All optional arguments called @var{output-port}, if not supplied,
 default to the current output port.
-
-@deffn {procedure+} flush-output [output-port]
-If @var{output-port} is buffered, this causes the contents of its buffer
-to be written to the output device.  Otherwise it has no effect.
-Returns an unspecified value.
-@end deffn
 
 @deffn procedure write-char char [output-port]
 @cindex character, output to port
@@ -12131,7 +12211,7 @@ flushing, and returns an unspecified value.
 @cindex string, output to port
 Writes @var{string} to @var{output-port}, performs discretionary output
 flushing, and returns an unspecified value.  This is equivalent to
-writing the contents of string, one character at a time using
+writing the contents of @var{string}, one character at a time using
 @code{write-char}, except that it is usually much faster.
 @end deffn
 
@@ -12168,7 +12248,7 @@ output flushing, and returns an unspecified value.  Equivalent to
 @end deffn
 
 @deffn {procedure+} fresh-line [output-port]
-Some output ports are able to tell whether or not they are at the
+Most output ports are able to tell whether or not they are at the
 beginning of a line of output.  If @var{output-port} is such a port,
 this procedure writes an end-of-line to the port only if the port is not
 already at the beginning of a line.  If @var{output-port} is not such a
@@ -12182,6 +12262,12 @@ Like @code{write}, except that it writes an end-of-line to
 @var{output-port} before writing @var{object}'s representation.  This
 procedure performs discretionary output flushing and returns an
 unspecified value.
+@end deffn
+
+@deffn {procedure+} flush-output [output-port]
+If @var{output-port} is buffered, this causes the contents of its buffer
+to be written to the output device.  Otherwise it has no effect.
+Returns an unspecified value.
 @end deffn
 
 @deffn {procedure+} beep [output-port]
@@ -12404,18 +12490,24 @@ nicely into one line of the program:
 @example
 @group
 (define (type-clash-error procedure arg spec actual)
-  (format #t
-          "~%Procedure ~S~%requires its %A argument ~
-           to be of type ~S,~%but it was called with ~
-           an argument of type ~S.~%"
-          procedure arg spec actual))
+  (format
+   #t
+   "~%Procedure ~S~%requires its %A argument ~
+    to be of type ~S,~%but it was called with ~
+    an argument of type ~S.~%"
+   procedure arg spec actual))
 @end group
 @end example
 
-@code{(type-clash-error 'vector-ref "first" 'integer 'vector)} prints:
-
 @example
 @group
+(type-clash-error 'vector-ref
+                  "first"
+                  'integer
+                  'vector)
+
+@r{prints}
+
 Procedure vector-ref
 requires its first argument to be of type integer,
 but it was called with an argument of type vector.
@@ -12581,8 +12673,6 @@ which must be an @sc{i/o} port if given.  If not given, this port
 defaults to the value of @code{(interaction-i/o-port)}; this is
 initially the console @sc{i/o} port.
 
-The required argument @var{prompt} must be a string.
-
 @deffn {procedure+} prompt-for-command-expression prompt [port]
 Prompts the user for an expression that is to be executed as a command.
 This is the procedure called by the @sc{rep} loop to read the user's
@@ -12590,13 +12680,14 @@ expressions.
 
 If @var{prompt} is a string, it is used verbatim as the prompt string.
 Otherwise, it must be a pair whose car is @code{standard} and whose cdr
-is a string; in this case the prompt string is formed by appending a
-space to the cdr string, unless it already ends in a space or is an
-empty string.
+is a string; in this case the prompt string is formed by prepending to
+the string the current @sc{rep} loop ``level number'' and a space.
+Also, a space is appended to the string, unless it already ends in a
+space or is an empty string.
 
-The default behavior of this procedure is to print two newlines, the
-current @sc{rep} loop ``level number'', a space, and the prompt string;
-flush the output buffer; then read an object and return it.
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read an
+object and return it.
 
 Under Edwin and Emacs, before the object is read, the interaction buffer
 is put into a mode that allows expressions to be edited and submitted
@@ -12611,7 +12702,7 @@ command; the returned character is guaranteed to satisfy
 @code{char-graphic?}.  If at all possible, the character is read from
 the user interface using a mode that reads the character as a single
 keystroke; in other words, it should not be necessary for the user to
-follow the character with a carriage return or similar rubbish.
+follow the character with a carriage return or something similar.
 
 @findex debug
 @findex where
@@ -12620,14 +12711,14 @@ the user's commands.
 
 If @var{prompt} is a string, it is used verbatim as the prompt string.
 Otherwise, it must be a pair whose car is @code{standard} and whose cdr
-is a string; in this case the prompt string is formed by appending a
-space to the cdr string, unless it already ends in a space or is an
-empty string.
+is a string; in this case the prompt string is formed by prepending to
+the string the current @sc{rep} loop ``level number'' and a space.
+Also, a space is appended to the string, unless it already ends in a
+space or is an empty string.
 
-The default behavior of this procedure is to print two newlines, the
-current @sc{rep} loop ``level number'', a space, and the prompt string;
-flush the output buffer; read a character in raw mode, echo that
-character, and return it.
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; read a
+character in raw mode, echo that character, and return it.
 
 Under Edwin and Emacs, instead of reading a character, the interaction
 buffer is put into a mode in which graphic characters submit themselves
@@ -12642,9 +12733,9 @@ The prompt string is formed by appending a colon and a space to
 @var{prompt}, unless @var{prompt} already ends in a space or is the null
 string.
 
-The default behavior of this procedure is to print two newlines and the
-prompt string; flush the output buffer; then read an object and return
-it.
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read an
+object and return it.
 
 Under Edwin and Emacs, the expression is read in the minibuffer.
 @end deffn
@@ -12664,12 +12755,12 @@ The prompt string is formed by appending the string @code{" (y or n)? "}
 to @var{prompt}, unless @var{prompt} already ends in a space or is the
 null string.
 
-The default behavior of this procedure is to print two newlines and the
-prompt string; flush the output buffer; then read a character in raw
-mode.  If the character is @code{#\y}, @code{#\Y}, or @code{#\space},
-the procedure returns @code{#t}; If the character is @code{#\n},
-@code{#\N}, or @code{#\rubout}, the procedure returns @code{#f}.
-Otherwise the prompt is repeated.
+The default behavior of this procedure is to print a fresh line, a
+newline, and the prompt string; flush the output buffer; then read a
+character in raw mode.  If the character is @code{#\y}, @code{#\Y}, or
+@code{#\space}, the procedure returns @code{#t}; If the character is
+@code{#\n}, @code{#\N}, or @code{#\rubout}, the procedure returns
+@code{#f}.  Otherwise the prompt is repeated.
 
 Under Edwin or Emacs, the confirmation is read in the minibuffer.
 @end deffn
@@ -12689,15 +12780,20 @@ defaulting and error checking, and sometimes other features, which are
 often unnecessary.  This interface provides the means to bypass such
 features, thus improving performance.
 
-@findex eq?
 The abstract model of an @sc{i/o} port, as implemented here, is a
 combination of a set of named operations and a state.  The state is an
 arbitrary object, the meaning of which is determined by the operations.
 The operations are defined by a mapping from names to procedures.
-Typically the names are symbols, but any object that can be
-discriminated by @code{eq?} may be used.
 
-The operations are divided into two classes:
+@cindex port type
+The set of named operations is represented by an object called a
+@dfn{port type}.  A port type is constructed from a set of named
+operations, and is subsequently used to construct a port.  The port type
+completely specifies the behavior of the port.  Port types also support
+a simple form of inheritance, allowing you to create new ports that are
+similar to existing ports.
+
+The port operations are divided into two classes:
 
 @table @asis
 @item Standard operations
@@ -12720,105 +12816,112 @@ prepared to deal with ports that do not implement them.
 @end table
 
 @menu
+* Port Types::                  
 * Constructors and Accessors for Ports::  
-* Blocking Mode::               
-* Terminal Mode::               
 * Input Port Operations::       
 * Output Port Operations::      
+* Blocking Mode::               
+* Terminal Mode::               
 @end menu
 
-@node Constructors and Accessors for Ports, Blocking Mode,  , Port Primitives
-@subsection Constructors and Accessors for Ports
+@node Port Types, Constructors and Accessors for Ports, Port Primitives, Port Primitives
+@subsection Port Types
 
-The procedures in this section provide means for constructing ports with
-custom operations, accessing their operations, and manipulating their
-internal state.
+The procedures in this section provide means for constructing port types
+with standard and custom operations, and accessing their operations.
 
-@deffn {procedure+} make-input-port operations object
-@deffnx {procedure+} make-output-port operations object
-@deffnx {procedure+} make-i/o-port operations object
-@cindex construction, of port
-Operations must be a list; each element is a list of two elements, the
-name of the operation and the procedure that implements it.  A new port
-is returned with the given operations and a state component of
-@var{object}.
+@deffn {procedure+} make-port-type operations port-type
+@cindex construction, of port type
+Creates and returns a new port type.
+@var{Operations} must be a list; each element is a list of two elements,
+the name of the operation (a symbol) and the procedure that implements
+it.  @var{Port-type} is either @code{#f} or a port type; if it is a port
+type, any operations implemented by @var{port-type} but not specified in
+@var{operations} will be implemented by the resulting port type.
 
 @var{Operations} need not contain definitions for all of the standard
 operations; the procedure will provide defaults for any standard
 operations that are not defined.  At a minimum, the following operations
-must be defined: for input ports, @code{read-char}, @code{peek-char},
-and @code{char-ready?}; for output ports, either @code{write-char} or
-@code{write-substring}; @sc{i/o} ports must supply the minimum
-operations for both input and output.
+must be defined: for input ports, @code{read-char} and @code{peek-char};
+for output ports, either @code{write-char} or @code{write-substring}.
+@sc{i/o} ports must supply the minimum operations for both input and
+output.
+
+If an operation in @var{operations} is defined to be @code{#f}, then the
+corresponding operation in @var{port-type} is @emph{not} inherited.
+
+If @code{read-char} is defined in @var{operations}, then any standard
+input operations defined in @var{port-type} are ignored.  Likewise, if
+@code{write-char} or @code{write-substring} is defined in
+@var{operations}, then any standard output operations defined in
+@var{port-type} are ignored.  This feature allows overriding the
+standard operations without having to enumerate them.
 @end deffn
 
-@deffn {procedure+} port/copy port object
-@cindex copying, of port
-Returns a new copy of @var{port}, identical to the original except that
-its state component is @var{object}.  @var{Port} is not modified.
+@deffn {procedure+} port-type? object
+@deffnx {procedure+} input-port-type? object
+@deffnx {procedure+} output-port-type? object
+@deffnx {procedure+} i/o-port-type? object
+These predicates return @code{#t} if @var{object} is a port type,
+input-port type, output-port type, or @sc{i/o}-port type, respectively.
+Otherwise, they return @code{#f}.
+@end deffn
 
-@code{port/copy} is normally used to speed up creation of ports.  This
-is done by creating a template using one of the port constructors
-@code{make-input-port}, @code{make-output-port}, or
-@code{make-i/o-port}, as appropriate; a dummy state component is
-supplied for the template.  Then @code{port/copy} is used to make a copy
-of the template, supplying the copy with the correct state.  This is
-useful because the port constructors are somewhat slow, as they must
-parse the @var{operations} list, provide defaulting for missing
-operations, etc.
+@deffn {procedure+} port-type/operations port-type
+Returns a newly allocated list containing all of the operations
+implemented by @var{port-type}.  Each element of the list is a list of
+two elements --- the name and its associated operation.
+@end deffn
 
-@findex input-port/copy
-@findex output-port/copy
-For compatibility with old code, @code{input-port/copy} and
-@code{output-port/copy} are synonyms for this procedure.
+@deffn {procedure+} port-type/operation-names port-type
+Returns a newly allocated list whose elements are the names of the
+operations implemented by @var{port-type}.
+@end deffn
+
+@deffn {procedure+} port-type/operation port-type symbol
+Returns the operation named @var{symbol} in @var{port-type}.  If
+@var{port-type} has no such operation, returns @code{#f}.
+@end deffn
+
+@node Constructors and Accessors for Ports, Input Port Operations, Port Types, Port Primitives
+@subsection Constructors and Accessors for Ports
+
+The procedures in this section provide means for constructing ports,
+accessing the type of a port, and manipulating the state of a port.
+
+@deffn {procedure+} make-port port-type state
+Returns a new port with type @var{port-type} and the given @var{state}.
+The port will be an input, output, or @sc{i/o} port according to
+@var{port-type}.
+@end deffn
+
+@deffn {procedure+} port/type port
+Returns the port type of @var{port}.
 @end deffn
 
 @deffn {procedure+} port/state port
 Returns the state component of @var{port}.
-
-@findex input-port/state
-@findex output-port/state
-For compatibility with old code, @code{input-port/state} and
-@code{output-port/state} are synonyms for this procedure.
 @end deffn
 
 @deffn {procedure+} set-port/state! port object
 Changes the state component of @var{port} to be @var{object}.
 Returns an unspecified value.
-
-@findex set-input-port/state!
-@findex set-output-port/state!
-For compatibility with old code, @code{set-input-port/state!} and
-@code{set-output-port/@*state!} are synonyms for this procedure.
 @end deffn
 
-@deffn {procedure+} port/operation port object
-Returns the operation named @var{object} in @var{port}.  If @var{port}
-has no such operation, returns @code{#f}.
+@deffn {procedure+} port/operation port symbol
+Equivalent to
 
-@findex input-port/operation
-@findex output-port/operation
-@findex input-port/custom-operation
-@findex output-port/custom-operation
-For compatibility with old code, @code{input-port/operation} and
-@code{output-port/operation} are similar to @code{port/operation}.  They
-differ in that they translate certain old operation names to new
-equivalents before calling @code{port/operation}.
-@code{input-port/custom-operation} and
-@code{output-port/custom-operation} are synonyms for
-@code{input-port/@*operation} and @code{output-port/operation},
-respectively.
+@example
+(port-type/operation (port/type @var{port}) @var{symbol})
+@end example
 @end deffn
 
 @deffn {procedure+} port/operation-names port
-Returns a list whose elements are the names of the operations supported
-by @code{port}.  The list is not newly allocated and must not be
-modified.
+Equivalent to
 
-@findex input-port/operation-names
-@findex output-port/operation-names
-For compatibility with old code, @code{input-port/operation-names} and
-@code{output-port/@*operation-names} are synonyms for this procedure.
+@example
+(port-type/operation-names (port/type @var{port}))
+@end example
 @end deffn
 
 @deffn {procedure+} make-eof-object input-port
@@ -12829,7 +12932,248 @@ Returns an object that satisfies the predicate @code{eof-object?}.  This
 is sometimes useful when building input ports.
 @end deffn
 
-@node Blocking Mode, Terminal Mode, Constructors and Accessors for Ports, Port Primitives
+@node Input Port Operations, Output Port Operations, Constructors and Accessors for Ports, Port Primitives
+@subsection Input Port Operations
+@cindex input port operations
+
+This section describes the standard operations on input ports.
+Following that, some useful custom operations are described.
+
+@defop {operation+} {input port} read-char input-port
+@cindex character, input from port
+Removes the next character available from @var{input-port} and returns
+it.  If @var{input-port} has no more characters and will never have any
+(e.g.@: at the end of an input file), this operation returns an
+end-of-file object.  If @var{input-port} has no more characters but will
+eventually have some more (e.g.@: a terminal where nothing has been
+typed recently), and it is in non-blocking mode, @code{#f} is returned;
+otherwise the operation hangs until input is available.
+@end defop
+
+@defop {operation+} {input port} peek-char input-port
+Reads the next character available from @var{input-port} and returns it.
+The character is @emph{not} removed from @var{input-port}, and a
+subsequent attempt to read from the port will get that character again.
+In other respects this operation behaves like @code{read-char}.
+@end defop
+
+@defop {operation+} {input port} discard-char input-port
+Discards the next character available from @var{input-port} and returns
+an unspecified value.  In other respects this operation behaves like
+@code{read-char}.
+@end defop
+
+@defop {operation+} {input port} char-ready? input-port k
+@code{char-ready?} returns @code{#t} if at least one character is
+available to be read from @var{input-port}.  If no characters are
+available, the operation waits up to @var{k} milliseconds before
+returning @code{#f}, returning immediately if any characters become
+available while it is waiting.
+@end defop
+
+@defop {operation+} {input port} read-string input-port char-set
+@defopx {operation+} {input port} discard-chars input-port char-set
+@cindex string, input from port
+These operations are like @code{read-char} and @code{discard-char},
+except that they read or discard multiple characters at once.  This can
+have a marked performance improvement on buffered input ports.  All
+characters up to, but excluding, the first character in @var{char-set}
+(or end of file) are read from @var{input-port}.  @code{read-string}
+returns these characters as a newly allocated string, while
+@code{discard-chars} discards them and returns an unspecified value.
+These operations hang until sufficient input is available, even if
+@var{input-port} is in non-blocking mode.  If end of file is encountered
+before any input characters, @code{read-string} returns an end-of-file
+object.
+@end defop
+
+@defop {operation+} {input port} read-substring input-port string start end
+Reads characters from @var{input-port} into the substring defined by
+@var{string}, @var{start}, and @var{end} until either the substring has
+been filled or there are no more characters available.  Returns the
+number of characters written to the substring.
+
+If @var{input-port} is an interactive port, and at least one character
+is immediately available, the available characters are written to the
+substring and this operation returns immediately.  If no characters are
+available, and @var{input-port} is in blocking mode, the operation
+blocks until at least one character is available.  Otherwise, the
+operation returns @code{#f} immediately.
+
+This is an extremely fast way to read characters from a port.
+@end defop
+
+@deffn {procedure+} input-port/read-char input-port
+@deffnx {procedure+} input-port/peek-char input-port
+@deffnx {procedure+} input-port/discard-char input-port
+@deffnx {procedure+} input-port/char-ready? input-port k
+@deffnx {procedure+} input-port/read-string input-port char-set
+@deffnx {procedure+} input-port/discard-chars input-port char-set
+@deffnx {procedure+} input-port/read-substring input-port string start end
+Each of these procedures invokes the respective operation on
+@var{input-port}.  For example, the following are equivalent:
+
+@example
+@group
+(input-port/read-char @var{input-port})
+((input-port/operation @var{input-port} 'read-char) @var{input-port})
+@end group
+@end example
+@end deffn
+
+The following custom operations are implemented for input ports to
+files, and will also work with some other kinds of input ports:
+
+@defop {operation+} {input port} eof? input-port
+Returns @code{#t} if @var{input-port} is known to be at end of file,
+otherwise it returns @code{#f}.
+@end defop
+
+@defop {operation+} {input port} chars-remaining input-port
+Returns an estimate of the number of characters remaining to be read
+from @var{input-port}.  This is useful only when @var{input-port} is a
+file port in binary mode; in other cases, it returns @code{#f}.
+@end defop
+
+@defop {operation+} {input port} buffered-input-chars input-port
+Returns the number of unread characters that are stored in
+@var{input-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop {operation+} {input port} input-buffer-size input-port
+Returns the maximum number of characters that @var{input-port}'s buffer
+can hold.
+@end defop
+
+@defop {operation+} {input port} set-input-buffer-size input-port size
+Resizes @var{input-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
+@node Output Port Operations, Blocking Mode, Input Port Operations, Port Primitives
+@subsection Output Port Operations
+@cindex output port operations
+
+This section describes the standard operations on output ports.
+Following that, some useful custom operations are described.
+
+@defop {operation+} {output port} write-char output-port char
+@cindex character, output to port
+Writes @var{char} to @var{output-port} and returns an unspecified value.
+@end defop
+
+@defop {operation+} {output port} write-substring output-port string start end
+@cindex substring, output to port
+Writes the substring specified by @var{string}, @var{start}, and
+@var{end} to @var{output-port} and returns an unspecified value.
+Equivalent to writing the characters of the substring, one by one, to
+@var{output-port}, but is implemented very efficiently.
+@end defop
+
+@defop {operation+} {output port} fresh-line output-port
+Most output ports are able to tell whether or not they are at the
+beginning of a line of output.  If @var{output-port} is such a port,
+end-of-line is written to the port only if the port is not already at
+the beginning of a line.  If @var{output-port} is not such a port, and
+end-of-line is unconditionally written to the port.  Returns an
+unspecified value.
+@end defop
+
+@defop {operation+} {output port} flush-output output-port
+If @var{output-port} is buffered, this causes its buffer to be written
+out.  Otherwise it has no effect.  Returns an unspecified value.
+@end defop
+
+@defop {operation+} {output port} discretionary-flush-output output-port
+Normally, this operation does nothing.  However, ports that support
+discretionary output flushing implement this operation identically to @code{flush-output}.
+@end defop
+
+@deffn {procedure+} output-port/write-char output-port char
+@deffnx {procedure+} output-port/write-substring output-port string start end
+@deffnx {procedure+} output-port/fresh-line output-port
+@deffnx {procedure+} output-port/flush-output output-port
+@deffnx {procedure+} output-port/discretionary-flush-output output-port
+Each of these procedures invokes the respective operation on
+@var{output-port}.  For example, the following are equivalent:
+
+@example
+@group
+(output-port/write-char @var{output-port} @var{char})
+((output-port/operation @var{output-port} 'write-char)
+ @var{output-port} @var{char})
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} output-port/write-string output-port string
+Writes @var{string} to @var{output-port}.  Equivalent to
+
+@example
+@group
+(output-port/write-substring @var{output-port}
+                             @var{string}
+                             0
+                             (string-length @var{string}))
+@end group
+@end example
+@end deffn
+
+The following custom operations are generally useful.
+
+@defop {operation+} {output port} buffered-output-chars output-port
+Returns the number of unwritten characters that are stored in
+@var{output-port}'s buffer.  This will always be less than or equal to
+the buffer's size.
+@end defop
+
+@defop {operation+} {output port} output-buffer-size output-port
+Returns the maximum number of characters that @var{output-port}'s buffer
+can hold.
+@end defop
+
+@defop {operation+} {output port} set-output-buffer-size output-port size
+Resizes @var{output-port}'s buffer so that it can hold at most @var{size}
+characters.  Characters in the buffer are discarded.  @var{Size} must be
+an exact non-negative integer.
+@end defop
+
+@defop {operation+} {output port} x-size output-port
+Returns an exact positive integer that is the width of @var{output-port}
+in characters.  If @var{output-port} has no natural width, e.g.@: if it is
+a file port, @code{#f} is returned.
+@end defop
+
+@defop {operation+} {output port} y-size output-port
+Returns an exact positive integer that is the height of
+@var{output-port} in characters.  If @var{output-port} has no natural
+height, e.g.@: if it is a file port, @code{#f} is returned.
+@end defop
+
+@deffn {procedure+} output-port/x-size output-port
+This procedure invokes the custom operation whose name is the symbol
+@code{x-size}, if it exists.  If the @code{x-size} operation is both
+defined and returns a value other than @code{#f}, that value is returned
+as the result of this procedure.  Otherwise, @code{output-port/x-size}
+returns a default value (currently @code{80}).
+
+@code{output-port/x-size} is useful for programs that tailor their
+output to the width of the display (a fairly common practice).  If the
+output device is not a display, such programs normally want some
+reasonable default width to work with, and this procedure provides
+exactly that.
+@end deffn
+
+@deffn {procedure+} output-port/y-size output-port
+This procedure invokes the custom operation whose name is the symbol
+@code{y-size}, if it exists.  If the @code{y-size} operation is defined,
+the value it returns is returned as the result of this procedure;
+otherwise, @code{#f} is returned.
+@end deffn
+
+@node Blocking Mode, Terminal Mode, Output Port Operations, Port Primitives
 @subsection Blocking Mode
 
 @cindex blocking mode, of port
@@ -12902,7 +13246,7 @@ by @code{dynamic-wind}, which guarantees that the output blocking mode
 is restored if @var{thunk} escapes from its continuation.
 @end deffn
 
-@node Terminal Mode, Input Port Operations, Blocking Mode, Port Primitives
+@node Terminal Mode,  , Blocking Mode, Port Primitives
 @subsection Terminal Mode
 
 @cindex terminal mode, of port
@@ -12986,277 +13330,6 @@ by @code{dynamic-wind}, which guarantees that the output terminal mode is
 restored if @var{thunk} escapes from its continuation.
 @end deffn
 
-@node Input Port Operations, Output Port Operations, Terminal Mode, Port Primitives
-@subsection Input Port Operations
-@cindex input port operations
-
-This section describes the standard operations on input ports.
-Following that, some useful custom operations are described.
-
-@defop {operation+} {input port} read-char input-port
-@cindex character, input from port
-Removes the next character available from @var{input-port} and returns
-it.  If @var{input-port} has no more characters and will never have any
-(e.g.@: at the end of an input file), this operation returns an
-end-of-file object.  If @var{input-port} has no more characters but will
-eventually have some more (e.g.@: a terminal where nothing has been
-typed recently), and it is in non-blocking mode, @code{#f} is returned;
-otherwise the operation hangs until input is available.
-@end defop
-
-@defop {operation+} {input port} peek-char input-port
-Reads the next character available from @var{input-port} and returns it.
-The character is @emph{not} removed from @var{input-port}, and a
-subsequent attempt to read from the port will get that character again.
-In other respects this operation behaves like @code{read-char}.
-@end defop
-
-@defop {operation+} {input port} discard-char input-port
-Discards the next character available from @var{input-port} and returns
-an unspecified value.  In other respects this operation behaves like
-@code{read-char}.
-@end defop
-
-@defop {operation+} {input port} char-ready? input-port k
-@code{char-ready?} returns @code{#t} if at least one character is
-available to be read from @var{input-port}.  If no characters are
-available, the operation waits up to @var{k} milliseconds before
-returning @code{#f}, returning immediately if any characters become
-available while it is waiting.
-@end defop
-
-@defop {operation+} {input port} read-string input-port char-set
-@defopx {operation+} {input port} discard-chars input-port char-set
-@cindex string, input from port
-These operations are like @code{read-char} and @code{discard-char},
-except that they read or discard multiple characters at once.  This can
-have a marked performance improvement on buffered input ports.  All
-characters up to, but excluding, the first character in @var{char-set}
-(or end of file) are read from @var{input-port}.  @code{read-string}
-returns these characters as a newly allocated string, while
-@code{discard-chars} discards them and returns an unspecified value.
-These operations hang until sufficient input is available, even if
-@var{input-port} is in non-blocking mode.  If end of file is encountered
-before any input characters, @code{read-string} returns an end-of-file
-object.
-@end defop
-
-@deffn {procedure+} input-port/operation/read-char input-port
-@deffnx {procedure+} input-port/operation/peek-char input-port
-@deffnx {procedure+} input-port/operation/discard-char input-port
-@deffnx {procedure+} input-port/operation/char-ready? input-port
-@deffnx {procedure+} input-port/operation/read-string input-port
-@deffnx {procedure+} input-port/operation/discard-chars input-port
-Each of these procedures returns the procedure that implements the
-respective operation for @var{input-port}.  Each is equivalent to, but
-faster than, @code{input-port/operation} on the respective operation
-name:
-
-@example
-@group
-(input-port/operation/read-char @var{input-port})
-(input-port/operation @var{input-port} 'read-char)
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} input-port/read-char input-port
-@deffnx {procedure+} input-port/peek-char input-port
-@deffnx {procedure+} input-port/discard-char input-port
-@deffnx {procedure+} input-port/char-ready? input-port k
-@deffnx {procedure+} input-port/read-string input-port char-set
-@deffnx {procedure+} input-port/discard-chars input-port char-set
-Each of these procedures invokes the respective operation on
-@var{input-port}.  For example, the following are equivalent:
-
-@example
-@group
-(input-port/read-string @var{input-port} @var{char-set})
-((input-port/operation/read-string @var{input-port}) @var{input-port} @var{char-set})
-@end group
-@end example
-@end deffn
-
-The following custom operations are implemented for input ports to
-files, and will also work with some other kinds of input ports:
-
-@defop {operation+} {input port} eof? input-port
-Returns @code{#t} if @var{input-port} is known to be at end of file,
-otherwise it returns @code{#f}.
-@end defop
-
-@defop {operation+} {input port} read-chars input-port string
-Attempts to read enough characters from @var{input-port} to fill
-@var{string}, returning the number of characters actually read.
-The string will be completely filled unless the port is unable to
-deliver the characters; this can happen when it is a file port and there
-aren't that many characters available, or when it is an interactive port
-in non-blocking mode and doesn't have that many characters immediately
-available.
-This is an extremely fast way to read characters from the port.
-@end defop
-
-@defop {operation+} {input port} read-substring input-port string start end
-Attempts to read enough characters from @var{input-port} to fill the
-substring specified by @var{string}, @var{start}, and @var{end},
-returning the number of characters actually read.
-The string will be completely filled unless the port is unable to
-deliver the characters; this can happen when it is a file port and there
-aren't that many characters available, or when it is an interactive port
-in non-blocking mode and doesn't have that many characters immediately
-available.
-This is an extremely fast way to read characters from the port.
-@end defop
-
-@defop {operation+} {input port} chars-remaining input-port
-Computes an estimate of the number of characters remaining to be read
-from @var{input-port}.  This is useful only when @var{input-port} is a
-file port in binary mode; in other cases, it returns @code{#f}.
-@end defop
-
-@defop {operation+} {input port} buffered-input-chars input-port
-Returns the number of unread characters that are stored in
-@var{input-port}'s buffer.  This will always be less than or equal to
-the buffer's size.
-@end defop
-
-@defop {operation+} {input port} input-buffer-size input-port
-Returns the maximum number of characters that @var{input-port}'s buffer
-can hold.
-@end defop
-
-@defop {operation+} {input port} set-input-buffer-size input-port size
-Resizes @var{input-port}'s buffer so that it can hold at most @var{size}
-characters.  Characters in the buffer are discarded.  @var{Size} must be
-an exact non-negative integer.
-@end defop
-
-@node Output Port Operations,  , Input Port Operations, Port Primitives
-@subsection Output Port Operations
-@cindex output port operations
-
-This section describes the standard operations on output ports.
-Following that, some useful custom operations are described.
-
-@defop {operation+} {output port} write-char output-port char
-@cindex character, output to port
-Writes @var{char} to @var{output-port} and returns an unspecified value.
-@end defop
-
-@defop {operation+} {output port} write-substring output-port string start end
-@cindex substring, output to port
-Writes the substring specified by @var{string}, @var{start}, and
-@var{end} to @var{output-port} and returns an unspecified value.
-Equivalent to writing the characters of the substring, one by one, to
-@var{output-port}, but is often implemented more efficiently.
-@end defop
-
-@defop {operation+} {output port} write-string output-port string
-@cindex string, output to port
-Writes @var{string} to @var{output-port} and returns an unspecified
-value.
-@end defop
-
-@defop {operation+} {output port} flush-output output-port
-If @var{output-port} is buffered, this causes its buffer to be written
-out.  Otherwise it has no effect.  Returns an unspecified value.
-@end defop
-
-@defop {operation+} {output port} discretionary-flush-output output-port
-If @var{output-port} is buffered, this causes its buffer to be written
-out.  Otherwise it has no effect.  Returns an unspecified value.
-
-This operation, if defined, is normally identical to
-@code{flush-output}.  However, it is not normally defined, and even when
-it is, it is invoked at different times (@pxref{Output Procedures}).
-@end defop
-
-@deffn {procedure+} output-port/operation/write-char output-port
-@deffnx {procedure+} output-port/operation/write-substring output-port
-@deffnx {procedure+} output-port/operation/write-string output-port
-@deffnx {procedure+} output-port/operation/flush-output output-port
-@deffnx {procedure+} output-port/operation/discretionary-flush-output output-port
-Each of these procedures returns the procedure that implements the
-respective operation for @var{output-port}.  Each is equivalent to, but
-faster than, @code{output-port/operation} on the respective operation
-name:
-
-@example
-@group
-(output-port/operation/write-char @var{output-port})
-(output-port/operation @var{output-port} 'write-char)
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} output-port/write-char output-port char
-@deffnx {procedure+} output-port/write-substring output-port string start end
-@deffnx {procedure+} output-port/write-string output-port string
-@deffnx {procedure+} output-port/flush-output output-port
-@deffnx {procedure+} output-port/discretionary-flush-output output-port
-Each of these procedures invokes the respective operation on
-@var{output-port}.  For example, the following are equivalent:
-
-@example
-@group
-(output-port/write-char @var{output-port} @var{char})
-((output-port/operation/write-char @var{output-port}) @var{output-port} @var{char})
-@end group
-@end example
-@end deffn
-
-The following custom operations are generally useful.
-
-@defop {operation+} {output port} buffered-output-chars output-port
-Returns the number of unwritten characters that are stored in
-@var{output-port}'s buffer.  This will always be less than or equal to
-the buffer's size.
-@end defop
-
-@defop {operation+} {output port} output-buffer-size output-port
-Returns the maximum number of characters that @var{output-port}'s buffer
-can hold.
-@end defop
-
-@defop {operation+} {output port} set-output-buffer-size output-port size
-Resizes @var{output-port}'s buffer so that it can hold at most @var{size}
-characters.  Characters in the buffer are discarded.  @var{Size} must be
-an exact non-negative integer.
-@end defop
-
-@defop {operation+} {output port} x-size output-port
-Returns an exact positive integer that is the width of @var{output-port}
-in characters.  If @var{output-port} has no natural width, e.g.@: if it is
-a file port, @code{#f} is returned.
-@end defop
-
-@defop {operation+} {output port} y-size output-port
-Returns an exact positive integer that is the height of
-@var{output-port} in characters.  If @var{output-port} has no natural
-height, e.g.@: if it is a file port, @code{#f} is returned.
-@end defop
-
-@deffn {procedure+} output-port/x-size output-port
-This procedure invokes the custom operation whose name is the symbol
-@code{x-size}, if it exists.  If the @code{x-size} operation is both
-defined and returns a value other than @code{#f}, that value is returned
-as the result of this procedure.  Otherwise, @code{output-port/x-size}
-returns a default value (currently @code{79}).
-
-@code{output-port/x-size} is useful for programs that tailor their
-output to the width of the display (a fairly common practice).  If the
-output device is not a display, such programs normally want some
-reasonable default width to work with, and this procedure provides
-exactly that.
-@end deffn
-
-@deffn {procedure+} output-port/y-size output-port
-This procedure invokes the custom operation whose name is the symbol
-@code{y-size}, if it exists.  If the @code{y-size} operation is defined,
-the value it returns is returned as the result of this procedure;
-otherwise, @code{#f} is returned.
-@end deffn
-
 @node File-System Interface, Error System, Input/Output, Top
 @chapter File-System Interface
 @cindex file-system interface
@@ -13293,7 +13366,7 @@ A facility for reading the contents of a directory.
 * Directory Reader::            
 @end menu
 
-@node Pathnames, Working Directory,  , File-System Interface
+@node Pathnames, Working Directory, File-System Interface, File-System Interface
 @section Pathnames
 
 @comment **** begin CLTL ****
@@ -13354,7 +13427,7 @@ external representations.
 * Miscellaneous Pathnames::     
 @end menu
 
-@node Filenames and Pathnames, Components of Pathnames,  , Pathnames
+@node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
 @subsection Filenames and Pathnames
 
 Pathname objects are usually created by parsing filenames (character
@@ -13371,8 +13444,8 @@ to @code{(parse-namestring @var{object} #f #f)}.
 
 @example
 @group
-(->pathname "foo")              @result{}  #[pathname 65 "foo"]
-(->pathname "/usr/morris")      @result{}  #[pathname 66 "/usr/morris"]
+(->pathname "foo")          @result{}  #[pathname 65 "foo"]
+(->pathname "/usr/morris")  @result{}  #[pathname 66 "/usr/morris"]
 @end group
 @end example
 @end deffn
@@ -13514,11 +13587,11 @@ missing components.
 
 Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
-a value makes no sense.  For example, unix, @sc{dos}, Windows, and OS/2
-file systems usually do not support version numbers, so the version
-component for such a host might be
-@code{unspecific}.@footnote{This description is adapted from
-@cite{Common Lisp, The Language}, second edition, section 23.1.1.}
+a value makes no sense.  For example, unix, Windows, and OS/2 file
+systems usually do not support version numbers, so the version component
+for such a host might be @code{unspecific}.@footnote{This description is
+adapted from @cite{Common Lisp, The Language}, second edition, section
+23.1.1.}
 @comment **** end CLTL ****
 
 Each component in a pathname is typically one of the following (with
@@ -13630,7 +13703,12 @@ component, which were outlined above.
 
 @example
 @group
-(make-pathname #f #f '(absolute "usr" "morris") "foo" "scm" #f)
+(make-pathname #f
+               #f
+               '(absolute "usr" "morris")
+               "foo"
+               "scm"
+               #f)
      @result{}  #[pathname 67 "/usr/morris/foo.scm"]
 @end group
 @end example
@@ -13925,8 +14003,8 @@ The @var{host} argument defaults to the value of @code{local-host}.  If
 the initialization file does not exist this procedure returns @code{#f}.
 
 Under unix, the init file is called @file{.scheme.init}; under Windows
-and OS/2, the init file is called @file{scheme.ini}.  In either case, it
-is located in the user's home directory, which is computed by
+and OS/2, the init file is called @file{scheme.ini}.  In either
+case, it is located in the user's home directory, which is computed by
 @code{user-homedir-pathname}.
 @end deffn
 
@@ -13944,25 +14022,48 @@ computed using the @code{getlogin} system call, or if that fails, the
 @code{geteuid} system call.  The resulting user name is passed to the
 @code{getpwnam} system call to obtain the home directory.
 
-Under OS/2, the user's home directory is specified by the @code{HOME}
-environment variable.  If this variable is undefined, but the
-@code{USERDIR} and @code{USER} environment variables are defined, then
-the user's home directory is @file{%USERDIR%\%USER%}.  If only
-@code{USERDIR} is defined, then the user's home directory is
-@file{%USERDIR%\nouser}.  If none of these variables is defined, then
-the home directory is the root directory of the current drive.
+Under OS/2, several heuristics are tried to find the user's home
+directory.  First, if the environment variable @code{HOME} is defined,
+that is the home directory.  If @code{HOME} is undefined, but the
+@code{USERDIR} and @code{USER} environment variables are defined and
+the directory @file{%USERDIR%\%USER%} exists, then it is used.  Failing
+that, if the directory @file{%USER%} exists on the OS/2 system
+drive, then it is used.  As a last resort, the OS/2 system drive is
+the home directory.
 
-Under Windows, the user's home directory is computed by examining
-several environment variables, in the following order.  If
-@code{HOMEPATH} is defined, the home directory is
-@file{%HOMEDRIVE%%HOMEPATH%}.  If @code{HOME} is defined, the home
-directory is @file{%HOMEDRIVE%%HOME%}.  If @code{USERDIR} and
-@code{USERNAME} are defined, the home directory is
-@file{%USERDIR%\%USERNAME%}.  If @code{USERDIR} and @code{USER} are
-defined, the home directory is @file{%USERDIR%\%USER%}.  If
-@code{USERDIR} is defined, the home directory is
-@file{%USERDIR%\nouser}.  If none of these variables is defined, then
-the home directory is the root directory of the current drive.
+Like OS/2, the Windows implementation uses heuristics based on
+environment variables.  The user's home directory is computed by
+examining several environment variables, in the following order:
+
+@itemize @bullet
+@item
+@code{HOMEDRIVE} and @code{HOMEPATH} are both defined and
+@file{%HOMEDRIVE%%HOMEPATH%} is an existing directory.  (These variables
+are automatically defined by Windows NT.)
+
+@item
+@code{HOME} is defined and @file{%HOME%} is an existing directory.
+
+@item
+@code{USERDIR} and @code{USERNAME} are defined and
+@file{%USERDIR%\%USERNAME%} is an existing directory.
+
+@item
+@code{USERDIR} and @code{USER} are defined and
+@file{%USERDIR%\%USER%} is an existing directory.
+
+@item
+@code{USERNAME} is defined and @file{%USERNAME%} is an existing
+directory on the Windows system drive.
+
+@item
+@code{USER} is defined and @file{%USER%} is an existing directory on the
+Windows system drive.
+
+@item
+Finally, if all else fails, the Windows system drive is used as the home
+directory.
+@end itemize
 @end deffn
 
 @deffn {procedure+} system-library-pathname pathname
@@ -13975,15 +14076,15 @@ error of type @code{condition-type:file-operation-error} is signalled if
 @example
 @group
 (system-library-pathname "compiler.com")
-     @result{} #[pathname 45 "/usr/local/lib/mit-scheme/compiler.com"]
+  @result{} #[pathname 45 "/usr/local/lib/mit-scheme/compiler.com"]
 @end group
 @end example
 @end deffn
 
 @deffn {procedure+} system-library-directory-pathname pathname
 @cindex library, system pathname
-Locates the pathname of a MIT Scheme system library directory.  An error
-of type @code{condition-type:file-operation-error} is signalled if
+Locates the pathname of an MIT Scheme system library directory.  An
+error of type @code{condition-type:file-operation-error} is signalled if
 @var{pathname} cannot be located on the library search path.
 
 @example
@@ -14033,7 +14134,7 @@ pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
 programs and the short name for interactive use.
 
 Additionally, @code{set-working-directory-pathname!} modifies the value
-of @code{*default-pathname-defaults*} by merging the new working
+of@* @code{*default-pathname-defaults*} by merging the new working
 directory into it.
 
 When this procedure is executed in the top-level @sc{rep} loop, it
@@ -14146,12 +14247,11 @@ appropriate file cannot be located within the file system.
 @end deffn
 
 @deffn {procedure+} call-with-temporary-file-pathname procedure
-@code{call-with-temporary-file-pathname} calls
-@code{temporary-file-pathname} to create a temporary file, then calls
-@var{procedure} with one argument, the pathname referring to that file.
-When @var{procedure} returns, if the temporary file still exists, it is
-deleted; then, the value yielded by @var{procedure} is returned.  If
-@var{procedure} escapes from its continuation, and the file still
+Calls @code{temporary-file-pathname} to create a temporary file, then
+calls @var{procedure} with one argument, the pathname referring to that
+file.  When @var{procedure} returns, if the temporary file still exists,
+it is deleted; then, the value yielded by @var{procedure} is returned.
+If @var{procedure} escapes from its continuation, and the file still
 exists, it is deleted.
 @end deffn
 
@@ -14171,19 +14271,20 @@ writable directory is found:
 
 @itemize @bullet
 @item
-The directory specified by the @code{TEMP} environment variable, if any.
+The directories specified by the environment variables @code{TMPDIR},
+@code{TEMP}, or @code{TMP}.
 
 @item
-The directory specified by the @code{TMP} environment variable, if any.
+Under unix, the directories @file{/var/tmp}, @file{/usr/tmp}, or
+@file{/tmp}.
 
 @item
-Under unix, the directories @file{/tmp} and @file{/usr/tmp}.
+Under OS/2 or Windows, the following directories on the system drive:
+@file{\temp}, @file{\tmp}, or @file{\}.
 
 @item
-Under OS/2 or Windows, the directories: @file{\tmp} on the current
-drive; @file{c:\}; the current directory; and @file{\} on the current
-drive.  (The current directory and drive are specified by
-@code{*default-pathname-defaults*}.)
+Under OS/2 or Windows, the current directory, as specified by
+@code{*default-pathname-defaults*}.
 @end itemize
 @end deffn
 
@@ -14220,8 +14321,8 @@ output; i.e.@: a @dfn{writable} file.  Otherwise returns @code{#f}.
 @deffn {procedure+} file-executable? filename
 Returns @code{#t} if @var{filename} names a file that can be executed.
 Otherwise returns @code{#f}.  Under unix, an executable file is
-identified by its mode bits.  Under OS/2, an executable file has one of
-the file extensions @file{.exe}, @file{.com}, @file{.cmd}, or
+identified by its mode bits.  Under OS/2, an executable file has
+one of the file extensions @file{.exe}, @file{.com}, @file{.cmd}, or
 @file{.bat}.  Under Windows, an executable file has one of the file
 extensions @file{.exe}, @file{.com}, or @file{.bat}.
 @end deffn
@@ -14241,8 +14342,8 @@ returned.
 @deffn {procedure+} file-eq? filename1 filename2
 Determines whether @var{filename1} and @var{filename2} refer to the same
 file.  Under unix, this is done by comparing the inodes and devices of
-the two files.  Under OS/2 and Windows, this is done by comparing the
-filename strings.
+the two files.  Under OS/2 and Windows, this is done by comparing
+the filename strings.
 @end deffn
 
 @deffn {procedure+} file-modes filename
@@ -14286,9 +14387,6 @@ Returns the access time of @var{filename} as an exact non-negative
 integer.  The result may be compared to other file times using ordinary
 integer arithmetic.  If @var{filename} names a file that does not exist,
 @code{file-access-time} returns @code{#f}.
-
-Some operating systems don't implement access times; in those systems
-@code{file-access-time} returns an unspecified value.
 
 @findex file-access-time-direct
 @findex file-access-time-indirect
@@ -14375,10 +14473,10 @@ The length of the file in bytes.
 @end deffn
 
 @deffn {procedure+} file-attributes/mode-string attributes
-The mode string of the file.  This is a newly allocated string showing
-the file's mode bits.  Under unix and Windows, this string is in unix
-format (simulated under Windows).  Under OS/2, this string shows the
-standard OS/2 attributes in their usual format.
+The mode string of the file, a newly allocated string showing the file's
+mode bits.  Under unix, this string is in unix format.  Under OS/2 and
+Windows, this string shows the standard ``DOS'' attributes in their
+usual format.
 @end deffn
 
 @deffn {procedure+} file-attributes/n-links attributes
@@ -14400,13 +14498,15 @@ The group id of the file's group, an exact non-negative integer.
 The inode number of the file, an exact non-negative integer.
 @end deffn
 
-The following additional accessors are defined under OS/2:
+The following additional accessor is defined under OS/2 and Windows:
 
 @deffn {procedure+} file-attributes/modes attributes
 The attribute bits of the file.  This is an exact non-negative integer
-containing the file's attribute bits, exactly as specified by the OS/2
-API.
+containing the file's attribute bits, exactly as specified by the
+operating system's API.
 @end deffn
+
+The following additional accessor is defined under OS/2:
 
 @deffn {procedure+} file-attributes/allocated-length attributes
 The allocated length of the file, which can be larger than the length of
@@ -14419,7 +14519,7 @@ the file due to fixed-length allocation units.
 
 @deffn {procedure+} directory-read directory [sort?]
 @var{Directory} must be an object that can be converted into a pathname
-by @code{->pathname}.  The directory specified by @var{directory} is
+by@* @code{->pathname}.  The directory specified by @var{directory} is
 read, and the contents of the directory is returned as a newly allocated
 list of absolute pathnames.  The result is sorted according to the usual
 sorting conventions for directories, unless @var{sort?} is specified as
@@ -14427,6 +14527,11 @@ sorting conventions for directories, unless @var{sort?} is specified as
 the returned list contains only those pathnames whose name, type, and
 version components match those of @var{directory}; @code{wild} or
 @code{#f} as one of these components means ``match anything''.
+
+The OS/2 and Windows implementations support ``globbing'', in which the
+characters @code{*} and @code{?} are interpreted to mean ``match
+anything'' and ``match any character'', respectively.  This ``globbing''
+is supported only in the file part of @var{directory}.
 @end deffn
 
 @node Error System, Graphics, File-System Interface, Top
@@ -14574,7 +14679,7 @@ uniformly by specifying a handler for the generalization.
 * Taxonomy::                    
 @end menu
 
-@node Condition Signalling, Error Messages,  , Error System
+@node Condition Signalling, Error Messages, Error System, Error System
 @section Condition Signalling
 
 @cindex condition signalling (defn)
@@ -14872,10 +14977,10 @@ signalled it is best to actually put a breakpoint on entry to
 @findex ignore-error
 @vindex standard-error-hook
 @cindex REP loop
-This is the procedure called internally by @code{error} after it calls
-@code{signal-condition}.  It normally creates creates a new @sc{repl}
-with the prompt @code{"error>"} (but see @code{standard-error-hook}).
-In order to simulate the effect of calling @code{error}, code may call
+Called internally by @code{error} after it calls
+@code{signal-condition}.  Normally creates creates a new @sc{repl} with
+the prompt @code{"error>"} (but see @code{standard-error-hook}).  In
+order to simulate the effect of calling @code{error}, code may call
 @code{signal-condition} directly and then call
 @code{standard-error-handler} if @code{signal-condition} returns.
 @end deffn
@@ -15028,7 +15133,7 @@ equivalent to having specified the symbol @code{bound-restarts}.
 * The Named Restart Abstraction::  
 @end menu
 
-@node Establishing Restart Code, Invoking Standard Restart Code,  , Restarts
+@node Establishing Restart Code, Invoking Standard Restart Code, Restarts, Restarts
 @subsection Establishing Restart Code
 
 @deffn {procedure+} with-simple-restart name reporter thunk
@@ -15046,6 +15151,7 @@ If the restart created by @code{with-simple-restart} is invoked it
 simply aborts the computation in progress by returning an unspecified
 value from the call to @code{with-simple-restart}.  Otherwise
 @code{with-simple-restart} returns the value computed by @var{thunk}.
+@end deffn
 
 @example
 @group
@@ -15066,7 +15172,6 @@ value from the call to @code{with-simple-restart}.  Otherwise
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} with-restart name reporter effector interactor thunk
 @findex invoke-restart
@@ -15087,6 +15192,7 @@ however, the @var{effector} will not return back to the handler that
 invoked it.  Instead, the @var{effector} should call a continuation
 created before the condition-signalling process began, and
 @code{with-restart} will therefore not return in the normal manner.
+@end deffn
 
 @example
 @group
@@ -15117,11 +15223,10 @@ created before the condition-signalling process began, and
 @end group
 
 @group
-(by-george! (can-george! (lambda () -3)) @result{} -3
+(by-george! (can-george! (lambda () -3))        @result{} -3
 (by-george! (can-george! (lambda () (car 'x)))) @result{} (george 1 2)
 @end group
 @end example
-@end deffn
 
 @node Invoking Standard Restart Code, Finding and Invoking General Restart Code, Establishing Restart Code, Restarts
 @subsection Invoking Standard Restart Code
@@ -15357,7 +15462,7 @@ provided by restarts.
 * Simple Condition Instance Operations::  
 @end menu
 
-@node Generating Operations on Conditions, Condition State,  , Condition Instances
+@node Generating Operations on Conditions, Condition State, Condition Instances, Condition Instances
 @subsection Generating Operations on Conditions
 
 @findex condition-constructor
@@ -15453,7 +15558,7 @@ the condition as its argument.
 There are several standard procedures that are conventionally used for
 @var{default-handler}.  If @var{condition-type} is a specialization of
 @code{condition-type:error}, @var{default-handler} should be the
-procedure @code{standard-error-handler}.  If @var{condition-type} is a
+procedure@* @code{standard-error-handler}.  If @var{condition-type} is a
 specialization of @code{condition-type:warning}, @var{default-handler}
 should be the procedure @code{standard-warning-handler}.  If
 @var{condition-type} is a specialization of
@@ -15700,6 +15805,7 @@ This type indicates the class of errors in which a program discovers an
 object that is of the wrong type.  The @var{type} field contains a
 string describing the type that was expected, and the @var{datum} field
 contains the object that is of the wrong type.
+@end deffn
 
 @example
 @group
@@ -15709,7 +15815,6 @@ contains the object that is of the wrong type.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:wrong-type-datum datum type
 This procedure signals a condition of type
@@ -15726,6 +15831,7 @@ position that was involved (this field contains either a symbol, a
 non-negative integer, or @code{#f}), the @var{type} field contains a
 string describing the type that was expected, and the @var{datum} field
 contains the offending argument.
+@end deffn
 
 @example
 @group
@@ -15744,7 +15850,6 @@ contains the offending argument.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:wrong-type-argument datum type operator
 This procedure signals a condition of type
@@ -15760,6 +15865,7 @@ arguments.  The @var{datum} field contains the procedure being called,
 the @var{type} field contains the number of arguments that the procedure
 accepts, and the @var{operands} field contains a list of the arguments
 that were passed to the procedure.
+@end deffn
 
 @example
 @group
@@ -15770,7 +15876,6 @@ that were passed to the procedure.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:wrong-number-of-arguments datum type operands
 This procedure signals a condition of type
@@ -15785,6 +15890,7 @@ object that is of the correct type but is otherwise out of range.  Most
 often, this type indicates that an index to some data structure is
 outside of the range of indices for that structure.  The @var{datum}
 field contains the offending object.
+@end deffn
 
 @example
 @group
@@ -15794,7 +15900,6 @@ field contains the offending object.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:datum-out-of-range datum
 This procedure signals a condition of type
@@ -15811,6 +15916,7 @@ procedure (or a symbol naming the procedure), the @var{operand} field
 indicates the argument position that was involved (this field contains
 either a symbol, a non-negative integer, or @code{#f}), and the
 @var{datum} field is the offending argument.
+@end deffn
 
 @example
 @group
@@ -15822,7 +15928,6 @@ either a symbol, a non-negative integer, or @code{#f}), and the
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:bad-range-argument datum operator
 This procedure signals a condition of type
@@ -15837,6 +15942,7 @@ This type indicates an error in which a program attempted to apply an
 object that is not a procedure.  The object being applied is saved in
 the @var{datum} field, and the arguments being passed to the object are
 saved as a list in the @var{operands} field.
+@end deffn
 
 @example
 @group
@@ -15847,7 +15953,6 @@ saved as a list in the @var{operands} field.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {condition type+} condition-type:file-error filename
 This is an abstract type.  It indicates that an error associated with a
@@ -15954,6 +16059,7 @@ This type is generated when a program attempts to access or modify a
 variable that is not bound.  The @var{location} field contains the name
 of the variable, and the @var{environment} field contains the
 environment in which the reference occurred.
+@end deffn
 
 @example
 @group
@@ -15965,13 +16071,13 @@ foo                                     @error{}
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {condition type+} condition-type:unassigned-variable location environment
 This type is generated when a program attempts to access a variable that
 is not assigned.  The @var{location} field contains the name of the
 variable, and the @var{environment} field contains the environment in
 which the reference occurred.
+@end deffn
 
 @example
 @group
@@ -15983,7 +16089,6 @@ foo                                     @error{}
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {condition type+} condition-type:arithmetic-error operator operands
 This is an abstract type.  It indicates that a numerical operation was
@@ -16000,6 +16105,7 @@ This type is generated when a program attempts to divide by zero.  The
 operation (or a symbol naming the procedure), and the @var{operands}
 field contains a list of the arguments that were passed to the
 procedure.
+@end deffn
 
 @example
 @group
@@ -16009,7 +16115,6 @@ procedure.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:divide-by-zero operator operands
 This procedure signals a condition of type
@@ -16074,6 +16179,7 @@ expected to be.  Conditions of this type are signalled by several
 procedures that look for particular named restarts, for example
 @code{muffle-warning}.  The @var{name} field contains the name that was
 being searched for.
+@end deffn
 
 @example
 @group
@@ -16083,7 +16189,6 @@ being searched for.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} error:no-such-restart name
 This procedure signals a condition of type
@@ -16095,6 +16200,7 @@ condition is filled in from the corresponding argument to the procedure.
 A condition of this type is generated when the procedure
 @code{current-load-pathname} is called from somewhere other than inside
 a file being loaded.
+@end deffn
 
 @example
 @group
@@ -16104,7 +16210,6 @@ a file being loaded.
 ; (RESTART 1) => Return to read-eval-print level 1.
 @end group
 @end example
-@end deffn
 
 @deffn {condition type+} condition-type:warning
 This is an abstract type.  All warnings should inherit from this type.
@@ -16142,8 +16247,8 @@ MIT Scheme has a simple two-dimensional line-graphics interface
 that is suitable for many graphics applications.  In particular it is
 often used for plotting data points from experiments.  The interface is
 generic in that it can support different types of graphics devices in a
-uniform manner.  At the present time only two types of graphics device
-are implemented.
+uniform manner.  At the present time only one type of graphics device
+is implemented on each operating system.
 
 Procedures are available for drawing points, lines, and text; defining
 the coordinate system; clipping graphics output; controlling some of the
@@ -16166,13 +16271,12 @@ either an exact integer or an inexact real.
 * Clipping of Graphics Output::  
 * Custom Graphics Operations::  
 * Images::                      
+* X Graphics::                  Graphics on the X Window System
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
-* OS/2 Graphics::               
-* X Graphics::                  
-* Starbase Graphics::           
+* OS/2 Graphics::               Graphics on IBM OS/2
 @end menu
 
-@node Opening and Closing of Graphics Devices, Coordinates for Graphics,  , Graphics
+@node Opening and Closing of Graphics Devices, Coordinates for Graphics, Graphics, Graphics
 @section Opening and Closing of Graphics Devices
 @cindex graphics, opening and closing devices
 
@@ -16300,7 +16404,9 @@ given by @var{x} and @var{y}, using the current drawing mode.
 Erases a single point on @var{graphics-device} at the virtual
 coordinates given by @var{x} and @var{y}.  This procedure is unaffected
 by the current drawing mode.
+@end deffn
 
+@noindent
 This is equivalent to
 
 @example
@@ -16311,7 +16417,6 @@ This is equivalent to
       (graphics-draw-point device x y))))
 @end group
 @end example
-@end deffn
 
 @deffn {procedure+} graphics-draw-line graphics-device x-start y-start x-end y-end
 @var{X-start}, @var{y-start}, @var{x-end}, and @var{y-end} must be real
@@ -16391,7 +16496,6 @@ Altogether 16 boolean operations are available for combining the source
 The source and destination are combined by the device on a
 pixel-by-pixel basis as follows:
 
-@page
 @example
 @group
 Mode    Meaning
@@ -16560,7 +16664,7 @@ For information on the custom operations for a particular device, see
 the documentation for its type.
 @end deffn
 
-@node Images, Win32 Graphics, Custom Graphics Operations, Graphics
+@node Images, X Graphics, Custom Graphics Operations, Graphics
 @section Images
 @cindex graphics, images
 @cindex images, graphics
@@ -16644,11 +16748,333 @@ from left to right.  There must be at least @code{(* (image/height
 @var{image}) (image/width @var{image}))} bytes in @var{bytes}.
 @end deffn
 
-@node Win32 Graphics, OS/2 Graphics, Images, Graphics
+@node X Graphics, Win32 Graphics, Images, Graphics
+@section X Graphics
+@cindex X graphics
+
+@cindex X window system
+MIT Scheme supports graphics in the X window system (version 11).
+Arbitrary numbers of displays may be opened, and arbitrary numbers of
+graphics windows may be created for each display.  A variety of
+operations is available to manipulate various aspects of the windows, to
+control their size, position, colors, and mapping.  The X graphics
+device type supports images, which are implemented as Xlib @code{XImage}
+objects.  X display, window, and image objects are automatically closed
+if they are reclaimed by the garbage collector.
+
+@menu
+* X Graphics Type::             
+* Utilities for X Graphics::    
+* Custom Operations on X Graphics Devices::  
+@end menu
+
+@node X Graphics Type, Utilities for X Graphics, X Graphics, X Graphics
+@subsection X Graphics Type
+
+
+A graphics device for X windows is created by passing the symbol
+@code{x} as the graphics device type name to
+@code{make-graphics-device}:
+
+@example
+(make-graphics-device 'x #!optional @var{display} @var{geometry} @var{suppress-map?})
+@end example
+
+@noindent
+where @var{display} is either a display object, @code{#f}, or a string;
+@var{geometry} is either @code{#f} or a string; and @var{suppress-map?}
+is a boolean or a vector (see below).  A new window is created on the
+appropriate display, and a graphics device representing that window is
+returned.
+
+@findex x-open-display
+@var{Display} specifies which X display the window is to be opened on;
+if it is @code{#f} or a string, it is passed as an argument to
+@code{x-open-display}, and the value returned by that procedure is used
+in place of the original argument.  @var{Geometry} is an X geometry
+string, or @code{#f} which means to use the default geometry (which is
+specified as a resource).
+
+@var{Suppress-map?}, if given, may take two forms.  First, it may be a
+boolean: if @code{#f} (the default), the window is automatically mapped
+after it is created; otherwise, @code{#t} means to suppress this
+automatic mapping.  The second form is a vector of three elements.  The
+first element is a boolean with the same meaning as the boolean form of
+@var{suppress-map?}.  The second element is a string, which specifies an
+alternative resource name to be used for looking up the window's
+resources.  The third element is also a string, which specifies a class
+name for looking up the window's resources.  The default value for
+@var{suppress-map?} is @code{#f}.
+
+The default resource and class names are @code{"schemeGraphics"} and
+@code{"SchemeGraphics"} respectively.
+
+@cindex resources, X graphics
+@cindex X resources, graphics
+The window is initialized using the resource and class names specified
+by @var{suppress-map?}, and is sensitive to the following resource
+properties:
+
+@example
+@group
+Property        Class           Default
+--------        -----           -------
+geometry        Geometry        512x384+0+0
+font            Font            fixed
+borderWidth     BorderWidth     2
+internalBorder  BorderWidth     @r{[border width]}
+background      Background      white
+foreground      Foreground      black
+borderColor     BorderColor     @r{[foreground color]}
+cursorColor     Foreground      @r{[foreground color]}
+pointerColor    Foreground      @r{[foreground color]}
+@end group
+@end example
+
+The window is created with a @code{backing_store} attribute of
+@code{Always}.  The window's name and icon name are initialized to
+@code{"scheme-graphics"}.
+
+
+@node Utilities for X Graphics, Custom Operations on X Graphics Devices, X Graphics Type, X Graphics
+@subsection Utilities for X Graphics
+
+@deffn {procedure+} x-graphics/open-display display-name
+@cindex display, X graphics
+@cindex X display, graphics
+Opens a connection to the display whose name is @var{display-name},
+returning a display object.  If unable to open a connection, @code{#f}
+is returned.  @var{Display-name} is normally a string, which is an X
+display name in the usual form; however, @code{#f} is also allowed,
+meaning to use the value of the unix environment variable
+@code{DISPLAY}.
+@end deffn
+
+@deffn {procedure+} x-graphics/close-display display
+Closes @var{display}; after calling this procedure, it is an error to
+use @var{display} for any purpose.  Any windows that were previously
+opened on @var{display} are destroyed and their resources returned to
+the operating system.
+@end deffn
+
+@deffn {procedure+} x-close-all-displays
+Closes all open connections to X displays.  Equivalent to calling
+@code{x-close-display} on all open displays.
+@end deffn
+
+@deffn {procedure+} x-geometry-string x y width height
+@cindex geometry string, X graphics
+@cindex X geometry string, graphics
+This procedure creates and returns a standard X geometry string from the
+given arguments.  @var{X} and @var{y} must be either exact integers or
+@code{#f}, while @var{width} and @var{height} must be either exact
+non-negative integers or @code{#f}.  Usually either @var{x} and @var{y}
+are both specified or both @code{#f}; similarly for @var{width} and
+@var{height}.  If only one of the elements of such a pair is specified,
+it is ignored.
+
+Examples:
+
+@example
+@group
+(x-geometry-string #f #f 100 200) @result{} "100x200"
+(x-geometry-string 2 -3 100 200) @result{} "100x200+2-3"
+(x-geometry-string 2 -3 #f #f) @result{} "+2-3"
+@end group
+@end example
+
+Note that the @var{x} and @var{y} arguments cannot distinguish between
+@code{+0} and @code{-0}, even though these have different meanings in X.
+If either of those arguments is @code{0}, it means @code{+0} in X
+terminology.  If you need to distinguish these two cases you must create
+your own geometry string using Scheme's string and number primitives.
+@end deffn
+
+@node Custom Operations on X Graphics Devices,  , Utilities for X Graphics, X Graphics
+@subsection Custom Operations on X Graphics Devices
+
+Custom operations are invoked using the procedure
+@code{graphics-operation}.  For example,
+
+@example
+(graphics-operation device 'set-foreground-color "blue")
+@end example
+
+@defop {operation+} x-graphics-device set-background-color color-name
+@defopx {operation+} x-graphics-device set-foreground-color color-name
+@defopx {operation+} x-graphics-device set-border-color color-name
+@defopx {operation+} x-graphics-device set-mouse-color color-name
+@findex graphics-clear
+These operations change the colors associated with a window.
+@var{Color-name} must be a string, which is the X server's name for the
+desired color.  @code{set-border-color} and @code{set-mouse-color}
+immediately change the border and mouse-cursor colors.
+@code{set-background-color} and @code{set-foreground-color} change the
+colors to be used when drawing, but have no effect on anything drawn
+prior to their invocation.  Because changing the background color
+affects the entire window, we recommend calling @code{graphics-clear} on
+the window's device afterwards.  Color names include both mnemonic
+names, like @code{"red"}, and intensity names specified in the
+@code{"#@var{rrggbb}"} notation.
+@end defop
+
+@defop {operation+} x-graphics-device draw-arc x y radius-x radius-y angle-start angle-sweep fill?
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-arc
+
+Operation @code{draw-arc} draws or fills an arc.  An arc is a segment of
+a circle, which may have been stretched along the x- or y- axis to form
+an ellipse.
+
+The parameters @var{x}, @var{y}, @var{radius-x} and @var{radius-y}
+describe the circle and @var{angle-start} and @var{angle-sweep} choose
+which part of the circle is drawn.  The arc is drawn on the graphics
+device with the center of the circle at the virtual coordinates given by
+@var{x} and @var{y}.  @var{radius-x} and @var{radius-y} determine the
+size of the circle in virtual coordinate units.
+
+The parameter @var{angle-start} determines where the arc starts.  It is
+measured in degrees in an anti-clockwise direction, starting at 3
+o'clock.  @var{angle-sweep} determines how much of the circle is drawn.
+It too is measured anti-clockwise in degrees.  A negative value means
+the measurement is in a clockwise direction.
+
+Note that the angles are determined on a unit circle before it is
+stretched into an ellipse, so the actual angles that you will see on the
+computer screen depends on all of: @var{radius-x} and @var{radius-y},
+the window size, and the virtual coordinates.
+
+If @var{fill?} is @code{#f} then just the segment of the circle is
+drawn, otherwise the arc is filled in a pie-slice fashion.
+
+This draws a quarter circle pie slice, standing on its point, with point
+at virtual coordinates (3,5):
+
+@example
+(graphics-opereration g 'draw-arc 3 5 .5 .5 45 90 #t)
+@end example
+
+@end defop
+
+@defop {operation+} x-graphics-device draw-circle x y radius
+@defopx {operation+} x-graphics-device fill-circle x y radius
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-circle
+@findex fill-circle
+These operations draw a circle (outline) or a filled circle (solid) at
+on the graphics device at the virtual coordinates given by @var{x} and
+@var{y}.  These operations could be implemented trivially interms of the
+@code{draw-arc} operation.
+@end defop
+
+@defop {operation+} x-graphics-device set-border-width width
+@defopx {operation+} x-graphics-device set-internal-border-width width
+@findex graphics-clear
+These operations change the external and internal border widths of a
+window.  @var{Width} must be an exact non-negative integer, specified in
+pixels.  The change takes place immediately.  Note that changing the
+internal border width can cause displayed graphics to be garbled; we
+recommend calling @code{graphics-clear} on the window's device after
+doing so.
+@end defop
+
+@defop {operation+} x-graphics-device set-font font-name
+Changes the font used when drawing text in a window.  @var{Font-name}
+must be a string that is a font name known to the X server.  This
+operation does not affect text drawn prior to its invocation.
+@end defop
+
+@defop {operation+} x-graphics-device set-mouse-shape shape-number
+Changes the shape of the mouse cursor.  @var{Shape-number} is an exact
+non-negative integer that is used as an index into the mouse-shape font;
+when multiplied by 2 this number corresponds to an index in the file@*
+@file{/usr/include/X11/cursorfont.h}.
+@end defop
+
+@defop {operation+} x-graphics-device map-window
+@defopx {operation+} x-graphics-device withdraw-window
+These operations control the mapping of windows.  They correspond
+directly to Xlib's @code{XMapWindow} and @code{XWithdrawWindow}.
+@end defop
+
+@defop {operation+} x-graphics-device resize-window width height
+Changes the size of a window.  @var{Width} and @var{height} must be
+exact non-negative integers.  The operation corresponds directly to
+Xlib's @code{XResizeWindow}.
+
+This operation resets the virtual coordinate system and the clip
+rectangle.
+@end defop
+
+@defop {operation+} x-graphics-device move-window x y
+Changes the position of a window on the display.  @var{X} and @var{y}
+must be exact integers.  The operation corresponds directly to Xlib's
+@code{XMoveWindow}.  Note that the coordinates @var{x} and @var{y} do
+not take the external border into account, and therefore will not
+position the window as you might like.  The only reliable way to
+position a window is to ask a window manager to do it for you.
+@end defop
+
+@defop {operation+} x-graphics-device get-default resource property
+This operation corresponds directly to Xlib's @code{XGetDefault}.
+@var{Resource} and @var{property} must be strings.  The operation
+returns the character string corresponding to the association of
+@var{resource} and @var{property}; if no such association exists,
+@code{#f} is returned.
+@end defop
+
+@defop {operation+} x-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
+This operation copies the contents of the rectangle specified by
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height} to
+the rectangle of the same dimensions at @var{destination-x-left} and
+@var{destination-y-top}.
+@end defop
+
+@defop {operation+} x-graphics-device font-structure font-name
+Returns a Scheme equivalent of the X font structure for the font named
+@var{font-name}.  If the string @var{font-name} does not name a font
+known to the X server, or names a 16-bit font, @code{#f} is returned.
+@end defop
+
+@deffn {procedure+} x-font-structure/name font-structure
+@deffnx {procedure+} x-font-structure/direction font-structure
+@deffnx {procedure+} x-font-structure/all-chars-exist font-structure
+@deffnx {procedure+} x-font-structure/default-char font-structure
+@deffnx {procedure+} x-font-structure/min-bounds font-structure
+@deffnx {procedure+} x-font-structure/max-bounds font-structure
+@deffnx {procedure+} x-font-structure/start-index font-structure
+@deffnx {procedure+} x-font-structure/character-bounds font-structure
+@deffnx {procedure+} x-font-structure/max-ascent font-structure
+@deffnx {procedure+} x-font-structure/max-descent font-structure
+These procedures extract the components of the font description
+structure returned by the X graphics operation @code{font-structure}.  A
+more complete description of these components appears in documentation
+of the @code{XLoadQueryFont} Xlib call.  @code{start-index} is the index
+of the first character available in the font.  The @code{min-bounds} and
+@code{max-bounds} components are structures of type
+@code{x-character-bounds}, and the @code{character-bounds} component is
+a vector of the same type.
+@end deffn
+
+@deffn {procedure+} x-character-bounds/lbearing character-bounds
+@deffnx {procedure+} x-character-bounds/rbearing character-bounds
+@deffnx {procedure+} x-character-bounds/width character-bounds
+@deffnx {procedure+} x-character-bounds/ascent character-bounds
+@deffnx {procedure+} x-character-bounds/descent character-bounds
+These procedures extract components of objects of type
+@code{x-character-bounds}.  A more complete description of them appears
+in documentation of the@* @code{XLoadQueryFont} Xlib call.
+@end deffn
+
+@node Win32 Graphics, OS/2 Graphics, X Graphics, Graphics
 @section Win32 Graphics
 @cindex Win32 graphics
 
-MIT Scheme supports graphics on Microsoft Windows 3.1, Windows 95, and
+MIT Scheme supports graphics on Microsoft Windows 95, Windows 98, and
 Windows NT.  In addition to the usual operations, there are operations
 to control the size, position and colors of a graphics window.  Win32
 devices support images, which are implemented as device independent
@@ -16668,7 +17094,7 @@ the click of a mouse button.
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 @end menu
 
-@node Win32 Graphics Type, Custom Operations for Win32 Graphics,  , Win32 Graphics
+@node Win32 Graphics Type, Custom Operations for Win32 Graphics, Win32 Graphics, Win32 Graphics
 @subsection Win32 Graphics Type
 
 Win32 graphics devices are created by specifying the symbol @code{win32}
@@ -16872,16 +17298,16 @@ to the rectangle of the same dimensions at @var{destination-x-left} and
 @var{destination-y-top}.
 @end defop
 
-@node OS/2 Graphics, X Graphics, Win32 Graphics, Graphics
+@node OS/2 Graphics,  , Win32 Graphics, Graphics
 @section OS/2 Graphics
 @cindex OS/2 graphics
 
-MIT Scheme supports graphics under the OS/2 Presentation Manager in OS/2
-version 2.1 and later.  The OS/2 graphics device type is implemented as
-a top level window.  In addition to the usual operations, there are
-operations to control the size, position, and colors of a graphics
-window.  OS/2 graphics devices support images, which are implemented as
-memory presentation spaces.
+MIT Scheme supports graphics under the OS/2 Presentation Manager in
+OS/2 version 2.1 and later.  The OS/2 graphics device type is
+implemented as a top level window.  In addition to the usual operations,
+there are operations to control the size, position, and colors of a
+graphics window.  OS/2 graphics devices support images, which are
+implemented as memory presentation spaces.
 
 The custom graphics operations defined in this section are invoked using
 the procedure @code{graphics-operation}.  For example,
@@ -16898,11 +17324,11 @@ the procedure @code{graphics-operation}.  For example,
 * Miscellaneous Operations for OS/2 Graphics::  
 @end menu
 
-@node OS/2 Graphics Type, Color Operations for OS/2 Graphics,  , OS/2 Graphics
+@node OS/2 Graphics Type, Color Operations for OS/2 Graphics, OS/2 Graphics, OS/2 Graphics
 @subsection OS/2 Graphics Type
 
-OS/2 graphics devices are created by specifying the symbol @code{os/2}
-as the @var{graphics-device-type} argument to
+OS/2 graphics devices are created by specifying the symbol
+@code{os/2} as the @var{graphics-device-type} argument to
 @code{make-graphics-device}.  The OS/2 graphics device type is
 implemented as a top-level window and supports color drawing in addition
 to the standard Scheme graphics operations.
@@ -16968,8 +17394,8 @@ available color is used instead.
 @defop {operation+} os2-graphics-device define-color name spec
 Define the string @var{name} to be the color specified by @var{spec}.
 @var{Spec} may be any acceptable color specification.  Note that the
-color names defined this way are available to any OS/2 graphics device,
-and the names do @emph{not} have to be defined for each device.
+color names defined this way are available to any OS/2 graphics
+device, and the names do @emph{not} have to be defined for each device.
 
 Color names defined by this interface may also be used when setting the
 colors of the Scheme console window, or the colors of Edwin editor
@@ -17262,434 +17688,6 @@ equivalent:
 @end example
 @end defop
 
-@node X Graphics, Starbase Graphics, OS/2 Graphics, Graphics
-@section X Graphics
-@cindex X graphics
-
-@cindex X window system
-MIT Scheme supports graphics in the X window system (version 11).
-Arbitrary numbers of displays may be opened, and arbitrary numbers of
-graphics windows may be created for each display.  A variety of
-operations is available to manipulate various aspects of the windows, to
-control their size, position, colors, and mapping.  The X graphics
-device type supports images, which are implemented as Xlib @code{XImage}
-objects.  X display, window, and image objects are automatically closed
-if they are reclaimed by the garbage collector.
-
-@menu
-* X Graphics Type::             
-* Utilities for X Graphics::    
-* Custom Operations on X Graphics Devices::  
-@end menu
-
-@node X Graphics Type, Utilities for X Graphics,  , X Graphics
-@subsection X Graphics Type
-
-
-A graphics device for X windows is created by passing the symbol
-@code{x} as the graphics device type name to
-@code{make-graphics-device}:
-
-@example
-(make-graphics-device 'x #!optional @var{display} @var{geometry} @var{suppress-map?})
-@end example
-
-@noindent
-where @var{display} is either a display object, @code{#f}, or a string;
-@var{geometry} is either @code{#f} or a string; and @var{suppress-map?}
-is a boolean or a vector (see below).  A new window is created on the
-appropriate display, and a graphics device representing that window is
-returned.
-
-@findex x-open-display
-@var{Display} specifies which X display the window is to be opened on;
-if it is @code{#f} or a string, it is passed as an argument to
-@code{x-open-display}, and the value returned by that procedure is used
-in place of the original argument.  @var{Geometry} is an X geometry
-string, or @code{#f} which means to use the default geometry (which is
-specified as a resource).
-
-@var{Suppress-map?}, if given, may take two forms.  First, it may be a
-boolean: if @code{#f} (the default), the window is automatically mapped
-after it is created; otherwise, @code{#t} means to suppress this
-automatic mapping.  The second form is a vector of three elements.  The
-first element is a boolean with the same meaning as the boolean form of
-@var{suppress-map?}.  The second element is a string, which specifies an
-alternative resource name to be used for looking up the window's
-resources.  The third element is also a string, which specifies a class
-name for looking up the window's resources.  The default value for
-@var{suppress-map?} is @code{#f}.
-
-The default resource and class names are @code{"schemeGraphics"} and
-@code{"SchemeGraphics"} respectively.
-
-@cindex resources, X graphics
-@cindex X resources, graphics
-The window is initialized using the resource and class names specified
-by @var{suppress-map?}, and is sensitive to the following resource
-properties:
-
-@example
-@group
-Property        Class           Default
---------        -----           -------
-geometry        Geometry        512x384+0+0
-font            Font            fixed
-borderWidth     BorderWidth     2
-internalBorder  BorderWidth     @r{[border width]}
-background      Background      white
-foreground      Foreground      black
-borderColor     BorderColor     @r{[foreground color]}
-cursorColor     Foreground      @r{[foreground color]}
-pointerColor    Foreground      @r{[foreground color]}
-@end group
-@end example
-
-The window is created with a @code{backing_store} attribute of
-@code{Always}.  The window's name and icon name are initialized to
-@code{"scheme-graphics"}.
-
-
-@node Utilities for X Graphics, Custom Operations on X Graphics Devices, X Graphics Type, X Graphics
-@subsection Utilities for X Graphics
-
-@deffn {procedure+} x-graphics/open-display display-name
-@cindex display, X graphics
-@cindex X display, graphics
-Opens a connection to the display whose name is @var{display-name},
-returning a display object.  If unable to open a connection, @code{#f}
-is returned.  @var{Display-name} is normally a string, which is an X
-display name in the usual form; however, @code{#f} is also allowed,
-meaning to use the value of the unix environment variable
-@code{DISPLAY}.
-@end deffn
-
-@deffn {procedure+} x-graphics/close-display display
-Closes @var{display}; after calling this procedure, it is an error to
-use @var{display} for any purpose.  Any windows that were previously
-opened on @var{display} are destroyed and their resources returned to
-the operating system.
-@end deffn
-
-@deffn {procedure+} x-close-all-displays
-Closes all open connections to X displays.  Equivalent to calling
-@code{x-close-display} on all open displays.
-@end deffn
-
-@deffn {procedure+} x-geometry-string x y width height
-@cindex geometry string, X graphics
-@cindex X geometry string, graphics
-This procedure creates and returns a standard X geometry string from the
-given arguments.  @var{X} and @var{y} must be either exact integers or
-@code{#f}, while @var{width} and @var{height} must be either exact
-non-negative integers or @code{#f}.  Usually either @var{x} and @var{y}
-are both specified or both @code{#f}; similarly for @var{width} and
-@var{height}.  If only one of the elements of such a pair is specified,
-it is ignored.
-
-Examples:
-
-@example
-@group
-(x-geometry-string #f #f 100 200) @result{} "100x200"
-(x-geometry-string 2 -3 100 200) @result{} "100x200+2-3"
-(x-geometry-string 2 -3 #f #f) @result{} "+2-3"
-@end group
-@end example
-
-Note that the @var{x} and @var{y} arguments cannot distinguish between
-@code{+0} and @code{-0}, even though these have different meanings in X.
-If either of those arguments is @code{0}, it means @code{+0} in X
-terminology.  If you need to distinguish these two cases you must create
-your own geometry string using Scheme's string and number primitives.
-@end deffn
-
-@node Custom Operations on X Graphics Devices,  , Utilities for X Graphics, X Graphics
-@subsection Custom Operations on X Graphics Devices
-
-Custom operations are invoked using the procedure
-@code{graphics-operation}.  For example,
-
-@example
-(graphics-operation device 'set-foreground-color "blue")
-@end example
-
-@defop {operation+} x-graphics-device set-background-color color-name
-@defopx {operation+} x-graphics-device set-foreground-color color-name
-@defopx {operation+} x-graphics-device set-border-color color-name
-@defopx {operation+} x-graphics-device set-mouse-color color-name
-@findex graphics-clear
-These operations change the colors associated with a window.
-@var{Color-name} must be a string, which is the X server's name for the
-desired color.  @code{set-border-color} and @code{set-mouse-color}
-immediately change the border and mouse-cursor colors.
-@code{set-background-color} and @code{set-foreground-color} change the
-colors to be used when drawing, but have no effect on anything drawn
-prior to their invocation.  Because changing the background color
-affects the entire window, we recommend calling @code{graphics-clear} on
-the window's device afterwards.  Color names include both mnemonic
-names, like @code{"red"}, and intensity names specified in the
-@code{"#@var{rrggbb}"} notation.
-@end defop
-
-@defop {operation+} x-graphics-device draw-arc x y radius-x radius-y angle-start angle-sweep fill?
-@cindex drawing arcs and circles, graphics
-@cindex graphics, drawing arcs and circles
-@cindex circles, drawing
-@findex draw-arc
-
-Operation @code{draw-arc} draws or fills an arc.  An arc is a segment of
-a circle, which may have been stretched along the x- or y- axis to form
-an ellipse.
-
-The parameters @var{X}, @var{Y}, @var{RADIUS-X} and @var{RADIUS-Y}
-describe the circle and @var{ANGLE-START} and @var{ANGLE-SWEEP} choose
-which part of the circle is drawn.  The arc is drawn on the graphics
-device with the center of the circle at the virtual coordinates given by
-@var{X} and @var{Y}.  @var{RADIUS-X} and @var{RADIUS-Y} determine the
-size of the circle in virtual coordinate units.
-
-The parameter @var{ANGLE-START} determines where the arc starts.  It is
-measured in degrees in an anti-clockwise direction, starting at 3
-o'clock.  @var{ANGLE-SWEEP} determines how much of the circle is drawn.
-It too is measured anti-clockwise in degrees.  A negative value means
-the measurement is in a clockwise direction.
-
-Note that the angles are determined on a unit circle before it is
-stretched into an ellipse, so the actual angles that you will see on the
-computer screen depends on all of: @var{RADIUS-X} and @var{RADIUS-Y},
-the window size, and the virtual coordinates.
-
-If @var{fill?} is @code{#F} then just the segment of the circle is
-drawn, otherwise the arc is filled in a pie-slice fashion.
-
-This draws a quarter circle pie slice, standing on its point, with point
-at virtual coordinates (3,5):
-
-@example
-(graphics-opereration g 'draw-arc 3 5 .5 .5 45 90 #T)
-@end example
-
-@end defop
-
-@defop {operation+} x-graphics-device draw-circle x y radius
-@defopx {operation+} x-graphics-device fill-circle x y radius
-@cindex drawing arcs and circles, graphics
-@cindex graphics, drawing arcs and circles
-@cindex circles, drawing
-@findex draw-circle
-@findex fill-circle
-These operations draw a circle (outline) or a filled circle (solid) at
-on the graphics device at the virtual coordinates given by @var{X} and
-@var{Y}.  These operations could be implemented trivially interms of the
-@code{draw-arc} operation.
-@end defop
-
-@defop {operation+} x-graphics-device set-border-width width
-@defopx {operation+} x-graphics-device set-internal-border-width width
-@findex graphics-clear
-These operations change the external and internal border widths of a
-window.  @var{Width} must be an exact non-negative integer, specified in
-pixels.  The change takes place immediately.  Note that changing the
-internal border width can cause displayed graphics to be garbled; we
-recommend calling @code{graphics-clear} on the window's device after
-doing so.
-@end defop
-
-@defop {operation+} x-graphics-device set-font font-name
-Changes the font used when drawing text in a window.  @var{Font-name}
-must be a string that is a font name known to the X server.  This
-operation does not affect text drawn prior to its invocation.
-@end defop
-
-@defop {operation+} x-graphics-device set-mouse-shape shape-number
-Changes the shape of the mouse cursor.  @var{Shape-number} is an exact
-non-negative integer that is used as an index into the mouse-shape font;
-when multiplied by 2 this number corresponds to an index in the file
-@file{/usr/include/X11/cursorfont.h}.
-@end defop
-
-@defop {operation+} x-graphics-device map-window
-@defopx {operation+} x-graphics-device withdraw-window
-These operations control the mapping of windows.  They correspond
-directly to the Xlib procedures @code{XMapWindow} and
-@code{XWithdrawWindow}.
-@end defop
-
-@defop {operation+} x-graphics-device resize-window width height
-Changes the size of a window.  @var{Width} and @var{height} must be
-exact non-negative integers.  The operation corresponds directly to the
-Xlib procedure @code{XResizeWindow}.
-
-This operation resets the virtual coordinate system and the clip
-rectangle.
-@end defop
-
-@defop {operation+} x-graphics-device move-window x y
-Changes the position of a window on the display.  @var{X} and @var{y}
-must be exact integers.  The operation corresponds directly to the Xlib
-procedure @code{XMoveWindow}.  Note that the coordinates @var{x} and
-@var{y} do not take the external border into account, and therefore will
-not position the window as you might like.  The only reliable way to
-position a window is to ask a window manager to do it for you.
-@end defop
-
-@defop {operation+} x-graphics-device get-default resource property
-This operation corresponds directly to the Xlib procedure
-@code{XGetDefault}.  @var{Resource} and @var{property} must be strings.
-The operation returns the character string corresponding to the
-association of @var{resource} and @var{property}; if no such association
-exists, @code{#f} is returned.
-@end defop
-
-@defop {operation+} x-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
-This operation copies the contents of the rectangle specified by
-@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height} to
-the rectangle of the same dimensions at @var{destination-x-left} and
-@var{destination-y-top}.
-@end defop
-
-@defop {operation+} x-graphics-device font-structure font-name
-Returns a Scheme equivalent of the X font structure for the font named
-@var{font-name}.  If the string @var{font-name} does not name a font
-known to the X server, or names a 16-bit font, @code{#f} is returned.
-@end defop
-
-@deffn {procedure+} x-font-structure/name font-structure
-@deffnx {procedure+} x-font-structure/direction font-structure
-@deffnx {procedure+} x-font-structure/all-chars-exist font-structure
-@deffnx {procedure+} x-font-structure/default-char font-structure
-@deffnx {procedure+} x-font-structure/min-bounds font-structure
-@deffnx {procedure+} x-font-structure/max-bounds font-structure
-@deffnx {procedure+} x-font-structure/start-index font-structure
-@deffnx {procedure+} x-font-structure/character-bounds font-structure
-@deffnx {procedure+} x-font-structure/max-ascent font-structure
-@deffnx {procedure+} x-font-structure/max-descent font-structure
-These procedures extract the components of the font description
-structure returned by the X graphics operation @code{font-structure}.  A
-more complete description of these components appears in documentation
-of the @code{XLoadQueryFont} Xlib call.  @code{start-index} is the index
-of the first character available in the font.  The @code{min-bounds} and
-@code{max-bounds} components are structures of type
-@code{x-character-bounds}, and the @code{character-bounds} component is
-a vector of the same type.
-@end deffn
-
-@deffn {procedure+} x-character-bounds/lbearing character-bounds
-@deffnx {procedure+} x-character-bounds/rbearing character-bounds
-@deffnx {procedure+} x-character-bounds/width character-bounds
-@deffnx {procedure+} x-character-bounds/ascent character-bounds
-@deffnx {procedure+} x-character-bounds/descent character-bounds
-These procedures extract components of objects of type
-@code{x-character-bounds}.  A more complete description of them appears
-in documentation of the @code{XLoadQueryFont} Xlib call.
-@end deffn
-
-@node Starbase Graphics,  , X Graphics, Graphics
-@section Starbase Graphics
-@cindex starbase graphics
-
-On Hewlett-Packard computers under the HP-UX operating system, Scheme
-supports graphics through the Starbase graphics library.  Note that the
-default distribution of Scheme for HP computers does not include support
-for Starbase --- you must rebuild the microcode to get this support.
-
-@defvr {variable+} starbase-graphics-device-type
-This is the device type for Starbase graphics devices.  A Starbase
-device is opened as follows:
-
-@example
-(make-graphics-device 'starbase @var{device-name} @var{driver-name})
-@end example
-
-where @var{device-name} and @var{driver-name} are strings that are used
-as the device and driver arguments to the Starbase @code{gopen} call.
-The device is opened with kind @code{OUTDEV} and mode @code{0}.  The
-device is initialized to have a mapping mode of @code{DISTORT}, and a
-line color index of @code{1}.
-@end defvr
-
-@defop {operation+} starbase-graphics-device write-image-file filename invert?
-This operation writes an image of the Starbase device's display in the
-file specified by @var{filename}.  The image is formatted to print on an
-HP Laserjet printer.  Normally pixels with a color index of 0 are not
-drawn by the printer, and all other pixels are; this results in the
-background being white and the foreground being black in the printed
-image.  If @var{invert?} is not @code{#f}, this is reversed: the
-background is printed as black and the foreground is not printed.
-@end defop
-
-@defop {operation+} starbase-graphics-device color-map-size
-Returns, as an exact non-negative integer, the number of entries in the
-color map for the device.
-@end defop
-
-@defop {operation+} starbase-graphics-device define-color color-index red green blue
-Defines the color associated with the color-map index @var{color-index}.
-@var{Color-index} must be an exact non-negative integer strictly less
-than the number of entries in the color map.  @var{Red}, @var{green},
-and @var{blue} must be real numbers in the range 0 to 1 inclusive, which
-define the color to be put in the map.
-@end defop
-
-@defop {operation+} starbase-graphics-device set-line-color color-index
-Changes the foreground color used in graphics operations for this
-device.  @var{Color-index} must be an exact non-negative integer
-strictly less than the number of entries in the color map.  Graphics
-drawn after this operation is invoked will appear in this new color.
-@end defop
-
-The text drawn by a Starbase device is controlled by the following
-characteristics:
-
-@table @asis
-@item Aspect
-The @dfn{aspect} of a character is its height-to-width ratio, a real
-number.  By default, this has the value @code{1}.
-@cindex aspect, of graphics character (defn)
-
-@item Height
-The @dfn{height} of a character in virtual device coordinates, a real
-number.  This is measured along the ``up vector'', which is defined by
-the slant of the character.  By default, the height is @code{.1}.
-@cindex height, of graphics character (defn)
-
-@item Rotation
-The @dfn{rotation} of a character defines the direction in which the
-characters are drawn.  It is specified as a real number in degrees, but
-only 4 values have any meaning: @code{0}, @code{90}, @code{180}, and
-@code{270}.  @code{0} draws left-to-right with upright characters;
-@code{90} draws top-to-bottom with characters on their right side;
-@code{180} draws right-to-left with upside-down characters; @code{270}
-draws bottom-to-top with characters on their left side.  The default
-rotation is @code{0}.
-@cindex rotation, of graphics character (defn)
-
-@item Slant
-The @dfn{slant} of a character defines the ``up vector''; it is a real
-number which is the tangent of the angle between the character's
-``vertical'' (defined by the rotation), and the ``up vector'', measured
-clockwise.  The default slant is @code{0}.
-@cindex slant, of graphics character (defn)
-@end table
-
-@defop {operation+} starbase-graphics-device text-aspect
-@defopx {operation+} starbase-graphics-device text-height
-@defopx {operation+} starbase-graphics-device text-rotation
-@defopx {operation+} starbase-graphics-device text-slant
-These operations return the current values of the text
-characteristics.
-@end defop
-
-@defop {operation+} starbase-graphics-device set-text-aspect aspect
-@defopx {operation+} starbase-graphics-device set-text-height height
-@defopx {operation+} starbase-graphics-device set-text-rotation rotation
-@defopx {operation+} starbase-graphics-device set-text-slant slant
-These operations alter the current values of the text characteristics.
-They have no effect on text drawn prior to their invocation.
-@end defop
-
-@c WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 @node Win32 Package Reference, Index, Graphics, Top
 @chapter Win32 Package Reference
 
@@ -17709,7 +17707,7 @@ those which are a consequence of the Intel x86 architecture.
 @end menu
 
 
-@node Win32 Package Overview, Foreign function interface,  , Win32 Package Reference
+@node Win32 Package Overview, Foreign function interface, Win32 Package Reference, Win32 Package Reference
 @section Overview
 
 
@@ -17769,7 +17767,7 @@ DLL and system procedures (e.g.@: MessageBox) are called using the same
 mechanism.
 
 @cindex limitations
-@strong{Warning:} The FFI as it stands has several flaws which make it
+@strong{Warning}: The FFI as it stands has several flaws which make it
 difficult to use reliably.  It is expected that both the interface to
 and the mechanisms used by the FFI will be changed in the future.  We
 provide it, and this documentation, only to give people an early start
@@ -17783,7 +17781,7 @@ returned will always be an integer (which may represent the address of a
 C data structure).
 
 @cindex warning
-@strong{Warning:} It is extremely dangerous to try to pass Scheme
+@strong{Warning}: It is extremely dangerous to try to pass Scheme
 callback procedures to C procedures.  It is only possible by passing
 integer `handles' rather than the actual procedures, and even so, if a
 garbage collection occurs during the execution of the callback procedure
@@ -17803,7 +17801,7 @@ procedures and a form for declaring foreign procedures.
 * Win32 API names and procedures::  
 @end menu
 
-@node  Windows Types, Windows Foreign Procedures,  , Foreign function interface
+@node  Windows Types, Windows Foreign Procedures, Foreign function interface, Foreign function interface
 @subsection Windows Types
 
 @cindex Windows types
@@ -17900,7 +17898,8 @@ stored in variables or defined using @code{define}:
 @example
 @group
 (define my-type unchecked)            @error{}  Unbound variable
-(define-similar-windows-type my-type unchecked)  @r{;; the correct way}
+(define-similar-windows-type my-type unchecked)
+                                      @r{;; the correct way}
 @end group
 @end example
 
@@ -18088,14 +18087,16 @@ it's value.
 @example
 @group
 (define set-window-title
-  (windows-procedure (set-window-text (window hwnd) (text string))
-    bool user32.dll "SetWindowText"))
+  (windows-procedure
+   (set-window-text (window hwnd) (text string))
+   bool user32.dll "SetWindowText"))
 
-(set-window-title my-win "Hi")   @result{}  #t
-                                 @r{;; Changes window's title/text}
+(set-window-title my-win "Hi")
+                         @result{}  #t
+                         @r{;; Changes window's title/text}
 
-set-window-title                 @result{}  #[compiled-procedure  ...]
-set-window-text                  @error{}  Unbound variable
+set-window-title         @result{}  #[compiled-procedure  ...]
+set-window-text          @error{}  Unbound variable
 @end group
 @end example
 
@@ -18242,7 +18243,7 @@ null handle error value.
 * Other parts of the DIB Utilities implementation::  
 @end menu
 
-@node DIB procedures, Other parts of the DIB Utilities implementation,  , Device Independent Bitmap Utilities
+@node DIB procedures, Other parts of the DIB Utilities implementation, Device Independent Bitmap Utilities, Device Independent Bitmap Utilities
 @subsection DIB procedures
 
 The following procedures have typed parameters, using the same
@@ -18345,7 +18346,7 @@ Returns a new bitmap containing the image from a region of the original.
 
 @deffn {procedure+} dib-set-pixels-unaligned dib (pixels string)
 Return type: @var{bool}.
-Calls the @code{DIBSetPixelsUnaligned} entry of @file{DIBUTILS.DLL}.  Stuffs
+Calls the @code{DIBSetPixelsUnaligned} entry of@* @file{DIBUTILS.DLL}.  Stuffs
 bytes from @var{pixels} into the bitmap.  There are no alignment
 constraints on @var{pixels} (the usual way of doing this is to use the
 @code{SetDIBits} function which requires that every scan line of the
@@ -18383,7 +18384,7 @@ calling convention.
 @c @section Writing windows procedures
 @c 
 @c @cindex warning
-@c @strong{Warning:} Do not try to do this.  It is very hard to get it even
+@c @strong{Warning}: Do not try to do this.  It is very hard to get it even
 @c partly right and probably impossible to make the program 100% reliable.
 @c 
 @c It is possible to write Scheme procedures that determine the behavior
