@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.166 1993/11/09 04:31:43 cph Exp $
+$Id: version.scm,v 14.167 1995/05/20 10:20:21 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -45,7 +45,7 @@ MIT in each case. |#
 		     '()))
   (add-system! microcode-system)
   (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-identification! "Runtime" 14 166))
+  (add-identification! "Runtime" 14 167))
 
 (define microcode-system)
 
