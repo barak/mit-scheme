@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.13 1992/02/08 18:16:00 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.14 1992/02/13 06:37:13 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -308,7 +308,7 @@ MIT in each case. |#
   (lookup-fixnum-method operator fixnum-methods/1-arg))
 
 (define-integrable (fixnum-1-arg target source operation)
-  (operation (standard-move-to-target! source)))
+  (operation (standard-move-to-target! source target)))
 
 (define fixnum-methods/2-args
   (list 'FIXNUM-METHODS/2-ARGS))
@@ -616,20 +616,18 @@ MIT in each case. |#
       (cond ((= n 1)
 	     (load-fixnum-constant 0 target))
 	    ((integer-power-of-2? n)
-	     =>
-	     (lambda (expt-of-2)
-	       (let ((sign (temporary-register-reference))
-		     (label (generate-label 'REM-MERGE))
-		     (mask (-1+ (expt 2 nbits))))
-		  ;; This may produce a branch to a branch, but a
-		  ;; peephole optimizer should be able to fix this.
-		 (LAP (MOV W ,sign ,target)
-		      (SAR W ,sign (& ,(-1+ scheme-object-width)))
-		      (XOR W ,sign (& ,mask))
-		      (AND W ,target (& ,mask))
-		      (JZ (@PCR ,label))
-		      (OR W ,target ,sign)
-		      (LABEL ,label)))))
+	     (let ((sign (temporary-register-reference))
+		   (label (generate-label 'REM-MERGE))
+		   (mask (-1+ (* n fixnum-1))))
+	       ;; This may produce a branch to a branch, but a
+	       ;; peephole optimizer should be able to fix this.
+	       (LAP (MOV W ,sign ,target)
+		    (AND W ,target (& ,mask))
+		    (JZ (@PCR ,label))
+		    (SAR W ,sign (& ,(-1+ scheme-object-width)))
+		    (XOR W ,sign (& ,mask))
+		    (OR W ,target ,sign)
+		    (LABEL ,label))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
 
