@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.22 1991/03/16 00:01:10 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/autosv.scm,v 1.23 1991/04/12 23:13:55 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -80,11 +80,21 @@ With arg, turn auto-saving on if arg is positive, else off."
 	      (not (buffer-auto-save-pathname buffer)))
 	  (begin
 	    (enable-buffer-auto-save! buffer)
-	    (temporary-message "Auto Save enabled"))
+	    (message "Auto Save enabled"))
 	  (begin
 	    (disable-buffer-auto-save! buffer)
-	    (temporary-message "Auto Save disabled"))))))
+	    (message "Auto Save disabled"))))))
 
+(define-command do-auto-save
+  "Auto-save all buffers that need it.
+This is all buffers that have auto-saving enabled
+and are changed since last auto-saved.
+Auto-saving writes the buffer into a file
+so that your editing is not lost if the system crashes.
+This file is not the file you visited; that changes only when you save."
+  ()
+  (lambda () (do-auto-save)))
+
 (define (setup-buffer-auto-save! buffer)
   (if (ref-variable auto-save-default)
       (enable-buffer-auto-save! buffer)
@@ -100,6 +110,23 @@ With arg, turn auto-saving on if arg is positive, else off."
 
 (define (disable-buffer-auto-save! buffer)
   (set-buffer-auto-save-pathname! buffer false))
+
+(define (delete-auto-save-file! buffer)
+  (if (ref-variable delete-auto-save-files)
+      (let ((pathname (buffer-auto-save-pathname buffer)))
+	(if (and pathname (file-exists? pathname))
+	    (delete-file pathname)))))
+
+(define (rename-auto-save-file! buffer)
+  (let ((old-pathname (buffer-auto-save-pathname buffer)))
+    (enable-buffer-auto-save! buffer)
+    (let ((new-pathname (buffer-auto-save-pathname buffer)))
+      (if (and old-pathname
+	       new-pathname
+	       (not (pathname=? new-pathname old-pathname))
+	       (not (pathname=? new-pathname (buffer-pathname buffer)))
+	       (file-exists? old-pathname))
+	  (rename-file old-pathname new-pathname)))))
 
 (define (do-auto-save)
   (let ((buffers
@@ -120,9 +147,3 @@ With arg, turn auto-saving on if arg is positive, else off."
 		(buffer-auto-save-pathname buffer))
   (set-buffer-save-length! buffer)
   (set-buffer-auto-saved! buffer))
-
-(define (delete-auto-save-file! buffer)
-  (if (and (ref-variable delete-auto-save-files)
-	   (buffer-auto-save-pathname buffer)
-	   (file-exists? (buffer-auto-save-pathname buffer)))
-      (delete-file (buffer-auto-save-pathname buffer))))
