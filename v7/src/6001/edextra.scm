@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edextra.scm,v 1.11 1992/09/10 07:32:09 cph Exp $
+$Id: edextra.scm,v 1.12 1992/09/14 23:00:50 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -378,18 +378,22 @@ The following filenames are reserved and may not be used:
 		       (ref-variable completion-ignored-extensions)))
 
 (set-variable!
- mail-default-reply-to
+ mail-header-function
  (let ((default-reply-to false))
-   (lambda ()
+   (lambda (point)
      (let ((reply-to
 	    (prompt-for-string "Please enter an email address for replies"
 			       default-reply-to
 			       'INSERTED-DEFAULT)))
-       (if (string-null? reply-to)
-	   false
+       (if (not (string-null? reply-to))
 	   (begin
 	     (set! default-reply-to reply-to)
-	     reply-to))))))
+	     (insert-string "From: " point)
+	     (insert-string reply-to point)
+	     (insert-newline point)
+	     (insert-string "Reply-to: " point)
+	     (insert-string reply-to point)
+	     (insert-newline point)))))))
 
 ;; Disable key bindings that exit the editor.
 ;; M-x logout is all the students should need.
