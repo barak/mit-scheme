@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.11 1995/01/20 22:51:58 ssmith Exp $
+$Id: rules3.scm,v 1.12 1995/05/24 00:20:12 ssmith Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -63,6 +63,8 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
+  (if continuation
+      (error "Invocation:Apply has a continuation"))
   continuation
   (LAP ,@(clear-map!)
        (POP (R ,ecx))
@@ -85,12 +87,14 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
+  (error "Invocation:Jump")
   frame-size continuation
   (LAP ,@(clear-map!)
        (JMP (@PCR ,label))))
 
 (define-rule statement
   (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
+  (error "Invocation:Computed-Jump")
   frame-size continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
@@ -99,6 +103,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
+  (error "Invocation:Lexpr")
   continuation
   (with-pc
     (lambda (pc-label pc-register)
@@ -109,6 +114,7 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
+  (error "Computed Lexpr")
   continuation
   ;; It expects the procedure at the top of the stack
   (LAP ,@(clear-map!)
@@ -119,19 +125,21 @@ MIT in each case. |#
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
-  continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 3))))
+       (,(if continuation 'CALL 'JMP)
+	(@PCRO ,(free-uuo-link-label name frame-size) 3))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
-  continuation
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 3))))
+       ,@(if continuation
+	     (LAP (CALL (@PCRO ,(global-uuo-link-label name frame-size) 3)))
+	     (LAP (JMP (@PCRO ,(global-uuo-link-label name frame-size) 3))))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
+  (error "Cache-reference")
   continuation
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension ecx))
@@ -150,6 +158,7 @@ MIT in each case. |#
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
   (QUALIFIER (interpreter-call-argument? environment))
+  (error "Invocation:Lookup")
   continuation
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment ecx))
@@ -214,35 +223,22 @@ MIT in each case. |#
 			,@(invoke-interface code:compiler-apply)))))))))
 
 (let-syntax
-    ((define-special-primitive-invocation
+    ((define-optimized-primitive-invocation
        (macro (name)
 	 `(define-rule statement
 	    (INVOCATION:SPECIAL-PRIMITIVE
 	     (? frame-size)
 	     (? continuation)
 	     ,(make-primitive-procedure name true))
-	    frame-size continuation
-	    (special-primitive-invocation
-	     ,(symbol-append 'CODE:COMPILER- name)))))
-
-     (define-optimized-primitive-invocation
-       (macro (name)
-	 `(define-rule statement
-	    (INVOCATION:SPECIAL-PRIMITIVE
-	     (? frame-size)
-	     (? continuation)
-	     ,(make-primitive-procedure name true))
-	    frame-size continuation
+	    frame-size
 	    (optimized-primitive-invocation
-	     ,(symbol-append 'ENTRY:COMPILER- name))))))
-
+	     ,(symbol-append 'ENTRY:COMPILER- name)
+	     continuation)))))
+  
   (let-syntax ((define-primitive-invocation
 		 (macro (name)
-		   #|
-		   `(define-special-primitive-invocation ,name)
-		   |#
 		   `(define-optimized-primitive-invocation ,name))))
-
+    
     (define-primitive-invocation &+)
     (define-primitive-invocation &-)
     (define-primitive-invocation &*)
@@ -325,14 +321,8 @@ MIT in each case. |#
   (define (do-regs regs)
     (LAP (COMMENT (PSEUDO-REGISTERS . ,regs))
 	 ,@(bytes->uwords
-	    (let* ((l (length regs))
-		   (bytes (reverse (cons l
-					 (map register-renumber regs)))))
-	      (append (let ((r (remainder (+ l 1) 4)))
-			(if (zero? r)
-			    '()
-			    (make-list (- 4 r) 0)))
-		      bytes)))))
+	    (let ((l (length regs)))
+	      (reverse (cons l (map register-renumber regs)))))))
 
   (call-with-values
    (lambda ()
@@ -351,7 +341,10 @@ MIT in each case. |#
     (if gen-int-regs
 	(bit-string-set! int-mask 7))
     (if gen-float-regs
-	(bit-string-set! int-mask 6))
+	(begin 
+	  (newline)
+	  (error "Cannot do floating point!")
+	  (bit-string-set! int-mask 6)))
     (let loop ((regs machine-regs))
       (cond ((not (null? regs))
 	     (let ((reg (car regs)))
@@ -360,20 +353,35 @@ MIT in each case. |#
 		       (bit-string-set! int-mask reg)
 		       (if (and (not use-ebp-as-mask?)
 				(= reg ebp))
-			   (bit-string-set! int-mask 4)
+			   (begin
+			     (newline)
+			     (display "Saving register: ")
+			     (display reg)
+			     (error "Cannot save machine register!")
+			     (bit-string-set! int-mask 4))
 			   (error "Register number too high to preserve:" reg)))
-		   (bit-string-set! flo-mask (- reg 8)))
+		   (begin
+		     (newline)
+		     (display "Saving register: ")
+		     (display reg)
+		     (error "Cannot save floating point register")
+		     (bit-string-set! flo-mask (- reg 8))))
 	       (loop (cdr regs))))
 	    ((bit-string-zero? flo-mask)
 	     (lambda ()
-	       (LAP ,@(if gen-float-regs (gen-float-regs) (LAP))
+	       (LAP ,@(if gen-float-regs (begin
+					   (error "Cannot generate floating point")
+					   (gen-float-regs)) (LAP))
 		    ,@(if gen-int-regs (gen-int-regs) (LAP))
 		    (COMMENT (MACHINE-REGS . ,machine-regs))
 		    (BYTE U ,(bit-string->unsigned-integer int-mask)))))
 	    (else
+	     (error "Cannot generate floating point")
 	     (bit-string-set! int-mask 5)
 	     (lambda ()
-	       (LAP ,@(if gen-float-regs (gen-float-regs) (LAP))
+	       (LAP ,@(if gen-float-regs (begin
+					   (error "Cannot generate floating point")
+					   (gen-float-regs)) (LAP))
 		    (COMMENT (MACHINE-REGS . ,machine-regs))
 		    (BYTE U ,(bit-string->unsigned-integer flo-mask))
 		    ,@(if gen-int-regs (gen-int-regs) (LAP))
@@ -391,18 +399,24 @@ MIT in each case. |#
   (LAP ,@(clear-map!/preserving)
        ,@(invoke-hook entry)))
 |#
-(define (optimized-primitive-invocation hook)
+(define (optimized-primitive-invocation hook continuation)
   (preserving-regs
    *optimized-clobbered-regs*
    (lambda (gen-preservation-info)
-     (if (not gen-preservation-info)
-	 (LAP ,@(invoke-hook hook))
-	 (let ((label1 (generate-label))
-	       (label2 (generate-label)))
-	   (LAP	,@(invoke-hook hook)
-		(LABEL ,label1)
-		,@(gen-preservation-info)
-		(LABEL ,label2)))))))
+     (if gen-preservation-info
+	 (if (not continuation)
+	     (error "No continuation, but preserving registers")
+	     (let ((label1 (generate-label))
+		   (label2 (generate-label)))
+	       (LAP (INC W (R ,regnum:free-pointer)) 
+		    ,@(invoke-hook/call hook)
+		    (LABEL ,label1)
+		    (BYTE U (- (- ,label2 ,label1) 1))
+		    ,@(gen-preservation-info)
+		    (LABEL ,label2))))
+	 (if continuation
+	     (LAP ,@(invoke-hook/call hook))
+	     (LAP ,@(invoke-hook hook)))))))
 
 
 
@@ -634,10 +648,10 @@ MIT in each case. |#
 
 (define (generate/cons-closure target procedure-label min max size)
   (let* ((mtarget (target-register target))
-	 (target (register-reference mtarget))
-	 (temp (temporary-register-reference)))
+	 (target (register-reference mtarget)))
+    ;	 (temp (temporary-register-reference))
     (LAP ,@(load-pc-relative-address
-	    temp
+	    target
 	    `(- ,(rtl-procedure/external-label (label->object procedure-label))
 		5))
 	 (MOV W (@R ,regnum:free-pointer)
@@ -645,17 +659,19 @@ MIT in each case. |#
 					     (+ 4 size))))
 	 (MOV W (@RO B ,regnum:free-pointer 4)
 	      (&U ,(make-closure-code-longword min max 8)))
-	 (LEA ,target (@RO B ,regnum:free-pointer 8))
 	 ;; (CALL (@PCR <entry>))
 	 (MOV B (@RO B ,regnum:free-pointer 8) (&U #xe8))
-	 (SUB W ,temp ,target)
-	 (MOV W (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
+	 (SUB W ,target (R ,regnum:free-pointer))
+	 (SUB W ,target (& 8))
+	 (MOV W (@RO B ,regnum:free-pointer 9) ,target) ; displacement
+	 (LEA ,target (@RO UW
+			   ,regnum:free-pointer
+			   ,(make-non-pointer-literal (ucode-type compiled-entry)
+						      8)))
 	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
-	 (LEA ,temp (@RO UW
-			 ,mtarget
-			 ,(make-non-pointer-literal (ucode-type compiled-entry)
-						    0)))
-	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp))))
+	 (MOV W (@RO B ,regnum:free-pointer -4) ,target)
+	 (SUB W ,target (& ,(make-non-pointer-literal (ucode-type compiled-entry)
+						      0))))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((mtarget (target-register target))
@@ -790,19 +806,28 @@ MIT in each case. |#
 (define (generate/quotation-header environment-label free-ref-label n-sections)
   (pc->reg eax
 	   (lambda (pc-label prefix)
-	     (LAP ,@prefix
-		  (MOV W (R ,ecx) ,reg:environment)
-		  (MOV W (@RO W ,eax (- ,environment-label ,pc-label))
-		       (R ,ecx))
-		  (LEA (R ,edx) (@RO W ,eax (- ,*block-label* ,pc-label)))
-		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
-		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
-		  #|
-		  ,@(invoke-interface/call code:compiler-link)
-		  |#
-		  ,@(invoke-hook/call entry:compiler-link)
-		  ,@(make-external-label (continuation-code-word false)
-					 (generate-label))))))
+	     (let ((envreg (vector-ref *rtlgen/argument-registers* 0)))
+	       (LAP ,@prefix
+		    (ADD W (@R ,esp) (& ,(make-non-pointer-literal (ucode-type compiled-entry)
+								   (machine/cont-adjustment))))
+		    (PUSH (R ,envreg))
+		    (PUSH W (& ,(make-non-pointer-literal (386-object-type #f)
+							  (386-object-datum #f))))
+
+		    (MOV W (@RO W ,eax (- ,environment-label ,pc-label))
+			 (R ,envreg))
+		    (LEA (R ,regnum:second-arg) (@RO W ,eax (- ,*block-label* ,pc-label)))
+		    (LEA (R ,regnum:third-arg) (@RO W ,eax (- ,free-ref-label ,pc-label)))
+		    (MOV W ,reg:utility-arg-4 (& ,n-sections))
+		    #|			;
+		    ,@(invoke-interface/call code:compiler-link)
+		    |#
+		    ,@(invoke-hook/call entry:compiler-link)
+		    ,@(make-external-label (continuation-code-word false)
+					   (generate-label))
+		    (POP (R ,envreg))
+		    (SUB W (@R ,esp) (& ,(make-non-pointer-literal (ucode-type compiled-entry)
+								   (machine/cont-adjustment)))))))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
@@ -991,7 +1016,7 @@ MIT in each case. |#
     ((7) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-7)))
     ((8) (LAP (JMP ,entry:compiler-shortcircuit-apply-size-8)))
     (else
-     (LAP ,@(load-immediate frame-size regnum:second-arg)
+     (LAP ,@(load-immediate (register-reference regnum:second-arg) frame-size)
 	  (JMP ,entry:compiler-shortcircuit-apply)))))
 
 (define-rule statement
@@ -1032,9 +1057,9 @@ MIT in each case. |#
      (let ((ret-add-label (generate-label)))
        (LAP (LABEL ,interrupt-label)
 	    (MOV B (R ,regnum:hook) (& ,(- frame-size 1)))
-	    ,@(invoke-hook entry:compiler-interrupt-procedure/new)
+	    ,@(invoke-hook/call entry:compiler-interrupt-procedure/new)
 	    (LABEL ,ret-add-label)
-	    (WORD S (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
+	    (LONG S (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
 
 (define-rule statement
   (INTERRUPT-CHECK:CONTINUATION (? intrpt) (? heap) (? stack) (? label)
@@ -1053,9 +1078,9 @@ MIT in each case. |#
 			 code:compiler-interrupt-procedure
 			 code:compiler-interrupt-continuation)
 		    28) |#
-	    ,@(invoke-hook entry:compiler-interrupt-continuation/new)
+	    ,@(invoke-hook/call entry:compiler-interrupt-continuation/new)
 	    (LABEL ,ret-add-label)
-	    (WORD S (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
+	    (LONG S (- (- ,label ,ret-add-label) ,*privilege-level*)))))))
 
 (define-rule statement
   (INTERRUPT-CHECK:CLOSURE (? intrpt) (? heap) (? stack)
@@ -1108,7 +1133,7 @@ MIT in each case. |#
 	   (need-interrupt-code)
 	   (profile-info/add 'HEAP-CHECK)
 	   (profile-info/add 'STACK-CHECK)
-	   (LAP (CMP W (R ,regnum:free-pointer) (@RO B ,regnum:regs-pointer ,register-block/memtop-offset))
+	   (LAP (CMP W (R ,regnum:free-pointer) ,(get-regblock-ea register-block/memtop-offset))
 		;; The following should be JAE, but on certain occasions
 		;; memtop is set to -1 to force an abort, which wouldn't
 		;; fare too well here.  This restricts memory to the lower
@@ -1116,20 +1141,20 @@ MIT in each case. |#
 		;; in operating systems that don't let us map memory where we
 		;; want it.
 		(JGE (@PCR ,interrupt-label))
-		(CMP W (R ,regnum:stack-pointer) (@RO B ,regnum:regs-pointer ,register-block/stack-guard-offset))
+		(CMP W (R ,regnum:stack-pointer) ,(get-regblock-ea register-block/stack-guard-offset))
 		;; Same may apply here
 		(JL (@PCR ,interrupt-label))))
 	  ;; NOTE: Spectrum loads memtop into a register at this point...
 	  (heap-check?
 	   (need-interrupt-code)
 	   (profile-info/add 'HEAP-CHECK)
-	   (LAP (CMP W (R ,regnum:free-pointer) (@RO B ,regnum:regs-pointer ,register-block/memtop-offset))
+	   (LAP (CMP W (R ,regnum:free-pointer) ,(get-regblock-ea register-block/memtop-offset))
 		;; NOTE: See above
 		(JGE (@PCR ,interrupt-label))))
 	  (stack-check?
 	   (need-interrupt-code)
 	   (profile-info/add 'STACK-CHECK)
-	   (LAP (CMP W (R ,regnum:stack-pointer) (@RO B ,regnum:regs-pointer ,register-block/stack-guard-offset))
+	   (LAP (CMP W (R ,regnum:stack-pointer) ,(get-regblock-ea register-block/stack-guard-offset))
 		(JL (@PCR ,interrupt-label))))
 	  (else
 	   (LAP)))))
@@ -1139,13 +1164,17 @@ MIT in each case. |#
 
 ;; Jumps to the location stored in the register
 (define-rule statement
-  (INVOCATION:REGISTER 0 #F (REGISTER (? reg))
+  (INVOCATION:REGISTER (? frame-size) (? continuation)
+		       (REGISTER (? reg))
 		       #F (MACHINE-CONSTANT (? nregs)))
+  frame-size                            ; ignored
   nregs					; ignored
   (profile-info/add 'INVOCATION:REGISTER)
   (let ((addr (standard-source! reg)))
     (LAP ,@(clear-map!)
-	 (JMP (R ,addr)))))
+	 ,@(if continuation
+	       (LAP (CALL (R ,addr)))
+	       (LAP (JMP (R ,addr)))))))
 
 ;; NOTE for this procedure, we may need to alter the return address
 ;; that's pushed onto the stack...  I'm not sure what the best way to
@@ -1160,6 +1189,10 @@ MIT in each case. |#
 	     (LAP (JMP (@PCR ,destination)))
 	     (LAP (CALL (@PCR ,destination))))))
 
+(define (arg-reg x)
+  (vector-ref *rtlgen/argument-registers* x))
+
+
 (define-rule statement
   (INVOCATION:NEW-APPLY (? frame-size) (? continuation)
 			(REGISTER (? dest)) (MACHINE-CONSTANT (? nregs)))
@@ -1167,11 +1200,17 @@ MIT in each case. |#
   nregs
   (profile-info/add 'INVOCATION:NEW-APPLY)
   (let* ((obj (register-alias dest (register-type dest)))
+	 (obj* (or obj
+		   (if (or (and (= (arg-reg 0) regnum:first-arg)
+				(> frame-size 1))
+			   (and (= (arg-reg 1) regnum:first-arg)
+				(> frame-size 2)))
+		       (standard-temporary!)
+		       regnum:first-arg)))
 	 (prefix (if obj
 		     (LAP)
-		     (%load-machine-register! dest regnum:first-arg
-					      delete-dead-registers!)))
-	 (obj* (or obj regnum:first-arg)))
+		     (%load-machine-register! dest obj*
+					      delete-dead-registers!))))
     (need-register! obj*)
     (let* ((temp (standard-temporary!))
 	   (addr (if untagged-entries? obj* temp)) ; by sharing temp, we save a reg
@@ -1190,22 +1229,28 @@ MIT in each case. |#
 		 (LAP)
 		 (LAP (MOV W (R ,addr) (R ,obj*))
 		      ,@(adjust-type (ucode-type compiled-entry)
-				     quad-mask-value
+				     0
 				     addr)))
 	   (CMP B (@RO B ,addr -3) (& ,frame-size))
 	   ;; This is ugly - oh well
 	   (JE (@PCR ,label2))
 	   (LABEL ,label)
-	   ,@(copy obj* regnum:first-arg)
 	   ,@(if continuation
 		 (LAP (CALL (@PCR ,label4))
 		      (LABEL ,label4)
 		      ;; There's something up with instr1.scm -- It calls IMMEDIATE to determine
 		      ;; (I think) if it's a byte or a word, and this is too complex for it
 		      ;; However, I don't see any rules to handle signed bytes vs. words!
-		      ;;		      (ADD W (@R ,esp) (& (OFFSET (- ,label3 ,label4)))))
-		      (ADD W (@R ,esp) (& ,(+ 3 3 2))))
+		      ;;		      (ADD W (@R ,esp) (& (OFFSET (- ,label3 ,label4))))
+		      (ADD W (@R ,esp) (&PCR (- ,label3 ,label4))))
 		 (LAP))
+	   ,@(if (> frame-size 2)
+		 (LAP (PUSH (R ,(arg-reg 1))))
+		 (LAP))
+	   ,@(if (> frame-size 1)
+		 (LAP (PUSH (R ,(arg-reg 0))))
+		 (LAP))
+	   ,@(copy obj* regnum:first-arg)
 	   ,@(%invocation:apply frame-size)
 	   (LABEL ,label2)
 	   ,@(if continuation
