@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: vc.scm,v 1.43 2000/03/27 18:01:54 cph Exp $
+;;; $Id: vc.scm,v 1.44 2000/03/27 20:54:33 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
 ;;;
@@ -70,7 +70,7 @@ value of this flag."
   "A list of strings specifying switches to be be passed to diff."
   '("-c")
   list-of-strings?)
-
+
 (define-variable vc-checkin-hooks
   "An event distributor that is invoked after a checkin is done."
   (make-event-distributor))
@@ -89,6 +89,18 @@ and that its contents match what the master file says."
 (define-variable vc-log-mode-hook
   "An event distributor that is invoked when entering VC-log mode."
   (make-event-distributor))
+
+(define-variable vc-follow-symlinks
+  "Indicates what to do if you visit a symbolic link to a file
+that is under version control.  Editing such a file through the
+link bypasses the version control system, which is dangerous and
+probably not what you want.  
+  If this variable is #t, VC follows the link and visits the real file,
+telling you about it in the echo area.  If it is `ask', VC asks for
+confirmation whether it should follow the link.  If #f, the link is
+visited and a warning displayed."
+  'ASK
+  (lambda (object) (or (boolean? object) (eq? 'ASK object))))
 
 (define-variable vc-display-status
   "If true, display revision number and lock status in modeline.
@@ -201,14 +213,49 @@ Otherwise, the mod time of the file is the checkout time."
 
 ;;;; Editor Hooks
 
-(add-event-receiver! (ref-variable find-file-hooks)
-  (lambda (buffer)
-    (let ((master (buffer-vc-master buffer #f)))
-      (if master
-	  (begin
-	    (vc-mode-line master buffer)
-	    (if (not (ref-variable vc-make-backup-files buffer))
-		(local-set-variable! make-backup-files #f buffer)))))))
+(set-variable!
+ find-file-hooks
+ (append!
+  (ref-variable find-file-hooks)
+  (list
+   (cond ((buffer-vc-master buffer #f)
+	  => (lambda (master)
+	       (vc-mode-line master buffer)
+	       (if (not (ref-variable vc-make-backup-files buffer))
+		   (local-set-variable! make-backup-files #f buffer))))
+	 ((let ((pathname (buffer-pathname buffer)))
+	    (and (file-symbolic-link? pathname)
+		 (file-vc-master (file-chase-links pathname) #f)))
+	  => (lambda (master)
+	       (let ((workfile (vc-master-workfile master))
+		     (type (vc-type-display-name (vc-master-type master))))
+		 (let ((follow
+			(lambda ()
+			  (let ((buffer*
+				 (or (pathname->buffer workfile)
+				     (find-file-noselect workfile #f))))
+			    (message "Followed link to " workfile)
+			    (kill-buffer buffer)
+			    buffer*))))
+		   (case (ref-variable vc-follow-symlinks buffer)
+		     ((#F)
+		      (message "Warning: symbolic link to "
+			       type
+			       "-controlled source file"))
+		     ((ASK)
+		      (if (or (pathname->buffer workfile)
+			      (prompt-for-yes-or-no?
+			       (string-append
+				"Symbolic link to "
+				type
+				"-controlled source file; follow link")))
+			  (follow)
+			  (begin
+			    (message
+			     "Warning: editing through the link bypasses version control.")
+			    buffer)))
+		     (else (follow))))))))
+	 (else buffer)))))
 
 (set-variable!
  find-file-not-found-hooks
@@ -820,7 +867,9 @@ Normally shows only locked files; prefix arg says to show all files."
 (define (revert-vc-dired-buffer buffer dont-use-auto-save? dont-confirm?)
   (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC #f)))
     (if spec
-	(fill-vc-dired-buffer! buffer (car spec) (cdr spec))
+	(begin
+	  (fill-vc-dired-buffer! buffer (car spec) (cdr spec))
+	  buffer)
 	(revert-buffer-default buffer dont-use-auto-save? dont-confirm?))))
 
 (define (generate-vc-dired-lines directory all-files? mark)
@@ -1859,27 +1908,28 @@ the value of vc-log-mode-hook."
 	      (buffer-windows buffer)))
 	(point-context (vc-mark-context (buffer-point buffer)))
 	(mark-context (vc-mark-context (buffer-mark buffer))))
-    (revert-buffer buffer #t dont-confirm?)
-    (update-screens! '(IGNORE-INPUT NO-SCREEN-OUTPUT))
-    (if (null? point-contexts)
-	(let ((m (vc-find-context buffer point-context)))
-	  (if m
-	      (set-buffer-point! buffer m)))
-	(for-each (lambda (entry)
-		    (let ((window (car entry)))
-		      (if (and (window-live? window)
-			       (eq? buffer (window-buffer window)))
-			  (begin
-			    (let ((m (vc-find-context buffer (caddr entry))))
-			      (if m
-				  (set-window-start-mark! window m #t)))
-			    (let ((m (vc-find-context buffer (cadr entry))))
-			      (if m
-				  (set-window-point! window m)))))))
-		  point-contexts))
-    (let ((m (vc-find-context buffer mark-context)))
-      (if m
-	  (set-buffer-mark! buffer m)))))
+    (let ((buffer (revert-buffer buffer #t dont-confirm?)))
+      (update-screens! '(IGNORE-INPUT NO-SCREEN-OUTPUT))
+      (if (null? point-contexts)
+	  (let ((m (vc-find-context buffer point-context)))
+	    (if m
+		(set-buffer-point! buffer m)))
+	  (for-each (lambda (entry)
+		      (let ((window (car entry)))
+			(if (and (window-live? window)
+				 (eq? buffer (window-buffer window)))
+			    (begin
+			      (let ((m (vc-find-context buffer (caddr entry))))
+				(if m
+				    (set-window-start-mark! window m #t)))
+			      (let ((m (vc-find-context buffer (cadr entry))))
+				(if m
+				    (set-window-point! window m)))))))
+		    point-contexts))
+      (let ((m (vc-find-context buffer mark-context)))
+	(if m
+	    (set-buffer-mark! buffer m)))
+      buffer)))
 
 (define (vc-mark-context mark)
   (let ((group (mark-group mark))
