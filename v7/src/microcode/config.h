@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 9.95 1996/03/04 20:32:53 cph Exp $
+$Id: config.h,v 9.96 1996/12/16 04:37:14 cph Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -438,6 +438,11 @@ typedef unsigned long SCHEME_OBJECT;
 #  define HAS_FLOOR
 #  define HAS_FREXP
 #  define HAS_MODF
+#endif
+
+#ifdef __linux
+extern void * linux_heap_malloc (unsigned long);
+#define HEAP_MALLOC linux_heap_malloc
 #endif
 
 #if defined(WINNT) && !defined(WINNT_RAW_ADDRESSES)

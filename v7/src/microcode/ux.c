@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.14 1996/04/23 20:58:45 cph Exp $
+$Id: ux.c,v 1.15 1996/12/16 04:37:31 cph Exp $
 
 Copyright (c) 1990-96 Massachusetts Institute of Technology
 
@@ -641,3 +641,22 @@ DEFUN (OS_free, (ptr), void * ptr)
 {
   UX_free (ptr);
 }
+
+#ifdef __linux
+
+#include <sys/mman.h>
+
+void *
+linux_heap_malloc (unsigned long requested_length)
+{
+  unsigned long ps = (getpagesize ());
+  void * addr
+    = (mmap (((void *) ps),
+	     (((requested_length + (ps - 1)) / ps) * ps),
+	     (PROT_EXEC | PROT_READ | PROT_WRITE),
+	     (MAP_PRIVATE | MAP_ANONYMOUS),
+	     0, 0));
+  return ((addr == ((void *) (-1))) ? 0 : addr);
+}
+
+#endif /* __linux */
