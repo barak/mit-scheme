@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.57 2001/03/08 20:58:23 cph Exp $
+$Id: load.scm,v 14.58 2001/12/18 21:21:43 cph Exp $
 
-Copyright (c) 1988-2000 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Code Loader
@@ -135,7 +136,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       result)))
 
 (define default-object
-  "default-object")
+  (list 'DEFAULT-OBJECT))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? #t))
@@ -360,15 +361,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (eval-stream stream environment syntax-table)
   (stream-map stream
 	      (let ((repl (nearest-repl)))
-		(let ((environment
-		       (if (eq? environment default-object)
-			   (repl/environment repl)
-			   environment))
-		      (syntax-table
-		       (make-syntax-table
-			(if (eq? syntax-table default-object)
-			    (repl/syntax-table repl)
-			    syntax-table))))
+		(let* ((environment
+			(if (eq? environment default-object)
+			    (repl/environment repl)
+			    environment))
+		       (syntax-table
+			(make-syntax-table
+			 (if (eq? syntax-table default-object)
+			     (environment-syntax-table environment)
+			     syntax-table))))
 		  (lambda (s-expression)
 		    (cons s-expression
 			  (hook/repl-eval #f
