@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.118 1993/04/27 09:22:28 cph Exp $
+$Id: edwin.pkg,v 1.119 1993/07/22 21:06:43 cph Exp $
 
 Copyright (c) 1989-1993 Massachusetts Institute of Technology
 
@@ -284,6 +284,7 @@ MIT in each case. |#
   (parent (edwin screen))
   (import (runtime primitive-io)
 	  channel-type=terminal?
+	  have-select?
 	  terminal-get-state
 	  terminal-output-baud-rate
 	  terminal-raw-input
