@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: mips.h,v 1.20 1994/05/02 19:04:06 cph Exp $
+$Id: mips.h,v 1.21 1998/07/19 20:40:10 cph Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -46,11 +46,18 @@ MIT in each case. */
 
 #include "cmptype.h"
 
-#ifdef _IRIX4
+#ifdef _IRIX
 
 #include <sys/cachectl.h>
+#include <unistd.h>
 
-#else /* not _IRIX4 */
+/* Define this to use the official method of flushing the cache: the
+   `mprotect' system call.  When not defined, we use `cacheflush',
+   which is more efficient. The mprotect method is known to work on
+   IRIX 6.3.  */
+/* #define USE_MPROTECT_CACHE_FLUSH */
+
+#else /* not _IRIX */
 #ifdef sonyrisc
 
 #include <sys/syscall.h>
@@ -83,7 +90,13 @@ extern void syscall();
 #endif /* not 0 */
 
 #endif /* not sonyrisc */
-#endif /* not _IRIX4 */
+#endif /* not _IRIX */
+
+#ifdef USE_MPROTECT_CACHE_FLUSH
+#define FLUSH_BOTH call_mprotect
+#else
+#define FLUSH_BOTH(addr, size) cacheflush ((addr), (size), BCACHE)
+#endif
 
 /* Machine parameters to be set by the user. */
 
@@ -340,7 +353,7 @@ do {									\
   PC[1] = JALR(COMP_REG_LINKAGE, COMP_REG_TEMPORARY);			\
   PC[2] = ADDI(COMP_REG_TRAMP_INDEX, 0, (4*index));			\
   /* assumes index fits in 16 bits */					\
-  cacheflush (PC, (3 * sizeof (unsigned long)), BCACHE);		\
+  FLUSH_BOTH (PC, (3 * sizeof (unsigned long)));			\
 }
 
 /* Execute cache entries.
@@ -461,10 +474,9 @@ do {									\
 
 #define FLUSH_I_CACHE() do						\
 {									\
-  cacheflush (Constant_Space,						\
+  FLUSH_BOTH (Constant_Space,						\
 	      (((unsigned long) Heap_Top)				\
-	       - ((unsigned long) Constant_Space)),			\
-	      BCACHE);							\
+	       - ((unsigned long) Constant_Space)));			\
 } while (0)
 
 /* This flushes a region of the I-cache.
@@ -474,7 +486,7 @@ do {									\
 
 #define FLUSH_I_CACHE_REGION(address, nwords) do			\
 {									\
-  cacheflush ((address), ((sizeof (long)) * (nwords)), BCACHE);		\
+  FLUSH_BOTH ((address), ((sizeof (long)) * (nwords)));			\
 } while (0)
 
 /* This guarantees that a newly-written section of address space
@@ -484,14 +496,25 @@ do {									\
    the written region overlaps with already-executed areas.
  */
 
+#ifdef USE_MPROTECT_CACHE_FLUSH
+
+#define PUSH_D_CACHE_REGION(address, nwords) do				\
+{									\
+  FLUSH_BOTH ((address), ((sizeof (long)) * (nwords)));			\
+} while (0)
+
+#else /* not USE_MPROTECT_CACHE_FLUSH */
+
 #define PUSH_D_CACHE_REGION(address, nwords) do				\
 {									\
   unsigned long _addr = ((unsigned long) (address));			\
   unsigned long _nbytes = ((sizeof (long)) * (nwords));			\
-  cacheflush (_addr, _nbytes, DCACHE);					\
-  cacheflush (_addr, 1, ICACHE);					\
-  cacheflush ((_addr + (_nbytes - 1)), 1, ICACHE);			\
+  cacheflush (((PTR) _addr), _nbytes, DCACHE);				\
+  cacheflush (((PTR) _addr), 1, ICACHE);				\
+  cacheflush (((PTR) (_addr + (_nbytes - 1))), 1, ICACHE);		\
 } while (0)
+
+#endif /* not USE_MPROTECT_CACHE_FLUSH */
 
 #ifdef IN_CMPINT_C
 
@@ -511,6 +534,57 @@ DEFUN_VOID (interface_initialize_C)
   interface_initialize ();
   return;
 }
+
+#ifdef _IRIX6
+
+#include <sys/mman.h>
+#include <sys/types.h>
+
+#define VM_PROT_SCHEME (PROT_READ | PROT_WRITE | PROT_EXEC)
+
+static void * mprotect_start;
+static unsigned long mprotect_size;
+
+static void
+DEFUN (call_mprotect_1, (start, size), void * start AND unsigned long size)
+{
+  if ((mprotect (start, size, VM_PROT_SCHEME)) != 0)
+    {
+      perror ("unable to change memory protection");
+      fprintf (stderr, "mprotect(0x%lx, %d (0x%lx), 0x%lx)\n",
+	       start, size, size, VM_PROT_SCHEME);
+      Microcode_Termination (TERM_EXIT);
+      /*NOTREACHED*/
+    }
+}
+
+#ifdef USE_MPROTECT_CACHE_FLUSH
+void
+DEFUN (call_mprotect, (start, size), void * start AND unsigned long size)
+{
+  unsigned long pagesize = (getpagesize ());
+  unsigned long istart = ((unsigned long) start);
+  unsigned long pstart = ((istart / pagesize) * pagesize);
+  call_mprotect_1 (((void *) pstart), (istart - pstart));
+}
+#endif /* USE_MPROTECT_CACHE_FLUSH */
+
+void *
+DEFUN (irix_heap_malloc, (size), long size)
+{
+  int pagesize = (getpagesize ());
+  void * area = (malloc (size + pagesize));
+  if (area == 0)
+    return (0);
+  mprotect_start
+    = ((void *)
+       (((((unsigned long) area) + (pagesize - 1)) / pagesize) * pagesize));
+  mprotect_size = size;
+  call_mprotect_1 (mprotect_start, mprotect_size);
+  return (mprotect_start);
+}
+
+#endif /* _IRIX6 */
 
 #define ASM_RESET_HOOK interface_initialize_C
 
