@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.7 1988/06/14 08:33:51 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.8 1988/07/16 21:51:09 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -197,9 +197,7 @@ MIT in each case. |#
 
 (define (compiler:batch-error-handler condition)
   (and (condition/error? condition)
-       (begin (apply warn
-		     (condition/message condition)
-		     (condition/irritants condition))
+       (begin (warn (condition/report-string condition))
 	      (compiler:abort false))))
 
 (define (compiler:abort value)
