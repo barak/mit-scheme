@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: parser.pkg,v 1.13 2001/10/04 16:28:13 cph Exp $
+;;; $Id: parser.pkg,v 1.14 2001/10/04 16:51:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -21,7 +21,7 @@
 
 ;;;; Parser language: packaging
 
-(global-definitions "$brun/runtime")
+(global-definitions "../runtime/runtime")
 
 (define-package (runtime *parser buffer)
   (files "buffer")

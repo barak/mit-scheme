@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xml.pkg,v 1.7 2001/07/16 20:41:29 cph Exp $
+;;; $Id: xml.pkg,v 1.8 2001/10/04 16:51:27 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -21,9 +21,9 @@
 
 ;;;; XML: packaging
 
-(global-definitions "$brun/runtime")
-(global-definitions "$bscm/sos/sos")
-(global-definitions "../parser/parser")
+(global-definitions "../runtime/runtime")
+(global-definitions "../sos/sos")
+(global-definitions "../star-parser/parser")
 
 (define-package (runtime xml)
   (files)
