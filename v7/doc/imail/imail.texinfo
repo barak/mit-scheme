@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.23 2001/07/17 02:47:54 cph Exp $
+@comment $Id: imail.texinfo,v 1.24 2001/07/18 04:18:55 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -33,7 +33,7 @@ Free Documentation License".
 @titlepage
 @title{IMAIL User's Manual}
 @subtitle Edition 1.5 for IMAIL Version 1.11
-@subtitle 16 July 2001
+@subtitle 18 July 2001
 @author by Chris Hanson
 
 @page
@@ -177,6 +177,7 @@ design.  Here we will introduce you to messages, folders,
 @menu
 * Messages::                    
 * Folders::                     
+* Containers::                  
 * URLs::                        
 * Server Connections::          
 @end menu
@@ -214,14 +215,14 @@ data so that they can be carried in an email message.  Most modern email
 software supports the @acronym{MIME} standard; one notable exception is
 Emacs Rmail.
 
-@node Folders, URLs, Messages, Concepts
+@node Folders, Containers, Messages, Concepts
 @section Folders
 
 @cindex folder
 Another important concept is a means for grouping messages together.
 All email software provides some means for doing this, and
 @acronym{IMAIL} is no exception.  @acronym{IMAIL} provides objects
-called @dfn{folders}.  A folder is just a container that holds an
+called @dfn{folders}.  A folder is just an object that holds an
 arbitrary number of email messages.  Messages can be added to a folder,
 deleted from a folder, and moved or copied from one folder to another.
 
@@ -229,8 +230,7 @@ deleted from a folder, and moved or copied from one folder to another.
 @cindex BABYL file
 @cindex unix mailbox file
 @cindex mbox file
-@cindex IMAP mailbox
-@cindex folder type
+@cindex IMAP mailbox, as folder
 @cindex type of folder
 In @acronym{IMAIL}, the concept of the folder is used to embrace
 different grouping mechanisms.  This is because @acronym{IMAIL} provides
@@ -244,7 +244,29 @@ exceptions, each of these different @dfn{types} of folder are treated
 exactly the same by @acronym{IMAIL}.  Finally, because @acronym{IMAIL}
 is extensible, other types of folders may be supported in the future.
 
-@node URLs, Server Connections, Folders, Concepts
+@node Containers, URLs, Folders, Concepts
+@section Containers
+
+@cindex container
+@cindex type of container
+@cindex directory, as container
+Folders can themselves be grouped together inside objects called
+@dfn{containers}.  A container is an object that holds folders, much in
+the same way that a folder holds messages.  As for folders, the concept
+of a container is a generalization of the different kinds of mechanisms
+used by the underlying mail technology.  So, for example, the container
+of a file folder is the directory holding that file.
+
+@cindex IMAP mailbox, as container
+@acronym{IMAP} containers are a little different: each @acronym{IMAP}
+mailbox is capable of holding other mailboxes.  What this means is that,
+from @acronym{IMAIL}'s point of view, an @acronym{IMAP} mailbox is both
+a folder object and a container object at the same time.  However, when
+@acronym{IMAIL} views an @acronym{IMAP} mailbox as a container, it is
+treated differently than when it is viewed as a folder, and consequently
+different notation is used in each case.
+
+@node URLs, Server Connections, Containers, Concepts
 @section URLs
 
 @cindex Uniform Resource Locator
@@ -265,6 +287,7 @@ folders.@footnote{@acronym{URL}s are defined in
 @menu
 * IMAP URLs::                   
 * File URLs::                   
+* Container URLs::              
 @end menu
 
 @node IMAP URLs, File URLs, URLs, URLs
@@ -341,9 +364,11 @@ Cyrus}) puts @emph{all} subfolders for a user account under
 @samp{inbox}, but this is not required by @acronym{IMAP} and is not
 generally true.
 
-@node File URLs,  , IMAP URLs, URLs
+@node File URLs, Container URLs, IMAP URLs, URLs
 @subsection File URLs
 
+@cindex file URL
+@cindex URL, file
 There is one other @acronym{URL} type supported by @acronym{IMAIL}: file
 @acronym{URL}s.  This uses the @samp{file:} @acronym{URL}
 syntax,@footnote{File @acronym{URL}s are defined in
@@ -405,6 +430,37 @@ becomes the @acronym{URL}
 file://localhost/C:/My%20Documents/Mail/My%20Mail.rmail
 @end example
 
+@node Container URLs,  , File URLs, URLs
+@subsection Container URLs
+
+@cindex container URL
+@cindex URL, container
+@acronym{IMAIL} also uses @acronym{URL}s to refer to containers.  The
+notation used for a container is what you would expect: take a folder
+@acronym{URL} and drop everything after the rightmost slash.  For
+example, the folder @acronym{URL}
+
+@example
+imap://localhost/inbox/sysadmin/equipment
+@end example
+
+@noindent
+has the corresponding container @acronym{URL}
+
+@example
+imap://localhost/inbox/sysadmin/
+@end example
+
+@noindent
+Note that this is different from the @acronym{URL} for the
+@code{sysadmin} folder:
+
+@example
+imap://localhost/inbox/sysadmin
+@end example
+
+
+@c **** Other stuff to consider documenting. ****
 @ifset dontsetme
 @itemize @bullet
 @item
@@ -740,8 +796,18 @@ opposed to mail messages).  This is because ordinary file-system
 commands already provide the ability to copy, delete, and rename such
 files.  This isn't the case for @acronym{IMAP} mail readers.
 Consequently @acronym{IMAIL} provides a basic set of commands for
-manipulating folders.@footnote{We plan to implement a Dired-like folder
-browser in the future.}
+manipulating folders, as well as a Dired-like folder browser.
+
+@menu
+* Simple Folder Commands::      
+* Folder Browser::              
+@end menu
+
+@node Simple Folder Commands, Folder Browser, Multiple Folders, Multiple Folders
+@subsection Simple Folder Commands
+
+Within a folder's buffer, @acronym{IMAIL} provides a number of simple
+commands that can be used to interact with other folders.
 
 @table @kbd
 @item i @var{URL} @key{RET}
@@ -868,8 +934,288 @@ folder.  It prompts for a @acronym{URL}, and signals an error if the
 name is already in use.  This command is rarely used since the
 message-copying commands automatically create folders as needed.
 
+@node Folder Browser,  , Simple Folder Commands, Multiple Folders
+@subsection The Folder Browser
+
+In addition to the simple commands just described, @acronym{IMAIL} also
+provides a Dired-like browser for viewing and manipulating folders.  The
+browser is generic, meaning that it will view collections of both
+@acronym{IMAP} folders and file folders, although it works better and is
+more useful in conjunction with @acronym{IMAP} folders.
+
+@kindex ^
+@findex imail-browser-view-container
+The @code{imail-browser-view-container} command is used to enter the
+folder browser.  In an @acronym{IMAIL} folder buffer, this command is
+bound to the @kbd{^} key, and will bring up a folder browser that is
+viewing the container of the current folder.  With a prefix argument,
+you will be asked for the URL of a container to browse.
+
+An @acronym{IMAIL} browser buffer is arranged so that each line in the
+browser represents a folder or a container (or both, in the case of
+@acronym{IMAP} containers).  Here is an example:
+
 @example
+@group
+imap://localhost/inbox/
+-----------------------
+  + debian/
+  + family
+  + gnu/
+  + ham/
+  + hp-laptops/
+  + linux/
+  + misc/
+  + mit/
+  + music/
+  + purchases
+  + scheme/
+  + software/
+  + sysadmin
+  + vendors/
+  + vlsi
+@end group
 @end example
+
+@noindent
+There are several interesting features of this buffer.  The first two
+lines of the buffer are a title, telling you the URL of the container
+that this buffer is browsing.  Each of the remaining lines shows the
+name of a folder (or container) that is inside the container.  You can
+perform various operations on one of these folders by moving point
+to the folder's line and invoking commands.
+
+Each line uses special characters to give you cues about the object
+being described.  If the object is a container, there is a @samp{+}
+character at the beginning of the line.  Because our example is showing
+an @acronym{IMAP} container, and virtually all @acronym{IMAP} folders
+are also containers, every line in the example starts with @samp{+}.
+Additionally, if the object is @emph{only} a container, then the
+object's name ends in the character @samp{/}; if the object is only a
+folder, or if it is both a folder and a container, then there is no
+trailing @samp{/}.
+
+The following commands are available in an @acronym{IMAIL} browser
+buffer.
+
+@table @kbd
+@item f
+View the folder on the current line in an @acronym{IMAIL} buffer
+(@code{imail-browser-view-selected-folder}).
+
+@item t
+If the object on the current line is a container, toggle whether its
+contents are shown (@code{imail-browser-toggle-container}).
+
+@item c
+Browse the container on the current line
+(@code{imail-browser-view-selected-container}).
+
+@item ^
+Browse the container of the this buffer's container
+(@code{imail-browser-view-container}).
+
+@item d
+Mark the object on the current line for subsequent deletion
+(@code{imail-browser-flag-folder-deletion}).
+
+@item m
+Mark the object on the current line for subsequent operations
+(@code{imail-browser-mark}).
+
+@item u
+Remove any mark from the current line and move to the next line
+(@code{imail-browser-unmark}).
+
+@item @key{DEL}
+Move to the previous line and remove any mark there
+(@code{imail-browser-unmark-backward}).
+
+@item M-@key{DEL} @var{char}
+Remove marks from all folders (@code{imail-browser-unmark-all-folders}).
+
+@item C @var{URL} @key{RET}
+Copy the folder on the current line to the folder named @var{URL},
+creating it if needed (@code{imail-browser-do-copy}).
+
+@item R @var{URL} @key{RET}
+Rename the object on the current line to be @var{URL}
+(@code{imail-browser-do-rename}).
+
+@item D
+Delete the object on the current line (@code{imail-browser-do-delete}).
+Prompts for confirmation before performing the deletion.
+
+@item x
+Delete all objects that have been marked for deletion
+(@code{imail-browser-do-flagged-delete}).  Prompts for confirmation
+before any deletion is performed.
+
+@item + @var{URL} @key{RET}
+Create a folder named @var{URL} (@code{imail-create-folder}).
+
+@item g
+Recompute the buffer's contents by querying the server or file system
+(@code{imail-browser-revert}).
+
+@item q
+Kill the current buffer (@code{imail-browser-quit}).
+@end table
+
+@kindex f
+@findex imail-browser-view-selected-folder
+If point is on a line describing a folder, use the @kbd{f}
+(@code{imail-browser-view-selected-folder}) command to view the contents
+of that folder.  This selects an @acronym{IMAIL} folder buffer for that
+folder.
+
+@kindex t
+@findex imail-browser-toggle-container
+If point is on a line describing a container, use the @kbd{t}
+(@code{imail-browser-toggle-container}) command to show the contents of
+the container in the current buffer.  This causes the @samp{+} on this
+line to change to a @samp{-}, and new lines describing the contents are
+inserted into the buffer following the current line.  The new lines are
+slightly indented to indicate the container relationship.  For example:
+
+@example
+@group
+imap://localhost/inbox/
+-----------------------
+  - debian/
+      + bugs
+      + maintainer
+      + misc
+  + family
+  + gnu/
+  + ham/
+  + hp-laptops/
+  + linux/
+  + misc/
+  + mit/
+  + music/
+  + purchases
+  + scheme/
+  + software/
+  + sysadmin
+  + vendors/
+  + vlsi
+@end group
+@end example
+
+@noindent
+@findex imail-browser-mouse-toggle-container
+To hide the container's content lines, use the @kbd{t} command again.
+Another way to open and close containers is to click the left mouse
+button on the @samp{+} or @samp{-} character for the container
+(@code{imail-browser-mouse-toggle-container}).
+
+@kindex c
+@findex imail-browser-view-selected-container
+@kindex ^
+@findex imail-browser-view-container
+If you would rather browse a container in a separate buffer, use the
+@kbd{c} (@code{imail-browser-view-selected-container}) command.  To
+browse the container of this buffer's container, use the @kbd{^}
+(@code{imail-browser-view-container}) command.
+
+Besides simple browsing capabilities, the @acronym{IMAIL} folder browser
+also provides the ability to modify folders and containers, by copying,
+renaming, and deleting them.  The commands to do this normally operate
+on the object on the current line.  However, you can @dfn{mark} one or
+more lines, and subsequently perform an operation on all of them at
+once.
+
+@kindex m
+@findex imail-browser-mark
+@kindex d
+@findex imail-browser-flag-folder-deletion
+There are several marking and unmarking commands.  The @kbd{m}
+(@code{imail-browser-mark}) command marks the current line and moves
+down to the next line.  The mark is visible as an asterisk at the
+beginning of the line.  A numeric argument serves as a repeat count.
+The @kbd{d} (@code{imail-browser-flag-folder-deletion}) is just like
+@kbd{m}, except that it marks lines with @samp{D}.  @samp{D} marks are
+used to flag objects for deletion, while @samp{*} marks are used for
+everything else.
+
+@kindex u
+@findex imail-browser-unmark
+@kindex DEL
+@findex imail-browser-unmark-backward
+@kindex M-DEL
+@findex imail-browser-unmark-all-folders
+To unmark a line, use the @kbd{u} (@code{imail-browser-unmark}) command.
+This removes any mark from the current line and moves to the next line.
+Like @kbd{m}, a numeric argument serves as a repeat count.  The
+@key{DEL} (@code{imail-browser-unmark-backward}) command moves upward,
+removing flags; it is like @kbd{u} with argument @code{-1}.  Finally,
+the @kbd{M-@key{DEL}} (@code{imail-browser-unmark-all-folders}) prompts
+for a character and unmarks @emph{all} lines marked with that character;
+specifying @key{RET} as the character removes all marks.
+
+The next three commands perform the copy, rename, and delete operations.
+These commands all operate on one or more folders, which you specify
+either by marking them, or by moving point to the corresponding lines.
+The folders to be operated on are specified as follows.  If the command
+is given a numeric argument @var{N}, then the next @var{N} folders are
+specified.  Otherwise, any folders marked with an asterisk are
+specified.  If there is no argument and no marked folders, then the
+folder on the current line is specified.
+
+@kindex C
+@findex imail-browser-do-copy
+The @kbd{C} (@code{imail-browser-do-copy}) command copies one or more
+folders.  If one folder is specified, the command prompts for the
+@acronym{URL} of another folder, and appends the messages of the first
+folder to the end of the second folder.  The second folder is created if
+necessary.  If more than one folder is specified, the command prompts
+for the @acronym{URL} of an existing container, and copies the source
+folders into the target container with the same names.
+
+@kindex R
+@findex imail-browser-do-rename
+The @kbd{R} (@code{imail-browser-do-rename}) command renames one or more
+folders.  If one folder is specified, the command prompts for a
+@acronym{URL}, and changes the name of the folder to the @acronym{URL}.
+If more than one folder is specified, the command prompts for the
+@acronym{URL} of an existing container, and moves the folders into the
+container.  Note that in both cases, it is an error if there is already
+a folder with the new name.  Furthermore, this command only works in
+limited circumstances, specifically, when moving a folder from one place
+to another on a single @acronym{IMAP} server, or when moving a file
+folder from one place to another within the same file system.
+
+@kindex D
+@findex imail-browser-do-delete
+@kindex x
+@findex imail-browser-do-flagged-delete
+The @kbd{D} (@code{imail-browser-do-delete}) command deletes one or more
+folders.  The command prompts for confirmation before any folders are
+deleted.  The @kbd{x} (@code{imail-browser-do-flagged-delete}) command
+is similar, except that the folders it deletes are those that have been
+marked with @samp{D}.  (The @kbd{x} command is mostly provided for
+compatibility with Dired.)
+
+@kindex +
+@findex imail-create-folder
+The @kbd{+} (@code{imail-create-folder}) command creates a new, empty
+folder.  It prompts for a @acronym{URL}, and signals an error if the
+name is already in use.  This command is rarely used since the
+message-copying commands automatically create folders as needed.
+
+@kindex g
+@findex imail-browser-revert
+The @kbd{g} (@code{imail-browser-revert}) command re-reads the contents
+of the browser buffer's container and uses that information to
+regenerate the buffer's contents.  Any marks that you have placed in the
+buffer are preserved.
+
+@kindex q
+@findex imail-browser-quit
+The @kbd{q} (@code{imail-browser-quit}) command kills the current
+buffer.  If you have marked some folders for later operation, the marks
+are discarded and the operations are not performed.
 
 @node MIME Support, Flags, Multiple Folders, Commands
 @section MIME Support
