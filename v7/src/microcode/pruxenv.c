@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/pruxenv.c,v 1.10 1992/07/08 22:58:22 cph Exp $
+$Id: pruxenv.c,v 1.11 1992/08/29 13:13:12 jinx Exp $
 
 Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
@@ -120,6 +120,20 @@ DEFINE_PRIMITIVE ("CURRENT-GID", Prim_current_gid, 0, 0,
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (long_to_integer (UX_getegid ()));
+}
+
+DEFINE_PRIMITIVE ("REAL-UID", Prim_real_uid, 0, 0,
+  "Return Scheme's real UID.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (UX_getuid ()));
+}
+
+DEFINE_PRIMITIVE ("REAL-GID", Prim_real_gid, 0, 0,
+  "Return Scheme's real GID.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (long_to_integer (UX_getgid ()));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM", Prim_system, 1, 1,
