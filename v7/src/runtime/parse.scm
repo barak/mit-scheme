@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.32 1999/05/14 22:15:47 cph Exp $
+$Id: parse.scm,v 14.33 1999/05/15 02:50:34 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -57,7 +57,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (TRUE . ,true)
 	  (OPTIONAL . ,lambda-optional-tag)
 	  (REST . ,lambda-rest-tag)
-	  (AUX . ,lambda-auxiliary-tag)))
+	  (AUX . ',lambda-auxiliary-tag)))
 
   (set! *parser-radix* 10)
   (set! *parser-associate-positions?* false)
