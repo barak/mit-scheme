@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.23 1987/04/16 02:08:22 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.c,v 9.24 1987/10/02 23:57:57 mhwu Rel $
 
    This file contains the procedures for handling BIGNUM Arithmetic. 
 */
@@ -714,7 +714,7 @@ div_internal(ARG1, ARG2, Quotient)
 		  (MAX_DIGIT_SIZE +
 		   ((Digit < 0) ? -1 : Get_Carry(Digit))));
      }
-     *SCAN++ = Get_Digit(Digit);
+     *SCAN = Get_Digit(Digit);
 
      if (Get_Carry(Digit) == 0)
      {
