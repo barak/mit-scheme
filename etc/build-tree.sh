@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-tree.sh,v 1.4 2000/08/18 19:32:02 cph Exp $
+# $Id: build-tree.sh,v 1.5 2000/08/18 19:33:24 cph Exp $
 #
 # Program to finish setting up the Scheme source tree after it is
 # checked out.  Adds required links, builds TAGS files, etc.
@@ -10,7 +10,7 @@ then
   echo "This must be run from the top-level Scheme source directory."
   exit 1
 fi
-for directory in 6001 cref edwin rcs runtime sf sos win32
+for directory in 6001 cref edwin imail rcs runtime sf sos win32
 do
   (cd $directory; ln -s ../Makefile.std Makefile)
 done
