@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.21 1992/09/18 16:30:34 jinx Exp $
+$Id: unxprm.scm,v 1.22 1992/09/18 16:35:32 jinx Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -228,11 +228,11 @@ MIT in each case. |#
   (ucode-primitive file-time->string 1))
 
 (define (unix/uid->string uid)
-  (or ((ucode-primitive uid->string 0) uid)
+  (or ((ucode-primitive uid->string 1) uid)
       (number->string uid 10)))
 
 (define (unix/gid->string gid)
-  (or ((ucode-primitive gid->string 0) gid)
+  (or ((ucode-primitive gid->string 1) gid)
       (number->string gid 10)))
 
 (define-integrable unix/system
