@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.68 1989/04/28 22:53:36 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.69 1989/06/19 22:42:29 markf Rel $
 ;;;
 ;;;	Copyright (c) 1985, 1989 Massachusetts Institute of Technology
 ;;;
@@ -385,7 +385,7 @@
 				 (mark-position mark)
 				 (mark-left-inserting? mark))
 	    (let ((tail (weak-memq mark (group-marks group))))
-	      (and tail (car tail))))
+	      (and tail (system-pair-car tail))))
 	(begin
 	  (set-group-marks! group
 			    (system-pair-cons (ucode-type weak-cons)
