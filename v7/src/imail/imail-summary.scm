@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-summary.scm,v 1.5 2000/05/18 20:55:04 cph Exp $
+;;; $Id: imail-summary.scm,v 1.6 2000/05/18 21:09:37 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -162,7 +162,7 @@ The recipients are specified as a comma-separated list of names."
 (define (imail-summary-message-mark buffer message)
   (let ((index (message-index message)))
     (and index
-	 (line-start (buffer-start buffer) index))))
+	 (line-start (imail-summary-first-line buffer) index))))
 
 (define (imail-summary-pop-up-message-buffer buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
@@ -181,7 +181,7 @@ The recipients are specified as a comma-separated list of names."
 					      #f))))
   (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
   (buffer-not-modified! buffer)
-  (set-buffer-point! buffer (buffer-start buffer))
+  (set-buffer-point! buffer (imail-summary-first-line buffer))
   (let ((message
 	 (selected-message #f (buffer-get buffer 'IMAIL-FOLDER-BUFFER))))
     (if message
@@ -189,17 +189,23 @@ The recipients are specified as a comma-separated list of names."
 
 (define (imail-summary-selected-message buffer)
   (let ((folder (selected-folder #f buffer))
-	(index
-	 (count-lines (buffer-start buffer)
-		      (line-start (buffer-point buffer) 0))))
+	(start (imail-summary-first-line buffer))
+	(here (line-start (buffer-point buffer) 0)))
     (and folder
-	 (< index (folder-length folder))
-	 (get-message folder index))))
+	 (mark<= start here)
+	 (let ((index (count-lines start here)))
+	   (and (< index (folder-length folder))
+		(get-message folder index))))))
 
 (define (imail-summary-select-message buffer message)
-  (let ((mark (line-start (buffer-start buffer) (message-index message))))
+  (let ((mark
+	 (line-start (imail-summary-first-line buffer)
+		     (message-index message))))
     (if mark
 	(set-buffer-point! buffer mark))))
+
+(define (imail-summary-first-line buffer)
+  (line-start (buffer-start buffer) 2 'LIMIT))
 
 (define (fill-imail-summary-buffer! buffer folder predicate)
   (let ((end (folder-length folder)))
@@ -214,6 +220,20 @@ The recipients are specified as a comma-separated list of names."
 		 n
 		 (loop (+ n 1) (* k 10))))))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+	(insert-string " " mark)
+	(insert-chars #\# index-digits mark)
+	(insert-string " Length  Date   " mark)
+	(insert-string-pad-right "Subject" 40 #\space mark)
+	(insert-string "  " mark)
+	(insert-string "From" mark)
+	(insert-newline mark)
+	(insert-string " " mark)
+	(insert-chars #\- index-digits mark)
+	(insert-string " ------  ----   " mark)
+	(insert-string-pad-right "-------" 40 #\space mark)
+	(insert-string "  " mark)
+	(insert-string "----" mark)
+	(insert-newline mark)
 	(for-each (lambda (message)
 		    (if (or (not predicate) (predicate message))
 			(write-imail-summary-line! message index-digits mark)))
@@ -238,7 +258,7 @@ The recipients are specified as a comma-separated list of names."
   (insert-string "  " mark)
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
-
+
 (define (message-summary-length-string message)
   (abbreviate-exact-nonnegative-integer (message-length message) 5))
 
