@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: mime-codec.scm,v 1.6 2000/06/01 19:29:05 cph Exp $
+;;; $Id: mime-codec.scm,v 1.7 2000/06/03 01:58:32 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -24,20 +24,18 @@
 
 ;;;; Decode quoted-printable
 
-(define (decode-quoted-printable-string string)
-  (decode-quoted-printable-substring string 0 (string-length string)))
+(define (decode-quoted-printable-string string port)
+  (decode-quoted-printable-substring string 0 (string-length string) port))
 
-(define (decode-quoted-printable-substring string start end)
-  (with-string-output-port
-    (lambda (port)
-      (let loop ((start start))
-	(let ((i (substring-find-next-char string start end #\newline)))
-	  (if i
-	      (begin
-		(if (decode-quoted-printable-line string start i port)
-		    (newline port))
-		(loop (fix:+ i 1)))
-	      (decode-quoted-printable-line string start end port)))))))
+(define (decode-quoted-printable-substring string start end port)
+  (let loop ((start start))
+    (let ((i (substring-find-next-char string start end #\newline)))
+      (if i
+	  (begin
+	    (if (decode-quoted-printable-line string start i port)
+		(newline port))
+	    (loop (fix:+ i 1)))
+	  (decode-quoted-printable-line string start end port)))))
 
 (define (decode-quoted-printable-line string start end port)
   (let ((end (skip-lwsp-backwards string start end)))
@@ -86,65 +84,58 @@
 
 ;;;; Decode BASE64
 
-(define (decode-base64-binary-string string)
-  (decode-base64-binary-substring string 0 (string-length string)))
+(define (decode-base64-binary-string string port)
+  (decode-base64-binary-substring string 0 (string-length string) port))
 
-(define (decode-base64-binary-substring string start end)
+(define (decode-base64-binary-substring string start end port)
   (decode-base64-internal string start end
-    (lambda (port)
-      (lambda (char)
-	(write-char char port)))))
+			  (lambda (char) (write-char char port))))
 
-(define (decode-base64-text-string string pending-return?)
+(define (decode-base64-text-string string pending-return? port)
   (decode-base64-text-substring string 0 (string-length string)
-				pending-return?))
+				pending-return? port))
 
-(define (decode-base64-text-substring string start end pending-return?)
-  (let ((result
-	 (decode-base64-internal string start end
-	   (lambda (port)
-	     (lambda (char)
-	       (if pending-return?
-		   (case char
-		     ((#\linefeed)
-		      (set! pending-return? #f)
-		      (newline port))
-		     ((#\return)
-		      (write-char #\return port))
-		     (else
-		      (set! pending-return? #f)
-		      (write-char #\return port)))
-		   (if (char=? char #\return)
-		       (set! pending-return? #t)
-		       (write-char char port))))))))
-    (values result pending-return?)))
+(define (decode-base64-text-substring string start end pending-return? port)
+  (decode-base64-internal string start end
+    (lambda (char)
+      (if pending-return?
+	  (case char
+	    ((#\linefeed)
+	     (set! pending-return? #f)
+	     (newline port))
+	    ((#\return)
+	     (write-char #\return port))
+	    (else
+	     (set! pending-return? #f)
+	     (write-char #\return port)))
+	  (if (char=? char #\return)
+	      (set! pending-return? #t)
+	      (write-char char port)))))
+  pending-return?)
 
-(define (decode-base64-internal string start end make-output)
-  (let ((input (string->input-port string start end)))
-    (with-string-output-port
-      (lambda (output)
-	(let ((input
-	       (lambda (index)
-		 (let loop ()
-		   (let ((char (read-char input)))
-		     (cond ((eof-object? char)
-			    (if (not (fix:= index 0))
-				(error "Premature EOF from BASE64 port."))
-			    #f)
-			   ((let ((digit
-				   (vector-8b-ref base64-char-table
-						  (char->integer char))))
-			      (and (fix:< digit #x40)
-				   digit)))
-			   ((char=? char #\=)
-			    (if (not (or (fix:= index 2) (fix:= index 3)))
-				(error "Misplaced #\= from BASE64 port."))
-			    #f)
-			   (else (loop)))))))
-	      (output (make-output output)))
-	  (let loop ()
-	    (if (decode-base64-quantum input output)
-		(loop))))))))
+(define (decode-base64-internal string start end output)
+  (let ((input
+	 (let ((port (string->input-port string start end)))
+	   (lambda (index)
+	     (let loop ()
+	       (let ((char (read-char port)))
+		 (cond ((eof-object? char)
+			(if (not (fix:= index 0))
+			    (error "Premature EOF from BASE64 port."))
+			#f)
+		       ((let ((digit
+			       (vector-8b-ref base64-char-table
+					      (char->integer char))))
+			  (and (fix:< digit #x40)
+			       digit)))
+		       ((char=? char #\=)
+			(if (not (or (fix:= index 2) (fix:= index 3)))
+			    (error "Misplaced #\= from BASE64 port."))
+			#f)
+		       (else (loop)))))))))
+    (let loop ()
+      (if (decode-base64-quantum input output)
+	  (loop)))))
 
 (define (decode-base64-quantum input output)
   (let ((d1 (input 0))
