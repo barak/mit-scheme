@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/events.scm,v 14.1 1988/06/13 11:44:35 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/events.scm,v 14.2 1991/04/25 14:40:13 markf Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -71,33 +71,35 @@ MIT in each case. |#
 (define remove-event-receiver!)
 
 (define (process-events! event-distributor)
-  (if (not
-       (without-interrupts
-	(lambda ()
-	  (let ((lock (event-distributor/lock event-distributor)))
-	    (set-event-distributor/lock! event-distributor true)
-	    lock))))
-      (begin
-	(queue-map! (event-distributor/events event-distributor)
-	  (lambda (event)
-	    (case (car event)
-	      ((INVOKE-RECEIVERS)
-	       (let loop
-		   ((receivers
-		     (event-distributor/receivers event-distributor)))
-		 (if (not (null? receivers))
-		     (begin (apply (car receivers) (cdr event))
-			    (loop (cdr receivers))))))
-	      ((ADD-RECEIVER)
-	       (set-event-distributor/receivers!
-		event-distributor
-		(append! (event-distributor/receivers event-distributor)
-			 (list (cdr event)))))
-	      ((REMOVE-RECEIVER)
-	       (set-event-distributor/receivers!
-		event-distributor
-		(delv! (cdr event)
-		       (event-distributor/receivers event-distributor))))
-	      (else
-	       (error "Illegal event" event)))))
-	(set-event-distributor/lock! event-distributor false))))
+  (let ((old-lock))
+    (dynamic-wind
+     (lambda ()
+       (let ((lock (event-distributor/lock event-distributor)))
+	 (set-event-distributor/lock! event-distributor true)
+	 (set! old-lock lock)
+	 unspecific))
+     (lambda ()
+       (if (not old-lock)
+	   (queue-map! (event-distributor/events event-distributor)
+	     (lambda (event)
+	       (case (car event)
+		 ((INVOKE-RECEIVERS)
+		  (do ((receivers
+			(event-distributor/receivers event-distributor)
+			(cdr receivers)))
+		      ((null? receivers))
+		    (apply (car receivers) (cdr event))))
+		 ((ADD-RECEIVER)
+		  (set-event-distributor/receivers!
+		   event-distributor
+		   (append! (event-distributor/receivers event-distributor)
+			    (list (cdr event)))))
+		 ((REMOVE-RECEIVER)
+		  (set-event-distributor/receivers!
+		   event-distributor
+		   (delv! (cdr event)
+			  (event-distributor/receivers event-distributor))))
+		 (else
+		  (error "Illegal event" event)))))))
+     (lambda ()
+       (set-event-distributor/lock! event-distributor old-lock)))))
