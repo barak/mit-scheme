@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.35 1995/02/09 21:23:49 adams Exp $
+$Id: uenvir.scm,v 14.36 1998/05/05 00:24:29 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-98 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -465,7 +465,10 @@ MIT in each case. |#
 (define (stack-ccenv/lookup environment name)
   (lookup-dbg-variable (stack-ccenv/block environment)
 		       name
-		       (stack-ccenv/get-value environment)))
+		       (stack-ccenv/get-value environment)
+		       (lambda (name)
+			 (environment-lookup (stack-ccenv/parent environment)
+					     name))))
 
 (define (stack-ccenv/assignable? environment name)
   (assignable-dbg-variable? (stack-ccenv/block environment) name))
@@ -571,7 +574,10 @@ MIT in each case. |#
 (define (closure-ccenv/lookup environment name)
   (lookup-dbg-variable (closure-ccenv/closure-block environment)
 		       name
-		       (closure-ccenv/get-value environment)))
+		       (closure-ccenv/get-value environment)
+		       (lambda (name)
+			 (environment-lookup (closure-ccenv/parent environment)
+					     name))))
 
 (define (closure-ccenv/assignable? environment name)
   (assignable-dbg-variable? (closure-ccenv/closure-block environment) name))
@@ -640,24 +646,27 @@ MIT in each case. |#
 (define (closure-ccenv/lambda environment)
   (dbg-block/source-code (closure-ccenv/stack-block environment)))
 
-(define (lookup-dbg-variable block name get-value)
+(define (lookup-dbg-variable block name get-value not-found)
   (let loop ((name name))
-    (let* ((index (dbg-block/find-name block name))
-	   (variable (vector-ref (dbg-block/layout-vector block) index)))
-      (case (dbg-variable/type variable)
-	((NORMAL)
-	 (get-value index))
-	((CELL)
-	 (let ((value (get-value index)))
-	   (if (not (cell? value))
-	       (error "Value of variable should be in cell" variable value))
-	   (cell-contents value)))
-	((INTEGRATED)
-	 (dbg-variable/value variable))
-	((INDIRECTED)
-	 (loop (dbg-variable/name (dbg-variable/value variable))))
-	(else
-	 (error "Unknown variable type" variable))))))
+    (let ((index (dbg-block/find-name block name)))
+      (if index
+	  (let ((variable (vector-ref (dbg-block/layout-vector block) index)))
+	    (case (dbg-variable/type variable)
+	      ((NORMAL)
+	       (get-value index))
+	      ((CELL)
+	       (let ((value (get-value index)))
+		 (if (not (cell? value))
+		     (error "Value of variable should be in cell"
+			    variable value))
+		 (cell-contents value)))
+	      ((INTEGRATED)
+	       (dbg-variable/value variable))
+	      ((INDIRECTED)
+	       (loop (dbg-variable/name (dbg-variable/value variable))))
+	      (else
+	       (error "Unknown variable type" variable))))
+	  (not-found name)))))
 
 (define (assignable-dbg-variable? block name)
   (eq? 'CELL
