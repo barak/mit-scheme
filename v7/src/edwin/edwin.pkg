@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.35 1991/05/02 01:12:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/edwin.pkg,v 1.36 1991/05/08 22:51:14 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -727,6 +727,17 @@ MIT in each case. |#
   (files "sendmail")
   (parent (edwin))
   (export (edwin)
+	  edwin-command$mail
+	  edwin-command$mail-bcc
+	  edwin-command$mail-cc
+	  edwin-command$mail-fill-yanked-message
+	  edwin-command$mail-other-window
+	  edwin-command$mail-send
+	  edwin-command$mail-send-and-exit
+	  edwin-command$mail-signature
+	  edwin-command$mail-subject
+	  edwin-command$mail-to
+	  edwin-command$mail-yank-original
 	  edwin-mode$mail
 	  edwin-variable$mail-archive-file-name
 	  edwin-variable$mail-default-reply-to
@@ -747,3 +758,35 @@ MIT in each case. |#
 	  define-mail-alias
 	  expand-mail-aliases
 	  guarantee-mail-aliases))
+
+(define-package (edwin rmail)
+  (files "rmail")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$rmail
+	  edwin-command$rmail-delete-backward
+	  edwin-command$rmail-delete-forward
+	  edwin-command$rmail-delete-message
+	  edwin-command$rmail-expunge
+	  edwin-command$rmail-get-new-mail
+	  edwin-command$rmail-last-message
+	  edwin-command$rmail-next-message
+	  edwin-command$rmail-next-undeleted-message
+	  edwin-command$rmail-previous-message
+	  edwin-command$rmail-previous-undeleted-message
+	  edwin-command$rmail-show-message
+	  edwin-command$rmail-toggle-header
+	  edwin-command$rmail-undelete-previous-message
+	  edwin-mode$rmail
+	  edwin-variable$rmail-default-dont-reply-to-names
+	  edwin-variable$rmail-delete-after-output
+	  edwin-variable$rmail-dont-reply-to-names
+	  edwin-variable$rmail-file-name
+	  edwin-variable$rmail-ignored-headers
+	  edwin-variable$rmail-inbox-list
+	  edwin-variable$rmail-last-file
+	  edwin-variable$rmail-last-rmail-file
+	  edwin-variable$rmail-message-filter
+	  edwin-variable$rmail-mode-hook
+	  edwin-variable$rmail-primary-inbox-list
+	  rmail-spool-directory))

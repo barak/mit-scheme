@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.20 1991/05/06 00:57:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/decls.scm,v 1.21 1991/05/08 22:50:26 cph Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -151,6 +151,7 @@ MIT in each case. |#
 	      "regcom"
 	      "regexp"
 	      "replaz"
+	      "rmail"
 	      "schmod"
 	      "scrcom"
 	      "screen"

@@ -153,6 +153,8 @@
 	       syntax-table/system-internal)
     ("ring"    (edwin)
 	       syntax-table/system-internal)
+    ("rmail"   (edwin rmail)
+	       edwin-syntax-table)
     ("schmod"  (edwin)
 	       edwin-syntax-table)
     ("scrcom"  (edwin)
