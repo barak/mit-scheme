@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.99 2003/03/06 04:57:52 cph Exp $
+$Id: interp.c,v 9.100 2003/03/06 05:41:19 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -1521,7 +1521,6 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	    }
 
 	  default:
-	  internal_apply_inapplicable:
 	    APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
 	  }
       }
