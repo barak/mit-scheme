@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dossig.c,v 1.8 1992/09/25 01:23:24 jinx Exp $
+$Id: dossig.c,v 1.9 1992/09/25 21:42:38 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -44,6 +44,9 @@ MIT in each case. */
 #include "dossys.h"
 #include "dosexcp.h"
 #include "doskbd.h"
+#ifdef USE_ZORTECH_CERROR
+#include <cerror.h>
+#endif
 
 cc_t EXFUN (DOS_interactive_interrupt_handler, (void));
 
@@ -716,16 +719,67 @@ DEFUN_STD_HANDLER (sighnd_dead_subprocess,
   {
   })
 
-/* PC specific low-level interrupt hooks */
-/* Control-Break Interrupt */
+/* PC specific low-level interrupt hooks. */
+/* Control-Break Interrupt. */
 
 int
-DEFUN (control_break_handler, (pd), struct INT_DATA *pd)
+DEFUN (control_break_handler, (pd), struct INT_DATA * pd)
 {
   tty_set_next_interrupt_char (CONTROL_G_INTERRUPT_CHAR);
-  return INTERRUPT_RETURN;
+  return (INTERRUPT_RETURN);
 }
 
+/* Critical-Error (abort, retry, ignore, fail) handler */
+
+#define CE_CAN_ERROR_BIT	0x1000
+#define CE_CAN_RETRY_BIT	0x0800
+#define CE_CAN_IGNORE_BIT	0x0400
+
+#define CE_IGNORE		0
+#define CE_RETRY		1
+#define CE_KILL			2
+#define CE_ERROR		3
+
+int
+ce_handler (int * ax, int * di)
+{  
+  if (((* ax) & CE_CAN_ERROR_BIT) != 0)
+    * ax = (((* ax) & 0xff00) | CE_ERROR);
+
+  else if (((* ax) & CE_CAN_IGNORE_BIT) != 0)
+    * ax = (((* ax) & 0xff00) | CE_IGNORE);
+
+  else if (((* ax) & CE_CAN_RETRY_BIT) != 0)
+    * ax = (((* ax) & 0xff00) | CE_RETRY);
+
+  else
+    /* We should really kill Scheme,
+       but there may be no way to do this from here.
+     */
+    * ax = (((* ax) & 0xff00) | CE_KILL);
+
+  return (1);
+}
+
+#ifdef USE_ZORTECH_CERROR
+
+int _far _cdecl 
+critical_error_handler (int * ax, int * di)
+{
+  return (ce_handler (ax, di));
+}
+
+#else /* not USE_ZORTECH_CERROR */
+
+int
+DEFUN (critical_error_handler, (pd), struct INT_DATA * pd)
+{
+  int value = (ce_handler (&pd->regs.e.eax, &pd->regs.e.edi));
+  return ((value == 1) ? INTERRUPT_RETURN : INTERRUPT_CHAIN_NEXT);
+}
+
+#endif /* USE_ZORTECH_CERROR */
+
 /* Interval timer */
 
 /* Scheme timer emulation; DOS does not have an ITIMER like unix. */
@@ -813,6 +867,10 @@ DEFUN_VOID (DOS_initialize_interrupts)
 {
   int iv;
   
+#ifdef USE_ZORTECH_CERROR
+  _cerror_handler = ((int _far _cdecl (*) (int *, int *)) NULL);
+#endif
+
   ctrl_c_check_flag = (dos_set_ctrl_c_check_flag (0));
   
   for (iv = (NUM_DOS_HANDLERS - 1); iv >= 0; iv--)
@@ -1025,7 +1083,7 @@ DEFUN_VOID (enable_DPMI_exceptions_p)
   else
     return (dos_false);
 }
-
+
 static void
 DEFUN_VOID (DOS_install_interrupts)
 {
@@ -1040,7 +1098,9 @@ DEFUN_VOID (DOS_install_interrupts)
     extern int EXFUN (X32_interrupt_restore, (unsigned));
     extern int EXFUN (X32_int_intercept, (unsigned, void (*) (), PTR));
     extern void EXFUN (X32_timer_interrupt, (void));
+    extern void EXFUN (X32_critical_error, (void));
     extern int X32_timer_interrupt_previous;
+    extern int X32_critical_error_previous;
 
     X32_asm_initialize ();
 
@@ -1068,6 +1128,22 @@ DEFUN_VOID (DOS_install_interrupts)
     else
       dos_record_interrupt_interception (DOS_INTVECT_USER_TIMER_TICK,
 					 X32_interrupt_restore);
+
+    if (!dpmi_p)
+    {
+#ifdef USE_ZORTECH_CERROR
+      _cerror_handler = critical_error_handler;
+      cerror_open ();
+#else /* not USE_ZORTECH_CERROR */
+      if ((X32_int_intercept (DOS_INTVECT_CRITICAL_ERROR,
+			      X32_critical_error,
+			      ((PTR) &X32_critical_error_previous)))
+	  == 0)
+	dos_record_interrupt_interception (DOS_INTVECT_CRITICAL_ERROR,
+					   X32_interrupt_restore);
+      
+#endif /* USE_ZORTECH_CERROR */
+    }
   }
 
   else
@@ -1077,10 +1153,20 @@ DEFUN_VOID (DOS_install_interrupts)
 		       256);
 
     if (!dpmi_p)
+    {
       scm_int_intercept (DOS_INTVECT_KB_CTRL_BREAK,
 			 control_break_handler,
 			 256);
 
+#ifdef USE_ZORTECH_CERROR
+      _cerror_handler = critical_error_handler;
+      cerror_open ();
+#else /* not USE_ZORTECH_CERROR */
+      scm_int_intercept (DOS_INTVECT_CRITICAL_ERROR,
+			 critical_error_handler,
+			 256);
+#endif /* USE_ZORTECH_CERROR */
+    }
   }
 
   if ((dos_install_kbd_hook ()) == DOS_SUCCESS)
@@ -1115,6 +1201,15 @@ DEFUN_VOID (DOS_restore_interrupts)
 	(void) ((dos_interrupt_restoration[iv]) (iv));
 	dos_interrupt_restoration[iv] = ((int (*) (unsigned)) NULL);
       }
+
+#ifdef USE_ZORTECH_CERROR
+    if (_cerror_handler == critical_error_handler)
+    {
+      cerror_close ();
+      _cerror_handler = ((int _far _cdecl (*) (int *, int *)) NULL);
+    }
+#endif /* USE_ZORTECH_CERROR */
+
     dos_interrupts_initialized_p = false;
   }
   dos_set_ctrl_c_check_flag (ctrl_c_check_flag);

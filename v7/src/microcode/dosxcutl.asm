@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;;	$Id: dosxcutl.asm,v 1.6 1992/09/25 01:21:28 jinx Exp $
+;;;	$Id: dosxcutl.asm,v 1.7 1992/09/25 21:46:01 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1992 Massachusetts Institute of Technology
 ;;;
@@ -389,6 +389,11 @@ _X32_excp_handlers 			db 32*20 dup (0)
 	public _X32_ds_val
 _X32_ds_val				dd 06765h
 
+	public _X32_critical_error_previous
+_X32_critical_error_previous		dd 0
+					dd 0
+					dd 0
+
 	public _X32_timer_interrupt_previous
 _X32_timer_interrupt_previous		dd 0
 					dd 0
@@ -585,6 +590,42 @@ x32_timer_continue:
 x32_timer_return:
 	pop	ds
 	jmp	fword ptr cs:_X32_timer_interrupt_previous
+
+;;	X32 critical error interrupt handler.
+;;	This gets invoked primarily when accessing removable media
+;;	that is not present.
+;;	Very few DOS functions can be invoked from here.
+
+	public	_X32_critical_error
+_X32_critical_error:
+	pushfd
+	test	ah,10h			; can error ?
+	je	x32_critical_error_ignore
+	mov	al,03h			; error
+	jmp	x32_critical_error_return
+	
+x32_critical_error_ignore:
+	test	ah,04h			; can ignore ?
+	je	x32_critical_error_retry
+	mov	al,00h			; ignore
+	jmp	x32_critical_error_return
+	
+x32_critical_error_retry:
+	test	ah,08h			; can retry ?
+	je	x32_critical_error_kill
+	mov	al,01h			; ignore
+	jmp	x32_critical_error_return
+	
+x32_critical_error_kill:
+	;; For now, invoke the previous handler.
+	;; Eventually we should abort cleanly,
+	;; but it is not clear it can be done.
+	popfd
+	jmp	fword ptr cs:_X32_critical_error_previous
+
+x32_critical_error_return:
+	popfd
+	iretd	
 
 ;;	X32 keyboard interrupt handler
 ;;	This performs scan-code to ASCII translation in order
