@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.2 1988/06/14 10:29:46 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/cref/forpkg.scm,v 1.3 1988/12/23 21:38:51 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -65,6 +65,7 @@ MIT in each case. |#
 				  "Bindings with Multiple Definitions"
 				  multiple)
 	      (write-string "\f\n")))))
+#|
     (if (not (memq root-package packages))
 	(begin
 	  (write-label "Global References")
@@ -83,10 +84,14 @@ MIT in each case. |#
     (format-references
      indentation width "Primitives" root-package
      (btree-fringe (package/references (pmodel/primitive-package pmodel))))
-    (for-each (lambda (package)
-		(write-string "\f\n")
-		(format-package indentation width package))
-	      packages)))
+|#
+    (if (not (null? packages))
+	(begin
+	  (format-package indentation width (car packages))
+	  (for-each (lambda (package)
+		      (write-string "\f\n")
+		      (format-package indentation width package))
+		    (cdr packages))))))
 
 (define (format-package indentation width package)
   (write-package-name "Package" package)
