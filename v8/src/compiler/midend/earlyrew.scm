@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.10 1995/08/10 13:41:57 adams Exp $
+$Id: earlyrew.scm,v 1.11 1995/08/10 21:52:53 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -340,7 +340,7 @@ MIT in each case. |#
 
     (define (by-zero expression zero-value)
       (if *earlyrew/maximize-exactness?*
-	  `(IF (CALL (QUOTE ,eq?) ,expression (QUOTE 0))
+	  `(IF (CALL (QUOTE ,eq?) (QUOTE #F) ,expression (QUOTE 0))
 	       (QUOTE 0)
 	       (QUOTE 0.0))
 	  `(BEGIN ,expression (QUOTE ,zero-value))))
