@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.6 2000/04/25 03:48:24 cph Exp $
+;;; $Id: imap-response.scm,v 1.7 2000/04/27 02:35:13 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -464,7 +464,7 @@
 	   (error "Missing response keyword:" keyword))))
 
 
-(define (imap:response:status? response)
+(define (imap:response:status-response? response)
   (memq (car response) '(OK NO BAD PREAUTH BYE)))
 
 (define (imap:response:expunge-index response)

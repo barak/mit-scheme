@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail.pkg,v 1.19 2000/04/25 03:39:44 cph Exp $
+;;; $Id: imail.pkg,v 1.20 2000/04/27 02:35:11 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -127,22 +127,56 @@
 	  imap:char-set:text-char
 	  imap:match:tag
 	  imap:parse:section
+	  imap:parse:server
+	  imap:parse:simple-message
 	  imap:quoted-char?
 	  imap:quoted-special?
 	  imap:string-may-be-quoted?
-	  imap:write-literal-string
+	  imap:write-literal-string-body
+	  imap:write-literal-string-header
 	  imap:write-quoted-string))
 
 (define-package (edwin imail imap-response)
   (files "imap-response")
   (parent (edwin imail))
   (export (edwin imail)
-	  imap:read-server-response))
+	  imap:find-response
+	  imap:read-server-response
+	  imap:response-code:alert?
+	  imap:response-code:permanentflags
+	  imap:response-code:permanentflags?
+	  imap:response-code:uidvalidity
+	  imap:response-code:uidvalidity?
+	  imap:response-code:unseen
+	  imap:response-code:unseen?
+	  imap:response:bye?
+	  imap:response:capabilities
+	  imap:response:capability?
+	  imap:response:continue?
+	  imap:response:exists-count
+	  imap:response:exists?
+	  imap:response:expunge-index
+	  imap:response:expunge?
+	  imap:response:fetch?
+	  imap:response:flags
+	  imap:response:flags?
+	  imap:response:list?
+	  imap:response:lsub?
+	  imap:response:no?
+	  imap:response:ok?
+	  imap:response:preauth?
+	  imap:response:recent?
+	  imap:response:response-text-code
+	  imap:response:response-text-string
+	  imap:response:search?
+	  imap:response:status?
+	  imap:response:tag))
 
 (define-package (edwin imail)
   (files "imail-util"
 	 "imail-core"
 	 "imail-file"
+	 "imail-imap"
 	 "imail-rmail"
 	 "imail-umail"
 	 "imail-top")
