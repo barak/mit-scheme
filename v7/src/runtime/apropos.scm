@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: apropos.scm,v 1.4 1999/07/06 15:08:44 cph Exp $
+$Id: apropos.scm,v 1.5 1999/07/31 18:39:59 cph Exp $
 
 Copyright (c) 1993, 1999 Massachusetts Institute of Technology
 
@@ -58,7 +58,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let ((text (if (symbol? text) (symbol-name text) text)))
     (process-env env)
     (for-each (lambda (symbol)
-		(if (substring? (symbol-name symbol) text)
+		(if (substring? text (symbol-name symbol))
 		    (process-symbol symbol env)))
 	      (sort (environment-bound-names env) symbol<?))
     (if (and search-parents? (environment-has-parent? env))

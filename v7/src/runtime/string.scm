@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.26 1999/06/22 01:06:52 cph Exp $
+$Id: string.scm,v 14.27 1999/07/31 18:39:29 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -623,7 +623,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ;;;; String Search
 
 (define (substring? pattern text)
-  (and (string-search-forward text pattern) #t))
+  (and (string-search-forward pattern text) #t))
 
 (define (string-search-forward pattern text)
   (guarantee-string pattern 'STRING-SEARCH-FORWARD)
