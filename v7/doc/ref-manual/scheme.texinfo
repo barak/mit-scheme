@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.83 1999/12/20 23:21:58 cph Exp $
+@comment $Id: scheme.texinfo,v 1.84 1999/12/21 21:00:27 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -95,9 +95,9 @@ by the Massachusetts Institute of Technology.
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.83
+@subtitle Edition 1.84
 @subtitle for Scheme Release 7.5
-@subtitle 20 December 1999
+@subtitle 21 December 1999
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -5474,8 +5474,8 @@ Returns a newly allocated list of the characters in @var{char-set}.
 @end deffn
 
 @deffn {procedure+} char-set-member? char-set char
-Returns @code{#t} if the @var{char} is in @var{char-set}; otherwise
-returns @code{#f}.
+Returns @code{#t} if @var{char} is in @var{char-set}; otherwise returns
+@code{#f}.
 @end deffn
 
 @deffn {procedure+} char-set char @dots{}
@@ -6421,9 +6421,29 @@ inclusive.  @var{Registers} must be a match-registers object as returned
 by one of the regular-expression match or search procedures above.
 @code{re-match-start-index} returns the start index of the corresponding
 regular-expression register, and @code{re-match-end-index} returns the
-corresponding end index.  If the matched regular expression contained
-@var{m} grouping operators, then the values of these procedures are
-undefined for @var{n} strictly greater than @var{m}.
+corresponding end index.
+@end deffn
+
+@deffn {procedure+} re-match-extract string registers n
+@var{Registers} must be a match-registers object as returned by one of
+the regular-expression match or search procedures above.  @var{String}
+must be the string that was passed as an argument to the procedure that
+returned @var{registers}.  @var{N} must be an exact integer between
+@code{0} and @code{9} inclusive.  If the matched regular expression
+contained @var{m} grouping operators, then the value of this procedure
+is undefined for @var{n} strictly greater than @var{m}.
+
+This procedure extracts the substring corresponding to the match
+register specified by @var{registers} and @var{n}.  This is equivalent
+to the following expression:
+
+@example
+@group
+(substring @var{string}
+           (re-match-start-index @var{n} @var{registers})
+           (re-match-end-index @var{n} @var{registers}))
+@end group
+@end example
 @end deffn
 
 @deffn {procedure+} regexp-group alternative @dots{}
@@ -6551,16 +6571,15 @@ modify their argument strings and return an unspecified value.
 @cindex length, of string
 @cindex maximum length, of string (defn)
 MIT Scheme allows the length of a string to be dynamically adjusted in a
-limited way.  This feature works as follows.  When a new string is
-allocated, by whatever method, it has a specific length.  At the time of
-allocation, it is also given a @dfn{maximum length}, which is guaranteed
-to be at least as large as the string's length.  (Sometimes the maximum
-length will be slightly larger than the length, but it is a bad idea to
-count on this.  Programs should assume that the maximum length is the
-same as the length at the time of the string's allocation.)  After the
-string is allocated, the operation @code{set-string-length!} can be used
-to alter the string's length to any value between 0 and the string's
-maximum length, inclusive.
+limited way.  When a new string is allocated, by whatever method, it has
+a specific length.  At the time of allocation, it is also given a
+@dfn{maximum length}, which is guaranteed to be at least as large as the
+string's length.  (Sometimes the maximum length will be slightly larger
+than the length, but it is a bad idea to count on this.  Programs should
+assume that the maximum length is the same as the length at the time of
+the string's allocation.)  After the string is allocated, the operation
+@code{set-string-length!} can be used to alter the string's length to
+any value between 0 and the string's maximum length, inclusive.
 
 @deffn {procedure+} string-maximum-length string
 Returns the maximum length of @var{string}.  The following is
@@ -6574,7 +6593,7 @@ guaranteed:
 @end example
 @findex string-length
 
-The maximum length of a string @emph{never} changes.
+The maximum length of a string never changes.
 @end deffn
 
 @deffn {procedure+} set-string-length! string k
@@ -7247,6 +7266,32 @@ z                                       @result{}  (g h)
 @end example
 @end deffn
 
+@deffn {procedure+} last-pair list
+Returns the last pair in @var{list}, which may be an improper list.
+@code{last-pair} could have been defined this way:
+
+@example
+@group
+(define last-pair
+  (lambda (x)
+    (if (pair? (cdr x))
+        (last-pair (cdr x))
+        x)))
+@end group
+@end example
+@end deffn
+
+@deffn {procedure+} except-last-pair list
+@deffnx {procedure+} except-last-pair! list
+These procedures remove the last pair from @var{list}.  @var{List} may
+be an improper list, except that it must consist of at least one pair.
+@code{except-last-pair} returns a newly allocated copy of @var{list}
+that omits the last pair.  @code{except-last-pair!} destructively
+removes the last pair from @var{list} and returns @var{list}.  If the
+cdr of @var{list} is not a pair, the empty list is returned by either
+procedure.
+@end deffn
+
 @node Filtering Lists, Searching Lists, Cutting and Pasting Lists, Lists
 @section Filtering Lists
 @cindex filtering, of list
@@ -7662,33 +7707,9 @@ destructively modifies @var{list}.  Because the result may not be
 @code{(set! x (reverse! x))}.
 @end deffn
 
-@deffn {procedure+} last-pair list
-Returns the last pair in @var{list}, which may be an improper list.
-@code{last-pair} could have been defined this way:
-
-@example
-@group
-(define last-pair
-  (lambda (x)
-    (if (pair? (cdr x))
-        (last-pair (cdr x))
-        x)))
-@end group
-@end example
-@end deffn
-
-@deffn {procedure+} except-last-pair list
-@deffnx {procedure+} except-last-pair! list
-These procedures remove the last pair from @var{list}.  @var{List} may
-be an improper list, except that it must consist of at least one pair.
-@code{except-last-pair} returns a newly allocated copy of @var{list}
-that omits the last pair.  @code{except-last-pair!} destructively
-removes the last pair from @var{list} and returns @var{list}.  If the
-cdr of @var{list} is not a pair, the empty list is returned by either
-procedure.
-@end deffn
-
 @deffn {procedure+} sort sequence procedure
+@deffnx {procedure+} merge-sort sequence procedure
+@deffnx {procedure+} quick-sort sequence procedure
 @cindex total ordering (defn)
 @var{Sequence} must be either a list or a vector.  @var{Procedure} must be a
 procedure of two arguments that defines a @dfn{total ordering} on the
@@ -7720,6 +7741,10 @@ precedes @var{y}, it is the case that
      @result{}  #f
 @end group
 @end example
+
+Two sorting algorithms are implemented: @code{merge-sort} and
+@code{quick-sort}.  The procedure @code{sort} is an alias for
+@code{merge-sort}.
 
 See also the definition of @code{sort!}.
 @end deffn
@@ -8010,6 +8035,8 @@ vector.
 @end deffn
 
 @deffn {procedure+} sort! vector procedure
+@deffnx {procedure+} merge-sort! vector procedure
+@deffnx {procedure+} quick-sort! vector procedure
 @var{Procedure} must be a procedure of two arguments that defines a
 @dfn{total ordering} on the elements of @var{vector}.  The elements of
 @var{vector} are rearranged so that they are sorted in the order defined
@@ -8018,6 +8045,10 @@ by @var{procedure}.  The elements are rearranged in place, that is,
 new order.
 
 @code{sort!} returns @var{vector} as its value.
+
+Two sorting algorithms are implemented: @code{merge-sort!} and
+@code{quick-sort!}.  The procedure @code{sort!} is an alias for
+@code{merge-sort!}.
 
 See also the definition of @code{sort}.
 @end deffn
@@ -11760,7 +11791,7 @@ However, because all top-level environments (such as
 @code{user-initial-environment}) are already interpreter environments,
 it does no harm to use such operations on them.
 
-@strong{Warning}: A future release of MIT Scheme will support hygenic
+@strong{Warning}: A future release of MIT Scheme will support hygienic
 macros, which are incompatible with non-top-level instances of
 @code{make-environment} and @code{the-environment}.  At that time, other
 uses of these constructs will be disallowed.
@@ -12425,45 +12456,50 @@ encountered before any characters are read, an end-of-file object is
 returned.
 @end deffn
 
-@deffn {procedure+} read-string! string [start [end [input-port]]]
-@code{read-string!} fills the specified region of @var{string} with
-characters read from @var{input-port} until the region is full or else
-there are no more characters available from the port.  The region is
-specified by @var{start} and @var{end}, which default to @code{0} and
-@var{string}'s length, respectively.
+@deffn {procedure+} read-string! string [input-port]
+@deffnx {procedure+} read-substring! string start end [input-port]
+@code{read-string!} and @code{read-substring!} fill the specified region
+of @var{string} with characters read from @var{input-port} until the
+region is full or else there are no more characters available from the
+port.  For @code{read-string!}, the region is all of @var{string}, and
+for @code{read-substring!}, the region is that part of @var{string}
+specified by @var{start} and @var{end}.
 
-The returned value is the number of characters written to @var{string}.
+The returned value is the number of characters filled into the region.
 However, there are several interesting cases to consider:
 
 @itemize @bullet
 @item
-If @code{read-string!} is called when @var{input-port} is at
-``end-of-file'', then the returned value is @code{0}.  Note that
-``end-of-file'' can mean a file port that is at the file's end, a string
-port that is at the string's end, or any other port that will never
-produce more characters.
+If @code{read-string!} (@code{read-substring!}) is called when
+@var{input-port} is at ``end-of-file'', then the returned value is
+@code{0}.  Note that ``end-of-file'' can mean a file port that is at the
+file's end, a string port that is at the string's end, or any other port
+that will never produce more characters.
 
 @item
 If @var{input-port} is an interactive port (e.g.@: a terminal), and one
 or more characters are immediately available, the region is filled using
-the available characters.  The procedure then returns immediately, even
-if the number of characters is less than the size of the region.  The
-returned value is the number of characters actually written.
+the available characters.  The procedure then returns immediately,
+without waiting for further characters, even if the number of available
+characters is less than the size of the region.  The returned value is
+the number of characters actually filled in.
 
 @item
 If @var{input-port} is an interactive port and no characters are
 immediately available, the result of the operation depends on the
 blocking mode of the port.  If the port is in non-blocking mode,
-@code{read-string!} immediately returns the value @code{#f}.  Otherwise,
-the operation blocks until a character is available.  As soon as at
-least one character is available, the region is filled with the
-available characters, and the number of characters written is
-immediately returned (even if the number available is insufficient to
-fill the region).
+@code{read-string!} (@code{read-substring!}) immediately returns the
+value @code{#f}.  Otherwise, the operation blocks until a character is
+available.  As soon as at least one character is available, the region
+is filled using the available characters.  The procedure then returns
+immediately, without waiting for further characters, even if the number
+of available characters is less than the size of the region.  The
+returned value is the number of characters actually filled in.
 @end itemize
 
-The importance of @code{read-string!} is that it is both flexible and
-extremely fast.
+The importance of @code{read-string!} and @code{read-substring!} are
+that they are both flexible and extremely fast, especially for large
+amounts of data.
 @end deffn
 
 The following variables may be dynamically bound to change the behavior
@@ -12812,7 +12848,7 @@ than the right.
 This outputs a @code{#\newline} character.  @code{~@var{n}%} outputs
 @var{n} newlines.  No @var{argument} is used.  Simply putting a newline
 in @var{control-string} would work, but @code{~%} is often used because
-it make the control string look nicer in the middle of a program.
+it makes the control string look nicer in the middle of a program.
 
 @item ~~
 This outputs a tilde.  @code{~@var{n}~} outputs @var{n} tildes.
@@ -13006,7 +13042,7 @@ customizations provide very similar behavior.
 
 @findex interaction-i/o-port
 Each of these procedure accepts an optional argument called @var{port},
-which must be an @sc{i/o} port if given.  If not given, this port
+which if given must be an @sc{i/o} port.  If not given, this port
 defaults to the value of @code{(interaction-i/o-port)}; this is
 initially the console @sc{i/o} port.
 
@@ -13693,11 +13729,18 @@ files.  Also, procedures that return detailed information about a
 particular file, such as its type (directory, link, etc.) or length.
 
 @item
-A facility for reading the contents of a directory.
+Procedures for reading the contents of a directory.
 
 @item
-A facility for obtaining times in various formats, converting between
+Procedures for obtaining times in various formats, converting between
 the formats, and generating human-readable time strings.
+
+@item
+Procedures to run other programs as subprocesses of Scheme, to read
+their output, and write input to them.
+
+@item
+A means to determine the operating system Scheme is running under.
 @end itemize
 
 @menu
@@ -14365,7 +14408,7 @@ keeps personal files, such as initialization files and mail.
 Under unix, the user's home directory is specified by the @code{HOME}
 environment variable.  If this variable is undefined, the user name is
 computed using the @code{getlogin} system call, or if that fails, the
-@code{geteuid} system call.  The resulting user name is passed to the
+@code{getuid} system call.  The resulting user name is passed to the
 @code{getpwnam} system call to obtain the home directory.
 
 Under OS/2, several heuristics are tried to find the user's home
@@ -14537,20 +14580,22 @@ these procedures, it will be of type
 @findex condition-type:file-operation-error
 
 @deffn {procedure+} file-exists? filename
+@deffnx {procedure+} file-exists-direct? filename
+@deffnx {procedure+} file-exists-indirect? filename
 @cindex existence, testing of file
-Returns @code{#t} if @var{filename} is an existing file or directory;
-otherwise returns @code{#f}.  In operating systems that support symbolic
-links, if the file is a symbolic link, this procedure tests the
-existence of the file linked to, not the link itself.
+These procedures return @code{#t} if @var{filename} is an existing file
+or directory; otherwise they return @code{#f}.  In operating systems
+that support symbolic links, if the file is a symbolic link,
+@code{file-exists-direct?} tests for the existence of the link, while
+@code{file-exists-indirect?} and @code{file-exists?} test for the
+existence of the file pointed to by the link.
 @end deffn
 
 @deffn {procedure+} copy-file source-filename target-filename
 @cindex copying, of file
 Makes a copy of the file named by @var{source-filename}.  The copy is
 performed by creating a new file called @var{target-filename}, and
-filling it with the same data as @var{source-filename}.  If
-@var{target-filename} exists prior to this procedure's invocation, it is
-deleted before the new output file is created.
+filling it with the same data as @var{source-filename}.
 @end deffn
 
 @deffn {procedure+} rename-file source-filename target-filename
