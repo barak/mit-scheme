@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.5 1988/06/14 08:42:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgcomb.scm,v 4.6 1988/09/14 06:38:12 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -56,6 +56,8 @@ MIT in each case. |#
 			   offset
 			   frame-size
 			   (and (return-operator/subproblem? continuation)
+				(not (continuation/always-known-operator?
+				      continuation))
 				(continuation/label continuation))
 			   (generate/invocation-prefix block
 						       callee
