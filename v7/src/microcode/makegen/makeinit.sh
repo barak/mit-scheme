@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.3 2000/12/05 21:46:17 cph Exp $
+# $Id: makeinit.sh,v 1.4 2000/12/05 23:16:51 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -20,9 +20,7 @@
 
 autoheader
 autoconf
-if [ ! -f Makefile.in ]; then
-  touch Makefile.in
-fi
+[ -f Makefile.in ] || touch Makefile.in
 ./configure
 scheme -heap 2000 <<EOF
 (load "makegen/makegen.scm")
@@ -30,4 +28,5 @@ scheme -heap 2000 <<EOF
 		   "Makefile.deps"
 		   "Makefile.in")
 EOF
-./config.status
+rm -f Makefile config.h config.cache config.log config.status
+rm -f cmpauxmd.m4 cmpintmd.h
