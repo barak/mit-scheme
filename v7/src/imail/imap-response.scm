@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.17 2000/05/16 18:55:41 cph Exp $
+;;; $Id: imap-response.scm,v 1.18 2000/05/18 19:29:10 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -269,6 +269,12 @@
 		     (lose))))
 	      (else (lose)))))))
 
+(define *read-literal-progress-hook* #f)
+
+(define (imap:read-literal-progress-hook procedure thunk)
+  (fluid-let ((*read-literal-progress-hook* procedure))
+    (thunk)))
+
 (define (read-literal port)
   (discard-known-char #\{ port)
   (let ((n (read-number port)))
@@ -277,11 +283,18 @@
     (discard-known-char #\linefeed port)
     (let ((s (make-string n)))
       (let loop ((start 0))
-	(let ((m (read-substring! s start n port)))
-	  (if (fix:= m 0)
-	      (error "Premature EOF:" port))
-	  (if (fix:< m (fix:- n start))
-	      (loop (fix:+ start m)))))
+	(if (fix:< start n)
+	    (let ((m
+		   (read-substring! s
+				    start
+				    (fix:min (fix:+ start 4096) n)
+				    port)))
+	      (if (fix:= m 0)
+		  (error "Premature EOF:" port))
+	      (let ((start (fix:+ start m)))
+		(if *read-literal-progress-hook*
+		    (*read-literal-progress-hook* start n))
+		(loop start)))))
       (if trace-imap-server-responses?
 	  (write-string s (notification-output-port)))
       (translate-network-line-endings-to-scheme! s)
