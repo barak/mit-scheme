@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.9 1995/05/20 10:14:17 cph Exp $
+$Id: pros2pm.c,v 1.10 1995/10/30 08:04:30 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -111,7 +111,7 @@ dimension_arg (unsigned int arg_number)
 
 #define COORDINATE_ARG SSHORT_ARG
 #define DIMENSION_ARG dimension_arg
-#define HWND_ARG(n) ((HWND) (arg_integer (n)))
+#define HWND_ARG(n) ((HWND) (arg_ulong_integer (n)))
 
 void
 OS2_initialize_window_primitives (void)
@@ -139,6 +139,11 @@ DEFINE_PRIMITIVE ("OS2WIN-OPEN", Prim_OS2_window_open, 2, 2, 0)
   PRIMITIVE_RETURN
     (long_to_integer (OS2_window_open (pm_qid,
 				       (OS2_qid_twin (qid_argument (1))),
+				       (FCF_TITLEBAR | FCF_SYSMENU
+					| FCF_SHELLPOSITION | FCF_SIZEBORDER
+					| FCF_MINMAX | FCF_TASKLIST),
+				       NULLHANDLE,
+				       1,
 				       0,
 				       (STRING_ARG (2)))));
 }
@@ -630,21 +635,18 @@ DEFINE_PRIMITIVE ("OS2PS-QUERY-CAPABILITY", Prim_OS2_ps_query_cap, 2, 2, 0)
 DEFINE_PRIMITIVE ("OS2PS-RESET-CLIP-RECTANGLE", Prim_OS2_ps_reset_clip_rectangle, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  OS2_ps_set_clip_rectangle ((psid_argument (1)), 0);
+  OS2_ps_reset_clip_rectangle (psid_argument (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("OS2PS-SET-CLIP-RECTANGLE", Prim_OS2_ps_set_clip_rectangle, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
-  {
-    RECTL rectl;
-    (rectl . xLeft) = (COORDINATE_ARG (2));
-    (rectl . xRight) = (COORDINATE_ARG (3));
-    (rectl . yBottom) = (COORDINATE_ARG (4));
-    (rectl . yTop) = (COORDINATE_ARG (5));
-    OS2_ps_set_clip_rectangle ((psid_argument (1)), (& rectl));
-  }
+  OS2_ps_set_clip_rectangle ((psid_argument (1)),
+			     (COORDINATE_ARG (2)),
+			     (COORDINATE_ARG (3)),
+			     (COORDINATE_ARG (4)),
+			     (COORDINATE_ARG (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -669,7 +671,7 @@ DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-BITS", Prim_OS2_ps_get_bitmap_bits, 5, 5, 0)
 			      (arg_nonnegative_integer (2)),
 			      (arg_nonnegative_integer (3)),
 			      (STRING_ARG (4)),
-			      (STRING_ARG (5)))));
+			      ((void *) (STRING_ARG (5))))));
 }
 
 DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
@@ -681,7 +683,7 @@ DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
 			      (arg_nonnegative_integer (2)),
 			      (arg_nonnegative_integer (3)),
 			      (STRING_ARG (4)),
-			      (STRING_ARG (5)))));
+			      ((void *) (STRING_ARG (5))))));
 }
 
 DEFINE_PRIMITIVE ("OS2-CLIPBOARD-WRITE-TEXT", Prim_OS2_clipboard_write_text, 1, 1, 0)
@@ -712,10 +714,10 @@ DEFINE_PRIMITIVE ("OS2MENU-CREATE", Prim_OS2_menu_create, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_create (pm_qid,
-				       (HWND_ARG (1)),
-				       (USHORT_ARG (2)),
-				       (USHORT_ARG (3)))));
+    (ulong_to_integer (OS2_menu_create (pm_qid,
+					(HWND_ARG (1)),
+					(USHORT_ARG (2)),
+					(USHORT_ARG (3)))));
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-DESTROY", Prim_OS2_menu_destroy, 1, 1, 0)
@@ -729,52 +731,75 @@ DEFINE_PRIMITIVE ("OS2MENU-INSERT-ITEM", Prim_OS2_menu_insert_item, 7, 7, 0)
 {
   PRIMITIVE_HEADER (7);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_insert_item (pm_qid,
-					    (HWND_ARG (1)),
-					    (USHORT_ARG (2)),
-					    (USHORT_ARG (3)),
-					    (USHORT_ARG (4)),
-					    (USHORT_ARG (5)),
-					    (HWND_ARG (6)),
-					    (STRING_ARG (7)))));
+    (ulong_to_integer (OS2_menu_insert_item (pm_qid,
+					     (HWND_ARG (1)),
+					     (USHORT_ARG (2)),
+					     (USHORT_ARG (3)),
+					     (USHORT_ARG (4)),
+					     (USHORT_ARG (5)),
+					     (HWND_ARG (6)),
+					     (STRING_ARG (7)))));
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-REMOVE-ITEM", Prim_OS2_menu_remove_item, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_remove_item (pm_qid,
-					    (HWND_ARG (1)),
-					    (USHORT_ARG (2)),
-					    (BOOLEAN_ARG (3)),
-					    (BOOLEAN_ARG (4)))));
+    (ulong_to_integer (OS2_menu_remove_item (pm_qid,
+					     (HWND_ARG (1)),
+					     (USHORT_ARG (2)),
+					     (BOOLEAN_ARG (3)),
+					     (BOOLEAN_ARG (4)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-GET-ITEM", Prim_OS2_menu_get_item, 3, 3, 0)
+{
+  PMENUITEM item;
+  SCHEME_OBJECT result;
+  PRIMITIVE_HEADER (3);
+
+  item = (OS2_menu_get_item (pm_qid,
+			     (HWND_ARG (1)),
+			     (USHORT_ARG (2)),
+			     (BOOLEAN_ARG (3))));
+  if (item == 0)
+    PRIMITIVE_RETURN (SHARP_F);
+  result = (allocate_marked_vector (TC_VECTOR, 6, 1));
+  VECTOR_SET (result, 0, (long_to_integer (item -> iPosition)));
+  VECTOR_SET (result, 1, (ulong_to_integer (item -> afStyle)));
+  VECTOR_SET (result, 2, (ulong_to_integer (item -> afAttribute)));
+  VECTOR_SET (result, 3, (ulong_to_integer (item -> id)));
+  VECTOR_SET (result, 4, (ulong_to_integer (item -> hwndSubMenu)));
+  VECTOR_SET (result, 5, (ulong_to_integer (item -> hItem)));
+  OS_free (item);
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-N-ITEMS", Prim_OS2_menu_n_items, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_n_items (pm_qid, (HWND_ARG (1)))));
+    (ulong_to_integer (OS2_menu_n_items (pm_qid, (HWND_ARG (1)))));
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-NTH-ITEM-ID", Prim_OS2_menu_nth_item_id, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_nth_item_id (pm_qid,
-					    (HWND_ARG (1)),
-					    (USHORT_ARG (2)))));
+    (ulong_to_integer (OS2_menu_nth_item_id (pm_qid,
+					     (HWND_ARG (1)),
+					     (USHORT_ARG (2)))));
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-GET-ITEM-ATTRIBUTES", Prim_OS2_menu_get_item_attributes, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
   PRIMITIVE_RETURN
-    (long_to_integer (OS2_menu_get_item_attributes (pm_qid,
-						    (HWND_ARG (1)),
-						    (USHORT_ARG (2)),
-						    (BOOLEAN_ARG (3)),
-						    (USHORT_ARG (4)))));
+    (ulong_to_integer (OS2_menu_get_item_attributes (pm_qid,
+						     (HWND_ARG (1)),
+						     (USHORT_ARG (2)),
+						     (BOOLEAN_ARG (3)),
+						     (USHORT_ARG (4)))));
 }
 
 DEFINE_PRIMITIVE ("OS2MENU-SET-ITEM-ATTRIBUTES", Prim_OS2_menu_set_item_attributes, 5, 5, 0)
@@ -787,6 +812,41 @@ DEFINE_PRIMITIVE ("OS2MENU-SET-ITEM-ATTRIBUTES", Prim_OS2_menu_set_item_attribut
 				(USHORT_ARG (4)),
 				(USHORT_ARG (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2-WINDOW-HANDLE-FROM-ID", Prim_OS2_window_handle_from_id, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_handle_from_id (pm_qid,
+						  (arg_ulong_integer (1)),
+						  (arg_ulong_integer (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-LOAD-MENU", Prim_OS2_window_load_menu, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS2_window_load_menu ((wid_argument (1)),
+					     (arg_ulong_integer (2)),
+					     (arg_ulong_integer (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-FONT-DIALOG", Prim_OS2_window_font_dialog, 2, 2, 0)
+{
+  const char * spec;
+  SCHEME_OBJECT result;
+  PRIMITIVE_HEADER (2);
+
+  spec = (OS2_window_font_dialog ((wid_argument (1)),
+				  (((ARG_REF (2)) == SHARP_F)
+				   ? 0
+				   : (STRING_ARG (2)))));
+  if (spec == 0)
+    PRIMITIVE_RETURN (SHARP_F);
+  result = (char_pointer_to_string ((char *) spec));
+  OS_free ((void *) spec);
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)
@@ -901,18 +961,22 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 2, 2, 0)
 	    }
 	  case mt_command_event:
 	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
 	      CVT_UNSIGNED (0, ET_COMMAND);
 	      CVT_UNSIGNED (1, (SM_COMMAND_EVENT_WID (message)));
-	      CVT_UNSIGNED  (2, (SM_COMMAND_EVENT_COMMAND (message)));
+	      CVT_UNSIGNED (2, (SM_COMMAND_EVENT_COMMAND (message)));
+	      CVT_UNSIGNED (3, (SM_COMMAND_EVENT_SOURCE (message)));
+	      CVT_BOOLEAN  (4, (SM_COMMAND_EVENT_MOUSEP (message)));
 	      break;
 	    }
 	  case mt_help_event:
 	    {
-	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      result = (allocate_marked_vector (TC_VECTOR, 5, 0));
 	      CVT_UNSIGNED (0, ET_HELP);
 	      CVT_UNSIGNED (1, (SM_HELP_EVENT_WID (message)));
-	      CVT_UNSIGNED  (2, (SM_HELP_EVENT_COMMAND (message)));
+	      CVT_UNSIGNED (2, (SM_HELP_EVENT_COMMAND (message)));
+	      CVT_UNSIGNED (3, (SM_HELP_EVENT_SOURCE (message)));
+	      CVT_BOOLEAN  (4, (SM_HELP_EVENT_MOUSEP (message)));
 	      break;
 	    }
 	  default:

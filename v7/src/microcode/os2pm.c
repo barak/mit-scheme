@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.19 1995/05/31 14:59:48 cph Exp $
+$Id: os2pm.c,v 1.20 1995/10/30 08:02:37 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -126,128 +126,12 @@ typedef struct
 #define ID_TABLE_LENGTH(table) ((table) -> length)
 #define ID_TABLE_POINTERS(table) ((table) -> pointers)
 
-typedef msg_t sm_pm_synchronize_request_t;
+/* This machine-generated file contains forward references and
+   structure definitions for most of the procedures.  */
+#include "os2pm-id.h"
 
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  qid_t qid;
-  qid_t event_qid;
-  unsigned long style;
-  char title [1];
-} sm_open_request_t;
-#define SM_OPEN_REQUEST_QID(m) (((sm_open_request_t *) (m)) -> qid)
-#define SM_OPEN_REQUEST_EVENT_QID(m) (((sm_open_request_t *) (m)) -> event_qid)
-#define SM_OPEN_REQUEST_STYLE(m) (((sm_open_request_t *) (m)) -> style)
-#define SM_OPEN_REQUEST_TITLE(m) (((sm_open_request_t *) (m)) -> title)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  wid_t wid;
-} sm_open_reply_t;
-#define SM_OPEN_REPLY_WID(m) (((sm_open_reply_t *) (m)) -> wid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-} sm_close_t;
-#define SM_CLOSE_WINDOW(m) (((sm_close_t *) (m)) -> window)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  char showp;
-} sm_show_t;
-#define SM_SHOW_WINDOW(m) (((sm_show_t *) (m)) -> window)
-#define SM_SHOW_SHOWP(m) (((sm_show_t *) (m)) -> showp)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short x;
-  short y;
-} sm_move_cursor_t;
-#define SM_MOVE_CURSOR_WINDOW(m) (((sm_move_cursor_t *) (m)) -> window)
-#define SM_MOVE_CURSOR_X(m) (((sm_move_cursor_t *) (m)) -> x)
-#define SM_MOVE_CURSOR_Y(m) (((sm_move_cursor_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  unsigned short width;
-  unsigned short height;
-  unsigned short style;
-} sm_shape_cursor_t;
-#define SM_SHAPE_CURSOR_WINDOW(m) (((sm_shape_cursor_t *) (m)) -> window)
-#define SM_SHAPE_CURSOR_WIDTH(m) (((sm_shape_cursor_t *) (m)) -> width)
-#define SM_SHAPE_CURSOR_HEIGHT(m) (((sm_shape_cursor_t *) (m)) -> height)
-#define SM_SHAPE_CURSOR_STYLE(m) (((sm_shape_cursor_t *) (m)) -> style)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  char showp;
-} sm_show_cursor_t;
-#define SM_SHOW_CURSOR_WINDOW(m) (((sm_show_cursor_t *) (m)) -> window)
-#define SM_SHOW_CURSOR_SHOWP(m) (((sm_show_cursor_t *) (m)) -> showp)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short xl;
-  short xh;
-  short yl;
-  short yh;
-  short x_delta;
-  short y_delta;
-} sm_scroll_t;
-#define SM_SCROLL_WINDOW(m) (((sm_scroll_t *) (m)) -> window)
-#define SM_SCROLL_XL(m) (((sm_scroll_t *) (m)) -> xl)
-#define SM_SCROLL_XH(m) (((sm_scroll_t *) (m)) -> xh)
-#define SM_SCROLL_YL(m) (((sm_scroll_t *) (m)) -> yl)
-#define SM_SCROLL_YH(m) (((sm_scroll_t *) (m)) -> yh)
-#define SM_SCROLL_X_DELTA(m) (((sm_scroll_t *) (m)) -> x_delta)
-#define SM_SCROLL_Y_DELTA(m) (((sm_scroll_t *) (m)) -> y_delta)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short xl;
-  short xh;
-  short yl;
-  short yh;
-} sm_invalidate_t;
-#define SM_INVALIDATE_WINDOW(m) (((sm_invalidate_t *) (m)) -> window)
-#define SM_INVALIDATE_XL(m) (((sm_invalidate_t *) (m)) -> xl)
-#define SM_INVALIDATE_XH(m) (((sm_invalidate_t *) (m)) -> xh)
-#define SM_INVALIDATE_YL(m) (((sm_invalidate_t *) (m)) -> yl)
-#define SM_INVALIDATE_YH(m) (((sm_invalidate_t *) (m)) -> yh)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  unsigned short x;
-  unsigned short y;
-} sm_set_grid_t;
-#define SM_SET_GRID_WINDOW(m) (((sm_set_grid_t *) (m)) -> window)
-#define SM_SET_GRID_X(m) (((sm_set_grid_t *) (m)) -> x)
-#define SM_SET_GRID_Y(m) (((sm_set_grid_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-} sm_activate_t;
-#define SM_ACTIVATE_WINDOW(m) (((sm_activate_t *) (m)) -> window)
+static void get_window_pos (window_t *, short *, short *);
+static void handle_window_pos_request (msg_t *);
 
 typedef struct
 {
@@ -265,16 +149,8 @@ typedef struct
 #define SM_POS_REPLY_X(m) (((sm_pos_reply_t *) (m)) -> x)
 #define SM_POS_REPLY_Y(m) (((sm_pos_reply_t *) (m)) -> y)
 
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  short x;
-  short y;
-} sm_set_pos_t;
-#define SM_SET_POS_WINDOW(m) (((sm_set_pos_t *) (m)) -> window)
-#define SM_SET_POS_X(m) (((sm_set_pos_t *) (m)) -> x)
-#define SM_SET_POS_Y(m) (((sm_set_pos_t *) (m)) -> y)
+static void get_window_size (window_t *, unsigned short *, unsigned short *);
+static void handle_window_size_request (msg_t *);
 
 typedef struct
 {
@@ -291,6 +167,10 @@ typedef struct
 } sm_size_reply_t;
 #define SM_SIZE_REPLY_WIDTH(m) (((sm_size_reply_t *) (m)) -> width)
 #define SM_SIZE_REPLY_HEIGHT(m) (((sm_size_reply_t *) (m)) -> height)
+
+static void get_window_frame_size
+  (window_t *, unsigned short *, unsigned short *);
+static void handle_window_frame_size_request (msg_t *);
 
 typedef struct
 {
@@ -311,109 +191,8 @@ typedef struct
 #define SM_FRAME_SIZE_REPLY_HEIGHT(m)					\
   (((sm_frame_size_reply_t *) (m)) -> height)
 
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  unsigned short width;
-  unsigned short height;
-} sm_set_size_t;
-#define SM_SET_SIZE_WINDOW(m) (((sm_set_size_t *) (m)) -> window)
-#define SM_SET_SIZE_WIDTH(m) (((sm_set_size_t *) (m)) -> width)
-#define SM_SET_SIZE_HEIGHT(m) (((sm_set_size_t *) (m)) -> height)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-} sm_focusp_request_t;
-#define SM_FOCUSP_REQUEST_WINDOW(m) (((sm_focusp_request_t *) (m)) -> window)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  char focusp;
-} sm_focusp_reply_t;
-#define SM_FOCUSP_REPLY_FOCUSP(m) (((sm_focusp_reply_t *) (m)) -> focusp)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  window_state_t state;
-} sm_set_state_t;
-#define SM_SET_STATE_WINDOW(m) (((sm_set_state_t *) (m)) -> window)
-#define SM_SET_STATE_STATE(m) (((sm_set_state_t *) (m)) -> state)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  char title [1];
-} sm_set_title_t;
-#define SM_SET_TITLE_WINDOW(m) (((sm_set_title_t *) (m)) -> window)
-#define SM_SET_TITLE_TITLE(m) (((sm_set_title_t *) (m)) -> title)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  window_t * window;
-  USHORT flags;
-} sm_update_frame_t;
-#define SM_UPDATE_FRAME_WINDOW(m) (((sm_update_frame_t *) (m)) -> window)
-#define SM_UPDATE_FRAME_FLAGS(m) (((sm_update_frame_t *) (m)) -> flags)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  qid_t qid;
-} sm_create_memory_ps_request_t;
-#define SM_CREATE_MEMORY_PS_REQUEST_QID(m)				\
-  (((sm_create_memory_ps_request_t *) (m)) -> qid)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-} sm_create_memory_ps_reply_t;
-#define SM_CREATE_MEMORY_PS_REPLY_PS(m)					\
-  (((sm_create_memory_ps_reply_t *) (m)) -> ps)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-} sm_destroy_memory_ps_t;
-#define SM_DESTROY_MEMORY_PS_PS(m) (((sm_destroy_memory_ps_t *) (m)) -> ps)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  USHORT width;
-  USHORT height;
-} sm_create_bitmap_request_t;
-#define SM_CREATE_BITMAP_REQUEST_PS(m)					\
-  (((sm_create_bitmap_request_t *) (m)) -> ps)
-#define SM_CREATE_BITMAP_REQUEST_WIDTH(m)				\
-  (((sm_create_bitmap_request_t *) (m)) -> width)
-#define SM_CREATE_BITMAP_REQUEST_HEIGHT(m)				\
-  (((sm_create_bitmap_request_t *) (m)) -> height)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  bitmap_t * bitmap;
-} sm_create_bitmap_reply_t;
-#define SM_CREATE_BITMAP_REPLY_BITMAP(m)				\
-  (((sm_create_bitmap_reply_t *) (m)) -> bitmap)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  bitmap_t * bitmap;
-} sm_destroy_bitmap_t;
-#define SM_DESTROY_BITMAP_BITMAP(m) (((sm_destroy_bitmap_t *) (m)) -> bitmap)
+static void handle_ps_set_bitmap_request (msg_t *);
+static bitmap_t * ps_set_bitmap (ps_t *, bitmap_t *);
 
 typedef struct
 {
@@ -433,472 +212,6 @@ typedef struct
 } sm_ps_set_bitmap_reply_t;
 #define SM_PS_SET_BITMAP_REPLY_BITMAP(m)				\
   (((sm_ps_set_bitmap_reply_t *) (m)) -> bitmap)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * target_ps;
-  ps_t * source_ps;
-  LONG npoints;
-  POINTL points [4];
-  LONG rop;
-  ULONG options;
-} sm_ps_bitblt_t;
-#define SM_PS_BITBLT_TARGET_PS(m) (((sm_ps_bitblt_t *) (m)) -> target_ps)
-#define SM_PS_BITBLT_SOURCE_PS(m) (((sm_ps_bitblt_t *) (m)) -> source_ps)
-#define SM_PS_BITBLT_NPOINTS(m) (((sm_ps_bitblt_t *) (m)) -> npoints)
-#define SM_PS_BITBLT_POINTS(m) (((sm_ps_bitblt_t *) (m)) -> points)
-#define SM_PS_BITBLT_ROP(m) (((sm_ps_bitblt_t *) (m)) -> rop)
-#define SM_PS_BITBLT_OPTIONS(m) (((sm_ps_bitblt_t *) (m)) -> options)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  short x;
-  short y;
-  unsigned short size;
-  const char data [1];
-} sm_ps_draw_text_t;
-#define SM_PS_DRAW_TEXT_PS(m) (((sm_ps_draw_text_t *) (m)) -> ps)
-#define SM_PS_DRAW_TEXT_X(m) (((sm_ps_draw_text_t *) (m)) -> x)
-#define SM_PS_DRAW_TEXT_Y(m) (((sm_ps_draw_text_t *) (m)) -> y)
-#define SM_PS_DRAW_TEXT_SIZE(m) (((sm_ps_draw_text_t *) (m)) -> size)
-#define SM_PS_DRAW_TEXT_DATA(m) (((sm_ps_draw_text_t *) (m)) -> data)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned short size;
-  const char data [1];
-} sm_ps_text_width_request_t;
-#define SM_PS_TEXT_WIDTH_REQUEST_PS(m)					\
-  (((sm_ps_text_width_request_t *) (m)) -> ps)
-#define SM_PS_TEXT_WIDTH_REQUEST_SIZE(m)				\
-  (((sm_ps_text_width_request_t *) (m)) -> size)
-#define SM_PS_TEXT_WIDTH_REQUEST_DATA(m)				\
-  (((sm_ps_text_width_request_t *) (m)) -> data)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  unsigned short size;
-} sm_ps_text_width_reply_t;
-#define SM_PS_TEXT_WIDTH_REPLY_SIZE(m)					\
-  (((sm_ps_text_width_reply_t *) (m)) -> size)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  short xl;
-  short xh;
-  short yl;
-  short yh;
-} sm_ps_clear_t;
-#define SM_PS_CLEAR_PS(m) (((sm_ps_clear_t *) (m)) -> ps)
-#define SM_PS_CLEAR_XL(m) (((sm_ps_clear_t *) (m)) -> xl)
-#define SM_PS_CLEAR_XH(m) (((sm_ps_clear_t *) (m)) -> xh)
-#define SM_PS_CLEAR_YL(m) (((sm_ps_clear_t *) (m)) -> yl)
-#define SM_PS_CLEAR_YH(m) (((sm_ps_clear_t *) (m)) -> yh)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-} sm_ps_get_font_metrics_request_t;
-#define SM_PS_GET_FONT_METRICS_REQUEST_PS(m)				\
-  (((sm_ps_get_font_metrics_request_t *) (m)) -> ps)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  font_metrics_t * metrics;
-} sm_ps_get_font_metrics_reply_t;
-#define SM_PS_GET_FONT_METRICS_REPLY_METRICS(m)				\
-  (((sm_ps_get_font_metrics_reply_t *) (m)) -> metrics)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned short id;
-  char spec [1];
-} sm_ps_set_font_t;
-#define SM_PS_SET_FONT_PS(m)						\
-  (((sm_ps_set_font_t *) (m)) -> ps)
-#define SM_PS_SET_FONT_ID(m)						\
-  (((sm_ps_set_font_t *) (m)) -> id)
-#define SM_PS_SET_FONT_SPEC(m)						\
-  (((sm_ps_set_font_t *) (m)) -> spec)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  COLOR foreground;
-  COLOR background;
-} sm_ps_set_colors_t;
-#define SM_PS_SET_COLORS_PS(m)						\
-  (((sm_ps_set_colors_t *) (m)) -> ps)
-#define SM_PS_SET_COLORS_FOREGROUND(m)					\
-  (((sm_ps_set_colors_t *) (m)) -> foreground)
-#define SM_PS_SET_COLORS_BACKGROUND(m)					\
-  (((sm_ps_set_colors_t *) (m)) -> background)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  short x;
-  short y;
-} sm_ps_move_gcursor_t;
-#define SM_PS_MOVE_GCURSOR_PS(m) (((sm_ps_move_gcursor_t *) (m)) -> ps)
-#define SM_PS_MOVE_GCURSOR_X(m) (((sm_ps_move_gcursor_t *) (m)) -> x)
-#define SM_PS_MOVE_GCURSOR_Y(m) (((sm_ps_move_gcursor_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  short x;
-  short y;
-} sm_ps_draw_line_t;
-#define SM_PS_DRAW_LINE_PS(m) (((sm_ps_draw_line_t *) (m)) -> ps)
-#define SM_PS_DRAW_LINE_X(m) (((sm_ps_draw_line_t *) (m)) -> x)
-#define SM_PS_DRAW_LINE_Y(m) (((sm_ps_draw_line_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  short x;
-  short y;
-} sm_ps_draw_point_t;
-#define SM_PS_DRAW_POINT_PS(m) (((sm_ps_draw_point_t *) (m)) -> ps)
-#define SM_PS_DRAW_POINT_X(m) (((sm_ps_draw_point_t *) (m)) -> x)
-#define SM_PS_DRAW_POINT_Y(m) (((sm_ps_draw_point_t *) (m)) -> y)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned long npoints;
-  PPOINTL points;
-} sm_ps_poly_line_t;
-#define SM_PS_POLY_LINE_PS(m) (((sm_ps_poly_line_t *) (m)) -> ps)
-#define SM_PS_POLY_LINE_NPOINTS(m) (((sm_ps_poly_line_t *) (m)) -> npoints)
-#define SM_PS_POLY_LINE_POINTS(m) (((sm_ps_poly_line_t *) (m)) -> points)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned long npoints;
-  PPOINTL points;
-} sm_ps_poly_line_disjoint_t;
-#define SM_PS_POLY_LINE_DISJOINT_PS(m)					\
-  (((sm_ps_poly_line_disjoint_t *) (m)) -> ps)
-#define SM_PS_POLY_LINE_DISJOINT_NPOINTS(m)				\
-  (((sm_ps_poly_line_disjoint_t *) (m)) -> npoints)
-#define SM_PS_POLY_LINE_DISJOINT_POINTS(m)				\
-  (((sm_ps_poly_line_disjoint_t *) (m)) -> points)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  LONG ltype;
-} sm_ps_set_line_type_t;
-#define SM_PS_SET_LINE_TYPE_PS(m) (((sm_ps_set_line_type_t *) (m)) -> ps)
-#define SM_PS_SET_LINE_TYPE_TYPE(m) (((sm_ps_set_line_type_t *) (m)) -> ltype)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  LONG mix;
-} sm_ps_set_mix_t;
-#define SM_PS_SET_MIX_PS(m) (((sm_ps_set_mix_t *) (m)) -> ps)
-#define SM_PS_SET_MIX_MIX(m) (((sm_ps_set_mix_t *) (m)) -> mix)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  LONG start;
-  LONG count;
-  PLONG values;
-} sm_ps_query_caps_t;
-#define SM_PS_QUERY_CAPS_PS(m) (((sm_ps_query_caps_t *) (m)) -> ps)
-#define SM_PS_QUERY_CAPS_START(m) (((sm_ps_query_caps_t *) (m)) -> start)
-#define SM_PS_QUERY_CAPS_COUNT(m) (((sm_ps_query_caps_t *) (m)) -> count)
-#define SM_PS_QUERY_CAPS_VALUES(m) (((sm_ps_query_caps_t *) (m)) -> values)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  RECTL rectl;
-} sm_ps_set_clip_rectangle_t;
-#define SM_PS_SET_CLIP_RECTANGLE_PS(m)					\
-  (((sm_ps_set_clip_rectangle_t *) (m)) -> ps)
-#define SM_PS_SET_CLIP_RECTANGLE_RECTL(m)				\
-  (((sm_ps_set_clip_rectangle_t *) (m)) -> rectl)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  bitmap_t * bitmap;
-  PBITMAPINFOHEADER params;
-} sm_get_bitmap_parameters_t;
-#define SM_GET_BITMAP_PARAMETERS_BITMAP(m)				\
-  (((sm_get_bitmap_parameters_t *) (m)) -> bitmap)
-#define SM_GET_BITMAP_PARAMETERS_PARAMS(m)				\
-  (((sm_get_bitmap_parameters_t *) (m)) -> params)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned long start;
-  unsigned long length;
-  PBYTE data;
-  PBITMAPINFO2 info;
-} sm_ps_get_bitmap_bits_request_t;
-#define SM_PS_GET_BITMAP_BITS_REQUEST_PS(m)				\
-  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> ps)
-#define SM_PS_GET_BITMAP_BITS_REQUEST_START(m)				\
-  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> start)
-#define SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH(m)				\
-  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> length)
-#define SM_PS_GET_BITMAP_BITS_REQUEST_DATA(m)				\
-  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> data)
-#define SM_PS_GET_BITMAP_BITS_REQUEST_INFO(m)				\
-  (((sm_ps_get_bitmap_bits_request_t *) (m)) -> info)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  unsigned long length;
-} sm_ps_get_bitmap_bits_reply_t;
-#define SM_PS_GET_BITMAP_BITS_REPLY_LENGTH(m)				\
-  (((sm_ps_get_bitmap_bits_reply_t *) (m)) -> length)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  ps_t * ps;
-  unsigned long start;
-  unsigned long length;
-  PBYTE data;
-  PBITMAPINFO2 info;
-} sm_ps_set_bitmap_bits_request_t;
-#define SM_PS_SET_BITMAP_BITS_REQUEST_PS(m)				\
-  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> ps)
-#define SM_PS_SET_BITMAP_BITS_REQUEST_START(m)				\
-  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> start)
-#define SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH(m)				\
-  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> length)
-#define SM_PS_SET_BITMAP_BITS_REQUEST_DATA(m)				\
-  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> data)
-#define SM_PS_SET_BITMAP_BITS_REQUEST_INFO(m)				\
-  (((sm_ps_set_bitmap_bits_request_t *) (m)) -> info)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  unsigned long length;
-} sm_ps_set_bitmap_bits_reply_t;
-#define SM_PS_SET_BITMAP_BITS_REPLY_LENGTH(m)				\
-  (((sm_ps_set_bitmap_bits_reply_t *) (m)) -> length)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  const char * text;
-} sm_clipboard_write_text_t;
-#define SM_CLIPBOARD_WRITE_TEXT_TEXT(m)					\
-  (((sm_clipboard_write_text_t *) (m)) -> text)
-
-typedef msg_t sm_clipboard_read_text_request_t;
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  const char * text;
-} sm_clipboard_read_text_reply_t;
-#define SM_CLIPBOARD_READ_TEXT_REPLY_TEXT(m)				\
-  (((sm_clipboard_read_text_reply_t *) (m)) -> text)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND owner;
-  USHORT style;
-  USHORT id;
-} sm_menu_create_request_t;
-#define SM_MENU_CREATE_REQUEST_OWNER(m)				\
-  (((sm_menu_create_request_t *) (m)) -> owner)
-#define SM_MENU_CREATE_REQUEST_STYLE(m)				\
-  (((sm_menu_create_request_t *) (m)) -> style)
-#define SM_MENU_CREATE_REQUEST_ID(m)				\
-  (((sm_menu_create_request_t *) (m)) -> id)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-} sm_menu_create_reply_t;
-#define SM_MENU_CREATE_REPLY_MENU(m)				\
-  (((sm_menu_create_reply_t *) (m)) -> menu)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-} sm_menu_destroy_t;
-#define SM_MENU_DESTROY_MENU(m) (((sm_menu_destroy_t *) (m)) -> menu)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-  USHORT position;
-  USHORT style;
-  USHORT attributes;
-  USHORT id;
-  HWND submenu;
-  PSZ text;
-} sm_menu_insert_item_request_t;
-#define SM_MENU_INSERT_ITEM_REQUEST_MENU(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> menu)
-#define SM_MENU_INSERT_ITEM_REQUEST_POSITION(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> position)
-#define SM_MENU_INSERT_ITEM_REQUEST_STYLE(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> style)
-#define SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES(m)			\
-  (((sm_menu_insert_item_request_t *) (m)) -> attributes)
-#define SM_MENU_INSERT_ITEM_REQUEST_ID(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> id)
-#define SM_MENU_INSERT_ITEM_REQUEST_SUBMENU(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> submenu)
-#define SM_MENU_INSERT_ITEM_REQUEST_TEXT(m)				\
-  (((sm_menu_insert_item_request_t *) (m)) -> text)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  USHORT position;
-} sm_menu_insert_item_reply_t;
-#define SM_MENU_INSERT_ITEM_REPLY_POSITION(m)				\
-  (((sm_menu_insert_item_reply_t *) (m)) -> position)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-  USHORT id;
-  USHORT submenup;
-  USHORT deletep;
-} sm_menu_remove_item_request_t;
-#define SM_MENU_REMOVE_ITEM_REQUEST_MENU(m)				\
-  (((sm_menu_remove_item_request_t *) (m)) -> menu)
-#define SM_MENU_REMOVE_ITEM_REQUEST_ID(m)				\
-  (((sm_menu_remove_item_request_t *) (m)) -> id)
-#define SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP(m)				\
-  (((sm_menu_remove_item_request_t *) (m)) -> submenup)
-#define SM_MENU_REMOVE_ITEM_REQUEST_DELETEP(m)				\
-  (((sm_menu_remove_item_request_t *) (m)) -> deletep)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  USHORT length;
-} sm_menu_remove_item_reply_t;
-#define SM_MENU_REMOVE_ITEM_REPLY_LENGTH(m)				\
-  (((sm_menu_remove_item_reply_t *) (m)) -> length)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-} sm_menu_n_items_request_t;
-#define SM_MENU_N_ITEMS_REQUEST_MENU(m)					\
-  (((sm_menu_n_items_request_t *) (m)) -> menu)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  USHORT length;
-} sm_menu_n_items_reply_t;
-#define SM_MENU_N_ITEMS_REPLY_LENGTH(m)					\
-  (((sm_menu_n_items_reply_t *) (m)) -> length)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-  USHORT position;
-} sm_menu_nth_item_id_request_t;
-#define SM_MENU_NTH_ITEM_ID_REQUEST_MENU(m)				\
-  (((sm_menu_nth_item_id_request_t *) (m)) -> menu)
-#define SM_MENU_NTH_ITEM_ID_REQUEST_POSITION(m)				\
-  (((sm_menu_nth_item_id_request_t *) (m)) -> position)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  USHORT id;
-} sm_menu_nth_item_id_reply_t;
-#define SM_MENU_NTH_ITEM_ID_REPLY_ID(m)					\
-  (((sm_menu_nth_item_id_reply_t *) (m)) -> id)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-  USHORT id;
-  USHORT submenup;
-  USHORT mask;
-} sm_menu_get_item_attributes_request_t;
-#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU(m)			\
-  (((sm_menu_get_item_attributes_request_t *) (m)) -> menu)
-#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID(m)			\
-  (((sm_menu_get_item_attributes_request_t *) (m)) -> id)
-#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP(m)			\
-  (((sm_menu_get_item_attributes_request_t *) (m)) -> submenup)
-#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK(m)			\
-  (((sm_menu_get_item_attributes_request_t *) (m)) -> mask)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  USHORT attributes;
-} sm_menu_get_item_attributes_reply_t;
-#define SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES(m)			\
-  (((sm_menu_get_item_attributes_reply_t *) (m)) -> attributes)
-
-typedef struct
-{
-  DECLARE_MSG_HEADER_FIELDS;
-  HWND menu;
-  USHORT id;
-  USHORT submenup;
-  USHORT mask;
-  USHORT attributes;
-} sm_menu_set_item_attributes_t;
-#define SM_MENU_SET_ITEM_ATTRIBUTES_MENU(m)				\
-  (((sm_menu_set_item_attributes_t *) (m)) -> menu)
-#define SM_MENU_SET_ITEM_ATTRIBUTES_ID(m)				\
-  (((sm_menu_set_item_attributes_t *) (m)) -> id)
-#define SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP(m)				\
-  (((sm_menu_set_item_attributes_t *) (m)) -> submenup)
-#define SM_MENU_SET_ITEM_ATTRIBUTES_MASK(m)				\
-  (((sm_menu_set_item_attributes_t *) (m)) -> mask)
-#define SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES(m)			\
-  (((sm_menu_set_item_attributes_t *) (m)) -> attributes)
 
 static void sync_transaction (qid_t, msg_t *);
 static void sync_reply (qid_t);
@@ -920,76 +233,20 @@ static MRESULT EXPENTRY object_window_procedure (HWND, ULONG, MPARAM, MPARAM);
 static MRESULT EXPENTRY frame_window_procedure (HWND, ULONG, MPARAM, MPARAM);
 static MRESULT EXPENTRY window_procedure (HWND, ULONG, MPARAM, MPARAM);
 
-static wid_t open_window (qid_t, qid_t, ULONG, PSZ);
 static window_t * hwnd_to_window (HWND);
-static void close_window (window_t *);
-static void show_window (window_t *, int);
-static void move_cursor (window_t *, short, short);
-static void shape_cursor
-  (window_t *, unsigned short, unsigned short, unsigned short);
-static void enable_cursor (window_t *, int);
 static void recreate_cursor (window_t *);
 static void activate_cursor (window_t *);
 static void deactivate_cursor (window_t *);
-static void scroll_rectangle (window_t *, short, short, PRECTL);
-static void invalidate_rectangle (window_t *, PRECTL);
-static void get_window_pos (window_t *, short *, short *);
-static void set_window_pos (window_t *, short, short);
-static void get_window_size (window_t *, unsigned short *, unsigned short *);
-static void get_window_frame_size
-  (window_t *, unsigned short *, unsigned short *);
-static void set_window_size (window_t *, unsigned short, unsigned short);
-static int window_focusp (window_t *);
-static void set_window_state (window_t *, window_state_t);
-static void set_window_title (window_t *, PSZ);
-static void update_frame_window (window_t *, USHORT);
 
-static ps_t * create_memory_ps (qid_t);
-static void destroy_memory_ps (ps_t *);
-static bitmap_t * create_bitmap (ps_t *, USHORT, USHORT);
-static void destroy_bitmap (bitmap_t *);
-static bitmap_t * ps_set_bitmap (ps_t *, bitmap_t *);
 static HDC get_ps_device (HPS);
 static LONG get_device_capability (HDC, LONG);
 static ps_t * create_ps (pst_t, HDC, qid_t);
 static void destroy_ps (ps_t *);
-static void ps_bitblt (ps_t *, ps_t *, LONG, PPOINTL, LONG, ULONG);
-static void ps_draw_text (ps_t *, short, short, const char *, unsigned short);
-static unsigned short ps_text_width (ps_t *, const char *, unsigned short);
 static void maybe_activate_cursor (ps_t *);
 static void maybe_deactivate_cursor (ps_t *);
-static void clear_rectangle (ps_t *, PRECTL);
-static void ps_set_colors (ps_t *, COLOR, COLOR);
-static void ps_move_gcursor (ps_t *, short, short);
-static void ps_draw_line (ps_t *, short, short);
-static void ps_draw_point (ps_t *, short, short);
-static void ps_poly_line (ps_t *, unsigned long, PPOINTL);
-static void ps_poly_line_disjoint (ps_t *, unsigned long, PPOINTL);
-static void ps_set_line_type (ps_t *, LONG);
-static void ps_set_mix (ps_t *, LONG);
-static void ps_query_caps (ps_t *, LONG, LONG, PLONG);
-static void ps_set_clip_rectangle (ps_t *, PRECTL);
-static void get_bitmap_parameters (bitmap_t *, PBITMAPINFOHEADER);
-static unsigned long ps_get_bitmap_bits
-  (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
-static unsigned long ps_set_bitmap_bits
-  (ps_t *, unsigned long, unsigned long, PBYTE, PBITMAPINFO2);
-static font_metrics_t * ps_get_font_metrics (ps_t *);
+
 static int ps_set_font (ps_t *, unsigned short, const char *);
 
-static void clipboard_write_text (const char *);
-static const char * clipboard_read_text (void);
-
-static HWND menu_create (HWND, USHORT, USHORT);
-static void menu_destroy (HWND);
-static USHORT menu_insert_item
-  (HWND, USHORT, USHORT, USHORT, USHORT, HWND, PSZ);
-static USHORT menu_remove_item (HWND, USHORT, USHORT, USHORT);
-static USHORT menu_n_items (HWND);
-static USHORT menu_nth_item_id (HWND, USHORT);
-static USHORT menu_get_item_attributes (HWND, USHORT, USHORT, USHORT);
-static void menu_set_item_attributes (HWND, USHORT, USHORT, USHORT, USHORT);
-
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
    unsigned short);
@@ -1001,10 +258,9 @@ static msg_t * make_paint_event
   (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
 static msg_t * make_resize_event (wid_t, unsigned short, unsigned short);
 static msg_t * make_visibility_event (wid_t, int);
-static msg_t * make_command_event (wid_t, USHORT);
-static msg_t * make_help_event (wid_t, USHORT);
+static msg_t * make_command_event (wid_t, USHORT, USHORT, USHORT);
+static msg_t * make_help_event (wid_t, USHORT, USHORT, USHORT);
 
-#define ID_RESOURCES 1
 #define ID_FRAME 1
 
 #define UWM_ENCAPSULATION WM_USER
@@ -1062,104 +318,19 @@ Please report this information to a Scheme wizard.",
 void
 OS2_initialize_pm_thread (void)
 {
-  SET_MSG_TYPE_LENGTH (mt_pm_synchronize_request, sm_pm_synchronize_request_t);
-  SET_MSG_TYPE_LENGTH (mt_window_open_request, sm_open_request_t);
-  SET_MSG_TYPE_LENGTH (mt_window_open_reply, sm_open_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_window_close, sm_close_t);
-  SET_MSG_TYPE_LENGTH (mt_window_show, sm_show_t);
-  SET_MSG_TYPE_LENGTH (mt_window_move_cursor, sm_move_cursor_t);
-  SET_MSG_TYPE_LENGTH (mt_window_shape_cursor, sm_shape_cursor_t);
-  SET_MSG_TYPE_LENGTH (mt_window_show_cursor, sm_show_cursor_t);
-  SET_MSG_TYPE_LENGTH (mt_window_scroll, sm_scroll_t);
-  SET_MSG_TYPE_LENGTH (mt_window_invalidate, sm_invalidate_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_grid, sm_set_grid_t);
-  SET_MSG_TYPE_LENGTH (mt_window_activate, sm_activate_t);
+  /* This machine-generated file contains code to initialize the
+     message-type sizes for most of the procedure messages.  */
+#include "os2pm-mi.h"
+
   SET_MSG_TYPE_LENGTH (mt_window_pos_request, sm_pos_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_pos_reply, sm_pos_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_pos, sm_set_pos_t);
   SET_MSG_TYPE_LENGTH (mt_window_size_request, sm_size_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_size_reply, sm_size_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_frame_size_request, sm_frame_size_request_t);
   SET_MSG_TYPE_LENGTH (mt_window_frame_size_reply, sm_frame_size_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_window_frame_size_request, sm_frame_size_request_t);
-  SET_MSG_TYPE_LENGTH (mt_window_frame_size_reply, sm_frame_size_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_size, sm_set_size_t);
-  SET_MSG_TYPE_LENGTH (mt_window_focusp_request, sm_focusp_request_t);
-  SET_MSG_TYPE_LENGTH (mt_window_focusp_reply, sm_focusp_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_state, sm_set_state_t);
-  SET_MSG_TYPE_LENGTH (mt_window_set_title, sm_set_title_t);
-  SET_MSG_TYPE_LENGTH (mt_window_update_frame, sm_update_frame_t);
 
-  SET_MSG_TYPE_LENGTH (mt_create_memory_ps_request,
-		       sm_create_memory_ps_request_t);
-  SET_MSG_TYPE_LENGTH (mt_create_memory_ps_reply, sm_create_memory_ps_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_destroy_memory_ps, sm_destroy_memory_ps_t);
-  SET_MSG_TYPE_LENGTH (mt_create_bitmap_request, sm_create_bitmap_request_t);
-  SET_MSG_TYPE_LENGTH (mt_create_bitmap_reply, sm_create_bitmap_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_destroy_bitmap, sm_destroy_bitmap_t);
   SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_request, sm_ps_set_bitmap_request_t);
   SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_reply, sm_ps_set_bitmap_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_bitblt, sm_ps_bitblt_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_draw_text, sm_ps_draw_text_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_text_width_request, sm_ps_text_width_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_text_width_reply, sm_ps_text_width_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_clear, sm_ps_clear_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_get_font_metrics_request,
-		       sm_ps_get_font_metrics_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_get_font_metrics_reply,
-		       sm_ps_get_font_metrics_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_font, sm_ps_set_font_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_colors, sm_ps_set_colors_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_move_gcursor, sm_ps_move_gcursor_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_draw_line, sm_ps_draw_line_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_draw_point, sm_ps_draw_point_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_poly_line, sm_ps_poly_line_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_poly_line_disjoint, sm_ps_poly_line_disjoint_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_line_type, sm_ps_set_line_type_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_mix, sm_ps_set_mix_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_query_caps, sm_ps_query_caps_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_clip_rectangle, sm_ps_set_clip_rectangle_t);
-  SET_MSG_TYPE_LENGTH (mt_get_bitmap_parameters, sm_get_bitmap_parameters_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_request,
-		       sm_ps_get_bitmap_bits_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_get_bitmap_bits_reply,
-		       sm_ps_get_bitmap_bits_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_bits_request,
-		       sm_ps_set_bitmap_bits_request_t);
-  SET_MSG_TYPE_LENGTH (mt_ps_set_bitmap_bits_reply,
-		       sm_ps_set_bitmap_bits_reply_t);
-
-  SET_MSG_TYPE_LENGTH (mt_clipboard_write_text, sm_clipboard_write_text_t);
-  SET_MSG_TYPE_LENGTH (mt_clipboard_read_text_request,
-		       sm_clipboard_read_text_request_t);
-  SET_MSG_TYPE_LENGTH (mt_clipboard_read_text_reply,
-		       sm_clipboard_read_text_reply_t);
-
-  SET_MSG_TYPE_LENGTH (mt_menu_create_request, sm_menu_create_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_create_reply, sm_menu_create_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_destroy, sm_menu_destroy_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_insert_item_request,
-		       sm_menu_insert_item_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_insert_item_reply,
-		       sm_menu_insert_item_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_remove_item_request,
-		       sm_menu_remove_item_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_remove_item_reply,
-		       sm_menu_remove_item_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_n_items_request,
-		       sm_menu_n_items_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_n_items_reply,
-		       sm_menu_n_items_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_nth_item_id_request,
-		       sm_menu_nth_item_id_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_nth_item_id_reply,
-		       sm_menu_nth_item_id_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_get_item_attributes_request,
-		       sm_menu_get_item_attributes_request_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_get_item_attributes_reply,
-		       sm_menu_get_item_attributes_reply_t);
-  SET_MSG_TYPE_LENGTH (mt_menu_set_item_attributes,
-		       sm_menu_set_item_attributes_t);
 
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
@@ -1188,7 +359,7 @@ OS2_initialize_pm_thread (void)
   }
   add_reload_cleanup (close_all_windows);
 }
-
+
 /* Define this to cause a calling thread to wait for the PM thread to
    finish requests that have trivial replies.  Otherwise, the calling
    thread waits only when the request has a non-trivial reply.
@@ -1219,6 +390,36 @@ sync_reply (qid_t qid)
 {
   OS2_send_message (qid, (OS2_create_message (mt_generic_reply)));
 }
+
+/* These macros simplify the code needed to perform message
+   transactions, by hiding the many type-casts needed.  */
+
+#define CREATE_MESSAGE(mt)						\
+  ((void *) (OS2_create_message (mt)))
+
+#define CREATE_MESSAGE_1(mt, extra)					\
+  ((void *) (OS2_create_message_1 ((mt), (extra))))
+
+#define DESTROY_MESSAGE(msg)						\
+  OS2_destroy_message ((msg_t *) (msg))
+
+#define SEND_MESSAGE(qid, msg)						\
+  OS2_send_message ((qid), ((msg_t *) (msg)))
+
+#define SIMPLE_TRANSACTION(qid, msg)					\
+  simple_transaction ((qid), ((msg_t *) (msg)))
+
+#define SYNC_TRANSACTION(qid, msg)					\
+  sync_transaction ((qid), ((msg_t *) (msg)))
+
+#define MESSAGE_TRANSACTION(qid, msg, mt)				\
+  ((void *) (OS2_message_transaction ((qid), ((msg_t *) (msg)), (mt))))
+
+#define MEMCPY(to, from, length)					\
+  FASTCOPY (((const char *) (from)), ((char *) (to)), (length))
+
+#define STRCPY(to, from)						\
+  strcpy (((char *) (to)), (from))
 
 static void
 pm_thread_procedure (void * arg)
@@ -1423,64 +624,6 @@ close_all_windows (void)
    encapsulated messages sent from the Scheme thread.  This defines
    the protocol used to communicate with the Scheme thread.  */
 
-static void handle_pm_synchronize_request (msg_t *);
-static void handle_window_open_request (msg_t *);
-static void handle_window_close_request (msg_t *);
-static void handle_window_show_request (msg_t *);
-static void handle_window_move_cursor_request (msg_t *);
-static void handle_window_shape_cursor_request (msg_t *);
-static void handle_window_show_cursor_request (msg_t *);
-static void handle_window_scroll_request (msg_t *);
-static void handle_window_invalidate_request (msg_t *);
-static void handle_window_set_grid_request (msg_t *);
-static void handle_window_activate_request (msg_t *);
-static void handle_window_pos_request (msg_t *);
-static void handle_window_set_pos_request (msg_t *);
-static void handle_window_size_request (msg_t *);
-static void handle_window_frame_size_request (msg_t *);
-static void handle_window_set_size_request (msg_t *);
-static void handle_window_focusp_request (msg_t *);
-static void handle_window_set_state_request (msg_t *);
-static void handle_window_set_title_request (msg_t *);
-static void handle_window_update_frame_request (msg_t *);
-
-static void handle_create_memory_ps_request (msg_t *);
-static void handle_destroy_memory_ps_request (msg_t *);
-static void handle_create_bitmap_request (msg_t *);
-static void handle_destroy_bitmap_request (msg_t *);
-static void handle_ps_set_bitmap_request (msg_t *);
-static void handle_ps_bitblt_request (msg_t *);
-static void handle_ps_draw_text_request (msg_t *);
-static void handle_ps_text_width_request (msg_t *);
-static void handle_ps_get_font_metrics_request (msg_t *);
-static void handle_ps_set_font_request (msg_t *);
-static void handle_ps_clear_request (msg_t *);
-static void handle_ps_set_colors_request (msg_t *);
-static void handle_ps_move_gcursor_request (msg_t *);
-static void handle_ps_draw_line_request (msg_t *);
-static void handle_ps_draw_point_request (msg_t *);
-static void handle_ps_poly_line_request (msg_t *);
-static void handle_ps_poly_line_disjoint_request (msg_t *);
-static void handle_ps_set_line_type_request (msg_t *);
-static void handle_ps_set_mix_request (msg_t *);
-static void handle_ps_query_caps_request (msg_t *);
-static void handle_ps_set_clip_rectangle_request (msg_t *);
-static void handle_get_bitmap_parameters_request (msg_t *);
-static void handle_ps_get_bitmap_bits_request (msg_t *);
-static void handle_ps_set_bitmap_bits_request (msg_t *);
-
-static void handle_clipboard_write_text_request (msg_t *);
-static void handle_clipboard_read_text_request (msg_t *);
-
-static void handle_menu_create_request (msg_t *);
-static void handle_menu_destroy_request (msg_t *);
-static void handle_menu_insert_item_request (msg_t *);
-static void handle_menu_remove_item_request (msg_t *);
-static void handle_menu_n_items_request (msg_t *);
-static void handle_menu_nth_item_id_request (msg_t *);
-static void handle_menu_get_item_attributes_request (msg_t *);
-static void handle_menu_set_item_attributes_request (msg_t *);
-
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 {
@@ -1489,44 +632,12 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
       msg_t * message = (PVOIDFROMMP (mp1));
       switch (MSG_TYPE (message))
 	{
-	case mt_pm_synchronize_request:
-	  handle_pm_synchronize_request (message);
-	  break;
-	case mt_window_open_request:
-	  handle_window_open_request (message);
-	  break;
-	case mt_window_close:
-	  handle_window_close_request (message);
-	  break;
-	case mt_window_show:
-	  handle_window_show_request (message);
-	  break;
-	case mt_window_move_cursor:
-	  handle_window_move_cursor_request (message);
-	  break;
-	case mt_window_shape_cursor:
-	  handle_window_shape_cursor_request (message);
-	  break;
-	case mt_window_show_cursor:
-	  handle_window_show_cursor_request (message);
-	  break;
-	case mt_window_scroll:
-	  handle_window_scroll_request (message);
-	  break;
-	case mt_window_invalidate:
-	  handle_window_invalidate_request (message);
-	  break;
-	case mt_window_set_grid:
-	  handle_window_set_grid_request (message);
-	  break;
-	case mt_window_activate:
-	  handle_window_activate_request (message);
-	  break;
+	  /* This machine-generated file contains dispatch cases for
+	     most of the procedure messages.  */
+#include "os2pm-dc.h"
+
 	case mt_window_pos_request:
 	  handle_window_pos_request (message);
-	  break;
-	case mt_window_set_pos:
-	  handle_window_set_pos_request (message);
 	  break;
 	case mt_window_size_request:
 	  handle_window_size_request (message);
@@ -1534,125 +645,8 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_window_frame_size_request:
 	  handle_window_frame_size_request (message);
 	  break;
-	case mt_window_set_size:
-	  handle_window_set_size_request (message);
-	  break;
-	case mt_window_focusp_request:
-	  handle_window_focusp_request (message);
-	  break;
-	case mt_window_set_state:
-	  handle_window_set_state_request (message);
-	  break;
-	case mt_window_set_title:
-	  handle_window_set_title_request (message);
-	  break;
-	case mt_window_update_frame:
-	  handle_window_update_frame_request (message);
-	  break;
-
-	case mt_create_memory_ps_request:
-	  handle_create_memory_ps_request (message);
-	  break;
-	case mt_destroy_memory_ps:
-	  handle_destroy_memory_ps_request (message);
-	  break;
-	case mt_create_bitmap_request:
-	  handle_create_bitmap_request (message);
-	  break;
-	case mt_destroy_bitmap:
-	  handle_destroy_bitmap_request (message);
-	  break;
 	case mt_ps_set_bitmap_request:
 	  handle_ps_set_bitmap_request (message);
-	  break;
-	case mt_ps_bitblt:
-	  handle_ps_bitblt_request (message);
-	  break;
-	case mt_ps_draw_text:
-	  handle_ps_draw_text_request (message);
-	  break;
-	case mt_ps_text_width_request:
-	  handle_ps_text_width_request (message);
-	  break;
-	case mt_ps_get_font_metrics_request:
-	  handle_ps_get_font_metrics_request (message);
-	  break;
-	case mt_ps_set_font:
-	  handle_ps_set_font_request (message);
-	  break;
-	case mt_ps_clear:
-	  handle_ps_clear_request (message);
-	  break;
-	case mt_ps_set_colors:
-	  handle_ps_set_colors_request (message);
-	  break;
-	case mt_ps_move_gcursor:
-	  handle_ps_move_gcursor_request (message);
-	  break;
-	case mt_ps_draw_line:
-	  handle_ps_draw_line_request (message);
-	  break;
-	case mt_ps_draw_point:
-	  handle_ps_draw_point_request (message);
-	  break;
-	case mt_ps_poly_line:
-	  handle_ps_poly_line_request (message);
-	  break;
-	case mt_ps_poly_line_disjoint:
-	  handle_ps_poly_line_disjoint_request (message);
-	  break;
-	case mt_ps_set_line_type:
-	  handle_ps_set_line_type_request (message);
-	  break;
-	case mt_ps_set_mix:
-	  handle_ps_set_mix_request (message);
-	  break;
-	case mt_ps_query_caps:
-	  handle_ps_query_caps_request (message);
-	  break;
-	case mt_ps_set_clip_rectangle:
-	  handle_ps_set_clip_rectangle_request (message);
-	  break;
-	case mt_get_bitmap_parameters:
-	  handle_get_bitmap_parameters_request (message);
-	  break;
-	case mt_ps_get_bitmap_bits_request:
-	  handle_ps_get_bitmap_bits_request (message);
-	  break;
-	case mt_ps_set_bitmap_bits_request:
-	  handle_ps_set_bitmap_bits_request (message);
-	  break;
-
-	case mt_clipboard_write_text:
-	  handle_clipboard_write_text_request (message);
-	  break;
-	case mt_clipboard_read_text_request:
-	  handle_clipboard_read_text_request (message);
-	  break;
-
-	case mt_menu_create_request:
-	  handle_menu_create_request (message);
-	  break;
-	case mt_menu_destroy:
-	  handle_menu_destroy_request (message);
-	  break;
-	case mt_menu_insert_item_request:
-	  handle_menu_insert_item_request (message);
-	  break;
-	case mt_menu_remove_item_request:
-	  handle_menu_remove_item_request (message);
-	  break;
-	case mt_menu_n_items_request:
-	  handle_menu_n_items_request (message);
-	  break;
-	case mt_menu_nth_item_id_request:
-	  handle_menu_nth_item_id_request (message);
-	  break;
-	case mt_menu_get_item_attributes_request:
-	  handle_menu_get_item_attributes_request (message);
-	  break;
-	case mt_menu_set_item_attributes:
-	  handle_menu_set_item_attributes_request (message);
 	  break;
 
 	default:
@@ -1675,263 +669,39 @@ OS2_create_pm_qid (tqueue_t * tqueue)
 }
 
 void
-OS2_pm_synchronize (qid_t qid)
-{
-  sync_transaction (qid, (OS2_create_message (mt_pm_synchronize_request)));
-}
-
-static void
-handle_pm_synchronize_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-wid_t
-OS2_window_open (qid_t qid, qid_t event_qid, unsigned long style,
-		 const char * title)
-{
-  msg_t * message
-    = (OS2_create_message_1 (mt_window_open_request, (strlen (title))));
-  wid_t wid;
-  (SM_OPEN_REQUEST_QID (message)) = qid;
-  (SM_OPEN_REQUEST_EVENT_QID (message)) = event_qid;
-  (SM_OPEN_REQUEST_STYLE (message)) = style;
-  strcpy ((SM_OPEN_REQUEST_TITLE (message)), title);
-  message = (OS2_message_transaction (qid, message, mt_window_open_reply));
-  wid = (SM_OPEN_REPLY_WID (message));
-  OS2_destroy_message (message);
-  return (wid);
-}
-
-static void
-handle_window_open_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_window_open_reply));
-  (SM_OPEN_REPLY_WID (reply))
-    = (open_window ((SM_OPEN_REQUEST_QID (request)),
-		    (SM_OPEN_REQUEST_EVENT_QID (request)),
-		    (SM_OPEN_REQUEST_STYLE (request)),
-		    (SM_OPEN_REQUEST_TITLE (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
 OS2_window_permanent (wid_t wid)
 {
   (WINDOW_PERMANENTP (wid_to_window (wid))) = 1;
 }
 
-void
-OS2_window_close (wid_t wid)
+HWND
+OS2_window_frame_handle (wid_t wid)
 {
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_close));
-  (SM_CLOSE_WINDOW (message)) = window;
-  simple_transaction ((WINDOW_QID (window)), message);
+  /* This is needed by the OS2_menu_create, to supply an owner for the
+     top-level menu bar.  */
+  return (WINDOW_FRAME (wid_to_window (wid)));
 }
 
-static void
-handle_window_close_request (msg_t * message)
+int
+OS2_memory_ps_p (psid_t psid)
 {
-  qid_t sender = (MSG_SENDER (message));
-  close_window (SM_CLOSE_WINDOW (message));
-  OS2_destroy_message (message);
-  simple_reply (sender);
+  return ((PS_VISUAL_TYPE (psid_to_ps (psid))) == pst_memory);
 }
 
-void
-OS2_window_show (wid_t wid, int showp)
+bid_t
+OS2_ps_get_bitmap (psid_t psid)
 {
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_show));
-  (SM_SHOW_WINDOW (message)) = window;
-  (SM_SHOW_SHOWP (message)) = showp;
-  simple_transaction ((WINDOW_QID (window)), message);
+  bitmap_t * bitmap = (PS_VISUAL (psid_to_ps (psid)));
+  return ((bitmap == 0) ? BID_NONE : (BITMAP_ID (bitmap)));
 }
+
+/* This macro supplies a NO-OP procedure needed by the
+   machine-generated code for OS2_pm_synchronize.  */
+#define pm_synchronize(qid)
 
-static void
-handle_window_show_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  show_window ((SM_SHOW_WINDOW (message)), (SM_SHOW_SHOWP (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_move_cursor (wid_t wid, short x, short y)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_move_cursor));
-  (SM_MOVE_CURSOR_WINDOW (message)) = window;
-  (SM_MOVE_CURSOR_X (message)) = x;
-  (SM_MOVE_CURSOR_Y (message)) = y;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_move_cursor_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_MOVE_CURSOR_WINDOW (message));
-  (WINDOW_CURSOR_X (window)) = (SM_MOVE_CURSOR_X (message));
-  (WINDOW_CURSOR_Y (window)) = (SM_MOVE_CURSOR_Y (message));
-  OS2_destroy_message (message);
-  move_cursor (window, (WINDOW_CURSOR_X (window)), (WINDOW_CURSOR_Y (window)));
-  simple_reply (sender);
-}
-
-void
-OS2_window_shape_cursor (wid_t wid,
-			 unsigned short width, unsigned short height,
-			 unsigned short style)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_shape_cursor));
-  (SM_SHAPE_CURSOR_WINDOW (message)) = window;
-  (SM_SHAPE_CURSOR_WIDTH (message)) = width;
-  (SM_SHAPE_CURSOR_HEIGHT (message)) = height;
-  (SM_SHAPE_CURSOR_STYLE (message)) = style;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_shape_cursor_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  shape_cursor ((SM_SHAPE_CURSOR_WINDOW (message)),
-		(SM_SHAPE_CURSOR_WIDTH (message)),
-		(SM_SHAPE_CURSOR_HEIGHT (message)),
-		(SM_SHAPE_CURSOR_STYLE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_show_cursor (wid_t wid, int showp)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_show_cursor));
-  (SM_SHOW_CURSOR_WINDOW (message)) = window;
-  (SM_SHOW_CURSOR_SHOWP (message)) = showp;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_show_cursor_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  enable_cursor ((SM_SHOW_CURSOR_WINDOW (message)),
-		 (SM_SHOW_CURSOR_SHOWP (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_scroll (wid_t wid, short xl, short xh, short yl, short yh,
-		   short x_delta, short y_delta)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_scroll));
-  (SM_SCROLL_WINDOW (message)) = window;
-  (SM_SCROLL_XL (message)) = xl;
-  (SM_SCROLL_XH (message)) = xh;
-  (SM_SCROLL_YL (message)) = yl;
-  (SM_SCROLL_YH (message)) = yh;
-  (SM_SCROLL_X_DELTA (message)) = x_delta;
-  (SM_SCROLL_Y_DELTA (message)) = y_delta;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_scroll_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  RECTL rectl;
-  (rectl . xLeft)   = (SM_SCROLL_XL (message));
-  (rectl . xRight)  = (SM_SCROLL_XH (message));
-  (rectl . yBottom) = (SM_SCROLL_YL (message));
-  (rectl . yTop)    = (SM_SCROLL_YH (message));
-  scroll_rectangle ((SM_SCROLL_WINDOW (message)),
-		    (SM_SCROLL_X_DELTA (message)),
-		    (SM_SCROLL_Y_DELTA (message)),
-		    (& rectl));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_invalidate (wid_t wid, short xl, short xh, short yl, short yh)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_invalidate));
-  (SM_INVALIDATE_WINDOW (message)) = window;
-  (SM_INVALIDATE_XL (message)) = xl;
-  (SM_INVALIDATE_XH (message)) = xh;
-  (SM_INVALIDATE_YL (message)) = yl;
-  (SM_INVALIDATE_YH (message)) = yh;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_invalidate_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  RECTL rectl;
-  (rectl . xLeft)   = (SM_INVALIDATE_XL (message));
-  (rectl . xRight)  = (SM_INVALIDATE_XH (message));
-  (rectl . yBottom) = (SM_INVALIDATE_YL (message));
-  (rectl . yTop)    = (SM_INVALIDATE_YH (message));
-  invalidate_rectangle ((SM_INVALIDATE_WINDOW (message)), (& rectl));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_set_grid (wid_t wid, unsigned short x, unsigned short y)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_grid));
-  (SM_SET_GRID_WINDOW (message)) = window;
-  (SM_SET_GRID_X (message)) = x;
-  (SM_SET_GRID_Y (message)) = y;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_grid_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_SET_GRID_WINDOW (message));
-  (WINDOW_GRID_X (window)) = (SM_SET_GRID_X (message));
-  (WINDOW_GRID_Y (window)) = (SM_SET_GRID_Y (message));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_activate (wid_t wid)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_activate));
-  (SM_ACTIVATE_WINDOW (message)) = window;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_activate_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  window_t * window = (SM_ACTIVATE_WINDOW (message));
-  OS2_destroy_message (message);
-  if (!WinSetActiveWindow (HWND_DESKTOP, (WINDOW_FRAME (window))))
-    window_warning (WinSetActiveWindow);
-  simple_reply (sender);
-}
+/* This machine-generated file contains most of the external procedure
+   definitions, and their associated handler procedures.  */
+#include "os2pm-rp.h"
 
 void
 OS2_window_pos (wid_t wid, short * x, short * y)
@@ -1958,28 +728,6 @@ handle_window_pos_request (msg_t * request)
 		  (& (SM_POS_REPLY_Y (reply))));
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
-}
-
-void
-OS2_window_set_pos (wid_t wid, short x, short y)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_pos));
-  (SM_SET_POS_WINDOW (message)) = window;
-  (SM_SET_POS_X (message)) = x;
-  (SM_SET_POS_Y (message)) = y;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_pos_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_window_pos ((SM_SET_POS_WINDOW (message)),
-		  (SM_SET_POS_X (message)),
-		  (SM_SET_POS_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
 }
 
 void
@@ -2037,229 +785,6 @@ handle_window_frame_size_request (msg_t * request)
   OS2_send_message (sender, reply);
 }
 
-void
-OS2_window_set_size (wid_t wid, unsigned short width, unsigned short height)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_size));
-  (SM_SET_SIZE_WINDOW (message)) = window;
-  (SM_SET_SIZE_WIDTH (message)) = width;
-  (SM_SET_SIZE_HEIGHT (message)) = height;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_size_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_window_size ((SM_SET_SIZE_WINDOW (message)),
-		   (SM_SET_SIZE_WIDTH (message)),
-		   (SM_SET_SIZE_HEIGHT (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-int
-OS2_window_focusp (wid_t wid)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_focusp_request));
-  (SM_FOCUSP_REQUEST_WINDOW (message)) = window;
-  message
-    = (OS2_message_transaction ((WINDOW_QID (window)),
-				message,
-				mt_window_focusp_reply));
-  {
-    int result = (SM_FOCUSP_REPLY_FOCUSP (message));
-    OS2_destroy_message (message);
-    return (result);
-  }
-}
-
-static void
-handle_window_focusp_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_window_focusp_reply));
-  (SM_FOCUSP_REPLY_FOCUSP (reply))
-    = (window_focusp (SM_FOCUSP_REQUEST_WINDOW (request)));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_window_set_state (wid_t wid, window_state_t state)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_set_state));
-  (SM_SET_STATE_WINDOW (message)) = window;
-  (SM_SET_STATE_STATE (message)) = state;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_state_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_window_state ((SM_SET_STATE_WINDOW (message)),
-		    (SM_SET_STATE_STATE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_window_set_title (wid_t wid, const char * title)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message
-    = (OS2_create_message_1 (mt_window_set_title, (strlen (title))));
-  (SM_SET_TITLE_WINDOW (message)) = window;
-  strcpy ((SM_SET_TITLE_TITLE (message)), title);
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_set_title_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  set_window_title ((SM_SET_TITLE_WINDOW (message)),
-		    (SM_SET_TITLE_TITLE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-HWND
-OS2_window_frame_handle (wid_t wid)
-{
-  /* This is needed by the OS2_menu_create, to supply an owner for the
-     top-level menu bar.  */
-  return (WINDOW_FRAME (wid_to_window (wid)));
-}
-
-void
-OS2_window_update_frame (wid_t wid, USHORT flags)
-{
-  window_t * window = (wid_to_window (wid));
-  msg_t * message = (OS2_create_message (mt_window_update_frame));
-  (SM_UPDATE_FRAME_WINDOW (message)) = window;
-  (SM_UPDATE_FRAME_FLAGS (message)) = flags;
-  simple_transaction ((WINDOW_QID (window)), message);
-}
-
-static void
-handle_window_update_frame_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  update_frame_window ((SM_UPDATE_FRAME_WINDOW (message)),
-		       (SM_UPDATE_FRAME_FLAGS (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-psid_t
-OS2_create_memory_ps (qid_t qid)
-{
-  msg_t * message = (OS2_create_message (mt_create_memory_ps_request));
-  ps_t * ps;
-  (SM_CREATE_MEMORY_PS_REQUEST_QID (message)) = qid;
-  message
-    = (OS2_message_transaction (qid, message, mt_create_memory_ps_reply));
-  ps = (SM_CREATE_MEMORY_PS_REPLY_PS (message));
-  OS2_destroy_message (message);
-  return (PS_ID (ps));
-}
-
-static void
-handle_create_memory_ps_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_create_memory_ps_reply));
-  (SM_CREATE_MEMORY_PS_REPLY_PS (reply))
-    = (create_memory_ps (SM_CREATE_MEMORY_PS_REQUEST_QID (request)));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_destroy_memory_ps (psid_t psid)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_destroy_memory_ps));
-  (SM_DESTROY_MEMORY_PS_PS (message)) = ps;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_destroy_memory_ps_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  destroy_memory_ps (SM_DESTROY_MEMORY_PS_PS (request));
-  OS2_destroy_message (request);
-  simple_reply (sender);
-}
-
-int
-OS2_memory_ps_p (psid_t psid)
-{
-  return ((PS_VISUAL_TYPE (psid_to_ps (psid))) == pst_memory);
-}
-
-bid_t
-OS2_create_bitmap (psid_t psid, USHORT width, USHORT height)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_create_bitmap_request));
-  bitmap_t * bitmap;
-  (SM_CREATE_BITMAP_REQUEST_PS (message)) = ps;
-  (SM_CREATE_BITMAP_REQUEST_WIDTH (message)) = width;
-  (SM_CREATE_BITMAP_REQUEST_HEIGHT (message)) = height;
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_create_bitmap_reply));
-  bitmap = (SM_CREATE_BITMAP_REPLY_BITMAP (message));
-  OS2_destroy_message (message);
-  return (BITMAP_ID (bitmap));
-}
-
-static void
-handle_create_bitmap_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_create_bitmap_reply));
-  (SM_CREATE_BITMAP_REPLY_BITMAP (reply))
-    = (create_bitmap ((SM_CREATE_BITMAP_REQUEST_PS (request)),
-		      (SM_CREATE_BITMAP_REQUEST_WIDTH (request)),
-		      (SM_CREATE_BITMAP_REQUEST_HEIGHT (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_destroy_bitmap (bid_t bid)
-{
-  bitmap_t * bitmap = (bid_to_bitmap (bid));
-  msg_t * message = (OS2_create_message (mt_destroy_bitmap));
-  (SM_DESTROY_BITMAP_BITMAP (message)) = bitmap;
-  simple_transaction ((BITMAP_QID (bitmap)), message);
-}
-
-static void
-handle_destroy_bitmap_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  destroy_bitmap (SM_DESTROY_BITMAP_BITMAP (request));
-  OS2_destroy_message (request);
-  simple_reply (sender);
-}
-
-bid_t
-OS2_ps_get_bitmap (psid_t psid)
-{
-  bitmap_t * bitmap = (PS_VISUAL (psid_to_ps (psid)));
-  return ((bitmap == 0) ? BID_NONE : (BITMAP_ID (bitmap)));
-}
-
 bid_t
 OS2_ps_set_bitmap (psid_t psid, bid_t bid)
 {
@@ -2288,774 +813,34 @@ handle_ps_set_bitmap_request (msg_t * request)
   OS2_destroy_message (request);
   OS2_send_message (sender, reply);
 }
-
-void
-OS2_ps_bitblt (psid_t target, psid_t source, LONG npoints, PPOINTL points,
-	       LONG rop, ULONG options)
-{
-  ps_t * target_ps = (psid_to_ps (target));
-  msg_t * message = (OS2_create_message (mt_ps_bitblt));
-  (SM_PS_BITBLT_TARGET_PS (message)) = target_ps;
-  (SM_PS_BITBLT_SOURCE_PS (message)) = (psid_to_ps (source));
-  (SM_PS_BITBLT_NPOINTS (message)) = npoints;
-  memcpy ((SM_PS_BITBLT_POINTS (message)),
-	  points,
-	  ((sizeof (POINTL)) * npoints));
-  (SM_PS_BITBLT_ROP (message)) = rop;
-  (SM_PS_BITBLT_OPTIONS (message)) = options;
-  simple_transaction ((PS_QID (target_ps)), message);
-}
-
-static void
-handle_ps_bitblt_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_bitblt ((SM_PS_BITBLT_TARGET_PS (message)),
-	     (SM_PS_BITBLT_SOURCE_PS (message)),
-	     (SM_PS_BITBLT_NPOINTS (message)),
-	     (& ((SM_PS_BITBLT_POINTS (message)) [0])),
-	     (SM_PS_BITBLT_ROP (message)),
-	     (SM_PS_BITBLT_OPTIONS (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_draw_text (psid_t psid, short x, short y,
-		  const char * data, unsigned short size)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message_1 (mt_ps_draw_text, (size - 1)));
-  (SM_PS_DRAW_TEXT_PS (message)) = ps;
-  (SM_PS_DRAW_TEXT_X (message)) = x;
-  (SM_PS_DRAW_TEXT_Y (message)) = y;
-  (SM_PS_DRAW_TEXT_SIZE (message)) = size;
-  FASTCOPY (data, ((char *) (SM_PS_DRAW_TEXT_DATA (message))), size);
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_draw_text_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_draw_text ((SM_PS_DRAW_TEXT_PS (message)),
-		(SM_PS_DRAW_TEXT_X (message)),
-		(SM_PS_DRAW_TEXT_Y (message)),
-		(SM_PS_DRAW_TEXT_DATA (message)),
-		(SM_PS_DRAW_TEXT_SIZE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-unsigned short
-OS2_ps_text_width (psid_t psid, const char * data, unsigned short size)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message
-    = (OS2_create_message_1 (mt_ps_text_width_request, (size - 1)));
-  (SM_PS_TEXT_WIDTH_REQUEST_PS (message)) = ps;
-  FASTCOPY (data, ((char *) (SM_PS_TEXT_WIDTH_REQUEST_DATA (message))), size);
-  (SM_PS_TEXT_WIDTH_REQUEST_SIZE (message)) = size;
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_ps_text_width_reply));
-  size = (SM_PS_TEXT_WIDTH_REPLY_SIZE (message));
-  OS2_destroy_message (message);
-  return (size);
-}
-
-static void
-handle_ps_text_width_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_text_width_reply));
-  (SM_PS_TEXT_WIDTH_REPLY_SIZE (reply))
-    = (ps_text_width ((SM_PS_TEXT_WIDTH_REQUEST_PS (request)),
-		      (SM_PS_TEXT_WIDTH_REQUEST_DATA (request)),
-		      (SM_PS_TEXT_WIDTH_REQUEST_SIZE (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-font_metrics_t *
-OS2_ps_get_font_metrics (psid_t psid)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_get_font_metrics_request));
-  font_metrics_t * metrics;
-  (SM_PS_GET_FONT_METRICS_REQUEST_PS (message)) = ps;
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_ps_get_font_metrics_reply));
-  metrics = (SM_PS_GET_FONT_METRICS_REPLY_METRICS (message));
-  OS2_destroy_message (message);
-  return (metrics);
-}
-
-static void
-handle_ps_get_font_metrics_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_get_font_metrics_reply));
-  (SM_PS_GET_FONT_METRICS_REPLY_METRICS (reply))
-    = (ps_get_font_metrics (SM_PS_GET_FONT_METRICS_REQUEST_PS (request)));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
 
 font_metrics_t *
 OS2_ps_set_font (psid_t psid, unsigned short id, const char * name)
 {
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message_1 (mt_ps_set_font, (strlen (name))));
-  font_metrics_t * metrics;
-  (SM_PS_SET_FONT_PS (message)) = ps;
-  (SM_PS_SET_FONT_ID (message)) = id;
-  strcpy ((SM_PS_SET_FONT_SPEC (message)), name);
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_ps_get_font_metrics_reply));
-  metrics = (SM_PS_GET_FONT_METRICS_REPLY_METRICS (message));
-  OS2_destroy_message (message);
+  font_metrics_t * metrics = (OS2_ps_set_font_internal (psid, id, name));
   if ((metrics != 0) && (psid == (OS2_console_psid ())))
     OS2_console_font_change_hook (metrics);
   return (metrics);
-}
-
-static void
-handle_ps_set_font_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_get_font_metrics_reply));
-  (SM_PS_GET_FONT_METRICS_REPLY_METRICS (reply))
-    = ((ps_set_font ((SM_PS_SET_FONT_PS (request)),
-		     (SM_PS_SET_FONT_ID (request)),
-		     (SM_PS_SET_FONT_SPEC (request))))
-       ? (ps_get_font_metrics (SM_PS_SET_FONT_PS (request)))
-       : 0);
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_ps_clear (psid_t psid, short xl, short xh, short yl, short yh)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_clear));
-  (SM_PS_CLEAR_PS (message)) = ps;
-  (SM_PS_CLEAR_XL (message)) = xl;
-  (SM_PS_CLEAR_XH (message)) = xh;
-  (SM_PS_CLEAR_YL (message)) = yl;
-  (SM_PS_CLEAR_YH (message)) = yh;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_clear_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  RECTL rectl;
-  (rectl . xLeft)   = (SM_PS_CLEAR_XL (message));
-  (rectl . xRight)  = (SM_PS_CLEAR_XH (message));
-  (rectl . yBottom) = (SM_PS_CLEAR_YL (message));
-  (rectl . yTop)    = (SM_PS_CLEAR_YH (message));
-  clear_rectangle ((SM_PS_CLEAR_PS (message)), (& rectl));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_set_colors (psid_t psid, COLOR foreground, COLOR background)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_set_colors));
-  (SM_PS_SET_COLORS_PS (message)) = ps;
-  (SM_PS_SET_COLORS_FOREGROUND (message)) = foreground;
-  (SM_PS_SET_COLORS_BACKGROUND (message)) = background;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_set_colors_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_set_colors ((SM_PS_SET_COLORS_PS (message)),
-		 (SM_PS_SET_COLORS_FOREGROUND (message)),
-		 (SM_PS_SET_COLORS_BACKGROUND (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_move_gcursor (psid_t psid, short x, short y)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_move_gcursor));
-  (SM_PS_MOVE_GCURSOR_PS (message)) = ps;
-  (SM_PS_MOVE_GCURSOR_X (message)) = x;
-  (SM_PS_MOVE_GCURSOR_Y (message)) = y;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_move_gcursor_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_move_gcursor ((SM_PS_MOVE_GCURSOR_PS (message)),
-		   (SM_PS_MOVE_GCURSOR_X (message)),
-		   (SM_PS_MOVE_GCURSOR_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_draw_line (psid_t psid, short x, short y)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_draw_line));
-  (SM_PS_DRAW_LINE_PS (message)) = ps;
-  (SM_PS_DRAW_LINE_X (message)) = x;
-  (SM_PS_DRAW_LINE_Y (message)) = y;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_draw_line_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_draw_line ((SM_PS_DRAW_LINE_PS (message)),
-		(SM_PS_DRAW_LINE_X (message)),
-		(SM_PS_DRAW_LINE_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_draw_point (psid_t psid, short x, short y)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_draw_point));
-  (SM_PS_DRAW_POINT_PS (message)) = ps;
-  (SM_PS_DRAW_POINT_X (message)) = x;
-  (SM_PS_DRAW_POINT_Y (message)) = y;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_draw_point_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_draw_point ((SM_PS_DRAW_POINT_PS (message)),
-		 (SM_PS_DRAW_POINT_X (message)),
-		 (SM_PS_DRAW_POINT_Y (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_poly_line (psid_t psid, unsigned long npoints, PPOINTL points)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_poly_line));
-  (SM_PS_POLY_LINE_PS (message)) = ps;
-  (SM_PS_POLY_LINE_NPOINTS (message)) = npoints;
-  (SM_PS_POLY_LINE_POINTS (message)) = points;
-  sync_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_poly_line_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_poly_line ((SM_PS_POLY_LINE_PS (message)),
-		(SM_PS_POLY_LINE_NPOINTS (message)),
-		(SM_PS_POLY_LINE_POINTS (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
-OS2_ps_poly_line_disjoint (psid_t psid, unsigned long npoints, PPOINTL points)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_poly_line_disjoint));
-  (SM_PS_POLY_LINE_DISJOINT_PS (message)) = ps;
-  (SM_PS_POLY_LINE_DISJOINT_NPOINTS (message)) = npoints;
-  (SM_PS_POLY_LINE_DISJOINT_POINTS (message)) = points;
-  sync_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_poly_line_disjoint_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_poly_line_disjoint ((SM_PS_POLY_LINE_DISJOINT_PS (message)),
-			 (SM_PS_POLY_LINE_DISJOINT_NPOINTS (message)),
-			 (SM_PS_POLY_LINE_DISJOINT_POINTS (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
-OS2_ps_set_line_type (psid_t psid, LONG type)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_set_line_type));
-  (SM_PS_SET_LINE_TYPE_PS (message)) = ps;
-  (SM_PS_SET_LINE_TYPE_TYPE (message)) = type;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_set_line_type_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_set_line_type ((SM_PS_SET_LINE_TYPE_PS (message)),
-		    (SM_PS_SET_LINE_TYPE_TYPE (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_set_mix (psid_t psid, LONG mix)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_set_mix));
-  (SM_PS_SET_MIX_PS (message)) = ps;
-  (SM_PS_SET_MIX_MIX (message)) = mix;
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_set_mix_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_set_mix ((SM_PS_SET_MIX_PS (message)), (SM_PS_SET_MIX_MIX (message)));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_ps_query_caps (psid_t psid, LONG start, LONG count, PLONG values)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_query_caps));
-  (SM_PS_QUERY_CAPS_PS (message)) = ps;
-  (SM_PS_QUERY_CAPS_START (message)) = start;
-  (SM_PS_QUERY_CAPS_COUNT (message)) = count;
-  (SM_PS_QUERY_CAPS_VALUES (message)) = values;
-  sync_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_query_caps_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_query_caps ((SM_PS_QUERY_CAPS_PS (message)),
-		 (SM_PS_QUERY_CAPS_START (message)),
-		 (SM_PS_QUERY_CAPS_COUNT (message)),
-		 (SM_PS_QUERY_CAPS_VALUES (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-void
-OS2_ps_set_clip_rectangle (psid_t psid, PRECTL rectl)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_set_clip_rectangle));
-  (SM_PS_SET_CLIP_RECTANGLE_PS (message)) = ps;
-  (SM_PS_SET_CLIP_RECTANGLE_RECTL (message)) = (* rectl);
-  simple_transaction ((PS_QID (ps)), message);
-}
-
-static void
-handle_ps_set_clip_rectangle_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  ps_set_clip_rectangle ((SM_PS_SET_CLIP_RECTANGLE_PS (message)),
-			 (& (SM_PS_SET_CLIP_RECTANGLE_RECTL (message))));
-  OS2_destroy_message (message);
-  simple_reply (sender);
-}
-
-void
-OS2_get_bitmap_parameters (bid_t bid, void * params)
-{
-  bitmap_t * bitmap = (bid_to_bitmap (bid));
-  msg_t * message = (OS2_create_message (mt_get_bitmap_parameters));
-  (SM_GET_BITMAP_PARAMETERS_BITMAP (message)) = bitmap;
-  (SM_GET_BITMAP_PARAMETERS_PARAMS (message)) = params;
-  sync_transaction ((BITMAP_QID (bitmap)), message);
-}
-
-static void
-handle_get_bitmap_parameters_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  get_bitmap_parameters ((SM_GET_BITMAP_PARAMETERS_BITMAP (message)),
-			 (SM_GET_BITMAP_PARAMETERS_PARAMS (message)));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-unsigned long
-OS2_ps_get_bitmap_bits (psid_t psid, unsigned long start, unsigned long length,
-			void * data, void * info)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_get_bitmap_bits_request));
-  unsigned long n;
-  (SM_PS_GET_BITMAP_BITS_REQUEST_PS (message)) = ps;
-  (SM_PS_GET_BITMAP_BITS_REQUEST_START (message)) = start;
-  (SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH (message)) = length;
-  (SM_PS_GET_BITMAP_BITS_REQUEST_DATA (message)) = data;
-  (SM_PS_GET_BITMAP_BITS_REQUEST_INFO (message)) = info;
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_ps_get_bitmap_bits_reply));
-  n = (SM_PS_GET_BITMAP_BITS_REPLY_LENGTH (message));
-  OS2_destroy_message (message);
-  return (n);
-}
-
-static void
-handle_ps_get_bitmap_bits_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_get_bitmap_bits_reply));
-  (SM_PS_GET_BITMAP_BITS_REPLY_LENGTH (reply))
-    = (ps_get_bitmap_bits ((SM_PS_GET_BITMAP_BITS_REQUEST_PS (request)),
-			   (SM_PS_GET_BITMAP_BITS_REQUEST_START (request)),
-			   (SM_PS_GET_BITMAP_BITS_REQUEST_LENGTH (request)),
-			   (SM_PS_GET_BITMAP_BITS_REQUEST_DATA (request)),
-			   (SM_PS_GET_BITMAP_BITS_REQUEST_INFO (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-unsigned long
-OS2_ps_set_bitmap_bits (psid_t psid, unsigned long start, unsigned long length,
-			void * data, void * info)
-{
-  ps_t * ps = (psid_to_ps (psid));
-  msg_t * message = (OS2_create_message (mt_ps_set_bitmap_bits_request));
-  unsigned long n;
-  (SM_PS_SET_BITMAP_BITS_REQUEST_PS (message)) = ps;
-  (SM_PS_SET_BITMAP_BITS_REQUEST_START (message)) = start;
-  (SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH (message)) = length;
-  (SM_PS_SET_BITMAP_BITS_REQUEST_DATA (message)) = data;
-  (SM_PS_SET_BITMAP_BITS_REQUEST_INFO (message)) = info;
-  message
-    = (OS2_message_transaction ((PS_QID (ps)),
-				message,
-				mt_ps_set_bitmap_bits_reply));
-  n = (SM_PS_SET_BITMAP_BITS_REPLY_LENGTH (message));
-  OS2_destroy_message (message);
-  return (n);
-}
-
-static void
-handle_ps_set_bitmap_bits_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_ps_set_bitmap_bits_reply));
-  (SM_PS_SET_BITMAP_BITS_REPLY_LENGTH (reply))
-    = (ps_set_bitmap_bits ((SM_PS_SET_BITMAP_BITS_REQUEST_PS (request)),
-			   (SM_PS_SET_BITMAP_BITS_REQUEST_START (request)),
-			   (SM_PS_SET_BITMAP_BITS_REQUEST_LENGTH (request)),
-			   (SM_PS_SET_BITMAP_BITS_REQUEST_DATA (request)),
-			   (SM_PS_SET_BITMAP_BITS_REQUEST_INFO (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_clipboard_write_text (qid_t qid, const char * text)
-{
-  msg_t * message = (OS2_create_message (mt_clipboard_write_text));
-  (SM_CLIPBOARD_WRITE_TEXT_TEXT (message)) = text;
-  sync_transaction (qid, message);
-}
-
-static void
-handle_clipboard_write_text_request (msg_t * message)
-{
-  qid_t sender = (MSG_SENDER (message));
-  clipboard_write_text (SM_CLIPBOARD_WRITE_TEXT_TEXT (message));
-  OS2_destroy_message (message);
-  sync_reply (sender);
-}
-
-const char *
-OS2_clipboard_read_text (qid_t qid)
-{
-  msg_t * message
-    = (OS2_message_transaction
-       (qid,
-	(OS2_create_message (mt_clipboard_read_text_request)),
-	mt_clipboard_read_text_reply));
-  const char * text = (SM_CLIPBOARD_READ_TEXT_REPLY_TEXT (message));
-  OS2_destroy_message (message);
-  return (text);
-}
-
-static void
-handle_clipboard_read_text_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_clipboard_read_text_reply));
-  (SM_CLIPBOARD_READ_TEXT_REPLY_TEXT (reply)) = (clipboard_read_text ());
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-HWND
-OS2_menu_create (qid_t qid, HWND owner, USHORT style, USHORT id)
-{
-  msg_t * message = (OS2_create_message (mt_menu_create_request));
-  HWND menu;
-  (SM_MENU_CREATE_REQUEST_OWNER (message)) = owner;
-  (SM_MENU_CREATE_REQUEST_STYLE (message)) = style;
-  (SM_MENU_CREATE_REQUEST_ID (message)) = id;
-  message = (OS2_message_transaction (qid, message, mt_menu_create_reply));
-  menu = (SM_MENU_CREATE_REPLY_MENU (message));
-  OS2_destroy_message (message);
-  return (menu);
-}
-
-static void
-handle_menu_create_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_create_reply));
-  (SM_MENU_CREATE_REPLY_MENU (reply))
-    = (menu_create ((SM_MENU_CREATE_REQUEST_OWNER (request)),
-		    (SM_MENU_CREATE_REQUEST_STYLE (request)),
-		    (SM_MENU_CREATE_REQUEST_ID (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_menu_destroy (qid_t qid, HWND menu)
-{
-  msg_t * message = (OS2_create_message (mt_menu_destroy));
-  (SM_MENU_DESTROY_MENU (message)) = menu;
-  simple_transaction (qid, message);
-}
-
-static void
-handle_menu_destroy_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  menu_destroy (SM_MENU_DESTROY_MENU (request));
-  OS2_destroy_message (request);
-  simple_reply (sender);
-}
-
-USHORT
-OS2_menu_insert_item (qid_t qid, HWND menu, USHORT position, USHORT style,
-		      USHORT attributes, USHORT id, HWND submenu, PSZ text)
-{
-  msg_t * message = (OS2_create_message (mt_menu_insert_item_request));
-  USHORT reply_position;
-  (SM_MENU_INSERT_ITEM_REQUEST_MENU (message)) = menu;
-  (SM_MENU_INSERT_ITEM_REQUEST_POSITION (message)) = position;
-  (SM_MENU_INSERT_ITEM_REQUEST_STYLE (message)) = style;
-  (SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES (message)) = attributes;
-  (SM_MENU_INSERT_ITEM_REQUEST_ID (message)) = id;
-  (SM_MENU_INSERT_ITEM_REQUEST_SUBMENU (message)) = submenu;
-  (SM_MENU_INSERT_ITEM_REQUEST_TEXT (message)) = text;
-  message
-    = (OS2_message_transaction (qid, message, mt_menu_insert_item_reply));
-  reply_position = (SM_MENU_INSERT_ITEM_REPLY_POSITION (message));
-  OS2_destroy_message (message);
-  return (reply_position);
-}
-
-static void
-handle_menu_insert_item_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_insert_item_reply));
-  (SM_MENU_INSERT_ITEM_REPLY_POSITION (reply))
-    = (menu_insert_item ((SM_MENU_INSERT_ITEM_REQUEST_MENU (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_POSITION (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_STYLE (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_ID (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_SUBMENU (request)),
-			 (SM_MENU_INSERT_ITEM_REQUEST_TEXT (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-USHORT
-OS2_menu_remove_item (qid_t qid, HWND menu, USHORT id, USHORT submenup,
-		      USHORT deletep)
-{
-  msg_t * message = (OS2_create_message (mt_menu_remove_item_request));
-  USHORT length;
-  (SM_MENU_REMOVE_ITEM_REQUEST_MENU (message)) = menu;
-  (SM_MENU_REMOVE_ITEM_REQUEST_ID (message)) = id;
-  (SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP (message)) = submenup;
-  (SM_MENU_REMOVE_ITEM_REQUEST_DELETEP (message)) = deletep;
-  message
-    = (OS2_message_transaction (qid, message, mt_menu_remove_item_reply));
-  length = (SM_MENU_REMOVE_ITEM_REPLY_LENGTH (message));
-  OS2_destroy_message (message);
-  return (length);
-}
-
-static void
-handle_menu_remove_item_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_remove_item_reply));
-  (SM_MENU_REMOVE_ITEM_REPLY_LENGTH (reply))
-    = (menu_remove_item ((SM_MENU_REMOVE_ITEM_REQUEST_MENU (request)),
-			 (SM_MENU_REMOVE_ITEM_REQUEST_ID (request)),
-			 (SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP (request)),
-			 (SM_MENU_REMOVE_ITEM_REQUEST_DELETEP (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-USHORT
-OS2_menu_n_items (qid_t qid, HWND menu)
-{
-  msg_t * message = (OS2_create_message (mt_menu_n_items_request));
-  USHORT length;
-  (SM_MENU_N_ITEMS_REQUEST_MENU (message)) = menu;
-  message
-    = (OS2_message_transaction (qid, message, mt_menu_n_items_reply));
-  length = (SM_MENU_N_ITEMS_REPLY_LENGTH (message));
-  OS2_destroy_message (message);
-  return (length);
-}
-
-static void
-handle_menu_n_items_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_n_items_reply));
-  (SM_MENU_N_ITEMS_REPLY_LENGTH (reply))
-    = (menu_n_items (SM_MENU_N_ITEMS_REQUEST_MENU (request)));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-USHORT
-OS2_menu_nth_item_id (qid_t qid, HWND menu, USHORT position)
-{
-  msg_t * message = (OS2_create_message (mt_menu_nth_item_id_request));
-  USHORT id;
-  (SM_MENU_NTH_ITEM_ID_REQUEST_MENU (message)) = menu;
-  (SM_MENU_NTH_ITEM_ID_REQUEST_POSITION (message)) = position;
-  message
-    = (OS2_message_transaction (qid, message, mt_menu_nth_item_id_reply));
-  id = (SM_MENU_NTH_ITEM_ID_REPLY_ID (message));
-  OS2_destroy_message (message);
-  return (id);
-}
-
-static void
-handle_menu_nth_item_id_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_nth_item_id_reply));
-  (SM_MENU_NTH_ITEM_ID_REPLY_ID (reply))
-    = (menu_nth_item_id ((SM_MENU_NTH_ITEM_ID_REQUEST_MENU (request)),
-			 (SM_MENU_NTH_ITEM_ID_REQUEST_POSITION (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-USHORT
-OS2_menu_get_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
-			      USHORT mask)
-{
-  msg_t * message = (OS2_create_message (mt_menu_get_item_attributes_request));
-  USHORT attributes;
-  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU (message)) = menu;
-  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID (message)) = id;
-  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP (message)) = submenup;
-  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK (message)) = mask;
-  message
-    = (OS2_message_transaction (qid,
-				message,
-				mt_menu_get_item_attributes_reply));
-  attributes = (SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES (message));
-  OS2_destroy_message (message);
-  return (attributes);
-}
-
-static void
-handle_menu_get_item_attributes_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  msg_t * reply = (OS2_create_message (mt_menu_get_item_attributes_reply));
-  (SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES (reply))
-    = (menu_get_item_attributes
-       ((SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU (request)),
-	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID (request)),
-	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP (request)),
-	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK (request))));
-  OS2_destroy_message (request);
-  OS2_send_message (sender, reply);
-}
-
-void
-OS2_menu_set_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
-			      USHORT mask, USHORT attributes)
-{
-  msg_t * message = (OS2_create_message (mt_menu_set_item_attributes));
-  (SM_MENU_SET_ITEM_ATTRIBUTES_MENU (message)) = menu;
-  (SM_MENU_SET_ITEM_ATTRIBUTES_ID (message)) = id;
-  (SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP (message)) = submenup;
-  (SM_MENU_SET_ITEM_ATTRIBUTES_MASK (message)) = mask;
-  (SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES (message)) = attributes;
-  simple_transaction (qid, message);
-}
-
-static void
-handle_menu_set_item_attributes_request (msg_t * request)
-{
-  qid_t sender = (MSG_SENDER (request));
-  menu_set_item_attributes
-    ((SM_MENU_SET_ITEM_ATTRIBUTES_MENU (request)),
-     (SM_MENU_SET_ITEM_ATTRIBUTES_ID (request)),
-     (SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP (request)),
-     (SM_MENU_SET_ITEM_ATTRIBUTES_MASK (request)),
-     (SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES (request)));
-  OS2_destroy_message (request);
-  simple_reply (sender);
 }
 
 static window_t * make_window (qid_t, qid_t);
 
 static wid_t
-open_window (qid_t qid, qid_t event_qid, ULONG style, PSZ title)
+open_window (qid_t qid, qid_t event_qid, ULONG flags, HMODULE module, ULONG id,
+	     ULONG style, const char * title)
 {
   window_t * window = (make_window (qid, event_qid));
   FRAMECDATA frame_data;
   HWND frame_window;
 
   (frame_data . cb) = (sizeof (frame_data));
-  (frame_data . flCreateFlags)
-     = (FCF_TITLEBAR | FCF_SYSMENU | FCF_SHELLPOSITION | FCF_SIZEBORDER
-	| FCF_MINMAX | FCF_TASKLIST);
-  (frame_data . hmodResources) = NULLHANDLE;
-  (frame_data . idResources) = ID_RESOURCES;
+  (frame_data . flCreateFlags) = flags;
+  (frame_data . hmodResources) = module;
+  (frame_data . idResources) = id;
   frame_window
     = (WinCreateWindow (HWND_DESKTOP,
 			WC_FRAME,
-			title,	/* title string */
+			((PSZ) title), /* title string */
 			0,	/* window style */
 			0, 0, 0, 0, /* size and position */
 			NULLHANDLE, /* owner window */
@@ -3157,6 +942,8 @@ win_show_cursor (HWND client, BOOL showp)
 static void
 move_cursor (window_t * window, short x, short y)
 {
+  (WINDOW_CURSOR_X (window)) = x;
+  (WINDOW_CURSOR_Y (window)) = y;
   if (WINDOW_CURSOR_CREATEDP (window))
     win_create_cursor ((WINDOW_CLIENT (window)), x, y, 0, 0, CURSOR_SETPOS, 0);
 }
@@ -3211,11 +998,16 @@ deactivate_cursor (window_t * window)
 }
 
 static void
-scroll_rectangle (window_t * window, short x_delta, short y_delta,
-		  PRECTL rectl)
+window_scroll (window_t * window, short xl, short xh, short yl, short yh,
+	       short x_delta, short y_delta)
 {
+  RECTL rectl;
+  (rectl . xLeft) = xl;
+  (rectl . xRight) = xh;
+  (rectl . yBottom) = yl;
+  (rectl . yTop) = yh;
   deactivate_cursor (window);
-  if ((WinScrollWindow ((WINDOW_CLIENT (window)), x_delta, y_delta, rectl,
+  if ((WinScrollWindow ((WINDOW_CLIENT (window)), x_delta, y_delta, (& rectl),
 			0, NULLHANDLE, 0, 0))
       == RGN_ERROR)
     window_warning (WinScrollWindow);
@@ -3223,10 +1015,29 @@ scroll_rectangle (window_t * window, short x_delta, short y_delta,
 }
 
 static void
-invalidate_rectangle (window_t * window, PRECTL rectl)
+window_invalidate (window_t * window, short xl, short xh, short yl, short yh)
 {
-  if (!WinInvalidateRect ((WINDOW_CLIENT (window)), rectl, FALSE))
+  RECTL rectl;
+  (rectl . xLeft) = xl;
+  (rectl . xRight) = xh;
+  (rectl . yBottom) = yl;
+  (rectl . yTop) = yh;
+  if (!WinInvalidateRect ((WINDOW_CLIENT (window)), (& rectl), FALSE))
     window_warning (WinInvalidateRect);
+}
+
+static void
+window_set_grid (window_t * window, unsigned short x, unsigned short y)
+{
+  (WINDOW_GRID_X (window)) = x;
+  (WINDOW_GRID_Y (window)) = y;
+}
+
+static void
+window_activate (window_t * window)
+{
+  if (!WinSetActiveWindow (HWND_DESKTOP, (WINDOW_FRAME (window))))
+    window_warning (WinSetActiveWindow);
 }
 
 static void
@@ -3344,9 +1155,9 @@ set_window_state (window_t * window, window_state_t state)
 }
 
 static void
-set_window_title (window_t * window, PSZ title)
+set_window_title (window_t * window, const char * title)
 {
-  if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
+  if (!WinSetWindowText ((WINDOW_FRAME (window)), ((PSZ) title)))
     window_warning (WinSetWindowText);
 }
 
@@ -3559,10 +1370,15 @@ maybe_deactivate_cursor (ps_t * ps)
 }
 
 static void
-clear_rectangle (ps_t * ps, PRECTL rectl)
+ps_clear (ps_t * ps, short xl, short xh, short yl, short yh)
 {
+  RECTL rectl;
+  (rectl . xLeft) = xl;
+  (rectl . xRight) = xh;
+  (rectl . yBottom) = yl;
+  (rectl . yTop) = yh;
   maybe_deactivate_cursor (ps);
-  if (!WinFillRect ((PS_HANDLE (ps)), rectl, (PS_BACKGROUND_COLOR (ps))))
+  if (!WinFillRect ((PS_HANDLE (ps)), (&rectl), (PS_BACKGROUND_COLOR (ps))))
     window_warning (WinFillRect);
   maybe_activate_cursor (ps);
 }
@@ -3652,35 +1468,38 @@ ps_query_caps (ps_t * ps, LONG start, LONG count, PLONG values)
 }
 
 static void
-ps_set_clip_rectangle (ps_t * ps, PRECTL rectl)
+ps_reset_clip_rectangle (ps_t * ps)
+{
+  if (!GpiSetClipPath ((PS_HANDLE (ps)), 0, SCP_RESET))
+    window_error (GpiSetClipPath);
+}
+
+static void
+ps_set_clip_rectangle (ps_t * ps, short xl, short xh, short yl, short yh)
 {
   HPS hps = (PS_HANDLE (ps));
-  if (!GpiSetClipPath (hps, 0, SCP_RESET))
+  ps_reset_clip_rectangle (ps);
+  if (!GpiBeginPath (hps, 1))
+    window_error (GpiBeginPath);
+  {
+    POINTL points [4];
+    ((points[0]) . x) = xl;
+    ((points[0]) . y) = yl;
+    ((points[1]) . x) = xl;
+    ((points[1]) . y) = yh;
+    ((points[2]) . x) = xh;
+    ((points[2]) . y) = yh;
+    ((points[3]) . x) = xh;
+    ((points[3]) . y) = yl;
+    if (!GpiMove (hps, (&points[3])))
+      window_warning (GpiMove);
+    if ((GpiPolyLine (hps, 4, points)) == GPI_ERROR)
+      window_warning (GpiPolyLine);
+  }
+  if (!GpiEndPath (hps))
+    window_error (GpiEndPath);
+  if (!GpiSetClipPath (hps, 1, (SCP_AND | SCP_INCL)))
     window_error (GpiSetClipPath);
-  if (rectl != 0)
-    {
-      if (!GpiBeginPath (hps, 1))
-	window_error (GpiBeginPath);
-      {
-	POINTL points [4];
-	((points[0]) . x) = (rectl -> xLeft);
-	((points[0]) . y) = (rectl -> yBottom);
-	((points[1]) . x) = (rectl -> xLeft);
-	((points[1]) . y) = (rectl -> yTop);
-	((points[2]) . x) = (rectl -> xRight);
-	((points[2]) . y) = (rectl -> yTop);
-	((points[3]) . x) = (rectl -> xRight);
-	((points[3]) . y) = (rectl -> yBottom);
-	if (!GpiMove (hps, (&points[3])))
-	  window_warning (GpiMove);
-	if ((GpiPolyLine (hps, 4, points)) == GPI_ERROR)
-	  window_warning (GpiPolyLine);
-      }
-      if (!GpiEndPath (hps))
-	window_error (GpiEndPath);
-      if (!GpiSetClipPath (hps, 1, (SCP_AND | SCP_INCL)))
-	window_error (GpiSetClipPath);
-    }
 }
 
 static void
@@ -3711,7 +1530,7 @@ ps_set_bitmap_bits (ps_t * ps, unsigned long start, unsigned long length,
 }
 
 static void
-clipboard_write_text (const char * text)
+clipboard_write_text (qid_t qid, const char * text)
 {
   unsigned int len = ((strlen (text)) + 1);
   PVOID shared_copy;
@@ -3736,7 +1555,7 @@ clipboard_write_text (const char * text)
 }
 
 static const char *
-clipboard_read_text (void)
+clipboard_read_text (qid_t qid)
 {
   char * result = 0;
   if (WinOpenClipbrd (pm_hab))
@@ -3755,7 +1574,7 @@ clipboard_read_text (void)
 }
 
 static HWND
-menu_create (HWND owner, USHORT style, USHORT id)
+menu_create (qid_t qid, HWND owner, USHORT style, USHORT id)
 {
   HWND menu
     = (WinCreateWindow (owner,	/* parent window */
@@ -3775,15 +1594,15 @@ menu_create (HWND owner, USHORT style, USHORT id)
 }
 
 static void
-menu_destroy (HWND menu)
+menu_destroy (qid_t qid, HWND menu)
 {
   if (!WinDestroyWindow (menu))
     window_error (WinDestroyWindow);
 }
 
 static USHORT
-menu_insert_item (HWND menu, USHORT position, USHORT style, USHORT attributes,
-		  USHORT id, HWND submenu, PSZ text)
+menu_insert_item (qid_t qid, HWND menu, USHORT position, USHORT style,
+		  USHORT attributes, USHORT id, HWND submenu, PSZ text)
 {
   MENUITEM item;
   (item . iPosition) = position;
@@ -3798,7 +1617,8 @@ menu_insert_item (HWND menu, USHORT position, USHORT style, USHORT attributes,
 }
 
 static USHORT
-menu_remove_item (HWND menu, USHORT id, USHORT submenup, USHORT deletep)
+menu_remove_item (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+		  USHORT deletep)
 {
   return (SHORT1FROMMR (WinSendMsg (menu,
 				    (deletep ? MM_DELETEITEM : MM_REMOVEITEM),
@@ -3806,14 +1626,26 @@ menu_remove_item (HWND menu, USHORT id, USHORT submenup, USHORT deletep)
 				    0)));
 }
 
+static PMENUITEM
+menu_get_item (qid_t qid, HWND menu, USHORT id, USHORT submenup)
+{
+  PMENUITEM item = (OS_malloc (sizeof (MENUITEM)));
+  if (LONGFROMMR (WinSendMsg (menu, MM_QUERYITEM,
+			      (MPFROM2SHORT (id, submenup)),
+			      (MPFROMP (item)))))
+    return (item);
+  OS_free (item);
+  return (0);
+}
+
 static USHORT
-menu_n_items (HWND menu)
+menu_n_items (qid_t qid, HWND menu)
 {
   return (SHORT1FROMMR (WinSendMsg (menu, MM_QUERYITEMCOUNT, 0, 0)));
 }
 
 static USHORT
-menu_nth_item_id (HWND menu, USHORT position)
+menu_nth_item_id (qid_t qid, HWND menu, USHORT position)
 {
   return (SHORT1FROMMR (WinSendMsg (menu, MM_ITEMIDFROMPOSITION,
 				    (MPFROMSHORT (position)),
@@ -3821,7 +1653,8 @@ menu_nth_item_id (HWND menu, USHORT position)
 }
 
 static USHORT
-menu_get_item_attributes (HWND menu, USHORT id, USHORT submenup, USHORT mask)
+menu_get_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+			  USHORT mask)
 {
   return (SHORT1FROMMR (WinSendMsg (menu, MM_QUERYITEMATTR,
 				    (MPFROM2SHORT (id, submenup)),
@@ -3829,15 +1662,28 @@ menu_get_item_attributes (HWND menu, USHORT id, USHORT submenup, USHORT mask)
 }
 
 static void
-menu_set_item_attributes (HWND menu, USHORT id, USHORT submenup, USHORT mask,
-			  USHORT attributes)
+menu_set_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+			  USHORT mask, USHORT attributes)
 {
   (void) WinSendMsg (menu, MM_SETITEMATTR,
 		     (MPFROM2SHORT (id, submenup)),
 		     (MPFROM2SHORT (mask, attributes)));
 }
+
+static HWND
+window_handle_from_id (qid_t qid, HWND window, ULONG id)
+{
+  return (WinWindowFromID (window, id));
+}
+
+static HWND
+window_load_menu (window_t * window, HMODULE module, ULONG id)
+{
+  return (WinLoadMenu ((WINDOW_FRAME (window)), module, id));
+}
 
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
+static const char * unparse_font_spec (PSZ, LONG, USHORT);
 static int ps_set_font_1 (ps_t * ps, PSZ, LONG, USHORT, LONG);
 static PLONG ps_make_char_increments (LONG);
 
@@ -3852,6 +1698,12 @@ ps_get_font_metrics (ps_t * ps)
   (FONT_METRICS_HEIGHT (metrics)) = (fm . lMaxBaselineExt);
   (FONT_METRICS_DESCENDER (metrics)) = (fm . lMaxDescender);
   return (metrics);
+}
+
+static font_metrics_t *
+ps_set_font_internal (ps_t * ps, unsigned short id, const char * spec)
+{
+  return ((ps_set_font (ps, id, spec)) ? (ps_get_font_metrics (ps)) : 0);
 }
 
 static int
@@ -3904,6 +1756,21 @@ parse_font_spec (const char * spec,
 	  selection |= FATTR_SEL_ITALIC;
 	  scan += 7;
 	}
+      else if ((strncmp (scan, ".outline", 8)) == 0)
+	{
+	  selection |= FATTR_SEL_OUTLINE;
+	  scan += 8;
+	}
+      else if ((strncmp (scan, ".strikeout", 10)) == 0)
+	{
+	  selection |= FATTR_SEL_STRIKEOUT;
+	  scan += 10;
+	}
+      else if ((strncmp (scan, ".underscore", 11)) == 0)
+	{
+	  selection |= FATTR_SEL_UNDERSCORE;
+	  scan += 11;
+	}
       else
 	break;
     }
@@ -3916,7 +1783,39 @@ parse_font_spec (const char * spec,
   return (1);
 }
 
+static const char *
+unparse_font_spec (PSZ name, LONG size, USHORT selection)
+{
+  char size_buffer [16];
+  char selection_buffer [16];
+  char * result;
+
+  sprintf (size_buffer, "%d", (size / 10));
+  strcpy (selection_buffer, "");
+  if ((selection & FATTR_SEL_BOLD) != 0)
+    strcat (selection_buffer, ".bold");
+  if ((selection & FATTR_SEL_ITALIC) != 0)
+    strcat (selection_buffer, ".italic");
+  if ((selection & FATTR_SEL_OUTLINE) != 0)
+    strcat (selection_buffer, ".outline");
+  if ((selection & FATTR_SEL_STRIKEOUT) != 0)
+    strcat (selection_buffer, ".strikeout");
+  if ((selection & FATTR_SEL_UNDERSCORE) != 0)
+    strcat (selection_buffer, ".underscore");
+  result
+    = (OS_malloc ((strlen (size_buffer))
+		  + (strlen (name))
+		  + (strlen (selection_buffer))
+		  + 2));
+  strcpy (result, size_buffer);
+  strcat (result, selection_buffer);
+  strcat (result, ".");
+  strcat (result, name);
+  return (result);
+}
+
 static int create_font (HPS, LONG, PFONTMETRICS, USHORT);
+static void copy_fontmetrics_to_fattrs (FONTMETRICS *, FATTRS *);
 static void ps_set_font_size (ps_t *, LONG);
 
 static int
@@ -3980,22 +1879,28 @@ ps_set_font_1 (ps_t * ps, PSZ name, LONG size, USHORT selection, LONG id)
 static int
 create_font (HPS hps, LONG font_id, PFONTMETRICS pfm, USHORT selection)
 {
-  FATTRS font_attrs;
+  FATTRS fa;
+  copy_fontmetrics_to_fattrs (pfm, (&fa));
+  (fa . fsSelection) = selection;
+  return ((GpiCreateLogFont (hps, 0, font_id, (&fa))) == FONT_MATCH);
+}
 
-  (font_attrs . usRecordLength) = (sizeof (font_attrs));
-  (font_attrs . fsSelection) = selection;
-  (font_attrs . lMatch) = (pfm -> lMatch);
-  strcpy ((font_attrs . szFacename), (pfm -> szFacename));
-  (font_attrs . idRegistry) = (pfm -> idRegistry);
-  (font_attrs . usCodePage) = (pfm -> usCodePage);
-  (font_attrs . lMaxBaselineExt) = 0;
-  (font_attrs . lAveCharWidth) = 0;
-  (font_attrs . fsType) = 0;
-  (font_attrs . fsFontUse)
+static void
+copy_fontmetrics_to_fattrs (FONTMETRICS * pfm, FATTRS * pfa)
+{
+  (pfa -> usRecordLength) = (sizeof (*pfa));
+  (pfa -> fsSelection) = (pfm -> fsSelection);
+  (pfa -> lMatch) = (pfm -> lMatch);
+  strcpy ((pfa -> szFacename), (pfm -> szFacename));
+  (pfa -> idRegistry) = (pfm -> idRegistry);
+  (pfa -> usCodePage) = (pfm -> usCodePage);
+  (pfa -> lMaxBaselineExt) = 0;
+  (pfa -> lAveCharWidth) = 0;
+  (pfa -> fsType) = 0;
+  (pfa -> fsFontUse)
     = ((((pfm -> fsDefn) & FM_DEFN_OUTLINE) != 0)
        ? (FATTR_FONTUSE_OUTLINE | FATTR_FONTUSE_TRANSFORMABLE)
        : 0);
-  return ((GpiCreateLogFont (hps, 0, font_id, (& font_attrs))) == FONT_MATCH);
 }
 
 static void
@@ -4034,6 +1939,75 @@ ps_make_char_increments (LONG increment)
   for (index = 0; (index < 512); index += 1)
     (increments[index]) = increment;
   return (increments);
+}
+
+static const char *
+window_font_dialog (window_t * window, const char * title)
+{
+  ps_t * ps = (WINDOW_CLIENT_PS (window));
+  HPS hps = (PS_HANDLE (ps));
+  FONTDLG info;
+  char name_buffer [FACESIZE];
+  HWND result;
+
+  memset ((&info), 0, (sizeof (info)));
+  (info . cbSize) = (sizeof (info));
+  (info . hpsScreen) = hps;
+  (info . pszTitle) = ((PSZ) title);
+  (info . fl) = (FNTS_FIXEDWIDTHONLY | FNTS_CENTER); /* FNTS_INITFROMFATTRS */
+  (info . pszFamilyname) = name_buffer;
+  (info . usFamilyBufLen) = (sizeof (name_buffer));
+  /* Because our PS is in RGB mode, the RGB color specs we are using
+     are useless.  It's undocumented, but only indexed colors work in
+     the font dialog, so we must override with indexes.  */
+  (info . clrFore) = CLR_BLACK; /* (PS_FOREGROUND_COLOR (ps)) */
+  (info . clrBack) = CLR_WHITE; /* (PS_BACKGROUND_COLOR (ps)) */
+  {
+    FONTMETRICS fm;
+    if (GpiQueryFontMetrics (hps, (sizeof (fm)), (&fm)))
+      {
+	strcpy (name_buffer, (fm . szFamilyname));
+	(info . usWeight) = (fm . usWeightClass);
+	(info . usWidth) = (fm . usWidthClass);
+	(info . fxPointSize)
+	  = (MAKEFIXED (((fm . sNominalPointSize) / 10), 0));
+	(info . flStyle) = (fm . fsSelection);
+	/* copy_fontmetrics_to_fattrs ((&fm), (& (info . fAttrs))); */
+      }
+  }
+  result = (WinFontDlg (HWND_DESKTOP, (WINDOW_CLIENT (window)), (&info)));
+  if ((result == NULLHANDLE) || ((info . lReturn) != DID_OK))
+    return (0);
+  {
+    PSZ face_name;
+    const char * font_spec;
+    {
+      FACENAMEDESC desc;
+      ULONG face_name_length;
+      (desc . usSize) = (sizeof (desc));
+      (desc . usWeightClass) = (info . usWeight);
+      (desc . usWidthClass) = (info . usWidth);
+      (desc . flOptions) = (info . flType);
+      face_name_length
+	= (GpiQueryFaceString (hps, (info . pszFamilyname), (&desc), 0, 0));
+      if (face_name_length == GPI_ERROR)
+	return (0);
+      face_name = (OS_malloc (face_name_length));
+      face_name_length
+	= (GpiQueryFaceString (hps, (info . pszFamilyname), (&desc),
+			       face_name_length, face_name));
+      if (face_name_length == GPI_ERROR)
+	{
+	  OS_free (face_name);
+	  return (0);
+	}
+    }
+    font_spec = (unparse_font_spec (face_name,
+				    ((FIXEDINT (info . fxPointSize)) * 10),
+				    (info . flStyle)));
+    OS_free (face_name);
+    return (font_spec);
+  }
 }
 
 static MRESULT EXPENTRY
@@ -4245,7 +2219,9 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	window_t * window = (hwnd_to_window (hwnd));
 	SEND_EVENT (window,
 		    (make_command_event ((WINDOW_ID (window)),
-					 (SHORT1FROMMP (mp1)))));
+					 ((COMMANDMSG (&msg)) -> cmd),
+					 ((COMMANDMSG (&msg)) -> source),
+					 ((COMMANDMSG (&msg)) -> fMouse))));
 	return (MRVOID);
       }
     case WM_HELP:
@@ -4253,7 +2229,9 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 	window_t * window = (hwnd_to_window (hwnd));
 	SEND_EVENT (window,
 		    (make_help_event ((WINDOW_ID (window)),
-				      (SHORT1FROMMP (mp1)))));
+				      ((COMMANDMSG (&msg)) -> cmd),
+				      ((COMMANDMSG (&msg)) -> source),
+				      ((COMMANDMSG (&msg)) -> fMouse))));
 	return (MRVOID);
       }
     case WM_BUTTON1DOWN:
@@ -4431,19 +2409,23 @@ make_visibility_event (wid_t wid, int shownp)
 }
 
 static msg_t *
-make_command_event (wid_t wid, USHORT command)
+make_command_event (wid_t wid, USHORT command, USHORT source, USHORT mousep)
 {
   msg_t * message = (OS2_create_message (mt_command_event));
   (SM_COMMAND_EVENT_WID (message)) = wid;
   (SM_COMMAND_EVENT_COMMAND (message)) = command;
+  (SM_COMMAND_EVENT_SOURCE (message)) = source;
+  (SM_COMMAND_EVENT_MOUSEP (message)) = mousep;
   return (message);
 }
 
 static msg_t *
-make_help_event (wid_t wid, USHORT command)
+make_help_event (wid_t wid, USHORT command, USHORT source, USHORT mousep)
 {
   msg_t * message = (OS2_create_message (mt_help_event));
   (SM_HELP_EVENT_WID (message)) = wid;
   (SM_HELP_EVENT_COMMAND (message)) = command;
+  (SM_HELP_EVENT_SOURCE (message)) = source;
+  (SM_HELP_EVENT_MOUSEP (message)) = mousep;
   return (message);
 }

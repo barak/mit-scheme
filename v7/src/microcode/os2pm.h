@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.10 1995/10/15 00:44:21 cph Exp $
+$Id: os2pm.h,v 1.11 1995/10/30 08:03:19 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -147,18 +147,26 @@ typedef struct
   DECLARE_MSG_HEADER_FIELDS;
   wid_t wid;
   unsigned short command;
+  unsigned short source;
+  unsigned short mousep;
 } sm_command_event_t;
 #define SM_COMMAND_EVENT_WID(m) (((sm_command_event_t *) (m)) -> wid)
 #define SM_COMMAND_EVENT_COMMAND(m) (((sm_command_event_t *) (m)) -> command)
+#define SM_COMMAND_EVENT_SOURCE(m) (((sm_command_event_t *) (m)) -> source)
+#define SM_COMMAND_EVENT_MOUSEP(m) (((sm_command_event_t *) (m)) -> mousep)
 
 typedef struct
 {
   DECLARE_MSG_HEADER_FIELDS;
   wid_t wid;
   unsigned short command;
+  unsigned short source;
+  unsigned short mousep;
 } sm_help_event_t;
 #define SM_HELP_EVENT_WID(m) (((sm_help_event_t *) (m)) -> wid)
 #define SM_HELP_EVENT_COMMAND(m) (((sm_help_event_t *) (m)) -> command)
+#define SM_HELP_EVENT_SOURCE(m) (((sm_help_event_t *) (m)) -> source)
+#define SM_HELP_EVENT_MOUSEP(m) (((sm_help_event_t *) (m)) -> mousep)
 
 typedef enum
 {
@@ -181,76 +189,19 @@ extern int OS2_psid_validp (psid_t);
 extern int OS2_wid_validp (wid_t);
 extern int OS2_bid_validp (bid_t);
 
+/* This machine-generated file contains most of the procedure prototypes.  */
+#include "os2pm-ed.h"
+
 extern psid_t OS2_window_client_ps (wid_t);
 extern qid_t OS2_create_pm_qid (tqueue_t *);
-extern void OS2_pm_synchronize (qid_t);
-extern wid_t OS2_window_open (qid_t, qid_t, unsigned long, const char *);
 extern void OS2_window_permanent (wid_t);
-extern void OS2_window_close (wid_t);
-extern void OS2_window_show (wid_t, int);
-extern void OS2_window_move_cursor (wid_t, short, short);
-extern void OS2_window_shape_cursor
-  (wid_t, unsigned short, unsigned short, unsigned short);
-extern void OS2_window_show_cursor (wid_t, int);
-extern void OS2_window_scroll
-  (wid_t, short, short, short, short, short, short);
-extern void OS2_window_invalidate (wid_t, short, short, short, short);
-extern void OS2_window_set_grid (wid_t, unsigned short, unsigned short);
-extern void OS2_window_activate (wid_t);
 extern void OS2_window_pos (wid_t, short *, short *);
-extern void OS2_window_set_pos (wid_t, short, short);
 extern void OS2_window_size (wid_t, unsigned short *, unsigned short *);
 extern void OS2_window_frame_size (wid_t, unsigned short *, unsigned short *);
-extern void OS2_window_set_size (wid_t, unsigned short, unsigned short);
-extern int OS2_window_focusp (wid_t);
-extern void OS2_window_set_state (wid_t, window_state_t);
-extern void OS2_window_set_title (wid_t, const char *);
 extern HWND OS2_window_frame_handle (wid_t);
-extern void OS2_window_update_frame (wid_t, USHORT);
-
-extern psid_t OS2_create_memory_ps (qid_t);
-extern void OS2_destroy_memory_ps (psid_t);
 extern int OS2_memory_ps_p (psid_t);
-extern bid_t OS2_create_bitmap (psid_t, USHORT, USHORT);
-extern void OS2_destroy_bitmap (bid_t);
 extern bid_t OS2_ps_get_bitmap (psid_t);
 extern bid_t OS2_ps_set_bitmap (psid_t, bid_t);
-extern void OS2_ps_bitblt (psid_t, psid_t, LONG, PPOINTL, LONG, ULONG);
-extern void OS2_ps_draw_text
-  (psid_t, short, short, const char *, unsigned short);
-extern unsigned short OS2_ps_text_width (psid_t, const char *, unsigned short);
-extern font_metrics_t * OS2_ps_get_font_metrics (psid_t);
 extern font_metrics_t * OS2_ps_set_font (psid_t, unsigned short, const char *);
-extern void OS2_ps_clear (psid_t, short, short, short, short);
-extern void OS2_ps_set_colors (psid_t, COLOR, COLOR);
-extern void OS2_ps_move_gcursor (psid_t, short, short);
-extern void OS2_ps_draw_line (psid_t, short, short);
-extern void OS2_ps_draw_point (psid_t, short, short);
-extern void OS2_ps_poly_line (psid_t, unsigned long, PPOINTL);
-extern void OS2_ps_poly_line_disjoint (psid_t, unsigned long, PPOINTL);
-extern void OS2_ps_set_line_type (psid_t, LONG);
-extern void OS2_ps_set_mix (psid_t, LONG);
-extern void OS2_ps_query_caps (psid_t, LONG, LONG, PLONG);
-extern void OS2_ps_set_clip_rectangle (psid_t, PRECTL);
-extern void OS2_get_bitmap_parameters (bid_t, void *);
-extern unsigned long OS2_ps_get_bitmap_bits
-  (psid_t, unsigned long, unsigned long, void *, void *);
-extern unsigned long OS2_ps_set_bitmap_bits
-  (psid_t, unsigned long, unsigned long, void *, void *);
-
-extern void OS2_clipboard_write_text (qid_t, const char *);
-extern const char * OS2_clipboard_read_text (qid_t);
-
-extern HWND OS2_menu_create (qid_t, HWND, USHORT, USHORT);
-extern void OS2_menu_destroy (qid_t, HWND);
-extern USHORT OS2_menu_insert_item
-  (qid_t, HWND, USHORT, USHORT, USHORT, USHORT, HWND, PSZ);
-extern USHORT OS2_menu_remove_item (qid_t, HWND, USHORT, USHORT, USHORT);
-extern USHORT OS2_menu_n_items (qid_t, HWND);
-extern USHORT OS2_menu_nth_item_id (qid_t, HWND, USHORT);
-extern USHORT OS2_menu_get_item_attributes
-  (qid_t, HWND, USHORT, USHORT, USHORT);
-extern void OS2_menu_set_item_attributes
-  (qid_t, HWND, USHORT, USHORT, USHORT, USHORT);
 
 #endif /* SCM_OS2PM_H */
