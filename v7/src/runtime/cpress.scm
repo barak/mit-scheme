@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cpress.scm,v 1.7 1995/09/29 19:57:46 cph Exp $
+$Id: cpress.scm,v 1.8 1997/02/21 06:12:33 cph Exp $
 
-Copyright (c) 1992-95 Massachusetts Institute of Technology
+Copyright (c) 1992-97 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -555,24 +555,6 @@ MIT in each case. |#
 		(write-literal literal-max)
 		(loop (fix:- nb literal-max)))))))
   (compress-continuation unspecific))
-
-(define (input-port/read-substring port string start end)
-  ;; This should be in the runtime system.
-  (let ((operation (port/operation port 'READ-SUBSTRING)))
-    (if operation
-	(operation port string start end)
-	(let loop ((index start))
-	  (if (fix:< index end)
-	      (let ((char (input-port/read-char port)))
-		(cond ((not char)
-		       (and (fix:> index start)
-			    (fix:- index start)))
-		      ((eof-object? char)
-		       (fix:- index start))
-		      (else
-		       (string-set! string index char)
-		       (loop (fix:+ index 1)))))
-	      (fix:- index start))))))
 
 (define (guarantee-buffer-space nb)
   ;; Make sure that the byte buffer has enough space to hold NB bytes.

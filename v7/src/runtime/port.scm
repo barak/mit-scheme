@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.9 1997/02/21 05:42:40 cph Exp $
+$Id: port.scm,v 1.10 1997/02/21 06:05:20 cph Exp $
 
 Copyright (c) 1991-97 Massachusetts Institute of Technology
 
@@ -140,6 +140,7 @@ MIT in each case. |#
 	  ((DISCARD-CHAR) (input-port/operation/discard-char port))
 	  ((READ-STRING) (input-port/operation/read-string port))
 	  ((DISCARD-CHARS) (input-port/operation/discard-chars port))
+	  ((READ-SUBSTRING) (input-port/operation/read-substring port))
 	  ((WRITE-CHAR) (output-port/operation/write-char port))
 	  ((WRITE-STRING) (output-port/operation/write-string port))
 	  ((WRITE-SUBSTRING) (output-port/operation/write-substring port))

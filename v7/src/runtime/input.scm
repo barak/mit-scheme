@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.17 1997/02/21 05:42:32 cph Exp $
+$Id: input.scm,v 14.18 1997/02/21 06:08:15 cph Exp $
 
 Copyright (c) 1988-97 Massachusetts Institute of Technology
 
@@ -144,13 +144,13 @@ MIT in each case. |#
 			    (guarantee-input-port port))))
 
 (define (read-string! string #!optional start end port)
-  (input-port/read-substring! string
+  (input-port/read-substring! (if (default-object? port)
+				  (current-input-port)
+				  (guarantee-input-port port))
+			      string
 			      (if (default-object? start)
 				  0
 				  start)
 			      (if (default-object? end)
 				  (string-length string)
-				  end)
-			      (if (default-object? port)
-				  (current-input-port)
-				  (guarantee-input-port port))))
+				  end)))
