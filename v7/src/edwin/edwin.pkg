@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.187 1996/04/23 23:23:56 cph Exp $
+$Id: edwin.pkg,v 1.188 1996/04/24 01:20:29 cph Exp $
 
 Copyright (c) 1989-96 Massachusetts Institute of Technology
 
@@ -550,6 +550,10 @@ MIT in each case. |#
 	  re-search-string-forward
 	  re-search-substring-backward
 	  re-search-substring-forward
+	  re-string-match
+	  re-string-search
+	  re-substring-match
+	  re-substring-search
 	  re-substitute-registers
 	  replace-match
 	  search-backward

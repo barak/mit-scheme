@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: regexp.scm,v 1.66 1995/02/02 21:20:02 cph Exp $
+;;;	$Id: regexp.scm,v 1.67 1996/04/24 01:20:21 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -317,7 +317,7 @@
 		   (mark-index end))))
       (and index
 	   (make-mark group index)))))
-
+
 (define (re-match-forward regexp start #!optional end case-fold-search)
   (let ((end (default-end-mark start end))
 	(case-fold-search (default-case-fold-search case-fold-search start))
@@ -332,3 +332,37 @@
 				    (mark-index end))))
       (and index
 	   (make-mark group index)))))
+
+(define (re-string-match regexp string #!optional case-fold syntax-table)
+  (let ((case-fold (if (default-object? case-fold) #f case-fold))
+	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
+    (re-match-string-forward (re-compile-pattern regexp case-fold)
+			     case-fold
+			     syntax-table
+			     string)))
+
+(define (re-substring-match regexp string start end
+			    #!optional case-fold syntax-table)
+  (let ((case-fold (if (default-object? case-fold) #f case-fold))
+	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
+    (re-match-substring-forward (re-compile-pattern regexp case-fold)
+				case-fold
+				syntax-table
+				string start end)))
+
+(define (re-string-search regexp string #!optional case-fold syntax-table)
+  (let ((case-fold (if (default-object? case-fold) #f case-fold))
+	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
+    (re-search-string-forward (re-compile-pattern regexp case-fold)
+			      case-fold
+			      syntax-table
+			      string)))
+
+(define (re-substring-search regexp string start end
+			    #!optional case-fold syntax-table)
+  (let ((case-fold (if (default-object? case-fold) #f case-fold))
+	(syntax-table (if (default-object? syntax-table) #f syntax-table)))
+    (re-search-substring-forward (re-compile-pattern regexp case-fold)
+				 case-fold
+				 syntax-table
+				 string start end)))
