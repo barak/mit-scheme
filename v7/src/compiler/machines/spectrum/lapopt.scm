@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.12 1993/06/25 22:56:49 gjr Exp $
+$Id: lapopt.scm,v 1.13 1993/07/01 03:14:14 gjr Exp $
 
 Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
@@ -38,6 +38,10 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 ;;;; An instruction classifier and decomposer
+
+(define-integrable (float-reg reg)
+  reg					; ignore
+  (+ 32 reg))
 
 (define (classify-instruction instr)
   ;; returns: type target source-1 source-2 offset
@@ -115,6 +119,50 @@ MIT in each case. |#
 		   false))
 	  ((memq opcode '(NOP))
 	   (values 'ALU false false false false))
+	  ((memq opcode '(VDEPI DEPI ZVDEPI ZDEPI))
+	   (values 'ALU
+		   (car (last-pair instr))
+		   false
+		   false
+		   false))
+	  ((memq opcode '(EXTRU EXTRS DEP ZDEP))
+	   (values 'ALU
+		   (list-ref instr 5)
+		   (list-ref instr 2)
+		   false
+		   false))
+	  ((memq opcode '(VEXTRU VEXTRS VDEP ZVDEP))
+	   (values 'ALU
+		   (list-ref instr 4)
+		   (list-ref instr 2)
+		   false
+		   false))
+	  ((memq opcode '(FCPY FABS FSQRT FRND))
+	   ;; source target
+	   (values 'FALU
+		   (float-reg (list-ref instr 3))
+		   (float-reg (list-ref instr 2))
+		   false
+		   false))
+	  ((memq opcode '(FADD FSUB FMPY FDIV FREM))
+	   ;; source1 source2 target
+	   (values 'FALU
+		   (float-reg (list-ref instr 4))
+		   (float-reg (list-ref instr 2))
+		   (float-reg (list-ref instr 3))
+		   false))
+	  ((eq? opcode 'FSTDS)
+	   ;; source (offset n m base)
+	   (let* ((offset (list-ref instr 3))
+		  (base (cadddr offset)))
+	     (values 'MEMORY
+		     (and (or (memq 'MA (cadr instr))
+			      (memq 'MB (cadr instr)))
+			  base)
+		     base
+		     (float-reg (list-ref instr 2))
+		     (cadr offset))))
+
 	  #|
 	  ((memq opcode '(B BL GATE))
 	   <>)
@@ -199,7 +247,9 @@ MIT in each case. |#
   ;; (COMBT (<) ...)
   (and (pair? (cadr instr))
        (not (memq (car instr)
-		  '(B BL BV BLR BLE BE)))))
+		  '(B BL BV BLR BLE BE)))
+       ;; or SGL, or QUAD, but not used now.
+       (not (memq 'DBL (cadr instr)))))
 
 (define (find-or-label instrs)
   (and (not (null? instrs))
@@ -281,7 +331,8 @@ MIT in each case. |#
 	   (with-values
 	       (lambda () (classify-instruction (car next)))
 	     (lambda (type target src1 src2 offset)
-	       (if (or (not (memq type '(MEMORY ALU)))
+	       offset			; ignored
+	       (if (or (not (memq type '(MEMORY ALU FALU)))
 		       (eq? target regnum:stack-pointer))
 		   (values (fix-simple-return ret frame junk)
 			   rest)
@@ -373,7 +424,8 @@ MIT in each case. |#
     (if (and instr
 	     (with-values (lambda () (classify-instruction instr))
 	       (lambda (type tgt src1 src2 offset)
-		 (or (eq? type 'ALU)
+		 tgt src1 src2		; ignored
+		 (or (memq type '(ALU FALU))
 		     (and (eq? type 'MEMORY)
 			  (offset-fits? offset (car instr))))))
 	     (not (skips? instr))
