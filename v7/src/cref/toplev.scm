@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.17 2002/03/14 04:58:39 cph Exp $
+$Id: toplev.scm,v 1.18 2002/03/15 01:42:41 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -37,14 +37,16 @@ USA.
 	  (kernel pathname pmodel changes? os-type))))))
 
 (define (cref/generate-trivial-constructor filename #!optional os-type)
-  (let ((pathname (merge-pathnames filename)))
+  (let ((pathname (merge-pathnames filename))
+	(os-type
+	 (if (or (default-object? os-type)
+		 (not os-type))
+	     microcode-id/operating-system
+	     os-type)))
     (write-external-descriptions pathname
-				 (read-package-model pathname)
+				 (read-package-model pathname os-type)
 				 #f
-				 (if (or (default-object? os-type)
-					 (not os-type))
-				     microcode-id/operating-system
-				     os-type))))
+				 os-type)))
 
 (define cref/generate-cref
   (generate/common
