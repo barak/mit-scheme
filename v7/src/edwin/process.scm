@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.19 1992/02/11 20:37:19 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.20 1992/02/11 20:52:30 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-92 Massachusetts Institute of Technology
 ;;;
@@ -487,6 +487,7 @@ after the listing is made.)"
 	       (status
 		(synchronous-process-wait process input-region output-mark))
 	       (reason (subprocess-exit-reason process)))
+	  (subprocess-delete process)
 	  (let ((abnormal-termination
 		 (lambda (message)
 		   (if output-mark
