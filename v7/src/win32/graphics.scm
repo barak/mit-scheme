@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.4 1994/01/12 00:23:17 adams Exp $
+$Id: graphics.scm,v 1.5 1994/10/26 18:33:16 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -92,7 +92,11 @@ MIT in each case. |#
 
 
 
-(define (make-picture-wndproc window)
+(define (graphics-error . complaint)
+  (apply (access error system-global-environment) complaint))
+
+
+(define (make-scheme-graphics-wndproc window)
 
   (define ps (make-paintstruct))
 
@@ -198,45 +202,46 @@ MIT in each case. |#
       (update-palette)
       0)
 
-    ((= msg WM_SIZE)
+     ((= msg WM_SIZE)
       (if (is-iconic? hwnd)
-	0
-        (let*  ((new-w      (loword lparam))
-	        (new-h      (hiword lparam))
-		(old-w	    (win32-device/width window))
-		(old-h	    (win32-device/height window)))
-	  (if (and (= new-w old-w) (= new-h old-h))
-	    0
-	    (let*  ((palette    (win32-device/palette window))
-		    (hdc        (get-dc hwnd))
-		    (bitmap-dc  (create-compatible-dc hdc))
-		    (bitmap     (create-compatible-bitmap hdc new-w new-h))
-		    (old-bm     (win32-device/bitmap window))
-		    (old-bm-dc  (win32-device/hdc window)))
-	      (select-object bitmap-dc bitmap)
-	      (if palette
-		  (begin
-		    (select-palette bitmap-dc palette #f)
-		    (realize-palette bitmap-dc)))
-              (set-bk-color bitmap-dc (win32-device/bg-color window))
-	      (set-bk-mode bitmap-dc TRANSPARENT)
-	      (set-text-align bitmap-dc (+ TA_BASELINE TA_LEFT TA_NOUPDATECP))
-              (set-stretch-blt-mode bitmap-dc COLORONCOLOR #|HALFTONE|#)
-	      (stretch-blt bitmap-dc 0 0 new-w new-h
-	                   old-bm-dc 0 0 old-w old-h
-		           SRCCOPY)
-              (set-win32-device/bitmap! window bitmap)
-	      (set-win32-device/hdc!    window bitmap-dc)
-	      (set-win32-device/width!  window new-w)
-	      (set-win32-device/height! window new-h)
-	      (set-win32-device/pen-valid?! window #f)
-	      (set-rop2 bitmap-dc (get-rop2 old-bm-dc))
-	      (win32-device/rescale window)
-   	      (delete-dc old-bm-dc)
-	      (delete-object old-bm)
-	      (release-dc hwnd hdc)
-	      (invalidate-rect hwnd #f #f)
-	      0)))))
+	  0
+	  (let*  ((new-w    (loword lparam))
+		  (new-h    (hiword lparam))
+		  (old-w    (win32-device/width window))
+		  (old-h    (win32-device/height window)))
+	    (if (and (= new-w old-w) (= new-h old-h))
+		0
+		(let*  ((palette    (win32-device/palette window))
+			(hdc        (get-dc hwnd))
+			(bitmap-dc  (create-compatible-dc hdc))
+			(bitmap     (create-compatible-bitmap hdc new-w new-h))
+			(old-bm     (win32-device/bitmap window))
+			(old-bm-dc  (win32-device/hdc window)))
+		  (select-object bitmap-dc bitmap)
+		  (if palette
+		      (begin
+			(select-palette bitmap-dc palette #f)
+			(realize-palette bitmap-dc)))
+		  (set-bk-color bitmap-dc (win32-device/bg-color window))
+		  (set-bk-mode  bitmap-dc TRANSPARENT)
+		  (set-text-align bitmap-dc
+				  (+ TA_BASELINE TA_LEFT TA_NOUPDATECP))
+		  (set-stretch-blt-mode bitmap-dc COLORONCOLOR #|HALFTONE|#)
+		  (stretch-blt bitmap-dc 0 0 new-w new-h
+			       old-bm-dc 0 0 old-w old-h
+			       SRCCOPY)
+		  (set-win32-device/bitmap! window bitmap)
+		  (set-win32-device/hdc!    window bitmap-dc)
+		  (set-win32-device/width!  window new-w)
+		  (set-win32-device/height! window new-h)
+		  (set-win32-device/pen-valid?! window #f)
+		  (set-rop2 bitmap-dc (get-rop2 old-bm-dc))
+		  (win32-device/rescale window)
+		  (delete-dc old-bm-dc)
+		  (delete-object old-bm)
+		  (release-dc hwnd hdc)
+		  (invalidate-rect hwnd #f #f)
+		  0)))))
 
     ((= msg WM_NCLBUTTONDOWN)
       (win32-device/flush window)
@@ -355,7 +360,7 @@ MIT in each case. |#
 		  ((eq? palette-kind 'system)        #f)
 		  (else  #f)))
          (device  (make-win32-device width height palette))
-	 (wndproc (make-picture-wndproc device))
+	 (wndproc (make-scheme-graphics-wndproc device))
          (w
 	   (create-scheme-window
 	     (+)
@@ -368,6 +373,7 @@ MIT in each case. |#
              (client-height->window-height height)
 	     0 0 (get-handle 0) 0
              wndproc)))
+    w ;ignored
     device))
 
 
@@ -457,7 +463,7 @@ MIT in each case. |#
 	  (begin
 	    (invalidate-rect hwnd #f #f)
 	    unspecific)
-	  ((access error system-global-environment)
+	  (graphics-error
 	   "Attempt to use deleted Scheme Graphics window" window)))))
 
 (define (win32-graphics/flush device)
@@ -669,19 +675,16 @@ MIT in each case. |#
 	  (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
 	((and (string? spec) (> (string-length spec) 1)
 	      (char=? (string-ref spec 0) #\#))
-	  ((access error system-global-environment)
-	   "Cant do #rrggbb colors yet:" spec))
+	  (graphics-error "Cant do #rrggbb colors yet:" spec))
 	((string? spec)
 	  (let  ((pair (list-search-positive
 			  color-table
 	                  (lambda (pair) (string-ci=? (car pair) spec)))))
 	    (if pair
 	        (cdr pair)
-		((access error system-global-environment)
-		 "Unknown color name:" spec))))
+		(graphics-error	 "Unknown color name:" spec))))
 	(else
-	  ((access error system-global-environment)
-	   "Illegal color" spec))))
+	  (graphics-error "Illegal color" spec))))
 
 (define color-table)
 
@@ -829,10 +832,9 @@ MIT in each case. |#
 	 (success?      (write-dib true-filename dib)))
     (if dib
 	(delete-dib dib))
-    (if success?
-	unspecific
-	((access error system-global-environment)
-	 "Cannot save bitmap to" true-filename))))
+    (if (not success?)
+	(graphics-error	 "Cannot save bitmap to" true-filename))
+    unspecific))
 
 (define (win32-graphics/load-bitmap device filename)
   (let* ((true-filename (bitmap-namestring filename))
@@ -847,8 +849,7 @@ MIT in each case. |#
 	    (win32-device/invalidate! window)
 	    (delete-dib dib)
 	    unspecific))
-	((access error system-global-environment)
-	 "Cannot load bitmap from" true-filename))))
+	(graphics-error "Cannot load bitmap from" true-filename))))
 
 ;;----------------------------------------------------------------------------
 ;;
@@ -859,6 +860,9 @@ MIT in each case. |#
          (hIcon     (load-icon hInstance "GRAPHICS_ICON")))
     (register-class (+) (get-handle 3) 0 0 hInstance
                     hIcon 32515 NULL_BRUSH 0 "SCHEME-GRAPHICS")))
+
+
+(define win32-graphics-device-type)
 
 (define (initialize-package!)
   (set! win32-graphics-device-type
@@ -918,9 +922,3 @@ MIT in each case. |#
 		       (when-microcode-supports-win32 register-graphics-window-class))
   (register-graphics-device-type 'win32 win32-graphics-device-type)
   unspecific)
-
-(define win32-graphics-device-type)
-
-;;
-;;  BUGS
-
