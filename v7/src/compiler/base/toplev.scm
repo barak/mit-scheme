@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.44 1992/07/20 22:12:22 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/toplev.scm,v 4.45 1992/08/20 19:58:10 jinx Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -1143,14 +1143,12 @@ MIT in each case. |#
     (let ((bsm (split-inf-structure! binf bcs-path)))
       (call-with-temporary-filename
 	(lambda (bif-name)
-	  (let ((bif-path (merge-pathnames bif-name bci-path)))
-	    (fasdump binf bif-path true)
-	    (compress bif-path bci-path))))
+	  (fasdump binf bif-name true)
+	  (compress bif-name bci-path)))
       (call-with-temporary-filename
 	(lambda (bsm-name)
-	  (let ((bsm-path (merge-pathnames bsm-name bcs-path)))
-	    (fasdump bsm bsm-path true)
-	    (compress bsm-path bcs-path)))))
+	  (fasdump bsm bsm-name true)
+	  (compress bsm-name bcs-path))))
     (announce-info-files bci-path bcs-path)))
   
 (define (compiler:dump-bci-file binf pathname)
@@ -1159,9 +1157,8 @@ MIT in each case. |#
     (split-inf-structure! binf false)
     (call-with-temporary-filename
       (lambda (bif-name)
-	(let ((bif-path (merge-pathnames bif-name bci-path)))
-	  (fasdump binf bif-path true)
-	  (compress bif-path bci-path))))
+	(fasdump binf bif-name true)
+	(compress bif-name bci-path)))
     (announce-info-files bci-path)))
 
 (define (announce-info-files . files)
