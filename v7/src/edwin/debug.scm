@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.17 1993/09/09 21:13:59 cph Exp $
+;;;	$Id: debug.scm,v 1.18 1993/09/09 21:17:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1992-93 Massachusetts Institute of Technology
 ;;;
@@ -492,12 +492,14 @@
       (if (condition? condition)
 	  (fluid-let ((prompt-for-confirmation
 		       (lambda (prompt #!optional port)
+			 port
 			 (call-with-interface-port
 			  (buffer-end buffer)
 			  (lambda (port)
 			    (prompt-for-yes-or-no? prompt)))))
 		      (prompt-for-evaluated-expression
 		       (lambda (prompt #!optional environment port)
+			 port
 			 (call-with-interface-port
 			  (buffer-end buffer)
 			  (lambda (port)
