@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unxdir.scm,v 14.11 1999/01/02 06:19:10 cph Exp $
+$Id: unxdir.scm,v 14.12 2001/05/12 20:03:03 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
 |#
 
 ;;;; Directory Operations -- unix
@@ -34,16 +35,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (directory-read-nosort pattern)
   (let ((pattern
 	 (let ((pattern (merge-pathnames pattern)))
-	   (let ((name (pathname-name pattern))
-		 (type (pathname-type pattern)))
-	     (if (or name type)
-		 pattern
-		 (make-pathname (pathname-host pattern)
-				(pathname-device pattern)
-				(pathname-directory pattern)
-				'WILD
-				'WILD
-				(pathname-version pattern)))))))
+	   (if (directory-pathname? pattern)
+	       (make-pathname (pathname-host pattern)
+			      (pathname-device pattern)
+			      (pathname-directory pattern)
+			      'WILD
+			      'WILD
+			      (pathname-version pattern))
+	       pattern))))
     (let ((directory-path (directory-pathname pattern)))
       (map (lambda (pathname)
 	     (merge-pathnames pathname directory-path))

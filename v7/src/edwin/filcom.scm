@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.216 2001/05/10 19:06:17 cph Exp $
+;;; $Id: filcom.scm,v 1.217 2001/05/12 20:02:19 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
 ;;;
@@ -471,15 +471,10 @@ all buffers."
   boolean?)
 
 (define (pathname->buffer-name pathname)
-  (let ((pathname
-	 (let ((pathname (->pathname pathname)))
-	   (if (pathname-name pathname)
-	       pathname
-	       (directory-pathname-as-file pathname)))))
-    (let ((name (file-namestring pathname)))
-      (if (string-null? name)
-	  (->namestring pathname)
-	  name))))
+  (let ((pathname (directory-pathname-as-file (->pathname pathname))))
+    (if (directory-pathname? pathname)
+	(->namestring pathname)
+	(file-namestring pathname))))
 
 (define (pathname->buffer pathname)
   (let ((pathname (->pathname pathname)))
@@ -497,11 +492,11 @@ if you wish to make buffer not be visiting any file."
     (set-visited-pathname
      (selected-buffer)
      (let ((pathname (->pathname filename)))
-       (and (not (string-null? (file-namestring pathname)))
+       (and (not (directory-pathname? pathname))
 	    pathname)))))
 
 (define (set-visited-pathname buffer pathname)
-  (if (and pathname (not (pathname-name pathname)))
+  (if (and pathname (directory-pathname? pathname))
       (editor-error "File name cannot be a directory: "
 		    (->namestring pathname)))
   (set-buffer-pathname! buffer pathname)
@@ -808,7 +803,6 @@ Prefix arg means treat the plaintext file as binary data."
 (define (filename-complete-string pathname
 				  if-unique if-not-unique if-not-found)
   (let ((directory (directory-namestring pathname))
-	(prefix (file-namestring pathname))
 	(if-directory
 	 (lambda (directory)
 	   (if-not-unique directory
@@ -818,10 +812,12 @@ Prefix arg means treat the plaintext file as binary data."
 			     (os/directory-list directory)))))))
     (cond ((not (file-test-no-errors file-directory? directory))
 	   (if-not-found))
-	  ((string-null? prefix)
+	  ((directory-pathname? pathname)
 	   (if-directory directory))
 	  (else
-	   (let ((filenames (os/directory-list-completions directory prefix))
+	   (let ((filenames
+		  (os/directory-list-completions directory
+						 (file-namestring pathname)))
 		 (unique-case
 		  (lambda (filename)
 		    (let ((pathname (merge-pathnames filename directory)))

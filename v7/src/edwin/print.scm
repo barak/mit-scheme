@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: print.scm,v 1.19 2000/04/30 22:17:07 cph Exp $
+;;; $Id: print.scm,v 1.20 2001/05/12 20:02:33 cph Exp $
 ;;;
-;;; Copyright (c) 1991-2000 Massachusetts Institute of Technology
+;;; Copyright (c) 1991-2001 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -16,7 +16,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
 
 ;;;; Print Buffers and Regions
 
@@ -107,9 +108,8 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
 	   (and buffer
 		(or (let ((pathname (buffer-pathname buffer)))
 		      (and pathname
-			   (let ((filename (file-namestring pathname)))
-			     (and (not (string-null? filename))
-				  filename))))
+			   (not (directory-pathname? pathname))
+			   (file-namestring pathname)))
 		    (string-append "Edwin buffer " (buffer-name buffer)))))))
     (if (or (not buffer-title)
 	    (and (group-start? (region-start region))

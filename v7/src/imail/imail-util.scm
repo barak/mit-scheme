@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-util.scm,v 1.35 2001/03/19 22:17:37 cph Exp $
+;;; $Id: imail-util.scm,v 1.36 2001/05/12 20:03:21 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -329,7 +329,7 @@
 			  (lambda () (filtered-list pathname filter))))))
     (cond ((not (safe-file-directory? (directory-pathname pathname)))
 	   (if-not-found))
-	  ((string-null? (file-namestring pathname))
+	  ((directory-pathname? pathname)
 	   (if-directory pathname))
 	  (else
 	   (let ((pathnames (filtered-completions pathname filter)))
@@ -340,7 +340,7 @@
 				    (string-greatest-common-prefix
 				     (map ->namestring pathnames)))
 				   (lambda () pathnames)))
-		   ((string-null? (file-namestring (car pathnames)))
+		   ((directory-pathname? (car pathnames))
 		    (if-directory (car pathnames)))
 		   (else
 		    (if-unique (car pathnames)))))))))
