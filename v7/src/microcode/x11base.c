@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.15 1990/10/02 22:52:26 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.16 1991/03/11 23:43:28 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -699,6 +699,9 @@ DEFUN (x_event_to_object, (event), XEvent * event)
    entry that reads events -- or else that all other event readers
    cooperate with this strategy.  */
 
+extern unsigned int OS_channels_registered;
+extern int EXFUN (UX_select_input, (int fd, int blockp));
+
 static SCHEME_OBJECT
 DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
        struct xdisplay * xd AND
@@ -713,18 +716,29 @@ DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
     {
       extern unsigned long EXFUN (OS_real_time_clock, (void));
       XEvent event;
-      if (time_limit_p)
+      if (time_limit_p || (OS_channels_registered > 0))
 	{
-	  if (events_queued == 0)
+	  if (events_queued > 0)
+	    events_queued -= 1;
+	  else
 	    while (1)
 	      {
 		events_queued = (XEventsQueued (display, QueuedAfterReading));
 		if (events_queued > 0)
-		  break;
-		if ((OS_real_time_clock ()) >= time_limit)
+		  {
+		    events_queued -= 1;
+		    break;
+		  }
+		if (time_limit_p && ((OS_real_time_clock ()) >= time_limit))
 		  return (SHARP_F);
+		if (UX_select_input ((ConnectionNumber (display)),
+				     (!time_limit_p)))
+		  /* No input is available from the display, but some
+		     other registered input channel has input.  Return a
+		     special value immediately so that input can be
+		     processed.  */
+		  return (SHARP_T);
 	      }
-	  events_queued -= 1;
 	}
       XNextEvent (display, (&event));
       if ((event . type) == KeymapNotify)
@@ -746,7 +760,7 @@ DEFUN (xd_process_events, (xd, time_limit_p, time_limit),
       }
     }
 }
-
+
 static void
 DEFUN_VOID (initialize_once)
 {
@@ -757,7 +771,7 @@ DEFUN_VOID (initialize_once)
   add_reload_cleanup (x_close_all_displays);
   initialization_done = 1;
 }
-
+
 DEFINE_PRIMITIVE ("X-DEBUG", Prim_x_debug, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);

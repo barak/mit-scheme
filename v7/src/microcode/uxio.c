@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.9 1991/03/01 00:56:07 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.c,v 1.10 1991/03/11 23:43:02 cph Exp $
 
-Copyright (c) 1990-1 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,23 @@ MIT in each case. */
 size_t OS_channel_table_size;
 struct channel * channel_table;
 
+#ifdef FD_SET
+#define SELECT_TYPE fd_set
+#else
+#define SELECT_TYPE int
+#define FD_SETSIZE ((sizeof (int)) * CHAR_BIT)
+#define FD_SET(n, p) ((*(p)) |= (1 << (n)))
+#define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
+#define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
+#define FD_ZERO(p) ((*(p)) = 0)
+#endif
+
+unsigned int OS_channels_registered;
+static SELECT_TYPE input_descriptors;
+#ifdef HAVE_SELECT
+static struct timeval zero_timeout;
+#endif
+
 static void
 DEFUN_VOID (UX_channel_close_all)
 {
@@ -65,6 +82,12 @@ DEFUN_VOID (UX_initialize_channels)
       MARK_CHANNEL_CLOSED (channel);
   }
   add_reload_cleanup (UX_channel_close_all);
+  FD_ZERO (&input_descriptors);
+  OS_channels_registered = 0;
+#ifdef HAVE_SELECT
+  (zero_timeout . tv_sec) = 0;
+  (zero_timeout . tv_usec) = 0;
+#endif
 }
 
 void
@@ -100,6 +123,7 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
+      OS_channel_unregister (channel);
       STD_VOID_SYSTEM_CALL
 	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
       MARK_CHANNEL_CLOSED (channel);
@@ -111,6 +135,7 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
+      OS_channel_unregister (channel);
       UX_close (CHANNEL_DESCRIPTOR (channel));
       MARK_CHANNEL_CLOSED (channel);
     }
@@ -298,3 +323,67 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 }
 
 #endif /* FCNTL_NONBLOCK */
+
+int
+DEFUN (OS_channel_registered_p, (channel), Tchannel channel)
+{
+  return (CHANNEL_REGISTERED (channel));
+}
+
+void
+DEFUN (OS_channel_register, (channel), Tchannel channel)
+{
+#ifdef HAVE_SELECT
+  if (! (CHANNEL_REGISTERED (channel)))
+    {
+      FD_SET ((CHANNEL_DESCRIPTOR (channel)), (&input_descriptors));
+      OS_channels_registered += 1;
+      (CHANNEL_REGISTERED (channel)) = 1;
+    }
+#else
+  error_unimplemented_primitive ();
+#endif
+}
+
+void
+DEFUN (OS_channel_unregister, (channel), Tchannel channel)
+{
+  if (CHANNEL_REGISTERED (channel))
+    {
+      FD_CLR ((CHANNEL_DESCRIPTOR (channel)), (&input_descriptors));
+      OS_channels_registered -= 1;
+      (CHANNEL_REGISTERED (channel)) = 0;
+    }
+}
+
+int
+DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
+{
+#ifdef HAVE_SELECT
+  int nfds;
+  SELECT_TYPE readable = input_descriptors;
+  FD_SET (fd, (&readable));
+  STD_UINT_SYSTEM_CALL
+    (syscall_select,
+     nfds,
+     (select (FD_SETSIZE, (&readable), 0, 0, (blockp ? 0 : (&zero_timeout)))));
+  return ((nfds > 0) && (! (FD_ISSET (fd, (&readable)))));
+#else
+  return (0);
+#endif
+}
+
+long
+DEFUN (OS_channel_select_then_read, (channel, buffer, nbytes),
+       Tchannel channel AND
+       PTR buffer AND
+       size_t nbytes)
+{
+#ifdef HAVE_SELECT
+  if ((OS_channels_registered > ((CHANNEL_REGISTERED (channel)) ? 1 : 0))
+      && (UX_select_input ((CHANNEL_DESCRIPTOR (channel)),
+			   (CHANNEL_NONBLOCKING (channel)))))
+    return (-2);
+#endif
+  return (OS_channel_read (channel, buffer, nbytes));
+}

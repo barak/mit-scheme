@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.6 1991/03/01 00:54:54 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osio.h,v 1.7 1991/03/11 23:42:31 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -76,5 +76,12 @@ extern void EXFUN
 extern int EXFUN (OS_channel_nonblocking_p, (Tchannel channel));
 extern void EXFUN (OS_channel_nonblocking, (Tchannel channel));
 extern void EXFUN (OS_channel_blocking, (Tchannel channel));
+
+extern unsigned int OS_channels_registered;
+extern int EXFUN (OS_channels_registered_p, (void));
+extern void EXFUN (OS_channel_register, (Tchannel channel));
+extern void EXFUN (OS_channel_unregister, (Tchannel channel));
+extern long EXFUN
+  (OS_channel_select_then_read, (Tchannel channel, PTR buffer, size_t nbytes));
 
 #endif /* SCM_OSIO_H */

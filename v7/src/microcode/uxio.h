@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.h,v 1.1 1990/06/20 19:37:20 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxio.h,v 1.2 1991/03/11 23:43:07 cph Exp $
 
-Copyright (c) 1990 Massachusetts Institute of Technology
+Copyright (c) 1990-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -43,6 +43,7 @@ struct channel
   enum channel_type type;
   unsigned int internal : 1;
   unsigned int nonblocking : 1;
+  unsigned int registered : 1;
 };
 
 #define MARK_CHANNEL_CLOSED(channel) ((CHANNEL_DESCRIPTOR (channel)) = (-1))
@@ -53,6 +54,7 @@ struct channel
 #define CHANNEL_INTERNAL(channel) ((channel_table [(channel)]) . internal)
 #define CHANNEL_NONBLOCKING(channel)					\
   ((channel_table [(channel)]) . nonblocking)
+#define CHANNEL_REGISTERED(channel) ((channel_table [(channel)]) . registered)
 
 #define MAKE_CHANNEL(descriptor, type, receiver)			\
 {									\
@@ -61,6 +63,7 @@ struct channel
   (CHANNEL_TYPE (MAKE_CHANNEL_temp)) = (type);				\
   (CHANNEL_INTERNAL (MAKE_CHANNEL_temp)) = 0;				\
   (CHANNEL_NONBLOCKING (MAKE_CHANNEL_temp)) = 0;			\
+  (CHANNEL_REGISTERED (MAKE_CHANNEL_temp)) = 0;				\
   receiver (MAKE_CHANNEL_temp);						\
 }
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.8 1991/03/09 21:10:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxproc.c,v 1.9 1991/03/11 23:43:12 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -63,6 +63,7 @@ static int scheme_ctty_fd;
 static Tprocess foreground_child_process;
 
 static long process_tick;
+static long sync_tick;
 
 #define NEW_RAW_STATUS(process, status, reason)				\
 {									\
@@ -142,7 +143,11 @@ DEFUN_VOID (block_sigchld)
   transaction_record_action (tat_always, release_sigchld, 0);
 }
 
-#endif /* HAVE_SYSV3_SIGNALS */
+#else /* not HAVE_SYSV3_SIGNALS */
+
+#define block_sigchld()
+
+#endif /* not HAVE_SYSV3_SIGNALS */
 
 #define block_jc_signals block_sigchld
 #define grab_signal_mask()
@@ -177,6 +182,7 @@ DEFUN_VOID (UX_initialize_processes)
   subprocess_death_hook = subprocess_death;
   stop_signal_hook = stop_signal_handler;
   process_tick = 0;
+  sync_tick = 0;
 }
 
 void
@@ -267,8 +273,7 @@ DEFUN (OS_make_subprocess,
   transaction_begin ();
   child = (process_allocate ());
 
-  /* Flush streams so that i/o won't be duplicated after the fork */
-  fflush (stdin);
+  /* Flush streams so that output won't be duplicated after the fork.  */
   fflush (stdout);
   fflush (stderr);
 
@@ -298,6 +303,7 @@ DEFUN (OS_make_subprocess,
       transaction_commit ();
       return (child);
     }
+
   /* In the child process -- if any errors occur, just exit. */
   /* Don't do `transaction_commit ()' here.  Because we used `vfork'
      to spawn the child, the side-effects that are performed by
@@ -353,7 +359,7 @@ DEFUN (OS_make_subprocess,
 	      err_fd = fd;
 	  }
       }
-
+
     /* Install the new standard I/O channels. */
     if ((in_fd >= 0) && (in_fd != STDIN_FILENO))
       {
@@ -478,8 +484,20 @@ DEFUN (OS_process_status_sync, (process), Tprocess process)
   block_sigchld ();
   {
     int result = ((PROCESS_TICK (process)) != (PROCESS_SYNC_TICK (process)));
-    if (result)
-      PROCESS_STATUS_SYNC (process);
+    if (result) PROCESS_STATUS_SYNC (process);
+    transaction_commit ();
+    return (result);
+  }
+}
+
+int
+DEFUN_VOID (OS_process_status_sync_all)
+{
+  transaction_begin ();
+  block_sigchld ();
+  {
+    int result = (process_tick != sync_tick);
+    if (result) sync_tick = process_tick;
     transaction_commit ();
     return (result);
   }
@@ -617,7 +635,15 @@ DEFUN (process_wait, (process), Tprocess process)
 #endif /* not HAVE_POSIX_SIGNALS */
 }
 
-static Tprocess EXFUN (find_process, (pid_t pid));
+static Tprocess
+DEFUN (find_process, (pid), pid_t pid)
+{
+  Tprocess process;
+  for (process = 0; (process < OS_process_table_size); process += 1)
+    if ((PROCESS_ID (process)) == pid)
+      return (process);
+  return (NO_PROCESS);
+}
 
 static void
 DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
@@ -641,16 +667,6 @@ DEFUN (subprocess_death, (pid, status), pid_t pid AND wait_status_t * status)
 	    (process, process_status_signalled, (WTERMSIG (*status)));
 	}
     }
-}
-
-static Tprocess
-DEFUN (find_process, (pid), pid_t pid)
-{
-  Tprocess process;
-  for (process = 0; (process < OS_process_table_size); process += 1)
-    if ((PROCESS_ID (process)) == pid)
-      return (process);
-  return (NO_PROCESS);
 }
 
 static void

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.3 1991/03/09 21:10:45 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/osproc.h,v 1.4 1991/03/11 23:42:38 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -107,6 +107,7 @@ extern int EXFUN (OS_process_foregroundable_p, (Tprocess process));
 extern pid_t EXFUN (OS_process_id, (Tprocess process));
 extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
 extern int EXFUN (OS_process_status_sync, (Tprocess process));
+extern int EXFUN (OS_process_status_sync_all, (void));
 extern enum process_status EXFUN (OS_process_status, (Tprocess process));
 extern unsigned short EXFUN (OS_process_reason, (Tprocess process));
 

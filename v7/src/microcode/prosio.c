@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.4 1991/03/01 00:55:30 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosio.c,v 1.5 1991/03/11 23:42:45 cph Exp $
 
 Copyright (c) 1987-91 Massachusetts Institute of Technology
 
@@ -191,7 +191,7 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
   OS_channel_blocking (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
   "Return a cons of two channels, the reader and writer of a pipe.")
 {
@@ -204,5 +204,54 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
     SET_PAIR_CAR (result, (long_to_integer (reader)));
     SET_PAIR_CDR (result, (long_to_integer (writer)));
     PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-REGISTERED?", Prim_channel_registered_p, 1, 1,
+  "Return #F iff CHANNEL is registered for selection.")
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (OS_channel_registered_p (arg_channel (1))));
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-REGISTER", Prim_channel_register, 1, 1,
+  "Register CHANNEL for selection.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_channel_register (arg_channel (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-UNREGISTER", Prim_channel_unregister, 1, 1,
+  "Unregister CHANNEL for selection.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_channel_unregister (arg_channel (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-SELECT-THEN-READ", Prim_channel_select_then_read, 4, 4,
+  "Like CHANNEL-READ, but also watches registered input channels.\n\
+If there is no input on CHANNEL, but there is input on some other registered\n\
+channel, this procedure returns #T.")
+{
+  PRIMITIVE_HEADER (4);
+  CHECK_ARG (2, STRING_P);
+  {
+    SCHEME_OBJECT buffer = (ARG_REF (2));
+    long length = (STRING_LENGTH (buffer));
+    long end = (arg_index_integer (4, (length + 1)));
+    long start = (arg_index_integer (3, (end + 1)));
+    long nread =
+      (OS_channel_select_then_read ((arg_channel (1)),
+				    (STRING_LOC (buffer, start)),
+				    (end - start)));
+    PRIMITIVE_RETURN
+      ((nread == -2)
+       ? SHARP_T
+       : (nread < 0)
+       ? SHARP_F
+       : (long_to_integer (nread)));
   }
 }

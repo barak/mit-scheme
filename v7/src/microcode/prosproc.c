@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.6 1991/03/09 21:10:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/prosproc.c,v 1.7 1991/03/11 23:42:52 cph Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -113,17 +113,9 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
     if ((ARG_REF (4)) == SHARP_F)
       ctty_type = process_ctty_type_none;
     else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-1)))
-      {
-	if (scheme_jc_status == process_jc_status_no_ctty)
-	  error_bad_range_arg (4);
-	ctty_type = process_ctty_type_inherit_bg;
-      }
+      ctty_type = process_ctty_type_inherit_bg;
     else if ((ARG_REF (4)) == (LONG_TO_FIXNUM (-2)))
-      {
-	if (scheme_jc_status == process_jc_status_no_ctty)
-	  error_bad_range_arg (4);
-	ctty_type = process_ctty_type_inherit_fg;
-      }
+      ctty_type = process_ctty_type_inherit_fg;
     else
       {
 	ctty_type = process_ctty_type_explicit;
@@ -235,7 +227,7 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
     }
   }
 }
-
+
 DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1, 
   "Return the process ID of process PROCESS-NUMBER.")
 {
@@ -266,7 +258,7 @@ DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1,
       PRIMITIVE_RETURN (UNSPECIFIC);
     }
 }
-
+
 DEFINE_PRIMITIVE ("PROCESS-STATUS-SYNC", Prim_process_status_sync, 1, 1,
   "Synchronize the status of process PROCESS-NUMBER.\n\
 Return #F if it was previously synchronized, #T if not.")
@@ -274,6 +266,12 @@ Return #F if it was previously synchronized, #T if not.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (BOOLEAN_TO_OBJECT (OS_process_status_sync (arg_process (1))));
+}
+
+DEFINE_PRIMITIVE ("PROCESS-STATUS-SYNC-ALL", Prim_process_status_sync_all, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_process_status_sync_all ()));
 }
 
 DEFINE_PRIMITIVE ("PROCESS-STATUS", Prim_process_status, 1, 1,
