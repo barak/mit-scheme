@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.117 1991/11/04 20:50:32 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.118 1992/01/24 23:48:35 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -359,7 +359,11 @@ and then move up one line."
   (let ((start (mark+ lstart 4)))
     (extract-string
      start
-     (mark-1+ (char-search-forward #\space start (line-end start 0))))))
+     (skip-chars-backward
+      " \t"
+      (let ((end (line-end start 0)))
+	(or (re-search-forward "\t\\|  " start end)
+	    end))))))
 
 (define (buffer-menu-mark lstart column)
   (guarantee-buffer-line lstart)
@@ -374,14 +378,10 @@ and then move up one line."
 	(region-insert-char! m char)))))
 
 (define (list-buffers-format k m r buffer size mode file)
-  (let ((buffer (pad-on-right-to buffer 12)))
-    (let ((size (pad-on-right-to size
-				 (- 5 (max 0 (- (string-length buffer) 12))))))
-      (let ((mode (pad-on-right-to mode
-				   (- 12 (max 0 (- (+ (string-length buffer)
-						      (string-length size))
-						   17))))))
-	(string-append k m r " " buffer " " size " " mode " " file)))))
+  (let* ((result
+	  (string-append k m r " " (pad-on-right-to buffer 13) "  " size))
+	 (result (string-append (pad-on-right-to result 24) " " mode)))
+    (string-append (pad-on-right-to result 39) " " file)))
 
 (define list-buffers-header
   (string-append
