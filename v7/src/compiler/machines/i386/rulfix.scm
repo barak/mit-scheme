@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.18 1992/02/16 02:47:12 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rulfix.scm,v 1.19 1992/02/17 22:38:12 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -507,7 +507,7 @@ MIT in each case. |#
 	(let ((load-dividend (load-machine-register! source1 eax)))
 	  (require-register! edx)
 	  (let ((source2 (any-reference source2)))
-	    (rtl-target:=machine-register! eax)
+	    (rtl-target:=machine-register! target eax)
 	    (LAP ,@load-dividend
 		 (MOV W (R ,edx) (R ,eax))
 		 (SAR W (R ,edx) (& 31))
@@ -522,7 +522,7 @@ MIT in each case. |#
 	(let ((load-dividend (load-machine-register! source1 eax)))
 	  (require-register! edx)
 	  (let ((source2 (any-reference source2)))
-	    (rtl-target:=machine-register! edx)
+	    (rtl-target:=machine-register! target edx)
 	    (LAP ,@load-dividend
 		 (MOV W (R ,edx) (R ,eax))
 		 (SAR W (R ,edx) (& 31))
