@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.94 2001/02/23 17:47:26 cph Exp $
+@comment $Id: scheme.texinfo,v 1.95 2001/07/17 02:36:50 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -37,7 +37,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-2000 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -49,9 +49,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.93
+@subtitle Edition 1.94
 @subtitle for Scheme Release 7.5
-@subtitle 4 September 2000
+@subtitle 16 July 2001
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -59,7 +59,7 @@ Free Documentation License".
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-2000 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-2001 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -4855,9 +4855,9 @@ returns @code{#f}.
 @cindex character (defn)
 Characters are objects that represent printed characters, such as
 letters and digits.@footnote{Some of the details in this section depend
-on the fact that the underlying operating system uses the @sc{ascii}
+on the fact that the underlying operating system uses the @acronym{ASCII}
 character set.  This may change when someone ports MIT Scheme to a
-non-@sc{ascii} operating system.}
+non-@acronym{ASCII} operating system.}
 
 @menu
 * External Representation of Characters::  
@@ -4906,7 +4906,7 @@ quote them.
 A character name may include one or more @dfn{bucky bit} prefixes to
 indicate that the character includes one or more of the keyboard shift
 keys Control, Meta, Super, Hyper, or Top (note that the Control bucky
-bit prefix is not the same as the @sc{ascii} control key).  The bucky
+bit prefix is not the same as the @acronym{ASCII} control key).  The bucky
 bit prefixes and their meanings are as follows (case is not
 significant):
 
@@ -4937,7 +4937,7 @@ For example,
 @cindex character, named (defn)
 @cindex name, of character
 The following @var{character-name}s are supported, shown here with their
-@sc{ascii} equivalents:
+@acronym{ASCII} equivalents:
 
 @example
 @group
@@ -4972,7 +4972,7 @@ tab                     HT
 @findex #\newline
 In addition, @code{#\newline} is the same as @code{#\linefeed} (but this
 may change in the future, so you should not depend on it).  All of the
-standard @sc{ascii} names for non-printing characters are supported:
+standard @acronym{ASCII} names for non-printing characters are supported:
 
 @example
 @group
@@ -5069,7 +5069,7 @@ The lowercase characters are in order; for example, @code{(char<? #\a
 @cindex character, standard
 @findex char-standard?
 In addition, MIT Scheme orders those characters that satisfy
-@code{char-standard?} the same way that @sc{ascii} does.  Specifically,
+@code{char-standard?} the same way that @acronym{ASCII} does.  Specifically,
 all the digits precede all the uppercase letters, and all the upper-case
 letters precede all the lowercase letters.
 
@@ -5146,18 +5146,18 @@ returns @code{#f}.
 @cindex ASCII character
 An MIT Scheme character consists of a @dfn{code} part and a @dfn{bucky
 bits} part.  The MIT Scheme set of characters can represent more
-characters than @sc{ascii} can; it includes characters with Super,
+characters than @acronym{ASCII} can; it includes characters with Super,
 Hyper, and Top bucky bits, as well as Control and Meta.  Every
-@sc{ascii} character corresponds to some MIT Scheme character, but not
+@acronym{ASCII} character corresponds to some MIT Scheme character, but not
 vice versa.@footnote{Note that the Control bucky bit is different from
-the @sc{ascii} control key.  This means that @code{#\SOH} (@sc{ascii}
+the @acronym{ASCII} control key.  This means that @code{#\SOH} (@acronym{ASCII}
 ctrl-A) is different from @code{#\C-A}.  In fact, the Control bucky bit
-is completely orthogonal to the @sc{ascii} control key, making possible
+is completely orthogonal to the @acronym{ASCII} control key, making possible
 such characters as @code{#\C-SOH}.}
 
 MIT Scheme uses a 16-bit character code with 5 bucky bits.  Normally,
 Scheme uses the least significant 7 bits of the character code to
-contain the @sc{ascii} representation for the character.  The
+contain the @acronym{ASCII} representation for the character.  The
 representation is expanded in order to allow for future accomodation of
 international character sets.
 
@@ -5271,7 +5271,7 @@ then
 Note: If the argument to @code{char->integer} or @code{integer->char} is
 a constant, the compiler will constant-fold the call, replacing it with
 the corresponding result.  This is a very useful way to denote unusual
-character constants or @sc{ascii} codes.
+character constants or @acronym{ASCII} codes.
 @end deffn
 
 @defvr {variable+} char-integer-limit
@@ -5283,41 +5283,41 @@ non-negative integers that are less than the value of this variable
 @node ASCII Characters, Character Sets, Internal Representation of Characters, Characters
 @section ASCII Characters
 
-MIT Scheme internally uses @sc{ascii} codes for @sc{i/o}, and stores
+MIT Scheme internally uses @acronym{ASCII} codes for @sc{i/o}, and stores
 character objects in a fashion that makes it convenient to convert
-between @sc{ascii} codes and characters.  Also, character strings are
-implemented as byte vectors whose elements are @sc{ascii} codes; these
+between @acronym{ASCII} codes and characters.  Also, character strings are
+implemented as byte vectors whose elements are @acronym{ASCII} codes; these
 codes are converted to character objects when accessed.  For these
 reasons it is sometimes desirable to be able to convert between
-@sc{ascii} codes and characters.
+@acronym{ASCII} codes and characters.
 
 @cindex ASCII character (defn)
 @cindex character, ASCII (defn)
-Not all characters can be represented as @sc{ascii} codes.  A character
-that has an equivalent @sc{ascii} representation is called an @dfn{ASCII
+Not all characters can be represented as @acronym{ASCII} codes.  A character
+that has an equivalent @acronym{ASCII} representation is called an @dfn{ASCII
 character}.
 
 @deffn {procedure+} char-ascii? char
-Returns the @sc{ascii} code for @var{char} if @var{char} has an
-@sc{ascii} representation; otherwise returns @code{#f}.
+Returns the @acronym{ASCII} code for @var{char} if @var{char} has an
+@acronym{ASCII} representation; otherwise returns @code{#f}.
 
 @findex char-bits
 In the current implementation, the characters that satisfy this
 predicate are those in which the Control, Super, Hyper, and Top bucky
 bits are turned off.  All characters for which the @code{char-bits}
 procedure returns @code{0} or @code{1} (i.e.@: no bucky bits, or just
-Meta) count as legal @sc{ascii} characters.
+Meta) count as legal @acronym{ASCII} characters.
 @end deffn
 
 @deffn {procedure+} char->ascii char
-Returns the @sc{ascii} code for @var{char}.  An error
+Returns the @acronym{ASCII} code for @var{char}.  An error
 @code{condition-type:bad-range-argument} is signalled if @var{char}
-doesn't have an @sc{ascii} representation.
+doesn't have an @acronym{ASCII} representation.
 @findex condition-type:bad-range-argument
 @end deffn
 
 @deffn {procedure+} ascii->char code
-@var{Code} must be the exact integer representation of an @sc{ascii}
+@var{Code} must be the exact integer representation of an @acronym{ASCII}
 code.  This procedure returns the character corresponding to @var{code}.
 @end deffn
 
@@ -5326,9 +5326,9 @@ code.  This procedure returns the character corresponding to @var{code}.
 @cindex character set
 @cindex set, of characters
 
-MIT Scheme's character-set abstraction is used to represent groups
-of characters, such as the letters or digits.  Character sets may
-contain only @sc{ascii} characters; in the future this may be changed to
+MIT Scheme's character-set abstraction is used to represent groups of
+characters, such as the letters or digits.  Character sets may contain
+only @acronym{ASCII} characters; in the future this may be changed to
 allow the full range of characters.
 
 There is no meaningful external representation for character sets; use
@@ -5339,9 +5339,7 @@ present) no specific equivalence predicate for character sets; use
 @deffn {procedure+} char-set? object
 @cindex type predicate, for character set
 Returns @code{#t} if @var{object} is a character set; otherwise returns
-@code{#f}.@footnote{Because character sets are implemented as strings,
-@code{string?} returns @code{#t} for character set objects.  However,
-string operations aren't meaningful with character sets.}
+@code{#f}.
 @end deffn
 
 @defvr {variable+} char-set:upper-case
@@ -5420,14 +5418,14 @@ Returns @code{#t} if @var{char} is in @var{char-set}; otherwise returns
 
 @deffn {procedure+} char-set char @dots{}
 @cindex construction, of character set
-Returns a character set consisting of the specified @sc{ascii}
+Returns a character set consisting of the specified @acronym{ASCII}
 characters.  With no arguments, @code{char-set} returns an empty
 character set.
 @end deffn
 
 @deffn {procedure+} chars->char-set chars
 Returns a character set consisting of @var{chars}, which must be a list
-of @sc{ascii} characters.  This is equivalent to @code{(apply char-set
+of @acronym{ASCII} characters.  This is equivalent to @code{(apply char-set
 @var{chars})}.
 @end deffn
 
@@ -5438,16 +5436,16 @@ Returns a character set consisting of all the characters that occur in
 
 @deffn {procedure+} ascii-range->char-set lower upper
 @var{Lower} and @var{upper} must be exact non-negative integers
-representing @sc{ascii} character codes, and @var{lower} must be less
+representing @acronym{ASCII} character codes, and @var{lower} must be less
 than or equal to @var{upper}.  This procedure creates and returns a new
-character set consisting of the characters whose @sc{ascii} codes are
+character set consisting of the characters whose @acronym{ASCII} codes are
 between @var{lower} (inclusive) and @var{upper} (exclusive).
 @end deffn
 
 @deffn {procedure+} predicate->char-set predicate
 @var{Predicate} must be a procedure of one argument.
 @code{predicate->char-set} creates and returns a character set
-consisting of the @sc{ascii} characters for which @var{predicate} is
+consisting of the @acronym{ASCII} characters for which @var{predicate} is
 true.
 @end deffn
 
@@ -5467,7 +5465,7 @@ least one o the @var{char-set}s.
 @end deffn
 
 @deffn {procedure+} char-set-invert char-set
-Returns a character set consisting of the @sc{ascii} characters that are
+Returns a character set consisting of the @acronym{ASCII} characters that are
 not in @var{char-set}.
 @end deffn
 
@@ -5479,7 +5477,7 @@ not in @var{char-set}.
 A @dfn{string} is a mutable sequence of characters.  In the current
 implementation of MIT Scheme, the elements of a string must all
 satisfy the predicate @code{char-ascii?}; if someone ports MIT
-Scheme to a non-@sc{ascii} operating system this requirement will
+Scheme to a non-@acronym{ASCII} operating system this requirement will
 change.
 
 @cindex external representation, for string
@@ -5532,7 +5530,7 @@ specifies the effect for three other characters: @code{\t}, @code{\n},
 and @code{\f}.  These escape sequences are respectively translated into
 the following characters: @code{#\tab}, @code{#\newline}, and
 @code{#\page}.  Finally, a backslash followed by exactly three octal
-digits is translated into the character whose @sc{ascii} code is those
+digits is translated into the character whose @acronym{ASCII} code is those
 digits.
 
 If a string literal is continued from one line to another, the string
@@ -5626,7 +5624,7 @@ The arguments must all satisfy @code{char-ascii?}.
 @deffn procedure list->string char-list
 @cindex list, converting to string
 @findex string->list
-@var{Char-list} must be a list of @sc{ascii} characters.
+@var{Char-list} must be a list of @acronym{ASCII} characters.
 @code{list->string} returns a newly allocated string formed from the
 elements of @var{char-list}.  This is equivalent to @code{(apply string
 @var{char-list})}.  The inverse of this operation is
@@ -6549,13 +6547,13 @@ maximum length of @var{string}.
 @cindex vector, byte
 
 @findex string-ref
-MIT Scheme implements strings as packed vectors of 8-bit @sc{ascii}
+MIT Scheme implements strings as packed vectors of 8-bit @acronym{ASCII}
 bytes.  Most of the string operations, such as @code{string-ref}, coerce
 these 8-bit codes into character objects.  However, some lower-level
 operations are made available for use.
 
 @deffn {procedure+} vector-8b-ref string k
-Returns character @var{k} of @var{string} as an @sc{ascii} code.
+Returns character @var{k} of @var{string} as an @acronym{ASCII} code.
 @var{K} must be a valid index of @var{string}.
 
 @example
@@ -6568,13 +6566,13 @@ Returns character @var{k} of @var{string} as an @sc{ascii} code.
 @deffn {procedure+} vector-8b-set! string k ascii
 Stores @var{ascii} in element @var{k} of @var{string} and returns an
 unspecified value.  @var{K} must be a valid index of @var{string}, and
-@var{ascii} must be a valid @sc{ascii} code.
+@var{ascii} must be a valid @acronym{ASCII} code.
 @end deffn
 
 @deffn {procedure+} vector-8b-fill! string start end ascii
 Stores @var{ascii} in elements @var{start} (inclusive) to @var{end}
 (exclusive) of @var{string} and returns an unspecified value.
-@var{Ascii} must be a valid @sc{ascii} code.
+@var{Ascii} must be a valid @acronym{ASCII} code.
 @end deffn
 
 @deffn {procedure+} vector-8b-find-next-char string start end ascii
@@ -6582,7 +6580,7 @@ Stores @var{ascii} in elements @var{start} (inclusive) to @var{end}
 Returns the index of the first occurrence of @var{ascii} in the given
 substring; returns @code{#f} if @var{ascii} does not appear.  The index
 returned is relative to the entire string, not just the substring.
-@var{Ascii} must be a valid @sc{ascii} code.
+@var{Ascii} must be a valid @acronym{ASCII} code.
 
 @code{vector-8b-find-next-char-ci} doesn't distinguish uppercase and
 lowercase letters.
@@ -6593,7 +6591,7 @@ lowercase letters.
 Returns the index of the last occurrence of @var{ascii} in the given
 substring; returns @code{#f} if @var{ascii} does not appear.  The index
 returned is relative to the entire string, not just the substring.
-@var{Ascii} must be a valid @sc{ascii} code.
+@var{Ascii} must be a valid @acronym{ASCII} code.
 
 @code{vector-8b-find-previous-char-ci} doesn't distinguish uppercase and
 lowercase letters.
@@ -11826,7 +11824,7 @@ a port that you specify.  The current output port is initially
 @code{console-i/o-port}, but Scheme provides procedures that let you
 change the current output port to be a file or string.
 
-All ports read or write only @sc{ascii} characters.
+All ports read or write only @acronym{ASCII} characters.
 
 Every port is either an input port, an output port, or both.  The
 following predicates distinguish all of the possible cases.
@@ -14115,6 +14113,21 @@ or relative, so if this procedure returns @code{#f}, the argument is a
 relative pathname.
 @end deffn
 
+@deffn {procedure+} directory-pathname? pathname
+Returns @code{#t} if @var{pathname} has only directory components and no
+file components.  This is roughly equivalent to
+
+@example
+@group
+(define (directory-pathname? pathname)
+  (string-null? (file-namestring pathname)))
+@end group
+@end example
+
+@noindent
+except that it is faster.
+@end deffn
+
 @deffn {procedure+} pathname-wild? pathname
 Returns @code{#t} if @var{pathname} contains any wildcard components;
 otherwise returns @code{#f}.
@@ -14540,6 +14553,34 @@ is returned.  If an error of type @code{condition-type:file-error} or
 @code{condition-type:port-error} is signalled, @code{#f} is returned.
 @end deffn
 
+@deffn {procedure+} hard-link-file source-filename target-filename
+@cindex linking (hard), of file
+@cindex hard linking, of file
+Makes a hard link from @var{source-filename} to @var{target-filename}.
+This operation gives the file specified by @var{source-filename} a new
+name, in addition to the old name.
+
+This currently works only on unix systems.  It is further restricted to
+work only when  @var{source-filename} and @var{target-filename} refer to
+names in the same file system.
+@end deffn
+
+@deffn {procedure+} soft-link-file source-filename target-filename
+@cindex linking (soft), of file
+@cindex soft linking, of file
+@cindex symbolic linking, of file
+Creates a new soft link called @var{target-filename} that points at the
+file @var{source-filename}.  (Soft links are also sometimes called
+@dfn{symbolic} links.)  Note that @var{source-filename} will be
+interpreted as a string (although you may specify it as a pathname
+object, if you wish).  The contents of this string will be stored in the
+file system as the soft link.  When a file operation attempts to open
+the link, the contents of the link are interpreted relative to the
+link's location at that time.
+
+This currently works only on unix systems.
+@end deffn
+
 @deffn {procedure+} make-directory filename
 Creates a new directory named @var{filename}.  Signals an error if
 @var{filename} already exists, or if the directory cannot be created.
@@ -14613,6 +14654,28 @@ Returns @code{#t} if the file named @var{filename} exists and is a
 directory.  Otherwise returns @code{#f}.  In operating systems that
 support symbolic links, if @var{filename} names a symbolic link, this
 examines the file linked to, not the link itself.
+
+This is equivalent to
+
+@example
+(eq? 'directory (file-type-indirect @var{filename}))
+@end example
+@end deffn
+
+@deffn {procedure+} file-regular? filename
+@cindex file (regular), predicate for
+@cindex regular file, predicate for
+Returns @code{#t} if the file named @var{filename} exists and is a
+regular file (i.e.@: not a directory, symbolic link, device file, etc.).
+Otherwise returns @code{#f}.  In operating systems that support symbolic
+links, if @var{filename} names a symbolic link, this examines the file
+linked to, not the link itself.
+
+This is equivalent to
+
+@example
+(eq? 'regular (file-type-indirect @var{filename}))
+@end example
 @end deffn
 
 @deffn {procedure+} file-symbolic-link? filename
@@ -14625,6 +14688,37 @@ be interpreted relative to the directory of @var{filename}.  If
 @var{filename} either does not exist or is not a symbolic link, or if
 the operating system does not support symbolic links, this procedure
 returns @code{#f}.
+@end deffn
+
+@deffn {procedure+} file-type-direct filename
+@deffnx {procedure+} file-type-indirect filename
+@cindex file type, procedure for
+If the file named @var{filename} exists, @code{file-type-direct} returns
+a symbol specifying what type of file it is.  For example, if
+@var{filename} refers to a directory, the symbol @code{directory} is
+returned.  If @var{filename} doesn't refer to an existing file,
+@code{#f} is returned.
+
+If @var{filename} refers to a symbolic link, @code{file-type-direct}
+returns the type of the link itself, while @code{file-type-indirect}
+returns the type of the file linked to.
+
+At this time, the symbols that can be returned are the following.  The
+names are intended to be self-explanatory.  Most of these names can only
+be returned on particular operating systems, and so the operating-system
+name is prefixed to the name.
+
+@example
+regular
+directory
+unix-symbolic-link
+unix-character-device
+unix-block-device
+unix-named-pipe
+unix-socket
+os2-named-pipe
+win32-named-pipe
+@end example
 @end deffn
 
 @deffn {procedure+} file-readable? filename
@@ -15998,13 +16092,13 @@ specifies @code{bar.mit.edu}.
 @cindex port number, TCP
 @var{Service} specifies the service to which you will connect.  A
 networked computer normally provides several different services, such as
-telnet or @sc{ftp}.  Each service is associated with a unique @dfn{port
-number}; for example, the @code{"www"} service is associated with port
-@code{80}.  The @var{service} argument specifies the port number, either
-by a string, or directly as an exact non-negative integer.  Port strings
-are decoded by the operating system using a table; for example, on unix
-the table is in @file{/etc/services}.  Usually you will use a port
-string rather than a number.
+telnet or @acronym{FTP}.  Each service is associated with a unique
+@dfn{port number}; for example, the @code{"www"} service is associated
+with port @code{80}.  The @var{service} argument specifies the port
+number, either as a string, or directly as an exact non-negative
+integer.  Port strings are decoded by the operating system using a
+table; for example, on unix the table is in @file{/etc/services}.
+Usually you will use a port string rather than a number.
 
 @deffn {procedure+} open-tcp-stream-socket host-name service [buffer-size [line-translation]]
 @code{open-tcp-stream-socket} opens a connection to the host specified
@@ -16048,7 +16142,7 @@ the server socket; it continues to listen for additional client
 connections.  You can have multiple client connections to the same
 server socket open simultaneously.
 
-@deffn {procedure+} open-tcp-server-socket service
+@deffn {procedure+} open-tcp-server-socket service [address]
 This procedure opens a server socket that listens for connections to
 @var{service}; the socket will continue to listen until you close it.
 The returned value is a server socket object.
@@ -16056,9 +16150,14 @@ The returned value is a server socket object.
 An error is signalled if another process is already listening on the
 service.  Additionally, ports whose number is less than @code{1024} are
 privileged on many operating systems, and cannot be used by
-non-privileged processes; attempting to open a server socket to one of
-these ports will signal an error if you do not have administrative
-privileges.
+non-privileged processes; if @var{service} specifies such a port and you
+do not have administrative privileges, an error may be signalled.
+
+The optional argument @var{address} specifies the @acronym{IP} address
+on which the socket will listen.  If this argument is not supplied or is
+given as @code{#f}, then the socket listens on all @acronym{IP}
+addresses for this machine.  (This is equivalent to passing the result
+of calling @code{host-address-any}.)
 @end deffn
 
 @deffn {procedure+} tcp-server-connection-accept server-socket block? peer-address
@@ -16072,10 +16171,10 @@ the time of the call.  If @code{#f}, it says to return immediately with
 two values of @code{#f}.  Otherwise, the call waits until a client
 connects.
 
-The argument @var{peer-address} is either @code{#f} or an @sc{ip}
+The argument @var{peer-address} is either @code{#f} or an @acronym{IP}
 address as allocated by @code{allocate-host-address}.  If it is an
-@sc{ip} address, the address is modified to be the address of the client
-making the connection.
+@acronym{IP} address, the address is modified to be the address of the
+client making the connection.
 
 Note that closing the port returned by this procedure does not affect
 @var{server-socket}; it just closes the particular client connection
@@ -16133,22 +16232,22 @@ prefix will be constant for a particular version of Windows.
 @end defvr
 
 The next few procedures provide access to the @dfn{domain name service}
-(@sc{dns}), which maintains associations between internet host names
-such as @code{"www.swiss.ai.mit.edu"} and @sc{ip} addresses, such as
-@code{18.23.0.16}.  In MIT Scheme, we represent an internet host name as
-a string, and an @sc{ip} address as a byte vector of length 4 (byte
-vectors are just character strings that are accessed using
+(@acronym{DNS}), which maintains associations between internet host
+names such as @code{"www.swiss.ai.mit.edu"} and @acronym{IP} addresses,
+such as @code{18.23.0.16}.  In MIT Scheme, we represent an internet host
+name as a string, and an @acronym{IP} address as a byte vector of length
+4 (byte vectors are just character strings that are accessed using
 @code{vector-8b-ref} rather than @code{string-ref}).  The bytes in an
-@sc{ip} address read in the same order as they do when written out:
+@acronym{IP} address read in the same order as they do when written out:
 
 @example
 (get-host-by-name "www.swiss") @result{} #("\022\027\000\020")
 @end example
 
 @deffn {procedure+} get-host-by-name host-name
-Looks up the internet host name @var{host-name} using the @sc{dns},
-returning a vector of @sc{ip} addresses for the corresponding host, or
-@code{#f} if there is no such host.  Usually the returned vector has
+Looks up the internet host name @var{host-name} using the @acronym{DNS},
+returning a vector of @acronym{IP} addresses for the corresponding host,
+or @code{#f} if there is no such host.  Usually the returned vector has
 only one element, but if a host has more than one network interface, the
 vector might have more than one element.
 
@@ -16158,7 +16257,7 @@ vector might have more than one element.
 @end deffn
 
 @deffn {procedure+} get-host-by-address ip-address
-Does a reverse @sc{dns} lookup on @var{ip-address}, returning the
+Does a reverse @acronym{DNS} lookup on @var{ip-address}, returning the
 internet host name corresponding to that address, or @code{#f} if there
 is no such host.
 
@@ -16204,10 +16303,38 @@ is running on.  So, in contrast to the example for @code{get-host-name}:
 @end deffn
 
 @deffn {procedure+} allocate-host-address
-Allocates and returns an @sc{ip} address object.  This is just a string
-of a fixed length (current 4 bytes) into which an @sc{ip} address may be
-stored.  This procedure is used to generate an appropriate argument to
-be passed to @code{tcp-server-connection-accept}.
+Allocates and returns an @acronym{IP} address object.  This is just a
+string of a fixed length (current 4 bytes) into which an @acronym{IP}
+address may be stored.  This procedure is used to generate an
+appropriate argument to be passed to
+@code{tcp-server-connection-accept}.
+
+@example
+(allocate-host-address) @result{} "Xe\034\241"
+@end example
+@end deffn
+
+@deffn {procedure+} host-address-any
+Return an @acronym{IP} address object that specifies ``any host''.  This
+object is useful only when passed as the @var{address} argument to
+@code{open-tcp-server-socket}.
+
+@example
+(host-address-any) @result{} "\000\000\000\000"
+@end example
+@end deffn
+
+@deffn {procedure+} host-address-loopback
+@cindex loopback interface
+Return an @acronym{IP} address object that specifies the local
+@dfn{loopback} network interface.  The loopback interface is a software
+network interface that can be used only for communicating between
+processes on the same computer.  This address object is useful only when
+passed as the @var{address} argument to @code{open-tcp-server-socket}.
+
+@example
+(host-address-loopback) @result{} "\177\000\000\001"
+@end example
 @end deffn
 
 @node Error System, Graphics, Operating-System Interface, Top
