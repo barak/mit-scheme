@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.4 1989/11/27 20:21:20 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpauxmd/hppa.m4,v 1.5 1989/11/28 05:06:33 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1989 Massachusetts Institute of Technology
 ;;;
@@ -112,8 +112,8 @@ define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(QUAD_MASK, eval(2 ** (TC_LENGTH - 2)))
 define(LOW_TC_BIT, eval(TC_LENGTH - 1))
 
-	.SPACE	$TEXT$
-	.SUBSPA	$CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
+	.SPACE  $TEXT$
+	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
 C_to_interface
 	.PROC
 	.CALLINFO CALLER,FRAME=28,SAVE_RP
@@ -157,7 +157,7 @@ trampoline_to_interface
 scheme_to_interface
 	ADDIL	L'utility_table-$global$,27
 	LDO	R'utility_table-$global$(1),29
-	LDWX,S	28(5,29),29		; Find handler
+	LDWX,S	28(0,29),29		; Find handler
 	ADDIL	L'Ext_Stack_Pointer-$global$,27
 	STW	22,R'Ext_Stack_Pointer-$global$(1) ; Update stack pointer
 	ADDIL	L'Free-$global$,27
@@ -190,12 +190,26 @@ interface_to_C
         .EXIT
         LDWM    -112(0,30),3		; Restore last reg, pop frame
         .PROCEND			;in=26;out=28;
-
-        .SPACE  $TEXT$
-        .SUBSPA $CODE$
-        .EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
-        .EXPORT interface_to_scheme,PRIV_LEV=3
-        .EXPORT interface_to_C,PRIV_LEV=3
-        .EXPORT trampoline_to_interface,PRIV_LEV=3
-        .EXPORT scheme_to_interface,PRIV_LEV=3
-        .END
+
+	.SPACE	$TEXT$
+	.SUBSPA $LIT$,QUAD=0,ALIGN=8,ACCESS=44
+;	.SUBSPA $CODE$,QUAD=0,ALIGN=8,ACCESS=44,CODE_ONLY
+	.SUBSPA $UNWIND$,QUAD=0,ALIGN=8,ACCESS=44
+	.SUBSPA $CODE$
+	.SPACE	$PRIVATE$
+	.SUBSPA $DATA$,QUAD=1,ALIGN=8,ACCESS=31
+$THISMODULE$
+	.SUBSPA $BSS$,QUAD=1,ALIGN=8,ACCESS=31,ZERO
+	.IMPORT $global$,DATA
+	.IMPORT	Registers,DATA
+	.IMPORT	Ext_Stack_Pointer,DATA
+	.IMPORT	Free,DATA
+	.IMPORT	utility_table,DATA
+	.SPACE	$TEXT$
+	.SUBSPA $CODE$
+	.EXPORT C_to_interface,PRIV_LEV=3,ARGW0=GR,RTNVAL=GR
+	.EXPORT interface_to_scheme,PRIV_LEV=3
+	.EXPORT interface_to_C,PRIV_LEV=3
+	.EXPORT trampoline_to_interface,PRIV_LEV=3
+	.EXPORT scheme_to_interface,PRIV_LEV=3
+	.END
