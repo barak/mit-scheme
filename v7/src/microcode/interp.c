@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.53 1989/10/28 15:38:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.54 1990/01/29 22:32:57 jinx Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -253,9 +253,8 @@ if (GC_Check(Amount))							\
     }									\
     else								\
     {									\
-      Store_Return(RC_INTERNAL_APPLY);					\
-      Val = SHARP_F;							\
-      TOUCH_SETUP(*Arg);						\
+      Prepare_Apply_Interrupt ();					\
+      TOUCH_SETUP (*Arg);						\
       *Arg = Orig_Answer;						\
       goto Internal_Apply;						\
     }									\
@@ -956,8 +955,7 @@ Pop_Return:
 
     case RC_COMB_APPLY_FUNCTION:
        End_Subproblem();
-       Stack_Ref(STACK_ENV_FUNCTION) = Val;
-       goto Internal_Apply;
+       goto Internal_Apply_Val;
 
     case RC_COMB_SAVE_VALUE:
       {	long Arg_Number;
@@ -1355,22 +1353,27 @@ external_assignment_return:
 
 #define Prepare_Apply_Interrupt()					\
 {									\
-  Store_Return(RC_INTERNAL_APPLY);					\
-  Store_Expression(SHARP_F);						\
-  Save_Cont();								\
+  Store_Expression (SHARP_F);						\
+  Prepare_Pop_Return_Interrupt (RC_INTERNAL_APPLY_VAL,			\
+				(Stack_Ref (STACK_ENV_FUNCTION)));	\
 }
 
 #define Apply_Error(N)							\
 {									\
-  Store_Return(RC_INTERNAL_APPLY);					\
-  Store_Expression(SHARP_F);						\
-  Val = SHARP_F;							\
-  Pop_Return_Error(N);							\
+  Store_Expression (SHARP_F);						\
+  Store_Return (RC_INTERNAL_APPLY_VAL);					\
+  Val = (Stack_Ref (STACK_ENV_FUNCTION));				\
+  Pop_Return_Error (N);							\
 }
 
 /* Interpret() continues on the next page */
 
 /* Interpret(), continued */
+
+    case RC_INTERNAL_APPLY_VAL:
+Internal_Apply_Val:
+
+       Stack_Ref (STACK_ENV_FUNCTION) = Val;
 
     case RC_INTERNAL_APPLY:
 Internal_Apply:
@@ -1381,10 +1384,10 @@ Internal_Apply:
       {
 	long Count;
 
-	Count = OBJECT_DATUM (Stack_Ref(STACK_ENV_HEADER));
-        Top_Of_Stack() = Fetch_Apply_Trapper();
-        Push(STACK_FRAME_HEADER + Count);
-        Stop_Trapping();
+	Count = (OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)));
+        Top_Of_Stack() = (Fetch_Apply_Trapper ());
+        Push (STACK_FRAME_HEADER + Count);
+        Stop_Trapping ();
       }
 
 Apply_Non_Trapping:
@@ -1394,9 +1397,7 @@ Apply_Non_Trapping:
 	long Interrupts;
 
 	Interrupts = (PENDING_INTERRUPTS());
-	Store_Expression(SHARP_F);
-	Val = SHARP_F;
-	Prepare_Apply_Interrupt();
+	Prepare_Apply_Interrupt ();
 	Interrupt(Interrupts);
       }
 
@@ -1473,7 +1474,7 @@ Perform_Application:
             if (GC_Check(nargs + 1))
             {
 	      Push(STACK_FRAME_HEADER + nargs - 1);
-              Prepare_Apply_Interrupt();
+              Prepare_Apply_Interrupt ();
               Immediate_GC(nargs + 1);
             }
 
@@ -1496,12 +1497,12 @@ Perform_Application:
 
           case TC_CONTROL_POINT:
 	  {
-            if (OBJECT_DATUM (Stack_Ref(STACK_ENV_HEADER)) !=
+            if (OBJECT_DATUM (Stack_Ref (STACK_ENV_HEADER)) !=
                 STACK_ENV_FIRST_ARG)
 	    {
               Apply_Error(ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	    }
-            Val = Stack_Ref(STACK_ENV_FIRST_ARG);
+            Val = (Stack_Ref (STACK_ENV_FIRST_ARG));
             Our_Throw(false, Function);
 	    Apply_Stacklet_Backout();
 	    Our_Throw_Part_2();
@@ -1605,7 +1606,7 @@ Perform_Application:
 				     0)))
             {
 	      Push(STACK_FRAME_HEADER + nargs);
-              Prepare_Apply_Interrupt();
+              Prepare_Apply_Interrupt ();
               Immediate_GC(size + 1 + ((nargs > params) ?
 				       (2 * (nargs - params)) :
 				       0));
@@ -1686,16 +1687,16 @@ return_from_compiled_code:
 
 	    case PRIM_INTERRUPT:
 	    {
-	      compiled_error_backout();
-	      Save_Cont();
-	      Interrupt(PENDING_INTERRUPTS());
+	      compiled_error_backout ();
+	      Save_Cont ();
+	      Interrupt (PENDING_INTERRUPTS ());
 	    }
 
 	    case PRIM_APPLY_INTERRUPT:
 	    {
-	      apply_compiled_backout();
-	      Prepare_Apply_Interrupt();
-	      Interrupt(PENDING_INTERRUPTS());
+	      apply_compiled_backout ();
+	      Prepare_Apply_Interrupt ();
+	      Interrupt (PENDING_INTERRUPTS ());
 	    }
 
 	    /* The assembly language interfaces return errors
@@ -1755,7 +1756,7 @@ return_from_compiled_code:
           }
 
           default:
-            Apply_Error(ERR_INAPPLICABLE_OBJECT);
+            Apply_Error (ERR_INAPPLICABLE_OBJECT);
         }       /* End of switch in RC_INTERNAL_APPLY */
       }         /* End of RC_INTERNAL_APPLY case */
 
@@ -2154,14 +2155,12 @@ Primitive_Internal_Apply:
     case RC_RESTORE_CONTINUATION:
     case RC_RESTORE_STEPPER:
     case RC_POP_FROM_COMPILED_CODE:
-      Export_Registers();
-      Microcode_Termination(TERM_UNIMPLEMENTED_CONTINUATION);
+      Pop_Return_Error (ERR_INAPPLICABLE_CONTINUATION);
 
     SITE_RETURN_DISPATCH_HOOK()
 
     default:
-      Export_Registers();
-      Microcode_Termination(TERM_NON_EXISTENT_CONTINUATION);
+      Pop_Return_Error (ERR_INAPPLICABLE_CONTINUATION);
   };
   goto Pop_Return;
 }
