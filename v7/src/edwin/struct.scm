@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.72 1990/11/02 03:15:58 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/struct.scm,v 1.73 1991/03/15 23:34:14 cph Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989, 1990 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -307,6 +307,19 @@
 (define-integrable (mark-index-integrable mark)
   (group-position->index-integrable (mark-group mark) (mark-position mark)))
 
+(define (set-mark-index! mark index)
+  (set-mark-index-integrable! mark index))
+
+(define-integrable (set-mark-index-integrable! mark index)
+  (set-mark-position!
+   mark
+   (group-index->position-integrable (mark-group mark)
+				     index
+				     (mark-left-inserting? mark))))
+
+(define (move-mark-to! mark target)
+  (set-mark-index-integrable! mark (mark-index-integrable target)))
+
 (define (mark-temporary-copy mark)
   (%make-mark (mark-group mark)
 	      (mark-position mark)
@@ -374,6 +387,16 @@
 			       false))
       (mark-permanent! mark)))
 
+(define (mark-right-inserting-copy mark)
+  (let ((group (mark-group mark)))
+    (%%make-permanent-mark group
+			   (if (and (mark-left-inserting? mark)
+				    (fix:= (mark-position mark)
+					   (group-gap-end group)))
+			       (group-gap-start group)
+			       (mark-position mark))
+			   false)))
+
 (define (mark-left-inserting mark)
   (if (mark-left-inserting? mark)
       (mark-permanent! mark)
@@ -385,33 +408,35 @@
 				   (mark-position mark))
 			       true))))
 
+(define (mark-left-inserting-copy mark)
+  (let ((group (mark-group mark)))
+    (%%make-permanent-mark group
+			   (if (and (not (mark-left-inserting? mark))
+				    (fix:= (mark-position mark)
+					   (group-gap-start group)))
+			       (group-gap-end group)
+			       (mark-position mark))
+			   true)))
+
 (define-integrable (%make-permanent-mark group index left-inserting?)
   (%%make-permanent-mark
    group
    (group-index->position-integrable group index left-inserting?)
    left-inserting?))
 
-(define-integrable recycle-permanent-marks?
-  false)
-
 (define (%%make-permanent-mark group position left-inserting?)
-  (or (and recycle-permanent-marks?
-	   (find-permanent-mark group position left-inserting?))
-      (let ((mark (%make-mark group position left-inserting?)))
-	(set-group-marks! group
-			  (system-pair-cons (ucode-type weak-cons)
-					    mark
-					    (group-marks group)))
-	mark)))
+  (let ((mark (%make-mark group position left-inserting?)))
+    (set-group-marks! group
+		      (system-pair-cons (ucode-type weak-cons)
+					mark
+					(group-marks group)))
+    mark))
 
 (define (mark-permanent! mark)
   (let ((group (mark-group mark)))
-    (or (if recycle-permanent-marks?
-	    (find-permanent-mark group
-				 (mark-position mark)
-				 (mark-left-inserting? mark))
-	    (let ((tail (weak-memq mark (group-marks group))))
-	      (and tail (system-pair-car tail))))
+    (or (let ((tail (weak-memq mark (group-marks group))))
+	  (and tail
+	       (system-pair-car tail)))
 	(begin
 	  (set-group-marks! group
 			    (system-pair-cons (ucode-type weak-cons)
@@ -460,52 +485,51 @@
 
 (define (mark-temporary! mark)
   ;; I'd think twice about using this one.
-  (if (not recycle-permanent-marks?)
-      (let ((group (mark-group mark)))
+  (let ((group (mark-group mark)))
 
-	(define (scan-head marks)
-	  (if (null? marks)
-	      (set-group-marks! group '())
-	      (let ((mark* (system-pair-car marks)))
-		(cond ((not mark*)
-		       (scan-head (system-pair-cdr marks)))
-		      ((eq? mark mark*)
-		       (set-group-marks! group (system-pair-cdr marks)))
-		      (else
-		       (set-group-marks! group marks)
-		       (scan-tail marks (system-pair-cdr marks)))))))
+    (define (scan-head marks)
+      (if (null? marks)
+	  (set-group-marks! group '())
+	  (let ((mark* (system-pair-car marks)))
+	    (cond ((not mark*)
+		   (scan-head (system-pair-cdr marks)))
+		  ((eq? mark mark*)
+		   (set-group-marks! group (system-pair-cdr marks)))
+		  (else
+		   (set-group-marks! group marks)
+		   (scan-tail marks (system-pair-cdr marks)))))))
 
-	(define (scan-tail previous marks)
-	  (if (not (null? marks))
-	      (let ((mark* (system-pair-car marks)))
-		(cond ((not mark*)
-		       (skip-nulls previous (system-pair-cdr marks)))
-		      ((eq? mark mark*)
-		       (system-pair-set-cdr! previous marks))
-		      (else
-		       (scan-tail marks (system-pair-cdr marks)))))))
+    (define (scan-tail previous marks)
+      (if (not (null? marks))
+	  (let ((mark* (system-pair-car marks)))
+	    (cond ((not mark*)
+		   (skip-nulls previous (system-pair-cdr marks)))
+		  ((eq? mark mark*)
+		   (system-pair-set-cdr! previous marks))
+		  (else
+		   (scan-tail marks (system-pair-cdr marks)))))))
 
-	(define (skip-nulls previous marks)
-	  (if (null? marks)
-	      (system-pair-set-cdr! previous '())
-	      (let ((mark* (system-pair-car marks)))
-		(cond ((not mark*)
-		       (skip-nulls previous (system-pair-cdr marks)))
-		      ((eq? mark mark*)
-		       (system-pair-set-cdr! previous (system-pair-cdr marks)))
-		      (else
-		       (system-pair-set-cdr! previous marks)
-		       (scan-tail marks (system-pair-cdr marks)))))))
+    (define (skip-nulls previous marks)
+      (if (null? marks)
+	  (system-pair-set-cdr! previous '())
+	  (let ((mark* (system-pair-car marks)))
+	    (cond ((not mark*)
+		   (skip-nulls previous (system-pair-cdr marks)))
+		  ((eq? mark mark*)
+		   (system-pair-set-cdr! previous (system-pair-cdr marks)))
+		  (else
+		   (system-pair-set-cdr! previous marks)
+		   (scan-tail marks (system-pair-cdr marks)))))))
 
-	(let ((marks (group-marks group)))
-	  (if (not (null? marks))
-	      (let ((mark* (system-pair-car marks)))
-		(cond ((not mark*)
-		       (scan-head (system-pair-cdr marks)))
-		      ((eq? mark mark*)
-		       (set-group-marks! group (system-pair-cdr marks)))
-		      (else
-		       (scan-tail marks (system-pair-cdr marks))))))))))
+    (let ((marks (group-marks group)))
+      (if (not (null? marks))
+	  (let ((mark* (system-pair-car marks)))
+	    (cond ((not mark*)
+		   (scan-head (system-pair-cdr marks)))
+		  ((eq? mark mark*)
+		   (set-group-marks! group (system-pair-cdr marks)))
+		  (else
+		   (scan-tail marks (system-pair-cdr marks)))))))))
 
 (define (find-permanent-mark group position left-inserting?)
 
