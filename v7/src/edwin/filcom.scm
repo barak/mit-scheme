@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: filcom.scm,v 1.212 2000/12/04 03:09:53 cph Exp $
+;;; $Id: filcom.scm,v 1.213 2000/12/05 21:52:49 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -57,7 +57,7 @@ If the current buffer now contains an empty file that you just visited
 \(presumably by mistake), use this command to visit the file you really want."
   (lambda ()
     (list
-     (prompt-for-existing-file
+     (prompt-for-file
       "Find alternate file"
       (let ((pathname (buffer-pathname (selected-buffer))))
 	(and pathname
