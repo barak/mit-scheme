@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.8 1991/09/08 02:31:35 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gcnote.scm,v 14.9 1991/11/26 06:43:48 cph Exp $
 
-Copyright (c) 1988-1991 Massachusetts Institute of Technology
+Copyright (c) 1988-91 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -51,7 +51,7 @@ MIT in each case. |#
     (thunk)))
 
 (define (gc-notification statistic)
-  (with-output-to-port (cmdl/output-port (nearest-cmdl))
+  (with-output-to-port (nearest-cmdl/port)
     (lambda ()
       (print-statistic statistic))))
 
