@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: verilog.scm,v 1.3 1997/03/07 23:34:54 cph Exp $
+;;;	$Id: verilog.scm,v 1.4 1997/03/10 05:40:20 cph Exp $
 ;;;
 ;;;	Copyright (c) 1996-97 Massachusetts Institute of Technology
 ;;;
@@ -71,9 +71,7 @@
 			 buffer)
     (local-set-variable! definition-start verilog-defun-start-regexp buffer)
     (local-set-variable! require-final-newline #t buffer)
-    (local-set-variable! keyparser-description
-			 verilog-keyparser-description
-			 buffer)
+    (local-set-variable! keyparser-description verilog-description buffer)
     (local-set-variable! keyword-table verilog-keyword-table buffer)
     (event-distributor/invoke! (ref-variable verilog-mode-hook buffer)
 			       buffer)))
@@ -118,7 +116,7 @@
 		    (match-forward "////" mark))
 		0)
 	       ((match-forward "///" mark)
-		(keyparser-compute-indentation mark))
+		(keyparser-compute-indentation mark #t))
 	       (else
 		(ref-variable comment-column mark)))))
     (if (within-indentation? mark)
@@ -179,63 +177,101 @@
   (+ (mark-indentation mark)
      (ref-variable verilog-continued-statement-offset mark)))
 
-(define verilog-keyparser-description
+(define verilog-description
   (make-keyparser-description
-   'PATTERNS
-   (map (lambda (entry)
-	  (list
-	   (make-keyparser-fragment 'KEYWORD
-				    (car entry)
-				    'PARSE-HEADER
-				    (caddr entry)
-				    'INDENT-HEADER
-				    continued-header-indent
-				    'PARSE-BODY
-				    keyparse-forward
-				    'INDENT-BODY
-				    continued-statement-indent)
-	   (and (cadr entry)
-		(make-keyparser-fragment 'KEYWORD
-					 (cadr entry)
-					 'PARSE-HEADER
-					 parse-forward-noop
-					 'INDENT-HEADER
-					 continued-header-indent
-					 'PARSE-BODY
-					 #f
-					 'INDENT-BODY
-					 #f))))
-	`(("always"	#f		,parse-forward-noop)
-	  ("begin"	"end"		,parse-forward-past-block-tag)
-	  ("case"	"endcase"	,forward-one-sexp)
-	  ("casex"	"endcase"	,forward-one-sexp)
-	  ("casez"	"endcase"	,forward-one-sexp)
-	  ("else"	#f		,parse-forward-noop)
-	  ("for"	#f		,forward-one-sexp)
-	  ("forever"	#f		,parse-forward-noop)
-	  ("fork"	"join"		,parse-forward-past-block-tag)
-	  ("function"	"endfunction"	,parse-forward-past-semicolon)
-	  ("if"		#f		,forward-one-sexp)
-	  ("initial"	#f		,parse-forward-noop)
-	  ("macromodule" "endmodule"	,parse-forward-past-semicolon)
-	  ("module"	"endmodule"	,parse-forward-past-semicolon)
-	  ("primitive"	"endprimitive"	,parse-forward-past-semicolon)
-	  ("repeat"	#f		,forward-one-sexp)
-	  ("table"	"endtable"	,parse-forward-noop)
-	  ("task"	"endtask"	,parse-forward-past-semicolon)
-	  ("while"	#f		,forward-one-sexp)))
-
-   'STATEMENT-LEADERS
-   `((,(re-compile-char #\# #f) . ,forward-one-sexp)
-     (,(re-compile-char #\@ #f) . ,forward-one-sexp))
-   
    'FIND-STATEMENT-END
    parse-forward-past-semicolon
-
    'INDENT-CONTINUED-STATEMENT
    continued-statement-indent
-   
    'INDENT-CONTINUED-COMMENT
    (lambda (mark)
-     (mark-column (or (verilog-comment-match-start mark) mark)))
-   ))
+     (mark-column (or (verilog-comment-match-start mark) mark)))))
+
+(define-keyparser-statement-leader #\# verilog-description
+  (re-compile-char #\# #f)
+  forward-one-sexp)
+
+(define-keyparser-statement-leader #\@ verilog-description
+  (re-compile-char #\@ #f)
+  forward-one-sexp)
+
+(define (define-standard-keyword keyword end parse-header)
+  (define-keyparser-pattern keyword verilog-description
+    (make-keyparser-fragment 'KEYWORD
+			     keyword
+			     'PARSE-HEADER
+			     parse-header
+			     'INDENT-HEADER
+			     continued-header-indent
+			     'PARSE-BODY
+			     keyparse-forward
+			     'INDENT-BODY
+			     continued-statement-indent)
+    (and end
+	 (make-keyparser-fragment 'KEYWORD
+				  end
+				  'PARSE-HEADER
+				  parse-forward-noop
+				  'INDENT-HEADER
+				  continued-header-indent
+				  'PARSE-BODY
+				  #f
+				  'INDENT-BODY
+				  #f))))
+
+(define-standard-keyword "always" #f
+  parse-forward-noop)
+
+(define-standard-keyword "begin" "end"
+  parse-forward-past-block-tag)
+
+(define-standard-keyword "case" "endcase"
+  forward-one-sexp)
+
+(define-standard-keyword "casex" "endcase"
+  forward-one-sexp)
+
+(define-standard-keyword "casez" "endcase"
+  forward-one-sexp)
+
+(define-standard-keyword "else" #f
+  parse-forward-noop)
+
+(define-standard-keyword "for" #f
+  forward-one-sexp)
+
+(define-standard-keyword "forever" #f
+  parse-forward-noop)
+
+(define-standard-keyword "fork" "join"
+  parse-forward-past-block-tag)
+
+(define-standard-keyword "function" "endfunction"
+  parse-forward-past-semicolon)
+
+(define-standard-keyword "if" #f
+  forward-one-sexp)
+
+(define-standard-keyword "initial" #f
+  parse-forward-noop)
+
+(define-standard-keyword "macromodule" "endmodule"
+  parse-forward-past-semicolon)
+
+(define-standard-keyword "module" "endmodule"
+  parse-forward-past-semicolon)
+
+(define-standard-keyword "primitive" "endprimitive"
+  parse-forward-past-semicolon)
+
+(define-standard-keyword "repeat" #f
+  forward-one-sexp)
+
+(define-standard-keyword "table" "endtable"
+  parse-forward-noop)
+
+(define-standard-keyword "task" "endtask"
+  parse-forward-past-semicolon)
+
+(define-standard-keyword "while" #f
+  forward-one-sexp)

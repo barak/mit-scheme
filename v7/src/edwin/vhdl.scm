@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: vhdl.scm,v 1.3 1997/03/08 00:21:37 cph Exp $
+;;;	$Id: vhdl.scm,v 1.4 1997/03/10 05:40:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1997 Massachusetts Institute of Technology
 ;;;
@@ -70,9 +70,7 @@
 			 buffer)
     (local-set-variable! definition-start vhdl-defun-start-regexp buffer)
     (local-set-variable! require-final-newline #t buffer)
-    (local-set-variable! keyparser-description
-			 vhdl-keyparser-description
-			 buffer)
+    (local-set-variable! keyparser-description vhdl-description buffer)
     (local-set-variable! keyword-table vhdl-keyword-table buffer)
     (event-distributor/invoke! (ref-variable vhdl-mode-hook buffer)
 			       buffer)))
@@ -114,7 +112,13 @@
 	 (cond ((match-forward "----" mark)
 		0)
 	       ((match-forward "---" mark)
-		(keyparser-compute-indentation mark))
+		(keyparser-compute-indentation mark #t))
+	       ((let ((s.e
+		       (let ((ls (line-start mark -1)))
+			 (and ls
+			      (vhdl-comment-locate ls)))))
+		  (and s.e
+		       (mark-column (car s.e)))))
 	       (else
 		(ref-variable comment-column mark)))))
     (if (within-indentation? mark)
@@ -127,7 +131,7 @@
    "^"
    (regexp-group "architecture" "configuration" "entity"
 		 "library" "package" "use")
-   (regexp-group "\\s " "$")))
+   (regexp-group "[^a-zA-Z0-9_]" "$")))
 
 (define vhdl-keyword-table
   (alist->string-table
@@ -154,18 +158,6 @@
   (+ (mark-indentation mark)
      (ref-variable vhdl-continued-statement-offset mark)))
 
-(define comatch:identifier-start
-  (comatch:general
-   (lambda (start end)
-     (and (re-match-forward "\\s \\|^" start end)
-	  start))))
-
-(define comatch:identifier-end
-  (comatch:general
-   (lambda (start end)
-     (and (re-match-forward "\\s \\|$" start end)
-	  start))))
-
 (define comatch:skip-whitespace
   (comatch:general
    (lambda (start end)
@@ -177,6 +169,12 @@
 		    (loop le)))
 	     start))))))
 
+(define comatch:identifier-end
+  (comatch:general
+   (lambda (start end)
+     (and (re-match-forward "[^a-zA-Z0-9_]\\|$" start end)
+	  start))))
+
 (define comatch:identifier
   (comatch:append comatch:skip-whitespace
 		  (comatch:regexp "[a-zA-Z][a-zA-Z0-9_]*")
@@ -187,23 +185,32 @@
 		  (comatch:string keyword)
 		  comatch:identifier-end))
 
-(define comatch:list
+(define (comatch:matched-sexp comatcher)
   (comatch:append comatch:skip-whitespace
-		  (comatch:and (comatch:char #\()
+		  (comatch:and comatcher
 			       comatch:sexp)))
-
-(define (match-for-loop mark)
-  (and (comatch-apply comatch:for-header:control mark)
-       mark))
 
-(define (match-for-component mark)
-  (and (comatch-apply comatch:for-header:component mark)
-       mark))
+(define comatch:list
+  (comatch:matched-sexp (comatch:char #\()))
 
-(define (match-for-block mark)
-  (and (not (or (comatch-apply comatch:for-header:control mark)
-		(comatch-apply comatch:for-header:component mark)))
-       mark))
+(define comatch:name
+  (let ((id-or-string
+	 (comatch:or comatch:identifier
+		     (comatch:matched-sexp (comatch:char #\")))))
+    (comatch:append
+     id-or-string
+     (comatch:*
+      (comatch:append
+       comatch:skip-whitespace
+       (comatch:or (comatch:append
+		    (comatch:char #\.)
+		    (comatch:or id-or-string
+				(comatch:matched-sexp (comatch:char #\'))))
+		   comatch:list
+		   (comatch:append
+		    (comatch:? (comatch:matched-sexp (comatch:char #\[)))
+		    (comatch:char #\')
+		    comatch:identifier)))))))
 
 (define comatch:for-header:control
   (comatch:append comatch:identifier
@@ -218,24 +225,9 @@
 		  comatch:skip-whitespace
 		  (comatch:char #\:)))
 
-(define (match-if-then mark)
-  (and (eq? 'THEN (classify-if-header mark))
-       mark))
-
-(define (match-if-generate mark)
-  (and (eq? 'GENERATE (classify-if-header mark))
-       mark))
-
-(define (classify-if-header mark)
-  (let ((m (parse-forward-past-generate/then mark (group-end mark))))
-    (and m
-	 (let ((s (backward-one-sexp m)))
-	   (and s
-		(let ((e (forward-one-sexp s)))
-		  (and e
-		       (if (string-ci=? "then" (extract-string s e))
-			   'THEN
-			   'GENERATE))))))))
+(define comatch:for-header:block
+  (comatch:not (comatch:or comatch:for-header:control
+			   comatch:for-header:component)))
 
 (define ((parse-forward-past search) start end)
   (let loop ((start start) (state #f))
@@ -256,9 +248,9 @@
 (define (parse-forward-past-token token)
   (parse-forward-past
    (let ((regexp
-	  (string-append (regexp-group "\\s " "^")
+	  (string-append (regexp-group "[^a-zA-Z0-9_]" "^")
 			 token
-			 (regexp-group "\\s " "$"))))
+			 (regexp-group "[^a-zA-Z0-9_]" "$"))))
      (lambda (start end)
        (re-search-forward regexp start end)))))
 
@@ -268,104 +260,224 @@
 (define parse-forward-past-then
   (parse-forward-past-token "then"))
 
-(define parse-forward-past-generate/then
-  (parse-forward-past-token (regexp-group "generate" "then")))
+(define parse-forward-past-=>
+  (parse-forward-past-token "=>"))
 
 (define (parse-forward-noop start end)
   end
   start)
 
-(define (parse-process-header start end)
-  (comatch-apply comatch:process-header start end))
+(define (parse-comatch comatcher)
+  (lambda (start end)
+    (comatch-apply comatcher start end)))
 
-(define comatch:process-header
-  (comatch:append (comatch:? comatch:list)
-		  (comatch:? (comatch:keyword "is"))))
+(define parse-forward-past-name
+  (parse-comatch comatch:name))
 
-(define (parse-postponed-header start end)
-  (comatch-apply comatch:postponed-header start end))
-
-(define comatch:postponed-header
-  (comatch:append (comatch:keyword "process")
-		  comatch:process-header))
-
-(define (parse-component-header start end)
-  (comatch-apply comatch:component-header start end))
-
-(define comatch:component-header
-  (comatch:append comatch:identifier
-		  (comatch:? (comatch:keyword "is"))))
+(define (trailing-keyword-matcher keyword . keywords)
+  (let ((parser
+	 (parse-forward-past-token (apply regexp-group keyword keywords))))
+    (lambda (mark stack)
+      stack
+      (let ((m (parser mark (group-end mark))))
+	(and m
+	     (let ((s (backward-one-sexp m)))
+	       (and s
+		    (let ((e (forward-one-sexp s)))
+		      (and e
+			   (string-ci=? keyword (extract-string s e))
+			   m)))))))))
 
-(define vhdl-keyparser-description
+(define vhdl-description
   (make-keyparser-description
-   'PATTERNS
-   (let ((standard-keyword
-	  (lambda (keyword match-header parse-header . rest)
-	    (apply make-keyparser-fragment
-		   'KEYWORD
-		   keyword
-		   'MATCH-HEADER
-		   match-header
-		   'PARSE-HEADER
-		   parse-header
-		   'INDENT-HEADER
-		   continued-header-indent
-		   'PARSE-BODY
-		   keyparse-forward
-		   'INDENT-BODY
-		   continued-statement-indent
-		   rest))))
-     (let ((begin-frag (standard-keyword "begin" #f parse-forward-noop))
-	   (end-frag (standard-keyword "end" #f parse-forward-past-semicolon)))
-       (append
-	(map (lambda (entry)
-	       (cons* (standard-keyword (car entry) (cadr entry) (caddr entry))
-		      end-frag
-		      (cdddr entry)))
-	     `(("architecture" #f ,parse-forward-past-is ,begin-frag)
-	       ("block" #f ,parse-process-header ,begin-frag)
-	       ("case" #f ,parse-forward-past-is)
-	       ("component" #f ,parse-component-header ,begin-frag)
-	       ("configuration" #f ,parse-forward-past-is)
-	       ("entity" #f ,parse-forward-past-is ,begin-frag)
-	       ("for" ,match-for-block ,parse-forward-noop)
-	       ("for" ,match-for-component ,(parse-forward-past-char #\:))
-	       ("for" ,match-for-loop
-		      ,(parse-forward-past-token
-			(regexp-group "generate" "loop")))
-	       ("function" #f ,parse-forward-past-is ,begin-frag)
-	       ("pure" #f ,parse-forward-past-is ,begin-frag)
-	       ("impure" #f ,parse-forward-past-is ,begin-frag)
-	       ("if" ,match-if-then
-		     ,parse-forward-past-then
-		     ,(standard-keyword "elsif" #f parse-forward-past-then)
-		     ,(standard-keyword "else" #f parse-forward-noop))
-	       ("if" ,match-if-generate ,parse-forward-past-generate/then)
-	       ("loop" #f ,parse-forward-noop)
-	       ("package" #f ,parse-forward-past-is)
-	       ("procedure" #f ,parse-forward-past-is ,begin-frag)
-	       ("process" #f ,parse-process-header ,begin-frag)
-	       ("postponed" #f ,parse-postponed-header ,begin-frag)
-	       ("range" #f ,(parse-forward-past-token "units"))
-	       ("record" #f ,parse-forward-noop)
-	       ("while" #f ,(parse-forward-past-token "loop"))))
-	(list
-	 (let ((when
-		(standard-keyword "when" #f (parse-forward-past-token "=>"))))
-	   (list when
-		 (standard-keyword "end" #f parse-forward-past-semicolon
-				   'POP-CONTAINER 1)
-		 when))))))
-
-   'STATEMENT-LEADERS
-   `((,(re-compile-pattern "[a-zA-Z0-9_]+\\s *:" #f) . ,parse-forward-noop))
-
    'FIND-STATEMENT-END
    parse-forward-past-semicolon
-
    'INDENT-CONTINUED-STATEMENT
    continued-statement-indent
-
    'INDENT-CONTINUED-COMMENT
    (lambda (mark)
      (mark-column (or (vhdl-comment-match-start mark) mark)))))
+
+(define-keyparser-statement-leader 'LABEL vhdl-description
+  "[a-zA-Z][a-zA-Z0-9_]*\\s *:"
+  parse-forward-noop)
+
+(define (define-matched-keyword pkey keyword match-header parse-header end
+	  . rest)
+  (define-keyparser-pattern pkey vhdl-description
+    (cons* (standard-keyword keyword match-header parse-header)
+	   end
+	   rest)))
+
+(define (define-standard-keyword pkey keyword parse-header end . rest)
+  (apply define-matched-keyword pkey keyword #f parse-header end rest))
+
+(define (standard-keyword keyword match-header parse-header . rest)
+  (apply make-keyparser-fragment
+	 'KEYWORD keyword
+	 'MATCH-HEADER match-header
+	 'PARSE-HEADER parse-header
+	 'INDENT-HEADER continued-header-indent
+	 'PARSE-BODY keyparse-forward
+	 'INDENT-BODY continued-statement-indent
+	 rest))
+
+(define begin-frag (standard-keyword "begin" #f parse-forward-noop))
+(define end-frag (standard-keyword "end" #f parse-forward-past-semicolon))
+
+(define-standard-keyword 'ARCHITECTURE "architecture"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'BLOCK "block"
+  (parse-comatch
+   (comatch:append (comatch:? comatch:list)
+		   (comatch:? (comatch:keyword "is"))))
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'CASE "case"
+  parse-forward-past-is
+  end-frag)
+
+(define-standard-keyword 'COMPONENT "component"
+  (parse-comatch
+   (comatch:append comatch:identifier
+		   (comatch:? (comatch:keyword "is"))))
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'CONFIGURATION "configuration"
+  parse-forward-past-is
+  end-frag)
+
+(define-standard-keyword 'ENTITY "entity"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'FUNCTION "function"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-standard-keyword '(FUNCTION IMPURE) "impure"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-standard-keyword '(FUNCTION PURE) "pure"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-matched-keyword '(GENERATE FOR) "for"
+  (let ((parser (trailing-keyword-matcher "generate" "loop")))
+    (lambda (mark stack)
+      (let ((mark (comatch-apply comatch:for-header:control mark)))
+	(and mark
+	     (parser mark stack)))))
+  parse-forward-noop
+  end-frag)
+
+(define-matched-keyword '(GENERATE IF) "if"
+  (trailing-keyword-matcher "generate" "then")
+  parse-forward-noop
+  end-frag)
+
+(define-matched-keyword 'IF "if"
+  (trailing-keyword-matcher "then" "generate")
+  parse-forward-noop
+  end-frag
+  (standard-keyword "elsif" #f parse-forward-past-then)
+  (standard-keyword "else" #f parse-forward-noop))
+
+(define-standard-keyword 'LOOP "loop"
+  parse-forward-noop
+  end-frag)
+
+(define-matched-keyword '(LOOP FOR) "for"
+  (let ((parser (trailing-keyword-matcher "loop" "generate")))
+    (lambda (mark stack)
+      (let ((mark (comatch-apply comatch:for-header:control mark)))
+	(and mark
+	     (parser mark stack)))))
+  parse-forward-noop
+  end-frag)
+
+(define-standard-keyword '(LOOP WHILE) "while"
+  (parse-forward-past-token "loop")
+  end-frag)
+
+(define-standard-keyword 'PACKAGE "package"
+  parse-forward-past-is
+  end-frag)
+
+(define-standard-keyword 'PROCEDURE "procedure"
+  parse-forward-past-is
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'PROCESS "process"
+  (parse-comatch
+   (comatch:append (comatch:? comatch:list)
+		   (comatch:? (comatch:keyword "is"))))
+  end-frag
+  begin-frag)
+
+(define-standard-keyword '(PROCESS POSTPONED) "postponed"
+  (parse-comatch
+   (comatch:append (comatch:keyword "process")
+		   (comatch:? comatch:list)
+		   (comatch:? (comatch:keyword "is"))))
+  end-frag
+  begin-frag)
+
+(define-standard-keyword 'RECORD "record"
+  parse-forward-noop
+  end-frag)
+
+(define-standard-keyword 'UNITS "range"
+  (parse-forward-past-token "units")
+  end-frag)
+
+(define-standard-keyword 'WHEN "when"
+  parse-forward-past-=>
+  (standard-keyword "end" #f parse-forward-past-semicolon 'POP-CONTAINER 1)
+  (standard-keyword "when" #f parse-forward-past-=>))
+
+(define-standard-keyword 'WITH "with"
+  (parse-forward-past-token "select")
+  #f)
+
+(define-matched-keyword 'COMPONENT-SPECIFICATION "for"
+  (lambda (mark stack)
+    (let ((mark (comatch-apply comatch:for-header:component mark)))
+      (and mark
+	   (in-configuration? stack)
+	   mark)))
+  parse-forward-past-name
+  end-frag)
+
+(define-matched-keyword 'CONFIGURATION-SPECIFICATION "for"
+  (lambda (mark stack)
+    (let ((mark (comatch-apply comatch:for-header:component mark)))
+      (and mark
+	   (not (in-configuration? stack))
+	   mark)))
+  parse-forward-past-name
+  #f)
+
+(define (in-configuration? stack)
+  (there-exists? stack
+    (lambda (entry)
+      (equal? 'CONFIGURATION (keyparser-stack-entry/keyword entry)))))
+
+(define-matched-keyword 'BLOCK-CONFIGURATION "for"
+  (lambda (mark stack)
+    stack
+    (and (comatch-apply comatch:for-header:block mark)
+	 mark))
+  parse-forward-noop
+  end-frag)
