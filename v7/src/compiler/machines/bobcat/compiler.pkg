@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.37 1992/07/29 22:04:11 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.38 1992/07/29 23:10:00 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -180,7 +180,7 @@ MIT in each case. |#
 	  *rtl-graphs*)
   (import (runtime compiler-info)
 	  make-dbg-info-vector
-	  inf-structure->bif/bsm)
+	  split-inf-structure!)
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*))
 
