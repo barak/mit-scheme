@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.109 2002/11/20 19:46:07 cph Exp $
+$Id: boot.c,v 9.110 2002/12/27 03:17:38 cph Exp $
 
 Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
@@ -387,6 +387,12 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
 		    SCHEME_VERSION, SCHEME_SUBVERSION);
       outf_console ("MIT Scheme running under %s\n", OS_Variant);
       OS_announcement ();
+      outf_console ("\nMIT Scheme comes with ABSOLUTELY NO WARRANTY.\n");
+      outf_console
+	("This is free software, and you are welcome to redistribute it\n");
+      outf_console
+	("under certain conditions; for details, see the file COPYING\n");
+      outf_console ("included with this program.\n\n");
       outf_flush_console ();
     }
   if (I_Am_Master)
