@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.22 2000/04/10 19:09:18 cph Exp $
+$Id: ed-ffi.scm,v 1.23 2000/04/11 04:01:05 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -56,6 +56,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     ("cpoint"	(runtime control-point)
 		syntax-table/system-internal)
     ("cpress"	(runtime compress)
+		syntax-table/system-internal)
+    ("crypto"	(runtime crypto)
 		syntax-table/system-internal)
     ("datime"	(runtime date/time)
 		syntax-table/system-internal)
