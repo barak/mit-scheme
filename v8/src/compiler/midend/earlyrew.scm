@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: earlyrew.scm,v 1.13 1995/08/19 01:33:51 adams Exp $
+$Id: earlyrew.scm,v 1.14 1995/08/31 15:23:51 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -165,20 +165,13 @@ MIT in each case. |#
 	(right-sided? (if (default-object? right-sided?)
 			  false
 			  right-sided?))
-	(%test (if (zero? n-bits)
-		   (lambda (name)
-		     `(CALL (QUOTE ,%machine-fixnum?)
-			    (QUOTE #F)
-			    (LOOKUP ,name)))
-		   (lambda (name)
-		     `(CALL (QUOTE ,%small-fixnum?)
-			    (QUOTE #F)
-			    (LOOKUP ,name)
-			    (QUOTE ,n-bits)))))
-	(test (if (zero? n-bits)
-		  machine-fixnum?
-		  (lambda (value)
-		    (small-fixnum? value n-bits)))))
+	(%test (lambda (name)
+		 `(CALL (QUOTE ,%small-fixnum?)
+			(QUOTE #F)
+			(LOOKUP ,name)
+			(QUOTE ,n-bits))))
+	(test (lambda (value)
+		(small-fixnum? value n-bits))))
     (lambda (form x y)
       (cond ((form/number? x)
 	     => (lambda (x-value)

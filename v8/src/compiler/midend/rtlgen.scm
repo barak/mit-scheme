@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.38 1995/08/19 15:33:00 adams Exp $
+$Id: rtlgen.scm,v 1.39 1995/08/31 15:25:40 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -3127,7 +3127,6 @@ MIT in each case. |#
   (define-simple-value-test/inverted 'NOT    'FALSE?  not)
   (define-simple-value-test/inverted 'FALSE? 'FALSE?  false?)
   (define-simple-value-test 'FIXNUM?         'FIXNUM?       fixnum?)
-  (define-simple-value-test %machine-fixnum? 'FIXNUM?       fixnum?)
   (define-simple-value-test 'INDEX-FIXNUM?   'INDEX-FIXNUM? index-fixnum?))
 
 (let ((define-simple-tag-test

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: laterew.scm,v 1.14 1995/08/23 14:07:19 adams Exp $
+$Id: laterew.scm,v 1.15 1995/08/31 15:25:13 adams Exp $
 
 Copyright (c) 1994-1995 Massachusetts Institute of Technology
 
@@ -138,17 +138,6 @@ MIT in each case. |#
 			     (LOOKUP ,name)
 			     (QUOTE ,(n-bits constant-rand)))
 		      `(QUOTE #F))))
-	       #|			;
-	       ;; Always open code as %small-fixnum?
-	       ;; So that generic arithmetic can be
-	       ;; recognized=>optimized at the RTL level
-	       ((zero? n-bits)
-		(lambda (name constant-rand)
-		  constant-rand		; ignored
-		  `(CALL (QUOTE ,%machine-fixnum?)
-			 (QUOTE #F)
-			 (LOOKUP ,name))))
-	       |#
 	       (else
 		(lambda (name constant-rand)
 		  constant-rand		; ignored		  

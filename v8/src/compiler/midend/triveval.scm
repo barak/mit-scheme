@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: triveval.scm,v 1.5 1995/06/22 15:09:07 adams Exp $
+$Id: triveval.scm,v 1.6 1995/08/31 15:26:05 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -433,7 +433,6 @@ MIT in each case. |#
     ; (declare-operator %invoke-continuation identity-procedure)
     (declare-operator %vector-index vector-index)
 
-    (declare-operator %machine-fixnum? machine-fixnum?)
     (declare-operator %small-fixnum? small-fixnum?)
     (declare-operator %+ +)
     (declare-operator %- -)
