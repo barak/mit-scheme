@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.60 1989/08/09 13:16:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.61 1989/08/10 04:42:31 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -52,6 +52,12 @@
   interactive-specification
   procedure)
 
+(unparser/set-tagged-vector-method!
+ %command-tag
+ (unparser/standard-method 'COMMAND
+   (lambda (state command)
+     (unparse-object state (command-name command)))))
+
 (define (command-name-string command)
   (editor-name/internal->external (symbol->string (command-name command))))
 
@@ -98,6 +104,13 @@
   value
   assignment-daemons
   buffer-local?)
+
+(unparser/set-tagged-vector-method!
+ %variable-tag
+ (unparser/standard-method 'VARIABLE
+   (lambda (state variable)
+     (unparse-object state (variable-name variable)))))
+
 (define (variable-name-string variable)
   (editor-name/internal->external (symbol->string (variable-name variable))))
 

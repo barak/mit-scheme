@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.24 1989/08/09 13:17:56 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modes.scm,v 1.25 1989/08/10 04:42:21 cph Rel $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -55,6 +55,15 @@
   initialization
   alist
   )
+
+(unparser/set-tagged-vector-method!
+ %mode-tag
+ (unparser/standard-method 'MODE
+   (lambda (state mode)
+     (unparse-object state (mode-name mode))
+     (if (not (mode-major? mode))
+	 (unparse-string state " (minor)")))))
+
 (define (make-mode name major? display-name comtabs description initialization)
   (let ((mode
 	 (let ((name (symbol->string name)))

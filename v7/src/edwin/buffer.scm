@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.133 1989/08/09 14:43:20 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/buffer.scm,v 1.134 1989/08/10 04:42:50 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989 Massachusetts Institute of Technology
 ;;;
@@ -65,6 +65,13 @@
   backed-up?
   modification-time
   )
+
+(unparser/set-tagged-vector-method!
+ %buffer-tag
+ (unparser/standard-method 'BUFFER
+   (lambda (state buffer)
+     (unparse-object state (buffer-name buffer)))))
+
 (define-variable buffer-creation-hook
   "If not false, a procedure to call when a new buffer is created.
 The procedure is passed the new buffer as its argument.
