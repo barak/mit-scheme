@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.2 1993/10/26 03:02:40 jawilson Exp $
+$Id: rulflo.scm,v 1.3 1993/10/26 20:00:55 gjr Exp $
 
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
@@ -142,9 +142,9 @@ MIT in each case. |#
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-1-ARG (? operation) (REGISTER (? source)) (? overflow?)))
   overflow?				;ignore
-  (let ((source (standard-source! source 'double)))
+  (let ((source (standard-source! source 'DOUBLE)))
     ((flonum-1-arg/operator operation)
-     (standard-target! target 'double)
+     (standard-target! target 'DOUBLE)
      source)))
 
 (define (flonum-1-arg/operator operation)
@@ -191,7 +191,7 @@ MIT in each case. |#
   (let ((source1 (standard-source! source1 'double))
 	(source2 (standard-source! source2 'double)))
     ((flonum-2-args/operator operation)
-     (standard-target! target 'double)
+     (standard-target! target 'DOUBLE)
      source1
      source2)))
 
