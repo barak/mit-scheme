@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.17 2004/05/26 17:43:18 cph Exp $
+$Id: unicode.scm,v 1.18 2004/05/27 14:03:06 cph Exp $
 
 Copyright 2001,2003,2004 Massachusetts Institute of Technology
 
@@ -82,13 +82,13 @@ USA.
 	      (LET* ((,(list-ref form 3)
 		      (IF (OR (DEFAULT-OBJECT? ,end) (NOT ,end))
 			  (STRING-LENGTH ,string)
-			  (GUARANTEE-SUBSTRING-END-INDEX
-			   ,end (STRING-LENGTH ,string) ,caller)))
+			  (GUARANTEE-LIMITED-INDEX ,end (STRING-LENGTH ,string)
+						   ,caller)))
 		     (,(list-ref form 2)
 		      (IF (OR (DEFAULT-OBJECT? ,start) (NOT ,start))
 			  0
-			  (GUARANTEE-SUBSTRING-START-INDEX
-			   ,start ,(list-ref form 3) ,caller))))
+			  (GUARANTEE-LIMITED-INDEX ,start ,(list-ref form 3)
+						   ,caller))))
 		,@(map (let ((excludes
 			      (list (list-ref form 2) (list-ref form 3))))
 			 (lambda (expr)
@@ -138,10 +138,8 @@ USA.
     (get-output-string port)))
 
 (define (initialize-package!)
-  (initialize-output-port!)
-  (initialize-input-port!)
-  (initialize-utf-output-ports!)
-  unspecific)
+  (initialize-wide-ports!)
+  (initialize-utf-ports!))
 
 ;;;; Unicode characters
 
@@ -159,9 +157,7 @@ USA.
 
 (define (unicode-code-point? object)
   (and (index-fixnum? object)
-       (if (fix:< object #x10000)
-	   (not (illegal-code? object))
-	   (fix:< object char-code-limit))))
+       (legal-code-32? object)))
 
 (define-integrable (guarantee-unicode-code-point object caller)
   (if (not (unicode-code-point? object))
@@ -170,7 +166,15 @@ USA.
 (define (error:not-unicode-code-point object caller)
   (error:wrong-type-argument object "a Unicode code point" caller))
 
-(define-integrable (illegal-code? pt)
+(define-integrable (legal-code-32? pt)
+  (if (fix:< pt #x10000)
+      (legal-code-16? pt)
+      (fix:< pt char-code-limit)))
+
+(define-integrable (legal-code-16? pt)
+  (not (illegal-code-16? pt)))
+
+(define-integrable (illegal-code-16? pt)
   (or (fix:= #xD800 (fix:and #xF800 pt))
       (fix:= #xFFFE (fix:and #xFFFE pt))))
 
@@ -577,7 +581,7 @@ USA.
 
 (define-integrable (%wide-string-set! string index char)
   (vector-set! (wide-string-contents string) index char))
-
+
 (define (wide-substring string start end)
   (guarantee-wide-substring string start end 'WIDE-SUBSTRING)
   (%wide-substring string start end))
@@ -591,7 +595,7 @@ USA.
 	  ((not (fix:< i end)))
 	(vector-set! v2 j (vector-ref v1 i))))
     string*))
-
+
 (define-integrable (guarantee-wide-string object caller)
   (if (not (wide-string? object))
       (error:not-wide-string object caller)))
@@ -620,136 +624,45 @@ USA.
 
 (define (guarantee-wide-substring/fail string start end caller)
   (guarantee-wide-string string caller)
-  (guarantee-substring-end-index end (%wide-string-length string) caller)
-  (guarantee-substring-start-index start end caller))
-
-(define open-wide-output-string)
-(define call-with-wide-output-string)
-
-(define (initialize-output-port!)
-  (set! open-wide-output-string
-	(let ((type
-	       (make-port-type
-		`((WRITE-CHAR
-		   ,(lambda (port char)
-		      (guarantee-wide-char char 'WRITE-CHAR)
-		      (without-interrupts
-		       (lambda ()
-			 (let* ((v (port/state port))
-				(n (fix:+ (vector-ref v 0) 1)))
-			   (if (fix:< n (vector-length v))
-			       (begin
-				 (vector-set! v n char)
-				 (vector-set! v 0 n))
-			       (let ((v
-				      (vector-grow
-				       v
-				       (fix:- (fix:* (vector-length v) 2)
-					      1))))
-				 (vector-set! v n char)
-				 (vector-set! v 0 n)
-				 (set-port/state! port v)
-				 v)))))
-		      1))
-		  (EXTRACT-OUTPUT!
-		   ,(lambda (port)
-		      (%make-wide-string
-		       (without-interrupts
-			(lambda ()
-			  (let ((v (port/state port)))
-			    (subvector v 1 (fix:+ (vector-ref v 0) 1))))))))
-		  (WRITE-SELF
-		   ,(lambda (port port*)
-		      port
-		      (write-string " to wide string" port*))))
-		#f)))
-	  (lambda ()
-	    (make-port type
-		       (let ((v (make-vector 17)))
-			 (vector-set! v 0 0)
-			 v)))))
-  (set! call-with-wide-output-string
-	(make-call-with-output-string open-wide-output-string))
-  unspecific)
+  (guarantee-limited-index end (%wide-string-length string) caller)
+  (guarantee-limited-index start end caller))
 
 (define (string->wide-string string #!optional start end)
   (guarantee-string string 'STRING->WIDE-STRING)
   (let* ((end
 	  (if (or (default-object? end) (not end))
 	      (string-length string)
-	      (guarantee-substring-end-index end (string-length string)
-					     'STRING->WIDE-STRING)))
+	      (guarantee-limited-index end (string-length string)
+				       'STRING->WIDE-STRING)))
 	 (start
 	  (if (or (default-object? start) (not start))
 	      0
-	      (guarantee-substring-start-index start end
-					       'STRING->WIDE-STRING)))
-	 (n (fix:- end start))
-	 (v (make-vector n)))
+	      (guarantee-limited-index start end 'STRING->WIDE-STRING)))
+	 (v (make-vector (fix:- end start))))
     (do ((i start (fix:+ i 1))
 	 (j 0 (fix:+ j 1)))
 	((not (fix:< i end)))
       (vector-set! v j (string-ref string i)))
     (%make-wide-string v)))
-
-(define (open-wide-input-string string #!optional start end)
-  (guarantee-wide-string string 'OPEN-WIDE-INPUT-STRING)
-  (let* ((end
+
+(define (wide-string->string string #!optional start end)
+  (guarantee-wide-string string 'WIDE-STRING->STRING)
+  (let* ((v (wide-string-contents string))
+	 (end
 	  (if (or (default-object? end) (not end))
-	      (wide-string-length string)
-	      (guarantee-substring-end-index end (%wide-string-length string)
-					     'OPEN-WIDE-INPUT-STRING)))
+	      (vector-length v)
+	      (guarantee-limited-index end (vector-length v)
+				       'WIDE-STRING->STRING)))
 	 (start
 	  (if (or (default-object? start) (not start))
 	      0
-	      (guarantee-substring-start-index start end
-					       'OPEN-WIDE-INPUT-STRING))))
-    (make-port ws-input-port-type (make-istate string start end))))
-
-(define ws-input-port-type)
-(define (initialize-input-port!)
-  (set! ws-input-port-type
-	(make-port-type
-	 `((CHAR-READY?
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (fix:< (istate-start s) (istate-end s)))))
-	   (READ-CHAR
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (let ((start (istate-start s)))
-		      (if (fix:< start (istate-end s))
-			  (begin
-			    (set-istate-start! s (fix:+ start 1))
-			    (%wide-string-ref (istate-string s) start))
-			  (make-eof-object port))))))))
-	   (WRITE-SELF
-	    ,(lambda (port output-port)
-	       port
-	       (write-string " from wide string" output-port))))
-	 #f))
-  unspecific)
-
-(define-structure (istate (type vector))
-  (string #f read-only #t)
-  start
-  (end #f read-only #t))
-
-(define (wide-string->string string #!optional start end)
-  (let ((input
-	 (open-wide-input-string string
-				 (if (default-object? start) #f start)
-				 (if (default-object? end) #f end))))
-    (call-with-output-string
-     (lambda (output)
-       (let loop ()
-	 (let ((char (read-char input)))
-	   (if (not (eof-object? char))
-	       (begin
-		 (write-char char output)
-		 (loop)))))))))
+	      (guarantee-limited-index start end 'WIDE-STRING->STRING)))
+	 (s (make-string (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (string-set! s j (vector-ref v i)))
+    s))
 
 ;;;; UTF-32 representation
 
@@ -781,7 +694,8 @@ USA.
 	   (if (not (and b1 b2 b3))
 	       (error "Truncated UTF-32 input."))
 	   (let ((pt (combiner b0 b1 b2 b3)))
-	     (guarantee-unicode-code-point pt caller)
+	     (if (not (legal-code-32? pt))
+		 (error:not-unicode-code-point pt caller))
 	     (integer->char pt))))))
 
 (define-integrable (utf32-be-bytes->code-point b0 b1 b2 b3)
@@ -824,69 +738,50 @@ USA.
     (sink 0)))
 
 (define (utf32-string->wide-string string #!optional start end)
-  (%utf32-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      (if (host-big-endian?)
-				  source-utf32-be-char
-				  source-utf32-le-char)
-			      'UTF32-STRING->WIDE-STRING))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   (if (host-big-endian?)
+			       source-utf32-be-char
+			       source-utf32-le-char)
+			   'UTF32-STRING->WIDE-STRING))
 
 (define (utf32-be-string->wide-string string #!optional start end)
-  (%utf32-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      source-utf32-be-char
-			      'UTF32-BE-STRING->WIDE-STRING))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   source-utf32-be-char
+			   'UTF32-BE-STRING->WIDE-STRING))
 
 (define (utf32-le-string->wide-string string #!optional start end)
-  (%utf32-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      source-utf32-le-char
-			      'UTF32-LE-STRING->WIDE-STRING))
-
-(define (%utf32-string->wide-string string start end source-utf32-char caller)
-  (let ((source (open-input-byte-buffer string start end)))
-    (call-with-wide-output-string
-     (lambda (output)
-       (let loop ()
-	 (let ((char (source-utf32-char source caller)))
-	   (if char
-	       (begin
-		 (write-char char output)
-		 (loop)))))))))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   source-utf32-le-char
+			   'UTF32-LE-STRING->WIDE-STRING))
 
 (define (wide-string->utf32-string string #!optional start end)
-  (%wide-string->utf32-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      (if (host-big-endian?)
-				  sink-utf32-be-char
-				  sink-utf32-le-char)))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   (if (host-big-endian?)
+			       sink-utf32-be-char
+			       sink-utf32-le-char)
+			   'WIDE-STRING->UTF32-STRING))
 
 (define (wide-string->utf32-be-string string #!optional start end)
-  (%wide-string->utf32-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      sink-utf32-be-char))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   sink-utf32-be-char
+			   'WIDE-STRING->UTF32-BE-STRING))
 
 (define (wide-string->utf32-le-string string #!optional start end)
-  (%wide-string->utf32-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      sink-utf32-le-char))
-
-(define (%wide-string->utf32-string string start end sink-utf32-char)
-  (let ((input (open-wide-input-string string start end)))
-    (call-with-output-byte-buffer
-     (lambda (sink)
-       (let loop ()
-	 (let ((char (read-char input)))
-	   (if (not (eof-object? char))
-	       (begin
-		 (sink-utf32-char char sink)
-		 (loop)))))))))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   sink-utf32-le-char
+			   'WIDE-STRING->UTF32-LE-STRING))
 
 (define (utf32-string-length string #!optional start end)
   (if (host-big-endian?)
@@ -960,11 +855,9 @@ USA.
     (vector-8b-ref string (fix:+ start i)))
 
   (if (fix:< start end)
-      (let ((start* (fix:+ start 4)))
-	(and (fix:<= start* end)
-	     (let ((pt (combiner (n 0) (n 1) (n 2) (n 3))))
-	       (and (unicode-code-point? pt)
-		    start*))))
+      (and (fix:<= (fix:+ start 4) end)
+	   (legal-code-32? (combiner (n 0) (n 1) (n 2) (n 3)))
+	   (fix:+ start 4))
       start))
 
 ;;;; UTF-16 representation
@@ -991,17 +884,18 @@ USA.
 (define-integrable (source-utf16-char source combinator caller)
   (let ((d0 (source-utf16-digit source combinator)))
     (and d0
-	 (let ((pt
-		(if (high-surrogate? d0)
-		    (let ((d1 (source-utf16-digit source combinator)))
-		      (if (not d1)
-			  (error "Truncated UTF-16 input."))
-		      (if (not (low-surrogate? d1))
-			  (error "Illegal UTF-16 subsequent digit:" d1))
-		      (combine-surrogates d0 d1))
-		    d0)))
-	   (guarantee-unicode-code-point pt caller)
-	   (integer->char pt)))))
+	 (integer->char
+	  (if (high-surrogate? d0)
+	      (let ((d1 (source-utf16-digit source combinator)))
+		(if (not d1)
+		    (error "Truncated UTF-16 input."))
+		(if (not (low-surrogate? d1))
+		    (error "Illegal UTF-16 subsequent digit:" d1))
+		(combine-surrogates d0 d1))
+	      (begin
+		(if (illegal-code-16? d0)
+		    (error:not-unicode-code-point d0 caller))
+		d0))))))
 
 (define-integrable (source-utf16-digit source combinator)
   (let ((b0 (source)))
@@ -1045,69 +939,50 @@ USA.
 	  (dissecter (fix:or #xDC00 (fix:and s #x3FF)) sink)))))
 
 (define (utf16-string->wide-string string #!optional start end)
-  (%utf16-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      (if (host-big-endian?)
-				  source-utf16-be-char
-				  source-utf16-le-char)
-			      'UTF16-STRING->WIDE-STRING))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   (if (host-big-endian?)
+			       source-utf16-be-char
+			       source-utf16-le-char)
+			   'UTF16-STRING->WIDE-STRING))
 
 (define (utf16-be-string->wide-string string #!optional start end)
-  (%utf16-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      source-utf16-be-char
-			      'UTF16-BE-STRING->WIDE-STRING))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   source-utf16-be-char
+			   'UTF16-BE-STRING->WIDE-STRING))
 
 (define (utf16-le-string->wide-string string #!optional start end)
-  (%utf16-string->wide-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      source-utf16-le-char
-			      'UTF16-LE-STRING->WIDE-STRING))
-
-(define (%utf16-string->wide-string string start end source-utf16-char caller)
-  (let ((source (open-input-byte-buffer string start end)))
-    (call-with-wide-output-string
-     (lambda (output)
-       (let loop ()
-	 (let ((char (source-utf16-char source caller)))
-	   (if char
-	       (begin
-		 (write-char char output)
-		 (loop)))))))))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   source-utf16-le-char
+			   'UTF16-LE-STRING->WIDE-STRING))
 
 (define (wide-string->utf16-string string #!optional start end)
-  (%wide-string->utf16-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      (if (host-big-endian?)
-				  sink-utf16-be-char
-				  sink-utf16-le-char)))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   (if (host-big-endian?)
+			       sink-utf16-be-char
+			       sink-utf16-le-char)
+			   'WIDE-STRING->UTF16-STRING))
 
 (define (wide-string->utf16-be-string string #!optional start end)
-  (%wide-string->utf16-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      sink-utf16-be-char))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   sink-utf16-be-char
+			   'WIDE-STRING->UTF16-BE-STRING))
 
 (define (wide-string->utf16-le-string string #!optional start end)
-  (%wide-string->utf16-string string
-			      (if (default-object? start) #f start)
-			      (if (default-object? end) #f end)
-			      sink-utf16-le-char))
-
-(define (%wide-string->utf16-string string start end sink-utf16-char)
-  (let ((input (open-wide-input-string string start end)))
-    (call-with-output-byte-buffer
-     (lambda (sink)
-       (let loop ()
-	 (let ((char (read-char input)))
-	   (if (not (eof-object? char))
-	       (begin
-		 (sink-utf16-char char sink)
-		 (loop)))))))))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   sink-utf16-le-char
+			   'WIDE-STRING->UTF16-LE-STRING))
 
 (define (utf16-string-length string #!optional start end)
   (if (host-big-endian?)
@@ -1185,12 +1060,9 @@ USA.
 	   (let ((d0 (combiner (n 0) (n 1))))
 	     (if (high-surrogate? d0)
 		 (and (fix:<= (fix:+ start 4) end)
-		      (let ((d1 (combiner (n 2) (n 3))))
-			(and (low-surrogate? d1)
-			     (let ((pt (combine-surrogates d0 d1)))
-			       (and (unicode-code-point? pt)
-				    (fix:+ start 4))))))
-		 (and (unicode-code-point? d0)
+		      (low-surrogate? (combiner (n 2) (n 3)))
+		      (fix:+ start 4))
+		 (and (legal-code-16? d0)
 		      (fix:+ start 2)))))
       start))
 
@@ -1214,10 +1086,10 @@ USA.
 ;;;; UTF-8 representation
 
 (define (read-utf8-char port)
-  (or (source-utf8-char (port->byte-source port))
+  (or (source-utf8-char (port->byte-source port) 'READ-UTF8-CHAR)
       (make-eof-object port)))
 
-(define (source-utf8-char source)
+(define (source-utf8-char source caller)
   (let ((b0 (source))
 	(get-next
 	 (lambda ()
@@ -1237,7 +1109,10 @@ USA.
 		((fix:< b0 #xF0)
 		 (let ((b1 (get-next)))
 		   (%vc3 b0 b1)
-		   (%cp3 b0 b1 (get-next))))
+		   (let ((pt (%cp3 b0 b1 (get-next))))
+		     (if (illegal-code-16? pt)
+			 (error:not-unicode-code-point pt caller))
+		     pt)))
 		((fix:< b0 #xF8)
 		 (let ((b1 (get-next)))
 		   (%vc4 b0 b1)
@@ -1247,18 +1122,11 @@ USA.
 		 (error "Illegal UTF-8 byte:" b0)))))))
 
 (define (utf8-string->wide-string string #!optional start end)
-  (let ((source
-	 (open-input-byte-buffer string
-				 (if (default-object? start) #f start)
-				 (if (default-object? end) #f end))))
-    (call-with-wide-output-string
-     (lambda (output)
-       (let loop ()
-	 (let ((char (source-utf8-char source)))
-	   (if char
-	       (begin
-		 (write-char char output)
-		 (loop)))))))))
+  (utf-string->wide-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   source-utf8-char
+			   'UTF8-STRING->WIDE-STRING))
 
 (define (write-utf8-char char port)
   (guarantee-wide-char char 'WRITE-UTF8-CHAR)
@@ -1290,18 +1158,11 @@ USA.
 	   (sink (subsequent-char 0))))))
 
 (define (wide-string->utf8-string string #!optional start end)
-  (let ((input
-	 (open-wide-input-string string
-				 (if (default-object? start) #f start)
-				 (if (default-object? end) #f end))))
-    (call-with-output-byte-buffer
-     (lambda (sink)
-       (let loop ()
-	 (let ((char (read-char input)))
-	   (if (not (eof-object? char))
-	       (begin
-		 (sink-utf8-char char sink)
-		 (loop)))))))))
+  (wide-string->utf-string string
+			   (if (default-object? start) #f start)
+			   (if (default-object? end) #f end)
+			   sink-utf8-char
+			   'WIDE-STRING->UTF8-STRING))
 
 (define (utf8-string-length string #!optional start end)
   (with-substring-args string start end 'UTF8-STRING-LENGTH
@@ -1334,6 +1195,7 @@ USA.
 		    (check-byte 1)
 		    (check-byte 2)
 		    (%vs3 b0 (n 1))
+		    (legal-code-16? (%cp3 b0 (n 1) (n 2)))
 		    (fix:+ start 3)))
 	      ((fix:< b0 #xF8)
 	       (and (fix:<= (fix:+ start 4) end)
@@ -1384,75 +1246,184 @@ USA.
 (define-integrable (%valid-trailer? n)
   (fix:= #x80 (fix:and #xC0 n)))
 
+;;;; Wide string ports
+
+(define open-wide-output-string)
+(define call-with-wide-output-string)
+(define open-wide-input-string)
+
+(define (initialize-wide-ports!)
+  (set! open-wide-output-string
+	(let ((type
+	       (make-port-type
+		`((WRITE-CHAR
+		   ,(lambda (port char)
+		      (guarantee-wide-char char 'WRITE-CHAR)
+		      ((port/state port) char)))
+		  (EXTRACT-OUTPUT!
+		   ,(lambda (port)
+		      (%make-wide-string
+		       (get-output-objects (port/state port)))))
+		  (WRITE-SELF
+		   ,(lambda (port port*)
+		      port
+		      (write-string " to wide string" port*))))
+		#f)))
+	  (lambda ()
+	    (make-port type (open-output-object-buffer)))))
+  (set! call-with-wide-output-string
+	(make-call-with-output-string open-wide-output-string))
+  (set! open-wide-input-string
+	(let ((type
+	       (make-port-type
+		`((READ-CHAR
+		   ,(lambda (port)
+		      (or ((port/state port))
+			  (make-eof-object port))))
+		  (WRITE-SELF
+		   ,(lambda (port output-port)
+		      port
+		      (write-string " from wide string" output-port))))
+		#f)))
+	  (lambda (string #!optional start end)
+	    (guarantee-wide-string string 'OPEN-WIDE-INPUT-STRING)
+	    (make-port type
+		       (open-input-object-buffer
+			(wide-string-contents string)
+			(if (default-object? start) #f start)
+			(if (default-object? end) #f end)
+			'OPEN-WIDE-INPUT-STRING)))))
+  unspecific)
+
+;;;; UTF-xx string ports
+
+(define open-utf8-input-string)
 (define open-utf8-output-string)
 (define call-with-utf8-output-string)
+(define open-utf16-input-string)
 (define open-utf16-output-string)
 (define call-with-utf16-output-string)
+(define open-utf16-be-input-string)
 (define open-utf16-be-output-string)
 (define call-with-utf16-be-output-string)
+(define open-utf16-le-input-string)
 (define open-utf16-le-output-string)
 (define call-with-utf16-le-output-string)
+(define open-utf32-input-string)
 (define open-utf32-output-string)
 (define call-with-utf32-output-string)
+(define open-utf32-be-input-string)
 (define open-utf32-be-output-string)
 (define call-with-utf32-be-output-string)
+(define open-utf32-le-input-string)
 (define open-utf32-le-output-string)
 (define call-with-utf32-le-output-string)
 
-(define (initialize-utf-output-ports!)
-  (let ((make-opener
-	 (lambda (sink-char coding-name)
-	   (let ((type
-		  (make-port-type
-		   `((WRITE-CHAR
-		      ,(lambda (port char)
-			 (guarantee-wide-char char 'WRITE-CHAR)
-			 (sink-char char (port/state port))
-			 1))
-		     (EXTRACT-OUTPUT!
-		      ,(lambda (port)
-			 (get-output-bytes (port/state port))))
-		     (WRITE-SELF
-		      ,(let ((description
-			      (string-append " to " coding-name " string")))
-			 (lambda (port port*)
-			   port
-			   (write-string description port*)))))
-		   #f)))
-	     (lambda ()
-	       (make-port type (open-output-byte-buffer)))))))
-    (let-syntax
-	((define-openers
-	   (sc-macro-transformer
-	    (lambda (form environment)
-	      (if (syntax-match? '(SYMBOL DATUM expression) (cdr form))
-		  (let ((n0 (symbol-append (cadr form) '-OUTPUT-STRING)))
-		    (let ((n1 (symbol-append 'OPEN- n0))
-			  (n2 (symbol-append 'CALL-WITH- n0)))
-		      `(BEGIN
-			 (SET! ,n1
-			       (MAKE-OPENER ,(cadddr form) ,(caddr form)))
-			 (SET! ,n2
-			       (MAKE-CALL-WITH-OUTPUT-STRING ,n1)))))
-		  (ill-formed-syntax form))))))
+(define (initialize-utf-ports!)
+  (let-syntax
+      ((define-openers
+	 (sc-macro-transformer
+	  (lambda (form environment)
+	    (if (syntax-match? '(SYMBOL DATUM) (cdr form))
+		(let ((root (cadr form))
+		      (name (caddr form))
+		      (sink
+		       (lambda (root)
+			 (symbol-append 'SINK- root '-CHAR)))
+		      (source
+		       (lambda (root)
+			 (symbol-append 'SOURCE- root '-CHAR))))
+		  (let ((prim
+			 (lambda (sink/source)
+			   (if (memq root '(UTF16 UTF32))
+			       `(IF (HOST-BIG-ENDIAN?)
+				    ,(sink/source (symbol-append root '-BE))
+				    ,(sink/source (symbol-append root '-LE)))
+			       (sink/source root))))
+			(n1 (symbol-append 'OPEN- root '-OUTPUT-STRING))
+			(n2 (symbol-append 'CALL-WITH- root '-OUTPUT-STRING))
+			(n3 (symbol-append 'OPEN- root '-INPUT-STRING)))
+		    `(BEGIN
+		       (SET! ,n1
+			     (MAKE-UTF-OUTPUT-OPENER ,name ,(prim sink)))
+		       (SET! ,n2
+			     (MAKE-CALL-WITH-OUTPUT-STRING ,n1))
+		       (SET! ,n3
+			     (MAKE-UTF-INPUT-OPENER ,name ,(prim source))))))
+		(ill-formed-syntax form))))))
+    (define-openers utf8 "UTF-8")
+    (define-openers utf16 "UTF-16")
+    (define-openers utf16-be "UTF-16BE")
+    (define-openers utf16-le "UTF-16LE")
+    (define-openers utf32 "UTF-32")
+    (define-openers utf32-be "UTF-32BE")
+    (define-openers utf32-le "UTF-32LE")
+    unspecific))
+
+(define (make-utf-output-opener coding-name sink-char)
+  (let ((type
+	 (make-port-type
+	  `((WRITE-CHAR
+	     ,(lambda (port char)
+		(guarantee-wide-char char 'WRITE-CHAR)
+		(sink-char char (port/state port))
+		1))
+	    (EXTRACT-OUTPUT!
+	     ,(lambda (port)
+		(get-output-bytes (port/state port))))
+	    (WRITE-SELF
+	     ,(let ((suffix (string-append " to " coding-name " string")))
+		(lambda (port port*)
+		  port
+		  (write-string suffix port*)))))
+	  #f)))
+    (lambda ()
+      (make-port type (open-output-byte-buffer)))))
 
-      (define-openers utf8 "UTF-8" sink-utf8-char)
+(define (make-utf-input-opener coding-name source-char)
+  (let ((type
+	 (make-port-type
+	  `((READ-CHAR
+	     ,(lambda (port)
+		(or (source-char (port/state port) 'READ-CHAR)
+		    (make-eof-object port))))
+	    (WRITE-SELF
+	     ,(let ((suffix (string-append " from " coding-name " string")))
+		(lambda (port output-port)
+		  port
+		  (write-string suffix output-port)))))
+	  #f)))
+    (lambda (bytes #!optional start end)
+      (make-port type
+		 (open-input-byte-buffer string
+					 (if (default-object? start) #f start)
+					 (if (default-object? end) #f end)
+					 #f)))))
 
-      (define-openers utf16 "UTF-16"
-	(if (host-big-endian?)
-	    sink-utf16-be-char
-	    sink-utf16-le-char))
-      (define-openers utf16-be "UTF-16BE" sink-utf16-be-char)
-      (define-openers utf16-le "UTF-16LE" sink-utf16-le-char)
+(define (utf-string->wide-string string start end source-char caller)
+  (let ((source (open-input-byte-buffer string start end caller)))
+    (%make-wide-string
+     (call-with-output-object-buffer
+      (lambda (sink)
+	(let loop ()
+	  (let ((char (source-char source caller)))
+	    (if char
+		(begin
+		  (sink char)
+		  (loop))))))))))
 
-      (define-openers utf32 "UTF-32"
-	(if (host-big-endian?)
-	    sink-utf32-be-char
-	    sink-utf32-le-char))
-      (define-openers utf32-be "UTF-32BE" sink-utf32-be-char)
-      (define-openers utf32-le "UTF-32LE" sink-utf32-le-char)
-
-      unspecific)))
+(define (wide-string->utf-string string start end sink-char caller)
+  (let ((source
+	 (open-input-object-buffer (wide-string-contents string) start end
+				   caller)))
+    (call-with-output-byte-buffer
+     (lambda (sink)
+       (let loop ()
+	 (let ((char (source)))
+	   (if char
+	       (begin
+		 (sink-char char sink)
+		 (loop)))))))))
 
 ;;;; Byte buffers
 
@@ -1463,22 +1434,25 @@ USA.
       (if (eq? byte 'EXTRACT-OUTPUT!)
 	  (without-interrupts
 	   (lambda ()
-	     (set-string-maximum-length! bytes index)
-	     (let ((bytes* bytes))
-	       (set! bytes #f)
-	       bytes*)))
-	  (begin
-	    (cond ((not bytes)
-		   (set! bytes (make-string 128))
-		   (set! index 0))
-		  ((not (fix:< index (string-length bytes)))
-		   (let ((n (fix:* (string-length bytes) 2)))
-		     (let ((bytes* (make-string n)))
-		       (string-move! bytes bytes* 0)
-		       (set! bytes bytes*)))))
-	    (vector-8b-set! bytes index byte)
-	    (set! index (fix:+ index 1))
-	    unspecific)))))
+	     (if bytes
+		 (let ((bytes* bytes))
+		   (set! bytes #f)
+		   (set-string-maximum-length! bytes* index)
+		   bytes*)
+		 (make-string 0))))
+	  (without-interrupts
+	   (lambda ()
+	     (cond ((not bytes)
+		    (set! bytes (make-string 128))
+		    (set! index 0))
+		   ((not (fix:< index (string-length bytes)))
+		    (let ((bytes*
+			   (make-string (fix:* (string-length bytes) 2))))
+		      (string-move! bytes bytes* 0)
+		      (set! bytes bytes*))))
+	     (vector-8b-set! bytes index byte)
+	     (set! index (fix:+ index 1))
+	     unspecific))))))
 
 (define (get-output-bytes buffer)
   (buffer 'EXTRACT-OUTPUT!))
@@ -1488,11 +1462,82 @@ USA.
     (generator buffer)
     (get-output-bytes buffer)))
 
-(define (open-input-byte-buffer bytes start end)
-  (let ((index (or start 0))
-	(end (or end (string-length bytes))))
+(define (open-input-byte-buffer bytes start end caller)
+  (let* ((end
+	  (if (not end)
+	      (string-length bytes)
+	      (guarantee-limited-index end (string-length bytes) caller)))
+	 (index
+	  (if (not start)
+	      0
+	      (guarantee-limited-index start end caller))))
     (lambda ()
-      (and (fix:< index end)
-	   (let ((byte (vector-8b-ref bytes index)))
+      (without-interrupts
+       (lambda ()
+	 (and (fix:< index end)
+	      (let ((byte (vector-8b-ref bytes index)))
+		(set! index (fix:+ index 1))
+		byte)))))))
+
+;;;; Object buffers
+
+(define (open-output-object-buffer)
+  (let ((objects #f)
+	(index))
+    (lambda (object)
+      (if (eq? object extract-output-tag)
+	  (without-interrupts
+	   (lambda ()
+	     (if objects
+		 (let ((objects* objects))
+		   (set! objects #f)
+		   (if (fix:< index (vector-length objects*))
+		       (vector-head objects* index)
+		       objects*))
+		 (make-vector 0))))
+	  (without-interrupts
+	   (lambda ()
+	     (cond ((not objects)
+		    (set! objects (make-vector 128))
+		    (set! index 0))
+		   ((not (fix:< index (vector-length objects)))
+		    (set! objects
+			  (vector-grow objects
+				       (fix:* (vector-length objects) 2)))))
+	     (vector-set! objects index object)
 	     (set! index (fix:+ index 1))
-	     byte)))))
+	     unspecific))))))
+
+(define (get-output-objects buffer)
+  (buffer extract-output-tag))
+
+(define extract-output-tag
+  (list 'EXTRACT-OUTPUT!))
+
+(define (call-with-output-object-buffer generator)
+  (let ((buffer (open-output-object-buffer)))
+    (generator buffer)
+    (get-output-objects buffer)))
+
+(define (open-input-object-buffer objects start end caller)
+  (let* ((end
+	  (if (not end)
+	      (vector-length objects)
+	      (guarantee-limited-index end (vector-length objects) caller)))
+	 (index
+	  (if (not start)
+	      0
+	      (guarantee-limited-index start end caller))))
+    (lambda ()
+      (without-interrupts
+       (lambda ()
+	 (and (fix:< index end)
+	      (let ((object (vector-ref objects index)))
+		(set! index (fix:+ index 1))
+		object)))))))
+
+(define (guarantee-limited-index index limit caller)
+  (guarantee-index-fixnum index caller)
+  (if (not (fix:<= index limit))
+      (error:bad-range-argument index caller))
+  index)
