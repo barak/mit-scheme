@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.142 2001/06/03 01:42:28 cph Exp $
+;;; $Id: imail-core.scm,v 1.143 2001/06/04 17:38:50 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2001 Massachusetts Institute of Technology
 ;;;
@@ -469,6 +469,19 @@
 			(lambda (resource) (close-resource resource #t)))))
 
 (define-generic %open-resource (url))
+
+(define (with-open-resource url procedure)
+  (let ((resource #f))
+    (dynamic-wind (lambda ()
+		    (set! resource (open-resource url))
+		    unspecific)
+		  (lambda () (procedure resource))
+		  (lambda ()
+		    (let ((r resource))
+		      (if r
+			  (begin
+			    (set! resource #f)
+			    (close-resource r #f))))))))
 
 ;; -------------------------------------------------------------------
 ;; Close RESOURCE, freeing up connections, memory, etc.  Subsequent
