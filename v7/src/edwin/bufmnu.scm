@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.115 1991/05/06 00:56:07 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufmnu.scm,v 1.116 1991/05/10 22:19:16 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -114,23 +114,24 @@ Type q immediately to make the buffer menu go away."
 
 (define-major-mode buffer-menu read-only-noarg "Buffer Menu"
   "Major mode for editing a list of buffers.
-Each line describes a buffer in the editor.
+Each line describes one of the buffers in Emacs.
+Letters do not insert themselves; instead, they are commands.
 m -- mark buffer to be displayed.
-q -- select buffer of line point is in.
+q -- select buffer of line point is on.
+  Also show buffers marked with m in other windows.
 1 -- select that buffer in full-screen window.
 2 -- select that buffer in one window,
   together with buffer selected before this one in another window.
-f -- select buffer of line point is in,
-  leaving *Buffer-List* as the previous buffer.
-o -- like f, but select buffer in another window.
-~ -- clear modified-flag of that buffer.
-s -- mark that buffer to be saved.
-d or k or C-d or C-k -- mark that buffer to be killed.
-x -- kill or save marked buffers.
-u -- remove all kinds of marks from the current line.
-DEL -- move up a line and remove marks.
-SPC -- move down a line.
-C-] -- abort Buffer-Menu edit, killing *Buffer-List*.")
+f -- select that buffer in place of the buffer menu buffer.
+o -- select that buffer in another window,
+  so the buffer menu buffer remains visible in its window.
+~ -- clear modified-flag on that buffer.
+s -- mark that buffer to be saved, and move down.
+d or k -- mark that buffer to be deleted, and move down.
+C-d -- mark that buffer to be deleted, and move up.
+x -- delete or save marked buffers.
+u -- remove all kinds of marks from current line.
+Delete -- back up a line and remove marks.")
 
 (define-key 'buffer-menu #\m 'buffer-menu-mark)
 (define-key 'buffer-menu #\q 'buffer-menu-quit)
@@ -142,7 +143,7 @@ C-] -- abort Buffer-Menu edit, killing *Buffer-List*.")
 (define-key 'buffer-menu #\s 'buffer-menu-save)
 (define-key 'buffer-menu #\d 'buffer-menu-delete)
 (define-key 'buffer-menu #\k 'buffer-menu-delete)
-(define-key 'buffer-menu #\c-d 'buffer-menu-delete)
+(define-key 'buffer-menu #\c-d 'buffer-menu-delete-backwards)
 (define-key 'buffer-menu #\c-k 'buffer-menu-delete)
 (define-key 'buffer-menu #\x 'buffer-menu-execute)
 (define-key 'buffer-menu #\u 'buffer-menu-unmark)
@@ -175,7 +176,7 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 	      (buffer-menu-select menu buffer (memq menu others))
 	      (let ((height (max (quotient (1+ (window-y-size window))
 					   (1+ (length others)))
-				 (1+ (ref-variable window-minimum-height)))))
+				 (1+ (ref-variable window-min-height)))))
 		(define (loop window buffers)
 		  (let ((new (window-split-vertically! window height)))
 		    (if new
@@ -236,16 +237,26 @@ You can mark buffers with the \\[buffer-menu-mark] command."
 	  (set-buffer-menu-mark! lstart 1 #\Space)))))
 
 (define-command buffer-menu-save
-  "Mark buffer on this line to be saved by X command."
+  "Mark buffer on this line to be saved by \\[buffer-menu-execute] command."
   "p"
   (lambda (argument)
     (set-multiple-marks! 1 #\S argument)))
 
 (define-command buffer-menu-delete
-  "Mark buffer on this line to be killed by X command."
+  "Mark buffer on this line to be killed by \\[buffer-menu-execute] command."
   "p"
   (lambda (argument)
     (set-multiple-marks! 0 #\D argument)))
+
+(define-command buffer-menu-delete-backwards
+  "Mark buffer on this line to be killed by \\[buffer-menu-execute] command
+and then move up one line."
+  "p"
+  (lambda (argument)
+    (do ((i 0 (+ i 1)))
+	((>= i argument))
+      (set-buffer-menu-mark! (current-lstart) 0 #\D)
+      (set-current-point! (previous-lstart)))))
 
 (define-command buffer-menu-execute
   "Save and/or Kill buffers marked with \\[buffer-menu-save] or \\[buffer-menu-delete]."
@@ -324,10 +335,10 @@ You can mark buffers with the \\[buffer-menu-mark] command."
   (line-start (current-point) 0))
 
 (define (next-lstart)
-  (line-start (current-point) 1))
+  (line-start (current-point) 1 'ERROR))
 
 (define (previous-lstart)
-  (line-start (current-point) -1))
+  (line-start (current-point) -1 'ERROR))
 
 (define (set-multiple-marks! column char n)
   (dotimes n
