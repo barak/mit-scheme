@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.45 2000/06/29 22:01:50 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.46 2000/06/30 02:57:22 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -115,25 +115,34 @@
       (call-with-binary-input-file pathname
 	(lambda (port)
 	  (set-rmail-folder-header-fields! folder (read-rmail-prolog port))
-	  (let loop ()
-	    (let ((message (read-rmail-message port)))
-	      (if message
-		  (begin
-		    (append-message message (folder-url folder))
-		    (loop))))))))))
+	  (let loop ((line #f))
+	    (call-with-values (lambda () (read-rmail-message port line))
+	      (lambda (message line)
+		(if message
+		    (begin
+		      (append-message message (folder-url folder))
+		      (loop line)))))))))))
 
 (define (read-rmail-prolog port)
-  (if (not (string-prefix? "BABYL OPTIONS:" (read-required-line port)))
+  (if (not (rmail-prolog-start-line? (read-required-line port)))
       (error "Not an RMAIL file:" port))
   (lines->header-fields (read-lines-to-eom port)))
 
-(define (read-rmail-message port)
-  (let ((line (read-line port)))
+(define (read-rmail-message port read-ahead-line)
+  (let ((line (or read-ahead-line (read-line port))))
     (cond ((eof-object? line)
-	   #f)
-	  ((and (fix:= 1 (string-length line))
-		(char=? rmail-message:start-char (string-ref line 0)))
-	   (read-rmail-message-1 port))
+	   (values #f #f))
+	  ((rmail-prolog-start-line? line)
+	   (discard-to-eom port)
+	   (read-rmail-message port #f))
+	  ((rmail-message-start-line? line)
+	   (values (read-rmail-message-1 port) #f))
+	  ((umail-delimiter? line)
+	   (read-umail-message line port
+	     (lambda (line)
+	       (or (rmail-prolog-start-line? line)
+		   (rmail-message-start-line? line)
+		   (umail-delimiter? line)))))
 	  (else
 	   (error "Malformed RMAIL file:" port)))))
 
@@ -309,6 +318,15 @@
 
 ;;;; Syntactic Markers
 
+(define (rmail-prolog-start-line? line)
+  (string-prefix? "BABYL OPTIONS:" line))
+
+(define (rmail-prolog-end-line? line)
+  (string-prefix? "\037" line))
+
+(define (rmail-message-start-line? line)
+  (string=? "\f" line))
+
 (define rmail-message:headers-separator
   "*** EOOH ***")
 
@@ -339,3 +357,7 @@
 	    (eof-object? (read-char port)))
 	(error "EOF while reading RMAIL message body:" port))
     string))
+
+(define (discard-to-eom port)
+  (input-port/discard-chars port rmail-message:end-char-set)
+  (input-port/discard-char port))

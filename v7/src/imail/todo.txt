@@ -1,11 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.102 2000/06/29 22:02:34 cph Exp $
+$Id: todo.txt,v 1.103 2000/06/30 02:57:24 cph Exp $
 
 Bug fixes
 ---------
-
-* RMAIL file reader must recognize when the tail of the file contains
-  umail messages.
 
 MIME conformance
 ----------------

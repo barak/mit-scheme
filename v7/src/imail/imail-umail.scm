@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-umail.scm,v 1.34 2000/06/20 19:46:56 cph Exp $
+;;; $Id: imail-umail.scm,v 1.35 2000/06/30 02:57:23 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -108,7 +108,10 @@
 		       (error "Malformed unix mail file:" port))
 		   (let loop ((from-line from-line) (index 0) (messages '()))
 		     (call-with-values
-			 (lambda () (read-umail-message from-line port))
+			 (lambda ()
+			   (read-umail-message from-line
+					       port
+					       umail-delimiter?))
 		       (lambda (message from-line)
 			 (attach-message! message folder index)
 			 (let ((messages (cons message messages)))
@@ -116,33 +119,27 @@
 			       (loop from-line (+ index 1) messages)
 			       (reverse! messages)))))))))))))))
 
-(define (read-umail-message from-line port)
-  (let read-headers ((header-lines '()))
+(define (read-umail-message from-line port delimiter?)
+  (let loop ((lines '()))
     (let ((line (read-line port)))
       (cond ((eof-object? line)
-	     (values (read-umail-message-1 from-line
-					   (reverse! header-lines)
-					   '())
-		     #f))
-	    ((string-null? line)
-	     (let read-body ((body-lines '()))
-	       (let ((line (read-line port)))
-		 (cond ((eof-object? line)
-			(values (read-umail-message-1 from-line
-						      (reverse! header-lines)
-						      (reverse! body-lines))
-				#f))
-		       ((umail-delimiter? line)
-			(values (read-umail-message-1 from-line
-						      (reverse! header-lines)
-						      (reverse! body-lines))
-				line))
-		       (else
-			(read-body (cons line body-lines)))))))
+	     (values (read-umail-message-1 from-line (reverse! lines)) #f))
+	    ((delimiter? line)
+	     (values (read-umail-message-1 from-line (reverse! lines)) line))
 	    (else
-	     (read-headers (cons line header-lines)))))))
+	     (loop (cons line lines)))))))
 
-(define (read-umail-message-1 from-line header-lines body-lines)
+(define (read-umail-message-1 from-line lines)
+  (let loop ((lines lines) (header-lines '()))
+    (if (pair? lines)
+	(if (string-null? (car lines))
+	    (read-umail-message-2 from-line
+				  (reverse! header-lines)
+				  (cdr lines))
+	    (loop (cdr lines) (cons (car lines) header-lines)))
+	(read-umail-message-2 from-line (reverse! header-lines) '()))))
+
+(define (read-umail-message-2 from-line header-lines body-lines)
   (call-with-values
       (lambda ()
 	(parse-imail-header-fields (lines->header-fields header-lines)))
