@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: prompt.scm,v 1.155 1992/09/17 23:18:04 cph Exp $
+;;;	$Id: prompt.scm,v 1.156 1992/11/29 20:22:37 bal Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
 ;;;
@@ -793,10 +793,13 @@ Whilst editing the command, the following commands are available:
 		   ((char=? input #\C-g)
 		    (abort-current-command))
 		   ((char=? input #\Rubout)
-		    (let ((new-string (string-head ts (-1+ (string-length ts)))))
-		      (set-typein-string!
-		       (make-string (string-length new-string) #\.) true)
-		      (loop new-string)))
+		    (let ((ts-len (string-length ts)))
+		      (if (> ts-len 0)
+			  (let ((new-string (string-head ts (-1+ ts-len))))
+			    (set-typein-string!
+			     (make-string (string-length new-string) #\.) true)
+			    (loop new-string))
+			  (loop ts))))
 		   (else
 		    (set-typein-string!
 		     (make-string (1+ (string-length ts)) #\.) true)
