@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.11 1996/05/15 05:51:26 cph Exp $
+;;;	$Id: snr.scm,v 1.12 1996/05/15 06:10:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995-96 Massachusetts Institute of Technology
 ;;;
@@ -1838,9 +1838,10 @@ With prefix argument, unmarks the previous several articles."
 	      buffer header news-header:real?)))
        (lambda (buffer header next n)
 	 (procedure buffer header)
-	 (if next
-	     (news-group-buffer:move-to-header buffer
-					       (if (> n 0) next header))))))))
+	 (news-group-buffer:move-to-header buffer
+					   (if (and next (> n 0))
+					       next
+					       header)))))))
 
 (define (mark/unmark-news-header-line buffer header name)
   (let ((thread (news-header:thread header)))
@@ -1908,9 +1909,10 @@ This unmarks the article indicated by point and any other articles in
 			news-group-buffer:previous-thread
 	(lambda (buffer thread next n)
 	  (procedure buffer thread)
-	  (if next
-	      (news-group-buffer:move-to-thread buffer
-						(if (> n 0) next thread))))))))
+	  (news-group-buffer:move-to-thread buffer
+					    (if (and next (> n 0))
+						next
+						thread)))))))
 
 (define (news-group-buffer:move-to-thread buffer thread)
   (news-group-buffer:move-to-header
