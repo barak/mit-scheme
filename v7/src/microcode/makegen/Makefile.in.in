@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.6 2000/12/06 05:46:47 cph Exp $
+# $Id: Makefile.in.in,v 1.7 2000/12/07 19:58:39 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -43,19 +43,18 @@ DESTDIR =
 top_builddir = .
 
 INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@ $(AM_INSTALL_PROGRAM_FLAGS)
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
-transform = @program_transform_name@
 
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-CONFIG_HEADER = config.h
-CONFIG_CLEAN_FILES = 
 
 # **** END BOILERPLATE ****
 
 # **** Tool configuration ****
+
+auxdir = $(libdir)/mit-scheme
 
 CC = @CC@
 M4 = $(srcdir)/makegen/m4.sh
@@ -63,7 +62,8 @@ AS = as
 TAR = tar
 GZIP_ENV = --best
 
-DEFS = -DMIT_SCHEME @DEFS@ -I. -I$(srcdir) -I.
+DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(auxdir)\" @DEFS@ \
+       -I. -I$(srcdir) -I.
 CFLAGS = @CFLAGS@
 X_CFLAGS = @X_CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -111,7 +111,7 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 # **** Program definitions ****
 
 bin_PROGRAMS = scheme bchscheme
-lib_PROGRAMS = bchdrn
+aux_PROGRAMS = gcdrone
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
 
 scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
@@ -150,7 +150,7 @@ psbtobin_DEPENDENCIES =
 psbtobin_LDFLAGS = 
 psbtobin_LIBS = $(LIBS)
 
-ALL_PROGRAMS = $(bin_PROGRAMS) $(lib_PROGRAMS)
+ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 
 MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
 
@@ -181,35 +181,35 @@ MAINTAINER_CLEAN_FILES = Makefile.in makegen/Makefile.deps \
 all: $(ALL_PROGRAMS)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
-	-rm -f scheme
+	-rm -f $@
 	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
 
 usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim
-	-rm -f usrdef.c
+	-rm -f $@
 	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
 
 bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
-	-rm -f bchscheme
+	-rm -f $@
 	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
 
 bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim
-	-rm -f bchdef.c
+	-rm -f $@
 	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
 
-bchdrn: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
-	-rm -f bchdrn
+gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
+	-rm -f $@
 	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
 
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
-	-rm -f findprim
+	-rm -f $@
 	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
 
 bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
-	-rm -f bintopsb
+	-rm -f $@
 	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
 
 psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
-	-rm -f psbtobin
+	-rm -f $@
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
 
 setup:
@@ -232,7 +232,30 @@ maintainer-clean: distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
 	( cd cmpauxmd && $(MAKE) $@ )
 
+install: install-binPROGRAMS install-auxPROGRAMS
+
+install-binPROGRAMS: $(bin_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	@list='$(bin_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
+	    fi; \
+	done
+
+install-auxPROGRAMS: $(aux_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(auxdir)
+	@list='$(aux_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(auxdir)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(auxdir)/.; \
+	    fi; \
+	done
+
 .PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
+.PHONY: install install_binPROGRAMS install_auxPROGRAMS
 
 # **** File dependencies ****
 
