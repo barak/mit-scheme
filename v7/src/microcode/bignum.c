@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.51 2003/02/14 18:28:15 cph Exp $
+$Id: bignum.c,v 9.52 2004/10/17 21:35:40 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1996,1997,2000 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,6 +36,7 @@ USA.
 
 #include "bignmint.h"
 #include "limits.h"
+#include "float.h"
 #include <math.h>
 
 #ifndef MIT_SCHEME
@@ -557,20 +560,20 @@ DEFUN (bignum_to_ulong, (bignum), bignum_type bignum)
 
 #endif /* not BIGNUM_NO_ULONG */
 
-#define DTB_WRITE_DIGIT(factor)						\
+#define DTB_WRITE_DIGIT(n_bits) do					\
 {									\
-  significand *= (factor);						\
+  significand *= (1L << (n_bits));					\
   digit = ((bignum_digit_type) significand);				\
   (*--scan) = digit;							\
   significand -= ((double) digit);					\
-}
+  n_valid_bits -= (n_bits);						\
+} while (0)
 
 bignum_type
 DEFUN (double_to_bignum, (x), double x)
 {
-  extern double frexp ();
   int exponent;
-  fast double significand = (frexp (x, (&exponent)));
+  double significand = (frexp (x, (&exponent)));
   if (exponent <= 0) return (BIGNUM_ZERO ());
   if (exponent == 1) return (BIGNUM_ONE (x < 0));
   if (significand < 0) significand = (-significand);
@@ -578,20 +581,35 @@ DEFUN (double_to_bignum, (x), double x)
     bignum_length_type length = (BIGNUM_BITS_TO_DIGITS (exponent));
     bignum_type result = (bignum_allocate (length, (x < 0)));
     bignum_digit_type * start = (BIGNUM_START_PTR (result));
-    fast bignum_digit_type * scan = (start + length);
-    fast bignum_digit_type digit;
-    int odd_bits = (exponent % BIGNUM_DIGIT_LENGTH);
-    if (odd_bits > 0)
-      DTB_WRITE_DIGIT (1L << odd_bits);
+    bignum_digit_type * scan = (start + length);
+    unsigned int n_valid_bits = DBL_MANT_DIG;
+    bignum_digit_type digit;
+    {
+      int odd_bits = (exponent % BIGNUM_DIGIT_LENGTH);
+      if (odd_bits > 0)
+	DTB_WRITE_DIGIT (odd_bits);
+    }
     while (start < scan)
       {
-	if (significand == 0)
+	if ((significand == 0)  || (n_valid_bits <= 0))
 	  {
 	    while (start < scan)
 	      (*--scan) = 0;
 	    break;
 	  }
-	DTB_WRITE_DIGIT (BIGNUM_RADIX);
+	if (n_valid_bits >= BIGNUM_DIGIT_LENGTH)
+	  DTB_WRITE_DIGIT (BIGNUM_DIGIT_LENGTH);
+	else
+	  {
+	    significand *= (1L << BIGNUM_DIGIT_LENGTH);
+	    digit = ((bignum_digit_type) significand);
+	    (*--scan)
+	      = (digit
+		 & (((1L << n_valid_bits) - 1)
+		    << (BIGNUM_DIGIT_LENGTH - n_valid_bits)));
+	    significand = 0.0;
+	    n_valid_bits = 0;
+	  }
       }
     return (result);
   }
