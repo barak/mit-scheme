@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.48 1987/06/30 21:42:10 cph Rel $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/input.scm,v 13.49 1987/07/24 21:57:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -512,21 +512,31 @@
 )
 
 (define (stickify-input-filenames filename/s default-pathname)
+  (let ((->pathname
+	 (if default-pathname
+	     (lambda (filename)
+	       (merge-pathnames (->pathname filename) default-pathname))
+	     ->pathname)))
+    (if (pair? filename/s)
+	(map ->pathname filename/s)
+	(->pathname filename/s))))
+
+#|(define (stickify-input-filenames filename/s default-pathname)
   (let loop
       ((filenames 
 	(if (pair? filename/s)
 	    filename/s
 	    (list filename/s)))
        (default-pathname default-pathname))
-    (let ((pathname (->pathname (car filenames))))
-      (let ((pathname
+    (let ((pathname
+	   (let ((pathname (->pathname (car filenames))))
 	     (if default-pathname
 		 (merge-pathnames pathname default-pathname)
-		 pathname)))
-	(cons pathname
-	      (if (pair? (cdr filenames))
-		  (loop (cdr filenames) pathname)
-		  '()))))))
+		 pathname))))
+      (cons pathname
+	    (if (pair? (cdr filenames))
+		(loop (cdr filenames) pathname)
+		'())))))|#
 
 (define fasload)
 (let ()
