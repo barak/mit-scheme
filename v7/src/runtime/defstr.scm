@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.46 2003/03/08 02:02:50 cph Exp $
+$Id: defstr.scm,v 14.47 2003/03/08 02:52:33 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,1997,2000 Massachusetts Institute of Technology
@@ -705,8 +705,9 @@ differences:
 (define (constructor-definition/keyword structure name)
   (if (eq? (structure/type structure) 'RECORD)
       (let ((context (structure/context structure)))
-	`(,(absolute 'RECORD-KEYWORD-CONSTRUCTOR context)
-	  ,(close (structure/tag-expression structure) context)))
+	`(DEFINE ,name
+	   (,(absolute 'RECORD-KEYWORD-CONSTRUCTOR context)
+	   ,(close (structure/tag-expression structure) context))))
       (make-constructor structure name 'KEYWORD-LIST
 	(lambda (tag-expression)
 	  (let ((context (structure/context structure)))
