@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.13 1992/02/17 22:36:58 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.14 1992/02/18 01:53:26 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -97,19 +97,15 @@ MIT in each case. |#
 	(define (two-arg target)
 	  (LAP (OR W ,target (&U ,literal))))
 
-	(cond ((register-alias datum 'GENERAL)
-	       =>
-	       (lambda (alias)
-		 (if (pseudo-register? target)
-		     (reuse-pseudo-register-alias!
-		      datum 'GENERAL
-		      (lambda (alias)
-			(two-arg (register-reference alias)))
-		      (lambda ()
-			(three-arg alias)))
-		     (three-arg alias))))
-	      (else
-	       (two-arg (standard-move-to-target! datum target)))))))
+	(let ((alias (register-alias datum 'GENERAL)))
+	  (cond ((not alias)
+		 (two-arg (standard-move-to-target! datum target)))
+		((register-copy-if-available datum 'GENERAL target)
+		 =>
+		 (lambda (get-tgt)
+		   (two-arg (get-tgt))))
+		(else
+		 (three-arg alias)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
