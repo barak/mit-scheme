@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.10 1990/01/18 22:47:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.11 1990/01/23 22:44:12 cph Rel $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -155,13 +155,16 @@ MIT in each case. |#
 				 (element-expression element)
 				 (element-cost element)
 				 (element-in-memory? element)
-				 (per-element (element-next-hash element)
-					      element)
+				 false
 				 previous
 				 (element-next-value element)
 				 (element-previous-value element)
 				 (element-first-value element))))
 			   (set-element-cost! element element*)
+			   (set-element-next-hash!
+			    element*
+			    (per-element (element-next-hash element)
+					 element*))
 			   element*))))
 		elements)))
       (letrec ((per-element
