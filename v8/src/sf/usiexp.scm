@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.9 1995/09/11 13:35:59 adams Exp $
+$Id: usiexp.scm,v 1.10 1995/09/11 14:29:12 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -705,6 +705,7 @@ MIT in each case. |#
   '(;; <name>: use binding in system-global-environment to obtain arity
     ;; (<name> #!optional min-arity max-arity): as specified (for use for
     ;; names that might not be bound when SF is loaded)
+    ABS
     ACOS
     ASIN
     ATAN
