@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.41 1991/10/29 22:34:01 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchgcc.h,v 9.42 1991/11/04 16:49:35 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -44,6 +44,17 @@ MIT in each case. */
 #include <fcntl.h>
 #endif
 #include <sys/param.h>
+
+extern char * EXFUN (error_name, (int));
+
+extern int EXFUN (retrying_file_operation,
+		  (/* no prototype because (const char *) != (char *) */
+		   int (*)(),
+		   int, char *, long, long, char *, char *, long *,
+		   int (*)(char *, char *)));
+
+extern int EXFUN (io_error_retry_p, (char *, char *));
+extern int EXFUN (io_error_always_abort, (char *, char *));
 
 #define GC_FILE_FLAGS		(O_RDWR | O_CREAT) /* O_SYNCIO removed */
 #define GC_FILE_MASK		0644	/* Everyone reads, owner writes */
@@ -64,6 +75,11 @@ MIT in each case. */
 
 #define ALIGNED_TO_IO_PAGE_P(addr)					\
   (((unsigned long) (addr)) == (ALIGN_DOWN_TO_IO_PAGE (addr)))
+
+extern long
+  gc_file_end_position,
+  gc_file_current_position,
+  gc_file_start_position;
 
 extern unsigned long
   gc_buffer_size,

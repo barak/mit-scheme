@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.57 1991/10/29 22:35:36 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.58 1991/11/04 16:49:52 jinx Exp $
 
 Copyright (c) 1987-1991 Massachusetts Institute of Technology
 
@@ -62,7 +62,8 @@ extern SCHEME_OBJECT
   EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
   * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
   * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
-  * EXFUN (cons_whole_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
+  * EXFUN (cons_whole_primitive_table,
+	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
 
 static char *dump_file_name;
 static int real_gc_file, dump_file;
@@ -261,10 +262,12 @@ next_buffer:
 
   if (fixup_count >= 0)
   {
-    if (((lseek (real_gc_file, (fixup_count << gc_buffer_byte_shift), 0))
-	 == -1)
-	|| ((read (real_gc_file, ((char *) fixup_buffer), gc_buffer_bytes))
-	    != gc_buffer_bytes))
+    if ((retrying_file_operation
+	 (read, real_gc_file, ((char *) fixup_buffer),
+	  (gc_file_start_position + (fixup_count << gc_buffer_byte_shift)),
+	  gc_buffer_bytes, "read", "the fixup buffer",
+	  &gc_file_current_position, io_error_retry_p))
+	!= gc_buffer_bytes)
     {
       gc_death (TERM_EXIT,
 		"fasdump: Could not read back the fasdump fixup information",
@@ -284,14 +287,18 @@ next_buffer:
 Boolean
 DEFUN_VOID (reset_fixes)
 {
+  long start;
+
   fixup_count += 1;
-  if (((lseek (real_gc_file, (fixup_count << gc_buffer_byte_shift), 0))
-       == -1)
-      || ((write (real_gc_file, ((char *) fixup_buffer), gc_buffer_bytes))
+  start = (gc_file_start_position + (fixup_count << gc_buffer_byte_shift));
+
+  if (((start + gc_buffer_bytes) > gc_file_end_position)
+      || ((retrying_file_operation
+	   (write, real_gc_file, ((char *) fixup_buffer),
+	    start, gc_buffer_bytes, "write", "the fixup buffer",
+	    &gc_file_current_position, io_error_always_abort))
 	  != gc_buffer_bytes))
-  {
     return (false);
-  }
   fixup = fixup_buffer_end;
   return (true);
 }

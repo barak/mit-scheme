@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.11 1991/10/29 22:38:56 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.c,v 1.12 1991/11/04 16:49:03 jinx Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -95,8 +95,10 @@ unsigned int option_constant_size;
 unsigned int option_stack_size;
 
 /* These only matter for bchscheme */
-static CONST char * option_raw_gcfile = 0;
+static CONST char * option_raw_gc_end_position = 0;
+static CONST char * option_raw_gc_file = 0;
 static CONST char * option_raw_gc_read_overlap = 0;
+static CONST char * option_raw_gc_start_position = 0;
 static CONST char * option_raw_gc_window_size = 0;
 static CONST char * option_raw_gc_write_overlap = 0;
 CONST char * option_gc_directory = 0;
@@ -106,6 +108,8 @@ int option_gc_keep;
 int option_gc_read_overlap;
 int option_gc_window_size;
 int option_gc_write_overlap;
+long option_gc_start_position;
+long option_gc_end_position;
 /*
 Scheme accepts the following command-line options.  The options may
 appear in any order, but they must all appear before any other
@@ -172,7 +176,7 @@ arguments on the command line.
 
 -option-summary
   Causes Scheme to write option information to standard error.
-
+
 -emacs
   Specifies that Scheme is running as a subprocess of GNU Emacs.
   This option is automatically supplied by GNU Emacs, and should not
@@ -204,14 +208,16 @@ compiled-code support:
   MITSCHEME_EDWIN_BAND is used, otherwise "edwin.com" is used.  It
   also specifies the use of large sizes, exactly like "-large".
 
-The following options are only meaningful to bchscheme
-(garbage collection to disk):
+The following options are only meaningful to bchscheme:
 
 -gc-directory DIRECTORY
   Specifies what directory to use to allocate the garbage collection file.
 
 -gc-drone FILENAME
   Specifies the program to use as the gc drones for overlapped I/O.
+
+-gc-end-position N
+  Specifies a position into the gc file past which bchscheme should not use. 
 
 -gc-file FILENAME
   Specifies that FILENAME should be used garbage collection.  Overrides
@@ -226,13 +232,15 @@ The following options are only meaningful to bchscheme
   for overlapped I/O.  Each implies a drone process to manage it,
   if supported.
 
+-gc-start-position N
+  Specifies a position into the gc file before which bchscheme should not use.
+
 -gc-window-size BLOCKS
   Specifies the size in 1024-word blocks of each GC window.
 
 -gc-write-overlap N
-  Specifies the number of additional GC windows to use when writing
-  for overlapped I/O.  Each implies a drone process to manage it,
-  if supported.
+  Specifies the number of additional GC windows to use when writing for
+  overlapped I/O.  Each implies a drone process to manage it, if supported.
 */
 
 #ifndef LIBRARY_PATH_VARIABLE
@@ -355,52 +363,68 @@ The following options are only meaningful to bchscheme
 
 /* These are only meaningful for bchscheme */
 
-#ifndef DEFAULT_GC_DRONE
-#define DEFAULT_GC_DRONE "gcdrone"
-#endif
-
-#ifndef GC_DRONE_VARIABLE
-#define GC_DRONE_VARIABLE "MITSCHEME_GC_DRONE"
-#endif
-
 #ifndef DEFAULT_GC_DIRECTORY
-#define DEFAULT_GC_DIRECTORY "/tmp"
+#define DEFAULT_GC_DIRECTORY		"/tmp"
 #endif
 
 #ifndef GC_DIRECTORY_VARIABLE
-#define GC_DIRECTORY_VARIABLE "MITSCHEME_GC_DIRECTORY"
+#define GC_DIRECTORY_VARIABLE		"MITSCHEME_GC_DIRECTORY"
+#endif
+
+#ifndef DEFAULT_GC_DRONE
+#define DEFAULT_GC_DRONE		"gcdrone"
+#endif
+
+#ifndef GC_DRONE_VARIABLE
+#define GC_DRONE_VARIABLE		"MITSCHEME_GC_DRONE"
+#endif
+
+#ifndef DEFAULT_GC_END_POSITION
+#define DEFAULT_GC_END_POSITION		-1
+#endif
+
+#ifndef GC_END_POSITION_VARIABLE
+#define GC_END_POSITION_VARIABLE	"MITSCHEME_GC_END_POSITION"
 #endif
 
 #ifndef DEFAULT_GC_FILE
-#define DEFAULT_GC_FILE "GCXXXXXX"
+#define DEFAULT_GC_FILE			"GCXXXXXX"
 #endif
 
 #ifndef GC_FILE_VARIABLE
-#define GC_FILE_VARIABLE "MITSCHEME_GC_FILE"
+#define GC_FILE_VARIABLE		"MITSCHEME_GC_FILE"
 #endif
 
 #ifndef DEFAULT_GC_READ_OVERLAP
-#define DEFAULT_GC_READ_OVERLAP 0
+#define DEFAULT_GC_READ_OVERLAP		0
 #endif
 
 #ifndef GC_READ_OVERLAP_VARIABLE
-#define GC_READ_OVERLAP_VARIABLE "MITSCHEME_GC_READ_OVERLAP"
+#define GC_READ_OVERLAP_VARIABLE	"MITSCHEME_GC_READ_OVERLAP"
+#endif
+
+#ifndef DEFAULT_GC_START_POSITION
+#define DEFAULT_GC_START_POSITION	0
+#endif
+
+#ifndef GC_START_POSITION_VARIABLE
+#define GC_START_POSITION_VARIABLE	"MITSCHEME_GC_START_POSITION"
 #endif
 
 #ifndef DEFAULT_GC_WINDOW_SIZE
-#define DEFAULT_GC_WINDOW_SIZE 16
+#define DEFAULT_GC_WINDOW_SIZE		16
 #endif
 
 #ifndef GC_WINDOW_SIZE_VARIABLE
-#define GC_WINDOW_SIZE_VARIABLE "MITSCHEME_GC_WINDOW_SIZE"
+#define GC_WINDOW_SIZE_VARIABLE		"MITSCHEME_GC_WINDOW_SIZE"
 #endif
 
 #ifndef DEFAULT_GC_WRITE_OVERLAP
-#define DEFAULT_GC_WRITE_OVERLAP 0
+#define DEFAULT_GC_WRITE_OVERLAP	0
 #endif
 
 #ifndef GC_WRITE_OVERLAP_VARIABLE
-#define GC_WRITE_OVERLAP_VARIABLE "MITSCHEME_GC_WRITE_OVERLAP"
+#define GC_WRITE_OVERLAP_VARIABLE	"MITSCHEME_GC_WRITE_OVERLAP"
 #endif
 
 static int
@@ -578,12 +602,14 @@ DEFUN (parse_standard_options, (argc, argv), int argc AND CONST char ** argv)
   /* The following options are only meaningful to bchscheme. */
   option_argument ("-gc-directory", 1, (&option_gc_directory));
   option_argument ("-gc-drone", 1, (&option_gc_drone));
+  option_argument ("-gc-end-position", 1, (&option_raw_gc_end_position));
   option_argument ("-gc-file", 1, (&option_gc_file));
   option_argument ("-gc-keep", 0, (&option_gc_keep));
+  option_argument ("-gc-start-position", 1, (&option_raw_gc_start_position));
   option_argument ("-gc-read-overlap", 1, (&option_raw_gc_read_overlap));
   option_argument ("-gc-window-size", 1, (&option_raw_gc_window_size));
   option_argument ("-gc-write-overlap", 1, (&option_raw_gc_write_overlap));
-  option_argument ("-gcfile", 1, (&option_raw_gcfile)); /* Obsolete */
+  option_argument ("-gcfile", 1, (&option_raw_gc_file)); /* Obsolete */
   parse_options (argc, argv);
 }
 
@@ -601,16 +627,16 @@ DEFUN (standard_string_option, (option, variable, defval),
   }
 }
 
-static unsigned int
-DEFUN (overlap_numeric_option, (option, optval, variable, defval),
+static long
+DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
        CONST char * option AND
        CONST char * optval AND
        CONST char * variable AND
-       unsigned int defval)
+       long defval)
 {
   if (optval != 0)
     {
-      int n = (atoi (optval));
+      long n = (strtol (optval, ((char **) NULL), 0));
       if (n < 0)
 	{
 	  fprintf (stderr, "%s: illegal argument %s for option %s.\n",
@@ -623,7 +649,7 @@ DEFUN (overlap_numeric_option, (option, optval, variable, defval),
     CONST char * t = (getenv (variable));
     if (t != 0)
       {
-	int n = (atoi (t));
+	long n = (strtol (t, ((char **) NULL), 0));
 	if (n < 0)
 	  {
 	    fprintf (stderr, "%s: illegal value %s for variable %s.\n",
@@ -968,18 +994,22 @@ DEFUN_VOID (describe_options)
   describe_string_option ("microcode tables", option_utabmd_file);
   {
     /* These are only relevant to bchscheme. */
-    if (option_gc_file != DEFAULT_GC_FILE)
-      describe_string_option ("GC file", option_gc_file);
-    if (option_gc_file != DEFAULT_GC_DIRECTORY)
+    if (option_gc_directory != DEFAULT_GC_DIRECTORY)
       describe_string_option ("GC directory", option_gc_directory);
-    if (option_raw_gc_window_size)
-      describe_size_option ("GC window size", option_gc_window_size);
-    if (option_raw_gc_read_overlap)
-      describe_numeric_option ("GC read overlap", option_gc_read_overlap);
-    if (option_raw_gc_write_overlap)
-      describe_numeric_option ("GC write overlap", option_gc_write_overlap);
     if (option_gc_drone != DEFAULT_GC_DRONE)
       describe_string_option ("GC drone program", option_gc_drone);
+    if (option_raw_gc_end_position)
+      describe_numeric_option ("GC end position", option_gc_end_position);
+    if (option_gc_file != DEFAULT_GC_FILE)
+      describe_string_option ("GC file", option_gc_file);
+    if (option_raw_gc_read_overlap)
+      describe_numeric_option ("GC read overlap", option_gc_read_overlap);
+    if (option_raw_gc_start_position)
+      describe_numeric_option ("GC start position", option_gc_start_position);
+    if (option_raw_gc_window_size)
+      describe_size_option ("GC window size", option_gc_window_size);
+    if (option_raw_gc_write_overlap)
+      describe_numeric_option ("GC write overlap", option_gc_write_overlap);
     if (option_gc_keep)
       describe_boolean_option ("keep GC file", option_gc_keep);
   }
@@ -1118,12 +1148,12 @@ DEFUN (read_command_line_options, (argc, argv),
 
   /* These are only meaningful for bchscheme. */
 
-  if (option_raw_gcfile != ((char *) 0))
+  if (option_raw_gc_file != ((char *) 0))
   {
     if (option_gc_file != ((char *) 0))
       conflicting_options ("-gcfile", "-gc-file");
     else
-      option_gc_file = option_raw_gcfile;
+      option_gc_file = option_raw_gc_file;
   }
 
   option_gc_directory =
@@ -1140,16 +1170,29 @@ DEFUN (read_command_line_options, (argc, argv),
 			     GC_DRONE_VARIABLE,
 			     DEFAULT_GC_DRONE));
 
+  option_gc_end_position =
+    (non_negative_numeric_option ("-gc-end-position",
+				  option_raw_gc_end_position,
+				  GC_END_POSITION_VARIABLE,
+				  DEFAULT_GC_END_POSITION));
+
   option_gc_file =
     (standard_string_option (option_gc_file,
 			     GC_FILE_VARIABLE,
 			     DEFAULT_GC_FILE));
 
   option_gc_read_overlap =
-    (overlap_numeric_option ("-gc-read-overlap",
-			     option_raw_gc_read_overlap,
-			     GC_READ_OVERLAP_VARIABLE,
-			     DEFAULT_GC_READ_OVERLAP));
+    ((int)
+     (non_negative_numeric_option ("-gc-read-overlap",
+				   option_raw_gc_read_overlap,
+				   GC_READ_OVERLAP_VARIABLE,
+				   DEFAULT_GC_READ_OVERLAP)));
+
+  option_gc_start_position =
+    (non_negative_numeric_option ("-gc-start-position",
+				  option_raw_gc_start_position,
+				  GC_START_POSITION_VARIABLE,
+				  DEFAULT_GC_START_POSITION));
 
   option_gc_window_size =
     (standard_numeric_option ("-gc-window-size",
@@ -1158,10 +1201,11 @@ DEFUN (read_command_line_options, (argc, argv),
 			      DEFAULT_GC_WINDOW_SIZE));
 
   option_gc_write_overlap =
-    (overlap_numeric_option ("-gc-write-overlap",
-			     option_raw_gc_write_overlap,
-			     GC_WRITE_OVERLAP_VARIABLE,
-			     DEFAULT_GC_WRITE_OVERLAP));
+    ((int)
+     (non_negative_numeric_option ("-gc-write-overlap",
+				   option_raw_gc_write_overlap,
+				   GC_WRITE_OVERLAP_VARIABLE,
+				   DEFAULT_GC_WRITE_OVERLAP)));
 
   if (option_summary)
     describe_options ();

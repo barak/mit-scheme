@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.5 1991/10/29 22:38:34 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/option.h,v 1.6 1991/11/04 16:48:54 jinx Exp $
 
 Copyright (c) 1990-1991 Massachusetts Institute of Technology
 
@@ -64,10 +64,12 @@ extern unsigned int option_stack_size;
 extern CONST char * option_gc_directory;
 extern CONST char * option_gc_drone;
 extern CONST char * option_gc_file;
-int option_gc_keep;
-int option_gc_read_overlap;
-int option_gc_window_size;
-int option_gc_write_overlap;
+extern int option_gc_keep;
+extern int option_gc_read_overlap;
+extern int option_gc_window_size;
+extern int option_gc_write_overlap;
+extern long option_gc_start_position;
+extern long option_gc_end_position;
 
 extern void EXFUN (read_command_line_options, (int argc, CONST char ** argv));
 
