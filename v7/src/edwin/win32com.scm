@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: win32com.scm,v 1.2 1994/11/02 19:32:20 adams Exp $
+;;;	$Id: win32com.scm,v 1.3 1994/11/06 18:36:57 adams Exp $
 ;;;
 ;;;	Copyright (c) 1994 Massachusetts Institute of Technology
 ;;;
@@ -59,7 +59,7 @@ When called interactively, completion is available on the input."
     (let  ((icon  (load-icon (get-handle 0) icon-name)))
       (if (zero? icon)
 	  (error "Unknown icon name" icon-name)
-	  ((ucode-primitive win32-screen-set-icon!)
+	  ((ucode-primitive win32-screen-set-icon! 2)
 	   (current-win32-window)
 	   icon)))))
 
