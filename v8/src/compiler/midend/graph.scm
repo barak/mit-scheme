@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: graph.scm,v 1.2 1994/11/20 00:43:09 jmiller Exp $
+$Id: graph.scm,v 1.3 1995/06/27 22:01:57 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -32,6 +32,8 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
+(declare (usual-integrations))
+
 (load-option 'hash-table)
 
 (define make-attribute make-eq-hash-table)
