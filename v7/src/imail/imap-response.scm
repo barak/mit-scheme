@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imap-response.scm,v 1.13 2000/05/08 15:04:44 cph Exp $
+;;; $Id: imap-response.scm,v 1.14 2000/05/16 03:33:49 cph Exp $
 ;;;
 ;;; Copyright (c) 2000 Massachusetts Institute of Technology
 ;;;
@@ -474,6 +474,7 @@
 (define imap:response:fetch-index cadr)
 (define imap:response:flags cdr)
 (define imap:response:recent-count cadr)
+(define imap:response:search-indices cdr)
 
 (define (imap:response:tag response)
   (and (memq (car response) '(OK NO BAD))

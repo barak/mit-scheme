@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-imap.scm,v 1.40 2000/05/16 03:13:29 cph Exp $
+;;; $Id: imail-imap.scm,v 1.41 2000/05/16 03:33:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -602,7 +602,15 @@
 
 (define-method search-folder ((folder <imap-folder>) criteria)
   (guarantee-imap-folder-open folder)
-  ???)
+  (map (lambda (index) (get-message folder index))
+       (imap:response:search-indices
+	(let ((connection (imap-folder-connection folder)))
+	  (cond ((string? criteria)
+		 (imap:command:search connection 'TEXT criteria))
+		(else
+		 (error:wrong-type-argument criteria
+					    "search criteria"
+					    'SEARCH-FOLDER)))))))
 
 (define-method folder-sync-status ((folder <imap-folder>))
   ;; Changes are always written through.
@@ -688,6 +696,10 @@
 			    (and (pair? flags) flags)
 			    (imap:universal-time->date-time time)
 			    (cons 'LITERAL text)))
+
+(define (imap:command:search connection . key-plist)
+  (apply imap:command:single-response imap:response:search?
+	 connection 'SEARCH key-plist))
 
 (define (imap:command:no-response connection command . arguments)
   (let ((response
