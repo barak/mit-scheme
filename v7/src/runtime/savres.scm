@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.26 1992/11/12 03:25:40 gjr Exp $
+$Id: savres.scm,v 14.27 1992/11/24 01:12:26 gjr Exp $
 
 Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
@@ -88,25 +88,34 @@ MIT in each case. |#
 		true)))))))
 
 (define (disk-save/kernel filename after-suspend after-restore)
-  ((without-interrupts
-    (lambda ()
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (let ((fixed-objects (get-fixed-objects-vector))
-	       (filename (->namestring (merge-pathnames filename))))
-	   ((ucode-primitive call-with-current-continuation)
-	    (lambda (restart)
-	      (gc-flip)
-	      (do () (((ucode-primitive dump-band) restart filename))
-		(with-simple-restart 'RETRY "Try again."
-		  (lambda ()
-		    (error "Disk save failed:" filename))))
-	      (continuation after-suspend)))
-	   ((ucode-primitive set-fixed-objects-vector!) fixed-objects)
+  (let ((filename (->namestring (merge-pathnames filename))))
+    ((without-interrupts
+      (lambda ()
+	(call-with-current-continuation
+	 (lambda (continuation)
+	   ;; GC cannot be allowed before the fixed-objects-vector
+	   ;; is reset after restoring.
+	   (with-absolutely-no-interrupts
+	       (lambda ()
+		 (let ((fixed-objects (get-fixed-objects-vector)))
+		   ((ucode-primitive call-with-current-continuation)
+		    (lambda (restart)
+		      (without-interrupts
+		       (lambda ()
+			 (gc-flip)
+			 (do ()
+			     (((ucode-primitive dump-band) restart filename))
+			   (with-simple-restart 'RETRY "Try again."
+			     (lambda ()
+			       (error "Disk save failed:" filename))))
+			 (continuation after-suspend)))))
+		   ((ucode-primitive set-fixed-objects-vector!)
+		    fixed-objects))))
 	   (re-read-microcode-tables!)
 	   after-restore)))))))
 
 (define (dump-world/kernel filename after-suspend after-restore)
+  (gc-flip)
   ((with-absolutely-no-interrupts
     (lambda ()
       (if ((ucode-primitive dump-world 1) filename)
