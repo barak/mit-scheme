@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: user.texinfo,v 1.36 1995/11/20 23:24:11 adams Exp $
+@comment $Id: user.texinfo,v 1.37 1995/11/29 07:08:59 adams Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename user.info
 @settitle MIT Scheme User's Manual
@@ -4092,51 +4092,53 @@ variable (referencing the variable), write caches for changing the
 value, and execute caches for calling the procedure assigned to that
 variable.
 
-Sometimes the variable caches contain special objects, reference traps,
-which mean that the operation cannot proceed normally and must either be
-completed by the system in order to keep the caches coherent, or must
-signal an error.  For example, the assignment
+Sometimes the variable caches contain special objects, called reference
+traps, which indicate that the operation cannot proceed normally and
+must either be completed by the system (in order to keep the caches
+coherent) or must signal an error.  For example, the assignment
 
 @lisp
 (set! newline my-better-newline)
 @end lisp
 
 will cause the system to go to each compiled procedure that calls
-@code{newline} and update its execute cache.  Obviously you want to
-avoid doing this in a loop.  Using @code{fluid-let} to temporarily
-redefine a procedure has the same inefficiency (but twice!).
+@code{newline} and update its execute cache to call the new procedure.
+Obviously you want to avoid updating hundreds of of execute caches in a
+critical loop.  Using @code{fluid-let} to temporarily redefine a
+procedure has the same inefficiency (but twice!).
 
 To behave correctly in all situations, each variable reference or
 assignment must check for the reference traps.
 
 Sometimes you can prove that the variable (a) will always be bound, (b)
 will always be assigned and (c) there will never be any compiled calls
-to that variable.
-In these cases the following declarations can speed up and reduce the
-size of a program that uses global variables.
-
+to that variable.  The compiler can't prove this because it assumes that
+other, independently compiled, files might be loaded which invalidate
+these assumptions.
+If you know that these contitions hold, the following declarations can
+speed up and reduce the size of a program that uses global variables.
 
 @deffn {declaration+} ignore-reference-traps variables
-This declaration is relatively safe.  If the variable is unbound or
-unassigned then a variable reference will yield a reference trap object,
-instead of signaling an error.  The reference trap object may later find
-its way into interpreted code and cause some `unrelated' variable to
-mysteriously become unbound or unassigned.
+If the variable is unbound or unassigned then a variable reference will
+yield a reference trap object instead of signaling an error.  This
+declaration is relatively safe:  The worst that can happen is that a
+reference trap object finds its way into a data structure (e.g. a list)
+or into interpreted code, in which case it will probably cause some
+`unrelated' variable to mysteriously become unbound or unassigned.
 @end deffn
 
 @deffn {declaration+} ignore-assignment-traps variables
-This declaration can cause a great deal of trouble.  An assignment to a
-variable that ignores assignment traps can cause a great deal of
-trouble.  If there is a compiled procedure call anywhere in the system
-to this variable, the execute caches will not be updated, causing an
-inconsistency between the value used for the procedure call and the
-value seen by reading the variable.  This mischief is compounded by the
-fact that the assignment can cause other assignments that were compiled
-with checks to behave this way too.
+An assignment to a variable that ignores assignment traps can cause a
+great deal of trouble.  If there is a compiled procedure call anywhere
+in the system to this variable, the execute caches will not be updated,
+causing an inconsistency between the value used for the procedure call
+and the value seen by reading the variable.  This mischief is compounded
+by the fact that the assignment can cause other assignments that were
+compiled with checks to behave this way too.
 @end deffn
 
 The @var{variables} are specified with expressions from the following
-set language.
+set language:
 
 @deffn {variable-specification} set name ...
 All of the explicitly listed names.
@@ -4151,7 +4153,7 @@ These expressions name sets of variables. @code{all} is the set of all
 variables, @code{none} is the empty set, @code{free} is all of the
 variables bound outside the current block, @code{bound} is all of the
 variables bound in the current block and @code{assigned} is all of the
-variables for which there exists an assignment (@code{set!}).
+variables for which there exists an assignment (i.e.@ @code{set!}).
 @end deffn
 
 @deffn {variable-specification} union set1 set2
@@ -4168,6 +4170,23 @@ For example, to ignore reference traps on all the variables except
 
 @end deffn
 
+Note: The scoping of @code{ignore-reference-traps} and
+@code{ignore-assignment-traps} differs between version of the compiler.
+MIT Scheme version 8.0 (Liar
+version 5.0) has true block scoping, thus the declaration takes effect
+only within the procedure or @code{let} in which the declarartion
+occurs.  This makes it possible to control individual variable
+references, for example:
+
+@example
+(let ()
+  (declare (ignore-reference-traps x))
+  x)
+@end example
+
+In earlier versions, a declaration affects all uses of the variable.
+
+In all versions, top level declarations affect the whole source file.
 
 @node Fixnum arithmetic, Flonum arithmetic, Global variables, Efficiency Tips
 @subsection Fixnum arithmetic
@@ -4200,12 +4219,12 @@ operations.
 A fruitful area for inserting fixnum operations is in the index
 operations in tight loops.
 
-Adding fixnum operations yourself is not always effective because the
-compiler sometimes can figure out that a value just has to be a fixnum
-and replaces the generic operation with the fixnum one.  For example, in
-the following code, the compiler knows that the result of
-@code{vector-length} is always a fixnum, and so replaces @code{-} with
-@code{fix:-}.
+With the new compiler (MIT Scheme version 8.0), adding fixnum operations
+yourself is not always effective because the compiler sometimes can
+figure out that a value just has to be a fixnum and replaces the generic
+operation with the fixnum one.  For example, in the following code, the
+compiler knows that the result of @code{vector-length} is always a
+fixnum, and so replaces @code{-} with @code{fix:-}.
 
 @example
 (define (last-index v) (- (vector-length v) 1))
@@ -4241,9 +4260,12 @@ kinds of number fit in a machine register.
 Flonums have to be @dfn{boxed} because a 64 bit IEEE floating point
 number (the representation the MIT Scheme uses) does not fit in a
 regular machine word.
+This is true even on 64 bit archiectures because some extra bits are
+needed to distinguish floating point numbers from other objects like
+pairs ans strigs.
 Values are boxed by storing them in a small record in the heap.
 Every floating point value that you see at the REPL is boxed.
-Floating point values are only unboxed for short periods of time when
+Floating point values are unboxed only for short periods of time when
 they are in the machine's floating point unit and actual floating point
 operations are begin performed.
 
@@ -4251,7 +4273,7 @@ operations are begin performed.
 Numerical calculations that happen to be using floating point numbers
 cause many temporary floating point numbers to be allocated.  It is not
 uncommon for numerical programs to spend over half of the time creating
-and garbage collecting the flonums.
+and garbage collecting the boxed flonums.
 
 Consider the following procedure for computing the distance of a point
 @var{(x,y)} from the origin.
@@ -4300,6 +4322,10 @@ This approach has the advantage of being completely safe, and
       (sqrt (+ (* x x) (* y y)))))
 @end example
 
+This approach is effective only for MIT Scheme version 8.0 and later.
+Earlier versions do not do this kind of type analysis.
+
+
 @subsubheading Flonum vectors
 
 Flonum vectors are vectors which contain only floating point values, in
@@ -4313,9 +4339,11 @@ vectors can decrease flonum consing.
 The disadvantages are that flonum vectors are incompatible with ordinary
 vectors, and if not used carefully, can increase flonum consing.  Flonum
 vectors are a pain to use because they require you to make a decision
-about the representation and stick with that, and it might not be easy
-to ascertain whether the advantages in one part of the program outweigh
-the disadvantages in another.
+about the representation and stick with it, and it might not be easy to
+ascertain whether the advantages in one part of the program outweigh the
+disadvantages in another.
+
+The flonum vector operations are:
 
 @deffn {procedure+} flo:vector-cons n
 Create a flonum vector of length @var{N}.
@@ -4330,7 +4358,10 @@ The contents should not be used until initialized.
 These operations are analogous to the ordinary vector operations.
 @end deffn
 
-This next operation causes no flonum consing because the flonum is
+
+@subsubheading Examples
+
+The following operation causes no flonum consing because the flonum is
 loaded directly from the flonum vector into a floating point machine
 register, added, and stored again.  There is no need for a temporary
 boxed flonum.
@@ -4339,10 +4370,10 @@ boxed flonum.
 (flo:vector-set v 0 (flo:+ (flo:vector-ref v 0) 1.2))
 @end example
 
-In this example, every time @code{g} is called, a new boxed flonum has
-to be created so that a valid Scheme object can be returned.
-If @code{g} is called more often than the elements of @var{v} are
-changed then an ordinary vector might be more efficient.
+In this next example, every time @code{g} is called, a new boxed flonum
+has to be created so that a valid Scheme object can be returned.  If
+@code{g} is called more often than the elements of @var{v} are changed
+then an ordinary vector might be more efficient.
 
 @example
 (define (g i)
@@ -4367,15 +4398,15 @@ the wrong answer. @code{F2} is correct.
 
 Pitfall 2:
 It is tempting to insert calls to @code{exact->inexact} to coerce values
-into flonums.
-This does not always work because complex numbers may be exact or inexact too.
-In addition, the current implementation of @code{exact->inexact} is slow.
+into flonums.  This does not always work because complex numbers may be
+exact or inexact too.  Also, the current implementation of
+@code{exact->inexact} is slow.
 
 
 Pitfall 3:
 A great deal of care has to be taken with the standard math procedures.
 For example, when called with a flonum, both @code{sqrt} and @code{asin}
-can return a complex number.
+can return a complex number (e.g -1.5).
 
 
 
@@ -4385,10 +4416,14 @@ can return a complex number.
 @subsubheading @code{in-package} and declarations
 
 Declarations from outside of an @code{in-package} form do not apply to
-the body of the form.  This is because the assumptions behind
-declarations in the enclosing text might not apply to the body.  As the
-@code{usual-integrations} declaration is included in this rule, it is a
-good idea to repeat the declaration e.g@:.
+the body of the form.
+This is because, in general, the new package (environment) could be nay
+packag, including one which contains alternative definitions for the
+standard procedures.
+The declarations in the enclosing text might be meaningless in the
+@code{in-package} body.
+As the @code{usual-integrations} declaration is included in this rule,
+it is usually a good idea to repeat the declaration e.g@:.
 
 @lisp
   ...
