@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rtlgen.scm,v 1.43 1996/03/08 17:15:38 adams Exp $
+$Id: rtlgen.scm,v 1.44 1996/04/25 04:23:33 cph Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -3698,7 +3698,7 @@ MIT in each case. |#
   (define-fixnumized-selector/tagged %vector-length  (machine-tag 'VECTOR) 0)
   ;;(define-fixnumized-selector/tagged '%RECORD-LENGTH (machine-tag 'RECORD) 0)
   (define-fixnumized-selector/tagged %%RECORD-LENGTH (machine-tag 'RECORD) 0)
-  (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 1)
+  (define-fixnumized-selector/tagged 'SYSTEM-VECTOR-SIZE false 0)
   ;;(define-fixnumized-selector 'STRING-LENGTH     (machine-tag 'STRING)    1)
   (define-fixnumized-selector %STRING-LENGTH     (machine-tag 'STRING)    1)
   ;;(define-fixnumized-selector 'BIT-STRING-LENGTH (machine-tag 'VECTOR-1B) 1)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.24 1996/03/08 17:16:12 adams Exp $
+$Id: fakeprim.scm,v 1.25 1996/04/25 04:23:45 cph Exp $
 
-Copyright (c) 1994-1995 Massachusetts Institute of Technology
+Copyright (c) 1994-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1093,7 +1093,6 @@ MIT in each case. |#
        ;;string-length vector-8b-ref
        system-pair-car system-pair-cdr
        system-hunk3-cxr0 system-hunk3-cxr1 system-hunk3-cxr2
-       (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
        system-vector-ref
        (make-primitive-procedure 'SYSTEM-VECTOR-SIZE)
        (make-primitive-procedure 'GET-INTERRUPT-ENABLES)
