@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.22 1990/06/20 20:29:31 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.23 1990/07/20 01:20:52 jinx Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -311,6 +311,7 @@ MIT in each case. |#
    (RUNTIME SCODE-COMBINATOR)
    (RUNTIME SCODE-WALKER)
    (RUNTIME CONTINUATION-PARSER)
+   (RUNTIME PROGRAM-COPIER)
    ;; I/O
    (RUNTIME CONSOLE-INPUT)
    (RUNTIME CONSOLE-OUTPUT)
