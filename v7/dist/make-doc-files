@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-doc-files,v 1.12 2000/12/23 05:42:57 cph Exp $
+# $Id: make-doc-files,v 1.13 2000/12/24 04:04:01 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -63,6 +63,7 @@ done
     cd doc
     autoconf
 )
+${INSTALL_DATA} ${DOCDIR}/ChangeLog ${TLDIR}/doc/.
 find ${TLDIR} -type d -name CVS -print|xargs rm -rf
 make_tarfile texinfo
 
