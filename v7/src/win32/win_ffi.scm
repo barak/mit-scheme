@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.4 1994/10/26 18:39:28 adams Exp $
+$Id: win_ffi.scm,v 1.5 1998/02/11 21:53:17 adams Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -327,7 +327,7 @@ MIT in each case. |#
   string?)
 
 (define-windows-type char*
-  (lambda (thing) (or (eq? thing #f) (string? #f))))
+  (lambda (thing) (or (eq? thing #f) (string? thing))))
 
 (define-windows-type handle
   (lambda (x) (or (eq? x #f) (int:integer? x)))
