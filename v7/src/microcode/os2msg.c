@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.7 1995/04/22 21:17:36 cph Exp $
+$Id: os2msg.c,v 1.8 1995/04/22 21:48:53 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -554,7 +554,7 @@ void
 OS2_close_std_tqueue (tqueue_t * tqueue)
 {
   OS2_close_event_semaphore (STD_TQUEUE_EVENT (tqueue));
-  OS2_close_event_semaphore (STD_TQUEUE_MUTEX (tqueue));
+  OS2_close_mutex_semaphore (STD_TQUEUE_MUTEX (tqueue));
   while ((STD_TQUEUE_HEAD (tqueue)) != 0)
     {
       msg_list_t * this = (STD_TQUEUE_HEAD (tqueue));
