@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.15 1993/06/25 23:11:03 gjr Exp $
+$Id: packag.scm,v 14.16 1993/06/25 23:14:58 gjr Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -191,7 +191,8 @@ MIT in each case. |#
 				    #\-
 				    #\_))))
 		(value (prim name)))
-	   (if load/suppress-loading-message?
+	   (if (or (not value)
+		   load/suppress-loading-message?)
 	       value
 	       (let ((port (nearest-cmdl/port)))
 		 (fresh-line port)
