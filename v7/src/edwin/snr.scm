@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: snr.scm,v 1.2 1995/05/06 02:21:51 cph Exp $
+;;;	$Id: snr.scm,v 1.3 1995/10/25 02:17:51 cph Exp $
 ;;;
 ;;;	Copyright (c) 1995 Massachusetts Institute of Technology
 ;;;
@@ -1650,17 +1650,6 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define (newsrc-file-buffer connection)
   (find-file-noselect (os/newsrc-file-name (nntp-connection:server connection))
 		      #f))
-
-(define (os/newsrc-file-name server)
-  (let ((homedir (user-homedir-pathname)))
-    (if (os2/fs-long-filenames? homedir)
-	(let ((specific
-	       (merge-pathnames (string-append ".newsrc-" server)
-				homedir)))
-	  (if (file-exists? specific)
-	      specific
-	      (merge-pathnames ".newsrc" homedir)))
-	(merge-pathnames "newsrc.ini" homedir))))
 
 ;;;; Miscellaneous
 

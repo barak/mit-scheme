@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.60 1995/10/12 22:59:35 cph Exp $
+;;;	$Id: unix.scm,v 1.61 1995/10/25 02:18:34 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -778,3 +778,11 @@ option, instead taking -P <filename>."
 		       (string-append " "
 				      (number->string
 				       (decoded-time/year dt)))))))
+
+(define (os/newsrc-file-name server)
+  (let ((homedir (user-homedir-pathname)))
+    (let ((specific
+	   (merge-pathnames (string-append ".newsrc-" server) homedir)))
+      (if (file-exists? specific)
+	  specific
+	  (merge-pathnames ".newsrc" homedir)))))
