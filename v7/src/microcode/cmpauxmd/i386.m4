@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Id: i386.m4,v 1.40 1995/10/14 18:38:57 cph Exp $
+###	$Id: i386.m4,v 1.41 1995/10/24 06:28:41 cph Exp $
 ###
 ###	Copyright (c) 1992-95 Massachusetts Institute of Technology
 ###
@@ -116,9 +116,10 @@
 ###
 ### DOS
 ###	If defined, expand to run under DOS; implies DASM.
-### WINNT
-###	If defined, expand to run under Windows NT or Win32s.  These
-###	two are distinguished by whether DOS is defined.
+### WIN32
+###	If defined, expand to run under Win32; implies DASM.
+###	Previously, this was defined in conjunction with DOS, but now
+###	DOS must not be defined!
 ### OS2
 ###	If defined, expand to run under OS/2.  This macro does nothing
 ###	more than define SUPPRESS_LEADING_UNDERSCORE and
@@ -126,7 +127,7 @@
 ###	call OS/2 API procedures; note that EMX/GCC doesn't define
 ###	these symbols because it thinks it's running under unix.
 ###
-### If none of { DOS, WINNT, OS2 } is defined, expansion is for unix.
+### If none of { DOS, WIN32, OS2 } is defined, expansion is for unix.
 ###
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
@@ -163,19 +164,9 @@ ifdef(`DOS',
       `define(IFNDOS,`')',
       `define(IFNDOS,`$1')')
 
-IFDOS(`define(DASM,1)')
-
-ifdef(`DASM',
-      `define(IFDASM,`$1')',
-      `define(IFDASM,`')')
-
-ifdef(`DASM',
-      `define(IFNDASM,`')',
-      `define(IFNDASM,`$1')')
-
-ifdef(`WINNT',
-      `define(IF_WINNT,`$1')',
-      `define(IF_WINNT,`')')
+ifdef(`WIN32',
+      `define(IF_WIN32,`$1')',
+      `define(IF_WIN32,`')')
 
 ifdef(`OS2',
       `define(IFOS2,`$1')',
@@ -193,38 +184,56 @@ ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
 
-IFNDASM(`	.file	"cmpaux-i386.s"')
-
-IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-
-ifdef(`SUPPRESS_LEADING_UNDERSCORE',
-      `define(external_data_reference,`$1')',
-      `define(external_data_reference,`_$1')')
-
-ifdef(`SUPPRESS_LEADING_UNDERSCORE',
-      `define(external_code_reference,`$1')',
-      `define(external_code_reference,`_$1')')
-
-ifdef(`WCC386R',
-      `define(EVR,`_$1')',
-      `define(EVR,`external_data_reference($1)')')
-
-ifdef(`WCC386R',
-      `define(hook_reference,`external_code_reference(asm_$1_)')',
-      `define(hook_reference,`external_code_reference(asm_$1)')')
+IFDOS(`define(DASM,1)')
+IF_WIN32(`define(DASM,1)')
 
 ifdef(`DASM',
-      `define(use_external_data,`	extrn EVR($1)':dword)',
+      `define(IFDASM,`$1')',
+      `define(IFDASM,`')')
+
+ifdef(`DASM',
+      `define(IFNDASM,`')',
+      `define(IFNDASM,`$1')')
+
+ifdef(`DASM',
+      `define(use_external_data,`	extrn $1':dword)',
       `define(use_external_data,`')')
 
 ifdef(`DASM',
-       `define(use_external_code,`	extrn external_code_reference($1)':near)',
+       `define(use_external_code,`	extrn $1':near)',
        `define(use_external_code,`')')
 
 ifdef(`DASM',
       `define(export_label,`	public $1')',
       `define(export_label,`	.globl $1')')
+
+IFNDASM(`	.file	"cmpaux-i386.s"')
+
+IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
+IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
+
+ifdef(`WCC386R',
+      `define(EVR,`_$1')',
+      `ifdef(`SUPPRESS_LEADING_UNDERSCORE',
+	     `define(EVR,`$1')',
+	     `define(EVR,`_$1')')')
+
+# When using the Watcom C compiler with register-based calling
+# conventions, source-code function names normally expand to `FOO_',
+# but functions that are compiled with prefix keywords such as
+# `__cdecl' or `__syscall' expand differently.  References to the
+# former type of name are marked with `EFR', while references to the
+# latter are marked with `EPFR'.
+
+ifdef(`SUPPRESS_LEADING_UNDERSCORE',
+      `define(EPFR,`$1')',
+      `define(EPFR,`_$1')')
+
+ifdef(`WCC386R',
+      `define(EFR,`$1_')',
+      `define(EFR,`EPFR($1)')')
+
+define(hook_reference,`EFR(asm_$1)')
 
 define(define_data,`export_label(EVR($1))')
 
@@ -232,7 +241,7 @@ define(define_code_label,`
 export_label($1)
 $1:')
 
-define(define_c_label,`define_code_label(external_code_reference($1))')
+define(define_c_label,`define_code_label(EPFR($1))')
 define(define_debugging_label,`define_code_label($1)')
 define(define_hook_label,`define_code_label(hook_reference($1))')
 
@@ -356,6 +365,16 @@ define(REGBLOCK_SIZE_IN_OBJECTS,
 	    +(COMPILER_REGBLOCK_N_HOOKS*COMPILER_HOOK_SIZE)
 	    +(COMPILER_REGBLOCK_N_TEMPS*COMPILER_TEMP_SIZE)))
 
+# Define the floating-point processor control word.  Always set
+# round-to-even and double precision.  Under DOS and Win32, mask all
+# exceptions.  Under unix and OS/2, mask only the inexact result
+# exception.
+ifdef(`DOS',
+      `define(FP_CONTROL_WORD,HEX(023f))',
+      `ifdef(`WIN32',
+             `define(FP_CONTROL_WORD,HEX(023f))',
+             `define(FP_CONTROL_WORD,HEX(0220))')')
+
 define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
@@ -366,14 +385,14 @@ IFDOS(`.386
 DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
-use_external_data(Free)
-use_external_data(Ext_Stack_Pointer)
-use_external_data(utility_table)
+use_external_data(EVR(Free))
+use_external_data(EVR(Ext_Stack_Pointer))
+use_external_data(EVR(utility_table))
 
-ifdef(`WINNT',`
-	extrn _RegistersPtr:dword
+ifdef(`WIN32',`
+use_external_data(EVR(RegistersPtr))
 ',`ifdef(`DOS',`
-use_external_data(Registers)
+use_external_data(EVR(Registers))
 ',`
 define_data(Regstart)
 allocate_space(Regstart,128)
@@ -383,7 +402,7 @@ allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 ')
 ')
 
-IF_WINNT(`	extrn _winnt_address_delta:dword')
+IF_WIN32(`use_external_data(EVR(winnt_address_delta))')
 
 define_data(i387_presence)
 allocate_longword(i387_presence)
@@ -394,7 +413,7 @@ allocate_longword(C_Stack_Pointer)
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
-IF_WINNT(`define(HACK_SEGMENT_REGS,1)')
+IF_WIN32(`define(HACK_SEGMENT_REGS,1)')
 IF_LINUX_ELF(`define(HACK_SEGMENT_REGS,1)')
 
 ifdef(`HACK_SEGMENT_REGS',`
@@ -423,10 +442,10 @@ allocate_word(C_Extra_Segment_Selector)
 define_data(C_Stack_Segment_Selector)
 allocate_word(C_Stack_Segment_Selector)
 
-IF_WINNT(`define(LRET,`db	0cbh')')
+IF_WIN32(`define(LRET,`db	0cbh')')
 IF_LINUX_ELF(`define(LRET,`lret')')
 
-IF_WINNT(`define(SEGMENT_DELTA,`EVR(winnt_address_delta)')')
+IF_WIN32(`define(SEGMENT_DELTA,`EVR(winnt_address_delta)')')
 IF_LINUX_ELF(`define(SEGMENT_DELTA,`IMM(0x08000000)')')
 
 ',`IFDOS(`
@@ -499,17 +518,10 @@ IF387(`
 	OP(inc,l)	REG(eax)			# 387 available
 	OP(sub,l)	TW(IMM(4),REG(esp))
 	fclex
-	fnstcw	WOF(-2,REG(ebp))
-	# On Unix, set rounding mode to round-to-even, precision control to
-	# double, mask the inexact result exception, and unmask the other exceptions.
-	# On DOS, set rounding mode to round-to-even, precision control to
-	# double and and mask all exceptions.
+	fnstcw		WOF(-2,REG(ebp))
 	OP(and,w)	TW(IMM(HEX(f0e0)),WOF(-2,REG(ebp)))
-	ifdef(`DOS',
-	      `OP(or,w)	TW(IMM(HEX(023f)),WOF(-2,REG(ebp)))',
-	      `OP(or,w)	TW(IMM(HEX(0220)),WOF(-2,REG(ebp)))')
-	fldcw	WOF(-2,REG(ebp))
-
+	OP(or,w)	TW(IMM(FP_CONTROL_WORD),WOF(-2,REG(ebp)))
+	fldcw		WOF(-2,REG(ebp))
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
@@ -530,12 +542,12 @@ define_c_label(C_to_interface)
 							# Register block = %esi
 							# Scheme offset in NT
 
-ifdef(`WINNT',
+ifdef(`WIN32',
 `	OP(mov,l)	TW(ABS(EVR(RegistersPtr)),regs)',
 `	OP(lea,l)	TW(ABS(EVR(Registers)),regs)')
 ifdef(`HACK_SEGMENT_REGS',
 `	OP(sub,l)	TW(SEGMENT_DELTA,regs)')
-	jmp	external_code_reference(interface_to_scheme)
+	jmp	EPFR(interface_to_scheme)
 
 define_hook_label(trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
@@ -589,7 +601,6 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	OP(add,l)	TW(IMM(8),EVR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))	# utility index
 ',
-
 `	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
 	OP(mov,l)	TW(rfree,EVR(Free))
 
@@ -624,11 +635,9 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 ')
 	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
 
-ifdef(`WINNT',`',`
 IFDOS(`
 	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
 	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
-')
 ')
 
 ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
@@ -691,12 +700,10 @@ IFDOS(`	OP(mov,w)	TW(EVR(Scheme_Stack_Segment_Selector),REG(ss))') # Swap stack 
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
 	jmp		IJMP(REG(edx))')
 
-IF_WINNT(`
-	extrn	_WinntExceptionTransferHook:near
-
-	public	_callWinntExceptionTransferHook
-_callWinntExceptionTransferHook:
-	call	_WinntExceptionTransferHook
+IF_WIN32(`
+use_external_code(EFR(WinntExceptionTransferHook))
+define_code_label(EFR(callWinntExceptionTransferHook))
+	call	EFR(WinntExceptionTransferHook)
 	mov	edx,eax
 ')
 

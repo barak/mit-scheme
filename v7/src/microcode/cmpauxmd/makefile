@@ -1,16 +1,23 @@
 #
 # Makefile for i386 PC compiled code interface files
-# for the MIT CScheme microcode.
+# for the MIT Scheme microcode.
 #
-# $Id: makefile,v 1.4 1995/10/15 00:28:51 cph Exp $
+# $Id: makefile,v 1.5 1995/10/24 06:28:49 cph Exp $
 #
 
-all: i386-dos.asm i386-nt.asm
+all : i386-dos.asm i386-nt.asm i386-ntw.asm
 
-i386-dos.asm: i386.m4 ../s/dos.m4
-	rm -f i386-dos.asm
-	../s/dos.m4 <i386.m4 >i386-dos.asm
+# Expand for DOS.
+i386-dos.asm : i386.m4 ../s/dos.m4
+	rm -f $@
+	../s/dos.m4 < $< > $@
 
-i386-nt.asm: i386.m4 ../s/nt.m4
-	rm -f i386-nt.asm
-	../s/nt.m4 <i386.m4 >i386-nt.asm
+# Expand for Win32 using Microsoft compiler.
+i386-nt.asm : i386.m4 ../s/nt.m4
+	rm -f $@
+	../s/nt.m4 < $< > $@
+
+# Expand for Win32 using Watcom compiler.
+i386-ntw.asm : i386.m4 ../s/nt.m4
+	rm -f $@
+	../s/nt.m4 "define(WCC386R,1)" < $< > $@
