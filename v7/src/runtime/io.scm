@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.41 1987/01/23 00:15:03 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.42 1987/02/02 14:17:12 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -39,40 +39,40 @@
 
 ;;;; Input/output utilities
 
-(declare (usual-integrations)
-	 (compilable-primitive-functions &make-object))
+(declare (usual-integrations))
 
 (define close-all-open-files)
 
 (define primitive-io
-  (make-package primitive-io
-		((open-files-slot (fixed-objects-vector-slot 'OPEN-FILES))
-		 (header-size 2)
-		 (counter-slot 0)
-		 (file-vector-slot 1)
-		 (default-size 10)
-		 (buffer-size 10)
-		 (closed-direction 0)
+  (let ((open-file-list-tag '*ALL-THE-OPEN-FILES*)
 
-		 (make-physical-channel (make-primitive-procedure 'HUNK3-CONS))
-		 (channel-number system-hunk3-cxr0)
-		 (channel-name system-hunk3-cxr1)
-		 (channel-direction system-hunk3-cxr2)
-		 (set-channel-direction! system-hunk3-set-cxr2!)
-		 (non-marked-vector-cons
-		  (make-primitive-procedure 'NON-MARKED-VECTOR-CONS))
-		 (insert-non-marked-vector!
-		  (make-primitive-procedure 'INSERT-NON-MARKED-VECTOR!))
-		 )
+	(weak-cons-type (microcode-type 'WEAK-CONS))
 
+	(make-physical-channel (make-primitive-procedure 'HUNK3-CONS))
+	(channel-descriptor system-hunk3-cxr0)
+	(channel-name system-hunk3-cxr1)
+	(channel-direction system-hunk3-cxr2)
+	(set-channel-direction! system-hunk3-set-cxr2!)
+
+	(closed-direction 0))
+
+    (make-environment
+    
 (declare (compilable-primitive-functions
 	  (make-physical-channel hunk3-cons)
-	  (channel-number system-hunk3-cxr0)
+	  (channel-descriptor system-hunk3-cxr0)
+	  (set-channel-descriptor! system-hunk3-set-cxr0!)
 	  (channel-name system-hunk3-cxr1)
 	  (channel-direction system-hunk3-cxr2)
-	  (set-channel-direction! system-hunk3-set-cxr2!)
-	  non-marked-vector-cons
-	  insert-non-marked-vector!))
+	  (set-channel-direction! system-hunk3-set-cxr2!)))
+
+(define open-files-list)
+(define traversing?)
+    
+(define (initialize)
+  (set! open-files-list (list open-file-list-tag))
+  (set! traversing? #F)
+  #T)
 
 ;;;; Open/Close Files
 
@@ -84,173 +84,105 @@
 (define open-channel-wrapper
   (let ((open-channel (make-primitive-procedure 'FILE-OPEN-CHANNEL)))
     (named-lambda ((open-channel-wrapper direction) filename)
-      (let ((open-files-vector
-	     (vector-ref (get-fixed-objects-vector) open-files-slot))
-	    (file-info
-	     (make-physical-channel (open-channel filename direction)
-				    filename
-				    direction)))
-	(add-file! file-info
-		   (if (= (vector-ref open-files-vector counter-slot)
-			  (- (vector-length open-files-vector) header-size))
-		       (grow-files-vector! open-files-vector)
-		       open-files-vector))
-	file-info))))
+      (without-interrupts
+       (lambda ()
+	 (let ((channel
+		(make-physical-channel (open-channel filename direction)
+				       filename
+				       direction)))
+	   
+	   (with-interrupt-mask INTERRUPT-MASK-NONE ; Disallow gc
+	    (lambda (ie)
+	      (set-cdr! open-files-list
+			(cons (system-pair-cons
+			       weak-cons-type
+			       channel
+			       (channel-descriptor channel))
+			      (cdr open-files-list)))))
+	   channel))))))
 
 (define open-input-channel (open-channel-wrapper #!FALSE))
 (define open-output-channel (open-channel-wrapper #!TRUE))
 
+;; This is locked from interrupts, but GC can occur since the
+;; procedure itself hangs on to the channel until the last moment,
+;; when it returns the channel's name.  The list will not be spliced
+;; by the daemon behind its back because of the traversing? flag.
+
 (define close-physical-channel
   (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
     (named-lambda (close-physical-channel channel)
-      (if (eq? closed-direction
-	       (set-channel-direction! channel closed-direction))
-	  #!TRUE					;Already closed!
-	  (begin (primitive channel)
-		 (remove-from-files-vector! channel)
-		 (channel-name channel))))))
-
-(define physical-channel-eof?
-  (let ((primitive (make-primitive-procedure 'FILE-EOF?)))
-    (named-lambda (physical-channel-eof? channel)
-      (or (eq? (channel-direction channel) closed-direction)
-	  (primitive (primitive (channel-number channel)))))))
+      (fluid-let ((traversing? #T))
+	(without-interrupts
+	 (lambda ()
+	   (if (eq? closed-direction
+		    (set-channel-direction! channel closed-direction))
+	       #!TRUE			;Already closed!
+	       (begin
+		 (primitive (channel-descriptor channel))
+		 (let loop ((l1 open-files-list)
+			    (l2 (cdr open-files-list)))
+		   (cond ((null? l2)
+			  (set! traversing? #F)
+			  (error "close-physical-channel: lost channel"
+				 channel))
+			 ((eq? channel (system-pair-car (car l2)))
+			  (set-cdr! l1 (cdr l2))
+			  (channel-name channel))
+			 (else (loop l2 (cdr l2)))))))))))))
+
+;;;; Finalization and daemon.
 
 (set! close-all-open-files
-(named-lambda (close-all-open-files)
-  (without-interrupts
-   (lambda ()
-     (for-each close-physical-channel (all-open-channels))))))
+      (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
+	(named-lambda (close-all-open-files)
+	  (fluid-let ((traversing? #T))
+	    (without-interrupts
+	     (lambda ()
+	       (let loop ((l (cdr open-files-list)))
+		 (cond ((null? l) #T)
+		       (else
+			(let ((channel (system-pair-car (car l))))
+			  (primitive (system-pair-cdr (car l)))
+			  (if (not (eq? channel #F))
+			      (set-channel-direction! channel
+						      closed-direction))
+			  (set-cdr! open-files-list (cdr l)))
+			(loop (cdr open-files-list)))))))))))
 
-;;; This is a crock -- it will have to be redesigned if we ever have
-;;; more than one terminal connected to this system.  Right now if one
-;;; just opens these channels (using "CONSOLE:" and "KEYBOARD:" on the
-;;; 9836), a regular file channel is opened which is both slower and
-;;; will not work when restoring the band.
+;; This is the daemon which closes files which no one points to.
+;; Runs with GC, and lower priority interrupts, disabled.
+;; It is unsafe because of the (unnecessary) consing by the
+;; interpreter while it executes the loop.
 
-(define console-output-channel (make-physical-channel 0 "CONSOLE:" #!TRUE))
-(define console-input-channel (make-physical-channel 0 "KEYBOARD:" #!FALSE))
-(define (get-console-output-channel) console-output-channel)
-(define (get-console-input-channel) console-input-channel)
+;; Replaced by a primitive installed below.
 
-(define (console-channel? channel)
-  (zero? (channel-number channel)))
-
-;;;; Files Vector Operations
+#|
 
-(define (grow-files-vector! old)
-  (without-interrupts
-   (lambda ()
-     (let ((new (vector-cons (+ buffer-size (vector-length old)) '()))
-	   (nm (non-marked-vector-cons
-		(+ buffer-size (- (vector-length old) header-size)))))
-       (lock-vector! old)
-       (let ((num (+ header-size (vector-ref old counter-slot))))
-	 (define (loop current)
-	   (if (= current num)
-	       (begin (clear-vector! new current
-				     (+ buffer-size (vector-length old)))
-		      (vector-set! (get-fixed-objects-vector) open-files-slot
-				   new)
-		      (unlock-vector! old)
-		      (unlock-vector! new))	;Must be done when installed!
-	       (begin (vector-set! new current (vector-ref old current))
-		      (loop (1+ current)))))
-	 (vector-set! new counter-slot (vector-ref old counter-slot))
-	 (insert-non-marked-vector! new file-vector-slot nm)
-	 (lock-vector! new)		;If GC occurs it will be alright
-	 (loop header-size)
-	 new)))))
+(define close-lost-open-files-daemon
+  (let ((primitive (make-primitive-procedure 'FILE-CLOSE-CHANNEL)))
+    (named-lambda (close-lost-open-files-daemon)
+      (if (not traversing?)
+	  (let loop ((l1 open-files-list)
+		     (l2 (cdr open-files-list)))
+	    (cond ((null? l2) #T)
+		  ((null? (system-pair-car (car l2)))
+		   (primitive (system-pair-cdr (car l2)))
+		   (set-cdr! l1 (cdr l2))
+		   (loop l1 (cdr l1)))
+		  (else (loop l2 (cdr l2)))))))))
 
-(define (add-file! file open-files)
-  (without-interrupts
-   (lambda ()
-     (lock-vector! open-files)
-     (vector-set! open-files
-		  (+ header-size
-		     (vector-set! open-files
-				  counter-slot
-				  (1+ (vector-ref open-files counter-slot))))
-		  file)
-     (unlock-vector! open-files))))
-      
-(define (remove-from-files-vector! file)
-  (without-interrupts
-   (lambda ()
-     (let ((open-files (vector-ref (get-fixed-objects-vector)
-				   open-files-slot)))
-       (lock-vector! open-files)
-       (let ((max (+ header-size (vector-ref open-files counter-slot))))
-	 (define (loop count)
-	      (cond ((= count max)
-		     (unlock-vector! open-files)
-		     (error "Not an i/o channel" 'CLOSE-CHANNEL file))
-		    ((eq? file (vector-ref open-files count))
-		     (let inner ((count (1+ count)))
-			  (if (= count max)
-			      (begin
-			       (vector-set! open-files
-					    counter-slot
-					    (-1+
-					     (vector-ref open-files
-							 counter-slot)))
-			       (vector-set! open-files (-1+ count) '()))
-			      (begin
-			       (vector-set! open-files
-					    (-1+ count)
-					    (vector-ref open-files count))
-			       (inner (1+ count))))))
-		    (else (loop (1+ count)))))
-	 (loop header-size)
-	 (unlock-vector! open-files))))))
-
-(define (clear-vector! v start end)
-  (without-interrupts
-   (lambda ()
-     (subvector-fill! v start end '()))))
+|#
 
-(define (all-open-channels)
-  (let ((files-vector (vector-ref (get-fixed-objects-vector) open-files-slot)))
-    (without-interrupts
-     (lambda ()
-       (lock-vector! files-vector)
-       (let ((result
-	      (subvector->list files-vector
-			       header-size
-			       (+ header-size
-				  (vector-ref files-vector counter-slot)))))
-	 (unlock-vector! files-vector)
-	 result)))))
-  
-(define ((locker flag) v)
-  (with-interrupts-reduced INTERRUPT-MASK-NONE
-   (lambda (old-mask)
-     (vector-set! v
-		  file-vector-slot
-		  (&make-object flag
-				(vector-ref v file-vector-slot)))
-     #!TRUE)))				; Guarantee a good value returned
+(define close-lost-open-files-daemon
+  (let ((primitive (make-primitive-procedure 'CLOSE-LOST-OPEN-FILES)))
+    (named-lambda (close-lost-open-files-daemon)
+      (if (not traversing?)
+	  (primitive open-files-list)))))
 
-(define lock-vector!
-  (locker (microcode-type 'NULL)))
+))) ;; End of PRIMITIVE-IO package.
 
-(define unlock-vector!
-  (locker (microcode-type 'MANIFEST-SPECIAL-NM-VECTOR)))
-
-(define (setup-files-vector)
-  (let ((base-vector (vector-cons (+ default-size header-size) '())))
-    (vector-set! base-vector counter-slot 0)
-    (insert-non-marked-vector! base-vector file-vector-slot
-			       (non-marked-vector-cons default-size))
-;   (lock-vector! base-vector)
-    (clear-vector! base-vector header-size (+ default-size header-size))
-    (vector-set! (get-fixed-objects-vector) open-files-slot base-vector)
-    (unlock-vector! base-vector)))
-
-;;; end PRIMITIVE-IO package.
-))
-
-((access setup-files-vector primitive-io))
-(add-gc-daemon! (make-primitive-procedure 'CLOSE-LOST-OPEN-FILES))
+((access initialize primitive-io))
+(add-gc-daemon! (access close-lost-open-files-daemon primitive-io))
 
 (add-gc-daemon! (access close-lost-open-files-daemon primitive-io))

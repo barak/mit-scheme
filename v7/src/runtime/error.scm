@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.41 1987/01/23 00:11:50 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/error.scm,v 13.42 1987/02/02 14:18:35 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -416,10 +416,12 @@ using the current read-eval-print environment."))
   "Fasload file would not relocate correctly"
   combination-first-operand)
 
+#|
 (define-operation-specific-error 'RAN-OUT-OF-HASH-NUMBERS
   (list (make-primitive-procedure 'OBJECT-HASH))
   "Hashed too many objects -- get a wizard"
   combination-first-operand)
+|#
 
 ;;; This will trap any external-primitive errors that
 ;;; aren't caught by special handlers.

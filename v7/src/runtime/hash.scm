@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.41 1987/01/23 00:14:04 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/hash.scm,v 13.42 1987/02/02 14:17:50 jinx Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -37,236 +37,207 @@
 ;;;	without prior written consent from MIT in each case.
 ;;;
 
-;;;; Object Hashing
+;;;; Object Hashing, populations, and 2D tables
+
+;; The hashing code, and the population code below, depend on weak
+;; conses supported by the microcode.  In particular, both pieces of
+;; code depend on the fact that the car of a weak cons becomes #F if
+;; the object is garbage collected.
+
+;; Important: This code must be rewritten for a parallel processor,
+;; since two processors may be updating the data structures
+;; simultaneously.
 
 (declare (usual-integrations))
-
-((make-primitive-procedure 'INITIALIZE-OBJECT-HASH) 313)
-(add-gc-daemon! (make-primitive-procedure 'REHASH-GC-DAEMON))
+
 (add-event-receiver! event:after-restore gc-flip)
+
+;;;; Object hashing
 
-(define object-hash (make-primitive-procedure 'OBJECT-HASH))
-(define object-unhash (make-primitive-procedure 'OBJECT-UNHASH))
+;; How this works:
 
-(define hash-of-false (object-hash #!FALSE))
-(define hash-of-false-number (primitive-datum hash-of-false))
+;; There are two tables, the hash table and the unhash table:
 
-(define (hash object)
-  (primitive-datum (object-hash object)))
+;; - The hash table associates objects to their hash numbers.  The
+;; entries are keyed according to the address (datum) of the object,
+;; and thus must be recomputed after every relocation (ie. band
+;; loading, garbage collection, etc.).
+
+;; - The unhash table associates the hash numbers with the
+;; corresponding objects.  It is keyed according to the numbers
+;; themselves.
+
+;; In order to make the hash and unhash tables weakly hold the objects
+;; hashed, the following mechanism is used:
+
+;; The hash table, a vector, has a SNMV header before all the buckets,
+;; and therefore the garbage collector will skip it and will not
+;; relocate its buckets.  It becomes invalid after a garbage
+;; collection and the first thing the daemon does is clear it.
+;; Each bucket is a normal alist with the objects in the cars, and the
+;; numbers in the cdrs, thus assq can be used to find an object in the
+;; bucket.
+
+;; The unhash table, also a vector, holds the objects by means of weak
+;; conses.  These weak conses are the same as the pairs in the buckets
+;; in the hash table, but with their type codes changed.  Each of the
+;; buckets in the unhash table is headed by an extra pair whose car is
+;; usually #T.  This pair is used by the splicing code.  The daemon
+;; treats buckets headed by #F differently from buckets headed by #T.
+;; A bucket headed by #T is compressed: Those pairs whose cars have
+;; disappeared are spliced out from the bucket.  On the other hand,
+;; buckets headed by #F are not compressed.  The intent is that while
+;; object-unhash is traversing a bucket, the bucket is locked so that
+;; the daemon will not splice it out behind object-unhash's back.
+;; Then object-unhash does not need to be locked against garbage
+;; collection.
+
+(define (hash x)
+  (if (eq? x #F)
+      0
+      (object-hash x)))
+
 
 (define (unhash n)
-  (if (= n hash-of-false-number)
-      #!FALSE
-      (or (object-unhash (make-non-pointer-object n))
-	  (error "Not a valid hash number" 'UNHASH n))))
+  (if (zero? n)
+      #F
+      (or (object-unhash n)
+	  (error "unhash: Not a valid hash number" n))))
 
 (define (valid-hash-number? n)
-  (if (eq? n hash-of-false)
-      #!TRUE
+  (if (zero? n)
+      #T
       (object-unhash n)))
+
+(define object-hash)
+(define object-unhash)
+
+(let ((pair-type (microcode-type 'PAIR))
+      (weak-cons-type (microcode-type 'WEAK-CONS))
+      (snmv-type (microcode-type 'MANIFEST-SPECIAL-NM-VECTOR))
+      (&make-object (make-primitive-procedure '&MAKE-OBJECT)))
+
+  (declare (compilable-primitive-functions &make-object))
 
-;;;; Populations
-;;;
-;;;  A population is a collection of objects.  This collection
-;;;  has the property that if one of the objects in the collection
-;;;  is reclaimed as garbage, then it is no longer an element of
-;;;  the collection.
+  (define next-hash-number)
+  (define hash-table-size)
+  (define unhash-table)
+  (define hash-table)
 
-(define make-population)
-(define population?)
+  (define (initialize-object-hash! size)
+    (set! next-hash-number 1)
+    (set! hash-table-size size)
+    (set! unhash-table (vector-cons size '()))
+    (set! hash-table (vector-cons (1+ size) '()))
+    (vector-set! hash-table 0 (&make-object snmv-type size))
+    (let initialize ((n 0))
+      (if (= n size)
+	  #T
+	  (begin (vector-set! unhash-table n (cons #T '()))
+		 (initialize (1+ n))))))
 
-(let ((population-tag '(POPULATION)))
+  ;; This is not dangerous because assq is a primitive and does not
+  ;; cause consing.  The rest of the consing (including that by the
+  ;; interpreter) is a small bounded amount.
 
-(define population-of-populations
-  (cons population-tag '()))
+  (set! object-hash
+	(named-lambda (object-hash object)
+	  (with-interrupt-mask INTERRUPT-MASK-NONE
+	   (lambda (ignore)
+	     (let* ((hash-index (1+ (remainder (primitive-datum object)
+					       hash-table-size)))
+		    (bucket (vector-ref hash-table hash-index))
+		    (association (assq object bucket)))
+	       (if (not (null? association))
+		   (cdr association)
+		   (let ((pair (cons object next-hash-number))
+			 (result next-hash-number)
+			 (unhash-bucket
+			  (vector-ref unhash-table
+				      (remainder next-hash-number
+						 hash-table-size))))
+		     (set! next-hash-number (1+ next-hash-number))
+		     (vector-set! hash-table hash-index (cons pair bucket))
+		     (set-cdr! unhash-bucket
+			       (cons (primitive-set-type weak-cons-type
+							 pair)
+				     (cdr unhash-bucket)))
+		     result)))))))
 
-(set! make-population
-(named-lambda (make-population)
-  (let ((population (cons population-tag '())))
-    (add-to-population! population-of-populations population)
-    population)))
+  ;; This is safe because it locks the garbage collector out only for
+  ;; a little time, enough to tag the bucket being searched, so that
+  ;; the daemon will not splice that bucket.
 
-(set! population?
-(named-lambda (population? object)
-  (and (pair? object)
-       (eq? (car object) population-tag))))
-
-(define (gc-population! population)
-  (set-cdr! population (delete-invalid-hash-numbers! (cdr population))))
-
-(define delete-invalid-hash-numbers!
-  (list-deletor!
-   (lambda (hash-number)
-     (not (valid-hash-number? hash-number)))))
-
-(define (gc-all-populations!)
-  (gc-population! population-of-populations)
-  (map-over-population population-of-populations gc-population!))
-
-(add-secondary-gc-daemon! gc-all-populations!)
-
-)
-
-(define (add-to-population! population object)
-  (let ((n (object-hash object)))
-    (if (not (memq n (cdr population)))
-	(set-cdr! population (cons n (cdr population))))))
-
-(define (remove-from-population! population object)
-  (set-cdr! population
-	    (delq! (object-hash object)
-		   (cdr population))))
+  (set! object-unhash
+	(named-lambda (object-unhash number)
+	  (let ((index (remainder number hash-table-size)))
+	    (with-interrupt-mask INTERRUPT-MASK-NONE
+	     (lambda (ie)
+	       (let ((bucket (vector-ref unhash-table index)))
+		 (set-car! bucket #F)
+		 (let ((result
+			(with-interrupt-mask INTERRUPT-MASK-GC-OK
+			 (lambda (ignore)
+			   (let loop ((l (cdr bucket)))
+			     (cond ((null? l) #F)
+				   ((= number (system-pair-cdr (car l)))
+				    (system-pair-car (car l)))
+				   (else (loop (cdr l)))))))))
+		   (set-car! bucket #T)
+		   result)))))))
 
-;;; Population Mappings
-;;; These have the effect of doing a GC-POPULATION! every time it is
-;;; called, since the cost of doing so is very small.
+;;;; Rehash daemon
 
-(define (map-over-population population procedure)
-  (let loop ((previous population)
-	     (rest (cdr population)))
-    (if (null? rest)
-	'()
-	(let ((unhash (object-unhash (car rest))))
-	  (if (or (eq? hash-of-false (car rest))
-		  unhash)
-	      (cons (procedure unhash)
-		    (loop rest (cdr rest)))
-	      (begin (set-cdr! previous (cdr rest))
-		     (loop previous (cdr rest))))))))
+  ;; The following is dangerous because of the (unnecessary) consing
+  ;; done by the interpreter while it executes the loops.  It runs
+  ;; with interrupts turned off.  The (necessary) consing done by
+  ;; rehash is not dangerous because at least that much storage was
+  ;; freed by the garbage collector.  To understand this, notice that
+  ;; the hash table has a SNMV header, so the garbage collector does
+  ;; not trace the hash table buckets, therefore freeing their
+  ;; storage.  The header is SNM rather than NM to make the buckets be
+  ;; relocated at band load/restore time.
 
-(define (map-over-population! population procedure)
-  (let loop ((previous population)
-	     (rest (cdr population)))
-    (if (not (null? rest))
-	(let ((unhash (object-unhash (car rest))))
-	  (if (or (eq? hash-of-false (car rest))
-		  unhash)
-	      (begin (procedure unhash)
-		     (loop rest (cdr rest)))
-	      (begin (set-cdr! previous (cdr rest))
-		     (loop previous (cdr rest))))))))
+  ;; Until this code is compiled, and therefore safe, it is replaced
+  ;; by a primitive.  See the installation code below.
 
-(define (for-all-inhabitants? population predicate)
-  (let loop ((previous population)
-	     (rest (cdr population)))
-    (or (null? rest)
-	(let ((unhash (object-unhash (car rest))))
-	  (if (or (eq? hash-of-false (car rest))
-		  unhash)
-	      (and (predicate unhash)
-		   (loop rest (cdr rest)))
-	      (begin (set-cdr! previous (cdr rest))
-		     (loop previous (cdr rest))))))))
+  #|
 
-(define (exists-an-inhabitant? population predicate)
-  (let loop ((previous population)
-	     (rest (cdr population)))
-    (and (not (null? rest))
-	 (let ((unhash (object-unhash (car rest))))
-	   (if (or (eq? hash-of-false (car rest))
-		   unhash)
-	       (or (predicate unhash)
-		   (loop rest (cdr rest)))
-	       (begin (set-cdr! previous (cdr rest))
-		      (loop previous (cdr rest))))))))
-
-;;;; Properties
+  (define (rehash weak-pair)
+    (let ((index (1+ (remainder
+		      (primitive-datum (system-pair-car weak-pair))
+		      hash-table-size))))
+      (vector-set! hash-table
+		   index
+		   (cons (primitive-set-type pair-type weak-pair)
+			 (vector-ref hash-table index)))))
 
-(define 2D-put!)
-(define 2D-get)
-(define 2D-remove!)
-(define 2D-get-alist-x)
-(define 2D-get-alist-y)
+  (define (cleanup n)
+    (if (zero? n)
+	'DONE
+	(begin (vector-set! hash-table n '())
+	       (cleanup (-1+ n)))))
 
-(let ((system-properties '()))
-
-(set! 2D-put!
-      (named-lambda (2D-put! x y value)
-	(let ((x-hash (object-hash x))
-	      (y-hash (object-hash y)))
-	  (let ((bucket (assq x-hash system-properties)))
-	    (if bucket
-		(let ((entry (assq y-hash (cdr bucket))))
-		  (if entry
-		      (set-cdr! entry value)
-		      (set-cdr! bucket
-				(cons (cons y-hash value)
-				      (cdr bucket)))))
-		(set! system-properties
-		      (cons (cons x-hash
-				  (cons (cons y-hash value)
-					'()))
-			    system-properties)))))))
-
-(set! 2D-get
-      (named-lambda (2D-get x y)
-	(let ((bucket (assq (object-hash x) system-properties)))
-	  (and bucket
-	       (let ((entry (assq (object-hash y) (cdr bucket))))
-		 (and entry
-		      (cdr entry)))))))
-
-;;; Returns TRUE iff an entry was removed.
-;;; Removes the bucket if the entry removed was the only entry.
-
-(set! 2D-remove!
-      (named-lambda (2D-remove! x y)
-	(let ((bucket (assq (object-hash x) system-properties)))
-	  (and bucket
-	       (begin (set-cdr! bucket
-				(del-assq! (object-hash y)
-					   (cdr bucket)))
-		      (if (null? (cdr bucket))
-			  (set! system-properties
-				(del-assq! (object-hash x)
-					   system-properties)))
-		      #!TRUE)))))
-
-;;; This clever piece of code removes all invalid entries and buckets,
-;;; and also removes any buckets which [subsequently] have no entries.
-
-(define (gc-system-properties!)
-  (set! system-properties (delete-invalid-hash-numbers! system-properties)))
-
-(define delete-invalid-hash-numbers!
-  (list-deletor!
-   (lambda (bucket)
-     (or (not (valid-hash-number? (car bucket)))
-	 (begin (set-cdr! bucket (delete-invalid-y! (cdr bucket)))
-		(null? (cdr bucket)))))))
-
-(define delete-invalid-y!
-  (list-deletor!
-   (lambda (entry)
-     (not (valid-hash-number? (car entry))))))
-
-(add-secondary-gc-daemon! gc-system-properties!)
-
-(set! 2D-get-alist-x
-      (named-lambda (2D-get-alist-x x)
-	(let ((bucket (assq (object-hash x) system-properties)))
-	  (if bucket
-	      (let loop ((rest (cdr bucket)))
-		(cond ((null? rest) '())
-		      ((valid-hash-number? (caar rest))
-		       (cons (cons (object-unhash (caar rest))
-				   (cdar rest))
-			     (loop (cdr rest))))
-		      (else (loop (cdr rest)))))
-	      '()))))
-
-(set! 2D-get-alist-y
-      (named-lambda (2D-get-alist-y y)
-	(let ((y-hash (object-hash y)))
-	  (let loop ((rest system-properties))
-	    (cond ((null? rest) '())
-		  ((valid-hash-number? (caar rest))
-		   (let ((entry (assq y-hash (cdar rest))))
-		     (if entry
-			 (cons (cons (object-unhash (caar rest))
-				     (cdr entry))
-			       (loop (cdr rest)))
-			 (loop (cdr rest)))))
-		  (else (loop (cdr rest))))))))
-
-)
+  (define (rehash-gc-daemon)
+    (cleanup hash-table-size)
+    (let outer ((n (-1+ hash-table-size)))
+      (if (negative? n)
+	  #T
+	  (let ((bucket (vector-ref unhash-table n)))
+	    (if (car bucket)
+		(let inner1 ((l1 bucket) (l2 (cdr bucket)))
+		  (cond ((null? l2) (outer (-1+ n)))
+			((eq? (system-pair-car (car l2)) #F)
+			 (set-cdr! l1 (cdr l2))
+			 (inner1 l1 (cdr l1)))
+			(else (rehash (car l2))
+			      (inner1 l2 (cdr l2)))))
+		(let inner2 ((l (cdr bucket)))
+		  (cond ((null? l) (outer (-1+ n)))
+			((eq? (system-pair-car (car l)) #F)
+			 (inner2 (cdr l)))
+			(else (rehash (car l))
+			      (inner2 (cdr l))))))))))
+  
+  (add-gc-daemon! rehash-gc-daemon)
+  |#
