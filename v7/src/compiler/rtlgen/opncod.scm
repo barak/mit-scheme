@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.22 1988/11/06 14:40:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/opncod.scm,v 4.23 1988/12/12 21:52:22 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -36,11 +36,9 @@ MIT in each case. |#
 
 (declare (usual-integrations))
 
-(package (open-coding-analysis combination/inline)
-
 ;;;; Analysis
 
-(define-export (open-coding-analysis applications)
+(define (open-coding-analysis applications)
   (for-each (if compiler:open-code-primitives?
 		(lambda (application)
 		  (if (eq? (application-type application) 'COMBINATION)
@@ -87,55 +85,48 @@ MIT in each case. |#
 
 ;;;; Code Generator
 
-(define-export (combination/inline combination)
-  (let ((offset (node/offset combination)))
-    (generate/return* (combination/block combination)
-		      (combination/continuation combination)
-		      (combination/continuation-push combination)
-		      (let ((inliner (combination/inliner combination)))
-			(let ((handler (inliner/handler inliner))
-			      (generator (inliner/generator inliner))
-			      (expressions
-			       (map (subproblem->expression offset)
-				    (inliner/operands inliner))))
-			  (make-return-operand
-			   (lambda (offset)
-			     offset
-			     ((vector-ref handler 1) generator expressions))
-			   (lambda (offset finish)
-			     offset
-			     ((vector-ref handler 2) generator
-						     expressions
-						     finish))
-			   (lambda (offset finish)
-			     offset
-			     ((vector-ref handler 3) generator
-						     expressions
-						     finish))
-			   false)))
-		      offset)))
+(define (combination/inline combination)
+  (generate/return* (combination/context combination)
+		    (combination/continuation combination)
+		    (combination/continuation-push combination)
+		    (let ((inliner (combination/inliner combination)))
+		      (let ((handler (inliner/handler inliner))
+			    (generator (inliner/generator inliner))
+			    (expressions
+			     (map subproblem->expression
+				  (inliner/operands inliner))))
+			(make-return-operand
+			 (lambda ()
+			   ((vector-ref handler 1) generator expressions))
+			 (lambda (finish)
+			   ((vector-ref handler 2) generator
+						   expressions
+						   finish))
+			 (lambda (finish)
+			   ((vector-ref handler 3) generator
+						   expressions
+						   finish))
+			 false)))))
 
-(define (subproblem->expression offset)
-  (lambda (subproblem)
-    (let ((rvalue (subproblem-rvalue subproblem)))
-      (let ((value (rvalue-known-value rvalue)))
-	(cond ((and value (rvalue/constant? value))
-	       (rtl:make-constant (constant-value value)))
-	      ((and value
-		    (rvalue/procedure? value)
-		    (procedure/trivial-or-virtual? value))
-	       (make-trivial-closure-cons value))
-	      ((and (rvalue/reference? rvalue)
-		    (not (variable/value-variable? (reference-lvalue rvalue)))
-		    (reference-to-known-location? rvalue))
-	       (rtl:make-fetch
-		(find-known-variable (reference-block rvalue)
-				     (reference-lvalue rvalue)
-				     offset)))
-	      (else
-	       (rtl:make-fetch
-		(continuation*/register
-		 (subproblem-continuation subproblem)))))))))
+(define (subproblem->expression subproblem)
+  (let ((rvalue (subproblem-rvalue subproblem)))
+    (let ((value (rvalue-known-value rvalue)))
+      (cond ((and value (rvalue/constant? value))
+	     (rtl:make-constant (constant-value value)))
+	    ((and value
+		  (rvalue/procedure? value)
+		  (procedure/trivial-or-virtual? value))
+	     (make-trivial-closure-cons value))
+	    ((and (rvalue/reference? rvalue)
+		  (not (variable/value-variable? (reference-lvalue rvalue)))
+		  (reference-to-known-location? rvalue))
+	     (rtl:make-fetch
+	      (find-known-variable (reference-context rvalue)
+				   (reference-lvalue rvalue))))
+	    (else
+	     (rtl:make-fetch
+	      (continuation*/register
+	       (subproblem-continuation subproblem))))))))
 
 (define (invoke/effect->effect generator expressions)
   (generator expressions false))
@@ -231,36 +222,33 @@ MIT in each case. |#
 (define-integrable (make-invocation operator operands)
   `(,operator ,@operands))
 
-(define (multiply-guarded-statement guards statement alternate)
-  (let guard-loop ((guards guards))
-    (cond ((null? guards) statement)
-	  ((cfg-null? (car guards)) (guard-loop (cdr guards)))
-	  (else
-	   (pcfg*scfg->scfg!
-	    (car guards)
-	    (guard-loop (cdr guards))
-	    alternate)))))
-
 (define (open-code:with-checks checks non-error-cfg error-finish
 			       prim-invocation)
-  (let* ((continuation-entry (generate-continuation-entry))
-	 (error-continuation
-	  (scfg*scfg->scfg!
-	   continuation-entry
-	   (if error-finish
-	       (error-finish (rtl:make-fetch register:value))
-	       (make-null-cfg))))
-	 (error-cfg
-	  (scfg*scfg->scfg!
-	   (generate-primitive
-	    (car prim-invocation)
-	    (cdr prim-invocation)
-	    (rtl:continuation-entry-continuation
-	     (rinst-rtl
-	      (bblock-instructions
-	       (cfg-entry-node continuation-entry)))))
-	   error-continuation)))
-    (multiply-guarded-statement checks non-error-cfg error-cfg)))
+  (let ((checks (list-transform-negative checks cfg-null?)))
+    (if (null? checks)
+	non-error-cfg
+	;; Don't generate `error-cfg' unless it is needed.  Otherwise
+	;; it creates some unreachable code which we can't easily
+	;; remove from the output afterwards.
+	(let ((error-cfg
+	       (let ((continuation-entry (generate-continuation-entry)))
+		 (scfg-append!
+		  (generate-primitive
+		   (car prim-invocation)
+		   (cdr prim-invocation)
+		   (rtl:continuation-entry-continuation
+		    (rinst-rtl
+		     (bblock-instructions
+		      (cfg-entry-node continuation-entry)))))
+		  continuation-entry
+		  (if error-finish
+		      (error-finish (rtl:make-fetch register:value))
+		      (make-null-cfg))))))
+	  (let loop ((checks checks))
+	    (if (null? checks)
+		non-error-cfg
+		(pcfg*scfg->scfg! (car checks)
+				  (loop (cdr checks)) error-cfg)))))))
 
 (define (open-code:limit-check checkee-locative limit-locative)
   (if compiler:generate-range-checks?
@@ -657,67 +645,24 @@ MIT in each case. |#
 	(generic-op (rtl:generic-binary-operator expression))
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-binary-operator expression)))
-#|
-	(flo-op
-	 (generic->floatnum-op (rtl:generic-binary-operator expression)))
-|#
 	(op1 (rtl:generic-binary-operand-1 expression))
 	(op2 (rtl:generic-binary-operand-2 expression)))
-    (let* ((give-it-up
-	    (scfg-append!
-	     (generate-primitive
-	      generic-op
-	      (cddr expression)
-	      (rtl:continuation-entry-continuation
-	       (rinst-rtl
-		(bblock-instructions
-		 (cfg-entry-node continuation-entry)))))
-	     continuation-entry
-	     (if is-pred?
-		 (finish
-		  (rtl:make-true-test (rtl:make-fetch register:value)))
-		 (expression-simplify-for-statement
-		  (rtl:make-fetch register:value)
-		  finish))))
-	   (generic-flonum
-	    ;; For now we will just call the generic op.
-	    ;; When we have open coded flonums, we will
-	    ;; stick that stuff here.
-	    give-it-up)
-	   (generic-3
-	    ;; op1 is a flonum, op2 is not
-	    (pcfg*scfg->scfg!
-	     (generate-type-test 'FIXNUM op2)
-	     ;; Whem we have open coded flonums we
-	     ;; will convert op2 to a float and do a
-	     ;; floating op.
-	     generic-flonum
-	     give-it-up))
-	   (generic-2
-	    ;; op1 is a fixnum, op2 is not
-	    (if compiler:open-code-flonum-checks?
-		(pcfg*scfg->scfg!
-		 (generate-type-test 'FLONUM op2)
-		 ;; Whem we have open coded flonums we
-		 ;; will convert op1 to a float and do a
-		 ;; floating op.
-		 generic-flonum
-		 give-it-up)
-		give-it-up))
-	   (generic-1
-	    ;; op1 is not a fixnum, op2 unknown
-	    (if compiler:open-code-flonum-checks?
-		(pcfg*scfg->scfg!
-		 (generate-type-test 'FLONUM op1)
-		 (pcfg*scfg->scfg!
-		  (generate-type-test 'FLONUM op2)
-		  ;; For now we will just call the generic op.
-		  ;; When we have open coded flonums, we will
-		  ;; stick that stuff here.
-		  generic-flonum
-		  generic-3)
-		 give-it-up)
-		give-it-up)))
+    (let ((give-it-up
+	   (scfg-append!
+	    (generate-primitive
+	     generic-op
+	     (cddr expression)
+	     (rtl:continuation-entry-continuation
+	      (rinst-rtl
+	       (bblock-instructions
+		(cfg-entry-node continuation-entry)))))
+	    continuation-entry
+	    (if is-pred?
+		(finish
+		 (rtl:make-true-test (rtl:make-fetch register:value)))
+		(expression-simplify-for-statement
+		 (rtl:make-fetch register:value)
+		 finish)))))
       (if is-pred?
 	  (pcfg*scfg->scfg!
 	   (generate-type-test 'FIXNUM op1)
@@ -731,8 +676,8 @@ MIT in each case. |#
 		  fix-op
 		  (rtl:make-object->fixnum op1)
 		  (rtl:make-object->fixnum op2))))
-	    generic-2)
-	   generic-1)
+	    give-it-up)
+	   give-it-up)
 	  (pcfg*scfg->scfg!
 	   (generate-type-test 'FIXNUM op1)
 	   (pcfg*scfg->scfg!
@@ -747,18 +692,14 @@ MIT in each case. |#
 		 (pcfg/prefer-alternative! (rtl:make-overflow-test))
 		 give-it-up
 		 (finish (rtl:make-fixnum->object fix-temp)))))
-	    generic-2)
-	   generic-1)))))
+	    give-it-up)
+	   give-it-up)))))
 
 (define (generate-generic-unary expression finish is-pred?)
   (let ((continuation-entry (generate-continuation-entry))
 	(generic-op (rtl:generic-unary-operator expression))
 	(fix-op
 	 (generic->fixnum-op (rtl:generic-unary-operator expression)))
-#|
-	(flo-op
-	 (generic->floatnum-op (rtl:generic-unary-operator expression)))
-|#
 	(op (rtl:generic-unary-operand expression)))
     (let* ((give-it-up
 	    (scfg-append!
@@ -775,12 +716,7 @@ MIT in each case. |#
 		  (rtl:make-true-test (rtl:make-fetch register:value)))
 		 (expression-simplify-for-statement
 		  (rtl:make-fetch register:value)
-		  finish))))
-	   (generic-flonum
-	    ;; For now we will just call the generic op.
-	    ;; When we have open coded flonums, we will
-	    ;; stick that stuff here.
-	    give-it-up))
+		  finish)))))
       (if is-pred?
 	  (pcfg*scfg->scfg!
 	   (generate-type-test 'FIXNUM op)
@@ -788,12 +724,7 @@ MIT in each case. |#
 	    (rtl:make-fixnum-pred-1-arg
 	    fix-op
 	    (rtl:make-object->fixnum op)))
-	   (if compiler:open-code-flonum-checks?
-	       (pcfg*scfg->scfg!
-		(generate-type-test 'FLONUM op)
-		generic-flonum
-		give-it-up)
-	       give-it-up))
+	   give-it-up)
 	  (pcfg*scfg->scfg!
 	   (generate-type-test 'FIXNUM op)
 	   (load-temporary-register scfg*scfg->scfg!
@@ -805,12 +736,7 @@ MIT in each case. |#
 		(pcfg/prefer-alternative! (rtl:make-overflow-test))
 		give-it-up
 		(finish (rtl:make-fixnum->object fix-temp)))))
-	   (if compiler:open-code-flonum-checks?
-	       (pcfg*scfg->scfg!
-		(generate-type-test 'FLONUM op)
-		generic-flonum
-		give-it-up)
-	       give-it-up))))))
+	   give-it-up)))))
 
 (define (generic->fixnum-op generic-op)
   (case generic-op
@@ -974,6 +900,3 @@ MIT in each case. |#
 	      finish
 	      (make-invocation 'STRING-SET! expressions))))
 	 '(0 1 2))))))
-
-;;; end COMBINATION/INLINE
-)
