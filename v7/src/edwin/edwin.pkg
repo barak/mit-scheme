@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.149 1994/08/04 08:50:44 cph Exp $
+$Id: edwin.pkg,v 1.150 1994/09/08 21:36:46 adams Exp $
 
 Copyright (c) 1989-1994 Massachusetts Institute of Technology
 
@@ -315,6 +315,7 @@ MIT in each case. |#
 	  edwin-variable$cursor-centering-point
 	  edwin-variable$mode-line-inverse-video
 	  edwin-variable$scroll-step
+	  edwin-variable$char-image-strings
 	  edwin-variable$tab-width
 	  edwin-variable$truncate-lines
 	  edwin-variable$truncate-partial-width-windows
@@ -325,6 +326,7 @@ MIT in each case. |#
 	  set-window-point!
 	  set-window-start-mark!
 	  window-buffer
+	  window-char->image
 	  window-clear-override-message!
 	  window-configuration?
 	  window-coordinates->mark
@@ -363,6 +365,7 @@ MIT in each case. |#
 	  editor-frame-window0
 	  editor-frame-windows
 	  make-editor-frame))
+
 
 (define-package (edwin window combination)
   (files "comwin")
