@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: unix.scm,v 1.88 1999/01/02 06:11:34 cph Exp $
+;;; $Id: unix.scm,v 1.89 1999/01/14 18:25:03 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -161,7 +161,7 @@ Includes the new backup.  Must be > 0."
   (call-with-values
       (lambda ()
 	(let ((type (pathname-type truename)))
-	  (if (member type unix/encoding-pathname-types)
+	  (if (member type os/encoding-pathname-types)
 	      (values (pathname-new-type truename #f)
 		      (string-append "~." type))
 	      (values truename "~"))))
@@ -235,13 +235,13 @@ Includes the new backup.  Must be > 0."
 	      (directory-channel-close channel)
 	      result))))))
 
-(define unix/encoding-pathname-types
+(define os/encoding-pathname-types
   '("Z" "gz" "KY" "ky" "bf"))
 
 (define unix/backup-suffixes
   (cons "~"
 	(map (lambda (type) (string-append "~." type))
-	     unix/encoding-pathname-types)))
+	     os/encoding-pathname-types)))
 
 (define (os/backup-filename? filename)
   (let ((end (string-length filename)))
@@ -273,12 +273,6 @@ Includes the new backup.  Must be > 0."
 			       (substring->number filename
 						  (fix:+ index 1)
 						  suffix)))))))))
-
-(define (os/pathname-type-for-mode pathname)
-  (let ((type (pathname-type pathname)))
-    (if (member type unix/encoding-pathname-types)
-	(pathname-type (->namestring (pathname-new-type pathname false)))
-	type)))
 
 (define (os/completion-ignore-filename? filename)
   (and (not (file-test-no-errors file-directory? filename))

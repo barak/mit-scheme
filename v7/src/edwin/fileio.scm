@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: fileio.scm,v 1.144 1999/01/02 06:11:34 cph Exp $
+;;; $Id: fileio.scm,v 1.145 1999/01/14 18:24:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -231,21 +231,26 @@ of the predicates is satisfied, the file is written in the usual way."
 			   (if (re-search-forward "[ \t]*;" m end false)
 			       (re-match-start 0)
 			       end)))))))))))
-
+
 (define (pathname-default-mode pathname buffer)
-  (or (let ((filename (->namestring pathname)))
-	(let loop ((types (ref-variable auto-mode-alist buffer)))
-	  (and (not (null? types))
-	       (if (re-string-match (caar types) filename)
-		   (->mode (cdar types))
-		   (loop (cdr types))))))
-      (let ((type (os/pathname-type-for-mode pathname)))
-	(and (string? type)
-	     (let loop ((types (ref-variable file-type-to-major-mode buffer)))
-	       (and (not (null? types))
-		    (if (string-ci=? type (caar types))
-			(->mode (cdar types))
-			(loop (cdr types)))))))))
+  (let ((pathname
+	 (if (member (pathname-type pathname) os/encoding-pathname-types)
+	     (->namestring (pathname-new-type pathname #f))
+	     pathname)))
+    (or (let ((filename (->namestring pathname)))
+	  (let loop ((types (ref-variable auto-mode-alist buffer)))
+	    (and (not (null? types))
+		 (if (re-string-match (caar types) filename)
+		     (->mode (cdar types))
+		     (loop (cdr types))))))
+	(let ((type (pathname-type pathname)))
+	  (and (string? type)
+	       (let loop
+		   ((types (ref-variable file-type-to-major-mode buffer)))
+		 (and (not (null? types))
+		      (if (string-ci=? type (caar types))
+			  (->mode (cdar types))
+			  (loop (cdr types))))))))))
 
 (define (string->mode-alist? object)
   (and (alist? object)

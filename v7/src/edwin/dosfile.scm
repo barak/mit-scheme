@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: dosfile.scm,v 1.22 1999/01/02 06:11:34 cph Exp $
+;;; $Id: dosfile.scm,v 1.23 1999/01/14 18:25:09 cph Exp $
 ;;;
 ;;; Copyright (c) 1994-1999 Massachusetts Institute of Technology
 ;;;
@@ -41,13 +41,13 @@ Includes the new backup.  Must be > 0."
   2
   (lambda (n) (and (exact-integer? n) (> n 0))))
 
-(define dos/encoding-pathname-types
+(define os/encoding-pathname-types
   '("gz" "bf" "ky"))
 
 (define dos/backup-suffixes
   (cons "~"
 	(map (lambda (type) (string-append "~." type))
-	     dos/encoding-pathname-types)))
+	     os/encoding-pathname-types)))
 
 (define-variable completion-ignored-extensions
   "Completion ignores filenames ending in any string in this list."
@@ -207,7 +207,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
       (lambda ()
 	(if (dos/fs-long-filenames? truename)
 	    (let ((type (pathname-type truename)))
-	      (if (member type dos/encoding-pathname-types)
+	      (if (member type os/encoding-pathname-types)
 		  (values (pathname-new-type truename #f)
 			  (string-append "~." type))
 		  (values truename "~")))
@@ -406,12 +406,6 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 (define (os/backup-by-copying? truename buffer)
   truename buffer
   #f)
-
-(define (os/pathname-type-for-mode pathname)
-  (let ((type (pathname-type pathname)))
-    (if (member type dos/encoding-pathname-types)
-	(pathname-type (->namestring (pathname-new-type pathname #f)))
-	type)))
 
 (define (os/completion-ignore-filename? filename)
   (or (os/backup-filename? filename)
