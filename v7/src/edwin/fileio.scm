@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: fileio.scm,v 1.127 1995/05/02 20:49:06 cph Exp $
+;;;	$Id: fileio.scm,v 1.128 1995/09/13 03:57:14 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -110,7 +110,10 @@ Each procedure is called with three arguments:
   (os/read-file-methods)
   list?)
 
-(define *translate-file-data-on-input?* #t)
+(define-variable translate-file-data-on-input
+  "If true (the default), end-of-line translation is done on file input."
+  #t
+  boolean?)
 
 (define (%insert-file mark truename visit?)
   (let ((do-it
@@ -137,7 +140,7 @@ Each procedure is called with three arguments:
     (let ((channel (file-open-input-channel filename)))
       (let ((length (channel-file-length channel))
 	    (buffer
-	     (and *translate-file-data-on-input?*
+	     (and (ref-variable translate-file-data-on-input group)
 		  (let ((translation (pathname-newline-translation truename)))
 		    (and translation
 			 (make-input-buffer channel 4096 translation))))))
@@ -420,7 +423,10 @@ Otherwise, a message is written both before and after long file writes."
   false
   boolean?)
 
-(define *translate-file-data-on-output?* #t)
+(define-variable translate-file-data-on-output
+  "If true (the default), end-of-line translation is done on file output."
+  #t
+  boolean?)
 
 (define (write-buffer-interactive buffer backup-mode)
   (let ((pathname (buffer-pathname buffer)))
@@ -520,7 +526,8 @@ Otherwise, a message is written both before and after long file writes."
 
 (define (write-region* region pathname message? append?)
   (let ((translation
-	 (and *translate-file-data-on-output?*
+	 (and (ref-variable translate-file-data-on-output
+			    (region-group region))
 	      (pathname-newline-translation pathname)))
 	(filename (->namestring pathname))
 	(group (region-group region))

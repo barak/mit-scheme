@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debuge.scm,v 1.50 1993/01/10 10:43:16 cph Exp $
+;;;	$Id: debuge.scm,v 1.51 1995/09/13 03:57:22 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -81,7 +81,8 @@
 		    (write-string "'")
 		    (let ((region (buffer-unclipped-region buffer)))
 		      (group-write-to-file
-		       (and *translate-file-data-on-output?*
+		       (and (ref-variable translate-file-data-on-output
+					  (region-group region))
 			    (pathname-newline-translation pathname))
 		       (region-group region)
 		       (region-start-index region)
