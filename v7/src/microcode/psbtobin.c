@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.33 1988/03/12 15:58:27 jinx Rel $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/psbtobin.c,v 9.34 1988/04/25 17:30:02 cph Rel $
  *
  * This File contains the code to translate portable format binary
  * files to internal format.
@@ -44,7 +44,7 @@ MIT in each case. */
 #define internal_file output_file
 
 static Boolean
-  band_p = false;
+  band_p = false,
   allow_compiled_p = false,
   allow_nmv_p = false;
 
