@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: things.scm,v 1.86 2000/02/25 19:40:00 cph Exp $
+;;; $Id: things.scm,v 1.87 2000/04/04 16:52:14 cph Exp $
 ;;;
 ;;; Copyright (c) 1985, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -159,7 +159,9 @@
 
 (define (compute-horizontal-space c1 c2 tab-width)
   ;; Compute the number of tabs/spaces required to fill from column C1
-  ;; to C2 with whitespace.  It is assumed that C1 >= C2.
+  ;; to C2 with whitespace.
+  (if (< c1 c2)
+      (error:bad-range-argument c2 'COMPUTE-HORIZONTAL-SPACE))
   (if tab-width
       (let ((qr1 (integer-divide c1 tab-width))
 	    (qr2 (integer-divide c2 tab-width)))
@@ -205,10 +207,8 @@
 (define (indent-to target-column #!optional minimum point)
   (let ((minimum (if (default-object? minimum) 0 minimum))
 	(point (if (default-object? point) (current-point) point)))
-    (insert-horizontal-space (let ((n (- target-column (mark-column point))))
-			       (if (< n minimum)
-				   (+ target-column (- minimum (max 0 n)))
-				   target-column))
+    (insert-horizontal-space (max target-column
+				  (+ (mark-column point) minimum))
 			     point)))
 
 (define (region-blank? region)
