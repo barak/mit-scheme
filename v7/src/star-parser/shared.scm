@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: shared.scm,v 1.3 2001/06/26 21:02:09 cph Exp $
+;;; $Id: shared.scm,v 1.4 2001/06/26 23:46:20 cph Exp $
 ;;;
 ;;; Copyright (c) 2001 Massachusetts Institute of Technology
 ;;;
@@ -280,6 +280,17 @@
 		      ,(cadr expression*)))
 	   ,(caddr expression)
 	   ,(cadddr expression*)))))
+
+(define-optimizer '('IF EXPRESSION
+			('OR . (+ EXPRESSION))
+			EXPRESSION)
+    (lambda (expression)
+      (equal? (car (last-pair (caddr expression)))
+	      (cadddr expression)))
+  (lambda (expression)
+    `(OR (AND ,(cadr expression)
+	      (OR ,@(except-last-pair (cdr (caddr expression)))))
+	 ,(cadddr expression))))
 
 (define-optimizer '('LET ((IDENTIFIER EXPRESSION))
 		     ('IF IDENTIFIER
@@ -317,6 +328,16 @@
 		      `(,(car binding) ,(optimize-expression (cadr binding))))
 		    (cadr expression))
 	   ,@(map optimize-expression (cddr expression))))))
+
+(define-optimizer '(('LAMBDA (* IDENTIFIER) . (* EXPRESSION)) . (* EXPRESSION))
+    (lambda (expression)
+      (= (length (cadr (car expression)))
+	 (length (cdr expression))))
+  (lambda (expression)
+    `(LET ,(map (lambda (v x) (list v x))
+		(cadr (car expression))
+		(map optimize-expression (cdr expression)))
+       ,@(map optimize-expression (cddr (car expression))))))
 
 (define-optimizer '('LAMBDA (* IDENTIFIER) EXPRESSION) #f
   (lambda (expression)
@@ -381,3 +402,7 @@
 	    (loop (append (cdar expressions) (cdr expressions)))
 	    (cons (car expressions) (loop (cdr expressions))))
 	'())))
+
+;;; Edwin Variables:
+;;; Eval: (scheme-indent-method 'define-optimizer 2)
+;;; End:
