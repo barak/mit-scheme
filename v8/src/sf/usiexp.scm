@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.7 1995/09/07 20:53:56 adams Exp $
+$Id: usiexp.scm,v 1.8 1995/09/08 03:09:28 adams Exp $
 
 Copyright (c) 1988-1995 Massachusetts Institute of Technology
 
@@ -717,6 +717,7 @@ MIT in each case. |#
     EXP
     EXPT
     FOR-EACH
+    LIST-REF
     LOG
     MEMQ
     SIN
