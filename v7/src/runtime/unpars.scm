@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.46 1999/01/02 06:19:10 cph Exp $
+$Id: unpars.scm,v 14.47 2001/03/21 19:15:26 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Unparser
@@ -329,7 +330,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(*unparse-with-brackets 'UNINTERNED-SYMBOL symbol unparse-symbol))))
 
 (define (unparse-symbol symbol)
-  (*unparse-string (symbol->string symbol)))
+  (*unparse-string (symbol-name symbol)))
 
 (define (unparse/character character)
   (if (or *slashify?*

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.46 2001/03/08 18:43:07 cph Exp $
+$Id: uerror.scm,v 14.47 2001/03/21 19:15:22 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Microcode Errors
@@ -308,7 +309,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(and code
 	     ((ucode-primitive system-call-error-message 1) code)))
       (if (symbol? error-type)
-	  (string-replace (symbol->string error-type) #\- #\space)
+	  (string-replace (symbol-name error-type) #\- #\space)
 	  (string-append "error " (write-to-string error-type)))))
 
 (define (normalize-trap-code-name name)

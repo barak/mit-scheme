@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.63 2001/03/21 05:39:44 cph Exp $
+$Id: infutl.scm,v 1.64 2001/03/21 19:15:12 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -370,7 +370,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (and procedure
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
-	       (symbol->string name))))))
+	       (symbol-name name))))))
 
 (define load-debugging-info-on-demand?
   #f)
@@ -378,7 +378,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (special-form-procedure-name? name)
   (let ((association (assq name special-form-procedure-names)))
     (and association
-	 (symbol->string (cdr association)))))
+	 (symbol-name (cdr association)))))
 
 (define special-form-procedure-names)
 

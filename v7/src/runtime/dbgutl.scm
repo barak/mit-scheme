@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgutl.scm,v 14.18 2001/03/21 05:39:39 cph Exp $
+$Id: dbgutl.scm,v 14.19 2001/03/21 19:15:04 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -54,7 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (cond ((string? name)
 	 (write-string (string-upcase name)))
 	((interned-symbol? name)
-	 (write-string (string-upcase (symbol->string name)) port))
+	 (write-string (string-upcase (symbol-name name)) port))
 	(else
 	 (write name port))))
 

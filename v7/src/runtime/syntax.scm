@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 14.32 1999/10/23 02:46:46 cph Exp $
+$Id: syntax.scm,v 14.33 2001/03/21 19:15:18 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; SYNTAX: S-Expressions -> SCODE
@@ -227,7 +228,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (cons
 	  (string-append "SYNTAX: "
 			 (if *current-keyword*
-			     (string-append (symbol->string *current-keyword*)
+			     (string-append (symbol-name *current-keyword*)
 					    ": "
 					    message)
 			     message))
