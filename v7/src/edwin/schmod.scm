@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.21 1991/07/31 18:09:15 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/schmod.scm,v 1.22 1991/08/26 03:56:46 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -94,8 +94,6 @@ normally they record the associated output in a transcript buffer:
 (define-key 'scheme #\c-m-q 'indent-sexp)
 (define-key 'scheme #\c-m-z 'eval-region)
 (define-key 'scheme #\m-tab 'scheme-complete-symbol)
-(define-key 'scheme #\m-( 'insert-parentheses)
-(define-key 'scheme #\m-) 'move-past-close-and-reindent)
 
 ;;;; Read Syntax
 

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.133 1991/08/23 00:23:35 arthur Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/modefs.scm,v 1.134 1991/08/26 03:56:33 arthur Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-91 Massachusetts Institute of Technology
 ;;;
@@ -180,6 +180,8 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-\[ 'backward-paragraph)
 (define-key 'fundamental #\m-\\ 'delete-horizontal-space)
 (define-key 'fundamental #\m-\] 'forward-paragraph)
+(define-key 'fundamental #\m-( 'insert-parentheses)
+(define-key 'fundamental #\m-) 'move-past-close-and-reindent)
 (define-key 'fundamental #\m-^ 'delete-indentation)
 (define-key 'fundamental #\m-a 'backward-sentence)
 (define-key 'fundamental #\m-b 'backward-word)
