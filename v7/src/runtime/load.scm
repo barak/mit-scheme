@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.21 1991/04/15 20:47:37 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/load.scm,v 14.22 1991/05/03 17:54:29 arthur Exp $
 
 Copyright (c) 1988-91 Massachusetts Institute of Technology
 
@@ -38,13 +38,17 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! hook/process-command-line default/process-command-line)
   (set! load-noisily? false)
   (set! load/loading? false)
   (set! load/suppress-loading-message? false)
   (set! load/default-types '("com" "bin" "scm"))
   (set! load/default-find-pathname-with-type search-types-in-order)
   (set! fasload/default-types '("com" "bin"))
-  (add-event-receiver! event:after-restart load-init-file))
+  (add-event-receiver! event:after-restart
+		       (lambda ()
+			 (load-init-file)
+			 (process-command-line))))
 
 (define load-noisily?)
 (define load/loading?)
@@ -288,3 +292,19 @@ MIT in each case. |#
 	      (loop (stream-car stream) (stream-cdr stream)))
 	    value))
       unspecific))
+
+(define-primitives
+  (get-unused-command-line 0))
+
+(define (process-command-line)
+  (let ((unused-command-line
+	 (and (implemented-primitive-procedure? get-unused-command-line)
+	      (get-unused-command-line))))
+    (if unused-command-line
+	(hook/process-command-line unused-command-line))))
+
+(define hook/process-command-line)
+
+(define (default/process-command-line unused-command-line)
+  (if (positive? (vector-length unused-command-line))
+      (warn "unused command-line arguments" unused-command-line)))
