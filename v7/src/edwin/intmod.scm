@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: intmod.scm,v 1.91 1998/06/01 05:49:43 cph Exp $
+;;;	$Id: intmod.scm,v 1.92 1998/06/07 08:19:11 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
@@ -160,7 +160,7 @@ REPL uses current evaluation environment."
   (if (and buffer (repl-buffer? buffer))
       buffer
       (let ((buffer (current-buffer)))
-	(if (buffer-interface-port buffer)
+	(if (buffer-interface-port buffer #f)
 	    buffer
 	    (global-repl-buffer)))))
 
@@ -171,7 +171,7 @@ REPL uses current evaluation environment."
 	 (car buffers))))
 
 (define (repl-buffer? buffer)
-  (buffer-interface-port buffer))
+  (buffer-interface-port buffer #f))
 
 (define repl-buffers)
 
@@ -234,16 +234,21 @@ REPL uses current evaluation environment."
       (set! repl-buffers (append! repl-buffers (list buffer))))
   (buffer-put! buffer 'INTERFACE-PORT port)
   (add-kill-buffer-hook buffer kill-buffer-inferior-repl)
-  (define-variable-local-value! buffer
-    (ref-variable-object comint-input-ring)
-    (port/input-ring port))
+  (buffer-put! buffer 'COMINT-PROCESS-MARK inferior-repl-process-mark)
+  (local-set-variable! comint-input-ring (port/input-ring port) buffer)
+  (local-set-variable! comint-last-input-end
+		       (mark-right-inserting-copy (buffer-end buffer))
+		       buffer)
+  (local-set-variable! comint-last-input-match #f buffer)
   (set-run-light! buffer #f))
 
-(define-integrable (buffer-interface-port buffer)
-  (buffer-get buffer 'INTERFACE-PORT))
+(define (buffer-interface-port buffer error?)
+  (or (buffer-get buffer 'INTERFACE-PORT #f)
+      (and error?
+	   (error "No inferior REPL for this buffer:" buffer))))
 
 (define (kill-buffer-inferior-repl buffer)
-  (let ((port (buffer-interface-port buffer)))
+  (let ((port (buffer-interface-port buffer #f)))
     (if port
 	(let ((thread (port/thread port)))
 	  (if (not (thread-dead? thread))
@@ -255,7 +260,7 @@ REPL uses current evaluation environment."
 (define (unwind-inferior-repl-buffer buffer)
   (without-interrupts
    (lambda ()
-     (let ((port (buffer-interface-port buffer)))
+     (let ((port (buffer-interface-port buffer #f)))
        (if port
 	   (begin
 	     (deregister-inferior-thread! (port/output-registration port))
@@ -419,8 +424,11 @@ The REPL may be controlled by the following commands:
 
 (define-key 'inferior-repl #\M-p 'comint-previous-input)
 (define-key 'inferior-repl #\M-n 'comint-next-input)
+(define-key 'inferior-repl '(#\C-c #\C-l) 'comint-show-output)
+(define-key 'inferior-repl '(#\C-c #\C-o) 'inferior-repl-flush-output)
 (define-key 'inferior-repl '(#\C-c #\C-r) 'comint-history-search-backward)
 (define-key 'inferior-repl '(#\C-c #\C-s) 'comint-history-search-forward)
+(define-key 'inferior-repl '(#\C-c #\C-u) 'comint-kill-input)
 
 (define-key 'inferior-repl '(#\C-c #\C-d) 'inferior-repl-debug)
 
@@ -465,7 +473,7 @@ Additionally, these commands abort the command loop:
 
 (define (interrupt-command interrupt flush-queue?)
   (lambda ()
-    (let ((port (buffer-interface-port (current-repl-buffer #f))))
+    (let ((port (buffer-interface-port (current-repl-buffer #f) #t)))
       (signal-thread-event (port/thread port) interrupt)
       (if flush-queue?
 	  (flush-queue! (port/expression-queue port))))))
@@ -511,7 +519,7 @@ Additionally, these commands abort the command loop:
   "r"
   (lambda (region)
     (let ((buffer (mark-buffer (region-start region))))
-      (comint-record-input (port/input-ring (buffer-interface-port buffer))
+      (comint-record-input (port/input-ring (buffer-interface-port buffer #t))
 			   (region->string region))
       (inferior-repl-eval-region buffer region))))
 
@@ -521,7 +529,7 @@ If this is an error, the debugger examines the error condition."
   ()
   (lambda ()
     (temporary-message "Starting continuation browser...")
-    (let ((port (buffer-interface-port (current-buffer))))
+    (let ((port (buffer-interface-port (current-buffer) #t)))
       (start-continuation-browser
        port
        (let ((object
@@ -551,7 +559,7 @@ If this is an error, the debugger examines the error condition."
 	  (apply continuation arguments))))))
 
 (define (buffer/inferior-cmdl buffer)
-  (let ((port (buffer-interface-port buffer)))
+  (let ((port (buffer-interface-port buffer #f)))
     (and port
 	 (port/inferior-cmdl port))))
 
@@ -570,9 +578,37 @@ If this is an error, the debugger examines the error condition."
   "Send this character to the inferior debugger process."
   ()
   (lambda ()
-    (let ((port (buffer-interface-port (current-buffer))))
+    (let ((port (buffer-interface-port (current-buffer) #t)))
       (set-port/command-char! port (last-command-key))
       (end-input-wait port))))
+
+(define-command inferior-repl-flush-output
+  "Kill all output from REPL since last input."
+  ()
+  (lambda ()
+    (let ((start (mark1+ (ref-variable comint-last-input-end) 'LIMIT))
+	  (end (port/mark (buffer-interface-port (selected-buffer) #t))))
+      (let ((value-mark
+	     (re-search-backward
+	      ";\\(Unspecified return value\\|Value: \\|Value [0-9]+: \\)"
+	      end start #f)))
+	(let ((start (mark-left-inserting-copy start))
+	      (end (or value-mark end)))
+	  (if (mark< start end)
+	      (begin
+		(delete-string start end)
+		(insert-string "*** output flushed ***\n" start)))
+	  (if value-mark
+	      (let ((m
+		     (re-match-forward ";Value [0-9]+: "
+				       start (group-end start) #f)))
+		(if m
+		    (let ((e (line-end m 0)))
+		      (if (> (- (mark-index e) (mark-index m)) 70)
+			  (begin
+			    (delete-string m e)
+			    (insert-string "*** flushed ***" m)))))))
+	  (mark-temporary! start))))))
 
 (define (inferior-repl-eval-region buffer region)
   (inferior-repl-eval-ok? buffer)
@@ -582,15 +618,17 @@ If this is an error, the debugger examines the error condition."
 	  (insert-region (region-start region)
 			 (region-end region)
 			 mark))))
-  (let ((port (buffer-interface-port buffer)))
-    (move-mark-to! (port/mark port)
-		   (let ((end (buffer-end buffer))
-			 (end* (region-end region)))
-		     (if (mark~ end end*)
-			 (begin
-			   (set-buffer-point! buffer end*)
-			   end*)
-			 end)))
+  (let ((port (buffer-interface-port buffer #t)))
+    (let ((input-end
+	   (let ((end (buffer-end buffer))
+		 (end* (region-end region)))
+	     (if (mark~ end end*)
+		 (begin
+		   (set-buffer-point! buffer end*)
+		   end*)
+		 end))))
+      (move-mark-to! (port/mark port) input-end)
+      (move-mark-to! (ref-variable comint-last-input-end buffer) input-end))
     (let ((queue (port/expression-queue port)))
       (bind-condition-handler (list condition-type:error)
 	  evaluation-error-handler
@@ -615,8 +653,10 @@ If this is an error, the debugger examines the error condition."
 	   (fluid-let ((*unparse-with-maximum-readability?* true))
 	     (write-to-string expression))
 	   mark))))
-  (let ((port (buffer-interface-port buffer)))
+  (let ((port (buffer-interface-port buffer #t)))
     ;;(move-mark-to! (port/mark port) (buffer-end buffer))
+    (move-mark-to! (ref-variable comint-last-input-end buffer)
+		   (port/mark port))
     (enqueue! (port/expression-queue port) (cons expression 'EXPRESSION))
     (end-input-wait port)))
 
@@ -627,6 +667,9 @@ If this is an error, the debugger examines the error condition."
 	 (if (eq? mode (ref-mode-object inferior-cmdl))
 	     "REPL needs response before evaluation will be enabled."
 	     "Can't evaluate -- REPL buffer in anomalous mode.")))))
+
+(define (inferior-repl-process-mark buffer)
+  (port/mark (buffer-interface-port buffer #t)))
 
 ;;;; Queue
 
