@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.11 1989/08/17 16:52:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/infutl.scm,v 1.12 1989/08/18 19:08:45 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -182,23 +182,26 @@ MIT in each case. |#
 (define (fasload/update-debugging-info! value com-pathname)
   (let ((process-block
 	 (lambda (block)
-	   (let ((info (compiled-code-block/debugging-info block)))
-	     (cond ((string? info)
-		    (set-compiled-code-block/debugging-info!
-		     block
-		     (process-binf-filename info com-pathname)))
-		   ((and (pair? info) (string? (car info)))
-		    (set-car! info
-			      (process-binf-filename (car info)
-						     com-pathname))))))))
+	   (let ((binf-filename
+		  (process-binf-filename
+		   (compiled-code-block/debugging-info block)
+		   com-pathname)))
+	     (set-compiled-code-block/debugging-info! block binf-filename)
+	     binf-filename))))
     (cond ((compiled-code-address? value)
 	   (process-block (compiled-code-address->block value)))
 	  ((and (comment? value)
 		(dbg-info-vector? (comment-text value)))
-	   (for-each
-	    process-block
-	    (vector->list
-	     (dbg-info-vector/blocks-vector (comment-text value))))))))
+	   (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
+	     (let ((binf-filename (process-block (vector-ref blocks 0)))
+		   (end (vector-length blocks)))
+	       (let loop ((index 1))
+		 (if (< index end)
+		     (begin
+		       (set-car! (compiled-code-block/debugging-info
+				  (vector-ref blocks index))
+				 binf-filename)
+		       (loop (1+ index)))))))))))
 
 (define (process-binf-filename binf-filename com-pathname)
   (pathname->string
@@ -212,8 +215,8 @@ MIT in each case. |#
 			    (pathname-type com-pathname)))
 	       (equal? (pathname-version binf-pathname)
 		       (pathname-version com-pathname)))
-	  (pathname-new-type com-pathname
-			     (pathname-type binf-pathname))	  binf-pathname)))))
+	  (pathname-new-type com-pathname (pathname-type binf-pathname))
+	  binf-pathname)))))
 
 (define directory-rewriting-rules
   '())
