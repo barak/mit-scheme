@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.14 1994/12/02 20:39:16 cph Exp $
+$Id: nttop.c,v 1.15 1995/10/24 05:13:42 cph Exp $
 
-Copyright (c) 1993-94 Massachusetts Institute of Technology
+Copyright (c) 1993-95 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -86,9 +86,9 @@ DEFUN_VOID (OS_initialize)
     const char * variant;
 
     nt_get_version (&version_number);
-    variant = ((version_number.platform == 0) ? "Windows-NT" : "MS Windows");
-    OS_Variant = (malloc ((strlen (variant)) + 19));
-    sprintf (OS_Variant, "MIT Scheme running under %s %d.%d 386/486\n",
+    variant = ((version_number.platform == 0) ? "Windows NT" : "Windows");
+    OS_Variant = (malloc ((strlen (variant)) + 64));
+    sprintf (OS_Variant, "%s %d.%d 386/486\n",
 	     variant,
 	     ((int) version_number.major),
 	     ((int) version_number.minor));
@@ -180,8 +180,10 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 CONST char *
 DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
 {
+#ifdef CL386
   extern char * sys_errlist [];
   extern int sys_nerr;
+#endif
   int code = (syserr_to_error_code ((enum syserr_names) syserr));
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
 }
