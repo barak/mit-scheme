@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.23 1990/06/20 17:42:50 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/ymkfile,v 1.24 1990/06/25 18:27:41 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -449,10 +449,12 @@ all: Psbtobin scheme
 
 scheme xscheme : $(OBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 bchscheme : $(BCHOBJECTS) $(SCHEME_OBJECTS)
 	@ECHO "#** Re-linking" $@ because of $?
+	rm -f $@
 	$(CC) $(LDFLAGS) -o $@ $(BCHOBJECTS) $(SCHEME_OBJECTS) $(SCHEME_LIB)
 
 Findprim : Findprim.o
