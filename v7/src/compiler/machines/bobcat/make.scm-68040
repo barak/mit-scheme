@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.13 1987/04/17 10:55:42 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.14 1987/04/21 23:51:35 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -67,7 +67,8 @@ MIT in each case. |#
 		"base/bblock"		;Basic block datatype
 		"base/dfg"		;data flow graph
 		"base/rtltyp"		;RTL: type definitions
-		"base/rtl"		;RTL: expression operations
+		"base/rtlexp"		;RTL: expression operations
+		"base/rtlcon"		;RTL: complex constructors
 		"base/rtlreg"		;RTL: registers
 		"base/rtlcfg"		;RTL: CFG types
 		"base/emodel"		;environment model
@@ -139,7 +140,7 @@ MIT in each case. |#
       (define :version)
       (define :modification)
 
-      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.13 1987/04/17 10:55:42 cph Exp $"
+      (parse-rcs-header "$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/make.scm-68040,v 1.14 1987/04/21 23:51:35 cph Exp $"
 	(lambda (filename version date time author state)
 	  (set! :version (car version))
 	  (set! :modification (cadr version))))))

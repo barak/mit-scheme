@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.2 1987/04/17 10:50:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/decls.scm,v 1.3 1987/04/21 23:51:09 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -68,7 +68,7 @@ MIT in each case. |#
 (define filenames/dependency-chain/base
   (filename/append "base"
 		   "object" "cfg" "ctypes" "dtypes" "bblock" "dfg" "rtltyp"
-		   "rtlreg" "rtlcfg" "rtl" "emodel" "rtypes"))
+		   "rtlreg" "rtlcfg" "emodel" "rtypes"))
 
 (define filenames/dependency-chain/rcse
   (filename/append "front-end" "rcseht" "rcserq" "rcsesr" "rcseep" "rcse"))
@@ -92,8 +92,8 @@ MIT in each case. |#
 (file-dependency/syntax/join
  (append (filename/append "base"
 			  "bblock" "cfg" "ctypes" "dfg" "dtypes" "emodel"
-			  "linear" "object" "queue" "rtl" "rtlcfg" "rtlreg"
-			  "rtltyp" "rtypes" "sets" "toplev" "utils")
+			  "linear" "object" "queue" "rtlcfg" "rtlcon" "rtlexp"
+			  "rtlreg" "rtltyp" "rtypes" "sets" "toplev" "utils")
 	 (filename/append "alpha" "dflow" "graphc")
 	 (filename/append "front-end"
 			  "ralloc" "rcse" "rcseep" "rcseht" "rcserq" "rcsesa"
