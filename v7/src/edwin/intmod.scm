@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: intmod.scm,v 1.98 1999/02/24 21:35:50 cph Exp $
+;;; $Id: intmod.scm,v 1.99 1999/02/24 21:59:07 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -525,12 +525,6 @@ If this is an error, the debugger examines the error condition."
 	   "Can't continue; REPL buffer no longer exists!"))
       (signal-thread-event (port/thread port)
 	(lambda ()
-	  ;; This call to UNBLOCK-THREAD-EVENTS is a kludge.
-	  ;; The continuation should be able to decide whether
-	  ;; or not to unblock, but that isn't so right now.
-	  ;; As a default, having them unblocked is better
-	  ;; than having them blocked.
-	  (unblock-thread-events)
 	  (apply continuation arguments))))))
 
 (define (buffer/inferior-cmdl buffer)
