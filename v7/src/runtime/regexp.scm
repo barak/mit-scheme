@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: regexp.scm,v 1.8 2000/04/12 02:36:23 cph Exp $
+;;; $Id: regexp.scm,v 1.9 2000/04/13 03:01:38 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -138,60 +138,63 @@
 
 (define (char-set->regexp char-set)
   (let ((chars (char-set-members char-set)))
-    (if (and (pair? chars)
-	     (memv (car chars) '(#\^ #\- #\]))
-	     (null? (cdr chars)))
-	(string #\\ char)
-	(let ((ranges
-	       (let outer ((chars chars) (ranges '()))
-		 (if (pair? chars)
-		     (let ((start (car chars)))
-		       (let inner ((chars (cdr chars)) (end (car chars)))
-			 (if (and (pair? chars)
-				  (fix:= (fix:+ (char->integer end) 1)
-					 (char->integer (car chars))))
-			     (inner (cdr chars) (car chars))
-			     (outer
-			      chars
-			      (let ((accum
-				     (lambda (start end ranges)
-				       (cons (if (and (char=? start end)
-						      (not (char=? #\- start)))
-						 start
-						 (cons start end))
-					     ranges))))
-				(if (and (not (char=? start end))
-					 (or (char=? #\] start)
-					     (char=? #\] end)))
-				    (if (char=? #\] start)
-					(cons #\] (accum #\^ end ranges))
-					(accum start #\\ (cons #\] ranges)))
-				    (accum start end ranges)))))))
-		     (reverse! ranges)))))
-	  (let ((ranges
-		 (if (memv #\] ranges)
-		     (cons #\] (delv! #\] ranges))
-		     ranges)))
-	    (let ((n
-		   (let loop ((ranges ranges) (n 2))
+    (cond ((null? chars)
+	   "")
+	  ((and (memv (car chars) '(#\^ #\- #\]))
+		(null? (cdr chars)))
+	   (string #\\ (car chars)))
+	  (else
+	   (let ((ranges
+		  (let outer ((chars chars) (ranges '()))
+		    (if (pair? chars)
+			(let ((start (car chars)))
+			  (let inner ((chars (cdr chars)) (end (car chars)))
+			    (if (and (pair? chars)
+				     (fix:= (fix:+ (char->integer end) 1)
+					    (char->integer (car chars))))
+				(inner (cdr chars) (car chars))
+				(outer
+				 chars
+				 (let ((accum
+					(lambda (start end ranges)
+					  (cons (if (and (char=? start end)
+							 (not (char=? #\-
+								      start)))
+						    start
+						    (cons start end))
+						ranges))))
+				   (if (and (not (char=? start end))
+					    (or (char=? #\] start)
+						(char=? #\] end)))
+				       (if (char=? #\] start)
+					   (cons #\] (accum #\^ end ranges))
+					   (accum start #\\ (cons #\] ranges)))
+				       (accum start end ranges)))))))
+			(reverse! ranges)))))
+	     (let ((ranges
+		    (if (memv #\] ranges)
+			(cons #\] (delv! #\] ranges))
+			ranges)))
+	       (let ((n
+		      (let loop ((ranges ranges) (n 2))
+			(if (pair? ranges)
+			    (loop (cdr ranges)
+				  (fix:+ n (if (pair? (car ranges)) 3 1)))
+			    n))))
+		 (let ((s (make-string n)))
+		   (string-set! s 0 #\[)
+		   (let loop ((ranges ranges) (i 1))
 		     (if (pair? ranges)
 			 (loop (cdr ranges)
-			       (fix:+ n (if (pair? (car ranges)) 3 1)))
-			 n))))
-	      (let ((s (make-string n)))
-		(string-set! s 0 #\[)
-		(let loop ((ranges ranges) (i 1))
-		  (if (pair? ranges)
-		      (loop (cdr ranges)
-			    (let ((range (car ranges)))
-			      (if (pair? range)
-				  (begin
-				    (string-set! s i (car range))
-				    (string-set! s (fix:+ i 1) #\-)
-				    (string-set! s (fix:+ i 2) (cdr range))
-				    (fix:+ i 3))
-				  (begin
-				    (string-set! s i range)
-				    (fix:+ i 1)))))
-		      (string-set! s i #\])))
-		s)))))))
+			       (let ((range (car ranges)))
+				 (if (pair? range)
+				     (begin
+				       (string-set! s i (car range))
+				       (string-set! s (fix:+ i 1) #\-)
+				       (string-set! s (fix:+ i 2) (cdr range))
+				       (fix:+ i 3))
+				     (begin
+				       (string-set! s i range)
+				       (fix:+ i 1)))))
+			 (string-set! s i #\])))
+		   s))))))))
