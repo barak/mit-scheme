@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.25 2003/02/14 18:28:21 cph Exp $
+$Id: nttrap.c,v 1.26 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1992-2002 Massachusetts Institute of Technology
+Copyright 1992-2002 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -110,7 +110,7 @@ DEFUN (trap_noise_end, (style), UINT style)
 
   value = (MessageBox (NULL,
 		       trap_output,
-		       "MIT Scheme Exception Information",
+		       "MIT/GNU Scheme Exception Information",
 		       style));
   free (trap_output);
   trap_output = ((char *) NULL);
@@ -398,7 +398,7 @@ DEFUN (display_exception_information, (info, context, flags),
 #endif /* W32_TRAP_DEBUG */
 
   value = (MessageBox (NULL, &msgbuf[0],
-		       "MIT Scheme Exception Info",
+		       "MIT/GNU Scheme Exception Info",
 		       (flags | MB_ICONSTOP)));
   return (value);
 }
@@ -1126,7 +1126,8 @@ DEFUN (tinyexcpdebug, (code, info),
   unsigned long * addr;
   char responsebuf[256], * response;
  
-  if ((MessageBox (NULL, "Debug?", "MIT Scheme Exception Debugger", MB_YESNO))
+  if ((MessageBox
+       (NULL, "Debug?", "MIT/GNU Scheme Exception Debugger", MB_YESNO))
       != IDYES)
     return;
 

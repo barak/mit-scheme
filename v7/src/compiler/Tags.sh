@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Tags.sh,v 1.3 2003/02/14 18:28:00 cph Exp $
+# $Id: Tags.sh,v 1.4 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility to make TAGS file for the MIT Scheme compiler directory.
+# Utility to make TAGS file for the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
 etags back/*.scm base/*.scm fggen/*.scm fgopt/*.scm machine/*.scm \

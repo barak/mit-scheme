@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.8 2003/02/14 18:28:10 cph Exp $
+# $Id: Clean.sh,v 1.9 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000, 2001, 2002 Massachusetts Institute of Technology
+# Copyright 2000,2001,2002 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility for cleaning up the MIT Scheme edwin directory.
+# Utility for cleaning up the MIT/GNU Scheme edwin directory.
 # The working directory must be the edwin directory.
 
 if [ $# -ne 1 ]; then

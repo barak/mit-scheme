@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme31.c,v 1.12 2003/02/14 18:28:31 cph Exp $
+$Id: scheme31.c,v 1.13 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright 1993-1999 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,7 +23,7 @@ USA.
 
 */
 
-/* MIT Scheme under Windows system utiltities DLL source.
+/* MIT/GNU Scheme under Windows system utiltities DLL source.
    Win32s (vs. true NT) version.
  */
 

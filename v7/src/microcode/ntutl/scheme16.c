@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme16.c,v 1.13 2003/02/14 18:28:31 cph Exp $
+$Id: scheme16.c,v 1.14 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright 1993-1999 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,7 +23,7 @@ USA.
 
 */
 
-/* MIT Scheme under Windows system utiltities DLL source.
+/* MIT/GNU Scheme under Windows system utiltities DLL source.
    Win16 side of the Win32s version.
  */
 
@@ -45,7 +45,7 @@ TellUser (char FAR * format, ...)
   va_end (arg_ptr);
   return (MessageBox (NULL,
 		      ((LPCSTR) &buffer[0]),
-		      ((LPCSTR) "MIT Scheme Win16 Notification"),
+		      ((LPCSTR) "MIT/GNU Scheme Win16 Notification"),
 		      (MB_TASKMODAL | MB_ICONINFORMATION | MB_OK)));
 }
 

@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.5 2003/02/14 18:28:34 cph Exp $
+# $Id: Clean.sh,v 1.6 2003/02/14 18:48:13 cph Exp $
 #
-# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+# Copyright 2000,2001 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility for cleaning up the MIT Scheme runtime-check directory.
+# Utility for cleaning up the MIT/GNU Scheme runtime-check directory.
 # The working directory must be the runtime-check directory.
 
 if [ $# -ne 1 ]; then

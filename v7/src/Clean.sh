@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.6 2003/02/14 18:28:00 cph Exp $
+# $Id: Clean.sh,v 1.7 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility for cleaning up MIT Scheme build directories.
+# Utility for cleaning up MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
 
 if [ $# -le 1 ]; then

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.32 2003/02/14 18:28:21 cph Exp $
+$Id: nttop.c,v 1.33 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993-2000 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,8 +84,8 @@ NT_initialize_win32_system_utilities ()
 
   win32_system_utilities_dll = LoadLibrary (dll_name);
   if (win32_system_utilities_dll == NULL) {
-    outf_fatal ("MIT Scheme is unable to find or load %s\n"
-		"This essential MIT Scheme file should be in the\n"
+    outf_fatal ("MIT/GNU Scheme is unable to find or load %s\n"
+		"This essential MIT/GNU Scheme file should be in the\n"
 		"same directory as SCHEME.EXE",
 		dll_name);
     outf_flush_fatal();

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: dragon4.scm,v 1.17 2003/02/14 18:28:32 cph Exp $
+$Id: dragon4.scm,v 1.18 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright 1989-1999 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -305,7 +305,7 @@ not much different to numbers within a few orders of magnitude of 1.
   (define failures 0)
   (define successes 0)
 
-  ;; From the MIT Scheme Reference Manual:
+  ;; From the MIT/GNU Scheme Reference Manual:
   (try (* 4 (atan 1 1))     '(relative 5)              "3.1416")
   (try (* 4000 (atan 1 1))  '(relative 5)              "3141.6")
   (try (* 4000 (atan 1 1))  '(relative 5 scientific)   "3.1416e3")

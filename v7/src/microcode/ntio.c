@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.26 2003/02/14 18:28:20 cph Exp $
+$Id: ntio.c,v 1.27 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1992-2001 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -659,7 +659,7 @@ NT_restore_channels (void)
 void
 NT_initialize_channels (void)
 {
-  master_tty_window = (Screen_Create (NULL, "MIT Scheme", SW_SHOWNORMAL));
+  master_tty_window = (Screen_Create (NULL, "MIT/GNU Scheme", SW_SHOWNORMAL));
   if (win32_under_win32s_p ())
     OS_have_select_p = 0;
   else

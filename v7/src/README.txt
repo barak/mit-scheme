@@ -1,11 +1,11 @@
-Structure and construction of the MIT Scheme source tree
+Structure and construction of the MIT/GNU Scheme source tree
 
-$Id: README.txt,v 1.2 2001/02/23 16:16:38 cph Exp $
+$Id: README.txt,v 1.3 2003/02/14 18:48:11 cph Exp $
 
 Directories
 ===========
 
-MIT Scheme is a large program consisting of many subdirectories.
+MIT/GNU Scheme is a large program consisting of many subdirectories.
 These subdirectories can be further grouped together into rough
 functional subsystems.
 
@@ -33,9 +33,10 @@ The compiler subsystem consists of these three directories:
 
 * "sf" contains a program that translates Scheme source code to an
   internal binary format called SCode.  SCode is the internal
-  representation used by the MIT Scheme interpreter.  The "sf" program
-  also performs a handful of optimizations, such as user-directed beta
-  substitution and early binding of known variables such as CAR.
+  representation used by the MIT/GNU Scheme interpreter.  The "sf"
+  program also performs a handful of optimizations, such as
+  user-directed beta substitution and early binding of known variables
+  such as CAR.
 
 * "compiler" contains the native-code compiler.  This program
   translates SCode to machine-language instructions.
@@ -68,8 +69,8 @@ contain may not work:
 
 * "pcsample" contains a profiling extension.
 
-* "swat" contains an extension that interfaces MIT Scheme to the Tk
-  graphical toolkit.
+* "swat" contains an extension that interfaces MIT/GNU Scheme to the
+  Tk graphical toolkit.
 
 * "wabbit" contains program for finding all of the objects that
   contain pointers to a given object.
@@ -77,7 +78,7 @@ contain may not work:
 Building from source on unix systems
 ====================================
 
-Building MIT Scheme from the CVS sources is a multi-stage process.
+Building MIT/GNU Scheme from the CVS sources is a multi-stage process.
 The system has been designed around a number of "build states" and
 specific commands that move the system from one build state to
 another.  These are the build states, ordered from least to most

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.30 2003/02/14 18:28:20 cph Exp $
+$Id: ntgui.c,v 1.31 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 1993-2000 Massachusetts Institute of Technology
+Copyright 1993-2000 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -169,7 +169,7 @@ catatonia_trigger (void)
   mes_result = (MessageBox (master_tty_window,
 			    "Scheme appears to have become catatonic.\n"
 			    "OK to kill it?",
-			    "MIT Scheme",
+			    "MIT/GNU Scheme",
 			    (MB_ICONSTOP | MB_OKCANCEL)));
 
   win32_catatonia_block[CATATONIA_BLOCK_COUNTER] = 0;
@@ -761,7 +761,7 @@ TellUser (char * format, ...)
   va_end (arg_ptr);
   return (MessageBox (master_tty_window,
 		      ((LPCSTR) &buffer[0]),
-		      ((LPCSTR) "MIT Scheme Win32 Notification"),
+		      ((LPCSTR) "MIT/GNU Scheme Win32 Notification"),
 		      (MB_TASKMODAL | MB_ICONINFORMATION
 		       | MB_SETFOREGROUND | MB_OK)));
 }
@@ -777,7 +777,7 @@ TellUserEx (int flags, char * format, ...)
   va_end (arg_ptr);
   return (MessageBox (master_tty_window,
 		      ((LPCSTR) &buffer[0]),
-		      ((LPCSTR) "MIT Scheme Win32 Notification"),
+		      ((LPCSTR) "MIT/GNU Scheme Win32 Notification"),
 		      (MB_TASKMODAL | MB_ICONINFORMATION
 		       | MB_SETFOREGROUND | flags)));
 }

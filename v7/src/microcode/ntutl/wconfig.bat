@@ -1,9 +1,9 @@
 @echo off
-rem MIT Scheme microcode configuration script for Win32 / Watcom C
+rem MIT/GNU Scheme microcode configuration script for Win32 / Watcom C
 rem
-rem Copyright (c) 1995-96 Massachusetts Institute of Technology
+rem Copyright 1995-96 Massachusetts Institute of Technology
 rem
-rem $Id: wconfig.bat,v 1.3 1996/10/08 01:32:34 cph Exp $
+rem $Id: wconfig.bat,v 1.4 2003/02/14 18:48:12 cph Exp $
 rem
 copy cmpintmd\i386.h cmpintmd.h
 copy cmpauxmd\i386-ntw.asm cmpauxmd.asm

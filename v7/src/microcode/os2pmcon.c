@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.28 2003/02/14 18:28:22 cph Exp $
+$Id: os2pmcon.c,v 1.29 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1994-2000 Massachusetts Institute of Technology
+Copyright 1994-2000 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -427,10 +427,9 @@ process_events (int blockp)
 		  case IDM_ABOUT:
 		    (void) WinMessageBox
 		      (HWND_DESKTOP, NULLHANDLE,
-		       "This is MIT Scheme Release "
+		       "This is MIT/GNU Scheme Release "
 		       SCHEME_RELEASE
-		       ", brought to you by the MIT Scheme Team.\n",
-		       "The Uncommon Lisp", 0, MB_OK);
+		       ", the Uncommon Lisp", 0, MB_OK);
 		    break;
 		  }
 	      }

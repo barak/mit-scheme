@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: avltree.c,v 1.7 2003/02/14 18:28:14 cph Exp $
+$Id: avltree.c,v 1.8 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 1993-2001 Massachusetts Institute of Technology
+Copyright 1993-2001 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,7 +24,7 @@ USA.
 */
 
 /* This file contains the code for a simple AVL tree library.
-   It is used by the MIT Scheme microcode to quickly map
+   It is used by the MIT/GNU Scheme microcode to quickly map
    names to indices into various tables.
  */
 

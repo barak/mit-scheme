@@ -1,6 +1,6 @@
-# $Id: makefile,v 1.9 2003/02/14 18:28:25 cph Exp $
+# $Id: makefile,v 1.10 2003/02/14 18:48:12 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Makefile for MIT Scheme's i386 compiled-code interface files.
+# Makefile for MIT/GNU Scheme's i386 compiled-code interface files.
 
 EXPANSIONS = i386-nt.asm i386-ntw.asm
 

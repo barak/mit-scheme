@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Stage.sh,v 1.4 2003/02/14 18:28:00 cph Exp $
+# $Id: Stage.sh,v 1.5 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000, 2001 Massachusetts Institute of Technology
+# Copyright 2000,2001 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility for MIT Scheme compiler staging.
+# Utility for MIT/GNU Scheme compiler staging.
 
 if [ $# -ne 2 ]; then
     echo "usage: $0 <command> <tag>"

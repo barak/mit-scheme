@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.112 2003/02/14 18:28:18 cph Exp $
+$Id: boot.c,v 9.113 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988-2002 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -384,7 +384,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   OS_initialize ();
   if (I_Am_Master)
     {
-      outf_console ("MIT Scheme running under %s\n", OS_Variant);
+      outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
       OS_announcement ();
       outf_console ("\n");
       outf_flush_console ();

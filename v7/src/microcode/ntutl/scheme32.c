@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: scheme32.c,v 1.19 2003/02/14 18:28:31 cph Exp $
+$Id: scheme32.c,v 1.20 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright 1993-1999 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,8 +23,8 @@ USA.
 
 */
 
-/* MIT Scheme under Windows system utiltities DLL source.
-   True NT (vs. Win32s) version 
+/* MIT/GNU Scheme under Windows system utiltities DLL source.
+   True Win32 (vs. Win32s) version 
  */
 
 #include "ntscmlib.h"

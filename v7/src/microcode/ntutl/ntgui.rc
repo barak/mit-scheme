@@ -36,12 +36,12 @@ BEGIN
     BLOCK "040904E4"
     BEGIN
 	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
-	VALUE "FileDescription", "MIT Scheme Microcode"
+	VALUE "FileDescription", "MIT/GNU Scheme Microcode"
 	VALUE "FileVersion", MAKEFILEVERSIONSTRING(SCHEME_VERSION,SCHEME_SUBVERSION)
 	VALUE "InternalName", "SCHEME"
 	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2000"
 	VALUE "OriginalFilename", "SCHEME.EXE"
-	VALUE "ProductName", "MIT Scheme"
+	VALUE "ProductName", "MIT/GNU Scheme"
 	VALUE "ProductVersion", SCHEME_RELEASE
     END
   END

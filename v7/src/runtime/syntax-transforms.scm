@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-transforms.scm,v 14.4 2003/02/14 18:28:34 cph Exp $
+$Id: syntax-transforms.scm,v 14.5 2003/02/14 18:48:13 cph Exp $
 
 Copyright 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 
@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; MIT Scheme syntax
+;;;; MIT/GNU Scheme syntax
 
 ;;; Procedures to convert transformers to internal form.  Required
 ;;; during cold load, so must be loaded very early in the sequence.

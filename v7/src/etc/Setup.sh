@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.8 2003/02/14 18:28:14 cph Exp $
+# $Id: Setup.sh,v 1.9 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Utility to set up an MIT Scheme build directory.
+# Utility to set up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
 
 if [ $# -ne 0 ]; then

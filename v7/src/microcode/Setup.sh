@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.7 2003/02/14 18:28:14 cph Exp $
+# $Id: Setup.sh,v 1.8 2003/02/14 18:48:11 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright 2000 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 # 02111-1307, USA.
 
-# Program to set up MIT Scheme microcode from CVS for distribution.
+# Program to set up MIT/GNU Scheme microcode from CVS for distribution.
 # Requires `gcc' and `scheme'.
 
 if [ ! -f config.h.in ]; then

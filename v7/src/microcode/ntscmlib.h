@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscmlib.h,v 1.11 2003/02/14 18:28:20 cph Exp $
+$Id: ntscmlib.h,v 1.12 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright 1993-1999 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,7 +23,7 @@ USA.
 
 */
 
-/* MIT Scheme under Windows system-dependent utilities. */
+/* MIT/GNU Scheme under Windows system-dependent utilities. */
 
 #ifndef SCM_NTLIB_H
 

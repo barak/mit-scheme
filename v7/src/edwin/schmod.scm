@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.63 2003/02/14 18:28:13 cph Exp $
+$Id: schmod.scm,v 1.64 2003/02/14 18:48:11 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -167,11 +167,11 @@ The following commands evaluate Scheme expressions:
 	    (2 RECEIVE)
 	    (3 DEFINE-RECORD-TYPE)
 
-	    ;; MIT Scheme keywords:
+	    ;; MIT/GNU Scheme keywords:
 	    (1 DEFINE-STRUCTURE FLUID-LET LET*-SYNTAX LOCAL-DECLARE
 	       NAMED-LAMBDA)
 
-	    ;; MIT Scheme procedures:
+	    ;; MIT/GNU Scheme procedures:
 	    (0 CALL-WITH-OUTPUT-STRING WITH-OUTPUT-TO-STRING)
 	    (1 CALL-WITH-APPEND-FILE CALL-WITH-BINARY-APPEND-FILE
 	       CALL-WITH-BINARY-INPUT-FILE CALL-WITH-BINARY-OUTPUT-FILE

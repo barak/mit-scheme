@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.49 2003/02/14 18:28:21 cph Exp $
+$Id: ntscreen.c,v 1.50 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1993-2002 Massachusetts Institute of Technology
+Copyright 1993-2002 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -780,7 +780,7 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				"\n"
 				"Really Exit Scheme?")
 			     : "OK to close this window?",
-			     "MIT Scheme",
+			     "MIT/GNU Scheme",
 			     (MB_ICONQUESTION | MB_OKCANCEL)))
 	       break;
 	   }
@@ -2927,7 +2927,7 @@ WriteScreenBlock (HWND hWnd, LPSTR lpBlock_in, int nLength_in)
 		  screen->mode_flags |= SCREEN_MODE_NEWLINE_CRS;
 		  screen->scroll_lines
 		    = (COMPUTE_SCROLL_LINES (screen->height));
-		  SetWindowText (screen->hWnd, "MIT Scheme");
+		  SetWindowText (screen->hWnd, "MIT/GNU Scheme");
 		}
 		i = j;  /* 1 added in for loop */
 		continue;

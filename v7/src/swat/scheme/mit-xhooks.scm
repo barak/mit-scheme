@@ -345,7 +345,7 @@ end of debugging stuff
 	(weak-set-cdr! (weak-cdr weak) result)
 	result))
     (lambda (display child-work-code child-idle-code)
-      child-idle-code			; Not used by MIT Scheme
+      child-idle-code			; Not used by MIT/GNU Scheme
       (let ((file (XConnectionNumber display))
 	    (weak (weak-cons child-work-code (weak-cons display #F))))
 	(without-interrupts

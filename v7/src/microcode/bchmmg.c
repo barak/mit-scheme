@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.103 2003/02/14 18:28:15 cph Exp $
+$Id: bchmmg.c,v 9.104 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
+Copyright 1987-2000, 2002 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -223,7 +223,7 @@ DEFUN (io_error_retry_p, (operation_name, noise),
 	   operation_name, (GetLastError ()), noise);
   switch (MessageBox (master_tty_window,
 		      &buf[0],
-		      "MIT Scheme garbage-collection problem description",
+		      "MIT/GNU Scheme garbage-collection problem description",
 		      (MB_ICONSTOP | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
   {
     case IDABORT:
@@ -250,12 +250,13 @@ io_error_retry_p (char * operation_name, char * noise)
 	   "%s: GC file error (code = %d) when manipulating %s.\n"
 	   "Choose an option (Cancel = Exit Scheme)",
 	   operation_name, errno, noise);
-  switch (WinMessageBox (HWND_DESKTOP,
-			 NULLHANDLE,
-			 (&buf[0]),
-			 "MIT Scheme garbage-collection problem description",
-			 0,
-			 (MB_ICONHAND | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
+  switch
+    (WinMessageBox (HWND_DESKTOP,
+		    NULLHANDLE,
+		    (&buf[0]),
+		    "MIT/GNU Scheme garbage-collection problem description",
+		    0,
+		    (MB_ICONHAND | MB_ABORTRETRYIGNORE | MB_APPLMODAL)))
     {
     case MBID_ABORT: return (1);
     case MBID_RETRY: return (0);

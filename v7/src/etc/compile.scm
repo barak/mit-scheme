@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.6 2003/02/14 18:28:14 cph Exp $
+$Id: compile.scm,v 1.7 2003/02/14 18:48:11 cph Exp $
 
-Copyright (c) 2000-2002 Massachusetts Institute of Technology
+Copyright 2000,2001,2002 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; Program to compile MIT Scheme.
+;;;; Program to compile MIT/GNU Scheme.
 
 ;;; This compiles the part of the system written in Scheme.
 ;;; The part written in C is compiled using "make".

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.14 2003/02/14 18:28:33 cph Exp $
+$Id: mit-syntax.scm,v 14.15 2003/02/14 18:48:13 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; MIT Scheme Syntax
+;;;; MIT/GNU Scheme Syntax
 
 (declare (usual-integrations))
 
