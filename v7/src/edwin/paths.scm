@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.11 1991/11/04 20:51:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/paths.scm,v 1.12 1992/05/26 17:14:48 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -38,13 +38,14 @@ MIT in each case. |#
 
 (define edwin-library-directory-pathname
   (let ((directory (pathname-as-directory "edwin")))
-    (lambda (name)
-      (let ((pathname
-	     (system-library-directory-pathname
-	      (merge-pathnames name directory))))
-	(if (not pathname)
-	    (error "Can't find edwin library directory:" name))
-	pathname))))
+    (lambda (envvar name)
+      (cond ((get-environment-variable envvar)
+	     => (lambda (name)
+		  (pathname-as-directory (merge-pathnames name))))
+	    ((system-library-directory-pathname
+	      (merge-pathnames name directory)))
+	    (else
+	     (error "Can't find edwin library directory:" name))))))
 
 (define (edwin-etc-pathname filename)
   (let ((pathname (merge-pathnames filename (edwin-etc-directory))))
@@ -53,13 +54,19 @@ MIT in each case. |#
     pathname))
 
 (define (edwin-binary-directory)
-  (edwin-library-directory-pathname "autoload"))
+  (edwin-library-directory-pathname
+   "EDWIN_BINARY_DIRECTORY"
+   "autoload"))
 
 (define (edwin-info-directory)
-  (edwin-library-directory-pathname "info"))
+  (edwin-library-directory-pathname
+   "EDWIN_INFO_DIRECTORY"
+   "info"))
 
 (define (edwin-etc-directory)
-  (edwin-library-directory-pathname "etc"))
+  (edwin-library-directory-pathname
+   "EDWIN_ETC_DIRECTORY"
+   "etc"))
 
 (define (edwin-tutorial-pathname)
   (edwin-etc-pathname "TUTORIAL"))
