@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.13 1989/05/08 22:20:50 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/proced.scm,v 4.14 1989/08/10 11:05:23 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -100,7 +100,7 @@ MIT in each case. |#
 	    (enumeration/index->name continuation-types
 				     (procedure-type procedure))))
        (if (eq? type 'PROCEDURE)
-	   (standard-unparser "PROCEDURE"
+	   (standard-unparser (symbol->string 'PROCEDURE)
 	     (lambda (state procedure)
 	       (unparse-label state (procedure-label procedure))))
 	   (standard-unparser (symbol->string (procedure-label procedure))

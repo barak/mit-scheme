@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.6 1988/12/16 13:24:22 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/object.scm,v 4.7 1989/08/10 11:05:19 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -146,7 +146,8 @@ MIT in each case. |#
 	 (error "Not a tagged vector" object))))
 
 (define (standard-unparser name unparser)
-  (let ((name (string-append "LIAR " name)))    (if unparser
+  (let ((name (string-append (symbol->string 'LIAR) ":" name)))
+    (if unparser
 	(unparser/standard-method name unparser)
 	(unparser/standard-method name))))
 

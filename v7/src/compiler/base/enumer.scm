@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/enumer.scm,v 4.2 1988/06/14 08:32:00 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/enumer.scm,v 4.3 1989/08/10 11:05:13 cph Rel $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -46,7 +46,8 @@ MIT in each case. |#
 (define-structure (enumerand
 		   (conc-name enumerand/)
 		   (print-procedure
-		    (standard-unparser "ENUMERAND"		      (lambda (state enumerand)
+		    (standard-unparser (symbol->string 'ENUMERAND)
+		      (lambda (state enumerand)
 			(unparse-object state (enumerand/name enumerand))))))
   (enumeration false read-only true)
   (name false read-only true)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.10 1989/04/21 16:58:46 markf Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/blocks.scm,v 4.11 1989/08/10 11:05:07 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -110,7 +110,8 @@ from the continuation, and then "glued" into place afterwards.
 (define-vector-tag-unparser block-tag
   (lambda (state block)
     ((standard-unparser
-      "BLOCK"      (lambda (state block)
+      (symbol->string 'BLOCK)
+      (lambda (state block)
 	(unparse-object state
 			(enumeration/index->name block-types
 						 (block-type block)))
