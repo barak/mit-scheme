@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.9 2000/12/08 19:19:23 cph Exp $
+# $Id: Makefile.in,v 1.10 2000/12/08 19:21:34 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -100,14 +100,14 @@ install: all
 	$(INSTALL_DATA) runtime/*.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
 	$(INSTALL_DATA) edwin/*.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
 
-	@for FN in $(RUN_OPTS); do \
+	@for FN in $(RUNOPTS); do \
 	    echo "$(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.";\
 	    $(INSTALL_DATA) runtime/$${FN}.com $(DESTDIR)$(RODIR)/.;\
 	    echo "cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci .";\
 	    ( cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${FN}.bci . );\
 	done
 
-	@for FN in $(ED_OPTS); do \
+	@for FN in $(EDOPTS); do \
 	    echo "installing edwin option $${FN}";\
 	    $(INSTALL_DATA) edwin/$${FN}.com $(DESTDIR)$(EODIR)/.;\
 	    echo "cd $(DESTDIR)$(EODIR); $(LN_S) ../SRC/edwin/$${FN}.bci .";\
