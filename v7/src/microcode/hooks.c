@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.50 1993/03/31 03:27:07 ziggy Exp $
+$Id: hooks.c,v 9.51 1993/06/04 00:15:34 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -386,6 +386,9 @@ DEFINE_PRIMITIVE ("WITHIN-CONTROL-POINT", Prim_within_control_point, 2, 2,
 
   /* This KNOWS the direction of stack growth. */
   Stack_Pointer = (Get_End_Of_Stacklet ());
+  /* We've discarded the history with the stack contents.  */
+  Prev_Restore_History_Stacklet = NULL;
+  Prev_Restore_History_Offset = 0;
   CLEAR_INTERRUPT (INT_Stack_Overflow);
 
  Will_Push (CONTINUATION_SIZE);
