@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.44 2004/07/19 17:36:48 cph Exp $
+$Id: xml-struct.scm,v 1.45 2004/08/10 01:09:41 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -533,7 +533,7 @@ USA.
 	((number? value) (number->string value))
 	((xml-namespace-iri? value) (xml-namespace-iri-string value))
 	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
-	(else (error:wrong-type-datum value "string value"))))
+	(else (error:wrong-type-datum value "XML string value"))))
 
 (define (nmtokens->string nmtokens)
   (if (pair? nmtokens)
