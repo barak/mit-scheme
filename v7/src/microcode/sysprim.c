@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/sysprim.c,v 9.36 1991/08/26 15:00:18 arthur Exp $
+$Id: sysprim.c,v 9.37 1992/10/17 20:43:12 jinx Exp $
 
-Copyright (c) 1987, 1988, 1989, 1990, 1991 Massachusetts Institute of Technology
+Copyright (c) 1987-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -69,24 +69,6 @@ DEFINE_PRIMITIVE ("UNDER-EMACS?", Prim_under_emacs_p, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_under_emacs_p ()));
-}
-
-/* (SET-RUN-LIGHT! OBJECT)
-   On the HP Pascal workstation system, it allows the character
-   displayed in the lower right-hand part of the screen to be changed.
-   In CScheme, rings the bell.
-   Used by various things to indicate the state of the system. */
-
-DEFINE_PRIMITIVE ("SET-RUN-LIGHT!", Prim_set_run_light, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-#ifdef RUN_LIGHT_IS_BEEP
-  fputs ((OS_tty_command_beep ()), stdout);
-  fflush (stdout);
-  PRIMITIVE_RETURN (SHARP_T);
-#else
-  PRIMITIVE_RETURN (SHARP_F);
-#endif
 }
 
 #define CONVERT_ADDRESS(address)					\
