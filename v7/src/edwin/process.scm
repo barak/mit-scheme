@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.9 1991/10/11 03:34:46 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/process.scm,v 1.10 1991/10/11 03:58:56 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991 Massachusetts Institute of Technology
 ;;;
@@ -610,16 +610,24 @@ Prefix arg means replace the region with it."
 	(let ((point (current-point))
 	      (mark (current-mark)))
 	  (let ((swap? (mark< point mark))
-		(temp (temporary-buffer " *shell-input*")))
-	    (let ((st (buffer-start temp)))
-	      (if swap?
-		  (insert-region point mark st)
-		  (insert-region mark point st))
-	      (delete-string point mark)
-	      (shell-command-region command
-				    point
-				    (make-region st (buffer-end temp))))
-	    (kill-buffer temp)
+		(temp))
+	    (dynamic-wind
+	     (lambda () unspecific)
+	     (lambda ()
+	       (set! temp (temporary-buffer " *shell-output*"))
+	       (shell-command-region command
+				     (buffer-start temp)
+				     (make-region point mark))
+	       (without-interrupts
+		 (lambda ()
+		   (delete-string point mark)
+		   (insert-region (buffer-start temp)
+				  (buffer-end temp)
+				  (current-point)))))
+	     (lambda ()
+	       (kill-buffer temp)
+	       (set! temp)
+	       unspecific))
 	    (if swap? ((ref-command exchange-point-and-mark)))))
 	(shell-command-pop-up-output
 	 (lambda (output-mark)
