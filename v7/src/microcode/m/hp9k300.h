@@ -1,9 +1,9 @@
 /* -*-C-*-
    Machine file for HP9000 series 300 (or 200)
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.7 1991/03/28 05:37:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/m/Attic/hp9k300.h,v 1.8 1992/03/16 19:56:30 cph Exp $
 
-Copyright (c) 1989, 1990 Massachusetts Institute of Technology
+Copyright (c) 1989-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -63,11 +63,13 @@ MIT in each case. */
 
 #ifndef ALTERNATE_CC
 
-/* For hp-ux version 6.2 and earlier, comment out this definition. */
-/* The full optimizer breaks some of the files under 6.5. */
-#define C_OPTIMIZE_SWITCH +O1
+/* For hp-ux version 6.5 or 7.0, uncomment this definition.  */
+/* The full optimizer breaks some of the files in those versions.  */
+/* #define C_OPTIMIZE_SWITCH +O1 */
 
-#define C_SWITCH_MACHINE -Wp,-H60000 -Wc,-Nt30000,-Ns3000 -DTYPE_CODE_LENGTH=6
+#define C_SWITCH_MACHINE -Wp,-H512000 -DTYPE_CODE_LENGTH=6
+/* For hp-ux prior to 8.0, add the following switches to the previous line:
+   -Wc,-Nt30000,-Ns3000  */
 
 #else
 
