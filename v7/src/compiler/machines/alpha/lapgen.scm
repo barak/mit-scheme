@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.3 1993/02/15 23:17:39 gjr Exp $
+$Id: lapgen.scm,v 1.4 1993/02/18 01:28:29 gjr Exp $
 
 Copyright (c) 1992-1993 Digital Equipment Corporation (D.E.C.)
 
@@ -252,12 +252,14 @@ case.
 (define (split-64-bits n)
   (let* ((n (->unsigned n 64))
 	 (split (integer-divide n #x100000000)))
-    (if (< (integer-divide-remainder split) #x80000000)
-	(values (->signed (integer-divide-quotient split) 32)
-		(->signed (integer-divide-remainder split) 32))
-	(values (->signed (1+ (integer-divide-quotient split)) 32)
-		(->signed (- (integer-divide-remainder split) #x100000000)
-			  32)))))
+    (let ((rem (integer-divide-remainder split))
+	  (quo (integer-divide-quotient split)))
+      (if (or (>= rem #x80000000)
+	      (negative? (adjusted:high rem)))
+	  (values (->signed (1+ quo) 32)
+		  (->signed (- rem #x100000000) 32))
+	  (values (->signed quo 32)
+		  (->signed rem 32))))))
 
 (define (->unsigned n nbits)
   (if (negative? n)
