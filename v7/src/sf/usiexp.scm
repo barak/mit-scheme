@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.23 1993/12/22 07:55:42 adams Exp $
+$Id: usiexp.scm,v 4.24 1993/12/22 08:09:24 adams Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -489,8 +489,8 @@ MIT in each case. |#
 
 ;; for +ve & -ve fixnums?
 ;(define (fix:fixnum?-expansion expr operands if-expanded if-not-expanded block)
-;  (let ((pos-tag  (ucode-type/positive-fixnum))
-;	(neg-tag  (ucode-type/negative-fixnum)))
+;  (let ((pos-tag  ucode-type/positive-fixnum)
+;	(neg-tag  ucode-type/negative-fixnum))
 ;    (if (and (pair? operands)
 ;	     (null? (cdr operands)))
 ;	(if-expanded
@@ -509,8 +509,8 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block (ucode-type/fixnum) (car operands))
-	(make-type-test false block (ucode-type/big-fixnum) (car operands))))
+	(make-type-test false block ucode-type/fixnum (car operands))
+	(make-type-test false block ucode-type/big-fixnum (car operands))))
       (if-not-expanded)))
 
 (define (exact-rational?-expansion expr operands if-expanded if-not-expanded
@@ -520,9 +520,9 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block (ucode-type/fixnum) (car operands))
-	(make-type-test false block (ucode-type/big-fixnum) (car operands))
-	(make-type-test false block (ucode-type/ratnum) (car operands))))
+	(make-type-test false block ucode-type/fixnum (car operands))
+	(make-type-test false block ucode-type/big-fixnum (car operands))
+	(make-type-test false block ucode-type/ratnum (car operands))))
       (if-not-expanded)))
 
 (define (complex?-expansion expr operands if-expanded if-not-expanded block)
@@ -531,11 +531,11 @@ MIT in each case. |#
       (if-expanded
        (make-disjunction
 	expr
-	(make-type-test false block (ucode-type/fixnum) (car operands))
-	(make-type-test false block (ucode-type/big-fixnum) (car operands))
-	(make-type-test false block (ucode-type/ratnum) (car operands))
-	(make-type-test false block (ucode-type/big-flonum) (car operands))
-	(make-type-test false block (ucode-type/recnum) (car operands))))
+	(make-type-test false block ucode-type/fixnum (car operands))
+	(make-type-test false block ucode-type/big-fixnum (car operands))
+	(make-type-test false block ucode-type/ratnum (car operands))
+	(make-type-test false block ucode-type/big-flonum (car operands))
+	(make-type-test false block ucode-type/recnum (car operands))))
       (if-not-expanded)))
 
 (define (make-disjunction expr . clauses)
