@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: curren.scm,v 1.131 2000/10/26 04:21:26 cph Exp $
+;;; $Id: curren.scm,v 1.132 2000/10/26 04:29:26 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -186,15 +186,17 @@ The frame is guaranteed to be deselected at that time."
 (define (select-window window)
   (without-interrupts
    (lambda ()
-     (undo-leave-window! window)
      (let ((screen (window-screen window)))
-       (if (selected-screen? screen)
-	   (change-selected-buffer window (window-buffer window) #t
-	     (lambda ()
-	       (screen-select-window! screen window)))
+       (if (not (eq? window (screen-selected-window screen)))
 	   (begin
-	     (screen-select-window! screen window)
-	     (select-screen screen)))))))
+	     (undo-leave-window! window)
+	     (if (selected-screen? screen)
+		 (change-selected-buffer window (window-buffer window) #t
+		   (lambda ()
+		     (screen-select-window! screen window)))
+		 (begin
+		   (screen-select-window! screen window)
+		   (select-screen screen)))))))))
 
 (define (select-cursor window)
   (screen-select-cursor! (window-screen window) window))
@@ -460,13 +462,15 @@ The frame is guaranteed to be deselected at that time."
 (define (select-buffer-in-window buffer window record?)
   (without-interrupts
    (lambda ()
-     (undo-leave-window! window)
-     (if (selected-window? window)
-	 (change-selected-buffer window buffer record?
-	   (lambda ()
-	     (set-window-buffer! window buffer)))
-	 (set-window-buffer! window buffer))
-     (maybe-select-buffer-layout window buffer))))
+     (if (not (eq? buffer (window-buffer window)))
+	 (begin
+	   (undo-leave-window! window)
+	   (if (selected-window? window)
+	       (change-selected-buffer window buffer record?
+				       (lambda ()
+					 (set-window-buffer! window buffer)))
+	       (set-window-buffer! window buffer))
+	   (maybe-select-buffer-layout window buffer))))))
 
 (define (change-selected-buffer window buffer record? selection-thunk)
   (change-local-bindings! (selected-buffer) buffer selection-thunk)
