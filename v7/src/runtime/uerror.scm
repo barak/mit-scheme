@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.38 1993/12/21 23:32:46 cph Exp $
+$Id: uerror.scm,v 14.39 1994/07/24 21:48:48 cph Exp $
 
 Copyright (c) 1988-93 Massachusetts Institute of Technology
 
@@ -340,6 +340,8 @@ MIT in each case. |#
 	 (values "read attributes of" "file"))
 	((eq? primitive (ucode-primitive directory-make 1))
 	 (values "create" "directory"))
+	((eq? primitive (ucode-primitive directory-delete 1))
+	 (values "delete" "directory"))
 	((eq? primitive (ucode-primitive file-copy 2))
 	 (values "copy" "file"))
 	((or (eq? primitive (ucode-primitive file-link-hard 2))
