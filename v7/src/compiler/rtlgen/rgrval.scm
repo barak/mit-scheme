@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.8 1987/06/01 16:08:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.9 1987/06/01 20:29:50 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1987 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.8 1987/06/01 16:08:23 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 1.9 1987/06/01 20:29:50 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -86,30 +86,39 @@ promotional, or sales literature without prior written consent from
 (define (generate/cached-reference name safe?)
   (let ((temp (make-temporary))
 	(result (make-temporary)))
-    (let ((cell (rtl:make-fetch temp)))
-      (let ((reference (rtl:make-fetch cell)))
-	(let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
-	      (n2 (rtl:make-type-test (rtl:make-object->type reference)
-				      (ucode-type reference-trap)))
-	      (n4 (rtl:make-assignment result reference))
-	      (n5 (rtl:make-interpreter-call:cache-reference cell safe?))
-	      (n6
-	       (rtl:make-assignment
-		result
-		(rtl:interpreter-call-result:cache-reference))))
-	  (scfg-next-connect! n1 n2)
-	  (pcfg-alternative-connect! n2 n4)
-	  (scfg-next-connect! n5 n6)
-	  (if safe?
-	      (let ((n3 (rtl:make-unassigned-test reference)))
-		(pcfg-consequent-connect! n2 n3)
-		(pcfg-consequent-connect! n3 n4)
-		(pcfg-alternative-connect! n3 n5))
-	      (pcfg-consequent-connect! n2 n5))
-	  (return-2 (make-scfg (cfg-entry-node n1)
-			       (hooks-union (scfg-next-hooks n4)
-					    (scfg-next-hooks n6)))
-		    (rtl:make-fetch result)))))))
+    (return-2
+     (let ((cell (rtl:make-fetch temp)))
+       (let ((reference (rtl:make-fetch cell)))
+	 (let ((n1 (rtl:make-assignment temp (rtl:make-variable-cache name)))
+	       (n2 (rtl:make-type-test (rtl:make-object->type reference)
+				       (ucode-type reference-trap)))
+	       (n3 (rtl:make-assignment result reference))
+	       (n4 (rtl:make-interpreter-call:cache-reference cell safe?))
+	       (n5
+		(rtl:make-assignment
+		 result
+		 (rtl:interpreter-call-result:cache-reference))))
+	   (scfg-next-connect! n1 n2)
+	   (pcfg-alternative-connect! n2 n3)
+	   (scfg-next-connect! n4 n5)
+	   (if safe?
+	       (let ((n6 (rtl:make-unassigned-test reference))
+		     ;; Make new copy of n3 to keep CSE happy.
+		     ;; Otherwise control merge will confuse it.
+		     (n7 (rtl:make-assignment result reference)))
+		 (pcfg-consequent-connect! n2 n6)
+		 (pcfg-consequent-connect! n6 n7)
+		 (pcfg-alternative-connect! n6 n4)
+		 (make-scfg (cfg-entry-node n1)
+			    (hooks-union (scfg-next-hooks n3)
+					 (hooks-union (scfg-next-hooks n5)
+						      (scfg-next-hooks n7)))))
+	       (begin
+		 (pcfg-consequent-connect! n2 n4)
+		 (make-scfg (cfg-entry-node n1)
+			    (hooks-union (scfg-next-hooks n3)
+					 (scfg-next-hooks n5))))))))
+		   (make-scfg (cfg-entry-node n2)
 			      (hooks-union (scfg-next-hooks n3)
 (define-rvalue-generator temporary-tag
   (lambda (temporary)
