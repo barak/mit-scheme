@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.36 2002/12/31 04:40:53 cph Exp $
+$Id: savres.scm,v 14.37 2003/01/02 01:52:39 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright (c) 1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright (c) 1995,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright (c) 2002,2003 Massachusetts Institute of Technology
 
 This file is part of MIT Scheme.
 
@@ -147,7 +149,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port))))
+	     (guarantee-output-port port 'IDENTIFY-WORLD))))
     (write-string "Copyright (c) " port)
     (write (decoded-time/year (or time-world-saved (get-decoded-time))) port)
     (write-string " Massachusetts Institute of Technology." port)
@@ -163,8 +165,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 	  (write-string " at " port)
 	  (write-string (decoded-time/time-string time-world-saved) port)
 	  (newline port)))
-    (for-each (lambda (name)
-		(write-string "  " port)
-		(write-string (get-subsystem-identification-string name) port)
-		(newline port))
-	      (get-subsystem-names))))
+    (write-string-table (map get-subsystem-identification-string
+			     (get-subsystem-names))
+			port
+			#f
+			1
+			"|| "
+			" || "
+			" ||")))
