@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: trap.h,v 9.46 2001/07/31 03:12:11 cph Exp $
+$Id: trap.h,v 9.47 2001/08/02 04:24:19 cph Exp $
 
 Copyright (c) 1987-1989, 1999-2001 Massachusetts Institute of Technology
 
@@ -37,7 +37,6 @@ typedef unsigned long trap_kind_t;
 /* The following are immediate traps: */
 #define TRAP_UNASSIGNED				0
 #define TRAP_UNBOUND				2
-#define TRAP_RECACHE				4
 #define TRAP_EXPENSIVE				6
 /* TRAP_MAX_IMMEDIATE is defined in const.h */
 
@@ -46,12 +45,17 @@ typedef unsigned long trap_kind_t;
 
 /* Usages of the above traps:
    TRAP_UNASSIGNED can appear in a value cell or a cache.
-   TRAP_UNBOUND can appear in a value cell or a cache, but only when
-     the associated variable is in the global environment.  This is
-     the only way to indicate that a variable is unbound  in the
-     global environment.
-   TRAP_RECACHE can only appear in a cache.  Its presence requests
-     that the reference be recached.
+   TRAP_UNBOUND can appear in the following locations:
+     * The value cell of a global variable.  All symbols initially
+       have their value cell set to UNBOUND_OBJECT.
+     * A cache that is in the value cell of a global variable.  This
+       is like the previous case except that some compiled code has
+       referenced the unbound variable.
+     * The value cell of a procedure's argument frame.  This is caused
+       by calling unbind_variable on a procedure's argument.
+     * A cache that is not stored in an environment.  This is caused
+       by referring to an unbound variable in an environment that does
+       not inherit from the global environment.
    TRAP_EXPENSIVE can only appear in a "clone" cache.  This causes
      assignments to this cache to trap out to the microcode, where the
      updating of the variable's associated UUO links can be performed.
@@ -71,13 +75,11 @@ typedef unsigned long trap_kind_t;
 #  if (TYPE_CODE_LENGTH == 8)
 #    define UNASSIGNED_OBJECT	0x32000000
 #    define UNBOUND_OBJECT	0x32000002
-#    define RECACHE_OBJECT	0x32000004
 #    define EXPENSIVE_OBJECT	0x32000006
 #  endif
 #  if (TYPE_CODE_LENGTH == 6)
 #    define UNASSIGNED_OBJECT	0xc8000000
 #    define UNBOUND_OBJECT	0xc8000002
-#    define RECACHE_OBJECT	0xc8000004
 #    define EXPENSIVE_OBJECT	0xc8000006
 #  endif
 #  if (TC_REFERENCE_TRAP != 0x32)
@@ -88,7 +90,6 @@ typedef unsigned long trap_kind_t;
 #ifndef UNASSIGNED_OBJECT	/* Safe version */
 #  define UNASSIGNED_OBJECT (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_UNASSIGNED))
 #  define UNBOUND_OBJECT    (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_UNBOUND))
-#  define RECACHE_OBJECT    (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_RECACHE))
 #  define EXPENSIVE_OBJECT  (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_EXPENSIVE))
 #endif
 
