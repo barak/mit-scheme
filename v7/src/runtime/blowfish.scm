@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: blowfish.scm,v 1.18 1999/12/21 19:05:18 cph Exp $
+$Id: blowfish.scm,v 1.19 2000/04/10 03:33:37 cph Exp $
 
-Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+Copyright (c) 1997, 1999, 2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,17 +19,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 |#
 
-;;;; Interface to Blowfish and MD5
+;;;; Interface to Blowfish
 ;;; package: ()
 
 (declare (usual-integrations))
 
-(define-primitives
-  (md5 1)
-  (md5-init 0)
-  (md5-update 4)
-  (md5-final 1))
-
 (define blowfish-available?)
 (define blowfish-set-key)
 (define blowfish-ecb)
@@ -48,7 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (define (initialize-key)
     (if (eq? 'UNKNOWN unlocked?)
 	(set! unlocked?
-	      (and (implemented-primitive-procedure? md5-init)
+	      (and (md5-available?)
 		   (implemented-primitive-procedure?
 		    (ucode-primitive blowfish-cfb64-substring-v2 9))
 		   (let ((pathname
@@ -63,7 +57,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (system-library-pathname "blowfish.key")))))))
 		     (and pathname
 			  (string=? key-sum
-				    (md5-sum->hexadecimal
+				    (mhash-sum->hexadecimal
 				     (md5-file pathname)))))))))
 
   (set! blowfish-available?
@@ -166,35 +160,3 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define blowfish-file-header-v1 "Blowfish, 16 rounds")
 (define blowfish-file-header-v2 "Blowfish, 16 rounds, version 2")
-
-(define (md5-file filename)
-  (call-with-binary-input-file filename
-    (lambda (port)
-      (let ((buffer (make-string 4096))
-	    (context (md5-init)))
-	(dynamic-wind (lambda ()
-			unspecific)
-		      (lambda ()
-			(let loop ()
-			  (let ((n (read-substring! buffer 0 4096 port)))
-			    (if (fix:= 0 n)
-				(md5-final context)
-				(begin
-				  (md5-update context buffer 0 n)
-				  (loop))))))
-		      (lambda ()
-			(string-fill! buffer #\NUL)))))))
-
-(define (md5-sum->number sum)
-  (let ((l (string-length sum)))
-    (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (vector-8b-ref sum i))))
-	((fix:= i l) n))))
-
-(define (md5-sum->hexadecimal sum)
-  (let ((s (number->string (md5-sum->number sum) 16)))
-    (string-downcase! s)
-    (let ((d (fix:- 32 (string-length s))))
-    (if (fix:> d 0)
-	(string-append (make-string d #\0) s)
-	s))))

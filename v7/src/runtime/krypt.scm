@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: krypt.scm,v 1.10 1999/08/09 16:26:39 cph Exp $
+$Id: krypt.scm,v 1.11 2000/04/10 03:33:42 cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 
@@ -139,7 +139,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (define (initialize-key)
     (if (eq? 'UNKNOWN unlocked?)
 	(set! unlocked?
-	      (and (implemented-primitive-procedure? md5-init)
+	      (and (md5-available?)
 		   (let ((pathname
 			  (call-with-current-continuation
 			   (lambda (k)
@@ -152,7 +152,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 (system-library-pathname "krypt.key")))))))
 		     (and pathname
 			  (string=? key-sum
-				    (md5-sum->hexadecimal
+				    (mhash-sum->hexadecimal
 				     (md5-file pathname)))))))))
 
   (set! encrypt

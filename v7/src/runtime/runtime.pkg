@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.339 2000/04/07 20:43:01 cph Exp $
+$Id: runtime.pkg,v 14.340 2000/04/10 03:34:03 cph Exp $
 
 Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
@@ -26,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 "bitstr"
 	 "boole"
 	 "boot"
+	 "crypto"
 	 "equals"
 	 "fixart"
 	 "global"
