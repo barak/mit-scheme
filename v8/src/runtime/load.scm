@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.12 1990/04/10 15:53:06 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/runtime/load.scm,v 14.13 1990/04/12 21:56:31 markf Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
 
@@ -141,22 +141,58 @@ MIT in each case. |#
 		  (loop (cdr filenames)))))
 	  (kernel filename/s true)))))
 
+(define (load-latest . args)
+  (fluid-let ((load/default-find-pathname-with-type find-latest-file))
+    (apply load args)))
+
+(define (fasload-latest . args)
+  (fluid-let ((load/default-find-pathname-with-type find-latest-file))
+    (apply fasload args)))
+
+(define (find-latest-file pathname default-types)
+  (let loop ((types default-types)
+	     (latest-pathname #f)
+	     (latest-modification-time 0))
+    (if (not (pair? types))
+	latest-pathname
+	(let* ((complete-pathname
+		(find-complete-pathname
+		 (pathname-new-type pathname (car types))))
+	       (modification-time
+		(if complete-pathname
+		    (file-modification-time complete-pathname)
+		    -1)))
+	  (if (> modification-time latest-modification-time)
+	      (loop (cdr types)
+		    complete-pathname
+		    modification-time)
+	      (loop (cdr types)
+		    latest-pathname
+		    latest-modification-time))))))
+
 (define default-object
   "default-object")
 
 (define (find-true-pathname pathname default-types)
-  (or (let ((try
-	     (lambda (pathname)
-	       (pathname->input-truename
-		(pathname-default-version pathname 'NEWEST)))))
-	(if (pathname-type pathname)
-	    (try pathname)
-	    (or (pathname->input-truename pathname)
-		(let loop ((types default-types))
-		  (and (not (null? types))
-		       (or (try (pathname-new-type pathname (car types)))
-			   (loop (cdr types))))))))
+  (or (if (pathname-type pathname)
+	  (find-complete-pathname pathname)
+	  (or (pathname->input-truename pathname)
+	      (load/default-find-pathname-with-type
+	       pathname
+	       default-types)))
       (error "No such file" pathname)))
+
+(define (search-types-in-order pathname default-types)
+  (let loop ((types default-types))
+    (and (not (null? types))
+	 (or (find-complete-pathname
+	      (pathname-new-type pathname (car types)))
+	     (loop (cdr types))))))
+
+(define (find-complete-pathname pathname)
+  (pathname->input-truename
+   (pathname-default-version pathname 'NEWEST)))
+
 
 (define (load/internal pathname true-pathname environment syntax-table
 		       purify? load-noisily?)
