@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufwfs.scm,v 1.16 1993/08/09 19:42:49 jawilson Exp $
+;;;	$Id: bufwfs.scm,v 1.17 1993/08/25 05:11:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -233,9 +233,8 @@
 				(if (fix:< y yl) yl y)
 				xl* xu
 				(and interval
-				     (interval-property
-				      interval
-				      'highlighted)))))
+				     (interval-property interval
+							'HIGHLIGHTED #f)))))
 		     (let ((fill-line
 			    (lambda (index xl*)
 			      (group-image! group index end-index*
