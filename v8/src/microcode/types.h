@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: types.h,v 9.35 1995/07/27 00:27:08 adams Exp $
+$Id: types.h,v 9.36 1997/07/16 02:35:18 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -193,8 +193,12 @@ MIT in each case. */
 #define TC_BIT_STRING                   TC_VECTOR_1B
 #define TC_VECTOR_8B                    TC_CHARACTER_STRING
 #define TC_HUNK3                        TC_HUNK3_B
+
 #ifndef TC_NEGATIVE_FIXNUM
 #define TC_NEGATIVE_FIXNUM              TC_POSITIVE_FIXNUM
+#define case_TC_FIXNUMs case TC_POSITIVE_FIXNUM
+#else
+#define case_TC_FIXNUMs case TC_POSITIVE_FIXNUM: case TC_NEGATIVE_FIXNUM
 #endif
 
 #define UNMARKED_HISTORY_TYPE           TC_HUNK3_A

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: types.h,v 9.35 1997/07/15 23:26:32 adams Exp $
+$Id: types.h,v 9.36 1997/07/16 02:35:09 adams Exp $
 
 Copyright (c) 1987-92 Massachusetts Institute of Technology
 
@@ -44,7 +44,7 @@ MIT in each case. */
 #define TC_UNINTERNED_SYMBOL		0x05
 #define TC_BIG_FLONUM			0x06
 #define TC_COMBINATION_1		0x07
-#define TC_TRUE				0x08
+#define TC_CONSTANT			0x08
 #define TC_EXTENDED_PROCEDURE		0x09
 #define TC_VECTOR			0x0A
 #define TC_RETURN_CODE 			0x0B
@@ -195,3 +195,5 @@ MIT in each case. */
 
 #define UNMARKED_HISTORY_TYPE		TC_HUNK3_A
 #define MARKED_HISTORY_TYPE		TC_HUNK3_B
+
+#define case_TC_FIXNUMs case TC_FIXNUM

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.54 1995/07/26 23:27:53 adams Exp $
+$Id: gccode.h,v 9.55 1997/07/16 02:36:59 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -56,18 +56,10 @@ MIT in each case. */
   case TC_RETURN_CODE:							\
   case TC_THE_ENVIRONMENT
 
-#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
 #define case_Fasload_Non_Pointer					\
-  case TC_POSITIVE_FIXNUM:						\
-  case TC_NEGATIVE_FIXNUM:						\
+  case_TC_FIXNUMs:							\
   case TC_CHARACTER:							\
   case_simple_Non_Pointer
-#else
-#define case_Fasload_Non_Pointer					\
-  case TC_POSITIVE_FIXNUM:						\
-  case TC_CHARACTER:							\
-  case_simple_Non_Pointer
-#endif
 
 #define case_Non_Pointer						\
   case TC_PRIMITIVE:							\
@@ -406,21 +398,6 @@ extern SCHEME_OBJECT * gc_objects_referencing_end;
 
 extern void EXFUN (check_transport_vector_lossage,
 		   (SCHEME_OBJECT *, SCHEME_OBJECT *, SCHEME_OBJECT *));
-
-#define CHECK_TRANSPORT_VECTOR_TERMINATION()				\
-{									\
-  if (! ((To <= Scan)							\
-	 && (((Constant_Space <= To) && (To < Constant_Top))		\
-	     ? ((Constant_Space <= Scan) && (Scan < Constant_Top))	\
-	     : ((Heap_Bottom <= Scan) && (Scan < Heap_Top)))))		\
-    check_transport_vector_lossage (Scan, Saved_Scan, To);		\
-  if ((OBJECT_DATUM (*Old)) > 65536)					\
-    {									\
-      outf_error ("\nWarning: copying large vector: %d\n",		\
-	          (OBJECT_DATUM (*Old)));				\
-      outf_flush_error ();						\
-    }									\
-}
 
 #define CHECK_TRANSPORT_VECTOR_TERMINATION()				\
 {									\

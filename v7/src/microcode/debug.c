@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.48 1996/10/02 18:57:21 cph Exp $
+$Id: debug.c,v 9.49 1997/07/16 02:35:53 adams Exp $
 
 Copyright (c) 1987-96 Massachusetts Institute of Technology
 
@@ -433,7 +433,7 @@ DEFUN (Print_Expression, (expression, string),
 
 extern char * Type_Names [];
 
-void
+static void
 DEFUN (do_printing, (stream, Expr, Detailed),
        outf_channel stream AND SCHEME_OBJECT Expr AND Boolean Detailed)
 {
@@ -475,10 +475,7 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       Expr = (MEMORY_REF (Expr, DEFINE_NAME));
       goto SPrint;
 
-    case TC_POSITIVE_FIXNUM:
-#if (TC_POSITIVE_FIXNUM != TC_NEGATIVE_FIXNUM)
-    case TC_NEGATIVE_FIXNUM:
-#endif
+    case_TC_FIXNUMs:
       outf (stream, "%ld", ((long) (FIXNUM_TO_LONG (Expr))));
       return;
 
@@ -624,11 +621,6 @@ DEFUN (do_printing, (stream, Expr, Detailed),
       return;
 
     case TC_CONSTANT:
-      if (Temp_Address == 0)
-	{
-	  outf (stream, "#T");
-	  return;
-	}
       break;
 
     case TC_COMPILED_ENTRY:
@@ -751,8 +743,7 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
   Back_Trace_Entry_Hook();
   Old_Stack = Stack_Pointer;
   while (true)
-  { 
-    /**************************** I DON'T UNDERSTAND THIS -- JSM
+  {
     if ((STACK_LOCATIVE_DIFFERENCE (Stack_Top, (STACK_LOC (0)))) <= 0)
     {
       if ((STACK_LOC (0)) == Old_Stack)
@@ -761,7 +752,6 @@ DEFUN (Back_Trace, (stream), outf_channel stream)
 	outf (stream, "\n[Stack ends abruptly.]\n");
       break;
     }
-    *******************************/
     if (Return_Hook_Address == (STACK_LOC (0)))
     {
       Temp = (STACK_POP ());

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.37 1995/07/26 23:42:24 adams Exp $
+$Id: load.c,v 9.38 1997/07/16 02:36:19 adams Exp $
 
 Copyright (c) 1987-1993 Massachusetts Institute of Technology
 
@@ -90,10 +90,10 @@ DEFUN_VOID (print_fasl_information)
 {
   printf ("FASL File Information:\n\n");
   printf ("Machine = %ld; Version = %ld; Subversion = %ld\n",
-		Machine_Type, Version, Sub_Version);
+	  Machine_Type, Version, Sub_Version);
   if ((dumped_processor_type != 0) || (dumped_interface_version != 0))
     printf ("Compiled code interface version = %ld; Processor type = %ld\n",
-		  dumped_interface_version, dumped_processor_type);
+	    dumped_interface_version, dumped_processor_type);
   if (band_p)
     printf ("The file contains a dumped image (band).\n");
 
@@ -183,7 +183,6 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
     C_Code_Table_Size = 0;
   }
   else
-
   {
     C_Code_Table_Length = (OBJECT_DATUM (buffer[FASL_Offset_C_Length]));
     C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Size]));
@@ -192,6 +191,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
   /* The error messages here should be handled by the runtime system! */
+
   if ((Version != FASL_READ_VERSION) ||
 #ifndef BYTE_INVERSION
       (Machine_Type != FASL_INTERNAL_FORMAT) ||
@@ -211,6 +211,7 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
 	     FASL_FILE_BAD_VERSION			:
 	     FASL_FILE_BAD_SUBVERSION));
   }
+
 #endif /* INHIBIT_FASL_VERSION_CHECK */
 
 #ifndef INHIBIT_COMPILED_VERSION_CHECK
