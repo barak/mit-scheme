@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.108 2001/11/26 18:16:01 cph Exp $
+@comment $Id: scheme.texinfo,v 1.109 2002/02/04 21:49:22 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT Scheme Reference
@@ -37,7 +37,7 @@
 @ifinfo
 This file documents the MIT Scheme system.
 
-Copyright @copyright{} 1988-2001 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -49,9 +49,9 @@ Free Documentation License".
 
 @titlepage
 @title{MIT Scheme Reference Manual}
-@subtitle Edition 1.95
-@subtitle for Scheme Release 7.6.0
-@subtitle 26 November 2001
+@subtitle Edition 1.96
+@subtitle for Scheme Release 7.7.0
+@subtitle 4 February 2002
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -59,7 +59,7 @@ Free Documentation License".
 @page
 
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1988-2001 Massachusetts Institute of Technology
+Copyright @copyright{} 1988-2002 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.1 or
@@ -158,11 +158,24 @@ Special Forms
 * Sequencing::                  
 * Iteration::                   
 * Structure Definitions::       
+* Macros::                      
 
 Definitions
 
 * Top-Level Definitions::       
 * Internal Definitions::        
+
+Macros
+
+* Syntactic Binding Constructs::  
+* Pattern Language::            
+* Syntactic Closures::          
+
+Syntactic Closures
+
+* Syntax Terminology::          
+* SC Transformer Definition::   
+* Identifiers::                 
 
 Numbers
 
@@ -1146,15 +1159,9 @@ programs:
 
 @itemize @bullet
 @item
-Certain identifiers are reserved for use as syntactic keywords; they
-should not be used as variables (for a list of the initial syntactic
-keywords, @pxref{Special Form Syntax}).
-@cindex syntactic keyword, identifier as
-
-@item
-Any identifier that is not a syntactic keyword can be used as a
-variable.
+An identifier can be used as a variable or as a syntactic keyword.
 @cindex variable, identifier as
+@cindex syntactic keyword, identifier as
 
 @item
 When an identifier appears as a literal or within a literal, it denotes
@@ -1440,25 +1447,52 @@ x                                       @result{}  28
 @cindex syntactic keyword (defn)
 A parenthesized expression that starts with a @dfn{syntactic keyword} is
 a @dfn{special form}.  Each special form has its own syntax, which is
-described later in the manual.  The following list contains all of the
-syntactic keywords that are defined when MIT Scheme is initialized:
+described later in the manual.
 
-@example
-@group
-access                  define-syntax           macro
-and                     delay                   make-environment
-begin                   do                      named-lambda
-case                    fluid-let               or
-cond                    if                      quasiquote
-cons-stream             in-package              quote
-declare                 lambda                  scode-quote
-default-object?         let                     sequence
-define                  let*                    set!
-define-integrable       let-syntax              the-environment
-define-macro            letrec                  unassigned?
-define-structure        local-declare           using-syntax
-@end group
-@end example
+Note that syntactic keywords and variable bindings share the same
+namespace.  A local variable binding may shadow a syntactic keyword, and
+a local syntactic-keyword definition may shadow a variable binding.
+
+The following list contains all of the syntactic keywords that are
+defined when MIT Scheme is initialized:
+
+@multitable @columnfractions .33 .33 .33
+@item access
+@tab and
+@tab begin
+@item case
+@tab cond
+@tab cons-stream
+@item declare
+@tab default-object?
+@tab define
+@item define-integrable
+@tab define-structure
+@tab define-syntax
+@item delay
+@tab do
+@tab er-macro-transformer
+@item fluid-let
+@tab if
+@tab lambda
+@item let
+@tab let*
+@tab let*-syntax
+@item let-syntax
+@tab letrec
+@tab letrec-syntax
+@item local-declare
+@tab named-lambda
+@tab non-hygienic-macro-transformer
+@item or
+@tab quasiquote
+@tab quote
+@item rsc-macro-transformer
+@tab sc-macro-transformer
+@tab set!
+@item syntax-rules
+@tab the-environment
+@end multitable
 
 @node Procedure Call Syntax,  , Special Form Syntax, Expressions
 @subsection Procedure Call Syntax
@@ -1508,13 +1542,8 @@ procedures in the above examples are the values of the variables
 @code{lambda} expressions.
 
 @cindex syntactic keyword
-@findex apply
 If the @var{operator} is a syntactic keyword, then the expression is not
-treated as a procedure call: it is a special form.  Thus you should not
-use syntactic keywords as procedure names.  If you were to bind one of
-these keywords to a procedure, you would have to use @code{apply} to
-call the procedure.  MIT Scheme signals an error when such a
-binding is attempted.
+treated as a procedure call: it is a special form.
 
 @node Special Forms, Equivalence Predicates, Overview, Top
 @chapter Special Forms
@@ -1534,6 +1563,7 @@ This chapter describes the basic Scheme special forms.
 * Sequencing::                  
 * Iteration::                   
 * Structure Definitions::       
+* Macros::                      
 @end menu
 
 @node Lambda Expressions, Lexical Binding, Special Forms, Special Forms
@@ -2729,7 +2759,7 @@ instead of @code{(@var{variable} @var{init})}.
 @end example
 @end deffn
 
-@node Structure Definitions,  , Iteration, Special Forms
+@node Structure Definitions, Macros, Iteration, Special Forms
 @section Structure Definitions
 
 This section provides examples and describes the options and syntax of
@@ -3160,6 +3190,922 @@ The @code{type} option is restricted to the values @code{vector} and
 @item
 The @code{include} option is not implemented.
 @end itemize
+
+@node Macros,  , Structure Definitions, Special Forms
+@section Macros
+
+@cindex macro
+Scheme programs can define and use new derived expression types, called
+@dfn{macros}.  Program-defined expression types have the syntax
+
+@example
+(@var{keyword} @var{datum} @dots{})
+@end example
+
+@noindent
+@cindex syntactic keyword
+@cindex keyword
+@cindex macro keyword
+where @var{keyword} is an identifier that uniquely determines the
+expression type.  This identifier is called the @dfn{syntactic keyword},
+or simply @dfn{keyword}, of the macro.  The number of the @var{datum}s,
+and their syntax, depends on the expression type.
+
+@cindex macro use
+@cindex macro transformer
+Each instance of a macro is called a @dfn{use} of the macro.  The set of
+rules that specifies how a use of a macro is transcribed into a more
+primitive expression is called the @dfn{transformer} of the macro.
+
+The macro definition facility consists of these parts:
+
+@itemize @bullet
+@item
+A set of expressions used to establish that certain identifiers are
+macro keywords, associate them with macro transformers, and control the
+scope within which a macro is defined.
+
+@item
+A standard high-level pattern language for specifying macro
+transformers, introduced by the @code{syntax-rules} special form.
+
+@item
+Two non-standard low-level languages for specifying macro transformers,
+@dfn{syntactic closures} and @dfn{explicit renaming}.
+@end itemize
+
+@cindex hygienic
+@cindex referentially transparent
+The syntactic keyword of a macro may shadow variable bindings, and local
+variable bindings may shadow keyword bindings.  All macros defined using
+the pattern language are ``hygienic'' and ``referentially transparent''
+and thus preserve Scheme's lexical scoping:
+
+@itemize @bullet
+@item
+If a macro transformer inserts a binding for an identifier (variable or
+keyword), the identifier will in effect be renamed throughout its scope
+to avoid conflicts with other identifiers.
+
+@item
+If a macro transformer inserts a free reference to an identifier, the
+reference refers to the binding that was visible where the transformer
+was specified, regardless of any local bindings that may surround the
+use of the macro.
+@end itemize
+
+@menu
+* Syntactic Binding Constructs::  
+* Pattern Language::            
+* Syntactic Closures::          
+@end menu
+
+@node Syntactic Binding Constructs, Pattern Language, Macros, Macros
+@subsection Binding Constructs for Syntactic Keywords
+
+@code{let-syntax}, @code{letrec-syntax}, @code{let*-syntax} and
+@code{define-syntax} are analogous to @code{let}, @code{letrec},
+@code{let*} and @code{define}, but they bind syntactic keywords to macro
+transformers instead of binding variables to locations that contain
+values.
+
+@deffn {special form} let-syntax bindings expression expression @dots{}
+@var{Bindings} should have the form
+
+@example
+((@var{keyword} @var{transformer-spec}) @dots{})
+@end example
+
+@noindent
+Each @var{keyword} is an identifier, each @var{transformer-spec} is a
+a macro-transformer expression, and the body is a sequence of
+one or more expressions.  It is an error for a @var{keyword} to appear
+more than once in the list of keywords being bound.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{let-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+@var{expression}s as its region.
+
+@example
+@group
+(let-syntax ((when (syntax-rules ()
+                     ((when test stmt1 stmt2 ...)
+                      (if test
+                          (begin stmt1
+                                 stmt2 ...))))))
+  (let ((if #t))
+    (when if (set! if 'now))
+    if))                           @result{}  now
+
+(let ((x 'outer))
+  (let-syntax ((m (syntax-rules () ((m) x))))
+    (let ((x 'inner))
+      (m))))                       @result{}  outer
+@end group
+@end example
+@end deffn
+
+@deffn {special form} letrec-syntax bindings expression expression @dots{}
+The syntax of @code{letrec-syntax} is the same as for @code{let-syntax}.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{letrec-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+@var{bindings} as well as the @var{expression}s within its region, so
+the transformers can transcribe expressions into uses of the macros
+introduced by the @code{letrec-syntax} expression.
+
+@example
+@group
+(letrec-syntax
+  ((my-or (syntax-rules ()
+            ((my-or) #f)
+            ((my-or e) e)
+            ((my-or e1 e2 ...)
+             (let ((temp e1))
+               (if temp
+                   temp
+                   (my-or e2 ...)))))))
+  (let ((x #f)
+        (y 7)
+        (temp 8)
+        (let odd?)
+        (if even?))
+    (my-or x
+           (let temp)
+           (if y)
+           y)))        @result{}  7
+@end group
+@end example
+@end deffn
+
+@deffn {special form} let*-syntax bindings expression expression @dots{}
+The syntax of @code{let*-syntax} is the same as for @code{let-syntax}.
+
+The @var{expression}s are expanded in the syntactic environment obtained
+by extending the syntactic environment of the @code{letrec-syntax}
+expression with macros whose keywords are the @var{keyword}s, bound to
+the specified transformers.  Each binding of a @var{keyword} has the
+subsequent @var{bindings} as well as the @var{expression}s within its
+region.  Thus
+
+@example
+@group
+(let*-syntax
+   ((a (syntax-rules @dots{}))
+    (b (syntax-rules @dots{})))
+  @dots{})
+@end group
+@end example
+
+@noindent
+is equivalent to
+
+@example
+@group
+(let-syntax ((a (syntax-rules @dots{})))
+  (let-syntax ((b (syntax-rules @dots{})))
+    @dots{}))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} define-syntax keyword transformer-spec
+@var{Keyword} is an identifier, and @var{transformer-spec} is a macro
+transformer expression.  The syntactic environment is extended by
+binding the @var{keyword} to the specified transformer.
+
+The region of the binding introduced by @code{define-syntax} is the
+entire block in which it appears.  However, the @var{keyword} may only
+be used after it has been defined.
+
+MIT Scheme permits @code{define-syntax} to appear both at top level and
+within @code{lambda} bodies.  The Revised^5 Report permits only
+top-level uses of @code{define-syntax}.
+
+Although macros may expand into definitions and syntax definitions in
+any context that permits them, it is an error for a definition or syntax
+definition to shadow a syntactic keyword whose meaning is needed to
+determine whether some form in the group of forms that contains the
+shadowing definition is in fact a definition, or, for internal definitions,
+is needed to determine the boundary between the group and the expressions
+that follow the group.  For example, the following are errors:
+
+@example
+(define define 3)
+
+(begin (define begin list))
+
+(let-syntax
+  ((foo (syntax-rules ()
+          ((foo (proc args ...) body ...)
+           (define proc
+             (lambda (args ...)
+               body ...))))))
+  (let ((x 3))
+    (foo (plus x y) (+ x y))
+    (define foo x)
+    (plus foo x)))
+@end example
+@end deffn
+
+@node Pattern Language, Syntactic Closures, Syntactic Binding Constructs, Macros
+@subsection Pattern Language
+
+MIT Scheme supports a high-level pattern language for specifying macro
+transformers.  This pattern language is defined by the Revised^5 Report
+and is portable to other conforming Scheme implementations.  To use the
+pattern language, specify a @var{transformer-spec} as a
+@code{syntax-rules} form:
+
+@deffn {special form} syntax-rules literals syntax-rule @dots{}
+@var{Literals} is a list of identifiers and each @var{syntax-rule}
+should be of the form
+
+@example
+(@var{pattern} @var{template})
+@end example
+
+The @var{pattern} in a @var{syntax-rule} is a list @var{pattern} that
+begins with the keyword for the macro.
+
+A @var{pattern} is either an identifier, a constant, or one of the
+following
+
+@example
+(@var{pattern} @dots{})
+(@var{pattern} @var{pattern} @dots{} . @var{pattern})
+(@var{pattern} @dots{} @var{pattern} @var{ellipsis})
+#(@var{pattern} @dots{})
+#(@var{pattern} @dots{} @var{pattern} @var{ellipsis})
+@end example
+
+@noindent
+and a template is either an identifier, a constant, or one of the
+following
+
+@example
+(@var{element} @dots{})
+(@var{element} @var{element} @dots{} . @var{template})
+#(@var{element} @dots{})
+@end example
+
+@vindex ...
+where an @var{element} is a @var{template} optionally followed by an
+@var{ellipsis} and an @var{ellipsis} is the identifier @samp{...} (which
+cannot be used as an identifier in either a template or a pattern).
+
+An instance of @code{syntax-rules} produces a new macro transformer by
+specifying a sequence of hygienic rewrite rules.  A use of a macro whose
+keyword is associated with a transformer specified by
+@code{syntax-rules} is matched against the patterns contained in the
+@var{syntax-rule}s, beginning with the leftmost @var{syntax-rule}.  When
+a match is found, the macro use is transcribed hygienically according to
+the template.
+
+An identifier that appears in the pattern of a @var{syntax-rule} is a
+@dfn{pattern-variable}, unless it is the keyword that begins the
+pattern, is listed in @var{literals}, or is the identifier @samp{...}.
+Pattern variables match arbitrary input elements and are used to refer
+to elements of the input in the template.  It is an error for the same
+pattern variable to appear more than once in a @var{pattern}.
+
+The keyword at the beginning of the pattern in a @var{syntax-rule} is
+not involved in the matching and is not considered a pattern variable or
+literal identifier.
+
+Identifiers that appear in @var{literals} are interpreted as literal
+identifiers to be matched against corresponding subforms of the input.
+A subform in the input matches a literal identifier if and only if it is
+an identifier and either both its occurrence in the macro expression and
+its occurrence in the macro definition have the same lexical binding, or
+the two identifiers are equal and both have no lexical binding.
+
+A subpattern followed by @code{...} can match zero or more elements of
+the input.  It is an error for @code{...} to appear in @var{literals}.
+Within a pattern the identifier @code{...} must follow the last element
+of a nonempty sequence of subpatterns.
+
+More formally, an input form @var{F} matches a pattern @var{P} if and
+only if:
+
+@itemize @bullet
+@item
+@var{P} is a non-literal identifier; or
+
+@item
+@var{P} is a literal identifier and @var{F} is an identifier with the
+same binding; or
+
+@item
+@var{P} is a list @code{(@var{P_1} @dots{} @var{P_n})} and @var{F} is a
+list of @var{n} forms that match @var{P_1} through @var{P_n},
+respectively; or
+
+@item
+@var{P} is an improper list @code{(@var{P_1} @var{P_2} @dots{} @var{P_n}
+. @var{P_n+1})} and @var{F} is a list or improper list of @var{n} or
+more forms that match @var{P_1} through @var{P_n}, respectively, and
+whose @var{n}th ``cdr'' matches @var{P_n+1}; or
+
+@item
+@var{P} is of the form @code{(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
+@var{ellipsis})} where @var{ellipsis} is the identifier @code{...} and
+@var{F} is a proper list of at least @var{n} forms, the first @var{n} of
+which match @var{P_1} through @var{P_n}, respectively, and each
+remaining element of @var{F} matches @var{P_n+1}; or
+
+@item
+@var{P} is a vector of the form @code{#(@var{P_1} @dots{} @var{P_n})}
+and @var{F} is a vector of @var{n} forms that match @var{P_1} through
+@var{P_n}; or
+
+@item
+@var{P} is of the form @code{#(@var{P_1} @dots{} @var{P_n} @var{P_n+1}
+@var{ellipsis})} where @var{ellipsis} is the identifier @code{...} and
+@var{F} is a vector of @var{n} or more forms the first @var{n} of which
+match @var{P_1} through @var{P_n}, respectively, and each remaining
+element of @var{F} matches @var{P_n+1}; or
+
+@item
+@var{P} is a datum and @var{F} is equal to @var{P} in the sense of the
+@code{equal?} procedure.
+@end itemize
+
+It is an error to use a macro keyword, within the scope of its
+binding, in an expression that does not match any of the patterns.
+
+When a macro use is transcribed according to the template of the
+matching @var{syntax rule}, pattern variables that occur in the template
+are replaced by the subforms they match in the input.  Pattern variables
+that occur in subpatterns followed by one or more instances of the
+identifier @code{...} are allowed only in subtemplates that are followed
+by as many instances of @code{...}.  They are replaced in the output by
+all of the subforms they match in the input, distributed as indicated.
+It is an error if the output cannot be built up as specified.
+
+Identifiers that appear in the template but are not pattern variables or
+the identifier @code{...} are inserted into the output as literal
+identifiers.  If a literal identifier is inserted as a free identifier
+then it refers to the binding of that identifier within whose scope the
+instance of @code{syntax-rules} appears.  If a literal identifier is
+inserted as a bound identifier then it is in effect renamed to prevent
+inadvertent captures of free identifiers.
+
+@example
+@group
+(let ((=> #f))
+  (cond (#t => 'ok)))           @result{} ok
+@end group
+@end example
+
+The macro transformer for @code{cond} recognizes @code{=>}
+as a local variable, and hence an expression, and not as the
+top-level identifier @code{=>}, which the macro transformer treats
+as a syntactic keyword.  Thus the example expands into
+
+@example
+@group
+(let ((=> #f))
+  (if #t (begin => 'ok)))
+@end group
+@end example
+
+instead of
+
+@example
+@group
+(let ((=> #f))
+  (let ((temp #t))
+    (if temp 
+        ('ok temp))))
+@end group
+@end example
+
+which would result in an invalid procedure call.
+@end deffn
+
+@node Syntactic Closures,  , Pattern Language, Macros
+@subsection Syntactic Closures
+
+@cindex syntactic closures
+MIT Scheme's syntax-transformation engine is an implementation of
+@dfn{syntactic closures}, a mechanism invented by Alan Bawden and
+Jonathan Rees.  The main feature of the syntactic-closures mechanism is
+its simplicity and its close relationship to the environment models
+commonly used with Scheme.  Using the mechanism to write macro
+transformers is somewhat cumbersome and can be confusing for the newly
+initiated, but it is easily mastered.
+
+@menu
+* Syntax Terminology::          
+* SC Transformer Definition::   
+* SC Identifiers::                 
+@end menu
+
+@node Syntax Terminology, SC Transformer Definition, Syntactic Closures, Syntactic Closures
+@subsubsection Syntax Terminology
+
+This section defines the concepts and data types used by the syntactic
+closures facility.
+
+@itemize @bullet
+@item
+@cindex form
+@dfn{Forms} are the syntactic entities out of which programs are
+recursively constructed.  A form is any expression, any definition, any
+syntactic keyword, or any syntactic closure.  The variable name that
+appears in a @code{set!} special form is also a form.  Examples of
+forms:
+
+@example
+@group
+17
+#t
+car
+(+ x 4)
+(lambda (x) x)
+(define pi 3.14159)
+if
+define
+@end group
+@end example
+
+@item
+@cindex alias
+@cindex identifier
+@cindex synthetic identifier
+An @dfn{alias} is an alternate name for a given symbol.  It can appear
+anywhere in a form that the symbol could be used, and when quoted it is
+replaced by the symbol; however, it does not satisfy the predicate
+@code{symbol?}.  Macro transformers rarely distinguish symbols from
+aliases, referring to both as @dfn{identifiers}.  Another name for an
+alias is @dfn{synthetic identifier}; this document uses both names.
+
+@item
+@cindex syntactic environment
+A @dfn{syntactic environment} maps identifiers to their meanings.  More
+precisely, it determines whether an identifier is a syntactic keyword
+or a variable.  If it is a keyword, the meaning is an interpretation
+for the form in which that keyword appears.  If it is a variable, the
+meaning identifies which binding of that variable is referenced.  In
+short, syntactic environments contain all of the contextual information
+necessary for interpreting the meaning of a particular form.
+
+@item
+@cindex syntactic closure
+A @dfn{syntactic closure} consists of a form, a syntactic environment,
+and a list of identifiers.  All identifiers in the form take their
+meaning from the syntactic environment, except those in the given list.
+The identifiers in the list are to have their meanings determined
+later.
+
+A syntactic closure may be used in any context in which its form could
+have been used.  Since a syntactic closure is also a form, it may not
+be used in contexts where a form would be illegal.  For example, a form
+may not appear as a clause in the @code{cond} special form.
+
+A syntactic closure appearing in a quoted structure is replaced by its
+form.
+@end itemize
+
+@node SC Transformer Definition, SC Identifiers, Syntax Terminology, Syntactic Closures
+@subsubsection Transformer Definition
+
+This section describes the special forms for defining syntactic-closures
+macro transformers, and the associated procedures for manipulating
+syntactic closures and syntactic environments.
+
+@deffn {special form} sc-macro-transformer expression
+It is an error if this syntax occurs except as a @var{transformer-spec}.
+
+The @var{expression} is evaluated in the transformer environment to
+yield a macro transformer as described below.  This macro transformer is
+bound to a macro keyword by the special form in which the
+@code{transformer} expression appears (for example, @code{let-syntax}).
+
+@cindex macro transformer
+@cindex input form
+@cindex usage environment
+@cindex output form
+@cindex transformer environment
+In the syntactic closures facility, a @dfn{macro transformer} is a
+procedure that takes two arguments, a form and a syntactic environment,
+and returns a new form.  The first argument, the @dfn{input form}, is
+the form in which the macro keyword occurred.  The second argument, the
+@dfn{usage environment}, is the syntactic environment in which the input
+form occurred.  The result of the transformer, the @dfn{output form}, is
+automatically closed in the @dfn{transformer environment}, which is the
+syntactic environment in which the @code{transformer} expression
+occurred.
+
+For example, here is a definition of a @code{push} macro using
+@code{syntax-rules}:
+
+@example
+@group
+(define-syntax push
+  (syntax-rules ()
+    ((push item list)
+     (set! list (cons item list)))))
+@end group
+@end example
+
+@noindent
+Here is an equivalent definition using @code{sc-macro-transformer}:
+
+@example
+@group
+(define-syntax push
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((item (make-syntactic-closure env '() (cadr exp)))
+           (list (make-syntactic-closure env '() (caddr exp))))
+       `(set! ,list (cons ,item ,list))))))
+@end group
+@end example
+
+@noindent
+In this example, the identifiers @code{set!} and @code{cons} are closed
+in the transformer environment, and thus will not be affected by the
+meanings of those identifiers in the usage environment @code{env}.
+
+Some macros may be non-hygienic by design.  For example, the following
+defines a @code{loop} macro that implicitly binds @code{exit} to an
+escape procedure.  The binding of @code{exit} is intended to capture
+free references to @code{exit} in the body of the loop, so @code{exit}
+must be left free when the body is closed:
+
+@example
+@group
+(define-syntax loop
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((body (cdr exp)))
+       `(call-with-current-continuation
+         (lambda (exit)
+           (let f ()
+             ,@@(map (lambda (exp)
+                      (make-syntactic-closure env '(exit)
+                        exp))
+                    body)
+             (f))))))))
+@end group
+@end example
+@end deffn
+
+@deffn {special form} rsc-macro-transformer expression
+This form is an alternative way to define a syntactic-closures macro
+transformer.  Its syntax and usage are identical to
+@code{sc-macro-transformer}, except that the roles of the usage
+environment and transformer environment are reversed.  In other words,
+the procedure specified by @var{expression} still accepts two arguments,
+but its second argument will be the transformer environment rather than
+the usage environment, and the returned expression is closed in the
+usage environment rather than the transformer environment.
+
+The advantage of this arrangement is that it allows a simpler definition
+style in some situations.  For example, here is the @code{push} macro
+from above, rewritten in this style:
+
+@example
+@group
+(define-syntax push
+  (rsc-macro-transformer
+   (lambda (exp env)
+     `(,(make-syntactic-closure env '() 'SET!)
+       ,(caddr exp)
+       (,(make-syntactic-closure env '() 'CONS)
+	,(cadr exp)
+	,(caddr exp))))))
+@end group
+@end example
+
+@noindent
+In this style only the introduced keywords are closed, while everything
+else remains open.
+
+Note that @code{rsc-macro-transformer} and @code{sc-macro-transformer}
+are easily interchangeable.  Here is how to emulate
+@code{rsc-macro-transformer} using @code{sc-macro-transformer}.  (This
+technique can be used to effect the opposite emulation as well.)
+
+@example
+@group
+(define-syntax push
+  (sc-macro-transformer
+   (lambda (exp usage-env)
+     (capture-syntactic-environment
+      (lambda (env)
+	(make-syntactic-closure usage-env '()
+	  `(,(make-syntactic-closure env '() 'SET!)
+	    ,(caddr exp)
+	    (,(make-syntactic-closure env '() 'CONS)
+	     ,(cadr exp)
+	     ,(caddr exp)))))))))
+@end group
+@end example
+@end deffn
+
+To assign meanings to the identifiers in a form, use
+@code{make-syntactic-closure} to close the form in a syntactic
+environment.
+
+@deffn procedure make-syntactic-closure environment free-names form
+@var{Environment} must be a syntactic environment, @var{free-names}
+must be a list of identifiers, and @var{form} must be a form.
+@code{make-syntactic-closure} constructs and returns a syntactic
+closure of @var{form} in @var{environment}, which can be used anywhere
+that @var{form} could have been used.  All the identifiers used in
+@var{form}, except those explicitly excepted by @var{free-names},
+obtain their meanings from @var{environment}.
+
+Here is an example where @var{free-names} is something other than the
+empty list.  It is instructive to compare the use of @var{free-names}
+in this example with its use in the @code{loop} example above: the
+examples are similar except for the source of the identifier being left
+free.
+
+@example
+@group
+(define-syntax let1
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (exp (cadddr exp)))
+       `((lambda (,id)
+           ,(make-syntactic-closure env (list id) exp))
+         ,(make-syntactic-closure env '() init))))))
+@end group
+@end example
+
+@noindent
+@code{let1} is a simplified version of @code{let} that only binds a
+single identifier, and whose body consists of a single expression.
+When the body expression is syntactically closed in its original
+syntactic environment, the identifier that is to be bound by
+@code{let1} must be left free, so that it can be properly captured by
+the @code{lambda} in the output form.
+@end deffn
+
+To obtain a syntactic environment other than the usage environment,
+use @code{capture-syntactic-environment}.
+
+@deffn procedure capture-syntactic-environment procedure
+@code{capture-syntactic-environment} returns a form that will, when
+transformed, call @var{procedure} on the current syntactic environment.
+@var{Procedure} should compute and return a new form to be transformed,
+in that same syntactic environment, in place of the form.
+
+An example will make this clear.  Suppose we wanted to define a simple
+@code{loop-until} keyword equivalent to
+
+@example
+@group
+(define-syntax loop-until
+  (syntax-rules ()
+    ((loop-until id init test return step)
+     (letrec ((loop
+               (lambda (id)
+                 (if test return (loop step)))))
+       (loop init)))))
+@end group
+@end example
+
+@noindent
+The following attempt at defining @code{loop-until} has a subtle
+bug:
+
+@example
+@group
+(define-syntax loop-until
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (test (cadddr exp))
+           (return (cadddr (cdr exp)))
+           (step (cadddr (cddr exp)))
+           (close
+            (lambda (exp free)
+              (make-syntactic-closure env free exp))))
+       `(letrec ((loop
+                  (lambda (,id)
+                    (if ,(close test (list id))
+                        ,(close return (list id))
+                        (loop ,(close step (list id)))))))
+          (loop ,(close init '())))))))
+@end group
+@end example
+
+@noindent
+This definition appears to take all of the proper precautions to
+prevent unintended captures.  It carefully closes the subexpressions in
+their original syntactic environment and it leaves the @code{id}
+identifier free in the @code{test}, @code{return}, and @code{step}
+expressions, so that it will be captured by the binding introduced by
+the @code{lambda} expression.  Unfortunately it uses the identifiers
+@code{if} and @code{loop} @emph{within} that @code{lambda} expression,
+so if the user of @code{loop-until} just happens to use, say, @code{if}
+for the identifier, it will be inadvertently captured.
+
+The syntactic environment that @code{if} and @code{loop} want to be
+exposed to is the one just outside the @code{lambda} expression: before
+the user's identifier is added to the syntactic environment, but after
+the identifier @code{loop} has been added.
+@code{capture-syntactic-environment} captures exactly that environment
+as follows:
+
+@example
+@group
+(define-syntax loop-until
+  (sc-macro-transformer
+   (lambda (exp env)
+     (let ((id (cadr exp))
+           (init (caddr exp))
+           (test (cadddr exp))
+           (return (cadddr (cdr exp)))
+           (step (cadddr (cddr exp)))
+           (close
+            (lambda (exp free)
+              (make-syntactic-closure env free exp))))
+       `(letrec ((loop
+                  ,(capture-syntactic-environment
+                    (lambda (env)
+                      `(lambda (,id)
+                         (,(make-syntactic-closure env '() `if)
+                          ,(close test (list id))
+                          ,(close return (list id))
+                          (,(make-syntactic-closure env '() `loop)
+                           ,(close step (list id)))))))))
+          (loop ,(close init '())))))))
+@end group
+@end example
+
+@noindent
+In this case, having captured the desired syntactic environment, it is
+convenient to construct syntactic closures of the identifiers @code{if}
+and the @code{loop} and use them in the body of the
+@code{lambda}.
+
+A common use of @code{capture-syntactic-environment} is to get the
+transformer environment of a macro transformer:
+
+@example
+@group
+(sc-macro-transformer
+ (lambda (exp env)
+   (capture-syntactic-environment
+    (lambda (transformer-env)
+      @dots{}))))
+@end group
+@end example
+@end deffn
+
+In most situations, the @var{free-names} argument to
+@code{make-syntactic-closure} is the empty list.  In those cases, the
+more succinct @code{close-syntax} can be used:
+
+@deffn procedure close-syntax form environment
+@var{Environment} must be a syntactic environment and @var{form} must be
+a form.  Returns a new syntactic closure of @var{form} in
+@var{environment}, with no free names.  Entirely equivalent to
+
+@example
+(make-syntactic-closure @var{environment} '() @var{form})
+@end example
+@end deffn
+
+@node SC Identifiers,  , SC Transformer Definition, Syntactic Closures
+@subsubsection Identifiers
+
+This section describes the procedures that create and manipulate
+identifiers.  The identifier data type extends the syntactic closures
+facility to be compatible with the high-level @code{syntax-rules}
+facility.
+
+@cindex alias
+As discussed earlier, an identifier is either a symbol or an
+@dfn{alias}.  An alias is implemented as a syntactic closure whose
+@var{form} is an identifier:
+
+@example
+@group
+(make-syntactic-closure env '() 'a) @result{} @r{an alias}
+@end group
+@end example
+
+@noindent
+Aliases are implemented as syntactic closures because they behave just
+like syntactic closures most of the time.  The difference is that an
+alias may be bound to a new value (for example by @code{lambda} or
+@code{let-syntax}); other syntactic closures may not be used this way.
+If an alias is bound, then within the scope of that binding it is looked
+up in the syntactic environment just like any other identifier.
+
+Aliases are used in the implementation of the high-level facility
+@code{syntax-rules}.  A macro transformer created by @code{syntax-rules}
+uses a template to generate its output form, substituting subforms of
+the input form into the template.  In a syntactic closures
+implementation, all of the symbols in the template are replaced by
+aliases closed in the transformer environment, while the output form
+itself is closed in the usage environment.  This guarantees that the
+macro transformation is hygienic, without requiring the transformer to
+know the syntactic roles of the substituted input subforms.
+
+@deffn procedure identifier? object
+Returns @code{#t} if @var{object} is an identifier, otherwise returns
+@code{#f}.  Examples:
+
+@example
+@group
+(identifier? 'a)        @result{} #t
+(identifier? (make-syntactic-closure env '() 'a))
+                        @result{} #t
+
+(identifier? "a")       @result{} #f
+(identifier? #\a)       @result{} #f
+(identifier? 97)        @result{} #f
+(identifier? #f)        @result{} #f
+(identifier? '(a))      @result{} #f
+(identifier? '#(a))     @result{} #f
+@end group
+@end example
+@end deffn
+
+The predicate @code{eq?} is used to determine if two identifers are
+``the same''.  Thus @code{eq?} can be used to compare identifiers
+exactly as it would be used to compare symbols.  Often, though, it is
+useful to know whether two identifiers ``mean the same thing''.  For
+example, the @code{cond} macro uses the symbol @code{else} to identify
+the final clause in the conditional.  A macro transformer for
+@code{cond} cannot just look for the symbol @code{else}, because the
+@code{cond} form might be the output of another macro transformer that
+replaced the symbol @code{else} with an alias.  Instead the transformer
+must look for an identifier that ``means the same thing'' in the usage
+environment as the symbol @code{else} means in the transformer
+environment.
+
+@deffn procedure identifier=? environment1 identifier1 environment2 identifier2
+@var{Environment1} and @var{environment2} must be syntactic
+environments, and @var{identifier1} and @var{identifier2} must be
+identifiers.  @code{identifier=?} returns @code{#t} if the meaning of
+@var{identifier1} in @var{environment1} is the same as that of
+@var{identifier2} in @var{environment2}, otherwise it returns @code{#f}.
+Examples:
+
+@example
+@group
+(let-syntax
+    ((foo
+      (transformer
+       (lambda (form env)
+         (capture-syntactic-environment
+          (lambda (transformer-env)
+            (identifier=? transformer-env 'x env 'x)))))))
+  (list (foo)
+        (let ((x 3))
+          (foo))))
+                        @result{} (#t #f)
+@end group
+
+@group
+(let-syntax ((bar foo))
+  (let-syntax
+      ((foo
+        (transformer
+         (lambda (form env)
+           (capture-syntactic-environment
+            (lambda (transformer-env)
+              (identifier=? transformer-env 'foo
+                            env (cadr form))))))))
+    (list (foo foo)
+          (foo bar))))
+                        @result{} (#f #t)
+@end group
+@end example
+@end deffn
+
+Sometimes it is useful to be able to introduce a new identifier that is
+guaranteed to be different from any existing identifier, similarly to
+the way that @code{generate-uninterned-symbol} is used. 
+
+@deffn make-synthetic-identifier identifier
+Creates and returns and new synthetic identifier (alias) that is
+guaranteed to be different from all existing identifiers.
+@var{Identifier} is any existing identifier, which is used in deriving
+the name of the new identifier.
+
+This is implemented by syntactically closing @var{identifier} in a
+special empty environment.
+@end deffn
+
+@node Explicit Renaming
+@subsection Explicit Renaming
 
 @node Equivalence Predicates, Numbers, Special Forms, Top
 @chapter Equivalence Predicates
