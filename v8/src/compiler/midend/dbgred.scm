@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbgred.scm,v 1.2 1995/01/31 03:53:33 adams Exp $
+$Id: dbgred.scm,v 1.3 1995/02/28 01:46:02 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -202,11 +202,6 @@ MIT in each case. |#
 	((memq name (dbg-reduce/env/static env)) => name)
 	(else #F)))
 
-(define (dbg-reduce/reduce form env)
-  ;; rewrite the debugging info for FORM
-  unspecific)
-
-
 (define (dbg-reduce/reduce form env)
   ;;(hash-table/put! *dbgt* form env)
   (cond ((code-rewrite/original-form/previous form)
