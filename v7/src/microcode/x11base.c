@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.44 1992/12/10 20:23:57 cph Exp $
+$Id: x11base.c,v 1.45 1993/01/12 21:41:22 cph Exp $
 
-Copyright (c) 1989-92 Massachusetts Institute of Technology
+Copyright (c) 1989-93 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -1478,6 +1478,12 @@ DEFINE_PRIMITIVE ("X-WINDOW-QUERY-POINTER", Prim_x_window_query_pointer, 1, 1, 0
     VECTOR_SET (result, 4, (convert_bucky_bits (keys_buttons, 1)));
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("X-WINDOW-ID", Prim_x_window_id, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (long_to_integer (XW_WINDOW (x_window_arg (1))));
 }
 
 /* Appearance Control Primitives */
