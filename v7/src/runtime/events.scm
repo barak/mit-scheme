@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: events.scm,v 14.4 1999/01/02 06:11:34 cph Exp $
+$Id: events.scm,v 14.5 2000/04/07 20:42:30 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -72,10 +72,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      ((null? receivers))
 		    (apply (car receivers) (cdr event))))
 		 ((ADD-RECEIVER)
-		  (set-event-distributor/receivers!
-		   event-distributor
-		   (append! (event-distributor/receivers event-distributor)
-			    (list (cdr event)))))
+		  (let ((receiver (cdr event))
+			(receivers
+			 (event-distributor/receivers event-distributor)))
+		    (if (not (memv receiver receivers))
+			(set-event-distributor/receivers!
+			 event-distributor
+			 (append! receivers (list receiver))))))
 		 ((REMOVE-RECEIVER)
 		  (set-event-distributor/receivers!
 		   event-distributor
