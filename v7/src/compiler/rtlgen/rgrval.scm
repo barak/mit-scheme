@@ -1,9 +1,9 @@
 d3 1
 a4 1
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.8 1988/11/01 04:55:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.9 1988/11/02 21:46:00 cph Exp $
 #| -*-Scheme-*-
 Copyright (c) 1988 Massachusetts Institute of Technology
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.8 1988/11/01 04:55:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlgen/rgrval.scm,v 4.9 1988/11/02 21:46:00 cph Exp $
 
 Copyright (c) 1988, 1990 Massachusetts Institute of Technology
 
@@ -98,7 +98,14 @@ promotional, or sales literature without prior written consent from
 		    safe?)
 		   (rtl:interpreter-call-result:lookup)))
 		(lambda (name)
-		  (generate/cached-reference name safe?))))))
+		  (if (memq 'IGNORE-REFERENCE-TRAPS
+			    (variable-declarations lvalue))
+		      (let ((temp (rtl:make-pseudo-register)))
+			(return-2
+			 (rtl:make-assignment temp
+					      (rtl:make-variable-cache name))
+			 (rtl:make-fetch (rtl:make-fetch temp))))
+		      (generate/cached-reference name safe?)))))))
 	(cond ((not value) (perform-fetch))
 			  lvalue))
 	       (generate/rvalue* value offset))
