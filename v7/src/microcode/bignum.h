@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.26 1992/01/20 15:55:43 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bignum.h,v 9.27 1992/02/10 13:16:02 jinx Exp $
 
 Copyright (c) 1989-1992 Massachusetts Institute of Technology
 
@@ -41,6 +41,8 @@ MIT in each case. */
    you could write alternate versions that don't require this type). */
 /* #define BIGNUM_NO_ULONG */
 
+#include "ansidecl.h"
+
 #ifdef MIT_SCHEME
 
 typedef SCHEME_OBJECT bignum_type;
@@ -58,68 +60,39 @@ enum bignum_comparison
   bignum_comparison_equal, bignum_comparison_less, bignum_comparison_greater
 };
 
-#ifdef __STDC__
-
-typedef void * bignum_procedure_context;
-extern bignum_type bignum_make_zero (void);
-extern bignum_type bignum_make_one (int negative_p);
-extern int bignum_equal_p (bignum_type, bignum_type);
-extern enum bignum_comparison bignum_test (bignum_type);
-extern enum bignum_comparison bignum_compare (bignum_type, bignum_type);
-extern bignum_type bignum_add (bignum_type, bignum_type);
-extern bignum_type bignum_subtract (bignum_type, bignum_type);
-extern bignum_type bignum_negate (bignum_type);
-extern bignum_type bignum_multiply (bignum_type, bignum_type);
-extern int bignum_divide
-  (bignum_type numerator, bignum_type denominator,
-   bignum_type * quotient, bignum_type * remainder);
-extern bignum_type bignum_quotient (bignum_type, bignum_type);
-extern bignum_type bignum_remainder (bignum_type, bignum_type);
+typedef PTR bignum_procedure_context;
+extern bignum_type EXFUN (bignum_make_zero, (void));
+extern bignum_type EXFUN (bignum_make_one, (int negative_p));
+extern int EXFUN (bignum_equal_p, (bignum_type, bignum_type));
+extern enum bignum_comparison EXFUN (bignum_test, (bignum_type));
+extern enum bignum_comparison EXFUN (bignum_compare,
+				     (bignum_type, bignum_type));
+extern bignum_type EXFUN (bignum_add, (bignum_type, bignum_type));
+extern bignum_type EXFUN (bignum_subtract, (bignum_type, bignum_type));
+extern bignum_type EXFUN (bignum_negate, (bignum_type));
+extern bignum_type EXFUN (bignum_multiply, (bignum_type, bignum_type));
+extern int EXFUN (bignum_divide,
+		  (bignum_type numerator, bignum_type denominator,
+		   bignum_type * quotient, bignum_type * remainder));
+extern bignum_type EXFUN (bignum_quotient, (bignum_type, bignum_type));
+extern bignum_type EXFUN (bignum_remainder, (bignum_type, bignum_type));
 #ifndef BIGNUM_NO_ULONG
-extern bignum_type long_to_bignum (long);
-extern long bignum_to_long (bignum_type);
+extern bignum_type EXFUN (long_to_bignum, (long));
+extern long EXFUN (bignum_to_long, (bignum_type));
 #endif /* not BIGNUM_NO_ULONG */
-extern bignum_type double_to_bignum (double);
-extern double bignum_to_double (bignum_type);
-extern int bignum_fits_in_word_p
-  (bignum_type, long word_length, int twos_complement_p);
-extern bignum_type bignum_length_in_bits (bignum_type);
-extern bignum_type bignum_length_upper_limit (void);
-extern bignum_type digit_stream_to_bignum
-  (unsigned int n_digits,
-   unsigned int (*producer) (), bignum_procedure_context context,
-   unsigned int radix, int negative_p);
-extern void bignum_to_digit_stream
-  (bignum_type, unsigned int radix,
-   void (*consumer) (), bignum_procedure_context context);
-extern long bignum_max_digit_stream_radix (void);
-
-#else /* not __STDC__ */
-
-typedef char * bignum_procedure_context;
-extern bignum_type bignum_make_zero ();
-extern bignum_type bignum_make_one ();
-extern int bignum_equal_p ();
-extern enum bignum_comparison bignum_test ();
-extern enum bignum_comparison bignum_compare ();
-extern bignum_type bignum_add ();
-extern bignum_type bignum_subtract ();
-extern bignum_type bignum_negate ();
-extern bignum_type bignum_multiply ();
-extern int bignum_divide ();
-extern bignum_type bignum_quotient ();
-extern bignum_type bignum_remainder ();
-#ifndef BIGNUM_NO_ULONG
-extern bignum_type long_to_bignum ();
-extern long bignum_to_long ();
-#endif /* not BIGNUM_NO_ULONG */
-extern bignum_type double_to_bignum ();
-extern double bignum_to_double ();
-extern int bignum_fits_in_word_p ();
-extern bignum_type bignum_length_in_bits ();
-extern bignum_type bignum_length_upper_limit ();
-extern bignum_type digit_stream_to_bignum ();
-extern void bignum_to_digit_stream ();
-extern long bignum_max_digit_stream_radix ();
-
-#endif /* __STDC__ */
+extern bignum_type EXFUN (double_to_bignum, (double));
+extern double EXFUN (bignum_to_double, (bignum_type));
+extern int EXFUN (bignum_fits_in_word_p,
+		  (bignum_type, long word_length, int twos_complement_p));
+extern bignum_type EXFUN (bignum_length_in_bits, (bignum_type));
+extern bignum_type EXFUN (bignum_length_upper_limit, (void));
+extern bignum_type EXFUN (digit_stream_to_bignum,
+			  (unsigned int n_digits,
+			   unsigned int EXFUN ((*producer), ()),
+			   bignum_procedure_context context,
+			   unsigned int radix, int negative_p));
+extern void EXFUN (bignum_to_digit_stream,
+		   (bignum_type, unsigned int radix,
+		    void EXFUN((*consumer), ()),
+		    bignum_procedure_context context));
+extern long EXFUN (bignum_max_digit_stream_radix, (void));
