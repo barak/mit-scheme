@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: prompt.scm,v 1.176 1999/01/28 05:44:43 cph Exp $
+;;; $Id: prompt.scm,v 1.177 1999/01/28 05:59:00 cph Exp $
 ;;;
 ;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
 ;;;
@@ -211,12 +211,10 @@
 					     (write-to-string string)))
 	      #t
 	      (let ((thunk (typein-editor-thunk (options/mode *options*))))
-		(if (and (eq? type 'INSERTED-DEFAULT) string)
-		    (begin
-		      (set-options/default-string! options #f)
-		      (lambda ()
-			(insert-string string)
-			((thunk))))
+		(if (and string (eq? type 'INSERTED-DEFAULT))
+		    (lambda ()
+		      (insert-string string)
+		      ((thunk)))
 		    thunk)))))))
     (record-in-history! value (options/history options))
     value))
@@ -444,11 +442,11 @@
 (define (history->default-string options)
   (let ((history (options/history options))
 	(index (options/history-index options)))
-    (if (let ((length (history-length history)))
-	  (and (> length 0)
-	       (not (< index length))))
-	(error "History index out of range:" index))
-    (if (not (memq 'DEFAULT-STRING (options/seen options)))
+    (if (and (not (options/default-string options))
+	     (not (memq 'DEFAULT-STRING (options/seen options)))
+	     (let ((length (history-length history)))
+	       (and (> length 0)
+		    (< index length))))
 	(set-options/default-string! options (history-item history index)))))
 
 ;;;; String Prompt Modes
