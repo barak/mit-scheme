@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: txtprp.scm,v 1.17 1999/01/02 06:11:34 cph Exp $
+;;; $Id: txtprp.scm,v 1.18 1999/11/01 03:29:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1993-1999 Massachusetts Institute of Technology
 ;;;
@@ -189,9 +189,7 @@
 	  (set-group-start-changes-index! group start)
 	  (set-group-end-changes-index! group end))))
   (set-group-modified?! group #t)
-  (vector-set! group
-	       group-index:modified-tick
-	       (fix:+ (group-modified-tick group) 1)))
+  (set-group-modified-tick! group (fix:+ (group-modified-tick group) 1)))
 
 (define (validate-region-arguments group start end procedure)
   (validate-group group procedure)
