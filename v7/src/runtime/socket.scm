@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.1 1990/11/09 08:46:27 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/socket.scm,v 1.2 1990/11/09 20:59:30 arthur Rel $
 
 Copyright (c) 1990 Massachusetts Institute of Technology
 
@@ -59,10 +59,12 @@ MIT in each case. |#
     (set-output-port/associated-port! output-port input-port)
     (values input-port output-port)))
 
-(define (open-tcp-server-socket port)
+(define (open-tcp-server-socket service)
   (without-interrupts
    (lambda ()
-     (make-channel ((ucode-primitive open-tcp-server-socket 1) port)))))
+     (make-channel
+      ((ucode-primitive open-tcp-server-socket 1)
+       ((ucode-primitive get-service-by-name 2) service "tcp"))))))
 
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
