@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.27 2003/09/24 04:17:38 cph Exp $
+$Id: xml-struct.scm,v 1.28 2003/09/24 04:19:01 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -92,8 +92,8 @@ USA.
 	 (lambda ()
 	   (error:wrong-type-argument simple "an XML name" 'MAKE-XML-NAME))))
     (receive (string symbol)
-	(cond ((symbol? name) (values (symbol-name name) name))
-	      ((string? name) (values name (string->symbol name)))
+	(cond ((symbol? simple) (values (symbol-name simple) simple))
+	      ((string? simple) (values simple (string->symbol simple)))
 	      (else (lose)))
       (let ((type (string-is-xml-nmtoken? string)))
 	(cond ((and type (not uri))
