@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pcsample.scm,v 1.1 1995/07/28 14:14:08 adams Exp $
+$Id: pcsample.scm,v 1.2 1995/11/26 18:39:50 ziggy Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -954,19 +954,19 @@ TODO:
 			     (internal-time/ticks->seconds stealth-t/real)
 			     *flo:round-to-magnification/scale*)))
 		       (let ((stealth-s/gc-only
-			      (flo:- stealth-s stealth-s/gc-only)))
-			 "\n;;;      discounting " ,stealth-s
-			 ,@(if *pc-sample/time-display/running-time-too?*
-			       `("\n;;;         running: " ,stealth-s/no-gc)
-			       '())
-			 ,@(if *pc-sample/time-display/non-gc-time-too?*
-			       `("\n;;;         GC time: " ,stealth-s/gc-only)
-			       '())
-			 ,@(if *pc-sample/time-display/real-time-too?*
-			       `("\n;;; wall clock time: " ,stealth-s/real)
-			       '())
-			 "\n;;;      seconds spent in clandestine activities."
-			 "\n;;;\n"))))
+			      (flo:- stealth-s stealth-s/no-gc)))
+			 `("\n;;;      discounting " ,stealth-s
+			   ,@(if *pc-sample/time-display/running-time-too?*
+				 `("\n;;;         running: " ,stealth-s/no-gc)
+				 '())
+			   ,@(if *pc-sample/time-display/non-gc-time-too?*
+				 `("\n;;;         GC time: " ,stealth-s/gc-only)
+				 '())
+			   ,@(if *pc-sample/time-display/real-time-too?*
+				 `("\n;;; wall clock time: " ,stealth-s/real)
+				 '())
+			   "\n;;;      seconds spent in clandestine activities."
+			   "\n;;;\n")))))
 	     ))))))))
 
 (define-integrable (flo:round-to-magnification num magnification)
