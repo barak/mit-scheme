@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.21 1997/10/22 05:25:31 cph Exp $
+$Id: uxproc.c,v 1.22 1997/10/22 05:40:53 cph Exp $
 
 Copyright (c) 1990-97 Massachusetts Institute of Technology
 
@@ -261,7 +261,7 @@ DEFUN (OS_make_subprocess,
   enum process_jc_status child_jc_status;
 
   if (envp == 0)
-    envp = environ;
+    envp = ((CONST char **) environ);
   switch (ctty_type)
     {
     case process_ctty_type_none:
@@ -421,7 +421,7 @@ DEFUN (OS_make_subprocess,
   UX_initialize_child_signals ();
 
   /* Start the process. */
-  execve (filename, argv, envp);
+  execve (filename, ((char * CONST *) argv), ((char * CONST *) envp));
  kill_child:
   _exit (1);
 }
