@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: unix.scm,v 1.47 1995/04/09 23:27:46 cph Exp $
+;;;	$Id: unix.scm,v 1.48 1995/04/15 06:14:01 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-95 Massachusetts Institute of Technology
 ;;;
@@ -690,3 +690,18 @@ Value is a list of strings."
 
 (define (os/rmail-pop-procedure)
   #f)
+
+(define (os/ls-file-time-string time)
+  (let ((dt (decode-file-time time))
+	(ns (lambda (n m c) (string-pad-left (number->string n) m c))))
+    (string-append (month/short-string (decoded-time/month dt))
+		   " "
+		   (ns (decoded-time/day dt) 2 #\space)
+		   " "
+		   (if (<= (- (get-universal-time) time) (* 60 60 24 180))
+		       (string-append (ns (decoded-time/hour dt) 2 #\0)
+				      ":"
+				      (ns (decoded-time/minute dt) 2 #\0))
+		       (string-append " "
+				      (number->string
+				       (decoded-time/year dt)))))))

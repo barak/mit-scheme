@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2.scm,v 1.11 1995/04/10 23:06:09 cph Exp $
+;;;	$Id: os2.scm,v 1.12 1995/04/15 06:14:22 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -389,33 +389,25 @@ Includes the new backup.  Must be > 0."
 	     (k unspecific))
 	 (lambda ()
 	   (for-each
-	    (let ((nmonths
-		   (lambda (time)
-		     (let ((time (quotient time #x200000)))
-		       (+ (* (quotient time 16) 12) (remainder time 16))))))
-	      (let ((now (nmonths (current-file-time))))
-		(lambda (entry)
-		  (insert-string
-		   (let ((name (car entry))
-			 (attr (cdr entry)))
-		     (let ((time (file-attributes/modification-time attr)))
-		       (let ((time-string (file-time->string time)))
-			 (string-append
-			  (file-attributes/mode-string attr)
-			  " "
-			  (string-pad-left (number->string
-					    (file-attributes/length attr))
-					   10 #\Space)
-			  " "
-			  (substring time-string 0 6) ;month/day
-			  " "
-			  (if (<= -6 (- (nmonths time) now) 0)
-			      (substring time-string 7 12) ;hour/minute
-			      (substring time-string 15 20)) ;year
-			  " "
-			  name))))
-		   mark)
-		  (insert-newline mark))))
+	    (let ((now (os2/file-time->nmonths (current-file-time))))
+	      (lambda (entry)
+		(insert-string
+		 (let ((name (car entry))
+		       (attr (cdr entry)))
+		   (string-append
+		    (file-attributes/mode-string attr)
+		    " "
+		    (string-pad-left (number->string
+				      (file-attributes/length attr))
+				     10 #\space)
+		    " "
+		    (os/ls-file-time-string
+		     (file-attributes/modification-time attr)
+		     now)
+		    " "
+		    name))
+		 mark)
+		(insert-newline mark)))
 	    (sort (list-transform-positive
 		      (map (lambda (pathname)
 			     (cons (file-namestring pathname)
@@ -429,6 +421,32 @@ Includes the new backup.  Must be > 0."
 		      (lambda (x y)
 			(string-ci<? (car x) (car y))))))))))
     (mark-temporary! mark)))
+
+;;;; Time
+
+(define (os/ls-file-time-string time #!optional now)
+  (let ((now
+	 (if (or (default-object? now) (not now))
+	     (os2/file-time->nmonths (current-file-time))
+	     now))
+	(dt (decode-file-time time))
+	(ns (lambda (n m c) (string-pad-left (number->string n) m c))))
+    (string-append (month/short-string (decoded-time/month dt))
+		   " "
+		   (ns (decoded-time/day dt) 2 #\space)
+		   " "
+		   (if (<= -6 (- (os2/file-time->nmonths time) now) 0)
+		       (string-append (ns (decoded-time/hour dt) 2 #\0)
+				      ":"
+				      (ns (decoded-time/minute dt) 2 #\0))
+		       (string-append " "
+				      (number->string
+				       (decoded-time/year dt)))))))
+
+(define (os2/file-time->nmonths time)
+  (let ((time (quotient time #x200000)))
+    (+ (* (quotient time 16) 12)
+       (remainder time 16))))
 
 ;;;; Subprocess/Shell Support
 
