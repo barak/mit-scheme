@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: struct.scm,v 1.88 1993/08/13 23:40:14 cph Exp $
+;;;	$Id: struct.scm,v 1.89 1993/08/14 02:47:21 jawilson Exp $
 ;;;
 ;;;	Copyright (c) 1985, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -163,7 +163,7 @@
     (let ((end (make-permanent-mark group 0 true)))
       (vector-set! group group-index:end-mark end)
       (vector-set! group group-index:display-end end))
-    (vector-set! group group-index:writable? false)
+    (vector-set! group group-index:writable? #t)
     (vector-set! group group-index:start-changes-index false)
     (vector-set! group group-index:end-changes-index false)
     (vector-set! group group-index:modified-tick 0)
