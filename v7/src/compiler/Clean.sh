@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.3 2000/12/08 06:15:12 cph Exp $
+# $Id: Clean.sh,v 1.4 2000/12/09 05:10:14 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -38,6 +38,11 @@ done
 case "${1}" in
 distclean | maintainer-clean)
     rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
+    ;;
+esac
+
+case "${1}" in
+maintainer-clean)
     rm -f machines/vax/dinstr[123].scm
     ;;
 esac
