@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.14 1991/03/21 23:25:47 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpgc.h,v 1.15 1991/03/22 06:27:39 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -43,6 +43,8 @@ See cmpint.txt, cmpint.c, cmpint-md.h, and cmpaux-md.m4 for more details.
 
 #ifndef CMPGC_H_INCLUDED
 #define CMPGC_H_INCLUDED
+
+#define NOP() do {} while (0) /* A useful macro */
 
 #ifdef HAS_COMPILER_SUPPORT
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.32 1991/03/21 23:26:02 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/cmpint.c,v 1.33 1991/03/22 06:27:54 jinx Exp $
 
 Copyright (c) 1989-1991 Massachusetts Institute of Technology
 
@@ -73,8 +73,6 @@ MIT in each case. */
  *
  */
 
-#define NOP() do {} while (0) /* A useful macro */
-
 /* Macro imports */
 
 #include <stdio.h>
@@ -99,7 +97,6 @@ MIT in each case. */
 #include "prims.h"      /* LEXPR */
 #include "prim.h"	/* Primitive_Procedure_Table, etc. */
 #define IN_CMPINT_C
-#include "cmpint2.h"    /* Compiled code object destructuring */
 #include "cmpgc.h"      /* Compiled code object relocation */
 
 #ifndef FLUSH_I_CACHE_REGION
