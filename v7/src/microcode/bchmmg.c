@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.71 1992/03/16 16:51:21 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchmmg.c,v 9.72 1992/03/26 04:14:35 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -494,7 +494,7 @@ static long default_sleep_period = 20 MILLISEC;
 #define GET_SLEEP_DELTA()	default_sleep_period
 #define SET_SLEEP_DELTA(value)	default_sleep_period = (value)
 
-extern int EXFUN (select, (int, int *, int *, int *, struct timeval *));
+extern int EXFUN (select, (int, int *, int *, int *, const struct timeval *));
 
 static void
 DEFUN (sleep_awaiting_drones, (microsec, mask),
@@ -1916,7 +1916,7 @@ DEFUN (open_gc_file, (size, unlink_p),
 #ifdef HAVE_PREALLOC
   if (!exists_p)
   {
-    extern int EXFUN (prealloc, (int, unsigned int));
+    extern int EXFUN (prealloc, (int, off_t));
 
     (void) (prealloc (gc_file, ((unsigned int) gc_file_end_position)));
   }
@@ -3254,5 +3254,5 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-SET!", Prim_bchscheme_set_params, 1, 1, 
     }
     /*NOTREACHED*/
   }
-#endif (CAN_RECONFIGURE_GC_BUFFERS == 0)
+#endif /* (CAN_RECONFIGURE_GC_BUFFERS == 0) */
 }

@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.61 1992/02/29 19:33:03 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/Attic/bchdmp.c,v 9.62 1992/03/26 04:11:47 cph Exp $
 
-Copyright (c) 1987-1992 Massachusetts Institute of Technology
+Copyright (c) 1987-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -256,8 +256,9 @@ DEFUN (fasdump_exit, (length), long length)
 
 #if TRUE
   {
+#if !(defined(_HPUX) && (_HPUX_VERSION >= 80))
     extern int EXFUN (ftruncate, (int, unsigned long));
-
+#endif
     ftruncate (dump_file, length);
     result = ((close (dump_file)) == 0);
   }
