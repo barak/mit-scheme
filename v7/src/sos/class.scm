@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: class.scm,v 1.7 1997/06/25 03:51:58 cph Exp $
+;;; $Id: class.scm,v 1.8 1997/06/25 04:03:55 cph Exp $
 ;;;
 ;;; Copyright (c) 1995-97 Massachusetts Institute of Technology
 ;;;
@@ -57,7 +57,7 @@
 
 (define (make-class name direct-superclasses direct-slots)
   (if (not (and (list? direct-superclasses)
-		(for-all? direct-superclasse sclass?)))
+		(for-all? direct-superclasses class?)))
       (error:wrong-type-argument direct-superclasses
 				 "list of classes"
 				 'MAKE-CLASS))
