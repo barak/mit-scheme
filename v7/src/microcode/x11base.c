@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.19 1991/04/26 05:25:16 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/x11base.c,v 1.20 1991/04/26 18:30:09 markf Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -544,15 +544,31 @@ DEFUN (button_event, (xw, event, type),
   EVENT_INTEGER (result, EVENT_1, (event -> y));
   {
     SCHEME_OBJECT conversion;
+    int button_number;
     switch (event -> button)
       {
-      case Button1: conversion = (LONG_TO_UNSIGNED_FIXNUM (0)); break;
-      case Button2: conversion = (LONG_TO_UNSIGNED_FIXNUM (1)); break;
-      case Button3: conversion = (LONG_TO_UNSIGNED_FIXNUM (2)); break;
-      case Button4: conversion = (LONG_TO_UNSIGNED_FIXNUM (3)); break;
-      case Button5: conversion = (LONG_TO_UNSIGNED_FIXNUM (4)); break;
-      default: conversion = (SHARP_F); break;
+      case Button1: button_number = 1; break;
+      case Button2: button_number = 2; break;
+      case Button3: button_number = 3; break;
+      case Button4: button_number = 4; break;
+      case Button5: button_number = 5; break;
+      default: button_number = 0; break;
       }
+    if (button_number) {
+      --button_number;
+      if ((event -> state) & ShiftMask) {
+	button_number += 5;
+      }
+      if ((event -> state) & ControlMask) {
+	button_number += 10;
+      }
+      if ((event -> state) & Mod1Mask) {
+	button_number += 20;
+      }
+      conversion = (LONG_TO_UNSIGNED_FIXNUM (button_number));
+    } else {
+      conversion = (SHARP_F);
+    }
     VECTOR_SET (result, EVENT_2, conversion);
   }
   return (result);
