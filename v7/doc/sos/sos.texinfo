@@ -6,10 +6,10 @@
 @setchapternewpage odd
 @synindex vr fn
 
-@c $Id: sos.texinfo,v 2.1 1997/06/25 07:22:56 cph Exp $
+@c $Id: sos.texinfo,v 2.2 1997/06/25 07:23:10 cph Exp $
 
 @set TITLE The SOS Reference Manual
-@set EDITION 2.0
+@set EDITION 2.2
 @set UPDATED 25 June 1997
 @set UPDATE-MONTH June 1997
 
