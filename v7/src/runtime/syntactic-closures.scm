@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: syntactic-closures.scm,v 14.5 2002/02/19 21:27:50 cph Exp $
+;;; $Id: syntactic-closures.scm,v 14.6 2002/02/19 21:28:20 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 ;;;
@@ -318,7 +318,8 @@
 		  (loop (cdr object)))
 	    (if (syntactic-closure? object)
 		(loop (syntactic-closure/form object))
-		object)))))
+		object)))
+      object))
 
 (define (close-syntax form environment)
   (make-syntactic-closure environment '() form))
