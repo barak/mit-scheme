@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.45 2000/06/19 05:00:49 cph Exp $
+;;; $Id: imail-file.scm,v 1.46 2000/06/20 19:47:05 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -42,13 +42,13 @@
 (define-method url-exists? ((url <file-url>))
   (file-exists? (file-url-pathname url)))
 
-(define (define-file-url-completers class filter)
+(define (define-file-url-completers class)
   (define-method %url-complete-string
       ((string <string>) (default-url class)
 			 if-unique if-not-unique if-not-found)
     (pathname-complete-string
      (merge-pathnames string (file-url-pathname default-url))
-     filter
+     (lambda (pathname) pathname #t)
      (lambda (string)
        (if-unique (->namestring string)))
      (lambda (prefix get-completions)
@@ -60,12 +60,7 @@
     (map ->namestring
 	 (pathname-completions-list
 	  (merge-pathnames string (file-url-pathname default-url))
-	  filter))))
-
-(define ((file-type-filter type) pathname)
-  (let ((type* (pathname-type pathname)))
-    (and type*
-	 (string=? type* type))))
+	  (lambda (pathname) pathname #t)))))
 
 ;;;; Server operations
 
