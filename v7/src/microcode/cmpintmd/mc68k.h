@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.16 1990/09/08 00:10:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpintmd/mc68k.h,v 1.17 1990/10/02 21:50:09 jinx Rel $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -306,6 +306,7 @@ mc68k_reset_hook ()
   SETUP_REGISTER (asm_primitive_error);			/* 35 */
   SETUP_REGISTER (asm_allocate_closure);		/* 36 */
 
+  if (offset != A6_CLOSURE_HOOK_OFFSET)
 
 #define CLOSURE_ENTRY_WORDS						\
   (COMPILED_CLOSURE_ENTRY_SIZE / (sizeof (SCHEME_OBJECT)))

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.13 1990/06/20 17:38:46 cph Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/mc68k.m4,v 1.14 1990/10/02 21:49:55 jinx Rel $
 ###
 ###	Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 ###
@@ -312,6 +312,10 @@ define_c_label(interface_to_C)
 ### of the trampoline storage area, passed to the C handler as the
 ### first argument.
 
+### IMPORTANT:
+### All the asm_* routines are declared in cmpint-mc68k.h.
+### New ones need to be declared there as well!
+
 define_c_label(asm_trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
 	mov.l	(%sp)+,%d1
@@ -358,6 +362,7 @@ define_interface_indirection(generic_negative,2a)
 define_interface_indirection(generic_add,2b)
 define_interface_indirection(generic_positive,2c)
 define_interface_indirection(generic_zero,2d)
+define_interface_jsr_indirection(primitive_error,36)
 
 # Save an additional instruction here to load the dynamic link.
 define_c_label(asm_interrupt_dlink)
