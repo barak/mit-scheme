@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: xterm.scm,v 1.63 2000/10/26 18:03:15 cph Exp $
+;;; $Id: xterm.scm,v 1.64 2000/11/30 06:27:01 cph Exp $
 ;;;
 ;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
 ;;;
@@ -716,7 +716,11 @@
     (if x-screen-ignore-focus-button?
 	(set! ignore-button-state 'IGNORE-BUTTON-DOWN))
     (and (not (selected-screen? screen))
-	 (make-input-event 'SELECT-SCREEN select-screen screen))))
+	 (make-input-event 'SELECT-SCREEN
+			   (lambda (screen)
+			     (fluid-let ((last-focus-time #f))
+			       (select-screen screen)))
+			   screen))))
 
 (define-event-handler event-type:delete-window
   (lambda (screen event)
