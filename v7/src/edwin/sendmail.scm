@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sendmail.scm,v 1.30 1995/05/10 20:26:21 cph Exp $
+;;;	$Id: sendmail.scm,v 1.31 1995/05/10 20:48:39 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-95 Massachusetts Institute of Technology
 ;;;
@@ -360,7 +360,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 (define-command mail-subject
   "Move point to end of Subject field."
   ()
-  (field-mover "Subject")).
+  (field-mover "Subject"))
 
 (define-command mail-cc
   "Move point to end of CC field."
