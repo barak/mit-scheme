@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.3 1995/03/16 05:52:05 adams Exp $
+$Id: rulrew.scm,v 1.4 1995/03/17 03:46:53 adams Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -177,11 +177,11 @@ MIT in each case. |#
    (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
   (list `EQ-TEST comparand source))
 
-(define-rule rewriting
+(define-rule rewriting			;add-pre-cse-rewriting-rule!
   (EQ-TEST (? source) (REGISTER (? comparand register-known-fixnum-constant)))
   (QUALIFIER
    (fits-in-5-bits-signed? (known-fixnum-constant/fixnum-value comparand)))
-  (list `EQ-TEST comparand source))
+  (list `EQ-TEST source comparand))
 
 (define (rtl:immediate-zero-constant? expression)
   (cond ((rtl:constant? expression)
