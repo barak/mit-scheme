@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.81 2003/02/14 18:28:13 cph Exp $
+$Id: sendmail.scm,v 1.82 2004/10/22 04:48:13 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
-Copyright 1997,1998,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -313,7 +313,7 @@ is inserted."
     (let ((given-header?
 	   (lambda (name null-true?)
 	     (let ((header
-		    (list-search-positive headers
+		    (find-matching-item headers
 		      (lambda (header)
 			(string-ci=? (car header) name)))))
 	       (and header
@@ -1549,7 +1549,7 @@ Otherwise, the MIME type is determined from the file's suffix;
       (if prompt?
 	  (do-mime)
 	  (let ((entry
-		 (list-search-positive
+		 (find-matching-item
 		     (ref-variable file-type-to-mime-type buffer)
 		   (lambda (entry)
 		     (if type
@@ -1557,8 +1557,8 @@ Otherwise, the MIME type is determined from the file's suffix;
 			 (not (car entry)))))))
 	    (cond (entry
 		   (finish (cadr entry) (caddr entry)))
-		  ((search-mime-types-file pathname)
-		   => (lambda (ts) (finish (car ts) (cadr ts))))
+		  ((pathname-mime-type pathname)
+		   => (lambda (t.s) (finish (car t.s) (cdr t.s))))
 		  (else
 		   (let loop ()
 		     (case (prompt-for-char
@@ -1567,27 +1567,6 @@ Otherwise, the MIME type is determined from the file's suffix;
 		       ((#\b #\B) (finish 'APPLICATION 'OCTET-STREAM))
 		       ((#\m #\M) (do-mime))
 		       (else (editor-beep) (loop)))))))))))
-
-(define (search-mime-types-file pathname)
-  (let ((filename (file-namestring pathname)))
-    (call-with-input-file (system-library-pathname "edwin/etc/mime.types")
-      (lambda (port)
-	(let loop ()
-	  (let ((line (read-line port)))
-	    (and (not (eof-object? line))
-		 (let ((line (string-trim line)))
-		   (if (or (string-null? line)
-			   (char=? (string-ref line 0) #\#))
-		       (loop)
-		       (let ((tokens
-			      (burst-string line char-set:whitespace #t)))
-			 (if (there-exists? (cdr tokens)
-			       (lambda (suffix)
-				 (string-suffix-ci? (string-append "." suffix)
-						    filename)))
-			     (map intern
-				  (burst-string (car tokens) #\/ #f))
-			     (loop))))))))))))
 
 (define-variable file-type-to-mime-type
   "Specifies the MIME type/subtype for files with a given type.
