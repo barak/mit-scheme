@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: bufwin.scm,v 1.307 1999/05/08 19:22:58 cph Exp $
+;;; $Id: bufwin.scm,v 1.308 2000/04/10 02:27:47 cph Exp $
 ;;;
-;;; Copyright (c) 1986, 1989-1999 Massachusetts Institute of Technology
+;;; Copyright (c) 1986, 1989-2000 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
@@ -75,6 +75,13 @@
    ;; A permanent left-inserting mark at the end of the text line
    ;; modelled by END-OUTLINE.
    current-end-mark
+
+   ;; The number of characters on the first line that are invisible,
+   ;; i.e. off the top of the window.
+   current-start-delta
+
+   ;; The value of START-PARTIAL for the current window contents.
+   current-start-partial
 
    ;; The Y position, relative to the window, of the top edge of
    ;; START-OUTLINE.  A non-positive number.
@@ -276,6 +283,20 @@
 (define-integrable (%set-window-current-end-mark! window mark)
   (with-instance-variables buffer-window window (mark)
     (set! current-end-mark mark)))
+
+(define-integrable (%window-current-start-delta window)
+  (with-instance-variables buffer-window window () current-start-delta))
+
+(define-integrable (%set-window-current-start-delta! window delta)
+  (with-instance-variables buffer-window window (delta)
+    (set! current-start-delta delta)))
+
+(define-integrable (%window-current-start-partial window)
+  (with-instance-variables buffer-window window () current-start-partial))
+
+(define-integrable (%set-window-current-start-partial! window partial)
+  (with-instance-variables buffer-window window (partial)
+    (set! current-start-partial partial)))
 
 (define-integrable (%window-current-start-y window)
   (with-instance-variables buffer-window window () current-start-y))
@@ -789,7 +810,9 @@
 	(mark-temporary! (%window-current-start-mark window))
 	(%set-window-current-start-mark! window false)
 	(mark-temporary! (%window-current-end-mark window))
-	(%set-window-current-end-mark! window false)))
+	(%set-window-current-end-mark! window false)
+	(%set-window-current-start-delta! window #f)
+	(%set-window-current-start-partial! window #f)))
   (%clear-window-outstanding-changes! window))
 
 (define-integrable (%clear-window-outstanding-changes! window)
@@ -1169,6 +1192,10 @@ If this is zero, point is always centered after it moves off screen."
 	(%set-window-current-end-mark!
 	 window
 	 (make-permanent-mark (%window-group window) (o3-index end) true))))
+  (%set-window-current-start-delta! window
+				    (fix:- (%window-start-index window)
+					   (%window-start-line-index window)))
+  (%set-window-current-start-partial! window (%window-start-partial window))
   (%set-window-current-start-y! window (o3-y start))
   (%set-window-current-end-y! window (o3-y end))
   (deallocate-o3! window start)
