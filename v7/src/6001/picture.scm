@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.8 1992/06/01 21:15:19 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/6001/picture.scm,v 1.9 1992/06/03 18:25:12 cph Exp $
 
 Copyright (c) 1991-92 Massachusetts Institute of Technology
 
@@ -56,11 +56,20 @@ MIT in each case. |#
   (graphics-operation window 'resize-window width height))
 
 (define (make-window width height x y)
-  (let ((window (make-graphics-device
-		 x-graphics-device-type
-		 false
-		 (x-geometry-string x y width height))))
+  (let ((window
+	 (make-graphics-device x-graphics-device-type
+			       false
+			       (x-geometry-string x y width height)
+			       true)))
     (graphics-set-coordinate-limits window 0 (- height) width 0)
+    ;; Prevent this window from receiving the keyboard focus.
+    (x-graphics/disable-keyboard-focus window)
+    ;; Inform the window manager that this window does not do any
+    ;; keyboard input.
+    (x-graphics/set-input-hint window false)
+    ;; OK, now map the window onto the screen.
+    (x-graphics/map-window window)
+    (x-graphics/flush window)
     (if (not (n-gray-map window))
 	(allocate-grays window))
     window))
