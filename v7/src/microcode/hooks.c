@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.49 1993/01/18 05:13:19 cph Exp $
+$Id: hooks.c,v 9.50 1993/03/31 03:27:07 ziggy Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -625,15 +625,27 @@ DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1, 0)
 /* Interrupts */
 
 DEFINE_PRIMITIVE ("GET-INTERRUPT-ENABLES", Prim_get_interrupt_enables, 0, 0,
-  "Returns the current interrupt mask.")
+  "(get-interrupt-enables)\n\
+Returns the current interrupt mask.\n\
+There are two interrupt bit masks:\n\
+- The interrupt mask has a one bit for every enabled interrupt.\n\
+- The interrupt code has a one bit for every interrupt pending service.\n\
+Interrupts are prioritized according to their bit position (LSB is highest).\n\
+At any interrupt polling point, the highest enabled pending interrupt is\n\
+serviced.  The interrupt handler is a two-argument Scheme procedure\n\
+invoked with all interrupts disabled and with the interrupt code and mask\n\
+as arguments.  The interrupt mask is restored on return from the interrupt\n\
+handler.  To prevent re-servicing the interrupt, the interrupt handler\n\
+should clear the corresponding interrupt bit.")
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (FETCH_INTERRUPT_MASK ()));
 }
 
 DEFINE_PRIMITIVE ("SET-INTERRUPT-ENABLES!", Prim_set_interrupt_enables, 1, 1,
-  "Sets the interrupt mask to NEW-INT-ENABLES; returns previous mask value.\n\
-See `mask_interrupt_enables' for more information on interrupts.")
+  "(set-interrupt-enables! interrupt-mask)\n\
+Sets the interrupt mask to NEW-INT-ENABLES; returns previous mask value.\n\
+See `get-interrupt-enables' for more information on interrupts.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -644,15 +656,21 @@ See `mask_interrupt_enables' for more information on interrupts.")
 }
 
 DEFINE_PRIMITIVE ("CLEAR-INTERRUPTS!", Prim_clear_interrupts, 1, 1,
-  "Clears the interrupt bits in the MASK argument.\n\
-The bits in MASK are interpreted as for `get-interrupt-enables'.")
+  "(clear-interrupts! interrupt-mask)\n\
+Clears the interrupt bits in interrupt-mask by clearing the\n\
+corresponding bits in the interrupt code.\n\
+See `get-interrupt-enables' for more information on interrupts.")
 {
   PRIMITIVE_HEADER (1);
   CLEAR_INTERRUPT ((arg_integer (1)) & INT_Mask);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("DISABLE-INTERRUPTS!", Prim_disable_interrupts, 1, 1, 0)
+DEFINE_PRIMITIVE ("DISABLE-INTERRUPTS!", Prim_disable_interrupts, 1, 1, 
+  "(disable-interrupts! interrupt-mask)\n\
+Disables the interrupts specified in interrupt-mask by clearing the\n\
+corresponding bits in the interrupt mask. Returns previous mask value.\n\
+See `get-interrupt-enables' for more information on interrupts.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -662,7 +680,11 @@ DEFINE_PRIMITIVE ("DISABLE-INTERRUPTS!", Prim_disable_interrupts, 1, 1, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1, 0)
+DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1,
+  "(enable-interrupts! interrupt-mask)\n\
+Enables the interrupts specified in interrupt-mask by setting the\n\
+corresponding bits in the interrupt mask. Returns previous mask value.\n\
+See `get-interrupt-enables' for more information on interrupts.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -670,6 +692,17 @@ DEFINE_PRIMITIVE ("ENABLE-INTERRUPTS!", Prim_enable_interrupts, 1, 1, 0)
     SET_INTERRUPT_MASK (previous | ((arg_integer (1)) & INT_Mask));
     PRIMITIVE_RETURN (LONG_TO_FIXNUM (previous));
   }
+}
+
+DEFINE_PRIMITIVE ("REQUEST-INTERRUPTS!", Prim_request_interrupts, 1, 1,
+  "(request-interrupts! interrupt-mask)\n\
+Requests the interrupt bits in interrupt-mask by setting the\n\
+corresponding bits in the interrupt code.\n\
+See `get-interrupt-enables' for more information on interrupts.")
+{
+  PRIMITIVE_HEADER (1);
+  REQUEST_INTERRUPT ((arg_integer (1)) & INT_Mask);
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("RETURN-TO-APPLICATION", Prim_return_to_application, 2, LEXPR,
