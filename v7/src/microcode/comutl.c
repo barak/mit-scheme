@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.5 1987/07/14 04:56:41 mhwu Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/comutl.c,v 1.6 1987/07/15 22:09:17 cph Rel $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -42,7 +42,7 @@ MIT in each case. */
   (((OBJECT_TYPE (object)) == TC_COMPILED_EXPRESSION) ||		\
    ((OBJECT_TYPE (object)) == TC_RETURN_ADDRESS))
 
-Built_In_Primitive (Prim_compiled_code_address_block, 1,
+Built_In_Primitive (Prim_comp_code_address_block, 1,
 		    "COMPILED-CODE-ADDRESS->BLOCK", 0xB5)
 {
   Pointer *address;
@@ -59,7 +59,7 @@ Built_In_Primitive (Prim_compiled_code_address_block, 1,
 #endif /* CMPGCFILE */
 }
 
-Built_In_Primitive (Prim_compiled_code_address_offset, 1,
+Built_In_Primitive (Prim_comp_code_address_offset, 1,
 		    "COMPILED-CODE-ADDRESS->OFFSET", 0xAC)
 {
   Pointer *address;
@@ -69,8 +69,7 @@ Built_In_Primitive (Prim_compiled_code_address_offset, 1,
   address = (Get_Pointer (Arg1));
 
 #ifdef CMPGCFILE
-  return (Make_Non_Pointer (TC_FIXNUM,
-			    (Get_Compiled_Offset (address))));
+  return (Make_Signed_Fixnum (Get_Compiled_Offset (address)));
 #else /* not CMPGCFILE */
   error_external_return ();
 #endif /* CMPGCFILE */

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.24 1987/05/14 13:49:47 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/string.c,v 9.25 1987/07/15 22:09:33 cph Rel $ */
 
 /* String primitives. */
 
@@ -288,7 +288,7 @@ Built_In_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
   return (NIL);
 }
 
-#define substring_find_char_in_set_prefix()			\
+#define substr_find_char_in_set_prefix()			\
   long start, end, length;					\
   char *char_set, *scan;					\
   Primitive_4_Args ();						\
@@ -308,7 +308,7 @@ Built_In_Primitive(Prim_Vec_8b_Find_Prev_Char_Ci, 4,
 Built_In_Primitive(Prim_Find_Next_Char_In_Set, 4,
 		   "SUBSTRING-FIND-NEXT-CHAR-IN-SET", 0x146)
 {
-  substring_find_char_in_set_prefix ();
+  substr_find_char_in_set_prefix ();
 
   char_set = (Scheme_String_To_C_String (Arg4));
   scan = (string_pointer (Arg1, start));
@@ -324,7 +324,7 @@ Built_In_Primitive(Prim_Find_Next_Char_In_Set, 4,
 Built_In_Primitive(Prim_Find_Prev_Char_In_Set, 4,
 		   "SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET", 0x147)
 {
-  substring_find_char_in_set_prefix ();
+  substr_find_char_in_set_prefix ();
 
   char_set = Scheme_String_To_C_String(Arg4);
   scan = (string_pointer (Arg1, end));

@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.30 1987/07/07 21:01:25 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/microcode/interp.c,v 9.31 1987/07/15 22:08:05 cph Rel $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -887,10 +887,10 @@ Pop_Return:
 			       comp_uuo_link_trap_restart)
 
       define_compiler_restart (RC_COMP_CACHE_REF_APPLY_RESTART,
-			       comp_cache_reference_apply_restart)
+			       comp_cache_ref_apply_restart)
 
       define_compiler_restart (RC_COMP_SAFE_REF_TRAP_RESTART,
-			       comp_safe_reference_trap_restart)
+			       comp_safe_ref_trap_restart)
 
       define_compiler_restart (RC_COMP_UNASSIGNED_TRAP_RESTART,
 			       comp_unassigned_p_trap_restart)

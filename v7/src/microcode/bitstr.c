@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.29 1987/05/14 13:46:57 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/bitstr.c,v 9.30 1987/07/15 22:10:15 cph Rel $
 
    Bit string primitives. */
 
@@ -841,7 +841,7 @@ Built_In_Primitive (Prim_write_bits_x, 3, "WRITE-BITS!", 0xE0)
     }								\
 }
 
-Built_In_Primitive (Prim_bit_substring_find_next_set_bit, 3,
+Built_In_Primitive (Prim_bitstr_find_next_set_bit, 3,
 		    "BIT-SUBSTRING-FIND-NEXT-SET-BIT", 0xDA)
 {
   substring_find_next_initialize ();
@@ -854,14 +854,14 @@ Built_In_Primitive (Prim_bit_substring_find_next_set_bit, 3,
       return (NIL);
     }
   else if (*scan &
-	   ((bit == 0) ? ~0 : (any_mask ((POINTER_LENGTH - bit), bit))))
+	   ((bit == 0) ? (~ 0) : (any_mask ((POINTER_LENGTH - bit), bit))))
     find_next_set_loop (bit);
 
   while (--word > end_word)
     if (*--scan)
       find_next_set_loop (0);
 
-  if (*--scan & ((end_bit == POINTER_LENGTH) ? ~0 : (low_mask (end_bit))))
+  if (*--scan & ((end_bit == POINTER_LENGTH) ? (~ 0) : (low_mask (end_bit))))
     find_next_set_loop (0);
 
   return (NIL);

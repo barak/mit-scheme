@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.1 1987/07/14 03:00:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/rgxprim.c,v 1.2 1987/07/15 22:09:57 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -180,11 +180,11 @@ Built_In_Primitive (Prim_re_compile_fastmap, 4, "RE-COMPILE-FASTMAP", 0x191)
 Built_In_Primitive (Prim_re_match_substring, 7, "RE-MATCH-SUBSTRING", 0x118)
   RE_SUBSTRING_PRIMITIVE (re_match)
 
-Built_In_Primitive (Prim_re_search_substring_forward, 7,
+Built_In_Primitive (Prim_re_search_substr_forward, 7,
 		    "RE-SEARCH-SUBSTRING-FORWARD", 0x119)
   RE_SUBSTRING_PRIMITIVE (re_search_forward)
 
-Built_In_Primitive (Prim_re_search_substring_backward, 7,
+Built_In_Primitive (Prim_re_search_substr_backward, 7,
 		    "RE-SEARCH-SUBSTRING-BACKWARD", 0x11A)
   RE_SUBSTRING_PRIMITIVE (re_search_backward)
 

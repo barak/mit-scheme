@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.1 1987/07/14 03:00:59 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/regex.c,v 1.2 1987/07/15 22:10:56 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -873,7 +873,7 @@ re_match (pattern_start, pattern_end, buffer, registers,
 
 	READ_PATTERN_OFFSET (offset);
 	if (pattern_pc == pattern_end)
-	  goto maybe_finalize_jump_finalize;
+	  goto finalize_jump;
 
 	/* Compare what follows with the beginning of the repeat.
 	   If we can establish that there is nothing that they
@@ -894,7 +894,7 @@ re_match (pattern_start, pattern_end, buffer, registers,
 	    break;
 
 	  default:
-	    goto maybe_finalize_jump_not_finalize;
+	    goto dont_finalize_jump;
 	  }
 
 	/* (pattern_pc [(offset - 3)]) is an `on_failure_jump'.
@@ -904,15 +904,15 @@ re_match (pattern_start, pattern_end, buffer, registers,
 	  case regexpcode_exact_1:
 	    {
 	      if (ascii != (pattern_pc [(offset + 1)]))
-		goto maybe_finalize_jump_finalize;
-	      goto maybe_finalize_jump_not_finalize;
+		goto finalize_jump;
+	      goto dont_finalize_jump;
 	    }
 
 	  case regexpcode_exact_n:
 	    {
 	      if (ascii != (pattern_pc [(offset + 2)]))
-		goto maybe_finalize_jump_finalize;
-	      goto maybe_finalize_jump_not_finalize;
+		goto finalize_jump;
+	      goto dont_finalize_jump;
 	    }
 
 	  case regexpcode_char_set:
@@ -920,8 +920,8 @@ re_match (pattern_start, pattern_end, buffer, registers,
 	      if (CHAR_SET_MEMBER_P ((pattern_pc [(offset + 1)]),
 				     (& (pattern_pc [(offset + 2)])),
 				     ascii))
-		goto maybe_finalize_jump_not_finalize;
-	      goto maybe_finalize_jump_finalize;
+		goto dont_finalize_jump;
+	      goto finalize_jump;
 	    }
 
 	  case regexpcode_not_char_set:
@@ -929,20 +929,20 @@ re_match (pattern_start, pattern_end, buffer, registers,
 	      if (CHAR_SET_MEMBER_P ((pattern_pc [(offset + 1)]),
 				     (& (pattern_pc [(offset + 2)])),
 				     ascii))
-		goto maybe_finalize_jump_finalize;
-	      goto maybe_finalize_jump_not_finalize;
+		goto finalize_jump;
+	      goto dont_finalize_jump;
 	    }
 
 	  default:
-	    goto maybe_finalize_jump_not_finalize;
+	    goto dont_finalize_jump;
 	  }
 
-      maybe_finalize_jump_finalize:
+      finalize_jump:
 	pattern_pc -= 2;
 	(pattern_pc [-1]) = ((unsigned char) regexpcode_finalize_jump);
 	goto re_match_finalize_jump;
 
-      maybe_finalize_jump_not_finalize:
+      dont_finalize_jump:
 	pattern_pc -= 2;
 	(pattern_pc [-1]) = ((unsigned char) regexpcode_jump);
 	goto re_match_jump;
