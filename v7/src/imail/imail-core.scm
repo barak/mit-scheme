@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-core.scm,v 1.44 2000/05/08 18:50:38 cph Exp $
+;;; $Id: imail-core.scm,v 1.45 2000/05/08 18:51:48 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -392,7 +392,7 @@
   (guarantee-folder folder 'ATTACH-MESSAGE)
   (set-message-folder! message folder))
 
-(define (detach-message message)
+(define (detach-message! message)
   (set-message-folder! message #f)
   (set-message-index! message #f))
 

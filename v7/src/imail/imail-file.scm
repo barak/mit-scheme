@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-file.scm,v 1.17 2000/05/04 17:40:03 cph Exp $
+;;; $Id: imail-file.scm,v 1.18 2000/05/08 18:51:43 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -83,7 +83,7 @@
        (if (not (eq? 'UNKNOWN messages))
 	   (begin
 	     (set-file-folder-messages! folder 'UNKNOWN)
-	     (for-each detach-message messages)))))))
+	     (for-each detach-message! messages)))))))
 
 (define-method folder-presentation-name ((folder <file-folder>))
   (url-body (folder-url folder)))
@@ -128,7 +128,7 @@
        (cond ((not (pair? messages))
 	      (set-file-folder-messages! folder (reverse! messages*)))
 	     ((message-deleted? (car messages))
-	      (detach-message (car messages))
+	      (detach-message! (car messages))
 	      (folder-modified! folder)
 	      (loop (cdr messages) index messages*))
 	     (else

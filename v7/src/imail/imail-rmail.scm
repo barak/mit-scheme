@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-rmail.scm,v 1.22 2000/05/03 19:29:42 cph Exp $
+;;; $Id: imail-rmail.scm,v 1.23 2000/05/08 18:51:36 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -84,7 +84,7 @@
        (lambda ()
 	 (let ((messages (%file-folder-messages folder)))
 	   (if (not (eq? 'UNKNOWN messages))
-	       (for-each detach-message messages)))
+	       (for-each detach-message! messages)))
 	 (set-file-folder-messages! folder '())))
       (call-with-binary-input-file pathname
 	(lambda (port)
