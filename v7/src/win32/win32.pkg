@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: win32.pkg,v 1.6 1995/02/21 23:28:04 cph Exp $
+$Id: win32.pkg,v 1.7 1996/02/28 16:33:38 adams Exp $
 
 Copyright (c) 1993-95 Massachusetts Institute of Technology
 
@@ -52,13 +52,16 @@ MIT in each case. |#
 	 "win_ffi"
 	 "module"
 	 "protect"
+	 "clipbrd"
 	 )
   (export ()
 	  %call-foreign-function
 	  parameterize-with-module-entry
 	  module-entry/machine-address
 	  module-entry/attempt-linkage
-          start-message-polling-thread)
+          start-message-polling-thread
+	  win32-clipboard-read-text
+	  win32-clipboard-write-text)
   (initialization (initialize-package!))
 )
 
