@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mklogs.scm,v 1.7 1995/11/12 05:46:34 cph Exp $
+$Id: mklogs.scm,v 1.8 1995/11/19 19:20:50 adams Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -39,13 +39,16 @@ MIT in each case. |#
 	    "/scheme/7.4/src/microcode"
 	    "/scheme/7.4/src/runtime"
 	    "/scheme/7.4/src/sf"
+
 	    "/scheme/8.0/src/6001"
 	    "/scheme/8.0/src/bench"
 	    "/scheme/8.0/src/compiler"
 	    "/scheme/8.0/src/cref"
 	    "/scheme/8.0/src/edwin"
 	    "/scheme/8.0/src/microcode"
+	    "/scheme/8.0/src/pcsample"
 	    "/scheme/8.0/src/rcs"
 	    "/scheme/8.0/src/runtime"
 	    "/scheme/8.0/src/sf"
+	    "/scheme/8.0/src/swat"
 	    "/scheme/8.0/src/win32"))
