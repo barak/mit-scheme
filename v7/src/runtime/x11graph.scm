@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.20 1992/05/07 22:24:43 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.21 1992/05/13 21:28:13 bal Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -93,6 +93,8 @@ MIT in each case. |#
   (x-graphics-set-line-style 2)
   (x-graphics-set-vdc-extent 5)
   (x-graphics-vdc-extent 1)
+
+  (x-graphics-fill-polygon 2)
 
   (x-bytes-into-image 2)
   (x-create-image 3)
@@ -204,6 +206,7 @@ MIT in each case. |#
 	   (draw-line ,x-graphics/draw-line)
 	   (draw-point ,x-graphics/draw-point)
 	   (draw-text ,x-graphics/draw-text)
+	   (fill-polygon ,x-graphics/fill-polygon)
 	   (flush ,x-graphics/flush)
 	   (font-structure ,x-graphics/font-structure)
 	   (get-colormap ,x-graphics/get-colormap)
@@ -581,6 +584,9 @@ MIT in each case. |#
 
 ;;;; Miscellaneous Operations
 
+(define (x-graphics/fill-polygon device point-vector)
+  (x-graphics-fill-polygon (x-graphics-device/xw device) point-vector))
+   
 (define (x-graphics/copy-area device
 			      source-x-left source-y-top
 			      width height
