@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.31 1991/11/15 05:14:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/make.scm,v 14.32 1992/02/07 19:47:32 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -383,6 +383,8 @@ MIT in each case. |#
 		   (fasload/update-debugging-info! object (car entry))
 		   (load/purification-root object)))
 	       fasload-purification-queue)))))
+  (set! (access gc-boot-loading? (->environment '(RUNTIME GARBAGE-COLLECTOR)))
+	false)
   (set! fasload-purification-queue)
   (newline console-output-port)
   (write-string "purifying..." console-output-port)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.7 1991/11/26 07:06:03 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 14.8 1992/02/07 19:47:24 jinx Exp $
 
-Copyright (c) 1988-91 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -38,6 +38,7 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! gc-boot-loading? true)
   (set! hook/gc-flip default/gc-flip)
   (set! hook/purify default/purify)
   (set! hook/stack-overflow default/stack-overflow)
@@ -152,16 +153,29 @@ MIT in each case. |#
   start-value space-remaining
   false)
 
+(define gc-boot-loading?)
+
+(define gc-boot-death-message
+  "\n;; Aborting boot-load: Not enough memory to load -- Use -large option.\n")
+  
 (define (gc-abort-test space-remaining)
   (if (< space-remaining 4096)
-      (abort->nearest
-       (cmdl-message/append
-	(cmdl-message/strings "Aborting!: out of memory")
-	;; Clean up whatever possible to avoid a reoccurrence.
-	(cmdl-message/active
-	 (lambda (port)
-	   port
-	   (with-gc-notification! true gc-clean)))))))
+      (if gc-boot-loading?
+	  (let ((console ((ucode-primitive tty-output-channel 0))))
+	    ((ucode-primitive channel-write 4)
+	     console
+	     gc-boot-death-message
+	     0
+	     ((ucode-primitive string-length 1) gc-boot-death-message))
+	    ((ucode-primitive exit-with-value 1) #x14))
+	  (abort->nearest
+	   (cmdl-message/append
+	    (cmdl-message/strings "Aborting!: out of memory")
+	    ;; Clean up whatever possible to avoid a reoccurrence.
+	    (cmdl-message/active
+	     (lambda (port)
+	       port
+	       (with-gc-notification! true gc-clean))))))))
 
 ;;;; User Primitives
 
