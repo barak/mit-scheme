@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: print.scm,v 1.14 1997/12/26 23:46:41 cph Exp $
+;;;	$Id: print.scm,v 1.15 1998/01/08 18:13:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1991-97 Massachusetts Institute of Technology
 ;;;
@@ -113,9 +113,17 @@ Variable LPR-SWITCHES is a list of extra switches (strings) to pass to lpr."
   print-headers? title buffer
   (call-with-temporary-file-pathname
    (lambda (pathname)
-     (write-region region pathname #f #t)
+     (call-with-temporary-buffer " print"
+       (lambda (temp)
+	 (insert-region (region-start region)
+			(region-end region)
+			(buffer-end temp))
+	 (insert-char #\page (buffer-end temp))
+	 (write-region (buffer-region temp) pathname #f #t)))
      (shell-command #f #f #f #f
-		    (string-append "print " (->namestring pathname))))))
+		    (string-append "copy "
+				   (->namestring pathname)
+				   " prn")))))
 
 (define (print-region-title-string region)
   (let ((buffer-title
