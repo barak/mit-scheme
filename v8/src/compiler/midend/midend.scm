@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midend.scm,v 1.12 1995/06/26 14:07:19 adams Exp $
+$Id: midend.scm,v 1.13 1995/06/26 14:09:49 adams Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -288,8 +288,9 @@ Example:
 		   (copy-variable-properties)))
 	      (*after-cps-conversion?* false)
 	      (*previous-code-rewrite-table* false)
-	      (*dbg-rewrites*
-	       (if (not recursive?) (dbg-info/make-rewrites) *dbg-rewrites*))
+	      (*dbg-rewrites* (dbg-info/make-rewrites))
+	      ;;(*dbg-rewrites*
+	      ;; (if (not recursive?) (dbg-info/make-rewrites) *dbg-rewrites*))
 	      (*code-rewrite-table*
 	       (if (not recursive?)
 		   (code/rewrite-table/make)
