@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.10 1991/07/12 23:17:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.11 1991/07/24 19:48:26 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -410,7 +410,9 @@ enum trap_state
   trap_state_exit,
   trap_state_suspend,
   trap_state_query,
-  trap_state_recover
+  trap_state_recover,
+  trap_state_exitting_soft,
+  trap_state_exitting_hard
 };
 
 extern void EXFUN (initialize_trap_recovery, (char * C_sp));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.13 1991/07/12 23:17:37 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.c,v 1.14 1991/07/24 19:48:24 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -73,8 +73,16 @@ DEFUN (OS_set_trap_state, (state), enum trap_state state)
 }
 
 static void
+DEFUN_VOID (trap_normal_termination)
+{
+  trap_state = trap_state_exitting_soft;
+  termination_trap ();
+}
+
+static void
 DEFUN_VOID (trap_immediate_termination)
 {
+  trap_state = trap_state_exitting_hard;
   OS_restore_external_state ();
   exit (1);
 }
@@ -114,21 +122,30 @@ DEFUN (trap_handler, (message, signo, info, scp),
   int code = ((SIGINFO_VALID_P (info)) ? (SIGINFO_CODE (info)) : 0);
   Boolean constant_space_broken = (!(CONSTANT_SPACE_SEALED ()));
   enum trap_state old_trap_state = trap_state;
+
+  if (old_trap_state == trap_state_exitting_hard)
+  {
+    _exit (1);
+  }
+  else if (old_trap_state == trap_state_exitting_soft)
+  {
+    trap_immediate_termination ();
+  }
   trap_state = trap_state_trapped;
   if (WITHIN_CRITICAL_SECTION_P ())
-    {
-      fprintf (stdout,
-	       "\n>> A %s has occurred within critical section \"%s\".\n",
-	       message, (CRITICAL_SECTION_NAME ()));
-      fprintf (stdout, ">> [signal %d (%s), code %d]\n",
-	       signo, (find_signal_name (signo)), code);
-    }
+  {
+    fprintf (stdout,
+	     "\n>> A %s has occurred within critical section \"%s\".\n",
+	     message, (CRITICAL_SECTION_NAME ()));
+    fprintf (stdout, ">> [signal %d (%s), code %d]\n",
+	     signo, (find_signal_name (signo)), code);
+  }
   else if (constant_space_broken || (old_trap_state != trap_state_recover))
-    {
-      fprintf (stdout, "\n>> A %s has occurred.\n", message);
-      fprintf (stdout, ">> [signal %d (%s), code %d]\n",
-	      signo, (find_signal_name (signo)), code);
-    }
+  {
+    fprintf (stdout, "\n>> A %s has occurred.\n", message);
+    fprintf (stdout, ">> [signal %d (%s), code %d]\n",
+	     signo, (find_signal_name (signo)), code);
+  }
   if (constant_space_broken)
   {
     fputs (">> Constant space has been overwritten.\n", stdout);
@@ -136,78 +153,83 @@ DEFUN (trap_handler, (message, signo, info, scp),
 	   stdout);
   }
   fflush (stdout);
+
   switch (old_trap_state)
+  {
+  case trap_state_trapped:
+    if ((saved_trap_state == trap_state_recover) ||
+	(saved_trap_state == trap_state_query))
     {
-    case trap_state_trapped:
-      if ((saved_trap_state == trap_state_recover) ||
-	  (saved_trap_state == trap_state_query))
-	{
-	  fputs (">> The trap occurred while processing an earlier trap.\n",
-		 stdout);
-	  fprintf (stdout,
-		   ">> [The earlier trap raised signal %d (%s), code %d.]\n",
-		   saved_signo,
-		   (find_signal_name (saved_signo)),
-		   ((SIGINFO_VALID_P (saved_info))
-		    ? (SIGINFO_CODE (saved_info))
-		    : 0));
-	  fputs (((WITHIN_CRITICAL_SECTION_P ())
-		  ? ">> Successful recovery is extremely unlikely.\n"
-		  : ">> Successful recovery is unlikely.\n"),
-		 stdout);
-	  break;
-	}
-      else
-	trap_immediate_termination ();
-    case trap_state_recover:
-      if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
-      {
-	fputs (">> Successful recovery is unlikely.\n", stdout);
-	break;
-      }
-      else
-      {
-	saved_trap_state = old_trap_state;
-	saved_signo = signo;
-	saved_info = info;
-	saved_scp = scp;
-	trap_recover ();
-      }
-    case trap_state_exit:
-      termination_trap ();
+      fputs (">> The trap occurred while processing an earlier trap.\n",
+	     stdout);
+      fprintf (stdout,
+	       ">> [The earlier trap raised signal %d (%s), code %d.]\n",
+	       saved_signo,
+	       (find_signal_name (saved_signo)),
+	       ((SIGINFO_VALID_P (saved_info))
+		? (SIGINFO_CODE (saved_info))
+		: 0));
+      fputs (((WITHIN_CRITICAL_SECTION_P ())
+	      ? ">> Successful recovery is extremely unlikely.\n"
+	      : ">> Successful recovery is unlikely.\n"),
+	     stdout);
+      break;
     }
+    else
+      trap_immediate_termination ();
+  case trap_state_recover:
+    if ((WITHIN_CRITICAL_SECTION_P ()) || constant_space_broken)
+    {
+      fputs (">> Successful recovery is unlikely.\n", stdout);
+      break;
+    }
+    else
+    {
+      saved_trap_state = old_trap_state;
+      saved_signo = signo;
+      saved_info = info;
+      saved_scp = scp;
+      trap_recover ();
+    }
+  case trap_state_exit:
+    termination_trap ();
+  }
+
   fflush (stdout);
   saved_trap_state = old_trap_state;
   saved_signo = signo;
   saved_info = info;
   saved_scp = scp;
+    
   while (1)
+  {
+    static CONST char * trap_query_choices[] =
     {
-      static CONST char * trap_query_choices[] =
-	{
-	  "D = dump core",
-	  "I = terminate immediately",
-	  "N = terminate normally",
-	  "R = attempt recovery",
-	  "Q = terminate normally",
-	  0
-	  };
-      switch (userio_choose_option
-	      ("Choose one of the following actions:",
-	       "Action -> ",
-	       trap_query_choices))
-	{
-	case 'I':
-	  trap_immediate_termination ();
-	case 'D':
-	  trap_dump_core ();
-	case 'N':
-	case 'Q':
-	  termination_trap ();
-	case 'R':
-	  trap_recover ();
-	}
+      "D = dump core",
+      "I = terminate immediately",
+      "N = terminate normally",
+      "R = attempt recovery",
+      "Q = terminate normally",
+      0
+      };
+    switch (userio_choose_option
+	    ("Choose one of the following actions:",
+	     "Action -> ",
+	     trap_query_choices))
+    {
+    case 'I':
+      trap_immediate_termination ();
+    case 'D':
+      trap_dump_core ();
+    case '\0':
+      /* Error in IO. Assume everything scrod. */
+    case 'N':
+    case 'Q':
+      trap_normal_termination ();
+    case 'R':
+      trap_recover ();
     }
+  }
 }
 
 #define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.2 1991/01/07 23:57:29 cph Rel $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxutil.c,v 1.3 1991/07/24 19:48:29 jinx Exp $
 
 Copyright (c) 1990, 1991 Massachusetts Institute of Technology
 
@@ -132,10 +132,13 @@ DEFUN_VOID (userio_read_char)
   char c;
   while (1)
     {
-      int nread = (UX_read (STDIN_FILENO, (&c), 1));
+      int nread;
+
+      errno = 0;
+      nread = (UX_read (STDIN_FILENO, (&c), 1));
       if (nread == 1)
 	break;
-      if ((nread < 0) && (errno != EINTR))
+      if (errno != EINTR)
 	{
 	  c = '\0';
 	  break;
@@ -187,6 +190,8 @@ DEFUN (userio_choose_option, (herald, prompt, choices),
       fflush (stdout);
       {
 	char command = (userio_read_char_raw ());
+	if ((command == '\0') && (errno != 0))
+	  return (command);
 	putc ('\n', stdout);
 	fflush (stdout);
 	if (islower (command))
@@ -225,6 +230,13 @@ DEFUN (userio_confirm, (prompt), CONST char * prompt)
 	case 'n':
 	case 'N':
 	  return (0);
+	case '\0':
+	  if (errno != 0)
+	  {
+	    /* IO problems, assume everything scrod. */
+	    fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
+	    termination_eof ();
+	  }
 	}
     }
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.12 1991/07/05 23:31:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxsig.c,v 1.13 1991/07/24 19:48:20 jinx Exp $
 
 Copyright (c) 1990-91 Massachusetts Institute of Technology
 
@@ -768,6 +768,13 @@ DEFUN (interactive_interrupt_handler, (scp), struct FULL_SIGCONTEXT * scp)
 	      fflush (stdout);
 	    }
 	  return;
+	case '\0':		/* C-@ */
+	  if (errno != 0)
+	  {
+	    /* IO problems, assume everything scrod. */
+	    fprintf (stderr, "Problems reading keyboard input -- Exitting.\n");
+	    termination_eof ();
+	  }
 	default:
 	  if (!option_emacs_subprocess)
 	    print_interactive_help ();
@@ -978,6 +985,10 @@ DEFUN (reset_query, (scp), struct FULL_SIGCONTEXT * scp)
 	       "Action -> ",
 	       reset_choices))
 	{
+	case '\0':
+	  /* IO problems, assume everything scrod. */
+	  fprintf (stderr, "Problems reading keyboard input -- exitting.\n");
+	  termination_eof ();
 	case 'D':
 	  SET_CRITICAL_SECTION_HOOK (soft_reset);
 	  return;
@@ -1009,6 +1020,12 @@ DEFUN_VOID (examine_memory)
       while (scan < end)
 	{
 	  char c = (userio_read_char ());
+	  if ((c == '\0') && (errno != 0))
+	  {
+	    /* IO problems, assume everything scrod. */
+	    fprintf (stderr, "Problems reading keyboard input -- exiting.\n");
+	    termination_eof ();
+	  }
 	  (*scan) = c;
 	  if (c == '\n')
 	    c = '\0';
