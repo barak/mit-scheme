@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.2 1987/08/20 18:03:45 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/dsyn.scm,v 1.3 1987/08/20 19:13:58 jinx Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -48,9 +48,9 @@ MIT in each case. |#
   (macro (name . cases)
     (if (memq name instructions-handled-specially)
 	''()
-	(map (lambda (case)
-	       (process-instruction-definition name case))
-	     cases))))
+	`(begin ,@(map (lambda (case)
+			 (process-instruction-definition name case))
+		       cases)))))
 
 (define (process-instruction-definition name case)
   (let ((prefix (cons name (find-pattern-prefix (car case))))
