@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.1 1990/03/28 22:04:46 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v8/src/compiler/etc/xcbfdir.scm,v 1.2 1990/04/04 19:47:29 jinx Exp $
 
 Copyright (c) 1989, 1990 Massachusetts Institute of Technology
 
@@ -37,31 +37,34 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (define (process-directory dir processor extension)
-  (for-each (lambda (pathname)
-	      (let ((one (pathname-new-type pathname extension))
-		    (two (pathname-new-type pathname "touch")))
+  (for-each
+   (lambda (pathname)
+     (let ((one (pathname-new-type pathname extension))
+	   (two (pathname-new-type pathname "touch")))
+       ;; file-touch returns #T if the file did not exist,
+       ;; it returns #F if it did.
+       (and (file-touch two)
+	    (if (file-exists? one)
+		(delete-file two)
 		(call-with-current-continuation
 		 (lambda (here)
-		   (if (not (or (file-exists? one) (file-exists? two)))
-		       (call-with-output-file two
-			   (lambda (port)
-			     (dynamic-wind
-			      (lambda () false)
-			      (lambda ()
-				(bind-condition-handler '()
-							(lambda (condition)
-							  (newline)
-							  (display ";; *** Aborting ***")
-							  (newline)
-							  (condition/write-report condition)
-							  (newline)
-							  (here 'next))
-							(lambda ()
-							  (processor pathname))))
-			      (lambda ()
-				(close-output-port port)
-				(delete-file two))))))))))
-	    (directory-read (string-append dir "/*.bin"))))
+		   (dynamic-wind
+		    (lambda () false)
+		    (lambda ()
+		      (bind-condition-handler
+		       '()
+		       (lambda (condition)
+			 (newline)
+			 (display ";; *** Aborting ***")
+			 (newline)
+			 (condition/write-report condition)
+			 (newline)
+			 (here 'next))
+		       (lambda ()
+			 (processor pathname))))
+		    (lambda ()
+		      (delete-file two)))))))))
+   (directory-read (string-append dir "/*.bin"))))
 
 (define (recompile-directory dir)
   (process-directory dir compile-bin-file "com"))
