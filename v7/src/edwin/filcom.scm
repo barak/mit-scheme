@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: filcom.scm,v 1.193 1997/10/22 01:21:11 cph Exp $
+;;;	$Id: filcom.scm,v 1.194 1998/11/18 02:55:25 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-97 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-98 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -696,7 +696,7 @@ Prefix arg means treat the plaintext file as binary data."
 		 (file-directory? pathname)))))
      (let ((directory
 	    (prompt-for-pathname* prompt default file-directory? false)))
-       (if (file-directory? directory)
+       (if (file-test-no-errors file-directory? directory)
 	   (pathname-as-directory directory)
 	   directory)))))
 
@@ -705,7 +705,7 @@ Prefix arg means treat the plaintext file as binary data."
    (pathname-as-directory
     (prompt-for-pathname* prompt default file-directory? true))))
 
-(define-integrable (prompt-for-pathname prompt default require-match?)
+(define (prompt-for-pathname prompt default require-match?)
   (prompt-for-pathname* prompt default file-exists? require-match?))
 
 (define (prompt-for-pathname* prompt default
@@ -740,7 +740,8 @@ Prefix arg means treat the plaintext file as binary data."
 	(filename-completions-list
 	 (prompt-string->pathname string insertion directory)))
       (lambda (string)
-	(verify-final-value?
+	(file-test-no-errors
+	 verify-final-value?
 	 (prompt-string->pathname string insertion directory)))
       require-match?)
      insertion
@@ -754,7 +755,7 @@ Prefix arg means treat the plaintext file as binary data."
     (let ((unique-case
 	   (lambda (filename)
 	     (let ((pathname (merge-pathnames filename directory)))
-	       (if (file-directory? pathname)
+	       (if (file-test-no-errors file-directory? pathname)
 		   ;; Note: We assume here that all directories contain
 		   ;; at least one file.  Thus directory names should 
 		   ;; complete, but not uniquely.
@@ -790,7 +791,7 @@ Prefix arg means treat the plaintext file as binary data."
 		   (non-unique-case filtered-filenames)))))))
   (let ((directory (directory-namestring pathname))
 	(prefix (file-namestring pathname)))
-    (cond ((not (file-directory? directory))
+    (cond ((not (file-test-no-errors file-directory? directory))
 	   (if-not-found))
 	  ((string-null? prefix)
 	   ;; This optimization assumes that all directories
@@ -823,10 +824,11 @@ Prefix arg means treat the plaintext file as binary data."
 (define (canonicalize-filename-completions directory filenames)
   (do ((filenames filenames (cdr filenames)))
       ((null? filenames))
-    (if (file-directory? (merge-pathnames (car filenames) directory))
+    (if (file-test-no-errors file-directory?
+			     (merge-pathnames (car filenames) directory))
 	(set-car! filenames
 		  (->namestring (pathname-as-directory (car filenames))))))
   (sort filenames string<?))
 
-(define-integrable (completion-ignore-filename? filename)
+(define (completion-ignore-filename? filename)
   (os/completion-ignore-filename? (->namestring filename)))
