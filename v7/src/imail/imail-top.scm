@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.195 2000/06/27 02:41:03 cph Exp $
+;;; $Id: imail-top.scm,v 1.196 2000/06/27 02:47:58 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -140,11 +140,9 @@ Otherwise, the text is left as is."
 
 (define-variable imail-forward-all-headers
   "If true, forwarded email messages will contain all header fields.
-Otherwise, only the header fields normally shown by IMAIL are sent.
-If value is 'MIME-ONLY, full header fields are sent only when
- imail-forward-using-mime is also true."
+Otherwise, only the header fields normally shown by IMAIL are sent."
   #f
-  (lambda (x) (or (boolean? x) (eq? x 'MIME-ONLY))))
+  boolean?)
 
 (define-variable imail-forward-using-mime
   "If true, forwarded email messages are sent as MIME attachments.
@@ -993,15 +991,17 @@ While composing the reply, use \\[mail-yank-original] to yank the
 
 (define-command imail-forward
   "Forward the current message to another user.
-With prefix argument, \"resend\" the message instead of forwarding it;
-see the documentation of `imail-resend'."
+With single \\[universal-argument], \"resend\" the message instead of forwarding it;
+ see the documentation of `imail-resend'.
+With negative argument, forward the message with all headers;
+ otherwise headers are trimmed according to imail-forward-all-headers."
   "P"
-  (lambda (resend?)
-    (if resend?
+  (lambda (argument)
+    (if (command-argument-multiplier-only? argument)
 	(dispatch-on-command (ref-command-object imail-resend))
-	(imail-forward))))
+	(imail-forward argument))))
 
-(define (imail-forward)
+(define (imail-forward argument)
   (let ((message (selected-message)))
     (make-mail-buffer
      `(("To" "")
@@ -1018,7 +1018,10 @@ see the documentation of `imail-resend'."
      #f
      (lambda (mail-buffer)
        (initialize-imail-mail-buffer mail-buffer)
-       (let ((raw? (ref-variable imail-forward-all-headers mail-buffer)))
+       (let ((raw?
+	      (if (< (command-argument-numeric-value argument) 0)
+		  #t
+		  (ref-variable imail-forward-all-headers mail-buffer))))
 	 (if (ref-variable imail-forward-using-mime mail-buffer)
 	     (add-buffer-mime-attachment!
 	      mail-buffer
@@ -1032,7 +1035,7 @@ see the documentation of `imail-resend'."
 	     (let ((mark (mark-left-inserting-copy (buffer-end mail-buffer))))
 	       (with-buffer-point-preserved mail-buffer
 		 (lambda ()
-		   (insert-header-fields message (eq? raw? #t) mark)
+		   (insert-header-fields message raw? mark)
 		   (insert-message-body message mark)))
 	       (mark-temporary! mark))))
        (if (window-has-no-neighbors? (current-window))
