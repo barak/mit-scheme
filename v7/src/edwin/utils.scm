@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: utils.scm,v 1.34 1993/09/13 18:30:49 gjr Exp $
+;;;	$Id: utils.scm,v 1.35 1994/03/08 20:19:32 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-1993 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-94 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -285,11 +285,11 @@
       (string? object)))
 
 (define (list-of-strings? object)
-  (and (list? object)
-       (for-all? object string?)))
+  (list-of-type? object string?))
 
-(define list-of-type?
-  for-all?)
+(define (list-of-type? object predicate)
+  (and (list? object)
+       (for-all? object predicate)))
 
 (define (dotimes n procedure)
   (define (loop i)
@@ -297,3 +297,16 @@
 	(begin (procedure i)
 	       (loop (1+ i)))))
   (loop 0))
+
+(define make-strong-eq-hash-table
+  (strong-hash-table/constructor eq-hash-mod eq? #t))
+
+(define make-weak-equal-hash-table
+  (weak-hash-table/constructor equal-hash-mod equal? #t))
+
+(define (weak-assq item alist)
+  (let loop ((alist alist))
+    (and (not (null? alist))
+	 (if (eq? (weak-car (car alist)) item)
+	     (car alist)
+	     (loop (cdr alist))))))
