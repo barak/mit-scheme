@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.440 2003/03/21 17:51:09 cph Exp $
+$Id: runtime.pkg,v 14.441 2003/04/14 18:19:26 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -292,6 +292,7 @@ USA.
 	  hook/exit
 	  hook/quit
 	  hook/scode-eval
+	  host-big-endian?
 	  hunk3-cons
 	  identity-procedure
 	  impurify
