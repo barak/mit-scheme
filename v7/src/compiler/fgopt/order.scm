@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.6 1988/07/20 07:37:29 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/fgopt/order.scm,v 4.7 1988/10/03 21:19:31 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -169,12 +169,18 @@ MIT in each case. |#
   (set-subproblem-type! operator (operator-type (subproblem-rvalue operator)))
   (if (and callee (rvalue/procedure? callee))
       (let ((rest
-	     (if (procedure-interface-optimizible? callee)
-		 (optimized-combination-ordering block
-						 operator
-						 operands
-						 callee)
-		 (standard-combination-ordering operator operands))))
+	     (cond ((not (stack-block? (procedure-block callee)))
+		    (standard-combination-ordering operator operands))
+		   ((procedure-always-known-operator? callee)
+		    ;; At this point, the following should be true.
+		    ;; (procedure-interface-optimizible? callee)
+		    (optimized-combination-ordering block
+						    operator
+						    operands
+						    callee))
+		   (else
+		    (known-combination-ordering block operator
+						operands callee)))))
 	(if (procedure/open? callee)
 	    (generate/static-link block callee rest)
 	    rest))
@@ -193,6 +199,35 @@ MIT in each case. |#
   (set-subproblem-types! operands continuation-type/push)
   (reverse (cons operator operands)))
 
+(define (known-combination-ordering block operator operands procedure)
+  (if (not (procedure/closure? procedure))
+      (error "known-combination-ordering: known non-closure" procedure))
+  ;; The behavior of known lexpr closures should be improved
+  ;; at least when the listification is trivial (0 or 1 args).
+  (if (procedure-rest procedure)
+      (standard-combination-ordering operator operands)
+      (begin
+	(set-subproblem-types! operands continuation-type/push)
+	(set-subproblem-type!
+	 operator
+	 (if (closure-procedure-needs-operator? procedure)
+	     continuation-type/push
+	     continuation-type/effect))
+	(push-unassigned block
+			 (known-combination/number-of-unassigned operands
+								 procedure)
+			 (reverse (cons operator operands))))))
+
+(define (known-combination/number-of-unassigned operands procedure)
+  (let ((n-supplied (length operands))
+	(n-required (length (cdr (procedure-original-required procedure))))
+	(n-optional (length (procedure-original-optional procedure))))
+    (let ((n-expected (+ n-required n-optional)))
+      (if (or (< n-supplied n-required) (> n-supplied n-expected))
+	  (error "known-combination-ordering: wrong number of arguments"
+		 procedure n-supplied n-expected))
+      (- n-expected n-supplied))))
+
 (define (generate/static-link block procedure rest)
   (if (stack-block/static-link? (procedure-block procedure))
       (cons (make-push block (block-parent (procedure-block procedure))) rest)
@@ -239,6 +274,9 @@ MIT in each case. |#
 				     (length optional))
 				 integrated
 				 non-integrated))
+		      ((and (not (null? subproblems)) (not rest))
+		       (error "sort-subproblems/out-of-line: Too many arguments"
+			      callee subproblems))
 		      ((and rest (lvalue-integrated? rest))
 		       (return-3 0
 				 (append! (reverse subproblems) integrated)
@@ -250,7 +288,9 @@ MIT in each case. |#
 					  non-integrated)))))))
 	  ;; This is a wrong number of arguments case, so the code
 	  ;; we generate will not be any good.
-	  (return-3 0 integrated non-integrated)))))
+	  ;; (return-3 0 integrated non-integrated)
+	  (error "sort-subproblems/out-of-line: Too few arguments"
+		 callee subproblems)))))
 
 (define (sort-integrated lvalues subproblems integrated non-integrated)
   (cond ((or (null? lvalues) (null? subproblems))
@@ -281,9 +321,10 @@ MIT in each case. |#
 	   (case (procedure/type callee)
 	     ((OPEN-EXTERNAL OPEN-INTERNAL) continuation-type/effect)
 	     ((CLOSURE)
-	      (if (procedure/trivial-closure? callee)
+	      (if (and (procedure/trivial-closure? callee)
+		       (not (procedure-rest callee)))
 		  continuation-type/effect
-		  continuation-type/push))
+		  continuation-type/apply))
 	     ((IC) continuation-type/apply)
 	     (else (error "Unknown procedure type" callee))))
 	  (else
