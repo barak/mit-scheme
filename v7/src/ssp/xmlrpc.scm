@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.6 2005/01/11 03:43:46 cph Exp $
+$Id: xmlrpc.scm,v 1.7 2005/02/05 03:44:10 cph Exp $
 
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
@@ -74,19 +74,24 @@ USA.
     (rpc-elt:param
      (rpc-elt:value (xml-rpc:encode-object object))))))
 
-(define (xml-rpc:fault code message . irritants)
-  (let ((message
-	 (call-with-output-string
-	  (lambda (port)
-	    (format-error-message message irritants port)))))
-    (rpc-elt:method-response
-     (rpc-elt:fault
-      (rpc-elt:value
-       (rpc-elt:struct
-	(rpc-elt:member (rpc-elt:name "faultCode")
-			(rpc-elt:value (rpc-elt:int (number->string code))))
-	(rpc-elt:member (rpc-elt:name "faultString")
-			(rpc-elt:value (rpc-elt:string message)))))))))
+(define (xml-rpc:fault code string)
+  (rpc-elt:method-response
+   (rpc-elt:fault
+    (rpc-elt:value
+     (rpc-elt:struct
+      (rpc-elt:member (rpc-elt:name "faultCode")
+		      (rpc-elt:value (rpc-elt:int (number->string code))))
+      (rpc-elt:member (rpc-elt:name "faultString")
+		      (rpc-elt:value (rpc-elt:string string))))))))
+
+(define (xml-rpc:simple-fault code message . irritants)
+  (xml-rpc:fault code
+		 (call-with-output-string
+		  (lambda (port)
+		    (format-error-message message irritants port)))))
+
+(define (xml-rpc:condition-fault code condition)
+  (xml-rpc:fault code (condition/report-string condition)))
 
 (define (xml-rpc:parse-request document)
   (let ((elt (xml-document-root document))
