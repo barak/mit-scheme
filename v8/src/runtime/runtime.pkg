@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.189 1993/08/13 00:03:24 cph Exp $
+$Id: runtime.pkg,v 14.190 1993/08/13 00:07:04 cph Exp $
 
 Copyright (c) 1988-1993 Massachusetts Institute of Technology
 
@@ -1818,6 +1818,7 @@ MIT in each case. |#
 	  repl-history/size
 	  repl-printer-history-size
 	  repl-reader-history-size
+	  repl-scode-eval
 	  repl/base
 	  repl/condition
 	  repl/environment
