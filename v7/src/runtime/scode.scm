@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.7 1990/01/04 06:43:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/scode.scm,v 14.8 1990/01/10 14:19:20 cph Exp $
 
 Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
@@ -118,7 +118,7 @@ MIT in each case. |#
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
       (error error-type:wrong-type-argument symbol))
-  (symbol-name symbol))
+  (system-pair-car symbol))
 
 (define-integrable (symbol->string symbol)
   (string-copy (symbol-name symbol)))
