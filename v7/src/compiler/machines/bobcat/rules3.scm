@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.9 1987/07/16 10:11:23 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/rules3.scm,v 1.10 1987/07/20 18:15:25 cph Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -98,7 +98,7 @@ MIT in each case. |#
      (LAP ,@set-environment
 	  ,@(generate-invocation-prefix prefix (list d4))
 	  ,(load-constant name (INST-EA (D 5)))
-	  ,(load-dnw (1+ frame-size) 0)
+	  ,(load-dnw frame-size 0)
 	  (JMP ,entry:compiler-lookup-apply)))))
 
 (define-rule statement
