@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: debug.scm,v 1.38 1996/05/12 02:34:30 cph Exp $
+;;;	$Id: debug.scm,v 1.39 1996/11/07 21:57:58 adams Exp $
 ;;;
 ;;;	Copyright (c) 1992-96 Massachusetts Institute of Technology
 ;;;
@@ -358,10 +358,12 @@
 		   (lambda (port)
 		     (write-description bline port)
 		     (if env-exists?
-			 (write-string
-			  "\n;EVALUATION may occur below in the environment of the selected frame.\n"
-			  port))))
-		 (set-buffer-point! buffer (buffer-start buffer))
+			 (begin
+			   (debugger-newline port)	
+			   (write-string
+			    ";EVALUATION may occur below in the environment of the selected frame." port)
+			   (debugger-newline port)))))
+		     (set-buffer-point! buffer (buffer-start buffer))
 		 (1d-table/put! (bline/properties bline)
 				'DESCRIPTION-BUFFER
 				buffer)
@@ -504,7 +506,7 @@
 	     (lambda (port)
 	       (write-string "  " port)
 	       (write-condition-report condition port)
-	       (newline port)
+	       (debugger-newline port)
 	       (command/condition-restart
 		(make-initial-dstate condition)
 		port))))
@@ -918,6 +920,23 @@ Set this variable to #F to disable this abbreviation."
 If false show the bindings without frames."
   #T
   boolean?)
+
+(define-variable debugger-show-inner-frame-topmost?
+  "Affects the debugger display when DEBUGGER-SHOW-FRAMES? is true.
+If false, frames are displayed with the outer (most global) frame topmost,
+like in a 6.001 style environment diagram.  This is the default.
+If true, frames are display innermost first."
+  #F
+  boolean?)
+
+(define-variable debugger-compact-display?
+  "If true, the debugger omits some blank lines.
+If false, more blank lines are produced between display elements.
+This variable is usually set to #F, but setting it to #T is useful
+to get more information in a short window, for example, when using
+a fixed size terminal."
+  #F
+  boolean?)
 
 ;;;; Pred's
 
@@ -1056,7 +1075,7 @@ The buffer below describes the current subproblem or reduction.
 	      (lambda (port)
 		(if (ref-variable debugger-show-help-message?)
 		    (write-string debugger-help-message port))
-		(newline port)
+		(debugger-newline port)
 		(if (condition? object)
 		    (begin
 		      (write-string "The " port)
@@ -1065,14 +1084,14 @@ The buffer below describes the current subproblem or reduction.
 					"condition")
 				    port)
 		      (write-string " that started the debugger is:" port)
-		      (newline port)
-		      (newline port)
+		      (debugger-newline port)
+		      (debugger-newline port)
 		      (write-string "  " port)
 		      (with-output-highlighted port
 			(lambda ()
 			  (write-condition-report object port)))
-		      (newline port)))
-		(newline port))))))
+		      (debugger-newline port)))
+		(debugger-newline port))))))
       (insert-blines browser 0 blines)
       (set-buffer-point! buffer
 			 (if (null? blines)
@@ -1211,10 +1230,15 @@ to display (if there are more than `environment-package-limit' items in
 the environment) an appropriate message is displayed.  To display the
 environment in this case, set the `environment-package-limit' variable
 to  `#f'.  This process is initiated by the command `M-x set-variable'.
- You can not use `set!' to set the variable because it is an editor
+You can not use `set!' to set the variable because it is an editor
 variable and does not exist in the current scheme environment.  At the
 bottom of the new buffer is a region for evaluating expressions similar
 to that of the description buffer.
+
+   The appearance of environment displays is controlled by the editor
+variables `debugger-show-inner-frame-topmost?' and `debugger-compact-display?'
+which affect the ordering of environment frames and the line spacing
+respectively.
 
    Type `q' to quit the debugger, killing its primary buffer and any
 others that it has created.
@@ -1400,8 +1424,8 @@ it has been renamed, it will not be deleted automatically.")
 	  (else
 	   (write-string "                         SUBPROBLEM LEVEL: " port)
 	   (write (subproblem/number subproblem) port)
-	   (newline port)
-	   (newline port)
+	   (debugger-newline port)
+	   (debugger-newline port)
 	   (let ((expression (subproblem/expression subproblem))
 		 (frame (subproblem/stack-frame subproblem)))
 	     (cond ((not (invalid-expression? expression))
@@ -1410,11 +1434,11 @@ it has been renamed, it will not be deleted automatically.")
 				      "Expression")
 				  port)
 		    (write-string " (from stack):" port)
-		    (newline port)
+		    (debugger-newline port)
 		    (write-string
-		     " Subproblem being executed highlighted.\n"
+		     " Subproblem being executed is highlighted.\n"
 		     port)
-		    (newline port)
+		    (debugger-newline port)
 		    (let ((subexpression
 			   (subproblem/subexpression subproblem)))
 		      (if (invalid-subexpression? subexpression)
@@ -1432,13 +1456,13 @@ it has been renamed, it will not be deleted automatically.")
 				      "Compiled expression unknown"
 				      "Expression unknown")
 				  port)
-		    (newline port)
+		    (debugger-newline port)
 		    (write (stack-frame/return-address frame) port))))
 	   (let ((environment (subproblem/environment subproblem)))
 	     (if (not (debugging-info/undefined-environment? environment))
 		 (begin
-		   (newline port)
-		   (newline port)
+		   (debugger-newline port)
+		   (debugger-newline port)
 		   (desc-show-environment-name-and-bindings environment
 							    port))))))))
 
@@ -1477,14 +1501,14 @@ it has been renamed, it will not be deleted automatically.")
     (write (subproblem/number (reduction/subproblem reduction)) port)
     (write-string "  REDUCTION NUMBER: " port)
     (write (reduction/number reduction) port)
-    (newline port)
-    (newline port)
+    (debugger-newline port)
+    (debugger-newline port)
     (write-string "Expression (from execution history):" port)
-    (newline port)
-    (newline port)
+    (debugger-newline port)
+    (debugger-newline port)
     (debugger-pp (reduction/expression reduction) expression-indentation port)
-    (newline port)
-    (newline port)
+    (debugger-newline port)
+    (debugger-newline port)
     (desc-show-environment-name-and-bindings (reduction/environment reduction)
 					port)))
 
@@ -1524,7 +1548,7 @@ it has been renamed, it will not be deleted automatically.")
 	       (lambda (port)
 		 (if (ref-variable debugger-show-help-message?)
 		     (write-string where-help-message port))
-		 (newline port))))))
+		 (debugger-newline port))))))
 	(insert-blines browser 0 blines)
 	(if (null? blines)
 	    (set-buffer-point! buffer (buffer-end buffer))
@@ -1618,19 +1642,19 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (show-environment-name-and-bindings environment port)
   (show-environment-name environment port)
-  (newline port)
-  (newline port)
+  (debugger-newline port)
+  (debugger-newline port)
   (let ((names (environment-bound-names environment))
 	(package (environment->package environment))
-	(finish (lambda (names)
-		  (newline port)
-		  (for-each (lambda (name)
-			      (myprint-binding name
-					       (environment-lookup environment
-								   name)
-					       environment
-					       port))
-			    names))))
+	(finish
+	 (lambda (names)
+	   (debugger-newline port)
+	   (for-each (lambda (name)
+		       (myprint-binding name
+					(environment-lookup environment name)
+					environment
+					port))
+	     names))))
     (cond ((null? names)
 	   (write-string " has no bindings" port))
 	  ((and package
@@ -1643,7 +1667,7 @@ once it has been renamed, it will not be deleted automatically.")
 			      (begin
 				(write-string " has " port)
 				(write n port)
-				(write-string " bindings (first" port)
+				(write-string " bindings (first " port)
 				(write limit port)
 				(write-string " shown):" port)
 				(finish (list-head names limit))
@@ -1657,36 +1681,36 @@ once it has been renamed, it will not be deleted automatically.")
 			(string<? (symbol->string x)
 				  (symbol->string y))))
 		names)))))
-  (newline port)
-  (newline port)
+  (debugger-newline port)
+  (debugger-newline port)
   (write-string
    "---------------------------------------------------------------------"
    port))
 
 ;;;This does some stuff who's end product is to pp the bindings
 (define (myprint-binding name value environment port)
-    (let ((x-size (output-port/x-size port)))
-      (newline port)
-      (write-string
-       (let ((name1
-	      (output-to-string
-	       (quotient x-size 2)
-	       (lambda ()
-		 (write-dbg-name name (current-output-port))))))
-	 (if (unassigned-reference-trap? value)
-	     (string-append name1 " is unassigned")
-	     (let* ((s (string-append name1 " = "))
-		    (length (string-length s))
-		    (pret
-		     (with-output-to-string
-		       (lambda ()
-			 (eval `(pp ,name (current-output-port) #t ,length)
-			       environment)))))
-	       (string-append
-		s
-		(string-tail pret (+ length 1))))))
-       port)
-      (newline port)))
+  (let ((x-size (output-port/x-size port)))
+    (debugger-newline port)
+    (write-string
+     (let ((name1
+	    (output-to-string
+	     (quotient x-size 2)
+	     (lambda ()
+	       (write-dbg-name name (current-output-port))))))
+       (if (unassigned-reference-trap? value)
+	   (string-append name1 " is unassigned")
+	   (let* ((s (string-append name1 " = "))
+		  (length (string-length s))
+		  (pret
+		   (with-output-to-string
+		     (lambda ()
+		       (eval `(pp ,name (current-output-port) #t ,length)
+			     environment)))))
+	     (string-append
+	      s
+	      (string-tail pret (+ length 1))))))
+     port)
+    (debugger-newline port)))
 
 (define bline-type:environment
   (make-bline-type environment/write-summary
@@ -1699,10 +1723,9 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (bline/offset-string number)
   (let ((string (number->string number)))
-    (let ((n (- offset-string-min (string-length string))))
-      (if (> n 0)
-	  (string-append string (make-string n #\space))
-	  string))))
+    (if (< (string-length string) offset-string-min)
+	(string-pad-right string offset-string-min)
+	string)))
 
 (define offset-string-min
   2)
@@ -1718,36 +1741,45 @@ once it has been renamed, it will not be deleted automatically.")
   (if (ref-variable debugger-show-frames?)
       (show-frames-and-bindings environment port)
       (print-the-local-bindings environment port))
-  (newline port)
+  (debugger-newline port)
   (write-string
    "---------------------------------------------------------------------"
    port))
 
 
+(define (debugger-newline port)
+  (if (ref-variable debugger-compact-display?)
+      (fresh-line port)
+      (newline port)))
 
 (define (show-frames-and-bindings environment port)
-  (define (envs environment)
-    (if  (eq? true (environment-has-parent? environment))
-	 (cons environment (envs (environment-parent environment))) ;
-	 '()))
-  (let ((env-list (envs environment))
-	(depth 0))
-    (map (lambda (env)
-	   (let ((ind (make-string (* 2 depth) #\space)))
-	     (newline port)
-	     (if (eq? env environment)
-		 (write-string (if (< 2 (string-length ind))
-				   (string-append
-				    (string-tail ind 2) "==> ")
-				   "==> ")
-			       port)
-		 (write-string ind port))
-	     (show-environment-name env port)
-	     (newline port)
-	     (set! depth (1+ depth))
-	     (show-environmend-bindings-with-ind env ind port)))
-	 env-list)))
 
+  (define (envs environment)
+    (if (environment-has-parent? environment)
+	(cons environment  (envs (environment-parent environment)))
+	'()))
+
+  (define (show-frames envs indents)
+    (for-each (lambda (env indent)
+		(debugger-newline port)
+		(if (eq? env environment)
+		    (begin
+		      (if (< 4 (string-length indent))
+			  (write-string (string-tail indent 4) port))
+		      (write-string "==> " port))
+		    (write-string indent port))
+		(show-environment-name env port)
+		(debugger-newline port)
+		(show-environment-bindings-with-ind env indent port))
+      envs indents))
+
+  (let ((env-list (envs environment)))
+    (cond ((ref-variable debugger-show-inner-frame-topmost?)
+	   (show-frames env-list (make-list (length env-list) "")))
+	  (else
+	   (show-frames (reverse env-list)
+			(make-initialized-list (length env-list)
+			  (lambda (i) (make-string (* i 2) #\space))))))))
 
 (define (print-the-local-bindings environment port)
   (let ((names (get-all-local-bindings environment)))
@@ -1764,13 +1796,18 @@ once it has been renamed, it will not be deleted automatically.")
 				port)
 			       (loop (environment-parent env)))))
 		       names))))
-      (newline port)
+      (debugger-newline port)
       (show-environment-name environment port)
       (cond ((zero? n-bindings)
-	     (write-string "\n    has no bindings\n" port))
+	     (debugger-newline port)
+	     (write-string "    has no bindings" port)
+	     (debugger-newline port))
 	    ((> n-bindings (ref-variable environment-package-limit)))
 	    (else
-	     (write-string "\n\n  Local Bindings:\n" port)
+	     (debugger-newline port)
+	     (debugger-newline port)
+	     (write-string "  Local Bindings:" port)
+	     (debugger-newline port)
 	     (finish names))))))
 
 (define (show-environment-name environment port)
@@ -1786,9 +1823,9 @@ once it has been renamed, it will not be deleted automatically.")
 
 (define (get-all-local-bindings environment)
   (define (envs environment)
-    (if  (eq? true (environment-has-parent? environment))
-	 (cons environment (envs (environment-parent environment))) ;
-	 '()))
+    (if (environment-has-parent? environment)
+	(cons environment (envs (environment-parent environment))) ;
+	'()))
   (let* ((env-list (envs environment))
 	 (names1 (map (lambda (envir)
 			(let ((names (environment-bound-names envir)))
@@ -1809,12 +1846,12 @@ once it has been renamed, it will not be deleted automatically.")
     names4))
 
 
-(define (show-environmend-bindings-with-ind environment ind port)
+(define (show-environment-bindings-with-ind environment ind port)
   (let ((names (environment-bound-names environment)))
     (let ((n-bindings (length names))
 	  (finish
 	   (lambda (names)
-	     (newline port)
+	     (debugger-newline port)
 	     (for-each (lambda (name)
 			 (print-binding-with-ind
 			  name
@@ -1823,15 +1860,15 @@ once it has been renamed, it will not be deleted automatically.")
 			  port))
 		       names))))
       (cond ((zero? n-bindings)
-	     #|(write-string (string-append ind "   has no bindings") port)
-	     (newline port)|#)
+	     #|(write-string (string-append ind "    has no bindings") port)
+	     (debugger-newline port)|#)
 	    ((> n-bindings (ref-variable environment-package-limit))
-	     (write-string (string-append ind "   has ") port)
+	     (write-string (string-append ind "    has ") port)
 	     (write n-bindings port)
 	     (write-string
 	      " bindings (see editor variable environment-package-limit) "
 	      port)
-	     (newline port))
+	     (debugger-newline port))
 	    (else
 	     (finish names))))))
 
@@ -1853,7 +1890,7 @@ once it has been renamed, it will not be deleted automatically.")
 		(lambda ()
 		  (write value)))))))
      port)
-    (newline port)))
+    (debugger-newline port)))
 
 
 ;;;; Interface Port
