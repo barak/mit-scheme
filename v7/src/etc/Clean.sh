@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.4 2000/12/08 06:07:23 cph Exp $
+# $Id: Clean.sh,v 1.5 2000/12/21 21:56:23 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -34,7 +34,13 @@ else
 fi
 
 case "${COMMAND}" in
-mostlyclean | clean | distclean)
+mostlyclean | clean)
+    ;;
+distclean)
+    if [ -f Makefile.in ] && [ -f Makefile ]; then
+	echo "rm Makefile"
+	rm Makefile
+    fi
     ;;
 maintainer-clean)
     for FN in .edwin-ffi Clean.sh Makefile Setup.sh Stage.sh Tags.sh; do
