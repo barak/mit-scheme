@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.45 2004/11/26 04:41:59 cph Exp $
+$Id: list.scm,v 14.46 2005/03/29 03:25:24 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1053,12 +1053,7 @@ USA.
 	     (loop (cdr (cdr l1)) (cdr l1)))
 	(null? l1))))
 
-(define (guarantee-keyword-list object caller)
-  (if (not (keyword-list? object))
-      (error:not-keyword-list object caller)))
-
-(define (error:not-keyword-list object caller)
-  (error:wrong-type-argument object "keyword list" caller))
+(define-guarantee keyword-list "keyword list")
 
 (define (restricted-keyword-list? object keywords)
   (let loop ((l1 object) (l2 object))
@@ -1069,7 +1064,7 @@ USA.
 	     (loop (cdr (cdr l1)) (cdr l1)))
 	(null? l1))))
 
-(define (guarantee-restricted-keyword-list object caller)
+(define (guarantee-restricted-keyword-list object keywords caller)
   (if (not (restricted-keyword-list? object))
       (error:not-restricted-keyword-list object caller)))
 
