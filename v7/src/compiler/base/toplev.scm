@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.57 1999/03/04 06:08:04 cph Exp $
+$Id: toplev.scm,v 4.58 2000/01/10 03:39:30 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -54,7 +54,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				 #f)))))))))
 	  (if (not (null? reasons))
 	      (begin
-		(newline)
 		(write-string ";Generating ")
 		(write (->namestring output-file))
 		(write-string " because of:")
@@ -62,6 +61,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			    (write-char #\space)
 			    (write (->namestring reason)))
 			  reasons)
+		(newline)
 		(doit)))))))
 
   (set! compile-file
@@ -158,11 +158,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			   output-pathname))))
 		(if compiler:noisy?
 		    (begin
-		      (newline)
 		      (write-string "Compile File: ")
 		      (write (enough-namestring input-pathname))
 		      (write-string " => ")
-		      (write (enough-namestring output-pathname))))
+		      (write (enough-namestring output-pathname))
+		      (newline)))
 		(compiler-file-output
 		 (transform input-pathname output-pathname)
 				      output-pathname)))))
@@ -230,15 +230,17 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (compiler:batch-error-handler condition)
   (let ((port (nearest-cmdl/port)))
-    (newline port)
-    (write-condition-report condition port))
+    (fresh-line port)
+    (write-condition-report condition port)
+    (newline port))
   (compiler:abort false))
 
 (define (compiler:abort value)
   (if (not compiler:abort-handled?)
       (error "Not set up to abort" value))
-  (newline)
+  (fresh-line)
   (write-string "*** Aborting...")
+  (newline)
   (compiler:abort-continuation value))
 
 (define (batch-kernel real-kernel)
@@ -265,11 +267,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (if output?
 	(begin
 	  (newline)
-	  (newline)
 	  (write-string *output-prefix*)
 	  (write-string "*** Recursive compilation ")
 	  (write my-number)
-	  (write-string " ***")))
+	  (write-string " ***")
+	  (newline)))
     (let ((value
 	   ((let ((do-it
 		   (lambda ()
@@ -305,11 +307,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      (do-it))))))))
       (if output?
 	  (begin
-	    (newline)
 	    (write-string *output-prefix*)
 	    (write-string "*** Done with recursive compilation ")
 	    (write my-number)
 	    (write-string " ***")
+	    (newline)
 	    (newline)))
       value)))
 
@@ -558,10 +560,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (compiler-phase/visible name thunk)
   (fluid-let ((*output-prefix* (string-append "    " *output-prefix*)))
-    (newline)
     (write-string *output-prefix*)
     (write-string name)
     (write-string "...")
+    (newline)
     (if compiler:show-time-reports?
 	(let ((process-start *process-time*)
 	      (real-start *real-time*))
@@ -593,14 +595,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (do-it)))))
 
 (define (compiler-time-report prefix process-time real-time)
-  (newline)
   (write-string *output-prefix*)
   (write-string prefix)
   (write-string ": ")
   (write (/ (exact->inexact process-time) 1000))
   (write-string " (process time); ")
   (write (/ (exact->inexact real-time) 1000))
-  (write-string " (real time)"))
+  (write-string " (real time)")
+  (newline))
 
 (define (phase/fg-generation)
   (compiler-superphase "Flow Graph Generation"
@@ -835,7 +837,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 			(- (rgraph-n-registers rgraph)
 			   number-of-machine-registers))
 		      *rtl-graphs*)))
-	    (newline)
 	    (write-string *output-prefix*)
 	    (write-string "  Registers used: ")
 	    (write (apply max n-registers))
@@ -844,7 +845,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	    (write-string " min, ")
 	    (write
 	     (exact->inexact (/ (apply + n-registers) (length n-registers))))
-	    (write-string " mean"))))))
+	    (write-string " mean")
+	    (newline))))))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
