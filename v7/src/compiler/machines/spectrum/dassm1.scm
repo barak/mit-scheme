@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm1.scm,v 4.16 1992/07/20 22:12:09 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/dassm1.scm,v 4.17 1992/08/11 02:33:27 jinx Exp $
 $MC68020-Header: dassm1.scm,v 4.15 90/07/12 16:42:39 GMT jinx Exp $
 
-Copyright (c) 1988-92 Massachusetts Institute of Technology
+Copyright (c) 1988-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -91,17 +91,6 @@ MIT in each case. |#
 	(newline)
 	(disassembler/write-compiled-code-block block info)))))
 
-;;; Operations exported from the disassembler package
-
-(define disassembler/instructions)
-(define disassembler/instructions/null?)
-(define disassembler/instructions/read)
-(define disassembler/lookup-symbol)
-(define disassembler/read-variable-cache)
-(define disassembler/read-procedure-cache)
-(define compiled-code-block/objects-per-procedure-cache)
-(define compiled-code-block/objects-per-variable-cache)
-
 (define (disassembler/write-compiled-code-block block info)
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
@@ -192,9 +181,9 @@ MIT in each case. |#
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
 
-      (define (write-caches size writer)
-	(let loop ((index (1+ index))
-		   (how-many (quotient length size)))
+      (define (write-caches offset size writer)
+	(let loop ((index (1+ (+ offset index)))
+		   (how-many (quotient (- length offset) size)))
 	  (if (zero? how-many)
 	      'DONE
 	      (begin
@@ -213,17 +202,20 @@ MIT in each case. |#
 	 (write field)
 	 (write-string "]")))
        (case kind
-	 ((0)
+	 ((0 3)
 	  (write-caches
+	   compiled-code-block/procedure-cache-offset
 	   compiled-code-block/objects-per-procedure-cache
 	   disassembler/write-procedure-cache))
 	 ((1)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Reference" block index))))
 	 ((2)
 	  (write-caches
+	   0
 	   compiled-code-block/objects-per-variable-cache
 	  (lambda (block index)
 	    (disassembler/write-variable-cache "Assignment" block index))))
