@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/rgxcmp.scm,v 1.106 1991/04/21 00:51:52 cph Exp $
+;;;	$Id: rgxcmp.scm,v 1.107 1995/10/19 08:39:38 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-91 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -144,6 +144,49 @@
   not-syntax-spec
   )
 
+;;;; Cache
+
+(define (cached-procedure size procedure)
+  (let ((cache (make-cache size)))
+    (lambda (key1 key2)
+      (cache-result cache procedure key1 key2))))
+
+(define (make-cache size)
+  (let ((items (make-list size)))
+    (do ((items items (cdr items)))
+	((null? items))
+      (set-car! items (cons (cons #f #f) #f)))
+    (set-cdr! (last-pair items) items)
+    (cons 'CACHE items)))
+
+(define (cache-result cache procedure key1 key2)
+  (let* ((tail (cdr cache))
+	 (head (cdr tail)))
+    (let loop ((items head) (prev tail))
+      (let ((item (car items)))
+	(cond ((and (eq? key1 (caar item))
+		    (eq? key2 (cdar item)))
+	       (cond ((eq? tail items)
+		      (set-cdr! cache prev))
+		     ((not (eq? head items))
+		      (without-interrupts
+		       (lambda ()
+			 (set-cdr! prev (cdr items))
+			 (set-cdr! items head)
+			 (set-cdr! tail items)))))
+	       (cdr item))
+	      ((eq? tail items)
+	       (let ((result (procedure key1 key2)))
+		 (without-interrupts
+		  (lambda ()
+		    (set-car! (car item) key1)
+		    (set-cdr! (car item) key2)
+		    (set-cdr! item result)
+		    (set-cdr! cache prev)))
+		 result))
+	      (else
+	       (loop (cdr items) items)))))))
+
 ;;;; String Compiler
 
 (define (re-compile-char char case-fold?)
@@ -152,38 +195,41 @@
     (string-set! result 1 (if case-fold? (char-upcase char) char))
     result))
 
-(define (re-compile-string string case-fold?)
-  (let ((string (if case-fold? (string-upcase string) string)))
-    (let ((n (string-length string)))
-      (if (fix:zero? n)
-	  string
-	  (let ((result
-		 (string-allocate 
-		  (let ((qr (integer-divide n 255)))
-		    (fix:+ (fix:* 257 (integer-divide-quotient qr))
-			   (let ((r (integer-divide-remainder qr)))
-			     (cond ((fix:zero? r) 0)
-				   ((fix:= 1 r) 2)
-				   (else (fix:+ r 2)))))))))
-	    (let loop ((n n) (i 0) (p 0))
-	      (cond ((fix:= n 1)
-		     (vector-8b-set! result p re-code:exact-1)
-		     (vector-8b-set! result
-				     (fix:1+ p)
-				     (vector-8b-ref string i))
-		     result)
-		    ((fix:< n 256)
-		     (vector-8b-set! result p re-code:exact-n)
-		     (vector-8b-set! result (fix:1+ p) n)
-		     (substring-move-right! string i (fix:+ i n)
-					    result (fix:+ p 2))
-		     result)
-		    (else
-		     (vector-8b-set! result p re-code:exact-n)
-		     (vector-8b-set! result (fix:1+ p) 255)
-		     (let ((j (fix:+ i 255)))
-		       (substring-move-right! string i j result (fix:+ p 2))
-		       (loop (fix:- n 255) j (fix:+ p 257)))))))))))
+(define re-compile-string
+  (cached-procedure 16
+    (lambda (string case-fold?)
+      (let ((string (if case-fold? (string-upcase string) string)))
+	(let ((n (string-length string)))
+	  (if (fix:zero? n)
+	      string
+	      (let ((result
+		     (string-allocate 
+		      (let ((qr (integer-divide n 255)))
+			(fix:+ (fix:* 257 (integer-divide-quotient qr))
+			       (let ((r (integer-divide-remainder qr)))
+				 (cond ((fix:zero? r) 0)
+				       ((fix:= 1 r) 2)
+				       (else (fix:+ r 2)))))))))
+		(let loop ((n n) (i 0) (p 0))
+		  (cond ((fix:= n 1)
+			 (vector-8b-set! result p re-code:exact-1)
+			 (vector-8b-set! result
+					 (fix:1+ p)
+					 (vector-8b-ref string i))
+			 result)
+			((fix:< n 256)
+			 (vector-8b-set! result p re-code:exact-n)
+			 (vector-8b-set! result (fix:1+ p) n)
+			 (substring-move-right! string i (fix:+ i n)
+						result (fix:+ p 2))
+			 result)
+			(else
+			 (vector-8b-set! result p re-code:exact-n)
+			 (vector-8b-set! result (fix:1+ p) 255)
+			 (let ((j (fix:+ i 255)))
+			   (substring-move-right! string i j
+						  result (fix:+ p 2))
+			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
 
 (define re-quote-string
   (let ((special (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$)))
@@ -218,47 +264,51 @@
 
 ;;;; Char-Set Compiler
 
-(define (re-compile-char-set pattern negate?)
-  (let ((length (string-length pattern))
-	(char-set (string-allocate 256)))
-    (let ((kernel
-	   (lambda (start background foreground)
-	     (let ((adjoin!
-		    (lambda (ascii)
-		      (vector-8b-set! char-set ascii foreground))))
-	       (vector-8b-fill! char-set 0 256 background)
-	       (let loop
-		   ((pattern
-		     (quote-pattern (substring->list pattern start length))))
-		 (cond ((null? pattern)
-			unspecific)
-		       ((null? (cdr pattern))
-			(adjoin! (char->ascii (car pattern))))
-		       ((char=? (cadr pattern) #\-)
-			(if (not (null? (cddr pattern)))
-			    (begin
-			      (let ((end (char->ascii (caddr pattern))))
-				(let loop ((index (char->ascii (car pattern))))
-				  (if (fix:<= index end)
-				      (begin
-					(vector-8b-set! char-set
-							index
-							foreground)
-					(loop (fix:1+ index))))))
-			      (loop (cdddr pattern)))
-			    (error "RE-COMPILE-CHAR-SET: Terminating hyphen")))
-		       (else
-			(adjoin! (char->ascii (car pattern)))
-			(loop (cdr pattern)))))))))
-      (if (and (not (fix:zero? length))
-	       (char=? (string-ref pattern 0) #\^))
-	  (if negate?
-	      (kernel 1 0 1)
-	      (kernel 1 1 0))
-	  (if negate?
-	      (kernel 0 1 0)
-	      (kernel 0 0 1))))
-    char-set))
+(define re-compile-char-set
+  (cached-procedure 16
+    (lambda (pattern negate?)
+      (let ((length (string-length pattern))
+	    (char-set (string-allocate 256)))
+	(let ((kernel
+	       (lambda (start background foreground)
+		 (let ((adjoin!
+			(lambda (ascii)
+			  (vector-8b-set! char-set ascii foreground))))
+		   (vector-8b-fill! char-set 0 256 background)
+		   (let loop
+		       ((pattern
+			 (quote-pattern
+			  (substring->list pattern start length))))
+		     (cond ((null? pattern)
+			    unspecific)
+			   ((null? (cdr pattern))
+			    (adjoin! (char->ascii (car pattern))))
+			   ((char=? (cadr pattern) #\-)
+			    (if (not (null? (cddr pattern)))
+				(begin
+				  (let ((end (char->ascii (caddr pattern))))
+				    (let loop
+					((index (char->ascii (car pattern))))
+				      (if (fix:<= index end)
+					  (begin
+					    (vector-8b-set! char-set
+							    index
+							    foreground)
+					    (loop (fix:1+ index))))))
+				  (loop (cdddr pattern)))
+				(error "Terminating hyphen.")))
+			   (else
+			    (adjoin! (char->ascii (car pattern)))
+			    (loop (cdr pattern)))))))))
+	  (if (and (not (fix:zero? length))
+		   (char=? (string-ref pattern 0) #\^))
+	      (if negate?
+		  (kernel 1 0 1)
+		  (kernel 1 1 0))
+	      (if negate?
+		  (kernel 0 1 0)
+		  (kernel 0 0 1))))
+	char-set))))
 
 (define (quote-pattern pattern)
   (cond ((null? pattern) '())
@@ -322,32 +372,34 @@
 (define pending-exact)
 (define last-start)
 
-(define (re-compile-pattern pattern case-fold?)
-  (let ((output (list 'OUTPUT)))
-    (fluid-let ((input-list (map char->ascii (string->list pattern)))
-		(current-byte)
-		(translation-table (re-translation-table case-fold?))
-		(output-head output)
-		(output-tail output)
-		(output-length 0)
-		(stack '())
-		(fixup-jump false)
-		(register-number 1)
-		(begin-alternative)
-		(pending-exact false)
-		(last-start false))
-      (set! begin-alternative (output-pointer))
-      (let loop ()
-	(if (input-end?)
-	    (begin
-	      (if fixup-jump
-		  (store-jump! fixup-jump re-code:jump (output-position)))
-	      (if (not (stack-empty?))
-		  (compilation-error "Unmatched \\("))
-	      (list->string (map ascii->char (cdr output-head))))
-	    (begin
-	      (compile-pattern-char)
-	      (loop)))))))
+(define re-compile-pattern
+  (cached-procedure 16
+    (lambda (pattern case-fold?)
+      (let ((output (list 'OUTPUT)))
+	(fluid-let ((input-list (map char->ascii (string->list pattern)))
+		    (current-byte)
+		    (translation-table (re-translation-table case-fold?))
+		    (output-head output)
+		    (output-tail output)
+		    (output-length 0)
+		    (stack '())
+		    (fixup-jump false)
+		    (register-number 1)
+		    (begin-alternative)
+		    (pending-exact false)
+		    (last-start false))
+	  (set! begin-alternative (output-pointer))
+	  (let loop ()
+	    (if (input-end?)
+		(begin
+		  (if fixup-jump
+		      (store-jump! fixup-jump re-code:jump (output-position)))
+		  (if (not (stack-empty?))
+		      (compilation-error "Unmatched \\("))
+		  (list->string (map ascii->char (cdr output-head))))
+		(begin
+		  (compile-pattern-char)
+		  (loop)))))))))
 
 ;;;; Input
 
@@ -805,8 +857,7 @@
 	       (write-string ")")
 	       (loop end)))
 	    ((CHAR-SET NOT-CHAR-SET)
-	     (let ((end (+ (+ i 2)
-			   (vector-8b-ref compiled-pattern (1+ i)))))
+	     (let ((end (+ (+ i 2) (vector-8b-ref compiled-pattern (1+ i)))))
 	       (let spit ((i (+ i 2)))
 		 (if (< i end)
 		     (begin
