@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.16 1992/03/20 05:18:02 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/x11graph.scm,v 1.17 1992/03/26 00:01:18 cph Exp $
 
 Copyright (c) 1989-92 Massachusetts Institute of Technology
 
@@ -375,6 +375,8 @@ MIT in each case. |#
 
 ;;;; Standard Operations
 
+(define x-graphics:auto-raise? false)
+
 (define-structure (x-window (conc-name x-window/)
 			    (constructor make-x-window (xw display)))
   xw
@@ -387,6 +389,12 @@ MIT in each case. |#
 
 (define-integrable (x-graphics-device/xd device)
   (x-display/xd (x-window/display (graphics-device/descriptor device))))
+
+(define-integrable (x-graphics-device/mapped? device)
+  (x-window/mapped? (graphics-device/descriptor device)))
+
+(define-integrable (x-graphics-device/visibility device)
+  (x-window/visibility (graphics-device/descriptor device)))
 
 (define (x-graphics/open display geometry #!optional suppress-map?)
   (let ((display
@@ -456,6 +464,10 @@ MIT in each case. |#
   (x-graphics-draw-string (x-graphics-device/xw device) x y string))
 
 (define (x-graphics/flush device)
+  (if (and x-graphics:auto-raise?
+	   (x-graphics-device/mapped? device)
+	   (not (eq? 'UNOBSCURED (x-graphics-device/visibility device))))
+      (x-graphics/raise-window device))
   (x-display-flush (x-graphics-device/xd device)))
 
 (define (x-graphics/move-cursor device x y)

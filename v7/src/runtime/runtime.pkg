@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.140 1992/03/25 23:51:57 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/runtime.pkg,v 14.141 1992/03/26 00:01:27 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -2109,6 +2109,7 @@ MIT in each case. |#
 	  x-graphics/set-window-name
 	  x-graphics/starbase-filename
 	  x-graphics/withdraw-window
+	  x-graphics:auto-raise?
 	  x-image/destroy
 	  x-image/draw
 	  x-image/draw-subimage
