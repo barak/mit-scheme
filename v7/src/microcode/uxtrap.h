@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.11 1991/07/24 19:48:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/uxtrap.h,v 1.12 1992/02/14 22:28:11 jinx Exp $
 
-Copyright (c) 1990-91 Massachusetts Institute of Technology
+Copyright (c) 1990-1992 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -87,7 +87,7 @@ MIT in each case. */
 }
 
 #endif /* hp9000s300 */
-
+
 #ifdef hp9000s800
 
 #include <sys/sysmacros.h>
@@ -179,7 +179,7 @@ MIT in each case. */
 }
 
 #endif /* hp9000s800 */
-
+
 #ifdef sun3
 
 #define HAVE_FULL_SIGCONTEXT
@@ -210,7 +210,7 @@ struct full_sigcontext
 }
 
 #endif /* sun3 */
-
+
 #ifdef vax
 
 #define HAVE_FULL_SIGCONTEXT
@@ -250,7 +250,7 @@ struct full_sigcontext
 }
 
 #endif /* vax */
-
+
 #ifdef mips
 #ifndef _SYSV4
 
@@ -301,7 +301,7 @@ struct full_sigcontext
 }
 
 #else /* _SYSV4 */
-
+
 /* Many of these definitions are not specific to the MIPS processor. */
 
 #include <sys/siginfo.h>
@@ -360,6 +360,25 @@ struct full_sigcontext
 
 #endif /* _SYSV4 */
 #endif /* mips */
+
+#ifdef i386
+/* The following are true for Mach (BSD 4.3 compatible).
+   I don't know about SCO or other versions.
+ */
+
+#define HAVE_FULL_SIGCONTEXT
+#define PROCESSOR_NREGS			8
+#define FULL_SIGCONTEXT_NREGS		8
+
+#define SIGCONTEXT			sigcontext
+#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
+#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
+#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
+#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_edi))
+
+/* INITIALIZE_UX_SIGNAL_CODES should be defined. */
+
+#endif /* i386 */
 
 #ifndef SIGINFO_T
 #define SIGINFO_T int
