@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 13.41 1987/01/23 00:22:29 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/wind.scm,v 13.42 1987/02/15 15:46:23 cph Rel $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -40,8 +40,7 @@
 ;;;; State Space Model
 
 (declare (usual-integrations)
-	 (compilable-primitive-functions
-	  set-fixed-objects-vector!))
+	 (integrate-primitive-procedures set-fixed-objects-vector!))
 
 (vector-set! (get-fixed-objects-vector)
 	     (fixed-objects-vector-slot 'STATE-SPACE-TAG)
@@ -56,7 +55,7 @@
 (define make-state-space
   (let ((prim (make-primitive-procedure 'MAKE-STATE-SPACE)))
     (named-lambda (make-state-space #!optional mutable?)
-      (if (unassigned? mutable?) (set! mutable? #!true))
+      (if (unassigned? mutable?) (set! mutable? #T))
       (prim mutable?))))
 
 (define execute-at-new-state-point
@@ -69,7 +68,7 @@
 ;;; a special case of the more general concept.
 
 (define system-state-space
-  (make-state-space #!false))
+  (make-state-space #F))
 
 (define current-dynamic-state
   (let ((prim (make-primitive-procedure 'current-dynamic-state)))
@@ -97,7 +96,4 @@
   (vector-set! fov 
 	       (fixed-objects-vector-slot 'STATE-SPACE-ROOT)
 	       (current-dynamic-state))
-  (set-fixed-objects-vector! fov))
-
-
   (set-fixed-objects-vector! fov))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.42 1987/02/02 14:17:12 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/io.scm,v 13.43 1987/02/15 15:44:21 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -58,7 +58,7 @@
 
     (make-environment
     
-(declare (compilable-primitive-functions
+(declare (integrate-primitive-procedures
 	  (make-physical-channel hunk3-cons)
 	  (channel-descriptor system-hunk3-cxr0)
 	  (set-channel-descriptor! system-hunk3-set-cxr0!)
@@ -101,8 +101,8 @@
 			      (cdr open-files-list)))))
 	   channel))))))
 
-(define open-input-channel (open-channel-wrapper #!FALSE))
-(define open-output-channel (open-channel-wrapper #!TRUE))
+(define open-input-channel (open-channel-wrapper #F))
+(define open-output-channel (open-channel-wrapper #T))
 
 ;; This is locked from interrupts, but GC can occur since the
 ;; procedure itself hangs on to the channel until the last moment,
@@ -117,7 +117,7 @@
 	 (lambda ()
 	   (if (eq? closed-direction
 		    (set-channel-direction! channel closed-direction))
-	       #!TRUE			;Already closed!
+	       #T			;Already closed!
 	       (begin
 		 (primitive (channel-descriptor channel))
 		 (let loop ((l1 open-files-list)
@@ -183,6 +183,4 @@
 ))) ;; End of PRIMITIVE-IO package.
 
 ((access initialize primitive-io))
-(add-gc-daemon! (access close-lost-open-files-daemon primitive-io))
-
 (add-gc-daemon! (access close-lost-open-files-daemon primitive-io))

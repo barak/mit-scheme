@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.41 1987/01/23 00:13:25 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/gc.scm,v 13.42 1987/02/15 15:42:33 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -40,7 +40,7 @@
 ;;;; Garbage Collector
 
 (declare (usual-integrations)
-	 (compilable-primitive-functions
+	 (integrate-primitive-procedures
 	  garbage-collect primitive-purify primitive-impurify primitive-fasdump
 	  set-interrupt-enables! enable-interrupts! primitive-gc-type pure?
 	  get-next-constant call-with-current-continuation hunk3-cons
@@ -200,4 +200,3 @@
 	ie)))))
 
 ;;; end GARBAGE-COLLECTOR-PACKAGE.
-))

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.41 1987/01/23 00:14:50 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/intrpt.scm,v 13.42 1987/02/15 15:43:59 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -20,9 +20,9 @@
 ;;;	future releases; and (b) to inform MIT of noteworthy uses of
 ;;;	this software.
 ;;;
-;;;	3.  All materials developed as a consequence of the use of
-;;;	this software shall duly acknowledge such use, in accordance
-;;;	with the usual standards of acknowledging credit in academic
+;;;	3. All materials developed as a consequence of the use of this
+;;;	software shall duly acknowledge such use, in accordance with
+;;;	the usual standards of acknowledging credit in academic
 ;;;	research.
 ;;;
 ;;;	4. MIT has made no warrantee or representation that the
@@ -30,7 +30,7 @@
 ;;;	under no obligation to provide any services, by way of
 ;;;	maintenance, update, or otherwise.
 ;;;
-;;;	5.  In conjunction with products arising from the use of this
+;;;	5. In conjunction with products arising from the use of this
 ;;;	material, there shall be no use of the name of the
 ;;;	Massachusetts Institute of Technology nor of any adaptation
 ;;;	thereof in any advertising, promotional, or sales literature
@@ -40,13 +40,13 @@
 ;;;; Interrupt System
 
 (declare (usual-integrations)
-	 (compilable-primitive-functions set-fixed-objects-vector!))
-
+	 (integrate-primitive-procedures set-fixed-objects-vector!))
+
 (define with-external-interrupts-handler)
 
 (define timer-interrupt
   (let ((setup-timer-interrupt
-	 (make-primitive-procedure 'setup-timer-interrupt #!TRUE)))
+	 (make-primitive-procedure 'setup-timer-interrupt #T)))
     (named-lambda (timer-interrupt)
       (setup-timer-interrupt '() '())
       (error "Unhandled Timer interrupt received"))))
@@ -253,5 +253,4 @@
 			(vector-ref interrupt-vector CHARACTER-SLOT)))))))
 
 ;;; end INTERRUPT-SYSTEM package.
-))
 (the-environment)))

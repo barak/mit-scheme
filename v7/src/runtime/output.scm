@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.41 1987/01/23 00:16:55 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/output.scm,v 13.42 1987/02/15 15:45:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -144,7 +144,7 @@
 (define open-output-file)
 (let ()
 #|
-(declare (compilable-primitive-functions file-write-char file-write-string))
+(declare (integrate-primitive-procedures file-write-char file-write-string))
 |#
 (define file-write-char
   (make-primitive-procedure 'FILE-WRITE-CHAR))
@@ -323,5 +323,4 @@
 
 (define (non-printing-object? object)
   (and (not (future? object))
-       (eq? object *the-non-printing-object*)))
 	((access :flush-output port))))))
