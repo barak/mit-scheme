@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.13 2000/01/04 17:24:00 cph Exp $
+$Id: strout.scm,v 14.14 2000/05/30 03:51:59 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright (c) 1988-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -80,12 +80,12 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (without-interrupts
    (lambda ()
      (let ((state (port/state port)))
-       (let ((result
-	      (string-head (accumulator-state-accumulator state)
-			   (accumulator-state-counter state))))
+       (let ((s (accumulator-state-accumulator state))
+	     (n (accumulator-state-counter state)))
 	 (set-accumulator-state-accumulator! state (make-string 16))
 	 (set-accumulator-state-counter! state 0)
-	 result)))))
+	 (set-string-maximum-length! s n)
+	 s)))))
 
 (define-structure (accumulator-state (type vector))
   accumulator
