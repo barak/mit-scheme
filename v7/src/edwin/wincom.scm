@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.91 1989/04/15 00:54:03 cph Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/wincom.scm,v 1.92 1989/04/23 23:28:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987, 1989 Massachusetts Institute of Technology
 ;;;
@@ -44,7 +44,7 @@
 (define-variable cursor-centering-point
   "The distance from the top of the window at which to center the point.
 This number is a percentage, where 0 is the window's top and 100 the bottom."
-  35)
+  50)
 
 (define-variable cursor-centering-threshold
   "If point moves offscreen by more than this many lines, recenter.
@@ -63,23 +63,23 @@ Do not set this variable below 1."
   1)
 
 (define-variable next-screen-context-lines
-  "Number of lines of continuity when scrolling by screenfuls."
+  "*Number of lines of continuity when scrolling by screenfuls."
   2)
 
 (define-variable mode-line-inverse-video
-  "If true, the mode line is highlighted."
+  "*True means use inverse video, or other suitable display mode, for the mode line."
   true)
 
 (define-variable pop-up-windows
-  "If false, this disables the use of pop-up windows."
+  "True enables the use of pop-up windows."
   true)
 
 (define-variable preserve-window-arrangement
-  "If true, commands that normally change the window arrangement do not."
+  "True means commands that normally change the window arrangement do not."
   false)
 
 (define-variable split-height-threshold
-  "Pop-up windows prefer to split the largest window if it is this large.
+  "Pop-up windows would prefer to split the largest window if this large.
 If there is only one window, it is split regardless of this value."
   500)
 
