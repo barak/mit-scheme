@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.9 1988/12/20 23:13:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/ctypes.scm,v 4.10 1989/04/17 17:05:19 cph Exp $
 
-Copyright (c) 1988 Massachusetts Institute of Technology
+Copyright (c) 1988, 1989 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -145,21 +145,6 @@ MIT in each case. |#
   (generator false read-only true)
   operands)
 
-;;; This method of handling constant combinations has the feature that
-;;; such combinations are handled exactly like RETURNs by the
-;;; procedure classification phase, which occurs after all constant
-;;; combinations have been identified.
-
-(define (combination/constant! combination rvalue)
-  (let ((continuation (combination/continuation combination)))
-    (set-application-type! combination 'RETURN)
-    (set-application-operator! combination continuation)
-    (set-application-operands! combination (list rvalue)))
-  (let ((push (combination/continuation-push combination)))
-    (if (and push (rvalue-known-value (combination/continuation combination)))
-	(set-virtual-continuation/type! (virtual-return-operator push)
-					continuation-type/effect))))
-
 (define-integrable (make-return block continuation rvalue)
   (make-application 'RETURN block continuation (list rvalue) false))
 
@@ -171,6 +156,35 @@ MIT in each case. |#
 (define-integrable return/continuation-push application-continuation-push)
 (define-integrable (return/operand return)
   (car (application-operands return)))
+
+;;; This method of handling constant combinations has the feature that
+;;; such combinations are handled exactly like RETURNs by the
+;;; procedure classification phase, which occurs after all constant
+;;; combinations have been identified.
+
+(define (combination/constant! combination rvalue)
+  (let ((continuation (combination/continuation combination)))
+    (for-each (lambda (continuation)
+		(set-continuation/combinations!
+		 continuation
+		 (delq! combination (continuation/combinations continuation)))
+		(set-continuation/returns!
+		 continuation
+		 (cons combination (continuation/returns continuation))))
+	      (rvalue-values continuation))
+    (for-each (lambda (operator)
+		(if (rvalue/procedure? operator)
+		    (set-procedure-applications!
+		     operator
+		     (delq! combination (procedure-applications operator)))))
+	      (rvalue-values (combination-operator combination)))
+    (set-application-type! combination 'RETURN)
+    (set-application-operator! combination continuation)
+    (set-application-operands! combination (list rvalue))
+    (let ((push (combination/continuation-push combination)))
+      (if (and push (rvalue-known-value continuation))
+	  (set-virtual-continuation/type! (virtual-return-operator push)
+					  continuation-type/effect)))))
 
 ;;;; Miscellaneous Node Types
 
