@@ -3018,9 +3018,10 @@ The procedure @code{edwin} is an alias for @code{edit}.
 
 @defvr {variable+} inhibit-editor-init-file?
 When Edwin is first initialized, it loads your init file (called
-@file{~/.edwin}) if you have one.  If the Scheme variable
-@code{inhibit-editor-init-file?} is true, however, your init file will
-not be loaded even if it exists.  By default, this variable is false.
+@file{~/.edwin} on unix, @file{edwin.ini} on PCs) if you have one.  If
+the Scheme variable @code{inhibit-editor-init-file?} is true, however,
+your init file will not be loaded even if it exists.  By default, this
+variable is false.
 @end defvr
 
 @deffn {procedure+} create-editor arg @dots{}
@@ -3111,6 +3112,8 @@ Offer to save any modified buffers, then kill both Edwin and Scheme
 system's command interpreter, and the Scheme process is terminated.
 This command is identical to the @kbd{C-x C-c} command of GNU Emacs.
 @end table
+
+
 
 The following Scheme procedures are useful for recovering from bugs in
 Edwin's implementation.  All of them are designed for use when Edwin is
