@@ -1,4 +1,4 @@
-# $Id: Makefile.in.in,v 1.9 2000/12/07 20:19:05 cph Exp $
+# $Id: Makefile.in.in,v 1.10 2000/12/08 02:52:14 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -161,8 +161,7 @@ CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpintmd.h TAGS
 
-MAINTAINER_CLEAN_FILES = Makefile.in makegen/Makefile.deps \
-	config.h.in configure
+MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 
 # **** Implicit rules ****
 
