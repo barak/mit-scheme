@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.7 1995/05/02 20:54:09 cph Exp $
+$Id: pros2pm.c,v 1.8 1995/05/16 09:19:55 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -111,6 +111,7 @@ dimension_arg (unsigned int arg_number)
 
 #define COORDINATE_ARG SSHORT_ARG
 #define DIMENSION_ARG dimension_arg
+#define HWND_ARG(n) ((HWND) (arg_integer (n)))
 
 void
 OS2_initialize_window_primitives (void)
@@ -297,6 +298,20 @@ DEFINE_PRIMITIVE ("OS2WIN-SET-TITLE", Prim_OS2_window_set_title, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   OS2_window_set_title ((wid_argument (1)), (STRING_ARG (2)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-FRAME-HANDLE", Prim_OS2_window_frame_handle, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_window_frame_handle (wid_argument (1))));
+}
+
+DEFINE_PRIMITIVE ("OS2WIN-UPDATE-FRAME", Prim_OS2_window_update_frame, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  OS2_window_update_frame ((wid_argument (1)), (USHORT_ARG (2)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -655,7 +670,7 @@ DEFINE_PRIMITIVE ("OS2PS-SET-BITMAP-BITS", Prim_OS2_ps_set_bitmap_bits, 5, 5, 0)
 			      (STRING_ARG (4)),
 			      (STRING_ARG (5)))));
 }
-
+
 DEFINE_PRIMITIVE ("OS2-CLIPBOARD-WRITE-TEXT", Prim_OS2_clipboard_write_text, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
@@ -678,6 +693,87 @@ DEFINE_PRIMITIVE ("OS2-CLIPBOARD-READ-TEXT", Prim_OS2_clipboard_read_text, 0, 0,
       }
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-CREATE", Prim_OS2_menu_create, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_create (pm_qid,
+				       (HWND_ARG (1)),
+				       (USHORT_ARG (2)),
+				       (USHORT_ARG (3)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-DESTROY", Prim_OS2_menu_destroy, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS2_menu_destroy (pm_qid, (HWND_ARG (1)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-INSERT-ITEM", Prim_OS2_menu_insert_item, 7, 7, 0)
+{
+  PRIMITIVE_HEADER (7);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_insert_item (pm_qid,
+					    (HWND_ARG (1)),
+					    (USHORT_ARG (2)),
+					    (USHORT_ARG (3)),
+					    (USHORT_ARG (4)),
+					    (USHORT_ARG (5)),
+					    (HWND_ARG (6)),
+					    (STRING_ARG (7)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-REMOVE-ITEM", Prim_OS2_menu_remove_item, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_remove_item (pm_qid,
+					    (HWND_ARG (1)),
+					    (USHORT_ARG (2)),
+					    (BOOLEAN_ARG (3)),
+					    (BOOLEAN_ARG (4)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-N-ITEMS", Prim_OS2_menu_n_items, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_n_items (pm_qid, (HWND_ARG (1)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-NTH-ITEM-ID", Prim_OS2_menu_nth_item_id, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_nth_item_id (pm_qid,
+					    (HWND_ARG (1)),
+					    (USHORT_ARG (2)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-GET-ITEM-ATTRIBUTES", Prim_OS2_menu_get_item_attributes, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  PRIMITIVE_RETURN
+    (long_to_integer (OS2_menu_get_item_attributes (pm_qid,
+						    (HWND_ARG (1)),
+						    (USHORT_ARG (2)),
+						    (BOOLEAN_ARG (3)),
+						    (USHORT_ARG (4)))));
+}
+
+DEFINE_PRIMITIVE ("OS2MENU-SET-ITEM-ATTRIBUTES", Prim_OS2_menu_set_item_attributes, 5, 5, 0)
+{
+  PRIMITIVE_HEADER (5);
+  OS2_menu_set_item_attributes (pm_qid,
+				(HWND_ARG (1)),
+				(USHORT_ARG (2)),
+				(BOOLEAN_ARG (3)),
+				(USHORT_ARG (4)),
+				(USHORT_ARG (5)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("OS2WIN-OPEN-EVENT-QID", Prim_OS2_window_open_event_qid, 0, 0, 0)
@@ -704,6 +800,8 @@ DEFINE_PRIMITIVE ("OS2WIN-CLOSE-EVENT-QID", Prim_OS2_window_close_event_qid, 1, 
 #define ET_PAINT	4
 #define ET_RESIZE	5
 #define ET_VISIBILITY	6
+#define ET_COMMAND	7
+#define ET_HELP		8
 
 #define CVT_UNSIGNED(n, v)						\
   VECTOR_SET (result, n, (LONG_TO_UNSIGNED_FIXNUM (v)))
@@ -786,6 +884,22 @@ DEFINE_PRIMITIVE ("OS2WIN-GET-EVENT", Prim_OS2_window_get_event, 2, 2, 0)
 	      CVT_UNSIGNED (0, ET_VISIBILITY);
 	      CVT_UNSIGNED (1, (SM_VISIBILITY_EVENT_WID (message)));
 	      CVT_BOOLEAN  (2, (SM_VISIBILITY_EVENT_SHOWNP (message)));
+	      break;
+	    }
+	  case mt_command_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      CVT_UNSIGNED (0, ET_COMMAND);
+	      CVT_UNSIGNED (1, (SM_COMMAND_EVENT_WID (message)));
+	      CVT_UNSIGNED  (2, (SM_COMMAND_EVENT_COMMAND (message)));
+	      break;
+	    }
+	  case mt_help_event:
+	    {
+	      result = (allocate_marked_vector (TC_VECTOR, 3, 0));
+	      CVT_UNSIGNED (0, ET_HELP);
+	      CVT_UNSIGNED (1, (SM_HELP_EVENT_WID (message)));
+	      CVT_UNSIGNED  (2, (SM_HELP_EVENT_COMMAND (message)));
 	      break;
 	    }
 	  default:

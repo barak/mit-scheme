@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2winp.scm,v 1.6 1995/05/02 20:58:41 cph Exp $
+$Id: os2winp.scm,v 1.7 1995/05/16 09:21:01 cph Exp $
 
 Copyright (c) 1995 Massachusetts Institute of Technology
 
@@ -40,6 +40,14 @@ MIT in each case. |#
 (define-primitives
   (os2-clipboard-read-text 0)
   (os2-clipboard-write-text 1)
+  (os2menu-create 3)
+  (os2menu-destroy 1)
+  (os2menu-get-item-attributes 4)
+  (os2menu-insert-item 7)
+  (os2menu-n-items 1)
+  (os2menu-nth-item 2)
+  (os2menu-remove-item 4)
+  (os2menu-set-item-attributes 5)
   (os2pm-synchronize 0)
   (os2ps-bitblt 6)
   (os2ps-clear 5)
@@ -76,6 +84,7 @@ MIT in each case. |#
   (os2win-desktop-width 0)
   (os2win-event-ready? 2)
   (os2win-focus? 1)
+  (os2win-frame-handle 1)
   (os2win-get-event 2)
   (os2win-get-frame-size 1)
   (os2win-get-pos 1)
@@ -94,7 +103,7 @@ MIT in each case. |#
   (os2win-shape-cursor 4)
   (os2win-show 2)
   (os2win-show-cursor 2)
-  )
+  (os2win-update-frame 2))
 
 (define-integrable (event-type event) (vector-ref event 0))
 (define-integrable (event-wid event) (vector-ref event 1))
@@ -119,8 +128,10 @@ MIT in each case. |#
 (define-event paint      4 xl xh yl yh)
 (define-event resize     5 width height)
 (define-event visibility 6 shown?)
+(define-event command    7 code)
+(define-event help       8 code)
 
-(define-integrable number-of-event-types 7)
+(define-integrable number-of-event-types 9)
 
 (define-integrable button-event-type:down 0)
 (define-integrable button-event-type:up 1)
@@ -403,3 +414,77 @@ MIT in each case. |#
 (define-integrable BBO_IGNORE        2)
 (define-integrable BBO_PAL_COLORS    4)
 (define-integrable BBO_NO_COLOR_INFO 8)
+
+;; Menu item positions:
+(define-integrable MIT_END                    #xFFFF)
+(define-integrable MIT_NONE                   #xFFFF)
+(define-integrable MIT_MEMERROR               #xFFFF)
+(define-integrable MIT_ERROR                  #xFFFF)
+(define-integrable MIT_FIRST                  #xFFFE)
+(define-integrable MIT_LAST                   #xFFFD)
+
+;; Menu item styles:
+(define-integrable MIS_TEXT                   #x0001)
+(define-integrable MIS_BITMAP                 #x0002)
+(define-integrable MIS_SEPARATOR              #x0004)
+(define-integrable MIS_OWNERDRAW              #x0008)
+(define-integrable MIS_SUBMENU                #x0010)
+(define-integrable MIS_MULTMENU               #x0020) ;multiple choice submenu
+(define-integrable MIS_SYSCOMMAND             #x0040)
+(define-integrable MIS_HELP                   #x0080)
+(define-integrable MIS_STATIC                 #x0100)
+(define-integrable MIS_BUTTONSEPARATOR        #x0200)
+(define-integrable MIS_BREAK                  #x0400)
+(define-integrable MIS_BREAKSEPARATOR         #x0800)
+(define-integrable MIS_GROUP                  #x1000) ;multiple choice group
+;; In multiple choice submenus a style of 'single' denotes the item is
+;; a radiobutton.  Absence of this style defaults the item to a
+;; checkbox.
+(define-integrable MIS_SINGLE                 #x2000)
+
+;; Menu item attributes:
+(define-integrable MIA_NODISMISS              #x0020)
+(define-integrable MIA_FRAMED                 #x1000)
+(define-integrable MIA_CHECKED                #x2000)
+(define-integrable MIA_DISABLED               #x4000)
+(define-integrable MIA_HILITED                #x8000)
+
+(define-integrable FID_SYSMENU                #x8002)
+(define-integrable FID_TITLEBAR               #x8003)
+(define-integrable FID_MINMAX                 #x8004)
+(define-integrable FID_MENU                   #x8005)
+(define-integrable FID_VERTSCROLL             #x8006)
+(define-integrable FID_HORZSCROLL             #x8007)
+(define-integrable FID_CLIENT                 #x8008)
+
+;; Menu control styles */
+(define-integrable MS_ACTIONBAR               #x0001)
+(define-integrable MS_TITLEBUTTON             #x0002)
+(define-integrable MS_VERTICALFLIP            #x0004)
+(define-integrable MS_CONDITIONALCASCADE      #x0040)
+
+;; Frame window styles:
+(define-integrable FCF_TITLEBAR               #x00000001)
+(define-integrable FCF_SYSMENU                #x00000002)
+(define-integrable FCF_MENU                   #x00000004)
+(define-integrable FCF_SIZEBORDER             #x00000008)
+(define-integrable FCF_MINBUTTON              #x00000010)
+(define-integrable FCF_MAXBUTTON              #x00000020)
+(define-integrable FCF_MINMAX                 #x00000030)
+(define-integrable FCF_VERTSCROLL             #x00000040)
+(define-integrable FCF_HORZSCROLL             #x00000080)
+(define-integrable FCF_DLGBORDER              #x00000100)
+(define-integrable FCF_BORDER                 #x00000200)
+(define-integrable FCF_SHELLPOSITION          #x00000400)
+(define-integrable FCF_TASKLIST               #x00000800)
+(define-integrable FCF_NOBYTEALIGN            #x00001000)
+(define-integrable FCF_NOMOVEWITHOWNER        #x00002000)
+(define-integrable FCF_ICON                   #x00004000)
+(define-integrable FCF_ACCELTABLE             #x00008000)
+(define-integrable FCF_SYSMODAL               #x00010000)
+(define-integrable FCF_SCREENALIGN            #x00020000)
+(define-integrable FCF_MOUSEALIGN             #x00040000)
+(define-integrable FCF_HIDEBUTTON             #x01000000)
+(define-integrable FCF_HIDEMAX                #x01000020)
+(define-integrable FCF_AUTOICON               #x40000000)
+(define-integrable FCF_STANDARD               #x0000CC3F)

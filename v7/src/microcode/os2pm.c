@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.c,v 1.14 1995/05/13 11:10:10 cph Exp $
+$Id: os2pm.c,v 1.15 1995/05/16 09:20:06 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -350,6 +350,15 @@ typedef struct
 } sm_set_title_t;
 #define SM_SET_TITLE_WINDOW(m) (((sm_set_title_t *) (m)) -> window)
 #define SM_SET_TITLE_TITLE(m) (((sm_set_title_t *) (m)) -> title)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  window_t * window;
+  USHORT flags;
+} sm_update_frame_t;
+#define SM_UPDATE_FRAME_WINDOW(m) (((sm_update_frame_t *) (m)) -> window)
+#define SM_UPDATE_FRAME_FLAGS(m) (((sm_update_frame_t *) (m)) -> flags)
 
 typedef struct
 {
@@ -712,6 +721,174 @@ typedef struct
 #define SM_CLIPBOARD_READ_TEXT_REPLY_TEXT(m)				\
   (((sm_clipboard_read_text_reply_t *) (m)) -> text)
 
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND owner;
+  USHORT style;
+  USHORT id;
+} sm_menu_create_request_t;
+#define SM_MENU_CREATE_REQUEST_OWNER(m)				\
+  (((sm_menu_create_request_t *) (m)) -> owner)
+#define SM_MENU_CREATE_REQUEST_STYLE(m)				\
+  (((sm_menu_create_request_t *) (m)) -> style)
+#define SM_MENU_CREATE_REQUEST_ID(m)				\
+  (((sm_menu_create_request_t *) (m)) -> id)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+} sm_menu_create_reply_t;
+#define SM_MENU_CREATE_REPLY_MENU(m)				\
+  (((sm_menu_create_reply_t *) (m)) -> menu)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+} sm_menu_destroy_t;
+#define SM_MENU_DESTROY_MENU(m) (((sm_menu_destroy_t *) (m)) -> menu)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+  USHORT position;
+  USHORT style;
+  USHORT attributes;
+  USHORT id;
+  HWND submenu;
+  PSZ text;
+} sm_menu_insert_item_request_t;
+#define SM_MENU_INSERT_ITEM_REQUEST_MENU(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> menu)
+#define SM_MENU_INSERT_ITEM_REQUEST_POSITION(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> position)
+#define SM_MENU_INSERT_ITEM_REQUEST_STYLE(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> style)
+#define SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES(m)			\
+  (((sm_menu_insert_item_request_t *) (m)) -> attributes)
+#define SM_MENU_INSERT_ITEM_REQUEST_ID(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> id)
+#define SM_MENU_INSERT_ITEM_REQUEST_SUBMENU(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> submenu)
+#define SM_MENU_INSERT_ITEM_REQUEST_TEXT(m)				\
+  (((sm_menu_insert_item_request_t *) (m)) -> text)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  USHORT position;
+} sm_menu_insert_item_reply_t;
+#define SM_MENU_INSERT_ITEM_REPLY_POSITION(m)				\
+  (((sm_menu_insert_item_reply_t *) (m)) -> position)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+  USHORT id;
+  USHORT submenup;
+  USHORT deletep;
+} sm_menu_remove_item_request_t;
+#define SM_MENU_REMOVE_ITEM_REQUEST_MENU(m)				\
+  (((sm_menu_remove_item_request_t *) (m)) -> menu)
+#define SM_MENU_REMOVE_ITEM_REQUEST_ID(m)				\
+  (((sm_menu_remove_item_request_t *) (m)) -> id)
+#define SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP(m)				\
+  (((sm_menu_remove_item_request_t *) (m)) -> submenup)
+#define SM_MENU_REMOVE_ITEM_REQUEST_DELETEP(m)				\
+  (((sm_menu_remove_item_request_t *) (m)) -> deletep)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  USHORT length;
+} sm_menu_remove_item_reply_t;
+#define SM_MENU_REMOVE_ITEM_REPLY_LENGTH(m)				\
+  (((sm_menu_remove_item_reply_t *) (m)) -> length)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+} sm_menu_n_items_request_t;
+#define SM_MENU_N_ITEMS_REQUEST_MENU(m)					\
+  (((sm_menu_n_items_request_t *) (m)) -> menu)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  USHORT length;
+} sm_menu_n_items_reply_t;
+#define SM_MENU_N_ITEMS_REPLY_LENGTH(m)					\
+  (((sm_menu_n_items_reply_t *) (m)) -> length)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+  USHORT position;
+} sm_menu_nth_item_id_request_t;
+#define SM_MENU_NTH_ITEM_ID_REQUEST_MENU(m)				\
+  (((sm_menu_nth_item_id_request_t *) (m)) -> menu)
+#define SM_MENU_NTH_ITEM_ID_REQUEST_POSITION(m)				\
+  (((sm_menu_nth_item_id_request_t *) (m)) -> position)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  USHORT id;
+} sm_menu_nth_item_id_reply_t;
+#define SM_MENU_NTH_ITEM_ID_REPLY_ID(m)					\
+  (((sm_menu_nth_item_id_reply_t *) (m)) -> id)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+  USHORT id;
+  USHORT submenup;
+  USHORT mask;
+} sm_menu_get_item_attributes_request_t;
+#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU(m)			\
+  (((sm_menu_get_item_attributes_request_t *) (m)) -> menu)
+#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID(m)			\
+  (((sm_menu_get_item_attributes_request_t *) (m)) -> id)
+#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP(m)			\
+  (((sm_menu_get_item_attributes_request_t *) (m)) -> submenup)
+#define SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK(m)			\
+  (((sm_menu_get_item_attributes_request_t *) (m)) -> mask)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  USHORT attributes;
+} sm_menu_get_item_attributes_reply_t;
+#define SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES(m)			\
+  (((sm_menu_get_item_attributes_reply_t *) (m)) -> attributes)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  HWND menu;
+  USHORT id;
+  USHORT submenup;
+  USHORT mask;
+  USHORT attributes;
+} sm_menu_set_item_attributes_t;
+#define SM_MENU_SET_ITEM_ATTRIBUTES_MENU(m)				\
+  (((sm_menu_set_item_attributes_t *) (m)) -> menu)
+#define SM_MENU_SET_ITEM_ATTRIBUTES_ID(m)				\
+  (((sm_menu_set_item_attributes_t *) (m)) -> id)
+#define SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP(m)				\
+  (((sm_menu_set_item_attributes_t *) (m)) -> submenup)
+#define SM_MENU_SET_ITEM_ATTRIBUTES_MASK(m)				\
+  (((sm_menu_set_item_attributes_t *) (m)) -> mask)
+#define SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES(m)			\
+  (((sm_menu_set_item_attributes_t *) (m)) -> attributes)
+
 static void sync_transaction (qid_t, msg_t *);
 static void sync_reply (qid_t);
 
@@ -754,6 +931,7 @@ static void set_window_size (window_t *, unsigned short, unsigned short);
 static int window_focusp (window_t *);
 static void set_window_state (window_t *, window_state_t);
 static void set_window_title (window_t *, PSZ);
+static void update_frame_window (window_t *, USHORT);
 
 static ps_t * create_memory_ps (qid_t);
 static void destroy_memory_ps (ps_t *);
@@ -790,6 +968,16 @@ static font_metrics_t * ps_set_font (ps_t *, unsigned short, const char *);
 static void clipboard_write_text (const char *);
 static const char * clipboard_read_text (void);
 
+static HWND menu_create (HWND, USHORT, USHORT);
+static void menu_destroy (HWND);
+static USHORT menu_insert_item
+  (HWND, USHORT, USHORT, USHORT, USHORT, HWND, PSZ);
+static USHORT menu_remove_item (HWND, USHORT, USHORT, USHORT);
+static USHORT menu_n_items (HWND);
+static USHORT menu_nth_item_id (HWND, USHORT);
+static USHORT menu_get_item_attributes (HWND, USHORT, USHORT, USHORT);
+static void menu_set_item_attributes (HWND, USHORT, USHORT, USHORT, USHORT);
+
 static msg_t * make_button_event
   (wid_t, unsigned char, unsigned char, unsigned short, unsigned short,
    unsigned short);
@@ -801,6 +989,8 @@ static msg_t * make_paint_event
   (wid_t, unsigned short, unsigned short, unsigned short, unsigned short);
 static msg_t * make_resize_event (wid_t, unsigned short, unsigned short);
 static msg_t * make_visibility_event (wid_t, int);
+static msg_t * make_command_event (wid_t, USHORT);
+static msg_t * make_help_event (wid_t, USHORT);
 
 #define ID_RESOURCES 1
 #define ID_FRAME 1
@@ -886,6 +1076,7 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_window_focusp_reply, sm_focusp_reply_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_state, sm_set_state_t);
   SET_MSG_TYPE_LENGTH (mt_window_set_title, sm_set_title_t);
+  SET_MSG_TYPE_LENGTH (mt_window_update_frame, sm_update_frame_t);
 
   SET_MSG_TYPE_LENGTH (mt_create_memory_ps_request,
 		       sm_create_memory_ps_request_t);
@@ -929,6 +1120,32 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_clipboard_read_text_reply,
 		       sm_clipboard_read_text_reply_t);
 
+  SET_MSG_TYPE_LENGTH (mt_menu_create_request, sm_menu_create_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_create_reply, sm_menu_create_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_destroy, sm_menu_destroy_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_insert_item_request,
+		       sm_menu_insert_item_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_insert_item_reply,
+		       sm_menu_insert_item_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_remove_item_request,
+		       sm_menu_remove_item_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_remove_item_reply,
+		       sm_menu_remove_item_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_n_items_request,
+		       sm_menu_n_items_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_n_items_reply,
+		       sm_menu_n_items_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_nth_item_id_request,
+		       sm_menu_nth_item_id_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_nth_item_id_reply,
+		       sm_menu_nth_item_id_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_get_item_attributes_request,
+		       sm_menu_get_item_attributes_request_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_get_item_attributes_reply,
+		       sm_menu_get_item_attributes_reply_t);
+  SET_MSG_TYPE_LENGTH (mt_menu_set_item_attributes,
+		       sm_menu_set_item_attributes_t);
+
   SET_MSG_TYPE_LENGTH (mt_button_event, sm_button_event_t);
   SET_MSG_TYPE_LENGTH (mt_close_event, sm_close_event_t);
   SET_MSG_TYPE_LENGTH (mt_focus_event, sm_focus_event_t);
@@ -936,6 +1153,8 @@ OS2_initialize_pm_thread (void)
   SET_MSG_TYPE_LENGTH (mt_paint_event, sm_paint_event_t);
   SET_MSG_TYPE_LENGTH (mt_resize_event, sm_resize_event_t);
   SET_MSG_TYPE_LENGTH (mt_visibility_event, sm_visibility_event_t);
+  SET_MSG_TYPE_LENGTH (mt_command_event, sm_command_event_t);
+  SET_MSG_TYPE_LENGTH (mt_help_event, sm_help_event_t);
 
   initialize_id_table (& psid_table);
   initialize_id_table (& wid_table);
@@ -1208,6 +1427,7 @@ static void handle_window_set_size_request (msg_t *);
 static void handle_window_focusp_request (msg_t *);
 static void handle_window_set_state_request (msg_t *);
 static void handle_window_set_title_request (msg_t *);
+static void handle_window_update_frame_request (msg_t *);
 
 static void handle_create_memory_ps_request (msg_t *);
 static void handle_destroy_memory_ps_request (msg_t *);
@@ -1235,6 +1455,15 @@ static void handle_ps_set_bitmap_bits_request (msg_t *);
 
 static void handle_clipboard_write_text_request (msg_t *);
 static void handle_clipboard_read_text_request (msg_t *);
+
+static void handle_menu_create_request (msg_t *);
+static void handle_menu_destroy_request (msg_t *);
+static void handle_menu_insert_item_request (msg_t *);
+static void handle_menu_remove_item_request (msg_t *);
+static void handle_menu_n_items_request (msg_t *);
+static void handle_menu_nth_item_id_request (msg_t *);
+static void handle_menu_get_item_attributes_request (msg_t *);
+static void handle_menu_set_item_attributes_request (msg_t *);
 
 static MRESULT EXPENTRY
 object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -1300,6 +1529,9 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	  break;
 	case mt_window_set_title:
 	  handle_window_set_title_request (message);
+	  break;
+	case mt_window_update_frame:
+	  handle_window_update_frame_request (message);
 	  break;
 
 	case mt_create_memory_ps_request:
@@ -1371,11 +1603,37 @@ object_window_procedure (HWND window, ULONG msg, MPARAM mp1, MPARAM mp2)
 	case mt_ps_set_bitmap_bits_request:
 	  handle_ps_set_bitmap_bits_request (message);
 	  break;
+
 	case mt_clipboard_write_text:
 	  handle_clipboard_write_text_request (message);
 	  break;
 	case mt_clipboard_read_text_request:
 	  handle_clipboard_read_text_request (message);
+	  break;
+
+	case mt_menu_create_request:
+	  handle_menu_create_request (message);
+	  break;
+	case mt_menu_destroy:
+	  handle_menu_destroy_request (message);
+	  break;
+	case mt_menu_insert_item_request:
+	  handle_menu_insert_item_request (message);
+	  break;
+	case mt_menu_remove_item_request:
+	  handle_menu_remove_item_request (message);
+	  break;
+	case mt_menu_n_items_request:
+	  handle_menu_n_items_request (message);
+	  break;
+	case mt_menu_nth_item_id_request:
+	  handle_menu_nth_item_id_request (message);
+	  break;
+	case mt_menu_get_item_attributes_request:
+	  handle_menu_get_item_attributes_request (message);
+	  break;
+	case mt_menu_set_item_attributes:
+	  handle_menu_set_item_attributes_request (message);
 	  break;
 
 	default:
@@ -1847,6 +2105,34 @@ handle_window_set_title_request (msg_t * message)
   qid_t sender = (MSG_SENDER (message));
   set_window_title ((SM_SET_TITLE_WINDOW (message)),
 		    (SM_SET_TITLE_TITLE (message)));
+  OS2_destroy_message (message);
+  simple_reply (sender);
+}
+
+HWND
+OS2_window_frame_handle (wid_t wid)
+{
+  /* This is needed by the OS2_menu_create, to supply an owner for the
+     top-level menu bar.  */
+  return (WINDOW_FRAME (wid_to_window (wid)));
+}
+
+void
+OS2_window_update_frame (wid_t wid, USHORT flags)
+{
+  window_t * window = (wid_to_window (wid));
+  msg_t * message = (OS2_create_message (mt_window_update_frame));
+  (SM_UPDATE_FRAME_WINDOW (message)) = window;
+  (SM_UPDATE_FRAME_FLAGS (message)) = flags;
+  simple_transaction ((WINDOW_QID (window)), message);
+}
+
+static void
+handle_window_update_frame_request (msg_t * message)
+{
+  qid_t sender = (MSG_SENDER (message));
+  update_frame_window ((SM_UPDATE_FRAME_WINDOW (message)),
+		       (SM_UPDATE_FRAME_FLAGS (message)));
   OS2_destroy_message (message);
   simple_reply (sender);
 }
@@ -2477,6 +2763,229 @@ handle_clipboard_read_text_request (msg_t * request)
   OS2_send_message (sender, reply);
 }
 
+HWND
+OS2_menu_create (qid_t qid, HWND owner, USHORT style, USHORT id)
+{
+  msg_t * message = (OS2_create_message (mt_menu_create_request));
+  HWND menu;
+  (SM_MENU_CREATE_REQUEST_OWNER (message)) = owner;
+  (SM_MENU_CREATE_REQUEST_STYLE (message)) = style;
+  (SM_MENU_CREATE_REQUEST_ID (message)) = id;
+  message = (OS2_message_transaction (qid, message, mt_menu_create_reply));
+  menu = (SM_MENU_CREATE_REPLY_MENU (message));
+  OS2_destroy_message (message);
+  return (menu);
+}
+
+static void
+handle_menu_create_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_create_reply));
+  (SM_MENU_CREATE_REPLY_MENU (reply))
+    = (menu_create ((SM_MENU_CREATE_REQUEST_OWNER (request)),
+		    (SM_MENU_CREATE_REQUEST_STYLE (request)),
+		    (SM_MENU_CREATE_REQUEST_ID (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+void
+OS2_menu_destroy (qid_t qid, HWND menu)
+{
+  msg_t * message = (OS2_create_message (mt_menu_destroy));
+  (SM_MENU_DESTROY_MENU (message)) = menu;
+  simple_transaction (qid, message);
+}
+
+static void
+handle_menu_destroy_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  menu_destroy (SM_MENU_DESTROY_MENU (request));
+  OS2_destroy_message (request);
+  simple_reply (sender);
+}
+
+USHORT
+OS2_menu_insert_item (qid_t qid, HWND menu, USHORT position, USHORT style,
+		      USHORT attributes, USHORT id, HWND submenu, PSZ text)
+{
+  msg_t * message = (OS2_create_message (mt_menu_insert_item_request));
+  USHORT reply_position;
+  (SM_MENU_INSERT_ITEM_REQUEST_MENU (message)) = menu;
+  (SM_MENU_INSERT_ITEM_REQUEST_POSITION (message)) = position;
+  (SM_MENU_INSERT_ITEM_REQUEST_STYLE (message)) = style;
+  (SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES (message)) = attributes;
+  (SM_MENU_INSERT_ITEM_REQUEST_ID (message)) = id;
+  (SM_MENU_INSERT_ITEM_REQUEST_SUBMENU (message)) = submenu;
+  (SM_MENU_INSERT_ITEM_REQUEST_TEXT (message)) = text;
+  message
+    = (OS2_message_transaction (qid, message, mt_menu_insert_item_reply));
+  reply_position = (SM_MENU_INSERT_ITEM_REPLY_POSITION (message));
+  OS2_destroy_message (message);
+  return (reply_position);
+}
+
+static void
+handle_menu_insert_item_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_insert_item_reply));
+  (SM_MENU_INSERT_ITEM_REPLY_POSITION (reply))
+    = (menu_insert_item ((SM_MENU_INSERT_ITEM_REQUEST_MENU (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_POSITION (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_STYLE (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_ATTRIBUTES (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_ID (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_SUBMENU (request)),
+			 (SM_MENU_INSERT_ITEM_REQUEST_TEXT (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+USHORT
+OS2_menu_remove_item (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+		      USHORT deletep)
+{
+  msg_t * message = (OS2_create_message (mt_menu_remove_item_request));
+  USHORT length;
+  (SM_MENU_REMOVE_ITEM_REQUEST_MENU (message)) = menu;
+  (SM_MENU_REMOVE_ITEM_REQUEST_ID (message)) = id;
+  (SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP (message)) = submenup;
+  (SM_MENU_REMOVE_ITEM_REQUEST_DELETEP (message)) = deletep;
+  message
+    = (OS2_message_transaction (qid, message, mt_menu_remove_item_reply));
+  length = (SM_MENU_REMOVE_ITEM_REPLY_LENGTH (message));
+  OS2_destroy_message (message);
+  return (length);
+}
+
+static void
+handle_menu_remove_item_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_remove_item_reply));
+  (SM_MENU_REMOVE_ITEM_REPLY_LENGTH (reply))
+    = (menu_remove_item ((SM_MENU_REMOVE_ITEM_REQUEST_MENU (request)),
+			 (SM_MENU_REMOVE_ITEM_REQUEST_ID (request)),
+			 (SM_MENU_REMOVE_ITEM_REQUEST_SUBMENUP (request)),
+			 (SM_MENU_REMOVE_ITEM_REQUEST_DELETEP (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+USHORT
+OS2_menu_n_items (qid_t qid, HWND menu)
+{
+  msg_t * message = (OS2_create_message (mt_menu_n_items_request));
+  USHORT length;
+  (SM_MENU_N_ITEMS_REQUEST_MENU (message)) = menu;
+  message
+    = (OS2_message_transaction (qid, message, mt_menu_n_items_reply));
+  length = (SM_MENU_N_ITEMS_REPLY_LENGTH (message));
+  OS2_destroy_message (message);
+  return (length);
+}
+
+static void
+handle_menu_n_items_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_n_items_reply));
+  (SM_MENU_N_ITEMS_REPLY_LENGTH (reply))
+    = (menu_n_items (SM_MENU_N_ITEMS_REQUEST_MENU (request)));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+USHORT
+OS2_menu_nth_item_id (qid_t qid, HWND menu, USHORT position)
+{
+  msg_t * message = (OS2_create_message (mt_menu_nth_item_id_request));
+  USHORT id;
+  (SM_MENU_NTH_ITEM_ID_REQUEST_MENU (message)) = menu;
+  (SM_MENU_NTH_ITEM_ID_REQUEST_POSITION (message)) = position;
+  message
+    = (OS2_message_transaction (qid, message, mt_menu_nth_item_id_reply));
+  id = (SM_MENU_NTH_ITEM_ID_REPLY_ID (message));
+  OS2_destroy_message (message);
+  return (id);
+}
+
+static void
+handle_menu_nth_item_id_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_nth_item_id_reply));
+  (SM_MENU_NTH_ITEM_ID_REPLY_ID (reply))
+    = (menu_nth_item_id ((SM_MENU_NTH_ITEM_ID_REQUEST_MENU (request)),
+			 (SM_MENU_NTH_ITEM_ID_REQUEST_POSITION (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+USHORT
+OS2_menu_get_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+			      USHORT mask)
+{
+  msg_t * message = (OS2_create_message (mt_menu_get_item_attributes_request));
+  USHORT attributes;
+  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU (message)) = menu;
+  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID (message)) = id;
+  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP (message)) = submenup;
+  (SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK (message)) = mask;
+  message
+    = (OS2_message_transaction (qid,
+				message,
+				mt_menu_get_item_attributes_reply));
+  attributes = (SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES (message));
+  OS2_destroy_message (message);
+  return (attributes);
+}
+
+static void
+handle_menu_get_item_attributes_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  msg_t * reply = (OS2_create_message (mt_menu_get_item_attributes_reply));
+  (SM_MENU_GET_ITEM_ATTRIBUTES_REPLY_ATTRIBUTES (reply))
+    = (menu_get_item_attributes
+       ((SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MENU (request)),
+	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_ID (request)),
+	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_SUBMENUP (request)),
+	(SM_MENU_GET_ITEM_ATTRIBUTES_REQUEST_MASK (request))));
+  OS2_destroy_message (request);
+  OS2_send_message (sender, reply);
+}
+
+void
+OS2_menu_set_item_attributes (qid_t qid, HWND menu, USHORT id, USHORT submenup,
+			      USHORT mask, USHORT attributes)
+{
+  msg_t * message = (OS2_create_message (mt_menu_set_item_attributes));
+  (SM_MENU_SET_ITEM_ATTRIBUTES_MENU (message)) = menu;
+  (SM_MENU_SET_ITEM_ATTRIBUTES_ID (message)) = id;
+  (SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP (message)) = submenup;
+  (SM_MENU_SET_ITEM_ATTRIBUTES_MASK (message)) = mask;
+  (SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES (message)) = attributes;
+  simple_transaction (qid, message);
+}
+
+static void
+handle_menu_set_item_attributes_request (msg_t * request)
+{
+  qid_t sender = (MSG_SENDER (request));
+  menu_set_item_attributes
+    ((SM_MENU_SET_ITEM_ATTRIBUTES_MENU (request)),
+     (SM_MENU_SET_ITEM_ATTRIBUTES_ID (request)),
+     (SM_MENU_SET_ITEM_ATTRIBUTES_SUBMENUP (request)),
+     (SM_MENU_SET_ITEM_ATTRIBUTES_MASK (request)),
+     (SM_MENU_SET_ITEM_ATTRIBUTES_ATTRIBUTES (request)));
+  OS2_destroy_message (request);
+  simple_reply (sender);
+}
+
 static window_t * make_window (qid_t, qid_t);
 
 static wid_t
@@ -2788,6 +3297,14 @@ set_window_title (window_t * window, PSZ title)
 {
   if (!WinSetWindowText ((WINDOW_FRAME (window)), title))
     window_warning (WinSetWindowText);
+}
+
+static void
+update_frame_window (window_t * window, USHORT flags)
+{
+  (void) WinSendMsg ((WINDOW_FRAME (window)), WM_UPDATEFRAME,
+		     (MPFROMSHORT (flags)),
+		     0);
 }
 
 static ps_t *
@@ -3189,6 +3706,89 @@ clipboard_read_text (void)
   return (result);
 }
 
+static HWND
+menu_create (HWND owner, USHORT style, USHORT id)
+{
+  HWND menu
+    = (WinCreateWindow (owner,	/* parent window */
+			WC_MENU, /* class name */
+			"",	/* window text */
+			style,	/* window style */
+			0, 0, 0, 0, /* size and position */
+			owner,	/* owner window */
+			HWND_TOP, /* sibling window */
+			id,	/* ID */
+			0,	/* control data */
+			0	/* presentation parameters */
+			));
+  if (menu == NULLHANDLE)
+    window_error (WinCreateWindow);
+  return (menu);
+}
+
+static void
+menu_destroy (HWND menu)
+{
+  if (!WinDestroyWindow (menu))
+    window_error (WinDestroyWindow);
+}
+
+static USHORT
+menu_insert_item (HWND menu, USHORT position, USHORT style, USHORT attributes,
+		  USHORT id, HWND submenu, PSZ text)
+{
+  MENUITEM item;
+  (item . iPosition) = position;
+  (item . afStyle) = style;
+  (item . afAttribute) = attributes;
+  (item . id) = id;
+  (item . hwndSubMenu) = submenu;
+  (item . hItem) = 0;
+  return (SHORT1FROMMR (WinSendMsg (menu, MM_INSERTITEM,
+				    (MPFROMP (&item)),
+				    (MPFROMP (text)))));
+}
+
+static USHORT
+menu_remove_item (HWND menu, USHORT id, USHORT submenup, USHORT deletep)
+{
+  return (SHORT1FROMMR (WinSendMsg (menu,
+				    (deletep ? MM_DELETEITEM : MM_REMOVEITEM),
+				    (MPFROM2SHORT (id, submenup)),
+				    0)));
+}
+
+static USHORT
+menu_n_items (HWND menu)
+{
+  return (SHORT1FROMMR (WinSendMsg (menu, MM_QUERYITEMCOUNT, 0, 0)));
+}
+
+static USHORT
+menu_nth_item_id (HWND menu, USHORT position)
+{
+  return (SHORT1FROMMR (WinSendMsg (menu, MM_ITEMIDFROMPOSITION,
+				    (MPFROMSHORT (position)),
+				    0)));
+}
+
+static USHORT
+menu_get_item_attributes (HWND menu, USHORT id, USHORT submenup, USHORT mask)
+{
+  return (SHORT1FROMMR (WinSendMsg (menu, MM_QUERYITEMATTR,
+				    (MPFROM2SHORT (id, submenup)),
+				    (MPFROMSHORT (mask)))));
+}
+
+static void
+menu_set_item_attributes (HWND menu, USHORT id, USHORT submenup, USHORT mask,
+			  USHORT attributes)
+{
+  (void) WinSendMsg (menu, MM_SETITEMATTR,
+		     (MPFROM2SHORT (id, submenup)),
+		     (MPFROM2SHORT (mask, attributes)));
+}
+
 static int parse_font_spec (const char *, PSZ *, LONG *, USHORT *);
 static int ps_set_font_1 (ps_t * ps, PSZ, LONG, USHORT, LONG);
 static PLONG ps_make_char_increments (LONG);
@@ -3583,6 +4183,22 @@ window_procedure (HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
 					    (SHORT1FROMMP (mp1)))));
 	return (MRVOID);
       }
+    case WM_COMMAND:
+      {
+	window_t * window = (hwnd_to_window (hwnd));
+	SEND_EVENT (window,
+		    (make_command_event ((WINDOW_ID (window)),
+					 (SHORT1FROMMP (mp1)))));
+	return (MRVOID);
+      }
+    case WM_HELP:
+      {
+	window_t * window = (hwnd_to_window (hwnd));
+	SEND_EVENT (window,
+		    (make_help_event ((WINDOW_ID (window)),
+				      (SHORT1FROMMP (mp1)))));
+	return (MRVOID);
+      }
     case WM_BUTTON1DOWN:
       if (process_button (hwnd, mp1, mp2, 0, BUTTON_EVENT_DOWN))
 	return (MRTRUE);
@@ -3754,5 +4370,23 @@ make_visibility_event (wid_t wid, int shownp)
   msg_t * message = (OS2_create_message (mt_visibility_event));
   (SM_VISIBILITY_EVENT_WID (message)) = wid;
   (SM_VISIBILITY_EVENT_SHOWNP (message)) = shownp;
+  return (message);
+}
+
+static msg_t *
+make_command_event (wid_t wid, USHORT command)
+{
+  msg_t * message = (OS2_create_message (mt_command_event));
+  (SM_COMMAND_EVENT_WID (message)) = wid;
+  (SM_COMMAND_EVENT_COMMAND (message)) = command;
+  return (message);
+}
+
+static msg_t *
+make_help_event (wid_t wid, USHORT command)
+{
+  msg_t * message = (OS2_create_message (mt_help_event));
+  (SM_HELP_EVENT_WID (message)) = wid;
+  (SM_HELP_EVENT_COMMAND (message)) = command;
   return (message);
 }

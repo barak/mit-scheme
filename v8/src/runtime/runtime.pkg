@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.256 1995/05/03 07:34:31 cph Exp $
+$Id: runtime.pkg,v 14.257 1995/05/16 09:20:48 cph Exp $
 
 Copyright (c) 1988-95 Massachusetts Institute of Technology
 
@@ -2462,6 +2462,7 @@ MIT in each case. |#
 	  caps_width			;pels
 	  caps_width_in_chars
 	  caps_window_byte_alignment
+	  command-event/code
 	  cursor_flash
 	  cursor_frame
 	  cursor_halftone
@@ -2469,12 +2470,45 @@ MIT in each case. |#
 	  event-type
 	  event-type:button
 	  event-type:close
+	  event-type:command
 	  event-type:focus
+	  event-type:help
 	  event-type:key
 	  event-type:paint
 	  event-type:resize
 	  event-type:visibility
 	  event-wid
+	  fcf_acceltable
+	  fcf_autoicon
+	  fcf_border
+	  fcf_dlgborder
+	  fcf_hidebutton
+	  fcf_hidemax
+	  fcf_horzscroll
+	  fcf_icon
+	  fcf_maxbutton
+	  fcf_menu
+	  fcf_minbutton
+	  fcf_minmax
+	  fcf_mousealign
+	  fcf_nobytealign
+	  fcf_nomovewithowner
+	  fcf_screenalign
+	  fcf_shellposition
+	  fcf_sizeborder
+	  fcf_standard
+	  fcf_sysmenu
+	  fcf_sysmodal
+	  fcf_tasklist
+	  fcf_titlebar
+	  fcf_vertscroll
+	  fid_client
+	  fid_horzscroll
+	  fid_menu
+	  fid_minmax
+	  fid_sysmenu
+	  fid_titlebar
+	  fid_vertscroll
 	  fm_and
 	  fm_default
 	  fm_invert
@@ -2496,6 +2530,7 @@ MIT in each case. |#
 	  font-metrics/descender
 	  font-metrics/height
 	  font-metrics/width
+	  help-event/code
 	  kc_alt
 	  kc_char
 	  kc_composite
@@ -2524,7 +2559,44 @@ MIT in each case. |#
 	  linetype_longdash
 	  linetype_shortdash
 	  linetype_solid
+	  mia_checked
+	  mia_disabled
+	  mia_framed
+	  mia_hilited
+	  mia_nodismiss
+	  mis_bitmap
+	  mis_break
+	  mis_breakseparator
+	  mis_buttonseparator
+	  mis_group
+	  mis_help
+	  mis_multmenu
+	  mis_ownerdraw
+	  mis_separator
+	  mis_single
+	  mis_static
+	  mis_submenu
+	  mis_syscommand
+	  mis_text
+	  mit_end
+	  mit_error
+	  mit_first
+	  mit_last
+	  mit_memerror
+	  mit_none
+	  ms_actionbar
+	  ms_conditionalcascade
+	  ms_titlebutton
+	  ms_verticalflip
 	  number-of-event-types
+	  os2menu-create
+	  os2menu-destroy
+	  os2menu-get-item-attributes
+	  os2menu-insert-item
+	  os2menu-n-items
+	  os2menu-nth-item
+	  os2menu-remove-item
+	  os2menu-set-item-attributes
 	  os2pm-synchronize
 	  os2ps-bitblt
 	  os2ps-clear
@@ -2561,6 +2633,7 @@ MIT in each case. |#
 	  os2win-desktop-width
 	  os2win-event-ready?
 	  os2win-focus?
+	  os2win-frame-handle
 	  os2win-get-event
 	  os2win-get-frame-size
 	  os2win-get-pos
@@ -2579,6 +2652,7 @@ MIT in each case. |#
 	  os2win-shape-cursor
 	  os2win-show
 	  os2win-show-cursor
+	  os2win-update-frame
 	  paint-event/xh
 	  paint-event/xl
 	  paint-event/yh
@@ -2680,7 +2754,8 @@ MIT in each case. |#
 	  ws_parentclip
 	  ws_savebits
 	  ws_syncpaint
-	  ws_visible))
+	  ws_visible
+	  ))
 
 (define-package (runtime state-space)
   (files "wind")

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pm.h,v 1.7 1995/05/02 20:53:43 cph Exp $
+$Id: os2pm.h,v 1.8 1995/05/16 09:20:15 cph Exp $
 
 Copyright (c) 1994-95 Massachusetts Institute of Technology
 
@@ -141,6 +141,24 @@ typedef struct
 #define SM_VISIBILITY_EVENT_WID(m) (((sm_visibility_event_t *) (m)) -> wid)
 #define SM_VISIBILITY_EVENT_SHOWNP(m)					\
   (((sm_visibility_event_t *) (m)) -> shownp)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  wid_t wid;
+  unsigned short command;
+} sm_command_event_t;
+#define SM_COMMAND_EVENT_WID(m) (((sm_command_event_t *) (m)) -> wid)
+#define SM_COMMAND_EVENT_COMMAND(m) (((sm_command_event_t *) (m)) -> command)
+
+typedef struct
+{
+  DECLARE_MSG_HEADER_FIELDS;
+  wid_t wid;
+  unsigned short command;
+} sm_help_event_t;
+#define SM_HELP_EVENT_WID(m) (((sm_help_event_t *) (m)) -> wid)
+#define SM_HELP_EVENT_COMMAND(m) (((sm_help_event_t *) (m)) -> command)
 
 typedef enum
 {
@@ -187,6 +205,8 @@ extern void OS2_window_set_size (wid_t, unsigned short, unsigned short);
 extern int OS2_window_focusp (wid_t);
 extern void OS2_window_set_state (wid_t, window_state_t);
 extern void OS2_window_set_title (wid_t, const char *);
+extern HWND OS2_window_frame_handle (wid_t);
+extern void OS2_window_update_frame (wid_t, USHORT);
 
 extern psid_t OS2_create_memory_ps (qid_t);
 extern void OS2_destroy_memory_ps (psid_t);
@@ -218,5 +238,17 @@ extern unsigned long OS2_ps_set_bitmap_bits
 
 extern void OS2_clipboard_write_text (qid_t, const char *);
 extern const char * OS2_clipboard_read_text (qid_t);
+
+extern HWND OS2_menu_create (qid_t, HWND, USHORT, USHORT);
+extern void OS2_menu_destroy (qid_t, HWND);
+extern USHORT OS2_menu_insert_item
+  (qid_t, HWND, USHORT, USHORT, USHORT, USHORT, HWND, PSZ);
+extern USHORT OS2_menu_remove_item (qid_t, HWND, USHORT, USHORT, USHORT);
+extern USHORT OS2_menu_n_items (qid_t, HWND);
+extern USHORT OS2_menu_nth_item_id (qid_t, HWND, USHORT);
+extern USHORT OS2_menu_get_item_attributes
+  (qid_t, HWND, USHORT, USHORT, USHORT);
+extern void OS2_menu_set_item_attributes
+  (qid_t, HWND, USHORT, USHORT, USHORT, USHORT);
 
 #endif /* SCM_OS2PM_H */

@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: os2term.scm,v 1.7 1995/04/22 21:20:13 cph Exp $
+;;;	$Id: os2term.scm,v 1.8 1995/05/16 09:21:28 cph Exp $
 ;;;
 ;;;	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ;;;
@@ -830,7 +830,12 @@
 				(inner (fix:+ index 1)))))))))))))))
 
 (define (process-special-event event)
-  (let ((handler (vector-ref event-handlers (event-type event)))
+  (let ((handler
+	 (let ((type (event-type event)))
+	   (and (fix:fixnum? type)
+		(fix:>= type 0)
+		(fix:< type (vector-length event-handlers))
+		(vector-ref event-handlers type))))
 	(screen (wid->screen (event-wid event))))
     (and handler
 	 screen
