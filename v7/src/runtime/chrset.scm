@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.18 2003/02/14 18:28:32 cph Exp $
+$Id: chrset.scm,v 14.19 2003/03/08 02:06:31 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -28,7 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (char-set (type-descriptor char-set-rtd))
+(define-structure (char-set (type-descriptor <char-set>))
   (table #f read-only #t))
 
 (define-integrable (guarantee-char-set object procedure)

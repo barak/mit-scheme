@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.18 2003/03/05 01:15:13 cph Exp $
+$Id: xml.pkg,v 1.19 2003/03/08 02:14:11 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -36,6 +36,21 @@ USA.
   (files "xml-struct")
   (parent (runtime xml))
   (export ()
+	  <xml-!attlist>
+	  <xml-!element>
+	  <xml-!entity>
+	  <xml-!notation>
+	  <xml-comment>
+	  <xml-declaration>
+	  <xml-document>
+	  <xml-dtd>
+	  <xml-element>
+	  <xml-entity-ref>
+	  <xml-external-id>
+	  <xml-parameter-!entity>
+	  <xml-parameter-entity-ref>
+	  <xml-processing-instructions>
+	  <xml-unparsed-!entity>
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
@@ -88,25 +103,19 @@ USA.
 	  set-xml-unparsed-!entity-notation!
 	  xml-!attlist-definitions
 	  xml-!attlist-name
-	  xml-!attlist-rtd
 	  xml-!attlist?
 	  xml-!element-content-type
 	  xml-!element-name
-	  xml-!element-rtd
 	  xml-!element?
 	  xml-!entity-name
-	  xml-!entity-rtd
 	  xml-!entity-value
 	  xml-!entity?
 	  xml-!notation-id
 	  xml-!notation-name
-	  xml-!notation-rtd
 	  xml-!notation?
-	  xml-comment-rtd
 	  xml-comment-text
 	  xml-comment?
 	  xml-declaration-encoding
-	  xml-declaration-rtd
 	  xml-declaration-standalone
 	  xml-declaration-version
 	  xml-declaration?
@@ -116,43 +125,34 @@ USA.
 	  xml-document-misc-2
 	  xml-document-misc-3
 	  xml-document-root
-	  xml-document-rtd
 	  xml-document?
 	  xml-dtd-external
 	  xml-dtd-internal
 	  xml-dtd-root
-	  xml-dtd-rtd
 	  xml-dtd?
 	  xml-element-attributes
 	  xml-element-contents
 	  xml-element-name
-	  xml-element-rtd
 	  xml-element?
 	  xml-entity-ref-name
-	  xml-entity-ref-rtd
 	  xml-entity-ref?
 	  xml-external-id-id
-	  xml-external-id-rtd
 	  xml-external-id-uri
 	  xml-external-id?
 	  xml-intern
 	  xml-name?
 	  xml-nmtoken?
 	  xml-parameter-!entity-name
-	  xml-parameter-!entity-rtd
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
 	  xml-parameter-entity-ref-name
-	  xml-parameter-entity-ref-rtd
 	  xml-parameter-entity-ref?
 	  xml-processing-instructions-name
-	  xml-processing-instructions-rtd
 	  xml-processing-instructions-text
 	  xml-processing-instructions?
 	  xml-unparsed-!entity-id
 	  xml-unparsed-!entity-name
 	  xml-unparsed-!entity-notation
-	  xml-unparsed-!entity-rtd
 	  xml-unparsed-!entity?
 	  xml-whitespace-string?))
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: method.scm,v 1.14 2003/02/14 18:28:35 cph Exp $
+$Id: method.scm,v 1.15 2003/03/08 02:16:14 cph Exp $
 
-Copyright 1995-1999 Massachusetts Institute of Technology
+Copyright 1995,1997,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -321,7 +321,7 @@ USA.
 	(else
 	 (error:wrong-type-argument s "specializer" 'SPECIALIZER-CLASSES))))
 
-(define-structure (union-specializer (type-descriptor union-specializer-rtd))
+(define-structure (union-specializer (type-descriptor <union-specializer>))
   (classes #f read-only #t))
 
 (define (union-specializer . specializers)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-transforms.scm,v 14.5 2003/02/14 18:48:13 cph Exp $
+$Id: syntax-transforms.scm,v 14.6 2003/03/08 02:07:26 cph Exp $
 
 Copyright 1989-1991, 2001, 2002 Massachusetts Institute of Technology
 
@@ -42,20 +42,20 @@ USA.
     (lambda arguments
       (apply constructor #f arguments))))
 
-(define item-rtd)
+(define <item>)
 (define make-item)
-(define expander-item-rtd)
+(define <expander-item>)
 (define make-expander-item)
 
 (define (initialize-syntax-transforms!)
-  (set! item-rtd
+  (set! <item>
 	(make-record-type "item" '(HISTORY RECORD)))
   (set! make-item
-	(record-constructor item-rtd '(HISTORY RECORD)))
-  (set! expander-item-rtd
+	(record-constructor <item> '(HISTORY RECORD)))
+  (set! <expander-item>
 	(make-record-type "expander-item" '(EXPANDER ENVIRONMENT)))
   (set! make-expander-item
-	(keyword-constructor expander-item-rtd '(EXPANDER ENVIRONMENT)))
+	(keyword-constructor <expander-item> '(EXPANDER ENVIRONMENT)))
   unspecific)
 
 (define (sc-macro-transformer->expander transformer closing-environment)

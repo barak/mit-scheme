@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.16 2003/03/05 01:14:40 cph Exp $
+$Id: xml-output.scm,v 1.17 2003/03/08 02:14:18 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -48,7 +48,7 @@ USA.
 (define (write-xml-1 xml port options)
   (%write-xml xml (make-ctx port options)))
 
-(define-structure (ctx (type-descriptor ctx-rtd)
+(define-structure (ctx (type-descriptor <ctx>)
 		       (keyword-constructor %make-ctx)
 		       (print-procedure
 			(standard-unparser-method 'XML-OUTPUT-CONTEXT #f)))
@@ -80,7 +80,7 @@ USA.
 
 (define-generic %write-xml (object ctx))
 
-(define-method %write-xml ((document xml-document-rtd) ctx)
+(define-method %write-xml ((document <xml-document>) ctx)
   (if (xml-document-declaration document)
       (%write-xml (xml-document-declaration document) ctx))
   (for-each (lambda (object) (%write-xml object ctx))
@@ -93,7 +93,7 @@ USA.
   (for-each (lambda (object) (%write-xml object ctx))
 	    (xml-document-misc-3 document)))
 
-(define-method %write-xml ((declaration xml-declaration-rtd) ctx)
+(define-method %write-xml ((declaration <xml-declaration>) ctx)
   (emit-string "<?xml version=\"" ctx)
   (emit-string (xml-declaration-version declaration) ctx)
   (emit-string "\"" ctx)
@@ -109,7 +109,7 @@ USA.
 	(emit-string "\"" ctx)))
   (emit-string "?>" ctx))
 
-(define-method %write-xml ((element xml-element-rtd) ctx)
+(define-method %write-xml ((element <xml-element>) ctx)
   (let ((name (xml-element-name element))
 	(contents (xml-element-contents element)))
     (emit-string "<" ctx)
@@ -127,18 +127,18 @@ USA.
 	  (emit-string ">" ctx))
 	(emit-string " />" ctx))))
 
-(define-method %write-xml ((comment xml-comment-rtd) ctx)
+(define-method %write-xml ((comment <xml-comment>) ctx)
   (emit-string "<!--" ctx)
   (emit-string (xml-comment-text comment) ctx)
   (emit-string "-->" ctx))
 
-(define-method %write-xml ((pi xml-processing-instructions-rtd) ctx)
+(define-method %write-xml ((pi <xml-processing-instructions>) ctx)
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
   (emit-string (xml-processing-instructions-text pi) ctx)
   (emit-string "?>" ctx))
 
-(define-method %write-xml ((dtd xml-dtd-rtd) ctx)
+(define-method %write-xml ((dtd <xml-dtd>) ctx)
   ;;root external internal
   (emit-string "<!DOCTYPE " ctx)
   (let ((col (ctx-start-col ctx)))
@@ -159,7 +159,7 @@ USA.
 	  (emit-string "]" ctx)))
     (emit-string ">" ctx)))
 
-(define-method %write-xml ((decl xml-!element-rtd) ctx)
+(define-method %write-xml ((decl <xml-!element>) ctx)
   (emit-string "<!ELEMENT " ctx)
   (write-xml-name (xml-!element-name decl) ctx)
   (emit-string " " ctx)
@@ -217,7 +217,7 @@ USA.
 	     (write-children type)))))
   (emit-string ">" ctx))
 
-(define-method %write-xml ((decl xml-!attlist-rtd) ctx)
+(define-method %write-xml ((decl <xml-!attlist>) ctx)
   (emit-string "<!ATTLIST " ctx)
   (write-xml-name (xml-!attlist-name decl) ctx)
   (let ((definitions (xml-!attlist-definitions decl))
@@ -276,7 +276,7 @@ USA.
 	      (write-definition (car definitions))))))
   (emit-string ">" ctx))
 
-(define-method %write-xml ((decl xml-!entity-rtd) ctx)
+(define-method %write-xml ((decl <xml-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
   (let ((col (ctx-start-col ctx)))
     (write-xml-name (xml-!entity-name decl) ctx)
@@ -284,7 +284,7 @@ USA.
     (write-entity-value (xml-!entity-value decl) col ctx)
     (emit-string ">" ctx)))
 
-(define-method %write-xml ((decl xml-unparsed-!entity-rtd) ctx)
+(define-method %write-xml ((decl <xml-unparsed-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
   (let ((col (ctx-start-col ctx)))
     (write-xml-name (xml-unparsed-!entity-name decl) ctx)
@@ -294,7 +294,7 @@ USA.
     (write-xml-name (xml-unparsed-!entity-notation decl) ctx)
     (emit-string ">" ctx)))
 
-(define-method %write-xml ((decl xml-parameter-!entity-rtd) ctx)
+(define-method %write-xml ((decl <xml-parameter-!entity>) ctx)
   (emit-string "<!ENTITY " ctx)
   (let ((col (ctx-start-col ctx)))
     (emit-string "% " ctx)
@@ -303,7 +303,7 @@ USA.
     (write-entity-value (xml-parameter-!entity-value decl) col ctx)
     (emit-string ">" ctx)))
 
-(define-method %write-xml ((decl xml-!notation-rtd) ctx)
+(define-method %write-xml ((decl <xml-!notation>) ctx)
   (emit-string "<!NOTATION " ctx)
   (let ((col (ctx-start-col ctx)))
     (write-xml-name (xml-!notation-name decl) ctx)
@@ -317,12 +317,12 @@ USA.
 			  (#\& . "&amp;"))
 			ctx))
 
-(define-method %write-xml ((ref xml-entity-ref-rtd) ctx)
+(define-method %write-xml ((ref <xml-entity-ref>) ctx)
   (emit-string "&" ctx)
   (write-xml-name (xml-entity-ref-name ref) ctx)
   (emit-string ";" ctx))
 
-(define-method %write-xml ((ref xml-parameter-entity-ref-rtd) ctx)
+(define-method %write-xml ((ref <xml-parameter-entity-ref>) ctx)
   (emit-string "%" ctx)
   (write-xml-name (xml-parameter-entity-ref-name ref) ctx)
   (emit-string ";" ctx))

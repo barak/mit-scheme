@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntactic-closures.scm,v 14.14 2003/03/07 21:10:12 cph Exp $
+$Id: syntactic-closures.scm,v 14.15 2003/03/08 02:07:18 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -649,16 +649,16 @@ USA.
 ;;; needed during the cold load.
 
 (define item?
-  (record-predicate item-rtd))
+  (record-predicate <item>))
 
 (define item/history
-  (record-accessor item-rtd 'HISTORY))
+  (record-accessor <item> 'HISTORY))
 
 (define (item/new-history item history)
   (make-item history (item/record item)))
 
 (define item/record
-  (record-accessor item-rtd 'RECORD))
+  (record-accessor <item> 'RECORD))
 
 (define (item=? x y)
   (eq? (item/record x) (item/record y)))
@@ -692,16 +692,16 @@ USA.
 ;;; to signal a meaningful error when one of the <init>s refers to
 ;;; one of the names being bound.
 
-(define reserved-name-item-rtd
+(define <reserved-name-item>
   (make-item-type "reserved-name-item" '()
     (lambda (item)
       (illegal-expression-item item "Reserved name"))))
 
 (define make-reserved-name-item
-  (item-constructor reserved-name-item-rtd '()))
+  (item-constructor <reserved-name-item> '()))
 
 (define reserved-name-item?
-  (item-predicate reserved-name-item-rtd))
+  (item-predicate <reserved-name-item>))
 
 ;;; Keyword items represent macro keywords.  There are several flavors
 ;;; of keyword item.
@@ -719,99 +719,99 @@ USA.
   (illegal-expression-item item "Syntactic keyword"))
 
 
-(define classifier-item-rtd
+(define <classifier-item>
   (make-keyword-type "classifier-item" '(CLASSIFIER)))
 
 (define make-classifier-item
-  (keyword-constructor classifier-item-rtd '(CLASSIFIER)))
+  (keyword-constructor <classifier-item> '(CLASSIFIER)))
 
 (define classifier-item?
-  (item-predicate classifier-item-rtd))
+  (item-predicate <classifier-item>))
 
 (define classifier-item/classifier
-  (item-accessor classifier-item-rtd 'CLASSIFIER))
+  (item-accessor <classifier-item> 'CLASSIFIER))
 
 
-(define compiler-item-rtd
+(define <compiler-item>
   (make-keyword-type "compiler-item" '(COMPILER)))
 
 (define make-compiler-item
-  (keyword-constructor compiler-item-rtd '(COMPILER)))
+  (keyword-constructor <compiler-item> '(COMPILER)))
 
 (define compiler-item?
-  (item-predicate compiler-item-rtd))
+  (item-predicate <compiler-item>))
 
 (define compiler-item/compiler
-  (item-accessor compiler-item-rtd 'COMPILER))
+  (item-accessor <compiler-item> 'COMPILER))
 
 
-(define-item-compiler expander-item-rtd
+(define-item-compiler <expander-item>
   keyword-item-compiler)
 
 (define expander-item?
-  (item-predicate expander-item-rtd))
+  (item-predicate <expander-item>))
 
 (define expander-item/expander
-  (item-accessor expander-item-rtd 'EXPANDER))
+  (item-accessor <expander-item> 'EXPANDER))
 
 (define expander-item/environment
-  (item-accessor expander-item-rtd 'ENVIRONMENT))
+  (item-accessor <expander-item> 'ENVIRONMENT))
 
 
-(define transformer-item-rtd
+(define <transformer-item>
   (make-keyword-type "transformer-item" '(EXPANDER EXPRESSION)))
 
 (define make-transformer-item
-  (keyword-constructor transformer-item-rtd '(EXPANDER EXPRESSION)))
+  (keyword-constructor <transformer-item> '(EXPANDER EXPRESSION)))
 
 (define transformer-item?
-  (item-predicate transformer-item-rtd))
+  (item-predicate <transformer-item>))
 
 (define transformer-item/expander
-  (item-accessor transformer-item-rtd 'EXPANDER))
+  (item-accessor <transformer-item> 'EXPANDER))
 
 (define transformer-item/expression
-  (item-accessor transformer-item-rtd 'EXPRESSION))
+  (item-accessor <transformer-item> 'EXPRESSION))
 
 ;;; Variable items represent run-time variables.
 
-(define variable-item-rtd
+(define <variable-item>
   (make-item-type "variable-item" '(NAME)
     (lambda (item)
       (output/variable (variable-item/name item)))))
 
 (define make-variable-item
-  (let ((constructor (item-constructor variable-item-rtd '(NAME))))
+  (let ((constructor (item-constructor <variable-item> '(NAME))))
     (lambda (name)
       (constructor #f name))))
 
 (define variable-item?
-  (item-predicate variable-item-rtd))
+  (item-predicate <variable-item>))
 
 (define variable-item/name
-  (item-accessor variable-item-rtd 'NAME))
+  (item-accessor <variable-item> 'NAME))
 
 ;;; Expression items represent any kind of expression other than a
 ;;; run-time variable or a sequence.  The ANNOTATION field is used to
 ;;; make expression items that can appear in non-expression contexts
 ;;; (for example, this could be used in the implementation of SETF).
 
-(define expression-item-rtd
+(define <expression-item>
   (make-item-type "expression-item" '(COMPILER ANNOTATION)
     (lambda (item)
       ((expression-item/compiler item)))))
 
 (define make-special-expression-item
-  (item-constructor expression-item-rtd '(COMPILER ANNOTATION)))
+  (item-constructor <expression-item> '(COMPILER ANNOTATION)))
 
 (define expression-item?
-  (item-predicate expression-item-rtd))
+  (item-predicate <expression-item>))
 
 (define expression-item/compiler
-  (item-accessor expression-item-rtd 'COMPILER))
+  (item-accessor <expression-item> 'COMPILER))
 
 (define expression-item/annotation
-  (item-accessor expression-item-rtd 'ANNOTATION))
+  (item-accessor <expression-item> 'ANNOTATION))
 
 (define (make-expression-item history compiler)
   (make-special-expression-item history compiler #f))
@@ -819,40 +819,40 @@ USA.
 ;;; Unassigned items represent the right hand side of a binding that
 ;;; has no explicit value.
 
-(define unassigned-item-rtd
+(define <unassigned-item>
   (make-item-type "unassigned-item" '()
     (lambda (item)
       item				;ignore
       (output/unassigned))))
 
 (define make-unassigned-item
-  (item-constructor unassigned-item-rtd '()))
+  (item-constructor <unassigned-item> '()))
 
 (define unassigned-item?
-  (item-predicate unassigned-item-rtd))
+  (item-predicate <unassigned-item>))
 
 ;;; Declaration items represent block-scoped declarations that are to
 ;;; be passed through to the compiler.
 
-(define declaration-item-rtd
+(define <declaration-item>
   (make-item-type "declaration-item" '(TEXT)
     (lambda (item)
       (illegal-expression-item item "Declaration"))))
 
 (define make-declaration-item
-  (item-constructor declaration-item-rtd '(TEXT)))
+  (item-constructor <declaration-item> '(TEXT)))
 
 (define declaration-item?
-  (item-predicate declaration-item-rtd))
+  (item-predicate <declaration-item>))
 
 (define declaration-item/text
-  (let ((accessor (item-accessor declaration-item-rtd 'TEXT)))
+  (let ((accessor (item-accessor <declaration-item> 'TEXT)))
     (lambda (item)
       ((accessor item)))))
 
 ;;; Body items represent sequences (e.g. BEGIN).
 
-(define body-item-rtd
+(define <body-item>
   (make-item-type "body-item" '(COMPONENTS)
     (lambda (item)
       (compile-body-items item (body-item/components item)))))
@@ -873,45 +873,45 @@ USA.
 	  items))))
 
 (define make-body-item
-  (item-constructor body-item-rtd '(COMPONENTS)))
+  (item-constructor <body-item> '(COMPONENTS)))
 
 (define body-item?
-  (item-predicate body-item-rtd))
+  (item-predicate <body-item>))
 
 (define body-item/components
-  (item-accessor body-item-rtd 'COMPONENTS))
+  (item-accessor <body-item> 'COMPONENTS))
 
 ;;; Binding items represent definitions, whether top-level or
 ;;; internal, keyword or variable.  Null binding items are for
 ;;; definitions that don't emit code.
 
-(define binding-item-rtd
+(define <binding-item>
   (make-item-type "binding-item" '(NAME VALUE)
     (lambda (item)
       (illegal-expression-item item "Definition"))))
 
 (define make-binding-item
-  (item-constructor binding-item-rtd '(NAME VALUE)))
+  (item-constructor <binding-item> '(NAME VALUE)))
 
 (define binding-item?
-  (item-predicate binding-item-rtd))
+  (item-predicate <binding-item>))
 
 (define binding-item/name
-  (item-accessor binding-item-rtd 'NAME))
+  (item-accessor <binding-item> 'NAME))
 
 (define binding-item/value
-  (item-accessor binding-item-rtd 'VALUE))
+  (item-accessor <binding-item> 'VALUE))
 
-(define null-binding-item-rtd
+(define <null-binding-item>
   (make-item-type "null-binding-item" '()
     (lambda (item)
       (illegal-expression-item item "Definition"))))
 
 (define make-null-binding-item
-  (item-constructor null-binding-item-rtd '()))
+  (item-constructor <null-binding-item> '()))
 
 (define null-binding-item?
-  (item-predicate null-binding-item-rtd))
+  (item-predicate <null-binding-item>))
 
 (define (bind-variable! environment name)
   (let ((rename (syntactic-environment/rename environment name)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.16 2003/03/06 05:04:56 cph Exp $
+$Id: mit-syntax.scm,v 14.17 2003/03/08 02:06:43 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -846,7 +846,7 @@ USA.
 	    (else
 	     (ill-formed-syntax form))))))
 
-(define access-item-rtd
+(define <access-item>
   (make-item-type "access-item" '(NAME ENVIRONMENT)
     (lambda (item)
       (output/access-reference
@@ -854,16 +854,16 @@ USA.
        (compile-item/expression (access-item/environment item))))))
 
 (define make-access-item
-  (item-constructor access-item-rtd '(NAME ENVIRONMENT)))
+  (item-constructor <access-item> '(NAME ENVIRONMENT)))
 
 (define access-item?
-  (item-predicate access-item-rtd))
+  (item-predicate <access-item>))
 
 (define access-item/name
-  (item-accessor access-item-rtd 'NAME))
+  (item-accessor <access-item> 'NAME))
 
 (define access-item/environment
-  (item-accessor access-item-rtd 'ENVIRONMENT))
+  (item-accessor <access-item> 'ENVIRONMENT))
 
 (define-er-macro-transformer 'CONS-STREAM system-global-environment
   (lambda (form rename compare)

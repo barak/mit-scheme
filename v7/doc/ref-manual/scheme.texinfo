@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: scheme.texinfo,v 1.121 2003/03/07 06:18:17 cph Exp $
+@comment $Id: scheme.texinfo,v 1.122 2003/03/08 02:10:44 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename scheme.info
 @settitle MIT/GNU Scheme Reference
@@ -51,7 +51,7 @@ Free Documentation License".
 @title{MIT/GNU Scheme Reference Manual}
 @subtitle Edition 1.98
 @subtitle for Scheme Release 7.7.2
-@subtitle 14 February 2003
+@subtitle 7 March 2003
 @author by Chris Hanson
 @author the MIT Scheme Team
 @author and a cast of thousands
@@ -3000,9 +3000,9 @@ different name to hold the type descriptor.
 (define-structure foo a b)
 foo             @result{} #[record-type 18]
 
-(define-structure (bar (type-descriptor bar-rtd)) a b)
+(define-structure (bar (type-descriptor <bar>)) a b)
 bar             @error{} Unbound variable: bar
-bar-rtd         @result{} #[record-type 19]
+<bar>         @result{} #[record-type 19]
 @end group
 @end example
 @end deffn
@@ -16562,7 +16562,7 @@ document.
 Each record type @var{type} has the following associated bindings:
 
 @table @code
-@item @var{type}-rtd
+@item <@var{type}>
 is a variable bound to the record-type descriptor for @var{type}.  The
 record-type descriptor may be used as a specializer in @acronym{SOS}
 method definitions, which greatly simplifies code to dispatch on these
@@ -16593,7 +16593,7 @@ The record's field is modified to have the new value.
 @end table
 
 @deftp {record type} xml-document declaration misc-1 dtd misc-2 root misc-3
-@vindex xml-document-rtd
+@vindex <xml-document>
 @findex xml-document?
 @findex make-xml-document
 @findex xml-document-declaration
@@ -16619,7 +16619,7 @@ or a string of whitespace.
 @end deftp
 
 @deftp {record type} xml-declaration version encoding standalone
-@vindex xml-declaration-rtd
+@vindex <xml-declaration>
 @findex xml-declaration?
 @findex make-xml-declaration
 @findex xml-declaration-version
@@ -16637,7 +16637,7 @@ The @code{xml-declaration} record represents the @samp{<?xml @dots{}
 @end deftp
 
 @deftp {record type} xml-element name attributes contents
-@vindex xml-element-rtd
+@vindex <xml-element>
 @findex xml-element?
 @findex make-xml-element
 @findex xml-element-name
@@ -16659,7 +16659,7 @@ string, an @code{xml-element} record, an
 @end deftp
 
 @deftp {record type} xml-processing-instructions name text
-@vindex xml-processing-instructions-rtd
+@vindex <xml-processing-instructions>
 @findex xml-processing-instructions?
 @findex make-xml-processing-instructions
 @findex xml-processing-instructions-name
@@ -16676,7 +16676,7 @@ instructions (a string).
 @end deftp
 
 @deftp {record type} xml-uninterpreted text
-@vindex xml-uninterpreted-rtd
+@vindex <xml-uninterpreted>
 @findex xml-uninterpreted?
 @findex make-xml-uninterpreted
 @findex xml-uninterpreted-text
@@ -16692,7 +16692,7 @@ text (a string).
 @end deftp
 
 @deftp {record type} xml-dtd root external internal
-@vindex xml-dtd-rtd
+@vindex <xml-dtd>
 @findex xml-dtd?
 @findex make-xml-dtd
 @findex xml-dtd-root
@@ -16711,7 +16711,7 @@ records (e.g.@: @code{xml-!element}, @code{xml-!attlist}, etc.).
 The remaining record types are valid only within a @acronym{DTD}.
 
 @deftp {record type} xml-!element name content-type
-@vindex xml-!element-rtd
+@vindex <xml-!element>
 @findex xml-!element?
 @findex make-xml-!element
 @findex xml-!element-name
@@ -16735,7 +16735,7 @@ A list @samp{(MIX @var{type} @dots{})} corresponds to the
 @end deftp
 
 @deftp {record type} xml-!attlist name definitions
-@vindex xml-!attlist-rtd
+@vindex <xml-!attlist>
 @findex xml-!attlist?
 @findex make-xml-!attlist
 @findex xml-!attlist-name
@@ -16788,7 +16788,7 @@ but might also be an @code{xml-uninterpreted} record.
 @end deftp
 
 @deftp {record type} xml-!entity name value
-@vindex xml-!entity-rtd
+@vindex <xml-!entity>
 @findex xml-!entity?
 @findex make-xml-!entity
 @findex xml-!entity-name
@@ -16802,7 +16802,7 @@ declaration.  @var{Name} is an @acronym{XML} name for the entity.
 @end deftp
 
 @deftp {record type} xml-parameter-!entity name value
-@vindex xml-parameter-!entity-rtd
+@vindex <xml-parameter-!entity>
 @findex xml-parameter-!entity?
 @findex make-xml-parameter-!entity
 @findex xml-parameter-!entity-name
@@ -16816,7 +16816,7 @@ declaration.  @var{Name} is an @acronym{XML} name for the entity.
 @end deftp
 
 @deftp {record type} xml-unparsed-!entity name id notation
-@vindex xml-unparsed-!entity-rtd
+@vindex <xml-unparsed-!entity>
 @findex xml-unparsed-!entity?
 @findex make-xml-unparsed-!entity
 @findex xml-unparsed-!entity-name
@@ -16832,7 +16832,7 @@ declaration.  @code{Name} is an @acronym{XML} name for the entity.
 @end deftp
 
 @deftp {record type} xml-!notation name id
-@vindex xml-!notation-rtd
+@vindex <xml-!notation>
 @findex xml-!notation?
 @findex make-xml-!notation
 @findex xml-!notation-name
@@ -16845,7 +16845,7 @@ The @code{xml-!notation} record represents a notation declaration.
 @end deftp
 
 @deftp {record type} xml-external-id id uri
-@vindex xml-external-id-rtd
+@vindex <xml-external-id>
 @findex xml-external-id?
 @findex make-xml-external-id
 @findex xml-external-id-id

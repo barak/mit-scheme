@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.11 2003/03/02 03:48:47 cph Exp $
+$Id: xml-struct.scm,v 1.12 2003/03/08 02:14:25 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -77,7 +77,7 @@ USA.
      (if (syntax-match? '(IDENTIFIER * (IDENTIFIER EXPRESSION)) (cdr form))
 	 (let ((root (symbol-append 'XML- (cadr form)))
 	       (slots (cddr form)))
-	   (let ((rtd (symbol-append root '-RTD))
+	   (let ((rtd (symbol-append '< root '>))
 		 (constructor (symbol-append 'MAKE- root))
 		 (slot-vars
 		  (map (lambda (slot)
@@ -343,7 +343,7 @@ USA.
 	       (accessor (caddr form)))
 	   (let ((root (symbol-append 'XML- name)))
 	     `(SET-RECORD-TYPE-UNPARSER-METHOD!
-	       ,(close-syntax (symbol-append root '-RTD) environment)
+	       ,(close-syntax (symbol-append '< root '>) environment)
 	       (STANDARD-UNPARSER-METHOD ',root
 		 (LAMBDA (,name PORT)
 		   (WRITE-CHAR #\SPACE PORT)
