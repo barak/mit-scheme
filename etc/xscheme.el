@@ -1,5 +1,5 @@
 ;; Run Scheme under Emacs
-;; Copyright (C) 1986, 1987 Free Software Foundation, Inc.
+;; Copyright (C) 1986, 1987, 1989 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -21,7 +21,7 @@
 ;;; Requires C-Scheme release 5 or later
 ;;; Changes to Control-G handler require runtime version 13.85 or later
 
-;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.22 1989/04/05 17:12:45 cph Exp $
+;;; $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/etc/xscheme.el,v 1.23 1989/04/28 22:59:40 cph Rel $
 
 (require 'scheme)
 
@@ -584,9 +584,9 @@ When called, the current buffer will be the Scheme process-buffer.")
 		     (setq xscheme-filter-input
 			   (substring xscheme-filter-input (1+ start)))
 		     (setq xscheme-process-filter-state 'reading-type))
-		   (progn
-		     (xscheme-process-filter-output xscheme-filter-input)
-		     (setq xscheme-filter-input nil)))))
+		   (let ((string xscheme-filter-input))
+		     (setq xscheme-filter-input nil)
+		     (xscheme-process-filter-output string)))))
 	    ((eq xscheme-process-filter-state 'reading-type)
 	     (if (zerop (length xscheme-filter-input))
 		 (setq xscheme-filter-input nil)
@@ -602,14 +602,13 @@ When called, the current buffer will be the Scheme process-buffer.")
 	    ((eq xscheme-process-filter-state 'reading-string)
 	     (let ((start (string-match "\e" xscheme-filter-input)))
 	       (if start
-		   (progn
-		     (funcall
-		      xscheme-string-receiver
-		      (concat xscheme-string-accumulator
-			      (substring xscheme-filter-input 0 start)))
+		   (let ((string
+			  (concat xscheme-string-accumulator
+				  (substring xscheme-filter-input 0 start))))
 		     (setq xscheme-filter-input
 			   (substring xscheme-filter-input (1+ start)))
-		     (setq xscheme-process-filter-state 'idle))
+		     (setq xscheme-process-filter-state 'idle)
+		     (funcall xscheme-string-receiver string))
 		   (progn
 		     (setq xscheme-string-accumulator
 			   (concat xscheme-string-accumulator
@@ -725,8 +724,8 @@ with the appropriate arguments, and to reenter the process filter with
 the remaining input.")
 
 (defun xscheme-process-filter:simple-action (action)
-  (funcall action)
-  (setq xscheme-process-filter-state 'idle))
+  (setq xscheme-process-filter-state 'idle)
+  (funcall action))
 
 (defun xscheme-process-filter:string-action (action)
   (setq xscheme-string-receiver action)
