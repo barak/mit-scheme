@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: modefs.scm,v 1.143 1992/11/17 22:46:22 cph Exp $
+;;;	$Id: modefs.scm,v 1.144 1993/09/01 18:02:14 gjr Exp $
 ;;;
-;;;	Copyright (c) 1985, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1985, 1989-1993 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -309,3 +309,5 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\{) 'shrink-window-horizontally)
 (define-key 'fundamental '(#\c-x #\}) 'enlarge-window-horizontally)
 (define-key 'fundamental '(#\c-x #\rubout) 'backward-kill-sentence)
+;; This should only be bound in NT/Windows
+(define-key 'fundamental #\m-S 'resize-screen)
