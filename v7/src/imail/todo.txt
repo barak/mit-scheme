@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.90 2000/06/20 19:43:06 cph Exp $
+$Id: todo.txt,v 1.91 2000/06/20 19:44:11 cph Exp $
 
 Bug fixes
 ---------
@@ -105,6 +105,9 @@ Design changes
   should be done during I/O rather than being a required feature of
   the representation.  This is safe to do for many headers, which are
   defined to have arbitrary whitespace.
+
+  Parsing errors must be detected during input; erroneous headers can
+  probably be discarded, depending on the error.
 
 * Move pathname-completion code into the runtime system.
 
