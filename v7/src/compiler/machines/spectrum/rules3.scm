@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 4.36 1992/09/28 16:35:41 cph Exp $
+$Id: rules3.scm,v 4.37 1992/09/30 19:28:50 cph Exp $
 
 Copyright (c) 1988-92 Massachusetts Institute of Technology
 
@@ -418,7 +418,7 @@ MIT in each case. |#
     (LAP (LABEL ,gc-label)
 	 ,@(invoke-interface-ble code)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
 (define (dlink-procedure-header code-word label)
   (let ((gc-label (generate-label)))    
@@ -426,10 +426,13 @@ MIT in each case. |#
 	 (COPY () ,regnum:dynamic-link ,regnum:second-arg)
 	 ,@(invoke-interface-ble code:compiler-interrupt-dlink)
 	 ,@(make-external-label code-word label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(interrupt-check label gc-label))))
 
-(define (interrupt-check gc-label)
-  (case compiler:generate-stack-checks?
+(define (interrupt-check label gc-label)
+  (case (let ((object (label->object label)))
+	  (and (rtl-procedure? object)
+	       (not (rtl-procedure/stack-leaf? object))
+	       compiler:generate-stack-checks?))
     ((#F)
      (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer
 		(@PCR ,gc-label))
@@ -518,7 +521,7 @@ MIT in each case. |#
 	   ,@(address->entry regnum:ble-return)
 	   (STWM () ,regnum:ble-return (OFFSET -4 0 22))
 	   (LABEL ,internal-label)
-	   ,@(interrupt-check gc-label)))))
+	   ,@(interrupt-check internal-label gc-label)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
