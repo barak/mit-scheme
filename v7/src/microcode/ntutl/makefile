@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.10 1993/09/01 18:28:41 gjr Exp $
+###	$Id: makefile,v 1.11 1993/09/03 17:50:09 gjr Exp $
 ###
 ###	Copyright (c) 1992-1993 Massachusetts Institute of Technology
 ###
@@ -147,36 +147,34 @@ bchutl.c
 # nt
 NT_SOURCES = \
 intext.c \
-ntfs.c \
 ntenv.c \
 ntfile.c \
+ntfs.c \
 ntgui.c \
 ntio.c \
-nttty.c \
-nttop.c \
-ntutil.c \
-ntsig.c \
-nttrap.c \
-ntsys.c \
 ntscreen.c \
+ntsig.c \
+ntsys.c \
+nttop.c \
+nttrap.c \
+nttty.c \
 ntasutl.asm
 
 NT_OBJECTS = \
 intext.obj \
-ntfs.obj \
 ntenv.obj \
 ntfile.obj \
+ntfs.obj \
 ntgui.obj \
-ntgui.rbj \
 ntio.obj \
-nttty.obj \
-nttop.obj \
-ntutil.obj \
-ntsig.obj \
-nttrap.obj \
-ntsys.obj  \
 ntscreen.obj \
-ntasutl.obj
+ntsig.obj \
+ntsys.obj  \
+nttop.obj \
+nttrap.obj \
+nttty.obj \
+ntasutl.obj \
+ntgui.rbj
 
 OS_PRIM_SOURCES = \
 prosfile.c \
@@ -412,13 +410,12 @@ prmcon.obj : scheme.tch prims.h prmcon.h $(OS_PRIM_DEPENDENCIES)
 
 NT_DEPENDENCIES = oscond.h ansidecl.h posixtyp.h intext.h \
 		   dstack.h os.h osscheme.h nt.h ntsys.h syscall.h
-ntenv.obj : scheme.tch osenv.h $(NT_DEPENDENCIES)
+ntenv.obj : scheme.tch osenv.h ntscreen.h $(NT_DEPENDENCIES)
 ntfile.obj : osfile.h osio.h ntio.h $(NT_DEPENDENCIES)
 ntfs.obj : osfs.h $(NT_DEPENDENCIES)
 ntio.obj : osio.h ntio.h $(NT_DEPENDENCIES)
-nttop.obj : ostop.h nttop.h osctty.h ntutil.h errors.h option.h $(NT_DEPENDENCIES)
+nttop.obj : ostop.h nttop.h osctty.h errors.h option.h $(NT_DEPENDENCIES)
 nttty.obj : ostty.h osenv.h osio.h ntio.h osterm.h ntterm.h $(NT_DEPENDENCIES)
-ntutil.obj : ntutil.h $(NT_DEPENDENCIES)
 ntsig.obj : ossig.h osctty.h ostty.h critsec.h $(NT_DEPENDENCIES) ntscmlib.h
 nttrap.obj: nttrap.h ntscmlib.h $(GC_HEAD_FILES) $(NT_DEPENDENCIES)
 ntsys.obj: ntsys.h

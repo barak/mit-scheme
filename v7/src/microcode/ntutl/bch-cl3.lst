@@ -75,7 +75,6 @@ nttrap.obj
 ntscreen.obj
 nttterm.obj
 nttty.obj
-ntutil.obj
 
 bchdmp.obj
 bchgcl.obj
