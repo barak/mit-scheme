@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchutl.c,v 1.8 1999/01/02 06:11:34 cph Exp $
+$Id: bchutl.c,v 1.9 2000/01/18 05:06:14 cph Exp $
 
 Copyright (c) 1991-1999 Massachusetts Institute of Technology
 
@@ -21,6 +21,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include "oscond.h"
 #include "ansidecl.h"
+#include <stdio.h>
 
 #include <errno.h>
 #ifndef EINTR
@@ -76,8 +77,6 @@ DEFUN (error_name, (code), int code)
 char *
 DEFUN (error_name, (code), int code)
 {
-  extern int sys_nerr;
-  extern char *sys_errlist[];
   static char buf[512];
 
   if ((code >= 0) && (code <= sys_nerr))

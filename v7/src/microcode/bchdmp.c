@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchdmp.c,v 9.83 1999/01/02 06:11:34 cph Exp $
+$Id: bchdmp.c,v 9.84 2000/01/18 05:05:57 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -26,6 +26,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include "scheme.h"
 #include "prims.h"
 #include "osfile.h"
+#include "osfs.h"
 #include "trap.h"
 #include "lookup.h"		/* UNCOMPILED_VARIABLE */
 #define In_Fasdump
@@ -179,7 +180,7 @@ static SCHEME_OBJECT *saved_free;
 static SCHEME_OBJECT *fixup_buffer = ((SCHEME_OBJECT *) NULL);
 static SCHEME_OBJECT *fixup_buffer_end;
 static SCHEME_OBJECT *fixup;
-static fixup_count = 0;
+static int fixup_count = 0;
 static Boolean compiled_code_present_p;
 
 /* Utility macros. */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.93 1999/01/02 06:11:34 cph Exp $
+$Id: bchmmg.c,v 9.94 2000/01/18 05:06:06 cph Exp $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 
@@ -2138,7 +2138,7 @@ Boolean
 DEFUN (update_allocator_parameters, (ctop), SCHEME_OBJECT * ctop)
 {
   SCHEME_OBJECT * htop;
-  long new_end, delta;
+  long new_end;
 
   /* buffer for impurify, etc. */
   ctop = ((SCHEME_OBJECT *)
