@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.11 2003/02/14 18:28:34 cph Exp $
+$Id: strnin.scm,v 14.12 2003/02/27 21:27:58 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003 Massachusetts Institute of Technology
 
@@ -44,24 +44,20 @@ USA.
   (with-input-from-port (open-input-string string) thunk))
 
 (define (open-input-string string #!optional start end)
+  (guarantee-string string 'OPEN-INPUT-STRING)
   (let ((end
-	 (if (default-object? end)
+	 (if (or (default-object? end) (not end))
 	     (string-length string)
-	     (check-index end (string-length string) 'OPEN-INPUT-STRING))))
-    (make-port
-     input-string-port-type
-     (make-input-string-state string
-			      (if (default-object? start)
-				  0
-				  (check-index start end 'OPEN-INPUT-STRING))
-			      end))))
-
-(define (check-index index limit procedure)
-  (if (not (exact-nonnegative-integer? index))
-      (error:wrong-type-argument index "exact non-negative integer" procedure))
-  (if (not (<= index limit))
-      (error:bad-range-argument index procedure))
-  index)
+	     (guarantee-substring-end-index end (string-length string)
+					    'OPEN-INPUT-STRING))))
+    (make-port input-string-port-type
+	       (make-input-string-state
+		string
+		(if (or (default-object? start) (not start))
+		    0
+		    (guarantee-substring-start-index start end
+						     'OPEN-INPUT-STRING))
+		end))))
 
 (define input-string-port-type)
 
