@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: info.scm,v 1.120 1995/09/28 16:17:13 cph Exp $
+;;;	$Id: info.scm,v 1.121 1996/04/24 01:57:30 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-95 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-96 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -86,9 +86,22 @@ Such selection regions are active only when info-selection-key is set."
   boolean?)
 
 (define-variable info-directory
-  "If not false, default directory for Info documentation files.
-Otherwise the standard directory is used."
-  false)
+  "Directory to search for Info documentation files.
+This variable is now obsolete; use info-directory-list instead."
+  #f
+  string-or-false?)
+
+(define-variable info-directory-list
+  "List of directories to search for Info documentation files.
+Empty list means not yet initialized.  In this case, the environment
+variable INFOPATH is used to initialize it."
+  '()
+  list-of-strings?)
+
+(define-variable info-suffix-list
+  "List of file-name suffixes for Info documentation files."
+  (list ".info" ".inf")
+  list-of-strings?)
 
 (define-variable info-previous-search
   "Default search string for Info \\[info-search] command to search for."
@@ -698,32 +711,7 @@ The name may be an abbreviation of the reference name."
 
 (define (find-node filename nodename)
   (let ((buffer (find-or-create-buffer info-buffer-name)))
-    (let ((pathname
-	   (and filename
-		(let ((pathname
-		       (let ((pathname (->pathname filename)))
-			 (merge-pathnames
-			  pathname
-			  ;; Use Info's default directory,
-			  ;; unless filename is explicitly self-relative.
-			  (if (let ((directory (pathname-directory pathname)))
-				(and (pair? directory)
-				     (eq? (car directory) 'RELATIVE)
-				     (pair? (cdr directory))
-				     (equal? (cadr directory) ".")))
-			      (buffer-default-directory (current-buffer))
-			      (or (ref-variable info-directory buffer)
-				  (edwin-info-directory))))))
-		      (group (buffer-group buffer)))
-		  (or (get-pathname-or-alternate group pathname #f)
-		      (let ((s (->namestring pathname)))
-			(or (and (not (string-suffix? ".info" s))
-				 (get-pathname-or-alternate
-				  group
-				  (string-append s ".info")
-				  #f))
-			    (editor-error "Can't find Info file: "
-					  filename))))))))
+    (let ((pathname (and filename (find-node-1 buffer filename))))
       (select-buffer buffer)
       (if (ref-variable info-current-file buffer)
 	  (record-node (ref-variable info-current-file buffer)
@@ -759,6 +747,52 @@ The name may be an abbreviation of the reference name."
 			    (string-ci=? nodename name)))
 		     node
 		     (loop node))))))))))
+
+(define (find-node-1 buffer pathname)
+  (let loop
+      ((directories
+	(if (let ((directory (pathname-directory pathname)))
+	      (and (pair? directory)
+		   (or (eq? (car directory) 'ABSOLUTE)
+		       (and (eq? (car directory) 'RELATIVE)
+			    (pair? (cdr directory))
+			    (equal? (cadr directory) ".")))))
+	    (list (buffer-default-directory buffer))
+	    (buffer-directory-list buffer))))
+    (if (null? directories)
+	(editor-error "Can't find Info file: " (->namestring pathname)))
+    (or (find-node-2 buffer (merge-pathnames pathname (car directories)))
+	(loop (cdr directories)))))
+
+(define (buffer-directory-list buffer)
+  (let ((variable (ref-variable-object info-directory-list)))
+    (let ((directories (variable-local-value buffer variable)))
+      (if (null? directories)
+	  (let ((directories
+		 (let ((dirlist
+			(lambda (directory)
+			  (list (->namestring directory)))))
+		   (cond ((ref-variable info-directory buffer)
+			  => dirlist)
+			 ((get-environment-variable "INFOPATH")
+			  => os/parse-path-string)
+			 (else
+			  (dirlist (edwin-info-directory)))))))
+	    (set-variable-local-value! buffer variable directories)
+	    directories)
+	  directories))))
+
+(define (find-node-2 buffer pathname)
+  (let ((group (buffer-group buffer)))
+    (or (get-pathname-or-alternate group pathname #f)
+	(let ((s (->namestring pathname)))
+	  (let loop ((suffixes (ref-variable info-suffix-list buffer)))
+	    (and (not (null? suffixes))
+		 (or (get-pathname-or-alternate
+		      group
+		      (string-append s (car suffixes))
+		      #f)
+		     (loop (cdr suffixes)))))))))
 
 (define (info-set-mode-line! buffer)
   (define-variable-local-value! buffer
