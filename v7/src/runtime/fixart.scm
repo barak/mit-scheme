@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.6 2001/02/11 00:08:16 cph Exp $
+$Id: fixart.scm,v 1.7 2001/10/22 00:28:09 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -16,7 +16,8 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
 |#
 
 ;;;; Fixnum Arithmetic
@@ -141,3 +142,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (if (not (real? x))
       (error:wrong-type-argument x "real number" '->FLONUM))
   (exact->inexact (real-part x)))
+
+(define (flo:finite? x)
+  (not (cond ((flo:> x 0.)
+	      (and (flo:> x 1.)
+		   (flo:= x (flo:/ x 2.))))
+	     ((flo:< x 0.)
+	      (and (flo:< x -1.)
+		   (flo:= x (flo:/ x 2.))))
+	     (else
+	      (flo:= x 0.)))))
