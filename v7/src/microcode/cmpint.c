@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.86 1995/10/08 15:23:41 cph Exp $
+$Id: cmpint.c,v 1.87 1996/01/04 23:30:48 cph Exp $
 
-Copyright (c) 1989-95 Massachusetts Institute of Technology
+Copyright (c) 1989-96 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -3628,6 +3628,10 @@ DEFUN (compiler_initialize, (fasl_p), long fasl_p)
        `setjmp' and restores it on `longjmp', so we must initialize
        the register before `setjmp' is called.  */
     interface_initialize ();
+#endif
+#ifdef _OS2
+    /* Same as for Sony.  */
+    i386_interface_initialize ();
 #endif
   }
   return;
