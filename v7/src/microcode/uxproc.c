@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.24 2000/01/18 05:10:07 cph Exp $
+$Id: uxproc.c,v 1.25 2000/02/01 01:47:25 cph Exp $
 
 Copyright (c) 1990-2000 Massachusetts Institute of Technology
 
@@ -27,10 +27,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #ifndef HAVE_DUP2
 #include "error: can't hack subprocess I/O without dup2() or equivalent"
-#endif
-
-#if defined(__osf__) || defined(__bsdi__)
-#define USE_TIOCSCTTY
 #endif
 
 extern char ** environ;
@@ -347,7 +343,7 @@ DEFUN (OS_make_subprocess,
 		|| ((SLAVE_PTY_P (ctty_name)) && (! (SETUP_SLAVE_PTY (fd))))
 #endif
 		|| (! (isatty (fd)))
-#ifdef USE_TIOCSCTTY
+#ifdef TIOCSCTTY
 		|| ((UX_ioctl (fd, TIOCSCTTY, 0)) < 0)
 #endif
 		/* Tell the controlling terminal its process group. */
