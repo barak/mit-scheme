@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 1.0 1988/01/05 15:58:40 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules2.scm,v 4.1 1988/01/05 15:59:31 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX LAP Generation Rules: Predicates
-;;;  Matches MC68020 version 1.3
+;;;  Matches MC68020 version 4.2
 
 (declare (usual-integrations))
 
@@ -70,6 +70,13 @@ MIT in each case. |#
      (LAP (ROTL (S 8) ,source ,reference)
 	  ,(test-byte type reference)))))
 
+(define-rule predicate
+  (TYPE-TEST (OBJECT->TYPE (OFFSET (REGISTER (? register)) (? offset))) 
+	     (? type))
+  (set-standard-branches! 'EQLU)
+  (LAP ,(test-non-pointer (ucode-type unassigned) 0 
+			  (coerce->any register))))
+  
 (define-rule predicate
   (UNASSIGNED-TEST (REGISTER (? register)))
   (set-standard-branches! 'EQLU)
@@ -172,12 +179,10 @@ MIT in each case. |#
 
 (define-rule predicate
   (EQ-TEST (POST-INCREMENT (REGISTER 14) 1) (REGISTER (? register)))
-  (record-pop!)
   (eq-test/register*memory register (INST-EA (@R+ 14))))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (POST-INCREMENT (REGISTER 14) 1))
-  (record-pop!)
   (eq-test/register*memory register (INST-EA (@R+ 14))))
 
 (define-rule predicate

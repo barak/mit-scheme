@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 1.0 1988/01/05 15:58:25 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules1.scm,v 4.1 1988/01/05 15:59:05 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -33,7 +33,7 @@ promotional, or sales literature without prior written consent from
 MIT in each case. |#
 
 ;;;; VAX LAP Generation Rules: Data Transfers
-;;;  Matches MC68020 version 1.6
+;;;  Matches MC68020 version 4.2
 
 (declare (usual-integrations))
 
@@ -46,13 +46,8 @@ MIT in each case. |#
 ;;; happened after the assignment.
 
 (define-rule statement
-  (ASSIGN (REGISTER 10) (REGISTER 14))
-  (enable-frame-pointer-offset! 0)
-  (LAP))
-
-(define-rule statement
   (ASSIGN (REGISTER 14) (OFFSET-ADDRESS (REGISTER 14) (? n)))
-  (decrement-frame-pointer-offset! n (increment-rnl 14 n)))
+  (increment-rnl 14 n))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OFFSET-ADDRESS (REGISTER 14) (? n)))
@@ -65,8 +60,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (REGISTER 14) (REGISTER (? source)))
-  (disable-frame-pointer-offset!
-   (LAP (MOV L ,(coerce->any source) (R 14)))))
+  (LAP (MOV L ,(coerce->any source) (R 14))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
@@ -117,7 +111,6 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER 14) 1))
   (QUALIFIER (pseudo-register? target))
-  (record-pop!)
   (delete-dead-registers!)
   (LAP (MOV L
 	    (@R+ 14)
@@ -162,7 +155,6 @@ MIT in each case. |#
 (define-rule statement
   (ASSIGN (OFFSET (REGISTER (? a)) (? n))
 	  (POST-INCREMENT (REGISTER 14) 1))
-  (record-pop!)
   (LAP (MOV L
 	    (@R+ 14)
 	    ,(indirect-reference! a n))))
@@ -189,6 +181,11 @@ MIT in each case. |#
   (LAP ,(load-constant object (INST-EA (@R+ 12)))))
 
 (define-rule statement
+  (ASSIGN (POST-INCREMENT (REGISTER 12) 1)
+	  (CONS-POINTER (CONSTANT (? type)) (CONSTANT (? datum))))
+  (LAP ,(load-non-pointer type datum (INST-EA (@R+ 12)))))
+
+(define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (UNASSIGNED))
   (LAP ,(load-non-pointer (ucode-type unassigned) 0 (INST-EA (@R+ 12)))))
 
@@ -202,7 +199,7 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (POST-INCREMENT (REGISTER 12) 1) (ENTRY:PROCEDURE (? label)))
-  (LAP (MOVA B (@PCR ,(procedure-external-label (label->procedure label)))
+  (LAP (MOVA B (@PCR ,(rtl-procedure/external-label (label->object label)))
 	     (@R+ 12))
        (MOV B ,(immediate-type (ucode-type compiled-expression))
 	    (@RO B 12 -1))))
@@ -211,49 +208,28 @@ MIT in each case. |#
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (CONSTANT (? object)))
-  (record-push!
-   (LAP ,(push-constant object))))
+  (LAP ,(push-constant object)))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (UNASSIGNED))
-  (record-push!
-   (LAP ,(push-non-pointer (ucode-type unassigned) 0))))
+  (LAP ,(push-non-pointer (ucode-type unassigned) 0)))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (REGISTER (? r)))
-  (record-push!
-   (if (= r regnum:frame-pointer)
-       (LAP (PUSHA L ,(offset-reference regnum:stack-pointer
-					(frame-pointer-offset)))
-	    (MOV B ,(immediate-type (ucode-type stack-environment))
-		 (@RO B 14 3)))
-       (LAP (PUSHL ,(coerce->any r))))))
+  (LAP (PUSHL ,(coerce->any r))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
 	  (CONS-POINTER (CONSTANT (? type)) (REGISTER (? r))))
-  (record-push!
-   (LAP (PUSHL ,(coerce->any r))
-	(MOV B ,(immediate-type type) (@RO B 14 3)))))
+  (LAP (PUSHL ,(coerce->any r))
+       (MOV B ,(immediate-type type) (@RO B 14 3))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (OFFSET (REGISTER (? r)) (? n)))
-  (record-push!
-   (LAP (PUSHL ,(indirect-reference! r n)))))
-
-(define-rule statement
-  (ASSIGN (PRE-INCREMENT (REGISTER 14) -1)
-	  (OFFSET-ADDRESS (REGISTER 10) (? n)))
-  (record-push!
-   (LAP (PUSHA L ,(offset-reference regnum:stack-pointer
-				    (+ n (frame-pointer-offset))))
-	(MOV B ,(immediate-type (ucode-type stack-environment))
-	     (@RO B 14 3)))))
+  (LAP (PUSHL ,(indirect-reference! r n))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 14) -1) (ENTRY:CONTINUATION (? label)))
-  (record-continuation-frame-pointer-offset! label)
-  (record-push!
-   (LAP (PUSHA B (@PCR ,label))
-	(MOV B ,(immediate-type (ucode-type compiler-return-address))
-	     (@RO B 14 3)))))
+  (LAP (PUSHA B (@PCR ,label))
+       (MOV B ,(immediate-type (ucode-type compiler-return-address))
+	    (@RO B 14 3))))
