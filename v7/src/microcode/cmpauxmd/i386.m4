@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.11 1992/02/28 20:19:58 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.12 1992/03/05 20:29:13 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -99,19 +99,124 @@
 
 ####	Utility macros and definitions
 
-define(use_external,`')			# Declare desire to use an external
-define(external_reference,`_$1')	# The actual reference
+ifdef(`DOS',
+`',
+`	.file	"cmpaux-i386.s"')
+
+ifdef(`DOS',
+      `define(use_external_data,`	extrn $1')',
+      `define(use_external_data,`')')
+
+ifdef(`DOS',
+      `define(use_external_code,`	extrn _$1:near')',
+      `define(use_external_code,`')')
+
+ifdef(`DOS',
+      `define(external_data_reference,`$1')',
+      `define(external_data_reference,`_$1')')
+
+define(EDR,`external_data_reference($1)')
+
+ifdef(`DOS',
+      `define(external_code_reference,`_$1')',
+      `define(external_code_reference,`_$1')')
+
+ifdef(`DOS',
+      `define(define_code,`	public _$1')',
+      `define(define_code,`	.globl _$1')')
+
+ifdef(`DOS',
+      `define(define_data,`	public $1')',
+      `define(define_data,`	.globl _$1')')
 
 define(define_c_label,
-`.globl external_reference($1)
-external_reference($1):')
+`define_code($1)
+external_code_reference($1):')
 
-define(define_debugging_label,
-`.globl $1
-$1:')
+ifdef(`DOS',
+      `define(define_debugging_label,`	public $1:near
+$1:')',
+      `define(define_debugging_label,`	.globl $1
+$1:')')
 
-define(HEX, `0x$1')
-define(IMMEDIATE, `$$1')
+ifdef(`DOS',
+      `define(DECLARE_DATA_SEGMENT,`	.data')',
+      `define(DECLARE_DATA_SEGMENT,`	.data')')
+
+ifdef(`DOS',
+      `define(DECLARE_CODE_SEGMENT,`	.code')',
+      `define(DECLARE_CODE_SEGMENT,`	.text')')
+
+ifdef(`DOS',
+      `define(declare_alignment,`')',
+      `define(declare_alignment,`	.align $1')')
+
+ifdef(`DOS',
+      `define(allocate_longword,`$1 dd 0')',
+      `define(allocate_longword,`	.comm _$1,4')')
+
+ifdef(`DOS',
+      `define(allocate_space,`$1 db $2 dup 0')',
+      `define(allocate_space,`_$1:
+	.space $2')')
+
+ifdef(`DOS',
+      `define(HEX, `0$1H')',
+      `define(HEX, `0x$1')')
+
+ifdef(`DOS',
+      `define(OP,`$1')',
+      `define(OP,`$1$2')')
+
+ifdef(`DOS',
+      `define(TW,`$2,$1')',
+      `define(TW,`$1,$2')')
+
+ifdef(`DOS',
+      `define(IMM, `$1')',
+      `define(IMM, `$$1')')
+
+ifdef(`DOS',
+      `define(REG,`$1')',
+      `define(REG,`%$1')')
+
+ifdef(`DOS',
+      `define(ST,`st($1)')',
+      `define(ST,`%st ($1)')')
+
+ifdef(`DOS',
+      `define(IND,`dword ptr [$1]')',
+      `define(IND,`($1)')')
+
+ifdef(`DOS',
+      `define(BOF,`byte ptr $1[$2]')',
+      `define(BOF,`$1($2)')')
+
+ifdef(`DOS',
+      `define(WOF,`word ptr $1[$2]')',
+      `define(WOF,`$1($2)')')
+
+ifdef(`DOS',
+      `define(LOF,`dword ptr $1[$2]')',
+      `define(LOF,`$1($2)')')
+
+ifdef(`DOS',
+      `define(DOF,`qword ptr $1[$2]')',
+      `define(DOF,`$1($2)')')
+
+ifdef(`DOS',
+      `define(IDX,`dword ptr [$1] [$2]')',
+      `define(IDX,`($1,$2)')')
+
+ifdef(`DOS',
+      `define(SDX,`dword ptr $1[$2*$3]')',
+      `define(SDX,`$1(,$2,$3)')')
+
+ifdef(`DOS',
+      `define(IJMP,`[$1]')',
+      `define(IJMP,`*$1')')
+
+ifdef(`DOS',`define(TYPE_CODE_LENGTH,6)')
 
 define(TC_LENGTH, ifdef(`TYPE_CODE_LENGTH', TYPE_CODE_LENGTH, 8))
 define(DATUM_LENGTH, eval(32 - TC_LENGTH))
@@ -146,112 +251,119 @@ define(REGBLOCK_SIZE_IN_OBJECTS,
 	    +(COMPILER_REGBLOCK_N_HOOKS*COMPILER_HOOK_SIZE)
 	    +(COMPILER_REGBLOCK_N_TEMPS*COMPILER_TEMP_SIZE)))
 
-define(regs,%esi)
-define(rfree,%edi)
-define(rmask,%ebp)
+define(regs,REG(esi))
+define(rfree,REG(edi))
+define(rmask,REG(ebp))
 
-use_external(Free)
-use_external(Registers)
-use_external(Ext_Stack_Pointer)
+ifdef(`DOS',
+`.386
+.model small')
 
-	.file	"cmpaux-i386.s"
+DECLARE_DATA_SEGMENT()
+declare_alignment(2)
 
-.data
-	.align 2
+use_external_data(Free)
+use_external_data(Registers)
+use_external_data(Ext_Stack_Pointer)
+use_external_data(utility_table)
 
-.globl C_Stack_Pointer
-.comm C_Stack_Pointer,4
+define_data(C_Stack_Pointer)
+allocate_longword(C_Stack_Pointer)
 
-.globl C_Frame_Pointer
-.comm C_Frame_Pointer,4
+define_data(C_Frame_Pointer)
+allocate_longword(C_Frame_Pointer)
 
-define_debugging_label(Regstart)
-	.space	128
-define_c_label(Registers)
-	.space	eval(REGBLOCK_SIZE_IN_OBJECTS*4)
+define_data(Regstart)
+allocate_space(Regstart,128)
+define_data(Registers)
+allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 
-.text
-	.align 2
+DECLARE_CODE_SEGMENT()
+declare_alignment(2)
 
 define_c_label(interface_initialize)
-	pushl	%ebp
-	movl	%esp,%ebp
-	subl	IMMEDIATE(4),%esp
-	fstcw	-2(%ebp)
+	OP(push,l)	REG(ebp)
+	OP(mov,l)	TW(REG(esp),REG(ebp))
+	OP(sub,l)	TW(IMM(4),REG(esp))
+	fstcw	WOF(-2,REG(ebp))
 	# Set rounding mode to round-to-even, precision control to double,
 	# mask the inexact result exception, and unmask the other exceptions.
-	andl	IMMEDIATE(0x0000f0e0),-4(%ebp)
-	orl	IMMEDIATE(0x00000220),-4(%ebp)
-	fldcw	-2(%ebp)
-	movw	%cs,%ax					# Obtain code segment
+	OP(and,l)	TW(IMM(HEX(0000f0e0)),LOF(-4,REG(ebp)))
+	OP(or,l)	TW(IMM(HEX(00000220)),LOF(-4,REG(ebp)))
+	fldcw	LOF(-2,REG(ebp))
+	OP(mov,w)	TW(REG(cs),REG(ax))		# Obtain code segment
 	leave
 	ret
 
 define_c_label(C_to_interface)
-	pushl	%ebp					# Link according
-	movl	%esp,%ebp				#  to C's conventions
-	pushl	%edi					# Save callee-saves
-	pushl	%esi					#  registers
-	pushl	%ebx
-	movl	8(%ebp),%edx				# Entry point
-	movl	%ebp,C_Frame_Pointer			# Preserve frame ptr
-	movl	%esp,C_Stack_Pointer			# Preserve stack ptr
+	OP(push,l)	REG(ebp)			# Link according
+	OP(mov,l)	TW(REG(esp),REG(ebp))		#  to C's conventions
+	OP(push,l)	REG(edi)			# Save callee-saves
+	OP(push,l)	REG(esi)			#  registers
+	OP(push,l)	REG(ebx)
+	OP(mov,l)	TW(LOF(8,REG(ebp)),REG(edx))	# Entry point
+							# Preserve frame ptr
+	OP(mov,l)	TW(REG(ebp),EDR(C_Frame_Pointer))
+							# Preserve stack ptr
+	OP(mov,l)	TW(REG(esp),EDR(C_Stack_Pointer))
 							# Register block = %esi
-	movl	IMMEDIATE(external_reference(Registers)),regs
-	jmp	external_reference(interface_to_scheme)
+	OP(mov,l)	TW(IMM(EDR(Registers)),regs)
+	jmp	external_code_reference(interface_to_scheme)
 
 define_c_label(asm_trampoline_to_interface)
 define_debugging_label(trampoline_to_interface)
-	popl	%ecx					# trampoline storage
+	OP(pop,l)	REG(ecx)			# trampoline storage
 	jmp	scheme_to_interface
 
 define_c_label(asm_scheme_to_interface_call)
 define_debugging_label(scheme_to_interface_call)
-	popl	%ecx					# arg1 = ret. add
-	addl	IMMEDIATE(4),%ecx			# Skip format info
+	OP(pop,l)	REG(ecx)			# arg1 = ret. add
+	OP(add,l)	TW(IMM(4),REG(ecx))		# Skip format info
 #	jmp	scheme_to_interface
 
 define_c_label(asm_scheme_to_interface)
 define_debugging_label(scheme_to_interface)
-	movl	%esp,external_reference(Ext_Stack_Pointer)
-	movl	rfree,external_reference(Free)
-	movl	C_Stack_Pointer,%esp
-	movl	C_Frame_Pointer,%ebp
-	pushl	REGBLOCK_UTILITY_ARG4()(regs)		# Utility args
-	pushl	%ebx
-	pushl	%edx
-	pushl	%ecx
-	xorl	%ecx,%ecx
-	movb	%eax,%ecx
-	movl	external_reference(utility_table)(,%ecx,4),%eax
-	call	*%eax
+	OP(mov,l)	TW(REG(esp),EDR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(rfree,EDR(Free))
+	OP(mov,l)	TW(EDR(C_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EDR(C_Frame_Pointer),REG(ebp))
+	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
+	OP(push,l)	REG(ebx)
+	OP(push,l)	REG(edx)
+	OP(push,l)	REG(ecx)
+	OP(xor,l)	TW(REG(ecx),REG(ecx))
+	OP(mov,b)	TW(REG(al),REG(cl))
+	OP(mov,l)	TW(SDX(EDR(utility_table),REG(ecx),4),REG(eax))
+	call	IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-	addl	IMMEDIATE(16),%esp			# Pop utility args
-	jmp	*%eax					# Invoke handler
+	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
+	jmp	IJMP(REG(eax))				# Invoke handler
 
 define_c_label(interface_to_scheme)
-	movl	external_reference(Free),rfree		# Free pointer = %edi
-	movl	REGBLOCK_VAL()(regs),%eax		# Value/dynamic link
-	movl	IMMEDIATE(ADDRESS_MASK),rmask 		# = %ebp
-	movl	external_reference(Ext_Stack_Pointer),%esp
-	movl	%eax,%ecx				# Preserve if used
-	andl	rmask,%ecx				# Restore potential
-	movl	%ecx,REGBLOCK_DLINK()(regs)		#  dynamic link
-	jmp	*%edx
+	OP(mov,l)	TW(EDR(Free),rfree)		# Free pointer = %edi
+							# Value/dynamic link
+	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax))
+	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
+	OP(mov,l)	TW(EDR(Ext_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
+	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential
+							#  dynamic link
+	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))
+	jmp	IJMP(REG(edx))
 
 define_c_label(interface_to_C)
-	ffree	%st (0)					# Free floating "regs"
-	ffree	%st (1)
-	ffree	%st (2)
-	ffree	%st (3)
-	ffree	%st (4)
-	ffree	%st (5)
-	ffree	%st (6)
-	movl	%edx,%eax				# Set up result
-	popl	%ebx					# Restore callee-saves
-	popl	%esi					#  registers
-	popl	%edi
+	ffree	ST(0)					# Free floating "regs"
+	ffree	ST(1)
+	ffree	ST(2)
+	ffree	ST(3)
+	ffree	ST(4)
+	ffree	ST(5)
+	ffree	ST(6)
+	OP(mov,l)	TW(REG(edx),REG(eax))		# Set up result
+	OP(pop,l)	REG(ebx)			# Restore callee-saves
+	OP(pop,l)	REG(esi)			#  registers
+	OP(pop,l)	REG(edi)
 	leave
 	ret
 
@@ -262,12 +374,12 @@ define_c_label(interface_to_C)
 
 define(define_jump_indirection,
 `define_c_label(asm_$1)
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 	
 define(define_call_indirection,
 `define_c_label(asm_$1)
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface_call')
 	
 define_call_indirection(interrupt_procedure,1a)
@@ -275,8 +387,8 @@ define_call_indirection(interrupt_continuation,1b)
 define_jump_indirection(interrupt_closure,18)
 
 define_c_label(asm_interrupt_dlink)
-	movl	REGBLOCK_DLINK()(regs),%edx
-	movb	IMMEDIATE(HEX(19)),%al
+	OP(mov,l)	TW(LOF(REGBLOCK_DLINK(),regs),REG(edx))
+	OP(mov,b)	TW(IMM(HEX(19)),REG(al))
 	jmp	scheme_to_interface_call
 
 ###
@@ -288,14 +400,16 @@ define_c_label(asm_interrupt_dlink)
 ###	apply_primitive
 ###
 
-	.align	2
+declare_alignment(2)
 define_c_label(asm_short_primitive_apply)
-	popl	%edx					# offset pointer
-	movl	(%edx),%ecx				# offset
-	movl	(%edx,%ecx),%ecx			# Primitive object
-	jmp	external_reference(asm_primitive_apply)	# Merge
+	OP(pop,l)	REG(edx)			# offset pointer
+	OP(mov,l)	TW(IND(REG(edx)),REG(ecx))	# offset
+							# Primitive object
+	OP(mov,l)	TW(IDX(REG(edx),REG(ecx)),REG(ecx))
+							# Merge
+	jmp	external_code_reference(asm_primitive_apply)
 
-	.align	2
+declare_alignment(2)
 define_jump_indirection(primitive_apply,12)
 
 define_jump_indirection(primitive_lexpr_apply,13)
@@ -312,43 +426,43 @@ define_call_indirection(primitive_error,36)
 # 
 # define(define_apply_fixed_size,
 # `define_c_label(asm_shortcircuit_apply_size_$1)
-# 	movl	IMMEDIATE($1),%edx
-# 	movb	IMMEDIATE(HEX(14)),%eax
+# 	OP(mov,l)	TW(IMM($1),REG(edx))
+# 	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 # 	jmp	scheme_to_interface')
 
-	.align	2
+declare_alignment(2)
 define_c_label(asm_shortcircuit_apply)
-	movl	%ecx,%eax				# Copy for type code
-	movl	%ecx,%ebx				# Copy for address
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax		# Select type code
-	andl	rmask,%ebx				# Select datum
-	cmpb	IMMEDIATE(TC_COMPILED_ENTRY),%al
+	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
+	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
+	OP(and,l)	TW(rmask,REG(ebx))		# Select datum
+	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_shortcircuit_apply_generic
-	movsbl	-4(%ebx),%eax				# Extract frame size
-	cmpl	%eax,%edx				# Compare to nargs+1
+	OP(movsb,l)	TW(BOF(-4,REG(ebx)),REG(eax))	# Extract frame size
+	OP(cmp,l)	TW(REG(eax),REG(edx))		# Compare to nargs+1
 	jne	asm_shortcircuit_apply_generic
-	jmp	*%ebx					# Invoke
+	jmp	IJMP(REG(ebx))				# Invoke
 
 define_debugging_label(asm_shortcircuit_apply_generic)
-	movl	IMMEDIATE(HEX(14)),%eax
+	OP(mov,l)	TW(IMM(HEX(14)),REG(eax))
 	jmp	scheme_to_interface	
 
 define(define_apply_fixed_size,
-`	.align	2
+`declare_alignment(2)
 define_c_label(asm_shortcircuit_apply_size_$1)
-	movl	%ecx,%eax				# Copy for type code
-	movl	%ecx,%ebx				# Copy for address
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax		# Select type code
-	andl	rmask,%ebx				# Select datum
-	cmpb	IMMEDIATE(TC_COMPILED_ENTRY),%al
+	OP(mov,l)	TW(REG(ecx),REG(eax))		# Copy for type code
+	OP(mov,l)	TW(REG(ecx),REG(ebx))		# Copy for address
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))	# Select type code
+	OP(and,l)	TW(rmask,REG(ebx))		# Select datum
+	OP(cmp,b)	TW(IMM(TC_COMPILED_ENTRY),REG(al))
 	jne	asm_shortcircuit_apply_generic_$1
-	cmpb	IMMEDIATE($1),-4(%ebx)			# Compare frame size
+	OP(cmp,b)	TW(IMM($1),BOF(-4,REG(ebx)))	# Compare frame size
 	jne	asm_shortcircuit_apply_generic_$1	# to nargs+1
-	jmp	*%ebx
+	jmp	IJMP(REG(ebx))
 
 asm_shortcircuit_apply_generic_$1:
-	movl	IMMEDIATE($1),%edx
-	movb	IMMEDIATE(HEX(14)),%eax
+	OP(mov,l)	TW(IMM($1),REG(edx))
+	OP(mov,b)	TW(IMM(HEX(14)),REG(al))
 	jmp	scheme_to_interface')
 
 define_apply_fixed_size(1)
@@ -366,278 +480,278 @@ define_apply_fixed_size(8)
 ###	numeric types are much faster than the rare ones
 ###	(bignums, ratnums, recnums)
 
-	.align	2
+declare_alignment(2)
 asm_generic_flonum_result:
-	movl	IMMEDIATE(eval(TAG(TC_MANIFEST_NM_VECTOR,2))),(rfree)
-	movl	rfree,%eax
-	fstpl	4(rfree)				# fstpd
-	orl	IMMEDIATE(eval(TAG(TC_FLONUM,0))),%eax
-	andl	rmask,(%esp)
-	addl	IMMEDIATE(12),rfree
-	movl	%eax,REGBLOCK_VAL()(regs)
+	OP(mov,l)	TW(IMM(eval(TAG(TC_MANIFEST_NM_VECTOR,2))),IND(rfree))
+	OP(mov,l)	TW(rfree,REG(eax))
+	OP(fstp,l)	DOF(4,rfree)			# fstpd
+	OP(or,l)	TW(IMM(eval(TAG(TC_FLONUM,0))),REG(eax))
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	OP(add,l)	TW(IMM(12),rfre)e
+	OP(mov,l)	TW(REG(eax),LOF(REGBLOCK_VAL(),regs))
 	ret
 
-	.align	2
+declare_alignment(2)
 asm_generic_fixnum_result:
-	andl	rmask,(%esp)
-	orb	IMMEDIATE(TC_FIXNUM),%al
-	rorl	IMMEDIATE(TC_LENGTH),%eax
-	movl	%eax,REGBLOCK_VAL()(regs)
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	OP(or,b)	TW(IMM(TC_FIXNUM),REG(al))
+	OP(ror,l)	TW(IMM(TC_LENGTH),REG(eax))
+	OP(mov,l)	TW(REG(eax),LOF(REGBLOCK_VAL(),regs))
 	ret
 
-	.align	2
+declare_alignment(2)
 asm_generic_return_sharp_t:
-	andl	rmask,(%esp)
-	movl	IMMEDIATE(eval(TAG(TC_TRUE,0))),REGBLOCK_VAL()(regs)
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	OP(mov,l)	TW(IMM(eval(TAG(TC_TRUE,0))),LOF(REGBLOCK_VAL(),regs))
 	ret
 
-	.align	2
+declare_alignment(2)
 asm_generic_return_sharp_f:
-	andl	rmask,(%esp)
-	movl	IMMEDIATE(eval(TAG(TC_FALSE,0))),REGBLOCK_VAL()(regs)
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	OP(mov,l)	TW(IMM(eval(TAG(TC_FALSE,0))),LOF(REGBLOCK_VAL(),regs))
 	ret
 
 define(define_unary_operation,
-`	.align	2
+`declare_alignment(2)
 define_c_label(asm_generic_$1)
-	popl	%edx
-	movl	%edx,%eax
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax
-	cmpb	IMMEDIATE(TC_FIXNUM),%al
+	OP(pop,l)	REG(edx)
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_$1_fix
-	cmpb	IMMEDIATE(TC_FLONUM),%al
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	andl	rmask,%edx
+	OP(and,l)	TW(rmask,REG(edx))
 	fld1
-	$4	4(%edx)
+	OP($4,l)	DOF(4,REG(edx))
 	jmp	asm_generic_flonum_result
 
 asm_generic_$1_fix:
-	movl	%edx,%eax
-	shll	IMMEDIATE(TC_LENGTH),%eax
-	$3	IMMEDIATE(eval(2 ** TC_LENGTH)),%eax
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	OP($3,l)	TW(IMM(eval(2 ** TC_LENGTH)),REG(eax))
 	jno	asm_generic_fixnum_result
 
 asm_generic_$1_fail:
-	pushl	%edx
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(push,l)	REG(edx)
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 
 define(define_unary_predicate,
-`	.align	2
+`declare_alignment(2)
 define_c_label(asm_generic_$1)
-	popl	%edx
-	movl	%edx,%eax
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax
-	cmpb	IMMEDIATE(TC_FIXNUM),%al
+	OP(pop,l)	REG(edx)
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_$1_fix
-	cmpb	IMMEDIATE(TC_FLONUM),%al
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	andl	rmask,%edx
-	fldl	4(%edx)
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(fld,l)	DOF(4,REG(edx))
 	ftst
-	fstsw	%ax
-	fstp	%st (0)
+	fstsw	REG(ax)
+	fstp	ST(0)
 	sahf
 	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
-	movl	%edx,%eax
-	shll	IMMEDIATE(TC_LENGTH),%eax
-	cmpl	IMMEDIATE(0),%eax
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	OP(cmp,l)	TW(IMM(0),REG(eax))
 	$3	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fail:
-	pushl	%edx
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(push,l)	REG(edx)
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
-`	.align	2
+`declare_alignment(2)
 define_c_label(asm_generic_$1)
-	popl	%edx
-	popl	%ebx
-	movl	%edx,%eax
-	movl	%ebx,%ecx
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax
-	shrl	IMMEDIATE(DATUM_LENGTH),%ecx
-	cmpb	IMMEDIATE(TC_FIXNUM),%al
+	OP(pop,l)	REG(edx)
+	OP(pop,l)	REG(ebx)
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_$1_fix
-	cmpb	IMMEDIATE(TC_FLONUM),%al
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	IMM(TC_FLONUM),REG(cl)
 	je	asm_generic_$1_flo_flo
-	cmpb	IMMEDIATE(TC_FIXNUM),%cl
+	OP(cmp,b)	IMM(TC_FIXNUM),REG(cl)
 	jne	asm_generic_$1_fail
-	shll	IMMEDIATE(TC_LENGTH),%ebx
-	andl	rmask,%edx
-	sarl	IMMEDIATE(TC_LENGTH),%ebx
-	fldl	4(%edx)					# fldd
-	movl	%ebx,(rfree)
-	$5	(rfree)					# fisubl
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ebx))
+	OP(fld,l)	DOF(4,REG(edx))			# fldd
+	OP(mov,l)	TW(REG(ebx),IND(rfree))
+	OP($5,l)	IND(rfree)				# fisubl
 	jmp	asm_generic_flonum_result
 
 asm_generic_$1_fix:
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	je	asm_generic_$1_fix_flo
-	cmpb	IMMEDIATE(TC_FIXNUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
 	jne	asm_generic_$1_fail
-	movl	%edx,%eax
-	movl	%ebx,%ecx
-	shll	IMMEDIATE(TC_LENGTH),%eax
-	shll	IMMEDIATE(TC_LENGTH),%ecx
-	$3	%ecx,%eax				# subl
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	OP($3,l)	TW(REG(ecx),REG(eax))		# subl
 	jno	asm_generic_fixnum_result
 
 asm_generic_$1_fail:
-	pushl	%ebx
-	pushl	%edx
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(push,l)	REG(ebx)
+	OP(push,l)	REG(edx)
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface
 
 asm_generic_$1_flo_flo:
-	andl	rmask,%edx
-	andl	rmask,%ebx
-	fldl	4(%edx)					# fldd
-	$6	4(%ebx)					# fsubl
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(and,l)	TW(rmask,REG(ebx))
+	OP(fld,l)	DOF(4,REG(edx))			# fldd
+	OP($6,l)	DOF(4,REG(ebx))			# fsubl
 	jmp	asm_generic_flonum_result	
 
 asm_generic_$1_fix_flo:
-	shll	IMMEDIATE(TC_LENGTH),%edx
-	andl	rmask,%ebx
-	sarl	IMMEDIATE(TC_LENGTH),%edx
-	fldl	4(%ebx)					# fldd
-	movl	%edx,(rfree)
-	$4	(rfree)					# fisubrl
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
+	OP(and,l)	TW(rmask,REG(ebx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(edx))
+	OP(fld,l)	DOF(4,REG(ebx))			# fldd
+	OP(mov,l)	TW(REG(edx),IND(rfree))
+	OP($4,l)	IND(rfree)			# fisubrl
 	jmp	asm_generic_flonum_result')
 
-	.align	2
+declare_alignment(2)
 define_c_label(asm_generic_divide)
-	popl	%edx
-	popl	%ebx
-	movl	%edx,%eax
-	movl	%ebx,%ecx
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax
-	shrl	IMMEDIATE(DATUM_LENGTH),%ecx
-	cmpb	IMMEDIATE(TC_FIXNUM),%al
+	OP(pop,l)	REG(edx)
+	OP(pop,l)	REG(ebx)
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_divide_fix
-	cmpb	IMMEDIATE(TC_FLONUM),%al
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_divide_fail
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	je	asm_generic_divide_flo_flo
-	cmpb	IMMEDIATE(TC_FIXNUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
 	jne	asm_generic_divide_fail
-	movl	%ebx,%ecx
-	shll	IMMEDIATE(TC_LENGTH),%ecx
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
 	je	asm_generic_divide_fail
-	andl	rmask,%edx
-	sarl	IMMEDIATE(TC_LENGTH),%ecx
-	fldl	4(%edx)					# fldd
-	movl	%ecx,(rfree)
-	fidivl	(rfree)
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	OP(fld,l)	DOF(4,REG(edx))			# fldd
+	OP(mov,l)	TW(REG(ecx),IND(rfree))
+	OP(fidiv,l)	IND(rfree)
 	jmp	asm_generic_flonum_result
 
 asm_generic_divide_fix:
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	jne	asm_generic_divide_fail
-	movl	%edx,%ecx
-	shll	IMMEDIATE(TC_LENGTH),%ecx
+	OP(mov,l)	TW(REG(edx),REG(ecx))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
 	je	asm_generic_divide_fail
-	andl	rmask,%ebx
-	sarl	IMMEDIATE(TC_LENGTH),%ecx
-	fldl	4(%ebx)					# fldd
-	movl	%ecx,(rfree)
-	fidivrl	(rfree)
+	OP(and,l)	TW(rmask,REG(ebx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	OP(fld,l)	DOF(4,REG(ebx))			# fldd
+	OP(mov,l)	TW(REG(ecx),IND(rfree))
+	OP(fidivr,l)	IND(rfree)
 	jmp	asm_generic_flonum_result
 
 asm_generic_divide_flo_flo:
-	movl	%ebx,%ecx
-	andl	rmask,%ecx
-	fldl	4(%ecx)					# fldd
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(and,l)	TW(rmask,REG(ecx))
+	OP(fld,l)	DOF(4,REG(ecx))			# fldd
 	ftst
-	fstsw	%ax
+	fstsw	REG(ax)
 	sahf
 	je	asm_generic_divide_by_zero
-	andl	rmask,%edx
-	fdivrl	4(%edx)
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(fdivr,l)	DOF(4,REG(edx))
 	jmp	asm_generic_flonum_result	
 
 asm_generic_divide_by_zero:
-	fstp	%st (0)					# Pop second arg
+	fstp	ST(0)					# Pop second arg
 
 asm_generic_divide_fail:
-	pushl	%ebx
-	pushl	%edx
-	movb	IMMEDIATE(HEX(23)),%al
+	OP(push,l)	REG(ebx)
+	OP(push,l)	REG(edx)
+	OP(mov,b)	TW(IMM(HEX(23)),REG(al))
 	jmp	scheme_to_interface
 
 define(define_binary_predicate,
-`	.align	2
+`declare_alignment(2)
 define_c_label(asm_generic_$1)
-	popl	%edx
-	popl	%ebx
-	movl	%edx,%eax
-	movl	%ebx,%ecx
-	shrl	IMMEDIATE(DATUM_LENGTH),%eax
-	shrl	IMMEDIATE(DATUM_LENGTH),%ecx
-	cmpb	IMMEDIATE(TC_FIXNUM),%al
+	OP(pop,l)	REG(edx)
+	OP(pop,l)	REG(ebx)
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
+	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_$1_fix
-	cmpb	IMMEDIATE(TC_FLONUM),%al
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	je	asm_generic_$1_flo_flo
-	cmpb	IMMEDIATE(TC_FIXNUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
 	jne	asm_generic_$1_fail
-	shll	IMMEDIATE(TC_LENGTH),%ebx
-	andl	rmask,%edx
-	sarl	IMMEDIATE(TC_LENGTH),%ebx
-	fldl	4(%edx)					# fldd
-	movl	%ebx,(rfree)
-	ficompl	(rfree)
-	fstsw	%ax
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ebx))
+	OP(fld,l)	DOF(4,REG(edx))			# fldd
+	OP(mov,l)	TW(REG(ebx),IND(rfree))
+	OP(ficomp,l)	IND(rfree)
+	fstsw	REG(ax)
 	sahf
 	$5	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
-	cmpb	IMMEDIATE(TC_FLONUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
 	je	asm_generic_$1_fix_flo
-	cmpb	IMMEDIATE(TC_FIXNUM),%cl
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
 	jne	asm_generic_$1_fail
-	shll	IMMEDIATE(TC_LENGTH),%edx
-	shll	IMMEDIATE(TC_LENGTH),%ebx
-	cmpl	%ebx,%edx
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
+	OP(cmp,l)	TW(REG(ebx),REG(edx))
 	$3	asm_generic_return_sharp_t	
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_flo_flo:
-	andl	rmask,%edx
-	andl	rmask,%ebx
-	fldl	4(%edx)					# fldd
-	fcompl	4(%ebx)
-	fstsw	%ax
+	OP(and,l)	TW(rmask,REG(edx))
+	OP(and,l)	TW(rmask,REG(ebx))
+	OP(fld,l)	DOF(4,REG(edx))			# fldd
+	OP(fcomp,l)	DOF(4,REG(ebx))
+	fstsw	REG(ax)
 	sahf
 	$6	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix_flo:
-	shll	IMMEDIATE(TC_LENGTH),%edx
-	andl	rmask,%ebx
-	sarl	IMMEDIATE(TC_LENGTH),%edx
-	movl	%edx,(rfree)
-	fildl	(rfree)
-	fcompl	4(%ebx)
-	fstsw	%ax
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
+	OP(and,l)	TW(rmask,REG(ebx))
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(edx))
+	OP(mov,l)	TW(REG(edx),IND(rfree))
+	OP(fild,l)	IND(rfree)
+	OP(fcomp,l)	DOF(4,REG(ebx))
+	fstsw	REG(ax)
 	sahf
 	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fail:
-	pushl	%ebx
-	pushl	%edx
-	movb	IMMEDIATE(HEX($2)),%al
+	OP(push,l)	REG(ebx)
+	OP(push,l)	REG(edx)
+	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 
 # define_jump_indirection(generic_decrement,22)
@@ -656,8 +770,8 @@ define_jump_indirection(generic_quotient,37)
 define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)
 
-define_unary_operation(decrement,22,subl,fsubrl)
-define_unary_operation(increment,26,addl,faddl)
+define_unary_operation(decrement,22,sub,fsubr)
+define_unary_operation(increment,26,add,fadd)
 
 define_unary_predicate(negative,2a,jl,jb)
 define_unary_predicate(positive,2c,jg,ja)
@@ -665,11 +779,11 @@ define_unary_predicate(zero,2d,je,je)
 
 # define_binary_operation(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
 # define_binary_operation(  $1,   $2,     $3,     $4,     $5,     $6)
-define_binary_operation(add,2b,addl,fiaddl,fiaddl,faddl)
-define_binary_operation(subtract,28,subl,fisubrl,fisubl,fsubl)
-define_binary_operation(multiply,29,imull,fimull,fimull,fmull)
+define_binary_operation(add,2b,add,fiadd,fiadd,fadd)
+define_binary_operation(subtract,28,sub,fisubr,fisub,fsub)
+define_binary_operation(multiply,29,imul,fimul,fimul,fmul)
 # Divide needs to check for 0, so we can't really use the following
-# define_binary_operation(divide,23,NONE,fidivrl,fidivl,fdivl)
+# define_binary_operation(divide,23,NONE,fidivr,fidiv,fdiv)
 
 # define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
 define_binary_predicate(equal,24,je,je,je,je)
