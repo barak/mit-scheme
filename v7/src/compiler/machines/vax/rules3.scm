@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.5 1988/03/21 21:45:31 bal Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/vax/rules3.scm,v 4.6 1988/03/25 20:36:03 bal Exp $
 
 Copyright (c) 1987 Massachusetts Institute of Technology
 
@@ -191,7 +191,7 @@ MIT in each case. |#
     (let ((temp-ref (register-reference temp)))
       (LAP (MOVA L ,(indirect-reference! base offset) ,temp-ref)
 	   (CMP L ,temp-ref (R 10))
-	   (B B GEQU (@PCR ,label))
+	   (B B LSSU (@PCR ,label))
 	   (MOV L (R 10) ,temp-ref)
 	   (LABEL ,label)
 	   ,@(generate/move-frame-up* frame-size temp)))))
