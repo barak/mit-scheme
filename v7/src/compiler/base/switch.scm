@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.18 1992/06/12 01:43:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/switch.scm,v 4.19 1992/07/29 19:56:52 cph Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -60,6 +60,7 @@ MIT in each case. |#
 (define compiler:intersperse-rtl-in-lap? true)
 (define compiler:generate-range-checks? false)
 (define compiler:generate-type-checks? false)
+(define compiler:generate-stack-checks? false)
 (define compiler:open-code-flonum-checks? false)
 (define compiler:use-multiclosures? true)
 (define compiler:coalescing-constant-warnings? true)

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.31 1992/02/07 05:58:22 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/spectrum/rules3.scm,v 4.32 1992/07/29 19:56:10 cph Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.30 1991/05/07 13:45:31 jinx Exp $
 
-Copyright (c) 1988-1992 Massachusetts Institute of Technology
+Copyright (c) 1988-92 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -431,7 +431,13 @@ MIT in each case. |#
 
 (define (interrupt-check gc-label)
   (LAP (COMB (>=) ,regnum:free-pointer ,regnum:memtop-pointer (@PCR ,gc-label))
-       (LDW () ,reg:memtop ,regnum:memtop-pointer)))
+       (LDW () ,reg:memtop ,regnum:memtop-pointer)
+       ,@(if compiler:generate-stack-checks?
+	     (LAP (LDW () ,reg:stack-guard ,regnum:addil-result)
+		  (COMB (<=) ,regnum:stack-pointer ,regnum:addil-result
+			(@PCR ,gc-label))
+		  (NOP ()))
+	     (LAP))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
