@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.28 2003/09/24 04:19:01 cph Exp $
+$Id: xml-struct.scm,v 1.29 2003/09/24 04:55:56 cph Exp $
 
 Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
@@ -59,8 +59,11 @@ USA.
   (error:wrong-type-argument object "an XML name" caller))
 
 (define (make-xml-namespace-uri uri)
-  (if (namespace-uri-string? uri)
-      (string->symbol uri)
+  (if (string? uri)
+      (begin
+	(if (not (namespace-uri-string? uri))
+	    (error:not-xml-namespace-uri uri 'MAKE-XML-NAMESPACE-URI))
+	(string->symbol uri))
       (begin
 	(if uri (guarantee-xml-namespace-uri uri 'MAKE-XML-NAMESPACE-URI))
 	uri)))
