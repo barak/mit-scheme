@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.11 1999/02/23 06:13:14 cph Exp $
+$Id: prntio.c,v 1.12 2000/04/19 03:21:09 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -44,6 +44,28 @@ DEFINE_PRIMITIVE ("CHANNEL-DESCRIPTOR", Prim_channel_descriptor, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (ulong_to_integer (arg_channel (1)));
+}
+
+DEFINE_PRIMITIVE ("WIN32-GUI-TRACE", Prim_win32_gui_trace, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    unsigned long old_level = win32_trace_level;
+    win32_trace_level = (arg_ulong_integer (1));
+    if (win32_trace_file != 0)
+      {
+	fflush (win32_trace_file);
+	fclose (win32_trace_file);
+	win32_trace_file = 0;
+      }
+    if (win32_trace_level > 0)
+      win32_trace_file
+	= (fopen ((((ARG_REF (2)) == SHARP_F)
+		   ? WIN32_TRACE_FILENAME
+		   : (STRING_ARG (2))),
+		  "w"));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("NT:MSGWAITFORMULTIPLEOBJECTS", Prim_nt_msgwaitformultipleobjects, 4, 4, 0)
@@ -109,25 +131,25 @@ static long
 wait_for_multiple_objects (unsigned long n_channels, Tchannel * channels,
 			   long console_index, int blockp)
 {
-#ifdef TRACE_SCREEN_MSGS
-  fprintf
-    (trace_file,
-     "wait_for_multiple_objects: n_channels=%d console_index=%d blockp=%d\n",
-     n_channels, console_index, blockp);
-  fflush (trace_file);
+  if (win32_trace_level > 1)
+    {
+      fprintf (win32_trace_file, "wait_for_multiple_objects: ");
+      fprintf (win32_trace_file, "n_channels=%d console_index=%d blockp=%d\n",
+	       n_channels, console_index, blockp);
+      fflush (win32_trace_file);
+    }
   {
     long result
       = (wait_for_multiple_objects_1
 	 (n_channels, channels, console_index, blockp));
-    fprintf (trace_file, "wait_for_multiple_objects: result=0x%x\n", result);
-    fflush (trace_file);
+    if (win32_trace_level > 1)
+      {
+	fprintf (win32_trace_file, "wait_for_multiple_objects: ");
+	fprintf (win32_trace_file, "result=0x%x\n", result);
+	fflush (win32_trace_file);
+      }
     return (result);
   }
-#else
-  return
-    (wait_for_multiple_objects_1
-     (n_channels, channels, console_index, blockp));
-#endif
 }
 
 static long

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.41 2000/01/13 16:27:52 cph Exp $
+$Id: ntscreen.c,v 1.42 2000/04/19 03:21:06 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -191,9 +191,7 @@ extern LRESULT FAR CALLBACK ScreenWndProc (HWND, UINT, WPARAM, LPARAM);
 static VOID RegisterScreen (SCREEN);
 static VOID UnregisterScreen (SCREEN);
 
-#ifdef TRACE_SCREEN_MSGS
 static const char * translate_message_code (UINT);
-#endif
 
 /* FILE GLOBAL VARIABLES */
 
@@ -207,9 +205,8 @@ static SCREEN_EVENT_LINK * free_events;
 static SCREEN_EVENT_LINK * event_queue_head;
 static SCREEN_EVENT_LINK * event_queue_tail;
 
-#ifdef TRACE_SCREEN_MSGS
-FILE * trace_file;
-#endif
+FILE * win32_trace_file;
+unsigned long win32_trace_level;
 
 static long
 screen_x_extra (SCREEN screen)
@@ -290,7 +287,8 @@ init_color (char *color_symbol, HWND hWnd, DWORD *color)
   char * envvar = getenv (color_symbol);
   if (envvar == NULL)
     return  FALSE;
-  /* Use GetNearestColor to ensure consistency with the background text color. */
+  /* Use GetNearestColor to ensure consistency with the background
+     text color. */
   hdc = GetDC (hWnd);
   *color = GetNearestColor (hdc, strtoul (envvar, NULL, 0));
   ReleaseDC (hWnd, hdc);
@@ -366,9 +364,8 @@ Screen_InitApplication (HANDLE hInstance)
    if (font_name)
      ScreenSetDefaultFont (font_name);
 
-#ifdef TRACE_SCREEN_MSGS
-   trace_file = (fopen (TRACE_SCREEN_FILENAME, "w"));
-#endif
+   win32_trace_file = 0;
+   win32_trace_level = 0;
 
 #ifdef WINDOWSLOSES
    init_MIT_Keyboard ();
@@ -512,19 +509,19 @@ ScreenWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
    SCREEN  screen = GETSCREEN (hWnd);
 
-#ifdef TRACE_SCREEN_MSGS
-   if (trace_file)
+   if (win32_trace_level > 0)
      {
        const char * name = (translate_message_code (uMsg));
-       fprintf (trace_file, "hWnd=0x%x, ", hWnd);
+       fprintf (win32_trace_file, "ScreenWndProc: ");
+       fprintf (win32_trace_file, "hWnd=0x%x, ", hWnd);
        if (name)
-	 fprintf (trace_file, "uMsg=%s, ", name);
+	 fprintf (win32_trace_file, "uMsg=%s, ", name);
        else
-	 fprintf (trace_file, "uMsg=0x%x, ", uMsg);
-       fprintf (trace_file, "wParam=0x%x, lParam=0x%x\n", wParam, lParam);
-       fflush (trace_file);
+	 fprintf (win32_trace_file, "uMsg=0x%x, ", uMsg);
+       fprintf (win32_trace_file, "wParam=0x%x, lParam=0x%x\n",
+		wParam, lParam);
+       fflush (win32_trace_file);
      }
-#endif
    switch (uMsg)
      {
      case WM_CREATE:
@@ -2024,13 +2021,15 @@ make_key_event (HWND handle, WPARAM wparam, LPARAM lparam, int ch)
   ((event -> event.key) . ch) = ch;
   ((event -> event.key) . control_key_state) = modifiers;
 
-#ifdef TRACE_SCREEN_MSGS
-  fprintf
-    (trace_file,
-     "make_key_event: handle=0x%x keycode=0x%x scancode=0x%x ch=0x%x modifiers=0x%x\n",
-     handle, wparam, (LP_SCAN_CODE (lparam)), ch, modifiers);
-  fflush (trace_file);
-#endif
+  if (win32_trace_level > 0)
+    {
+      fprintf (win32_trace_file, "make_key_event: ");
+      fprintf
+	(win32_trace_file,
+	 "handle=0x%x keycode=0x%x scancode=0x%x ch=0x%x modifiers=0x%x\n",
+	 handle, wparam, (LP_SCAN_CODE (lparam)), ch, modifiers);
+      fflush (win32_trace_file);
+    }
 }
 
 /* Process WM_KEYDOWN and WM_SYSKEYDOWN.  Return 1 to indicate that
@@ -3346,10 +3345,11 @@ int
 Screen_read_event (SCREEN_EVENT * event)
 {
   int result = (read_event (0, 0, 1, event));
-#ifdef TRACE_SCREEN_MSGS
-  fprintf (trace_file, "Screen_read_event: result=%d\n", result);
-  fflush (trace_file);
-#endif
+  if (win32_trace_level > 1)
+    {
+      fprintf (win32_trace_file, "Screen_read_event: result=%d\n", result);
+      fflush (win32_trace_file);
+    }
   return (result);
 }
 
@@ -3707,7 +3707,6 @@ ScreenSetBackgroundColour (SCREEN screen, DWORD colour)
   return  change_colour (screen, colour, &screen->rgbBGColour);
 }
 
-#ifdef TRACE_SCREEN_MSGS
 static const char *
 translate_message_code (UINT uMsg)
 {
@@ -3922,4 +3921,3 @@ translate_message_code (UINT uMsg)
     default: return (0);
     }
 }
-#endif

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.19 2000/01/10 04:44:25 cph Exp $
+$Id: ntscreen.h,v 1.20 2000/04/19 03:21:07 cph Exp $
 
 Copyright (c) 1993-2000 Massachusetts Institute of Technology
 
@@ -224,12 +224,10 @@ struct screen_write_char_s
 /* Do user-level timer interrupts by using WM_TIMER.  */
 #define USE_WM_TIMER
 
-/* Define this to generate an event trace.  */
-#ifdef TRACE_SCREEN_MSGS
-extern FILE * trace_file;
-#ifndef TRACE_SCREEN_FILENAME
-#define TRACE_SCREEN_FILENAME "nttrace.out"
-#endif
+extern FILE * win32_trace_file;
+extern unsigned long win32_trace_level;
+#ifndef WIN32_TRACE_FILENAME
+#define WIN32_TRACE_FILENAME "w32trace.out"
 #endif
 
 #ifdef __WATCOMC__
