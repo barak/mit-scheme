@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.4 1988/12/12 21:51:35 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/base/subprb.scm,v 4.5 1988/12/16 13:13:43 cph Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -63,12 +63,6 @@ known that the continuation need not be used.
   (rvalue false read-only true)
   (simple? 'UNKNOWN)
   (free-variables 'UNKNOWN))
-
-(set-type-object-description!
- subproblem
- (lambda (subproblem)
-   (descriptor-list subproblem
-		    prefix continuation rvalue simple? free-variables)))
 
 (define-integrable (subproblem-entry-node subproblem)
   (cfg-entry-node (subproblem-prefix subproblem)))
@@ -139,14 +133,6 @@ known that the continuation need not be used.
   context
   parent
   type)
-
-(set-type-object-description!
- virtual-continuation
- (lambda (continuation)
-   `((VIRTUAL-CONTINUATION/CONTEXT
-      ,(virtual-continuation/context continuation))
-     (VIRTUAL-CONTINUATION/PARENT ,(virtual-continuation/parent continuation))
-     (VIRTUAL-CONTINUATION/TYPE ,(virtual-continuation/type continuation)))))
 
 (define-integrable (virtual-continuation/make block type)
   ;; Used exclusively after FG generation.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.6 1988/08/29 23:19:44 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcseht.scm,v 4.7 1988/12/16 13:17:18 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -63,18 +63,6 @@ MIT in each case. |#
   (previous-value false)
   (first-value false))
 
-(set-type-object-description!
- element
- (lambda (element)
-   `((ELEMENT-EXPRESSION ,(element-expression element))
-     (ELEMENT-COST ,(element-cost element))
-     (ELEMENT-IN-MEMORY? ,(element-in-memory? element))
-     (ELEMENT-NEXT-HASH ,(element-next-hash element))
-     (ELEMENT-PREVIOUS-HASH ,(element-previous-hash element))
-     (ELEMENT-NEXT-VALUE ,(element-next-value element))
-     (ELEMENT-PREVIOUS-VALUE ,(element-previous-value element))
-     (ELEMENT-FIRST-VALUE ,(element-first-value element)))))
-
 (define (hash-table-lookup hash expression)
   (let loop ((element (hash-table-ref hash)))
     (and element
@@ -119,19 +107,6 @@ MIT in each case. |#
 		   (else
 		    (loop next (element-next-value next)))))))
     element))
-
-(define (rtl:expression-cost expression)
-  (case (rtl:expression-type expression)
-    ((REGISTER) 1)
-    ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
-    (else
-     (let loop ((parts (cdr expression)) (cost 2))
-       (if (null? parts)
-	   cost
-	   (loop (cdr parts)
-		 (if (pair? (car parts))
-		     (+ cost (rtl:expression-cost (car parts)))
-		     cost)))))))
 
 (define (hash-table-delete! hash element)
   (if element
@@ -165,7 +140,19 @@ MIT in each case. |#
 		     (bucket-loop (element-next-hash element)))
 	      (table-loop (1+ i))))))
   unspecific)
-
+
+(define (rtl:expression-cost expression)
+  (case (rtl:expression-type expression)
+    ((REGISTER) 1)
+    ((CONSTANT) (rtl:constant-cost (rtl:constant-value expression)))
+    (else
+     (let loop ((parts (cdr expression)) (cost 2))
+       (if (null? parts)
+	   cost
+	   (loop (cdr parts)
+		 (if (pair? (car parts))
+		     (+ cost (rtl:expression-cost (car parts)))
+		     cost)))))))
 (define (hash-table-copy table)
   ;; During this procedure, the `element-cost' slots of `table' are
   ;; reused as "broken hearts".

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.3 1988/08/11 20:11:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/rtlopt/rcserq.scm,v 4.4 1988/12/16 13:18:45 cph Rel $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -42,13 +42,6 @@ MIT in each case. |#
 		   (print-procedure (standard-unparser "QUANTITY" false)))  (number false read-only true)
   (first-register false)
   (last-register false))
-
-(set-type-object-description!
- quantity
- (lambda (quantity)
-   `((QUANTITY-NUMBER ,(quantity-number quantity))
-     (QUANTITY-FIRST-REGISTER ,(quantity-first-register quantity))
-     (QUANTITY-LAST-REGISTER ,(quantity-last-register quantity)))))
 
 (define (get-register-quantity register)
   (or (register-quantity register)
