@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.2 1991/01/19 04:21:08 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/logmer.scm,v 1.3 1991/11/26 08:34:12 cph Exp $
 
 Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
@@ -126,7 +126,7 @@ MIT in each case. |#
 
 (define (working-file-string pathname prefix)
   (let ((filename
-	 (pathname->string
+	 (->namestring
 	  (pathname-new-directory
 	   pathname
 	   (let ((directory (list-tail (pathname-directory pathname) prefix)))
@@ -148,7 +148,7 @@ MIT in each case. |#
       (begin
 	(newline trace-port)
 	(write-string "read-file " trace-port)
-	(write-string (pathname->string pathname) trace-port)))
+	(write-string (->namestring pathname) trace-port)))
   (let ((deltas (rcstext->deltas (rcs/read-file pathname 'LOG-ONLY))))
     (for-each (lambda (delta)
 		(set-delta/log! delta
@@ -178,14 +178,12 @@ MIT in each case. |#
 		      (cons (car input) output))))))))
 
 (define (rcs-directory-read filename)
-  (let ((pathname
-	 (pathname->absolute-pathname
-	  (pathname-as-directory (->pathname filename)))))
-    (map (let ((directory-path (pathname-directory-path pathname)))
+  (let ((pathname (merge-pathnames (pathname-as-directory filename))))
+    (map (let ((directory-path (directory-pathname pathname)))
 	   (lambda (filename)
-	     (merge-pathnames directory-path (string->pathname filename))))
+	     (merge-pathnames directory-path (->pathname filename))))
 	 (list-transform-positive
-	     (generate-filenames (pathname-directory-string pathname))
+	     (generate-filenames (directory-namestring pathname))
 	   (lambda (filename)
 	     (string-suffix? ",v" filename))))))
 
@@ -230,6 +228,6 @@ MIT in each case. |#
 					    (common-prefix (cdr x)
 							   (cdr y)))))))))
 		  pathnames)
-	(if (equal? prefix '(ROOT))
+	(if (equal? prefix '(ABSOLUTE))
 	    '()
 	    prefix))))

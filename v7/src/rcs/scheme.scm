@@ -15,7 +15,7 @@
 				    (directory-read pathname)
 				  (lambda (pathname)
 				    (zero? (string-match-backward
-					    (pathname->string pathname)
+					    (->namestring pathname)
 					    ",v")))))
 			      (map (lambda (directory)
 				     (string-append directory "/RCS/"))

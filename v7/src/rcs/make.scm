@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/make.scm,v 1.2 1991/01/19 04:21:14 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/rcs/Attic/make.scm,v 1.3 1991/11/26 08:36:01 cph Exp $
 
 Copyright (c) 1988, 1991 Massachusetts Institute of Technology
 
@@ -38,4 +38,4 @@ MIT in each case. |#
 
 (load-option 'hash-table)
 (package/system-loader "rcs" '() 'QUERY)
-(add-identification! "RCS" 2 0)
+(add-identification! "RCS" 2 1)
