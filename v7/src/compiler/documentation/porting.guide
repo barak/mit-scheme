@@ -1,18 +1,36 @@
 Emacs: Please use -*- Text -*- mode.  Thank you.
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.1 1991/02/20 23:23:59 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.2 1991/02/21 21:59:32 jinx Exp $
+
 
 			LIAR PORTING GUIDE
 			(Very Preliminary)
 
 
-Note: This porting guide applies to version 4.78, but most of the
+Note: This porting guide applies to Liar version 4.78, but most of the
 relevant information has not changed for a while, nor is it likely to
 change in a while.
 
 For questions on Liar not covered by this document, or questions about
 this document, contact liar-implementors@zurich.ai.mit.edu .
 
+
+
+		Acknowledgments
+
+Liar is the work of many people.  The current version is mostly the
+effort of Chris Hanson and Bill Rozas, with significant contributions
+from Mark Friedman.  Arthur Gleckler, Brian LaMacchia, Jim Miller,
+and Henry Wu have also helped develop Liar.
+
+The new Liar may never have existed if it had not been for the efforts
+and help of the now-extinct BBN Butterfly Lisp group that included Don
+Allen, Seth Steinberg, Larry Stabile, and Anthony Courtemanche.  Don
+Allen, in particular, babysat computers to painstakingly bootstrap the
+first version of the new Liar.
+
+This document was written by Bill Rozas, with modifications and hints
+from the people listed above.
 
 
 		0. Introduction and a brief walk through Liar.
@@ -301,20 +319,20 @@ architecture that a port can be obtained by small modifications.  In
 particular, if the architectures are really close, there may be no
 need for architecture-specific additional tuning.
 
-Note that we develop the compiler on Motorola >=68020 processors, so
+Note that the compiler is developed on Motorola >=68020 processors, so
 this is the best-tuned version, and the other ports are not very well
-tuned or not tuned at all because we don't use the other hardware.  If
-you improve an existing port, please give us the improvements.
+tuned or not tuned at all.  If you improve an existing port, please
+share the improvements by notifying liar-implementors.
 
 - If you have a Vax-like CISC machine, you can try starting from the
 Vax or the Motorola 68020 ports.  The Vax port was written by starting
 from the 68020 port.  This is probably the best solution for some
 architectures like the NS32000, and perhaps even the IBM 370.
 
-- If you have an "enlarged" RISC processor, with more complex
+- If you have an "enlarged" RISC processor, with some complex
 addressing modes, and bit-field instructions, you may want to start by
 looking at the Spectrum (HP Precision Architecture) port.  This is
-probably a good starting point for the Motorola 88000, and the IBM
+probably a good starting point for the Motorola 88000 and for the IBM
 RS6000 architectures.
 
 - If you have a bare-bones RISC processor, similar to a MIPS
@@ -334,8 +352,132 @@ is probably a good idea for you to compare how the various ports solve
 the various problems.
 
 		3. Compiler operation, RTL rules and LAP rules.
-Mention the early syntaxing, but tell them to ignore it.
-Mention the switches and what they do.
+
+The front end of the compiler translates Scode into a flow-graph and
+then into RTL.  The back end does machine-independent optimization on
+the RTL, generates assembly language (in LAP format) from the RTL, and
+assembles the resulting bits.
+
+Although RTL is a machine-independent language, the particular RTL
+generated for a given program will vary from machine to machine.
+
+The RTL can vary in the following ways:
+
+- RTL is a language for manipulating the contents of conceptual
+registers.  RTL registers are divided into `pseudo registers' and
+`machine registers'.  Machine registers represent physical hardware
+registers, some of which have been reserved by the port to hold useful
+quantities (stack pointer, value register, etc.)  while pseudo
+registers represent quantities that will need physical registers or
+memory locations to hold them in the final translation.  In order to
+make the RTL more homogenous, the registers are not distinguished
+syntactically in the RTL, but are instead distinguished by the value
+range.  Machine registers are represented as the N lowest numbered RTL
+registers (where N is the number of hardware registers), and all
+others are pseudo registers. Since some RTL instructions explicitly
+mention machine registers and these (and their numbers) vary from
+architecture to architecture, the register numbers in an RTL program
+will vary depending on the back end in use.  Note that all pseudo
+registers are equivalent, and all can hold arbitrary Scheme objects,
+while machine registers can be further divided into separate classes
+(eg. address, data, and floating-point registers).
+
+- RTL assumes only a load-store architecture, but can accommodate
+architectures that allow memory operands and rich addressing modes.
+RTL is constructed by generating statements that include relatively
+complex expressions.  These expressions may represent multiple memory
+indirections or other operations.  An RTL simplifier runs over this
+initial RTL, assigning these intermediate quantities to new pseudo
+registers and rewriting the original statements to manipulate the
+original and new pseudo registers.  Typically this simplification
+results in a sequence of assignments to pseudo registers with single
+operations per assignment and where the only memory operations are
+load and store.  However, this simplification is modulated by the
+port.  The port supplies a set of rewriting rules to the simplifier
+that causes the simplifier to leave more complex expressions in place,
+or to be simplified in different ways, depending on the availability
+of memory operands or richer addressing modes.  Since these rules
+vary from port to port, the final RTL differs for the different ports.
+
+- The open coding of Scheme primitives is port-dependent.  On some
+machines, for example, there is no integer multiply instruction, and
+it would not be advantageous to open code this operation.  The RTL for
+a particular program may reflect the set of primitive operations that
+the back end for the port can open code.
+
+The RTL program is represented as a control flow-graph where each of
+the nodes has an associated list of RTL statements.  The edges in the
+graph correspond to conditional and unconditional branches in the
+code, and include a low-level predicate used to choose between the
+alternatives.  Linearization of the graph does not occur at the RTL
+level, but at the LAP level.  There is a debugging RTL linearizer used
+by the RTL output routine.
+
+Besides assignments and tests, the RTL has some higher level concepts
+that correspond to procedure headers, continuation (return address)
+headers, etc.
+
+Thus an RTL program is made mostly of register to register operation
+statements, a few conditional tests, and a few higher-level glue
+statements.
+
+Once a program has been translated to RTL, the RTL code is optimized
+in a machine-independent way by minimizing the number of RTL pseudo
+registers used, removing redundant subexpressions, eliminating dead
+code, and various other techniques.
+
+The RTL program is then translated into a Lisp-format
+assembly-language program (LAP).  Hardware register allocation occurs
+during this stage.  The register allocator is machine-independent and
+can accommodate different register classes, but does not currently
+accomodate register pairs (hence why floating point operations are not
+currently open coded on the Vax).
+
+The register allocator works by considering unused machine registers
+(those not reserved by the port) to be a cache for the pseudo
+registers.  Thus a particular pseudo register may map into multiple
+machine registers of different types, and these aliases are
+invalidated as the pseudo registers are written or the corresponding
+machine registers reused.  Thus the most basic facility that the
+register allocator provides is a utility to allocate an alias of a
+particular type for a given pseudo register.
+
+The port defines the types and numbers of machine registers, and the
+register allocator manages the associations between the pseudo
+registers and their aliases and the set of free machine registers.  It
+will also automatically spill the contents of machine registers to
+memory when pressed for machine registers, and reload the values when
+necessary.
+
+Thus the resultint LAP program is the collection of the code issued by
+the rules that translate RTL into LAP, the instructions issued behind
+the scenes by the register allocator, and the instructions used to
+linearize the control flow-graph.  
+
+The back end provides a set of rules for the translation of RTL to
+LAP, and a set of procedures that the register allocator and the
+linearizer use to generate such instructions.  The rules are written
+using a special syntax that creates entries in a data base used by a
+pattern matcher to translate the RTL into LAP.
+
+The linear LAP is then translated into binary form by using the same
+pattern matcher with a different set of rules.  These rules define the
+translation between assembly language and machine language for the
+architecture.  Most of these rules output bits to be collected
+together, but some output a set of directives to the bit-level
+assembler to define labels, or choose between alternative encoding of
+the fields depending on the final value.  These alternative encodings
+are typically used for PC-relative quantities.
+
+The machine-independent bit-assembler then collects all the bits
+together and keeps track of a virtual program counter used to
+determine the distance between instruction fields.  A relaxation
+process is used to minimize the size of the resulting encoding (ie.
+tension branches, or choose the smallest encoding that will do the job
+when there are alternatives).
+
+*** Mention the early syntaxing, but tell them to ignore it.
+*** Mention the switches and what they do.
 
 		4. Description of the files in compiler/machines/port.
 Particular emphasis on machin.scm, assmd.scm, the macro files, and the
@@ -344,7 +486,7 @@ assembler.
 		5. How to test the compiler once the port files have
 been written.
 ?? How to test the assembler by using LAP->CODE .
-Include my upgraded test suited in the compiler directory, and perhaps
+Include my upgraded test suite in the compiler directory, and perhaps
 some scripts that do the testing.
 
 		6. How to build a compiler once it has been
@@ -355,17 +497,26 @@ Testing for convergence by doing stages and comparing binaries.
 Common bugs.  interrupts, dlinks, register allocation bus, and bugs
 in the interface.
 
-		7. How to write RTL rules and use the register
-allocator.
+		7. How to write RTL rules and use the register allocator.
 Get CPH to help with this.
-Closures, multi closures, uuo-link calls, and block-linking.
+- Closures, multi closures, uuo-link calls, and block-linking.  Other
+hairy stuff in rules3.  Rules4 and part of rules3 should go away, they
+are fossils.  On the other hand, they are easy to take care of because
+of the portable runtime library.
+- Branches, condition codes, set-current-branches!, etc.
+
+- Important rules when writing RTL:
+  - delete-dead-registers! must be invoked before allocating an alias
+for a target pseudo-register.  Define a utility that does the common
+case.
+  - all source registers aliases need to be need-register!d, before
+allocating the target register.  This is done by the usual utilities.
+  - describe the common utilities for reusing and 2/3 operand opcodes.
+
 
 		8. How to use the RTL rewriter to improve the output
 code.
-Suggest looking at the 68000 and the Spectrum versions.
+- Suggest looking at the 68000 and the Spectrum versions.
 
 		9. How to interface to the runtime library.  How to
 write special-purpose optimized entries.
-
-		10. How to give us the new port so that we can
-distribute it, and help upgrade/maintain it.
