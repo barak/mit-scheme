@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dosx32.c,v 1.4 1992/10/07 06:23:35 jinx Exp $
+$Id: dosx32.c,v 1.5 1992/10/12 20:00:46 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
 
@@ -34,7 +34,7 @@ MIT in each case. */
 
 #include <int.h>
 #include <stdio.h>
-#include "ansidecl.h"
+#include "scheme.h"
 #include "msdos.h"
 #include "dosio.h"
 #include "dossys.h"
@@ -393,6 +393,10 @@ DEFUN (X32_DPMI_system, (command), const char * command)
     * ptimer_record = timer_record->next;
     return (-2);
   }
+  /* Request a low-level timer interrupt, in case we missed it because
+     we disabled it.
+   */
+  REQUEST_INTERRUPT (INT_Global_GC);
   return (result);
 }
 
