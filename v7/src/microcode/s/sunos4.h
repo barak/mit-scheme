@@ -1,7 +1,7 @@
 /* -*-C-*-
    System file for SUNOS
 
-$Id: sunos4.h,v 1.5 1993/11/19 22:21:33 cph Exp $
+$Id: sunos4.h,v 1.6 1993/11/21 18:55:46 gjr Exp $
 
 Copyright (c) 1990-1993 Massachusetts Institute of Technology
 
@@ -42,4 +42,4 @@ MIT in each case. */
 /* These definitions configure the microcode to support dynamic loading. */
 #define SOURCES_SYSTEM pruxdld.c
 #define OBJECTS_SYSTEM pruxdld.o
-#define LIBS_SYSTEM = -ld
+#define LIBS_SYSTEM -ld
