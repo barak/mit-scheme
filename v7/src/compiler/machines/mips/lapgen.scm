@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.1 1990/05/07 04:15:06 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/mips/lapgen.scm,v 1.2 1990/11/28 22:10:07 cph Exp $
 $MC68020-Header: lapgen.scm,v 4.26 90/01/18 22:43:36 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990 Massachusetts Institute of Technology
@@ -236,7 +236,7 @@ MIT in each case. |#
      (ADDIU ,dest ,regnum:assembler-temp ,(adjusted:low value))))))
 
 (define (fp-copy from to)
-  (if (= r t)
+  (if (= to from)
       (LAP)
       (LAP (FMOV DOUBLE ,(float-register->fpr to)
 		        ,(float-register->fpr from)))))
