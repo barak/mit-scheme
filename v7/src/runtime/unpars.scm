@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.44 1987/04/25 09:45:17 jinx Exp $
+;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/unpars.scm,v 13.45 1987/06/15 18:22:43 cph Exp $
 ;;;
 ;;;	Copyright (c) 1987 Massachusetts Institute of Technology
 ;;;
@@ -163,20 +163,40 @@
 		       (*unparse-string string)))
 		 (*unparse-char #\"))
 	  (*unparse-string string)))))
-
+
 (define-type 'VECTOR
-  (lambda (vector)
-    (define (normal)
-      (*unparse-char #\#)
-      (unparse-list (vector->list vector)))
-    (cond ((zero? (vector-length vector)) (*unparse-string "#()"))
-	  ((future? vector) (normal))
-	  (else
-	   (let ((entry
-		  (assq (vector-ref vector 0) *unparser-special-objects*)))
-	     (if entry
-		 ((cdr entry) vector)
-		 (normal)))))))
+  (let ((nmv-type (microcode-type 'manifest-nm-vector))
+	(snmv-type  (microcode-type 'manifest-special-nm-vector)))
+    (lambda (vector)
+      (let ((length (vector-length vector)))
+	(let ((normal
+	       (lambda ()
+		 (*unparse-char #\#)
+		 (let loop ((index 0))
+		   (cond ((= index length)
+			  (*unparse-char #\)))
+			 ((with-interrupt-mask interrupt-mask-none
+			    (lambda (ie)
+			      (or (primitive-type? nmv-type
+						   (vector-ref vector index))
+				  (primitive-type?
+				   snmv-type
+				   (vector-ref vector index)))))
+			  (error "Attempt to unparse partially marked vector"))
+			 (else
+			  (*unparse-char #\Space)
+			  (*unparse-object-or-future (vector-ref vector index))
+			  (loop (1+ index))))))))
+	(cond ((zero? length)
+	       (*unparse-string "#()"))
+	      ((future? vector)
+	       (normal))
+	      (else
+	       (let ((entry
+		      (assq (vector-ref vector 0) *unparser-special-objects*)))
+		 (if entry
+		     ((cdr entry) vector)
+		     (normal)))))))))
 
 (define *unparser-special-objects* '())
 
