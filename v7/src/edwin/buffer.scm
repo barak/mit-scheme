@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffer.scm,v 1.161 1993/01/09 09:38:53 cph Exp $
+;;;	$Id: buffer.scm,v 1.162 1993/08/10 23:28:12 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -330,7 +330,7 @@ The buffer is guaranteed to be deselected at that time."
 			(cons (cons variable value)
 			      (buffer-local-bindings buffer)))))
      (if (buffer-local-bindings-installed? buffer)
-	 (vector-set! variable variable-index:value value))
+	 (set-variable-%value! variable value))
      (invoke-variable-assignment-daemons! buffer variable))))
 
 (define (undefine-variable-local-value! buffer variable)
@@ -343,9 +343,8 @@ The buffer is guaranteed to be deselected at that time."
 			  buffer-index:local-bindings
 			  (delq! binding (buffer-local-bindings buffer)))
 	     (if (buffer-local-bindings-installed? buffer)
-		 (vector-set! variable
-			      variable-index:value
-			      (variable-default-value variable)))
+		 (set-variable-%value! variable
+				       (variable-default-value variable)))
 	     (invoke-variable-assignment-daemons! buffer variable)))))))
 
 (define (variable-local-value buffer variable)
@@ -365,7 +364,7 @@ The buffer is guaranteed to be deselected at that time."
 	    (lambda ()
 	      (set-cdr! binding value)
 	      (if (buffer-local-bindings-installed? buffer)
-		  (vector-set! variable variable-index:value value))
+		  (set-variable-%value! variable value))
 	      (invoke-variable-assignment-daemons! buffer variable)))))
 	(else
 	 (set-variable-default-value! variable value))))
@@ -374,9 +373,9 @@ The buffer is guaranteed to be deselected at that time."
   (check-variable-value-validity! variable value)
   (without-interrupts
    (lambda ()
-     (vector-set! variable variable-index:default-value value)
+     (set-variable-%default-value! variable value)
      (if (not (search-local-bindings (current-buffer) variable))
-	 (vector-set! variable variable-index:value value))
+	 (set-variable-%value! variable value))
      (invoke-variable-assignment-daemons! false variable))))
 
 (define-integrable (search-local-bindings buffer variable)
@@ -392,9 +391,8 @@ The buffer is guaranteed to be deselected at that time."
     (if (buffer-local-bindings-installed? buffer)
 	(do ((bindings bindings (cdr bindings)))
 	    ((null? bindings))
-	  (vector-set! (caar bindings)
-		       variable-index:value
-		       (variable-default-value (caar bindings)))))
+	  (set-variable-%value! (caar bindings)
+				(variable-default-value (caar bindings)))))
     (vector-set! buffer buffer-index:local-bindings '())
     (do ((bindings bindings (cdr bindings)))
 	((null? bindings))
@@ -416,15 +414,14 @@ The buffer is guaranteed to be deselected at that time."
 (define (install-buffer-local-bindings! buffer)
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
       ((null? bindings))
-    (vector-set! (caar bindings) variable-index:value (cdar bindings)))
+    (set-variable-%value! (caar bindings) (cdar bindings)))
   (vector-set! buffer buffer-index:local-bindings-installed? true))
 
 (define (uninstall-buffer-local-bindings! buffer)
   (do ((bindings (buffer-local-bindings buffer) (cdr bindings)))
       ((null? bindings))
-    (vector-set! (caar bindings)
-		 variable-index:value
-		 (variable-default-value (caar bindings))))
+    (set-variable-%value! (caar bindings)
+			  (variable-default-value (caar bindings))))
   (vector-set! buffer buffer-index:local-bindings-installed? false))
 
 (define (set-variable-value! variable value)
@@ -434,8 +431,8 @@ The buffer is guaranteed to be deselected at that time."
 	(check-variable-value-validity! variable value)
 	(without-interrupts
 	 (lambda ()
-	   (vector-set! variable variable-index:default-value value)
-	   (vector-set! variable variable-index:value value)
+	   (set-variable-%default-value! variable value)
+	   (set-variable-%value! variable value)
 	   (invoke-variable-assignment-daemons! false variable))))))
 
 (define (with-variable-value! variable new-value thunk)

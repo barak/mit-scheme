@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/bufset.scm,v 1.10 1992/04/07 08:39:01 cph Exp $
+;;;	$Id: bufset.scm,v 1.11 1993/08/10 23:27:48 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,32 +46,31 @@
 
 (declare (usual-integrations))
 
-(define-named-structure "Bufferset"
+(define-structure (bufferset (constructor %make-bufferset))
   buffer-list
-  names)
+  (names #f read-only #t))
 
 (define (make-bufferset initial-buffer)
-  (let ((bufferset (%make-bufferset))
-	(names (make-string-table 16 false)))
-    (string-table-put! names (buffer-name initial-buffer) initial-buffer)
-    (vector-set! bufferset bufferset-index:buffer-list (list initial-buffer))
-    (vector-set! bufferset bufferset-index:names names)
-    bufferset))
+  (%make-bufferset (list initial-buffer)
+		   (let ((names (make-string-table 16 false)))
+		     (string-table-put! names
+					(buffer-name initial-buffer)
+					initial-buffer)
+		     names)))
 
 (define (bufferset-select-buffer! bufferset buffer)
   (if (memq buffer (bufferset-buffer-list bufferset))
-      (vector-set! bufferset
-		   bufferset-index:buffer-list
-		   (cons buffer
-			 (delq! buffer (bufferset-buffer-list bufferset)))))
+      (set-bufferset-buffer-list!
+       bufferset
+       (cons buffer (delq! buffer (bufferset-buffer-list bufferset)))))
   unspecific)
 
 (define (bufferset-bury-buffer! bufferset buffer)
   (if (memq buffer (bufferset-buffer-list bufferset))
-      (vector-set! bufferset
-		   bufferset-index:buffer-list
-		   (append! (delq! buffer (bufferset-buffer-list bufferset))
-			    (list buffer))))
+      (set-bufferset-buffer-list!
+       bufferset
+       (append! (delq! buffer (bufferset-buffer-list bufferset))
+		(list buffer))))
   unspecific)
 
 (define (bufferset-guarantee-buffer! bufferset buffer)
@@ -80,10 +79,9 @@
 	(string-table-put! (bufferset-names bufferset)
 			   (buffer-name buffer)
 			   buffer)
-	(vector-set! bufferset
-		     bufferset-index:buffer-list
-		     (append! (bufferset-buffer-list bufferset)
-			      (list buffer)))))
+	(set-bufferset-buffer-list! bufferset
+				    (append! (bufferset-buffer-list bufferset)
+					     (list buffer)))))
   unspecific)
 
 (define (bufferset-find-buffer bufferset name)
@@ -99,9 +97,9 @@
 			  (buffer-default-directory (current-buffer))
 			  (working-directory-pathname)))))
     (string-table-put! (bufferset-names bufferset) name buffer)
-    (vector-set! bufferset
-		 bufferset-index:buffer-list
-		 (append! (bufferset-buffer-list bufferset) (list buffer)))
+    (set-bufferset-buffer-list!
+     bufferset
+     (append! (bufferset-buffer-list bufferset) (list buffer)))
     buffer))
 
 (define (bufferset-find-or-create-buffer bufferset name)
@@ -111,9 +109,8 @@
 (define (bufferset-kill-buffer! bufferset buffer)
   (if (not (memq buffer (bufferset-buffer-list bufferset)))
       (error "Attempt to kill unknown buffer" buffer))
-  (vector-set! bufferset
-	       bufferset-index:buffer-list
-	       (delq! buffer (bufferset-buffer-list bufferset)))
+  (set-bufferset-buffer-list! bufferset
+			      (delq! buffer (bufferset-buffer-list bufferset)))
   (string-table-remove! (bufferset-names bufferset) (buffer-name buffer)))
 
 (define (bufferset-rename-buffer bufferset buffer new-name)

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/edwin/comman.scm,v 1.69 1992/04/07 09:35:32 cph Exp $
+;;;	$Id: comman.scm,v 1.70 1993/08/10 23:27:57 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,17 +46,16 @@
 
 (declare (usual-integrations))
 
-(define-named-structure "Command"
+(define-structure (command
+		   (constructor %make-command ())
+		   (print-procedure
+		    (unparser/standard-method 'COMMAND
+		      (lambda (state command)
+			(unparse-object state (command-name command))))))
   name
   description
   interactive-specification
   procedure)
-
-(unparser/set-tagged-vector-method!
- %command-tag
- (unparser/standard-method 'COMMAND
-   (lambda (state command)
-     (unparse-object state (command-name command)))))
 
 (define (command-name-string command)
   (editor-name/internal->external (symbol->string (command-name command))))
@@ -74,13 +73,14 @@
 	       (let ((command (%make-command)))
 		 (string-table-put! editor-commands name command)
 		 command)))))
-    (vector-set! command command-index:name name)
-    (vector-set! command command-index:description description)
-    (vector-set! command command-index:interactive-specification specification)
-    (vector-set! command command-index:procedure procedure)
+    (set-command-name! command name)
+    (set-command-description! command description)
+    (set-command-interactive-specification! command specification)
+    (set-command-procedure! command procedure)
     command))
 
-(define editor-commands (make-string-table 500))
+(define editor-commands
+  (make-string-table 500))
 
 (define (name->command name)
   (let ((name (canonicalize-name name)))
@@ -96,23 +96,29 @@
 	  command))))
 
 (define (->command object)
-  (if (command? object) object (name->command object)))
+  (if (command? object)
+      object
+      (name->command object)))
 
-(define-named-structure "Variable"
+(define-structure (variable
+		   (constructor %make-variable ())
+		   (print-procedure
+		    (unparser/standard-method 'VARIABLE
+		      (lambda (state variable)
+			(unparse-object state (variable-name variable))))))
   name
   description
-  value
+  %value
   buffer-local?
   initial-value
-  default-value
+  %default-value
   assignment-daemons
   value-validity-test)
 
-(unparser/set-tagged-vector-method!
- %variable-tag
- (unparser/standard-method 'VARIABLE
-   (lambda (state variable)
-     (unparse-object state (variable-name variable)))))
+(define-integrable variable-value variable-%value)
+(define-integrable variable-default-value variable-%default-value)
+(define-integrable define-variable-value-validity-test
+  set-variable-value-validity-test!)
 
 (define (variable-name-string variable)
   (editor-name/internal->external (symbol->string (variable-name variable))))
@@ -124,21 +130,18 @@
 	       (let ((variable (%make-variable)))
 		 (string-table-put! editor-variables name variable)
 		 variable)))))
-    (vector-set! variable variable-index:name name)
-    (vector-set! variable variable-index:description description)
-    (vector-set! variable variable-index:value value)
-    (vector-set! variable variable-index:buffer-local? buffer-local?)
-    (vector-set! variable variable-index:initial-value value)
-    (vector-set! variable variable-index:default-value value)
-    (vector-set! variable variable-index:assignment-daemons '())
-    (vector-set! variable variable-index:value-validity-test false)
+    (set-variable-name! variable name)
+    (set-variable-description! variable description)
+    (set-variable-%value! variable value)
+    (set-variable-buffer-local?! variable buffer-local?)
+    (set-variable-initial-value! variable value)
+    (set-variable-%default-value! variable value)
+    (set-variable-assignment-daemons! variable '())
+    (set-variable-value-validity-test! variable false)
     variable))
 
 (define-integrable (make-variable-buffer-local! variable)
-  (vector-set! variable variable-index:buffer-local? true))
-
-(define (define-variable-value-validity-test variable test)
-  (vector-set! variable variable-index:value-validity-test test))
+  (set-variable-buffer-local?! variable #t))
 
 (define (check-variable-value-validity! variable value)
   (if (not (variable-value-valid? variable value))
@@ -152,16 +155,15 @@
 (define (add-variable-assignment-daemon! variable daemon)
   (let ((daemons (variable-assignment-daemons variable)))
     (if (not (memq daemon daemons))
-	(vector-set! variable
-		     variable-index:assignment-daemons
-		     (cons daemon daemons)))))
+	(set-variable-assignment-daemons! variable (cons daemon daemons)))))
 
 (define (invoke-variable-assignment-daemons! buffer variable)
   (do ((daemons (variable-assignment-daemons variable) (cdr daemons)))
       ((null? daemons))
     ((car daemons) buffer variable)))
 
-(define editor-variables (make-string-table 50))
+(define editor-variables
+  (make-string-table 50))
 
 (define (name->variable name)
   (let ((name (canonicalize-name name)))
@@ -169,4 +171,6 @@
 	(make-variable name "" false false))))
 
 (define (->variable object)
-  (if (variable? object) object (name->variable object)))
+  (if (variable? object)
+      object
+      (name->variable object)))
