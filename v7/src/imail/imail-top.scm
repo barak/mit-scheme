@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.216 2000/10/20 04:07:53 cph Exp $
+;;; $Id: imail-top.scm,v 1.217 2000/10/26 02:31:12 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -289,7 +289,7 @@ regardless of the folder type."
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
-    (add-pre-select-buffer-hook buffer imail-pre-select-buffer-hook)
+    ;;(add-pre-select-buffer-hook buffer imail-pre-select-buffer-hook)
     (buffer-put! buffer 'MAIL-YANK-ORIGINAL-METHOD imail-yank-original)
     (local-set-variable! mode-line-modified "--- " buffer)
     (imail-adjust-adaptive-fill buffer)
