@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: xterm.scm,v 1.38 1993/04/27 09:22:32 cph Exp $
+;;;	$Id: xterm.scm,v 1.39 1993/04/28 19:51:10 cph Exp $
 ;;;
 ;;;	Copyright (c) 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -415,17 +415,14 @@
 
 (define (read-event queue display block?)
   (let loop ()
+    (set! reading-event? #t)
     (let ((event
-	   (let ((block-events? (block-thread-events)))
-	     (let ((event
-		    (if (queue-empty? queue)
-			(if (eq? 'IN-UPDATE block?)
-			    (x-display-process-events display 2)
-			    (read-event-1 display block?))
-			(dequeue!/unsafe queue))))
-	       (if (not block-events?)
-		   (unblock-thread-events))
-	       event))))
+	   (if (queue-empty? queue)
+	       (if (eq? 'IN-UPDATE block?)
+		   (x-display-process-events display 2)
+		   (read-event-1 display block?))
+	       (dequeue!/unsafe queue))))
+      (set! reading-event? #f)
       (if (and (vector? event)
 	       (fix:= (vector-ref event 0) event-type:expose))
 	  (begin
@@ -457,15 +454,17 @@
 	 (x-display-descriptor x-display-data)
 	 (current-thread)
 	 (lambda ()
-	   (let ((event (x-display-process-events x-display-data 2)))
-	     (if event
-		 (if (and signal-interrupts?
-			  (fix:= event-type:key-press (vector-ref event 0))
-			  (string-find-next-char (vector-ref event 2) #\BEL))
-		     (begin
-		       (clean-event-queue x-display-events)
-		       (signal-interrupt!))
-		     (enqueue!/unsafe x-display-events event)))))))
+	   (if (not reading-event?)
+	       (let ((event (x-display-process-events x-display-data 2)))
+		 (if event
+		     (if (and signal-interrupts?
+			      (fix:= event-type:key-press (vector-ref event 0))
+			      (string-find-next-char (vector-ref event 2)
+						     #\BEL))
+			 (begin
+			   (clean-event-queue x-display-events)
+			   (signal-interrupt!))
+			 (enqueue!/unsafe x-display-events event))))))))
   unspecific)
 
 (define (clean-event-queue queue)
@@ -591,13 +590,15 @@
     (set! last-focus-time (vector-ref event 2))
     (make-input-event select-screen screen)))
 
+(define reading-event?)
 (define signal-interrupts?)
 (define last-focus-time)
 (define previewer-registration)
 
 (define (with-editor-interrupts-from-x receiver)
-  (fluid-let ((signal-interrupts? true)
-	      (last-focus-time false)
+  (fluid-let ((reading-event? #f)
+	      (signal-interrupts? #t)
+	      (last-focus-time #f)
 	      (previewer-registration))
     (dynamic-wind
      preview-event-stream
