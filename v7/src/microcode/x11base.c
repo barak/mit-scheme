@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.62 1996/09/12 19:23:48 cph Exp $
+$Id: x11base.c,v 1.63 1996/09/20 18:54:48 cph Exp $
 
 Copyright (c) 1989-95 Massachusetts Institute of Technology
 
@@ -1920,11 +1920,17 @@ DEFINE_PRIMITIVE ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    XSetInputFocus
-      ((XW_DISPLAY (xw)),
-       (XW_WINDOW (xw)),
-       RevertToParent,
-       ((Time) (arg_ulong_integer (2))));
+    unsigned char status;
+
+    CATCH_X_ERRORS (status);
+    if (status == 0)
+      XSetInputFocus
+	((XW_DISPLAY (xw)),
+	 (XW_WINDOW (xw)),
+	 RevertToParent,
+	 ((Time) (arg_ulong_integer (2))));
+    else
+      error_bad_range_arg (1);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
