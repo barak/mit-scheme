@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.7 1992/09/17 01:31:42 jinx Exp $
+$Id: thread.scm,v 1.8 1993/01/29 16:31:20 cph Exp $
 
-Copyright (c) 1991-1992 Massachusetts Institute of Technology
+Copyright (c) 1991-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts
 Institute of Technology, Department of Electrical Engineering and
@@ -79,17 +79,6 @@ MIT in each case. |#
 (define no-exit-value-marker
   (list 'NO-EXIT-VALUE-MARKER))
 
-(define-integrable (thread-running thread)
-  (set-thread/execution-state! thread 'RUNNING)
-  (let ((prev last-running-thread))
-    (if prev
-	(set-thread/next! prev thread)
-	(set! first-running-thread thread)))
-  (set! last-running-thread thread)
-  (if (not thread-timer-running?)
-      (%restart-thread-timer))
-  unspecific)
-
 (define-integrable (thread-waiting? thread)
   (eq? 'WAITING (thread/execution-state thread)))
 
@@ -97,9 +86,11 @@ MIT in each case. |#
   (eq? 'DEAD (thread/execution-state thread)))
 
 ;;; Threads whose execution state is RUNNING.
-(define thread-timer-running?)
 (define first-running-thread)
 (define last-running-thread)
+
+(define thread-timer-running?)
+(define root-continuation-default)
 
 (define-integrable (without-interrupts thunk)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -109,9 +100,9 @@ MIT in each case. |#
 
 (define (initialize-package!)
   (initialize-error-conditions!)
-  (set! thread-timer-running? false)
   (set! first-running-thread false)
   (set! last-running-thread false)
+  (set! thread-timer-running? false)
   (set! timer-records false)
   (set! timer-interval 100)
   (set! last-real-time false)
@@ -141,8 +132,6 @@ MIT in each case. |#
 	   (set-interrupt-enables! interrupt-mask/all)
 	   (exit-current-thread (thunk))))))))
 
-(define root-continuation-default)
-
 (define (create-thread-continuation)
   root-continuation-default)
 
@@ -164,19 +153,14 @@ MIT in each case. |#
      (and (thread-waiting? thread)
 	  (thread/continuation thread)))))
 
-(define (run-thread thread)
-  (let ((continuation (thread/continuation thread)))
-    (set-thread/continuation! thread false)
-    (let ((event
-	   (and (not (thread/block-events? thread))
-		(ring/dequeue (thread/pending-events thread) false))))
-      (%within-continuation continuation true
-       (if (not event)
-	   %restart-thread-timer
-	   (lambda ()
-	     (%restart-thread-timer)
-	     (handle-thread-event thread event)
-	     (set-thread/block-events?! thread false)))))))
+(define (thread-running thread)
+  (set-thread/execution-state! thread 'RUNNING)
+  (let ((prev last-running-thread))
+    (if prev
+	(set-thread/next! prev thread)
+	(set! first-running-thread thread)))
+  (set! last-running-thread thread)
+  (%maybe-toggle-thread-timer))
 
 (define (thread-not-running thread state)
   (set-thread/execution-state! thread state)
@@ -186,14 +170,27 @@ MIT in each case. |#
     (if (not thread*)
 	(begin
 	  (set! last-running-thread thread*)
-	  (%restart-thread-timer)
+	  (%maybe-toggle-thread-timer)
 	  ;; Busy-waiting here is a bad idea -- should implement a
 	  ;; primitive to block the Scheme process while waiting for
 	  ;; a signal.
-	  (begin
-	    (set-interrupt-enables! interrupt-mask/all)
-	    (do () (false))))
+	  (set-interrupt-enables! interrupt-mask/all)
+	  (do () (false)))
 	(run-thread thread*))))
+
+(define (run-thread thread)
+  (let ((continuation (thread/continuation thread)))
+    (set-thread/continuation! thread false)
+    (let ((event
+	   (and (not (thread/block-events? thread))
+		(ring/dequeue (thread/pending-events thread) false))))
+      (%within-continuation continuation true
+	(if (not event)
+	    %maybe-toggle-thread-timer
+	    (lambda ()
+	      (%maybe-toggle-thread-timer)
+	      (handle-thread-event thread event)
+	      (set-thread/block-events?! thread false)))))))
 
 (define (suspend-current-thread)
   (without-interrupts
@@ -204,7 +201,6 @@ MIT in each case. |#
 	 (if event
 	     (handle-thread-event thread event)
 	     (begin
-	       (%stop-thread-timer)
 	       (set-thread/block-events?! thread false)
 	       (call-with-current-continuation
 		(lambda (continuation)
@@ -224,20 +220,19 @@ MIT in each case. |#
   (deliver-timer-events)
   (let ((thread first-running-thread))
     (cond ((not thread)
-	   (%restart-thread-timer))
+	   (%maybe-toggle-thread-timer))
 	  ((thread/continuation thread)
 	   (run-thread thread))
 	  ((not (eq? 'RUNNING-WITHOUT-PREEMPTION
 		     (thread/execution-state thread)))
 	   (yield-thread thread))
 	  (else
-	   (%restart-thread-timer)))))
+	   (%maybe-toggle-thread-timer)))))
 
 (define (yield-current-thread)
   (let ((thread (current-thread)))
     (without-interrupts
      (lambda ()
-       (%stop-thread-timer)
        ;; Allow preemption now, since the current thread has
        ;; volunteered to yield control.
        (set-thread/execution-state! thread 'RUNNING)
@@ -249,7 +244,7 @@ MIT in each case. |#
 (define-integrable (yield-thread thread)
   (let ((next (thread/next thread)))
     (if (not next)
-	(%restart-thread-timer)
+	(%maybe-toggle-thread-timer)
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
@@ -262,7 +257,6 @@ MIT in each case. |#
 (define (exit-current-thread value)
   (let ((thread (current-thread)))
     (set-interrupt-enables! interrupt-mask/gc-ok)
-    (%stop-thread-timer)
     (if (eq? no-exit-value-marker (thread/exit-value thread))
 	(release-joined-threads thread value))
     (thread-not-running thread 'DEAD)))
@@ -356,9 +350,7 @@ MIT in each case. |#
 	       (begin
 		 (thread-running thread)
 		 (if (not self)
-		     (begin
-		       (%stop-thread-timer)
-		       (run-thread thread))))))))))
+		     (run-thread thread)))))))))
 
 (define-integrable (handle-thread-event thread event)
   (set-thread/block-events?! thread true)
@@ -434,10 +426,10 @@ MIT in each case. |#
 
 (define-integrable (threads-pending-timer-events?)
   timer-records)
-
+
 (define (thread-timer-interval)
   timer-interval)
-
+
 (define (set-thread-timer-interval! interval)
   (if (not (or (false? interval)
 	       (and (exact-integer? interval)
@@ -446,36 +438,33 @@ MIT in each case. |#
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)
-      (%start-thread-timer))))
+      (%maybe-toggle-thread-timer))))
 
-(define (%start-thread-timer)
-  ;; Note: This stretches the current thread's timer slice.
-  (if thread-timer-running?
-      (%stop-thread-timer))
-  (if timer-interval
-      (%restart-thread-timer)))
+(define (start-thread-timer)
+  (without-interrupts %maybe-toggle-thread-timer))
 
-(define (%restart-thread-timer)
+(define (stop-thread-timer)
+  (without-interrupts %stop-thread-timer))
+
+(define (%maybe-toggle-thread-timer)
   (if (and timer-interval
 	   (or (let ((current-thread first-running-thread))
 		 (and current-thread
 		      (thread/next current-thread)))
 	       (threads-pending-timer-events?)))
-      (begin
-	((ucode-primitive real-timer-set) timer-interval 0)
-	(set! thread-timer-running? true)
-	unspecific)))
+      (if (not thread-timer-running?)
+	  (begin
+	    ((ucode-primitive real-timer-set) timer-interval timer-interval)
+	    (set! thread-timer-running? true)
+	    unspecific))
+      (%stop-thread-timer)))
 
 (define (%stop-thread-timer)
-  ((ucode-primitive real-timer-clear))
-  (set! thread-timer-running? false)
-  ((ucode-primitive clear-interrupts!) interrupt-bit/timer))
-
-(define (start-thread-timer)
-  (without-interrupts %start-thread-timer))
-
-(define (stop-thread-timer)
-  (without-interrupts %stop-thread-timer))
+  (if thread-timer-running?
+      (begin
+	((ucode-primitive real-timer-clear))
+	(set! thread-timer-running? false)
+	((ucode-primitive clear-interrupts!) interrupt-bit/timer))))
 
 ;;;; Mutexes
 
