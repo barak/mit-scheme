@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.8 1988/11/01 04:56:26 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm2.scm,v 4.9 1988/11/04 02:24:53 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -37,7 +37,60 @@ MIT in each case. |#
 (declare (usual-integrations))
 
 (set! compiled-code-block/bytes-per-object 4)
+(set! compiled-code-block/objects-per-procedure-cache 2)
+(set! compiled-code-block/objects-per-variable-cache 1)
 
+(set! disassembler/read-variable-cache
+      (lambda (block index)
+	(let-syntax ((ucode-type
+		      (macro (name) (microcode-type name)))
+		     (ucode-primitive
+		      (macro (name arity)
+			(make-primitive-procedure name arity))))
+	  ((ucode-primitive primitive-object-set-type 2)
+	   (ucode-type quad)
+	   (system-vector-ref block index)))))
+
+(set! disassembler/read-procedure-cache
+      (lambda (block index)
+	(fluid-let ((*block block))
+	  (let* ((offset (compiled-code-block/index->offset index)))
+	    (let ((opcode (read-unsigned-integer offset 16))
+		  (arity (read-unsigned-integer (+ offset 6) 16)))
+	      (case opcode
+		((#x4ef9)		; JMP <value>.L
+		 (vector 'COMPILED
+			 (read-procedure (+ offset 2))
+			 arity))
+		((#x4eb9)		; JSR <value>.L
+		 (let* ((new-block
+			 (compiled-code-address->block
+			  (read-procedure (+ offset 2))))
+			(offset
+			 (fluid-let ((*block new-block))
+			   (read-unsigned-integer 14 16))))
+		   (case offset
+		     ((#xf6)		; lookup
+		      (vector 'VARIABLE
+			      (variable-cache-name
+			       (system-vector-ref new-block 3))
+			      arity))
+		     ((#xfc)		; interpreted
+		      (vector 'INTERPRETED
+			      (system-vector-ref new-block 3)
+			      arity))
+		     ((#x102)		; arity
+		      (vector 'COMPILED
+			      (system-vector-ref new-block 3)
+			      arity))
+		     (else
+		      (error
+		       "disassembler/read-procedure-cache: Unknown offset"
+		       offset block index)))))
+		(else
+		 (error "disassembler/read-procedure-cache: Unknown opcode"
+			opcode block index))))))))
+
 (set! disassembler/instructions
   (lambda (block start-offset end-offset symbol-table)
     (let loop ((offset start-offset) (state (disassembler/initial-state)))
@@ -140,12 +193,29 @@ MIT in each case. |#
 (define (make-dc wl bit-string)
   `(DC ,wl ,(bit-string->unsigned-integer bit-string)))
 
+(define (read-procedure offset)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     (let-syntax ((ucode-type
+		   (macro (name) (microcode-type name)))
+		  (ucode-primitive
+		   (macro (name arity)
+		     (make-primitive-procedure name arity))))
+       ((ucode-primitive primitive-object-set-type 2)
+	(ucode-type compiled-entry)
+	((ucode-primitive make-non-pointer-object 1)
+	 (read-unsigned-integer offset 32)))))))
+
+(define (read-unsigned-integer offset size)
+  (bit-string->unsigned-integer (read-bits offset size)))
+
 (define (read-bits offset size-in-bits)
-  (let ((word (bit-string-allocate size-in-bits)))
+  (let ((word (bit-string-allocate size-in-bits))
+	(bit-offset (* offset addressing-granularity)))
     (with-absolutely-no-interrupts
      (lambda ()
        (if *block
-	   (read-bits! *block (* offset addressing-granularity) word)
+	   (read-bits! *block bit-offset word)
 	   (read-bits! offset 0 word))))
     word))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.7 1988/07/16 21:47:47 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/dassm1.scm,v 4.8 1988/11/04 02:24:12 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -82,7 +82,7 @@ MIT in each case. |#
 
 (define disassembler/base-address)
 
-(define (disassembler/write-compiled-entry entry)
+(define (compiler:disassemble entry)
   (define (do-it the-block)
     (compiler-info/with-on-demand-loading ;force compiler info loading
      (lambda ()
@@ -110,6 +110,10 @@ MIT in each case. |#
 (define disassembler/instructions/null?)
 (define disassembler/instructions/read)
 (define disassembler/lookup-symbol)
+(define disassembler/read-variable-cache)
+(define disassembler/read-procedure-cache)
+(define compiled-code-block/objects-per-procedure-cache)
+(define compiled-code-block/objects-per-variable-cache)
 
 (define (write-block block)
   (write-string "#[COMPILED-CODE-BLOCK ")
@@ -173,16 +177,22 @@ MIT in each case. |#
   (fluid-let ((*unparser-radix* 16))
     (let ((end (system-vector-length block)))
       (let loop ((index (compiled-code-block/constants-start block)))
-	(if (< index end)
-	    (begin
-	      (disassembler/write-instruction
-	       symbol-table
-	       (compiled-code-block/index->offset index)
-	       (lambda ()
-		 (write-constant block
-				 symbol-table
-				 (system-vector-ref block index))))
-	      (loop (1+ index))))))))
+	(cond ((not (< index end)) 'DONE)
+	      ((object-type?
+		(let-syntax ((ucode-type
+			      (macro (name) (microcode-type name))))
+		  (ucode-type linkage-section))
+		(system-vector-ref block index))
+	       (loop (disassembler/write-linkage-section block symbol-table index)))
+	      (else
+	       (disassembler/write-instruction
+		symbol-table
+		(compiled-code-block/index->offset index)
+		(lambda ()
+		  (write-constant block
+				  symbol-table
+				  (system-vector-ref block index))))
+	       (loop (1+ index))))))))
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))
@@ -207,6 +217,86 @@ MIT in each case. |#
 	 (write-string ")"))
 	(else false)))
 
+(define (disassembler/write-linkage-section block symbol-table index)
+  (define (write-caches index size how-many writer)
+    (let loop ((index index) (how-many how-many))
+      (if (zero? how-many)
+	  'DONE
+	  (begin
+	    (disassembler/write-instruction
+	     symbol-table
+	     (compiled-code-block/index->offset index)
+	     (lambda ()
+	       (writer block index)))
+	    (loop (+ size index) (-1+ how-many))))))
+
+  (let* ((field (object-datum (system-vector-ref block index)))
+	 (descriptor (integer-divide field #x10000)))
+    (let ((kind (integer-divide-quotient descriptor))
+	  (length (integer-divide-remainder descriptor)))
+      (disassembler/write-instruction
+       symbol-table
+       (compiled-code-block/index->offset index)
+       (lambda ()
+	 (write-string "#[LINKAGE-SECTION ")
+	 (write field)
+	 (write-string "]")))
+      (case kind
+	((0)
+	 (write-caches (1+ index)
+		       compiled-code-block/objects-per-procedure-cache
+		       (quotient length compiled-code-block/objects-per-procedure-cache)
+		       disassembler/write-procedure-cache))
+	((1)
+	 (write-caches (1+ index)
+		       compiled-code-block/objects-per-variable-cache
+		       (quotient length compiled-code-block/objects-per-variable-cache)
+		       (lambda (block index)
+			 (disassembler/write-variable-cache
+			  "Reference"
+			  block
+			  index))))
+	((2)
+	 (write-caches (1+ index) 
+		       compiler/variable-cache-size
+		       (quotient length compiler/variable-cache-size)
+		       (lambda (block index)
+			 (disassembler/write-variable-cache
+			  "Assignment"
+			  block
+			  index))))
+	(else
+	 (error "disassembler/write-linkage-section: Unknown section kind"
+		kind)))
+      (1+ (+ index length)))))
+
+(define (variable-cache-name cache)
+  (let-syntax ((ucode-primitive
+		(macro (name arity)
+		  (make-primitive-procedure name arity))))
+    ((ucode-primitive primitive-object-ref 2)
+     cache
+     1)))
+
+(define (disassembler/write-variable-cache kind block index)
+  (write-string kind)
+  (write-string " cache to ")
+  (write (variable-cache-name (disassembler/read-variable-cache block index))))
+
+(define (disassembler/write-procedure-cache block index)
+  (let ((result (disassembler/read-procedure-cache block index)))
+    (write (vector-ref result 2))
+    (write-string " argument procedure cache to ")
+    (case (vector-ref result 0)
+      ((COMPILED INTERPRETED)
+       (write (vector-ref result 1)))
+      ((VARIABLE)
+       (write-string "variable ")
+       (write (vector-ref result 1)))
+      (else
+       (error "disassembler/write-procedure-cache: Unknown cache kind"
+	      (vector-ref result 0))))))
+
 (define (disassembler/write-instruction symbol-table offset write-instruction)
   (if symbol-table
       (sorted-vector/for-each symbol-table offset

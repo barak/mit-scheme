@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.8 1988/11/01 04:43:57 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/bobcat/compiler.pkg,v 1.9 1988/11/04 02:26:07 jinx Exp $
 
 Copyright (c) 1988 Massachusetts Institute of Technology
 
@@ -337,6 +337,7 @@ MIT in each case. |#
 	 "machines/bobcat/dassm3")
   (parent (compiler))
   (export ()
-	  compiler:write-lap-file)
+	  compiler:write-lap-file
+	  compiler:disassemble)
   (import (runtime compiler-info)
 	  compiler-entries-tag))
