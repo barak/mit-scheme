@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.28 2004/02/24 20:59:09 cph Exp $
+$Id: genio.scm,v 1.29 2004/02/25 20:59:29 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -1400,9 +1400,10 @@ USA.
 	(let ((bv (output-buffer-bytes ob))
 	      (bs (output-buffer-start ob)))
 	  (put-byte bv bs 0 #x00)
-	  (put-byte bv bs 1 (fix:and (fix:lsh cp #x10) #xFF))
-	  (put-byte bv bs 2 (fix:and (fix:lsh cp #x08) #xFF))
-	  (put-byte bv bs 3 (fix:and cp #xFF)))
+	  (put-byte bv bs 1 (fix:and (fix:lsh cp -16) #xFF))
+	  (put-byte bv bs 2 (fix:and (fix:lsh cp -8) #xFF))
+	  (put-byte bv bs 3 (fix:and cp #xFF))
+	  4)
 	(error:char-encoding ob cp))))
 
 (define-encoder 'UTF-32LE
@@ -1411,9 +1412,10 @@ USA.
 	(let ((bv (output-buffer-bytes ob))
 	      (bs (output-buffer-start ob)))
 	  (put-byte bv bs 0 (fix:and cp #xFF))
-	  (put-byte bv bs 1 (fix:and (fix:lsh cp #x08) #xFF))
-	  (put-byte bv bs 2 (fix:and (fix:lsh cp #x10) #xFF))
-	  (put-byte bv bs 3 #x00))
+	  (put-byte bv bs 1 (fix:and (fix:lsh cp -8) #xFF))
+	  (put-byte bv bs 2 (fix:and (fix:lsh cp -16) #xFF))
+	  (put-byte bv bs 3 #x00)
+	  4)
 	(error:char-encoding ob cp))))
 
 ;;;; Normalizers
