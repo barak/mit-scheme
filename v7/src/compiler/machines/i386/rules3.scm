@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.15 1992/02/16 02:06:29 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules3.scm,v 1.16 1992/02/17 04:41:04 jinx Exp $
 $MC68020-Header: /scheme/compiler/bobcat/RCS/rules3.scm,v 4.31 1991/05/28 19:14:55 jinx Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -163,7 +163,7 @@ MIT in each case. |#
 	  (cond ((not (negative? arity))
 		 (LAP ,@get-code
 		      ,@(clear-map!)
-		      ,@(invoke code:compiler-apply
+		      ,@(invoke code:compiler-primitive-apply
 				entry:compiler-primitive-apply)))
 		((= arity -1)
 		 (LAP ,@get-code
