@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.48 1989/06/16 11:32:03 cph Exp $ */
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/intern.c,v 9.49 1989/07/05 18:45:54 cph Rel $ */
 
 /* String hash functions and interning of symbols. */
 
@@ -173,7 +173,7 @@ intern_symbol (symbol)
 }
 
 DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1,
-  "(FIND-SYMBOL STRING)
+  "(FIND-SYMBOL STRING)\n\
 Returns the symbol whose name is STRING, or #F if no such symbol exists.")
 {
   PRIMITIVE_HEADER (1);
@@ -183,7 +183,7 @@ Returns the symbol whose name is STRING, or #F if no such symbol exists.")
 }
 
 DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_string_to_symbol, 1, 1,
-  "(STRING->SYMBOL STRING)
+  "(STRING->SYMBOL STRING)\n\
 Returns the symbol whose name is STRING, constructing a new symbol if needed.")
 {
   PRIMITIVE_HEADER (1);
@@ -193,9 +193,9 @@ Returns the symbol whose name is STRING, constructing a new symbol if needed.")
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH", Prim_string_hash, 1, 1,
-  "(STRING-HASH STRING)
-Return a hash value for a string.  This uses the hashing
-algorithm used for interning symbols.  It is intended for use by
+  "(STRING-HASH STRING)\n\
+Return a hash value for a string.  This uses the hashing\n\
+algorithm used for interning symbols.  It is intended for use by\n\
 the reader in creating interned symbols.")
 {
   PRIMITIVE_HEADER (1);
@@ -205,8 +205,8 @@ the reader in creating interned symbols.")
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2,
-  "(STRING-HASH-MOD STRING DENOMINATOR)
-DENOMINATOR must be a nonnegative integer.
+  "(STRING-HASH-MOD STRING DENOMINATOR)\n\
+DENOMINATOR must be a nonnegative integer.\n\
 Equivalent to (MOD (STRING-HASH STRING) DENOMINATOR).")
 {
   PRIMITIVE_HEADER (2);
