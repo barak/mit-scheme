@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.57 2005/01/06 18:10:27 cph Exp $
+$Id: string.scm,v 14.58 2005/01/07 15:10:23 cph Exp $
 
 Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -73,21 +73,6 @@ USA.
 
 (define-integrable (vector-8b-find-previous-char-ci string start end ascii)
   (substring-find-previous-char-ci string start end (ascii->char ascii)))
-
-(define (vector-8b->hexadecimal bytes)
-  (let ((n (vector-8b-length bytes)))
-    (let ((s (make-string (fix:* 2 n))))
-      (do ((i 0 (fix:+ i 1))
-	   (j 0 (fix:+ j 2)))
-	  ((not (fix:< i n)))
-	(string-set! s j (hex-digit (fix:lsh (vector-8b-ref bytes i) -4)))
-	(string-set! s
-		     (fix:+ j 1)
-		     (hex-digit (fix:and (vector-8b-ref bytes i) #x0F))))
-      s)))
-
-(define-integrable (hex-digit k)
-  (string-ref "0123456789abcdef" k))
 
 ;;; Character optimizations
 
@@ -418,6 +403,43 @@ USA.
       (let ((char (string-ref string j)))
 	(string-set! string j (string-ref string i))
 	(string-set! string i char)))))
+
+(define (vector-8b->hexadecimal bytes)
+  (define-integrable (hex-char k)
+    (string-ref "0123456789abcdef" (fix:and k #x0F)))
+  (guarantee-string bytes 'VECTOR-8B->HEXADECIMAL)
+  (let ((n (vector-8b-length bytes)))
+    (let ((s (make-string (fix:* 2 n))))
+      (do ((i 0 (fix:+ i 1))
+	   (j 0 (fix:+ j 2)))
+	  ((not (fix:< i n)))
+	(string-set! s j (hex-char (fix:lsh (vector-8b-ref bytes i) -4)))
+	(string-set! s (fix:+ j 1) (hex-char (vector-8b-ref bytes i))))
+      s)))
+
+(define (hexadecimal->vector-8b string)
+  (guarantee-string string 'HEXADECIMAL->VECTOR-8B)
+  (let ((end (string-length string))
+	(lose
+	 (lambda ()
+	   (error:bad-range-argument string 'HEXADECIMAL->VECTOR-8B))))
+    (define-integrable (hex-digit char)
+      (let ((d
+	     (fix:- (char->integer char)
+		    (char->integer #\0))))
+	(if (not (and (fix:<= 0 d) (fix:< d 16)))
+	    (lose))
+	d))
+    (if (not (fix:= (fix:and end 1) 0))
+	(lose))
+    (let ((bytes (make-vector-8b (fix:lsh end -1))))
+      (do ((i 0 (fix:+ i 2))
+	   (j 0 (fix:+ j 1)))
+	  ((not (fix:< i end)))
+	(vector-8b-set! bytes j
+			(fix:+ (fix:lsh (hex-digit (string-ref string i)) 4)
+			       (hex-digit (string-ref string (fix:+ i 1))))))
+      bytes)))
 
 ;;;; Case
 
