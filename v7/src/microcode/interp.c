@@ -30,7 +30,7 @@ Technology nor of any adaptation thereof in any advertising,
 promotional, or sales literature without prior written consent from
 MIT in each case. */
 
-/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.26 1987/05/31 16:36:05 cph Exp $
+/* $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/interp.c,v 9.27 1987/06/09 18:48:44 cph Exp $
  *
  * This file contains the heart of the Scheme Scode
  * interpreter
@@ -979,11 +979,11 @@ assignment_end_before_lock:
 
 assignment_end_after_lock:
 
+      Val = *cell;
+
       if (Type_Code(*cell) != TC_REFERENCE_TRAP)
       {
-	Val = *cell;
-
-      normal_assignment_done:
+normal_assignment_done:
 	*cell = value;
 	remove_lock(set_serializer);
 	Set_Time_Zone(Zone_Working);
