@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.16 2000/07/26 16:36:56 cph Exp $
+@comment $Id: imail.texinfo,v 1.17 2000/08/07 01:37:19 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -27,8 +27,8 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.0 for IMAIL Version 1.4
-@subtitle 26 July 2000
+@subtitle Edition 1.1 for IMAIL Version 1.5
+@subtitle 6 August 2000
 @author by Chris Hanson
 
 @page
@@ -1423,7 +1423,7 @@ deletes the current message, @kbd{u} undeletes, and @kbd{x} expunges.
 starts a reply to it.  You can scroll the current message while
 remaining in the summary buffer using @key{SPC} and @key{DEL}.
 
-@kindex SPC
+@kindex e
 @findex imail-summary-select-message
 The @acronym{IMAIL} commands to move between messages also work in the
 summary buffer, but with a twist: they move through the set of messages
@@ -1431,7 +1431,7 @@ included in the summary.  They also ensure the @acronym{IMAIL} buffer
 appears on the screen (unlike cursor motion commands, which update the
 contents of the @acronym{IMAIL} buffer but don't display it in a window
 unless it already appears).  You can always display the message indicated
-by point using the @key{SPC} command (@code{imail-summary-select-message}).
+by point using the @key{e} command (@code{imail-summary-select-message}).
 
 @kindex q
 @findex imail-summary-quit
