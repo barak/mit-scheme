@@ -1,0 +1,371 @@
+Emacs: Please use -*- Text -*- mode.  Thank you.
+
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/documentation/porting.guide,v 1.1 1991/02/20 23:23:59 jinx Exp $
+
+			LIAR PORTING GUIDE
+			(Very Preliminary)
+
+
+Note: This porting guide applies to version 4.78, but most of the
+relevant information has not changed for a while, nor is it likely to
+change in a while.
+
+For questions on Liar not covered by this document, or questions about
+this document, contact liar-implementors@zurich.ai.mit.edu .
+
+
+
+		0. Introduction and a brief walk through Liar.
+
+Liar translates Scode as produced by the procedure SYNTAX, or by the
+file syntaxer (SF) into compiled code objects.  The Scode is
+translated into a sequences of languages, the last of which is the
+binary representation of the compiled code.
+
+The sequence of languages manipulated is
+
+    Characters --READ--> 
+    S-Expressions --SYNTAX--> 
+    Scode --COMPILE-SCODE--> 
+    compiled code objects.
+
+Liar is a multi-pass compiler, where each major pass has multiple
+subpasses.  Many of the subpasses do not manipulate the whole code
+graph, but instead follow threads that link the relevant parts of the
+graph.
+
+Compile-Scode is the main entry point to Liar, although CF is the
+usual entry point.  CF uses COMPILE-SCODE, and assumes that the code
+has been syntaxed by SF producing a .bin file, and dumps the resulting
+compiled code into a .com file.
+
+The internal sublanguages used by Liar are:
+
+    Scode --FGGEN--> 
+    Flow-graph --RTLGEN--> 
+    RTL (Register Transfer Language) --LAPGEN-->
+    LAP (Lisp assembly program) --ASSEMBLER--> 
+    bits --LINK--> 
+    compiled code object.
+
+where FGGEN, etc., are some of the major passes of the compiler.  
+
+The remaining major passes are FGOPT (the flow-graph optimizer), and
+RTLOPT (the RTL-level optimizer).  RTL-level register allocation is
+performed by RTLOPT, and hardware-level register allocation is
+performed by LAPGEN.  Branch-tensioning of the output code is
+performed by ASSEMBLER.  LINK constructs a Scheme compiled code object
+from the bits representing the code and the fixed data that the
+compiled code uses at runtime.
+
+compiler/toplev.scm contains the top-level calls of the compiler and
+its pass structure.
+
+	0.1.  Package structure for Liar
+
+The package structure of the compiler reflects the pass structure.
+The package structure is specified in compiler/machines/port/comp.pkg.
+The major packages are:
+
+(COMPILER):
+	Utilities and data structures shared by most of the compiler.
+
+(COMPILER MACROS):
+	Syntax extensions used by the compiler to define language
+translation rules.
+
+(COMPILER TOP-LEVEL):
+	Top level pass structure of the compiler.
+
+(COMPILER FG-GENERATOR):
+	This package contains the flow-graph generator, FGGEN.
+
+(COMPILER FG-OPTIMIZER):
+	This package contains the flow-graph analyzer and optimizer,
+FGOPT. It has many sub-packages to contain the individual sub-passes.
+
+(COMPILER RTL-GENERATOR):
+	This package contains the flow-graph to RTL translator,
+RTLGEN. It contains a few sub-packages for the major kinds of
+flow-graph operations.
+
+(COMPILER RTL-OPTIMIZER):
+	This package contains most of the RTL-level optimizer, RTLOPT.
+It has various sub-packages corresponding to some of its sub-passes.
+
+(COMPILER RTL-CSE):
+	This package contains the RTL-level common (redundant)
+subexpression eliminator pass of the RTL-level optimizer.
+
+(COMPILER LAP-SYNTAXER):
+	This package contains most of the machine-dependent parts of
+the compiler and the back end utilities.  In particular, it contains
+the RTL -> LAP translation rules, and the LAP -> bits translation
+rules, ie. the LAPGEN and ASSEMBLER passes respectively.  It has some
+sub-packges for various major utilities (linearizer, map-merger,
+etc.).
+
+(COMPILER ASSEMBLER):
+	This package contains most of the machine-independent portion
+of the assembler.  In particular, it contains the bit-assembler, ie.
+the portion of the assembler that accumulates the bit strings produced
+by ASSEMBLER and performs branch-tensioning on the result.
+
+(COMPILER DISASSEMBLER):
+	This package contains the disassembler.  It is not needed for
+ordinary compiler operation, but is useful for low-level debugging,
+and debugging of the compiler and assembler.
+
+	0.2. Directory structure for Liar
+
+The directory structure loosely reflects the pass structure of the
+compiler.  compiler/machines/port/comp.pkg lists the packages and the
+files that they include.
+
+compiler/back:
+	This directory contains the machine-independent portion of the
+back end.  It contains bit-string utilities, symbol table utilities,
+label management procedures, the hardware register allocator, and the
+top-level assembler calls.
+
+compiler/base:
+	This directory contains common utilities used by the whole
+compiler, and the top level procedures provided by the compiler.
+
+compiler/etc:
+	This directory contains utilities used for cross-compiling,
+and checking re-compilations.
+
+compiler/fggen:
+	This directory contains the front end of the compiler.  The
+code in this directory translates Scode into a flow-graph used by the
+analyzer and optimizer.
+
+compiler/fgopt:
+	This directory contains the flow-graph analyzer and optimizer.
+
+compiler/rtlbase:
+	This directory contains utilities used by the RTL generator and
+optimizer.
+
+compiler/rtlgen:
+	This directory contains the code that translates the
+flow-graph into register transfer language (RTL).
+
+compiler/rtlopt:
+	This directory contains the RTL-level optimizer.  It contains
+code to perform lifetime analysis, redundant subexpression
+elimination, elimination of dead code, etc.
+
+compiler/machines:
+	This directory contains a subdirectory for each port of the
+compiler.  Each of these subdirectories contains the port (machine)
+dependent files of the compiler.
+
+compiler/machines/port:
+	This directory contains the definition of machine parameters,
+the assembler rules, the disassembler, and RTL to assembly-language
+rules for the port.  
+
+All machine-dependent files are in compiler/machines/port and is the
+only directory that needs to be written to port the compiler to a new
+architecture.
+
+		1. Liar's runtime model.
+
+Liar does not open-code all operations that the code would need to
+execute.  In particular, it leaves error handling and recovery,
+interrupt processing, and initialization, to a runtime library written
+in assembly language.
+
+Although this runtime library need not run in the context of the
+CScheme interpreter, currently the only implementation of this library
+runs from the interpreter and uses it for many of its operations.
+
+In other words, Liar does not depend on the interpreter directly, but
+indirectly through the runtime library.  It does depend on the ability
+to invoke CScheme primitives at runtime, some of which (eval, etc.)
+require the interpreter to be present.  It should be possible,
+however, to provide an alternate runtime library and primitive set
+that would allow code produced by Liar to run without the interpreter
+being present (F1).
+
+On the other hand, since the only instance of the runtime library is
+that supplied by the interpreter, Liar currently assumes that the
+Scheme object representation is the same as that used by the
+interpreter, but this is relatively well abstracted and should not be
+hard to change (F2).
+
+The runtime library is currently implemented by microcode/cmpaux-md.m4
+and microcode/cmpint.c .
+
+microcode/cmpaux-md.m4 is an assembly language port-dependent file
+that allows compiled Scheme to call the C-written library routines and
+viceversa.  It is described in microcode/cmpaux.txt .
+
+microcode/cmpint.c defines the library in a machine/port-independent
+way, but requires some information about the port and this is provided
+in microcode/cmpint2.h, a copy (or link) of the appropriate
+microcode/cmpint-md.h file.  The microcode/cmpint-md.h files are
+described in microcode/cmpint.txt .
+
+microcode/cmpint.txt also describes a lot of the data structures that
+the compiled code and runtime library manipulate, and defines some of
+the concepts needed to understand the compiler.
+
+The rest of this document assumes that you are using the runtime
+library provided by the CScheme interpreter.  If you wish to use Liar
+as a compiler for stand-alone programs, a lot of work needs to be
+done, and this work is not described here.  Perhaps we will do it in
+the future.
+
+If you have not yet read microcode/cmpaux.txt and
+microcode/cmpint.txt, please do so before reading the rest of this
+document.
+
+(F1) We often toy with this idea.
+
+(F2) Famous last words.
+
+		2. Preliminary Observations
+
+A. Constraints on architectures to which Liar can be ported:
+
+- Liar assumes that the target machine has an address space that is
+flat enough that all Scheme objects can be addressed uniformly.  In
+other words, segmented address spaces with segments necessarily
+smaller than the Scheme runtime heap will make Liar very hard or
+inefficient to port.
+
+- Liar assumes that code and data can coexist in the same address
+space.  In other words, a true Harvard architecture, with separate
+code and data spaces, would be hard to support without relatively
+major changes.  This assumption conflicts with some current hardware
+that has programmer-visible split data and instruction caches, but
+most of these problems can be resolved if the user is given enough
+control over flushing of the hardware caches.  At some point in the
+future we may provide a C back end for Liar which will resolve some of
+these problems.  Whatever technique the C back end may use can
+probably be emulated by architectures with such a strong division.
+
+- Liar assumes that the target machine is a general-register machine.
+Ie. operations are based on processor registers, and there is a
+moderately large set of general-purpose registers that can be used
+interchangeably.  It would be very hard to port Liar to a stack
+machine, a graph-reduction engine, or a 4-counter machine.  It is
+probably also hard to port Liar to an Intel 386/486 because of the
+small number of registers and the fact that most of them are special
+to some common instructions.
+
+B. Some implementation decisions that may make your job harder:
+
+- Liar generates code that passes arguments to procedures on a stack.
+This decision especially affects the performance on load-store
+architectures, common these days.  This may change in the future due
+to the fact that most modern machines have large register sets and
+memory-based operations are noticeably slower than register-based
+operations even when the memory locations have mappings in the cache.
+
+- Liar assumes that pushing and popping elements from a stack is
+cheap.  Currently Liar does not attempt to bump the stack pointer once
+per block of operations, but instead bumps it once per item.  This is
+expensive on many modern machines where pre-and-post incrementing are
+not supported by the hardware.  This may also change in the
+not-too-far future.
+
+- Liar assumes that it is cheap to compute overflow conditions on
+integer arithmetic operations.  Generic arithmetic primitives have the
+common fixnum case open-coded, and the overflow and non-fixnum cases
+coded out of line, but this depends on the ability of the code to
+detect overflow conditions cheaply.  This is not true of some modern
+machines, notably the MIPS R3000 processor.  If your  processor does
+not detect such conditions, you may have to emulate what the port to
+the MIPS processor does.
+
+- Liar assumes that extracting, inserting, and comparing bit-fields is
+relatively cheap.  The current object representation for Liar
+(compatible with the interpreter) consists of using a number (6-8) of
+bits in the most significant bit positions of a word as a type tag,
+and the rest as the datum, typically an encoded address.  Not only
+must extracting, comparing, and inserting these tags be cheap, but
+decoding the address must be cheap as well.  These operations are
+relatively cheap on architectures with bit-field instructions, but
+more expensive if they must be emulated with bitwise boolean
+operations and shifts, as on the MIPS R3000.
+
+C. Emulating an existing port.
+
+The simplest way to port Liar is to find an architecture to which Liar
+has already been ported that is sufficiently similar to the desired
+architecture that a port can be obtained by small modifications.  In
+particular, if the architectures are really close, there may be no
+need for architecture-specific additional tuning.
+
+Note that we develop the compiler on Motorola >=68020 processors, so
+this is the best-tuned version, and the other ports are not very well
+tuned or not tuned at all because we don't use the other hardware.  If
+you improve an existing port, please give us the improvements.
+
+- If you have a Vax-like CISC machine, you can try starting from the
+Vax or the Motorola 68020 ports.  The Vax port was written by starting
+from the 68020 port.  This is probably the best solution for some
+architectures like the NS32000, and perhaps even the IBM 370.
+
+- If you have an "enlarged" RISC processor, with more complex
+addressing modes, and bit-field instructions, you may want to start by
+looking at the Spectrum (HP Precision Architecture) port.  This is
+probably a good starting point for the Motorola 88000, and the IBM
+RS6000 architectures.
+
+- If you have a bare-bones RISC processor, similar to a MIPS
+R2000/R3000 processor, you may want to start from this port.  Since
+the MIPS R2000 is a minimalist architecture, it should almost subsume
+all other RISCs, and may well be a good starting point for all of
+them.  This is probably a good starting point for the Sparc
+architecture.  Note that the MIPS port was done by starting from the
+Spectrum port.
+
+- If you have a machine significantly different from those listed
+above, you are out of luck and will have to write a port from scratch.
+
+Of course, no architecture is identical to any other, so you may want
+to mix and match ideas from many of the ports already finished, and it
+is probably a good idea for you to compare how the various ports solve
+the various problems.
+
+		3. Compiler operation, RTL rules and LAP rules.
+Mention the early syntaxing, but tell them to ignore it.
+Mention the switches and what they do.
+
+		4. Description of the files in compiler/machines/port.
+Particular emphasis on machin.scm, assmd.scm, the macro files, and the
+assembler.
+
+		5. How to test the compiler once the port files have
+been written.
+?? How to test the assembler by using LAP->CODE .
+Include my upgraded test suited in the compiler directory, and perhaps
+some scripts that do the testing.
+
+		6. How to build a compiler once it has been
+preliminarly tested.  
+Cross compiling.
+Spreading the computation over a bunch of machines.
+Testing for convergence by doing stages and comparing binaries.
+Common bugs.  interrupts, dlinks, register allocation bus, and bugs
+in the interface.
+
+		7. How to write RTL rules and use the register
+allocator.
+Get CPH to help with this.
+Closures, multi closures, uuo-link calls, and block-linking.
+
+		8. How to use the RTL rewriter to improve the output
+code.
+Suggest looking at the 68000 and the Spectrum versions.
+
+		9. How to interface to the runtime library.  How to
+write special-purpose optimized entries.
+
+		10. How to give us the new port so that we can
+distribute it, and help upgrade/maintain it.
