@@ -1,8 +1,8 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ###	$Id: mips.m4,v 1.10 1993/01/12 10:43:07 cph Exp $
+ ###	$Id: mips.m4,v 1.11 1993/10/17 11:16:34 cph Exp $
  ###
- ###	Copyright (c) 1989-1992 Massachusetts Institute of Technology
+ ###	Copyright (c) 1989-93 Massachusetts Institute of Technology
  ###
  ###	This material was developed by the Scheme project at the
  ###	Massachusetts Institute of Technology, Department of
@@ -552,7 +552,7 @@ set_interrupt_enables_1:
 	lw	$C_arg3,Stack_Guard
 	bne	$C_arg2,$0,set_interrupt_enables_2
 	nop
-	lw	$C_arg3,Constant_Top
+	lw	$C_arg3,Stack_Bottom
 	.globl	set_interrupt_enables_2
 set_interrupt_enables_2:
 	lw	$C_arg2,4($stack)	# get return address
