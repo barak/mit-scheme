@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: sercom.scm,v 1.62 1993/08/10 07:04:31 cph Exp $
+;;;	$Id: sercom.scm,v 1.63 1993/10/14 22:42:46 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -361,8 +361,3 @@ Special characters:
 	    (if mark
 		(set-current-point! mark)
 		(editor-failure)))))))
-
-;; Edwin Variables:
-;; scheme-environment: '(edwin)
-;; scheme-syntax-table: (access edwin-syntax-table (->environment '(edwin)))
-;; End:
