@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###	$Id: makefile,v 1.6 1995/03/13 23:18:16 cph Exp $
+###	$Id: makefile,v 1.7 1995/03/13 23:20:46 cph Exp $
 ###
 ###	Copyright (c) 1994-95 Massachusetts Institute of Technology
 ###
@@ -305,7 +305,7 @@ BCHSOURCES = $(CORE_SOURCES) $(BCH_GC_SOURCES)
 BCHOBJECTS = $(CORE_OBJECTS) $(BCH_GC_OBJECTS) $(OS2_OBJECTS) \
 	$(OS_PRIM_OBJECTS) bchdef.$(OBJ)
 
-all: bintopsb.exe psbtobin.exe scheme.exe bchschem.exe
+#all: bintopsb.exe psbtobin.exe scheme.exe bchschem.exe
 
 clean:
 	rm -f *.$(OBJ) *.exe *.tch usrdef.c bchdef.c
