@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: buffrm.scm,v 1.47 1993/01/09 01:15:52 cph Exp $
+;;;	$Id: buffrm.scm,v 1.48 1993/08/10 05:42:07 cph Exp $
 ;;;
 ;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
@@ -366,8 +366,7 @@ Automatically becomes local when set in any fashion."
       (error:wrong-type-argument object "window configuration" procedure)))
 
 (define (screen-window-configuration screen)
-  (if (not (screen? screen))
-      (error:wrong-type-argument screen "screen" 'SCREEN-WINDOW-CONFIGURATION))
+  (guarantee-screen screen 'SCREEN-WINDOW-CONFIGURATION)
   (let ((frame (screen-root-window screen))
 	(converted-windows '()))
     (let ((root-window
@@ -463,8 +462,7 @@ Automatically becomes local when set in any fashion."
 					    (saved-window/point saved-window))
 			(select-buffer-in-window buffer window false)
 			(let ((mark (saved-window/mark saved-window)))
-			  (if mark
-			      (push-buffer-mark! buffer mark)))
+			  (if mark (push-buffer-mark! buffer mark)))
 			(set-window-start-mark!
 			 window
 			 (saved-window/start-mark saved-window)
@@ -480,21 +478,18 @@ Automatically becomes local when set in any fashion."
 	  (let ((convert-window
 		 (lambda (saved-window)
 		   (let ((association (assq saved-window converted-windows)))
-		     (and association
-			  (cdr association))))))
+		     (and association (cdr association))))))
 	    (let ((window
 		   (window-configuration/selected-window configuration)))
 	      (if window
 		  (let ((window (convert-window window)))
 		    (without-interrupts
-		     (lambda ()
-		       (screen-select-window! screen window))))))
+		     (lambda () (screen-select-window! screen window))))))
 	    (let ((window (window-configuration/cursor-window configuration)))
 	      (if window
 		  (let ((window (convert-window window)))
 		    (without-interrupts
-		     (lambda ()
-		       (screen-select-cursor! screen window))))))
+		     (lambda () (screen-select-cursor! screen window))))))
 	    (let ((window
 		   (window-configuration/minibuffer-scroll-window
 		    configuration)))

@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: c-mode.scm,v 1.51 1992/11/17 17:37:47 cph Exp $
+;;;	$Id: c-mode.scm,v 1.52 1993/08/10 05:46:42 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -46,11 +46,6 @@
 
 (declare (usual-integrations))
 
-(define-command c-mode
-  "Enter C mode."
-  ()
-  (lambda () (set-current-major-mode! (ref-mode-object c))))
-
 (define-major-mode c fundamental "C"
   "Major mode for editing C code.
 Expression and list commands understand all C brackets.
@@ -129,6 +124,11 @@ Settings for K&R and BSD indentation styles are
       c-mode:comment-indent)
     (event-distributor/invoke! (ref-variable c-mode-hook buffer) buffer)))
 
+(define-command c-mode
+  "Enter C mode."
+  ()
+  (lambda () (set-current-major-mode! (ref-mode-object c))))
+
 (define-variable c-mode-hook
   "An event distributor that is invoked when entering C mode."
   (make-event-distributor))

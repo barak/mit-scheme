@@ -1,8 +1,8 @@
 ;;; -*-Scheme-*-
 ;;;
-;;;	$Id: bufmnu.scm,v 1.124 1992/11/17 17:37:28 cph Exp $
+;;;	$Id: bufmnu.scm,v 1.125 1993/08/10 05:43:07 cph Exp $
 ;;;
-;;;	Copyright (c) 1986, 1989-92 Massachusetts Institute of Technology
+;;;	Copyright (c) 1986, 1989-93 Massachusetts Institute of Technology
 ;;;
 ;;;	This material was developed by the Scheme project at the
 ;;;	Massachusetts Institute of Technology, Department of
@@ -298,14 +298,14 @@ and then move up one line."
   "p"
   (lambda (argument)
     (set-current-point! (line-start (current-point) argument 'BEEP))))
-
+
 (define-command buffer-menu-abort
   "Abort buffer menu edit."
   ()
   (lambda ()
     (kill-buffer-interactive (current-buffer))
     (clear-message)))
-
+
 (define (buffer-menu-select menu buffer needed?)
   (select-buffer buffer)
   (if (not (or (eq? menu buffer) needed?))
