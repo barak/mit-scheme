@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.h,v 1.1 1993/06/24 06:55:44 gjr Exp $
+$Id: outf.h,v 1.2 1993/06/24 08:22:21 gjr Exp $
 
 Copyright (c) 1993 Massachusetts Institute of Technology
 
@@ -37,6 +37,7 @@ MIT in each case. */
 
 #include <stdarg.h>
 #include <stdio.h>
+#include "ansidecl.h"
 
 typedef struct __outf_channel_type_placeholder *outf_channel;
 
