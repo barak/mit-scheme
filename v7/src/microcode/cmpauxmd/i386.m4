@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.20 1992/03/13 19:29:08 jinx Exp $
+###	$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/cmpauxmd/i386.m4,v 1.21 1992/03/16 02:08:47 jinx Exp $
 ###
 ###	Copyright (c) 1992 Massachusetts Institute of Technology
 ###
@@ -229,7 +229,7 @@ ifdef(`DOS',
       `define(SDX,`$1(,$2,$3)')')
 
 ifdef(`DOS',
-      `define(IJMP,`[$1]')',
+      `define(IJMP,`$1')',
       `define(IJMP,`*$1')')
 
 ifdef(`DOS',`define(TYPE_CODE_LENGTH,6)')
