@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.60 2001/08/10 17:10:33 cph Exp $
+$Id: toplev.scm,v 4.61 2001/12/18 21:30:57 cph Exp $
 
 Copyright (c) 1988-2001 Massachusetts Institute of Technology
 
@@ -78,7 +78,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (fluid-let ((sf/default-syntax-table
 			   (if (default-object? syntax-table)
 			       #f
-			       syntax-table))
+			       (guarantee-syntax-table syntax-table
+						       'COMPILE-FILE)))
 			  (sf/default-declarations
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
