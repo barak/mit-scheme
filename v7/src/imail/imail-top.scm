@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id: imail-top.scm,v 1.118 2000/06/02 02:25:36 cph Exp $
+;;; $Id: imail-top.scm,v 1.119 2000/06/02 02:48:08 cph Exp $
 ;;;
 ;;; Copyright (c) 1999-2000 Massachusetts Institute of Technology
 ;;;
@@ -781,13 +781,14 @@ With prefix argument N moves backward N messages with these flags."
 	 (if (null? selector)
 	     (message-body message)
 	     (message-mime-body-part message selector))))
-    (if (let ((charset
-	       (let ((entry (assq 'CHARSET (mime-body-parameters body))))
-		 (if entry
-		     (cdr entry)
-		     "us-ascii"))))
-	  (or (string-ci=? charset "us-ascii")
-	      (re-string-match "\\`iso-8859-[0-9]+\\'" charset #t)))
+    (if (or (eq? (mime-body-subtype body) 'PLAIN)
+	    (let ((charset
+		   (let ((entry (assq 'CHARSET (mime-body-parameters body))))
+		     (if entry
+			 (cdr entry)
+			 "us-ascii"))))
+	      (or (string-ci=? charset "us-ascii")
+		  (re-string-match "\\`iso-8859-[0-9]+\\'" charset #t))))
 	(begin
 	  (case (mime-body-one-part-encoding body)
 	    ((QUOTED-PRINTABLE)
