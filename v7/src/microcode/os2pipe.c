@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pipe.c,v 1.1 1994/11/28 03:42:59 cph Exp $
+$Id: os2pipe.c,v 1.2 1994/12/02 20:41:57 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -76,10 +76,11 @@ input_pipe_operator (Tchannel channel, chop_t operation,
     {
     case chop_read:
       (* ((long *) arg3))
-	= (channel_thread_read (channel, ((char *) arg1), ((size_t) arg2)));
+	= (OS2_channel_thread_read
+	   (channel, ((char *) arg1), ((size_t) arg2)));
       break;
     case chop_close:
-      channel_thread_close (channel);
+      OS2_channel_thread_close (channel);
       break;
     default:
       OS2_logic_error ("Unknown operation for input pipe.");

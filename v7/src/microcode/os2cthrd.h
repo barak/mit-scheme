@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2cthrd.h,v 1.1 1994/11/28 03:42:55 cph Exp $
+$Id: os2cthrd.h,v 1.2 1994/12/02 20:41:38 cph Exp $
 
 Copyright (c) 1994 Massachusetts Institute of Technology
 
@@ -53,7 +53,7 @@ typedef struct
 #define CHANNEL_CONTEXT_READAHEAD_INDEX(c) ((c) -> readahead_index)
 #define CHANNEL_CONTEXT_EOFP(c) ((c) -> eofp)
 
-typedef struct
+typedef struct sm_readahead_s
 {
   DECLARE_MSG_HEADER_FIELDS;
   ULONG size;
@@ -68,8 +68,21 @@ typedef struct
 typedef msg_t sm_readahead_ack_t;
 
 extern channel_context_t * OS2_make_channel_context (void);
-extern long channel_thread_read (Tchannel, char *, size_t);
+extern long OS2_channel_thread_read (Tchannel, char *, size_t);
 extern void OS2_wait_for_readahead_ack (qid_t);
-extern void channel_thread_close (Tchannel);
+extern void OS2_channel_thread_close (Tchannel);
+
+typedef struct
+{
+  msg_list_t * head;
+  msg_list_t * tail;
+} readahead_buffer_t;
+
+extern readahead_buffer_t * OS2_make_readahead_buffer (void);
+extern int OS2_readahead_buffer_emptyp (readahead_buffer_t *);
+extern void OS2_readahead_buffer_insert (readahead_buffer_t *, char);
+extern char OS2_readahead_buffer_rubout (readahead_buffer_t *);
+extern msg_t * OS2_readahead_buffer_read (readahead_buffer_t *);
+extern msg_list_t * OS2_readahead_buffer_read_all (readahead_buffer_t *);
 
 #endif /* SCM_OS2CTHRD_H */
