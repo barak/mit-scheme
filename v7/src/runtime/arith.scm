@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.19 1991/04/26 02:39:56 cph Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/runtime/arith.scm,v 1.20 1991/05/06 18:08:24 jinx Exp $
 
 Copyright (c) 1989-91 Massachusetts Institute of Technology
 
@@ -130,7 +130,10 @@ MIT in each case. |#
       (set-trampoline! 'GENERIC-TRAMPOLINE-ADD complex:+)
       (set-trampoline! 'GENERIC-TRAMPOLINE-SUBTRACT complex:-)
       (set-trampoline! 'GENERIC-TRAMPOLINE-MULTIPLY complex:*)
-      (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/)))
+      (set-trampoline! 'GENERIC-TRAMPOLINE-DIVIDE complex:/)
+      (set-trampoline! 'GENERIC-TRAMPOLINE-QUOTIENT complex:quotient)
+      (set-trampoline! 'GENERIC-TRAMPOLINE-REMAINDER complex:remainder)
+      (set-trampoline! 'GENERIC-TRAMPOLINE-MODULO complex:modulo)))
   unspecific)
 
 (define flo:significand-digits-base-2)
@@ -1635,9 +1638,36 @@ MIT in each case. |#
 					  (reduce complex:* 1 (cddr zs))))))))
 
 (define abs complex:abs)
+#|
+;; Kludge!
+
 (define quotient complex:quotient)
 (define remainder complex:remainder)
 (define modulo complex:modulo)
+|#
+
+(define (quotient n d)
+  ((ucode-primitive quotient 2) n d))
+
+(define (remainder n d)
+  ((ucode-primitive remainder 2) n d))
+
+#|
+
+(define (modulo n d)
+  ((ucode-primitive modulo 2) n d))
+
+|#
+
+(define (modulo n d)
+  (let ((r ((ucode-primitive remainder 2) n d)))
+    (if (or (zero? r)
+	    (if (negative? n)
+		(negative? d)
+		(not (negative? d))))
+	r
+	(+ r d))))
+
 (define integer-floor complex:integer-floor)
 (define integer-ceiling complex:integer-ceiling)
 (define integer-truncate complex:quotient)
