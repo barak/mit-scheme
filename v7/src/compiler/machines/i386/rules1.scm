@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.11 1992/02/15 16:12:51 jinx Exp $
+$Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/compiler/machines/i386/rules1.scm,v 1.12 1992/02/15 16:21:03 jinx Exp $
 $MC68020-Header: /scheme/src/compiler/machines/bobcat/RCS/rules1.scm,v 4.36 1991/10/25 06:49:58 cph Exp $
 
 Copyright (c) 1992 Massachusetts Institute of Technology
@@ -95,7 +95,7 @@ MIT in each case. |#
 	    (LAP (LEA ,target (@RO UW ,source ,literal)))))
 
 	(define (two-arg target)
-	  (LAP (OR W ,target (&U ,literal)))
+	  (LAP (OR W ,target (&U ,literal))))
 
 	(cond ((register-alias datum 'GENERAL)
 	       =>
@@ -107,7 +107,7 @@ MIT in each case. |#
 						     (three-arg alias)))
 		     (three-arg alias))))
 	      (else
-	       (two-arg (standard-move-to-target! datum target))))))))
+	       (two-arg (standard-move-to-target! datum target)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (REGISTER (? source))))
