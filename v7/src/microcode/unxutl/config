@@ -1,6 +1,6 @@
 #!/bin/sh
 # Configuration script for MIT Scheme
-# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.14 1991/10/17 08:21:11 cph Exp $
+# $Header: /Users/cph/tmp/foo/mit-scheme/mit-scheme/v7/src/microcode/unxutl/Attic/config,v 1.15 1992/04/30 04:06:22 cph Exp $
 # Modelled on the configuration script for GNU CC
 #   Copyright (C) 1988 Free Software Foundation, Inc.
 
@@ -71,7 +71,7 @@ case $# in
 		cmpint_file=cmpint-mips.h
 		;;
 	nws3250)			# sony news laptop
-		system_file=sysv4
+		system_file=newsos5
 		machine_file=mips
 		cmpint_file=cmpint-mips.h
 		;;
